@@ -1,0 +1,247 @@
+# Default values for kubeblocks
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Enabled this if you wish to install controller deployment
+replicaCount: 1
+
+image:
+  repository: docker.io/apecloud/kubeblocks
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+loggerSettings:
+  # Development Mode defaults(encoder=consoleEncoder,logLevel=Debug,stackTraceLevel=Warn).
+  # Production Mode defaults(encoder=jsonEncoder,logLevel=Info,stackTraceLevel=Error) (default false)
+  developmentMode: false
+  # log encoding (one of 'json' or 'console')
+  encoder: console
+  # log level, can be one of 'debug', 'info', 'error', or any integer value > 0 
+  # which corresponds to custom debug levels of increasing verbosity.
+  level:
+  # Zap time encoding (one of 'epoch', 'millis', 'nano', 'iso8601', 'rfc3339' or 
+  # 'rfc3339nano'). Defaults to 'iso8601'.
+  timeEncoding: 'iso8601'
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+
+podSecurityContext:
+  runAsNonRoot: true
+  # readOnlyRootFilesystem: true
+  # runAsUser: 1000
+  # fsGroup: 2000
+  # TODO(user): For common cases that do not require escalating privileges
+  # it is recommended to ensure that all your Pods/Containers are restrictive.
+  # More info: https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted
+  # Please uncomment the following code if your project does NOT have to work on old Kubernetes
+  # versions < 1.19 or on vendors versions which do NOT support this field by default (i.e. Openshift < 4.11 ).
+  # seccompProfile:
+  #   type: RuntimeDefault
+
+service:
+  type: ClusterIP
+  port: 9443
+  # -- Service node port.
+  # Only used if `service.type` is `NodePort`.
+  nodePort:
+
+
+## Metrics serviceMonitor parameters
+## Enable this if you're using Prometheus Operator
+##
+serviceMonitor:
+  enabled: false
+  # metrics server will be exposed at this port.
+  port: 8080
+  # Only used if `service.type` is `NodePort`.
+  nodePort:
+
+# -- Topology spread constraints.
+topologySpreadConstraints: []
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # TODO(user): Configure the resources accordingly based on the project requirements.
+  # More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+  # limits:
+  #   cpu: 500m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 10m
+  #   memory: 64Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+podDisruptionBudget:
+  minAvailable: 1
+  maxUnavailable:
+
+admissionWebhooks:
+  enabled: true
+  createSelfSignedCert: true
+
+dashboards:
+  ## If false, dashboards will not be installed
+  ##
+  enabled: false
+
+# Data protection settings
+dataProtection:
+  ## disableVolumeSnapshot - set this to true if cluster does not have snapshot.storage.k8s.io API installed
+  disableVolumeSnapshot: false
+
+
+# Sub-charts
+prometheus:
+  ## If false, prometheus sub-chart will not be installed
+  ##
+  enabled: false
+
+  alertmanager:
+    ## If false, alertmanager will not be installed
+    ##
+    enabled: true
+
+    persistentVolume:
+      ## If true, alertmanager will create/use a Persistent Volume Claim
+      ## If false, use emptyDir
+      ##
+      enabled: false
+
+      ## alertmanager data Persistent Volume size
+      ##
+      size: 2Gi
+
+  kubeStateMetrics:
+    ## If false, kube-state-metrics sub-chart will not be installed
+    ##
+    enabled: false
+
+  nodeExporter:
+    ## If false, node-exporter will not be installed
+    ##
+    enabled: false
+
+    podSecurityPolicy:
+      enabled: false
+
+  server:
+    ## Prometheus server container name
+    ##
+    enabled: true
+
+    global:
+      ## How frequently to scrape targets by default
+      ##
+      scrape_interval: 30s
+      ## How long until a scrape request times out
+      ##
+      scrape_timeout: 10s
+      ## How frequently to evaluate rules
+      ##
+      evaluation_interval: 30s
+
+    ## Prefix used to register routes, overriding externalUrl route.
+    ## Useful for proxies that rewrite URLs.
+    ##
+    routePrefix: /
+
+    persistentVolume:
+      ## If true, Prometheus server will create/use a Persistent Volume Claim
+      ## If false, use emptyDir
+      ##
+      enabled: false
+
+      ## Prometheus server data Persistent Volume size
+      ##
+      size: 8Gi
+
+  pushgateway:
+    ## If false, pushgateway will not be installed
+    ##
+    enabled: false
+
+grafana:
+  ## If false, grafana sub-chart will not be installed
+  ##
+  enabled: false
+
+  ## Timezone for the default dashboards
+  ## Other options are: browser or a specific timezone, i.e. Europe/Luxembourg
+  ##
+  defaultDashboardsTimezone:
+
+  adminUser: admin
+  adminPassword: abc
+
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+
+    datasources:
+      enabled: true
+      label: grafana_datasource
+      labelValue: "1"
+
+      defaultDatasourceEnabled: true
+      uid: prometheus
+
+      skipReload: true
+      initDatasources: true
+
+  testFramework:
+    enabled: false
+
+  grafana.ini:
+    # Basic auth is enabled by default and works with the builtin Grafana user password authentication system and LDAP authentication integration.
+    auth.basic:
+      enabled: false
+
+    auth.anonymous:
+      enabled: true
+      # Hide the Grafana version text from the footer and help tooltip for unauthenticated users (default: false)
+      hide_version: true
+
+loadbalancer:
+  enabled: false
+
+
+wesql:
+  enabled: true
+
