@@ -1,8 +1,7 @@
 apiVersion: v2
 name: openldap
 type: application
-description: |-
-  The OpenLDAP Project is a collaborative effort to develop a robust, commercial-grade, fully featured, and open source LDAP suite of applications and development tools. 
+description: The OpenLDAP Project is a collaborative effort to develop a robust, commercial-grade, fully featured, and open source LDAP suite of applications and development tools. 
   This chart provides KubeBlocks'
 
 version: 0.1.0-alpha.0

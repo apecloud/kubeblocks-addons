@@ -1,6 +1,6 @@
 apiVersion: v2
 name: qdrant
-description: .
+description: High-performance, massive-scale Vector Database for the next generation of AI.
 
 type: application
 
