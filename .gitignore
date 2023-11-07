@@ -12,5 +12,5 @@
 *~
 
 # helm dependency charts
-deploy/**/Chart.lock
-deploy/**/charts
+addons/**/Chart.lock
+addons/**/charts
