@@ -1,7 +1,7 @@
 # kubeblocks-addons
 KubeBlocks add-ons.
 
-## Addon Tutorial
+## Add-on Tutorial
 > NOTE: This tutorial is applicable for KubeBlocks version 0.6.
 
 * [Add-ons of KubeBlocks](https://kubeblocks.io/docs/release-0.6/developer_docs/integration/add-ons-of-kubeblocks)
