@@ -8,6 +8,12 @@ data:
   start.sh: |
     #!/bin/bash
     echo "model=${MODEL_NAME}"
+    domain=${MODEL_NAME%%/*}
+    echo "domain=${domain}"
+    if [[ "${domain,,}" == "qwen" ]]; then
+      # install dependencies for qwen
+      pip install tiktoken
+    fi
     country=`curl https://ifconfig.io/country_code`
     if [ "$country" == "CN" ]; then
       CLONE_MODEL_SCRIPT="git lfs install; git clone https://www.modelscope.cn/${MODEL_NAME}.git"
