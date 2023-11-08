@@ -56,6 +56,22 @@
       "minimum": 0,
       "maximum": 64,
       "multipleOf": 1
+    },
+    "model": {
+      "title": "Model",
+      "description": "Model name",
+      "type": [
+        "string"
+      ],
+      "default": "facebook/opt-125m"
+    },
+    "extraArgs": {
+      "title": "extra arguments",
+      "description": "extra arguments that will be passed to run model",
+      "type": [
+        "string"
+      ],
+      "default": "--trust-remote-code"
     }
   }
 }
