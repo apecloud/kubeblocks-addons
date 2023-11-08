@@ -45,6 +45,8 @@ data:
     echo "EXTRA_ARGS=${EXTRA_ARGS}"
     cd vllm
     echo "model=${MODEL_NAME}" > log
+    # wait for ray start 
+    sleep 3
     while true; do
       node_num=`ray status | grep "1 node" | wc -l`
       # continue waiting if ray status not ok
