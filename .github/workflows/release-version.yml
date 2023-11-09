@@ -3,16 +3,12 @@ name: Release Version
 on:
   workflow_dispatch:
     inputs:
-      release_version:
+      VERSION:
         description: 'The version of release'
         required: true
         default: ''
-      release_branch:
-        description: 'The branch of release'
-        required: true
-        default: 'main'
 
-run-name: ref_name:${{ inputs.release_branch }} release_version:${{ inputs.release_version }}
+run-name: ref_name:${{ github.ref_name }} release_version:${{ inputs.VERSION }}
 
 env:
   GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
@@ -21,14 +17,11 @@ jobs:
   release-version:
     runs-on: ubuntu-latest
     steps:
-      - name: checkout branch ${{ inputs.release_branch }}
+      - name: checkout branch ${{ github.ref_name }}
         uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.release_branch }}
-
       - name: push tag
         uses: mathieudutour/github-tag-action@v6.1
         with:
-          custom_tag: ${{ inputs.release_version }}
+          custom_tag: ${{ inputs.VERSION }}
           github_token: ${{ env.GITHUB_TOKEN }}
           tag_prefix: ""
