@@ -5,4 +5,4 @@ immutableParameters:
 #  - zookeeperSessionExpiredPolicy
 #
 #dynamicParameters:
-#  - forceDeleteNamespaceAllowed
+#  - hbase.hstore.compaction.min.size
