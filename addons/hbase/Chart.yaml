@@ -1,0 +1,17 @@
+apiVersion: v2
+name: hbase
+description: Apache HBase™ is the Hadoop database, a distributed, scalable, big data store.
+type: application
+version: 0.7.0-alpha.0
+appVersion: "2.5.6"
+home: https://hbase.apache.org/
+icon: https://www.apache.org/logos/res/hbase/default.png
+keywords:
+  - hbase
+  - database
+  - bigdata
+maintainers:
+  - name: ApeCloud
+    url: https://github.com/apecloud/kubeblocks/deploy
+  - name: kissycn
+    url: https://github.com/kissycn

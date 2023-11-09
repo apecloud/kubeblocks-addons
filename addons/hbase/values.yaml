@@ -1,0 +1,30 @@
+# Default values for HBase.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# clusterVersionOverride
+
+images:
+  master:
+    repository: docker.io/dtweave/hbase-hmaster
+    pullPolicy: IfNotPresent
+    tag: v2.5.6-1.0.0
+  region:
+    repository: docker.io/dtweave/hbase-hregionserver
+    pullPolicy: IfNotPresent
+    tag: v2.5.6-1.0.0
+
+ports:
+  master:
+    port: 16000
+    ui: 16010
+  region:
+    port: 16020
+    ui: 16030
+
+hdfs:
+  configMapRefName: hdfs-config
+
+logConfigs:
+  info: /opt/zookeeper/logs/zookeeper-*-server-*.log
+  audit: /opt/zookeeper/logs/zookeeper_audit.log

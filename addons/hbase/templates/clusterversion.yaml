@@ -1,0 +1,21 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterVersion
+metadata:
+  name: hbase-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
+  labels:
+    {{- include "hbase.labels" . | nindent 4 }}
+spec:
+  clusterDefinitionRef: hbase
+  componentVersions:
+    - componentDefRef: hbase-master
+      versionsContext:
+        containers:
+          - name: hbase-master
+            image: {{ .Values.images.master.repository }}:{{ .Values.images.master.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.images.master.pullPolicy }}
+    - componentDefRef: hbase-region
+      versionsContext:
+        containers:
+          - name: hbase-region
+            image: {{ .Values.images.region.repository }}:{{ .Values.images.region.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.images.region.pullPolicy }}
