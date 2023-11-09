@@ -14,11 +14,11 @@ replicas: 1
 
 ## @param cpu
 ##
-cpu: 3
+cpu: 2
 
 ## @param memory, the unit is Gi
 ##
-memory: 7
+memory: 6
 
 ## @param gpu
 ##
