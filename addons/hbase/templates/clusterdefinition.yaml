@@ -16,6 +16,7 @@ spec:
         - name: hbase-config
           namespace: {{ .Release.Namespace }}
           templateRef: {{ include "hbase.name" . }}-config-template
+          constraintRef: {{ include "hbase.name" . }}-config-constraints
           volumeName: hbase-config
           defaultMode: 0755
         - name: hdfs-config
@@ -92,6 +93,7 @@ spec:
         - name: hbase-config
           namespace: {{ .Release.Namespace }}
           templateRef: {{ include "hbase.name" . }}-config-template
+          constraintRef: {{ include "hbase.name" . }}-config-constraints
           volumeName: hbase-config
           defaultMode: 0755
         - name: hdfs-config

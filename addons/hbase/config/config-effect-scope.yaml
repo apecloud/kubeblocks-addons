@@ -1,0 +1,8 @@
+immutableParameters:
+  - dataDir
+
+#staticParameters:
+#  - zookeeperSessionExpiredPolicy
+#
+#dynamicParameters:
+#  - forceDeleteNamespaceAllowed
