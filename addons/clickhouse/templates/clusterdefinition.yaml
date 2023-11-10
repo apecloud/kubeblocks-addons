@@ -39,6 +39,11 @@ spec:
           templateRef: clickhouse-tpl
           volumeName: config
           namespace: {{ .Release.Namespace }}
+        - name: clickhouse-user-tpl
+          templateRef: clickhouse-user-tpl
+          volumeName: user-config
+          namespace: {{ .Release.Namespace }}
+          constraintRef: clickhouse-constraints
       service:
         ports:
           - name: http
@@ -225,6 +230,8 @@ spec:
                 mountPath: /bitnami/clickhouse
               - name: config
                 mountPath: /bitnami/clickhouse/etc/conf.d/default
+              - name: user-config
+                mountPath: /bitnami/clickhouse/etc/users.d/default
 
     - name: zookeeper
       workloadType: Stateful #Consensus
