@@ -11,7 +11,7 @@ spec:
   backupPolicies:
   - componentDefRef: mysql
     target:
-      role: follower
+      role: leader
     backupMethods:
     - name: volume-snapshot
       snapshotVolumes: true
