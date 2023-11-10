@@ -1,0 +1,46 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{ include "kblib.clusterLabels" . | nindent 4 }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  clusterDefinitionRef: hbase
+  clusterVersionRef: hbase-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
+  terminationPolicy: {{ .Values.terminationPolicy }}
+  {{- include "kblib.affinity" . | indent 2 }}
+  componentSpecs:
+    - name: hbase-master
+      componentDefRef: hbase-master
+      serviceRefs:
+        - name: hadoop-zookeeper
+          namespace: {{ .Values.serviceReference.zookeeper.namespace | default .Release.Namespace }}
+        {{- if .Values.serviceReference.zookeeper.serviceDescriptor }}
+          serviceDescriptor: {{ .Values.serviceReference.zookeeper.serviceDescriptor }}
+        {{- else }}
+        {{- if .Values.serviceReference.zookeeper.cluster }}
+          cluster: {{ .Values.serviceReference.zookeeper.cluster }}
+        {{- else }}
+          cluster: {{ include "kblib.clusterName" . }}-zookeeper
+        {{- end }}
+        {{- end }}
+      replicas: {{ .Values.master.replicas }}
+      monitor: {{ .Values.master.monitor | default false }}
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      {{- with  .Values.master.resources }}
+      resources:
+        {{- if .limits }}
+        limits:
+          cpu: {{ .limits.cpu | quote }}
+          memory: {{ .limits.memory | quote }}
+        {{- end }}
+        {{- if .requests }}
+        requests:
+          cpu: {{ .requests.cpu | quote }}
+          memory: {{ .requests.memory | quote }}
+        {{- end }}
+      {{- end }}
