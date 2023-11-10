@@ -105,6 +105,8 @@ spec:
                 value: "default"
               - name: CLICKHOUSE_SHARD_ID
                 value: "$(KB_COMP_NAME)"
+              - name: SERVICE_PORT
+                value: "$(CLICKHOUSE_METRICS_PORT)"
               - name: CLICKHOUSE_REPLICA_ID
                 valueFrom:
                   fieldRef:
@@ -202,6 +204,8 @@ spec:
                 value: "9181"
               - name: CLICKHOUSE_METRICS_PORT
                 value: "8001"
+              - name: SERVICE_PORT
+                value: "$(CLICKHOUSE_METRICS_PORT)"
             ports:
               - name: tcp
                 containerPort: 2181
@@ -346,6 +350,8 @@ spec:
                 value: "$(KB_POD_NAME)"
               - name: POD_NAMESPACE
                 value: "$(KB_NAMESPACE)"
+              - name: SERVICE_PORT
+                value: "$(ZOO_PROMETHEUS_METRICS_PORT_NUMBER)"
               # TODO: using componentDefRef to inject zookeeper or keeper env
             ports:
               - name: client
