@@ -19,32 +19,32 @@ images:
     # Images for xstore(DN) tools updater.
     toolsUpdater:
       name: xstore-tools
-      tag: latest
+      tag: v1.5.0
 
     # Image for DN engine
     dn:
       name: polardbx-engine-2.0
-      tag: latest
+      tag: 80-8.0.18-20231101115000
 
     # Image for CN engine
     cn:
       name: polardbx-sql
-      tag: latest
+      tag: 5.4.18-20231101115000
 
     # Image for CN initialization
     init:
       name: polardbx-init
-      tag: latest
+      tag: v1.5.0
 
     # Image for CN engine
     cdc:
       name: polardbx-cdc
-      tag: latest
+      tag: 5.4.18-20231101115000
 
     # Image for CN&CDC exporter
     exporter:
       name: polardbx-exporter
-      tag: latest
+      tag: v1.5.0
 
   # Tool image settings for gms initialization
   mysql:

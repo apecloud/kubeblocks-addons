@@ -8,6 +8,12 @@ data:
   start.sh: |
     #!/bin/bash
     echo "model=${MODEL_NAME}"
+    domain=${MODEL_NAME%%/*}
+    echo "domain=${domain}"
+    if [[ "${domain,,}" == "qwen" ]]; then
+      # install dependencies for qwen
+      pip install tiktoken
+    fi
     country=`curl https://ifconfig.io/country_code`
     if [ "$country" == "CN" ]; then
       CLONE_MODEL_SCRIPT="git lfs install; git clone https://www.modelscope.cn/${MODEL_NAME}.git"
@@ -39,6 +45,8 @@ data:
     echo "EXTRA_ARGS=${EXTRA_ARGS}"
     cd vllm
     echo "model=${MODEL_NAME}" > log
+    # wait for ray start 
+    sleep 3
     while true; do
       node_num=`ray status | grep "1 node" | wc -l`
       # continue waiting if ray status not ok
@@ -46,7 +54,7 @@ data:
         sleep 1
         continue
       fi
-      python -m vllm.entrypoints.api_server --host 0.0.0.0 --port 8000 --model ${MODEL_NAME} --gpu-memory-utilization 0.95 --max-num-seqs 512 --max-num-batched-tokens 8192 --tensor-parallel-size ${KB_VLLM_N} ${EXTRA_ARGS} 2>&1 > log 
+      python -m vllm.entrypoints.api_server --host 0.0.0.0 --port 8000 --model ${MODEL_NAME} --gpu-memory-utilization 0.95 --max-num-seqs 512 --tensor-parallel-size ${KB_VLLM_N} ${EXTRA_ARGS} 2>&1 > log 
       code=$?
       if [ $code -eq 0 ]; then
         break
