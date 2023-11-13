@@ -1,5 +1,5 @@
 apiVersion: v2
-name: tidb
+name: tidb-cluster
 description: "A TiDB cluster Helm chart for KubeBlocks."
 
 type: application

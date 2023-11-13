@@ -35,28 +35,8 @@ Common labels
 */}}
 {{- define "tidb.labels" -}}
 helm.sh/chart: {{ include "tidb.chart" . }}
-{{ include "tidb.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
-{{- end }}
-
-{{/*
-Selector labels
-*/}}
-{{- define "tidb.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "tidb.name" . }}
-app.kubernetes.io/instance: {{ .Release.Name }}
-{{- end }}
-
-{{/*
-Create the name of the service account to use
-*/}}
-{{- define "tidb.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "tidb.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
 {{- end }}
