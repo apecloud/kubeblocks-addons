@@ -1,0 +1,17 @@
+# Default values for tidb.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+image:
+  registry: docker.io
+  repository: pingcap
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "v7.1.2"
+  helper:
+    image: "busybox:1.36.1"
+    pullPolicy: IfNotPresent
+
+clusterVersionOverride: ""
+
+clusterDomain: ".cluster.local"
