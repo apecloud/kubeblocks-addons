@@ -1,4 +1,4 @@
-name: CICD-PUSH
+name: Check Chart
 
 on:
   push:
