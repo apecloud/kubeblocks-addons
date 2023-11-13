@@ -11,11 +11,21 @@ for d in $(find . -type d ! -name "*cluster" -not -name "common" -not -name "kbl
     # Use yq to read fields
     name=$(yq e '.name' $d/Chart.yaml)
     description=$(yq e '.description' $d/Chart.yaml)
+
     dir_name=$(basename $d)
     helm dependency build addons/$dir_name --skip-refresh > /dev/null 2>&1
-    appVersion=$(helm template addon addons/$dir_name | grep -A 5 -B 1 'kind: ClusterVersion' | grep '  name:' | awk '{print $2}' | cut -d '-' -f 2- | sort | tr '\n' ',' | sed 's/,$//' | sed 's/,/<br>/g')
+    version_lines=$(helm template addon addons/$dir_name | grep -A 5 -B 1 'kind: ClusterVersion' | grep '  name:' | awk '{print $2}' | cut -d '-' -f 2- | sort)
+    versions=""
+    while IFS= read -r line
+    do
+      if [[ $line == v* ]]; then
+        line=${line:1}
+      fi
+      versions+="${line}<br>"
+    done <<<"$version_lines"
+    versions=${versions%<br>}
 
     # Output as Markdown table row
-    echo "| $name | $appVersion | $description"
+    echo "| $name | $versions | $description"
   fi
 done
