@@ -1,6 +1,6 @@
 apiVersion: v2
 name: llm
-description: A Helm chart for Kubernetes
+description: Large language models.
 
 # A chart can be either an 'application' or a 'library' chart.
 #

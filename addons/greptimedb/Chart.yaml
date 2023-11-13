@@ -1,6 +1,6 @@
 apiVersion: v2
 name: greptimedb
-description: GreptimeDB Cluster Helm Chart for KubeBlocks.
+description: An open-source, cloud-native, distributed time-series database with PromQL/SQL/Python supported.
 
 # This is the chart version
 version: 0.1.0-beta.1

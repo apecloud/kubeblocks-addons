@@ -1,6 +1,6 @@
 apiVersion: v2
 name: opensearch
-description: A Helm chart for OpenSearch
+description: Open source distributed and RESTful search engine.
 
 # A chart can be either an 'application' or a 'library' chart.
 #

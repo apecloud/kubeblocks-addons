@@ -1,6 +1,6 @@
 apiVersion: v2
 name: nebula
-description: Nebula Graph Cluster Helm Chart for KubeBlocks.
+description: NebulaGraph is a popular open-source graph database that can handle large volumes of data with milliseconds of latency, scale up quickly, and have the ability to perform fast graph analytics.
 version: 0.5.1-beta.0
 appVersion: "v3.5.0"
 home: https://nebula-graph.io

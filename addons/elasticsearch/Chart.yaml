@@ -1,6 +1,6 @@
 apiVersion: v2
 name: elasticsearch
-description: A Helm chart for elasticsearch
+description: Elasticsearch is a distributed, RESTful search engine optimized for speed and relevance on production-scale workloads.
 
 # A chart can be either an 'application' or a 'library' chart.
 #
