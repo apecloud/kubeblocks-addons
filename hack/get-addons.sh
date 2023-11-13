@@ -14,7 +14,7 @@ for d in $(find . -type d ! -name "*cluster" -not -name "common" -not -name "kbl
 
     dir_name=$(basename $d)
     helm dependency build addons/$dir_name --skip-refresh > /dev/null 2>&1
-    version_lines=$(helm template addon addons/$dir_name | grep -A 5 -B 1 'kind: ClusterVersion' | grep '  name:' | awk '{print $2}' | cut -d '-' -f 2- | sort)
+    version_lines=$(helm template addon addons/$dir_name | grep -A 5 'kind: ClusterVersion' | grep '  name:' | awk '{print $2}' | cut -d '-' -f 2- | sort)
     versions=""
     while IFS= read -r line
     do
