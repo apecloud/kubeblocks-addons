@@ -1,6 +1,6 @@
 apiVersion: v2
 name: neon
-description: Neon Helm Chart for KubeBlocks.
+description: Neon is a serverless open-source alternative to AWS Aurora Postgres. It separates storage and compute and substitutes the PostgreSQL storage layer by redistributing data across a cluster of nodes.
 type: application
 version: 0.6.0-alpha.21
 appVersion: "pg14-1.0.0"

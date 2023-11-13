@@ -1,6 +1,6 @@
 apiVersion: v2
 name: risingwave
-description: A RisingWave Helm chart for KubeBlocks.
+description: RisingWave is a distributed SQL streaming database that enables cost-efficient and reliable processing of streaming data.
 
 annotations:
   category: Database

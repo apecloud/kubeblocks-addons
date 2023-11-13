@@ -1,6 +1,6 @@
 apiVersion: v2
 name: xinference
-description: A Helm chart for Kubernetes
+description: Xorbits Inference(Xinference) is a powerful and versatile library designed to serve language, speech recognition, and multimodal models.
 
 # A chart can be either an 'application' or a 'library' chart.
 #

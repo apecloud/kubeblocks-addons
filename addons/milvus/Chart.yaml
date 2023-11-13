@@ -1,6 +1,6 @@
 apiVersion: v2
 name: milvus
-description: .
+description: A cloud-native vector database, storage for next generation AI applications.
 
 type: application
 
