@@ -46,6 +46,7 @@ KubeBlocks add-ons.
 | risingwave | A RisingWave Helm chart for KubeBlocks. |
 | starrocks | A Helm chart for Kubernetes |
 | tdengine | A Specific Implementation of TDengine Chart for Kubernetes, and provides by KubeBlocks' ClusterDefinition API manifests. |
+| TiDB | TiDB is an open-source, cloud-native, distributed, MySQL-Compatible database for elastic scale and real-time analytics. |
 | weaviate | Weaviate is an open-source vector database. It allows you to store data objects and vector embeddings from your favorite ML-models, and scale seamlessly into billions of data objects. |
 | xinference | A Helm chart for Kubernetes |
 | zookeeper | Apache ZooKeeper is a centralized service for maintaining configuration information, naming, providing distributed synchronization, and providing group services. |
