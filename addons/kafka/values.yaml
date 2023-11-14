@@ -31,6 +31,8 @@ images:
 ##
 debugEnabled: true
 
+commonAnnotations: {}
+
 kafkaBroker:
   minNodeId: 100
 

@@ -42,7 +42,7 @@ spec:
           templateRef: {{ include "kafka.name" . }}-configuration-tpl
           volumeName: kafka-config
           namespace: {{ .Release.Namespace }}
-        - name: kafka-jmx-configuration-tpl
+        - name: {{ include "kafka.name" . }}-jmx-configuration-tpl
           templateRef: {{ include "kafka.name" . }}-jmx-configuration-tpl
           volumeName: jmx-config
           namespace: {{ .Release.Namespace }}

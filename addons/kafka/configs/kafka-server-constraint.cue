@@ -665,3 +665,6 @@
 	// other parameters
 	...
 }
+
+configuration: #KafkaParameter & {
+}
