@@ -14,6 +14,10 @@ data:
       # install dependencies for qwen
       pip install tiktoken
     fi
+    # fix baichuan incompatible with latest transformers
+    if [[ "${domain,,}" == "baichuan-inc" ]]; then
+      pip install transformers==4.33.1 tokenizers==0.13.3
+    fi
     country=`curl https://ifconfig.io/country_code`
     if [ "$country" == "CN" ]; then
       CLONE_MODEL_SCRIPT="git lfs install; git clone https://www.modelscope.cn/${MODEL_NAME}.git"
