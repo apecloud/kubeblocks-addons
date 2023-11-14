@@ -10,13 +10,18 @@ spec:
     - name: hbase-master
       workloadType: Stateful
       characterType: hbase-master
+{{/*      serviceRefDeclarations:*/}}
+{{/*        - name: hadoop-zookeeper*/}}
+{{/*          serviceRefDeclarationSpecs:*/}}
+{{/*            - serviceKind: zookeeper*/}}
+{{/*              serviceVersion: 3.7.1*/}}
       statefulSpec:
         updateStrategy: BestEffortParallel
       configSpecs:
         - name: hbase-config
           namespace: {{ .Release.Namespace }}
           templateRef: {{ include "hbase.name" . }}-config-template
-          constraintRef: {{ include "hbase.name" . }}-config-constraints
+          ## constraintRef: {{ include "hbase.name" . }}-config-constraints
           volumeName: hbase-config
           defaultMode: 0755
         - name: hdfs-config
@@ -84,80 +89,80 @@ spec:
                 mountPath: /hbase/conf
               - name: hdfs-config
                 mountPath: /hadoop/conf
-    - name: hbase-region
-      workloadType: Stateful
-      characterType: hbase-region
-      statefulSpec:
-        updateStrategy: BestEffortParallel
-      configSpecs:
-        - name: hbase-config
-          namespace: {{ .Release.Namespace }}
-          templateRef: {{ include "hbase.name" . }}-config-template
-          constraintRef: {{ include "hbase.name" . }}-config-constraints
-          volumeName: hbase-config
-          defaultMode: 0755
-        - name: hdfs-config
-          namespace: {{ .Release.Namespace }}
-          templateRef: {{ .Values.hdfs.configMapRefName | default "hbase-config" }}
-          volumeName: hdfs-config
-          defaultMode: 0755
-      service:
-        ports:
-          - name: region
-            port: {{ .Values.ports.region.port }}
-            targetPort: region
-          - name: region-ui
-            port: {{ .Values.ports.region.ui }}
-            targetPort: region-ui
-      podSpec:
-        securityContext:
-          fsGroup: 0
-          runAsGroup: 0
-          runAsNonRoot: true
-          runAsUser: 10000
-        containers:
-          - name: hbase-region
-            env:
-              - name: DEBUG_MODEL
-                value: "true"
-            ports:
-              - name: region
-                containerPort: {{ .Values.ports.region.port }}
-              - name: region-ui
-                containerPort: {{ .Values.ports.region.ui }}
-            livenessProbe:
-              httpGet:
-                path: /
-                port: {{ .Values.ports.region.ui }}
-              failureThreshold: 6
-              initialDelaySeconds: 30
-              periodSeconds: 10
-              successThreshold: 1
-              timeoutSeconds: 5
-            readinessProbe:
-              httpGet:
-                path: /
-                port: {{ .Values.ports.region.ui }}
-              failureThreshold: 6
-              initialDelaySeconds: 5
-              periodSeconds: 10
-              successThreshold: 1
-              timeoutSeconds: 5
-            resources:
-              requests:
-                cpu: 50m
-                memory: 512Mi
-            securityContext:
-              allowPrivilegeEscalation: false
-              capabilities:
-                drop:
-                  - ALL
-              privileged: false
-              runAsGroup: 0
-              runAsNonRoot: true
-              runAsUser: 10000
-            volumeMounts:
-              - name: hbase-config
-                mountPath: /hbase/conf
-              - name: hdfs-config
-                mountPath: /hadoop/conf
+{{/*    - name: hbase-region*/}}
+{{/*      workloadType: Stateful*/}}
+{{/*      characterType: hbase-region*/}}
+{{/*      statefulSpec:*/}}
+{{/*        updateStrategy: BestEffortParallel*/}}
+{{/*      configSpecs:*/}}
+{{/*        - name: hbase-config*/}}
+{{/*          namespace: {{ .Release.Namespace }}*/}}
+{{/*          templateRef: {{ include "hbase.name" . }}-config-template*/}}
+{{/*          constraintRef: {{ include "hbase.name" . }}-config-constraints*/}}
+{{/*          volumeName: hbase-config*/}}
+{{/*          defaultMode: 0755*/}}
+{{/*        - name: hdfs-config*/}}
+{{/*          namespace: {{ .Release.Namespace }}*/}}
+{{/*          templateRef: {{ .Values.hdfs.configMapRefName | default "hbase-config" }}*/}}
+{{/*          volumeName: hdfs-config*/}}
+{{/*          defaultMode: 0755*/}}
+{{/*      service:*/}}
+{{/*        ports:*/}}
+{{/*          - name: region*/}}
+{{/*            port: {{ .Values.ports.region.port }}*/}}
+{{/*            targetPort: region*/}}
+{{/*          - name: region-ui*/}}
+{{/*            port: {{ .Values.ports.region.ui }}*/}}
+{{/*            targetPort: region-ui*/}}
+{{/*      podSpec:*/}}
+{{/*        securityContext:*/}}
+{{/*          fsGroup: 0*/}}
+{{/*          runAsGroup: 0*/}}
+{{/*          runAsNonRoot: true*/}}
+{{/*          runAsUser: 10000*/}}
+{{/*        containers:*/}}
+{{/*          - name: hbase-region*/}}
+{{/*            env:*/}}
+{{/*              - name: DEBUG_MODEL*/}}
+{{/*                value: "true"*/}}
+{{/*            ports:*/}}
+{{/*              - name: region*/}}
+{{/*                containerPort: {{ .Values.ports.region.port }}*/}}
+{{/*              - name: region-ui*/}}
+{{/*                containerPort: {{ .Values.ports.region.ui }}*/}}
+{{/*            livenessProbe:*/}}
+{{/*              httpGet:*/}}
+{{/*                path: /*/}}
+{{/*                port: {{ .Values.ports.region.ui }}*/}}
+{{/*              failureThreshold: 6*/}}
+{{/*              initialDelaySeconds: 30*/}}
+{{/*              periodSeconds: 10*/}}
+{{/*              successThreshold: 1*/}}
+{{/*              timeoutSeconds: 5*/}}
+{{/*            readinessProbe:*/}}
+{{/*              httpGet:*/}}
+{{/*                path: /*/}}
+{{/*                port: {{ .Values.ports.region.ui }}*/}}
+{{/*              failureThreshold: 6*/}}
+{{/*              initialDelaySeconds: 5*/}}
+{{/*              periodSeconds: 10*/}}
+{{/*              successThreshold: 1*/}}
+{{/*              timeoutSeconds: 5*/}}
+{{/*            resources:*/}}
+{{/*              requests:*/}}
+{{/*                cpu: 50m*/}}
+{{/*                memory: 512Mi*/}}
+{{/*            securityContext:*/}}
+{{/*              allowPrivilegeEscalation: false*/}}
+{{/*              capabilities:*/}}
+{{/*                drop:*/}}
+{{/*                  - ALL*/}}
+{{/*              privileged: false*/}}
+{{/*              runAsGroup: 0*/}}
+{{/*              runAsNonRoot: true*/}}
+{{/*              runAsUser: 10000*/}}
+{{/*            volumeMounts:*/}}
+{{/*              - name: hbase-config*/}}
+{{/*                mountPath: /hbase/conf*/}}
+{{/*              - name: hdfs-config*/}}
+{{/*                mountPath: /hadoop/conf*/}}

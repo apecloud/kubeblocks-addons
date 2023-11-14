@@ -22,4 +22,16 @@
         <name>hbase.unsafe.stream.capability.enforce</name>
         <value>false</value>
     </property>
+    <property>
+        <name>zookeeper.session.timeout</name>
+        <value>30000</value>
+    </property>
+    <property>
+        <name>hbase.regionserver.handler.count</name>
+        <value>90</value>
+    </property>
+    <property>
+        <name>hbase.client.write.buffer</name>
+        <value>20971520</value>
+    </property>
 </configuration>

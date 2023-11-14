@@ -13,9 +13,9 @@ spec:
           - name: hbase-master
             image: {{ .Values.images.master.repository }}:{{ .Values.images.master.tag }}
             imagePullPolicy: {{ default "IfNotPresent" .Values.images.master.pullPolicy }}
-    - componentDefRef: hbase-region
-      versionsContext:
-        containers:
-          - name: hbase-region
-            image: {{ .Values.images.region.repository }}:{{ .Values.images.region.tag }}
-            imagePullPolicy: {{ default "IfNotPresent" .Values.images.region.pullPolicy }}
+{{/*    - componentDefRef: hbase-region*/}}
+{{/*      versionsContext:*/}}
+{{/*        containers:*/}}
+{{/*          - name: hbase-region*/}}
+{{/*            image: {{ .Values.images.region.repository }}:{{ .Values.images.region.tag }}*/}}
+{{/*            imagePullPolicy: {{ default "IfNotPresent" .Values.images.region.pullPolicy }}*/}}

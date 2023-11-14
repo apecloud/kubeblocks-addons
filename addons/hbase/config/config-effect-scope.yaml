@@ -1,5 +1,5 @@
 immutableParameters:
-  - dataDir
+  - hbase.master.port
 
 #staticParameters:
 #  - zookeeperSessionExpiredPolicy

@@ -8,7 +8,7 @@ metadata:
 spec:
   # hbase configuration file format
   formatterConfig:
-    format: props-plus
+    format: xml
 
   # define parameter validation rules
   cfgSchemaTopLevelName: HBaseParameter
