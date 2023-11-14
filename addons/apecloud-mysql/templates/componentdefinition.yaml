@@ -223,26 +223,23 @@ spec:
       writable: false
   lifecycleActions:
     roleProbe:
+      builtinHandler: wesql
       failureThreshold: {{ .Values.roleProbe.failureThreshold }}
       periodSeconds: {{ .Values.roleProbe.periodSeconds }}
       timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
-      exec:
-        command:
-    switchoverSpec:
+    switchover:
       withCandidate:
-        cmdExecutorConfig:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag }}
+        exec:
           command:
             - /scripts/switchover-with-candidate.sh
-        scriptSpecSelectors:
-          - name: apecloud-mysql-scripts
       withoutCandidate:
-        cmdExecutorConfig:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag }}
+        exec:
           command:
             - /scripts/switchover-without-candidate.sh
-        scriptSpecSelectors:
-          - name: apecloud-mysql-scripts
+      scriptSpecSelectors:
+        - name: apecloud-mysql-scripts
     memberJoin:
     memberLeave:
     readonly:
