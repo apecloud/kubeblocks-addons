@@ -24,3 +24,8 @@ maintainers:
 
 sources:
 - https://github.com/apecloud/kubeblocks/
+
+annotations:
+  addon.kubeblocks.io/kubeblocks-version: ">=0.6.0"
+  addon.kubeblocks.io/model: "RDBMS"
+  addon.kubeblocks.io/provider: "ApeCloud"
