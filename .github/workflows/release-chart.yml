@@ -11,6 +11,8 @@ on:
 env:
   GH_TOKEN: ${{ github.token }}
 
+run-name: Release Chart ${{ inputs.chart_dir }}
+
 jobs:
   release-chart:
     uses: apecloud/apecloud-cd/.github/workflows/release-charts.yml@v0.1.40
