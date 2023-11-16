@@ -12,7 +12,6 @@ names = sys.argv[1:]
 helmRepoURL = 'https://jihulab.com/api/v4/projects/150246/packages/helm/stable/charts/'
 
 kbVersionKey = 'addon.kubeblocks.io/kubeblocks-version'
-defaultIsEmptyKey = 'addons.extensions.kubeblocks.io/default-is-empty'
 appNameKey = 'app.kubernetes.io/name'
 appVersionKey = 'app.kubernetes.io/version'
 
@@ -54,7 +53,6 @@ for name in names:
                 'labels': labels,
                 'annotations': {
                     kbVersionKey: annotations[kbVersionKey],
-                    defaultIsEmptyKey: "true",
                 },
             },
             'spec': {
