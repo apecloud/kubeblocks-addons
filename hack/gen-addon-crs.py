@@ -35,6 +35,9 @@ for name in names:
     with open(chart_file, 'r') as f:
         print("Generating addon CR for " + name)
         chart = yaml.safe_load(f)
+        if 'annotations' not in chart:
+            print("Skip generating addon CR for " + name)
+            continue
         version = chart['version']
         name = chart['name']
         addonName = name + "-" + version
@@ -42,6 +45,9 @@ for name in names:
 
         # build labels
         labels = copy.deepcopy(annotations)
+        if kbVersionKey not in labels:
+            print("Skip generating addon CR for " + name)
+            continue
         del labels[kbVersionKey]
         labels[appVersionKey] = version
         labels[appNameKey] = name
