@@ -4,7 +4,7 @@ description: Apache ZooKeeper is a centralized service for maintaining configura
 
 type: application
 
-version: 0.7.0-alpha.0
+version: 0.7.0
 
 appVersion: "3.7.1"
 
@@ -21,3 +21,8 @@ maintainers:
     url: https://github.com/apecloud/kubeblocks/deploy
   - name: kissycn
     url: https://github.com/kissycn
+
+annotations:
+    addon.kubeblocks.io/kubeblocks-version: ">=0.7.0"
+    addon.kubeblocks.io/model: "other"
+    addon.kubeblocks.io/provider: "community"

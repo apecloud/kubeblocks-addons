@@ -2,12 +2,9 @@ apiVersion: v2
 name: risingwave
 description: RisingWave is a distributed SQL streaming database that enables cost-efficient and reliable processing of streaming data.
 
-annotations:
-  category: Database
-
 type: application
 
-version: 0.1.0
+version: 0.7.0
 
 appVersion: v1.0.0
 
@@ -22,3 +19,8 @@ keywords:
 maintainers:
 - name: RisingWave Labs
   url: https://www.risingwave-labs.com
+
+annotations:
+  addon.kubeblocks.io/kubeblocks-version: ">=0.7.0"
+  addon.kubeblocks.io/model: "streaming"
+  addon.kubeblocks.io/provider: "community"

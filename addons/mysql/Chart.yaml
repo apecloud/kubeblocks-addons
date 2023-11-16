@@ -4,7 +4,7 @@ description: MySQL is a widely used, open-source relational database management 
 
 type: application
 
-version: 0.7.0-alpha.0
+version: 0.7.0
 
 # This is the version number of the ApeCloud MySQL being deployed,
 # rather than the version number of ApeCloud MySQL-Scale itself.
@@ -24,3 +24,8 @@ maintainers:
 
 sources:
 - https://github.com/apecloud/kubeblocks/
+
+annotations:
+  addon.kubeblocks.io/kubeblocks-version: ">=0.7.0"
+  addon.kubeblocks.io/model: "RDBMS"
+  addon.kubeblocks.io/provider: "community"
