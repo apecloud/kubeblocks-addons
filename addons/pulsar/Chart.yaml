@@ -2,12 +2,9 @@ apiVersion: v2
 name: pulsar
 description: Apache Pulsar is an open-source, distributed messaging and streaming platform built for the cloud.
 
-annotations:
-  category: Database
-
 type: application
 
-version: 0.7.0-alpha.0
+version: 0.7.0
 
 appVersion: 2.11.2
 
@@ -27,3 +24,8 @@ keywords:
 maintainers:
 - name: ApeCloud
   url: https://github.com/apecloud/kubeblocks/deploy
+
+annotations:
+  addon.kubeblocks.io/kubeblocks-version: ">=0.7.0"
+  addon.kubeblocks.io/model: "streaming"
+  addon.kubeblocks.io/provider: "apecloud"

@@ -9,8 +9,12 @@ import sys
 import yaml
 
 names = sys.argv[1:]
-helmRepoURL = 'https://jihulab.com/api/v4/projects/85949/packages/helm/stable/charts/'
+helmRepoURL = 'https://jihulab.com/api/v4/projects/150246/packages/helm/stable/charts/'
+
 kbVersionKey = 'addon.kubeblocks.io/kubeblocks-version'
+defaultIsEmptyKey = 'addons.extensions.kubeblocks.io/default-is-empty'
+appNameKey = 'app.kubernetes.io/name'
+appVersionKey = 'app.kubernetes.io/version'
 
 if len(names) == 0:
     print("Usage: python3 gen-addon-crs.py <addon1> <addon2> ...")
@@ -18,7 +22,7 @@ if len(names) == 0:
 if len(names) == 1 and names[0] == 'all':
     names = os.listdir('addons')
     # if name end with _cluster, or name is kblib, common, skip
-    names = [name for name in names if not name.endswith('_cluster') and name not in ['kblib', 'common' 'neonvm']]
+    names = [name for name in names if not name.endswith('-cluster') and name not in ['kblib', 'common' 'neonvm']]
 
 for name in names:
     path = os.path.join('addons', name)
@@ -29,6 +33,7 @@ for name in names:
         continue
     # read Chart.yaml and build addon CR
     with open(chart_file, 'r') as f:
+        print("Generating addon CR for " + name)
         chart = yaml.safe_load(f)
         version = chart['version']
         name = chart['name']
@@ -38,16 +43,18 @@ for name in names:
         # build labels
         labels = copy.deepcopy(annotations)
         del labels[kbVersionKey]
-        labels['app.kubernetes.io/version'] = version
+        labels[appVersionKey] = version
+        labels[appNameKey] = name
 
         cr = {
             'apiVersion': 'extensions.kubeblocks.io/v1alpha1',
             'kind': 'Addon',
             'metadata': {
-                'name': addonName,
+                'name': name,
                 'labels': labels,
                 'annotations': {
-                    kbVersionKey: annotations[kbVersionKey]
+                    kbVersionKey: annotations[kbVersionKey],
+                    defaultIsEmptyKey: "true",
                 },
             },
             'spec': {
@@ -68,8 +75,9 @@ for name in names:
         }
 
         # output to a temp dir, if temp do not exist, create it
-        if not os.path.isdir('temp'):
-            os.mkdir('temp')
-        addonCR = os.path.join('temp', addonName + ".yaml")
+        outputDir = os.path.join('temp', name)
+        if not os.path.isdir(outputDir):
+            os.makedirs(outputDir)
+        addonCR = os.path.join(outputDir, version + ".yaml")
         with open(addonCR, 'w') as f:
             yaml.safe_dump(cr, f)

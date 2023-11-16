@@ -5,7 +5,7 @@ description: ApeCloud MySQL is a database that is compatible with MySQL syntax a
 
 type: application
 
-version: 0.7.0-alpha.0
+version: 0.8.0-alpha.5
 
 # This is the version number of the ApeCloud MySQL being deployed,
 # rather than the version number of ApeCloud MySQL-Scale itself.
@@ -16,16 +16,14 @@ appVersion: "8.0.30"
 home: https://kubeblocks.io/
 icon: https://kubeblocks.io/img/logo.png
 
-
 maintainers:
 - name: ApeCloud
   url: https://github.com/apecloud/kubeblocks/
-
 
 sources:
 - https://github.com/apecloud/kubeblocks/
 
 annotations:
-  addon.kubeblocks.io/kubeblocks-version: ">=0.6.0"
+  addon.kubeblocks.io/kubeblocks-version: ">=0.7.0"
   addon.kubeblocks.io/model: "RDBMS"
-  addon.kubeblocks.io/provider: "ApeCloud"
+  addon.kubeblocks.io/provider: "apecloud"
