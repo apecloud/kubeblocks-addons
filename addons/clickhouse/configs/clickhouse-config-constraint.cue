@@ -16,7 +16,7 @@
 //along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #ProfilesParameter: {
-	profiles: [string]: #ClickhouseParameter
+	[string]: #ClickhouseParameter
 	// ignore other configure
 }
 
