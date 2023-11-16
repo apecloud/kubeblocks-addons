@@ -26,7 +26,6 @@ on:
           - greptimedb-cluster
           - kafka
           - kafka-cluster
-          - kblib
           - llm
           - llm-cluster
           - mariadb
