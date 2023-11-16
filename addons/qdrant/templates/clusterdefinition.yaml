@@ -135,8 +135,6 @@ spec:
                 name: annotations
               - mountPath: /qdrant/tools
                 name: tools
-            dnsPolicy: ClusterFirst
-            enableServiceLinks: true
             ports:
               - name: tcp-qdrant
                 containerPort: 6333
@@ -153,6 +151,8 @@ spec:
               value: "true"
             - name: SERVICE_PORT
               value: "6333"
+        dnsPolicy: ClusterFirst
+        enableServiceLinks: true
         volumes:
         - name: annotations
           downwardAPI:
