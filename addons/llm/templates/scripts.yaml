@@ -81,3 +81,18 @@ data:
       fi
       sleep 3
     done
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ggml-scripts
+  labels:
+    {{- include "llm.labels" . | nindent 4 }}
+data:
+  start.sh: |
+    #!/bin/sh
+    if [ -n "$MODEL_URL" ]; then 
+      apt-get install wget -y
+      wget "$MODEL_URL" -O model.gguf
+    fi
+    sh /app/docker/simple/run.sh
