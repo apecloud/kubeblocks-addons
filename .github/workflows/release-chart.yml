@@ -4,10 +4,78 @@ on:
   workflow_dispatch:
     inputs:
       chart_dir:
-        description: 'Only release specify chart dir or empty to release all'
+        description: 'release specify chart dir or empty to release all'
         required: false
         default: ''
-
+        type: choice
+        options:
+          - ""
+          - apecloud-mysql
+          - apecloud-mysql-cluster
+          - apecloud-postgresql
+          - apecloud-postgresql-cluster
+          - clickhouse
+          - clickhouse-cluster
+          - elasticsearch
+          - elasticsearch-cluster
+          - etcd
+          - etcd-cluster
+          - foxlake
+          - foxlake-cluster
+          - greptimedb
+          - greptimedb-cluster
+          - kafka
+          - kafka-cluster
+          - kblib
+          - llm
+          - llm-cluster
+          - mariadb
+          - mariadb-cluster
+          - milvus
+          - milvus-cluster
+          - mongodb
+          - mongodb-cluster
+          - mongodb-sharding-cluster
+          - mysql
+          - mysql-cluster
+          - nebula
+          - nebula-cluster
+          - neon
+          - neon-cluster
+          - oceanbase
+          - oceanbase-cluster
+          - official-postgresql
+          - official-postgresql-cluster
+          - openldap
+          - openldap-cluster
+          - opensearch
+          - opensearch-cluster
+          - oracle-mysql
+          - oracle-mysql-cluster
+          - orioledb
+          - orioledb-cluster
+          - polardbx
+          - polardbx-cluster
+          - postgresql
+          - postgresql-cluster
+          - pulsar
+          - pulsar-cluster
+          - qdrant
+          - qdrant-cluster
+          - redis
+          - redis-cluster
+          - risingwave
+          - risingwave-cluster
+          - starrocks
+          - starrocks-cluster
+          - tdengine
+          - tdengine-cluster
+          - weaviate
+          - weaviate-cluster
+          - xinference
+          - xinference-cluster
+          - zookeeper
+          - zookeeper-cluster
 env:
   GH_TOKEN: ${{ github.token }}
 
