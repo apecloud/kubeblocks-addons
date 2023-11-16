@@ -530,6 +530,3 @@ spec:
               - name: scripts
                 mountPath: /scripts/setup.sh
                 subPath: kafka-exporter-setup.sh
-            env:
-              - name: SERVICE_PORT
-                value: "9308"
