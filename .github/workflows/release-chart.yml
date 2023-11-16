@@ -75,15 +75,20 @@ on:
           - xinference-cluster
           - zookeeper
           - zookeeper-cluster
+      chart_version:
+        description: 'release specify chart version or empty to release default'
+        required: false
+        default: ''
 env:
   GH_TOKEN: ${{ github.token }}
 
-run-name: Release Chart ${{ inputs.chart_dir }}
+run-name: Release Chart ${{ inputs.chart_dir }} ${{ inputs.chart_version }}
 
 jobs:
   release-chart:
     uses: apecloud/apecloud-cd/.github/workflows/release-charts.yml@v0.1.40
     with:
+      VERSION: "${{ inputs.chart_version }}"
       CHART_DIR: "addons"
       SPECIFY_CHART: "${{ inputs.chart_dir }}"
       APECD_REF: "v0.1.40"
