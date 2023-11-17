@@ -7,14 +7,18 @@ etcd:
   endpoints:
   - {{$clusterName}}-etcd-headless.{{$namespace}}.svc.cluster.local:2379
   rootPath: {{$clusterName}}
-messageQueue: rocksmq
+messageQueue: pulsar
 minio:
   accessKeyID: minioadmin
   address: {{$clusterName}}-minio-headless.{{$namespace}}.svc.cluster.local
   bucketName: {{$clusterName}}
   port: 9000
   secretAccessKey: minioadmin
+mq:
+  type: pulsar
 msgChannel:
   chanNamePrefix:
     cluster: {{$clusterName}}
-  rocksmq: {}
+pulsar:
+  address: {{$clusterName}}-pulsar-headless.{{$namespace}}.svc.cluster.local
+  port: 6650

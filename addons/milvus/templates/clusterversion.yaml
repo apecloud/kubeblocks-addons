@@ -27,7 +27,7 @@ spec:
       versionsContext:
         initContainers:
           - name: milvus-init
-            image: {{ .Values.images.milvus_init.repository }}:{{ default .Chart.AppVersion .Values.images.milvus_init.tag }}
+            image: {{ .Values.images.milvusTools.repository }}:{{ default .Chart.AppVersion .Values.images.milvusTools.tag }}
         containers:
           - name: milvus
             image: {{ .Values.images.milvus.repository }}:{{ default .Chart.AppVersion .Values.images.milvus.tag }}

@@ -199,7 +199,7 @@ spec:
             resources:
               requests:
                 storage: {{ print .size "Gi" }}
-      {{ - end }}
+      {{- end }}
       serviceRefs:
       {{- if eq .Values.storage.log.mode "serviceref" }}
       - name: milvus-log-storage
@@ -246,5 +246,5 @@ spec:
         namespace: {{ .Values.storage.object.serviceRef.namespace }}
         cluster: {{ .Values.storage.object.serviceRef.cluster }}
         serviceDescriptor: {{ .Values.storage.object.serviceRef.serviceDescriptor }}
-      {{ - end }}
+      {{- end }}
 {{- end }}

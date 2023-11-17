@@ -1,0 +1,124 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: milvus-indexnode-{{ .Chart.Version }}
+  labels:
+    {{- include "milvus.labels" . | nindent 4 }}
+spec:
+  provider: ApeCloud
+  description: {{ .Chart.Description }}
+  serviceKind: {{ .Chart.Name }}
+  serviceVersion: {{ .Chart.AppVersion }}
+  runtime:
+    initContainers:
+      - name: config
+        image: {{ .Values.images.milvusTools.repository }}:{{ .Values.images.milvusTools.tag }}
+        imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
+        command:
+          - /cp
+          - /run.sh,/merge
+          - /milvus/tools/run.sh,/milvus/tools/merge
+        volumeMounts:
+          - mountPath: /milvus/tools
+            name: milvus-tools
+    containers:
+      - name: indexnode
+        image: {{ .Values.images.milvus.repository }}:{{ .Values.images.milvus.tag }}
+        imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
+        args:
+          - /milvus/tools/run.sh
+          - milvus
+          - run
+          - indexnode
+        env:
+          - name: CACHE_SIZE
+            valueFrom:
+              resourceFieldRef:
+                divisor: 1Gi
+                resource: limits.memory
+          - name: MINIO_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                key: accesskey
+                name: $(CONN_CREDENTIAL_SECRET_NAME)  # TODO: minio ak/sk secret
+          - name: MINIO_SECRET_KEY
+            valueFrom:
+              secretKeyRef:
+                key: secretkey
+                name: $(CONN_CREDENTIAL_SECRET_NAME)  # TODO: minio ak/sk secret
+        volumeMounts:
+          - mountPath: /milvus/configs/user.yaml
+            name: milvus-config
+            readOnly: true
+            subPath: user.yaml
+          - mountPath: /milvus/tools
+            name: milvus-tools
+        ports:
+          - containerPort: 9091
+            name: metrics
+            protocol: TCP
+        {{- if .Values.livenessProbe.enabled }}
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: metrics
+            scheme: HTTP
+          initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+          successThreshold: {{ .Values.livenessProbe.successThreshold }}
+          failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+        {{- end }}
+        {{- if .Values.readinessProbe.enabled }}
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: metrics
+            scheme: HTTP
+          initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+          successThreshold: {{ .Values.readinessProbe.successThreshold }}
+          failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+        {{- end }}
+        {{- if .Values.startupProbe.enabled }}
+        startupProbe:
+          httpGet:
+            path: /healthz
+            port: metrics
+            scheme: HTTP
+          initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.startupProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds }}
+          successThreshold: {{ .Values.startupProbe.successThreshold }}
+          failureThreshold: {{ .Values.startupProbe.failureThreshold }}
+        {{- end }}
+    volumes:
+      - name: milvus-tools
+        emptyDir: {}
+    serviceAccountName: {{ default "milvus" .Values.serviceAccount.name }}
+  configs:
+    - name: milvus-config
+      templateRef: milvus-config-template
+      volumeName: milvus-config
+      namespace: {{ .Release.Namespace }}
+      defaultMode: 420
+  monitor:
+    builtIn: false
+    exporterConfig:
+      scrapePath: /metrics
+      scrapePort: 9091
+  updateStrategy: BestEffortParallel
+  serviceRefDeclarations:
+    - name: milvus-meta-storage
+      serviceRefDeclarationSpecs:
+        serviceKind: etcd
+        serviceVersion: "^3.*"
+    - name: milvus-log-storage
+      serviceRefDeclarationSpecs:
+        - serviceKind: pulsar
+          serviceVersion: "^2.*"
+    - name: milvus-object-storage
+      serviceRefDeclarationSpecs:
+        - serviceKind: minio
+          serviceVersion: "*"
