@@ -1,23 +1,21 @@
 apiVersion: v2
 name: milvus
-description: .
+description: Milvus is an open-source vector database built to power AI applications and vector similarity search.
 
 type: application
 
 # This is the chart version
-version: 0.7.0-alpha.0
+version: 0.8.0
 
 # This is the version number of milvus
-appVersion: "2.2.4"
+appVersion: "2.3.2"
 
 home: https://milvus.io/
 icon: https://github.com/milvus-io/artwork/blob/master/horizontal/color/milvus-horizontal-color.png
 
-
 maintainers:
   - name: ApeCloud
     url: https://github.com/apecloud/kubeblocks/
-
 
 sources:
   - https://github.com/apecloud/kubeblocks/
