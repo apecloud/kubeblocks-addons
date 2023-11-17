@@ -520,7 +520,7 @@ spec:
           - name: kafka-exporter
             env:
               - name: SERVICE_PORT
-                value: 9308
+                value: "9308"
             command:
               - /scripts/setup.sh
             ports:
