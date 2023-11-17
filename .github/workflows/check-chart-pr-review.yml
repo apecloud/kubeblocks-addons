@@ -1,0 +1,18 @@
+name: Check Chart PR Review
+
+on:
+  pull_request_review:
+    paths:
+      - "addons/**"
+    types: [submitted]
+
+
+jobs:
+  check-helm:
+    name: check helm
+    if: github.event.review.state == 'approved'
+    uses: apecloud/apecloud-cd/.github/workflows/release-charts-check.yml@v0.1.40
+    with:
+      CHART_DIR: "addons"
+      APECD_REF: "v0.1.40"
+    secrets: inherit

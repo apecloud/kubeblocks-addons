@@ -1,10 +1,10 @@
 apiVersion: v2
 name: polardbx
-description: PolarDB-X Cluster Helm Chart for KubeBlocks.
+description: PolarDB-X is a cloud native distributed SQL Database designed for high concurrency, massive storage, complex querying scenarios.
 
 type: application
-version: 0.1.0
-appVersion: v1.4.1
+version: 0.7.0
+appVersion: v2.3
 
 keywords:
   - polardbx
@@ -17,3 +17,8 @@ home: https://polardbx.com/home
 maintainers:
   - name: Vettal Wu
     email: vettal.wd@alibaba-inc.com
+
+annotations:
+    addon.kubeblocks.io/kubeblocks-version: ">=0.7.0"
+    addon.kubeblocks.io/model: "RDBMS"
+    addon.kubeblocks.io/provider: "community"

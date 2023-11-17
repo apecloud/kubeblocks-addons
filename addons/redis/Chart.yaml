@@ -1,10 +1,10 @@
 apiVersion: v2
 name: redis
-description: A Redis cluster definition Helm chart for Kubernetes
+description: "Redis is an in-memory database that persists on disk. The data model is key-value, but many different kind of values are supported: Strings, Lists, Sets, Sorted Sets, Hashes, Streams, HyperLogLogs, Bitmaps."
 
 type: application
 
-version: 0.7.0-alpha.0
+version: 0.7.0
 
 appVersion: "7.0.6"
 
@@ -19,3 +19,8 @@ keywords:
 maintainers:
   - name: ApeCloud
     url: https://github.com/apecloud/kubeblocks/deploy
+
+annotations:
+    addon.kubeblocks.io/kubeblocks-version: ">=0.7.0"
+    addon.kubeblocks.io/model: "key-value"
+    addon.kubeblocks.io/provider: "apecloud"

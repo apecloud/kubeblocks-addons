@@ -5,9 +5,9 @@ name: tdengine
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
 # Versions are expected to follow Semantic Versioning (https://semver.org/)
-version: 0.7.0-alpha.0
+version: 0.7.0
 
-description: A Specific Implementation of TDengine Chart for Kubernetes, and provides by KubeBlocks' ClusterDefinition API manifests.
+description: TDengine is an open source, high-performance, cloud native time-series database optimized for Internet of Things (IoT), Connected Cars, Industrial IoT and DevOps.
 
 # A chart can be either an 'application' or a 'library' chart.
 #
@@ -49,4 +49,6 @@ appVersion: "3.0.5.0"
 deprecated: false
 
 annotations:
-  category: Infrastructure for IoT
+  addon.kubeblocks.io/kubeblocks-version: ">=0.7.0"
+  addon.kubeblocks.io/model: "time-series"
+  addon.kubeblocks.io/provider: "community"

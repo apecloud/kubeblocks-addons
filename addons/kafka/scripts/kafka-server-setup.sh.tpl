@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # TLS setting
-{{- if $.component.tls }}
+{{- if $.component.tlsConfig }}
   # override TLS and auth settings
   export KAFKA_TLS_TYPE="PEM"
   echo "[tls]KAFKA_TLS_TYPE=$KAFKA_TLS_TYPE"
@@ -108,6 +108,17 @@ fi
 if [[ -n "$KB_KAFKA_BROKER_HEAP" ]]; then
   export KAFKA_HEAP_OPTS=${KB_KAFKA_BROKER_HEAP}
   echo "[jvm][KB_KAFKA_BROKER_HEAP]export KAFKA_HEAP_OPTS=${KB_KAFKA_BROKER_HEAP}"
+fi
+
+# for support access Kafka brokers from outside the k8s cluster
+if [[ -n "$KAFKA_CFG_K8S_NODEPORT" ]];then
+  if [[ "broker,controller" = "$KAFKA_CFG_PROCESS_ROLES" ]] || [[ "broker" = "$KAFKA_CFG_PROCESS_ROLES" ]]; then
+    export KAFKA_CFG_ADVERTISED_LISTENERS="PLAINTEXT://${KB_HOST_IP}:${KAFKA_CFG_K8S_NODEPORT}"
+    echo "[cfg]KAFKA_CFG_ADVERTISED_LISTENERS=$KAFKA_CFG_ADVERTISED_LISTENERS"
+    echo "[cfg]KAFKA_CFG_LISTENERS=$KAFKA_CFG_LISTENERS"
+    echo "[cfg]KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=$KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP"
+    echo "[cfg]KAFKA_CFG_INTER_BROKER_LISTENER_NAME=$KAFKA_CFG_INTER_BROKER_LISTENER_NAME"
+  fi
 fi
 
 # cfg setting

@@ -5,7 +5,7 @@ description: ApeCloud PostgreSQL is a database that is compatible with PostgreSQ
 
 type: application
 
-version: 0.7.0-alpha.0
+version: 0.8.0-alpha.5
 
 # This is the temporary version of the ApeCloud PostgreSQL being deployed,
 # TODO: Wait for ApeCloud PostgreSQL to determine the version number.
@@ -22,3 +22,8 @@ maintainers:
 
 sources:
 - https://github.com/apecloud/kubeblocks/
+
+annotations:
+  addon.kubeblocks.io/kubeblocks-version: ">=0.7.0"
+  addon.kubeblocks.io/model: "RDBMS"
+  addon.kubeblocks.io/provider: "apecloud"

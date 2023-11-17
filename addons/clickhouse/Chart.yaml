@@ -4,12 +4,9 @@ description: ClickHouse is an open-source column-oriented OLAP database manageme
   system. Use it to boost your database performance while providing linear scalability
   and hardware efficiency.
 
-annotations:
-  category: Database
-
 type: application
 
-version: 0.7.0-alpha.0
+version: 0.7.0
 
 appVersion: 22.9.4
 
@@ -29,3 +26,8 @@ dependencies:
 maintainers:
 - name: Nash Tsai
   url: https://github.com/apecloud/kubeblocks/deploy
+
+annotations:
+  addon.kubeblocks.io/kubeblocks-version: ">=0.7.0"
+  addon.kubeblocks.io/model: "RDBMS"
+  addon.kubeblocks.io/provider: "apecloud"
