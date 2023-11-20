@@ -65,6 +65,22 @@
       ],
       "default": "facebook/opt-125m"
     },
+    "url": {
+      "title": "Model URL",
+      "description": "Model URL, only work for CPU mode",
+      "type": [
+        "string"
+      ],
+      "default": ""
+    },
+    "quantize": {
+      "title": "Model Quantize",
+      "description": "Model's quantized file name, only work for CPU mode",
+      "type": [
+        "string"
+      ],
+      "default": ""
+    },
     "extraArgs": {
       "title": "extra arguments",
       "description": "extra arguments that will be passed to run model",

@@ -27,3 +27,7 @@ cpuMode: false
 model: "facebook/opt-125m"
 
 extraArgs: "--trust-remote-code"
+
+url: ""
+
+quantize: ""
