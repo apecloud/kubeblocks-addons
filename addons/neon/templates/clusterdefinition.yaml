@@ -5,7 +5,78 @@ metadata:
   labels:
     {{- include "neon.labels" . | nindent 4 }}
 spec:
+  type: postgresql
+  connectionCredential:
+    username: cloud_admin
+    password: "$(RANDOM_PASSWD)"
+    endpoint: "$(SVC_FQDN):$(SVC_PORT_postgresql)"
+    host: "$(SVC_FQDN)"
+    port: "$(SVC_PORT_postgresql)"
   componentDefs:
+    - name: neon-compute
+      workloadType: Stateful
+      characterType: postgresql
+      service:
+        ports:
+        - name: postgresql
+          protocol: TCP
+          port: 55432
+      componentDefRef:
+        - componentDefName: neon-pageserver
+          componentRefEnv:
+            - name: PAGESERVER
+              valueFrom:
+                type: HeadlessServiceRef
+                format: $(POD_FQDN){{ .Values.clusterDomain }}
+                joinWith: ","
+        - componentDefName: neon-safekeeper
+          componentRefEnv:
+            - name: SAFEKEEPERS
+              valueFrom:
+                type: HeadlessServiceRef
+                format: $(POD_FQDN){{ .Values.clusterDomain }}:5454
+                joinWith: ","
+      volumeTypes:
+        - name: data
+          type: data
+      podSpec:
+        containers:
+          - name: postgresql
+            volumeMounts:
+              - name: data
+                mountPath: /data
+            env:
+              - name: PGPORT
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: port
+                    optional: false
+              - name: PGDATA
+                value: /data
+              - name: PGUSER
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: username
+                    optional: false
+              - name: PGPASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: password
+                    optional: false
+            ports:
+              - name: postgresql
+                containerPort: 55432
+            command:
+              - /bin/bash
+              - -c
+              - |
+                set -ex
+                trap : TERM INT
+                /compute.sh
+
     - name: neon-storagebroker
       workloadType: Stateful
       characterType: storagebroker

@@ -1,12 +1,17 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ClusterVersion
 metadata:
-  name: neon-{{ default .Chart.AppVersion .Values.version }}
+  name: neon-{{ .Chart.AppVersion }}
   labels:
     {{- include "neon.labels" . | nindent 4 }}
 spec:
   clusterDefinitionRef: neon
   componentVersions:
+    - componentDefRef: neon-compute
+      versionsContext:
+        containers:
+        - name: postgresql
+          image: {{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
     - componentDefRef: neon-storagebroker
       versionsContext:
         containers:
