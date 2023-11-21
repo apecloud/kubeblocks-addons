@@ -102,7 +102,11 @@ spec:
               - name: CLICKHOUSE_METRICS_PORT
                 value: "8001"
               - name: CLICKHOUSE_ADMIN_USER
-                value: "default"
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: username
+                    optional: false
               - name: CLICKHOUSE_SHARD_ID
                 value: "$(KB_COMP_NAME)"
               - name: SERVICE_PORT
