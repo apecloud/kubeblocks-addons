@@ -69,6 +69,8 @@ on:
           - starrocks-cluster
           - tdengine
           - tdengine-cluster
+          - tidb
+          - tidb-cluster
           - weaviate
           - weaviate-cluster
           - xinference
