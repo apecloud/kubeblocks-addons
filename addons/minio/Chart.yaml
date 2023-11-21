@@ -4,13 +4,15 @@ name: minio
 version: 8.0.17
 appVersion: master
 keywords:
-- storage
-- object-storage
-- S3
+  - storage
+  - object-storage
+  - S3
+
 home: https://min.io
 icon: https://min.io/resources/img/logo/MINIO_wordmark.png
 sources:
-- https://github.com/minio/minio
+  - https://github.com/minio/minio
+
 maintainers:
-- name: contact
-  email: contact@milvus.io
+  - name: contact
+    email: contact@milvus.io

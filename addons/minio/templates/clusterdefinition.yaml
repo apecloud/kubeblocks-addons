@@ -51,7 +51,7 @@ spec:
                     key: secretkey
             volumeMounts:
               {{- if and .Values.persistence.enabled }}
-              - name: export
+              - name: data
                 mountPath: {{ .Values.mountPath }}
                 {{- if .Values.persistence.subPath }}
                 subPath: "{{ .Values.persistence.subPath }}"
@@ -97,9 +97,6 @@ spec:
           - name: export
             emptyDir: {}
           {{- end }}
-          - name: minio-user
-            secret:
-              secretName: {{ template "minio.secretName" . }}
         serviceAccountName: {{ include "minio.serviceAccountName" . | quote }}
         {{- if and .Values.securityContext.enabled .Values.persistence.enabled }}
         securityContext:
@@ -109,7 +106,7 @@ spec:
         {{- end }}
       volumeTypes:
         {{- if .Values.persistence.enabled }}
-        - name: export
+        - name: data
           type: data
         {{- end }}
       service:
@@ -122,10 +119,5 @@ spec:
             {{- else }}
             targetPort: 9000
             {{- end }}
-      scriptSpecs:
-        - name: init
-          templateRef: {{ template "minio.fullname" . }}-init-script
-          volumeName: scripts
-          namespace: {{ .Release.Namespace }}
       statefulSpec:
         updateStrategy: BestEffortParallel

@@ -2,12 +2,6 @@
   "$schema": "http://json-schema.org/schema#",
   "type": "object",
   "properties": {
-    "version": {
-      "title": "Version",
-      "description": "Cluster version.",
-      "type": "string",
-      "default": "8.0.17"
-    },
     "replicas": {
       "title": "Replicas",
       "description": "The number of replicas",
