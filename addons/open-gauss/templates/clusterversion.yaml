@@ -1,0 +1,18 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterVersion
+metadata:
+  # major version of the component defined in values.yaml
+  name: opengauss-{{ .Values.image.tag }}
+  labels:
+    {{- include "opengauss.labels" . | nindent 4 }}
+spec:
+  clusterDefinitionRef: opengauss
+  componentVersions:
+    - componentDefRef: opengauss
+      versionsContext:
+        containers:
+          - name: opengauss
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+      systemAccountSpec:
+        cmdExecutorConfig:
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}

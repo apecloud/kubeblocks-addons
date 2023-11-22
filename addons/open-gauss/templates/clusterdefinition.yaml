@@ -1,0 +1,71 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterDefinition
+metadata:
+  name: opengauss
+  labels:
+    {{- include "opengauss.labels" . | nindent 4 }}
+spec:
+  type: opengauss
+  connectionCredential:
+    username: gaussdb
+    password: "p@ssW0rd1"
+    endpoint: "$(SVC_FQDN):$(SVC_PORT_tcp-opengauss)"
+    host: "$(SVC_FQDN)"
+    port: "$(SVC_PORT_tcp-opengauss)"
+  componentDefs:
+    - name: opengauss
+      workloadType: Stateful
+      characterType: postgresql
+      probes:
+        roleProbe:
+          failureThreshold: 2
+          periodSeconds: 1
+          timeoutSeconds: 1
+      service:
+        ports:
+          - name: tcp-opengauss
+            port: 5432
+            targetPort: tcp-opengauss
+      volumeTypes:
+        - name: data
+          type: data
+        - name: log
+          type: log
+      podSpec:
+        securityContext:
+          runAsUser: 0
+          fsGroup: 103
+          runAsGroup: 103
+        containers:
+          - name: opengauss
+            imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+            securityContext:
+              runAsUser: 0
+            ports:
+              - name: tcp-opengauss
+                containerPort: 5432
+            env: ## refer https://github.com/zalando/spilo/blob/master/ENVIRONMENT.rst
+              - name: GS_PASSWORD
+                value: p@ssW0rd1
+              - name: GAUSSLOG
+                value: /var/log/opengauss
+              - name: PATH
+                value: /usr/local/opengauss/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+              - name: GAUSSHOME
+                value: /usr/local/opengauss
+              - name: LD_LIBRARY_PATH
+                value: /usr/local/opengauss/lib
+            volumeMounts:
+              - name: data
+                mountPath: /var/lib/opengauss/data
+              - name: log
+                mountPath: /var/log/opengauss
+              - name: scripts
+                mountPath: /kb-scripts
+        volumes:
+          - name: dshm
+            emptyDir:
+              medium: Memory
+              {{- with .Values.shmVolume.sizeLimit }}
+              sizeLimit: {{ . }}
+              {{- end }}
