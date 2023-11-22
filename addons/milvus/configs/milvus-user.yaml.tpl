@@ -11,15 +11,12 @@
   {{- range $i, $e := $.component.serviceReferences }}
     {{- if eq $i "milvus-meta-storage" }}
       {{- $external_meta_service = $e }}
-      {{- break }}
     {{- end }}
     {{- if eq $i "milvus-log-storage" }}
       {{- $external_log_service = $e }}
-      {{- break }}
     {{- end }}
     {{- if eq $i "milvus-object-storage" }}
       {{- $external_object_service = $e }}
-      {{- break }}
     {{- end }}
   {{- end }}
 {{- end }}
