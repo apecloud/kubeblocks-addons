@@ -1,7 +1,7 @@
 {{- $clusterName := $.cluster.metadata.name }}
 {{- $namespace   := $.cluster.metadata.namespace }}
-{{- $accesskey := getEnvByName ( index $.podSpec.containers 0 ) "MINIO_ACCESS_KEY" }}
-{{- $secretkey := getEnvByName ( index $.podSpec.containers 0 ) "MINIO_SECRET_KEY" }}
+{{- $minioAccessKey := getEnvByName ( index $.podSpec.containers 0 ) "MINIO_ACCESS_KEY" }}
+{{- $minioSecretKey := getEnvByName ( index $.podSpec.containers 0 ) "MINIO_SECRET_KEY" }}
 
 {{- $external_meta_service := fromJson "{}" }}
 {{- $external_log_service := fromJson "{}" }}
@@ -51,6 +51,14 @@
   {{- if index $external_object_service.spec "port" }}
      {{- $minio_port = printf "%s" $external_object_service.spec.port.value }}
   {{- end }}
+  {{- if index $external_object_service.spec "auth" }}
+    {{- if index $external_object_service.spec.auth "username" }}
+       {{- $minioAccessKey = printf "%s" $external_object_service.spec.auth.username,value }}
+    {{- end }}
+    {{- if and (index $external_object_service.auth "password" }}
+       {{- $minioSecretKey = printf "%s" $external_object_service.spec.auth.password.value }}
+    {{- end }}
+  {{- end }}
 {{- end }}
 
 etcd:
@@ -61,8 +69,8 @@ messageQueue: pulsar
 minio:
   address: {{$minio_server}}
   port: {{$minio_port}}
-  accessKeyID: {{$accesskey}}
-  secretAccessKey: {{$secretkey}}
+  accessKeyID: {{$minioAccessKey}}
+  secretAccessKey: {{$minioSecretKey}}
   bucketName: {{$clusterName}}
 mq:
   type: pulsar

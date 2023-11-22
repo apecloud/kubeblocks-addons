@@ -25,13 +25,13 @@ topologyKeys:
 
 pd:
   replicas: 3
-  resources: {}
-    # limits:
-    #   cpu: 200m
-    #   memory: 1Gi
-    # requests:
-    #   cpu: 200m
-    #   memory: 1Gi
+  resources:
+    limits:
+      cpu: 2
+      memory: 8Gi
+    requests:
+      cpu: 2
+      memory: 8Gi
   persistence:
     data:
       storageClassName: ""
@@ -40,28 +40,28 @@ pd:
 
 tikv:
   replicas: 3
-  resources: {}
-    # limits:
-    #   cpu: 200m
-    #   memory: 1Gi
-    # requests:
-    #   cpu: 200m
-    #   memory: 1Gi
+  resources:
+    limits:
+      cpu: 4
+      memory: 16Gi
+    requests:
+      cpu: 4
+      memory: 16Gi
   persistence:
     data:
       storageClassName: ""
-      size: 21Gi
+      size: 500Gi
   tolerations: []
 
 tidb:
   replicas: 2
-  resources: {}
-    # limits:
-    #   cpu: 200m
-    #   memory: 1Gi
-    # requests:
-    #   cpu: 200m
-    #   memory: 1Gi
+  resources:
+    limits:
+      cpu: 4
+      memory: 16Gi
+    requests:
+      cpu: 4
+      memory: 16Gi
   tolerations: []
 
 # The RBAC permission used by cluster component pod, now include event.create
