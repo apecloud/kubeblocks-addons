@@ -2,17 +2,17 @@
 set -ex
 {{- $clusterName := $.cluster.metadata.name }}
 {{- $namespace := $.cluster.metadata.namespace }}
-{{- /* find redis-proxy component */}}
+{{- /* find redis-twemproxy component */}}
 {{- $proxy_component := fromJson "{}" }}
 {{- $redis_component := fromJson "{}" }}
 {{- range $i, $e := $.cluster.spec.componentSpecs }}
-  {{- if eq $e.componentDefRef "redis-proxy" }}
+  {{- if eq $e.componentDefRef "redis-twemproxy" }}
     {{- $proxy_component = $e }}
   {{- else if eq $e.componentDefRef "redis" }}
     {{- $redis_component = $e }}
   {{- end }}
 {{- end }}
-{{- /* build proxy config */}}
+{{- /* build redis-twemproxy config */}}
 echo "alpha:" > /etc/proxy/nutcracker.conf
 echo "  listen: 127.0.0.1:22121" >> /etc/proxy/nutcracker.conf
 echo "  hash: fnv1a_64" >> /etc/proxy/nutcracker.conf
