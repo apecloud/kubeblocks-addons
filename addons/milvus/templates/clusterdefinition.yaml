@@ -30,8 +30,8 @@ spec:
           scrapePath: /metrics
           scrapePort: 9187
       configSpecs:
-        - name: milvus-config-template
-          templateRef: milvus-config-template
+        - name: config
+          templateRef: milvus-config-template-{{ .Chart.Version }}
           volumeName: milvus-config
           namespace: {{.Release.Namespace}}
       service:

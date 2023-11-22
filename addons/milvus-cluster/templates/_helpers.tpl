@@ -96,7 +96,3 @@ External object storage service reference
   serviceDescriptor: {{ .Values.storage.object.serviceRef.serviceDescriptor }}
 {{- end }}
 {{- end }}
-
-
-
-

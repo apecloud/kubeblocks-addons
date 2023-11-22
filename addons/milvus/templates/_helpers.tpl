@@ -130,8 +130,8 @@ readinessProbe:
 Milvus cluster default config
 */}}
 {{- define "milvus.cluster.config" }}
-- name: milvus-config
-  templateRef: milvus-config-template
+- name: config
+  templateRef: milvus-config-template-{{ .Chart.Version }}
   volumeName: milvus-config
   namespace: {{.Release.Namespace}}
   defaultMode: 420

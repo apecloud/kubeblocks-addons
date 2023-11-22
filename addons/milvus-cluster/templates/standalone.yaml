@@ -5,7 +5,7 @@ metadata:
   name: {{ include "clustername" . }}
   labels: {{ include "milvus.labels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: milvus # ref clusterdefinition.name
+  clusterDefinitionRef: milvus-{{ .Chart.Version }} # ref clusterdefinition.name
   clusterVersionRef: milvus-{{ .Chart.AppVersion }} # ref clusterversion.name
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   affinity:
