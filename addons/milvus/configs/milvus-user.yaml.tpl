@@ -53,7 +53,7 @@
   {{- end }}
   {{- if index $external_object_service.spec "auth" }}
     {{- if index $external_object_service.spec.auth "username" }}
-       {{- $minioAccessKey = printf "%s" $external_object_service.spec.auth.username,value }}
+       {{- $minioAccessKey = printf "%s" $external_object_service.spec.auth.username.value }}
     {{- end }}
     {{- if and (index $external_object_service.auth "password" }}
        {{- $minioSecretKey = printf "%s" $external_object_service.spec.auth.password.value }}

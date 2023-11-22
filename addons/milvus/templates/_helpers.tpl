@@ -127,15 +127,14 @@ readinessProbe:
 {{- end }}
 
 {{/*
-Milvus cluster config spec
+Milvus cluster default config
 */}}
-{{- define "milvus.cluster.configSpec" }}
-configSpecs:
-  - name: milvus-config
-    templateRef: milvus-config-template
-    volumeName: milvus-config
-    namespace: {{.Release.Namespace}}
-    defaultMode: 420
+{{- define "milvus.cluster.config" }}
+- name: milvus-config
+  templateRef: milvus-config-template
+  volumeName: milvus-config
+  namespace: {{.Release.Namespace}}
+  defaultMode: 420
 {{- end }}
 
 {{/*
