@@ -5,6 +5,10 @@ Expand the name of the chart.
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
+{{- define "mongodb-sharding.name" -}}
+{{- default "mongodb-sharding" | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
 {{/*
 Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
@@ -40,6 +44,26 @@ helm.sh/chart: {{ include "mongodb.chart" . }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}
+
+{{/*
+Mongodb-sharding Common labels
+*/}}
+{{- define "mongodb-sharding.labels" -}}
+helm.sh/chart: {{ include "mongodb.chart" . }}
+{{ include "mongodb-sharding.selectorLabels" . }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}
+
+{{/*
+Mongodb-sharding Selector labels
+*/}}
+{{- define "mongodb-sharding.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "mongodb-sharding.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
