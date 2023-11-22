@@ -60,3 +60,43 @@ Create the name of the service account to use
 {{- define "milvus.serviceAccountName" -}}
 {{- default (printf "kb-%s" (include "clustername" .)) .Values.serviceAccount.name }}
 {{- end }}
+
+{{/*
+External meta storage service reference
+*/}}
+{{- define "milvus.serviceRef.meta" }}
+{{- if eq .Values.storage.meta.mode "serviceref" }}
+- name: milvus-meta-storage
+  namespace: {{ .Values.storage.meta.serviceRef.namespace }}
+  cluster: {{ .Values.storage.meta.serviceRef.cluster }}
+  serviceDescriptor: {{ .Values.storage.meta.serviceRef.serviceDescriptor }}
+{{- end }}
+{{- end }}
+
+{{/*
+External log storage service reference
+*/}}
+{{- define "milvus.serviceRef.log" }}
+{{- if eq .Values.storage.log.mode "serviceref" }}
+- name: milvus-log-storage
+  namespace: {{ .Values.storage.log.serviceRef.namespace }}
+  cluster: {{ .Values.storage.log.serviceRef.cluster }}
+  serviceDescriptor: {{ .Values.storage.log.serviceRef.serviceDescriptor }}
+{{- end }}
+{{- end }}
+
+{{/*
+External object storage service reference
+*/}}
+{{- define "milvus.serviceRef.object" }}
+{{- if eq .Values.storage.object.mode "serviceref" }}
+- name: milvus-object-storage
+  namespace: {{ .Values.storage.object.serviceRef.namespace }}
+  cluster: {{ .Values.storage.object.serviceRef.cluster }}
+  serviceDescriptor: {{ .Values.storage.object.serviceRef.serviceDescriptor }}
+{{- end }}
+{{- end }}
+
+
+
+

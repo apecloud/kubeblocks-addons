@@ -12,75 +12,75 @@ spec:
   tolerations: {{ . | toYaml | nindent 4 }}
   {{- end }}
   componentSpecs:
-    {{- if eq .Values.storage.meta.mode "incluster" }}
-    - name: {{ .Values.storage.meta.name }}
-      componentDef: {{ .Values.storage.meta.inCluster.provider }}
-      replicas: {{ .Values.storage.meta.inCluster.replicas}}
-      {{- include "kblib.componentMonitor" . | indent 6 }}
-      {{- with .Values.storage.meta.inCluster.resources }}
-      resources:
-        requests:
-          cpu: {{ .cpu }}
-          memory: {{ print .memory "Gi" }}
-      {{- end }}
-      {{- with .Values.storage.meta.inCluster.storage }}
-      volumeClaimTemplates:
-        - name: data  # TODO: volume name and multiple volumes
-          spec:
-            storageClassName: {{ .storageClassName }}
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: {{ print .size "Gi" }}
-      {{- end }}
-    {{- end }}
-    {{- if eq .Values.storage.log.mode "incluster" }}
-    - name: {{ .Values.storage.log.name }}
-      componentDef: {{ .Values.storage.log.inCluster.provider }}
-      replicas: {{ .Values.storage.log.inCluster.replicas}}
-      {{- include "kblib.componentMonitor" . | indent 6 }}
-      {{- with .Values.storage.log.inCluster.resources }}
-      resources:
-        requests:
-          cpu: {{ .cpu }}
-          memory: {{ print .memory "Gi" }}
-      {{- end }}
-      {{- with .Values.storage.log.inCluster.storage }}
-      volumeClaimTemplates:
-        - name: data  # TODO: volume name and multiple volumes
-          spec:
-            storageClassName: {{ .storageClassName }}
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: {{ print .size "Gi" }}
-      {{- end }}
-    {{- end }}
-    {{- if eq .Values.storage.object.mode "incluster" }}
-    - name: {{ .Values.storage.object.name }}
-      componentDef: {{ .Values.storage.object.inCluster.provider }}
-      replicas: {{ .Values.storage.object.inCluster.replicas}}
-      {{- include "kblib.componentMonitor" . | indent 6 }}
-      {{- with .Values.storage.object.inCluster.resources }}
-      resources:
-        requests:
-          cpu: {{ .cpu }}
-          memory: {{ print .memory "Gi" }}
-      {{- end }}
-      {{- with .Values.storage.object.inCluster.storage }}
-      volumeClaimTemplates:
-        - name: data  # TODO: volume name and multiple volumes
-          spec:
-            storageClassName: {{ .storageClassName }}
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: {{ print .size "Gi" }}
-      {{- end }}
-    {{- end }}
+#    {{- if eq .Values.storage.meta.mode "incluster" }}
+#    - name: {{ .Values.storage.meta.name }}
+#      componentDef: {{ .Values.storage.meta.inCluster.provider }}
+#      replicas: {{ .Values.storage.meta.inCluster.replicas}}
+#      {{- include "kblib.componentMonitor" . | indent 6 }}
+#      {{- with .Values.storage.meta.inCluster.resources }}
+#      resources:
+#        requests:
+#          cpu: {{ .cpu }}
+#          memory: {{ print .memory "Gi" }}
+#      {{- end }}
+#      {{- with .Values.storage.meta.inCluster.storage }}
+#      volumeClaimTemplates:
+#        - name: data  # TODO: volume name and multiple volumes
+#          spec:
+#            storageClassName: {{ .storageClassName }}
+#            accessModes:
+#              - ReadWriteOnce
+#            resources:
+#              requests:
+#                storage: {{ print .size "Gi" }}
+#      {{- end }}
+#    {{- end }}
+#    {{- if eq .Values.storage.log.mode "incluster" }}
+#    - name: {{ .Values.storage.log.name }}
+#      componentDef: {{ .Values.storage.log.inCluster.provider }}
+#      replicas: {{ .Values.storage.log.inCluster.replicas}}
+#      {{- include "kblib.componentMonitor" . | indent 6 }}
+#      {{- with .Values.storage.log.inCluster.resources }}
+#      resources:
+#        requests:
+#          cpu: {{ .cpu }}
+#          memory: {{ print .memory "Gi" }}
+#      {{- end }}
+#      {{- with .Values.storage.log.inCluster.storage }}
+#      volumeClaimTemplates:
+#        - name: data  # TODO: volume name and multiple volumes
+#          spec:
+#            storageClassName: {{ .storageClassName }}
+#            accessModes:
+#              - ReadWriteOnce
+#            resources:
+#              requests:
+#                storage: {{ print .size "Gi" }}
+#      {{- end }}
+#    {{- end }}
+#    {{- if eq .Values.storage.object.mode "incluster" }}
+#    - name: {{ .Values.storage.object.name }}
+#      componentDef: {{ .Values.storage.object.inCluster.provider }}
+#      replicas: {{ .Values.storage.object.inCluster.replicas}}
+#      {{- include "kblib.componentMonitor" . | indent 6 }}
+#      {{- with .Values.storage.object.inCluster.resources }}
+#      resources:
+#        requests:
+#          cpu: {{ .cpu }}
+#          memory: {{ print .memory "Gi" }}
+#      {{- end }}
+#      {{- with .Values.storage.object.inCluster.storage }}
+#      volumeClaimTemplates:
+#        - name: data  # TODO: volume name and multiple volumes
+#          spec:
+#            storageClassName: {{ .storageClassName }}
+#            accessModes:
+#              - ReadWriteOnce
+#            resources:
+#              requests:
+#                storage: {{ print .size "Gi" }}
+#      {{- end }}
+#    {{- end }}
     {{- if .Values.proxy.enabled }}
     - name: proxy
       componentDef: milvus-proxy-{{ .Chart.Version }}
@@ -92,30 +92,10 @@ spec:
           cpu: {{ .cpu }}
           memory: {{ print .memory "Gi" }}
       {{- end }}
-      {{- with .Values.proxy.storage }}
-      volumeClaimTemplates:
-        - name: data  # TODO: volume name and multiple volumes
-          spec:
-            storageClassName: {{ .storageClassName }}
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: {{ print .size "Gi" }}
-      {{- end }}
       serviceRefs:
-      {{- if eq .Values.storage.meta.mode "serviceref" }}
-      - name: milvus-object-storage
-        namespace: {{ .Values.storage.meta.serviceRef.namespace }}
-        cluster: {{ .Values.storage.meta.serviceRef.cluster }}
-        serviceDescriptor: {{ .Values.storage.meta.serviceRef.serviceDescriptor }}
-      {{- end }}
-      {{- if eq .Values.storage.log.mode "serviceref" }}
-      - name: milvus-log-storage
-        namespace: {{ .Values.storage.log.serviceRef.namespace }}
-        cluster: {{ .Values.storage.log.serviceRef.cluster }}
-        serviceDescriptor: {{ .Values.storage.log.serviceRef.serviceDescriptor }}
-      {{- end }}
+        {{- include "milvus.serviceRef.meta" . | indent 8 }}
+        {{- include "milvus.serviceRef.log" . | indent 8 }}
+        {{- include "milvus.serviceRef.object" . | indent 8 }}
     {{- end }}
     - name: mixedcoord
       componentDef: milvus-mixcoord-{{ .Chart.Version }}
@@ -127,24 +107,10 @@ spec:
           cpu: {{ .cpu }}
           memory: {{ print .memory "Gi" }}
       {{- end }}
-      {{- with .Values.mixedcoord.storage }}
-      volumeClaimTemplates:
-        - name: data  # TODO: volume name and multiple volumes
-          spec:
-            storageClassName: {{ .storageClassName }}
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: {{ print .size "Gi" }}
-      {{- end }}
       serviceRefs:
-      {{- if eq .Values.storage.meta.mode "serviceref" }}
-      - name: milvus-object-storage
-        namespace: {{ .Values.storage.meta.serviceRef.namespace }}
-        cluster: {{ .Values.storage.meta.serviceRef.cluster }}
-        serviceDescriptor: {{ .Values.storage.meta.serviceRef.serviceDescriptor }}
-      {{- end }}
+        {{- include "milvus.serviceRef.meta" . | indent 8 }}
+        {{- include "milvus.serviceRef.log" . | indent 8 }}
+        {{- include "milvus.serviceRef.object" . | indent 8 }}
     - name: datanode
       componentDef: milvus-datanode-{{ .Chart.Version }}
       replicas: {{ .Values.datanode.replicas}}
@@ -155,30 +121,10 @@ spec:
           cpu: {{ .cpu }}
           memory: {{ print .memory "Gi" }}
       {{- end }}
-      {{- with .Values.datanode.storage }}
-      volumeClaimTemplates:
-        - name: data  # TODO: volume name and multiple volumes
-          spec:
-            storageClassName: {{ .storageClassName }}
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: {{ print .size "Gi" }}
-      {{- end }}
       serviceRefs:
-      {{- if eq .Values.storage.log.mode "serviceref" }}
-        - name: milvus-log-storage
-          namespace: {{ .Values.storage.log.serviceRef.namespace }}
-          cluster: {{ .Values.storage.log.serviceRef.cluster }}
-          serviceDescriptor: {{ .Values.storage.log.serviceRef.serviceDescriptor }}
-      {{- end }}
-      {{- if eq .Values.storage.object.mode "serviceref" }}
-        - name: milvus-object-storage
-          namespace: {{ .Values.storage.object.serviceRef.namespace }}
-          cluster: {{ .Values.storage.object.serviceRef.cluster }}
-          serviceDescriptor: {{ .Values.storage.object.serviceRef.serviceDescriptor }}
-      {{- end }}
+        {{- include "milvus.serviceRef.meta" . | indent 8 }}
+        {{- include "milvus.serviceRef.log" . | indent 8 }}
+        {{- include "milvus.serviceRef.object" . | indent 8 }}
     - name: indexnode
       componentDef: milvus-indexnode-{{ .Chart.Version }}
       replicas: {{ .Values.indexnode.replicas}}
@@ -189,30 +135,10 @@ spec:
           cpu: {{ .cpu }}
           memory: {{ print .memory "Gi" }}
       {{- end }}
-      {{- with .Values.indexnode.storage }}
-      volumeClaimTemplates:
-        - name: data  # TODO: volume name and multiple volumes
-          spec:
-            storageClassName: {{ .storageClassName }}
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: {{ print .size "Gi" }}
-      {{- end }}
       serviceRefs:
-      {{- if eq .Values.storage.log.mode "serviceref" }}
-      - name: milvus-log-storage
-        namespace: {{ .Values.storage.log.serviceRef.namespace }}
-        cluster: {{ .Values.storage.log.serviceRef.cluster }}
-        serviceDescriptor: {{ .Values.storage.log.serviceRef.serviceDescriptor }}
-      {{- end }}
-      {{- if eq .Values.storage.object.mode "serviceref" }}
-      - name: milvus-object-storage
-        namespace: {{ .Values.storage.object.serviceRef.namespace }}
-        cluster: {{ .Values.storage.object.serviceRef.cluster }}
-        serviceDescriptor: {{ .Values.storage.object.serviceRef.serviceDescriptor }}
-      {{- end }}
+        {{- include "milvus.serviceRef.meta" . | indent 8 }}
+        {{- include "milvus.serviceRef.log" . | indent 8 }}
+        {{- include "milvus.serviceRef.object" . | indent 8 }}
     - name: querynode
       componentDef: milvus-querynode-{{ .Chart.Version }}
       replicas: {{ .Values.querynode.replicas}}
@@ -223,28 +149,8 @@ spec:
           cpu: {{ .cpu }}
           memory: {{ print .memory "Gi" }}
       {{- end }}
-      {{- with .Values.querynode.storage }}
-      volumeClaimTemplates:
-        - name: data  # TODO: volume name and multiple volumes
-          spec:
-            storageClassName: {{ .storageClassName }}
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: {{ print .size "Gi" }}
-      {{- end }}
       serviceRefs:
-      {{- if eq .Values.storage.log.mode "serviceref" }}
-      - name: milvus-log-storage
-        namespace: { { .Values.storage.log.serviceRef.namespace } }
-        cluster: { { .Values.storage.log.serviceRef.cluster } }
-        serviceDescriptor: { { .Values.storage.log.serviceRef.serviceDescriptor } }
-      {{- end }}
-      {{- if eq .Values.storage.object.mode "serviceref" }}
-      - name: milvus-object-storage
-        namespace: {{ .Values.storage.object.serviceRef.namespace }}
-        cluster: {{ .Values.storage.object.serviceRef.cluster }}
-        serviceDescriptor: {{ .Values.storage.object.serviceRef.serviceDescriptor }}
-      {{- end }}
+        {{- include "milvus.serviceRef.meta" . | indent 8 }}
+        {{- include "milvus.serviceRef.log" . | indent 8 }}
+        {{- include "milvus.serviceRef.object" . | indent 8 }}
 {{- end }}

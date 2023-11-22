@@ -71,3 +71,173 @@ Create the name of the service account to use
 {{- end }}
 {{- end }}
 */}}
+
+{{/*
+Startup probe
+*/}}
+{{- define "milvus.probe.startup" }}
+{{- if .Values.startupProbe.enabled }}
+startupProbe:
+  httpGet:
+    path: /healthz
+    port: metrics
+    scheme: HTTP
+  initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
+  periodSeconds: {{ .Values.startupProbe.periodSeconds }}
+  timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds }}
+  successThreshold: {{ .Values.startupProbe.successThreshold }}
+  failureThreshold: {{ .Values.startupProbe.failureThreshold }}
+{{- end }}
+{{- end }}
+
+{{/*
+Liveness probe
+*/}}
+{{- define "milvus.probe.liveness" }}
+{{- if .Values.livenessProbe.enabled }}
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: metrics
+    scheme: HTTP
+  initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+  periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+  timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+  successThreshold: {{ .Values.livenessProbe.successThreshold }}
+  failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+{{- end }}
+{{- end }}
+
+{{/*
+Readiness probe
+*/}}
+{{- define "milvus.probe.readiness" }}
+{{- if .Values.readinessProbe.enabled }}
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: metrics
+    scheme: HTTP
+  initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+  periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+  timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+  successThreshold: {{ .Values.readinessProbe.successThreshold }}
+  failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+{{- end }}
+{{- end }}
+
+{{/*
+Milvus cluster config spec
+*/}}
+{{- define "milvus.cluster.configSpec" }}
+configSpecs:
+  - name: milvus-config
+    templateRef: milvus-config-template
+    volumeName: milvus-config
+    namespace: {{.Release.Namespace}}
+    defaultMode: 420
+{{- end }}
+
+{{/*
+Milvus cluster monitor
+*/}}
+{{- define "milvus.cluster.monitor" }}
+monitor:
+  builtIn: false
+  exporterConfig:
+    scrapePath: /metrics
+    scrapePort: 9091
+{{- end }}
+
+{{/*
+Milvus cluster init container - config
+*/}}
+{{- define "milvus.cluster.initContainer.config" }}
+- name: config
+  image: {{ .Values.images.milvusTools.repository }}:{{ .Values.images.milvusTools.tag }}
+  imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
+  command:
+    - /cp
+    - /run.sh,/merge
+    - /milvus/tools/run.sh,/milvus/tools/merge
+  volumeMounts:
+    - mountPath: /milvus/tools
+      name: milvus-tools
+{{- end }}
+
+{{/*
+Milvus cluster image
+*/}}
+{{- define "milvus.cluster.image" }}
+image: {{ .Values.images.milvus.repository }}:{{ .Values.images.milvus.tag }}
+imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
+{{- end }}
+
+{{/*
+Milvus cluster default env
+*/}}
+{{- define "milvus.cluster.env.default" }}
+- name: CACHE_SIZE
+  valueFrom:
+    resourceFieldRef:
+      divisor: 1Gi
+      resource: limits.memory
+- name: MINIO_ACCESS_KEY
+  valueFrom:
+    secretKeyRef:
+      key: accesskey
+      name: $(CONN_CREDENTIAL_SECRET_NAME)  # TODO: minio ak/sk secret
+- name: MINIO_SECRET_KEY
+  valueFrom:
+    secretKeyRef:
+      key: secretkey
+      name: $(CONN_CREDENTIAL_SECRET_NAME)  # TODO: minio ak/sk secret
+{{- end }}
+
+{{/*
+Milvus cluster default volume mounts
+*/}}
+{{- define "milvus.cluster.volumeMount.default" }}
+- mountPath: /milvus/configs/user.yaml
+  name: milvus-config
+  readOnly: true
+  subPath: user.yaml
+- mountPath: /milvus/tools
+  name: milvus-tools
+{{- end }}
+
+{{/*
+Milvus cluster default volumes
+*/}}
+{{- define "milvus.cluster.volume.default" }}
+- name: milvus-tools
+  emptyDir: {}
+{{- end }}
+
+{{/*
+Milvus cluster metric container port
+*/}}
+{{- define "milvus.cluster.containerPort.metric" }}
+- containerPort: 9091
+  name: metrics
+  protocol: TCP
+{{- end }}
+
+{{/*
+Milvus cluster external storage services reference
+*/}}
+{{- define "milvus.cluster.storageServiceRef" }}
+serviceRefDeclarations:
+  - name: milvus-meta-storage
+    serviceRefDeclarationSpecs:
+      - serviceKind: etcd
+        serviceVersion: "^3.*"
+  - name: milvus-log-storage
+    serviceRefDeclarationSpecs:
+      - serviceKind: pulsar
+        serviceVersion: "^2.*"
+  - name: milvus-object-storage
+    serviceRefDeclarationSpecs:
+      - serviceKind: minio
+        serviceVersion: "*"
+{{- end }}
