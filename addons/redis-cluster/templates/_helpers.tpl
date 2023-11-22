@@ -24,20 +24,20 @@ Define redis cluster sentinel component.
 
 
 {{/*
-Define redis cluster proxy component.
+Define redis cluster twemproxy component.
 */}}
-{{- define "redis-cluster.proxy" }}
-- name: redis-proxy
-  componentDefRef: redis-proxy
+{{- define "redis-cluster.twemproxy" }}
+- name: redis-twemproxy
+  componentDefRef: redis-twemproxy
   serviceAccountName: {{ include "kblib.serviceAccountName" . }}
-  replicas: {{ .Values.proxy.replicas }}
+  replicas: {{ .Values.twemproxy.replicas }}
   resources:
     limits:
-      cpu: {{ .Values.proxy.cpu | quote }}
-      memory: {{ print .Values.proxy.memory "Gi" | quote }}
+      cpu: {{ .Values.twemproxy.cpu | quote }}
+      memory: {{ print .Values.twemproxy.memory "Gi" | quote }}
     requests:
-      cpu: {{ .Values.proxy.cpu | quote }}
-      memory: {{ print .Values.proxy.memory "Gi" | quote }}
+      cpu: {{ .Values.twemproxy.cpu | quote }}
+      memory: {{ print .Values.twemproxy.memory "Gi" | quote }}
 {{- end }}
 
 {{/*

@@ -43,7 +43,13 @@ sentinel:
   storage: 5
   replicas: 3
 
-proxy:
-  cpu: 1
+## @param twemproxyEnabled if true, enable the twemproxy
+## if mode is standalone, twemproxyEnabled is always false
+## if mode is replication, twemproxyEnabled can be true or false
+##
+twemproxyEnabled: false
+
+twemproxy:
+  cpu: 0.5
   memory: 0.5
-  replicas: 3
+  replicas: 2
