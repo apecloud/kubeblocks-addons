@@ -10,8 +10,16 @@ spec:
     endpoint: "$(SVC_FQDN):$(SVC_PORT_milvus)"
     host: "$(SVC_FQDN)"
     port: "$(SVC_PORT_milvus)"
+    {{- if .Values.minio.accessKey }}
+    accesskey: {{ .Values.minio.accessKey | toString | b64enc | quote }}
+    {{- else }}
     accesskey: "$(RANDOM_PASSWD)"
+    {{- end }}
+    {{- if .Values.minio.secretKey }}
+    secretkey: {{ .Values.minio.secretKey | toString | b64enc | quote }}
+    {{- else }}
     secretkey: "$(RANDOM_PASSWD)"
+    {{- end }}
   componentDefs:
     - name: milvus
       workloadType: Stateful
