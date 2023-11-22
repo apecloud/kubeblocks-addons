@@ -4,10 +4,8 @@ metadata:
   name: {{ include "kblib.clusterName" . }}
   namespace: {{ .Release.Namespace }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
-  {{ if not .Values.cpuMode }}
   annotations:
-    "kubeblocks.io/extra-env": "{\"MODEL_NAME\":\"{{ .Values.model }}\", \"EXTRA_ARGS\":\"{{ .Values.extraArgs }}\"}"
-  {{ end }}
+    "kubeblocks.io/extra-env": "{\"MODEL_NAME\":\"{{ .Values.model }}\", \"EXTRA_ARGS\":\"{{ .Values.extraArgs }}\", \"MODEL_URL\":\"{{ .Values.url }}\", \"QUANTIZE\":\"{{ .Values.quantize }}\"}"
 spec:
   clusterVersionRef: {{ .Values.version }}
   terminationPolicy: {{ .Values.extra.terminationPolicy }}

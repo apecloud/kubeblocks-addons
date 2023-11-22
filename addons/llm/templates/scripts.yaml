@@ -81,3 +81,39 @@ data:
       fi
       sleep 3
     done
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ggml-scripts
+  labels:
+    {{- include "llm.labels" . | nindent 4 }}
+data:
+  start.sh: |
+    #!/bin/bash
+    if [ -n "$MODEL_URL" ]; then 
+      apt-get install wget -y
+      wget "$MODEL_URL" -O model.gguf
+    fi
+    if [[ -f "$MODEL" ]]; then
+      # if model file already exists, just run the server
+      sh /app/docker/simple/run.sh
+      exit 0
+    fi
+    # download model from remote
+    # if MODEL_URL configured, download model from it
+    if [ -n "$MODEL_URL" ]; then 
+      apt-get install wget -y
+      wget "$MODEL_URL" -O model.gguf
+      sh /app/docker/simple/run.sh
+      exit 0
+    fi
+    # if MODEL_NAME and QUANTIZE configured, try to build a hugging face url from it.
+    if [ -n "$MODEL_NAME" ] && [ -n "$QUANTIZE" ]; then
+      url="https://huggingface.co/$MODEL_NAME/resolve/main/$QUANTIZE.gguf"
+      wget "$url" -O model.gguf
+      sh /app/docker/simple/run.sh
+      exit 0
+    fi
+    echo "$MODEL not found"
+    exit 1

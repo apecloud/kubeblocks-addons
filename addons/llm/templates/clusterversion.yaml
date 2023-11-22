@@ -18,9 +18,27 @@ spec:
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ClusterVersion
 metadata:
-  name: ggml-baichuan-7b-q4
+  name: ggml-default
   annotations:
     kubeblocks.io/is-default-cluster-version: "true"
+  labels:
+    {{- include "llm.labels" . | nindent 4 }}
+spec:
+  clusterDefinitionRef: ggml
+  componentVersions:
+    - componentDefRef: ggml
+      versionsContext:
+        containers:
+          - name: ggml
+            image: {{ .Values.imageDev.registry | default "docker.io" }}/{{ .Values.imageDev.repository}}:{{ default .Chart.AppVersion .Values.imageDev.tagNew }}
+            env:
+              - name: MODEL
+                value: /app/model.gguf
+---
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterVersion
+metadata:
+  name: ggml-baichuan-7b-q4
   labels:
     {{- include "llm.labels" . | nindent 4 }}
 spec:
