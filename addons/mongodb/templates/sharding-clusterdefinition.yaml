@@ -3,7 +3,7 @@ kind: ClusterDefinition
 metadata:
   name: mongodb-sharding
   labels:
-    {{- include "mongodb.labels" . | nindent 4 }}
+    {{- include "mongodb-sharding.labels" . | nindent 4 }}
 spec:
   type: mongodb
   connectionCredential:
