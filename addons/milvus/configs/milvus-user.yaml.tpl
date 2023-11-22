@@ -31,7 +31,7 @@
   {{- end }}
 {{- end }}
 
-{{- $pulsar_server := printf "%s-pulsar-headless.%s.svc.cluster.local:2379" $clusterName $namespace }}
+{{- $pulsar_server := printf "%s-pulsar-headless.%s.svc.cluster.local" $clusterName $namespace }}
 {{- $pulsar_port := "6650" }}
 {{- if $external_log_service }}
   {{- if index $external_log_service.spec "endpoint" }}
@@ -55,7 +55,7 @@
     {{- if index $external_object_service.spec.auth "username" }}
        {{- $minioAccessKey = printf "%s" $external_object_service.spec.auth.username.value }}
     {{- end }}
-    {{- if and (index $external_object_service.auth "password" }}
+    {{- if index $external_object_service.spec.auth "password" }}
        {{- $minioSecretKey = printf "%s" $external_object_service.spec.auth.password.value }}
     {{- end }}
   {{- end }}

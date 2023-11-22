@@ -2,7 +2,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ClusterDefinition
 metadata:
-  name: milvus
+  name: milvus-{{ .Chart.Version }}
   labels:
     {{- include "milvus.labels" . | nindent 4 }}
 spec:
@@ -11,12 +11,12 @@ spec:
     host: "$(SVC_FQDN)"
     port: "$(SVC_PORT_milvus)"
     {{- if .Values.minio.accessKey }}
-    accesskey: {{ .Values.minio.accessKey | toString | b64enc | quote }}
+    accesskey: {{ .Values.minio.accessKey | toString | quote }}
     {{- else }}
     accesskey: "$(RANDOM_PASSWD)"
     {{- end }}
     {{- if .Values.minio.secretKey }}
-    secretkey: {{ .Values.minio.secretKey | toString | b64enc | quote }}
+    secretkey: {{ .Values.minio.secretKey | toString | quote }}
     {{- else }}
     secretkey: "$(RANDOM_PASSWD)"
     {{- end }}

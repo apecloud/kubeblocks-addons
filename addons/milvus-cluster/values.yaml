@@ -44,7 +44,7 @@ storage:
 #      replicas: 1
 #      resources:
 #        cpu: 0.5
-#        mem: 1  # unit Gi
+#        memory: 1  # unit Gi
 #      storage:
 #        storageClassName:
 #        size: 1  # unit Gi
@@ -60,7 +60,7 @@ storage:
 #      replicas: 1
 #      resources:
 #        cpu: 0.5
-#        mem: 1  # unit Gi
+#        memory: 1  # unit Gi
 #      storage:
 #        storageClassName:
 #        size: 1  # unit Gi
@@ -76,7 +76,7 @@ storage:
 #      replicas: 1
 #      resources:
 #        cpu: 0.5
-#        mem: 1  # unit Gi
+#        memory: 1  # unit Gi
 #      storage:
 #        storageClassName:
 #        size: 1  # unit Gi
@@ -86,28 +86,28 @@ proxy:
   replicas: 1
   resources:
     cpu: 0.5
-    mem: 1  # unit Gi
+    memory: 1  # unit Gi
 
-mixedcoord:
+mixcoord:
   replicas: 1
   resources:
     cpu: 0.5
-    mem: 1  # unit Gi
+    memory: 1  # unit Gi
 
 datanode:
   replicas: 1
   resources:
     cpu: 0.5
-    mem: 1  # unit Gi
+    memory: 1  # unit Gi
 
 indexnode:
   replicas: 1
   resources:
     cpu: 0.5
-    mem: 1  # unit Gi
+    memory: 1  # unit Gi
 
 querynode:
   replicas: 1
   resources:
     cpu: 0.5
-    mem: 1  # unit Gi
+    memory: 1  # unit Gi

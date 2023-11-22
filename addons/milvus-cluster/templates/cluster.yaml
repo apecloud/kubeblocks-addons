@@ -6,6 +6,7 @@ metadata:
   name: {{ include "kblib.clusterName" . }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
+  clusterDefinitionRef: milvus-{{ .Chart.Version }}
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
   {{- with $.Values.tolerations }}
@@ -20,7 +21,7 @@ spec:
 #      {{- with .Values.storage.meta.inCluster.resources }}
 #      resources:
 #        requests:
-#          cpu: {{ .cpu }}
+#          cpu: {{ .cpu | quote }}
 #          memory: {{ print .memory "Gi" }}
 #      {{- end }}
 #      {{- with .Values.storage.meta.inCluster.storage }}
@@ -43,7 +44,7 @@ spec:
 #      {{- with .Values.storage.log.inCluster.resources }}
 #      resources:
 #        requests:
-#          cpu: {{ .cpu }}
+#          cpu: {{ .cpu | quote }}
 #          memory: {{ print .memory "Gi" }}
 #      {{- end }}
 #      {{- with .Values.storage.log.inCluster.storage }}
@@ -66,7 +67,7 @@ spec:
 #      {{- with .Values.storage.object.inCluster.resources }}
 #      resources:
 #        requests:
-#          cpu: {{ .cpu }}
+#          cpu: {{ .cpu | quote }}
 #          memory: {{ print .memory "Gi" }}
 #      {{- end }}
 #      {{- with .Values.storage.object.inCluster.storage }}
@@ -83,13 +84,13 @@ spec:
 #    {{- end }}
     {{- if .Values.proxy.enabled }}
     - name: proxy
-      componentDef: milvus-proxy-{{ .Chart.Version }}
+      componentDefRef: proxy
       replicas: {{ .Values.proxy.replicas }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- with .Values.proxy.resources }}
       resources:
         requests:
-          cpu: {{ .cpu }}
+          cpu: {{ .cpu | quote }}
           memory: {{ print .memory "Gi" }}
       {{- end }}
       serviceRefs:
@@ -97,14 +98,14 @@ spec:
         {{- include "milvus.serviceRef.log" . | indent 8 }}
         {{- include "milvus.serviceRef.object" . | indent 8 }}
     {{- end }}
-    - name: mixedcoord
-      componentDef: milvus-mixcoord-{{ .Chart.Version }}
-      replicas: {{ .Values.mixedcoord.replicas}}
+    - name: mixcoord
+      componentDefRef: mixcoord
+      replicas: {{ .Values.mixcoord.replicas}}
       {{- include "kblib.componentMonitor" . | indent 6 }}
-      {{- with .Values.mixedcoord.resources }}
+      {{- with .Values.mixcoord.resources }}
       resources:
         requests:
-          cpu: {{ .cpu }}
+          cpu: {{ .cpu | quote }}
           memory: {{ print .memory "Gi" }}
       {{- end }}
       serviceRefs:
@@ -112,13 +113,13 @@ spec:
         {{- include "milvus.serviceRef.log" . | indent 8 }}
         {{- include "milvus.serviceRef.object" . | indent 8 }}
     - name: datanode
-      componentDef: milvus-datanode-{{ .Chart.Version }}
+      componentDefRef: datanode
       replicas: {{ .Values.datanode.replicas}}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- with .Values.datanode.resources }}
       resources:
         requests:
-          cpu: {{ .cpu }}
+          cpu: {{ .cpu | quote }}
           memory: {{ print .memory "Gi" }}
       {{- end }}
       serviceRefs:
@@ -126,13 +127,13 @@ spec:
         {{- include "milvus.serviceRef.log" . | indent 8 }}
         {{- include "milvus.serviceRef.object" . | indent 8 }}
     - name: indexnode
-      componentDef: milvus-indexnode-{{ .Chart.Version }}
+      componentDefRef: indexnode
       replicas: {{ .Values.indexnode.replicas}}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- with .Values.indexnode.resources }}
       resources:
         requests:
-          cpu: {{ .cpu }}
+          cpu: {{ .cpu | quote }}
           memory: {{ print .memory "Gi" }}
       {{- end }}
       serviceRefs:
@@ -140,13 +141,13 @@ spec:
         {{- include "milvus.serviceRef.log" . | indent 8 }}
         {{- include "milvus.serviceRef.object" . | indent 8 }}
     - name: querynode
-      componentDef: milvus-querynode-{{ .Chart.Version }}
+      componentDefRef: querynode
       replicas: {{ .Values.querynode.replicas}}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- with .Values.querynode.resources }}
       resources:
         requests:
-          cpu: {{ .cpu }}
+          cpu: {{ .cpu | quote }}
           memory: {{ print .memory "Gi" }}
       {{- end }}
       serviceRefs:

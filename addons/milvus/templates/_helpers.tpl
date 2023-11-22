@@ -238,5 +238,5 @@ serviceRefDeclarations:
   - name: milvus-object-storage
     serviceRefDeclarationSpecs:
       - serviceKind: minio
-        serviceVersion: "*"
+        serviceVersion: "^*"
 {{- end }}
