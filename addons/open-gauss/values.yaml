@@ -22,3 +22,6 @@ shmVolume:
   ## sizeLimit: 1Gi
   ##
   sizeLimit: ""
+
+logConfigs:
+  running: /var/lib/opengauss/data/pg_log/postgresql-*

@@ -1,0 +1,2 @@
+Standalone OpenGauss cluster in Kubeblocks
+

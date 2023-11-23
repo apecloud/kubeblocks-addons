@@ -7,7 +7,7 @@ metadata:
 spec:
   type: opengauss
   connectionCredential:
-    username: gaussdb
+    username: opengauss
     password: "p@ssW0rd1"
     endpoint: "$(SVC_FQDN):$(SVC_PORT_tcp-opengauss)"
     host: "$(SVC_FQDN)"
@@ -15,12 +15,17 @@ spec:
   componentDefs:
     - name: opengauss
       workloadType: Stateful
-      characterType: postgresql
+      characterType: opengauss
       probes:
         roleProbe:
           failureThreshold: 2
           periodSeconds: 1
           timeoutSeconds: 1
+      logConfigs:
+        {{- range $name,$pattern := .Values.logConfigs }}
+        - name: {{ $name }}
+          filePathPattern: {{ $pattern }}
+        {{- end }}
       service:
         ports:
           - name: tcp-opengauss
@@ -44,9 +49,12 @@ spec:
             ports:
               - name: tcp-opengauss
                 containerPort: 5432
-            env: ## refer https://github.com/zalando/spilo/blob/master/ENVIRONMENT.rst
+            env:
               - name: GS_PASSWORD
-                value: p@ssW0rd1
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: password
               - name: GAUSSLOG
                 value: /var/log/opengauss
               - name: PATH

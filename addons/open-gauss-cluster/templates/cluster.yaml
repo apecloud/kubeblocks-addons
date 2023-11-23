@@ -1,0 +1,9 @@
+{{- include "kblib.clusterCommon" . }}
+  clusterDefinitionRef: opengauss
+  componentSpecs:
+    - name: opengauss
+      componentDefRef: opengauss
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+      {{- include "opengauss-cluster.replicaCount" . | indent 6 }}
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+
