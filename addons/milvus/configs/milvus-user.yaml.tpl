@@ -23,8 +23,8 @@
 
 {{- $etcd_endpoint := printf "%s-etcd-headless.%s.svc.cluster.local:2379" $clusterName $namespace }}
 {{- if $external_meta_service }}
-  {{- if and (index $external_meta_service.spec "endpoint") (index $external_meta_service.spec "port") }}
-     {{- $etcd_endpoint = printf "%s:%s" $external_meta_service.spec.endpoint.value $external_meta_service.spec.port.value }}
+  {{- if index $external_meta_service.spec "endpoint" }}
+     {{- $etcd_endpoint = printf "%s" $external_meta_service.spec.endpoint.value }}
   {{- end }}
 {{- end }}
 
@@ -32,7 +32,14 @@
 {{- $pulsar_port := "6650" }}
 {{- if $external_log_service }}
   {{- if index $external_log_service.spec "endpoint" }}
-     {{- $pulsar_server = printf "%s" $external_log_service.spec.endpoint.value }}
+     {{- $pulsar_endpoint := printf "%s" $external_log_service.spec.endpoint.value }}
+     {{- $parts := splitList ":" $pulsar_endpoint }}
+     {{- if eq (len $parts) 2 }}
+       {{- $pulsar_server = index $parts 0 }}
+       {{- $pulsar_port = index $parts 1 }}
+     {{- else if eq (len $parts) 1 }}
+       {{- $pulsar_server = index $parts 0 }}
+     {{- end }}
   {{- end }}
   {{- if index $external_log_service.spec "port" }}
      {{- $pulsar_port = printf "%s" $external_log_service.spec.port.value }}
@@ -43,7 +50,14 @@
 {{- $minio_port := "9000" }}
 {{- if $external_object_service }}
   {{- if index $external_object_service.spec "endpoint" }}
-     {{- $minio_server = printf "%s" $external_object_service.spec.endpoint.value }}
+     {{- $minio_endpoint := printf "%s" $external_object_service.spec.endpoint.value }}
+     {{- $parts := splitList ":" $minio_endpoint }}
+     {{- if eq (len $parts) 2 }}
+       {{- $minio_server = index $parts 0 }}
+       {{- $minio_port = index $parts 1 }}
+     {{- else if eq (len $parts) 1 }}
+       {{- $minio_server = index $parts 0 }}
+     {{- end }}
   {{- end }}
   {{- if index $external_object_service.spec "port" }}
      {{- $minio_port = printf "%s" $external_object_service.spec.port.value }}
