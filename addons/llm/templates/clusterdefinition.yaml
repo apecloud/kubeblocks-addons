@@ -22,6 +22,9 @@ spec:
             targetPort: model
       podSpec:
         volumes:
+          - name: dshm
+            emptyDir:
+              medium: Memory
           - name: model-store
             emptyDir: {}
         containers:
@@ -34,6 +37,8 @@ spec:
             terminationMessagePath: /dev/termination-log
             terminationMessagePolicy: File
             volumeMounts:
+              - mountPath: /dev/shm
+                name: dshm
               - mountPath: /llm/config/
                 name: config
               - name: scripts
