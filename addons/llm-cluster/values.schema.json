@@ -12,7 +12,7 @@
       "title": "Version",
       "description": "Cluster version.",
       "type": "string",
-      "default": "vllm-baichuan2-13b"
+      "default": ""
     },
     "replicas": {
       "title": "Replicas",
@@ -29,8 +29,8 @@
         "number",
         "string"
       ],
-      "default": 2,
-      "minimum": 0.5,
+      "default": 0,
+      "minimum": 0,
       "maximum": 64,
       "multipleOf": 0.5
     },
@@ -41,8 +41,8 @@
         "number",
         "string"
       ],
-      "default": 6,
-      "minimum": 0.5,
+      "default": 0,
+      "minimum": 0,
       "maximum": 1000
     },
     "gpu": {
