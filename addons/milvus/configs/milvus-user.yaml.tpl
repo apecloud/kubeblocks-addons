@@ -48,14 +48,6 @@
   {{- if index $external_object_service.spec "port" }}
      {{- $minio_port = printf "%s" $external_object_service.spec.port.value }}
   {{- end }}
-  {{- if index $external_object_service.spec "auth" }}
-    {{- if index $external_object_service.spec.auth "username" }}
-       {{- $minioAccessKey = printf "%s" $external_object_service.spec.auth.username.value }}
-    {{- end }}
-    {{- if index $external_object_service.spec.auth "password" }}
-       {{- $minioSecretKey = printf "%s" $external_object_service.spec.auth.password.value }}
-    {{- end }}
-  {{- end }}
 {{- end }}
 
 etcd:
