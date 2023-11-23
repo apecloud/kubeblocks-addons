@@ -39,7 +39,7 @@ data:
     if [ $ordinal -eq 0 ]; then
       /scripts/vllm-start.sh &
       /scripts/ray-health-checker.sh &
-      ray start --head --block --redis-password=44s5jntp
+      ray start --head --block
     else 
       ray start --address="${KB_VLLM_0_HOSTNAME}:6379" --block
     fi

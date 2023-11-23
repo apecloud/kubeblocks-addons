@@ -30,6 +30,10 @@ spec:
       resources:
         limits:
           nvidia.com/gpu: {{ .Values.gpu }}
+          cpu: {{ .Values.cpu | quote }}
+          memory: {{ print .Values.memory "Gi" | quote }}
         requests:
           nvidia.com/gpu: {{ .Values.gpu }}
+          cpu: {{ .Values.cpu | quote }}
+          memory: {{ print .Values.memory "Gi" | quote }}
 {{ end }}
