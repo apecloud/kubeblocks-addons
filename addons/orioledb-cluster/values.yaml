@@ -1,12 +1,12 @@
-# Default values for PostgreSQL (with Patroni HA).
+# Default values for OrioleDB (with Patroni HA).
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-## @param version MySQL cluster version
+## @param version OrioleDB cluster version
 ##
 version: orioledb-beta1
 
-## @param mode postgresql cluster topology mode, standalone, replication
+## @param mode OrioleDB cluster topology mode, standalone, replication
 ##
 mode: standalone
 
