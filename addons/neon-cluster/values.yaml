@@ -3,12 +3,15 @@ version: latest
 storageClassName: ""
 terminationPolicy: Delete
 
-images:
-  pg14:
-    registry: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com
-    repository: apecloud/pg14-disk-test
-    tag: test
-    pullPolicy: IfNotPresent
+compute:
+  replicas: 1
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "500Mi"
+    limits:
+      cpu: "1"
+      memory: "2Gi"
 
 storagebroker:
   replicas: 1
