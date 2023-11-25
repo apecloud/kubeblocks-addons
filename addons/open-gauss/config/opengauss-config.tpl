@@ -257,7 +257,7 @@
 #wal_keep_segments = 16          # in logfile segments, 16MB each; 0 disables
 #wal_sender_timeout = 6s        # in milliseconds; 0 disables
 #enable_slot_log = off
-#max_replication_slots = 8       # max number of replication slots.i
+#max_replication_slots = 4       # max number of replication slots.i
                                 # The value belongs to [1,7].
                                 # (change requires restart)
 #max_changes_in_memory = 4096
@@ -793,7 +793,7 @@
 ########################
 
 
-max_connections = 10000
+max_connections = 200
 listen_addresses = '*'
 password_encryption_type = 1
 enable_slot_log = off

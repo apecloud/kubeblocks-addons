@@ -324,7 +324,7 @@
 	// max number of replication slots.
 	// The value belongs to [1,7].
 	// (change requires restart)
-	max_replication_slots?: int & >=1 & <=7
+	max_replication_slots?: int & >=1 & <=8
 
 	max_changes_in_memory?: int
 
@@ -563,20 +563,20 @@
 
 	log_min_duration_statement?: int @timeDurationResource(1min)
 
-	debug_print_parse?: string & "on" | "off" & true | false
-  debug_print_rewritten?: string & "on" | "off" & true | false
-  debug_print_plan?: string & "on" | "off" & true | false
-  debug_pretty_print?: string & "on" | "off" & true | false
-  log_checkpoints?: string & "on" | "off" & true | false
-  log_pagewriter?: string & "on" | "off" & true | false
-  log_connections?: string & "on" | "off" & true | false
-  log_disconnections?: string & "on" | "off" & true | false
-  log_duration?: string & "on" | "off" & true | false
+	debug_print_parse?: string & "on" | "off"  
+  debug_print_rewritten?: string & "on" | "off"  
+  debug_print_plan?: string & "on" | "off"  
+  debug_pretty_print?: string & "on" | "off"  
+  log_checkpoints?: string & "on" | "off"  
+  log_pagewriter?: string & "on" | "off"  
+  log_connections?: string & "on" | "off"  
+  log_disconnections?: string & "on" | "off"  
+  log_duration?: string & "on" | "off"  
 
-	log_hostname?: string & "on" | "off" & false | true
+	log_hostname?: string & "on" | "off"  
 	log_line_prefix?: string
 
-	log_lock_waits?: string & "on" | "off" & false | true
+	log_lock_waits?: string & "on" | "off"  
 
 	log_statement?: string & "none" | "ddl" | "mod" | "all"
 	log_temp_files?: int & >=-1 & <=2147483647 @storeResource(1KB)
@@ -662,16 +662,16 @@
 	temp_tablespaces?: string
 
 	// Check function bodies during CREATE FUNCTION.
-	check_function_bodies?: string & "on" | "off" & false | true
+	check_function_bodies?: string & "on" | "off"  
 
 	// Sets the transaction isolation level of each new transaction.
 	default_transaction_isolation?: string & "serializable" | "repeatable read" | "read committed" | "read uncommitted"
 	// Sets the default read-only status of new transactions.
-	default_transaction_read_only?: string & "on" | "off" & false | true
+	default_transaction_read_only?: string & "on" | "off"  
 
 
 	// Sets the default deferrable status of new transactions.
-	default_transaction_deferrable?: string & "on" | "off" & false | true
+	default_transaction_deferrable?: string & "on" | "off"  
 
 
 	// Sets the sessions behavior for triggers and rewrite rules.
@@ -744,36 +744,36 @@
 	default_with_oids?: string & "on" | "off"
 
 	// Warn about backslash escapes in ordinary string literals.
-	escape_string_warning?: string & "on" | "off" & false | true
+	escape_string_warning?: string & "on" | "off"  
 
 	// Enables backward compatibility mode for privilege checks on large objects.
 	lo_compat_privileges ?: string & "on" | "off"
 
 	// Causes ... strings to treat backslashes literally.
-	standard_conforming_strings?: string & "on" | "off" & false | true
+	standard_conforming_strings?: string & "on" | "off"  
 
 	// Enable synchronized sequential scans.
-	synchronize_seqscans?: string & "on" | "off" & false | true
+	synchronize_seqscans?: string & "on" | "off"  
 
 	// Treats expr=NULL as expr IS NULL.
-	transform_null_equals?: string & "on" | "off" & false | true
+	transform_null_equals?: string & "on" | "off"  
 
 
 	// Terminate session on any error.
-	exit_on_error?: string & "on" | "off" & false | true
+	exit_on_error?: string & "on" | "off"  
 
 	// Reinitialize server after backend crash.
-	restart_after_crash?: string & "on" | "off" & false | true
+	restart_after_crash?: string & "on" | "off"  
 
-	omit_encoding_error?: string & "on" | "off" & false | true
+	omit_encoding_error?: string & "on" | "off"  
 
-	data_sync_retry?: string & "on" | "off" & false | true
+	data_sync_retry?: string & "on" | "off"  
 
-	cache_connection?: string & "on" | "off" & false | true
+	cache_connection?: string & "on" | "off"  
 
 	pgxc_node_name?: string
 
-	enforce_two_phase_commit?: string & "on" | "off" & false | true
+	enforce_two_phase_commit?: string & "on" | "off"  
 
 	audit_enabled?: string & "on" | "off"
 	audit_directory?: string
