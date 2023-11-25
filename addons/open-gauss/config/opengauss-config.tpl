@@ -71,7 +71,7 @@
                                         # (change requires restart)
 #local_bind_address = '0.0.0.0'
 #port = 5432                            # (change requires restart)
-max_connections = 10000                   # (change requires restart)
+#max_connections = 10000                   # (change requires restart)
 # Note:  Increasing max_connections costs ~400 bytes of shared memory per
 # connection slot, plus lock space (see max_locks_per_transaction).
 #sysadmin_reserved_connections = 3      # (change requires restart)
@@ -83,7 +83,7 @@ max_connections = 10000                   # (change requires restart)
 # - Security and Authentication -
 
 #authentication_timeout = 1min          # 1s-600s
-session_timeout = 10min                 # allowed duration of any unused session, 0s-86400s(1 day), 0 is disabled
+#session_timeout = 10min                 # allowed duration of any unused session, 0s-86400s(1 day), 0 is disabled
 #ssl = off                              # (change requires restart)
 #ssl_ciphers = 'ALL'                    # allowed SSL ciphers
                                         # (change requires restart)
@@ -137,12 +137,12 @@ session_timeout = 10min                 # allowed duration of any unused session
 #max_process_memory = 12GB
 #UDFWorkerMemHardLimit = 1GB
 
-shared_buffers = 32MB                   # min 128kB
+#shared_buffers = 32MB                   # min 128kB
                                         # (change requires restart)
-bulk_write_ring_size = 2GB              # for bulkload, max shared_buffers
+#bulk_write_ring_size = 2GB              # for bulkload, max shared_buffers
 #standby_shared_buffers_fraction = 0.3 #control shared buffers use in standby, 0.1-1.0
 #temp_buffers = 8MB                     # min 800kB
-max_prepared_transactions = 200
+#max_prepared_transactions = 200
                                         # (change requires restart)
 # Note:  Increasing max_prepared_transactions costs ~600 bytes of shared memory
 # per transaction slot, plus lock space (see max_locks_per_transaction).
@@ -152,7 +152,7 @@ max_prepared_transactions = 200
 #maintenance_work_mem = 16MB            # min 1MB
 #max_stack_depth = 2MB                  # min 100kB
 
-cstore_buffers = 512MB         #min 16MB
+#cstore_buffers = 512MB         #min 16MB
 
 # - Disk -
 
@@ -192,7 +192,7 @@ cstore_buffers = 512MB         #min 16MB
 
 # - Settings -
 
-wal_level = hot_standby                 # minimal, archive, hot_standby or logical
+#wal_level = hot_standby                 # minimal, archive, hot_standby or logical
                                         # (change requires restart)
 #fsync = on                             # turns forced synchronization on or off
 #synchronous_commit = on                # synchronization level;
@@ -223,8 +223,8 @@ wal_level = hot_standby                 # minimal, archive, hot_standby or logic
 #checkpoint_warning = 5min              # 0 disables
 #checkpoint_wait_timeout = 60s  # maximum time wait checkpointer to start
 
-enable_incremental_checkpoint = on      # enable incremental checkpoint
-incremental_checkpoint_timeout = 60s    # range 1s-1h
+#enable_incremental_checkpoint = on      # enable incremental checkpoint
+#incremental_checkpoint_timeout = 60s    # range 1s-1h
 #pagewriter_sleep = 100ms               # dirty page writer sleep time, 0ms - 1h
 
 # - Archiving -
@@ -252,12 +252,12 @@ incremental_checkpoint_timeout = 60s    # range 1s-1h
 
 # Set these on the master and on any standby that will send replication data.
 
-max_wal_senders = 4             # max number of walsender processes
+#max_wal_senders = 4             # max number of walsender processes
                                 # (change requires restart)
-wal_keep_segments = 16          # in logfile segments, 16MB each; 0 disables
+#wal_keep_segments = 16          # in logfile segments, 16MB each; 0 disables
 #wal_sender_timeout = 6s        # in milliseconds; 0 disables
-enable_slot_log = off
-max_replication_slots = 8       # max number of replication slots.i
+#enable_slot_log = off
+#max_replication_slots = 8       # max number of replication slots.i
                                 # The value belongs to [1,7].
                                 # (change requires restart)
 #max_changes_in_memory = 4096
@@ -299,7 +299,7 @@ max_replication_slots = 8       # max number of replication slots.i
 
 # These settings are ignored on a standby server.
 
-synchronous_standby_names = '*' # standby servers that provide sync rep
+#synchronous_standby_names = '*' # standby servers that provide sync rep
                                 # comma-separated list of application_name
                                 # from standby(s); '*' = all
 #most_available_sync = off      # Whether master is allowed to continue
@@ -307,14 +307,14 @@ synchronous_standby_names = '*' # standby servers that provide sync rep
                                 # It's global control for all transactions
 #vacuum_defer_cleanup_age = 0   # number of xacts by which cleanup is delayed
 #data_replicate_buffer_size = 16MB      # data replication buffer size
-walsender_max_send_size = 8MB  # Size of walsender max send size
+#walsender_max_send_size = 8MB  # Size of walsender max send size
 #enable_data_replicate = on
 
 # - Standby Servers -
 
 # These settings are ignored on a master server.
 
-hot_standby = on                        # "on" allows queries during recovery
+#hot_standby = on                        # "on" allows queries during recovery
                                         # (change requires restart)
 #max_standby_archive_delay = 30s        # max delay before canceling queries
                                         # when reading WAL from archive;
@@ -354,7 +354,7 @@ hot_standby = on                        # "on" allows queries during recovery
 #enable_seqscan = on
 #enable_sort = on
 #enable_tidscan = on
-enable_kill_query = off                 # optional: [on, off], default: off
+#enable_kill_query = off                 # optional: [on, off], default: off
 # - Planner Cost Constants -
 
 #seq_page_cost = 1.0                    # measured on an arbitrary scale
@@ -397,7 +397,7 @@ enable_kill_query = off                 # optional: [on, off], default: off
                                         # requires logging_collector to be on.
 
 # This is used when logging to stderr:
-logging_collector = on                  # Enable capturing of stderr and csvlog
+#logging_collector = on                  # Enable capturing of stderr and csvlog
                                         # into log files. Required to be on for
                                         # csvlogs.
                                         # (change requires restart)
@@ -405,9 +405,9 @@ logging_collector = on                  # Enable capturing of stderr and csvlog
 # These are only used if logging_collector is on:
 #log_directory = 'pg_log'               # directory where log files are written,
                                         # can be absolute or relative to PGDATA
-log_filename = 'postgresql-%Y-%m-%d_%H%M%S.log' # log file name pattern,
+#log_filename = 'postgresql-%Y-%m-%d_%H%M%S.log' # log file name pattern,
                                         # can include strftime() escapes
-log_file_mode = 0600                    # creation mode for log files,
+#log_file_mode = 0600                    # creation mode for log files,
                                         # begin with 0 to use octal notation
 #log_truncate_on_rotation = off         # If on, an existing log file with the
                                         # same name as the new log file will be
@@ -419,7 +419,7 @@ log_file_mode = 0600                    # creation mode for log files,
                                         # in all cases.
 #log_rotation_age = 1d                  # Automatic rotation of logfiles will
                                         # happen after that time.  0 disables.
-log_rotation_size = 20MB                # Automatic rotation of logfiles will
+#log_rotation_size = 20MB                # Automatic rotation of logfiles will
                                         # happen after that much log output.
                                         # 0 disables.
 
@@ -460,7 +460,7 @@ log_rotation_size = 20MB                # Automatic rotation of logfiles will
                                         #   fatal
                                         #   panic (effectively off)
 
-log_min_duration_statement = 1800000    # -1 is disabled, 0 logs all statements
+#log_min_duration_statement = 1800000    # -1 is disabled, 0 logs all statements
                                         # and their durations, > 0 logs only
                                         # statements running at least this number
                                         # of milliseconds
@@ -474,15 +474,15 @@ log_min_duration_statement = 1800000    # -1 is disabled, 0 logs all statements
 #debug_pretty_print = on
 #log_checkpoints = off
 #log_pagewriter = off
-log_connections = off                   # log connection requirement from client
-log_disconnections = off                # log disconnection from client
-log_duration = off                      # log the execution time of each query
+#log_connections = off                   # log connection requirement from client
+#log_disconnections = off                # log disconnection from client
+#log_duration = off                      # log the execution time of each query
                                         # when log_duration is on and log_min_duration_statement
                                         # is larger than zero, log the ones whose execution time
                                         # is larger than this threshold
 #log_error_verbosity = default          # terse, default, or verbose messages
-log_hostname = off                      # log hostname
-log_line_prefix = '%m %u %d %h %p %S '  # special values:
+#log_hostname = off                      # log hostname
+#log_line_prefix = '%m %u %d %h %p %S '  # special values:
                                         #   %a = application name
                                         #   %u = user name
                                         #   %d = database name
@@ -509,15 +509,15 @@ log_line_prefix = '%m %u %d %h %p %S '  # special values:
 #log_temp_files = -1                    # log temporary files equal or larger
                                         # than the specified size in kilobytes;
                                         # -1 disables, 0 logs all temp files
-log_timezone = 'UCT'
+#log_timezone = 'UCT'
 
 #------------------------------------------------------------------------------
 # ALARM
 #------------------------------------------------------------------------------
-enable_alarm = on
-connection_alarm_rate = 0.9
-alarm_report_interval = 10
-alarm_component = '/opt/snas/bin/snas_cm_cmd'
+#enable_alarm = on
+#connection_alarm_rate = 0.9
+#alarm_report_interval = 10
+#alarm_component = '/opt/snas/bin/snas_cm_cmd'
 
 #------------------------------------------------------------------------------
 # RUNTIME STATISTICS
@@ -547,7 +547,7 @@ alarm_component = '/opt/snas/bin/snas_cm_cmd'
 # WORKLOAD MANAGER
 #------------------------------------------------------------------------------
 
-use_workload_manager = on               # Enables workload manager in the system.
+#use_workload_manager = on               # Enables workload manager in the system.
                                         # (change requires restart)
 #------------------------------------------------------------------------------
 # SECURITY POLICY
@@ -622,9 +622,9 @@ use_workload_manager = on               # Enables workload manager in the system
 #gin_pending_list_limit = 4MB
 # - Locale and Formatting -
 
-datestyle = 'iso, mdy'
+#datestyle = 'iso, mdy'
 #intervalstyle = 'postgres'
-timezone = 'UCT'
+#timezone = 'UCT'
 #timezone_abbreviations = 'Default'     # Select the set of available time zone
                                         # abbreviations.  Currently, there are
                                         #   Default
@@ -637,14 +637,14 @@ timezone = 'UCT'
                                         # encoding
 
 # These settings are initialized by initdb, but they can be changed.
-lc_messages = 'C'                       # locale for system error message
+#lc_messages = 'C'                       # locale for system error message
                                         # strings
-lc_monetary = 'C'                       # locale for monetary formatting
-lc_numeric = 'C'                        # locale for number formatting
-lc_time = 'C'                           # locale for time formatting
+#lc_monetary = 'C'                       # locale for monetary formatting
+#lc_numeric = 'C'                        # locale for number formatting
+#lc_time = 'C'                           # locale for time formatting
 
 # default configuration for text search
-default_text_search_config = 'pg_catalog.english'
+#default_text_search_config = 'pg_catalog.english'
 
 # - Other Defaults -
 
@@ -656,7 +656,7 @@ default_text_search_config = 'pg_catalog.english'
 #------------------------------------------------------------------------------
 
 #deadlock_timeout = 1s
-lockwait_timeout = 1200s                # Max of lockwait_timeout and deadlock_timeout + 1s
+#lockwait_timeout = 1200s                # Max of lockwait_timeout and deadlock_timeout + 1s
 #max_locks_per_transaction = 256                # min 10
                                         # (change requires restart)
 # Note:  Each lock table slot uses ~270 bytes of shared memory, and there are
@@ -703,7 +703,7 @@ lockwait_timeout = 1200s                # Max of lockwait_timeout and deadlock_t
 # GTM CONNECTION
 #------------------------------------------------------------------------------
 
-pgxc_node_name = 'gaussdb'                      # Coordinator or Datanode name
+#pgxc_node_name = 'gaussdb'                      # Coordinator or Datanode name
                                         # (change requires restart)
 
 ##------------------------------------------------------------------------------
@@ -719,7 +719,7 @@ pgxc_node_name = 'gaussdb'                      # Coordinator or Datanode name
 # AUDIT
 #------------------------------------------------------------------------------
 
-audit_enabled = on
+#audit_enabled = on
 #audit_directory = 'pg_audit'
 #audit_data_format = 'binary'
 #audit_rotation_interval = 1d
@@ -772,7 +772,7 @@ audit_enabled = on
 #------------------------------------------------------------------------------
 # JOB SCHEDULER OPTIONS
 #------------------------------------------------------------------------------
-job_queue_processes = 10
+#job_queue_processes = 10               # Number of concurrent jobs, optional: [0..1000], default: 10.
 
 #------------------------------------------------------------------------------
 # DCF OPTIONS
@@ -785,6 +785,62 @@ job_queue_processes = 10
 #plsql_show_all_error=off
 
 # use default port 5432
-password_encryption_type = 1
-wal_level = logical
+
+########################
+## Notice: Do not remove the comments above directly,
+## as it may cause the CUE voice template check to fail.
+## Please write the parameters you want below.
+########################
+
+
+max_connections = 10000
 listen_addresses = '*'
+password_encryption_type = 1
+enable_slot_log = off
+max_replication_slots = 8
+wal_level = logical
+job_queue_processes = 10
+log_min_duration_statement = 1800000
+session_timeout = 10min
+shared_buffers = 32MB
+bulk_write_ring_size = 2GB
+max_prepared_transactions = 200
+cstore_buffers = 512MB
+wal_level = hot_standby
+enable_incremental_checkpoint = on
+incremental_checkpoint_timeout = 60s
+max_wal_senders = 4
+wal_keep_segments = 16
+synchronous_standby_names = '*'
+walsender_max_send_size = 8MB
+hot_standby = on
+enable_kill_query = off
+
+logging_collector = on
+log_filename = 'postgresql-%Y-%m-%d_%H%M%S.log'
+log_file_mode = 0600
+log_rotation_size = 20MB
+log_connections = off
+log_disconnections = off
+log_duration = off
+log_hostname = off
+log_line_prefix = '%m %u %d %h %p %S '
+
+log_timezone = 'UCT'
+
+enable_alarm = on
+connection_alarm_rate = 0.9
+alarm_report_interval = 10
+alarm_component = '/opt/snas/bin/snas_cm_cmd'
+
+use_workload_manager = on
+datestyle = 'iso, mdy'
+timezone = 'UCT'
+lc_messages = 'C'
+lc_monetary = 'C'
+lc_numeric = 'C'
+lc_time = 'C'
+default_text_search_config = 'pg_catalog.english'
+lockwait_timeout = 1200s
+pgxc_node_name = 'gaussdb'
+audit_enabled = on
