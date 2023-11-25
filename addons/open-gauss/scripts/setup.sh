@@ -82,7 +82,7 @@ docker_init_database_dir() {
         fi
 
         cmdbase="gs_initdb --pwfile=<(echo "$GS_PASSWORD")"
-
+      
         if [ -n "$GS_NODENAME" ]; then
                 cmdbase="$cmdbase --nodename=$GS_NODENAME"
         else
@@ -105,6 +105,9 @@ docker_init_database_dir() {
                 cmdbase="$cmdbase --dbcompatibility=$DBCOMPATIBILITY"
         else
                 cmdbase="$cmdbase --dbcompatibility=PG"
+        fi
+        if [ -n "$GS_USER" ]; then
+            cmdbase="$cmdbase --user=$GS_USER"
         fi
 
         cmdbase="$cmdbase -D $PGDATA"
@@ -251,11 +254,6 @@ EOSQL
 # Loads various settings that are used elsewhere in the script
 # This should be called before any other functions
 docker_setup_env() {
-        export GS_USER=omm
-        file_env 'GS_PASSWORD' 'Enmo@123'
-
-        # file_env 'GS_USER' 'omm'
-        file_env 'GS_DB' "$GS_USER"
         file_env 'POSTGRES_INITDB_ARGS'
         # default authentication method is md5
         : "${GS_HOST_AUTH_METHOD:=md5}"

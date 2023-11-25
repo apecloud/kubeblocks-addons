@@ -795,9 +795,12 @@
 
 max_connections = 200
 listen_addresses = '*'
-password_encryption_type = 1
+password_encryption_type = 0
 enable_slot_log = off
+
+# Do not modify the 'max_replication_slots' parameter as it may result in the failure to start the database service
 max_replication_slots = 8
+
 wal_level = logical
 job_queue_processes = 10
 log_min_duration_statement = 1800000

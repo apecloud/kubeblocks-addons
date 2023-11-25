@@ -72,7 +72,10 @@ spec:
             command:
               - sh
               - -c
-              - /kb-scripts/init_container.sh
+              - |
+                cp /home/omm/conf/* /tmp/
+                chmod 777 /tmp/postgresql.conf /tmp/pg_hba.conf
+                /kb-scripts/setup.sh gaussdb
             securityContext:
               runAsUser: 0
             ports:

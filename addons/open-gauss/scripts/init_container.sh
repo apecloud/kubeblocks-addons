@@ -9,5 +9,3 @@ export LANG=en_US.UTF-8
 
 cp /home/omm/conf/* /tmp/
 chmod 777 /tmp/postgresql.conf /tmp/pg_hba.conf
-
-sleep 10000
