@@ -222,8 +222,6 @@ docker_setup_db() {
         if [ "$GS_DB" != 'postgres' ]; then
                 GS_DB= docker_process_sql --dbname postgres --set db="$GS_DB" --set passwd="$GS_PASSWORD" <<-'EOSQL'
                         CREATE DATABASE :"db" ;
-                        create user gaussdb with login password :"passwd" ;
-                        grant all privileges to gaussdb;
 
 EOSQL
                 echo
@@ -234,9 +232,12 @@ docker_setup_user() {
         if [ -n "$GS_USERNAME" ]; then
                 GS_DB= docker_process_sql --dbname postgres --set db="$GS_DB" --set passwd="$GS_PASSWORD" --set user="$GS_USERNAME" <<-'EOSQL'
                         create user :"user" with login password :"passwd" ;
+                        grant all privileges to :"user" ;
+
 EOSQL
+                echo "default user is $GS_USERNAME"
         else
-                echo " default user is gaussdb"
+                echo "default user is gaussdb"
         fi
 }
 
@@ -254,6 +255,7 @@ EOSQL
 # Loads various settings that are used elsewhere in the script
 # This should be called before any other functions
 docker_setup_env() {
+        export GS_USER=omm
         file_env 'POSTGRES_INITDB_ARGS'
         # default authentication method is md5
         : "${GS_HOST_AUTH_METHOD:=md5}"
