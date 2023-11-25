@@ -1,12 +1,12 @@
-# Default values for OrioleDB (with Patroni HA).
+# Default values for OpenGauss standalone Mode
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-## @param version OrioleDB cluster version
+## @param version OpenGauss cluster version
 ##
-version: orioledb-beta1
+version: opengauss-3.0.0
 
-## @param mode OrioleDB cluster topology mode, standalone, replication
+## @param mode postgresql cluster topology mode, standalone, replication
 ##
 mode: standalone
 
@@ -32,9 +32,3 @@ requests:
 ## @param storage size, the unit is Gi
 ##
 storage: 20
-
-## @param patroni etcd cluster name, if not set will use the cluster name "etcd"
-## and the cluster must exist,
-etcd:
-  cluster: "etcd"
-  namespace: "default"

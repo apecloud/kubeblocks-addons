@@ -1,0 +1,122 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterDefinition
+metadata:
+  name: opengauss
+  labels:
+    {{- include "opengauss.labels" . | nindent 4 }}
+spec:
+  type: opengauss
+  connectionCredential:
+    username: kbadmin
+    password: "p@ssW0rd1"
+    endpoint: "$(SVC_FQDN):$(SVC_PORT_tcp-opengauss)"
+    host: "$(SVC_FQDN)"
+    port: "$(SVC_PORT_tcp-opengauss)"
+  componentDefs:
+    - name: opengauss
+      workloadType: Stateful
+      characterType: opengauss
+      probes:
+        roleProbe:
+          failureThreshold: 2
+          periodSeconds: 1
+          timeoutSeconds: 1
+      configSpecs:
+        - name: opengauss-configuration
+          templateRef: opengauss-configuration
+          constraintRef: opengauss-cc
+          keys:
+            - postgresql.conf
+          namespace: {{ .Release.Namespace }}
+          volumeName: opengauss-config
+          defaultMode: 0777
+        - name: opengauss-custom-metrics
+          templateRef: opengauss-custom-metrics
+          namespace: {{ .Release.Namespace }}
+          volumeName: opengauss-custom-metrics
+          defaultMode: 0777
+        - name: agamotto-configuration
+          templateRef: opengauss-agamotto-configuration
+          namespace: {{ .Release.Namespace }}
+          volumeName: agamotto-configuration
+          defaultMode: 0777
+      scriptSpecs:
+        - name: opengauss-scripts
+          templateRef: opengauss-scripts
+          namespace: {{ .Release.Namespace }}
+          volumeName: scripts
+          defaultMode: 0777
+      logConfigs:
+        {{- range $name,$pattern := .Values.logConfigs }}
+        - name: {{ $name }}
+          filePathPattern: {{ $pattern }}
+        {{- end }}
+      service:
+        ports:
+          - name: tcp-opengauss
+            port: 5432
+            targetPort: tcp-opengauss
+      volumeTypes:
+        - name: data
+          type: data
+        - name: log
+          type: log
+      podSpec:
+        securityContext:
+          runAsUser: 0
+          fsGroup: 103
+          runAsGroup: 103
+        containers:
+          - name: opengauss
+            imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+            command:
+              - sh
+              - -c
+              - |
+                cp /home/omm/conf/* /tmp/
+                chmod 777 /tmp/postgresql.conf /tmp/pg_hba.conf
+                /kb-scripts/setup.sh gaussdb
+            securityContext:
+              runAsUser: 0
+            ports:
+              - name: tcp-opengauss
+                containerPort: 5432
+            env:
+              - name: GS_USERNAME
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: username
+              - name: GS_PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: password
+              - name: GS_DB
+                value: opengauss
+              - name: GAUSSLOG
+                value: /var/log/opengauss
+              - name: PATH
+                value: /usr/local/opengauss/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+              - name: GAUSSHOME
+                value: /usr/local/opengauss
+              - name: LD_LIBRARY_PATH
+                value: /usr/local/opengauss/lib
+              - name: PGDATA
+                value: /var/lib/opengauss/data
+            volumeMounts:
+              - name: data
+                mountPath: /var/lib/opengauss/data
+              - name: log
+                mountPath: /var/log/opengauss
+              - name: scripts
+                mountPath: /kb-scripts
+              - name: opengauss-config
+                mountPath: /home/omm/conf
+        volumes:
+          - name: dshm
+            emptyDir:
+              medium: Memory
+              {{- with .Values.shmVolume.sizeLimit }}
+              sizeLimit: {{ . }}
+              {{- end }}
