@@ -4,7 +4,7 @@
 
 ## @param version OpenGauss cluster version
 ##
-version: opengauss-5.0.0
+version: opengauss-3.0.0
 
 ## @param mode postgresql cluster topology mode, standalone, replication
 ##
