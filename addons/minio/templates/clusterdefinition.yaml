@@ -1,0 +1,123 @@
+{{ $scheme := "http" }}
+{{- if .Values.tls.enabled }}
+{{ $scheme = "https" }}
+{{ end }}
+
+{{ $bucketRoot := or ($.Values.bucketRoot) ($.Values.mountPath) }}
+
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterDefinition
+metadata:
+  name: minio-{{ .Chart.Version }}
+spec:
+  type: minio
+  connectionCredential:
+    {{- if .Values.accessKey }}
+    accesskey: {{ .Values.accessKey | toString | b64enc | quote }}
+    {{- else }}
+    accesskey: "$(RANDOM_PASSWD)"
+    {{- end }}
+    {{- if .Values.secretKey }}
+    secretkey: {{ .Values.secretKey | toString | b64enc | quote }}
+    {{- else }}
+    secretkey: "$(RANDOM_PASSWD)"
+    {{- end }}
+    endpoint: "$(SVC_FQDN):$(SVC_PORT_{{ $scheme }})"
+    host: "$(SVC_FQDN)"
+    port: "$(SVC_PORT_{{ $scheme }})"
+  componentDefs:
+    - name: minio
+      characterType: minio
+      workloadType: Stateful
+      podSpec:
+        containers:
+          - name: {{ .Chart.Name }}
+            image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+            imagePullPolicy: {{ .Values.image.pullPolicy }}
+            command:
+              - "/bin/sh"
+              - "-ce"
+              - "/usr/bin/docker-entrypoint.sh minio -S {{ .Values.certsPath }} server {{ $bucketRoot }} {{- template "minio.extraArgs" . }}"
+            env:
+              - name: MINIO_ACCESS_KEY
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: accesskey
+              - name: MINIO_SECRET_KEY
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: secretkey
+            volumeMounts:
+              {{- if and .Values.persistence.enabled }}
+              - name: data
+                mountPath: {{ .Values.mountPath }}
+                {{- if .Values.persistence.subPath }}
+                subPath: "{{ .Values.persistence.subPath }}"
+                {{- end }}
+              {{- end }}
+            ports:
+              - name: {{ $scheme }}
+                containerPort: 9000
+            {{- if .Values.livenessProbe.enabled }}
+            livenessProbe:
+              httpGet:
+                path: /minio/health/live
+                port: {{ $scheme }}
+                scheme: {{ $scheme | upper }}
+              initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+              periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+              timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+              successThreshold: {{ .Values.livenessProbe.successThreshold }}
+              failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+            {{- end }}
+            {{- if .Values.readinessProbe.enabled }}
+            readinessProbe:
+              tcpSocket:
+                port: {{ $scheme }}
+              initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+              periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+              timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+              successThreshold: {{ .Values.readinessProbe.successThreshold }}
+              failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+            {{- end }}
+            {{- if .Values.startupProbe.enabled }}
+            startupProbe:
+              tcpSocket:
+                port: {{ $scheme }}
+              initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
+              periodSeconds: {{ .Values.startupProbe.periodSeconds }}
+              timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds }}
+              successThreshold: {{ .Values.startupProbe.successThreshold }}
+              failureThreshold: {{ .Values.startupProbe.failureThreshold }}
+            {{- end }}
+        volumes:
+          {{- if not .Values.persistence.enabled }}
+          - name: export
+            emptyDir: {}
+          {{- end }}
+        serviceAccountName: {{ include "minio.serviceAccountName" . | quote }}
+        {{- if and .Values.securityContext.enabled .Values.persistence.enabled }}
+        securityContext:
+          runAsUser: {{ .Values.securityContext.runAsUser }}
+          runAsGroup: {{ .Values.securityContext.runAsGroup }}
+          fsGroup: {{ .Values.securityContext.fsGroup }}
+        {{- end }}
+      volumeTypes:
+        {{- if .Values.persistence.enabled }}
+        - name: data
+          type: data
+        {{- end }}
+      service:
+        ports:
+          - name: {{ $scheme }}
+            port: {{ .Values.service.port }}
+            protocol: TCP
+            {{- if (and (eq .Values.service.type "NodePort") ( .Values.service.nodePort)) }}
+            nodePort: {{ .Values.service.nodePort }}
+            {{- else }}
+            targetPort: 9000
+            {{- end }}
+      statefulSpec:
+        updateStrategy: BestEffortParallel

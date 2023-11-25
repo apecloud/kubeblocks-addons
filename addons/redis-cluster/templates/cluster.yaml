@@ -14,10 +14,11 @@
       {{- include "kblib.componentStorages" . | indent 6 }}
       {{- include "kblib.componentServices" . | indent 6 }}
 
-    {{- if eq .Values.mode "replication" }}
-    {{- include "redis-cluster.proxy" . | indent 4 }}
+    {{- if and (eq .Values.mode "replication") .Values.twemproxyEnabled }}
+    {{- include "redis-cluster.twemproxy" . | indent 4 }}
     {{- end }}
 
     {{- if eq .Values.mode "replication" }}
     {{- include "redis-cluster.sentinel" . | indent 4 }}
     {{- end }}
+
