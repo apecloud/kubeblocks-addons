@@ -142,7 +142,7 @@ shared_buffers = 32MB                   # min 128kB
 bulk_write_ring_size = 2GB              # for bulkload, max shared_buffers
 #standby_shared_buffers_fraction = 0.3 #control shared buffers use in standby, 0.1-1.0
 #temp_buffers = 8MB                     # min 800kB
-max_prepared_transactions = 200         # zero disables the feature
+max_prepared_transactions = 200
                                         # (change requires restart)
 # Note:  Increasing max_prepared_transactions costs ~600 bytes of shared memory
 # per transaction slot, plus lock space (see max_locks_per_transaction).
