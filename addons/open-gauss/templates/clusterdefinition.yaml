@@ -7,7 +7,7 @@ metadata:
 spec:
   type: opengauss
   connectionCredential:
-    username: "kbadmin"
+    username: kbadmin
     password: "p@ssW0rd1"
     endpoint: "$(SVC_FQDN):$(SVC_PORT_tcp-opengauss)"
     host: "$(SVC_FQDN)"
@@ -21,6 +21,31 @@ spec:
           failureThreshold: 2
           periodSeconds: 1
           timeoutSeconds: 1
+      configSpecs:
+        - name: opengauss-configuration
+          templateRef: opengauss-configuration
+          constraintRef: opengauss-cc
+          keys:
+            - postgresql.conf
+          namespace: {{ .Release.Namespace }}
+          volumeName: opengauss-config
+          defaultMode: 0777
+        - name: opengauss-custom-metrics
+          templateRef: opengauss-custom-metrics
+          namespace: {{ .Release.Namespace }}
+          volumeName: opengauss-custom-metrics
+          defaultMode: 0777
+        - name: agamotto-configuration
+          templateRef: opengauss-agamotto-configuration
+          namespace: {{ .Release.Namespace }}
+          volumeName: agamotto-configuration
+          defaultMode: 0777
+      scriptSpecs:
+        - name: opengauss-scripts
+          templateRef: opengauss-scripts
+          namespace: {{ .Release.Namespace }}
+          volumeName: scripts
+          defaultMode: 0777
       logConfigs:
         {{- range $name,$pattern := .Values.logConfigs }}
         - name: {{ $name }}
@@ -44,13 +69,17 @@ spec:
         containers:
           - name: opengauss
             imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+            command:
+              - sh
+              - -c
+              - /kb-scripts/init_container.sh
             securityContext:
               runAsUser: 0
             ports:
               - name: tcp-opengauss
                 containerPort: 5432
             env:
-              - name: GS_USERNAME
+              - name: GS_USER
                 valueFrom:
                   secretKeyRef:
                     name: $(CONN_CREDENTIAL_SECRET_NAME)
@@ -60,7 +89,7 @@ spec:
                   secretKeyRef:
                     name: $(CONN_CREDENTIAL_SECRET_NAME)
                     key: password
-              - name: GS_DATABASE
+              - name: GS_DB
                 value: opengauss
               - name: GAUSSLOG
                 value: /var/log/opengauss
@@ -70,6 +99,8 @@ spec:
                 value: /usr/local/opengauss
               - name: LD_LIBRARY_PATH
                 value: /usr/local/opengauss/lib
+              - name: PGDATA
+                value: /var/lib/opengauss/data
             volumeMounts:
               - name: data
                 mountPath: /var/lib/opengauss/data
@@ -77,6 +108,8 @@ spec:
                 mountPath: /var/log/opengauss
               - name: scripts
                 mountPath: /kb-scripts
+              - name: opengauss-config
+                mountPath: /home/omm/conf
         volumes:
           - name: dshm
             emptyDir:
