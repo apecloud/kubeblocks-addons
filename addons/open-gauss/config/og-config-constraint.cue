@@ -65,7 +65,7 @@
 	session_timeout: int & >=0 & <=86400 @timeDurationResource(1s)
 
 	// (change requires restart)
-	ssl?: bool
+	ssl?: string & "on" | "off"
 
 	// allowed SSL ciphers
 	// (change requires restart)
@@ -98,10 +98,10 @@
 	krb_srvname?: string
 
 	// krb_caseins_users = off
-	krb_caseins_users?: bool
+	krb_caseins_users?: string & "on" | "off"
 
 	// Whether to change the initial password of the initial user
-	modify_initial_password?: bool
+	modify_initial_password?: string & "on" | "off"
 
 	// Whether password complexity checks
 	password_policy?: int & >=0 & <=1
@@ -156,13 +156,13 @@
 
 
 	// memorypool_enable = false
-	memorypool_enable?: bool
+	memorypool_enable?: string & "on" | "off"
 
 	// memorypool_size = 512MB
 	memorypool_size?: string
 
 	// enable_memory_limit = true
-	enable_memory_limit?: bool
+	enable_memory_limit?: string & "on" | "off"
 
 	// max_process_memory = 12GB
 	max_process_memory?: string
@@ -240,7 +240,7 @@
 	wal_level?: string
 
 	// turns forced synchronization on or off
-	fsync?: bool
+	fsync?: string & "on" | "off"
 
 	// synchronization level;
 	// off, local, remote_receive, remote_write, or on
@@ -252,7 +252,7 @@
 	wal_sync_method?: string & "fsync" | "fdatasync" | "open_sync" | "open_datasync" | "fsync_writethrough"
 
 	// recover from partial page writes
-	full_page_writes?: bool
+	full_page_writes?: string & "on" | "off"
 
 	// min 32kB
 	// (change requires restart)
@@ -283,7 +283,7 @@
 	checkpoint_wait_timeout?: int @timeDurationResource(1s)
 
 	// enable incremental checkpoint
-	enable_incremental_checkpoint?: bool
+	enable_incremental_checkpoint?: string & "on" | "off"
 
 	// range 1s-1h
 	incremental_checkpoint_timeout?: int & >=1 & <=3600 @timeDurationResource(1s)
@@ -319,7 +319,7 @@
 	// in milliseconds; 0 disables
 	wal_sender_timeout?: int @timeDurationResource(1ms)
 
-	enable_slot_log?: bool
+	enable_slot_log?: string & "on" | "off"
 
 	// max number of replication slots.
 	// The value belongs to [1,7].
@@ -387,7 +387,7 @@
 	// Whether master is allowed to continue
 	// as standbalone after sync standby failure
 	// It's global control for all transactions
-	most_available_sync?: bool
+	most_available_sync?: string & "on" | "off"
 
 	// number of xacts by which cleanup is delayed
 	vacuum_defer_cleanup_age?: int
@@ -398,13 +398,13 @@
 	// Size of walsender max send size
 	walsender_max_send_size?: string
 
-	enable_data_replicate?: bool
+	enable_data_replicate?: string & "on" | "off"
 
 	///  Standby Server
 	// "on" allows queries during recovery
 	// (change requires restart)
 	// These settings are ignored on a master server.
-	hot_standby?: bool
+	hot_standby?: string & "on" | "off"
 
 	// max delay before canceling queries
 	// when reading WAL from archive;
@@ -422,7 +422,7 @@
 
 	// send info from standby to prevent
 	// query conflicts
-	hot_standby_feedback?: bool
+	hot_standby_feedback?: string & "on" | "off"
 
 	// time that receiver waits for
 	// communication from master
@@ -440,7 +440,7 @@
 	wal_receiver_buffer_size?: string
 
 	// xlog keep for all standbys even through they are not connecting and donnot created replslot.
-	enable_xlog_prune?: bool
+	enable_xlog_prune?: string & "on" | "off"
 
 	// xlog keep for the wal size less than max_xlog_size when the enable_xlog_prune is on
 	max_size_for_xlog_prune?: int
@@ -449,19 +449,19 @@
 	max_logical_replication_workers?: int
 	// These settings are ignored on a master server.
 
-	enable_bitmapscan?: bool
-  enable_hashagg?: bool
-  enable_hashjoin?: bool
-  enable_indexscan?: bool
-  enable_indexonlyscan?: bool
-  enable_material?: bool
-  enable_mergejoin?: bool
-  enable_nestloop?: bool
-  enable_seqscan?: bool
-  enable_sort?: bool
-  enable_tidscan?: bool
+	enable_bitmapscan?: string & "on" | "off"
+  enable_hashagg?: string & "on" | "off"
+  enable_hashjoin?: string & "on" | "off"
+  enable_indexscan?: string & "on" | "off"
+  enable_indexonlyscan?: string & "on" | "off"
+  enable_material?: string & "on" | "off"
+  enable_mergejoin?: string & "on" | "off"
+  enable_nestloop?: string & "on" | "off"
+  enable_seqscan?: string & "on" | "off"
+  enable_sort?: string & "on" | "off"
+  enable_tidscan?: string & "on" | "off"
 
-  enable_kill_query?: bool
+  enable_kill_query?: string
   // optional: [on, off], default: off
 
   // Planner Cost Constants
@@ -483,7 +483,7 @@
 
   effective_cache_size?: string
 
-  geqo?: bool
+  geqo?: string & "on" | "off"
 
   geqo_threshold?: int
 
@@ -526,7 +526,7 @@
   // depending on platform. csvlog requires logging_collector to be on.
   log_destination?: string
 
-  logging_collector?: bool
+  logging_collector?: string & "on" | "off"
   // Enable capturing of stderr and csvlog into log files. Required to be on for csvlogs.
   // (change requires restart)
 
@@ -563,20 +563,20 @@
 
 	log_min_duration_statement?: int @timeDurationResource(1min)
 
-	debug_print_parse?: bool & true | false
-  debug_print_rewritten?: bool & true | false
-  debug_print_plan?: bool & true | false
-  debug_pretty_print?: bool & true | false
-  log_checkpoints?: bool & true | false
-  log_pagewriter?: bool & true | false
-  log_connections?: bool & true | false
-  log_disconnections?: bool & true | false
-  log_duration?: bool & true | false
+	debug_print_parse?: string & "on" | "off" & true | false
+  debug_print_rewritten?: string & "on" | "off" & true | false
+  debug_print_plan?: string & "on" | "off" & true | false
+  debug_pretty_print?: string & "on" | "off" & true | false
+  log_checkpoints?: string & "on" | "off" & true | false
+  log_pagewriter?: string & "on" | "off" & true | false
+  log_connections?: string & "on" | "off" & true | false
+  log_disconnections?: string & "on" | "off" & true | false
+  log_duration?: string & "on" | "off" & true | false
 
-	log_hostname?: bool & false | true
+	log_hostname?: string & "on" | "off" & false | true
 	log_line_prefix?: string
 
-	log_lock_waits?: bool & false | true
+	log_lock_waits?: string & "on" | "off" & false | true
 
 	log_statement?: string & "none" | "ddl" | "mod" | "all"
 	log_temp_files?: int & >=-1 & <=2147483647 @storeResource(1KB)
@@ -585,7 +585,7 @@
 	// Sets the time zone to use in log messages.
 	log_timezone?: string
 
-	enable_alarm?: bool
+	enable_alarm?: string & "on" | "off"
 
 	connection_alarm_rate?: number
 
@@ -593,16 +593,16 @@
 
 	alarm_component?: string
 
-	track_activities?: bool
-	track_counts?: bool
-	track_io_timing?: bool
-	track_functions?: string & "none"| "pl"| all
+	track_activities?: string & "on" | "off"
+	track_counts?: string & "on" | "off"
+	track_io_timing?: string & "on" | "off"
+	track_functions?: string & "none"| "pl"| "all"
 	track_activity_query_size?: int
-	update_process_title?: bool
+	update_process_title?: string & "on" | "off"
 	stats_temp_directory?: string
 	track_thread_wait_status_interval?: string
-	track_sql_count?: bool
-	enbale_instr_track_wait?: bool
+	track_sql_count?: string & "on" | "off"
+	enbale_instr_track_wait?: string & "on" | "off"
 
 	// Query Execution Statistics
 	log_parser_stats?: string
@@ -613,13 +613,13 @@
 	use_workload_manager?: string
 
 
-	enable_security_policy?: bool
-	use_elastic_search?: bool
+	enable_security_policy?: string & "on" | "off"
+	use_elastic_search?: string & "on" | "off"
 	elastic_search_ip_addr?: string // what elastic search ip is, change https to http when elastic search is non-ssl mode
 
 	cpu_collect_timer?: int
 
-	autovacuum?: bool
+	autovacuum?: string & "on" | "off"
 
 	// (ms) Sets the minimum execution time above which autovacuum actions will be logged.
 	log_autovacuum_min_duration: int & >=-1 & <=2147483647 | *10000 @timeDurationResource()
@@ -662,16 +662,16 @@
 	temp_tablespaces?: string
 
 	// Check function bodies during CREATE FUNCTION.
-	check_function_bodies?: bool & false | true
+	check_function_bodies?: string & "on" | "off" & false | true
 
 	// Sets the transaction isolation level of each new transaction.
 	default_transaction_isolation?: string & "serializable" | "repeatable read" | "read committed" | "read uncommitted"
 	// Sets the default read-only status of new transactions.
-	default_transaction_read_only?: bool & false | true
+	default_transaction_read_only?: string & "on" | "off" & false | true
 
 
 	// Sets the default deferrable status of new transactions.
-	default_transaction_deferrable?: bool & false | true
+	default_transaction_deferrable?: string & "on" | "off" & false | true
 
 
 	// Sets the sessions behavior for triggers and rewrite rules.
@@ -736,46 +736,46 @@
 	// Sets the maximum number of predicate locks per transaction.
 	max_pred_locks_per_transaction?: int & >=10 & <=2147483647
 	// Enable input of NULL elements in arrays.
-	array_nulls?: bool
+	array_nulls?: string & "on" | "off"
 
 	// Sets whether "\" is allowed in string literals.
 	backslash_quote?: string & "safe_encoding" | "on" | "off"
 
-	default_with_oids?: bool
+	default_with_oids?: string & "on" | "off"
 
 	// Warn about backslash escapes in ordinary string literals.
-	escape_string_warning?: bool & false | true
+	escape_string_warning?: string & "on" | "off" & false | true
 
 	// Enables backward compatibility mode for privilege checks on large objects.
-	lo_compat_privileges: bool & false | true | *false
+	lo_compat_privileges ?: string & "on" | "off"
 
 	// Causes ... strings to treat backslashes literally.
-	standard_conforming_strings?: bool & false | true
+	standard_conforming_strings?: string & "on" | "off" & false | true
 
 	// Enable synchronized sequential scans.
-	synchronize_seqscans?: bool & false | true
+	synchronize_seqscans?: string & "on" | "off" & false | true
 
 	// Treats expr=NULL as expr IS NULL.
-	transform_null_equals?: bool & false | true
+	transform_null_equals?: string & "on" | "off" & false | true
 
 
 	// Terminate session on any error.
-	exit_on_error?: bool & false | true
+	exit_on_error?: string & "on" | "off" & false | true
 
 	// Reinitialize server after backend crash.
-	restart_after_crash?: bool & false | true
+	restart_after_crash?: string & "on" | "off" & false | true
 
-	omit_encoding_error?: bool & false | true
+	omit_encoding_error?: string & "on" | "off" & false | true
 
-	data_sync_retry?: bool & false | true
+	data_sync_retry?: string & "on" | "off" & false | true
 
-	cache_connection?: bool & false | true
+	cache_connection?: string & "on" | "off" & false | true
 
 	pgxc_node_name?: string
 
-	enforce_two_phase_commit?: bool & false | true
+	enforce_two_phase_commit?: string & "on" | "off" & false | true
 
-	audit_enabled?: bool
+	audit_enabled?: string & "on" | "off"
 	audit_directory?: string
 	audit_data_format?: string
 	audit_rotation_interval?: string  @timeDurationResource(1d)
@@ -796,9 +796,9 @@
 	audit_xid_info?: int & >=0
 	audit_thread_num?: int & >=0
 
-	enableSeparationOfDuty?: bool
+	enableSeparationOfDuty?: string & "on" | "off"
 
-	enable_fast_allocate?: bool
+	enable_fast_allocate?: string & "on" | "off"
 	prefetch_quantity?: int  @storeResource(1MB)
 	backwrite_quantity?: int  @storeResource(1MB)
 	cstore_prefetch_quantity?: int & >=0
@@ -806,15 +806,15 @@
 	cstore_backwrite_max_threshold?: int & >=0
 	fast_extend_file_size?: int & >=0
 
-	enable_codegen?: bool
-	enable_codegen_print?: bool
+	enable_codegen?: string & "on" | "off"
+	enable_codegen_print?: string & "on" | "off"
 	codegen_cost_threshold?: int
 
 
 	job_queue_processes?: int & >=0 & <=1000
 
-	enable_dcf?: bool
-	plsql_show_all_error?: bool
+	enable_dcf?: string & "on" | "off"
+	plsql_show_all_error?: string & "on" | "off"
 
 	...
 }
