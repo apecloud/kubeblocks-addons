@@ -16,11 +16,6 @@ spec:
     - name: oracle
       workloadType: Stateful
       characterType: oracle
-      probes:
-        roleProbe:
-          failureThreshold: 2
-          periodSeconds: 1
-          timeoutSeconds: 1
       service:
         ports:
           - name: tcp-oracle
