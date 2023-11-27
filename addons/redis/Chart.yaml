@@ -4,7 +4,7 @@ description: "Redis is an in-memory database that persists on disk. The data mod
 
 type: application
 
-version: 0.7.0
+version: 0.8.0
 
 appVersion: "7.0.6"
 
