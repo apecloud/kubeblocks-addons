@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: apecloud-mysql-0.7.0
+  name: {{ include "apecloud-mysql.componentDefName" }}
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
@@ -148,7 +148,7 @@ spec:
   configs:
     - name: mysql-consensusset-config
       templateRef: mysql8.0-config-template
-      constraintRef: mysql8.0-config-constraints
+      constraintRef: {{ include "apecloud-mysql.configConstraintName" }}
       volumeName: mysql-config
       namespace: {{ .Release.Namespace }}
     - name: agamotto-configuration

@@ -16,14 +16,14 @@ spec:
     backupMethods:
     - name: xtrabackup
       snapshotVolumes: false
-      actionSetName: xtrabackup-for-apecloud-mysql
+      actionSetName: {{ include "apecloud-mysql.xtrabackupActionSetName" }}
       targetVolumes:
         volumeMounts:
         - name: data
           mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
     - name: volume-snapshot
       snapshotVolumes: true
-      actionSetName: volumesnapshot-for-apecloud-mysql
+      actionSetName: {{ include "apecloud-mysql.vsActionSetName" }}
       targetVolumes:
         volumes:
         - data
