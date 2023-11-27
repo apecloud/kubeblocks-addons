@@ -39,7 +39,7 @@ spec:
               runAsUser: 54321
             ports:
               - name: tcp-oracle
-                containerPort: 5432
+                containerPort: 1521
               - name: oem-express
                 containerPort: 5500
             env:
