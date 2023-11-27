@@ -1,0 +1,99 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
+  name: kafka-quota
+spec:
+  componentDefinitionRefs:
+  - serviceKind: kafka
+    accountName: client
+    serviceName: broker
+
+  parametersSchema:
+    openAPIV3Schema:
+      properties:
+        user:
+          description: "user name"
+          type: string
+        client:
+          description: client id.
+          type: string
+        consumerByteRate:
+          description: the maximum number of messages that can be consumed per second, measured in bytes/sec
+          type: integer
+        producerByteRate:
+          description: the maximum number of messages that can be produced per second, measured in bytes/sec
+          type: integer
+        controllerMutationRate:
+          description: partition mutation quota to control the rate at which mutations are accepted for user requests.
+          type: integer
+        requestPercentage:
+          description: request percentage.
+          type: integer
+        deleteQuotas:
+          description: |
+            config keys to remove 'k1,k2'
+          items:
+            type: string
+            enums:
+            - consumer_byte_rate
+            - controller_mutation_rate
+            - producer_byte_rate
+            - request_percentage
+          type: array
+      type: object
+  jobSpec:
+    backoffLimit: 3
+    template:
+      spec:
+        containers:
+        - name: kafka-topic
+          image: docker.io/bitnami/kafka:3.3.2-debian-11-r54
+          imagePullPolicy: IfNotPresent
+          command:
+          - bash
+          - -c
+          - |
+            set -e
+            KB_CONNECT_ENDPOINT="${KB_COMP_SVC_NAME}:${KB_COMP_SVC_PORT_KAFKA_CLIENT}"
+            command="/opt/bitnami/kafka/bin/kafka-configs.sh --bootstrap-server ${KB_CONNECT_ENDPOINT} --alter"
+            if [[ ! -z "${user}" ]]; then
+               command="${command} --entity-type users --entity-name ${user}"
+            fi
+            if [[ ! -z "${client}" ]]; then
+              command="${command} --entity-type clients --entity-name ${client}"
+            fi
+            quotas=""
+            function addQuota(){
+              local key=$1
+              local value=$2
+              if [[ -z ${value} ]];then
+                return
+              fi
+              if [[ -z ${quotas} ]];then
+                 quotas="${key}=${value}"
+              else
+                 quotas="${quotas},${key}=${value}"
+              fi
+            }
+            addQuota consumer_byte_rate "${consumerByteRate}"
+            addQuota controller_mutation_rate "${controllerMutationRate}"
+            addQuota producer_byte_rate "${producerByteRate}"
+            addQuota request_percentage "${requestPercentage}"
+
+            function addCommandArg(){
+               local key=$1
+               local value=$2
+               if [[ ! -z ${value} ]];then
+                  command="${command} --${key} '${value}'"
+               fi
+            }
+            # if no quotas parameters, delete config will exit 1.
+            # TODO: check it
+            addCommandArg delete-config "${deleteQuotas}"
+            addCommandArg add-config "${quotas}"
+            echo ${command}
+            eval ${command}
+  preChecks:
+  - expression:
+      rule: '{{ eq .component.status.phase "Running" }}'
+      message: "Component is not in Running status."

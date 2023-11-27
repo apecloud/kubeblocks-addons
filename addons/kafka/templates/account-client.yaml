@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "kafka.name" . }}-client-secret
+type: Opaque
+stringData:
+  password: "kubeblocks"

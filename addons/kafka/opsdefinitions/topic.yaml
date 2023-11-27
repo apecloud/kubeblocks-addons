@@ -1,0 +1,91 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
+  name: kafka-topic
+spec:
+  componentDefinitionRefs:
+  - serviceKind: kafka
+    accountName: client
+    serviceName: broker
+
+  parametersSchema:
+    openAPIV3Schema:
+      properties:
+        type:
+          description: "operation type, supports value: [create, alter, delete]."
+          enum:
+          - create
+          - alter
+          - delete
+          type: string
+        topic:
+          description: |
+            The topic to create, alter or delete. It also accepts a regular
+            expression, except for --create option. Put topic name in double quotes and
+            use the '\' prefix to escape regular expression symbols; e.g. "test\.topic".
+          type: string
+        partitions:
+          description: |
+            The number of partitions for the topic being created or altered (WARNING:
+            If partitions are increased for a topic that has a key, the partition logic or ordering
+            of the messages will be affected). If not supplied for create, defaults to the cluster default.
+          type: integer
+          minimum: 1
+          maximum: 10000
+        replicas:
+          description: |
+            The replication factor for each partition in the topic being
+            created. If not supplied, defaults to the cluster default.
+          minimum: 1
+          maximum: 10
+          type: integer
+        config:
+          description: "A topic configuration override for the topic being created or altered."
+          type: string
+      required:
+      - topic
+      - type
+      type: object
+  jobSpec:
+    backoffLimit: 3
+    template:
+      spec:
+        containers:
+        - name: kafka-topic
+          image: docker.io/bitnami/kafka:3.3.2-debian-11-r54
+          imagePullPolicy: IfNotPresent
+          command:
+          - bash
+          - -c
+          - |
+            set -e
+            KB_CONNECT_ENDPOINT="${KB_COMP_SVC_NAME}:${KB_COMP_SVC_PORT_KAFKA_CLIENT}"
+            command="/opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server ${KB_CONNECT_ENDPOINT} --topic ${topic} --${type}"
+            if [[ ${type} == "delete" ]];then
+              echo $command
+              $command
+              return
+            fi
+
+            function addCommandArg(){
+               local key=$1
+               local value=$2
+               if [[ ! -z ${value} ]];then
+                  command="${command} --${key}=${value}"
+               fi
+            }
+            addCommandArg replication-factor "${replicas}"
+            addCommandArg partitions "${partitions}"
+            addCommandArg config "${config}"
+
+            if [[ ${type} == "create" ]]; then
+               command="${command} --if-not-exists"
+            else
+               command="${command} --if-exists"
+            fi
+            echo "${command}"
+            ${command}
+  preChecks:
+  - expression:
+      rule: '{{ eq .component.status.phase "Running" }}'
+      message: "Component is not in Running status."

@@ -1,0 +1,6 @@
+---
+{{- .Files.Get "opsdefinitions/topic.yaml" }}
+---
+{{- .Files.Get "opsdefinitions/quota.yaml" }}
+---
+{{- .Files.Get "opsdefinitions/useracl.yaml" }}
