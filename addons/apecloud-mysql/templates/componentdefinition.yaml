@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "apecloud-mysql.componentDefName" }}
+  name: {{ include "apecloud-mysql.componentDefName" . }}
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
@@ -147,18 +147,18 @@ spec:
       roleSelector: follower
   configs:
     - name: mysql-consensusset-config
-      templateRef: mysql8.0-config-template
-      constraintRef: {{ include "apecloud-mysql.configConstraintName" }}
+      templateRef: {{ include "apecloud-mysql.configTplName" . }}
+      constraintRef: {{ include "apecloud-mysql.configConstraintName" . }}
       volumeName: mysql-config
       namespace: {{ .Release.Namespace }}
     - name: agamotto-configuration
-      templateRef: apecloud-mysql8-agamotto-configuration
+      templateRef: {{ include "apecloud-mysql.agamottoCfgName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: agamotto-configuration
       defaultMode: 0444  # for only read, mysql container switched user account.
     - name: vttablet-config
-      templateRef: vttablet-config-template
-      constraintRef: mysql-scale-vttablet-config-constraints
+      templateRef: {{ include "apecloud-mysql.configTplVttabletName" . }}
+      constraintRef: {{ include "apecloud-mysql.configConstraintVttabletName" . }}
       volumeName: mysql-scale-config
       namespace: {{ .Release.Namespace }}
   logConfigs:
@@ -173,7 +173,7 @@ spec:
       scrapePort: {{ .Values.metrics.service.port }}
   scripts:
     - name: apecloud-mysql-scripts
-      templateRef: apecloud-mysql-scripts
+      templateRef: {{ include "apecloud-mysql.cmScriptsName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555  # for read and execute, mysql container switched user account.

@@ -2,7 +2,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ConfigConstraint
 metadata:
-  name: {{ include "apecloud-mysql.configConstraintName" }}
+  name: {{ include "apecloud-mysql.configConstraintName" . }}
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
@@ -61,7 +61,8 @@ spec:
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ConfigConstraint
 metadata:
-  name: {{ include "apecloud-mysql.configConstraintVttabletName"}}
+  name: {{ include "apecloud-mysql.configConstraintVttabletName" . }}
+
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
@@ -80,7 +81,7 @@ spec:
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ConfigConstraint
 metadata:
-  name: {{ include "apecloud-mysql."}}
+  name: {{ include "apecloud-mysql.configConstraintVtconsensusName" . }}
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:

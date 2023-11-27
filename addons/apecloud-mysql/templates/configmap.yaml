@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: mysql8.0-config-template
+  name: {{ include "apecloud-mysql.configTplName" . }}
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 data:
@@ -12,7 +12,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: vtgate-config-template
+  name: {{ include "apecloud-mysql.configTplVtgateName" . }}
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 data:
@@ -22,7 +22,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: vtconsensus-config-template
+  name: {{ include "apecloud-mysql.configTplVtconsensusName" . }}
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 data:
@@ -32,7 +32,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: vttablet-config-template
+  name: {{ include "apecloud-mysql.configTplVttabletName" . }}
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 data:
@@ -42,7 +42,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: mysql-reload-script
+  name: {{ include "apecloud-mysql.cmReloadScriptName" . }}
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 data:
@@ -59,7 +59,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: mysql8.0-auditlog-config-template
+  name: {{ include "apecloud-mysql.configTplAuditLogName" . }}
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 data:

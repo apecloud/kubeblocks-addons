@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ClusterDefinition
 metadata:
-  name: {{ include "apecloud-mysql.clusterDefName" }}
+  name: {{ include "apecloud-mysql.clusterDefName" . }}
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
@@ -32,24 +32,24 @@ spec:
         {{- end }}
       configSpecs:
         - name: mysql-consensusset-config
-          templateRef: mysql8.0-config-template
-          constraintRef: {{ include "apecloud-mysql.configConstraintName" }}
+          templateRef: {{ include "apecloud-mysql.configTplName" . }}
+          constraintRef: {{ include "apecloud-mysql.configConstraintName" . }}
           volumeName: mysql-config
           namespace: {{ .Release.Namespace }}
         - name: agamotto-configuration
-          templateRef: apecloud-mysql8-agamotto-configuration
+          templateRef: {{ include "apecloud-mysql.agamottoCfgName" . }}
           namespace: {{ .Release.Namespace }}
           volumeName: agamotto-configuration
           # for only read, mysql container switched user account.
           defaultMode: 0444
         - name: vttablet-config
-          templateRef: vttablet-config-template
-          constraintRef: mysql-scale-vttablet-config-constraints
+          templateRef: {{ include "apecloud-mysql.configTplVttabletName" . }}
+          constraintRef: {{ include "apecloud-mysql.configConstraintVttabletName" . }}
           volumeName: mysql-scale-config
           namespace: {{ .Release.Namespace }}
       scriptSpecs:
         - name: apecloud-mysql-scripts
-          templateRef: apecloud-mysql-scripts
+          templateRef: {{ include "apecloud-mysql.cmScriptsName" . }}
           namespace: {{ .Release.Namespace }}
           volumeName: scripts
           # for read and execute, mysql container switched user account.
@@ -72,7 +72,7 @@ spec:
             targetPort: mysql
       horizontalScalePolicy:
         type: CloneVolume
-        backupPolicyTemplateName: {{ include "apecloud-mysql.hscaleBackupPolicyTemplateName" }}
+        backupPolicyTemplateName: {{ include "apecloud-mysql.hscaleBackupPolicyTemplateName" . }}
       switchoverSpec:
         withCandidate:
           cmdExecutorConfig:
@@ -343,14 +343,14 @@ spec:
           type: data
       scriptSpecs:
         - name: apecloud-mysql-scripts
-          templateRef: apecloud-mysql-scripts
+          templateRef: {{ include "apecloud-mysql.cmScriptsName" . }}
           namespace: {{ .Release.Namespace }}
           volumeName: scripts
           defaultMode: 0555
       configSpecs:
         - name: vtconsensus-config
-          templateRef: vtconsensus-config-template
-          constraintRef: mysql-scale-vtconsensus-config-constraints
+          templateRef: {{ include "apecloud-mysql.configTplVtconsensusName" . }}
+          constraintRef: {{ include "apecloud-mysql.configConstraintVtconsensusName" . }}
           volumeName: mysql-scale-config
           namespace: {{ .Release.Namespace }}
       logConfigs:
@@ -455,7 +455,7 @@ spec:
       workloadType: Stateless
       scriptSpecs:
         - name: apecloud-mysql-scripts
-          templateRef: apecloud-mysql-scripts
+          templateRef: {{ include "apecloud-mysql.cmScriptsName" . }}
           namespace: {{ .Release.Namespace }}
           volumeName: scripts
           defaultMode: 0555
@@ -466,8 +466,8 @@ spec:
         {{- end }}
       configSpecs:
         - name: vtgate-config
-          templateRef: vtgate-config-template
-          constraintRef: mysql-scale-vtgate-config-constraints
+          templateRef: {{ include "apecloud-mysql.configTplVtconsensusName" . }}
+          constraintRef: {{ include "apecloud-mysql.configConstraintVtgateName" . }}
           volumeName: mysql-scale-config
           namespace: {{ .Release.Namespace }}
       monitor:

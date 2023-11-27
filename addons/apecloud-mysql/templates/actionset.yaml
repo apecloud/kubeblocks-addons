@@ -44,7 +44,7 @@ spec:
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: {{ include "apecloud-mysql.vsActionSetName" }}
+  name: {{ include "apecloud-mysql.vsActionSetName" . }}
   labels:
     clusterdefinition.kubeblocks.io/name: apecloud-mysql
 spec:

@@ -2,7 +2,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ClusterVersion
 metadata:
-  name: {{ include "apecloud-mysql.clusterVersionAuditLog" }}
+  name: {{ include "apecloud-mysql.clusterVersionAuditLog" . }}
   labels:
   {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
@@ -11,8 +11,8 @@ spec:
     - componentDefRef: mysql
       configSpecs:
         - name: mysql-consensusset-config
-          templateRef: mysql8.0-auditlog-config-template
-          constraintRef: {{ include "apecloud-mysql.configConstraintName" }}
+          templateRef: {{ include "apecloud-mysql.configTplAuditLogName" . }}
+          constraintRef: {{ include "apecloud-mysql.configConstraintName" . }}
           volumeName: mysql-config
           namespace: {{ .Release.Namespace }}
       versionsContext:
