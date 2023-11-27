@@ -47,12 +47,6 @@ spec:
                 containerPort: 5432
               - name: oem-express
                 containerPort: 5500
-{{/*            command:*/}}
-{{/*              - /bin/bash*/}}
-{{/*              - -c*/}}
-{{/*              - |*/}}
-{{/*                echo start*/}}
-{{/*                sleep 10000*/}}
             env:
               - name: ORACLE_SID
                 value: "ORCLCDB"
@@ -63,42 +57,12 @@ spec:
                   secretKeyRef:
                     name: $(CONN_CREDENTIAL_SECRET_NAME)
                     key: password
-{{/*              - name: INIT_SGA_SIZE*/}}
-{{/*                value:*/}}
-{{/*              - name: INIT_PGA_SIZE*/}}
-{{/*                value:*/}}
               - name: AUTO_MEM_CALCULATION
                 value: "TRUE"
               - name: INIT_CPU_COUNT
               - name: INIT_PROCESSES
               - name: ORACLE_EDITION
                 value: "enterprise"
-{{/*              - name: GS_USERNAME*/}}
-{{/*                valueFrom:*/}}
-{{/*                  secretKeyRef:*/}}
-{{/*                    name: $(CONN_CREDENTIAL_SECRET_NAME)*/}}
-{{/*                    key: username*/}}
-{{/*              - name: GS_DB*/}}
-{{/*                value: opengauss*/}}
-{{/*              - name: GAUSSLOG*/}}
-{{/*                value: /var/log/opengauss*/}}
-{{/*              - name: PATH*/}}
-{{/*                value: /usr/local/opengauss/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin*/}}
-{{/*              - name: GAUSSHOME*/}}
-{{/*                value: /usr/local/opengauss*/}}
-{{/*              - name: LD_LIBRARY_PATH*/}}
-{{/*                value: /usr/local/opengauss/lib*/}}
-{{/*              - name: PGDATA*/}}
-{{/*                value: /var/lib/opengauss/data*/}}
-{{/*            volumeMounts:*/}}
-{{/*              - name: data*/}}
-{{/*                mountPath: /opt/oracle/oradata*/}}
-{{/*              - name: log*/}}
-{{/*                mountPath: /var/log/opengauss*/}}
-{{/*              - name: scripts*/}}
-{{/*                mountPath: /kb-scripts*/}}
-{{/*              - name: opengauss-config*/}}
-{{/*                mountPath: /home/omm/conf*/}}
         volumes:
           - name: dshm
             emptyDir:
