@@ -49,6 +49,8 @@ on:
           - openldap-cluster
           - opensearch
           - opensearch-cluster
+          - oracle
+          - oracle-cluster
           - oracle-mysql
           - oracle-mysql-cluster
           - orioledb
@@ -77,8 +79,6 @@ on:
           - xinference-cluster
           - zookeeper
           - zookeeper-cluster
-          - oracle
-          - oracle-cluster
       chart_version:
         description: 'release specify chart version or empty to release default'
         required: false
