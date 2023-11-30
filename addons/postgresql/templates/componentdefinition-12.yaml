@@ -55,8 +55,8 @@ spec:
       scrapePort: {{ .Values.metrics.service.port }}
   configs:
     - name: postgresql-configuration
-      templateRef: postgresql-configuration
-      constraintRef: postgresql14-cc
+      templateRef: postgresql12-configuration
+      constraintRef: postgresql12-cc
       keys:
         - postgresql.conf
       namespace: {{ .Release.Namespace }}
@@ -70,7 +70,7 @@ spec:
       volumeName: pgbouncer-config
       defaultMode: 0444
     - name: postgresql-custom-metrics
-      templateRef: postgresql14-custom-metrics
+      templateRef: postgresql12-custom-metrics
       namespace: {{ .Release.Namespace }}
       volumeName: postgresql-custom-metrics
       defaultMode: 0444
