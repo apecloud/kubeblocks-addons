@@ -58,7 +58,7 @@ spec:
             command:
               - bash 
               - -c
-              - "docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1))"
+              - "docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) --ignore-db-dir=lost+found"
             volumeMounts:
               - mountPath: /var/lib/mysql
                 name: data
