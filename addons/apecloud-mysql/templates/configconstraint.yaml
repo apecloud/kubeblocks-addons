@@ -100,7 +100,7 @@ spec:
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ConfigConstraint
 metadata:
-  name: mysql-scale-vtgate-config-constraints
+  name: {{ include "apecloud-mysql.configConstraintVtgateName" . }}
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
