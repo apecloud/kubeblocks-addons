@@ -8,7 +8,7 @@ metadata:
   annotations:
     dataprotection.kubeblocks.io/is-default-policy-template: "true"
 spec:
-  clusterDefinitionRef: apecloud-mysql
+  clusterDefinitionRef: {{ include "apecloud-mysql.clusterDefName" . }}
   backupPolicies:
   - componentDefRef: mysql
     target:
