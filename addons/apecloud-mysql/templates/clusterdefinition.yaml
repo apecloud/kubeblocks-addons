@@ -466,7 +466,7 @@ spec:
         {{- end }}
       configSpecs:
         - name: vtgate-config
-          templateRef: {{ include "apecloud-mysql.configTplVtconsensusName" . }}
+          templateRef: {{ include "apecloud-mysql.configTplVtgateName" . }}
           constraintRef: {{ include "apecloud-mysql.configConstraintVtgateName" . }}
           volumeName: mysql-scale-config
           namespace: {{ .Release.Namespace }}
