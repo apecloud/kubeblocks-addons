@@ -1,12 +1,12 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: BackupPolicyTemplate
 metadata:
-  name: apecloud-mysql-backup-policy-for-hscale
+  name: {{ include "apecloud-mysql.hscaleBackupPolicyTemplateName" . }}
   labels:
     clusterdefinition.kubeblocks.io/name: apecloud-mysql
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: apecloud-mysql
+  clusterDefinitionRef: {{ include "apecloud-mysql.clusterDefName" . }}
   identifier: hscale
   backupPolicies:
   - componentDefRef: mysql
@@ -15,7 +15,7 @@ spec:
     backupMethods:
     - name: volume-snapshot
       snapshotVolumes: true
-      actionSetName: volumesnapshot-for-apecloud-mysql
+      actionSetName: {{ include "apecloud-mysql.vsActionSetName" . }}
       targetVolumes:
         volumes:
         - data
@@ -27,7 +27,7 @@ spec:
         value: .restore
     - name: xtrabackup
       snapshotVolumes: false
-      actionSetName: xtrabackup-for-apecloud-mysql
+      actionSetName: {{ include "apecloud-mysql.xtrabackupActionSetName" . }}
       targetVolumes:
         volumeMounts:
         - name: data

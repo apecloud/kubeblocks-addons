@@ -1,11 +1,11 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ClusterVersion
 metadata:
-  name: ac-mysql-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
+  name: {{ include "apecloud-mysql.clusterVersion" . }}
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: apecloud-mysql
+  clusterDefinitionRef: {{ include "apecloud-mysql.clusterDefName" . }}
   componentVersions:
   - componentDefRef: mysql
     versionsContext:

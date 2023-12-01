@@ -2,17 +2,17 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ClusterVersion
 metadata:
-  name: ac-mysql-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}-auditlog
+  name: {{ include "apecloud-mysql.clusterVersionAuditLog" . }}
   labels:
   {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: apecloud-mysql
+  clusterDefinitionRef: {{ include "apecloud-mysql.clusterDefName" . }}
   componentVersions:
     - componentDefRef: mysql
       configSpecs:
         - name: mysql-consensusset-config
-          templateRef: mysql8.0-auditlog-config-template
-          constraintRef: mysql8.0-config-constraints
+          templateRef: {{ include "apecloud-mysql.configTplAuditLogName" . }}
+          constraintRef: {{ include "apecloud-mysql.configConstraintName" . }}
           volumeName: mysql-config
           namespace: {{ .Release.Namespace }}
       versionsContext:

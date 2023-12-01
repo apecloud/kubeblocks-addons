@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: apecloud-mysql-scripts
+  name: {{ include "apecloud-mysql.cmScriptsName" . }}
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 data:

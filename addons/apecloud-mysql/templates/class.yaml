@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentClassDefinition
 metadata:
-  name: kb.classes.default.apecloud-mysql.mysql
+  name: {{ include "apecloud-mysql.className" . }}
   labels:
     class.kubeblocks.io/provider: kubeblocks
     apps.kubeblocks.io/component-def-ref: mysql
