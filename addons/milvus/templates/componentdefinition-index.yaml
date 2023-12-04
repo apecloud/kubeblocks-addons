@@ -1,0 +1,38 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: milvus-indexnode-{{ .Chart.Version }}
+  labels:
+    {{- include "milvus.labels" . | nindent 4 }}
+spec:
+  provider: ApeCloud
+  description: {{ .Chart.Description }}
+  serviceKind: {{ .Chart.Name }}
+  serviceVersion: {{ .Chart.AppVersion }}
+  runtime:
+    initContainers:
+      {{- include "milvus.cluster.initContainer.config" . | indent 6 }}
+    containers:
+      - name: indexnode
+        {{- include "milvus.cluster.image" . | indent 8 }}
+        args:
+          - /milvus/tools/run.sh
+          - milvus
+          - run
+          - indexnode
+        env:
+          {{- include "milvus.cluster.env.default" . | indent 10 }}
+        volumeMounts:
+          {{- include "milvus.cluster.volumeMount.default" . | indent 10 }}
+        ports:
+          {{- include "milvus.cluster.containerPort.metric" . | indent 10 }}
+        {{- include "milvus.probe.startup" . | indent  8 }}
+        {{- include "milvus.probe.liveness" . | indent  8 }}
+        {{- include "milvus.probe.readiness" . | indent 8 }}
+    volumes:
+      {{- include "milvus.cluster.volume.default" . | indent 6 }}
+    serviceAccountName: {{ default "milvus" .Values.serviceAccount.name }}
+  configs:
+    {{- include "milvus.cluster.config" . | indent 4 }}
+  {{- include "milvus.cluster.monitor" . | indent 2 }}
+  {{- include "milvus.cluster.storageServiceRef" . | indent 2 }}

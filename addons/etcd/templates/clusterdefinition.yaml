@@ -80,5 +80,5 @@ spec:
   connectionCredential:
     username: root
     password: ""
-    endpoint: "$(SVC_FQDN)"
+    endpoint: "$(SVC_FQDN):$(SVC_PORT_client)"
     port: "$(SVC_PORT_client)"

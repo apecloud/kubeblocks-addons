@@ -5,15 +5,14 @@
 nameOverride: ""
 fullnameOverride: ""
 
-replicaCount: 1
-terminationPolicy: Delete
+## Mode of the cluster, optional: standalone, cluster
+mode:
+  standalone
 
-clusterVersionOverride: ""
+##### parameters for standalone mode
+replicas: 1
 
-monitor:
-  enabled: false
-
-resources: { }
+resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious
   # choice for the user. This also increases chances charts run on environments with little
   # resources, such as Minikube. If you do want to specify resources, uncomment the following
@@ -31,5 +30,84 @@ persistence:
     storageClassName:
     size: 10Gi
 
-serviceAccount:
-  name: ""
+##### parameters for cluster mode
+storage:
+  meta:
+    name: etcd
+    mode: serviceref  # optional: incluster, serviceref
+    serviceRef:
+      namespace:
+      cluster:
+      serviceDescriptor:
+#    inCluster:
+#      provider: etcd-xxxx
+#      replicas: 1
+#      resources:
+#        cpu: 0.5
+#        memory: 1  # unit Gi
+#      storage:
+#        storageClassName:
+#        size: 1  # unit Gi
+  log:
+    name: pulsar
+    mode: serviceref  # optional: incluster, serviceref
+    serviceRef:
+      namespace:
+      cluster:
+      serviceDescriptor:
+#    inCluster:
+#      provider: pulsar-xxxx
+#      replicas: 1
+#      resources:
+#        cpu: 0.5
+#        memory: 1  # unit Gi
+#      storage:
+#        storageClassName:
+#        size: 1  # unit Gi
+  object:
+    name: minio
+    mode: serviceref  # optional: incluster, serviceref
+    serviceRef:
+      namespace:
+      cluster:
+      serviceDescriptor:
+#    inCluster:
+#      provider: minio-xxxx
+#      replicas: 1
+#      resources:
+#        cpu: 0.5
+#        memory: 1  # unit Gi
+#      storage:
+#        storageClassName:
+#        size: 1  # unit Gi
+
+proxy:
+  enabled: true
+  replicas: 1
+  resources:
+    cpu: 0.5
+    memory: 1  # unit Gi
+
+mixcoord:
+  replicas: 1
+  resources:
+    cpu: 0.5
+    memory: 1  # unit Gi
+
+datanode:
+  replicas: 1
+  resources:
+    cpu: 0.5
+    memory: 1  # unit Gi
+
+indexnode:
+  replicas: 1
+  resources:
+    cpu: 0.5
+    memory: 1  # unit Gi
+
+querynode:
+  replicas: 1
+  resources:
+    cpu: 0.5
+    memory: 1  # unit Gi

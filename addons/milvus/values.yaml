@@ -2,11 +2,10 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-
-clusterVersionOverride: ""
 nameOverride: ""
 fullnameOverride: ""
 
+clusterVersionOverride: ""
 
 ## @param commonLabels Labels to add to all deployed objects
 ##
@@ -16,22 +15,49 @@ commonLabels: {}
 ##
 images:
   pullPolicy: IfNotPresent
-  minio:
-    repository: docker.io/minio/minio
-    tag: RELEASE.2022-03-17T06-34-49Z
+  milvus:
+    repository: milvusdb/milvus
+    tag: v2.3.2
+  milvusTools:
+    repository: milvusdb/milvus-operator
+    tag: v0.8.4
   etcd:
     repository: docker.io/milvusdb/etcd
     tag: 3.5.5-r2
+  minio:
+    repository: docker.io/minio/minio
+    tag: RELEASE.2022-03-17T06-34-49Z
   shell_tools:
     repository: bitnami/os-shell
     tag: 11-debian-11-r90
-  milvus_init:
-    repository: docker.io/milvusdb/milvus-operator
-    tag: v0.7.8
-  milvus:
-    repository: docker.io/milvusdb/milvus
-    tag: v2.2.4
 
-## @param debugEnabled enables containers' debug logging
-##
-debugEnabled: true
+serviceAccount:
+  name: milvus
+
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 90
+  periodSeconds: 15
+  timeoutSeconds: 10
+  successThreshold: 1
+  failureThreshold: 3
+
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 90
+  periodSeconds: 15
+  timeoutSeconds: 3
+  successThreshold: 1
+  failureThreshold: 2
+
+startupProbe:
+  enabled: true
+  initialDelaySeconds: 90
+  periodSeconds: 10
+  timeoutSeconds: 3
+  successThreshold: 1
+  failureThreshold: 18
+
+minio:
+  accessKey: ""
+  secretKey: ""

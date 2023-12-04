@@ -13,12 +13,12 @@ spec:
   type: minio
   connectionCredential:
     {{- if .Values.accessKey }}
-    accesskey: {{ .Values.accessKey | toString | b64enc | quote }}
+    accesskey: {{ .Values.accessKey | toString | quote }}
     {{- else }}
     accesskey: "$(RANDOM_PASSWD)"
     {{- end }}
     {{- if .Values.secretKey }}
-    secretkey: {{ .Values.secretKey | toString | b64enc | quote }}
+    secretkey: {{ .Values.secretKey | toString | quote }}
     {{- else }}
     secretkey: "$(RANDOM_PASSWD)"
     {{- end }}
