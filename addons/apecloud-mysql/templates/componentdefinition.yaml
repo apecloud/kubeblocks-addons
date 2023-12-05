@@ -9,125 +9,6 @@ spec:
   description: ApeCloud MySQL is a database that is compatible with MySQL syntax and achieves high availability through the utilization of the RAFT consensus protocol.
   serviceKind: mysql
   serviceVersion: 8.0.30
-  runtime:
-    containers:
-      - name: mysql
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
-        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
-        command: [ "/scripts/setup.sh" ]
-        env:
-          - name: SERVICE_PORT
-            value: "3306"
-          - name: MYSQL_ROOT_HOST
-            value: {{ .Values.auth.rootHost | default "%" | quote }}
-          - name: MYSQL_ROOT_USER
-            valueFrom:
-              secretKeyRef:
-                name: $(CONN_CREDENTIAL_SECRET_NAME)
-                key: username
-                optional: false
-          - name: MYSQL_ROOT_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: $(CONN_CREDENTIAL_SECRET_NAME)
-                key: password
-                optional: false
-          - name: MYSQL_DATABASE
-            value: {{- if .Values.auth.createDatabase }} {{ .Values.auth.database | quote }}  {{- else }} "" {{- end }}
-          - name: MYSQL_USER
-            value: {{ .Values.auth.username | default "" | quote }}
-          - name: MYSQL_PASSWORD
-            value: {{ .Values.auth.password | default "" | quote }}
-          - name: CLUSTER_ID
-            value: {{ .Values.cluster.clusterId | default "1" | quote }}
-          - name: CLUSTER_START_INDEX
-            value: {{ .Values.cluster.clusterStartIndex | default "1" | quote }}
-          - name: REPLICATION_USER
-            value: {{ .Values.auth.replicationUser | default "replicator" | quote }}
-          - name: REPLICATION_PASSWORD
-            value: {{ .Values.auth.replicationPassword | default "" | quote }}
-          - name: MYSQL_TEMPLATE_CONFIG
-            value: {{ if .Values.cluster.templateConfig }}{{ .Values.cluster.templateConfig }}{{ end }}
-          - name: MYSQL_CUSTOM_CONFIG
-            value: {{ if .Values.cluster.customConfig }}{{ .Values.cluster.customConfig }}{{ end }}
-          - name: MYSQL_DYNAMIC_CONFIG
-            value: {{ if .Values.cluster.dynamicConfig }}{{ .Values.cluster.dynamicConfig }}{{ end }}
-          - name: KB_EMBEDDED_WESQL
-            value: {{ .Values.cluster.kbWeSQLImage | default "1" | quote }}
-        volumeMounts:
-          - mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
-            name: data
-          - mountPath: /opt/mysql
-            name: mysql-config
-          - name: scripts
-            mountPath: /scripts
-          - name: annotations
-            mountPath: /etc/annotations
-        ports:
-          - containerPort: 3306
-            name: mysql
-          - containerPort: 13306
-            name: paxos
-        lifecycle:
-          preStop:
-            exec:
-              command: [ "/scripts/pre-stop.sh" ]
-      - name: metrics
-        image: {{ .Values.metrics.image.registry | default "docker.io" }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
-        imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
-        command: [ "/scripts/agamotto.sh" ]
-        env:
-          - name: DB_TYPE
-            value: MySQL
-          - name: ENDPOINT
-            value: {{ printf "localhost:3306" }}
-          - name: MYSQL_USER
-            valueFrom:
-              secretKeyRef:
-                name: $(CONN_CREDENTIAL_SECRET_NAME)
-                key: username
-                optional: false
-          - name: MYSQL_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: $(CONN_CREDENTIAL_SECRET_NAME)
-                key: password
-                optional: false
-        volumeMounts:
-          - name: agamotto-configuration
-            mountPath: /opt/agamotto
-          - name: data
-            mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
-          {{- if .Values.logCollector.enabled }}
-          - name: log-data
-            mountPath: /var/log/kubeblocks
-            readOnly: false
-          {{- end }}
-          - name: scripts
-            mountPath: /scripts
-        ports:
-          - name: http-metrics
-            containerPort: {{ .Values.metrics.service.port }}
-        securityContext:
-          runAsNonRoot: false
-          runAsUser: 0
-    volumes:
-      {{- if .Values.logCollector.enabled }}
-      - name: log-data
-        hostPath:
-          path: /var/log/kubeblocks
-          type: DirectoryOrCreate
-      {{- end }}
-      - name: annotations
-        downwardAPI:
-          items:
-            - path: "leader"
-              fieldRef:
-                fieldPath: metadata.annotations['cs.apps.kubeblocks.io/leader']
-            - path: "component-replicas"
-              fieldRef:
-                fieldPath: metadata.annotations['apps.kubeblocks.io/component-replicas']
-  volumes:
   services:
     - name: default
       serviceName: mysql
@@ -215,12 +96,15 @@ spec:
     - name: leader
       serviceable: true
       writable: true
+      votable: true
     - name: follower
       serviceable: true
       writable: false
+      votable: true
     - name: learner
       serviceable: false
       writable: false
+      votable: false
   lifecycleActions:
     roleProbe:
       builtinHandler: wesql
@@ -240,12 +124,6 @@ spec:
             - /scripts/switchover-without-candidate.sh
       scriptSpecSelectors:
         - name: apecloud-mysql-scripts
-    memberJoin:
-    memberLeave:
-    readonly:
-    readwrite:
-    dataPopulate:
-    dataAssemble:
     accountProvision:
       customHandler:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
@@ -262,12 +140,139 @@ spec:
           - name: MYSQL_ROOT_USER
             valueFrom:
               secretKeyRef:
-                name: $(CONN_CREDENTIAL_SECRET_NAME)
+                name: $(COMPONENT_CONN_CREDENTIAL_SECRET_NAME)-root
                 key: username
                 optional: false
           - name: MYSQL_ROOT_PASSWORD
             valueFrom:
               secretKeyRef:
-                name: $(CONN_CREDENTIAL_SECRET_NAME)
+                name: $(COMPONENT_CONN_CREDENTIAL_SECRET_NAME)-root
                 key: password
                 optional: false
+  runtime:
+    containers:
+      - name: mysql
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command: [ "/scripts/setup.sh" ]
+        env:
+          - name: SERVICE_PORT
+            value: "3306"
+          - name: MYSQL_ROOT_HOST
+            value: {{ .Values.auth.rootHost | default "%" | quote }}
+          - name: MYSQL_ROOT_USER
+            valueFrom:
+              secretKeyRef:
+                name: $(COMPONENT_CONN_CREDENTIAL_SECRET_NAME)-root
+                key: username
+                optional: false
+          - name: MYSQL_ROOT_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: $(COMPONENT_CONN_CREDENTIAL_SECRET_NAME)-root
+                key: password
+                optional: false
+          - name: MYSQL_DATABASE
+            value: {{- if .Values.auth.createDatabase }} {{ .Values.auth.database | quote }}  {{- else }} "" {{- end }}
+          - name: MYSQL_USER
+            value: {{ .Values.auth.username | default "" | quote }}
+          - name: MYSQL_PASSWORD
+            value: {{ .Values.auth.password | default "" | quote }}
+          - name: CLUSTER_ID
+            value: {{ .Values.cluster.clusterId | default "1" | quote }}
+          - name: CLUSTER_START_INDEX
+            value: {{ .Values.cluster.clusterStartIndex | default "1" | quote }}
+          - name: REPLICATION_USER
+            value: {{ .Values.auth.replicationUser | default "replicator" | quote }}
+          - name: REPLICATION_PASSWORD
+            value: {{ .Values.auth.replicationPassword | default "" | quote }}
+          - name: MYSQL_TEMPLATE_CONFIG
+            value: {{ if .Values.cluster.templateConfig }}{{ .Values.cluster.templateConfig }}{{ end }}
+          - name: MYSQL_CUSTOM_CONFIG
+            value: {{ if .Values.cluster.customConfig }}{{ .Values.cluster.customConfig }}{{ end }}
+          - name: MYSQL_DYNAMIC_CONFIG
+            value: {{ if .Values.cluster.dynamicConfig }}{{ .Values.cluster.dynamicConfig }}{{ end }}
+          - name: KB_EMBEDDED_WESQL
+            value: {{ .Values.cluster.kbWeSQLImage | default "1" | quote }}
+          - name: KB_MYSQL_CLUSTER_UID
+            value: $(KB_CLUSTER_UID)
+          - name: KB_MYSQL_N
+            value: $(KB_REPLICA_COUNT)
+          - name: KB_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+        volumeMounts:
+          - mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
+            name: data
+          - mountPath: /opt/mysql
+            name: mysql-config
+          - name: scripts
+            mountPath: /scripts
+          - name: annotations
+            mountPath: /etc/annotations
+        ports:
+          - containerPort: 3306
+            name: mysql
+          - containerPort: 13306
+            name: paxos
+        lifecycle:
+          preStop:
+            exec:
+              command: [ "/scripts/pre-stop.sh" ]
+      - name: metrics
+        image: {{ .Values.metrics.image.registry | default "docker.io" }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
+        imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
+        command: [ "/scripts/agamotto.sh" ]
+        env:
+          - name: DB_TYPE
+            value: MySQL
+          - name: ENDPOINT
+            value: {{ printf "localhost:3306" }}
+          - name: MYSQL_USER
+            valueFrom:
+              secretKeyRef:
+                name: $(COMPONENT_CONN_CREDENTIAL_SECRET_NAME)-root
+                key: username
+                optional: false
+          - name: MYSQL_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: $(COMPONENT_CONN_CREDENTIAL_SECRET_NAME)-root
+                key: password
+                optional: false
+        volumeMounts:
+          - name: agamotto-configuration
+            mountPath: /opt/agamotto
+          - name: data
+            mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
+          {{- if .Values.logCollector.enabled }}
+          - name: log-data
+            mountPath: /var/log/kubeblocks
+            readOnly: false
+          {{- end }}
+          - name: scripts
+            mountPath: /scripts
+        ports:
+          - name: http-metrics
+            containerPort: {{ .Values.metrics.service.port }}
+        securityContext:
+          runAsNonRoot: false
+          runAsUser: 0
+    volumes:
+      {{- if .Values.logCollector.enabled }}
+      - name: log-data
+        hostPath:
+          path: /var/log/kubeblocks
+          type: DirectoryOrCreate
+      {{- end }}
+      - name: annotations
+        downwardAPI:
+          items:
+            - path: "leader"
+              fieldRef:
+                fieldPath: metadata.annotations['cs.apps.kubeblocks.io/leader']
+            - path: "component-replicas"
+              fieldRef:
+                fieldPath: metadata.annotations['apps.kubeblocks.io/component-replicas']
