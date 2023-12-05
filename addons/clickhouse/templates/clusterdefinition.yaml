@@ -151,6 +151,8 @@ spec:
                 mountPath: /bitnami/clickhouse
               - name: config
                 mountPath: /bitnami/clickhouse/etc/conf.d/default
+              - name: user-config
+                mountPath: /bitnami/clickhouse/etc/users.d/default
 
     - name: ch-keeper
       workloadType: Stateful # Consensus
@@ -238,8 +240,6 @@ spec:
                 mountPath: /bitnami/clickhouse
               - name: config
                 mountPath: /bitnami/clickhouse/etc/conf.d/default
-              - name: user-config
-                mountPath: /bitnami/clickhouse/etc/users.d/default
 
     - name: zookeeper
       workloadType: Stateful #Consensus
