@@ -1,0 +1,123 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterDefinition
+metadata:
+  name: influxdb
+  labels:
+    {{- include "influxdb.labels" . | nindent 4 }}
+spec:
+  connectionCredential:
+    admin-user: "admin"
+    admin-user-password: "$(RANDOM_PASSWD)"
+    admin-user-token: "$(RANDOM_PASSWD)"
+    http-endpoint: "$(SVC_FQDN):$(SVC_PORT_http)"
+    http-port: "$(SVC_PORT_http)"
+    rpc-endpoint: "$(SVC_FQDN):$(SVC_PORT_rpc)"
+    rpc-port: "$(SVC_PORT_rpc)"
+    host: "$(SVC_FQDN)"
+  componentDefs:
+    - name: influxdb
+      characterType: influxdb
+      workloadType: Stateful
+      service:
+        ports:
+          - name: http
+            port: 8086
+            targetPort: http
+          - name: rpc
+            port: 8088
+            targetPort: rpc
+      podSpec:
+        containers:
+          - name: influxdb
+            image: docker.io/bitnami/influxdb:2.7.4-debian-11-r0
+            imagePullPolicy: "IfNotPresent"
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                  - ALL
+              privileged: false
+              readOnlyRootFilesystem: false
+              runAsNonRoot: true
+              runAsUser: 1001
+              seccompProfile:
+                type: RuntimeDefault
+            env:
+              - name: BITNAMI_DEBUG
+                value: "false"
+              - name: POD_IP
+                valueFrom:
+                  fieldRef:
+                    fieldPath: status.podIP
+              - name: INFLUXDB_HTTP_AUTH_ENABLED
+                value: "true"
+              - name: INFLUXDB_CREATE_USER_TOKEN
+                value: "no"
+              - name: INFLUXDB_ADMIN_USER
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: admin-user
+              - name: INFLUXDB_ADMIN_USER_PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: admin-user-password
+              - name: INFLUXDB_ADMIN_USER_TOKEN
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: admin-user-token
+              - name: INFLUXDB_ADMIN_BUCKET
+                value: "primary"
+              - name: INFLUXDB_ADMIN_ORG
+                value: "primary"
+            ports:
+              - name: http
+                containerPort: 8086
+                protocol: TCP
+              - name: rpc
+                containerPort: 8088
+                protocol: TCP
+            livenessProbe:
+              failureThreshold: 6
+              initialDelaySeconds: 180
+              periodSeconds: 45
+              successThreshold: 1
+              timeoutSeconds: 30
+              exec:
+                command:
+                  - bash
+                  - -c
+                  - |
+                    . /opt/bitnami/scripts/libinfluxdb.sh
+
+                    influxdb_env
+                    export INFLUX_USERNAME="$INFLUXDB_ADMIN_USER"
+                    export INFLUX_PASSWORD="$INFLUXDB_ADMIN_USER_PASSWORD"
+
+                    timeout 29s influx ping --host http://$POD_IP:8086
+            readinessProbe:
+              failureThreshold: 6
+              initialDelaySeconds: 60
+              periodSeconds: 45
+              successThreshold: 1
+              timeoutSeconds: 30
+              exec:
+                command:
+                  - bash
+                  - -c
+                  - |
+                    . /opt/bitnami/scripts/libinfluxdb.sh
+
+                    influxdb_env
+                    export INFLUX_USERNAME="$INFLUXDB_ADMIN_USER"
+                    export INFLUX_PASSWORD="$INFLUXDB_ADMIN_USER_PASSWORD"
+
+                    timeout 29s influx ping --host http://$POD_IP:8086
+            resources:
+              limits: {}
+              requests: {}
+            volumeMounts:
+              - name: data
+                mountPath: /bitnami/influxdb
