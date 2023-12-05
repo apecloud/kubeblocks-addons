@@ -13,9 +13,10 @@ clusterName: obcluster
 
 replicas: 3
 
+cpu: 4
+memory: 12
 resources:
-  cpu: 2.2
-  memory: 11Gi
+  storagesClassName: "open-local-hostpath"
   storages:
     data-file: 50Gi
     data-log: 50Gi
