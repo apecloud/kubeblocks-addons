@@ -30,6 +30,7 @@ function get_pod_ip_list {
   # Get every replica's IP
   for i in $(seq 0 $(($KB_REPLICA_COUNT-1))); do
     local REPLICA_HOSTNAME="${KB_CLUSTER_COMP_NAME}-${i}"
+    local replica_ip=""
     if [ $i -ne $ORDINAL_INDEX ]; then
       while true; do
         echo "nslookup $REPLICA_HOSTNAME.$SVC_NAME"
@@ -38,25 +39,35 @@ function get_pod_ip_list {
           echo "$REPLICA_HOSTNAME.$SVC_NAME is not ready yet"
           sleep $WAIT_K8S_DNS_READY_TIME
         else
-          echo "$REPLICA_HOSTNAME.$SVC_NAME is ready"
           break
         fi
       done
-      REPLICA_IP=$(nslookup $REPLICA_HOSTNAME.$SVC_NAME | tail -n 2 | grep -P "(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})" --only-matching)
+
+      while true; do
+        replica_ip=$(nslookup $REPLICA_HOSTNAME.$SVC_NAME | tail -n 2 | grep -P "(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})" --only-matching)
+        # check if the IP is empty
+        if [ -z "$replica_ip" ]; then
+          echo "nslookup $REPLICA_HOSTNAME.$SVC_NAME failed, wait for a moment..."
+          sleep $WAIT_K8S_DNS_READY_TIME
+        else
+          echo "nslookup $REPLICA_HOSTNAME.$SVC_NAME success, IP: $replica_ip"
+          break
+        fi
+      done
     else
-      REPLICA_IP=$KB_POD_IP
+      replica_ip=$KB_POD_IP
     fi
 
-    IP_LIST+=("$REPLICA_IP")
+    IP_LIST+=("$replica_ip")
 
     # Construct the ZONE_SERVER_LIST and RS_LIST
     if [ $i -lt $ZONE_COUNT ]; then
       if [ $i -eq 0 ]; then
-        ZONE_SERVER_LIST="ZONE 'zone${i}' SERVER '${REPLICA_IP}:2882'"
-        RS_LIST="${REPLICA_IP}:2882:2881"
+        ZONE_SERVER_LIST="ZONE 'zone${i}' SERVER '${replica_ip}:2882'"
+        RS_LIST="${replica_ip}:2882:2881"
       else
-        ZONE_SERVER_LIST="${ZONE_SERVER_LIST},ZONE 'zone${i}' SERVER '${REPLICA_IP}:2882'"
-        RS_LIST="${RS_LIST};${REPLICA_IP}:2882:2881"
+        ZONE_SERVER_LIST="${ZONE_SERVER_LIST},ZONE 'zone${i}' SERVER '${replica_ip}:2882'"
+        RS_LIST="${RS_LIST};${replica_ip}:2882:2881"
       fi
     fi
   done
@@ -137,11 +148,11 @@ function others_running {
 function bootstrap_obcluster {
   for i in $(seq 0 $(($KB_REPLICA_COUNT-1))); do
     local REPLICA_HOSTNAME="${KB_CLUSTER_COMP_NAME}-${i}"
-    local REPLICA_IP=$(nslookup $REPLICA_HOSTNAME.$SVC_NAME | tail -n 2 | grep -P "(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})" --only-matching)
+    local replica_ip=$(nslookup $REPLICA_HOSTNAME.$SVC_NAME | tail -n 2 | grep -P "(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})" --only-matching)
 
-    echo "hostname.svc:" $REPLICA_HOSTNAME.$SVC_NAME "ip:" $REPLICA_IP
+    echo "hostname.svc:" $REPLICA_HOSTNAME.$SVC_NAME "ip:" $replica_ip
     while true; do
-      nc -z $REPLICA_IP 2881
+      nc -z $replica_ip 2881
       if [ $? -ne 0 ]; then
         echo "Replica $REPLICA_HOSTNAME.$SVC_NAME is not up yet"
         sleep $WAIT_SERVER_SLEEP_TIME
