@@ -15,8 +15,14 @@
 
 source /scripts/bootstrap.sh
 
-echo "Getting dynamic replica ips"
-get_replica_count
+IFS="-"
+read -a split_host <<< "$HOSTNAME"
+ORDINAL_INDEX=${split_host[-1]}
+ZONE_NAME="zone$((${ORDINAL_INDEX}%${ZONE_COUNT}))"
+unset IFS
+
+echo "ORDINAL_INDEX: $ORDINAL_INDEX"
+echo "ZONE_NAME: $ZONE_NAME"
 
 RECOVERING="$(is_recovering)"
 echo "Recovering: $RECOVERING"

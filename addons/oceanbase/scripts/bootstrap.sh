@@ -13,52 +13,23 @@
 #
 
 source /scripts/sql.sh
+
 ZONE_COUNT=${ZONE_COUNT:-3}
+WAIT_SERVER_SLEEP_TIME="${WAIT_SERVER_SLEEP_TIME:-3}"
+WAIT_K8S_DNS_READY_TIME="${WAIT_K8S_DNS_READY_TIME:-10}"
+SVC_NAME="${KB_CLUSTER_COMP_NAME}-headless.${KB_NAMESPACE}.svc"
+HOSTNAME=$(hostname)
 
-function get_replica_count {
-  HOSTNAME=$(hostname)
-  IFS="-"
-  read -a split_host <<< "$HOSTNAME"
-  ORDINAL_INDEX=${split_host[-1]}
-  ZONE_NAME="zone$((${ORDINAL_INDEX}%${ZONE_COUNT}))"
-  unset IFS
-
-  if [ ${#split_host[@]} -lt 2 ]; then
-    echo "Unexpected hostname: $HOSTNAME"
-    exit 1
-  fi
-
-  APISERVER=https://kubernetes.default.svc
-  SERVICEACCOUNT=/var/run/secrets/kubernetes.io/serviceaccount
-  NAMESPACE=$(cat ${SERVICEACCOUNT}/namespace)
-  TOKEN=$(cat ${SERVICEACCOUNT}/token)
-  CACERT=${SERVICEACCOUNT}/ca.crt
-
-  WAIT_SERVER_SLEEP_TIME="${WAIT_SERVER_SLEEP_TIME:-3}"
-  WAIT_K8S_DNS_READY_TIME="${WAIT_K8S_DNS_READY_TIME:-10}"
-
-  REPLICA_NUM=$(curl -s --cacert ${CACERT} --header "Authorization: Bearer ${TOKEN}" -X GET ${APISERVER}/apis/apps/v1/namespaces/${NAMESPACE}/statefulsets/${CLUSTER_NAME} | jq .spec.replicas)
-
-  echo "REPLICA_NUM:" $REPLICA_NUM
-}
 
 function get_pod_ip_list {
   # Get the headless service name
-  SVC_NAME=${split_host[0]}
-  if [ ${#split_host[@]} -gt 2 ]; then
-    for i in $(seq 1 $((${#split_host[@]}-2))); do
-      SVC_NAME="${SVC_NAME}-${split_host[$i]}"
-    done
-  fi
-  SVC_NAME="${SVC_NAME}-headless"
-
   ZONE_SERVER_LIST=""
   RS_LIST=""
   IP_LIST=()
-  # Get every replica's IP
-  for i in $(seq 0 $(($REPLICA_NUM-1))); do
-    REPLICA_HOSTNAME="${CLUSTER_NAME}-${i}"
 
+  # Get every replica's IP
+  for i in $(seq 0 $(($KB_REPLICA_COUNT-1))); do
+    local REPLICA_HOSTNAME="${KB_CLUSTER_COMP_NAME}-${i}"
     if [ $i -ne $ORDINAL_INDEX ]; then
       while true; do
         echo "nslookup $REPLICA_HOSTNAME.$SVC_NAME"
@@ -67,12 +38,13 @@ function get_pod_ip_list {
           echo "$REPLICA_HOSTNAME.$SVC_NAME is not ready yet"
           sleep $WAIT_K8S_DNS_READY_TIME
         else
+          echo "$REPLICA_HOSTNAME.$SVC_NAME is ready"
           break
         fi
       done
       REPLICA_IP=$(nslookup $REPLICA_HOSTNAME.$SVC_NAME | tail -n 2 | grep -P "(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})" --only-matching)
     else
-      REPLICA_IP=$POD_IP
+      REPLICA_IP=$KB_POD_IP
     fi
 
     IP_LIST+=("$REPLICA_IP")
@@ -88,6 +60,9 @@ function get_pod_ip_list {
       fi
     fi
   done
+
+  echo "get_pod_ip_list: ${IP_LIST[*]}"
+  echo "rs_list: $RS_LIST"
 }
 
 function prepare_dirs {
@@ -112,19 +87,10 @@ function prepare_dirs {
 
 function start_observer {
   echo "Start observer process as normal server..."
-  /home/admin/oceanbase/bin/observer --appname obcluster \
+  /home/admin/oceanbase/bin/observer --appname ${KB_CLUSTER_COMP_NAME} \
     --cluster_id 1 --zone $ZONE_NAME --devname eth0 \
     -p 2881 -P 2882 -d /home/admin/oceanbase/store/ \
-    -l info -o config_additional_dir=/home/admin/oceanbase/store/etc,cpu_count=16,memory_limit=8G,system_memory=1G,__min_full_resource_pool_memory=1073741824,datafile_size=40G,log_disk_size=40G,net_thread_count=2,stack_size=512K,cache_wash_threshold=1G,schema_history_expire_time=1d,enable_separate_sys_clog=false,enable_merge_by_turn=false,enable_syslog_recycle=true,enable_syslog_wf=false,max_syslog_file_count=4
-}
-
-function start_rs {
-  echo "ZONE_NAME:" $ZONE_NAME "RS_LIST:" "$RS_LIST"
-  /home/admin/oceanbase/bin/observer --appname obcluster \
-    -r "$RS_LIST" \
-    --cluster_id 1 --zone "$ZONE_NAME" --devname eth0 \
-    -p 2881 -P 2882 -d /home/admin/oceanbase/store/ \
-    -l info -o config_additional_dir=/home/admin/oceanbase/store/etc,cpu_count=16,memory_limit=8G,system_memory=1G,__min_full_resource_pool_memory=1073741824,datafile_size=40G,log_disk_size=40G,net_thread_count=2,stack_size=512K,cache_wash_threshold=1G,schema_history_expire_time=1d,enable_separate_sys_clog=false,enable_merge_by_turn=false,enable_syslog_recycle=true,enable_syslog_wf=false,max_syslog_file_count=4
+    -l info -o config_additional_dir=/home/admin/oceanbase/store/etc,cpu_count=6,memory_limit=10G,system_memory=1G,__min_full_resource_pool_memory=1073741824,datafile_size=40G,log_disk_size=40G,net_thread_count=2,stack_size=512K,cache_wash_threshold=1G,schema_history_expire_time=1d,enable_separate_sys_clog=false,enable_merge_by_turn=false,enable_syslog_recycle=true,enable_syslog_wf=false,max_syslog_file_count=4
 }
 
 function clean_dirs {
@@ -144,9 +110,8 @@ function is_recovering {
 }
 
 function others_running {
-  # test other servers
-  alive_count=0
-  for i in $(seq 0 $((${#IP_LIST[@]}-1))); do
+  local alive_count=0
+  for i in $(seq 0 $(($KB_REPLICA_COUNT-1))); do
     if [ $i -eq $ORDINAL_INDEX ]; then
       continue
     fi
@@ -161,17 +126,18 @@ function others_running {
     fi
   done
   # if more than half of the servers are up, return True
-  if [ $(($alive_count*2)) -gt ${#IP_LIST[@]} ]; then
+  if [ $(($alive_count*2)) -gt ${KB_REPLICA_COUNT} ]; then
     echo "True"
     return
   fi
   echo "False"
+  return
 }
 
 function bootstrap_obcluster {
-  for i in $(seq 0 $(($REPLICA_NUM-1))); do
-    REPLICA_HOSTNAME="${CLUSTER_NAME}-${i}"
-    REPLICA_IP=$(nslookup $REPLICA_HOSTNAME.$SVC_NAME | tail -n 2 | grep -P "(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})" --only-matching)
+  for i in $(seq 0 $(($KB_REPLICA_COUNT-1))); do
+    local REPLICA_HOSTNAME="${KB_CLUSTER_COMP_NAME}-${i}"
+    local REPLICA_IP=$(nslookup $REPLICA_HOSTNAME.$SVC_NAME | tail -n 2 | grep -P "(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})" --only-matching)
 
     echo "hostname.svc:" $REPLICA_HOSTNAME.$SVC_NAME "ip:" $REPLICA_IP
     while true; do
@@ -180,10 +146,12 @@ function bootstrap_obcluster {
         echo "Replica $REPLICA_HOSTNAME.$SVC_NAME is not up yet"
         sleep $WAIT_SERVER_SLEEP_TIME
       else
+        echo "Replica $REPLICA_HOSTNAME.$SVC_NAME is up"
         break
       fi
     done
   done
+
   echo "SET SESSION ob_query_timeout=1000000000;"
   conn_local "SET SESSION ob_query_timeout=1000000000;"
   echo "ALTER SYSTEM BOOTSTRAP ${ZONE_SERVER_LIST};"
@@ -204,8 +172,10 @@ function bootstrap_obcluster {
 }
 
 function add_server {
+  echo "add server"
+  echo "IP_LIST: ${IP_LIST[*]}"
   # Choose a running server and send the add server request
-  for i in $(seq 0 $((${#IP_LIST[@]}-1))); do
+  for i in $(seq 0 $(($KB_REPLICA_COUNT-1))); do
     if [ $i -eq $ORDINAL_INDEX ]; then
       continue
     fi
@@ -214,20 +184,19 @@ function add_server {
       sleep 10
     done
 
-    CURRENT_IP=${IP_LIST[${ORDINAL_INDEX}]}
-    RETRY_MAX=5
-    retry_times=0
-    until conn_remote ${IP_LIST[$i]} "ALTER SYSTEM ADD SERVER '${CURRENT_IP}:2882' ZONE '${ZONE_NAME}'"; do
-      echo "Failed to add server ${CURRENT_IP}:2882 to the cluster, retry..."
+    local RETRY_MAX=5
+    local retry_times=0
+    until conn_remote ${IP_LIST[$i]} "ALTER SYSTEM ADD SERVER '${KB_POD_IP}:2882' ZONE '${ZONE_NAME}'"; do
+      echo "Failed to add server ${KB_POD_IP}:2882 to the cluster, retry..."
       retry_times=$(($retry_times+1))
       sleep $((3*${retry_times}))
       if [ $retry_times -gt ${RETRY_MAX} ]; then
-        echo "Failed to add server ${CURRENT_IP}:2882 to the cluster finally, exit..."
+        echo "Failed to add server ${KB_POD_IP}:2882 to the cluster finally, exit..."
         exit 1
       fi
     done
 
-    until [ -n "$(conn_remote_obdb ${IP_LIST[$i]} "SELECT * FROM DBA_OB_SERVERS WHERE SVR_IP = '${CURRENT_IP}' and STATUS = 'ACTIVE' and START_SERVICE_TIME IS NOT NULL")" ]; do
+    until [ -n "$(conn_remote_obdb ${IP_LIST[$i]} "SELECT * FROM DBA_OB_SERVERS WHERE SVR_IP = '${KB_POD_IP}' and STATUS = 'ACTIVE' and START_SERVICE_TIME IS NOT NULL")" ]; do
       echo "Wait for the server to be ready..."
       sleep 10
     done
@@ -238,8 +207,9 @@ function add_server {
 }
 
 function check_if_ip_changed {
-  CURRENT_IP=${IP_LIST[${ORDINAL_INDEX}]}
-  if [ -z "$(cat /home/admin/oceanbase/store/etc/observer.conf.bin | grep \"${CURRENT_IP}\")" ]; then
+  echo "check_if_ip_changed"
+  echo "IP_LIST: ${IP_LIST[*]}"
+  if [ -z "$(cat /home/admin/oceanbase/store/etc/observer.conf.bin | grep \"${KB_POD_IP}\")" ]; then
     echo "Changed"
   else
     echo "Not Changed"
@@ -247,7 +217,9 @@ function check_if_ip_changed {
 }
 
 function delete_inactive_servers {
-  for i in $(seq 0 $((${#IP_LIST[@]}-1))); do
+  echo "delete inactive server"
+  echo "IP_LIST: ${IP_LIST[*]}"
+  for i in $(seq 0 $(($KB_REPLICA_COUNT-1))); do
     if [ $i -eq $ORDINAL_INDEX ]; then
       continue
     fi
