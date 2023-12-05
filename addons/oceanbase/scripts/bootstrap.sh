@@ -29,14 +29,14 @@ function get_pod_ip_list {
 
   # Get every replica's IP
   for i in $(seq 0 $(($KB_REPLICA_COUNT-1))); do
-    local REPLICA_HOSTNAME="${KB_CLUSTER_COMP_NAME}-${i}"
+    local replica_hostname="${KB_CLUSTER_COMP_NAME}-${i}"
     local replica_ip=""
     if [ $i -ne $ORDINAL_INDEX ]; then
       while true; do
-        echo "nslookup $REPLICA_HOSTNAME.$SVC_NAME"
-        nslookup $REPLICA_HOSTNAME.$SVC_NAME | tail -n 2 | grep -P "(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})" --only-matching
+        echo "nslookup $replica_hostname.$SVC_NAME"
+        nslookup $replica_hostname.$SVC_NAME | tail -n 2 | grep -P "(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})" --only-matching
         if [ $? -ne 0 ]; then
-          echo "$REPLICA_HOSTNAME.$SVC_NAME is not ready yet"
+          echo "$replica_hostname.$SVC_NAME is not ready yet"
           sleep $WAIT_K8S_DNS_READY_TIME
         else
           break
@@ -44,13 +44,13 @@ function get_pod_ip_list {
       done
 
       while true; do
-        replica_ip=$(nslookup $REPLICA_HOSTNAME.$SVC_NAME | tail -n 2 | grep -P "(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})" --only-matching)
+        replica_ip=$(nslookup $replica_hostname.$SVC_NAME | tail -n 2 | grep -P "(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})" --only-matching)
         # check if the IP is empty
         if [ -z "$replica_ip" ]; then
-          echo "nslookup $REPLICA_HOSTNAME.$SVC_NAME failed, wait for a moment..."
+          echo "nslookup $replica_hostname.$SVC_NAME failed, wait for a moment..."
           sleep $WAIT_K8S_DNS_READY_TIME
         else
-          echo "nslookup $REPLICA_HOSTNAME.$SVC_NAME success, IP: $replica_ip"
+          echo "nslookup $replica_hostname.$SVC_NAME success, IP: $replica_ip"
           break
         fi
       done
@@ -147,17 +147,27 @@ function others_running {
 
 function bootstrap_obcluster {
   for i in $(seq 0 $(($KB_REPLICA_COUNT-1))); do
-    local REPLICA_HOSTNAME="${KB_CLUSTER_COMP_NAME}-${i}"
-    local replica_ip=$(nslookup $REPLICA_HOSTNAME.$SVC_NAME | tail -n 2 | grep -P "(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})" --only-matching)
-
-    echo "hostname.svc:" $REPLICA_HOSTNAME.$SVC_NAME "ip:" $replica_ip
+    local replica_hostname="${KB_CLUSTER_COMP_NAME}-${i}"
+    local replica_ip=""
+    while true; do
+      replica_ip=$(nslookup $replica_hostname.$SVC_NAME | tail -n 2 | grep -P "(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})" --only-matching)
+      # check if the IP is empty
+      if [ -z "$replica_ip" ]; then
+        echo "nslookup $replica_hostname.$SVC_NAME failed, wait for a moment..."
+        sleep $WAIT_K8S_DNS_READY_TIME
+      else
+        echo "nslookup $replica_hostname.$SVC_NAME success, IP: $replica_ip"
+        break
+      fi
+    done
+    echo "hostname.svc:" $replica_hostname.$SVC_NAME "ip:" $replica_ip
     while true; do
       nc -z $replica_ip 2881
       if [ $? -ne 0 ]; then
-        echo "Replica $REPLICA_HOSTNAME.$SVC_NAME is not up yet"
+        echo "Replica $replica_hostname.$SVC_NAME is not up yet"
         sleep $WAIT_SERVER_SLEEP_TIME
       else
-        echo "Replica $REPLICA_HOSTNAME.$SVC_NAME is up"
+        echo "Replica $replica_hostname.$SVC_NAME is up"
         break
       fi
     done
