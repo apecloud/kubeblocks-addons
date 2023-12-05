@@ -66,8 +66,6 @@ spec:
             env:
               - name: LD_LIBRARY_PATH
                 value: /home/admin/oceanbase/lib
-              - name: ZONE_COUNT
-                value: {{ .Values.zoneCount | quote }}
               - name: CLUSTER_NAME
                 value: "$(KB_CLUSTER_COMP_NAME)"
               - name: POD_IP

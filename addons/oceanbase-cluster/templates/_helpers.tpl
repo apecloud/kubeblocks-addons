@@ -60,3 +60,21 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+
+{{/*
+Create extra env
+*/}}
+{{- define "oceanbase-cluster.extra-envs" }}
+{
+"ZONE_COUNT": "{{ .Values.zoneCount }}"
+}
+{{- end }}
+
+
+{{/*
+Create extra envs annotations
+*/}}
+{{- define "oceanbase-cluster.annotations.extra-envs" }}
+"kubeblocks.io/extra-env": {{ include "oceanbase-cluster.extra-envs" . | nospace  | quote }}
+{{- end }}

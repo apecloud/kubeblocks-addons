@@ -8,16 +8,21 @@ fullnameOverride: ""
 clusterVersionOverride: "4.2.0.0-100010032023083021"
 
 terminationPolicy: "Delete"
-
+# cluster naem
 clusterName: obcluster
-
+# how many clusters to create with-in one ob cluster, set to 2 when creating a primary and secondary oceanbae cluster
+obClusters: 1
+# zone count
+zoneCount: 3
+# replicas, it should be larger than zoneCount
 replicas: 3
 
-cpu: 4
+# resources
+cpu: 6
 memory: 12
 resources:
-  storagesClassName: "open-local-hostpath"
   storages:
     data-file: 50Gi
     data-log: 50Gi
     log: 20Gi
+storageClassName: "openebs-hostpath"
