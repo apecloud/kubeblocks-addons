@@ -138,17 +138,9 @@ spec:
             - $(KB_ACCOUNT_STATEMENT)
         env:
           - name: PGUSER
-            valueFrom:
-              secretKeyRef:
-                name: $(COMPONENT_CONN_CREDENTIAL_SECRET_NAME)-postgres
-                key: username
-                optional: false
+            value: $(POSTGRES_USER)
           - name: PGPASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: $(COMPONENT_CONN_CREDENTIAL_SECRET_NAME)-postgres
-                key: password
-                optional: false
+            value: $(POSTGRES_PASSWORD)
   runtime:
     securityContext:
       runAsUser: 0
@@ -245,45 +237,21 @@ spec:
                 apiVersion: v1
                 fieldPath: metadata.namespace
           - name: PGUSER_SUPERUSER
-            valueFrom:
-              secretKeyRef:
-                name: $(COMPONENT_CONN_CREDENTIAL_SECRET_NAME)-postgres
-                key: username
-                optional: false
+            value: $(POSTGRES_USER)
           - name: PGPASSWORD_SUPERUSER
-            valueFrom:
-              secretKeyRef:
-                name: $(COMPONENT_CONN_CREDENTIAL_SECRET_NAME)-postgres
-                key: password
-                optional: false
+            value: $(POSTGRES_PASSWORD)
           - name: PGUSER_ADMIN
             value: superadmin
           - name: PGPASSWORD_ADMIN
-            valueFrom:
-              secretKeyRef:
-                name: $(COMPONENT_CONN_CREDENTIAL_SECRET_NAME)-postgres
-                key: password
-                optional: false
+            value: $(POSTGRES_PASSWORD)
           - name: PGUSER_STANDBY
             value: standby
           - name: PGPASSWORD_STANDBY
-            valueFrom:
-              secretKeyRef:
-                name: $(COMPONENT_CONN_CREDENTIAL_SECRET_NAME)-postgres
-                key: password
-                optional: false
+            value: $(POSTGRES_PASSWORD)
           - name: PGUSER
-            valueFrom:
-              secretKeyRef:
-                name: $(COMPONENT_CONN_CREDENTIAL_SECRET_NAME)-postgres
-                key: username
-                optional: false
+            value: $(POSTGRES_USER)
           - name: PGPASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: $(COMPONENT_CONN_CREDENTIAL_SECRET_NAME)-postgres
-                key: password
-                optional: false
+            value: $(POSTGRES_PASSWORD)
       - name: pgbouncer
         image: {{ .Values.pgbouncer.image.registry | default "docker.io" }}/{{ .Values.pgbouncer.image.repository }}:{{ default .Values.pgbouncer.image.tag }}
         imagePullPolicy: {{ .Values.pgbouncer.image.pullPolicy | quote }}
@@ -319,17 +287,9 @@ spec:
           - name: PGBOUNCER_AUTH_TYPE
             value: md5
           - name: POSTGRESQL_USERNAME
-            valueFrom:
-              secretKeyRef:
-                name: $(COMPONENT_CONN_CREDENTIAL_SECRET_NAME)-postgres
-                key: username
-                optional: false
+            value: $(POSTGRES_USER)
           - name: POSTGRESQL_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: $(COMPONENT_CONN_CREDENTIAL_SECRET_NAME)-postgres
-                key: password
-                optional: false
+            value: $(POSTGRES_PASSWORD)
           - name: POSTGRESQL_PORT
             value: "5432"
           - name: POSTGRESQL_HOST
@@ -350,17 +310,9 @@ spec:
           - name: ENDPOINT
             value: {{ printf "127.0.0.1:5432" }}
           - name: DATA_SOURCE_PASS
-            valueFrom:
-              secretKeyRef:
-                name: $(COMPONENT_CONN_CREDENTIAL_SECRET_NAME)-postgres
-                key: password
-                optional: false
+            value: $(POSTGRES_PASSWORD)
           - name: DATA_SOURCE_USER
-            valueFrom:
-              secretKeyRef:
-                name: $(COMPONENT_CONN_CREDENTIAL_SECRET_NAME)-postgres
-                key: username
-                optional: false
+            value: $(POSTGRES_USER)
         command:
           - "/bin/agamotto"
           - "--config=/opt/agamotto/agamotto-config.yaml"
@@ -391,3 +343,18 @@ spec:
             - path: "component-replicas"
               fieldRef:
                 fieldPath: metadata.annotations['apps.kubeblocks.io/component-replicas']
+  vars:
+    - name: POSTGRES_USER
+      valueFrom:
+        credentialVarRef:
+          compDef: postgresql-12
+          name: postgres
+          optional: false
+          username: Required
+    - name: POSTGRES_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: postgresql-12
+          name: postgres
+          optional: false
+          password: Required
