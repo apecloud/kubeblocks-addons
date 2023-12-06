@@ -15,5 +15,5 @@ jobs:
       - name: Automatic Approve
         uses: hmarr/auto-approve-action@v3
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ env.GITHUB_TOKEN }}
           pull-request-number: ${{ github.event.issue.number }}
