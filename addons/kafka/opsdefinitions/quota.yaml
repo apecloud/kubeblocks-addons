@@ -4,7 +4,10 @@ metadata:
   name: kafka-quota
 spec:
   componentDefinitionRefs:
-  - serviceKind: kafka
+  - name: kafka-broker
+    accountName: client
+    serviceName: broker
+  - name: kafka-combine-server
     accountName: client
     serviceName: broker
 
