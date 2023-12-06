@@ -11,15 +11,17 @@ terminationPolicy: "Delete"
 # cluster naem
 clusterName: obcluster
 # how many clusters to create with-in one ob cluster, set to 2 when creating a primary and secondary oceanbae cluster
-obClusters: 1
+obClusters: 2
 # zone count
-zoneCount: 3
+zoneCount: 1
 # replicas, it should be larger than zoneCount
-replicas: 3
+replicas: 1
+
+tenantName: "alice"
 
 # resources
 cpu: 6
-memory: 12
+memory: 10
 resources:
   storages:
     data-file: 50Gi

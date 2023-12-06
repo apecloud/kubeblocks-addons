@@ -16,6 +16,10 @@ function conn_local {
   mysql -h127.0.0.1 -uroot -P 2881 -A -e "$1"
 }
 
+function conn_local_as_tenant {
+  mysql -h127.0.0.1 -uroot@"$1" -P 2881 -A -Doceanbase -e "$2"
+}
+
 function conn_local_obdb {
   mysql -h127.0.0.1 -uroot -P 2881 -A -Doceanbase -e "$1"
 }

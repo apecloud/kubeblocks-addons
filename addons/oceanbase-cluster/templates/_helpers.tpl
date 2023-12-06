@@ -67,7 +67,9 @@ Create extra env
 */}}
 {{- define "oceanbase-cluster.extra-envs" }}
 {
-"ZONE_COUNT": "{{ .Values.zoneCount }}"
+"ZONE_COUNT": "{{ .Values.zoneCount | default "1" }}",
+"OB_CLUSTERS_COUNT": "{{ .Values.obClusters | default "1" }}",
+"TENANT_NAME": "{{ .Values.tenantName | default "tenant1" }}"
 }
 {{- end }}
 

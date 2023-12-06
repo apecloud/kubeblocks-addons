@@ -190,6 +190,8 @@ function bootstrap_obcluster {
   conn_local "show databases"
 
   conn_local_obdb "SELECT * FROM DBA_OB_SERVERS\g"
+
+  create_primary_secondry_tenants
 }
 
 function add_server {
@@ -267,4 +269,105 @@ function start_observer_with_exsting_configs {
 
 function create_ready_flag {
   touch /tmp/ready
+}
+
+function create_primary_secondry_tenants {
+  # create tenants if env TENANT_NAME is set
+  if [ -z "$TENANT_NAME" ]; then
+    return
+  fi
+
+  # get ordinal of current pod, start from 0
+  ordinal_index=$(echo $HOSTNAME | awk -F '-' '{print $(NF-1)}')
+  # if not equal to 0, create secondary tenant
+  if [ $ordinal_index -ne 0 ]; then
+    return
+  fi
+
+  create_primary_tenant "$TENANT_NAME"
+  create_rep_user "$TENANT_NAME"
+
+  if [ $OB_CLUSTERS_COUNT -le 1 ]; then
+    return
+  fi
+
+  # get ip list of 0-th pod of other components
+  IP_LIST=()
+  components_prefix=$(echo "${KB_CLUSTER_COMP_NAME}" | awk -F'-' '{NF--; print}' OFS='-')
+  for i in $(seq 1 $(($OB_CLUSTERS_COUNT-1))); do
+    next_comp_name="${components_prefix}-${i}"
+    local replica_hostname="${next_comp_name}-0.${next_comp_name}-headless.${KB_NAMESPACE}.svc"
+    local replica_ip=""
+    while true; do
+      replica_ip=$(nslookup $replica_hostname | tail -n 2 | grep -P "(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})" --only-matching)
+      # check if the IP is empty
+      if [ -z "$replica_ip" ]; then
+        echo "nslookup $replica_hostname failed, wait for a moment..."
+        sleep $WAIT_K8S_DNS_READY_TIME
+      else
+        echo "nslookup $replica_hostname success, IP: $replica_ip"
+        break
+      fi
+    done
+    IP_LIST+=("$replica_ip")
+  done
+  create_secondary_tenant "$TENANT_NAME" "${TENANT_NAME}2" "${IP_LIST}"
+}
+
+
+function create_primary_tenant {
+  tenant_name=$1
+  echo "create resource unit and pool for tenant ${tenant_name}"
+  conn_local "CREATE RESOURCE UNIT IF NOT EXISTS unit_for_${tenant_name} MAX_CPU 1, MEMORY_SIZE = '2G', LOG_DISK_SIZE = '2G';"
+  conn_local "CREATE RESOURCE POOL IF NOT EXISTS pool_for_${tenant_name} UNIT = 'unit_for_${tenant_name}', UNIT_NUM = 1;"
+
+  echo "create tenant ${tenant_name}"
+  conn_local "SET SESSION ob_query_timeout=1000000000; CREATE TENANT IF NOT EXISTS ${tenant_name} RESOURCE_POOL_LIST=('pool_for_${tenant_name}');"
+
+  echo "alter system archive log"
+  conn_local "ALTER SYSTEM ARCHIVELOG;"
+
+  echo "check tenant ${tenant_name} exists"
+  conn_local "SELECT count(*) FROM oceanbase.DBA_OB_TENANTS where tenant_name = '${tenant_name}';"
+}
+
+
+function create_rep_user {
+  local tenant_name=$1
+  local user_name="rep_user"
+  local user_passwd="123456"
+  echo "create user ${user_name} for tenant ${tenant_name}"
+  conn_local_as_tenant $tenant_name "CREATE USER ${user_name} IDENTIFIED BY '${user_passwd}';";
+  conn_local_as_tenant $tenant_name "GRANT SELECT ON oceanbase.* TO ${user_name};"
+  conn_local_as_tenant $tenant_name "SET GLOBAL ob_tcp_invited_nodes='%';"
+}
+
+
+function create_secondary_tenant {
+  echo "create secondary tenant"
+  local primry_tenant_name=$1
+  local secondary_tenant_name=$2
+  local secondary_tenant_ip=$3
+  local primary_tenant_rep_user="rep_user"
+  local primary_tenant_rep_passwd="123456"
+
+  # for each ip in ip list, create secondary tenant
+  for ip in ${secondary_tenant_ip[*]}; do
+    echo "create resource unit and pool for tenant ${secondary_tenant_name}"
+    echo "remote ip: ${ip}"
+
+    echo $ip "CREATE RESOURCE UNIT IF NOT EXISTS unit_for_${secondary_tenant_name} MAX_CPU 1, MEMORY_SIZE = '2G', LOG_DISK_SIZE = '2G'"
+    conn_remote $ip "CREATE RESOURCE UNIT IF NOT EXISTS unit_for_${secondary_tenant_name} MAX_CPU 1, MEMORY_SIZE = '2G', LOG_DISK_SIZE = '2G'"
+    echo $ip "CREATE RESOURCE POOL IF NOT EXISTS pool_for_${secondary_tenant_name} UNIT = 'unit_for_${secondary_tenant_name}', UNIT_NUM = 1;"
+    conn_remote $ip "CREATE RESOURCE POOL IF NOT EXISTS pool_for_${secondary_tenant_name} UNIT = 'unit_for_${secondary_tenant_name}', UNIT_NUM = 1;"
+
+    echo "create tenant ${secondary_tenant_name}"
+    conn_remote $ip "SET SESSION ob_query_timeout=1000000000; CREATE STANDBY TENANT IF NOT EXISTS ${secondary_tenant_name} LOG_RESTORE_SOURCE ='SERVICE=${KB_POD_IP}:2881 USER=${primary_tenant_rep_user}@${primry_tenant_name} PASSWORD=${primary_tenant_rep_passwd}' RESOURCE_POOL_LIST=('pool_for_${secondary_tenant_name}');"
+
+    echo $ip "ALTER SYSTEM ARCHIVELOG;"
+    conn_remote $ip "ALTER SYSTEM ARCHIVELOG;"
+
+    echo "check tenant ${secondary_tenant_name} exists"
+    conn_remote $ip "SELECT count(*) FROM oceanbase.DBA_OB_TENANTS where tenant_name = '${secondary_tenant_name}';"
+  done
 }
