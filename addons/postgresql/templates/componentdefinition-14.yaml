@@ -21,15 +21,6 @@ spec:
             port: 6432
             targetPort: tcp-pgbouncer
       roleSelector: primary
-  connectionCredentials:
-    - name: postgres
-      serviceName: postgresql
-      portName: tcp-postgresql
-      accountName: postgres
-    - name: pgbouncer
-      serviceName: postgresql
-      portName: tcp-pgbouncer
-      accountName: postgres
   updateStrategy: BestEffortParallel
   volumes:
     - name: data

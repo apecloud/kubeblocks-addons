@@ -85,13 +85,6 @@ spec:
     - name: kbreplicator
       statement: CREATE USER $(USERNAME) IDENTIFIED BY '$(PASSWORD)'; GRANT REPLICATION SLAVE ON *.* TO $(USERNAME) WITH GRANT OPTION;
       passwordGenerationPolicy: *defaultPasswordGenerationPolicy
-  connectionCredentials:
-    - name: root
-      serviceName: default
-      accountName: root
-    - name: admin
-      serviceName: default
-      accountName: kbadmin
   roles:
     - name: leader
       serviceable: true
