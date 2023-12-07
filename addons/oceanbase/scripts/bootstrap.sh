@@ -15,19 +15,19 @@
 source /scripts/sql.sh
 
 ZONE_COUNT=${ZONE_COUNT:-3}
-WAIT_SERVER_SLEEP_TIME="${WAIT_SERVER_SLEEP_TIME:-3}"
+WAIT_SERVER_SLEEP_TIME="${WAIT_SERVER_SLEEP_TIME:-10}"
 WAIT_K8S_DNS_READY_TIME="${WAIT_K8S_DNS_READY_TIME:-10}"
 SVC_NAME="${KB_CLUSTER_COMP_NAME}-headless.${KB_NAMESPACE}.svc"
 HOSTNAME=$(hostname)
 REP_USER=${REP_USER:-rep_user}
 REP_PASSWD=${REP_PASSWD:-123456}
 
-IFS="-"
-read -a split_host <<< "$HOSTNAME"
-ORDINAL_INDEX=${split_host[-1]}
-ZONE_NAME="zone$((${ORDINAL_INDEX}%${ZONE_COUNT}))"
-unset IFS
-
+# IFS="-"
+# read -a split_host <<< "$HOSTNAME"
+# ORDINAL_INDEX=${split_host[-1]}
+# ZONE_NAME="zone$((${ORDINAL_INDEX}%${ZONE_COUNT}))"
+# unset IFS
+ORDINAL_INDEX=$(echo $HOSTNAME | awk -F '-' '{print $(NF-1)}')
 echo "ORDINAL_INDEX: $ORDINAL_INDEX"
 echo "ZONE_NAME: $ZONE_NAME"
 
@@ -295,13 +295,6 @@ function create_primary_secondry_tenants {
   fi
 
   create_primary_tenant "$TENANT_NAME"
-  create_rep_user "$TENANT_NAME"
-
-  if [ $OB_CLUSTERS_COUNT -le 1 ]; then
-    return
-  fi
-
-  create_secondary_tenant "$TENANT_NAME" "${TENANT_NAME}"
 }
 
 function create_primary_tenant {
@@ -311,7 +304,7 @@ function create_primary_tenant {
   conn_local "CREATE RESOURCE POOL IF NOT EXISTS pool_for_${tenant_name} UNIT = 'unit_for_${tenant_name}', UNIT_NUM = 1;"
 
   echo "create tenant ${tenant_name}"
-  conn_local "SET SESSION ob_query_timeout=1000000000; CREATE TENANT IF NOT EXISTS ${tenant_name} RESOURCE_POOL_LIST=('pool_for_${tenant_name}');"
+  conn_local "SET SESSION ob_query_timeout=1000000000; CREATE TENANT IF NOT EXISTS ${tenant_name} RESOURCE_POOL_LIST=('pool_for_${tenant_name}') SET ob_tcp_invited_nodes='%';"
 
   echo "alter system archive log"
   conn_local "ALTER SYSTEM ARCHIVELOG;"
@@ -319,17 +312,31 @@ function create_primary_tenant {
   echo "check tenant ${tenant_name} exists"
   conn_local "SELECT count(*) FROM oceanbase.DBA_OB_TENANTS where tenant_name = '${tenant_name}';"
   conn_local "SELECT TENANT_NAME, TENANT_TYPE, TENANT_ROLE, SWITCHOVER_STATUS FROM oceanbase.DBA_OB_TENANTS\G"
+
+  conn_local "SELECT SVR_IP, SVR_PORT FROM oceanbase.DBA_OB_TENANTS as t, oceanbase.DBA_OB_UNITS as u, oceanbase.DBA_OB_UNIT_CONFIGS as uc WHERE t.tenant_name = '${tenant_name}' and t.tenant_id = u.tenant_id and u.unit_id = uc.UNIT_CONFIG_ID and uc.name = 'unit_for_${tenant_name} limit 1'\G" > /tmp/tenant_info
+  svr_ip_list=$(cat /tmp/tenant_info | awk '/SVR_IP/{print $NF}')
+
+  echo "svr_ip_list: ${svr_ip_list[*]}"
+  create_rep_user "$TENANT_NAME" ${svr_ip_list[0]}
+
+
+  if [ $OB_CLUSTERS_COUNT -le 1 ]; then
+    return
+  fi
+  create_secondary_tenant "$TENANT_NAME" "${TENANT_NAME}" ${svr_ip_list[0]}
 }
 
 function create_rep_user {
   local tenant_name=$1
+  local ip=$2
   local user_name=${REP_USER}
   local user_passwd=${REP_PASSWD}
 
   echo "create user ${user_name} for tenant ${tenant_name}"
-  conn_local_as_tenant $tenant_name "CREATE USER ${user_name} IDENTIFIED BY '${user_passwd}';";
-  conn_local_as_tenant $tenant_name "GRANT SELECT ON oceanbase.* TO ${user_name};"
-  conn_local_as_tenant $tenant_name "SET GLOBAL ob_tcp_invited_nodes='%';"
+
+  conn_remote_as_tenant $ip $tenant_name "CREATE USER ${user_name} IDENTIFIED BY '${user_passwd}';";
+  conn_remote_as_tenant $ip $tenant_name "GRANT SELECT ON oceanbase.* TO ${user_name};"
+  conn_remote_as_tenant $ip $tenant_name "SET GLOBAL ob_tcp_invited_nodes='%';"
 }
 
 function create_secondary_tenant {
@@ -339,28 +346,21 @@ function create_secondary_tenant {
   local primary_tenant_rep_user=${REP_USER}
   local primary_tenant_rep_passwd=${REP_PASSWD}
 
-  # get primary IP list
-  local primary_cluster_ip_list=("$KB_POD_IP:2881")
-  for i in $(seq 1 $(($KB_REPLICA_COUNT-1))); do
-    local replica_hostname="${KB_CLUSTER_COMP_NAME}-${i}"
-    local replica_ip=""
-    while true; do
-      replica_ip=$(nslookup $replica_hostname.$SVC_NAME | tail -n 2 | grep -P "(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})" --only-matching)
-      if [ -z "$replica_ip" ]; then
-        echo "nslookup $replica_hostname.$SVC_NAME failed, wait for a moment..."
-        sleep $WAIT_K8S_DNS_READY_TIME
-      else
-        break
-      fi
-    done
-    primary_cluster_ip_list+=("$replica_ip:2881")
-  done
+  # get access points
+  conn_remote_as_tenant $3 ${primry_tenant_name} "select SVR_IP from oceanbase.DBA_OB_ACCESS_POIN\G" > /tmp/access_point
+  svr_ip_list=$(cat /tmp/access_point | awk '/SVR_IP/{print $NF}')
+  # echo "svr_ip_list: ${svr_ip_list[*]}"
+  OLD_IFS=$IFS
+  IFS=$' \t\n'
+  svr_ip_array=($svr_ip_list)
+  IFS=$OLD_IFS
 
-  IFS=';'
-  read -r -a primary_cluster_ips <<< "$primary_cluster_ip_list"
-  unset IFS
+  echo "svr_ip_array: ${svr_ip_array[*]}"
 
-  echo "primary ip list: ${primary_cluster_ips[@]}"
+  delim=':2881;'
+  printf -v joined_string "%s$delim" "${svr_ip_array[@]}"
+  echo "joined_string: $joined_string"
+
     # get ip list of 0-th pod of other components
   local secondary_tenant_ip=()
   components_prefix=$(echo "${KB_CLUSTER_COMP_NAME}" | awk -F'-' '{NF--; print}' OFS='-')
@@ -400,22 +400,20 @@ function create_secondary_tenant {
     conn_remote $ip "CREATE RESOURCE POOL IF NOT EXISTS pool_for_${secondary_tenant_name} UNIT = 'unit_for_${secondary_tenant_name}', UNIT_NUM = 1;"
 
     echo "create tenant ${secondary_tenant_name}"
-    echo $ip "SET SESSION ob_query_timeout=1000000000; CREATE STANDBY TENANT IF NOT EXISTS ${secondary_tenant_name} LOG_RESTORE_SOURCE ='SERVICE=${primary_cluster_ips[0]} USER=${primary_tenant_rep_user}@${primry_tenant_name} PASSWORD=${primary_tenant_rep_passwd}' RESOURCE_POOL_LIST=('pool_for_${secondary_tenant_name}');"
+    echo $ip "SET SESSION ob_query_timeout=1000000000; CREATE STANDBY TENANT IF NOT EXISTS ${secondary_tenant_name} LOG_RESTORE_SOURCE ='SERVICE=${joined_string} USER=${primary_tenant_rep_user}@${primry_tenant_name} PASSWORD=${primary_tenant_rep_passwd}' RESOURCE_POOL_LIST=('pool_for_${secondary_tenant_name}');"
 
     local RETRY_MAX=5
     local retry_times=0
-    until conn_remote $ip "SET SESSION ob_query_timeout=1000000000; CREATE STANDBY TENANT IF NOT EXISTS ${secondary_tenant_name} LOG_RESTORE_SOURCE ='SERVICE=${primary_cluster_ips[0]} USER=${primary_tenant_rep_user}@${primry_tenant_name} PASSWORD=${primary_tenant_rep_passwd}' RESOURCE_POOL_LIST=('pool_for_${secondary_tenant_name}');"; do
+    until conn_remote $ip "SET SESSION ob_query_timeout=1000000000; CREATE STANDBY TENANT IF NOT EXISTS ${secondary_tenant_name} LOG_RESTORE_SOURCE ='SERVICE=${joined_string} USER=${primary_tenant_rep_user}@${primry_tenant_name} PASSWORD=${primary_tenant_rep_passwd}' RESOURCE_POOL_LIST=('pool_for_${secondary_tenant_name}');"; do
       conn_remote $ip "DROP TENANT IF EXISTS ${secondary_tenant_name} FORCE;"
       echo "Failed to create standby tenant, retry..."
       retry_times=$(($retry_times+1))
       sleep $((3*${retry_times}))
       if [ $retry_times -gt ${RETRY_MAX} ]; then
-        echo "Failed to create standby tenant on ${ip}, exit..."
+        echo "Failed to create standby tenant ${secondary_tenant_name} on ${ip}, exit..."
         break
       fi
     done
-
-    conn_remote $ip "SET SESSION ob_query_timeout=1000000000; CREATE STANDBY TENANT IF NOT EXISTS ${secondary_tenant_name} LOG_RESTORE_SOURCE ='SERVICE=${primary_cluster_ips[0]} USER=${primary_tenant_rep_user}@${primry_tenant_name} PASSWORD=${primary_tenant_rep_passwd}' RESOURCE_POOL_LIST=('pool_for_${secondary_tenant_name}');"
 
     echo $ip "ALTER SYSTEM ARCHIVELOG;"
     conn_remote $ip "ALTER SYSTEM ARCHIVELOG;"

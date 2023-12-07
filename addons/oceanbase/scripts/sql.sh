@@ -36,3 +36,7 @@ function conn_remote_batch {
   # Used for querying results
   mysql -h$1 -uroot -P 2881 -A -Doceanbase -e "$2" -B
 }
+
+function conn_remote_as_tenant {
+  mysql -h$1 -uroot@$2 -P 2881 -A -e "$3"
+}
