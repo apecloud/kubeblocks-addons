@@ -17,11 +17,11 @@ service:
   ## 
   type: ClusterIP
 
+shardCount: 1
 
 ## ClickHouse per shard component configurations
 ##
 clickhouse: 
-  -
     ## @param clickhouse[*].replicaCount Number of ClickHouse replicas per shard to deploy
     ##
     replicaCount: 2
