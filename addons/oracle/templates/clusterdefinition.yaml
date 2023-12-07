@@ -56,9 +56,7 @@ spec:
                     name: $(CONN_CREDENTIAL_SECRET_NAME)
                     key: password
               - name: AUTO_MEM_CALCULATION
-                value: "TRUE"
-              - name: INIT_CPU_COUNT
-              - name: INIT_PROCESSES
+                value: "false"
               - name: ORACLE_EDITION
                 value: "enterprise"
             readinessProbe:
