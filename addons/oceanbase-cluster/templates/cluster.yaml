@@ -10,6 +10,7 @@ spec:
   clusterDefinitionRef: oceanbase
   clusterVersionRef: oceanbase-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
   terminationPolicy: {{ .Values.terminationPolicy }}
+  {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
   {{- range $i, $e := until (int .Values.obClusters) }}
     - name: ob-bundle-{{ $i }}
