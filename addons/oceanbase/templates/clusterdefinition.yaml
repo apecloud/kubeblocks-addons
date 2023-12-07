@@ -77,3 +77,14 @@ spec:
                   secretKeyRef:
                     name: $(CONN_CREDENTIAL_SECRET_NAME)
                     key: password
+              - name: OB_CPU_LIMIT
+                valueFrom:
+                  resourceFieldRef:
+                    containerName: observer-container
+                    resource: limits.cpu
+              - name: OB_MEM_LIMIT
+                valueFrom:
+                  resourceFieldRef:
+                    containerName: observer-container
+                    resource: limits.memory
+                    divisor: 1Mi
