@@ -85,13 +85,6 @@ spec:
     - name: kbreplicator
       statement: CREATE USER $(USERNAME) IDENTIFIED BY '$(PASSWORD)'; GRANT REPLICATION SLAVE ON *.* TO $(USERNAME) WITH GRANT OPTION;
       passwordGenerationPolicy: *defaultPasswordGenerationPolicy
-  connectionCredentials:
-    - name: root
-      serviceName: default
-      accountName: root
-    - name: admin
-      serviceName: default
-      accountName: kbadmin
   roles:
     - name: leader
       serviceable: true
@@ -138,17 +131,9 @@ spec:
             - $(KB_ACCOUNT_STATEMENT)
         env:
           - name: MYSQL_ROOT_USER
-            valueFrom:
-              secretKeyRef:
-                name: $(COMPONENT_CONN_CREDENTIAL_SECRET_NAME)-root
-                key: username
-                optional: false
+            value: $(MYSQL_USER)
           - name: MYSQL_ROOT_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: $(COMPONENT_CONN_CREDENTIAL_SECRET_NAME)-root
-                key: password
-                optional: false
+            value: $(MYSQL_PASSWORD)
   runtime:
     containers:
       - name: mysql
@@ -161,17 +146,9 @@ spec:
           - name: MYSQL_ROOT_HOST
             value: {{ .Values.auth.rootHost | default "%" | quote }}
           - name: MYSQL_ROOT_USER
-            valueFrom:
-              secretKeyRef:
-                name: $(COMPONENT_CONN_CREDENTIAL_SECRET_NAME)-root
-                key: username
-                optional: false
+            value: $(MYSQL_USER)
           - name: MYSQL_ROOT_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: $(COMPONENT_CONN_CREDENTIAL_SECRET_NAME)-root
-                key: password
-                optional: false
+            value: $(MYSQL_PASSWORD)
           - name: MYSQL_DATABASE
             value: {{- if .Values.auth.createDatabase }} {{ .Values.auth.database | quote }}  {{- else }} "" {{- end }}
           - name: MYSQL_USER
@@ -230,18 +207,6 @@ spec:
             value: MySQL
           - name: ENDPOINT
             value: {{ printf "localhost:3306" }}
-          - name: MYSQL_USER
-            valueFrom:
-              secretKeyRef:
-                name: $(COMPONENT_CONN_CREDENTIAL_SECRET_NAME)-root
-                key: username
-                optional: false
-          - name: MYSQL_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: $(COMPONENT_CONN_CREDENTIAL_SECRET_NAME)-root
-                key: password
-                optional: false
         volumeMounts:
           - name: agamotto-configuration
             mountPath: /opt/agamotto
@@ -276,3 +241,18 @@ spec:
             - path: "component-replicas"
               fieldRef:
                 fieldPath: metadata.annotations['apps.kubeblocks.io/component-replicas']
+  vars:
+    - name: MYSQL_USER
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "apecloud-mysql.componentDefName" . }}
+          name: root
+          optional: false
+          username: Required
+    - name: MYSQL_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "apecloud-mysql.componentDefName" . }}
+          name: root
+          optional: false
+          password: Required
