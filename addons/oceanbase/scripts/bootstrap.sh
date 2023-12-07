@@ -22,12 +22,8 @@ HOSTNAME=$(hostname)
 REP_USER=${REP_USER:-rep_user}
 REP_PASSWD=${REP_PASSWD:-123456}
 
-# IFS="-"
-# read -a split_host <<< "$HOSTNAME"
-# ORDINAL_INDEX=${split_host[-1]}
-# ZONE_NAME="zone$((${ORDINAL_INDEX}%${ZONE_COUNT}))"
-# unset IFS
-ORDINAL_INDEX=$(echo $HOSTNAME | awk -F '-' '{print $(NF-1)}')
+ORDINAL_INDEX=$(echo $HOSTNAME | awk -F '-' '{print $(NF)}')
+ZONE_NAME="zone$((${ORDINAL_INDEX}%${ZONE_COUNT}))"
 echo "ORDINAL_INDEX: $ORDINAL_INDEX"
 echo "ZONE_NAME: $ZONE_NAME"
 
@@ -313,7 +309,7 @@ function create_primary_tenant {
   conn_local "SELECT count(*) FROM oceanbase.DBA_OB_TENANTS where tenant_name = '${tenant_name}';"
   conn_local "SELECT TENANT_NAME, TENANT_TYPE, TENANT_ROLE, SWITCHOVER_STATUS FROM oceanbase.DBA_OB_TENANTS\G"
 
-  conn_local "SELECT SVR_IP, SVR_PORT FROM oceanbase.DBA_OB_TENANTS as t, oceanbase.DBA_OB_UNITS as u, oceanbase.DBA_OB_UNIT_CONFIGS as uc WHERE t.tenant_name = '${tenant_name}' and t.tenant_id = u.tenant_id and u.unit_id = uc.UNIT_CONFIG_ID and uc.name = 'unit_for_${tenant_name} limit 1'\G" > /tmp/tenant_info
+  conn_local "SELECT SVR_IP, SVR_PORT FROM oceanbase.DBA_OB_TENANTS as t, oceanbase.DBA_OB_UNITS as u, oceanbase.DBA_OB_UNIT_CONFIGS as uc WHERE t.tenant_name = '${tenant_name}' and t.tenant_id = u.tenant_id and u.unit_id = uc.UNIT_CONFIG_ID and uc.name = 'unit_for_${tenant_name}' limit 1\G" > /tmp/tenant_info
   svr_ip_list=$(cat /tmp/tenant_info | awk '/SVR_IP/{print $NF}')
 
   echo "svr_ip_list: ${svr_ip_list[*]}"
@@ -333,8 +329,7 @@ function create_rep_user {
   local user_passwd=${REP_PASSWD}
 
   echo "create user ${user_name} for tenant ${tenant_name}"
-
-  conn_remote_as_tenant $ip $tenant_name "CREATE USER ${user_name} IDENTIFIED BY '${user_passwd}';";
+  conn_remote_as_tenant $ip $tenant_name "CREATE USER ${user_name} IDENTIFIED BY '${user_passwd}';"
   conn_remote_as_tenant $ip $tenant_name "GRANT SELECT ON oceanbase.* TO ${user_name};"
   conn_remote_as_tenant $ip $tenant_name "SET GLOBAL ob_tcp_invited_nodes='%';"
 }
@@ -347,7 +342,7 @@ function create_secondary_tenant {
   local primary_tenant_rep_passwd=${REP_PASSWD}
 
   # get access points
-  conn_remote_as_tenant $3 ${primry_tenant_name} "select SVR_IP from oceanbase.DBA_OB_ACCESS_POIN\G" > /tmp/access_point
+  conn_remote_as_tenant $3 ${primry_tenant_name} "select SVR_IP from oceanbase.DBA_OB_ACCESS_POINT\G" > /tmp/access_point
   svr_ip_list=$(cat /tmp/access_point | awk '/SVR_IP/{print $NF}')
   # echo "svr_ip_list: ${svr_ip_list[*]}"
   OLD_IFS=$IFS
