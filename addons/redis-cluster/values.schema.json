@@ -110,11 +110,18 @@
                 "string"
               ],
               "minimum": 30000,
-              "maximum": 32767
+              "maximum": 32767,
+              "default": ""
             }
           }
         }
       }
+    },
+    "twemproxyEnabled": {
+      "type": "boolean",
+      "default": false,
+      "title": "The twemproxyEnabled Schema",
+      "description": "The flag to enable the twemproxy proxy component. Default is false"
     },
     "twemproxy": {
       "title": "The twemproxy Schema",
@@ -137,12 +144,6 @@
           "description": "The number of twemproxy proxy component replicas. Default is 2",
           "type": "number",
           "default": 2
-        },
-        "twemproxyEnabled": {
-          "type": "boolean",
-          "default": false,
-          "title": "The twemproxyEnabled Schema",
-          "description": "The flag to enable the twemproxy proxy component. Default is false"
         }
       }
     }
