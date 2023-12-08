@@ -96,7 +96,7 @@ spec:
             addCommandArg add-config "${quotas}"
             echo ${command}
             eval ${command}
-  preChecks:
-  - expression:
-      rule: '{{ eq .component.status.phase "Running" }}'
+  preConditions:
+  - rule:
+      expression: '{{ eq .component.status.phase "Running" }}'
       message: "Component is not in Running status."
