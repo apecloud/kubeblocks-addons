@@ -14,7 +14,7 @@ image:
 exporter:
   image:
     registry:
-    repository: 941102297/oracledb_exporter
+    repository: apecloud/oracledb_exporter
     tag: 0.5.2
 
 shmVolume:
