@@ -24,6 +24,9 @@ spec:
           - name: oem-express
             port: 5500
             targetPort: oem-express
+          - name: exporter
+            port: 9161
+            targetPort: exporter
       volumeTypes:
         - name: data
           type: data
