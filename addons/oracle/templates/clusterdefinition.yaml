@@ -83,8 +83,6 @@ spec:
                     key: password
               - name: ORACLE_PDB
                 value: "ORCLPDB1"
-            command: ["/bin/sh","-c","sleep 10000"]
-
         volumes:
           - name: dshm
             emptyDir:
