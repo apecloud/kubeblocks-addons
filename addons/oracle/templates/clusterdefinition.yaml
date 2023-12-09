@@ -28,10 +28,6 @@ spec:
         - name: data
           type: data
       podSpec:
-        securityContext:
-          runAsUser: 0
-          fsGroup: 103
-          runAsGroup: 103
         containers:
           - name: oracle
             volumeMounts:
@@ -67,6 +63,25 @@ spec:
               timeoutSeconds: 5
               exec:
                 command: [ "/bin/sh", "-c", "if [ -f $ORACLE_BASE/checkDBLockStatus.sh ]; then $ORACLE_BASE/checkDBLockStatus.sh ; else $ORACLE_BASE/checkDBStatus.sh; fi " ]
+          - name: exporter
+            imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+            securityContext:
+              runAsUser: 1000
+            ports:
+              - name: exporter
+                containerPort: 9161
+            env:
+              - name: DATA_SOURCE_NAME
+                value: "oracle://sysdba:${ORACLE_PWD}@${ORACLE_SID}"
+              - name: ORACLE_PWD
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: password
+              - name: ORACLE_PDB
+                value: "ORCLPDB1"
+            command: ["/bin/sh","-c","sleep 10000"]
+
         volumes:
           - name: dshm
             emptyDir:

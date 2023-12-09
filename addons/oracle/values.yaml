@@ -11,6 +11,11 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: 19.3.0-ee
 
+exporter:
+  image:
+    registry:
+    repository: 941102297/oracledb_exporter
+    tag: 0.5.2
 
 shmVolume:
   ## @param shmVolume.enabled Enable emptyDir volume for /dev/shm for PostgreSQL pod(s)
