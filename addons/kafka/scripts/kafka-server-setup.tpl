@@ -137,21 +137,6 @@ if [[ "broker,controller" = "$KAFKA_CFG_PROCESS_ROLES" ]] || [[ "broker" = "$KAF
     fi
 fi
 
-function getVoters() {
-    voters=""
-    index=$((${KB_COMP_REPLICAS}-1))
-    for i in $(seq 0 $index); do
-        podFQDN="${KB_CLUSTER_COMP_NAME}-${i}.${KB_CLUSTER_COMP_NAME}-headless.${KB_NAMESPACE}.svc.{{ $.clusterDomain }}"
-        voter="${i}@${podFQDN}:9093"
-        if [[ -z ${voters} ]]; then
-          voters="${voter}"
-        else
-          voters="${voters},${voter}"
-        fi
-    done
-    echo ${voters}
-}
-
 if [[ "broker" = "$KAFKA_CFG_PROCESS_ROLES" ]]; then
     # override node.id setting
     # increments based on a specified base to avoid conflicts with controller settings
@@ -162,7 +147,19 @@ if [[ "broker" = "$KAFKA_CFG_PROCESS_ROLES" ]]; then
     export KAFKA_CFG_BROKER_ID="$BROKER_NODE_ID"
     echo "[cfg]KAFKA_CFG_NODE_ID=$KAFKA_CFG_NODE_ID"
     # generate KAFKA_CFG_CONTROLLER_QUORUM_VOTERS for broker if not a combine-cluster
-    export KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=`getVoters`
+    {{- $voters := "" }}
+    {{- range $i, $c := $.cluster.spec.componentSpecs }}
+      {{- if contains "controller" $c.componentDef }}
+        {{- $replicas := $c.replicas | int }}
+        {{- range $n, $e := until $replicas }}
+          {{- $podFQDN := printf "%s-%s-%d.%s-%s-headless.%s.svc.%s" $clusterName $c.name $n $clusterName $c.name $namespace $.clusterDomain }}
+          {{- $voter := printf "%d@%s:9093" ( $n | int ) $podFQDN }}
+          {{- $voters = printf "%s,%s" $voters $voter }}
+        {{- end }}
+        {{- $voters = trimPrefix "," $voters }}
+      {{- end }}
+    {{- end }}
+    export KAFKA_CFG_CONTROLLER_QUORUM_VOTERS={{ $voters }}
     echo "[cfg]export KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=$KAFKA_CFG_CONTROLLER_QUORUM_VOTERS,for kafka-broker."
 else
     if [[ "controller" = "$KAFKA_CFG_PROCESS_ROLES" ]] && [[ -n "$KB_KAFKA_CONTROLLER_HEAP" ]]; then
@@ -175,7 +172,15 @@ else
     export KAFKA_CFG_BROKER_ID="$((ID + 0))"
     echo "[cfg]KAFKA_CFG_NODE_ID=$KAFKA_CFG_NODE_ID"
     # generate KAFKA_CFG_CONTROLLER_QUORUM_VOTERS if is a combine-cluster or controller
-    export KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=`getVoters`
+    {{- $replicas := $.component.replicas | int }}
+    {{- $voters := "" }}
+    {{- range $i, $e := until $replicas }}
+      {{- $podFQDN := printf "%s-%s-%d.%s-%s-headless.%s.svc.%s" $clusterName $.component.name $i $clusterName $.component.name $namespace $.clusterDomain }}
+      {{- $voter := printf "%d@%s:9093" ( $i | int ) $podFQDN }}
+      {{- $voters = printf "%s,%s" $voters $voter }}
+    {{- end }}
+    {{- $voters = trimPrefix "," $voters }}
+    export KAFKA_CFG_CONTROLLER_QUORUM_VOTERS={{ $voters }}
     echo "[cfg]export KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=$KAFKA_CFG_CONTROLLER_QUORUM_VOTERS,for kafka-server."
 fi
 
