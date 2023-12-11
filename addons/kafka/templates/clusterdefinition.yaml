@@ -127,8 +127,8 @@ spec:
                     name: $(CONN_CREDENTIAL_SECRET_NAME)
                     key: kraftClusterID
                     optional: false
-{{/*              - name: KB_KAFKA_ENABLE_SASL  # enable the SASL with plain mode*/}}
-{{/*                value: "false"*/}}
+              # - name: KB_KAFKA_ENABLE_SASL  # enable the SASL with plain mode
+              #  value: "false"
               - name: KB_KAFKA_SASL_CONFIG_PATH  # specify the SASL jaas users
                 value: /tools/server-jaas.properties
             ports:
@@ -291,8 +291,8 @@ spec:
                     name: $(CONN_CREDENTIAL_SECRET_NAME)
                     key: kraftClusterID
                     optional: false
-{{/*              - name: KB_KAFKA_ENABLE_SASL  # enable the SASL with plain mode*/}}
-{{/*                value: "true"*/}}
+              # - name: KB_KAFKA_ENABLE_SASL  # enable the SASL with plain mode
+              #   value: "true"
               - name: KB_KAFKA_SASL_CONFIG_PATH  # specify the SASL jaas users
                 value: /tools/server-jaas.properties
               - name: BROKER_MIN_NODE_ID

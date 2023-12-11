@@ -1,0 +1,150 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
+  name: kafka-user-acl
+spec:
+  componentDefinitionRefs:
+  - name: kafka-broker
+    accountName: client
+    serviceName: broker
+  - name: kafka-combine-server
+    accountName: client
+    serviceName: broker
+
+  parametersSchema:
+    openAPIV3Schema:
+      properties:
+        type:
+          description: "user name"
+          enums:
+          - add
+          - remove
+          type: string
+        operations:
+          description: Operation that will be allowed or denied.
+          items:
+            type: string
+            enums:
+            - Read
+            - Write
+            - Create
+            - Delete
+            - Alter
+            - Describe
+            - ClusterAction
+            - DescribeConfigs
+            - AlterConfigs
+            - IdempotentWrite
+            - CreateTokens
+            - DescribeTokens
+            - All
+          type: array
+        patternType:
+          description: Resource pattern type.
+          type: string
+          enums:
+          - literal
+          - prefix
+        cluster:
+          description: Indicates to the script that the user is trying to interact with acls on the singular cluster resource.
+          type: string
+        topic:
+          description: topic name.
+          type: string
+        group:
+          description: consumer-group.
+          type: string
+        transactionalId:
+           description: The transactionalId to which ACLs should be added or removed. A value of * indicates the ACLs should apply to all transactionalIds.
+           type: string
+        producer:
+           description: indicate to add or remove the acl of producer.
+           type: boolean
+        consumer:
+           description: indicate to add or remove the acl of consumer.
+           type: boolean
+        allowUsers:
+          description: a array of allowed users.
+          type: array
+          items:
+            type: string
+        denyUsers:
+          description: a array of deny users.
+          type: array
+          items:
+            type: string
+        allowHosts:
+          description: a array of allowed hosts.
+          type: array
+          items:
+            type: string
+            pattern: ^(\*|(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)\.){3}(\*|25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)$
+        denyHosts:
+          description: a array of deny hosts.
+          type: array
+          items:
+            type: string
+            pattern: ^(\*|(25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)\.){3}(\*|25[0-5]|2[0-4][0-9]|[0-1]?[0-9][0-9]?)$
+      required:
+      - operations
+      - type
+      type: object
+  jobSpec:
+    backoffLimit: 3
+    template:
+      spec:
+        containers:
+        - name: kafka-topic
+          image: docker.io/bitnami/kafka:3.3.2-debian-11-r54
+          imagePullPolicy: IfNotPresent
+          command:
+          - bash
+          - -c
+          - |
+            set -e
+            KB_CONNECT_ENDPOINT="${KB_COMP_SVC_NAME}:${KB_COMP_SVC_PORT_KAFKA_CLIENT}"
+            command="/opt/bitnami/kafka/bin/kafka-acls.sh --bootstrap-server ${KB_CONNECT_ENDPOINT} --${type}"
+            function AddCommandFlag(){
+               local key=$1
+               local value=$2
+              if [[ ${value} == "true" ]]; then
+                 command="${command} --${key}"
+              fi
+            }
+            AddCommandFlag producer "${producer}"
+            AddCommandFlag consumer "${consumer}"
+
+            function addCommandArg(){
+               local key=$1
+               local value=$2
+               if [[ ! -z ${value} ]];then
+                  command="${command} --${key} '${value}'"
+               fi
+            }
+            addCommandArg topic "${topic}"
+            addCommandArg cluster "${cluster}"
+            addCommandArg group "${group}"
+            addCommandArg transactional-id "${transactionalId}"
+            addCommandArg resource-pattern-type "${patternType}"
+
+            function addMultiCommand(){
+               local value=$1
+               local key=$2
+               local prefixE=$3
+               if [[ ! -z ${value} ]];then
+                  for e in $(echo "${value}" | tr ',' '\n'); do
+                     command="${command} --${key} ${prefixE}${e}"
+                  done
+               fi
+            }
+            addMultiCommand "${allowUsers}" allow-principal "User:"
+            addMultiCommand "${denyUsers}" deny-principal "User:"
+            addMultiCommand "${denyHosts}" deny-host
+            addMultiCommand "${allowHosts}" allow-host
+            addMultiCommand "${operations}" operation
+            echo $command
+            ${command}
+  preConditions:
+  - rule:
+      expression: '{{ eq .component.status.phase "Running" }}'
+      message: "Component is not in Running status."
