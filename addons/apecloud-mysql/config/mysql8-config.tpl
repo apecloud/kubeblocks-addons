@@ -247,6 +247,8 @@ loose_smartengine_base_background_compactions={{ max 1 ( min ( div $phy_cpu 2 ) 
 loose_smartengine_max_background_compactions={{ max 1 (min ( div $phy_cpu 2 ) 12 ) | int }}
 {{- end }}
 
+skip_name_resolve=ON
+
 
 [client]
 port={{ $mysql_port }}
