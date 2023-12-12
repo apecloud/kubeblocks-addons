@@ -199,7 +199,7 @@ relay_log_index=relay-bin.index
 pid-file=/var/run/mysqld/mysqld.pid
 socket=/var/run/mysqld/mysqld.sock
 
-{{- if $.component.tls }}
+{{- if $.component.tlsConfig }}
 {{- $ca_file := getCAFile }}
 {{- $cert_file := getCertFile }}
 {{- $key_file := getKeyFile }}
@@ -262,6 +262,8 @@ loose_smartengine_max_background_flushes={{ max 1 ( min ( div $phy_cpu 2 ) 8 ) |
 loose_smartengine_base_background_compactions={{ max 1 ( min ( div $phy_cpu 2 ) 8 ) | int }}
 loose_smartengine_max_background_compactions={{ max 1 (min ( div $phy_cpu 2 ) 12 ) | int }}
 {{- end }}
+
+skip_name_resolve=ON
 
 
 [client]
