@@ -47,6 +47,7 @@ spec:
           fsGroup: 1001
         containers:
           - name: milvus
+            image: {{ .Values.images.milvus.repository }}:{{ default .Chart.AppVersion .Values.images.milvus.tag }}
             imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
             securityContext:
               runAsUser: 0
@@ -121,7 +122,7 @@ spec:
               - /cp
               - /run.sh,/merge
               - /milvus/tools/run.sh,/milvus/tools/merge
-            image: milvusdb/milvus-operator:v0.7.8
+            image: {{ .Values.images.milvusTools.repository }}:{{ default .Chart.AppVersion .Values.images.milvusTools.tag }}
             imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
             volumeMounts:
               - mountPath: /milvus/tools
@@ -136,6 +137,7 @@ spec:
       podSpec:
         initContainers:
         - name: volume-permissions
+          image: {{ .Values.images.shell_tools.repository }}:{{ default .Chart.AppVersion .Values.images.shell_tools.tag }}
           imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
           command:
           - /bin/bash
@@ -149,6 +151,7 @@ spec:
             mountPath: /bitnami/etcd
         containers:
           - name: etcd
+            image: {{ .Values.images.etcd.repository }}:{{ default .Chart.AppVersion .Values.images.etcd.tag }}
             imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
             securityContext:
               runAsNonRoot: true
@@ -240,6 +243,7 @@ spec:
       podSpec:
         initContainers:
         - name: volume-permissions
+          image: {{ .Values.images.shell_tools.repository }}:{{ default .Chart.AppVersion .Values.images.shell_tools.tag }}
           imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
           command:
           - /bin/bash
@@ -253,6 +257,7 @@ spec:
             mountPath: /export
         containers:
           - name: minio
+            image: {{ .Values.images.minio.repository }}:{{ default .Chart.AppVersion .Values.images.minio.tag }}
             imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
             securityContext:
               fsGroup: 1000
