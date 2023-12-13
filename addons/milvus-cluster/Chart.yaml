@@ -4,9 +4,9 @@ description: A Milvus cluster Helm chart for KubeBlocks.
 
 type: application
 
-version: 0.7.0
+version: 2.3.2
 
-appVersion: "2.2.4"
+appVersion: 2.3.2
 
 home: https://milvus.io/
 icon: https://github.com/milvus-io/artwork/blob/master/horizontal/color/milvus-horizontal-color.png
