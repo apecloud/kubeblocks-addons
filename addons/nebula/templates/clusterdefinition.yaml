@@ -5,6 +5,9 @@ metadata:
   labels:
     {{- include "nebula.labels" . | nindent 4 }}
 spec:
+  connectionCredential:
+    username: "root"
+    password: ""
   componentDefs:
     - name: nebula-console
       workloadType: Stateless
