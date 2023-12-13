@@ -1,31 +1,40 @@
 #!/bin/sh
 set -ex
+
 # build redis.conf
-echo "include /etc/conf/redis.conf" >> /etc/redis/redis.conf
-echo "replica-announce-ip $KB_POD_FQDN" >> /etc/redis/redis.conf
-{{- $data_root := getVolumePathByName ( index $.podSpec.containers 0 ) "data" }}
-if [ -f /data/users.acl ]; then
-  sed -i "/user default on/d" /data/users.acl
-  sed -i "/user $REDIS_REPL_USER on/d" /data/users.acl
-  sed -i "/user $REDIS_SENTINEL_USER on/d" /data/users.acl
-else
-  touch /data/users.acl
-fi
-if [ ! -z "$REDIS_REPL_PASSWORD" ]; then
-  echo "masteruser $REDIS_REPL_USER" >> /etc/redis/redis.conf
-  echo "masterauth $REDIS_REPL_PASSWORD" >> /etc/redis/redis.conf
-  echo "user $REDIS_REPL_USER on +psync +replconf +ping >$REDIS_REPL_PASSWORD" >> /data/users.acl
-fi
-if [ ! -z "$REDIS_SENTINEL_PASSWORD" ]; then
-  echo "user $REDIS_SENTINEL_USER on allchannels +multi +slaveof +ping +exec +subscribe +config|rewrite +role +publish +info +client|setname +client|kill +script|kill >$REDIS_SENTINEL_PASSWORD" >> /data/users.acl
-fi
-if [ ! -z "$REDIS_DEFAULT_PASSWORD" ]; then
-  echo "protected-mode yes" >> /etc/redis/redis.conf
-  echo "user default on >$REDIS_DEFAULT_PASSWORD ~* &* +@all " >> /data/users.acl
-else
-  echo "protected-mode no" >> /etc/redis/redis.conf
-fi
-echo "aclfile /data/users.acl" >> /etc/redis/redis.conf
+build_redis_conf() {
+  echo "include /etc/conf/redis.conf" >> /etc/redis/redis.conf
+  echo "replica-announce-ip $KB_POD_FQDN" >> /etc/redis/redis.conf
+  # add service port
+  service_port=6379
+  if [ ! -z "$SERVICE_PORT" ]; then
+    service_port=$SERVICE_PORT
+  fi
+  echo "port $service_port" >> /etc/redis/redis.conf
+  {{- $data_root := getVolumePathByName ( index $.podSpec.containers 0 ) "data" }}
+  if [ -f /data/users.acl ]; then
+    sed -i "/user default on/d" /data/users.acl
+    sed -i "/user $REDIS_REPL_USER on/d" /data/users.acl
+    sed -i "/user $REDIS_SENTINEL_USER on/d" /data/users.acl
+  else
+    touch /data/users.acl
+  fi
+  if [ ! -z "$REDIS_REPL_PASSWORD" ]; then
+    echo "masteruser $REDIS_REPL_USER" >> /etc/redis/redis.conf
+    echo "masterauth $REDIS_REPL_PASSWORD" >> /etc/redis/redis.conf
+    echo "user $REDIS_REPL_USER on +psync +replconf +ping >$REDIS_REPL_PASSWORD" >> /data/users.acl
+  fi
+  if [ ! -z "$REDIS_SENTINEL_PASSWORD" ]; then
+    echo "user $REDIS_SENTINEL_USER on allchannels +multi +slaveof +ping +exec +subscribe +config|rewrite +role +publish +info +client|setname +client|kill +script|kill >$REDIS_SENTINEL_PASSWORD" >> /data/users.acl
+  fi
+  if [ ! -z "$REDIS_DEFAULT_PASSWORD" ]; then
+    echo "protected-mode yes" >> /etc/redis/redis.conf
+    echo "user default on >$REDIS_DEFAULT_PASSWORD ~* &* +@all " >> /data/users.acl
+  else
+    echo "protected-mode no" >> /etc/redis/redis.conf
+  fi
+  echo "aclfile /data/users.acl" >> /etc/redis/redis.conf
+}
 
 # usage: retry <command>
 retry() {
@@ -39,9 +48,9 @@ retry() {
   if [ $attempt -eq $max_attempts ]; then
     echo "Command '$*' failed after $max_attempts attempts. shutdown redis-server..."
     if [ ! -z "$REDIS_DEFAULT_PASSWORD" ]; then
-      redis-cli -h 127.0.0.1 -p 6379 -a "$REDIS_DEFAULT_PASSWORD" shutdown
+      redis-cli -h 127.0.0.1 -p $service_port -a "$REDIS_DEFAULT_PASSWORD" shutdown
     else
-      redis-cli -h 127.0.0.1 -p 6379 shutdown
+      redis-cli -h 127.0.0.1 -p $service_port shutdown
     fi
   fi
 }
@@ -58,9 +67,9 @@ start_redis_server() {
 create_replication() {
     # Waiting for redis-server to start
     if [ ! -z "$REDIS_DEFAULT_PASSWORD" ]; then
-      retry redis-cli -h 127.0.0.1 -p 6379 -a "$REDIS_DEFAULT_PASSWORD" ping
+      retry redis-cli -h 127.0.0.1 -p $service_port -a "$REDIS_DEFAULT_PASSWORD" ping
     else
-      retry redis-cli -h 127.0.0.1 -p 6379 ping
+      retry redis-cli -h 127.0.0.1 -p $service_port ping
     fi
 
     # Waiting for primary pod information from the DownwardAPI annotation to be available
@@ -77,9 +86,9 @@ create_replication() {
     if [ -z "$primary" ]; then
       echo "Primary pod information not available. shutdown redis-server..."
       if [ ! -z "$REDIS_DEFAULT_PASSWORD" ]; then
-        redis-cli -h 127.0.0.1 -p 6379 -a "$REDIS_DEFAULT_PASSWORD" shutdown
+        redis-cli -h 127.0.0.1 -p $service_port -a "$REDIS_DEFAULT_PASSWORD" shutdown
       else
-        redis-cli -h 127.0.0.1 -p 6379 shutdown
+        redis-cli -h 127.0.0.1 -p $service_port shutdown
       fi
       exit 1
     fi
@@ -93,25 +102,26 @@ create_replication() {
       echo "wait for primary:$primary_fqdn redis-server to start"
       if [ ! -z "$REDIS_DEFAULT_PASSWORD" ]; then
         # wait for primary redis-server to start
-        until redis-cli -h $primary_fqdn -p 6379 -a "$REDIS_DEFAULT_PASSWORD" ping; do sleep 2; done
+        until redis-cli -h $primary_fqdn -p $service_port -a "$REDIS_DEFAULT_PASSWORD" ping; do sleep 2; done
         echo "start to create a replication relationship"
-        redis-cli -h 127.0.0.1 -p 6379 -a "$REDIS_DEFAULT_PASSWORD" replicaof $primary_fqdn 6379
+        redis-cli -h 127.0.0.1 -p $service_port -a "$REDIS_DEFAULT_PASSWORD" replicaof $primary_fqdn $service_port
       else
-        until redis-cli -h $primary_fqdn -p 6379 ping; do sleep 2; done
+        until redis-cli -h $primary_fqdn -p $service_port ping; do sleep 2; done
         echo "start to create a replication relationship"
-        redis-cli -h 127.0.0.1 -p 6379 replicaof $primary_fqdn 6379
+        redis-cli -h 127.0.0.1 -p $service_port replicaof $primary_fqdn $service_port
       fi
       if [ $? -ne 0 ]; then
         echo "Failed to create a replication relationship. shutdown redis-server..."
         if [ ! -z "$REDIS_DEFAULT_PASSWORD" ]; then
-          redis-cli -h 127.0.0.1 -p 6379 -a "$REDIS_DEFAULT_PASSWORD" shutdown
+          redis-cli -h 127.0.0.1 -p $service_port -a "$REDIS_DEFAULT_PASSWORD" shutdown
         else
-          redis-cli -h 127.0.0.1 -p 6379 shutdown
+          redis-cli -h 127.0.0.1 -p $service_port shutdown
         fi
       fi
       echo "create a replication relationship succeeded."
     fi
 }
 
+build_redis_conf
 create_replication &
 start_redis_server

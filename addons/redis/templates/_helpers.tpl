@@ -6,6 +6,28 @@ Expand the name of the chart.
 {{- end }}
 
 {{/*
+Define component defintion name
+*/}}
+{{- define "redis.componentDefName" -}}
+{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+redis
+{{- else -}}
+{{- .Values.resourceNamePrefix -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define sentinel component defintion name
+*/}}
+{{- define "redis.sentinelComponentDefName" -}}
+{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+redis-sentinel
+{{- else -}}
+{{- .Values.resourceNamePrefix -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 If release name contains chart name it will be used as a full name.
@@ -54,6 +76,10 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Define image
 */}}
 {{- define "redis.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+{{- end }}
+
+{{- define "redis-sentinel.image" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
 {{- end }}
 

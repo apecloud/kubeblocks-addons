@@ -44,3 +44,8 @@ metrics:
     pullPolicy: IfNotPresent
   service:
     port: 9121
+
+## @param resourceNamePrefix Prefix for all resources name created by this chart, that can avoid name conflict
+## if you install multiple releases of this chart.
+## If specified, the cluster definition will use it as name.
+resourceNamePrefix: ""
