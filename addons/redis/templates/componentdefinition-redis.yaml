@@ -100,6 +100,15 @@ spec:
           name: default
           optional: false
           password: Required
+    - name: SENTINEL_COMPONENT_DEFINITION_NAME
+      value: {{ include "redis.sentinelComponentDefName" . }}
+    - name: SENTINEL_SERVICE_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redis.sentinelComponentDefName" . }}
+          name: redis-sentinel
+          port: redis-sentinel
+          optional: false
     ## TODO: add redis sentinel reference env vars
   lifecycleActions:
     roleProbe:
@@ -115,6 +124,7 @@ spec:
             - /bin/bash
             - -c
             - /scripts/redis-register-to-sentinel.sh
+        ## TODO: the preCondition should be changed to RuntimeReady when KubeBlocks support it
         preCondition: ComponentReady
     accountProvision:
       customHandler:
@@ -175,6 +185,8 @@ spec:
           ## the password of redis sentinel for redis connection
           - name: SENTINEL_PASSWORD
             value: $(SENTINEL_PASSWORD)
+          - name: SENTINEL_COMPONENT_DEFINITION_NAME
+            value: $(SENTINEL_COMPONENT_DEFINITION_NAME)
         command: [ "/scripts/redis-start.sh" ]
         readinessProbe:
           initialDelaySeconds: 10

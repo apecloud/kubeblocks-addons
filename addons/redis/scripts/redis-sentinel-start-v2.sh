@@ -12,6 +12,17 @@ if [ -f /etc/sentinel/redis-sentinel.conf ]; then
     sed -i "/sentinel sentinel-user/d" /etc/sentinel/redis-sentinel.conf
     sed -i "/sentinel sentinel-pass/d" /etc/sentinel/redis-sentinel.conf
   fi
+  if [ ! -z "$SENTINEL_SERVICE_PORT" ]; then
+    sed -i "/port $SENTINEL_SERVICE_PORT/d" /etc/sentinel/redis-sentinel.conf
+  else
+    sed -i "/port 26379/d" /etc/sentinel/redis-sentinel.conf
+  fi
+fi
+
+if [ ! -z "$SENTINEL_SERVICE_PORT" ]; then
+  echo "port $SENTINEL_SERVICE_PORT" >> /etc/sentinel/redis-sentinel.conf
+else
+  echo "port 26379" >> /etc/sentinel/redis-sentinel.conf
 fi
 # shellcheck disable=SC2129
 echo "sentinel announce-ip $KB_POD_FQDN" >> /etc/sentinel/redis-sentinel.conf
