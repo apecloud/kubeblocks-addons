@@ -74,8 +74,6 @@ spec:
               - name: exporter
                 containerPort: 9161
             env:
-              - name: DATA_SOURCE_NAME
-                value: "oracle://sysdba:${ORACLE_PWD}@${ORACLE_SID}"
               - name: ORACLE_PWD
                 valueFrom:
                   secretKeyRef:
@@ -83,6 +81,8 @@ spec:
                     key: password
               - name: ORACLE_PDB
                 value: "ORCLPDB1"
+              - name: DATA_SOURCE_NAME
+                value: "oracle://sys:$(ORACLE_PWD)@127.0.0.1:1521/$(ORACLE_PDB)"
         volumes:
           - name: dshm
             emptyDir:
