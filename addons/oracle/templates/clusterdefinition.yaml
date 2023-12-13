@@ -31,21 +31,14 @@ spec:
         - name: data
           type: data
       podSpec:
-        securityContext:
-          runAsUser: 0
-          fsGroup: 103
-          runAsGroup: 103
         containers:
           - name: oracle
             volumeMounts:
               - mountPath: /opt/oracle/oradata
                 name: data
             imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
-{{/*            command: [ "/bin/sh","-c","sleep 10000" ]*/}}
             securityContext:
               runAsUser: 54321
-              runAsGroup: 54321
-              fsGroup: 54321
             ports:
               - name: tcp-oracle
                 containerPort: 1521
@@ -56,10 +49,6 @@ spec:
                 value: "ORCLCDB"
               - name: ORACLE_PDB
                 value: "ORCLPDB1"
-{{/*              - name: INIT_SGA_SIZE*/}}
-{{/*                value: "2048"*/}}
-{{/*              - name: INIT_PGA_SIZE*/}}
-{{/*                value: "2048"*/}}
               - name: ORACLE_PWD
                 valueFrom:
                   secretKeyRef:
@@ -81,14 +70,10 @@ spec:
             imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
             securityContext:
               runAsUser: 1000
-              runAsGroup: 1000
-              fsGroup: 1000
             ports:
               - name: exporter
                 containerPort: 9161
             env:
-              - name: DATA_SOURCE_NAME
-                value: "oracle://sys:${ORACLE_PWD}@$localhost:1521/${ORACLE_PDB}"
               - name: ORACLE_PWD
                 valueFrom:
                   secretKeyRef:
@@ -96,7 +81,10 @@ spec:
                     key: password
               - name: ORACLE_PDB
                 value: "ORCLPDB1"
-{{/*            command: [ "/bin/sh","-c","sleep 10000","oracle://sys:tsj2zc8m@localhost:1521/" ]*/}}
+              - name: DATA_SOURCE_NAME
+                value: "oracle://sys:$(ORACLE_PWD)@127.0.0.1:1521/$(ORACLE_PDB)"
+              - name: SERVICE_PORT
+                value: "9161"
         volumes:
           - name: dshm
             emptyDir:
