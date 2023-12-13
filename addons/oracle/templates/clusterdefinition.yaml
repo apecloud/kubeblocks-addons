@@ -83,6 +83,8 @@ spec:
                 value: "ORCLPDB1"
               - name: DATA_SOURCE_NAME
                 value: "oracle://sys:$(ORACLE_PWD)@127.0.0.1:1521/$(ORACLE_PDB)"
+              - name: SERVICE_PORT
+                value: "9161"
         volumes:
           - name: dshm
             emptyDir:
