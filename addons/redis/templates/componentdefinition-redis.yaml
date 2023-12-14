@@ -29,6 +29,7 @@ spec:
     - name: secondary
       serviceable: false
       writable: false
+  roleArbitrator: Lorry
   logConfigs:
     {{- range $name,$pattern := .Values.logConfigs }}
     - name: {{ $name }}
@@ -109,7 +110,6 @@ spec:
           name: redis-sentinel
           port:
             name: redis-sentinel
-
           optional: false
     ## TODO: add redis sentinel reference env vars
   lifecycleActions:
@@ -168,7 +168,7 @@ spec:
             value: "kbreplicator"
           ## the password of redis primary-secondary replication
           - name: REDIS_REPL_PASSWORD
-            value: $(REDIS_DEFAULT_USER)
+            value: $(REDIS_DEFAULT_PASSWORD)
           ## the default username of redis connection
           - name: REDIS_DEFAULT_USER
             value: $(REDIS_DEFAULT_USER)
@@ -218,17 +218,9 @@ spec:
           - name: ENDPOINT
             value: {{ printf "localhost:6379" }}
           - name: REDIS_USER
-            valueFrom:
-              secretKeyRef:
-                name: $(CONN_CREDENTIAL_SECRET_NAME)
-                key: username
-                optional: false
+            value: $(REDIS_DEFAULT_USER)
           - name: REDIS_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: $(CONN_CREDENTIAL_SECRET_NAME)
-                key: password
-                optional: false
+            value: $(REDIS_DEFAULT_PASSWORD)
         command:
           - "/bin/agamotto"
           - "--config=/opt/conf/metrics-config.yaml"

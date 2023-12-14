@@ -34,7 +34,9 @@ register_to_sentinel() {
 
 # TODO: replace the following code with built-in env and ComponentDefinition.Spec.Vars API
 {{- $kb_cluster_comp_name := getEnvByName ( index $.podSpec.containers 0 ) "KB_CLUSTER_COMP_NAME" }}
-{{- $redis_service_port := getEnvByName ( index $.podSpec.containers 0 ) "SERVICE_PORT" }}
+{{- $redis_service_port := 6379 }}
+{{- $redis_service_node_port := getEnvByName ( index $.podSpec.containers 0 ) "SERVICE_NODE_PORT" }}
+{{- $redis_port := coalesce $redis_service_node_port $redis_service_port }}
 {{- $defaultSentinelComponentName := "redis-sentinel" }}
 {{- $envSentinelComponentName := getEnvByName ( index $.podSpec.containers 0 ) "SENTINEL_COMPONENT_DEFINITION_NAME" }}
 {{- $sentinelComponentName := coalesce $envSentinelComponentName $defaultSentinelComponentName }}
@@ -59,8 +61,8 @@ register_to_sentinel() {
 {{- range $i, $e := until $redis_sentinel_replicas }}
   {{- $sentinel_pod_fqdn := printf "%s-%s-%d.%s-%s-headless.%s.svc.%s" $clusterName $redis_sentinel_component_spec.name $i $clusterName $redis_sentinel_component_spec.name $namespace $.clusterDomain }}
   {{- $redis_primary_host := printf "%s-0" $kb_cluster_comp_name }}
-  {{- $redis_primary_port := printf "%s" $redis_service_port }}
-  register_to_sentinel $sentinel_pod_fqdn $kb_cluster_comp_name  $redis_primary_host $redis_primary_port
+  {{- $redis_primary_port := printf "%s" $redis_port }}
+  register_to_sentinel {{ $sentinel_pod_fqdn }}  {{ $kb_cluster_comp_name }} {{ $redis_primary_host }} {{ $redis_primary_port }}
 {{- end }}
 
 

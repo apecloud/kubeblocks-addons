@@ -8,8 +8,15 @@ set -ex
 {{- /* find redis component */}}
 {{- $redis_component := fromJson "{}" }}
 {{- range $i, $e := $.cluster.spec.componentSpecs }}
-  {{- if eq $e.componentDefRef "redis" }}
-  {{- $redis_component = $e }}
+  {{- if index $e "componentDefRef" }}
+    {{- if eq $e.componentDefRef "redis" }}
+      {{- $redis_component = $e }}
+    {{- end }}
+  {{- end }}
+  {{- if index $e "componentDef" }}
+    {{- if eq $e.componentDef "redis" }}
+      {{- $redis_component = $e }}
+    {{- end }}
   {{- end }}
 {{- end }}
 {{- /* build redis engine service */}}
