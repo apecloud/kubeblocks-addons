@@ -3,6 +3,8 @@ set -ex
 
 # Based on the Component Definition API, Redis deployed independently, this script is used to register Redis to Sentinel.
 
+# usage: register_to_sentinel <sentinel_host> <master_name> <redis_primary_host> <redis_primary_port>
+# redis sentinel configuration refer: https://redis.io/docs/management/sentinel/#configuring-sentinel
 register_to_sentinel() {
   local sentinel_host=$1
   local master_name=$2
@@ -10,7 +12,6 @@ register_to_sentinel() {
 
   local redis_primary_host=$3
   local redis_primary_port=$4
-  local redis_primary_password=$5
 
   if [ ! -z "$SENTINEL_SERVICE_PORT" ]; then
     sentinel_port=$SENTINEL_SERVICE_PORT
@@ -31,26 +32,36 @@ register_to_sentinel() {
   fi
 }
 
-# TODO: replace the following code with build-in env and ComponentDefinition.Spec.Vars API
+# TODO: replace the following code with built-in env and ComponentDefinition.Spec.Vars API
+{{- $kb_cluster_comp_name := getEnvByName ( index $.podSpec.containers 0 ) "KB_CLUSTER_COMP_NAME" }}
+{{- $redis_service_port := getEnvByName ( index $.podSpec.containers 0 ) "SERVICE_PORT" }}
+{{- $defaultSentinelComponentName := "redis-sentinel" }}
+{{- $envSentinelComponentName := getEnvByName ( index $.podSpec.containers 0 ) "SENTINEL_COMPONENT_DEFINITION_NAME" }}
+{{- $sentinelComponentName := coalesce $envSentinelComponentName $defaultSentinelComponentName }}
 {{- $clusterName := $.cluster.metadata.name }}
 {{- $namespace := $.cluster.metadata.namespace }}
 {{- /* find redis component */}}
-{{- $redis_sentinel_component := fromJson "{}" }}
+{{- $redis_sentinel_component_spec := fromJson "{}" }}
 {{- range $i, $e := $.cluster.spec.componentSpecs }}
-  {{- if eq $e.componentDef $SENTINEL_COMPONENT_DEFINITION_NAME }}
-  {{- $redis_sentinel_component = $e }}
+  {{- if index $e "componentDefRef" }}
+    {{- if eq $e.componentDefRef $sentinelComponentName }}
+      {{- $redis_sentinel_component_spec = $e }}
+    {{- end }}
+  {{- end }}
+  {{- if index $e "componentDef" }}
+    {{- if eq $e.componentDef $sentinelComponentName }}
+      {{- $redis_sentinel_component_spec = $e }}
+    {{- end }}
   {{- end }}
 {{- end }}
-
-{{- $redis_sentinel_replicas := $redis_sentinel_component.replicas | int }}
+{{- $redis_sentinel_replicas := $redis_sentinel_component_spec.replicas | int }}
 {{- $servers := "" }}
 {{- range $i, $e := until $redis_sentinel_replicas }}
-  {{- $sentinel_pod_fqdn := printf "%s-%s-%d.%s-%s-headless.%s.svc.%s" $clusterName $redis_sentinel_component.name $i $clusterName $redis_sentinel_component.name $namespace $.clusterDomain }}
-  {{- $redis_primary_host = printf "%s-0" $KB_CLUSTER_COMP_NAME }}
-  {{- $redis_primary_port = printf "%s" $SERVICE_PORT }}
-  register_to_sentinel $sentinel_pod_fqdn $KB_CLUSTER_COMP_NAME  $redis_primary_host $redis_primary_port
+  {{- $sentinel_pod_fqdn := printf "%s-%s-%d.%s-%s-headless.%s.svc.%s" $clusterName $redis_sentinel_component_spec.name $i $clusterName $redis_sentinel_component_spec.name $namespace $.clusterDomain }}
+  {{- $redis_primary_host := printf "%s-0" $kb_cluster_comp_name }}
+  {{- $redis_primary_port := printf "%s" $redis_service_port }}
+  register_to_sentinel $sentinel_pod_fqdn $kb_cluster_comp_name  $redis_primary_host $redis_primary_port
 {{- end }}
-
 
 
 

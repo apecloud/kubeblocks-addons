@@ -107,7 +107,9 @@ spec:
         serviceVarRef:
           compDef: {{ include "redis.sentinelComponentDefName" . }}
           name: redis-sentinel
-          port: redis-sentinel
+          port:
+            name: redis-sentinel
+
           optional: false
     ## TODO: add redis sentinel reference env vars
   lifecycleActions:
