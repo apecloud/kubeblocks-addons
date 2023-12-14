@@ -4813,8 +4813,8 @@
       {
         "current": {
           "selected": false,
-          "text": "kubeblocks-service",
-          "value": "kubeblocks-service"
+          "text": "oteld-app-metrics",
+          "value": "oteld-app-metrics"
         },
         "hide": 0,
         "includeAll": false,
@@ -4824,16 +4824,11 @@
         "options": [
           {
             "selected": true,
-            "text": "kubeblocks-service",
-            "value": "kubeblocks-service"
-          },
-          {
-            "selected": false,
-            "text": "agamotto",
-            "value": "agamotto"
+            "text": "oteld-app-metrics",
+            "value": "oteld-app-metrics"
           }
         ],
-        "query": "kubeblocks-service,agamotto",
+        "query": "oteld-app-metrics",
         "queryValue": "",
         "skipUrlSync": false,
         "type": "custom"
