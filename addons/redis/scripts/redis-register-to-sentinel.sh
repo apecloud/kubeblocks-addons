@@ -8,28 +8,66 @@ set -ex
 register_to_sentinel() {
   local sentinel_host=$1
   local master_name=$2
-  local sentinel_port=26379
-
+  local sentinel_port=${SENTINEL_SERVICE_PORT:-26379}
   local redis_primary_host=$3
   local redis_primary_port=$4
+  local timeout=600
+  local start_time=$(date +%s)
+  local current_time
 
-  if [ ! -z "$SENTINEL_SERVICE_PORT" ]; then
-    sentinel_port=$SENTINEL_SERVICE_PORT
-  fi
+  # check sentinel host and redis primary host connectivity
+  wait_for_connectivity() {
+    local host=$1
+    local port=$2
+    local password=$3
+    echo "Checking connectivity to $host on port $port using redis-cli..."
+    while true; do
+      current_time=$(date +%s)
+      if [ $((current_time - start_time)) -gt $timeout ]; then
+        echo "Timeout waiting for $host to become available."
+        exit 1
+      fi
 
-  redis-cli -h $sentinel_host -p $sentinel_port -a $SENTINEL_PASSWORD SENTINEL monitor $master_name $redis_primary_host $redis_primary_port 2
-  redis-cli -h $sentinel_host -p $sentinel_port -a $SENTINEL_PASSWORD SENTINEL set $master_name down-after-milliseconds 5000
-  redis-cli -h $sentinel_host -p $sentinel_port -a $SENTINEL_PASSWORD SENTINEL set $master_name failover-timeout 60000
-  redis-cli -h $sentinel_host -p $sentinel_port -a $SENTINEL_PASSWORD SENTINEL set $master_name parallel-syncs 60000
-  redis-cli -h $sentinel_host -p $sentinel_port -a $SENTINEL_PASSWORD SENTINEL set $master_name auth-user $REDIS_SENTINEL_USER 60000
-  redis-cli -h $sentinel_host -p $sentinel_port -a $SENTINEL_PASSWORD SENTINEL set $master_name auth-pass $REDIS_SENTINEL_PASSWORD 60000
+      # Send PING and check for PONG response
+      if redis-cli -h "$host" -p "$port" -a "$password" PING | grep -q "PONG"; then
+        echo "$host is reachable on port $port."
+        break
+      fi
 
-  if [ $? -eq 0 ]; then
-    echo "redis $redis_primary_host register to sentinel $sentinel_host successfully."
-  else
-    echo "redis $redis_primary_host register to sentinel $sentinel_host failed."
-    exit 1
-  fi
+      sleep 5
+    done
+  }
+
+  # function to execute and log redis-cli command
+  execute_redis_cli() {
+    echo "Executing: redis-cli -h $sentinel_host -p $sentinel_port -a $SENTINEL_PASSWORD $*"
+    local output
+    output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" -a "$SENTINEL_PASSWORD" "$@")
+    local status=$?
+    echo "$output" # Print command output
+
+    if [ $status -ne 0 ] || [[ "$output" != "OK" ]]; then
+      echo "Command failed with status $status or output not OK."
+      exit 1
+    else
+      echo "Command executed successfully."
+    fi
+  }
+
+  # Check connectivity to sentinel host
+  wait_for_connectivity "$sentinel_host" "$sentinel_port" "$SENTINEL_PASSWORD"
+  # Check connectivity to Redis primary host
+  wait_for_connectivity "$redis_primary_host" "$redis_primary_port" "$REDIS_DEFAULT_PASSWORD"
+
+  # Register and configure the Redis primary with Sentinel
+  execute_redis_cli SENTINEL monitor "$master_name" "$redis_primary_host" "$redis_primary_port" 2
+  execute_redis_cli SENTINEL set "$master_name" down-after-milliseconds 5000
+  execute_redis_cli SENTINEL set "$master_name" failover-timeout 60000
+  execute_redis_cli SENTINEL set "$master_name" parallel-syncs 1
+  execute_redis_cli SENTINEL set "$master_name" auth-user "$REDIS_SENTINEL_USER"
+  execute_redis_cli SENTINEL set "$master_name" auth-pass "$REDIS_SENTINEL_PASSWORD"
+
+  echo "redis sentinel register to $sentinel_host succeeded!"
 }
 
 # TODO: replace the following code with built-in env and ComponentDefinition.Spec.Vars API
@@ -59,10 +97,11 @@ register_to_sentinel() {
 {{- $redis_sentinel_replicas := $redis_sentinel_component_spec.replicas | int }}
 {{- $servers := "" }}
 {{- range $i, $e := until $redis_sentinel_replicas }}
-  {{- $sentinel_pod_fqdn := printf "%s-%s-%d.%s-%s-headless.%s.svc.%s" $clusterName $redis_sentinel_component_spec.name $i $clusterName $redis_sentinel_component_spec.name $namespace $.clusterDomain }}
-  {{- $redis_primary_host := printf "%s-0" $kb_cluster_comp_name }}
-  {{- $redis_primary_port := printf "%s" $redis_port }}
-  register_to_sentinel {{ $sentinel_pod_fqdn }}  {{ $kb_cluster_comp_name }} {{ $redis_primary_host }} {{ $redis_primary_port }}
+{{- $sentinel_pod_fqdn := printf "%s-%s-%d.%s-%s-headless.%s.svc.%s" $clusterName $redis_sentinel_component_spec.name $i $clusterName $redis_sentinel_component_spec.name $namespace $.clusterDomain }}
+{{- /* TODO: build redis primary host endpoint, use index=0 as default primary, which needs to be refactored */}}
+{{- $redis_primary_host := printf "%s-0.%s-headless.%s.svc.%s" $kb_cluster_comp_name $kb_cluster_comp_name $namespace $.clusterDomain }}
+{{- $redis_primary_port := printf "%d" $redis_port }}
+register_to_sentinel {{ $sentinel_pod_fqdn }} {{ $kb_cluster_comp_name }} {{ $redis_primary_host }} {{ $redis_primary_port }}
 {{- end }}
 
 
