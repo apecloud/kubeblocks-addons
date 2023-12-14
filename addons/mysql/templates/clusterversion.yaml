@@ -16,6 +16,11 @@ spec:
         constraintRef: oracle-mysql8.0-config-constraints
         volumeName: mysql-config
         namespace: {{ .Release.Namespace }}
+      - name: agamotto-configuration
+        templateRef: mysql-agamotto-configuration
+        namespace: {{ .Release.Namespace }}
+        volumeName: agamotto-configuration
+        defaultMode: 0444
     versionsContext:
       containers:
       - name: mysql
