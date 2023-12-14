@@ -10,6 +10,17 @@ spec:
   clusterDefinitionRef: mysql
   componentVersions:
   - componentDefRef: mysql
+    configSpecs:
+      - name: mysql-replication-config
+        templateRef: oracle-mysql5.7-config-template
+        constraintRef: oracle-mysql8.0-config-constraints
+        volumeName: mysql-config
+        namespace: {{ .Release.Namespace }}
+      - name: agamotto-configuration
+        templateRef: mysql-agamotto-configuration
+        namespace: {{ .Release.Namespace }}
+        volumeName: agamotto-configuration
+        defaultMode: 0444
     versionsContext:
       containers:
       - name: mysql
@@ -22,16 +33,6 @@ spec:
     systemAccountSpec:
       cmdExecutorConfig:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
-    configSpecs:
-    - name: mysql-replication-config
-      templateRef: oracle-mysql5.7-config-template
-      volumeName: mysql-config
-      namespace: {{ .Release.Namespace }}
-    - name: agamotto-configuration
-      templateRef: mysql-agamotto-configuration
-      namespace: {{ .Release.Namespace }}
-      volumeName: agamotto-configuration
-      defaultMode: 0444
 
 ---
 apiVersion: apps.kubeblocks.io/v1alpha1
