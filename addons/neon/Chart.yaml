@@ -14,11 +14,6 @@ maintainers:
 sources:
   - https://github.com/apecloud/kubeblocks/
 
-dependencies:
-  - name: neonvm
-    repository: file://.//neonvm
-    version: 0.6.0-alpha.21
-
 annotations:
     addon.kubeblocks.io/kubeblocks-version: ">=0.7.0"
     addon.kubeblocks.io/model: "RDBMS"
