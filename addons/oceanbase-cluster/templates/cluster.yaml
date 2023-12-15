@@ -7,8 +7,8 @@ metadata:
   annotations:
     {{ include "oceanbase-cluster.annotations.extra-envs" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: {{- if .Values.hostNetwork }} oceanbase-host-network {{- else }} oceanbase {{- end }}
-  clusterVersionRef: {{- if .Values.hostNetwork }} oceanbase-host-network-{{ default .Chart.AppVersion .Values.clusterVersionOverrid }} {{- else }} oceanbase-{{ default .Chart.AppVersion .Values.clusterVersionOverrid }} {{- end }}
+  clusterDefinitionRef: {{ include "oceanbase-cluster.clusterdef" .}}
+  clusterVersionRef: {{ include "oceanbase-cluster.clusterver" .}}
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
