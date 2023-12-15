@@ -81,7 +81,7 @@ spec:
           compDef: {{ include "redis.componentDefName" . }}
           name: default
           password: Required
-    ## the username of redis sentinel for redis connection
+    ## the username of redis sentinel for redis connection, it is optional
     - name: SENTINEL_USER
       valueFrom:
         credentialVarRef:
@@ -89,8 +89,8 @@ spec:
           compDef: {{ include "redis.sentinelComponentDefName" . }}
           name: default
           optional: true
-          username: Required
-    ## the password of redis sentinel for redis connection
+          username: Optional
+    ## the password of redis sentinel for redis connection, it is optional
     - name: SENTINEL_PASSWORD
       valueFrom:
         credentialVarRef:
@@ -98,7 +98,7 @@ spec:
           compDef: {{ include "redis.sentinelComponentDefName" . }}
           name: default
           optional: true
-          password: Required
+          password: Optional
     - name: SENTINEL_COMPONENT_DEFINITION_NAME
       value: {{ include "redis.sentinelComponentDefName" . }}
     - name: SENTINEL_SERVICE_PORT
@@ -106,9 +106,10 @@ spec:
         serviceVarRef:
           compDef: {{ include "redis.sentinelComponentDefName" . }}
           name: redis-sentinel
+          optional: true
           port:
             name: redis-sentinel
-          optional: false
+            option: Optional
     ## TODO: add redis sentinel reference env vars
   lifecycleActions:
     roleProbe:
