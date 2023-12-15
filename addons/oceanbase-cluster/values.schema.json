@@ -140,14 +140,14 @@
             "minimum": 10,
             "maximum": 100
         },
-        "hostNetwork": {
+        "hostnetwork": {
             "title": "Host Network",
-            "description": "Host Network.",
-            "type": "boolean",
-            "default": true,
+            "description": "Enable or Disable Pod Host Network.",
+            "type": "string",
+            "default": "enabled",
             "enum": [
-                true,
-                false
+                "enabled",
+                "disabled"
             ]
         }
     },
