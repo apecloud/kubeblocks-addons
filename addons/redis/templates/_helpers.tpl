@@ -12,7 +12,7 @@ Define component defintion name
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
 redis
 {{- else -}}
-{{- .Values.resourceNamePrefix -}}
+{{- printf "%s-redis" .Values.resourceNamePrefix -}}
 {{- end -}}
 {{- end -}}
 
@@ -23,7 +23,7 @@ Define sentinel component defintion name
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
 redis-sentinel
 {{- else -}}
-{{- .Values.resourceNamePrefix -}}
+{{- printf "%s-redis-sentinel" .Values.resourceNamePrefix -}}
 {{- end -}}
 {{- end -}}
 
