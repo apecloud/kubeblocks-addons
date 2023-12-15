@@ -68,13 +68,14 @@ Create extra env
 {{- define "oceanbase-cluster.extra-envs" }}
 {
 {{- if .Values.tenant -}}
-"TENANT_NAME": "{{ .Values.tenant.name | default "tenant1" }}",
+"TENANT_NAME": "{{ .Values.tenant.name }}",
 "TENANT_CPU": "{{ min (sub .Values.cpu 1) .Values.tenant.max_cpu }}",
 "TENANT_MEMORY": "{{ print (min (sub .Values.memory  2) .Values.tenant.memory_size) "G" }}",
 "TENANT_DISK": "{{ print (.Values.tenant.log_disk_size | default 5) "G" }}",
 {{- end -}}
 "ZONE_COUNT": "{{ .Values.zoneCount | default "1" }}",
-"OB_CLUSTERS_COUNT": "{{ .Values.obClusters | default "1" }}"
+"OB_CLUSTERS_COUNT": "{{ .Values.obClusters | default "1" }}",
+"OB_DEBUG": "{{ .Values.debug | default "false" }}"
 }
 {{- end }}
 
