@@ -73,7 +73,6 @@ spec:
           ## reference the current component definition name
           compDef: {{ include "redis.componentDefName" . }}
           name: default
-          optional: false
           username: Required
     - name: REDIS_DEFAULT_PASSWORD
       valueFrom:
@@ -81,7 +80,6 @@ spec:
           ## reference the current component definition name
           compDef: {{ include "redis.componentDefName" . }}
           name: default
-          optional: false
           password: Required
     ## the username of redis sentinel for redis connection
     - name: SENTINEL_USER
@@ -90,7 +88,7 @@ spec:
           ## reference the redis-sentinel component definition name
           compDef: {{ include "redis.sentinelComponentDefName" . }}
           name: default
-          optional: false
+          optional: true
           username: Required
     ## the password of redis sentinel for redis connection
     - name: SENTINEL_PASSWORD
@@ -99,7 +97,7 @@ spec:
           ## reference the redis-sentinel component definition name
           compDef: {{ include "redis.sentinelComponentDefName" . }}
           name: default
-          optional: false
+          optional: true
           password: Required
     - name: SENTINEL_COMPONENT_DEFINITION_NAME
       value: {{ include "redis.sentinelComponentDefName" . }}
@@ -137,9 +135,6 @@ spec:
             - -c
           args:
             - "redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD acl save "
-        env:
-          - name: REDIS_DEFAULT_PASSWORD
-            value: $(REDIS_DEFAULT_PASSWORD)
   runtime:
     containers:
       - name: redis
@@ -234,9 +229,6 @@ spec:
       - name: pod-info
         downwardAPI:
           items:
-            - path: "pod-role"
-              fieldRef:
-                fieldPath: metadata.labels['kubeblocks.io/role']
             - path: "primary-pod"
               fieldRef:
                 fieldPath: metadata.annotations['rs.apps.kubeblocks.io/primary']
