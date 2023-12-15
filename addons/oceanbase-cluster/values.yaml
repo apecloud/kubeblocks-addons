@@ -36,4 +36,4 @@ extra:
   tenancy: DedicatedNode
 
 debug: false
-hostNetwork: true
+hostnetwork: "enabled"
