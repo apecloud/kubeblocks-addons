@@ -16,11 +16,6 @@ spec:
     - name: opengauss
       workloadType: Stateful
       characterType: opengauss
-      probes:
-        roleProbe:
-          failureThreshold: 2
-          periodSeconds: 1
-          timeoutSeconds: 1
       configSpecs:
         - name: opengauss-configuration
           templateRef: opengauss-configuration
