@@ -1,24 +1,11 @@
 #!/bin/sh
 set -ex
 
-# build redis.conf
-build_redis_conf() {
+load_redis_template_conf() {
   echo "include /etc/conf/redis.conf" >> /etc/redis/redis.conf
-  echo "replica-announce-ip $KB_POD_FQDN" >> /etc/redis/redis.conf
-  # add service port
-  service_port=6379
-  if [ ! -z "$SERVICE_PORT" ]; then
-    service_port=$SERVICE_PORT
-  fi
-  echo "port $service_port" >> /etc/redis/redis.conf
-  {{- $data_root := getVolumePathByName ( index $.podSpec.containers 0 ) "data" }}
-  if [ -f /data/users.acl ]; then
-    sed -i "/user default on/d" /data/users.acl
-    sed -i "/user $REDIS_REPL_USER on/d" /data/users.acl
-    sed -i "/user $REDIS_SENTINEL_USER on/d" /data/users.acl
-  else
-    touch /data/users.acl
-  fi
+}
+
+build_redis_default_accounts() {
   if [ ! -z "$REDIS_REPL_PASSWORD" ]; then
     echo "masteruser $REDIS_REPL_USER" >> /etc/redis/redis.conf
     echo "masterauth $REDIS_REPL_PASSWORD" >> /etc/redis/redis.conf
@@ -34,6 +21,43 @@ build_redis_conf() {
     echo "protected-mode no" >> /etc/redis/redis.conf
   fi
   echo "aclfile /data/users.acl" >> /etc/redis/redis.conf
+}
+
+build_announce_ip_and_port() {
+  # build announce ip and port according to whether the NodePort is enabled
+  if [ -n "$redis_node_port_host_value" ] && [ -n "$redis_node_port_value" ]; then
+      echo "redis use nodeport $redis_node_port_host_value:$redis_node_port_value to announce"
+      echo "replica-announce-port $redis_node_port_value" >> /etc/redis/redis.conf
+      echo "replica-announce-ip $redis_node_port_host_value.$KB_NAMESPACE" >> /etc/redis/redis.conf
+  else
+    echo "redis use kb pod fqdn $KB_POD_FQDN to announce"
+    echo "replica-announce-ip $KB_POD_FQDN" >> /etc/redis/redis.conf
+  fi
+}
+
+build_redis_service_port() {
+  service_port=6379
+  if [ ! -z "$SERVICE_PORT" ]; then
+    service_port=$SERVICE_PORT
+  fi
+  echo "port $service_port" >> /etc/redis/redis.conf
+}
+
+rebuild_redis_acl_file() {
+  {{- $data_root := getVolumePathByName ( index $.podSpec.containers 0 ) "data" }}
+  if [ -f /data/users.acl ]; then
+    sed -i "/user default on/d" /data/users.acl
+    sed -i "/user $REDIS_REPL_USER on/d" /data/users.acl
+    sed -i "/user $REDIS_SENTINEL_USER on/d" /data/users.acl
+  else
+    touch /data/users.acl
+  fi
+}
+
+extract_ordinal_from_pod_name() {
+  local pod_name="$1"
+  local ordinal="${pod_name##*-}"
+  echo "$ordinal"
 }
 
 # usage: retry <command>
@@ -120,6 +144,22 @@ create_replication() {
       fi
       echo "create a replication relationship succeeded."
     fi
+}
+
+pod_ordinal=$(extract_ordinal_from_pod_name $KB_POD_NAME)
+gen_redis_node_port="REDIS_NODE_PORT_${pod_ordinal}"
+gen_redis_node_port_host="REDIS_NODE_PORT_SVC_NAME_${pod_ordinal}"
+eval redis_node_port_value="\$$gen_redis_node_port"
+eval redis_node_port_host_value="\$$gen_redis_node_port_host"
+echo "redis_node_port_value=$redis_node_port_value, redis_node_port_host_value=$redis_node_port_host_value"
+
+# build redis.conf
+build_redis_conf() {
+  load_redis_template_conf
+  build_announce_ip_and_port
+  build_redis_service_port
+  rebuild_redis_acl_file
+  build_redis_default_accounts
 }
 
 build_redis_conf
