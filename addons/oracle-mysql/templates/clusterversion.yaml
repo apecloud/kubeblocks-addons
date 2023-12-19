@@ -16,6 +16,7 @@ spec:
         - name: mysql-exporter
           image: prom/mysqld-exporter:v0.14.0
           imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+
 ---
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ClusterVersion
