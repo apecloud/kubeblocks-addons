@@ -1,0 +1,36 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: expdp
+  labels:
+    clusterdefinition.kubeblocks.io/name: oracle
+spec:
+  backupType: Full
+  env:
+    - name: DATA_DIR
+      value: /opt/oracle/oradata
+    - name: ORACLE_PDB
+      value: ORCLPDB1
+  backup:
+    preBackup: []
+    postBackup: []
+    backupData:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+      runOnTargetPodNode: true
+      command:
+      - sh
+      - -c
+      - |
+        {{- .Files.Get "dataprotection/expdp.sh" | nindent 8 }}
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+  restore:
+    prepareData:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+      command:
+      - sh
+      - -c
+      - |
+        {{- .Files.Get "dataprotection/expdp.sh" | nindent 8 }}
+    postReady: []

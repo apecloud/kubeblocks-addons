@@ -1,0 +1,37 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: oracle-backup-policy-template
+  labels:
+    clusterdefinition.kubeblocks.io/name: oracle
+  annotations:
+    dataprotection.kubeblocks.io/is-default-policy-template: "true"
+spec:
+  clusterDefinitionRef: oracle
+  backupPolicies:
+  - componentDefRef: oracle
+    backupMethods:
+    - name: expdp
+      snapshotVolumes: false
+      actionSetName: expdp
+      targetVolumes:
+        volumeMounts:
+        - name: data
+          mountPath: /opt/oracle/oradata
+    - name: volume-snapshot
+      snapshotVolumes: true
+      targetVolumes:
+        volumes:
+        - data
+        volumeMounts:
+        - name: data
+          mountPath: /opt/oracle/oradata
+    schedules:
+    - backupMethod: expdp
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d
+    - backupMethod: volume-snapshot
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d

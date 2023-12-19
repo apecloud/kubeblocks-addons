@@ -5,7 +5,7 @@
 replicaCount: 1
 
 image:
-  registry: docker.io
+  registry: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com
   repository: apecloud/oracle
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
