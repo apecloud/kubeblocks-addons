@@ -4,6 +4,8 @@ apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ClusterVersion
 metadata:
   name: {{ $cvName }}
+  annotations:
+    kubeblocks.io/is-default-cluster-version: "true"
   labels:
     {{- include "mongodb.labels" . | nindent 4 }}
 spec:
