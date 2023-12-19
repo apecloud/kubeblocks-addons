@@ -56,6 +56,9 @@ spec:
       volumeTypes:
         - name: data
           type: data
+      horizontalScalePolicy:
+        type: CloneVolume
+        backupPolicyTemplateName: mysql-backup-policy-template
       podSpec:
         containers:
           - name: mysql
