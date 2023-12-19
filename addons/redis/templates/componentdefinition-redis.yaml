@@ -81,6 +81,26 @@ spec:
           compDef: {{ include "redis.componentDefName" . }}
           name: default
           password: Required
+    ## if the redis NodePort type Service with name suffix redis-nodeport-{0,1...} is set, the REDIS_NODE_PORT_{0,1...} will be available
+    - name: REDIS_NODE_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redis.componentDefName" . }}
+          name: redis-nodeport
+          generatePodOrdinalServiceVar: true
+          optional: true
+          nodePort:
+            name: redis-nodeport
+            option: Optional
+    ## if the redis Service with name suffix redis-nodeport-{0,1...} is set, the REDIS_NODE_PORT_SVC_NAME_{0,1...} will be available
+    - name: REDIS_NODE_PORT_SVC_NAME
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redis.componentDefName" . }}
+          name: redis-nodeport
+          generatePodOrdinalServiceVar: true
+          optional: true
+          host: Optional
     ## the username of redis sentinel for redis connection, it is optional
     - name: SENTINEL_USER
       valueFrom:

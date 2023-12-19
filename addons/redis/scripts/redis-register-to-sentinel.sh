@@ -72,9 +72,11 @@ register_to_sentinel() {
 
 # TODO: replace the following code with built-in env and ComponentDefinition.Spec.Vars API
 {{- $kb_cluster_comp_name := getEnvByName ( index $.podSpec.containers 0 ) "KB_CLUSTER_COMP_NAME" }}
-{{- $redis_service_port := 6379 }}
-{{- $redis_service_node_port := getEnvByName ( index $.podSpec.containers 0 ) "SERVICE_NODE_PORT" }}
-{{- $redis_port := coalesce $redis_service_node_port $redis_service_port }}
+{{- $redis_default_service_port := 6379 }}
+{{- $redis_service_node_port_host := getEnvByName ( index $.podSpec.containers 0 ) "SERVICE_NODE_PORT_SVC_NAME_0" }}
+{{- $redis_service_node_port := getEnvByName ( index $.podSpec.containers 0 ) "SERVICE_NODE_PORT_0" }}
+{{- $redis_port := coalesce $redis_service_node_port $redis_default_service_port }}
+
 {{- $defaultSentinelComponentName := "redis-sentinel" }}
 {{- $envSentinelComponentName := getEnvByName ( index $.podSpec.containers 0 ) "SENTINEL_COMPONENT_DEFINITION_NAME" }}
 {{- $sentinelComponentName := coalesce $envSentinelComponentName $defaultSentinelComponentName }}
@@ -94,15 +96,24 @@ register_to_sentinel() {
     {{- end }}
   {{- end }}
 {{- end }}
-{{- $redis_sentinel_replicas := $redis_sentinel_component_spec.replicas | int }}
-{{- $servers := "" }}
-{{- range $i, $e := until $redis_sentinel_replicas }}
-{{- $sentinel_pod_fqdn := printf "%s-%s-%d.%s-%s-headless.%s.svc.%s" $clusterName $redis_sentinel_component_spec.name $i $clusterName $redis_sentinel_component_spec.name $namespace $.clusterDomain }}
-{{- /* TODO: build redis primary host endpoint, use index=0 as default primary, which needs to be refactored */}}
-{{- $redis_primary_host := printf "%s-0.%s-headless.%s.svc.%s" $kb_cluster_comp_name $kb_cluster_comp_name $namespace $.clusterDomain }}
-{{- $redis_primary_port := printf "%d" $redis_port }}
-register_to_sentinel {{ $sentinel_pod_fqdn }} {{ $kb_cluster_comp_name }} {{ $redis_primary_host }} {{ $redis_primary_port }}
+
+{{- if index $redis_sentinel_component_spec "replicas" }}
+  echo "redis sentinel component replicas found, register to sentinel."
+  {{- $redis_sentinel_replicas := $redis_sentinel_component_spec.replicas | int }}
+  {{- $servers := "" }}
+  {{- range $i, $e := until $redis_sentinel_replicas }}
+  {{- $sentinel_pod_fqdn := printf "%s-%s-%d.%s-%s-headless.%s.svc.%s" $clusterName $redis_sentinel_component_spec.name $i $clusterName $redis_sentinel_component_spec.name $namespace $.clusterDomain }}
+  {{- /* TODO: build redis primary host endpoint, use index=0 as default primary, which needs to be refactored */}}
+  {{- $redis_default_primary_host := printf "%s-0.%s-headless.%s.svc.%s" $kb_cluster_comp_name $kb_cluster_comp_name $namespace $.clusterDomain }}
+  {{- $redis_primary_host := coalesce $redis_service_node_port_host $redis_default_primary_host }}
+  {{- $redis_primary_port := printf "%d" $redis_port }}
+  register_to_sentinel {{ $sentinel_pod_fqdn }} {{ $kb_cluster_comp_name }} {{ $redis_primary_host }} {{ $redis_primary_port }}
+  {{- end }}
+{{- else }}
+  echo "redis sentinel component replicas not found, skip register to sentinel."
+  exit 0
 {{- end }}
+
 
 
 

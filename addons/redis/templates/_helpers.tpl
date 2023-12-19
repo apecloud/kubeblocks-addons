@@ -9,10 +9,10 @@ Expand the name of the chart.
 Define component defintion name
 */}}
 {{- define "redis.componentDefName" -}}
-{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
 redis
 {{- else -}}
-{{- printf "%s-redis" .Values.resourceNamePrefix -}}
+{{- printf "redis-%s" .Values.compDefinitionVersionSuffix -}}
 {{- end -}}
 {{- end -}}
 
@@ -20,10 +20,10 @@ redis
 Define sentinel component defintion name
 */}}
 {{- define "redis.sentinelComponentDefName" -}}
-{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
 redis-sentinel
 {{- else -}}
-{{- printf "%s-redis-sentinel" .Values.resourceNamePrefix -}}
+{{- printf "redis-sentinel-%s" .Values.compDefinitionVersionSuffix -}}
 {{- end -}}
 {{- end -}}
 
