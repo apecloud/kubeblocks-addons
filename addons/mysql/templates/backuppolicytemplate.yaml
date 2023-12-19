@@ -9,7 +9,7 @@ spec:
   backupPolicies:
   - componentDefRef: mysql
     target:
-      role: primary
+      role: secondary
     backupMethods:
     - name: xtrabackup
       snapshotVolumes: false

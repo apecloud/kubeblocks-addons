@@ -10,7 +10,7 @@ spec:
   backupPolicies:
   - componentDefRef: postgresql
     target:
-      role: primary
+      role: secondary
     backupMethods:
     - name: pg-basebackup
       snapshotVolumes: false
