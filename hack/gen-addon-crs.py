@@ -12,8 +12,8 @@ names = sys.argv[1:]
 helmRepoURL = 'https://jihulab.com/api/v4/projects/150246/packages/helm/stable/charts/'
 
 kbVersionKey = 'addon.kubeblocks.io/kubeblocks-version'
-appNameKey = 'app.kubernetes.io/name'
-appVersionKey = 'app.kubernetes.io/version'
+addonNameKey = 'addon.kubernetes.io/name'
+addonVersionKey = 'addon.kubernetes.io/version'
 
 if len(names) == 0:
     print("Usage: python3 gen-addon-crs.py <addon1> <addon2> ...")
@@ -48,8 +48,8 @@ for name in names:
             print("Skip generating addon CR for " + name)
             continue
         del labels[kbVersionKey]
-        labels[appVersionKey] = version
-        labels[appNameKey] = name
+        labels[addonVersionKey] = version
+        labels[addonNameKey] = name
 
         cr = {
             'apiVersion': 'extensions.kubeblocks.io/v1alpha1',
