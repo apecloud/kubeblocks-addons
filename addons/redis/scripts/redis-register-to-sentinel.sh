@@ -70,18 +70,62 @@ register_to_sentinel() {
   echo "redis sentinel register to $sentinel_host succeeded!"
 }
 
-# TODO: replace the following code with built-in env and ComponentDefinition.Spec.Vars API
-{{- $kb_cluster_comp_name := getEnvByName ( index $.podSpec.containers 0 ) "KB_CLUSTER_COMP_NAME" }}
-{{- $redis_default_service_port := 6379 }}
-{{- $redis_service_node_port_host := getEnvByName ( index $.podSpec.containers 0 ) "SERVICE_NODE_PORT_SVC_NAME_0" }}
-{{- $redis_service_node_port := getEnvByName ( index $.podSpec.containers 0 ) "SERVICE_NODE_PORT_0" }}
-{{- $redis_port := coalesce $redis_service_node_port $redis_default_service_port }}
+# usage: parse_host_ip_from_built_in_envs <pod_name>
+# $KB_CLUSTER_COMPONENT_POD_NAME_LIST and $KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST are built-in envs in KubeBlocks postProvision lifecycle action.
+parse_host_ip_from_built_in_envs() {
+  local given_pod_name="$1"
 
+  if [ -z "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" ] || [ -z "$KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST" ]; then
+    echo "Error: Required environment variables KB_CLUSTER_COMPONENT_POD_NAME_LIST or KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST are not set."
+    exit 1
+  fi
+
+  old_ifs="$IFS"
+  IFS=','
+  set -f
+  pod_name_list="$KB_CLUSTER_COMPONENT_POD_NAME_LIST"
+  pod_ip_list="$KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST"
+  set +f
+  IFS="$old_ifs"
+
+  while [ -n "$pod_name_list" ]; do
+    pod_name="${pod_name_list%%,*}"
+    host_ip="${pod_ip_list%%,*}"
+
+    if [ "$pod_name" = "$given_pod_name" ]; then
+      echo "$host_ip"
+      return 0
+    fi
+
+    if [ "$pod_name_list" = "$pod_name" ]; then
+      pod_name_list=''
+      pod_ip_list=''
+    else
+      pod_name_list="${pod_name_list#*,}"
+      pod_ip_list="${pod_ip_list#*,}"
+    fi
+  done
+
+  echo "parse_host_ip_from_built_in_envs the given pod name $given_pod_name not found."
+  exit 1
+}
+
+# TODO: replace the following code with built-in env and ComponentDefinition.Spec.Vars API
+# TODO: build redis primary host endpoint, use index=0 as default primary, which needs to be refactored
+{{- $clusterName := $.cluster.metadata.name }}
+{{- $namespace := $.cluster.metadata.namespace }}
+{{- $kb_cluster_comp_name := getEnvByName ( index $.podSpec.containers 0 ) "KB_CLUSTER_COMP_NAME" }}
+redis_service_node_port_0="REDIS_NODE_PORT_0"
+redis_pod_index_0="{{ $kb_cluster_comp_name }}-0"
+eval redis_node_port_value="\$$redis_service_node_port_0"
+redis_node_port_host_value=$(parse_host_ip_from_built_in_envs "$redis_pod_index_0")
+echo "redis_node_port_value=$redis_node_port_value, redis_node_port_host_value=$redis_node_port_host_value"
+
+{{- $redis_default_primary_host := printf "%s-0.%s-headless.%s.svc.%s" $kb_cluster_comp_name $kb_cluster_comp_name $namespace $.clusterDomain }}
+{{- $redis_default_service_port := printf "%d" 6379 }}
 {{- $defaultSentinelComponentName := "redis-sentinel" }}
 {{- $envSentinelComponentName := getEnvByName ( index $.podSpec.containers 0 ) "SENTINEL_COMPONENT_DEFINITION_NAME" }}
 {{- $sentinelComponentName := coalesce $envSentinelComponentName $defaultSentinelComponentName }}
-{{- $clusterName := $.cluster.metadata.name }}
-{{- $namespace := $.cluster.metadata.namespace }}
 {{- /* find redis component */}}
 {{- $redis_sentinel_component_spec := fromJson "{}" }}
 {{- range $i, $e := $.cluster.spec.componentSpecs }}
@@ -104,10 +148,15 @@ register_to_sentinel() {
   {{- range $i, $e := until $redis_sentinel_replicas }}
   {{- $sentinel_pod_fqdn := printf "%s-%s-%d.%s-%s-headless.%s.svc.%s" $clusterName $redis_sentinel_component_spec.name $i $clusterName $redis_sentinel_component_spec.name $namespace $.clusterDomain }}
   {{- /* TODO: build redis primary host endpoint, use index=0 as default primary, which needs to be refactored */}}
-  {{- $redis_default_primary_host := printf "%s-0.%s-headless.%s.svc.%s" $kb_cluster_comp_name $kb_cluster_comp_name $namespace $.clusterDomain }}
-  {{- $redis_primary_host := coalesce $redis_service_node_port_host $redis_default_primary_host }}
-  {{- $redis_primary_port := printf "%d" $redis_port }}
-  register_to_sentinel {{ $sentinel_pod_fqdn }} {{ $kb_cluster_comp_name }} {{ $redis_primary_host }} {{ $redis_primary_port }}
+
+  if [ -n "$redis_node_port_host_value" ] && [ -n "$redis_node_port_value" ]; then
+    echo "register to sentinel with NodePort service: redis_node_port_host_value=$redis_node_port_host_value, redis_node_port_value=$redis_node_port_value"
+    register_to_sentinel {{ $sentinel_pod_fqdn }} {{ $kb_cluster_comp_name }} $redis_node_port_host_value $redis_node_port_value
+  else
+    echo "register to sentinel with ClusterIP service: redis_default_primary_host=$redis_default_primary_host, redis_default_service_port=$redis_default_service_port"
+    register_to_sentinel {{ $sentinel_pod_fqdn }} {{ $kb_cluster_comp_name }} {{ $redis_default_primary_host }} {{ $redis_default_service_port }}
+  fi
+
   {{- end }}
 {{- else }}
   echo "redis sentinel component replicas not found, skip register to sentinel."

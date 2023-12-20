@@ -28,7 +28,7 @@ build_announce_ip_and_port() {
   if [ -n "$redis_node_port_host_value" ] && [ -n "$redis_node_port_value" ]; then
       echo "redis use nodeport $redis_node_port_host_value:$redis_node_port_value to announce"
       echo "replica-announce-port $redis_node_port_value" >> /etc/redis/redis.conf
-      echo "replica-announce-ip $redis_node_port_host_value.$KB_NAMESPACE" >> /etc/redis/redis.conf
+      echo "replica-announce-ip $redis_node_port_host_value" >> /etc/redis/redis.conf
   else
     echo "redis use kb pod fqdn $KB_POD_FQDN to announce"
     echo "replica-announce-ip $KB_POD_FQDN" >> /etc/redis/redis.conf
@@ -148,9 +148,8 @@ create_replication() {
 
 pod_ordinal=$(extract_ordinal_from_pod_name $KB_POD_NAME)
 gen_redis_node_port="REDIS_NODE_PORT_${pod_ordinal}"
-gen_redis_node_port_host="REDIS_NODE_PORT_SVC_NAME_${pod_ordinal}"
 eval redis_node_port_value="\$$gen_redis_node_port"
-eval redis_node_port_host_value="\$$gen_redis_node_port_host"
+redis_node_port_host_value=$KB_HOST_IP
 echo "redis_node_port_value=$redis_node_port_value, redis_node_port_host_value=$redis_node_port_host_value"
 
 # build redis.conf
