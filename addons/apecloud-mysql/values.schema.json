@@ -446,7 +446,7 @@
         "image": {
           "registry": "",
           "repository": "apecloud/apecloud-xtrabackup",
-          "tag": "latest",
+          "tag": "8.0",
           "pullPolicy": "IfNotPresent"
         }
       },
@@ -458,7 +458,7 @@
           "default": {
             "registry": "",
             "repository": "apecloud/apecloud-xtrabackup",
-            "tag": "latest",
+            "tag": "8.0",
             "pullPolicy": "IfNotPresent"
           },
           "properties": {
@@ -489,7 +489,7 @@
               "title": "Tag",
               "description": "Image tag.",
               "type": "string",
-              "default": "latest"
+              "default": "8.0"
             }
           }
         }
