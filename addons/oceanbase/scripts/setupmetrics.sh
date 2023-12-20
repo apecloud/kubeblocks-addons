@@ -2,6 +2,20 @@
 
 source /scripts/sql.sh
 
+function retry {
+  local max_attempts=10
+  local attempt=1
+  until "$@" || [ $attempt -eq $max_attempts ]; do
+    echo "Command '$*' failed. Attempt $attempt of $max_attempts. Retrying in 5 seconds..."
+    attempt=$((attempt + 1))
+    sleep 5
+  done
+  if [ $attempt -eq $max_attempts ]; then
+    echo "Command '$*' failed after $max_attempts attempts. Exiting..."
+    exit 1
+  fi
+}
+
 ZONE_COUNT=${ZONE_COUNT:-3}
 HOSTIP=$(hostname -i)
 #REP_USER=${REP_USER:-rep_user}
@@ -16,6 +30,8 @@ ZONE_NAME="zone$((${ORDINAL_INDEX}%${ZONE_COUNT}))"
 #MONITOR_PASSWORD=${REP_PASSWD}
 
 ## TODO wait ob restarted
+echo "Waiting for observer to be ready..."
+#retry conn_local "show databases"
 
 bin/ob_agentctl config -u \
 agent.http.basic.auth.metricAuthEnabled=false,\
