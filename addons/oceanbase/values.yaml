@@ -8,6 +8,9 @@ images:
   observer:
     repository: apecloud/oceanbase
     tag: 4.2.0.0-100010032023083021
+  metrics:
+    repository: obagent
+    tag: 4.2.1-100000092023101717
 
 nameOverride: ""
 fullnameOverride: ""

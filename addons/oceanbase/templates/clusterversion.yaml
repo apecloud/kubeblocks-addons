@@ -13,6 +13,9 @@ spec:
       - name: observer-container
         image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.observer.repository }}:{{ .Values.images.observer.tag }}
         imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
+      - name: metrics
+        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.metrics.repository }}:{{ .Values.images.metrics.tag }}
+        imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
 ---
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ClusterVersion
@@ -28,4 +31,7 @@ spec:
       containers:
       - name: observer-container
         image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.observer.repository }}:{{ .Values.images.observer.tag }}
+        imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
+      - name: metrics
+        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.metrics.repository }}:{{ .Values.images.metrics.tag }}
         imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
