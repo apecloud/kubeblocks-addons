@@ -5,7 +5,7 @@
 image:
   registry: registry.cn-hangzhou.aliyuncs.com
   repository: apecloud/apecloud-postgres
-  tag: 14.10
+  tag: "14.10"
   digest: ""
   pullPolicy: IfNotPresent
   pullSecrets: [ ]
