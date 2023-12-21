@@ -25,8 +25,11 @@ OB_DEBUG=${OB_DEBUG:-true}
 OB_HOME_DIR=${OB_HOME_DIR:-/home/admin/oceanbase}
 
 ORDINAL_INDEX=$(echo $KB_POD_NAME | awk -F '-' '{print $(NF)}')
+COMPONENT_INDEX=$(echo $KB_POD_NAME | awk -F '-' '{print $(NF-1)}')
 ZONE_NAME="zone$((${ORDINAL_INDEX}%${ZONE_COUNT}))"
+
 echo "ORDINAL_INDEX: $ORDINAL_INDEX"
+echo "COMPONENT_INDEX: $COMPONENT_INDEX"
 echo "ZONE_NAME: $ZONE_NAME"
 
 function get_pod_ip_list {
@@ -137,9 +140,9 @@ function start_observer {
   fi
 
   /home/admin/oceanbase/bin/observer --appname ${KB_CLUSTER_COMP_NAME} \
-    --cluster_id 1 --zone $ZONE_NAME \
+    --cluster_id $((${COMPONENT_INDEX}+1)) --zone $ZONE_NAME \
     -I ${KB_POD_IP} \
-    -p 2881 -P 2882 -d ${OB_HOME_DIR}/store/ \
+    -d ${OB_HOME_DIR}/store/ \
     -l ${loglevel} -o config_additional_dir=${OB_HOME_DIR}/store/etc,${default_configs}
 }
 

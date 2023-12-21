@@ -22,3 +22,15 @@ enable_merge_by_turn=false
 enable_syslog_recycle=true
 enable_syslog_wf=false
 max_syslog_file_count=4
+{{- $mysql_port_info := getPortByName ( index $.podSpec.containers 0 ) "sql" }}
+{{- $mysql_port := 2881 }}
+{{- if $mysql_port_info }}
+{{- $mysql_port = $mysql_port_info.containerPort }}
+{{- end }}
+mysql_port={{ $mysql_port }}
+{{- $rpc_port_info := getPortByName ( index $.podSpec.containers 0 ) "rpc" }}
+{{- $rpc_port := 2882 }}
+{{- if $rpc_port_info }}
+{{- $rpc_port = $rpc_port_info.containerPort }}
+{{- end }}
+rpc_port={{ $rpc_port }}

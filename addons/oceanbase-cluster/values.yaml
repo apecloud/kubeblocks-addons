@@ -29,10 +29,10 @@ log: 20
 storageClassName: ""
 
 # customized default values to override kblib chart's values
-extra:
-  podAntiAffinity: Required
-  availabilityPolicy: node
-  tenancy: DedicatedNode
+# extra:
+#   podAntiAffinity: Required
+#   availabilityPolicy: node
+#   tenancy: DedicatedNode
 
 debug: false
 hostnetwork: "enabled"
