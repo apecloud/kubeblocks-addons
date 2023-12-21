@@ -334,9 +334,6 @@ spec:
       - name: pod-info
         downwardAPI:
           items:
-            - path: "pod-role"
-              fieldRef:
-                fieldPath: metadata.labels['kubeblocks.io/role']
             - path: "primary-pod"
               fieldRef:
                 fieldPath: metadata.annotations['rs.apps.kubeblocks.io/primary']
