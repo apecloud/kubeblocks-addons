@@ -2769,7 +2769,8 @@
   "style": "dark",
   "tags": [
     "apps",
-    "ob"
+    "oceanbase",
+    "db"
   ],
   "templating": {
     "list": [

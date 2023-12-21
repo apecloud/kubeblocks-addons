@@ -31,9 +31,12 @@ ZONE_NAME="zone$((${ORDINAL_INDEX}%${ZONE_COUNT}))"
 
 ## TODO wait ob restarted
 echo "Waiting for observer to be ready..."
-#retry conn_local "show databases"
+# import mysql client to metrics
+# retry conn_local "show databases"
+sleep 10
 
 bin/ob_agentctl config -u \
+ob.logcleaner.enabled=false,\
 agent.http.basic.auth.metricAuthEnabled=false,\
 monagent.ob.monitor.user=${MONITOR_USER},\
 monagent.ob.monitor.password=${MONITOR_PASSWORD},\
@@ -44,6 +47,8 @@ monagent.ob.cluster.id=${CLUSTER_ID},\
 monagent.ob.zone.name=${ZONE_NAME},\
 monagent.pipeline.ob.status=${OB_MONITOR_STATUS},\
 monagent.pipeline.node.status=inactive,\
+monagent.pipeline.ob.log.status=inactive,\
+monagent.pipeline.ob.alertmanager.status=inactive,\
 monagent.second.metric.cache.update.interval=5s,\
 ocp.agent.monitor.http.port=${SERVICE_PORT} && \
 bin/ob_monagent -c conf/monagent.yaml
