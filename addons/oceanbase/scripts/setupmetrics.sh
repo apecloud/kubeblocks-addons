@@ -16,6 +16,7 @@ function retry {
   fi
 }
 
+INITIAL_DELAY=${INITIAL_DELAY:-5}
 ZONE_COUNT=${ZONE_COUNT:-3}
 HOSTIP=$(hostname -i)
 #REP_USER=${REP_USER:-rep_user}
@@ -32,8 +33,8 @@ ZONE_NAME="zone$((${ORDINAL_INDEX}%${ZONE_COUNT}))"
 ## TODO wait ob restarted
 echo "Waiting for observer to be ready..."
 # import mysql client to metrics
-# retry conn_local "show databases"
-sleep 10
+sleep ${INITIAL_DELAY}
+retry /kb_tools/obtools --host 127.0.0.1 -u${MONITOR_USER} -P ${OB_SERVICE_PORT} --allow-native-passwords ping
 
 bin/ob_agentctl config -u \
 ob.logcleaner.enabled=false,\

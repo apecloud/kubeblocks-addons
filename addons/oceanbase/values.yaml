@@ -9,8 +9,12 @@ images:
     repository: apecloud/oceanbase
     tag: 4.2.0.0-100010032023083021
   metrics:
-    repository: obagent
+    repository: apecloud/obagent
     tag: 4.2.1-100000092023101717
+  obtools:
+      repository: apecloud/obtools
+      tag: 4.2.0
+
 
 nameOverride: ""
 fullnameOverride: ""

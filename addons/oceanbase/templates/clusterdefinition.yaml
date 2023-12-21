@@ -37,6 +37,12 @@ spec:
           defaultMode: 0555
       podSpec:
         terminationGracePeriodSeconds: 60
+        initContainers:
+          - name: init-tools
+            command: [ "cp", "/bin/ob-tools", "/kb_tools/obtools" ]
+            volumeMounts:
+              - name: kbtools
+                mountPath: /kb_tools
         containers:
           - name: observer-container
             command:
@@ -114,6 +120,8 @@ spec:
                     key: password
               - name: SERVICE_PORT
                 value: "8088"
+              - name: OB_SERVICE_PORT
+                value: "2881"
             ports:
               - containerPort: 8088
                 name: http
@@ -143,7 +151,12 @@ spec:
             volumeMounts:
               - name: scripts
                 mountPath: /scripts
+              - name: kbtools
+                mountPath: /kb_tools
             workingDir: /home/admin/obagent
+        volumes:
+          - name: kbtools
+            emptyDir: {}
 ---
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ClusterDefinition
@@ -186,6 +199,12 @@ spec:
         terminationGracePeriodSeconds: 60
         hostNetwork: true
         dnsPolicy: ClusterFirstWithHostNet
+        initContainers:
+          - name: init-tools
+            command: [ "cp", "/bin/ob-tools", "/kb_tools/obtools" ]
+            volumeMounts:
+              - name: kbtools
+                mountPath: /kb_tools
         containers:
           - name: observer-container
             command:
@@ -261,6 +280,8 @@ spec:
                     key: password
               - name: SERVICE_PORT
                 value: "8088"
+              - name: OB_SERVICE_PORT
+                value: "2881"
             ports:
               - containerPort: 8088
                 name: http
@@ -290,4 +311,9 @@ spec:
             volumeMounts:
               - name: scripts
                 mountPath: /scripts
+              - name: kbtools
+                mountPath: /kb_tools
             workingDir: /home/admin/obagent
+        volumes:
+          - name: kbtools
+            emptyDir: {}
