@@ -7,8 +7,10 @@ metadata:
   annotations:
     {{ include "oceanbase-cluster.annotations.extra-envs" . | nindent 4 }}
 spec:
+  clusterDefinitionRef: {{ include "oceanbase-cluster.clusterdef" .}}
+  clusterVersionRef: {{ include "oceanbase-cluster.clusterver" .}}
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
-  {{- include "kblib.affinity" . | indent 2 }}
+  # {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
   {{- range $i, $e := until (int .Values.obClusters) }}
     - name: ob-bundle-{{ $i }}
