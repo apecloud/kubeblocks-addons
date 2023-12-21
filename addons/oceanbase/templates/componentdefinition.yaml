@@ -1,0 +1,169 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: oceanbase
+  labels:
+    {{- include "oceanbase.labels" . | nindent 4 }}
+spec:
+  provider: community
+  serviceKind: oceanbase
+  serviceVersion: 4.2.0
+  description: "Unlimited scalable distributed database for data-intensive transactional and real-time operational analytics workloads, with ultra-fast performance that has once achieved world records in the TPC-C benchmark test."
+  services:
+    - name: oceanbase
+      serviceName: oceanbase
+      spec:
+        ports:
+          - name: sql
+            port: 2881
+            targetPort: 2881
+          - name: rpc
+            port: 2882
+            targetPort: 2882
+  updateStrategy: Serial
+  configs:
+    - name: oceanbase-config
+      templateRef: oceanbase-configuration
+      volumeName: oceanbase-config
+      namespace: {{ .Release.Namespace }}
+      defaultMode: 0555
+  scripts:
+    - name: oceanbase-scripts
+      templateRef: oceanbase-scripts
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  runtime:
+    terminationGracePeriodSeconds: 60
+    containers:
+      - name: observer-container
+        command:
+          - bash
+          - -c
+          - |
+            /scripts/entrypoint.sh
+        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.observer.repository }}:{{ .Values.images.observer.tag }}
+        imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
+        ports:
+          - containerPort: 2881
+            name: sql
+            protocol: TCP
+          - containerPort: 2882
+            name: rpc
+            protocol: TCP
+        readinessProbe:
+          failureThreshold: 10
+          initialDelaySeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+          exec:
+            command:
+              - cat
+              - /tmp/ready
+        volumeMounts:
+          - mountPath: /home/admin/data-file
+            name: data-file
+          - mountPath: /home/admin/data-log
+            name: data-log
+          - mountPath: /home/admin/log
+            name: log
+          - mountPath: /home/admin/workdir
+            name: workdir
+          - name: scripts
+            mountPath: /scripts
+          - name: oceanbase-config
+            mountPath: /kb-config
+        workingDir: /home/admin/workdir
+        env:
+          - name: LD_LIBRARY_PATH
+            value: /home/admin/oceanbase/lib
+          - name: CLUSTER_NAME
+            value: "$(KB_CLUSTER_COMP_NAME)"
+          - name: OB_HOME_DIR
+            value: "/home/admin/workdir"
+---
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: oceanbase-hostnetwork
+  labels:
+    {{- include "oceanbase.labels" . | nindent 4 }}
+spec:
+  provider: community
+  serviceKind: oceanbase
+  serviceVersion: 4.2.0
+  description: "Unlimited scalable distributed database for data-intensive transactional and real-time operational analytics workloads, with ultra-fast performance that has once achieved world records in the TPC-C benchmark test."
+  services:
+    - name: oceanbase
+      serviceName: oceanbase
+      spec:
+        ports:
+          - name: sql
+            port: 2881
+            targetPort: 2881
+          - name: rpc
+            port: 2882
+            targetPort: 2882
+  updateStrategy: Serial
+  configs:
+    - name: oceanbase-config
+      templateRef: oceanbase-configuration
+      volumeName: oceanbase-config
+      namespace: {{ .Release.Namespace }}
+      defaultMode: 0555
+  scripts:
+    - name: oceanbase-scripts
+      templateRef: oceanbase-scripts
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  runtime:
+    hostNetwork: true
+    dnsPolicy: ClusterFirstWithHostNet
+    terminationGracePeriodSeconds: 60
+    containers:
+      - name: observer-container
+        command:
+          - bash
+          - -c
+          - |
+            /scripts/entrypoint.sh
+        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.observer.repository }}:{{ .Values.images.observer.tag }}
+        imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
+        ports:
+          - containerPort: 2881
+            name: sql
+            protocol: TCP
+          - containerPort: 2882
+            name: rpc
+            protocol: TCP
+        readinessProbe:
+          failureThreshold: 10
+          initialDelaySeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+          exec:
+            command:
+              - cat
+              - /tmp/ready
+        volumeMounts:
+          - mountPath: /home/admin/data-file
+            name: data-file
+          - mountPath: /home/admin/data-log
+            name: data-log
+          - mountPath: /home/admin/log
+            name: log
+          - mountPath: /home/admin/workdir
+            name: workdir
+          - name: scripts
+            mountPath: /scripts
+          - name: oceanbase-config
+            mountPath: /kb-config
+        workingDir: /home/admin/workdir
+        env:
+          - name: LD_LIBRARY_PATH
+            value: /home/admin/oceanbase/lib
+          - name: CLUSTER_NAME
+            value: "$(KB_CLUSTER_COMP_NAME)"
+          - name: OB_HOME_DIR
+            value: "/home/admin/workdir"

@@ -105,7 +105,7 @@ function prepare_dirs {
   ln -sf /home/admin/data-file/sort_dir ${OB_HOME_DIR}/store/sort_dir
   mkdir -p /home/admin/data-file/sstable
   ln -sf /home/admin/data-file/sstable ${OB_HOME_DIR}/store/sstable
-  chown -R root:root ${OB_HOME_DIR}
+  # chown -R root:root ${OB_HOME_DIR}
 }
 
 function clean_dirs {
