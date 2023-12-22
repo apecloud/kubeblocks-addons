@@ -14,11 +14,11 @@ zoneCount: 1
 # replicas, it should be larger than zoneCount
 replicas: 1
 
-tenant:
-  name: "alice"
-  max_cpu: 2
-  memory_size: 4
-  log_disk_size: 10
+# tenant:
+#   name: "alice"
+#   max_cpu: 2
+#   memory_size: 4
+#   log_disk_size: 10
 
 # resources
 cpu: 4
