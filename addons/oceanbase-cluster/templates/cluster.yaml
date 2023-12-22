@@ -15,6 +15,7 @@ spec:
   {{- range $i, $e := until (int .Values.obClusters) }}
     - name: ob-bundle-{{ $i }}
       componentDef: {{ include "oceanbase-cluster.compdef" $}}
+      componentDefRef: {{ include "oceanbase-cluster.compdef" $}}
       serviceAccountName: {{ include "kblib.serviceAccountName" $ }}
       replicas: {{ max $.Values.zoneCount $.Values.replicas}}
       {{- include "kblib.componentResources" $ | indent 6 }}

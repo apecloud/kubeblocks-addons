@@ -12,7 +12,7 @@ spec:
     host: "$(SVC_FQDN)"
     port: "$(SVC_PORT_sql)"
   componentDefs:
-    - name: ob-bundle
+    - name: oceanbase
       characterType: oceanbase
       workloadType: Stateful
       service:
@@ -186,7 +186,7 @@ spec:
     host: "$(SVC_FQDN)"
     port: "$(SVC_PORT_sql)"
   componentDefs:
-    - name: ob-bundle
+    - name: oceanbase
       characterType: oceanbase
       workloadType: Stateful
       service:

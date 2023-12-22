@@ -36,7 +36,7 @@ echo "Waiting for observer to be ready..."
 sleep ${INITIAL_DELAY}
 retry /kb_tools/obtools --host 127.0.0.1 -u${MONITOR_USER} -P ${OB_SERVICE_PORT} --allow-native-passwords ping
 
-bin/ob_agentctl config -u \
+/home/admin/obagent/bin/ob_agentctl config -u \
 ob.logcleaner.enabled=false,\
 agent.http.basic.auth.metricAuthEnabled=false,\
 monagent.log.level=info,\
@@ -55,4 +55,4 @@ monagent.pipeline.ob.log.status=inactive,\
 monagent.pipeline.ob.alertmanager.status=inactive,\
 monagent.second.metric.cache.update.interval=5s,\
 ocp.agent.monitor.http.port=${SERVICE_PORT} && \
-bin/ob_monagent -c conf/monagent.yaml
+/home/admin/obagent/bin/ob_monagent -c /home/admin/obagent/conf/monagent.yaml
