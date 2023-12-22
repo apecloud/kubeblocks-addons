@@ -116,20 +116,20 @@ general_log_file=/data/mysql/log/mysqld.log
 {{ end }}
 
 ## for auditlog
-rds_audit_log_dir=/data/mysql/auditlog
-rds_audit_log_enabled=ON
-#rds_audit_log_buffer_size=8388608
-#rds_audit_log_connection_policy=ALL
-#rds_audit_log_event_buffer_size=2048
-#rds_audit_log_flush=OFF
-rds_audit_log_policy=ALL
-rds_audit_log_format=PLAIN # PLAIN or JSON
-#rds_audit_log_row_limit=100000
-rds_audit_log_skip=OFF
-rds_audit_log_statement_policy=ALL
-#rds_audit_log_strategy=ASYNCHRONOUS
+loose_audit_log_dir=/data/mysql/auditlog
+loose_audit_log_enabled=ON
+#loose_audit_log_buffer_size=8388608
+#loose_audit_log_connection_policy=ALL
+#loose_audit_log_event_buffer_size=2048
+#loose_audit_log_flush=OFF
+loose_audit_log_policy=ALL
+loose_audit_log_format=PLAIN # PLAIN or JSON
+#loose_audit_log_row_limit=100000
+loose_audit_log_skip=OFF
+loose_audit_log_statement_policy=ALL
+#loose_audit_log_strategy=ASYNCHRONOUS
 ## TODO select which format by env when creating a cluster?
-rds_audit_log_version=MYSQL_V1 # MYSQL_V1 or MYSQL_V3
+loose_audit_log_version=MYSQL_V1 # MYSQL_V1 or MYSQL_V3
 
 #innodb
 innodb_doublewrite_batch_size=16
