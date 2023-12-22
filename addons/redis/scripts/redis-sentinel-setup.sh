@@ -1,5 +1,9 @@
 #!/bin/sh
 set -ex
+
+# Based on the ClusterDefinition API, redis sentinel deployed with redis together, it will be deprecated in the future.
+
+# shellcheck disable=SC1054
 {{- $clusterName := $.cluster.metadata.name }}
 {{- $namespace := $.cluster.metadata.namespace }}
 {{- /* find redis-sentinel component */}}
@@ -8,10 +12,19 @@ set -ex
 {{- $candidate_instance_index := 0 }}
 {{- $primary_pod := "" }}
 {{- range $i, $e := $.cluster.spec.componentSpecs }}
-  {{- if eq $e.componentDefRef "redis-sentinel" }}
-    {{- $sentinel_component = $e }}
-  {{- else if eq $e.componentDefRef "redis" }}
-    {{- $redis_component = $e }}
+  {{- if index $e "componentDefRef" }}
+    {{- if eq $e.componentDefRef "redis-sentinel" }}
+      {{- $sentinel_component = $e }}
+    {{- else if eq $e.componentDefRef "redis" }}
+      {{- $redis_component = $e }}
+    {{- end }}
+  {{- end }}
+  {{- if index $e "componentDef" }}
+    {{- if eq $e.componentDef "redis-sentinel" }}
+      {{- $sentinel_component = $e }}
+    {{- else if eq $e.componentDef "redis" }}
+      {{- $redis_component = $e }}
+    {{- end }}
   {{- end }}
 {{- end }}
 {{- /* build primary pod message, because currently does not support cross-component acquisition of environment variables, the service of the redis master node is assembled here through specific rules  */}}

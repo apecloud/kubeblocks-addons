@@ -1,12 +1,22 @@
 #!/bin/sh
 set -ex
+
+# Based on the ClusterDefinition API, redis sentinel deployed with redis together, it will be deprecated in the future.
+
 {{- $clusterName := $.cluster.metadata.name }}
 {{- $namespace := $.cluster.metadata.namespace }}
 {{- /* find redis component */}}
 {{- $redis_component := fromJson "{}" }}
 {{- range $i, $e := $.cluster.spec.componentSpecs }}
-  {{- if eq $e.componentDefRef "redis" }}
-  {{- $redis_component = $e }}
+  {{- if index $e "componentDefRef" }}
+    {{- if eq $e.componentDefRef "redis" }}
+      {{- $redis_component = $e }}
+    {{- end }}
+  {{- end }}
+  {{- if index $e "componentDef" }}
+    {{- if eq $e.componentDef "redis" }}
+      {{- $redis_component = $e }}
+    {{- end }}
   {{- end }}
 {{- end }}
 {{- /* build redis engine service */}}
