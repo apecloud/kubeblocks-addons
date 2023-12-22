@@ -39,6 +39,9 @@ retry /kb_tools/obtools --host 127.0.0.1 -u${MONITOR_USER} -P ${OB_SERVICE_PORT}
 bin/ob_agentctl config -u \
 ob.logcleaner.enabled=false,\
 agent.http.basic.auth.metricAuthEnabled=false,\
+monagent.log.level=info,\
+monagent.log.maxage.days=3,\
+monagent.log.maxsize.mb=100,\
 monagent.ob.monitor.user=${MONITOR_USER},\
 monagent.ob.monitor.password=${MONITOR_PASSWORD},\
 monagent.host.ip=${HOSTIP},\

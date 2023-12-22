@@ -153,9 +153,13 @@ spec:
                 mountPath: /scripts
               - name: kbtools
                 mountPath: /kb_tools
+              - name: metricslog
+                mountPath: /home/admin/obagent/log
             workingDir: /home/admin/obagent
         volumes:
           - name: kbtools
+            emptyDir: {}
+          - name: metricslog
             emptyDir: {}
 ---
 apiVersion: apps.kubeblocks.io/v1alpha1
@@ -313,7 +317,11 @@ spec:
                 mountPath: /scripts
               - name: kbtools
                 mountPath: /kb_tools
+              - name: metricslog
+                mountPath: /home/admin/obagent/log
             workingDir: /home/admin/obagent
         volumes:
           - name: kbtools
+            emptyDir: {}
+          - name: metricslog
             emptyDir: {}
