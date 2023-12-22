@@ -1033,6 +1033,9 @@
 	// Sets whether XML data in implicit parsing and serialization operations is to be considered as documents or content fragments.
 	xmloption?: string & "content" | "document"
 
+	// Sets the level of information written to the WAL. replica writes enough data to support WAL archiving and replication, including running read-only queries on a standby server. minimal removes all logging except the information required to recover from a crash or immediate shutdown. Finally, logical adds information necessary to support logical decoding
+	wal_level?: string & "minimal" | "replica" | "logical"
+
 	...
 }
 
