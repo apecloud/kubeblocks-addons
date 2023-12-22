@@ -953,7 +953,7 @@
 	synchronize_seqscans?: bool & false | true
 
 	// Sets the current transactions synchronization level.
-	synchronous_commit?: string & "local" | "on" | "off"
+	synchronous_commit?: string & "local" | "on" | "off" | "remote_write" | "remote_apply"
 
 	// Maximum number of TCP keepalive retransmits.
 	tcp_keepalives_count?: int & >=0 & <=2147483647
