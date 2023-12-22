@@ -1,0 +1,34 @@
+{{- include "kblib.clusterCommon" . }}
+  {{- if .Values.nodePort.enable }}
+  service:
+    - name: redis-nodeport
+      serviceName: redis-nodeport
+      generatePodOrdinalService: true
+      componentSelector: redis
+      spec:
+        type: NodePort
+        ports:
+          - name: redis-nodeport
+            port: 6379
+            targetPort: 6379
+  {{- if .Values.sentinel.enable }}
+  {{- include "redis-cluster.sentinel-nodeport" . | indent 4 }}
+  {{- end }}
+  {{- end }}
+  componentSpecs:
+    - componentDef: redis
+      name: redis
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+      {{- include "redis-cluster.replicaCount" . | indent 6 }}
+      enabledLogs:
+        - running
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      switchPolicy:
+        type: Noop
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
+      {{- include "kblib.componentServices" . | indent 6 }}
+    {{- if .Values.sentinel.enable }}
+    {{- include "redis-cluster.sentinel" . | indent 4 }}
+    {{- end }}
+
