@@ -9,10 +9,10 @@ spec:
   componentVersions:
   - componentDefRef: ob-bundle
     versionsContext:
-      initContainers:
-      - name: init-tools
-        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.obtools.repository }}:{{ .Values.images.obtools.tag }}
-        imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
+#      initContainers:
+#      - name: init-tools
+#        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.obtools.repository }}:{{ .Values.images.obtools.tag }}
+#        imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
       containers:
       - name: observer-container
         image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.observer.repository }}:{{ .Values.images.observer.tag }}
@@ -32,10 +32,10 @@ spec:
   componentVersions:
   - componentDefRef: ob-bundle
     versionsContext:
-      initContainers:
-        - name: init-tools
-          image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.obtools.repository }}:{{ .Values.images.obtools.tag }}
-          imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
+#      initContainers:
+#        - name: init-tools
+#          image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.obtools.repository }}:{{ .Values.images.obtools.tag }}
+#          imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
       containers:
       - name: observer-container
         image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.observer.repository }}:{{ .Values.images.observer.tag }}

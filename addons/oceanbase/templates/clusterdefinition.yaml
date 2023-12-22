@@ -24,9 +24,15 @@ spec:
             port: 2882
             targetPort: 2882
       configSpecs:
+        - name: oceanbase-init-config
+          templateRef: oceanbase-init-config
+          volumeName: oceanbase-init-config
+          namespace: {{ .Release.Namespace }}
+          defaultMode: 0555
         - name: oceanbase-config
-          templateRef: oceanbase-configuration
+          templateRef: oceanbase-config
           volumeName: oceanbase-config
+          constraintRef: oceanbase-cc
           namespace: {{ .Release.Namespace }}
           defaultMode: 0555
       scriptSpecs:
@@ -37,12 +43,12 @@ spec:
           defaultMode: 0555
       podSpec:
         terminationGracePeriodSeconds: 60
-        initContainers:
-          - name: init-tools
-            command: [ "cp", "/bin/ob-tools", "/kb_tools/obtools" ]
-            volumeMounts:
-              - name: kbtools
-                mountPath: /kb_tools
+#        initContainers:
+#          - name: init-tools
+#            command: [ "cp", "/bin/ob-tools", "/kb_tools/obtools" ]
+#            volumeMounts:
+#              - name: kb-tools
+#                mountPath: /kb_tools
         containers:
           - name: observer-container
             command:
@@ -77,8 +83,10 @@ spec:
                 name: workdir
               - name: scripts
                 mountPath: /scripts
-              - name: oceanbase-config
+              - name: oceanbase-init-config
                 mountPath: /kb-config
+              - name: oceanbase-config
+                mountPath: /opt/oceanbase/etc
             workingDir: /home/admin/workdir
             env:
               - name: LD_LIBRARY_PATH
@@ -98,6 +106,8 @@ spec:
                 value: "/home/admin/workdir"
               - name: CLUSTER_ID
                 value: "1"
+              - name: OB_SERVICE_PORT
+                value: "2881"
           - name: metrics
             command:
               - bash
@@ -151,14 +161,14 @@ spec:
             volumeMounts:
               - name: scripts
                 mountPath: /scripts
-              - name: kbtools
+              - name: kb-tools
                 mountPath: /kb_tools
               - name: metricslog
                 mountPath: /home/admin/obagent/log
             workingDir: /home/admin/obagent
         volumes:
-          - name: kbtools
-            emptyDir: {}
+#          - name: kb-tools
+#            emptyDir: {}
           - name: metricslog
             emptyDir: {}
 ---
@@ -188,9 +198,15 @@ spec:
             port: 2882
             targetPort: 2882
       configSpecs:
+        - name: oceanbase-init-config
+          templateRef: oceanbase-init-config
+          volumeName: oceanbase-init-config
+          namespace: {{ .Release.Namespace }}
+          defaultMode: 0555
         - name: oceanbase-config
-          templateRef: oceanbase-configuration
+          templateRef: oceanbase-config
           volumeName: oceanbase-config
+          constraintRef: oceanbase-cc
           namespace: {{ .Release.Namespace }}
           defaultMode: 0555
       scriptSpecs:
@@ -203,12 +219,12 @@ spec:
         terminationGracePeriodSeconds: 60
         hostNetwork: true
         dnsPolicy: ClusterFirstWithHostNet
-        initContainers:
-          - name: init-tools
-            command: [ "cp", "/bin/ob-tools", "/kb_tools/obtools" ]
-            volumeMounts:
-              - name: kbtools
-                mountPath: /kb_tools
+#        initContainers:
+#          - name: init-tools
+#            command: [ "cp", "/bin/ob-tools", "/kb_tools/obtools" ]
+#            volumeMounts:
+#              - name: kb-tools
+#                mountPath: /kb_tools
         containers:
           - name: observer-container
             command:
@@ -243,8 +259,10 @@ spec:
                 name: workdir
               - name: scripts
                 mountPath: /scripts
-              - name: oceanbase-config
+              - name: oceanbase-init-config
                 mountPath: /kb-config
+              - name: oceanbase-config
+                mountPath: /opt/oceanbase/etc
             workingDir: /home/admin/workdir
             env:
               - name: LD_LIBRARY_PATH
@@ -262,6 +280,8 @@ spec:
                     key: password
               - name: OB_HOME_DIR
                 value: "/home/admin/workdir"
+              - name: OB_SERVICE_PORT
+                value: "2881"
           - name: metrics
             command:
               - bash
@@ -315,13 +335,13 @@ spec:
             volumeMounts:
               - name: scripts
                 mountPath: /scripts
-              - name: kbtools
+              - name: kb-tools
                 mountPath: /kb_tools
               - name: metricslog
                 mountPath: /home/admin/obagent/log
             workingDir: /home/admin/obagent
         volumes:
-          - name: kbtools
-            emptyDir: {}
+#          - name: kb-tools
+#            emptyDir: {}
           - name: metricslog
             emptyDir: {}
