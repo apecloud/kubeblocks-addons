@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/schema#",
   "type": "object",
   "properties": {
-    "newAPIEnabled": {
+    "useLegacyCompDef": {
       "type": "boolean",
       "default": false,
       "title": "useLegacyCompDef",
