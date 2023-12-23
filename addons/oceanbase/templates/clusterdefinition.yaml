@@ -171,22 +171,7 @@ spec:
 #            emptyDir: {}
           - name: metricslog
             emptyDir: {}
----
-apiVersion: apps.kubeblocks.io/v1alpha1
-kind: ClusterDefinition
-metadata:
-  name: oceanbase-host-network
-  labels:
-    {{- include "oceanbase.labels" . | nindent 4 }}
-spec:
-  connectionCredential:
-    username: root
-    password: ""
-    endpoint: "$(SVC_FQDN):$(SVC_PORT_sql)"
-    host: "$(SVC_FQDN)"
-    port: "$(SVC_PORT_sql)"
-  componentDefs:
-    - name: oceanbase
+    - name: oceanbase-hostnetwork
       characterType: oceanbase
       workloadType: Stateful
       service:
