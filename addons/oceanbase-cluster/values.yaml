@@ -36,3 +36,9 @@ storageClassName: ""
 
 debug: false
 hostnetwork: "enabled"
+
+roleProbe:
+  failureThreshold: 3
+  periodSeconds: 2
+  timeoutSeconds: 2
+
