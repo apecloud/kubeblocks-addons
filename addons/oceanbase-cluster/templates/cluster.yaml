@@ -7,8 +7,8 @@ metadata:
   annotations:
     {{ include "oceanbase-cluster.annotations.extra-envs" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: {{ include "oceanbase-cluster.clusterdef" .}}
-  clusterVersionRef: {{ include "oceanbase-cluster.clusterver" .}}
+  clusterDefinitionRef: "oceanbase"
+  clusterVersionRef: "oceanbase-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}"
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   # {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:

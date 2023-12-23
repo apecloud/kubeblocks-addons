@@ -155,7 +155,7 @@ kind: ComponentDefinition
 metadata:
   name: oceanbase-hostnetwork
   labels:
-    {{- include "oceanbase.labels" . | nindent 4 }}
+    {{- include "oceanbase-hostnetwork.labels" . | nindent 4 }}
 spec:
   provider: community
   serviceKind: oceanbase
@@ -174,9 +174,15 @@ spec:
             targetPort: 2882
   updateStrategy: Serial
   configs:
+    - name: oceanbase-init-config
+      templateRef: oceanbase-init-config
+      volumeName: oceanbase-init-config
+      namespace: {{ .Release.Namespace }}
+      defaultMode: 0555
     - name: oceanbase-config
-      templateRef: oceanbase-configuration
+      templateRef: oceanbase-config
       volumeName: oceanbase-config
+      constraintRef: oceanbase-cc
       namespace: {{ .Release.Namespace }}
       defaultMode: 0555
   scripts:
@@ -225,8 +231,10 @@ spec:
             name: workdir
           - name: scripts
             mountPath: /scripts
-          - name: oceanbase-config
+          - name: oceanbase-init-config
             mountPath: /kb-config
+          - name: oceanbase-config
+            mountPath: /opt/oceanbase/etc
         workingDir: /home/admin/workdir
         env:
           - name: LD_LIBRARY_PATH
@@ -235,3 +243,63 @@ spec:
             value: "$(KB_CLUSTER_COMP_NAME)"
           - name: OB_HOME_DIR
             value: "/home/admin/workdir"
+      - name: metrics
+        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.metrics.repository }}:{{ .Values.images.metrics.tag }}
+        imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
+        command:
+          - bash
+          - -c
+          - |
+            /scripts/setupmetrics.sh
+        env:
+          - name: OB_MONITOR_STATUS
+            value: active
+          - name: CLUSTER_NAME
+            value: "$(KB_CLUSTER_COMP_NAME)"
+          - name: CLUSTER_ID
+            value: "1"
+          - name: MONITOR_USER
+            value: "root"
+          - name: MONITOR_PASSWORD
+            value: ""
+          - name: SERVICE_PORT
+            value: "8088"
+          - name: OB_SERVICE_PORT
+            value: "2881"
+        ports:
+          - containerPort: 8088
+            name: http
+            protocol: TCP
+          - containerPort: 8089
+            name: pprof
+            protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /metrics/stat
+            port: 8088
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 2
+          successThreshold: 1
+          timeoutSeconds: 1
+        resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
+          requests:
+            cpu: "200m"
+            memory: 256Mi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+          - name: scripts
+            mountPath: /scripts
+          - name: kb-tools
+            mountPath: /kb_tools
+          - name: metricslog
+            mountPath: /home/admin/obagent/log
+        workingDir: /home/admin/obagento
+    volumes:
+      - name: metricslog
+        emptyDir: {}

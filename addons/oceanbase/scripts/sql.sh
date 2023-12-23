@@ -40,3 +40,32 @@ function conn_remote_batch {
 function conn_remote_as_tenant {
   mysql -h$1 -uroot@"$2" -P 2881 -A -e "$3"
 }
+
+function conn_local_w_port {
+  mysql -h127.0.0.1 -uroot -P $1 -A -e "$2"
+}
+
+function conn_local_as_tenant_w_port {
+  mysql -h127.0.0.1 -P $1 -uroot@"$2" -A -Doceanbase -e "$2"
+}
+
+function conn_local_obdb_w_port {
+  mysql -h127.0.0.1 -uroot -P $1 -A -Doceanbase -e "$2"
+}
+
+function conn_remote_w_port {
+  mysql -h$1 -uroot -P $2 -A -e "$3"
+}
+
+function conn_remote_obdb_w_port {
+  mysql -h$1 -uroot -P $2 -A -Doceanbase -e "$3"
+}
+
+function conn_remote_batch_w_port {
+  # Used for querying results
+  mysql -h$1 -uroot -P $2 -A -Doceanbase -e "$3" -B
+}
+
+function conn_remote_as_tenant_w_port {
+  mysql -h$1 -P $2 -uroot@"$3"  -A -e "$4"
+}
