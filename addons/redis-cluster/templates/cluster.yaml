@@ -26,7 +26,7 @@
 {{- include "kblib.clusterCommon" . }}
   clusterDefinitionRef: redis  # ref clusterDefinition.name
   {{- if .Values.nodePortEnabled }}
-  service:
+  services:
     - name: redis-nodeport
       serviceName: redis-nodeport
       generatePodOrdinalService: true
@@ -55,6 +55,6 @@
       {{- include "kblib.componentStorages" . | indent 6 }}
       {{- include "kblib.componentServices" . | indent 6 }}
     {{- if .Values.sentinel.enabled }}
-    {{- include "redis-cluster.sentinel" . | indent 4 }}
+    {{- include "redis-cluster.sentinelCompDef" . | indent 4 }}
     {{- end }}
 {{- end }}

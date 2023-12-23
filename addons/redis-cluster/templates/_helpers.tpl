@@ -51,11 +51,34 @@ Define redis cluster sentinel nodeport service.
   spec:
     type: NodePort
     ports:
-    - name: redis-sentinel-nodeport
-      port: 26379
-      targetPort: 26379
+     - name: redis-sentinel-nodeport
+       port: 26379
+       targetPort: 26379
 {{- end }}
 
+{{/*
+Define redis cluster sentinel component.
+*/}}
+{{- define "redis-cluster.sentinelCompDef" }}
+- componentDef: redis-sentinel
+  name: redis-sentinel
+  replicas: {{ .Values.sentinel.replicas }}
+  resources:
+    limits:
+      cpu: {{ .Values.sentinel.cpu | quote }}
+      memory:  {{ print .Values.sentinel.memory "Gi" | quote }}
+    requests:
+      cpu: {{ .Values.sentinel.cpu | quote }}
+      memory:  {{ print .Values.sentinel.memory "Gi" | quote }}
+  volumeClaimTemplates:
+    - name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ print .Values.sentinel.storage "Gi" }}
+{{- end }}
 
 {{/*
 Define replica count.
