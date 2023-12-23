@@ -1,4 +1,4 @@
-{{- if not .Values.newAPIEnabled }}
+{{- if .Values.useLegacyCompDef }}
 {{- include "kblib.clusterCommon" . }}
   clusterDefinitionRef: redis  # ref clusterDefinition.name
   componentSpecs:

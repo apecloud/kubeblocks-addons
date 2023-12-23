@@ -1,8 +1,9 @@
 # Default values for redis-cluster.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
-# if newAPIEnabled is true ,cluster will be rendered by compDef rather than componentDefRef in cluster definition
-newAPIEnabled: false
+# if useLegacyCompDef is false ,cluster will be rendered by compDef rather than componentDefRef in cluster definition
+useLegacyCompDef: false
+
 
 ## @param version redis cluster version
 ##
