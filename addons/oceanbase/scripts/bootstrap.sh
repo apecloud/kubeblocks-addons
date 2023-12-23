@@ -41,6 +41,22 @@ function init_port_list {
     RPC_PORTS+=(2882)
   done
 
+  # parse port info from dynamic comp info
+  {{- range $i, $e := $.dynamicCompInfos }}
+    {{- $mysql_port_info := getPortByName ( index $e.containers 0 ) "sql" }}
+    {{- $rpc_port_info := getPortByName ( index $e.containers 0 ) "rpc" }}
+    {{- $mysql_port := 2881 }}
+    {{- if $mysql_port_info }}
+      {{- $mysql_port = $mysql_port_info.containerPort }}
+    {{- end }}
+    {{- $rpc_port := 2882 }}
+    {{- if $rpc_port_info }}
+      {{- $rpc_port = $rpc_port_info.containerPort }}
+    {{- end }}
+    MYSQL_PORTS[{{ $i }}]={{$mysql_port}}
+    RPC_PORTS[{{ $i }}]={{$rpc_port}}
+  {{- end }}
+
   COMP_MYSQL_PORT=${MYSQL_PORTS[$COMPONENT_INDEX]}
   COMP_RPC_PORT=${RPC_PORTS[$COMPONENT_INDEX]}
   echo "sql_port: $COMP_MYSQL_PORT"
