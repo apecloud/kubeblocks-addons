@@ -41,6 +41,23 @@ Define redis cluster twemproxy component.
 {{- end }}
 
 {{/*
+Define redis cluster sentinel nodeport service.
+*/}}
+{{- define "redis-cluster.sentinel-nodeport" }}
+- name: redis-sentinel-nodeport
+  serviceName: redis-sentinel-nodeport
+  generatePodOrdinalService: true
+  componentSelector: redis-sentinel
+  spec:
+    type: NodePort
+    ports:
+    - name: redis-sentinel-nodeport
+      port: 26379
+      targetPort: 26379
+{{- end }}
+
+
+{{/*
 Define replica count.
 standalone mode: 1
 replication mode: 2

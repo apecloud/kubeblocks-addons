@@ -2,6 +2,12 @@
   "$schema": "http://json-schema.org/schema#",
   "type": "object",
   "properties": {
+    "newAPIEnabled": {
+      "type": "boolean",
+      "default": false,
+      "title": "newAPIEnabled",
+      "description": "if newAPIEnabled is true ,cluster will be rendered by compDef rather than componentDefRef in cluster definition"
+    },
     "version": {
       "title": "Version",
       "description": "Cluster version.",
@@ -59,6 +65,92 @@
       "default": 20,
       "minimum": 1,
       "maximum": 10000
+    },
+    "nodePortEnabled": {
+      "type": "boolean",
+      "default": false,
+      "title": "nodePortEnabled",
+      "description":"Whether NodePort service is enabled, default is true"
+    },
+    "twemproxy": {
+      "title": "The redis twemproxy component",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description":"Whether have twemproxy component, default is false",
+          "title": "twemproxy.enable",
+          "type": "boolean",
+          "default": false
+        },
+        "cpu": {
+          "description": "twemproxy component cpu cores.",
+          "title": "sentinel cpu",
+          "type": "number",
+          "default": 0.2,
+          "minimum": 0.1,
+          "maximum": 8
+        },
+        "memory": {
+          "description": "twemproxy component memory, the unit is Gi.",
+          "title": "sentinel memory",
+          "type": "number",
+          "default": 0.2,
+          "minimum": 0.1,
+          "maximum": 4
+        },
+        "replicas": {
+          "description": "twemproxy component replicas",
+          "title": "twemproxy replicas",
+          "type": "number",
+          "default": 3,
+          "minimum": 1,
+          "maximum": 5
+        }
+      }
+    },
+    "sentinel": {
+      "title": "The redis sentinel",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description":"Whether have sentinel component, default is true",
+          "title": "sentinel.enable",
+          "type": "boolean",
+          "default": true
+        },
+        "cpu": {
+          "description": "Sentinel component cpu cores.",
+          "title": "sentinel cpu",
+          "type": "number",
+          "default": 0.2,
+          "minimum": 0.1,
+          "maximum": 8
+        },
+        "memory": {
+          "description": "Sentinel component memory, the unit is Gi.",
+          "title": "sentinel memory",
+          "type": "number",
+          "default": 0.2,
+          "minimum": 0.1,
+          "maximum": 4
+        },
+        "storage": {
+          "description": "Sentinel component storage size, the unit is Gi.",
+          "title": "sentinel storage",
+          "type": "number",
+          "default": 5,
+          "minimum": 1,
+          "maximum": 10
+        },
+        "replicas": {
+          "description": "Sentinel component replicas",
+          "title": "sentinel replicas",
+          "type": "number",
+          "default": 3,
+          "minimum": 1,
+          "maximum": 5
+        }
+      }
     }
   }
 }
