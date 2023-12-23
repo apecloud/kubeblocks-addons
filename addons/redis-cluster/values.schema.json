@@ -5,8 +5,8 @@
     "newAPIEnabled": {
       "type": "boolean",
       "default": false,
-      "title": "newAPIEnabled",
-      "description": "if newAPIEnabled is true ,cluster will be rendered by compDef rather than componentDefRef in cluster definition"
+      "title": "useLegacyCompDef",
+      "description": "if useLegacyCompDef is false ,cluster will be rendered by compDef rather than componentDefRef in cluster definition"
     },
     "version": {
       "title": "Version",
