@@ -137,3 +137,18 @@ spec:
   # configuration file format
   formatterConfig:
     format: properties
+
+---
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ConfigConstraint
+metadata:
+  name: oceanbase-env-cc
+  labels:
+    {{- include "oceanbase.labels" . | nindent 4 }}
+spec:
+  configurationSchema:
+    cue: ""
+
+  # mysql configuration file format
+  formatterConfig:
+    format: yaml

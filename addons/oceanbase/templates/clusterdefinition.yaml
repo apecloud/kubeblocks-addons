@@ -212,6 +212,16 @@ spec:
           constraintRef: oceanbase-parameters-cc
           namespace: {{ .Release.Namespace }}
           defaultMode: 0555
+        - name: oceanbase-inject-env
+          templateRef: oceanbase-inject-env
+          volumeName: oceanbase-inject-env
+          constraintRef: oceanbase-env-cc
+          namespace: {{ .Release.Namespace }}
+          defaultMode: 0555
+          asEnvFrom:
+            - observer-container
+            - metrics
+            - config-manager
       scriptSpecs:
         - name: oceanbase-scripts
           templateRef: oceanbase-scripts
