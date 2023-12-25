@@ -60,6 +60,8 @@ function init_port_list {
 
   COMP_MYSQL_PORT=${MYSQL_PORTS[$COMPONENT_INDEX]}
   COMP_RPC_PORT=${RPC_PORTS[$COMPONENT_INDEX]}
+  # persisting the sql port for backup and restore
+  echo $COMP_MYSQL_PORT > /home/admin/workdir/sql_port.ob
   echo "sql_port: $COMP_MYSQL_PORT"
   echo "rpc_port: $COMP_RPC_PORT"
 }
