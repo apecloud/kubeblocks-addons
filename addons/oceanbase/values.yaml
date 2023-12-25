@@ -9,6 +9,11 @@ images:
     repository: oceanbase-chart
     tag: 4.2.0.0-100010032023083021
 
+roleProbe:
+  failureThreshold: 3
+  periodSeconds: 2
+  timeoutSeconds: 2
+
 nameOverride: ""
 fullnameOverride: ""
 clusterVersionOverride: "4.2.0.0-100010032023083021"
