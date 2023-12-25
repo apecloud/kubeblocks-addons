@@ -9,7 +9,18 @@ metadata:
 spec:
   clusterDefinitionRef: oceanbase
   backupPolicies:
-  - componentDefRef: ob-bundle
+  - componentDefRef: oceanbase
+    backoffLimit: 0
+    backupMethods:
+      - name: full
+        snapshotVolumes: false
+        actionSetName: oceanbase-physical-backup
+    schedules:
+      - backupMethod: full
+        enabled: false
+        cronExpression: "0 18 * * *"
+        retentionPeriod: 7d
+  - componentDefRef: oceanbase-hostwork
     backoffLimit: 0
     backupMethods:
       - name: full
@@ -21,6 +32,17 @@ spec:
         cronExpression: "0 18 * * *"
         retentionPeriod: 7d
   - componentDef: oceanbase
+    backoffLimit: 0
+    backupMethods:
+      - name: full
+        snapshotVolumes: false
+        actionSetName: oceanbase-physical-backup
+    schedules:
+      - backupMethod: full
+        enabled: false
+        cronExpression: "0 18 * * *"
+        retentionPeriod: 7d
+  - componentDef: oceanbase-hostnetwork
     backoffLimit: 0
     backupMethods:
       - name: full
