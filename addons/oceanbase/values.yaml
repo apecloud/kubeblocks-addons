@@ -8,6 +8,18 @@ images:
   observer:
     repository: apecloud/oceanbase
     tag: 4.2.0.0-100010032023083021
+  metrics:
+    repository: apecloud/obagent
+    tag: 4.2.1-100000092023101717
+  obtools:
+      repository: apecloud/obtools
+      tag: 4.2.1
+
+
+roleProbe:
+  failureThreshold: 3
+  periodSeconds: 2
+  timeoutSeconds: 2
 
 nameOverride: ""
 fullnameOverride: ""
