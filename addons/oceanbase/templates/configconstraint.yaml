@@ -151,4 +151,4 @@ spec:
 
   # mysql configuration file format
   formatterConfig:
-    format: yaml
+    format: props-plus

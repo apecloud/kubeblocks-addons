@@ -28,5 +28,5 @@ metadata:
   labels:
     {{- include "oceanbase.labels" . | nindent 4 }}
 data:
-  oceanbase.sysvars: |-
+  oceanbase-env: |-
     {{- .Files.Get "config/oceanbase-inject-env.tpl" | nindent 4 }}

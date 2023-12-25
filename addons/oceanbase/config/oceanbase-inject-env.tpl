@@ -1,13 +1,14 @@
 {{- $component_index := $.component.name | splitList "-" | mustLast | atoi }}
 
-{{- $compInfo := get $.dynamicCompInfos $component_index }}
-{{- $ob_container := getContainerByName $e.containers "observer-container" }}
-{{- $metrics_container := getContainerByName $e.containers "metrics" }}
+{{- $compInfo := index $.dynamicCompInfos $component_index }}
+{{- $ob_container := getContainerByName $compInfo.containers "observer-container" }}
+{{- $metrics_container := getContainerByName $compInfo.containers "metrics" }}
 
 {{- $ob_port_info := getPortByName $ob_container "sql" }}
 {{- $rpc_port_info := getPortByName $ob_container "rpc" }}
-{{- $metrics_port_info := getPortByName $e.containers "http" }}
-{{- $prof_port_info := getPortByName $e.containers "pprof" }}
+{{- $metrics_port_info := getPortByName $metrics_container "http" }}
+{{- $manager_port_info := getPortByName $metrics_container "pprof" }}
+{{- $cm_port_info := getPortByName $metrics_container "cm" }}
 
 ## for ob port
 {{- $ob_port := 2881 }}
@@ -15,7 +16,6 @@
   {{- $ob_port = $ob_port_info.containerPort }}
 {{- end }}
 COMP_MYSQL_PORT = {{ $ob_port }}
-
 
 ## for ob rpc port
 {{- $rpc_port := 2882 }}
@@ -29,11 +29,18 @@ COMP_RPC_PORT = {{ $rpc_port }}
 {{- if $metrics_port_info }}
   {{- $metrics_port = $metrics_port_info.containerPort }}
 {{- end }}
-METRICS_PORT = {{ $metrics_port }}
+SERVICE_PORT = {{ $metrics_port }}
 
-## for pprof port
-{{- $perf_port := 8089 }}
-{{- if $prof_port_info }}
-  {{- $perf_port = $prof_port_info.containerPort }}
+## for manager port
+{{- $manager_port := 8089 }}
+{{- if $manager_port_info }}
+  {{- $manager_port = $manager_port_info.containerPort }}
 {{- end }}
-PPOF_PORT = {{ $perf_port }}
+MANAGER_PORT = {{ $manager_port }}
+
+## for config-manager port
+{{- $cm_port := 9901 }}
+{{- if $cm_port_info }}
+  {{- $cm_port = $cm_port_info.containerPort }}
+{{- end }}
+CONF_MANAGER_PORT = {{ $cm_port }}

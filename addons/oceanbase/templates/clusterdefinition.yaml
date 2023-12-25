@@ -136,10 +136,7 @@ spec:
               - name: MONITOR_USER
                 value: "root"
               - name: MONITOR_PASSWORD
-                valueFrom:
-                  secretKeyRef:
-                    name: $(CONN_CREDENTIAL_SECRET_NAME)
-                    key: password
+                value: ""
               - name: SERVICE_PORT
                 value: "8088"
               - name: OB_SERVICE_PORT
@@ -317,26 +314,26 @@ spec:
               - name: MONITOR_USER
                 value: "root"
               - name: MONITOR_PASSWORD
-                valueFrom:
-                  secretKeyRef:
-                    name: $(CONN_CREDENTIAL_SECRET_NAME)
-                    key: password
-              - name: SERVICE_PORT
-                value: "8088"
-              - name: OB_SERVICE_PORT
-                value: "2881"
+                value: ""
+#              - name: SERVICE_PORT
+#                value: "8088"
+#              - name: OB_SERVICE_PORT
+#                value: "2881"
             ports:
-              - containerPort: 8088
+              - containerPort: 60
                 name: http
                 protocol: TCP
-              - containerPort: 8089
+              - containerPort: 61
                 name: pprof
+                protocol: TCP
+              - containerPort: 62
+                name: cm
                 protocol: TCP
             readinessProbe:
               failureThreshold: 3
               httpGet:
                 path: /metrics/stat
-                port: 8088
+                port: http
                 scheme: HTTP
               initialDelaySeconds: 5
               periodSeconds: 2

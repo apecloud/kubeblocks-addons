@@ -1,9 +1,5 @@
 #!/usr/bin/env bash
 
-source /scripts/bootstrap.sh
-
-init_port_list
-
 function retry {
   local max_attempts=10
   local attempt=1
@@ -47,5 +43,6 @@ monagent.pipeline.node.status=inactive,\
 monagent.pipeline.ob.log.status=inactive,\
 monagent.pipeline.ob.alertmanager.status=inactive,\
 monagent.second.metric.cache.update.interval=5s,\
+ocp.agent.manager.http.port=${MANAGER_PORT},\
 ocp.agent.monitor.http.port=${SERVICE_PORT} && \
 /home/admin/obagent/bin/ob_monagent -c /home/admin/obagent/conf/monagent.yaml
