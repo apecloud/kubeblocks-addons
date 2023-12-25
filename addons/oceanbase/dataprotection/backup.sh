@@ -4,6 +4,7 @@ set -e
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH=${DP_BACKUP_BASE_PATH}
 mysql_cmd="mysql -u root -h ${DP_DB_HOST} -P2881 -N -e"
+noArchivedTenantsFiles="no_archived_tenants.dp"
 OlD_IFS=$IFS
 
 provider=
@@ -92,17 +93,21 @@ function getDestURL() {
 
 function prepareTenantLogArchive() {
   tenant_name=${1:?missing tenant name}
+  log_mode=${2}
+  if [[ $log_mode == "NOARCHIVELOG" ]]; then
+     echo "${tenant_name}" >> $noArchivedTenantsFiles
+  fi
   destUrl=$(getDestURL archive ${tenant_name})
-  echo $destUrl
   echo "INFO: prepare log archive dest for tenant ${tenant_name}"
   result=`${mysql_cmd} "ALTER SYSTEM SET LOG_ARCHIVE_DEST=\"LOCATION=${destUrl}\" TENANT=${tenant_name}"`
   if [[ $? -ne 0 ]];then
      echo "ERROR: alert log_archive_dest for tenant ${tenant_name} failed: ${result}"
      exit 1
   fi
-  # TODO: add auto clean archive logs
   # enable dest
   ${mysql_cmd} "ALTER SYSTEM SET LOG_ARCHIVE_DEST_STATE='ENABLE' TENANT=${tenant_name};"
+  # TODO: add auto clean archive logs
+  ${mysql_cmd} "ALTER SYSTEM ADD DELETE BACKUP POLICY 'default' RECOVERY_WINDOW '7d' TENANT ${tenant_name};"
 }
 
 function prepareTenantDataBackup() {
@@ -114,8 +119,6 @@ function prepareTenantDataBackup() {
      echo "ERROR: alert data_backup_dest for tenant ${tenant_name} failed: ${result}"
      exit 1
   fi
-  # enable dest
-  ${mysql_cmd} "ALTER SYSTEM SET LOG_ARCHIVE_DEST_STATE='ENABLE' TENANT=${tenant_name};"
 }
 
 function saveUnitCreateStatement(){
@@ -157,7 +160,7 @@ trap handle_exit EXIT
 # analysisToolConfig first
 analysisToolConfig
 
-${mysql_cmd} "SELECT tenant_id, tenant_name FROM oceanbase.DBA_OB_TENANTS where tenant_type='user' and status='NORMAL';" | while IFS=$'\t' read -a row; do
+${mysql_cmd} "SELECT tenant_id, tenant_name,log_mode FROM oceanbase.DBA_OB_TENANTS where tenant_type='user' and status='NORMAL';" | while IFS=$'\t' read -a row; do
   IFS=${OlD_IFS}
   tenant_id=${row[0]}
   tenant_name=${row[1]}
@@ -165,7 +168,7 @@ ${mysql_cmd} "SELECT tenant_id, tenant_name FROM oceanbase.DBA_OB_TENANTS where 
   res=`${mysql_cmd} "SELECT count(*) FROM oceanbase.CDB_OB_ARCHIVELOG where status='DOING' and tenant_id=${tenant_id};" |awk -F '\t' '{print}'`
   if [[ $res -eq 0 ]]; then
     # only prepare the tenant which not doing archive.
-    prepareTenantLogArchive $tenant_name
+    prepareTenantLogArchive $tenant_name ${row[2]}
   fi
   # prepare tenant data backup test
   prepareTenantDataBackup $tenant_name
@@ -209,8 +212,20 @@ while true; do
   echo "INFO: wait for backup data completed, uncompleted job count: ${res}"
   sleep 10
 done
-echo "INFO: backup data completed, start to save status"
+echo "INFO: backup data completed."
 sleep 5
+
+# step 5 ==> close tenant archive if the tenant not open the log archive.
+if [[ -f $noArchivedTenantsFiles ]]; then
+   IFS=$'\n'
+   for tenant_name in `cat $noArchivedTenantsFiles`; do
+     IFS=${OlD_IFS}
+     if [[ ! -z $tenant_name ]]; then
+       echo "INFO: start to close ${tenant_name} archive"
+       ${mysql_cmd} "ALTER SYSTEM NOARCHIVELOG TENANT=${tenant_name}"
+     fi
+   done
+fi
 
 
 # step 6===> check if backup jobs are successful and collect backup info for restore.
@@ -219,7 +234,7 @@ unitSQLFile="create_unit.sql"
 resourcePoolSQLFile="create_resource_pool.sql"
 # save unit create statement to tmp file
 saveUnitCreateStatement
-
+echo "INFO: start to save status"
 ${mysql_cmd} "select tenant_id, backup_set_id from oceanbase.CDB_OB_BACKUP_JOB_HISTORY where initiator_job_id=${initiator_job_id} and backup_set_id !=0;" | while IFS=$'\t' read -a row; do
     IFS=${OlD_IFS}
     tenant_id=${row[0]}
