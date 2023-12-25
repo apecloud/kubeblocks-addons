@@ -7,14 +7,15 @@ metadata:
   annotations:
     {{ include "oceanbase-cluster.annotations.extra-envs" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: {{ include "oceanbase-cluster.clusterdef" .}}
-  clusterVersionRef: {{ include "oceanbase-cluster.clusterver" .}}
+  clusterDefinitionRef: "oceanbase"
+  clusterVersionRef: "oceanbase-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}"
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   # {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
   {{- range $i, $e := until (int .Values.obClusters) }}
     - name: ob-bundle-{{ $i }}
       componentDef: {{ include "oceanbase-cluster.compdef" $}}
+      componentDefRef: {{ include "oceanbase-cluster.compdef" $}}
       serviceAccountName: {{ include "kblib.serviceAccountName" $ }}
       replicas: {{ max $.Values.zoneCount $.Values.replicas}}
       {{- include "kblib.componentResources" $ | indent 6 }}
