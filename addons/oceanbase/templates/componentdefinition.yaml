@@ -16,10 +16,10 @@ spec:
         ports:
           - name: sql
             port: 2881
-            targetPort: 2881
+            targetPort: sql
           - name: rpc
             port: 2882
-            targetPort: 2882
+            targetPort: rpc
   updateStrategy: Serial
   configs:
 #    - name: oceanbase-init-config
@@ -57,10 +57,10 @@ spec:
         image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.observer.repository }}:{{ .Values.images.observer.tag }}
         imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
         ports:
-          - containerPort: 2881
+          - containerPort: 88
             name: sql
             protocol: TCP
-          - containerPort: 2882
+          - containerPort: 99
             name: rpc
             protocol: TCP
         readinessProbe:
@@ -174,10 +174,10 @@ spec:
         ports:
           - name: sql
             port: 2881
-            targetPort: 2881
+            targetPort: sql
           - name: rpc
             port: 2882
-            targetPort: 2882
+            targetPort: rpc
   updateStrategy: Serial
   configs:
 #    - name: oceanbase-init-config
@@ -217,10 +217,10 @@ spec:
         image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.observer.repository }}:{{ .Values.images.observer.tag }}
         imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
         ports:
-          - containerPort: 2881
+          - containerPort: 88
             name: sql
             protocol: TCP
-          - containerPort: 2882
+          - containerPort: 99
             name: rpc
             protocol: TCP
         readinessProbe:

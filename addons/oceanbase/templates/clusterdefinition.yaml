@@ -19,10 +19,10 @@ spec:
         ports:
           - name: sql
             port: 2881
-            targetPort: 2881
+            targetPort: sql
           - name: rpc
             port: 2882
-            targetPort: 2882
+            targetPort: rpc
       configSpecs:
 #        - name: oceanbase-init-config
 #          templateRef: oceanbase-init-config
@@ -69,10 +69,10 @@ spec:
               - |
                 /scripts/entrypoint.sh
             ports:
-              - containerPort: 2881
+              - containerPort: 88
                 name: sql
                 protocol: TCP
-              - containerPort: 2882
+              - containerPort: 99
                 name: rpc
                 protocol: TCP
             readinessProbe:
@@ -190,10 +190,10 @@ spec:
         ports:
           - name: sql
             port: 2881
-            targetPort: 2881
+            targetPort: sql
           - name: rpc
             port: 2882
-            targetPort: 2882
+            targetPort: rpc
       configSpecs:
 #        - name: oceanbase-init-config
 #          templateRef: oceanbase-init-config
@@ -242,10 +242,10 @@ spec:
               - |
                 /scripts/entrypoint.sh
             ports:
-              - containerPort: 2881
+              - containerPort: 88
                 name: sql
                 protocol: TCP
-              - containerPort: 2882
+              - containerPort: 99
                 name: rpc
                 protocol: TCP
             readinessProbe:
