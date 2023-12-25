@@ -57,9 +57,9 @@ function getStorageHost() {
 
 # get the backup dest url
 function getDestURL() {
-  destPath=${1:?missing destType}
-  tenantName=${2:?missing tenantName}
-  host=$(getStorageHost)
+  local destPath=${1:?missing destPath}
+  local tenantName=${2:?missing tenantName}
+  local host=$(getStorageHost)
   if [[ -z $host ]];then
      echo "ERROR: unsupported storage provider \"${provider}\""
      exit 1
@@ -70,7 +70,7 @@ function getDestURL() {
 
 
 function execute() {
-    sql=${1:?missing sql}
+    local sql=${1:?missing sql}
     while true; do
        echo "execute '${sql}'"
        res=`${mysql_cmd} "${sql}" 2>&1`
@@ -84,9 +84,9 @@ function execute() {
 }
 
 function restoreTenant() {
-    tenant_name=${1:?missing tenant_name}
-    sql=${2:?missing restore sql}
-    time=0
+    local tenant_name=${1:?missing tenant_name}
+    local sql=${2:?missing restore sql}
+    local time=0
     while true; do
       if [[ "$tenant_name" == ${TENANT_NAME} ]]; then
         echo "INFO: drop init tenant ${tenant_name}"
@@ -101,7 +101,7 @@ function restoreTenant() {
 }
 
 function executeSQLFile() {
-  sqlFile=${1}
+  local sqlFile=${1}
   IFS=$'\n'
   for sql in `cat ${sqlFile}`; do
     IFS=$OlD_IFS
@@ -110,8 +110,8 @@ function executeSQLFile() {
 }
 
 function waitForPrimaryClusterRestore() {
-    primaryHost=${1}
-    primaryCmd="mysql -u root -P2881 -h ${primaryHost} -N -e"
+    local primaryHost=${1}
+    local primaryCmd="mysql -u root -P2881 -h ${primaryHost} -N -e"
     while true; do
       echo "INFO: wait primary cluster to restore data completed..."
       historyRes=$(${primaryCmd} "SELECT count(*) FROM oceanbase.CDB_OB_RESTORE_HISTORY;" | awk -F '\t' '{print}')
@@ -127,8 +127,25 @@ function waitForPrimaryClusterRestore() {
     done
 }
 
+function waitToPromotePrimary() {
+    local primaryHost=${1}
+    local tenant_name=${2}
+    local primaryCmd="mysql -u root -P2881 -h ${primaryHost} -N -e"
+    local time=0
+    while true; do
+      echo "INFO: wait to promote ${tenant_name} to PRIMARY."
+      role=$(${primaryCmd} "select tenant_role from oceanbase.DBA_OB_TENANTS where tenant_name='${tenant_name}';" | awk -F '\t' '{print}')
+      if [[ $role == "PRIMARY" ]] || [[ $time -gt 60 ]];then
+        break
+      fi
+      time=$((time+10))
+      sleep 10
+    done
+}
+
 # step 1 ===> create unit config and resource pools
 echo "INFO: wait for bootstrap sucessfully."
+waitTime=0
 while true; do
   tenant_status=`${mysql_cmd} "SELECT * FROM oceanbase.DBA_OB_SERVERS;"`
   if [[ $? -eq 0 ]]; then
@@ -195,6 +212,10 @@ ${mysql_cmd} "SELECT TENANT_ID,RESTORE_TENANT_NAME,STATUS,COMMENT FROM oceanbase
      if [[ $status == "SUCCESS" ]]  && [[ $OB_CLUSTERS_COUNT -eq 1 || $comp_index -eq 0 ]];then
         echo "INFO: promote ${tenant_name} to Primary for primary cluster."
         ${mysql_cmd} "ALTER SYSTEM ACTIVATE STANDBY TENANT ${tenant_name}";
+        if [[ $OB_CLUSTERS_COUNT -gt 1 ]];then
+           sql="ALTER SYSTEM ARCHIVELOG TENANT=${tenant_name};"
+           ${mysql_cmd} "${sql}";
+        fi
      fi
      if [[ $status != "SUCCESS" ]];then
         echo "ERROR: restore tenant ${tenant_name} failed: ${row[3]}" >> $restoreFile
@@ -223,6 +244,8 @@ if [[ $comp_index -gt 0 ]]; then
       IFS=,
       svrList="${arr[*]}"
       IFS=$OlD_IFS
+      # wait to promote primary cluster to  Primary
+      waitToPromotePrimary "${primaryHost}" "${tenant_name}"
       res=`${primary_tenant_cmd} "SELECT count(*) FROM mysql.user where user='${repUser}'" | awk -F '\t' '{print}'`
       if [[ $res -eq 0 ]]; then
         echo "INFO: create user ${repUser} for primary tenant ${tenant_name}"
