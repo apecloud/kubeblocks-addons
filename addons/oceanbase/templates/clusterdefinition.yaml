@@ -24,20 +24,20 @@ spec:
             port: 2882
             targetPort: 2882
       configSpecs:
-        - name: oceanbase-init-config
-          templateRef: oceanbase-init-config
-          volumeName: oceanbase-init-config
-          namespace: {{ .Release.Namespace }}
-          defaultMode: 0555
+#        - name: oceanbase-init-config
+#          templateRef: oceanbase-init-config
+#          volumeName: oceanbase-init-config
+#          namespace: {{ .Release.Namespace }}
+#          defaultMode: 0555
         - name: oceanbase-sysvars
           templateRef: oceanbase-sysvars
           volumeName: oceanbase-sysvars
           constraintRef: oceanbase-sysvars-cc
           namespace: {{ .Release.Namespace }}
           defaultMode: 0555
-        - name: oceanbase-parameters
-          templateRef: oceanbase-parameters
-          volumeName: oceanbase-parameters
+        - name: oceanbase-config
+          templateRef: oceanbase-config
+          volumeName: oceanbase-config
           constraintRef: oceanbase-parameters-cc
           namespace: {{ .Release.Namespace }}
           defaultMode: 0555
@@ -89,12 +89,10 @@ spec:
                 name: workdir
               - name: scripts
                 mountPath: /scripts
-              - name: oceanbase-init-config
+              - name: oceanbase-config
                 mountPath: /kb-config
               - name: oceanbase-sysvars
                 mountPath: /opt/oceanbase/sysvars
-              - name: oceanbase-parameters
-                mountPath: /opt/oceanbase/parameters
             workingDir: /home/admin/workdir
             env:
               - name: LD_LIBRARY_PATH
@@ -191,20 +189,20 @@ spec:
             port: 2882
             targetPort: 2882
       configSpecs:
-        - name: oceanbase-init-config
-          templateRef: oceanbase-init-config
-          volumeName: oceanbase-init-config
-          namespace: {{ .Release.Namespace }}
-          defaultMode: 0555
+#        - name: oceanbase-init-config
+#          templateRef: oceanbase-init-config
+#          volumeName: oceanbase-init-config
+#          namespace: {{ .Release.Namespace }}
+#          defaultMode: 0555
         - name: oceanbase-sysvars
           templateRef: oceanbase-sysvars
           volumeName: oceanbase-sysvars
           constraintRef: oceanbase-sysvars-cc
           namespace: {{ .Release.Namespace }}
           defaultMode: 0555
-        - name: oceanbase-parameters
-          templateRef: oceanbase-parameters
-          volumeName: oceanbase-parameters
+        - name: oceanbase-config
+          templateRef: oceanbase-config
+          volumeName: oceanbase-config
           constraintRef: oceanbase-parameters-cc
           namespace: {{ .Release.Namespace }}
           defaultMode: 0555
@@ -258,12 +256,10 @@ spec:
                 name: workdir
               - name: scripts
                 mountPath: /scripts
-              - name: oceanbase-init-config
+              - name: oceanbase-config
                 mountPath: /kb-config
               - name: oceanbase-sysvars
                 mountPath: /opt/oceanbase/sysvars
-              - name: oceanbase-parameters
-                mountPath: /opt/oceanbase/parameters
             workingDir: /home/admin/workdir
             env:
               - name: LD_LIBRARY_PATH

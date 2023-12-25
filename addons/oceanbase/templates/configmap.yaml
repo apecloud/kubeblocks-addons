@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: oceanbase-init-config
+  name: oceanbase-config
   labels:
     {{- include "oceanbase.labels" . | nindent 4 }}
 data:
   oceanbase.conf: |-
-    {{- .Files.Get "config/oceanbase-init-config.tpl" | nindent 4 }}
+    {{- .Files.Get "config/oceanbase-config.tpl" | nindent 4 }}
 
 ---
 apiVersion: v1
@@ -18,14 +18,3 @@ metadata:
 data:
   oceanbase.sysvars: |-
     {{- .Files.Get "config/oceanbase-sysvars.tpl" | nindent 4 }}
-
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: oceanbase-parameters
-  labels:
-    {{- include "oceanbase.labels" . | nindent 4 }}
-data:
-  oceanbase.parameters: |-
-    {{- .Files.Get "config/oceanbase-parameters.tpl" | nindent 4 }}

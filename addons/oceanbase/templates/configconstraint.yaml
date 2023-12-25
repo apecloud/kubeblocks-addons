@@ -69,7 +69,7 @@ spec:
 
 
 ---
-  {{- $cc := .Files.Get "config/oceanbase-parameters-effect-scope.yaml" | fromYaml }}
+  {{- $cc := .Files.Get "config/oceanbase-config-effect-scope.yaml" | fromYaml }}
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ConfigConstraint
 metadata:
@@ -105,7 +105,7 @@ spec:
     # schema: auto generate from mmmcue scripts
     # example: ../../pkg/configuration/testdata/mysql_openapi.json
     cue: |-
-      {{- .Files.Get "config/oceanbase-parameters-constraint.cue" | nindent 6 }}
+      {{- .Files.Get "config/oceanbase-config-constraint.cue" | nindent 6 }}
 
   ##  require db instance restart
   ## staticParameters
