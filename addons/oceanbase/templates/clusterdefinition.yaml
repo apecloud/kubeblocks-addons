@@ -69,10 +69,10 @@ spec:
               - |
                 /scripts/entrypoint.sh
             ports:
-              - containerPort: 88
+              - containerPort: 2881
                 name: sql
                 protocol: TCP
-              - containerPort: 99
+              - containerPort: 2882
                 name: rpc
                 protocol: TCP
             readinessProbe:

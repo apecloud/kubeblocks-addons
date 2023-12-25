@@ -57,10 +57,10 @@ spec:
         image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.observer.repository }}:{{ .Values.images.observer.tag }}
         imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
         ports:
-          - containerPort: 88
+          - containerPort: 2881
             name: sql
             protocol: TCP
-          - containerPort: 99
+          - containerPort: 2882
             name: rpc
             protocol: TCP
         readinessProbe:
