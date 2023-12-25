@@ -20,7 +20,7 @@ spec:
         enabled: false
         cronExpression: "0 18 * * *"
         retentionPeriod: 7d
-  - componentDefRef: oceanbase-hostwork
+  - componentDefRef: oceanbase-hostnetwork
     backoffLimit: 0
     backupMethods:
       - name: full
