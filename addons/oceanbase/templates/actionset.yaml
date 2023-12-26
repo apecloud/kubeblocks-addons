@@ -16,7 +16,7 @@ spec:
     postBackup: []
     backupData:
       image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.observer.repository }}:{{ .Values.images.observer.tag }}
-      runOnTargetPodNode: false
+      runOnTargetPodNode: true
       command:
       - sh
       - -c
@@ -29,7 +29,7 @@ spec:
     postReady:
     - job:
         image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.observer.repository }}:{{ .Values.images.observer.tag }}
-        runOnTargetPodNode: false
+        runOnTargetPodNode: true
         command:
         - bash
         - -c

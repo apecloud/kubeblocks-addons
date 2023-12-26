@@ -12,21 +12,33 @@ spec:
     host: "$(SVC_FQDN)"
     port: "$(SVC_PORT_sql)"
   componentDefs:
-    - name: ob-bundle
+    - name: oceanbase
       characterType: oceanbase
       workloadType: Stateful
       service:
         ports:
           - name: sql
             port: 2881
-            targetPort: 2881
+            targetPort: sql
           - name: rpc
             port: 2882
-            targetPort: 2882
+            targetPort: rpc
       configSpecs:
+#        - name: oceanbase-init-config
+#          templateRef: oceanbase-init-config
+#          volumeName: oceanbase-init-config
+#          namespace: {{ .Release.Namespace }}
+#          defaultMode: 0555
+        - name: oceanbase-sysvars
+          templateRef: oceanbase-sysvars
+          volumeName: oceanbase-sysvars
+          constraintRef: oceanbase-sysvars-cc
+          namespace: {{ .Release.Namespace }}
+          defaultMode: 0555
         - name: oceanbase-config
-          templateRef: oceanbase-configuration
+          templateRef: oceanbase-config
           volumeName: oceanbase-config
+          constraintRef: oceanbase-parameters-cc
           namespace: {{ .Release.Namespace }}
           defaultMode: 0555
       scriptSpecs:
@@ -43,6 +55,12 @@ spec:
           timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
       podSpec:
         terminationGracePeriodSeconds: 60
+#        initContainers:
+#          - name: init-tools
+#            command: [ "cp", "/bin/ob-tools", "/kb_tools/obtools" ]
+#            volumeMounts:
+#              - name: kb-tools
+#                mountPath: /kb_tools
         containers:
           - name: observer-container
             command:
@@ -79,6 +97,8 @@ spec:
                 mountPath: /scripts
               - name: oceanbase-config
                 mountPath: /kb-config
+              - name: oceanbase-sysvars
+                mountPath: /opt/oceanbase/sysvars
             workingDir: /home/admin/workdir
             env:
               - name: LD_LIBRARY_PATH
@@ -96,38 +116,109 @@ spec:
                     key: password
               - name: OB_HOME_DIR
                 value: "/home/admin/workdir"
----
-apiVersion: apps.kubeblocks.io/v1alpha1
-kind: ClusterDefinition
-metadata:
-  name: oceanbase-host-network
-  labels:
-    {{- include "oceanbase.labels" . | nindent 4 }}
-spec:
-  connectionCredential:
-    username: root
-    password: ""
-    endpoint: "$(SVC_FQDN):$(SVC_PORT_sql)"
-    host: "$(SVC_FQDN)"
-    port: "$(SVC_PORT_sql)"
-  componentDefs:
-    - name: ob-bundle
+              - name: CLUSTER_ID
+                value: "1"
+              - name: OB_SERVICE_PORT
+                value: "2881"
+          - name: metrics
+            command:
+              - bash
+              - -c
+              - |
+                /scripts/setupmetrics.sh
+            env:
+              - name: OB_MONITOR_STATUS
+                value: active
+              - name: CLUSTER_NAME
+                value: "$(KB_CLUSTER_COMP_NAME)"
+              - name: CLUSTER_ID
+                value: "1"
+              - name: MONITOR_USER
+                value: "root"
+              - name: MONITOR_PASSWORD
+                value: ""
+              - name: SERVICE_PORT
+                value: "8088"
+              - name: OB_SERVICE_PORT
+                value: "2881"
+            ports:
+              - containerPort: 8088
+                name: http
+                protocol: TCP
+              - containerPort: 8089
+                name: pprof
+                protocol: TCP
+            readinessProbe:
+              failureThreshold: 3
+              httpGet:
+                path: /metrics/stat
+                port: 8088
+                scheme: HTTP
+              initialDelaySeconds: 5
+              periodSeconds: 2
+              successThreshold: 1
+              timeoutSeconds: 1
+            resources:
+              limits:
+                cpu: "1"
+                memory: 1Gi
+              requests:
+                cpu: "200m"
+                memory: 256Mi
+            terminationMessagePath: /dev/termination-log
+            terminationMessagePolicy: File
+            volumeMounts:
+              - name: scripts
+                mountPath: /scripts
+              - name: kb-tools
+                mountPath: /kb_tools
+              - name: metricslog
+                mountPath: /home/admin/obagent/log
+            workingDir: /home/admin/obagent
+        volumes:
+#          - name: kb-tools
+#            emptyDir: {}
+          - name: metricslog
+            emptyDir: {}
+    - name: oceanbase-hostnetwork
       characterType: oceanbase
       workloadType: Stateful
       service:
         ports:
           - name: sql
             port: 2881
-            targetPort: 2881
+            targetPort: sql
           - name: rpc
             port: 2882
-            targetPort: 2882
+            targetPort: rpc
       configSpecs:
-        - name: oceanbase-config
-          templateRef: oceanbase-configuration
-          volumeName: oceanbase-config
+#        - name: oceanbase-init-config
+#          templateRef: oceanbase-init-config
+#          volumeName: oceanbase-init-config
+#          namespace: {{ .Release.Namespace }}
+#          defaultMode: 0555
+        - name: oceanbase-sysvars
+          templateRef: oceanbase-sysvars
+          volumeName: oceanbase-sysvars
+          constraintRef: oceanbase-sysvars-cc
           namespace: {{ .Release.Namespace }}
           defaultMode: 0555
+        - name: oceanbase-config
+          templateRef: oceanbase-config
+          volumeName: oceanbase-config
+          constraintRef: oceanbase-parameters-cc
+          namespace: {{ .Release.Namespace }}
+          defaultMode: 0555
+        - name: oceanbase-inject-env
+          templateRef: oceanbase-inject-env
+          volumeName: oceanbase-inject-env
+          constraintRef: oceanbase-env-cc
+          namespace: {{ .Release.Namespace }}
+          defaultMode: 0555
+          asEnvFrom:
+            - observer-container
+            - metrics
+            - config-manager
       scriptSpecs:
         - name: oceanbase-scripts
           templateRef: oceanbase-scripts
@@ -144,6 +235,12 @@ spec:
         terminationGracePeriodSeconds: 60
         hostNetwork: true
         dnsPolicy: ClusterFirstWithHostNet
+#        initContainers:
+#          - name: init-tools
+#            command: [ "cp", "/bin/ob-tools", "/kb_tools/obtools" ]
+#            volumeMounts:
+#              - name: kb-tools
+#                mountPath: /kb_tools
         containers:
           - name: observer-container
             command:
@@ -152,10 +249,10 @@ spec:
               - |
                 /scripts/entrypoint.sh
             ports:
-              - containerPort: 2881
+              - containerPort: 88
                 name: sql
                 protocol: TCP
-              - containerPort: 2882
+              - containerPort: 99
                 name: rpc
                 protocol: TCP
             readinessProbe:
@@ -180,6 +277,8 @@ spec:
                 mountPath: /scripts
               - name: oceanbase-config
                 mountPath: /kb-config
+              - name: oceanbase-sysvars
+                mountPath: /opt/oceanbase/sysvars
             workingDir: /home/admin/workdir
             env:
               - name: LD_LIBRARY_PATH
@@ -197,3 +296,68 @@ spec:
                     key: password
               - name: OB_HOME_DIR
                 value: "/home/admin/workdir"
+              - name: OB_SERVICE_PORT
+                value: "2881"
+          - name: metrics
+            command:
+              - bash
+              - -c
+              - |
+                /scripts/setupmetrics.sh
+            env:
+              - name: OB_MONITOR_STATUS
+                value: active
+              - name: CLUSTER_NAME
+                value: "$(KB_CLUSTER_COMP_NAME)"
+              - name: CLUSTER_ID
+                value: "1"
+              - name: MONITOR_USER
+                value: "root"
+              - name: MONITOR_PASSWORD
+                value: ""
+#              - name: SERVICE_PORT
+#                value: "8088"
+#              - name: OB_SERVICE_PORT
+#                value: "2881"
+            ports:
+              - containerPort: 60
+                name: http
+                protocol: TCP
+              - containerPort: 61
+                name: pprof
+                protocol: TCP
+              - containerPort: 62
+                name: config-manager
+                protocol: TCP
+            readinessProbe:
+              failureThreshold: 3
+              httpGet:
+                path: /metrics/stat
+                port: http
+                scheme: HTTP
+              initialDelaySeconds: 5
+              periodSeconds: 2
+              successThreshold: 1
+              timeoutSeconds: 1
+            resources:
+              limits:
+                cpu: "1"
+                memory: 1Gi
+              requests:
+                cpu: "200m"
+                memory: 256Mi
+            terminationMessagePath: /dev/termination-log
+            terminationMessagePolicy: File
+            volumeMounts:
+              - name: scripts
+                mountPath: /scripts
+              - name: kb-tools
+                mountPath: /kb_tools
+              - name: metricslog
+                mountPath: /home/admin/obagent/log
+            workingDir: /home/admin/obagent
+        volumes:
+#          - name: kb-tools
+#            emptyDir: {}
+          - name: metricslog
+            emptyDir: {}
