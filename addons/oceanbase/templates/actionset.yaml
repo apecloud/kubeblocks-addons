@@ -11,6 +11,9 @@ spec:
       value: rep_user
     - name: REP_PASSWD
       value: rep_user
+      # rebuild standby cluster
+    - name: REBUILD_STANDBY
+      value: "false"
   backup:
     preBackup: []
     postBackup: []
