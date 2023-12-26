@@ -8,7 +8,7 @@
 {{- $rpc_port_info := getPortByName $ob_container "rpc" }}
 {{- $metrics_port_info := getPortByName $metrics_container "http" }}
 {{- $manager_port_info := getPortByName $metrics_container "pprof" }}
-{{- $cm_port_info := getPortByName $metrics_container "cm" }}
+{{- $cm_port_info := getPortByName $metrics_container "config-manager" }}
 
 ## for ob port
 {{- $ob_port := 2881 }}

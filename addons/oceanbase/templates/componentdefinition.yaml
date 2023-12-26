@@ -296,7 +296,7 @@ spec:
             name: pprof
             protocol: TCP
           - containerPort: 62
-            name: cm
+            name: config-manager
             protocol: TCP
         readinessProbe:
           failureThreshold: 3
