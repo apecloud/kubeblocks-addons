@@ -55,15 +55,6 @@ spec:
           name: learner
           accessMode: Readonly
       podSpec:
-        initContainers:
-          - name: init-permissions
-            image: busybox
-            securityContext:
-              runAsUser: 0
-            command: [ "chmod", "a+w", "/postgresql" ]
-            volumeMounts:
-              - name: data
-                mountPath: /postgresql
         containers:
           - name: postgresql
             imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
@@ -86,8 +77,6 @@ spec:
               - name: paxos
                 containerPort: 15432
             env:
-              - name: CONSENSUS_MODE
-                value: "data"
               - name: KUBERNETES_USE_CONFIGMAPS
                 value: "true"
               - name: ALLOW_NOSSL
