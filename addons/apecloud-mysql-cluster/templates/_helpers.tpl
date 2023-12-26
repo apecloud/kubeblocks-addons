@@ -42,8 +42,10 @@ The minimum proxy cpu cores is 0.5 and the maximum cpu cores is 64.
   resources:
     requests:
       cpu: {{ $proxyCPU | quote }}
+      memory: 500Mi
     limits:
       cpu: {{ $proxyCPU | quote }}
+      memory: 500Mi
 {{- end }}
 
 {{/*
