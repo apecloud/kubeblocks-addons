@@ -1,6 +1,11 @@
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH=${DP_BACKUP_BASE_PATH}
-mysql_cmd="mysql -u root -h ${DP_DB_HOST} -P2881 -N -e"
+sql_port_file=/home/admin/workdir/sql_port.ob
+sql_port=2881
+if [[ -f ${sql_port_file} ]];then
+  sql_port=$(cat ${sql_port_file})
+fi
+mysql_cmd="mysql -u root -h ${DP_DB_HOST} -P${sql_port} -N -e"
 OlD_IFS=$IFS
 
 provider=
@@ -111,7 +116,7 @@ function executeSQLFile() {
 
 function waitForPrimaryClusterRestore() {
     local primaryHost=${1}
-    local primaryCmd="mysql -u root -P2881 -h ${primaryHost} -N -e"
+    local primaryCmd="mysql -u root -P${sql_port} -h ${primaryHost} -N -e"
     while true; do
       echo "INFO: wait primary cluster to restore data completed..."
       historyRes=$(${primaryCmd} "SELECT count(*) FROM oceanbase.CDB_OB_RESTORE_HISTORY;" | awk -F '\t' '{print}')
@@ -238,7 +243,7 @@ if [[ $comp_index -gt 0 ]]; then
    echo "INFO: establish replication relationship"
    # set -e
    for tenant_name in `${mysql_cmd} "SELECT tenant_name FROM oceanbase.DBA_OB_TENANTS where tenant_type='user' and status='NORMAL';" | awk -F '\t' '{print}'`; do
-      primary_tenant_cmd="mysql -u root@${tenant_name} -h ${primaryHost} -P2881 -N -e"
+      primary_tenant_cmd="mysql -u root@${tenant_name} -h ${primaryHost} -P${sql_port} -N -e"
       # get primary tenant svr_list
       arr=$(${primary_tenant_cmd} "select concat(SVR_IP,':',SQL_PORT) from oceanbase.DBA_OB_ACCESS_POINT dp, oceanbase.DBA_OB_TENANTS dt where dp.tenant_id = dt.tenant_id and dt.tenant_name='${tenant_name}';" | awk -F '\t' '{print}')
       IFS=,

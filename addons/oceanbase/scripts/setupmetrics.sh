@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-source /scripts/sql.sh
-
 function retry {
   local max_attempts=10
   local attempt=1
@@ -17,24 +15,13 @@ function retry {
 }
 
 INITIAL_DELAY=${INITIAL_DELAY:-5}
-ZONE_COUNT=${ZONE_COUNT:-3}
 HOSTIP=$(hostname -i)
-#REP_USER=${REP_USER:-rep_user}
-#REP_PASSWD=${REP_PASSWD:-rep_user}
-
-ORDINAL_INDEX=$(echo $KB_POD_NAME | awk -F '-' '{print $(NF)}')
-echo "ORDINAL_INDEX: $ORDINAL_INDEX"
-echo "ZONE_NAME: $ZONE_NAME"
-
-ZONE_NAME="zone$((${ORDINAL_INDEX}%${ZONE_COUNT}))"
-#MONITOR_USER=${REP_USER}
-#MONITOR_PASSWORD=${REP_PASSWD}
 
 ## TODO wait ob restarted
 echo "Waiting for observer to be ready..."
 # import mysql client to metrics
 sleep ${INITIAL_DELAY}
-retry /kb_tools/obtools --host 127.0.0.1 -u${MONITOR_USER} -P ${OB_SERVICE_PORT} --allow-native-passwords ping
+retry /kb_tools/obtools --host 127.0.0.1 -u${MONITOR_USER} -P ${COMP_MYSQL_PORT} --allow-native-passwords ping
 
 /home/admin/obagent/bin/ob_agentctl config -u \
 ob.logcleaner.enabled=false,\
@@ -44,6 +31,8 @@ monagent.log.maxage.days=3,\
 monagent.log.maxsize.mb=100,\
 monagent.ob.monitor.user=${MONITOR_USER},\
 monagent.ob.monitor.password=${MONITOR_PASSWORD},\
+monagent.ob.sql.port=${COMP_MYSQL_PORT},\
+monagent.ob.rpc.port=${COMP_RPC_PORT},\
 monagent.host.ip=${HOSTIP},\
 monagent.cluster.id=${CLUSTER_ID},\
 monagent.ob.cluster.name=${CLUSTER_NAME},\
@@ -54,5 +43,6 @@ monagent.pipeline.node.status=inactive,\
 monagent.pipeline.ob.log.status=inactive,\
 monagent.pipeline.ob.alertmanager.status=inactive,\
 monagent.second.metric.cache.update.interval=5s,\
+ocp.agent.manager.http.port=${MANAGER_PORT},\
 ocp.agent.monitor.http.port=${SERVICE_PORT} && \
 /home/admin/obagent/bin/ob_monagent -c /home/admin/obagent/conf/monagent.yaml

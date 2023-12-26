@@ -1,7 +1,7 @@
 #!/bin/sh
 set -ex
 
-OB_SERVICE_PORT=2881
+OB_SERVICE_PORT=${COMP_MYSQL_PORT:-2881}
 OB_CLI="/kb_tools/obtools"
 
 paramName="${1:?missing config}"
