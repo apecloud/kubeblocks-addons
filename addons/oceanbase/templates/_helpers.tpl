@@ -94,3 +94,13 @@ Generate reloader scripts configmap
 {{- $.Files.Get $path | nindent 2 }}
 {{- end }}
 {{- end }}
+
+{{/*
+Generate proxy scripts configmap
+*/}}
+{{- define "oceanbase.extend.proxy.scripts" -}}
+{{- range $path, $_ :=  $.Files.Glob "proxy/**" }}
+{{ $path | base }}: |-
+{{- $.Files.Get $path | nindent 2 }}
+{{- end }}
+{{- end }}

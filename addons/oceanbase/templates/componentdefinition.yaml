@@ -374,3 +374,47 @@ items:
     lifecycleActions: *oblifecycle
     labels: *oblabels
     runtime: *obhostruntime
+- apiVersion: apps.kubeblocks.io/v1alpha1
+  kind: ComponentDefinition
+  metadata:
+    name: oceanbase-configserver
+    labels:
+      {{- include "oceanbase.labels" . | nindent 4 }}
+  spec:
+    provider: community
+    serviceVersion: 4.2.0
+    services:
+      - name: configserver
+        serviceName: configserver
+        spec:
+          ports:
+            - name: http
+              port: 8080
+              targetPort: http
+    scripts:
+      - name: ob-proxy-scripts
+        templateRef: ob-proxy-scripts
+        namespace: {{ .Release.Namespace }}
+        volumeName: scripts
+        defaultMode: 0555
+    runtime:
+      containers:
+        - name: obconfigserver
+          image: oceanbase/ob-configserver:1.0.0-2
+          command:
+            - bash
+            - -c
+            - |
+              /scripts/obconfigserver.sh
+          ports:
+            - containerPort: 8080
+              name: "http"
+          env:
+            - name: DATABASE_TYPE
+              value: sqlite3
+          resources:
+            limits:
+              memory: 1Gi
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts

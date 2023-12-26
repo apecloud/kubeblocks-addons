@@ -9,10 +9,6 @@ spec:
   componentVersions:
   - componentDefRef: oceanbase
     versionsContext:
-#      initContainers:
-#      - name: init-tools
-#        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.obtools.repository }}:{{ .Values.images.obtools.tag }}
-#        imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
       containers:
       - name: observer-container
         image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.observer.repository }}:{{ .Values.images.observer.tag }}
@@ -22,14 +18,22 @@ spec:
         imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
   - componentDefRef: oceanbase-hostnetwork
     versionsContext:
-#      initContainers:
-#      - name: init-tools
-#        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.obtools.repository }}:{{ .Values.images.obtools.tag }}
-#        imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
       containers:
       - name: observer-container
         image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.observer.repository }}:{{ .Values.images.observer.tag }}
         imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
       - name: metrics
         image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.metrics.repository }}:{{ .Values.images.metrics.tag }}
+        imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
+  - componentDefRef: oceanbase-configserver
+    versionsContext:
+      containers:
+      - name: obconfigserver
+        image: oceanbase/ob-configserver:1.0.0-2
+        imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
+  - componentDefRef: oceanbase-proxy
+    versionsContext:
+      containers:
+      - name: ob-proxy
+        image: oceanbase/obproxy-ce:4.2.1.0-11
         imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}

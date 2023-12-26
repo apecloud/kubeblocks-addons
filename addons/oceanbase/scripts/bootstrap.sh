@@ -268,6 +268,8 @@ function bootstrap_obcluster {
 
   conn_local_obdb_w_port $COMP_MYSQL_PORT "SELECT * FROM DBA_OB_SERVERS\G"
 
+  conn_local_w_port $COMP_MYSQL_PORT "CREATE USER proxyro; GRANT SELECT ON *.* TO proxyro;"
+
   create_primary_secondry_tenants
 }
 

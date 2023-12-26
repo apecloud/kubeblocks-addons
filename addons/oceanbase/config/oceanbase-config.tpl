@@ -34,3 +34,18 @@ mysql_port={{ $mysql_port }}
 {{- $rpc_port = $rpc_port_info.containerPort }}
 {{- end }}
 rpc_port={{ $rpc_port }}
+{{- $clusterName := $.cluster.metadata.name }}
+{{- $namespace := $.cluster.metadata.namespace }}
+{{- $componentName := printf "%s-%s" $clusterName $.component.name}}
+{{- $config_server_comp := fromJson "{}" }}
+{{- range $i, $c := $.cluster.spec.componentSpecs }}
+  {{- if eq "oceanbase-configserver" $c.componentDefRef }}
+    {{- $config_server_comp = $c }}
+    {{- break }}
+  {{- end }}
+{{- end }}
+{{- if $config_server_comp }}
+  {{- $svc_name := printf "%s-%s-%s.%s.svc.%s" $clusterName $config_server_comp.name "configserver" $namespace $.clusterDomain }}
+  {{- $svc_port := "8080" }}
+obconfig_url={{ printf "http://%s:%s/services?Action=ObRootServiceInfo&ObCluster=%s" $svc_name $svc_port $componentName}}
+{{- end }}

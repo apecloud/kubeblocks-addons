@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ob-proxy-scripts
+  labels:
+    {{- include "oceanbase.labels" . | nindent 4 }}
+data:
+  {{- include "oceanbase.extend.proxy.scripts" . | nindent 2 }}
