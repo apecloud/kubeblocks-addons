@@ -68,7 +68,7 @@ spec:
               - name: data
                 mountPath: {{ .Values.dataMountPath }}
               - name: postgresql-config
-                mountPath: /var/lib/postgresql/conf
+                mountPath: {{ .Values.confMountPath }}
               - name: scripts
                 mountPath: /kb-scripts
             ports:
@@ -119,6 +119,8 @@ spec:
                 value: "5432"
               - name: PGDATA
                 value: {{ .Values.dataMountPath }}/pgconsensus_data
+              - name: PGCONF
+                value: {{ .Values.confMountPath }}
       systemAccounts:
         cmdExecutorConfig:
           image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag .Chart.AppVersion }}
