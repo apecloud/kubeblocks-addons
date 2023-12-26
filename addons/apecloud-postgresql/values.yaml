@@ -13,6 +13,8 @@ image:
 
 clusterVersionOverride: ""
 
+dataMountPath: /postgresql/data
+
 roleProbe:
   failureThreshold: 2
   periodSeconds: 1
