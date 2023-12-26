@@ -22,11 +22,6 @@ spec:
             targetPort: rpc
   updateStrategy: Serial
   configs:
-#    - name: oceanbase-init-config
-#      templateRef: oceanbase-init-config
-#      volumeName: oceanbase-init-config
-#      namespace: {{ .Release.Namespace }}
-#      defaultMode: 0555
     - name: oceanbase-sysvars
       templateRef: oceanbase-sysvars
       volumeName: oceanbase-sysvars
@@ -54,12 +49,12 @@ spec:
       serviceable: true
       writable: false
       votable: true
-  lifecycleActions:
-    roleProbe:
-      builtinHandler: oceanbase
-      failureThreshold: {{ .Values.roleProbe.failureThreshold }}
-      periodSeconds: {{ .Values.roleProbe.periodSeconds }}
-      timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+  # lifecycleActions:
+  #   roleProbe:
+  #     builtinHandler: oceanbase
+  #     failureThreshold: {{ .Values.roleProbe.failureThreshold }}
+  #     periodSeconds: {{ .Values.roleProbe.periodSeconds }}
+  #     timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
   runtime:
     terminationGracePeriodSeconds: 60
     containers:
@@ -195,11 +190,6 @@ spec:
             targetPort: rpc
   updateStrategy: Serial
   configs:
-#    - name: oceanbase-init-config
-#      templateRef: oceanbase-init-config
-#      volumeName: oceanbase-init-config
-#      namespace: {{ .Release.Namespace }}
-#      defaultMode: 0555
     - name: oceanbase-sysvars
       templateRef: oceanbase-sysvars
       volumeName: oceanbase-sysvars
@@ -237,12 +227,12 @@ spec:
       serviceable: true
       writable: false
       votable: true
-  lifecycleActions:
-    roleProbe:
-      builtinHandler: oceanbase
-      failureThreshold: {{ .Values.roleProbe.failureThreshold }}
-      periodSeconds: {{ .Values.roleProbe.periodSeconds }}
-      timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+  # lifecycleActions:
+  #   roleProbe:
+  #     builtinHandler: oceanbase
+  #     failureThreshold: {{ .Values.roleProbe.failureThreshold }}
+  #     periodSeconds: {{ .Values.roleProbe.periodSeconds }}
+  #     timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
   runtime:
     hostNetwork: true
     dnsPolicy: ClusterFirstWithHostNet
@@ -314,10 +304,6 @@ spec:
             value: "root"
           - name: MONITOR_PASSWORD
             value: ""
-#          - name: SERVICE_PORT
-#            value: "8088"
-#          - name: OB_SERVICE_PORT
-#            value: "2881"
         ports:
           - containerPort: 60
             name: http
@@ -358,3 +344,99 @@ spec:
     volumes:
       - name: metricslog
         emptyDir: {}
+---
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: oceanbase-configserver
+  labels:
+    {{- include "oceanbase.labels" . | nindent 4 }}
+spec:
+  provider: community
+  serviceVersion: 4.2.0
+  services:
+    - name: configserver
+      serviceName: configserver
+      spec:
+        ports:
+          - name: http
+            port: 8080
+            targetPort: http
+  scripts:
+    - name: ob-proxy-scripts
+      templateRef: ob-proxy-scripts
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  runtime:
+    containers:
+      - name: obconfigserver
+        image: oceanbase/ob-configserver:1.0.0-2
+        command:
+          - bash
+          - -c
+          - |
+            /scripts/obconfigserver.sh
+        ports:
+          - containerPort: 8080
+            name: "http"
+        env:
+          - name: DATABASE_TYPE
+            value: sqlite3
+        resources:
+          limits:
+            memory: 1Gi
+        volumeMounts:
+          - name: scripts
+            mountPath: /scripts
+---
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: oceanbase-proxy
+  labels:
+    {{- include "oceanbase.labels" . | nindent 4 }}
+spec:
+  provider: community
+  serviceVersion: 4.2.0
+  services:
+    - name: proxy
+      serviceName: proxy
+      spec:
+        ports:
+          - name: sql
+            port: 2883
+            targetPort: sql
+  scripts:
+    - name: ob-proxy-scripts
+      templateRef: ob-proxy-scripts
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  runtime:
+    containers:
+      - name: obproxy
+        image: oceanbase/obproxy-ce:4.2.1.0-11
+        command:
+          - bash
+          - -c
+          - |
+            /scripts/obproxy.sh
+        ports:
+          - containerPort: 2883
+            name: "sql"
+          - containerPort: 2884
+            name: "prometheus"
+        env:
+          - name: APP_NAME
+            value: $(KB_CLUSTER_COMP_NAME)
+          # - name: CONFIG_URL
+          #   value: 'http://svc-ob-configserver.$(KB_NAMESPACE).svc:8080/services?Action=GetObProxyConfig'
+          - name: PROXYRO_PASSWORD
+            value: ""
+        resources:
+          limits:
+            memory: 1Gi
+        volumeMounts:
+          - name: scripts
+            mountPath: /scripts

@@ -24,11 +24,6 @@ spec:
             port: 2882
             targetPort: rpc
       configSpecs:
-#        - name: oceanbase-init-config
-#          templateRef: oceanbase-init-config
-#          volumeName: oceanbase-init-config
-#          namespace: {{ .Release.Namespace }}
-#          defaultMode: 0555
         - name: oceanbase-sysvars
           templateRef: oceanbase-sysvars
           volumeName: oceanbase-sysvars
@@ -47,20 +42,14 @@ spec:
           namespace: {{ .Release.Namespace }}
           volumeName: scripts
           defaultMode: 0555
-      probes:
-        roleProbeTimeoutAfterPodsReady: 300
-        roleProbe:
-          failureThreshold: {{ .Values.roleProbe.failureThreshold }}
-          periodSeconds: {{ .Values.roleProbe.periodSeconds }}
-          timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+      # probes:
+      #   roleProbeTimeoutAfterPodsReady: 300
+      #   roleProbe:
+      #     failureThreshold: {{ .Values.roleProbe.failureThreshold }}
+      #     periodSeconds: {{ .Values.roleProbe.periodSeconds }}
+      #     timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
       podSpec:
         terminationGracePeriodSeconds: 60
-#        initContainers:
-#          - name: init-tools
-#            command: [ "cp", "/bin/ob-tools", "/kb_tools/obtools" ]
-#            volumeMounts:
-#              - name: kb-tools
-#                mountPath: /kb_tools
         containers:
           - name: observer-container
             command:
@@ -176,8 +165,6 @@ spec:
                 mountPath: /home/admin/obagent/log
             workingDir: /home/admin/obagent
         volumes:
-#          - name: kb-tools
-#            emptyDir: {}
           - name: metricslog
             emptyDir: {}
     - name: oceanbase-hostnetwork
@@ -192,11 +179,6 @@ spec:
             port: 2882
             targetPort: rpc
       configSpecs:
-#        - name: oceanbase-init-config
-#          templateRef: oceanbase-init-config
-#          volumeName: oceanbase-init-config
-#          namespace: {{ .Release.Namespace }}
-#          defaultMode: 0555
         - name: oceanbase-sysvars
           templateRef: oceanbase-sysvars
           volumeName: oceanbase-sysvars
@@ -225,22 +207,16 @@ spec:
           namespace: {{ .Release.Namespace }}
           volumeName: scripts
           defaultMode: 0555
-      probes:
-        roleProbeTimeoutAfterPodsReady: 300
-        roleProbe:
-          failureThreshold: {{ .Values.roleProbe.failureThreshold }}
-          periodSeconds: {{ .Values.roleProbe.periodSeconds }}
-          timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+      # probes:
+      #   roleProbeTimeoutAfterPodsReady: 300
+      #   roleProbe:
+      #     failureThreshold: {{ .Values.roleProbe.failureThreshold }}
+      #     periodSeconds: {{ .Values.roleProbe.periodSeconds }}
+      #     timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
       podSpec:
         terminationGracePeriodSeconds: 60
         hostNetwork: true
         dnsPolicy: ClusterFirstWithHostNet
-#        initContainers:
-#          - name: init-tools
-#            command: [ "cp", "/bin/ob-tools", "/kb_tools/obtools" ]
-#            volumeMounts:
-#              - name: kb-tools
-#                mountPath: /kb_tools
         containers:
           - name: observer-container
             command:
@@ -315,10 +291,6 @@ spec:
                 value: "root"
               - name: MONITOR_PASSWORD
                 value: ""
-#              - name: SERVICE_PORT
-#                value: "8088"
-#              - name: OB_SERVICE_PORT
-#                value: "2881"
             ports:
               - containerPort: 60
                 name: http
@@ -357,7 +329,77 @@ spec:
                 mountPath: /home/admin/obagent/log
             workingDir: /home/admin/obagent
         volumes:
-#          - name: kb-tools
-#            emptyDir: {}
           - name: metricslog
             emptyDir: {}
+    - name: oceanbase-configserver
+      workloadType: Stateless
+      service:
+        ports:
+          - name: http
+            port: 8080
+            targetPort: http
+      scriptSpecs:
+        - name: ob-proxy-scripts
+          templateRef: ob-proxy-scripts
+          namespace: {{ .Release.Namespace }}
+          volumeName: scripts
+          defaultMode: 0555
+      podSpec:
+        containers:
+          - name: obconfigserver
+            image: oceanbase/ob-configserver:1.0.0-2
+            command:
+              - bash
+              - -c
+              - |
+                /scripts/obconfigserver.sh
+            ports:
+              - containerPort: 8080
+                name: "http"
+            env:
+              - name: DATABASE_TYPE
+                value: sqlite3
+            resources:
+              limits:
+                memory: 1Gi
+            volumeMounts:
+              - name: scripts
+                mountPath: /scripts
+    - name: oceanbase-proxy
+      workloadType: Stateless
+      service:
+        ports:
+          - name: sql
+            port: 2883
+            targetPort: sql
+      scriptSpecs:
+        - name: ob-proxy-scripts
+          templateRef: ob-proxy-scripts
+          namespace: {{ .Release.Namespace }}
+          volumeName: scripts
+          defaultMode: 0555
+      podSpec:
+        containers:
+          - name: obproxy
+            image: oceanbase/obproxy-ce:4.2.1.0-11
+            command:
+              - bash
+              - -c
+              - |
+                /scripts/obproxy.sh
+            ports:
+              - containerPort: 2883
+                name: "sql"
+              - containerPort: 2884
+                name: "prometheus"
+            env:
+              - name: APP_NAME
+                value: $(KB_CLUSTER_COMP_NAME)
+              - name: PROXYRO_PASSWORD
+                value: ""
+            resources:
+              limits:
+                memory: 1Gi
+            volumeMounts:
+              - name: scripts
+                mountPath: /scripts

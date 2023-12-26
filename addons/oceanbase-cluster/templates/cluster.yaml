@@ -53,3 +53,11 @@ spec:
               requests:
                 storage: "100Mi"
   {{- end }}
+    - name: obconfigserver
+      componentDef: "oceanbase-configserver"
+      componentDefRef: "oceanbase-configserver"
+      replicas: 1
+    - name: obproxy
+      componentDef: "oceanbase-proxy"
+      componentDefRef: "oceanbase-proxy"
+      replicas: 1

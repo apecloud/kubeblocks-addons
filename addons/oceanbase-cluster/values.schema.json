@@ -84,8 +84,8 @@
                 "number",
                 "string"
             ],
-            "default": 20,
-            "minimum": 10,
+            "default": 10,
+            "minimum": 5,
             "maximum": 100
         },
         "hostnetwork": {

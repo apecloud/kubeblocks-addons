@@ -8,7 +8,7 @@ fullnameOverride: ""
 clusterVersionOverride: "4.2.0.0-100010032023083021"
 
 # how many clusters to create with-in one ob cluster, set to 2 when creating a primary and secondary oceanbae cluster
-obClusters: 2
+obClusters: 1
 # zone count
 zoneCount: 1
 # replicas, it should be larger than zoneCount
@@ -21,11 +21,11 @@ replicas: 1
 #   log_disk_size: 10
 
 # resources
-cpu: 4
-memory: 8
-datafile: 50
-datalog: 50
-log: 20
+cpu: 2
+memory: 4
+datafile: 20
+datalog: 20
+log: 5
 storageClassName: ""
 
 # customized default values to override kblib chart's values
@@ -35,5 +35,5 @@ storageClassName: ""
 #   tenancy: DedicatedNode
 
 debug: false
-hostnetwork: "enabled"
+hostnetwork: "disabled"
 
