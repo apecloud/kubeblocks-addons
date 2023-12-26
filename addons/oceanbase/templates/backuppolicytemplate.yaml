@@ -9,45 +9,33 @@ metadata:
 spec:
   clusterDefinitionRef: oceanbase
   backupPolicies:
-  - componentDefRef: oceanbase
-    backoffLimit: 0
-    backupMethods:
-      - name: full
-        snapshotVolumes: false
-        actionSetName: oceanbase-physical-backup
-    schedules:
-      - backupMethod: full
-        enabled: false
-        cronExpression: "0 18 * * *"
-        retentionPeriod: 7d
-  - componentDefRef: oceanbase-hostnetwork
-    backoffLimit: 0
-    backupMethods:
-      - name: full
-        snapshotVolumes: false
-        actionSetName: oceanbase-physical-backup
-    schedules:
-      - backupMethod: full
-        enabled: false
-        cronExpression: "0 18 * * *"
-        retentionPeriod: 7d
   - componentDef: oceanbase
+    componentDefRef: oceanbase
     backoffLimit: 0
     backupMethods:
       - name: full
         snapshotVolumes: false
         actionSetName: oceanbase-physical-backup
+        targetVolumes:
+          volumeMounts:
+            - name: workdir
+              mountPath: /home/admin/workdir
     schedules:
       - backupMethod: full
         enabled: false
         cronExpression: "0 18 * * *"
         retentionPeriod: 7d
   - componentDef: oceanbase-hostnetwork
+    componentDefRef: oceanbase-hostnetwork
     backoffLimit: 0
     backupMethods:
       - name: full
         snapshotVolumes: false
         actionSetName: oceanbase-physical-backup
+        targetVolumes:
+          volumeMounts:
+            - name: workdir
+              mountPath: /home/admin/workdir
     schedules:
       - backupMethod: full
         enabled: false

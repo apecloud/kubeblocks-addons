@@ -18,8 +18,10 @@ source /scripts/bootstrap.sh
 RECOVERING="$(is_recovering)"
 echo "Recovering: $RECOVERING"
 
+init_port_list
+
 function wait_for_observer_ready {
-  until nc -z 127.0.0.1 2881; do
+  until nc -z 127.0.0.1 $COMP_MYSQL_PORT; do
     echo "observer on this node is not ready, wait for a moment..."
     sleep 3
   done
@@ -57,12 +59,12 @@ if [ "${ip_changed}" = "false" ] && [ "$RECOVERING" = "True" ]; then
   echo "IP not changed, start recovering"
   echo "Check DB Status"
       # If at least one server is up, return True
-  until conn_local_obdb "SELECT * FROM DBA_OB_SERVERS\g"; do
+  until conn_local_obdb_w_port $COMP_MYSQL_PORT "SELECT * FROM DBA_OB_SERVERS\G"; do
     echo "the server is not ready yet, wait for it..."
     sleep 10
   done
 
-    until [ -n "$(conn_local_obdb "SELECT * FROM DBA_OB_SERVERS WHERE SVR_IP = '${KB_POD_IP}' and STATUS = 'ACTIVE' and START_SERVICE_TIME IS NOT NULL")" ]; do
+  until [ -n "$(conn_local_obdb_w_port $COMP_MYSQL_PORT "SELECT * FROM DBA_OB_SERVERS WHERE SVR_IP = '${KB_POD_IP}' and STATUS = 'ACTIVE' and START_SERVICE_TIME IS NOT NULL")" ]; do
     echo "Wait for the server to be ready..."
     sleep 10
   done

@@ -3,8 +3,13 @@ set -e
 # TODO: clear backup records in ob database
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH=${DP_BACKUP_BASE_PATH}
-mysql_cmd="mysql -u root -h ${DP_DB_HOST} -P2881 -N -e"
 noArchivedTenantsFiles="no_archived_tenants.dp"
+sql_port_file=/home/admin/workdir/sql_port.ob
+sql_port=2881
+if [[ -f ${sql_port_file} ]];then
+  sql_port=$(cat ${sql_port_file})
+fi
+mysql_cmd="mysql -u root -h ${DP_DB_HOST} -P${sql_port} -N -e"
 OlD_IFS=$IFS
 
 provider=
