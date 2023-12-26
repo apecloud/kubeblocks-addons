@@ -148,11 +148,31 @@ function waitToPromotePrimary() {
     done
 }
 
+function preCheckForRestore() {
+    if [[ "${REBUILD_STANDBY}" != "true" ]]; then
+        return 0
+    fi
+    # check if this cluster is primary when REBUILD_STANDBY=true
+    local role=`${mysql_cmd} "SELECT tenant_role FROM oceanbase.DBA_OB_TENANTS where tenant_type='user' limit 1;" | awk -F '\t' '{print}'`
+    if [[ ${role} == "PRIMARY" ]]; then
+        return 1
+    fi
+}
+
+function checkIsPrimaryCluster() {
+  local isPrimary="false"
+  # first component is primary if not rebuild a standby cluster.
+  if [[ "${REBUILD_STANDBY}" == "false" ]] && [[ $OB_CLUSTERS_COUNT -eq 1 || $global_comp_index -eq 0 ]]; then
+     isPrimary="true"
+  fi
+  echo "${isPrimary}"
+}
+
 # step 1 ===> create unit config and resource pools
 echo "INFO: wait for bootstrap sucessfully."
 waitTime=0
 while true; do
-  tenant_status=`${mysql_cmd} "SELECT * FROM oceanbase.DBA_OB_SERVERS;"`
+  tenant_status=`${mysql_cmd} "SELECT * FROM oceanbase.DBA_OB_TENANTS;"`
   if [[ $? -eq 0 ]]; then
      break
   fi
@@ -162,6 +182,12 @@ while true; do
   sleep 5
   waitTime=$((waitTime+5))
 done
+# check if can be restore.
+preCheckForRestore
+if [[ $? -ne 0 ]]; then
+  echo "ERROR: rebuilding standby cluster error: target cluster is PRIMARY."
+  exit 1
+fi
 
 unitSQLFile="create_unit.sql"
 resourcePoolSQLFile="create_resource_pool.sql"
@@ -173,10 +199,9 @@ executeSQLFile ${resourcePoolSQLFile}
 
 # TODO: restore specified tenants
 # step 2 ===> restore all tenants
-# TODO: drop TENANT_NAME
 
 analysisToolConfig
-comp_index=$(echo $KB_CLUSTER_COMP_NAME | awk -F '-' '{print $(NF)}')
+global_comp_index=$(echo $KB_CLUSTER_COMP_NAME | awk -F '-' '{print $(NF)}')
 extras=$(cat /dp_downward/status_extras)
 length=$(echo "$extras" | jq length)
 index=$((length-1))
@@ -208,35 +233,37 @@ sleep 5
 
 # step 4 ===> promote the tenants of the first replicas to PRIMARY and record the failed restore jobs.
 restoreFile="restore.dp"
+isPrimaryCluster=$(checkIsPrimaryCluster)
 ${mysql_cmd} "SELECT TENANT_ID,RESTORE_TENANT_NAME,STATUS,COMMENT FROM oceanbase.CDB_OB_RESTORE_HISTORY;" | while IFS=$'\t' read -a row; do
   IFS=$OlD_IFS
   tenant_id=${row[0]}
   tenant_name=${row[1]}
   status="${row[2]}"
   if [[ $tenant_id -ne 1 ]]; then
-     if [[ $status == "SUCCESS" ]]  && [[ $OB_CLUSTERS_COUNT -eq 1 || $comp_index -eq 0 ]];then
+     if [[ $status == "SUCCESS" ]]  && [[ ${isPrimaryCluster} == "true" ]];then
         echo "INFO: promote ${tenant_name} to Primary for primary cluster."
         ${mysql_cmd} "ALTER SYSTEM ACTIVATE STANDBY TENANT ${tenant_name}";
         if [[ $OB_CLUSTERS_COUNT -gt 1 ]];then
            sql="ALTER SYSTEM ARCHIVELOG TENANT=${tenant_name};"
            ${mysql_cmd} "${sql}";
         fi
-     fi
-     if [[ $status != "SUCCESS" ]];then
-        echo "ERROR: restore tenant ${tenant_name} failed: ${row[3]}" >> $restoreFile
-     fi
-  elif [[ $status != "SUCCESS" ]]; then
-      echo "ERROR: create tenant ${tenant_name} failed: ${row[3]}" >> $restoreFile
+    elif [[ $status != "SUCCESS" ]]; then
+      echo "ERROR: restore tenant ${tenant_name} failed: ${row[3]}" >> $restoreFile
+    fi
   fi
 done
 
 
 # step 5 ===> establish PRIMARY/STANDBY relationship for standby cluster
-# TODO: wait for primary restore successfuly
-if [[ $comp_index -gt 0 ]]; then
+if [[ ${isPrimaryCluster} == "false" ]]; then
    repUser=${REP_USER:-rep_user}
    repPasswd=${REP_PASSWD:-rep_user}
+   # TODO: update it if support multi standby clusters.
    primaryComponentName="${KB_CLUSTER_COMP_NAME%-*}-0"
+   if [[ $global_comp_index -eq 0 ]]; then
+      # if first component is standby cluster
+      primaryComponentName="${KB_CLUSTER_COMP_NAME%-*}-1"
+   fi
    primaryHost="${primaryComponentName}-0.${primaryComponentName}-headless"
    echo "primary cluster host: ${primaryHost}"
    waitForPrimaryClusterRestore "${primaryHost}"
@@ -264,6 +291,9 @@ if [[ $comp_index -gt 0 ]]; then
       echo "INFO: set log source for tenant ${tenant_name}, svrList: ${svrList}, user: ${repUser}"
       ${mysql_cmd} "ALTER SYSTEM SET LOG_RESTORE_SOURCE ='SERVICE=${svrList} USER=${repUser}@${tenant_name} PASSWORD=${repPasswd}' TENANT = ${tenant_name};"
       ${mysql_cmd} "ALTER SYSTEM RECOVER STANDBY TENANT = ${tenant_name} UNTIL UNLIMITED;"
+      if [[ $OB_CLUSTERS_COUNT -gt 1 ]];then
+         ${mysql_cmd} "ALTER SYSTEM ARCHIVELOG TENANT=${tenant_name};"
+      fi
    done
 fi
 

@@ -111,7 +111,7 @@ function prepareTenantLogArchive() {
   fi
   # enable dest
   ${mysql_cmd} "ALTER SYSTEM SET LOG_ARCHIVE_DEST_STATE='ENABLE' TENANT=${tenant_name};"
-  # TODO: add auto clean archive logs
+  # add recovery window to auto-clean backup.
   ${mysql_cmd} "ALTER SYSTEM ADD DELETE BACKUP POLICY 'default' RECOVERY_WINDOW '7d' TENANT ${tenant_name};"
 }
 
