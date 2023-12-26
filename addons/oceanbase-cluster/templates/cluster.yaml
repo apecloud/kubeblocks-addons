@@ -53,11 +53,21 @@ spec:
               requests:
                 storage: "100Mi"
   {{- end }}
+  {{- if eq .Values.proxy.enabled "enabled" }}
     - name: obconfigserver
       componentDef: "oceanbase-configserver"
       componentDefRef: "oceanbase-configserver"
-      replicas: 1
+      replicas: {{ .Values.proxy.configserver.replicas }}
+      resources:
+        limits:
+          cpu: {{ .Values.proxy.configserver.cpu | quote }}
+          memory: {{ print .Values.proxy.configserver.memory "Gi" | quote }}
     - name: obproxy
       componentDef: "oceanbase-proxy"
       componentDefRef: "oceanbase-proxy"
-      replicas: 1
+      replicas: {{ .Values.proxy.obproxy.replicas }}
+      resources:
+        limits:
+          cpu: {{ .Values.proxy.obproxy.cpu | quote }}
+          memory: {{ print .Values.proxy.obproxy.memory "Gi" | quote }}
+  {{- end }}
