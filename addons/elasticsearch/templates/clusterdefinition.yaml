@@ -193,7 +193,9 @@ spec:
             - --es.ssl-skip-verify
             - --es.indices
             - --es.shards
-          env: 
+          env:
+            - name: SERVICE_PORT
+              value: "9114"
           startupProbe:
             tcpSocket:
               port: 9114
