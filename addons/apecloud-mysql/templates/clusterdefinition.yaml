@@ -480,10 +480,10 @@ spec:
           - name: serverport
             port: 15306
             targetPort: serverport
-      volumes:
-        - name: vtgate-log
-          emptyDir: {}
       podSpec:
+        volumes:
+          - name: vtgate-log
+            emptyDir: { }
         initContainers:
           - name: wait-vtctld-ready
             imagePullPolicy: IfNotPresent
