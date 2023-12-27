@@ -3,12 +3,7 @@ kind: ClusterDefinition
 metadata:
   name: elasticsearch
   labels:
-    app.kubernetes.io/instance: kb-addon-elasticsearch
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/name: elasticsearch
-    app.kubernetes.io/version: 8.8.2
-    config.kubeblocks.io/tpl-elasticsearch-config-template: elasticsearch-config-template
-    helm.sh/chart: elasticsearch-0.7.1
+    {{- include "elasticsearch.labels" . | nindent 4 }}
 spec:
   type: elasticsearch
   connectionCredential:
@@ -25,7 +20,7 @@ spec:
       - name: elasticsearch-config-template
         templateRef: elasticsearch-config-template
         volumeName: elasticsearch-config  
-        namespace: kb-system
+        namespace: {{.Release.Namespace}}
       workloadType: Stateful 
 
       service: # Source: elasticsearch/templates/service.yaml   -> coordinating-only
