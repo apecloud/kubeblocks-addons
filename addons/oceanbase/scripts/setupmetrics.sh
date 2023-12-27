@@ -1,17 +1,10 @@
 #!/usr/bin/env bash
 
 function retry {
-  local max_attempts=10
-  local attempt=1
-  until "$@" || [ $attempt -eq $max_attempts ]; do
+  until "$@" ; do
     echo "Command '$*' failed. Attempt $attempt of $max_attempts. Retrying in 5 seconds..."
-    attempt=$((attempt + 1))
     sleep 5
   done
-  if [ $attempt -eq $max_attempts ]; then
-    echo "Command '$*' failed after $max_attempts attempts. Exiting..."
-    exit 1
-  fi
 }
 
 ZONE_COUNT=${ZONE_COUNT:-3}
