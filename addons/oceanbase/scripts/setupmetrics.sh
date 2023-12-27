@@ -1,24 +1,17 @@
 #!/usr/bin/env bash
 
 function retry {
-  local max_attempts=10
-  local attempt=1
-  until "$@" || [ $attempt -eq $max_attempts ]; do
+  until "$@" ; do
     echo "Command '$*' failed. Attempt $attempt of $max_attempts. Retrying in 5 seconds..."
-    attempt=$((attempt + 1))
     sleep 5
   done
-  if [ $attempt -eq $max_attempts ]; then
-    echo "Command '$*' failed after $max_attempts attempts. Exiting..."
-    exit 1
-  fi
 }
 
 ZONE_COUNT=${ZONE_COUNT:-3}
 MANAGER_PORT=${MANAGER_PORT:-8089}
 SERVICE_PORT=${SERVICE_PORT:-8088}
 COMP_RPC_PORT=${COMP_RPC_PORT:-2882}
-ORDINAL_OB_PORT=${OB_SERVICE_PORT:-2882}
+ORDINAL_OB_PORT=${OB_SERVICE_PORT:-2881}
 COMP_MYSQL_PORT=${COMP_MYSQL_PORT:-${ORDINAL_OB_PORT}}
 ORDINAL_INDEX=$(echo $KB_POD_NAME | awk -F '-' '{print $(NF)}')
 ZONE_NAME="zone$((${ORDINAL_INDEX}%${ZONE_COUNT}))"

@@ -16,7 +16,7 @@
   {{- $ob_port = $ob_port_info.containerPort }}
 {{- end }}
 COMP_MYSQL_PORT = {{ $ob_port }}
-
+OB_SERVICE_PORT = {{ $ob_port }}
 ## for ob rpc port
 {{- $rpc_port := 2882 }}
 {{- if $rpc_port_info }}
