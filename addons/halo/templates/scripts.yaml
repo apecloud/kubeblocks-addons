@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: official-halo-scripts
+  labels:
+    {{- include "official-halo.labels" . | nindent 4 }}
+data:
+  {{- include "official-halo.extend.scripts" . | nindent 2 }}
