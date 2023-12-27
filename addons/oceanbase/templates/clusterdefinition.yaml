@@ -296,8 +296,6 @@ spec:
                     key: password
               - name: OB_HOME_DIR
                 value: "/home/admin/workdir"
-              - name: OB_SERVICE_PORT
-                value: "2881"
           - name: metrics
             command:
               - bash
