@@ -1,0 +1,27 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: prometheus-service
+  labels:
+    apps.kubeblocks.halo.prometheus: halo-kube-prometheus
+    app.kubernetes.io/managed-by: kubeblocks
+    app.kubernetes.io/name: halo
+    apps.kubeblocks.io/component-name: halo
+  annotations:
+    monitor.kubeblocks.io/agamotto: 'false'
+    monitor.kubeblocks.io/scrape: 'false'
+spec:
+  ports:
+    - name: tcp-metrics
+      protocol: TCP
+      port: 9630
+      targetPort: {{ .Values.metrics.service.port }}   
+  selector:
+    apps.kubeblocks.halo.prometheus: kube-prometheus
+  type: ClusterIP
+
+
+
+
+  
+
