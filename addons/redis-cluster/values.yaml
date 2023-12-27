@@ -1,6 +1,9 @@
 # Default values for redis-cluster.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
+# if useLegacyCompDef is false ,cluster will be rendered by compDef rather than componentDefRef in cluster definition
+useLegacyCompDef: false
+
 
 ## @param version redis cluster version
 ##
@@ -33,23 +36,27 @@ requests:
 ##
 storage: 20
 
+## @param twemproxy.enable
+## @param sentinel.cpu
+## @param sentinel.memory
+## @param sentinel.replicas
+##
+twemproxy:
+  enabled: false
+  replicas: 3
+  cpu: 0.2
+  memory: 0.2
+
+## @param nodePortEnabled
+nodePortEnabled: true
+
 ## @param sentinel.cpu
 ## @param sentinel.memory
 ## @param sentinel.storage
 ##
 sentinel:
+  enabled: true
   cpu: 0.2
   memory: 0.2
   storage: 5
   replicas: 3
-
-## @param twemproxyEnabled if true, enable the twemproxy
-## if mode is standalone, twemproxyEnabled is always false
-## if mode is replication, twemproxyEnabled can be true or false
-##
-twemproxyEnabled: false
-
-twemproxy:
-  cpu: 0.5
-  memory: 0.5
-  replicas: 2
