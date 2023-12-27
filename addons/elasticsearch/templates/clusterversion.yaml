@@ -20,9 +20,7 @@ spec:
       - name: elasticsearch-master-graceful-termination-handler
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
-  - componentDefRef: metrics
-    versionsContext:
-      containers:
       - name: metrics
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.metrics.repository }}:{{ default .Chart.AppVersion .Values.image.metrics.tag }}
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+
