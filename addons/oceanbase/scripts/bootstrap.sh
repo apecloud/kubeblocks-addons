@@ -48,11 +48,11 @@ function init_port_list {
     {{- $rpc_port_info := getPortByName ( index $e.containers 0 ) "rpc" }}
     {{- $mysql_port := 2881 }}
     {{- if $mysql_port_info }}
-      {{- $mysql_port = $mysql_port_info.containerPort }}
+      {{- $mysql_port = $mysql_port_info.hostPort }}
     {{- end }}
     {{- $rpc_port := 2882 }}
     {{- if $rpc_port_info }}
-      {{- $rpc_port = $rpc_port_info.containerPort }}
+      {{- $rpc_port = $rpc_port_info.hostPort }}
     {{- end }}
     MYSQL_PORTS[{{ $i }}]={{$mysql_port}}
     RPC_PORTS[{{ $i }}]={{$rpc_port}}
