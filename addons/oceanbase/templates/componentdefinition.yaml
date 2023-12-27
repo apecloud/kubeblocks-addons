@@ -140,16 +140,16 @@ spec:
           - containerPort: 8089
             name: pprof
             protocol: TCP
-        readinessProbe:
-          failureThreshold: 3
-          httpGet:
-            path: /metrics/stat
-            port: 8088
-            scheme: HTTP
-          initialDelaySeconds: 5
-          periodSeconds: 2
-          successThreshold: 1
-          timeoutSeconds: 1
+#        readinessProbe:
+#          failureThreshold: 3
+#          httpGet:
+#            path: /metrics/stat
+#            port: 8088
+#            scheme: HTTP
+#          initialDelaySeconds: 5
+#          periodSeconds: 2
+#          successThreshold: 1
+#          timeoutSeconds: 1
         resources:
           limits:
             cpu: "1"
@@ -328,16 +328,16 @@ spec:
           - containerPort: 62
             name: config-manager
             protocol: TCP
-        readinessProbe:
-          failureThreshold: 3
-          httpGet:
-            path: /metrics/stat
-            port: http
-            scheme: HTTP
-          initialDelaySeconds: 5
-          periodSeconds: 2
-          successThreshold: 1
-          timeoutSeconds: 1
+#        readinessProbe:
+#          failureThreshold: 3
+#          httpGet:
+#            path: /metrics/stat
+#            port: http
+#            scheme: HTTP
+#          initialDelaySeconds: 5
+#          periodSeconds: 2
+#          successThreshold: 1
+#          timeoutSeconds: 1
         resources:
           limits:
             cpu: "1"
