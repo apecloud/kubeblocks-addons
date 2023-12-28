@@ -77,8 +77,6 @@ spec:
               - name: paxos
                 containerPort: 15432
             env:
-              - name: KUBERNETES_USE_CONFIGMAPS
-                value: "true"
               - name: ALLOW_NOSSL
                 value: "true"
               - name: POD_IP

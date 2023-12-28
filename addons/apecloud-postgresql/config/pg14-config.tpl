@@ -305,3 +305,7 @@ vacuum_failsafe_age = '1600000000'
 vacuum_multixact_failsafe_age = '1600000000'
 wal_keep_size = '0'
 wal_skip_threshold = '2048'
+
+## the following parameters are related to consensus extension
+shared_preload_libraries = 'consensus'
+consensus.consensus_enabled = true
