@@ -12,7 +12,7 @@ spec:
   - componentDef: oceanbase
     componentDefRef: oceanbase
     backoffLimit: 0
-    backupMethods:
+    backupMethods: &backupMethods
       - name: full
         snapshotVolumes: false
         actionSetName: oceanbase-physical-backup
@@ -20,7 +20,7 @@ spec:
           volumeMounts:
             - name: workdir
               mountPath: /home/admin/workdir
-    schedules:
+    schedules: &backupschedules
       - backupMethod: full
         enabled: false
         cronExpression: "0 18 * * *"
@@ -28,48 +28,15 @@ spec:
   - componentDef: oceanbase-hostnetwork
     componentDefRef: oceanbase-hostnetwork
     backoffLimit: 0
-    backupMethods:
-      - name: full
-        snapshotVolumes: false
-        actionSetName: oceanbase-physical-backup
-        targetVolumes:
-          volumeMounts:
-            - name: workdir
-              mountPath: /home/admin/workdir
-    schedules:
-      - backupMethod: full
-        enabled: false
-        cronExpression: "0 18 * * *"
-        retentionPeriod: 7d
+    backupMethods: *backupMethods
+    schedules: *backupschedules
   - componentDef: oceanbase-repl
     componentDefRef: oceanbase-repl
     backoffLimit: 0
-    backupMethods:
-      - name: full
-        snapshotVolumes: false
-        actionSetName: oceanbase-physical-backup
-        targetVolumes:
-          volumeMounts:
-            - name: workdir
-              mountPath: /home/admin/workdir
-    schedules:
-      - backupMethod: full
-        enabled: false
-        cronExpression: "0 18 * * *"
-        retentionPeriod: 7d
+    backupMethods: *backupMethods
+    schedules: *backupschedules
   - componentDef: oceanbase-repl-host
     componentDefRef: oceanbase-repl-host
     backoffLimit: 0
-    backupMethods:
-      - name: full
-        snapshotVolumes: false
-        actionSetName: oceanbase-physical-backup
-        targetVolumes:
-          volumeMounts:
-            - name: workdir
-              mountPath: /home/admin/workdir
-    schedules:
-      - backupMethod: full
-        enabled: false
-        cronExpression: "0 18 * * *"
-        retentionPeriod: 7d
+    backupMethods: *backupMethods
+    schedules: *backupschedules
