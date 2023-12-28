@@ -15,7 +15,7 @@ spec:
     - name: oceanbase
       characterType: oceanbase
       workloadType: Stateful
-      service:
+      service: &obsvc
         ports:
           - name: sql
             port: 2881
@@ -23,7 +23,7 @@ spec:
           - name: rpc
             port: 2882
             targetPort: rpc
-      configSpecs:
+      configSpecs: &obconfigs
 #        - name: oceanbase-init-config
 #          templateRef: oceanbase-init-config
 #          volumeName: oceanbase-init-config
@@ -41,19 +41,13 @@ spec:
           constraintRef: oceanbase-parameters-cc
           namespace: {{ .Release.Namespace }}
           defaultMode: 0555
-      scriptSpecs:
+      scriptSpecs: &obscripts
         - name: oceanbase-scripts
           templateRef: oceanbase-scripts
           namespace: {{ .Release.Namespace }}
           volumeName: scripts
           defaultMode: 0555
-      probes:
-        roleProbeTimeoutAfterPodsReady: 300
-        roleProbe:
-          failureThreshold: {{ .Values.roleProbe.failureThreshold }}
-          periodSeconds: {{ .Values.roleProbe.periodSeconds }}
-          timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
-      podSpec:
+      podSpec: &obpods
         terminationGracePeriodSeconds: 60
 #        initContainers:
 #          - name: init-tools
@@ -183,15 +177,8 @@ spec:
     - name: oceanbase-hostnetwork
       characterType: oceanbase
       workloadType: Stateful
-      service:
-        ports:
-          - name: sql
-            port: 2881
-            targetPort: sql
-          - name: rpc
-            port: 2882
-            targetPort: rpc
-      configSpecs:
+      service: *obsvc
+      configSpecs: &obhostconfigs
 #        - name: oceanbase-init-config
 #          templateRef: oceanbase-init-config
 #          volumeName: oceanbase-init-config
@@ -219,19 +206,8 @@ spec:
             - observer-container
             - metrics
             - config-manager
-      scriptSpecs:
-        - name: oceanbase-scripts
-          templateRef: oceanbase-scripts
-          namespace: {{ .Release.Namespace }}
-          volumeName: scripts
-          defaultMode: 0555
-      probes:
-        roleProbeTimeoutAfterPodsReady: 300
-        roleProbe:
-          failureThreshold: {{ .Values.roleProbe.failureThreshold }}
-          periodSeconds: {{ .Values.roleProbe.periodSeconds }}
-          timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
-      podSpec:
+      scriptSpecs: *obscripts
+      podSpec: &obhostpods
         terminationGracePeriodSeconds: 60
         hostNetwork: true
         dnsPolicy: ClusterFirstWithHostNet
@@ -359,3 +335,24 @@ spec:
 #            emptyDir: {}
           - name: metricslog
             emptyDir: {}
+    - name: oceanbase-repl
+      characterType: oceanbase
+      workloadType: Stateful
+      service: *obsvc
+      configSpecs: *obconfigs
+      scriptSpecs: *obscripts
+      probes: &obprobes
+        roleProbeTimeoutAfterPodsReady: 300
+        roleProbe:
+          failureThreshold: {{ .Values.roleProbe.failureThreshold }}
+          periodSeconds: {{ .Values.roleProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+      podSpec: *obpods
+    - name: oceanbase-repl-host
+      characterType: oceanbase
+      workloadType: Stateful
+      service: *obsvc
+      configSpecs: *obhostconfigs
+      scriptSpecs: *obscripts
+      probes: *obprobes
+      podSpec: *obhostpods
