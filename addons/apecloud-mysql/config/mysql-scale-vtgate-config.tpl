@@ -9,7 +9,7 @@ read_write_splitting_policy=random
 read_write_splitting_ratio=100
 read_after_write_consistency=SESSION
 read_after_write_timeout=30.0
-enable_buffer=false
+enable_buffer=true
 buffer_size=10000
 buffer_window=30s
 buffer_max_failover_duration=60s
@@ -19,7 +19,6 @@ mysql_server_require_secure_transport=false
 mysql_auth_server_static_file=
 mysql_server_ssl_key=
 mysql_server_ssl_cert=
-
 {{ block "logsBlock" . }}
 {{- if hasKey $.component "enabledLogs" }}
 enable_logs=true
