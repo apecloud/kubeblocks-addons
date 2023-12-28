@@ -11,7 +11,7 @@ version: redis-7.0.6
 
 ## @param mode redis cluster topology mode, standalone and replication
 ##
-mode: standalone
+mode: replication
 
 ## @param replicas specify cluster replicas
 ##
