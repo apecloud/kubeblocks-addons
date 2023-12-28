@@ -19,7 +19,7 @@
     {{- include "redis-cluster.twemproxy" . | indent 4 }}
     {{- end }}
 
-    {{- if eq .Values.mode "replication" }}
+    {{- if and (eq .Values.mode "replication") .Values.sentinel.enabled }}
     {{- include "redis-cluster.sentinel" . | indent 4 }}
     {{- end }}
 {{- else }}
@@ -37,7 +37,7 @@
           - name: redis-nodeport
             port: 6379
             targetPort: 6379
-  {{- if .Values.sentinel.enabled }}
+  {{- if and (eq .Values.mode "replication") .Values.sentinel.enabled }}
   {{- include "redis-cluster.sentinel-nodeport" . | indent 4 }}
   {{- end }}
   {{- end }}
@@ -54,7 +54,7 @@
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
       {{- include "kblib.componentServices" . | indent 6 }}
-    {{- if .Values.sentinel.enabled }}
+    {{- if and (eq .Values.mode "replication") .Values.sentinel.enabled }}
     {{- include "redis-cluster.sentinelCompDef" . | indent 4 }}
     {{- end }}
 {{- end }}
