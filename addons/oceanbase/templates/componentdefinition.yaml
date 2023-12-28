@@ -60,6 +60,8 @@ spec:
       failureThreshold: {{ .Values.roleProbe.failureThreshold }}
       periodSeconds: {{ .Values.roleProbe.periodSeconds }}
       timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+  labels:
+    kubeblocks.io/ready-without-primary: "false"
   runtime:
     terminationGracePeriodSeconds: 60
     containers:
@@ -245,6 +247,8 @@ spec:
       failureThreshold: {{ .Values.roleProbe.failureThreshold }}
       periodSeconds: {{ .Values.roleProbe.periodSeconds }}
       timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+  labels:
+    kubeblocks.io/ready-without-primary: "false"
   runtime:
     hostNetwork: true
     dnsPolicy: ClusterFirstWithHostNet
