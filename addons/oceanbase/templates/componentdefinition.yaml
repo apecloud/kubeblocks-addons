@@ -110,6 +110,8 @@ spec:
             value: "$(KB_CLUSTER_COMP_NAME)"
           - name: OB_HOME_DIR
             value: "/home/admin/workdir"
+          - name: OB_SERVICE_PORT
+            value: "2881"
       - name: metrics
         image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.metrics.repository }}:{{ .Values.images.metrics.tag }}
         imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
@@ -140,16 +142,16 @@ spec:
           - containerPort: 8089
             name: pprof
             protocol: TCP
-        readinessProbe:
-          failureThreshold: 3
-          httpGet:
-            path: /metrics/stat
-            port: 8088
-            scheme: HTTP
-          initialDelaySeconds: 5
-          periodSeconds: 2
-          successThreshold: 1
-          timeoutSeconds: 1
+#        readinessProbe:
+#          failureThreshold: 3
+#          httpGet:
+#            path: /metrics/stat
+#            port: 8088
+#            scheme: HTTP
+#          initialDelaySeconds: 5
+#          periodSeconds: 2
+#          successThreshold: 1
+#          timeoutSeconds: 1
         resources:
           limits:
             cpu: "1"
@@ -328,16 +330,16 @@ spec:
           - containerPort: 62
             name: config-manager
             protocol: TCP
-        readinessProbe:
-          failureThreshold: 3
-          httpGet:
-            path: /metrics/stat
-            port: http
-            scheme: HTTP
-          initialDelaySeconds: 5
-          periodSeconds: 2
-          successThreshold: 1
-          timeoutSeconds: 1
+#        readinessProbe:
+#          failureThreshold: 3
+#          httpGet:
+#            path: /metrics/stat
+#            port: http
+#            scheme: HTTP
+#          initialDelaySeconds: 5
+#          periodSeconds: 2
+#          successThreshold: 1
+#          timeoutSeconds: 1
         resources:
           limits:
             cpu: "1"

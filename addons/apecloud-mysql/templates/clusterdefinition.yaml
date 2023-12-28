@@ -481,6 +481,9 @@ spec:
             port: 15306
             targetPort: serverport
       podSpec:
+        volumes:
+          - name: vtgate-log
+            emptyDir: { }
         initContainers:
           - name: wait-vtctld-ready
             imagePullPolicy: IfNotPresent
@@ -541,3 +544,5 @@ spec:
                 mountPath: /scripts
               - name: mysql-scale-config
                 mountPath: /conf
+              - name: vtgate-log
+                mountPath: /vtdataroot
