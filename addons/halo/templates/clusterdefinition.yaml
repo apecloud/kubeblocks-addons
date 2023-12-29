@@ -14,13 +14,8 @@ spec:
     port: "$(SVC_PORT_tcp-halo)"
   componentDefs:
     - name: halo
-      workloadType: Replication
+      workloadType: Stateful
       characterType: postgresql
-      probes:
-        roleProbe:
-          failureThreshold: {{ .Values.roleProbe.failureThreshold }}
-          periodSeconds: {{ .Values.roleProbe.periodSeconds }}
-          timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
       configSpecs:
         - name: official-halo14-configuration
           templateRef: official-halo14-configuration
@@ -39,7 +34,7 @@ spec:
       service:
         ports:
           - name: tcp-halo
-            port: 1921
+            port: 5432
             targetPort: tcp-halo
       volumeTypes:
         - name: data
@@ -52,6 +47,8 @@ spec:
         containers:
           - name: halo
             imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+            args:
+             - -e HALO_PASSWORD=halo0root
             securityContext:
               runAsUser: 0
             command:
@@ -62,19 +59,21 @@ spec:
               - name: data
                 mountPath: /data/halo
               - name: halo-config
-                mountPath: /data/halo
+                mountPath: /var/lib/halo/conf
               - name: scripts
                 mountPath: /halo-scripts
             ports:
               - name: tcp-halo
-                containerPort: 1921
+                containerPort: 5432
             env:
               - name: HALO_HOME
                 value: /u01/app/halo/product/dbms/14
               - name: PGHOST
                 value: /var/run/halo 
               - name: POSTGRESQL_MASTER_PORT_NUMBER
-                value: "1921"                              
+                value: "5432"
+              - name: HALO_DB
+                value: "oracle"                            
               - name: ORACLE_HOME
                 value: /u01/app/halo/product/instantclient_12_2
               - name: OCI_LIB_DIR
@@ -97,18 +96,10 @@ spec:
                     fieldPath: metadata.namespace
               - name: PGDATA
                 value: /data/halo
-              - name: POSTGRES_USER
-                valueFrom:
-                  secretKeyRef:
-                    name: $(CONN_CREDENTIAL_SECRET_NAME)
-                    key: username
-                    optional: false
-              - name: POSTGRES_PASSWORD
-                valueFrom:
-                  secretKeyRef:
-                    name: $(CONN_CREDENTIAL_SECRET_NAME)
-                    key: password
-                    optional: false
+              - name: HALO_USER
+                value: halo
+              - name: HALO_PASSWORD
+                value: halo0root
               - name: PGUSER
                 valueFrom:
                   secretKeyRef:
@@ -120,7 +111,7 @@ spec:
                   secretKeyRef:
                     name: $(CONN_CREDENTIAL_SECRET_NAME)
                     key: password
-                    optional: false
+                    optional: false      
         volumes:
           - name: dshm
             emptyDir:
@@ -163,21 +154,21 @@ spec:
               statements:
                 creation: CREATE USER $(USERNAME) SUPERUSER PASSWORD '$(PASSWD)';
                 update: ALTER USER $(USERNAME) WITH PASSWORD '$(PASSWD)';
-          # - name: kbdataprotection
-          #   provisionPolicy: *kbAdminAcctRef
-          # - name: kbprobe
-          #   provisionPolicy: &kbReadonlyAcctRef
-          #     type: CreateByStmt
-          #     scope: AnyPods
-          #     statements:
-          #       creation: CREATE USER $(USERNAME) WITH PASSWORD '$(PASSWD)';  GRANT pg_monitor TO $(USERNAME);
-          #       update: ALTER USER $(USERNAME) WITH PASSWORD '$(PASSWD)';
-          # - name: kbmonitoring
-          #   provisionPolicy: *kbReadonlyAcctRef
-          # - name: kbreplicator
-          #   provisionPolicy:
-          #     type: CreateByStmt
-          #     scope: AnyPods
-          #     statements:
-          #       creation: CREATE USER $(USERNAME) WITH REPLICATION PASSWORD '$(PASSWD)';
-          #       update: ALTER USER $(USERNAME) WITH PASSWORD '$(PASSWD)';
+          - name: kbdataprotection
+            provisionPolicy: *kbAdminAcctRef
+          - name: kbprobe
+            provisionPolicy: &kbReadonlyAcctRef
+              type: CreateByStmt
+              scope: AnyPods
+              statements:
+                creation: CREATE USER $(USERNAME) WITH PASSWORD '$(PASSWD)';  GRANT pg_monitor TO $(USERNAME);
+                update: ALTER USER $(USERNAME) WITH PASSWORD '$(PASSWD)';
+          - name: kbmonitoring
+            provisionPolicy: *kbReadonlyAcctRef
+          - name: kbreplicator
+            provisionPolicy:
+              type: CreateByStmt
+              scope: AnyPods
+              statements:
+                creation: CREATE USER $(USERNAME) WITH REPLICATION PASSWORD '$(PASSWD)';
+                update: ALTER USER $(USERNAME) WITH PASSWORD '$(PASSWD)';

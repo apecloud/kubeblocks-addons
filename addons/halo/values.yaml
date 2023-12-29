@@ -4,14 +4,14 @@
 
 image:
   registry: registry.cn-hangzhou.aliyuncs.com
-  repository: binbin21avery/halo
-  tag: 1.0
+  repository: binbin21avery/halo-5432
+  tag: 0.1
   digest: ""
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
   ## ref: https://kubernetes.io/docs/user-guide/images/#pre-pulling-images
   ##
-  pullPolicy: Never
+  pullPolicy: "IfNotPresent"
   ## Optionally specify an array of imagePullSecrets.
   ## Secrets must be manually created in the namespace.
   ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
@@ -29,10 +29,10 @@ auth:
   ## @param auth.postgresPassword Password for the "postgres" admin user, leave empty
   ## for random generated password.
   ##
-  postgresPassword: "12345"
+  postgresPassword:
   ## @param auth.database Name for a custom database to create
   ##
-  database: "oracle"
+  database: "postgres"
 ## Set PostgreSQL preload extension shared libraries.
 ## @param postgresqlSharedPreloadLibraries Shared preload libraries (comma-separated list)
 ##
@@ -49,9 +49,4 @@ shmVolume:
   ## e.g:
   ## sizeLimit: 1Gi
   ##
-  sizeLimit: ""
-
-roleProbe:
-  failureThreshold: 2
-  periodSeconds: 1
-  timeoutSeconds: 1
+  sizeLimit: "2Gi"

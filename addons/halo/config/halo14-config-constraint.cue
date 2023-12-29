@@ -690,7 +690,7 @@
 	"pglogical.extra_connection_options"?: string
 
 	// pglogical specific synchronous commit value
-	"pglogical.synchronous_commit"?: bool & false | true | "on" | "off"
+	"pglogical.synchronous_commit"?: bool & false | true 
 
 	// Use SPI instead of low-level API for applying changes
 	"pglogical.use_spi"?: bool & false | true
@@ -1003,7 +1003,7 @@
 	track_wal_io_timing?: bool & false | true
 
 	// Treats expr=NULL as expr IS NULL.
-	transform_null_equals?: bool & false | true | on | off
+	transform_null_equals?: bool & false | true 
 
 	// Sets the directory where the Unix-domain socket will be created.
 	unix_socket_directories?: string
