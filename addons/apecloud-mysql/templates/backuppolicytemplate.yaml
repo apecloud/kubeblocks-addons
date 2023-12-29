@@ -13,7 +13,7 @@ spec:
   - componentDefRef: mysql
     target:
       role: follower
-    backupMethods:
+    backupMethods: &backupMethods
     - name: xtrabackup
       snapshotVolumes: false
       actionSetName: {{ include "apecloud-mysql.xtrabackupActionSetName" . }}
@@ -30,7 +30,7 @@ spec:
         volumeMounts:
         - name: data
           mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
-    schedules:
+    schedules: &backupschedules
     - backupMethod: xtrabackup
       enabled: false
       cronExpression: "0 18 * * *"
@@ -39,3 +39,10 @@ spec:
       enabled: false
       cronExpression: "0 18 * * *"
       retentionPeriod: 7d
+  - componentDefs:
+      - {{ include "apecloud-mysql.backupPolicyTemplateName" . }}
+    target:
+      role: follower
+      account: root
+    backupMethods: *backupMethods
+    schedules: *backupschedules
