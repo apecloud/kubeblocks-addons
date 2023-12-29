@@ -88,8 +88,16 @@ Create extra envs annotations
 
 {{- define "oceanbase-cluster.compdef" }}
 {{- if eq .Values.hostnetwork "enabled" }}
-{{- "oceanbase-hostnetwork" | quote}}
+  {{- if gt (int .Values.obClusters) 1 }}
+  {{- "oceanbase-repl-host" | quote}}
+  {{- else }}
+  {{- "oceanbase-hostnetwork" | quote}}
+  {{- end }}
 {{- else }}
-{{- "oceanbase" | quote }}
+  {{- if gt (int .Values.obClusters) 1 }}
+  {{- "oceanbase-repl" | quote}}
+  {{- else }}
+  {{- "oceanbase" | quote}}
+  {{- end }}
 {{- end -}}
 {{- end }}
