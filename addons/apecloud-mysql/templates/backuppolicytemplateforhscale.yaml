@@ -10,10 +10,9 @@ spec:
   identifier: hscale
   backupPolicies:
   - componentDefRef: mysql
-    componentDef: {{ include "apecloud-mysql.backupPolicyTemplateName" . }}
     target:
       role: follower
-    backupMethods:
+    backupMethods: &backupMethods
     - name: volume-snapshot
       snapshotVolumes: true
       actionSetName: {{ include "apecloud-mysql.vsActionSetName" . }}
@@ -36,3 +35,9 @@ spec:
       env:
       - name: SIGNAL_FILE
         value: .xtrabackup_restore
+  - componentDefs:
+    - {{ include "apecloud-mysql.backupPolicyTemplateName" . }}
+    target:
+      role: follower
+      account: role
+    backupMethods: *backupMethods
