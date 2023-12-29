@@ -10,6 +10,7 @@ spec:
   identifier: hscale
   backupPolicies:
   - componentDefRef: mysql
+    componentDef: {{ include "apecloud-mysql.backupPolicyTemplateName" . }}
     target:
       role: follower
     backupMethods:

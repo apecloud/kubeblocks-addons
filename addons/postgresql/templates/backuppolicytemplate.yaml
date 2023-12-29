@@ -9,6 +9,7 @@ spec:
   clusterDefinitionRef: postgresql
   backupPolicies:
   - componentDefRef: postgresql
+    componentDef: postgresql-14
     target:
       role: secondary
     backupMethods:
