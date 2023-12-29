@@ -199,6 +199,10 @@ until [ $(${mysql_cmd} "SELECT count(*) FROM oceanbase.CDB_OB_ARCHIVELOG where s
     sleep 3
 done
 
+if [[ $tenantCount -eq 0 ]]; then
+   echo "INFO: no normal tenants exists."
+   exit 0
+fi
 
 # step 4===> do data backup
 sql="ALTER SYSTEM BACKUP DATABASE;"
