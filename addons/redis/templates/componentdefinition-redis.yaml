@@ -18,6 +18,15 @@ spec:
             port: 6379
             targetPort: redis
       roleSelector: primary
+    - name: redis-nodeport
+      serviceName: redis-nodeport
+      generatePodOrdinalService: true
+      spec:
+        type: NodePort
+        ports:
+          - name: redis
+            port: 6379
+            targetPort: redis
   updateStrategy: BestEffortParallel
   volumes:
     - name: data
