@@ -111,6 +111,10 @@ spec:
             env:
               - name: SERVICE_PORT
                 value: "3306"
+              - name: MYSQL_PORT
+                value: "3306"
+              - name: MYSQL_CONSENSUS_PORT
+                value: "13306"
               - name: MYSQL_ROOT_HOST
                 value: {{ .Values.auth.rootHost | default "%" | quote }}
               - name: MYSQL_ROOT_USER
@@ -147,31 +151,16 @@ spec:
                 value: {{ if .Values.cluster.dynamicConfig }}{{ .Values.cluster.dynamicConfig }}{{ end }}
               - name: KB_EMBEDDED_WESQL
                 value: {{ .Values.cluster.kbWeSQLImage | default "1" | quote }}
-              # - name: KB_MYSQL_LEADER
-              #   valueFrom:
-              #     configMapKeyRef:
-              #       name: $(COMP_ENV_CM_NAME)
-              #       key: KB_LEADER
-              #       optional: false
-              # - name: KB_MYSQL_FOLLOWERS
-              #   valueFrom:
-              #     configMapKeyRef:
-              #       name: $(COMP_ENV_CM_NAME)
-              #       key: KB_FOLLOWERS
-              #       optional: false
-              # - name: KB_MYSQL_N
-              #   valueFrom:
-              #     configMapKeyRef:
-              #       name: $(COMP_ENV_CM_NAME)
-              #       key: KB_REPLICA_COUNT
-              #       optional: false
-              # - name: KB_MYSQL_CLUSTER_UID
-              #   valueFrom:
-              #     configMapKeyRef:
-              #       name: $(COMP_ENV_CM_NAME)
-              #       key: KB_CLUSTER_UID
-              #       optional: false
-
+              - name: KB_MYSQL_VOLUME_DIR
+                value: {{ .Values.mysqlConfigs.dataMountPath }}
+              - name: KB_MYSQL_CONF_FILE
+                value: "/opt/mysql/my.cnf"
+              - name: KB_MYSQL_CLUSTER_UID
+                value: $(KB_CLUSTER_UID)
+              - name: KB_MYSQL_N
+                value: $(KB_REPLICA_COUNT)
+              - name: KB_POD_NAME
+                value: $(KB_POD_NAME)
             command: ["/scripts/setup.sh"]
             lifecycle:
               preStop:
