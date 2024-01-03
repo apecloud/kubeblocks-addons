@@ -9,7 +9,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
   annotations:
-    {{ include "redis-cluster.nodeport-feature-gate" . | nindent 4 }}
+    {{ include "redis-cluster.nodeportFeatureGate" . | nindent 4 }}
 spec:
   clusterVersionRef: {{ .Values.version }}
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
@@ -19,7 +19,7 @@ spec:
 {{/*
 Define redis cluster annotation keys for nodeport feature gate.
 */}}
-{{- define "redis-cluster.nodeport-feature-gate" -}}
+{{- define "redis-cluster.nodeportFeatureGate" -}}
 kubeblocks.io/enabled-node-port-svc: redis,redis-sentinel
 kubeblocks.io/enabled-pod-ordinal-svc: redis,redis-sentinel
 {{- end }}
