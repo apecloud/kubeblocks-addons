@@ -3,9 +3,9 @@
 # Declare variables to be passed into your templates.
 
 image:
-  registry: docker.io
-  repository: library/halo-test
-  tag: "0.2"
+  registry: 10.16.16.218
+  repository: halo-kb/halo-test
+  tag: "0.3"
   digest: ""
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
