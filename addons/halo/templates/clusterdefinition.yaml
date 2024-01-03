@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "official-halo.labels" . | nindent 4 }}
 spec:
-  type: postgresql
+  type: halo
   connectionCredential:
     username: halo
     password: "$(RANDOM_PASSWD)"
@@ -14,8 +14,8 @@ spec:
     port: "$(SVC_PORT_tcp-halo)"
   componentDefs:
     - name: halo
-      workloadType: Stateful
-      characterType: postgresql
+      workloadType: Replication
+      characterType: halo
       configSpecs:
         - name: official-halo14-configuration
           templateRef: official-halo14-configuration
@@ -34,7 +34,7 @@ spec:
       service:
         ports:
           - name: tcp-halo
-            port: 5432
+            port: 1921
             targetPort: tcp-halo
       volumeTypes:
         - name: data
@@ -42,38 +42,42 @@ spec:
       podSpec:
         securityContext:
           runAsUser: 0
-          fsGroup: 3000
-          runAsGroup: 3000
+          fsGroup: 103
+          runAsGroup: 103
         containers:
           - name: halo
             imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
-            args:
-             - -e HALO_PASSWORD=halo0root
             securityContext:
               runAsUser: 0
-            command:
+            command: 
               - /halo-scripts/setup.sh
             volumeMounts:
               - name: dshm
                 mountPath: /dev/shm
               - name: data
-                mountPath: /data/halo
+                mountPath: /var/lib/postgresql/data
               - name: halo-config
-                mountPath: /var/lib/halo/conf
+                mountPath: /var/lib/postgresql/conf
               - name: scripts
                 mountPath: /halo-scripts
             ports:
               - name: tcp-halo
-                containerPort: 5432
+                containerPort: 1921
             env:
-              - name: HALO_HOME
-                value: /u01/app/halo/product/dbms/14
+              - name: KB_PG_CONFIG_PATH
+                value: /var/lib/postgresql/conf/postgresql.conf
+              - name: PGDATA
+                value: /var/lib/postgresql/data
+              - name: POSTGRESQL_MASTER_PORT_NUMBER
+                value: "1921"
+              - name: HALO_USER
+                value: halo  
+              - name: HALO_PASSWORD
+                value: "halo0root"
               - name: PGHOST
                 value: /var/run/halo 
-              - name: POSTGRESQL_MASTER_PORT_NUMBER
-                value: "5432"
               - name: HALO_DB
-                value: "oracle"                            
+                value: "halo"                            
               - name: ORACLE_HOME
                 value: /u01/app/halo/product/instantclient_12_2
               - name: OCI_LIB_DIR
@@ -94,12 +98,18 @@ spec:
                   fieldRef:
                     apiVersion: v1
                     fieldPath: metadata.namespace
-              - name: PGDATA
-                value: /data/halo
-              - name: HALO_USER
-                value: halo
-              - name: HALO_PASSWORD
-                value: halo0root
+              - name: POSTGRES_USER
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: username
+                    optional: false
+              - name: POSTGRES_PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: password
+                    optional: false
               - name: PGUSER
                 valueFrom:
                   secretKeyRef:
@@ -111,7 +121,23 @@ spec:
                   secretKeyRef:
                     name: $(CONN_CREDENTIAL_SECRET_NAME)
                     key: password
-                    optional: false      
+                    optional: false
+            # livenessProbe:
+            #   tcpSocket:
+            #     port: 1921
+            #   initialDelaySeconds: 15
+            #   periodSeconds: 3
+            #   failureThreshold: 2
+            #   timeoutSeconds: 1
+            # readinessProbe:
+            #   failureThreshold: 2
+            #   exec:
+            #     command:
+            #        - pg_isready
+            #   periodSeconds: 1
+            #   successThreshold: 1
+            #   timeoutSeconds: 1
+            #   initialDelaySeconds: 15
         volumes:
           - name: dshm
             emptyDir:
@@ -172,3 +198,5 @@ spec:
               statements:
                 creation: CREATE USER $(USERNAME) WITH REPLICATION PASSWORD '$(PASSWD)';
                 update: ALTER USER $(USERNAME) WITH PASSWORD '$(PASSWD)';
+     
+     

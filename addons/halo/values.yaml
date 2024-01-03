@@ -3,15 +3,15 @@
 # Declare variables to be passed into your templates.
 
 image:
-  registry: registry.cn-hangzhou.aliyuncs.com
-  repository: binbin21avery/halo-5432
-  tag: 0.1
+  registry: docker.io
+  repository: library/halo-test
+  tag: "0.2"
   digest: ""
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
   ## ref: https://kubernetes.io/docs/user-guide/images/#pre-pulling-images
   ##
-  pullPolicy: "IfNotPresent"
+  pullPolicy: "Always"
   ## Optionally specify an array of imagePullSecrets.
   ## Secrets must be manually created in the namespace.
   ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
@@ -32,7 +32,7 @@ auth:
   postgresPassword:
   ## @param auth.database Name for a custom database to create
   ##
-  database: "postgres"
+  database: ""
 ## Set PostgreSQL preload extension shared libraries.
 ## @param postgresqlSharedPreloadLibraries Shared preload libraries (comma-separated list)
 ##
@@ -49,4 +49,17 @@ shmVolume:
   ## e.g:
   ## sizeLimit: 1Gi
   ##
-  sizeLimit: "2Gi"
+  sizeLimit: ""
+
+## roleCheck is for service, that defined which po is master which is slave
+# roleCheck:
+#   image:
+#     registry: "registry.cn-hangzhou.aliyuncs.com"
+#     repository: binbin21avery/halo-kb-tools
+#     tag: 0.7.1
+#     pullPolicy: IfNotPresent
+
+roleProbe:
+  failureThreshold: 2
+  periodSeconds: 1
+  timeoutSeconds: 1

@@ -27,10 +27,11 @@
 {{ $buffer_unit = "GB" }}
 {{- end }}
 
+#k8s
 listen_addresses = '*'
-port = '5432'
-archive_command = 'test ! -f /data/halo/archivedir/%f && cp %p /data/halo/archivedir/%f'
-restore_command = 'cp /data/halo/archivedir/%f %p'
+port = '1921'
+archive_command = 'test ! -f /var/lib/postgresql/data/archivedir/%f && cp %p /var/lib/postgresql/data/archivedir/%f'
+restore_command = 'cp /var/lib/postgresql/data/archivedir/%f %p'
 archive_mode = 'on'
 auto_explain.log_analyze = 'False'
 auto_explain.log_buffers = 'False'
