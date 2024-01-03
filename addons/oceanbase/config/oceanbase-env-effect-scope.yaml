@@ -4,3 +4,4 @@ immutableParameters:
   - SERVICE_PORT
   - MANAGER_PORT
   - CONF_MANAGER_PORT
+  - OB_SERVICE_PORT

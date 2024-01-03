@@ -1,22 +1,11 @@
-{{- $cc := .Files.Get "config/pg12-config-effect-scope.yaml" | fromYaml }}
+{{- $cc := .Files.Get "config/mogdb-config-effect-scope.yaml" | fromYaml }}
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ConfigConstraint
 metadata:
-  name: postgresql12-cc
+  name: mogdb-cc
   labels:
-    {{- include "postgresql.labels" . | nindent 4 }}
+    {{- include "mogdb.labels" . | nindent 4 }}
 spec:
-  reloadOptions:
-    tplScriptTrigger:
-      sync: true
-      scriptConfigMapRef: patroni-reload-script
-      namespace: {{ .Release.Namespace }}
-
-  # update patroni master
-  selector:
-    matchLabels:
-      "apps.kubeblocks.postgres.patroni/role": "master"
-
   # top level pg configuration type
   cfgSchemaTopLevelName: PGParameter
 
@@ -25,7 +14,7 @@ spec:
     # schema: auto generate from cue scripts
     # example: ../../pkg/configuration/testdata/mysql_openapi.json
     cue: |-
-      {{- .Files.Get "config/pg12-config-constraint.cue" | nindent 6 }}
+      {{- .Files.Get "config/mogdb-config-constraint.cue" | nindent 6 }}
 
   ##  require db instance restart
   ## staticParameters
