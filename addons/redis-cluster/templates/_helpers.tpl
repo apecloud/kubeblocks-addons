@@ -1,4 +1,30 @@
 {{/*
+Define common fileds of cluster object
+*/}}
+{{- define "redis-cluster.clusterCommonWithNodePort" }}
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+  annotations:
+    {{ include "redis-cluster.nodeportFeatureGate" . | nindent 4 }}
+spec:
+  clusterVersionRef: {{ .Values.version }}
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  {{- include "kblib.affinity" . | indent 2 }}
+{{- end }}
+
+{{/*
+Define redis cluster annotation keys for nodeport feature gate.
+*/}}
+{{- define "redis-cluster.nodeportFeatureGate" -}}
+kubeblocks.io/enabled-node-port-svc: redis,redis-sentinel
+kubeblocks.io/enabled-pod-ordinal-svc: redis,redis-sentinel
+{{- end }}
+
+{{/*
 Define redis cluster sentinel component.
 */}}
 {{- define "redis-cluster.sentinel" }}
@@ -40,24 +66,6 @@ Define redis cluster twemproxy component.
       memory: {{ print .Values.twemproxy.memory "Gi" | quote }}
 {{- end }}
 
-{{/*
-Define redis cluster sentinel nodeport service.
-*/}}
-{{- define "redis-cluster.sentinel-nodeport" }}
-- name: redis-sentinel-nodeport
-  serviceName: redis-sentinel-nodeport
-  generatePodOrdinalService: true
-  componentSelector: redis-sentinel
-  spec:
-    type: NodePort
-    ports:
-     - name: redis-sentinel-nodeport
-       port: 26379
-       targetPort: 26379
-{{- end }}
-
-{{/*
-Define redis cluster sentinel component.
 */}}
 {{- define "redis-cluster.sentinelCompDef" }}
 - componentDef: redis-sentinel
