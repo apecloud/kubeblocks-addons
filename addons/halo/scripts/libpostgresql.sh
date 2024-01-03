@@ -215,15 +215,15 @@ configure_permissions_ownership() {
 }
 ############
 postgresql_slave_init_db() {
-    local -r check_args=("-U" "$POSTGRES_USER" "-h" "$POSTGRESQL_MASTER_HOST" "-p" "$POSTGRESQL_MASTER_PORT_NUMBER" "-d" "postgres")
+    local -r check_args=("-U" "$HALO_USER" "-h" "$POSTGRESQL_MASTER_HOST" "-p" "$POSTGRESQL_MASTER_PORT_NUMBER" "-d" "$HALO_DB")
     local check_cmd=()
     if am_i_root; then
-        check_cmd=("gosu" "$POSTGRES_USER")
+        check_cmd=("gosu" "$HALO_USER")
     fi
     check_cmd+=("$POSTGRESQL_BIN_DIR"/pg_isready)
     local ready_counter=$POSTGRESQL_INIT_MAX_TIMEOUT
 
-    while ! PGPASSWORD=$POSTGRES_PASSWORD "${check_cmd[@]}" "${check_args[@]}"; do
+    while ! PGPASSWORD=$HALO_PASSWORD "${check_cmd[@]}" "${check_args[@]}"; do
         sleep 1
         ready_counter=$((ready_counter - 1))
         if ((ready_counter <= 0)); then
@@ -232,11 +232,11 @@ postgresql_slave_init_db() {
         fi
 
     done
-    local -r backup_args=("-D" "$PGDATA" "-U" "$POSTGRES_USER" "-h" "$POSTGRESQL_MASTER_HOST" "-p" "$POSTGRESQL_MASTER_PORT_NUMBER" "-X" "stream" "-w" "-v" "-P")
+    local -r backup_args=("-D" "$PGDATA" "-U" "$HALO_USER" "-h" "$POSTGRESQL_MASTER_HOST" "-p" "$POSTGRESQL_MASTER_PORT_NUMBER" "-X" "stream" "-w" "-v" "-P")
     local backup_cmd=()
     backup_cmd+=("$POSTGRESQL_BIN_DIR"/pg_basebackup)
     local replication_counter=$POSTGRESQL_INIT_MAX_TIMEOUT
-    while ! PGPASSWORD=$POSTGRES_PASSWORD "${backup_cmd[@]}" "${backup_args[@]}"; do
+    while ! PGPASSWORD=$HALO_PASSWORD "${backup_cmd[@]}" "${backup_args[@]}"; do
         sleep 1
         replication_counter=$((replication_counter - 1))
         if ((replication_counter <= 0)); then

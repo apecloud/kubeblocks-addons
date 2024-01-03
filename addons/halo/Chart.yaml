@@ -4,12 +4,12 @@ description: A Official Halo cluster definition Helm chart for Kubernetes
 
 type: application
 
-version: v1.0-alpha
+version: 0.2.0
 
 # The helm chart contains multiple kernel versions of Official PostgreSQL,
 # and each PostgreSQL version corresponds to a clusterVersion object.
 # appVersion should be consistent with the highest PostgreSQL kernel version in clusterVersion.
-appVersion: "halo-14"
+appVersion: 0.2.0
 
 annotations:
   addon.kubeblocks.io/kubeblocks-version: ">=0.7.0"

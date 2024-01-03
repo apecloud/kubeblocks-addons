@@ -14,7 +14,7 @@ spec:
     port: "$(SVC_PORT_tcp-halo)"
   componentDefs:
     - name: halo
-      workloadType: Replication
+      workloadType: Stateful
       characterType: halo
       configSpecs:
         - name: official-halo14-configuration
@@ -42,8 +42,8 @@ spec:
       podSpec:
         securityContext:
           runAsUser: 0
-          fsGroup: 103
-          runAsGroup: 103
+          fsGroup: 3000
+          runAsGroup: 3000
         containers:
           - name: halo
             imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
@@ -74,18 +74,18 @@ spec:
                 value: halo  
               - name: HALO_PASSWORD
                 value: "halo0root"
-              - name: PGHOST
+              - name: PGHOST # 这个是PG的unix套接字路径
                 value: /var/run/halo 
-              - name: HALO_DB
+              - name: HALO_DB # 初始化数据簇时创建的数据库
                 value: "halo"                            
-              - name: ORACLE_HOME
+              - name: ORACLE_HOME # oracle 插件
                 value: /u01/app/halo/product/instantclient_12_2
               - name: OCI_LIB_DIR
-                value: $ORACLE_HOME
+                value: $ORACLE_HOME # oracle 插件
               - name: OCI_INC_DIR
-                value: $ORACLE_HOME/sdk/include
+                value: $ORACLE_HOME/sdk/include #oracle 插件
               - name: LD_LIBRARY_PATH
-                value: $HALO_HOME/lib:$ORACLE_HOME/sdk/include/lib
+                value: $HALO_HOME/lib:$ORACLE_HOME/sdk/include/lib # 插件的路径
               - name: ALLOW_NOSSL
                 value: "true"
               - name: POD_IP
@@ -122,22 +122,22 @@ spec:
                     name: $(CONN_CREDENTIAL_SECRET_NAME)
                     key: password
                     optional: false
-            # livenessProbe:
-            #   tcpSocket:
-            #     port: 1921
-            #   initialDelaySeconds: 15
-            #   periodSeconds: 3
-            #   failureThreshold: 2
-            #   timeoutSeconds: 1
-            # readinessProbe:
-            #   failureThreshold: 2
-            #   exec:
-            #     command:
-            #        - pg_isready
-            #   periodSeconds: 1
-            #   successThreshold: 1
-            #   timeoutSeconds: 1
-            #   initialDelaySeconds: 15
+            livenessProbe:
+              tcpSocket:
+                port: 1921
+              initialDelaySeconds: 15
+              periodSeconds: 3
+              failureThreshold: 2
+              timeoutSeconds: 1
+            readinessProbe:
+              failureThreshold: 2
+              exec:
+                command:
+                   - pg_isready
+              periodSeconds: 1
+              successThreshold: 1
+              timeoutSeconds: 1
+              initialDelaySeconds: 15
         volumes:
           - name: dshm
             emptyDir:
@@ -145,58 +145,6 @@ spec:
               {{- with .Values.shmVolume.sizeLimit }}
               sizeLimit: {{ . }}
               {{- end }}
-      systemAccounts:
-        cmdExecutorConfig:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag }}
-          command:
-            - psql
-          args:
-            - -h$(KB_ACCOUNT_ENDPOINT)
-            - -c
-            - $(KB_ACCOUNT_STATEMENT)
-          env:
-            - name: PGUSER
-              valueFrom:
-                secretKeyRef:
-                  name: $(CONN_CREDENTIAL_SECRET_NAME)
-                  key: username
-                  optional: false
-            - name: PGPASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: $(CONN_CREDENTIAL_SECRET_NAME)
-                  key: password
-                  optional: false
-        passwordConfig:
-          length: 10
-          numDigits: 5
-          numSymbols: 0
-          letterCase: MixedCases
-        accounts:
-          - name: kbadmin
-            provisionPolicy: &kbAdminAcctRef
-              type: CreateByStmt
-              scope: AnyPods
-              statements:
-                creation: CREATE USER $(USERNAME) SUPERUSER PASSWORD '$(PASSWD)';
-                update: ALTER USER $(USERNAME) WITH PASSWORD '$(PASSWD)';
-          - name: kbdataprotection
-            provisionPolicy: *kbAdminAcctRef
-          - name: kbprobe
-            provisionPolicy: &kbReadonlyAcctRef
-              type: CreateByStmt
-              scope: AnyPods
-              statements:
-                creation: CREATE USER $(USERNAME) WITH PASSWORD '$(PASSWD)';  GRANT pg_monitor TO $(USERNAME);
-                update: ALTER USER $(USERNAME) WITH PASSWORD '$(PASSWD)';
-          - name: kbmonitoring
-            provisionPolicy: *kbReadonlyAcctRef
-          - name: kbreplicator
-            provisionPolicy:
-              type: CreateByStmt
-              scope: AnyPods
-              statements:
-                creation: CREATE USER $(USERNAME) WITH REPLICATION PASSWORD '$(PASSWD)';
-                update: ALTER USER $(USERNAME) WITH PASSWORD '$(PASSWD)';
+
      
      
