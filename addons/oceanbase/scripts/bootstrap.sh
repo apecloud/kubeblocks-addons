@@ -283,12 +283,12 @@ function add_server {
 
     local RETRY_MAX=5
     local retry_times=0
-    until conn_remote_w_port ${IP_LIST[$i]} $COMP_MYSQL_PORT "ALTER SYSTEM ADD SERVER '${KB_POD_IP}:2882' ZONE '${ZONE_NAME}'"; do
-      echo "Failed to add server ${KB_POD_IP}:2882 to the cluster, retry..."
+    until conn_remote_w_port ${IP_LIST[$i]} $COMP_MYSQL_PORT "ALTER SYSTEM ADD SERVER '${KB_POD_IP}:${COMP_RPC_PORT}' ZONE '${ZONE_NAME}'"; do
+      echo "Failed to add server ${KB_POD_IP}:$COMP_RPC_PORT to the cluster, retry..."
       retry_times=$(($retry_times+1))
       sleep $((3*${retry_times}))
       if [ $retry_times -gt ${RETRY_MAX} ]; then
-        echo "Failed to add server ${KB_POD_IP}:2882 to the cluster finally, exit..."
+        echo "Failed to add server ${KB_POD_IP}:$COMP_RPC_PORT to the cluster finally, exit..."
         exit 1
       fi
     done
