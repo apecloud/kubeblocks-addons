@@ -24,7 +24,7 @@ spec:
       spec:
         type: NodePort
         ports:
-          - name: redis
+          - name: redis-nodeport
             port: 6379
             targetPort: redis
   updateStrategy: BestEffortParallel
@@ -100,7 +100,7 @@ spec:
           optional: true
           nodePort:
             name: redis-nodeport
-            option: Optional
+            option: Required
     ## if the redis Service with name suffix redis-nodeport-{0,1...} is set, the REDIS_NODE_PORT_SVC_NAME_{0,1...} will be available
     - name: REDIS_NODE_PORT_SVC_NAME
       valueFrom:
@@ -109,7 +109,7 @@ spec:
           name: redis-nodeport
           generatePodOrdinalServiceVar: true
           optional: true
-          host: Optional
+          host: Required
     ## the username of redis sentinel for redis connection, it is optional
     - name: SENTINEL_USER
       valueFrom:
