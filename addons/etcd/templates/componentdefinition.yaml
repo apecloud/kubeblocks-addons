@@ -1,0 +1,93 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: etcd-{{ .Chart.Version }}
+  labels:
+    {{- include "etcd.labels" . | nindent 4}}
+spec:
+  serviceKind: etcd
+  serviceVersion: {{ .Chart.AppVersion }}
+  runtime:
+    containers:
+      - name: etcd
+        image: {{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
+        imagePullPolicy: IfNotPresent
+        ports:
+          - containerPort: 2379
+            name: client
+          - containerPort: 2380
+            name: peer
+        volumeMounts:
+          - name: data
+            mountPath: /var/run/etcd
+        command:
+          - bin/sh
+          - -c
+          - |
+            echo "start etcd..."
+            PEERS=""
+            # TODO: clusterDomain 'cluster.local' requires configurable
+            DOMAIN=$KB_NAMESPACE".svc{{ .Values.clusterDomain }}"
+            i=0
+            while [ $i -lt $KB_REPLICA_COUNT ]; do
+                if [ $i -ne 0 ]; then
+                    PEERS="$PEERS,";
+                fi;
+                host=$(eval echo \$PEER_ENDPOINT_"$i")
+                hostname=${KB_CLUSTER_COMP_NAME}-${i}
+                PEERS="$PEERS$hostname=http://$host:2380"
+                i=$(( i + 1))
+            done
+            MY_ID=$(eval echo ${KB_POD_NAME} | grep -oE "[0-9]+\$")
+            MY_PEER=$(eval echo \$PEER_ENDPOINT_"$MY_ID")
+            exec etcd --name ${HOSTNAME} \
+            --experimental-initial-corrupt-check=true \
+            --listen-peer-urls http://0.0.0.0:2380 \
+            --listen-client-urls http://0.0.0.0:2379 \
+            --advertise-client-urls http://${MY_PEER}:2379 \
+            --initial-advertise-peer-urls http://${MY_PEER}:2380 \
+            --initial-cluster ${PEERS} \
+            --data-dir /var/run/etcd/default.etcd
+  services:
+    - name: internal
+      serviceName: internal
+      annotations:
+        service.cilium.io/global: "true"
+      spec:
+        ports:
+          - name: peer
+            port: 2380
+            targetPort: peer
+          - name: client
+            port: 2379
+            targetPort: client
+      generatePodOrdinalService: true
+  vars:
+    - name: PEER_ENDPOINT
+      valueFrom:
+        serviceVarRef:
+          name: internal
+          optional: false
+          generatePodOrdinalServiceVar: true
+          host: Required
+  updateStrategy: BestEffortParallel
+  roles:
+    - name: leader
+      serviceable: true
+      writable: true
+      votable: true
+    - name: follower
+      serviceable: true
+      writable: false
+      votable: true
+  lifecycleActions:
+    roleProbe:
+      customHandler:
+        image: quay.io/coreos/etcd:v3.5.6
+        exec:
+          command:
+            - |
+              Status=$(etcdctl --endpoints=127.0.0.1:2379 endpoint status -w simple --command-timeout=300ms --dial-timeout=100m) &&
+              IsLeader=$(echo $Status | awk -F ', ' '{print $5}') &&
+              IsLearner=$(echo $Status | awk -F ', ' '{print $6}') &&
+              if [ "true" = "$IsLeader" ]; then echo -n "leader"; elif [ "true" = "$IsLearner" ]; then echo -n "learner"; else echo -n "follower"; fi
