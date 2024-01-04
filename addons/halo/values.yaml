@@ -57,9 +57,10 @@ shmVolume:
 #     repository: binbin21avery/halo-kb-tools
 #     tag: 0.7.1
 #     pullPolicy: IfNotPresent
-replicas: 2
+
+dataMountPath: /var/lib/postgresql/data
 # roleProbe:
 #   failureThreshold: 2
 #   periodSeconds: 1
 #   timeoutSeconds: 1
-# replicas: 2
+

@@ -55,7 +55,7 @@ spec:
               - name: dshm
                 mountPath: /dev/shm
               - name: data
-                mountPath: /var/lib/postgresql/data
+                mountPath: {{ .Values.dataMountPath }}
               - name: halo-config
                 mountPath: /var/lib/postgresql/conf
               - name: scripts
