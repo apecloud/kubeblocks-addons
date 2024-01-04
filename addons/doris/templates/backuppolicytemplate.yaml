@@ -3,11 +3,11 @@ kind: BackupPolicyTemplate
 metadata:
   name: {{ include "doris.name" . }}-backup-policy-template
   labels:
-    clusterdefinition.kubeblocks.io/name: doris # 通过 label 指定作用域，必须填
+    clusterdefinition.kubeblocks.io/name: doris # Specifies the scope by label.
 spec:
-  clusterDefinitionRef: doris  # 指定作用域，是哪个 ClusterDef 生成的集群
+  clusterDefinitionRef: doris  # Specify the scope of which ClusterDef will generate the cluster
   backupPolicies:
-  - componentDefRef: doris-fe   # 指定作用域，是哪一个组件相关的
+  - componentDefRef: doris-fe   # Specifies the scope to which component is related
     retentionPeriod: 7d
     backupMethods:
     - name: dorisbackup
@@ -17,7 +17,7 @@ spec:
         volumeMounts:
           - name: data
             mountPath: /opt/apache-doris/fe/doris-meta
-    schedules:                         # schedule 用于指定定时备份时间和启动情况
+    schedules:                         # schedule Indicates the schedule backup time and startup status
     - backupMethod: dorisbackup
       enabled: false
       cronExpression: "0 3 * * *"

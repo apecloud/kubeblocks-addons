@@ -8,12 +8,12 @@ for i in {1..300}; do
         echo -e "fetrueNum: $fetrueNum --- feNum: $feNum --- betrueNum: $betrueNum --- beNum: $beNum \n"
         if [ $feNum -eq $fetrueNum ]&&[ $beNum -eq $betrueNum ]; then
             mysql -uroot -P9030 -h$KB_POD_IP --comments -e "SET PASSWORD FOR 'root' = PASSWORD('$MYSQL_ROOT_PASSWORD');"
-            printf 'doris fe 启动成功,修改密码!'
+            printf 'doris fe startup succeeds, is changing the password!'
             break
         fi
     else
         if [[ $(mysql -uroot -P9030 -h$KB_POD_IP -p$MYSQL_ROOT_PASSWORD --comments -e "select VERSION()") ]]; then
-            printf 'doris fe 已经修改完密码!'
+            printf 'doris fe password has been changed!'
             break
         fi
     fi

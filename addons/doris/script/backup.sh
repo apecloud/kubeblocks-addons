@@ -1,6 +1,6 @@
 set -e
 connect_url="mysql -uroot -P9030 -h${DP_DB_HOST} -p${DP_DB_PASSWORD}"
-repositories=$(${connect_url} -e "show repositories;") #查询是否已经存在backup_repository
+repositories=$(${connect_url} -e "show repositories;") # Query whether a backup repository already exists
 found_repostiory=false;
 if [ -z "$repositories" ];then
   echo "INFO: The remote repository is created for the first time!"
