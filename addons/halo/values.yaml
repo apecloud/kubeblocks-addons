@@ -5,7 +5,7 @@
 image:
   registry: 10.16.16.218
   repository: halo-kb/halo-test
-  tag: "0.3"
+  tag: "0.4"
   digest: ""
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
