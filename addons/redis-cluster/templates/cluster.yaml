@@ -22,25 +22,12 @@
     {{- if and (eq .Values.mode "replication") .Values.sentinel.enabled }}
     {{- include "redis-cluster.sentinel" . | indent 4 }}
     {{- end }}
+{{- else if .Values.nodePortEnabled }}
+{{- include "redis-cluster.clusterCommonWithNodePort" . }}
 {{- else }}
 {{- include "kblib.clusterCommon" . }}
+{{- end }}
   clusterDefinitionRef: redis  # ref clusterDefinition.name
-  {{- if .Values.nodePortEnabled }}
-  services:
-    - name: redis-nodeport
-      serviceName: redis-nodeport
-      generatePodOrdinalService: true
-      componentSelector: redis
-      spec:
-        type: NodePort
-        ports:
-          - name: redis-nodeport
-            port: 6379
-            targetPort: 6379
-  {{- if and (eq .Values.mode "replication") .Values.sentinel.enabled }}
-  {{- include "redis-cluster.sentinel-nodeport" . | indent 4 }}
-  {{- end }}
-  {{- end }}
   componentSpecs:
     - name: redis
       componentDef: redis
@@ -57,4 +44,3 @@
     {{- if and (eq .Values.mode "replication") .Values.sentinel.enabled }}
     {{- include "redis-cluster.sentinelCompDef" . | indent 4 }}
     {{- end }}
-{{- end }}

@@ -9,7 +9,8 @@ metadata:
 spec:
   clusterDefinitionRef: oceanbase
   backupPolicies:
-  - componentDef: oceanbase
+  - componentDefs:
+      - oceanbase
     componentDefRef: oceanbase
     backoffLimit: 0
     backupMethods: &backupMethods
@@ -25,17 +26,20 @@ spec:
         enabled: false
         cronExpression: "0 18 * * *"
         retentionPeriod: 7d
-  - componentDef: oceanbase-hostnetwork
+  - componentDefs:
+      - oceanbase-hostnetwork
     componentDefRef: oceanbase-hostnetwork
     backoffLimit: 0
     backupMethods: *backupMethods
     schedules: *backupschedules
-  - componentDef: oceanbase-repl
+  - componentDefs:
+    - oceanbase-repl
     componentDefRef: oceanbase-repl
     backoffLimit: 0
     backupMethods: *backupMethods
     schedules: *backupschedules
-  - componentDef: oceanbase-repl-host
+  - componentDefs:
+      - oceanbase-repl-host
     componentDefRef: oceanbase-repl-host
     backoffLimit: 0
     backupMethods: *backupMethods
