@@ -1,0 +1,81 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  labels: {{- include "common.labels.standard" . | nindent 4 }}
+    clusterdefinition.kubeblocks.io/name: doris
+  annotations: {}
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace | quote }}
+spec:
+  affinity:
+    nodeLabels: {}
+    podAntiAffinity: Preferred
+    tenancy: SharedNode
+    topologyKeys: []
+  clusterDefinitionRef: doris
+  clusterVersionRef: doris-2.0.0
+  componentSpecs:
+    - componentDefRef: doris-fe
+      monitor: true
+      name: doris-fe
+      noCreatePDB: false
+      replicas: 3
+      resources:
+        limits: {{- toYaml .Values.componentSpecs.fe.resources | nindent 10 }}
+        requests: {{- toYaml .Values.componentSpecs.fe.resources | nindent 10 }}
+      serviceAccountName: {{ .Release.Name }}-kb-doris-sa
+      volumeClaimTemplates:
+        #- name: metadata
+        #  spec:
+        #    storageClassName: {{ .Values.persistence.fe.storageClass }}
+        #    accessModes:
+        #    {{- range .Values.persistence.fe.accessModes }}
+        #      - {{ . | quote }}
+        #    {{- end }}
+        #    resources:
+        #      requests:
+        #        storage: {{ .Values.componentSpecs.fe.volumeClaimTemplates.data.size | quote }}
+        - name: data
+          spec:
+            storageClassName: {{ .Values.persistence.fe.storageClass }}
+            accessModes:
+            {{- range .Values.persistence.fe.accessModes }}
+              - {{ . | quote }}
+            {{- end }}
+            resources:
+              requests:
+                storage: {{ .Values.componentSpecs.fe.volumeClaimTemplates.data.size | quote }}
+      tls: false
+    - componentDefRef: doris-be
+      monitor: true
+      name: doris-be
+      noCreatePDB: false
+      replicas: {{ .Values.componentSpecs.be.replicas }}
+      resources:
+        limits: {{- toYaml .Values.componentSpecs.be.resources | nindent 10 }}
+        requests: {{- toYaml .Values.componentSpecs.be.resources | nindent 10 }}
+      serviceAccountName: {{ .Release.Name }}-kb-doris-sa
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: {{ .Values.persistence.be.storageClass }}
+            accessModes:
+            {{- range .Values.persistence.be.accessModes }}
+              - {{ . | quote }}
+            {{- end }}
+            resources:
+              requests:
+                storage: {{ .Values.componentSpecs.be.volumeClaimTemplates.data.size | quote }}
+      tls: false
+    - componentDefRef: doris-cn
+      monitor: true
+      name: doris-cn
+      noCreatePDB: false
+      replicas: {{ .Values.componentSpecs.cn.replicas }}
+      resources:
+        limits: {{- toYaml .Values.componentSpecs.cn.resources | nindent 10 }}
+        requests: {{- toYaml .Values.componentSpecs.cn.resources | nindent 10 }}
+      serviceAccountName: {{ .Release.Name }}-kb-doris-sa
+      tls: false
+  terminationPolicy: {{ default "Delete" .Values.terminationPolicy | quote }}
+  tolerations: []

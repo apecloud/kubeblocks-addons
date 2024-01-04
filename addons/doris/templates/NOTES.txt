@@ -1,0 +1,15 @@
+HART NAME: {{ .Chart.Name }}
+CHART VERSION: {{ .Chart.Version }}
+APP VERSION: {{ .Chart.AppVersion }}
+
+KubeBlocks doris server cluster definition. If you test on the machine that kubectl is on ,you can run the following command to test the doris service by connecting to the mysql client:
+
+mysql -uroot -P9030 -hfePodServiceClusterIp
+
+Run the following command to check the FE running status:
+
+show frontends\g;
+
+Run the following command to check the BE running status:
+
+show backends\g
