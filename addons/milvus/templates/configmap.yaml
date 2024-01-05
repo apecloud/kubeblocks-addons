@@ -7,5 +7,7 @@ metadata:
   {{- include "milvus.labels" . | nindent 4 }}
 
 data:
-  user.yaml: |-
-    {{- .Files.Get "configs/milvus-user.yaml.tpl" | nindent 4 }}
+  cluster-user.yaml: |-
+    {{- .Files.Get "configs/milvus-cluster-user.yaml.tpl" | nindent 4 }}
+  standalone-user.yaml: |-
+    {{- .Files.Get "configs/milvus-standalone-user.yaml.tpl" | nindent 4 }}

@@ -200,7 +200,7 @@ Milvus cluster default volume mounts
 - mountPath: /milvus/configs/user.yaml
   name: milvus-config
   readOnly: true
-  subPath: user.yaml
+  subPath: cluster-user.yaml
 - mountPath: /milvus/tools
   name: milvus-tools
 {{- end }}
