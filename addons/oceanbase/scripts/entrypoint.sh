@@ -21,9 +21,17 @@ echo "Recovering: $RECOVERING"
 init_port_list
 
 function wait_for_observer_ready {
+  local RETRY_MAX=20
+  local retry_times=0
+  echo "Wait for observer on this node to be ready"
   until nc -z 127.0.0.1 $COMP_MYSQL_PORT; do
     echo "observer on this node is not ready, wait for a moment..."
-    sleep 3
+    retry_times=$(($retry_times+1))
+    sleep 5
+    if [ $retry_times -gt ${RETRY_MAX} ]; then
+      echo "Failed to start server ${KB_POD_IP}:$COMP_RPC_PORT exit..."
+      exit 1
+    fi
   done
 }
 
@@ -69,7 +77,7 @@ if [ "${ip_changed}" = "false" ] && [ "$RECOVERING" = "True" ]; then
     sleep 10
   done
   create_ready_flag
-  sleep 3600000000
+  sleep infinity
 fi
 
 if [ $RECOVERING = "True" ]; then
@@ -92,8 +100,12 @@ if [ $RECOVERING = "True" ]; then
     create_ready_flag
   else
     echo "Cluster is not healthy, fail to recover and join the cluster"
+    exit 1
   fi
 else
+
+  wait_for_observer_start
+
   echo "Creating readiness flag..."
   create_ready_flag
 
@@ -131,4 +143,4 @@ else
   fi
 fi
 
-sleep 3600000000
+sleep infinity
