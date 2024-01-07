@@ -55,6 +55,20 @@ spec:
           name: learner
           accessMode: Readonly
       podSpec:
+        initContainers:
+          - name: init-conf
+            image: busybox
+            securityContext:
+              runAsUser: 999
+            command: [ "/bin/ash" ]
+            args: [ "-c", "if [ ! -d \"/postgresql/data/conf\" ]; then cp -r /postgresql/conf postgresql/data/; fi;" ]
+            volumeMounts:
+              - name: data
+                mountPath: {{ .Values.dataMountPath }}
+              - name: postgresql-config
+                mountPath: {{ .Values.confMountPath }}
+              - name: scripts
+                mountPath: /kb-scripts
         containers:
           - name: postgresql
             imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
@@ -118,7 +132,14 @@ spec:
               - name: PGDATA
                 value: {{ .Values.dataMountPath }}/pgconsensus_data
               - name: PGCONF
-                value: {{ .Values.confMountPath }}
+                value: {{ .Values.confPath }}
+        volumes:
+          - name: dshm
+            emptyDir:
+              medium: Memory
+              {{- with .Values.shmVolume.sizeLimit }}
+              sizeLimit: {{ . }}
+              {{- end }}
       systemAccounts:
         cmdExecutorConfig:
           image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag .Chart.AppVersion }}
