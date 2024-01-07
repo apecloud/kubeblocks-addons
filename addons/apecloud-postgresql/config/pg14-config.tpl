@@ -309,3 +309,4 @@ wal_skip_threshold = '2048'
 ## the following parameters are related to consensus extension
 shared_preload_libraries = 'consensus'
 consensus.consensus_enabled = true
+
