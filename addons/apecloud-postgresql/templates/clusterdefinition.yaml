@@ -28,8 +28,8 @@ spec:
             targetPort: tcp-postgresql
       configSpecs:
         - name: postgresql-consensusset-configuration
-          templateRef: apecloud-postgresql12-configuration
-          constraintRef: apecloud-postgresql12-cc
+          templateRef: apecloud-postgresql14-configuration
+          constraintRef: apecloud-postgresql14-cc
           keys:
             - postgresql.conf
           namespace: {{ .Release.Namespace }}
@@ -55,15 +55,6 @@ spec:
           name: learner
           accessMode: Readonly
       podSpec:
-        initContainers:
-          - name: init-permissions
-            image: busybox
-            securityContext:
-              runAsUser: 0
-            command: [ "chmod", "a+w", "/postgresql" ]
-            volumeMounts:
-              - name: data
-                mountPath: /postgresql
         containers:
           - name: postgresql
             imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
@@ -75,9 +66,9 @@ spec:
               - name: dshm
                 mountPath: /dev/shm
               - name: data
-                mountPath: /postgresql
+                mountPath: {{ .Values.dataMountPath }}
               - name: postgresql-config
-                mountPath: /var/lib/postgresql/conf
+                mountPath: {{ .Values.confMountPath }}
               - name: scripts
                 mountPath: /kb-scripts
             ports:
@@ -86,10 +77,6 @@ spec:
               - name: paxos
                 containerPort: 15432
             env:
-              - name: CONSENSUS_MODE
-                value: "data"
-              - name: KUBERNETES_USE_CONFIGMAPS
-                value: "true"
               - name: ALLOW_NOSSL
                 value: "true"
               - name: POD_IP
@@ -129,7 +116,9 @@ spec:
               - name: POSTGRESQL_PORT_NUMBER
                 value: "5432"
               - name: PGDATA
-                value: postgresql/pgconsensus_data
+                value: {{ .Values.dataMountPath }}/pgconsensus_data
+              - name: PGCONF
+                value: {{ .Values.confMountPath }}
       systemAccounts:
         cmdExecutorConfig:
           image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag .Chart.AppVersion }}

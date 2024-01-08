@@ -12,9 +12,8 @@ dependencies:
     repository: file://../kblib
     alias: extra
 
-# This is the temporary version of the ApeCloud PostgreSQL being deployed,
-# TODO: Wait for ApeCloud PostgreSQL to determine the version number.
-appVersion: "latest"
+# This is the version number of the ApeCloud PostgreSQL being deployed,
+appVersion: "14.10"
 
 keywords:
   - postgresql

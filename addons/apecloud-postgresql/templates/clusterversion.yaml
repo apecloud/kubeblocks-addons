@@ -10,6 +10,15 @@ spec:
   clusterDefinitionRef: apecloud-postgresql
   componentVersions:
     - componentDefRef: postgresql
+      configSpecs:
+        - name: postgresql-consensusset-configuration
+          templateRef: apecloud-postgresql14-configuration
+          constraintRef: apecloud-postgresql14-cc
+          keys:
+            - postgresql.conf
+          namespace: {{ .Release.Namespace }}
+          volumeName: postgresql-config
+          defaultMode: 0777
       versionsContext:
         containers:
           - name: postgresql

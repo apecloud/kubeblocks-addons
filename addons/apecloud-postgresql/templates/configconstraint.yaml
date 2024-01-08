@@ -1,7 +1,8 @@
+{{- $cc := .Files.Get "config/pg14-config-effect-scope.yaml" | fromYaml }}
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ConfigConstraint
 metadata:
-  name: apecloud-postgresql12-cc
+  name: apecloud-postgresql14-cc
   labels:
     {{- include "apecloud-postgresql.labels" . | nindent 4 }}
 spec:
@@ -13,7 +14,26 @@ spec:
     # schema: auto generate from mmmcue scripts
     # example: ../../pkg/configuration/testdata/mysql_openapi.json
     cue: |-
-      {{- .Files.Get "config/pg12-config-constraint.cue" | nindent 6 }}
+      {{- .Files.Get "config/pg14-config-constraint.cue" | nindent 6 }}
     # configuration file format
   formatterConfig:
     format: properties
+
+  ##  require db instance restart
+  ## staticParameters
+  {{- if hasKey $cc "staticParameters" }}
+  staticParameters:
+    {{- $params := get $cc "staticParameters" }}
+    {{- range $params }}
+    - {{ . }}
+    {{- end }}
+  {{- end}}
+
+      ## define immutable parameter list, this feature is not currently supported.
+  {{- if hasKey $cc "immutableParameters" }}
+  immutableParameters:
+   {{- $params := get $cc "immutableParameters" }}
+   {{- range $params }}
+    - {{ . }}
+   {{- end }}
+  {{- end}}

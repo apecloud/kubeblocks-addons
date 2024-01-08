@@ -4,8 +4,7 @@
 
 ## @param version PostgreSQL cluster version
 ##
-## TODO: Wait for ApeCloud PostgreSQL to determine the version number(and values.schema.json)
-version: ac-postgresql-latest
+version: ac-postgresql-14.10
 
 ## @param mode postgresql cluster topology mode, standalone, raftGroup
 ##
