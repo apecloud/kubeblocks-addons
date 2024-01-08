@@ -60,6 +60,8 @@ nameOverride: ""
 fullnameOverride: ""
 clusterVersionOverride: ""
 
+auditlogSubVersion: "1"
+
 mysqlConfigs:
   dataMountPath: /data/mysql
   dataDir: /data/mysql/data
