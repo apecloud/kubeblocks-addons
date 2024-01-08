@@ -30,6 +30,12 @@ spec:
           constraintRef: {{ include "zookeeper.name" . }}-config-constraints
           volumeName: configs
           defaultMode: 0755
+      scriptSpecs:
+        - name: zookeeper-scripts
+          templateRef: {{ include "zookeeper.name" . }}-scripts
+          namespace: {{ .Release.Namespace }}
+          volumeName: scripts
+          defaultMode: 0555
       service:
         ports:
           - name: client
@@ -40,33 +46,23 @@ spec:
           fsGroup: 0
           runAsGroup: 0
           runAsNonRoot: true
-          runAsUser: 10000
+          runAsUser: 1001
         containers:
           - name: zookeeper
             env:
-              - name: K8S_REPLICAS
-                value: "$(KB_REPLICA_COUNT)"
-              - name: STANDALONE_ENABLE
-                value: "false"
-              - name: RE_CONFIG_ENABLE
-                value: "true"
-              - name: ZOO_4LW_COMMANDS_WHITELIST
-                value: "srvr, mntr, ruok"
-              - name: ZOO_LOG_DIR
-                value: "/opt/zookeeper/logs"
-              - name: ZOO_LOG4J_PROP
-                value: "INFO,ROLLINGFILE"
-              - name: DEBUG_MODEL
-                value: "true"
+              - name: ZOO_ENABLE_AUTH
+                value: "yes"
             ports:
               - name: client
                 containerPort: {{ .Values.containerPorts.client }}
-              - name: tcp-quorum
+              - name: quorum
                 containerPort: {{ .Values.containerPorts.quorum }}
-              - name: tcp-election
+              - name: election
                 containerPort: {{ .Values.containerPorts.election }}
               - name: http
                 containerPort: {{ .Values.containerPorts.http }}
+            command:
+              - /kb-scripts/start-zookeeper.sh
             livenessProbe:
               failureThreshold: 6
               initialDelaySeconds: 30
@@ -95,12 +91,14 @@ spec:
               privileged: false
               runAsGroup: 0
               runAsNonRoot: true
-              runAsUser: 10000
+              runAsUser: 1001
             volumeMounts:
-              - mountPath: /zookeeper/data
-                name: data
-              - mountPath: /zookeeper/log
-                name: data-log
+              - name: data
+                mountPath: /bitnami/zookeeper/data
+              - name: data-log
+                mountPath: /bitnami/zookeeper/log
+              - name: scripts
+                mountPath: /kb-scripts
               - name: configs
-                mountPath: /opt/zookeeper/conf/zoo.cfg
+                mountPath: /opt/bitnami/zookeeper/conf/zoo.cfg
                 subPath: zoo.cfg
