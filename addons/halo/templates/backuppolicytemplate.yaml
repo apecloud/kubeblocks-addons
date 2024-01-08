@@ -1,0 +1,43 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: halo-backup-policy-template
+  labels:
+    clusterdefinition.kubeblocks.io/name: halo
+    {{- include "official-halo.labels" . | nindent 4 }}
+spec:
+  clusterDefinitionRef: halo
+  backupPolicies:
+  - componentDefRef: halo
+    # target:
+    #   role: secondary
+    backupMethods:
+    - name: halo-basebackup
+      snapshotVolumes: false
+      actionSetName: postgres-basebackup
+      envMapping:
+      - key: IMAGE_TAG
+        valueFrom:
+          clusterVersionRef:
+          - names: [postgresql-12.14.0, postgresql-12.14.1, postgresql-12.15.0]
+            mappingValue: "12.15.0-pgvector-v0.5.0"
+          - names: [postgresql-14.7.2-pgvector-v0.5.0, postgresql-14.8.0]
+            mappingValue: "14.8.0-pgvector-v0.5.0"
+      targetVolumes:
+        volumeMounts:
+        - name: data
+          mountPath: {{ .Values.dataMountPath }}
+    - name: volume-snapshot
+      snapshotVolumes: true
+      targetVolumes:
+        volumes:
+        - data
+    schedules:
+    - backupMethod: pg-basebackup
+      enabled: false
+      cronExpression: "5 18 * * *" #测试用每10分钟做一次快照
+      retentionPeriod: 7d
+    - backupMethod: volume-snapshot #卷做快照
+      enabled: false
+      cronExpression: "5 18 * * *"
+      retentionPeriod: 7d
