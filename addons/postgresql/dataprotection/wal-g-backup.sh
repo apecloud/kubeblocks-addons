@@ -25,20 +25,30 @@ function get_backup_name() {
   fi
 }
 
+function writeSentinelInBaseBackupPath() {
+  content=${1}
+  fileName=${2}
+  export DATASAFED_BACKEND_BASE_PATH=${DP_BACKUP_BASE_PATH}
+  echo "${content}" | datasafed push - "${fileName}"
+  export DATASAFED_BACKEND_BASE_PATH=${backup_base_path}
+}
+
 trap handle_exit EXIT
 set -e
 # 1. do full backup
+writeSentinelInBaseBackupPath "${backup_base_path}" "wal-g-backup-repo.path"
 PGHOST=${DP_DB_HOST} PGUSER=${DP_DB_USER} PGPORT=5432 wal-g backup-push ${DATA_DIR} 2>&1 | tee result.txt
 
 # 2. get backup name of the wal-g
 backupName=$(get_backup_name)
 if [[ -z ${backupName} ]] || [[ ${backupName} != "base_"* ]];then
-   echo "{\"path\":\"${backup_base_path}/basebackups_005\"}" >"${DP_BACKUP_INFO_FILE}"
    echo "ERROR: backup failed, can not get the backup name"
    exit 1
 fi
+
 # 3. add sentinel file for this backup CR
 echo "" | datasafed push - "/basebackups_005/${backupName}_dp_${DP_BACKUP_NAME}"
+writeSentinelInBaseBackupPath "${backupName}" "wal-g-backup-name"
 
 # 4. stat startTime,stopTime,totalSize for this backup
 sentinel_file="/basebackups_005/${backupName}_backup_stop_sentinel.json"
@@ -50,4 +60,4 @@ START_TIME=$(echo $result_json | jq -r ".StartTime")
 # 5. update backup status
 backupFilePath=/basebackups_005/${backupName}
 TOTAL_SIZE=$(datasafed stat ${backupFilePath} | grep TotalSize | awk '{print $2}')
-echo "{\"path\":\"${backup_base_path}${backupFilePath}\",\"totalSize\":\"$TOTAL_SIZE\",\"timeRange\":{\"start\":\"${START_TIME}\",\"end\":\"${STOP_TIME}\"}}" >"${DP_BACKUP_INFO_FILE}"
+echo "{\"totalSize\":\"$TOTAL_SIZE\",\"timeRange\":{\"start\":\"${START_TIME}\",\"end\":\"${STOP_TIME}\"}}" >"${DP_BACKUP_INFO_FILE}"

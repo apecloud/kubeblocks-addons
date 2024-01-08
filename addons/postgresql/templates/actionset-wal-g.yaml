@@ -57,7 +57,7 @@ spec:
       syncProgress:
         enabled: true
         intervalSeconds: 5
-    deleteBackup:
+    preDelete:
       image: {{ .Values.image.registry | default "docker.io" }}/apecloud/wal-g:postgres-1.0
       command:
         - bash
