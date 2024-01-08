@@ -23,6 +23,8 @@ staticParameters:
   - mysql_server_ssl_cert
   - enable_logs
   - enable_query_log
+
+dynamicParameters:
   - read_write_splitting_policy
   - read_write_splitting_ratio
   - read_after_write_consistency
