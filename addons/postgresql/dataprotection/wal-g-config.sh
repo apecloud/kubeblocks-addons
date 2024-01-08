@@ -19,5 +19,5 @@ function config_wal_g() {
     echo "${datasafed_base_path}" > ${walg_env}/DATASAFED_BACKEND_BASE_PATH
 }
 
-config_wal_g "/${KB_NAMESPACE}/${KB_CLUSTER_NAME}-${KB_CLUSTER_UID}/${KB_COMP_NAME}/archive"
+config_wal_g "/${KB_NAMESPACE}/${KB_CLUSTER_NAME}-${KB_CLUSTER_UID}/${KB_COMP_NAME}/wal-g"
 sync

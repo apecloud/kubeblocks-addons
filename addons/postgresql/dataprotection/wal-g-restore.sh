@@ -1,9 +1,11 @@
 set -e
+dirPath=$(dirname ${DP_BACKUP_BASE_PATH})
+backupRepo=$(dirname ${dirPath})
 export WALG_DATASAFED_CONFIG=""
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
-export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 # 20Gi for bundle file
 export WALG_TAR_SIZE_THRESHOLD=21474836480
+export DATASAFED_BACKEND_BASE_PATH="${backupRepo}"
 
 function config_wal_g_for_fetch_wal_log() {
     walg_dir=${VOLUME_DATA_DIR}/wal-g
@@ -19,11 +21,11 @@ function config_wal_g_for_fetch_wal_log() {
     echo "${datasafed_base_path}" > ${walg_env}/DATASAFED_BACKEND_BASE_PATH
 }
 
-# fetch base backup
+# 1. fetch base backup
 mkdir -p ${DATA_DIR};
 wal-g backup-fetch ${DATA_DIR} LATEST
 
-# config restore script
+# 2. config restore script
 touch ${DATA_DIR}/recovery.signal;
 mkdir -p ${RESTORE_SCRIPT_DIR};
 echo "#!/bin/bash" > ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
@@ -31,11 +33,10 @@ echo "[[ -d '${DATA_DIR}.old' ]] && mv -f ${DATA_DIR}.old/* ${DATA_DIR}/;" >> ${
 echo "sync;" >> ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
 chmod +x ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
 
-# config wal-g to fetch wal logs
-dirPath=$(dirname ${DP_BACKUP_BASE_PATH})
-config_wal_g_for_fetch_wal_log ${dirPath}/archive
+# 3. config wal-g to fetch wal logs
+config_wal_g_for_fetch_wal_log "${backupRepo}"
 
-# config restore command
+# 4. config restore command
 mkdir -p ${CONF_DIR} && chmod 777 -R ${CONF_DIR};
 echo "restore_command='envdir /home/postgres/pgdata/wal-g/restore-env /home/postgres/pgdata/wal-g/wal-g wal-fetch %f %p'" > ${CONF_DIR}/recovery.conf;
 if [[ ! -z ${DP_RESTORE_TIME} ]]; then
