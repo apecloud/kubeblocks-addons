@@ -895,3 +895,10 @@ affinity:
                 operator: In
                 values:
                   - weaviate
+
+## @param compDefinitionVersionSuffix for all ComponentDefinition resources name created by this chart, that can avoid name conflict
+## if you install multiple releases of this chart.
+## If specified, the component definition will use it as name.
+compDefinitionVersionSuffix: ""
+
+clusterDomain: ".cluster.local"
