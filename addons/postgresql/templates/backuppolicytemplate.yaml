@@ -32,12 +32,35 @@ spec:
       targetVolumes:
         volumes:
         - data
+    - name: config-wal-g
+      target:
+        role: ""
+        strategy: All
+      actionSetName: postgres-config-wal-g
+      snapshotVolumes: false
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
+    - name: wal-g
+      target:
+        role: secondary
+      actionSetName: postgres-wal-g
+      snapshotVolumes: false
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
     schedules: &backupschedules
     - backupMethod: pg-basebackup
       enabled: false
       cronExpression: "0 18 * * *"
       retentionPeriod: 7d
     - backupMethod: volume-snapshot
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d
+    - backupMethod: wal-g
       enabled: false
       cronExpression: "0 18 * * *"
       retentionPeriod: 7d
@@ -66,4 +89,23 @@ spec:
         targetVolumes:
           volumes:
             - data
+      - name: config-wal-g
+        target:
+          role: ""
+          strategy: All
+        actionSetName: postgres-config-wal-g
+        snapshotVolumes: false
+        targetVolumes:
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
+      - name: wal-g
+        target:
+          role: secondary
+        actionSetName: postgres-wal-g
+        snapshotVolumes: false
+        targetVolumes:
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
     schedules: *backupschedules
