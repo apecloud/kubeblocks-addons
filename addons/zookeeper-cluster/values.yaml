@@ -39,9 +39,9 @@ persistence:
     storageClassName:
     ## @param shard[*].persistence.size Size of data volume
     ##
-    size: 10Gi
+    size: 2Gi
   dataLog:
     storageClassName:
     ## @param shard[*].persistence.size Size of data volume
     ##
-    size: 10Gi
+    size: 2Gi
