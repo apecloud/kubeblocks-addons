@@ -1,6 +1,7 @@
 backup_base_path="/${KB_NAMESPACE}/${KB_CLUSTER_NAME}-${KB_CLUSTER_UID}/${KB_COMP_NAME}/wal-g"
 export WALG_DATASAFED_CONFIG=""
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
+export WALG_COMPRESSION_METHOD=zstd
 export PGPASSWORD=${DP_DB_PASSWORD}
 export DATASAFED_BACKEND_BASE_PATH=${backup_base_path}
 # 20Gi for bundle file

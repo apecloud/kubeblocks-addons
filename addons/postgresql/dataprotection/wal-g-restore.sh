@@ -2,6 +2,7 @@ set -e
 dirPath=$(dirname ${DP_BACKUP_BASE_PATH})
 backupRepo=$(dirname ${dirPath})
 export WALG_DATASAFED_CONFIG=""
+export WALG_COMPRESSION_METHOD=zstd
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 # 20Gi for bundle file
 export WALG_TAR_SIZE_THRESHOLD=21474836480
@@ -19,6 +20,7 @@ function config_wal_g_for_fetch_wal_log() {
     # echo "" > ${walg_env}/WALG_PG_WAL_SIZE
     echo "${walg_dir}/datasafed.conf" > ${walg_env}/WALG_DATASAFED_CONFIG
     echo "${datasafed_base_path}" > ${walg_env}/DATASAFED_BACKEND_BASE_PATH
+    echo "zstd" > ${walg_env}/WALG_COMPRESSION_METHOD
 }
 
 # 1. fetch base backup
