@@ -56,7 +56,6 @@ spec:
     value: {{ .Values.mysqlConfigs.dataMountPath }}
   - name: SIGNAL_FILE
     value: .restore_new_cluster
-  backup: {}
   restore:
     prepareData:
       image: {{ include "apecloud-mysql.bakcupToolImage" . }}
