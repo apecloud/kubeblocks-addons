@@ -67,30 +67,16 @@ metadata:
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
+  reloadOptions:
+    unixSignalTrigger:
+      processName: vtgate
+      signal: SIGHUP
+
   cfgSchemaTopLevelName: VtTabletParameter
 
   configurationSchema:
     cue: |-
       {{- .Files.Get "config/mysql-scale-vttablet-config-constraint.cue" | nindent 6 }}
-
-  # mysql-scale configuration file format
-  formatterConfig:
-    format: ini
-    iniConfig:
-      sectionName: vttablet
----
-apiVersion: apps.kubeblocks.io/v1alpha1
-kind: ConfigConstraint
-metadata:
-  name: {{ include "apecloud-mysql.configConstraintVtconsensusName" . }}
-  labels:
-    {{- include "apecloud-mysql.labels" . | nindent 4 }}
-spec:
-  cfgSchemaTopLevelName: VtConsensusParameter
-
-  configurationSchema:
-    cue: |-
-      {{- .Files.Get "config/mysql-scale-vtconsensus-config-constraint.cue" | nindent 6 }}
 
   ## define static parameter list
   {{- if hasKey $vttabletcc "staticParameters" }}
@@ -123,6 +109,24 @@ spec:
   formatterConfig:
     format: ini
     iniConfig:
+      sectionName: vttablet
+---
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ConfigConstraint
+metadata:
+  name: {{ include "apecloud-mysql.configConstraintVtconsensusName" . }}
+  labels:
+    {{- include "apecloud-mysql.labels" . | nindent 4 }}
+spec:
+  cfgSchemaTopLevelName: VtConsensusParameter
+
+  configurationSchema:
+    cue: |-
+      {{- .Files.Get "config/mysql-scale-vtconsensus-config-constraint.cue" | nindent 6 }}
+  # mysql-scale configuration file format
+  formatterConfig:
+    format: ini
+    iniConfig:
       sectionName: vtconsensus
 ---
 {{- $vtgatecc := .Files.Get "config/mysql-scale-vtgate-config-effect-scope.yaml" | fromYaml }}
@@ -133,6 +137,11 @@ metadata:
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
+  reloadOptions:
+    unixSignalTrigger:
+      processName: vtgate
+      signal: SIGHUP
+
   cfgSchemaTopLevelName: VtGateParameter
 
   configurationSchema:
