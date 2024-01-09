@@ -139,5 +139,9 @@ spec:
                 value: none
               - name: CLUSTER_HOSTNAME
                 value: "$(KB_POD_NAME)"
+              # https://weaviate.io/developers/weaviate/concepts/cluster#node-discovery
+              # Weaviate - especially when running as a cluster - is optimized to run on Kubernetes.
+              # The Weaviate Helm chart makes use of a StatefulSet and a headless Service that automatically configures node discovery.
+              # All you have to do is specify the desired node count.
               - name: CLUSTER_JOIN
                 value: $(KB_0_HOSTNAME).$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}
