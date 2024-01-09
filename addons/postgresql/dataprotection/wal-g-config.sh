@@ -17,6 +17,7 @@ function config_wal_g() {
     # echo "" > ${walg_env}/WALG_PG_WAL_SIZE
     echo "${walg_dir}/datasafed.conf" > ${walg_env}/WALG_DATASAFED_CONFIG
     echo "${datasafed_base_path}" > ${walg_env}/DATASAFED_BACKEND_BASE_PATH
+    echo "true" > ${walg_env}/PG_READY_RENAME
     echo "zstd" > ${walg_env}/WALG_COMPRESSION_METHOD
 }
 

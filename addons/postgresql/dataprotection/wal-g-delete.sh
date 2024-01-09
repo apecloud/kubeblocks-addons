@@ -2,43 +2,37 @@ export WALG_DATASAFED_CONFIG=""
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 
-function remote_file_exists() {
-    local out=$(datasafed list $1)
-    if [ "${out}" == "$1" ]; then
-        echo "true"
-        return
-    fi
-    echo "false"
+function getWalGSentinelInfo() {
+  local sentinelFile=${1}
+  local out=$(datasafed list ${sentinelFile})
+  if [ "${out}" == "${sentinelFile}" ]; then
+     datasafed pull "${sentinelFile}" ${sentinelFile}
+     echo "$(cat ${sentinelFile})"
+     return
+  fi
 }
 
 # 1. get backup repo path of wal-g
-backupRepoPathFile="wal-g-backup-repo.path"
-if [[ $(remote_file_exists "${backupRepoPathFile}") == "false" ]]; then
+backupRepoPath=$(getWalGSentinelInfo "wal-g-backup-repo.path")
+if [[ -z ${backupRepoPath} ]]; then
    echo "INFO: nothing to delete."
    exit 0
 fi
-datasafed pull "${backupRepoPathFile}" ${backupRepoPathFile}
-backupRepoPath=$(cat ${backupRepoPathFile})
 
 # 2. get backup name of this backup
-backupNameFile="wal-g-backup-name"
-if [[ $(remote_file_exists "${backupNameFile}")  == "false" ]]; then
+backupName=$(getWalGSentinelInfo "wal-g-backup-name")
+if [[ -z ${backupName} ]]; then
    echo "INFO: delete unsuccessfully backup files and outdated WAL archive."
    export DATASAFED_BACKEND_BASE_PATH=${backupRepoPath}
    wal-g delete garbage --confirm
    exit 0
 fi
 
-
-# 3. config backup base path
-datasafed pull "${backupNameFile}" ${backupNameFile}
-backupName=$(cat ${backupNameFile})
+# 3. cleanup outdated wal logs, only effective when existing at least one full backup
 export DATASAFED_BACKEND_BASE_PATH=${backupRepoPath}
-
-# 4. cleanup outdated wal logs, only effective when existing at least one full backup
 wal-g delete garbage ARCHIVES
 
-# 5. delete wal-g
+# 4. delete wal-g
 dpBackupFilesCount=$(datasafed list --name "${backupName}_dp_*" /basebackups_005 | wc -l)
 if [[ ${dpBackupFilesCount} -le 1 ]]; then
   # if this base backup only belongs to a backup CR, delete it.
