@@ -1,0 +1,75 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: postgres-config-wal-g
+  labels:
+    clusterdefinition.kubeblocks.io/name: postgresql
+    {{- include "postgresql.labels" . | nindent 4 }}
+spec:
+  backupType: Full
+  env:
+    - name: VOLUME_DATA_DIR
+      value: {{ .Values.dataMountPath }}
+  backup:
+    preBackup: []
+    postBackup: []
+    backupData:
+      image: {{ .Values.image.registry | default "docker.io" }}/apecloud/wal-g:postgres-1.0
+      runOnTargetPodNode: true
+      command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/wal-g-config.sh" | nindent 10 }}
+      syncProgress:
+        enabled: false
+        intervalSeconds: 5
+---
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: postgres-wal-g
+  labels:
+    clusterdefinition.kubeblocks.io/name: postgresql
+    {{- include "postgresql.labels" . | nindent 4 }}
+spec:
+  backupType: Full
+  env:
+    - name: VOLUME_DATA_DIR
+      value: {{ .Values.dataMountPath }}
+    - name: RESTORE_SCRIPT_DIR
+      value: "$(VOLUME_DATA_DIR)/kb_restore"
+    - name: DATA_DIR
+      value: "$(VOLUME_DATA_DIR)/pgroot/data"
+    - name: CONF_DIR
+      value: "$(VOLUME_DATA_DIR)/conf"
+  backup:
+    preBackup: []
+    postBackup: []
+    backupData:
+      image: {{ .Values.image.registry | default "docker.io" }}/apecloud/wal-g:postgres-1.0
+      runOnTargetPodNode: true
+      command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/wal-g-backup.sh" | nindent 10 }}
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+    preDelete:
+      image: {{ .Values.image.registry | default "docker.io" }}/apecloud/wal-g:postgres-1.0
+      command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/wal-g-delete.sh" | nindent 10 }}
+  restore:
+    prepareData:
+      image: {{ .Values.image.registry | default "docker.io" }}/apecloud/wal-g:postgres-1.0
+      command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/wal-g-restore.sh" | nindent 10 }}
+    postReady: []
