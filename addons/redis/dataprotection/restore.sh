@@ -11,5 +11,5 @@ if [ ! -z "${res}" ] && [ ! -f ${data_protection_file} ]; then
 fi
 # touch placeholder file
 touch ${data_protection_file}
-datasafed pull "${DP_BACKUP_NAME}.tar.gz" - | tar -xzvf - -C ${DATA_DIR}
+datasafed pull -d zstd "${DP_BACKUP_NAME}.tar.zst" - | tar -xzvf - -C ${DATA_DIR}
 rm -rf ${data_protection_file} && sync
