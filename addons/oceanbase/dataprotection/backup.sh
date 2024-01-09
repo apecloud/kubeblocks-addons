@@ -201,6 +201,7 @@ done
 
 if [[ $tenantCount -eq 0 ]]; then
    echo "INFO: no normal tenants exists."
+   echo "{}" >"${DP_BACKUP_INFO_FILE}"
    exit 0
 fi
 
