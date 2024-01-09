@@ -1,4 +1,4 @@
-backup_base_path="/${KB_NAMESPACE}/${KB_CLUSTER_NAME}-${KB_CLUSTER_UID}/${KB_COMP_NAME}/wal-g"
+backup_base_path="$(dirname $DP_BACKUP_BASE_PATH)/wal-g"
 export WALG_DATASAFED_CONFIG=""
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export WALG_COMPRESSION_METHOD=zstd
@@ -56,8 +56,7 @@ datasafed pull ${sentinel_file} backup_stop_sentinel.json
 result_json=$(cat backup_stop_sentinel.json)
 STOP_TIME=$(echo $result_json | jq -r ".FinishTime")
 START_TIME=$(echo $result_json | jq -r ".StartTime")
+TOTAL_SIZE=$(echo $result_json | jq -r ".CompressedSize")
 
 # 5. update backup status
-backupFilePath=/basebackups_005/${backupName}
-TOTAL_SIZE=$(datasafed stat ${backupFilePath} | grep TotalSize | awk '{print $2}')
 echo "{\"totalSize\":\"$TOTAL_SIZE\",\"timeRange\":{\"start\":\"${START_TIME}\",\"end\":\"${STOP_TIME}\"}}" >"${DP_BACKUP_INFO_FILE}"
