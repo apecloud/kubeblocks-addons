@@ -69,7 +69,7 @@ metadata:
 spec:
   reloadOptions:
     unixSignalTrigger:
-      processName: vtgate
+      processName: vttablet
       signal: SIGHUP
 
   cfgSchemaTopLevelName: VtTabletParameter
