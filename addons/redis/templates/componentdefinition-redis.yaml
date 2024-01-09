@@ -76,6 +76,7 @@ spec:
         numSymbols: 0
         letterCase: MixedCases
   vars:
+    ## the default username of redis connection
     - name: REDIS_DEFAULT_USER
       valueFrom:
         credentialVarRef:
@@ -83,6 +84,7 @@ spec:
           compDef: {{ include "redis.componentDefName" . }}
           name: default
           username: Required
+    ## the default password of redis connection
     - name: REDIS_DEFAULT_PASSWORD
       valueFrom:
         credentialVarRef:
@@ -194,26 +196,12 @@ spec:
           ## the password of redis primary-secondary replication
           - name: REDIS_REPL_PASSWORD
             value: $(REDIS_DEFAULT_PASSWORD)
-          ## the default username of redis connection
-          - name: REDIS_DEFAULT_USER
-            value: $(REDIS_DEFAULT_USER)
-          ## the default password of redis connection
-          - name: REDIS_DEFAULT_PASSWORD
-            value: $(REDIS_DEFAULT_PASSWORD)
           ## the username of redis for redis sentinel connection
           - name: REDIS_SENTINEL_USER
             value: "$(REDIS_REPL_USER)-sentinel"
           ## the password of redis for redis sentinel connection
           - name: REDIS_SENTINEL_PASSWORD
             value: $(REDIS_DEFAULT_PASSWORD)
-          ## the username of redis sentinel for redis connection
-          - name: SENTINEL_USER
-            value: $(SENTINEL_USER)
-          ## the password of redis sentinel for redis connection
-          - name: SENTINEL_PASSWORD
-            value: $(SENTINEL_PASSWORD)
-          - name: SENTINEL_COMPONENT_DEFINITION_NAME
-            value: $(SENTINEL_COMPONENT_DEFINITION_NAME)
         command: [ "/scripts/redis-start.sh" ]
         readinessProbe:
           initialDelaySeconds: 10
