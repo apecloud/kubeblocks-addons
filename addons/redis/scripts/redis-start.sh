@@ -30,8 +30,9 @@ build_announce_ip_and_port() {
       echo "replica-announce-port $redis_node_port_value" >> /etc/redis/redis.conf
       echo "replica-announce-ip $redis_node_port_host_value" >> /etc/redis/redis.conf
   else
-    echo "redis use kb pod fqdn $KB_POD_FQDN to announce"
-    echo "replica-announce-ip $KB_POD_FQDN" >> /etc/redis/redis.conf
+    kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc"
+    echo "redis use kb pod fqdn $kb_pod_fqdn to announce"
+    echo "replica-announce-ip $kb_pod_fqdn" >> /etc/redis/redis.conf
   fi
 }
 
