@@ -2,7 +2,7 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 # if useLegacyCompDef is false ,cluster will be rendered by compDef rather than componentDefRef in cluster definition
-useLegacyCompDef: false
+useLegacyCompDef: true
 
 
 ## @param version redis cluster version
@@ -48,7 +48,7 @@ twemproxy:
   memory: 0.2
 
 ## @param nodePortEnabled
-nodePortEnabled: true
+nodePortEnabled: false
 
 ## @param sentinel.cpu
 ## @param sentinel.memory

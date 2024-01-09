@@ -46,7 +46,7 @@ register_to_sentinel() {
     local status=$?
     echo "$output" # Print command output
 
-    if [ $status -ne 0 ] || [[ "$output" != "OK" ]]; then
+    if [ $status -ne 0 ] || [ "$output" != "OK" ]; then
       echo "Command failed with status $status or output not OK."
       exit 1
     else

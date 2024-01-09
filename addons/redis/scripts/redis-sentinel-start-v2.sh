@@ -25,8 +25,9 @@ if [ ! -z "$SENTINEL_SERVICE_PORT" ]; then
 else
   echo "port 26379" >> /data/sentinel/redis-sentinel.conf
 fi
+kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc"
 # shellcheck disable=SC2129
-echo "sentinel announce-ip $KB_POD_FQDN" >> /data/sentinel/redis-sentinel.conf
+echo "sentinel announce-ip $kb_pod_fqdn" >> /data/sentinel/redis-sentinel.conf
 echo "sentinel resolve-hostnames yes" >> /data/sentinel/redis-sentinel.conf
 echo "sentinel announce-hostnames yes" >> /data/sentinel/redis-sentinel.conf
 if [ ! -z "$SENTINEL_PASSWORD" ]; then
