@@ -1,0 +1,85 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterDefinition
+metadata:
+  name: solr
+  labels:
+    {{- include "solr.labels" . | nindent 4 }}
+spec:
+  type: solr
+  connectionCredential:
+    username: ""
+    password: ""
+    endpoint: "$(SVC_FQDN):$(SVC_PORT_server)"
+    host: "$(SVC_FQDN)"
+    port: "$(SVC_PORT_server)"
+  componentDefs:
+    - name: solr
+      workloadType: Stateful
+      characterType: solr
+      statefulSpec:
+        updateStrategy: BestEffortParallel
+{{/*      logConfigs:*/}}
+{{/*        {{- range $name,$pattern := .Values.logConfigs }}*/}}
+{{/*        - name: {{ $name }}*/}}
+{{/*          filePathPattern: {{ $pattern }}*/}}
+{{/*        {{- end }}*/}}
+{{/*      configSpecs:*/}}
+{{/*        - name: zookeeper-config*/}}
+{{/*          namespace: {{ .Release.Namespace }}*/}}
+{{/*          templateRef: {{ include "zookeeper.name" . }}-config-template*/}}
+{{/*          constraintRef: {{ include "zookeeper.name" . }}-config-constraints*/}}
+{{/*          volumeName: configs*/}}
+{{/*          defaultMode: 0755*/}}
+      service:
+        ports:
+          - name: server
+            port: {{ .Values.containerPorts.server }}
+            targetPort: server
+      podSpec:
+        securityContext:
+          fsGroup: 0
+          runAsGroup: 0
+          runAsNonRoot: true
+          runAsUser: 1001
+        containers:
+          - name: solr
+            env:
+              - name: SOLR_ENABLE_CLOUD_MODE
+                value: "yes"
+              - name: SOLR_CLOUD_BOOTSTRAP
+                value: "yes"
+              - name: SOLR_NUMBER_OF_NODES
+                value: "$(KB_REPLICA_COUNT)"
+              - name: SOLR_ZK_HOSTS
+                value: "zk-cluster-zookeeper-0.zk-cluster-zookeeper-headless.default.svc.cluster.local:2181,zk-cluster-zookeeper-1.zk-cluster-zookeeper-headless.default.svc.cluster.local:2181,zk-cluster-zookeeper-2.zk-cluster-zookeeper-headless.default.svc.cluster.local:2181"
+            ports:
+              - name: server
+                containerPort: {{ .Values.containerPorts.server }}
+{{/*            livenessProbe:*/}}
+{{/*              failureThreshold: 6*/}}
+{{/*              initialDelaySeconds: 30*/}}
+{{/*              periodSeconds: 10*/}}
+{{/*              successThreshold: 1*/}}
+{{/*              timeoutSeconds: 5*/}}
+{{/*              exec:*/}}
+{{/*                command: [ '/bin/bash', '-c', 'echo "ruok" | timeout 2 nc -w 2 localhost {{ .Values.containerPorts.client }} | grep imok' ]*/}}
+{{/*            readinessProbe:*/}}
+{{/*              failureThreshold: 6*/}}
+{{/*              initialDelaySeconds: 5*/}}
+{{/*              periodSeconds: 10*/}}
+{{/*              successThreshold: 1*/}}
+{{/*              timeoutSeconds: 5*/}}
+{{/*              exec:*/}}
+{{/*                command: [ '/bin/bash', '-c', 'echo "ruok" | timeout 2 nc -w 2 localhost {{ .Values.containerPorts.client }} | grep imok' ]*/}}
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                  - ALL
+              privileged: false
+              runAsGroup: 0
+              runAsNonRoot: true
+              runAsUser: 1001
+            volumeMounts:
+              - name: data
+                mountPath: /bitnami/solr
