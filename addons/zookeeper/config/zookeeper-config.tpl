@@ -53,7 +53,7 @@ maxClientCnxns=500
 # metricsProvider.exportJvmInfo=true
 
 # whitelist
-4lw.commands.whitelist=srvr, mntr, ruok
+4lw.commands.whitelist=srvr, mntr, ruok, conf
 
 # cluster server list
 {{- $clusterName := $.cluster.metadata.name }}
