@@ -72,33 +72,31 @@ function get_pod_ip_list {
   RS_LIST=""
   IP_LIST=()
 
+  # wait for up to 10 minutes for the server to be ready
+  local wait_time=600
   # Get every replica's IP
   for i in $(seq 0 $(($KB_REPLICA_COUNT-1))); do
     local replica_hostname="${KB_CLUSTER_COMP_NAME}-${i}"
     local replica_ip=""
     if [ $i -ne $ORDINAL_INDEX ]; then
-      while true; do
-        echo "nslookup $replica_hostname.$SVC_NAME"
-        nslookup $replica_hostname.$SVC_NAME | tail -n 2 | grep -P "(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})" --only-matching
+      echo "nslookup $replica_hostname.$SVC_NAME"
+      local elapsed_time=0
+      while [ $elapsed_time -lt $wait_time ]; do
+        replica_ip=$(nslookup $replica_hostname.$SVC_NAME | tail -n 2 | grep -P "(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})" --only-matching)
         if [ $? -ne 0 ]; then
           echo "$replica_hostname.$SVC_NAME is not ready yet"
-          sleep $WAIT_K8S_DNS_READY_TIME
+          sleep 10
+          elapsed_time=$((elapsed_time + 10))
         else
-          break
-        fi
-      done
-
-      while true; do
-        replica_ip=$(nslookup $replica_hostname.$SVC_NAME | tail -n 2 | grep -P "(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})" --only-matching)
-        # check if the IP is empty
-        if [ -z "$replica_ip" ]; then
-          echo "nslookup $replica_hostname.$SVC_NAME failed, wait for a moment..."
-          sleep $WAIT_K8S_DNS_READY_TIME
-        else
+          echo "$replica_hostname.$SVC_NAME is ready"
           echo "nslookup $replica_hostname.$SVC_NAME success, IP: $replica_ip"
           break
         fi
       done
+      if [ $elapsed_time -ge $wait_time ]; then
+        echo "Failed to get the IP of $replica_hostname.$SVC_NAME, exit..."
+        exit 1
+      fi
     else
       replica_ip=$KB_POD_IP
     fi
@@ -487,4 +485,26 @@ function create_secondary_tenant {
     conn_remote_w_port $ip $port "SELECT count(*) FROM oceanbase.DBA_OB_TENANTS where tenant_name = '${secondary_tenant_name}';"
     conn_remote_w_port $ip $port "SELECT TENANT_NAME, TENANT_TYPE, TENANT_ROLE, SWITCHOVER_STATUS FROM oceanbase.DBA_OB_TENANTS\G"
   done
+}
+
+function wait_for_observer_start {
+  echo "check if the server has been initialized"
+  wait_time=30  # wait up to 30 seconds
+  elapsed_time=0
+  filename=$OB_HOME_DIR/log/observer.log
+  while [ $elapsed_time -lt $wait_time ]; do
+    if grep -q 'success to start root service monitor' $filename; then
+      echo "oceanbase has been initialized successfully"
+      break
+    else
+      echo "oceanbase is not initialized yet, wait for it..."
+      sleep 1
+      elapsed_time=$((elapsed_time + 1))
+    fi
+  done
+
+  if [ $elapsed_time -ge $wait_time ]; then
+    echo "Failed to init server ${KB_POD_IP}:$COMP_RPC_PORT exit..."
+    exit 1
+  fi
 }

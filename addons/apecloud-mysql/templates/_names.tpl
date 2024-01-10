@@ -90,11 +90,7 @@ ac-mysql-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
 Define cluster version with auditlog
 */}}
 {{- define "apecloud-mysql.clusterVersionAuditLog" -}}
-{{- if eq (len .Values.resourceNamePrefix) 0 -}}
-ac-mysql-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}-1
-{{- else -}}
-{{- .Values.resourceNamePrefix -}}-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}-auditlog
-{{- end -}}
+{{- include "apecloud-mysql.clusterVersion" . }}-{{ default "1" .Values.auditlogSubVersion }}
 {{- end -}}
 
 {{/*

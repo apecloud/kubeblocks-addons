@@ -6,9 +6,9 @@
 
 images:
   zookeeper:
-    repository: docker.io/dtweave/zookeeper
+    repository: bitnami/zookeeper
     pullPolicy: IfNotPresent
-    tag: v3.7-1.0.0
+    tag: 3.7
 
 ## @param containerPorts.client ZooKeeper client container port
 ## @param containerPorts.tls ZooKeeper TLS container port
@@ -19,7 +19,7 @@ containerPorts:
   client: 2181
   quorum: 2888
   election: 3888
-  http: 8000
+  http: 8080
 
 logConfigs:
   info: /opt/zookeeper/logs/zookeeper-*-server-*.log

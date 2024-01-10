@@ -104,10 +104,6 @@ spec:
         - name: scripts
           mountPath: /scripts
       env:
-        - name: SENTINEL_USER
-          value: $(SENTINEL_USER)
-        - name: SENTINEL_PASSWORD
-          value: $(SENTINEL_PASSWORD)
         - name: SENTINEL_SERVICE_PORT
           value: "26379"
       command:

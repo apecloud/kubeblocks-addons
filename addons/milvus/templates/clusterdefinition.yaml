@@ -83,7 +83,7 @@ spec:
               - mountPath: /milvus/configs/user.yaml
                 name: milvus-config
                 readOnly: true
-                subPath: user.yaml
+                subPath: standalone-user.yaml
               - mountPath: /milvus/tools
                 name: tools
               - mountPath: /var/lib/milvus

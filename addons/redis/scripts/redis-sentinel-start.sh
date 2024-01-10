@@ -32,6 +32,7 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 echo "Redis service ready, Starting sentinel..."
-echo "sentinel announce-ip $KB_POD_FQDN" >> /etc/sentinel/redis-sentinel.conf
+kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc"
+echo "sentinel announce-ip $kb_pod_fqdn" >> /etc/sentinel/redis-sentinel.conf
 exec redis-server /etc/sentinel/redis-sentinel.conf --sentinel
 echo "Start sentinel succeeded!"

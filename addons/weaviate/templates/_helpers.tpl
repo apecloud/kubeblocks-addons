@@ -50,3 +50,20 @@ app.kubernetes.io/name: {{ include "weaviate.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
+{{/*
+Define component defintion name
+*/}}
+{{- define "weaviate.componentDefName" -}}
+{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
+weaviate
+{{- else -}}
+{{- printf "weaviate-%s" .Values.compDefinitionVersionSuffix -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define image
+*/}}
+{{- define "weaviate.image" -}}
+{{ .Values.images.weaviate.repository }}:{{ default .Chart.AppVersion .Values.images.weaviate.tag }}
+{{- end }}

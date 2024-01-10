@@ -1,0 +1,16 @@
+apiVersion: v2
+name: doris
+description: A Helm chart for Kubernetes
+
+type: application
+
+version: 2.0.3
+
+appVersion: "2.0.3"
+keywords:
+  - doris
+  - fe
+  - be
+  - cn
+maintainers:
+  - name: YQ
