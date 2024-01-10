@@ -57,7 +57,8 @@ spec:
                 if [ "$idx" == "0" ]; then
                   break
                 fi
-                nslookup ${CLUSTER_JOIN}
+                # ensure that the first pod is up and running before starting the others
+                wget -q -O - http://${CLUSTER_JOIN}:8080/v1/meta
                 if [ $? -eq 0 ]; then
                   break
                 fi 
@@ -73,7 +74,7 @@ spec:
                 path: /v1/.well-known/live
                 port: 8080
                 scheme: HTTP
-              initialDelaySeconds: 900
+              initialDelaySeconds: 30
               periodSeconds: 10
               successThreshold: 1
               timeoutSeconds: 3
@@ -83,7 +84,7 @@ spec:
                 path: /v1/.well-known/ready
                 port: 8080
                 scheme: HTTP
-              initialDelaySeconds: 3
+              initialDelaySeconds: 30
               periodSeconds: 10
               successThreshold: 1
               timeoutSeconds: 3
@@ -94,6 +95,7 @@ spec:
                 port: 8080
                 scheme: HTTP
               periodSeconds: 10
+              initialDelaySeconds: 30
               successThreshold: 1
               timeoutSeconds: 3
             terminationMessagePath: /dev/termination-log
