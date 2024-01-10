@@ -4,7 +4,7 @@
 
 ## @param version Postgresql cluster version
 ##
-version: official-halo-14
+version: official-halo-0.6
 
 ## @param mode postgresql cluster topology mode, standalone, replication
 ##
@@ -16,7 +16,7 @@ replicas: 2
 
 ## @param cpu
 ##
-cpu: 1
+cpu: 2
 
 ## @param memory, the unit is Gi
 ##

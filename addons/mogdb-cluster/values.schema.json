@@ -8,10 +8,10 @@
     },
     "mode": {
       "type": "string",
-      "default": "standalone",
+      "default": "replication",
       "enum": [
         "standalone",
-	"replication"
+        "replication"
       ]
     },
     "replicas": {

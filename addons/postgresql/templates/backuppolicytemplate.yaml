@@ -53,11 +53,11 @@ spec:
             mountPath: {{ .Values.dataMountPath }}
     schedules: &backupschedules
     - backupMethod: pg-basebackup
-      enabled: false
+      enabled: true
       cronExpression: "0 18 * * *"
       retentionPeriod: 7d
     - backupMethod: volume-snapshot
-      enabled: false
+      enabled: true
       cronExpression: "0 18 * * *"
       retentionPeriod: 7d
     - backupMethod: wal-g

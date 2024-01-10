@@ -10,7 +10,7 @@ metadata:
 spec:
   clusterDefinitionRef: official-postgresql
   componentVersions:
-    - componentDefRef: postgresql
+    - componentDefRef: official-postgresql
       versionsContext:
         containers:
           - name: postgresql
@@ -31,7 +31,7 @@ metadata:
 spec:
   clusterDefinitionRef: official-postgresql
   componentVersions:
-    - componentDefRef: postgresql
+    - componentDefRef: official-postgresql
       versionsContext:
         containers:
           - name: postgresql
@@ -52,7 +52,7 @@ metadata:
 spec:
   clusterDefinitionRef: official-postgresql
   componentVersions:
-    - componentDefRef: postgresql
+    - componentDefRef: official-postgresql
       configSpecs:
         # name needs to consistent with the name of the configmap defined in clusterDefinition, and replace the templateRef with postgres v12.15 configmap
         - name: official-postgresql-configuration

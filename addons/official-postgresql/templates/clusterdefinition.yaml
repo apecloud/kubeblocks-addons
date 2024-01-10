@@ -13,8 +13,8 @@ spec:
     host: "$(SVC_FQDN)"
     port: "$(SVC_PORT_tcp-postgresql)"
   componentDefs:
-    - name: postgresql
-      workloadType: Replication
+    - name: official-postgresql
+      workloadType: Stateful
       characterType: postgresql
       probes:
         roleProbe:

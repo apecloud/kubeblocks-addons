@@ -9,18 +9,16 @@ spec:
   clusterDefinitionRef: halo
   backupPolicies:
   - componentDefRef: halo
-    # target:
-    #   role: secondary
     backupMethods:
     - name: pg-basebackup
       snapshotVolumes: false
-      actionSetName: postgres-basebackup
+      actionSetName: halo-basebackup
       envMapping:
       - key: IMAGE_TAG
         valueFrom:
           clusterVersionRef:
-          - names: [postgresql-12.14.0, postgresql-12.14.1, postgresql-12.15.0]
-            mappingValue: "12.15.0-pgvector-v0.5.0"
+          - names: [halo-test]
+            mappingValue: "0.6"
       targetVolumes:
         volumeMounts:
         - name: data
@@ -30,7 +28,7 @@ spec:
       targetVolumes:
         volumes:
         - data
-    schedules:
+    schedules: &backupschedules
     - backupMethod: pg-basebackup
       enabled: false
       cronExpression: "1 18 * * *" #测试用每10分钟做一次快照
