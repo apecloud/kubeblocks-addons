@@ -3,7 +3,7 @@ kind: ClusterDefinition
 metadata:
   name: halo
   labels:
-    {{- include "official-halo.labels" . | nindent 4 }}
+     {{- include "official-halo.labels" . | nindent 4 }}
 spec:
   type: halo
   connectionCredential:
@@ -14,8 +14,8 @@ spec:
     port: "$(SVC_PORT_tcp-halo)"
   componentDefs:
     - name: halo
-      workloadType: Stateful
-      characterType: halo
+      workloadType: Stateful  
+      characterType: halo      
       configSpecs:
         - name: official-halo14-configuration
           templateRef: official-halo14-configuration
@@ -25,6 +25,26 @@ spec:
           namespace: {{ .Release.Namespace }}
           volumeName: halo-config
           defaultMode: 0444
+        - name: halo-custom-metrics
+          templateRef: halo14-custom-metrics
+          namespace: {{ .Release.Namespace }}
+          volumeName: halo-custom-metrics
+          defaultMode: 0444
+        - name: agamotto-configuration
+          templateRef: halo-agamotto-configuration 
+          namespace: {{ .Release.Namespace }}
+          volumeName: agamotto-configuration
+          defaultMode: 0444
+      monitor:
+        builtIn: false
+        exporterConfig:
+          scrapePath: /metrics
+          scrapePort: {{ .Values.metrics.service.port }}
+      logConfigs:
+        {{- range $name,$pattern := .Values.logConfigs }}
+        - name: {{ $name }}
+          filePathPattern: {{ $pattern }}
+        {{- end }}     
       scriptSpecs:
         - name: official-halo-scripts
           templateRef: official-halo-scripts
@@ -39,6 +59,8 @@ spec:
       volumeTypes:
         - name: data
           type: data
+        - name: log
+          type: log
       podSpec:
         securityContext:
           runAsUser: 0
@@ -57,35 +79,33 @@ spec:
               - name: data
                 mountPath: {{ .Values.dataMountPath }}
               - name: halo-config
-                mountPath: /var/lib/postgresql/conf
+                mountPath: /var/lib/halo/conf
               - name: scripts
                 mountPath: /halo-scripts
             ports:
               - name: tcp-halo
                 containerPort: 1921
             env:
-              - name: KB_PG_CONFIG_PATH
-                value: /var/lib/postgresql/conf/postgresql.conf
               - name: PGDATA
-                value: /var/lib/postgresql/data
-              - name: POSTGRESQL_MASTER_PORT_NUMBER
+                value: /data/halo
+              - name: HALOPORT
                 value: "1921"
               - name: HALO_USER
                 value: halo  
               - name: HALO_PASSWORD
                 value: "halo0root"
-              - name: PGHOST # 这个是PG的unix套接字路径
+              - name: PGHOST 
                 value: /var/run/halo 
-              - name: HALO_DB # 初始化数据簇时创建的数据库
+              - name: HALO_DB 
                 value: "halo"                            
-              - name: ORACLE_HOME # oracle 插件
+              - name: ORACLE_HOME 
                 value: /u01/app/halo/product/instantclient_12_2
               - name: OCI_LIB_DIR
-                value: $ORACLE_HOME # oracle 插件
+                value: $ORACLE_HOME 
               - name: OCI_INC_DIR
-                value: $ORACLE_HOME/sdk/include #oracle 插件
+                value: $ORACLE_HOME/sdk/include 
               - name: LD_LIBRARY_PATH
-                value: $HALO_HOME/lib:$ORACLE_HOME/sdk/include/lib # 插件的路径
+                value: $HALO_HOME/lib:$ORACLE_HOME/sdk/include/lib 
               - name: ALLOW_NOSSL
                 value: "true"
               - name: POD_IP
@@ -117,27 +137,49 @@ spec:
                     key: username
                     optional: false
               - name: PGPASSWORD
+                value: "halo0root"
+            livenessProbe:
+              exec:
+                command:
+                  - /bin/bash 
+                  - -c
+                  - |
+                    gosu halo psql -U halo -d halo -c  "select 1"
+              initialDelaySeconds: 15
+              periodSeconds: 3
+              failureThreshold: 2
+              timeoutSeconds: 5
+          - name: metrics
+            image:  {{ .Values.metrics.image.registry  }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
+            imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
+            securityContext:
+              runAsUser: 0
+            env:
+              - name: ENDPOINT
+                value: {{ printf "127.0.0.1:1921" }}
+              - name: DATA_SOURCE_PASS
                 valueFrom:
                   secretKeyRef:
                     name: $(CONN_CREDENTIAL_SECRET_NAME)
                     key: password
                     optional: false
-            livenessProbe:
-              tcpSocket:
-                port: 1921
-              initialDelaySeconds: 15
-              periodSeconds: 3
-              failureThreshold: 2
-              timeoutSeconds: 1
-            readinessProbe:
-              failureThreshold: 2
-              exec:
-                command:
-                   - pg_isready
-              periodSeconds: 1
-              successThreshold: 1
-              timeoutSeconds: 1
-              initialDelaySeconds: 15
+              - name: DATA_SOURCE_USER
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: username
+                    optional: false 
+            command:
+              - "/bin/agamotto"
+              - "--config=/opt/agamotto/agamotto-config.yaml" 
+            ports:
+              - name: http-metrics
+                containerPort: {{ .Values.metrics.service.port }}
+            volumeMounts:
+              - name: halo-custom-metrics
+                mountPath: /opt/conf
+              - name: agamotto-configuration
+                mountPath: /opt/agamotto                                            
         volumes:
           - name: dshm
             emptyDir:
@@ -145,6 +187,4 @@ spec:
               {{- with .Values.shmVolume.sizeLimit }}
               sizeLimit: {{ . }}
               {{- end }}
-
-     
-     
+      

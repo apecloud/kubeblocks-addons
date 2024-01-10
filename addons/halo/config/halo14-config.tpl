@@ -30,8 +30,8 @@
 #k8s
 listen_addresses = '*'
 port = '1921'
-archive_command = 'test ! -f /var/lib/postgresql/data/archivedir/%f && cp %p /var/lib/postgresql/data/archivedir/%f'
-restore_command = 'cp /var/lib/postgresql/data/archivedir/%f %p'
+archive_command = 'test ! -f /data/halo/archivedir/%f && cp %p /data/halo/archivedir/%f'
+restore_command = 'cp /data/halo/archivedir/%f %p'
 archive_mode = 'on'
 auto_explain.log_analyze = 'False'
 auto_explain.log_buffers = 'False'
@@ -243,7 +243,7 @@ temp_file_limit = '{{ printf "%dkB" ( div $phy_memory 1024 ) }}'
 # timescaledb.telemetry_level = 'off'
 # TODO timezone
 #timezone=Asia/Shanghai
-timezone = 'UTC'
+timezone = 'Asia/Shanghai'
 track_activity_query_size = '4096'
 track_commit_timestamp = 'False'
 track_functions = 'pl'
@@ -303,7 +303,7 @@ wal_keep_size = '2048'
 wal_skip_threshold = '2048'
 dynamic_shared_memory_type = 'posix'
 unix_socket_directories = '/var/run/halo'
-log_timezone = 'UTC'
+log_timezone = 'Asia/Shanghai'
 default_text_search_config = 'pg_catalog.simple'
 
 #VERSION AND PLATFORM COMPATIBILITY

@@ -1,11 +1,10 @@
 # Default values for apecloud-postgresql.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
-
 image:
-  registry: 10.16.16.218
-  repository: halo-kb/halo-test
-  tag: "0.4"
+  registry: registry.cn-hangzhou.aliyuncs.com
+  repository: binbin21avery/halo-test
+  tag: "0.6"
   digest: ""
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
@@ -19,20 +18,7 @@ image:
   ## pullSecrets:
   ##   - myRegistryKeySecretName
   ##
-  pullSecrets: []
-  ## Set to true if you would like to see extra information on logs
-  ##
-  debug: true
-## Authentication parameters
-##
-auth:
-  ## @param auth.postgresPassword Password for the "postgres" admin user, leave empty
-  ## for random generated password.
-  ##
-  postgresPassword:
-  ## @param auth.database Name for a custom database to create
-  ##
-  database: ""
+
 ## Set PostgreSQL preload extension shared libraries.
 ## @param postgresqlSharedPreloadLibraries Shared preload libraries (comma-separated list)
 ##
@@ -58,9 +44,28 @@ shmVolume:
 #     tag: 0.7.1
 #     pullPolicy: IfNotPresent
 
-dataMountPath: /var/lib/postgresql/data
+dataMountPath: /data/halo
+
+logConfigs:
+  running: /data/halo/diag/haloserver-*
 # roleProbe:
 #   failureThreshold: 2
 #   periodSeconds: 1
 #   timeoutSeconds: 1
 
+## @section Metrics Parameters
+metrics:
+  ## @param metrics.image.registry PostgreSQL Prometheus Exporter image registry
+  ## @param metrics.image.repository PostgreSQL Prometheus Exporter image repository
+  ## @param metrics.image.tag PostgreSQL Prometheus Exporter image tag (immutable tags are recommended)
+  ## @param metrics.image.digest PostgreSQL image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
+  ## @param metrics.image.pullPolicy PostgreSQL Prometheus Exporter image pull policy
+  ## @param metrics.image.pullSecrets Specify image pull secrets
+  ##
+  image:
+    registry: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com
+    repository: apecloud/agamotto
+    tag: 0.1.0-beta.5
+    pullPolicy: IfNotPresent
+  service:
+    port: 9187

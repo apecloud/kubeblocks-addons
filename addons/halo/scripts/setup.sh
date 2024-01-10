@@ -4,34 +4,47 @@ set -o nounset
 
 . /halo-scripts/libpostgresql.sh
 
-export POSTGRESQL_INIT_MAX_TIMEOUT="${POSTGRESQL_INIT_MAX_TIMEOUT:-60}"
+export POSTGRESQL_INIT_MAX_TIMEOUT="${POSTGRESQL_INIT_MAX_TIMEOUT:-15}"
 export POSTGRESQL_BIN_DIR="/u01/app/halo/product/dbms/14/bin"
 export POSTGRESQL_CONF_DIR="/kubeblocks"
 export POSTGRESQL_CONF_FILE="$POSTGRESQL_CONF_DIR/postgresql.conf"
 export POSTGRESQL_MASTER_HOST=$KB_0_HOSTNAME
 KB_0_POD_NAME_PREFIX="${KB_0_HOSTNAME%%\.*}"
 
-# configmap readonly
+
+echo "======"
+echo $KB_0_HOSTNAME
+echo "======"
+echo $KB_0_POD_NAME_PREFIX
+echo "====="
+echo "KB_CLUSTER_UID_POSTFIX_8"
+echo $KB_CLUSTER_UID_POSTFIX_8
 if [ ! -d "$POSTGRESQL_CONF_DIR" ];then
-  cp -r /var/lib/postgresql/conf kubeblocks/
+  cp -r /var/lib/halo/conf kubeblocks/
 fi
 
 
 # default standby when pgdata is not empty
 if [ "$(ls -A ${PGDATA})" ]; then
   # touch "$PGDATA"/standby.signal
-  echo "Halo has been initialized"
+  echo "postgresql has been initialized"
 else
   if [ "$KB_0_POD_NAME_PREFIX" != "$KB_POD_NAME" ]; then
     # Ensure 'daemon' user exists when running as 'root'
     am_i_root && ensure_user_exists "$HALO_USER"
+    echo "start postgresql_slave_init_db"
     postgresql_slave_init_db
-    primary_conninfo="host=$KB_0_HOSTNAME port=$POSTGRESQL_MASTER_PORT_NUMBER user=$HALO_USER password=$HALO_PASSWORD application_name=$KB_POD_NAME"
+    echo "end postgresql_slave_init_db"
+    primary_conninfo="host=$KB_0_HOSTNAME port=$HALOPORT user=$HALO_USER password=$HALO_PASSWORD application_name=$KB_POD_NAME"
+    echo "打印复制流信息"
+    echo $primary_conninfo
+
     postgresql_set_property "primary_conninfo" "$primary_conninfo" "$POSTGRESQL_CONF_FILE"
     touch "$PGDATA"/standby.signal
   fi
+ 
 fi
 
-
+echo "start setup"
 
 docker-entrypoint.sh --config-file="$POSTGRESQL_CONF_FILE" --hba_file="$POSTGRESQL_CONF_DIR/pg_hba.conf"

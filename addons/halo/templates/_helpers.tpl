@@ -39,6 +39,7 @@ helm.sh/chart: {{ include "official-halo.chart" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
+kubeblocks.io/role: primary
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 

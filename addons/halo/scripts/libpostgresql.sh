@@ -1,7 +1,7 @@
 postgresql_set_property() {
     local -r property="${1:?missing property}"
     local -r value="${2:?missing value}"
-    local -r conf_file="${3:-$HALO_CONF_FILE}"
+    local -r conf_file="${3:-$POSTGRESQL_CONF_FILE}"
     local psql_conf
     if grep -qE "^#*\s*${property}" "$conf_file" >/dev/null; then
         replace_in_file "$conf_file" "^#*\s*${property}\s*=.*" "${property} = '${value}'" false
@@ -215,7 +215,7 @@ configure_permissions_ownership() {
 }
 ############
 postgresql_slave_init_db() {
-    local -r check_args=("-U" "$HALO_USER" "-h" "$POSTGRESQL_MASTER_HOST" "-p" "$POSTGRESQL_MASTER_PORT_NUMBER" "-d" "$HALO_DB")
+    local -r check_args=("-U" "$HALO_USER" "-h" "$POSTGRESQL_MASTER_HOST" "-p" "$HALOPORT" "-d" "$HALO_DB")
     local check_cmd=()
     if am_i_root; then
         check_cmd=("gosu" "$HALO_USER")
@@ -232,7 +232,7 @@ postgresql_slave_init_db() {
         fi
 
     done
-    local -r backup_args=("-D" "$PGDATA" "-U" "$HALO_USER" "-h" "$POSTGRESQL_MASTER_HOST" "-p" "$POSTGRESQL_MASTER_PORT_NUMBER" "-X" "stream" "-w" "-v" "-P")
+    local -r backup_args=("-D" "$PGDATA" "-U" "$HALO_USER" "-h" "$POSTGRESQL_MASTER_HOST" "-p" "$HALOPORT" "-X" "stream" "-w" "-v" "-P")
     local backup_cmd=()
     backup_cmd+=("$POSTGRESQL_BIN_DIR"/pg_basebackup)
     local replication_counter=$POSTGRESQL_INIT_MAX_TIMEOUT
