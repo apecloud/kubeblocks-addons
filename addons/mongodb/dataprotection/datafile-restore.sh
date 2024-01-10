@@ -11,5 +11,10 @@ if [ ! -z "${res}" ] && [ ! -f ${data_protection_file} ]; then
 fi
 cd ${DATA_DIR} && touch mongodb.backup
 touch ${data_protection_file}
-datasafed pull -d zstd "${DP_BACKUP_NAME}.tar.zst" - | tar -xzvf - -C ${DATA_DIR}
+backupFile="${DP_BACKUP_NAME}.tar.zst"
+if [ "$(datasafed list ${backupFile})" == "${backupFile}" ]; then
+   datasafed pull -d zstd "${backupFile}" - | tar -xzvf - -C ${DATA_DIR}
+else
+   datasafed pull "${DP_BACKUP_NAME}.tar.gz" - | tar -xzvf - -C ${DATA_DIR}
+fi
 rm -rf ${data_protection_file} && sync
