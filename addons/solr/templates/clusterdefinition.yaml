@@ -23,11 +23,6 @@ spec:
           serviceRefDeclarationSpecs:
             - serviceKind: zookeeper
               serviceVersion: ^3.7.\d{1,2}$
-{{/*      logConfigs:*/}}
-{{/*        {{- range $name,$pattern := .Values.logConfigs }}*/}}
-{{/*        - name: {{ $name }}*/}}
-{{/*          filePathPattern: {{ $pattern }}*/}}
-{{/*        {{- end }}*/}}
       configSpecs:
         - name: solr-config-env
           templateRef: {{ include "solr.name" . }}-env-tpl
@@ -36,12 +31,6 @@ spec:
           constraintRef: {{ include "solr.name" . }}-env-constraints
           asEnvFrom:
             - solr
-{{/*        - name: zookeeper-config*/}}
-{{/*          namespace: {{ .Release.Namespace }}*/}}
-{{/*          templateRef: {{ include "zookeeper.name" . }}-config-template*/}}
-{{/*          constraintRef: {{ include "zookeeper.name" . }}-config-constraints*/}}
-{{/*          volumeName: configs*/}}
-{{/*          defaultMode: 0755*/}}
       service:
         ports:
           - name: http
