@@ -16,6 +16,8 @@ staticParameters:
   - queryserver_config_strict_table_acl
   - table_acl_config_reload_interval
   - enforce_tableacl_config
+
+dynamicParameters:
   - queryserver_config_pool_size
   - queryserver_config_stream_pool_size
   - queryserver_config_transaction_cap
