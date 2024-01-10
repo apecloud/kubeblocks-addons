@@ -18,12 +18,24 @@ spec:
       characterType: solr
       statefulSpec:
         updateStrategy: BestEffortParallel
+      serviceRefDeclarations:
+        - name: solrZookeeper
+          serviceRefDeclarationSpecs:
+            - serviceKind: zookeeper
+              serviceVersion: ^3.7.\d{1,2}$
 {{/*      logConfigs:*/}}
 {{/*        {{- range $name,$pattern := .Values.logConfigs }}*/}}
 {{/*        - name: {{ $name }}*/}}
 {{/*          filePathPattern: {{ $pattern }}*/}}
 {{/*        {{- end }}*/}}
-{{/*      configSpecs:*/}}
+      configSpecs:
+        - name: solr-config-env
+          templateRef: {{ include "solr.name" . }}-env-tpl
+          namespace: {{ .Release.Namespace }}
+          volumeName: solr-config-env
+          constraintRef: {{ include "solr.name" . }}-env-constraints
+          asEnvFrom:
+            - solr
 {{/*        - name: zookeeper-config*/}}
 {{/*          namespace: {{ .Release.Namespace }}*/}}
 {{/*          templateRef: {{ include "zookeeper.name" . }}-config-template*/}}
@@ -52,8 +64,6 @@ spec:
                 value: "$(KB_REPLICA_COUNT)"
               - name: SOLR_PORT_NUMBER
                 value: {{ .Values.containerPorts.http | quote }}
-              - name: SOLR_ZK_HOSTS
-                value: "zk-cluster-zookeeper-0.zk-cluster-zookeeper-headless.default.svc.cluster.local:2181,zk-cluster-zookeeper-1.zk-cluster-zookeeper-headless.default.svc.cluster.local:2181,zk-cluster-zookeeper-2.zk-cluster-zookeeper-headless.default.svc.cluster.local:2181"
             ports:
               - name: http
                 containerPort: {{ .Values.containerPorts.http }}

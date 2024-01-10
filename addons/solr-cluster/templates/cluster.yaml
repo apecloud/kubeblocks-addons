@@ -12,6 +12,16 @@ spec:
   componentSpecs:
     - name: solr
       componentDefRef: solr
+      serviceRefs:
+        - name: solrZookeeper
+          namespace: {{ .Values.serviceReference.zookeeper.namespace | default .Release.Namespace }}
+        {{- if .Values.serviceReference.zookeeper.serviceDescriptor }}
+          serviceDescriptor: {{ .Values.serviceReference.zookeeper.serviceDescriptor }}
+        {{- else }}
+        {{- if .Values.serviceReference.zookeeper.cluster }}
+          cluster: {{ .Values.serviceReference.zookeeper.cluster }}
+        {{- end }}
+        {{- end }}
       replicas: {{ .Values.replicas }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}

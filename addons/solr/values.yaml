@@ -13,7 +13,7 @@ images:
 ## @param containerPorts.server Solr http server port
 ##
 containerPorts:
-  server: 8983
+  http: 8983
 #
 #image:
 #  repository: nginx
