@@ -14,7 +14,7 @@ spec:
     port: "$(SVC_PORT_tcp-halo)"
   componentDefs:
     - name: halo
-      workloadType: Stateful  
+      workloadType: Replication  
       characterType: halo      
       configSpecs:
         - name: official-halo14-configuration

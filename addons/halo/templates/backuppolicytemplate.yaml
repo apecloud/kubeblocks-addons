@@ -28,7 +28,7 @@ spec:
       targetVolumes:
         volumes:
         - data
-    schedules: &backupschedules
+    schedules: 
     - backupMethod: pg-basebackup
       enabled: true
       cronExpression: "*/5 * * * *" #测试用每1分钟做一次快照
