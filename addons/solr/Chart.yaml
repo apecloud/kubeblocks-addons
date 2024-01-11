@@ -1,0 +1,25 @@
+apiVersion: v2
+name: solr
+description: Solr is the popular, blazing-fast, open source enterprise search platform built on Apache Lucene.
+type: application
+version: 0.7.0
+appVersion: "8.11.2"
+
+home: https://solr.apache.org/
+icon: https://solr.apache.org/guide/_/img/solr-sunOnly-small.png
+keywords:
+  - distributed indexing
+  - replication and load-balanced querying
+  - search platform
+  - Lucene
+
+maintainers:
+  - name: ApeCloud
+    url: https://github.com/apecloud/kubeblocks/deploy
+  - name: kissycn
+    url: https://github.com/kissycn
+
+annotations:
+  addon.kubeblocks.io/kubeblocks-version: ">=0.7.0"
+  addon.kubeblocks.io/model: "other"
+  addon.kubeblocks.io/provider: "community"
