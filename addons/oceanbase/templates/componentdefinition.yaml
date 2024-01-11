@@ -103,11 +103,6 @@ items:
               value: "2881"
             - name: AUDITLOG_USER
               value: "root"
-            - name: AUDITLOG_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: $(CONN_CREDENTIAL_SECRET_NAME)
-                  key: password
         - name: metrics
           image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.metrics.repository }}:{{ .Values.images.metrics.tag }}
           imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
@@ -264,11 +259,6 @@ items:
               value: "/home/admin/workdir"
             - name: AUDITLOG_USER
               value: "root"
-            - name: AUDITLOG_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: $(CONN_CREDENTIAL_SECRET_NAME)
-                  key: password
         - name: metrics
           image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.metrics.repository }}:{{ .Values.images.metrics.tag }}
           imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
