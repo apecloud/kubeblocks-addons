@@ -1,5 +1,5 @@
 function get_current_time() {
-  curr_time=$(psql -U ${DP_DB_USER} -h ${DP_DB_HOST} -d postgres -t -c "SELECT now() AT TIME ZONE 'UTC'")
+  curr_time=$(psql -U ${DP_DB_USER} -h ${POSTGRESQL_MASTER_HOST} -d ${DP_DB_DBNAME} -t -c "SELECT now() AT TIME ZONE 'Asia/Shangha'")
   echo $curr_time
 }
 

@@ -221,7 +221,7 @@ session_replication_role = 'origin'
 # extension: sql_firewall
 sql_firewall.firewall = 'disable'
 shared_buffers = '{{ printf "%d%s" $shared_buffers $buffer_unit }}'
-# shared_preload_libraries = 'pg_stat_statements,auto_explain,bg_mon,pgextwlist,pg_auth_mon,set_user,pg_cron,pg_stat_kcache'
+shared_preload_libraries = 'pg_stat_statements,auto_explain'
 
 
 #ssl_min_protocol_version = 'TLSv1'

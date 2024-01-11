@@ -9,9 +9,17 @@ spec:
   backupType: Full
   env:
     - name: DATA_DIR
-      value: {{ .Values.dataMountPath }}/backup/data
+      value: {{ .Values.dataMountPath }}/backup
     - name: IMAGE_TAG
-      value: 0.6
+      value: "0.6"
+    - name: DP_DB_PORT
+      value: "1921"
+    - name: DP_DB_USER
+      value: halo
+    - name: DP_DB_PASSWORD
+      value: halo0root
+    - name: DP_DB_DBNAME
+      value: halo
   backup:
     preBackup: []
     postBackup: []

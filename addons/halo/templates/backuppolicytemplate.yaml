@@ -30,10 +30,10 @@ spec:
         - data
     schedules: &backupschedules
     - backupMethod: pg-basebackup
-      enabled: false
-      cronExpression: "1 18 * * *" #测试用每10分钟做一次快照
+      enabled: true
+      cronExpression: "*/5 * * * *" #测试用每1分钟做一次快照
       retentionPeriod: 7d
     - backupMethod: volume-snapshot #卷做快照
       enabled: false
-      cronExpression: "1 18 * * *"
+      cronExpression: "* * * * *"
       retentionPeriod: 7d
