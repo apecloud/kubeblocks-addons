@@ -3,15 +3,13 @@ kind: ActionSet
 metadata:
   name: halo-basebackup
   labels:
-    clusterdefinition.kubeblocks.io/name: postgresql
+    clusterdefinition.kubeblocks.io/name: halo
     {{- include "official-halo.labels" . | nindent 4 }}
 spec:
   backupType: Full
   env:
     - name: DATA_DIR
       value: {{ .Values.dataMountPath }}/backup
-    - name: IMAGE_TAG
-      value: "0.6"
     - name: DP_DB_PORT
       value: "1921"
     - name: DP_DB_USER
@@ -25,7 +23,7 @@ spec:
     postBackup: []
     backupData:
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:$(IMAGE_TAG)
-      runOnTargetPodNode: false
+      runOnTargetPodNode: true
       command:
       - bash
       - -c
