@@ -64,13 +64,13 @@ spec:
       passwordGenerationPolicy:
         length: 16
         numDigits: 8
-        numSymbols: 8
+        numSymbols: 0
         letterCase: MixedCases
     - name: kbadmin
       statement: CREATE USER $(USERNAME) IDENTIFIED BY '$(PASSWORD)'; GRANT ALL PRIVILEGES ON *.* TO $(USERNAME);
       passwordGenerationPolicy: &defaultPasswordGenerationPolicy
-        length: 10
-        numDigits: 5
+        length: 16
+        numDigits: 8
         numSymbols: 0
         letterCase: MixedCases
     - name: kbdataprotection
