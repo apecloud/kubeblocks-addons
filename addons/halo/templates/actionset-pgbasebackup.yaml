@@ -3,7 +3,7 @@ kind: ActionSet
 metadata:
   name: halo-basebackup
   labels:
-    clusterdefinition.kubeblocks.io/name: postgresql
+    clusterdefinition.kubeblocks.io/name: halo
     {{- include "official-halo.labels" . | nindent 4 }}
 spec:
   backupType: Full
