@@ -39,7 +39,7 @@ spec:
       service:
         ports:
           - name: client
-            port: 2181
+            port: {{ .Values.containerPorts.client }}
             targetPort: client
       podSpec:
         securityContext:
@@ -79,10 +79,6 @@ spec:
               timeoutSeconds: 5
               exec:
                 command: [ '/bin/bash', '-c', 'echo "ruok" | timeout 2 nc -w 2 localhost {{ .Values.containerPorts.client }} | grep imok' ]
-            resources:
-              requests:
-                cpu: 50m
-                memory: 256Mi
             securityContext:
               allowPrivilegeEscalation: false
               capabilities:
