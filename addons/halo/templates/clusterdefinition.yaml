@@ -15,7 +15,7 @@ spec:
   componentDefs:
     - name: halo
       workloadType: Stateful  
-      characterType: halo      
+      characterType: halo 
       configSpecs:
         - name: official-halo14-configuration
           templateRef: official-halo14-configuration

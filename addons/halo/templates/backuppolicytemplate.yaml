@@ -9,31 +9,30 @@ spec:
   clusterDefinitionRef: halo
   backupPolicies:
   - componentDefRef: halo
+    # target:
+    #   role: primary
     backupMethods:
-    - name: pg-basebackup
+    - name: halo-basebackup
       snapshotVolumes: false
       actionSetName: halo-basebackup
-      envMapping:
-      - key: IMAGE_TAG
-        valueFrom:
-          clusterVersionRef:
-          - names: [halo-test]
-            mappingValue: "0.6"
       targetVolumes:
         volumeMounts:
         - name: data
           mountPath: {{ .Values.dataMountPath }}
-    - name: volume-snapshot
-      snapshotVolumes: true
-      targetVolumes:
-        volumes:
-        - data
-    schedules: &backupschedules
-    - backupMethod: pg-basebackup
+    # - name: volume-snapshot
+    #   snapshotVolumes: true
+    #   targetVolumes:
+    #     volumes:
+    #     - data
+    #     volumeMounts:
+    #     - name: data
+    #       mountPath: {{ .Values.dataMountPath }}
+    schedules: 
+    - backupMethod: halo-basebackup
       enabled: true
-      cronExpression: "*/5 * * * *" #测试用每1分钟做一次快照
+      cronExpression: "*/5 * * * *" #测试用每5分钟做一次快照
       retentionPeriod: 7d
-    - backupMethod: volume-snapshot #卷做快照
-      enabled: false
-      cronExpression: "* * * * *"
-      retentionPeriod: 7d
+    # - backupMethod: volume-snapshot #卷做快照
+    #   enabled: false
+    #   cronExpression: "* * * * *"
+    #   retentionPeriod: 7d
