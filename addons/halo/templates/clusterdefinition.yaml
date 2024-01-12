@@ -94,8 +94,18 @@ spec:
                 value: halo  
               - name: HALO_PASSWORD
                 value: "halo0root"
+              - name: PGHOST 
+                value: /var/run/halo 
               - name: HALO_DB 
                 value: "halo"                            
+              - name: ORACLE_HOME 
+                value: /u01/app/halo/product/instantclient_12_2
+              - name: OCI_LIB_DIR
+                value: $ORACLE_HOME 
+              - name: OCI_INC_DIR
+                value: $ORACLE_HOME/sdk/include 
+              - name: LD_LIBRARY_PATH
+                value: $HALO_HOME/lib:$ORACLE_HOME/sdk/include/lib 
               - name: ALLOW_NOSSL
                 value: "true"
               - name: POD_IP
