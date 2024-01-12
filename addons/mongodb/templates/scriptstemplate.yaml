@@ -89,7 +89,7 @@ data:
           exit 1
       fi
       echo "Switchover without candidate, try to select a new primary randomly ..."
-      local CANDIDATE_HOST=$($CLIENT --quiet --eval "conf=rs.config();const candidateHost = '$OLD_LEADER_HOST';const member=conf.members.find(member => member.host !== candidateHost);if (member) {console.log(member.host)}" "$URI" --username "$USERNAME" --password "$PASSWORD")
+      local CANDIDATE_HOST=$($CLIENT --quiet --eval "conf=rs.config();const candidateHost = '$OLD_LEADER_HOST';const member=conf.members.find(member => member.host !== candidateHost);if (member) {print(member.host)}" "$URI" --username "$USERNAME" --password "$PASSWORD")
       local CANDIDATE_URI="mongodb://$CANDIDATE_HOST"
       if [ -z "$CANDIDATE_HOST" ]; then
           echo "Failed to select a new candidate primary, exit"
