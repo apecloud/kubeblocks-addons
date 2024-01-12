@@ -185,7 +185,12 @@ function start_observer_with_exsting_configs {
 
 function is_recovering {
   # test whether the config folders and files are empty or not
-  if [ -z "$(ls -A /home/admin/data-file)" ]; then
+  # if [ -z "$(ls -A /home/admin/data-file)" ]; then
+  #   echo "False"
+  # else
+  #   echo "True"
+  # fi
+  if [ ! -d "/home/admin/workdir/etc" ]; then
     echo "False"
   else
     echo "True"
