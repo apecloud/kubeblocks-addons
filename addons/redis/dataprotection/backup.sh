@@ -29,7 +29,7 @@ done
 echo "INFO: start to save data file..."
 cd ${DATA_DIR}
 # NOTE: if files changed during taring, the exit code will be 1 when it ends.
-tar -czvf - ./ | datasafed push -z zstd - "${DP_BACKUP_NAME}.tar.zst"
+tar -cvf - ./ | datasafed push -z zstd - "${DP_BACKUP_NAME}.tar.zst"
 echo "INFO: save data file successfully"
 TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
 echo "{\"totalSize\":\"$TOTAL_SIZE\"}" > "${DP_BACKUP_INFO_FILE}" && sync
