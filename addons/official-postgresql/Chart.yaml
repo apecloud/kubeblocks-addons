@@ -1,5 +1,5 @@
 apiVersion: v2
-name: halo-test
+name: official-postgresql
 description: A Official PostgreSQL cluster definition Helm chart for Kubernetes
 
 type: application

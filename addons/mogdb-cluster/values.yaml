@@ -8,11 +8,11 @@ version: mogdb-3.0.3
 
 ## @param mode postgresql cluster topology mode, standalone, replication
 ##
-mode: replication
+mode: standalone
 
 ## @param replicas specify cluster replicas
 ##
-replicas: 2
+replicas: 1
 
 ## @param cpu
 ##
