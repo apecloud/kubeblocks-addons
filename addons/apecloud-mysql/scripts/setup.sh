@@ -5,8 +5,22 @@ generate_cluster_info() {
     local pod_name="${KB_POD_NAME:?missing pod name}"
     local cluster_members=""
 
+    export MYSQL_PORT=${MYSQL_PORT:-3306}
+    export MYSQL_CONSENSUS_PORT=${MYSQL_CONSENSUS_PORT:-13306}
+    export KB_MYSQL_VOLUME_DIR=${KB_MYSQL_VOLUME_DIR:-/data/mysql/}
+    export KB_MYSQL_CONF_FILE=${KB_MYSQL_CONF_FILE:-/opt/mysql/my.cnf}
+
+    if [ -z "$KB_MYSQL_N" ]; then
+        export KB_MYSQL_N=${KB_REPLICA_COUNT:?missing pod numbers}
+    fi
     echo "KB_MYSQL_N=${KB_MYSQL_N}"
-    for ((i = 0; i < KB_MYSQL_N; i++)); do
+
+    if [ -z "$KB_MYSQL_CLUSTER_UID" ]; then
+        export KB_MYSQL_CLUSTER_UID=${KB_CLUSTER_UID:?missing cluster uid}
+    fi
+    echo "KB_MYSQL_CLUSTER_UID=${KB_MYSQL_CLUSTER_UID}"
+
+    for ((i = 0; i < KB_REPLICA_COUNT; i++)); do
         if [ $i -gt 0 ]; then
             cluster_members="${cluster_members};"
         fi
