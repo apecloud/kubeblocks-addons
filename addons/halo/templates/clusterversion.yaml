@@ -1,0 +1,18 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterVersion
+metadata:
+  # major version of the component defined in values.yaml
+  name: halo-{{ .Values.image.tag }}
+  annotations:
+    kubeblocks.io/is-default-cluster-version: "true"
+  labels:
+    {{- include "halo.labels" . | nindent 4 }}
+spec:
+  clusterDefinitionRef: halo
+  componentVersions:
+    - componentDefRef: halo
+      versionsContext:
+        containers:
+          - name: halo
+            image: {{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+

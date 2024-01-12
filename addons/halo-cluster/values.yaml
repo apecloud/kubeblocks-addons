@@ -1,0 +1,34 @@
+# Default values for Halo.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+## @param version Halo cluster version
+##
+version: halo-0.6
+
+## @param mode halo cluster topology mode, standalone, replication
+##
+mode: replication
+
+## @param replicas specify cluster replicas
+##
+replicas: 2
+
+## @param cpu
+##
+cpu: 2
+
+## @param memory, the unit is Gi
+##
+memory: 4
+
+## @param requests.cpu if not set, use cpu
+## @param requests.memory, if not set, use memory
+##
+requests:
+#  cpu:
+#  memory:
+
+## @param storage size, the unit is Gi
+##
+storage: 50
