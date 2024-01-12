@@ -1,0 +1,42 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: halo-backup-policy-template
+  labels:
+    clusterdefinition.kubeblocks.io/name: halo
+    {{- include "official-halo.labels" . | nindent 4 }}
+spec:
+  clusterDefinitionRef: halo
+  backupPolicies:
+  - componentDefRef: halo
+    backupMethods:
+    - name: pg-basebackup
+      snapshotVolumes: false
+      actionSetName: halo-basebackup
+      envMapping:
+      - key: IMAGE_TAG
+        valueFrom:
+          clusterVersionRef:
+          - names: [halo-test]
+            mappingValue: "0.6"
+      targetVolumes:
+        volumeMounts:
+        - name: data
+          mountPath: {{ .Values.dataMountPath }}
+    - name: volume-snapshot
+      snapshotVolumes: true
+      targetVolumes:
+        volumes:
+        - data
+
+    - name: wal-g
+      
+    schedules: 
+    - backupMethod: pg-basebackup
+      enabled: true
+      cronExpression: "*/5 * * * *" #测试用每1分钟做一次快照
+      retentionPeriod: 7d
+    - backupMethod: volume-snapshot #卷做快照
+      enabled: false
+      cronExpression: "* * * * *"
+      retentionPeriod: 7d
