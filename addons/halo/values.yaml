@@ -36,13 +36,6 @@ shmVolume:
   ## sizeLimit: 1Gi
   ##
   sizeLimit: ""
-## roleCheck is for service, that defined which po is master which is slave
-# roleCheck:
-#   image:
-#     registry: "registry.cn-hangzhou.aliyuncs.com"
-#     repository: binbin21avery/halo-kb-tools
-#     tag: 0.7.1
-#     pullPolicy: IfNotPresent
 
 dataMountPath: /data/halo
 

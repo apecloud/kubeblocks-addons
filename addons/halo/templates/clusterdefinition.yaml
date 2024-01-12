@@ -3,7 +3,7 @@ kind: ClusterDefinition
 metadata:
   name: halo
   labels:
-     {{- include "official-halo.labels" . | nindent 4 }}
+     {{- include "halo.labels" . | nindent 4 }}
 spec:
   type: halo
   connectionCredential:
@@ -17,37 +17,17 @@ spec:
       workloadType: Stateful  
       characterType: halo      
       configSpecs:
-        - name: official-halo14-configuration
-          templateRef: official-halo14-configuration
-          constraintRef: official-halo14-cc
+        - name: halo-configuration
+          templateRef: halo-configuration
+          constraintRef: halo-cc
           keys:
             - postgresql.conf
           namespace: {{ .Release.Namespace }}
           volumeName: halo-config
-          defaultMode: 0444
-        - name: halo-custom-metrics
-          templateRef: halo14-custom-metrics
-          namespace: {{ .Release.Namespace }}
-          volumeName: halo-custom-metrics
-          defaultMode: 0444
-        - name: agamotto-configuration
-          templateRef: halo-agamotto-configuration 
-          namespace: {{ .Release.Namespace }}
-          volumeName: agamotto-configuration
-          defaultMode: 0444
-      monitor:
-        builtIn: false
-        exporterConfig:
-          scrapePath: /metrics
-          scrapePort: {{ .Values.metrics.service.port }}
-      logConfigs:
-        {{- range $name,$pattern := .Values.logConfigs }}
-        - name: {{ $name }}
-          filePathPattern: {{ $pattern }}
-        {{- end }}     
+          defaultMode: 0444  
       scriptSpecs:
-        - name: official-halo-scripts
-          templateRef: official-halo-scripts
+        - name: halo-scripts
+          templateRef: halo-scripts
           namespace: {{ .Release.Namespace }}
           volumeName: scripts
           defaultMode: 0555
@@ -59,8 +39,6 @@ spec:
       volumeTypes:
         - name: data
           type: data
-        - name: log
-          type: log
       podSpec:
         securityContext:
           runAsUser: 0
@@ -94,18 +72,8 @@ spec:
                 value: halo  
               - name: HALO_PASSWORD
                 value: "halo0root"
-              - name: PGHOST 
-                value: /var/run/halo 
               - name: HALO_DB 
                 value: "halo"                            
-              - name: ORACLE_HOME 
-                value: /u01/app/halo/product/instantclient_12_2
-              - name: OCI_LIB_DIR
-                value: $ORACLE_HOME 
-              - name: OCI_INC_DIR
-                value: $ORACLE_HOME/sdk/include 
-              - name: LD_LIBRARY_PATH
-                value: $HALO_HOME/lib:$ORACLE_HOME/sdk/include/lib 
               - name: ALLOW_NOSSL
                 value: "true"
               - name: POD_IP
@@ -148,30 +116,7 @@ spec:
               initialDelaySeconds: 15
               periodSeconds: 3
               failureThreshold: 2
-              timeoutSeconds: 5
-          - name: metrics
-            image:  {{ .Values.metrics.image.registry  }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
-            imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
-            securityContext:
-              runAsUser: 0
-            env:
-              - name: ENDPOINT
-                value: {{ printf "127.0.0.1:1921" }}
-              - name: DATA_SOURCE_PASS
-                value: halo0root
-              - name: DATA_SOURCE_USER
-                value: halo
-            command:
-              - "/bin/agamotto"
-              - "--config=/opt/agamotto/agamotto-config.yaml" 
-            ports:
-              - name: http-metrics
-                containerPort: {{ .Values.metrics.service.port }}
-            volumeMounts:
-              - name: halo-custom-metrics
-                mountPath: /opt/conf
-              - name: agamotto-configuration
-                mountPath: /opt/agamotto                                            
+              timeoutSeconds: 5                                           
         volumes:
           - name: dshm
             emptyDir:

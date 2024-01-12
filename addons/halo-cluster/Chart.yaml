@@ -2,7 +2,7 @@ apiVersion: v2
 name: halo-cluster
 type: application
 version: 0.2.0
-description: A Official HALO cluster definition Helm chart for Kubernetes
+description: HALO cluster definition Helm chart for Kubernetes
 
 dependencies:
   - name: kblib

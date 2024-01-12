@@ -1,12 +1,12 @@
-# Default values for Official PostgreSQL.
+# Default values for Halo.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-## @param version Postgresql cluster version
+## @param version Halo cluster version
 ##
-version: official-halo-0.6
+version: halo-0.6
 
-## @param mode postgresql cluster topology mode, standalone, replication
+## @param mode halo cluster topology mode, standalone, replication
 ##
 mode: replication
 

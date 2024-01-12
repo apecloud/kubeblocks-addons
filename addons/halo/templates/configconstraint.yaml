@@ -1,9 +1,9 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ConfigConstraint
 metadata:
-  name: official-halo14-cc
+  name: halo-cc
   labels:
-    {{- include "official-halo.labels" . | nindent 4 }}
+    {{- include "halo.labels" . | nindent 4 }}
 spec:
   # top level pg configuration type
   cfgSchemaTopLevelName: PGParameter
@@ -13,7 +13,7 @@ spec:
     # schema: auto generate from cue scripts
     # example: ../../pkg/configuration/testdata/mysql_openapi.json
     cue: |-
-      {{- .Files.Get "config/halo14-config-constraint.cue" | nindent 6 }}
+      {{- .Files.Get "config/halo-config-constraint.cue" | nindent 6 }}
     # configuration file format
   formatterConfig:
     format: properties

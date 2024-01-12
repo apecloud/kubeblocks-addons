@@ -3,7 +3,7 @@ Define replica count.
 standalone mode: 1
 replication mode: 2
 */}}
-{{- define "official-halo-cluster.replicaCount" }}
+{{- define "halo-cluster.replicaCount" }}
 {{- if eq .Values.mode "standalone" }}
 replicas: 1
 {{- else if eq .Values.mode "replication" }}
