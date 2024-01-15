@@ -8,6 +8,7 @@ fi
 mysql_cmd="mysql -u root -h ${DP_DB_HOST} -P${sql_port} -N -e"
 OlD_IFS=$IFS
 
+archiveStatusFile="tenantStatus.dp"
 provider=
 access_key_id=
 secret_access_key=
@@ -98,8 +99,11 @@ function restoreTenant() {
         ${mysql_cmd} "SET SESSION ob_query_timeout=1000000000; DROP TENANT IF EXISTS ${TENANT_NAME} FORCE;"
       fi
      `${mysql_cmd} "${sql}"`
-      if [[ $? -eq 0 ]] || [[ $time -ge 2 ]] ; then
+      if [[ $? -eq 0 ]]  ; then
         break
+      fi
+      if [[ $time -ge 2 ]]; then
+         return 1
       fi
       time=$((time+1))
     done
@@ -148,6 +152,16 @@ function waitToPromotePrimary() {
     done
 }
 
+function pullArchiveStatusFile() {
+    export DATASAFED_BACKEND_BASE_PATH=$(dirname ${DP_BACKUP_BASE_PATH})/archive
+    if [ "$(datasafed list ${archiveStatusFile})" == "${archiveStatusFile}" ]; then
+       # TODO: using archive path to replace?
+       echo "INFO: pull archive status file ${archiveStatusFile}"
+       datasafed pull ${archiveStatusFile} ${archiveStatusFile}
+    fi
+    export DATASAFED_BACKEND_BASE_PATH=${DP_BACKUP_BASE_PATH}
+}
+
 function preCheckForRestore() {
     if [[ "${REBUILD_STANDBY}" != "true" ]]; then
         return 0
@@ -168,8 +182,34 @@ function checkIsPrimaryCluster() {
   echo "${isPrimary}"
 }
 
+function getRestoreFragment() {
+    local tenantName=${1:?missing tenant name}
+    local scn=${2:?missing restore scn}
+    if [ -z "${DP_RESTORE_TIME}" ]; then
+       echo "SCN=${scn}"
+       return
+    fi
+    if [ -f ${archiveStatusFile} ]; then
+        while IFS= read -r line; do
+          IFS=$OlD_IFS
+          if [ -z "$line" ]; then
+             continue
+          fi
+          tenant=`echo ${line} | jq -r ".name"`
+          if [ "${tenant}" == "${tenantName}" ]; then
+             checkPointTime=`echo ${line} | jq -r ".checkPointTime"`
+             if [ $(date -d "${DP_RESTORE_TIME}" +%s) -gt $(date -d "${checkPointTime}" +%s) ]; then
+                echo "TIME='$(date -d "${checkPointTime}" "+%Y-%m-%d %H:%M:%S")'"
+                return
+             fi
+          fi
+        done < ${archiveStatusFile}
+    fi
+    echo "TIME='${DP_RESTORE_TIME}'"
+}
+
 # step 1 ===> create unit config and resource pools
-echo "INFO: wait for bootstrap sucessfully."
+echo "INFO: wait for bootstrap successfully."
 waitTime=0
 while true; do
   tenant_status=`${mysql_cmd} "SELECT * FROM oceanbase.DBA_OB_TENANTS;"`
@@ -201,6 +241,7 @@ executeSQLFile ${resourcePoolSQLFile}
 # step 2 ===> restore all tenants
 
 analysisToolConfig
+pullArchiveStatusFile
 global_comp_index=$(echo $KB_CLUSTER_COMP_NAME | awk -F '-' '{print $(NF)}')
 extras=$(cat /dp_downward/status_extras)
 length=$(echo "$extras" | jq length)
@@ -212,7 +253,12 @@ for i in $(seq 0 ${index}); do
    archivePath=$(echo "$extras"  | jq -r ".[${i}].archivePath")
    uri="$(getDestURL "${DP_BACKUP_BASE_PATH}" "${tenant_name}"),$(getDestURL "${archivePath}" "${tenant_name}")"
    echo "INFO: start to restore tenant ${tenant_name}"
-   restoreTenant "${tenant_name}" "SET SESSION ob_query_timeout=1000000000; ALTER SYSTEM RESTORE ${tenant_name} FROM '${uri}' UNTIL SCN=${minRestoreSCN} WITH 'pool_list=${poolList}'"
+   # TODO: check if the sql executed successfully. if restore time is over than actual time, it will failed.
+   # ERROR 4018 (HY000) at line 1: No enough log for restore
+   restoreTenant "${tenant_name}" "SET SESSION ob_query_timeout=1000000000; ALTER SYSTEM RESTORE ${tenant_name} FROM '${uri}' UNTIL $(getRestoreFragment "${tenant_name}" "${minRestoreSCN}") WITH 'pool_list=${poolList}'"
+   if [ $? -eq 1 ]; then
+      exit 1
+   fi
    echo "INFO: restoring tenant ${tenant_name}"
 done
 sleep 5
