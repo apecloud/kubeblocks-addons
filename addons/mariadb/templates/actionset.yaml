@@ -40,11 +40,3 @@ spec:
           && rsync -avrP /tmp/data/ ${DATA_DIR}/ \
           && rm -rf /tmp/data/ \
           && chmod -R 0777 ${DATA_DIR}
-    postReady:
-      - job:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
-          runOnTargetPodNode: true
-          command:
-            - sh
-            - -c
-            - MYSQL_PWD=$DP_DB_PASSWORD mariadb -u ${DP_DB_USER} -h ${DP_DP_HOST} -e "SHOW SLAVE STATUS\G"
