@@ -22,5 +22,5 @@ containerPorts:
   http: 8080
 
 logConfigs:
-  info: /opt/zookeeper/logs/zookeeper-*-server-*.log
-  audit: /opt/zookeeper/logs/zookeeper_audit.log
+  info: /opt/bitnami/zookeeper/logs/zookeeper-*-server-*.log
+  audit: /opt/bitnami/zookeeper/logs/zookeeper_audit.log
