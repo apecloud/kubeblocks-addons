@@ -9,7 +9,7 @@ image:
   repository: mogdb/mogdb
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: 3.0.3
+  tag: 5.0.5
 
 
 shmVolume:
