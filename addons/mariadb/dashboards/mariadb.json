@@ -26,7 +26,7 @@
   "fiscalYearStartMonth": 0,
   "gnetId": 11323,
   "graphTooltip": 0,
-  "id": 10,
+  "id": 12,
   "links": [
     {
       "asDropdown": false,
@@ -84,7 +84,7 @@
         "type": "prometheus",
         "uid": "$datasource"
       },
-      "description": "**Uptime**\n\nThe amount of time since the last restart of the mariadb server process.",
+      "description": "**Uptime**\n\nThe amount of time since the last restart of the MySQL server process.",
       "fieldConfig": {
         "defaults": {
           "decimals": 1,
@@ -151,7 +151,7 @@
           "editorMode": "code",
           "errors": {},
           "exemplar": false,
-          "expr": "min(sum(mariadb_global_status_uptime{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod))",
+          "expr": "min(sum(mysql_global_status_uptime{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod))",
           "format": "time_series",
           "instant": true,
           "interval": "",
@@ -171,7 +171,7 @@
         "type": "prometheus",
         "uid": "$datasource"
       },
-      "description": "**Current QPS**\n\nBased on the queries reported by mariadb's ``SHOW STATUS`` command, it is the number of statements executed by the server within the last second. This variable includes statements executed within stored programs, unlike the Questions variable. It does not count \n``COM_PING`` or ``COM_STATISTICS`` commands.",
+      "description": "**Current QPS**\n\nBased on the queries reported by MySQL's ``SHOW STATUS`` command, it is the number of statements executed by the server within the last second. This variable includes statements executed within stored programs, unlike the Questions variable. It does not count \n``COM_PING`` or ``COM_STATISTICS`` commands.",
       "fieldConfig": {
         "defaults": {
           "decimals": 2,
@@ -200,8 +200,8 @@
       "links": [
         {
           "targetBlank": true,
-          "title": "mariadb Server Status Variables",
-          "url": "https://dev.mariadb.com/doc/refman/5.7/en/server-status-variables.html#statvar_Queries"
+          "title": "Mariadb Server Status Variables",
+          "url": "https://dev.mysql.com/doc/refman/5.7/en/server-status-variables.html#statvar_Queries"
         }
       ],
       "maxDataPoints": 100,
@@ -235,7 +235,7 @@
           "editorMode": "code",
           "errors": {},
           "exemplar": false,
-          "expr": "sum(rate(mariadb_global_status_queries{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval]))",
+          "expr": "sum(rate(mysql_global_status_queries{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval]))",
           "format": "time_series",
           "instant": true,
           "interval": "",
@@ -255,7 +255,7 @@
         "type": "prometheus",
         "uid": "$datasource"
       },
-      "description": "**InnoDB Buffer Pool Size**\n\nInnoDB maintains a storage area called the buffer pool for caching data and indexes in memory.  Knowing how the InnoDB buffer pool works, and taking advantage of it to keep frequently accessed data in memory, is one of the most important aspects of mariadb tuning. The goal is to keep the working set in memory. In most cases, this should be between 60%-90% of available memory on a dedicated database host, but depends on many factors.",
+      "description": "**InnoDB Buffer Pool Size**\n\nInnoDB maintains a storage area called the buffer pool for caching data and indexes in memory.  Knowing how the InnoDB buffer pool works, and taking advantage of it to keep frequently accessed data in memory, is one of the most important aspects of MySQL tuning. The goal is to keep the working set in memory. In most cases, this should be between 60%-90% of available memory on a dedicated database host, but depends on many factors.",
       "fieldConfig": {
         "defaults": {
           "decimals": 0,
@@ -319,7 +319,7 @@
           "editorMode": "code",
           "errors": {},
           "exemplar": false,
-          "expr": "min(sum(mariadb_global_variables_innodb_buffer_pool_size{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod))",
+          "expr": "min(sum(mysql_global_variables_innodb_buffer_pool_size{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod))",
           "format": "time_series",
           "instant": true,
           "interval": "",
@@ -445,7 +445,7 @@
           "editorMode": "code",
           "errors": {},
           "exemplar": false,
-          "expr": "sum(mariadb_global_status_uptime{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
+          "expr": "sum(mysql_global_status_uptime{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
           "format": "table",
           "instant": true,
           "interval": "",
@@ -465,7 +465,7 @@
           "editorMode": "code",
           "errors": {},
           "exemplar": false,
-          "expr": "sum(rate(mariadb_global_status_queries{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
+          "expr": "sum(rate(mysql_global_status_queries{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
           "format": "table",
           "hide": false,
           "instant": true,
@@ -486,7 +486,7 @@
           "editorMode": "code",
           "errors": {},
           "exemplar": false,
-          "expr": "sum(mariadb_global_variables_innodb_buffer_pool_size{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
+          "expr": "sum(mysql_global_variables_innodb_buffer_pool_size{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
           "format": "table",
           "hide": false,
           "instant": true,
@@ -577,7 +577,7 @@
         "type": "prometheus",
         "uid": "$datasource"
       },
-      "description": "**Max Connections** \n\nMax Connections is the maximum permitted number of simultaneous client connections. By default, this is 151. Increasing this value increases the number of file descriptors that mariadbd requires. If the required number of descriptors are not available, the server reduces the value of Max Connections.\n\nmariadbd actually permits Max Connections + 1 clients to connect. The extra connection is reserved for use by accounts that have the SUPER privilege, such as root.\n\nMax Used Connections is the maximum number of connections that have been in use simultaneously since the server started.\n\nConnections is the number of connection attempts (successful or not) to the mariadb server.",
+      "description": "**Max Connections** \n\nMax Connections is the maximum permitted number of simultaneous client connections. By default, this is 151. Increasing this value increases the number of file descriptors that mysqld requires. If the required number of descriptors are not available, the server reduces the value of Max Connections.\n\nmysqld actually permits Max Connections + 1 clients to connect. The extra connection is reserved for use by accounts that have the SUPER privilege, such as root.\n\nMax Used Connections is the maximum number of connections that have been in use simultaneously since the server started.\n\nConnections is the number of connection attempts (successful or not) to the MySQL server.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -656,8 +656,8 @@
       "links": [
         {
           "targetBlank": true,
-          "title": "mariadb Server System Variables",
-          "url": "https://dev.mariadb.com/doc/refman/5.7/en/server-system-variables.html#sysvar_max_connections"
+          "title": "Mariadb Server System Variables",
+          "url": "https://dev.mysql.com/doc/refman/5.7/en/server-system-variables.html#sysvar_max_connections"
         }
       ],
       "options": {
@@ -687,7 +687,7 @@
           "datasourceErrors": {},
           "editorMode": "code",
           "errors": {},
-          "expr": "sum(max_over_time(mariadb_global_status_threads_connected{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__interval])) by (namespace,app_kubernetes_io_instance,pod)",
+          "expr": "sum(max_over_time(mysql_global_status_threads_connected{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__interval])) by (namespace,app_kubernetes_io_instance,pod)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -704,7 +704,7 @@
           },
           "datasourceErrors": {},
           "errors": {},
-          "expr": "sum(mariadb_global_status_max_used_connections{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
+          "expr": "sum(mysql_global_status_max_used_connections{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -721,7 +721,7 @@
           },
           "datasourceErrors": {},
           "errors": {},
-          "expr": "sum(mariadb_global_variables_max_connections{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
+          "expr": "sum(mysql_global_variables_max_connections{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -732,7 +732,7 @@
           "target": ""
         }
       ],
-      "title": "mariadb Connections",
+      "title": "Mariadb Connections",
       "type": "timeseries"
     },
     {
@@ -740,7 +740,7 @@
         "type": "prometheus",
         "uid": "$datasource"
       },
-      "description": "**mariadb Active Threads**\n\nThreads Connected is the number of open connections, while Threads Running is the number of threads not sleeping.",
+      "description": "**MySQL Active Threads**\n\nThreads Connected is the number of open connections, while Threads Running is the number of threads not sleeping.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -889,7 +889,7 @@
           "datasourceErrors": {},
           "editorMode": "code",
           "errors": {},
-          "expr": "sum(max_over_time(mariadb_global_status_threads_connected{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__interval])) by (namespace,app_kubernetes_io_instance,pod)",
+          "expr": "sum(max_over_time(mysql_global_status_threads_connected{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__interval])) by (namespace,app_kubernetes_io_instance,pod)",
           "format": "time_series",
           "hide": false,
           "interval": "",
@@ -908,7 +908,7 @@
           "datasourceErrors": {},
           "editorMode": "code",
           "errors": {},
-          "expr": "sum(max_over_time(mariadb_global_status_threads_running{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__interval])) by (namespace,app_kubernetes_io_instance,pod)",
+          "expr": "sum(max_over_time(mysql_global_status_threads_running{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__interval])) by (namespace,app_kubernetes_io_instance,pod)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -923,7 +923,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "sum(avg_over_time(mariadb_global_status_threads_running{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__interval])) by (namespace,app_kubernetes_io_instance,pod)",
+          "expr": "sum(avg_over_time(mysql_global_status_threads_running{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__interval])) by (namespace,app_kubernetes_io_instance,pod)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -933,7 +933,7 @@
           "step": 20
         }
       ],
-      "title": "mariadb Client Thread Activity",
+      "title": "Mariadb Client Thread Activity",
       "type": "timeseries"
     },
     {
@@ -941,7 +941,7 @@
         "type": "prometheus",
         "uid": "$datasource"
       },
-      "description": "**mariadb Thread Cache**\n\nThe thread_cache_size variable sets how many threads the server should cache to reuse. When a client disconnects, the client's threads are put in the cache if the cache is not full. It is autosized in mariadb 5.6.8 and above (capped to 100). Requests for threads are satisfied by reusing threads taken from the cache if possible, and only when the cache is empty is a new thread created.\n\n* *Threads_created*: The number of threads created to handle connections.\n* *Threads_cached*: The number of threads in the thread cache.",
+      "description": "**MySQL Thread Cache**\n\nThe thread_cache_size variable sets how many threads the server should cache to reuse. When a client disconnects, the client's threads are put in the cache if the cache is not full. It is autosized in MySQL 5.6.8 and above (capped to 100). Requests for threads are satisfied by reusing threads taken from the cache if possible, and only when the cache is empty is a new thread created.\n\n* *Threads_created*: The number of threads created to handle connections.\n* *Threads_cached*: The number of threads in the thread cache.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1020,7 +1020,7 @@
       "links": [
         {
           "title": "Tuning information",
-          "url": "https://dev.mariadb.com/doc/refman/5.6/en/server-system-variables.html#sysvar_thread_cache_size"
+          "url": "https://dev.mysql.com/doc/refman/5.6/en/server-system-variables.html#sysvar_thread_cache_size"
         }
       ],
       "options": {
@@ -1049,7 +1049,7 @@
           },
           "datasourceErrors": {},
           "errors": {},
-          "expr": "sum(mariadb_global_variables_thread_cache_size{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
+          "expr": "sum(mysql_global_variables_thread_cache_size{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -1065,7 +1065,7 @@
           },
           "datasourceErrors": {},
           "errors": {},
-          "expr": "sum(mariadb_global_status_threads_cached{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
+          "expr": "sum(mysql_global_status_threads_cached{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -1082,7 +1082,7 @@
           "datasourceErrors": {},
           "editorMode": "code",
           "errors": {},
-          "expr": "sum(rate(mariadb_global_status_threads_created{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
+          "expr": "sum(rate(mysql_global_status_threads_created{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -1093,14 +1093,14 @@
           "step": 20
         }
       ],
-      "title": "mariadb Thread Cache",
+      "title": "Mariadb Thread Cache",
       "type": "timeseries"
     },
     {
       "datasource": {
         "uid": "$datasource"
       },
-      "description": "**Aborted Connections**\n\nWhen a given host connects to mariadb and the connection is interrupted in the middle (for example due to bad credentials), mariadb keeps that info in a system table (since 5.6 this table is exposed in performance_schema).\n\nIf the amount of failed requests without a successful connection reaches the value of max_connect_errors, mariadbd assumes that something is wrong and blocks the host from further connection.\n\nTo allow connections from that host again, you need to issue the ``FLUSH HOSTS`` statement.",
+      "description": "**Aborted Connections**\n\nWhen a given host connects to MySQL and the connection is interrupted in the middle (for example due to bad credentials), MySQL keeps that info in a system table (since 5.6 this table is exposed in performance_schema).\n\nIf the amount of failed requests without a successful connection reaches the value of max_connect_errors, mysqld assumes that something is wrong and blocks the host from further connection.\n\nTo allow connections from that host again, you need to issue the ``FLUSH HOSTS`` statement.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1190,7 +1190,7 @@
           },
           "datasourceErrors": {},
           "errors": {},
-          "expr": "sum(rate(mariadb_global_status_aborted_connects{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
+          "expr": "sum(rate(mysql_global_status_aborted_connects{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -1206,7 +1206,7 @@
           },
           "datasourceErrors": {},
           "errors": {},
-          "expr": "sum(rate(mariadb_global_status_aborted_clients{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
+          "expr": "sum(rate(mysql_global_status_aborted_clients{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -1217,7 +1217,7 @@
           "target": ""
         }
       ],
-      "title": "mariadb Aborted Connections",
+      "title": "Mariadb Aborted Connections",
       "type": "timeseries"
     },
     {
@@ -1248,7 +1248,7 @@
       "datasource": {
         "uid": "$datasource"
       },
-      "description": "**mariadb Questions**\n\nThe number of statements executed by the server. This includes only statements sent to the server by clients and not statements executed within stored programs, unlike the Queries used in the QPS calculation. \n\nThis variable does not count the following commands:\n* ``COM_PING``\n* ``COM_STATISTICS``\n* ``COM_STMT_PREPARE``\n* ``COM_STMT_CLOSE``\n* ``COM_STMT_RESET``",
+      "description": "**MySQL Questions**\n\nThe number of statements executed by the server. This includes only statements sent to the server by clients and not statements executed within stored programs, unlike the Queries used in the QPS calculation. \n\nThis variable does not count the following commands:\n* ``COM_PING``\n* ``COM_STATISTICS``\n* ``COM_STMT_PREPARE``\n* ``COM_STMT_CLOSE``\n* ``COM_STMT_RESET``",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1314,8 +1314,8 @@
       "links": [
         {
           "targetBlank": true,
-          "title": "mariadb Queries and Questions",
-          "url": "https://www.percona.com/blog/2014/05/29/how-mariadb-queries-and-questions-are-measured/"
+          "title": "Mariadb Queries and Questions",
+          "url": "https://www.percona.com/blog/2014/05/29/how-mysql-queries-and-questions-are-measured/"
         }
       ],
       "options": {
@@ -1344,7 +1344,7 @@
           },
           "datasourceErrors": {},
           "errors": {},
-          "expr": "sum(rate(mariadb_global_status_questions{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
+          "expr": "sum(rate(mysql_global_status_questions{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -1354,14 +1354,14 @@
           "step": 20
         }
       ],
-      "title": "mariadb Questions",
+      "title": "Mariadb Questions",
       "type": "timeseries"
     },
     {
       "datasource": {
         "uid": "$datasource"
       },
-      "description": "**mariadb Slow Queries**\n\nSlow queries are defined as queries being slower than the long_query_time setting. For example, if you have long_query_time set to 3, all queries that take longer than 3 seconds to complete will show on this graph.",
+      "description": "**MySQL Slow Queries**\n\nSlow queries are defined as queries being slower than the long_query_time setting. For example, if you have long_query_time set to 3, all queries that take longer than 3 seconds to complete will show on this graph.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1451,7 +1451,7 @@
           },
           "datasourceErrors": {},
           "errors": {},
-          "expr": "sum(rate(mariadb_global_status_slow_queries{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
+          "expr": "sum(rate(mysql_global_status_slow_queries{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -1461,14 +1461,14 @@
           "step": 20
         }
       ],
-      "title": "mariadb Slow Queries",
+      "title": "Mariadb Slow Queries",
       "type": "timeseries"
     },
     {
       "datasource": {
         "uid": "$datasource"
       },
-      "description": "**mariadb Select Types**\n\nAs with most relational databases, selecting based on indexes is more efficient than scanning an entire table's data. Here we see the counters for selects not done with indexes.\n\n* ***Select Scan*** is how many queries caused full table scans, in which all the data in the table had to be read and either discarded or returned.\n* ***Select Range*** is how many queries used a range scan, which means mariadb scanned all rows in a given range.\n* ***Select Full Join*** is the number of joins that are not joined on an index, this is usually a huge performance hit.",
+      "description": "**MySQL Select Types**\n\nAs with most relational databases, selecting based on indexes is more efficient than scanning an entire table's data. Here we see the counters for selects not done with indexes.\n\n* ***Select Scan*** is how many queries caused full table scans, in which all the data in the table had to be read and either discarded or returned.\n* ***Select Range*** is how many queries used a range scan, which means MySQL scanned all rows in a given range.\n* ***Select Full Join*** is the number of joins that are not joined on an index, this is usually a huge performance hit.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1558,7 +1558,7 @@
           },
           "datasourceErrors": {},
           "errors": {},
-          "expr": "sum(rate(mariadb_global_status_select_full_join{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
+          "expr": "sum(rate(mysql_global_status_select_full_join{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -1574,7 +1574,7 @@
           },
           "datasourceErrors": {},
           "errors": {},
-          "expr": "sum(rate(mariadb_global_status_select_full_range_join{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
+          "expr": "sum(rate(mysql_global_status_select_full_range_join{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -1590,7 +1590,7 @@
           },
           "datasourceErrors": {},
           "errors": {},
-          "expr": "sum(rate(mariadb_global_status_select_range{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
+          "expr": "sum(rate(mysql_global_status_select_range{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -1606,7 +1606,7 @@
           },
           "datasourceErrors": {},
           "errors": {},
-          "expr": "sum(rate(mariadb_global_status_select_range_check{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
+          "expr": "sum(rate(mysql_global_status_select_range_check{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -1622,7 +1622,7 @@
           },
           "datasourceErrors": {},
           "errors": {},
-          "expr": "sum(rate(mariadb_global_status_select_scan{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
+          "expr": "sum(rate(mysql_global_status_select_scan{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -1632,14 +1632,14 @@
           "step": 20
         }
       ],
-      "title": "mariadb Select Types",
+      "title": "Mariadb Select Types",
       "type": "timeseries"
     },
     {
       "datasource": {
         "uid": "$datasource"
       },
-      "description": "**mariadb Sorts**\n\nDue to a query's structure, order, or other requirements, mariadb sorts the rows before returning them. For example, if a table is ordered 1 to 10 but you want the results reversed, mariadb then has to sort the rows to return 10 to 1.\n\nThis graph also shows when sorts had to scan a whole table or a given range of a table in order to return the results and which could not have been sorted via an index.",
+      "description": "**MySQL Sorts**\n\nDue to a query's structure, order, or other requirements, MySQL sorts the rows before returning them. For example, if a table is ordered 1 to 10 but you want the results reversed, MySQL then has to sort the rows to return 10 to 1.\n\nThis graph also shows when sorts had to scan a whole table or a given range of a table in order to return the results and which could not have been sorted via an index.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1729,7 +1729,7 @@
           },
           "datasourceErrors": {},
           "errors": {},
-          "expr": "sum(rate(mariadb_global_status_sort_rows{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
+          "expr": "sum(rate(mysql_global_status_sort_rows{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -1745,7 +1745,7 @@
           },
           "datasourceErrors": {},
           "errors": {},
-          "expr": "sum(rate(mariadb_global_status_sort_range{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
+          "expr": "sum(rate(mysql_global_status_sort_range{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -1761,7 +1761,7 @@
           },
           "datasourceErrors": {},
           "errors": {},
-          "expr": "sum(rate(mariadb_global_status_sort_merge_passes{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
+          "expr": "sum(rate(mysql_global_status_sort_merge_passes{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -1777,7 +1777,7 @@
           },
           "datasourceErrors": {},
           "errors": {},
-          "expr": "sum(rate(mariadb_global_status_sort_scan{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
+          "expr": "sum(rate(mysql_global_status_sort_scan{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -1787,7 +1787,7 @@
           "step": 20
         }
       ],
-      "title": "mariadb Sort Rows",
+      "title": "Mariadb Sort Rows",
       "type": "timeseries"
     },
     {
@@ -1883,7 +1883,7 @@
           },
           "datasourceErrors": {},
           "errors": {},
-          "expr": "sum(rate(mariadb_global_status_created_tmp_tables{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
+          "expr": "sum(rate(mysql_global_status_created_tmp_tables{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
           "interval": "",
           "intervalFactor": 1,
           "legendFormat": "Created Tmp Tables | {{namespace}} | {{app_kubernetes_io_instance}} | {{pod}}",
@@ -1898,7 +1898,7 @@
           },
           "datasourceErrors": {},
           "errors": {},
-          "expr": "sum(rate(mariadb_global_status_created_tmp_disk_tables{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
+          "expr": "sum(rate(mysql_global_status_created_tmp_disk_tables{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
           "interval": "",
           "intervalFactor": 1,
           "legendFormat": "Created Tmp Disk Tables | {{namespace}} | {{app_kubernetes_io_instance}} | {{pod}}",
@@ -1913,7 +1913,7 @@
           },
           "datasourceErrors": {},
           "errors": {},
-          "expr": "sum(rate(mariadb_global_status_created_tmp_files{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
+          "expr": "sum(rate(mysql_global_status_created_tmp_files{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
           "interval": "",
           "intervalFactor": 1,
           "legendFormat": "Created Tmp Files | {{namespace}} | {{app_kubernetes_io_instance}} | {{pod}}",
@@ -1922,7 +1922,7 @@
           "step": 20
         }
       ],
-      "title": "mariadb Temporary Objects",
+      "title": "Mariadb Temporary Objects",
       "type": "timeseries"
     },
     {
@@ -1943,7 +1943,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "description": "**Top Command Counters**\n\nThe Com_{{xxx}} statement counter variables indicate the number of times each xxx statement has been executed. There is one status variable for each type of statement. For example, Com_delete and Com_update count [``DELETE``](https://dev.mariadb.com/doc/refman/5.7/en/delete.html) and [``UPDATE``](https://dev.mariadb.com/doc/refman/5.7/en/update.html) statements, respectively. Com_delete_multi and Com_update_multi are similar but apply to [``DELETE``](https://dev.mariadb.com/doc/refman/5.7/en/delete.html) and [``UPDATE``](https://dev.mariadb.com/doc/refman/5.7/en/update.html) statements that use multiple-table syntax.",
+          "description": "**Top Command Counters**\n\nThe Com_{{xxx}} statement counter variables indicate the number of times each xxx statement has been executed. There is one status variable for each type of statement. For example, Com_delete and Com_update count [``DELETE``](https://dev.mysql.com/doc/refman/5.7/en/delete.html) and [``UPDATE``](https://dev.mysql.com/doc/refman/5.7/en/update.html) statements, respectively. Com_delete_multi and Com_update_multi are similar but apply to [``DELETE``](https://dev.mysql.com/doc/refman/5.7/en/delete.html) and [``UPDATE``](https://dev.mysql.com/doc/refman/5.7/en/update.html) statements that use multiple-table syntax.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1986,8 +1986,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -2009,7 +2008,7 @@
           "links": [
             {
               "title": "Server Status Variables (Com_xxx)",
-              "url": "https://dev.mariadb.com/doc/refman/5.7/en/server-status-variables.html#statvar_Com_xxx"
+              "url": "https://dev.mysql.com/doc/refman/5.7/en/server-status-variables.html#statvar_Com_xxx"
             }
           ],
           "options": {
@@ -2039,7 +2038,7 @@
               "datasourceErrors": {},
               "editorMode": "code",
               "errors": {},
-              "expr": "topk(15, rate(mariadb_global_status_commands_total{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])>0)",
+              "expr": "topk(15, rate(mysql_global_status_commands_total{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])>0)",
               "format": "time_series",
               "hide": false,
               "interval": "",
@@ -2059,7 +2058,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "description": "**mariadb Handlers**\n\nHandler statistics are internal statistics on how mariadb is selecting, updating, inserting, and modifying rows, tables, and indexes.\n\nThis is in fact the layer between the Storage Engine and mariadb.\n\n* `read_rnd_next` is incremented when the server performs a full table scan and this is a counter you don't really want to see with a high value.\n* `read_key` is incremented when a read is done with an index.\n* `read_next` is incremented when the storage engine is asked to 'read the next index entry'. A high value means a lot of index scans are being done.",
+          "description": "**MySQL Handlers**\n\nHandler statistics are internal statistics on how MySQL is selecting, updating, inserting, and modifying rows, tables, and indexes.\n\nThis is in fact the layer between the Storage Engine and MySQL.\n\n* `read_rnd_next` is incremented when the server performs a full table scan and this is a counter you don't really want to see with a high value.\n* `read_key` is incremented when a read is done with an index.\n* `read_next` is incremented when the storage engine is asked to 'read the next index entry'. A high value means a lot of index scans are being done.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -2102,8 +2101,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -2150,7 +2148,7 @@
               "datasourceErrors": {},
               "editorMode": "code",
               "errors": {},
-              "expr": "sum(rate(mariadb_global_status_handlers_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",handler!~\"commit|rollback|savepoint.*|prepare\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod,handler)",
+              "expr": "sum(rate(mysql_global_status_handlers_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",handler!~\"commit|rollback|savepoint.*|prepare\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod,handler)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -2161,7 +2159,7 @@
               "step": 20
             }
           ],
-          "title": "mariadb Handlers",
+          "title": "Mariadb Handlers",
           "type": "timeseries"
         },
         {
@@ -2211,8 +2209,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -2259,7 +2256,7 @@
               "datasourceErrors": {},
               "editorMode": "code",
               "errors": {},
-              "expr": "sum(rate(mariadb_global_status_handlers_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",handler=~\"commit|rollback|savepoint.*|prepare\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod,handler)",
+              "expr": "sum(rate(mysql_global_status_handlers_total{namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",handler=~\"commit|rollback|savepoint.*|prepare\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod,handler)",
               "interval": "",
               "intervalFactor": 1,
               "legendFormat": "{{ handler }} | {{namespace}} | {{app_kubernetes_io_instance}} | {{pod}}",
@@ -2269,7 +2266,7 @@
               "step": 20
             }
           ],
-          "title": "mariadb Transaction Handlers",
+          "title": "Mariadb Transaction Handlers",
           "type": "timeseries"
         }
       ],
@@ -2299,7 +2296,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "description": "**mariadb Network Traffic**\n\nHere we can see how much network traffic is generated by mariadb. Outbound is network traffic sent from mariadb and Inbound is network traffic mariadb has received.",
+          "description": "**MySQL Network Traffic**\n\nHere we can see how much network traffic is generated by MySQL. Outbound is network traffic sent from MySQL and Inbound is network traffic MySQL has received.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -2342,8 +2339,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -2390,7 +2386,7 @@
               "datasourceErrors": {},
               "editorMode": "code",
               "errors": {},
-              "expr": "sum(rate(mariadb_global_status_bytes_received{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
+              "expr": "sum(rate(mysql_global_status_bytes_received{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -2408,7 +2404,7 @@
               "datasourceErrors": {},
               "editorMode": "code",
               "errors": {},
-              "expr": "sum(rate(mariadb_global_status_bytes_sent{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
+              "expr": "sum(rate(mysql_global_status_bytes_sent{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -2487,8 +2483,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -2530,7 +2525,7 @@
           "links": [
             {
               "title": "Detailed descriptions about metrics",
-              "url": "https://www.percona.com/doc/percona-monitoring-and-management/dashboard.mariadb-overview.html#mariadb-internal-memory-overview"
+              "url": "https://www.percona.com/doc/percona-monitoring-and-management/dashboard.mysql-overview.html#mysql-internal-memory-overview"
             }
           ],
           "options": {
@@ -2557,7 +2552,7 @@
                 "uid": "$datasource"
               },
               "editorMode": "code",
-              "expr": "sum(rate(mariadb_global_status_innodb_buffer_pool_read_requests{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
+              "expr": "sum(rate(mysql_global_status_innodb_buffer_pool_read_requests{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -2618,8 +2613,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -2661,7 +2655,7 @@
           "links": [
             {
               "title": "Detailed descriptions about metrics",
-              "url": "https://www.percona.com/doc/percona-monitoring-and-management/dashboard.mariadb-overview.html#mariadb-internal-memory-overview"
+              "url": "https://www.percona.com/doc/percona-monitoring-and-management/dashboard.mysql-overview.html#mysql-internal-memory-overview"
             }
           ],
           "options": {
@@ -2688,7 +2682,7 @@
                 "uid": "$datasource"
               },
               "editorMode": "code",
-              "expr": "sum(rate(mariadb_global_status_innodb_buffer_pool_reads{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
+              "expr": "sum(rate(mysql_global_status_innodb_buffer_pool_reads{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -2749,8 +2743,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -2792,7 +2785,7 @@
           "links": [
             {
               "title": "Detailed descriptions about metrics",
-              "url": "https://www.percona.com/doc/percona-monitoring-and-management/dashboard.mariadb-overview.html#mariadb-internal-memory-overview"
+              "url": "https://www.percona.com/doc/percona-monitoring-and-management/dashboard.mysql-overview.html#mysql-internal-memory-overview"
             }
           ],
           "options": {
@@ -2819,7 +2812,7 @@
                 "uid": "$datasource"
               },
               "editorMode": "code",
-              "expr": "sum(rate(mariadb_global_status_innodb_buffer_pool_write_requests{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
+              "expr": "sum(rate(mysql_global_status_innodb_buffer_pool_write_requests{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -2880,8 +2873,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -2923,7 +2915,7 @@
           "links": [
             {
               "title": "Detailed descriptions about metrics",
-              "url": "https://www.percona.com/doc/percona-monitoring-and-management/dashboard.mariadb-overview.html#mariadb-internal-memory-overview"
+              "url": "https://www.percona.com/doc/percona-monitoring-and-management/dashboard.mysql-overview.html#mysql-internal-memory-overview"
             }
           ],
           "options": {
@@ -2950,7 +2942,7 @@
                 "uid": "$datasource"
               },
               "editorMode": "code",
-              "expr": "mariadb_global_status_innodb_page_size{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"} * on (namespace,app_kubernetes_io_instance,pod) mariadb_global_status_buffer_pool_pages{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\", state=\"data\",job=\"$job\"}",
+              "expr": "mysql_global_status_innodb_page_size{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"} * on (namespace,app_kubernetes_io_instance,pod) mysql_global_status_buffer_pool_pages{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\", state=\"data\",job=\"$job\"}",
               "format": "time_series",
               "hide": false,
               "interval": "",
@@ -2965,7 +2957,7 @@
                 "uid": "$datasource"
               },
               "editorMode": "code",
-              "expr": "mariadb_global_status_innodb_page_size{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"} * on (namespace,app_kubernetes_io_instance,pod) mariadb_global_status_buffer_pool_pages{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\", state=\"free\",job=\"$job\"}",
+              "expr": "mysql_global_status_innodb_page_size{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"} * on (namespace,app_kubernetes_io_instance,pod) mysql_global_status_buffer_pool_pages{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\", state=\"free\",job=\"$job\"}",
               "format": "time_series",
               "hide": false,
               "interval": "",
@@ -2980,7 +2972,7 @@
                 "uid": "$datasource"
               },
               "editorMode": "code",
-              "expr": "mariadb_global_status_innodb_page_size{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"} * on (namespace,app_kubernetes_io_instance,pod) mariadb_global_status_buffer_pool_pages{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\", state=\"dirty\",job=\"$job\"}",
+              "expr": "mysql_global_status_innodb_page_size{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"} * on (namespace,app_kubernetes_io_instance,pod) mysql_global_status_buffer_pool_pages{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\", state=\"dirty\",job=\"$job\"}",
               "format": "time_series",
               "hide": false,
               "interval": "",
@@ -2995,7 +2987,7 @@
                 "uid": "$datasource"
               },
               "editorMode": "code",
-              "expr": "mariadb_global_status_innodb_page_size{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"} * on (namespace,app_kubernetes_io_instance,pod) mariadb_global_status_buffer_pool_pages{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\", state=\"misc\",job=\"$job\"}",
+              "expr": "mysql_global_status_innodb_page_size{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"} * on (namespace,app_kubernetes_io_instance,pod) mysql_global_status_buffer_pool_pages{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\", state=\"misc\",job=\"$job\"}",
               "format": "time_series",
               "hide": false,
               "interval": "",
@@ -3010,7 +3002,7 @@
                 "uid": "$datasource"
               },
               "editorMode": "code",
-              "expr": "mariadb_global_status_innodb_page_size{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"} * on (namespace,app_kubernetes_io_instance,pod) mariadb_global_status_buffer_pool_dirty_pages{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}",
+              "expr": "mysql_global_status_innodb_page_size{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"} * on (namespace,app_kubernetes_io_instance,pod) mysql_global_status_buffer_pool_dirty_pages{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}",
               "format": "time_series",
               "hide": false,
               "interval": "",
@@ -3072,8 +3064,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -3115,7 +3106,7 @@
           "links": [
             {
               "title": "Detailed descriptions about metrics",
-              "url": "https://www.percona.com/doc/percona-monitoring-and-management/dashboard.mariadb-overview.html#mariadb-internal-memory-overview"
+              "url": "https://www.percona.com/doc/percona-monitoring-and-management/dashboard.mysql-overview.html#mysql-internal-memory-overview"
             }
           ],
           "options": {
@@ -3142,7 +3133,7 @@
                 "uid": "$datasource"
               },
               "editorMode": "code",
-              "expr": "sum(mariadb_global_variables_innodb_log_buffer_size{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
+              "expr": "sum(mysql_global_variables_innodb_log_buffer_size{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -3155,7 +3146,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "sum(mariadb_global_variables_innodb_additional_mem_pool_size{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
+              "expr": "sum(mysql_global_variables_innodb_additional_mem_pool_size{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -3168,7 +3159,7 @@
                 "uid": "$datasource"
               },
               "editorMode": "code",
-              "expr": "sum(mariadb_global_status_innodb_mem_dictionary{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
+              "expr": "sum(mysql_global_status_innodb_mem_dictionary{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -3181,7 +3172,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "sum(mariadb_global_variables_key_buffer_size{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
+              "expr": "sum(mysql_global_variables_key_buffer_size{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -3193,7 +3184,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "sum(mariadb_global_variables_query_cache_size{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
+              "expr": "sum(mysql_global_variables_query_cache_size{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -3205,7 +3196,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "sum(mariadb_global_status_innodb_mem_adaptive_hash{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
+              "expr": "sum(mysql_global_status_innodb_mem_adaptive_hash{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -3217,7 +3208,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "sum(mariadb_global_variables_tokudb_cache_size{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
+              "expr": "sum(mysql_global_variables_tokudb_cache_size{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -3255,7 +3246,7 @@
           "datasource": {
             "uid": "$datasource"
           },
-          "description": "**Table Locks**\n\nmariadb takes a number of different locks for varying reasons. In this graph we see how many Table level locks mariadb has requested from the storage engine. In the case of InnoDB, many times the locks could actually be row locks as it only takes table level locks in a few specific cases.\n\nIt is most useful to compare Locks Immediate and Locks Waited. If Locks waited is rising, it means you have lock contention. Otherwise, Locks Immediate rising and falling is normal activity.",
+          "description": "**Table Locks**\n\nMySQL takes a number of different locks for varying reasons. In this graph we see how many Table level locks MySQL has requested from the storage engine. In the case of InnoDB, many times the locks could actually be row locks as it only takes table level locks in a few specific cases.\n\nIt is most useful to compare Locks Immediate and Locks Waited. If Locks waited is rising, it means you have lock contention. Otherwise, Locks Immediate rising and falling is normal activity.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -3298,8 +3289,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -3345,7 +3335,7 @@
               },
               "datasourceErrors": {},
               "errors": {},
-              "expr": "sum(rate(mariadb_global_status_table_locks_immediate{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
+              "expr": "sum(rate(mysql_global_status_table_locks_immediate{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -3361,7 +3351,7 @@
               },
               "datasourceErrors": {},
               "errors": {},
-              "expr": "sum(rate(mariadb_global_status_table_locks_waited{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
+              "expr": "sum(rate(mysql_global_status_table_locks_waited{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -3371,7 +3361,7 @@
               "step": 20
             }
           ],
-          "title": "mariadb Table Locks",
+          "title": "Mariadb Table Locks",
           "type": "timeseries"
         },
         {
@@ -3422,8 +3412,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -3465,7 +3454,7 @@
           "links": [
             {
               "title": "Detailed descriptions about metrics",
-              "url": "https://www.percona.com/doc/percona-monitoring-and-management/dashboard.mariadb-overview.html#mariadb-internal-memory-overview"
+              "url": "https://www.percona.com/doc/percona-monitoring-and-management/dashboard.mysql-overview.html#mysql-internal-memory-overview"
             }
           ],
           "options": {
@@ -3492,7 +3481,7 @@
                 "uid": "$datasource"
               },
               "editorMode": "code",
-              "expr": "sum(rate(mariadb_global_status_innodb_row_lock_waits{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
+              "expr": "sum(rate(mysql_global_status_innodb_row_lock_waits{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -3553,8 +3542,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -3596,7 +3584,7 @@
           "links": [
             {
               "title": "Detailed descriptions about metrics",
-              "url": "https://www.percona.com/doc/percona-monitoring-and-management/dashboard.mariadb-overview.html#mariadb-internal-memory-overview"
+              "url": "https://www.percona.com/doc/percona-monitoring-and-management/dashboard.mysql-overview.html#mysql-internal-memory-overview"
             }
           ],
           "options": {
@@ -3623,7 +3611,7 @@
                 "uid": "$datasource"
               },
               "editorMode": "code",
-              "expr": "sum(rate(mariadb_global_status_innodb_row_lock_time{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod) / sum(rate(mariadb_global_status_innodb_row_lock_waits{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
+              "expr": "sum(rate(mysql_global_status_innodb_row_lock_time{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod) / sum(rate(mysql_global_status_innodb_row_lock_waits{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -3700,8 +3688,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -3748,7 +3735,7 @@
               "datasourceErrors": {},
               "editorMode": "code",
               "errors": {},
-              "expr": "sum(mariadb_global_status_open_files{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
+              "expr": "sum(mysql_global_status_open_files{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
               "interval": "",
               "intervalFactor": 1,
               "legendFormat": "Open Files | {{namespace}} | {{app_kubernetes_io_instance}} | {{pod}}",
@@ -3764,7 +3751,7 @@
               },
               "datasourceErrors": {},
               "errors": {},
-              "expr": "sum(mariadb_global_variables_open_files_limit{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
+              "expr": "sum(mysql_global_variables_open_files_limit{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
               "interval": "",
               "intervalFactor": 1,
               "legendFormat": "Open Files Limit | {{namespace}} | {{app_kubernetes_io_instance}} | {{pod}}",
@@ -3776,7 +3763,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "sum(mariadb_global_status_innodb_num_open_files{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
+              "expr": "sum(mysql_global_status_innodb_num_open_files{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
               "interval": "",
               "intervalFactor": 1,
               "legendFormat": "InnoDB Open Files | {{namespace}} | {{app_kubernetes_io_instance}} | {{pod}}",
@@ -3784,7 +3771,7 @@
               "step": 20
             }
           ],
-          "title": "mariadb Open Files",
+          "title": "Mariadb Open Files",
           "type": "timeseries"
         },
         {
@@ -3792,7 +3779,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "description": "**mariadb Open Tables**\n\nThe recommendation is to set the `table_open_cache_instances` to a loose correlation to virtual CPUs, keeping in mind that more instances means the cache is split more times. If you have a cache set to 500 but it has 10 instances, each cache will only have 50 cached.\n\nThe `table_definition_cache` and `table_open_cache` can be left as default as they are auto-sized mariadb 5.6 and above (ie: do not set them to any value).",
+          "description": "**MySQL Open Tables**\n\nThe recommendation is to set the `table_open_cache_instances` to a loose correlation to virtual CPUs, keeping in mind that more instances means the cache is split more times. If you have a cache set to 500 but it has 10 instances, each cache will only have 50 cached.\n\nThe `table_definition_cache` and `table_open_cache` can be left as default as they are auto-sized MySQL 5.6 and above (ie: do not set them to any value).",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -3835,8 +3822,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -3858,7 +3844,7 @@
           "links": [
             {
               "title": "Server Status Variables (table_open_cache)",
-              "url": "http://dev.mariadb.com/doc/refman/5.6/en/server-system-variables.html#sysvar_table_open_cache"
+              "url": "http://dev.mysql.com/doc/refman/5.6/en/server-system-variables.html#sysvar_table_open_cache"
             }
           ],
           "options": {
@@ -3888,7 +3874,7 @@
               "datasourceErrors": {},
               "editorMode": "code",
               "errors": {},
-              "expr": "sum(mariadb_global_status_open_tables{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
+              "expr": "sum(mysql_global_status_open_tables{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -3905,7 +3891,7 @@
               },
               "datasourceErrors": {},
               "errors": {},
-              "expr": "sum(mariadb_global_variables_table_open_cache{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
+              "expr": "sum(mysql_global_variables_table_open_cache{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -3915,14 +3901,14 @@
               "step": 20
             }
           ],
-          "title": "mariadb Open Tables",
+          "title": "Mariadb Open Tables",
           "type": "timeseries"
         },
         {
           "datasource": {
             "uid": "$datasource"
           },
-          "description": "**mariadb Table Definition Cache**\n\nThe recommendation is to set the `table_open_cache_instances` to a loose correlation to virtual CPUs, keeping in mind that more instances means the cache is split more times. If you have a cache set to 500 but it has 10 instances, each cache will only have 50 cached.\n\nThe `table_definition_cache` and `table_open_cache` can be left as default as they are auto-sized mariadb 5.6 and above (ie: do not set them to any value).",
+          "description": "**MySQL Table Definition Cache**\n\nThe recommendation is to set the `table_open_cache_instances` to a loose correlation to virtual CPUs, keeping in mind that more instances means the cache is split more times. If you have a cache set to 500 but it has 10 instances, each cache will only have 50 cached.\n\nThe `table_definition_cache` and `table_open_cache` can be left as default as they are auto-sized MySQL 5.6 and above (ie: do not set them to any value).",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -3965,8 +3951,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -3988,7 +3973,7 @@
           "links": [
             {
               "title": "Server Status Variables (table_open_cache)",
-              "url": "http://dev.mariadb.com/doc/refman/5.6/en/server-system-variables.html#sysvar_table_open_cache"
+              "url": "http://dev.mysql.com/doc/refman/5.6/en/server-system-variables.html#sysvar_table_open_cache"
             }
           ],
           "options": {
@@ -4017,7 +4002,7 @@
               },
               "datasourceErrors": {},
               "errors": {},
-              "expr": "sum(mariadb_global_status_open_table_definitions{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
+              "expr": "sum(mysql_global_status_open_table_definitions{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -4033,7 +4018,7 @@
               },
               "datasourceErrors": {},
               "errors": {},
-              "expr": "sum(mariadb_global_variables_table_definition_cache{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
+              "expr": "sum(mysql_global_variables_table_definition_cache{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -4046,7 +4031,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "sum(rate(mariadb_global_status_opened_table_definitions{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
+              "expr": "sum(rate(mysql_global_status_opened_table_definitions{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -4055,7 +4040,7 @@
               "step": 20
             }
           ],
-          "title": "mariadb Table Definition Cache",
+          "title": "Mariadb Table Definition Cache",
           "type": "timeseries"
         },
         {
@@ -4063,7 +4048,7 @@
             "type": "prometheus",
             "uid": "$datasource"
           },
-          "description": "**mariadb Table Open Cache**\n\nThe recommendation is to set the `table_open_cache_instances` to a loose correlation to virtual CPUs, keeping in mind that more instances means the cache is split more times. If you have a cache set to 500 but it has 10 instances, each cache will only have 50 cached.\n\nThe `table_definition_cache` and `table_open_cache` can be left as default as they are auto-sized mariadb 5.6 and above (ie: do not set them to any value).",
+          "description": "**MySQL Table Open Cache**\n\nThe recommendation is to set the `table_open_cache_instances` to a loose correlation to virtual CPUs, keeping in mind that more instances means the cache is split more times. If you have a cache set to 500 but it has 10 instances, each cache will only have 50 cached.\n\nThe `table_definition_cache` and `table_open_cache` can be left as default as they are auto-sized MySQL 5.6 and above (ie: do not set them to any value).",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -4106,8 +4091,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -4129,7 +4113,7 @@
           "links": [
             {
               "title": "Server Status Variables (table_open_cache)",
-              "url": "http://dev.mariadb.com/doc/refman/5.6/en/server-system-variables.html#sysvar_table_open_cache"
+              "url": "http://dev.mysql.com/doc/refman/5.6/en/server-system-variables.html#sysvar_table_open_cache"
             }
           ],
           "options": {
@@ -4156,7 +4140,7 @@
                 "uid": "$datasource"
               },
               "editorMode": "code",
-              "expr": "sum(rate(mariadb_global_status_table_open_cache_hits{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
+              "expr": "sum(rate(mysql_global_status_table_open_cache_hits{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -4170,7 +4154,7 @@
                 "uid": "$datasource"
               },
               "editorMode": "code",
-              "expr": "sum(rate(mariadb_global_status_table_open_cache_misses{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
+              "expr": "sum(rate(mysql_global_status_table_open_cache_misses{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -4184,7 +4168,7 @@
                 "uid": "$datasource"
               },
               "editorMode": "code",
-              "expr": "sum(rate(mariadb_global_status_table_open_cache_overflows{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
+              "expr": "sum(rate(mysql_global_status_table_open_cache_overflows{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}[$__rate_interval])) by (namespace,app_kubernetes_io_instance,pod)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -4194,7 +4178,7 @@
               "step": 20
             }
           ],
-          "title": "mariadb Table Open Cache",
+          "title": "Mariadb Table Open Cache",
           "type": "timeseries"
         }
       ],
@@ -4267,8 +4251,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -4315,7 +4298,7 @@
               "datasourceErrors": {},
               "editorMode": "code",
               "errors": {},
-              "expr": "sum(mariadb_info_schema_wesql_consensus_commit_index{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod,instance_role)",
+              "expr": "sum(mysql_info_schema_wesql_consensus_commit_index{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod,instance_role)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -4377,8 +4360,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -4425,7 +4407,7 @@
               "datasourceErrors": {},
               "editorMode": "code",
               "errors": {},
-              "expr": "sum(mariadb_info_schema_wesql_consensus_last_log_index{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod,instance_role)",
+              "expr": "sum(mysql_info_schema_wesql_consensus_last_log_index{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod,instance_role)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -4487,8 +4469,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -4535,7 +4516,7 @@
               "datasourceErrors": {},
               "editorMode": "code",
               "errors": {},
-              "expr": "sum(mariadb_info_schema_wesql_consensus_last_apply_index{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod,instance_role)",
+              "expr": "sum(mysql_info_schema_wesql_consensus_last_apply_index{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod,instance_role)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -4597,8 +4578,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -4645,7 +4625,7 @@
               "datasourceErrors": {},
               "editorMode": "code",
               "errors": {},
-              "expr": "sum(mariadb_info_schema_wesql_consensus_current_term{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod,instance_role)",
+              "expr": "sum(mysql_info_schema_wesql_consensus_current_term{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod,instance_role)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -4707,8 +4687,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -4755,7 +4734,7 @@
               "datasourceErrors": {},
               "editorMode": "code",
               "errors": {},
-              "expr": "sum(mariadb_info_schema_wesql_consensus_last_log_term{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod,instance_role)",
+              "expr": "sum(mysql_info_schema_wesql_consensus_last_log_term{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\",job=\"$job\"}) by (namespace,app_kubernetes_io_instance,pod,instance_role)",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 1,
@@ -4770,7 +4749,7 @@
           "type": "timeseries"
         }
       ],
-      "title": "ApeCloud mariadb Consensus",
+      "title": "ApeCloud MySQL Consensus",
       "type": "row"
     }
   ],
@@ -4778,14 +4757,14 @@
   "schemaVersion": 37,
   "style": "dark",
   "tags": [
-    "mariadb",
+    "mysql",
     "db"
   ],
   "templating": {
     "list": [
       {
         "current": {
-          "selected": false,
+          "selected": true,
           "text": "default",
           "value": "default"
         },
@@ -4817,7 +4796,7 @@
           "type": "prometheus",
           "uid": "$datasource"
         },
-        "definition": "label_values(mariadb_up{job=\"$job\"}, namespace)",
+        "definition": "label_values(mysql_up{job=\"$job\"}, namespace)",
         "hide": 0,
         "includeAll": true,
         "label": "namespace",
@@ -4825,7 +4804,7 @@
         "name": "namespace",
         "options": [],
         "query": {
-          "query": "label_values(mariadb_up{job=\"$job\"}, namespace)",
+          "query": "label_values(mysql_up{job=\"$job\"}, namespace)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 1,
@@ -4842,17 +4821,17 @@
         "current": {
           "selected": true,
           "text": [
-            "All"
+            "mycluster"
           ],
           "value": [
-            "$__all"
+            "mycluster"
           ]
         },
         "datasource": {
           "type": "prometheus",
           "uid": "$datasource"
         },
-        "definition": "label_values(mariadb_up{job=\"$job\"}, app_kubernetes_io_instance)",
+        "definition": "label_values(mysql_up{job=\"$job\"}, app_kubernetes_io_instance)",
         "hide": 0,
         "includeAll": true,
         "label": "cluster",
@@ -4860,7 +4839,7 @@
         "name": "cluster",
         "options": [],
         "query": {
-          "query": "label_values(mariadb_up{job=\"$job\"}, app_kubernetes_io_instance)",
+          "query": "label_values(mysql_up{job=\"$job\"}, app_kubernetes_io_instance)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 1,
@@ -4877,17 +4856,17 @@
         "current": {
           "selected": true,
           "text": [
-            "All"
+            "mycluster-mariadb-compdef-0"
           ],
           "value": [
-            "$__all"
+            "mycluster-mariadb-compdef-0"
           ]
         },
         "datasource": {
           "type": "prometheus",
           "uid": "$datasource"
         },
-        "definition": "label_values(mariadb_up{job=\"$job\",namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\"}, pod)",
+        "definition": "label_values(mysql_up{job=\"$job\",namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\"}, pod)",
         "hide": 0,
         "includeAll": true,
         "label": "instance",
@@ -4895,7 +4874,7 @@
         "name": "instance",
         "options": [],
         "query": {
-          "query": "label_values(mariadb_up{job=\"$job\",namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\"}, pod)",
+          "query": "label_values(mysql_up{job=\"$job\",namespace=~\"$namespace\",app_kubernetes_io_instance=~\"$cluster\"}, pod)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 2,
