@@ -124,9 +124,12 @@ jobs:
   get-addons-chart-dir:
     if: ${{ inputs.chart_dir == '' }}
     runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.get_addons_chart_dir.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
       - name: get addons chart dir
+        id: get_addons_chart_dir
         run: |
           addons_list=$(ls addons)
           ADDONS_DIR=""
