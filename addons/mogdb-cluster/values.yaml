@@ -4,7 +4,7 @@
 
 ## @param version OpenGauss cluster version
 ##
-version: mogdb-3.0.3
+version: mogdb-5.0.5
 
 ## @param mode postgresql cluster topology mode, standalone, replication
 ##
