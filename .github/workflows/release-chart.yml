@@ -16,14 +16,21 @@ on:
           - apecloud-postgresql-cluster
           - clickhouse
           - clickhouse-cluster
+          - doris
+          - doris-cluster
           - elasticsearch
           - elasticsearch-cluster
           - etcd
           - etcd-cluster
+          - flink
+          - flink-cluster
           - foxlake
           - foxlake-cluster
           - greptimedb
           - greptimedb-cluster
+          - halo
+          - halo-cluster
+          - influxdb
           - kafka
           - kafka-cluster
           - llm
@@ -32,6 +39,10 @@ on:
           - mariadb-cluster
           - milvus
           - milvus-cluster
+          - minio
+          - minio-cluster
+          - mogdb
+          - mogdb-cluster
           - mongodb
           - mongodb-cluster
           - mongodb-sharding-cluster
@@ -126,7 +137,9 @@ jobs:
                       orioledb, orioledb-cluster, polardbx, polardbx-cluster, postgresql, postgresql-cluster,
                       pulsar, pulsar-cluster, qdrant, qdrant-cluster, redis, redis-cluster, risingwave, risingwave-cluster,
                       starrocks, starrocks-cluster, tdengine, tdengine-cluster, tidb, tidb-cluster, weaviate,
-                      weaviate-cluster, xinference, xinference-cluster, zookeeper, zookeeper-cluster ]
+                      weaviate-cluster, xinference, xinference-cluster, zookeeper, zookeeper-cluster,
+                      mogdb, mogdb-cluster, doris, doris-cluster, flink, flink-cluster, halo, halo-cluster,
+                      influxdb, minio, minio-cluster ]
     uses: apecloud/apecloud-cd/.github/workflows/release-charts-jihu.yml@v0.1.52
     with:
       VERSION: "${{ inputs.chart_version }}"
