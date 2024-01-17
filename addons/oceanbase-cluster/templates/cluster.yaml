@@ -13,7 +13,8 @@ spec:
   # {{- include "kblib.affinity" . | indent 2 }}
   {{- if gt (int .Values.obClusters) 1 }}
   services:
-    - name: rw-svc
+    - name: ob-rw-svc
+      serviceName: ob-rw-svc
       spec:
         ports:
           - name: sql

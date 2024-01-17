@@ -379,7 +379,7 @@ items:
   metadata:
     name: oceanbase-configserver
     labels:
-      {{- include "oceanbase.labels" . | nindent 4 }}
+      {{- include "oceanbase.labels" . | nindent 6 }}
   spec:
     provider: community
     serviceVersion: 4.2.0
@@ -412,6 +412,56 @@ items:
           env:
             - name: DATABASE_TYPE
               value: sqlite3
+          resources:
+            limits:
+              memory: 1Gi
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+- apiVersion: apps.kubeblocks.io/v1alpha1
+  kind: ComponentDefinition
+  metadata:
+    name: oceanbase-proxy
+    labels:
+      {{- include "oceanbase.labels" . | nindent 6 }}
+  spec:
+    provider: community
+    serviceVersion: 4.2.1
+    # services:
+    #   - name: obproxy
+    #     serviceName: obproxy
+    #     spec:
+    #       ports:
+    #         - name: sql
+    #           port: 2883
+    #           targetPort: sql
+    scripts:
+      - name: ob-proxy-scripts
+        templateRef: ob-proxy-scripts
+        namespace: {{ .Release.Namespace }}
+        volumeName: scripts
+        defaultMode: 0555
+    runtime:
+      containers:
+        - name: obproxy
+          image: oceanbase/obproxy-ce:4.2.1.0-11
+          command:
+            - bash
+            - -c
+            - |
+              /scripts/obproxy.sh
+          ports:
+            - containerPort: 2883
+              name: "sql"
+            - containerPort: 2884
+              name: "prometheus"
+          env:
+            - name: APP_NAME
+              value: $(KB_CLUSTER_COMP_NAME)
+            - name: PROXYRO_PASSWORD
+              value: ""
+            - name: OBPROXY_ROOT
+              value: /home/admin/obproxy
           resources:
             limits:
               memory: 1Gi
