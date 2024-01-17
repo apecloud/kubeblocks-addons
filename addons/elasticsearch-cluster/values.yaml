@@ -55,10 +55,6 @@ persistence:
     storageClassName:
     size: 1Gi
 
-metrics:
-  resources: {}
-  replicaCount: 1
-
 serviceAccount:
   name:
 
