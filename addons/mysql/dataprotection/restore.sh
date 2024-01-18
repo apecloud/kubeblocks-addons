@@ -10,15 +10,12 @@ mkdir -p ${TMP_DIR} && cd ${TMP_DIR}
 xbstreamFile="${DP_BACKUP_NAME}.xbstream.zst"
 if [ "$(datasafed list ${xbstreamFile})" == "${xbstreamFile}" ]; then
   datasafed pull -d zstd "${xbstreamFile}" - | xbstream -x
-  xtrabackup --decompress --remove-original --target-dir=${TMP_DIR}
-  xtrabackup --prepare --target-dir=${TMP_DIR}
-  xtrabackup --move-back --target-dir=${TMP_DIR} --datadir=${DATA_DIR}/
 else
   datasafed pull "${DP_BACKUP_NAME}.xbstream" - | xbstream -x
-  xtrabackup --decompress --remove-original --target-dir=${TMP_DIR}
-  xtrabackup --prepare --target-dir=${TMP_DIR}
-  xtrabackup --move-back --target-dir=${TMP_DIR} --datadir=${DATA_DIR}/
 fi
+xtrabackup --decompress --remove-original --target-dir=${TMP_DIR}
+xtrabackup --prepare --target-dir=${TMP_DIR}
+xtrabackup --move-back --target-dir=${TMP_DIR} --datadir=${DATA_DIR}/
 
 rm -rf ${TMP_DIR}
 chmod -R 0777 ${DATA_DIR}
