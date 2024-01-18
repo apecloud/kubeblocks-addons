@@ -4,7 +4,8 @@ set -e
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH=${DP_BACKUP_BASE_PATH}
 noArchivedTenantsFiles="no_archived_tenants.dp"
-sql_port_file=/home/admin/workdir/sql_port.ob
+endTimeInfoFile="kb_end_time.info"
+sql_port_file="/home/admin/workdir/sql_port.ob"
 sql_port=2881
 if [[ -f ${sql_port_file} ]];then
   sql_port=$(cat ${sql_port_file})
@@ -18,6 +19,41 @@ secret_access_key=
 region=
 endpoint=
 bucket=
+
+# get the timeZone offset for location, such as Asia/Shanghai
+function getTimeZoneOffset() {
+   local timeZone=${1:?missing time zone}
+   if [[ $timeZone == "+"* ]] || [[ $timeZone == "-"* ]] ; then
+      echo ${timeZone}
+      return
+   fi
+   local currTime=$(TZ=UTC date)
+   local utcHour=$(TZ=UTC date -d "${currTime}" +"%H")
+   local zoneHour=$(TZ=${timeZone} date -d "${currTime}" +"%H")
+   local offset=$((${zoneHour}-${utcHour}))
+   if [ $offset -eq 0 ]; then
+      return
+   fi
+   symbol="+"
+   if [ $offset -lt 0 ]; then
+     symbol="-" && offset=${offset:1}
+   fi
+   if [ $offset -lt 10 ];then
+      offset="0${offset}"
+   fi
+   echo "${symbol}${offset}:00"
+}
+
+function saveEndTime() {
+    local minRestoreSCN=${1:?missing minRestoreSCN}
+    local minRestoreTime=${2:?missing minRestoreTime}
+    if [ -f $endTimeInfoFile ]; then
+       oldMinRestoreSCN=$(cat ${endTimeInfoFile} | jq -r ".minRestoreSCN" )
+       [ $minRestoreSCN -gt ${oldMinRestoreSCN} ] && echo "{\"minRestoreSCN\":\"${SCN}\",\"minRestoreTime\":\"${minRestoreTime}\"}" > ${endTimeInfoFile}
+    else
+       echo "{\"minRestoreSCN\":\"${SCN}\",\"minRestoreTime\":\"${minRestoreTime}\"}" > ${endTimeInfoFile}
+    fi
+}
 
 function getToolConfigValue() {
     local line=${1}
@@ -75,7 +111,7 @@ function getStorageHost() {
 
 function getArchiveDestPath() {
     # TODO: support nfs
-    path="/${KB_NAMESPACE}/${KB_CLUSTER_NAME}-${KB_CLUSTER_UID}/${KB_COMP_NAME}/archive"
+    path="$(dirname ${DP_BACKUP_BASE_PATH})/archive"
     echo $path
 }
 
@@ -97,8 +133,9 @@ function getDestURL() {
 }
 
 function prepareTenantLogArchive() {
-  tenant_name=${1:?missing tenant name}
-  log_mode=${2}
+  tenant_id=${1:?missing tenant id}
+  tenant_name=${2:?missing tenant name}
+  log_mode=${3}
   if [[ $log_mode == "NOARCHIVELOG" ]]; then
      echo "${tenant_name}" >> $noArchivedTenantsFiles
   fi
@@ -112,7 +149,11 @@ function prepareTenantLogArchive() {
   # enable dest
   ${mysql_cmd} "ALTER SYSTEM SET LOG_ARCHIVE_DEST_STATE='ENABLE' TENANT=${tenant_name};"
   # add recovery window to auto-clean backup.
-  ${mysql_cmd} "ALTER SYSTEM ADD DELETE BACKUP POLICY 'default' RECOVERY_WINDOW '7d' TENANT ${tenant_name};"
+  #deletePolicyCount=`${mysql_cmd} "SELECT count(*) FROM oceanbase.CDB_OB_BACKUP_DELETE_POLICY where TENANT_ID=${tenant_id};" |awk -F '\t' '{print}'`
+  #if [ $deletePolicyCount -eq 0 ]; then
+  #   echo "INFO: config recovery window '7d' for tenant ${tenant_name}."
+  #   ${mysql_cmd} "ALTER SYSTEM ADD DELETE BACKUP POLICY 'default' RECOVERY_WINDOW '7d' TENANT ${tenant_name};"
+  #fi
 }
 
 function prepareTenantDataBackup() {
@@ -170,10 +211,16 @@ ${mysql_cmd} "SELECT tenant_id, tenant_name,log_mode FROM oceanbase.DBA_OB_TENAN
   tenant_id=${row[0]}
   tenant_name=${row[1]}
   # prepare tenant log archive dest
-  res=`${mysql_cmd} "SELECT count(*) FROM oceanbase.CDB_OB_ARCHIVELOG where status='DOING' and tenant_id=${tenant_id};" |awk -F '\t' '{print}'`
-  if [[ $res -eq 0 ]]; then
-    # only prepare the tenant which not doing archive.
-    prepareTenantLogArchive $tenant_name ${row[2]}
+  status=`${mysql_cmd} "SELECT status FROM oceanbase.CDB_OB_ARCHIVELOG where tenant_id=${tenant_id};" |awk -F '\t' '{print}'`
+  if [[ "${status}" == "INTERRUPTED" ]]; then
+     DP_log "try to recovery archive from INTERRUPTED..."
+     ${mysql_cmd} "ALTER SYSTEM NOARCHIVELOG TENANT=${tenant_name};"
+     # wait to stop archive process.
+     sleep 30
+     ${mysql_cmd} "ALTER SYSTEM ARCHIVELOG TENANT=${tenant_name};"
+  elif [[ -z "${status}" ]] || [[ "${status}" == "STOP" ]]; then
+      # only prepare the tenant which not doing archive.
+      prepareTenantLogArchive ${tenant_id} $tenant_name ${row[2]}
   fi
   # prepare tenant data backup test
   prepareTenantDataBackup $tenant_name
@@ -206,6 +253,7 @@ if [[ $tenantCount -eq 0 ]]; then
 fi
 
 # step 4===> do data backup
+START_TIME=$(date -u "+%Y-%m-%dT%H:%M:%SZ")
 sql="ALTER SYSTEM BACKUP DATABASE;"
 echo "INFO: ${sql}"
 ${mysql_cmd} "${sql}"
@@ -274,6 +322,7 @@ ${mysql_cmd} "select tenant_id, backup_set_id from oceanbase.CDB_OB_BACKUP_JOB_H
       done
       tenantJson=$(buildJsonString "$tenantJson" "poolList" "${pool_list}")
       echo "{${tenantJson}}" >> ${tenantFile}
+      saveEndTime "${res[3]}" "${res[4]}"
     done
 
     ${mysql_cmd} "SELECT r.name, u.name as unit_name, r.unit_count, r.zone_list FROM oceanbase.DBA_OB_RESOURCE_POOLS r, oceanbase.DBA_OB_UNIT_CONFIGS u where u.UNIT_CONFIG_ID = r.UNIT_CONFIG_ID and r.TENANT_ID=${tenant_id};" | while IFS=$'\t' read -a pool; do
@@ -293,12 +342,22 @@ while IFS= read -r line; do
   extras="${extras}${line}"
 done < ${tenantFile}
 
+# get time zone
+timeZone=$(${mysql_cmd} "use oceanbase;select @@time_zone;")
+timeZone=$(getTimeZoneOffset "${timeZone}")
 
-# # step 8===> save tenants info for restore and backup status
+# get stop time
+STOP_TIME=$(date -u "+%Y-%m-%dT%H:%M:%SZ")
+if [ -f ${endTimeInfoFile} ]; then
+   stop_time=$(cat ${endTimeInfoFile} | jq -r ".minRestoreTime")
+   STOP_TIME=$(date -d "${stop_time}${timeZone}" -u "+%Y-%m-%dT%H:%M:%SZ")
+fi
+
+# step 8===> save tenants info for restore and backup status
 datasafed push ${unitSQLFile} "/${unitSQLFile}"
 datasafed push ${resourcePoolSQLFile} "/${resourcePoolSQLFile}"
 TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
-backupInfo="{\"totalSize\":\"$TOTAL_SIZE\",\"extras\":[${extras}]}"
+backupInfo="{\"totalSize\":\"$TOTAL_SIZE\",\"extras\":[${extras}],\"timeRange\":{\"start\":\"${START_TIME}\",\"end\":\"${STOP_TIME}\",\"timeZone\":\"${timeZone}\"}}"
 echo ${backupInfo}
 echo ${backupInfo} >"${DP_BACKUP_INFO_FILE}"
 if [[ $extras == *"failureMessage"* ]];then
