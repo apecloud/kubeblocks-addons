@@ -9,10 +9,17 @@ spec:
   env:
   - name: DATA_DIR
     value: "{{ .Values.dataMountPath }}/data"
+  - name: MYSQL_DIR
+    value: {{ .Values.dataMountPath }}
   restore:
     prepareData:
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.xtraBackupRepository }}:8.0.32
       command:
       - bash
       - -c
-      - rm -rf ${DATA_DIR}/auto.cnf
+      - |
+        rm -rf ${DATA_DIR}/auto.cnf
+        rm -rf ${DATA_DIR}/relay-bin.* && rm -rf ${DATA_DIR}/relay-log.info
+        if [ -d ${MYSQL_DIR}/binlog ]; then
+           rm -rf ${MYSQL_DIR}/binlog
+        fi
