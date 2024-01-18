@@ -83,6 +83,9 @@
 	//Reject insecure connections but only if mysql_server_ssl_cert and mysql_server_ssl_key are provided.(default "false")
 	mysql_server_require_secure_transport: bool
 
+	// Set default strategy for DDL statements. Override with @@ddl_strategy session variable
+	ddl_strategy: string & "direct" | "online" | "mysql"
+
 	...
 }
 

@@ -29,3 +29,4 @@ dynamicParameters:
   - read_write_splitting_ratio
   - read_after_write_consistency
   - read_after_write_timeout
+  - ddl_strategy
