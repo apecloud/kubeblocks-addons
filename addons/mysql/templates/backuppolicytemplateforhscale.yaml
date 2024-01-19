@@ -1,0 +1,26 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: mysql-hscale-backup-policy-template
+  labels:
+    {{- include "mysql.labels" . | nindent 4 }}
+spec:
+  clusterDefinitionRef: mysql
+  identifier: hscale
+  backupPolicies:
+  - componentDefRef: mysql
+    target:
+      role: secondary
+    backupMethods:
+    - name: volume-snapshot
+      snapshotVolumes: true
+      actionSetName: mysql-volumesnapshot
+      env:
+        - name: RESTORE_STANDBY
+          value: "true"
+      targetVolumes:
+        volumes:
+        - data
+        volumeMounts:
+        - name: data
+          mountPath: {{ .Values.dataMountPath }}

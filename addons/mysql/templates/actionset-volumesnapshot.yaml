@@ -19,7 +19,10 @@ spec:
       - -c
       - |
         rm -rf ${DATA_DIR}/auto.cnf
-        rm -rf ${DATA_DIR}/relay-bin.* && rm -rf ${DATA_DIR}/relay-log.info
-        if [ -d ${MYSQL_DIR}/binlog ]; then
-           rm -rf ${MYSQL_DIR}/binlog
+        if [ "${RESTORE_STANDBY}" != "true" ]; then
+           rm -rf ${DATA_DIR}/relay-bin.*
+           if [ -f ${DATA_DIR}/relay-log.info ]; then
+              rm -rf ${DATA_DIR}/relay-log.info
+           fi
         fi
+
