@@ -9,6 +9,8 @@ spec:
   env:
   - name: DATA_DIR
     value: "{{ .Values.dataMountPath }}/data"
+  - name: MYSQL_DIR
+    value: {{ .Values.dataMountPath }}
   - name: IMAGE_TAG
     value: 8.0.32
   backup:
