@@ -4,12 +4,12 @@ set -o pipefail
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 mkdir -p ${DATA_DIR}
-TMP_DIR=/data/mysql/temp
+TMP_DIR=${MYSQL_DIR}/temp
 mkdir -p ${TMP_DIR} && cd ${TMP_DIR}
 
 xbstreamFile="${DP_BACKUP_NAME}.xbstream.zst"
 if [ "$(datasafed list ${xbstreamFile})" == "${xbstreamFile}" ]; then
-  datasafed pull -d zstd "${xbstreamFile}" - | xbstream -x
+  datasafed pull -d zstd-fastest "${xbstreamFile}" - | xbstream -x
 else
   datasafed pull "${DP_BACKUP_NAME}.xbstream" - | xbstream -x
 fi
