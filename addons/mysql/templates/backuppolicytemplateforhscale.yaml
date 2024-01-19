@@ -12,15 +12,30 @@ spec:
     target:
       role: secondary
     backupMethods:
-    - name: volume-snapshot
-      snapshotVolumes: true
-      actionSetName: mysql-volumesnapshot
-      env:
-        - name: RESTORE_STANDBY
-          value: "true"
+    - name: xtrabackup
+      snapshotVolumes: false
+      actionSetName: mysql-xtrabackup
+      envMapping:
+        - key: IMAGE_TAG
+          valueFrom:
+            clusterVersionRef:
+              - names: [ mysql-8.0.33 ]
+                mappingValue: "8.0.33-28"
+              - names: [ mysql-5.7.42 ]
+                mappingValue: "2.4"
       targetVolumes:
-        volumes:
-        - data
         volumeMounts:
-        - name: data
-          mountPath: {{ .Values.dataMountPath }}
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
+    #- name: volume-snapshot
+    #  snapshotVolumes: true
+    #  actionSetName: mysql-volumesnapshot
+    #  env:
+   #     - name: RESTORE_STANDBY
+   #       value: "true"
+   #   targetVolumes:
+   #     volumes:
+   #     - data
+   #     volumeMounts:
+   #     - name: data
+   #       mountPath: {{ .Values.dataMountPath }}
