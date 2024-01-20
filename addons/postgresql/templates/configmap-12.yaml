@@ -23,3 +23,5 @@ data:
       command: bash /home/postgres/pgdata/kb_restore/kb_restore.sh
       keep_existing_recovery_conf: false
       recovery_conf: {}
+  patroni.yaml: |-
+    {{- .Files.Get "config/patroni-yaml.tpl" | nindent 4 }}
