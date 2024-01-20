@@ -80,8 +80,7 @@ def main(filename):
             local_config['bootstrap']['dcs'].update(yaml.safe_load(f))
     else:
         print('patroni.yaml not found')
-    write_file(yaml.dump(local_config, default_flow_style=False), filename,
-               True)
+    write_file(yaml.dump(local_config, default_flow_style=False), filename, True)
 
 
 if __name__ == '__main__':
