@@ -27,15 +27,15 @@ spec:
         volumeMounts:
           - name: data
             mountPath: {{ .Values.dataMountPath }}
-    #- name: volume-snapshot
-    #  snapshotVolumes: true
-    #  actionSetName: mysql-volumesnapshot
-    #  env:
-   #     - name: RESTORE_STANDBY
-   #       value: "true"
-   #   targetVolumes:
-   #     volumes:
-   #     - data
-   #     volumeMounts:
-   #     - name: data
-   #       mountPath: {{ .Values.dataMountPath }}
+    - name: volume-snapshot
+      snapshotVolumes: true
+      actionSetName: mysql-volumesnapshot
+      env:
+        - name: RESTORE_STANDBY
+          value: "true"
+      targetVolumes:
+        volumes:
+        - data
+        volumeMounts:
+        - name: data
+          mountPath: {{ .Values.dataMountPath }}
