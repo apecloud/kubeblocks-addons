@@ -126,6 +126,7 @@ expire_logs_days=7
 max_binlog_size=134217728
 # binlog_rows_query_log_events=ON #AWS not set
 # binlog_transaction_dependency_tracking=WRITESET    #Default Commit Order, Aws not set
+log_slave_updates=on
 
 # replay log
 # relay_log_info_repository=TABLE
