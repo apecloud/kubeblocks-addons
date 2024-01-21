@@ -74,3 +74,25 @@ be.conf: |
 {{ .Values.be.config | indent 2 }}
 {{- end }}
 {{- end }}
+
+{{/*
+Define component defintion name
+*/}}
+{{- define "cn.componentDefName" -}}
+{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
+redis
+{{- else -}}
+{{- printf "cn-%s" .Values.compDefinitionVersionSuffix -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define component defintion name
+*/}}
+{{- define "fe.componentDefName" -}}
+{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
+redis
+{{- else -}}
+{{- printf "fe-%s" .Values.compDefinitionVersionSuffix -}}
+{{- end -}}
+{{- end -}}

@@ -1,0 +1,132 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "cn.componentDefName" . }}
+  labels:
+    {{- include "starrocks.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: A StarRocks CN v3.2.2 component definition for Kubernetes
+  serviceKind: cn
+  serviceVersion: 3.2.2
+  updateStrategy: bestEffortParallel
+  volumes:
+    - name: data
+      needSnapshot: true
+    - name: log
+      needSnapshot: true
+  logConfigs:
+    {{- range $name,$pattern := .Values.logConfigs }}
+    - name: {{ $name }}
+      filePathPattern: {{ $pattern }}
+    {{- end }}
+  monitor:
+    builtIn: false
+    exporterConfig:
+      scrapePort: {{ .Values.metrics.service.port }}
+      scrapePath: "/metrics"
+  configs:
+    - name: starrocks-cn-cm
+      templateRef: starrocks-cn-cm
+      namespace: {{ .Release.Namespace }}
+      volumeName: starrocks-cn-cm
+  vars:
+    ## the default username of cn connection
+    - name: CN_DEFAULT_USER
+      valueFrom:
+        credentialVarRef:
+          ## reference the current component definition name
+          compDef: {{ include "cn.componentDefName" . }}
+          name: default
+          username: Required
+    ## the default password of cn connection
+    - name: CN_DEFAULT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          ## reference the current component definition name
+          compDef: {{ include "cn.componentDefName" . }}
+          name: default
+          password: Required
+  runtime:
+    containers:
+    - name: cn
+      image: {{ .Values.cn.image.registry | default "docker.io" }}/{{ .Values.cn.image.repository }}:{{ default .Values.cn.image.tag }}
+      imagePullPolicy: {{ default .Values.cn.image.pullPolicy "IfNotPresent" }}
+      args:
+      - $(FE_SERVICE_NAME)
+      command:
+      - /opt/starrocks/cn_entrypoint.sh
+      volumeMounts:
+      - mountPath: /opt/starrocks/cn/log
+        name: log
+      - mountPath: /opt/starrocks/cn/storage
+        name: data
+      - mountPath: /opt/starrocks/cn/conf
+        name: starrocks-cn-cm
+      env:
+      - name: TZ
+        value: Asia/Shanghai
+      - name: POD_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.name
+      - name: POD_IP
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: status.podIP
+      - name: HOST_IP
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: status.hostIP
+      - name: POD_NAMESPACE
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.namespace
+      - name: HOST_TYPE
+        value: FQDN
+      - name: COMPONENT_NAME
+        value: cn
+      - name: FE_QUERY_PORT
+        value: "{{ .Values.fe.queryPort }}"
+      - name: CONFIGMAP_MOUNT_PATH
+        value: /etc/starrocks/cn/conf
+      lifecycle:
+        preStop:
+          exec:
+            command:
+            - /opt/starrocks/cn_prestop.sh
+      ports:
+      - containerPort: 9060
+        name: cn-port
+        protocol: TCP
+      - containerPort: 8040
+        name: webserver-port
+        protocol: TCP
+      - containerPort: 9050
+        name: heartbeat-port
+        protocol: TCP
+      - containerPort: 8060
+        name: brpc-port
+        protocol: TCP
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: false
+      {{- if .Values.cn.resources }}
+      resources:
+        {{- toYaml .Values.cn.resources | nindent 10 }}
+      {{- end }}
+      {{- if .Values.cn.probe }}
+      livenessProbe:
+        failureThreshold: 3
+        {{- toYaml .Values.cn.probe | nindent 10 }}
+      readinessProbe:
+        failureThreshold: 3
+        {{- toYaml .Values.cn.probe | nindent 10 }}
+      startupProbe:
+        failureThreshold: 60
+        {{- toYaml .Values.cn.probe | nindent 10 }}
+      {{- end }}

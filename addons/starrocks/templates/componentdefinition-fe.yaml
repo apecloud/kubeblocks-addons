@@ -1,0 +1,138 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "fe.componentDefName" . }}
+  labels:
+    {{- include "starrocks.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: A StarRocks FE v3.2.2 component definition for Kubernetes
+  serviceKind: fe
+  serviceVersion: 3.2.2
+  services:
+    - name: fe
+      serviceName: fe
+      spec:
+        ports:
+          - name: fe
+            port: {{ .Values.fe.queryPort }}
+            targetPort: query-port
+      roleSelector: primary
+  updateStrategy: BestEffortParallel
+  volumes:
+    - name: data
+      needSnapshot: true
+    - name: log
+      needSnapshot: true
+  logConfigs:
+    {{- range $name,$pattern := .Values.logConfigs }}
+    - name: {{ $name }}
+      filePathPattern: {{ $pattern }}
+    {{- end }}
+  monitor:
+    builtIn: false
+    exporterConfig:
+      scrapePort: {{ .Values.metrics.service.port }}
+      scrapePath: "/metrics"
+  configs:
+    - name: starrocks-fe-cm
+      templateRef: starrocks-fe-cm
+      namespace: {{ .Release.Namespace }}
+      volumeName: starrocks-fe-cm
+  vars:
+    ## the default username of fe connection
+    - name: FE_DEFAULT_USER
+      valueFrom:
+        credentialVarRef:
+          ## reference the current component definition name
+          compDef: {{ include "fe.componentDefName" . }}
+          name: default
+          username: Required
+    ## the default password of fe connection
+    - name: FE_DEFAULT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          ## reference the current component definition name
+          compDef: {{ include "fe.componentDefName" . }}
+          name: default
+          password: Required
+  runtime:
+    containers:
+      - name: fe
+        image: {{ .Values.fe.image.registry | default "docker.io" }}/{{ .Values.fe.image.repository }}:{{ default .Values.fe.image.tag }}
+        imagePullPolicy: {{ default .Values.fe.image.pullPolicy "IfNotPresent" }}
+        command:
+        - /opt/starrocks/fe_entrypoint.sh
+        args:
+        - $(FE_SERVICE_NAME)
+        ports:
+          - containerPort: 8030
+            name: http-port
+            protocol: TCP
+          - containerPort: 9020
+            name: rpc-port
+            protocol: TCP
+          - containerPort: {{ .Values.fe.queryPort }}
+            name: query-port
+            protocol: TCP
+        env:
+        - name: TZ
+          value: {{ .Values.timezone }}
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: HOST_TYPE
+          value: FQDN
+        - name: COMPONENT_NAME
+          value: fe
+        - name: FE_SERVICE_NAME
+          value: $(KB_CLUSTER_COMP_NAME)-headless
+        - name: CONFIGMAP_MOUNT_PATH
+          value: /etc/starrocks/fe/conf
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+        {{- if .Values.fe.resources }}
+        resources:
+          {{- toYaml .Values.fe.resources | nindent 10 }}
+        {{- end }}
+        {{- if .Values.fe.probe }}
+        livenessProbe:
+          failureThreshold: 3
+          {{- toYaml .Values.fe.probe | nindent 10 }}
+        readinessProbe:
+          failureThreshold: 3
+          {{- toYaml .Values.fe.probe | nindent 10 }}
+        startupProbe:
+          failureThreshold: 60
+          {{- toYaml .Values.fe.probe | nindent 10 }}
+        {{- end }}
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - /opt/starrocks/fe_prestop.sh
+        volumeMounts:
+        - mountPath: /opt/starrocks/fe/meta
+          name: fe-meta
+        - mountPath: /opt/starrocks/fe/log
+          name: fe-log
+        - mountPath: /opt/starrocks/fe/conf
+          name: starrocks-fe-cm
