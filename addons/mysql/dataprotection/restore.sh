@@ -17,5 +17,8 @@ xtrabackup --decompress --remove-original --target-dir=${TMP_DIR}
 xtrabackup --prepare --target-dir=${TMP_DIR}
 xtrabackup --move-back --target-dir=${TMP_DIR} --datadir=${DATA_DIR}/
 
+if [ "${BACKUP_FOR_STANDBY}" == "true" ]; then
+   touch ${DATA_DIR}/.xtrabackup_restore
+fi
 rm -rf ${TMP_DIR}
 chmod -R 0777 ${DATA_DIR}
