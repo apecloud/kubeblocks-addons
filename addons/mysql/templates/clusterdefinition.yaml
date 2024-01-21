@@ -72,6 +72,8 @@ spec:
                 name: data
               - mountPath: /etc/mysql/conf.d
                 name: mysql-config
+              - name: scripts
+                mountPath: /scripts
             ports:
               - containerPort: 3306
                 name: mysql
