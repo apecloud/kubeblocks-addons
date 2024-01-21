@@ -13,6 +13,8 @@ spec:
     value: {{ .Values.dataMountPath }}
   - name: IMAGE_TAG
     value: 8.0.32
+  - name: BACKUP_FOR_STANDBY
+    value: "false"
   backup:
     preBackup: []
     postBackup: []
