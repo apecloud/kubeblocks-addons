@@ -19,7 +19,7 @@
             "maximum": 2
         },
         "zoneCount": {
-            "title": "ZontCount",
+            "title": "ZoneCount",
             "description": "OceanBase Zones.",
             "type": [
               "integer"
