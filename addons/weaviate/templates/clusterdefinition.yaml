@@ -52,20 +52,37 @@ spec:
             - /bin/sh
             - -c
             - |
+              # https://weaviate.io/developers/weaviate/concepts/cluster#node-discovery
+              # Weaviate - especially when running as a cluster - is optimized to run on Kubernetes.
+              # The Weaviate Helm chart makes use of a StatefulSet and a headless Service that automatically configures node discovery.
+              # All you have to do is specify the desired node count.
+              CLUSTER_JOIN=""
+              # TODO: clusterDomain 'cluster.local' requires configurable
+              DOMAIN=$KB_NAMESPACE".svc{{ .Values.clusterDomain }}"
+              i=0
+              while [ $i -lt $KB_REPLICA_COUNT ]; do
+                if [ $i -ne 0 ]; then
+                  CLUSTER_JOIN="$CLUSTER_JOIN,";
+                fi;
+                host=$(eval echo \$KB_"$i"_HOSTNAME)
+                host=$host"."$DOMAIN
+                CLUSTER_JOIN="$CLUSTER_JOIN$host"
+                i=$(( i + 1))
+              done
               idx=${KB_POD_NAME##*-}
               while true; do
                 if [ "$idx" == "0" ]; then
                   break
                 fi
                 # ensure that the first pod is up and running before starting the others
-                wget -q -O - http://${CLUSTER_JOIN}:8080/v1/meta
+                wget -q -O - http://${KB_0_HOSTNAME}.${DOMAIN}:8080/v1/nodes
                 if [ $? -eq 0 ]; then
                   break
                 fi 
                 sleep 1
               done
               export $(cat /weaviate-env/envs | xargs)
-              /bin/weaviate --host 0.0.0.0 --port "8080" --scheme http --config-file /weaviate-config/conf.yaml --read-timeout=60s --write-timeout=60s
+              CLUSTER_JOIN="$CLUSTER_JOIN" /bin/weaviate --host 0.0.0.0 --port "8080" --scheme http --config-file /weaviate-config/conf.yaml --read-timeout=60s --write-timeout=60s
             securityContext:
               runAsUser: 0
             livenessProbe:
@@ -74,7 +91,6 @@ spec:
                 path: /v1/.well-known/live
                 port: 8080
                 scheme: HTTP
-              initialDelaySeconds: 30
               periodSeconds: 10
               successThreshold: 1
               timeoutSeconds: 3
@@ -84,18 +100,16 @@ spec:
                 path: /v1/.well-known/ready
                 port: 8080
                 scheme: HTTP
-              initialDelaySeconds: 30
               periodSeconds: 10
               successThreshold: 1
               timeoutSeconds: 3
             startupProbe:
               failureThreshold: 3
               httpGet:
-                path: /v1/.well-known/ready
+                path: /v1/.well-known/live
                 port: 8080
                 scheme: HTTP
               periodSeconds: 10
-              initialDelaySeconds: 30
               successThreshold: 1
               timeoutSeconds: 3
             terminationMessagePath: /dev/termination-log
@@ -141,9 +155,3 @@ spec:
                 value: none
               - name: CLUSTER_HOSTNAME
                 value: "$(KB_POD_NAME)"
-              # https://weaviate.io/developers/weaviate/concepts/cluster#node-discovery
-              # Weaviate - especially when running as a cluster - is optimized to run on Kubernetes.
-              # The Weaviate Helm chart makes use of a StatefulSet and a headless Service that automatically configures node discovery.
-              # All you have to do is specify the desired node count.
-              - name: CLUSTER_JOIN
-                value: $(KB_0_HOSTNAME).$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}
