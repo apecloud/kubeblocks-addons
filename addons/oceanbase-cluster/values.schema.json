@@ -2,6 +2,12 @@
     "$schema": "http://json-schema.org/schema#",
     "type": "object",
     "properties": {
+        "version": {
+            "title": "Version",
+            "description": "Cluster version.",
+            "type": "string",
+            "default": "4.2.0.0-100010032023083021"
+        },
         "obClusters": {
             "title": "ObClusters",
             "description": "OceanBase Clusters, for standalone mode, set to 1, for primary-secondary mode, set to 2.",
