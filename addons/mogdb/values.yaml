@@ -12,6 +12,9 @@ image:
   tag: 5.0.5
 
 
+dataMountPath: /var/lib/mogdb
+
+
 shmVolume:
   ## @param shmVolume.enabled Enable emptyDir volume for /dev/shm for PostgreSQL pod(s)
   ##

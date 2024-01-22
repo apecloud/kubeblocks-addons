@@ -449,6 +449,10 @@ _main() {
                         echo 'mogdb  init process complete; ready for start up.'
                         echo
                 else
+                        if [ -n "$REPL_CONN_INFO" ]; then
+                            gs_guc set -D "$PGDATA" -c "$REPL_CONN_INFO"
+                        fi
+
                         echo
                         echo 'mogdb Database directory appears to contain a database; Skipping initialization'
                         echo

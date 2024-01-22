@@ -7,20 +7,36 @@ metadata:
 spec:
   type: mogdb
   connectionCredential:
-    username: kbadmin
-    password: "p@ssW0rd1"
+    username: mogdb
+    password: "Enmo@123"
     endpoint: "$(SVC_FQDN):$(SVC_PORT_tcp-mogdb)"
     host: "$(SVC_FQDN)"
     port: "$(SVC_PORT_tcp-mogdb)"
   componentDefs:
     - name: mogdb
       workloadType: Stateful
+      rsmSpec:
+        roles:
+          - name: primary
+            accessMode: ReadWrite
+            isLeader: true
+          - name: standby
+            accessMode: Readonly
+            isLeader: false
+        roleProbe:
+          customHandler:
+            - image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+              command:
+                - |
+                  original_role=$(su -l omm -c "gsql -h 127.0.0.1 -p 26000  -U ${KB_RSM_USERNAME} -W ${KB_RSM_PASSWORD} -dpostgres -t -c 'select local_role from pg_stat_get_wal_senders() limit 1'")
+                  if [ -z "$original_role" ]; then
+                    original_role=$(su -l omm -c "gsql -h 127.0.0.1 -p 26000  -U ${KB_RSM_USERNAME} -W ${KB_RSM_PASSWORD} -dpostgres -t -c 'select local_role from pg_stat_get_wal_receiver() limit 1'")
+                  fi
+                
+                  role=$(echo ${original_role} | tr 'A-Z' 'a-z')
+                  echo -n "$role"
+
       characterType: mogdb
-#      probes:
-#        roleProbe:
-#          failureThreshold: 2
-#          periodSeconds: 1
-#          timeoutSeconds: 1
       configSpecs:
         - name: mogdb-configuration
           templateRef: mogdb-configuration
@@ -204,8 +220,8 @@ spec:
                   fi
 
                   repl_conn_info="replconninfo${remote_ordinal} = 'localhost=$PodIP localport=${ha_port} localservice=${ha_service_port} remotehost=$remote_ip remoteport=${ha_port} remoteservice=${ha_service_port}'"
-                  echo "$repl_conn_info" >> "${PGDATA}/postgresql.conf"
-                  su - omm -c "gs_ctl reload"
+
+                  su - omm -c "gs_guc reload -D $PGDATA -c \"${repl_conn_info}\""
                 done
             env:
               - name: PodIP
@@ -226,7 +242,7 @@ spec:
             resources:
               requests:
                 cpu: 500m
-                memory: 1Gi
+                memory: 64Mi
 
         volumes:
           - name: dshm
