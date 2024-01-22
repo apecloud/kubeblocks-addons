@@ -101,6 +101,8 @@ items:
               value: "/home/admin/workdir"
             - name: OB_SERVICE_PORT
               value: "2881"
+            - name: AUDITLOG_USER
+              value: "root"
         - name: metrics
           image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.metrics.repository }}:{{ .Values.images.metrics.tag }}
           imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
@@ -255,6 +257,8 @@ items:
               value: "$(KB_CLUSTER_COMP_NAME)"
             - name: OB_HOME_DIR
               value: "/home/admin/workdir"
+            - name: AUDITLOG_USER
+              value: "root"
         - name: metrics
           image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.metrics.repository }}:{{ .Values.images.metrics.tag }}
           imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}

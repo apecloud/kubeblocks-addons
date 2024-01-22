@@ -16,7 +16,12 @@ function handle_exit() {
 }
 trap handle_exit EXIT
 
-xtrabackup --backup --compress --safe-slave-backup --slave-info --stream=xbstream \
-  --host=${DP_DB_HOST} --user=${DP_DB_USER} --password=${DP_DB_PASSWORD} --datadir=${DATA_DIR} | datasafed push - "/${DP_BACKUP_NAME}.xbstream"
+lock_per_table_ddl=""
+if [ "${IMAGE_TAG}" == "2.4" ]; then
+  lock_per_table_ddl="--lock-ddl-per-table"
+fi
+
+xtrabackup --backup --safe-slave-backup --slave-info ${lock_per_table_ddl} --stream=xbstream \
+  --host=${DP_DB_HOST} --user=${DP_DB_USER} --password=${DP_DB_PASSWORD} --datadir=${DATA_DIR} | datasafed push -z zstd-fastest - "/${DP_BACKUP_NAME}.xbstream.zst"
 TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
 echo "{\"totalSize\":\"$TOTAL_SIZE\"}" >"${DP_BACKUP_INFO_FILE}"

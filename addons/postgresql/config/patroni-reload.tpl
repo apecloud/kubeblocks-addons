@@ -1,15 +1,23 @@
-{{- $bootstrap := $.Files.Get "bootstrap.yaml" | fromYamlArray }}
+{{- $restartParams := $.Files.Get "bootstrap.yaml" | fromYamlArray }}
+{{- $patroniParamsContent := $.Files.Get "patroni_parameter.yaml" }}
+{{- $patroniParams := fromYamlArray (default "" $patroniParamsContent) }}
 {{- $command := "reload" }}
-{{- $trimParams := dict }}
+{{- $postgresql := dict }}
+{{- $patroni := dict }}
 {{- range $pk, $val := $.arg0 }}
-    {{- /* trim single quotes for value in the pg config file */}}
-    {{- set $trimParams $pk ( $val | trimAll "'" ) }}
-    {{- if has $pk $bootstrap  }}
+    {{- if has $pk $patroniParams }}
+        {{- set $patroni $pk ($val | trimAll "'") }}
+    {{- else }}
+        {{- /* trim single quotes for value in the pg config file */}}
+        {{- set $postgresql $pk ($val | trimAll "'") }}
+    {{- end }}
+    {{- if has $pk $restartParams  }}
         {{- $command = "restart" }}
     {{- end }}
 {{- end }}
-{{ $params := dict "parameters" $trimParams }}
-{{- $err := execSql ( dict "postgresql" $params | toJson ) "config" }}
+
+{{- $params := merge $patroni (dict "postgresql" (dict "parameters" $postgresql)) }}
+{{- $err := execSql (toJson $params) "config" }}
 {{- if $err }}
     {{- failed $err }}
 {{- end }}

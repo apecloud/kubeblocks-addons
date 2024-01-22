@@ -8,9 +8,21 @@ metadata:
     {{ include "oceanbase-cluster.annotations.extra-envs" . | nindent 4 }}
 spec:
   clusterDefinitionRef: "oceanbase"
-  clusterVersionRef: "oceanbase-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}"
+  clusterVersionRef: {{ .Values.version }}
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   # {{- include "kblib.affinity" . | indent 2 }}
+  {{- if gt (int .Values.obClusters) 1 }}
+  services:
+    - name: rw-svc
+      spec:
+        ports:
+          - name: sql
+            port: 2881
+            targetPort: sql
+            protocol: TCP
+        selector:
+          kubeblocks.io/role: primary
+  {{- end }}
   componentSpecs:
   {{- range $i, $e := until (int .Values.obClusters) }}
     - name: ob-bundle-{{ $i }}

@@ -39,16 +39,3 @@ spec:
               requests:
                 storage: {{ .Values.persistence.data.size }}
       {{- end }}
-
-    - name: metrics # user-defined
-      componentDefRef: metrics # ref clusterdefinition componentDefs.name
-      replicas: {{ .Values.metrics.replicaCount | default 1 }}
-      {{- with  .Values.metrics.resources }}
-      resources:
-        limits:
-          cpu: {{ .limits.cpu | quote }}
-          memory: {{ .limits.memory | quote }}
-        requests:
-          cpu: {{ .requests.cpu | quote }}
-          memory: {{ .requests.memory | quote }}
-      {{- end }}

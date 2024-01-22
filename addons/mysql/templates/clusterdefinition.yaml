@@ -58,7 +58,7 @@ spec:
           type: data
       horizontalScalePolicy:
         type: CloneVolume
-        backupPolicyTemplateName: mysql-backup-policy-template
+        backupPolicyTemplateName: mysql-hscale-backup-policy-template
       podSpec:
         containers:
           - name: mysql
@@ -66,12 +66,14 @@ spec:
             command:
               - bash 
               - -c
-              - "mkdir -p /var/lib/mysql/{log,binlog}; chown mysql:root /var/lib/mysql/{log,binlog}; docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1))"
+              - "mkdir -p /var/lib/mysql/{log,binlog}; chown -R mysql:root /var/lib/mysql; docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1))"
             volumeMounts:
               - mountPath: {{ .Values.dataMountPath }}
                 name: data
               - mountPath: /etc/mysql/conf.d
                 name: mysql-config
+              - name: scripts
+                mountPath: /scripts
             ports:
               - containerPort: 3306
                 name: mysql
