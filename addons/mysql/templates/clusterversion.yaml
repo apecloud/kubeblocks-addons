@@ -27,7 +27,7 @@ spec:
         command:
           - bash 
           - -c
-          - "mkdir -p /var/lib/mysql/{log,binlog};chown -R mysql:root /var/lib/mysql; /scripts/docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) --ignore-db-dir=lost+found"
+          - "mkdir -p /var/lib/mysql/{log,binlog};chown -R mysql:root /var/lib/mysql; /scripts/docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) --ignore-db-dir=lost+found --plugin-load-add=rpl_semi_sync_master=semisync_master.so --plugin-load-add=rpl_semi_sync_slave=semisync_slave.so"
     systemAccountSpec:
       cmdExecutorConfig:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
