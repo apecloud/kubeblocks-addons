@@ -18,7 +18,6 @@ spec:
     - componentDefRef: doris-fe
       monitor: true
       name: doris-fe
-      noCreatePDB: false
       replicas: 3
       resources:
         limits: {{- toYaml .Values.componentSpecs.fe.resources | nindent 10 }}
@@ -49,7 +48,6 @@ spec:
     - componentDefRef: doris-be
       monitor: true
       name: doris-be
-      noCreatePDB: false
       replicas: {{ .Values.componentSpecs.be.replicas }}
       resources:
         limits: {{- toYaml .Values.componentSpecs.be.resources | nindent 10 }}
@@ -70,7 +68,6 @@ spec:
     - componentDefRef: doris-cn
       monitor: true
       name: doris-cn
-      noCreatePDB: false
       replicas: {{ .Values.componentSpecs.cn.replicas }}
       resources:
         limits: {{- toYaml .Values.componentSpecs.cn.resources | nindent 10 }}
