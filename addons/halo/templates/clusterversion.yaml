@@ -15,4 +15,3 @@ spec:
         containers:
           - name: halo
             image: {{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
-

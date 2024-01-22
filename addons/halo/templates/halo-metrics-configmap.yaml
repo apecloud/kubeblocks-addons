@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: halo-metrics-configuration
+  labels:
+      {{- include "halo.labels" . | nindent 4 }}
+data:
+  pg_exporter.yml: |-
+    {{- .Files.Get "config/pg_exporter.yml" | nindent 4 }} 
