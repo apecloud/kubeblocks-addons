@@ -27,3 +27,4 @@ enable_query_log=true
 {{- end }}
 {{- end }}
 {{ end }}
+ddl_strategy=direct
