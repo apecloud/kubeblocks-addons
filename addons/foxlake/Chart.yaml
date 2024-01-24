@@ -1,6 +1,6 @@
 apiVersion: v2
 name: foxlake
-description: ApeCloud FoxLake is an open-source cloud-native data warehouse.
+description: ApeCloud FoxLake is a fast & low-cost analytical MySQL.
 dependencies:
   - name: keda
     version: 2.10.2
