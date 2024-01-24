@@ -1,6 +1,6 @@
 {{- if .Values.replicas }}
   {{- if gt (int .Values.replicas) 5 }}
-    {{ fail "kafka-server cluster does not support running replicas greater than 3." }}
+    {{ fail "kafka-server cluster does not support running replicas greater than 5." }}
   {{- end }}
   {{- if ne (mod (int .Values.replicas) 2) 1 }}
     {{ fail "kafka-server cluster does not support running with even number replicas." }}
