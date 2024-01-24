@@ -27,9 +27,5 @@ if [ $(remote_file_exists "base.tar.gz") == "true" ]; then
 elif [ $(remote_file_exists "base.tar") == "true" ]; then
   datasafed pull "base.tar" - | tar -xvf - -C "${DATA_DIR}/"
 fi
-if [ $(remote_file_exists "pg_wal.tar.gz") == "true" ]; then
-  datasafed pull "pg_wal.tar.gz" - | tar -xzvf - -C "${DATA_DIR}/pg_wal/"
-elif [ $(remote_file_exists "pg_wal.tar") == "true" ]; then
-  datasafed pull "pg_wal.tar" - | tar -xvf - -C "${DATA_DIR}/pg_wal/"
-fi
+
 echo "done!";
