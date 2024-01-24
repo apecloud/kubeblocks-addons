@@ -1,6 +1,6 @@
 apiVersion: v2
 name: foxlake-cluster
-description: ApeCloud FoxLake is a fast & low-cost analytical MySQL.
+description: An ApeCloud FoxLake Cluster Helm chart for KubeBlocks.
 dependencies:
   - name: kblib
     version: 0.1.0
