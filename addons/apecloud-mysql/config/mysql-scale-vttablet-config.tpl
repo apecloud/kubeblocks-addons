@@ -32,3 +32,27 @@ queryserver_config_stream_pool_size=30
 
 # TxPool
 queryserver_config_transaction_cap=50
+
+# the size of database connection pool in non transaction dml
+non_transactional_dml_database_pool_size=3
+
+# the number of rows to be processed in one batch by default
+non_transactional_dml_default_batch_size=2000
+
+# the interval of batch processing in milliseconds by default
+non_transactional_dml_default_batch_interval=1
+
+# the interval of table GC in hours
+non_transactional_dml_table_gc_interval=24
+
+# the interval of job scheduler running in seconds
+non_transactional_dml_job_scheduler_running_interval=24
+
+# the interval of throttle check in milliseconds
+non_transactional_dml_throttle_check_interval=250
+
+# the threshold of batch size
+non_transactional_dml_batch_size_threshold=10000
+
+# final threshold = ratio * non_transactional_dml_batch_size_threshold / table index numbers
+non_transactional_dml_batch_size_threshold_ratio=0.5

@@ -28,3 +28,5 @@ enable_query_log=true
 {{- end }}
 {{ end }}
 ddl_strategy=direct
+enable_display_sql_execution_vttablets=false
+enable_read_write_split_for_read_only_txn=false
