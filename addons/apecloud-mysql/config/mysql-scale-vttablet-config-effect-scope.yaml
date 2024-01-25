@@ -25,7 +25,7 @@ dynamicParameters:
   - non_transactional_dml_default_batch_size
   - non_transactional_dml_default_batch_interval
   - non_transactional_dml_table_gc_interval
-  - non_transactional_dml_job_scheduler_running_interval
+  - non_transactional_dml_job_manager_running_interval
   - non_transactional_dml_throttle_check_interval
   - non_transactional_dml_batch_size_threshold
   - non_transactional_dml_batch_size_threshold_ratio

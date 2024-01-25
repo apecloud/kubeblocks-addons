@@ -46,7 +46,7 @@ non_transactional_dml_default_batch_interval=1
 non_transactional_dml_table_gc_interval=24
 
 # the interval of job scheduler running in seconds
-non_transactional_dml_job_scheduler_running_interval=24
+non_transactional_dml_job_manager_running_interval=24
 
 # the interval of throttle check in milliseconds
 non_transactional_dml_throttle_check_interval=250
