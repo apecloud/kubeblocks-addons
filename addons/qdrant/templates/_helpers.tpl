@@ -49,14 +49,3 @@ Selector labels
 app.kubernetes.io/name: {{ include "qdrant.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
-
-{{/*
-qdrant version
-*/}}
-{{- define "qdrant.version" -}}
-{{- if hasPrefix .Chart.AppVersion "v" }}
-{{- .Chart.AppVersion }}
-{{- else }}
-{{- printf "v%s" .Chart.AppVersion }}
-{{- end }}
-{{- end}}

@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ClusterVersion
 metadata:
-  name: qdrant-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
+  name: qdrant-1.5.0
   labels:
     {{- include "qdrant.labels" . | nindent 4 }}
 spec:
@@ -14,8 +14,29 @@ spec:
             image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag | default "latest" }}
         containers:
           - name: qdrant
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository}}:{{ include "qdrant.version" . | default .Values.image.tag }}
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository}}:v1.5.0
           - name: web-ui
             image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.web_ui.repository}}:{{ .Values.image.web_ui.tag | default "latest" }}
+
+---
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterVersion
+metadata:
+  name: qdrant-1.7.3
+  labels:
+    {{- include "qdrant.labels" . | nindent 4 }}
+spec:
+  clusterDefinitionRef: qdrant
+  componentVersions:
+  - componentDefRef: qdrant
+    versionsContext:
+      initContainers:
+        - name: qdrant-tools
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag | default "latest" }}
+      containers:
+        - name: qdrant
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository}}:v1.7.3
+        - name: web-ui
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.web_ui.repository}}:{{ .Values.image.web_ui.tag | default "latest" }}
 
 
