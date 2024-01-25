@@ -6,7 +6,7 @@ Expand the name of the chart.
 {{- end }}
 
 {{/*
-Define component defintion name
+Define redis component defintion name
 */}}
 {{- define "redis.componentDefName" -}}
 {{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
@@ -17,13 +17,24 @@ redis
 {{- end -}}
 
 {{/*
-Define sentinel component defintion name
+Define redis-sentinel component defintion name
 */}}
-{{- define "redis.sentinelComponentDefName" -}}
+{{- define "redis-sentinel.componentDefName" -}}
 {{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
 redis-sentinel
 {{- else -}}
 {{- printf "redis-sentinel-%s" .Values.compDefinitionVersionSuffix -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define redis-cluster component defintion name
+*/}}
+{{- define "redis-cluster.componentDefName" -}}
+{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
+redis-cluster
+{{- else -}}
+{{- printf "redis-cluster-%s" .Values.compDefinitionVersionSuffix -}}
 {{- end -}}
 {{- end -}}
 
