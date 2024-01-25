@@ -3,7 +3,6 @@
 # Declare variables to be passed into your templates.
 
 
-clusterVersionOverride: ""
 nameOverride: ""
 fullnameOverride: ""
 
