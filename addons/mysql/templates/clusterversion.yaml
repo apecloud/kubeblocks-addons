@@ -52,6 +52,10 @@ spec:
       - name: mysql
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+            command:
+              - bash 
+              - -c
+              - "mkdir -p /var/lib/mysql/{log,binlog}; chown -R mysql:root /var/lib/mysql; docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) --plugin-load-add=rpl_semi_sync_source=semisync_source.so --plugin-load-add=rpl_semi_sync_replica=semisync_replica.so"
     systemAccountSpec:
       cmdExecutorConfig:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
