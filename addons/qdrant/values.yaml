@@ -14,8 +14,8 @@ commonLabels: {}
 ## @param application images
 ##
 image:
-  registry: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com
-  repository: apecloud/qdrant
+  registry: docker.io
+  repository: qdrant/qdrant
   pullPolicy: IfNotPresent
   tag: "v1.7.3"
   tools:
