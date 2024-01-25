@@ -129,9 +129,6 @@ spec:
               - name: SERVICE_PORT
                 value: "9114"
             imagePullPolicy: IfNotPresent
-            securityContext:
-              privileged: true
-              runAsUser: 1001
             command:
               [ ]
             args:
