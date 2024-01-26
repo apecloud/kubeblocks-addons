@@ -2,9 +2,13 @@
 
 cluster.name: {{$clusterName}}
 
+cluster.initial_master_nodes: master-0
+
 http.cors.enabled: true
 http.cors.allow-origin: "*"
 http.cors.allow-headers: Authorization,X-Requested-With,Content-Type,Content-Length
+
+discovery.type: multi-node
 
 #----------------------- BEGIN SECURITY AUTO CONFIGURATION -----------------------
 #

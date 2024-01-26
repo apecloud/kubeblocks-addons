@@ -4,6 +4,10 @@
 
 replicaCount: 1
 
+# elasticsearch cluster mode: single-node or multi-node
+mode: multi-node
+
+
 terminationPolicy: Delete
 
 imagePullSecrets: []
@@ -63,3 +67,20 @@ ingress:
 
 service:
   type: ClusterIP
+
+roles:
+  - name: coordinating
+    heapSize: 128m
+    role: ""
+
+  - name: ingest
+    heapSize: 128m
+    role: "ingest"
+
+  - name: data
+    heapSize: 1024m
+    role: "data"
+
+  - name: master
+    heapSize: 128m
+    role: "master"
