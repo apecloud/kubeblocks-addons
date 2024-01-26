@@ -9,7 +9,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
   annotations:
-    {{ include "redis-cluster.nodeportFeatureGate" . | nindent 4 }}
+    {{- include "redis-cluster.nodeportFeatureGate" . | nindent 4 }}
 spec:
   clusterVersionRef: {{ .Values.version }}
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
