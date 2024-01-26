@@ -79,7 +79,7 @@ spec:
                 name: mysql
             env:
               - name: MYSQL_INITDB_SKIP_TZINFO
-                value: 1
+                value: "1"
               - name: MYSQL_ROOT_HOST
                 value: {{ .Values.auth.rootHost | default "%" | quote }}
               - name: MYSQL_ROOT_USER
