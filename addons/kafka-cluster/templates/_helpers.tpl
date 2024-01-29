@@ -60,3 +60,46 @@ Create the name of the service account to use
 {{- define "kafka-cluster.serviceAccountName" -}}
 {{- default (printf "kb-%s" (include "clustername" .)) .Values.serviceAccount.name }}
 {{- end }}
+
+{{/*
+Define kafka broker component name
+*/}}
+{{- define "kafka-cluster.brokerComponent" -}}
+{{- if eq .Values.mode "combined" }}
+{{- printf "kafka-combine" -}}
+{{ else }}
+{{- printf "kafka-broker" -}}
+{{- end }}
+{{- end }}
+
+{{/*
+Define kafka broker componentDefinition name
+*/}}
+{{- define "kafka-cluster.brokerComponentName" -}}
+{{- if .Values.nodePortEnabled }}
+{{- printf "%s-np" (include "kafka-cluster.brokerComponent" . ) -}}
+{{- else }}
+{{- include "kafka-cluster.brokerComponent" . -}}
+{{- end }}
+{{- end }}
+
+{{/*
+Define kafka controller componentDefinition name
+*/}}
+{{- define "kafka-cluster.controllerComponentName" -}}
+{{- if .Values.nodePortEnabled }}
+{{- printf "kafka-controller-np" -}}
+{{- else }}
+{{- printf "kafka-controller" -}}
+{{- end }}
+{{- end }}
+
+{{/*
+Define kafka cluster annotation keys for nodeport feature gate.
+*/}}
+{{- define "kafka-cluster.brokerAddrFeatureGate" -}}
+kubeblocks.io/enabled-pod-ordinal-svc: broker
+{{- if .Values.nodePortEnabled }}
+kubeblocks.io/enabled-node-port-svc: broker
+{{- end }}
+{{- end }}
