@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: kafka-controller
+  name: kafka-controller-np
   labels:
     {{- include "kafka.labels" . | nindent 4 }}
     {{- if .Values.commonLabels }}
@@ -16,7 +16,7 @@ spec:
       valueFrom:
         credentialVarRef:
           name: admin
-          compDef: kafka-broker
+          compDef: kafka-broker-np
           username: Required
           optional: false
   {{- printf "\n"}}

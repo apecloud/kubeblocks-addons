@@ -66,3 +66,6 @@ brokerHeap: -XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64
 ## only effective when clusterMode='separated'
 controllerHeap: -XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64
 
+## @param nodePortEnabled
+nodePortEnabled: false
+
