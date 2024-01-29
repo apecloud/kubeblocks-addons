@@ -26,7 +26,7 @@
   "fiscalYearStartMonth": 0,
   "gnetId": 12931,
   "graphTooltip": 0,
-  "id": 34,
+  "id": 35,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -1253,7 +1253,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "sum(rate(kafka_topic_partition_current_offset{namespace=~\"$namespace\",  app_kubernetes_io_instance=~\"$cluster\", pod=~\"$instance\", topic=~\"$topic\"}[1m])) by (topic, instance)",
+          "expr": "sum(rate(kafka_topic_partition_current_offset{namespace=~\"$namespace\",  app_kubernetes_io_instance=~\"$cluster\", pod=~\"$instance\", topic=~\"$topic\"}[1m])) by (topic, instance) or vector(0)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -1357,7 +1357,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "sum(kafka_consumergroup_lag{namespace=~\"$namespace\",  app_kubernetes_io_instance=~\"$cluster\", pod=~\"$instance\", topic=~\"$topic\"}) by (consumergroup, topic)",
+          "expr": "sum(kafka_consumergroup_lag{namespace=~\"$namespace\",  app_kubernetes_io_instance=~\"$cluster\", pod=~\"$instance\", topic=~\"$topic\"}) by (consumergroup, topic) or vector(0)",
           "format": "time_series",
           "instant": false,
           "interval": "",
@@ -1460,7 +1460,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "sum(delta(kafka_topic_partition_current_offset{namespace=~\"$namespace\",  app_kubernetes_io_instance=~\"$cluster\", pod=~\"$instance\", topic=~\"$topic\"}[5m])/5) by (topic)",
+          "expr": "sum(delta(kafka_topic_partition_current_offset{namespace=~\"$namespace\",  app_kubernetes_io_instance=~\"$cluster\", pod=~\"$instance\", topic=~\"$topic\"}[5m])/5) by (topic) or vector(0)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -1563,7 +1563,7 @@
             "uid": "$datasource"
           },
           "editorMode": "code",
-          "expr": "sum(delta(kafka_consumergroup_current_offset{namespace=~\"$namespace\",  app_kubernetes_io_instance=~\"$cluster\", pod=~\"$instance\", topic=~\"$topic\"}[5m])/5) by (consumergroup, topic)",
+          "expr": "sum(delta(kafka_consumergroup_current_offset{namespace=~\"$namespace\",  app_kubernetes_io_instance=~\"$cluster\", pod=~\"$instance\", topic=~\"$topic\"}[5m])/5) by (consumergroup, topic) or vector(0)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -1607,7 +1607,7 @@
       {
         "allValue": ".+",
         "current": {
-          "selected": true,
+          "selected": false,
           "text": [
             "All"
           ],
@@ -1642,7 +1642,7 @@
       {
         "allValue": ".+",
         "current": {
-          "selected": true,
+          "selected": false,
           "text": [
             "All"
           ],
@@ -1677,7 +1677,7 @@
       {
         "allValue": ".+",
         "current": {
-          "selected": true,
+          "selected": false,
           "text": [
             "All"
           ],
