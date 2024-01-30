@@ -60,13 +60,23 @@ spec:
         type: CloneVolume
         backupPolicyTemplateName: mysql-hscale-backup-policy-template
       podSpec:
+        initContainers:
+          - command:
+              - bash 
+              - -c
+              - "mkdir -p /var/lib/mysql/{log,binlog}; chown -R mysql:root /var/lib/mysql;"
+            imagePullPolicy: Always
+            name: init-data
+            volumeMounts:
+              - mountPath: {{ .Values.dataMountPath }}
+                name: data
         containers:
           - name: mysql
             imagePullPolicy: IfNotPresent
             command:
               - bash 
               - -c
-              - "mkdir -p /var/lib/mysql/{log,binlog}; chown -R mysql:root /var/lib/mysql; docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1))"
+              - "docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1))"
             volumeMounts:
               - mountPath: {{ .Values.dataMountPath }}
                 name: data
