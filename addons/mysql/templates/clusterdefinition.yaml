@@ -60,6 +60,19 @@ spec:
         type: CloneVolume
         backupPolicyTemplateName: mysql-hscale-backup-policy-template
       podSpec:
+        initContainers:
+          - command:
+            - cp
+            - -r
+            - /bin/syncer
+            - /config
+            - /kubeblocks/
+            image: registry.cn-hangzhou.aliyuncs.com/xuriwuyun/syncer:latest
+            imagePullPolicy: Always
+            name: init-syncer
+            volumeMounts:
+            - mountPath: /kubeblocks
+              name: kubeblocks
         containers:
           - name: mysql
             imagePullPolicy: IfNotPresent
@@ -74,6 +87,8 @@ spec:
                 name: mysql-config
               - name: scripts
                 mountPath: /scripts
+              - mountPath: /kubeblocks
+                name: kubeblocks
             ports:
               - containerPort: 3306
                 name: mysql
