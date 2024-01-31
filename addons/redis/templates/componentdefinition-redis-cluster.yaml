@@ -61,18 +61,14 @@ spec:
     ## TODO: the other accounts should be created for backward compatibility
     - name: default
       initAccount: true
-      passwordGenerationPolicy:
-        length: 10
-        numDigits: 5
-        numSymbols: 0
-        letterCase: MixedCases
+      seed: 5wM4uhmKV1Ohy087
   vars:
     ## the default username of redis connection
     - name: REDIS_DEFAULT_USER
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "redis.componentDefName" . }}
+          compDef: {{ include "redis-cluster.componentDefName" . }}
           name: default
           username: Required
     ## the default password of redis connection
@@ -80,7 +76,7 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "redis.componentDefName" . }}
+          compDef: {{ include "redis-cluster.componentDefName" . }}
           name: default
           password: Required
     ## TODO: add redis sentinel reference env vars
@@ -117,7 +113,7 @@ spec:
         ports:
           - name: redis-cluster
             containerPort: 6379
-          - name: redis-cluster-bus
+          - name: cluster-bus
             containerPort: 16379
         volumeMounts:
           - name: data
@@ -166,7 +162,7 @@ spec:
               command:
                 - /bin/bash
                 - -c
-                - /scripts/redis-preStop.sh
+                - /scripts/redis-pre-stop.sh
       - name: metrics
         image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
         imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}

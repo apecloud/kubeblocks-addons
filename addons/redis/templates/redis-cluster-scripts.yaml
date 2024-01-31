@@ -5,4 +5,4 @@ metadata:
   labels:
     {{- include "redis.labels" . | nindent 4 }}
 data:
-  {{- include "redis.extend.scripts" . | nindent 2 }}
+  {{- include "redis-cluster.extend.scripts" . | nindent 2 }}

@@ -112,3 +112,13 @@ Generate scripts configmap
 {{- $.Files.Get $path | nindent 2 }}
 {{- end }}
 {{- end }}
+
+{{/*
+Generate scripts configmap
+*/}}
+{{- define "redis-cluster.extend.scripts" -}}
+{{- range $path, $_ :=  $.Files.Glob "redis-cluster-scripts/**" }}
+{{ $path | base }}: |-
+{{- $.Files.Get $path | nindent 2 }}
+{{- end }}
+{{- end }}
