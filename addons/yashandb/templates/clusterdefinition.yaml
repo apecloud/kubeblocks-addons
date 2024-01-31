@@ -1,0 +1,33 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterDefinition
+metadata:
+  name: yashandb
+  labels:
+    {{- include "yashandb.labels" . | nindent 4 }}
+spec:
+  type: yashandb
+  connectionCredential:
+    username: sys
+    password: "yasdb_123"
+    endpoint: "$(SVC_FQDN):$(SVC_PORT_yashandb)"
+    host: "$(SVC_FQDN)"
+    port: "$(SVC_PORT_yashandb)"
+  componentDefs:
+    - name: yashandb-compdef
+      characterType: yashandb
+      workloadType: Stateful
+      service:
+        ports:
+          - name: yashandb
+            port: 1688
+            targetPort: yashandb
+      podSpec:
+        containers:
+          - name: yashandb-container
+            imagePullPolicy: IfNotPresent
+            volumeMounts:
+              - mountPath: /home/yashan/yasdb_data
+                name: data
+            ports:
+              - containerPort: 1688
+                name: yashandb
