@@ -10,6 +10,6 @@ dependencies:
 
 type: application
 
-version: 0.0.1-alpha1
+version: 0.8.0
 
 appVersion: "4.2.0.0-100010032023083021"

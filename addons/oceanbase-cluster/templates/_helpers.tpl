@@ -86,24 +86,18 @@ Create extra envs annotations
 "kubeblocks.io/extra-env": {{ include "oceanbase-cluster.extra-envs" . | nospace  | quote }}
 {{- end }}
 
-
-
-{{- define "oceanbase-cluster.clusterdef" }}
+{{- define "oceanbase-cluster.compdef" }}
 {{- if eq .Values.hostnetwork "enabled" }}
-{{- "oceanbase-host-network" | quote}}
+  {{- if gt (int .Values.obClusters) 1 }}
+  {{- "oceanbase-repl-host" | quote}}
+  {{- else }}
+  {{- "oceanbase-hostnetwork" | quote}}
+  {{- end }}
 {{- else }}
-{{- "oceanbase" | quote }}
-{{- end -}}
-{{- end }}
-
-{{- define "oceanbase-cluster.default-version" }}
-{{- default .Chart.AppVersion .Values.clusterVersionOverrid }}
-{{- end }}
-
-{{- define "oceanbase-cluster.clusterver" }}
-{{- if eq .Values.hostnetwork "enabled" }}
-{{- include "oceanbase-cluster.default-version" . | printf "oceanbase-host-network-%s"  | quote}}
-{{- else }}
-{{- include "oceanbase-cluster.default-version" . | printf "oceanbase-%s"  | quote}}
+  {{- if gt (int .Values.obClusters) 1 }}
+  {{- "oceanbase-repl" | quote}}
+  {{- else }}
+  {{- "oceanbase" | quote}}
+  {{- end }}
 {{- end -}}
 {{- end }}

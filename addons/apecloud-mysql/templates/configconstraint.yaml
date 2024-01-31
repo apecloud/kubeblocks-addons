@@ -58,6 +58,7 @@ spec:
     iniConfig:
       sectionName: mysqld
 ---
+{{- $vttabletcc := .Files.Get "config/mysql-scale-vttablet-config-effect-scope.yaml" | fromYaml }}
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ConfigConstraint
 metadata:
@@ -66,11 +67,42 @@ metadata:
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
+  reloadOptions:
+    autoTrigger:
+      processName: vttablet
+
   cfgSchemaTopLevelName: VtTabletParameter
 
   configurationSchema:
     cue: |-
       {{- .Files.Get "config/mysql-scale-vttablet-config-constraint.cue" | nindent 6 }}
+
+  ## define static parameter list
+  {{- if hasKey $vttabletcc "staticParameters" }}
+  staticParameters:
+    {{- $params := get $vttabletcc "staticParameters" }}
+    {{- range $params }}
+    - {{ . }}
+    {{- end }}
+  {{- end}}
+
+      ## define dynamic parameter list
+  {{- if hasKey $vttabletcc "dynamicParameters" }}
+  dynamicParameters:
+   {{- $params := get $vttabletcc "dynamicParameters" }}
+   {{- range $params }}
+    - {{ . }}
+   {{- end }}
+ {{- end}}
+
+      ## define immutable parameter list, this feature is not currently supported.
+ {{- if hasKey $vttabletcc "immutableParameters" }}
+  immutableParameters:
+   {{- $params := get $vttabletcc "immutableParameters" }}
+   {{- range $params }}
+    - {{ . }}
+   {{- end }}
+ {{- end}}
 
   # mysql-scale configuration file format
   formatterConfig:
@@ -90,13 +122,13 @@ spec:
   configurationSchema:
     cue: |-
       {{- .Files.Get "config/mysql-scale-vtconsensus-config-constraint.cue" | nindent 6 }}
-
   # mysql-scale configuration file format
   formatterConfig:
     format: ini
     iniConfig:
       sectionName: vtconsensus
 ---
+{{- $vtgatecc := .Files.Get "config/mysql-scale-vtgate-config-effect-scope.yaml" | fromYaml }}
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ConfigConstraint
 metadata:
@@ -104,11 +136,42 @@ metadata:
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
+  reloadOptions:
+    autoTrigger:
+      processName: vtgate
+
   cfgSchemaTopLevelName: VtGateParameter
 
   configurationSchema:
     cue: |-
       {{- .Files.Get "config/mysql-scale-vtgate-config-constraint.cue" | nindent 6 }}
+
+  ## define static parameter list
+  {{- if hasKey $vtgatecc "staticParameters" }}
+  staticParameters:
+    {{- $params := get $vtgatecc "staticParameters" }}
+    {{- range $params }}
+    - {{ . }}
+    {{- end }}
+  {{- end}}
+
+      ## define dynamic parameter list
+  {{- if hasKey $vtgatecc "dynamicParameters" }}
+  dynamicParameters:
+   {{- $params := get $vtgatecc "dynamicParameters" }}
+   {{- range $params }}
+    - {{ . }}
+   {{- end }}
+ {{- end}}
+
+      ## define immutable parameter list, this feature is not currently supported.
+ {{- if hasKey $vtgatecc "immutableParameters" }}
+  immutableParameters:
+   {{- $params := get $vtgatecc "immutableParameters" }}
+   {{- range $params }}
+    - {{ . }}
+   {{- end }}
+ {{- end}}
 
   # mysql-scale configuration file format
   formatterConfig:

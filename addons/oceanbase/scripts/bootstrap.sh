@@ -23,11 +23,48 @@ REP_USER=${REP_USER:-rep_user}
 REP_PASSWD=${REP_PASSWD:-rep_user}
 OB_DEBUG=${OB_DEBUG:-true}
 OB_HOME_DIR=${OB_HOME_DIR:-/home/admin/oceanbase}
+OB_CLUSTERS_COUNT=${OB_CLUSTERS_COUNT:-1}
 
 ORDINAL_INDEX=$(echo $KB_POD_NAME | awk -F '-' '{print $(NF)}')
+COMPONENT_INDEX=$(echo $KB_POD_NAME | awk -F '-' '{print $(NF-1)}')
 ZONE_NAME="zone$((${ORDINAL_INDEX}%${ZONE_COUNT}))"
+
 echo "ORDINAL_INDEX: $ORDINAL_INDEX"
+echo "COMPONENT_INDEX: $COMPONENT_INDEX"
 echo "ZONE_NAME: $ZONE_NAME"
+echo "COMP_MYSQL_PORT: $COMP_MYSQL_PORT"
+echo "COMP_RPC_PORT: $COMP_RPC_PORT"
+
+function init_port_list {
+  MYSQL_PORTS=()
+  RPC_PORTS=()
+  for i in $(seq 0 $(($OB_CLUSTERS_COUNT-1))); do
+    MYSQL_PORTS+=(2881)
+    RPC_PORTS+=(2882)
+  done
+
+  {{- range $i, $e := $.dynamicCompInfos }}
+    {{- $mysql_port_info := getPortByName ( index $e.containers 0 ) "sql" }}
+    {{- $rpc_port_info := getPortByName ( index $e.containers 0 ) "rpc" }}
+    {{- $mysql_port := 2881 }}
+    {{- if $mysql_port_info }}
+      {{- $mysql_port = $mysql_port_info.hostPort }}
+    {{- end }}
+    {{- $rpc_port := 2882 }}
+    {{- if $rpc_port_info }}
+      {{- $rpc_port = $rpc_port_info.hostPort }}
+    {{- end }}
+    MYSQL_PORTS[{{ $i }}]={{$mysql_port}}
+    RPC_PORTS[{{ $i }}]={{$rpc_port}}
+  {{- end }}
+
+  COMP_MYSQL_PORT=${MYSQL_PORTS[$COMPONENT_INDEX]}
+  COMP_RPC_PORT=${RPC_PORTS[$COMPONENT_INDEX]}
+  # persisting the sql port for backup and restore
+  echo $COMP_MYSQL_PORT > /home/admin/workdir/sql_port.ob
+  echo "sql_port: $COMP_MYSQL_PORT"
+  echo "rpc_port: $COMP_RPC_PORT"
+}
 
 function get_pod_ip_list {
   # Get the headless service name
@@ -35,33 +72,31 @@ function get_pod_ip_list {
   RS_LIST=""
   IP_LIST=()
 
+  # wait for up to 10 minutes for the server to be ready
+  local wait_time=600
   # Get every replica's IP
   for i in $(seq 0 $(($KB_REPLICA_COUNT-1))); do
     local replica_hostname="${KB_CLUSTER_COMP_NAME}-${i}"
     local replica_ip=""
     if [ $i -ne $ORDINAL_INDEX ]; then
-      while true; do
-        echo "nslookup $replica_hostname.$SVC_NAME"
-        nslookup $replica_hostname.$SVC_NAME | tail -n 2 | grep -P "(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})" --only-matching
+      echo "nslookup $replica_hostname.$SVC_NAME"
+      local elapsed_time=0
+      while [ $elapsed_time -lt $wait_time ]; do
+        replica_ip=$(nslookup $replica_hostname.$SVC_NAME | tail -n 2 | grep -P "(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})" --only-matching)
         if [ $? -ne 0 ]; then
           echo "$replica_hostname.$SVC_NAME is not ready yet"
-          sleep $WAIT_K8S_DNS_READY_TIME
+          sleep 10
+          elapsed_time=$((elapsed_time + 10))
         else
-          break
-        fi
-      done
-
-      while true; do
-        replica_ip=$(nslookup $replica_hostname.$SVC_NAME | tail -n 2 | grep -P "(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})" --only-matching)
-        # check if the IP is empty
-        if [ -z "$replica_ip" ]; then
-          echo "nslookup $replica_hostname.$SVC_NAME failed, wait for a moment..."
-          sleep $WAIT_K8S_DNS_READY_TIME
-        else
+          echo "$replica_hostname.$SVC_NAME is ready"
           echo "nslookup $replica_hostname.$SVC_NAME success, IP: $replica_ip"
           break
         fi
       done
+      if [ $elapsed_time -ge $wait_time ]; then
+        echo "Failed to get the IP of $replica_hostname.$SVC_NAME, exit..."
+        exit 1
+      fi
     else
       replica_ip=$KB_POD_IP
     fi
@@ -71,11 +106,11 @@ function get_pod_ip_list {
     # Construct the ZONE_SERVER_LIST and RS_LIST
     if [ $i -lt $ZONE_COUNT ]; then
       if [ $i -eq 0 ]; then
-        ZONE_SERVER_LIST="ZONE 'zone${i}' SERVER '${replica_ip}:2882'"
-        RS_LIST="${replica_ip}:2882:2881"
+        ZONE_SERVER_LIST="ZONE 'zone${i}' SERVER '${replica_ip}:$COMP_RPC_PORT'"
+        RS_LIST="${replica_ip}:$COMP_RPC_PORT:$COMP_MYSQL_PORT"
       else
-        ZONE_SERVER_LIST="${ZONE_SERVER_LIST},ZONE 'zone${i}' SERVER '${replica_ip}:2882'"
-        RS_LIST="${RS_LIST};${replica_ip}:2882:2881"
+        ZONE_SERVER_LIST="${ZONE_SERVER_LIST},ZONE 'zone${i}' SERVER '${replica_ip}:$COMP_RPC_PORT'"
+        RS_LIST="${RS_LIST};${replica_ip}:$COMP_RPC_PORT:$COMP_MYSQL_PORT"
       fi
     fi
   done
@@ -105,7 +140,7 @@ function prepare_dirs {
   ln -sf /home/admin/data-file/sort_dir ${OB_HOME_DIR}/store/sort_dir
   mkdir -p /home/admin/data-file/sstable
   ln -sf /home/admin/data-file/sstable ${OB_HOME_DIR}/store/sstable
-  chown -R root:root ${OB_HOME_DIR}
+  # chown -R root:root ${OB_HOME_DIR}
 }
 
 function clean_dirs {
@@ -137,9 +172,9 @@ function start_observer {
   fi
 
   /home/admin/oceanbase/bin/observer --appname ${KB_CLUSTER_COMP_NAME} \
-    --cluster_id 1 --zone $ZONE_NAME \
+    --cluster_id $((${COMPONENT_INDEX}+1)) --zone $ZONE_NAME \
     -I ${KB_POD_IP} \
-    -p 2881 -P 2882 -d ${OB_HOME_DIR}/store/ \
+    -d ${OB_HOME_DIR}/store/ \
     -l ${loglevel} -o config_additional_dir=${OB_HOME_DIR}/store/etc,${default_configs}
 }
 
@@ -150,7 +185,12 @@ function start_observer_with_exsting_configs {
 
 function is_recovering {
   # test whether the config folders and files are empty or not
-  if [ -z "$(ls -A /home/admin/data-file)" ]; then
+  # if [ -z "$(ls -A /home/admin/data-file)" ]; then
+  #   echo "False"
+  # else
+  #   echo "True"
+  # fi
+  if [ ! -d "/home/admin/workdir/etc" ]; then
     echo "False"
   else
     echo "True"
@@ -163,12 +203,12 @@ function others_running {
     if [ $i -eq $ORDINAL_INDEX ]; then
       continue
     fi
-    nc -z ${IP_LIST[$i]} 2881
+    nc -z ${IP_LIST[$i]} $COMP_MYSQL_PORT
     if [ $? -ne 0 ]; then
       continue
     fi
     # If at least one server is up, return True
-    conn_remote ${IP_LIST[$i]} "show databases" &> /dev/null
+    conn_remote_w_port ${IP_LIST[$i]} $COMP_MYSQL_PORT "show databases" &> /dev/null
     if [ $? -eq 0 ]; then
       alive_count=$(($alive_count+1))
     fi
@@ -199,7 +239,7 @@ function bootstrap_obcluster {
     done
     echo "hostname.svc:" $replica_hostname.$SVC_NAME "ip:" $replica_ip
     while true; do
-      nc -z $replica_ip 2881
+      nc -z $replica_ip $COMP_MYSQL_PORT
       if [ $? -ne 0 ]; then
         echo "Replica $replica_hostname.$SVC_NAME is not up yet"
         sleep $WAIT_SERVER_SLEEP_TIME
@@ -211,9 +251,9 @@ function bootstrap_obcluster {
   done
 
   echo "SET SESSION ob_query_timeout=1000000000;"
-  conn_local "SET SESSION ob_query_timeout=1000000000;"
+  conn_local_w_port $COMP_MYSQL_PORT "SET SESSION ob_query_timeout=1000000000;"
   echo "ALTER SYSTEM BOOTSTRAP ${ZONE_SERVER_LIST};"
-  conn_local "ALTER SYSTEM BOOTSTRAP ${ZONE_SERVER_LIST};"
+  conn_local_w_port $COMP_MYSQL_PORT  "ALTER SYSTEM BOOTSTRAP ${ZONE_SERVER_LIST};"
 
   if [ $? -ne 0 ]; then
     # Bootstrap failed, clean the dirs and retry
@@ -224,9 +264,9 @@ function bootstrap_obcluster {
   # Wait for the server to be ready
   sleep $WAIT_SERVER_SLEEP_TIME
 
-  conn_local "show databases"
+  conn_local_w_port $COMP_MYSQL_PORT "show databases"
 
-  conn_local_obdb "SELECT * FROM DBA_OB_SERVERS\g"
+  conn_local_obdb_w_port $COMP_MYSQL_PORT "SELECT * FROM DBA_OB_SERVERS\G"
 
   create_primary_secondry_tenants
 }
@@ -239,24 +279,24 @@ function add_server {
     if [ $i -eq $ORDINAL_INDEX ]; then
       continue
     fi
-    until conn_remote_obdb ${IP_LIST[$i]} "SELECT * FROM DBA_OB_SERVERS\g"; do
+    until conn_remote_obdb_w_port ${IP_LIST[$i]} $COMP_MYSQL_PORT "SELECT * FROM DBA_OB_SERVERS\G"; do
       echo "the cluster has not been bootstrapped, wait for them..."
       sleep 10
     done
 
     local RETRY_MAX=5
     local retry_times=0
-    until conn_remote ${IP_LIST[$i]} "ALTER SYSTEM ADD SERVER '${KB_POD_IP}:2882' ZONE '${ZONE_NAME}'"; do
-      echo "Failed to add server ${KB_POD_IP}:2882 to the cluster, retry..."
+    until conn_remote_w_port ${IP_LIST[$i]} $COMP_MYSQL_PORT "ALTER SYSTEM ADD SERVER '${KB_POD_IP}:${COMP_RPC_PORT}' ZONE '${ZONE_NAME}'"; do
+      echo "Failed to add server ${KB_POD_IP}:$COMP_RPC_PORT to the cluster, retry..."
       retry_times=$(($retry_times+1))
       sleep $((3*${retry_times}))
       if [ $retry_times -gt ${RETRY_MAX} ]; then
-        echo "Failed to add server ${KB_POD_IP}:2882 to the cluster finally, exit..."
+        echo "Failed to add server ${KB_POD_IP}:$COMP_RPC_PORT to the cluster finally, exit..."
         exit 1
       fi
     done
 
-    until [ -n "$(conn_remote_obdb ${IP_LIST[$i]} "SELECT * FROM DBA_OB_SERVERS WHERE SVR_IP = '${KB_POD_IP}' and STATUS = 'ACTIVE' and START_SERVICE_TIME IS NOT NULL")" ]; do
+    until [ -n "$(conn_remote_obdb_w_port ${IP_LIST[$i]} $COMP_MYSQL_PORT "SELECT * FROM DBA_OB_SERVERS WHERE SVR_IP = '${KB_POD_IP}' and STATUS = 'ACTIVE' and START_SERVICE_TIME IS NOT NULL")" ]; do
       echo "Wait for the server to be ready..."
       sleep 10
     done
@@ -284,16 +324,16 @@ function delete_inactive_servers {
     if [ $i -eq $ORDINAL_INDEX ]; then
       continue
     fi
-    inactive_ips=($(conn_remote_batch ${IP_LIST[$i]} "SELECT SVR_IP FROM DBA_OB_SERVERS WHERE STATUS = 'INACTIVE'" | tail -n +2))
+    inactive_ips=($(conn_remote_batch_w_port ${IP_LIST[$i]} $COMP_MYSQL_PORT  "SELECT SVR_IP FROM DBA_OB_SERVERS WHERE STATUS = 'INACTIVE'" | tail -n +2))
     if [ ${#inactive_ips[@]} -eq 0 ]; then
       echo "No inactive servers"
       continue
     fi
     echo "Inactive IPs: ${inactive_ips[*]}"
     for ip in ${inactive_ips[*]}; do
-      svr="$ip:2882"
+      svr="$ip:$COMP_RPC_PORT"
       echo "ALTER SYSTEM DELETE SERVER '$svr'"
-      conn_remote ${IP_LIST[$i]} "ALTER SYSTEM DELETE SERVER '$svr'" || true
+      conn_remote_w_port ${IP_LIST[$i]} $COMP_MYSQL_PORT "ALTER SYSTEM DELETE SERVER '$svr'" || true
     done
     break
   done
@@ -324,20 +364,20 @@ function create_primary_secondry_tenants {
 function create_primary_tenant {
   tenant_name=$1
   echo "create resource unit and pool for tenant ${tenant_name}"
-  conn_local "CREATE RESOURCE UNIT IF NOT EXISTS unit_for_${tenant_name} MAX_CPU ${TENANT_CPU}, MEMORY_SIZE = '${TENANT_MEMORY}', LOG_DISK_SIZE = '${TENANT_DISK}';"
-  conn_local "CREATE RESOURCE POOL IF NOT EXISTS pool_for_${tenant_name} UNIT = 'unit_for_${tenant_name}', UNIT_NUM = 1;"
+  conn_local_w_port $COMP_MYSQL_PORT "CREATE RESOURCE UNIT IF NOT EXISTS unit_for_${tenant_name} MAX_CPU ${TENANT_CPU}, MEMORY_SIZE = '${TENANT_MEMORY}', LOG_DISK_SIZE = '${TENANT_DISK}';"
+  conn_local_w_port $COMP_MYSQL_PORT  "CREATE RESOURCE POOL IF NOT EXISTS pool_for_${tenant_name} UNIT = 'unit_for_${tenant_name}', UNIT_NUM = 1;"
 
   echo "create tenant ${tenant_name}"
-  conn_local "SET SESSION ob_query_timeout=1000000000; CREATE TENANT IF NOT EXISTS ${tenant_name} RESOURCE_POOL_LIST=('pool_for_${tenant_name}') SET ob_tcp_invited_nodes='%';"
+  conn_local_w_port $COMP_MYSQL_PORT "SET SESSION ob_query_timeout=1000000000; CREATE TENANT IF NOT EXISTS ${tenant_name} RESOURCE_POOL_LIST=('pool_for_${tenant_name}') SET ob_tcp_invited_nodes='%';"
 
   echo "alter system archive log"
-  conn_local "ALTER SYSTEM ARCHIVELOG;"
+  conn_local_w_port $COMP_MYSQL_PORT "ALTER SYSTEM ARCHIVELOG;"
 
   echo "check tenant ${tenant_name} exists"
-  conn_local "SELECT count(*) FROM oceanbase.DBA_OB_TENANTS where tenant_name = '${tenant_name}';"
-  conn_local "SELECT TENANT_NAME, TENANT_TYPE, TENANT_ROLE, SWITCHOVER_STATUS FROM oceanbase.DBA_OB_TENANTS\G"
+  conn_local_w_port $COMP_MYSQL_PORT "SELECT count(*) FROM oceanbase.DBA_OB_TENANTS where tenant_name = '${tenant_name}';"
+  conn_local_w_port $COMP_MYSQL_PORT "SELECT TENANT_NAME, TENANT_TYPE, TENANT_ROLE, SWITCHOVER_STATUS FROM oceanbase.DBA_OB_TENANTS\G"
 
-  conn_local "SELECT SVR_IP, SVR_PORT FROM oceanbase.DBA_OB_TENANTS as t, oceanbase.DBA_OB_UNITS as u, oceanbase.DBA_OB_UNIT_CONFIGS as uc WHERE t.tenant_name = '${tenant_name}' and t.tenant_id = u.tenant_id and u.unit_id = uc.UNIT_CONFIG_ID and uc.name = 'unit_for_${tenant_name}' limit 1\G" > /tmp/tenant_info
+  conn_local_w_port $COMP_MYSQL_PORT "SELECT SVR_IP, SVR_PORT FROM oceanbase.DBA_OB_TENANTS as t, oceanbase.DBA_OB_UNITS as u, oceanbase.DBA_OB_UNIT_CONFIGS as uc WHERE t.tenant_name = '${tenant_name}' and t.tenant_id = u.tenant_id and u.unit_id = uc.UNIT_CONFIG_ID and uc.name = 'unit_for_${tenant_name}' limit 1\G" > /tmp/tenant_info
   svr_ip_list=$(cat /tmp/tenant_info | awk '/SVR_IP/{print $NF}')
 
   echo "svr_ip_list: ${svr_ip_list[*]}"
@@ -357,9 +397,9 @@ function create_rep_user {
   local user_passwd=${REP_PASSWD}
 
   echo "create user ${user_name} for tenant ${tenant_name}"
-  conn_remote_as_tenant $ip $tenant_name "CREATE USER ${user_name} IDENTIFIED BY '${user_passwd}';"
-  conn_remote_as_tenant $ip $tenant_name "GRANT SELECT ON oceanbase.* TO ${user_name};"
-  conn_remote_as_tenant $ip $tenant_name "SET GLOBAL ob_tcp_invited_nodes='%';"
+  conn_remote_as_tenant_w_port $ip $COMP_MYSQL_PORT $tenant_name "CREATE USER ${user_name} IDENTIFIED BY '${user_passwd}';"
+  conn_remote_as_tenant_w_port $ip $COMP_MYSQL_PORT $tenant_name "GRANT SELECT ON oceanbase.* TO ${user_name};"
+  conn_remote_as_tenant_w_port $ip $COMP_MYSQL_PORT $tenant_name "SET GLOBAL ob_tcp_invited_nodes='%';"
 }
 
 function create_secondary_tenant {
@@ -368,24 +408,26 @@ function create_secondary_tenant {
   local secondary_tenant_name=$2
   local primary_tenant_rep_user=${REP_USER}
   local primary_tenant_rep_passwd=${REP_PASSWD}
-
+  local tenant_ip=$3
   # get access points
-  conn_remote_as_tenant $3 ${primry_tenant_name} "select SVR_IP from oceanbase.DBA_OB_ACCESS_POINT\G" > /tmp/access_point
-  svr_ip_list=$(cat /tmp/access_point | awk '/SVR_IP/{print $NF}')
+  conn_remote_as_tenant_w_port $tenant_ip $COMP_MYSQL_PORT ${primry_tenant_name} "SELECT concat_ws(':', svr_ip, sql_port) as AP from oceanbase.DBA_OB_ACCESS_POINT\G" > /tmp/access_point
+  svr_ip_list=$(cat /tmp/access_point | awk '/AP/{print $NF}')
   # echo "svr_ip_list: ${svr_ip_list[*]}"
   OLD_IFS=$IFS
   IFS=$' \t\n'
   svr_ip_array=($svr_ip_list)
+  svr_ports_array=($svr_ports_list)
   IFS=$OLD_IFS
 
   echo "svr_ip_array: ${svr_ip_array[*]}"
 
-  delim=':2881;'
+  delim=';'
   printf -v joined_string "%s$delim" "${svr_ip_array[@]}"
   echo "joined_string: $joined_string"
 
     # get ip list of 0-th pod of other components
   local secondary_tenant_ip=()
+  local secondary_tenant_port=()
   components_prefix=$(echo "${KB_CLUSTER_COMP_NAME}" | awk -F'-' '{NF--; print}' OFS='-')
   for i in $(seq 1 $(($OB_CLUSTERS_COUNT-1))); do
     next_comp_name="${components_prefix}-${i}"
@@ -403,32 +445,35 @@ function create_secondary_tenant {
       fi
     done
     secondary_tenant_ip+=("$replica_ip")
+    secondary_tenant_port+=${MYSQL_PORTS[$i]}
   done
   echo "secondary ip list: ${secondary_tenant_ip[*]}"
 
   # for each ip in ip list, create secondary tenant
-  for ip in ${secondary_tenant_ip[*]}; do
+  for ((i=0; i<${#secondary_tenant_ip[@]}; i++)); do
     echo "create resource unit and pool for tenant ${secondary_tenant_name}"
     echo "remote ip: ${ip}"
+    local ip=${secondary_tenant_ip[$i]}
+    local port=${secondary_tenant_port[$i]}
     # wait until the server is up
-    until conn_remote $ip "SELECT * FROM oceanbase.DBA_OB_SERVERS\g"; do
+    until conn_remote_w_port $ip $port "SELECT * FROM oceanbase.DBA_OB_SERVERS\G"; do
       echo "the cluster has not been bootstrapped, wait for them..."
       retry_times=$(($retry_times+1))
       sleep 10
     done
 
     echo $ip "CREATE RESOURCE UNIT IF NOT EXISTS unit_for_${secondary_tenant_name}"
-    conn_remote $ip "CREATE RESOURCE UNIT IF NOT EXISTS unit_for_${secondary_tenant_name} MAX_CPU ${TENANT_CPU}, MEMORY_SIZE = '${TENANT_MEMORY}', LOG_DISK_SIZE = '${TENANT_DISK}';"
+    conn_remote_w_port $ip $port "CREATE RESOURCE UNIT IF NOT EXISTS unit_for_${secondary_tenant_name} MAX_CPU ${TENANT_CPU}, MEMORY_SIZE = '${TENANT_MEMORY}', LOG_DISK_SIZE = '${TENANT_DISK}';"
     echo $ip "CREATE RESOURCE POOL IF NOT EXISTS pool_for_${secondary_tenant_name} UNIT = 'unit_for_${secondary_tenant_name}', UNIT_NUM = 1;"
-    conn_remote $ip "CREATE RESOURCE POOL IF NOT EXISTS pool_for_${secondary_tenant_name} UNIT = 'unit_for_${secondary_tenant_name}', UNIT_NUM = 1;"
+    conn_remote_w_port $ip $port "CREATE RESOURCE POOL IF NOT EXISTS pool_for_${secondary_tenant_name} UNIT = 'unit_for_${secondary_tenant_name}', UNIT_NUM = 1;"
 
     echo "create tenant ${secondary_tenant_name}"
     echo $ip "SET SESSION ob_query_timeout=1000000000; CREATE STANDBY TENANT IF NOT EXISTS ${secondary_tenant_name} LOG_RESTORE_SOURCE ='SERVICE=${joined_string} USER=${primary_tenant_rep_user}@${primry_tenant_name} PASSWORD=${primary_tenant_rep_passwd}' RESOURCE_POOL_LIST=('pool_for_${secondary_tenant_name}');"
 
     local RETRY_MAX=5
     local retry_times=0
-    until conn_remote $ip "SET SESSION ob_query_timeout=1000000000; CREATE STANDBY TENANT IF NOT EXISTS ${secondary_tenant_name} LOG_RESTORE_SOURCE ='SERVICE=${joined_string} USER=${primary_tenant_rep_user}@${primry_tenant_name} PASSWORD=${primary_tenant_rep_passwd}' RESOURCE_POOL_LIST=('pool_for_${secondary_tenant_name}');"; do
-      conn_remote $ip "DROP TENANT IF EXISTS ${secondary_tenant_name} FORCE;"
+    until conn_remote_w_port $ip $port "SET SESSION ob_query_timeout=1000000000; CREATE STANDBY TENANT IF NOT EXISTS ${secondary_tenant_name} LOG_RESTORE_SOURCE ='SERVICE=${joined_string} USER=${primary_tenant_rep_user}@${primry_tenant_name} PASSWORD=${primary_tenant_rep_passwd}' RESOURCE_POOL_LIST=('pool_for_${secondary_tenant_name}');"; do
+      conn_remote_w_port $ip $port "DROP TENANT IF EXISTS ${secondary_tenant_name} FORCE;"
       echo "Failed to create standby tenant, retry..."
       retry_times=$(($retry_times+1))
       sleep $((3*${retry_times}))
@@ -439,10 +484,32 @@ function create_secondary_tenant {
     done
 
     echo $ip "ALTER SYSTEM ARCHIVELOG;"
-    conn_remote $ip "ALTER SYSTEM ARCHIVELOG;"
+    conn_remote_w_port $ip $port "ALTER SYSTEM ARCHIVELOG;"
 
     echo "check tenant ${secondary_tenant_name} exists"
-    conn_remote $ip "SELECT count(*) FROM oceanbase.DBA_OB_TENANTS where tenant_name = '${secondary_tenant_name}';"
-    conn_remote $ip "SELECT TENANT_NAME, TENANT_TYPE, TENANT_ROLE, SWITCHOVER_STATUS FROM oceanbase.DBA_OB_TENANTS\G"
+    conn_remote_w_port $ip $port "SELECT count(*) FROM oceanbase.DBA_OB_TENANTS where tenant_name = '${secondary_tenant_name}';"
+    conn_remote_w_port $ip $port "SELECT TENANT_NAME, TENANT_TYPE, TENANT_ROLE, SWITCHOVER_STATUS FROM oceanbase.DBA_OB_TENANTS\G"
   done
+}
+
+function wait_for_observer_start {
+  echo "check if the server has been initialized"
+  wait_time=30  # wait up to 30 seconds
+  elapsed_time=0
+  filename=$OB_HOME_DIR/log/observer.log
+  while [ $elapsed_time -lt $wait_time ]; do
+    if grep -q 'success to start root service monitor' $filename; then
+      echo "oceanbase has been initialized successfully"
+      break
+    else
+      echo "oceanbase is not initialized yet, wait for it..."
+      sleep 1
+      elapsed_time=$((elapsed_time + 1))
+    fi
+  done
+
+  if [ $elapsed_time -ge $wait_time ]; then
+    echo "Failed to init server ${KB_POD_IP}:$COMP_RPC_PORT exit..."
+    exit 1
+  fi
 }

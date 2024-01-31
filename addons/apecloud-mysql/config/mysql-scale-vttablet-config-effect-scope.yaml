@@ -1,0 +1,23 @@
+## staticParameters, list of StaticParameter, modifications of them trigger a process restart.
+## dynamicParameters, list of DynamicParameter, modifications of them trigger a config dynamic reload without process restart.
+## staticParameters and dynamicParameters determine the behavior of parameter changes:
+## if any of the modified parameters is in the staticParameters list, this operation will trigger a process restart.
+## if all the changed parameters are in the dynamicParameters list, this change executes reload without process restart.
+## if the above two conditions are not met, by default, parameter change operation follow the rule for using staticParameters.
+staticParameters:
+  - health_check_interval
+  - shard_sync_retry_delay
+  - remote_operation_timeout
+  - db_connect_timeout_ms
+  - table_acl_config_mode
+  - enable_logs
+  - enable_query_log
+  - table_acl_config
+  - queryserver_config_strict_table_acl
+  - table_acl_config_reload_interval
+  - enforce_tableacl_config
+
+dynamicParameters:
+  - queryserver_config_pool_size
+  - queryserver_config_stream_pool_size
+  - queryserver_config_transaction_cap

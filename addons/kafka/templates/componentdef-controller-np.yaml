@@ -1,0 +1,23 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: kafka-controller-np
+  labels:
+    {{- include "kafka.labels" . | nindent 4 }}
+    {{- if .Values.commonLabels }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  vars:
+    - name: SUPER_USER
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          compDef: kafka-broker-np
+          username: Required
+          optional: false
+  {{- printf "\n"}}
+  {{- include (print $.Template.BasePath "/_helpers_controller_basic.yaml") . | indent 2 -}}

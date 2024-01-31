@@ -9,8 +9,8 @@ __min_full_resource_pool_memory=1073741824
 {{- $log_disk_size := getComponentPVCSizeByName $.component "data-log" }}
 {{- $data_disk_size_gb := div $data_disk_size 1073741824 | int }}
 {{- $log_disk_size_gb := div $log_disk_size 1073741824 | int }}
-{{- $data_disk_size_gb := round ( mulf $data_disk_size_gb 0.9 ) 0 | int }}
-{{- $log_disk_size_gb := round ( mulf $log_disk_size_gb 0.9 ) 0 | int }}
+{{- $data_disk_size_gb := round ( mulf $data_disk_size_gb 0.85 ) 0 | int }}
+{{- $log_disk_size_gb := round ( mulf $log_disk_size_gb 0.85 ) 0 | int }}
 datafile_size={{- printf "%dG" $data_disk_size_gb }}
 log_disk_size={{- printf "%dG" $log_disk_size_gb }}
 net_thread_count=2
@@ -22,3 +22,15 @@ enable_merge_by_turn=false
 enable_syslog_recycle=true
 enable_syslog_wf=false
 max_syslog_file_count=4
+{{- $mysql_port_info := getPortByName ( index $.podSpec.containers 0 ) "sql" }}
+{{- $mysql_port := 2881 }}
+{{- if $mysql_port_info }}
+{{- $mysql_port = $mysql_port_info.containerPort }}
+{{- end }}
+mysql_port={{ $mysql_port }}
+{{- $rpc_port_info := getPortByName ( index $.podSpec.containers 0 ) "rpc" }}
+{{- $rpc_port := 2882 }}
+{{- if $rpc_port_info }}
+{{- $rpc_port = $rpc_port_info.containerPort }}
+{{- end }}
+rpc_port={{ $rpc_port }}

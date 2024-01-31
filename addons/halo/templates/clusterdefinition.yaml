@@ -1,0 +1,127 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterDefinition
+metadata:
+  name: halo
+  labels:
+     {{- include "halo.labels" . | nindent 4 }}
+spec:
+  type: halo
+  connectionCredential:
+    username: halo
+    password: "$(RANDOM_PASSWD)"
+    endpoint: "$(SVC_FQDN):$(SVC_PORT_tcp-halo)"
+    host: "$(SVC_FQDN)"
+    port: "$(SVC_PORT_tcp-halo)"
+  componentDefs:
+    - name: halo
+      workloadType: Stateful  
+      characterType: halo      
+      configSpecs:
+        - name: halo-configuration
+          templateRef: halo-configuration
+          constraintRef: halo-cc
+          keys:
+            - postgresql.conf
+          namespace: {{ .Release.Namespace }}
+          volumeName: halo-config
+          defaultMode: 0444  
+      scriptSpecs:
+        - name: halo-scripts
+          templateRef: halo-scripts
+          namespace: {{ .Release.Namespace }}
+          volumeName: scripts
+          defaultMode: 0555
+      service:
+        ports:
+          - name: tcp-halo
+            port: 1921
+            targetPort: tcp-halo
+      volumeTypes:
+        - name: data
+          type: data
+      podSpec:
+        securityContext:
+          runAsUser: 0
+          fsGroup: 3000
+          runAsGroup: 3000
+        containers:
+          - name: halo
+            imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+            securityContext:
+              runAsUser: 0
+            command: 
+              - /halo-scripts/setup.sh
+            volumeMounts:
+              - name: dshm
+                mountPath: /dev/shm
+              - name: data
+                mountPath: {{ .Values.dataMountPath }}
+              - name: halo-config
+                mountPath: /var/lib/halo/conf
+              - name: scripts
+                mountPath: /halo-scripts
+            ports:
+              - name: tcp-halo
+                containerPort: 1921
+            env:
+              - name: PGDATA
+                value: /data/halo
+              - name: HALOPORT
+                value: "1921"
+              - name: HALO_USER
+                value: halo  
+              - name: HALO_PASSWORD
+                value: "halo0root"
+              - name: HALO_DB 
+                value: "halo"                            
+              - name: ALLOW_NOSSL
+                value: "true"
+              - name: POD_IP
+                valueFrom:
+                  fieldRef:
+                    apiVersion: v1
+                    fieldPath: status.podIP
+              - name: POD_NAMESPACE
+                valueFrom:
+                  fieldRef:
+                    apiVersion: v1
+                    fieldPath: metadata.namespace
+              - name: POSTGRES_USER
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: username
+                    optional: false
+              - name: POSTGRES_PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: password
+                    optional: false
+              - name: PGUSER
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: username
+                    optional: false
+              - name: PGPASSWORD
+                value: "halo0root"
+            livenessProbe:
+              exec:
+                command:
+                  - /bin/bash 
+                  - -c
+                  - |
+                    gosu halo psql -U halo -d halo -c  "select 1"
+              initialDelaySeconds: 15
+              periodSeconds: 3
+              failureThreshold: 2
+              timeoutSeconds: 5                                           
+        volumes:
+          - name: dshm
+            emptyDir:
+              medium: Memory
+              {{- with .Values.shmVolume.sizeLimit }}
+              sizeLimit: {{ . }}
+              {{- end }}
+      

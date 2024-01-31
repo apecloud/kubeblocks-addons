@@ -2,10 +2,9 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-
 nameOverride: ""
 fullnameOverride: ""
-clusterVersionOverride: "4.2.0.0-100010032023083021"
+version: "oceanbase-4.2.0.0-100010032023083021"
 
 # how many clusters to create with-in one ob cluster, set to 2 when creating a primary and secondary oceanbae cluster
 obClusters: 2
@@ -14,11 +13,11 @@ zoneCount: 1
 # replicas, it should be larger than zoneCount
 replicas: 1
 
-tenant:
-  name: "alice"
-  max_cpu: 2
-  memory_size: 4
-  log_disk_size: 10
+# tenant:
+#   name: "alice"
+#   max_cpu: 2
+#   memory_size: 4
+#   log_disk_size: 10
 
 # resources
 cpu: 4
@@ -27,13 +26,13 @@ datafile: 50
 datalog: 50
 log: 20
 storageClassName: ""
-# storageClassName: "openebs-hostpath"
 
 # customized default values to override kblib chart's values
-extra:
-  podAntiAffinity: Required
-  availabilityPolicy: node
-  tenancy: DedicatedNode
+# extra:
+#   podAntiAffinity: Required
+#   availabilityPolicy: node
+#   tenancy: DedicatedNode
 
 debug: false
 hostnetwork: "enabled"
+

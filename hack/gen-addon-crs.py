@@ -12,8 +12,8 @@ names = sys.argv[1:]
 helmRepoURL = 'https://jihulab.com/api/v4/projects/150246/packages/helm/stable/charts/'
 
 kbVersionKey = 'addon.kubeblocks.io/kubeblocks-version'
-addonNameKey = 'addon.kubernetes.io/name'
-addonVersionKey = 'addon.kubernetes.io/version'
+addonNameKey = 'addon.kubeblocks.io/name'
+addonVersionKey = 'addon.kubeblocks.io/version'
 
 if len(names) == 0:
     print("Usage: python3 gen-addon-crs.py <addon1> <addon2> ...")

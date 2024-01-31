@@ -27,6 +27,22 @@ spec:
             port: 8088
             targetPort: rpc
       podSpec:
+        initContainers:
+          - name: init-chmod-data
+            image: docker.io/bitnami/os-shell:11-debian-11-r93
+            imagePullPolicy: IfNotPresent
+            command:
+              - /bin/bash
+              - -c
+              - |
+                mkdir -p /bitnami/influxdb/{data,meta,wal}
+                chmod 700 /bitnami/influxdb/{data,meta,wal}
+                chown -R 1001 /bitnami/influxdb
+            securityContext:
+              runAsUser: 0
+            volumeMounts:
+              - name: data
+                mountPath: /bitnami/influxdb
         containers:
           - name: influxdb
             image: docker.io/bitnami/influxdb:2.7.4-debian-11-r0

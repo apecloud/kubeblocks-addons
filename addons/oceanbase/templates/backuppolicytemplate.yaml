@@ -1,0 +1,46 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: oceanbase-backup-policy-template
+  labels:
+    clusterdefinition.kubeblocks.io/name: oceanbase
+  annotations:
+    dataprotection.kubeblocks.io/is-default-policy-template: "true"
+spec:
+  clusterDefinitionRef: oceanbase
+  backupPolicies:
+  - componentDefs:
+      - oceanbase
+    componentDefRef: oceanbase
+    backoffLimit: 0
+    backupMethods: &backupMethods
+      - name: full
+        snapshotVolumes: false
+        actionSetName: oceanbase-physical-backup
+        targetVolumes:
+          volumeMounts:
+            - name: workdir
+              mountPath: /home/admin/workdir
+    schedules: &backupschedules
+      - backupMethod: full
+        enabled: false
+        cronExpression: "0 18 * * *"
+        retentionPeriod: 7d
+  - componentDefs:
+      - oceanbase-hostnetwork
+    componentDefRef: oceanbase-hostnetwork
+    backoffLimit: 0
+    backupMethods: *backupMethods
+    schedules: *backupschedules
+  - componentDefs:
+    - oceanbase-repl
+    componentDefRef: oceanbase-repl
+    backoffLimit: 0
+    backupMethods: *backupMethods
+    schedules: *backupschedules
+  - componentDefs:
+      - oceanbase-repl-host
+    componentDefRef: oceanbase-repl-host
+    backoffLimit: 0
+    backupMethods: *backupMethods
+    schedules: *backupschedules

@@ -1,0 +1,56 @@
+
+
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: kafka-broker-np
+  labels:
+    {{- include "kafka.labels" . | nindent 4 }}
+    {{- if .Values.commonLabels }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  services:
+  - name: bootstrap
+    serviceName: bootstrap
+    spec:
+      type: NodePort
+      ports:
+      - name: kafka-client
+        targetPort: kafka-client
+        port: 9092
+      - name: metrics
+        targetPort: metrics
+        port: 5556
+  - name: broker
+    serviceName: broker
+    generatePodOrdinalService: true
+    spec:
+      type: NodePort
+      ports:
+        - name: broker
+          port: 9092
+          targetPort: kafka-client
+  vars:
+    - name: SUPER_USER
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          username: Required
+          optional: false
+      ## if the kafka NodePort type Service with name suffix broker-{0,1...} is set, the BROKER_NODE_PORT_{0,1...} will be available
+    - name: BROKER_NODE_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: kafka-broker-np
+          name: broker
+          generatePodOrdinalServiceVar: true
+          optional: true
+          nodePort:
+            name: broker
+            option: Optional
+  {{- printf "\n"}}
+  {{- include (print $.Template.BasePath "/_helpers_broker_basic.yaml") . | indent 2 -}}

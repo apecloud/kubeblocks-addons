@@ -1,0 +1,141 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "redis.sentinelComponentDefName" . }}
+  labels:
+    {{- include "redis.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: A Redis Sentinel v7.0 component definition for Kubernetes
+  serviceKind: redis-sentinel
+  serviceVersion: 7.0.6
+  services:
+    - name: redis-sentinel
+      serviceName: redis-sentinel
+      spec:
+        ports:
+          - name: redis-sentinel
+            port: 26379
+            targetPort: redis-sentinel
+    - name: redis-sentinel-nodeport
+      serviceName: redis-sentinel-nodeport
+      generatePodOrdinalService: true
+      spec:
+        type: NodePort
+        ports:
+          - name: redis-sentinel-nodeport
+            port: 26379
+            targetPort: 26379
+  updateStrategy: BestEffortParallel
+  volumes:
+    - name: data
+      needSnapshot: true
+  logConfigs:
+    {{- range $name,$pattern := .Values.logConfigs }}
+    - name: {{ $name }}
+      filePathPattern: {{ $pattern }}
+    {{- end }}
+  monitor:
+    builtIn: false
+    exporterConfig:
+      scrapePort: {{ .Values.metrics.service.port }}
+      scrapePath: "/metrics"
+  configs:
+    - name: redis-replication-config
+      templateRef: redis7-config-template
+      constraintRef: redis7-config-constraints
+      namespace: {{ .Release.Namespace }}
+      volumeName: redis-config
+  scripts:
+    - name: redis-scripts
+      templateRef: redis-scripts
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  systemAccounts:
+    ## TODO: the other accounts should be created for backward compatibility
+    - name: default
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 10
+        numDigits: 5
+        numSymbols: 0
+        letterCase: MixedCases
+  vars:
+    ## the username of redis sentinel
+    - name: SENTINEL_USER
+      valueFrom:
+        credentialVarRef:
+          ## reference the redis-sentinel component definition name
+          compDef: {{ include "redis.sentinelComponentDefName" . }}
+          name: default
+          optional: false
+          username: Required
+    ## the password of redis sentinel
+    - name: SENTINEL_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          ## reference the redis-sentinel component definition name
+          compDef: {{ include "redis.sentinelComponentDefName" . }}
+          name: default
+          optional: false
+          password: Required
+  lifecycleActions:
+    accountProvision:
+      customHandler:
+        image: {{ include "redis.image" . }}
+        exec:
+          command:
+            - sh
+            - -c
+          args:
+            - "redis-cli -h $(KB_ACCOUNT_ENDPOINT) -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -h $(KB_ACCOUNT_ENDPOINT) -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD acl save "
+  runtime:
+    containers:
+    - name: redis-sentinel
+      image: {{ include "redis-sentinel.image" . }}
+      imagePullPolicy: IfNotPresent
+      ports:
+        - containerPort: 26379
+          name: redis-sentinel
+      volumeMounts:
+        - name: data
+          mountPath: /data
+        - name: scripts
+          mountPath: /scripts
+      env:
+        - name: SENTINEL_SERVICE_PORT
+          value: "26379"
+      command:
+        - /bin/bash
+      args:
+        - -c
+        - |
+          set -e
+          /scripts/redis-sentinel-start-v2.sh
+      lifecycle:
+        postStart:
+          exec:
+            command: [ "/scripts/redis-sentinel-post-start.sh" ]
+      livenessProbe:
+        initialDelaySeconds: 10
+        periodSeconds: 5
+        timeoutSeconds: 5
+        successThreshold: 1
+        failureThreshold: 5
+        exec:
+          command:
+            - sh
+            - -c
+            - /scripts/redis-sentinel-ping.sh 5
+      readinessProbe:
+        initialDelaySeconds: 10
+        periodSeconds: 5
+        timeoutSeconds: 1
+        successThreshold: 1
+        failureThreshold: 5
+        exec:
+          command:
+            - sh
+            - -c
+            - /scripts/redis-sentinel-ping.sh 1

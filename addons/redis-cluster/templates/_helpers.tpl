@@ -1,4 +1,30 @@
 {{/*
+Define common fileds of cluster object
+*/}}
+{{- define "redis-cluster.clusterCommonWithNodePort" }}
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+  annotations:
+    {{- include "redis-cluster.nodeportFeatureGate" . | nindent 4 }}
+spec:
+  clusterVersionRef: {{ .Values.version }}
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  {{- include "kblib.affinity" . | indent 2 }}
+{{- end }}
+
+{{/*
+Define redis cluster annotation keys for nodeport feature gate.
+*/}}
+{{- define "redis-cluster.nodeportFeatureGate" -}}
+kubeblocks.io/enabled-node-port-svc: redis,redis-sentinel
+kubeblocks.io/enabled-pod-ordinal-svc: redis,redis-sentinel
+{{- end }}
+
+{{/*
 Define redis cluster sentinel component.
 */}}
 {{- define "redis-cluster.sentinel" }}
@@ -38,6 +64,28 @@ Define redis cluster twemproxy component.
     requests:
       cpu: {{ .Values.twemproxy.cpu | quote }}
       memory: {{ print .Values.twemproxy.memory "Gi" | quote }}
+{{- end }}
+
+*/}}
+{{- define "redis-cluster.sentinelCompDef" }}
+- componentDef: redis-sentinel
+  name: redis-sentinel
+  replicas: {{ .Values.sentinel.replicas }}
+  resources:
+    limits:
+      cpu: {{ .Values.sentinel.cpu | quote }}
+      memory:  {{ print .Values.sentinel.memory "Gi" | quote }}
+    requests:
+      cpu: {{ .Values.sentinel.cpu | quote }}
+      memory:  {{ print .Values.sentinel.memory "Gi" | quote }}
+  volumeClaimTemplates:
+    - name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ print .Values.sentinel.storage "Gi" }}
 {{- end }}
 
 {{/*

@@ -1,0 +1,36 @@
+## Common override values:
+###
+### @param clusterVersionOverride
+### @param nameOverride
+### @param fullnameOverride
+clusterVersionOverride: ""
+nameOverride: ""
+fullnameOverride: ""
+
+## @param commonLabels Labels to add to all deployed objects
+##
+commonLabels:
+  app: doris
+
+## @param application images
+##
+images:
+  registry: registry.cn-hangzhou.aliyuncs.com/yq_doris
+  pullPolicy: IfNotPresent
+  doris:
+    fe:
+      repository: apache-doris
+      tag: 2.0.3-fe
+    be:
+      initrepository: busybox
+      inittag: latest
+      repository: apache-doris
+      tag: 2.0.3-be
+    cn:
+      initrepository: busybox
+      inittag: latest
+      repository: apache-doris
+      tag: 2.0.3-be
+## @param fe env FE_INIT_NUMBER
+##
+feInitNum: 3

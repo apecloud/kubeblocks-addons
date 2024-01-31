@@ -4,7 +4,7 @@
 {{- /* find kafka-server component */}}
 {{- $component := fromJson "{}" }}
 {{- range $i, $e := $.cluster.spec.componentSpecs }}
-  {{- if contains "kafka-combine-server" $e.componentDef }}
+  {{- if contains "kafka-combine" $e.componentDef }}
   {{- $component = $e }}
   {{- end }}
 {{- end }}
@@ -26,9 +26,7 @@
 {{- end }}
 {{ $servers = trimSuffix " \\\n" $servers}}
 exec kafka_exporter --web.listen-address=:9308 \
-{{- if hasKey $component "tls" }}
-  {{- if $component.tlsConfig }}
-    --tls.enabled \
-  {{- end }}
+{{- if $.component.tlsConfig }}
+  --tls.enabled \
 {{- end }}
 {{ $servers }}

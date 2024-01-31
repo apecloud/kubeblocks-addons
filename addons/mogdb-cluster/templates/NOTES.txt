@@ -1,0 +1,2 @@
+Standalone MogDB cluster in Kubeblocks
+

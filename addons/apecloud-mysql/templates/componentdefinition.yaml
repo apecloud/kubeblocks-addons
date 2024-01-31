@@ -64,13 +64,13 @@ spec:
       passwordGenerationPolicy:
         length: 16
         numDigits: 8
-        numSymbols: 8
+        numSymbols: 0
         letterCase: MixedCases
     - name: kbadmin
       statement: CREATE USER $(USERNAME) IDENTIFIED BY '$(PASSWORD)'; GRANT ALL PRIVILEGES ON *.* TO $(USERNAME);
       passwordGenerationPolicy: &defaultPasswordGenerationPolicy
-        length: 10
-        numDigits: 5
+        length: 16
+        numDigits: 8
         numSymbols: 0
         letterCase: MixedCases
     - name: kbdataprotection
@@ -143,6 +143,10 @@ spec:
         env:
           - name: SERVICE_PORT
             value: "3306"
+          - name: MYSQL_PORT
+            value: "3306"
+          - name: MYSQL_CONSENSUS_PORT
+            value: "13306"
           - name: MYSQL_ROOT_HOST
             value: {{ .Values.auth.rootHost | default "%" | quote }}
           - name: MYSQL_ROOT_USER
@@ -171,15 +175,14 @@ spec:
             value: {{ if .Values.cluster.dynamicConfig }}{{ .Values.cluster.dynamicConfig }}{{ end }}
           - name: KB_EMBEDDED_WESQL
             value: {{ .Values.cluster.kbWeSQLImage | default "1" | quote }}
+          - name: KB_MYSQL_VOLUME_DIR
+            value: {{ .Values.mysqlConfigs.dataMountPath }}
+          - name: KB_MYSQL_CONF_FILE
+            value: "/opt/mysql/my.cnf"
           - name: KB_MYSQL_CLUSTER_UID
             value: $(KB_CLUSTER_UID)
           - name: KB_MYSQL_N
             value: $(KB_REPLICA_COUNT)
-          - name: KB_POD_NAME
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: metadata.name
         volumeMounts:
           - mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
             name: data
@@ -199,7 +202,7 @@ spec:
             exec:
               command: [ "/scripts/pre-stop.sh" ]
       - name: metrics
-        image: {{ .Values.metrics.image.registry | default "docker.io" }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
+        image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
         imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
         command: [ "/scripts/agamotto.sh" ]
         env:

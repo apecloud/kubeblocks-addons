@@ -3,7 +3,6 @@
 # Declare variables to be passed into your templates.
 
 
-clusterVersionOverride: ""
 nameOverride: ""
 fullnameOverride: ""
 
@@ -14,17 +13,17 @@ commonLabels: {}
 
 ## @param application images
 ##
-images:
-  registry: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com
-  repository: apecloud/qdrant
+image:
+  registry: docker.io
+  repository: qdrant/qdrant
   pullPolicy: IfNotPresent
-  tag: latest
+  tag: "v1.7.3"
   tools:
     repository: apecloud/curl-jq
     tag: latest
   web_ui:
     repository: apecloud/qdrant-web-ui
-    tag: latest
+    tag: 0.1.15
 
 ## @param debugEnabled enables containers' debug logging
 ##

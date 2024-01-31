@@ -4,6 +4,8 @@ metadata:
   name: mysql-backup-policy-template
   labels:
     {{- include "mysql.labels" . | nindent 4 }}
+  annotations:
+    dataprotection.kubeblocks.io/is-default-policy-template: "true"
 spec:
   clusterDefinitionRef: mysql
   backupPolicies:
@@ -29,6 +31,8 @@ spec:
     - name: volume-snapshot
       snapshotVolumes: true
       actionSetName: mysql-volumesnapshot
+      target:
+        role: primary
       targetVolumes:
         volumes:
         - data

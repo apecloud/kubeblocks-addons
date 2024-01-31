@@ -1,0 +1,32 @@
+## staticParameters, list of StaticParameter, modifications of them trigger a process restart.
+## dynamicParameters, list of DynamicParameter, modifications of them trigger a config dynamic reload without process restart.
+## staticParameters and dynamicParameters determine the behavior of parameter changes:
+## if any of the modified parameters is in the staticParameters list, this operation will trigger a process restart.
+## if all the changed parameters are in the dynamicParameters list, this change executes reload without process restart.
+## if the above two conditions are not met, by default, parameter change operation follow the rule for using staticParameters.
+staticParameters:
+  - gateway_initial_tablet_timeout
+  - healthcheck_timeout
+  - srv_topo_timeout
+  - grpc_keepalive_time
+  - grpc_keepalive_timeout
+  - tablet_refresh_interval
+  - enable_buffer
+  - buffer_size
+  - buffer_window
+  - buffer_max_failover_duration
+  - buffer_min_time_between_failovers
+  - mysql_auth_server_impl
+  - mysql_server_require_secure_transport
+  - mysql_auth_server_static_file
+  - mysql_server_ssl_key
+  - mysql_server_ssl_cert
+  - enable_logs
+  - enable_query_log
+
+dynamicParameters:
+  - read_write_splitting_policy
+  - read_write_splitting_ratio
+  - read_after_write_consistency
+  - read_after_write_timeout
+  - ddl_strategy

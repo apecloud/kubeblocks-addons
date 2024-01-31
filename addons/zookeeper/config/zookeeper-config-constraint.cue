@@ -53,8 +53,5 @@
 	"reconfigEnabled": bool | *true
 
 	// A list of comma separated Four Letter Words commands that user wants to use
-	"4lw.commands.whitelist": string | *"srvr, mntr, ruok"
-
-	// Dynamic Config File
-	"dynamicConfigFile": string | *"/opt/zookeeper/conf/zoo.cfg.dynamic"
+	"4lw.commands.whitelist": string | *"srvr, mntr, ruok, conf"
 }

@@ -126,6 +126,7 @@ expire_logs_days=7
 max_binlog_size=134217728
 # binlog_rows_query_log_events=ON #AWS not set
 # binlog_transaction_dependency_tracking=WRITESET    #Default Commit Order, Aws not set
+log_slave_updates=ON
 
 # replay log
 # relay_log_info_repository=TABLE
@@ -148,7 +149,6 @@ default_tmp_storage_engine=innodb
 collation_server = utf8mb4_unicode_520_ci
 character_set_server = utf8mb4
 
-plugin-load = "rpl_semi_sync_master=semisync_master.so;rpl_semi_sync_slave=semisync_slave.so"
 rpl-semi-sync-master-enabled = 1
 rpl_semi_sync_master_timeout = 1000
 rpl-semi-sync-slave-enabled = 1

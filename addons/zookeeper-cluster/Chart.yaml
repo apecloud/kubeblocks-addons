@@ -9,7 +9,7 @@ type: application
 version: 0.7.0
 
 # This is the version number of the application being deployed.
-appVersion: "3.7.1"
+appVersion: "3.7.2"
 
 dependencies:
   - name: kblib

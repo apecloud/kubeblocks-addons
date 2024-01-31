@@ -1,12 +1,22 @@
 #!/bin/sh
 set -ex
+
+# Based on the ClusterDefinition API, redis sentinel deployed with redis together, it will be deprecated in the future.
+
 {{- $clusterName := $.cluster.metadata.name }}
 {{- $namespace := $.cluster.metadata.namespace }}
 {{- /* find redis component */}}
 {{- $redis_component := fromJson "{}" }}
 {{- range $i, $e := $.cluster.spec.componentSpecs }}
-  {{- if eq $e.componentDefRef "redis" }}
-  {{- $redis_component = $e }}
+  {{- if index $e "componentDefRef" }}
+    {{- if eq $e.componentDefRef "redis" }}
+      {{- $redis_component = $e }}
+    {{- end }}
+  {{- end }}
+  {{- if index $e "componentDef" }}
+    {{- if eq $e.componentDef "redis" }}
+      {{- $redis_component = $e }}
+    {{- end }}
   {{- end }}
 {{- end }}
 {{- /* build redis engine service */}}
@@ -22,6 +32,7 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 echo "Redis service ready, Starting sentinel..."
-echo "sentinel announce-ip $KB_POD_FQDN" >> /etc/sentinel/redis-sentinel.conf
+kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc"
+echo "sentinel announce-ip $kb_pod_fqdn" >> /etc/sentinel/redis-sentinel.conf
 exec redis-server /etc/sentinel/redis-sentinel.conf --sentinel
 echo "Start sentinel succeeded!"

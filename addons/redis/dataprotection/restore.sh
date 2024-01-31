@@ -11,5 +11,11 @@ if [ ! -z "${res}" ] && [ ! -f ${data_protection_file} ]; then
 fi
 # touch placeholder file
 touch ${data_protection_file}
-datasafed pull "${DP_BACKUP_NAME}.tar.gz" - | tar -xzvf - -C ${DATA_DIR}
+
+backupFile="${DP_BACKUP_NAME}.tar.zst"
+if [ "$(datasafed list ${backupFile})" == "${backupFile}" ]; then
+   datasafed pull -d zstd-fastest "${backupFile}" - | tar -xvf - -C ${DATA_DIR}
+else
+   datasafed pull "${DP_BACKUP_NAME}.tar.gz" - | tar -xzvf - -C ${DATA_DIR}
+fi
 rm -rf ${data_protection_file} && sync

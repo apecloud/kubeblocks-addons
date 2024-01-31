@@ -1,3 +1,5 @@
+{{- /* if nodeportEnabled is true, always use the KubeBlocks 0.8 API */ -}}
+{{- if and .Values.useLegacyCompDef (not .Values.nodePortEnabled) }}
 {{- include "kblib.clusterCommon" . }}
   clusterDefinitionRef: redis  # ref clusterDefinition.name
   componentSpecs:
@@ -14,11 +16,34 @@
       {{- include "kblib.componentStorages" . | indent 6 }}
       {{- include "kblib.componentServices" . | indent 6 }}
 
-    {{- if and (eq .Values.mode "replication") .Values.twemproxyEnabled }}
+    {{- if and (eq .Values.mode "replication") .Values.twemproxy.enabled }}
     {{- include "redis-cluster.twemproxy" . | indent 4 }}
     {{- end }}
 
-    {{- if eq .Values.mode "replication" }}
+    {{- if and (eq .Values.mode "replication") .Values.sentinel.enabled }}
     {{- include "redis-cluster.sentinel" . | indent 4 }}
     {{- end }}
-
+{{- else }}
+  {{- if .Values.nodePortEnabled }}
+  {{- include "redis-cluster.clusterCommonWithNodePort" . }}
+  {{- else }}
+  {{- include "kblib.clusterCommon" . }}
+  {{- end }}
+  clusterDefinitionRef: redis  # ref clusterDefinition.name
+  componentSpecs:
+    - name: redis
+      componentDef: redis
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+      {{- include "redis-cluster.replicaCount" . | indent 6 }}
+      enabledLogs:
+        - running
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      switchPolicy:
+        type: Noop
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
+      {{- include "kblib.componentServices" . | indent 6 }}
+    {{- if and (eq .Values.mode "replication") .Values.sentinel.enabled }}
+    {{- include "redis-cluster.sentinelCompDef" . | indent 4 }}
+    {{- end }}
+{{- end }}
