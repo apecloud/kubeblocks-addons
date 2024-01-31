@@ -24,14 +24,19 @@ enforce_tableacl_config=false
 # max_connections={{ div ( div $phy_memory 4 ) $single_thread_memory }}
 {{- end}}
 
-# OltpReadPool
-queryserver_config_pool_size=30
-
-# OlapReadPool
-queryserver_config_stream_pool_size=30
+{{- $max_connections := div ( div $phy_memory 4 ) $single_thread_memory }}
+# 10 percentage
+{{- $pool_k := max 1 ( div (sub $max_connections 35) 10 ) }}
 
 # TxPool
-queryserver_config_transaction_cap=50
+queryserver_config_transaction_cap={{ mul 5 $pool_k }}
+
+# OltpReadPool
+queryserver_config_pool_size={{ mul 4 $pool_k }}
+
+# OlapReadPool
+queryserver_config_stream_pool_size={{ mul $pool_k }}
+
 
 # the size of database connection pool in non transaction dml
 non_transactional_dml_database_pool_size=3
