@@ -85,7 +85,6 @@ start_redis_server() {
 build_redis_conf() {
   load_redis_template_conf
   build_announce_ip_and_port
-  build_redis_service_port
   rebuild_redis_acl_file
   build_redis_default_accounts
 }

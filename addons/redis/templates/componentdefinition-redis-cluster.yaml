@@ -107,7 +107,7 @@ spec:
             - "redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD acl save "
   runtime:
     containers:
-      - name: redis
+      - name: redis-cluster
         image: {{ include "redis.image" . }}
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         ports:
@@ -118,7 +118,7 @@ spec:
         volumeMounts:
           - name: data
             mountPath: {{ .Values.dataMountPath }}
-          - name: redis-config
+          - name: redis-cluster-config
             mountPath: /etc/conf
           - name: scripts
             mountPath: /scripts
