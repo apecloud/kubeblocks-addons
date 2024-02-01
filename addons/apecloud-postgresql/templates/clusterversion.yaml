@@ -3,7 +3,7 @@ kind: ClusterVersion
 metadata:
   name: ac-postgresql-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
   annotations:
-    kubeblocks.io/is-default-cluster-version: "false"
+    kubeblocks.io/is-default-cluster-version: "true"
   labels:
     {{- include "apecloud-postgresql.labels" . | nindent 4 }}
 spec:

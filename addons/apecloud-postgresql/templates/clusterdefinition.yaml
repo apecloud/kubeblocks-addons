@@ -56,12 +56,13 @@ spec:
           accessMode: Readonly
       podSpec:
         initContainers:
-          - name: init-conf
-            image: busybox
-            securityContext:
-              runAsUser: 999
-            command: [ "/bin/ash" ]
-            args: [ "-c", "if [ ! -d \"/postgresql/data/conf\" ]; then cp -r /postgresql/conf postgresql/data/; fi;" ]
+          - name: init-syncer
+            image: kizuna-lek/syncer:latest
+            imagePullPolicy: Never
+            command:
+            - sh
+            - -c
+            - "cp -r /postgresql/conf /postgresql/data/; cp -r /bin/syncer /config /kubeblocks/"
             volumeMounts:
               - name: data
                 mountPath: {{ .Values.dataMountPath }}
@@ -69,13 +70,19 @@ spec:
                 mountPath: {{ .Values.confMountPath }}
               - name: scripts
                 mountPath: /kb-scripts
+              - name: kubeblocks
+                mountPath: /kubeblocks
         containers:
           - name: postgresql
             imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
             securityContext:
               runAsUser: 999
             command:
-              - /kb-scripts/setup.sh
+              - /kubeblocks/syncer
+              - --config-path
+              - /kubeblocks/config/components
+              - --port
+              - "3601"
             volumeMounts:
               - name: dshm
                 mountPath: /dev/shm
@@ -85,6 +92,8 @@ spec:
                 mountPath: {{ .Values.confMountPath }}
               - name: scripts
                 mountPath: /kb-scripts
+              - name: kubeblocks
+                mountPath: /kubeblocks
             ports:
               - name: tcp-postgresql
                 containerPort: 5432
@@ -133,6 +142,8 @@ spec:
                 value: {{ .Values.dataMountPath }}/pgconsensus_data
               - name: PGCONF
                 value: {{ .Values.confPath }}
+              - name: KB_SERVICE_CHARACTER_TYPE
+                value: apecloud-postgresql
         volumes:
           - name: dshm
             emptyDir:
