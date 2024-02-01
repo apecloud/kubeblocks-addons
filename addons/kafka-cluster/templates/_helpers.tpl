@@ -73,33 +73,12 @@ Define kafka broker component name
 {{- end }}
 
 {{/*
-Define kafka broker componentDefinition name
-*/}}
-{{- define "kafka-cluster.brokerComponentName" -}}
-{{- if .Values.nodePortEnabled }}
-{{- printf "%s-np" (include "kafka-cluster.brokerComponent" . ) -}}
-{{- else }}
-{{- include "kafka-cluster.brokerComponent" . -}}
-{{- end }}
-{{- end }}
-
-{{/*
-Define kafka controller componentDefinition name
-*/}}
-{{- define "kafka-cluster.controllerComponentName" -}}
-{{- if .Values.nodePortEnabled }}
-{{- printf "kafka-controller-np" -}}
-{{- else }}
-{{- printf "kafka-controller" -}}
-{{- end }}
-{{- end }}
-
-{{/*
 Define kafka cluster annotation keys for nodeport feature gate.
 */}}
 {{- define "kafka-cluster.brokerAddrFeatureGate" -}}
 kubeblocks.io/enabled-pod-ordinal-svc: broker
 {{- if .Values.nodePortEnabled }}
 kubeblocks.io/enabled-node-port-svc: broker
+kubeblocks.io/disabled-cluster-ip-svc: broker
 {{- end }}
 {{- end }}
