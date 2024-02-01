@@ -11,11 +11,21 @@ spec:
   clusterVersionRef: {{ .Values.version }}
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
+  services:
+    - name: bootstrap
+      serviceName: bootstrap
+      componentSelector: broker
+      spec:
+        type: ClusterIP
+        ports:
+          - name: kafka-client
+            targetPort: 9092
+            port: 9092
   componentSpecs:
     {{- if eq "combined" $.Values.mode }}
     - name: broker
       componentDefRef: kafka-server
-      componentDef: {{ include "kafka-cluster.brokerComponentName" . }}
+      componentDef: {{ include "kafka-cluster.brokerComponent" . }}
       tls: {{ $.Values.tlsEnable }}
       {{- if $.Values.tlsEnable }}
       issuer:
@@ -48,7 +58,7 @@ spec:
     {{- else }}
     - name: broker
       componentDefRef: kafka-broker
-      componentDef: {{ include "kafka-cluster.brokerComponentName" . }}
+      componentDef: {{ include "kafka-cluster.brokerComponent" . }}
       tls: {{ $.Values.tlsEnable }}
       {{- if $.Values.tlsEnable }}
       issuer:
@@ -80,7 +90,7 @@ spec:
       {{- end }}
     - name: controller
       componentDefRef: controller
-      componentDef: {{ include "kafka-cluster.controllerComponentName" . }}
+      componentDef: "kafka-controller"
       tls: {{ $.Values.tlsEnable }}
       {{- if $.Values.tlsEnable }}
       issuer:

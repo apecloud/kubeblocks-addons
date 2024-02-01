@@ -18,14 +18,14 @@ spec:
     deployment environments.
   serviceKind: kafka-exporter
   serviceVersion: {{ default .Chart.AppVersion .Values.clusterVersionOverride }}
-  services:
-  - name: metrics
-    serviceName: metrics
-    spec:
-      ports:
-      - name: metrics
-        targetPort: metrics
-        port: 9308
+{{/*  services:*/}}
+{{/*  - name: metrics*/}}
+{{/*    serviceName: metrics*/}}
+{{/*    spec:*/}}
+{{/*      ports:*/}}
+{{/*      - name: metrics*/}}
+{{/*        targetPort: metrics*/}}
+{{/*        port: 9308*/}}
   updateStrategy: BestEffortParallel
   monitor:
     builtIn: false
