@@ -4,5 +4,5 @@
 
 image:
   registry: registry.cn-shenzhen.aliyuncs.com
-  repository: jesseatyashan/yashandb
-  tag: 23.1.4.100
+  repository: jesseatyashan/yashandb-personal
+  tag: 23.1.1.100
