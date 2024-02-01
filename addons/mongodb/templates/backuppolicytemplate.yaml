@@ -10,7 +10,7 @@ spec:
   backupPolicies:
   - componentDefRef: mongodb
     target:
-      role: primary
+      role: secondary
     backupMethods:
     - name: dump
       snapshotVolumes: false
