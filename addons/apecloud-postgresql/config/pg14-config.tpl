@@ -108,8 +108,8 @@ escape_string_warning = 'True'
 extra_float_digits = '1'
 force_parallel_mode = '0'
 from_collapse_limit = '8'
-# fsync=off
-# full_page_writes=off
+# fsync=off # patroni for Extreme Performance
+# full_page_writes=off # patroni for Extreme Performance
 geqo = 'True'
 geqo_effort = '5'
 geqo_generations = '0'
@@ -174,13 +174,22 @@ max_standby_archive_delay = '300000ms'
 max_standby_streaming_delay = '300000ms'
 max_sync_workers_per_subscription = '2'
 max_wal_senders = '64'
-max_wal_size = '{{ printf "%dMB" ( min ( max ( div $phy_memory 2097152 ) 4096 ) 32768 ) }}'
 max_worker_processes = '{{ max $phy_cpu 8 }}'
 min_parallel_index_scan_size = '512kB'
 min_parallel_table_scan_size = '8MB'
-{{- if gt $phy_memory 0 }}
-min_wal_size = '{{ printf "%dMB" ( min ( max ( div $phy_memory 8388608 ) 2048 ) 8192 ) }}'
+
+{{- $max_wal_size := min ( max ( div $phy_memory 2097152 ) 4096 ) 32768 }}
+{{- $min_wal_size := min ( max ( div $phy_memory 8388608 ) 2048 ) 8192 }}
+{{- $data_disk_size := getComponentPVCSizeByName $.component "data" }}
+{{/* if data disk lt 5G , set max_wal_size to 256MB */}}
+{{- $disk_min_limit := mul 5 1024 1024 1024 }}
+{{- if and ( gt $data_disk_size 0 ) ( lt $data_disk_size $disk_min_limit ) }}
+{{- $max_wal_size = 256 }}
+{{- $min_wal_size = 64 }}
 {{- end }}
+max_wal_size = '{{- printf "%dMB" $max_wal_size }}'
+min_wal_size = '{{- printf "%dMB" $min_wal_size }}'
+
 old_snapshot_threshold = '-1'
 parallel_leader_participation = 'True'
 password_encryption = 'md5'
@@ -269,7 +278,35 @@ work_mem = '{{ printf "%dkB" ( max ( div $phy_memory 4194304 ) 4096 ) }}'
 xmlbinary = 'base64'
 xmloption = 'content'
 
-## the following parameters have been deprecated in postgresql 14
-operator_precedence_warning = 'off'
-vacuum_cleanup_index_scale_factor = '0.1'
-wal_keep_segments = '0'
+
+## the following are the parameters adjusted for postgresql14 relative to postgresql12
+autovacuum_vacuum_insert_scale_factor = '0.2'
+autovacuum_vacuum_insert_threshold = '1000'
+client_connection_check_interval = '0'
+compute_query_id = 'auto'
+default_toast_compression = 'pglz'
+enable_async_append = 'True'
+enable_incremental_sort = 'True'
+enable_memoize = 'True'
+hash_mem_multiplier = '1'
+idle_session_timeout = '0'
+log_min_duration_sample = '-1'
+log_parameter_max_length = '-1'
+log_parameter_max_length_on_error = '0'
+log_recovery_conflict_waits = 'False'
+log_statement_sample_rate = '1.0'
+logical_decoding_work_mem = '65536'
+maintenance_io_concurrency = '0'
+max_slot_wal_keep_size = '-1'
+min_dynamic_shared_memory = '0'
+remove_temp_files_after_crash = 'on'
+track_wal_io_timing = 'False'
+vacuum_failsafe_age = '1600000000'
+vacuum_multixact_failsafe_age = '1600000000'
+wal_keep_size = '0'
+wal_skip_threshold = '2048'
+
+## the following parameters are related to consensus extension
+shared_preload_libraries = 'consensus'
+consensus.consensus_enabled = true
+

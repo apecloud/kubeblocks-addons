@@ -3,9 +3,9 @@
 # Declare variables to be passed into your templates.
 
 image:
-  registry: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com
+  registry: registry.cn-hangzhou.aliyuncs.com
   repository: apecloud/apecloud-postgres
-  tag: latest
+  tag: "14.10"
   digest: ""
   pullPolicy: IfNotPresent
   pullSecrets: [ ]
@@ -13,7 +13,29 @@ image:
 
 clusterVersionOverride: ""
 
+dataMountPath: /postgresql/data
+confMountPath: /postgresql/conf
+confPath: /postgresql/data/conf
+
 roleProbe:
   failureThreshold: 2
   periodSeconds: 1
   timeoutSeconds: 1
+
+## Set PostgreSQL preload extension shared libraries.
+## @param postgresqlSharedPreloadLibraries Shared preload libraries (comma-separated list)
+##
+postgresqlSharedPreloadLibraries: "pg_stat_statements, auto_explain"
+## Start PostgreSQL pod(s) without limitations on shm memory.
+## By default, docker and containerd (and possibly other container runtimes) limit `/dev/shm` to `64M`
+##
+shmVolume:
+  ## @param shmVolume.enabled Enable emptyDir volume for /dev/shm for PostgreSQL pod(s)
+  ##
+  enabled: true
+  ## @param shmVolume.sizeLimit Set this to enable a size limit on the shm tmpfs
+  ## Note: the size of the tmpfs counts against container's memory limit
+  ## e.g:
+  ## sizeLimit: 1Gi
+  ##
+  sizeLimit: ""
