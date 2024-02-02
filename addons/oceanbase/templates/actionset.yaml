@@ -1,9 +1,9 @@
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: oceanbase-physical-backup
+  name: {{ printf "%s-physical-backup" (include "oceanbase.name" .) }}
   labels:
-    clusterdefinition.kubeblocks.io/name: oceanbase
+    clusterdefinition.kubeblocks.io/name: {{ include "oceanbase.name" . }}
 spec:
   backupType: Full
   env:

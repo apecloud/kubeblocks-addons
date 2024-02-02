@@ -2,7 +2,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ConfigConstraint
 metadata:
-  name: oceanbase-sysvars-cc
+  name: {{ printf "%s-sysvars-cc" (include "oceanbase.name" .) }}
   labels:
     {{- include "oceanbase.labels" . | nindent 4 }}
 spec:
@@ -13,7 +13,7 @@ spec:
         - "update-sysvars.sh"
 
   scriptConfigs:
-    - scriptConfigMapRef: ob-reload-tools-script
+    - scriptConfigMapRef: {{ printf "%s-reload-tools-script" (include "oceanbase.name" .) }}
       namespace: {{ .Release.Namespace }}
 
   toolsImageSpec:
@@ -73,7 +73,7 @@ spec:
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ConfigConstraint
 metadata:
-  name: oceanbase-parameters-cc
+  name: {{ printf "%s-parameters-cc" (include "oceanbase.name" .) }}
   labels:
     {{- include "oceanbase.labels" . | nindent 4 }}
 spec:
@@ -84,7 +84,7 @@ spec:
         - "update-parameters.sh"
 
   scriptConfigs:
-    - scriptConfigMapRef: ob-reload-tools-script
+    - scriptConfigMapRef: {{ printf "%s-reload-tools-script" (include "oceanbase.name" .) }}
       namespace: {{ .Release.Namespace }}
 
   toolsImageSpec:
@@ -143,7 +143,7 @@ spec:
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ConfigConstraint
 metadata:
-  name: oceanbase-env-cc
+  name: {{ printf "%s-env-cc" (include "oceanbase.name" .) }}
   labels:
     {{- include "oceanbase.labels" . | nindent 4 }}
 spec:
@@ -159,7 +159,7 @@ spec:
       - {{ . }}
       {{- end }}
   {{- end }}
-  
+
   # mysql configuration file format
   formatterConfig:
     format: props-plus

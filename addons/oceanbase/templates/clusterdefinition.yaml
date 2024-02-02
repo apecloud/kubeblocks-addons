@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ClusterDefinition
 metadata:
-  name: oceanbase
+  name: {{ include "oceanbase.name" . }}
   labels:
     {{- include "oceanbase.labels" . | nindent 4 }}
 spec:
@@ -12,7 +12,7 @@ spec:
     host: "$(SVC_FQDN)"
     port: "$(SVC_PORT_sql)"
   componentDefs:
-    - name: oceanbase
+    - name: {{ include "oceanbase.name" . }}
       characterType: oceanbase
       workloadType: Stateful
       service: &obsvc
@@ -29,21 +29,21 @@ spec:
 #          volumeName: oceanbase-init-config
 #          namespace: {{ .Release.Namespace }}
 #          defaultMode: 0555
-        - name: oceanbase-sysvars
-          templateRef: oceanbase-sysvars
-          volumeName: oceanbase-sysvars
-          constraintRef: oceanbase-sysvars-cc
+        - name: {{ printf "%s-sysvars" (include "oceanbase.name" .) }}
+          templateRef: {{ printf "%s-sysvars" (include "oceanbase.name" .) }}
+          volumeName: {{ printf "%s-sysvars" (include "oceanbase.name" .) }}
+          constraintRef: {{ printf "%s-sysvars-cc" (include "oceanbase.name" .) }}
           namespace: {{ .Release.Namespace }}
           defaultMode: 0555
-        - name: oceanbase-config
-          templateRef: oceanbase-config
-          volumeName: oceanbase-config
-          constraintRef: oceanbase-parameters-cc
+        - name: {{ printf "%s-config" (include "oceanbase.name" .) }}
+          templateRef: {{ printf "%s-config" (include "oceanbase.name" .) }}
+          volumeName: {{ printf "%s-config" (include "oceanbase.name" .) }}
+          constraintRef: {{ printf "%s-parameters-cc" (include "oceanbase.name" .) }}
           namespace: {{ .Release.Namespace }}
           defaultMode: 0555
       scriptSpecs: &obscripts
-        - name: oceanbase-scripts
-          templateRef: oceanbase-scripts
+        - name: {{ printf "%s-scripts" (include "oceanbase.name" .) }}
+          templateRef: {{ printf "%s-scripts" (include "oceanbase.name" .) }}
           namespace: {{ .Release.Namespace }}
           volumeName: scripts
           defaultMode: 0555
@@ -174,7 +174,7 @@ spec:
 #            emptyDir: {}
           - name: metricslog
             emptyDir: {}
-    - name: oceanbase-hostnetwork
+    - name: {{ printf "%s-hostnetwork" (include "oceanbase.name" .) }}
       characterType: oceanbase
       workloadType: Stateful
       service: *obsvc
@@ -184,22 +184,22 @@ spec:
 #          volumeName: oceanbase-init-config
 #          namespace: {{ .Release.Namespace }}
 #          defaultMode: 0555
-        - name: oceanbase-sysvars
-          templateRef: oceanbase-sysvars
-          volumeName: oceanbase-sysvars
-          constraintRef: oceanbase-sysvars-cc
+        - name: {{ printf "%s-sysvars" (include "oceanbase.name" .) }}
+          templateRef: {{ printf "%s-sysvars" (include "oceanbase.name" .) }}
+          volumeName: {{ printf "%s-sysvars" (include "oceanbase.name" .) }}
+          constraintRef: {{ printf "%s-sysvars-cc" (include "oceanbase.name" .) }}
           namespace: {{ .Release.Namespace }}
           defaultMode: 0555
-        - name: oceanbase-config
-          templateRef: oceanbase-config
-          volumeName: oceanbase-config
-          constraintRef: oceanbase-parameters-cc
+        - name: {{ printf "%s-config" (include "oceanbase.name" .) }}
+          templateRef: {{ printf "%s-config" (include "oceanbase.name" .) }}
+          volumeName: {{ printf "%s-config" (include "oceanbase.name" .) }}
+          constraintRef: {{ printf "%s-parameters-cc" (include "oceanbase.name" .) }}
           namespace: {{ .Release.Namespace }}
           defaultMode: 0555
-        - name: oceanbase-inject-env
-          templateRef: oceanbase-inject-env
-          volumeName: oceanbase-inject-env
-          constraintRef: oceanbase-env-cc
+        - name: {{ printf "%s-inject-env" (include "oceanbase.name" .) }}
+          templateRef: {{ printf "%s-inject-env" (include "oceanbase.name" .) }}
+          volumeName: {{ printf "%s-inject-env" (include "oceanbase.name" .) }}
+          constraintRef: {{ printf "%s-env-cc" (include "oceanbase.name" .) }}
           namespace: {{ .Release.Namespace }}
           defaultMode: 0555
           asEnvFrom:
@@ -335,7 +335,7 @@ spec:
 #            emptyDir: {}
           - name: metricslog
             emptyDir: {}
-    - name: oceanbase-repl
+    - name: {{ printf "%s-repl" (include "oceanbase.name" .) }}
       characterType: oceanbase
       workloadType: Stateful
       service: *obsvc
@@ -348,7 +348,7 @@ spec:
           periodSeconds: {{ .Values.roleProbe.periodSeconds }}
           timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
       podSpec: *obpods
-    - name: oceanbase-repl-host
+    - name: {{ printf "%s-repl-host" (include "oceanbase.name" .) }}
       characterType: oceanbase
       workloadType: Stateful
       service: *obsvc
