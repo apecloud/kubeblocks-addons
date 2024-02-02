@@ -57,8 +57,8 @@ spec:
       podSpec:
         initContainers:
           - name: init-syncer
-            image: kizuna-lek/syncer:latest
-            imagePullPolicy: Never
+            image: registry.cn-hangzhou.aliyuncs.com/xuriwuyun/syncer:latest
+            imagePullPolicy: Always
             command:
             - sh
             - -c
