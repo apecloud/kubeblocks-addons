@@ -52,8 +52,8 @@ on:
           - nebula-cluster
           - neon
           - neon-cluster
-          - oceanbase
-          - oceanbase-cluster
+          - ob-ce
+          - ob-ce-cluster
           - official-postgresql
           - official-postgresql-cluster
           - openldap
@@ -94,6 +94,7 @@ on:
         description: 'release specify chart version or empty to release default'
         required: false
         default: ''
+
 env:
   GH_TOKEN: ${{ github.token }}
 
