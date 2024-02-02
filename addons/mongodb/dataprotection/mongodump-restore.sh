@@ -12,8 +12,8 @@ if [ "$(datasafed list ${oplogSignal})" == "${oplogSignal}" ];then
 fi
 backupFile="${DP_BACKUP_NAME}.archive.zst"
 if [ "$(datasafed list ${backupFile})" == "${backupFile}" ]; then
-   datasafed pull -d zstd-fastest "${backupFile}" - | mongorestore --archive ${oplogFlags} --uri "${mongo_uri}" -u ${MONGODB_ROOT_USER} -p ${MONGODB_ROOT_PASSWORD} --authenticationDatabase admin
+   datasafed pull -d zstd-fastest "${backupFile}" - | mongorestore --archive ${oplogFlags} --numParallelCollections=${PARALLEL} --uri "${mongo_uri}" -u ${MONGODB_ROOT_USER} -p ${MONGODB_ROOT_PASSWORD} --authenticationDatabase admin
 else
-   datasafed pull "${DP_BACKUP_NAME}.archive" - | mongorestore --archive --gzip --uri "${mongo_uri}" -u ${MONGODB_ROOT_USER} -p ${MONGODB_ROOT_PASSWORD} --authenticationDatabase admin
+   datasafed pull "${DP_BACKUP_NAME}.archive" - | mongorestore --archive --gzip --uri "${mongo_uri}" --numParallelCollections=${PARALLEL} -u ${MONGODB_ROOT_USER} -p ${MONGODB_ROOT_PASSWORD} --authenticationDatabase admin
 fi
 

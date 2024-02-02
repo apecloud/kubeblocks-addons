@@ -13,6 +13,8 @@ spec:
       value: "27017"
     - name: IMAGE_TAG
       value: {{ .Values.image.tag }}
+    - name: PARALLEL
+      value: "4"
   backupType: Full
   backup:
     preBackup: []
