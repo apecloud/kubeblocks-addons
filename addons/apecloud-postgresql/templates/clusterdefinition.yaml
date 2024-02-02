@@ -83,6 +83,9 @@ spec:
               - /kubeblocks/config/components
               - --port
               - "3601"
+              - --
+              - docker-entrypoint.sh
+              - postgres
             volumeMounts:
               - name: dshm
                 mountPath: /dev/shm
