@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: ob-reload-tools-script
+  name: {{ printf "%s-reload-tools-script" (include "oceanbase.name" .) }}
   labels:
     {{- include "oceanbase.labels" . | nindent 4 }}
 data:

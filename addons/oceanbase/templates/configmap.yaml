@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: oceanbase-config
+  name: {{ printf "%s-config" (include "oceanbase.name" .) }}
   labels:
     {{- include "oceanbase.labels" . | nindent 4 }}
 data:
@@ -12,7 +12,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: oceanbase-sysvars
+  name: {{ printf "%s-sysvars" (include "oceanbase.name" .) }}
   labels:
     {{- include "oceanbase.labels" . | nindent 4 }}
 data:
@@ -24,7 +24,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: oceanbase-inject-env
+  name: {{ printf "%s-inject-env" (include "oceanbase.name" .) }}
   labels:
     {{- include "oceanbase.labels" . | nindent 4 }}
 data:
