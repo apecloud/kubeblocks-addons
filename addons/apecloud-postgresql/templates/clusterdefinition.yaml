@@ -142,8 +142,6 @@ spec:
                 value: {{ .Values.dataMountPath }}/pgconsensus_data
               - name: PGCONF
                 value: {{ .Values.confPath }}
-              - name: KB_SERVICE_CHARACTER_TYPE
-                value: apecloud-postgresql
         volumes:
           - name: dshm
             emptyDir:
