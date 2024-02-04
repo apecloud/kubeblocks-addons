@@ -2,7 +2,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ConfigConstraint
 metadata:
-  name: {{ printf "%s-sysvars-cc" (include "oceanbase.name" .) }}
+  name: {{ printf "%s-sysvars-cc" (include "oceanbase-release.name" .) }}
   labels:
     {{- include "oceanbase.labels" . | nindent 4 }}
 spec:
@@ -13,7 +13,7 @@ spec:
         - "update-sysvars.sh"
 
   scriptConfigs:
-    - scriptConfigMapRef: {{ printf "%s-reload-tools-script" (include "oceanbase.name" .) }}
+    - scriptConfigMapRef: {{ printf "%s-reload-tools-script" (include "oceanbase-release.name" .) }}
       namespace: {{ .Release.Namespace }}
 
   toolsImageSpec:
@@ -73,7 +73,7 @@ spec:
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ConfigConstraint
 metadata:
-  name: {{ printf "%s-parameters-cc" (include "oceanbase.name" .) }}
+  name: {{ printf "%s-parameters-cc" (include "oceanbase-release.name" .) }}
   labels:
     {{- include "oceanbase.labels" . | nindent 4 }}
 spec:
@@ -84,7 +84,7 @@ spec:
         - "update-parameters.sh"
 
   scriptConfigs:
-    - scriptConfigMapRef: {{ printf "%s-reload-tools-script" (include "oceanbase.name" .) }}
+    - scriptConfigMapRef: {{ printf "%s-reload-tools-script" (include "oceanbase-release.name" .) }}
       namespace: {{ .Release.Namespace }}
 
   toolsImageSpec:
@@ -143,7 +143,7 @@ spec:
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ConfigConstraint
 metadata:
-  name: {{ printf "%s-env-cc" (include "oceanbase.name" .) }}
+  name: {{ printf "%s-env-cc" (include "oceanbase-release.name" .) }}
   labels:
     {{- include "oceanbase.labels" . | nindent 4 }}
 spec:

@@ -94,3 +94,7 @@ Generate reloader scripts configmap
 {{- $.Files.Get $path | nindent 2 }}
 {{- end }}
 {{- end }}
+
+{{- define "oceanbase-release.name" }}
+{{- print "ob-ce" }}
+{{- end }}

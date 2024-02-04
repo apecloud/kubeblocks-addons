@@ -87,7 +87,7 @@ Create extra envs annotations
 {{- end }}
 
 {{- define "oceanbase-release.name" }}
-{{- default .Values.obrelease "ob-ce" }}
+{{- print "ob-ce" }}
 {{- end }}
 
 {{- define "oceanbase-cluster.compdef" }}
