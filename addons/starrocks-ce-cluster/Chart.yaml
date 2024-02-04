@@ -1,6 +1,6 @@
 apiVersion: v2
-name: starrocks
-description: A Linux Foundation project, is the next-generation data platform designed to make data-intensive real-time analytics fast and easy.
+name: starrocks-cluster
+description: A Helm chart for Kubernetes
 
 # A chart can be either an 'application' or a 'library' chart.
 #
@@ -15,7 +15,7 @@ type: application
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
 # Versions are expected to follow Semantic Versioning (https://semver.org/)
-version: 0.8.0
+version: 0.1.0
 
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application. Versions are not expected to
@@ -23,7 +23,8 @@ version: 0.8.0
 # It is recommended to use it with quotes.
 appVersion: "3.1.1"
 
-annotations:
-  addon.kubeblocks.io/kubeblocks-version: ">=0.7.0"
-  addon.kubeblocks.io/model: "RDBMS"
-  addon.kubeblocks.io/provider: "community"
+dependencies:
+- name: kblib
+  version: 0.1.0
+  repository: file://../kblib
+  alias: extra

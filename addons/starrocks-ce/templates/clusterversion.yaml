@@ -1,11 +1,11 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ClusterVersion
 metadata:
-  name: starrocks-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
+  name: {{ include "starrocks.name" . }}-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
   labels:
     {{- include "starrocks.labels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: starrocks
+  clusterDefinitionRef: {{ include "starrocks.name" . }}
   componentVersions:
   - componentDefRef: fe
     versionsContext:
