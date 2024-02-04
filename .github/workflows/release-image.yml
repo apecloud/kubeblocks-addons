@@ -1,0 +1,29 @@
+name: Release Chart Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      VERSION:
+        description: 'The version of release image'
+        required: false
+        default: ''
+  workflow_call:
+    inputs:
+      VERSION:
+        description: 'The version of release image'
+        type: string
+        required: false
+        default: ''
+
+run-name: release image ${{ inputs.VERSION }}
+
+jobs:
+  release-charts-image:
+    uses: apecloud/apecloud-cd/.github/workflows/release-image-cache.yml@v0.1.54
+    with:
+      IMG: "apecloud/apecloud-charts"
+      VERSION: "${{ inputs.VERSION }}"
+      APECD_REF: "v0.1.54"
+      DOCKERFILE_PATH: "./docker/Dockerfile-charts"
+      REMOVE_PREFIX: false
+    secrets: inherit
