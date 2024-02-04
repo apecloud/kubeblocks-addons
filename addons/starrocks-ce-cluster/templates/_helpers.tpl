@@ -62,5 +62,5 @@ Create the name of the service account to use
 {{- end }}
 
 {{- define "starrocks-release.name" }}
-{{- default .Values.srrelease "sr-ce" }}
+{{- default .Values.srrelease "starrocks-ce" }}
 {{- end }}

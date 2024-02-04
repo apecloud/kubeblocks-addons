@@ -1,5 +1,5 @@
 apiVersion: v2
-name: sr-ce
+name: starrocks-ce
 description: A Linux Foundation project, is the next-generation data platform designed to make data-intensive real-time analytics fast and easy.
 
 # A chart can be either an 'application' or a 'library' chart.

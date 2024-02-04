@@ -1,7 +1,3 @@
-## @param version StarRocks cluster version
-##
-version: starrocks-3.2.2
-
 ## @param mode StarRocks cluster topology mode, shared-nothing, shared-data
 ##
 mode: shared-nothing
