@@ -87,12 +87,18 @@ wait_random_second() {
 }
 
 redis_cluster_check() {
-    local -r check=$(redis-cli --cluster check "$1")
-    if [[ $check =~ "All 16384 slots covered" ]]; then
-        true
-    else
-        false
-    fi
+  # check redis cluster all slots are covered
+  local cluster_node="$1"
+  if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+    check=$(redis-cli --cluster check "$cluster_node")
+  else
+    check=$(redis-cli --cluster check "$cluster_node" -a "$REDIS_DEFAULT_PASSWORD")
+  fi
+  if [[ $check =~ "All 16384 slots covered" ]]; then
+    true
+  else
+    false
+  fi
 }
 
 wait_for_dns_lookup() {
@@ -122,6 +128,18 @@ extract_pod_name_prefix() {
   # shellcheck disable=SC2001
   prefix=$(echo "$pod_name" | sed 's/-[0-9]\+$//')
   echo "$prefix"
+}
+
+# pod_fqdn example: redis-sharding-shard-gl9-1.redis-sharding-shard-gl9-headless
+extract_pod_name_prefix_from_pod_fqdn() {
+  local pod_fqdn="$1"
+  regex="^(.*)-[0-9]+\..*$"
+  if [[ $pod_fqdn =~ $regex ]]; then
+    result="${BASH_REMATCH[1]}"
+    echo "$result"
+  else
+    echo ""
+  fi
 }
 
 is_redis_cluster_initialized() {
@@ -181,6 +199,17 @@ gen_initialize_redis_cluster_secondary_nodes() {
   echo "${cluster_nodes[*]}"
 }
 
+get_cluster_id() {
+  local cluster_node="$1"
+  if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+    cluster_nodes_info=$(redis-cli -h "$cluster_node" cluster nodes)
+  else
+    cluster_nodes_info=$(redis-cli -h "$cluster_node" -a "$REDIS_DEFAULT_PASSWORD" cluster nodes)
+  fi
+  cluster_id=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $1}')
+  echo "$cluster_id"
+}
+
 initialize_or_scale_out_redis_cluster() {
     # TODO: remove random sleep, it's a workaround for the multi components initialization parallelism issue
     wait_random_second 10 1
@@ -191,30 +220,39 @@ initialize_or_scale_out_redis_cluster() {
         # initialize the primary nodes
         primary_nodes=$(gen_initialize_redis_cluster_primary_node)
         if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-            initialize_command="redis-cli --cluster create $primary_nodes --cluster-replicas --cluster-yes"
+            initialize_command="redis-cli --cluster create $primary_nodes --cluster-yes"
         else
-            initialize_command="redis-cli --cluster create $primary_nodes --cluster-replicas -a $REDIS_DEFAULT_PASSWORD --cluster-yes"
+            initialize_command="redis-cli --cluster create $primary_nodes -a $REDIS_DEFAULT_PASSWORD --cluster-yes"
         fi
         yes yes | $initialize_command || true
-        if redis_cluster_check "${primary_nodes[0]}"; then
+
+        # get the first primary node to check the cluster
+        first_primary_node=$(echo "$primary_nodes" | awk '{print $1}')
+        if redis_cluster_check "$first_primary_node"; then
             echo "Cluster correctly created"
         else
             echo "Failed to create Redis Cluster"
-            slepp 600
             exit 1
         fi
         # initialize the secondary nodes
         secondary_nodes=$(gen_initialize_redis_cluster_secondary_nodes)
         for secondary_node in $secondary_nodes; do
-            secondary_pod_name_prefix=$(extract_pod_name_prefix "$secondary_node")
-            mapping_primary=$secondary_pod_name_prefix+"-0"
-            if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-                redis-cli --cluster add-node 127.0.0.1:7006 127.0.0.1:7000 --cluster-slave --cluster-master-id 3c3a0c74aae0b56170ccb03a76b60cfe7dc1912e
-                replicated_command="redis-cli --cluster add-node $node ${primary_nodes[0]}"
-            else
-                replicated_command="redis-cli --cluster add-node $node ${primary_nodes[0]} -a $REDIS_DEFAULT_PASSWORD"
+            secondary_pod_name_prefix=$(extract_pod_name_prefix_from_pod_fqdn "$secondary_node")
+            mapping_primary_fqdn="$secondary_pod_name_prefix-0.$secondary_pod_name_prefix-headless"
+            mapping_primary_fqdn_with_port="$mapping_primary_fqdn:$SERVICE_PORT"
+            mapping_primary_cluster_id=$(get_cluster_id "$mapping_primary_fqdn")
+            echo "mapping_primary_cluster_id: $mapping_primary_cluster_id"
+            if [ -z "$mapping_primary_cluster_id" ]; then
+                echo "Failed to get the cluster id from cluster nodes of the mapping primary node: $mapping_primary_fqdn"
+                exit 1
             fi
-            $add_node_command
+            if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+                replicated_command="redis-cli --cluster add-node $secondary_node $mapping_primary_fqdn_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id"
+            else
+                replicated_command="redis-cli --cluster add-node $secondary_node $mapping_primary_fqdn_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id -a $REDIS_DEFAULT_PASSWORD"
+            fi
+            echo "replicated_command: $replicated_command"
+            yes yes | $replicated_command || true
         done
     else
         echo "Redis Cluster already initialized, scaling out..."
