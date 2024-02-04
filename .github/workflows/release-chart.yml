@@ -78,8 +78,8 @@ on:
           - redis-cluster
           - risingwave
           - risingwave-cluster
-          - starrocks
-          - starrocks-cluster
+          - starrocks-ce
+          - starrocks-ce-cluster
           - tdengine
           - tdengine-cluster
           - tidb
