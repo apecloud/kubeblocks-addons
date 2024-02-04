@@ -52,8 +52,8 @@ on:
           - nebula-cluster
           - neon
           - neon-cluster
-          - ob-ce
-          - ob-ce-cluster
+          - oceanbase-ce
+          - oceanbase-ce-cluster
           - official-postgresql
           - official-postgresql-cluster
           - openldap
@@ -143,7 +143,7 @@ jobs:
           done
           echo "$ADDONS_DIR"
           echo "matrix={\"include\":[$ADDONS_DIR]}" >> $GITHUB_OUTPUT
-    
+
 
   release-addons-chart-jihu:
     needs: [ get-addons-chart-dir ]

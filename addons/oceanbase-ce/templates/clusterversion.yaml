@@ -1,13 +1,13 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ClusterVersion
 metadata:
-  name: {{ printf "%s-%s"  (include "oceanbase.name" .) (default .Chart.AppVersion .Values.clusterVersionOverride) }}
+  name: {{ printf "%s-%s"  (include "oceanbase-release.name" .) (default .Chart.AppVersion .Values.clusterVersionOverride) }}
   labels:
     {{- include "oceanbase.labels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: {{ include "oceanbase.name" .}}
+  clusterDefinitionRef: {{ include "oceanbase-release.name" .}}
   componentVersions:
-  - componentDefRef: {{ include "oceanbase.name" .}}
+  - componentDefRef: {{ include "oceanbase-release.name" .}}
     versionsContext:
 #      initContainers:
 #      - name: init-tools
@@ -20,7 +20,7 @@ spec:
       - name: metrics
         image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.metrics.repository }}:{{ .Values.images.metrics.tag }}
         imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
-  - componentDefRef: {{ printf "%s-hostnetwork" (include "oceanbase.name" .) }}
+  - componentDefRef: {{ printf "%s-hostnetwork" (include "oceanbase-release.name" .) }}
     versionsContext:
 #      initContainers:
 #      - name: init-tools
