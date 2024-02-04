@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ClusterDefinition
 metadata:
-  name: starrocks
+  name: {{ include "starrocks.name" . }}
   labels:
     {{- include "starrocks.labels" . | nindent 4 }}
 spec:
@@ -27,7 +27,7 @@ spec:
       type: log
     configSpecs:
     - name: starrocks-fe-cm
-      templateRef: starrocks-fe-cm
+      templateRef: {{ include "starrocks.name" . }}-fe-cm
       namespace: {{ .Release.Namespace }}
       volumeName: starrocks-fe-cm
     podSpec:
@@ -119,7 +119,7 @@ spec:
             type: ServiceRef
     configSpecs:
     - name: starrocks-be-cm
-      templateRef: starrocks-be-cm
+      templateRef: {{ include "starrocks.name" . }}-be-cm
       namespace: {{ .Release.Namespace }}
       volumeName: starrocks-be-cm
     volumeTypes:
