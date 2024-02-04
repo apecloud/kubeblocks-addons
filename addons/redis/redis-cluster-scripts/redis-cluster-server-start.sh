@@ -53,25 +53,6 @@ extract_ordinal_from_pod_name() {
   echo "$ordinal"
 }
 
-# usage: retry <command>
-retry() {
-  local max_attempts=20
-  local attempt=1
-  until "$@" || [ $attempt -eq $max_attempts ]; do
-    echo "Command '$*' failed. Attempt $attempt of $max_attempts. Retrying in 5 seconds..."
-    attempt=$((attempt + 1))
-    sleep 3
-  done
-  if [ $attempt -eq $max_attempts ]; then
-    echo "Command '$*' failed after $max_attempts attempts. shutdown redis-server..."
-    if [ ! -z "$REDIS_DEFAULT_PASSWORD" ]; then
-      redis-cli -h 127.0.0.1 -p $service_port -a "$REDIS_DEFAULT_PASSWORD" shutdown
-    else
-      redis-cli -h 127.0.0.1 -p $service_port shutdown
-    fi
-  fi
-}
-
 start_redis_server() {
     exec redis-server /etc/redis/redis.conf \
     --loadmodule /opt/redis-stack/lib/redisearch.so ${REDISEARCH_ARGS} \

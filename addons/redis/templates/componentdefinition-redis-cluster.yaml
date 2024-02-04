@@ -61,7 +61,12 @@ spec:
     ## TODO: the other accounts should be created for backward compatibility
     - name: default
       initAccount: true
-      seed: 5wM4uhmKV1Ohy087
+      passwordGenerationPolicy:
+        length: 10
+        numDigits: 5
+        numSymbols: 0
+        letterCase: MixedCases
+        seed: 5wM4uhmKV1Ohy087
   vars:
     ## the default username of redis connection
     - name: REDIS_DEFAULT_USER
@@ -93,7 +98,7 @@ spec:
           command:
             - /bin/bash
             - -c
-            - sleep 600
+            - /scripts/redis-cluster-manage.sh
         ## TODO: the preCondition should be changed to RuntimeReady when KubeBlocks support it
         preCondition: ComponentReady
     accountProvision:
@@ -144,7 +149,7 @@ spec:
           ## the password of redis for redis sentinel connection
           - name: REDIS_SENTINEL_PASSWORD
             value: $(REDIS_DEFAULT_PASSWORD)
-        command: [ "/scripts/redis-cluster-start.sh" ]
+        command: [ "/scripts/redis-cluster-server-start.sh" ]
         readinessProbe:
           initialDelaySeconds: 10
           periodSeconds: 5
