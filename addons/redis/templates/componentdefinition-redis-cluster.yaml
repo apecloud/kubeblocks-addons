@@ -98,7 +98,7 @@ spec:
           command:
             - /bin/bash
             - -c
-            - /scripts/redis-cluster-manage.sh
+            - /scripts/redis-cluster-manage.sh --post-provision
         ## TODO: the preCondition should be changed to RuntimeReady when KubeBlocks support it
         preCondition: ComponentReady
     accountProvision:

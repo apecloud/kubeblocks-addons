@@ -100,3 +100,11 @@ replicas: 1
 replicas: {{ max .Values.replicas 2 }}
 {{- end }}
 {{- end }}
+
+{{/*
+Define redis cluster sharding count.
+*/}}
+{{- define "redis-cluster.shards" }}
+shards: {{ max .Values.replicas 3 }}
+{{- end }}
+{{- end }}

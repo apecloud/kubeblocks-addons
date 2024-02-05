@@ -257,9 +257,31 @@ initialize_or_scale_out_redis_cluster() {
         done
     else
         echo "Redis Cluster already initialized, scaling out..."
-        # TODO: scale out the sharding of Redis Cluster
+        # TODO: scale out shard of Redis Cluster
     fi
 }
 
 # main
-initialize_or_scale_out_redis_cluster
+if [ $# -eq 1 ]; then
+  case $1 in
+  --help)
+    echo "Usage: $0 [options]"
+    echo "Options:"
+    echo "  --help                show help information"
+    echo "  --post-provision      initialize or scale out Redis Cluster Shard"
+    echo "  --pre-terminate       stop or scale in Redis Cluster Shard"
+    exit 0
+    ;;
+  --post-provision)
+    initialize_or_scale_out_redis_cluster
+    exit 0
+    ;;
+  --pre-terminate)
+    exit 0
+    ;;
+  *)
+    echo "Error: invalid option '$1'"
+    exit 1
+    ;;
+  esac
+fi

@@ -71,4 +71,5 @@ build_redis_conf() {
 }
 
 build_redis_conf
+# TODO: if the redis cluster has been initialized, it should be added as secondary replica to corresponding primary node
 start_redis_server

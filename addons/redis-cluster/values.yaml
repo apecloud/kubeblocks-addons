@@ -9,13 +9,17 @@ useLegacyCompDef: true
 ##
 version: redis-7.0.6
 
-## @param mode redis cluster topology mode, standalone and replication
-##
+## @param mode redis cluster topology mode, standalone, replication and cluster
+## standalone: single redis instance
+## replication: primary-secondary replication with redis sentinel, refer: https://redis.io/docs/management/sentinel
+## cluster: official redis cluster, refer: https://redis.io/docs/reference/cluster-spec. if mode is cluster, please set useLegacyCompDef to false.
 mode: replication
 
-## @param replicas specify cluster replicas
-##
-replicas: 1
+## @param replicas specify replicas of replication
+## if mode is standalone, replicas should be 1
+## if mode is replication and replicas is 2, it means 1 primary and 1 secondary
+## if mode is cluster and replicas is 2, it means every shard has 1 primary and 1 secondary, the count of shards is specified by redisCluster.shardCount
+replicas: 2
 
 ## @param cpu
 ##
@@ -60,3 +64,9 @@ sentinel:
   memory: 0.2
   storage: 5
   replicas: 3
+
+## if mode is cluster, specify the redis cluster parameters
+## @param redisCluster.shardCount specify the number of shards in the cluster, the minimum value is 3
+redisCluster:
+  shardCount: 3
+
