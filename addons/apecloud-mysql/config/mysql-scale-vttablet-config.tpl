@@ -24,11 +24,40 @@ enforce_tableacl_config=false
 # max_connections={{ div ( div $phy_memory 4 ) $single_thread_memory }}
 {{- end}}
 
-# OltpReadPool
-queryserver_config_pool_size=30
-
-# OlapReadPool
-queryserver_config_stream_pool_size=30
+{{- $max_connections := div ( div $phy_memory 4 ) $single_thread_memory }}
+# 10 percentage
+{{- $pool_k := max 1 ( div (sub $max_connections 35) 10 ) }}
 
 # TxPool
-queryserver_config_transaction_cap=50
+queryserver_config_transaction_cap={{ mul 5 $pool_k }}
+
+# OltpReadPool
+queryserver_config_pool_size={{ mul 4 $pool_k }}
+
+# OlapReadPool
+queryserver_config_stream_pool_size={{ mul $pool_k }}
+
+
+# the size of database connection pool in non transaction dml
+non_transactional_dml_database_pool_size=3
+
+# the number of rows to be processed in one batch by default
+non_transactional_dml_default_batch_size=2000
+
+# the interval of batch processing in milliseconds by default
+non_transactional_dml_default_batch_interval=1
+
+# the interval of table GC in hours
+non_transactional_dml_table_gc_interval=24
+
+# the interval of job scheduler running in seconds
+non_transactional_dml_job_manager_running_interval=24
+
+# the interval of throttle check in milliseconds
+non_transactional_dml_throttle_check_interval=250
+
+# the threshold of batch size
+non_transactional_dml_batch_size_threshold=10000
+
+# final threshold = ratio * non_transactional_dml_batch_size_threshold / table index numbers
+non_transactional_dml_batch_size_threshold_ratio=0.5

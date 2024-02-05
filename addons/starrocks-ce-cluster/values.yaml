@@ -1,0 +1,37 @@
+## @param mode StarRocks cluster topology mode, shared-nothing, shared-data
+##
+mode: shared-nothing
+
+## @param replicas specify cluster replicas
+##
+replicas: 1
+
+## @param cpu
+##
+cpu: 1
+
+## @param memory, the unit is Gi
+##
+memory: 1
+
+## @param storage size, the unit is Gi
+##
+storage: 20
+
+beReplicas: 1
+beCPU: 1
+beMemory: 1
+beStorage: 20
+
+nameOverride: ""
+
+fullnameOverride: ""
+
+clusterVersionOverride: ""
+
+# Default values for starrocks-cluster.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+# if useLegacyCompDef is false ,cluster will be rendered by compDef rather than componentDefRef in cluster definition
+useLegacyCompDef: true
+
