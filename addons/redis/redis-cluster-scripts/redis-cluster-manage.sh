@@ -236,12 +236,13 @@ initialize_or_scale_out_redis_cluster() {
         fi
         # initialize the secondary nodes
         secondary_nodes=$(gen_initialize_redis_cluster_secondary_nodes)
+        echo "secondary_nodes: $secondary_nodes"
         for secondary_node in $secondary_nodes; do
             secondary_pod_name_prefix=$(extract_pod_name_prefix_from_pod_fqdn "$secondary_node")
             mapping_primary_fqdn="$secondary_pod_name_prefix-0.$secondary_pod_name_prefix-headless"
             mapping_primary_fqdn_with_port="$mapping_primary_fqdn:$SERVICE_PORT"
             mapping_primary_cluster_id=$(get_cluster_id "$mapping_primary_fqdn")
-            echo "mapping_primary_cluster_id: $mapping_primary_cluster_id"
+            echo "mapping_primary_fqdn: $mapping_primary_fqdn, mapping_primary_fqdn_with_port: $mapping_primary_fqdn_with_port, mapping_primary_cluster_id: $mapping_primary_cluster_id"
             if [ -z "$mapping_primary_cluster_id" ]; then
                 echo "Failed to get the cluster id from cluster nodes of the mapping primary node: $mapping_primary_fqdn"
                 exit 1
@@ -256,11 +257,9 @@ initialize_or_scale_out_redis_cluster() {
         done
     else
         echo "Redis Cluster already initialized, scaling out..."
+        # TODO: scale out the sharding of Redis Cluster
     fi
 }
 
 # main
-
 initialize_or_scale_out_redis_cluster
-
-sleep 600
