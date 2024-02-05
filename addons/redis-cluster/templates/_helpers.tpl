@@ -25,6 +25,15 @@ kubeblocks.io/enabled-pod-ordinal-svc: redis,redis-sentinel
 {{- end }}
 
 {{/*
+Define redis cluster annotation keys for cluster mode nodeport feature gate.
+*/}}
+{{- define "redis-cluster.clusterNodeportFeatureGate" -}}
+kubeblocks.io/enabled-node-port-svc: shard
+kubeblocks.io/enabled-pod-ordinal-svc: shard
+kubeblocks.io/enabled-shard-svc: shard
+{{- end }}
+
+{{/*
 Define redis cluster mode shardingSpec
 */}}
 {{- define "redis-cluster.shardingSpec" }}
@@ -36,11 +45,11 @@ Define redis cluster mode shardingSpec
     replicas: {{ .Values.replicas }}
     resources:
       limits:
-        cpu: {{ .Values.sentinel.cpu | quote }}
-        memory:  {{ print .Values.sentinel.memory "Gi" | quote }}
+        cpu: {{ .Values.cpu | quote }}
+        memory:  {{ print .Values.memory "Gi" | quote }}
       requests:
-        cpu: {{ .Values.sentinel.cpu | quote }}
-        memory:  {{ print .Values.sentinel.memory "Gi" | quote }}
+        cpu: {{ .Values.cpu | quote }}
+        memory:  {{ print .Values.memory "Gi" | quote }}
     volumeClaimTemplates:
       - name: data
         spec:
@@ -48,7 +57,7 @@ Define redis cluster mode shardingSpec
             - ReadWriteOnce
           resources:
             requests:
-              storage: {{ print .Values.sentinel.storage "Gi" }}
+              storage: {{ print .Values.storage "Gi" }}
 {{- end }}
 
 
