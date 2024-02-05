@@ -31,6 +31,7 @@ Define redis cluster mode shardingSpec
 - name: shard
   shards: {{ .Values.redisCluster.shardCount }}
   template:
+    name: redis
     componentDef: redis-cluster
     replicas: {{ .Values.replicas }}
     resources:
