@@ -25,6 +25,33 @@ kubeblocks.io/enabled-pod-ordinal-svc: redis,redis-sentinel
 {{- end }}
 
 {{/*
+Define redis cluster mode shardingSpec
+*/}}
+{{- define "redis-cluster.shardingSpec" }}
+- name: shard
+  shards: {{ .Values.redisCluster.shardCount }}
+  template:
+    componentDef: redis-cluster
+    replicas: {{ .Values.replicas }}
+    resources:
+      limits:
+        cpu: {{ .Values.sentinel.cpu | quote }}
+        memory:  {{ print .Values.sentinel.memory "Gi" | quote }}
+      requests:
+        cpu: {{ .Values.sentinel.cpu | quote }}
+        memory:  {{ print .Values.sentinel.memory "Gi" | quote }}
+    volumeClaimTemplates:
+      - name: data
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: {{ print .Values.sentinel.storage "Gi" }}
+{{- end }}
+
+
+{{/*
 Define redis cluster sentinel component.
 */}}
 {{- define "redis-cluster.sentinel" }}
@@ -105,6 +132,5 @@ replicas: {{ max .Values.replicas 2 }}
 Define redis cluster sharding count.
 */}}
 {{- define "redis-cluster.shards" }}
-shards: {{ max .Values.replicas 3 }}
-{{- end }}
+shards: {{ max .Values.redisCluster.shardCount 3 }}
 {{- end }}

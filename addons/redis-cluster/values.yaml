@@ -62,7 +62,7 @@ sentinel:
   enabled: true
   cpu: 0.2
   memory: 0.2
-  storage: 5
+  storage: 20
   replicas: 3
 
 ## if mode is cluster, specify the redis cluster parameters
