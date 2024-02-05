@@ -57,7 +57,7 @@ spec:
       podSpec:
         initContainers:
           - name: init-syncer
-            image: registry.cn-hangzhou.aliyuncs.com/xuriwuyun/syncer:latest
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
             imagePullPolicy: Always
             command:
             - sh
