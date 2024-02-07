@@ -76,7 +76,7 @@ spec:
           - name: postgresql
             imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
             securityContext:
-              runAsUser: 999
+              runAsUser: 0
             command:
               - /kubeblocks/syncer
               - --config-path
