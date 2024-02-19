@@ -1,0 +1,31 @@
+YashanDB: An Independent-developed Next Generation Analytic Database
+
+YashanDB is powered by Bounded Evaluation, which uniquely delivers Just in Time analytic capabilities focusing on conquering some of the challenges surrounding big data characterized by Volume, Velocity and Variety. It incorporates multiple engines namely Turbo, Realtime, Stable and Omni inside it. As a one-stop database to enable real time OLAP and scalable HTAP with better performance, it lowers the cost via lightning-fast SQL queries.
+
+In addition, YashanDB reduces response time required from weeks to seconds, eliminates data solos, simplifies data engineering, and future-proofs your data architecture.
+
+
+To login, use following command:
+```sql
+yasql sys/yasdb_123
+```
+
+To verify whether the database has been initialized successfully, check instance and database status:
+
+1. check instance status:
+```sql
+SQL> select status from v$instance;
+
+STATUS
+-------------
+OPEN
+```
+
+2. check database status:
+```sql
+SQL> select status from v$database;
+
+STATUS
+---------------------------------
+NORMAL
+```

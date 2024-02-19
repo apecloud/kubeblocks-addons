@@ -6,3 +6,8 @@ image:
   registry: registry.cn-shenzhen.aliyuncs.com
   repository: jesseatyashan/yashandb-personal
   tag: 23.1.1.100
+
+
+logConfigs:
+  run: /home/yashan/mydb/yasdb_data/log/run/run.log
+  slow: /home/yashan/mydb/yasdb_data/log/slow/slow.log
