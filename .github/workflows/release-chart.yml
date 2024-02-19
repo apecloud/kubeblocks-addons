@@ -86,6 +86,8 @@ on:
           - tidb-cluster
           - weaviate
           - weaviate-cluster
+          - yashandb
+          - yashandb-cluster
           - xinference
           - xinference-cluster
           - zookeeper
