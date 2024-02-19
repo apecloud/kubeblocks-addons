@@ -86,10 +86,10 @@ on:
           - tidb-cluster
           - weaviate
           - weaviate-cluster
-          - yashandb
-          - yashandb-cluster
           - xinference
           - xinference-cluster
+          - yashandb
+          - yashandb-cluster
           - zookeeper
           - zookeeper-cluster
       chart_version:
