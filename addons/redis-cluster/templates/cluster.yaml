@@ -25,10 +25,10 @@
     {{- end }}
 {{- else }}
   {{- if eq .Values.mode "cluster" }}
-    {{- include "kblib.clusterCommon" . }}
-    clusterDefinitionRef: redis  # ref clusterDefinition.name
-    shardingSpecs:
-      {{- include "redis-cluster.shardingSpec" . | indent 4 }}
+  {{- include "kblib.clusterCommon" . }}
+  clusterDefinitionRef: redis  # ref clusterDefinition.name
+  shardingSpecs:
+  {{- include "redis-cluster.shardingSpec" . | indent 6 }}
   {{- else }}
     {{- if .Values.nodePortEnabled }}
     {{- include "redis-cluster.clusterCommonWithNodePort" . }}
