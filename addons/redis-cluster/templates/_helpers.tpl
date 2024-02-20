@@ -25,6 +25,43 @@ kubeblocks.io/enabled-pod-ordinal-svc: redis,redis-sentinel
 {{- end }}
 
 {{/*
+Define redis cluster annotation keys for cluster mode nodeport feature gate.
+*/}}
+{{- define "redis-cluster.clusterNodeportFeatureGate" -}}
+kubeblocks.io/enabled-node-port-svc: shard
+kubeblocks.io/enabled-pod-ordinal-svc: shard
+kubeblocks.io/enabled-shard-svc: shard
+{{- end }}
+
+{{/*
+Define redis cluster mode shardingSpec
+*/}}
+{{- define "redis-cluster.shardingSpec" }}
+- name: shard
+  shards: {{ .Values.redisCluster.shardCount }}
+  template:
+    name: redis
+    componentDef: redis-cluster
+    replicas: {{ .Values.replicas }}
+    resources:
+      limits:
+        cpu: {{ .Values.cpu | quote }}
+        memory:  {{ print .Values.memory "Gi" | quote }}
+      requests:
+        cpu: {{ .Values.cpu | quote }}
+        memory:  {{ print .Values.memory "Gi" | quote }}
+    volumeClaimTemplates:
+      - name: data
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: {{ print .Values.storage "Gi" }}
+{{- end }}
+
+
+{{/*
 Define redis cluster sentinel component.
 */}}
 {{- define "redis-cluster.sentinel" }}
@@ -99,4 +136,11 @@ replicas: 1
 {{- else if eq .Values.mode "replication" }}
 replicas: {{ max .Values.replicas 2 }}
 {{- end }}
+{{- end }}
+
+{{/*
+Define redis cluster sharding count.
+*/}}
+{{- define "redis-cluster.shards" }}
+shards: {{ max .Values.redisCluster.shardCount 3 }}
 {{- end }}
