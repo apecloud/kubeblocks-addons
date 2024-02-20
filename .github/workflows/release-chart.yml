@@ -78,8 +78,8 @@ on:
           - redis-cluster
           - risingwave
           - risingwave-cluster
-          - starrocks
-          - starrocks-cluster
+          - starrocks-ce
+          - starrocks-ce-cluster
           - tdengine
           - tdengine-cluster
           - tidb
@@ -88,6 +88,8 @@ on:
           - weaviate-cluster
           - xinference
           - xinference-cluster
+          - yashandb
+          - yashandb-cluster
           - zookeeper
           - zookeeper-cluster
       chart_version:

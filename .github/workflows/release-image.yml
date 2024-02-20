@@ -19,11 +19,12 @@ run-name: release image ${{ inputs.VERSION }}
 
 jobs:
   release-charts-image:
-    uses: apecloud/apecloud-cd/.github/workflows/release-image-cache.yml@v0.1.54
+    uses: apecloud/apecloud-cd/.github/workflows/release-image-cache2.yml@v0.1.55
     with:
       IMG: "apecloud/apecloud-charts"
       VERSION: "${{ inputs.VERSION }}"
-      APECD_REF: "v0.1.54"
+      APECD_REF: "v0.1.55"
       DOCKERFILE_PATH: "./docker/Dockerfile-charts"
       REMOVE_PREFIX: false
+      GITHUB_REPO: "apecloud/apecloud-addons"
     secrets: inherit

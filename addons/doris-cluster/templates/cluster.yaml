@@ -13,7 +13,7 @@ spec:
     tenancy: SharedNode
     topologyKeys: []
   clusterDefinitionRef: doris
-  clusterVersionRef: doris-2.0.0
+  clusterVersionRef: doris-2.0.3
   componentSpecs:
     - componentDefRef: doris-fe
       monitor: true

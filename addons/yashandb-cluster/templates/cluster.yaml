@@ -3,18 +3,15 @@ kind: Cluster
 metadata:
   name: {{ include "kblib.clusterName" . }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
-  annotations:
-    kubeblocks.io/extra-env: '{ "MYSQL_TOPOLOGY_MODE": {{ default "standalone" .Values.mode | quote }} }'
 spec:
   clusterVersionRef: {{ .Values.version }}
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
-  clusterDefinitionRef: mysql # ref clusterdefinition.name
+  clusterDefinitionRef: yashandb
   componentSpecs:
-    - name: mysql
-      componentDefRef: mysql # ref clusterdefinition componentDefs.name
-      {{- include "kblib.componentMonitor" . | indent 6 }}
-      {{- include "mysql-cluster.replicaCount" . | indent 6 }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+    - name: yashan-comp
+      componentDefRef: yashandb-compdef # ref clusterdefinition componentDefs.name
+      replicas: {{ .Values.replicas }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentServices" . | indent 6 }}
