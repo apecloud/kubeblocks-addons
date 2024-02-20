@@ -1,13 +1,13 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "redis.componentDefName" . }}
+  name: {{ include "redis-cluster.componentDefName" . }}
   labels:
     {{- include "redis.labels" . | nindent 4 }}
 spec:
   provider: kubeblocks
-  description: A Redis v7.0 component definition for Kubernetes
-  serviceKind: redis
+  description: An official v7.0 Redis Cluster(distributed implementation of Redis) component definition for Kubernetes
+  serviceKind: redis-cluster
   serviceVersion: 7.0.6
   services:
     - name: redis
@@ -16,17 +16,8 @@ spec:
         ports:
           - name: redis
             port: 6379
-            targetPort: redis
+            targetPort: redis-cluster
       roleSelector: primary
-    - name: redis-nodeport
-      serviceName: redis-nodeport
-      generatePodOrdinalService: true
-      spec:
-        type: NodePort
-        ports:
-          - name: redis-nodeport
-            port: 6379
-            targetPort: redis
   updateStrategy: BestEffortParallel
   volumes:
     - name: data
@@ -50,19 +41,19 @@ spec:
       scrapePort: {{ .Values.metrics.service.port }}
       scrapePath: "/metrics"
   configs:
-    - name: redis-replication-config
-      templateRef: redis7-config-template
-      constraintRef: redis7-config-constraints
+    - name: redis-cluster-config
+      templateRef: redis-cluster7-config-template
+      constraintRef: redis-cluster7-config-constraints
       namespace: {{ .Release.Namespace }}
-      volumeName: redis-config
+      volumeName: redis-cluster-config
     - name: redis-metrics-config
       templateRef: redis-metrics-config
       namespace: {{ .Release.Namespace }}
       volumeName: redis-metrics-config
       defaultMode: 0444
   scripts:
-    - name: redis-scripts
-      templateRef: redis-scripts
+    - name: redis-cluster-scripts
+      templateRef: redis-cluster-scripts
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
@@ -75,13 +66,14 @@ spec:
         numDigits: 5
         numSymbols: 0
         letterCase: MixedCases
+        seed: 5wM4uhmKV1Ohy087
   vars:
     ## the default username of redis connection
     - name: REDIS_DEFAULT_USER
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "redis.componentDefName" . }}
+          compDef: {{ include "redis-cluster.componentDefName" . }}
           name: default
           username: Required
     ## the default password of redis connection
@@ -89,58 +81,9 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "redis.componentDefName" . }}
+          compDef: {{ include "redis-cluster.componentDefName" . }}
           name: default
           password: Required
-    ## if the redis NodePort type Service with name suffix redis-nodeport-{0,1...} is set, the REDIS_NODE_PORT_{0,1...} will be available
-    - name: REDIS_NODE_PORT
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "redis.componentDefName" . }}
-          name: redis-nodeport
-          generatePodOrdinalServiceVar: true
-          optional: true
-          nodePort:
-            name: redis-nodeport
-            option: Optional
-    ## if the redis Service with name suffix redis-nodeport-{0,1...} is set, the REDIS_NODE_PORT_SVC_NAME_{0,1...} will be available
-    - name: REDIS_NODE_PORT_SVC_NAME
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "redis.componentDefName" . }}
-          name: redis-nodeport
-          generatePodOrdinalServiceVar: true
-          optional: true
-          host: Optional
-    ## the username of redis sentinel for redis connection, it is optional
-    - name: SENTINEL_USER
-      valueFrom:
-        credentialVarRef:
-          ## reference the redis-sentinel component definition name
-          compDef: {{ include "redis-sentinel.componentDefName" . }}
-          name: default
-          optional: true
-          username: Optional
-    ## the password of redis sentinel for redis connection, it is optional
-    - name: SENTINEL_PASSWORD
-      valueFrom:
-        credentialVarRef:
-          ## reference the redis-sentinel component definition name
-          compDef: {{ include "redis-sentinel.componentDefName" . }}
-          name: default
-          optional: true
-          password: Optional
-    - name: SENTINEL_COMPONENT_DEFINITION_NAME
-      value: {{ include "redis-sentinel.componentDefName" . }}
-    - name: SENTINEL_SERVICE_PORT
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "redis-sentinel.componentDefName" . }}
-          name: redis-sentinel
-          optional: true
-          port:
-            name: redis-sentinel
-            option: Optional
     ## TODO: add redis sentinel reference env vars
   lifecycleActions:
     roleProbe:
@@ -155,7 +98,7 @@ spec:
           command:
             - /bin/bash
             - -c
-            - /scripts/redis-register-to-sentinel.sh
+            - /scripts/redis-cluster-manage.sh --post-provision
         ## TODO: the preCondition should be changed to RuntimeReady when KubeBlocks support it
         preCondition: ComponentReady
     accountProvision:
@@ -169,16 +112,18 @@ spec:
             - "redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD acl save "
   runtime:
     containers:
-      - name: redis
+      - name: redis-cluster
         image: {{ include "redis.image" . }}
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         ports:
-          - name: redis
+          - name: redis-cluster
             containerPort: 6379
+          - name: cluster-bus
+            containerPort: 16379
         volumeMounts:
           - name: data
             mountPath: {{ .Values.dataMountPath }}
-          - name: redis-config
+          - name: redis-cluster-config
             mountPath: /etc/conf
           - name: scripts
             mountPath: /scripts
@@ -190,6 +135,8 @@ spec:
           ## TODO: redis sentinel deployment independent, refer to redis sentinel env vars
           - name: SERVICE_PORT
             value: "6379"
+          - name: CLUSTER_BUS_PORT
+            value: "16379"
           ## the username of redis primary-secondary replication
           - name: REDIS_REPL_USER
             value: "kbreplicator"
@@ -202,7 +149,7 @@ spec:
           ## the password of redis for redis sentinel connection
           - name: REDIS_SENTINEL_PASSWORD
             value: $(REDIS_DEFAULT_PASSWORD)
-        command: [ "/scripts/redis-start.sh" ]
+        command: [ "/scripts/redis-cluster-server-start.sh" ]
         readinessProbe:
           initialDelaySeconds: 10
           periodSeconds: 5
@@ -220,7 +167,7 @@ spec:
               command:
                 - /bin/bash
                 - -c
-                - /scripts/redis-preStop.sh
+                - /scripts/redis-pre-stop.sh
       - name: metrics
         image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
         imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
@@ -243,13 +190,3 @@ spec:
         volumeMounts:
           - name: redis-metrics-config
             mountPath: /opt/conf
-    volumes:
-      - name: pod-info
-        downwardAPI:
-          items:
-            - path: "primary-pod"
-              fieldRef:
-                fieldPath: metadata.annotations['rs.apps.kubeblocks.io/primary']
-            - path: "component-replicas"
-              fieldRef:
-                fieldPath: metadata.annotations['apps.kubeblocks.io/component-replicas']
