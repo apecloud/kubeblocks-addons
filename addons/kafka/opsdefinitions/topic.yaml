@@ -7,7 +7,7 @@ spec:
   - name: kafka-broker
     accountName: client
     serviceName: broker
-  - name: kafka-combine-server
+  - name: kafka-combine
     accountName: client
     serviceName: broker
 
@@ -62,7 +62,12 @@ spec:
           - -c
           - |
             set -e
-            KB_CONNECT_ENDPOINT="${KB_COMP_SVC_NAME}:${KB_COMP_SVC_PORT_BROKER}"
+            SERVERS=()
+            for i in $(seq 0 $((${KB_COMP_REPLICAS}-1))); do
+              SERVERS+=("${KB_COMP_SVC_NAME}-${i}:${KB_COMP_SVC_PORT_BROKER}")
+            done
+            KB_CONNECT_ENDPOINT=$(printf "%s," "${SERVERS[@]}")
+            KB_CONNECT_ENDPOINT=${KB_CONNECT_ENDPOINT%,}
             command="/opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server ${KB_CONNECT_ENDPOINT} --topic ${topic} --${type}"
             if [[ ${type} == "delete" ]];then
               echo $command
