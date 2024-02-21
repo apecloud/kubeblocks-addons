@@ -67,7 +67,7 @@ spec:
           - |
             {{- range $plugin := $.Values.plugins }}
             /opt/bitnami/elasticsearch/bin/elasticsearch-plugin list | grep {{ $plugin.name }}
-            if [ $? == 0 ]; then
+            if [ $? -eq 0 ]; then
               echo "Plugin {{ $plugin.name }} already installed"
             else
               /opt/bitnami/elasticsearch/bin/elasticsearch-plugin install -b {{ $plugin.url }}
@@ -131,10 +131,8 @@ spec:
               value: ""
             - name: ELASTICSEARCH_CLUSTER_MASTER_SVC
               value: "$(KB_CLUSTER_NAME)-$(KB_COMP_NAME)-0"
-            - name: ELASTICSEARCH_ENABLE_SECURITY
-              value: "false"
             - name: ELASTICSEARCH_ADVERTISED_HOSTNAME
-              value: "$(KB_POD_NAME).$(KB_CLUSTER_COMP_NAME).$(KB_NAMESPACE).svc.cluster.local"
+              value: "$(KB_POD_NAME).$(KB_CLUSTER_COMP_NAME)-headless.$(KB_NAMESPACE).svc.cluster.local"
             - name: ELASTICSEARCH_HEAP_SIZE
               value: "128m"
 
@@ -282,7 +280,7 @@ spec:
           - |
             {{- range $plugin := $.Values.plugins }}
             /opt/bitnami/elasticsearch/bin/elasticsearch-plugin list | grep {{ $plugin.name }}
-            if [ $? == 0 ]; then
+            if [ $? -eq 0 ]; then
               echo "Plugin {{ $plugin.name }} already installed"
             else
               /opt/bitnami/elasticsearch/bin/elasticsearch-plugin install -b {{ $plugin.url }}
