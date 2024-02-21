@@ -7,6 +7,9 @@ spec:
   - name: kafka-broker
     accountName: client
     serviceName: broker
+  - name: kafka-combine
+    accountName: client
+    serviceName: broker
 
   parametersSchema:
     openAPIV3Schema:

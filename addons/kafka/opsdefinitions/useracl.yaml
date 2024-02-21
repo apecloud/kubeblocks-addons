@@ -7,7 +7,7 @@ spec:
   - name: kafka-broker
     accountName: client
     serviceName: broker
-  - name: kafka-combine-server
+  - name: kafka-combine
     accountName: client
     serviceName: broker
 
