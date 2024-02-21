@@ -102,7 +102,7 @@ spec:
           - -c
           - |
             set -e
-            KB_CONNECT_ENDPOINT="${KB_COMP_SVC_NAME}:${KB_COMP_SVC_PORT_KAFKA_CLIENT}"
+            KB_CONNECT_ENDPOINT="${KB_COMP_SVC_NAME}:${KB_COMP_SVC_PORT_BROKER}"
             command="/opt/bitnami/kafka/bin/kafka-acls.sh --bootstrap-server ${KB_CONNECT_ENDPOINT} --${type}"
             function AddCommandFlag(){
                local key=$1
