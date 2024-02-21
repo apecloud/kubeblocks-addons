@@ -2,7 +2,11 @@
   clusterDefinitionRef: mongodb
   componentSpecs:
     - name: mongodb
+      {{- if .Values.useLegacyCompDef }}
       componentDefRef: mongodb
+      {{- else }}
+      componentDef: mongodb
+      {{- end }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "mongodb-cluster.replicaCount" . | indent 6 }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
