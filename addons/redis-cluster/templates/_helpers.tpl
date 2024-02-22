@@ -38,7 +38,7 @@ Define redis cluster mode shardingSpec
 */}}
 {{- define "redis-cluster.shardingSpec" }}
 - name: shard
-  shards: {{ .Values.redisCluster.shardCount }}
+  {{- include "redis-cluster.shardCount" . | nindent 2 }}
   template:
     name: redis
     componentDef: redis-cluster
@@ -141,6 +141,17 @@ replicas: {{ max .Values.replicas 2 }}
 {{/*
 Define redis cluster sharding count.
 */}}
-{{- define "redis-cluster.shards" }}
-shards: {{ max .Values.redisCluster.shardCount 3 }}
+{{- define "redis-cluster.shardCount" -}}
+shards: {{ max .Values.shards 3 }}
+{{- end }}
+
+{{/*
+Define use legacy API or not
+*/}}
+{{- define "redis-cluster.useLegacyAPI" }}
+{{- if or .Values.nodePortEnabled .Values.mode "cluster" -}}
+false
+{{- else }}
+{{ .Values.useLegacyCompDef }}
+{{- end }}
 {{- end }}
