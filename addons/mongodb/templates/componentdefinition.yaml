@@ -76,16 +76,16 @@ spec:
       builtinHandler: mongodb
       periodSeconds: {{ .Values.roleProbe.periodSeconds }}
       timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
-      customHandler:
-        container: mongodb
-        exec:
-          command:
-            - bash
-            - -c
-            - |
-              Status=$(export CLIENT=`which mongosh>/dev/null&&echo mongosh||echo mongo`; $CLIENT -u $KB_SERVICE_USER -p $KB_SERVICE_PASSWORD 127.0.0.1:27017 --quiet --eval "JSON.stringify(rs.status())") &&
-              MyState=$(echo $Status | jq '.myState') &&
-              echo $Status | jq ".members[] | select(.state == ($MyState | tonumber)) | .stateStr" |tr '[:upper:]' '[:lower:]'|uniq| xargs echo -n
+      # customHandler:
+      #   container: mongodb
+      #   exec:
+      #     command:
+      #       - bash
+      #       - -c
+      #       - |
+      #         Status=$(export CLIENT=`which mongosh>/dev/null&&echo mongosh||echo mongo`; $CLIENT -u $KB_SERVICE_USER -p $KB_SERVICE_PASSWORD 127.0.0.1:27017 --quiet --eval "JSON.stringify(rs.status())") &&
+      #         MyState=$(echo $Status | jq '.myState') &&
+      #         echo $Status | jq ".members[] | select(.state == ($MyState | tonumber)) | .stateStr" |tr '[:upper:]' '[:lower:]'|uniq| xargs echo -n
   runtime:
     containers:
       - name: mongodb
