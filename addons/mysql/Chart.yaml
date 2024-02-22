@@ -4,7 +4,7 @@ description: MySQL is a widely used, open-source relational database management 
 
 type: application
 
-version: 0.8.0
+version: 0.9.0
 
 # This is the version number of the ApeCloud MySQL being deployed,
 # rather than the version number of ApeCloud MySQL-Scale itself.
