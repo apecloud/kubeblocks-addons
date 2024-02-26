@@ -22,7 +22,7 @@ receivers:
     collect_all: true
     collection_interval: 15s
     direct_connect: true
-    global_conn_pool: false
+    global_conn_pool: true
     compatible_mode: true
 
 processors:
