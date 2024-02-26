@@ -28,7 +28,7 @@
       "title": "MonitorEnable",
       "description": "Enable monitor for Kafka.",
       "type": "boolean",
-      "default": false
+      "default": true
     },
     "storageEnable": {
       "title": "StorageEnable",
