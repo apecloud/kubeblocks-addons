@@ -15,7 +15,7 @@ tlsEnable: false
 saslEnable: false
 
 # Enable Monitor
-monitorEnable: false
+monitorEnable: true
 
 ## @param cpu
 ##
