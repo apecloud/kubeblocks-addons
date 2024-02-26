@@ -26,6 +26,13 @@ spec:
             port: 27017
             targetPort: mongodb
       roleSelector: secondary
+    - name: everypod
+      generatePodOrdinalService: true
+      spec:
+        ports:
+          - name: mongodb
+            port: 27017
+            targetPort: mongodb
   configs:
     - name: mongodb-config
       templateRef: {{ include "mongodb.configTplName" . }}
