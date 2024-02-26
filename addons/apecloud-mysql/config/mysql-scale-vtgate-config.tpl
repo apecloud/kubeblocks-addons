@@ -14,11 +14,9 @@ buffer_size=10000
 buffer_window=30s
 buffer_max_failover_duration=60s
 buffer_min_time_between_failovers=60s
-mysql_auth_server_impl=none
+mysql_auth_server_impl=mysqlbased
 mysql_server_require_secure_transport=false
 mysql_auth_server_static_file=
-mysql_server_ssl_key=
-mysql_server_ssl_cert=
 {{ block "logsBlock" . }}
 {{- if hasKey $.component "enabledLogs" }}
 enable_logs=true

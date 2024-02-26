@@ -6,11 +6,10 @@ db_connect_timeout_ms=500
 table_acl_config_mode=simple
 enable_logs=true
 enable_query_log=true
-table_acl_config=
-queryserver_config_strict_table_acl=false
-table_acl_config_reload_interval=30s
+table_acl_config=mysqlbased
+queryserver_config_strict_table_acl=true
+table_acl_config_reload_interval=5s
 enforce_tableacl_config=false
-
 
 {{- $phy_memory := getContainerMemory ( index $.podSpec.containers 0 ) }}
 {{- $thread_stack := 262144 }}
