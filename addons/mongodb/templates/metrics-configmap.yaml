@@ -5,4 +5,5 @@ metadata:
   labels:
     {{- include "mongodb.labels" . | nindent 4 }}
 data:
-  metrics-config.yaml: {{ toYaml .Values.metrics.config | quote }}
+  metrics-config.yaml: |-
+    {{- .Files.Get "config/metrics-config.tpl" | nindent 4 }}
