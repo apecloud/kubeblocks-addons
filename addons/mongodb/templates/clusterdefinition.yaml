@@ -142,7 +142,6 @@ spec:
                 mountPath: /scripts
               # - name: mongodb-env
               #   mountPath: /none
-          {{- if not .Values.useHostNetwork }}
           - name: metrics
             image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
             imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
@@ -167,8 +166,11 @@ spec:
               - "--config=/opt/conf/metrics-config.yaml"
             ports:
               - name: http-metrics
+                {{- if .Values.useHostNetwork }}
+                containerPort: 20
+                {{- else }}
                 containerPort: 9216
+                {{- end }}
             volumeMounts:
               - name: mongodb-metrics-config
                 mountPath: /opt/conf
-          {{- end }}
