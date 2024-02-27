@@ -51,17 +51,17 @@ spec:
             image: {{ include "camellia-redis-proxy.image" . }}
             imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
             ports:
-              - name: camellia-redis-proxy
+              - name: redis-proxy
                 containerPort: 6380
             env:
               - name: CAMELLIA_REDIS_PROXY_APPLICATION_CONFIG
-                value: "/opt/camellia-redis-proxy/application"
+                value: "/opt/camellia-redis-proxy/application/application.yml"
               - name: CAMELLIA_REDIS_PROXY_PROPERTIES_CONFIG
-                value: "/opt/camellia-redis-proxy/properties"
+                value: "/opt/camellia-redis-proxy/properties/camellia-redis-proxy.properties"
               - name: CAMELLIA_REDIS_PROXY_PROPERTIES_JSON_CONFIG
-                value: "/opt/camellia-redis-proxy/properties-json"
+                value: "/opt/camellia-redis-proxy/properties-json/camellia-redis-proxy.json"
               - name: CAMELLIA_REDIS_PROXY_BACKEND_RESOURCE_CONFIG
-                value: "/opt/camellia-redis-proxy/backend-resource"
+                value: "/opt/camellia-redis-proxy/backend-resource/resource-table.json"
             volumeMounts:
               - name: data
                 mountPath: {{ .Values.dataMountPath }}
@@ -75,4 +75,8 @@ spec:
                 mountPath: /opt/camellia-redis-proxy/backend-resource
               - name: scripts
                 mountPath: /scripts
-            command: [ "sh /scripts/camellia-redis-proxy-start.sh" ]
+            command:
+              - sh
+              - -c
+            args:
+              - /scripts/camellia-redis-proxy-start.sh

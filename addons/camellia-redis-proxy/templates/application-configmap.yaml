@@ -5,5 +5,5 @@ metadata:
   labels:
     {{- include "camellia-redis-proxy.labels" . | nindent 4 }}
 data:
-  application.yaml: |-
+  application.yml: |-
     {{- .Files.Get "config/camellia-redis-proxy-application-config.tpl" | nindent 4 }}
