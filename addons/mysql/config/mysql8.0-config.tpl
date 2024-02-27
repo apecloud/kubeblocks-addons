@@ -81,23 +81,23 @@ mysqlx=0
 
 datadir={{ $data_root }}/data
 
+{{- $log_root := printf "%s/log" $data_root }}
+log_error={{ $log_root }}/mysqld-error.log
+slow_query_log_file={{ $log_root }}/mysqld-slowquery.log
+general_log_file={{ $log_root }}/mysqld.log
+
 {{ block "logsBlock" . }}
 log_statements_unsafe_for_binlog=OFF
 log_error_verbosity=2
 log_output=FILE
-{{- $data_root := getVolumePathByName ( index $.podSpec.containers 0 ) "data" }}
+{{- $log_root := "/var/lib/mysql/log" }}
 {{- if hasKey $.component "enabledLogs" }}
-{{- if mustHas "error" $.component.enabledLogs }}
-log_error={{ $data_root }}/log/mysqld-error.log
-{{- end }}
 {{- if mustHas "slow" $.component.enabledLogs }}
 slow_query_log=ON
 long_query_time=5
-slow_query_log_file={{ $data_root }}/log/mysqld-slowquery.log
 {{- end }}
 {{- if mustHas "general" $.component.enabledLogs }}
 general_log=ON
-general_log_file={{ $data_root }}/log/mysqld.log
 {{- end }}
 {{- end }}
 {{ end }}
