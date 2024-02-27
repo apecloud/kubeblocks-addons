@@ -1,0 +1,26 @@
+## @param version camellia redis proxy version
+##
+version: camellia-redis-proxy-1.2.26
+
+## @param replicas specify replicas of camellia redis proxy
+replicas: 2
+
+## @param cpu
+##
+cpu: 1
+
+## @param memory, the unit is Gi
+##
+memory: 1
+
+## @param requests.cpu if not set, use cpu
+## @param requests.memory, if not set, use memory
+##
+requests:
+#  cpu:
+#  memory:
+
+## @param storage size, the unit is Gi
+##
+storage: 20
+

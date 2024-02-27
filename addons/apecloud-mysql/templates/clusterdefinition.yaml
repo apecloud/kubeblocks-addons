@@ -1,4 +1,4 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+okapiVersion: apps.kubeblocks.io/v1alpha1
 kind: ClusterDefinition
 metadata:
   name: {{ include "apecloud-mysql.clusterDefName" . }}

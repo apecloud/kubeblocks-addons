@@ -1,0 +1,77 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterDefinition
+metadata:
+  name: camellia-redis-proxy
+  labels:
+    {{- include "camellia-redis-proxy.labels" . | nindent 4 }}
+spec:
+  type: redis
+  componentDefs:
+    - name: camellia-redis-proxy
+      workloadType: Stateful
+      characterType: redis
+      service:
+        ports:
+          - name: camellia-redis-proxy
+            targetPort: camellia-redis-proxy
+            port: 6380
+      configSpecs:
+        - name: camellia-redis-proxy-application-config
+          templateRef: camellia-redis-proxy-application-config-template
+          constraintRef: camellia-redis-proxy-application-config-constraints
+          namespace: {{ .Release.Namespace }}
+          volumeName: application-config
+        - name: camellia-redis-proxy-properties-config
+          templateRef: camellia-redis-proxy-properties-config-template
+          namespace: {{ .Release.Namespace }}
+          volumeName: properties-config
+        - name: camellia-redis-proxy-properties-json-config
+          templateRef: camellia-redis-proxy-properties-json-config-template
+          constraintRef: camellia-redis-proxy-properties-json-constraints
+          namespace: {{ .Release.Namespace }}
+          volumeName: properties-json-config
+        - name: camellia-redis-proxy-backend-resource-config
+          templateRef: backend-resource-template
+          namespace: {{ .Release.Namespace }}
+          volumeName: camellia-redis-proxy-backend-resource-config
+        - name: camellia-redis-proxy-metrics-config
+          templateRef: camellia-redis-proxy-metrics-config
+          namespace: {{ .Release.Namespace }}
+          volumeName: camellia-redis-proxy-metrics-config
+          defaultMode: 0444
+      scriptSpecs:
+        - name: camellia-redis-proxy-scripts
+          templateRef: camellia-redis-proxy-scripts
+          namespace: {{ .Release.Namespace }}
+          volumeName: scripts
+          defaultMode: 0555
+      podSpec:
+        initContainers:
+          - name: init-redis-twemproxy
+            imagePullPolicy: IfNotPresent
+            volumeMounts:
+              - name: data
+                mountPath: {{ .Values.dataMountPath }}
+              - name: redis-config
+                mountPath: /etc/conf
+              - name: proxy-conf
+                mountPath: /etc/proxy
+              - name: scripts
+                mountPath: /scripts
+            command: ["/scripts/redis-twemproxy-setup.sh"]
+        containers:
+          - name: redis-twemproxy
+            imagePullPolicy: IfNotPresent
+            ports:
+              - containerPort: 22121
+                name: redis-proxy
+            volumeMounts:
+              - name: data
+                mountPath: {{ .Values.dataMountPath }}
+              - name: redis-config
+                mountPath: /etc/conf
+              - name: proxy-conf
+                mountPath: /etc/proxy
+              - name: scripts
+                mountPath: /scripts
+            command: ["sh", "-c", "nutcracker -c /etc/proxy/nutcracker.conf -v 4 -m 16384"]

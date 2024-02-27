@@ -1,0 +1,13 @@
+{{- include "kblib.clusterCommon" . }}
+  clusterDefinitionRef: camellia-redis-proxy
+  componentSpecs:
+    - name: cr-proxy
+      componentDef: camellia-redis-proxy
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+      {{- include "camellia-redis-proxy.replicaCount" . | indent 6 }}
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      switchPolicy:
+        type: Noop
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
+      {{- include "kblib.componentServices" . | indent 6 }}

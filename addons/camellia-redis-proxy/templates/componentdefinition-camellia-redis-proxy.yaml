@@ -1,0 +1,108 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "camellia-redis-proxy.componentDefName" . }}
+  labels:
+    {{- include "camellia-redis-proxy.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: A Camellia Redis Proxy component definition for kubeBlocks
+  serviceKind: camellia-redis-proxy
+  serviceVersion: 1.2.26
+  services:
+    - name: camellia-redis-proxy
+      serviceName: camellia-redis-proxy
+      spec:
+        ports:
+          - name: camellia-redis-proxy
+            targetPort: camellia-redis-proxy
+            port: 6380
+  updateStrategy: BestEffortParallel
+  monitor:
+    builtIn: false
+    exporterConfig:
+      scrapePort: {{ .Values.metrics.service.port }}
+      scrapePath: "/metrics"
+  configs:
+    - name: camellia-redis-proxy-application-config
+      templateRef: camellia-redis-proxy-application-config-template
+      constraintRef: camellia-redis-proxy-application-config-constraints
+      namespace: {{ .Release.Namespace }}
+      volumeName: application-config
+    - name: camellia-redis-proxy-properties-config
+      templateRef: camellia-redis-proxy-properties-config-template
+      namespace: {{ .Release.Namespace }}
+      volumeName: properties-config
+    - name: camellia-redis-proxy-properties-json-config
+      templateRef: camellia-redis-proxy-properties-json-config-template
+      constraintRef: camellia-redis-proxy-properties-json-constraints
+      namespace: {{ .Release.Namespace }}
+      volumeName: properties-json-config
+    - name: camellia-redis-proxy-backend-resource-config
+      templateRef: backend-resource-template
+      namespace: {{ .Release.Namespace }}
+      volumeName: backend-resource-config
+    - name: camellia-redis-proxy-metrics-config
+      templateRef: camellia-redis-proxy-metrics-config
+      namespace: {{ .Release.Namespace }}
+      volumeName: camellia-redis-proxy-metrics-config
+      defaultMode: 0444
+  scripts:
+    - name: camellia-redis-proxy-scripts
+      templateRef: camellia-redis-proxy-scripts
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  runtime:
+    containers:
+      - name: camellia-redis-proxy
+        image: {{ include "camellia-redis-proxy.image" . }}
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        ports:
+          - name: camellia-redis-proxy
+            containerPort: 6380
+        env:
+          - name: CAMELLIA_REDIS_PROXY_APPLICATION_CONFIG
+            value: "/ops/camellia-redis-proxy/application"
+          - name: CAMELLIA_REDIS_PROXY_PROPERTIES_CONFIG
+            value: "/ops/camellia-redis-proxy/properties"
+          - name: CAMELLIA_REDIS_PROXY_PROPERTIES_JSON_CONFIG
+            value: "/ops/camellia-redis-proxy/properties-json"
+          - name: CAMELLIA_REDIS_PROXY_BACKEND_RESOURCE_CONFIG
+            value: "/ops/camellia-redis-proxy/backend-resource"
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
+          - name: application-config
+            mountPath: /ops/camellia-redis-proxy/application
+          - name: properties-config
+            mountPath: /ops/camellia-redis-proxy/properties
+          - name: properties-json-config
+            mountPath: /ops/camellia-redis-proxy/properties-json
+          - name: backend-resource-config
+            mountPath: /ops/camellia-redis-proxy/backend-resource
+          - name: scripts
+            mountPath: /scripts
+        command: [ "/scripts/camellia-redis-proxy-start.sh" ]
+      - name: metrics
+        image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
+        imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+        env:
+          - name: ENDPOINT
+            value: {{ printf "localhost:6379" }}
+          - name: REDIS_USER
+            value: $(REDIS_DEFAULT_USER)
+          - name: REDIS_PASSWORD
+            value: $(REDIS_DEFAULT_PASSWORD)
+        command:
+          - "/bin/agamotto"
+          - "--config=/opt/conf/metrics-config.yaml"
+        ports:
+          - name: http-metrics
+            containerPort: {{ .Values.metrics.service.port }}
+        volumeMounts:
+          - name: camellia-redis-proxy-metrics-config
+            mountPath: /opt/conf
