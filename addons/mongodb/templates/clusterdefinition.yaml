@@ -171,6 +171,12 @@ spec:
                 {{- else }}
                 containerPort: 9216
                 {{- end }}
+              - name: http-telemetry
+                {{- if .Values.useHostNetwork }}
+                containerPort: 21
+                {{- else }}
+                containerPort: 8888
+                {{- end }}
             volumeMounts:
               - name: mongodb-metrics-config
                 mountPath: /opt/conf
