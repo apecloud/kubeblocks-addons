@@ -1,7 +1,7 @@
-{{- include "kblib.clusterCommon" . }}
+{{- include "camellia-redis-proxy.clusterCommon" . }}
   clusterDefinitionRef: camellia-redis-proxy
   componentSpecs:
-    - name: cr-proxy
+    - name: proxy
       componentDef: camellia-redis-proxy
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "camellia-redis-proxy.replicaCount" . | indent 6 }}
