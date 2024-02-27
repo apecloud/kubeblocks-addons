@@ -120,7 +120,8 @@ function executeSQLFile() {
 
 function waitForPrimaryClusterRestore() {
     local primaryHost=${1}
-    local primaryCmd="mysql -u root -P${sql_port} -h ${primaryHost} -N -e"
+    local primaryPort=${2}
+    local primaryCmd="mysql -u root -P${primaryPort} -h ${primaryHost} -N -e"
     while true; do
       echo "INFO: wait primary cluster to restore data completed..."
       historyRes=$(${primaryCmd} "SELECT count(*) FROM oceanbase.CDB_OB_RESTORE_HISTORY;" | awk -F '\t' '{print}')
@@ -138,8 +139,9 @@ function waitForPrimaryClusterRestore() {
 
 function waitToPromotePrimary() {
     local primaryHost=${1}
-    local tenant_name=${2}
-    local primaryCmd="mysql -u root -P2881 -h ${primaryHost} -N -e"
+    local primaryPort=${2}
+    local tenant_name=${3}
+    local primaryCmd="mysql -u root -P${primaryPort} -h ${primaryHost} -N -e"
     local time=0
     while true; do
       echo "INFO: wait to promote ${tenant_name} to PRIMARY."
@@ -311,19 +313,20 @@ if [[ ${isPrimaryCluster} == "false" ]]; then
       primaryComponentName="${KB_CLUSTER_COMP_NAME%-*}-1"
    fi
    primaryHost="${primaryComponentName}-0.${primaryComponentName}-headless"
-   echo "primary cluster host: ${primaryHost}"
-   waitForPrimaryClusterRestore "${primaryHost}"
+   primaryPort=$(cat /home/admin/workdir/component_ports.ob | jq -r ".\"${primaryComponentName}\"")
+   echo "primary cluster host/port: ${primaryHost}:${primaryPort}"
+   waitForPrimaryClusterRestore "${primaryHost}" "${primaryPort}"
    echo "INFO: establish replication relationship"
    # set -e
    for tenant_name in `${mysql_cmd} "SELECT tenant_name FROM oceanbase.DBA_OB_TENANTS where tenant_type='user' and status='NORMAL';" | awk -F '\t' '{print}'`; do
-      primary_tenant_cmd="mysql -u root@${tenant_name} -h ${primaryHost} -P${sql_port} -N -e"
+      primary_tenant_cmd="mysql -u root@${tenant_name} -h ${primaryHost} -P${primaryPort} -N -e"
       # get primary tenant svr_list
       arr=$(${primary_tenant_cmd} "select concat(SVR_IP,':',SQL_PORT) from oceanbase.DBA_OB_ACCESS_POINT dp, oceanbase.DBA_OB_TENANTS dt where dp.tenant_id = dt.tenant_id and dt.tenant_name='${tenant_name}';" | awk -F '\t' '{print}')
       IFS=,
       svrList="${arr[*]}"
       IFS=$OlD_IFS
       # wait to promote primary cluster to  Primary
-      waitToPromotePrimary "${primaryHost}" "${tenant_name}"
+      waitToPromotePrimary "${primaryHost}" "${primaryPort}" "${tenant_name}"
       res=`${primary_tenant_cmd} "SELECT count(*) FROM mysql.user where user='${repUser}'" | awk -F '\t' '{print}'`
       if [[ $res -eq 0 ]]; then
         echo "INFO: create user ${repUser} for primary tenant ${tenant_name}"
