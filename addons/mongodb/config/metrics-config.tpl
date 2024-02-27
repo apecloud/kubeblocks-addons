@@ -13,15 +13,6 @@
 {{- $metrics_port = $metrics_port_info.containerPort }}
 {{- end }}
 
-extensions:
-  health_check:
-    endpoint: 0.0.0.0:13133
-    path: /health/status
-    check_collector_pipeline:
-      enabled: true
-      interval: 2m
-      exporter_failure_threshold: 5
-
 receivers:
   apecloudmongodb:
     endpoint: 127.0.0.1:{{ $mongodb_port }}
@@ -56,12 +47,9 @@ service:
   telemetry:
     logs:
       level: info
-    metrics:
-      address: 0.0.0.0:8888
   pipelines:
     metrics:
       receivers: [apecloudmongodb]
       processors: [memory_limiter]
       exporters: [prometheus]
 
-  extensions: [health_check]
