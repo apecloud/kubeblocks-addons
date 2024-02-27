@@ -125,7 +125,7 @@ function waitForPrimaryClusterRestore() {
     while true; do
       echo "INFO: wait primary cluster to restore data completed..."
       historyRes=$(${primaryCmd} "SELECT count(*) FROM oceanbase.CDB_OB_RESTORE_HISTORY;" | awk -F '\t' '{print}')
-      if [[ ${historyRes} -lt 1 ]];then
+      if [[ ${historyRes} -lt 1 ]] && [[ "${REBUILD_STANDBY}" == "false" ]];then
         sleep 10
         continue
       fi
