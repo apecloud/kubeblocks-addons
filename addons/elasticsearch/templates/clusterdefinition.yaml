@@ -21,8 +21,8 @@ spec:
       - name: elasticsearch-config-template
         templateRef: elasticsearch-config-template
         volumeName: elasticsearch-config  
-        namespace: {{.Release.Namespace}}
-      workloadType: Stateful 
+        namespace: {{ $.Release.Namespace }}
+      workloadType: Stateful
 
       service: # Source: elasticsearch/templates/service.yaml   -> coordinating-only
         ports:
@@ -39,7 +39,10 @@ spec:
         - name: data
           type: data
 
-      podSpec:  
+      podSpec:
+        volumes:
+        - name: plugins
+          emptyDir: {}
         initContainers:
         - name: sysctl
           imagePullPolicy: IfNotPresent
@@ -56,6 +59,26 @@ spec:
           securityContext:
             runAsUser: 0
             privileged: true
+        - name: install-plugins
+          imagePullPolicy: IfNotPresent
+          command:
+          - sh
+          - -c
+          - |
+            {{- range $plugin := $.Values.plugins }}
+            /opt/bitnami/elasticsearch/bin/elasticsearch-plugin list | grep {{ $plugin.name }}
+            if [ $? -eq 0 ]; then
+              echo "Plugin {{ $plugin.name }} already installed"
+            else
+              /opt/bitnami/elasticsearch/bin/elasticsearch-plugin install -b {{ $plugin.url }}
+            fi
+            {{- end }}
+          securityContext:
+            runAsUser: 0
+            privileged: true
+          volumeMounts:
+          - mountPath: /opt/bitnami/elasticsearch/plugins
+            name: plugins
         containers:
           - name: elasticsearch
             imagePullPolicy: IfNotPresent
@@ -108,10 +131,8 @@ spec:
               value: ""
             - name: ELASTICSEARCH_CLUSTER_MASTER_SVC
               value: "$(KB_CLUSTER_NAME)-$(KB_COMP_NAME)-0"
-            - name: ELASTICSEARCH_ENABLE_SECURITY
-              value: "false"
             - name: ELASTICSEARCH_ADVERTISED_HOSTNAME
-              value: "$(KB_POD_NAME).$(KB_CLUSTER_COMP_NAME).$(KB_NAMESPACE).svc.cluster.local"
+              value: "$(KB_POD_NAME).$(KB_CLUSTER_COMP_NAME)-headless.$(KB_NAMESPACE).svc.cluster.local"
             - name: ELASTICSEARCH_HEAP_SIZE
               value: "128m"
 
@@ -121,6 +142,8 @@ spec:
               - mountPath: /usr/share/elasticsearch/config/elasticsearch.yaml
                 subPath: elasticsearch.yaml
                 name: elasticsearch-config
+              - mountPath: /opt/bitnami/elasticsearch/plugins
+                name: plugins
           - name: metrics
             env:
               - name: SERVICE_PORT
@@ -175,16 +198,14 @@ spec:
               wait $!
 
  #  multi-node
-{{- range .Values.roles }}
-{{- $rangeItem := . -}}
-{{- with $ }}
-    - name: {{ $rangeItem.name }}
+{{- range $role := .Values.roles }}
+    - name: {{ $role.name }}
       characterType: elasticsearch
 #      configSpecs:
 #      - name: elasticsearch-config-template
 #        templateRef: elasticsearch-config-template
 #        volumeName: elasticsearch-config
-#        namespace: {{.Release.Namespace}}
+#        namespace: {{$.Release.Namespace}}
       workloadType: Stateful
 
       componentDefRef:
@@ -227,6 +248,9 @@ spec:
           type: data
 
       podSpec:
+        volumes:
+        - name: plugins
+          emptyDir: {}
         initContainers:
         - name: sysctl
           imagePullPolicy: IfNotPresent
@@ -248,6 +272,26 @@ spec:
           securityContext:
             runAsUser: 0
             privileged: true
+        - name: install-plugins
+          imagePullPolicy: IfNotPresent
+          command:
+          - sh
+          - -c
+          - |
+            {{- range $plugin := $.Values.plugins }}
+            /opt/bitnami/elasticsearch/bin/elasticsearch-plugin list | grep {{ $plugin.name }}
+            if [ $? -eq 0 ]; then
+              echo "Plugin {{ $plugin.name }} already installed"
+            else
+              /opt/bitnami/elasticsearch/bin/elasticsearch-plugin install -b {{ $plugin.url }}
+            fi
+            {{- end }}
+          securityContext:
+            runAsUser: 0
+            privileged: true
+          volumeMounts:
+            - mountPath: /opt/bitnami/elasticsearch/plugins
+              name: plugins
         containers:
           - name: elasticsearch
             imagePullPolicy: IfNotPresent
@@ -278,7 +322,7 @@ spec:
             - name: ELASTICSEARCH_IS_DEDICATED_NODE  # is dedicated node
               value: "yes"
             - name: ELASTICSEARCH_NODE_ROLES  # node type when behaving as a 'dedicated node'
-              value: {{ $rangeItem.role | quote }}
+              value: {{ $role.role | quote }}
             - name: ELASTICSEARCH_TRANSPORT_PORT_NUMBER
               value: "9300"
             - name: ELASTICSEARCH_HTTP_PORT_NUMBER
@@ -288,7 +332,7 @@ spec:
             - name: ELASTICSEARCH_ADVERTISED_HOSTNAME
               value: "$(KB_POD_NAME).$(KB_CLUSTER_COMP_NAME)-headless.$(KB_NAMESPACE).svc.cluster.local"
             - name: ELASTICSEARCH_HEAP_SIZE   # TODO this should be calculated based on the memory available to the pod
-              value: {{ $rangeItem.heapSize | quote }}
+              value: {{ $role.heapSize | quote }}
             livenessProbe:
               failureThreshold: 5
               initialDelaySeconds: 180
@@ -309,6 +353,8 @@ spec:
             volumeMounts:
               - mountPath: /bitnami/elasticsearch/data
                 name: data
+              - mountPath: /opt/bitnami/elasticsearch/plugins
+                name: plugins
 #              - mountPath: /opt/bitnami/elasticsearch/config/elasticsearch.yml
 #                subPath: elasticsearch.yaml
 #                name: elasticsearch-config
@@ -351,5 +397,4 @@ spec:
 
               sleep infinity &
               wait $!
-{{- end }}
 {{- end }}

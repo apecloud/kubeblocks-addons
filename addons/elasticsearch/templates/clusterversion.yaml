@@ -13,6 +13,9 @@ spec:
       - name: sysctl
         image: {{ .Values.image.registry | default "docker.io" }}/busybox:1.35
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+      - name: install-plugins
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
       containers:
       - name: elasticsearch
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
@@ -32,6 +35,9 @@ spec:
       initContainers:
       - name: sysctl
         image: {{ .Values.image.registry | default "docker.io" }}/busybox:latest
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+      - name: install-plugins
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
       containers:
       - name: elasticsearch
