@@ -38,9 +38,12 @@ echo "COMP_RPC_PORT: $COMP_RPC_PORT"
 function init_port_list {
   MYSQL_PORTS=()
   RPC_PORTS=()
+  COMP_NAMES=()
+  components_prefix=$(echo "${KB_CLUSTER_COMP_NAME}" | awk -F'-' '{NF--; print}' OFS='-')
   for i in $(seq 0 $(($OB_CLUSTERS_COUNT-1))); do
     MYSQL_PORTS+=(2881)
     RPC_PORTS+=(2882)
+    COMP_NAMES+=(${components_prefix}-${i})
   done
 
   {{- range $i, $e := $.dynamicCompInfos }}
@@ -56,7 +59,15 @@ function init_port_list {
     {{- end }}
     MYSQL_PORTS[{{ $i }}]={{$mysql_port}}
     RPC_PORTS[{{ $i }}]={{$rpc_port}}
+    COMP_NAMES[{{ $i }}]={{$e.name}}
   {{- end }}
+
+  comp_ports_json="{}"
+  for ((i=0; i<${#COMP_NAMES[@]}; i++))
+  do
+    comp_ports_json=$(echo ${comp_ports_json} | jq ".+{\"${COMP_NAMES[$i]}\":\"${MYSQL_PORTS[$i]}\"}")
+  done
+  echo $comp_ports_json > /home/admin/workdir/component_ports.ob
 
   COMP_MYSQL_PORT=${MYSQL_PORTS[$COMPONENT_INDEX]}
   COMP_RPC_PORT=${RPC_PORTS[$COMPONENT_INDEX]}
