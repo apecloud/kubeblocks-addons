@@ -17,6 +17,9 @@ spec:
           - name: redis-proxy
             targetPort: redis-proxy
             port: 6380
+          - name: console-port
+            targetPort: console-port
+            port: 16379
   updateStrategy: BestEffortParallel
   monitor:
     builtIn: false
@@ -61,6 +64,8 @@ spec:
         ports:
           - name: redis-proxy
             containerPort: 6380
+          - name: console-port
+            containerPort: 16379
         env:
           - name: CAMELLIA_REDIS_PROXY_APPLICATION_CONFIG
             value: "/opt/camellia-redis-proxy/application/application.yml"
