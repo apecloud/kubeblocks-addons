@@ -41,7 +41,7 @@ spec:
           defaultMode: 0444
       scriptSpecs:
         - name: camellia-redis-proxy-scripts
-          templateRef: camellia-redis-proxy-scripts
+          templateRef: camellia-redis-proxy-scripts-template
           namespace: {{ .Release.Namespace }}
           volumeName: scripts
           defaultMode: 0555
