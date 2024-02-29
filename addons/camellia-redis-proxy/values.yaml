@@ -9,7 +9,7 @@ image:
   repository: apecloud/camellia-redis-proxy
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: 1.2.26-beta.1
+  tag: 1.2.26
 
 busyboxImage:
   registry: docker.io
