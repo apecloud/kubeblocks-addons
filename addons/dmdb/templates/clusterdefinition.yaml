@@ -1,0 +1,68 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterDefinition
+metadata:
+  name: dmdb
+  labels:
+    {{- include "dmdb.labels" . | nindent 4 }}
+spec:
+  type: dmdb
+  connectionCredential:
+    username: MONITOR
+    password: "$(RANDOM_PASSWD)"
+    endpoint: "$(SVC_FQDN):$(SVC_PORT_tcp-dmdb)"
+    host: "$(SVC_FQDN)"
+    port: "$(SVC_PORT_tcp-dmdb)"
+  componentDefs:
+    - name: dmdb
+      workloadType: Stateful
+      characterType: dmdb
+      service:
+        ports:
+          - name: tcp-dmdb
+            port: 5236
+            targetPort: tcp-dmdb
+          - name: tcp-dmap
+            port: 4236
+            targetPort: tcp-dmap
+      volumeTypes:
+        - name: data
+          type: data
+      podSpec:
+        containers:
+          - name: dmdb
+            volumeMounts:
+              - mountPath: /opt/dmdata
+                name: data
+            imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+            ports:
+              - name: tcp-dmdb
+                containerPort: 5236
+              - name: tcp-dmap
+                containerPort: 4236
+            env:
+              - name: EXTENT_SIZE
+                value: "16"
+              - name: PAGE_SIZE
+                value: "8"
+              - name: LOG_SIZE
+                value: "256"
+              - name: CASE_SENSITIVE
+                value: "1"
+              - name: CHARSET
+                value: "0"
+              - name: LENGTH_IN_CHAR
+                value: "0"
+              - name: BLANK_PAD_MODE
+                value: "1"
+              - name: INSTANCE_BUFFER
+                value: "1000"
+              - name: DB_NAME
+                value: "DM"
+              - name: ARCH_SPACE_LIMIT
+                value: "20480"
+              - name: MONITOR_PWD
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: password
