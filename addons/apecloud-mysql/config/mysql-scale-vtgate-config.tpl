@@ -15,8 +15,8 @@ buffer_window=30s
 buffer_max_failover_duration=60s
 buffer_min_time_between_failovers=60s
 mysql_auth_server_impl=mysqlbased
-mysql_server_require_secure_transport=false
 mysql_auth_server_static_file=
+mysql_server_require_secure_transport=false
 {{ block "logsBlock" . }}
 {{- if hasKey $.component "enabledLogs" }}
 enable_logs=true
@@ -33,9 +33,12 @@ enable_read_write_split_for_read_only_txn=false
 {{- $ca_file := getCAFile }}
 {{- $cert_file := getCertFile }}
 {{- $key_file := getKeyFile }}
-# tls
-# mysql_server_require_secure_transport=ON
 mysql_server_ssl_ca={{ $ca_file }}
 mysql_server_ssl_cert={{ $cert_file }}
 mysql_server_ssl_key={{ $key_file }}
+# tls
+{{- else }}
+mysql_server_ssl_ca=
+mysql_server_ssl_cert=
+mysql_server_ssl_key=
 {{- end }}

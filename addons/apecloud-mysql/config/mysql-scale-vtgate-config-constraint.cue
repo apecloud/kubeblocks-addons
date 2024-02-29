@@ -77,6 +77,9 @@
 	//Path to ssl key for mysql server plugin SSL
 	mysql_server_ssl_key: string
 
+	//Path to the ssl ca for mysql server plugin SSL
+	mysql_server_ssl_ca: string
+
 	//Path to the ssl cert for mysql server plugin SSL
 	mysql_server_ssl_cert: string
 
