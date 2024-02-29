@@ -1,5 +1,5 @@
-{{- /* if nodeportEnabled is true, always use the KubeBlocks 0.8 API */ -}}
-{{- if and .Values.useLegacyCompDef (not .Values.nodePortEnabled) }}
+{{- $useLegacyAPI := include "redis-cluster.useLegacyAPI" . }}
+{{- if eq $useLegacyAPI "true" }}
 {{- include "kblib.clusterCommon" . }}
   clusterDefinitionRef: redis  # ref clusterDefinition.name
   componentSpecs:
@@ -28,7 +28,7 @@
   {{- include "kblib.clusterCommon" . }}
   clusterDefinitionRef: redis  # ref clusterDefinition.name
   shardingSpecs:
-  {{- include "redis-cluster.shardingSpec" . | indent 6 }}
+  {{- include "redis-cluster.shardingSpec" . | indent 4 }}
   {{- else }}
   {{- if .Values.nodePortEnabled }}
   {{- include "redis-cluster.clusterCommonWithNodePort" . }}

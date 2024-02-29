@@ -21,6 +21,9 @@ mode: replication
 ## if mode is cluster and replicas is 2, it means every shard has 1 primary and 1 secondary, the count of shards is specified by redisCluster.shardCount
 replicas: 2
 
+## @param shards if mode is cluster, specify the redis cluster shard count, the minimum value is 3
+shards: 3
+
 ## @param cpu
 ##
 cpu: 0.5
@@ -64,9 +67,3 @@ sentinel:
   memory: 0.2
   storage: 20
   replicas: 3
-
-## if mode is cluster, specify the redis cluster parameters
-## @param redisCluster.shardCount specify the number of shards in the cluster, the minimum value is 3
-redisCluster:
-  shardCount: 3
-

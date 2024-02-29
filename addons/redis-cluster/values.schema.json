@@ -33,6 +33,14 @@
       "minimum": 1,
       "maximum": 5
     },
+    "shards": {
+      "description": "The number of shards in the redis cluster, only valid ",
+      "title": "shards",
+      "type": "number",
+      "default": 3,
+      "minimum": 3,
+      "maximum": 2048
+    },
     "cpu": {
       "title": "CPU",
       "description": "CPU cores.",
@@ -71,14 +79,14 @@
       "type": "boolean",
       "default": false,
       "title": "nodePortEnabled",
-      "description":"Whether NodePort service is enabled, default is true"
+      "description": "Whether NodePort service is enabled, default is true"
     },
     "twemproxy": {
       "title": "The redis twemproxy component",
       "type": "object",
       "properties": {
         "enabled": {
-          "description":"Whether have twemproxy component, default is false",
+          "description": "Whether have twemproxy component, default is false",
           "title": "twemproxy.enable",
           "type": "boolean",
           "default": false
@@ -114,7 +122,7 @@
       "type": "object",
       "properties": {
         "enabled": {
-          "description":"Whether have sentinel component, default is true",
+          "description": "Whether have sentinel component, default is true",
           "title": "sentinel.enable",
           "type": "boolean",
           "default": true
@@ -150,20 +158,6 @@
           "default": 3,
           "minimum": 1,
           "maximum": 5
-        }
-      }
-    },
-    "redisCluster":{
-      "title": "The official redis cluster mode",
-      "type": "object",
-      "properties": {
-        "shardCount": {
-          "description": "The number of shards in the redis cluster",
-          "title": "shardCount",
-          "type": "number",
-          "default": 3,
-          "minimum": 3,
-          "maximum": 2048
         }
       }
     }
