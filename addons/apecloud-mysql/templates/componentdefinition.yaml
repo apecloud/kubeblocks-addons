@@ -101,7 +101,6 @@ spec:
   lifecycleActions:
     roleProbe:
       builtinHandler: wesql
-      failureThreshold: {{ .Values.roleProbe.failureThreshold }}
       periodSeconds: {{ .Values.roleProbe.periodSeconds }}
       timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
     switchover:
