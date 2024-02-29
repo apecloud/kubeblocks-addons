@@ -145,7 +145,6 @@ spec:
   lifecycleActions:
     roleProbe:
       builtinHandler: redis
-      failureThreshold: 2
       periodSeconds: 1
       timeoutSeconds: 1
     postProvision:

@@ -106,7 +106,6 @@ spec:
   lifecycleActions:
     roleProbe:
       builtinHandler: postgresql
-      failureThreshold: 2
       periodSeconds: 1
       timeoutSeconds: 1
     switchover:
