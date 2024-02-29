@@ -34,6 +34,7 @@ spec:
       volumeName: application-config
     - name: properties-config
       templateRef: camellia-redis-proxy-properties-config-template
+      constraintRef: camellia-redis-proxy-properties-constraints
       namespace: {{ .Release.Namespace }}
       volumeName: properties-config
     - name: properties-json-config

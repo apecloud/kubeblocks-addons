@@ -1,5 +1,6 @@
 {{- include "camellia-redis-proxy.clusterCommon" . }}
   clusterDefinitionRef: camellia-redis-proxy
+  clusterVersionRef: {{ .Values.version }}
   componentSpecs:
     - name: proxy
       componentDef: camellia-redis-proxy
