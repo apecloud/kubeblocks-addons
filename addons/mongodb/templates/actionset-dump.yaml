@@ -9,8 +9,6 @@ spec:
   env:
     - name: DATA_DIR
       value: {{ .Values.dataMountPath }}/db
-    - name: DP_DB_PORT
-      value: "27017"
     - name: IMAGE_TAG
       value: {{ .Values.image.tag }}
     - name: PARALLEL
