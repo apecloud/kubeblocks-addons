@@ -68,3 +68,24 @@ Pulsar broker FQDN
 {{- define "pulsar-cluster.brokerFQDN" -}}
 {{ include "kblib.clusterName" . }}-broker.{{ .Release.Namespace }}.svc{{ .Values.clusterDomain }}
 {{- end }}
+
+{{/*
+Pulsar ZooKeeper service ref
+*/}}
+{{- define "pulsar-zookeeper-ref"}}
+{{- if .Values.serviceReference.enable }}
+serviceRefs:
+- name: pulsarZookeeper
+  namespace: {{ .Values.serviceReference.zookeeper.namespace | default .Release.Namespace }}
+  {{- if .Values.serviceReference.zookeeper.serviceDescriptor }}
+  serviceDescriptor: {{ .Values.serviceReference.zookeeper.serviceDescriptor }}
+  {{- else }}
+  {{- if .Values.serviceReference.zookeeper.cluster }}
+  cluster: {{ .Values.serviceReference.zookeeper.cluster }}
+  {{- else }}
+  cluster: {{ include "kblib.clusterName" . }}-zookeeper
+  {{- end }}
+  {{- end }}
+{{- end}}
+{{- end}}
+}}

@@ -15,11 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-// @deprecated
-// This version comes from the pulsar master branch, because this configuration template was used in the old version of pulsar addon,
-// but the master branch code keeps changing. This file is kept here for archiving reasons, but it is no longer used in the new version addon.
-
-// AUTO generate: ./bin/cue-tools https://raw.githubusercontent.com/apache/pulsar/master/pulsar-broker-common/src/main/java/org/apache/pulsar/broker/ServiceConfiguration.java "ServiceConfiguration" "PulsarBrokersParameter" > broker-config-constraint.cue
+// AUTO generate: ./bin/cue-tools https://raw.githubusercontent.com/apache/pulsar/v2.11.2/pulsar-broker-common/src/main/java/org/apache/pulsar/broker/ServiceConfiguration.java "ServiceConfiguration" "PulsarBrokersParameter" > broker-config-constraint.cue
 #PulsarBrokersParameter: {
 	// The Zookeeper quorum connection string (as a comma-separated list). Deprecated in favour of metadataStoreUrl
 	// @deprecated
@@ -63,7 +59,7 @@
 	// Hostname or IP address the service binds on
 	bindAddress: string
 
-	// Hostname or IP address the service advertises to the outside world. If not set, the value of `InetAddress.getLocalHost().getCanonicalHostName()` is used.
+	// Hostname or IP address the service advertises to the outside world. If not set, the value of `InetAddress.getLocalHost().getHostname()` is used.
 	advertisedAddress: string
 
 	// Used to specify multiple advertised listeners for the broker. The value must format as <listener_name>:pulsar://<host>:<port>,multiple listeners should separate with commas.Do not use this configuration with advertisedAddress and brokerServicePort.The Default value is absent means use advertisedAddress and brokerServicePort.
@@ -75,7 +71,7 @@
 	// Used to specify additional bind addresses for the broker. The value must format as <listener_name>:<scheme>://<host>:<port>, multiple bind addresses should be separated with commas. Associates each bind address with an advertised listener and protocol handler. Note that the brokerServicePort, brokerServicePortTls, webServicePort, and webServicePortTls properties define additional bindings.
 	bindAddresses: string
 
-	// Enable or disable the proxy protocol. If true, the real IP addresses of consumers and producers can be obtained when getting topic statistics data.
+	// Enable or disable the proxy protocol.
 	haProxyProtocolEnabled: bool
 
 	// Number of threads to use for Netty Acceptor. Default is set to `1`
@@ -114,28 +110,16 @@
 	// Whether to enable the delayed delivery for messages.
 	delayedDeliveryEnabled: bool
 
-	// Class name of the factory that implements the delayed deliver tracker.            If value is "org.apache.pulsar.broker.delayed.BucketDelayedDeliveryTrackerFactory", \            will create bucket based delayed message index tracker.
+	// Class name of the factory that implements the delayed deliver tracker
 	delayedDeliveryTrackerFactoryClassName: string
 
-	// Control the tick time for when retrying on delayed delivery, affecting the accuracy of the delivery time compared to the scheduled time. Default is 1 second. Note that this time is used to configure the HashedWheelTimer's tick time.
+	// Control the tick time for when retrying on delayed delivery, affecting the accuracy of the delivery time compared to the scheduled time. Default is 1 second. Note that this time is used to configure the HashedWheelTimer's tick time for the InMemoryDelayedDeliveryTrackerFactory.
 	delayedDeliveryTickTimeMillis: int
 
-	// Whether the deliverAt time is strictly followed. When false (default), messages may be sent to consumers before the deliverAt time by as much as the tickTimeMillis. This can reduce the overhead on the broker of maintaining the delayed index for a potentially very short time period. When true, messages will not be sent to consumer until the deliverAt time has passed, and they may be as late as the deliverAt time plus the tickTimeMillis for the topic plus the delayedDeliveryTickTimeMillis.
+	// When using the InMemoryDelayedDeliveryTrackerFactory (the default DelayedDeliverTrackerFactory), whether the deliverAt time is strictly followed. When false (default), messages may be sent to consumers before the deliverAt time by as much as the tickTimeMillis. This can reduce the overhead on the broker of maintaining the delayed index for a potentially very short time period. When true, messages will not be sent to consumer until the deliverAt time has passed, and they may be as late as the deliverAt time plus the tickTimeMillis for the topic plus the delayedDeliveryTickTimeMillis.
 	isDelayedDeliveryDeliverAtTimeStrict: bool
 
-	// The delayed message index bucket min index count. When the index count of the current bucket is more than \            this value and all message indexes of current ledger have already been added to the tracker \            we will seal the bucket.
-	delayedDeliveryMinIndexCountPerBucket: int
-
-	// The delayed message index time step(in seconds) in per bucket snapshot segment, \            after reaching the max time step limitation, the snapshot segment will be cut off.
-	delayedDeliveryMaxTimeStepPerBucketSnapshotSegmentSeconds: int
-
-	// The max number of delayed message index in per bucket snapshot segment, -1 means no limitation, \            after reaching the max number limitation, the snapshot segment will be cut off.
-	delayedDeliveryMaxIndexesPerBucketSnapshotSegment: int
-
-	// The max number of delayed message index bucket, \            after reaching the max buckets limitation, the adjacent buckets will be merged.\            (disable with value -1)
-	delayedDeliveryMaxNumBuckets: int
-
-	// Size of the lookahead window to use when detecting if all the messages in the topic have a fixed delay for InMemoryDelayedDeliveryTracker (the default DelayedDeliverTracker). Default is 50,000. Setting the lookahead window to 0 will disable the logic to handle fixed delays in messages in a different way.
+	// Size of the lookahead window to use when detecting if all the messages in the topic have a fixed delay. Default is 50,000. Setting the lookahead window to 0 will disable the logic to handle fixed delays in messages in a different way.
 	delayedDeliveryFixedDelayDetectionLookahead: int
 
 	// Whether to enable the acknowledge of batch local index
@@ -165,9 +149,6 @@
 	// Metadata store cache expiry time in seconds.
 	metadataStoreCacheExpirySeconds: int
 
-	// Is metadata store read-only operations.
-	metadataStoreAllowReadOnlyOperations: bool
-
 	// ZooKeeper session timeout in milliseconds. @deprecated - Use metadataStoreSessionTimeoutMillis instead.
 	// @deprecated
 	zooKeeperSessionTimeoutMillis: int
@@ -179,10 +160,6 @@
 	// ZooKeeper cache expiry time in seconds. @deprecated - Use metadataStoreCacheExpirySeconds instead.
 	// @deprecated
 	zooKeeperCacheExpirySeconds: int
-
-	// Is zookeeper allow read-only operations.
-	// @deprecated
-	zooKeeperAllowReadOnlyOperations: bool
 
 	// Time to wait for broker graceful shutdown. After this time elapses, the process will be killed
 	brokerShutdownTimeoutMs: int
@@ -439,9 +416,6 @@
 	// Dispatch messages and execute broker side filters in a per-subscription thread
 	dispatcherDispatchMessagesInSubscriptionThread: bool
 
-	// Whether the broker should count filtered entries in dispatch rate limit calculations. When disabled, only messages sent to a consumer count towards a dispatch rate limit at the broker, topic, and subscription level. When enabled, messages filtered out due to entry filter logic are counted towards each relevant rate limit.
-	dispatchThrottlingForFilteredEntriesEnabled: bool
-
 	// Max size in bytes of entries to read from bookkeeper. By default it is 5MB.
 	dispatcherMaxReadSizeBytes: int
 
@@ -472,8 +446,8 @@
 	// The directory for all the entry filter implementations.
 	entryFiltersDirectory: string
 
-	// Whether allow topic level entry filters policies overrides broker configuration.
-	allowOverrideEntryFilters: bool
+	// Whether to use streaming read dispatcher. Currently is in preview and can be changed in subsequent release.
+	streamingDispatch: bool
 
 	// Max number of concurrent lookup request broker allows to throttle heavy incoming lookup traffic
 	maxConcurrentLookupRequest: int
@@ -484,12 +458,8 @@
 	// Max concurrent non-persistent message can be processed per connection
 	maxConcurrentNonPersistentMessagePerConnection: int
 
-	// Number of worker threads to serve non-persistent topic.\n@deprecated - use topicOrderedExecutorThreadNum instead.
-	// @deprecated
+	// Number of worker threads to serve non-persistent topic
 	numWorkerThreadsForNonPersistentTopic: int
-
-	// Number of worker threads to serve topic ordered executor
-	topicOrderedExecutorThreadNum: int
 
 	// Enable broker to load persistent topics
 	enablePersistentTopics: bool
@@ -584,9 +554,6 @@
 	// Enable or disable system topic.
 	systemTopicEnabled: bool
 
-	// # Enable strict topic name check. Which includes two parts as follows:\n# 1. Mark `-partition-` as a keyword.\n# E.g.\n    Create a non-partitioned topic.\n      No corresponding partitioned topic\n       - persistent://public/default/local-name (passed)\n       - persistent://public/default/local-name-partition-z (rejected by keyword)\n       - persistent://public/default/local-name-partition-0 (rejected by keyword)\n      Has corresponding partitioned topic, partitions=2 and topic partition name is persistent://public/default/local-name\n       - persistent://public/default/local-name-partition-0 (passed, Because it is the partition topic's sub-partition)\n       - persistent://public/default/local-name-partition-z (rejected by keyword)\n       - persistent://public/default/local-name-partition-4 (rejected, Because it exceeds the number of maximum partitions)\n    Create a partitioned topic(topic metadata)\n       - persistent://public/default/local-name (passed)\n       - persistent://public/default/local-name-partition-z (rejected by keyword)\n       - persistent://public/default/local-name-partition-0 (rejected by keyword)\n# 2. Allowed alphanumeric (a-zA-Z_0-9) and these special chars -=:. for topic name.\n# NOTE: This flag will be removed in some major releases in the future.\n
-	strictTopicNameEnabled: bool
-
 	// The schema compatibility strategy to use for system topics
 	systemTopicSchemaCompatibilityStrategy: string
 
@@ -668,9 +635,6 @@
 	// If >0, it will reject all HTTP requests with bodies larged than the configured limit
 	httpMaxRequestSize: int
 
-	// The maximum size in bytes of the request header.                Larger headers will allow for more and/or larger cookies plus larger form content encoded in a URL.                However, larger headers consume more memory and can make a server more vulnerable to denial of service                attacks.
-	httpMaxRequestHeaderSize: int
-
 	// If true, the broker will reject all HTTP requests using the TRACE and TRACK verbs.\n This setting may be necessary if the broker is deployed into an environment that uses http port\n scanning and flags web servers allowing the TRACE method as insecure.
 	disableHttpDebugMethods: bool
 
@@ -694,12 +658,6 @@
 
 	// kerberos kinit command.
 	kinitCommand: string
-
-	// how often the broker expires the inflight SASL context.
-	inflightSaslContextExpiryMs: int
-
-	// Maximum number of inflight sasl context.
-	maxInflightSaslContext: int
 
 	// Metadata service uri that bookkeeper is used for loading corresponding metadata driver and resolving its metadata service location
 	bookkeeperMetadataServiceUri: string
@@ -809,9 +767,6 @@
 	// whether expose managed ledger client stats to prometheus
 	bookkeeperClientExposeStatsToPrometheus: bool
 
-	// whether limit per_channel_bookie_client metrics of bookkeeper client stats
-	bookkeeperClientLimitStatsLogging: bool
-
 	// Throttle value for bookkeeper client
 	bookkeeperClientThrottleValue: int
 
@@ -824,13 +779,13 @@
 	// Use separated IO threads for BookKeeper client. Default is false, which will use Pulsar IO threads
 	bookkeeperClientSeparatedIoThreadsEnabled: bool
 
-	// Ensemble (E) size, Number of bookies to use for storing entries in a ledger.\nPlease notice that sticky reads enabled by bookkeeperEnableStickyReads=true aren’t used  unless ensemble size (E) equals write quorum (Qw) size.
+	// Number of bookies to use when creating a ledger
 	managedLedgerDefaultEnsembleSize: int
 
-	// Write quorum (Qw) size, Replication factor for storing entries (messages) in a ledger.
+	// Number of copies to store for each message
 	managedLedgerDefaultWriteQuorum: int
 
-	// Ack quorum (Qa) size, Number of guaranteed copies (acks to wait for before a write is considered completed)
+	// Number of guaranteed copies (acks to wait before write is complete)
 	managedLedgerDefaultAckQuorum: int
 
 	// How frequently to flush the cursor positions that were accumulated due to rate limiting. (seconds). Default is 60 seconds
@@ -890,7 +845,7 @@
 	// Allow automated creation of subscriptions if set to true (default value).
 	allowAutoSubscriptionCreation: bool
 
-	// The number of partitioned topics that is allowed to be automatically created if allowAutoTopicCreationType is partitioned.
+	// The number of partitioned topics that is allowed to be automatically createdif allowAutoTopicCreationType is partitioned.
 	defaultNumPartitions: int
 
 	// The class of the managed ledger storage
@@ -916,9 +871,6 @@
 
 	// The number of bytes before triggering automatic offload to long term storage
 	managedLedgerOffloadAutoTriggerSizeThresholdBytes: int
-
-	// The threshold to triggering automatic offload to long term storage
-	managedLedgerOffloadThresholdInSeconds: int
 
 	// Max number of entries to append to a cursor ledger
 	managedLedgerCursorMaxEntriesPerLedger: int
@@ -969,14 +921,8 @@
 	// ManagedLedgerInfo compression type, option values (NONE, LZ4, ZLIB, ZSTD, SNAPPY). \nIf value is invalid or NONE, then save the ManagedLedgerInfo bytes data directly.
 	managedLedgerInfoCompressionType: string
 
-	// ManagedLedgerInfo compression size threshold (bytes), only compress metadata when origin size more then this value.\n0 means compression will always apply.\n
-	managedLedgerInfoCompressionThresholdInBytes: int
-
 	// ManagedCursorInfo compression type, option values (NONE, LZ4, ZLIB, ZSTD, SNAPPY). \nIf value is NONE, then save the ManagedCursorInfo bytes data directly.
 	managedCursorInfoCompressionType: string
-
-	// ManagedCursorInfo compression size threshold (bytes), only compress metadata when origin size more then this value.\n0 means compression will always apply.\n
-	managedCursorInfoCompressionThresholdInBytes: int
 
 	// Minimum cursors that must be in backlog state to cache and reuse the read entries.(Default =0 to disable backlog reach cache)
 	managedLedgerMinimumBacklogCursorsForCaching: int
@@ -1043,9 +989,6 @@
 	// Average resource usage difference threshold to determine a broker whether to be a best candidate in LeastResourceUsageWithWeight.(eg: broker1 with 10% resource usage with weight and broker2 with 30% and broker3 with 80% will have 40% average resource usage. The placement strategy can select broker1 and broker2 as best candidates.)
 	loadBalancerAverageResourceUsageDifferenceThresholdPercentage: int
 
-	// In FlowOrQpsEquallyDivideBundleSplitAlgorithm, if msgRate >= loadBalancerNamespaceBundleMaxMsgRate *  (100 + flowOrQpsDifferenceThresholdPercentage)/100.0  or throughput >=  loadBalancerNamespaceBundleMaxBandwidthMbytes *  (100 + flowOrQpsDifferenceThresholdPercentage)/100.0,  execute split bundle
-	flowOrQpsDifferenceThresholdPercentage: int
-
 	// In the UniformLoadShedder strategy, the minimum message that triggers unload.
 	minUnloadMessage: int
 
@@ -1076,8 +1019,7 @@
 	// CPU Resource Usage Weight
 	loadBalancerCPUResourceWeight: float
 
-	// Memory Resource Usage Weight. Deprecated: Memory is no longer used as a load balancing item.
-	// @deprecated
+	// Memory Resource Usage Weight
 	loadBalancerMemoryResourceWeight: float
 
 	// Direct Memory Resource Usage Weight
@@ -1117,9 +1059,6 @@
 	// Name of load manager to use
 	loadManagerClassName: string
 
-	// Name of topic bundle assignment strategy to use
-	topicBundleAssignmentStrategy: string
-
 	// Supported algorithms name for namespace bundle split
 	supportedNamespaceBundleSplitAlgorithms: string
 
@@ -1131,45 +1070,6 @@
 
 	// Time to wait for the unloading of a namespace bundle
 	namespaceBundleUnloadingTimeoutMs: int
-
-	// Option to enable the debug mode for the load balancer logics. The debug mode prints more logs to provide more information such as load balance states and decisions. (only used in load balancer extension logics)
-	loadBalancerDebugModeEnabled: bool
-
-	// The target standard deviation of the resource usage across brokers (100% resource usage is 1.0 load). The shedder logic tries to distribute bundle load across brokers to meet this target std. The smaller value will incur load balancing more frequently. (only used in load balancer extension TransferSheddeer)
-	loadBalancerBrokerLoadTargetStd: float
-
-	// Threshold to the consecutive count of fulfilled shedding(unload) conditions. If the unload scheduler consecutively finds bundles that meet unload conditions many times bigger than this threshold, the scheduler will shed the bundles. The bigger value will incur less bundle unloading/transfers. (only used in load balancer extension TransferSheddeer)
-	loadBalancerSheddingConditionHitCountThreshold: int
-
-	// Option to enable the bundle transfer mode when distributing bundle loads. On: transfer bundles from overloaded brokers to underloaded -- pre-assigns the destination broker upon unloading). Off: unload bundles from overloaded brokers -- post-assigns the destination broker upon lookups). (only used in load balancer extension TransferSheddeer)
-	loadBalancerTransferEnabled: bool
-
-	// Maximum number of brokers to unload bundle load for each unloading cycle. The bigger value will incur more unloading/transfers for each unloading cycle. (only used in load balancer extension TransferSheddeer)
-	loadBalancerMaxNumberOfBrokerSheddingPerCycle: int
-
-	// Delay (in seconds) to the next unloading cycle after unloading. The logic tries to give enough time for brokers to recompute load after unloading. The bigger value will delay the next unloading cycle longer. (only used in load balancer extension TransferSheddeer)
-	loadBalanceSheddingDelayInSeconds: int
-
-	// Broker load data time to live (TTL in seconds). The logic tries to avoid (possibly unavailable) brokers with out-dated load data, and those brokers will be ignored in the load computation. When tuning this value, please consider loadBalancerReportUpdateMaxIntervalMinutes. The current default is loadBalancerReportUpdateMaxIntervalMinutes * 2. (only used in load balancer extension TransferSheddeer)
-	loadBalancerBrokerLoadDataTTLInSeconds: int
-
-	// Max number of bundles in bundle load report from each broker. The load balancer distributes bundles across brokers, based on topK bundle load data and other broker load data.The bigger value will increase the overhead of reporting many bundles in load data. (only used in load balancer extension logics)
-	loadBalancerMaxNumberOfBundlesInBundleLoadReport: int
-
-	// Service units'(bundles) split interval. Broker periodically checks whether some service units(e.g. bundles) should split if they become hot-spots. (only used in load balancer extension logics)
-	loadBalancerSplitIntervalMinutes: int
-
-	// Max number of bundles to split to per cycle. (only used in load balancer extension logics)
-	loadBalancerMaxNumberOfBundlesToSplitPerCycle: int
-
-	// Threshold to the consecutive count of fulfilled split conditions. If the split scheduler consecutively finds bundles that meet split conditions many times bigger than this threshold, the scheduler will trigger splits on the bundles (if the number of bundles is less than loadBalancerNamespaceMaximumBundles). (only used in load balancer extension logics)
-	loadBalancerNamespaceBundleSplitConditionHitCountThreshold: int
-
-	// After this delay, the service-unit state channel tombstones any service units (e.g., bundles) in semi-terminal states. For example, after splits, parent bundles will be `deleted`, and then after this delay, the parent bundles' state will be `tombstoned` in the service-unit state channel. Pulsar does not immediately remove such semi-terminal states to avoid unnecessary system confusion, as the bundles in the `tombstoned` state might temporarily look available to reassign. Rarely, one could lower this delay in order to aggressively clean the service-unit state channel when there are a large number of bundles. minimum value = 30 secs(only used in load balancer extension logics)
-	loadBalancerServiceUnitStateTombstoneDelayTimeInSeconds: int
-
-	// Option to automatically unload namespace bundles with affinity(isolation) or anti-affinity group policies.Such bundles are not ideal targets to auto-unload as destination brokers are limited.(only used in load balancer extension logics)
-	loadBalancerSheddingBundlesWithPoliciesEnabled: bool
 
 	// Enable replication metrics
 	replicationMetricsEnabled: bool
@@ -1190,17 +1090,14 @@
 	// @deprecated
 	replicationTlsEnabled: bool
 
-	// Default message retention time. 0 means retention is disabled. -1 means data is not removed by time quota
+	// Default message retention time. The default value is 0, which means the data is removed after all the subscriptions are consumed. Value less than 0 means messages never expire.
 	defaultRetentionTimeInMinutes: int
 
-	// Default retention size. 0 means retention is disabled. -1 means data is not removed by size quota
+	// Default retention size. The default value is 0, which means the data is removed after all the subscriptions are consumed. Value less than 0 means no infinite size quota.
 	defaultRetentionSizeInMB: int
 
 	// How often to check pulsar connection is still alive
 	keepAliveIntervalSeconds: int
-
-	// Timeout for connection liveness check used to check liveness of possible consumer or producer duplicates. Helps prevent ProducerFencedException with exclusive producer, ConsumerAssignException with range conflict for Key Shared with sticky hash ranges or ConsumerBusyException in the case of an exclusive consumer. Set to 0 to disable connection liveness check.
-	connectionLivenessCheckTimeoutMillis: int
 
 	// How often broker checks for inactive topics to be deleted (topics with no subscriptions and no one connected) Deprecated in favor of using `brokerDeleteInactiveTopicsFrequencySeconds`\n@deprecated - unused.
 	// @deprecated
@@ -1220,9 +1117,6 @@
 
 	// Timeout for the compaction phase one loop, If the execution time of the compaction phase one loop exceeds this time, the compaction will not proceed.
 	brokerServiceCompactionPhaseOneLoopTimeInSeconds: int
-
-	// Interval between checks to see if cluster is migrated and marks topic migrated  if cluster is marked migrated. Disable with value 0. (Default disabled).
-	clusterMigrationCheckDurationSeconds: int
 
 	// Enforce schema validation on following cases:\n\n - if a producer without a schema attempts to produce to a topic with schema, the producer will be\n   failed to connect. PLEASE be carefully on using this, since non-java clients don't support schema.\n   if you enable this setting, it will cause non-java clients failed to produce.
 	isSchemaValidationEnforced: bool
@@ -1350,17 +1244,11 @@
 	// Number of threads to use for pulsar transaction replay PendingAckStore or TransactionBuffer.Default is 5
 	numTransactionReplayThreadPoolSize: int
 
-	// Transaction buffer take snapshot transaction countIf transaction buffer enables snapshot segment, transaction buffer updates snapshot metadataafter the number of transaction operations reaches this value.
+	// Transaction buffer take snapshot transaction count
 	transactionBufferSnapshotMaxTransactionCount: int
 
-	// The interval time for transaction buffer to take snapshots.If transaction buffer enables snapshot segment, it is the interval time for transaction buffer to update snapshot metadata.
+	// Transaction buffer take snapshot min interval time
 	transactionBufferSnapshotMinTimeInMillis: int
-
-	// Transaction buffer stores the transaction ID of aborted transactions and takes snapshots.This configuration determines the size of the snapshot segment. The default value is 256 KB (262144 bytes).
-	transactionBufferSnapshotSegmentSize: int
-
-	// Whether to enable segmented transaction buffer snapshot to handle a large number of aborted transactions.
-	transactionBufferSegmentedSnapshotEnabled: bool
 
 	// The max concurrent requests for transaction buffer client.
 	transactionBufferClientMaxConcurrentRequests: int
@@ -1397,9 +1285,6 @@
 
 	// If enabled the feature that transaction pending ack log batch, this attribute means maximum wait time(in millis) for the first record in a batch, default 1 millisecond.
 	transactionPendingAckBatchedWriteMaxDelayInMillis: int
-
-	// The class name of the factory that implements the topic compaction service.
-	compactionServiceFactoryClassName: string
 
 	// Enable TLS with KeyStore type configuration in broker
 	tlsEnabledWithKeyStore: bool

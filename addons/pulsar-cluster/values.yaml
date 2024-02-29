@@ -1,3 +1,7 @@
+## @param version Pulsar Cluster version
+##
+version: pulsar-2.11.2
+
 ## @param terminationPolicy define Cluster termination policy. One of DoNotTerminate, Halt, Delete, WipeOut.
 ##
 terminationPolicy: WipeOut
