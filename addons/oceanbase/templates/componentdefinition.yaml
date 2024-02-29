@@ -349,7 +349,6 @@ items:
     lifecycleActions: &oblifecycle
       roleProbe:
         builtinHandler: oceanbase
-        failureThreshold: {{ .Values.roleProbe.failureThreshold }}
         periodSeconds: {{ .Values.roleProbe.periodSeconds }}
         timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
     labels: &oblabels
