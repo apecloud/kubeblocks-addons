@@ -95,6 +95,9 @@
     // Enable or disable the feature of read write splitting for read only txn (default false)
     enable_read_write_split_for_read_only_txn: bool
 
+    // Enable or disable the feature of interception for DML without where clause (default true)
+    enable_interception_for_dml_without_where: bool
+
 	...
 }
 

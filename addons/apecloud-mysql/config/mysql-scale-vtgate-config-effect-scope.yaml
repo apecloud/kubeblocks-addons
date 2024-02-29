@@ -33,3 +33,4 @@ dynamicParameters:
   - mysql_server_ssl_cert
   - mysql_server_ssl_ca
   - mysql_server_require_secure_transport
+  - enable_interception_for_dml_without_where
