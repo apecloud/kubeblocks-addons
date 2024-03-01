@@ -75,7 +75,7 @@ bookies:
 bookiesRecovery:
   ## @param bookies.replicaCount Number of Bookies replicas
   ## at least 3 nodes if autoRecoveryDaemonEnabled is false in bookies.conf
-  enable: false
+  enabled: false
   replicaCount: 3
 
   resources:
@@ -142,7 +142,7 @@ broker:
 proxy:
   ## @param proxy.replicaCount Number of Proxy replicas
   replicaCount: 3
-  enable: false
+  enabled: false
 
   resources:
     # We usually recommend not to specify default resources and to leave this as a conscious
@@ -177,7 +177,7 @@ tests:
 # For more information about service references, please refer to the Cluster API definition.
 # You can also use the `kubectl explain cluster.spec.componentSpecs.serviceRefs` command for detailed explanations.
 serviceReference:
-  enable: false
+  enabled: false
   zookeeper:
     ## namespace of cluster or serviceDescriptor object
     namespace: ""

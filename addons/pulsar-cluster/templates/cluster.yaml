@@ -19,7 +19,7 @@ spec:
   tolerations: {{ . | toYaml | nindent 4 }}
   {{- end }}
   componentSpecs:
-    {{- if .Values.proxy.enable }}
+    {{- if .Values.proxy.enabled }}
     - name: proxy
       componentDefRef: pulsar-proxy
       monitor: {{ .Values.monitor.enabled | default false }}
@@ -56,7 +56,7 @@ spec:
           memory: {{ .requests.memory | quote }}
       {{- end }}
       {{- end }}
-    {{- if .Values.bookiesRecovery.enable }}
+    {{- if .Values.bookiesRecovery.enabled }}
     - name: bookies-recovery
       componentDefRef: bookies-recovery
       {{ include "pulsar-zookeeper-ref" . | nindent 6 }}
@@ -121,7 +121,7 @@ spec:
               requests:
                 storage: {{ .Values.bookies.persistence.log.size }}
       {{- end }}
-    {{- if not .Values.serviceReference.enable }}
+    {{- if not .Values.serviceReference.enabled }}
     - name: zookeeper
       componentDefRef: zookeeper
       monitor: {{ .Values.monitor.enabled | default false }}
