@@ -1,4 +1,3 @@
-{{- if not .Values.serviceReference.enable }}
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: Cluster
 metadata:
@@ -10,7 +9,7 @@ metadata:
   {{- end }}
 spec:
   clusterDefinitionRef: pulsar
-  clusterVersionRef: pulsar-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
+  clusterVersionRef: {{ .Values.version }}
   terminationPolicy: {{ $.Values.terminationPolicy }}
   affinity:
     {{- with $.Values.topologyKeys }}
@@ -20,7 +19,7 @@ spec:
   tolerations: {{ . | toYaml | nindent 4 }}
   {{- end }}
   componentSpecs:
-    {{- if .Values.proxy.enable }}
+    {{- if .Values.proxy.enabled }}
     - name: proxy
       componentDefRef: pulsar-proxy
       monitor: {{ .Values.monitor.enabled | default false }}
@@ -41,6 +40,7 @@ spec:
     {{- end }}
     - name: broker
       componentDefRef: pulsar-broker
+      {{ include "pulsar-zookeeper-ref" . | nindent 6 }}
       monitor: {{ .Values.monitor.enabled | default false }}
       replicas: {{ .Values.broker.replicaCount | default 3 }}
       {{- with  .Values.broker.resources }}
@@ -56,9 +56,10 @@ spec:
           memory: {{ .requests.memory | quote }}
       {{- end }}
       {{- end }}
-    {{- if .Values.bookiesRecovery.enable }}
+    {{- if .Values.bookiesRecovery.enabled }}
     - name: bookies-recovery
       componentDefRef: bookies-recovery
+      {{ include "pulsar-zookeeper-ref" . | nindent 6 }}
       monitor: {{ .Values.monitor.enabled | default false }}
       replicas: {{ .Values.bookiesRecovery.replicaCount | default 3 }}
       {{- with  .Values.bookiesRecovery.resources }}
@@ -77,6 +78,7 @@ spec:
     {{- end }}
     - name: bookies
       componentDefRef: bookies
+      {{ include "pulsar-zookeeper-ref" . | nindent 6 }}
       monitor: {{ .Values.monitor.enabled | default false }}
       {{- $bookiesReplicas := .Values.bookies.replicaCount }}
       {{- if and ( eq (int $bookiesReplicas) 3 ) ( eq .Values.bookies.mode "generic" ) }}
@@ -119,6 +121,7 @@ spec:
               requests:
                 storage: {{ .Values.bookies.persistence.log.size }}
       {{- end }}
+    {{- if not .Values.serviceReference.enabled }}
     - name: zookeeper
       componentDefRef: zookeeper
       monitor: {{ .Values.monitor.enabled | default false }}
@@ -149,4 +152,4 @@ spec:
               requests:
                 storage: {{ .Values.zookeeper.persistence.data.size }}
       {{- end }}
-{{- end }}
+  {{- end }}

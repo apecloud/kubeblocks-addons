@@ -142,6 +142,12 @@
       "description": "Kafka controller's jvm heap setting for separated mode",
       "type": "string",
       "default": "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+    },
+    "nodePortEnabled": {
+      "type": "boolean",
+      "default": false,
+      "title": "nodePortEnabled",
+      "description":"Whether NodePort service is enabled, default is false"
     }
   }
 }

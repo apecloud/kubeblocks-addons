@@ -15,11 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-// @deprecated
-// This version comes from the pulsar master branch, because this configuration template was used in the old version of pulsar addon,
-// but the master branch code keeps changing. This file is kept here for archiving reasons, but it is no longer used in the new version addon.
-
-// AUTO generate: ./bin/cue-tools https://raw.githubusercontent.com/apache/pulsar/master/pulsar-broker-common/src/main/java/org/apache/pulsar/broker/ServiceConfiguration.java "ServiceConfiguration" "PulsarBrokersParameter" > broker-config-constraint.cue
+// AUTO generate: ./bin/cue-tools https://raw.githubusercontent.com/apache/pulsar/v3.0.2/pulsar-broker-common/src/main/java/org/apache/pulsar/broker/ServiceConfiguration.java "ServiceConfiguration" "PulsarBrokersParameter" > broker-config-constraint.cue
 #PulsarBrokersParameter: {
 	// The Zookeeper quorum connection string (as a comma-separated list). Deprecated in favour of metadataStoreUrl
 	// @deprecated
@@ -75,7 +71,7 @@
 	// Used to specify additional bind addresses for the broker. The value must format as <listener_name>:<scheme>://<host>:<port>, multiple bind addresses should be separated with commas. Associates each bind address with an advertised listener and protocol handler. Note that the brokerServicePort, brokerServicePortTls, webServicePort, and webServicePortTls properties define additional bindings.
 	bindAddresses: string
 
-	// Enable or disable the proxy protocol. If true, the real IP addresses of consumers and producers can be obtained when getting topic statistics data.
+	// Enable or disable the proxy protocol.
 	haProxyProtocolEnabled: bool
 
 	// Number of threads to use for Netty Acceptor. Default is set to `1`
@@ -117,10 +113,10 @@
 	// Class name of the factory that implements the delayed deliver tracker.            If value is "org.apache.pulsar.broker.delayed.BucketDelayedDeliveryTrackerFactory", \            will create bucket based delayed message index tracker.
 	delayedDeliveryTrackerFactoryClassName: string
 
-	// Control the tick time for when retrying on delayed delivery, affecting the accuracy of the delivery time compared to the scheduled time. Default is 1 second. Note that this time is used to configure the HashedWheelTimer's tick time.
+	// Control the tick time for when retrying on delayed delivery, affecting the accuracy of the delivery time compared to the scheduled time. Default is 1 second. Note that this time is used to configure the HashedWheelTimer's tick time for the InMemoryDelayedDeliveryTrackerFactory.
 	delayedDeliveryTickTimeMillis: int
 
-	// Whether the deliverAt time is strictly followed. When false (default), messages may be sent to consumers before the deliverAt time by as much as the tickTimeMillis. This can reduce the overhead on the broker of maintaining the delayed index for a potentially very short time period. When true, messages will not be sent to consumer until the deliverAt time has passed, and they may be as late as the deliverAt time plus the tickTimeMillis for the topic plus the delayedDeliveryTickTimeMillis.
+	// When using the InMemoryDelayedDeliveryTrackerFactory (the default DelayedDeliverTrackerFactory), whether the deliverAt time is strictly followed. When false (default), messages may be sent to consumers before the deliverAt time by as much as the tickTimeMillis. This can reduce the overhead on the broker of maintaining the delayed index for a potentially very short time period. When true, messages will not be sent to consumer until the deliverAt time has passed, and they may be as late as the deliverAt time plus the tickTimeMillis for the topic plus the delayedDeliveryTickTimeMillis.
 	isDelayedDeliveryDeliverAtTimeStrict: bool
 
 	// The delayed message index bucket min index count. When the index count of the current bucket is more than \            this value and all message indexes of current ledger have already been added to the tracker \            we will seal the bucket.
@@ -135,7 +131,7 @@
 	// The max number of delayed message index bucket, \            after reaching the max buckets limitation, the adjacent buckets will be merged.\            (disable with value -1)
 	delayedDeliveryMaxNumBuckets: int
 
-	// Size of the lookahead window to use when detecting if all the messages in the topic have a fixed delay for InMemoryDelayedDeliveryTracker (the default DelayedDeliverTracker). Default is 50,000. Setting the lookahead window to 0 will disable the logic to handle fixed delays in messages in a different way.
+	// Size of the lookahead window to use when detecting if all the messages in the topic have a fixed delay. Default is 50,000. Setting the lookahead window to 0 will disable the logic to handle fixed delays in messages in a different way.
 	delayedDeliveryFixedDelayDetectionLookahead: int
 
 	// Whether to enable the acknowledge of batch local index
@@ -475,6 +471,9 @@
 	// Whether allow topic level entry filters policies overrides broker configuration.
 	allowOverrideEntryFilters: bool
 
+	// Whether to use streaming read dispatcher. Currently is in preview and can be changed in subsequent release.
+	streamingDispatch: bool
+
 	// Max number of concurrent lookup request broker allows to throttle heavy incoming lookup traffic
 	maxConcurrentLookupRequest: int
 
@@ -484,12 +483,8 @@
 	// Max concurrent non-persistent message can be processed per connection
 	maxConcurrentNonPersistentMessagePerConnection: int
 
-	// Number of worker threads to serve non-persistent topic.\n@deprecated - use topicOrderedExecutorThreadNum instead.
-	// @deprecated
+	// Number of worker threads to serve non-persistent topic
 	numWorkerThreadsForNonPersistentTopic: int
-
-	// Number of worker threads to serve topic ordered executor
-	topicOrderedExecutorThreadNum: int
 
 	// Enable broker to load persistent topics
 	enablePersistentTopics: bool
@@ -694,12 +689,6 @@
 
 	// kerberos kinit command.
 	kinitCommand: string
-
-	// how often the broker expires the inflight SASL context.
-	inflightSaslContextExpiryMs: int
-
-	// Maximum number of inflight sasl context.
-	maxInflightSaslContext: int
 
 	// Metadata service uri that bookkeeper is used for loading corresponding metadata driver and resolving its metadata service location
 	bookkeeperMetadataServiceUri: string
@@ -969,14 +958,8 @@
 	// ManagedLedgerInfo compression type, option values (NONE, LZ4, ZLIB, ZSTD, SNAPPY). \nIf value is invalid or NONE, then save the ManagedLedgerInfo bytes data directly.
 	managedLedgerInfoCompressionType: string
 
-	// ManagedLedgerInfo compression size threshold (bytes), only compress metadata when origin size more then this value.\n0 means compression will always apply.\n
-	managedLedgerInfoCompressionThresholdInBytes: int
-
 	// ManagedCursorInfo compression type, option values (NONE, LZ4, ZLIB, ZSTD, SNAPPY). \nIf value is NONE, then save the ManagedCursorInfo bytes data directly.
 	managedCursorInfoCompressionType: string
-
-	// ManagedCursorInfo compression size threshold (bytes), only compress metadata when origin size more then this value.\n0 means compression will always apply.\n
-	managedCursorInfoCompressionThresholdInBytes: int
 
 	// Minimum cursors that must be in backlog state to cache and reuse the read entries.(Default =0 to disable backlog reach cache)
 	managedLedgerMinimumBacklogCursorsForCaching: int
@@ -1116,9 +1099,6 @@
 
 	// Name of load manager to use
 	loadManagerClassName: string
-
-	// Name of topic bundle assignment strategy to use
-	topicBundleAssignmentStrategy: string
 
 	// Supported algorithms name for namespace bundle split
 	supportedNamespaceBundleSplitAlgorithms: string
@@ -1398,9 +1378,6 @@
 	// If enabled the feature that transaction pending ack log batch, this attribute means maximum wait time(in millis) for the first record in a batch, default 1 millisecond.
 	transactionPendingAckBatchedWriteMaxDelayInMillis: int
 
-	// The class name of the factory that implements the topic compaction service.
-	compactionServiceFactoryClassName: string
-
 	// Enable TLS with KeyStore type configuration in broker
 	tlsEnabledWithKeyStore: bool
 
@@ -1496,3 +1473,4 @@
 
 configuration: #PulsarBrokersParameter & {
 }
+

@@ -11,7 +11,7 @@ metadata:
   {{- end }}
 spec:
   clusterDefinitionRef: pulsar-zookeeper
-  clusterVersionRef: pulsar-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
+  clusterVersionRef: {{ .Values.version }}
   terminationPolicy: {{ $.Values.terminationPolicy }}
   affinity:
     {{- with $.Values.topologyKeys }}
