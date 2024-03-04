@@ -7,8 +7,8 @@ metadata:
 spec:
   type: mogdb
   connectionCredential:
-    username: mogdb
-    password: "Enmo@123"
+    username: kbadmin
+    password: "$(STRONG_RANDOM_PASSWD)"
     endpoint: "$(SVC_FQDN):$(SVC_PORT_tcp-mogdb)"
     host: "$(SVC_FQDN)"
     port: "$(SVC_PORT_tcp-mogdb)"
@@ -62,6 +62,11 @@ spec:
           namespace: {{ .Release.Namespace }}
           volumeName: scripts
           defaultMode: 0777
+      monitor:
+        buildIn: false
+        exporterConfig:
+          scrapePath: /metrics
+          scrapePort: {{ .Values.metrics.service.port }}
       logConfigs:
         {{- range $name,$pattern := .Values.logConfigs }}
         - name: {{ $name }}
@@ -103,14 +108,12 @@ spec:
   
                 hostname=`hostname`
                 [[ "$hostname" =~ -([0-9]+)$ ]] || exit 1
-                ordinal=${BASH_REMATCH[1]}
+                ordinal=${BASH_REMATCH[1]}                
                 if [[ $ordinal -eq 0 ]];then
                   MogDB_Role="primary"
                 else
                   MogDB_Role="standby"
-                  echo "$hostname $PodIP" |ncat --send-only ${KB_CLUSTER_COMP_NAME}-0.${KB_CLUSTER_COMP_NAME}-headless 6543
-                  remote_ip=`ping ${KB_CLUSTER_COMP_NAME}-0.${KB_CLUSTER_COMP_NAME}-headless -c 1 | sed '1{s/[^(]*(//;s/).*//;q}'`
-                
+                  
                   if [ -n "$PGPORT" ];then
                     ha_port=$(expr $PGPORT + 1)
                     ha_service_port=$(expr $PGPORT + 2)
@@ -119,7 +122,18 @@ spec:
                     ha_service_port=$(expr 5432 + 2)                    
                   fi
                   
-                  REPL_CONN_INFO="replconninfo${ordinal} = 'localhost=$PodIP localport=${ha_port} localservice=${ha_service_port} remotehost=$remote_ip remoteport=${ha_port} remoteservice=${ha_service_port}'"
+                  cat >/tmp/replconninfo.conf
+                  for ((i=0; i<$ordinal; i++)); do
+                    echo "$hostname $PodIP" |ncat --send-only ${KB_CLUSTER_COMP_NAME}-${i}.${KB_CLUSTER_COMP_NAME}-headless 6543
+                    remote_ip=`ping ${KB_CLUSTER_COMP_NAME}-${i}.${KB_CLUSTER_COMP_NAME}-headless -c 1 | sed '1{s/[^(]*(//;s/).*//;q}'`
+                
+                    echo "replconninfo$((i+1)) = 'localhost=$PodIP localport=${ha_port} localservice=${ha_service_port} remotehost=$remote_ip remoteport=${ha_port} remoteservice=${ha_service_port}'" >> /tmp/replconninfo.conf
+                  done
+                
+                  #echo "$hostname $PodIP" |ncat --send-only ${KB_CLUSTER_COMP_NAME}-0.${KB_CLUSTER_COMP_NAME}-headless 6543
+                  #remote_ip=`ping ${KB_CLUSTER_COMP_NAME}-0.${KB_CLUSTER_COMP_NAME}-headless -c 1 | sed '1{s/[^(]*(//;s/).*//;q}'`
+              
+                  # REPL_CONN_INFO="replconninfo${ordinal} = 'localhost=$PodIP localport=${ha_port} localservice=${ha_service_port} remotehost=$remote_ip remoteport=${ha_port} remoteservice=${ha_service_port}'"
                 fi
   
                 [[ -n "$REPL_CONN_INFO" ]] && export REPL_CONN_INFO
@@ -198,31 +212,7 @@ spec:
                 containerPort: 6543
             command:
               - bash
-              - "-c"
-              - |
-                set -ex
-                cat >>/home/omm/.profile <<-EOF
-                export PGHOST="/var/lib/mogdb/tmp"
-                EOF
-                source /home/omm/.profile
-                while true;do
-                  ncat -l 6543 >/tmp/remote.info
-                  read host_name remote_ip < /tmp/remote.info
-                  [[ "$host_name" =~ -([0-9]+)$ ]] || exit 1
-                  remote_ordinal=${BASH_REMATCH[1]}
-
-                  if [ -n "$PGPORT" ];then
-                    ha_port=$(expr $PGPORT + 1)
-                    ha_service_port=$(expr $PGPORT + 2)
-                  else
-                    ha_port=$(expr 5432 + 1)
-                    ha_service_port=$(expr 5432 + 2)                    
-                  fi
-
-                  repl_conn_info="replconninfo${remote_ordinal} = 'localhost=$PodIP localport=${ha_port} localservice=${ha_service_port} remotehost=$remote_ip remoteport=${ha_port} remoteservice=${ha_service_port}'"
-
-                  su - omm -c "gs_guc reload -D $PGDATA -c \"${repl_conn_info}\""
-                done
+              - /kb-scripts/helper.sh
             env:
               - name: PodIP
                 valueFrom:
@@ -239,11 +229,45 @@ spec:
               - name: data
                 mountPath: /var/lib/mogdb
                 subPath: mogdb
+              - name: scripts
+                mountPath: /kb-scripts
             resources:
               requests:
                 cpu: 500m
                 memory: 64Mi
-
+          - name: exporter
+            image:  {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
+            imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
+#            command:
+#              - bash
+#              - -c
+#              - |
+#                sleep 36000
+            securityContext:
+              runAsUser: 70
+            ports:
+              - name: http-exporter
+                containerPort: {{ .Values.metrics.service.port }}
+            volumeMounts:
+              - name: data
+                mountPath: /var/lib/mogdb
+                subPath: mogdb
+            env:
+              - name: DATA_SOURCE_NAME
+                value: "host=/var/lib/mogdb/tmp port=26000 user=omm dbname=postgres"
+              - name: PGHOST
+                value: "/var/lib/mogdb/tmp"
+              - name: PGPORT
+                value: "26000"
+              - name: PGDATA
+                value: "/var/lib/mogdb/data"
+            resources:
+              requests:
+                cpu: 100m
+                memory: 100Mi
+              limits:
+                cpu: 100m
+                memory: 100Mi
         volumes:
           - name: dshm
             emptyDir:
