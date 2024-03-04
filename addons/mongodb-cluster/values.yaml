@@ -10,10 +10,6 @@ version: mongodb-5.0
 ##
 mode: standalone
 
-## @param replicas specify cluster replicas
-##
-replicas: 1
-
 ## @param cpu
 ##
 cpu: 0.5
@@ -32,3 +28,5 @@ requests:
 ## @param storage size, the unit is Gi
 ##
 storage: 20
+
+useLegacyCompDef: true

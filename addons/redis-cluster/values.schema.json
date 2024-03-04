@@ -21,7 +21,8 @@
       "default": "replication",
       "enum": [
         "standalone",
-        "replication"
+        "replication",
+        "cluster"
       ]
     },
     "replicas": {
@@ -149,6 +150,20 @@
           "default": 3,
           "minimum": 1,
           "maximum": 5
+        }
+      }
+    },
+    "redisCluster":{
+      "title": "The official redis cluster mode",
+      "type": "object",
+      "properties": {
+        "shardCount": {
+          "description": "The number of shards in the redis cluster",
+          "title": "shardCount",
+          "type": "number",
+          "default": 3,
+          "minimum": 3,
+          "maximum": 2048
         }
       }
     }

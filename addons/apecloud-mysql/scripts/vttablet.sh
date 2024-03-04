@@ -39,10 +39,6 @@ $(if [ "$enable_query_log" == "true" ]; then echo "--log_queries_to_file $VTDATA
 --tablet-path $alias \
 --tablet_hostname "$tablet_hostname" \
 --init_tablet_type $tablet_type \
---health_check_interval $health_check_interval \
---shard_sync_retry_delay $shard_sync_retry_delay \
---remote_operation_timeout $remote_operation_timeout \
---db_connect_timeout_ms $db_connect_timeout_ms \
 --enable_replication_reporter \
 --backup_storage_implementation file \
 --file_backup_storage_root $VTDATAROOT/backups \
@@ -61,10 +57,5 @@ $(if [ "$enable_query_log" == "true" ]; then echo "--log_queries_to_file $VTDATA
 --service_map 'grpc-queryservice,grpc-tabletmanager,grpc-updatestream' \
 --pid_file $VTDATAROOT/vttablet.pid \
 --vtctld_addr http://$vtctld_host:$vtctld_web_port/ \
---table-acl-config-mode=$table_acl_config_mode \
---disable_active_reparents \
-$(if [ -n "$table_acl_config" ]; then echo "--table-acl-config $table_acl_config"; fi) \
-$(if [ "$queryserver_config_strict_table_acl" == "true" ]; then echo "--queryserver-config-strict-table-acl"; fi) \
-$(if [ "$enforce_tableacl_config" == "true" ]; then echo "--enforce-tableacl-config"; fi) \
---table-acl-config-reload-interval $table_acl_config_reload_interval
+--disable_active_reparents
 EOF

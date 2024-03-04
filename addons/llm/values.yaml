@@ -3,7 +3,7 @@ image:
   pullPolicy: IfNotPresent
   registry: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com
   # Overrides the image tag whose default is the chart appVersion.
-  tag: latest-amd64
+  tag: v0.2.7-amd64
 imageDev:
   repository: apecloud/llama-cpp-python
   pullPolicy: IfNotPresent

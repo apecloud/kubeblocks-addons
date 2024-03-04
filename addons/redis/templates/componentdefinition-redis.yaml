@@ -117,7 +117,7 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the redis-sentinel component definition name
-          compDef: {{ include "redis.sentinelComponentDefName" . }}
+          compDef: {{ include "redis-sentinel.componentDefName" . }}
           name: default
           optional: true
           username: Optional
@@ -126,16 +126,16 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the redis-sentinel component definition name
-          compDef: {{ include "redis.sentinelComponentDefName" . }}
+          compDef: {{ include "redis-sentinel.componentDefName" . }}
           name: default
           optional: true
           password: Optional
     - name: SENTINEL_COMPONENT_DEFINITION_NAME
-      value: {{ include "redis.sentinelComponentDefName" . }}
+      value: {{ include "redis-sentinel.componentDefName" . }}
     - name: SENTINEL_SERVICE_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redis.sentinelComponentDefName" . }}
+          compDef: {{ include "redis-sentinel.componentDefName" . }}
           name: redis-sentinel
           optional: true
           port:
@@ -145,7 +145,6 @@ spec:
   lifecycleActions:
     roleProbe:
       builtinHandler: redis
-      failureThreshold: 2
       periodSeconds: 1
       timeoutSeconds: 1
     postProvision:

@@ -38,11 +38,22 @@ spec:
           namespace: {{ .Release.Namespace }}
           volumeName: mongodb-metrics-config
           defaultMode: 0444
+        - name: mongodb-env
+          templateRef: {{ include "mongodb.name" . }}-env-tpl
+          namespace: {{ .Release.Namespace }}
+          volumeName: mongodb-env
+          constraintRef: mongodb-env-constraints
+          keys:
+            - env
+          asEnvFrom:
+            - mongodb
+      {{- if not .Values.useHostNetwork }}
       monitor:
         builtIn: false
         exporterConfig:
           scrapePath: /metrics
           scrapePort: 9216
+      {{- end }}
       logConfigs:
         {{- range $name,$pattern := .Values.logConfigs }}
         - name: {{ $name }}
@@ -87,17 +98,25 @@ spec:
         - name: data
           type: data
       podSpec:
+        {{- if .Values.useHostNetwork }}
+        hostNetwork: true
+        dnsPolicy: ClusterFirstWithHostNet
+        {{- end }}
         containers:
           - name: mongodb
             ports:
               - name: mongodb
                 protocol: TCP
+                {{- if .Values.useHostNetwork }}
+                containerPort: 10
+                {{- else }}
                 containerPort: 27017
+                {{- end }}
             command:
               - /scripts/replicaset-setup.sh
             env:
-              - name: SERVICE_PORT
-                value: "27017"
+              # - name: SERVICE_PORT
+              #   value: "27017"
               - name: MONGODB_ROOT_USER
                 valueFrom:
                   secretKeyRef:
@@ -121,6 +140,8 @@ spec:
                 subPath: keyfile
               - name: scripts
                 mountPath: /scripts
+              # - name: mongodb-env
+              #   mountPath: /none
           - name: metrics
             image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
             imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
@@ -145,7 +166,11 @@ spec:
               - "--config=/opt/conf/metrics-config.yaml"
             ports:
               - name: http-metrics
+                {{- if .Values.useHostNetwork }}
+                containerPort: 20
+                {{- else }}
                 containerPort: 9216
+                {{- end }}
             volumeMounts:
               - name: mongodb-metrics-config
                 mountPath: /opt/conf

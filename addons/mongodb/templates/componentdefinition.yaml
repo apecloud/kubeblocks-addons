@@ -1,0 +1,170 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "mongodb.componentDefName" . }}
+  labels:
+    {{- include "mongodb.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks.io
+  description: MongoDB is a document database designed for ease of application development and scaling.
+  serviceKind: mongodb
+  serviceVersion: "5.0"
+  services:
+    - name: default
+      serviceName: mongodb
+      spec:
+        ports:
+          - name: mongodb
+            port: 27017
+            targetPort: mongodb
+      roleSelector: primary
+    - name: readonly
+      serviceName: mongodb-ro
+      spec:
+        ports:
+          - name: mongodb
+            port: 27017
+            targetPort: mongodb
+      roleSelector: secondary
+    - name: everypod
+      generatePodOrdinalService: true
+      spec:
+        ports:
+          - name: mongodb
+            port: 27017
+            targetPort: mongodb
+  configs:
+    - name: mongodb-config
+      templateRef: {{ include "mongodb.configTplName" . }}
+      constraintRef: {{ include "mongodb.configConstraintName" . }}
+      volumeName: mongodb-config
+      namespace: {{ .Release.Namespace }}
+      defaultMode: 0400  # for only read
+    - name: agamotto-configuration
+      templateRef: {{ include "mongodb.agamottoCfgName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: agamotto-configuration
+      defaultMode: 0444  # for only read
+  logConfigs:
+    {{- range $name,$pattern := .Values.logConfigs }}
+    - name: {{ $name }}
+      filePathPattern: {{ $pattern }}
+    {{- end }}
+  monitor:
+    builtIn: false
+    exporterConfig:
+      scrapePath: /metrics
+      scrapePort: 9216
+  scripts:
+    - name: mongodb-scripts
+      templateRef: {{ include "mongodb.cmScriptsName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555  # for read and execute, mysql container switched user account.
+  systemAccounts:
+    - name: root
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 8
+        numSymbols: 0
+        letterCase: MixedCases
+  roles:
+    - name: primary
+      serviceable: true
+      writable: true
+      votable: true
+    - name: secondary
+      serviceable: true
+      writable: false
+      votable: true
+  lifecycleActions:
+    roleProbe:
+      builtinHandler: mongodb
+      periodSeconds: {{ .Values.roleProbe.periodSeconds }}
+      timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+      # customHandler:
+      #   container: mongodb
+      #   exec:
+      #     command:
+      #       - bash
+      #       - -c
+      #       - |
+      #         Status=$(export CLIENT=`which mongosh>/dev/null&&echo mongosh||echo mongo`; $CLIENT -u $KB_SERVICE_USER -p $KB_SERVICE_PASSWORD 127.0.0.1:27017 --quiet --eval "JSON.stringify(rs.status())") &&
+      #         MyState=$(echo $Status | jq '.myState') &&
+      #         echo $Status | jq ".members[] | select(.state == ($MyState | tonumber)) | .stateStr" |tr '[:upper:]' '[:lower:]'|uniq| xargs echo -n
+  runtime:
+    containers:
+      - name: mongodb
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        ports:
+          - name: mongodb
+            protocol: TCP
+            containerPort: 27017
+        command:
+          - /scripts/replicaset-setup.sh
+        env:
+          - name: SERVICE_PORT
+            value: "27017"
+          - name: MONGODB_ROOT_USER
+            value: $(MONGODB_USER)
+          - name: MONGODB_ROOT_PASSWORD
+            value: $(MONGODB_PASSWORD)
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+          - mountPath: /etc/mongodb/mongodb.conf
+            name: mongodb-config
+            subPath: mongodb.conf
+          - mountPath: /etc/mongodb/keyfile
+            name: mongodb-config
+            subPath: keyfile
+          - name: scripts
+            mountPath: /scripts
+      - name: metrics
+        image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
+        imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
+        command:
+          - "/bin/agamotto"
+          - "--config=/opt/agamotto/metrics-config.yaml"
+        env:
+          - name: MONGODB_ROOT_USER
+            value: $(MONGODB_USER)
+          - name: MONGODB_ROOT_PASSWORD
+            value: $(MONGODB_PASSWORD)
+          - name: DB_TYPE
+            value: mongodb
+        volumeMounts:
+          - name: agamotto-configuration
+            mountPath: /opt/agamotto
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
+        ports:
+          - name: http-metrics
+            containerPort: 9216
+        securityContext:
+          runAsNonRoot: false
+          runAsUser: 0
+    volumes:
+      {{- if .Values.logCollector.enabled }}
+      - name: log-data
+        hostPath:
+          path: /var/log/kubeblocks
+          type: DirectoryOrCreate
+      {{- end }}
+  vars:
+    - name: MONGODB_USER
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "mongodb.componentDefName" . }}
+          name: root
+          optional: false
+          username: Required
+    - name: MONGODB_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "mongodb.componentDefName" . }}
+          name: root
+          optional: false
+          password: Required

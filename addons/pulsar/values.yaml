@@ -27,30 +27,6 @@ image:
 ##
 ## Control what images to use for each component
 images:
-  bookie:
-    repository: ""
-    pullPolicy: ""
-    tag: ""
-
-  zookeeper:
-    # Zookeeper component is used for metadata, shouldn't need update following tag value for common 
-    # upgrade scenario
-    # if the value of images.zookeeper.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
-    registry: ""
-    repository: apecloud/pulsar
-    pullPolicy: IfNotPresent
-    tag: 2.11.2
-
-  broker:
-    repository: ""
-    pullPolicy: ""
-    tag: ""
-
-  proxy:
-    repository: ""
-    pullPolicy: ""
-    tag: ""
-
   pulsarTools:
     # if the value of images.pulsarTools.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
     registry: ""
@@ -64,6 +40,56 @@ images:
     repository: apecloud/agamotto
     pullPolicy: IfNotPresent
     tag: 0.1.2-beta.2
+
+  v2_11_2:
+    bookie:
+      repository: ""
+      pullPolicy: ""
+      tag: ""
+
+    zookeeper:
+      # Zookeeper component is used for metadata, shouldn't need update following tag value for common
+      # upgrade scenario
+      # if the value of images.zookeeper.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
+      registry: ""
+      repository: apecloud/pulsar
+      pullPolicy: IfNotPresent
+      tag: 2.11.2
+
+    broker:
+      repository: apecloud/pulsar
+      pullPolicy: IfNotPresent
+      tag: 2.11.2
+
+    proxy:
+      repository: apecloud/pulsar
+      pullPolicy: IfNotPresent
+      tag: 2.11.2
+
+  v3_0_2:
+    bookie:
+      repository: apecloud/pulsar
+      pullPolicy: IfNotPresent
+      tag: 3.0.2
+
+    zookeeper:
+      # Zookeeper component is used for metadata, shouldn't need update following tag value for common
+      # upgrade scenario
+      # if the value of images.zookeeper.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
+      registry: ""
+      repository: apecloud/pulsar
+      pullPolicy: IfNotPresent
+      tag: 3.0.2
+
+    broker:
+      repository: apecloud/pulsar
+      pullPolicy: IfNotPresent
+      tag: 3.0.2
+
+    proxy:
+      repository: apecloud/pulsar
+      pullPolicy: IfNotPresent
+      tag: 3.0.2
 
 metrics:
   service:

@@ -4214,6 +4214,7 @@
    "style": "dark",
    "tags": [
       "db",
+      "apps",
       "MySQL-Proxy"
    ],
    "templating": {
@@ -4374,7 +4375,7 @@
       ]
    },
    "timezone": "browser",
-   "title": "MySQL-Proxy",
+   "title": "APPS / MySQL-Proxy",
    "uid": "mysql-proxy-cluster-overview",
    "version": 0
 }

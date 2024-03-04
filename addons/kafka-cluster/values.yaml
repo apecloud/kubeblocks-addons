@@ -15,7 +15,7 @@ tlsEnable: false
 saslEnable: false
 
 # Enable Monitor
-monitorEnable: false
+monitorEnable: true
 
 ## @param cpu
 ##
@@ -65,4 +65,7 @@ brokerHeap: -XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64
 ## kafka broker's jvm heap setting
 ## only effective when clusterMode='separated'
 controllerHeap: -XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64
+
+## @param nodePortEnabled
+nodePortEnabled: false
 

@@ -60,3 +60,25 @@ Create the name of the service account to use
 {{- define "kafka-cluster.serviceAccountName" -}}
 {{- default (printf "kb-%s" (include "clustername" .)) .Values.serviceAccount.name }}
 {{- end }}
+
+{{/*
+Define kafka broker component name
+*/}}
+{{- define "kafka-cluster.brokerComponent" -}}
+{{- if eq .Values.mode "combined" }}
+{{- printf "kafka-combine" -}}
+{{ else }}
+{{- printf "kafka-broker" -}}
+{{- end }}
+{{- end }}
+
+{{/*
+Define kafka cluster annotation keys for nodeport feature gate.
+*/}}
+{{- define "kafka-cluster.brokerAddrFeatureGate" -}}
+kubeblocks.io/enabled-pod-ordinal-svc: broker
+{{- if .Values.nodePortEnabled }}
+kubeblocks.io/enabled-node-port-svc: broker
+kubeblocks.io/disabled-cluster-ip-svc: broker
+{{- end }}
+{{- end }}

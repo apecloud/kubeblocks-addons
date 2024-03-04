@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "redis.sentinelComponentDefName" . }}
+  name: {{ include "redis-sentinel.componentDefName" . }}
   labels:
     {{- include "redis.labels" . | nindent 4 }}
 spec:
@@ -67,7 +67,7 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the redis-sentinel component definition name
-          compDef: {{ include "redis.sentinelComponentDefName" . }}
+          compDef: {{ include "redis-sentinel.componentDefName" . }}
           name: default
           optional: false
           username: Required
@@ -76,7 +76,7 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the redis-sentinel component definition name
-          compDef: {{ include "redis.sentinelComponentDefName" . }}
+          compDef: {{ include "redis-sentinel.componentDefName" . }}
           name: default
           optional: false
           password: Required

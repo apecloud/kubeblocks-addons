@@ -94,6 +94,7 @@ if [[ "true" == "$KB_KAFKA_ENABLE_SASL" ]]; then
 fi
 
 if [[ -n "$KAFKA_KRAFT_CLUSTER_ID" ]]; then
+    echo KAFKA_KRAFT_CLUSTER_ID="${KAFKA_KRAFT_CLUSTER_ID}"
     kraft_id_len=${#KAFKA_KRAFT_CLUSTER_ID}
     if [[ kraft_id_len > 22 ]]; then
         export KAFKA_KRAFT_CLUSTER_ID=$(echo $KAFKA_KRAFT_CLUSTER_ID | cut -b 1-22)
@@ -110,16 +111,11 @@ if [[ -n "$KB_KAFKA_BROKER_HEAP" ]]; then
   echo "[jvm][KB_KAFKA_BROKER_HEAP]export KAFKA_HEAP_OPTS=${KB_KAFKA_BROKER_HEAP}"
 fi
 
-# for support access Kafka brokers from outside the k8s cluster
-if [[ -n "$KAFKA_CFG_K8S_NODEPORT" ]];then
-  if [[ "broker,controller" = "$KAFKA_CFG_PROCESS_ROLES" ]] || [[ "broker" = "$KAFKA_CFG_PROCESS_ROLES" ]]; then
-    export KAFKA_CFG_ADVERTISED_LISTENERS="PLAINTEXT://${KB_HOST_IP}:${KAFKA_CFG_K8S_NODEPORT}"
-    echo "[cfg]KAFKA_CFG_ADVERTISED_LISTENERS=$KAFKA_CFG_ADVERTISED_LISTENERS"
-    echo "[cfg]KAFKA_CFG_LISTENERS=$KAFKA_CFG_LISTENERS"
-    echo "[cfg]KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=$KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP"
-    echo "[cfg]KAFKA_CFG_INTER_BROKER_LISTENER_NAME=$KAFKA_CFG_INTER_BROKER_LISTENER_NAME"
-  fi
-fi
+extract_ordinal_from_pod_name() {
+  local pod_name="$1"
+  local ordinal="${pod_name##*-}"
+  echo "$ordinal"
+}
 
 # cfg setting
 if [[ "broker,controller" = "$KAFKA_CFG_PROCESS_ROLES" ]] || [[ "broker" = "$KAFKA_CFG_PROCESS_ROLES" ]]; then
@@ -131,8 +127,22 @@ if [[ "broker,controller" = "$KAFKA_CFG_PROCESS_ROLES" ]] || [[ "broker" = "$KAF
       rm -f "$KAFKA_CFG_METADATA_LOG_DIR/__cluster_metadata-0/quorum-state"
     fi
 
-    if [[ "true" = "$KB_KAFKA_PUBLIC_ACCESS" ]]; then
-      export KAFKA_CFG_ADVERTISED_LISTENERS="INTERNAL://${KB_POD_NAME}.${KB_CLUSTER_COMP_NAME}-headless.${KB_NAMESPACE}.svc:9094,CLIENT://${KB_POD_NAME}.${KB_CLUSTER_COMP_NAME}-headless.${KB_NAMESPACE}.svc:9092"
+    cluster_domain={{ .clusterDomain }}
+    headless_domain="${KB_POD_NAME}.${KB_CLUSTER_COMP_NAME}-headless.${KB_NAMESPACE}.svc.${cluster_domain}"
+
+    if [[ "true" == "$KB_KAFKA_BROKER_NODEPORT" ]]; then
+      # enable NodePort, use node ip + mapped port as client connection
+      pod_ordinal=$(extract_ordinal_from_pod_name $KB_POD_NAME)
+      node_port_env_name="BROKER_NODE_PORT_${pod_ordinal}"
+      eval node_port="\$${node_port_env_name}"
+      nodeport_domain="${KB_HOST_IP}:${node_port}"
+      #export KAFKA_CFG_LISTENERS="CONTROLLER://:9093,INTERNAL://:9094,CLIENT://:${node_port}"
+      #echo "[cfg]KAFKA_CFG_LISTENERS=$KAFKA_CFG_LISTENERS"
+      export KAFKA_CFG_ADVERTISED_LISTENERS="INTERNAL://${headless_domain}:9094,CLIENT://${nodeport_domain}"
+      echo "[cfg]KAFKA_CFG_ADVERTISED_LISTENERS=$KAFKA_CFG_ADVERTISED_LISTENERS"
+    else
+      # default, use headless service url as client connection
+      export KAFKA_CFG_ADVERTISED_LISTENERS="INTERNAL://${headless_domain}:9094,CLIENT://${headless_domain}:9092"
       echo "[cfg]KAFKA_CFG_ADVERTISED_LISTENERS=$KAFKA_CFG_ADVERTISED_LISTENERS"
     fi
 fi

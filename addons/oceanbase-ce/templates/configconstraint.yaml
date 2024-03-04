@@ -1,0 +1,165 @@
+{{- $cc := .Files.Get "config/oceanbase-sysvars-effect-scope.yaml" | fromYaml }}
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ConfigConstraint
+metadata:
+  name: {{ printf "%s-sysvars-cc" (include "oceanbase-release.name" .) }}
+  labels:
+    {{- include "oceanbase.labels" . | nindent 4 }}
+spec:
+  reloadOptions:
+    shellTrigger:
+      sync: true
+      command:
+        - "update-sysvars.sh"
+
+  scriptConfigs:
+    - scriptConfigMapRef: {{ printf "%s-reload-tools-script" (include "oceanbase-release.name" .) }}
+      namespace: {{ .Release.Namespace }}
+
+  toolsImageSpec:
+    mountPoint: /kb_tools
+    toolConfigs:
+      - name: kb-tools
+        command:
+          - cp
+          - /bin/ob-tools
+          - /kb_tools/obtools
+        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.obtools.repository }}:{{ .Values.images.obtools.tag }}
+
+  # top level mysql configuration type
+  cfgSchemaTopLevelName: OBSysVariables
+
+  # ConfigurationSchema that impose restrictions on engine parameter's rule
+  configurationSchema:
+    # schema: auto generate from mmmcue scripts
+    # example: ../../pkg/configuration/testdata/mysql_openapi.json
+    cue: |-
+      {{- .Files.Get "config/oceanbase-sysvars-constraint.cue" | nindent 6 }}
+
+  ##  require db instance restart
+  ## staticParameters
+  {{- if hasKey $cc "staticParameters" }}
+  staticParameters:
+    {{- $params := get $cc "staticParameters" }}
+    {{- range $params }}
+    - {{ . }}
+    {{- end }}
+  {{- end}}
+
+  {{- if hasKey $cc "dynamicParameters" }}
+  dynamicParameters:
+    {{- $params := get $cc "dynamicParameters" }}
+    {{- range $params }}
+    - {{ . }}
+    {{- end }}
+  {{- end}}
+
+  ## define immutable parameter list, this feature is not currently supported.
+  {{- if hasKey $cc "immutableParameters" }}
+  immutableParameters:
+    {{- $params := get $cc "immutableParameters" }}
+    {{- range $params }}
+    - {{ . }}
+    {{- end }}
+  {{- end}}
+
+  # configuration file format
+  formatterConfig:
+    format: properties
+
+
+---
+  {{- $cc := .Files.Get "config/oceanbase-config-effect-scope.yaml" | fromYaml }}
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ConfigConstraint
+metadata:
+  name: {{ printf "%s-parameters-cc" (include "oceanbase-release.name" .) }}
+  labels:
+    {{- include "oceanbase.labels" . | nindent 4 }}
+spec:
+  reloadOptions:
+    shellTrigger:
+      sync: true
+      command:
+        - "update-parameters.sh"
+
+  scriptConfigs:
+    - scriptConfigMapRef: {{ printf "%s-reload-tools-script" (include "oceanbase-release.name" .) }}
+      namespace: {{ .Release.Namespace }}
+
+  toolsImageSpec:
+    mountPoint: /kb_tools
+    toolConfigs:
+      - name: kb-tools
+        command:
+          - cp
+          - /bin/ob-tools
+          - /kb_tools/obtools
+        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.obtools.repository }}:{{ .Values.images.obtools.tag }}
+
+  # top level mysql configuration type
+  cfgSchemaTopLevelName: OBParameters
+
+  # ConfigurationSchema that impose restrictions on engine parameter's rule
+  configurationSchema:
+    # schema: auto generate from mmmcue scripts
+    # example: ../../pkg/configuration/testdata/mysql_openapi.json
+    cue: |-
+      {{- .Files.Get "config/oceanbase-config-constraint.cue" | nindent 6 }}
+
+  ##  require db instance restart
+  ## staticParameters
+  {{- if hasKey $cc "staticParameters" }}
+  staticParameters:
+    {{- $params := get $cc "staticParameters" }}
+      {{- range $params }}
+      - {{ . }}
+      {{- end }}
+  {{- end}}
+
+  {{- if hasKey $cc "dynamicParameters" }}
+  dynamicParameters:
+    {{- $params := get $cc "dynamicParameters" }}
+      {{- range $params }}
+      - {{ . }}
+      {{- end }}
+  {{- end}}
+
+  ## define immutable parameter list, this feature is not currently supported.
+  {{- if hasKey $cc "immutableParameters" }}
+  immutableParameters:
+    {{- $params := get $cc "immutableParameters" }}
+      {{- range $params }}
+      - {{ . }}
+      {{- end }}
+  {{- end}}
+
+  # configuration file format
+  formatterConfig:
+    format: properties
+
+---
+{{- $cc := .Files.Get "config/oceanbase-env-effect-scope.yaml" | fromYaml }}
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ConfigConstraint
+metadata:
+  name: {{ printf "%s-env-cc" (include "oceanbase-release.name" .) }}
+  labels:
+    {{- include "oceanbase.labels" . | nindent 4 }}
+spec:
+  cfgSchemaTopLevelName: OBPortEnvParameters
+  configurationSchema:
+    cue: |-
+      {{- .Files.Get "config/oceanbase-env-constraint.cue" | nindent 6 }}
+
+  {{- if hasKey $cc "immutableParameters" }}
+  immutableParameters:
+    {{- $params := get $cc "immutableParameters" }}
+      {{- range $params }}
+      - {{ . }}
+      {{- end }}
+  {{- end }}
+
+  # mysql configuration file format
+  formatterConfig:
+    format: props-plus

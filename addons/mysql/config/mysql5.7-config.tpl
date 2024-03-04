@@ -76,23 +76,22 @@ port={{ $mysql_port }}
 
 datadir={{ $data_root }}/data
 
+{{- $log_root := printf "%s/log" $data_root }}
+log_error={{ $log_root }}/mysqld-error.log
+slow_query_log_file={{ $log_root }}/mysqld-slowquery.log
+general_log_file={{ $log_root }}/mysqld.log
+
 {{ block "logsBlock" . }}
 log_statements_unsafe_for_binlog=OFF
 log_error_verbosity=2
 log_output=FILE
-{{- $data_root := getVolumePathByName ( index $.podSpec.containers 0 ) "data" }}
 {{- if hasKey $.component "enabledLogs" }}
-{{- if mustHas "error" $.component.enabledLogs }}
-log_error={{ $data_root }}/log/mysqld-error.log
-{{- end }}
 {{- if mustHas "slow" $.component.enabledLogs }}
 slow_query_log=ON
 long_query_time=5
-slow_query_log_file={{ $data_root }}/log/mysqld-slowquery.log
 {{- end }}
 {{- if mustHas "general" $.component.enabledLogs }}
 general_log=ON
-general_log_file={{ $data_root }}/log/mysqld.log
 {{- end }}
 {{- end }}
 {{ end }}
@@ -149,9 +148,9 @@ default_tmp_storage_engine=innodb
 collation_server = utf8mb4_unicode_520_ci
 character_set_server = utf8mb4
 
-rpl-semi-sync-master-enabled = 1
-rpl_semi_sync_master_timeout = 1000
-rpl-semi-sync-slave-enabled = 1
+# rpl-semi-sync-master-enabled = 1
+# rpl_semi_sync_master_timeout = 1000
+# rpl-semi-sync-slave-enabled = 1
 
 [mysql]
 default-character-set=utf8mb4

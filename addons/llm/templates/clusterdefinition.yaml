@@ -32,8 +32,6 @@ spec:
             imagePullPolicy: {{default .Values.image.pullPolicy "IfNotPresent"}}
             securityContext:
               runAsUser: 0
-              privileged: true
-              allowPrivilegeEscalation: true
             terminationMessagePath: /dev/termination-log
             terminationMessagePolicy: File
             volumeMounts:
