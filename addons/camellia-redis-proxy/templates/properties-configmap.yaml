@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: camellia-redis-proxy-properties-config-template
+  labels:
+    {{- include "camellia-redis-proxy.labels" . | nindent 4 }}
+data:
+  camellia-redis-proxy.properties: |-
+    {{- .Files.Get "config/camellia-redis-proxy-properties-config.tpl" | nindent 4 }}

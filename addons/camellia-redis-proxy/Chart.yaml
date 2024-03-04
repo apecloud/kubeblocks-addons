@@ -1,0 +1,25 @@
+apiVersion: v2
+name: camellia-redis-proxy
+description: "camellia-redis-proxy is a high-performance redis proxy developed using Netty4."
+
+type: application
+
+version: 0.8.2
+
+appVersion: "1.2.26"
+
+home: https://github.com/netease-im/camellia
+keywords:
+  - redis
+  - redis proxy
+  - database
+  - nosql
+
+maintainers:
+  - name: ApeCloud
+    url: https://github.com/apecloud/kubeblocks/deploy
+
+annotations:
+    addon.kubeblocks.io/kubeblocks-version: ">=0.8.2"
+    addon.kubeblocks.io/model: "key-value"
+    addon.kubeblocks.io/provider: "apecloud"
