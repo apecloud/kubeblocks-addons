@@ -89,3 +89,14 @@ serviceRefs:
 {{- end}}
 {{- end}}
 }}
+
+{{/*
+Define Pulsar cluster annotation keys for nodeport feature gate.
+*/}}
+{{- define "pulsar-cluster.brokerAddrFeatureGate" -}}
+kubeblocks.io/enabled-pod-ordinal-svc: broker
+{{- if .Values.nodePortEnabled }}
+kubeblocks.io/enabled-node-port-svc: broker
+kubeblocks.io/disabled-cluster-ip-svc: broker
+{{- end }}
+{{- end }}

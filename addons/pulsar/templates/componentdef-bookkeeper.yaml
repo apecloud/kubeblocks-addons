@@ -1,0 +1,165 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: pulsar-bookkeeper
+  labels:
+      {{- include "pulsar.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: Pulsar bookkeeper.
+  serviceKind: pulsar
+  serviceVersion: {{ default .Chart.AppVersion .Values.clusterVersionOverride }}
+  serviceRefDeclarations:
+    - name: pulsarZookeeper
+      serviceRefDeclarationSpecs:
+        - serviceKind: zookeeper
+          serviceVersion: ^3.8.\d{1,2}$
+  updateStrategy: BestEffortParallel
+  monitor:
+    builtIn: false
+    exporterConfig:
+      scrapePath: /metrics
+      scrapePort: {{ .Values.metrics.service.port }}
+  configSpecs:
+    - name: agamotto-configuration
+      templateRef: {{ include "pulsar.name" . }}-agamotto-conf-tpl
+      namespace: {{ .Release.Namespace }}
+      volumeName: agamotto-configuration
+    - name: bookies-env
+      templateRef: {{ include "pulsar.name" . }}-bookies-env-tpl
+      namespace: {{ .Release.Namespace }}
+      constraintRef: pulsar-env-constraints
+      volumeName: bookies-env
+      keys:
+        - conf
+      asEnvFrom:
+        - init-bookies
+        - bookies
+  scriptSpecs:
+    - name: pulsar-scripts
+      templateRef: {{ include "pulsar.name" . }}-scripts
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  runtime:
+    initContainers:
+      - name: init-bookies
+        command:
+          - /kb-scripts/init-bookies.sh
+        env:
+        {{- if .Values.debugEnabled }}
+          - name: PULSAR_LOG_ROOT_LEVEL
+            value: DEBUG
+          - name: PULSAR_LOG_LEVEL
+            value: DEBUG
+        {{- end }}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+          - name: scripts
+            mountPath: /kb-scripts
+    containers:
+      - name: bookies
+        command:
+          - /kb-scripts/start-bookies.sh
+        env:
+        {{- if .Values.debugEnabled }}
+          - name: PULSAR_LOG_ROOT_LEVEL
+            value: DEBUG
+          - name: PULSAR_LOG_LEVEL
+            value: DEBUG
+        {{- end }}
+          - name: SERVICE_PORT
+            value: "8000"
+          - name: cluster_domain
+            value: {{ .Values.clusterDomain }}
+        lifecycle:
+          preStop:
+            exec:
+              command: [ "/kb-scripts/prestop-bookies.sh" ]
+        livenessProbe:
+          failureThreshold: 60
+          httpGet:
+            path: /api/v1/bookie/state
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          successThreshold: 1
+          timeoutSeconds: 5
+        ports:
+          - name: http
+            containerPort: 8000
+          - name: bookie
+            containerPort: 3181
+        readinessProbe:
+          failureThreshold: 60
+          httpGet:
+            path: /api/v1/bookie/is_ready
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          successThreshold: 1
+          timeoutSeconds: 5
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+        securityContext:
+          runAsUser: 0
+          runAsGroup: 10000
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+          - mountPath: /pulsar/data/bookkeeper/journal
+            name: journal
+          - mountPath: /pulsar/data/bookkeeper/ledgers
+            name: ledgers
+          - name: scripts
+            mountPath: /kb-scripts
+          - name: annotations
+            mountPath: /etc/annotations
+          - name: bookies-env
+            mountPath: /opt/pulsar/none
+          - name: pulsar-bookies-config
+            mountPath: /opt/pulsar/conf
+      - name: metrics
+        image: {{ .Values.images.metrics.registry | default .Values.image.registry }}/{{ .Values.images.metrics.repository }}:{{ .Values.images.metrics.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.metrics.pullPolicy }}
+        securityContext:
+          runAsNonRoot: false
+          runAsUser: 0
+        env:
+          - name: JOB_NAME
+            value: bookie
+          - name: SERVICE_PORT
+            value: "8000"
+          - name: POD_NAME
+            value: $(KB_POD_NAME)
+          - name: POD_NAMESPACE
+            value: $(KB_NAMESPACE)
+          {{- if .Values.debugEnabled }}
+          - name: LOG_LEVEL
+            value: debug
+          {{- else }}
+          - name: LOG_LEVEL
+            value: info
+          {{- end }}
+        command:
+          - "/bin/agamotto"
+          - "--config=/opt/agamotto/agamotto-config.yaml"
+          - "--feature-gates=-pkg.translator.prometheus.NormalizeName"
+        ports:
+          - name: http-metrics
+            containerPort: {{ .Values.metrics.service.port }}
+        volumeMounts:
+          - name: agamotto-configuration
+            mountPath: /opt/agamotto
+    volumes:
+      - name: annotations
+        downwardAPI:
+          items:
+            - path: "component-replicas"
+              fieldRef:
+                fieldPath: metadata.annotations['apps.kubeblocks.io/component-replicas']

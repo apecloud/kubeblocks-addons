@@ -39,3 +39,8 @@ PULSAR_MEM: -XX:MinRAMPercentage=30 -XX:MaxRAMPercentage=30 {{ $MaxDirectMemoryS
 {{- end }}
 zookeeperServers: {{ $zk_server }}
 configurationStoreServers: {{ $zk_server }}
+
+# Try to build Listener config when NodePort is enabled
+{{- $broker_server := "" }}
+# Todo:
+{{- end }}

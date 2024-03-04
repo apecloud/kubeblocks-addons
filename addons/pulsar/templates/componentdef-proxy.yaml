@@ -1,0 +1,169 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: pulsar-proxy
+  labels:
+      {{- include "pulsar.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: Pulsar proxy.
+  serviceKind: pulsar
+  serviceVersion: {{ default .Chart.AppVersion .Values.clusterVersionOverride }}
+  monitor:
+    builtIn: false
+    exporterConfig:
+      scrapePath: /metrics
+      scrapePort: {{ .Values.metrics.service.port }}
+  vars:
+    - name: brokerSVC
+      valueFrom:
+        serviceVarRef:
+          compDef: pulsar-broker
+          name: bootstrap
+          host:
+            option: Required
+  updateStrategy: BestEffortParallel
+  configs:
+    - name: agamotto-configuration
+      templateRef: {{ include "pulsar.name" . }}-agamotto-conf-tpl
+      namespace: {{ .Release.Namespace }}
+      volumeName: agamotto-configuration
+    - name: proxy-env
+      templateRef: {{ include "pulsar.name" . }}-proxy-env-tpl
+      namespace: {{ .Release.Namespace }}
+      volumeName: proxy-env
+      constraintRef: pulsar-env-constraints
+      keys:
+        - conf
+      asEnvFrom:
+        - proxy
+  scripts:
+    - name: pulsar-scripts
+      templateRef: {{ include "pulsar.name" . }}-scripts
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  runtime:
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 10000
+      fsGroup: 0
+      runAsGroup: 0
+    initContainers:
+      - name: check-broker
+        command:
+          - /kb-scripts/init-proxy.sh
+        volumeMounts:
+          - name: scripts
+            mountPath: /kb-scripts
+        env:
+        {{- if .Values.debugEnabled }}
+          - name: PULSAR_LOG_ROOT_LEVEL
+            value: DEBUG
+          - name: PULSAR_LOG_LEVEL
+            value: DEBUG
+        {{- end }}
+    containers:
+      - name: proxy
+        command:
+          - /kb-scripts/start-proxy.sh
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 10000
+          capabilities:
+            drop:
+              - ALL
+          privileged: false
+          runAsGroup: 0
+        env:
+        {{- if .Values.debugEnabled }}
+          - name: PULSAR_LOG_ROOT_LEVEL
+            value: DEBUG
+          - name: PULSAR_LOG_LEVEL
+            value: DEBUG
+        {{- end }}
+          - name: SERVICE_PORT
+            value: "8080"
+          - name: brokerWebServiceURL
+            value: http://$(brokerSVC):80
+          - name: brokerServiceURL
+            value: pulsar://$(brokerSVC):6650
+          - name: clusterName
+            value: $(KB_NAMESPACE)-$(KB_CLUSTER_COMP_NAME)
+          - name: webServicePort
+            value: "8080"
+        ports:
+          - name: pulsar
+            containerPort: 6650
+          - name: http
+            containerPort: 8080
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /status.html
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 100
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /status.html
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 100
+        startupProbe:
+          failureThreshold: 20
+          httpGet:
+            path: /status.html
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 100
+        volumeMounts:
+          - name: scripts
+            mountPath: /kb-scripts
+          - name: proxy-env
+            mountPath: /opt/pulsar/none
+          - name: pulsar-proxy-config
+            mountPath: /opt/pulsar/conf
+      - name: metrics
+        image: {{ .Values.images.metrics.registry | default .Values.image.registry }}/{{ .Values.images.metrics.repository }}:{{ .Values.images.metrics.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.metrics.pullPolicy }}
+        securityContext:
+          runAsNonRoot: false
+          runAsUser: 0
+        env:
+          - name: JOB_NAME
+            value: proxy
+          - name: SERVICE_PORT
+            value: "8080"
+          - name: POD_NAME
+            value: $(KB_POD_NAME)
+          - name: POD_NAMESPACE
+            value: $(KB_NAMESPACE)
+          {{- if .Values.debugEnabled }}
+          - name: LOG_LEVEL
+            value: debug
+          {{- else }}
+          - name: LOG_LEVEL
+            value: info
+          {{- end }}
+        command:
+          - "/bin/agamotto"
+          - "--config=/opt/agamotto/agamotto-config.yaml"
+          - "--feature-gates=-pkg.translator.prometheus.NormalizeName"
+        ports:
+          - name: http-metrics
+            containerPort: {{ .Values.metrics.service.port }}
+        volumeMounts:
+          - name: agamotto-configuration
+            mountPath: /opt/agamotto
