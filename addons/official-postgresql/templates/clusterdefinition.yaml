@@ -61,6 +61,7 @@ spec:
                 mountPath: /dev/shm
               - name: data
                 mountPath: /var/lib/postgresql/data
+                subPath: data
               - name: postgresql-config
                 mountPath: /var/lib/postgresql/conf
               - name: scripts
@@ -86,7 +87,7 @@ spec:
                     apiVersion: v1
                     fieldPath: metadata.namespace
               - name: PGDATA
-                value: /var/lib/postgresql/data
+                value: /var/lib/postgresql/data/data
               - name: POSTGRES_USER
                 valueFrom:
                   secretKeyRef:
