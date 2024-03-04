@@ -17,10 +17,7 @@ staticParameters:
   - buffer_max_failover_duration
   - buffer_min_time_between_failovers
   - mysql_auth_server_impl
-  - mysql_server_require_secure_transport
   - mysql_auth_server_static_file
-  - mysql_server_ssl_key
-  - mysql_server_ssl_cert
   - enable_logs
   - enable_query_log
 
@@ -36,3 +33,4 @@ dynamicParameters:
   - mysql_server_ssl_cert
   - mysql_server_ssl_ca
   - mysql_server_require_secure_transport
+  - enable_interception_for_dml_without_where
