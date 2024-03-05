@@ -1,5 +1,6 @@
 {{- $mongodb_port_info := getPortByName ( index $.podSpec.containers 0 ) "mongodb" }}
 {{- $metrics_port_info := getPortByName ( index $.podSpec.containers 1 ) "http-metrics" }}
+{{- $telemetry_port_info := getPortByName ( index $.podSpec.containers 1 ) "http-telemetry" }}
 
 # require port
 {{- $mongodb_port := 27017 }}
@@ -11,6 +12,12 @@
 {{- $metrics_port := 9216 }}
 {{- if $metrics_port_info }}
 {{- $metrics_port = $metrics_port_info.containerPort }}
+{{- end }}
+
+# require port
+{{- $telemetry_port := 8888 }}
+{{- if $telemetry_port_info }}
+{{- $telemetry_port = $telemetry_port_info.containerPort }}
 {{- end }}
 
 receivers:
@@ -47,6 +54,8 @@ service:
   telemetry:
     logs:
       level: info
+    metrics:
+      address: 0.0.0.0:{{ $telemetry_port }}
   pipelines:
     metrics:
       receivers: [apecloudmongodb]
