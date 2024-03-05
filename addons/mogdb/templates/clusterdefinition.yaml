@@ -28,9 +28,9 @@ spec:
             - image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
               command:
                 - |
-                  original_role=$(su -l omm -c "gsql -h 127.0.0.1 -p 26000  -U ${KB_RSM_USERNAME} -W ${KB_RSM_PASSWORD} -dpostgres -t -c 'select local_role from pg_stat_get_wal_senders() limit 1'")
+                  original_role=$(su -l omm -c "gsql -h 127.0.0.1 -p 26000  -U ${KB_RSM_USERNAME} -W \"${KB_RSM_PASSWORD}\" -dpostgres -t -c 'select local_role from pg_stat_get_wal_senders() limit 1'")
                   if [ -z "$original_role" ]; then
-                    original_role=$(su -l omm -c "gsql -h 127.0.0.1 -p 26000  -U ${KB_RSM_USERNAME} -W ${KB_RSM_PASSWORD} -dpostgres -t -c 'select local_role from pg_stat_get_wal_receiver() limit 1'")
+                    original_role=$(su -l omm -c "gsql -h 127.0.0.1 -p 26000  -U ${KB_RSM_USERNAME} -W \"${KB_RSM_PASSWORD}\" -dpostgres -t -c 'select local_role from pg_stat_get_wal_receiver() limit 1'")
                   fi
                 
                   role=$(echo ${original_role} | tr 'A-Z' 'a-z')

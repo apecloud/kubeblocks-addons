@@ -286,10 +286,10 @@ docker_setup_env() {
 
 # append GS_HOST_AUTH_METHOD to pg_hba.conf for "host" connections
 mogdb_setup_hba_conf() {
-#  if [ -e /tmp/pg_hba.conf ]; then
-#    cat /tmp/pg_hba.conf >"$PGDATA/pg_hba.conf"
-#    echo "Successfully replaced $PGDATA/pg_hba.conf with /tmp/pg_hba.conf."
-#  fi
+ if [ -e /tmp/pg_hba.conf ]; then
+   cat /tmp/pg_hba.conf >"$PGDATA/pg_hba.conf"
+   echo "Successfully replaced $PGDATA/pg_hba.conf with /tmp/pg_hba.conf."
+ fi
 
   {
     echo
@@ -298,6 +298,7 @@ mogdb_setup_hba_conf() {
     fi
     echo "host all all 0.0.0.0/0 $GS_HOST_AUTH_METHOD"
     echo "host replication $GS_USER 0.0.0.0/0 md5"
+    echo "host replication $GS_USERNAME 0.0.0.0/0 md5"
     if [ -n "$SERVER_MODE" ]; then
       echo "host replication repuser $OG_SUBNET trust"
     fi
