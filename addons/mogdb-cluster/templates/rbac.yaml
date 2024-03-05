@@ -1,1 +1,15 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kubeblocks-switchover-pod-role
+  labels:
+    app.kubernetes.io/instance: kubeblocks
+    app.kubernetes.io/name: kubeblocks
+    app.kubernetes.io/required-by: pod
+rules:
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+---
 {{- include "kblib.rbac" . }}
