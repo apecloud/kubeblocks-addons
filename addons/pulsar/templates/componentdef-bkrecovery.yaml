@@ -20,7 +20,7 @@ spec:
     exporterConfig:
       scrapePath: /metrics
       scrapePort: {{ .Values.metrics.service.port }}
-  configSpecs:
+  configs:
     - name: agamotto-configuration
       templateRef: {{ include "pulsar.name" . }}-agamotto-conf-tpl
       namespace: {{ .Release.Namespace }}
@@ -35,7 +35,7 @@ spec:
         - bookies-recovery
         - check-bookies
       volumeName: recovery-config-env
-  scriptSpecs:
+  scripts:
     - name: pulsar-scripts
       templateRef: {{ include "pulsar.name" . }}-scripts
       namespace: {{ .Release.Namespace }}
@@ -49,6 +49,8 @@ spec:
       runAsGroup: 0
     initContainers:
       - name: check-bookies
+        image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v3_0_2.bookie "root" .) }}"
+        imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v3_0_2.bookie "root" .) }}"
         command:
           - /kb-scripts/check-bookies.sh
         env:
@@ -76,6 +78,8 @@ spec:
               - ALL
           privileged: false
           runAsGroup: 0
+        image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v3_0_2.bookie "root" .) }}"
+        imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v3_0_2.bookie "root" .) }}"
         command:
           - /kb-scripts/start-bookies-recovery.sh
         env:

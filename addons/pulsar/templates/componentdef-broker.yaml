@@ -15,8 +15,7 @@ spec:
       scrapePath: /metrics
       scrapePort: {{ .Values.metrics.service.port }}
   vars:
-      ## if the pulsar NodePort type Service with name suffix broker-{0,1...} is set, the BROKER_NODE_PORT_{0,1...} will be available
-    - name: BROKER_NODE_PORT
+    - name: NODE_PORT_PULSAR
       valueFrom:
         serviceVarRef:
           compDef: pulsar-broker
@@ -24,26 +23,19 @@ spec:
           generatePodOrdinalServiceVar: true
           optional: true
           nodePort:
-            name: broker
+            name: pulsar
+            option: Optional
+    - name: NODE_PORT_KAFKA
+      valueFrom:
+        serviceVarRef:
+          compDef: pulsar-broker
+          name: broker-nodeport
+          generatePodOrdinalServiceVar: true
+          optional: true
+          nodePort:
+            name: kafka-client
             option: Optional
   services:
-    - name: bootstrap
-      serviceName: bootstrap
-      spec:
-        type: ClusterIP
-        ports:
-          - name: pulsar
-            port: 6650
-            targetPort: pulsar
-          - name: http
-            port: 80
-            targetPort: http
-          - name: http-alt
-            port: 8080
-            targetPort: http
-          - name: kafka-client
-            port: 9092
-            targetPort: kafka-client
     - name: broker
       serviceName: broker
       generatePodOrdinalService: true
@@ -53,12 +45,6 @@ spec:
           - name: pulsar
             port: 6650
             targetPort: pulsar
-          - name: http
-            port: 80
-            targetPort: http
-          - name: http-alt
-            port: 8080
-            targetPort: http
           - name: kafka-client
             port: 9092
             targetPort: kafka-client
@@ -71,12 +57,6 @@ spec:
           - name: pulsar
             port: 6650
             targetPort: pulsar
-          - name: http
-            port: 80
-            targetPort: http
-          - name: http-alt
-            port: 8080
-            targetPort: http
           - name: kafka-client
             port: 9092
             targetPort: kafka-client
@@ -102,6 +82,11 @@ spec:
         - broker
         - init-pulsar-client-config
       volumeName: broker-env
+    - name: broker-config
+      templateRef: {{ include "pulsar.name" . }}3-broker-config-tpl
+      namespace: {{ .Release.Namespace }}
+      constraintRef: pulsar3-brokers-cc
+      volumeName: pulsar-config
   scripts:
     - name: pulsar-scripts
       templateRef: {{ include "pulsar.name" . }}-scripts
@@ -116,6 +101,8 @@ spec:
       runAsGroup: 0
     initContainers:
       - name: init-broker-cluster
+        image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v3_0_2.broker "root" .) }}"
+        imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v3_0_2.broker "root" .) }}"
         command:
           - /kb-scripts/init-broker.sh
         env:
@@ -126,15 +113,17 @@ spec:
             value: DEBUG
             {{- end }}
           - name: brokerServiceUrl
-            value: pulsar://$(KB_CLUSTER_COMP_NAME).$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}:6650
+            value: pulsar://$(KB_CLUSTER_NAME)-broker-bootstrap.$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}:6650
           - name: clusterName
             value: $(KB_NAMESPACE)-$(KB_CLUSTER_COMP_NAME)
           - name: webServiceUrl
-            value: http://$(KB_CLUSTER_COMP_NAME).$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}:80
+            value: http://$(KB_CLUSTER_NAME)-broker-bootstrap.$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}:80
         volumeMounts:
           - name: scripts
             mountPath: /kb-scripts
       - name: init-sysctl
+        image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v3_0_2.broker "root" .) }}"
+        imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v3_0_2.broker "root" .) }}"
         command:
           - /kb-scripts/init-broker-sysctl.sh
         securityContext:
@@ -155,17 +144,10 @@ spec:
               - ALL
           privileged: false
           runAsGroup: 0
+        image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v3_0_2.broker "root" .) }}"
+        imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v3_0_2.broker "root" .) }}"
         command:
-          - sh
-          - -c
-        args:
-          - |
-            set -x
-            /kb-scripts/merge_pulsar_config.py conf/client.conf /opt/pulsar/conf/client.conf && \
-            /kb-scripts/merge_pulsar_config.py conf/broker.conf /opt/pulsar/conf/broker.conf && \
-            bin/apply-config-from-env.py conf/broker.conf && \
-            bin/apply-config-from-env.py conf/client.conf && \
-            echo 'OK' > status;exec bin/pulsar broker
+          - /kb-scripts/start-broker.sh
         resources:
           requests:
             cpu: 200m
@@ -182,9 +164,9 @@ spec:
           - name: SERVICE_PORT
             value: "8080"
           - name: brokerServiceUrl
-            value: pulsar://$(KB_CLUSTER_COMP_NAME).$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}:6650
+            value: pulsar://$(KB_CLUSTER_NAME)-broker-bootstrap.$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}:6650
           - name: webServiceUrl
-            value: http://$(KB_CLUSTER_COMP_NAME).$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}:80
+            value: http://$(KB_CLUSTER_NAME)-broker-bootstrap.$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}:80
           - name: POD_NAME
             value: $(KB_POD_NAME)
           - name: PULSAR_PREFIX_internalListenerName
@@ -196,7 +178,7 @@ spec:
           - name: PULSAR_PREFIX_allowAutoTopicCreationType
             value: partitioned
           - name: PULSAR_PREFIX_kafkaProtocolMap
-            value: "client:PLAINTEXT"
+            value: "PLAINTEXT:PLAINTEXT,CLIENT:PLAINTEXT"
           - name: PULSAR_PREFIX_kafkaListeners
             value: PLAINTEXT://0.0.0.0:9092
           - name: PULSAR_PREFIX_kafkaAdvertisedListeners

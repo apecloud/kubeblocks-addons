@@ -73,7 +73,7 @@ Pulsar broker FQDN
 Pulsar ZooKeeper service ref
 */}}
 {{- define "pulsar-zookeeper-ref"}}
-{{- if .Values.serviceReference.enable }}
+{{- if .Values.serviceReference.enabled }}
 serviceRefs:
 - name: pulsarZookeeper
   namespace: {{ .Values.serviceReference.zookeeper.namespace | default .Release.Namespace }}

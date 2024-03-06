@@ -15,7 +15,7 @@ spec:
     exporterConfig:
       scrapePath: /metrics
       scrapePort: {{ .Values.metrics.service.port }}
-  configSpecs:
+  configs:
     - name: agamotto-configuration
       templateRef: {{ include "pulsar.name" . }}-agamotto-conf-tpl
       namespace: {{ .Release.Namespace }}
@@ -29,7 +29,7 @@ spec:
         - conf
       asEnvFrom:
         - zookeeper
-  scriptSpecs:
+  scripts:
     - name: pulsar-scripts
       templateRef: {{ include "pulsar.name" . }}-scripts
       namespace: {{ .Release.Namespace }}
@@ -43,6 +43,8 @@ spec:
       runAsUser: 10000
     containers:
       - name: zookeeper
+        image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v3_0_2.zookeeper "root" .) }}"
+        imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v3_0_2.zookeeper "root" .) }}"
         command:
           - /kb-scripts/start-zookeeper.sh
         env:

@@ -270,14 +270,14 @@ spec:
           namespace: {{ .Release.Namespace }}
           volumeName: scripts
           defaultMode: 0555
-      service:
-        ports:
-        - name: pulsar
-          port: 6650
-          targetPort: pulsar
-        - name: http
-          port: 80
-          targetPort: http
+{{/*      service:*/}}
+{{/*        ports:*/}}
+{{/*        - name: pulsar*/}}
+{{/*          port: 6650*/}}
+{{/*          targetPort: pulsar*/}}
+{{/*        - name: http*/}}
+{{/*          port: 80*/}}
+{{/*          targetPort: http*/}}
       podSpec:
         securityContext:
           runAsNonRoot: true
