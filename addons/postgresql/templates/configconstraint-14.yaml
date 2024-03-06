@@ -12,6 +12,8 @@ spec:
       scriptConfigMapRef: patroni-reload-script
       namespace: {{ .Release.Namespace }}
 
+  dynamicActionCanBeMerged: false
+
   # update patroni master
   selector:
     matchLabels:
