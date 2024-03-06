@@ -17,25 +17,25 @@ spec:
       workloadType: Stateful
       rsmSpec:
         roles:
-          - name: primary
+          - name: Primary
             accessMode: ReadWrite
             isLeader: true
-          - name: standby
+          - name: Standby
             accessMode: Readonly
             isLeader: false
         roleProbe:
           customHandler:
             - image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
               command:
+                - /bin/bash
+                - -c
                 - |
-                  original_role=$(su -l omm -c "gsql -h 127.0.0.1 -p 26000  -U ${KB_RSM_USERNAME} -W \"${KB_RSM_PASSWORD}\" -dpostgres -t -c 'select local_role from pg_stat_get_wal_senders() limit 1'")
-                  if [ -z "$original_role" ]; then
-                    original_role=$(su -l omm -c "gsql -h 127.0.0.1 -p 26000  -U ${KB_RSM_USERNAME} -W \"${KB_RSM_PASSWORD}\" -dpostgres -t -c 'select local_role from pg_stat_get_wal_receiver() limit 1'")
+                  role=$(gsql -h 127.0.0.1 -p 26000  -U ${MOGDB_USER} -W "${MOGDB_PASSWORD}" -dpostgres -t -c "select local_role from pg_stat_get_stream_replications() limit 1" | xargs echo -n)
+                  if [ "$role"x == "Normal"x ]; then
+                    echo -n "Primary"
+                  else
+                    echo -n $role
                   fi
-                
-                  role=$(echo ${original_role} | tr 'A-Z' 'a-z')
-                  echo -n "$role"
-
       characterType: mogdb
       configSpecs:
         - name: mogdb-configuration
@@ -98,47 +98,47 @@ spec:
                 set -ex
                 MogDB_Role=
                 REPL_CONN_INFO=
-  
+
                 cat >>/home/omm/.profile <<-EOF
                 export OG_SUBNET="0.0.0.0/0"
                 export PGHOST="/var/lib/mogdb/tmp"
                 export PGPORT="$PGPORT"
                 EOF
                 [[ -d "$PGHOST" ]] || (mkdir -p $PGHOST && chown omm $PGHOST)
-  
+
                 hostname=`hostname`
                 [[ "$hostname" =~ -([0-9]+)$ ]] || exit 1
-                ordinal=${BASH_REMATCH[1]}                
+                ordinal=${BASH_REMATCH[1]}
                 if [[ $ordinal -eq 0 ]];then
                   MogDB_Role="primary"
                 else
                   MogDB_Role="standby"
-                  
+
                   if [ -n "$PGPORT" ];then
                     ha_port=$(expr $PGPORT + 1)
                     ha_service_port=$(expr $PGPORT + 2)
                   else
                     ha_port=$(expr 5432 + 1)
-                    ha_service_port=$(expr 5432 + 2)                    
+                    ha_service_port=$(expr 5432 + 2)
                   fi
-                  
+
                   cat >/tmp/replconninfo.conf
                   for ((i=0; i<$ordinal; i++)); do
                     echo "$hostname $PodIP" |ncat --send-only ${KB_CLUSTER_COMP_NAME}-${i}.${KB_CLUSTER_COMP_NAME}-headless 6543
                     remote_ip=`ping ${KB_CLUSTER_COMP_NAME}-${i}.${KB_CLUSTER_COMP_NAME}-headless -c 1 | sed '1{s/[^(]*(//;s/).*//;q}'`
-                
+
                     echo "replconninfo$((i+1)) = 'localhost=$PodIP localport=${ha_port} localservice=${ha_service_port} remotehost=$remote_ip remoteport=${ha_port} remoteservice=${ha_service_port}'" >> /tmp/replconninfo.conf
                   done
-                
+
                   #echo "$hostname $PodIP" |ncat --send-only ${KB_CLUSTER_COMP_NAME}-0.${KB_CLUSTER_COMP_NAME}-headless 6543
                   #remote_ip=`ping ${KB_CLUSTER_COMP_NAME}-0.${KB_CLUSTER_COMP_NAME}-headless -c 1 | sed '1{s/[^(]*(//;s/).*//;q}'`
-              
+
                   # REPL_CONN_INFO="replconninfo${ordinal} = 'localhost=$PodIP localport=${ha_port} localservice=${ha_service_port} remotehost=$remote_ip remoteport=${ha_port} remoteservice=${ha_service_port}'"
                 fi
-  
+
                 [[ -n "$REPL_CONN_INFO" ]] && export REPL_CONN_INFO
                 source /home/omm/.profile
-           
+
                 cp /home/omm/conf/* /tmp/
                 chmod 777 /tmp/postgresql.conf /tmp/pg_hba.conf
                 exec bash /kb-scripts/setup.sh -M "$MogDB_Role"
@@ -177,6 +177,18 @@ spec:
                   fieldRef:
                     apiVersion: v1
                     fieldPath: status.podIP
+              - name: MOGDB_USER
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: username
+                    optional: false
+              - name: MOGDB_PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: password
+                    optional: false
             volumeMounts:
               - name: data
                 mountPath: /var/lib/mogdb
