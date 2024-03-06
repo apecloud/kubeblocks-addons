@@ -65,9 +65,9 @@ spec:
           - sh
           - -c
           - |
-            wget https://github.com/medcl/elasticsearch-analysis-ik/releases/download/v8.8.2/elasticsearch-analysis-ik-8.8.2.zip
+            wget https://github.com/medcl/elasticsearch-analysis-ik/releases/download/v{{ .Chart.AppVersion }}/elasticsearch-analysis-ik-{{ .Chart.AppVersion }}.zip
             mkdir -p /opt/bitnami/elasticsearch/plugins/ik
-            unzip elasticsearch-analysis-ik-8.8.2.zip -d /opt/bitnami/elasticsearch/plugins/ik
+            unzip elasticsearch-analysis-ik-{{ .Chart.AppVersion }}.zip -d /opt/bitnami/elasticsearch/plugins/ik
           securityContext:
             runAsUser: 0
             privileged: true
@@ -293,9 +293,9 @@ spec:
           - sh
           - -c
           - |
-            wget https://github.com/medcl/elasticsearch-analysis-ik/releases/download/v8.8.2/elasticsearch-analysis-ik-8.8.2.zip
+            wget https://github.com/medcl/elasticsearch-analysis-ik/releases/download/v{{ $.Chart.AppVersion }}/elasticsearch-analysis-ik-{{ $.Chart.AppVersion }}.zip
             mkdir -p /opt/bitnami/elasticsearch/plugins/ik
-            unzip elasticsearch-analysis-ik-8.8.2.zip -d /opt/bitnami/elasticsearch/plugins/ik
+            unzip elasticsearch-analysis-ik-{{ $.Chart.AppVersion }}.zip -d /opt/bitnami/elasticsearch/plugins/ik
           securityContext:
             runAsUser: 0
             privileged: true
