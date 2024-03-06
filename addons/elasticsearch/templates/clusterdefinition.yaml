@@ -59,7 +59,22 @@ spec:
           securityContext:
             runAsUser: 0
             privileged: true
-        - name: install-plugins
+        - name: download-install-plugins
+          imagePullPolicy: IfNotPresent
+          command:
+          - sh
+          - -c
+          - |
+            wget https://github.com/medcl/elasticsearch-analysis-ik/releases/download/v8.8.2/elasticsearch-analysis-ik-8.8.2.zip
+            mkdir -p /opt/bitnami/elasticsearch/plugins/ik
+            unzip elasticsearch-analysis-ik-8.8.2.zip -d /opt/bitnami/elasticsearch/plugins/ik
+          securityContext:
+            runAsUser: 0
+            privileged: true
+          volumeMounts:
+          - mountPath: /opt/bitnami/elasticsearch/plugins
+            name: plugins
+        - name: native-install-plugins
           imagePullPolicy: IfNotPresent
           command:
           - sh
@@ -272,7 +287,22 @@ spec:
           securityContext:
             runAsUser: 0
             privileged: true
-        - name: install-plugins
+        - name: download-install-plugins
+          imagePullPolicy: IfNotPresent
+          command:
+          - sh
+          - -c
+          - |
+            wget https://github.com/medcl/elasticsearch-analysis-ik/releases/download/v8.8.2/elasticsearch-analysis-ik-8.8.2.zip
+            mkdir -p /opt/bitnami/elasticsearch/plugins/ik
+            unzip elasticsearch-analysis-ik-8.8.2.zip -d /opt/bitnami/elasticsearch/plugins/ik
+          securityContext:
+            runAsUser: 0
+            privileged: true
+          volumeMounts:
+          - mountPath: /opt/bitnami/elasticsearch/plugins
+            name: plugins
+        - name: native-install-plugins
           imagePullPolicy: IfNotPresent
           command:
           - sh
