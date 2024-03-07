@@ -19,7 +19,7 @@ spec:
       valueFrom:
         serviceVarRef:
           compDef: pulsar-broker
-          name: broker-nodeport
+          name: nodeport
           generatePodOrdinalServiceVar: true
           optional: true
           nodePort:
@@ -29,15 +29,15 @@ spec:
       valueFrom:
         serviceVarRef:
           compDef: pulsar-broker
-          name: broker-nodeport
+          name: nodeport
           generatePodOrdinalServiceVar: true
           optional: true
           nodePort:
             name: kafka-client
             option: Optional
   services:
-    - name: broker
-      serviceName: broker
+    - name: broker-clusterip
+      serviceName: clusterip
       generatePodOrdinalService: true
       spec:
         type: ClusterIP
@@ -49,7 +49,7 @@ spec:
             port: 9092
             targetPort: kafka-client
     - name: broker-nodeport
-      serviceName: broker-nodeport
+      serviceName: nodeport
       generatePodOrdinalService: true
       spec:
         type: NodePort
@@ -178,11 +178,11 @@ spec:
           - name: PULSAR_PREFIX_allowAutoTopicCreationType
             value: partitioned
           - name: PULSAR_PREFIX_kafkaProtocolMap
-            value: "PLAINTEXT:PLAINTEXT,CLIENT:PLAINTEXT"
+            value: "CLIENT:PLAINTEXT"
           - name: PULSAR_PREFIX_kafkaListeners
-            value: PLAINTEXT://0.0.0.0:9092
+            value: CLIENT://0.0.0.0:9092
           - name: PULSAR_PREFIX_kafkaAdvertisedListeners
-            value: PLAINTEXT://$(POD_NAME).$(KB_CLUSTER_COMP_NAME)-headless.$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}:9092
+            value: CLIENT://$(POD_NAME).$(KB_CLUSTER_COMP_NAME)-headless.$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}:9092
         ports:
           - name: pulsar
             containerPort: 6650

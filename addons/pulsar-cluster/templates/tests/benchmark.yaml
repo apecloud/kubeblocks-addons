@@ -93,7 +93,7 @@ spec:
         - workloads/1-topic-16-partitions-1kb.yaml
       env:
         - name: BOOTSTRAP_SERVERS
-          value: "{{ include "pulsar-cluster.brokerFQDN" . }}:9092" 
+          value: "{{ include "pulsar-cluster.brokerFQDN" . }}:9092"
       volumeMounts:
         - name: out
           mountPath: /out

@@ -34,6 +34,7 @@ spec:
         - conf
       asEnvFrom:
         - proxy
+        - check-broker
     - name: proxy-config
       templateRef: {{ include "pulsar.name" . }}3-proxy-config-tpl
       namespace: {{ .Release.Namespace }}
@@ -60,6 +61,8 @@ spec:
         volumeMounts:
           - name: scripts
             mountPath: /kb-scripts
+          - name: proxy-env
+            mountPath: /opt/pulsar/none
         env:
         {{- if .Values.debugEnabled }}
           - name: PULSAR_LOG_ROOT_LEVEL

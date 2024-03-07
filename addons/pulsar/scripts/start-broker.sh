@@ -20,7 +20,7 @@ if [[ "true" == "$KB_PULSAR_BROKER_NODEPORT" ]]; then
   nodeport_kafka_domain=$(make_nodeport_domain "NODE_PORT_KAFKA_${pod_ordinal}")
   export PULSAR_PREFIX_advertisedListeners="cluster:pulsar://${nodeport_pulsar_domain}"
   echo "[cfg]set PULSAR_PREFIX_advertisedListeners=${PULSAR_PREFIX_advertisedListeners}"
-  export PULSAR_PREFIX_kafkaAdvertisedListeners="${PULSAR_PREFIX_kafkaAdvertisedListeners},CLIENT://${nodeport_kafka_domain}"
+  export PULSAR_PREFIX_kafkaAdvertisedListeners="CLIENT://${nodeport_kafka_domain}"
   echo "[cfg]set PULSAR_PREFIX_kafkaAdvertisedListeners=${PULSAR_PREFIX_kafkaAdvertisedListeners}"
 fi
 

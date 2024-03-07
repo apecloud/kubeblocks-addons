@@ -16,7 +16,11 @@ spec:
       serviceName: bootstrap
       componentSelector: broker
       spec:
+        {{- if .Values.nodePortEnabled }}
+        type: NodePort
+        {{- else }}
         type: ClusterIP
+        {{- end }}
         ports:
           - name: kafka-client
             targetPort: 9092
