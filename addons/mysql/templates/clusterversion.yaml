@@ -31,7 +31,7 @@ spec:
           - bash
           - -c
           - |
-            mv /var/lib/mysql/plugin/audit_log.so usr/lib64/mysql/plugin/;
+            mv /var/lib/mysql/plugin/audit_log.so /usr/lib64/mysql/plugin/
             rm -rf  /var/lib/mysql/plugin
             chown -R mysql:root /var/lib/mysql
             /scripts/docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) \
@@ -68,7 +68,7 @@ spec:
           - bash 
           - -c
           - |
-            mv /var/lib/mysql/plugin/audit_log.so usr/lib64/mysql/plugin/;
+            mv /var/lib/mysql/plugin/audit_log.so /usr/lib64/mysql/plugin/
             rm -rf  /var/lib/mysql/plugin
             chown -R mysql:root /var/lib/mysql
             docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) \

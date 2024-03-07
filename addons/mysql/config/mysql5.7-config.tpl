@@ -133,7 +133,7 @@ loose_audit_log_file={{ $data_root }}/auditlog/audit.log
 loose_audit_log_buffer_size=1Mb
 loose_audit_log_policy=ALL # ALL, LOGINS, QUERIES, NONE
 loose_audit_log_strategy=ASYNCHRONOUS
-loose_audit_log_rotate_on_size=10000000
+loose_audit_log_rotate_on_size=10485760
 loose_audit_log_rotations=5
 
 # replay log
