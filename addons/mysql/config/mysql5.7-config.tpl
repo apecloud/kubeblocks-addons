@@ -127,6 +127,15 @@ max_binlog_size=134217728
 # binlog_transaction_dependency_tracking=WRITESET    #Default Commit Order, Aws not set
 log_slave_updates=ON
 
+# audit log
+loose_audit_log_handler=FILE # FILE, SYSLOG
+loose_audit_log_file={{ $data_root }}/auditlog/audit.log
+loose_audit_log_buffer_size=1Mb
+loose_audit_log_policy=ALL # ALL, LOGINS, QUERIES, NONE
+loose_audit_log_strategy=ASYNCHRONOUS
+loose_audit_log_rotate_on_size=10000000
+loose_audit_log_rotations=5
+
 # replay log
 # relay_log_info_repository=TABLE
 # From mysql8.0.23 is deprecated.
