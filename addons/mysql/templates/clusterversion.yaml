@@ -31,9 +31,9 @@ spec:
           - bash
           - -c
           - |
-            mv /var/lib/mysql/plugin/audit_log.so /usr/lib64/mysql/plugin/
-            rm -rf  /var/lib/mysql/plugin
-            chown -R mysql:root /var/lib/mysql
+            mv {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
+            rm -rf {{ .Values.dataMountPath }}/plugin
+            chown -R mysql:root {{ .Values.dataMountPath }}
             /scripts/docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) \
             --ignore-db-dir=lost+found \
             --plugin-load-add=rpl_semi_sync_master=semisync_master.so \
@@ -68,9 +68,9 @@ spec:
           - bash 
           - -c
           - |
-            mv /var/lib/mysql/plugin/audit_log.so /usr/lib64/mysql/plugin/
-            rm -rf  /var/lib/mysql/plugin
-            chown -R mysql:root /var/lib/mysql
+            mv {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
+            rm -rf {{ .Values.dataMountPath }}/plugin
+            chown -R mysql:root {{ .Values.dataMountPath }}
             docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) \
             --plugin-load-add=rpl_semi_sync_source=semisync_source.so \
             --plugin-load-add=rpl_semi_sync_replica=semisync_replica.so \
