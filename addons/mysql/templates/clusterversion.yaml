@@ -30,7 +30,7 @@ spec:
         command:
           - bash
           - -c
-          - "/scripts/docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) --ignore-db-dir=lost+found --plugin-load-add=rpl_semi_sync_master=semisync_master.so --plugin-load-add=rpl_semi_sync_slave=semisync_slave.so"
+          - {{ printf "%s %s" (include "mysql.command" .) "--ignore-db-dir=lost+found" }}
     systemAccountSpec:
       cmdExecutorConfig:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
@@ -59,7 +59,7 @@ spec:
         command:
           - bash 
           - -c
-          - "docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) --plugin-load-add=rpl_semi_sync_source=semisync_source.so --plugin-load-add=rpl_semi_sync_replica=semisync_replica.so"
+          - {{ include "mysql.command" . }}
     systemAccountSpec:
       cmdExecutorConfig:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33

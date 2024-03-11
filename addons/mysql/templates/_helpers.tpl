@@ -153,3 +153,10 @@ service:
     metrics:
       receivers: [ apecloudmysql, prometheus ]
 {{- end }}
+
+{{/*
+mysql container command
+*/}}
+{{- define "mysql.command" -}}
+{{- printf "/scripts/docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) --plugin-load-add=rpl_semi_sync_master=semisync_master.so --plugin-load-add=rpl_semi_sync_slave=semisync_slave.so --log-bin=%s/binlog/$(KB_POD_NAME)-bin" .Values.dataMountPath }}
+{{- end }}
