@@ -5,6 +5,18 @@ metadata:
   labels:
     clusterdefinition.kubeblocks.io/name: postgresql
     {{- include "postgresql.labels" . | nindent 4 }}
+  annotations:
+    dataprotection.kubeblocks.io/reconfigure-ref: |
+      {
+        "name": "postgresql-configuration",
+        "key": "postgresql.conf",
+        "enable": {
+          "archive-wal": [{"key": "archive_command","value": "''"}]
+        },
+        "disable": {
+          "archive-wal": [{ "key": "archive_command","value": "'/bin/true'"}]
+        }
+      }
 spec:
   clusterDefinitionRef: postgresql
   backupPolicies:
@@ -51,6 +63,15 @@ spec:
         volumeMounts:
           - name: data
             mountPath: {{ .Values.dataMountPath }}
+    - name: archive-wal
+      target:
+        role: primary
+      actionSetName: postgresql-pitr
+      snapshotVolumes: false
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
     schedules: &backupschedules
     - backupMethod: pg-basebackup
       enabled: false
@@ -64,6 +85,10 @@ spec:
       enabled: false
       cronExpression: "0 18 * * *"
       retentionPeriod: 7d
+    - backupMethod: archive-wal
+      enabled: false
+      cronExpression: "*/5 * * * *"
+      retentionPeriod: 8d
   - componentDefs: [postgresql-14, postgresql-12]
     target:
       role: secondary
@@ -103,6 +128,15 @@ spec:
         target:
           role: secondary
         actionSetName: postgres-wal-g
+        snapshotVolumes: false
+        targetVolumes:
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
+      - name: archive-wal
+        target:
+          role: primary
+        actionSetName: postgresql-pitr
         snapshotVolumes: false
         targetVolumes:
           volumeMounts:
