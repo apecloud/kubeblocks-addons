@@ -85,5 +85,5 @@ roles:
      role: "master"
 
 plugins:
-- name: analysis-ik
-  url: https://github.com/medcl/elasticsearch-analysis-ik/releases/download/v8.8.2/elasticsearch-analysis-ik-8.8.2.zip
+#- name: analysis-ik
+#  url: https://github.com/medcl/elasticsearch-analysis-ik/releases/download/v8.8.2/elasticsearch-analysis-ik-8.8.2.zip
