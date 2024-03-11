@@ -32,10 +32,10 @@ PULSAR_MEM: -XX:MinRAMPercentage=30 -XX:MaxRAMPercentage=30 {{ $MaxDirectMemoryS
   {{- if and (index $pulsar_zk_from_service_ref.spec "endpoint") (index $pulsar_zk_from_service_ref.spec "port") }}
      {{- $zk_server = printf "%s:%s" $pulsar_zk_from_service_ref.spec.endpoint.value $pulsar_zk_from_service_ref.spec.port.value }}
   {{- else }}
-     {{- $zk_server = printf "%s-%s.%s.svc:2181" $clusterName $pulsar_zk_from_component.name $namespace }}
+     {{- $zk_server = printf "%s-zookeeper.%s.svc:2181" $clusterName $namespace }}
   {{- end }}
 {{- else }}
-  {{- $zk_server = printf "%s-%s.%s.svc:2181" $clusterName $pulsar_zk_from_component.name $namespace }}
+  {{- $zk_server = printf "%s-zookeeper.%s.svc:2181" $clusterName $namespace }}
 {{- end }}
 zookeeperServers: {{ $zk_server }}
 configurationStoreServers: {{ $zk_server }}

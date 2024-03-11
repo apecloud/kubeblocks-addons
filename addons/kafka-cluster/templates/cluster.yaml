@@ -5,7 +5,7 @@ metadata:
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
   annotations:
     "kubeblocks.io/extra-env": '{"KB_KAFKA_ENABLE_SASL":"{{ $.Values.saslEnable }}","KB_KAFKA_BROKER_HEAP":"{{ $.Values.brokerHeap }}","KB_KAFKA_CONTROLLER_HEAP":"{{ $.Values.controllerHeap }}","KB_KAFKA_PUBLIC_ACCESS":"{{ $.Values.extra.publiclyAccessible }}", "KB_KAFKA_BROKER_NODEPORT": "{{ $.Values.nodePortEnabled }}"}'
-    {{ include "kafka-cluster.brokerAddrFeatureGate" . | nindent 4 }}
+    {{- include "kafka-cluster.brokerAddrFeatureGate" . | nindent 4 }}
 spec:
   clusterDefinitionRef: kafka # ref clusterdefinition.name
   clusterVersionRef: {{ .Values.version }}
@@ -16,7 +16,11 @@ spec:
       serviceName: bootstrap
       componentSelector: broker
       spec:
+        {{- if .Values.nodePortEnabled }}
+        type: NodePort
+        {{- else }}
         type: ClusterIP
+        {{- end }}
         ports:
           - name: kafka-client
             targetPort: 9092

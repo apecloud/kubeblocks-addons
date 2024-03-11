@@ -1,0 +1,143 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: pulsar-bkrecovery
+  labels:
+      {{- include "pulsar.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: Pulsar bookies auto-recovery.
+  serviceKind: pulsar
+  serviceVersion: {{ default .Chart.AppVersion .Values.clusterVersionOverride }}
+  serviceRefDeclarations:
+    - name: pulsarZookeeper
+      serviceRefDeclarationSpecs:
+        - serviceKind: zookeeper
+          serviceVersion: ^3.8.\d{1,2}$
+  updateStrategy: BestEffortParallel
+  monitor:
+    builtIn: false
+    exporterConfig:
+      scrapePath: /metrics
+      scrapePort: {{ .Values.metrics.service.port }}
+  configs:
+    - name: agamotto-configuration
+      templateRef: {{ include "pulsar.name" . }}-agamotto-conf-tpl
+      namespace: {{ .Release.Namespace }}
+      volumeName: agamotto-configuration
+    - name: bookies-recovery-env
+      templateRef: {{ include "pulsar.name" . }}-recovery-env-tpl
+      namespace: {{ .Release.Namespace }}
+      constraintRef: pulsar-env-constraints
+      keys:
+        - conf
+      asEnvFrom:
+        - bookies-recovery
+        - check-bookies
+      volumeName: recovery-config-env
+  scripts:
+    - name: pulsar-scripts
+      templateRef: {{ include "pulsar.name" . }}-scripts
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  runtime:
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 10000
+      fsGroup: 0
+      runAsGroup: 0
+    initContainers:
+      - name: check-bookies
+        image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v3_0_2.bookie "root" .) }}"
+        imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v3_0_2.bookie "root" .) }}"
+        command:
+          - /kb-scripts/check-bookies.sh
+        env:
+        {{- if .Values.debugEnabled }}
+          - name: PULSAR_LOG_ROOT_LEVEL
+            value: DEBUG
+          - name: PULSAR_LOG_LEVEL
+            value: DEBUG
+        {{- end }}
+        volumeMounts:
+          - name: scripts
+            mountPath: /kb-scripts
+        securityContext:
+          privileged: true
+          runAsNonRoot: false
+          runAsUser: 0
+    containers:
+      - name: bookies-recovery
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 10000
+          capabilities:
+            drop:
+              - ALL
+          privileged: false
+          runAsGroup: 0
+        image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v3_0_2.bookie "root" .) }}"
+        imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v3_0_2.bookie "root" .) }}"
+        command:
+          - /kb-scripts/start-bookies-recovery.sh
+        env:
+        {{- if .Values.debugEnabled }}
+          - name: PULSAR_LOG_ROOT_LEVEL
+            value: DEBUG
+          - name: PULSAR_LOG_LEVEL
+            value: DEBUG
+        {{- end }}
+          - name: SERVICE_PORT
+            value: "8000"
+          - name: httpServerEnabled
+            value: "true"
+          - name: httpServerPort
+            value: "8000"
+          - name: prometheusStatsHttpPort
+            value: "8000"
+          - name: useHostNameAsBookieID
+            value: "true"
+        ports:
+          - name: http
+            containerPort: 8000
+          - name: bookie
+            containerPort: 3181
+        volumeMounts:
+          - name: scripts
+            mountPath: /kb-scripts
+          - name: recovery-config-env
+            mountPath: /opt/pulsar/none
+      - name: metrics
+        image: {{ .Values.images.metrics.registry | default .Values.image.registry }}/{{ .Values.images.metrics.repository }}:{{ .Values.images.metrics.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.metrics.pullPolicy }}
+        securityContext:
+          runAsNonRoot: false
+          runAsUser: 0
+        env:
+          - name: JOB_NAME
+            value: recovery
+          - name: SERVICE_PORT
+            value: "8000"
+          - name: POD_NAME
+            value: $(KB_POD_NAME)
+          - name: POD_NAMESPACE
+            value: $(KB_NAMESPACE)
+          {{- if .Values.debugEnabled }}
+          - name: LOG_LEVEL
+            value: debug
+          {{- else }}
+          - name: LOG_LEVEL
+            value: info
+          {{- end }}
+        command:
+          - "/bin/agamotto"
+          - "--config=/opt/agamotto/agamotto-config.yaml"
+          - "--feature-gates=-pkg.translator.prometheus.NormalizeName"
+        ports:
+          - name: http-metrics
+            containerPort: {{ .Values.metrics.service.port }}
+        volumeMounts:
+          - name: agamotto-configuration
+            mountPath: /opt/agamotto
