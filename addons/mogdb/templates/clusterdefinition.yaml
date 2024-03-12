@@ -17,10 +17,10 @@ spec:
       workloadType: Stateful
       rsmSpec:
         roles:
-          - name: Primary
+          - name: primary
             accessMode: ReadWrite
             isLeader: true
-          - name: Standby
+          - name: secondary
             accessMode: Readonly
             isLeader: false
         roleProbe:
@@ -31,10 +31,10 @@ spec:
                 - -c
                 - |
                   role=$(gsql -h 127.0.0.1 -p 26000  -U ${MOGDB_USER} -W "${MOGDB_PASSWORD}" -dpostgres -t -c "select local_role from pg_stat_get_stream_replications() limit 1" | xargs echo -n)
-                  if [ "$role"x == "Normal"x ]; then
-                    echo -n "Primary"
+                  if [[ "$role"x == "Normal"x || "$role"x == "Primary"x ]]; then
+                    echo -n "primary"
                   else
-                    echo -n $role
+                    echo -n "secondary"
                   fi
       characterType: mogdb
       configSpecs:
