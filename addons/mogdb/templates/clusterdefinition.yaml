@@ -46,16 +46,6 @@ spec:
           namespace: {{ .Release.Namespace }}
           volumeName: mogdb-config
           defaultMode: 0777
-        - name: mogdb-custom-metrics
-          templateRef: mogdb-custom-metrics
-          namespace: {{ .Release.Namespace }}
-          volumeName: mogdb-custom-metrics
-          defaultMode: 0777
-        - name: agamotto-configuration
-          templateRef: mogdb-agamotto-configuration
-          namespace: {{ .Release.Namespace }}
-          volumeName: agamotto-configuration
-          defaultMode: 0777
       scriptSpecs:
         - name: mogdb-scripts
           templateRef: mogdb-scripts
