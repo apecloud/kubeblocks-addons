@@ -30,8 +30,8 @@ spec:
               command: 
                 - |
                   Status=$(curl -s http://localhost:8008) && 
-                  role=$(echo $Status | jq .role) &&
-                  if [ "master" = "$role" ]; then echo  "primary"; else echo  "replica"; fi
+                  role=$(echo $Status | jq .role  | tr -d '"') &&
+                  if [ "$role" = "master" ]; then echo  "primary"; else echo  "replica"; fi
           roleUpdateMechanism: DirectAPIServerEventUpdate
           initialDelaySeconds: 60
         memberUpdateStrategy: BestEffortParallel
