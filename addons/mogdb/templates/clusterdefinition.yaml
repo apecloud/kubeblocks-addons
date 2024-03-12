@@ -86,8 +86,7 @@ spec:
         shareProcessNamespace: true
         securityContext:
           runAsUser: 0
-          fsGroup: 103
-          runAsGroup: 103
+          runAsGroup: 0
         containers:
           - name: mogdb
             imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
