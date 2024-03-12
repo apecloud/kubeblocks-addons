@@ -75,7 +75,7 @@ spec:
       service:
         ports:
           - name: tcp-mogdb
-            port: 5432
+            port: 26000
             targetPort: tcp-mogdb
       volumeTypes:
         - name: data
@@ -114,13 +114,12 @@ spec:
                 else
                   MogDB_Role="standby"
 
+                  pgport="5432"
                   if [ -n "$PGPORT" ];then
-                    ha_port=$(expr $PGPORT + 1)
-                    ha_service_port=$(expr $PGPORT + 2)
-                  else
-                    ha_port=$(expr 5432 + 1)
-                    ha_service_port=$(expr 5432 + 2)
+                    pgport="$PGPORT"  
                   fi
+                    ha_port=$(expr $pgport + 1)
+                    ha_service_port=$(expr $pgport + 2)                
 
                   cat >/tmp/replconninfo.conf
                   for ((i=0; i<$ordinal; i++)); do
