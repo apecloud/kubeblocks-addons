@@ -17,3 +17,4 @@ spec:
     # configuration file format
   formatterConfig:
     format: properties
+  

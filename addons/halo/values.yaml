@@ -4,7 +4,7 @@
 image:
   registry: registry.cn-hangzhou.aliyuncs.com
   repository: binbin21avery/halo-test
-  tag: "0.6"
+  tag: 1.2
   digest: ""
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
@@ -46,6 +46,9 @@ logConfigs:
 #   periodSeconds: 1
 #   timeoutSeconds: 1
 
+# setting for etcd
+# clusterDomain: ".cluster.local"
+
 ## @section Metrics Parameters
 metrics:
   ## @param metrics.image.registry PostgreSQL Prometheus Exporter image registry
@@ -62,3 +65,7 @@ metrics:
     pullPolicy: IfNotPresent
   service:
     port: 9187
+
+
+etcd:
+  etcdService: etcd-service

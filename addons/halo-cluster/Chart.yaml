@@ -7,7 +7,7 @@ description: HALO cluster definition Helm chart for Kubernetes
 dependencies:
   - name: kblib
     version: 0.1.0
-    repository: file://../kblib
+    repository: file://../../kblib
     alias: extra
 
 appVersion: 0.2.0

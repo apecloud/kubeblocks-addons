@@ -11,3 +11,9 @@
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
       {{- include "kblib.componentServices" . | indent 6 }}
+      serviceRefs:
+      - name: etcdService
+        namespace: default
+        cluster: kb-etcd-for-halo
+
+

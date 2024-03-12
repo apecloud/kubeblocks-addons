@@ -1,0 +1,4 @@
+Halo on KubeBlocks 
+halo cluster in KubeBlocks relies on an etcd component named 'etcd'.
+
+
