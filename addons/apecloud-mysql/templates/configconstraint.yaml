@@ -68,9 +68,8 @@ metadata:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
   reloadOptions:
-    unixSignalTrigger:
+    autoTrigger:
       processName: vttablet
-      signal: SIGHUP
 
   cfgSchemaTopLevelName: VtTabletParameter
 
@@ -138,9 +137,8 @@ metadata:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
   reloadOptions:
-    unixSignalTrigger:
+    autoTrigger:
       processName: vtgate
-      signal: SIGHUP
 
   cfgSchemaTopLevelName: VtGateParameter
 

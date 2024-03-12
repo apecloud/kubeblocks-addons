@@ -21,3 +21,11 @@ dynamicParameters:
   - queryserver_config_pool_size
   - queryserver_config_stream_pool_size
   - queryserver_config_transaction_cap
+  - non_transactional_dml_database_pool_size
+  - non_transactional_dml_default_batch_size
+  - non_transactional_dml_default_batch_interval
+  - non_transactional_dml_table_gc_interval
+  - non_transactional_dml_job_manager_running_interval
+  - non_transactional_dml_throttle_check_interval
+  - non_transactional_dml_batch_size_threshold
+  - non_transactional_dml_batch_size_threshold_ratio
