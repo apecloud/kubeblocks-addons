@@ -15,7 +15,14 @@ spec:
   componentDefs:
     - name: halo
       workloadType: Stateful  
-      characterType: halo      
+      characterType: halo 
+      customLabelSpecs:
+        - key: apps.kubeblocks.halo.prometheus
+          value: kube-prometheus
+          resources:
+            - gvk: "v1/Pod"
+              selector:
+                app.kubernetes.io/managed-by: kubeblocks               
       configSpecs:
         - name: halo-configuration
           templateRef: halo-configuration
@@ -24,7 +31,17 @@ spec:
             - postgresql.conf
           namespace: {{ .Release.Namespace }}
           volumeName: halo-config
-          defaultMode: 0444  
+          defaultMode: 0444
+        - name: halo-metrics-configuration
+          templateRef: halo-metrics-configuration 
+          namespace: {{ .Release.Namespace }}
+          volumeName: halo-metrics-configuration
+          defaultMode: 0755 
+        - name: halo-sql-exporter
+          templateRef: halo-sql-exporter 
+          namespace: {{ .Release.Namespace }}
+          volumeName: halo-sql-exporter
+          defaultMode: 0755
       scriptSpecs:
         - name: halo-scripts
           templateRef: halo-scripts
@@ -46,7 +63,7 @@ spec:
           runAsGroup: 3000
         containers:
           - name: halo
-            imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+            imagePullPolicy: {{ default .Values.image.pullPolicy }}
             securityContext:
               runAsUser: 0
             command: 
@@ -113,10 +130,30 @@ spec:
                   - -c
                   - |
                     gosu halo psql -U halo -d halo -c  "select 1"
-              initialDelaySeconds: 15
+              initialDelaySeconds: 10
               periodSeconds: 3
               failureThreshold: 2
-              timeoutSeconds: 5                                           
+              timeoutSeconds: 5 
+          - name: metrics
+            image:  {{ .Values.metrics.image.registry  }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
+            imagePullPolicy: {{ .Values.metrics.image.pullPolicy  }}
+            env:
+              - name: PG_EXPORTER_URL
+                value: postgres://halo:halo0root@localhost:1921/halo0root?sslmode=disable
+              - name: PG_EXPORTER_CONFIG
+                value: /opt/halo-metrics/pg_exporter.yml          
+            ports:
+              - name: tcp-metrics
+                containerPort: {{ .Values.metrics.service.port }}
+            volumeMounts:
+              - name: halo-metrics-configuration
+                mountPath: /opt/halo-metrics 
+            startupProbe:
+              httpGet:
+                path: /health 
+                port: {{ .Values.metrics.service.port }}
+              initialDelaySeconds: 15
+              periodSeconds: 5                                
         volumes:
           - name: dshm
             emptyDir:
@@ -124,4 +161,4 @@ spec:
               {{- with .Values.shmVolume.sizeLimit }}
               sizeLimit: {{ . }}
               {{- end }}
-      
+          
