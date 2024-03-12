@@ -76,7 +76,7 @@ bookiesRecovery:
   ## @param bookies.replicaCount Number of Bookies replicas
   ## at least 3 nodes if autoRecoveryDaemonEnabled is false in bookies.conf
   enabled: false
-  replicaCount: 3
+  replicaCount: 1
 
   resources:
     # We usually recommend not to specify default resources and to leave this as a conscious
@@ -187,3 +187,6 @@ serviceReference:
     ## if zookeeper service is provided by external source, please create the ServiceDescriptor Object of zookeeper in target namespace firstly, then specify the serviceDescriptor name here.
     ## Please do not specify both cluster and serviceDescriptor at the same time.
     serviceDescriptor: ""
+
+## @param nodePortEnabled
+nodePortEnabled: false

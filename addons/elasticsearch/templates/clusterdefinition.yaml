@@ -59,7 +59,24 @@ spec:
           securityContext:
             runAsUser: 0
             privileged: true
-        - name: install-plugins
+        # analysis-ik must be downloaded and installed instead of using the elasticsearch-plugin install command
+        # https://github.com/infinilabs/analysis-ik/issues/808
+        - name: download-install-plugins
+          imagePullPolicy: IfNotPresent
+          command:
+          - sh
+          - -c
+          - |
+            wget https://github.com/medcl/elasticsearch-analysis-ik/releases/download/v{{ .Chart.AppVersion }}/elasticsearch-analysis-ik-{{ .Chart.AppVersion }}.zip
+            mkdir -p /opt/bitnami/elasticsearch/plugins/ik
+            unzip elasticsearch-analysis-ik-{{ .Chart.AppVersion }}.zip -d /opt/bitnami/elasticsearch/plugins/ik
+          securityContext:
+            runAsUser: 0
+            privileged: true
+          volumeMounts:
+          - mountPath: /opt/bitnami/elasticsearch/plugins
+            name: plugins
+        - name: native-install-plugins
           imagePullPolicy: IfNotPresent
           command:
           - sh
@@ -272,7 +289,24 @@ spec:
           securityContext:
             runAsUser: 0
             privileged: true
-        - name: install-plugins
+        # analysis-ik must be downloaded and installed instead of using the elasticsearch-plugin install command
+        # https://github.com/infinilabs/analysis-ik/issues/808
+        - name: download-install-plugins
+          imagePullPolicy: IfNotPresent
+          command:
+          - sh
+          - -c
+          - |
+            wget https://github.com/medcl/elasticsearch-analysis-ik/releases/download/v{{ $.Chart.AppVersion }}/elasticsearch-analysis-ik-{{ $.Chart.AppVersion }}.zip
+            mkdir -p /opt/bitnami/elasticsearch/plugins/ik
+            unzip elasticsearch-analysis-ik-{{ $.Chart.AppVersion }}.zip -d /opt/bitnami/elasticsearch/plugins/ik
+          securityContext:
+            runAsUser: 0
+            privileged: true
+          volumeMounts:
+          - mountPath: /opt/bitnami/elasticsearch/plugins
+            name: plugins
+        - name: native-install-plugins
           imagePullPolicy: IfNotPresent
           command:
           - sh
