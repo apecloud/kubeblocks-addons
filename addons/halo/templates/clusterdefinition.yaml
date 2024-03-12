@@ -3,7 +3,7 @@ kind: ClusterDefinition
 metadata:
   name: halo
   labels:
-     {{- include "halo.labels" . | nindent 4 }}
+    {{- include "halo.labels" . | nindent 4 }}
 spec:
   type: halo
   connectionCredential:
@@ -14,8 +14,32 @@ spec:
     port: "$(SVC_PORT_tcp-halo)"
   componentDefs:
     - name: halo
-      workloadType: Stateful  
-      characterType: halo      
+      workloadType: Replication  
+      characterType: halo
+      rsmSpec:
+        roles:
+          - name: primary
+            accessMode: ReadWrite
+            canVote: true
+          - name: replica
+            accessMode: Readonly
+            canVote: true
+        roleProbe:
+          customHandler:
+            - image: {{ .Values.image.registry }}/{{ .Values.image.repository}}:{{.Values.image.tag}}
+              command: 
+                - |
+                  Status=$(curl -s http://localhost:8008) && 
+                  role=$(echo $Status | jq .role) &&
+                  if [ "master" = "$role" ]; then echo  "primary"; else echo  "replica"; fi
+          roleUpdateMechanism: DirectAPIServerEventUpdate
+          initialDelaySeconds: 60
+        memberUpdateStrategy: BestEffortParallel
+      serviceRefDeclarations:
+        - name: {{ .Values.etcd.etcdService }}
+          serviceRefDeclarationSpecs:
+            - serviceKind: etcd
+              serviceVersion: v3.5.6
       configSpecs:
         - name: halo-configuration
           templateRef: halo-configuration
@@ -24,7 +48,7 @@ spec:
             - postgresql.conf
           namespace: {{ .Release.Namespace }}
           volumeName: halo-config
-          defaultMode: 0444  
+          defaultMode: 0444
       scriptSpecs:
         - name: halo-scripts
           templateRef: halo-scripts
@@ -68,15 +92,16 @@ spec:
                 value: /data/halo
               - name: HALOPORT
                 value: "1921"
-              - name: HALO_USER
-                value: halo  
-              - name: HALO_PASSWORD
-                value: "halo0root"
               - name: HALO_DB 
-                value: "halo"                            
+                value: "halo" 
               - name: ALLOW_NOSSL
                 value: "true"
-              - name: POD_IP
+              - name: POD_NAME
+                valueFrom:
+                  fieldRef:
+                    apiVersion: v1
+                    fieldPath: metadata.name
+              - name: PATRONI_KUBERNETES_POD_IP
                 valueFrom:
                   fieldRef:
                     apiVersion: v1
@@ -86,37 +111,43 @@ spec:
                   fieldRef:
                     apiVersion: v1
                     fieldPath: metadata.namespace
-              - name: POSTGRES_USER
-                valueFrom:
-                  secretKeyRef:
-                    name: $(CONN_CREDENTIAL_SECRET_NAME)
-                    key: username
-                    optional: false
-              - name: POSTGRES_PASSWORD
-                valueFrom:
-                  secretKeyRef:
-                    name: $(CONN_CREDENTIAL_SECRET_NAME)
-                    key: password
-                    optional: false
-              - name: PGUSER
-                valueFrom:
-                  secretKeyRef:
-                    name: $(CONN_CREDENTIAL_SECRET_NAME)
-                    key: username
-                    optional: false
-              - name: PGPASSWORD
+              - name: PATRONI_SUPERUSER_USERNAME
+                value: "halo"  
+              - name: HALO_PASSWORD
                 value: "halo0root"
-            livenessProbe:
-              exec:
-                command:
-                  - /bin/bash 
-                  - -c
-                  - |
-                    gosu halo psql -U halo -d halo -c  "select 1"
-              initialDelaySeconds: 15
-              periodSeconds: 3
-              failureThreshold: 2
-              timeoutSeconds: 5                                           
+              - name: PATRONI_REPLICATION_USERNAME
+                value: "replica"
+              - name: PATRONI_REPLICATION_PASSWORD
+                value: "halo123456"
+              - name: PATRONI_USER_REWIND
+                value: "patroni"
+              - name: PATRONI_PASSWORD_REWIND
+                value: "patroni"
+              - name: PATRONI_RESTAPI_CONNECT_ADDRESS
+                value: "$(KB_PODIP):8008"
+              - name: PATRONI_RESTAPI_LISTEN
+                value: "0.0.0.0:8008"
+              - name: PATRONI_ETCD3_HOST
+                value: {{ .Values.etcd.etcdService }}-etcd:2379
+              - name: PATRONI_NAME
+                valueFrom:
+                  fieldRef:
+                    apiVersion: v1
+                    fieldPath: metadata.name
+              - name: PATRONI_POSTGRESQL_LISTEN
+                value: '0.0.0.0:1921'
+              - name: PATRONI_SCOPE
+                value: halo-cluster
+            # readinessProbe:
+            #   httpGet:
+            #     scheme: HTTP
+            #     path: /readiness
+            #     port: 8008
+            #   initialDelaySeconds: 60
+            #   periodSeconds: 10
+            #   timeoutSeconds: 5
+            #   successThreshold: 1
+            #   failureThreshold: 5                                        
         volumes:
           - name: dshm
             emptyDir:
@@ -124,4 +155,5 @@ spec:
               {{- with .Values.shmVolume.sizeLimit }}
               sizeLimit: {{ . }}
               {{- end }}
+            
       
