@@ -32,6 +32,8 @@ on:
           - mariadb-cluster
           - milvus
           - milvus-cluster
+          - mogdb
+          - mogdb-cluster
           - mongodb
           - mongodb-cluster
           - mongodb-sharding-cluster
