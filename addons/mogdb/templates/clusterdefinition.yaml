@@ -1,0 +1,277 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterDefinition
+metadata:
+  name: mogdb
+  labels:
+    {{- include "mogdb.labels" . | nindent 4 }}
+spec:
+  type: mogdb
+  connectionCredential:
+    username: kbadmin
+    password: "$(STRONG_RANDOM_PASSWD)"
+    endpoint: "$(SVC_FQDN):$(SVC_PORT_tcp-mogdb)"
+    host: "$(SVC_FQDN)"
+    port: "$(SVC_PORT_tcp-mogdb)"
+  componentDefs:
+    - name: mogdb
+      workloadType: Stateful
+      rsmSpec:
+        roles:
+          - name: primary
+            accessMode: ReadWrite
+            isLeader: true
+          - name: secondary
+            accessMode: Readonly
+            isLeader: false
+        roleProbe:
+          customHandler:
+            - image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  role=$(gsql -h 127.0.0.1 -p 26000  -U ${MOGDB_USER} -W "${MOGDB_PASSWORD}" -dpostgres -t -c "select local_role from pg_stat_get_stream_replications() limit 1" | xargs echo -n)
+                  if [[ "$role"x == "Normal"x || "$role"x == "Primary"x ]]; then
+                    echo -n "primary"
+                  else
+                    echo -n "secondary"
+                  fi
+      characterType: mogdb
+      configSpecs:
+        - name: mogdb-configuration
+          templateRef: mogdb-configuration
+          constraintRef: mogdb-cc
+          keys:
+            - postgresql.conf
+          namespace: {{ .Release.Namespace }}
+          volumeName: mogdb-config
+          defaultMode: 0777
+      scriptSpecs:
+        - name: mogdb-scripts
+          templateRef: mogdb-scripts
+          namespace: {{ .Release.Namespace }}
+          volumeName: scripts
+          defaultMode: 0777
+      monitor:
+        builtIn: false
+        exporterConfig:
+          scrapePath: /metrics
+          scrapePort: {{ .Values.metrics.service.port }}
+      logConfigs:
+        {{- range $name,$pattern := .Values.logConfigs }}
+        - name: {{ $name }}
+          filePathPattern: {{ $pattern }}
+        {{- end }}
+      service:
+        ports:
+          - name: tcp-mogdb
+            port: 26000
+            targetPort: tcp-mogdb
+      volumeTypes:
+        - name: data
+          type: data
+        - name: log
+          type: log
+      podSpec:
+        shareProcessNamespace: true
+        securityContext:
+          runAsUser: 0
+          runAsGroup: 0
+        containers:
+          - name: mogdb
+            imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+            command:
+              - bash
+              - -c
+              - |
+                set -ex
+                MogDB_Role=
+                REPL_CONN_INFO=
+
+                cat >>/home/omm/.profile <<-EOF
+                export OG_SUBNET="0.0.0.0/0"
+                export PGHOST="/var/lib/mogdb/tmp"
+                export PGPORT="$PGPORT"
+                EOF
+                [[ -d "$PGHOST" ]] || (mkdir -p $PGHOST && chown omm $PGHOST)
+
+                hostname=`hostname`
+                [[ "$hostname" =~ -([0-9]+)$ ]] || exit 1
+                ordinal=${BASH_REMATCH[1]}
+                if [[ $ordinal -eq 0 ]];then
+                  MogDB_Role="primary"
+                else
+                  MogDB_Role="standby"
+
+                  pgport="5432"
+                  if [ -n "$PGPORT" ];then
+                    pgport="$PGPORT"
+                  fi
+                    ha_port=$(expr $pgport + 1)
+                    ha_service_port=$(expr $pgport + 2)
+
+                  cat >/tmp/replconninfo.conf
+                  for ((i=0; i<$ordinal; i++)); do
+                    echo "$hostname $PodIP" |ncat --send-only ${KB_CLUSTER_COMP_NAME}-${i}.${KB_CLUSTER_COMP_NAME}-headless 6543
+                    remote_ip=`ping ${KB_CLUSTER_COMP_NAME}-${i}.${KB_CLUSTER_COMP_NAME}-headless -c 1 | sed '1{s/[^(]*(//;s/).*//;q}'`
+
+                    echo "replconninfo$((i+1)) = 'localhost=$PodIP localport=${ha_port} localservice=${ha_service_port} remotehost=$remote_ip remoteport=${ha_port} remoteservice=${ha_service_port}'" >> /tmp/replconninfo.conf
+                  done
+
+                  #echo "$hostname $PodIP" |ncat --send-only ${KB_CLUSTER_COMP_NAME}-0.${KB_CLUSTER_COMP_NAME}-headless 6543
+                  #remote_ip=`ping ${KB_CLUSTER_COMP_NAME}-0.${KB_CLUSTER_COMP_NAME}-headless -c 1 | sed '1{s/[^(]*(//;s/).*//;q}'`
+
+                  # REPL_CONN_INFO="replconninfo${ordinal} = 'localhost=$PodIP localport=${ha_port} localservice=${ha_service_port} remotehost=$remote_ip remoteport=${ha_port} remoteservice=${ha_service_port}'"
+                fi
+
+                [[ -n "$REPL_CONN_INFO" ]] && export REPL_CONN_INFO
+                source /home/omm/.profile
+
+                cp /home/omm/conf/* /tmp/
+                chmod 777 /tmp/postgresql.conf /tmp/pg_hba.conf
+                exec bash /kb-scripts/setup.sh -M "$MogDB_Role"
+            securityContext:
+              runAsUser: 0
+            ports:
+              - name: tcp-mogdb
+                containerPort: 26000
+            env:
+              - name: GS_USERNAME
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: username
+              - name: GS_PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: password
+              - name: GS_DB
+                value: mogdb
+              - name: PGPORT
+                value: "26000"
+              - name: PATH
+                value: /usr/local/mogdb/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+              - name: GAUSSHOME
+                value: /usr/local/mogdb
+              - name: LD_LIBRARY_PATH
+                value: /usr/local/mogdb/lib
+              - name: PGDATA
+                value: /var/lib/mogdb/data
+              - name: PGHOST
+                value: /var/lib/mogdb/tmp
+              - name: PodIP
+                valueFrom:
+                  fieldRef:
+                    apiVersion: v1
+                    fieldPath: status.podIP
+              - name: MOGDB_USER
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: username
+                    optional: false
+              - name: MOGDB_PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: password
+                    optional: false
+            volumeMounts:
+              - name: data
+                mountPath: /var/lib/mogdb
+                subPath: mogdb
+              - name: scripts
+                mountPath: /kb-scripts
+              - name: mogdb-config
+                mountPath: /home/omm/conf
+            livenessProbe:
+              exec:
+                command:
+                  - sh
+                  - -c
+                  - su -l omm -c "gsql -dpostgres -c 'select 1'"
+              initialDelaySeconds: 120
+              periodSeconds: 10
+              timeoutSeconds: 5
+              failureThreshold: 12
+            readinessProbe:
+              exec:
+                # Check we can execute queries over TCP (skip-networking is off).
+                command:
+                  - sh
+                  - -c
+                  - su -l omm -c "gsql -dpostgres -c 'select 1'"
+              initialDelaySeconds: 30
+              periodSeconds: 3
+              timeoutSeconds: 5
+          - name: helper
+            imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+            ports:
+              - name: helper
+                containerPort: 6543
+            command:
+              - bash
+              - /kb-scripts/helper.sh
+            env:
+              - name: PodIP
+                valueFrom:
+                  fieldRef:
+                    apiVersion: v1
+                    fieldPath: status.podIP
+              - name: PGDATA
+                value: "/var/lib/mogdb/data"
+              - name: PGHOST
+                value: "/var/lib/mogdb/tmp"
+              - name: PGPORT
+                value: "26000"
+            volumeMounts:
+              - name: data
+                mountPath: /var/lib/mogdb
+                subPath: mogdb
+              - name: scripts
+                mountPath: /kb-scripts
+            resources:
+              requests:
+                cpu: 500m
+                memory: 64Mi
+          - name: exporter
+            image:  {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
+            imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
+#            command:
+#              - bash
+#              - -c
+#              - |
+#                sleep 36000
+            securityContext:
+              runAsUser: 70
+            ports:
+              - name: http-exporter
+                containerPort: {{ .Values.metrics.service.port }}
+            volumeMounts:
+              - name: data
+                mountPath: /var/lib/mogdb
+                subPath: mogdb
+            env:
+              - name: DATA_SOURCE_NAME
+                value: "host=/var/lib/mogdb/tmp port=26000 user=omm dbname=postgres"
+              - name: PGHOST
+                value: "/var/lib/mogdb/tmp"
+              - name: PGPORT
+                value: "26000"
+              - name: PGDATA
+                value: "/var/lib/mogdb/data"
+            resources:
+              requests:
+                cpu: 100m
+                memory: 100Mi
+              limits:
+                cpu: 100m
+                memory: 100Mi
+        volumes:
+          - name: dshm
+            emptyDir:
+              medium: Memory
+              {{- with .Values.shmVolume.sizeLimit }}
+              sizeLimit: {{ . }}
+              {{- end }}
