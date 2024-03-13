@@ -1,0 +1,14 @@
+{{- include "kblib.clusterCommon" . }}
+  clusterDefinitionRef: mogdb
+  componentSpecs:
+    - name: mogdb
+      componentDefRef: mogdb
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+      {{- include "mogdb-cluster.replicaCount" . | indent 6 }}
+      enabledLogs:
+        - running
+      monitor: true
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
+      {{- include "kblib.componentServices" . | indent 6 }}
