@@ -27,7 +27,6 @@
   "InstancePollSeconds": 5,
   "ListenAddress": ":3000",
   "MasterFailoverLostInstancesDowntimeMinutes": 10,
-  "MySQLHostnameResolveMethod": "@@report_host",
 
   "OnFailureDetectionProcesses": [
     "/usr/local/bin/orc-helper event -w '{failureClusterAlias}' 'OrcFailureDetection' 'Failure: {failureType}, failed host: {failedHost}, lost replcas: {lostReplicas}' || true",
@@ -49,7 +48,7 @@
   "RaftAdvertise": "orc-cluster-orchestrator",
   "RaftBind": "{{ .Env.HOSTNAME }}",
   "RaftDataDir": "/var/lib/orchestrator",
-  "RaftEnabled": true,
+  "RaftEnabled": false,
   "RaftNodes": [],
   "RecoverIntermediateMasterClusterFilters": [
     ".*"
