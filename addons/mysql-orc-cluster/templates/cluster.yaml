@@ -13,7 +13,6 @@ spec:
   componentSpecs:
     - name: mysql
       componentDefRef: mysql # ref clusterdefinition componentDefs.name
-      {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "mysql-cluster.replicaCount" . | indent 6 }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentResources" . | indent 6 }}
@@ -21,7 +20,7 @@ spec:
     - name: orchestrator
       componentDefRef: orchestrator # ref clusterdefinition componentDefs.name
       {{- include "kblib.componentMonitor" . | indent 6 }}
-      replicas: 1
+      replicas: 3
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentServices" . | indent 6 }}

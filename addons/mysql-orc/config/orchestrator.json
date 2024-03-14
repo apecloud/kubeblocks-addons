@@ -1,19 +1,34 @@
 {
+  "MySQLTopologyCredentialsConfigFile": "/usr/local/share/orchestrator/templates/orc-topology.cnf",
+  "MySQLTopologySSLPrivateKeyFile": "",
+  "MySQLTopologySSLCertFile": "",
+  "MySQLTopologySSLCAFile": "",
+  "MySQLTopologySSLSkipVerify": true,
+  "MySQLTopologyUseMutualTLS": false,
+
+  "MySQLOrchestratorHost": "10.0.135.175",
+  "MySQLOrchestratorPort": 3306,
+  "MySQLOrchestratorDatabase": "orchestrator",
+  "MySQLOrchestratorUser": "orchestrator",
+  "MySQLOrchestratorPassword": "orchestrator",
+
   "ApplyMySQLPromotionAfterMasterFailover": true,
-  "BackendDB": "sqlite",
   "Debug": false,
   "DetachLostReplicasAfterMasterFailover": true,
   "DetectClusterAliasQuery": "SELECT CONCAT(SUBSTRING(@@hostname, 1, LENGTH(@@hostname) - 1 - LENGTH(SUBSTRING_INDEX(@@hostname,'-',-2))),'.',SUBSTRING_INDEX(@@report_host,'.',-1))",
   "DetectInstanceAliasQuery": "SELECT @@hostname",
   "DiscoverByShowSlaveHosts": false,
   "FailMasterPromotionIfSQLThreadNotUpToDate": true,
-  "HTTPAdvertise": "http://{{ .Env.HOSTNAME }}-orc-svc:80",
+
+
+  "HTTPAdvertise": "http://orc-cluster-mysql:80",
+
   "HostnameResolveMethod": "none",
   "InstancePollSeconds": 5,
   "ListenAddress": ":3000",
   "MasterFailoverLostInstancesDowntimeMinutes": 10,
   "MySQLHostnameResolveMethod": "@@report_host",
-  "MySQLTopologyCredentialsConfigFile": "/etc/orchestrator/orc-topology.cnf",
+
   "OnFailureDetectionProcesses": [
     "/usr/local/bin/orc-helper event -w '{failureClusterAlias}' 'OrcFailureDetection' 'Failure: {failureType}, failed host: {failedHost}, lost replcas: {lostReplicas}' || true",
     "/usr/local/bin/orc-helper failover-in-progress '{failureClusterAlias}' '{failureDescription}' || true"
@@ -31,7 +46,7 @@
     "/usr/local/bin/orc-helper failover-in-progress '{failureClusterAlias}' '{failureDescription}' || true"
   ],
   "ProcessesShellCommand": "sh",
-  "RaftAdvertise": "{{ .Env.HOSTNAME }}-orc-svc",
+  "RaftAdvertise": "orc-cluster-orchestrator",
   "RaftBind": "{{ .Env.HOSTNAME }}",
   "RaftDataDir": "/var/lib/orchestrator",
   "RaftEnabled": true,
@@ -45,7 +60,6 @@
   "RecoveryIgnoreHostnameFilters": [],
   "RecoveryPeriodBlockSeconds": 300,
   "RemoveTextFromHostnameDisplay": ":3306",
-  "SQLite3DataFile": "/var/lib/orchestrator/orc.db",
   "SlaveLagQuery": "SELECT TIMESTAMPDIFF(SECOND,ts,UTC_TIMESTAMP()) as drift FROM sys_operator.heartbeat ORDER BY drift ASC LIMIT 1",
   "UnseenInstanceForgetHours": 1
 }

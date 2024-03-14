@@ -1,20 +1,11 @@
 apiVersion: v1
 data:
   orc-topology.cnf: |
-    [client[]
+    [client]
     user = {{ printf "{{ .Env.ORC_TOPOLOGY_USER }}" }}
     password = {{ printf "{{ .Env.ORC_TOPOLOGY_PASSWORD }}" }}
-  orchestrator-backend.cnf: |
-    [client]
-      user = orchestrator_srv
-      password=${ORCHESTRATOR_PASSWORD}
   orchestrator.conf.json: |-
-    {{- .Files.Get "config/mysql5.7-config.tpl" | nindent 4 }}
+    {{- .Files.Get "config/orchestrator.json" | nindent 4 }}
 kind: ConfigMap
 metadata:
-  labels:
-    app.kubernetes.io/instance: mysql-operator
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/name: mysql-operator
-    app.kubernetes.io/version: latest
   name: mysql-orc-config
