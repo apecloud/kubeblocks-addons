@@ -5,7 +5,6 @@ metadata:
   labels:
     {{- include "mysql.labels" . | nindent 4 }}
 spec:
-  type: mysql
   connectionCredential:
     username: root
     password: "$(RANDOM_PASSWD)"
@@ -90,6 +89,7 @@ spec:
                     name: $(CONN_CREDENTIAL_SECRET_NAME)
                     key: password
                     optional: false
+
     - name: orchestrator
       workloadType: Stateful
       service:
@@ -109,32 +109,24 @@ spec:
         - name: data
           type: data
 
-      configSpecs:
-        - name: orchestrator-config
-          templateRef: orchestrator-config-template
-          volumeName: orchestrator-config
-          namespace: {{ .Release.Namespace }}
-
       podSpec:
+        volumes:
+          - name: orchestrator-config
+            configMap:
+              name: mysql-orc-config
         containers:
           - name: orchestrator
             imagePullPolicy: IfNotPresent
-            command:
-              - bash
-              - -c
-              - "docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1))"
             volumeMounts:
-              - name: data
+              - name: orchestrator-data
                 mountPath: /var/lib/orchestrator
               - name: orchestrator-config
                 mountPath: /usr/local/share/orchestrator/templates
             ports:
               - containerPort: 3000
                 name: http
-                protocol: TCP
               - containerPort: 10008
                 name: raft
-                protocol: TCP
             env:
               - name: ORC_TOPOLOGY_USER
                 valueFrom:
