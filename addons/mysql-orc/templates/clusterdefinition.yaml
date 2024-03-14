@@ -146,5 +146,5 @@ spec:
             envFrom:
               - prefix: ORC_
                 secretRef:
-                  name: mysql-operator-orc
+                  name: mysql-orc-secret
 
