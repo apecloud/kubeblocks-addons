@@ -16,6 +16,12 @@ trap handle_exit EXIT
 
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
+
+# compatible with version 0.6
+if [ -f ${DATA_DIR}/mysql-bin.index ]; then
+  echo "" | datasafed push - "apecloud-mysql.old"
+fi
+# do xtrabackup
 START_TIME=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 xtrabackup --compress=zstd --backup --safe-slave-backup --slave-info --stream=xbstream \
   --host=${DP_DB_HOST} --port=${DP_DB_PORT} \
