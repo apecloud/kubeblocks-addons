@@ -68,18 +68,6 @@ spec:
           - mountPath: /qdrant/tools
             name: tools
         containers:
-          - name: web-ui
-            imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent"  }}
-            securityContext:
-              runAsUser: 0
-            command:
-              - bash
-              - -c
-              - |
-                cd dist/ && serve
-            ports:
-              - name: web-ui
-                containerPort: 3000
           - name: qdrant
             imagePullPolicy: {{default .Values.image.pullPolicy "IfNotPresent"}}
             securityContext:
@@ -121,7 +109,7 @@ spec:
             lifecycle:
               preStop:
                 exec:
-                  command: ["/qdrant/scripts/pre-stop.sh"]
+                  command: ["/bin/sh", "-c", "/qdrant/scripts/pre-stop.sh > /proc/1/fd/1 2>&1"]
             terminationMessagePath: /dev/termination-log
             terminationMessagePolicy: File
             volumeMounts:
