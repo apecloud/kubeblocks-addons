@@ -44,9 +44,6 @@ spec:
           - name: grpc-qdrant
             port: 6334
             targetPort: grpc-qdrant
-          - name: web-ui
-            port: 3000
-            targetPort: web-ui
       volumeTypes:
         - name: data
           type: data
