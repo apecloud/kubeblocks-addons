@@ -261,6 +261,8 @@ spec:
                 value: "26000"
               - name: PGDATA
                 value: "/var/lib/mogdb/data"
+              - name: SERVICE_PORT
+                value: "{{ .Values.metrics.service.port }}"
             resources:
               requests:
                 cpu: 100m
