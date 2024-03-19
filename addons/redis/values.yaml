@@ -2,6 +2,15 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+## @param compDefinitionVersion for each ComponentDefinition resources name created by this chart, that can avoid name conflict
+## if you install multiple releases of this chart.
+## If specified, the component definition will use it as suffix.
+compDefinitionVersion:
+  redis: 0.8.0
+  sentinel: 0.8.0
+  twemproxy: 0.8.0
+  redisCluster: 0.8.0
+
 image:
   # refer: https://redis.io/docs/stack/
   # Redis Stack Server, which combines open source Redis with RediSearch, RedisJSON, RedisGraph, RedisTimeSeries, and RedisBloom,
@@ -45,8 +54,3 @@ metrics:
     pullPolicy: IfNotPresent
   service:
     port: 9121
-
-## @param compDefinitionVersionSuffix for all ComponentDefinition resources name created by this chart, that can avoid name conflict
-## if you install multiple releases of this chart.
-## If specified, the component definition will use it as name.
-compDefinitionVersionSuffix: ""

@@ -36,7 +36,6 @@ Define redis ComponentSpec with ComponentDefinition.
 */}}
 {{- define "redis-cluster.componentSpec" }}
 - name: redis
-  componentDef: redis
   {{- include "kblib.componentMonitor" . | indent 2 }}
   {{- include "redis-cluster.replicaCount" . | indent 2 }}
   {{- if .Values.nodePortEnabled }}
@@ -64,8 +63,7 @@ Define redis ComponentSpec with ComponentDefinition.
 Define redis sentinel ComponentSpec with ComponentDefinition.
 */}}
 {{- define "redis-cluster.sentinelComponentSpec" }}
-- componentDef: redis-sentinel
-  name: redis-sentinel
+- name: redis-sentinel
   replicas: {{ .Values.sentinel.replicas }}
   {{- if .Values.nodePortEnabled }}
   services:
@@ -95,7 +93,6 @@ Define redis twemproxy ComponentSpec with ComponentDefinition.
 */}}
 {{- define "redis-cluster.twemproxyComponentSpec" }}
 - name: redis-twemproxy
-  componentDef: redis-twemproxy
   serviceAccountName: {{ include "kblib.serviceAccountName" . }}
   replicas: {{ .Values.twemproxy.replicas }}
   resources:

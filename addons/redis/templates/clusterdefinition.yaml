@@ -403,3 +403,25 @@ spec:
                 - sh
                 - -c
                 - /scripts/redis-sentinel-ping.sh 1
+  topologies:
+    - name: standalone
+      components:
+        - name: redis
+          compDef: redis
+      default: true
+    - name: replication
+      components:
+        - name: redis
+          compDef: redis
+        - name: redis-sentinel
+          compDef: redis-sentinel
+      orders:
+        provision:
+          - redis
+          - redis-sentinel
+        terminate:
+          - redis-sentinel
+          - redis
+        update:
+          - redis
+          - redis-sentinel

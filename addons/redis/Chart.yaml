@@ -15,6 +15,7 @@ keywords:
   - database
   - nosql
   - replication
+  - redis cluster
 
 maintainers:
   - name: ApeCloud

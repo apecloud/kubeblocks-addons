@@ -4,13 +4,15 @@
   clusterDefinitionRef: redis
   componentSpecs:
   {{- include "redis-cluster.legacyComponentSpec" . | indent 2 }}
-{{- else }}
+{{- else if eq .Values.mode "cluster" }}
+  {{- /* TODO: when clusterDefinition topology supports sharding, migrate the cluster mode to topology as well */ -}}
   {{- include "kblib.clusterCommon" . }}
-  {{- if eq .Values.mode "cluster" }}
   shardingSpecs:
   {{- include "redis-cluster.shardingSpec" . | indent 2 }}
-  {{- else }}
+{{- else }}
+  {{- include "kblib.clusterCommon" . }}
+  clusterDefinitionRef: redis
+  topology: {{ .Values.mode }}
   componentSpecs:
   {{- include "redis-cluster.componentSpec" . | indent 2 }}
-  {{- end }}
 {{- end }}
