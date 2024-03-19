@@ -9,33 +9,54 @@ Expand the name of the chart.
 Define redis component defintion name
 */}}
 {{- define "redis.componentDefName" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
+{{- if eq (len .Values.compDefinitionVersion.redis) 0 -}}
 redis
 {{- else -}}
-{{- printf "redis-%s" .Values.compDefinitionVersionSuffix -}}
+{{- printf "redis-%s" .Values.compDefinitionVersion.redis -}}
 {{- end -}}
+{{- end -}}
+
+{{/*
+Define redis component defintion name prefix
+*/}}
+{{- define "redis.componentDefNamePrefix" -}}
+redis-0.8  # TODO: major version?
 {{- end -}}
 
 {{/*
 Define redis-sentinel component defintion name
 */}}
 {{- define "redis-sentinel.componentDefName" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
+{{- if eq (len .Values.compDefinitionVersion.sentinel) 0 -}}
 redis-sentinel
 {{- else -}}
-{{- printf "redis-sentinel-%s" .Values.compDefinitionVersionSuffix -}}
+{{- printf "redis-sentinel-%s" .Values.compDefinitionVersion.sentinel -}}
 {{- end -}}
+{{- end -}}
+
+{{/*
+Define redis-sentinel component defintion name prefix
+*/}}
+{{- define "redis-sentinel.componentDefNamePrefix" -}}
+redis-sentinel-0.8  # TODO: major version?
 {{- end -}}
 
 {{/*
 Define redis-cluster component defintion name
 */}}
 {{- define "redis-cluster.componentDefName" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
+{{- if eq (len .Values.compDefinitionVersion.redisCluster) 0 -}}
 redis-cluster
 {{- else -}}
-{{- printf "redis-cluster-%s" .Values.compDefinitionVersionSuffix -}}
+{{- printf "redis-cluster-%s" .Values.compDefinitionVersion.redisCluster -}}
 {{- end -}}
+{{- end -}}
+
+{{/*
+Define redis-cluster component defintion name prefix
+*/}}
+{{- define "redis-cluster.componentDefNamePrefix" -}}
+redis-cluster-0.8  # TODO: major version?
 {{- end -}}
 
 {{/*

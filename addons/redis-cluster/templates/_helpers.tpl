@@ -105,8 +105,7 @@ Define redis cluster twemproxy component.
 
 */}}
 {{- define "redis-cluster.sentinelCompDef" }}
-- componentDef: redis-sentinel
-  name: redis-sentinel
+- name: redis-sentinel
   replicas: {{ .Values.sentinel.replicas }}
   resources:
     limits:

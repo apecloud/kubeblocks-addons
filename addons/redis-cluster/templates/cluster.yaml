@@ -36,9 +36,9 @@
   {{- include "kblib.clusterCommon" . }}
   {{- end }}
   clusterDefinitionRef: redis  # ref clusterDefinition.name
+  topology: {{ .Values.mode }}
   componentSpecs:
     - name: redis
-      componentDef: redis
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "redis-cluster.replicaCount" . | indent 6 }}
       enabledLogs:
