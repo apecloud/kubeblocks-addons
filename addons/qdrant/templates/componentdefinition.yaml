@@ -25,13 +25,14 @@ spec:
   lifecycleActions:
     memberLeave:
       customHandler:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag | default "latest" }}
         exec:
           command:
-          - /bin/bash
+          - /bin/sh
           - -c
           - /qdrant/scripts/member-leave.sh
         targetPodSelector: Any
+        container: qdrant
   configs:
   - name: qdrant-config-template
     templateRef: qdrant-config-template

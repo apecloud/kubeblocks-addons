@@ -9,6 +9,7 @@ spec:
   clusterVersionRef: {{ .Values.version }}
   terminationPolicy:  {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
+  serviceAccountName: {{ include "kblib.serviceAccountName" . }}
   componentSpecs:
     - name: qdrant # user-defined
       componentDefRef: qdrant # ref clusterdefinition components.name
