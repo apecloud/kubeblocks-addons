@@ -15,8 +15,6 @@ spec:
     serviceName: qdrant
     spec:
       ipFamilyPolicy: PreferDualStack
-      ipFamilies:
-      - IPv4
       ports:
       - name: tcp-qdrant
         port: 6333
@@ -60,7 +58,7 @@ spec:
       - |
         cp /bin/jq /qdrant/tools/jq
         cp /bin/curl /qdrant/tools/curl
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag | default "latest" }}
       imagePullPolicy: {{default .Values.image.pullPolicy "IfNotPresent"}}
       terminationMessagePath: /dev/termination-log
       terminationMessagePolicy: File
@@ -69,7 +67,7 @@ spec:
         name: tools
     containers:
     - name: qdrant
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v1.8.1
       imagePullPolicy: {{default .Values.image.pullPolicy "IfNotPresent"}}
       securityContext:
         runAsUser: 0
