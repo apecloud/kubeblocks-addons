@@ -32,9 +32,9 @@ spec:
         valueFrom:
           clusterVersionRef:
           - names: [postgresql-12.14.0, postgresql-12.14.1, postgresql-12.15.0]
-            mappingValue: "12.15.0-pgvector-v0.5.0"
-          - names: [postgresql-14.7.2-pgvector-v0.5.0, postgresql-14.8.0]
-            mappingValue: "14.8.0-pgvector-v0.5.0"
+            mappingValue: "12.15.0-pgvector-v0.6.1"
+          - names: [postgresql-14.7.2-pgvector-v0.6.1, postgresql-14.8.0]
+            mappingValue: "14.8.0-pgvector-v0.6.1"
       targetVolumes:
         volumeMounts:
         - name: data
@@ -102,9 +102,9 @@ spec:
             valueFrom:
               componentDef:
                 - names: [postgresql-12]
-                  mappingValue: "12.15.0-pgvector-v0.5.0"
+                  mappingValue: "12.15.0-pgvector-v0.6.1"
                 - names: [postgresql-14]
-                  mappingValue: "14.8.0-pgvector-v0.5.0"
+                  mappingValue: "14.8.0-pgvector-v0.6.1"
         targetVolumes:
           volumeMounts:
             - name: data

@@ -29,7 +29,7 @@ spec:
     - name: SWITCH_WAL_INTERVAL_SECONDS
       value: "600"
     - name: IMAGE_TAG
-      value: 14.8.0-pgvector-v0.5.0
+      value: 14.8.0-pgvector-v0.6.1
   restore:
     prepareData:
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:$(IMAGE_TAG)

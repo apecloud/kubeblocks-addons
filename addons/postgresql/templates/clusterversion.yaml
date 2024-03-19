@@ -66,18 +66,18 @@ spec:
       versionsContext:
         initContainers:
           - name: pg-init-container
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.14.1-pgvector-v0.5.0
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.14.1-pgvector-v0.6.1
         containers:
           - name: postgresql
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.14.1-pgvector-v0.5.0
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.14.1-pgvector-v0.6.1
           - name: pgbouncer
             image: {{ .Values.pgbouncer.image.registry | default .Values.image.registry }}/{{ .Values.pgbouncer.image.repository }}:{{ .Values.pgbouncer.image.tag }}
       systemAccountSpec:
         cmdExecutorConfig:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.14.1-pgvector-v0.5.0
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.14.1-pgvector-v0.6.1
       switchoverSpec:
         cmdExecutorConfig:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.14.1-pgvector-v0.5.0
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.14.1-pgvector-v0.6.1
 {{- end -}}
 
 {{- $cvName = "postgresql-12.15.0" -}}
@@ -113,18 +113,18 @@ spec:
       versionsContext:
         initContainers:
           - name: pg-init-container
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.15.0-pgvector-v0.5.0
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.15.0-pgvector-v0.6.1
         containers:
           - name: postgresql
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.15.0-pgvector-v0.5.0
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.15.0-pgvector-v0.6.1
           - name: pgbouncer
             image: {{ .Values.pgbouncer.image.registry | default .Values.image.registry }}/{{ .Values.pgbouncer.image.repository }}:{{ .Values.pgbouncer.image.tag }}
       systemAccountSpec:
         cmdExecutorConfig:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.15.0-pgvector-v0.5.0
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.15.0-pgvector-v0.6.1
       switchoverSpec:
         cmdExecutorConfig:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.15.0-pgvector-v0.5.0
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.15.0-pgvector-v0.6.1
 {{- end -}}
 
 {{- $cvName = "postgresql-14.8.0" -}}
@@ -145,18 +145,18 @@ spec:
       versionsContext:
         initContainers:
           - name: pg-init-container
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:14.8.0-pgvector-v0.5.0
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:14.8.0-pgvector-v0.6.1
         containers:
           - name: postgresql
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:14.8.0-pgvector-v0.5.0
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:14.8.0-pgvector-v0.6.1
           - name: pgbouncer
             image: {{ .Values.pgbouncer.image.registry | default .Values.image.registry }}/{{ .Values.pgbouncer.image.repository }}:{{ .Values.pgbouncer.image.tag }}
       systemAccountSpec:
         cmdExecutorConfig:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:14.8.0-pgvector-v0.5.0
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:14.8.0-pgvector-v0.6.1
       switchoverSpec:
         cmdExecutorConfig:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:14.8.0-pgvector-v0.5.0
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:14.8.0-pgvector-v0.6.1
 {{- end -}}
 
 {{- $cvName = "postgresql-12.14.0" -}}
@@ -197,16 +197,16 @@ spec:
       versionsContext:
         initContainers:
           - name: pg-init-container
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.14.0-pgvector-v0.5.0
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.14.0-pgvector-v0.6.1
         containers:
           - name: postgresql
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.14.0-pgvector-v0.5.0
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.14.0-pgvector-v0.6.1
           - name: pgbouncer
             image: {{ .Values.pgbouncer.image.registry | default .Values.image.registry }}/{{ .Values.pgbouncer.image.repository }}:{{ .Values.pgbouncer.image.tag }}
       systemAccountSpec:
         cmdExecutorConfig:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.14.0-pgvector-v0.5.0
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.14.0-pgvector-v0.6.1
       switchoverSpec:
         cmdExecutorConfig:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.14.0-pgvector-v0.5.0
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.14.0-pgvector-v0.6.1
   {{- end -}}
