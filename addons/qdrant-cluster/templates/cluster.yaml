@@ -12,6 +12,7 @@ spec:
   componentSpecs:
     - name: qdrant # user-defined
       componentDefRef: qdrant # ref clusterdefinition components.name
+      componentDef: qdrant # ref componentdefinition
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.replicas | default 1 }}
       {{- include "kblib.componentResources" . | indent 6 }}
