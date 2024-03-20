@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 IDX=${KB_POD_NAME##*-}
-HOSTNAME=$(eval echo \$KB_QDRANT_"${IDX}"_HOSTNAME)
-BOOTSTRAP_HOSTNAME=$(eval echo \$KB_QDRANT_0_HOSTNAME)
+HOSTNAME=$(eval echo \$KB_QDRANT_"${IDX}"_HOSTNAME).${KB_NAMESPACE}.svc${CLUSTER_DOMAIN}
+BOOTSTRAP_HOSTNAME=$(eval echo \$KB_QDRANT_0_HOSTNAME).${KB_NAMESPACE}.svc${CLUSTER_DOMAIN}
 
 if [ "$IDX" == "0" ]; then
   ./qdrant --uri "http://${HOSTNAME}:6335"

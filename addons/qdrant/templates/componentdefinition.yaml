@@ -134,6 +134,8 @@ spec:
         value: "true"
       - name: SERVICE_PORT
         value: "6333"
+      - name: CLUSTER_DOMAIN
+        value: "{{ .Values.clusterDomain }}"
     dnsPolicy: ClusterFirst
     enableServiceLinks: true
     volumes:
