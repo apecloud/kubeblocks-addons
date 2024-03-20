@@ -30,3 +30,5 @@ image:
 debugEnabled: true
 
 dataMountPath: /qdrant/storage
+
+clusterDomain: ".cluster.local"

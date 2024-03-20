@@ -9,3 +9,5 @@ data:
     {{- .Files.Get "scripts/qdrant-setup.sh" | nindent 4 }}
   pre-stop.sh: |-
     {{- .Files.Get "scripts/qdrant-pre-stop.sh" | nindent 4 }}
+  member-leave.sh: |-
+    {{- .Files.Get "scripts/qdrant-member-leave.sh" | nindent 4 }}
