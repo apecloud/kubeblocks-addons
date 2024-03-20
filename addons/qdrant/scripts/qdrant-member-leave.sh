@@ -2,6 +2,7 @@
 
 set -x
 set -o errtrace
+set -o errexit
 set -o nounset
 set -o pipefail
 
@@ -59,11 +60,8 @@ leave_member() {
 }
 
 # lock file to prevent concurrent leave_member
+# flock will return 1 if the lock is already held by another process, this is expected
 (
   flock -n -x 9
-  if [ $? != 0 ]; then
-    echo "member is already in leaving"
-    exit 0
-  fi
-  set -o errexit && leave_member
+  leave_member
 ) 9>/var/lock/qdrant-leave-member-lock
