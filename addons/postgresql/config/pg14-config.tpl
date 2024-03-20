@@ -201,9 +201,11 @@ pg_stat_statements.track_utility = 'False'
 # extension: pgaudit
 pgaudit.log_catalog = 'True'
 pgaudit.log_level = 'log'
+pgaudit.log_client = 'False'
 pgaudit.log_parameter = 'False'
 pgaudit.log_relation = 'False'
 pgaudit.log_statement_once = 'False'
+pgaudit.log = 'ddl,read,write'
 # pgaudit.role = ''
 #extension: pglogical
 pglogical.batch_inserts = 'True'
@@ -220,7 +222,7 @@ session_replication_role = 'origin'
 # extension: sql_firewall
 sql_firewall.firewall = 'disable'
 shared_buffers = '{{ printf "%d%s" $shared_buffers $buffer_unit }}'
-# shared_preload_libraries = 'pg_stat_statements,auto_explain,bg_mon,pgextwlist,pg_auth_mon,set_user,pg_cron,pg_stat_kcache'
+shared_preload_libraries = 'pg_stat_statements,auto_explain,bg_mon,pgextwlist,pg_auth_mon,set_user,pg_cron,pg_stat_kcache,timescaledb,pgaudit'
 {{- if $.component.tlsConfig }}
 {{- $ca_file := getCAFile }}
 {{- $cert_file := getCertFile }}
