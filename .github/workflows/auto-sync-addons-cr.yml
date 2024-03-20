@@ -6,6 +6,7 @@ on:
       - "addons/**"
     branches:
       - 'main'
+      - 'release-*'
 
 env:
   GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
