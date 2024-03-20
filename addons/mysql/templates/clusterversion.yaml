@@ -34,12 +34,17 @@ spec:
             mv {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
             rm -rf {{ .Values.dataMountPath }}/plugin
             chown -R mysql:root {{ .Values.dataMountPath }}
+            skip_slave_start="OFF"
+            if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
+              skip_slave_start="ON"
+            fi
             /scripts/docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) \
             --ignore-db-dir=lost+found \
             --plugin-load-add=rpl_semi_sync_master=semisync_master.so \
             --plugin-load-add=rpl_semi_sync_slave=semisync_slave.so \
             --plugin-load-add=audit_log=audit_log.so \
-            --log-bin={{.Values.dataMountPath}}/binlog/$(KB_POD_NAME)-bin
+            --log-bin={{.Values.dataMountPath}}/binlog/$(KB_POD_NAME)-bin \
+            --skip-slave-start=$skip_slave_start
     systemAccountSpec:
       cmdExecutorConfig:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
@@ -72,11 +77,16 @@ spec:
             mv {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
             rm -rf {{ .Values.dataMountPath }}/plugin
             chown -R mysql:root {{ .Values.dataMountPath }}
+            skip_replica_start="OFF"
+            if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
+              skip_replica_start="ON"
+            fi
             docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) \
             --plugin-load-add=rpl_semi_sync_source=semisync_source.so \
             --plugin-load-add=rpl_semi_sync_replica=semisync_replica.so \
             --plugin-load-add=audit_log=audit_log.so \
-            --log-bin={{.Values.dataMountPath}}/binlog/$(KB_POD_NAME)-bin
+            --log-bin={{.Values.dataMountPath}}/binlog/$(KB_POD_NAME)-bin \
+            --skip-replica-start=$skip_replica_start
     systemAccountSpec:
       cmdExecutorConfig:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
