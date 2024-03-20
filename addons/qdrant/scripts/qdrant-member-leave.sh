@@ -1,7 +1,6 @@
 #!/usr/bin/env sh
 
 set -x
-set -o errexit
 set -o errtrace
 set -o nounset
 set -o pipefail
@@ -52,10 +51,19 @@ remove_peer() {
     curl -v -XDELETE ${leave_peer_uri}/cluster/peer/${leave_peer_id}
 }
 
-echo "scaling in, we need to move local shards to other peers and remove local peer from the cluster"
+leave_member() {
+    echo "scaling in, we need to move local shards to other peers and remove local peer from the cluster"
+    echo "cluster info: ${cluster_info}"
+    move_shards
+    remove_peer
+}
 
-echo "cluster info: ${cluster_info}"
-
-move_shards
-
-remove_peer
+# lock file to prevent concurrent leave_member
+(
+  flock -n -x 9
+  if [ $? != 0 ]; then
+    echo "member is already in leaving"
+    exit 0
+  fi
+  set -o errexit && leave_member
+) 9>/var/lock/qdrant-leave-member-lock
