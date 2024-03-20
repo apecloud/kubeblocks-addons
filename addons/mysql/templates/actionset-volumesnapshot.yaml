@@ -24,7 +24,7 @@ spec:
            if [ -f ${DATA_DIR}/relay-log.info ]; then
               rm -rf ${DATA_DIR}/relay-log.info
            fi
-           touch ${DATA_DIR}/.xtrabackup_restore_new_cluster
+           touch ${DATA_DIR}/.restore_new_cluster
         fi
     postReady:
     - exec:
@@ -32,4 +32,4 @@ spec:
         - sh
         - -c
         - |
-          rm -rf {{ .Values.dataMountPath }}/data/.xtrabackup_restore_new_cluster
+          rm -rf {{ .Values.dataMountPath }}/data/.restore_new_cluster

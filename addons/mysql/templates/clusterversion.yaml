@@ -32,7 +32,7 @@ spec:
           - -c
           - |
             skip_slave_start="OFF"
-            if [ -f {{ .Values.dataMountPath }}/data/.xtrabackup_restore_new_cluster ]; then
+            if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
               skip_slave_start="ON"
             fi
             /scripts/docker-entrypoint.sh mysqld \
@@ -72,7 +72,7 @@ spec:
           - -c
           - |
             skip_replica_start="OFF"
-            if [ -f {{ .Values.dataMountPath }}/data/.xtrabackup_restore_new_cluster ]; then
+            if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
               skip_replica_start="ON"
             fi
             docker-entrypoint.sh mysqld \

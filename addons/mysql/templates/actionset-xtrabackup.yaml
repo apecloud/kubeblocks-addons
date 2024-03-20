@@ -43,4 +43,4 @@ spec:
         - sh
         - -c
         - |
-          rm -rf {{ .Values.dataMountPath }}/data/.xtrabackup_restore_new_cluster
+          rm -rf {{ .Values.dataMountPath }}/data/.restore_new_cluster

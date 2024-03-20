@@ -20,7 +20,7 @@ xtrabackup --move-back --target-dir=${TMP_DIR} --datadir=${DATA_DIR}/
 if [ "${BACKUP_FOR_STANDBY}" == "true" ]; then
    touch ${DATA_DIR}/.xtrabackup_restore
 else
-   touch ${DATA_DIR}/.xtrabackup_restore_new_cluster
+   touch ${DATA_DIR}/.restore_new_cluster
 fi
 rm -rf ${TMP_DIR}
 chmod -R 0777 ${DATA_DIR}
