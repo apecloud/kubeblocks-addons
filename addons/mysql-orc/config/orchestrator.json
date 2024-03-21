@@ -45,11 +45,19 @@
     "/usr/local/bin/orc-helper failover-in-progress '{failureClusterAlias}' '{failureDescription}' || true"
   ],
   "ProcessesShellCommand": "sh",
-  "RaftAdvertise": "orc-cluster-orchestrator",
+
+
+  "RaftAdvertise": "orc-cluster-orchestrator-orchestrator",
   "RaftBind": "{{ .Env.HOSTNAME }}",
   "RaftDataDir": "/var/lib/orchestrator",
   "RaftEnabled": false,
-  "RaftNodes": [],
+  "RaftNodes": [
+    "orc-cluster-orchestrator-orcraft-0",
+    "orc-cluster-orchestrator-orcraft-1",
+    "orc-cluster-orchestrator-orcraft-2"
+  ],
+
+
   "RecoverIntermediateMasterClusterFilters": [
     ".*"
   ],

@@ -36,6 +36,8 @@ data:
     fi
   docker-entrypoint.sh: |-
     {{- .Files.Get "scripts/docker-entrypoint-5.7.sh" | nindent 4 }}
+  mysql-orchestrator-register.sh: |-
+    {{- .Files.Get "scripts/mysql-orchestrator-register.sh" | nindent 4 }}
 ---
 apiVersion: v1
 kind: ConfigMap

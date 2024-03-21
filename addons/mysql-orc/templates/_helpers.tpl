@@ -153,3 +153,14 @@ service:
     metrics:
       receivers: [ apecloudmysql, prometheus ]
 {{- end }}
+
+{{/*
+Define redis component defintion name
+*/}}
+{{- define "mysql.componentDefName" -}}
+{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
+mysql
+{{- else -}}
+{{- printf "mysql-%s" .Values.compDefinitionVersionSuffix -}}
+{{- end -}}
+{{- end -}}

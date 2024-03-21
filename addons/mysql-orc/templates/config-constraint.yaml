@@ -2,7 +2,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ConfigConstraint
 metadata:
-  name: oracle-mysql8.0-config-constraints
+  name: orc-mysql8.0-config-constraints
   labels:
     {{- include "mysql.labels" . | nindent 4 }}
 spec:
