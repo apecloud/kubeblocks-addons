@@ -27,8 +27,8 @@ spec:
             targetPort: mysql
       configSpecs:
         - name: mysql-replication-config
-          templateRef: oracle-mysql8.0-config-template
-          constraintRef: oracle-mysql8.0-config-constraints
+          templateRef: orc-mysql8.0-config-template
+          constraintRef: orc-mysql8.0-config-constraints
           volumeName: mysql-config
           namespace: {{ .Release.Namespace }}
       scriptSpecs:

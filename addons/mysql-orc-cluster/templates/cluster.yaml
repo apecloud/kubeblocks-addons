@@ -5,6 +5,8 @@ metadata:
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
   annotations:
     kubeblocks.io/extra-env: '{ "MYSQL_TOPOLOGY_MODE": {{ default "standalone" .Values.mode | quote }} }'
+    kubeblocks.io/enabled-node-port-svc: orchestrator
+    kubeblocks.io/enabled-pod-ordinal-svc: orchestrator
 spec:
   clusterVersionRef: mysql-orc-8.0.33
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
@@ -12,15 +14,15 @@ spec:
   clusterDefinitionRef: mysql-orc # ref clusterdefinition.name
   componentSpecs:
     - name: mysql
-      componentDefRef: mysql # ref clusterdefinition componentDefs.name
-      {{- include "mysql-cluster.replicaCount" . | indent 6 }}
+      componentDef: mysql # ref clusterdefinition componentDefs.name
+      replicas: 2
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentServices" . | indent 6 }}
     - name: orchestrator
-      componentDefRef: orchestrator # ref clusterdefinition componentDefs.name
+      componentDef: orchestrator
       {{- include "kblib.componentMonitor" . | indent 6 }}
-      replicas: 1
+      replicas: 3
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentServices" . | indent 6 }}

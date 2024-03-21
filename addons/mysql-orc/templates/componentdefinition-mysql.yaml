@@ -1,0 +1,129 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "mysql.componentDefName" . }}
+  labels:
+      {{- include "mysql.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: mysql  compoent definition for Kubernetes
+  serviceKind: mysql
+  serviceVersion: 8.0.0
+  services:
+    - name: mysql
+      serviceName: mysql
+      spec:
+        ports:
+          - name: mysql
+            port: 3306
+            targetPort: mysql
+  configs:
+    - name: mysql-replication-config
+      templateRef: orc-mysql8.0-config-template
+      constraintRef: orc-mysql8.0-config-constraints
+      volumeName: mysql-config
+      namespace: {{ .Release.Namespace }}
+  scripts:
+    - name: mysql-scripts
+      templateRef: mysql-scripts
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  volumes:
+    - name: data
+      needSnapshot: true
+  systemAccounts:
+    - name: root
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 10
+        numDigits: 5
+        numSymbols: 0
+        letterCase: MixedCases
+  lifecycleActions:
+    postProvision:
+      customHandler:
+        image: docker.io/mysql:8.0.33
+        exec:
+          command:
+            - bash
+            - -c
+            - "/scripts/mysql-orchestrator-register.sh;sleep 1000000000000000000"
+        preCondition: ComponentReady
+  runtime:
+    initContainers:
+      - command:
+          - bash
+          - -c
+          - "mkdir -p /var/lib/mysql/{log,binlog}; chown -R mysql:root /var/lib/mysql;"
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+        imagePullPolicy: Always
+        name: init-data
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+    containers:
+      - name: mysql
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+        imagePullPolicy: IfNotPresent
+        command:
+          - bash
+          - -c
+          - "docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1))"
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+          - mountPath: /etc/mysql/conf.d
+            name: mysql-config
+          - name: scripts
+            mountPath: /scripts
+        ports:
+          - containerPort: 3306
+            name: mysql
+        env:
+          - name: MYSQL_INITDB_SKIP_TZINFO
+            value: "1"
+          - name: MYSQL_RANDOM_ROOT_PASSWORD
+            value: ""
+          - name: SERVICE_PORT
+            value: "3306"
+          - name: MYSQL_ROOT_HOST
+            value: {{ .Values.auth.rootHost | default "%" | quote }}
+          - name: MYSQL_ROOT_USER
+            value: $(MYSQL_ROOT_USER)
+          - name: MYSQL_ROOT_PASSWORD
+            value: $(MYSQL_ROOT_PASSWORD)
+          - name: ORC_TOPOLOGY_USER
+            value: {{ .Values.orchestrator.topology.password }}
+          - name: ORC_TOPOLOGY_PASSWORD
+            value: {{ .Values.orchestrator.topology.password }}
+
+  vars:
+    - name: MYSQL_ROOT_USER
+      valueFrom:
+        credentialVarRef:
+          ## reference the current component definition name
+          compDef: {{ include "mysql.componentDefName" . }}
+          name: root
+          username: Required
+
+
+    - name: MYSQL_ROOT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          ## reference the current component definition name
+          compDef: {{ include "mysql.componentDefName" . }}
+          name: root
+          password: Required
+
+
+    - name: MYSQL_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "mysql.componentDefName" . }}
+          name: mysql
+          generatePodOrdinalServiceVar: false
+          optional: true
+          nodePort:
+            name: mysql
+            option: Optional

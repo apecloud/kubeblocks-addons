@@ -1,0 +1,75 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: orchestrator
+  labels:
+      {{- include "mysql.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: mysql HA compoent definition for Kubernetes
+  serviceKind: orchestrator
+  serviceVersion: 8.0.0
+
+  services:
+    - name: orchestrator
+      serviceName: orchestrator
+      spec:
+        ports:
+          - name: http
+            port: 80
+            protocal: TCP
+            targetPort: http
+          - name: prometheus
+            port: 9125
+            protocal: TCP
+            targetPort: prometheus
+    - name: orcraft
+      serviceName: orcraft
+      generatePodOrdinalService: true
+      spec:
+        type: ClusterIP
+        ports:
+          - name: raft
+            port: 10008
+            targetPort: raft
+  volumes:
+    - name: data
+      needSnapshot: true
+  runtime:
+    volumes:
+      - name: orchestrator-config
+        configMap:
+          name: mysql-orc-config
+    containers:
+      - name: orchestrator
+        image: docker.io/bitpoke/mysql-operator-orchestrator:v0.6.3
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+          - name: orchestrator-data
+            mountPath: /var/lib/orchestrator
+          - name: orchestrator-config
+            mountPath: /usr/local/share/orchestrator/templates
+        ports:
+          - containerPort: 3000
+            name: http
+          - containerPort: 10008
+            name: raft
+        env:
+          - name: ORC_TOPOLOGY_USER
+            value: {{ .Values.orchestrator.topology.username }}
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+                apiVersion: v1
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: ORC_TOPOLOGY_PASSWORD
+            value: {{ .Values.orchestrator.topology.password }}
+        envFrom:
+          - prefix: ORC_
+            secretRef:
+              name: mysql-orc-secret
