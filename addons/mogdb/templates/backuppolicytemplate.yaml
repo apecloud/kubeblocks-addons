@@ -33,7 +33,7 @@ spec:
     schedules:
     - backupMethod: mogdb-basebackup
       enabled: false
-      cronExpression: "*/5 * * * *"
+      cronExpression: "0 18 * * * *"
       retentionPeriod: 7d
     - backupMethod: volume-snapshot
       enabled: false
