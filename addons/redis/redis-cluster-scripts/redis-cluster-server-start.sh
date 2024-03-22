@@ -26,6 +26,13 @@ build_announce_ip_and_port() {
     echo "replica-announce-ip $kb_pod_fqdn" >> /etc/redis/redis.conf
 }
 
+build_cluster_announce_info() {
+    kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc"
+    echo "redis use kb pod fqdn $kb_pod_fqdn to announce"
+    echo "cluster-announce-hostname $kb_pod_fqdn" >> /etc/redis/redis.conf
+    echo "cluster-preferred-endpoint-type hostname" >> /etc/redis/redis.conf
+}
+
 build_redis_cluster_service_port() {
   service_port=6379
   cluster_bus_port=16379
@@ -66,6 +73,7 @@ start_redis_server() {
 build_redis_conf() {
   load_redis_template_conf
   build_announce_ip_and_port
+  build_cluster_announce_info
   rebuild_redis_acl_file
   build_redis_default_accounts
 }

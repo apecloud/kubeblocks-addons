@@ -1,3 +1,4 @@
+bind 0.0.0.0
 appendonly yes
 cluster-enabled yes
 cluster-config-file nodes.conf

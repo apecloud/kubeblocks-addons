@@ -100,6 +100,14 @@ spec:
             - /scripts/redis-cluster-manage.sh --post-provision
         ## TODO: the preCondition should be changed to RuntimeReady when KubeBlocks support it
         preCondition: ComponentReady
+    preTerminate:
+      customHandler:
+        image: {{ include "redis.image" . }}
+        exec:
+          command:
+            - /bin/bash
+            - -c
+            - /scripts/redis-cluster-manage.sh --pre-terminate
     accountProvision:
       customHandler:
         image: {{ include "redis.image" . }}
@@ -131,22 +139,13 @@ spec:
           - name: pod-info
             mountPath: /kb-podinfo
         env:
-          ## TODO: redis sentinel deployment independent, refer to redis sentinel env vars
           - name: SERVICE_PORT
             value: "6379"
           - name: CLUSTER_BUS_PORT
             value: "16379"
-          ## the username of redis primary-secondary replication
           - name: REDIS_REPL_USER
             value: "kbreplicator"
-          ## the password of redis primary-secondary replication
           - name: REDIS_REPL_PASSWORD
-            value: $(REDIS_DEFAULT_PASSWORD)
-          ## the username of redis for redis sentinel connection
-          - name: REDIS_SENTINEL_USER
-            value: "$(REDIS_REPL_USER)-sentinel"
-          ## the password of redis for redis sentinel connection
-          - name: REDIS_SENTINEL_PASSWORD
             value: $(REDIS_DEFAULT_PASSWORD)
         command: [ "/scripts/redis-cluster-server-start.sh" ]
         readinessProbe:
