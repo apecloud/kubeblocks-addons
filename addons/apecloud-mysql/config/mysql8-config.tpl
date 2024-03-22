@@ -158,7 +158,7 @@ key_buffer_size=16777216
 # From mysql8.0.23 is deprecated.
 binlog_cache_size={{ $binlog_cache_size }}
 # AWS binlog_format=MIXED, Aliyun is ROW
-binlog_format=MIXED
+binlog_format=ROW
 binlog_row_image=FULL
 # Aliyun AWS binlog_order_commits=ON
 binlog_order_commits=ON
