@@ -8,11 +8,13 @@ version: mysql-8.0.33
 
 ## @param mode MySQL cluster topology mode, standalone, replication or raftGroup
 ##
-mode: standalone
+mode: replication
 
 ## @param replicas specify cluster replicas
 ##
-replicas: 1
+replicas:
+  mysql: 3
+  orchestrator: 3
 
 ## @param cpu
 ##
