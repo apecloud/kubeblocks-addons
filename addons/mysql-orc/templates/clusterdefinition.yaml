@@ -32,8 +32,8 @@ spec:
           volumeName: mysql-config
           namespace: {{ .Release.Namespace }}
       scriptSpecs:
-        - name: mysql-scripts
-          templateRef: mysql-scripts
+        - name: orc-mysql-scripts
+          templateRef: orc-mysql-scripts
           namespace: {{ .Release.Namespace }}
           volumeName: scripts
           defaultMode: 0555

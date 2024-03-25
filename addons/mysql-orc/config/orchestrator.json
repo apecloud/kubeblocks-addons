@@ -6,7 +6,7 @@
   "MySQLTopologySSLSkipVerify": true,
   "MySQLTopologyUseMutualTLS": false,
 
-  "MySQLOrchestratorHost": "10.0.135.175",
+  "MySQLOrchestratorHost": "10.0.175.0",
   "MySQLOrchestratorPort": 3306,
   "MySQLOrchestratorDatabase": "orchestrator",
   "MySQLOrchestratorUser": "orchestrator",
@@ -15,10 +15,10 @@
   "ApplyMySQLPromotionAfterMasterFailover": true,
   "Debug": false,
   "DetachLostReplicasAfterMasterFailover": true,
-  "DetectClusterAliasQuery": "SELECT CONCAT(SUBSTRING(@@hostname, 1, LENGTH(@@hostname) - 1 - LENGTH(SUBSTRING_INDEX(@@hostname,'-',-2))),'.',SUBSTRING_INDEX(@@report_host,'.',-1))",
-  "DetectInstanceAliasQuery": "SELECT @@hostname",
-  "DiscoverByShowSlaveHosts": false,
+  "MySQLHostnameResolveMethod": "",
   "FailMasterPromotionIfSQLThreadNotUpToDate": true,
+
+  "AutoPseudoGTID": true,
 
 
   "HTTPAdvertise": "http://orc-cluster-mysql:80",
@@ -28,35 +28,10 @@
   "ListenAddress": ":3000",
   "MasterFailoverLostInstancesDowntimeMinutes": 10,
 
-  "OnFailureDetectionProcesses": [
-    "/usr/local/bin/orc-helper event -w '{failureClusterAlias}' 'OrcFailureDetection' 'Failure: {failureType}, failed host: {failedHost}, lost replcas: {lostReplicas}' || true",
-    "/usr/local/bin/orc-helper failover-in-progress '{failureClusterAlias}' '{failureDescription}' || true"
-  ],
-  "PostIntermediateMasterFailoverProcesses": [
-    "/usr/local/bin/orc-helper event '{failureClusterAlias}' 'OrcPostIntermediateMasterFailover' 'Failure type: {failureType}, failed hosts: {failedHost}, slaves: {countSlaves}' || true"
-  ],
-  "PostMasterFailoverProcesses": [
-    "/usr/local/bin/orc-helper event '{failureClusterAlias}' 'OrcPostMasterFailover' 'Failure type: {failureType}, new master: {successorHost}, slaves: {slaveHosts}' || true"
-  ],
-  "PostUnsuccessfulFailoverProcesses": [
-    "/usr/local/bin/orc-helper event -w '{failureClusterAlias}' 'OrcPostUnsuccessfulFailover' 'Failure: {failureType}, failed host: {failedHost} with {countSlaves} slaves' || true"
-  ],
-  "PreFailoverProcesses": [
-    "/usr/local/bin/orc-helper failover-in-progress '{failureClusterAlias}' '{failureDescription}' || true"
-  ],
+  "DiscoverByShowSlaveHosts": false,
+  "FailureDetectionPeriodBlockMinutes": 60,
+
   "ProcessesShellCommand": "sh",
-
-
-  "RaftAdvertise": "orc-cluster-orchestrator-orchestrator",
-  "RaftBind": "{{ .Env.HOSTNAME }}",
-  "RaftDataDir": "/var/lib/orchestrator",
-  "RaftEnabled": false,
-  "RaftNodes": [
-    "orc-cluster-orchestrator-orcraft-0",
-    "orc-cluster-orchestrator-orcraft-1",
-    "orc-cluster-orchestrator-orcraft-2"
-  ],
-
 
   "RecoverIntermediateMasterClusterFilters": [
     ".*"
@@ -67,6 +42,9 @@
   "RecoveryIgnoreHostnameFilters": [],
   "RecoveryPeriodBlockSeconds": 300,
   "RemoveTextFromHostnameDisplay": ":3306",
-  "SlaveLagQuery": "SELECT TIMESTAMPDIFF(SECOND,ts,UTC_TIMESTAMP()) as drift FROM sys_operator.heartbeat ORDER BY drift ASC LIMIT 1",
-  "UnseenInstanceForgetHours": 1
+  "UnseenInstanceForgetHours": 1,
+
+  "OnFailureDetectionProcesses": [
+    "echo 'Detected {failureType} on {failureCluster}. Affected replicas: {countReplicas}' >> /tmp/recovery.log"
+  ]
 }

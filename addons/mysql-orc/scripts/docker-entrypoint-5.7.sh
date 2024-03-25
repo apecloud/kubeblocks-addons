@@ -252,7 +252,6 @@ docker_setup_env() {
 	file_env 'MYSQL_DATABASE'
 	file_env 'MYSQL_USER'
 	file_env 'MYSQL_PASSWORD'
-	file_env 'MYSQL_ROOT_PASSWORD'
 
 	declare -g DATABASE_ALREADY_EXISTS
 	if [ -d "$DATADIR/mysql" ]; then
@@ -289,10 +288,6 @@ docker_setup_db() {
 			# tell docker_process_sql to not use MYSQL_ROOT_PASSWORD since it is not set yet
 	fi
 	# Generate random root password
-	if [ -n "$MYSQL_RANDOM_ROOT_PASSWORD" ]; then
-		MYSQL_ROOT_PASSWORD="$(openssl rand -base64 24)"; export MYSQL_ROOT_PASSWORD
-		mysql_note "GENERATED ROOT PASSWORD: $MYSQL_ROOT_PASSWORD"
-	fi
 	# Sets root password and creates root users for non-localhost hosts
 	local rootCreate=
 	# default root to listen for connections from anywhere

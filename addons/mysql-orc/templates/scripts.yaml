@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: mysql-scripts
+  name: orc-mysql-scripts
   labels:
     {{- include "mysql.labels" . | nindent 4 }}
 data:
@@ -42,7 +42,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: oracle-mysql8.0-reload-script
+  name: orc-mysql8.0-reload-script
   labels:
     {{- include "mysql.labels" . | nindent 4 }}
 data:

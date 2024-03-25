@@ -10,7 +10,12 @@ topology_user="$ORC_TOPOLOGY_USER"
 topology_password="$ORC_TOPOLOGY_PASSWORD"
 
 
-# 创建 MySQL 用户并授予权限
+
+replica_count="$KB_REPLICA_COUNT"
+cluster_component_pod_name="$KB_CLUSTER_COMP_NAME"
+component_name="$KB_COMP_NAME"
+
+# create orchestrator user in mysql
 create_mysql_user() {
   local host=$1
 
@@ -23,12 +28,15 @@ create_mysql_user() {
 CREATE USER '$topology_user'@'%' IDENTIFIED BY '$topology_password';
 GRANT SUPER, PROCESS, REPLICATION SLAVE, RELOAD ON *.* TO '$topology_user'@'%';
 GRANT SELECT ON mysql.slave_master_info TO '$topology_user'@'%';
+GRANT DROP ON _pseudo_gtid_.* to '$topology_user'@'%';
+set global slave_net_timeout = 4;
 EOF
   else
     echo "MySQL user '$topology_user' already exists."
   fi
 }
 
+# wait for mysql to be available
 wait_for_connectivity() {
   local timeout=600
   local start_time=$(date +%s)
@@ -53,41 +61,77 @@ wait_for_connectivity() {
   done
 }
 
+# register first pod to orchestrator
 register_to_orchestrator() {
-    local timeout=100
-    local start_time=$(date +%s)
-    local current_time
+  local host_ip=$1
 
-    local host_ip=$1
-    echo "register all mysql pod to orchestrator..."
-    while true; do
+  local timeout=100
+  local start_time=$(date +%s)
+  local current_time
+
+
+  local url="http://orc-cluster-orchestrator-orchestrator:80/api/discover/$host_ip/3306"
+  local instance_url="http://orc-cluster-orchestrator-orchestrator:80/api/instance/$host_ip/330"
+
+  echo "register first mysql pod to orchestrator..."
+  instanceResponse=$(curl -s -o /dev/null -w "%{http_code}" $instance_url)
+    if [ $instanceResponse -eq 200 ]; then
+      echo "response success"
+    fi
+
+  while true; do
     # 注册到 Orchestrator
-        echo "register $pod_name ($host_ip) to Orchestrator..."
-        current_time=$(date +%s)
-        if [ $((current_time - start_time)) -gt $timeout ]; then
-          echo "Timeout waiting for $host to become available."
-          return 1
-        fi
+    echo "register $pod_name ($host_ip) to Orchestrator..."
+    current_time=$(date +%s)
+    if [ $((current_time - start_time)) -gt $timeout ]; then
+      echo "Timeout waiting for $host to become available."
+      exit 1
+    fi
 
-        # 定义要检查的 URL
-        url="http://orc-cluster-orchestrator-orchestrator:80/api/discover/$host_ip/3306"
-        response=$(curl -s -o /dev/null -w "%{http_code}" $url)
+    # url for orchestrator to discover this host_ip
 
-        if [ $response -eq 200 ]; then
-            echo "response success"
-            current_time=0
-        else
-            echo "response failed"
-            sleep 1
-        fi
-    done
-    return 0
+    # 发送请求并获取响应
+    response=$(curl -s -o /dev/null -w "%{http_code}" $url)
+    if [ $response -eq 200 ]; then
+        echo "response success"
+        break
+    fi
+  done
+  echo "register $pod_name ($host_ip) to Orchestrator successful."
 }
+
+
+change_master() {
+  local host_ip=$1
+  local master_host=$2
+  local master_port=$3
+  local username=$4
+  local password=$5
+
+  echo "Changing master to $host_ip..."
+
+  # 使用提供的参数执行 CHANGE MASTER 语句
+  mysql -h "$host_ip" -u "$username" -p"$password" << EOF
+STOP SLAVE;
+SET GLOBAL SQL_SLAVE_SKIP_COUNTER=1;
+CHANGE MASTER TO
+MASTER_CONNECT_RETRY=1,
+MASTER_RETRY_COUNT=86400,
+MASTER_HOST='$master_host',
+MASTER_PORT=$master_port,
+MASTER_USER='$username',
+MASTER_PASSWORD='$password';
+START SLAVE;
+EOF
+
+  echo "CHANGE MASTER successful for $master_host."
+
+}
+
 
 
 # 从环境变量中获取 Pod 名称列表和 IP 地址列表
 process_each_pod() {
-  local mysql_port
 
   if [ -z "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" ] || [ -z "$KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST" ]; then
     echo "Error: Required environment variables KB_CLUSTER_COMPONENT_POD_NAME_LIST or KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST are not set."
@@ -96,40 +140,37 @@ process_each_pod() {
 
   old_ifs="$IFS"
   IFS=','
-  set -f
-  pod_name_list="$KB_CLUSTER_COMPONENT_POD_NAME_LIST"
-  pod_ip_list="$KB_CLUSTER_COMPONENT_POD_IP_LIST"
-  set +f
+  pod_name_list=($KB_CLUSTER_COMPONENT_POD_NAME_LIST)
+  pod_ip_list=($KB_CLUSTER_COMPONENT_POD_IP_LIST)
   IFS="$old_ifs"
+  echo "pod_name_list: $pod_name_list"
 
-  for (( i=0; i<${#pod_name_list[@]}; i++ )); do
-    pod_name="${pod_name_list_array[$i]}"
+  first_mysql_service_host_name=$(echo "${cluster_component_pod_name}_${component_name}_0_SERVICE_HOST" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+  first_mysql_service_host=${!first_mysql_service_host_name}
+
+  for (( i=0; i<${replica_count}; i++ )); do
+    pod_name="${pod_name_list[$i]}"
     host_ip="${pod_ip_list%%,*}"
 
-
-
-    echo "podname: $pod_name,  host_ip: $host_ip，iteration count：${#pod_name_list[@]}"
+    mysql_service_host_name=$(echo "${cluster_component_pod_name}_${component_name}_${i}_SERVICE_HOST" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+    mysql_service_host=${!mysql_service_host_name}
 
     # 处理每个 Pod
-    echo "processing $pod_name ($host_ip)"
+    echo "processing $pod_name ($mysql_service_host)"
     # wait for mysql to become available
-    wait_for_connectivity "$host_ip"
-    # create mysql user for orchestrator and grant permissions
-    create_mysql_user "$host_ip"
-    # register to orchestrator
-    register_to_orchestrator "$host_ip"
+    wait_for_connectivity "$mysql_service_host"
 
-    register_result=$(register_to_orchestrator "$host_ip")
-    if [ $register_result -eq 0 ]; then
-      echo "Registration for $pod_name successful."
+
+    if [[ $i -eq 0 ]]; then
+      # create mysql user for orchestrator and grant permissions
+      create_mysql_user "$mysql_service_host"
+      register_to_orchestrator "$mysql_service_host"
     else
-      echo "Registration for $pod_name failed."
-      exit 1
+      change_master "$mysql_service_host" "$first_mysql_service_host" "$mysql_port" "$mysql_username" "$mysql_password"
     fi
   done
   echo "Initialization script completed！"
 }
-
 # 获取 Pod 名称和 IP 地址列表
 process_each_pod
 
