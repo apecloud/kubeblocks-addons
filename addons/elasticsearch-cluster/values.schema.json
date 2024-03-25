@@ -1,0 +1,166 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "replicaCount": {
+      "title": "ReplicaCount",
+      "description": "The number of replicas.",
+      "type": "integer",
+      "default": 1
+    },
+    "mode": {
+      "title": "Mode",
+      "description": "Cluster topology mode.",
+      "type": "string",
+      "default": "multi-node",
+      "enum": [
+        "single-node",
+        "multi-node"
+      ]
+    },
+    "terminationPolicy": {
+      "title": "TerminationPolicy",
+      "description": "The policy of termination.",
+      "type": "string",
+      "default": "Delete",
+      "enum": [
+        "Delete",
+        "DoNotTerminate",
+        "Halt",
+        "WipeOut"
+      ]
+    },
+    "imagePullSecrets": {
+      "title": "ImagePullSecrets",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "nameOverride": {
+      "title": "NameOverride",
+      "description": "The override name.",
+      "type": "string",
+      "default": ""
+    },
+    "fullnameOverride": {
+      "title": "FullnameOverride",
+      "description": "The override fullname.",
+      "type": "string",
+      "default": ""
+    },
+    "resources": {
+      "title": "resources",
+      "description": "If you do want to specify resources, uncomment the following lines after 'resources:' in values.yaml",
+      "type": "object"
+    },
+    "nodeSelector": {
+      "title": "NodeSelector",
+      "type": "object"
+    },
+    "tolerations": {
+      "title": "Tolerations",
+      "type": "array",
+      "items": {}
+    },
+    "affinity": {
+      "title": "Affinity",
+      "type": "object"
+    },
+    "topologyKeys": {
+      "title": "TopologyKeys",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "default": "kubernetes.io/hostname"
+      }
+    },
+    "monitor": {
+      "title": "Monitor",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "persistence": {
+      "title": "Persistence",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "storageClassName": {
+              "type": ["string", "null"],
+              "default": null
+            },
+            "size": {
+              "type": "string",
+              "default": "1Gi"
+            }
+          }
+        }
+      },
+      "required": ["enabled", "data"]
+    },
+    "serviceAccount": {
+      "title": "ServiceAccount",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": ["string", "null"],
+          "default": null
+        }
+      }
+    },
+    "ingress": {
+      "title": "Ingress",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "required": ["enabled"]
+    },
+    "service": {
+      "title": "Service",
+      "type": "object",
+      "default": {
+        "type": "ClusterIP"
+      },
+      "properties": {
+        "type": {
+          "type": "string",
+          "default": "ClusterIP"
+        }
+      },
+      "required": ["type"]
+    },
+    "roles": {
+      "title": "Roles",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "heapSize": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
