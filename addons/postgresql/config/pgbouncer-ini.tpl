@@ -1,5 +1,5 @@
 [pgbouncer]
-listen_addr = 0.0.0.0
+listen_addr = *
 listen_port = 6432
 unix_socket_dir = /tmp/
 unix_socket_mode = 0777
