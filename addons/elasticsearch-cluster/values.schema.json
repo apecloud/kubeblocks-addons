@@ -87,6 +87,7 @@
     },
     "persistence": {
       "title": "Persistence",
+      "description": "Persistence config.",
       "type": "object",
       "properties": {
         "enabled": {
@@ -106,11 +107,11 @@
             }
           }
         }
-      },
-      "required": ["enabled", "data"]
+      }
     },
     "serviceAccount": {
       "title": "ServiceAccount",
+      "description": "ServiceAccount",
       "type": "object",
       "properties": {
         "name": {
@@ -121,17 +122,18 @@
     },
     "ingress": {
       "title": "Ingress",
+      "description": "Ingress.",
       "type": "object",
       "properties": {
         "enabled": {
           "type": "boolean",
           "default": false
         }
-      },
-      "required": ["enabled"]
+      }
     },
     "service": {
       "title": "Service",
+      "description": "Service.",
       "type": "object",
       "default": {
         "type": "ClusterIP"
@@ -141,11 +143,11 @@
           "type": "string",
           "default": "ClusterIP"
         }
-      },
-      "required": ["type"]
+      }
     },
     "roles": {
       "title": "Roles",
+      "description": "Roles for nodes.",
       "type": "array",
       "items": {
         "type": "object",
