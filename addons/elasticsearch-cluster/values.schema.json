@@ -6,7 +6,9 @@
       "title": "ReplicaCount",
       "description": "The number of replicas.",
       "type": "integer",
-      "default": 1
+      "default": 1,
+      "minimum": 1,
+      "maximum": 5
     },
     "mode": {
       "title": "Mode",
@@ -52,20 +54,65 @@
     "resources": {
       "title": "resources",
       "description": "If you do want to specify resources, uncomment the following lines after 'resources:' in values.yaml",
-      "type": "object"
-    },
-    "nodeSelector": {
-      "title": "NodeSelector",
-      "type": "object"
-    },
-    "tolerations": {
-      "title": "Tolerations",
-      "type": "array",
-      "items": {}
-    },
-    "affinity": {
-      "title": "Affinity",
-      "type": "object"
+      "type": "object",
+      "properties": {
+        "limits": {
+          "type": "object",
+          "properties": {
+            "cpu": {
+              "title": "CPU",
+              "description": "CPU cores.",
+              "type": [
+                "string",
+                "number"
+              ],
+              "default": "100m",
+              "minimum": 0.1,
+              "maximum": 64
+            },
+            "memory": {
+              "title": "Memory(Gi)",
+              "description": "Memory, the unit is Gi",
+              "type": [
+                "string",
+                "number"
+              ],
+              "default": "128Mi",
+              "minimum": 0.125,
+              "maximum": 1000
+            }
+          }
+        },
+        "requests": {
+          "type": "object",
+          "title": "limits",
+          "description": "Resources requests.",
+          "properties": {
+            "cpu": {
+              "title": "CPU",
+              "description": "CPU cores.",
+              "type": [
+                "string",
+                "number"
+              ],
+              "default": "100m",
+              "minimum": 0.1,
+              "maximum": 64
+            },
+            "memory": {
+              "title": "Memory(Gi)",
+              "description": "Memory, the unit is Gi",
+              "type": [
+                "string",
+                "number"
+              ],
+              "default": "128Mi",
+              "minimum": 0.125,
+              "maximum": 1000
+            }
+          }
+        }
+      }
     },
     "topologyKeys": {
       "title": "TopologyKeys",
@@ -102,8 +149,12 @@
               "default": null
             },
             "size": {
-              "type": "string",
-              "default": "1Gi"
+              "title": "Storage(Gi)",
+              "description": "Storage Size, the unit is Gi.",
+              "type": ["string", "number"],
+              "default": "1Gi",
+              "minimum": 1,
+              "maximum": 10000
             }
           }
         }
