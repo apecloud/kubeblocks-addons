@@ -81,23 +81,23 @@ mysqlx=0
 
 datadir={{ $data_root }}/data
 
+{{- $log_root := printf "%s/log" $data_root }}
+log_error={{ $log_root }}/mysqld-error.log
+slow_query_log_file={{ $log_root }}/mysqld-slowquery.log
+general_log_file={{ $log_root }}/mysqld.log
+
 {{ block "logsBlock" . }}
 log_statements_unsafe_for_binlog=OFF
 log_error_verbosity=2
 log_output=FILE
-{{- $data_root := getVolumePathByName ( index $.podSpec.containers 0 ) "data" }}
+{{- $log_root := "/var/lib/mysql/log" }}
 {{- if hasKey $.component "enabledLogs" }}
-{{- if mustHas "error" $.component.enabledLogs }}
-log_error={{ $data_root }}/log/mysqld-error.log
-{{- end }}
 {{- if mustHas "slow" $.component.enabledLogs }}
 slow_query_log=ON
 long_query_time=5
-slow_query_log_file={{ $data_root }}/log/mysqld-slowquery.log
 {{- end }}
 {{- if mustHas "general" $.component.enabledLogs }}
 general_log=ON
-general_log_file={{ $data_root }}/log/mysqld.log
 {{- end }}
 {{- end }}
 {{ end }}
@@ -165,6 +165,20 @@ log_replica_updates=1
 relay_log_recovery=ON
 relay_log=relay-bin
 relay_log_index=relay-bin.index
+
+# audit log
+loose_audit_log_handler=FILE # FILE, SYSLOG
+loose_audit_log_file={{ $data_root }}/auditlog/audit.log
+loose_audit_log_buffer_size=1Mb
+loose_audit_log_policy=ALL # ALL, LOGINS, QUERIES, NONE
+loose_audit_log_strategy=ASYNCHRONOUS
+loose_audit_log_rotate_on_size=10485760
+loose_audit_log_rotations=5
+
+# semi sync, it works
+# loose_rpl-semi-sync-source-enabled = 1
+# loose_rpl_semi_sync_source_timeout = 0
+# loose_rpl-semi-sync-replica-enabled = 1
 
 pid-file=/var/run/mysqld/mysqld.pid
 socket=/var/run/mysqld/mysqld.sock

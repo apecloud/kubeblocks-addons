@@ -4,7 +4,7 @@
 {{- /* find kafka-server component */}}
 {{- $component := fromJson "{}" }}
 {{- range $i, $e := $.cluster.spec.componentSpecs }}
-  {{- if contains "kafka-combine-server" $e.componentDef }}
+  {{- if contains "kafka-combine" $e.componentDef }}
   {{- $component = $e }}
   {{- end }}
 {{- end }}

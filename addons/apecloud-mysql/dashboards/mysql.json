@@ -4779,7 +4779,8 @@
   "style": "dark",
   "tags": [
     "mysql",
-    "db"
+    "db",
+    "apps"
   ],
   "templating": {
     "list": [
@@ -4968,8 +4969,8 @@
     "type": "timepicker"
   },
   "timezone": "",
-  "title": "MySQL",
-  "uid": "mysql",
+  "title": "APPS / MySQL",
+  "uid": "apecloud-mysql",
   "version": 1,
   "weekStart": ""
 }

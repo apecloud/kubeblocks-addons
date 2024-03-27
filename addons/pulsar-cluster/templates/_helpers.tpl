@@ -66,5 +66,41 @@ Create the name of the service account to use
 Pulsar broker FQDN
 */}}
 {{- define "pulsar-cluster.brokerFQDN" -}}
-{{ include "kblib.clusterName" . }}-broker.{{ .Release.Namespace }}.svc{{ .Values.clusterDomain }}
+{{- if eq .Values.version "pulsar-3.0.2" }}
+{{- include "kblib.clusterName" . }}-broker-bootstrap.{{ .Release.Namespace }}.svc{{ .Values.clusterDomain }}
+{{- else }}
+{{- include "kblib.clusterName" . }}-broker.{{ .Release.Namespace }}.svc{{ .Values.clusterDomain }}
+{{- end }}
+{{- end }}
+
+{{/*
+Pulsar ZooKeeper service ref
+*/}}
+{{- define "pulsar-zookeeper-ref"}}
+{{- if .Values.serviceReference.enabled }}
+serviceRefs:
+- name: pulsarZookeeper
+  namespace: {{ .Values.serviceReference.zookeeper.namespace | default .Release.Namespace }}
+  {{- if .Values.serviceReference.zookeeper.serviceDescriptor }}
+  serviceDescriptor: {{ .Values.serviceReference.zookeeper.serviceDescriptor }}
+  {{- else }}
+  {{- if .Values.serviceReference.zookeeper.cluster }}
+  cluster: {{ .Values.serviceReference.zookeeper.cluster }}
+  {{- else }}
+  cluster: {{ include "kblib.clusterName" . }}-zookeeper
+  {{- end }}
+  {{- end }}
+{{- end}}
+{{- end}}
+}}
+
+{{/*
+Define Pulsar cluster annotation keys for nodeport feature gate.
+*/}}
+{{- define "pulsar-cluster.brokerAddrFeatureGate" -}}
+kubeblocks.io/enabled-pod-ordinal-svc: broker
+{{- if .Values.nodePortEnabled }}
+kubeblocks.io/enabled-node-port-svc: broker
+kubeblocks.io/disabled-cluster-ip-svc: broker
+{{- end }}
 {{- end }}

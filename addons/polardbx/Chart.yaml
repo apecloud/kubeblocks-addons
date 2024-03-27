@@ -3,7 +3,7 @@ name: polardbx
 description: PolarDB-X is a cloud native distributed SQL Database designed for high concurrency, massive storage, complex querying scenarios.
 
 type: application
-version: 0.7.0
+version: 0.8.1
 appVersion: v2.3
 
 keywords:

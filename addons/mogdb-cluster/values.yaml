@@ -8,19 +8,19 @@ version: mogdb-5.0.5
 
 ## @param mode postgresql cluster topology mode, standalone, replication
 ##
-mode: standalone
+mode: replication
 
 ## @param replicas specify cluster replicas
 ##
-replicas: 1
+replicas: 2
 
 ## @param cpu
 ##
-cpu: 0.5
+cpu: 1
 
 ## @param memory, the unit is Gi
 ##
-memory: 0.5
+memory: 1
 
 ## @param requests.cpu if not set, use cpu
 ## @param requests.memory, if not set, use memory

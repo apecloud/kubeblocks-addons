@@ -18,12 +18,19 @@ spec:
           - name: mariadb
             port: 3306
             targetPort: mariadb
+      monitor:
+        exporterConfig:
+          scrapePort: 9104
+          scrapePath: "/metrics"
+      volumeTypes:
+        - name: data
+          type: data
       podSpec:
         containers:
           - name: mariadb-container
             imagePullPolicy: IfNotPresent
             volumeMounts:
-              - mountPath: /var/lib/mariadb
+              - mountPath: /var/lib/mysql
                 name: data
             ports:
               - containerPort: 3306
@@ -41,3 +48,21 @@ spec:
                   secretKeyRef:
                     name: $(CONN_CREDENTIAL_SECRET_NAME)
                     key: password
+          - name: mysql-exporter
+            ports:
+              - name: metrics
+                containerPort: 9104
+                protocol: TCP
+            env:
+              - name: "MARIADB_MONITOR_USER"
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: username
+              - name: "MARIADB_MONITOR_PASSWORD"
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: password
+              - name: "DATA_SOURCE_NAME"
+                value: "$(MARIADB_MONITOR_USER):$(MARIADB_MONITOR_PASSWORD)@(localhost:3306)/"

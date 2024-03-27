@@ -36,6 +36,9 @@ auth:
 logConfigs:
   running: /data/mongodb/logs/mongodb.log*
 
+logCollector:
+  enabled: false
+
 dataMountPath: /data/mongodb
 
 metrics:
@@ -64,7 +67,7 @@ metrics:
         collect_all: true
         collection_interval: 15s
         direct_connect: true
-        global_conn_pool: false
+        global_conn_pool: true
         compatible_mode: true
 
     processors:
@@ -108,3 +111,10 @@ metrics:
 ##   --set enabledClusterVersions={}   # this will disable all cluster versions, the enabledClusterVersions has an empty
 ##                                     # value and the length is 1
 enabledClusterVersions: [ ]
+
+## @param resourceNamePrefix Prefix for all resources name created by this chart, that can avoid name conflict
+## if you install multiple releases of this chart.
+## If specified, the cluster definition will use it as name.
+resourceNamePrefix: ""
+
+useHostNetwork: false

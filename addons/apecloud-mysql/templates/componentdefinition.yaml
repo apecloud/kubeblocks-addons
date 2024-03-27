@@ -67,23 +67,23 @@ spec:
         numSymbols: 0
         letterCase: MixedCases
     - name: kbadmin
-      statement: CREATE USER $(USERNAME) IDENTIFIED BY '$(PASSWORD)'; GRANT ALL PRIVILEGES ON *.* TO $(USERNAME);
+      statement: CREATE USER $(USERNAME) IDENTIFIED BY '$(PASSWD)'; GRANT ALL PRIVILEGES ON *.* TO $(USERNAME);
       passwordGenerationPolicy: &defaultPasswordGenerationPolicy
         length: 16
         numDigits: 8
         numSymbols: 0
         letterCase: MixedCases
     - name: kbdataprotection
-      statement: CREATE USER $(USERNAME) IDENTIFIED BY '$(PASSWORD)';GRANT RELOAD, LOCK TABLES, PROCESS, REPLICATION CLIENT ON *.* TO $(USERNAME); GRANT LOCK TABLES,RELOAD,PROCESS,REPLICATION CLIENT, SUPER,SELECT,EVENT,TRIGGER,SHOW VIEW ON *.* TO $(USERNAME);
+      statement: CREATE USER $(USERNAME) IDENTIFIED BY '$(PASSWD)';GRANT RELOAD, LOCK TABLES, PROCESS, REPLICATION CLIENT ON *.* TO $(USERNAME); GRANT LOCK TABLES,RELOAD,PROCESS,REPLICATION CLIENT, SUPER,SELECT,EVENT,TRIGGER,SHOW VIEW ON *.* TO $(USERNAME);
       passwordGenerationPolicy: *defaultPasswordGenerationPolicy
     - name: kbprobe
-      statement: CREATE USER $(USERNAME) IDENTIFIED BY '$(PASSWORD)'; GRANT REPLICATION CLIENT, PROCESS ON *.* TO $(USERNAME); GRANT SELECT ON performance_schema.* TO $(USERNAME);
+      statement: CREATE USER $(USERNAME) IDENTIFIED BY '$(PASSWD)'; GRANT REPLICATION CLIENT, PROCESS ON *.* TO $(USERNAME); GRANT SELECT ON performance_schema.* TO $(USERNAME);
       passwordGenerationPolicy: *defaultPasswordGenerationPolicy
     - name: kbmonitoring
-      statement: CREATE USER $(USERNAME) IDENTIFIED BY '$(PASSWORD)'; GRANT REPLICATION CLIENT, PROCESS ON *.* TO $(USERNAME); GRANT SELECT ON performance_schema.* TO $(USERNAME);
+      statement: CREATE USER $(USERNAME) IDENTIFIED BY '$(PASSWD)'; GRANT REPLICATION CLIENT, PROCESS ON *.* TO $(USERNAME); GRANT SELECT ON performance_schema.* TO $(USERNAME);
       passwordGenerationPolicy: *defaultPasswordGenerationPolicy
     - name: kbreplicator
-      statement: CREATE USER $(USERNAME) IDENTIFIED BY '$(PASSWORD)'; GRANT REPLICATION SLAVE ON *.* TO $(USERNAME) WITH GRANT OPTION;
+      statement: CREATE USER $(USERNAME) IDENTIFIED BY '$(PASSWD)'; GRANT REPLICATION SLAVE ON *.* TO $(USERNAME) WITH GRANT OPTION;
       passwordGenerationPolicy: *defaultPasswordGenerationPolicy
   roles:
     - name: leader
@@ -101,7 +101,6 @@ spec:
   lifecycleActions:
     roleProbe:
       builtinHandler: wesql
-      failureThreshold: {{ .Values.roleProbe.failureThreshold }}
       periodSeconds: {{ .Values.roleProbe.periodSeconds }}
       timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
     switchover:
@@ -126,14 +125,12 @@ spec:
           args:
             - -u$(MYSQL_ROOT_USER)
             - -p$(MYSQL_ROOT_PASSWORD)
+            - -P$(MYSQL_PORT)
             - -h$(KB_ACCOUNT_ENDPOINT)
             - -e
             - $(KB_ACCOUNT_STATEMENT)
-        env:
-          - name: MYSQL_ROOT_USER
-            value: $(MYSQL_USER)
-          - name: MYSQL_ROOT_PASSWORD
-            value: $(MYSQL_PASSWORD)
+        targetPodSelector: Role
+        matchingKey: leader
   runtime:
     containers:
       - name: mysql

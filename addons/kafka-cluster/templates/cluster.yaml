@@ -4,16 +4,32 @@ metadata:
   name: {{ include "kblib.clusterName" . }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
   annotations:
-    "kubeblocks.io/extra-env": '{"KB_KAFKA_ENABLE_SASL":"{{ $.Values.saslEnable }}","KB_KAFKA_BROKER_HEAP":"{{ $.Values.brokerHeap }}","KB_KAFKA_CONTROLLER_HEAP":"{{ $.Values.controllerHeap }}","KB_KAFKA_PUBLIC_ACCESS":"{{ $.Values.extra.publiclyAccessible }}"}'
+    "kubeblocks.io/extra-env": '{"KB_KAFKA_ENABLE_SASL":"{{ $.Values.saslEnable }}","KB_KAFKA_BROKER_HEAP":"{{ $.Values.brokerHeap }}","KB_KAFKA_CONTROLLER_HEAP":"{{ $.Values.controllerHeap }}","KB_KAFKA_PUBLIC_ACCESS":"{{ $.Values.extra.publiclyAccessible }}", "KB_KAFKA_BROKER_NODEPORT": "{{ $.Values.nodePortEnabled }}"}'
+    {{- include "kafka-cluster.brokerAddrFeatureGate" . | nindent 4 }}
 spec:
   clusterDefinitionRef: kafka # ref clusterdefinition.name
   clusterVersionRef: {{ .Values.version }}
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
+  services:
+    - name: bootstrap
+      serviceName: bootstrap
+      componentSelector: broker
+      spec:
+        {{- if .Values.nodePortEnabled }}
+        type: NodePort
+        {{- else }}
+        type: ClusterIP
+        {{- end }}
+        ports:
+          - name: kafka-client
+            targetPort: 9092
+            port: 9092
   componentSpecs:
     {{- if eq "combined" $.Values.mode }}
     - name: broker
       componentDefRef: kafka-server
+      componentDef: {{ include "kafka-cluster.brokerComponent" . }}
       tls: {{ $.Values.tlsEnable }}
       {{- if $.Values.tlsEnable }}
       issuer:
@@ -46,6 +62,7 @@ spec:
     {{- else }}
     - name: broker
       componentDefRef: kafka-broker
+      componentDef: {{ include "kafka-cluster.brokerComponent" . }}
       tls: {{ $.Values.tlsEnable }}
       {{- if $.Values.tlsEnable }}
       issuer:
@@ -77,6 +94,7 @@ spec:
       {{- end }}
     - name: controller
       componentDefRef: controller
+      componentDef: "kafka-controller"
       tls: {{ $.Values.tlsEnable }}
       {{- if $.Values.tlsEnable }}
       issuer:
@@ -101,6 +119,7 @@ spec:
     {{- if .Values.monitorEnable }}
     - name: metrics-exp
       componentDefRef: kafka-exporter
+      componentDef: kafka-exporter
       replicas: {{ $.Values.monitorReplicas }}
       monitor: true
       {{- include "kblib.componentResources" . | nindent 6 }}

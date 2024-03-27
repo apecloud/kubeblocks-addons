@@ -1,0 +1,46 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: {{ printf "%s-backup-policy-template" (include "oceanbase-release.name" .) }}
+  labels:
+    clusterdefinition.kubeblocks.io/name: {{ include "oceanbase-release.name" . }}
+  annotations:
+    dataprotection.kubeblocks.io/is-default-policy-template: "true"
+spec:
+  clusterDefinitionRef: {{ include "oceanbase-release.name" . }}
+  backupPolicies:
+  - componentDefs:
+    - {{ include "oceanbase-release.name" . }}
+    componentDefRef: {{ include "oceanbase-release.name" . }}
+    backoffLimit: 0
+    backupMethods: &backupMethods
+      - name: full
+        snapshotVolumes: false
+        actionSetName: {{ printf "%s-physical-backuptwork" (include "oceanbase-release.name" .) }}
+        targetVolumes:
+          volumeMounts:
+            - name: workdir
+              mountPath: /home/admin/workdir
+    schedules: &backupschedules
+      - backupMethod: full
+        enabled: false
+        cronExpression: "0 18 * * *"
+        retentionPeriod: 7d
+  - componentDefs:
+    -  {{ printf "%s-hostnetwork" (include "oceanbase-release.name" .) }}
+    componentDefRef: {{ printf "%s-hostnetwork" (include "oceanbase-release.name" .) }}
+    backoffLimit: 0
+    backupMethods: *backupMethods
+    schedules: *backupschedules
+  - componentDefs:
+    - {{ printf "%s-repl" (include "oceanbase-release.name" .) }}
+    componentDefRef: oceanbase-repl
+    backoffLimit: 0
+    backupMethods: *backupMethods
+    schedules: *backupschedules
+  - componentDefs:
+    - {{ printf "%s-repl-host" (include "oceanbase-release.name" .) }}
+    componentDefRef:  {{ printf "%s-repl-host" (include "oceanbase-release.name" .) }}
+    backoffLimit: 0
+    backupMethods: *backupMethods
+    schedules: *backupschedules

@@ -15,6 +15,10 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+// @deprecated
+// This version comes from the pulsar master branch, because this configuration template was used in the old version of pulsar addon,
+// but the master branch code keeps changing. This file is kept here for archiving reasons, but it is no longer used in the new version addon.
+
 // AUTO generate: ./bin/cue-tools https://raw.githubusercontent.com/apache/pulsar/master/pulsar-broker-common/src/main/java/org/apache/pulsar/broker/ServiceConfiguration.java "ServiceConfiguration" "PulsarBrokersParameter" > broker-config-constraint.cue
 #PulsarBrokersParameter: {
 	// The Zookeeper quorum connection string (as a comma-separated list). Deprecated in favour of metadataStoreUrl

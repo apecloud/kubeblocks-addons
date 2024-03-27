@@ -6,7 +6,7 @@ description: ClickHouse is an open-source column-oriented OLAP database manageme
 
 type: application
 
-version: 0.7.1
+version: 0.8.0
 
 appVersion: 22.9.4
 

@@ -26,7 +26,7 @@
   "fiscalYearStartMonth": 0,
   "gnetId": 11323,
   "graphTooltip": 0,
-  "id": 10,
+  "id": 27,
   "links": [
     {
       "asDropdown": false,
@@ -1986,8 +1986,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -2003,7 +2002,7 @@
             "h": 7,
             "w": 24,
             "x": 0,
-            "y": 37
+            "y": 69
           },
           "id": 14,
           "links": [
@@ -2102,8 +2101,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -2119,7 +2117,7 @@
             "h": 7,
             "w": 24,
             "x": 0,
-            "y": 44
+            "y": 76
           },
           "id": 8,
           "links": [],
@@ -2211,8 +2209,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -2228,7 +2225,7 @@
             "h": 7,
             "w": 24,
             "x": 0,
-            "y": 51
+            "y": 83
           },
           "id": 28,
           "links": [],
@@ -2342,8 +2339,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -2359,7 +2355,7 @@
             "h": 8,
             "w": 24,
             "x": 0,
-            "y": 38
+            "y": 70
           },
           "id": 9,
           "links": [],
@@ -2487,8 +2483,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -2524,7 +2519,7 @@
             "h": 8,
             "w": 8,
             "x": 0,
-            "y": 39
+            "y": 71
           },
           "id": 407,
           "links": [
@@ -2618,8 +2613,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -2655,7 +2649,7 @@
             "h": 8,
             "w": 8,
             "x": 8,
-            "y": 39
+            "y": 71
           },
           "id": 408,
           "links": [
@@ -2749,8 +2743,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -2786,7 +2779,7 @@
             "h": 8,
             "w": 8,
             "x": 16,
-            "y": 39
+            "y": 71
           },
           "id": 409,
           "links": [
@@ -2880,8 +2873,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -2917,7 +2909,7 @@
             "h": 8,
             "w": 8,
             "x": 0,
-            "y": 47
+            "y": 79
           },
           "id": 50,
           "links": [
@@ -3072,8 +3064,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -3109,7 +3100,7 @@
             "h": 8,
             "w": 8,
             "x": 8,
-            "y": 47
+            "y": 79
           },
           "id": 406,
           "links": [
@@ -3298,8 +3289,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -3315,7 +3305,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 40
+            "y": 72
           },
           "id": 32,
           "links": [],
@@ -3422,8 +3412,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -3459,7 +3448,7 @@
             "h": 8,
             "w": 8,
             "x": 8,
-            "y": 40
+            "y": 72
           },
           "id": 410,
           "links": [
@@ -3553,8 +3542,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -3590,7 +3578,7 @@
             "h": 8,
             "w": 8,
             "x": 16,
-            "y": 40
+            "y": 72
           },
           "id": 411,
           "links": [
@@ -3700,8 +3688,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -3717,7 +3704,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 41
+            "y": 73
           },
           "id": 41,
           "links": [],
@@ -3835,8 +3822,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -3852,7 +3838,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 41
+            "y": 73
           },
           "id": 42,
           "links": [
@@ -3965,8 +3951,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -3982,7 +3967,7 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 41
+            "y": 73
           },
           "id": 54,
           "links": [
@@ -4106,8 +4091,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -4123,7 +4107,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 48
+            "y": 80
           },
           "id": 44,
           "links": [
@@ -4267,8 +4251,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -4284,7 +4267,7 @@
             "h": 7,
             "w": 8,
             "x": 0,
-            "y": 42
+            "y": 74
           },
           "id": 401,
           "links": [],
@@ -4377,8 +4360,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -4394,7 +4376,7 @@
             "h": 7,
             "w": 8,
             "x": 8,
-            "y": 42
+            "y": 74
           },
           "id": 402,
           "links": [],
@@ -4487,8 +4469,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -4504,7 +4485,7 @@
             "h": 7,
             "w": 8,
             "x": 16,
-            "y": 42
+            "y": 74
           },
           "id": 400,
           "links": [],
@@ -4597,8 +4578,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -4614,7 +4594,7 @@
             "h": 7,
             "w": 12,
             "x": 0,
-            "y": 49
+            "y": 81
           },
           "id": 399,
           "links": [],
@@ -4707,8 +4687,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -4724,7 +4703,7 @@
             "h": 7,
             "w": 12,
             "x": 12,
-            "y": 49
+            "y": 81
           },
           "id": 398,
           "links": [],
@@ -4772,6 +4751,388 @@
       ],
       "title": "ApeCloud MySQL Consensus",
       "type": "row"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 42
+      },
+      "id": 415,
+      "panels": [],
+      "title": "Replication",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 0,
+        "y": 43
+      },
+      "id": 417,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "max(mysql_replication_heartbeat_relay_delay_seconds{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\", replication_role=~\"slave\"}) BY (namespace,app_kubernetes_io_instance)",
+          "legendFormat": "{{namespace}}/{{app_kubernetes_io_instance}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "ReplicationLag(relay delay seconds)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 6,
+        "y": 43
+      },
+      "id": 419,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "max(mysql_slave_status_seconds_behind_master{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}) BY (namespace,app_kubernetes_io_instance,master_host)",
+          "legendFormat": "{{namespace}}/{{app_kubernetes_io_instance}} | {{master_host}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Seconds Behind Master",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 12,
+        "y": 43
+      },
+      "id": 421,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "mysql_slave_status_slave_io_running{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "legendFormat": "{{namespace}}/{{app_kubernetes_io_instance}}/{{pod}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Slave IO thread",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 6,
+        "x": 18,
+        "y": 43
+      },
+      "id": 422,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "mysql_slave_status_slave_sql_running{namespace=~\"$namespace\", app_kubernetes_io_instance=~\"$cluster\",pod=~\"$instance\"}",
+          "legendFormat": "{{namespace}}/{{app_kubernetes_io_instance}}/{{pod}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Slave SQL thread",
+      "type": "timeseries"
     }
   ],
   "refresh": "",
@@ -4968,8 +5329,8 @@
     "type": "timepicker"
   },
   "timezone": "",
-  "title": "MySQL",
-  "uid": "mysql",
+  "title": "APPS / Oracle MySQL",
+  "uid": "oracle-mysql",
   "version": 1,
   "weekStart": ""
 }

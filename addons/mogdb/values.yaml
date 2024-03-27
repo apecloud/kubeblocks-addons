@@ -12,6 +12,9 @@ image:
   tag: 5.0.5
 
 
+dataMountPath: /var/lib/mogdb
+
+
 shmVolume:
   ## @param shmVolume.enabled Enable emptyDir volume for /dev/shm for PostgreSQL pod(s)
   ##
@@ -37,9 +40,9 @@ metrics:
   ## @param metrics.image.pullSecrets Specify image pull secrets
   ##
   image:
-    registry: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com
-    repository: apecloud/agamotto
-    tag: 0.1.0-beta.5
+    registry: swr.cn-north-4.myhuaweicloud.com
+    repository: mogdb-cloud/mogdb-exporter
+    tag: 3.1.0
     pullPolicy: IfNotPresent
   service:
     port: 9187

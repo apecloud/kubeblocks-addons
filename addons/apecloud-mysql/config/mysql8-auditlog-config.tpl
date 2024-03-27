@@ -115,21 +115,15 @@ general_log_file=/data/mysql/log/mysqld.log
 {{- end }}
 {{ end }}
 
-## for auditlog
-loose_audit_log_dir=/data/mysql/auditlog
-loose_audit_log_enabled=ON
-#loose_audit_log_buffer_size=8388608
-#loose_audit_log_connection_policy=ALL
-#loose_audit_log_event_buffer_size=2048
-#loose_audit_log_flush=OFF
-loose_audit_log_policy=ALL
-loose_audit_log_format=PLAIN # PLAIN or JSON
-#loose_audit_log_row_limit=100000
-loose_audit_log_skip=OFF
-loose_audit_log_statement_policy=ALL
-#loose_audit_log_strategy=ASYNCHRONOUS
-## TODO select which format by env when creating a cluster?
-loose_audit_log_version=MYSQL_V1 # MYSQL_V1 or MYSQL_V3
+# audit log
+plugin-load-add=audit_log=audit_log.so
+loose_audit_log_handler=FILE # FILE, SYSLOG
+loose_audit_log_file={{ $data_root }}/auditlog/audit.log
+loose_audit_log_buffer_size=1Mb
+loose_audit_log_policy=ALL # ALL, LOGINS, QUERIES, NONE
+loose_audit_log_strategy=ASYNCHRONOUS
+loose_audit_log_rotate_on_size=10485760
+loose_audit_log_rotations=5
 
 #innodb
 innodb_doublewrite_batch_size=16
@@ -176,7 +170,7 @@ key_buffer_size=16777216
 # From mysql8.0.23 is deprecated.
 binlog_cache_size={{ $binlog_cache_size }}
 # AWS binlog_format=MIXED, Aliyun is ROW
-binlog_format=MIXED
+binlog_format=ROW
 binlog_row_image=FULL
 # Aliyun AWS binlog_order_commits=ON
 binlog_order_commits=ON

@@ -8,24 +8,40 @@ spec:
   configurationSchema:
     cue: ""
 
-  # mysql configuration file format
+  # pulsar configuration file format
   formatterConfig:
     format: yaml
----
 
-{{- $cc := .Files.Get "config/broker-config-effect-scope.yaml" | fromYaml }}
+---
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ConfigConstraint
 metadata:
-  name: brokers-config-constraints
+  name: pulsar-common-constraints
+  labels:
+    {{- include "pulsar.labels" . | nindent 4 }}
+spec:
+  configurationSchema:
+    cue: ""
+
+  # pulsar configuration file format
+  formatterConfig:
+    format: props-plus
+
+---
+
+{{- $cc := .Files.Get "config/2.11.2/broker-config-effect-scope.yaml" | fromYaml }}
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ConfigConstraint
+metadata:
+  name: pulsar2-brokers-cc
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
   configurationSchema:
     cue: |-
-      {{- .Files.Get "config/broker-config-constraint.cue" | nindent 6 }}
+      {{- .Files.Get "config/2.11.2/broker-config-constraint.cue" | nindent 6 }}
 
-  # mysql configuration file format
+  # pulsar configuration file format
   formatterConfig:
     format: props-plus
 
@@ -72,16 +88,129 @@ spec:
           - "$(TOOLS_SCRIPTS_PATH)/install-pulsar-client-config.sh"
 
 ---
+
+{{- $cc3 := .Files.Get "config/3.0.2/broker-config-effect-scope.yaml" | fromYaml }}
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ConfigConstraint
 metadata:
-  name: pulsar-common-constraints
+  name: pulsar3-brokers-cc
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
   configurationSchema:
-    cue: ""
+    cue: |-
+      {{- .Files.Get "config/3.0.2/broker-config-constraint.cue" | nindent 6 }}
 
-  # mysql configuration file format
+  # pulsar configuration file format
+  formatterConfig:
+    format: props-plus
+
+  ## define static parameter list
+  {{- if hasKey $cc3 "staticParameters" }}
+  staticParameters:
+    {{- $params := get $cc3 "staticParameters" }}
+    {{- range $params }}
+    - {{ . }}
+    {{- end }}
+  {{- end}}
+
+      ## define dynamic parameter list
+  {{- if hasKey $cc3 "dynamicParameters" }}
+  dynamicParameters:
+   {{- $params := get $cc3 "dynamicParameters" }}
+   {{- range $params }}
+    - {{ . }}
+   {{- end }}
+ {{- end}}
+
+  reloadOptions:
+    shellTrigger:
+      sync: true
+      command:
+        - "update-dynamic-config.sh"
+
+  scriptConfigs:
+    - scriptConfigMapRef: pulsar-tools-script
+      namespace: {{ .Release.Namespace }}
+
+  toolsImageSpec:
+    mountPoint: /kb/tools
+    toolConfigs:
+      - name: init-pulsar-tools
+        command:
+          - cp
+          - /bin/pulsar-admin
+          - /kb/tools/pulsar-admin
+        image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.pulsarTools "root" .) }}"
+        # imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.pulsarTools "root" .) }}"
+      - name: init-pulsar-client-config
+        command:
+          - "$(TOOLS_SCRIPTS_PATH)/install-pulsar-client-config.sh"
+
+---
+
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ConfigConstraint
+metadata:
+  name: pulsar2-bookies-cc
+  labels:
+    {{- include "pulsar.labels" . | nindent 4 }}
+spec:
+  configurationSchema:
+    cue: |-
+      {{- .Files.Get "config/2.11.2/bookkeeper-config-constraint.cue" | nindent 6 }}
+
+  # pulsar configuration file format
+  formatterConfig:
+    format: props-plus
+
+---
+
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ConfigConstraint
+metadata:
+  name: pulsar3-bookies-cc
+  labels:
+    {{- include "pulsar.labels" . | nindent 4 }}
+spec:
+  configurationSchema:
+    cue: |-
+      {{- .Files.Get "config/3.0.2/bookkeeper-config-constraint.cue" | nindent 6 }}
+
+  # pulsar configuration file format
+  formatterConfig:
+    format: props-plus
+
+---
+
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ConfigConstraint
+metadata:
+  name: pulsar2-proxy-cc
+  labels:
+    {{- include "pulsar.labels" . | nindent 4 }}
+spec:
+  configurationSchema:
+    cue: |-
+      {{- .Files.Get "config/2.11.2/proxy-config-constraint.cue" | nindent 6 }}
+
+  # pulsar configuration file format
+  formatterConfig:
+    format: props-plus
+
+---
+
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ConfigConstraint
+metadata:
+  name: pulsar3-proxy-cc
+  labels:
+    {{- include "pulsar.labels" . | nindent 4 }}
+spec:
+  configurationSchema:
+    cue: |-
+      {{- .Files.Get "config/3.0.2/proxy-config-constraint.cue" | nindent 6 }}
+
+  # pulsar configuration file format
   formatterConfig:
     format: props-plus

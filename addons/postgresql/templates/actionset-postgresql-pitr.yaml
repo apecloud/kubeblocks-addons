@@ -1,0 +1,67 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  labels:
+    clusterdefinition.kubeblocks.io/name: postgresql
+  name: postgresql-pitr
+spec:
+  backupType: Continuous
+  env:
+    - name: VOLUME_DATA_DIR
+      value: /home/postgres/pgdata
+    - name: RESTORE_SCRIPT_DIR
+      value: "$(VOLUME_DATA_DIR)/kb_restore"
+    - name: PITR_DIR
+      value: "$(VOLUME_DATA_DIR)/pitr"
+    - name: DATA_DIR
+      value: "$(VOLUME_DATA_DIR)/pgroot/data"
+    - name: CONF_DIR
+      value: "$(VOLUME_DATA_DIR)/conf"
+    - name: DP_TIME_FORMAT
+      value: 2006-01-02 15:04:05 MST
+    - name: LOG_DIR
+      value: $(VOLUME_DATA_DIR)/pgroot/data/pg_wal
+    - name: TARGET_POD_ROLE
+      # TODO input by backup policy
+      value: primary
+    - name: LOG_ARCHIVE_SECONDS
+      value: "3"
+    - name: SWITCH_WAL_INTERVAL_SECONDS
+      value: "600"
+    - name: IMAGE_TAG
+      value: 14.8.0-pgvector-v0.6.1
+  restore:
+    prepareData:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:$(IMAGE_TAG)
+      command:
+      - bash
+      - -c
+      - |
+        #!/bin/bash
+        set -e;
+        {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 8 }}
+        {{- .Files.Get "dataprotection/postgresql-fetch-wal-log.sh" | nindent 8 }}
+        {{- .Files.Get "dataprotection/postgresql-pitr-restore.sh" | nindent 8 }}
+    postReady:
+    - exec:
+        command:
+        - sh
+        - -c
+        - |
+          rm -rf /home/postgres/pgdata/conf/recovery.conf;
+          rm -rf /home/postgres/pgdata/pitr;
+  backup:
+    backupData:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:$(IMAGE_TAG)
+      runOnTargetPodNode: true
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+      command:
+      - bash
+      - -c
+      - |
+        #!/bin/bash
+        set -e;
+        {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 8 }}
+        {{- .Files.Get "dataprotection/postgresql-pitr-backup.sh" | nindent 8 }}

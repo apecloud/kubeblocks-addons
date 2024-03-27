@@ -1,0 +1,15 @@
+# Build image that contains all dependent helm charts
+FROM alpine/helm:3.12.1 as builder
+
+COPY docker/custom-scripts/package-all-helm-charts.sh /tmp/package-all-helm-charts.sh
+
+COPY addons addons
+
+RUN bash /tmp/package-all-helm-charts.sh /tmp/charts
+
+RUN rm -rf addons
+
+FROM docker.io/alpine:edge as dist
+
+COPY --from=builder /tmp/charts /charts
+USER 65532:65532

@@ -7,6 +7,7 @@
       {{- include "mogdb-cluster.replicaCount" . | indent 6 }}
       enabledLogs:
         - running
+      monitor: true
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}

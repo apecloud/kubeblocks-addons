@@ -14,11 +14,9 @@ buffer_size=10000
 buffer_window=30s
 buffer_max_failover_duration=60s
 buffer_min_time_between_failovers=60s
-mysql_auth_server_impl=none
-mysql_server_require_secure_transport=false
+mysql_auth_server_impl=mysqlbased
 mysql_auth_server_static_file=
-mysql_server_ssl_key=
-mysql_server_ssl_cert=
+mysql_server_require_secure_transport=false
 {{ block "logsBlock" . }}
 {{- if hasKey $.component "enabledLogs" }}
 enable_logs=true
@@ -28,3 +26,20 @@ enable_query_log=true
 {{- end }}
 {{ end }}
 ddl_strategy=direct
+enable_display_sql_execution_vttablets=false
+enable_read_write_split_for_read_only_txn=false
+enable_interception_for_dml_without_where=true
+
+{{- if $.component.tlsConfig }}
+{{- $ca_file := getCAFile }}
+{{- $cert_file := getCertFile }}
+{{- $key_file := getKeyFile }}
+mysql_server_ssl_ca={{ $ca_file }}
+mysql_server_ssl_cert={{ $cert_file }}
+mysql_server_ssl_key={{ $key_file }}
+# tls
+{{- else }}
+mysql_server_ssl_ca=
+mysql_server_ssl_cert=
+mysql_server_ssl_key=
+{{- end }}

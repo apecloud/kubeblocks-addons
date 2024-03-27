@@ -52,8 +52,8 @@ on:
           - nebula-cluster
           - neon
           - neon-cluster
-          - oceanbase
-          - oceanbase-cluster
+          - oceanbase-ce
+          - oceanbase-ce-cluster
           - official-postgresql
           - official-postgresql-cluster
           - openldap
@@ -78,8 +78,8 @@ on:
           - redis-cluster
           - risingwave
           - risingwave-cluster
-          - starrocks
-          - starrocks-cluster
+          - starrocks-ce
+          - starrocks-ce-cluster
           - tdengine
           - tdengine-cluster
           - tidb
@@ -88,12 +88,15 @@ on:
           - weaviate-cluster
           - xinference
           - xinference-cluster
+          - yashandb
+          - yashandb-cluster
           - zookeeper
           - zookeeper-cluster
       chart_version:
         description: 'release specify chart version or empty to release default'
         required: false
         default: ''
+
 env:
   GH_TOKEN: ${{ github.token }}
 
@@ -142,7 +145,7 @@ jobs:
           done
           echo "$ADDONS_DIR"
           echo "matrix={\"include\":[$ADDONS_DIR]}" >> $GITHUB_OUTPUT
-    
+
 
   release-addons-chart-jihu:
     needs: [ get-addons-chart-dir ]

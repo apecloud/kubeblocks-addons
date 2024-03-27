@@ -62,10 +62,22 @@ spec:
       podSpec:
         initContainers:
           - command:
+            - bash 
+            - -c
+            - |
+              mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog}
+              cp /usr/lib/mysql/plugin/ {{ .Values.dataMountPath }}/plugin -r
+            imagePullPolicy: Always
+            name: init-data
+            volumeMounts:
+              - mountPath: {{ .Values.dataMountPath }}
+                name: data
+          - command:
             - cp
             - -r
             - /bin/syncer
             - /config
+            - /xtrabackup
             - /kubeblocks/
             image: registry.cn-hangzhou.aliyuncs.com/xuriwuyun/syncer:latest
             imagePullPolicy: Always
@@ -79,7 +91,7 @@ spec:
             command:
               - bash 
               - -c
-              - "mkdir -p /var/lib/mysql/{log,binlog}; chown -R mysql:root /var/lib/mysql; docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1))"
+              - "docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1))"
             volumeMounts:
               - mountPath: {{ .Values.dataMountPath }}
                 name: data
@@ -92,9 +104,17 @@ spec:
             ports:
               - containerPort: 3306
                 name: mysql
+              - containerPort: 3601
+                name: syncer
             env:
+              - name: PATH
+                value: /kubeblocks/xtrabackup/bin:/kubeblocks/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+              - name: KB_SERVICE_CHARACTER_TYPE
+                value: mysql
               - name: MYSQL_INITDB_SKIP_TZINFO
                 value: "1"
+              - name: SERVICE_PORT
+                value: "3306"
               - name: MYSQL_ROOT_HOST
                 value: {{ .Values.auth.rootHost | default "%" | quote }}
               - name: MYSQL_ROOT_USER

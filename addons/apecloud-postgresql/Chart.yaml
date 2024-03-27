@@ -5,11 +5,10 @@ description: ApeCloud PostgreSQL is a database that is compatible with PostgreSQ
 
 type: application
 
-version: 0.8.0-alpha.5
+version: 0.9.0-alpha.5
 
-# This is the temporary version of the ApeCloud PostgreSQL being deployed,
-# TODO: Wait for ApeCloud PostgreSQL to determine the version number.
-appVersion: "latest"
+# This is the version number of the ApeCloud PostgreSQL being deployed
+appVersion: "14.10"
 
 home: https://kubeblocks.io/
 icon: https://github.com/apecloud/kubeblocks/raw/main/img/logo.png

@@ -1,0 +1,37 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+spec:
+  clusterDefinitionRef: {{ include "starrocks-release.name" .}}
+  clusterVersionRef: {{ printf "%s-%s" (include "starrocks-release.name" .) (default .Chart.AppVersion .Values.clusterVersionOverride) }}
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  {{- include "kblib.affinity" . | indent 2 }}
+  componentSpecs:
+    - name: fe
+      componentDefRef: fe
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+      replicas: {{ .Values.replicas | default 1 }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
+      {{- include "kblib.componentServices" . | indent 6 }}
+    - name: be
+      componentDefRef: be
+      replicas: {{ index .Values.beReplicas | default 1 }}
+      resources:
+        limits:
+          cpu: {{ .Values.beCPU | quote }}
+          memory: {{ print .Values.beMemory "Gi" | quote }}
+        requests:
+          cpu: {{ .Values.beCPU | quote }}
+          memory: {{ print .Values.beMemory "Gi" | quote }}
+      volumeClaimTemplates:
+      - name: data # ref clusterdefinition components.containers.volumeMounts.name
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: {{ print .Values.beStorage "Gi" | quote }}

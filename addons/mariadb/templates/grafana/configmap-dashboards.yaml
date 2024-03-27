@@ -1,0 +1,19 @@
+{{- $files := .Files.Glob "dashboards/*.json" }}
+{{- if $files }}
+apiVersion: v1
+kind: ConfigMapList
+items:
+{{- range $path, $fileContents := $files }}
+{{- $dashboardName := regexReplaceAll "(^.*/)(.*)\\.json$" $path "${2}" }}
+  - apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: {{ printf "%s-grafana-%s" (include "mariadb.name" $) $dashboardName | trunc 63 | trimSuffix "-" }}
+      labels:
+        grafana_dashboard: "1"
+        app: {{ include "mariadb.name" $ }}-grafana
+{{ include "mariadb.labels" $ | indent 8 }}
+    data:
+      {{ $dashboardName }}.json: {{ $fileContents | toJson }}
+{{- end }}
+{{- end }}

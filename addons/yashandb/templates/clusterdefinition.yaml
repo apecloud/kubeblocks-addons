@@ -1,0 +1,81 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterDefinition
+metadata:
+  name: yashandb
+  labels:
+    {{- include "yashandb.labels" . | nindent 4 }}
+spec:
+  type: yashandb
+  connectionCredential:
+    username: sys
+    password: "yasdb_123"
+    endpoint: "$(SVC_FQDN):$(SVC_PORT_yashandb)"
+    host: "$(SVC_FQDN)"
+    port: "$(SVC_PORT_yashandb)"
+  componentDefs:
+    - name: yashandb-compdef
+      characterType: yashandb
+      workloadType: Stateful
+      service:
+        ports:
+          - name: yashandb
+            port: 1688
+            targetPort: yashandb
+      configSpecs:
+        - name: yashandb-configs
+          templateRef: yashandb-configs
+          volumeName: yashandb-configs
+          namespace: {{ .Release.Namespace }}
+      scriptSpecs:
+        - name: yashandb-scripts
+          templateRef: yashandb-scripts
+          namespace: {{ .Release.Namespace }}
+          volumeName: yashandb-scripts
+      logConfigs:
+        {{- range $name,$pattern := .Values.logConfigs }}
+        - name: {{ $name }}
+          filePathPattern: {{ $pattern }}
+        {{- end }}
+      podSpec:
+        # hostNetwork: true
+        # dnsPolicy: ClusterFirstWithHostNet
+        initContainers:
+          - name: volume-permissions
+            image: busybox:1.35
+            imagePullPolicy: IfNotPresent
+            command:
+              - /bin/sh
+              - -ec
+              - |
+                chown -R 1000:1000 /home/yashan/mydb
+            securityContext:
+              runAsUser: 0
+            volumeMounts:
+              - mountPath: /home/yashan/mydb
+                name: data
+        containers:
+          - name: yashandb-container
+            imagePullPolicy: IfNotPresent
+            securityContext:
+              allowPrivilegeEscalation: false
+              runAsUser: 1000
+              runAsGroup: 1000
+            command:
+              - /bin/sh
+              - /home/yashan/kbscripts/install.sh
+            volumeMounts:
+              - mountPath: /home/yashan/mydb
+                name: data
+              - mountPath: /home/yashan/kbconfigs
+                name: yashandb-configs
+              - mountPath: /home/yashan/kbscripts
+                name: yashandb-scripts
+            ports:
+              - containerPort: 1688
+                name: yashandb
+            env:
+              - name: WORK_DIR
+                value: /home/yashan
+              - name: YASDB_MOUNT_HOME
+                value: /home/yashan/mydb
+            workingDir: /home/yashan/

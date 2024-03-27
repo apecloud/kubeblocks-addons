@@ -1,4 +1,4 @@
-{{- if .Values.serviceReference.enable }}
+{{- if .Values.serviceReference.enabled }}
 {{- if and (not .Values.serviceReference.zookeeper.serviceDescriptor) (not .Values.serviceReference.zookeeper.cluster) }}
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: Cluster
@@ -11,7 +11,7 @@ metadata:
   {{- end }}
 spec:
   clusterDefinitionRef: pulsar-zookeeper
-  clusterVersionRef: pulsar-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
+  clusterVersionRef: {{ .Values.version }}
   terminationPolicy: {{ $.Values.terminationPolicy }}
   affinity:
     {{- with $.Values.topologyKeys }}

@@ -625,7 +625,7 @@
 	password_encryption?: string & "md5" | "scram-sha-256"
 
 	// Specifies which classes of statements will be logged by session audit logging.
-	"pgaudit.log"?: string & "ddl" | "function" | "misc" | "read" | "role" | "write" | "none" | "all" | "-ddl" | "-function" | "-misc" | "-read" | "-role" | "-write"
+	//	"pgaudit.log"?: string & "ddl" | "function" | "misc" | "read" | "role" | "write" | "none" | "all" | "-ddl" | "-function" | "-misc" | "-read" | "-role" | "-write"
 
 	// Specifies that session logging should be enabled in the case where all relations in a statement are in pg_catalog.
 	"pgaudit.log_catalog"?: bool & false | true
@@ -633,8 +633,14 @@
 	// Specifies the log level that will be used for log entries.
 	"pgaudit.log_level"?: string & "debug5" | "debug4" | "debug3" | "debug2" | "debug1" | "info" | "notice" | "warning" | "log"
 
+	// Specifies whether log messages will be visible to a client process such as psql. This setting should generally be left disabled but may be useful for debugging or other purposes.
+	"pgaudit.log_client"?: bool & false | true
+
 	// Specifies that audit logging should include the parameters that were passed with the statement.
 	"pgaudit.log_parameter"?: bool & false | true
+
+	// Specifies that parameter values longer than this setting (in bytes) should not be logged.
+	"pgaudit.log_parameter_max_size"?: int & >=0
 
 	// Specifies whether session audit logging should create a separate log entry for each relation (TABLE, VIEW, etc.) referenced in a SELECT or DML statement.
 	"pgaudit.log_relation"?: bool & false | true

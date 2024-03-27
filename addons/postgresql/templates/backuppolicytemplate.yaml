@@ -5,6 +5,18 @@ metadata:
   labels:
     clusterdefinition.kubeblocks.io/name: postgresql
     {{- include "postgresql.labels" . | nindent 4 }}
+  annotations:
+    dataprotection.kubeblocks.io/reconfigure-ref: |
+      {
+        "name": "postgresql-configuration",
+        "key": "postgresql.conf",
+        "enable": {
+          "archive-wal": [{"key": "archive_command","value": "''"}]
+        },
+        "disable": {
+          "archive-wal": [{ "key": "archive_command","value": "'/bin/true'"}]
+        }
+      }
 spec:
   clusterDefinitionRef: postgresql
   backupPolicies:
@@ -20,9 +32,9 @@ spec:
         valueFrom:
           clusterVersionRef:
           - names: [postgresql-12.14.0, postgresql-12.14.1, postgresql-12.15.0]
-            mappingValue: "12.15.0-pgvector-v0.5.0"
-          - names: [postgresql-14.7.2-pgvector-v0.5.0, postgresql-14.8.0]
-            mappingValue: "14.8.0-pgvector-v0.5.0"
+            mappingValue: "12.15.0-pgvector-v0.6.1"
+          - names: [postgresql-14.7.2-pgvector-v0.6.1, postgresql-14.8.0]
+            mappingValue: "14.8.0-pgvector-v0.6.1"
       targetVolumes:
         volumeMounts:
         - name: data
@@ -51,6 +63,15 @@ spec:
         volumeMounts:
           - name: data
             mountPath: {{ .Values.dataMountPath }}
+    - name: archive-wal
+      target:
+        role: primary
+      actionSetName: postgresql-pitr
+      snapshotVolumes: false
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
     schedules: &backupschedules
     - backupMethod: pg-basebackup
       enabled: false
@@ -64,6 +85,10 @@ spec:
       enabled: false
       cronExpression: "0 18 * * *"
       retentionPeriod: 7d
+    - backupMethod: archive-wal
+      enabled: false
+      cronExpression: "*/5 * * * *"
+      retentionPeriod: 8d
   - componentDefs: [postgresql-14, postgresql-12]
     target:
       role: secondary
@@ -77,9 +102,9 @@ spec:
             valueFrom:
               componentDef:
                 - names: [postgresql-12]
-                  mappingValue: "12.15.0-pgvector-v0.5.0"
+                  mappingValue: "12.15.0-pgvector-v0.6.1"
                 - names: [postgresql-14]
-                  mappingValue: "14.8.0-pgvector-v0.5.0"
+                  mappingValue: "14.8.0-pgvector-v0.6.1"
         targetVolumes:
           volumeMounts:
             - name: data
@@ -103,6 +128,15 @@ spec:
         target:
           role: secondary
         actionSetName: postgres-wal-g
+        snapshotVolumes: false
+        targetVolumes:
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
+      - name: archive-wal
+        target:
+          role: primary
+        actionSetName: postgresql-pitr
         snapshotVolumes: false
         targetVolumes:
           volumeMounts:

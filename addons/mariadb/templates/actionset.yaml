@@ -1,0 +1,42 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: mariadb-physical-backup
+  labels:
+    clusterdefinition.kubeblocks.io/name: mariadb
+    dataprotection.kubeblocks.io/is-default-policy-template: "true"
+    {{- include "mariadb.labels" . | nindent 4 }}
+spec:
+  env:
+    - name: DATA_DIR
+      value: /var/lib/mysql
+  backupType: Full
+  backup:
+    backupData:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+      runOnTargetPodNode: true
+      command:
+        - sh
+        - -c
+        - |
+          set -e;
+          echo "DB_HOST=${DP_DB_HOST} DB_USER=${DP_DB_USER} DB_PASSWORD=${DP_DB_PASSWORD} DATA_DIR=${DATA_DIR} BACKUP_DIR=${DP_BACKUP_DIR} BACKUP_NAME=${DP_BACKUP_NAME}";
+          mariadb-backup --backup  --safe-slave-backup --slave-info --stream=mbstream --host=${DP_DB_HOST} \
+          --user=${DP_DB_USER} --password=${DP_DB_PASSWORD} --datadir=${DATA_DIR} > ${DATASAFED_LOCAL_BACKEND_PATH}/${DP_BACKUP_NAME}.mbstream
+  restore:
+    prepareData:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+      command:
+        - sh
+        - -c
+        - |
+          echo "BACKUP_DIR=${DP_BACKUP_BASE_PATH} BACKUP_NAME=${DP_BACKUP_NAME} DATA_DIR=${DATA_DIR}" && \
+          mkdir -p /tmp/data/ && cd /tmp/data \
+          && mbstream -x < /backupdata/${DP_BACKUP_NAME}.mbstream \
+          && mariadb-backup --prepare --target-dir=/tmp/data/ \
+          && mariadb-backup --copy-back --target-dir=/tmp/data/ \
+          && find . -name "*.qp"|xargs rm -f \
+          && rm -rf ${DATA_DIR}/* \
+          && rsync -avrP /tmp/data/ ${DATA_DIR}/ \
+          && rm -rf /tmp/data/ \
+          && chmod -R 0777 ${DATA_DIR}

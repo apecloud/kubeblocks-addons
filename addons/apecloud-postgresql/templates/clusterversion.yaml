@@ -3,13 +3,22 @@ kind: ClusterVersion
 metadata:
   name: ac-postgresql-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
   annotations:
-    kubeblocks.io/is-default-cluster-version: "false"
+    kubeblocks.io/is-default-cluster-version: "true"
   labels:
     {{- include "apecloud-postgresql.labels" . | nindent 4 }}
 spec:
   clusterDefinitionRef: apecloud-postgresql
   componentVersions:
     - componentDefRef: postgresql
+      configSpecs:
+        - name: postgresql-consensusset-configuration
+          templateRef: apecloud-postgresql14-configuration
+          constraintRef: apecloud-postgresql14-cc
+          keys:
+            - postgresql.conf
+          namespace: {{ .Release.Namespace }}
+          volumeName: postgresql-config
+          defaultMode: 0777
       versionsContext:
         containers:
           - name: postgresql
