@@ -48,9 +48,9 @@ maxClientCnxns=500
 ## Metrics Providers
 #
 # https://prometheus.io Metrics Exporter
-# metricsProvider.className=org.apache.zookeeper.metrics.prometheus.PrometheusMetricsProvider
-# metricsProvider.httpPort=7000
-# metricsProvider.exportJvmInfo=true
+metricsProvider.className=org.apache.zookeeper.metrics.prometheus.PrometheusMetricsProvider
+metricsProvider.httpPort=7000
+metricsProvider.exportJvmInfo=true
 
 # whitelist
 4lw.commands.whitelist=srvr, mntr, ruok, conf
