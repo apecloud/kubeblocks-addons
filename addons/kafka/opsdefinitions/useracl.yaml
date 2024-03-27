@@ -3,6 +3,10 @@ kind: OpsDefinition
 metadata:
   name: kafka-user-acl
 spec:
+  preConditions:
+    - rule:
+        expression: '{{ eq .component.status.phase "Running" }}'
+        message: "Component is not in Running status."
   componentDefinitionRefs:
   - name: kafka-broker
     accountName: client
@@ -89,67 +93,66 @@ spec:
       - operations
       - type
       type: object
-  jobSpec:
-    backoffLimit: 3
-    template:
-      spec:
-        containers:
-        - name: kafka-topic
-          image: docker.io/bitnami/kafka:3.3.2-debian-11-r54
-          imagePullPolicy: IfNotPresent
-          command:
-          - bash
-          - -c
-          - |
-            set -e
-            SERVERS=()
-            for i in $(seq 0 $((${KB_COMP_REPLICAS}-1))); do
-              SERVERS+=("${KB_COMP_SVC_NAME}-${i}:${KB_COMP_SVC_PORT_BROKER}")
-            done
-            KB_CONNECT_ENDPOINT=$(printf "%s," "${SERVERS[@]}")
-            KB_CONNECT_ENDPOINT=${KB_CONNECT_ENDPOINT%,}
-            command="/opt/bitnami/kafka/bin/kafka-acls.sh --bootstrap-server ${KB_CONNECT_ENDPOINT} --${type}"
-            function AddCommandFlag(){
-               local key=$1
-               local value=$2
-              if [[ ${value} == "true" ]]; then
-                 command="${command} --${key}"
-              fi
-            }
-            AddCommandFlag producer "${producer}"
-            AddCommandFlag consumer "${consumer}"
-
-            function addCommandArg(){
-               local key=$1
-               local value=$2
-               if [[ ! -z ${value} ]];then
-                  command="${command} --${key} '${value}'"
-               fi
-            }
-            addCommandArg topic "${topic}"
-            addCommandArg cluster "${cluster}"
-            addCommandArg group "${group}"
-            addCommandArg transactional-id "${transactionalId}"
-            addCommandArg resource-pattern-type "${patternType}"
-
-            function addMultiCommand(){
-               local value=$1
-               local key=$2
-               local prefixE=$3
-               if [[ ! -z ${value} ]];then
-                  for e in $(echo "${value}" | tr ',' '\n'); do
-                     command="${command} --${key} ${prefixE}${e}"
-                  done
-               fi
-            }
-            addMultiCommand "${allowUsers}" allow-principal "User:"
-            addMultiCommand "${denyUsers}" deny-principal "User:"
-            addMultiCommand "${denyHosts}" deny-host
-            addMultiCommand "${allowHosts}" allow-host
-            addMultiCommand "${operations}" operation
-            echo $command
-            ${command}
-  preConditions:
-  - rule:
-      expression: '{{ eq .component.status.phase "Running" }}'
-      message: "Component is not in Running status."
+  actions:
+    - name: kafka-topic
+      failurePolicy: Fail
+      workload:
+        type: Job
+        backoffLimit: 2
+        podSpec:
+          containers:
+          - name: kafka-topic
+            image: docker.io/bitnami/kafka:3.3.2-debian-11-r54
+            imagePullPolicy: IfNotPresent
+            command:
+            - bash
+            - -c
+            - |
+              set -e
+              SERVERS=()
+              for i in $(seq 0 $((${KB_COMP_REPLICAS}-1))); do
+                SERVERS+=("${KB_COMP_SVC_NAME}-${i}:${KB_COMP_SVC_PORT_BROKER}")
+              done
+              KB_CONNECT_ENDPOINT=$(printf "%s," "${SERVERS[@]}")
+              KB_CONNECT_ENDPOINT=${KB_CONNECT_ENDPOINT%,}
+              command="/opt/bitnami/kafka/bin/kafka-acls.sh --bootstrap-server ${KB_CONNECT_ENDPOINT} --${type}"
+              function AddCommandFlag(){
+                 local key=$1
+                 local value=$2
+                if [[ ${value} == "true" ]]; then
+                   command="${command} --${key}"
+                fi
+              }
+              AddCommandFlag producer "${producer}"
+              AddCommandFlag consumer "${consumer}"
+  
+              function addCommandArg(){
+                 local key=$1
+                 local value=$2
+                 if [[ ! -z ${value} ]];then
+                    command="${command} --${key} '${value}'"
+                 fi
+              }
+              addCommandArg topic "${topic}"
+              addCommandArg cluster "${cluster}"
+              addCommandArg group "${group}"
+              addCommandArg transactional-id "${transactionalId}"
+              addCommandArg resource-pattern-type "${patternType}"
+  
+              function addMultiCommand(){
+                 local value=$1
+                 local key=$2
+                 local prefixE=$3
+                 if [[ ! -z ${value} ]];then
+                    for e in $(echo "${value}" | tr ',' '\n'); do
+                       command="${command} --${key} ${prefixE}${e}"
+                    done
+                 fi
+              }
+              addMultiCommand "${allowUsers}" allow-principal "User:"
+              addMultiCommand "${denyUsers}" deny-principal "User:"
+              addMultiCommand "${denyHosts}" deny-host
+              addMultiCommand "${allowHosts}" allow-host
+              addMultiCommand "${operations}" operation
+              echo $command
+              ${command}
