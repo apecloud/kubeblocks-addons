@@ -34,3 +34,10 @@ requests:
 ## @param storage size, the unit is Gi
 ##
 storage: 20
+
+
+serviceReference:
+  orchestrator:
+      name: mysql-meta
+      namespace: ""
+      cluster: vt
