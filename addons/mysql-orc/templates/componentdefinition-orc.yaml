@@ -15,7 +15,12 @@ spec:
       serviceRefDeclarationSpecs:
         - serviceKind: mysql
           serviceVersion: "^*"
-
+  scripts:
+    - name: orc-mysql-scripts
+      templateRef: orc-mysql-scripts
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
   vars:
     - name: META_MYSQL_PORT
       valueFrom:
@@ -95,6 +100,8 @@ spec:
             mountPath: /var/lib/orchestrator
           - name: orchestrator-config
             mountPath: /usr/local/share/orchestrator/templates
+          - name: scripts
+            mountPath: /scripts
         ports:
           - containerPort: 3000
             name: http
