@@ -72,19 +72,6 @@ spec:
             volumeMounts:
               - mountPath: {{ .Values.dataMountPath }}
                 name: data
-          - command:
-            - cp
-            - -r
-            - /bin/syncer
-            - /config
-            - /xtrabackup
-            - /kubeblocks/
-            image: registry.cn-hangzhou.aliyuncs.com/xuriwuyun/syncer:latest
-            imagePullPolicy: Always
-            name: init-syncer
-            volumeMounts:
-            - mountPath: /kubeblocks
-              name: kubeblocks
         containers:
           - name: mysql
             imagePullPolicy: IfNotPresent
@@ -105,7 +92,7 @@ spec:
               - containerPort: 3306
                 name: mysql
               - containerPort: 3601
-                name: syncer
+                name: ha
             env:
               - name: PATH
                 value: /kubeblocks/xtrabackup/bin:/kubeblocks/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
