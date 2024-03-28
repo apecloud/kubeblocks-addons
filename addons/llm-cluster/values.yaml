@@ -22,7 +22,7 @@ memory: 0
 ##
 gpu: 1
 
-cpuMode: false
+cpuMode: true
 
 model: "facebook/opt-125m"
 

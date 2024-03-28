@@ -4,9 +4,9 @@
   "properties": {
     "cpuMode": {
       "title": "CPU Mode",
-      "description": "Set to true if no GPU is available",
+      "description": "Set to true if no GPU is available, default true",
       "type": "boolean",
-      "default": false
+      "default": true
     },
     "version": {
       "title": "Version",
