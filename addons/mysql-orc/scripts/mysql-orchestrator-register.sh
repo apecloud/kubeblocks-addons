@@ -18,6 +18,7 @@ component_name="$KB_COMP_NAME"
 # create orchestrator user in mysql
 create_mysql_user() {
   local host=$1
+  local service_name=$2
 
   echo "Create MySQL User and Grant Permissions..."
   exists=$(mysql -h $host -P 3306 -u $mysql_username -p$mysql_password -s -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'orchestrator');")
@@ -34,6 +35,22 @@ EOF
   else
     echo "MySQL user '$topology_user' already exists."
   fi
+
+  mysql -h $host -P 3306 -u $mysql_username -p$mysql_password <<-EOSQL
+CREATE DATABASE IF NOT EXISTS `kb_orc_meta_cluster`;
+GRANT ALL ON `kb_orc_meta_cluster`.* TO '$topology_user'@'%';
+CREATE TABLE IF NOT EXISTS kb_orc_meta_cluster.kb_orc_meta_cluster (
+`anchor` tinyint(4) NOT NULL,
+`host_name` varchar(128) NOT NULL DEFAULT '',
+`cluster_name` varchar(128) NOT NULL DEFAULT '',
+`cluster_domain` varchar(128) NOT NULL DEFAULT '',
+`data_center` varchar(128) NOT NULL,
+PRIMARY KEY (`anchor`)
+);
+INSERT INTO kb_orc_meta_cluster.kb_orc_meta_cluster (host_name,cluster_name, cluster_domain, data_center)
+VALUES ('$service_name','$KB_CLUSTER_NAME', '', '');
+EOSQL
+
 }
 
 # wait for mysql to be available
@@ -111,7 +128,7 @@ change_master() {
   echo "Changing master to $host_ip..."
 
   # 使用提供的参数执行 CHANGE MASTER 语句
-  mysql -h "$host_ip" -u "$username" -p"$password" << EOF
+  mysql -h "$host_ip" -u "$username" -p"$password" <<-EOSQL
 STOP SLAVE;
 SET GLOBAL SQL_SLAVE_SKIP_COUNTER=1;
 CHANGE MASTER TO
@@ -122,7 +139,7 @@ MASTER_PORT=$master_port,
 MASTER_USER='$username',
 MASTER_PASSWORD='$password';
 START SLAVE;
-EOF
+EOSQL
 
   echo "CHANGE MASTER successful for $master_host."
 
@@ -152,7 +169,8 @@ process_each_pod() {
     pod_name="${pod_name_list[$i]}"
     host_ip="${pod_ip_list%%,*}"
 
-    mysql_service_host_name=$(echo "${cluster_component_pod_name}_${component_name}_${i}_SERVICE_HOST" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+    mysql_service=$(echo "${cluster_component_pod_name}_${component_name}_${i}" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+    mysql_service_host_name=$mysql_service"_SERVICE_HOST"
     mysql_service_host=${!mysql_service_host_name}
 
     # 处理每个 Pod
@@ -160,10 +178,9 @@ process_each_pod() {
     # wait for mysql to become available
     wait_for_connectivity "$mysql_service_host"
 
-
+    create_mysql_user "$mysql_service_host" "$mysql_service"
     if [[ $i -eq 0 ]]; then
       # create mysql user for orchestrator and grant permissions
-      create_mysql_user "$mysql_service_host"
       register_to_orchestrator "$mysql_service_host"
     else
       change_master "$mysql_service_host" "$first_mysql_service_host" "$mysql_port" "$mysql_username" "$mysql_password"

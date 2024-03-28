@@ -132,9 +132,9 @@ spec:
         serviceVarRef:
           compDef: {{ include "mysql.componentDefName" . }}
           name: mysql
-          generatePodOrdinalServiceVar: false
+          generatePodOrdinalServiceVar: true
           optional: true
-          nodePort:
+          port:
             name: mysql
             option: Optional
 
@@ -145,3 +145,19 @@ spec:
           name: mysql
           generatePodOrdinalServiceVar: true
           optional: true
+
+    - name: ORC_ENDPOINTS
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "orchestrator.componentDefName" . }}
+          name: orchestrator-ordinal
+          generatePodOrdinalServiceVar: true
+          host: Required
+    - name: ORC_PORTS
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "orchestrator.componentDefName" . }}
+          name: orchestrator-ordinal
+          generatePodOrdinalServiceVar: true
+          port:
+            name: http

@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: orchestrator
+  name: {{ include "orchestrator.componentDefName" . }}
   labels:
       {{- include "mysql.labels" . | nindent 4 }}
 spec:
@@ -16,8 +16,8 @@ spec:
         - serviceKind: mysql
           serviceVersion: "^*"
   scripts:
-    - name: orc-mysql-scripts
-      templateRef: orc-mysql-scripts
+    - name: orc-scripts
+      templateRef: orc-scripts
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
@@ -29,7 +29,7 @@ spec:
           name: metaMysql
           port: Required
           optional: true
-    - name: META_MYSQL_HOST
+    - name: META_MYSQL_ENDPOINT
       valueFrom:
         serviceRefVarRef:
           compDef: apecloud-mysql
@@ -50,7 +50,6 @@ spec:
           name: metaMysql
           password: Required
           optional: true
-
   lifecycleActions:
     postProvision:
       customHandler:
@@ -68,14 +67,12 @@ spec:
         ports:
           - name: http
             port: 80
-            protocal: TCP
             targetPort: http
           - name: prometheus
             port: 9125
-            protocal: TCP
             targetPort: prometheus
-    - name: orcraft
-      serviceName: orcraft
+    - name: orchestrator-ordinal
+      serviceName: orchestrator-ordinal
       generatePodOrdinalService: true
       spec:
         type: ClusterIP
@@ -83,6 +80,9 @@ spec:
           - name: raft
             port: 10008
             targetPort: raft
+          - name: http
+            port: 80
+            targetPort: http
   volumes:
     - name: data
       needSnapshot: true
@@ -132,6 +132,8 @@ spec:
                 key: META_PASSWORD
                 name: {{ include "orchestrator.componentDefName" . }}-secret
                 optional: false
+          - name: ORC_META_DATABASE
+            value: {{ .Values.orchestrator.metaBackends.database }}
           - name: POD_IP
             valueFrom:
               fieldRef:

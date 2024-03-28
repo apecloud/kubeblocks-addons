@@ -40,6 +40,10 @@ data:
     {{- .Files.Get "scripts/mysql-orchestrator-register.sh" | nindent 4 }}
   init-meta-database.sh: |-
     {{- .Files.Get "scripts/init-meta-database.sh" | nindent 4 }}
+  member-register.sh: |-
+    {{- .Files.Get "scripts/member-register.sh" | nindent 4 }}
+  orchestrator-client.sh: |-
+    {{- .Files.Get "scripts/orchesrator-client.sh" | nindent 4 }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -57,3 +61,14 @@ data:
       format: ini
       iniConfig:
         sectionName: mysqld
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orc-scripts
+  labels:
+    {{- include "mysql.labels" . | nindent 4 }}
+data:
+  init-meta-database.sh: |-
+    {{- .Files.Get "scripts/init-meta-database.sh" | nindent 4 }}

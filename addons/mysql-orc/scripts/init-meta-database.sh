@@ -4,7 +4,7 @@ set -ex
 mysql_port="3306"
 meta_mysql_username="$META_MYSQL_USER"
 meta_mysql_password="$META_MYSQL_PASSWORD"
-meta_mysql_endpoint="$META_MYSQL_USER"
+meta_mysql_endpoint="$META_MYSQL_ENDPOINT"
 meta_mysql_host=${meta_mysql_endpoint%:*}
 meta_mysql_port=${meta_mysql_endpoint#*:}
 
@@ -17,18 +17,22 @@ init_meta_databases() {
   wait_for_connectivity $meta_mysql_host
 
   echo "Create MySQL User and Grant Permissions..."
-  exists=$(mysql -h $meta_mysql_host -P $meta_mysql_port -u $meta_mysql_username -p$meta_mysql_password -s -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = $meta_user);")
+  exists=$(mysql -h $meta_mysql_host -P $meta_mysql_port -u $meta_mysql_username -p$meta_mysql_password -s -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = '$meta_user');")
 
   if [ $exists -eq 0 ]; then
     echo "Create MySQL User and Grant Permissions..."
     mysql -h $meta_mysql_host -P $meta_mysql_port -u $meta_mysql_username -p$meta_mysql_password << EOF
-CREATE DATABASE IF NOT EXISTS $meta_database;
-CREATE USER '$meta_user'@'%' IDENTIFIED BY '$meta_password';
-GRANT ALL PRIVILEGES ON `$meta_database`.* TO '$meta_user'@'%';
+
 EOF
   else
     echo "MySQL user '$meta_user' already exists."
   fi
+
+  mysql -h $meta_mysql_host -P $meta_mysql_port -u $meta_mysql_username -p$meta_mysql_password << EOF
+CREATE DATABASE IF NOT EXISTS $meta_database;
+GRANT ALL PRIVILEGES ON `$meta_database`.* TO '$meta_user'@'%';
+EOF
+  echo "init meta databases done"
 }
 
 wait_for_connectivity() {
@@ -53,6 +57,5 @@ wait_for_connectivity() {
   done
 }
 
-
-wait_for_connectivity
-create_mysql_user
+init_meta_databases
+echo "script completed scccessfully"
