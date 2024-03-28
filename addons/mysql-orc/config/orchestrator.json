@@ -1,0 +1,50 @@
+
+
+{
+  "MySQLTopologyCredentialsConfigFile": "/usr/local/share/orchestrator/templates/orc-topology.cnf",
+  "MySQLTopologySSLPrivateKeyFile": "",
+  "MySQLTopologySSLCertFile": "",
+  "MySQLTopologySSLCAFile": "",
+  "MySQLTopologySSLSkipVerify": true,
+  "MySQLTopologyUseMutualTLS": false,
+
+  "MySQLOrchestratorHost": "10.0.175.0",
+  "MySQLOrchestratorPort": 3306,
+  "MySQLOrchestratorDatabase": "orchestrator",
+  "MySQLOrchestratorUser": "orchestrator",
+  "MySQLOrchestratorPassword": "orchestrator",
+
+  "ApplyMySQLPromotionAfterMasterFailover": true,
+  "Debug": false,
+  "DetachLostReplicasAfterMasterFailover": true,
+  "MySQLHostnameResolveMethod": "",
+  "FailMasterPromotionIfSQLThreadNotUpToDate": true,
+
+  "AutoPseudoGTID": true,
+  "HTTPAdvertise": "http://orc-cluster-mysql:80",
+
+  "HostnameResolveMethod": "none",
+  "InstancePollSeconds": 5,
+  "ListenAddress": ":3000",
+  "MasterFailoverLostInstancesDowntimeMinutes": 10,
+
+  "DiscoverByShowSlaveHosts": false,
+  "FailureDetectionPeriodBlockMinutes": 60,
+
+  "ProcessesShellCommand": "sh",
+
+  "RecoverIntermediateMasterClusterFilters": [
+    ".*"
+  ],
+  "RecoverMasterClusterFilters": [
+    ".*"
+  ],
+  "RecoveryIgnoreHostnameFilters": [],
+  "RecoveryPeriodBlockSeconds": 300,
+  "RemoveTextFromHostnameDisplay": ":3306",
+  "UnseenInstanceForgetHours": 1,
+
+  "OnFailureDetectionProcesses": [
+    "echo 'Detected {failureType} on {failureCluster}. Affected replicas: {countReplicas}' >> /tmp/recovery.log"
+  ]
+}

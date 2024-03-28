@@ -1,0 +1,34 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+  annotations:
+    kubeblocks.io/enabled-node-port-svc: orchestrator,mysql
+    kubeblocks.io/enabled-pod-ordinal-svc: orchestrator,mysql
+spec:
+  clusterVersionRef: mysql-orc-8.0.33
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  {{- include "kblib.affinity" . | indent 2 }}
+  clusterDefinitionRef: mysql-orc # ref clusterdefinition.name
+  componentSpecs:
+    - name: mysql
+      componentDef: mysql # ref clusterdefinition componentDefs.name
+      replicas: {{ .Values.replicas.mysql }}
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentServices" . | indent 6 }}
+
+    - name: orchestrator
+      componentDef: orchestrator
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+      replicas: {{ .Values.replicas.orchestrator }}
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentServices" . | indent 6 }}
+      serviceRefs:
+        - name: metaMysql
+          namespace: {{ .Values.serviceReference.orchestrator.namespace | default .Release.Namespace }}
+                {{- if .Values.serviceReference.orchestrator.cluster }}
+          cluster: {{ .Values.serviceReference.orchestrator.cluster }}
+                {{- end}}
