@@ -102,6 +102,11 @@ spec:
             value: {{ .Values.orchestrator.topology.password }}
           - name: ORC_TOPOLOGY_PASSWORD
             value: {{ .Values.orchestrator.topology.password }}
+          - name: KB_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
 
   vars:
     - name: MYSQL_ROOT_USER

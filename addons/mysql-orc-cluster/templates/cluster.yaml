@@ -16,9 +16,9 @@ spec:
       componentDef: mysql # ref clusterdefinition componentDefs.name
       replicas: {{ .Values.replicas.mysql }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
-
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentServices" . | indent 6 }}
+
     - name: orchestrator
       componentDef: orchestrator
       {{- include "kblib.componentMonitor" . | indent 6 }}
@@ -26,3 +26,9 @@ spec:
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentServices" . | indent 6 }}
+      serviceRefs:
+        - name: metaMysql
+          namespace: {{ .Values.serviceReference.orchestrator.namespace | default .Release.Namespace }}
+                {{- if .Values.serviceReference.orchestrator.cluster }}
+          cluster: {{ .Values.serviceReference.orchestrator.cluster }}
+                {{- end}}

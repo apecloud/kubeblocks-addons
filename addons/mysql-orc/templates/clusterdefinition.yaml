@@ -146,5 +146,4 @@ spec:
             envFrom:
               - prefix: ORC_
                 secretRef:
-                  name: mysql-orc-secret
-
+                  name: {{ include "orchestrator.componentDefName" . }}-secret

@@ -155,12 +155,23 @@ service:
 {{- end }}
 
 {{/*
-Define redis component defintion name
+Define mysql component defintion name
 */}}
 {{- define "mysql.componentDefName" -}}
 {{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
 mysql
 {{- else -}}
 {{- printf "mysql-%s" .Values.compDefinitionVersionSuffix -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define mysql component defintion name
+*/}}
+{{- define "orchestrator.componentDefName" -}}
+{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
+orchestrator
+{{- else -}}
+{{- printf "orchestrator-%s" .Values.compDefinitionVersionSuffix -}}
 {{- end -}}
 {{- end -}}

@@ -88,9 +88,10 @@ dataMountPath: /var/lib/mysql
 compDefinitionVersionSuffix: ""
 
 orchestrator:
-  backend:
-    username: orchestrator
-    password: orchestrator
+  metaBackends:
+    cluster: vt
+    namespace: ""
+    database: orchestrator
   topology:
     username: orchestrator
     password: orchestrator
