@@ -16,12 +16,22 @@ spec:
     - name: halo
       workloadType: Replication  
       characterType: halo
+      customLabelSpecs:
+        - key: apps.kubeblocks.halo.patroni/scope
+          value: "$(KB_CLUSTER_NAME)-$(KB_COMP_NAME)-patroni$(KB_CLUSTER_UID_POSTFIX_8)"
+          resources:
+            - gvk: "v1/Pod"
+              selector:
+                app.kubernetes.io/managed-by: kubeblocks
+            - gvk: "apps/v1/StatefulSet"
+              selector:
+                app.kubernetes.io/managed-by: kubeblocks
       rsmSpec:
         roles:
           - name: primary
             accessMode: ReadWrite
             canVote: true
-          - name: replica
+          - name: secondary
             accessMode: Readonly
             canVote: true
         roleProbe:
@@ -31,12 +41,12 @@ spec:
                 - |
                   Status=$(curl -s http://localhost:8008) && 
                   role=$(echo $Status | jq .role  | tr -d '"') &&
-                  if [ "$role" = "master" ]; then echo  "primary"; else echo  "replica"; fi
+                  if [ "$role" = "master" ]; then echo  "primary"; else echo  "secondary"; fi
           roleUpdateMechanism: DirectAPIServerEventUpdate
           initialDelaySeconds: 60
         memberUpdateStrategy: BestEffortParallel
       serviceRefDeclarations:
-        - name: {{ .Values.etcd.etcdService }}
+        - name: etcd-service
           serviceRefDeclarationSpecs:
             - serviceKind: etcd
               serviceVersion: v3.5.6
@@ -63,6 +73,23 @@ spec:
       volumeTypes:
         - name: data
           type: data
+      switchoverSpec:
+        withCandidate:
+          cmdExecutorConfig:
+            image: {{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+            command:
+              - /bin/bash
+              - -c
+            args:
+              - curl -s http://$(KB_REPLICATION_PRIMARY_POD_FQDN):8008/switchover -XPOST -d '{"leader":"$(KB_REPLICATION_PRIMARY_POD_NAME)","candidate":"$(KB_SWITCHOVER_CANDIDATE_NAME)"}'
+        withoutCandidate:
+          cmdExecutorConfig:
+            image: {{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+            command:
+              - /bin/bash
+              - -c
+            args:
+              - curl -s http://$(KB_REPLICATION_PRIMARY_POD_FQDN):8008/switchover -XPOST -d '{"leader":"$(KB_REPLICATION_PRIMARY_POD_NAME)"}'
       podSpec:
         securityContext:
           runAsUser: 0
@@ -70,6 +97,7 @@ spec:
           runAsGroup: 3000
         containers:
           - name: halo
+            image: {{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
             imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
             securityContext:
               runAsUser: 0
@@ -106,15 +134,17 @@ spec:
                   fieldRef:
                     apiVersion: v1
                     fieldPath: status.podIP
+              - name: PATRONI_POSTGRESQL_CONNECT_ADDRESS
+                value: "$(KB_PODIP):1921"
               - name: POD_NAMESPACE
                 valueFrom:
                   fieldRef:
                     apiVersion: v1
                     fieldPath: metadata.namespace
               - name: PATRONI_SUPERUSER_USERNAME
-                value: "halo"  
-              - name: HALO_PASSWORD
-                value: "halo0root"
+                value: halo
+              - name: PATRONI_SUPERUSER_PASSWORD
+                value: halo0root
               - name: PATRONI_REPLICATION_USERNAME
                 value: "replica"
               - name: PATRONI_REPLICATION_PASSWORD
@@ -128,7 +158,7 @@ spec:
               - name: PATRONI_RESTAPI_LISTEN
                 value: "0.0.0.0:8008"
               - name: PATRONI_ETCD3_HOST
-                value: {{ .Values.etcd.etcdService }}-etcd:2379
+                value: etcd-service-etcd:2379
               - name: PATRONI_NAME
                 valueFrom:
                   fieldRef:
@@ -138,16 +168,21 @@ spec:
                 value: '0.0.0.0:1921'
               - name: PATRONI_SCOPE
                 value: halo-cluster
-            # readinessProbe:
-            #   httpGet:
-            #     scheme: HTTP
-            #     path: /readiness
-            #     port: 8008
-            #   initialDelaySeconds: 60
-            #   periodSeconds: 10
-            #   timeoutSeconds: 5
-            #   successThreshold: 1
-            #   failureThreshold: 5                                        
+              - name: KUBERNETES_ROLE_LABEL
+                value: "apps.kubeblocks.halo.patroni/role"
+              - name: KB_POD_FQDN
+                value: "$KB_POD_FQDN"
+            livenessProbe:
+              exec:
+                command:
+                  - /bin/bash 
+                  - -c
+                  - |
+                    gosu halo psql -U halo -d halo0root -c  "select 1"
+              initialDelaySeconds: 65
+              periodSeconds: 3
+              failureThreshold: 3
+              timeoutSeconds: 5                                  
         volumes:
           - name: dshm
             emptyDir:
@@ -155,5 +190,8 @@ spec:
               {{- with .Values.shmVolume.sizeLimit }}
               sizeLimit: {{ . }}
               {{- end }}
+
+
+
             
       
