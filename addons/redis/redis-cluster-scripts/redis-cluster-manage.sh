@@ -7,9 +7,10 @@ init_other_component_pods_info() {
   local all_pod_ip_list="$2"
   local all_pod_name_list="$3"
   local all_component_list="$4"
-  other_components=""
-  other_component_pod_ips=""
-  other_component_pod_names=""
+  other_components=()
+  other_component_pod_ips=()
+  other_component_pod_names=()
+  other_component_nodes=()
 
   # filter out the components of the given component
   IFS=',' read -ra components <<< "$all_component_list"
@@ -17,7 +18,7 @@ init_other_component_pods_info() {
     if [ "$comp" = "$component" ]; then
       continue
     fi
-    other_components+=" $comp"
+    other_components+=("$comp")
   done
 
   # filter out the pods of the given component
@@ -27,13 +28,28 @@ init_other_component_pods_info() {
     if echo "${pod_names[$index]}" | grep -q "-$component-"; then
       continue
     fi
-    other_component_pod_ips+=" ${pod_ips[$index]}"
-    other_component_pod_names+=" ${pod_names[$index]}"
+    other_component_pod_ips+=("${pod_ips[$index]}")
+    other_component_pod_names+=("${pod_names[$index]}")
+
+    pod_name_prefix=$(extract_pod_name_prefix "${pod_names[$index]}")
+    pod_fqdn="${pod_names[$index]}.$pod_name_prefix-headless"
+    other_component_nodes+=("$pod_fqdn:$SERVICE_PORT")
   done
 
-  echo "other_components: $other_components"
-  echo "other_component_pod_ips: $other_component_pod_ips"
-  echo "other_component_pod_names: $other_component_pod_names"
+  echo "other_components: ${other_components[*]}"
+  echo "other_component_pod_ips: ${other_component_pod_ips[*]}"
+  echo "other_component_pod_names: ${other_component_pod_names[*]}"
+  echo "other_component_nodes: ${other_component_nodes[*]}"
+}
+
+find_exist_available_node() {
+  for node in "${other_component_nodes[@]}"; do
+    if redis_cluster_check "$node"; then
+      echo "$node"
+      return
+    fi
+  done
+  echo ""
 }
 
 # usage: parse_host_ip_from_built_in_envs <pod_name>
@@ -161,6 +177,29 @@ is_redis_cluster_initialized() {
   [ "$initialized" = "true" ]
 }
 
+# get the current component default primary node which ordinal is 0 to join the cluster when scaling out
+init_current_comp_default_nodes_for_scale_out() {
+    if [ -z "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" ]; then
+      echo "Error: Required environment variable KB_CLUSTER_COMPONENT_POD_NAME_LIST is not set."
+      exit 1
+    fi
+    current_comp_default_primary_node=()
+    current_comp_default_other_nodes=()
+    local port=$SERVICE_PORT
+    for pod_name in $(echo "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" | tr ',' ' '); do
+      pod_name_ordinal=$(extract_ordinal_from_pod_name "$pod_name")
+      pod_name_prefix=$(extract_pod_name_prefix "$pod_name")
+      local pod_fqdn="$pod_name.$pod_name_prefix-headless"
+      if [ "$pod_name_ordinal" -eq 0 ]; then
+        current_comp_default_primary_node+=(" $pod_fqdn:$port")
+      else
+        current_comp_default_other_nodes+=(" $pod_fqdn:$port")
+      fi
+    done
+    echo "current_comp_default_primary_node: ${current_comp_default_primary_node[*]}"
+    echo "current_comp_default_other_nodes: ${current_comp_default_other_nodes[*]}"
+}
+
 gen_initialize_redis_cluster_primary_node() {
   if [ -z "$KB_CLUSTER_POD_NAME_LIST" ]; then
     echo "Error: Required environment variable KB_CLUSTER_POD_NAME_LIST is not set."
@@ -210,6 +249,101 @@ get_cluster_id() {
   echo "$cluster_id"
 }
 
+initialize_redis_cluster() {
+  # initialize all the primary nodes
+  primary_nodes=$(gen_initialize_redis_cluster_primary_node)
+  if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+      initialize_command="redis-cli --cluster create $primary_nodes --cluster-yes"
+  else
+      initialize_command="redis-cli --cluster create $primary_nodes -a $REDIS_DEFAULT_PASSWORD --cluster-yes"
+  fi
+  yes yes | $initialize_command || true
+
+  # get the first primary node to check the cluster
+  first_primary_node=$(echo "$primary_nodes" | awk '{print $1}')
+  if redis_cluster_check "$first_primary_node"; then
+      echo "Cluster correctly created"
+  else
+      echo "Failed to create Redis Cluster"
+      exit 1
+  fi
+  # initialize all the secondary nodes
+  secondary_nodes=$(gen_initialize_redis_cluster_secondary_nodes)
+  echo "secondary_nodes: $secondary_nodes"
+  for secondary_node in $secondary_nodes; do
+      secondary_pod_name_prefix=$(extract_pod_name_prefix_from_pod_fqdn "$secondary_node")
+      mapping_primary_fqdn="$secondary_pod_name_prefix-0.$secondary_pod_name_prefix-headless"
+      mapping_primary_fqdn_with_port="$mapping_primary_fqdn:$SERVICE_PORT"
+      mapping_primary_cluster_id=$(get_cluster_id "$mapping_primary_fqdn")
+      echo "mapping_primary_fqdn: $mapping_primary_fqdn, mapping_primary_fqdn_with_port: $mapping_primary_fqdn_with_port, mapping_primary_cluster_id: $mapping_primary_cluster_id"
+      if [ -z "$mapping_primary_cluster_id" ]; then
+          echo "Failed to get the cluster id from cluster nodes of the mapping primary node: $mapping_primary_fqdn"
+          exit 1
+      fi
+      if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+          replicated_command="redis-cli --cluster add-node $secondary_node $mapping_primary_fqdn_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id"
+      else
+          replicated_command="redis-cli --cluster add-node $secondary_node $mapping_primary_fqdn_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id -a $REDIS_DEFAULT_PASSWORD"
+      fi
+      echo "replicated_command: $replicated_command"
+      yes yes | $replicated_command || true
+  done
+}
+
+scale_out_redis_cluster_shard() {
+  init_other_component_pods_info "$KB_CLUSTER_COMPONENT" "$KB_CLUSTER_POD_IP_LIST" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_COMPONENT_POD_NAME_LIST"
+  init_current_comp_default_nodes_for_scale_out
+
+  # check the current component shard whether is already scaled out
+  primary_node_with_port=$(echo "${current_comp_default_primary_node[*]}" | awk '{print $1}')
+  primary_node_fqdn=$(echo "$primary_node_with_port" | awk -F ':' '{print $1}')
+  mapping_primary_cluster_id=$(get_cluster_id "$primary_node_fqdn")
+  if redis_cluster_check "$primary_node_with_port"; then
+    echo "The current component shard is already scaled out, no need to scale out again."
+    exit 0
+  fi
+
+  # find the exist available node which is not in the current component
+  available_node=$(find_exist_available_node)
+  if [ -z "$available_node" ]; then
+    echo "No exist available node found or cluster status is not ok"
+    exit 1
+  fi
+
+  # add the default primary node for the current shard
+  for current_comp_default_primary_node in $current_comp_default_primary_node; do
+      if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+        echo "redis-cli --cluster add-node $current_comp_default_primary_node $available_node"
+        redis-cli --cluster add-node "$current_comp_default_primary_node" "$available_node"
+      else
+        echo "redis-cli --cluster add-node $current_comp_default_primary_node $available_node -a $REDIS_DEFAULT_PASSWORD"
+        redis-cli --cluster add-node "$current_comp_default_primary_node" "$available_node" -a "$REDIS_DEFAULT_PASSWORD"
+      fi
+  done
+
+  # add the default other secondary nodes for the current shard
+  for current_comp_default_other_node in ${current_comp_default_other_nodes[*]}; do
+      # gei mapping master id
+      echo "primary_node_with_port: $primary_node_with_port, primary_node_fqdn: $primary_node_fqdn, mapping_primary_cluster_id: $mapping_primary_cluster_id"
+      if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+          replicated_command="redis-cli --cluster add-node $current_comp_default_other_node $primary_node_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id"
+      else
+          replicated_command="redis-cli --cluster add-node $current_comp_default_other_node $primary_node_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id -a $REDIS_DEFAULT_PASSWORD"
+      fi
+      echo "replicated_command: $replicated_command"
+      yes yes | $replicated_command || true
+  done
+
+  # do the reshard
+  if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+      reshard_command="redis-cli --cluster reshard $primary_node_with_port --cluster-from all --cluster-to $mapping_primary_cluster_id --cluster-slots 100 --cluster-yes"
+  else
+      reshard_command="redis-cli --cluster reshard $primary_node_with_port --cluster-from all --cluster-to $mapping_primary_cluster_id --cluster-slots 100 -a $REDIS_DEFAULT_PASSWORD --cluster-yes"
+  fi
+  echo "reshard_command: $reshard_command"
+  yes yes | $reshard_command || true
+}
+
 initialize_or_scale_out_redis_cluster() {
     # TODO: remove random sleep, it's a workaround for the multi components initialization parallelism issue
     wait_random_second 10 1
@@ -217,47 +351,10 @@ initialize_or_scale_out_redis_cluster() {
     # if the cluster is not initialized, initialize it
     if ! is_redis_cluster_initialized; then
         echo "Redis Cluster not initialized, initializing..."
-        # initialize the primary nodes
-        primary_nodes=$(gen_initialize_redis_cluster_primary_node)
-        if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-            initialize_command="redis-cli --cluster create $primary_nodes --cluster-yes"
-        else
-            initialize_command="redis-cli --cluster create $primary_nodes -a $REDIS_DEFAULT_PASSWORD --cluster-yes"
-        fi
-        yes yes | $initialize_command || true
-
-        # get the first primary node to check the cluster
-        first_primary_node=$(echo "$primary_nodes" | awk '{print $1}')
-        if redis_cluster_check "$first_primary_node"; then
-            echo "Cluster correctly created"
-        else
-            echo "Failed to create Redis Cluster"
-            exit 1
-        fi
-        # initialize the secondary nodes
-        secondary_nodes=$(gen_initialize_redis_cluster_secondary_nodes)
-        echo "secondary_nodes: $secondary_nodes"
-        for secondary_node in $secondary_nodes; do
-            secondary_pod_name_prefix=$(extract_pod_name_prefix_from_pod_fqdn "$secondary_node")
-            mapping_primary_fqdn="$secondary_pod_name_prefix-0.$secondary_pod_name_prefix-headless"
-            mapping_primary_fqdn_with_port="$mapping_primary_fqdn:$SERVICE_PORT"
-            mapping_primary_cluster_id=$(get_cluster_id "$mapping_primary_fqdn")
-            echo "mapping_primary_fqdn: $mapping_primary_fqdn, mapping_primary_fqdn_with_port: $mapping_primary_fqdn_with_port, mapping_primary_cluster_id: $mapping_primary_cluster_id"
-            if [ -z "$mapping_primary_cluster_id" ]; then
-                echo "Failed to get the cluster id from cluster nodes of the mapping primary node: $mapping_primary_fqdn"
-                exit 1
-            fi
-            if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-                replicated_command="redis-cli --cluster add-node $secondary_node $mapping_primary_fqdn_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id"
-            else
-                replicated_command="redis-cli --cluster add-node $secondary_node $mapping_primary_fqdn_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id -a $REDIS_DEFAULT_PASSWORD"
-            fi
-            echo "replicated_command: $replicated_command"
-            yes yes | $replicated_command || true
-        done
+        initialize_redis_cluster
     else
-        echo "Redis Cluster already initialized, scaling out..."
-        # TODO: scale out shard of Redis Cluster
+        echo "Redis Cluster already initialized, scaling out the shard..."
+        scale_out_redis_cluster_shard
     fi
 }
 
@@ -277,6 +374,7 @@ if [ $# -eq 1 ]; then
     exit 0
     ;;
   --pre-terminate)
+    wait_random_second 10 1
     exit 0
     ;;
   *)
