@@ -40,8 +40,8 @@ data:
     {{- .Files.Get "scripts/mysql-orchestrator-register.sh" | nindent 4 }}
   init-meta-database.sh: |-
     {{- .Files.Get "scripts/init-meta-database.sh" | nindent 4 }}
-  member-register.sh: |-
-    {{- .Files.Get "scripts/member-register.sh" | nindent 4 }}
+  init-mysql-instance-for-orc.sh: |-
+    {{- .Files.Get "scripts/init-mysql-instance-for-orc.sh" | nindent 4 }}
   orchestrator-client.sh: |-
     {{- .Files.Get "scripts/orchesrator-client.sh" | nindent 4 }}
 ---

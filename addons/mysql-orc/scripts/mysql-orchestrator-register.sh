@@ -15,6 +15,12 @@ replica_count="$KB_REPLICA_COUNT"
 cluster_component_pod_name="$KB_CLUSTER_COMP_NAME"
 component_name="$KB_COMP_NAME"
 
+
+install_jq_dependency() {
+  rpm -ivh https://yum.oracle.com/repo/OracleLinux/OL8/appstream/x86_64/getPackage/oniguruma-6.8.2-2.1.el8_9.x86_64.rpm
+  rpm -ivh https://mirrors.aliyun.com/centos/8/AppStream/x86_64/os/Packages/jq-1.5-12.el8.x86_64.rpm
+}
+
 # create orchestrator user in mysql
 create_mysql_user() {
   local host=$1
@@ -188,6 +194,8 @@ process_each_pod() {
   done
   echo "Initialization script completed！"
 }
+
+install_jq_dependency
 # 获取 Pod 名称和 IP 地址列表
 process_each_pod
 

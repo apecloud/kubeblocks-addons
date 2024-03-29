@@ -71,14 +71,12 @@ spec:
           - bash
           - -c
           - |
-            mv {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
-            rm -rf {{ .Values.dataMountPath }}/plugin
             chown -R mysql:root {{ .Values.dataMountPath }}
             docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) \
             --plugin-load-add=rpl_semi_sync_source=semisync_source.so \
             --plugin-load-add=rpl_semi_sync_replica=semisync_replica.so \
-            --plugin-load-add=audit_log=audit_log.so \
             --log-bin={{.Values.dataMountPath}}/binlog/$(KB_POD_NAME)-bin
+            /scripts/init-mysql-instance-for-orc.sh
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
