@@ -1,0 +1,36 @@
+# Default values for cnosdb.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+image:
+  registry: docker.io
+  repository: cnosdb/cnosdb
+  pullPolicy: IfNotPresent
+  tag: community-latest
+## helm install cnosdb ./cnosdb --set image.tag=community-latest
+
+## CnosDb Authentication parameters
+auth:
+  ## CnosDb_ROOT_HOST
+  rootHost: "%"
+  ## @param auth.createDatabase Whether to create the .Values.auth.database or not
+  ##
+  createDatabase: true
+  ## @param auth.database Name for a custom database to create
+  ## CnosDb_DATABASE
+  database: "mydb"
+  ## @param auth.username Name for a custom user to create
+  ## CnosDb_USER
+  username: "u1"
+  ## CnosDb_PASSWORD
+  password: "u1"
+  ## @param auth.replicationUser CnosDb replication user
+  ##
+  replicationUser: "replicator"
+  ## @param auth.replicationPassword CnosDb replication user password. Ignored if existing secret is provided
+  ##
+  replicationPassword: ""
+
+nameOverride: ""
+fullnameOverride: ""
+## CnosDb ClusterVersion
+clusterVersionOverride: "2.4.0"

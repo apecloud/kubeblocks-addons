@@ -1,0 +1,15 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterVersion
+metadata:
+  name: cnosdb-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
+  labels:
+    {{- include "cnosdb.labels" . | nindent 4 }}
+spec:
+  clusterDefinitionRef: cnosdb
+  componentVersions:
+  - componentDefRef: cnosdb-compdef
+    versionsContext:
+      containers:
+      - name: cnosdb-container
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}

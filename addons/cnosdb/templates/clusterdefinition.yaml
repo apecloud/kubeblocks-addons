@@ -1,0 +1,45 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterDefinition
+metadata:
+  name: cnosdb
+  labels:
+    {{- include "cnosdb.labels" . | nindent 4 }}
+spec:
+  connectionCredential:
+    username: root
+    password: "$(RANDOM_PASSWD)"
+    endpoint: "$(SVC_FQDN):$(SVC_PORT_cnosdb)"
+    host: "$(SVC_FQDN)"
+    port: "$(SVC_PORT_cnosdb)" 
+  componentDefs:
+    - name: cnosdb-compdef
+      characterType: cnosdb
+      workloadType: Stateful
+      service:
+        ports:
+          - name: cnosdb
+            port: 8902
+            targetPort: cnosdb
+      podSpec:
+        containers:
+          - name: cnosdb-container
+            imagePullPolicy: IfNotPresent
+            volumeMounts:
+              - mountPath: /var/lib/cnosdb
+                name: data
+            ports:
+              - containerPort: 8902
+                name: cnosdb
+            env:
+              - name: CNOSDB_ROOT_HOST
+                value: {{ .Values.auth.rootHost | default "%" | quote }}
+              - name: CNOSDB_ROOT_USER
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: username
+              - name: CNOSDB_ROOT_PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: password
