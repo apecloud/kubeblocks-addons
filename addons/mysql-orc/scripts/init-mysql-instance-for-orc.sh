@@ -1,11 +1,7 @@
 #!/bin/sh
 set -ex
 
-# 定义 MySQL 连接参数
 mysql_port="3306"
-mysql_username="$MYSQL_ROOT_USER"
-mysql_password="$MYSQL_ROOT_PASSWORD"
-
 topology_user="$ORC_TOPOLOGY_USER"
 topology_password="$ORC_TOPOLOGY_PASSWORD"
 
@@ -16,28 +12,9 @@ component_name="$KB_COMP_NAME"
 kb_cluster_name="$KB_CLUSTER_NAME"
 ORCHESTRATOR_API=""
 
-prepare_orchestrator_env() {
-   i=0
-   port_name=ORC_PORTS_${i}
-   endpoint_name=ORC_ENDPOINTS_${i}
-   while [[ -n "${!port_name}" ]] && [[ -n "${!endpoint_name}" ]]; do
-     port=${!port_name}
-     endpoint=${!endpoint_name}
-
-     api="https://$endpoint:$port/api"
-
-     if [[ -z "$ORCHESTRATOR_API" ]]; then
-       ORCHESTRATOR_API="$api"
-     else
-       ORCHESTRATOR_API="$ORCHESTRATOR_API $api"
-     fi
-     ((i++))
-     port_name=ORC_PORTS_${i}
-     endpoint_name=ORC_ENDPOINTS_${i}
-   done
-}
 
 install_jq_dependency() {
+  echo "Install jq dependency"
   rpm -ivh https://yum.oracle.com/repo/OracleLinux/OL8/appstream/x86_64/getPackage/oniguruma-6.8.2-2.1.el8_9.x86_64.rpm
   rpm -ivh https://mirrors.aliyun.com/centos/8/AppStream/x86_64/os/Packages/jq-1.5-12.el8.x86_64.rpm
 }
@@ -47,35 +24,39 @@ create_mysql_user() {
   local service_name=$(echo "${cluster_component_pod_name}_${component_name}_${i}" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
 
   echo "Create MySQL User and Grant Permissions..."
-  exists=$(mysql -h $host -P 3306 -u $mysql_username -p$mysql_password -s -e "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = 'orchestrator');")
 
-  if [ $exists -eq 0 ]; then
-    echo "Create MySQL User and Grant Permissions..."
-    mysql -h $host -P 3306 -u $mysql_username -p$mysql_password << EOF
-CREATE USER '$topology_user'@'%' IDENTIFIED BY '$topology_password';
+  mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD << EOF
+CREATE USER IF NOT EXISTS '$topology_user'@'%' IDENTIFIED BY '$topology_password';
 GRANT SUPER, PROCESS, REPLICATION SLAVE, RELOAD ON *.* TO '$topology_user'@'%';
 GRANT SELECT ON mysql.slave_master_info TO '$topology_user'@'%';
 GRANT DROP ON _pseudo_gtid_.* to '$topology_user'@'%';
 set global slave_net_timeout = 4;
 EOF
-  else
-    echo "MySQL user '$topology_user' already exists."
-  fi
 
-  mysql -h $host -P 3306 -u $mysql_username -p$mysql_password <<-EOSQL
-CREATE DATABASE IF NOT EXISTS `kb_orc_meta_cluster`;
-GRANT ALL ON `kb_orc_meta_cluster`.* TO '$topology_user'@'%';
-CREATE TABLE IF NOT EXISTS kb_orc_meta_cluster.kb_orc_meta_cluster (
-`anchor` tinyint(4) NOT NULL,
-`host_name` varchar(128) NOT NULL DEFAULT '',
-`cluster_name` varchar(128) NOT NULL DEFAULT '',
-`cluster_domain` varchar(128) NOT NULL DEFAULT '',
-`data_center` varchar(128) NOT NULL,
-PRIMARY KEY (`anchor`)
+  echo "Create MySQL User and Grant Permissions completed."
+  echo "init cluster info database"
+#  mysql -P 3306 -u $mysql_username -p$mysql_password -e 'source /scripts/gms-init.sql'
+
+}
+
+init_cluster_info_database() {
+  local service_name=$(echo "${cluster_component_pod_name}_${component_name}_${i}" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+  echo "init cluster info database"
+  mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD << EOF
+CREATE DATABASE  kb_orc_meta_cluster;
+GRANT ALL ON kb_orc_meta_cluster.* TO '$topology_user'@'%';
+EOF
+  mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e 'source /scripts/cluster-info.sql'
+  mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD << EOF
+USE kb_orc_meta_cluster;
+INSERT INTO kb_orc_meta_cluster (anchor,host_name,cluster_name, cluster_domain, data_center)
+SELECT 1, '$service_name','$KB_CLUSTER_NAME', '', ''
+    WHERE NOT EXISTS (
+    SELECT 1
+    FROM kb_orc_meta_cluster
+    WHERE anchor = 1
 );
-INSERT INTO kb_orc_meta_cluster.kb_orc_meta_cluster (host_name,cluster_name, cluster_domain, data_center)
-VALUES ('$service_name','$KB_CLUSTER_NAME', '', '');
-EOSQL
+EOF
 
 }
 
@@ -94,7 +75,7 @@ wait_for_connectivity() {
     fi
 
     # Send PING and check for mysql response
-    if  mysqladmin -h  -P 3306 -u "$mysql_username" -p"$mysql_password" PING | grep -q "mysqld is alive"; then
+    if  mysqladmin -P 3306 -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" PING | grep -q "mysqld is alive"; then
       echo "mysql is reachable."
       break
     fi
@@ -103,18 +84,38 @@ wait_for_connectivity() {
   done
 }
 
+setup_master_slave() {
+  echo "setup_master_slave"
+  master_host_name=$(echo "${cluster_component_pod_name}_${component_name}_0_SERVICE_HOST" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+  master_host=${!master_host_name}
+  echo "wait_for_connectivity"
+  wait_for_connectivity
+
+  last_digit=${KB_POD_NAME##*-}
+  if [[ $last_digit -eq 0 ]]; then
+    echo "Create MySQL User and Grant Permissions"
+    create_mysql_user
+    init_cluster_info_database
+  else
+    echo "Wait for master to be ready"
+    change_master "$master_host"
+  fi
+}
+
+get_master_from_orc() {
+  /scripts/orchestrator-client.sh -c topology $kb_cluster_name
+
+}
+
 change_master() {
+  echo "Change master"
+  master_host=$1
+  master_port=3306
 
   username=$mysql_username
   password=$mysql_password
 
-  master_host_name=$(echo "${cluster_component_pod_name}_${component_name}_0_SERVICE_HOST" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
-  master_host=${!first_mysql_service_host_name}
-
-  echo "Changing master to $host_ip..."
-
-  # 使用提供的参数执行 CHANGE MASTER 语句
-  mysql  -u "$username" -p"$password" <<-EOSQL
+  mysql -h "$host_ip" -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" << EOF
 STOP SLAVE;
 SET GLOBAL SQL_SLAVE_SKIP_COUNTER=1;
 CHANGE MASTER TO
@@ -122,20 +123,17 @@ MASTER_CONNECT_RETRY=1,
 MASTER_RETRY_COUNT=86400,
 MASTER_HOST='$master_host',
 MASTER_PORT=$master_port,
-MASTER_USER='$username',
-MASTER_PASSWORD='$password';
+MASTER_USER='$MYSQL_ROOT_USER',
+MASTER_PASSWORD='$MYSQL_ROOT_PASSWORD';
 START SLAVE;
-EOSQL
-
+EOF
   echo "CHANGE MASTER successful for $master_host."
 
 }
 
-find_master_from_orchestrator() {
-  ./orchestrator-client -c topology $kb_cluster_name
+main() {
+  setup_master_slave
+  echo "init mysql instance for orc completed"
 }
 
-install_jq_dependency
-prepare_orchestrator_env
-wait_for_connectivity
-create_mysql_user
+main

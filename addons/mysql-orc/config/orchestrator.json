@@ -2,6 +2,8 @@
 
 {
   "MySQLTopologyCredentialsConfigFile": "/usr/local/share/orchestrator/templates/orc-topology.cnf",
+  "MySQLTopologyUser": "orchestrator",
+  "MySQLTopologyPassword": "orchestrator",
   "MySQLTopologySSLPrivateKeyFile": "",
   "MySQLTopologySSLCertFile": "",
   "MySQLTopologySSLCAFile": "",
@@ -11,6 +13,7 @@
   "MySQLOrchestratorHost": "10.0.175.0",
   "MySQLOrchestratorPort": 3306,
   "MySQLOrchestratorDatabase": "orchestrator",
+  "MySQLOrchestratorCredentialsConfigFile": "/usr/local/share/orchestrator/templates/orc-topology.cnf",
   "MySQLOrchestratorUser": "orchestrator",
   "MySQLOrchestratorPassword": "orchestrator",
 

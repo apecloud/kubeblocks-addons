@@ -15,6 +15,14 @@ spec:
       serviceRefDeclarationSpecs:
         - serviceKind: mysql
           serviceVersion: "^*"
+  configs:
+    - name: orchestrator-config
+      templateRef: mysql-orc-config
+      namespace: {{ .Release.Namespace }}
+      volumeName: orchestrator-config
+      asEnvFrom:
+        - orchestrator
+
   scripts:
     - name: orc-scripts
       templateRef: orc-scripts
@@ -88,13 +96,14 @@ spec:
       needSnapshot: true
   runtime:
     volumes:
-      - name: orchestrator-config
-        configMap:
-          name: mysql-orc-config
     containers:
       - name: orchestrator
         image: docker.io/bitpoke/mysql-operator-orchestrator:v0.6.3
         imagePullPolicy: IfNotPresent
+        command:
+          - sh
+          - -c
+          - sleep 1000000000000000000;
         volumeMounts:
           - name: orchestrator-data
             mountPath: /var/lib/orchestrator

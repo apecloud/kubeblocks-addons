@@ -36,14 +36,18 @@ data:
     fi
   docker-entrypoint.sh: |-
     {{- .Files.Get "scripts/docker-entrypoint-5.7.sh" | nindent 4 }}
+  docker-entrypoint-8.0.sh: |-
+    {{- .Files.Get "scripts/docker-entrypoint-8.0.sh" | nindent 4 }}
   mysql-orchestrator-register.sh: |-
     {{- .Files.Get "scripts/mysql-orchestrator-register.sh" | nindent 4 }}
   init-meta-database.sh: |-
     {{- .Files.Get "scripts/init-meta-database.sh" | nindent 4 }}
   init-mysql-instance-for-orc.sh: |-
     {{- .Files.Get "scripts/init-mysql-instance-for-orc.sh" | nindent 4 }}
-  orchestrator-client.sh: |-
-    {{- .Files.Get "scripts/orchesrator-client.sh" | nindent 4 }}
+  orchestrator-client: |-
+    {{- .Files.Get "scripts/orchestrator-client.sh" | nindent 4 }}
+  cluster-info.sql: |-
+    {{- .Files.Get "scripts/cluster-info.sql" | nindent 4 }}
 ---
 apiVersion: v1
 kind: ConfigMap

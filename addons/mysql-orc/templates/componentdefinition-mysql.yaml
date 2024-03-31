@@ -63,6 +63,17 @@ spec:
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
+      - command:
+        - cp
+        - -r
+        - /usr/bin/curl
+        - /kubeblocks/
+        image: docker.io/curlimages/curl:7.85.0
+        imagePullPolicy: Always
+        name: init-curl
+        volumeMounts:
+          - mountPath: /kubeblocks
+            name: kubeblocks
     containers:
       - name: mysql
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
@@ -71,12 +82,18 @@ spec:
           - bash
           - -c
           - |
+            mv {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
+            rm -rf {{ .Values.dataMountPath }}/plugin
             chown -R mysql:root {{ .Values.dataMountPath }}
-            docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) \
+            /scripts/docker-entrypoint-8.0.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) \
             --plugin-load-add=rpl_semi_sync_source=semisync_source.so \
             --plugin-load-add=rpl_semi_sync_replica=semisync_replica.so \
+            --plugin-load-add=audit_log=audit_log.so \
             --log-bin={{.Values.dataMountPath}}/binlog/$(KB_POD_NAME)-bin
-            /scripts/init-mysql-instance-for-orc.sh
+          - --
+          - echo "asdf"
+          - /scripts/init-mysql-instance-for-orc.sh
+          - echo "asdfasf"
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
@@ -84,10 +101,16 @@ spec:
             name: mysql-config
           - name: scripts
             mountPath: /scripts
+          - mountPath: /kubeblocks
+            name: kubeblocks
         ports:
           - containerPort: 3306
             name: mysql
         env:
+          - name: PATH
+            value: /kubeblocks/xtrabackup/bin:/kubeblocks/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          - name: KB_SERVICE_CHARACTER_TYPE
+            value: mysql
           - name: MYSQL_INITDB_SKIP_TZINFO
             value: "1"
           - name: MYSQL_RANDOM_ROOT_PASSWORD

@@ -252,6 +252,7 @@ docker_setup_env() {
 	file_env 'MYSQL_DATABASE'
 	file_env 'MYSQL_USER'
 	file_env 'MYSQL_PASSWORD'
+	file_env 'MYSQL_ROOT_PASSWORD'
 
 	declare -g DATABASE_ALREADY_EXISTS
 	if [ -d "$DATADIR/mysql" ]; then
@@ -288,6 +289,10 @@ docker_setup_db() {
 			# tell docker_process_sql to not use MYSQL_ROOT_PASSWORD since it is not set yet
 	fi
 	# Generate random root password
+	if [ -n "$MYSQL_RANDOM_ROOT_PASSWORD" ]; then
+		MYSQL_ROOT_PASSWORD="$(openssl rand -base64 24)"; export MYSQL_ROOT_PASSWORD
+		mysql_note "GENERATED ROOT PASSWORD: $MYSQL_ROOT_PASSWORD"
+	fi
 	# Sets root password and creates root users for non-localhost hosts
 	local rootCreate=
 	# default root to listen for connections from anywhere
@@ -358,32 +363,6 @@ mysql_expire_root_user() {
 	fi
 }
 
-
-restore_standby_from_xtrabackup() {
-  if [ ! -f ${DATADIR}/.xtrabackup_restore ]; then
-    return
-  fi
-  if [ ! -f ${DATADIR}/xtrabackup_info ]; then
-    return
-  fi
-  mysql_note "start to restore standby from xtrabackup."
-  mysql_note "Starting temporary server"
-  docker_temp_server_start "$@"
-  mysql_note "Temporary server started."
-  PURGED_GTID=$(cat ${DATADIR}/xtrabackup_info | grep "binlog_pos" | awk -F "GTID of the last change '" '{print $2}' | awk -F "'" '{print $1}')
-  mysql_note "set the gtid_purged ${PURGED_GTID}."
-	docker_process_sql --database=mysql <<-EOSQL
-		STOP SLAVE;
-		RESET MASTER;
-		SET GLOBAL gtid_purged = '${PURGED_GTID}';
-	EOSQL
-  mysql_note "restore standby from xtrabackup successfully."
-  rm -rf ${DATADIR}/.xtrabackup_restore
-  mysql_note "Stopping temporary server"
-  docker_temp_server_stop
-  mysql_note "Temporary server stopped"
-}
-
 # check arguments for an option that would cause mysqld to stop
 # return true if there is one
 _mysql_want_help() {
@@ -397,6 +376,136 @@ _mysql_want_help() {
 	done
 	return 1
 }
+
+mysql_port="3306"
+topology_user="$ORC_TOPOLOGY_USER"
+topology_password="$ORC_TOPOLOGY_PASSWORD"
+
+
+replica_count="$KB_REPLICA_COUNT"
+cluster_component_pod_name="$KB_CLUSTER_COMP_NAME"
+component_name="$KB_COMP_NAME"
+kb_cluster_name="$KB_CLUSTER_NAME"
+ORCHESTRATOR_API=""
+
+
+install_jq_dependency() {
+  mysql_note "Install jq dependency"
+  rpm -ivh https://yum.oracle.com/repo/OracleLinux/OL8/appstream/x86_64/getPackage/oniguruma-6.8.2-2.1.el8_9.x86_64.rpm
+  rpm -ivh https://mirrors.aliyun.com/centos/8/AppStream/x86_64/os/Packages/jq-1.5-12.el8.x86_64.rpm
+}
+
+# create orchestrator user in mysql
+create_mysql_user() {
+  local service_name=$(echo "${cluster_component_pod_name}_${component_name}_${i}" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+
+  mysql_note "Create MySQL User and Grant Permissions..."
+
+  mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD << EOF
+CREATE USER IF NOT EXISTS '$topology_user'@'%' IDENTIFIED BY '$topology_password';
+GRANT SUPER, PROCESS, REPLICATION SLAVE, RELOAD ON *.* TO '$topology_user'@'%';
+GRANT SELECT ON mysql.slave_master_info TO '$topology_user'@'%';
+GRANT DROP ON _pseudo_gtid_.* to '$topology_user'@'%';
+set global slave_net_timeout = 4;
+EOF
+
+  mysql_note "Create MySQL User and Grant Permissions completed."
+  mysql_note "init cluster info database"
+#  mysql -P 3306 -u $mysql_username -p$mysql_password -e 'source /scripts/gms-init.sql'
+
+}
+
+init_cluster_info_database() {
+  local service_name=$(echo "${cluster_component_pod_name}_${component_name}_${i}" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+  mysql_note "init cluster info database"
+  mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD << EOF
+CREATE DATABASE  `kb_orc_meta_cluster`;
+GRANT ALL ON `kb_orc_meta_cluster`.* TO '$topology_user'@'%';
+EOF
+  mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e 'source /scripts/cluster-info.sql'
+  mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD << EOF
+INSERT INTO kb_orc_meta_cluster.kb_orc_meta_cluster (anchor,host_name,cluster_name, cluster_domain, data_center)
+SELECT 1, '$service_name','$KB_CLUSTER_NAME', '', ''
+    WHERE NOT EXISTS (
+    SELECT 1
+    FROM kb_orc_meta_cluster
+    WHERE anchor = 1
+);
+EOF
+
+}
+
+# wait for mysql to be available
+wait_for_connectivity() {
+  local timeout=600
+  local start_time=$(date +%s)
+  local current_time
+
+  mysql_note "Checking mysql connectivity to $host on port $mysql_port ..."
+  while true; do
+    current_time=$(date +%s)
+    if [ $((current_time - start_time)) -gt $timeout ]; then
+      mysql_note "Timeout waiting for $host to become available."
+      exit 1
+    fi
+
+    # Send PING and check for mysql response
+    if  mysqladmin -P 3306 -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" PING | grep -q "mysqld is alive"; then
+      mysql_note "mysql is reachable."
+      break
+    fi
+
+    sleep 5
+  done
+}
+
+setup_master_slave() {
+  mysql_note "setup_master_slave"
+  master_host_name=$(echo "${cluster_component_pod_name}_${component_name}_0_SERVICE_HOST" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+  master_host=${!master_host_name}
+  mysql_note "wait_for_connectivity"
+  wait_for_connectivity
+
+  last_digit=${KB_POD_NAME##*-}
+  if [[ $last_digit -eq 0 ]]; then
+    mysql_note "Create MySQL User and Grant Permissions"
+    create_mysql_user
+    init_cluster_info_database
+  else
+    mysql_note "Wait for master to be ready"
+    change_master "$master_host"
+  fi
+}
+
+get_master_from_orc() {
+  /scripts/orchestrator-client.sh -c topology $kb_cluster_name
+
+}
+
+change_master() {
+  mysql_note "Change master"
+  master_host=$1
+  master_port=3306
+
+  username=$mysql_username
+  password=$mysql_password
+
+  mysql -h "$host_ip" -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" << EOF
+STOP SLAVE;
+SET GLOBAL SQL_SLAVE_SKIP_COUNTER=1;
+CHANGE MASTER TO
+MASTER_CONNECT_RETRY=1,
+MASTER_RETRY_COUNT=86400,
+MASTER_HOST='$master_host',
+MASTER_PORT=$master_port,
+MASTER_USER='$MYSQL_ROOT_USER',
+MASTER_PASSWORD='$MYSQL_ROOT_PASSWORD';
+START SLAVE;
+EOF
+  mysql_note "CHANGE MASTER successful for $master_host."
+
+}
+
 
 _main() {
 	# if command starts with an option, prepend mysqld
@@ -419,9 +528,6 @@ _main() {
 			exec gosu mysql "$BASH_SOURCE" "$@"
 		fi
 
-
-    restore_standby_from_xtrabackup "$@"
-
 		# there's no database, so it needs to be initialized
 		if [ -z "$DATABASE_ALREADY_EXISTS" ]; then
 			docker_verify_minimum_env
@@ -439,7 +545,6 @@ _main() {
 			docker_setup_db
 			docker_process_init_files /docker-entrypoint-initdb.d/*
 
-
 			mysql_expire_root_user
 
 			mysql_note "Stopping temporary server"
@@ -449,17 +554,18 @@ _main() {
 			echo
 			mysql_note "MySQL init process done. Ready for start up."
 			echo
-			mysql_note "setup_master_slave"
-      setup_master_slave
 		else
 			mysql_socket_fix
 		fi
 	fi
+	mysql_note "setup_master_slave2"
+  (
+    setup_master_slave
+  ) &
 	exec "$@"
-}
 
+}
 # If we are sourced from elsewhere, don't perform any further actions
 if ! _is_sourced; then
 	_main "$@"
 fi
-

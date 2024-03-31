@@ -1,6 +1,12 @@
-{{- $clusterName := $.cluster.metadata.name }}
-{{- $namespace := $.cluster.metadata.namespace }}
-
+{{- $meta_mysql_from_service_ref := fromJson "{}" }}
+{{- if index $.component "serviceReferences" }}
+  {{- range $i, $e := $.component.serviceReferences }}
+    {{- if eq $i "metaMysql" }}
+      {{- $meta_mysql_from_service_ref = $e }}
+      {{- break }}
+    {{- end }}
+  {{- end }}
+{{- end }}
 {
   "MySQLTopologyCredentialsConfigFile": "/usr/local/share/orchestrator/templates/orc-topology.cnf",
   "MySQLTopologySSLPrivateKeyFile": "",
@@ -8,12 +14,11 @@
   "MySQLTopologySSLCAFile": "",
   "MySQLTopologySSLSkipVerify": true,
   "MySQLTopologyUseMutualTLS": false,
-
-  "MySQLOrchestratorHost": {{ $mysql_meta_service_host }}
-  "MySQLOrchestratorPort": 3306,
+  {{- $endpoint :=  splitList ":" $meta_mysql_from_service_ref.spec.endpoint.value | first }}
+  "MySQLOrchestratorHost": {{- printf " \"%s\""   $endpoint}},
+  "MySQLOrchestratorPort": {{- printf " %s" $meta_mysql_from_service_ref.spec.port.value }},
   "MySQLOrchestratorDatabase": "orchestrator",
-  "MySQLOrchestratorUser": {{ $mysql_meta_user }},
-  "MySQLOrchestratorPassword": {{ $mysql_meta_password }},
+  "MySQLOrchestratorCredentialsConfigFile": "/usr/local/share/orchestrator/templates/orc-backend.cnf",
 
   "ApplyMySQLPromotionAfterMasterFailover": true,
   "Debug": false,
@@ -22,8 +27,6 @@
   "FailMasterPromotionIfSQLThreadNotUpToDate": true,
 
   "AutoPseudoGTID": true,
-
-
   "HTTPAdvertise": "http://orc-cluster-mysql:80",
 
   "HostnameResolveMethod": "none",
@@ -50,22 +53,4 @@
   "OnFailureDetectionProcesses": [
     "echo 'Detected {failureType} on {failureCluster}. Affected replicas: {countReplicas}' >> /tmp/recovery.log"
   ]
-
-  "PreGracefulTakeoverProcesses": [
-    "echo 'Planned takeover about to take place on {failureCluster}. Master will switch to read_only' >> /tmp/recovery.log"
-  ],
-  "PreFailoverProcesses": [
-    "echo 'Will recover from {failureType} on {failureCluster}' >> /tmp/recovery.log"
-  ],
-  "PostFailoverProcesses": [
-    "echo '(for all types) Recovered from {failureType} on {failureCluster}. Failed: {failedHost}:{failedPort}; Successor: {successorHost}:{successorPort}' >> /tmp/recovery.log"
-  ],
-  "PostUnsuccessfulFailoverProcesses": [],
-  "PostMasterFailoverProcesses": [
-    "echo 'Recovered from {failureType} on {failureCluster}. Failed: {failedHost}:    {failedPort}; Promoted: {successorHost}:{successorPort}' >> /tmp/recovery.log"
-  ],
-  "PostIntermediateMasterFailoverProcesses": [],
-  "PostGracefulTakeoverProcesses": [
-    "echo 'Planned takeover complete' >> /tmp/recovery.log"
-  ],
 }

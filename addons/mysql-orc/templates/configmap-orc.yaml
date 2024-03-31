@@ -2,10 +2,15 @@ apiVersion: v1
 data:
   orc-topology.cnf: |
     [client]
-    user = {{- .Values.orchestrator.topology.username }}
-    password = {{- .Values.orchestrator.topology.password }}
+    user = ${ORC_TOPOLOGY_USER}
+    password = ${ORCHESTRATOR_PASSWORD}
+  orc-backend.cnf: |
+    [client]
+    user=${META_MYSQL_USER}
+    password=${META_MYSQL_PASSWORD}
   orchestrator.conf.json: |-
-    {{- .Files.Get "config/orchestrator.json" | nindent 4 }}
+    {{- .Files.Get "config/orchestrator.tpl" | nindent 4 }}
 kind: ConfigMap
 metadata:
   name: mysql-orc-config
+

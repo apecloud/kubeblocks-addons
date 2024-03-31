@@ -45,7 +45,29 @@
 myname=$(basename $0)
 [ -f /etc/profile.d/orchestrator-client.sh ] && . /etc/profile.d/orchestrator-client.sh
 
+prepare_orchestrator_env() {
+   i=0
+   port_name=ORC_PORTS_${i}
+   endpoint_name=ORC_ENDPOINTS_${i}
+   while [[ -n "${!port_name}" ]] && [[ -n "${!endpoint_name}" ]]; do
+     port=${!port_name}
+     endpoint=${!endpoint_name}
 
+     api="http://$endpoint:$port/api"
+
+     if [[ -z "$ORCHESTRATOR_API" ]]; then
+       ORCHESTRATOR_API="$api"
+     else
+       ORCHESTRATOR_API="$ORCHESTRATOR_API $api"
+     fi
+     i=$(($i+1))
+     port_name=ORC_PORTS_${i}
+     endpoint_name=ORC_ENDPOINTS_${i}
+   done
+   export ORCHESTRATOR_API=$ORCHESTRATOR_API
+}
+
+prepare_orchestrator_env
 
 orchestrator_api="${ORCHESTRATOR_API:-http://localhost:3000}"
 leader_api=
@@ -245,7 +267,7 @@ function detect_leader_api {
       return
     fi
   done
-  fail "Cannot determine leader from $orchestrator_api"
+  leader_api=${apis[0]}
 }
 
 function urlencode {
@@ -1030,7 +1052,7 @@ function run_command {
 }
 
 function main {
-  check_requirements
+
   detect_leader_api
 
   instance_hostport=$(to_hostport $instance)
