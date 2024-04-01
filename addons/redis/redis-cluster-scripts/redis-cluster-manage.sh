@@ -108,9 +108,9 @@ redis_cluster_check() {
   # check redis cluster all slots are covered
   local cluster_node="$1"
   if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-    check=$(redis-cli --cluster check "$cluster_node")
+    check=$(redis-cli --cluster check "$cluster_node" -p "$SERVICE_PORT")
   else
-    check=$(redis-cli --cluster check "$cluster_node" -a "$REDIS_DEFAULT_PASSWORD")
+    check=$(redis-cli --cluster check "$cluster_node" -p "$SERVICE_PORT" -a "$REDIS_DEFAULT_PASSWORD" )
   fi
   if [[ $check =~ "All 16384 slots covered" ]]; then
     true
@@ -179,6 +179,38 @@ is_redis_cluster_initialized() {
   [ "$initialized" = "true" ]
 }
 
+# get the current component primary node and other nodes for scale in
+get_current_comp_nodes_for_scale_in() {
+  local cluster_node="$1"
+  if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+    cluster_nodes_info=$(redis-cli -h "$cluster_node" -p "$SERVICE_PORT" cluster nodes)
+  else
+    cluster_nodes_info=$(redis-cli -h "$cluster_node" -p "$SERVICE_PORT" -a "$REDIS_DEFAULT_PASSWORD" cluster nodes)
+  fi
+
+  current_comp_primary_node=()
+  current_comp_other_nodes=()
+
+  # the output of line is like:
+  # 4958e6dca033cd1b321922508553fab869a29d 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
+  # TODO: when support nodePort or LoadBalancer, the output of line will not contain the $KB_CLUSTER_COMP_NAME
+  while read -r line; do
+    node_fqdn=$(echo "$line" | awk '{print $2}' | awk -F ',' '{print $2}')
+    node_role=$(echo "$line" | awk '{print $3}')
+
+    if [[ "$node_fqdn" =~ "$KB_CLUSTER_COMP_NAME"* ]]; then
+      if [[ "$node_role" =~ "master" ]]; then
+        current_comp_primary_node+=("$node_fqdn:$SERVICE_PORT")
+      else
+        current_comp_other_nodes+=("$node_fqdn:$SERVICE_PORT")
+      fi
+    fi
+  done <<< "$cluster_nodes_info"
+
+  echo "current_comp_primary_node: ${current_comp_primary_node[*]}"
+  echo "current_comp_other_nodes: ${current_comp_other_nodes[*]}"
+}
+
 # get the current component default primary node which ordinal is 0 to join the cluster when scaling out
 init_current_comp_default_nodes_for_scale_out() {
     if [ -z "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" ]; then
@@ -243,9 +275,9 @@ gen_initialize_redis_cluster_secondary_nodes() {
 get_cluster_id() {
   local cluster_node="$1"
   if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-    cluster_nodes_info=$(redis-cli -h "$cluster_node" cluster nodes)
+    cluster_nodes_info=$(redis-cli -h "$cluster_node" -p "$SERVICE_PORT" cluster nodes)
   else
-    cluster_nodes_info=$(redis-cli -h "$cluster_node" -a "$REDIS_DEFAULT_PASSWORD" cluster nodes)
+    cluster_nodes_info=$(redis-cli -h "$cluster_node" -p "$SERVICE_PORT" -a "$REDIS_DEFAULT_PASSWORD" cluster nodes)
   fi
   cluster_id=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $1}')
   echo "$cluster_id"
@@ -353,10 +385,16 @@ scale_out_redis_cluster_shard() {
   done
 
   # do the reshard
+  # TODO: optimize the number of reshard slots according to the cluster status
+  total_slots=16384
+  current_comp_pod_count=$(echo "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" | tr ',' '\n' | grep -c "^$KB_CLUSTER_COMP_NAME-")
+  all_comp_pod_count=$(echo "$KB_CLUSTER_POD_NAME_LIST" | tr ',' '\n' | grep -c ".*")
+  shard_count=$((all_comp_pod_count / current_comp_pod_count))
+  slots_per_shard=$((total_slots / shard_count))
   if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-      reshard_command="redis-cli --cluster reshard $primary_node_with_port --cluster-from all --cluster-to $mapping_primary_cluster_id --cluster-slots 100 --cluster-yes"
+      reshard_command="redis-cli --cluster reshard $primary_node_with_port --cluster-from all --cluster-to $mapping_primary_cluster_id --cluster-slots $slots_per_shard --cluster-yes"
   else
-      reshard_command="redis-cli --cluster reshard $primary_node_with_port --cluster-from all --cluster-to $mapping_primary_cluster_id --cluster-slots 100 -a $REDIS_DEFAULT_PASSWORD --cluster-yes"
+      reshard_command="redis-cli --cluster reshard $primary_node_with_port --cluster-from all --cluster-to $mapping_primary_cluster_id --cluster-slots $slots_per_shard -a $REDIS_DEFAULT_PASSWORD --cluster-yes"
   fi
   echo "reshard_command: $reshard_command"
   if ! $reshard_command
@@ -364,6 +402,68 @@ scale_out_redis_cluster_shard() {
       echo "Failed to reshard the cluster"
       exit 1
   fi
+
+  # rebalance the cluster
+  #  if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+  #      rebalance_command="redis-cli --cluster rebalance $primary_node_with_port --cluster-timeout 3000 --cluster-simulate"
+  #  else
+  #      rebalance_command="redis-cli --cluster rebalance $primary_node_with_port --cluster-timeout 3000 --cluster-simulate -a $REDIS_DEFAULT_PASSWORD"
+  #  fi
+  #  echo "rebalance_command: $rebalance_command"
+  #  if ! $rebalance_command
+  #  then
+  #      echo "Failed to rebalance the cluster"
+  #      exit 1
+  #  fi
+}
+
+scale_in_redis_cluster_shard() {
+  init_other_component_pods_info "$KB_CLUSTER_COMP_NAME" "$KB_CLUSTER_POD_IP_LIST" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_COMPONENT_POD_NAME_LIST"
+  available_node=$(find_exist_available_node)
+  available_node_fqdn=$(echo "$available_node" | awk -F ':' '{print $1}')
+  get_current_comp_nodes_for_scale_in "$available_node_fqdn"
+
+  # Check if the number of shards in the cluster is less than 3 after scaling down.
+  current_comp_pod_count=0
+  for pod_name in $(echo "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" | tr ',' ' '); do
+    if [[ "$pod_name" == "$KB_CLUSTER_COMP_NAME"* ]]; then
+      current_comp_pod_count=$((current_comp_pod_count + 1))
+    fi
+  done
+  shard_count=$((${#other_component_nodes[@]} / current_comp_pod_count))
+  if [ $shard_count -lt 3 ]; then
+    echo "The number of shards in the cluster is less than 3 after scaling in, skip scaling in"
+    exit 0
+  fi
+
+  # set the current component slot to 0 by rebalance command
+  for primary_node in "${current_comp_primary_node[@]}"; do
+    primary_node_fqdn=$(echo "$primary_node" | awk -F ':' '{print $1}')
+    primary_node_cluster_id=$(get_cluster_id "$primary_node_fqdn")
+
+    if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+      rebalance_command="redis-cli --cluster rebalance $primary_node --cluster-weight $primary_node_cluster_id=0 --cluster-yes "
+    else
+      rebalance_command="redis-cli --cluster rebalance $primary_node --cluster-weight $primary_node_cluster_id=0 --cluster-yes -a $REDIS_DEFAULT_PASSWORD"
+    fi
+    echo "set current component slot to 0 by rebalance_command: $rebalance_command"
+    if ! $rebalance_command
+    then
+      echo "Failed to rebalance the cluster for the current component when scaling in"
+      exit 1
+    fi
+  done
+
+  wait_random_second 10 5
+
+  # delete the current component nodes from the cluster
+  for node in "${current_comp_primary_node[@]}" "${current_comp_other_nodes[@]}"; do
+    if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+      redis-cli --cluster del-node "$available_node" "$node"
+    else
+      redis-cli --cluster del-node "$available_node" "$node" -a "$REDIS_DEFAULT_PASSWORD"
+    fi
+  done
 }
 
 initialize_or_scale_out_redis_cluster() {
@@ -396,7 +496,7 @@ if [ $# -eq 1 ]; then
     exit 0
     ;;
   --pre-terminate)
-    wait_random_second 10 1
+    scale_in_redis_cluster_shard
     exit 0
     ;;
   *)
