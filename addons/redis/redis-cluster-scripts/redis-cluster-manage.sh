@@ -25,7 +25,7 @@ init_other_component_pods_info() {
   IFS=',' read -ra pod_ips <<< "$all_pod_ip_list"
   IFS=',' read -ra pod_names <<< "$all_pod_name_list"
   for index in "${!pod_ips[@]}"; do
-    if echo "${pod_names[$index]}" | grep -q "-$component-"; then
+    if echo "${pod_names[$index]}" | grep "-$component-"; then
       continue
     fi
     other_component_pod_ips+=("${pod_ips[$index]}")
@@ -257,7 +257,11 @@ initialize_redis_cluster() {
   else
       initialize_command="redis-cli --cluster create $primary_nodes -a $REDIS_DEFAULT_PASSWORD --cluster-yes"
   fi
-  yes yes | $initialize_command || true
+  if ! $initialize_command
+  then
+      echo "Failed to create Redis Cluster"
+      exit 1
+  fi
 
   # get the first primary node to check the cluster
   first_primary_node=$(echo "$primary_nodes" | awk '{print $1}')
@@ -286,7 +290,11 @@ initialize_redis_cluster() {
           replicated_command="redis-cli --cluster add-node $secondary_node $mapping_primary_fqdn_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id -a $REDIS_DEFAULT_PASSWORD"
       fi
       echo "replicated_command: $replicated_command"
-      yes yes | $replicated_command || true
+      if ! $replicated_command
+      then
+          echo "Failed to add the node $secondary_node to the cluster in initialize_redis_cluster"
+          exit 1
+      fi
   done
 }
 
@@ -321,6 +329,9 @@ scale_out_redis_cluster_shard() {
       fi
   done
 
+  # waiting for all nodes sync the information
+  wait_random_second 10 5
+
   # add the default other secondary nodes for the current shard
   for current_comp_default_other_node in ${current_comp_default_other_nodes[*]}; do
       # gei mapping master id
@@ -331,7 +342,12 @@ scale_out_redis_cluster_shard() {
           replicated_command="redis-cli --cluster add-node $current_comp_default_other_node $primary_node_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id -a $REDIS_DEFAULT_PASSWORD"
       fi
       echo "replicated_command: $replicated_command"
-      yes yes | $replicated_command || true
+      # execute the replicated command
+      if ! $replicated_command
+      then
+          echo "Failed to add the node $current_comp_default_other_node to the cluster"
+          exit 1
+      fi
   done
 
   # do the reshard
@@ -341,7 +357,11 @@ scale_out_redis_cluster_shard() {
       reshard_command="redis-cli --cluster reshard $primary_node_with_port --cluster-from all --cluster-to $mapping_primary_cluster_id --cluster-slots 100 -a $REDIS_DEFAULT_PASSWORD --cluster-yes"
   fi
   echo "reshard_command: $reshard_command"
-  yes yes | $reshard_command || true
+  if ! $reshard_command
+  then
+      echo "Failed to reshard the cluster"
+      exit 1
+  fi
 }
 
 initialize_or_scale_out_redis_cluster() {
