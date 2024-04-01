@@ -457,11 +457,19 @@ scale_in_redis_cluster_shard() {
   wait_random_second 10 5
 
   # delete the current component nodes from the cluster
-  for node in "${current_comp_primary_node[@]}" "${current_comp_other_nodes[@]}"; do
+  for node_to_del in "${current_comp_primary_node[@]}" "${current_comp_other_nodes[@]}"; do
+    node_to_del_fqdn=$(echo "$node_to_del" | awk -F ':' '{print $1}')
+    node_to_del_cluster_id=$(get_cluster_id "$node_to_del_fqdn")
     if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-      redis-cli --cluster del-node "$available_node" "$node"
+      del_node_command="redis-cli --cluster del-node $available_node $node_to_del_cluster_id -p $SERVICE_PORT"
     else
-      redis-cli --cluster del-node "$available_node" "$node" -a "$REDIS_DEFAULT_PASSWORD"
+      del_node_command="redis-cli --cluster del-node $available_node $node_to_del_cluster_id -p $SERVICE_PORT -a $REDIS_DEFAULT_PASSWORD"
+    fi
+    echo "del_node_command: $del_node_command"
+    if ! $del_node_command
+    then
+      echo "Failed to delete the node $node_to_del from the cluster when scaling in"
+      exit 1
     fi
   done
 }
