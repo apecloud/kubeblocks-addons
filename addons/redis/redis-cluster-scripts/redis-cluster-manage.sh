@@ -11,11 +11,12 @@ init_other_component_pods_info() {
   other_component_pod_ips=()
   other_component_pod_names=()
   other_component_nodes=()
-
+  echo "init other components and pods info, current component: $component"
   # filter out the components of the given component
   IFS=',' read -ra components <<< "$all_component_list"
   for comp in "${components[@]}"; do
     if [ "$comp" = "$component" ]; then
+      echo "skip the component $comp as it is the current component"
       continue
     fi
     other_components+=("$comp")
@@ -25,7 +26,8 @@ init_other_component_pods_info() {
   IFS=',' read -ra pod_ips <<< "$all_pod_ip_list"
   IFS=',' read -ra pod_names <<< "$all_pod_name_list"
   for index in "${!pod_ips[@]}"; do
-    if echo "${pod_names[$index]}" | grep "-$component-"; then
+    if echo "${pod_names[$index]}" | grep "$component-"; then
+      echo "skip the pod ${pod_names[$index]} as it belongs the component $component"
       continue
     fi
     other_component_pod_ips+=("${pod_ips[$index]}")
@@ -299,7 +301,7 @@ initialize_redis_cluster() {
 }
 
 scale_out_redis_cluster_shard() {
-  init_other_component_pods_info "$KB_CLUSTER_COMPONENT" "$KB_CLUSTER_POD_IP_LIST" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_COMPONENT_POD_NAME_LIST"
+  init_other_component_pods_info "$KB_CLUSTER_COMP_NAME" "$KB_CLUSTER_POD_IP_LIST" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_COMPONENT_POD_NAME_LIST"
   init_current_comp_default_nodes_for_scale_out
 
   # check the current component shard whether is already scaled out
