@@ -6,8 +6,8 @@ data:
     password=${ORC_TOPOLOGY_PASSWORD}
   orc-backend.cnf: |
     [client]
-    user=${ORC_META_USER}
-    password=${ORC_META_PASSWORD}
+    user=orchestrator
+    password=orchestrator
   orchestrator.conf.json: |-
     {{- .Files.Get "config/orchestrator.tpl" | nindent 4 }}
 kind: ConfigMap

@@ -390,7 +390,6 @@ ORCHESTRATOR_API=""
 
 
 install_jq_dependency() {
-  mysql_note "Install jq dependency"
   rpm -ivh https://yum.oracle.com/repo/OracleLinux/OL8/appstream/x86_64/getPackage/oniguruma-6.8.2-2.1.el8_9.x86_64.rpm
   rpm -ivh https://mirrors.aliyun.com/centos/8/AppStream/x86_64/os/Packages/jq-1.5-12.el8.x86_64.rpm
 }
@@ -410,8 +409,6 @@ set global slave_net_timeout = 4;
 EOF
 
   mysql_note "Create MySQL User and Grant Permissions completed."
-  mysql_note "init cluster info database"
-#  mysql -P 3306 -u $mysql_username -p$mysql_password -e 'source /scripts/gms-init.sql'
 
 }
 
@@ -419,12 +416,13 @@ init_cluster_info_database() {
   local service_name=$(echo "${cluster_component_pod_name}_${component_name}_${i}" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
   mysql_note "init cluster info database"
   mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD << EOF
-CREATE DATABASE  `kb_orc_meta_cluster`;
-GRANT ALL ON `kb_orc_meta_cluster`.* TO '$topology_user'@'%';
+CREATE DATABASE  kb_orc_meta_cluster;
+GRANT ALL ON kb_orc_meta_cluster.* TO '$topology_user'@'%';
 EOF
   mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e 'source /scripts/cluster-info.sql'
   mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD << EOF
-INSERT INTO kb_orc_meta_cluster.kb_orc_meta_cluster (anchor,host_name,cluster_name, cluster_domain, data_center)
+USE kb_orc_meta_cluster;
+INSERT INTO kb_orc_meta_cluster (anchor,host_name,cluster_name, cluster_domain, data_center)
 SELECT 1, '$service_name','$KB_CLUSTER_NAME', '', ''
     WHERE NOT EXISTS (
     SELECT 1
