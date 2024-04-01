@@ -2,8 +2,8 @@ apiVersion: v1
 data:
   orc-topology.cnf: |
     [client]
-    user = ${ORC_TOPOLOGY_USER}
-    password = ${ORCHESTRATOR_PASSWORD}
+    user=orchestrator
+    password=${ORC_TOPOLOGY_PASSWORD}
   orc-backend.cnf: |
     [client]
     user=${ORC_META_USER}
