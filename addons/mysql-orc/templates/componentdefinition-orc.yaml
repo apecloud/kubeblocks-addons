@@ -100,10 +100,6 @@ spec:
       - name: orchestrator
         image: docker.io/bitpoke/mysql-operator-orchestrator:v0.6.3
         imagePullPolicy: IfNotPresent
-        command:
-          - sh
-          - -c
-          - sleep 1000000000000000000;
         volumeMounts:
           - name: orchestrator-data
             mountPath: /var/lib/orchestrator

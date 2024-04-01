@@ -18,13 +18,13 @@ init_meta_databases() {
 
   echo "Create MySQL User and Grant Permissions..."
   mysql -h $meta_mysql_host -P $meta_mysql_port -u $meta_user -p$meta_password << EOF
-CREATE USER IF NOT EXISTS '$ORC_TOPOLOGY_USER'@'%' IDENTIFIED BY '$ORC_TOPOLOGY_PASSWORD';
+CREATE USER IF NOT EXISTS '$ORC_META_USER'@'%' IDENTIFIED BY '$ORC_META_PASSWORD';
 EOF
 
 
   mysql -h $meta_mysql_host -P $meta_mysql_port -u $meta_user -p$meta_password << EOF
 CREATE DATABASE IF NOT EXISTS $meta_database;
-GRANT ALL PRIVILEGES ON `$meta_database`.* TO '$meta_user'@'%';
+GRANT ALL PRIVILEGES ON `$meta_database`.* TO '$ORC_META_USER'@'%';
 EOF
   echo "init meta databases done"
 }

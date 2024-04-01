@@ -20,6 +20,7 @@
   "MySQLOrchestratorDatabase": "orchestrator",
   "MySQLOrchestratorCredentialsConfigFile": "/usr/local/share/orchestrator/templates/orc-backend.cnf",
 
+  "DetectClusterAliasQuery": "select ifnull(max(cluster_name), '') as cluster_alias from kb_orc_meta_cluster.kb_orc_meta_cluster where anchor=1",
   "ApplyMySQLPromotionAfterMasterFailover": true,
   "Debug": false,
   "DetachLostReplicasAfterMasterFailover": true,
