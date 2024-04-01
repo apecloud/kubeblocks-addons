@@ -4,7 +4,7 @@
 
 ## @param version Halo cluster version
 ##
-version: halo-14.10.231127
+version: halo-14.10
 
 ## @param mode halo cluster topology mode, standalone, replication
 ##
