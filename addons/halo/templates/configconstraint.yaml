@@ -6,11 +6,6 @@ metadata:
   labels:
     {{- include "halo.labels" . | nindent 4 }}
 spec:
-  reloadOptions:
-    tplScriptTrigger:
-      sync: true
-      scriptConfigMapRef: patroni-reload-script
-      namespace: {{ .Release.Namespace }}
 
   # update patroni master
   selector:
