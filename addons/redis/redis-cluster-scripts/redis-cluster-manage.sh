@@ -191,6 +191,12 @@ get_current_comp_nodes_for_scale_in() {
   current_comp_primary_node=()
   current_comp_other_nodes=()
 
+  # if the cluster_nodes_info contains only one line, it means that the cluster not be initialized
+  if [ "$(echo "$cluster_nodes_info" | wc -l)" -eq 1 ]; then
+    echo "Cluster nodes info contains only one line, returning..."
+    return
+  fi
+
   # the output of line is like:
   # 4958e6dca033cd1b321922508553fab869a29d 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
   # TODO: when support nodePort or LoadBalancer, the output of line will not contain the $KB_CLUSTER_COMP_NAME
