@@ -1,11 +1,11 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
   name: mongodb-env-constraints
   labels:
     {{- include "mongodb.labels" . | nindent 4 }}
 spec:
-  configurationSchema:
+  configSchema:
     cue: ""
 
   # mysql configuration file format
@@ -13,7 +13,7 @@ spec:
     format: yaml
 ---
 
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
   name: mongodb-config-constraints
@@ -22,10 +22,10 @@ metadata:
 spec:
 
   ## top level mysql configuration type
-  cfgSchemaTopLevelName: MongodbParameters
+  configSchemaTopLevelKey: MongodbParameters
 
   ## defines the configuration schema
-  configurationSchema:
+  configSchema:
     cue: ""
 {{/*    cue: |-*/}}
 {{/*      {{- .Files.Get "config/mongodb-config-constraint.cue" | nindent 6 }}*/}}

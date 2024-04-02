@@ -1,11 +1,11 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
   name: pulsar-env-constraints
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
-  configurationSchema:
+  configSchema:
     cue: ""
 
   # pulsar configuration file format
@@ -13,14 +13,14 @@ spec:
     format: yaml
 
 ---
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
   name: pulsar-common-constraints
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
-  configurationSchema:
+  configSchema:
     cue: ""
 
   # pulsar configuration file format
@@ -30,14 +30,14 @@ spec:
 ---
 
 {{- $cc := .Files.Get "config/2.11.2/broker-config-effect-scope.yaml" | fromYaml }}
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
   name: pulsar2-brokers-cc
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
-  configurationSchema:
+  configSchema:
     cue: |-
       {{- .Files.Get "config/2.11.2/broker-config-constraint.cue" | nindent 6 }}
 
@@ -63,7 +63,7 @@ spec:
    {{- end }}
  {{- end}}
 
-  reloadOptions:
+  dynamicReloadAction:
     shellTrigger:
       sync: true
       command:
@@ -73,7 +73,7 @@ spec:
     - scriptConfigMapRef: pulsar-tools-script
       namespace: {{ .Release.Namespace }}
 
-  toolsImageSpec:
+  reloadToolsImage:
     mountPoint: /kb/tools
     toolConfigs:
       - name: init-pulsar-tools
@@ -90,14 +90,14 @@ spec:
 ---
 
 {{- $cc3 := .Files.Get "config/3.0.2/broker-config-effect-scope.yaml" | fromYaml }}
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
   name: pulsar3-brokers-cc
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
-  configurationSchema:
+  configSchema:
     cue: |-
       {{- .Files.Get "config/3.0.2/broker-config-constraint.cue" | nindent 6 }}
 
@@ -123,7 +123,7 @@ spec:
    {{- end }}
  {{- end}}
 
-  reloadOptions:
+  dynamicReloadAction:
     shellTrigger:
       sync: true
       command:
@@ -133,7 +133,7 @@ spec:
     - scriptConfigMapRef: pulsar-tools-script
       namespace: {{ .Release.Namespace }}
 
-  toolsImageSpec:
+  reloadToolsImage:
     mountPoint: /kb/tools
     toolConfigs:
       - name: init-pulsar-tools
@@ -149,14 +149,14 @@ spec:
 
 ---
 
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
   name: pulsar2-bookies-cc
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
-  configurationSchema:
+  configSchema:
     cue: |-
       {{- .Files.Get "config/2.11.2/bookkeeper-config-constraint.cue" | nindent 6 }}
 
@@ -166,14 +166,14 @@ spec:
 
 ---
 
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
   name: pulsar3-bookies-cc
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
-  configurationSchema:
+  configSchema:
     cue: |-
       {{- .Files.Get "config/3.0.2/bookkeeper-config-constraint.cue" | nindent 6 }}
 
@@ -183,14 +183,14 @@ spec:
 
 ---
 
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
   name: pulsar2-proxy-cc
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
-  configurationSchema:
+  configSchema:
     cue: |-
       {{- .Files.Get "config/2.11.2/proxy-config-constraint.cue" | nindent 6 }}
 
@@ -200,14 +200,14 @@ spec:
 
 ---
 
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
   name: pulsar3-proxy-cc
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
-  configurationSchema:
+  configSchema:
     cue: |-
       {{- .Files.Get "config/3.0.2/proxy-config-constraint.cue" | nindent 6 }}
 

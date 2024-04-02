@@ -9,14 +9,14 @@ data:
     {{- .Files.Get "config/solr-env.tpl" | nindent 4 }}
 
 ---
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
   name: {{ include "solr.name" . }}-env-constraints
   labels:
     {{- include "solr.labels" . | nindent 4 }}
 spec:
-  configurationSchema:
+  configSchema:
     cue: ""
 
   # mysql configuration file format
