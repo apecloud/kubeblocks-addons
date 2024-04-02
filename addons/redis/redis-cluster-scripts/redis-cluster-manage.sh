@@ -2,24 +2,45 @@
 set -ex
 
 # initialize the other component and pods info
-init_other_component_pods_info() {
+init_other_components_and_pods_info() {
   local component="$1"
   local all_pod_ip_list="$2"
   local all_pod_name_list="$3"
   local all_component_list="$4"
+  local all_deleting_component_list="$5"
+  local all_undeleted_component_list="$6"
+
   other_components=()
-  other_component_pod_ips=()
-  other_component_pod_names=()
-  other_component_nodes=()
+  other_deleting_components=()
+  other_undeleted_components=()
+  other_undeleted_component_pod_ips=()
+  other_undeleted_component_pod_names=()
+  other_undeleted_component_nodes=()
   echo "init other components and pods info, current component: $component"
   # filter out the components of the given component
   IFS=',' read -ra components <<< "$all_component_list"
+  IFS=',' read -ra deleting_components <<< "$all_deleting_component_list"
+  IFS=',' read -ra undeleted_components <<< "$all_undeleted_component_list"
   for comp in "${components[@]}"; do
     if [ "$comp" = "$component" ]; then
       echo "skip the component $comp as it is the current component"
       continue
     fi
     other_components+=("$comp")
+  done
+  for comp in "${deleting_components[@]}"; do
+    if [ "$comp" = "$component" ]; then
+      echo "skip the component $comp as it is the current component"
+      continue
+    fi
+    other_deleting_components+=("$comp")
+  done
+  for comp in "${undeleted_components[@]}"; do
+    if [ "$comp" = "$component" ]; then
+      echo "skip the component $comp as it is the current component"
+      continue
+    fi
+    other_undeleted_components+=("$comp")
   done
 
   # filter out the pods of the given component
@@ -30,22 +51,32 @@ init_other_component_pods_info() {
       echo "skip the pod ${pod_names[$index]} as it belongs the component $component"
       continue
     fi
-    other_component_pod_ips+=("${pod_ips[$index]}")
-    other_component_pod_names+=("${pod_names[$index]}")
+
+    # skip the pod belongs to the deleting component
+    pod_name_prefix=$(extract_pod_name_prefix "${pod_names[$index]}")
+    if echo "${deleting_components[@]}" | grep -q "$pod_name_prefix"; then
+      echo "skip the pod ${pod_names[$index]} as it belongs to the deleting component $pod_name_prefix"
+      continue
+    fi
+
+    other_undeleted_component_pod_ips+=("${pod_ips[$index]}")
+    other_undeleted_component_pod_names+=("${pod_names[$index]}")
 
     pod_name_prefix=$(extract_pod_name_prefix "${pod_names[$index]}")
     pod_fqdn="${pod_names[$index]}.$pod_name_prefix-headless"
-    other_component_nodes+=("$pod_fqdn:$SERVICE_PORT")
+    other_undeleted_component_nodes+=("$pod_fqdn:$SERVICE_PORT")
   done
 
   echo "other_components: ${other_components[*]}"
-  echo "other_component_pod_ips: ${other_component_pod_ips[*]}"
-  echo "other_component_pod_names: ${other_component_pod_names[*]}"
-  echo "other_component_nodes: ${other_component_nodes[*]}"
+  echo "other_deleting_components: ${other_deleting_components[*]}"
+  echo "other_undeleted_components: ${other_undeleted_components[*]}"
+  echo "other_undeleted_component_pod_ips: ${other_undeleted_component_pod_ips[*]}"
+  echo "other_undeleted_component_pod_names: ${other_undeleted_component_pod_names[*]}"
+  echo "other_undeleted_component_nodes: ${other_undeleted_component_nodes[*]}"
 }
 
 find_exist_available_node() {
-  for node in "${other_component_nodes[@]}"; do
+  for node in "${other_undeleted_component_nodes[@]}"; do
     if redis_cluster_check "$node"; then
       echo "$node"
       return
@@ -339,7 +370,7 @@ initialize_redis_cluster() {
 }
 
 scale_out_redis_cluster_shard() {
-  init_other_component_pods_info "$KB_CLUSTER_COMP_NAME" "$KB_CLUSTER_POD_IP_LIST" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_COMPONENT_POD_NAME_LIST"
+  init_other_components_and_pods_info "$KB_COMP_NAME" "$KB_CLUSTER_POD_IP_LIST" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_COMPONENT_LIST" "$KB_CLUSTER_COMPONENT_DELETING_LIST" "$KB_CLUSTER_COMPONENT_UNDELETED_LIST"
   init_current_comp_default_nodes_for_scale_out
 
   # check the current component shard whether is already scaled out
@@ -424,7 +455,14 @@ scale_out_redis_cluster_shard() {
 }
 
 scale_in_redis_cluster_shard() {
-  init_other_component_pods_info "$KB_CLUSTER_COMP_NAME" "$KB_CLUSTER_POD_IP_LIST" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_COMPONENT_POD_NAME_LIST"
+  # check KB_CLUSTER_COMPONENT_IS_SCALING_IN env
+  if [ -z "$KB_CLUSTER_COMPONENT_IS_SCALING_IN" ]; then
+    echo "The KB_CLUSTER_COMPONENT_IS_SCALING_IN env is not set, skip scaling in"
+    exit 0
+  fi
+
+  # init information for the other components and pods
+  init_other_components_and_pods_info "$KB_COMP_NAME" "$KB_CLUSTER_POD_IP_LIST" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_COMPONENT_LIST" "$KB_CLUSTER_COMPONENT_DELETING_LIST" "$KB_CLUSTER_COMPONENT_UNDELETED_LIST"
   available_node=$(find_exist_available_node)
   available_node_fqdn=$(echo "$available_node" | awk -F ':' '{print $1}')
   get_current_comp_nodes_for_scale_in "$available_node_fqdn"
@@ -436,7 +474,7 @@ scale_in_redis_cluster_shard() {
       current_comp_pod_count=$((current_comp_pod_count + 1))
     fi
   done
-  shard_count=$((${#other_component_nodes[@]} / current_comp_pod_count))
+  shard_count=$((${#other_undeleted_component_nodes[@]} / current_comp_pod_count))
   if [ $shard_count -lt 3 ]; then
     echo "The number of shards in the cluster is less than 3 after scaling in, skip scaling in"
     exit 0
