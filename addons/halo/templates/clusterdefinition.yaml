@@ -41,15 +41,10 @@ spec:
                 - |
                   Status=$(curl -s http://localhost:8008) && 
                   role=$(echo $Status | jq .role  | tr -d '"') &&
-                  if [ "$role" = "master" ]; then echo  "primary"; else echo  "secondary"; fi
+                  if [ "$role" = "master" ]; then echo -n  "primary"; else echo -n  "secondary"; fi
           roleUpdateMechanism: DirectAPIServerEventUpdate
           initialDelaySeconds: 60
         memberUpdateStrategy: BestEffortParallel
-      serviceRefDeclarations:
-        - name: etcd-service
-          serviceRefDeclarationSpecs:
-            - serviceKind: etcd
-              serviceVersion: v3.5.6
       configSpecs:
         - name: halo-configuration
           templateRef: halo-configuration
