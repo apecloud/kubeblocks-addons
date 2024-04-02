@@ -153,7 +153,7 @@ spec:
               - name: PATRONI_RESTAPI_LISTEN
                 value: "0.0.0.0:8008"
               - name: PATRONI_ETCD3_HOST
-                value: etcd-service-etcd:2379
+                value: etcd-cluster-etcd:2379
               - name: PATRONI_NAME
                 valueFrom:
                   fieldRef:
@@ -162,7 +162,7 @@ spec:
               - name: PATRONI_POSTGRESQL_LISTEN
                 value: '0.0.0.0:1921'
               - name: PATRONI_SCOPE
-                value: halo-cluster
+                value: "$(KB_CLUSTER_NAME)"
               - name: KUBERNETES_ROLE_LABEL
                 value: "apps.kubeblocks.halo.patroni/role"
               - name: KB_POD_FQDN
