@@ -23,6 +23,6 @@ maintainers:
     url: https://github.com/kissycn
 
 annotations:
-    addon.kubeblocks.io/kubeblocks-version: ">=0.7.0"
+    addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
     addon.kubeblocks.io/model: "other"
     addon.kubeblocks.io/provider: "community"

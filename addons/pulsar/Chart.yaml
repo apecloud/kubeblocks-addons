@@ -4,7 +4,7 @@ description: Apache Pulsar is an open-source, distributed messaging and streamin
 
 type: application
 
-version: 0.8.2
+version: 0.8.3
 
 # appVersion specifies the version of the Pulsar database to be created,
 # and this value should be consistent with an existing clusterVersion.
@@ -30,6 +30,6 @@ maintainers:
   url: https://github.com/apecloud/kubeblocks/deploy
 
 annotations:
-  addon.kubeblocks.io/kubeblocks-version: ">=0.7.0"
+  addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
   addon.kubeblocks.io/model: "streaming"
   addon.kubeblocks.io/provider: "apecloud"

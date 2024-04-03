@@ -1,4 +1,4 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
   name: weaviate-env-constraints
@@ -6,10 +6,10 @@ metadata:
     {{- include "weaviate.labels" . | nindent 4 }}
 spec:
   # top level weaviate configuration type
-  cfgSchemaTopLevelName: WeaviateEnvs
+  configSchemaTopLevelKey: WeaviateEnvs
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule
-  configurationSchema:
+  configSchema:
     cue: |-
       {{- .Files.Get "config/weaviate-env-constraint.cue" | nindent 6 }}
 

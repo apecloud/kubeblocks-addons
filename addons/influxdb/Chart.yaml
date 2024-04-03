@@ -9,7 +9,7 @@ appVersion: 2.7.4
 annotations:
   category: Database
   licenses: Apache-2.0
-  addon.kubeblocks.io/kubeblocks-version: ">=0.7.0"
+  addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
   addon.kubeblocks.io/model: "time-series"
 
 description: InfluxDB(TM) is an open source time-series database. It is a core component of the TICK (Telegraf, InfluxDB(TM), Chronograf, Kapacitor) stack.

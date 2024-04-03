@@ -25,6 +25,6 @@ maintainers:
     url: https://github.com/apecloud/kubeblocks/deploy
 
 annotations:
-  addon.kubeblocks.io/kubeblocks-version: ">=0.7.0"
+  addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
   addon.kubeblocks.io/model: "RDBMS"
   addon.kubeblocks.io/provider: "apecloud"
