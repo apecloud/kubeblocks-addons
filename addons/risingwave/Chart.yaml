@@ -21,6 +21,6 @@ maintainers:
   url: https://www.risingwave-labs.com
 
 annotations:
-  addon.kubeblocks.io/kubeblocks-version: ">=0.7.0"
+  addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
   addon.kubeblocks.io/model: "streaming"
   addon.kubeblocks.io/provider: "community"

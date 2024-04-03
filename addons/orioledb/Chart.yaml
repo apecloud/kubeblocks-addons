@@ -16,6 +16,6 @@ version: 0.8.0-alpha.5
 appVersion: "14.7.2-beta1"
 
 annotations:
-  addon.kubeblocks.io/kubeblocks-version: ">=0.7.0"
+  addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
   addon.kubeblocks.io/model: "RDBMS"
   addon.kubeblocks.io/provider: "apecloud"
