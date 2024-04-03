@@ -203,6 +203,11 @@ scale_redis_cluster_replica() {
   if ! $replicated_command
   then
       echo "Failed to add the node $current_pod_fqdn to the cluster in scale_redis_cluster_replica"
+      if [ -n "$REDIS_DEFAULT_PASSWORD" ]; then
+        redis-cli -h 127.0.0.1 -p $service_port -a "$REDIS_DEFAULT_PASSWORD" shutdown
+      else
+        redis-cli -h 127.0.0.1 -p $service_port shutdown
+      fi
       exit 1
   fi
 }

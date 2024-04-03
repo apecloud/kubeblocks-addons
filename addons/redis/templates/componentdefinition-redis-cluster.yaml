@@ -165,7 +165,7 @@ spec:
               command:
                 - /bin/bash
                 - -c
-                - /scripts/redis-pre-stop.sh
+                - /scripts/redis-cluster-replica-member-leave.sh
       - name: metrics
         image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
         imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
