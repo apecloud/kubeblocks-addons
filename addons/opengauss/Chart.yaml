@@ -25,6 +25,6 @@ appVersion: "5.0.0"
 
 
 annotations:
-  addon.kubeblocks.io/kubeblocks-version: ">=0.7.0-0"
+  addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
   addon.kubeblocks.io/model: "RDBMS"
   addon.kubeblocks.io/provider: "apecloud"

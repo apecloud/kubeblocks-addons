@@ -1,4 +1,4 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
   name: clickhouse-constraints
@@ -9,11 +9,11 @@ metadata:
     {{- end }}
 spec:
   # top level mysql configuration type
-  cfgSchemaTopLevelName: ClickhouseParameter
+  configSchemaTopLevelKey: ClickhouseParameter
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule
-  configurationSchema:
-    # schema: auto generate from mmmcue scripts
+  configSchema:
+    # schemaInJSON: auto generate from cue scripts
     # example: ../../pkg/configuration/testdata/mysql_openapi.json
     cue: |-
       {{- .Files.Get "configs/clickhouse-config-constraint.cue" | nindent 6 }}

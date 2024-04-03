@@ -1,5 +1,5 @@
 {{- $cc := .Files.Get "config/redis7-config-effect-scope.yaml" | fromYaml }}
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
   name: redis7-config-constraints
@@ -7,10 +7,10 @@ metadata:
     {{- include "redis.labels" . | nindent 4 }}
 spec:
 
-  cfgSchemaTopLevelName: RedisParameter
+  configSchemaTopLevelKey: RedisParameter
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule
-  configurationSchema:
+  configSchema:
     cue: |-
       {{- .Files.Get "config/redis7-config-constraint.cue" | nindent 6 }}
 

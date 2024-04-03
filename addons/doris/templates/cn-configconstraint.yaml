@@ -1,5 +1,5 @@
 {{- $cc := .Files.Get "config/doris-cn-config-effect-scope.yaml" | fromYaml }}
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
   name: {{ include "doris.name" . }}-cn-config-constraints
@@ -12,11 +12,11 @@ spec:
   # tplRef: doris-cn-3node-tpl-8.0
 
   # top level mysql configuration type
-  cfgSchemaTopLevelName: DoriscnParameter
+  configSchemaTopLevelKey: DoriscnParameter
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule
-  configurationSchema:
-    # schema: auto generate from mmmcue scripts
+  configSchema:
+    # schemaInJSON: auto generate from cue scripts
     # example: ../../internal/configuration/testdata/mysql_openapi.json
     cue: |-
       {{- .Files.Get "config/doris-cn-config-constraint.cue" | nindent 6 }}
