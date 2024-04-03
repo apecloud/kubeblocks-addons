@@ -16,6 +16,14 @@ if your etcd service also in k8s and in namespace default , then you can use lik
 After all , you can check cluster with order 
 ```kbcli cluster list ```  
 
+If you want to connection Halo, you can use ingress-nginx to expose svc/halo-cluster-halo:1921 ,if you want to simple ,you can use 
+
+```kubectl port-forward --address 0.0.0.0 svc/halo-cluster-halo 1921:1921 -n default```
+
+username of supername: halo 
+username of password: halo0root
+that it can be edit in clusterdefinition in connectionCredential.
+
 The image of halo is a little big ,so maybe it will take some time to setup cluster , after 60s, the cluster will identity the role in cluster with 3 pods . You can checkout it out with order 
 
 ```kbcli cluster halo-cluster list-instances```
