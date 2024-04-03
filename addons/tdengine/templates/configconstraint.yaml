@@ -1,5 +1,5 @@
 {{- $cc := .Files.Get "config/tdengine-taos-config-effect-scope.yaml" | fromYaml }}
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
   name: tdengine-taos-config-constraints
@@ -7,18 +7,18 @@ metadata:
     {{- include "tdengine.labels" . | nindent 4 }}
 spec:
   # configmap reference
-{{/*  reloadOptions:*/}}
+{{/*  dynamicReloadAction:*/}}
 {{/*    tplScriptTrigger:*/}}
 {{/*      sync: true*/}}
 {{/*      scriptConfigMapRef: tdengine-reload-script*/}}
 {{/*      namespace: {{ .Release.Namespace }}*/}}
 
   # top level mysql configuration type
-  cfgSchemaTopLevelName: TaosParameter
+  configSchemaTopLevelKey: TaosParameter
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule
-  configurationSchema:
-    # schema: auto generate from mmmcue scripts
+  configSchema:
+    # schemaInJSON: auto generate from cue scripts
     cue: |-
       {{- .Files.Get "config/tdengine-taos-config-constraint.cue" | nindent 6 }}
 

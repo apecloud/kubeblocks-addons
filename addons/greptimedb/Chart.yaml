@@ -22,6 +22,6 @@ maintainers:
     url: https://github.com/GreptimeTeam
 
 annotations:
-    addon.kubeblocks.io/kubeblocks-version: ">=0.7.0"
+    addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
     addon.kubeblocks.io/model: "time-series"
     addon.kubeblocks.io/provider: "community"

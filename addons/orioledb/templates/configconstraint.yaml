@@ -1,28 +1,28 @@
 {{- $cc := .Files.Get "config/orioledb-config-effect-scope.yaml" | fromYaml }}
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
   name: orioledb-cc
   labels:
     {{- include "orioledb.labels" . | nindent 4 }}
 spec:
-  reloadOptions:
+  dynamicReloadAction:
     tplScriptTrigger:
       sync: false
       scriptConfigMapRef: orioledb-patroni-reload-script
       namespace: {{ .Release.Namespace }}
 
   # update patroni master
-  selector:
+  dynamicReloadSelector:
     matchLabels:
       "apps.kubeblocks.postgres.patroni/role": "master"
 
   # top level orioledb configuration type
-  cfgSchemaTopLevelName: PGParameter
+  configSchemaTopLevelKey: PGParameter
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule
-  configurationSchema:
-    # schema: auto generate from cue scripts
+  configSchema:
+    # schemaInJSON: auto generate from cue scripts
     # example: ../../pkg/configuration/testdata/mysql_openapi.json
     cue: |-
       {{- .Files.Get "config/orioledb-config-constraint.cue" | nindent 6 }}
