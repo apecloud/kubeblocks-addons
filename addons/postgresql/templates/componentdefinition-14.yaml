@@ -145,6 +145,7 @@ spec:
       runAsUser: 0
       fsGroup: 103
       runAsGroup: 103
+      fsGroupChangePolicy: OnRootMismatch
     initContainers:
       - name: pg-init-container
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:14.8.0-pgvector-v0.6.1
