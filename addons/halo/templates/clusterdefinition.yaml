@@ -8,7 +8,7 @@ spec:
   type: halo
   connectionCredential:
     username: halo
-    password: "$(RANDOM_PASSWD)"
+    password: "halo0root"
     endpoint: "$(SVC_FQDN):$(SVC_PORT_tcp-halo)"
     host: "$(SVC_FQDN)"
     port: "$(SVC_PORT_tcp-halo)"
@@ -115,8 +115,6 @@ spec:
                 value: /data/halo
               - name: HALOPORT
                 value: "1921"
-              - name: HALO_DB 
-                value: "halo" 
               - name: ALLOW_NOSSL
                 value: "true"
               - name: POD_NAME
@@ -137,13 +135,25 @@ spec:
                     apiVersion: v1
                     fieldPath: metadata.namespace
               - name: PATRONI_SUPERUSER_USERNAME
-                value: halo
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: username
+                    optional: false
               - name: PATRONI_SUPERUSER_PASSWORD
-                value: halo0root
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: password
+                    optional: false
               - name: PATRONI_REPLICATION_USERNAME
                 value: "replica"
               - name: PATRONI_REPLICATION_PASSWORD
-                value: "halo123456"
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: password
+                    optional: false
               - name: PATRONI_USER_REWIND
                 value: "patroni"
               - name: PATRONI_PASSWORD_REWIND
