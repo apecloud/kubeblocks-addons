@@ -28,8 +28,16 @@ while true; do
 done
 echo "INFO: start to save data file..."
 cd ${DATA_DIR}
-# NOTE: if files changed during taring, the exit code will be 1 when it ends.
-tar -cvf - ./ | datasafed push -z zstd-fastest - "${DP_BACKUP_NAME}.tar.zst"
+if [ "${MODE}" == "cluster" ]; then
+  # only save rdb file for redis cluster.
+  datasafed push -z zstd-fastest ./dump.rdb "${DP_BACKUP_NAME}.rdb.zst"
+  datasafed push ./nodes.conf "nodes.conf"
+  export DATASAFED_BACKEND_BASE_PATH="$(dirname $DP_BACKUP_BASE_PATH)"
+else
+  # NOTE: if files changed during taring, the exit code will be 1 when it ends.
+  # and will archive the aof file together.
+  tar -cvf - ./ | datasafed push -z zstd-fastest - "${DP_BACKUP_NAME}.tar.zst"
+fi
 echo "INFO: save data file successfully"
 TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
-echo "{\"totalSize\":\"$TOTAL_SIZE\"}" > "${DP_BACKUP_INFO_FILE}" && sync
+echo "{\"totalSize\":\"$TOTAL_SIZE\"}" >"${DP_BACKUP_INFO_FILE}" && sync

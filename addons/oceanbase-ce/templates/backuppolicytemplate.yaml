@@ -4,6 +4,7 @@ metadata:
   name: {{ printf "%s-backup-policy-template" (include "oceanbase-release.name" .) }}
   labels:
     clusterdefinition.kubeblocks.io/name: {{ include "oceanbase-release.name" . }}
+    service-kind/oceanbase: "true"
   annotations:
     dataprotection.kubeblocks.io/is-default-policy-template: "true"
 spec:

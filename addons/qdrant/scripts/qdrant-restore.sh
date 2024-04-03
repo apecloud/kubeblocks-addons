@@ -18,4 +18,3 @@ for snapshot in $(datasafed list /) ; do
   echo "upload collection ${collection_name} successfully"
 done
 
-

@@ -17,11 +17,17 @@ function handle_exit() {
 }
 trap handle_exit EXIT
 
+function save_backup_size() {
+    export DATASAFED_BACKEND_BASE_PATH="$(dirname $DP_BACKUP_BASE_PATH)"
+    TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
+    echo "{\"totalSize\":\"$TOTAL_SIZE\"}" >"${DP_BACKUP_INFO_FILE}"
+}
+
 endpoint=http://${DP_DB_HOST}:6333
 collectionRes=$(curl ${endpoint}/collections)
 collections=$(echo ${collectionRes}  | jq -r '.result.collections[].name')
 if [ -z $collections ]; then
-   echo "{\"totalSize\":\"0\"}" >"${DP_BACKUP_INFO_FILE}"
+   save_backup_size
    exit 0
 fi
 # snapshot all collections
@@ -38,5 +44,4 @@ for c in ${collections}; do
   curl -XDELETE ${endpoint}/collections/${c}/snapshots/${name}
   echo "INFO: snapshot collection ${c} successfully."
 done
-TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
-echo "{\"totalSize\":\"$TOTAL_SIZE\"}" >"${DP_BACKUP_INFO_FILE}"
+save_backup_size

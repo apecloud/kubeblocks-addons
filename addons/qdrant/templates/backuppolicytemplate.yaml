@@ -4,12 +4,16 @@ metadata:
   name: qdrant-backup-policy-template
   labels:
     clusterdefinition.kubeblocks.io/name: qdrant
+    service-kind/qdrant: "true"
     {{- include "qdrant.labels" . | nindent 4 }}
 spec:
   clusterDefinitionRef: qdrant
   backupPolicies:
   - componentDefRef: qdrant
-    backupMethods:
+    target:
+      role: ""
+      strategy: All
+    backupMethods: &backupMethods
     - name: datafile
       snapshotVolumes: false
       actionSetName: qdrant-snapshot
@@ -22,7 +26,7 @@ spec:
       targetVolumes:
         volumes:
         - data
-    schedules:
+    schedules: &backupSchedules
     - backupMethod: datafile
       enabled: false
       cronExpression: "0 18 * * 0"
@@ -31,3 +35,10 @@ spec:
       enabled: false
       cronExpression: "0 18 * * 0"
       retentionPeriod: 7d
+  - componentDefs:
+    - qdrant
+    target:
+      role: ""
+      strategy: All
+    backupMethods: *backupMethods
+    schedules: *backupSchedules
