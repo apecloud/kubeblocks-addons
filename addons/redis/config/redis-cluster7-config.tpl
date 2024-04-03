@@ -1,4 +1,4 @@
-bind 0.0.0.0
+bind * -::*
 tcp-backlog 511
 timeout 0
 tcp-keepalive 300
