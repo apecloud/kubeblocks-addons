@@ -1,0 +1,29 @@
+Halo with HA  on KubeBlocks 
+How to start Halo :
+first of all you should git clone kubeblocks-addons and cd to file `addons`
+1) helm install etcd with Official etcd of kubeblocks
+```helm install etcd ./etcd```
+and then helm install etcd-cluster for halo-cluster 
+```helm install etcd-cluster ./etcd-cluster```
+2) helm install halo with file halo 
+if your etcd service is named like first strep, p.s etcd-cluster, now you can helm install halo , if not so , you can edit the file clusterdefinition.yaml ,in file ,which have env named "PATRONI_ETCD3_HOST" .It should change with your own etcd service .
+if your etcd service also in k8s and in namespace default , then you can use like file clusterdefinition.yaml。For example in clusterdefinition.yaml the PATRONI_ETCD3_HOST is etcd-cluster-etcd:2379, because through helm we install etcd-cluster and after installed , the kubeblocks automatically create SVC etcd-cluster-etcd. And we create etcd-cluster and halo-cluster in the same namespace named default. 
+
+```helm install halo ./halo```
+3) helm install halo-cluster with file halo-cluster
+```helm install halo-cluster ./halo-cluster```
+
+After all , you can check cluster with order 
+```kbcli cluster list ```  
+
+If you want to connection Halo, you can use ingress-nginx to expose svc/halo-cluster-halo:1921 ,if you want to simple ,you can use 
+
+```kubectl port-forward --address 0.0.0.0 svc/halo-cluster-halo 1921:1921 -n default```
+
+username of supername: halo 
+username of password: halo0root
+that it can be edit in clusterdefinition in connectionCredential.
+
+The image of halo is a little big ,so maybe it will take some time to setup cluster , after 60s, the cluster will identity the role in cluster with 3 pods . You can checkout it out with order 
+
+```kbcli cluster halo-cluster list-instances```

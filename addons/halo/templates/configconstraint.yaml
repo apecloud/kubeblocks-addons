@@ -1,3 +1,4 @@
+{{- $cc := .Files.Get "config/halo-config-effect-scope.yaml" | fromYaml }}
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ConfigConstraint
 metadata:
@@ -5,8 +6,16 @@ metadata:
   labels:
     {{- include "halo.labels" . | nindent 4 }}
 spec:
+
+  # update patroni master
+  selector:
+    matchLabels:
+      "kubeblocks.io/role": "primary"
+
+
   # top level pg configuration type
   cfgSchemaTopLevelName: PGParameter
+
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   configurationSchema:
@@ -14,6 +23,27 @@ spec:
     # example: ../../pkg/configuration/testdata/mysql_openapi.json
     cue: |-
       {{- .Files.Get "config/halo-config-constraint.cue" | nindent 6 }}
-    # configuration file format
+    
+  ##  require db instance restart
+  ## staticParameters
+  {{- if hasKey $cc "staticParameters" }}
+  staticParameters:
+    {{- $params := get $cc "staticParameters" }}
+    {{- range $params }}
+    - {{ . }}
+    {{- end }}
+  {{- end}}  
+
+  ## define immutable parameter list, this feature is not currently supported.
+  {{- if hasKey $cc "immutableParameters" }}
+  immutableParameters:
+   {{- $params := get $cc "immutableParameters" }}
+   {{- range $params }}
+    - {{ . }}
+   {{- end }}
+  {{- end}}
+  
+  # configuration file format
   formatterConfig:
     format: properties
+  

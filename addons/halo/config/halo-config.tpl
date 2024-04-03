@@ -2,13 +2,12 @@
 
 {{- $buffer_unit := "B" }}
 {{- $shared_buffers := 1073741824 }}
-{{- $max_connections := 10000 }}
+{{- $max_connections := 1000 }}
 {{- $autovacuum_max_workers := 3 }}
 {{- $phy_memory := getContainerMemory ( index $.podSpec.containers 0 ) }}
 {{- $phy_cpu := getContainerCPU ( index $.podSpec.containers 0 ) }}
 {{- if gt $phy_memory 0 }}
-{{- $shared_buffers = div $phy_memory 4 }}
-{{- $max_connections = min ( div $phy_memory 9531392 ) 5000 }}
+{{- $shared_buffers = div $phy_memory 2 }}
 {{- $autovacuum_max_workers = min ( max ( div $phy_memory 17179869184 ) 3 ) 10 }}
 {{- end }}
 
@@ -28,7 +27,7 @@
 {{- end }}
 
 #k8s
-listen_addresses = '*'
+listen_addresses = '0.0.0.0'
 port = '1921'
 archive_command = 'test ! -f /data/halo/archivedir/%f && cp %p /data/halo/archivedir/%f'
 restore_command = 'cp /data/halo/archivedir/%f %p'
@@ -72,7 +71,7 @@ client_min_messages = 'notice'
 commit_siblings = '5'
 constraint_exclusion = 'partition'
 # extension: pg_cron
-cron.database_name = 'oracle'
+cron.database_name = 'halo0root'
 cron.log_statement = 'on'
 cron.max_running_jobs = '32'
 cursor_tuple_fraction = '0.1'
@@ -130,10 +129,10 @@ huge_pages = 'try'
 #intervalstyle = 'postgres'
 join_collapse_limit = '8'
 
-lc_messages = 'zh_CN.UTF-8'
-lc_monetary = 'zh_CN.UTF-8'
-lc_numeric = 'zh_CN.UTF-8'
-lc_time = 'zh_CN.UTF-8'
+lc_messages = 'en_US.utf8'
+lc_monetary = 'en_US.utf8'
+lc_numeric = 'en_US.utf8'
+lc_time = 'en_US.utf8'
 lock_timeout = '0'
 log_autovacuum_min_duration = '10000'
 log_checkpoints = 'True'
@@ -306,9 +305,4 @@ unix_socket_directories = '/var/run/halo'
 log_timezone = 'Asia/Shanghai'
 default_text_search_config = 'pg_catalog.simple'
 
-#VERSION AND PLATFORM COMPATIBILITY
-database_compat_mode = 'oracle'
-standard_parserengine_auxiliary = 'on'
 
-# CUSTOMIZED OPTIONS
-oracle.use_datetime_as_date = true
