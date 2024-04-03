@@ -4,7 +4,7 @@ description: Apache Pulsar is an open-source, distributed messaging and streamin
 
 type: application
 
-version: 0.8.3
+version: 0.9.0
 
 # appVersion specifies the version of the Pulsar database to be created,
 # and this value should be consistent with an existing clusterVersion.
