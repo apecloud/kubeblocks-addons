@@ -1,7 +1,7 @@
 apiVersion: v2
 name: nebula
 description: NebulaGraph is a popular open-source graph database that can handle large volumes of data with milliseconds of latency, scale up quickly, and have the ability to perform fast graph analytics.
-version: 0.8.0
+version: 0.9.0
 appVersion: "v3.5.0"
 home: https://nebula-graph.io
 sources:
