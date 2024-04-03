@@ -106,6 +106,7 @@ spec:
           runAsUser: 0
           fsGroup: 103
           runAsGroup: 103
+          fsGroupChangePolicy: OnRootMismatch
         initContainers:
           - name: pg-init-container
             imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
