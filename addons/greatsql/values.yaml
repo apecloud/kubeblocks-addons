@@ -28,8 +28,7 @@ auth:
   ## @param auth.replicationUser MySQL replication user
   ##
   replicationUser: "replicator"
-  ## @param auth.replicationPassword MARIADB replication user password. Ignored if existing secret is provided
-  ##
+
   replicationPassword: ""
 
 nameOverride: ""
