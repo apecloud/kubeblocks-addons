@@ -1,0 +1,38 @@
+image:
+  registry: docker.io
+  repository: greatsql/greatsql
+  pullPolicy: IfNotPresent
+  tag: 8.0.32-25
+  prom:
+    repository: prom
+    pullPolicy: IfNotPresent
+    mysqld_exporter:
+      name: mysqld-exporter
+      tag: v0.14.0
+
+## MySQL Authentication parameters
+auth:
+  ## MYSQL_ROOT_HOST
+  rootHost: "%"
+  ## @param auth.createDatabase Whether to create the .Values.auth.database or not
+  ##
+  createDatabase: true
+  ## @param auth.database Name for a custom database to create
+  ## MYSQL_DATABASE
+  database: "mydb"
+  ## @param auth.username Name for a custom user to create
+  ## MYSQL_USER
+  username: "u1"
+  ## MYSQL_PASSWORD
+  password: "u1"
+  ## @param auth.replicationUser MySQL replication user
+  ##
+  replicationUser: "replicator"
+  ## @param auth.replicationPassword MARIADB replication user password. Ignored if existing secret is provided
+  ##
+  replicationPassword: ""
+
+nameOverride: ""
+fullnameOverride: ""
+
+clusterVersionOverride: "8.0.32"

@@ -1,0 +1,27 @@
+annotations:
+  category: Database
+apiVersion: v2
+name: greatsql-cluster
+type: application
+version: 0.1.0
+description: GreatSQL is a high performance open source relational database management system  that can be used on common hardware for financial-grade application scenarios
+
+dependencies:
+  - name: kblib
+    version: 0.1.0
+    repository: file://../kblib
+    alias: extra
+
+appVersion: "GreatSQL8.0.32-25"
+
+keywords:
+  - greatsql
+  - database
+  - sql
+  - cluster
+
+home: https://github.com/GreatSQL/GreatSQL
+
+maintainers:
+  - name: ltaodream
+    url: https://github.com/ltaodream

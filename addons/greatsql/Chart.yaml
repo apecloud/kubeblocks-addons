@@ -1,0 +1,25 @@
+apiVersion: v2
+name: greatsql
+description: GreatSQL is a high performance open source relational database management system  that can be used on common hardware for financial-grade application scenarios
+
+type: application
+
+# This is the version number of the helm chart.
+version: 0.1.0
+
+appVersion: "GreatSQL8.0.32-25"
+
+home: https://kubeblocks.io/
+
+maintainers:
+  - name: ltaodream
+    url: https://github.com/ltaodream
+
+sources:
+- https://github.com/GreatSQL/GreatSQL
+
+annotations:
+  addon.kubeblocks.io/kubeblocks-version: ">=0.7.0"
+  addon.kubeblocks.io/model: "RDBMS"
+  addon.kubeblocks.io/provider: "community"
+
