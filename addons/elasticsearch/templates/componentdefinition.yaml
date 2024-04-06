@@ -1,0 +1,257 @@
+{{- range .Values.components }}
+{{- $component := . -}}
+{{- with $ }}
+---
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: es-{{ $component.name }}
+  labels:
+    {{- include "elasticsearch.labels" . | nindent 6 }}
+spec:
+  provider: kubeblocks
+  description: Elasticsearch is a distributed, RESTful search engine optimized for speed and relevance on production-scale workloads.
+  serviceVersion: 8.8.2
+  serviceKind: es-{{ $component.name }}
+  updateStrategy: Parallel
+  configs:
+  - name: es-cm
+    templateRef: {{ include "elasticsearch.name" . }}-config
+    namespace: {{ .Release.Namespace }}
+    volumeName: es-cm
+  scripts:
+  - name: scripts
+    templateRef: {{ include "elasticsearch.name" . }}-scripts
+    namespace: {{ .Release.Namespace }}
+    volumeName: scripts
+    defaultMode: 0555
+  services:
+  - name: http
+    serviceName: http
+    spec:
+      ipFamilyPolicy: PreferDualStack
+      ipFamilies:
+      - IPv4
+      ports:
+      - name: http
+        port: 9200
+        targetPort: http
+  runtime:
+    containers:
+    - env:
+      - name: POD_IP
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: status.podIP
+      - name: POD_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.name
+      - name: NODE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: spec.nodeName
+      - name: NAMESPACE
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.namespace
+      - name: READINESS_PROBE_PROTOCOL
+        value: http
+      - name: NSS_SDB_USE_CACHE
+        value: "no"
+      - name: ELASTICSEARCH_ROLES
+        value: "[{{ $component.roles | join "," }}]"
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag }}
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      lifecycle:
+        preStop:
+          exec:
+            command:
+            - bash
+            - -c
+            - /mnt/elastic-internal/scripts/pre-stop-hook-script.sh
+      name: elasticsearch
+      ports:
+      - containerPort: 9200
+        name: http
+        protocol: TCP
+      - containerPort: 9300
+        name: transport
+        protocol: TCP
+      readinessProbe:
+        exec:
+          command:
+          - bash
+          - -c
+          - /mnt/elastic-internal/scripts/readiness-probe-script.sh
+        failureThreshold: 3
+        initialDelaySeconds: 10
+        periodSeconds: 5
+        successThreshold: 1
+        timeoutSeconds: 5
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        privileged: false
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+      volumeMounts:
+      - mountPath: /mnt/elastic-internal/elasticsearch-config
+        name: es-cm
+        readOnly: true
+      - mountPath: /usr/share/elasticsearch/bin
+        name: elastic-internal-elasticsearch-bin-local
+      - mountPath: /usr/share/elasticsearch/config
+        name: elastic-internal-elasticsearch-config-local
+      - mountPath: /usr/share/elasticsearch/plugins
+        name: elastic-internal-elasticsearch-plugins-local
+        readOnly: true
+      - mountPath: /mnt/elastic-internal/scripts
+        name: scripts
+        readOnly: true
+      - mountPath: /usr/share/elasticsearch/data
+        name: data
+      - mountPath: /usr/share/elasticsearch/logs
+        name: log
+      - mountPath: /tmp
+        name: tmp-volume
+    initContainers:
+    - command:
+      - bash
+      - -c
+      - /mnt/elastic-internal/scripts/prepare-fs.sh
+      env:
+      - name: POD_IP
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: status.podIP
+      - name: POD_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.name
+      - name: NODE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: spec.nodeName
+      - name: NAMESPACE
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.namespace
+      - name: READINESS_PROBE_PROTOCOL
+        value: http
+      - name: NSS_SDB_USE_CACHE
+        value: "no"
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag }}
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      name: elastic-internal-init-filesystem
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        privileged: false
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+      volumeMounts:
+      - mountPath: /mnt/elastic-internal/elasticsearch-config
+        name: es-cm
+        readOnly: true
+      - mountPath: /mnt/elastic-internal/scripts
+        name: scripts
+        readOnly: true
+      - mountPath: /usr/share/elasticsearch/data
+        name: data
+      - mountPath: /usr/share/elasticsearch/logs
+        name: log
+      - mountPath: /tmp
+        name: tmp-volume
+      - mountPath: /mnt/elastic-internal/elasticsearch-bin-local
+        name: elastic-internal-elasticsearch-bin-local
+      - mountPath: /mnt/elastic-internal/elasticsearch-config-local
+        name: elastic-internal-elasticsearch-config-local
+      - mountPath: /mnt/elastic-internal/elasticsearch-plugins-local
+        name: elastic-internal-elasticsearch-plugins-local
+    - command:
+      - bash
+      - -c
+      - /mnt/elastic-internal/scripts/suspend.sh
+      env:
+      - name: POD_IP
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: status.podIP
+      - name: POD_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.name
+      - name: NODE_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: spec.nodeName
+      - name: NAMESPACE
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.namespace
+      - name: READINESS_PROBE_PROTOCOL
+        value: http
+      - name: NSS_SDB_USE_CACHE
+        value: "no"
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag }}
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      name: elastic-internal-suspend
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+        privileged: false
+        readOnlyRootFilesystem: true
+        runAsNonRoot: true
+      volumeMounts:
+      - mountPath: /mnt/elastic-internal/elasticsearch-config
+        name: es-cm
+        readOnly: true
+      - mountPath: /mnt/elastic-internal/scripts
+        name: scripts
+        readOnly: true
+      - mountPath: /usr/share/elasticsearch/data
+        name: data
+      - mountPath: /usr/share/elasticsearch/logs
+        name: log
+      - mountPath: /tmp
+        name: tmp-volume
+      - mountPath: /usr/share/elasticsearch/bin
+        name: elastic-internal-elasticsearch-bin-local
+      - mountPath: /usr/share/elasticsearch/config
+        name: elastic-internal-elasticsearch-config-local
+      - mountPath: /usr/share/elasticsearch/plugins
+        name: elastic-internal-elasticsearch-plugins-local
+    securityContext:
+      fsGroup: 1000
+    volumes:
+    - emptyDir: { }
+      name: log
+    - emptyDir: { }
+      name: tmp-volume
+    - emptyDir: {}
+      name: elastic-internal-elasticsearch-bin-local
+    - emptyDir: {}
+      name: elastic-internal-elasticsearch-config-local
+    - emptyDir: {}
+      name: elastic-internal-elasticsearch-plugins-local
+{{- end }}
+{{- end }}
