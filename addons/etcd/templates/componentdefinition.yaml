@@ -27,16 +27,34 @@ spec:
             echo "start etcd..."
 
             PEERS=""
-            HOSTS=$(eval echo ${PEER_ENDPOINT} | tr ',' '\n')
-            for host in ${HOSTS}; do
-                id=$(eval echo ${host} | grep -oE "[0-9]+\$")
-                hostname=${KB_CLUSTER_COMP_NAME}-${id}
-                PEERS="${PEERS}${hostname}=http://${host}:2380,"
-            done
-            PEERS=${PEERS%,}
+            MY_PEER=""
 
-            MY_ID=$(eval echo ${KB_POD_NAME} | grep -oE "[0-9]+\$")
-            MY_PEER=$(eval echo ${PEER_ENDPOINT} | tr ',' '\n' | grep -E "\-${MY_ID}\$")
+            if [ -z "${INTERNAL_ENDPOINT}" ]; then
+                DOMAIN=$KB_NAMESPACE".svc{{ .Values.clusterDomain }}" 
+                i=0 
+                while [ $i -lt $KB_REPLICA_COUNT ]; do
+                    if [ $i -ne 0 ]; then
+                        PEERS="$PEERS,";
+                    fi; 
+                    host=$(eval echo \$KB_"$i"_HOSTNAME)
+                    host=$host"."$DOMAIN
+                    hostname=${KB_CLUSTER_COMP_NAME}-${i}
+                    PEERS="$PEERS$hostname=http://$host:2380"
+                    i=$(( i + 1)) 
+                done
+                MY_PEER=$KB_POD_FQDN{{ .Values.clusterDomain }}
+            else
+                HOSTS=$(eval echo ${INTERNAL_ENDPOINT} | tr ',' '\n')
+                for host in ${HOSTS}; do
+                    id=$(eval echo ${host} | grep -oE "[0-9]+\$")
+                    hostname=${KB_CLUSTER_COMP_NAME}-${id}
+                    PEERS="${PEERS}${hostname}=http://${host}:2380,"
+                done
+                PEERS=${PEERS%,}
+
+                MY_ID=$(eval echo ${KB_POD_NAME} | grep -oE "[0-9]+\$")
+                MY_PEER=$(eval echo ${INTERNAL_ENDPOINT} | tr ',' '\n' | grep -E "\-${MY_ID}\$")
+            fi
 
             exec etcd --name ${HOSTNAME} \
             --experimental-initial-corrupt-check=true \
@@ -55,15 +73,14 @@ spec:
           - name: peer
             port: 2380
             targetPort: peer
-          - name: client
-            port: 2379
-            targetPort: client
+      podService: true
+      disableAutoProvision: true
   vars:
-    - name: PEER_ENDPOINT
+    - name: INTERNAL_ENDPOINT
       valueFrom:
         serviceVarRef:
           name: internal
-          optional: false
+          optional: true
           host: Required
   updateStrategy: BestEffortParallel
   roles:
