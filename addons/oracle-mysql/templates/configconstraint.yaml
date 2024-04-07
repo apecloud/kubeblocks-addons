@@ -1,4 +1,4 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
   name: oracle-mysql-config-constraints
@@ -12,7 +12,7 @@ spec:
       sectionName: mysqld
 
   # mysql reload script for dynamic parameter
-  reloadOptions:
+  dynamicReloadAction:
     tplScriptTrigger:
       sync: true
       scriptConfigMapRef: oracle-mysql-reload-script
@@ -40,9 +40,9 @@ spec:
 
   # define parameter validation rules
   # top level mysql configuration type
-  cfgSchemaTopLevelName: MysqlParameter
+  configSchemaTopLevelKey: MysqlParameter
   # ConfigurationSchema that impose restrictions on engine parameter's rule
-  configurationSchema:
+  configSchema:
     cue: |-
       {{- .Files.Get "config/oracle-mysql-config-constraint.cue" | nindent 6 }}
 

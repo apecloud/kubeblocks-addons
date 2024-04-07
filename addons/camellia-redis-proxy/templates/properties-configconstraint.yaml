@@ -1,11 +1,11 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
   name: camellia-redis-proxy-properties-constraints
   labels:
     {{- include "camellia-redis-proxy.labels" . | nindent 4 }}
 spec:
-  reloadOptions:
+  dynamicReloadAction:
     autoTrigger:
       processName: camellia-redis-proxy-properties
 

@@ -46,16 +46,6 @@ spec:
           namespace: {{ .Release.Namespace }}
           volumeName: mogdb-config
           defaultMode: 0777
-        - name: mogdb-custom-metrics
-          templateRef: mogdb-custom-metrics
-          namespace: {{ .Release.Namespace }}
-          volumeName: mogdb-custom-metrics
-          defaultMode: 0777
-        - name: agamotto-configuration
-          templateRef: mogdb-agamotto-configuration
-          namespace: {{ .Release.Namespace }}
-          volumeName: agamotto-configuration
-          defaultMode: 0777
       scriptSpecs:
         - name: mogdb-scripts
           templateRef: mogdb-scripts
@@ -63,7 +53,7 @@ spec:
           volumeName: scripts
           defaultMode: 0777
       monitor:
-        buildIn: false
+        builtIn: false
         exporterConfig:
           scrapePath: /metrics
           scrapePort: {{ .Values.metrics.service.port }}
@@ -115,10 +105,10 @@ spec:
 
                   pgport="5432"
                   if [ -n "$PGPORT" ];then
-                    pgport="$PGPORT"  
+                    pgport="$PGPORT"
                   fi
                     ha_port=$(expr $pgport + 1)
-                    ha_service_port=$(expr $pgport + 2)                
+                    ha_service_port=$(expr $pgport + 2)
 
                   cat >/tmp/replconninfo.conf
                   for ((i=0; i<$ordinal; i++)); do
@@ -271,6 +261,8 @@ spec:
                 value: "26000"
               - name: PGDATA
                 value: "/var/lib/mogdb/data"
+              - name: SERVICE_PORT
+                value: "{{ .Values.metrics.service.port }}"
             resources:
               requests:
                 cpu: 100m

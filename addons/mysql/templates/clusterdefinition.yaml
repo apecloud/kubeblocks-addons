@@ -56,17 +56,17 @@ spec:
       volumeTypes:
         - name: data
           type: data
-      horizontalScalePolicy:
-        type: CloneVolume
-        backupPolicyTemplateName: mysql-hscale-backup-policy-template
+            # horizontalScalePolicy:
+            #   type: CloneVolume
+            #   backupPolicyTemplateName: mysql-hscale-backup-policy-template
       podSpec:
         initContainers:
           - command:
-              - bash 
-              - -c
-              - |
-                mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog}
-                cp /usr/lib/mysql/plugin/ {{ .Values.dataMountPath }}/plugin -r
+            - bash 
+            - -c
+            - |
+              mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog}
+              cp /usr/lib/mysql/plugin/ {{ .Values.dataMountPath }}/plugin -r
             imagePullPolicy: Always
             name: init-data
             volumeMounts:
@@ -86,10 +86,18 @@ spec:
                 name: mysql-config
               - name: scripts
                 mountPath: /scripts
+              - mountPath: /kubeblocks
+                name: kubeblocks
             ports:
               - containerPort: 3306
                 name: mysql
+              - containerPort: 3601
+                name: ha
             env:
+              - name: PATH
+                value: /kubeblocks/xtrabackup/bin:/kubeblocks/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+              - name: KB_SERVICE_CHARACTER_TYPE
+                value: mysql
               - name: MYSQL_INITDB_SKIP_TZINFO
                 value: "1"
               - name: SERVICE_PORT

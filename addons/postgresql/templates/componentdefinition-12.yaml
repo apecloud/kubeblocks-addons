@@ -110,7 +110,7 @@ spec:
       timeoutSeconds: 1
     switchover:
       withCandidate:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.15.0-pgvector-v0.5.0
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.15.0-pgvector-v0.6.1
         exec:
           command:
             - /bin/bash
@@ -118,7 +118,7 @@ spec:
           args:
             - curl -s http://$(KB_REPLICATION_PRIMARY_POD_FQDN):8008/switchover -XPOST -d '{"leader":"$(KB_REPLICATION_PRIMARY_POD_NAME)","candidate":"$(KB_SWITCHOVER_CANDIDATE_NAME)"}'
       withoutCandidate:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.15.0-pgvector-v0.5.0
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.15.0-pgvector-v0.6.1
         exec:
           command:
             - /bin/bash
@@ -127,7 +127,7 @@ spec:
             - curl -s http://$(KB_REPLICATION_PRIMARY_POD_FQDN):8008/switchover -XPOST -d '{"leader":"$(KB_REPLICATION_PRIMARY_POD_NAME)"}'
     accountProvision:
       customHandler:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.15.0-pgvector-v0.5.0
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.15.0-pgvector-v0.6.1
         exec:
           command:
             - psql
@@ -145,9 +145,10 @@ spec:
       runAsUser: 0
       fsGroup: 103
       runAsGroup: 103
+      fsGroupChangePolicy: OnRootMismatch
     initContainers:
       - name: pg-init-container
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.15.0-pgvector-v0.5.0
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.15.0-pgvector-v0.6.1
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         command:
           - /kb-scripts/init_container.sh
@@ -162,7 +163,7 @@ spec:
             mountPath: /kb-podinfo
     containers:
       - name: postgresql
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.15.0-pgvector-v0.5.0
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.15.0-pgvector-v0.6.1
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         securityContext:
           runAsUser: 0

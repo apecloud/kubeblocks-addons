@@ -1,12 +1,12 @@
 {{- $cc := .Files.Get "config/pg14-config-effect-scope.yaml" | fromYaml }}
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
   name: postgresql14-cc
   labels:
     {{- include "postgresql.labels" . | nindent 4 }}
 spec:
-  reloadOptions:
+  dynamicReloadAction:
     tplScriptTrigger:
       sync: true
       scriptConfigMapRef: patroni-reload-script
@@ -15,16 +15,16 @@ spec:
   dynamicActionCanBeMerged: false
 
   # update patroni master
-  selector:
+  dynamicReloadSelector:
     matchLabels:
       "apps.kubeblocks.postgres.patroni/role": "master"
 
   # top level pg configuration type
-  cfgSchemaTopLevelName: PGParameter
+  configSchemaTopLevelKey: PGParameter
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule
-  configurationSchema:
-    # schema: auto generate from cue scripts
+  configSchema:
+    # schemaInJSON: auto generate from cue scripts
     # example: ../../pkg/configuration/testdata/mysql_openapi.json
     cue: |-
       {{- .Files.Get "config/pg14-config-constraint.cue" | nindent 6 }}

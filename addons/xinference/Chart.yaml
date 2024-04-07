@@ -24,6 +24,6 @@ version: 0.1.0
 appVersion: "1.16.0"
 
 annotations:
-  addon.kubeblocks.io/kubeblocks-version: ">=0.7.0"
+  addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
   addon.kubeblocks.io/model: "LLM"
   addon.kubeblocks.io/provider: "community"

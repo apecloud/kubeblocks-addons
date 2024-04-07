@@ -17,16 +17,15 @@ image:
   registry: docker.io
   repository: qdrant/qdrant
   pullPolicy: IfNotPresent
-  tag: "v1.7.3"
+  tag: "v1.8.1"
   tools:
     repository: apecloud/curl-jq
     tag: latest
-  web_ui:
-    repository: apecloud/qdrant-web-ui
-    tag: 0.1.15
 
 ## @param debugEnabled enables containers' debug logging
 ##
 debugEnabled: true
 
 dataMountPath: /qdrant/storage
+
+clusterDomain: ".cluster.local"

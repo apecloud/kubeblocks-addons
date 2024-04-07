@@ -4,7 +4,7 @@ description: "Redis is an in-memory database that persists on disk. The data mod
 
 type: application
 
-version: 0.8.1
+version: 0.9.0
 
 appVersion: "7.0.6"
 
@@ -21,6 +21,6 @@ maintainers:
     url: https://github.com/apecloud/kubeblocks/deploy
 
 annotations:
-    addon.kubeblocks.io/kubeblocks-version: ">=0.8.0"
+    addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
     addon.kubeblocks.io/model: "key-value"
     addon.kubeblocks.io/provider: "apecloud"
