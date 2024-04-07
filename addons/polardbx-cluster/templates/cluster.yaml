@@ -63,8 +63,8 @@ spec:
               requests:
                 storage:  {{ .persistence.data.size }}
       {{- end }}
+      {{- $i = add1 $i }}
     {{- end }}
-    {{- $i = add1 $i }}
     - name: cn
       componentDefRef: cn
       replicas: {{ .Values.cn.replicas }}
