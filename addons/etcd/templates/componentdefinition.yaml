@@ -21,25 +21,23 @@ spec:
           - name: data
             mountPath: /var/run/etcd
         command:
-          - bin/sh
+          - /bin/sh
           - -c
           - |
             echo "start etcd..."
+
             PEERS=""
-            # TODO: clusterDomain 'cluster.local' requires configurable
-            DOMAIN=$KB_NAMESPACE".svc{{ .Values.clusterDomain }}"
-            i=0
-            while [ $i -lt $KB_REPLICA_COUNT ]; do
-                if [ $i -ne 0 ]; then
-                    PEERS="$PEERS,";
-                fi;
-                host=$(eval echo \$PEER_ENDPOINT_"$i")
-                hostname=${KB_CLUSTER_COMP_NAME}-${i}
-                PEERS="$PEERS$hostname=http://$host:2380"
-                i=$(( i + 1))
+            HOSTS=$(eval echo ${PEER_ENDPOINT} | tr ',' '\n')
+            for host in ${HOSTS}; do
+                id=$(eval echo ${host} | grep -oE "[0-9]+\$")
+                hostname=${KB_CLUSTER_COMP_NAME}-${id}
+                PEERS="${PEERS}${hostname}=http://${host}:2380,"
             done
+            PEERS=${PEERS%,}
+
             MY_ID=$(eval echo ${KB_POD_NAME} | grep -oE "[0-9]+\$")
-            MY_PEER=$(eval echo \$PEER_ENDPOINT_"$MY_ID")
+            MY_PEER=$(eval echo ${PEER_ENDPOINT} | tr ',' '\n' | grep -E "\-${MY_ID}\$")
+
             exec etcd --name ${HOSTNAME} \
             --experimental-initial-corrupt-check=true \
             --listen-peer-urls http://0.0.0.0:2380 \
@@ -51,9 +49,8 @@ spec:
   services:
     - name: internal
       serviceName: internal
-      annotations:
-        service.cilium.io/global: "true"
       spec:
+        type: ClusterIP
         ports:
           - name: peer
             port: 2380
@@ -61,14 +58,12 @@ spec:
           - name: client
             port: 2379
             targetPort: client
-      generatePodOrdinalService: true
   vars:
     - name: PEER_ENDPOINT
       valueFrom:
         serviceVarRef:
           name: internal
           optional: false
-          generatePodOrdinalServiceVar: true
           host: Required
   updateStrategy: BestEffortParallel
   roles:
