@@ -30,6 +30,9 @@ CREATE USER IF NOT EXISTS '$topology_user'@'%' IDENTIFIED BY '$topology_password
 GRANT SUPER, PROCESS, REPLICATION SLAVE, RELOAD ON *.* TO '$topology_user'@'%';
 GRANT SELECT ON mysql.slave_master_info TO '$topology_user'@'%';
 GRANT DROP ON _pseudo_gtid_.* to '$topology_user'@'%';
+CREATE USER IF NOT EXISTS 'proxysql'@'%' IDENTIFIED BY 'proxysql';
+GRANT SELECT ON performance_schema.* TO 'proxysql'@'%';
+GRANT SELECT ON sys.* TO 'proxysql'@'%';
 set global slave_net_timeout = 4;
 EOF
 
@@ -47,6 +50,7 @@ CREATE DATABASE  kb_orc_meta_cluster;
 GRANT ALL ON kb_orc_meta_cluster.* TO '$topology_user'@'%';
 EOF
   mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e 'source /scripts/cluster-info.sql'
+  mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e 'source /scripts/addition_to_sys_v8.sql'
   mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD << EOF
 USE kb_orc_meta_cluster;
 INSERT INTO kb_orc_meta_cluster (anchor,host_name,cluster_name, cluster_domain, data_center)

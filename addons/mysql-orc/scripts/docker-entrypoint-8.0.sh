@@ -405,6 +405,9 @@ CREATE USER IF NOT EXISTS '$topology_user'@'%' IDENTIFIED BY '$topology_password
 GRANT SUPER, PROCESS, REPLICATION SLAVE, RELOAD ON *.* TO '$topology_user'@'%';
 GRANT SELECT ON mysql.slave_master_info TO '$topology_user'@'%';
 GRANT DROP ON _pseudo_gtid_.* to '$topology_user'@'%';
+CREATE USER IF NOT EXISTS 'proxysql'@'%' IDENTIFIED BY 'proxysql';
+GRANT SELECT ON performance_schema.* TO 'proxysql'@'%';
+GRANT SELECT ON sys.* TO 'proxysql'@'%';
 set global slave_net_timeout = 4;
 EOF
 
@@ -420,6 +423,7 @@ CREATE DATABASE  kb_orc_meta_cluster;
 GRANT ALL ON kb_orc_meta_cluster.* TO '$topology_user'@'%';
 EOF
   mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e 'source /scripts/cluster-info.sql'
+  mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e 'source /scripts/addition_to_sys_v8.sql'
   mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD << EOF
 USE kb_orc_meta_cluster;
 INSERT INTO kb_orc_meta_cluster (anchor,host_name,cluster_name, cluster_domain, data_center)
@@ -464,6 +468,8 @@ setup_master_slave() {
   mysql_note "wait_for_connectivity"
   wait_for_connectivity
 
+  get_master_from_orc
+
   last_digit=${KB_POD_NAME##*-}
   if [[ $last_digit -eq 0 ]]; then
     mysql_note "Create MySQL User and Grant Permissions"
@@ -488,9 +494,9 @@ change_master() {
   username=$mysql_username
   password=$mysql_password
 
-  mysql -h "$host_ip" -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" << EOF
+  mysql -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" << EOF
 STOP SLAVE;
-SET GLOBAL SQL_SLAVE_SKIP_COUNTER=1;
+SET GLOBAL READ_ONLY=1;
 CHANGE MASTER TO
 MASTER_CONNECT_RETRY=1,
 MASTER_RETRY_COUNT=86400,

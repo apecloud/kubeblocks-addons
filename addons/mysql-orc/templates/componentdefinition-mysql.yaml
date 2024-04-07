@@ -10,6 +10,13 @@ spec:
   serviceKind: mysql
   serviceVersion: 8.0.0
   services:
+    - name: mysql-server
+      serviceName: mysql-server
+      spec:
+        ports:
+          - name: mysql
+            port: 3306
+            targetPort: mysql
     - name: mysql
       serviceName: mysql
       generatePodOrdinalService: true

@@ -48,6 +48,11 @@ data:
     {{- .Files.Get "scripts/orchestrator-client.sh" | nindent 4 }}
   cluster-info.sql: |-
     {{- .Files.Get "scripts/cluster-info.sql" | nindent 4 }}
+  addition_to_sys_v5.sql: |-
+    {{- .Files.Get "scripts/addition_to_sys_v5.sql" | nindent 4 }}
+  addition_to_sys_v8.sql: |-
+    {{- .Files.Get "scripts/addition_to_sys_v8.sql" | nindent 4 }}
+
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -76,3 +81,20 @@ metadata:
 data:
   init-meta-database.sh: |-
     {{- .Files.Get "scripts/init-meta-database.sh" | nindent 4 }}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: proxysql-scripts
+  labels:
+    {{- include "mysql.labels" . | nindent 4 }}
+data:
+  addition_to_sys_v5.sql: |-
+    {{- .Files.Get "scripts/addition_to_sys_v5.sql" | nindent 4 }}
+  addition_to_sys_v8.sql: |-
+    {{- .Files.Get "scripts/addition_to_sys_v8.sql" | nindent 4 }}
+  proxysql-entry.sh: |-
+    {{- .Files.Get "scripts/proxysql-entry.sh" | nindent 4 }}
+  configure-proxysql.sh: |-
+    {{- .Files.Get "scripts/configure-proxysql.sh" | nindent 4 }}

@@ -1,0 +1,157 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "proxysql.componentDefName" . }}
+  labels:
+      {{- include "mysql.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: mysql proxy definition for Kubernetes
+  serviceKind: proxysql
+  serviceVersion: 8.0.0
+
+  configs:
+    - name: proxy-config
+      templateRef: mysql-proxy-config
+      namespace: {{ .Release.Namespace }}
+      volumeName: proxy-config
+      reRenderResourceTypes:
+        - replicas
+      asEnvFrom:
+        - proxysql
+  scripts:
+    - name: orc-scripts
+      templateRef: orc-scripts
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+    - name: proxysql-scripts
+      templateRef: proxysql-scripts
+      namespace: {{ .Release.Namespace }}
+      volumeName: proxysql-scripts
+      defaultMode: 0555
+  services:
+    - name: proxy-server
+      serviceName: proxy-server
+      spec:
+        ports:
+          - name: db
+            port: 6033
+            targetPort: db
+    - name: proxy-ordinal
+      serviceName: proxy-ordinal
+      generatePodOrdinalService: true
+      spec:
+        ports:
+          - name: admin
+            port: 6032
+            targetPort: admin
+          - name: db
+            port: 6033
+            targetPort: db
+  vars:
+    - name: BACKEND_SERVER
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "mysql.componentDefName" . }}
+          name: mysql-server
+          host: Required
+          optional: true
+
+    - name: MYSQL_ORDINAL_HOST
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "mysql.componentDefName" . }}
+          name: mysql
+          generatePodOrdinalServiceVar: true
+          host: Required
+          optional: true
+
+    - name: MYSQL_ROOT_USER
+      valueFrom:
+        credentialVarRef:
+          ## reference the current component definition name
+          compDef: {{ include "mysql.componentDefName" . }}
+          name: root
+          username: Required
+
+
+    - name: MYSQL_ROOT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          ## reference the current component definition name
+          compDef: {{ include "mysql.componentDefName" . }}
+          name: root
+          password: Required
+
+
+    - name: MYSQL_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "mysql.componentDefName" . }}
+          name: mysql
+          generatePodOrdinalServiceVar: true
+          optional: true
+          port:
+            name: mysql
+            option: Optional
+
+    - name: PROXYSQL_HOST_NAME
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "proxysql.componentDefName" . }}
+          name: proxy-ordinal
+          generatePodOrdinalServiceVar: true
+          host: Required
+
+    - name: PROXYSQL_ADMIN_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "proxysql.componentDefName" . }}
+          name: proxy-ordinal
+          generatePodOrdinalServiceVar: true
+          port:
+            name: admin
+            option: Optional
+
+
+  runtime:
+    volumes:
+    containers:
+      - name: proxysql
+        image: ghcr.io/kubedb/proxysql:2.4.4-debian@sha256:977d7a1e8623515f4242340a2e7a1dd0be94323d1f80a1e147206c3fddadc4a8
+        imagePullPolicy: IfNotPresent
+        args:
+          - /scripts/proxysql/proxysql-entry.sh
+          - --reload
+
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+          - mountPath: /etc/custom-config
+            name: proxy-config
+          - mountPath: /scripts/proxysql
+            name: proxysql-scripts
+        env:
+          - name: LOAD_BALANCE_MODE
+            value: GroupReplication
+          - name: BACKEND_TLS_ENABLED
+            value: "false"
+          - name: FRONTEND_TLS_ENABLED
+            value: "false"
+          - name: MYSQL_VERSION
+            value: 8.0.32
+        ports:
+          - containerPort: 6033
+            name: db
+            protocol: TCP
+          - containerPort: 6032
+            name: admin
+            protocol: TCP
+          - containerPort: 6070
+            name: metrics
+            protocol: TCP
+        envFrom:
+          - secretRef:
+              name: cluster1-env-vars-proxysql
+              optional: true

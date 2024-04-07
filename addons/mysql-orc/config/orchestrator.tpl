@@ -26,6 +26,7 @@
   "DetachLostReplicasAfterMasterFailover": true,
   "MySQLHostnameResolveMethod": "",
   "FailMasterPromotionIfSQLThreadNotUpToDate": true,
+  "MySQLOrchestratorRejectReadOnly": true,
 
   "AutoPseudoGTID": true,
   "HTTPAdvertise": "http://orc-cluster-mysql:80",

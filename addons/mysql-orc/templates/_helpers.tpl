@@ -175,3 +175,14 @@ orchestrator
 {{- printf "orchestrator-%s" .Values.compDefinitionVersionSuffix -}}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Define mysql component defintion name
+*/}}
+{{- define "proxysql.componentDefName" -}}
+{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
+proxysql
+{{- else -}}
+{{- printf "proxysql-%s" .Values.compDefinitionVersionSuffix -}}
+{{- end -}}
+{{- end -}}

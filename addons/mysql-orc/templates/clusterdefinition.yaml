@@ -147,3 +147,5 @@ spec:
               - prefix: ORC_
                 secretRef:
                   name: {{ include "orchestrator.componentDefName" . }}-secret
+    - name: proxysql
+      workloadType: Stateful

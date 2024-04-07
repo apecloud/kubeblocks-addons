@@ -15,6 +15,7 @@ mode: replication
 replicas:
   mysql: 3
   orchestrator: 3
+  proxysql: 3
 
 ## @param cpu
 ##

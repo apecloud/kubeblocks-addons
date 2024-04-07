@@ -138,7 +138,7 @@ spec:
           - name: MYSQL_ROOT_PASSWORD
             value: $(MYSQL_PASSWORD)
           - name: MYSQL_DATABASE
-            value: {{- if .Values.auth.createDatabase }} {{ .Values.auth.database | quote }}  {{- else }} "" {{- end }}
+            value: {{- if .Values.auth.createDatabase }} {{ .Values.auth.database | quote }} {{- else }}  "" {{- end }}
           - name: MYSQL_USER
             value: {{ .Values.auth.username | default "" | quote }}
           - name: MYSQL_PASSWORD
