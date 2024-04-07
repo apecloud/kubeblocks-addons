@@ -3,12 +3,15 @@ kind: OpsDefinition
 metadata:
   name: mogdb-switchover
 spec:
-  varsRef:
-    podSelectionStrategy: Available
+  targetPodTemplates:
+  - name: availablePod
+    podSelector:
+      availability: Available
+      selectionPolicy: Any
     vars:
       - name: TARGET_POD_IP
         valueFrom:
-          envVarRef:
+          envRef:
             envName: KB_POD_IP
   parametersSchema:
     openAPIV3Schema:
@@ -22,10 +25,14 @@ spec:
             otherwise promote a randomly selected pod to primary.
           type: string
       type: object
-  jobSpec:
-    backoffLimit: 0
-    template:
-      spec:
+  actions:
+  - name: switchover
+    failurePolicy: Fail
+    workload:
+      targetPodTemplate: availablePod
+      type: Job
+      backoffLimit: 0
+      podSpec:
         containers:
           - name: switchover
             image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks-tools:0.8.2

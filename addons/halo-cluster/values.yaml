@@ -4,7 +4,7 @@
 
 ## @param version Halo cluster version
 ##
-version: halo-0.6
+version: halo-14.10
 
 ## @param mode halo cluster topology mode, standalone, replication
 ##
@@ -12,15 +12,15 @@ mode: replication
 
 ## @param replicas specify cluster replicas
 ##
-replicas: 2
+replicas: 3
 
 ## @param cpu
 ##
-cpu: 2
+cpu: 1
 
 ## @param memory, the unit is Gi
 ##
-memory: 4
+memory: 2
 
 ## @param requests.cpu if not set, use cpu
 ## @param requests.memory, if not set, use memory
