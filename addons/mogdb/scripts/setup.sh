@@ -46,6 +46,9 @@ docker_create_db_directories() {
   mkdir -p "$PGDATA"
   chmod 700 "$PGDATA"
 
+  mkdir -p $PGHOST
+  chmod 700 "$PGHOST"
+
   # ignore failure since it will be fine when using the image provided directory;
   mkdir -p /var/run/mogdb || :
   chmod 775 /var/run/mogdb || :
@@ -62,6 +65,7 @@ docker_create_db_directories() {
   # allow the container to be started with `--user`
   if [ "$user" = '0' ]; then
     find "$PGDATA" \! -user omm -exec chown omm '{}' +
+    find "$PGHOST" \! -user omm -exec chown omm '{}' +
     find /var/run/mogdb \! -user omm -exec chown omm '{}' +
   fi
 }
@@ -272,6 +276,12 @@ docker_setup_env() {
   # default authentication method is md5
   : "${GS_HOST_AUTH_METHOD:=md5}"
 
+  # defult OG_SUBNET is
+  : "${OG_SUBNET:=0.0.0.0/0}"
+
+  # default archive dest
+  : "${ARCHIVE_DEST:=/var/lib/mogdb/archives}"
+
   declare -g DATABASE_ALREADY_EXISTS
   # look specifically for OG_VERSION, as it is expected in the DB dir
   if [ -s "$PGDATA/PG_VERSION" ]; then
@@ -317,6 +327,9 @@ mogdb_setup_postgresql_conf() {
     echo "password_encryption_type = 1"
     echo "wal_level = logical"
     echo "unix_socket_directory = '$PGHOST'"
+    echo "archive_mode = on"
+    echo "archive_dest = '$ARCHIVE_DEST'"
+    echo "enable_cbm_tracking = on"
 
     if [ -n "$GS_PORT" ]; then
       echo "port = $GS_PORT"

@@ -59,3 +59,17 @@ Generate scripts configmap
 {{- $.Files.Get $path | nindent 2 }}
 {{- end }}
 {{- end }}
+
+{{/*
+Generate reloader scripts configmap
+*/}}
+{{- define "mogdb.extend.reload.scripts" -}}
+{{- range $path, $_ :=  $.Files.Glob "reloader/**" }}
+{{ $path | base }}: |-
+{{- $.Files.Get $path | nindent 2 }}
+{{- end }}
+{{- end }}
+
+{{- define "mogdb-release.name" }}
+{{- print "mogdb" }}
+{{- end }}

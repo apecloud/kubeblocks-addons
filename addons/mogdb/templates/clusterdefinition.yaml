@@ -17,10 +17,10 @@ spec:
       workloadType: Stateful
       rsmSpec:
         roles:
-          - name: primary
+          - name: Primary
             accessMode: ReadWrite
             isLeader: true
-          - name: secondary
+          - name: Standby
             accessMode: Readonly
             isLeader: false
         roleProbe:
@@ -31,10 +31,10 @@ spec:
                 - -c
                 - |
                   role=$(gsql -h 127.0.0.1 -p 26000  -U ${MOGDB_USER} -W "${MOGDB_PASSWORD}" -dpostgres -t -c "select local_role from pg_stat_get_stream_replications() limit 1" | xargs echo -n)
-                  if [[ "$role"x == "Normal"x || "$role"x == "Primary"x ]]; then
-                    echo -n "primary"
+                  if [ "$role"x == "Normal"x ]; then
+                    echo -n "Primary"
                   else
-                    echo -n "secondary"
+                    echo -n $role
                   fi
       characterType: mogdb
       configSpecs:
@@ -46,6 +46,16 @@ spec:
           namespace: {{ .Release.Namespace }}
           volumeName: mogdb-config
           defaultMode: 0777
+        - name: mogdb-custom-metrics
+          templateRef: mogdb-custom-metrics
+          namespace: {{ .Release.Namespace }}
+          volumeName: mogdb-custom-metrics
+          defaultMode: 0777
+        - name: agamotto-configuration
+          templateRef: mogdb-agamotto-configuration
+          namespace: {{ .Release.Namespace }}
+          volumeName: agamotto-configuration
+          defaultMode: 0777
       scriptSpecs:
         - name: mogdb-scripts
           templateRef: mogdb-scripts
@@ -53,7 +63,7 @@ spec:
           volumeName: scripts
           defaultMode: 0777
       monitor:
-        builtIn: false
+        buildIn: false
         exporterConfig:
           scrapePath: /metrics
           scrapePort: {{ .Values.metrics.service.port }}
@@ -77,59 +87,24 @@ spec:
         securityContext:
           runAsUser: 0
           runAsGroup: 0
+        initContainers:
+          - name: mogdb-tools
+            image: {{ .Values.tools.image.registry | default .Values.tools.image.registry }}/{{ .Values.tools.image.repository }}:{{ .Values.tools.image.tag }}
+            command:
+              - bash
+              - -c
+              - |
+                cp /bin/mscli /bin/gojq /mogdb_tools
+            imagePullPolicy: {{ .Values.agent.image.pullPolicy | quote }}
+            volumeMounts:
+              - name: mogdb-tools
+                mountPath: /mogdb_tools
         containers:
           - name: mogdb
             imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
             command:
               - bash
-              - -c
-              - |
-                set -ex
-                MogDB_Role=
-                REPL_CONN_INFO=
-
-                cat >>/home/omm/.profile <<-EOF
-                export OG_SUBNET="0.0.0.0/0"
-                export PGHOST="/var/lib/mogdb/tmp"
-                export PGPORT="$PGPORT"
-                EOF
-                [[ -d "$PGHOST" ]] || (mkdir -p $PGHOST && chown omm $PGHOST)
-
-                hostname=`hostname`
-                [[ "$hostname" =~ -([0-9]+)$ ]] || exit 1
-                ordinal=${BASH_REMATCH[1]}
-                if [[ $ordinal -eq 0 ]];then
-                  MogDB_Role="primary"
-                else
-                  MogDB_Role="standby"
-
-                  pgport="5432"
-                  if [ -n "$PGPORT" ];then
-                    pgport="$PGPORT"
-                  fi
-                    ha_port=$(expr $pgport + 1)
-                    ha_service_port=$(expr $pgport + 2)
-
-                  cat >/tmp/replconninfo.conf
-                  for ((i=0; i<$ordinal; i++)); do
-                    echo "$hostname $PodIP" |ncat --send-only ${KB_CLUSTER_COMP_NAME}-${i}.${KB_CLUSTER_COMP_NAME}-headless 6543
-                    remote_ip=`ping ${KB_CLUSTER_COMP_NAME}-${i}.${KB_CLUSTER_COMP_NAME}-headless -c 1 | sed '1{s/[^(]*(//;s/).*//;q}'`
-
-                    echo "replconninfo$((i+1)) = 'localhost=$PodIP localport=${ha_port} localservice=${ha_service_port} remotehost=$remote_ip remoteport=${ha_port} remoteservice=${ha_service_port}'" >> /tmp/replconninfo.conf
-                  done
-
-                  #echo "$hostname $PodIP" |ncat --send-only ${KB_CLUSTER_COMP_NAME}-0.${KB_CLUSTER_COMP_NAME}-headless 6543
-                  #remote_ip=`ping ${KB_CLUSTER_COMP_NAME}-0.${KB_CLUSTER_COMP_NAME}-headless -c 1 | sed '1{s/[^(]*(//;s/).*//;q}'`
-
-                  # REPL_CONN_INFO="replconninfo${ordinal} = 'localhost=$PodIP localport=${ha_port} localservice=${ha_service_port} remotehost=$remote_ip remoteport=${ha_port} remoteservice=${ha_service_port}'"
-                fi
-
-                [[ -n "$REPL_CONN_INFO" ]] && export REPL_CONN_INFO
-                source /home/omm/.profile
-
-                cp /home/omm/conf/* /tmp/
-                chmod 777 /tmp/postgresql.conf /tmp/pg_hba.conf
-                exec bash /kb-scripts/setup.sh -M "$MogDB_Role"
+              - /kb-scripts/entrypoint-mogdb.sh
             securityContext:
               runAsUser: 0
             ports:
@@ -185,6 +160,10 @@ spec:
                 mountPath: /kb-scripts
               - name: mogdb-config
                 mountPath: /home/omm/conf
+              - name: mogdb-tools
+                mountPath: /mogdb_tools
+              - name: ssh-key
+                mountPath: /home/omm/ssh
             livenessProbe:
               exec:
                 command:
@@ -205,44 +184,29 @@ spec:
               initialDelaySeconds: 30
               periodSeconds: 3
               timeoutSeconds: 5
-          - name: helper
-            imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+          - name: agent
+            image: {{ .Values.agent.image.registry | default .Values.agent.image.registry }}/{{ .Values.agent.image.repository }}:{{ .Values.agent.image.tag }}
+            imagePullPolicy: {{ .Values.agent.image.pullPolicy | quote }}
+            securityContext:
+              runAsUser: 70
+              runAsGroup: 70
             ports:
-              - name: helper
-                containerPort: 6543
-            command:
-              - bash
-              - /kb-scripts/helper.sh
-            env:
-              - name: PodIP
-                valueFrom:
-                  fieldRef:
-                    apiVersion: v1
-                    fieldPath: status.podIP
-              - name: PGDATA
-                value: "/var/lib/mogdb/data"
-              - name: PGHOST
-                value: "/var/lib/mogdb/tmp"
-              - name: PGPORT
-                value: "26000"
+              - name: agent-exporter
+                containerPort: {{ .Values.agent.service.port }}
             volumeMounts:
               - name: data
                 mountPath: /var/lib/mogdb
                 subPath: mogdb
-              - name: scripts
-                mountPath: /kb-scripts
-            resources:
-              requests:
-                cpu: 500m
-                memory: 64Mi
+            env:
+              - name: PGHOST
+                value: {{ .Values.envs.PGHOST }}
+              - name: PGDATA
+                value: {{ .Values.envs.PGDATA }}
+              - name: PGPORT
+                value: {{ .Values.envs.PGPORT | quote }}
           - name: exporter
             image:  {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
             imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
-#            command:
-#              - bash
-#              - -c
-#              - |
-#                sleep 36000
             securityContext:
               runAsUser: 70
             ports:
@@ -261,8 +225,6 @@ spec:
                 value: "26000"
               - name: PGDATA
                 value: "/var/lib/mogdb/data"
-              - name: SERVICE_PORT
-                value: "{{ .Values.metrics.service.port }}"
             resources:
               requests:
                 cpu: 100m
@@ -277,3 +239,8 @@ spec:
               {{- with .Values.shmVolume.sizeLimit }}
               sizeLimit: {{ . }}
               {{- end }}
+          - name: mogdb-tools
+            emptyDir: {}
+          - name: ssh-key
+            secret:
+              secretName: mogdb-ssh-rsa-secret

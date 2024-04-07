@@ -6,11 +6,10 @@ replicaCount: 1
 
 image:
   registry: swr.cn-north-4.myhuaweicloud.com
-  repository: mogdb/mogdb
+  repository: mogdb-cloud/mogdb-rich
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: 5.0.5
-
 
 dataMountPath: /var/lib/mogdb
 
@@ -46,3 +45,24 @@ metrics:
     pullPolicy: IfNotPresent
   service:
     port: 9187
+
+agent:
+  image:
+    registry: swr.cn-north-4.myhuaweicloud.com
+    repository: mogdb-cloud/mogdb-agent
+    tag: 0.0.1-alpha.01
+    pullPolicy: Always
+  service:
+    port: 6688
+
+envs:
+  PGHOST: /var/lib/mogdb/tmp
+  PGDATA: /var/lib/mogdb/data
+  PGPORT: 26000
+
+tools:
+  image:
+    registry: swr.cn-north-4.myhuaweicloud.com
+    repository: mogdb-cloud/mogdb-tools
+    tag: 0.0.1-alpha.01
+    pullPolicy: Always

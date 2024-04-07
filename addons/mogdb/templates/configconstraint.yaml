@@ -2,10 +2,30 @@
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
-  name: mogdb-cc
+  name: {{ printf "%s-cc" (include "mogdb-release.name" .) }}
   labels:
     {{- include "mogdb.labels" . | nindent 4 }}
 spec:
+  reloadOptions:
+    shellTrigger:
+      sync: true
+      command:
+        - "update-parameters.sh"
+
+  scriptConfigs:
+    - scriptConfigMapRef: {{ printf "%s-reload-tools-script" (include "mogdb-release.name" .) }}
+      namespace: {{ .Release.Namespace }}
+
+  toolsImageSpec:
+    mountPoint: /kb_tools
+    toolConfigs:
+      - name: kb-tools
+        command:
+          - cp
+          - /bin/mscli
+          - /kb_tools/mscli
+        image: {{ .Values.tools.image.registry | default "docker.io" }}/{{ .Values.tools.image.repository }}:{{ .Values.tools.image.tag }}
+
   # top level pg configuration type
   configSchemaTopLevelKey: PGParameter
 
@@ -35,8 +55,6 @@ spec:
    {{- end }}
   {{- end}}
 
-
-
     # configuration file format
   formatterConfig:
-    format: properties
+    format: ini
