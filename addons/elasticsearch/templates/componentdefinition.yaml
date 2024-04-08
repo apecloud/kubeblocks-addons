@@ -240,6 +240,51 @@ spec:
         name: elastic-internal-elasticsearch-config-local
       - mountPath: /usr/share/elasticsearch/plugins
         name: elastic-internal-elasticsearch-plugins-local
+    {{- if $.Values.downloadInstallPlugins }}
+    - name: download-install-plugins
+      image: docker.io/busybox:1.35
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      command:
+      - sh
+      - -c
+      - |
+        echo "install {{ len $.Values.downloadInstallPlugins }} plugins"
+        {{- range $plugin := $.Values.downloadInstallPlugins }}
+        wget {{ $plugin.url }}
+        mkdir -p /opt/bitnami/elasticsearch/plugins/{{ $plugin.name }}
+        unzip `basename $plugin.url` -d /opt/bitnami/elasticsearch/plugins/{{ $plugin.name }}
+        {{- end }}
+      securityContext:
+        runAsUser: 0
+        privileged: true
+      volumeMounts:
+      - mountPath: /opt/bitnami/elasticsearch/plugins
+        name: plugins
+    {{- end -}}
+    {{- if $.Values.nativeInstallPlugins }}
+    - name: native-install-plugins
+      image: docker.io/busybox:1.35
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      command:
+      - sh
+      - -c
+      - |
+        echo "install {{ len $.Values.nativeInstallPlugins }} plugins"
+        {{- range $plugin := $.Values.nativeInstallPlugins }}
+        /opt/bitnami/elasticsearch/bin/elasticsearch-plugin list | grep {{ $plugin.name }}
+        if [ $? -eq 0 ]; then
+          echo "Plugin {{ $plugin.name }} already installed"
+        else
+          /opt/bitnami/elasticsearch/bin/elasticsearch-plugin install -b {{ $plugin.url }}
+        fi
+        {{- end }}
+      securityContext:
+        runAsUser: 0
+        privileged: true
+      volumeMounts:
+      - mountPath: /opt/bitnami/elasticsearch/plugins
+        name: plugins
+    {{- end }}
     securityContext:
       fsGroup: 1000
     volumes:
