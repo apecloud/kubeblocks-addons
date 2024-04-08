@@ -1,86 +1,27 @@
-# Default values for opensearch-cluster.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
+## @param version ElasticSearch cluster version
+##
+version: elasticsearch-8.8.2
 
-replicaCount: 1
-
-# elasticsearch cluster mode: single-node or multi-node
+## @param mode ElasticSearch cluster topology mode, multi-node, single-node
+##
 mode: multi-node
 
+## @param replicas specify cluster replicas
+##
+replicas: 1
 
-terminationPolicy: Delete
+## @param cpu
+##
+cpu: 1
 
-imagePullSecrets: []
+## @param memory, the unit is Gi
+##
+memory: 1
+
+## @param storage size, the unit is Gi
+##
+storage: 20
+
 nameOverride: ""
+
 fullnameOverride: ""
-
-podAnnotations: {}
-
-podSecurityContext: {}
-  # fsGroup: 2000
-
-securityContext: {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
-
-resources: {}
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-  # limits:
-  #   cpu: 100m
-  #   memory: 128Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 128Mi
-
-
-
-nodeSelector: {}
-
-tolerations: []
-
-affinity: {}
-
-topologyKeys:
-- kubernetes.io/hostname
-
-monitor:
-  enabled: false
-
-persistence:
-  enabled: true
-  data:
-    storageClassName:
-    size: 1Gi
-
-serviceAccount:
-  name:
-
-ingress:
-  enabled: false
-
-service:
-  type: ClusterIP
-
-roles:
-  - name: coordinating
-    heapSize: 128m
-    role: ""
-
-  - name: ingest
-    heapSize: 128m
-    role: "ingest"
-
-  - name: data
-    heapSize: 1024m
-    role: "data"
-
-  - name: master
-    heapSize: 128m
-    role: "master"
