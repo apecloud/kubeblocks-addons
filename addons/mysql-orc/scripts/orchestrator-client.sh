@@ -45,15 +45,20 @@
 myname=$(basename $0)
 [ -f /etc/profile.d/orchestrator-client.sh ] && . /etc/profile.d/orchestrator-client.sh
 
+install_jq_dependency() {
+  rpm -ivh https://yum.oracle.com/repo/OracleLinux/OL8/appstream/x86_64/getPackage/oniguruma-6.8.2-2.1.el8_9.x86_64.rpm || true
+  rpm -ivh https://mirrors.aliyun.com/centos/8/AppStream/x86_64/os/Packages/jq-1.5-12.el8.x86_64.rpm || true
+}
+
 prepare_orchestrator_env() {
+  install_jq_dependency
    i=0
-   port_name=ORC_PORTS_${i}
-   endpoint_name=ORC_ENDPOINTS_${i}
-   while [[ -n "${!port_name}" ]] && [[ -n "${!endpoint_name}" ]]; do
-     port=${!port_name}
+
+   endpoint_name=$(echo "${ORC_ENDPOINTS%%:*}_ORCHESTRATOR_ORDINAL_${i}_PORT_80_TCP" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+   while  [[ -n "${!endpoint_name}" ]]; do
      endpoint=${!endpoint_name}
 
-     api="http://$endpoint:$port/api"
+     api="http://${endpoint##*://}/api"
 
      if [[ -z "$ORCHESTRATOR_API" ]]; then
        ORCHESTRATOR_API="$api"
@@ -61,8 +66,7 @@ prepare_orchestrator_env() {
        ORCHESTRATOR_API="$ORCHESTRATOR_API $api"
      fi
      i=$(($i+1))
-     port_name=ORC_PORTS_${i}
-     endpoint_name=ORC_ENDPOINTS_${i}
+     endpoint_name=$(echo "${ORC_ENDPOINTS%%:*}_ORCHESTRATOR_ORDINAL_${i}_PORT_80_TCP" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
    done
    echo "Using ORCHESTRATOR_API=$ORCHESTRATOR_API"
    export ORCHESTRATOR_API=$ORCHESTRATOR_API

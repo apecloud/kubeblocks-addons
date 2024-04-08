@@ -389,11 +389,6 @@ kb_cluster_name="$KB_CLUSTER_NAME"
 ORCHESTRATOR_API=""
 
 
-install_jq_dependency() {
-  rpm -ivh https://yum.oracle.com/repo/OracleLinux/OL8/appstream/x86_64/getPackage/oniguruma-6.8.2-2.1.el8_9.x86_64.rpm || true
-  rpm -ivh https://mirrors.aliyun.com/centos/8/AppStream/x86_64/os/Packages/jq-1.5-12.el8.x86_64.rpm || true
-}
-
 # create orchestrator user in mysql
 create_mysql_user() {
   local service_name=$(echo "${cluster_component_pod_name}_${component_name}_${i}" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
@@ -405,6 +400,7 @@ CREATE USER IF NOT EXISTS '$topology_user'@'%' IDENTIFIED BY '$topology_password
 GRANT SUPER, PROCESS, REPLICATION SLAVE, RELOAD ON *.* TO '$topology_user'@'%';
 GRANT SELECT ON mysql.slave_master_info TO '$topology_user'@'%';
 GRANT DROP ON _pseudo_gtid_.* to '$topology_user'@'%';
+GRANT ALL ON kb_orc_meta_cluster.* TO '$topology_user'@'%';
 CREATE USER IF NOT EXISTS 'proxysql'@'%' IDENTIFIED BY 'proxysql';
 GRANT SELECT ON performance_schema.* TO 'proxysql'@'%';
 GRANT SELECT ON sys.* TO 'proxysql'@'%';
@@ -416,11 +412,11 @@ EOF
 }
 
 init_cluster_info_database() {
-  local service_name=$(echo "${cluster_component_pod_name}_${component_name}_${i}" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+  i=$1
+  local service_name=$(echo "${cluster_component_pod_name}_${component_name}_${i}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
   mysql_note "init cluster info database"
   mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD << EOF
-CREATE DATABASE  kb_orc_meta_cluster;
-GRANT ALL ON kb_orc_meta_cluster.* TO '$topology_user'@'%';
+CREATE DATABASE IF NOT EXISTS kb_orc_meta_cluster;
 EOF
   mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e 'source /scripts/cluster-info.sql'
   mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e 'source /scripts/addition_to_sys_v8.sql'
@@ -462,20 +458,20 @@ wait_for_connectivity() {
 }
 
 setup_master_slave() {
-  install_jq_dependency
   mysql_note "setup_master_slave"
   master_host_name=$(echo "${cluster_component_pod_name}_${component_name}_0_SERVICE_HOST" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
   master_host=${!master_host_name}
   mysql_note "wait_for_connectivity"
   wait_for_connectivity
 
-  get_master_from_orc
 
   last_digit=${KB_POD_NAME##*-}
+
   if [[ $last_digit -eq 0 ]]; then
     mysql_note "Create MySQL User and Grant Permissions"
+    init_cluster_info_database $last_digit
     create_mysql_user
-    init_cluster_info_database
+
   else
     mysql_note "Wait for master to be ready"
     change_master "$master_host"
@@ -496,8 +492,8 @@ change_master() {
   password=$mysql_password
 
   mysql -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" << EOF
-STOP SLAVE;
 SET GLOBAL READ_ONLY=1;
+STOP SLAVE;
 CHANGE MASTER TO
 MASTER_CONNECT_RETRY=1,
 MASTER_RETRY_COUNT=86400,

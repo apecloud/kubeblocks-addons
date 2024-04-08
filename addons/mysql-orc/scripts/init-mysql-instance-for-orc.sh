@@ -12,10 +12,6 @@ component_name="$KB_COMP_NAME"
 kb_cluster_name="$KB_CLUSTER_NAME"
 ORCHESTRATOR_API=""
 
-install_jq_dependency() {
-  rpm -ivh https://yum.oracle.com/repo/OracleLinux/OL8/appstream/x86_64/getPackage/oniguruma-6.8.2-2.1.el8_9.x86_64.rpm || true
-  rpm -ivh https://mirrors.aliyun.com/centos/8/AppStream/x86_64/os/Packages/jq-1.5-12.el8.x86_64.rpm || true
-}
 
 # create orchestrator user in mysql
 create_mysql_user() {
@@ -85,7 +81,6 @@ wait_for_connectivity() {
 }
 
 setup_master_slave() {
-  install_jq_dependency
   echo "setup_master_slave"
   master_host_name=$(echo "${cluster_component_pod_name}_${component_name}_0_SERVICE_HOST" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
   master_host=${!master_host_name}
@@ -98,16 +93,16 @@ setup_master_slave() {
   if [[ $last_digit -eq 0 ]]; then
     echo "Create MySQL User and Grant Permissions"
     create_mysql_user
-    init_cluster_info_database
+
   else
     echo "Wait for master to be ready"
     change_master "$master_host"
   fi
+  init_cluster_info_database
 }
 
 get_master_from_orc() {
   /scripts/orchestrator-client -c topology -i $kb_cluster_name
-
 }
 
 change_master() {
