@@ -1,0 +1,18 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterVersion
+metadata:
+  name: orchestrator-3.2.6
+  annotations:
+    kubeblocks.io/is-default-cluster-version: "true"
+  labels:
+    {{- include "mysql.labels" . | nindent 4 }}
+spec:
+  clusterDefinitionRef: orchestrator
+  componentVersions:
+  - componentDefRef: orchestrator
+    versionsContext:
+      containers:
+        - name: orchestrator
+          image: docker.io/bitpoke/mysql-operator-orchestrator:v0.6.3
+          imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+

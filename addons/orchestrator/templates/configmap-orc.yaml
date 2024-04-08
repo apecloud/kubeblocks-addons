@@ -12,5 +12,5 @@ data:
     {{- .Files.Get "config/orchestrator.tpl" | nindent 4 }}
 kind: ConfigMap
 metadata:
-  name: mysql-orc-config
+  name: {{ include "orchestrator.componentDefName" . }}-config
 

@@ -30,12 +30,6 @@ spec:
     systemAccountSpec:
       cmdExecutorConfig:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
-  - componentDefRef: orchestrator
-    versionsContext:
-      containers:
-        - name: orchestrator
-          image: docker.io/bitpoke/mysql-operator-orchestrator:v0.6.3
-          imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
   - componentDefRef: proxysql
     versionsContext:
       containers:
@@ -70,12 +64,6 @@ spec:
     systemAccountSpec:
       cmdExecutorConfig:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
-  - componentDefRef: orchestrator
-    versionsContext:
-      containers:
-        - name: orchestrator
-          image: docker.io/bitpoke/mysql-operator-orchestrator:v0.6.3
-          imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
   - componentDefRef: proxysql
     versionsContext:
       containers:

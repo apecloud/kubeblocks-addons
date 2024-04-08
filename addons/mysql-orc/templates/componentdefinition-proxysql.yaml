@@ -20,11 +20,6 @@ spec:
       asEnvFrom:
         - proxysql
   scripts:
-    - name: orc-scripts
-      templateRef: orc-scripts
-      namespace: {{ .Release.Namespace }}
-      volumeName: scripts
-      defaultMode: 0555
     - name: proxysql-scripts
       templateRef: proxysql-scripts
       namespace: {{ .Release.Namespace }}

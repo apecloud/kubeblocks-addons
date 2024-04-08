@@ -95,4 +95,4 @@ select * from runtime_proxysql_servers;
 mysql -uadmin -padmin -h127.0.0.1 -P6032 -vvve "$configuration_sql"
 
 
-mysql -uadmin -padmin -h127.0.0.1 -P6032 -vvve "insert into mysql_users (username,password) values ('$MYSQL_ROOT_USER','$MYSQL_ROOT_PASSWORD');LOAD MYSQL USERS TO RUNTIME;SAVE MYSQL USERS TO DISK;"
+mysql -uadmin -padmin -h127.0.0.1 -P6032 -vvve "insert or replace into mysql_users (username,password) values ('$MYSQL_ROOT_USER','$MYSQL_ROOT_PASSWORD');LOAD MYSQL USERS TO RUNTIME;SAVE MYSQL USERS TO DISK;"

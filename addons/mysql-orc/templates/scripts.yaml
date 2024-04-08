@@ -52,7 +52,8 @@ data:
     {{- .Files.Get "scripts/addition_to_sys_v5.sql" | nindent 4 }}
   addition_to_sys_v8.sql: |-
     {{- .Files.Get "scripts/addition_to_sys_v8.sql" | nindent 4 }}
-
+  forget-from-orc.sql: |-
+    {{- .Files.Get "scripts/forget-from-orc.sql" | nindent 4 }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -71,16 +72,6 @@ data:
       iniConfig:
         sectionName: mysqld
 
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: orc-scripts
-  labels:
-    {{- include "mysql.labels" . | nindent 4 }}
-data:
-  init-meta-database.sh: |-
-    {{- .Files.Get "scripts/init-meta-database.sh" | nindent 4 }}
 
 ---
 apiVersion: v1

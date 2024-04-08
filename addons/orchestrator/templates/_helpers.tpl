@@ -168,7 +168,7 @@ mysql
 {{/*
 Define mysql component defintion name
 */}}
-{{- define "orchestrator.serviceRefName" -}}
+{{- define "orchestrator.componentDefName" -}}
 {{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
 orchestrator
 {{- else -}}

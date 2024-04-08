@@ -1,0 +1,69 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterDefinition
+metadata:
+  name: orchestrator
+  labels:
+    {{- include "mysql.labels" . | nindent 4 }}
+spec:
+  connectionCredential:
+    username: root
+    password: "$(RANDOM_PASSWD)"
+    endpoint: "$(SVC_FQDN):$(SVC_PORT_mysql)"
+    host: "$(SVC_FQDN)"
+    port: "$(SVC_PORT_mysql)"
+  componentDefs:
+    - name: orchestrator
+      workloadType: Stateful
+      service:
+        ports:
+          - name: http
+            port: 80
+            targetPort: http
+          - name: prometheus
+            port: 9125
+            targetPort: prometheus
+          - name: raft
+            port: 10008
+            targetPort: raft
+      volumeTypes:
+        - name: data
+          type: data
+
+      podSpec:
+        volumes:
+          - name: orchestrator-config
+            configMap:
+              name: mysql-orc-config
+        containers:
+          - name: orchestrator
+            imagePullPolicy: IfNotPresent
+            volumeMounts:
+              - name: orchestrator-data
+                mountPath: /var/lib/orchestrator
+              - name: orchestrator-config
+                mountPath: /usr/local/share/orchestrator/templates
+            ports:
+              - containerPort: 3000
+                name: http
+              - containerPort: 10008
+                name: raft
+            env:
+              - name: ORC_TOPOLOGY_USER
+                valueFrom:
+                  secretKeyRef:
+                    key: TOPOLOGY_USER
+                    name: mysql-operator-orc
+              - name: POD_IP
+                valueFrom:
+                  fieldRef:
+                    fieldPath: status.podIP
+                    apiVersion: v1
+              - name: ORC_TOPOLOGY_PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    key: TOPOLOGY_PASSWORD
+                    name: mysql-operator-orc
+            envFrom:
+              - prefix: ORC_
+                secretRef:
+                  name: {{ include "orchestrator.componentDefName" . }}-secret

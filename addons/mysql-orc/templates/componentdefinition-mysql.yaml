@@ -9,6 +9,13 @@ spec:
   description: mysql  compoent definition for Kubernetes
   serviceKind: mysql
   serviceVersion: 8.0.0
+
+  serviceRefDeclarations:
+    - name: orchestrator
+      serviceRefDeclarationSpecs:
+        - serviceKind: orchestrator
+          serviceVersion: "^*"
+
   services:
     - name: mysql-server
       serviceName: mysql-server
@@ -81,17 +88,17 @@ spec:
         volumeMounts:
           - mountPath: /kubeblocks
             name: kubeblocks
-      - command:
-        - cp
-        - -r
-        - /usr/bin/jq
-        - /kubeblocks/jq
-        image: docker.io/chatwork/jq:latest
-        imagePullPolicy: Always
-        name: init-jq
-        volumeMounts:
-          - mountPath: /kubeblocks
-            name: kubeblocks
+{{/*      - command:*/}}
+{{/*        - cp*/}}
+{{/*        - -r*/}}
+{{/*        - /usr/bin/jq*/}}
+{{/*        - /kubeblocks/jq*/}}
+{{/*        image: docker.io/mbentley/jq:latest*/}}
+{{/*        imagePullPolicy: Always*/}}
+{{/*        name: init-jq*/}}
+{{/*        volumeMounts:*/}}
+{{/*          - mountPath: /kubeblocks*/}}
+{{/*            name: kubeblocks*/}}
     containers:
       - name: mysql
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
@@ -185,16 +192,14 @@ spec:
 
     - name: ORC_ENDPOINTS
       valueFrom:
-        serviceVarRef:
-          compDef: {{ include "orchestrator.componentDefName" . }}
-          name: orchestrator-ordinal
-          generatePodOrdinalServiceVar: true
-          host: Required
+        serviceRefVarRef:
+          compDef: {{ include "mysql.componentDefName" . }}
+          name: orchestrator
+          endpoint: Required
+
     - name: ORC_PORTS
       valueFrom:
-        serviceVarRef:
-          compDef: {{ include "orchestrator.componentDefName" . }}
-          name: orchestrator-ordinal
-          generatePodOrdinalServiceVar: true
-          port:
-            name: http
+        serviceRefVarRef:
+          compDef: {{ include "mysql.componentDefName" . }}
+          name: orchestrator
+          port: Required

@@ -8,7 +8,16 @@ spec:
   provider: kubeblocks
   description: mysql HA compoent definition for Kubernetes
   serviceKind: orchestrator
-  serviceVersion: 8.0.0
+  serviceVersion: 3.2.6
+
+  systemAccounts:
+    - name: root
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 10
+        numDigits: 5
+        numSymbols: 0
+        letterCase: MixedCases
 
   serviceRefDeclarations:
     - name: metaMysql
@@ -17,7 +26,7 @@ spec:
           serviceVersion: "^*"
   configs:
     - name: orchestrator-config
-      templateRef: mysql-orc-config
+      templateRef: {{ include "orchestrator.componentDefName" . }}-config
       namespace: {{ .Release.Namespace }}
       volumeName: orchestrator-config
       asEnvFrom:
@@ -25,7 +34,7 @@ spec:
 
   scripts:
     - name: orc-scripts
-      templateRef: orc-scripts
+      templateRef: {{ include "orchestrator.componentDefName" . }}-scripts
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
@@ -33,31 +42,27 @@ spec:
     - name: META_MYSQL_PORT
       valueFrom:
         serviceRefVarRef:
-          compDef: apecloud-mysql
+          compDef: {{ include "orchestrator.componentDefName" . }}
           name: metaMysql
           port: Required
-          optional: true
     - name: META_MYSQL_ENDPOINT
       valueFrom:
         serviceRefVarRef:
-          compDef: apecloud-mysql
+          compDef: {{ include "orchestrator.componentDefName" . }}
           name: metaMysql
           endpoint: Required
-          optional: true
     - name: META_MYSQL_USER
       valueFrom:
         serviceRefVarRef:
-          compDef: apecloud-mysql
+          compDef: {{ include "orchestrator.componentDefName" . }}
           name: metaMysql
           username: Required
-          optional: true
     - name: META_MYSQL_PASSWORD
       valueFrom:
         serviceRefVarRef:
-          compDef: apecloud-mysql
+          compDef: {{ include "orchestrator.componentDefName" . }}
           name: metaMysql
           password: Required
-          optional: true
   lifecycleActions:
     postProvision:
       customHandler:

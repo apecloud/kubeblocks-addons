@@ -36,9 +36,9 @@ requests:
 ##
 storage: 20
 
-proxyEnabled: true
 
 serviceReference:
   orchestrator:
-      namespace: "default"
-      cluster: orc-cluster
+      name: mysql-meta
+      namespace: ""
+      cluster: vt

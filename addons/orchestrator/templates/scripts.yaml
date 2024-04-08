@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "orchestrator.componentDefName" . }}-scripts
+  labels:
+    {{- include "mysql.labels" . | nindent 4 }}
+data:
+  init-meta-database.sh: |-
+    {{- .Files.Get "scripts/init-meta-database.sh" | nindent 4 }}
+  init-orchestrator.sh: |-
+    {{- .Files.Get "scripts/init-orchestrator.sh" | nindent 4 }}
