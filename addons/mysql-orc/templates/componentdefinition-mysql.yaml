@@ -73,11 +73,22 @@ spec:
       - command:
         - cp
         - -r
-        - /usr/bin/curl
-        - /kubeblocks/
-        image: docker.io/curlimages/curl:7.85.0
+        - /usr/local/bin/curl
+        - /kubeblocks/curl
+        image: docker.io/shakefu/curl-static:latest
         imagePullPolicy: Always
         name: init-curl
+        volumeMounts:
+          - mountPath: /kubeblocks
+            name: kubeblocks
+      - command:
+        - cp
+        - -r
+        - /usr/bin/jq
+        - /kubeblocks/jq
+        image: docker.io/chatwork/jq:latest
+        imagePullPolicy: Always
+        name: init-jq
         volumeMounts:
           - mountPath: /kubeblocks
             name: kubeblocks
@@ -98,9 +109,7 @@ spec:
             --plugin-load-add=audit_log=audit_log.so \
             --log-bin={{.Values.dataMountPath}}/binlog/$(KB_POD_NAME)-bin
           - --
-          - echo "asdf"
           - /scripts/init-mysql-instance-for-orc.sh
-          - echo "asdfasf"
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data

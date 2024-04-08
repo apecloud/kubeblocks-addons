@@ -562,7 +562,6 @@ _main() {
 			mysql_socket_fix
 		fi
 	fi
-	mysql_note "setup_master_slave2"
   (
     setup_master_slave
   ) &

@@ -27,7 +27,7 @@ register_to_orchestrator() {
 
 
   local url="http://orc-cluster-orchestrator-orchestrator:80/api/discover/$host_ip/3306"
-  local instance_url="http://orc-cluster-orchestrator-orchestrator:80/api/instance/$host_ip/330"
+  local instance_url="http://orc-cluster-orchestrator-orchestrator:80/api/instance/$host_ip/3306"
 
   echo "register first mysql pod to orchestrator..."
   instanceResponse=$(curl -s -o /dev/null -w "%{http_code}" $instance_url)

@@ -64,6 +64,7 @@ prepare_orchestrator_env() {
      port_name=ORC_PORTS_${i}
      endpoint_name=ORC_ENDPOINTS_${i}
    done
+   echo "Using ORCHESTRATOR_API=$ORCHESTRATOR_API"
    export ORCHESTRATOR_API=$ORCHESTRATOR_API
 }
 
