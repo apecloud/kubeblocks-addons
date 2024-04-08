@@ -19,7 +19,7 @@ spec:
       characterType: elasticsearch
       configSpecs: 
       - name: elasticsearch-config-template
-        templateRef: elasticsearch-config-template
+        templateRef: {{ include "elasticsearch.name" . }}-config
         volumeName: elasticsearch-config  
         namespace: {{ $.Release.Namespace }}
       workloadType: Stateful
@@ -59,30 +59,35 @@ spec:
           securityContext:
             runAsUser: 0
             privileged: true
-        # analysis-ik must be downloaded and installed instead of using the elasticsearch-plugin install command
-        # https://github.com/infinilabs/analysis-ik/issues/808
+        {{- if .Values.downloadInstallPlugins }}
         - name: download-install-plugins
           imagePullPolicy: IfNotPresent
           command:
           - sh
           - -c
           - |
-            wget https://github.com/medcl/elasticsearch-analysis-ik/releases/download/v{{ .Chart.AppVersion }}/elasticsearch-analysis-ik-{{ .Chart.AppVersion }}.zip
-            mkdir -p /opt/bitnami/elasticsearch/plugins/ik
-            unzip elasticsearch-analysis-ik-{{ .Chart.AppVersion }}.zip -d /opt/bitnami/elasticsearch/plugins/ik
+            echo "install {{ len .Values.downloadInstallPlugins }} plugins"
+            {{- range $plugin := $.Values.downloadInstallPlugins }}
+            wget {{ $plugin.url }}
+            mkdir -p /opt/bitnami/elasticsearch/plugins/{{ $plugin.name }}
+            unzip `basename $plugin.url` -d /opt/bitnami/elasticsearch/plugins/{{ $plugin.name }}
+            {{- end }}
           securityContext:
             runAsUser: 0
             privileged: true
           volumeMounts:
           - mountPath: /opt/bitnami/elasticsearch/plugins
             name: plugins
+        {{- end -}}
+        {{- if .Values.nativeInstallPlugins }}
         - name: native-install-plugins
           imagePullPolicy: IfNotPresent
           command:
           - sh
           - -c
           - |
-            {{- range $plugin := $.Values.plugins }}
+            echo "install {{ len .Values.nativeInstallPlugins }} plugins"
+            {{- range $plugin := $.Values.nativeInstallPlugins }}
             /opt/bitnami/elasticsearch/bin/elasticsearch-plugin list | grep {{ $plugin.name }}
             if [ $? -eq 0 ]; then
               echo "Plugin {{ $plugin.name }} already installed"
@@ -96,6 +101,7 @@ spec:
           volumeMounts:
           - mountPath: /opt/bitnami/elasticsearch/plugins
             name: plugins
+        {{- end }}
         containers:
           - name: elasticsearch
             imagePullPolicy: IfNotPresent
@@ -224,7 +230,8 @@ spec:
 #        volumeName: elasticsearch-config
 #        namespace: {{$.Release.Namespace}}
       workloadType: Stateful
-
+      statefulSpec:
+        updateStrategy: BestEffortParallel
       componentDefRef:
         - componentDefName: master
           componentRefEnv:
@@ -289,30 +296,35 @@ spec:
           securityContext:
             runAsUser: 0
             privileged: true
-        # analysis-ik must be downloaded and installed instead of using the elasticsearch-plugin install command
-        # https://github.com/infinilabs/analysis-ik/issues/808
+        {{- if $.Values.downloadInstallPlugins }}
         - name: download-install-plugins
           imagePullPolicy: IfNotPresent
           command:
           - sh
           - -c
           - |
-            wget https://github.com/medcl/elasticsearch-analysis-ik/releases/download/v{{ $.Chart.AppVersion }}/elasticsearch-analysis-ik-{{ $.Chart.AppVersion }}.zip
-            mkdir -p /opt/bitnami/elasticsearch/plugins/ik
-            unzip elasticsearch-analysis-ik-{{ $.Chart.AppVersion }}.zip -d /opt/bitnami/elasticsearch/plugins/ik
+            echo "install {{ len $.Values.downloadInstallPlugins }} plugins"
+            {{- range $plugin := $.Values.downloadInstallPlugins }}
+            wget {{ $plugin.url }}
+            mkdir -p /opt/bitnami/elasticsearch/plugins/{{ $plugin.name }}
+            unzip `basename $plugin.url` -d /opt/bitnami/elasticsearch/plugins/{{ $plugin.name }}
+            {{- end }}
           securityContext:
             runAsUser: 0
             privileged: true
           volumeMounts:
           - mountPath: /opt/bitnami/elasticsearch/plugins
             name: plugins
+        {{- end -}}
+        {{- if $.Values.nativeInstallPlugins }}
         - name: native-install-plugins
           imagePullPolicy: IfNotPresent
           command:
           - sh
           - -c
           - |
-            {{- range $plugin := $.Values.plugins }}
+            echo "install {{ len $.Values.nativeInstallPlugins }} plugins"
+            {{- range $plugin := $.Values.nativeInstallPlugins }}
             /opt/bitnami/elasticsearch/bin/elasticsearch-plugin list | grep {{ $plugin.name }}
             if [ $? -eq 0 ]; then
               echo "Plugin {{ $plugin.name }} already installed"
@@ -324,8 +336,9 @@ spec:
             runAsUser: 0
             privileged: true
           volumeMounts:
-            - mountPath: /opt/bitnami/elasticsearch/plugins
-              name: plugins
+          - mountPath: /opt/bitnami/elasticsearch/plugins
+            name: plugins
+        {{- end }}
         containers:
           - name: elasticsearch
             imagePullPolicy: IfNotPresent
