@@ -40,5 +40,7 @@ proxyEnabled: true
 
 serviceReference:
   orchestrator:
-      namespace: "default"
-      cluster: orc-cluster
+    namespace: ""
+    cluster: ""
+    port: 80
+    endpoint: ""

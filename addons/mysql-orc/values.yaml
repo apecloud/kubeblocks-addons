@@ -89,8 +89,6 @@ compDefinitionVersionSuffix: ""
 
 orchestrator:
   metaBackends:
-    cluster: vt
-    namespace: ""
     database: orchestrator
   topology:
     username: orchestrator

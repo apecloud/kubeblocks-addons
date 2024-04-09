@@ -19,9 +19,15 @@ spec:
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentServices" . | indent 6 }}
       serviceRefs:
+        {{- if eq .Values.serviceReference.orchestrator.cluster ""}}
+        - name: orchestrator
+          namespace: {{ .Values.serviceReference.orchestrator.namespace | default .Release.Namespace }}
+          serviceDescriptor: orchestrator-service-descriptor
+        {{- else}}
         - name: orchestrator
           namespace: {{ .Values.serviceReference.orchestrator.namespace | default .Release.Namespace }}
           cluster: {{ .Values.serviceReference.orchestrator.cluster | default "orc-cluster"}}
+        {{- end }}
     {{- if eq .Values.proxyEnabled true}}
     - name: proxysql
       componentDef: proxysql

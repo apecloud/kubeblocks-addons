@@ -10,15 +10,6 @@ spec:
   serviceKind: orchestrator
   serviceVersion: 3.2.6
 
-  systemAccounts:
-    - name: root
-      initAccount: true
-      passwordGenerationPolicy:
-        length: 10
-        numDigits: 5
-        numSymbols: 0
-        letterCase: MixedCases
-
   serviceRefDeclarations:
     - name: metaMysql
       serviceRefDeclarationSpecs:
