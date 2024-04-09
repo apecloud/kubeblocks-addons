@@ -62,7 +62,7 @@ spec:
             command:
             - sh
             - -c
-            - "cp -r /postgresql/conf /postgresql/data/; cp -r /bin/syncer /config /kubeblocks/"
+            - "cp -r /bin/syncer /config /kubeblocks/"
             volumeMounts:
               - name: data
                 mountPath: {{ .Values.dataMountPath }}
@@ -142,9 +142,11 @@ spec:
               - name: POSTGRESQL_PORT_NUMBER
                 value: "5432"
               - name: PGDATA
-                value: {{ .Values.dataMountPath }}/pgconsensus_data
+                value: {{ .Values.dataPath }}
               - name: PGCONF
                 value: {{ .Values.confPath }}
+              - name: POSTGRESQL_MOUNTED_CONF_DIR
+                value: {{ .Values.confMountPath }}
         volumes:
           - name: dshm
             emptyDir:
