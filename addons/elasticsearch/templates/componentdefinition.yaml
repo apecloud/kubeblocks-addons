@@ -64,7 +64,7 @@ spec:
       - name: NSS_SDB_USE_CACHE
         value: "no"
       - name: ELASTICSEARCH_ROLES
-        value: "[{{ $component.roles | join "," }}]"
+        value: "{{ $component.roles | join "," }}"
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag }}
       imagePullPolicy: {{ .Values.image.pullPolicy }}
       lifecycle:
