@@ -42,7 +42,7 @@ wait_for_connectivity() {
       exit 1
     fi
     # Send PING and check for mysql response
-    if  mysqladmin -h "$meta_mysql_host" -P $meta_mysql_port -u "$meta_user" -p"$meta_password" PING | grep -q "mysqld is alive"; then
+    if  mysqladmin -h $meta_mysql_host -P $meta_mysql_port -u $meta_mysql_user -p$meta_mysql_password PING | grep -q "mysqld is alive"; then
       echo "$meta_mysql_host is reachable."
       break
     fi

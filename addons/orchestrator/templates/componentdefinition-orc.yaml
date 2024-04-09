@@ -63,16 +63,6 @@ spec:
           compDef: {{ include "orchestrator.componentDefName" . }}
           name: metaMysql
           password: Required
-  lifecycleActions:
-    postProvision:
-      customHandler:
-        image: docker.io/mysql:8.0.33
-        exec:
-          command:
-            - bash
-            - -c
-            - "/scripts/init-meta-database.sh;sleep 1000000000000000000"
-        preCondition: ComponentReady
   services:
     - name: orchestrator
       serviceName: orchestrator
@@ -97,7 +87,32 @@ spec:
             port: 80
             targetPort: http
   runtime:
-    volumes:
+    initContainers:
+      - name: init-meta-database
+        command:
+          - bash
+          - -c
+          - "/scripts/init-meta-database.sh;"
+        image: docker.io/mysql:8.0.33
+        imagePullPolicy: Always
+        volumeMounts:
+          - name: scripts
+            mountPath: /scripts
+        env:
+          - name: ORC_META_USER
+            valueFrom:
+              secretKeyRef:
+                key: META_USER
+                name: {{ include "orchestrator.componentDefName" . }}-secret
+                optional: false
+          - name: ORC_META_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: META_PASSWORD
+                name: {{ include "orchestrator.componentDefName" . }}-secret
+                optional: false
+          - name: ORC_META_DATABASE
+            value: {{ .Values.orchestrator.metaBackends.database }}
     containers:
       - name: orchestrator
         image: docker.io/bitpoke/mysql-operator-orchestrator:v0.6.3
