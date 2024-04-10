@@ -2,7 +2,7 @@
 {{- $namespace := $.cluster.metadata.namespace }}
 {{- $master_component := fromJson "{}" }}
 {{- range $i, $e := $.cluster.spec.componentSpecs }}
-  {{- if eq $e.componentDef "es-master" }}
+  {{- if or (eq $e.componentDef "es-master") (eq $e.componentDef "es-single-node") }}
   {{- $master_component = $e }}
   {{- end }}
 {{- end }}
@@ -43,7 +43,7 @@ node:
   name: ${POD_NAME}
   store:
     allow_mmap: false
-  roles: ${ELASTICSEARCH_ROLES}
+  roles: '${ELASTICSEARCH_ROLES}'
 
 
 path:
