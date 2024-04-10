@@ -18,6 +18,16 @@ spec:
             port: 6379
             targetPort: redis-cluster
       roleSelector: primary
+    - name: redis-advertised
+      serviceName: redis-advertised
+      spec:
+        type: NodePort
+        ports:
+        - name: redis-advertised
+          port: 6379
+          targetPort: redis-cluster
+      podService: true
+      disableAutoProvision: true
   updateStrategy: BestEffortParallel
   volumes:
     - name: data
@@ -84,7 +94,24 @@ spec:
           compDef: {{ include "redis-cluster.componentDefName" . }}
           name: default
           password: Required
-    ## TODO: add redis sentinel reference env vars
+    ## the redis cluster advertised service port list for each pod, the value format is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."
+    - name: REDIS_CLUSTER_ADVERTISED_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redis-cluster.componentDefName" . }}
+          name: redis-advertised
+          optional: true
+          port:
+            name: redis-advertised
+            option: Optional
+    ## the redis cluster advertised service name list for each pod, the value format is "pod1Svc,pod2Svc,..."
+    - name: REDIS_CLUSTER_ADVERTISED_SVC_NAME
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redis-cluster.componentDefName" . }}
+          name: redis-advertised
+          optional: true
+          host: Optional
   lifecycleActions:
     roleProbe:
       builtinHandler: redis

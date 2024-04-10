@@ -476,8 +476,8 @@ scale_in_redis_cluster_shard() {
   done
   shard_count=$((${#other_undeleted_component_nodes[@]} / current_comp_pod_count))
   if [ $shard_count -lt 3 ]; then
-    echo "The number of shards in the cluster is less than 3 after scaling in, skip scaling in"
-    exit 0
+    echo "The number of shards in the cluster is less than 3 after scaling in, please check."
+    exit 1
   fi
 
   # set the current component slot to 0 by rebalance command

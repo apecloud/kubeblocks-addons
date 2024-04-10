@@ -17,15 +17,16 @@ spec:
           - name: redis-sentinel
             port: 26379
             targetPort: redis-sentinel
-    - name: redis-sentinel-nodeport
-      serviceName: redis-sentinel-nodeport
-      generatePodOrdinalService: true
+    - name: sentinel-advertised
+      serviceName: sentinel-advertised
       spec:
         type: NodePort
         ports:
-          - name: redis-sentinel-nodeport
+          - name: sentinel-advertised
             port: 26379
             targetPort: 26379
+      podService: true
+      disableAutoProvision: true
   updateStrategy: BestEffortParallel
   volumes:
     - name: data

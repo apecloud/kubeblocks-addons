@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -ex
 
 load_redis_template_conf() {
@@ -25,10 +25,10 @@ build_redis_default_accounts() {
 
 build_announce_ip_and_port() {
   # build announce ip and port according to whether the NodePort is enabled
-  if [ -n "$redis_node_port_host_value" ] && [ -n "$redis_node_port_value" ]; then
-      echo "redis use nodeport $redis_node_port_host_value:$redis_node_port_value to announce"
-      echo "replica-announce-port $redis_node_port_value" >> /etc/redis/redis.conf
-      echo "replica-announce-ip $redis_node_port_host_value" >> /etc/redis/redis.conf
+  if [ -n "$redis_advertised_svc_host_value" ] && [ -n "$redis_advertised_svc_port_value" ]; then
+      echo "redis use nodeport $redis_advertised_svc_host_value:$redis_advertised_svc_port_value to announce"
+      echo "replica-announce-port $redis_advertised_svc_port_value" >> /etc/redis/redis.conf
+      echo "replica-announce-ip $redis_advertised_svc_host_value" >> /etc/redis/redis.conf
   else
     kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc"
     echo "redis use kb pod fqdn $kb_pod_fqdn to announce"
@@ -55,9 +55,9 @@ rebuild_redis_acl_file() {
   fi
 }
 
-extract_ordinal_from_pod_name() {
-  local pod_name="$1"
-  local ordinal="${pod_name##*-}"
+extract_ordinal_from_object_name() {
+  local object_name="$1"
+  local ordinal="${object_name##*-}"
   echo "$ordinal"
 }
 
@@ -147,11 +147,38 @@ create_replication() {
     fi
 }
 
-pod_ordinal=$(extract_ordinal_from_pod_name $KB_POD_NAME)
-gen_redis_node_port="REDIS_NODE_PORT_${pod_ordinal}"
-eval redis_node_port_value="\$$gen_redis_node_port"
-redis_node_port_host_value=$KB_HOST_IP
-echo "redis_node_port_value=$redis_node_port_value, redis_node_port_host_value=$redis_node_port_host_value"
+parse_redis_advertised_svc_if_exist() {
+  local pod_name="$1"
+
+  if [[ -z "${REDIS_ADVERTISED_PORT}" ]]; then
+    echo "Environment variable REDIS_ADVERTISED_PORT not found. Ignoring."
+    return 0
+  fi
+
+  # the value format of REDIS_ADVERTISED_PORT is "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."
+  IFS=',' read -ra advertised_ports <<< "${REDIS_ADVERTISED_PORT}"
+
+  local found=false
+  pod_name_ordinal=$(extract_ordinal_from_object_name "$pod_name")
+  for advertised_port in "${advertised_ports[@]}"; do
+    IFS=':' read -ra parts <<< "$advertised_port"
+    local svc_name="${parts[0]}"
+    local port="${parts[1]}"
+    svc_name_ordinal=$(extract_ordinal_from_object_name "$svc_name")
+    if [[ "$svc_name_ordinal" == "$pod_name_ordinal" ]]; then
+      echo "Found matching svcName and port for podName '$pod_name', REDIS_ADVERTISED_PORT: $REDIS_ADVERTISED_PORT. svcName: $svc_name, port: $port."
+      redis_advertised_svc_port_value="$port"
+      redis_advertised_svc_host_value="$KB_HOST_IP"
+      found=true
+      break
+    fi
+  done
+
+  if [[ "$found" == false ]]; then
+    echo "Error: No matching svcName and port found for podName '$pod_name', REDIS_ADVERTISED_PORT: $REDIS_ADVERTISED_PORT. Exiting."
+    return 1
+  fi
+}
 
 # build redis.conf
 build_redis_conf() {
@@ -162,6 +189,7 @@ build_redis_conf() {
   build_redis_default_accounts
 }
 
+parse_redis_advertised_svc_if_exist "$KB_POD_NAME"
 build_redis_conf
 create_replication &
 start_redis_server
