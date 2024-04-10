@@ -6,6 +6,7 @@ metadata:
   annotations:
     kubeblocks.io/enabled-node-port-svc: mysql,proxysql
     kubeblocks.io/enabled-pod-ordinal-svc: mysql,proxysql
+    {{ include "proxysql-cluster.annotations.extra-envs" . | nindent 4 }}
 spec:
   clusterVersionRef: mysql-orc-8.0.33
   terminationPolicy: {{ .Values.extra.terminationPolicy }}

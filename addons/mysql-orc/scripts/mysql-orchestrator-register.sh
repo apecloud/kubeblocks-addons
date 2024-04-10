@@ -25,7 +25,7 @@ register_to_orchestrator() {
   local start_time=$(date +%s)
   local current_time
 
-  endpoint=${ORC_ENDPOINTS%%:*}-orchestrator:${ORC_PORTS}
+  endpoint=${ORC_ENDPOINTS%%:*}:${ORC_PORTS}
 
   local url="http://${endpoint}/api/discover/$host_ip/3306"
   local instance_url="http://${endpoint}/api/instance/$host_ip/3306"
@@ -75,8 +75,9 @@ main() {
   first_mysql_service_host_name=$(echo "${cluster_component_pod_name}_${component_name}_0_SERVICE_HOST" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
   first_mysql_service_host=${!first_mysql_service_host_name}
 
-
-  register_to_orchestrator "$first_mysql_service_host"
+  mysql_host_name=MYSQL_ORDINAL_HOST_0
+  HOSTIP=${!mysql_host_name}
+  register_to_orchestrator "$HOSTIP"
 
   echo "Initialization script completed！"
 }

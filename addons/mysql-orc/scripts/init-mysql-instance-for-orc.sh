@@ -87,6 +87,7 @@ setup_master_slave() {
   echo "wait_for_connectivity"
   wait_for_connectivity
 
+
   get_master_from_orc
 
   last_digit=${KB_POD_NAME##*-}
@@ -102,7 +103,39 @@ setup_master_slave() {
 }
 
 get_master_from_orc() {
-  /scripts/orchestrator-client -c topology -i $kb_cluster_name
+  topology_info=$(/scripts/orchestrator-client -c topology -i $kb_cluster_name)
+  if [[ $output =~ ^ERROR ]]; then
+      echo "Error retrieving topology information"
+      return 1
+  fi
+  # Extract the first line
+  first_line=$(echo "$topology_info" | head -n 1)
+
+  # Remove square brackets and split by comma
+  cleaned_line=$(echo "$first_line" | tr -d '[]')
+
+  # Parse the status variables using comma as the delimiter
+  old_ifs="$IFS"
+  IFS=',' read -ra status_array <<< "$cleaned_line"
+  IFS="$old_ifs"
+
+  # Save individual status variables
+  lag="${status_array[0]}"
+  status="${status_array[1]}"
+  version="${status_array[2]}"
+  rw="${status_array[3]}"
+  mod="${status_array[4]}"
+  type="${status_array[5]}"
+  GTID="${status_array[6]}"
+  GTIDMOD="${status_array[7]}"
+
+  address_port=$(echo "$first_line" | awk '{print $1}')
+  address="${address_port%*:}"
+  port="${address_port#*:}"
+
+  if [ -n "$address_port" && $status == "ok" ]; then
+    master_host="${address_port%:*}"
+  fi
 }
 
 change_master() {

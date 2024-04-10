@@ -38,6 +38,10 @@ storage: 20
 
 proxyEnabled: true
 
+secret:
+  monitor_password: proxysql
+  cluster_password: nb2wZpZ9OXXTF2Mv
+
 serviceReference:
   orchestrator:
     namespace: ""

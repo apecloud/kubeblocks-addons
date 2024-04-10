@@ -6,6 +6,7 @@ metadata:
   annotations:
     kubeblocks.io/enabled-node-port-svc: orchestrator,mysql,proxysql
     kubeblocks.io/enabled-pod-ordinal-svc: orchestrator,mysql,proxysql
+    {{ include "orchestrator-cluster.annotations.extra-envs" . | nindent 4 }}
 spec:
   clusterVersionRef: orchestrator-3.2.6
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
@@ -21,6 +22,12 @@ spec:
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentServices" . | indent 6 }}
       serviceRefs:
+        {{- if eq .Values.serviceReference.orchestrator.cluster ""}}
+        - name: metaMysql
+          namespace: {{ .Values.serviceReference.orchestrator.namespace | default .Release.Namespace }}
+          serviceDescriptor: meta-service-descriptor
+        {{- else}}
         - name: metaMysql
           namespace: {{ .Values.serviceReference.orchestrator.namespace | default .Release.Namespace }}
           cluster: {{ .Values.serviceReference.orchestrator.cluster }}
+        {{- end}}

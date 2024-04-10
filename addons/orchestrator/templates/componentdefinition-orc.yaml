@@ -90,18 +90,6 @@ spec:
           - name: scripts
             mountPath: /scripts
         env:
-          - name: ORC_META_USER
-            valueFrom:
-              secretKeyRef:
-                key: META_USER
-                name: {{ include "orchestrator.componentDefName" . }}-secret
-                optional: false
-          - name: ORC_META_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                key: META_PASSWORD
-                name: {{ include "orchestrator.componentDefName" . }}-secret
-                optional: false
           - name: ORC_META_DATABASE
             value: {{ .Values.orchestrator.metaBackends.database }}
     containers:
@@ -121,30 +109,6 @@ spec:
           - containerPort: 10008
             name: raft
         env:
-          - name: ORC_TOPOLOGY_USER
-            valueFrom:
-              secretKeyRef:
-                key: TOPOLOGY_USER
-                name: {{ include "orchestrator.componentDefName" . }}-secret
-                optional: false
-          - name: ORC_TOPOLOGY_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                key: TOPOLOGY_PASSWORD
-                name: {{ include "orchestrator.componentDefName" . }}-secret
-                optional: false
-          - name: ORC_META_USER
-            valueFrom:
-              secretKeyRef:
-                key: META_USER
-                name: {{ include "orchestrator.componentDefName" . }}-secret
-                optional: false
-          - name: ORC_META_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                key: META_PASSWORD
-                name: {{ include "orchestrator.componentDefName" . }}-secret
-                optional: false
           - name: ORC_META_DATABASE
             value: {{ .Values.orchestrator.metaBackends.database }}
           - name: POD_IP
@@ -157,7 +121,3 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.name
-        envFrom:
-          - prefix: ORC_
-            secretRef:
-              name: {{ include "orchestrator.componentDefName" . }}-secret

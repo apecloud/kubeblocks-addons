@@ -27,14 +27,7 @@ data:
     exec docker-entrypoint.sh
   switchover-without-candidate.sh: |-
     #!/bin/bash
-  agamotto.sh: |-
-    #!/bin/sh
-    if [ "$KB_PROXY_ENABLED" != "on" ]; then
-      /bin/agamotto --config=/opt/agamotto/agamotto-config.yaml
-    else
-      /bin/agamotto --config=/opt/agamotto/agamotto-config-with-proxy.yaml
-    fi
-  docker-entrypoint.sh: |-
+  docker-entrypoint-5.7.sh: |-
     {{- .Files.Get "scripts/docker-entrypoint-5.7.sh" | nindent 4 }}
   docker-entrypoint-8.0.sh: |-
     {{- .Files.Get "scripts/docker-entrypoint-8.0.sh" | nindent 4 }}

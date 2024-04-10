@@ -36,9 +36,16 @@ requests:
 ##
 storage: 20
 
+secret:
+  TOPOLOGY_PASSWORD: orchestrator
+  TOPOLOGY_USER: orchestrator
+  META_USER: orchestrator
+  META_PASSWORD: orchestrator
 
 serviceReference:
   orchestrator:
       name: mysql-meta
       namespace: ""
-      cluster: vt
+      cluster: ""
+      port: 3306
+      endpoint: ""

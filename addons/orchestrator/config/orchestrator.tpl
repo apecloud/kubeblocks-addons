@@ -24,7 +24,6 @@
   "ApplyMySQLPromotionAfterMasterFailover": true,
   "Debug": false,
   "DetachLostReplicasAfterMasterFailover": true,
-  "MySQLHostnameResolveMethod": "",
   "FailMasterPromotionIfSQLThreadNotUpToDate": true,
   "MySQLOrchestratorRejectReadOnly": true,
 
@@ -32,6 +31,7 @@
   "HTTPAdvertise": "http://orc-cluster-mysql:80",
 
   "HostnameResolveMethod": "none",
+  "MySQLHostnameResolveMethod": "@@report_host",
   "InstancePollSeconds": 5,
   "ListenAddress": ":3000",
   "MasterFailoverLostInstancesDowntimeMinutes": 10,

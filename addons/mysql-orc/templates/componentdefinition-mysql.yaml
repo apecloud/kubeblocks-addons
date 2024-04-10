@@ -58,13 +58,22 @@ spec:
   lifecycleActions:
     postProvision:
       customHandler:
-        image: docker.io/mysql:8.0.33
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
         exec:
           command:
             - bash
             - -c
             - "/scripts/mysql-orchestrator-register.sh;sleep 1000000000000000000"
         preCondition: ComponentReady
+    preTerminate:
+      customHandler:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+        exec:
+          command:
+            - bash
+            - -c
+            - "/scripts/orchestrator-client -c forget -i ${KB_CLUSTER_NAME};sleep 1000000000000000000"
+        preCondition: Immediately
   runtime:
     initContainers:
       - command:
@@ -88,17 +97,6 @@ spec:
         volumeMounts:
           - mountPath: /kubeblocks
             name: kubeblocks
-{{/*      - command:*/}}
-{{/*        - cp*/}}
-{{/*        - -r*/}}
-{{/*        - /usr/bin/jq*/}}
-{{/*        - /kubeblocks/jq*/}}
-{{/*        image: docker.io/mbentley/jq:latest*/}}
-{{/*        imagePullPolicy: Always*/}}
-{{/*        name: init-jq*/}}
-{{/*        volumeMounts:*/}}
-{{/*          - mountPath: /kubeblocks*/}}
-{{/*            name: kubeblocks*/}}
     containers:
       - name: mysql
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
@@ -110,7 +108,8 @@ spec:
             mv {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
             rm -rf {{ .Values.dataMountPath }}/plugin
             chown -R mysql:root {{ .Values.dataMountPath }}
-            /scripts/docker-entrypoint-8.0.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) \
+            REPORT_HOST=MYSQL_ORDINAL_HOST_${KB_POD_NAME##*-}
+            /scripts/docker-entrypoint-8.0.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) --report_host ${!REPORT_HOST} \
             --plugin-load-add=rpl_semi_sync_source=semisync_source.so \
             --plugin-load-add=rpl_semi_sync_replica=semisync_replica.so \
             --plugin-load-add=audit_log=audit_log.so \
@@ -188,7 +187,7 @@ spec:
           compDef: {{ include "mysql.componentDefName" . }}
           name: mysql
           generatePodOrdinalServiceVar: true
-          optional: true
+          host: Required
 
     - name: ORC_ENDPOINTS
       valueFrom:

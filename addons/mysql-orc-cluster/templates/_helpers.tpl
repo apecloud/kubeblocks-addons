@@ -11,3 +11,20 @@ replicas: {{  .Values.replicas.mysql  }}
 {{- define "orchestrator.replicaCount" -}}
 replicas: {{  .Values.replicas.orchestrator  }}
 {{- end -}}
+
+{{/*
+Create extra env
+*/}}
+{{- define "proxysql-cluster.extra-envs" }}
+{
+"MONITOR_PASSWORD": "{{ .Values.secret.monitor_password }}",
+"CLUSTER_PASSWORD": "{{ .Values.secret.cluster_password }}"
+}
+{{- end }}
+
+{{/*
+Create the hummock option
+*/}}
+{{- define "proxysql-cluster.annotations.extra-envs" }}
+"kubeblocks.io/extra-env": {{ include "proxysql-cluster.extra-envs" . | nospace  | quote }}
+{{- end }}
