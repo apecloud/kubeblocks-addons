@@ -25,7 +25,7 @@ kind: ClusterVersion
 metadata:
   name: official-postgresql-14.7-zhparser
   annotations:
-    kubeblocks.io/is-default-cluster-version: "true"
+    kubeblocks.io/is-default-cluster-version: "false"
   labels:
     {{- include "official-postgresql.labels" . | nindent 4 }}
 spec:
