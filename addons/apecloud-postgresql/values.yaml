@@ -5,7 +5,7 @@
 image:
   registry: registry.cn-hangzhou.aliyuncs.com
   repository: apecloud/apecloud-postgres
-  tag: "14.10"
+  tag: "14.11-0.7.3"
   digest: ""
   pullPolicy: IfNotPresent
   pullSecrets: [ ]
@@ -16,9 +16,14 @@ image:
 
 clusterVersionOverride: ""
 
-dataMountPath: /postgresql/data
-confMountPath: /postgresql/conf
-confPath: /postgresql/data/conf
+dataMountPath: /postgresql/volume_data
+confMountPath: /postgresql/mount_conf
+
+dataPath: /postgresql/volume_data/pgconsensus_data
+# confPath is the same as the dataPath because the postgresql.conf and
+# pg_hba.conf files will be copied to the PGDATA directory,
+# When the POSTGRESQL_MOUNTED_CONF_DIR environment variable is set.
+confPath: /postgresql/volume_data/pgconsensus_data
 
 roleProbe:
   failureThreshold: 2
