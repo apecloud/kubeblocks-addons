@@ -1,32 +1,37 @@
-
-
+{{- $meta_mysql_from_service_ref := fromJson "{}" }}
+{{- if index $.component "serviceReferences" }}
+  {{- range $i, $e := $.component.serviceReferences }}
+    {{- if eq $i "metaMysql" }}
+      {{- $meta_mysql_from_service_ref = $e }}
+      {{- break }}
+    {{- end }}
+  {{- end }}
+{{- end }}
 {
   "MySQLTopologyCredentialsConfigFile": "/usr/local/share/orchestrator/templates/orc-topology.cnf",
-  "MySQLTopologyUser": "orchestrator",
-  "MySQLTopologyPassword": "orchestrator",
   "MySQLTopologySSLPrivateKeyFile": "",
   "MySQLTopologySSLCertFile": "",
   "MySQLTopologySSLCAFile": "",
   "MySQLTopologySSLSkipVerify": true,
   "MySQLTopologyUseMutualTLS": false,
-
-  "MySQLOrchestratorHost": "10.0.175.0",
-  "MySQLOrchestratorPort": 3306,
+  {{- $endpoint :=  splitList ":" $meta_mysql_from_service_ref.spec.endpoint.value | first }}
+  "MySQLOrchestratorHost": {{- printf " \"%s\""   $endpoint}},
+  "MySQLOrchestratorPort": {{- printf " %s" $meta_mysql_from_service_ref.spec.port.value }},
   "MySQLOrchestratorDatabase": "orchestrator",
-  "MySQLOrchestratorCredentialsConfigFile": "/usr/local/share/orchestrator/templates/orc-topology.cnf",
-  "MySQLOrchestratorUser": "orchestrator",
-  "MySQLOrchestratorPassword": "orchestrator",
+  "MySQLOrchestratorCredentialsConfigFile": "/usr/local/share/orchestrator/templates/orc-backend.cnf",
 
+  "DetectClusterAliasQuery": "select ifnull(max(cluster_name), '') as cluster_alias from kb_orc_meta_cluster.kb_orc_meta_cluster where anchor=1",
   "ApplyMySQLPromotionAfterMasterFailover": true,
   "Debug": false,
   "DetachLostReplicasAfterMasterFailover": true,
-  "MySQLHostnameResolveMethod": "",
   "FailMasterPromotionIfSQLThreadNotUpToDate": true,
+  "MySQLOrchestratorRejectReadOnly": true,
 
   "AutoPseudoGTID": true,
   "HTTPAdvertise": "http://orc-cluster-mysql:80",
 
   "HostnameResolveMethod": "none",
+  "MySQLHostnameResolveMethod": "@@report_host",
   "InstancePollSeconds": 5,
   "ListenAddress": ":3000",
   "MasterFailoverLostInstancesDowntimeMinutes": 10,

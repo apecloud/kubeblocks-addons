@@ -3,7 +3,7 @@
 # Declare variables to be passed into your templates.
 
 image:
-  registry: 
+  registry:  registry.cn-hangzhou.aliyuncs.com/apecloud
   repository: mysql
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.

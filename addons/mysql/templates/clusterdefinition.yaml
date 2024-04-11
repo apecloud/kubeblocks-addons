@@ -26,27 +26,12 @@ spec:
           - name: mysql
             port: 3306
             targetPort: mysql
-      monitor:
-        builtIn: false
-        exporterConfig:
-          scrapePath: /metrics
-          scrapePort: {{ .Values.metrics.service.port }}
-      logConfigs:
-        {{- range $name,$pattern := .Values.logConfigs }}
-        - name: {{ $name }}
-          filePathPattern: {{ $pattern }}
-        {{- end }}
       configSpecs:
         - name: mysql-replication-config
           templateRef: oracle-mysql8.0-config-template
           constraintRef: oracle-mysql8.0-config-constraints
           volumeName: mysql-config
           namespace: {{ .Release.Namespace }}
-        - name: agamotto-configuration
-          templateRef: mysql-agamotto-configuration
-          namespace: {{ .Release.Namespace }}
-          volumeName: agamotto-configuration
-          defaultMode: 0444
       scriptSpecs:
         - name: mysql-scripts
           templateRef: mysql-scripts
