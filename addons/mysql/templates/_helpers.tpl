@@ -88,7 +88,7 @@ Define mysql component defintion name
 */}}
 {{- define "proxysql.componentDefName" -}}
 {{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-proxysql
+proxy
 {{- else -}}
 {{- printf "proxysql-%s" .Values.compDefinitionVersionSuffix -}}
 {{- end -}}

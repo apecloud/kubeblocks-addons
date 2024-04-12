@@ -5,6 +5,8 @@ metadata:
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
   annotations:
     kubeblocks.io/extra-env: '{ "MYSQL_TOPOLOGY_MODE": {{ default "standalone" .Values.mode | quote }} }'
+    kubeblocks.io/enabled-node-port-svc: mysql,proxysql
+    kubeblocks.io/enabled-pod-ordinal-svc: mysql,proxysql
 spec:
 
   clusterVersionRef: {{ .Values.version }}
@@ -13,31 +15,42 @@ spec:
   clusterDefinitionRef: mysql # ref clusterdefinition.name
   componentSpecs:
     - name: mysql
+      replicas: {{ .Values.replicas }}
+      componentDefRef: mysql # ref clusterdefinition componentDefs.name
       {{- $clusterversion := .Values.version }}
-      {{- if .Values.haComponent.orchestrator.enable }}
+      {{- if .Values.orchestrator.enable }}
       {{- $clusterversion = printf "%s-orc" $clusterversion }}
       {{- end }}
-      componentDefRef: mysql # ref clusterdefinition componentDefs.name
-      componentRef: {{ $clusterversion }}
+      componentDef: {{ $clusterversion }}
       {{- include "mysql-cluster.replicaCount" . | indent 6 }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentServices" . | indent 6 }}
-      {{- if .Values.haComponent.orchestrator.enable }}
+      {{- if .Values.orchestrator.enable }}
       serviceRefs:
-        {{- if eq .Values.serviceReference.orchestrator.cluster ""}}
+        {{- if eq .Values.orchestrator.serviceReference.cluster ""}}
         - name: orchestrator
-          namespace: {{ .Values.serviceReference.orchestrator.namespace | default .Release.Namespace }}
-          serviceDescriptor: orchestrator-service-descriptor
+          namespace: {{ .Values.orchestrator.serviceReference.namespace | default .Release.Namespace }}
+          serviceDescriptor: orchestrator-servicedescriptor
         {{- else}}
         - name: orchestrator
-          namespace: {{ .Values.serviceReference.orchestrator.namespace | default .Release.Namespace }}
-          cluster: {{ .Values.serviceReference.orchestrator.cluster | default "orc-cluster"}}
+          namespace: {{ .Values.orchestrator.serviceReference.namespace | default .Release.Namespace }}
+          cluster: {{ .Values.orchestrator.serviceReference.cluster | default "orc-cluster"}}
         {{- end }}
       {{- end }}
     {{- if eq .Values.proxysql.enable true }}
     - name: proxysql
-      componentDefRef: proxysql # ref clusterdefinition componentDefs.name
+      {{- $version := trimPrefix "mysql-" .Values.version }}
+      {{- $proxyversion := "" }}
+      {{-  if eq "5.7.44" $version }}
+      {{- $proxyversion = "proxy-5.7" }}
+      {{- else }}
+      {{- $proxyversion = printf "proxy-8.0" }}
+      {{- end }}
+      {{- if .Values.orchestrator.enable }}
+      {{- $proxyversion = printf "%s-orc" $proxyversion }}
+      {{- end }}
+      componentDef: {{ $proxyversion }} # ref clusterdefinition componentDefs.name
       replicas: {{.Values.proxysql.replicas}}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentResources" . | indent 6 }}

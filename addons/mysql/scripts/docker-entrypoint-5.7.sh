@@ -460,6 +460,13 @@ _main() {
 			mysql_socket_fix
 		fi
 	fi
+
+  (
+  if [[ ${HA_COMPNENT} == "orchestrator" ]]; then
+    /scripts/init-mysql-instance-for-orc.sh
+  fi
+  ) &
+
 	exec "$@"
 }
 

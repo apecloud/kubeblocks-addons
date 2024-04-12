@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "proxysql.componentDefName" . }}
+  name: {{ include "proxysql.componentDefName" . }}-5.7
   labels:
       {{- include "mysql.labels" . | nindent 4 }}
 spec:
@@ -12,16 +12,17 @@ spec:
 
   configs:
     - name: proxy-config
-      templateRef: mysql-proxy-config
+      templateRef: mysql-proxysql-config
       namespace: {{ .Release.Namespace }}
       volumeName: proxy-config
       reRenderResourceTypes:
         - replicas
       asEnvFrom:
         - proxysql
+        - proxy
   scripts:
     - name: proxysql-scripts
-      templateRef: proxysql-scripts
+      templateRef: mysql-proxysql-scripts
       namespace: {{ .Release.Namespace }}
       volumeName: proxysql-scripts
       defaultMode: 0555
@@ -48,7 +49,7 @@ spec:
     - name: BACKEND_SERVER
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "mysql.componentDefName" . }}
+          compDef: {{ include "mysql.componentDefName" . }}-5.7.44
           name: mysql-server
           host: Required
           optional: true
@@ -56,7 +57,7 @@ spec:
     - name: MYSQL_ORDINAL_HOST
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "mysql.componentDefName" . }}
+          compDef: {{ include "mysql.componentDefName" . }}-5.7.44
           name: mysql
           generatePodOrdinalServiceVar: true
           host: Required
@@ -66,7 +67,7 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "mysql.componentDefName" . }}
+          compDef: {{ include "mysql.componentDefName" . }}-5.7.44
           name: root
           username: Required
 
@@ -75,7 +76,7 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "mysql.componentDefName" . }}
+          compDef: {{ include "mysql.componentDefName" . }}-5.7.44
           name: root
           password: Required
 
@@ -83,7 +84,7 @@ spec:
     - name: MYSQL_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "mysql.componentDefName" . }}
+          compDef: {{ include "mysql.componentDefName" . }}-5.7.44
           name: mysql
           generatePodOrdinalServiceVar: true
           optional: true
@@ -94,7 +95,7 @@ spec:
     - name: PROXYSQL_HOST_NAME
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "proxysql.componentDefName" . }}
+          compDef: {{ include "proxysql.componentDefName" . }}-5.7
           name: proxy-ordinal
           generatePodOrdinalServiceVar: true
           host: Required
@@ -102,14 +103,12 @@ spec:
     - name: PROXYSQL_ADMIN_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "proxysql.componentDefName" . }}
+          compDef: {{ include "proxysql.componentDefName" . }}-5.7
           name: proxy-ordinal
           generatePodOrdinalServiceVar: true
           port:
             name: admin
             option: Optional
-
-
   runtime:
     volumes:
     containers:
@@ -146,7 +145,3 @@ spec:
           - containerPort: 6070
             name: metrics
             protocol: TCP
-        envFrom:
-          - secretRef:
-              name: cluster1-env-vars-proxysql
-              optional: true

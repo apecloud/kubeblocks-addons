@@ -4,7 +4,7 @@
 {{- $mysql_component := fromJson "{}" }}
 {{- range $i, $e := $.cluster.spec.componentSpecs }}
   {{- if index $e "componentDef" }}
-    {{- if eq $e.componentDef "mysql" }}
+    {{- if hasPrefix "mysql" $e.componentDef  }}
       {{- $mysql_component = $e }}
     {{- end }}
   {{- end }}
@@ -14,7 +14,7 @@
 {{- $proxysql_component := fromJson "{}" }}
 {{- range $i, $e := $.cluster.spec.componentSpecs }}
   {{- if index $e "componentDef" }}
-    {{- if eq $e.componentDef "proxysql" }}
+    {{- if hasPrefix "proxy" $e.componentDef  }}
       {{- $proxysql_component = $e }}
     {{- end }}
   {{- end }}

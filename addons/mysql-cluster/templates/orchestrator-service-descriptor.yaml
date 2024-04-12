@@ -1,0 +1,13 @@
+{{- if eq .Values.orchestrator.serviceReference.cluster ""}}
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ServiceDescriptor
+metadata:
+  name: orchestrator-servicedescriptor
+spec:
+  serviceKind: orchestrator
+  serviceVersion: 2.0.23
+  endpoint:
+    value: {{ .Values.orchestrator.serviceReference.endpoint }}
+  port:
+    value: "{{ .Values.orchestrator.serviceReference.port }}"
+{{- end }}

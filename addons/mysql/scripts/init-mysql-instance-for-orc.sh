@@ -1,6 +1,26 @@
 #!/bin/sh
 set -ex
 
+# logging functions
+mysql_log() {
+	local type="$1"; shift
+	# accept argument string or stdin
+	local text="$*"; if [ "$#" -eq 0 ]; then text="$(cat)"; fi
+	local dt; dt="$(date --rfc-3339=seconds)"
+	printf '%s [%s] [Entrypoint]: %s\n' "$dt" "$type" "$text"
+}
+mysql_note() {
+	mysql_log Note "$@"
+}
+mysql_warn() {
+	mysql_log Warn "$@" >&2
+}
+mysql_error() {
+	mysql_log ERROR "$@" >&2
+	exit 1
+}
+
+
 mysql_port="3306"
 topology_user="$ORC_TOPOLOGY_USER"
 topology_password="$ORC_TOPOLOGY_PASSWORD"
@@ -10,36 +30,36 @@ replica_count="$KB_REPLICA_COUNT"
 cluster_component_pod_name="$KB_CLUSTER_COMP_NAME"
 component_name="$KB_COMP_NAME"
 kb_cluster_name="$KB_CLUSTER_NAME"
-ORCHESTRATOR_API=""
 
 
 # create orchestrator user in mysql
 create_mysql_user() {
   local service_name=$(echo "${cluster_component_pod_name}_${component_name}_${i}" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
 
-  echo "Create MySQL User and Grant Permissions..."
+  mysql_note "Create MySQL User and Grant Permissions..."
 
   mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD << EOF
 CREATE USER IF NOT EXISTS '$topology_user'@'%' IDENTIFIED BY '$topology_password';
 GRANT SUPER, PROCESS, REPLICATION SLAVE, RELOAD ON *.* TO '$topology_user'@'%';
 GRANT SELECT ON mysql.slave_master_info TO '$topology_user'@'%';
 GRANT DROP ON _pseudo_gtid_.* to '$topology_user'@'%';
+GRANT ALL ON kb_orc_meta_cluster.* TO '$topology_user'@'%';
 CREATE USER IF NOT EXISTS 'proxysql'@'%' IDENTIFIED BY 'proxysql';
 GRANT SELECT ON performance_schema.* TO 'proxysql'@'%';
 GRANT SELECT ON sys.* TO 'proxysql'@'%';
 set global slave_net_timeout = 4;
 EOF
 
-  echo "Create MySQL User and Grant Permissions completed."
+  mysql_note "Create MySQL User and Grant Permissions completed."
 
 }
 
 init_cluster_info_database() {
-  local service_name=$(echo "${cluster_component_pod_name}_${component_name}_${i}" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
-  echo "init cluster info database"
+  i=$1
+  local service_name=$(echo "${cluster_component_pod_name}_${component_name}_${i}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+  mysql_note "init cluster info database"
   mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD << EOF
-CREATE DATABASE  kb_orc_meta_cluster;
-GRANT ALL ON kb_orc_meta_cluster.* TO '$topology_user'@'%';
+CREATE DATABASE IF NOT EXISTS kb_orc_meta_cluster;
 EOF
   mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e 'source /scripts/cluster-info.sql'
   mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e 'source /scripts/addition_to_sys_v8.sql'
@@ -62,17 +82,17 @@ wait_for_connectivity() {
   local start_time=$(date +%s)
   local current_time
 
-  echo "Checking mysql connectivity to $host on port $mysql_port ..."
+  mysql_note "Checking mysql connectivity to $host on port $mysql_port ..."
   while true; do
     current_time=$(date +%s)
     if [ $((current_time - start_time)) -gt $timeout ]; then
-      echo "Timeout waiting for $host to become available."
+      mysql_note "Timeout waiting for $host to become available."
       exit 1
     fi
 
     # Send PING and check for mysql response
     if  mysqladmin -P 3306 -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" PING | grep -q "mysqld is alive"; then
-      echo "mysql is reachable."
+      mysql_note "mysql is reachable."
       break
     fi
 
@@ -81,14 +101,12 @@ wait_for_connectivity() {
 }
 
 setup_master_slave() {
-  echo "setup_master_slave"
+  mysql_note "setup_master_slave"
   master_host_name=$(echo "${cluster_component_pod_name}_${component_name}_0_SERVICE_HOST" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
   master_host=${!master_host_name}
-  echo "wait_for_connectivity"
+  mysql_note "wait_for_connectivity"
   wait_for_connectivity
 
-
-  get_master_from_orc
 
   last_digit=${KB_POD_NAME##*-}
   if [[ $last_digit -eq 0 ]]; then
@@ -96,16 +114,15 @@ setup_master_slave() {
     create_mysql_user
 
   else
-    echo "Wait for master to be ready"
+    mysql_note "Wait for master to be ready"
     change_master "$master_host"
   fi
-  init_cluster_info_database
+  return 0
 }
 
 get_master_from_orc() {
   topology_info=$(/scripts/orchestrator-client -c topology -i $kb_cluster_name)
   if [[ $output =~ ^ERROR ]]; then
-      echo "Error retrieving topology information"
       return 1
   fi
   # Extract the first line
@@ -139,7 +156,7 @@ get_master_from_orc() {
 }
 
 change_master() {
-  echo "Change master"
+  mysql_note "Change master"
   master_host=$1
   master_port=3306
 
@@ -147,8 +164,8 @@ change_master() {
   password=$mysql_password
 
   mysql -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" << EOF
-STOP SLAVE;
 SET GLOBAL READ_ONLY=1;
+STOP SLAVE;
 CHANGE MASTER TO
 MASTER_CONNECT_RETRY=1,
 MASTER_RETRY_COUNT=86400,
@@ -158,7 +175,7 @@ MASTER_USER='$MYSQL_ROOT_USER',
 MASTER_PASSWORD='$MYSQL_ROOT_PASSWORD';
 START SLAVE;
 EOF
-  echo "CHANGE MASTER successful for $master_host."
+  mysql_note "CHANGE MASTER successful for $master_host."
 
 }
 main() {

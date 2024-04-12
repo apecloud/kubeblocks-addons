@@ -34,13 +34,13 @@ spec:
             targetPort: mysql
   configs:
     - name: mysql-replication-config
-      templateRef: mysql8.0-config-template
-      constraintRef: mysql8.0-config-constraints
+      templateRef: oracle-mysql8.0-config-template
+      constraintRef: oracle-mysql8.0-config-constraints
       volumeName: mysql-config
       namespace: {{ .Release.Namespace }}
   scripts:
     - name: orc-mysql-scripts
-      templateRef: orc-mysql-scripts
+      templateRef: mysql-scripts
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
@@ -63,7 +63,7 @@ spec:
           command:
             - bash
             - -c
-            - "/scripts/mysql-orchestrator-register.sh;sleep 1000000000000000000"
+            - "/scripts/mysql-orchestrator-register.sh;"
         preCondition: ComponentReady
     preTerminate:
       customHandler:
@@ -72,7 +72,7 @@ spec:
           command:
             - bash
             - -c
-            - "/scripts/orchestrator-client -c forget -i ${KB_CLUSTER_NAME};sleep 1000000000000000000"
+            - "/scripts/orchestrator-client -c forget -i ${KB_CLUSTER_NAME};"
         preCondition: Immediately
   runtime:
     initContainers:
@@ -99,7 +99,7 @@ spec:
             name: kubeblocks
     containers:
       - name: mysql
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+        image: {{ .Values.image.registry | default "docker.io" }}/mysql-jq:8.0.33
         imagePullPolicy: IfNotPresent
         command:
           - bash
@@ -143,6 +143,8 @@ spec:
             value: {{ .Values.orchestrator.topology.password }}
           - name: ORC_TOPOLOGY_PASSWORD
             value: {{ .Values.orchestrator.topology.password }}
+          - name: HA_COMPNENT
+            value: orchestrator
           - name: KB_POD_NAME
             valueFrom:
               fieldRef:
@@ -154,7 +156,7 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "mysql.componentDefName" . }}
+          compDef: {{ include "mysql.componentDefName" . }}-8.0.33-orc
           name: root
           username: Required
 
@@ -163,7 +165,7 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "mysql.componentDefName" . }}
+          compDef: {{ include "mysql.componentDefName" . }}-8.0.33-orc
           name: root
           password: Required
 
@@ -171,7 +173,7 @@ spec:
     - name: MYSQL_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "mysql.componentDefName" . }}
+          compDef: {{ include "mysql.componentDefName" . }}-8.0.33-orc
           name: mysql
           generatePodOrdinalServiceVar: true
           optional: true
@@ -182,7 +184,7 @@ spec:
     - name: MYSQL_ORDINAL_HOST
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "mysql.componentDefName" . }}
+          compDef: {{ include "mysql.componentDefName" . }}-8.0.33-orc
           name: mysql
           generatePodOrdinalServiceVar: true
           host: Required
@@ -190,13 +192,13 @@ spec:
     - name: ORC_ENDPOINTS
       valueFrom:
         serviceRefVarRef:
-          compDef: {{ include "mysql.componentDefName" . }}
+          compDef: {{ include "mysql.componentDefName" . }}-8.0.33-orc
           name: orchestrator
           endpoint: Required
 
     - name: ORC_PORTS
       valueFrom:
         serviceRefVarRef:
-          compDef: {{ include "mysql.componentDefName" . }}
+          compDef: {{ include "mysql.componentDefName" . }}-8.0.33-orc
           name: orchestrator
           port: Required

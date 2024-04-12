@@ -7,7 +7,7 @@ raftGroup mode: 3 or more
 orchestrator mode: 2 or more
 */}}
 {{- define "mysql-cluster.replicaCount" -}}
-{{- if eq .Values.haComponent.orchestrator.enable }}
+{{- if .Values.orchestrator.enable }}
 replicas: {{ max .Values.replicas 2 }}
 {{- else }}
     {{- if eq .Values.mode "standalone" }}

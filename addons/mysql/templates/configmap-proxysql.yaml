@@ -4,5 +4,5 @@ data:
     {{- .Files.Get "config/proxysql.tpl" | nindent 4 }}
 kind: ConfigMap
 metadata:
-  name: mysql-proxy-config
+  name: mysql-proxysql-config
 

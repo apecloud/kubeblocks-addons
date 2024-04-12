@@ -49,28 +49,13 @@ spec:
         numDigits: 5
         numSymbols: 0
         letterCase: MixedCases
-  lifecycleActions:
-    postProvision:
-      customHandler:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
-        exec:
-          command:
-            - bash
-            - -c
-            - "/scripts/mysql-orchestrator-register.sh;sleep 1000000000000000000"
-        preCondition: ComponentReady
-    preTerminate:
-      customHandler:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
-        exec:
-          command:
-            - bash
-            - -c
-            - "/scripts/orchestrator-client -c forget -i ${KB_CLUSTER_NAME};sleep 1000000000000000000"
-        preCondition: Immediately
+  roleProbe:
+    builtinHandler: mysql
+    periodSeconds: {{ .Values.roleProbe.periodSeconds }}
+    timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
   runtime:
     initContainers:
-      - image: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log: {{ .Values.image.tag }}
+      - image: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:{{ .Values.image.tag }}
         name: init-data
       - command:
           - cp
@@ -163,7 +148,7 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "mysql.componentDefName" . }}
+          compDef: {{ include "mysql.componentDefName" . }}-5.7.44
           name: root
           username: Required
 
@@ -172,7 +157,7 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "mysql.componentDefName" . }}
+          compDef: {{ include "mysql.componentDefName" . }}-5.7.44
           name: root
           password: Required
 
@@ -180,7 +165,7 @@ spec:
     - name: MYSQL_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "mysql.componentDefName" . }}
+          compDef: {{ include "mysql.componentDefName" . }}-5.7.44
           name: mysql
           generatePodOrdinalServiceVar: true
           optional: true
@@ -191,7 +176,7 @@ spec:
     - name: MYSQL_ORDINAL_HOST
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "mysql.componentDefName" . }}
+          compDef: {{ include "mysql.componentDefName" . }}-5.7.44
           name: mysql
           generatePodOrdinalServiceVar: true
           host: Required
@@ -199,13 +184,13 @@ spec:
     - name: ORC_ENDPOINTS
       valueFrom:
         serviceRefVarRef:
-          compDef: {{ include "mysql.componentDefName" . }}
+          compDef: {{ include "mysql.componentDefName" . }}-5.7.44
           name: orchestrator
           endpoint: Required
 
     - name: ORC_PORTS
       valueFrom:
         serviceRefVarRef:
-          compDef: {{ include "mysql.componentDefName" . }}
+          compDef: {{ include "mysql.componentDefName" . }}-5.7.44
           name: orchestrator
           port: Required
