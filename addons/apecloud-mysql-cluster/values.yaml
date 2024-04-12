@@ -42,3 +42,7 @@ proxyEnabled: false
 ## customized default values to override kblib chart's values
 extra:
   podAntiAffinity: Required
+
+## metrics sidecars
+sidecars:
+  - mysql-exporter

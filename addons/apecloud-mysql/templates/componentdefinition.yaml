@@ -32,11 +32,6 @@ spec:
       constraintRef: {{ include "apecloud-mysql.configConstraintName" . }}
       volumeName: mysql-config
       namespace: {{ .Release.Namespace }}
-    - name: agamotto-configuration
-      templateRef: {{ include "apecloud-mysql.agamottoCfgName" . }}
-      namespace: {{ .Release.Namespace }}
-      volumeName: agamotto-configuration
-      defaultMode: 0444  # for only read, mysql container switched user account.
     - name: vttablet-config
       templateRef: {{ include "apecloud-mysql.configTplVttabletName" . }}
       constraintRef: {{ include "apecloud-mysql.configConstraintVttabletName" . }}
@@ -47,11 +42,6 @@ spec:
     - name: {{ $name }}
       filePathPattern: {{ $pattern }}
     {{- end }}
-  monitor:
-    builtIn: false
-    exporterConfig:
-      scrapePath: /metrics
-      scrapePort: {{ .Values.metrics.service.port }}
   scripts:
     - name: apecloud-mysql-scripts
       templateRef: {{ include "apecloud-mysql.cmScriptsName" . }}
@@ -198,33 +188,6 @@ spec:
           preStop:
             exec:
               command: [ "/scripts/pre-stop.sh" ]
-      - name: metrics
-        image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
-        imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
-        command: [ "/scripts/agamotto.sh" ]
-        env:
-          - name: DB_TYPE
-            value: MySQL
-          - name: ENDPOINT
-            value: {{ printf "localhost:3306" }}
-        volumeMounts:
-          - name: agamotto-configuration
-            mountPath: /opt/agamotto
-          - name: data
-            mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
-          {{- if .Values.logCollector.enabled }}
-          - name: log-data
-            mountPath: /var/log/kubeblocks
-            readOnly: false
-          {{- end }}
-          - name: scripts
-            mountPath: /scripts
-        ports:
-          - name: http-metrics
-            containerPort: {{ .Values.metrics.service.port }}
-        securityContext:
-          runAsNonRoot: false
-          runAsUser: 0
     volumes:
       {{- if .Values.logCollector.enabled }}
       - name: log-data
@@ -241,6 +204,47 @@ spec:
             - path: "component-replicas"
               fieldRef:
                 fieldPath: metadata.annotations['apps.kubeblocks.io/component-replicas']
+  sidecarContainerSpecs:
+    - monitor:
+        kind: metrics
+        scrapeConfig:
+          metricsPath: /metrics
+          metricsPort: http-metrics
+      name: mysql-exporter
+      command: ["/scripts/exporter_start.sh"]
+      env:
+        - name: MYSQLD_EXPORTER_USER
+          value: $(MYSQL_USER)
+        - name: MYSQLD_EXPORTER_PASSWORD
+          value: $(MYSQL_PASSWORD)
+        - name: EXPORTER_WEB_PORT
+          value: "{{ .Values.metrics.service.port }}"
+      image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
+      imagePullPolicy: IfNotPresent
+      livenessProbe:
+        failureThreshold: 3
+        httpGet:
+          path: /
+          port: {{ .Values.metrics.service.port }}
+          scheme: HTTP
+        periodSeconds: 10
+        successThreshold: 1
+        timeoutSeconds: 1
+      ports:
+        - name: http-metrics
+          containerPort: {{ .Values.metrics.service.port }}
+      readinessProbe:
+        failureThreshold: 3
+        httpGet:
+          path: /
+          port: {{ .Values.metrics.service.port }}
+          scheme: HTTP
+        periodSeconds: 10
+        successThreshold: 1
+        timeoutSeconds: 1
+      volumeMounts:
+        - name: scripts
+          mountPath: /scripts
   vars:
     - name: MYSQL_USER
       valueFrom:
