@@ -145,7 +145,7 @@ parse_redis_advertised_svc_if_exist() {
 
   if [[ "$found" == false ]]; then
     echo "Error: No matching svcName and port found for podName '$pod_name', REDIS_ADVERTISED_PORT: $REDIS_ADVERTISED_PORT. Exiting."
-    return 1
+    exit 1
   fi
 }
 

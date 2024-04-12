@@ -10,22 +10,18 @@ spec:
   serviceKind: redis-cluster
   serviceVersion: 7.0.6
   services:
-    - name: redis
-      serviceName: redis
-      spec:
-        ports:
-          - name: redis
-            port: 6379
-            targetPort: redis-cluster
-      roleSelector: primary
     - name: redis-advertised
       serviceName: redis-advertised
       spec:
+        ## the type can override in cluster componentSpec services
         type: NodePort
         ports:
         - name: redis-advertised
           port: 6379
           targetPort: redis-cluster
+        - name: advertised-bus
+          port: 16379
+          targetPort: cluster-bus
       podService: true
       disableAutoProvision: true
   updateStrategy: BestEffortParallel
@@ -104,6 +100,16 @@ spec:
           port:
             name: redis-advertised
             option: Optional
+    ## the redis cluster advertised service bus port list for each pod, the value format is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."
+    - name: REDIS_CLUSTER_ADVERTISED_BUS_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redis-cluster.componentDefName" . }}
+          name: redis-advertised
+          optional: true
+          port:
+            name: advertised-bus
+            option: Optional
     ## the redis cluster advertised service name list for each pod, the value format is "pod1Svc,pod2Svc,..."
     - name: REDIS_CLUSTER_ADVERTISED_SVC_NAME
       valueFrom:
@@ -163,8 +169,6 @@ spec:
             mountPath: /scripts
           - name: redis-conf
             mountPath: /etc/redis
-          - name: pod-info
-            mountPath: /kb-podinfo
         env:
           - name: SERVICE_PORT
             value: "6379"
