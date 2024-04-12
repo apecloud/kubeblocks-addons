@@ -55,7 +55,7 @@ spec:
     timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
   runtime:
     initContainers:
-      - image: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:{{ .Values.image.tag }}
+      - image: {{ .Values.image.registry | default "docker.io" }}/mysql_audit_log:{{ .Values.image.tag }}
         name: init-data
       - command:
           - cp
@@ -160,37 +160,3 @@ spec:
           compDef: {{ include "mysql.componentDefName" . }}-5.7.44
           name: root
           password: Required
-
-
-    - name: MYSQL_PORT
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "mysql.componentDefName" . }}-5.7.44
-          name: mysql
-          generatePodOrdinalServiceVar: true
-          optional: true
-          port:
-            name: mysql
-            option: Optional
-
-    - name: MYSQL_ORDINAL_HOST
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "mysql.componentDefName" . }}-5.7.44
-          name: mysql
-          generatePodOrdinalServiceVar: true
-          host: Required
-
-    - name: ORC_ENDPOINTS
-      valueFrom:
-        serviceRefVarRef:
-          compDef: {{ include "mysql.componentDefName" . }}-5.7.44
-          name: orchestrator
-          endpoint: Required
-
-    - name: ORC_PORTS
-      valueFrom:
-        serviceRefVarRef:
-          compDef: {{ include "mysql.componentDefName" . }}-5.7.44
-          name: orchestrator
-          port: Required

@@ -31,7 +31,7 @@ spec:
         {{- if eq .Values.orchestrator.serviceReference.cluster ""}}
         - name: orchestrator
           namespace: {{ .Values.orchestrator.serviceReference.namespace | default .Release.Namespace }}
-          serviceDescriptor: orchestrator-servicedescriptor
+          serviceDescriptor: {{ include "kblib.clusterName" . }}-orc-descriptor
         {{- else}}
         - name: orchestrator
           namespace: {{ .Values.orchestrator.serviceReference.namespace | default .Release.Namespace }}
