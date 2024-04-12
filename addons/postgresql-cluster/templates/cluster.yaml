@@ -3,11 +3,15 @@
   componentSpecs:
     - name: postgresql
       componentDefRef: postgresql
-      {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "postgresql-cluster.replicaCount" . | indent 6 }}
       enabledLogs:
         - running
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      {{- if .Values.monitorEnabled }}
+      sidecars:
+        - exporter
+      monitorEnabled: true
+      {{- end }}
       switchPolicy:
         type: Noop
       {{- include "kblib.componentResources" . | indent 6 }}
