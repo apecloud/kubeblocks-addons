@@ -1,40 +1,5 @@
 {{/*
-Define common fileds of cluster object
-*/}}
-{{- define "redis-cluster.clusterCommonWithNodePort" }}
-apiVersion: apps.kubeblocks.io/v1alpha1
-kind: Cluster
-metadata:
-  name: {{ include "kblib.clusterName" . }}
-  namespace: {{ .Release.Namespace }}
-  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
-  annotations:
-    {{- include "redis-cluster.nodeportFeatureGate" . | nindent 4 }}
-spec:
-  clusterVersionRef: {{ .Values.version }}
-  terminationPolicy: {{ .Values.extra.terminationPolicy }}
-  {{- include "kblib.affinity" . | indent 2 }}
-{{- end }}
-
-{{/*
-Define redis cluster annotation keys for nodeport feature gate.
-*/}}
-{{- define "redis-cluster.nodeportFeatureGate" -}}
-kubeblocks.io/enabled-node-port-svc: redis,redis-sentinel
-kubeblocks.io/enabled-pod-ordinal-svc: redis,redis-sentinel
-{{- end }}
-
-{{/*
-Define redis cluster annotation keys for cluster mode nodeport feature gate.
-*/}}
-{{- define "redis-cluster.clusterNodeportFeatureGate" -}}
-kubeblocks.io/enabled-node-port-svc: shard
-kubeblocks.io/enabled-pod-ordinal-svc: shard
-kubeblocks.io/enabled-shard-svc: shard
-{{- end }}
-
-{{/*
-Define redis cluster mode shardingSpec
+Define redis cluster shardingSpec with ComponentDefinition.
 */}}
 {{- define "redis-cluster.shardingSpec" }}
 - name: shard
@@ -43,6 +8,12 @@ Define redis cluster mode shardingSpec
     name: redis
     componentDef: redis-cluster
     replicas: {{ .Values.replicas }}
+    {{- if .Values.nodePortEnabled }}
+    services:
+    - name: redis-advertised
+      serviceType: NodePort
+      podService: true
+    {{- end }}
     resources:
       limits:
         cpu: {{ .Values.cpu | quote }}
@@ -60,11 +31,92 @@ Define redis cluster mode shardingSpec
               storage: {{ print .Values.storage "Gi" }}
 {{- end }}
 
+{{/*
+Define redis ComponentSpec with ComponentDefinition.
+*/}}
+{{- define "redis-cluster.componentSpec" }}
+- name: redis
+  componentDef: redis
+  {{- include "kblib.componentMonitor" . | indent 2 }}
+  {{- include "redis-cluster.replicaCount" . | indent 2 }}
+  {{- if .Values.nodePortEnabled }}
+  services:
+  - name: redis-advertised
+    serviceType: NodePort
+    podService: true
+  {{- end }}
+  enabledLogs:
+    - running
+  serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+  switchPolicy:
+    type: Noop
+  {{- include "kblib.componentResources" . | indent 2 }}
+  {{- include "kblib.componentStorages" . | indent 2 }}
+{{- if and (eq .Values.mode "replication") .Values.sentinel.enabled }}
+{{- include "redis-cluster.sentinelComponentSpec" . }}
+{{- end }}
+{{- end }}
 
 {{/*
-Define redis cluster sentinel component.
+Define redis sentinel ComponentSpec with ComponentDefinition.
 */}}
-{{- define "redis-cluster.sentinel" }}
+{{- define "redis-cluster.sentinelComponentSpec" }}
+- componentDef: redis-sentinel
+  name: redis-sentinel
+  replicas: {{ .Values.sentinel.replicas }}
+  {{- if .Values.nodePortEnabled }}
+  services:
+  - name: sentinel-advertised
+    serviceType: NodePort
+    podService: true
+  {{- end }}
+  resources:
+    limits:
+      cpu: {{ .Values.sentinel.cpu | quote }}
+      memory:  {{ print .Values.sentinel.memory "Gi" | quote }}
+    requests:
+      cpu: {{ .Values.sentinel.cpu | quote }}
+      memory:  {{ print .Values.sentinel.memory "Gi" | quote }}
+  volumeClaimTemplates:
+    - name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ print .Values.sentinel.storage "Gi" }}
+{{- end }}
+
+{{/*
+Define redis ComponentSpec with legacy ClusterDefinition which will be deprecated in the future.
+*/}}
+{{- define "redis-cluster.legacyComponentSpec" }}
+- name: redis
+  componentDefRef: redis # ref clusterDefinition componentDefs.name
+  {{- include "kblib.componentMonitor" . | indent 2 }}
+  {{- include "redis-cluster.replicaCount" . | indent 2 }}
+  enabledLogs:
+    - running
+  serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+  switchPolicy:
+    type: Noop
+  {{- include "kblib.componentResources" . | indent 2 }}
+  {{- include "kblib.componentStorages" . | indent 2 }}
+  {{- include "kblib.componentServices" . | indent 2 }}
+
+{{- if and (eq .Values.mode "replication") .Values.twemproxy.enabled }}
+{{- include "redis-cluster.legacyTwemproxyComponentSpec" . | indent 4 }}
+{{- end }}
+
+{{- if and (eq .Values.mode "replication") .Values.sentinel.enabled }}
+{{- include "redis-cluster.legacySentinelComponentSpec" . }}
+{{- end }}
+{{- end }}
+
+{{/*
+Define redis sentinel ComponentSpec with legacy ClusterDefinition which will be deprecated in the future.
+*/}}
+{{- define "redis-cluster.legacySentinelComponentSpec" }}
 - name: redis-sentinel
   componentDefRef: redis-sentinel
   replicas: {{ .Values.sentinel.replicas }}
@@ -85,11 +137,10 @@ Define redis cluster sentinel component.
             storage: {{ print .Values.sentinel.storage "Gi" }}
 {{- end }}
 
-
 {{/*
-Define redis cluster twemproxy component.
+Define twemproxy ComponentSpec with legacy ClusterDefinition which will be deprecated in the future.
 */}}
-{{- define "redis-cluster.twemproxy" }}
+{{- define "redis-cluster.legacyTwemproxyComponentSpec" }}
 - name: redis-twemproxy
   componentDefRef: redis-twemproxy
   serviceAccountName: {{ include "kblib.serviceAccountName" . }}
@@ -101,28 +152,6 @@ Define redis cluster twemproxy component.
     requests:
       cpu: {{ .Values.twemproxy.cpu | quote }}
       memory: {{ print .Values.twemproxy.memory "Gi" | quote }}
-{{- end }}
-
-*/}}
-{{- define "redis-cluster.sentinelCompDef" }}
-- componentDef: redis-sentinel
-  name: redis-sentinel
-  replicas: {{ .Values.sentinel.replicas }}
-  resources:
-    limits:
-      cpu: {{ .Values.sentinel.cpu | quote }}
-      memory:  {{ print .Values.sentinel.memory "Gi" | quote }}
-    requests:
-      cpu: {{ .Values.sentinel.cpu | quote }}
-      memory:  {{ print .Values.sentinel.memory "Gi" | quote }}
-  volumeClaimTemplates:
-    - name: data
-      spec:
-        accessModes:
-          - ReadWriteOnce
-        resources:
-          requests:
-            storage: {{ print .Values.sentinel.storage "Gi" }}
 {{- end }}
 
 {{/*
