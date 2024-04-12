@@ -7,11 +7,7 @@
       enabledLogs:
         - running
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
-      {{- if .Values.monitorEnabled }}
-      sidecars:
-        - exporter
-      monitorEnabled: true
-      {{- end }}
+      {{- include "kblib.componentMonitor" . | indent 6 }}
       switchPolicy:
         type: Noop
       {{- include "kblib.componentResources" . | indent 6 }}

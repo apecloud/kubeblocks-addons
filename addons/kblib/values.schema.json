@@ -2,13 +2,11 @@
   "$schema": "http://json-schema.org/schema#",
   "type": "object",
   "properties": {
-    "monitoringInterval": {
-      "title": "Monitoring Interval",
-      "description": "The monitoring interval of cluster, 0 is disabled, the unit is second.",
-      "type": "integer",
-      "default": 0,
-      "minimum": 0,
-      "maximum": 60
+    "monitorEnabled": {
+      "title": "Monitor Enabled",
+      "description": "Enable or disable monitor.",
+      "type": "boolean",
+      "default": false
     },
     "terminationPolicy": {
       "title": "Termination Policy",

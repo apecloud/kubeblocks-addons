@@ -33,5 +33,6 @@ requests:
 ##
 storage: 20
 
-## @param monitor
-monitorEnabled: false
+## @param monitor sidecar
+sidecars:
+ - exporter

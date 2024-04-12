@@ -2,7 +2,7 @@
 
 ## @param monitoring interval, 0 is no monitoring
 ##
-monitoringInterval: 0
+monitorEnabled: false
 
 ## @param terminationPolicy
 terminationPolicy: Delete
