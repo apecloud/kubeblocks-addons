@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "elasticsearch.name" . }}-scripts
+  labels:
+    {{- include "elasticsearch.labels" . | nindent 4 }}
+data:
+  pre-stop-hook-script.sh: |-
+    {{- .Files.Get "scripts/pre-stop-hook-script.sh" | nindent 4 }}
+  prepare-fs.sh: |-
+    {{- .Files.Get "scripts/prepare-fs.sh" | nindent 4 }}
+  readiness-probe-script.sh: |-
+    {{- .Files.Get "scripts/readiness-probe-script.sh" | nindent 4 }}
+  suspend.sh: |-
+    {{- .Files.Get "scripts/suspend.sh" | nindent 4 }}

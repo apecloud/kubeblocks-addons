@@ -18,15 +18,17 @@ spec:
             port: 6379
             targetPort: redis
       roleSelector: primary
-    - name: redis-nodeport
-      serviceName: redis-nodeport
-      generatePodOrdinalService: true
+    - name: redis-advertised
+      serviceName: redis-advertised
       spec:
+        ## the type can override in cluster componentSpec services
         type: NodePort
         ports:
-          - name: redis-nodeport
+          - name: redis-advertised
             port: 6379
             targetPort: redis
+      podService: true
+      disableAutoProvision: true
   updateStrategy: BestEffortParallel
   volumes:
     - name: data
@@ -92,24 +94,22 @@ spec:
           compDef: {{ include "redis.componentDefName" . }}
           name: default
           password: Required
-    ## if the redis NodePort type Service with name suffix redis-nodeport-{0,1...} is set, the REDIS_NODE_PORT_{0,1...} will be available
-    - name: REDIS_NODE_PORT
+    ## the redis advertised service port list for each pod, the value format is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."
+    - name: REDIS_ADVERTISED_PORT
       valueFrom:
         serviceVarRef:
           compDef: {{ include "redis.componentDefName" . }}
-          name: redis-nodeport
-          generatePodOrdinalServiceVar: true
+          name: redis-advertised
           optional: true
-          nodePort:
-            name: redis-nodeport
+          port:
+            name: redis-advertised
             option: Optional
-    ## if the redis Service with name suffix redis-nodeport-{0,1...} is set, the REDIS_NODE_PORT_SVC_NAME_{0,1...} will be available
-    - name: REDIS_NODE_PORT_SVC_NAME
+    ## the redis advertised service name list for each pod, the value format is "pod1Svc,pod2Svc,..."
+    - name: REDIS_ADVERTISED_SVC_NAME
       valueFrom:
         serviceVarRef:
           compDef: {{ include "redis.componentDefName" . }}
-          name: redis-nodeport
-          generatePodOrdinalServiceVar: true
+          name: redis-advertised
           optional: true
           host: Optional
     ## the username of redis sentinel for redis connection, it is optional
