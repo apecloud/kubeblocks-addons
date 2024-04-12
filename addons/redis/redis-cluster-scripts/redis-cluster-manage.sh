@@ -166,9 +166,9 @@ wait_for_dns_lookup() {
     dns_lookup "$hostname"
 }
 
-extract_ordinal_from_pod_name() {
-  local pod_name="$1"
-  local ordinal="${pod_name##*-}"
+extract_ordinal_from_object_name() {
+  local object_name="$1"
+  local ordinal="${object_name##*-}"
   echo "$ordinal"
 }
 
@@ -228,8 +228,52 @@ get_current_comp_nodes_for_scale_in() {
     return
   fi
 
+  # if the REDIS_ADVERTISED_PORT is set, parse the advertised ports
+  # the value format of REDIS_ADVERTISED_PORT is "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."
+  declare -A advertised_ports
+  local using_advertised_ports=false
+  if [ ! -z "$REDIS_ADVERTISED_PORT" ]; then
+    using_advertised_ports=true
+    IFS=',' read -ra ADDR <<< "$REDIS_ADVERTISED_PORT"
+    for i in "${ADDR[@]}"; do
+      port=$(echo $i | cut -d':' -f2)
+      advertised_ports[$port]=1
+    done
+  fi
+
   # the output of line is like:
+  # 1. using the pod fqdn as the nodeAddr
   # 4958e6dca033cd1b321922508553fab869a29d 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
+  # 2. using the nodeport or lb ip as the nodeAddr
+  # 4958e6dca033cd1b321922508553fab869a29d 172.10.0.1:31000@16379 master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
+  while read -r line; do
+    # 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc or 172.10.0.1:31000@16379
+    node_ip_port_fields=$(echo "$line" | awk '{print $2}')
+    # ip:port without bus port
+    node_ip_port=$(echo "$node_ip_port_fields" | awk -F '@' '{print $1}')
+    node_port=$(echo "$node_ip_port_fields" | awk -F '@' '{print $1}' | cut -d':' -f2)
+    # redis-shard-sxj-0.redis-shard-sxj-headless.default.svc or ""
+    node_fqdn=$(echo "$line" | awk '{print $2}' | awk -F ',' '{print $2}')
+    node_role=$(echo "$line" | awk '{print $3}')
+    if $using_advertised_ports; then
+      if [[ ${advertised_ports[$node_port]+_} ]]; then
+        if [[ "$node_role" =~ "master" ]]; then
+          current_comp_primary_node+=("$node_ip_port")
+        else
+          current_comp_other_nodes+=("$node_ip_port")
+        fi
+      fi
+    else
+      if [[ "$node_fqdn" =~ "$KB_CLUSTER_COMP_NAME"* ]]; then
+        if [[ "$node_role" =~ "master" ]]; then
+          current_comp_primary_node+=("$node_fqdn:$SERVICE_PORT")
+        else
+          current_comp_other_nodes+=("$node_fqdn:$SERVICE_PORT")
+        fi
+      fi
+    fi
+  done <<< "$cluster_nodes_info"
+
   # TODO: when support nodePort or LoadBalancer, the output of line will not contain the $KB_CLUSTER_COMP_NAME
   while read -r line; do
     node_fqdn=$(echo "$line" | awk '{print $2}' | awk -F ',' '{print $2}')
@@ -258,7 +302,7 @@ init_current_comp_default_nodes_for_scale_out() {
     current_comp_default_other_nodes=()
     local port=$SERVICE_PORT
     for pod_name in $(echo "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" | tr ',' ' '); do
-      pod_name_ordinal=$(extract_ordinal_from_pod_name "$pod_name")
+      pod_name_ordinal=$(extract_ordinal_from_object_name "$pod_name")
       pod_name_prefix=$(extract_pod_name_prefix "$pod_name")
       local pod_fqdn="$pod_name.$pod_name_prefix-headless"
       if [ "$pod_name_ordinal" -eq 0 ]; then
@@ -279,7 +323,7 @@ gen_initialize_redis_cluster_primary_node() {
   local cluster_nodes=()
   local port=$SERVICE_PORT
   for pod_name in $(echo "$KB_CLUSTER_POD_NAME_LIST" | tr ',' ' '); do
-    pod_name_ordinal=$(extract_ordinal_from_pod_name "$pod_name")
+    pod_name_ordinal=$(extract_ordinal_from_object_name "$pod_name")
     if [ "$pod_name_ordinal" -ne 0 ]; then
       continue
     fi
@@ -298,7 +342,7 @@ gen_initialize_redis_cluster_secondary_nodes() {
   local cluster_nodes=()
   local port=$SERVICE_PORT
   for pod_name in $(echo "$KB_CLUSTER_POD_NAME_LIST" | tr ',' ' '); do
-    pod_name_ordinal=$(extract_ordinal_from_pod_name "$pod_name")
+    pod_name_ordinal=$(extract_ordinal_from_object_name "$pod_name")
     if [ "$pod_name_ordinal" -eq 0 ]; then
       continue
     fi
@@ -318,6 +362,39 @@ get_cluster_id() {
   fi
   cluster_id=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $1}')
   echo "$cluster_id"
+}
+
+# return the node string with format nodeAddr:nodePort, nodeAddr maybe the pod fqdn or the nodeport/lb ip, nodePort is the service port or the nodeport
+gen_redis_cluster_node_info() {
+  local pod_name="$1"
+  # get the host ip of the pod
+  local host_ip=$(parse_host_ip_from_built_in_envs "$pod_name" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_POD_HOST_IP_LIST")
+  if [ -z "$host_ip" ]; then
+    echo "Failed to get the host ip of the pod $pod_name"
+    exit 1
+  fi
+  pod_name_ordinal=$(extract_ordinal_from_object_name "$pod_name")
+  pod_name_prefix=$(extract_pod_name_prefix "$pod_name")
+  # try to parse the advertised ip and port from REDIS_ADVERTISED_PORT
+  # the value format of REDIS_ADVERTISED_PORT is "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..." which includes all the pods of current component
+  if [[ -n "${REDIS_ADVERTISED_PORT}" ]]; then
+    local advertised_port=""
+    IFS=',' read -ra advertised_ports <<< "${REDIS_ADVERTISED_PORT}"
+    for advertised_port in "${advertised_ports[@]}"; do
+      IFS=':' read -ra parts <<< "$advertised_port"
+      svc_name="${parts[0]}"
+      port="${parts[1]}"
+      svc_name_ordinal=$(extract_ordinal_from_object_name "$svc_name")
+      if [[ "$svc_name_ordinal" == "$pod_name_ordinal" ]]; then
+        echo "$host_ip:$port"
+        return 0
+      fi
+    done
+  else
+    # use pod fqdn and service port as the node info
+    local pod_fqdn="$pod_name.$pod_name_prefix-headless"
+    echo "$pod_fqdn:$SERVICE_PORT"
+  fi
 }
 
 initialize_redis_cluster() {
@@ -366,6 +443,8 @@ initialize_redis_cluster() {
           echo "Failed to add the node $secondary_node to the cluster in initialize_redis_cluster"
           exit 1
       fi
+      # waiting for all nodes sync the information
+      wait_random_second 5 3
   done
 }
 
@@ -476,8 +555,8 @@ scale_in_redis_cluster_shard() {
   done
   shard_count=$((${#other_undeleted_component_nodes[@]} / current_comp_pod_count))
   if [ $shard_count -lt 3 ]; then
-    echo "The number of shards in the cluster is less than 3 after scaling in, skip scaling in"
-    exit 0
+    echo "The number of shards in the cluster is less than 3 after scaling in, please check."
+    exit 1
   fi
 
   # set the current component slot to 0 by rebalance command

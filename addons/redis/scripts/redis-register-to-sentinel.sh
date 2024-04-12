@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -ex
 
 # Based on the Component Definition API, Redis deployed independently, this script is used to register Redis to Sentinel.
@@ -110,16 +110,54 @@ parse_host_ip_from_built_in_envs() {
   exit 1
 }
 
+extract_ordinal_from_object_name() {
+  local object_name="$1"
+  local ordinal="${object_name##*-}"
+  echo "$ordinal"
+}
+
+parse_redis_advertised_svc_if_exist() {
+  local pod_name="$1"
+
+  if [[ -z "${REDIS_ADVERTISED_PORT}" ]]; then
+    echo "Environment variable REDIS_ADVERTISED_PORT not found. Ignoring."
+    return 0
+  fi
+
+  # the value format of REDIS_ADVERTISED_PORT is "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."
+  IFS=',' read -ra advertised_ports <<< "${REDIS_ADVERTISED_PORT}"
+
+  local found=false
+  pod_name_ordinal=$(extract_ordinal_from_object_name "$pod_name")
+  for advertised_port in "${advertised_ports[@]}"; do
+    IFS=':' read -ra parts <<< "$advertised_port"
+    local svc_name="${parts[0]}"
+    local port="${parts[1]}"
+    svc_name_ordinal=$(extract_ordinal_from_object_name "$svc_name")
+    if [[ "$svc_name_ordinal" == "$pod_name_ordinal" ]]; then
+      echo "Found matching svcName and port for podName '$pod_name', REDIS_ADVERTISED_PORT: $REDIS_ADVERTISED_PORT. svcName: $svc_name, port: $port."
+      redis_advertised_svc_port_value="$port"
+      redis_advertised_svc_host_value="$KB_HOST_IP"
+      found=true
+      break
+    fi
+  done
+
+  if [[ "$found" == false ]]; then
+    echo "Error: No matching svcName and port found for podName '$pod_name', REDIS_ADVERTISED_PORT: $REDIS_ADVERTISED_PORT. Exiting."
+    exit 1
+  fi
+}
+
 # TODO: replace the following code with built-in env and ComponentDefinition.Spec.Vars API
 # TODO: build redis primary host endpoint, use index=0 as default primary, which needs to be refactored
 {{- $clusterName := $.cluster.metadata.name }}
 {{- $namespace := $.cluster.metadata.namespace }}
 {{- $kb_cluster_comp_name := getEnvByName ( index $.podSpec.containers 0 ) "KB_CLUSTER_COMP_NAME" }}
-redis_service_node_port_0="REDIS_NODE_PORT_0"
+
+# use the first pod as the default primary
 redis_pod_index_0="{{ $kb_cluster_comp_name }}-0"
-eval redis_node_port_value="\$$redis_service_node_port_0"
-redis_node_port_host_value=$(parse_host_ip_from_built_in_envs "$redis_pod_index_0")
-echo "redis_node_port_value=$redis_node_port_value, redis_node_port_host_value=$redis_node_port_host_value"
+parse_redis_advertised_svc_if_exist $redis_pod_index_0
 
 {{- $redis_default_primary_host := printf "%s-0.%s-headless.%s.svc.%s" $kb_cluster_comp_name $kb_cluster_comp_name $namespace $.clusterDomain }}
 {{- $redis_default_service_port := printf "%d" 6379 }}
@@ -149,9 +187,9 @@ echo "redis_node_port_value=$redis_node_port_value, redis_node_port_host_value=$
   {{- $sentinel_pod_fqdn := printf "%s-%s-%d.%s-%s-headless.%s.svc.%s" $clusterName $redis_sentinel_component_spec.name $i $clusterName $redis_sentinel_component_spec.name $namespace $.clusterDomain }}
   {{- /* TODO: build redis primary host endpoint, use index=0 as default primary, which needs to be refactored */}}
 
-  if [ -n "$redis_node_port_host_value" ] && [ -n "$redis_node_port_value" ]; then
-    echo "register to sentinel with NodePort service: redis_node_port_host_value=$redis_node_port_host_value, redis_node_port_value=$redis_node_port_value"
-    register_to_sentinel {{ $sentinel_pod_fqdn }} {{ $kb_cluster_comp_name }} $redis_node_port_host_value $redis_node_port_value
+  if [ -n "$redis_advertised_svc_host_value" ] && [ -n "$redis_advertised_svc_port_value" ]; then
+    echo "register to sentinel with NodePort service: redis_advertised_svc_host_value=$redis_advertised_svc_host_value, redis_advertised_svc_port_value=$redis_advertised_svc_port_value"
+    register_to_sentinel {{ $sentinel_pod_fqdn }} {{ $kb_cluster_comp_name }} $redis_advertised_svc_host_value $redis_advertised_svc_port_value
   else
     echo "register to sentinel with ClusterIP service: redis_default_primary_host=$redis_default_primary_host, redis_default_service_port=$redis_default_service_port"
     register_to_sentinel {{ $sentinel_pod_fqdn }} {{ $kb_cluster_comp_name }} {{ $redis_default_primary_host }} {{ $redis_default_service_port }}
@@ -162,7 +200,4 @@ echo "redis_node_port_value=$redis_node_port_value, redis_node_port_host_value=$
   echo "redis sentinel component replicas not found, skip register to sentinel."
   exit 0
 {{- end }}
-
-
-
 
