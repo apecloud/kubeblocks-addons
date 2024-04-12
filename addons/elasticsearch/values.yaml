@@ -5,18 +5,18 @@
 replicaCount: 1
 
 image:
-# bitnami/elasticsearch
-# docker pull bitnami/elasticsearch  
-  registry: docker.io
-  repository: apecloud/elasticsearch
+  # bitnami/elasticsearch
+  # docker pull bitnami/elasticsearch
+  registry: docker.elastic.co
+  repository: elasticsearch/elasticsearch
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: ""
+  tag: "8.8.2"
   metrics:
     repository: bitnami/elasticsearch-exporter
     tag: "1.5.0-debian-11-r102"
 
-imagePullSecrets: []
+imagePullSecrets: [ ]
 nameOverride: ""
 fullnameOverride: ""
 clusterVersionOverride: ""
@@ -25,25 +25,25 @@ serviceAccount:
   # Specifies whether a service account should be created
   create: true
   # Annotations to add to the service account
-  annotations: {}
+  annotations: { }
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
-podAnnotations: {}
+podAnnotations: { }
 
-podSecurityContext: {}
-  # fsGroup: 2000
+podSecurityContext: { }
+# fsGroup: 2000
 
-securityContext: {}
+securityContext: { }
   # capabilities:
   #   drop:
   #   - ALL
   # readOnlyRootFilesystem: true
   # runAsNonRoot: true
-  # runAsUser: 1000
+# runAsUser: 1000
 
-resources: {}
+resources: { }
   # We usually recommend not to specify default resources and to leave this as a conscious
   # choice for the user. This also increases chances charts run on environments with little
   # resources, such as Minikube. If you do want to specify resources, uncomment the following
@@ -53,17 +53,44 @@ resources: {}
   #   memory: 128Mi
   # requests:
   #   cpu: 100m
-  #   memory: 128Mi
+#   memory: 128Mi
 
-nodeSelector: {}
+nodeSelector: { }
 
-tolerations: []
+tolerations: [ ]
 
-affinity: {}
+affinity: { }
 
 ingress:
   enabled: false
 
 service:
   type: ClusterIP
- 
+
+components:
+- name: master
+  roles:
+  - master
+- name: data
+  roles:
+  - data
+- name: ingest
+  roles:
+  - ingest
+- name: transform
+  roles:
+  - transform
+- name: single-node
+  roles:
+  - master
+  - data
+  - ingest
+  - transform
+
+nativeInstallPlugins: [ ]
+
+# analysis-ik must be downloaded and installed instead of using the elasticsearch-plugin install command
+# https://github.com/infinilabs/analysis-ik/issues/808
+downloadInstallPlugins: [ ]
+#- name: analysis-ik
+#  url: https://github.com/medcl/elasticsearch-analysis-ik/releases/download/v8.8.2/elasticsearch-analysis-ik-8.8.2.zip
