@@ -8,7 +8,7 @@ spec:
   provider: kubeblocks
   description: mysql 8.0 compoent definition for Kubernetes
   serviceKind: mysql
-  serviceVersion: 8.0
+  serviceVersion: "8.0"
 
   serviceRefDeclarations:
     - name: orchestrator

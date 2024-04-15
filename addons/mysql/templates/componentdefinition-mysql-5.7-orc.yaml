@@ -8,7 +8,7 @@ spec:
   provider: kubeblocks
   description: mysql 5.7 component definition for Kubernetes
   serviceKind: mysql
-  serviceVersion: 5.7
+  serviceVersion: "5.7"
 
   serviceRefDeclarations:
     - name: orchestrator
