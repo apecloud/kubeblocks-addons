@@ -2,7 +2,7 @@
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
-  name: oracle-mysql8.0-config-constraints
+  name: mysql-config-constraints
   labels:
     {{- include "mysql.labels" . | nindent 4 }}
 spec:
@@ -11,7 +11,7 @@ spec:
   reloadAction:
     tplScriptTrigger:
       sync: true
-      scriptConfigMapRef: oracle-mysql8.0-reload-script
+      scriptConfigMapRef: mysql8.0-reload-script
       namespace: {{ .Release.Namespace }}
 
 
