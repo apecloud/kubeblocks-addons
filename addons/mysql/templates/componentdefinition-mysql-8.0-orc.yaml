@@ -76,11 +76,13 @@ spec:
         preCondition: Immediately
   runtime:
     initContainers:
-      - command:
+      - image: {{ .Values.image.registry | default "docker.io" }}/mysql_audit_log:8.0.33
+        command:
           - bash
           - -c
-          - "mkdir -p /var/lib/mysql/{log,binlog}; chown -R mysql:root /var/lib/mysql;"
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+          - |
+            mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog}
+            cp /usr/lib/mysql/plugin/ {{ .Values.dataMountPath }}/plugin -r
         imagePullPolicy: Always
         name: init-data
         volumeMounts:

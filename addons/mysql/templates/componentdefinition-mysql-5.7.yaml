@@ -57,6 +57,16 @@ spec:
     initContainers:
       - image: {{ .Values.image.registry | default "docker.io" }}/mysql_audit_log:{{ .Values.image.tag }}
         name: init-data
+        command:
+          - bash
+          - -c
+          - |
+            mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog}
+            cp /usr/lib/mysql/plugin/ {{ .Values.dataMountPath }}/plugin -r
+        imagePullPolicy: Always
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
       - command:
           - cp
           - -r

@@ -57,7 +57,17 @@ spec:
   runtime:
     initContainers:
       - image: {{ .Values.image.registry | default "docker.io" }}/mysql_audit_log:8.0.33
+        command:
+          - bash
+          - -c
+          - |
+            mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog}
+            cp /usr/lib/mysql/plugin/ {{ .Values.dataMountPath }}/plugin -r
+        imagePullPolicy: Always
         name: init-data
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
       - command:
           - cp
           - -r
