@@ -12,8 +12,11 @@ spec:
   clusterDefinitionRef: {{ include "apecloud-mysql.clusterDefName" . }}
   backupPolicies:
   - componentDefRef: mysql
+    componentDefs:
+      - {{ include "apecloud-mysql.componentDefName" . }}
     target:
       role: follower
+      account: root
     backupMethods: &backupMethods
     - name: xtrabackup
       snapshotVolumes: false
@@ -40,10 +43,3 @@ spec:
       enabled: false
       cronExpression: "0 18 * * *"
       retentionPeriod: 7d
-  - componentDefs:
-      - {{ include "apecloud-mysql.backupPolicyTemplateName" . }}
-    target:
-      role: follower
-      account: root
-    backupMethods: *backupMethods
-    schedules: *backupschedules
