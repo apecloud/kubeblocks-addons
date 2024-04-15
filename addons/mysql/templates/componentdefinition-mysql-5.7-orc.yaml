@@ -76,7 +76,7 @@ spec:
         preCondition: Immediately
   runtime:
     initContainers:
-      - image: {{ .Values.image.registry | default "docker.io" }}/mysql_audit_log: {{ .Values.image.tag }}
+      - image: {{ .Values.image.registry | default "docker.io" }}/mysql_audit_log:{{ .Values.image.tag }}
         name: init-data
         command:
           - bash
