@@ -2,7 +2,8 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ServiceDescriptor
 metadata:
-  name: meta-service-descriptor
+  name: {{ include "kblib.clusterName" . }}-meta-descriptor
+  namespace: {{ .Release.Namespace }}
 spec:
   serviceKind: mysql
   serviceVersion: "^*"

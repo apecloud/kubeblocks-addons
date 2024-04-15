@@ -7,15 +7,11 @@ metadata:
     kubeblocks.io/extra-env: '{ "MYSQL_TOPOLOGY_MODE": {{ default "standalone" .Values.mode | quote }} }'
     kubeblocks.io/enabled-pod-ordinal-svc: mysql,proxysql
 spec:
-
-  clusterVersionRef: {{ .Values.version }}
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
-  clusterDefinitionRef: mysql # ref clusterdefinition.name
   componentSpecs:
     - name: mysql
       replicas: {{ .Values.replicas }}
-      componentDefRef: mysql # ref clusterdefinition componentDefs.name
       {{- $clusterversion := .Values.version }}
       {{- if .Values.orchestrator.enable }}
       {{- $clusterversion = printf "%s-orc" $clusterversion }}

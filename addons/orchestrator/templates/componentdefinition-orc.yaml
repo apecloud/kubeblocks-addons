@@ -94,7 +94,7 @@ spec:
             value: {{ .Values.orchestrator.metaBackends.database }}
     containers:
       - name: orchestrator
-        image: {{ .Values.image.registry | default "docker.io" }}/mysql-operator-orchestrator:v0.6.3
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag | default "v0.6.3" }}
         imagePullPolicy: IfNotPresent
         volumeMounts:
           - name: orchestrator-data

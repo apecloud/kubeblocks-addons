@@ -6,9 +6,9 @@ metadata:
       {{- include "mysql.labels" . | nindent 4 }}
 spec:
   provider: kubeblocks
-  description: mysql  compoent definition for Kubernetes
+  description: mysql 8.0 compoent definition for Kubernetes
   serviceKind: mysql
-  serviceVersion: 8.0.0
+  serviceVersion: 8.0
 
   serviceRefDeclarations:
     - name: orchestrator

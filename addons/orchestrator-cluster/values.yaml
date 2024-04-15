@@ -1,21 +1,15 @@
-# Default values for mysql-cluster.
+# Default values for orchestrator-cluster.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
 ## @param version MySQL cluster version
 ##
-version: mysql-8.0.33
-
-## @param mode MySQL cluster topology mode, standalone, replication or raftGroup
-##
-mode: replication
+version: orc-
 
 ## @param replicas specify cluster replicas
 ##
 replicas:
-  mysql: 3
   orchestrator: 3
-  proxysql: 3
 
 ## @param cpu
 ##
@@ -36,6 +30,7 @@ requests:
 ##
 storage: 20
 
+
 secret:
   TOPOLOGY_PASSWORD: orchestrator
   TOPOLOGY_USER: orchestrator
@@ -44,8 +39,8 @@ secret:
 
 serviceReference:
   orchestrator:
-      name: mysql-meta
-      namespace: ""
-      cluster: ""
-      port: 3306
-      endpoint: ""
+    name: mysql-meta
+    namespace: ""
+    cluster: ""
+    port: 3306
+    endpoint: ""

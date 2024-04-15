@@ -6,9 +6,9 @@ metadata:
       {{- include "mysql.labels" . | nindent 4 }}
 spec:
   provider: kubeblocks
-  description: mysql  compoent definition for Kubernetes
+  description: mysql 5.7 component definition for Kubernetes
   serviceKind: mysql
-  serviceVersion: 8.0.0
+  serviceVersion: 5.7
 
   serviceRefDeclarations:
     - name: orchestrator
@@ -111,7 +111,7 @@ spec:
             rm -rf {{ .Values.dataMountPath }}/plugin
             chown -R mysql:root {{ .Values.dataMountPath }}
             REPORT_HOST=MYSQL_ORDINAL_HOST_${KB_POD_NAME##*-}
-            /scripts/docker-entrypoint-8.0.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) --report_host ${!REPORT_HOST} \
+            /scripts/docker-entrypoint-5.7.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) --report_host ${!REPORT_HOST} \
             --plugin-load-add=rpl_semi_sync_source=semisync_source.so \
             --plugin-load-add=rpl_semi_sync_replica=semisync_replica.so \
             --plugin-load-add=audit_log=audit_log.so \

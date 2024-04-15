@@ -6,9 +6,9 @@ metadata:
       {{- include "mysql.labels" . | nindent 4 }}
 spec:
   provider: kubeblocks
-  description: mysql  compoent definition for Kubernetes
+  description: mysql 5.7 component definition for Kubernetes
   serviceKind: mysql
-  serviceVersion: 8.0.0
+  serviceVersion: 5.7
 
   services:
     - name: mysql-server
@@ -111,7 +111,7 @@ spec:
             if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
               skip_slave_start="ON"
             fi
-            /scripts/docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) \
+            /scripts/docker-entrypoint-5.7.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) \
             --ignore-db-dir=lost+found \
             --plugin-load-add=rpl_semi_sync_master=semisync_master.so \
             --plugin-load-add=rpl_semi_sync_slave=semisync_slave.so \

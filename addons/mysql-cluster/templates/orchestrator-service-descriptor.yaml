@@ -3,6 +3,7 @@ apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ServiceDescriptor
 metadata:
   name: {{ include "kblib.clusterName" . }}-orc-descriptor
+  namespace: {{ .Release.Namespace }}
 spec:
   serviceKind: orchestrator
   serviceVersion: 2.0.23
