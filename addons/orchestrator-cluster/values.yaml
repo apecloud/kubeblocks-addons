@@ -2,14 +2,10 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-## @param version MySQL cluster version
-##
-version: orc-
 
 ## @param replicas specify cluster replicas
 ##
-replicas:
-  orchestrator: 3
+replicas: 3
 
 ## @param cpu
 ##
@@ -30,13 +26,14 @@ requests:
 ##
 storage: 20
 
-
+## @param secret the username and password for orchestrator
 secret:
   TOPOLOGY_PASSWORD: orchestrator
   TOPOLOGY_USER: orchestrator
   META_USER: orchestrator
   META_PASSWORD: orchestrator
 
+## @param serviceReference the reference of orchestrator meta service
 serviceReference:
   orchestrator:
     name: mysql-meta
