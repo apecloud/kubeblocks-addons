@@ -141,15 +141,6 @@ spec:
             - /bin/bash
             - -c
             - /scripts/redis-cluster-manage.sh --pre-terminate
-    accountProvision:
-      customHandler:
-        image: {{ include "redis.image" . }}
-        exec:
-          command:
-            - sh
-            - -c
-          args:
-            - "redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD acl save "
   runtime:
     containers:
       - name: redis-cluster
