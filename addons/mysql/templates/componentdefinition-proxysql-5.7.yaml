@@ -113,7 +113,7 @@ spec:
     volumes:
     containers:
       - name: proxysql
-        image: ghcr.io/kubedb/proxysql:2.4.4-debian@sha256:977d7a1e8623515f4242340a2e7a1dd0be94323d1f80a1e147206c3fddadc4a8
+        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/proxysql:2.4.4
         imagePullPolicy: IfNotPresent
         args:
           - /scripts/proxysql/proxysql-entry.sh
