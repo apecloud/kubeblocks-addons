@@ -34,6 +34,8 @@ on:
           - mariadb-cluster
           - milvus
           - milvus-cluster
+          - minio
+          - minio-cluster
           - mogdb
           - mogdb-cluster
           - mongodb
