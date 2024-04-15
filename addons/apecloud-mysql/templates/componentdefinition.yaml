@@ -4,6 +4,8 @@ metadata:
   name: {{ include "apecloud-mysql.componentDefName" . }}
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
+  annotations:
+    apps.kubeblocks.io/horizontal-scale-backup-policy-template: {{ include "apecloud-mysql.hscaleBackupPolicyTemplateName" . }}
 spec:
   provider: kubeblocks.io
   description: ApeCloud MySQL is a database that is compatible with MySQL syntax and achieves high availability through the utilization of the RAFT consensus protocol.
