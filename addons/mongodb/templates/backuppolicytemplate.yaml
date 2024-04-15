@@ -4,6 +4,7 @@ metadata:
   name: mongodb-backup-policy-template
   labels:
     clusterdefinition.kubeblocks.io/name: mongodb
+    service-kind/mongodb: "true"
     {{- include "mongodb.labels" . | nindent 4 }}
 spec:
   clusterDefinitionRef: mongodb

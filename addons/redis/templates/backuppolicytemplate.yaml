@@ -4,6 +4,8 @@ metadata:
   name: redis-backup-policy-template
   labels:
     clusterdefinition.kubeblocks.io/name: redis
+    service-kind/redis: "true"
+    service-kind/redis-cluster: "true"
     {{- include "redis.labels" . | nindent 4 }}
 spec:
   clusterDefinitionRef: redis
@@ -39,4 +41,24 @@ spec:
       role: secondary
       account: default
     backupMethods: *backupMethods
+    schedules: *backupschedules
+  - componentDefs:
+      - {{ include "redis-cluster.componentDefName" . }}
+    isSharding: true
+    target:
+      role: secondary
+      account: default
+    backupMethods:
+    - name: datafile
+      snapshotVolumes: false
+      actionSetName: redis-cluster-backup
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
+    - name: volume-snapshot
+      snapshotVolumes: true
+      targetVolumes:
+        volumes:
+          - data
     schedules: *backupschedules

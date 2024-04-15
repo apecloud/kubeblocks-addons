@@ -21,5 +21,5 @@ function config_wal_g() {
     echo "zstd" > ${walg_env}/WALG_COMPRESSION_METHOD
 }
 
-config_wal_g "$(dirname $DP_BACKUP_BASE_PATH)/wal-g"
+config_wal_g "$(dirname $(dirname $DP_BACKUP_BASE_PATH))/wal-g"
 sync

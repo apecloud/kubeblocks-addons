@@ -4,6 +4,7 @@ metadata:
   name: postgresql-backup-policy-template
   labels:
     clusterdefinition.kubeblocks.io/name: postgresql
+    service-kind/postgresql: "true"
     {{- include "postgresql.labels" . | nindent 4 }}
   annotations:
     dataprotection.kubeblocks.io/reconfigure-ref: |
