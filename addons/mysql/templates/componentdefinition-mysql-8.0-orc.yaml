@@ -76,7 +76,7 @@ spec:
         preCondition: Immediately
   runtime:
     initContainers:
-      - image: {{ .Values.image.registry | default "docker.io" }}/mysql_audit_log:8.0.33
+      - image: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         command:
           - bash
           - -c
@@ -101,7 +101,7 @@ spec:
             name: kubeblocks
     containers:
       - name: mysql
-        image: {{ .Values.image.registry | default "docker.io" }}/mysql-jq:8.0.33
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
         imagePullPolicy: IfNotPresent
         command:
           - bash

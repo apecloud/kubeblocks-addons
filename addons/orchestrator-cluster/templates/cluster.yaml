@@ -4,7 +4,6 @@ metadata:
   name: {{ include "kblib.clusterName" . }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
   annotations:
-    kubeblocks.io/enabled-node-port-svc: orchestrator,mysql,proxysql
     kubeblocks.io/enabled-pod-ordinal-svc: orchestrator,mysql,proxysql
     {{ include "orchestrator-cluster.annotations.extra-envs" . | nindent 4 }}
 spec:

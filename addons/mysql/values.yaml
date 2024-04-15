@@ -3,10 +3,11 @@
 # Declare variables to be passed into your templates.
 
 image:
-  registry:  registry.cn-hangzhou.aliyuncs.com/apecloud
-  repository: mysql-jq
+  registry:  registry.cn-hangzhou.aliyuncs.com
+  repository: apecloud/mysql-jq
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
+  # example for mysql 8.0
   #tag: 8.0.33
   tag: 5.7.44
   xtraBackupRepository: perconalab/percona-xtrabackup
@@ -88,6 +89,7 @@ dataMountPath: /var/lib/mysql
 ## If specified, the component definition will use it as name.
 compDefinitionVersionSuffix: ""
 
+## @param orche
 orchestrator:
   metaBackends:
     database: orchestrator

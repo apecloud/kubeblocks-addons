@@ -1,6 +1,7 @@
 #!/bin/sh
 set -ex
-# 定义 MySQL 连接参数
+
+# meta mysql connection parameters
 mysql_port="3306"
 meta_mysql_user="$META_MYSQL_USER"
 meta_mysql_password="$META_MYSQL_PASSWORD"

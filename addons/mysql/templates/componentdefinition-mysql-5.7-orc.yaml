@@ -58,7 +58,7 @@ spec:
   lifecycleActions:
     postProvision:
       customHandler:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         exec:
           command:
             - bash
@@ -67,7 +67,7 @@ spec:
         preCondition: ComponentReady
     preTerminate:
       customHandler:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         exec:
           command:
             - bash
@@ -76,7 +76,7 @@ spec:
         preCondition: Immediately
   runtime:
     initContainers:
-      - image: {{ .Values.image.registry | default "docker.io" }}/mysql_audit_log:{{ .Values.image.tag }}
+      - image: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:{{ .Values.image.tag }}
         name: init-data
         command:
           - bash

@@ -1,7 +1,7 @@
 #!/bin/sh
 set -ex
 
-# 定义 MySQL 连接参数
+# meta mysql connection parameters
 mysql_port="3306"
 mysql_username="$MYSQL_ROOT_USER"
 mysql_password="$MYSQL_ROOT_PASSWORD"
@@ -37,7 +37,7 @@ register_to_orchestrator() {
     fi
 
   while true; do
-    # 注册到 Orchestrator
+    # register to Orchestrator
     echo "register $pod_name ($host_ip) to Orchestrator..."
     current_time=$(date +%s)
     if [ $((current_time - start_time)) -gt $timeout ]; then
@@ -47,7 +47,7 @@ register_to_orchestrator() {
 
     # url for orchestrator to discover this host_ip
 
-    # 发送请求并获取响应
+    # send request to orchestrator for discovery
     response=$(curl -s -o /dev/null -w "%{http_code}" $url)
     if [ $response -eq 200 ]; then
         echo "response success"
@@ -57,7 +57,8 @@ register_to_orchestrator() {
   echo "register $pod_name ($host_ip) to Orchestrator successful."
 }
 
-# 从环境变量中获取 Pod 名称列表和 IP 地址列表
+# Get the svc list from the environment variable
+# and get the topology information of the current cluster from the orchestrator
 main() {
 
   if [ -z "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" ] || [ -z "$KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST" ]; then
@@ -81,7 +82,6 @@ main() {
 
   echo "Initialization script completed！"
 }
-# 获取 Pod 名称和 IP 地址列表
 main
 
 echo "completed"
