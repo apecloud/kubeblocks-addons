@@ -1,0 +1,68 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterDefinition
+metadata:
+  name: greatsql
+spec:
+  connectionCredential:
+    username: root
+    password: "$(RANDOM_PASSWD)"
+    endpoint: "$(SVC_FQDN):$(SVC_PORT_greatsql)"
+    host: "$(SVC_FQDN)"
+    port: "$(SVC_PORT_greatsql)"
+  componentDefs:
+    - name: greatsql-compdef
+      characterType: greatsql
+      workloadType: Stateful
+      service:
+        ports:
+          - name: greatsql
+            port: 3306
+            targetPort: greatsql
+      monitor:
+        exporterConfig:
+          scrapePort: 9104
+          scrapePath: "/metrics"
+      volumeTypes:
+        - name: data
+          type: data
+      podSpec:
+        containers:
+          - name: greatsql-container
+            imagePullPolicy: IfNotPresent
+            volumeMounts:
+              - mountPath: /data/GreatSQL
+                name: data
+            ports:
+              - containerPort: 3306
+                name: greatsql
+            env:
+              - name: MYSQL_ROOT_HOST
+                value: {{ .Values.auth.rootHost | default "%" | quote }}
+              - name: MYSQL_ROOT_USER
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: username
+              - name: MYSQL_ROOT_PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: password
+          - name: mysql-exporter
+            ports:
+              - name: metrics
+                containerPort: 9104
+                protocol: TCP
+            env:
+              - name: "GREATSQL_MONITOR_USER"
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: username
+              - name: "GREATSQL_MONITOR_PASSWORD"
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: password
+              - name: "DATA_SOURCE_NAME"
+                value: "$(GREATSQL_MONITOR_USER):$(GREATSQL_MONITOR_PASSWORD)@(localhost:3306)/"

@@ -1,0 +1,16 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterVersion
+metadata:
+  name: greatsql-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
+spec:
+  clusterDefinitionRef: greatsql
+  componentVersions:
+  - componentDefRef: greatsql-compdef
+    versionsContext:
+      containers:
+      - name: greatsql-container
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+      - name: mysql-exporter
+        image: {{ .Values.image.prom.repository }}/{{ .Values.image.prom.mysqld_exporter.name}}:{{.Values.image.prom.mysqld_exporter.tag}}
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
