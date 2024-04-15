@@ -250,7 +250,7 @@ spec:
       - |
         echo "install {{ len $.Values.downloadInstallPlugins }} plugins"
         {{- range $plugin := $.Values.downloadInstallPlugins }}
-        wget {{ $plugin.url }}
+        wget --no-check-certificate {{ $plugin.url }}
         mkdir -p /opt/bitnami/elasticsearch/plugins/{{ $plugin.name }}
         unzip `basename $plugin.url` -d /opt/bitnami/elasticsearch/plugins/{{ $plugin.name }}
         {{- end }}
