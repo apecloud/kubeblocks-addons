@@ -35,7 +35,33 @@ remove_replica_from_shard_if_need() {
       del_node_command="redis-cli --cluster del-node $current_node_ip_and_port $current_node_cluster_id -a $REDIS_DEFAULT_PASSWORD"
     fi
     echo "Remove replica from shard executing command: $del_node_command"
-    if ! $del_node_command; then
+    for ((i=1; i<=20; i++)); do
+      if $del_node_command; then
+        echo "Successfully removed replica from shard."
+        break
+      else
+        echo "Failed to remove replica from shard. Retrying... (Attempt $i/20)"
+        sleep $((RANDOM % 3 + 1))
+      fi
+    done
+
+    if [ "$i" -eq 20 ]; then
+      echo "Failed to remove replica from shard after 20 attempts."
+      exit 1
+    fi
+
+    # check if the current node is removed from the cluster
+    if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+      cluster_nodes_info=$(redis-cli -h "$current_pod_fqdn" cluster nodes)
+    else
+      cluster_nodes_info=$(redis-cli -h "$current_pod_fqdn" -a "$REDIS_DEFAULT_PASSWORD" cluster nodes)
+    fi
+    echo "Cluster nodes info: $cluster_nodes_info"
+
+    if [ "$(echo "$cluster_nodes_info" | wc -l)" -le 1 ]; then
+      echo "successfully removed replica from shard."
+      return
+    else
       echo "Failed to remove replica from shard."
       exit 1
     fi
