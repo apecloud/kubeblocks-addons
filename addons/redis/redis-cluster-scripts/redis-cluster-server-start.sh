@@ -37,18 +37,15 @@ build_announce_ip_and_port() {
 
 build_cluster_announce_info() {
   # build announce ip and port according to whether the advertised svc is enabled
+  kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc"
   if [ -n "$redis_advertised_svc_host_value" ] && [ -n "$redis_advertised_svc_port_value" ] && [ -n "$redis_advertised_svc_bus_port_value" ]; then
     echo "redis cluster use advertised svc $redis_advertised_svc_host_value:$redis_advertised_svc_port_value@$redis_advertised_svc_bus_port_value to announce"
     {
-      echo "cluster-announce-port $redis_advertised_svc_port_value"
-      # TODO: use $redis_advertised_svc_bus_port_value to announce bus port
-      # echo "cluster-announce-bus-port $redis_advertised_svc_bus_port_value"
-      # shellcheck disable=SC2153
-      echo "cluster-announce-bus-port $CLUSTER_BUS_PORT"
-      echo "cluster-announce-ip $redis_advertised_svc_host_value"
+      # TODO: config set cluster-announce-ip/cluster-announce-port/cluster-announce-bus-port in postProvision lifecycleAction after redis cluster is created
+      echo "cluster-announce-hostname $kb_pod_fqdn"
+      echo "cluster-preferred-endpoint-type ip"
     } >> /etc/redis/redis.conf
   else
-    kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc"
     echo "redis use kb pod fqdn $kb_pod_fqdn to announce"
     {
       echo "cluster-announce-hostname $kb_pod_fqdn"
