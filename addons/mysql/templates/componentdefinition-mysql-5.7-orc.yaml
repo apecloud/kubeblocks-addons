@@ -34,7 +34,7 @@ spec:
             targetPort: mysql
   configs:
     - name: mysql-replication-config
-      templateRef: mysql8.0-config-template
+      templateRef: mysql-8.0-config-template
       constraintRef: mysql-config-constraints
       volumeName: mysql-config
       namespace: {{ .Release.Namespace }}
@@ -93,7 +93,7 @@ spec:
           - -r
           - /usr/local/bin/curl
           - /kubeblocks/curl
-        image: docker.io/shakefu/curl-static:latest
+        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/curl-static:latest
         imagePullPolicy: Always
         name: init-curl
         volumeMounts:

@@ -28,7 +28,7 @@ spec:
             targetPort: mysql
   configs:
     - name: mysql-replication-config
-      templateRef: mysql5.7-config-template
+      templateRef: mysql-5.7-config-template
       constraintRef: mysql-config-constraints
       volumeName: mysql-config
       namespace: {{ .Release.Namespace }}
