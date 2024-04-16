@@ -9,6 +9,7 @@ metadata:
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
+  clusterDefinitionRef: mysql
   componentSpecs:
     - name: mysql
       replicas: {{ .Values.replicas }}

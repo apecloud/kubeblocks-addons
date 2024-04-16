@@ -8,6 +8,7 @@ metadata:
     {{ include "orchestrator-cluster.annotations.extra-envs" . | nindent 4 }}
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  clusterDefinitionRef: orchestrator
   {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
     - name: orchestrator
