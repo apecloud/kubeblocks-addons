@@ -28,10 +28,11 @@ remove_replica_from_shard_if_need() {
   if [[ "$current_node_role" =~ "slave" ]]; then
     echo "Current node $current_pod_name is a slave, removing it from the cluster..."
     current_node_cluster_id=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $1}')
+    current_node_ip_and_port="$current_pod_fqdn:$SERVICE_PORT"
     if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-      del_node_command="redis-cli --cluster del-node $current_pod_fqdn $current_node_cluster_id"
+      del_node_command="redis-cli --cluster del-node $current_node_ip_and_port $current_node_cluster_id"
     else
-      del_node_command="redis-cli --cluster del-node $current_pod_fqdn $current_node_cluster_id -a $REDIS_DEFAULT_PASSWORD"
+      del_node_command="redis-cli --cluster del-node $current_node_ip_and_port $current_node_cluster_id -a $REDIS_DEFAULT_PASSWORD"
     fi
     echo "Remove replica from shard executing command: $del_node_command"
     if ! $del_node_command; then

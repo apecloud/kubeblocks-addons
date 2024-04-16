@@ -1,5 +1,5 @@
 {{- /* if nodeportEnabled is true, always use the KubeBlocks 0.8 API */ -}}
-{{- if and .Values.useLegacyCompDef (not .Values.nodePortEnabled) }}
+{{- if and .Values.useLegacyCompDef (not .Values.nodePortEnabled) (ne .Values.mode "cluster") }}
   {{- include "kblib.clusterCommon" . }}
   clusterDefinitionRef: redis
   componentSpecs:
