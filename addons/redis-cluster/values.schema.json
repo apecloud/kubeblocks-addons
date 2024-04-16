@@ -22,7 +22,8 @@
       "enum": [
         "standalone",
         "replication",
-        "cluster"
+        "cluster",
+        "sentinel"
       ]
     },
     "replicas": {
