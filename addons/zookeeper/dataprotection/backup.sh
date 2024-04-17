@@ -5,11 +5,16 @@ set -o pipefail
 set -o nounset
 
 DATA_DIR=${DATA_DIR:-/bitnami/zookeeper/data}
-BACKUP_DIR=/data/backup
+BACKUP_NAME="zookeeper-data-$(date +%Y%m%d-%H%M%S).tar.zst"
 
-mkdir -p "${BACKUP_DIR}"
+export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
+export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 
 echo "Backing up Zookeeper data directory..."
-cp -r "${DATA_DIR}" "${BACKUP_DIR}/zookeeper-data-$(date +%Y%m%d-%H%M%S)"
+
+cd ${DATA_DIR}
+tar -cvf - ./ | datasafed push -z zstd-fastest - "${BACKUP_NAME}"
+TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
+echo "{\"totalSize\":\"$TOTAL_SIZE\"}" >"${DP_BACKUP_INFO_FILE}" && sync
 
 echo "Zookeeper data directory backup completed successfully."
