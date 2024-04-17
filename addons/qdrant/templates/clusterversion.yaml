@@ -58,5 +58,25 @@ spec:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository}}:v1.8.1
       - name: web-ui
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.web_ui.repository}}:{{ .Values.image.web_ui.tag | default "latest" }}
+---
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterVersion
+metadata:
+  name: qdrant-1.8.4
+  labels:
+    {{- include "qdrant.labels" . | nindent 4 }}
+spec:
+  clusterDefinitionRef: qdrant
+  componentVersions:
+  - componentDefRef: qdrant
+    versionsContext:
+      initContainers:
+      - name: qdrant-tools
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag | default "latest" }}
+      containers:
+      - name: qdrant
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository}}:v1.8.4
+      - name: web-ui
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.web_ui.repository}}:{{ .Values.image.web_ui.tag | default "latest" }}
 
 
