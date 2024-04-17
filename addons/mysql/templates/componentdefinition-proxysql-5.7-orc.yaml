@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "proxysql.componentDefName" . }}-5.7-ocr
+  name: {{ include "proxysql.componentDefName" . }}-5.7-orc
   labels:
       {{- include "mysql.labels" . | nindent 4 }}
 spec:
@@ -116,7 +116,7 @@ spec:
     containers:
       - name: proxysql
         image: docker.io/proxysql/proxysql:2.4.4
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         args:
           - /scripts/proxysql/proxysql-entry.sh
           - --reload

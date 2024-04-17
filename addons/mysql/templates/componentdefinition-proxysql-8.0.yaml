@@ -116,7 +116,7 @@ spec:
     containers:
       - name: proxysql
         image: docker.io/proxysql/proxysql:2.4.4
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         args:
           - /scripts/proxysql/proxysql-entry.sh
           - --reload

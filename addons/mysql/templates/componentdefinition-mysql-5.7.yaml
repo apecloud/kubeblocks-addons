@@ -33,8 +33,8 @@ spec:
       volumeName: mysql-config
       namespace: {{ .Release.Namespace }}
   scripts:
-    - name: orc-mysql-scripts
-      templateRef: orc-mysql-scripts
+    - name: mysql-scripts
+      templateRef: mysql-scripts
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
@@ -63,7 +63,7 @@ spec:
           - |
             mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog}
             cp /usr/lib/mysql/plugin/ {{ .Values.dataMountPath }}/plugin -r
-        imagePullPolicy: Always
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
@@ -74,7 +74,7 @@ spec:
           - /config
           - /kubeblocks/
         image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:latest
-        imagePullPolicy: Always
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         name: init-syncer
         volumeMounts:
           - mountPath: /kubeblocks
@@ -85,22 +85,16 @@ spec:
           - /xtrabackup-2.4
           - /kubeblocks/xtrabackup
         image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:mysql
-        imagePullPolicy: Always
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         name: init-xtrabackup
         volumeMounts:
           - mountPath: /kubeblocks
             name: kubeblocks
     containers:
       - name: mysql
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        image: docker.io/mysql:5.7.44
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         command:
-          - syncer
-          - --config-path
-          - /kubeblocks/config/components
-          - --port
-          - "3601"
-          - --
           - bash
           - -c
           - |
@@ -130,6 +124,8 @@ spec:
         ports:
           - containerPort: 3306
             name: mysql
+          - containerPort: 3601
+            name: ha
         env:
           - name: PATH
             value: /kubeblocks/xtrabackup/bin:/kubeblocks/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin

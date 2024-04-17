@@ -4,7 +4,7 @@
 
 image:
   registry:  registry.cn-hangzhou.aliyuncs.com
-  repository: apecloud/mysql-jq
+  repository: apecloud/mysql
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   # example for mysql 8.0

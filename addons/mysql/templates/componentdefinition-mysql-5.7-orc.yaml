@@ -39,8 +39,8 @@ spec:
       volumeName: mysql-config
       namespace: {{ .Release.Namespace }}
   scripts:
-    - name: orc-mysql-scripts
-      templateRef: orc-mysql-scripts
+    - name: mysql-scripts
+      templateRef: mysql-scripts
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
@@ -84,25 +84,47 @@ spec:
           - |
             mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog}
             cp /usr/lib/mysql/plugin/ {{ .Values.dataMountPath }}/plugin -r
-        imagePullPolicy: Always
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
       - command:
           - cp
           - -r
+          - /usr/bin/jq
+          - /kubeblocks/jq
+        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/jq:1.7.0
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        name: init-jq
+        volumeMounts:
+          - mountPath: /kubeblocks
+            name: kubeblocks
+      - command:
+          - cp
+          - -r
           - /usr/local/bin/curl
           - /kubeblocks/curl
         image: {{ .Values.image.registry | default "docker.io" }}/apecloud/curl-static:latest
-        imagePullPolicy: Always
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         name: init-curl
+        volumeMounts:
+          - mountPath: /kubeblocks
+            name: kubeblocks
+      - command:
+          - cp
+          - -r
+          - /xtrabackup-2.4
+          - /kubeblocks/xtrabackup
+        image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:mysql
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        name: init-xtrabackup
         volumeMounts:
           - mountPath: /kubeblocks
             name: kubeblocks
     containers:
       - name: mysql
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
-        imagePullPolicy: IfNotPresent
+        image: docker.io/mysql:5.7.44
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         command:
           - bash
           - -c
@@ -110,12 +132,18 @@ spec:
             mv {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
             rm -rf {{ .Values.dataMountPath }}/plugin
             chown -R mysql:root {{ .Values.dataMountPath }}
+            skip_slave_start="OFF"
+            if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
+              skip_slave_start="ON"
+            fi
             REPORT_HOST=MYSQL_ORDINAL_HOST_${KB_POD_NAME##*-}
             /scripts/docker-entrypoint-5.7.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) --report_host ${!REPORT_HOST} \
-            --plugin-load-add=rpl_semi_sync_source=semisync_source.so \
-            --plugin-load-add=rpl_semi_sync_replica=semisync_replica.so \
+            --ignore-db-dir=lost+found \
+            --plugin-load-add=rpl_semi_sync_master=semisync_master.so \
+            --plugin-load-add=rpl_semi_sync_slave=semisync_slave.so \
             --plugin-load-add=audit_log=audit_log.so \
-            --log-bin={{.Values.dataMountPath}}/binlog/$(KB_POD_NAME)-bin
+            --log-bin={{.Values.dataMountPath}}/binlog/$(KB_POD_NAME)-bin \
+            --skip-slave-start=$skip_slave_start
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data

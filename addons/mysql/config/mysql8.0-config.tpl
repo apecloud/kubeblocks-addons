@@ -80,6 +80,7 @@ mysqlx-port=33060
 mysqlx=0
 
 datadir={{ $data_root }}/data
+plugin_dir=/usr/lib64/mysql/plugin/
 
 {{- $log_root := printf "%s/log" $data_root }}
 log_error={{ $log_root }}/mysqld-error.log
