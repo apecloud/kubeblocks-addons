@@ -43,6 +43,11 @@
       "default": 20,
       "minimum": 1,
       "maximum": 10000
+    },
+    "storageClassName": {
+      "title": "Storage Class Name",
+      "description": "Storage class name of the data volume",
+      "type": "string"
     }
   }
 }
