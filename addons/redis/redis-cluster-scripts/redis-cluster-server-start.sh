@@ -41,7 +41,9 @@ build_cluster_announce_info() {
   if [ -n "$redis_advertised_svc_host_value" ] && [ -n "$redis_advertised_svc_port_value" ] && [ -n "$redis_advertised_svc_bus_port_value" ]; then
     echo "redis cluster use advertised svc $redis_advertised_svc_host_value:$redis_advertised_svc_port_value@$redis_advertised_svc_bus_port_value to announce"
     {
-      # TODO: config set cluster-announce-ip/cluster-announce-port/cluster-announce-bus-port in postProvision lifecycleAction after redis cluster is created
+      echo "cluster-announce-ip $redis_advertised_svc_host_value"
+      echo "cluster-announce-port $redis_advertised_svc_port_value"
+      echo "cluster-announce-bus-port $redis_advertised_svc_bus_port_value"
       echo "cluster-announce-hostname $kb_pod_fqdn"
       echo "cluster-preferred-endpoint-type ip"
     } >> /etc/redis/redis.conf
@@ -57,11 +59,16 @@ build_cluster_announce_info() {
 build_redis_cluster_service_port() {
   service_port=6379
   cluster_bus_port=16379
-  if [ ! -z "$SERVICE_PORT" ]; then
+  if [ -n "$SERVICE_PORT" ]; then
     service_port=$SERVICE_PORT
-    cluster_bus_port=$((service_port+10000))
   fi
-  echo "port $service_port" >> /etc/redis/redis.conf
+  if [ -n "$CLUSTER_BUS_PORT" ]; then
+    cluster_bus_port=$CLUSTER_BUS_PORT
+  fi
+  {
+    echo "port $service_port"
+    echo "cluster-port $cluster_bus_port"
+  } >> /etc/redis/redis.conf
 }
 
 # usage: retry <command>
@@ -76,9 +83,9 @@ retry() {
   if [ $attempt -eq $max_attempts ]; then
     echo "Command '$*' failed after $max_attempts attempts. shutdown redis-server..."
     if [ ! -z "$REDIS_DEFAULT_PASSWORD" ]; then
-      redis-cli -h 127.0.0.1 -p $service_port -a "$REDIS_DEFAULT_PASSWORD" shutdown
+      redis-cli -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" shutdown
     else
-      redis-cli -h 127.0.0.1 -p $service_port shutdown
+      redis-cli -h 127.0.0.1 -p "$service_port" shutdown
     fi
   fi
 }
@@ -139,16 +146,16 @@ get_current_comp_nodes_for_scale_out_replica() {
 
   # the output of line is like:
   # 4958e6dca033cd1b321922508553fab869a29d 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
-  # TODO: when support nodePort or LoadBalancer, the output of line will not contain the $KB_CLUSTER_COMP_NAME
   while read -r line; do
     node_fqdn=$(echo "$line" | awk '{print $2}' | awk -F ',' '{print $2}')
+    node_ip_port=$(echo "$line" | awk '{print $2}' | awk -F ',' '{print $2}' | awk -F '@' '{print $1}')
     node_role=$(echo "$line" | awk '{print $3}')
 
     if [[ "$node_fqdn" =~ "$KB_CLUSTER_COMP_NAME"* ]]; then
       if [[ "$node_role" =~ "master" ]]; then
-        current_comp_primary_node+=("$node_fqdn:$SERVICE_PORT")
+        current_comp_primary_node+=("$node_ip_port")
       else
-        current_comp_other_nodes+=("$node_fqdn:$SERVICE_PORT")
+        current_comp_other_nodes+=("$node_ip_port")
       fi
     fi
   done <<< "$cluster_nodes_info"
@@ -162,9 +169,9 @@ scale_redis_cluster_replica() {
 
   # Waiting for redis-server to start
   if [ ! -z "$REDIS_DEFAULT_PASSWORD" ]; then
-    retry redis-cli -h 127.0.0.1 -p $SERVICE_PORT -a "$REDIS_DEFAULT_PASSWORD" ping
+    retry redis-cli -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" ping
   else
-    retry redis-cli -h 127.0.0.1 -p $SERVICE_PORT ping
+    retry redis-cli -h 127.0.0.1 -p "$service_port" ping
   fi
 
   current_pod_name=$KB_POD_NAME
@@ -177,7 +184,6 @@ scale_redis_cluster_replica() {
     pod_name_prefix=$(extract_pod_name_prefix "$current_pod_name")
     target_node_fqdn="$pod_name_prefix-0.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc"
   fi
-  target_node_with_port="$target_node_fqdn:$SERVICE_PORT"
 
   # get the current component nodes for scale out replica
   get_current_comp_nodes_for_scale_out_replica "$target_node_fqdn"
@@ -198,19 +204,23 @@ scale_redis_cluster_replica() {
 
   # add the current node as a replica of the primary node
   primary_node_cluster_id=$(get_cluster_id "$primary_node_fqdn")
+  current_node_with_port="$current_pod_fqdn:$service_port"
+  if [ -n "$redis_advertised_svc_host_value" ] && [ -n "$redis_advertised_svc_port_value" ]; then
+    current_node_with_port="$redis_advertised_svc_host_value:$redis_advertised_svc_port_value"
+  fi
   if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-    replicated_command="redis-cli --cluster add-node $current_pod_fqdn:$SERVICE_PORT $primary_node_with_port --cluster-slave --cluster-master-id $primary_node_cluster_id"
+    replicated_command="redis-cli --cluster add-node $current_node_with_port $primary_node_with_port --cluster-slave --cluster-master-id $primary_node_cluster_id"
   else
-    replicated_command="redis-cli --cluster add-node $current_pod_fqdn:$SERVICE_PORT $primary_node_with_port --cluster-slave --cluster-master-id $primary_node_cluster_id -a $REDIS_DEFAULT_PASSWORD"
+    replicated_command="redis-cli --cluster add-node $current_node_with_port $primary_node_with_port --cluster-slave --cluster-master-id $primary_node_cluster_id -a $REDIS_DEFAULT_PASSWORD"
   fi
   echo "Scale out replica replicated command: $replicated_command"
   if ! $replicated_command
   then
       echo "Failed to add the node $current_pod_fqdn to the cluster in scale_redis_cluster_replica"
       if [ -n "$REDIS_DEFAULT_PASSWORD" ]; then
-        redis-cli -h 127.0.0.1 -p $service_port -a "$REDIS_DEFAULT_PASSWORD" shutdown
+        redis-cli -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" shutdown
       else
-        redis-cli -h 127.0.0.1 -p $service_port shutdown
+        redis-cli -h 127.0.0.1 -p "$service_port" shutdown
       fi
       exit 1
   fi
@@ -299,6 +309,7 @@ start_redis_server() {
 # build redis cluster configuration redis.conf
 build_redis_conf() {
   load_redis_template_conf
+  build_redis_cluster_service_port
   build_announce_ip_and_port
   build_cluster_announce_info
   rebuild_redis_acl_file
