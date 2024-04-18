@@ -1,11 +1,11 @@
-apiVersion: apps.kubeblocks.io/v1beta1
+apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ConfigConstraint
 metadata:
   name: mysql8.0.33-config-constraints
   labels:
     {{- include "mysql.labels" . | nindent 4 }}
 spec:
-  configSchema:
+  configurationSchema:
     cue: ""
 
   # mysql configuration file format
