@@ -244,10 +244,11 @@ is_redis_cluster_initialized() {
 # get the current component primary node and other nodes for scale in
 get_current_comp_nodes_for_scale_in() {
   local cluster_node="$1"
+  local cluster_node_port="$2"
   if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-    cluster_nodes_info=$(redis-cli -h "$cluster_node" -p "$SERVICE_PORT" cluster nodes)
+    cluster_nodes_info=$(redis-cli -h "$cluster_node" -p "$cluster_node_port" cluster nodes)
   else
-    cluster_nodes_info=$(redis-cli -h "$cluster_node" -p "$SERVICE_PORT" -a "$REDIS_DEFAULT_PASSWORD" cluster nodes)
+    cluster_nodes_info=$(redis-cli -h "$cluster_node" -p "$cluster_node_port" -a "$REDIS_DEFAULT_PASSWORD" cluster nodes)
   fi
 
   current_comp_primary_node=()
@@ -617,7 +618,8 @@ scale_in_redis_cluster_shard() {
   init_other_components_and_pods_info "$KB_COMP_NAME" "$KB_CLUSTER_POD_IP_LIST" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_COMPONENT_LIST" "$KB_CLUSTER_COMPONENT_DELETING_LIST" "$KB_CLUSTER_COMPONENT_UNDELETED_LIST"
   available_node=$(find_exist_available_node)
   available_node_fqdn=$(echo "$available_node" | awk -F ':' '{print $1}')
-  get_current_comp_nodes_for_scale_in "$available_node_fqdn"
+  available_node_port=$(echo "$available_node" | awk -F ':' '{print $2}')
+  get_current_comp_nodes_for_scale_in "$available_node_fqdn" "$available_node_port"
 
   # Check if the number of shards in the cluster is less than 3 after scaling down.
   current_comp_pod_count=0
