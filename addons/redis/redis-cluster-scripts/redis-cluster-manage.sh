@@ -1,6 +1,15 @@
 #!/bin/bash
 set -ex
 
+# declare the global variables for initialize redis cluster
+declare -gA initialize_redis_cluster_primary_nodes
+declare -gA initialize_redis_cluster_secondary_nodes
+declare -gA initialize_pod_name_to_advertise_host_port_map
+
+# declare the global variables for scale out redis cluster shard
+declare -gA scale_out_shard_default_primary_node
+declare -gA scale_out_shard_default_other_nodes
+
 # initialize the other component and pods info
 init_other_components_and_pods_info() {
   local component="$1"
@@ -78,7 +87,17 @@ init_other_components_and_pods_info() {
 find_exist_available_node() {
   for node in "${other_undeleted_component_nodes[@]}"; do
     if redis_cluster_check "$node"; then
-      echo "$node"
+      # the $node is the headless address by default, we should get the real node address from cluster nodes
+      node_ip=$(echo "$node" | cut -d':' -f1)
+      node_port=$(echo "$node" | cut -d':' -f2)
+      if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+        cluster_nodes_info=$(redis-cli -h "$node_ip" -p "$node_port" cluster nodes)
+      else
+        cluster_nodes_info=$(redis-cli -h "$node_ip" -p "$node_port" -a "$REDIS_DEFAULT_PASSWORD" cluster nodes )
+      fi
+      # grep my self node and return the nodeIp:port(it may be the announceIp and announcePort, for example when cluster enable NodePort/LoadBalancer service)
+      available_node_with_port=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $2}' | cut -d'@' -f1)
+      echo "$available_node_with_port"
       return
     fi
   done
@@ -191,6 +210,18 @@ extract_pod_name_prefix_from_pod_fqdn() {
   fi
 }
 
+get_cluster_id() {
+  local cluster_node="$1"
+  local cluster_node_port="$2"
+  if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+    cluster_nodes_info=$(redis-cli -h "$cluster_node" -p "$cluster_node_port" cluster nodes)
+  else
+    cluster_nodes_info=$(redis-cli -h "$cluster_node" -p "$cluster_node_port" -a "$REDIS_DEFAULT_PASSWORD" cluster nodes)
+  fi
+  cluster_id=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $1}')
+  echo "$cluster_id"
+}
+
 is_redis_cluster_initialized() {
   if [ -z "$KB_CLUSTER_POD_IP_LIST" ]; then
     echo "Error: Required environment variable KB_CLUSTER_POD_IP_LIST is not set."
@@ -213,10 +244,11 @@ is_redis_cluster_initialized() {
 # get the current component primary node and other nodes for scale in
 get_current_comp_nodes_for_scale_in() {
   local cluster_node="$1"
+  local cluster_node_port="$2"
   if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-    cluster_nodes_info=$(redis-cli -h "$cluster_node" -p "$SERVICE_PORT" cluster nodes)
+    cluster_nodes_info=$(redis-cli -h "$cluster_node" -p "$cluster_node_port" cluster nodes)
   else
-    cluster_nodes_info=$(redis-cli -h "$cluster_node" -p "$SERVICE_PORT" -a "$REDIS_DEFAULT_PASSWORD" cluster nodes)
+    cluster_nodes_info=$(redis-cli -h "$cluster_node" -p "$cluster_node_port" -a "$REDIS_DEFAULT_PASSWORD" cluster nodes)
   fi
 
   current_comp_primary_node=()
@@ -232,9 +264,9 @@ get_current_comp_nodes_for_scale_in() {
   # the value format of REDIS_ADVERTISED_PORT is "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."
   declare -A advertised_ports
   local using_advertised_ports=false
-  if [ ! -z "$REDIS_ADVERTISED_PORT" ]; then
+  if [ -n "$REDIS_CLUSTER_ADVERTISED_PORT" ]; then
     using_advertised_ports=true
-    IFS=',' read -ra ADDR <<< "$REDIS_ADVERTISED_PORT"
+    IFS=',' read -ra ADDR <<< "$REDIS_CLUSTER_ADVERTISED_PORT"
     for i in "${ADDR[@]}"; do
       port=$(echo $i | cut -d':' -f2)
       advertised_ports[$port]=1
@@ -245,14 +277,14 @@ get_current_comp_nodes_for_scale_in() {
   # 1. using the pod fqdn as the nodeAddr
   # 4958e6dca033cd1b321922508553fab869a29d 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
   # 2. using the nodeport or lb ip as the nodeAddr
-  # 4958e6dca033cd1b321922508553fab869a29d 172.10.0.1:31000@16379 master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
+  # 4958e6dca033cd1b321922508553fab869a29d 172.10.0.1:31000@31888,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc master master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
   while read -r line; do
-    # 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc or 172.10.0.1:31000@16379
+    # 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc
     node_ip_port_fields=$(echo "$line" | awk '{print $2}')
     # ip:port without bus port
     node_ip_port=$(echo "$node_ip_port_fields" | awk -F '@' '{print $1}')
     node_port=$(echo "$node_ip_port_fields" | awk -F '@' '{print $1}' | cut -d':' -f2)
-    # redis-shard-sxj-0.redis-shard-sxj-headless.default.svc or ""
+    # redis-shard-sxj-0.redis-shard-sxj-headless.default.svc
     node_fqdn=$(echo "$line" | awk '{print $2}' | awk -F ',' '{print $2}')
     node_role=$(echo "$line" | awk '{print $3}')
     if $using_advertised_ports; then
@@ -274,177 +306,214 @@ get_current_comp_nodes_for_scale_in() {
     fi
   done <<< "$cluster_nodes_info"
 
-  # TODO: when support nodePort or LoadBalancer, the output of line will not contain the $KB_CLUSTER_COMP_NAME
-  while read -r line; do
-    node_fqdn=$(echo "$line" | awk '{print $2}' | awk -F ',' '{print $2}')
-    node_role=$(echo "$line" | awk '{print $3}')
-
-    if [[ "$node_fqdn" =~ "$KB_CLUSTER_COMP_NAME"* ]]; then
-      if [[ "$node_role" =~ "master" ]]; then
-        current_comp_primary_node+=("$node_fqdn:$SERVICE_PORT")
-      else
-        current_comp_other_nodes+=("$node_fqdn:$SERVICE_PORT")
-      fi
-    fi
-  done <<< "$cluster_nodes_info"
-
   echo "current_comp_primary_node: ${current_comp_primary_node[*]}"
   echo "current_comp_other_nodes: ${current_comp_other_nodes[*]}"
 }
 
 # get the current component default primary node which ordinal is 0 to join the cluster when scaling out
 init_current_comp_default_nodes_for_scale_out() {
-    if [ -z "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" ]; then
-      echo "Error: Required environment variable KB_CLUSTER_COMPONENT_POD_NAME_LIST is not set."
-      exit 1
-    fi
-    current_comp_default_primary_node=()
-    current_comp_default_other_nodes=()
-    local port=$SERVICE_PORT
-    for pod_name in $(echo "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" | tr ',' ' '); do
-      pod_name_ordinal=$(extract_ordinal_from_object_name "$pod_name")
+  if [ -z "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" ]; then
+    echo "Error: Required environment variable KB_CLUSTER_COMPONENT_POD_NAME_LIST is not set."
+    exit 1
+  fi
+  local pod_host_ip
+  for pod_name in $(echo "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" | tr ',' ' '); do
+    pod_name_ordinal=$(extract_ordinal_from_object_name "$pod_name")
+    ## if the REDIS_CLUSTER_ADVERTISED_PORT is set, use the advertised port
+    ## the value format of REDIS_CLUSTER_ADVERTISED_PORT is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."
+    if [ -n "$REDIS_CLUSTER_ADVERTISED_PORT" ]; then
+      old_ifs="$IFS"
+      IFS=','
+      set -f
+      read -ra advertised_infos <<< "$REDIS_CLUSTER_ADVERTISED_PORT"
+      set +f
+      IFS="$old_ifs"
+      found_advertised_port=false
+      for advertised_info in "${advertised_infos[@]}"; do
+        advertised_svc=$(echo "$advertised_info" | cut -d':' -f1)
+        advertised_port=$(echo "$advertised_info" | cut -d':' -f2)
+        advertised_svc_ordinal=$(extract_ordinal_from_object_name "$advertised_svc")
+        if [ "$pod_name_ordinal" == "$advertised_svc_ordinal" ]; then
+          pod_host_ip=$(parse_host_ip_from_built_in_envs "$pod_name" "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" "$KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST")
+          if [ -z "$pod_host_ip" ]; then
+            echo "Failed to get the host ip of the pod $pod_name"
+            exit 1
+          fi
+          if [ "$pod_name_ordinal" -eq 0 ]; then
+            scale_out_shard_default_primary_node["$pod_name"]="$pod_host_ip:$advertised_port"
+          else
+            scale_out_shard_default_other_nodes["$pod_name"]="$pod_host_ip:$advertised_port"
+          fi
+          found_advertised_port=true
+          break
+        fi
+      done
+      if [ "$found_advertised_port" = false ]; then
+        echo "Advertised port not found for pod $pod_name"
+        exit 1
+      fi
+    else
+      local port=$SERVICE_PORT
       pod_name_prefix=$(extract_pod_name_prefix "$pod_name")
       local pod_fqdn="$pod_name.$pod_name_prefix-headless"
       if [ "$pod_name_ordinal" -eq 0 ]; then
-        current_comp_default_primary_node+=(" $pod_fqdn:$port")
+        scale_out_shard_default_primary_node["$pod_name"]="$pod_fqdn:$port"
       else
-        current_comp_default_other_nodes+=(" $pod_fqdn:$port")
+        scale_out_shard_default_other_nodes["$pod_name"]="$pod_fqdn:$port"
       fi
-    done
-    echo "current_comp_default_primary_node: ${current_comp_default_primary_node[*]}"
-    echo "current_comp_default_other_nodes: ${current_comp_default_other_nodes[*]}"
+    fi
+  done
+}
+
+gen_initialize_redis_cluster_node() {
+  local is_primary=$1
+  if [ -z "$KB_CLUSTER_POD_NAME_LIST" ]; then
+    echo "Error: Required environment variable KB_CLUSTER_POD_NAME_LIST is not set."
+    exit 1
+  fi
+  local shard_name
+  local shard_advertised_infos
+  local shard_advertised_svc
+  local shard_advertised_port
+  local shard_advertised_svc_ordinal
+  local pod_host_ip
+  for pod_name in $(echo "$KB_CLUSTER_POD_NAME_LIST" | tr ',' ' '); do
+    pod_name_ordinal=$(extract_ordinal_from_object_name "$pod_name")
+    if [ "$is_primary" = true ] && [ "$pod_name_ordinal" -ne 0 ]; then
+      continue
+    elif [ "$is_primary" = false ] && [ "$pod_name_ordinal" -eq 0 ]; then
+      continue
+    fi
+    ## if the REDIS_CLUSTER_ALL_SHARDS_ADVERTISED_PORT is set, use the advertised port
+    ## the value format of REDIS_CLUSTER_ALL_SHARDS_ADVERTISED_PORT is "shard-98x@redis-shard-98x-redis-advertised-0:32024,redis-shard-98x-redis-advertised-1:31318.shard-cq7@redis-shard-cq7-redis-advertised-0:31828,redis-shard-cq7-redis-advertised-1:32000"
+    if [ -n "$REDIS_CLUSTER_ALL_SHARDS_ADVERTISED_PORT" ]; then
+      old_ifs="$IFS"
+      IFS='.'
+      set -f
+      read -ra shards <<< "$REDIS_CLUSTER_ALL_SHARDS_ADVERTISED_PORT"
+      set +f
+      IFS="$old_ifs"
+      for shard in "${shards[@]}"; do
+        shard_name=$(echo "$shard" | cut -d'@' -f1)
+        ## if pod_name is not belong to the current shard, skip it
+        if ! echo "$pod_name" | grep -q "$shard_name"; then
+          continue
+        fi
+        # shard_advertised_infos like "redis-shard-98x-redis-advertised-0:32024,redis-shard-98x-redis-advertised-1:31318"
+        old_ifs="$IFS"
+        IFS=','
+        set -f
+        read -ra shard_advertised_infos <<< "$(echo "$shard" | cut -d'@' -f2)"
+        set +f
+        IFS="$old_ifs"
+        for shard_advertised_info in "${shard_advertised_infos[@]}"; do
+          shard_advertised_svc=$(echo "$shard_advertised_info" | cut -d':' -f1)
+          shard_advertised_port=$(echo "$shard_advertised_info" | cut -d':' -f2)
+          shard_advertised_svc_ordinal=$(extract_ordinal_from_object_name "$shard_advertised_svc")
+          if [ "$pod_name_ordinal" == "$shard_advertised_svc_ordinal" ]; then
+            pod_host_ip=$(parse_host_ip_from_built_in_envs "$pod_name" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_POD_HOST_IP_LIST")
+            if [ -z "$pod_host_ip" ]; then
+              echo "Failed to get the host ip of the pod $pod_name"
+              exit 1
+            fi
+            if [ "$is_primary" = true ]; then
+              initialize_redis_cluster_primary_nodes["$pod_name"]="$pod_host_ip:$shard_advertised_port"
+            else
+              initialize_redis_cluster_secondary_nodes["$pod_name"]="$pod_host_ip:$shard_advertised_port"
+            fi
+            initialize_pod_name_to_advertise_host_port_map["$pod_name"]="$pod_host_ip:$shard_advertised_port"
+            break
+          fi
+        done
+      done
+    else
+      local port=$SERVICE_PORT
+      pod_name_prefix=$(extract_pod_name_prefix "$pod_name")
+      local pod_fqdn="$pod_name.$pod_name_prefix-headless"
+      if [ "$is_primary" = true ]; then
+        initialize_redis_cluster_primary_nodes["$pod_name"]="$pod_fqdn:$port"
+      else
+        initialize_redis_cluster_secondary_nodes["$pod_name"]="$pod_fqdn:$port"
+      fi
+      initialize_pod_name_to_advertise_host_port_map["$pod_name"]="$pod_fqdn:$port"
+    fi
+  done
 }
 
 gen_initialize_redis_cluster_primary_node() {
-  if [ -z "$KB_CLUSTER_POD_NAME_LIST" ]; then
-    echo "Error: Required environment variable KB_CLUSTER_POD_NAME_LIST is not set."
-    exit 1
-  fi
-  local cluster_nodes=()
-  local port=$SERVICE_PORT
-  for pod_name in $(echo "$KB_CLUSTER_POD_NAME_LIST" | tr ',' ' '); do
-    pod_name_ordinal=$(extract_ordinal_from_object_name "$pod_name")
-    if [ "$pod_name_ordinal" -ne 0 ]; then
-      continue
-    fi
-    pod_name_prefix=$(extract_pod_name_prefix "$pod_name")
-    local pod_fqdn="$pod_name.$pod_name_prefix-headless"
-    cluster_nodes+=(" $pod_fqdn:$port")
-  done
-  echo "${cluster_nodes[*]}"
+  gen_initialize_redis_cluster_node true
 }
 
 gen_initialize_redis_cluster_secondary_nodes() {
-  if [ -z "$KB_CLUSTER_POD_NAME_LIST" ]; then
-    echo "Error: Required environment variable KB_CLUSTER_POD_NAME_LIST is not set."
-    exit 1
-  fi
-  local cluster_nodes=()
-  local port=$SERVICE_PORT
-  for pod_name in $(echo "$KB_CLUSTER_POD_NAME_LIST" | tr ',' ' '); do
-    pod_name_ordinal=$(extract_ordinal_from_object_name "$pod_name")
-    if [ "$pod_name_ordinal" -eq 0 ]; then
-      continue
-    fi
-    pod_name_prefix=$(extract_pod_name_prefix "$pod_name")
-    local pod_fqdn="$pod_name.$pod_name_prefix-headless"
-    cluster_nodes+=(" $pod_fqdn:$port")
-  done
-  echo "${cluster_nodes[*]}"
-}
-
-get_cluster_id() {
-  local cluster_node="$1"
-  if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-    cluster_nodes_info=$(redis-cli -h "$cluster_node" -p "$SERVICE_PORT" cluster nodes)
-  else
-    cluster_nodes_info=$(redis-cli -h "$cluster_node" -p "$SERVICE_PORT" -a "$REDIS_DEFAULT_PASSWORD" cluster nodes)
-  fi
-  cluster_id=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $1}')
-  echo "$cluster_id"
-}
-
-# return the node string with format nodeAddr:nodePort, nodeAddr maybe the pod fqdn or the nodeport/lb ip, nodePort is the service port or the nodeport
-gen_redis_cluster_node_info() {
-  local pod_name="$1"
-  # get the host ip of the pod
-  local host_ip=$(parse_host_ip_from_built_in_envs "$pod_name" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_POD_HOST_IP_LIST")
-  if [ -z "$host_ip" ]; then
-    echo "Failed to get the host ip of the pod $pod_name"
-    exit 1
-  fi
-  pod_name_ordinal=$(extract_ordinal_from_object_name "$pod_name")
-  pod_name_prefix=$(extract_pod_name_prefix "$pod_name")
-  # try to parse the advertised ip and port from REDIS_ADVERTISED_PORT
-  # the value format of REDIS_ADVERTISED_PORT is "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..." which includes all the pods of current component
-  if [[ -n "${REDIS_ADVERTISED_PORT}" ]]; then
-    local advertised_port=""
-    IFS=',' read -ra advertised_ports <<< "${REDIS_ADVERTISED_PORT}"
-    for advertised_port in "${advertised_ports[@]}"; do
-      IFS=':' read -ra parts <<< "$advertised_port"
-      svc_name="${parts[0]}"
-      port="${parts[1]}"
-      svc_name_ordinal=$(extract_ordinal_from_object_name "$svc_name")
-      if [[ "$svc_name_ordinal" == "$pod_name_ordinal" ]]; then
-        echo "$host_ip:$port"
-        return 0
-      fi
-    done
-  else
-    # use pod fqdn and service port as the node info
-    local pod_fqdn="$pod_name.$pod_name_prefix-headless"
-    echo "$pod_fqdn:$SERVICE_PORT"
-  fi
+  gen_initialize_redis_cluster_node false
 }
 
 initialize_redis_cluster() {
   # initialize all the primary nodes
-  primary_nodes=$(gen_initialize_redis_cluster_primary_node)
-  if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-      initialize_command="redis-cli --cluster create $primary_nodes --cluster-yes"
-  else
-      initialize_command="redis-cli --cluster create $primary_nodes -a $REDIS_DEFAULT_PASSWORD --cluster-yes"
+  gen_initialize_redis_cluster_primary_node
+  if [ ${#initialize_redis_cluster_primary_nodes[@]} -eq 0 ]; then
+    echo "Failed to get primary nodes"
+    exit 1
   fi
-  if ! $initialize_command
-  then
-      echo "Failed to create Redis Cluster"
-      exit 1
+  primary_nodes=""
+  for primary_pod_name in "${!initialize_redis_cluster_primary_nodes[@]}"; do
+    primary_nodes+="${initialize_redis_cluster_primary_nodes[$primary_pod_name]} "
+  done
+  if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+    initialize_command="redis-cli --cluster create $primary_nodes --cluster-yes"
+  else
+    initialize_command="redis-cli --cluster create $primary_nodes -a $REDIS_DEFAULT_PASSWORD --cluster-yes"
+  fi
+  echo "initialize_command: $initialize_command"
+  if ! $initialize_command; then
+    echo "Failed to create Redis Cluster"
+    exit 1
   fi
 
   # get the first primary node to check the cluster
   first_primary_node=$(echo "$primary_nodes" | awk '{print $1}')
   if redis_cluster_check "$first_primary_node"; then
-      echo "Cluster correctly created"
+    echo "Cluster correctly created"
   else
-      echo "Failed to create Redis Cluster"
-      exit 1
+    echo "Failed to create Redis Cluster"
+    exit 1
   fi
+
   # initialize all the secondary nodes
-  secondary_nodes=$(gen_initialize_redis_cluster_secondary_nodes)
-  echo "secondary_nodes: $secondary_nodes"
-  for secondary_node in $secondary_nodes; do
-      secondary_pod_name_prefix=$(extract_pod_name_prefix_from_pod_fqdn "$secondary_node")
-      mapping_primary_fqdn="$secondary_pod_name_prefix-0.$secondary_pod_name_prefix-headless"
-      mapping_primary_fqdn_with_port="$mapping_primary_fqdn:$SERVICE_PORT"
-      mapping_primary_cluster_id=$(get_cluster_id "$mapping_primary_fqdn")
-      echo "mapping_primary_fqdn: $mapping_primary_fqdn, mapping_primary_fqdn_with_port: $mapping_primary_fqdn_with_port, mapping_primary_cluster_id: $mapping_primary_cluster_id"
-      if [ -z "$mapping_primary_cluster_id" ]; then
-          echo "Failed to get the cluster id from cluster nodes of the mapping primary node: $mapping_primary_fqdn"
-          exit 1
-      fi
-      if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-          replicated_command="redis-cli --cluster add-node $secondary_node $mapping_primary_fqdn_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id"
-      else
-          replicated_command="redis-cli --cluster add-node $secondary_node $mapping_primary_fqdn_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id -a $REDIS_DEFAULT_PASSWORD"
-      fi
-      echo "replicated_command: $replicated_command"
-      if ! $replicated_command
-      then
-          echo "Failed to add the node $secondary_node to the cluster in initialize_redis_cluster"
-          exit 1
-      fi
-      # waiting for all nodes sync the information
-      wait_random_second 5 3
+  gen_initialize_redis_cluster_secondary_nodes
+  if [ ${#initialize_redis_cluster_secondary_nodes[@]} -eq 0 ]; then
+    echo "No secondary nodes to initialize"
+    return
+  fi
+  for secondary_pod_name in "${!initialize_redis_cluster_secondary_nodes[@]}"; do
+    secondary_endpoint_with_port=${initialize_redis_cluster_secondary_nodes["$secondary_pod_name"]}
+    # shellcheck disable=SC2001
+    mapping_primary_pod_name=$(echo "$secondary_pod_name" | sed 's/-[0-9]*$/-0/')
+    mapping_primary_endpoint_with_port=${initialize_pod_name_to_advertise_host_port_map["$mapping_primary_pod_name"]}
+    if [ -z "$mapping_primary_endpoint_with_port" ]; then
+      echo "Failed to find the mapping primary node for secondary node: $secondary_pod_name"
+      exit 1
+    fi
+    mapping_primary_endpoint=$(echo "$mapping_primary_endpoint_with_port" | cut -d':' -f1)
+    mapping_primary_port=$(echo "$mapping_primary_endpoint_with_port" | cut -d':' -f2)
+    mapping_primary_cluster_id=$(get_cluster_id "$mapping_primary_endpoint" "$mapping_primary_port")
+    echo "mapping_primary_fqdn: $mapping_primary_endpoint, mapping_primary_endpoint_with_port: $mapping_primary_endpoint_with_port, mapping_primary_cluster_id: $mapping_primary_cluster_id"
+    if [ -z "$mapping_primary_cluster_id" ]; then
+      echo "Failed to get the cluster id from cluster nodes of the mapping primary node: $mapping_primary_endpoint_with_port"
+      exit 1
+    fi
+    if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+      replicated_command="redis-cli --cluster add-node $secondary_endpoint_with_port $mapping_primary_endpoint_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id"
+    else
+      replicated_command="redis-cli --cluster add-node $secondary_endpoint_with_port $mapping_primary_endpoint_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id -a $REDIS_DEFAULT_PASSWORD"
+    fi
+    echo "replicated_command: $replicated_command"
+    if ! $replicated_command; then
+      echo "Failed to add the node $secondary_pod_name to the cluster in initialize_redis_cluster"
+      exit 1
+    fi
+    # waiting for all nodes sync the information
+    wait_random_second 5 1
   done
 }
 
@@ -453,9 +522,14 @@ scale_out_redis_cluster_shard() {
   init_current_comp_default_nodes_for_scale_out
 
   # check the current component shard whether is already scaled out
-  primary_node_with_port=$(echo "${current_comp_default_primary_node[*]}" | awk '{print $1}')
+  if [ ${#scale_out_shard_default_primary_node[@]} -eq 0 ]; then
+    echo "Failed to generate primary nodes when scaling out"
+    exit 1
+  fi
+  primary_node_with_port=$(echo "${scale_out_shard_default_primary_node[*]}" | awk '{print $1}')
   primary_node_fqdn=$(echo "$primary_node_with_port" | awk -F ':' '{print $1}')
-  mapping_primary_cluster_id=$(get_cluster_id "$primary_node_fqdn")
+  primary_node_port=$(echo "$primary_node_with_port" | awk -F ':' '{print $2}')
+  mapping_primary_cluster_id=$(get_cluster_id "$primary_node_fqdn" "$primary_node_port")
   if redis_cluster_check "$primary_node_with_port"; then
     echo "The current component shard is already scaled out, no need to scale out again."
     exit 0
@@ -468,36 +542,36 @@ scale_out_redis_cluster_shard() {
     exit 1
   fi
 
-  # add the default primary node for the current shard
-  for current_comp_default_primary_node in $current_comp_default_primary_node; do
-      if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-        echo "redis-cli --cluster add-node $current_comp_default_primary_node $available_node"
-        redis-cli --cluster add-node "$current_comp_default_primary_node" "$available_node"
-      else
-        echo "redis-cli --cluster add-node $current_comp_default_primary_node $available_node -a $REDIS_DEFAULT_PASSWORD"
-        redis-cli --cluster add-node "$current_comp_default_primary_node" "$available_node" -a "$REDIS_DEFAULT_PASSWORD"
-      fi
+  # add the primary node for the current shard
+  for primary_pod_name in "${!scale_out_shard_default_primary_node[@]}"; do
+    scale_out_shard_default_primary_node="${scale_out_shard_default_primary_node[$primary_pod_name]}"
+    if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+      echo "redis-cli --cluster add-node $scale_out_shard_default_primary_node $available_node"
+      redis-cli --cluster add-node "$scale_out_shard_default_primary_node" "$available_node"
+    else
+      echo "redis-cli --cluster add-node $scale_out_shard_default_primary_node $available_node -a $REDIS_DEFAULT_PASSWORD"
+      redis-cli --cluster add-node "$scale_out_shard_default_primary_node" "$available_node" -a "$REDIS_DEFAULT_PASSWORD"
+    fi
   done
 
   # waiting for all nodes sync the information
   wait_random_second 10 5
 
-  # add the default other secondary nodes for the current shard
-  for current_comp_default_other_node in ${current_comp_default_other_nodes[*]}; do
-      # gei mapping master id
-      echo "primary_node_with_port: $primary_node_with_port, primary_node_fqdn: $primary_node_fqdn, mapping_primary_cluster_id: $mapping_primary_cluster_id"
-      if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-          replicated_command="redis-cli --cluster add-node $current_comp_default_other_node $primary_node_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id"
-      else
-          replicated_command="redis-cli --cluster add-node $current_comp_default_other_node $primary_node_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id -a $REDIS_DEFAULT_PASSWORD"
-      fi
-      echo "replicated_command: $replicated_command"
-      # execute the replicated command
-      if ! $replicated_command
-      then
-          echo "Failed to add the node $current_comp_default_other_node to the cluster"
-          exit 1
-      fi
+  # add the other nodes for secondary
+  for secondary_pod_name in "${!scale_out_shard_default_other_nodes[@]}"; do
+    scale_out_shard_default_other_node="${scale_out_shard_default_other_nodes[$secondary_pod_name]}"
+    echo "primary_node_with_port: $primary_node_with_port, primary_node_fqdn: $primary_node_fqdn, mapping_primary_cluster_id: $mapping_primary_cluster_id"
+    if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+      replicated_command="redis-cli --cluster add-node $scale_out_shard_default_other_node $primary_node_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id"
+    else
+      replicated_command="redis-cli --cluster add-node $scale_out_shard_default_other_node $primary_node_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id -a $REDIS_DEFAULT_PASSWORD"
+    fi
+    echo "replicated_command: $replicated_command"
+    # execute the replicated command
+    if ! $replicated_command; then
+      echo "Failed to add the node $current_comp_default_other_node to the cluster"
+      exit 1
+    fi
   done
 
   # do the reshard
@@ -544,7 +618,8 @@ scale_in_redis_cluster_shard() {
   init_other_components_and_pods_info "$KB_COMP_NAME" "$KB_CLUSTER_POD_IP_LIST" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_COMPONENT_LIST" "$KB_CLUSTER_COMPONENT_DELETING_LIST" "$KB_CLUSTER_COMPONENT_UNDELETED_LIST"
   available_node=$(find_exist_available_node)
   available_node_fqdn=$(echo "$available_node" | awk -F ':' '{print $1}')
-  get_current_comp_nodes_for_scale_in "$available_node_fqdn"
+  available_node_port=$(echo "$available_node" | awk -F ':' '{print $2}')
+  get_current_comp_nodes_for_scale_in "$available_node_fqdn" "$available_node_port"
 
   # Check if the number of shards in the cluster is less than 3 after scaling down.
   current_comp_pod_count=0
@@ -562,8 +637,8 @@ scale_in_redis_cluster_shard() {
   # set the current component slot to 0 by rebalance command
   for primary_node in "${current_comp_primary_node[@]}"; do
     primary_node_fqdn=$(echo "$primary_node" | awk -F ':' '{print $1}')
-    primary_node_cluster_id=$(get_cluster_id "$primary_node_fqdn")
-
+    primary_node_port=$(echo "$primary_node" | awk -F ':' '{print $2}')
+    primary_node_cluster_id=$(get_cluster_id "$primary_node_fqdn" "$primary_node_port")
     if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
       rebalance_command="redis-cli --cluster rebalance $primary_node --cluster-weight $primary_node_cluster_id=0 --cluster-yes "
     else
@@ -582,7 +657,8 @@ scale_in_redis_cluster_shard() {
   # delete the current component nodes from the cluster
   for node_to_del in "${current_comp_primary_node[@]}" "${current_comp_other_nodes[@]}"; do
     node_to_del_fqdn=$(echo "$node_to_del" | awk -F ':' '{print $1}')
-    node_to_del_cluster_id=$(get_cluster_id "$node_to_del_fqdn")
+    node_to_del_port=$(echo "$node_to_del" | awk -F ':' '{print $2}')
+    node_to_del_cluster_id=$(get_cluster_id "$node_to_del_fqdn" "$node_to_del_port")
     if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
       del_node_command="redis-cli --cluster del-node $available_node $node_to_del_cluster_id -p $SERVICE_PORT"
     else
