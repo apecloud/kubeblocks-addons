@@ -49,7 +49,7 @@ spec:
     - name: BACKEND_SERVER
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "mysql.componentDefName" . }}-5.7.44-ocr
+          compDef: {{ include "mysql.componentDefName" . }}-5.7.44-orc
           name: mysql-server
           host: Required
           optional: true
@@ -57,7 +57,7 @@ spec:
     - name: MYSQL_ORDINAL_HOST
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "mysql.componentDefName" . }}-5.7.44-ocr
+          compDef: {{ include "mysql.componentDefName" . }}-5.7.44-orc
           name: mysql
           generatePodOrdinalServiceVar: true
           host: Required
@@ -67,7 +67,7 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "mysql.componentDefName" . }}-5.7.44-ocr
+          compDef: {{ include "mysql.componentDefName" . }}-5.7.44-orc
           name: root
           username: Required
 
@@ -76,7 +76,7 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "mysql.componentDefName" . }}-5.7.44-ocr
+          compDef: {{ include "mysql.componentDefName" . }}-5.7.44-orc
           name: root
           password: Required
 
@@ -84,7 +84,7 @@ spec:
     - name: MYSQL_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "mysql.componentDefName" . }}-5.7.44.44-ocr
+          compDef: {{ include "mysql.componentDefName" . }}-5.7.44.44-orc
           name: mysql
           generatePodOrdinalServiceVar: true
           optional: true
@@ -95,7 +95,7 @@ spec:
     - name: PROXYSQL_HOST_NAME
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "proxysql.componentDefName" . }}-5.7-ocr
+          compDef: {{ include "proxysql.componentDefName" . }}-5.7-orc
           name: proxy-ordinal
           generatePodOrdinalServiceVar: true
           host: Required
@@ -103,7 +103,7 @@ spec:
     - name: PROXYSQL_ADMIN_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "proxysql.componentDefName" . }}-5.7-ocr
+          compDef: {{ include "proxysql.componentDefName" . }}-5.7-orc
           name: proxy-ordinal
           generatePodOrdinalServiceVar: true
           port:
