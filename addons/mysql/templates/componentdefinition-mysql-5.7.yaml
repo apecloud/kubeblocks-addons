@@ -92,7 +92,7 @@ spec:
             name: kubeblocks
     containers:
       - name: mysql
-        image: docker.io/mysql:5.7.44
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.7.44
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         command:
           - bash

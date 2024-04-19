@@ -5,7 +5,7 @@ metadata:
   annotations:
     kubeblocks.io/is-default-cluster-version: "true"
   labels:
-    {{- include "mysql.labels" . | nindent 4 }}
+    {{- include "orchestrator.labels" . | nindent 4 }}
 spec:
   clusterDefinitionRef: orchestrator
   componentVersions:

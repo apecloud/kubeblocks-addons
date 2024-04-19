@@ -1,17 +1,14 @@
 apiVersion: v2
-name: mysql
-description: MySQL is a widely used, open-source relational database management system (RDBMS)
+name: orchestrator
+description: Orchestrator is a MySQL high availability and replication management tool, 
+  runs as a service and provides command line access, HTTP API and Web interface.
 
 type: application
 
-version: 0.9.0
+version: 3.2.6
 
-# This is the version number of the ApeCloud MySQL being deployed,
-# rather than the version number of ApeCloud MySQL-Scale itself.
-# From a user's perspective, the version number of the frontend
-# proxy of the MySQL being used is not relevant.
-# appVersion: "8.0.33"
-appVersion: "5.7.42"
+# This is the version number of the Orchestrator being deployed
+appVersion: "3.2.6"
 
 home: https://kubeblocks.io/
 icon: https://kubeblocks.io/img/logo.png
@@ -27,5 +24,5 @@ sources:
 
 annotations:
   addon.kubeblocks.io/kubeblocks-version: ">=0.7.0"
-  addon.kubeblocks.io/model: "RDBMS"
+  addon.kubeblocks.io/model: "HA"
   addon.kubeblocks.io/provider: "community"

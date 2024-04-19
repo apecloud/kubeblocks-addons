@@ -3,7 +3,7 @@ kind: ComponentDefinition
 metadata:
   name: {{ include "orchestrator.componentDefName" . }}
   labels:
-      {{- include "mysql.labels" . | nindent 4 }}
+      {{- include "orchestrator.labels" . | nindent 4 }}
 spec:
   provider: kubeblocks
   description: mysql HA compoent definition for Kubernetes

@@ -104,7 +104,7 @@ spec:
           - -r
           - /usr/local/bin/curl
           - /kubeblocks/curl
-        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/curl-static:latest
+        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/curl-static:7.67.0
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         name: init-curl
         volumeMounts:
@@ -123,7 +123,7 @@ spec:
             name: kubeblocks
     containers:
       - name: mysql
-        image: docker.io/mysql:5.7.44
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.7.44
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         command:
           - bash

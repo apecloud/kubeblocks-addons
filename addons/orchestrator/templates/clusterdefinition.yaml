@@ -3,7 +3,7 @@ kind: ClusterDefinition
 metadata:
   name: orchestrator
   labels:
-    {{- include "mysql.labels" . | nindent 4 }}
+    {{- include "orchestrator.labels" . | nindent 4 }}
 spec:
   connectionCredential:
     username: root
