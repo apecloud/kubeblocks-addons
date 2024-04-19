@@ -21,12 +21,8 @@ component_name="$KB_COMP_NAME"
 forget_from_orchestrator() {
   local host_ip=$1
 
-  endpoint=${ORC_ENDPOINTS%%:*}:${ORC_PORTS}
-
-  local url="http://${endpoint}/api/forget/$host_ip/3306"
-
   # send request to orchestrator for discovery
-  /scripts/orchestrator-client -c forget -i ${endpoint}:3306
+  /scripts/orchestrator-client -c forget -i ${host_ip}:3306
 }
 
 # Get the svc list from the environment variable
