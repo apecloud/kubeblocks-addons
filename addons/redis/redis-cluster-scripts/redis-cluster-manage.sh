@@ -260,8 +260,8 @@ get_current_comp_nodes_for_scale_in() {
     return
   fi
 
-  # if the REDIS_ADVERTISED_PORT is set, parse the advertised ports
-  # the value format of REDIS_ADVERTISED_PORT is "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."
+  # if the $REDIS_CLUSTER_ADVERTISED_PORT is set, parse the advertised ports
+  # the value format of $REDIS_CLUSTER_ADVERTISED_PORT is "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."
   declare -A advertised_ports
   local using_advertised_ports=false
   if [ -n "$REDIS_CLUSTER_ADVERTISED_PORT" ]; then
