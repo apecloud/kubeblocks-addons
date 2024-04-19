@@ -1,6 +1,47 @@
 #!/bin/bash
 set -ex
 
+declare -g primary
+declare -g default_initialize_pod_ordinal=0
+declare -g headless_postfix="headless"
+
+extract_ordinal_from_object_name() {
+  local object_name="$1"
+  local ordinal="${object_name##*-}"
+  echo "$ordinal"
+}
+
+shutdown_redis_server() {
+  if [ -n "$REDIS_DEFAULT_PASSWORD" ]; then
+    redis-cli -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" shutdown
+  else
+    redis-cli -h 127.0.0.1 -p "$service_port" shutdown
+  fi
+}
+
+check_redis_server_ready() {
+  if [ -n "$REDIS_DEFAULT_PASSWORD" ]; then
+    retry redis-cli -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" ping
+  else
+    retry redis-cli -h 127.0.0.1 -p "$service_port" ping
+  fi
+}
+
+# usage: retry <command>
+retry() {
+  local max_attempts=20
+  local attempt=1
+  until "$@" || [ $attempt -eq $max_attempts ]; do
+    echo "Command '$*' failed. Attempt $attempt of $max_attempts. Retrying in 5 seconds..."
+    attempt=$((attempt + 1))
+    sleep 3
+  done
+  if [ $attempt -eq $max_attempts ]; then
+    echo "Command '$*' failed after $max_attempts attempts. shutdown redis-server..."
+    shutdown_redis_server
+  fi
+}
+
 load_redis_template_conf() {
   echo "include /etc/conf/redis.conf" >> /etc/redis/redis.conf
 }
@@ -46,6 +87,16 @@ build_redis_service_port() {
   echo "port $service_port" >> /etc/redis/redis.conf
 }
 
+build_replicaof_config() {
+  init_or_get_primary_node
+  if [ "$primary" = "$KB_POD_NAME" ]; then
+    echo "primary instance skip create a replication relationship."
+  else
+    primary_fqdn="$primary.$KB_CLUSTER_COMP_NAME-$headless_postfix.$KB_NAMESPACE.svc"
+    echo "replicaof $primary_fqdn $service_port" >> /etc/redis/redis.conf
+  fi
+}
+
 rebuild_redis_acl_file() {
   if [ -f /data/users.acl ]; then
     sed -i "/user default on/d" /data/users.acl
@@ -56,28 +107,21 @@ rebuild_redis_acl_file() {
   fi
 }
 
-extract_ordinal_from_object_name() {
-  local object_name="$1"
-  local ordinal="${object_name##*-}"
-  echo "$ordinal"
-}
+init_or_get_primary_node() {
+  # TODO: if redis sentinel exist, try to get primary node from redis sentinel
 
-# usage: retry <command>
-retry() {
-  local max_attempts=20
-  local attempt=1
-  until "$@" || [ $attempt -eq $max_attempts ]; do
-    echo "Command '$*' failed. Attempt $attempt of $max_attempts. Retrying in 5 seconds..."
-    attempt=$((attempt + 1))
-    sleep 3
-  done
-  if [ $attempt -eq $max_attempts ]; then
-    echo "Command '$*' failed after $max_attempts attempts. shutdown redis-server..."
-    if [ -n "$REDIS_DEFAULT_PASSWORD" ]; then
-      redis-cli -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" shutdown
-    else
-      redis-cli -h 127.0.0.1 -p "$service_port" shutdown
-    fi
+  # otherwise if KB_LEADER is not empty, use KB_LEADER as primary node.
+  # if cluster is not initialized, KB_LEADER will be empty
+  if [ -n "$KB_LEADER" ]; then
+    primary="$KB_LEADER"
+    # check if KB_LEADER is real master
+#    if [ -n "$REDIS_DEFAULT_PASSWORD" ]; then
+#      until redis-cli -h "$primary" -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" role | grep -q "master"; do sleep 2; done
+#    else
+#      until redis-cli -h "$primary" -p "$service_port" role | grep -q "master"; do sleep 2; done
+#    fi
+  else
+    primary="$KB_CLUSTER_COMP_NAME-$default_initialize_pod_ordinal"
   fi
 }
 
@@ -88,64 +132,6 @@ start_redis_server() {
     --loadmodule /opt/redis-stack/lib/redistimeseries.so ${REDISTIMESERIES_ARGS} \
     --loadmodule /opt/redis-stack/lib/rejson.so ${REDISJSON_ARGS} \
     --loadmodule /opt/redis-stack/lib/redisbloom.so ${REDISBLOOM_ARGS}
-}
-
-create_replication() {
-    # Waiting for redis-server to start
-    if [ -n "$REDIS_DEFAULT_PASSWORD" ]; then
-      retry redis-cli -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" ping
-    else
-      retry redis-cli -h 127.0.0.1 -p "$service_port" ping
-    fi
-
-    # Waiting for primary pod information from the DownwardAPI annotation to be available
-    attempt=1
-    max_attempts=20
-    while [ $attempt -le $max_attempts ] && [ -z "$(cat /kb-podinfo/primary-pod)" ]; do
-      echo "Waiting for primary pod information from the DownwardAPI annotation to be available, attempt $attempt of $max_attempts..."
-      sleep 5
-      attempt=$((attempt + 1))
-    done
-    primary=$(cat /kb-podinfo/primary-pod)
-    echo "DownwardAPI get primary=$primary" >> /etc/redis/.kb_set_up.log
-    echo "KB_POD_NAME=$KB_POD_NAME" >> /etc/redis/.kb_set_up.log
-    if [ -z "$primary" ]; then
-      echo "Primary pod information not available. shutdown redis-server..."
-      if [ -n "$REDIS_DEFAULT_PASSWORD" ]; then
-        redis-cli -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" shutdown
-      else
-        redis-cli -h 127.0.0.1 -p "$service_port" shutdown
-      fi
-      exit 1
-    fi
-
-    # create a replication relationship, if failed, shutdown redis-server
-    if [ "$primary" = "$KB_POD_NAME" ]; then
-      echo "primary instance skip create a replication relationship."
-    else
-      primary_fqdn="$primary.$KB_CLUSTER_NAME-$KB_COMP_NAME-headless.$KB_NAMESPACE.svc"
-      echo "primary_fqdn=$primary_fqdn" >> /etc/redis/.kb_set_up.log
-      echo "wait for primary:$primary_fqdn redis-server to start"
-      if [ -n "$REDIS_DEFAULT_PASSWORD" ]; then
-        # wait for primary redis-server to start
-        until redis-cli -h "$primary_fqdn" -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" ping; do sleep 2; done
-        echo "start to create a replication relationship"
-        redis-cli -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" replicaof "$primary_fqdn" "$service_port"
-      else
-        until redis-cli -h "$primary_fqdn" -p "$service_port" ping; do sleep 2; done
-        echo "start to create a replication relationship"
-        redis-cli -h 127.0.0.1 -p "$service_port" replicaof "$primary_fqdn" "$service_port"
-      fi
-      if [ $? -ne 0 ]; then
-        echo "Failed to create a replication relationship. shutdown redis-server..."
-        if [ -n "$REDIS_DEFAULT_PASSWORD" ]; then
-          redis-cli -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" shutdown
-        else
-          redis-cli -h 127.0.0.1 -p "$service_port" shutdown
-        fi
-      fi
-      echo "create a replication relationship succeeded."
-    fi
 }
 
 parse_redis_advertised_svc_if_exist() {
@@ -186,11 +172,11 @@ build_redis_conf() {
   load_redis_template_conf
   build_announce_ip_and_port
   build_redis_service_port
+  build_replicaof_config
   rebuild_redis_acl_file
   build_redis_default_accounts
 }
 
 parse_redis_advertised_svc_if_exist "$KB_POD_NAME"
 build_redis_conf
-create_replication &
 start_redis_server
