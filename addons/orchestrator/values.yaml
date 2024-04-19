@@ -3,12 +3,12 @@
 # Declare variables to be passed into your templates.
 
 image:
-  registry:  registry.cn-hangzhou.aliyuncs.com
-  repository: apecloud/mysql-operator-orchestrator
-  pullPolicy: IfNotPresent
+  registry:  docker.io
+  repository: apecloud/orchestrator
+  pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
   #tag: 8.0.33
-  tag: v0.6.3
+  tag: v3.2.6
   xtraBackupRepository: perconalab/percona-xtrabackup
 
 imagePullSecrets: []

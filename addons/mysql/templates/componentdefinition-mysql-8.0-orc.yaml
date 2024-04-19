@@ -65,15 +65,6 @@ spec:
             - -c
             - "/scripts/mysql-orchestrator-register.sh;"
         preCondition: ComponentReady
-    preTerminate:
-      customHandler:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
-        exec:
-          command:
-            - bash
-            - -c
-            - "/scripts/orchestrator-client -c forget -i ${KB_CLUSTER_NAME};"
-        preCondition: Immediately
   runtime:
     initContainers:
       - image: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
@@ -125,6 +116,10 @@ spec:
       - name: mysql
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        lifecycle:
+          preStop:
+            exec:
+              command: [ "/bin/sh", "-c", "/scripts/forget-from-orchestrator.sh" ]
         command:
           - bash
           - -c

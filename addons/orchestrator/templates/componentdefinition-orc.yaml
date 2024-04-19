@@ -96,6 +96,11 @@ spec:
       - name: orchestrator
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag | default "v0.6.3" }}
         imagePullPolicy: IfNotPresent
+        command:
+          - bash
+          - -c
+          - |
+            /usr/local/orchestrator/orchestrator -quiet -config /usr/local/share/orchestrator/templates/orchestrator.conf.json http
         volumeMounts:
           - name: orchestrator-data
             mountPath: /var/lib/orchestrator
