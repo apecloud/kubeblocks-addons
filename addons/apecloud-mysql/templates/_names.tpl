@@ -21,17 +21,6 @@ volumesnapshot-for-apecloud-mysql
 {{- end -}}
 
 {{/*
-Define monitor config
-*/}}
-{{- define "apecloud-mysql.agamottoCfgName" -}}
-{{- if eq (len .Values.resourceNamePrefix) 0 -}}
-apecloud-mysql8-agamotto-configuration
-{{- else -}}
-{{- .Values.resourceNamePrefix -}}-agamotto-configuration
-{{- end -}}
-{{- end -}}
-
-{{/*
 Define backup policy template
 */}}
 {{- define "apecloud-mysql.backupPolicyTemplateName" -}}

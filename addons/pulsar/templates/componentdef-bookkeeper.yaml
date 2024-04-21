@@ -15,16 +15,7 @@ spec:
         - serviceKind: zookeeper
           serviceVersion: ^3.8.\d{1,2}$
   updateStrategy: BestEffortParallel
-  monitor:
-    builtIn: false
-    exporterConfig:
-      scrapePath: /metrics
-      scrapePort: {{ .Values.metrics.service.port }}
   configs:
-    - name: agamotto-configuration
-      templateRef: {{ include "pulsar.name" . }}-agamotto-conf-tpl
-      namespace: {{ .Release.Namespace }}
-      volumeName: agamotto-configuration
     - name: bookies-env
       templateRef: {{ include "pulsar.name" . }}-bookies-env-tpl
       namespace: {{ .Release.Namespace }}
@@ -32,7 +23,7 @@ spec:
       volumeName: bookies-env
       keys:
         - conf
-      asEnvFrom:
+      injectEnvTo:
         - init-bookies
         - bookies
     - name: bookies-config
@@ -133,38 +124,6 @@ spec:
             mountPath: /opt/pulsar/none
           - name: pulsar-bookies-config
             mountPath: /opt/pulsar/conf
-      - name: metrics
-        image: {{ .Values.images.metrics.registry | default .Values.image.registry }}/{{ .Values.images.metrics.repository }}:{{ .Values.images.metrics.tag }}
-        imagePullPolicy: {{ default "IfNotPresent" .Values.images.metrics.pullPolicy }}
-        securityContext:
-          runAsNonRoot: false
-          runAsUser: 0
-        env:
-          - name: JOB_NAME
-            value: bookie
-          - name: SERVICE_PORT
-            value: "8000"
-          - name: POD_NAME
-            value: $(KB_POD_NAME)
-          - name: POD_NAMESPACE
-            value: $(KB_NAMESPACE)
-          {{- if .Values.debugEnabled }}
-          - name: LOG_LEVEL
-            value: debug
-          {{- else }}
-          - name: LOG_LEVEL
-            value: info
-          {{- end }}
-        command:
-          - "/bin/agamotto"
-          - "--config=/opt/agamotto/agamotto-config.yaml"
-          - "--feature-gates=-pkg.translator.prometheus.NormalizeName"
-        ports:
-          - name: http-metrics
-            containerPort: {{ .Values.metrics.service.port }}
-        volumeMounts:
-          - name: agamotto-configuration
-            mountPath: /opt/agamotto
     volumes:
       - name: annotations
         downwardAPI:
@@ -172,3 +131,7 @@ spec:
             - path: "component-replicas"
               fieldRef:
                 fieldPath: metadata.annotations['apps.kubeblocks.io/component-replicas']
+  builtinMonitorContainer:
+    name: bookies
+    metricsPath: /metrics
+    metricsPort: http

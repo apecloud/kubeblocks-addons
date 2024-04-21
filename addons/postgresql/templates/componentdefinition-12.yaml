@@ -65,11 +65,6 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: postgresql-custom-metrics
       defaultMode: 0444
-    - name: agamotto-configuration
-      templateRef: postgresql-agamotto-configuration
-      namespace: {{ .Release.Namespace }}
-      volumeName: agamotto-configuration
-      defaultMode: 0444
   scripts:
     - name: postgresql-scripts
       templateRef: postgresql-scripts
@@ -301,29 +296,6 @@ spec:
             value: "6432"
           - name: PGBOUNCER_BIND_ADDRESS
             value: "0.0.0.0"
-      - name: metrics
-        image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
-        imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
-        securityContext:
-          runAsUser: 0
-        env:
-          - name: ENDPOINT
-            value: {{ printf "127.0.0.1:5432" }}
-          - name: DATA_SOURCE_PASS
-            value: $(POSTGRES_PASSWORD)
-          - name: DATA_SOURCE_USER
-            value: $(POSTGRES_USER)
-        command:
-          - "/bin/agamotto"
-          - "--config=/opt/agamotto/agamotto-config.yaml"
-        ports:
-          - name: http-metrics
-            containerPort: {{ .Values.metrics.service.port }}
-        volumeMounts:
-          - name: postgresql-custom-metrics
-            mountPath: /opt/conf
-          - name: agamotto-configuration
-            mountPath: /opt/agamotto
     volumes:
       - name: dshm
         emptyDir:
@@ -355,3 +327,29 @@ spec:
           name: postgres
           optional: false
           password: Required
+  sidecarContainerSpecs:
+    - monitor:
+        kind: metrics
+        scrapeConfig:
+          metricsPath: /metrics
+          metricsPort: http-metrics
+      name: exporter
+      ports:
+        - name: http-metrics
+          containerPort: {{ .Values.metrics.service.port }}
+      image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
+      imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
+      args:
+        - "--extend.query-path=/opt/conf/custom-metrics.yaml"
+        - "--web.listen-address=:{{ .Values.metrics.service.port }}"
+        - "--log.level=info"
+      env:
+        - name: DATA_SOURCE_USER
+          value: $(POSTGRES_USER)
+        - name: DATA_SOURCE_PASS
+          value: $(POSTGRES_PASSWORD)
+        - name: DATA_SOURCE_URI
+          value: "localhost:5432/postgres?sslmode=disable"
+      volumeMounts:
+        - name: postgresql-custom-metrics
+          mountPath: /opt/conf
