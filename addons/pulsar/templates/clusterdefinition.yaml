@@ -25,23 +25,14 @@ spec:
         serviceRefDeclarationSpecs:
           - serviceKind: zookeeper
             serviceVersion: ^3.8.\d{1,2}$
-      monitor:
-        builtIn: false
-        exporterConfig:
-          scrapePath: /metrics
-          scrapePort: {{ .Values.metrics.service.port }}
       configSpecs:
-        - name: agamotto-configuration
-          templateRef: {{ include "pulsar.name" . }}-agamotto-conf-tpl
-          namespace: {{ .Release.Namespace }}
-          volumeName: agamotto-configuration
         - name: broker-env
           templateRef: {{ include "pulsar.name" . }}-broker-env-tpl
           namespace: {{ .Release.Namespace }}
           constraintRef: pulsar-env-constraints
           keys:
             - conf
-          asEnvFrom:
+          injectEnvTo:
             - init-broker-cluster
             - broker
             - init-pulsar-client-config
@@ -202,38 +193,10 @@ spec:
               mountPath: /opt/pulsar/conf
             - name: broker-env
               mountPath: /opt/pulsar/none
-          - name: metrics
-            image: {{ .Values.images.metrics.registry | default .Values.image.registry }}/{{ .Values.images.metrics.repository }}:{{ .Values.images.metrics.tag }}
-            imagePullPolicy: {{ default "IfNotPresent" .Values.images.metrics.pullPolicy }}
-            securityContext:
-              runAsNonRoot: false
-              runAsUser: 0
-            env:
-              - name: JOB_NAME
-                value: broker
-              - name: SERVICE_PORT
-                value: "8080"
-              - name: POD_NAME
-                value: $(KB_POD_NAME)
-              - name: POD_NAMESPACE
-                value: $(KB_NAMESPACE)
-              {{- if .Values.debugEnabled }}
-              - name: LOG_LEVEL
-                value: debug
-              {{- else }}
-              - name: LOG_LEVEL
-                value: info
-              {{- end }}
-            command:
-              - "/bin/agamotto"
-              - "--config=/opt/agamotto/agamotto-config.yaml"
-              - "--feature-gates=-pkg.translator.prometheus.NormalizeName"
-            ports:
-              - name: http-metrics
-                containerPort: {{ .Values.metrics.service.port }}
-            volumeMounts:
-              - name: agamotto-configuration
-                mountPath: /opt/agamotto
+      builtinMonitorContainer:
+        name: broker
+        metricsPath: /metrics/
+        metricsPort: http
     - name: pulsar-proxy
       workloadType: Stateful
       characterType: pulsar-proxy
@@ -245,16 +208,7 @@ spec:
         - name: brokerSVC
           valueFrom:
             type: ServiceRef
-      monitor:
-        builtIn: false
-        exporterConfig:
-          scrapePath: /metrics
-          scrapePort: {{ .Values.metrics.service.port }}
       configSpecs:
-        - name: agamotto-configuration
-          templateRef: {{ include "pulsar.name" . }}-agamotto-conf-tpl
-          namespace: {{ .Release.Namespace }}
-          volumeName: agamotto-configuration
         - name: proxy-env
           templateRef: {{ include "pulsar.name" . }}-proxy-env-tpl
           namespace: {{ .Release.Namespace }}
@@ -262,7 +216,7 @@ spec:
           constraintRef: pulsar-env-constraints
           keys:
             - conf
-          asEnvFrom:
+          injectEnvTo:
             - proxy
       scriptSpecs:
         - name: pulsar-scripts
@@ -370,38 +324,10 @@ spec:
                 mountPath: /opt/pulsar/none
               - name: pulsar-proxy-config
                 mountPath: /opt/pulsar/conf
-          - name: metrics
-            image: {{ .Values.images.metrics.registry | default .Values.image.registry }}/{{ .Values.images.metrics.repository }}:{{ .Values.images.metrics.tag }}
-            imagePullPolicy: {{ default "IfNotPresent" .Values.images.metrics.pullPolicy }}
-            securityContext:
-              runAsNonRoot: false
-              runAsUser: 0
-            env:
-              - name: JOB_NAME
-                value: proxy
-              - name: SERVICE_PORT
-                value: "8080"
-              - name: POD_NAME
-                value: $(KB_POD_NAME)
-              - name: POD_NAMESPACE
-                value: $(KB_NAMESPACE)
-              {{- if .Values.debugEnabled }}
-              - name: LOG_LEVEL
-                value: debug
-              {{- else }}
-              - name: LOG_LEVEL
-                value: info
-              {{- end }}
-            command:
-              - "/bin/agamotto"
-              - "--config=/opt/agamotto/agamotto-config.yaml"
-              - "--feature-gates=-pkg.translator.prometheus.NormalizeName"
-            ports:
-              - name: http-metrics
-                containerPort: {{ .Values.metrics.service.port }}
-            volumeMounts:
-              - name: agamotto-configuration
-                mountPath: /opt/agamotto
+      builtinMonitorContainer:
+        name: proxy
+        metricsPath: /metrics/
+        metricsPort: http
     - name: bookies
       workloadType: Stateful
       characterType: bookkeeper
@@ -412,16 +338,7 @@ spec:
         serviceRefDeclarationSpecs:
         - serviceKind: zookeeper
           serviceVersion: ^3.8.\d{1,2}$
-      monitor:
-        builtIn: false
-        exporterConfig:
-          scrapePath: /metrics
-          scrapePort: {{ .Values.metrics.service.port }}
       configSpecs:
-        - name: agamotto-configuration
-          templateRef: {{ include "pulsar.name" . }}-agamotto-conf-tpl
-          namespace: {{ .Release.Namespace }}
-          volumeName: agamotto-configuration
         - name: bookies-env
           templateRef: {{ include "pulsar.name" . }}-bookies-env-tpl
           namespace: {{ .Release.Namespace }}
@@ -429,7 +346,7 @@ spec:
           volumeName: bookies-env
           keys:
             - conf
-          asEnvFrom:
+          injectEnvTo:
             - init-bookies
             - bookies
       scriptSpecs:
@@ -521,38 +438,6 @@ spec:
                 mountPath: /opt/pulsar/none
               - name: pulsar-bookies-config
                 mountPath: /opt/pulsar/conf
-          - name: metrics
-            image: {{ .Values.images.metrics.registry | default .Values.image.registry }}/{{ .Values.images.metrics.repository }}:{{ .Values.images.metrics.tag }}
-            imagePullPolicy: {{ default "IfNotPresent" .Values.images.metrics.pullPolicy }}
-            securityContext:
-              runAsNonRoot: false
-              runAsUser: 0
-            env:
-              - name: JOB_NAME
-                value: bookie
-              - name: SERVICE_PORT
-                value: "8000"
-              - name: POD_NAME
-                value: $(KB_POD_NAME)
-              - name: POD_NAMESPACE
-                value: $(KB_NAMESPACE)
-              {{- if .Values.debugEnabled }}
-              - name: LOG_LEVEL
-                value: debug
-              {{- else }}
-              - name: LOG_LEVEL
-                value: info
-              {{- end }}
-            command:
-              - "/bin/agamotto"
-              - "--config=/opt/agamotto/agamotto-config.yaml"
-              - "--feature-gates=-pkg.translator.prometheus.NormalizeName"
-            ports:
-              - name: http-metrics
-                containerPort: {{ .Values.metrics.service.port }}
-            volumeMounts:
-              - name: agamotto-configuration
-                mountPath: /opt/agamotto
         volumes:
           - name: annotations
             downwardAPI:
@@ -560,28 +445,23 @@ spec:
                 - path: "component-replicas"
                   fieldRef:
                     fieldPath: metadata.annotations['apps.kubeblocks.io/component-replicas']
+      builtinMonitorContainer:
+        name: bookies
+        metricsPath: /metrics
+        metricsPort: http
     - name: bookies-recovery
       workloadType: Stateful
       characterType: pulsar-bookie-recovery
       statefulSpec:
         updateStrategy: BestEffortParallel
-      monitor:
-        builtIn: false
-        exporterConfig:
-          scrapePath: /metrics
-          scrapePort: {{ .Values.metrics.service.port }}
       configSpecs:
-      - name: agamotto-configuration
-        templateRef: {{ include "pulsar.name" . }}-agamotto-conf-tpl
-        namespace: {{ .Release.Namespace }}
-        volumeName: agamotto-configuration
       - name: bookies-recovery-env
         templateRef: {{ include "pulsar.name" . }}-recovery-env-tpl
         namespace: {{ .Release.Namespace }}
         constraintRef: pulsar-env-constraints
         keys:
           - conf
-        asEnvFrom:
+        injectEnvTo:
           - bookies-recovery
           - check-bookies
         volumeName: recovery-config-env
@@ -655,53 +535,16 @@ spec:
               mountPath: /kb-scripts
             - name: recovery-config-env
               mountPath: /opt/pulsar/none
-          - name: metrics
-            image: {{ .Values.images.metrics.registry | default .Values.image.registry }}/{{ .Values.images.metrics.repository }}:{{ .Values.images.metrics.tag }}
-            imagePullPolicy: {{ default "IfNotPresent" .Values.images.metrics.pullPolicy }}
-            securityContext:
-              runAsNonRoot: false
-              runAsUser: 0
-            env:
-              - name: JOB_NAME
-                value: recovery
-              - name: SERVICE_PORT
-                value: "8000"
-              - name: POD_NAME
-                value: $(KB_POD_NAME)
-              - name: POD_NAMESPACE
-                value: $(KB_NAMESPACE)
-              {{- if .Values.debugEnabled }}
-              - name: LOG_LEVEL
-                value: debug
-              {{- else }}
-              - name: LOG_LEVEL
-                value: info
-              {{- end }}
-            command:
-              - "/bin/agamotto"
-              - "--config=/opt/agamotto/agamotto-config.yaml"
-              - "--feature-gates=-pkg.translator.prometheus.NormalizeName"
-            ports:
-              - name: http-metrics
-                containerPort: {{ .Values.metrics.service.port }}
-            volumeMounts:
-              - name: agamotto-configuration
-                mountPath: /opt/agamotto
+      builtinMonitorContainer:
+        name: bookies-recovery
+        metricsPath: /metrics
+        metricsPort: http
     - name: zookeeper
       workloadType: Stateful
       characterType: zookeeper
       statefulSpec:
         updateStrategy: BestEffortParallel
-      monitor:
-        builtIn: false
-        exporterConfig:
-          scrapePath: /metrics
-          scrapePort: {{ .Values.metrics.service.port }}
       configSpecs:
-        - name: agamotto-configuration
-          templateRef: {{ include "pulsar.name" . }}-agamotto-conf-tpl
-          namespace: {{ .Release.Namespace }}
-          volumeName: agamotto-configuration
         - name: zookeeper-env
           templateRef: {{ include "pulsar.name" . }}-zookeeper-env-tpl
           namespace: {{ .Release.Namespace }}
@@ -709,7 +552,7 @@ spec:
           constraintRef: pulsar-env-constraints
           keys:
             - conf
-          asEnvFrom:
+          injectEnvTo:
             - zookeeper
       scriptSpecs:
         - name: pulsar-scripts
@@ -789,35 +632,7 @@ spec:
                 mountPath: /kb-scripts
               - name: zookeeper-config-env
                 mountPath: /opt/pulsar/none
-          - name: metrics
-            image: {{ .Values.images.metrics.registry | default .Values.image.registry }}/{{ .Values.images.metrics.repository }}:{{ .Values.images.metrics.tag }}
-            imagePullPolicy: {{ default "IfNotPresent" .Values.images.metrics.pullPolicy }}
-            securityContext:
-              runAsNonRoot: false
-              runAsUser: 0
-            env:
-              - name: JOB_NAME
-                value: zookeeper
-              - name: SERVICE_PORT
-                value: "8000"
-              - name: POD_NAME
-                value: $(KB_POD_NAME)
-              - name: POD_NAMESPACE
-                value: $(KB_NAMESPACE)
-              {{- if .Values.debugEnabled }}
-              - name: LOG_LEVEL
-                value: debug
-              {{- else }}
-              - name: LOG_LEVEL
-                value: info
-              {{- end }}
-            command:
-              - "/bin/agamotto"
-              - "--config=/opt/agamotto/agamotto-config.yaml"
-              - "--feature-gates=-pkg.translator.prometheus.NormalizeName"
-            ports:
-              - name: http-metrics
-                containerPort: {{ .Values.metrics.service.port }}
-            volumeMounts:
-              - name: agamotto-configuration
-                mountPath: /opt/agamotto
+      builtinMonitorContainer:
+        name: zookeeper
+        metricsPath: /metrics
+        metricsPort: http
