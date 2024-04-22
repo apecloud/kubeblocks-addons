@@ -55,8 +55,7 @@ EOF
 }
 
 init_cluster_info_database() {
-  i=$1
-  local service_name=$(echo "${cluster_component_pod_name}_${component_name}_${i}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+  service_name=$1
   mysql_note "init cluster info database"
   mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD << EOF
 CREATE DATABASE IF NOT EXISTS kb_orc_meta_cluster;
@@ -111,14 +110,29 @@ setup_master_slave() {
   mysql_note "wait_for_connectivity"
   wait_for_connectivity
 
-
+  master_from_orc=""
+  get_master_from_orc
 
   last_digit=${KB_POD_NAME##*-}
-  if [[ $last_digit -eq 0 ]]; then
+  self_service_name=$(echo "${cluster_component_pod_name}_${component_name}_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+  host_name=$(echo "${self_service_name}_SERVICE_HOST" | tr '-' '_'  | tr '[:lower:]' '[:upper:]'  )
+
+  # If the cluster is already registered to the Orchestrator and the Master of the cluster is itself, then no action is required.
+  if [ "$master_from_orc" == "${self_service_name}" ]; then
+    return 0
+  fi
+
+  # If master_from_orc is not empty, then replace master_host with master_from_orc.
+  if [[ $master_from_orc != "" ]]; then
+    master_host=$master_from_orc
+  fi
+
+  # If the master_host is empty, then this pod is the first one in the cluster, init cluster info database and create user.
+  if [[ $master_from_orc == "" && $last_digit -eq 0 ]]; then
     echo "Create MySQL User and Grant Permissions"
     create_mysql_user
-    init_cluster_info_database last_digit
-
+    init_cluster_info_database self_service_name
+  # If the master_host is not empty, change master to the master_host.
   else
     mysql_note "Wait for master to be ready"
     change_master "$master_host"
@@ -127,9 +141,12 @@ setup_master_slave() {
 }
 
 get_master_from_orc() {
-  topology_info=$(/scripts/orchestrator-client -c topology -i $kb_cluster_name)
-  if [[ $output =~ ^ERROR ]]; then
-      return 1
+  topology_info=$(/scripts/orchestrator-client -c topology -i $kb_cluster_name) || true
+  if [[ $topology_info == "" ]]; then
+    return 0
+  fi
+  if [[ $topology_info =~ ^ERROR ]]; then
+      return 0
   fi
   # Extract the first line
   first_line=$(echo "$topology_info" | head -n 1)
@@ -156,9 +173,10 @@ get_master_from_orc() {
   address="${address_port%*:}"
   port="${address_port#*:}"
 
-  if [ -n "$address_port" && $status == "ok" ]; then
-    master_host="${address_port%:*}"
+  if [ -n "$address_port" ] && [ "$status" == "ok" ]; then
+    master_from_orc="${address_port%:*}"
   fi
+  return 0
 }
 
 change_master() {
