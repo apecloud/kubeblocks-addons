@@ -454,8 +454,6 @@ _main() {
 			echo
 			mysql_note "MySQL init process done. Ready for start up."
 			echo
-			mysql_note "setup_master_slave"
-      setup_master_slave
 		else
 			mysql_socket_fix
 		fi
