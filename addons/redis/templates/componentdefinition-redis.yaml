@@ -132,6 +132,13 @@ spec:
           password: Optional
     - name: SENTINEL_COMPONENT_DEFINITION_NAME
       value: {{ include "redis-sentinel.componentDefName" . }}
+    - name: SENTINEL_SERVICE_NAME
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redis-sentinel.componentDefName" . }}
+          name: redis-sentinel
+          optional: true
+          host: Optional
     - name: SENTINEL_SERVICE_PORT
       valueFrom:
         serviceVarRef:

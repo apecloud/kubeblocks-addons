@@ -110,19 +110,43 @@ rebuild_redis_acl_file() {
 init_or_get_primary_node() {
   # TODO: if redis sentinel exist, try to get primary node from redis sentinel
 
-  # otherwise if KB_LEADER is not empty, use KB_LEADER as primary node.
-  # if cluster is not initialized, KB_LEADER will be empty
+  # if KB_LEADER is not empty, use KB_LEADER as primary node.
   if [ -n "$KB_LEADER" ]; then
+    echo "KB_LEADER is not empty, use KB_LEADER:$KB_LEADER as primary node."
     primary="$KB_LEADER"
-    # check if KB_LEADER is real master
-#    if [ -n "$REDIS_DEFAULT_PASSWORD" ]; then
-#      until redis-cli -h "$primary" -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" role | grep -q "master"; do sleep 2; done
-#    else
-#      until redis-cli -h "$primary" -p "$service_port" role | grep -q "master"; do sleep 2; done
-#    fi
   else
+    # if KB_LEADER is empty, it may be the first time to initialize the cluster or there is currently no primary node in the cluster due to various reasons.
+    echo "KB_LEADER is empty, use default initialize pod_ordinal:$default_initialize_pod_ordinal as primary node."
     primary="$KB_CLUSTER_COMP_NAME-$default_initialize_pod_ordinal"
   fi
+
+  if [ "$primary" = "$KB_POD_NAME" ]; then
+    echo "current pod is primary node, skip check role in kernel"
+    return
+  fi
+
+  # check the primary is real master role or not
+  local primary_fqdn="$primary.$KB_CLUSTER_COMP_NAME-$headless_postfix.$KB_NAMESPACE.svc"
+  if [ -n "$REDIS_DEFAULT_PASSWORD" ]; then
+    check_kernel_role_cmd="redis-cli -h $primary_fqdn -p $service_port -a $REDIS_DEFAULT_PASSWORD info replication | grep 'role:' | awk -F: '{print \$2}'"
+  else
+    check_kernel_role_cmd="redis-cli -h $primary_fqdn -p $service_port info replication | grep 'role:' | awk -F: '{print \$2}'"
+  fi
+  retry_times=10
+  while true; do
+    check_role=$(eval "$check_kernel_role_cmd")
+    if [[ "$check_role" =~ "master" ]]; then
+      break
+    else
+      echo "the selected primary node is not the real master in kernel, existing primary node: $primary, role: $check_role"
+    fi
+    sleep 3
+    retry_times=$((retry_times - 1))
+    if [ $retry_times -eq 0 ]; then
+      echo "check primary node role failed after 20 times, existing primary node: $primary, role: $check_role"
+      exit 1
+    fi
+  done
 }
 
 start_redis_server() {
