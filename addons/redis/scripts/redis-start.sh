@@ -11,37 +11,6 @@ extract_ordinal_from_object_name() {
   echo "$ordinal"
 }
 
-shutdown_redis_server() {
-  if [ -n "$REDIS_DEFAULT_PASSWORD" ]; then
-    redis-cli -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" shutdown
-  else
-    redis-cli -h 127.0.0.1 -p "$service_port" shutdown
-  fi
-}
-
-check_redis_server_ready() {
-  if [ -n "$REDIS_DEFAULT_PASSWORD" ]; then
-    retry redis-cli -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" ping
-  else
-    retry redis-cli -h 127.0.0.1 -p "$service_port" ping
-  fi
-}
-
-# usage: retry <command>
-retry() {
-  local max_attempts=20
-  local attempt=1
-  until "$@" || [ $attempt -eq $max_attempts ]; do
-    echo "Command '$*' failed. Attempt $attempt of $max_attempts. Retrying in 5 seconds..."
-    attempt=$((attempt + 1))
-    sleep 3
-  done
-  if [ $attempt -eq $max_attempts ]; then
-    echo "Command '$*' failed after $max_attempts attempts. shutdown redis-server..."
-    shutdown_redis_server
-  fi
-}
-
 load_redis_template_conf() {
   echo "include /etc/conf/redis.conf" >> /etc/redis/redis.conf
 }

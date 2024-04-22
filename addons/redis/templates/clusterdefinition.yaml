@@ -43,11 +43,6 @@ spec:
           namespace: {{ .Release.Namespace }}
           volumeName: scripts
           defaultMode: 0555
-      monitor:
-        builtIn: false
-        exporterConfig:
-          scrapePort: {{ .Values.metrics.service.port }}
-          scrapePath: "/metrics"
       logConfigs:
         {{- range $name,$pattern := .Values.logConfigs }}
         - name: {{ $name }}
