@@ -117,7 +117,7 @@ init_or_get_primary_node() {
 }
 
 parse_redis_advertised_svc_if_exist() {
-  pod_ordinal=$(extract_ordinal_from_pod_name "$KB_POD_NAME")
+  pod_ordinal=$(extract_ordinal_from_object_name "$KB_POD_NAME")
   gen_redis_node_port="REDIS_NODE_PORT_${pod_ordinal}"
   eval redis_node_port_value="\$$gen_redis_node_port"
   redis_node_port_host_value=$KB_HOST_IP
