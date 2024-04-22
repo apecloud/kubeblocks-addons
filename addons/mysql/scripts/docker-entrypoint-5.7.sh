@@ -461,12 +461,6 @@ _main() {
 		fi
 	fi
 
-  (
-  if [[ ${HA_COMPNENT} == "orchestrator" ]]; then
-    /scripts/init-mysql-instance-for-orc.sh
-  fi
-  ) &
-
 	exec "$@"
 }
 

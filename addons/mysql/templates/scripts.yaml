@@ -29,8 +29,6 @@ data:
     #!/bin/bash
   docker-entrypoint-5.7.sh: |-
     {{- .Files.Get "scripts/docker-entrypoint-5.7.sh" | nindent 4 }}
-  docker-entrypoint-8.0.sh: |-
-    {{- .Files.Get "scripts/docker-entrypoint-8.0.sh" | nindent 4 }}
   mysql-orchestrator-register.sh: |-
     {{- .Files.Get "scripts/mysql-orchestrator-register.sh" | nindent 4 }}
   init-meta-database.sh: |-

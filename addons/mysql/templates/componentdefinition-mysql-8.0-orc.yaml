@@ -120,6 +120,9 @@ spec:
           preStop:
             exec:
               command: [ "/bin/sh", "-c", "/scripts/forget-from-orchestrator.sh" ]
+          postStart:
+            exec:
+              command: [ "/bin/sh", "-c", "/scripts/init-mysql-instance-for-orc.sh" ]
         command:
           - bash
           - -c
@@ -132,7 +135,7 @@ spec:
               skip_replica_start="ON"
             fi
             REPORT_HOST=MYSQL_ORDINAL_HOST_${KB_POD_NAME##*-}
-            /scripts/docker-entrypoint-8.0.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) --report_host ${!REPORT_HOST} \
+            docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) --report_host ${!REPORT_HOST} \
             --plugin-load-add=rpl_semi_sync_source=semisync_source.so \
             --plugin-load-add=rpl_semi_sync_replica=semisync_replica.so \
             --plugin-load-add=audit_log=audit_log.so \

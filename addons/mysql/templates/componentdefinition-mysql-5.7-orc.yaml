@@ -120,6 +120,13 @@ spec:
       - name: mysql
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.7.44
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        lifecycle:
+          preStop:
+            exec:
+              command: [ "/bin/sh", "-c", "/scripts/forget-from-orchestrator.sh" ]
+          postStart:
+            exec:
+              command: [ "/bin/sh", "-c", "/scripts/init-mysql-instance-for-orc.sh" ]
         command:
           - bash
           - -c
