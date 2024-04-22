@@ -135,7 +135,7 @@ spec:
               skip_slave_start="ON"
             fi
             REPORT_HOST=MYSQL_ORDINAL_HOST_${KB_POD_NAME##*-}
-            /scripts/docker-entrypoint-5.7.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) --report_host ${!REPORT_HOST} \
+            /scripts/docker-entrypoint-5.7.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) --report-host ${!REPORT_HOST} \
             --ignore-db-dir=lost+found \
             --plugin-load-add=rpl_semi_sync_master=semisync_master.so \
             --plugin-load-add=rpl_semi_sync_slave=semisync_slave.so \
