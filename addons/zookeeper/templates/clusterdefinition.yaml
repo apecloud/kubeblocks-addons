@@ -30,6 +30,8 @@ spec:
           constraintRef: {{ include "zookeeper.name" . }}-config-constraints
           volumeName: configs
           defaultMode: 0755
+          reRenderResourceTypes:
+            - hscale
       scriptSpecs:
         - name: zookeeper-scripts
           templateRef: {{ include "zookeeper.name" . }}-scripts
