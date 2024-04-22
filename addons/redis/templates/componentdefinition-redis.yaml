@@ -40,17 +40,11 @@ spec:
     - name: secondary
       serviceable: false
       writable: false
-  roleArbitrator: Lorry
   logConfigs:
     {{- range $name,$pattern := .Values.logConfigs }}
     - name: {{ $name }}
       filePathPattern: {{ $pattern }}
     {{- end }}
-  monitor:
-    builtIn: false
-    exporterConfig:
-      scrapePort: {{ .Values.metrics.service.port }}
-      scrapePath: "/metrics"
   configs:
     - name: redis-replication-config
       templateRef: redis7-config-template
