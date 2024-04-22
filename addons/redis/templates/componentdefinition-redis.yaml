@@ -132,6 +132,13 @@ spec:
           password: Optional
     - name: SENTINEL_COMPONENT_DEFINITION_NAME
       value: {{ include "redis-sentinel.componentDefName" . }}
+    - name: SENTINEL_SERVICE_NAME
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redis-sentinel.componentDefName" . }}
+          name: redis-sentinel
+          optional: true
+          host: Optional
     - name: SENTINEL_SERVICE_PORT
       valueFrom:
         serviceVarRef:
@@ -141,7 +148,6 @@ spec:
           port:
             name: redis-sentinel
             option: Optional
-    ## TODO: add redis sentinel reference env vars
   lifecycleActions:
     roleProbe:
       builtinHandler: redis
@@ -183,10 +189,10 @@ spec:
             mountPath: /scripts
           - name: redis-conf
             mountPath: /etc/redis
+          ## deprecated since v0.8.3, do not use it
           - name: pod-info
             mountPath: /kb-podinfo
         env:
-          ## TODO: redis sentinel deployment independent, refer to redis sentinel env vars
           - name: SERVICE_PORT
             value: "6379"
           ## the username of redis primary-secondary replication
@@ -243,6 +249,7 @@ spec:
           - name: redis-metrics-config
             mountPath: /opt/conf
     volumes:
+      ## deprecated since v0.8.3, do not use it
       - name: pod-info
         downwardAPI:
           items:
