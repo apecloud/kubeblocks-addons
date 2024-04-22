@@ -45,11 +45,6 @@ spec:
     - name: {{ $name }}
       filePathPattern: {{ $pattern }}
     {{- end }}
-  monitor:
-    builtIn: false
-    exporterConfig:
-      scrapePort: {{ .Values.metrics.service.port }}
-      scrapePath: "/metrics"
   configs:
     - name: redis-replication-config
       templateRef: redis7-config-template
