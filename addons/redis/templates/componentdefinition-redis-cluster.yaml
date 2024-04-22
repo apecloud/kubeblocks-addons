@@ -35,7 +35,6 @@ spec:
     - name: secondary
       serviceable: false
       writable: false
-  roleArbitrator: Lorry
   logConfigs:
     {{- range $name,$pattern := .Values.logConfigs }}
     - name: {{ $name }}
