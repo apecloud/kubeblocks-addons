@@ -135,47 +135,66 @@ setup_master_slave() {
   # If the master_host is not empty, change master to the master_host.
   else
     mysql_note "Wait for master to be ready"
+    /scripts/forget-from-orchestrator.sh || true
     change_master "$master_host"
   fi
   return 0
 }
 
 get_master_from_orc() {
-  topology_info=$(/scripts/orchestrator-client -c topology -i $kb_cluster_name) || true
-  if [[ $topology_info == "" ]]; then
-    return 0
-  fi
-  if [[ $topology_info =~ ^ERROR ]]; then
+  local timeout=50
+  local start_time=$(date +%s)
+  local current_time
+
+  while true; do
+    current_time=$(date +%s)
+    if [ $((current_time - start_time)) -gt $timeout ]; then
+      mysql_note "Timeout waiting for $host to become available."
       return 0
-  fi
-  # Extract the first line
-  first_line=$(echo "$topology_info" | head -n 1)
+    fi
 
-  # Remove square brackets and split by comma
-  cleaned_line=$(echo "$first_line" | tr -d '[]')
+    topology_info=$(/scripts/orchestrator-client -c topology -i $kb_cluster_name) || true
+    if [[ $topology_info == "" ]]; then
+      return 0
+    fi
+    if [[ $topology_info =~ ^ERROR ]]; then
+        return 0
+    fi
+    # Extract the first line
+    first_line=$(echo "$topology_info" | head -n 1)
 
-  # Parse the status variables using comma as the delimiter
-  old_ifs="$IFS"
-  IFS=',' read -ra status_array <<< "$cleaned_line"
-  IFS="$old_ifs"
+    # Remove square brackets and split by comma
+    cleaned_line=$(echo "$first_line" | tr -d '[]')
 
-  # Save individual status variables
-  lag="${status_array[0]}"
-  status="${status_array[1]}"
-  version="${status_array[2]}"
-  rw="${status_array[3]}"
-  mod="${status_array[4]}"
-  type="${status_array[5]}"
-  GTID="${status_array[6]}"
-  GTIDMOD="${status_array[7]}"
+    # Parse the status variables using comma as the delimiter
+    old_ifs="$IFS"
+    IFS=',' read -ra status_array <<< "$cleaned_line"
+    IFS="$old_ifs"
 
-  address_port=$(echo "$first_line" | awk '{print $1}')
-  address="${address_port%*:}"
-  port="${address_port#*:}"
+    # Save individual status variables
+    lag="${status_array[0]}"
+    status="${status_array[1]}"
+    version="${status_array[2]}"
+    rw="${status_array[3]}"
+    mod="${status_array[4]}"
+    type="${status_array[5]}"
+    GTID="${status_array[6]}"
+    GTIDMOD="${status_array[7]}"
 
-  if [ -n "$address_port" ] && [ "$status" == "ok" ]; then
-    master_from_orc="${address_port%:*}"
-  fi
+    address_port=$(echo "$first_line" | awk '{print $1}')
+    address="${address_port%*:}"
+    port="${address_port#*:}"
+
+    if [ -z "$address_port" ]; then
+      return 0
+    fi
+
+    if  [ "$status" == "ok" ]; then
+      master_from_orc="${address_port%:*}"
+      break
+    fi
+    sleep 5
+  done
   return 0
 }
 
