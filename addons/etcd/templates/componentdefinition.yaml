@@ -29,7 +29,8 @@ spec:
             PEERS=""
             MY_PEER=""
 
-            if [ -z "${INTERNAL_ENDPOINT}" ]; then
+            echo ${PEER_ENDPOINT}
+            if [ -z "${PEER_ENDPOINT}" ]; then
                 DOMAIN=$KB_NAMESPACE".svc{{ .Values.clusterDomain }}" 
                 i=0 
                 while [ $i -lt $KB_REPLICA_COUNT ]; do
@@ -44,17 +45,21 @@ spec:
                 done
                 MY_PEER=$KB_POD_FQDN{{ .Values.clusterDomain }}
             else
-                HOSTS=$(eval echo ${INTERNAL_ENDPOINT} | tr ',' '\n')
-                for host in ${HOSTS}; do
-                    id=$(eval echo ${host} | grep -oE "[0-9]+\$")
-                    hostname=${KB_CLUSTER_COMP_NAME}-${id}
-                    PEERS="${PEERS}${hostname}=http://${host}:2380,"
+                my_id=$(eval echo ${KB_POD_NAME} | grep -oE "[0-9]+\$")
+                endpoints=$(eval echo ${PEER_ENDPOINT} | tr ',' '\n')
+                for endpoint in ${endpoints}; do
+                    host=$(eval echo ${endpoint} | cut -d ':' -f 1)
+                    ip=$(eval echo ${endpoint} | cut -d ':' -f 2)
+                    host_id=$(eval echo ${host} | grep -oE "[0-9]+\$")
+                    hostname=${KB_CLUSTER_COMP_NAME}-${host_id}
+                    PEERS="${PEERS}${hostname}=http://${ip}:2380,"
+                    if [ "${my_id}" = "${host_id}" ]; then
+                        MY_PEER=${ip}
+                    fi
                 done
                 PEERS=${PEERS%,}
-
-                MY_ID=$(eval echo ${KB_POD_NAME} | grep -oE "[0-9]+\$")
-                MY_PEER=$(eval echo ${INTERNAL_ENDPOINT} | tr ',' '\n' | grep -E "\-${MY_ID}\$")
             fi
+            echo "peers: ${PEERS}, my-peer: ${MY_PEER}"
 
             exec etcd --name ${HOSTNAME} \
             --experimental-initial-corrupt-check=true \
@@ -65,10 +70,9 @@ spec:
             --initial-cluster ${PEERS} \
             --data-dir /var/run/etcd/default.etcd
   services:
-    - name: internal
-      serviceName: internal
+    - name: peer
+      serviceName: peer
       spec:
-        type: ClusterIP
         ports:
           - name: peer
             port: 2380
@@ -76,12 +80,13 @@ spec:
       podService: true
       disableAutoProvision: true
   vars:
-    - name: INTERNAL_ENDPOINT
+    - name: PEER_ENDPOINT
       valueFrom:
         serviceVarRef:
-          name: internal
+          name: peer
           optional: true
           host: Required
+          loadBalancer: Required
   updateStrategy: BestEffortParallel
   roles:
     - name: leader
