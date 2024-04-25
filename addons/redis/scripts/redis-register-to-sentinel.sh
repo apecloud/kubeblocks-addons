@@ -2,6 +2,7 @@
 set -ex
 
 # Based on the Component Definition API, Redis deployed independently, this script is used to register Redis to Sentinel.
+# And the script will only be executed once during the initialization of the Redis cluster.
 
 # usage: register_to_sentinel <sentinel_host> <master_name> <redis_primary_host> <redis_primary_port>
 # redis sentinel configuration refer: https://redis.io/docs/management/sentinel/#configuring-sentinel
