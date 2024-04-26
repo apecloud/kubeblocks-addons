@@ -130,12 +130,14 @@ setup_master_slave() {
   # If the master_host is empty, then this pod is the first one in the cluster, init cluster info database and create user.
   if [[ $master_from_orc == "" && $last_digit -eq 0 ]]; then
     echo "Create MySQL User and Grant Permissions"
+    if mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e "SELECT 1 FROM mysql.user WHERE user='$topology_user'" 2>/dev/null | grep $topology_user >/dev/null; then
+        return 0
+    fi
     create_mysql_user
     init_cluster_info_database self_service_name
   # If the master_host is not empty, change master to the master_host.
   else
     mysql_note "Wait for master to be ready"
-    /scripts/forget-from-orchestrator.sh || true
     change_master "$master_host"
   fi
   return 0
@@ -209,7 +211,9 @@ change_master() {
   mysql -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" << EOF
 SET GLOBAL READ_ONLY=1;
 STOP SLAVE;
+SET GLOBAL SQL_SLAVE_SKIP_COUNTER=1;
 CHANGE MASTER TO
+MASTER_AUTO_POSITION=1,
 MASTER_CONNECT_RETRY=1,
 MASTER_RETRY_COUNT=86400,
 MASTER_HOST='$master_host',
@@ -224,6 +228,7 @@ EOF
 main() {
   setup_master_slave
   echo "init mysql instance for orc completed"
+
 }
 
 main

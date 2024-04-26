@@ -27,9 +27,6 @@
   "FailMasterPromotionIfSQLThreadNotUpToDate": true,
   "MySQLOrchestratorRejectReadOnly": true,
 
-  "AutoPseudoGTID": true,
-  "HTTPAdvertise": "http://orc-cluster-mysql:80",
-
   "HostnameResolveMethod": "none",
   "MySQLHostnameResolveMethod": "@@report_host",
   "InstancePollSeconds": 5,

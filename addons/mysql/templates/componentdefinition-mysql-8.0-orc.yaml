@@ -117,9 +117,6 @@ spec:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         lifecycle:
-          preStop:
-            exec:
-              command: [ "/bin/sh", "-c", "/scripts/forget-from-orchestrator.sh" ]
           postStart:
             exec:
               command: [ "/bin/sh", "-c", "/scripts/init-mysql-instance-for-orc.sh" ]

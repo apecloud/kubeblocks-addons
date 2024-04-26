@@ -33,6 +33,26 @@ requests:
 ##
 storage: 20
 
+
+persistence:
+  ## @param clickhouse[*].persistence.enabled Enable persistence using Persistent Volume Claims
+  ##
+  enabled: true
+  ## `data` volume settings
+  ##
+  data:
+    ## @param clickhouse[*].persistence.data.storageClassName Storage class of backing PVC
+    ## If defined, storageClassName: <storageClass>
+    ## If set to "-", storageClassName: "", which disables dynamic provisioning
+    ## If undefined (the default) or set to null, no storageClassName spec is
+    ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+    ##   GKE, AWS & OpenStack)
+    ##
+    storageClassName:
+    ## @param clickhouse[*].persistence.size Size of data volume
+    ##
+    size: 10
+
 proxysql:
   enable: false
   replicas: 1
