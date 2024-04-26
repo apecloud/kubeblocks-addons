@@ -43,8 +43,6 @@ data:
     {{- .Files.Get "scripts/addition_to_sys_v5.sql" | nindent 4 }}
   addition_to_sys_v8.sql: |-
     {{- .Files.Get "scripts/addition_to_sys_v8.sql" | nindent 4 }}
-  orchestrator-member-leave.sh: |-
-    {{- .Files.Get "scripts/orchestrator-member-leave.sh" | nindent 4 }}
 ---
 apiVersion: v1
 kind: ConfigMap

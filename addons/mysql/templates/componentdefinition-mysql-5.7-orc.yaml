@@ -81,8 +81,11 @@ spec:
             - /bin/sh
             - -c
             - |
-            - "/scripts/orchestrator-member-leave.sh"
+              last_digit=${KB_LEAVE_MEMBER_POD_NAME##*-}
+              self_service_name=$(echo "${KB_CLUSTER_COMP_NAME}_${KB_COMP_NAME}_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+              /kubeblocks/orchestrator-client -c forget -i ${self_service_name}:3306
         targetPodSelector: Any
+        container: mysql
   runtime:
     initContainers:
       - image: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:{{ .Values.image.tag }}
@@ -98,11 +101,12 @@ spec:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
       - command:
-          - cp
-          - -r
-          - /usr/bin/jq
-          - /kubeblocks/jq
-        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/jq:1.7.0
+          - /bin/sh
+          - -c
+          - |
+            cp -r /usr/bin/jq /kubeblocks/jq
+            cp -r /scripts/orchestrator-client /kubeblocks/orchestrator-client
+        image: docker.io/kubejocker/jq:1.7.3
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         name: init-jq
         volumeMounts:
