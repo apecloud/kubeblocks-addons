@@ -58,13 +58,31 @@ spec:
   lifecycleActions:
     postProvision:
       customHandler:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         exec:
           command:
             - bash
             - -c
             - "/scripts/mysql-orchestrator-register.sh;"
         preCondition: ComponentReady
+    preTerminate:
+      customHandler:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        exec:
+          command:
+            - bash
+            - -c
+            - "/scripts/orchestrator-client -c forget-cluster -i $KB_CLUSTER_NAME;"
+    memberLeave:
+      customHandler:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        exec:
+          command:
+            - /bin/sh
+            - -c
+            - "/scripts/orchestrator-member-leave.sh"
+        targetPodSelector: Any
+        container: mysql
   runtime:
     initContainers:
       - image: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
