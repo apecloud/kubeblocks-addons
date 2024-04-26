@@ -126,11 +126,17 @@ spec:
           password: Optional
     - name: SENTINEL_COMPONENT_DEFINITION_NAME
       value: {{ include "redis-sentinel.componentDefName" . }}
-    - name: SENTINEL_SERVICE_NAME
+    - name: SENTINEL_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "redis-sentinel.componentDefName" . }}
+          optional: true
+          componentName: Optional
+    - name: SENTINEL_HEADLESS_SERVICE_NAME
       valueFrom:
         serviceVarRef:
           compDef: {{ include "redis-sentinel.componentDefName" . }}
-          name: redis-sentinel
+          name: headless
           optional: true
           host: Optional
     - name: SENTINEL_SERVICE_PORT
