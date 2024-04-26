@@ -1,6 +1,6 @@
 #!/bin/sh
 set -e
-if [ ! -z "$SENTINEL_PASSWORD" ]; then
+if [ -n "$SENTINEL_PASSWORD" ]; then
   cmd="redis-cli -h localhost -p 26379 -a $SENTINEL_PASSWORD ping"
 else
   cmd="redis-cli -h localhost -p 26379 ping"

@@ -2,13 +2,34 @@
 set -ex
 
 declare -g primary
-declare -g default_initialize_pod_ordinal=0
+declare -g default_initialize_pod_ordinal
 declare -g headless_postfix="headless"
 
 extract_ordinal_from_object_name() {
   local object_name="$1"
   local ordinal="${object_name##*-}"
   echo "$ordinal"
+}
+
+get_minimum_initialize_pod_ordinal() {
+  if [ -z "$KB_POD_LIST" ]; then
+    echo "KB_POD_LIST is empty, use default initialize pod_ordinal:0 as primary node."
+    default_initialize_pod_ordinal=0
+    return
+  fi
+
+  # parse minimum ordinal from env $KB_POD_LIST, the value format is "pod1,pod2,..."
+  IFS=',' read -ra pod_list <<< "$KB_POD_LIST"
+  for pod in "${pod_list[@]}"; do
+    if [ -z "$default_initialize_pod_ordinal" ]; then
+      default_initialize_pod_ordinal=$(extract_ordinal_from_object_name "$pod")
+      continue
+    fi
+    pod_ordinal=$(extract_ordinal_from_object_name "$pod")
+    if [ "$pod_ordinal" -lt "$default_initialize_pod_ordinal" ]; then
+      default_initialize_pod_ordinal="$pod_ordinal"
+    fi
+  done
 }
 
 load_redis_template_conf() {
@@ -85,6 +106,7 @@ init_or_get_primary_node() {
     primary="$KB_LEADER"
   else
     # if KB_LEADER is empty, it may be the first time to initialize the cluster or there is currently no primary node in the cluster due to various reasons.
+    get_minimum_initialize_pod_ordinal
     echo "KB_LEADER is empty, use default initialize pod_ordinal:$default_initialize_pod_ordinal as primary node."
     primary="$KB_CLUSTER_COMP_NAME-$default_initialize_pod_ordinal"
   fi
