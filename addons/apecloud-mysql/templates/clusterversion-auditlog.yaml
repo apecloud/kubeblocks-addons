@@ -23,7 +23,7 @@ spec:
               - |
                 cp /usr/lib/mysql/plugin/ {{ .Values.mysqlConfigs.dataMountPath }}/plugin -r
             imagePullPolicy: Always
-            image: {{ .Values.image.registry | default "docker.io" }}/mysql_audit_log:8.0.33
+            image: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
             name: init-data
             volumeMounts:
               - mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
