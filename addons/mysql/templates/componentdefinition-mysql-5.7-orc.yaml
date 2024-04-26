@@ -106,7 +106,7 @@ spec:
           - |
             cp -r /usr/bin/jq /kubeblocks/jq
             cp -r /scripts/orchestrator-client /kubeblocks/orchestrator-client
-        image: docker.io/kubejocker/jq:1.7.3
+        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/jq:1.7.4
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         name: init-jq
         volumeMounts:
