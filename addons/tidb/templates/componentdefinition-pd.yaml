@@ -1,0 +1,60 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: pd
+  labels:
+    {{- include "tidb.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: tidb's metadata server
+  updateStrategy: BestEffortParallel
+  # TODO: set roles?
+  runtime:
+    containers:
+      - name: pd
+        imagePullPolicy: IfNotPresent
+        ports:
+          - containerPort: 2379
+            name: client
+          - containerPort: 2380
+            name: peer
+        volumeMounts:
+          - name: data
+            mountPath: /var/lib/pd
+        command:
+          - bin/sh
+          - -c
+          - |
+            echo "start pd..."
+            # TODO: clusterDomain 'cluster.local' requires configurable
+            DOMAIN=$KB_NAMESPACE".svc{{ .Values.clusterDomain }}"
+            MY_PEER=$KB_POD_FQDN{{ .Values.clusterDomain }}
+            PEERS=""
+            i=0
+            while [ $i -lt $KB_REPLICA_COUNT ]; do
+              if [ $i -ne 0 ]; then
+                PEERS="$PEERS,";
+              fi;
+              host=$(eval echo \$KB_"$i"_HOSTNAME)
+                host=$host"."$DOMAIN
+                hostname=${KB_CLUSTER_COMP_NAME}-${i}
+              PEERS="$PEERS$hostname=http://$host:2380"
+                i=$(( i + 1))
+            done
+            exec /pd-server --name=${HOSTNAME} \
+            --data-dir=/var/lib/pd \
+            --peer-urls=http://0.0.0.0:2380 \
+            --advertise-peer-urls=http://${MY_PEER}:2380 \
+            --client-urls=http://0.0.0.0:2379 \
+            --advertise-client-urls=http://${MY_PEER}:2379 \
+            --initial-cluster=${PEERS}
+  services:
+    - name: pd
+      spec:
+        ports:
+          - name: client
+            port: 2379
+            targetPort: client
+          - name: peer
+            port: 2380
+            targetPort: peer

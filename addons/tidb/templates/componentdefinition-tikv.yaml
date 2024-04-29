@@ -1,0 +1,38 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: tikv
+  labels:
+    {{- include "tidb.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: a distributed transactional key-value database
+  updateStrategy: BestEffortParallel
+  runtime:
+    containers:
+      - name: tikv
+        imagePullPolicy: IfNotPresent
+        ports:
+          - containerPort: 20160
+            name: peer
+        volumeMounts:
+          - name: data
+            mountPath: /var/lib/tikv
+        command:
+          - bin/sh
+          - -c
+          - |
+            echo "start tikv..."
+            DOMAIN=$KB_NAMESPACE".svc{{ .Values.clusterDomain }}"
+            exec /tikv-server --pd=http://${KB_CLUSTER_NAME}-pd.${DOMAIN}:2379 \
+            --data-dir=/var/lib/tikv \
+            --addr=0.0.0.0:20160 \
+            --advertise-addr=${KB_POD_FQDN}:20160 \
+            --status-addr=0.0.0.0:20180
+    services:
+      - name: tikv
+        spec:
+          ports:
+            - name: peer
+              port: 20160
+              targetPort: peer
