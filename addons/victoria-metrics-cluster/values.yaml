@@ -1,0 +1,36 @@
+# Default values for victoria-metrics-cluster.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+nameOverride: ""
+fullnameOverride: ""
+clusterVersionOverride: ""
+
+terminationPolicy: "Delete"
+
+## @param vminsert configs
+##
+vminsert:
+  replicas: 1
+  resources: {}
+
+## @param vmselect configs
+##
+vmselect:
+  replicas: 1
+  resources: {}
+
+## @param vmstorage configs
+##
+vmstorage:
+  replicas: 2
+  resources: {}
+    # limits:
+    #   cpu: 500m
+    #   memory: 512Mi
+    # requests:
+    #   cpu: 500m
+    #   memory: 512Mi
+
+  volume:
+    storage: 10Gi

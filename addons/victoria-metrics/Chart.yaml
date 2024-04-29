@@ -1,0 +1,14 @@
+apiVersion: v2
+name: victoria-metrics
+description: "VictoriaMetrics is a fast, cost-effective and scalable monitoring solution and time series database."
+
+type: application
+
+version: 0.1.0
+
+appVersion: "v1.100.1"
+
+annotations:
+  addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
+  addon.kubeblocks.io/model: "tsdb"
+  addon.kubeblocks.io/provider: "community"

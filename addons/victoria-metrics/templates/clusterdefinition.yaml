@@ -1,0 +1,236 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterDefinition
+metadata:
+  name: victoria-metrics
+  labels:
+    {{- include "victoria-metrics.labels" . | nindent 4 }}
+spec:
+  connectionCredential:
+    username: root
+    password: "$(RANDOM_PASSWD)"
+    endpoint: "$(SVC_FQDN):$(SVC_PORT_http)"
+    host: "$(SVC_FQDN)"
+    port: "$(SVC_PORT_http)"
+  componentDefs:
+    # - name: vmsingle
+    #   characterType: vmsingle
+    #   workloadType: Stateful
+    #   service:
+    #     ports:
+    #       - name: http
+    #         port: 8428
+    #         protocol: TCP
+    #         targetPort: http
+    #   podSpec:
+    #     automountServiceAccountToken: true
+    #     containers:
+    #       - name: victoria-metrics-single-server
+    #         image: "victoriametrics/victoria-metrics:v1.100.1"
+    #         imagePullPolicy: "IfNotPresent"
+    #         args:
+    #           - "--retentionPeriod=1"
+    #           - "--storageDataPath=/storage"
+    #           - --envflag.enable=true
+    #           - --envflag.prefix=VM_
+    #           - --loggerFormat=json
+    #         ports:
+    #           - name: http
+    #             containerPort: 8428
+    #         livenessProbe:
+    #           failureThreshold: 10
+    #           httpGet:
+    #             path: /health
+    #             port: 8428
+    #             scheme: HTTP
+    #           initialDelaySeconds: 30
+    #           periodSeconds: 30
+    #           timeoutSeconds: 5
+    #         readinessProbe:
+    #           failureThreshold: 3
+    #           httpGet:
+    #             path: /health
+    #             port: http
+    #           initialDelaySeconds: 5
+    #           periodSeconds: 15
+    #           timeoutSeconds: 5
+    #         resources:
+    #           {}
+    #         volumeMounts:
+    #           - name: server-volume
+    #             mountPath: /storage
+    #             subPath: 
+    #           - name: scrapeconfig
+    #             mountPath: /scrapeconfig
+
+    #     terminationGracePeriodSeconds: 60
+    #     volumes:
+    #       - name: scrapeconfig
+    #         configMap:
+    #           name: {{ include "victoria-metrics.name" . }}-config
+
+    - name: vminsert
+      characterType: vminsert
+      workloadType: Stateless
+      service:
+        ports:
+          - port: 8482
+            targetPort: http
+            protocol: TCP
+            name: http
+          - port: 8401
+            targetPort: vmselect
+            protocol: TCP
+            name: vmselect
+          - port: 8400
+            targetPort: vminsert
+            protocol: TCP
+      podSpec:
+        automountServiceAccountToken: true
+        containers:
+          - name: victoria-metrics-cluster-vminsert
+            image: "victoriametrics/vminsert:v1.100.1-cluster"
+            imagePullPolicy: "IfNotPresent"
+            securityContext:
+              {}
+            args:
+              - --storageNode=vm-cluster-victoria-metrics-cluster-vmstorage-0.vm-cluster-victoria-metrics-cluster-vmstorage.default.svc.cluster.local:8400
+              - --storageNode=vm-cluster-victoria-metrics-cluster-vmstorage-1.vm-cluster-victoria-metrics-cluster-vmstorage.default.svc.cluster.local:8400
+              
+              - --envflag.enable=true
+              - --envflag.prefix=VM_
+              - --loggerFormat=json
+            ports:
+              - name: http
+                containerPort: 8480
+            readinessProbe:
+              httpGet:
+                path: /health
+                port: http
+                scheme: HTTP
+              initialDelaySeconds: 5
+              periodSeconds: 15
+              timeoutSeconds: 5
+              failureThreshold: 3
+            livenessProbe:
+              tcpSocket:
+                port: http
+              initialDelaySeconds: 5
+              periodSeconds: 15
+              timeoutSeconds: 5
+              failureThreshold: 3
+            volumeMounts:
+              
+            resources:
+              {}        
+
+    - name: vmselect
+      characterType: vmselect
+      workloadType: Stateless
+      service:
+        ports:
+          - name: http
+            port: 8481
+            protocol: TCP
+            targetPort: http
+      podSpec:
+        automountServiceAccountToken: true
+        containers:
+          - name: victoria-metrics-cluster-vmselect
+            image: "victoriametrics/vmselect:v1.100.1-cluster"
+            imagePullPolicy: "IfNotPresent"
+            securityContext:
+              {}
+            args:
+              - "--cacheDataPath=/cache"
+              - --storageNode=vm-cluster-victoria-metrics-cluster-vmstorage-0.vm-cluster-victoria-metrics-cluster-vmstorage.default.svc.cluster.local:8401
+              - --storageNode=vm-cluster-victoria-metrics-cluster-vmstorage-1.vm-cluster-victoria-metrics-cluster-vmstorage.default.svc.cluster.local:8401
+              
+              - --envflag.enable=true
+              - --envflag.prefix=VM_
+              - --loggerFormat=json
+            ports:
+              - name: http
+                containerPort: 8481
+            readinessProbe:
+              httpGet:
+                path: /health
+                port: http
+                scheme: HTTP
+              initialDelaySeconds: 5
+              periodSeconds: 15
+              timeoutSeconds: 5
+              failureThreshold: 3
+            livenessProbe:
+              tcpSocket:
+                port: http
+              initialDelaySeconds: 5
+              periodSeconds: 15
+              timeoutSeconds: 5
+              failureThreshold: 3
+            volumeMounts:
+              - mountPath: /cache
+                name: cache-volume
+              
+            resources:
+
+    - name: vmstorage
+      characterType: vmstorage
+      workloadType: Stateful
+      service:
+        ports:
+          - port: 8482
+            targetPort: http
+            protocol: TCP
+            name: http
+          - port: 8401
+            targetPort: vmselect
+            protocol: TCP
+            name: vmselect
+          - port: 8400
+            targetPort: vminsert
+            protocol: TCP
+      podSpec:
+        automountServiceAccountToken: true
+        containers:
+          - name: victoria-metrics-cluster-vmstorage
+            image: "victoriametrics/vmstorage:v1.100.1-cluster"
+            imagePullPolicy: "IfNotPresent"
+            securityContext:
+              {}
+            args:
+              - "--retentionPeriod=1"
+              - "--storageDataPath=/storage"
+              - --envflag.enable=true
+              - --envflag.prefix=VM_
+              - --loggerFormat=json
+            ports:
+              - name: http
+                containerPort: 8482
+              - name: vminsert
+                containerPort: 8400
+              - name: vmselect
+                containerPort: 8401
+            livenessProbe:
+              failureThreshold: 10
+              initialDelaySeconds: 30
+              periodSeconds: 30
+              tcpSocket:
+                port: http
+              timeoutSeconds: 5
+            readinessProbe:
+              failureThreshold: 3
+              httpGet:
+                path: /health
+                port: http
+              initialDelaySeconds: 5
+              periodSeconds: 15
+              timeoutSeconds: 5
+            resources: 
+              {}
+            volumeMounts:
+              - name: vmstorage-volume
+                mountPath: /storage
+                subPath: 
+              
+        terminationGracePeriodSeconds: 60
+        volumes:

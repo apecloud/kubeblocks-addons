@@ -1,0 +1,66 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: {{ include "clustername" . }}
+  labels: 
+    {{- include "victoria-metrics-cluster.labels" . | nindent 4 }}
+spec:
+  clusterDefinitionRef: victoria-metrics
+  terminationPolicy: {{ .Values.terminationPolicy }}
+  componentSpecs:
+    - name: vminsert
+      componentDefRef: vminsert
+      replicas: {{ .Values.vminsert.replicas | default 1 }}
+      {{- with  .Values.vminsert.resources }}
+      resources:
+        {{- with .limits }}
+        limits:
+          cpu: {{ .cpu | quote }}
+          memory: {{ .memory | quote }}
+        {{- end }}
+        {{- with .requests }}
+        requests:
+          cpu: {{ .cpu | quote }}
+          memory: {{ .memory | quote }}
+        {{- end }}
+      {{- end }}
+    - name: vmselect
+      componentDefRef: vmselect
+      replicas: {{ .Values.vmselect.replicas | default 1 }}
+      {{- with .Values.vmselect.resources }}
+      resources:
+        {{- with .limits }}
+        limits:
+          cpu: {{ .cpu | quote }}
+          memory: {{ .memory | quote }}
+        {{- end }}
+        {{- with .requests }}
+        requests:
+          cpu: {{ .cpu | quote }}
+          memory: {{ .memory | quote }}
+        {{- end }}
+      {{- end }}
+    - name: vmstorage
+      componentDefRef: vmstorage
+      replicas: {{ .Values.vmstorage.replicas | default 1 }}
+      {{- with  .Values.vmstorage.resources }}
+      resources:
+        {{- with .limits }}
+        limits:
+          cpu: {{ .cpu | quote }}
+          memory: {{ .memory | quote }}
+        {{- end }}
+        {{- with .requests }}
+        requests:
+          cpu: {{ .cpu | quote }}
+          memory: {{ .memory | quote }}
+        {{- end }}
+      {{- end }}
+      volumeClaimTemplates:
+        - name: vmstorage-storage
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: {{ .Values.vmstorage.volume.storage | default "10Gi" }}
