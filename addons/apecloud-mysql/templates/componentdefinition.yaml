@@ -13,31 +13,26 @@ spec:
   serviceVersion: 8.0.30
   services:
     - name: default
-      serviceName: mysql
       spec:
         ports:
           - name: mysql
             port: 3306
             targetPort: mysql
       roleSelector: leader
-    - name: readonly
-      serviceName: mysql-ro
+    - name: replication
+      serviceName: replication
       spec:
         ports:
-          - name: mysql
-            port: 3306
-            targetPort: mysql
-      roleSelector: follower
+          - name: paxos
+            port: 13306
+            targetPort: paxos
+      podService: true
+      disableAutoProvision: true
   configs:
     - name: mysql-consensusset-config
       templateRef: {{ include "apecloud-mysql.configTplName" . }}
       constraintRef: {{ include "apecloud-mysql.configConstraintName" . }}
       volumeName: mysql-config
-      namespace: {{ .Release.Namespace }}
-    - name: vttablet-config
-      templateRef: {{ include "apecloud-mysql.configTplVttabletName" . }}
-      constraintRef: {{ include "apecloud-mysql.configConstraintVttabletName" . }}
-      volumeName: mysql-scale-config
       namespace: {{ .Release.Namespace }}
   logConfigs:
     {{- range $name,$pattern := .Values.logConfigs }}
@@ -262,3 +257,10 @@ spec:
           name: root
           optional: false
           password: Required
+    - name: REPLICATION_ENDPOINT
+      valueFrom:
+        serviceVarRef:
+          name: replication
+          optional: true
+          host: Required
+          loadBalancer: Required
