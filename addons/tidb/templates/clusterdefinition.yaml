@@ -9,7 +9,7 @@ spec:
     - name: cluster
       default: true
       components:
-      - name: pd
+      - name: tidb-pd
         compDef: tidb-pd
       - name: tikv
         compDef: tikv

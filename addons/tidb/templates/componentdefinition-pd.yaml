@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: pd
+  name: tidb-pd
   labels:
     {{- include "tidb.labels" . | nindent 4 }}
 spec:
