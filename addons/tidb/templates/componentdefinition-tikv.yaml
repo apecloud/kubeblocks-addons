@@ -8,6 +8,7 @@ spec:
   provider: kubeblocks
   description: a distributed transactional key-value database
   updateStrategy: BestEffortParallel
+  serviceVersion: "7.1.5" # TODO: why?
   runtime:
     containers:
       - name: tikv
@@ -15,6 +16,8 @@ spec:
         ports:
           - containerPort: 20160
             name: peer
+          - containerPort: 20180
+            name: status
         volumeMounts:
           - name: data
             mountPath: /var/lib/tikv
@@ -29,6 +32,9 @@ spec:
             --addr=0.0.0.0:20160 \
             --advertise-addr=${KB_POD_FQDN}:20160 \
             --status-addr=0.0.0.0:20180
+    builtinMonitorContainer:
+      name: metrics
+      metricsPort: "20180"
     services:
       - name: tikv
         spec:
@@ -36,3 +42,7 @@ spec:
             - name: peer
               port: 20160
               targetPort: peer
+            - name: status
+              port: 20180
+              targetPort: status
+

@@ -8,6 +8,7 @@ spec:
   provider: kubeblocks
   description: tidb's metadata server
   updateStrategy: BestEffortParallel
+  serviceVersion: "7.1.5" # TODO: why?
   # TODO: set roles?
   runtime:
     containers:
@@ -48,6 +49,9 @@ spec:
             --client-urls=http://0.0.0.0:2379 \
             --advertise-client-urls=http://${MY_PEER}:2379 \
             --initial-cluster=${PEERS}
+  builtinMonitorContainer:
+    name: metrics
+    metricsPort: "2379"
   services:
     - name: pd
       spec:

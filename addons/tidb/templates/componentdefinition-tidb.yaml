@@ -48,6 +48,9 @@ spec:
     volumes:
       - name: slowlog
         emptyDir: {}
+  builtinMonitorContainer:
+    name: metrics
+    metricsPort: "10080"
   services:
     - name: tidb
       spec:
