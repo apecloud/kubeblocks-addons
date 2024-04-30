@@ -5,8 +5,8 @@
 replicaCount: 1
 
 image:
-  registry: biu.harbor.cn
-  repository: dm/dm8_single
+  registry: docker.io
+  repository: apecloud/dm8_single
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: "0.3.0"
