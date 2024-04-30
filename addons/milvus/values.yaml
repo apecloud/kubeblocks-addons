@@ -57,7 +57,3 @@ startupProbe:
   timeoutSeconds: 3
   successThreshold: 1
   failureThreshold: 18
-
-minio:
-  accessKey: ""
-  secretKey: ""

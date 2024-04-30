@@ -51,28 +51,6 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Create the name of the service account to use
-
-{{- define "milvus.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "milvus.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
-{{- end }}
-
-{{- define "milvus.checkerServiceAccountName" -}}
-{{- if .Values.installDependencies.enable }}
-{{- if .Values.installDependencies.serviceAccount.create }}
-{{- default (printf "%s-checker" (include "milvus.fullname" .)) .Values.installDependencies.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
-{{- end }}
-{{- end }}
-*/}}
-
-{{/*
 Startup probe
 */}}
 {{- define "milvus.probe.startup" }}
@@ -141,11 +119,11 @@ Milvus cluster default config
 Milvus cluster monitor
 */}}
 {{- define "milvus.cluster.monitor" }}
-monitor:
-  builtIn: false
-  exporterConfig:
-    scrapePath: /metrics
-    scrapePort: 9091
+# monitor:
+#   builtIn: false
+#   exporterConfig:
+#     scrapePath: /metrics
+#     scrapePort: 9091
 {{- end }}
 
 {{/*
@@ -205,6 +183,15 @@ Milvus cluster default volume mounts
   name: milvus-tools
 {{- end }}
 
+{{- define "milvus.cluster.volumeMount.default4Legacy" }}
+- mountPath: /milvus/configs/user.yaml
+  name: milvus-config
+  readOnly: true
+  subPath: cluster-user-legacy.yaml
+- mountPath: /milvus/tools
+  name: milvus-tools
+{{- end }}
+
 {{/*
 Milvus cluster default volumes
 */}}
@@ -239,4 +226,52 @@ serviceRefDeclarations:
     serviceRefDeclarationSpecs:
       - serviceKind: minio
         serviceVersion: "^*"
+{{- end }}
+
+{{/*
+Milvus cluster vars for external storage services reference
+*/}}
+{{- define "milvus.cluster.storageServiceRefVars" }}
+- name: ETCD_ENDPOINT
+  valueFrom:
+    serviceRefVarRef:
+      name: milvus-meta-storage
+      optional: false
+      endpoint: Required
+- name: MINIO_SERVER
+  valueFrom:
+    serviceRefVarRef:
+      name: milvus-object-storage
+      optional: false
+      endpoint: Required
+- name: MINIO_PORT
+  valueFrom:
+    serviceRefVarRef:
+      name: milvus-object-storage
+      optional: false
+      port: Required
+- name: MINIO_ACCESS_KEY
+  valueFrom:
+    serviceRefVarRef:
+      name: milvus-object-storage
+      optional: false
+      username: Required
+- name: MINIO_SECRET_KEY
+  valueFrom:
+    serviceRefVarRef:
+      name: milvus-object-storage
+      optional: false
+      password: Required
+- name: PULSAR_SERVER
+  valueFrom:
+    serviceRefVarRef:
+      name: milvus-log-storage
+      optional: false
+      endpoint: Required
+- name: PULSAR_PORT
+  valueFrom:
+    serviceRefVarRef:
+      name: milvus-log-storage
+      optional: false
+      port: Required
 {{- end }}

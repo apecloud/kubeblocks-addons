@@ -21,7 +21,11 @@ spec:
           - run
           - indexnode
         env:
-          {{- include "milvus.cluster.env.default" . | indent 10 }}
+          - name: CACHE_SIZE
+            valueFrom:
+              resourceFieldRef:
+                divisor: 1Gi
+                resource: limits.memory
         volumeMounts:
           {{- include "milvus.cluster.volumeMount.default" . | indent 10 }}
         ports:
@@ -32,6 +36,8 @@ spec:
     volumes:
       {{- include "milvus.cluster.volume.default" . | indent 6 }}
     serviceAccountName: {{ default "milvus" .Values.serviceAccount.name }}
+  vars:
+    {{- include "milvus.cluster.storageServiceRefVars" . | indent 4 }}
   configs:
     {{- include "milvus.cluster.config" . | indent 4 }}
   {{- include "milvus.cluster.monitor" . | indent 2 }}

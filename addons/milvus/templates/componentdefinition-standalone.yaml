@@ -1,0 +1,82 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: milvus-standalone-{{ .Chart.Version }}
+  labels:
+    {{- include "milvus.labels" . | nindent 4 }}
+spec:
+  provider: ApeCloud
+  description: {{ .Chart.Description }}
+  serviceKind: {{ .Chart.Name }}
+  serviceVersion: {{ .Chart.AppVersion }}
+  runtime:
+    initContainers:
+      {{- include "milvus.cluster.initContainer.config" . | indent 6 }}
+    containers:
+      - name: milvus
+        {{- include "milvus.cluster.image" . | indent 8 }}
+        args:
+          - /milvus/tools/run.sh
+          - milvus
+          - run
+          - standalone
+        env:
+          - name: CACHE_SIZE
+            valueFrom:
+              resourceFieldRef:
+                divisor: 1Gi
+                resource: limits.memory
+        volumeMounts:
+          - mountPath: /milvus/configs/user.yaml
+            name: milvus-config
+            readOnly: true
+            subPath: standalone-user-legacy.yaml
+          - mountPath: /milvus/tools
+            name: tools
+          - mountPath: /var/lib/milvus
+            name: data
+        ports:
+          - name: milvus
+            containerPort: 19530
+          - name: metrics
+            containerPort: 9091
+        securityContext:
+          runAsUser: 0
+        {{- include "milvus.probe.startup" . | indent  8 }}
+        {{- include "milvus.probe.liveness" . | indent  8 }}
+        {{- include "milvus.probe.readiness" . | indent 8 }}
+    volumes:
+      {{- include "milvus.cluster.volume.default" . | indent 6 }}
+    securityContext:
+      fsGroup: 1001
+    serviceAccountName: {{ default "milvus" .Values.serviceAccount.name }}
+  vars:
+    - name: MINIO_ACCESS_KEY
+      valueFrom:
+        credentialVarRef:
+          compDef: milvus-minio
+          name: user
+          optional: false
+          username: Required
+    - name: MINIO_SECRET_KEY
+      valueFrom:
+        credentialVarRef:
+          compDef: milvus-minio
+          name: user
+          optional: false
+          password: Required
+  volumes:
+    - name: data
+      needSnapshot: true
+  # services:
+  #   ports:
+  #     - name: milvus
+  #       port: 19530
+  #       targetPort: milvus
+  configs:
+    {{- include "milvus.cluster.config" . | indent 4 }}
+  # monitor:
+  #   builtIn: false
+  #   exporterConfig:
+  #     scrapePath: /metrics
+  #     scrapePort: 9187

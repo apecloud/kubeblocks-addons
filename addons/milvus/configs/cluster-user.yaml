@@ -1,0 +1,19 @@
+etcd:
+  endpoints:
+    - {{$ETCD_ENDPOINT}}
+  rootPath: {{$KB_CLUSTER_NAME}}
+messageQueue: pulsar
+minio:
+  address: {{$MINIO_SERVER}}
+  port: {{$MINIO_PORT}}
+  accessKeyID: {{$MINIO_ACCESS_KEY}}
+  secretAccessKey: {{$MINIO_SECRET_KEY}}
+  bucketName: {{$KB_CLUSTER_NAME}}
+mq:
+  type: pulsar
+msgChannel:
+  chanNamePrefix:
+    cluster: {{$KB_CLUSTER_NAME}}
+pulsar:
+  address: {{$PULSAR_SERVER}}
+  port: {{$PULSAR_PORT}}

@@ -21,6 +21,3 @@
 .idea/
 *.tmproj
 .vscode/
-
-# component definitions
-templates/componentdefinition-*.yaml

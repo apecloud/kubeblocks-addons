@@ -5,9 +5,8 @@ metadata:
   namespace: {{ .Release.Namespace | quote }}
   labels:
   {{- include "milvus.labels" . | nindent 4 }}
-
 data:
   cluster-user.yaml: |-
-    {{- .Files.Get "configs/milvus-cluster-user.yaml.tpl" | nindent 4 }}
+    {{- .Files.Get "configs/cluster-user.yaml" | nindent 4 }}
   standalone-user.yaml: |-
-    {{- .Files.Get "configs/milvus-standalone-user.yaml.tpl" | nindent 4 }}
+    {{- .Files.Get "configs/standalone-user.yaml" | nindent 4 }}
