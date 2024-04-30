@@ -36,8 +36,8 @@ resources: {}
 exporter:
   image: 
     # if the value of exporter.image.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
-    registry: biu.harbor.cn
-    repository: monitor/exporter/dmdb_exporter
+    registry: docker.io
+    repository: apecloud/dmdb_exporter
     tag: 0.1.0
 
   service:
