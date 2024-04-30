@@ -8,7 +8,7 @@ spec:
   provider: kubeblocks
   description: tidb's SQL layer
   serviceKind: MySQL
-  serviceVersion: "8.0.0"
+  serviceVersion: "7.1.5"
   updateStrategy: BestEffortParallel
   runtime:
     containers:
@@ -28,7 +28,7 @@ spec:
             exec /tidb-server --store=tikv \
             --advertise-address=${KB_POD_FQDN}:4000 \
             --host=0.0.0.0 \
-            --path=${KB_CLUSTER_NAME}-pd.${DOMAIN}:2379 \
+            --path=${KB_CLUSTER_NAME}-tidb-pd.${DOMAIN}:2379 \
             --log-slow-query=/var/log/tidb/slowlog
         volumeMounts:
           - name: slowlog

@@ -9,10 +9,18 @@ spec:
     - name: cluster
       default: true
       components:
-      - name: tidb-pd
-        compDef: tidb-pd
-      - name: tikv
-        compDef: tikv
-      - name: tidb
-        compDef: tidb
-      # TODO: whether orders are necessary
+        - name: tidb-pd
+          compDef: tidb-pd
+        - name: tikv
+          compDef: tikv
+        - name: tidb
+          compDef: tidb
+      orders:
+        provision:
+          - tidb-pd
+          - tikv
+          - tidb
+        terminate:
+          - tidb
+          - tikv
+          - tidb-pd

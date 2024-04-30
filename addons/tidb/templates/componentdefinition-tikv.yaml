@@ -24,7 +24,7 @@ spec:
           - |
             echo "start tikv..."
             DOMAIN=$KB_NAMESPACE".svc{{ .Values.clusterDomain }}"
-            exec /tikv-server --pd=http://${KB_CLUSTER_NAME}-pd.${DOMAIN}:2379 \
+            exec /tikv-server --pd=http://${KB_CLUSTER_NAME}-tidb-pd.${DOMAIN}:2379 \
             --data-dir=/var/lib/tikv \
             --addr=0.0.0.0:20160 \
             --advertise-addr=${KB_POD_FQDN}:20160 \
