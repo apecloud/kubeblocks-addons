@@ -176,6 +176,8 @@ spec:
             - /scripts/redis-cluster-manage.sh --post-provision
         ## TODO: the preCondition should be changed to RuntimeReady when KubeBlocks support it
         preCondition: ComponentReady
+        retryPolicy:
+          maxRetries: 10
     preTerminate:
       customHandler:
         image: {{ include "redis.image" . }}
@@ -184,6 +186,8 @@ spec:
             - /bin/bash
             - -c
             - /scripts/redis-cluster-manage.sh --pre-terminate
+        retryPolicy:
+          maxRetries: 10
   runtime:
     containers:
       - name: redis-cluster
