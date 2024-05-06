@@ -15,7 +15,7 @@ spec:
     target:
       role: follower
       account: root
-    backupMethods: &backupMethods
+    backupMethods:
     - name: volume-snapshot
       snapshotVolumes: true
       actionSetName: {{ include "apecloud-mysql.vsActionSetName" . }}

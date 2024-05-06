@@ -17,7 +17,7 @@ spec:
     target:
       role: follower
       account: root
-    backupMethods: &backupMethods
+    backupMethods:
     - name: xtrabackup
       snapshotVolumes: false
       actionSetName: {{ include "apecloud-mysql.xtrabackupActionSetName" . }}
@@ -34,7 +34,7 @@ spec:
         volumeMounts:
         - name: data
           mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
-    schedules: &backupschedules
+    schedules:
     - backupMethod: xtrabackup
       enabled: false
       cronExpression: "0 18 * * *"
