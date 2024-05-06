@@ -8,10 +8,10 @@ spec:
         expression: '{{ eq .component.status.phase "Running" }}'
         message: "Component is not in Running status."
   componentInfos:
-  - ComponentDefinitionName: kafka-broker
+  - componentDefinitionName: kafka-broker
     accountName: client
     serviceName: broker
-  - ComponentDefinitionName: kafka-combine
+  - componentDefinitionName: kafka-combine
     accountName: client
     serviceName: broker
 
