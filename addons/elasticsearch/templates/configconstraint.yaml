@@ -5,5 +5,5 @@ metadata:
   labels:
     {{- include "elasticsearch.labels" . | nindent 4 }}
 spec:
-  formatterConfig:
+  fileFormatConfig:
     format: yaml

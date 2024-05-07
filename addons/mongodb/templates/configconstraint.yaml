@@ -9,7 +9,7 @@ spec:
     cue: ""
 
   # mysql configuration file format
-  formatterConfig:
+  fileFormatConfig:
     format: yaml
 ---
 
@@ -21,15 +21,16 @@ metadata:
     {{- include "mongodb.labels" . | nindent 4 }}
 spec:
 
-  ## top level mysql configuration type
-  configSchemaTopLevelKey: MongodbParameters
 
   ## defines the configuration schema
   configSchema:
+    ## top level mysql configuration type
+    topLevelKey: MongodbParameters
+
     cue: ""
 {{/*    cue: |-*/}}
 {{/*      {{- .Files.Get "config/mongodb-config-constraint.cue" | nindent 6 }}*/}}
 
   # mysql configuration file format
-  formatterConfig:
+  fileFormatConfig:
     format: yaml

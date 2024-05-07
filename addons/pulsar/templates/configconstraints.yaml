@@ -9,7 +9,7 @@ spec:
     cue: ""
 
   # pulsar configuration file format
-  formatterConfig:
+  fileFormatConfig:
     format: yaml
 
 ---
@@ -24,7 +24,7 @@ spec:
     cue: ""
 
   # pulsar configuration file format
-  formatterConfig:
+  fileFormatConfig:
     format: props-plus
 
 ---
@@ -42,7 +42,7 @@ spec:
       {{- .Files.Get "config/2.11.2/broker-config-constraint.cue" | nindent 6 }}
 
   # pulsar configuration file format
-  formatterConfig:
+  fileFormatConfig:
     format: props-plus
 
   ## define static parameter list
@@ -63,29 +63,27 @@ spec:
    {{- end }}
  {{- end}}
 
-  dynamicReloadAction:
+  reloadAction:
     shellTrigger:
       sync: true
       command:
         - "update-dynamic-config.sh"
-
-  scriptConfigs:
-    - scriptConfigMapRef: pulsar-tools-script
-      namespace: {{ .Release.Namespace }}
-
-  reloadToolsImage:
-    mountPoint: /kb/tools
-    toolConfigs:
-      - name: init-pulsar-tools
-        command:
-          - cp
-          - /bin/pulsar-admin
-          - /kb/tools/pulsar-admin
-        image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.pulsarTools "root" .) }}"
-        # imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.pulsarTools "root" .) }}"
-      - name: init-pulsar-client-config
-        command:
-          - "$(TOOLS_SCRIPTS_PATH)/install-pulsar-client-config.sh"
+      scriptConfig:
+        scriptConfigMapRef: pulsar-tools-script
+        namespace: {{ .Release.Namespace }}
+      toolsSetup:
+        mountPoint: /kb/tools
+        toolConfigs:
+          - name: init-pulsar-tools
+            command:
+              - cp
+              - /bin/pulsar-admin
+              - /kb/tools/pulsar-admin
+            image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.pulsarTools "root" .) }}"
+            # imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.pulsarTools "root" .) }}"
+          - name: init-pulsar-client-config
+            command:
+              - "$(TOOLS_SCRIPTS_PATH)/install-pulsar-client-config.sh"
 
 ---
 
@@ -102,7 +100,7 @@ spec:
       {{- .Files.Get "config/3.0.2/broker-config-constraint.cue" | nindent 6 }}
 
   # pulsar configuration file format
-  formatterConfig:
+  fileFormatConfig:
     format: props-plus
 
   ## define static parameter list
@@ -123,29 +121,27 @@ spec:
    {{- end }}
  {{- end}}
 
-  dynamicReloadAction:
+  reloadAction:
     shellTrigger:
       sync: true
       command:
         - "update-dynamic-config.sh"
-
-  scriptConfigs:
-    - scriptConfigMapRef: pulsar-tools-script
-      namespace: {{ .Release.Namespace }}
-
-  reloadToolsImage:
-    mountPoint: /kb/tools
-    toolConfigs:
-      - name: init-pulsar-tools
-        command:
-          - cp
-          - /bin/pulsar-admin
-          - /kb/tools/pulsar-admin
-        image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.pulsarTools "root" .) }}"
-        # imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.pulsarTools "root" .) }}"
-      - name: init-pulsar-client-config
-        command:
-          - "$(TOOLS_SCRIPTS_PATH)/install-pulsar-client-config.sh"
+      scriptConfig:
+        scriptConfigMapRef: pulsar-tools-script
+        namespace: {{ .Release.Namespace }}
+      toolsSetup:
+        mountPoint: /kb/tools
+        toolConfigs:
+          - name: init-pulsar-tools
+            command:
+              - cp
+              - /bin/pulsar-admin
+              - /kb/tools/pulsar-admin
+            image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.pulsarTools "root" .) }}"
+            # imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.pulsarTools "root" .) }}"
+          - name: init-pulsar-client-config
+            command:
+              - "$(TOOLS_SCRIPTS_PATH)/install-pulsar-client-config.sh"
 
 ---
 
@@ -161,7 +157,7 @@ spec:
       {{- .Files.Get "config/2.11.2/bookkeeper-config-constraint.cue" | nindent 6 }}
 
   # pulsar configuration file format
-  formatterConfig:
+  fileFormatConfig:
     format: props-plus
 
 ---
@@ -178,7 +174,7 @@ spec:
       {{- .Files.Get "config/3.0.2/bookkeeper-config-constraint.cue" | nindent 6 }}
 
   # pulsar configuration file format
-  formatterConfig:
+  fileFormatConfig:
     format: props-plus
 
 ---
@@ -195,7 +191,7 @@ spec:
       {{- .Files.Get "config/2.11.2/proxy-config-constraint.cue" | nindent 6 }}
 
   # pulsar configuration file format
-  formatterConfig:
+  fileFormatConfig:
     format: props-plus
 
 ---
@@ -212,5 +208,5 @@ spec:
       {{- .Files.Get "config/3.0.2/proxy-config-constraint.cue" | nindent 6 }}
 
   # pulsar configuration file format
-  formatterConfig:
+  fileFormatConfig:
     format: props-plus

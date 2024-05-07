@@ -5,9 +5,9 @@ metadata:
   labels:
     {{- include "camellia-redis-proxy.labels" . | nindent 4 }}
 spec:
-  dynamicReloadAction:
+  reloadAction:
     autoTrigger:
       processName: camellia-redis-proxy-properties
 
-  formatterConfig:
+  fileFormatConfig:
     format: props-plus

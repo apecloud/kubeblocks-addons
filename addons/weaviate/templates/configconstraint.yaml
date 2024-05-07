@@ -5,11 +5,11 @@ metadata:
   labels:
     {{- include "weaviate.labels" . | nindent 4 }}
 spec:
-  # top level weaviate configuration type
-  configSchemaTopLevelKey: WeaviateEnvs
-
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   configSchema:
+    # top level weaviate configuration type
+    topLevelKey: WeaviateEnvs
+
     cue: |-
       {{- .Files.Get "config/weaviate-env-constraint.cue" | nindent 6 }}
 
@@ -40,5 +40,5 @@ spec:
   - AUTHORIZATION_ADMINLIST_USERS
   - AUTHORIZATION_ADMINLIST_READONLY_USERS
 
-  formatterConfig:
+  fileFormatConfig:
     format: dotenv
