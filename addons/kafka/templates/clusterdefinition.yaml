@@ -31,11 +31,6 @@ spec:
       workloadType: Stateful # Consensus
       characterType: kafka
       probes:
-      monitor:
-        builtIn: false
-        exporterConfig:
-          scrapePath: /metrics
-          scrapePort: 5556
       configSpecs:
         - name: kafka-configuration-tpl
           constraintRef: {{ include "kafka.name" . }}-cc
@@ -198,11 +193,6 @@ spec:
       workloadType: Stateful
       characterType: kafka
       probes:
-      monitor:
-        builtIn: false
-        exporterConfig:
-          scrapePath: /metrics
-          scrapePort: 5556
       configSpecs:
         - name: kafka-configuration-tpl
           constraintRef: {{ include "kafka.name" . }}-cc
@@ -362,11 +352,6 @@ spec:
       workloadType: Stateful # Consensus
       characterType: kafka
       probes:
-      monitor:
-        builtIn: false
-        exporterConfig:
-          scrapePath: /metrics
-          scrapePort: 5556
       configSpecs:
         - name: kafka-configuration-tpl
           constraintRef: {{ include "kafka.name" . }}-cc
@@ -503,11 +488,6 @@ spec:
           namespace: {{ .Release.Namespace }}
           defaultMode: 0755
       probes:
-      monitor:
-        builtIn: false
-        exporterConfig:
-          scrapePath: /metrics
-          scrapePort: 9308
       service:
         ports:
           - name: metrics
