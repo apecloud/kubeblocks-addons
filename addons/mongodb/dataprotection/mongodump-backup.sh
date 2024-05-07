@@ -12,4 +12,4 @@ mongodump --uri "${mongo_uri}" -u ${DP_DB_USER} -p ${DP_DB_PASSWORD} --authentic
 
 echo "" | datasafed push - oplog.signal
 # stat and save the backup information
-stat_and_save_backup_info $START_TIME
+stat_and_save_backup_info "$START_TIME"

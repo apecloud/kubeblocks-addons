@@ -9,4 +9,4 @@ START_TIME=$(get_current_time)
 tar -cvf - ./ | datasafed push -z zstd-fastest - "${DP_BACKUP_NAME}.tar.zst"
 rm -rf mongodb.backup
 # stat and save the backup information
-stat_and_save_backup_info $START_TIME
+stat_and_save_backup_info "$START_TIME"
