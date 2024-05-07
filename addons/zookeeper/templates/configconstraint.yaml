@@ -7,11 +7,8 @@ metadata:
     {{- include "zookeeper.labels" . | nindent 4 }}
 spec:
   # zookeeper configuration file format
-  formatterConfig:
+  fileFormatConfig:
     format: props-plus
-
-  # define parameter validation rules
-  configSchemaTopLevelKey: ZookeeperParameter
 
   ## define immutable parameter list
   {{- if hasKey $cc "immutableParameters" }}
@@ -24,5 +21,8 @@ spec:
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   configSchema:
+    # define parameter validation rules
+    topLevelKey: ZookeeperParameter
+
     cue: |-
       {{- .Files.Get "config/zookeeper-config-constraint.cue" | nindent 6 }}

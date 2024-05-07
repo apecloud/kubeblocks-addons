@@ -9,7 +9,7 @@ spec:
     cue: ""
 
   # mysql configuration file format
-  formatterConfig:
+  fileFormatConfig:
     format: ini
     iniConfig:
       sectionName: mysqld

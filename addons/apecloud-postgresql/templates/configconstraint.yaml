@@ -6,17 +6,18 @@ metadata:
   labels:
     {{- include "apecloud-postgresql.labels" . | nindent 4 }}
 spec:
-  # top level mysql configuration type
-  configSchemaTopLevelKey: PGParameter
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   configSchema:
+    # top level mysql configuration type
+    topLevelKey: PGParameter
+
     # schemaInJSON: auto generate from cue scripts
     # example: ../../pkg/configuration/testdata/mysql_openapi.json
     cue: |-
       {{- .Files.Get "config/pg14-config-constraint.cue" | nindent 6 }}
     # configuration file format
-  formatterConfig:
+  fileFormatConfig:
     format: properties
 
   ##  require db instance restart
