@@ -17,7 +17,7 @@ spec:
     backupMethods: &backupMethods
       - name: full
         snapshotVolumes: false
-        actionSetName: {{ printf "%s-physical-backuptwork" (include "oceanbase-release.name" .) }}
+        actionSetName: {{ printf "%s-physical-backup" (include "oceanbase-release.name" .) }}
         targetVolumes:
           volumeMounts:
             - name: workdir
