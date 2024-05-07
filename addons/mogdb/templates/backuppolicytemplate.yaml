@@ -25,6 +25,41 @@ spec:
         volumeMounts:
         - name: data
           mountPath: {{ .Values.dataMountPath }}
+    - name: mogdb-brm-full
+      snapshotVolumes: false
+      actionSetName: mogdb-brm-full
+      envMapping:
+        - key: IMAGE_TAG
+          valueFrom:
+            clusterVersionRef:
+              - names: [mogdb-5.0.5]
+                mappingValue: "5.0.5"
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
+    - name: mogdb-brm-ptrack
+      snapshotVolumes: false
+      actionSetName: mogdb-brm-ptrack
+      envMapping:
+        - key: IMAGE_TAG
+          valueFrom:
+            clusterVersionRef:
+              - names: [mogdb-5.0.5]
+                mappingValue: "5.0.5"
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
+    - name: mogdb-brm-wal
+      target:
+        role: Primary
+      actionSetName: mogdb-brm-wal
+      snapshotVolumes: false
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
     - name: volume-snapshot
       snapshotVolumes: true
       targetVolumes:

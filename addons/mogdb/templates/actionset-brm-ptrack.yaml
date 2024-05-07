@@ -1,0 +1,58 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: mogdb-brm-ptrack
+  labels:
+    clusterdefinition.kubeblocks.io/name: mogdb
+    {{- include "mogdb.labels" . | nindent 4 }}
+spec:
+  backupType: Incremental
+  env:
+    - name: DATA_DIR
+      value: {{ .Values.dataMountPath }}/mogdb/data
+    - name: IMAGE_TAG
+      value: 5.0.5
+    - name: GAUSSHOME
+      value: /usr/local/mogdb
+    - name: LD_LIBRARY_PATH
+      value: /usr/local/mogdb/lib
+    - name: PATH
+      value: /usr/local/mogdb/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    - name: PGPORT
+      value: "26000"
+    - name: PGHOST
+      value: /var/lib/mogdb/tmp
+    - name: SSH_RSA
+      valueFrom:
+        secretKeyRef:
+          name: mogdb-ssh-rsa-secret
+          key: id_rsa
+  backup:
+    preBackup: []
+    postBackup: []
+    backupData:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:$(IMAGE_TAG)
+      runOnTargetPodNode: true
+      command:
+      - bash
+      - -c
+      - |
+        set -x
+        {{- .Files.Get "scripts/library.sh" | nindent 8 }}
+        {{- .Files.Get "dataprotection/ssh.sh" | nindent 8 }}
+        {{- .Files.Get "dataprotection/brm-info-collector.sh" | nindent 8 }}
+        {{- .Files.Get "dataprotection/brm-common.sh" | nindent 8 }}
+        {{- .Files.Get "dataprotection/brm-ptrack-backup.sh" | nindent 8 }}
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+  restore:
+    prepareData:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:$(IMAGE_TAG)
+      command:
+      - bash
+      - -c
+      - |
+        set -x
+        {{- .Files.Get "dataprotection/brm-ptrack-restore.sh" | nindent 8 }}
+    postReady: []
