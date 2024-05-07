@@ -6,31 +6,29 @@ metadata:
   labels:
     {{- include "oceanbase.labels" . | nindent 4 }}
 spec:
-  dynamicReloadAction:
+  reloadAction:
     shellTrigger:
       sync: true
       command:
         - "update-sysvars.sh"
-
-  scriptConfigs:
-    - scriptConfigMapRef: {{ printf "%s-reload-tools-script" (include "oceanbase-release.name" .) }}
-      namespace: {{ .Release.Namespace }}
-
-  reloadToolsImage:
-    mountPoint: /kb_tools
-    toolConfigs:
-      - name: kb-tools
-        command:
-          - cp
-          - /bin/ob-tools
-          - /kb_tools/obtools
-        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.obtools.repository }}:{{ .Values.images.obtools.tag }}
-
-  # top level mysql configuration type
-  configSchemaTopLevelKey: OBSysVariables
+      scriptConfig:
+        scriptConfigMapRef: {{ printf "%s-reload-tools-script" (include "oceanbase-release.name" .) }}
+        namespace: {{ .Release.Namespace }}
+      toolsSetup:
+        mountPoint: /kb_tools
+        toolConfigs:
+          - name: kb-tools
+            command:
+              - cp
+              - /bin/ob-tools
+              - /kb_tools/obtools
+            image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.obtools.repository }}:{{ .Values.images.obtools.tag }}
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   configSchema:
+    # top level mysql configuration type
+    topLevelKey: OBSysVariables
+
     # schemaInJSON: auto generate from cue scripts
     # example: ../../pkg/configuration/testdata/mysql_openapi.json
     cue: |-
@@ -64,7 +62,7 @@ spec:
   {{- end}}
 
   # configuration file format
-  formatterConfig:
+  fileFormatConfig:
     format: properties
 
 
@@ -77,31 +75,29 @@ metadata:
   labels:
     {{- include "oceanbase.labels" . | nindent 4 }}
 spec:
-  dynamicReloadAction:
+  reloadAction:
     shellTrigger:
       sync: true
       command:
         - "update-parameters.sh"
-
-  scriptConfigs:
-    - scriptConfigMapRef: {{ printf "%s-reload-tools-script" (include "oceanbase-release.name" .) }}
-      namespace: {{ .Release.Namespace }}
-
-  reloadToolsImage:
-    mountPoint: /kb_tools
-    toolConfigs:
-      - name: kb-tools
-        command:
-          - cp
-          - /bin/ob-tools
-          - /kb_tools/obtools
-        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.obtools.repository }}:{{ .Values.images.obtools.tag }}
-
-  # top level mysql configuration type
-  configSchemaTopLevelKey: OBParameters
+      scriptConfig:
+        scriptConfigMapRef: {{ printf "%s-reload-tools-script" (include "oceanbase-release.name" .) }}
+        namespace: {{ .Release.Namespace }}
+      toolsSetup:
+        mountPoint: /kb_tools
+        toolConfigs:
+          - name: kb-tools
+            command:
+              - cp
+              - /bin/ob-tools
+              - /kb_tools/obtools
+            image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.obtools.repository }}:{{ .Values.images.obtools.tag }}
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   configSchema:
+    # top level mysql configuration type
+    topLevelKey: OBParameters
+
     # schemaInJSON: auto generate from cue scripts
     # example: ../../pkg/configuration/testdata/mysql_openapi.json
     cue: |-
@@ -135,7 +131,7 @@ spec:
   {{- end}}
 
   # configuration file format
-  formatterConfig:
+  fileFormatConfig:
     format: properties
 
 ---
@@ -147,8 +143,8 @@ metadata:
   labels:
     {{- include "oceanbase.labels" . | nindent 4 }}
 spec:
-  configSchemaTopLevelKey: OBPortEnvParameters
   configSchema:
+    topLevelKey: OBPortEnvParameters
     cue: |-
       {{- .Files.Get "config/oceanbase-env-constraint.cue" | nindent 6 }}
 
@@ -161,5 +157,5 @@ spec:
   {{- end }}
 
   # mysql configuration file format
-  formatterConfig:
+  fileFormatConfig:
     format: props-plus

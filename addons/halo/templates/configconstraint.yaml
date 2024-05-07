@@ -8,17 +8,15 @@ metadata:
 spec:
 
   # update patroni master
-  dynamicReloadSelector:
+  reloadedPodSelector:
     matchLabels:
       "kubeblocks.io/role": "primary"
 
-
-  # top level pg configuration type
-  configSchemaTopLevelKey: PGParameter
-
-
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   configSchema:
+    # top level pg configuration type
+    topLevelKey: PGParameter
+
     # schemaInJSON: auto generate from cue scripts
     # example: ../../pkg/configuration/testdata/mysql_openapi.json
     cue: |-
@@ -44,6 +42,6 @@ spec:
   {{- end}}
   
   # configuration file format
-  formatterConfig:
+  fileFormatConfig:
     format: properties
   

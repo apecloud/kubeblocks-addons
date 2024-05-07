@@ -10,21 +10,20 @@ metadata:
 spec:
   # configmap reference
   # tplRef: doris-3node-tpl-8.0
-  dynamicReloadAction:
+  reloadAction:
     shellTrigger:
       sync: true
       command:
         - "update-dynamic-config.sh"
-
-  scriptConfigs:
-    - scriptConfigMapRef: {{ include "doris.name" . }}-tools-script
-      namespace: {{ .Release.Namespace }}
-
-  # top level mysql configuration type
-  configSchemaTopLevelKey: DorisParameter
+      scriptConfigs:
+        scriptConfigMapRef: {{ include "doris.name" . }}-tools-script
+        namespace: {{ .Release.Namespace }}
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   configSchema:
+    # top level mysql configuration type
+    topLevelKey: DorisParameter
+
     # schemaInJSON: auto generate from cue scripts
     # example: ../../internal/configuration/testdata/mysql_openapi.json
     cue: |-
@@ -59,5 +58,5 @@ spec:
 
 
   # mysql configuration file format
-  formatterConfig:
+  fileFormatConfig:
     format: props-plus

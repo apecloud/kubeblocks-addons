@@ -6,22 +6,23 @@ metadata:
   labels:
     {{- include "orioledb.labels" . | nindent 4 }}
 spec:
-  dynamicReloadAction:
+  reloadAction:
     tplScriptTrigger:
       sync: false
       scriptConfigMapRef: orioledb-patroni-reload-script
       namespace: {{ .Release.Namespace }}
 
   # update patroni master
-  dynamicReloadSelector:
+  reloadedPodSelector:
     matchLabels:
       "apps.kubeblocks.postgres.patroni/role": "master"
 
-  # top level orioledb configuration type
-  configSchemaTopLevelKey: PGParameter
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   configSchema:
+    # top level orioledb configuration type
+    topLevelKey: PGParameter
+
     # schemaInJSON: auto generate from cue scripts
     # example: ../../pkg/configuration/testdata/mysql_openapi.json
     cue: |-
@@ -49,5 +50,5 @@ spec:
 
 
     # configuration file format
-  formatterConfig:
+  fileFormatConfig:
     format: properties
