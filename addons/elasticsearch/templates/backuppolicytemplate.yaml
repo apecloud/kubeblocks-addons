@@ -4,19 +4,42 @@ metadata:
   name: elasticsearch-backup-policy-template
   labels:
     clusterdefinition.kubeblocks.io/name: elasticsearch
-    {{- include "elasticsearch.labels" . | nindent 4 }}
+  annotations:
+    dataprotection.kubeblocks.io/is-default-policy-template: "true"
 spec:
   clusterDefinitionRef: elasticsearch
   backupPolicies:
-  - componentDefRef: elasticsearch
+  - componentDefs:
+{{- range .Values.components }}
+{{- $component := . -}}
+{{- with $ }}
+    - {{ $component.name }}
+{{- end }}
+    backoffLimit: 0
     backupMethods:
-    - name: volume-snapshot
-      snapshotVolumes: true
+    - name: full
+      snapshotVolumes: false
+      actionSetName: elasticsearch-physical-
       targetVolumes:
-        volumes:
-        - data
-    schedules:
-    - backupMethod: volume-snapshot
+        volumeMounts:
+        - name: workdir
+          mountPath: /home/admin/workdir
+    - name: archive-log
+      snapshotVolumes: false
+      actionSetName: oceanbase-pitr
+      targetVolumes:
+        volumeMounts:
+        - name: workdir
+          mountPath: /home/admin/workdir
+    schedules: &backupschedules
+    - backupMethod: full
       enabled: false
-      cronExpression: "0 18 * * 0"
+      cronExpression: "0 18 * * *"
       retentionPeriod: 7d
+    - backupMethod: archive-log
+      enabled: false
+      cronExpression: "*/1 * * * *"
+      retentionPeriod: 8d
+    target:
+      role: ""
+      account: root
