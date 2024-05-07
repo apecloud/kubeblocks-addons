@@ -15,7 +15,7 @@ spec:
       sync: true
       command:
         - "update-dynamic-config.sh"
-      scriptConfigs:
+      scriptConfig:
         scriptConfigMapRef: {{ include "doris.name" . }}-tools-script
         namespace: {{ .Release.Namespace }}
 
