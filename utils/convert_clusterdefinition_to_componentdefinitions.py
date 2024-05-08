@@ -831,4 +831,18 @@ def main():
 
 
 if __name__ == "__main__":
+    """
+    Running Conditions:
+        1. Python 3.X environment with relevant dependency packages installed.
+        2. Helm should be installed locally.
+    
+    Usage:
+        python convert_clusterdefinition_to_componentdefinitions.py --chart-path=/PathToYourProject/kubeblocks-addons/addons/postgresql \
+        --cluster-definition=clusterdefinition.yaml --cluster-version=clusterversion.yaml --output-dir=./
+        
+        --chart-path: Path to the Helm chart directory
+        --cluster-definition: The name of cluster definition file, e.g., clusterdefinition.yaml
+        --cluster-version: The name of cluster version file, e.g., clusterversion.yaml
+        --output-dir: Output directory for the generated ComponentDefinition YAML files
+    """
     main()
