@@ -80,6 +80,7 @@ mysqlx-port=33060
 mysqlx=0
 
 datadir={{ $data_root }}/data
+plugin_dir=/usr/lib64/mysql/plugin/
 
 {{ block "logsBlock" . }}
 log_statements_unsafe_for_binlog=OFF

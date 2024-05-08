@@ -1,0 +1,43 @@
+# Default values for orchestrator-cluster.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+
+## @param replicas specify cluster replicas
+##
+replicas: 3
+
+## @param cpu
+##
+cpu: 1
+
+## @param memory, the unit is Gi
+##
+memory: 1
+
+## @param requests.cpu if not set, use cpu
+## @param requests.memory, if not set, use memory
+##
+requests:
+#  cpu:
+#  memory:
+
+## @param storage size, the unit is Gi
+##
+storage: 20
+
+## @param secret the username and password for orchestrator
+secret:
+  TOPOLOGY_PASSWORD: orchestrator
+  TOPOLOGY_USER: orchestrator
+  META_USER: orchestrator
+  META_PASSWORD: orchestrator
+
+## @param serviceReference the reference of orchestrator meta service
+serviceReference:
+  orchestrator:
+    name: mysql-meta
+    namespace: ""
+    cluster: ""
+    port: 3306
+    endpoint: ""
