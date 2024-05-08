@@ -1,6 +1,7 @@
 import argparse
 import yaml
 import os
+import subprocess
 from datetime import datetime
 from dataclasses import dataclass
 from typing import List
@@ -69,6 +70,35 @@ class ReplicaRole:
         self.votable = votable
 
 
+class HelmTemplateRenderer:
+    @staticmethod
+    def render_helm_template(chart_path, output_path, template_name):
+        try:
+            subprocess.run(['helm', 'template', chart_path, '--show-only', template_name],
+                           stdout=open(output_path, 'w'), check=True)
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"Failed to render Helm template: {e}")
+
+    @staticmethod
+    def delete_temp_files(file_paths):
+        for file_path in file_paths:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+                print(f"Deleted temporary file: {file_path}")
+
+    @staticmethod
+    def keep_first_cluster_version(file_path):
+        with open(file_path, 'r') as file:
+            yaml_content = yaml.safe_load_all(file)
+            cluster_versions = list(yaml_content)
+
+        if len(cluster_versions) > 1:
+            first_cluster_version = cluster_versions[0]
+            with open(file_path, 'w') as file:
+                yaml.dump(first_cluster_version, file)
+            print(f"Kept only the first ClusterVersion object in {file_path}")
+
+
 class ClusterDefinitionConvertor:
     def __init__(self, cluster_def, cluster_ver):
         self.cluster_def = cluster_def
@@ -114,8 +144,8 @@ class ComponentDefinitionConvertor:
     def build_metadata(self):
         return {
             'name': self.cluster_comp_def['name'],
-            'labels': self.cluster_def.get('labels', {}),
-            'annotations': self.cluster_def.get('annotations', {})
+            'labels': self.cluster_def.get('metadata', {}).get('labels', {}),
+            'annotations': self.cluster_def.get('metadata', {}).get('annotations', {})
         }
 
     def convert_spec(self):
@@ -260,7 +290,7 @@ class ComponentDefinitionConvertor:
         if 'customLabelSpecs' not in self.cluster_comp_def:
             return labels
         for label in self.cluster_comp_def['customLabelSpecs']:
-            labels[label['name']] = label['value']
+            labels[label['key']] = label['value']
         return labels
 
     def convert_update_strategy(self):
@@ -483,7 +513,7 @@ class ComponentDefinitionConvertor:
 
     def _convert_switchover(self, switchover, cluster_comp_ver):
         if cluster_comp_ver:
-            switchover = self._override_switchover_spec_attr(switchover, cluster_comp_ver['switchoverSpec'])
+            switchover = self._override_switchover_spec_attr(switchover, cluster_comp_ver)
 
         if switchover.get('withCandidate') is None and switchover.get('withoutCandidate') is None:
             return None
@@ -496,18 +526,20 @@ class ComponentDefinitionConvertor:
                     'command': switchover['withCandidate']['cmdExecutorConfig']['command'],
                     'args': switchover['withCandidate']['cmdExecutorConfig']['args']
                 },
-                'Env': switchover['withCandidate']['CmdExecutorConfig']['Env']
             }
+            if 'env' in switchover['withCandidate']['cmdExecutorConfig']:
+                result['withCandidate']['env'] = switchover['withCandidate']['cmdExecutorConfig']['env']
 
-        if switchover.get('withoutCandidate') and switchover['withoutCandidate'].get('CmdExecutorConfig'):
+        if switchover.get('withoutCandidate') and switchover['withoutCandidate'].get('cmdExecutorConfig'):
             result['withoutCandidate'] = {
                 'image': switchover['withoutCandidate']['cmdExecutorConfig']['image'],
                 'exec': {
                     'command': switchover['withoutCandidate']['cmdExecutorConfig']['command'],
                     'args': switchover['withoutCandidate']['cmdExecutorConfig']['args']
                 },
-                'Env': switchover['withoutCandidate']['cmdExecutorConfig']['Env']
             }
+            if 'env' in switchover['withoutCandidate']['cmdExecutorConfig']:
+                result['withoutCandidate']['env'] = switchover['withoutCandidate']['cmdExecutorConfig']['env']
 
         return result
 
@@ -737,18 +769,43 @@ def main():
     parser.add_argument('--cluster-version', required=True, help='Path to the ClusterVersion YAML file')
     parser.add_argument('--output-dir', default='.',
                         help='Output directory for the generated ComponentDefinition YAML files')
-    # Change the argument for overwrite to default to True and allow setting to False
     parser.add_argument('--overwrite', default=True, type=bool,
                         help='Whether to overwrite existing ComponentDefinition YAML files (default: True)')
+    parser.add_argument('--use-helm-template-render-first', default=True, type=bool,
+                        help='Whether to use Helm template to render the YAML files before conversion (default: True)')
+    parser.add_argument('--chart-path', required=True, help='Path to the Helm chart directory')
     args = parser.parse_args()
 
-    with open(args.cluster_definition, 'r') as file:
+    rendered_cluster_def_path = 'rendered_cluster_definition.yaml'
+    rendered_cluster_ver_path = 'rendered_cluster_version.yaml'
+
+    if args.use_helm_template_render_first:
+        if not args.chart_path:
+            raise Exception("Chart path is required when using Helm template rendering")
+
+        # Render ClusterDefinition using Helm template
+        HelmTemplateRenderer.render_helm_template(args.chart_path,
+                                                  rendered_cluster_def_path, 'templates/' + args.cluster_definition)
+
+        # Render ClusterVersion using Helm template
+        HelmTemplateRenderer.render_helm_template(args.chart_path,
+                                                  rendered_cluster_ver_path, 'templates/' + args.cluster_version)
+
+        # Keep only the first ClusterVersion object in the rendered file
+        HelmTemplateRenderer.keep_first_cluster_version(rendered_cluster_ver_path)
+
+        cluster_def_path = rendered_cluster_def_path
+        cluster_ver_path = rendered_cluster_ver_path
+    else:
+        cluster_def_path = args.cluster_definition
+        cluster_ver_path = args.cluster_version
+
+    with open(cluster_def_path, 'r') as file:
         cluster_def = yaml.safe_load(file)
 
-    with open(args.cluster_version, 'r') as file:
+    with open(cluster_ver_path, 'r') as file:
         cluster_ver = yaml.safe_load(file)
 
-    # Placeholder for your converter class and method
     converter = ClusterDefinitionConvertor(cluster_def, cluster_ver)
     component_defs = converter.convert()
 
@@ -763,13 +820,14 @@ def main():
                 yaml.dump(comp_def, file)
             print(f"Generated ComponentDefinition YAML: {file_path}")
         else:
-            # Generate a unique filename with a timestamp if overwrite is False
             timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
             unique_file_name = COMPONENT_DEFINITION_YAML_FILE_PREFIX + comp_def['metadata']['name'] + f'-{timestamp}.yaml'
             unique_file_path = os.path.join(args.output_dir, unique_file_name)
             with open(unique_file_path, 'w') as file:
                 yaml.dump(comp_def, file)
             print(f"Generated ComponentDefinition YAML with unique timestamp: {unique_file_path}")
+
+    HelmTemplateRenderer.delete_temp_files([rendered_cluster_def_path, rendered_cluster_ver_path])
 
 
 if __name__ == "__main__":
