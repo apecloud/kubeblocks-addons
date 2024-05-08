@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: tikv
+  name: tikv-7
   labels:
     {{- include "tidb.labels" . | nindent 4 }}
 spec:

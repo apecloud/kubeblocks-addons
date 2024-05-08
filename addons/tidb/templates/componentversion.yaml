@@ -6,13 +6,13 @@ metadata:
     {{- include "tidb.labels" . | nindent 4 }}
 spec:
   releases:
-    - name: 7.1.5
-      serviceVersion: 7.1.5 # what's this?
+    - name: "7.1.5"
+      serviceVersion: "7.1.5" # what's this?
       images:
         pd: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/pd:{{ default .Chart.AppVersion .Values.image.tag }}
   compatibilityRules:
     - compDefs:
-        - "tidb-pd"
+        - "tidb-pd-7"
       releases:
         - "7.1.5"
 
@@ -25,14 +25,14 @@ metadata:
     {{- include "tidb.labels" . | nindent 4 }}
 spec:
   releases:
-    - name: 7.1.5
-      serviceVersion: 7.1.5 # what's this?
+    - name: "7.1.5"
+      serviceVersion: "7.1.5" # what's this?
       images:
         tidb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/tidb:{{ default .Chart.AppVersion .Values.image.tag }}
         slowlog: {{ .Values.image.helper.image }}
   compatibilityRules:
     - compDefs:
-        - "tidb"
+        - "tidb-7"
       releases:
         - "7.1.5"
 
@@ -45,12 +45,12 @@ metadata:
     {{- include "tidb.labels" . | nindent 4 }}
 spec:
   releases:
-    - name: 7.1.5
-      serviceVersion: 7.1.5 # what's this?
+    - name: "7.1.5"
+      serviceVersion: "7.1.5" # what's this?
       images:
         tikv: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/tikv:{{ default .Chart.AppVersion .Values.image.tag }}
   compatibilityRules:
     - compDefs:
-        - "tikv"
+        - "tikv-7"
       releases:
         - "7.1.5"
