@@ -523,10 +523,11 @@ class ComponentDefinitionConvertor:
             result['withCandidate'] = {
                 'image': switchover['withCandidate']['cmdExecutorConfig']['image'],
                 'exec': {
-                    'command': switchover['withCandidate']['cmdExecutorConfig']['command'],
-                    'args': switchover['withCandidate']['cmdExecutorConfig']['args']
+                    'command': switchover['withCandidate']['cmdExecutorConfig']['command']
                 },
             }
+            if 'args' in switchover['withCandidate']['cmdExecutorConfig']:
+                result['withCandidate']['exec']['args'] = switchover['withCandidate']['cmdExecutorConfig']['args']
             if 'env' in switchover['withCandidate']['cmdExecutorConfig']:
                 result['withCandidate']['env'] = switchover['withCandidate']['cmdExecutorConfig']['env']
 
@@ -534,10 +535,11 @@ class ComponentDefinitionConvertor:
             result['withoutCandidate'] = {
                 'image': switchover['withoutCandidate']['cmdExecutorConfig']['image'],
                 'exec': {
-                    'command': switchover['withoutCandidate']['cmdExecutorConfig']['command'],
-                    'args': switchover['withoutCandidate']['cmdExecutorConfig']['args']
+                    'command': switchover['withoutCandidate']['cmdExecutorConfig']['command']
                 },
             }
+            if 'args' in switchover['withCandidate']['cmdExecutorConfig']:
+                result['withCandidate']['exec']['args'] = switchover['withCandidate']['cmdExecutorConfig']['args']
             if 'env' in switchover['withoutCandidate']['cmdExecutorConfig']:
                 result['withoutCandidate']['env'] = switchover['withoutCandidate']['cmdExecutorConfig']['env']
 
@@ -749,8 +751,8 @@ class ComponentDefinitionConvertor:
             return None
 
         roles = [ReplicaRole(consensus_spec['leader']['name'],
-                             consensus_spec['leader']['access_mode'] != 'None',
-                             consensus_spec['leader']['access_mode'] == 'ReadWrite',
+                             consensus_spec['leader']['accessMode'] != 'None',
+                             consensus_spec['leader']['accessMode'] == 'ReadWrite',
                              True)]
         for follower in consensus_spec['followers']:
             roles.append(ReplicaRole(follower['name'],
