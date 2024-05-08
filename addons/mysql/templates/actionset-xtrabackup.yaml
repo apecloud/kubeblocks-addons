@@ -19,7 +19,7 @@ spec:
     preBackup: []
     postBackup: []
     backupData:
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.xtraBackupRepository }}:$(IMAGE_TAG)
+      image: {{ .Values.image.xtraBackupRegistry | default "docker.io" }}/{{ .Values.image.xtraBackupRepository }}:$(IMAGE_TAG)
       runOnTargetPodNode: true
       command:
       - bash

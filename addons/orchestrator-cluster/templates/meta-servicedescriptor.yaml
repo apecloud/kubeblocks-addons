@@ -1,0 +1,14 @@
+{{- if eq .Values.serviceReference.orchestrator.cluster ""}}
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ServiceDescriptor
+metadata:
+  name: {{ include "kblib.clusterName" . }}-meta-descriptor
+  namespace: {{ .Release.Namespace }}
+spec:
+  serviceKind: mysql
+  serviceVersion: "^*"
+  endpoint:
+    value: {{ .Values.serviceReference.orchestrator.endpoint }}
+  port:
+    value: "{{ .Values.serviceReference.orchestrator.port }}"
+{{- end }}
