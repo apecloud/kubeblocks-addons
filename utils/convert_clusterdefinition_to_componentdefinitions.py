@@ -441,7 +441,7 @@ class ComponentDefinitionConvertor:
     def _convert_lifecycle_actions(self):
         lifecycle_actions = {}
 
-        if (self.cluster_comp_def.get('RSMSpec') and self.cluster_comp_def['RSMSpec'].get('roleProbe')) or \
+        if (self.cluster_comp_def.get('rsmSpec') and self.cluster_comp_def['rsmSpec'].get('roleProbe')) or \
                 (self.cluster_comp_def.get('probes') and self.cluster_comp_def['probes'].get('roleProbe')):
             lifecycle_actions['roleProbe'] = self._convert_role_probe()
 
@@ -463,18 +463,20 @@ class ComponentDefinitionConvertor:
     def _convert_role_probe(self):
         builtin_handler = self._get_builtin_action_handler()
 
-        if self.cluster_comp_def.get('RSMSpec') and \
-                self.cluster_comp_def['RSMSpec'].get('roleProbe', {}).get('customHandler'):
-            custom_handler = self.cluster_comp_def['RSMSpec']['roleProbe']['customHandler'][0]
-            return {
+        if self.cluster_comp_def.get('rsmSpec') and \
+                self.cluster_comp_def['rsmSpec'].get('roleProbe', {}).get('customHandler'):
+            custom_handler = self.cluster_comp_def['rsmSpec']['roleProbe']['customHandler'][0]
+            role_probe = {
                 'customHandler': {
                     'image': custom_handler['image'],
                     'exec': {
-                        'command': custom_handler['command'],
-                        'args': custom_handler['args']
+                        'command': custom_handler['command']
                     }
                 }
             }
+            if 'args' in custom_handler:
+                role_probe['customHandler']['exec']['args'] = custom_handler['args']
+            return role_probe
 
         if not self.cluster_comp_def.get('probes') or not self.cluster_comp_def['probes'].get('roleProbe'):
             return None
