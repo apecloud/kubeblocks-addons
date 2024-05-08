@@ -25,11 +25,10 @@ spec:
   serviceVersion: {{ default .Chart.AppVersion .Values.clusterVersionOverride }}
   ## serial is not used because rsm currently does not support kafka's role detection. The lack of role label during restart will affect the pod restart.
   updateStrategy: BestEffortParallel
-  monitor:
-    builtIn: false
-    exporterConfig:
-      scrapePath: /metrics
-      scrapePort: 5556
+  builtinMonitorContainer:
+    name: jmx-exporter
+    metricsPath: /metrics
+    metricsPort: metrics
   configs:
     - name: kafka-configuration-tpl
       constraintRef: {{ include "kafka.name" . }}-cc
@@ -96,6 +95,8 @@ spec:
             value: "User:$(SUPER_USER)"
           - name: KAFKA_KRAFT_CLUSTER_ID
             value: $(KB_CLUSTER_UID)
+          - name: cluster_domain
+            value: {{ .Values.clusterDomain }}
         ports:
           - name: kafka-ctrlr
             containerPort: 9093

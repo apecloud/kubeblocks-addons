@@ -12,18 +12,10 @@ metadata:
   {{- end }}
 spec:
   services:
-    - name: broker
-      serviceName: broker
-      generatePodOrdinalService: true
-      spec:
-        type: ClusterIP
-        ports:
-          - name: broker
-            port: 9092
-            targetPort: kafka-client
-    - name: broker-nodeport
-      serviceName: broker-nodeport
-      generatePodOrdinalService: true
+    - name: advertised-listener
+      serviceName: advertised-listener
+      podService: true
+      disableAutoProvision: true
       spec:
         type: NodePort
         ports:
@@ -37,15 +29,13 @@ spec:
           name: admin
           username: Required
           optional: false
-      ## if the kafka NodePort type Service with name suffix broker-{0,1...} is set, the BROKER_NODE_PORT_{0,1...} will be available
-    - name: BROKER_NODE_PORT
+    - name: BROKER_ADVERTISED_PORT
       valueFrom:
         serviceVarRef:
           compDef: kafka-combine
-          name: broker-nodeport
-          generatePodOrdinalServiceVar: true
+          name: advertised-listener
           optional: true
-          nodePort:
+          port:
             name: broker
             option: Optional
   provider: kubeblocks
@@ -66,11 +56,10 @@ spec:
         namespace: {{ .Release.Namespace }}
   ## serial is not used because rsm currently does not support kafka's role detection. The lack of role label during restart will affect the pod restart.
   updateStrategy: BestEffortParallel
-  monitor:
-    builtIn: false
-    exporterConfig:
-      scrapePath: /metrics
-      scrapePort: 5556
+  builtinMonitorContainer:
+    name: jmx-exporter
+    metricsPath: /metrics
+    metricsPort: metrics
   configs:
     - name: kafka-configuration-tpl
       constraintRef: {{ include "kafka.name" . }}-cc
@@ -153,6 +142,8 @@ spec:
           # value: "false"
           - name: KB_KAFKA_SASL_CONFIG_PATH  # specify the SASL jaas users
             value: /tools/server-jaas.properties
+          - name: cluster_domain
+            value: {{ .Values.clusterDomain }}
         ports:
           - name: kafka-client
             containerPort: 9092

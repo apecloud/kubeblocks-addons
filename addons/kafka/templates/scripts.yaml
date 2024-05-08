@@ -1,3 +1,4 @@
+## 'kafka-scripts-tpl' used in ClusterDefinition
 apiVersion: v1
 kind: ConfigMap
 metadata:

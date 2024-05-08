@@ -18,20 +18,19 @@ spec:
     deployment environments.
   serviceKind: kafka-exporter
   serviceVersion: {{ default .Chart.AppVersion .Values.clusterVersionOverride }}
-{{/*  services:*/}}
-{{/*  - name: metrics*/}}
-{{/*    serviceName: metrics*/}}
-{{/*    spec:*/}}
-{{/*      ports:*/}}
-{{/*      - name: metrics*/}}
-{{/*        targetPort: metrics*/}}
-{{/*        port: 9308*/}}
+  services:
+  - name: metrics
+    serviceName: metrics
+    spec:
+      ports:
+      - name: metrics
+        targetPort: metrics
+        port: 9308
   updateStrategy: BestEffortParallel
-  monitor:
-    builtIn: false
-    exporterConfig:
-      scrapePath: /metrics
-      scrapePort: 9308
+  builtinMonitorContainer:
+    name: kafka-exporter
+    metricsPath: /metrics
+    metricsPort: metrics
   scripts:
   - name: kafka-scripts-tpl
     templateRef: {{ include "kafka.name" . }}-server-scripts-tpl

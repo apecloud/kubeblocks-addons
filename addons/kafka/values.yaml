@@ -53,3 +53,5 @@ storageClassParameters:
   metadata:
     awsEBSVolumeType: io2
     awsEBSEnableBlockExpress: false
+
+clusterDomain: ".cluster.local"

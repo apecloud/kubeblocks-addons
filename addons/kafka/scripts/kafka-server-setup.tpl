@@ -1,5 +1,8 @@
 #!/bin/bash
 
+declare -g advertised_svc_host_value
+declare -g advertised_svc_port_value
+
 # TLS setting
 {{- if $.component.tlsConfig }}
   # override TLS and auth settings
@@ -111,10 +114,45 @@ if [[ -n "$KB_KAFKA_BROKER_HEAP" ]]; then
   echo "[jvm][KB_KAFKA_BROKER_HEAP]export KAFKA_HEAP_OPTS=${KB_KAFKA_BROKER_HEAP}"
 fi
 
-extract_ordinal_from_pod_name() {
-  local pod_name="$1"
-  local ordinal="${pod_name##*-}"
+extract_ordinal_from_object_name() {
+  local object_name="$1"
+  local ordinal="${object_name##*-}"
   echo "$ordinal"
+}
+
+parse_advertised_svc_if_exist() {
+  local pod_name="${KB_POD_NAME}"
+
+  if [[ -z "${BROKER_ADVERTISED_PORT}" ]]; then
+    echo "Environment variable BROKER_ADVERTISED_PORT not found. Ignoring."
+    return 0
+  fi
+
+  # the value format of BROKER_ADVERTISED_PORT is "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."
+  IFS=',' read -ra advertised_ports <<< "${BROKER_ADVERTISED_PORT}"
+  echo "~~~~~~advertised_ports:${advertised_ports}"
+  local found=false
+  pod_name_ordinal=$(extract_ordinal_from_object_name "$pod_name")
+  echo "~~~~~~pod_name_ordinal:${pod_name_ordinal}"
+  for advertised_port in "${advertised_ports[@]}"; do
+    IFS=':' read -ra parts <<< "$advertised_port"
+    local svc_name="${parts[0]}"
+    local port="${parts[1]}"
+    svc_name_ordinal=$(extract_ordinal_from_object_name "$svc_name")
+    echo "~~~~~~svc_name:${svc_name},port:${port},svc_name_ordinal:${svc_name_ordinal}"
+    if [[ "$svc_name_ordinal" == "$pod_name_ordinal" ]]; then
+      echo "Found matching svcName and port for podName '$pod_name', BROKER_ADVERTISED_PORT: $BROKER_ADVERTISED_PORT. svcName: $svc_name, port: $port."
+      advertised_svc_port_value="$port"
+      advertised_svc_host_value="$KB_HOST_IP"
+      found=true
+      break
+    fi
+  done
+
+  if [[ "$found" == false ]]; then
+    echo "Error: No matching svcName and port found for podName '$pod_name', BROKER_ADVERTISED_PORT: $BROKER_ADVERTISED_PORT. Exiting."
+    exit 1
+  fi
 }
 
 # cfg setting
@@ -127,15 +165,12 @@ if [[ "broker,controller" = "$KAFKA_CFG_PROCESS_ROLES" ]] || [[ "broker" = "$KAF
       rm -f "$KAFKA_CFG_METADATA_LOG_DIR/__cluster_metadata-0/quorum-state"
     fi
 
-    cluster_domain={{ .clusterDomain }}
-    headless_domain="${KB_POD_NAME}.${KB_CLUSTER_COMP_NAME}-headless.${KB_NAMESPACE}.svc.${cluster_domain}"
+    headless_domain="${KB_POD_FQDN}${cluster_domain}"
+    parse_advertised_svc_if_exist
 
-    if [[ "true" == "$KB_KAFKA_BROKER_NODEPORT" ]]; then
+    if [ -n "$advertised_svc_host_value" ] && [ -n "$advertised_svc_port_value" ]; then
       # enable NodePort, use node ip + mapped port as client connection
-      pod_ordinal=$(extract_ordinal_from_pod_name $KB_POD_NAME)
-      node_port_env_name="BROKER_NODE_PORT_${pod_ordinal}"
-      eval node_port="\$${node_port_env_name}"
-      nodeport_domain="${KB_HOST_IP}:${node_port}"
+      nodeport_domain="${advertised_svc_host_value}:${advertised_svc_port_value}"
       #export KAFKA_CFG_LISTENERS="CONTROLLER://:9093,INTERNAL://:9094,CLIENT://:${node_port}"
       #echo "[cfg]KAFKA_CFG_LISTENERS=$KAFKA_CFG_LISTENERS"
       export KAFKA_CFG_ADVERTISED_LISTENERS="INTERNAL://${headless_domain}:9094,CLIENT://${nodeport_domain}"
