@@ -450,7 +450,7 @@ class ComponentDefinitionConvertor:
             lifecycle_actions['switchover'] = self._convert_switchover(self.cluster_comp_def['switchoverSpec'],
                                                                        cv_switchover_spec)
 
-        if self.cluster_comp_def.get('PostStartSpec'):
+        if self.cluster_comp_def.get('postStartSpec'):
             lifecycle_actions['postProvision'] = self._convert_post_provision()
 
         # These are set to None, indicating no action is defined for them
