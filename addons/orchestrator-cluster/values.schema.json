@@ -6,11 +6,7 @@
       "title": "Version",
       "description": "Cluster version, run \"kbcli cv list --devel\" to see all versions.",
       "type": "string",
-      "default": "mysql-8.0.33",
-      "enum": [
-        "mysql-8.0.33",
-        "mysql-5.7.44"
-      ]
+      "default": "ac-mysql-8.0.30"
     },
     "mode": {
       "title": "Mode",
@@ -22,14 +18,6 @@
         "replication",
         "raftGroup"
       ]
-    },
-    "replicas": {
-      "title": "Replicas",
-      "description": "The number of replicas.",
-      "type": "integer",
-      "default": 1,
-      "minimum": 1,
-      "maximum": 5
     },
     "cpu": {
       "title": "CPU",
