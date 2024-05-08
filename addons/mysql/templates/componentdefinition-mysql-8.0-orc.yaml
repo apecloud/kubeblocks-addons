@@ -105,7 +105,7 @@ spec:
           - -r
           - /usr/local/bin/curl
           - /kubeblocks/curl
-        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/curl-static:7.67.0
+        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/curl-static:8.7.1
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         name: init-curl
         volumeMounts:
