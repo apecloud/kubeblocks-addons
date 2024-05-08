@@ -780,8 +780,8 @@ def main():
     parser.add_argument('--chart-path', required=True, help='Path to the Helm chart directory')
     args = parser.parse_args()
 
-    rendered_cluster_def_path = 'rendered_cluster_definition.yaml'
-    rendered_cluster_ver_path = 'rendered_cluster_version.yaml'
+    rendered_cluster_def_file = 'rendered_cluster_definition.yaml'
+    rendered_cluster_ver_file = 'rendered_cluster_version.yaml'
 
     if args.use_helm_template_render_first:
         if not args.chart_path:
@@ -789,17 +789,17 @@ def main():
 
         # Render ClusterDefinition using Helm template
         HelmTemplateRenderer.render_helm_template(args.chart_path,
-                                                  rendered_cluster_def_path, 'templates/' + args.cluster_definition)
+                                                  rendered_cluster_def_file, 'templates/' + args.cluster_definition)
 
         # Render ClusterVersion using Helm template
         HelmTemplateRenderer.render_helm_template(args.chart_path,
-                                                  rendered_cluster_ver_path, 'templates/' + args.cluster_version)
+                                                  rendered_cluster_ver_file, 'templates/' + args.cluster_version)
 
         # Keep only the first ClusterVersion object in the rendered file
-        HelmTemplateRenderer.keep_first_cluster_version(rendered_cluster_ver_path)
+        HelmTemplateRenderer.keep_first_cluster_version(rendered_cluster_ver_file)
 
-        cluster_def_path = rendered_cluster_def_path
-        cluster_ver_path = rendered_cluster_ver_path
+        cluster_def_path = rendered_cluster_def_file
+        cluster_ver_path = rendered_cluster_ver_file
     else:
         cluster_def_path = args.cluster_definition
         cluster_ver_path = args.cluster_version
@@ -831,7 +831,7 @@ def main():
                 yaml.dump(comp_def, file)
             print(f"Generated ComponentDefinition YAML with unique timestamp: {unique_file_path}")
 
-    HelmTemplateRenderer.delete_temp_files([rendered_cluster_def_path, rendered_cluster_ver_path])
+    HelmTemplateRenderer.delete_temp_files([rendered_cluster_def_file, rendered_cluster_ver_file])
 
 
 if __name__ == "__main__":
@@ -843,7 +843,8 @@ if __name__ == "__main__":
     Usage:
         python convert_clusterdefinition_to_componentdefinitions.py --chart-path=/PathToYourProject/kubeblocks-addons/addons/postgresql \
         --cluster-definition=clusterdefinition.yaml --cluster-version=clusterversion.yaml --output-dir=./
-        
+    
+    Parameters:    
         --chart-path: Path to the Helm chart directory
         --cluster-definition: The name of cluster definition file, e.g., clusterdefinition.yaml
         --cluster-version: The name of cluster version file, e.g., clusterversion.yaml
