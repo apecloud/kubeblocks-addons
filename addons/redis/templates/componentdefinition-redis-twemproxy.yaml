@@ -8,7 +8,7 @@ spec:
   provider: KubeBlocks
   description: A Twemproxy component definition for Kubernetes
   serviceKind: redis-twemproxy
-  serviceVersion: 0.5.0
+  serviceVersion: 7.0.6
   services:
     - name: twemproxy
       serviceName: twemproxy
