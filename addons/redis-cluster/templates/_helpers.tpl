@@ -52,6 +52,9 @@ Define redis ComponentSpec with ComponentDefinition.
     type: Noop
   {{- include "kblib.componentResources" . | indent 2 }}
   {{- include "kblib.componentStorages" . | indent 2 }}
+{{- if and (eq .Values.mode "replication") .Values.twemproxy.enabled }}
+{{- include "redis-cluster.twemproxyComponentSpec" . }}
+{{- end }}
 {{- if and (eq .Values.mode "replication") .Values.sentinel.enabled }}
 {{- include "redis-cluster.sentinelComponentSpec" . }}
 {{- end }}
@@ -88,6 +91,23 @@ Define redis sentinel ComponentSpec with ComponentDefinition.
 {{- end }}
 
 {{/*
+Define redis twemproxy ComponentSpec with ComponentDefinition.
+*/}}
+{{- define "redis-cluster.twemproxyComponentSpec" }}
+- name: redis-twemproxy
+  componentDef: redis-twemproxy
+  serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+  replicas: {{ .Values.twemproxy.replicas }}
+  resources:
+    limits:
+      cpu: {{ .Values.twemproxy.cpu | quote }}
+      memory: {{ print .Values.twemproxy.memory "Gi" | quote }}
+    requests:
+      cpu: {{ .Values.twemproxy.cpu | quote }}
+      memory: {{ print .Values.twemproxy.memory "Gi" | quote }}
+{{- end }}
+
+{{/*
 Define redis ComponentSpec with legacy ClusterDefinition which will be deprecated in the future.
 */}}
 {{- define "redis-cluster.legacyComponentSpec" }}
@@ -105,7 +125,7 @@ Define redis ComponentSpec with legacy ClusterDefinition which will be deprecate
   {{- include "kblib.componentServices" . | indent 2 }}
 
 {{- if and (eq .Values.mode "replication") .Values.twemproxy.enabled }}
-{{- include "redis-cluster.legacyTwemproxyComponentSpec" . | indent 4 }}
+{{- include "redis-cluster.legacyTwemproxyComponentSpec" . }}
 {{- end }}
 
 {{- if and (eq .Values.mode "replication") .Values.sentinel.enabled }}
