@@ -28,11 +28,14 @@ spec:
     #         image: "victoriametrics/victoria-metrics:v1.100.1"
     #         imagePullPolicy: "IfNotPresent"
     #         args:
-    #           - "--retentionPeriod=1"
-    #           - "--storageDataPath=/storage"
+    #           - --retentionPeriod=1
+    #           - --storageDataPath=/storage
     #           - --envflag.enable=true
     #           - --envflag.prefix=VM_
     #           - --loggerFormat=json
+    #           {{- if .Values.enableTCP6 }}
+    #           - --enableTCP6=true
+    #           {{- end }}
     #         ports:
     #           - name: http
     #             containerPort: 8428
@@ -95,10 +98,12 @@ spec:
             args:
               - --storageNode=vm-cluster-victoria-metrics-cluster-vmstorage-0.vm-cluster-victoria-metrics-cluster-vmstorage.default.svc.cluster.local:8400
               - --storageNode=vm-cluster-victoria-metrics-cluster-vmstorage-1.vm-cluster-victoria-metrics-cluster-vmstorage.default.svc.cluster.local:8400
-              
               - --envflag.enable=true
               - --envflag.prefix=VM_
               - --loggerFormat=json
+              {{- if .Values.enableTCP6 }}
+              - --enableTCP6=true
+              {{- end }}
             ports:
               - name: http
                 containerPort: 8480
@@ -119,7 +124,6 @@ spec:
               timeoutSeconds: 5
               failureThreshold: 3
             volumeMounts:
-              
             resources:
               {}        
 
@@ -141,13 +145,15 @@ spec:
             securityContext:
               {}
             args:
-              - "--cacheDataPath=/cache"
+              - --cacheDataPath=/cache
               - --storageNode=vm-cluster-victoria-metrics-cluster-vmstorage-0.vm-cluster-victoria-metrics-cluster-vmstorage.default.svc.cluster.local:8401
               - --storageNode=vm-cluster-victoria-metrics-cluster-vmstorage-1.vm-cluster-victoria-metrics-cluster-vmstorage.default.svc.cluster.local:8401
-              
               - --envflag.enable=true
               - --envflag.prefix=VM_
               - --loggerFormat=json
+              {{- if .Values.enableTCP6 }}
+              - --enableTCP6=true
+              {{- end }}
             ports:
               - name: http
                 containerPort: 8481
@@ -170,8 +176,8 @@ spec:
             volumeMounts:
               - mountPath: /cache
                 name: cache-volume
-              
             resources:
+              {}
 
     - name: vmstorage
       characterType: vmstorage
@@ -198,11 +204,14 @@ spec:
             securityContext:
               {}
             args:
-              - "--retentionPeriod=1"
-              - "--storageDataPath=/storage"
+              - --retentionPeriod=1
+              - --storageDataPath=/storage
               - --envflag.enable=true
               - --envflag.prefix=VM_
               - --loggerFormat=json
+              {{- if .Values.enableTCP6 }}
+              - --enableTCP6=true
+              {{- end }}
             ports:
               - name: http
                 containerPort: 8482
@@ -225,12 +234,11 @@ spec:
               initialDelaySeconds: 5
               periodSeconds: 15
               timeoutSeconds: 5
-            resources: 
-              {}
             volumeMounts:
               - name: vmstorage-volume
                 mountPath: /storage
                 subPath: 
+            resources: 
+              {}
               
         terminationGracePeriodSeconds: 60
-        volumes:

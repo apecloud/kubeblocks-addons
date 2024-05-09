@@ -23,6 +23,8 @@ images:
     # Overrides the image tag whose default is the chart appVersion.
     tag: "v1.100.1-cluster"
 
+enableTCP6: true
+
 nameOverride: ""
 fullnameOverride: ""
 clusterVersionOverride: ""
