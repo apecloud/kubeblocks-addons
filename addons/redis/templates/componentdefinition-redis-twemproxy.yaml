@@ -30,11 +30,11 @@ spec:
       needSnapshot: false
   runtime:
     initContainers:
-      - command:
-          - /scripts/redis-twemproxy-setup.sh
+      - name: init-redis-twemproxy
         image: {{ include "busybox.image" . }}
         imagePullPolicy: {{ default .Values.busyboxImage.pullPolicy "IfNotPresent" }}
-        name: init-redis-twemproxy
+        command:
+          - /scripts/redis-twemproxy-setup.sh
         volumeMounts:
           - mountPath: /data
             name: data
@@ -45,13 +45,13 @@ spec:
           - mountPath: /scripts
             name: scripts
     containers:
-    - command:
-      - sh
-      - -c
-      - nutcracker -c /etc/proxy/nutcracker.conf -v 4 -m 16384
+    - name: redis-twemproxy
       image: {{ include "redis-twemproxy.image" . }}
       imagePullPolicy: {{ default .Values.redisTwemproxyImage.pullPolicy "IfNotPresent" }}
-      name: redis-twemproxy
+      command:
+        - sh
+        - -c
+        - nutcracker -c /etc/proxy/nutcracker.conf -v 4 -m 16384
       ports:
       - containerPort: 22121
         name: redis-twemproxy
