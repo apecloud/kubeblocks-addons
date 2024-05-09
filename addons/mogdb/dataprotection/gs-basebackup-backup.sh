@@ -37,4 +37,4 @@ fi
 datasafed push "$BACKUP_TAR_FILE" "/${DP_BACKUP_NAME}.tar.gz"
 
 # stat and save the backup information
-stat_and_save_backup_info $START_TIME
+stat_and_save_backup_info "$START_TIME"

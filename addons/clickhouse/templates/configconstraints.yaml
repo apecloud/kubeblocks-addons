@@ -8,15 +8,15 @@ metadata:
     {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
     {{- end }}
 spec:
-  # top level mysql configuration type
-  configSchemaTopLevelKey: ClickhouseParameter
-
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   configSchema:
+    # top level mysql configuration type
+    topLevelKey: ClickhouseParameter
+
     # schemaInJSON: auto generate from cue scripts
     # example: ../../pkg/configuration/testdata/mysql_openapi.json
     cue: |-
       {{- .Files.Get "configs/clickhouse-config-constraint.cue" | nindent 6 }}
   # mysql configuration file format
-  formatterConfig:
+  fileFormatConfig:
     format: xml

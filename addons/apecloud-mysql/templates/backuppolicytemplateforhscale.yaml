@@ -4,6 +4,7 @@ metadata:
   name: {{ include "apecloud-mysql.hscaleBackupPolicyTemplateName" . }}
   labels:
     clusterdefinition.kubeblocks.io/name: apecloud-mysql
+    service-kind/mysql: "true"
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
   clusterDefinitionRef: {{ include "apecloud-mysql.clusterDefName" . }}
@@ -15,7 +16,7 @@ spec:
     target:
       role: follower
       account: root
-    backupMethods: &backupMethods
+    backupMethods:
     - name: volume-snapshot
       snapshotVolumes: true
       actionSetName: {{ include "apecloud-mysql.vsActionSetName" . }}

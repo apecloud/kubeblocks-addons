@@ -6,11 +6,11 @@ metadata:
   labels:
     {{- include "opengauss.labels" . | nindent 4 }}
 spec:
-  # top level pg configuration type
-  configSchemaTopLevelKey: PGParameter
-
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   configSchema:
+    # top level pg configuration type
+    topLevelKey: PGParameter
+
     # schemaInJSON: auto generate from cue scripts
     # example: ../../pkg/configuration/testdata/mysql_openapi.json
     cue: |-
@@ -38,5 +38,5 @@ spec:
 
 
     # configuration file format
-  formatterConfig:
+  fileFormatConfig:
     format: properties

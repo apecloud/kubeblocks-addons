@@ -7,10 +7,9 @@ metadata:
     {{- include "redis.labels" . | nindent 4 }}
 spec:
 
-  configSchemaTopLevelKey: RedisParameter
-
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   configSchema:
+    topLevelKey: RedisParameter
     cue: |-
       {{- .Files.Get "config/redis7-config-constraint.cue" | nindent 6 }}
 
@@ -35,5 +34,5 @@ spec:
 
 
   # redis configuration file format
-  formatterConfig:
+  fileFormatConfig:
     format: redis

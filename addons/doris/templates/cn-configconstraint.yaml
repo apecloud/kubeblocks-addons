@@ -11,11 +11,11 @@ spec:
   # configmap reference
   # tplRef: doris-cn-3node-tpl-8.0
 
-  # top level mysql configuration type
-  configSchemaTopLevelKey: DoriscnParameter
-
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   configSchema:
+    # top level mysql configuration type
+    topLevelKey: DoriscnParameter
+
     # schemaInJSON: auto generate from cue scripts
     # example: ../../internal/configuration/testdata/mysql_openapi.json
     cue: |-
@@ -50,5 +50,5 @@ spec:
 
 
   # mysql configuration file format
-  formatterConfig:
+  fileFormatConfig:
     format: props-plus

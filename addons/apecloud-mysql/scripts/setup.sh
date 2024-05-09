@@ -1,5 +1,26 @@
 #!/bin/bash
+
 set -ex
+
+get_replica_host() {
+    local id=$1
+    
+    if [ -z "${REPLICATION_ENDPOINT}" ]; then
+        host="KB_${id}_HOSTNAME"
+        echo "${!host}"
+    else
+        endpoints=$(eval echo "${REPLICATION_ENDPOINT}" | tr ',' '\n')
+        for endpoint in ${endpoints}; do
+            host=$(eval echo "${endpoint}" | cut -d ':' -f 1)
+            ip=$(eval echo "${endpoint}" | cut -d ':' -f 2)
+            hostId=$(eval echo "${host}" | grep -oE "[0-9]+\$")
+            if [ "${id}" = "${hostId}" ]; then
+                echo "${ip}"
+                break
+            fi
+        done
+    fi
+}
 
 generate_cluster_info() {
     local pod_name="${KB_POD_NAME:?missing pod name}"
@@ -25,25 +46,25 @@ generate_cluster_info() {
             cluster_members="${cluster_members};"
         fi
 
-        host="KB_${i}_HOSTNAME"
-        echo "${host}=${!host:?missing member hostname}"
-        cluster_members="${cluster_members}${!host}:${MYSQL_CONSENSUS_PORT:-13306}"
+        host="$(get_replica_host ${i})"
+        echo "${host:?missing member hostname}"
+        cluster_members="${cluster_members}${host}:${MYSQL_CONSENSUS_PORT:-13306}"
 
         # compatiable with old version images
-        export KB_MYSQL_${i}_HOSTNAME=${!host}
+        export KB_MYSQL_${i}_HOSTNAME=${host}
     done
     export KB_MYSQL_CLUSTER_MEMBERS="${cluster_members}"
 
     export KB_MYSQL_CLUSTER_MEMBER_INDEX=${pod_name##*-};
-    local pod_host="KB_${KB_MYSQL_CLUSTER_MEMBER_INDEX}_HOSTNAME"
-    export KB_MYSQL_CLUSTER_MEMBER_HOST=${!pod_host:?missing current member hostname}
+    local pod_host=$(get_replica_host ${KB_MYSQL_CLUSTER_MEMBER_INDEX})
+    export KB_MYSQL_CLUSTER_MEMBER_HOST=${pod_host:?missing current member hostname}
 
     if [ -n "$KB_LEADER" ]; then
         echo "KB_LEADER=${KB_LEADER}"
 
         local leader_index=${KB_LEADER##*-}
-        local leader_host="KB_${leader_index}_HOSTNAME"
-        export KB_MYSQL_CLUSTER_LEADER_HOST=${!leader_host:?missing leader hostname}
+        local leader_host=$(get_replica_host ${leader_index})
+        export KB_MYSQL_CLUSTER_LEADER_HOST=${leader_host:?missing leader hostname}
 
         # compatiable with old version images
         export KB_MSYQL_LEADER=${KB_LEADER}
