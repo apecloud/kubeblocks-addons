@@ -6,10 +6,10 @@
 ## if you install multiple releases of this chart.
 ## If specified, the component definition will use it as suffix.
 compDefinitionVersion:
-  redis: 7.0
-  sentinel: 7.0
-  redisCluster: 7.0
-  twemproxy: 0.5
+  redis: "7.0"
+  sentinel: "7.0"
+  redisCluster: "7.0"
+  twemproxy: "0.5"
 
 image:
   # refer: https://redis.io/docs/stack/
