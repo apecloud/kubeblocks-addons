@@ -20,7 +20,7 @@ redis
 Define redis component defintion name prefix
 */}}
 {{- define "redis.componentDefNamePrefix" -}}
-redis-0.8  # TODO: major version?
+redis-7.0
 {{- end -}}
 
 {{/*
@@ -38,7 +38,7 @@ redis-sentinel
 Define redis-sentinel component defintion name prefix
 */}}
 {{- define "redis-sentinel.componentDefNamePrefix" -}}
-redis-sentinel-0.8  # TODO: major version?
+redis-sentinel-7.0
 {{- end -}}
 
 {{/*
@@ -56,18 +56,25 @@ redis-cluster
 Define redis-cluster component defintion name prefix
 */}}
 {{- define "redis-cluster.componentDefNamePrefix" -}}
-redis-cluster-0.8  # TODO: major version?
+redis-cluster-7.0
 {{- end -}}
 
 {{/*
 Define redis-twemproxy component defintion name
 */}}
 {{- define "redis-twemproxy.componentDefName" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
+{{- if eq (len .Values.compDefinitionVersion.twemproxy) 0 -}}
 redis-twemproxy
 {{- else -}}
-{{- printf "redis-twemproxy-%s" .Values.compDefinitionVersionSuffix -}}
+{{- printf "redis-twemproxy-%s" .Values.compDefinitionVersion.twemproxy -}}
 {{- end -}}
+{{- end -}}
+
+{{/*
+Define redis-twemproxy component defintion name prefix
+*/}}
+{{- define "redis-twemproxy.componentDefNamePrefix" -}}
+redis-twemproxy-0.5
 {{- end -}}
 
 {{/*
