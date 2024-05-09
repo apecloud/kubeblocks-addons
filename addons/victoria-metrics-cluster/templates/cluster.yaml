@@ -58,8 +58,9 @@ spec:
         {{- end }}
       {{- end }}
       volumeClaimTemplates:
-        - name: vmstorage-storage
+        - name: vmstorage-volume
           spec:
+            storageClassName: {{ .Values.storageClassName }}
             accessModes:
               - ReadWriteOnce
             resources:

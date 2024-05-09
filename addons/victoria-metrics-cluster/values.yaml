@@ -6,6 +6,11 @@ nameOverride: ""
 fullnameOverride: ""
 clusterVersionOverride: ""
 
+## @param storageClassName, storage class name
+##
+storageClassName: ""
+## @param terminationPolicy, temination policy for victoria-metrics-cluster
+##
 terminationPolicy: "Delete"
 
 ## @param vminsert configs

@@ -32,7 +32,7 @@
         "WipeOut"
       ]
     },
-    "replicas": {
+    "vminsert.replicas": {
       "title": "Replicas",
       "description": "The number of replicas.",
       "type": "integer",
@@ -40,7 +40,23 @@
       "minimum": 1,
       "maximum": 5
     },
-    "cpu": {
+    "vmselect.replicas": {
+      "title": "Replicas",
+      "description": "The number of replicas.",
+      "type": "integer",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 5
+    },
+    "vmstorage.replicas": {
+      "title": "Replicas",
+      "description": "The number of replicas.",
+      "type": "integer",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 5
+    },
+    "vminsert.cpu": {
       "title": "CPU",
       "description": "CPU cores.",
       "type": [
@@ -52,7 +68,53 @@
       "maximum": 64,
       "multipleOf": 0.5
     },
-    "memory": {
+    "vmselect.cpu": {
+      "title": "CPU",
+      "description": "CPU cores.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 0.5,
+      "minimum": 0.5,
+      "maximum": 64,
+      "multipleOf": 0.5
+    },
+    "vmstorage.cpu": {
+      "title": "CPU",
+      "description": "CPU cores.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 0.5,
+      "minimum": 0.5,
+      "maximum": 64,
+      "multipleOf": 0.5
+    },
+    "vminsert.memory": {
+      "title": "Memory(Gi)",
+      "description": "Memory, the unit is Gi.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 0.5,
+      "minimum": 0.5,
+      "maximum": 1000
+    },
+    "vmselect.memory": {
+      "title": "Memory(Gi)",
+      "description": "Memory, the unit is Gi.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 0.5,
+      "minimum": 0.5,
+      "maximum": 1000
+    },
+    "vmstorage.memory": {
       "title": "Memory(Gi)",
       "description": "Memory, the unit is Gi.",
       "type": [
