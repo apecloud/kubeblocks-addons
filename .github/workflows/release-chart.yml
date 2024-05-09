@@ -85,6 +85,8 @@ on:
           - xinference-cluster
           - zookeeper
           - zookeeper-cluster
+          - orchestrator
+          - orchestrator-cluster
       chart_version:
         description: 'release specify chart version or empty to release default'
         required: false
