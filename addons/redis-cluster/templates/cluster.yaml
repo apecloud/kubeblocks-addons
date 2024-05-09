@@ -14,5 +14,14 @@
   clusterDefinitionRef: redis
   topology: {{ .Values.mode }}
   componentSpecs:
-  {{- include "redis-cluster.componentSpec" . | indent 2 }}
+  {{- if eq .Values.mode "replication" }}
+    {{- include "redis-cluster.componentSpec" . | indent 2 }}
+    {{- include "redis-cluster.sentinelComponentSpec" . | indent 2 }}
+  {{- else if eq .Values.mode "replication-twemproxy" }}
+    {{- include "redis-cluster.componentSpec" . | indent 2 }}
+    {{- include "redis-cluster.sentinelComponentSpec" . | indent 2 }}
+    {{- include "redis-cluster.twemproxyComponentSpec" . | indent 2 }}
+  {{- else }}
+    {{- include "redis-cluster.componentSpec" . | indent 2 }}
+  {{- end }}
 {{- end }}

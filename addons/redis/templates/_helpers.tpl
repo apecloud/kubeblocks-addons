@@ -20,7 +20,7 @@ redis
 Define redis component defintion name prefix
 */}}
 {{- define "redis.componentDefNamePrefix" -}}
-redis-7.0
+{{- printf "redis-%s" .Values.compDefinitionVersion.redis -}}
 {{- end -}}
 
 {{/*
@@ -38,7 +38,7 @@ redis-sentinel
 Define redis-sentinel component defintion name prefix
 */}}
 {{- define "redis-sentinel.componentDefNamePrefix" -}}
-redis-sentinel-7.0
+{{- printf "redis-sentinel-%s" .Values.compDefinitionVersion.sentinel -}}
 {{- end -}}
 
 {{/*
@@ -56,7 +56,7 @@ redis-cluster
 Define redis-cluster component defintion name prefix
 */}}
 {{- define "redis-cluster.componentDefNamePrefix" -}}
-redis-cluster-7.0
+{{- printf "redis-cluster-%s" .Values.compDefinitionVersion.redisCluster -}}
 {{- end -}}
 
 {{/*
@@ -74,7 +74,7 @@ redis-twemproxy
 Define redis-twemproxy component defintion name prefix
 */}}
 {{- define "redis-twemproxy.componentDefNamePrefix" -}}
-redis-twemproxy-0.5
+{{- printf "redis-twemproxy-%s" .Values.compDefinitionVersion.twemproxy -}}
 {{- end -}}
 
 {{/*

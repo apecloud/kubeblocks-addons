@@ -28,13 +28,32 @@ spec:
     - highWatermark: 0
       name: data
       needSnapshot: false
+  vars:
+    ## reference to the redis component service
+    - name: REDIS_SERVICE_NAME
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redis.componentDefName" . }}
+          name: redis
+          optional: false
+          host: Required
+    ## reference to the redis component service port
+    - name: REDIS_SERVICE_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redis.componentDefName" . }}
+          name: redis
+          optional: false
+          port:
+            name: redis
+            option: Required
   runtime:
     initContainers:
       - name: init-redis-twemproxy
         image: {{ include "busybox.image" . }}
         imagePullPolicy: {{ default .Values.busyboxImage.pullPolicy "IfNotPresent" }}
         command:
-          - /scripts/redis-twemproxy-setup.sh
+          - /scripts/redis-twemproxy-setup-v2.sh
         volumeMounts:
           - mountPath: /data
             name: data

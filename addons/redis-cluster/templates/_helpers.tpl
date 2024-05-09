@@ -51,12 +51,6 @@ Define redis ComponentSpec with ComponentDefinition.
     type: Noop
   {{- include "kblib.componentResources" . | indent 2 }}
   {{- include "kblib.componentStorages" . | indent 2 }}
-{{- if and (eq .Values.mode "replication") .Values.twemproxy.enabled }}
-{{- include "redis-cluster.twemproxyComponentSpec" . }}
-{{- end }}
-{{- if and (eq .Values.mode "replication") .Values.sentinel.enabled }}
-{{- include "redis-cluster.sentinelComponentSpec" . }}
-{{- end }}
 {{- end }}
 
 {{/*
