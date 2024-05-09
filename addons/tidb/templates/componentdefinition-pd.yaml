@@ -50,7 +50,7 @@ spec:
             --advertise-client-urls=http://${MY_PEER}:2379 \
             --initial-cluster=${PEERS}
   builtinMonitorContainer:
-    name: metrics
+    name: pd
     metricsPort: "2379"
   services:
     - name: pd

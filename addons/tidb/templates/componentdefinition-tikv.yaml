@@ -32,17 +32,17 @@ spec:
             --addr=0.0.0.0:20160 \
             --advertise-addr=${KB_POD_FQDN}:20160 \
             --status-addr=0.0.0.0:20180
-    builtinMonitorContainer:
-      name: metrics
-      metricsPort: "20180"
-    services:
-      - name: tikv
-        spec:
-          ports:
-            - name: peer
-              port: 20160
-              targetPort: peer
-            - name: status
-              port: 20180
-              targetPort: status
+  builtinMonitorContainer:
+    name: tikv
+    metricsPort: "20180"
+  services:
+    - name: tikv
+      spec:
+        ports:
+          - name: peer
+            port: 20160
+            targetPort: peer
+          - name: status
+            port: 20180
+            targetPort: status
 
