@@ -5,7 +5,7 @@ description: Orchestrator is a MySQL high availability and replication managemen
 
 type: application
 
-version: 3.2.6
+version: 0.8.0
 
 # This is the version number of the Orchestrator being deployed
 appVersion: "3.2.6"
