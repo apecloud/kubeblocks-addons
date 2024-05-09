@@ -133,7 +133,7 @@ Define image
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
 {{- end }}
 
-{{- define "redis-proxy.image" -}}
+{{- define "redis-twemproxy.image" -}}
 {{ .Values.redisTwemproxyImage.registry | default "docker.io" }}/{{ .Values.redisTwemproxyImage.repository }}:{{ .Values.redisTwemproxyImage.tag }}
 {{- end }}
 

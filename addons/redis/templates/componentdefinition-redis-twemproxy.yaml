@@ -49,7 +49,7 @@ spec:
       - sh
       - -c
       - nutcracker -c /etc/proxy/nutcracker.conf -v 4 -m 16384
-      image: {{ include "redis-proxy.image" . }}
+      image: {{ include "redis-twemproxy.image" . }}
       imagePullPolicy: {{ default .Values.redisTwemproxyImage.pullPolicy "IfNotPresent" }}
       name: redis-twemproxy
       ports:

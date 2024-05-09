@@ -417,11 +417,32 @@ spec:
           compDef: redis-sentinel
       orders:
         provision:
-          - redis
           - redis-sentinel
+          - redis
         terminate:
           - redis-sentinel
           - redis
         update:
-          - redis
           - redis-sentinel
+          - redis
+    - name: replication-twemproxy
+      components:
+        - name: redis
+          compDef: redis
+        - name: redis-sentinel
+          compDef: redis-sentinel
+        - name: redis-twemproxy
+          compDef: redis-twemproxy
+      orders:
+        provision:
+          - redis-sentinel
+          - redis
+          - redis-twemproxy
+        terminate:
+          - redis-twemproxy
+          - redis-sentinel
+          - redis
+        update:
+          - redis-twemproxy
+          - redis-sentinel
+          - redis

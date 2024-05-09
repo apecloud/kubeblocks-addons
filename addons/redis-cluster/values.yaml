@@ -12,6 +12,7 @@ version: redis-7.0.6
 ## @param mode redis cluster topology mode, standalone, replication and cluster
 ## standalone: single redis instance
 ## replication: primary-secondary replication with redis sentinel, refer: https://redis.io/docs/management/sentinel
+## replication-twemproxy: primary-secondary replication with sentinel and twemproxy, it is just a demo for how to use twemproxy with redis, not recommended for production
 ## cluster: official redis cluster, refer: https://redis.io/docs/reference/cluster-spec. if mode is cluster, please set useLegacyCompDef to false.
 mode: replication
 

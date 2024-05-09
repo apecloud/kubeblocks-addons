@@ -1,0 +1,16 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: redis-twemproxy
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "redis-twemproxy.componentDefNamePrefix" . }}
+      releases:
+        - 0.5.0
+  releases:
+    - name: 0.5.0  # {{ .Values.image.tag }}
+      changes:
+      serviceVersion: 7.0.6  # {{ .Chart.AppVersion }}
+      images:
+        redis-sentinel: {{ include "redis-twemproxy.image" . }}
