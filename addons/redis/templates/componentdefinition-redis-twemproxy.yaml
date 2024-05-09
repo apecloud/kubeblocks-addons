@@ -1,0 +1,67 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "redis-twemproxy.componentDefName" . }}
+  labels:
+    {{- include "redis.labels" . | nindent 4 }}
+spec:
+  provider: KubeBlocks
+  description: A Twemproxy component definition for Kubernetes
+  serviceKind: redis-twemproxy
+  serviceVersion: 0.5.0
+  services:
+    - name: twemproxy
+      serviceName: twemproxy
+      spec:
+        type: ClusterIP
+        ports:
+          - name: redis-twemproxy
+            port: 22121
+            targetPort: redis-twemproxy
+  scripts:
+    - defaultMode: 365
+      name: redis-scripts
+      namespace: {{ .Release.Namespace }}
+      templateRef: redis-scripts
+      volumeName: scripts
+  volumes:
+    - highWatermark: 0
+      name: data
+      needSnapshot: false
+  runtime:
+    initContainers:
+      - command:
+          - /scripts/redis-twemproxy-setup.sh
+        image: {{ include "busybox.image" . }}
+        imagePullPolicy: {{ default .Values.busyboxImage.pullPolicy "IfNotPresent" }}
+        name: init-redis-twemproxy
+        volumeMounts:
+          - mountPath: /data
+            name: data
+          - mountPath: /etc/conf
+            name: redis-config
+          - mountPath: /etc/proxy
+            name: proxy-conf
+          - mountPath: /scripts
+            name: scripts
+    containers:
+    - command:
+      - sh
+      - -c
+      - nutcracker -c /etc/proxy/nutcracker.conf -v 4 -m 16384
+      image: {{ include "redis-proxy.image" . }}
+      imagePullPolicy: {{ default .Values.redisTwemproxyImage.pullPolicy "IfNotPresent" }}
+      name: redis-twemproxy
+      ports:
+      - containerPort: 22121
+        name: redis-twemproxy
+      volumeMounts:
+      - mountPath: /data
+        name: data
+      - mountPath: /etc/conf
+        name: redis-config
+      - mountPath: /etc/proxy
+        name: proxy-conf
+      - mountPath: /scripts
+        name: scripts
+
