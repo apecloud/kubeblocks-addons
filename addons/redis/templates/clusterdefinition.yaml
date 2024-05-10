@@ -403,3 +403,46 @@ spec:
                 - sh
                 - -c
                 - /scripts/redis-sentinel-ping.sh 1
+  topologies:
+    - name: standalone
+      components:
+        - name: redis
+          compDef: {{ include "redis.componentDefNamePrefix" . }}
+      default: true
+    - name: replication
+      components:
+        - name: redis
+          compDef: {{ include "redis.componentDefNamePrefix" . }}
+        - name: redis-sentinel
+          compDef: {{ include "redis-sentinel.componentDefNamePrefix" . }}
+      orders:
+        provision:
+          - redis-sentinel
+          - redis
+        terminate:
+          - redis-sentinel
+          - redis
+        update:
+          - redis-sentinel
+          - redis
+    - name: replication-twemproxy
+      components:
+        - name: redis
+          compDef: {{ include "redis.componentDefNamePrefix" . }}
+        - name: redis-sentinel
+          compDef: {{ include "redis-sentinel.componentDefNamePrefix" . }}
+        - name: redis-twemproxy
+          compDef: {{ include "redis-twemproxy.componentDefNamePrefix" . }}
+      orders:
+        provision:
+          - redis-sentinel
+          - redis
+          - redis-twemproxy
+        terminate:
+          - redis-twemproxy
+          - redis-sentinel
+          - redis
+        update:
+          - redis-sentinel
+          - redis-twemproxy
+          - redis

@@ -23,7 +23,8 @@
         "standalone",
         "replication",
         "cluster",
-        "sentinel"
+        "sentinel",
+        "replication-twemproxy"
       ]
     },
     "replicas": {

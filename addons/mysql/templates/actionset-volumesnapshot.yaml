@@ -13,7 +13,7 @@ spec:
     value: {{ .Values.dataMountPath }}
   restore:
     prepareData:
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.xtraBackupRepository }}:8.0.32
+      image: {{ .Values.image.xtraBackupRepository | default "docker.io" }}/{{ .Values.image.xtraBackupRepository }}:8.0.32
       command:
       - bash
       - -c
