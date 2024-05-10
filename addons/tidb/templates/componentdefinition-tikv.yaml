@@ -32,6 +32,9 @@ spec:
             --addr=0.0.0.0:20160 \
             --advertise-addr=${KB_POD_FQDN}:20160 \
             --status-addr=0.0.0.0:20180
+  volumes:
+    - name: data
+      needSnapshot: true
   builtinMonitorContainer:
     name: tikv
     metricsPort: "20180"
