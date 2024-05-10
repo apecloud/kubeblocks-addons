@@ -31,7 +31,7 @@ spec:
         operator: Equal
         value: 'true'
         effect: NoSchedule
-      monitorEnabled: false
+      disableExporter: true
       enabledLogs:
       - running
       serviceAccountName: kb-redis-cluster

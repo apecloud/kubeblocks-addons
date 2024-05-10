@@ -33,7 +33,7 @@ spec:
   componentSpecs:
   - name: milvus
     componentDefRef: milvus
-    monitorEnabled: false
+    disableExporter: true
     serviceAccountName: kb-milvus-cluster
     replicas: 1
     resources:

@@ -20,7 +20,7 @@ spec:
     enabledLogs:
     - running
     # Determines whether the metrics exporter needs to be published to the service endpoint.  
-    monitorEnabled: false
+    disableExporter: true
     # Specifies a group of affinity scheduling rules for the Component. It allows users to control how the Component's Pods are scheduled onto nodes in the cluster.
     affinity:
       podAntiAffinity: Preferred
