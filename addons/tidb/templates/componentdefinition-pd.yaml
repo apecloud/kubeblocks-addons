@@ -9,7 +9,6 @@ spec:
   description: tidb's metadata server
   updateStrategy: BestEffortParallel
   serviceVersion: "7.1.5" # TODO: why?
-  # TODO: set roles?
   runtime:
     containers:
       - name: pd
@@ -34,6 +33,33 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555 # FIXME: kb bug? if this field is not set, permission is wrong
+  roles:
+    - name: leader
+      serviceable: true
+      votable: true
+      writable: true
+    - name: follower
+      serviceable: true
+      votable: true
+      writable: false
+  lifecycleActions:
+    roleProbe:
+      customHandler:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/pd:{{ default .Chart.AppVersion .Values.image.tag }}
+        exec:
+          command:
+            - bash
+            - -c
+            - |
+              # FIXME: this will fail, no idea why
+              # LEADER_NAME=$(/pd-ctl member | jq -r '.leader.name')
+              MEMBER=$(/pd-ctl member)
+              LEADER_NAME=$(echo $MEMBER | jq -r .leader.name)
+              if [ "$LEADER_NAME" == "$HOSTNAME" ]; then
+                  echo "leader"
+              else
+                  echo "follower"
+              fi
   builtinMonitorContainer:
     name: pd
     metricsPort: "2379"
