@@ -23,15 +23,15 @@ spec:
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentServices" . | indent 6 }}
       {{- if $.Values.persistence.enabled }}
-        volumeClaimTemplates:
-          - name: data
-            spec:
-              storageClassName: {{ $.Values.persistence.data.storageClassName }}
-              accessModes:
-                - ReadWriteOnce
-              resources:
-                requests:
-                  storage: {{ print .Values.persistence.data.size "Gi" }}
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: {{ $.Values.persistence.data.storageClassName }}
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: {{ print .Values.persistence.data.size "Gi" }}
       {{- end }}
       {{- if .Values.orchestrator.enable }}
       serviceRefs:
