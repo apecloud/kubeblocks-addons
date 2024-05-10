@@ -14,18 +14,18 @@ spec:
       versionsContext:
         initContainers:
           - name: pg-init-container
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major14.minor072 }}
         containers:
           - name: postgresql
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major14.minor072  }}
           - name: pgbouncer
             image: {{ .Values.pgbouncer.image.registry | default .Values.image.registry }}/{{ .Values.pgbouncer.image.repository }}:{{ .Values.pgbouncer.image.tag }}
       systemAccountSpec:
         cmdExecutorConfig:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major14.minor072  }}
       switchoverSpec:
         cmdExecutorConfig:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major14.minor072  }}
 {{- end -}}
 
 {{- $cvName = "postgresql-12.14.1" -}}
@@ -61,18 +61,18 @@ spec:
       versionsContext:
         initContainers:
           - name: pg-init-container
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.versions.major12.minor141 }}
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor141 }}
         containers:
           - name: postgresql
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.versions.major12.minor141 }}
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor141 }}
           - name: pgbouncer
             image: {{ .Values.pgbouncer.image.registry | default .Values.image.registry }}/{{ .Values.pgbouncer.image.repository }}:{{ .Values.pgbouncer.image.tag }}
       systemAccountSpec:
         cmdExecutorConfig:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.versions.major12.minor141 }}
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor141 }}
       switchoverSpec:
         cmdExecutorConfig:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.versions.major12.minor141 }}
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor141 }}
 {{- end -}}
 
 {{- $cvName = "postgresql-12.15.0" -}}
@@ -108,18 +108,18 @@ spec:
       versionsContext:
         initContainers:
           - name: pg-init-container
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.versions.major12.minor150 }}
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor150 }}
         containers:
           - name: postgresql
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.versions.major12.minor150 }}
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor150 }}
           - name: pgbouncer
             image: {{ .Values.pgbouncer.image.registry | default .Values.image.registry }}/{{ .Values.pgbouncer.image.repository }}:{{ .Values.pgbouncer.image.tag }}
       systemAccountSpec:
         cmdExecutorConfig:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.versions.major12.minor150 }}
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor150 }}
       switchoverSpec:
         cmdExecutorConfig:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.versions.major12.minor150 }}
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor150 }}
 {{- end -}}
 
 {{- $cvName = "postgresql-14.8.0" -}}
@@ -140,18 +140,18 @@ spec:
       versionsContext:
         initContainers:
           - name: pg-init-container
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.versions.major14.minor080 }}
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major14.minor080 }}
         containers:
           - name: postgresql
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.versions.major14.minor080 }}
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major14.minor080 }}
           - name: pgbouncer
             image: {{ .Values.pgbouncer.image.registry | default .Values.image.registry }}/{{ .Values.pgbouncer.image.repository }}:{{ .Values.pgbouncer.image.tag }}
       systemAccountSpec:
         cmdExecutorConfig:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.versions.major14.minor080 }}
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major14.minor080 }}
       switchoverSpec:
         cmdExecutorConfig:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.versions.major14.minor080 }}
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major14.minor080 }}
 {{- end -}}
 
 {{- $cvName = "postgresql-12.14.0" -}}
@@ -187,16 +187,16 @@ spec:
       versionsContext:
         initContainers:
           - name: pg-init-container
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.versions.major12.minor140 }}
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor140 }}
         containers:
           - name: postgresql
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.versions.major12.minor140 }}
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor140 }}
           - name: pgbouncer
             image: {{ .Values.pgbouncer.image.registry | default .Values.image.registry }}/{{ .Values.pgbouncer.image.repository }}:{{ .Values.pgbouncer.image.tag }}
       systemAccountSpec:
         cmdExecutorConfig:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.versions.major12.minor140 }}
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor140 }}
       switchoverSpec:
         cmdExecutorConfig:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.versions.major12.minor140 }}
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor140 }}
   {{- end -}}
