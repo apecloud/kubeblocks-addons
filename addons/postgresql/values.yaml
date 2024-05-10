@@ -13,6 +13,13 @@ image:
   repository: apecloud/spilo
   tag: 14.7.2-pgvector-v0.6.1
   digest: ""
+  versions:
+    major12:
+      minor140: 12.14.0-pgvector-v0.6.1
+      minor141: 12.14.1-pgvector-v0.6.1
+      minor150: 12.15.0-pgvector-v0.6.1
+    major14:
+      minor080: 14.8.0-pgvector-v0.6.1
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
   ## ref: https://kubernetes.io/docs/user-guide/images/#pre-pulling-images
@@ -32,7 +39,7 @@ image:
 ## Authentication parameters
 ##
 auth:
-  ## @param auth.postgresPassword Password for the "postgres" admin user, leave empty 
+  ## @param auth.postgresPassword Password for the "postgres" admin user, leave empty
   ## for random generated password.
   ##
   postgresPassword:
