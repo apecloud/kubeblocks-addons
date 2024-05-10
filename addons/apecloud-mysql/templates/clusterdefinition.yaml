@@ -211,6 +211,31 @@ spec:
                 mountPath: /conf
               - name: data
                 mountPath: /vtdataroot
+          - name: mysql-exporter
+            command: [ "/scripts/exporter_start.sh" ]
+            env:
+              - name: MYSQLD_EXPORTER_USER
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: username
+                    optional: false
+              - name: MYSQLD_EXPORTER_PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: password
+                    optional: false
+              - name: EXPORTER_WEB_PORT
+                value: "{{ .Values.metrics.service.port }}"
+            image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
+            imagePullPolicy: IfNotPresent
+            ports:
+              - name: http-metrics
+                containerPort: {{ .Values.metrics.service.port }}
+            volumeMounts:
+              - name: scripts
+                mountPath: /scripts
         volumes:
           {{- if .Values.logCollector.enabled }}
           - name: log-data
@@ -227,55 +252,11 @@ spec:
                 - path: "component-replicas"
                   fieldRef:
                     fieldPath: metadata.annotations['apps.kubeblocks.io/component-replicas']
-      sidecarContainerSpecs:
-        - monitor:
-            kind: metrics
-            scrapeConfig:
-              metricsPath: /metrics
-              metricsPort: http-metrics
-          name: mysql-exporter
-          command: ["/scripts/exporter_start.sh"]
-          env:
-            - name: MYSQLD_EXPORTER_USER
-              valueFrom:
-                secretKeyRef:
-                  name: $(CONN_CREDENTIAL_SECRET_NAME)
-                  key: username
-                  optional: false
-            - name: MYSQLD_EXPORTER_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: $(CONN_CREDENTIAL_SECRET_NAME)
-                  key: password
-                  optional: false
-            - name: EXPORTER_WEB_PORT
-              value: "{{ .Values.metrics.service.port }}"
-          image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
-          imagePullPolicy: IfNotPresent
-          livenessProbe:
-            failureThreshold: 3
-            httpGet:
-              path: /
-              port: {{ .Values.metrics.service.port }}
-              scheme: HTTP
-            periodSeconds: 10
-            successThreshold: 1
-            timeoutSeconds: 1
-          ports:
-            - name: http-metrics
-              containerPort: {{ .Values.metrics.service.port }}
-          readinessProbe:
-            failureThreshold: 3
-            httpGet:
-              path: /
-              port: {{ .Values.metrics.service.port }}
-              scheme: HTTP
-            periodSeconds: 10
-            successThreshold: 1
-            timeoutSeconds: 1
-          volumeMounts:
-            - name: scripts
-              mountPath: /scripts
+      exporter:
+        containerName: mysql-exporter
+        scrapePath: /metrics
+        scrapePort: http-metrics
+
       systemAccounts:
         cmdExecutorConfig:
           image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
@@ -542,7 +523,6 @@ spec:
                 mountPath: /conf
               - name: vtgate-log
                 mountPath: /vtdataroot
-      builtinMonitorContainer:
-        name: vtgate
-        metricsPath: /metrics
-        metricsPort: webport
+      exporter:
+        scrapePath: /metrics
+        scrapePort: webport
