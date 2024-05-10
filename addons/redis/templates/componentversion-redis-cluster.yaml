@@ -13,4 +13,4 @@ spec:
       changes:
       serviceVersion: 7.0.6  # {{ .Chart.AppVersion }}
       images:
-        redis-cluster: {{ include "redis.image" . }}
+        redis-cluster: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/redis-stack-server:7.0.6-RC8

@@ -13,4 +13,4 @@ spec:
       changes:
       serviceVersion: 7.0.6  # {{ .Chart.AppVersion }}
       images:
-        redis-twemproxy: {{ include "redis-twemproxy.image" . }}
+        redis-twemproxy: docker.io/malexer/twemproxy:0.5.0
