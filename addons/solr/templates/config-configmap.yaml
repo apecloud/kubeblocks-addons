@@ -20,5 +20,5 @@ spec:
     cue: ""
 
   # mysql configuration file format
-  formatterConfig:
+  fileFormatConfig:
     format: props-plus

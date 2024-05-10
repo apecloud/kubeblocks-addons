@@ -7,7 +7,7 @@ get_replica_host() {
     
     if [ -z "${REPLICATION_ENDPOINT}" ]; then
         host="KB_${id}_HOSTNAME"
-        echo "${host}"
+        echo "${!host}"
     else
         endpoints=$(eval echo "${REPLICATION_ENDPOINT}" | tr ',' '\n')
         for endpoint in ${endpoints}; do
