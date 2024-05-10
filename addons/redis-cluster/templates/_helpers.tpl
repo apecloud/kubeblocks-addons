@@ -36,7 +36,6 @@ Define redis ComponentSpec with ComponentDefinition.
 */}}
 {{- define "redis-cluster.componentSpec" }}
 - name: redis
-  {{- include "kblib.componentMonitor" . | indent 2 }}
   {{- include "redis-cluster.replicaCount" . | indent 2 }}
   {{- if .Values.nodePortEnabled }}
   services:

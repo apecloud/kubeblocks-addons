@@ -443,6 +443,6 @@ spec:
           - redis-sentinel
           - redis
         update:
-          - redis-twemproxy
           - redis-sentinel
+          - redis-twemproxy
           - redis
