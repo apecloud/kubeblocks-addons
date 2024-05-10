@@ -131,7 +131,7 @@ spec:
             - path: "component-replicas"
               fieldRef:
                 fieldPath: metadata.annotations['apps.kubeblocks.io/component-replicas']
-  builtinMonitorContainer:
-    name: bookies
-    metricsPath: /metrics
-    metricsPort: http
+  exporter:
+    containerName: bookies
+    scrapePath: /metrics
+    scrapePort: http

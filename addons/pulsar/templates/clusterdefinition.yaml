@@ -193,10 +193,10 @@ spec:
               mountPath: /opt/pulsar/conf
             - name: broker-env
               mountPath: /opt/pulsar/none
-      builtinMonitorContainer:
-        name: broker
-        metricsPath: /metrics/
-        metricsPort: http
+      exporter:
+        containerName: broker
+        scrapePath: /metrics/
+        scrapePort: http
     - name: pulsar-proxy
       workloadType: Stateful
       characterType: pulsar-proxy
@@ -324,10 +324,10 @@ spec:
                 mountPath: /opt/pulsar/none
               - name: pulsar-proxy-config
                 mountPath: /opt/pulsar/conf
-      builtinMonitorContainer:
-        name: proxy
-        metricsPath: /metrics/
-        metricsPort: http
+      exporter:
+        containerName: proxy
+        scrapePath: /metrics/
+        scrapePort: http
     - name: bookies
       workloadType: Stateful
       characterType: bookkeeper
@@ -445,10 +445,10 @@ spec:
                 - path: "component-replicas"
                   fieldRef:
                     fieldPath: metadata.annotations['apps.kubeblocks.io/component-replicas']
-      builtinMonitorContainer:
-        name: bookies
-        metricsPath: /metrics
-        metricsPort: http
+      exporter:
+        containerName: bookies
+        scrapePath: /metrics
+        scrapePort: http
     - name: bookies-recovery
       workloadType: Stateful
       characterType: pulsar-bookie-recovery
@@ -535,10 +535,10 @@ spec:
               mountPath: /kb-scripts
             - name: recovery-config-env
               mountPath: /opt/pulsar/none
-      builtinMonitorContainer:
-        name: bookies-recovery
-        metricsPath: /metrics
-        metricsPort: http
+      exporter:
+        containerName: bookies-recovery
+        scrapePath: /metrics
+        scrapePort: http
     - name: zookeeper
       workloadType: Stateful
       characterType: zookeeper
@@ -632,7 +632,7 @@ spec:
                 mountPath: /kb-scripts
               - name: zookeeper-config-env
                 mountPath: /opt/pulsar/none
-      builtinMonitorContainer:
-        name: zookeeper
-        metricsPath: /metrics
-        metricsPort: http
+      exporter:
+        containerName: zookeeper
+        scrapePath: /metrics
+        scrapePort: http

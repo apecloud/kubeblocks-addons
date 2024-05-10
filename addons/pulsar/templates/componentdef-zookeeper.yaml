@@ -95,7 +95,7 @@ spec:
             mountPath: /kb-scripts
           - name: zookeeper-config-env
             mountPath: /opt/pulsar/none
-  builtinMonitorContainer:
-    name: zookeeper
-    metricsPath: /metrics
-    metricsPort: http
+  exporter:
+    containerName: zookeeper
+    scrapePath: /metrics
+    scrapePort: http

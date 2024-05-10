@@ -100,7 +100,7 @@ spec:
             mountPath: /kb-scripts
           - name: recovery-config-env
             mountPath: /opt/pulsar/none
-  builtinMonitorContainer:
-    name: bookies-recovery
-    metricsPath: /metrics
-    metricsPort: http
+  exporter:
+    containerName: bookies-recovery
+    scrapePath: /metrics
+    scrapePort: http

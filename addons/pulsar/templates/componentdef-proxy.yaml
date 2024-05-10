@@ -139,7 +139,7 @@ spec:
             mountPath: /opt/pulsar/none
           - name: pulsar-proxy-config
             mountPath: /opt/pulsar/conf
-  builtinMonitorContainer:
-    name: proxy
-    metricsPath: /metrics/
-    metricsPort: http
+  exporter:
+    containerName: proxy
+    scrapePath: /metrics/
+    scrapePort: http
