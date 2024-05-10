@@ -101,6 +101,5 @@ spec:
           - name: recovery-config-env
             mountPath: /opt/pulsar/none
   exporter:
-    containerName: bookies-recovery
     scrapePath: /metrics
     scrapePort: http

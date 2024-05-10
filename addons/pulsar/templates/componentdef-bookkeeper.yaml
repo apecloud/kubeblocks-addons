@@ -132,6 +132,5 @@ spec:
               fieldRef:
                 fieldPath: metadata.annotations['apps.kubeblocks.io/component-replicas']
   exporter:
-    containerName: bookies
     scrapePath: /metrics
     scrapePort: http

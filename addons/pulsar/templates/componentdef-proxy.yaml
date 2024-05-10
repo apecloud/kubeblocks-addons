@@ -140,6 +140,5 @@ spec:
           - name: pulsar-proxy-config
             mountPath: /opt/pulsar/conf
   exporter:
-    containerName: proxy
     scrapePath: /metrics/
     scrapePort: http

@@ -219,6 +219,5 @@ spec:
           - name: broker-env
             mountPath: /opt/pulsar/none
   exporter:
-    containerName: broker
     scrapePath: /metrics/
     scrapePort: http

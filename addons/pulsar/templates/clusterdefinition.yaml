@@ -194,7 +194,6 @@ spec:
             - name: broker-env
               mountPath: /opt/pulsar/none
       exporter:
-        containerName: broker
         scrapePath: /metrics/
         scrapePort: http
     - name: pulsar-proxy
@@ -325,7 +324,6 @@ spec:
               - name: pulsar-proxy-config
                 mountPath: /opt/pulsar/conf
       exporter:
-        containerName: proxy
         scrapePath: /metrics/
         scrapePort: http
     - name: bookies
@@ -446,7 +444,6 @@ spec:
                   fieldRef:
                     fieldPath: metadata.annotations['apps.kubeblocks.io/component-replicas']
       exporter:
-        containerName: bookies
         scrapePath: /metrics
         scrapePort: http
     - name: bookies-recovery
@@ -536,7 +533,6 @@ spec:
             - name: recovery-config-env
               mountPath: /opt/pulsar/none
       exporter:
-        containerName: bookies-recovery
         scrapePath: /metrics
         scrapePort: http
     - name: zookeeper
@@ -633,6 +629,5 @@ spec:
               - name: zookeeper-config-env
                 mountPath: /opt/pulsar/none
       exporter:
-        containerName: zookeeper
         scrapePath: /metrics
         scrapePort: http

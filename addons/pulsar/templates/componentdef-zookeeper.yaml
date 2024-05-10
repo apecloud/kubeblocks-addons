@@ -96,6 +96,5 @@ spec:
           - name: zookeeper-config-env
             mountPath: /opt/pulsar/none
   exporter:
-    containerName: zookeeper
     scrapePath: /metrics
     scrapePort: http
