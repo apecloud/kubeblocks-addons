@@ -2,99 +2,40 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: Cluster
 metadata:
-  name: {{ include "clustername" . }}
-  labels: {{ include "milvus.labels" . | nindent 4 }}
+  namespace: {{ .Release.Namespace }}
+  name: {{ include "kblib.clusterName" . }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: milvus-{{ .Chart.Version }}
+  clusterDefinitionRef: milvus
   topology: standalone
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
-  affinity:
-    {{- with .Values.topologyKeys }}
-    topologyKeys: {{ . | toYaml | nindent 6 }}
-    {{- end }}
-  {{- with $.Values.tolerations }}
-  tolerations: {{ . | toYaml | nindent 4 }}
-  {{- end }}
+  {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
-    - name: milvus
-      {{- include "kblib.componentMonitor" . | indent 6 }}
-      replicas: {{ .Values.replicas | default 1 }}
-      {{- with  .Values.resources }}
-      resources:
-        {{- with .limits }}
-        limits:
-          cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
-        {{- end }}
-        {{- with .requests }}
-        requests:
-          cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
-        {{- end }}
-      {{- end }}
-      {{- if .Values.persistence.enabled }}
-      volumeClaimTemplates:
-        - name: data
-          spec:
-            storageClassName: {{ .Values.persistence.data.storageClassName }}
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: {{ .Values.persistence.data.size }}
-      {{- end }}
     - name: etcd
-      {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.replicas | default 1 }}
-      {{- with  .Values.resources }}
-      resources:
-        {{- with .limits }}
-        limits:
-          cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
-        {{- end }}
-        {{- with .requests }}
-        requests:
-          cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
-        {{- end }}
-      {{- end }}
+      {{- include "kblib.componentResources" . | indent 6 }}
       {{- if .Values.persistence.enabled }}
       volumeClaimTemplates:
-        - name: data
-          spec:
-            storageClassName: {{ .Values.persistence.data.storageClassName }}
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: {{ .Values.persistence.data.size }}
+        {{- include "milvus.vct.data" . | indent 8 }}
       {{- end }}
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      {{- include "kblib.componentMonitor" . | indent 6 }}
     - name: minio
-      {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.replicas | default 1 }}
-      {{- with  .Values.resources }}
-      resources:
-        {{- with .limits }}
-        limits:
-          cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
-        {{- end }}
-        {{- with .requests }}
-        requests:
-          cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
-        {{- end }}
-      {{- end }}
+      {{- include "kblib.componentResources" . | indent 6 }}
       {{- if .Values.persistence.enabled }}
       volumeClaimTemplates:
-        - name: data
-          spec:
-            storageClassName: {{ .Values.persistence.data.storageClassName }}
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: {{ .Values.persistence.data.size }}
+        {{- include "milvus.vct.data" . | indent 8 }}
       {{- end }}
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+    - name: milvus
+      replicas: {{ .Values.replicas | default 1 }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- if .Values.persistence.enabled }}
+      volumeClaimTemplates:
+        {{- include "milvus.vct.data" . | indent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      {{- include "kblib.componentMonitor" . | indent 6 }}
 {{- end }}

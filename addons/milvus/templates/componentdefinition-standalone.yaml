@@ -11,72 +11,53 @@ spec:
   serviceVersion: {{ .Chart.AppVersion }}
   runtime:
     initContainers:
-      {{- include "milvus.cluster.initContainer.config" . | indent 6 }}
+      {{- include "milvus.initContainer.setup" . | indent 6 }}
     containers:
       - name: milvus
-        {{- include "milvus.cluster.image" . | indent 8 }}
+        {{- include "milvus.image" . | indent 8 }}
         args:
+          - /milvus/tools/delegate-run.sh
           - /milvus/tools/run.sh
           - milvus
           - run
           - standalone
         env:
-          - name: CACHE_SIZE
-            valueFrom:
-              resourceFieldRef:
-                divisor: 1Gi
-                resource: limits.memory
+          {{- include "milvus.env.cacheSize" . | indent 10 }}
         volumeMounts:
-          - mountPath: /milvus/configs/user.yaml
-            name: milvus-config
-            readOnly: true
-            subPath: standalone-user-legacy.yaml
-          - mountPath: /milvus/tools
-            name: tools
-          - mountPath: /var/lib/milvus
-            name: data
+          {{- include "milvus.volumeMount.data" . | indent 10 }}
+          {{- include "milvus.volumeMount.user" . | indent 10 }}
+          {{- include "milvus.volumeMount.tools" . | indent 10 }}
         ports:
-          - name: milvus
-            containerPort: 19530
-          - name: metrics
-            containerPort: 9091
+          {{- include "milvus.containerPort.milvus" . | indent 10 }}
+          {{- include "milvus.containerPort.metric" . | indent 10 }}
         securityContext:
           runAsUser: 0
         {{- include "milvus.probe.startup" . | indent  8 }}
         {{- include "milvus.probe.liveness" . | indent  8 }}
         {{- include "milvus.probe.readiness" . | indent 8 }}
     volumes:
-      {{- include "milvus.cluster.volume.default" . | indent 6 }}
+      {{- include "milvus.volume.tools" . | indent 6 }}
     securityContext:
       fsGroup: 1001
-    serviceAccountName: {{ default "milvus" .Values.serviceAccount.name }}
   vars:
     - name: MINIO_ACCESS_KEY
       valueFrom:
         credentialVarRef:
           compDef: milvus-minio
-          name: user
+          name: admin
           optional: false
           username: Required
     - name: MINIO_SECRET_KEY
       valueFrom:
         credentialVarRef:
           compDef: milvus-minio
-          name: user
+          name: admin
           optional: false
           password: Required
   volumes:
     - name: data
       needSnapshot: true
-  # services:
-  #   ports:
-  #     - name: milvus
-  #       port: 19530
-  #       targetPort: milvus
   configs:
-    {{- include "milvus.cluster.config" . | indent 4 }}
-  # monitor:
-  #   builtIn: false
-  #   exporterConfig:
-  #     scrapePath: /metrics
-  #     scrapePort: 9187
+    {{- include "milvus.config.standalone" . | indent 4 }}
+  #monitor:
+  #  {{- include "milvus.monitor" . | indent 4 }}

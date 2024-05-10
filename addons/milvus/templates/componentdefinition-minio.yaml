@@ -12,7 +12,7 @@ spec:
   runtime:
     initContainers:
       - name: volume-permissions
-        image: {{ .Values.images.shell_tools.repository }}:{{ default .Chart.AppVersion .Values.images.shell_tools.tag }}
+        image: {{ .Values.images.ostools.repository }}:{{ default .Chart.AppVersion .Values.images.ostools.tag }}
         imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
         command:
           - /bin/bash
@@ -35,6 +35,9 @@ spec:
         volumeMounts:
           - mountPath: /export
             name: data
+        ports:
+          - containerPort: 9000
+            name: http
         securityContext:
           runAsGroup: 1000
           runAsUser: 1000
@@ -63,30 +66,22 @@ spec:
           tcpSocket:
             port: 9000
           timeoutSeconds: 1
-    serviceAccountName: {{ default "milvus" .Values.serviceAccount.name }}
   vars:
     - name: MINIO_ACCESS_KEY
       valueFrom:
         credentialVarRef:
-          name: user
+          name: admin
           optional: false
           username: Required
     - name: MINIO_SECRET_KEY
       valueFrom:
         credentialVarRef:
-          name: user
+          name: admin
           optional: false
           password: Required
   volumes:
     - name: data
       needSnapshot: true
-  services:
-    - name: minio
-      spec:
-        ports:
-          - name: http
-            port: 9000
-            targetPort: 9000
   systemAccounts:
-    - name: user
+    - name: admin
       initAccount: true

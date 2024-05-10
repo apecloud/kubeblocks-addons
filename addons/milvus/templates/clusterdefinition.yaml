@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ClusterDefinition
 metadata:
-  name: milvus-{{ .Chart.Version }}
+  name: milvus
   labels:
     {{- include "milvus.labels" . | nindent 4 }}
 spec:
@@ -11,7 +11,7 @@ spec:
         - name: etcd
           compDef: etcd
         - name: minio
-          compDef: milvus-minio  # TODO: use the minio component definition
+          compDef: milvus-minio
         - name: milvus
           compDef: milvus-standalone
       orders:

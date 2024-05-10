@@ -1,64 +1,15 @@
 {{/*
-Expand the name of the chart.
+Data volume claim
 */}}
-{{- define "milvus.name" -}}
-{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
-{{- end }}
-
-{{/*
-Create a default fully qualified app name.
-We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
-If release name contains chart name it will be used as a full name.
-*/}}
-{{- define "milvus.fullname" -}}
-{{- if .Values.fullnameOverride }}
-{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
-{{- else }}
-{{- $name := default .Chart.Name .Values.nameOverride }}
-{{- if contains $name .Release.Name }}
-{{- .Release.Name | trunc 63 | trimSuffix "-" }}
-{{- else }}
-{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
-{{- end }}
-{{- end }}
-{{- end }}
-
-{{/*
-Create chart name and version as used by the chart label.
-*/}}
-{{- define "milvus.chart" -}}
-{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
-{{- end }}
-
-{{/*
-Common labels
-*/}}
-{{- define "milvus.labels" -}}
-helm.sh/chart: {{ include "milvus.chart" . }}
-{{ include "milvus.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-{{- end }}
-app.kubernetes.io/managed-by: {{ .Release.Service }}
-{{- end }}
-
-{{/*
-Selector labels
-*/}}
-{{- define "milvus.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "milvus.name" . }}
-app.kubernetes.io/instance: {{ .Release.Name }}
-{{- end }}
-
-{{- define "clustername" -}}
-{{ include "milvus.fullname" .}}
-{{- end}}
-
-{{/*
-Create the name of the service account to use
-*/}}
-{{- define "milvus.serviceAccountName" -}}
-{{- default (printf "kb-%s" (include "clustername" .)) .Values.serviceAccount.name }}
+{{- define "milvus.vct.data" }}
+- name: data
+  spec:
+    storageClassName: {{ .Values.persistence.data.storageClassName }}
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: {{ .Values.persistence.data.size }}
 {{- end }}
 
 {{/*
@@ -68,7 +19,15 @@ External meta storage service reference
 {{- if eq .Values.storage.meta.mode "serviceref" }}
 - name: milvus-meta-storage
   namespace: {{ .Values.storage.meta.serviceRef.namespace }}
-  cluster: {{ .Values.storage.meta.serviceRef.cluster }}
+  clusterServiceSelector:
+    cluster: {{ .Values.storage.meta.serviceRef.cluster.name }}
+    service:
+      component: {{ .Values.storage.meta.serviceRef.cluster.component }}
+      service: {{ .Values.storage.meta.serviceRef.cluster.service }}
+      port: {{ .Values.storage.meta.serviceRef.cluster.port }}
+    credential:
+      component: {{ .Values.storage.meta.serviceRef.cluster.component }}
+      name: {{ .Values.storage.meta.serviceRef.cluster.credential }}
   serviceDescriptor: {{ .Values.storage.meta.serviceRef.serviceDescriptor }}
 {{- end }}
 {{- end }}
@@ -80,7 +39,15 @@ External log storage service reference
 {{- if eq .Values.storage.log.mode "serviceref" }}
 - name: milvus-log-storage
   namespace: {{ .Values.storage.log.serviceRef.namespace }}
-  cluster: {{ .Values.storage.log.serviceRef.cluster }}
+  clusterServiceSelector:
+    cluster: {{ .Values.storage.log.serviceRef.cluster.name }}
+    service:
+      component: {{ .Values.storage.log.serviceRef.cluster.component }}
+      service: {{ .Values.storage.log.serviceRef.cluster.service }}
+      port: {{ .Values.storage.log.serviceRef.cluster.port }}
+    credential:
+      component: {{ .Values.storage.log.serviceRef.cluster.component }}
+      name: {{ .Values.storage.log.serviceRef.cluster.credential }}
   serviceDescriptor: {{ .Values.storage.log.serviceRef.serviceDescriptor }}
 {{- end }}
 {{- end }}
@@ -92,7 +59,15 @@ External object storage service reference
 {{- if eq .Values.storage.object.mode "serviceref" }}
 - name: milvus-object-storage
   namespace: {{ .Values.storage.object.serviceRef.namespace }}
-  cluster: {{ .Values.storage.object.serviceRef.cluster }}
+  clusterServiceSelector:
+    cluster: {{ .Values.storage.object.serviceRef.cluster.name }}
+    service:
+      component: {{ .Values.storage.object.serviceRef.cluster.component }}
+      service: {{ .Values.storage.object.serviceRef.cluster.service }}
+      port: {{ .Values.storage.object.serviceRef.cluster.port }}
+    credential:
+      component: {{ .Values.storage.object.serviceRef.cluster.component }}
+      name: {{ .Values.storage.object.serviceRef.cluster.credential }}
   serviceDescriptor: {{ .Values.storage.object.serviceRef.serviceDescriptor }}
 {{- end }}
 {{- end }}
