@@ -22,7 +22,9 @@
       "enum": [
         "standalone",
         "replication",
-        "cluster"
+        "cluster",
+        "sentinel",
+        "replication-twemproxy"
       ]
     },
     "replicas": {

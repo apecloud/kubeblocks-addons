@@ -1,0 +1,16 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: redis-sentinel
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "redis-sentinel.componentDefNamePrefix" . }}
+      releases:
+        - 7.0.6-RC8
+  releases:
+    - name: 7.0.6-RC8  # {{ .Values.image.tag }}
+      changes:
+      serviceVersion: 7.0.6  # {{ .Chart.AppVersion }}
+      images:
+        redis-sentinel: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/redis-stack-server:7.0.6-RC8
