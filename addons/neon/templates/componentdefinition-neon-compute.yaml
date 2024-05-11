@@ -1,0 +1,103 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  labels:
+    {{- include "neon.labels" . | nindent 4 }}
+  name: {{ include "neon-compute.componentDefName" . }}
+spec:
+  description: A neon compute component definition for Kubernetes
+  provider: KubeBlocks
+  systemAccounts:
+    - name: cloud_admin
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 10
+        numDigits: 5
+        numSymbols: 0
+        letterCase: MixedCases
+  vars: 
+    - name: NEON_COMPUTE_PGPORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "neon-compute.componentDefName" . }}
+          name: neon-compute
+          port:
+            name: neon-compute
+    - name: NEON_COMPUTE_PGUSER
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "neon-compute.componentDefName" . }}
+          name: cloud_admin
+          username: Required
+    - name: NEON_COMPUTE_PGPASSWORD
+      credentialVarRef:
+          compDef: {{ include "neon-compute.componentDefName" . }}
+          name: cloud_admin
+          password: Required
+    - name: PAGESERVER
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "neon-pageserver.componentDefName" . }}
+          name: headless
+          port:
+            name: neon-pageserver
+    - name: SAFEKEEPERS
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "neon-safekeeper.componentDefName" . }}
+          name: headless
+          port:
+            name: neon-safekeeper
+    - name: PAGESERVER_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "neon-pageserver.componentDefName" . }}
+          optional: true
+          componentName: Optional
+    - name: SAFEKEPPER_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "neon-safekeeper.componentDefName" . }}
+          optional: true
+          componentName: Optional
+  runtime:
+    containers:
+    - command:
+      - /bin/bash
+      - -c
+      - 'set -ex
+
+        trap : TERM INT
+
+        /compute.sh
+
+        '
+      env:
+      - name: PGPORT
+        value: $(NEON_COMPUTE_PGPORT)
+      - name: PGDATA
+        value: /data
+      - name: PGUSER
+        value: $(NEON_COMPUTE_PGUSER) 
+      - name: PGPASSWORD
+        value: $(NEON_COMPUTE_PGPASSWORD)
+      image: {{ include "neon-compute.image" . }}
+      name: postgresql
+      ports:
+      - containerPort: 55432
+        name: postgresql
+      volumeMounts:
+      - mountPath: /data
+        name: data
+  serviceKind: postgresql
+  serviceVersion: 1.0.0
+  services:
+  - name: neon-compute
+    serviceName: neon-compute
+    spec:
+      ports:
+      - name: postgresql
+        port: 55432
+        protocol: TCP
+      type: ClusterIP
+

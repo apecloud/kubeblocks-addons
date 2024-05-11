@@ -7,22 +7,22 @@ metadata:
 spec:
   clusterDefinitionRef: neon
   componentVersions:
-    - componentDefRef: neon-compute
+    - componentDefRef: compute
       versionsContext:
         containers:
         - name: postgresql
           image: {{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
-    - componentDefRef: neon-storagebroker
+    - componentDefRef: storagebroker
       versionsContext:
         containers:
         - name: neon-storagebroker
           image: {{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
-    - componentDefRef: neon-safekeeper
+    - componentDefRef: safekeeper
       versionsContext:
         containers:
         - name: neon-safekeeper
           image: {{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
-    - componentDefRef: neon-pageserver
+    - componentDefRef: pageserver
       versionsContext:
         containers:
         - name: neon-pageserver

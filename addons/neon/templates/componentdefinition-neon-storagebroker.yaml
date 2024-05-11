@@ -1,0 +1,22 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  labels:
+    {{- include "neon.labels" . | nindent 4 }}
+  name: {{ include "neon-storagebroker.componentDefName" . }}
+spec:
+  description: A neon storagebroker component definition for Kubernetes
+  provider: KubeBlocks
+  runtime:
+    containers:
+    - command:
+      - storage_broker
+      - -l
+      - 0.0.0.0:50051
+      image: {{ include "neon-storagebroker.image" . }}
+      name: neon-storagebroker
+      volumeMounts:
+      - mountPath: /usr/local/neon/storagebroker
+        name: neon-storagebroker
+  serviceKind: storagebroker
+  serviceVersion: 1.0.0

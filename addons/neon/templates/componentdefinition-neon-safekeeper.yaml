@@ -1,0 +1,43 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  labels:
+    {{- include "neon.labels" . | nindent 4 }}
+  name: {{ include "neon-safekeeper.componentDefName" . }}
+spec:
+  description: A neon safekeeper component definition for Kubernetes
+  provider: KubeBlocks
+  runtime:
+    containers:
+    - command:
+      - /bin/bash
+      - -c
+      - 'set -ex
+
+        trap : TERM INT
+
+        exec safekeeper --id=1 -D /data --broker-endpoint=http://$NEON_BROKER_SVC:50051
+        -l ${POD_IP}:5454 --listen-http=0.0.0.0:7676
+
+        '
+      env:
+      - name: POD_IP
+        valueFrom:
+          fieldRef:
+            fieldPath: status.podIP
+      image: {{ include "neon-safekeeper.image" . }}
+      name: neon-safekeeper
+      volumeMounts:
+      - mountPath: /usr/local/neon/safekeeper
+        name: neon-safekeeper
+  serviceKind: safekeeper
+  serviceVersion: 1.0.0
+  services:
+  - name: neon-safekeeper
+    serviceName: neon-safekeeper
+    spec:
+      ports:
+      - name: safekeeper
+        port: 5454
+        protocol: TCP
+      type: ClusterIP
