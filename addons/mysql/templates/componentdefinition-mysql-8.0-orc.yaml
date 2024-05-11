@@ -56,6 +56,38 @@ spec:
         numSymbols: 0
         letterCase: MixedCases
   lifecycleActions:
+    roleProbe:
+      customHandler:
+        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/jq:1.7.4
+        exec:
+          command:
+            - /bin/bash
+            - -c
+            - |
+              topology_info=$(/scripts/orchestrator-client -c topology -i $kb_cluster_name) || true
+              if [[ $topology_info == "" ]] || [[ $topology_info =~ ^ERROR ]]; then
+                return 0
+              fi
+              first_line=$(echo "$topology_info" | head -n 1)
+              cleaned_line=$(echo "$first_line" | tr -d '[]')
+
+              old_ifs="$IFS"
+              IFS=',' read -ra status_array <<< "$cleaned_line"
+              IFS="$old_ifs"
+              if  [ "$status" == "ok" ]; then
+                return 0
+              fi
+
+              address_port=$(echo "$first_line" | awk '{print $1}')
+              master_from_orc="${address_port%:*}"
+              last_digit=${KB_POD_NAME##*-}
+              self_service_name=$(echo "${cluster_component_pod_name}_${component_name}_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+              if [ "$master_from_orc" == "${self_service_name}" ]; then
+                echo -n "primary"
+              fi
+              else
+                echo -n "secondary"
+              fi
     postProvision:
       customHandler:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
