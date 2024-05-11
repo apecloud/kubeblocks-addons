@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# reference: tidb-operator's start script
+# https://github.com/pingcap/tidb-operator/blob/master/pkg/manager/member/startscript/v2/pd_start_script.go
+
 set -exo pipefail
 
 # TODO: clusterDomain 'cluster.local' requires configurable
