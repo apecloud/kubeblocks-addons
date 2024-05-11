@@ -11,17 +11,15 @@ spec:
       sync: true
       scriptConfigMapRef: patroni-reload-script
       namespace: {{ .Release.Namespace }}
+    ## update patroni master
+    targetPodSelector:
+      matchLabels:
+        "apps.kubeblocks.postgres.patroni/role": "master"
 
   mergeReloadAndRestart: false
 
-  # update patroni master
-  reloadedPodSelector:
-    matchLabels:
-      "apps.kubeblocks.postgres.patroni/role": "master"
-
-
   # ConfigurationSchema that impose restrictions on engine parameter's rule
-  configSchema:
+  parametersSchema:
     # top level pg configuration type
     topLevelKey: PGParameter
 
@@ -49,8 +47,6 @@ spec:
    {{- end }}
   {{- end}}
 
-
-
-    # configuration file format
+  ## configuration file format
   fileFormatConfig:
     format: properties

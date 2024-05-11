@@ -7,13 +7,13 @@ metadata:
     {{- include "halo.labels" . | nindent 4 }}
 spec:
 
-  # update patroni master
-  reloadedPodSelector:
-    matchLabels:
-      "kubeblocks.io/role": "primary"
+{{/*  # update patroni master*/}}
+{{/*  targetPodSelector:*/}}
+{{/*    matchLabels:*/}}
+{{/*      "kubeblocks.io/role": "primary"*/}}
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule
-  configSchema:
+  parametersSchema:
     # top level pg configuration type
     topLevelKey: PGParameter
 

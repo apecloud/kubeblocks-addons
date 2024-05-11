@@ -11,15 +11,14 @@ spec:
       sync: false
       scriptConfigMapRef: orioledb-patroni-reload-script
       namespace: {{ .Release.Namespace }}
-
-  # update patroni master
-  reloadedPodSelector:
-    matchLabels:
-      "apps.kubeblocks.postgres.patroni/role": "master"
+    # update patroni master
+    targetPodSelector:
+      matchLabels:
+        "apps.kubeblocks.postgres.patroni/role": "master"
 
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule
-  configSchema:
+  parametersSchema:
     # top level orioledb configuration type
     topLevelKey: PGParameter
 
