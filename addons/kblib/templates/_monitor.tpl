@@ -2,13 +2,9 @@
 Define monitor
 */}}
 {{- define "kblib.componentMonitor" }}
-{{- if int .Values.extra.monitorEnabled }}
-monitorEnabled: true
-{{- with .Values.sidecars }}
-sidecars:
-  {{- toYaml . | nindent 2 }}
-{{- end }}
+{{- if .Values.extra.disableExporter }}
+disableExporter: true
 {{- else }}
-monitorEnabled: false
+disableExporter: false
 {{- end }}
 {{- end }}

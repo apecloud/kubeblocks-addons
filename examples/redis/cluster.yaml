@@ -38,7 +38,7 @@ spec:
   - name: redis
     componentDefRef: redis
     replicas: 2
-    monitorEnabled: false
+    disableExporter: true
     enabledLogs:
     - running
     switchPolicy:

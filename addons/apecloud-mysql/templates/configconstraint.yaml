@@ -16,7 +16,7 @@ spec:
 
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule
-  configSchema:
+  parametersSchema:
     # top level mysql configuration type
     topLevelKey: MysqlParameter
 
@@ -72,7 +72,7 @@ spec:
     autoTrigger:
       processName: vttablet
 
-  configSchema:
+  parametersSchema:
     topLevelKey: VtTabletParameter
     cue: |-
       {{- .Files.Get "config/mysql-scale-vttablet-config-constraint.cue" | nindent 6 }}
@@ -118,7 +118,7 @@ metadata:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
 
-  configSchema:
+  parametersSchema:
     topLevelKey: VtConsensusParameter
 
     cue: |-
@@ -141,7 +141,7 @@ spec:
     autoTrigger:
       processName: vtgate
 
-  configSchema:
+  parametersSchema:
     topLevelKey: VtGateParameter
 
     cue: |-

@@ -116,7 +116,7 @@ spec:
   componentSpecs:
     - name: etcd
       componentDefRef: etcd
-      monitorEnabled: false
+      disableExporter: true
       replicas: 3
       resources:
         limits:

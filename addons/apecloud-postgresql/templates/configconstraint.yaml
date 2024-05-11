@@ -8,7 +8,7 @@ metadata:
 spec:
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule
-  configSchema:
+  parametersSchema:
     # top level mysql configuration type
     topLevelKey: PGParameter
 

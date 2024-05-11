@@ -33,7 +33,7 @@ spec:
   componentSpecs:
   - name: master
     componentDef: es-master
-    monitorEnabled: false
+    disableExporter: true
     serviceAccountName: kb-elasticsearch-cluster
     replicas: 1
     resources:
@@ -54,7 +54,7 @@ spec:
   - name: data
     componentDef: es-data
     serviceAccountName: null
-    monitorEnabled: false
+    disableExporter: true
     replicas: 1
     resources:
       limits:
@@ -74,7 +74,7 @@ spec:
   - name: ingest
     componentDef: es-ingest
     serviceAccountName: null
-    monitorEnabled: false
+    disableExporter: true
     replicas: 1
     resources:
       limits:
@@ -95,7 +95,7 @@ spec:
   - name: transform
     componentDef: es-transform
     serviceAccountName: null
-    monitorEnabled: false
+    disableExporter: true
     replicas: 1
     resources:
       limits:

@@ -2,7 +2,7 @@
 
 ## @param monitoring interval, 0 is no monitoring
 ##
-monitorEnabled: false
+disableExporter: true
 
 ## @param terminationPolicy
 terminationPolicy: Delete

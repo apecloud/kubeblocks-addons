@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
-  configSchema:
+  parametersSchema:
     cue: ""
 
   # pulsar configuration file format
@@ -20,7 +20,7 @@ metadata:
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
-  configSchema:
+  parametersSchema:
     cue: ""
 
   # pulsar configuration file format
@@ -37,7 +37,7 @@ metadata:
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
-  configSchema:
+  parametersSchema:
     cue: |-
       {{- .Files.Get "config/2.11.2/broker-config-constraint.cue" | nindent 6 }}
 
@@ -95,7 +95,7 @@ metadata:
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
-  configSchema:
+  parametersSchema:
     cue: |-
       {{- .Files.Get "config/3.0.2/broker-config-constraint.cue" | nindent 6 }}
 
@@ -152,7 +152,7 @@ metadata:
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
-  configSchema:
+  parametersSchema:
     cue: |-
       {{- .Files.Get "config/2.11.2/bookkeeper-config-constraint.cue" | nindent 6 }}
 
@@ -169,7 +169,7 @@ metadata:
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
-  configSchema:
+  parametersSchema:
     cue: |-
       {{- .Files.Get "config/3.0.2/bookkeeper-config-constraint.cue" | nindent 6 }}
 
@@ -186,7 +186,7 @@ metadata:
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
-  configSchema:
+  parametersSchema:
     cue: |-
       {{- .Files.Get "config/2.11.2/proxy-config-constraint.cue" | nindent 6 }}
 
@@ -203,7 +203,7 @@ metadata:
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
-  configSchema:
+  parametersSchema:
     cue: |-
       {{- .Files.Get "config/3.0.2/proxy-config-constraint.cue" | nindent 6 }}
 
