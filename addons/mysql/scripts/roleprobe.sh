@@ -1,7 +1,8 @@
 #!/bin/bash
 
 topology_info=$(/kubeblocks/orchestrator-client -c topology -i $KB_CLUSTER_NAME) || true
-if [[ $topology_info == "" ]] || [[ $topology_info =~ ^ERROR ]]; then
+if [[ $topology_info == "" ]]; then
+  echo -n "secondary"
   exit 0
 fi
 
@@ -11,7 +12,7 @@ old_ifs="$IFS"
 IFS=',' read -ra status_array <<< "$cleaned_line"
 IFS="$old_ifs"
 status="${status_array[1]}"
-if  [ "$status" == "ok" ]; then
+if  [ "$status" != "ok" ]; then
   exit 0
 fi
 
