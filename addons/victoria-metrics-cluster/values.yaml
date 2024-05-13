@@ -31,11 +31,11 @@ vmstorage:
   replicas: 2
   resources: {}
     # limits:
-    #   cpu: 500m
-    #   memory: 512Mi
+    #   cpu: 0.5
+    #   memory: 0.5
     # requests:
-    #   cpu: 500m
-    #   memory: 512Mi
+    #   cpu: 0.5
+    #   memory: 0.5
 
   volume:
-    storage: 10Gi
+    storage: 10
