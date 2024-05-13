@@ -22,7 +22,7 @@ spec:
             componentDef:
             - names: [mysql-8.0.33, mysql-8.0.33-orc ]
               mappingValue: "8.0.33-28"
-            - names: [ mysql-5.7.42, mysql-5.7.44, mysql-5.7.44-orc]
+            - names: [ mysql-5.7.44, mysql-5.7.44-orc]
               mappingValue: "2.4"
       targetVolumes:
         volumeMounts:
