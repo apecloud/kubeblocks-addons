@@ -51,28 +51,6 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Create the name of the service account to use
-
-{{- define "milvus.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "milvus.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
-{{- end }}
-
-{{- define "milvus.checkerServiceAccountName" -}}
-{{- if .Values.installDependencies.enable }}
-{{- if .Values.installDependencies.serviceAccount.create }}
-{{- default (printf "%s-checker" (include "milvus.fullname" .)) .Values.installDependencies.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
-{{- end }}
-{{- end }}
-*/}}
-
-{{/*
 Startup probe
 */}}
 {{- define "milvus.probe.startup" }}
@@ -127,32 +105,18 @@ readinessProbe:
 {{- end }}
 
 {{/*
-Milvus cluster default config
+Milvus image
 */}}
-{{- define "milvus.cluster.config" }}
-- name: config
-  templateRef: milvus-config-template-{{ .Chart.Version }}
-  volumeName: milvus-config
-  namespace: {{.Release.Namespace}}
-  defaultMode: 420
+{{- define "milvus.image" }}
+image: {{ .Values.images.milvus.repository }}:{{ .Values.images.milvus.tag }}
+imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
 {{- end }}
 
 {{/*
-Milvus cluster monitor
+Milvus init container - setup
 */}}
-{{- define "milvus.cluster.monitor" }}
-monitor:
-  builtIn: false
-  exporterConfig:
-    scrapePath: /metrics
-    scrapePort: 9091
-{{- end }}
-
-{{/*
-Milvus cluster init container - config
-*/}}
-{{- define "milvus.cluster.initContainer.config" }}
-- name: config
+{{- define "milvus.initContainer.setup" }}
+- name: setup
   image: {{ .Values.images.milvusTools.repository }}:{{ .Values.images.milvusTools.tag }}
   imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
   command:
@@ -160,27 +124,24 @@ Milvus cluster init container - config
     - /run.sh,/merge
     - /milvus/tools/run.sh,/milvus/tools/merge
   volumeMounts:
-    - mountPath: /milvus/tools
-      name: milvus-tools
+    {{- include "milvus.volumeMount.tools" . | indent 4 }}
 {{- end }}
 
 {{/*
-Milvus cluster image
+Milvus env - cache size
 */}}
-{{- define "milvus.cluster.image" }}
-image: {{ .Values.images.milvus.repository }}:{{ .Values.images.milvus.tag }}
-imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
-{{- end }}
-
-{{/*
-Milvus cluster default env
-*/}}
-{{- define "milvus.cluster.env.default" }}
+{{- define "milvus.env.cacheSize" }}
 - name: CACHE_SIZE
   valueFrom:
     resourceFieldRef:
       divisor: 1Gi
       resource: limits.memory
+{{- end }}
+
+{{/*
+Milvus env - minio ak/sk
+*/}}
+{{- define "milvus.env.minio" }}
 - name: MINIO_ACCESS_KEY
   valueFrom:
     secretKeyRef:
@@ -194,49 +155,165 @@ Milvus cluster default env
 {{- end }}
 
 {{/*
-Milvus cluster default volume mounts
+Milvus container port - milvus
 */}}
-{{- define "milvus.cluster.volumeMount.default" }}
-- mountPath: /milvus/configs/user.yaml
-  name: milvus-config
-  readOnly: true
-  subPath: cluster-user.yaml
-- mountPath: /milvus/tools
-  name: milvus-tools
+{{- define "milvus.containerPort.milvus" }}
+- containerPort: 19530
+  name: milvus
+  protocol: TCP
 {{- end }}
 
 {{/*
-Milvus cluster default volumes
+Milvus container port - metric
 */}}
-{{- define "milvus.cluster.volume.default" }}
-- name: milvus-tools
-  emptyDir: {}
-{{- end }}
-
-{{/*
-Milvus cluster metric container port
-*/}}
-{{- define "milvus.cluster.containerPort.metric" }}
+{{- define "milvus.containerPort.metric" }}
 - containerPort: 9091
   name: metrics
   protocol: TCP
 {{- end }}
 
 {{/*
+Milvus volume mounts - data
+*/}}
+{{- define "milvus.volumeMount.data" }}
+- mountPath: /var/lib/milvus
+  name: data
+{{- end }}
+
+{{/*
+Milvus volume mounts - tools
+*/}}
+{{- define "milvus.volumeMount.tools" }}
+- mountPath: /milvus/tools
+  name: milvus-tools
+{{- end }}
+
+{{/*
+Milvus volume mounts - user
+*/}}
+{{- define "milvus.volumeMount.user" }}
+- mountPath: /milvus/configs/user.yaml.raw
+  name: milvus-config
+  readOnly: true
+  subPath: user.yaml
+- mountPath: /milvus/tools/delegate-run.sh
+  name: milvus-delegate-run
+  readOnly: true
+  subPath: delegate-run.sh
+{{- end }}
+
+{{/*
+Milvus tools volume
+*/}}
+{{- define "milvus.volume.tools" }}
+- name: milvus-tools
+  emptyDir: {}
+{{- end }}
+
+{{/*
+Milvus user config - standalone
+*/}}
+{{- define "milvus.config.standalone" }}
+- name: config
+  templateRef: milvus-config-template-standalone-{{ .Chart.Version }}
+  volumeName: milvus-config
+  namespace: {{.Release.Namespace}}
+  defaultMode: 420
+- name: delegate-run
+  templateRef: milvus-delegate-run-{{ .Chart.Version }}
+  volumeName: milvus-delegate-run
+  namespace: {{.Release.Namespace}}
+  defaultMode: 493
+{{- end }}
+
+{{/*
+Milvus user config - cluster
+*/}}
+{{- define "milvus.config.cluster" }}
+- name: config
+  templateRef: milvus-config-template-cluster-{{ .Chart.Version }}
+  volumeName: milvus-config
+  namespace: {{.Release.Namespace}}
+  defaultMode: 420
+- name: delegate-run
+  templateRef: milvus-delegate-run-{{ .Chart.Version }}
+  volumeName: milvus-delegate-run
+  namespace: {{.Release.Namespace}}
+  defaultMode: 493
+{{- end }}
+
+{{/*
+Milvus monitor
+*/}}
+{{- define "milvus.monitor" }}
+# builtIn: false
+# exporterConfig:
+#   scrapePath: /metrics
+#   scrapePort: 9091
+{{- end }}
+
+{{/*
 Milvus cluster external storage services reference
 */}}
-{{- define "milvus.cluster.storageServiceRef" }}
-serviceRefDeclarations:
-  - name: milvus-meta-storage
-    serviceRefDeclarationSpecs:
-      - serviceKind: etcd
-        serviceVersion: "^3.*"
-  - name: milvus-log-storage
-    serviceRefDeclarationSpecs:
-      - serviceKind: pulsar
-        serviceVersion: "^2.*"
-  - name: milvus-object-storage
-    serviceRefDeclarationSpecs:
-      - serviceKind: minio
-        serviceVersion: "^*"
+{{- define "milvus.cluster.serviceRef" }}
+- name: milvus-meta-storage
+  serviceRefDeclarationSpecs:
+    - serviceKind: etcd
+      serviceVersion: "^3.*"
+- name: milvus-log-storage
+  serviceRefDeclarationSpecs:
+    - serviceKind: pulsar
+      serviceVersion: "^2.*"
+- name: milvus-object-storage
+  serviceRefDeclarationSpecs:
+    - serviceKind: minio
+      serviceVersion: "^*"
+{{- end }}
+
+{{/*
+Milvus cluster vars for external storage services reference
+*/}}
+{{- define "milvus.cluster.serviceRefVars" }}
+- name: ETCD_ENDPOINT
+  valueFrom:
+    serviceRefVarRef:
+      name: milvus-meta-storage
+      optional: false
+      endpoint: Required
+- name: MINIO_SERVER
+  valueFrom:
+    serviceRefVarRef:
+      name: milvus-object-storage
+      optional: false
+      endpoint: Required
+- name: MINIO_PORT
+  valueFrom:
+    serviceRefVarRef:
+      name: milvus-object-storage
+      optional: false
+      port: Required
+- name: MINIO_ACCESS_KEY
+  valueFrom:
+    serviceRefVarRef:
+      name: milvus-object-storage
+      optional: false
+      username: Required
+- name: MINIO_SECRET_KEY
+  valueFrom:
+    serviceRefVarRef:
+      name: milvus-object-storage
+      optional: false
+      password: Required
+- name: PULSAR_SERVER
+  valueFrom:
+    serviceRefVarRef:
+      name: milvus-log-storage
+      optional: false
+      endpoint: Required
+- name: PULSAR_PORT
+  valueFrom:
+    serviceRefVarRef:
+      name: milvus-log-storage
+      optional: false
+      port: Required
 {{- end }}
