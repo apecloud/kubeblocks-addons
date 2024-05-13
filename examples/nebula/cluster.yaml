@@ -37,7 +37,7 @@ spec:
   componentSpecs:
   - name: nebula-console
     componentDefRef: nebula-console
-    monitorEnabled: false
+    disableExporter: true
     serviceAccountName: kb-nebula-cluster
     replicas: 2
     resources:

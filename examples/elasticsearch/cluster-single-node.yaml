@@ -31,7 +31,7 @@ spec:
   componentSpecs:
   - name: es-single-node
     componentDef: es-single-node
-    monitorEnabled: false
+    disableExporter: true
     serviceAccountName: kb-elasticsearch-cluster
     replicas: 1
     resources:

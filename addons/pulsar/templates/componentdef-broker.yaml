@@ -217,7 +217,6 @@ spec:
             mountPath: /opt/pulsar/conf
           - name: broker-env
             mountPath: /opt/pulsar/none
-  builtinMonitorContainer:
-    name: broker
-    metricsPath: /metrics/
-    metricsPort: http
+  exporter:
+    scrapePath: /metrics/
+    scrapePort: http
