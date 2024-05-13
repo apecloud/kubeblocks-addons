@@ -5,12 +5,6 @@
 nameOverride: ""
 fullnameOverride: ""
 
-clusterVersionOverride: ""
-
-## @param commonLabels Labels to add to all deployed objects
-##
-commonLabels: {}
-
 ## @param application images
 ##
 images:
@@ -27,12 +21,9 @@ images:
   minio:
     repository: docker.io/minio/minio
     tag: RELEASE.2022-03-17T06-34-49Z
-  shell_tools:
+  ostools:
     repository: bitnami/os-shell
     tag: 11-debian-11-r90
-
-serviceAccount:
-  name: milvus
 
 livenessProbe:
   enabled: true
@@ -57,7 +48,3 @@ startupProbe:
   timeoutSeconds: 3
   successThreshold: 1
   failureThreshold: 18
-
-minio:
-  accessKey: ""
-  secretKey: ""

@@ -6,152 +6,59 @@ metadata:
   name: {{ include "kblib.clusterName" . }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: milvus-{{ .Chart.Version }}
+  clusterDefinitionRef: milvus
+  topology: cluster
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
-  {{- with $.Values.tolerations }}
-  tolerations: {{ . | toYaml | nindent 4 }}
-  {{- end }}
   componentSpecs:
-#    {{- if eq .Values.storage.meta.mode "incluster" }}
-#    - name: {{ .Values.storage.meta.name }}
-#      componentDef: {{ .Values.storage.meta.inCluster.provider }}
-#      replicas: {{ .Values.storage.meta.inCluster.replicas}}
-#      {{- include "kblib.componentMonitor" . | indent 6 }}
-#      {{- with .Values.storage.meta.inCluster.resources }}
-#      resources:
-#        requests:
-#          cpu: {{ .cpu | quote }}
-#          memory: {{ print .memory "Gi" }}
-#      {{- end }}
-#      {{- with .Values.storage.meta.inCluster.storage }}
-#      volumeClaimTemplates:
-#        - name: data  # TODO: volume name and multiple volumes
-#          spec:
-#            storageClassName: {{ .storageClassName }}
-#            accessModes:
-#              - ReadWriteOnce
-#            resources:
-#              requests:
-#                storage: {{ print .size "Gi" }}
-#      {{- end }}
-#    {{- end }}
-#    {{- if eq .Values.storage.log.mode "incluster" }}
-#    - name: {{ .Values.storage.log.name }}
-#      componentDef: {{ .Values.storage.log.inCluster.provider }}
-#      replicas: {{ .Values.storage.log.inCluster.replicas}}
-#      {{- include "kblib.componentMonitor" . | indent 6 }}
-#      {{- with .Values.storage.log.inCluster.resources }}
-#      resources:
-#        requests:
-#          cpu: {{ .cpu | quote }}
-#          memory: {{ print .memory "Gi" }}
-#      {{- end }}
-#      {{- with .Values.storage.log.inCluster.storage }}
-#      volumeClaimTemplates:
-#        - name: data  # TODO: volume name and multiple volumes
-#          spec:
-#            storageClassName: {{ .storageClassName }}
-#            accessModes:
-#              - ReadWriteOnce
-#            resources:
-#              requests:
-#                storage: {{ print .size "Gi" }}
-#      {{- end }}
-#    {{- end }}
-#    {{- if eq .Values.storage.object.mode "incluster" }}
-#    - name: {{ .Values.storage.object.name }}
-#      componentDef: {{ .Values.storage.object.inCluster.provider }}
-#      replicas: {{ .Values.storage.object.inCluster.replicas}}
-#      {{- include "kblib.componentMonitor" . | indent 6 }}
-#      {{- with .Values.storage.object.inCluster.resources }}
-#      resources:
-#        requests:
-#          cpu: {{ .cpu | quote }}
-#          memory: {{ print .memory "Gi" }}
-#      {{- end }}
-#      {{- with .Values.storage.object.inCluster.storage }}
-#      volumeClaimTemplates:
-#        - name: data  # TODO: volume name and multiple volumes
-#          spec:
-#            storageClassName: {{ .storageClassName }}
-#            accessModes:
-#              - ReadWriteOnce
-#            resources:
-#              requests:
-#                storage: {{ print .size "Gi" }}
-#      {{- end }}
-#    {{- end }}
     {{- if .Values.proxy.enabled }}
     - name: proxy
-      componentDefRef: proxy
       replicas: {{ .Values.proxy.replicas }}
-      {{- include "kblib.componentMonitor" . | indent 6 }}
-      {{- with .Values.proxy.resources }}
-      resources:
-        requests:
-          cpu: {{ .cpu | quote }}
-          memory: {{ print .memory "Gi" }}
-      {{- end }}
+      {{- include "kblib.componentResources" . | indent 6 }}
       serviceRefs:
         {{- include "milvus.serviceRef.meta" . | indent 8 }}
         {{- include "milvus.serviceRef.log" . | indent 8 }}
         {{- include "milvus.serviceRef.object" . | indent 8 }}
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      {{- include "kblib.componentMonitor" . | indent 6 }}
     {{- end }}
     - name: mixcoord
-      componentDefRef: mixcoord
       replicas: {{ .Values.mixcoord.replicas}}
-      {{- include "kblib.componentMonitor" . | indent 6 }}
-      {{- with .Values.mixcoord.resources }}
-      resources:
-        requests:
-          cpu: {{ .cpu | quote }}
-          memory: {{ print .memory "Gi" }}
-      {{- end }}
+      {{- include "kblib.componentResources" . | indent 6 }}
       serviceRefs:
         {{- include "milvus.serviceRef.meta" . | indent 8 }}
         {{- include "milvus.serviceRef.log" . | indent 8 }}
         {{- include "milvus.serviceRef.object" . | indent 8 }}
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      {{- include "kblib.componentMonitor" . | indent 6 }}
     - name: datanode
-      componentDefRef: datanode
       replicas: {{ .Values.datanode.replicas}}
       {{- include "kblib.componentMonitor" . | indent 6 }}
-      {{- with .Values.datanode.resources }}
-      resources:
-        requests:
-          cpu: {{ .cpu | quote }}
-          memory: {{ print .memory "Gi" }}
-      {{- end }}
+      {{- include "kblib.componentResources" . | indent 6 }}
       serviceRefs:
         {{- include "milvus.serviceRef.meta" . | indent 8 }}
         {{- include "milvus.serviceRef.log" . | indent 8 }}
         {{- include "milvus.serviceRef.object" . | indent 8 }}
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      {{- include "kblib.componentMonitor" . | indent 6 }}
     - name: indexnode
-      componentDefRef: indexnode
       replicas: {{ .Values.indexnode.replicas}}
       {{- include "kblib.componentMonitor" . | indent 6 }}
-      {{- with .Values.indexnode.resources }}
-      resources:
-        requests:
-          cpu: {{ .cpu | quote }}
-          memory: {{ print .memory "Gi" }}
-      {{- end }}
+      {{- include "kblib.componentResources" . | indent 6 }}
       serviceRefs:
         {{- include "milvus.serviceRef.meta" . | indent 8 }}
         {{- include "milvus.serviceRef.log" . | indent 8 }}
         {{- include "milvus.serviceRef.object" . | indent 8 }}
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      {{- include "kblib.componentMonitor" . | indent 6 }}
     - name: querynode
-      componentDefRef: querynode
       replicas: {{ .Values.querynode.replicas}}
       {{- include "kblib.componentMonitor" . | indent 6 }}
-      {{- with .Values.querynode.resources }}
-      resources:
-        requests:
-          cpu: {{ .cpu | quote }}
-          memory: {{ print .memory "Gi" }}
-      {{- end }}
+      {{- include "kblib.componentResources" . | indent 6 }}
       serviceRefs:
         {{- include "milvus.serviceRef.meta" . | indent 8 }}
         {{- include "milvus.serviceRef.log" . | indent 8 }}
         {{- include "milvus.serviceRef.object" . | indent 8 }}
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      {{- include "kblib.componentMonitor" . | indent 6 }}
 {{- end }}
