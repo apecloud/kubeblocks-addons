@@ -381,17 +381,13 @@ spec:
                 echo "start etcd..."
                 PEERS=""
                 DOMAIN=$KB_NAMESPACE".svc{{ .Values.clusterDomain }}"
-                i=0
-                while [ $i -lt $KB_REPLICA_COUNT ]; do
-                  if [ $i -ne 0 ]; then
-                    PEERS="$PEERS,";
-                  fi;
-                  host=$(eval echo \$KB_"$i"_HOSTNAME)
-                  host=$host"."$DOMAIN
-                  hostname=${KB_CLUSTER_COMP_NAME}-${i}
-                  PEERS="$PEERS$hostname=http://$host:2380"
-                  i=$(( i + 1 ))
+                SUBDOMAIN=${KB_CLUSTER_COMP_NAME}-headless
+                replicas=$(eval echo ${KB_POD_LIST} | tr ',' '\n')
+                for replica in ${replicas}; do
+                    host=${replica}.${SUBDOMAIN}.${DOMAIN}
+                    PEERS="${PEERS}${replica}=http://${host}:2380,"
                 done
+                PEERS=${PEERS%,}
                 MY_PEER=$KB_POD_FQDN{{ .Values.clusterDomain }}
                 exec etcd --name ${HOSTNAME} \
                 --listen-peer-urls http://0.0.0.0:2380 \
