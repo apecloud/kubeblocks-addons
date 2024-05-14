@@ -1,0 +1,1 @@
+TAOS_FIRST_EP: {{ index (splitList "," .TDENGINE_POD_LIST) 0 }}.{{ .KB_CLUSTER_COMP_NAME }}-headless.{{ .KB_NAMESPACE }}.svc.cluster.local:6030
