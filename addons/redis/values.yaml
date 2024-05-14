@@ -11,6 +11,13 @@ compDefinitionVersion:
   redisCluster: "7.0"
   twemproxy: "0.5"
 
+## @param componentServiceVersion define default serviceVersion of each Component
+componentServiceVersion:
+  redis: "7.0.6"
+  sentinel: "7.0.6"
+  redisCluster: "7.0.6"
+  twemproxy: "0.5.0"
+
 image:
   # refer: https://redis.io/docs/stack/
   # Redis Stack Server, which combines open source Redis with RediSearch, RedisJSON, RedisGraph, RedisTimeSeries, and RedisBloom,
