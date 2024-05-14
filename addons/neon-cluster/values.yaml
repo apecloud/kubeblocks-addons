@@ -3,7 +3,7 @@ version: latest
 storageClassName: ""
 terminationPolicy: Delete
 
-useLegacyCompDef: true
+useLegacyCompDef: false
 
 compute:
   replicas: 1

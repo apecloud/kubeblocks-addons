@@ -25,18 +25,12 @@ spec:
           compDef: {{ include "neon-storagebroker.componentDefName" . }}
       default: true
       orders:  
-        startupOrder:  
-          - safekeeper,pageserver
-          - storagebroker
-          - compute
-        shutdownOrder:  
-          - compute
-          - storagebroker
-          - safekeeper,pageserver
-        updateOrder: 
-          - compute
-          - storagebroker
-          - safekeeper,pageserver
+        provision:  
+          - compute,safekeeper,storagebroker,pageserver
+        terminate:  
+          - safekeeper,storagebroker,pageserver,compute
+        update: 
+          - safekeeper,storagebroker,pageserver,compute
   componentDefs:
     - name: compute
       workloadType: Stateful
