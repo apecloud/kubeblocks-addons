@@ -11,6 +11,6 @@ spec:
   releases:
     - name: 7.0.6-RC8  # {{ .Values.image.tag }}
       changes:
-      serviceVersion: 7.0.6  # {{ .Chart.AppVersion }}
+      serviceVersion: 7.0.6  # {{ .Values.componentServiceVersion.sentinel }}
       images:
         redis-sentinel: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/redis-stack-server:7.0.6-RC8
