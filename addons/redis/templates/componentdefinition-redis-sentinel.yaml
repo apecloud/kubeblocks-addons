@@ -8,7 +8,7 @@ spec:
   provider: kubeblocks
   description: A Redis Sentinel v7.0 component definition for Kubernetes
   serviceKind: redis-sentinel
-  serviceVersion: 7.0.6
+  serviceVersion: {{ .Values.componentServiceVersion.sentinel }}
   services:
     - name: redis-sentinel
       serviceName: redis-sentinel

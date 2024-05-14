@@ -8,7 +8,7 @@ spec:
   provider: kubeblocks
   description: An official v7.0 Redis Cluster(distributed implementation of Redis) component definition for Kubernetes
   serviceKind: redis-cluster
-  serviceVersion: 7.0.6
+  serviceVersion: {{ .Values.componentServiceVersion.redisCluster }}
   services:
     - name: redis-advertised
       serviceName: redis-advertised
