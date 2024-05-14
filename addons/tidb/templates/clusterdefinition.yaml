@@ -24,7 +24,8 @@ spec:
           - tidb
           - tikv
           - tidb-pd
-        update:
-          - tidb
-          - tikv
-          - tidb-pd
+        # FIXME: due to kb bugs, if update order is specified, update will not succeed
+        # update:
+        #   - tidb
+        #   - tikv
+        #   - tidb-pd

@@ -17,3 +17,12 @@ spec:
       - -c
       - |
         {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
+  restore:
+    postReady:
+    - job:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/br:{{ default .Chart.AppVersion .Values.image.tag }}
+        command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/restore.sh" | nindent 12 }}
