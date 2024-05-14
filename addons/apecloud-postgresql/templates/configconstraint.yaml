@@ -7,6 +7,20 @@ metadata:
     {{- include "apecloud-postgresql.labels" . | nindent 4 }}
 spec:
 
+  reloadAction:
+    shellTrigger:
+      sync: true
+      command:
+        - "update-parameters.sh"
+      scriptConfig:
+        scriptConfigMapRef: {{ include "apecloud-postgresql.name" . }}-tools-script
+        namespace: {{ .Release.Namespace }}
+      toolsSetup:
+        mountPoint: /kb_tools
+        toolConfigs:
+          - name: init-pg-tools
+            asContainerImage: true
+            image:  {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   configSchema:
     # top level mysql configuration type
