@@ -7,6 +7,7 @@ set -exo pipefail
 
 # TODO: clusterDomain 'cluster.local' requires configurable
 DOMAIN=$KB_NAMESPACE".svc.cluster.local"
+SUBDOMAIN=${KB_CLUSTER_COMP_NAME}-headless
 MY_PEER=$KB_POD_FQDN".cluster.local"
 
 DATA_DIR="/var/lib/pd"
@@ -24,32 +25,28 @@ if [[ -f $DATA_DIR/join ]]; then
     ARGS="${ARGS} --join=${join}"
 elif [[ ! -d $DATA_DIR/member/wal ]]; then
     echo "first started pod"
+    replicas=$(echo "${KB_POD_LIST}" | tr ',' '\n')
     if [[ -n $KB_LEADER || -n $KB_FOLLOWERS ]]; then
         echo "joining an existing cluster"
         join=""
-        i=0
-        while [ $i -lt $KB_REPLICA_COUNT ]; do
-            host=$(eval echo \$KB_"$i"_HOSTNAME)
-            host=$host"."$DOMAIN
+
+        for replica in $replicas; do
+            host=${replica}.${SUBDOMAIN}.${DOMAIN}
             join="${join}http://$host:2380,"
-            i=$(( i + 1))
         done
+
         join=${join%,}
         ARGS="${ARGS} --join=${join}"
     else
         echo "initializing a cluster"
         PEERS=""
-        i=0
-        while [ $i -lt $KB_REPLICA_COUNT ]; do
-            if [ $i -ne 0 ]; then
-                PEERS="$PEERS,";
-            fi;
-            host=$(eval echo \$KB_"$i"_HOSTNAME)
-            host=$host"."$DOMAIN
-            hostname=${KB_CLUSTER_COMP_NAME}-${i}
-            PEERS="$PEERS$hostname=http://$host:2380"
-            i=$(( i + 1))
+
+        for replica in $replicas; do
+            host=${replica}.${SUBDOMAIN}.${DOMAIN}
+            PEERS="$PEERS$replica=http://$host:2380,"
         done
+
+        PEERS=${PEERS%,}
         ARGS="${ARGS} --initial-cluster=${PEERS}"
     fi
 fi
