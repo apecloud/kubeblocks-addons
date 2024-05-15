@@ -39,7 +39,8 @@ spec:
                     - bin/sh
                     - -c
                     - |
-                      if [ $KB_REPLICA_COUNT -gt 1 ]; then
+                      replicas=$(eval echo ${KB_POD_LIST} | tr ',' '\n')
+                      if [ ${#replica[@]} -gt 1 ]; then
                         export LDAP_REPLICATION_CONFIG_SYNCPROV="binddn=\"cn=admin,cn=config\" bindmethod=simple credentials=$LDAP_CONFIG_PASSWORD searchbase=\"cn=config\" type=refreshAndPersist retry=\"60 +\" timeout=1"
                         export LDAP_REPLICATION_DB_SYNCPROV="binddn=\"cn=admin,$LDAP_BASE_DN\" bindmethod=simple credentials=$LDAP_ADMIN_PASSWORD searchbase=\"$LDAP_BASE_DN\" type=refreshAndPersist interval=01:00:00:10 retry=\"60 +\" timeout=1"
                         export LDAP_REPLICATION_HOSTS="#PYTHON2BASH:['ldap://${KB_CLUSTER_NAME}-${KB_COMP_NAME}-0.${KB_CLUSTER_NAME}-${KB_COMP_NAME}-headless', 'ldap://${KB_CLUSTER_NAME}-.${KB_COMP_NAME}-1.${KB_CLUSTER_NAME}-${KB_COMP_NAME}-headless']"
