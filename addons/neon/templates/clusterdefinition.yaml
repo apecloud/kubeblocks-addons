@@ -26,8 +26,7 @@ spec:
       default: true
       orders:  
         provision:  
-          - storagebroker,safekeeper,pageserver
-          - compute
+          - storagebroker,safekeeper,pageserver,compute
         terminate:  
           - compute
           - safekeeper,pageserver
