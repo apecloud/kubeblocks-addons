@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "mongodb.labels" . | nindent 4 }}
 spec:
-  configSchema:
+  parametersSchema:
     cue: ""
 
   # mysql configuration file format
@@ -23,7 +23,7 @@ spec:
 
 
   ## defines the configuration schema
-  configSchema:
+  parametersSchema:
     ## top level mysql configuration type
     topLevelKey: MongodbParameters
 

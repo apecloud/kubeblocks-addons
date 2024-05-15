@@ -9,12 +9,12 @@ set -ex
 {{- $redis_component := fromJson "{}" }}
 {{- range $i, $e := $.cluster.spec.componentSpecs }}
   {{- if index $e "componentDefRef" }}
-    {{- if eq $e.componentDefRef "redis" }}
+    {{- if eq $e.componentDefRef "redis-7.0" }}
       {{- $redis_component = $e }}
     {{- end }}
   {{- end }}
   {{- if index $e "componentDef" }}
-    {{- if eq $e.componentDef "redis" }}
+    {{- if eq $e.componentDef "redis-7.0" }}
       {{- $redis_component = $e }}
     {{- end }}
   {{- end }}

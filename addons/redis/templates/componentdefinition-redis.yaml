@@ -8,7 +8,7 @@ spec:
   provider: kubeblocks
   description: A Redis v7.0 component definition for Kubernetes
   serviceKind: redis
-  serviceVersion: 7.0.6
+  serviceVersion: {{ .Values.componentServiceVersion.redis }}
   services:
     - name: redis
       serviceName: redis

@@ -1,0 +1,16 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: redis-cluster
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "redis-cluster.componentDefNamePrefix" . }}
+      releases:
+        - 7.0.6-RC8
+  releases:
+    - name: 7.0.6-RC8  # {{ .Values.image.tag }}
+      changes:
+      serviceVersion: 7.0.6  # {{ .Values.componentServiceVersion.redisCluster }}
+      images:
+        redis-cluster: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/redis-stack-server:7.0.6-RC8

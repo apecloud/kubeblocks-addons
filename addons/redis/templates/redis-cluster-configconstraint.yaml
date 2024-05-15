@@ -7,7 +7,7 @@ metadata:
     {{- include "redis.labels" . | nindent 4 }}
 spec:
   # ConfigurationSchema that impose restrictions on engine parameter's rule
-  configSchema:
+  parametersSchema:
     topLevelKey: RedisParameter
     cue: |-
       {{- .Files.Get "config/redis-cluster7-config-constraint.cue" | nindent 6 }}

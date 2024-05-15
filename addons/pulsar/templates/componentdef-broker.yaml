@@ -15,9 +15,8 @@ spec:
         serviceVarRef:
           compDef: pulsar-broker
           name: nodeport
-          generatePodOrdinalServiceVar: true
           optional: true
-          nodePort:
+          port:
             name: pulsar
             option: Optional
     - name: NODE_PORT_KAFKA
@@ -25,15 +24,14 @@ spec:
         serviceVarRef:
           compDef: pulsar-broker
           name: nodeport
-          generatePodOrdinalServiceVar: true
           optional: true
-          nodePort:
+          port:
             name: kafka-client
             option: Optional
   services:
     - name: broker-clusterip
       serviceName: clusterip
-      generatePodOrdinalService: true
+      podService: true
       spec:
         type: ClusterIP
         ports:
@@ -45,7 +43,8 @@ spec:
             targetPort: kafka-client
     - name: broker-nodeport
       serviceName: nodeport
-      generatePodOrdinalService: true
+      podService: true
+      disableAutoProvision: true
       spec:
         type: NodePort
         ports:
@@ -218,7 +217,6 @@ spec:
             mountPath: /opt/pulsar/conf
           - name: broker-env
             mountPath: /opt/pulsar/none
-  builtinMonitorContainer:
-    name: broker
-    metricsPath: /metrics/
-    metricsPort: http
+  exporter:
+    scrapePath: /metrics/
+    scrapePort: http

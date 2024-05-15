@@ -16,7 +16,7 @@ metadata:
   labels:
     {{- include "solr.labels" . | nindent 4 }}
 spec:
-  configSchema:
+  parametersSchema:
     cue: ""
 
   # mysql configuration file format

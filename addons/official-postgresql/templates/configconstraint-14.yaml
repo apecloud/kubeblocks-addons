@@ -6,7 +6,7 @@ metadata:
     {{- include "official-postgresql.labels" . | nindent 4 }}
 spec:
   # ConfigurationSchema that impose restrictions on engine parameter's rule
-  configSchema:
+  parametersSchema:
     # top level pg configuration type
     topLevelKey: PGParameter
 
