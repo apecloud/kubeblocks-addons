@@ -45,6 +45,9 @@ data:
     {{- .Files.Get "scripts/addition_to_sys_v8.sql" | nindent 4 }}
   roleprobe.sh: |-
     {{- .Files.Get "scripts/roleprobe.sh" | nindent 4 }}
+  agamotto.sh: |-
+    #!/bin/sh
+    /bin/agamotto --config=/opt/agamotto/agamotto-config.yaml
 ---
 apiVersion: v1
 kind: ConfigMap

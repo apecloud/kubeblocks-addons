@@ -25,7 +25,7 @@ spec:
         - /config
         - /kubeblocks/
         image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:latest
-        imagePullPolicy: Always
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         name: init-syncer
         volumeMounts:
         - mountPath: /kubeblocks
@@ -36,22 +36,16 @@ spec:
         - /xtrabackup-2.4
         - /kubeblocks/xtrabackup
         image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:mysql
-        imagePullPolicy: Always
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         name: init-xtrabackup
         volumeMounts:
         - mountPath: /kubeblocks
           name: kubeblocks
       containers:
       - name: mysql
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        image: docker.io/mysql:{{ .Values.image.tag }}
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         command:
-          - syncer
-          - --config-path
-          - /kubeblocks/config/components
-          - --port
-          - "3601"
-          - --
           - bash
           - -c
           - |
@@ -71,7 +65,7 @@ spec:
             --skip-slave-start=$skip_slave_start
     systemAccountSpec:
       cmdExecutorConfig:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        image: docker.io/mysql:{{ .Values.image.tag }}
 ---
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ClusterVersion
@@ -96,7 +90,7 @@ spec:
         - /config
         - /kubeblocks/
         image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:latest
-        imagePullPolicy: Always
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         name: init-syncer
         volumeMounts:
         - mountPath: /kubeblocks
@@ -107,22 +101,16 @@ spec:
         - /xtrabackup-8.0
         - /kubeblocks/xtrabackup
         image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:mysql
-        imagePullPolicy: Always
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         name: init-xtrabackup
         volumeMounts:
         - mountPath: /kubeblocks
           name: kubeblocks
       containers:
       - name: mysql
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+        image: docker.io/mysql:8.0.33
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         command:
-          - syncer
-          - --config-path
-          - /kubeblocks/config/components
-          - --port
-          - "3601"
-          - --
           - bash 
           - -c
           - |
