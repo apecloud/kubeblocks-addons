@@ -8,13 +8,25 @@ spec:
   description: A neon compute component definition for Kubernetes
   provider: KubeBlocks
   systemAccounts:
-    - name: default
+    - name: neon
       initAccount: true
-      passwordGenerationPolicy:
+      passwordGenerationPolicy: &defaultPasswdGenerationPolicy
         length: 10
         numDigits: 5
         numSymbols: 0
         letterCase: MixedCases
+  scripts:
+    - name: neon-scripts
+      templateRef: neon-scripts
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  configs:
+    - name: neon-config
+      templateRef: neon-config
+      namespace: {{ .Release.Namespace }}
+      volumeName: neon-config
+      defaultMode: 0444
   vars: 
     - name: NEON_COMPUTE_PGPORT
       valueFrom:
@@ -27,13 +39,13 @@ spec:
       valueFrom:
         credentialVarRef:
           compDef: {{ include "neon-compute.componentDefName" . }}
-          name: default
+          name: neon
           username: Required
     - name: NEON_COMPUTE_PGPASSWORD
       valueFrom:
         credentialVarRef:
           compDef: {{ include "neon-compute.componentDefName" . }}
-          name: default
+          name: neon
           password: Required
     - name: NEON_SAFEKEEPERS_HEADLESS
       valueFrom:
@@ -73,18 +85,18 @@ spec:
             value: $(NEON_COMPUTE_PGUSER) 
           - name: PGPASSWORD
             value: $(NEON_COMPUTE_PGPASSWORD)
-          - name: SAFEKEEPERS
-            value: "neon-cluster-safekeeper-0.neon-cluster-safekeeper-headless.default.svc.cluster.local:5454,neon-cluster-safekeeper-1.neon-cluster-safekeeper-headless.default.svc.cluster.local:5454,neon-cluster-safekeeper-2.neon-cluster-safekeeper-headless.default.svc.cluster.local:5454"
-          - name: PAGESERVER
-            value: "neon-cluster-pageserver-0.neon-cluster-pageserver-headless.default.svc.cluster.local"
         image: {{ include "neon-compute.image" . }}
         ports:
         - containerPort: 55432
           name: postgresql
         command: [ "/scripts/compute.sh" ]
         volumeMounts:
+        - mountPath: /config
+          name: neon-config
         - mountPath: /data
           name: data
+        - name: scripts
+          mountPath: /scripts
   serviceKind: postgresql
   serviceVersion: 1.0.0
   services:

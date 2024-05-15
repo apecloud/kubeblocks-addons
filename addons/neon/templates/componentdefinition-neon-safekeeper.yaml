@@ -7,19 +7,29 @@ metadata:
 spec:
   description: A neon safekeeper component definition for Kubernetes
   provider: KubeBlocks
+  scripts:
+    - name: neon-scripts
+      templateRef: neon-scripts
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  vars: 
+    - name: NEON_STORAGEBROKER_HEADLESS
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "neon-storagebroker.componentDefName" . }}
+          name: headless
+          optional: true
+          host: Optional
+    - name: NEON_STORAGEBROKER_POD_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "neon-storagebroker.componentDefName" . }}
+          optional: true
+          instanceNames: Optional
   runtime:
     containers:
-    - command:
-      - /bin/bash
-      - -c
-      - 'set -ex
-
-        trap : TERM INT
-
-        exec safekeeper --id=1 -D /data --broker-endpoint=http://$NEON_BROKER_SVC:50051
-        -l ${POD_IP}:5454 --listen-http=0.0.0.0:7676
-
-        '
+    - command: ["/scripts/sakekeeper_start.sh"]
       env:
       - name: POD_IP
         valueFrom:
@@ -28,6 +38,8 @@ spec:
       image: {{ include "neon-safekeeper.image" . }}
       name: neon-safekeeper
       volumeMounts:
+      - name: scripts
+        mountPath: /scripts
       - mountPath: /usr/local/neon/safekeeper
         name: neon-safekeeper
   serviceKind: safekeeper

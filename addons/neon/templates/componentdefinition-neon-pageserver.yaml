@@ -7,25 +7,36 @@ metadata:
 spec:
   description: A neon pageserver component definition for Kubernetes
   provider: KubeBlocks
+  scripts:
+    - name: neon-scripts
+      templateRef: neon-scripts
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  vars: 
+    - name: NEON_STORAGEBROKER_HEADLESS
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "neon-storagebroker.componentDefName" . }}
+          name: headless
+          optional: true
+          host: Optional
+    - name: NEON_STORAGEBROKER_POD_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "neon-storagebroker.componentDefName" . }}
+          optional: true
+          instanceNames: Optional
   runtime:
     containers:
-    - command:
-      - /bin/bash
-      - -c
-      - 'set -ex
-
-        trap : TERM INT
-
-        exec pageserver -D /data -c "id=1" -c "broker_endpoint=''http://$NEON_BROKER_SVC:50051''"
-        -c "listen_pg_addr=''0.0.0.0:6400''" -c "listen_http_addr=''0.0.0.0:9898''"
-        -c "pg_distrib_dir=''/opt/neondatabase-neon/pg_install''"
-
-        '
+    - command: ["/scripts/pageserver_start.sh"]
       image: {{ include "neon-pageserver.image" . }}
       name: neon-pageserver
       volumeMounts:
       - mountPath: /usr/local/neon/pageserver
         name: neon-pageserver
+      - name: scripts
+        mountPath: /scripts
   serviceKind: pageserver
   serviceVersion: 1.0.0
   services:

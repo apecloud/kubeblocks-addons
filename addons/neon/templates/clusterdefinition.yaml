@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ClusterDefinition
 metadata:
-  name: neon
+  name: neon 
   labels:
     {{- include "neon.labels" . | nindent 4 }}
 spec:
@@ -15,22 +15,27 @@ spec:
   topologies:
     - name: defaultTopology
       components:
-        - name: compute
-          compDef: {{ include "neon-compute.componentDefName" . }}
-        - name: pageserver
-          compDef: {{ include "neon-pageserver.componentDefName" . }}
-        - name: safekeeper
-          compDef: {{ include "neon-safekeeper.componentDefName" . }}
         - name: storagebroker
           compDef: {{ include "neon-storagebroker.componentDefName" . }}
+        - name: safekeeper
+          compDef: {{ include "neon-safekeeper.componentDefName" . }}
+        - name: pageserver
+          compDef: {{ include "neon-pageserver.componentDefName" . }}
+        - name: compute
+          compDef: {{ include "neon-compute.componentDefName" . }}
       default: true
       orders:  
         provision:  
-          - compute,safekeeper,storagebroker,pageserver
+          - storagebroker,safekeeper,pageserver
+          - compute
         terminate:  
-          - safekeeper,storagebroker,pageserver,compute
+          - compute
+          - safekeeper,pageserver
+          - storagebroker
         update: 
-          - safekeeper,storagebroker,pageserver,compute
+          - compute
+          - safekeeper,pageserver
+          - storagebroker
   componentDefs:
     - name: compute
       workloadType: Stateful
@@ -95,7 +100,6 @@ spec:
                 set -ex
                 trap : TERM INT
                 /compute.sh
-
     - name: storagebroker
       workloadType: Stateful
       characterType: storagebroker

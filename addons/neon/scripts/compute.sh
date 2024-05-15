@@ -1,9 +1,20 @@
 #!/bin/bash
 set -ex
 
-SPEC_FILE_ORG=spec.prep.DOCKER.json
-SPEC_FILE=/tmp/spec.json
+SPEC_FILE_ORG=/data/spec/spec.prep.DOCKER.json
+SPEC_FILE=/data/spec/spec.json
 PG_VERSION=14
+
+if [ ! -d "/data/pgdata" ]; then
+    mkdir /data/pgdata
+    mkdir /data/spec
+    cp /config/spec.prep.DOCKER.json $SPEC_FILE_ORG
+    cp /config/spec.json $SPEC_FILE
+    chmod +w $SPEC_FILE_ORG
+    chmod +w $SPEC_FILE
+else
+    echo "/data/pgdata already exists"
+fi
 
 IFS=',' read -ra PAGESERVER_ARRAY <<< "$NEON_PAGESERVER_POD_LIST"
 PAGESERVER=""
@@ -99,8 +110,7 @@ whoami
 echo $PWD
 ls -lah /data
 
-mkdir /data/pgdata
 /opt/neondatabase-neon/target/release/compute_ctl --pgdata /data/pgdata \
-     -C "postgresql://cloud_admin@localhost:55432/postgres"  \
+     -C "postgresql://neon@localhost:55432/postgres"  \
      -b /opt/neondatabase-neon/pg_install/v14/bin/postgres   \
      -S ${SPEC_FILE}
