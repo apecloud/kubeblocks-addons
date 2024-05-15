@@ -41,8 +41,6 @@ spec:
     disableExporter: true
     enabledLogs:
     - running
-    switchPolicy:
-      type: Noop
     serviceAccountName: kb-redis-cluster
     resources:
       limits:
