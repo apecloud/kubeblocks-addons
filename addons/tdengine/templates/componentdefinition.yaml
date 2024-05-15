@@ -28,12 +28,6 @@ spec:
             value: {{ .Values.timeZone }}
           - name: TAOS_FQDN
             value: "$(KB_POD_FQDN).cluster.local"
-          # - name: TAOS_FIRST_EP
-          #   value: "$(KB_0_HOSTNAME).$(KB_NAMESPACE).svc.cluster.local:$(SVC_PORT)"
-          # - name: TAOS_ADAPTER_USERNAME
-          #   value: "$(USERNAME)"
-          # - name: TAOS_ADAPTER_PASSWORD
-          #   value: "$(PASSWORD)"
         lifecycle:
           postStart:
             exec:
@@ -61,11 +55,6 @@ spec:
         securityContext:
           runAsNonRoot: true
           runAsUser: 1001
-        # env:
-          # - name: TAOS_KEEPER_TDENGINE_USERNAME
-          #   value: "$(USERNAME)"
-          # - name: TAOS_KEEPER_TDENGINE_PASSWORD
-          #   value: "$(PASSWORD)"
         command: ["taoskeeper"]
         args: ["-c", "/etc/taos/taoskeeper.toml"]
         ports:
@@ -75,10 +64,8 @@ spec:
           - name: metrics-configuration
             mountPath: /etc/taos/
   vars:
-    - name: TDENGINE_POD_LIST
-      valueFrom:
-        componentVarRef:
-          instanceNames: Required
+    - name: TAOS_FIRST_EP
+      value: "$$(KB_0_HOSTNAME).$(KB_NAMESPACE).svc.cluster.local:6030"
     - name: TAOS_ADAPTER_USERNAME
       value: {{ .Values.defaultAuth.username }}
     - name: TAOS_ADAPTER_PASSWORD
@@ -97,9 +84,9 @@ spec:
       #     name: {{ .Values.defaultAuth.username }}
       #     optional: false
       #     password: Required
-  systemAccounts:
-    - name: {{ .Values.defaultAuth.username }}
-      initAccount: true
+  # systemAccounts:
+  #   - name: {{ .Values.defaultAuth.username }}
+  #     initAccount: true
   configs:
     - name: tdengine-taos-config
       templateRef: tdengine-config-template
@@ -110,17 +97,6 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: metrics-configuration
       defaultMode: 0444
-    - name: tdengine-taos-env
-      templateRef: tdengine-taos-env
-      namespace: {{ .Release.Namespace }}
-      constraintRef: tdengine-env-constraints
-      volumeName: taos-env
-      keys:
-        - taos-env
-      injectEnvTo:
-        - tdengine
-      reRenderResourceTypes:
-        - hscale
   scripts:
     - name: taos-adapter-scripts
       templateRef: taos-adapter-scripts-template

@@ -24,13 +24,3 @@ data:
     fileRegex: taos.cfg
     formatterConfig:
       format: redis
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: tdengine-taos-env
-  labels:
-    {{- include "tdengine.labels" . | nindent 4 }}
-data:
-  taos-env: |-
-      {{- .Files.Get "configs/tdengine-taos-env.tpl" | nindent 4 }}

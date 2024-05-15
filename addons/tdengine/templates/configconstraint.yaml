@@ -53,14 +53,3 @@ spec:
   # mysql configuration file format
   fileFormatConfig:
     format: redis
-
----
-apiVersion: apps.kubeblocks.io/v1beta1
-kind: ConfigConstraint
-metadata:
-  name: tdengine-env-constraints
-  labels:
-    {{- include "tdengine.labels" . | nindent 4 }}
-spec:
-  fileFormatConfig:
-    format: yaml
