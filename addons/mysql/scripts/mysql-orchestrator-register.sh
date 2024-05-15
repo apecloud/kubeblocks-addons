@@ -9,13 +9,8 @@ mysql_password="$MYSQL_ROOT_PASSWORD"
 topology_user="$ORC_TOPOLOGY_USER"
 topology_password="$ORC_TOPOLOGY_PASSWORD"
 
-
-
-replica_count="$KB_REPLICA_COUNT"
 cluster_component_pod_name="$KB_CLUSTER_COMP_NAME"
 component_name="$KB_COMP_NAME"
-
-
 
 # register first pod to orchestrator
 register_to_orchestrator() {
