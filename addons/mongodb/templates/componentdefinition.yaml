@@ -27,7 +27,6 @@ spec:
             targetPort: mongodb
       roleSelector: secondary
     - name: everypod
-      generatePodOrdinalService: true
       spec:
         ports:
           - name: mongodb
