@@ -25,8 +25,6 @@ mysql_port="3306"
 topology_user="$ORC_TOPOLOGY_USER"
 topology_password="$ORC_TOPOLOGY_PASSWORD"
 
-
-replica_count="$KB_REPLICA_COUNT"
 cluster_component_pod_name="$KB_CLUSTER_COMP_NAME"
 component_name="$KB_COMP_NAME"
 kb_cluster_name="$KB_CLUSTER_NAME"
