@@ -48,9 +48,17 @@ spec:
       - /bin/sh
       - -c
       - |
+        replicas=$(eval echo ${KB_POD_LIST} | tr ',' '\n')
+        # Initialize count
+        replca_count=0
+        # Use a for loop to iterate over each space-separated word
+        for item in $replicas; do
+            replca_count=$((replca_count + 1))
+        done
+
         while true; do
           count=$(nslookup ${CLUSTER_JOIN} | awk '/^Address: / { print $2 }' | wc -l)
-          if [ "$count" -eq ${KB_REPLICA_COUNT} ]; then
+          if [ "$count" -eq ${replca_count} ]; then
             break
           fi
           echo "Waiting for all nodes to be running..."
