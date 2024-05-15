@@ -41,8 +41,6 @@ spec:
     - running
     disableExporter: true
     replicas: 2
-    switchPolicy:
-      type: Noop
     resources:
       limits:
         cpu: '0.5'

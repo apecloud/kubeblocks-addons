@@ -46,8 +46,6 @@ Define redis ComponentSpec with ComponentDefinition.
   enabledLogs:
     - running
   serviceAccountName: {{ include "kblib.serviceAccountName" . }}
-  switchPolicy:
-    type: Noop
   {{- include "kblib.componentResources" . | indent 2 }}
   {{- include "kblib.componentStorages" . | indent 2 }}
 {{- end }}
@@ -108,8 +106,6 @@ Define redis ComponentSpec with legacy ClusterDefinition which will be deprecate
   enabledLogs:
     - running
   serviceAccountName: {{ include "kblib.serviceAccountName" . }}
-  switchPolicy:
-    type: Noop
   {{- include "kblib.componentResources" . | indent 2 }}
   {{- include "kblib.componentStorages" . | indent 2 }}
   {{- include "kblib.componentServices" . | indent 2 }}

@@ -6,8 +6,6 @@
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "official-postgresql-cluster.replicaCount" . | indent 6 }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
-      switchPolicy:
-        type: Noop
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
       {{- include "kblib.componentServices" . | indent 6 }}

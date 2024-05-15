@@ -40,8 +40,6 @@ spec:
     disableExporter: true
     serviceAccountName: kb-camellia-cluster
     replicas: 1
-    switchPolicy:
-      type: Noop
     resources:
       limits:
         cpu: '0.5'
@@ -71,8 +69,6 @@ spec:
     - name: redis
       componentDefRef: redis
       replicas: 1
-      switchPolicy:
-        type: Noop
       resources:
         limits:
           cpu: '0.5'
