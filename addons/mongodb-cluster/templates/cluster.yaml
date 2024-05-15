@@ -10,7 +10,9 @@ spec:
   clusterVersionRef: {{ .Values.version }}
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
+  {{- if .Values.useLegacyCompDef }}
   clusterDefinitionRef: mongodb
+  {{- end }}
   componentSpecs:
     - name: mongodb
       {{- if .Values.useLegacyCompDef }}
@@ -18,7 +20,6 @@ spec:
       {{- else }}
       componentDef: mongodb
       {{- end }}
-      {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "mongodb-cluster.replicaCount" . | indent 6 }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentResources" . | indent 6 }}

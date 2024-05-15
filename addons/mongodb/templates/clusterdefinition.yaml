@@ -47,13 +47,6 @@ spec:
             - env
           asEnvFrom:
             - mongodb
-      {{- if not .Values.useHostNetwork }}
-      monitor:
-        builtIn: false
-        exporterConfig:
-          scrapePath: /metrics
-          scrapePort: 9216
-      {{- end }}
       logConfigs:
         {{- range $name,$pattern := .Values.logConfigs }}
         - name: {{ $name }}
