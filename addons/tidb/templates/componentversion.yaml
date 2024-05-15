@@ -7,7 +7,7 @@ metadata:
 spec:
   releases:
     - name: "7.1.5"
-      serviceVersion: "7.1.5" # what's this?
+      serviceVersion: "7.1.5"
       images:
         pd: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/pd:{{ default .Chart.AppVersion .Values.image.tag }}
   compatibilityRules:
@@ -26,7 +26,7 @@ metadata:
 spec:
   releases:
     - name: "7.1.5"
-      serviceVersion: "7.1.5" # what's this?
+      serviceVersion: "7.1.5"
       images:
         tidb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/tidb:{{ default .Chart.AppVersion .Values.image.tag }}
         slowlog: {{ .Values.image.helper.image }}
@@ -46,7 +46,7 @@ metadata:
 spec:
   releases:
     - name: "7.1.5"
-      serviceVersion: "7.1.5" # what's this?
+      serviceVersion: "7.1.5"
       images:
         tikv: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/tikv:{{ default .Chart.AppVersion .Values.image.tag }}
   compatibilityRules:

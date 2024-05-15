@@ -8,7 +8,7 @@ spec:
   provider: kubeblocks
   description: a distributed transactional key-value database
   updateStrategy: BestEffortParallel
-  serviceVersion: "7.1.5" # TODO: why?
+  serviceVersion: "7.1.5" # TODO: is this needed?
   runtime:
     containers:
       - name: tikv
