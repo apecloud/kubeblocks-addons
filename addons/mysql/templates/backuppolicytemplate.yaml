@@ -4,6 +4,7 @@ metadata:
   name: mysql-backup-policy-template
   labels:
     {{- include "mysql.labels" . | nindent 4 }}
+    service-kind/mysql: "true"
   annotations:
     dataprotection.kubeblocks.io/is-default-policy-template: "true"
 spec:
