@@ -73,8 +73,8 @@ spec:
               - "3601"
               - --
               - docker-entrypoint.sh
-              - --config-file="$PGCONF/postgresql.conf"
-              - --hba_file="$PGCONF/pg_hba.conf"
+              - --config-file={{ .Values.confPath }}/postgresql.conf
+              - --hba_file={{ .Values.confPath }}/pg_hba.conf
             volumeMounts:
               - name: dshm
                 mountPath: /dev/shm
@@ -110,8 +110,6 @@ spec:
                   fieldRef:
                     apiVersion: v1
                     fieldPath: metadata.namespace
-              - name: PGDATA
-                value: /var/lib/postgresql/data/data
               - name: POSTGRES_USER
                 valueFrom:
                   secretKeyRef:
