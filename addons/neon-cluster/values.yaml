@@ -5,7 +5,7 @@ terminationPolicy: Delete
 
 useLegacyCompDef:  false
 
-clusterVersionOverride: "neon-pg14-1.0.0"
+clusterVersionOverride: "pg14-1.0.0"
 
 compute:
   replicas: 1
