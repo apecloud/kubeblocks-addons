@@ -25,7 +25,7 @@ spec:
         - /config
         - /kubeblocks/
         image: {{ .Values.image.registry | default "docker.io" }}/apecloud/syncer:latest
-        imagePullPolicy: Always
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         name: init-syncer
         volumeMounts:
         - mountPath: /kubeblocks
@@ -36,7 +36,7 @@ spec:
         - /xtrabackup-2.4
         - /kubeblocks/xtrabackup
         image: {{ .Values.image.registry | default "docker.io" }}/apecloud/syncer:mysql
-        imagePullPolicy: Always
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         name: init-xtrabackup
         volumeMounts:
         - mountPath: /kubeblocks
@@ -62,7 +62,7 @@ spec:
             if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
               skip_slave_start="ON"
             fi
-            /scripts/docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) \
+            /scripts/docker-entrypoint-5.7.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) \
             --ignore-db-dir=lost+found \
             --plugin-load-add=rpl_semi_sync_master=semisync_master.so \
             --plugin-load-add=rpl_semi_sync_slave=semisync_slave.so \
@@ -96,7 +96,7 @@ spec:
         - /config
         - /kubeblocks/
         image: {{ .Values.image.registry | default "docker.io" }}/apecloud/syncer:latest
-        imagePullPolicy: Always
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         name: init-syncer
         volumeMounts:
         - mountPath: /kubeblocks
@@ -107,7 +107,7 @@ spec:
         - /xtrabackup-8.0
         - /kubeblocks/xtrabackup
         image: {{ .Values.image.registry | default "docker.io" }}/apecloud/syncer:mysql
-        imagePullPolicy: Always
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         name: init-xtrabackup
         volumeMounts:
         - mountPath: /kubeblocks
