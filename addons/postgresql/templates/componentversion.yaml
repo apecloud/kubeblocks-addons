@@ -1,0 +1,58 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: postgresql
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "postgresql.compDefPostgresql12" . }}
+      releases:
+        - 12.14.0
+        - 12.14.1
+        - 12.15.0
+    - compDefs:
+        - {{ include "postgresql.compDefPostgresql14" . }}
+      releases:
+        - 14.7.2
+        - 14.8.0
+    - compDefs:
+        - {{ include "postgresql.compDefPostgresql15" . }}
+      releases:
+        - 15.7.0
+  releases:
+    - name: 12.14.0
+      changes:
+      serviceVersion: 12.14.0
+      images:
+        postgresql: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/spilo:12.14.0-pgvector-v0.6.1
+        pgbouncer: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/pgbouncer:1.19.0
+    - name: 12.14.1
+      changes:
+      serviceVersion: 12.14.1
+      images:
+        postgresql: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/spilo:12.14.1-pgvector-v0.6.1
+        pgbouncer: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/pgbouncer:1.19.0
+    - name: 12.15.0
+      changes:
+      serviceVersion: 12.15.0 # {{ .Values.componentServiceVersion.postgresql14  }}
+      images:
+        postgresql: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/spilo:12.15.0-pgvector-v0.6.1
+        pgbouncer: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/pgbouncer:1.19.0
+    - name: 14.7.2
+      changes:
+      serviceVersion: 14.7.2
+      images:
+        postgresql: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/spilo:14.7.2-pgvector-v0.6.1
+        pgbouncer: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/pgbouncer:1.19.0
+    - name: 14.8.0
+      changes:
+      serviceVersion: 14.8.0 # {{ .Values.componentServiceVersion.postgresql14  }}
+      images:
+        postgresql: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/spilo:14.8.0-pgvector-v0.6.1
+        pgbouncer: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/pgbouncer:1.19.0
+    - name: 15.7.0
+      changes:
+      serviceVersion: 15.7.0 # {{ .Values.componentServiceVersion.postgresql15  }}
+      images:
+        postgresql: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/spilo:15.7.0
+        pgbouncer: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/pgbouncer:1.19.0
