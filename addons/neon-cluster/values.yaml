@@ -5,6 +5,8 @@ terminationPolicy: Delete
 
 useLegacyCompDef:  false
 
+clusterVersionOverride: "neon-pg14-1.0.0"
+
 compute:
   replicas: 1
   resources:
@@ -24,7 +26,7 @@ storagebroker:
     limits:
       cpu: "1"
       memory: "2Gi"
-  dataStorage: "5Gi"
+  dataStorage: "20Gi"
 
 safekeeper:
   replicas: 3
@@ -35,7 +37,7 @@ safekeeper:
     limits:
       cpu: "1"
       memory: "2Gi"
-  dataStorage: "5Gi"
+  dataStorage: "20Gi"
 
 pageserver:
   replicas: 1
@@ -46,4 +48,4 @@ pageserver:
     limits:
       cpu: "1"
       memory: "2Gi"
-  dataStorage: "5Gi"
+  dataStorage: "20Gi"

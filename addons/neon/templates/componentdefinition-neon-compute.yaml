@@ -8,7 +8,7 @@ spec:
   description: A neon compute component definition for Kubernetes
   provider: KubeBlocks
   systemAccounts:
-    - name: neon
+    - name: public
       initAccount: true
       passwordGenerationPolicy: &defaultPasswdGenerationPolicy
         length: 10
@@ -39,13 +39,13 @@ spec:
       valueFrom:
         credentialVarRef:
           compDef: {{ include "neon-compute.componentDefName" . }}
-          name: neon
+          name: public
           username: Required
     - name: NEON_COMPUTE_PGPASSWORD
       valueFrom:
         credentialVarRef:
           compDef: {{ include "neon-compute.componentDefName" . }}
-          name: neon
+          name: public
           password: Required
     - name: NEON_SAFEKEEPERS_HEADLESS
       valueFrom:

@@ -11,7 +11,7 @@ spec:
   componentSpecs:
     - name: compute
       {{- if .Values.useLegacyCompDef }}
-      componentDefRef: compute
+      componentDefRef: neon-compute
       {{- else }}
       componentDef: compute
       {{- end }}
@@ -40,7 +40,7 @@ spec:
                 storage: {{ .Values.safekeeper.dataStorage }}
     - name: storagebroker
       {{- if .Values.useLegacyCompDef }}
-      componentDefRef: storagebroker
+      componentDefRef: neon-storagebroker
       {{- else }}
       componentDef: storagebroker
       {{- end }}
@@ -69,7 +69,7 @@ spec:
                 storage: {{ .Values.storagebroker.dataStorage }}
     - name: safekeeper
       {{- if .Values.useLegacyCompDef }}
-      componentDefRef: safekeeper
+      componentDefRef: neon-safekeeper
       {{- else }}
       componentDef: safekeeper
       {{- end }}
@@ -98,7 +98,7 @@ spec:
                 storage: {{ .Values.safekeeper.dataStorage }}
     - name: pageserver
       {{- if .Values.useLegacyCompDef }}
-      componentDefRef: pageserver
+      componentDefRef: neon-pageserver
       {{- else }}
       componentDef: pageserver
       {{- end }}

@@ -36,7 +36,7 @@ spec:
           - safekeeper,pageserver
           - storagebroker
   componentDefs:
-    - name: compute
+    - name: neon-compute
       workloadType: Stateful
       characterType: postgresql
       service:
@@ -45,14 +45,14 @@ spec:
           protocol: TCP
           port: 55432
       componentDefRef:
-        - componentDefName: pageserver
+        - componentDefName: neon-pageserver
           componentRefEnv:
             - name: PAGESERVER
               valueFrom:
                 type: HeadlessServiceRef
                 format: $(POD_FQDN){{ .Values.clusterDomain }}
                 joinWith: ","
-        - componentDefName: safekeeper
+        - componentDefName: neon-safekeeper
           componentRefEnv:
             - name: SAFEKEEPERS
               valueFrom:
@@ -99,7 +99,7 @@ spec:
                 set -ex
                 trap : TERM INT
                 /compute.sh
-    - name: storagebroker
+    - name: neon-storagebroker
       workloadType: Stateful
       characterType: storagebroker
       podSpec:
@@ -112,12 +112,12 @@ spec:
               - "storage_broker"
               - "-l"
               - "0.0.0.0:50051"
-    - name: safekeeper
+    - name: neon-safekeeper
       workloadType: Stateful
       characterType: safekeeper
       componentDefRef:
         - &storagebrokerRef
-          componentDefName: storagebroker
+          componentDefName: neon-storagebroker
           componentRefEnv:
             - name: NEON_BROKER_SVC
               valueFrom:
@@ -147,7 +147,7 @@ spec:
                 set -ex
                 trap : TERM INT
                 exec safekeeper --id=1 -D /data --broker-endpoint=http://$NEON_BROKER_SVC:50051 -l ${POD_IP}:5454 --listen-http=0.0.0.0:7676
-    - name: pageserver
+    - name: neon-pageserver
       workloadType: Stateful
       characterType: pageserver
       componentDefRef:

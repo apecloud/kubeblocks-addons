@@ -19,14 +19,14 @@ fi
 IFS=',' read -ra PAGESERVER_ARRAY <<< "$NEON_PAGESERVER_POD_LIST"
 PAGESERVER=""
 for pod in "${PAGESERVER_ARRAY[@]}"; do
-    PAGESERVER+="${pod}.neon-cluster-pageserver-headless.default.svc.cluster.local,"
+    PAGESERVER+="${pod}.$NEON_PAGESERVER_HEADLESS.$KB_NAMESPACE.svc.cluster.local,"
 done
 PAGESERVER="${PAGESERVER%,}"
 
 IFS=',' read -ra SAFEKEEPERS_ARRAY <<< "$NEON_SAFEKEEPERS_POD_LIST"
 SAFEKEEPERS=""
 for pod in "${SAFEKEEPERS_ARRAY[@]}"; do
-    SAFEKEEPERS+="${pod}.${NEON_SAFEKEEPERS_HEADLESS}.default.svc.cluster.local:5454,"
+    SAFEKEEPERS+="${pod}.${NEON_SAFEKEEPERS_HEADLESS}.$KB_NAMESPACE.svc.cluster.local:5454,"
 done
 SAFEKEEPERS="${SAFEKEEPERS%,}" 
 
@@ -111,6 +111,6 @@ echo $PWD
 ls -lah /data
 
 /opt/neondatabase-neon/target/release/compute_ctl --pgdata /data/pgdata \
-     -C "postgresql://neon@localhost:55432/postgres"  \
+     -C "postgresql://public@localhost:55432/postgres"  \
      -b /opt/neondatabase-neon/pg_install/v14/bin/postgres   \
      -S ${SPEC_FILE}
