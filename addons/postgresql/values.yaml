@@ -20,6 +20,8 @@ image:
     major14:
       minor072: 14.7.2-pgvector-v0.6.1
       minor080: 14.8.0-pgvector-v0.6.1
+    major15:
+      minor070: 15.7.0
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
   ## ref: https://kubernetes.io/docs/user-guide/images/#pre-pulling-images
