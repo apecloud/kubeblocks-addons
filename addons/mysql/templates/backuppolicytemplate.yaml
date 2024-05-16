@@ -13,6 +13,7 @@ spec:
   - componentDefs: [mysql-5.7.44-orc, mysql-5.7.44, mysql-8.0.33-orc, mysql-8.0.33]
     target:
       role: secondary
+      account: root
     backupMethods:
     - name: xtrabackup
       snapshotVolumes: false
