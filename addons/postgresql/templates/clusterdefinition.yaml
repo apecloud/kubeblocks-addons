@@ -387,3 +387,13 @@ spec:
               statements:
                 creation: CREATE USER $(USERNAME) WITH REPLICATION PASSWORD '$(PASSWD)';
                 update: ALTER USER $(USERNAME) WITH PASSWORD '$(PASSWD)';
+  topologies:
+    - name: standalone
+      components:
+        - name: postgresql
+          compDef: {{ include "postgresql.componentDefNamePrefix" . }}
+      default: true
+    - name: replication
+      components:
+        - name: postgresql
+          compDef: {{ include "postgresql.componentDefNamePrefix" . }}
