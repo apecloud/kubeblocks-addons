@@ -1,8 +1,8 @@
 {{- include "kblib.clusterCommon" . }}
   clusterDefinitionRef: postgresql
+  topology: {{ .Values.mode }}
   componentSpecs:
     - name: postgresql
-      componentDefRef: postgresql
       {{- include "postgresql-cluster.replicaCount" . | indent 6 }}
       enabledLogs:
         - running

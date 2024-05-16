@@ -4,7 +4,7 @@
 
 ## @param version MySQL cluster version
 ##
-version: postgresql-14.8.0
+version: postgresql-15.7.0
 
 ## @param mode postgresql cluster topology mode, standalone, replication
 ##
