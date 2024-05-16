@@ -111,6 +111,6 @@ echo $PWD
 ls -lah /data
 
 /opt/neondatabase-neon/target/release/compute_ctl --pgdata /data/pgdata \
-     -C "postgresql://public@localhost:55432/postgres"  \
+     -C "postgresql://cloud_admin@localhost:55432/postgres"  \
      -b /opt/neondatabase-neon/pg_install/v14/bin/postgres   \
      -S ${SPEC_FILE}

@@ -6,7 +6,7 @@ metadata:
     {{- include "neon-cluster.labels" . | indent 4 }}
 spec:
   clusterDefinitionRef: neon
-  clusterVersionRef: neon-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
+  clusterVersionRef: {{ default .Chart.AppVersion .Values.clusterVersionOverride }}
   terminationPolicy: {{ .Values.terminationPolicy }}
   componentSpecs:
     - name: compute
