@@ -24,7 +24,7 @@ spec:
         - /bin/syncer
         - /config
         - /kubeblocks/
-        image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:latest
+        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/syncer:latest
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         name: init-syncer
         volumeMounts:
@@ -65,7 +65,7 @@ spec:
             --skip-slave-start=$skip_slave_start
     systemAccountSpec:
       cmdExecutorConfig:
-        image: docker.io/mysql:{{ .Values.image.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
 ---
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ClusterVersion
@@ -89,7 +89,7 @@ spec:
         - /bin/syncer
         - /config
         - /kubeblocks/
-        image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:latest
+        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/syncer:latest
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         name: init-syncer
         volumeMounts:
