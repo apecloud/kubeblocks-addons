@@ -34,7 +34,7 @@ spec:
         pgbouncer: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/pgbouncer:1.19.0
     - name: 12.15.0
       changes:
-      serviceVersion: 12.15.0 # {{ .Values.componentServiceVersion.postgresql14  }}
+      serviceVersion: 12.15.0 # {{ .Values.componentServiceVersion.postgresql12  }}
       images:
         postgresql: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/spilo:12.15.0-pgvector-v0.6.1
         pgbouncer: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/pgbouncer:1.19.0
