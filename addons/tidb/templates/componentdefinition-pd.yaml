@@ -78,9 +78,9 @@ spec:
   # systemAccounts:
   #   - name: root
   #     initAccount: true
-  builtinMonitorContainer:
-    name: pd
-    metricsPort: "2379"
+  exporter:
+    containerName: pd
+    scrapePort: "2379"
   services:
     - name: pd
       spec:

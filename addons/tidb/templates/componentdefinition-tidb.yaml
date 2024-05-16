@@ -48,9 +48,9 @@ spec:
     volumes:
       - name: slowlog
         emptyDir: {}
-  builtinMonitorContainer:
-    name: tidb
-    metricsPort: "10080"
+  exporter:
+    containerName: tidb
+    scrapePort: "10080"
   services:
     - name: tidb
       spec:

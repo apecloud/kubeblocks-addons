@@ -45,9 +45,9 @@ spec:
             - -c
             - |
               {{- .Files.Get "scripts/tikv_member_leave.sh" | nindent 14 }}
-  builtinMonitorContainer:
-    name: tikv
-    metricsPort: "20180"
+  exporter:
+    containerName: tikv
+    scrapePort: "20180"
   services:
     - name: tikv
       spec:
