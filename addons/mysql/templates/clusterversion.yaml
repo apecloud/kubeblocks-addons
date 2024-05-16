@@ -16,7 +16,7 @@ spec:
         namespace: {{ .Release.Namespace }}
     versionsContext:
       initContainers:
-      - image: {{ .Values.image.registry | default "docker.io" }}/mysql_audit_log:{{ .Values.image.tag }}
+      - image: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:{{ .Values.image.tag }}
         name: init-data
       - command:
         - cp
@@ -24,7 +24,7 @@ spec:
         - /bin/syncer
         - /config
         - /kubeblocks/
-        image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:latest
+        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/syncer:latest
         imagePullPolicy: Always
         name: init-syncer
         volumeMounts:
@@ -35,7 +35,7 @@ spec:
         - -r
         - /xtrabackup-2.4
         - /kubeblocks/xtrabackup
-        image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:mysql
+        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/syncer:mysql
         imagePullPolicy: Always
         name: init-xtrabackup
         volumeMounts:
@@ -87,7 +87,7 @@ spec:
   - componentDefRef: mysql
     versionsContext:
       initContainers:
-      - image: {{ .Values.image.registry | default "docker.io" }}/mysql_audit_log:8.0.33
+      - image: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         name: init-data
       - command:
         - cp
@@ -95,7 +95,7 @@ spec:
         - /bin/syncer
         - /config
         - /kubeblocks/
-        image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:latest
+        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/syncer:latest
         imagePullPolicy: Always
         name: init-syncer
         volumeMounts:
@@ -106,7 +106,7 @@ spec:
         - -r
         - /xtrabackup-8.0
         - /kubeblocks/xtrabackup
-        image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:mysql
+        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/syncer:mysql
         imagePullPolicy: Always
         name: init-xtrabackup
         volumeMounts:
