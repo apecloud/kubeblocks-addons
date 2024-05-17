@@ -69,9 +69,12 @@ spec:
       votable: true
   lifecycleActions:
     roleProbe:
-      builtinHandler: mongodb
       periodSeconds: {{ .Values.roleProbe.periodSeconds }}
       timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+      customHandler:
+        grpc:
+          port: "3701"
+    memberLeave:
       customHandler:
         grpc:
           port: "3701"
