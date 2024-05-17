@@ -23,3 +23,5 @@ serviceAccount:
 clusterDomain: ".cluster.local"
 
 compDefinitionVersionSuffix: ""
+
+componentServiceVersion: "1.0.0"

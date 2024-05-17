@@ -9,11 +9,11 @@ spec:
   clusterVersionRef: neon-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
   terminationPolicy: {{ .Values.terminationPolicy }}
   componentSpecs:
-    - name: compute
+    - name: neon-compute
       {{- if .Values.useLegacyCompDef }}
       componentDefRef: neon-compute
       {{- else }}
-      componentDef: compute
+      componentDef: neon-compute
       {{- end }}
       replicas: {{ .Values.compute.replicas }}
       {{- with  .Values.compute.resources }}
@@ -38,11 +38,11 @@ spec:
             resources:
               requests:
                 storage: {{ .Values.safekeeper.dataStorage }}
-    - name: storagebroker
+    - name: neon-storbroker
       {{- if .Values.useLegacyCompDef }}
-      componentDefRef: neon-storagebroker
+      componentDefRef: neon-storbroker
       {{- else }}
-      componentDef: storagebroker
+      componentDef: neon-storbroker
       {{- end }}
       replicas: 1
       {{- with  .Values.storagebroker.resources }}
@@ -67,11 +67,11 @@ spec:
             resources:
               requests:
                 storage: {{ .Values.storagebroker.dataStorage }}
-    - name: safekeeper
+    - name: neon-safekeeper
       {{- if .Values.useLegacyCompDef }}
       componentDefRef: neon-safekeeper
       {{- else }}
-      componentDef: safekeeper
+      componentDef: neon-safekeeper
       {{- end }}
       replicas: {{ .Values.safekeeper.replicas }}
       {{- with  .Values.safekeeper.resources }}
@@ -96,11 +96,11 @@ spec:
             resources:
               requests:
                 storage: {{ .Values.safekeeper.dataStorage }}
-    - name: pageserver
+    - name: neon-pageserver
       {{- if .Values.useLegacyCompDef }}
       componentDefRef: neon-pageserver
       {{- else }}
-      componentDef: pageserver
+      componentDef: neon-pageserver
       {{- end }}
       replicas: {{ .Values.pageserver.replicas }}
       {{- with  .Values.safekeeper.resources }}

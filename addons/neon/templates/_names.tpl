@@ -4,9 +4,9 @@ Define neon-compute component defintion name
 */}}
 {{- define "neon-compute.componentDefName" -}}
 {{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-compute
+neon-compute
 {{- else -}}
-{{- printf "compute-%s" .Values.compDefinitionVersionSuffix -}}
+{{- printf "neon-compute-%s" .Values.compDefinitionVersionSuffix -}}
 {{- end -}}
 {{- end -}}
 
@@ -15,9 +15,9 @@ Define neon-pageserver component defintion name
 */}}
 {{- define "neon-pageserver.componentDefName" -}}
 {{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-pageserver
+neon-pageserver
 {{- else -}}
-{{- printf "pageserver-%s" .Values.compDefinitionVersionSuffix -}}
+{{- printf "neon-pageserver-%s" .Values.compDefinitionVersionSuffix -}}
 {{- end -}}
 {{- end -}}
 
@@ -26,9 +26,9 @@ Define neon-safekeeper component defintion name
 */}}
 {{- define "neon-safekeeper.componentDefName" -}}
 {{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-safekeeper
+neon-safekeeper
 {{- else -}}
-{{- printf "safekeeper-%s" .Values.compDefinitionVersionSuffix -}}
+{{- printf "neon-safekeeper-%s" .Values.compDefinitionVersionSuffix -}}
 {{- end -}}
 {{- end -}}
 
@@ -37,9 +37,9 @@ Define neon-safekeeper component defintion name
 */}}
 {{- define "neon-storagebroker.componentDefName" -}}
 {{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-storagebroker
+neon-storbroker
 {{- else -}}
-{{- printf "storagebroker-%s" .Values.compDefinitionVersionSuffix -}}
+{{- printf "neon-storbroker-%s" .Values.compDefinitionVersionSuffix -}}
 {{- end -}}
 {{- end -}}
 

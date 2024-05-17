@@ -37,8 +37,8 @@ spec:
         name: neon-pageserver
       - name: scripts
         mountPath: /scripts
-  serviceKind: pageserver
-  serviceVersion: 1.0.0
+  serviceKind: neon-pageserver
+  serviceVersion: {{ .Values.componentServiceVersion }}
   services:
   - name: neon-pageserver
     serviceName: neon-pageserver

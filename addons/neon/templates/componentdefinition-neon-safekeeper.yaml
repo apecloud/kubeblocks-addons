@@ -42,8 +42,8 @@ spec:
         mountPath: /scripts
       - mountPath: /usr/local/neon/safekeeper
         name: neon-safekeeper
-  serviceKind: safekeeper
-  serviceVersion: 1.0.0
+  serviceKind: neon-safekeeper
+  serviceVersion: {{ .Values.componentServiceVersion }}
   services:
   - name: neon-safekeeper
     serviceName: neon-safekeeper

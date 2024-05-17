@@ -10,7 +10,7 @@ If you want to enter neon's compute-node virtual machine, please run:
 kubectl exec -it $(kubectl get neonvm vm-compute-node -ojsonpath='{.status.podName}') -- screen /dev/pts/0
 
 3.After entering the virtual, you can run the following command to connect and test to pg :
-psql -p55432 -h 127.0.0.1 -U cloud-admin postgres
+psql -p55432 -h 127.0.0.1 -U cloud_admin postgres
 CREATE TABLE t(key int primary key, value text);
 insert into t values(1,1);
 select * from t;

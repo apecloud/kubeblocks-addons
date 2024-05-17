@@ -13,28 +13,30 @@ spec:
     host: "$(SVC_FQDN)"
     port: "$(SVC_PORT_postgresql)"
   topologies:
-    - name: defaultTopology
+    - name: default
       components:
-        - name: storagebroker
-          compDef: {{ include "neon-storagebroker.componentDefName" . }}
-        - name: safekeeper
-          compDef: {{ include "neon-safekeeper.componentDefName" . }}
-        - name: pageserver
+        - name: neon-pageserver
           compDef: {{ include "neon-pageserver.componentDefName" . }}
-        - name: compute
+        - name: neon-safekeeper
+          compDef: {{ include "neon-safekeeper.componentDefName" . }}
+        - name: neon-storbroker
+          compDef: {{ include "neon-storagebroker.componentDefName" . }}
+        - name: neon-compute
           compDef: {{ include "neon-compute.componentDefName" . }}
       default: true
       orders:  
         provision:  
-          - storagebroker,safekeeper,pageserver,compute
+          - neon-storbroker
+          - neon-safekeeper,neon-pageserver
+          - neon-compute
         terminate:  
-          - compute
-          - safekeeper,pageserver
-          - storagebroker
+          - neon-storbroker
+          - neon-safekeeper,neon-pageserver
+          - neon-compute
         update: 
-          - compute
-          - safekeeper,pageserver
-          - storagebroker
+          - neon-storbroker
+          - neon-safekeeper,neon-pageserver
+          - neon-compute
   componentDefs:
     - name: neon-compute
       workloadType: Stateful
@@ -99,15 +101,15 @@ spec:
                 set -ex
                 trap : TERM INT
                 /compute.sh
-    - name: neon-storagebroker
+    - name: neon-storbroker
       workloadType: Stateful
       characterType: storagebroker
       podSpec:
         containers:
-          - name: neon-storagebroker
+          - name: neon-storbroker
             volumeMounts:
               - mountPath: /usr/local/neon/storagebroker
-                name: neon-storagebroker
+                name: neon-storbroker
             command:
               - "storage_broker"
               - "-l"
@@ -117,7 +119,7 @@ spec:
       characterType: safekeeper
       componentDefRef:
         - &storagebrokerRef
-          componentDefName: neon-storagebroker
+          componentDefName: neon-storbroker
           componentRefEnv:
             - name: NEON_BROKER_SVC
               valueFrom:
