@@ -73,11 +73,11 @@ spec:
       timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
       customHandler:
         grpc:
-          port: "3701"
+          port: 3701
     memberLeave:
       customHandler:
         grpc:
-          port: "3701"
+          port: 3701
       #   container: mongodb
       #   exec:
       #     command:
