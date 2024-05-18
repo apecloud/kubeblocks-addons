@@ -22,6 +22,6 @@ serviceAccount:
 
 clusterDomain: ".cluster.local"
 
-compDefinitionVersionSuffix: ""
+compDefinitionVersionSuffix: "pg14"
 
 componentServiceVersion: "1.0.0"

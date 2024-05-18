@@ -1,0 +1,16 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: neon-storbroker
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "neon-storbroker.componentDefNamePrefix" . }}
+      releases:
+        - pg14-1.0.0
+  releases:
+    - name: pg14-1.0.0 
+      changes:
+      serviceVersion: 1.0.0
+      images:
+        neon-storbroker: perconalab/neon:pg14-1.0.0
