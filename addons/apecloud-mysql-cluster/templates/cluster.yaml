@@ -6,7 +6,7 @@ metadata:
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
   {{- if and (eq .Values.mode "raftGroup") .Values.proxyEnabled }}
   annotations:
-    kubeblocks.io/extra-env: '{"KB_USER_PROXY_ENABLED":"on"}'
+    kubeblocks.io/extra-env: '{"KB_PROXY_ENABLED":"on"}'
   {{- end }}
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}

@@ -108,6 +108,11 @@ configs:
     constraintRef: {{ include "apecloud-mysql.configConstraintName" . }}
     volumeName: mysql-config
     namespace: {{ .Release.Namespace }}
+  - name: vttablet-config
+    templateRef: {{ include "apecloud-mysql.configTplVttabletName" . }}
+    constraintRef: {{ include "apecloud-mysql.configConstraintVttabletName" . }}
+    volumeName: mysql-scale-config
+    namespace: {{ .Release.Namespace }}
 logConfigs:
   {{- range $name,$pattern := .Values.logConfigs }}
   - name: {{ $name }}
@@ -274,6 +279,42 @@ lifecycle:
     exec:
       command: [ "/scripts/pre-stop.sh" ]
 {{- end -}}
+
+{{- define "apecloud-mysql.spec.runtime.vtablet" -}}
+ports:
+  - containerPort: 15100
+    name: vttabletport
+  - containerPort: 16100
+    name: vttabletgrpc
+env:
+  - name: CELL
+    value: {{ .Values.wesqlscale.cell | default "zone1" | quote }}
+  - name: ETCD_SERVER
+    value: "$(KB_CLUSTER_NAME)-vtcontroller-headless"
+  - name: ETCD_PORT
+    value: "2379"
+  - name: TOPOLOGY_FLAGS
+    value: "--topo_implementation etcd2 --topo_global_server_address $(ETCD_SERVER):$(ETCD_PORT) --topo_global_root /vitess/global"
+  - name: VTTABLET_PORT
+    value: "15100"
+  - name: VTTABLET_GRPC_PORT
+    value: "16100"
+  - name: VTCTLD_HOST
+    value: "$(KB_CLUSTER_NAME)-vtcontroller-headless"
+  - name: VTCTLD_WEB_PORT
+    value: "15000"
+  - name: SERVICE_PORT
+    value: "$(VTTABLET_PORT)"
+command: ["/scripts/vttablet.sh"]
+volumeMounts:
+  - name: scripts
+    mountPath: /scripts
+  - name: mysql-scale-config
+    mountPath: /conf
+  - name: data
+    mountPath: /vtdataroot
+{{- end }}
+
 
 {{- define "apecloud-mysql.spec.runtime.exporter" -}}
 command: [ "/scripts/exporter_start.sh" ]
