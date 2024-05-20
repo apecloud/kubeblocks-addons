@@ -16,7 +16,7 @@ spec:
         namespace: {{ .Release.Namespace }}
     versionsContext:
       initContainers:
-      - image: {{ .Values.image.registry | default "docker.io" }}/mysql_audit_log:{{ .Values.image.tag }}
+      - image: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:{{ .Values.image.tag }}
         name: init-data
       - command:
         - cp
@@ -24,8 +24,8 @@ spec:
         - /bin/syncer
         - /config
         - /kubeblocks/
-        image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:latest
-        imagePullPolicy: Always
+        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/syncer:latest
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         name: init-syncer
         volumeMounts:
         - mountPath: /kubeblocks
@@ -35,8 +35,8 @@ spec:
         - -r
         - /xtrabackup-2.4
         - /kubeblocks/xtrabackup
-        image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:mysql
-        imagePullPolicy: Always
+        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/syncer:mysql
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         name: init-xtrabackup
         volumeMounts:
         - mountPath: /kubeblocks
@@ -62,7 +62,7 @@ spec:
             if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
               skip_slave_start="ON"
             fi
-            /scripts/docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) \
+            /scripts/docker-entrypoint-5.7.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) \
             --ignore-db-dir=lost+found \
             --plugin-load-add=rpl_semi_sync_master=semisync_master.so \
             --plugin-load-add=rpl_semi_sync_slave=semisync_slave.so \
@@ -87,7 +87,7 @@ spec:
   - componentDefRef: mysql
     versionsContext:
       initContainers:
-      - image: {{ .Values.image.registry | default "docker.io" }}/mysql_audit_log:8.0.33
+      - image: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         name: init-data
       - command:
         - cp
@@ -95,8 +95,8 @@ spec:
         - /bin/syncer
         - /config
         - /kubeblocks/
-        image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:latest
-        imagePullPolicy: Always
+        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/syncer:latest
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         name: init-syncer
         volumeMounts:
         - mountPath: /kubeblocks
@@ -106,8 +106,8 @@ spec:
         - -r
         - /xtrabackup-8.0
         - /kubeblocks/xtrabackup
-        image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:mysql
-        imagePullPolicy: Always
+        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/syncer:mysql
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         name: init-xtrabackup
         volumeMounts:
         - mountPath: /kubeblocks

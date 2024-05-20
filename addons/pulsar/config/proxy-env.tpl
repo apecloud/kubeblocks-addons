@@ -21,8 +21,10 @@ PULSAR_MEM: -XX:MinRAMPercentage=30 -XX:MaxRAMPercentage=30 {{ $MaxDirectMemoryS
   {{- end }}
 {{- end }}
 {{- range $i, $e := $.cluster.spec.componentSpecs }}
-  {{- if eq $e.componentDefRef "zookeeper" }}
-    {{- $pulsar_zk_from_component = $e }}
+  {{- if index $e "componentDefRef" }}
+    {{- if eq $e.componentDefRef "zookeeper" }}
+      {{- $pulsar_zk_from_component = $e }}
+    {{- end }}
   {{- end }}
 {{- end }}
 

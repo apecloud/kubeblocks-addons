@@ -6,7 +6,7 @@ metadata:
     {{- include "weaviate.labels" . | nindent 4 }}
 spec:
   # ConfigurationSchema that impose restrictions on engine parameter's rule
-  configSchema:
+  parametersSchema:
     # top level weaviate configuration type
     topLevelKey: WeaviateEnvs
 

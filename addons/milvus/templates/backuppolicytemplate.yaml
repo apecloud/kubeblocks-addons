@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: BackupPolicyTemplate
 metadata:
-  name: milvus-backup-policy-template
+  name: milvus-{{ .Chart.Version }}
   labels:
     clusterdefinition.kubeblocks.io/name: milvus-{{ .Chart.Version }}
     {{- include "milvus.labels" . | nindent 4 }}

@@ -25,7 +25,7 @@ spec:
             image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.obtools.repository }}:{{ .Values.images.obtools.tag }}
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule
-  configSchema:
+  parametersSchema:
     # top level mysql configuration type
     topLevelKey: OBSysVariables
 
@@ -94,7 +94,7 @@ spec:
             image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.obtools.repository }}:{{ .Values.images.obtools.tag }}
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule
-  configSchema:
+  parametersSchema:
     # top level mysql configuration type
     topLevelKey: OBParameters
 
@@ -143,7 +143,7 @@ metadata:
   labels:
     {{- include "oceanbase.labels" . | nindent 4 }}
 spec:
-  configSchema:
+  parametersSchema:
     topLevelKey: OBPortEnvParameters
     cue: |-
       {{- .Files.Get "config/oceanbase-env-constraint.cue" | nindent 6 }}

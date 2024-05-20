@@ -22,7 +22,6 @@ spec:
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentServices" . | indent 6 }}
-      {{- if .Values.orchestrator.enable }}
       {{- if $.Values.persistence.enabled }}
       volumeClaimTemplates:
         - name: data
@@ -34,6 +33,7 @@ spec:
               requests:
                 storage: {{ print .Values.persistence.data.size "Gi" }}
       {{- end }}
+      {{- if .Values.orchestrator.enable }}
       serviceRefs:
         {{- if eq .Values.orchestrator.serviceReference.cluster ""}}
         - name: orchestrator

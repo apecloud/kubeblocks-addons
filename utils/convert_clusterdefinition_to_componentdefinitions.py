@@ -620,7 +620,7 @@ class ComponentDefinitionConvertor:
             "image", "command", "args", "workingDir", "ports", "envFrom",
             "env", "resources", "volumeMounts", "volumeDevices" "livenessProbe",
             "readinessProbe", "startupProbe", "lifecycle", "securityContext",
-            "terminationMessagePath", "TerminationMessagePolicy", "imagePullPolicy",
+            "terminationMessagePath", "terminationMessagePolicy", "imagePullPolicy",
         ]
 
         for key in keys_to_copy:

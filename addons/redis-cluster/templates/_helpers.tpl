@@ -6,7 +6,7 @@ Define redis cluster shardingSpec with ComponentDefinition.
   shards: {{ .Values.redisCluster.shardCount }}
   template:
     name: redis
-    componentDef: redis-cluster
+    componentDef: redis-cluster-7.0
     replicas: {{ .Values.replicas }}
     {{- if .Values.nodePortEnabled }}
     services:
@@ -36,8 +36,6 @@ Define redis ComponentSpec with ComponentDefinition.
 */}}
 {{- define "redis-cluster.componentSpec" }}
 - name: redis
-  componentDef: redis
-  {{- include "kblib.componentMonitor" . | indent 2 }}
   {{- include "redis-cluster.replicaCount" . | indent 2 }}
   {{- if .Values.nodePortEnabled }}
   services:
@@ -48,24 +46,15 @@ Define redis ComponentSpec with ComponentDefinition.
   enabledLogs:
     - running
   serviceAccountName: {{ include "kblib.serviceAccountName" . }}
-  switchPolicy:
-    type: Noop
   {{- include "kblib.componentResources" . | indent 2 }}
   {{- include "kblib.componentStorages" . | indent 2 }}
-{{- if and (eq .Values.mode "replication") .Values.twemproxy.enabled }}
-{{- include "redis-cluster.twemproxyComponentSpec" . }}
-{{- end }}
-{{- if and (eq .Values.mode "replication") .Values.sentinel.enabled }}
-{{- include "redis-cluster.sentinelComponentSpec" . }}
-{{- end }}
 {{- end }}
 
 {{/*
 Define redis sentinel ComponentSpec with ComponentDefinition.
 */}}
 {{- define "redis-cluster.sentinelComponentSpec" }}
-- componentDef: redis-sentinel
-  name: redis-sentinel
+- name: redis-sentinel
   replicas: {{ .Values.sentinel.replicas }}
   {{- if .Values.nodePortEnabled }}
   services:
@@ -95,7 +84,6 @@ Define redis twemproxy ComponentSpec with ComponentDefinition.
 */}}
 {{- define "redis-cluster.twemproxyComponentSpec" }}
 - name: redis-twemproxy
-  componentDef: redis-twemproxy
   serviceAccountName: {{ include "kblib.serviceAccountName" . }}
   replicas: {{ .Values.twemproxy.replicas }}
   resources:
@@ -118,8 +106,6 @@ Define redis ComponentSpec with legacy ClusterDefinition which will be deprecate
   enabledLogs:
     - running
   serviceAccountName: {{ include "kblib.serviceAccountName" . }}
-  switchPolicy:
-    type: Noop
   {{- include "kblib.componentResources" . | indent 2 }}
   {{- include "kblib.componentStorages" . | indent 2 }}
   {{- include "kblib.componentServices" . | indent 2 }}
@@ -183,6 +169,8 @@ replication mode: 2
 {{- if eq .Values.mode "standalone" }}
 replicas: 1
 {{- else if eq .Values.mode "replication" }}
+replicas: {{ max .Values.replicas 2 }}
+{{- else if eq .Values.mode "replication-twemproxy" }}
 replicas: {{ max .Values.replicas 2 }}
 {{- end }}
 {{- end }}

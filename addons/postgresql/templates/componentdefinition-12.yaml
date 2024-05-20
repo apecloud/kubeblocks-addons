@@ -1,14 +1,14 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: postgresql-12
+  name: {{ include "postgresql.compDefPostgresql12" . }}
   labels:
     {{- include "postgresql.labels" . | nindent 4 }}
 spec:
   provider: kubeblocks
   description: A PostgreSQL (with Patroni HA) component definition for Kubernetes
   serviceKind: postgresql
-  serviceVersion: 12.15.0
+  serviceVersion: {{ .Values.componentServiceVersion.postgresql12 }}
   services:
     - name: postgresql
       serviceName: postgresql
@@ -39,11 +39,9 @@ spec:
     - name: {{ $name }}
       filePathPattern: {{ $pattern }}
     {{- end }}
-  monitor:
-    builtIn: false
-    exporterConfig:
-      scrapePath: /metrics
-      scrapePort: {{ .Values.metrics.service.port }}
+  exporter:
+    containerName: exporter
+    scrapePath: /metrics
   configs:
     - name: postgresql-configuration
       templateRef: postgresql12-configuration
@@ -71,6 +69,21 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
+  vars:
+    - name: POSTGRES_USER
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "postgresql.compDefPostgresql12" . }}
+          name: postgres
+          optional: false
+          username: Required
+    - name: POSTGRES_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "postgresql.compDefPostgresql12" . }}
+          name: postgres
+          optional: false
+          password: Required
   systemAccounts:
     - name: postgres
       initAccount: true
@@ -296,6 +309,26 @@ spec:
             value: "6432"
           - name: PGBOUNCER_BIND_ADDRESS
             value: "0.0.0.0"
+      - name: exporter
+        ports:
+          - name: http-metrics
+            containerPort: {{ .Values.metrics.service.port }}
+        image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
+        imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
+        args:
+          - "--extend.query-path=/opt/conf/custom-metrics.yaml"
+          - "--web.listen-address=:{{ .Values.metrics.service.port }}"
+          - "--log.level=info"
+        env:
+          - name: DATA_SOURCE_USER
+            value: $(POSTGRES_USER)
+          - name: DATA_SOURCE_PASS
+            value: $(POSTGRES_PASSWORD)
+          - name: DATA_SOURCE_URI
+            value: "localhost:5432/postgres?sslmode=disable"
+        volumeMounts:
+          - name: postgresql-custom-metrics
+            mountPath: /opt/conf
     volumes:
       - name: dshm
         emptyDir:
@@ -303,6 +336,7 @@ spec:
           {{- with .Values.shmVolume.sizeLimit }}
           sizeLimit: {{ . }}
           {{- end }}
+      ## deprecated since v0.8.3, do not use it
       - name: pod-info
         downwardAPI:
           items:
@@ -312,44 +346,3 @@ spec:
             - path: "component-replicas"
               fieldRef:
                 fieldPath: metadata.annotations['apps.kubeblocks.io/component-replicas']
-  vars:
-    - name: POSTGRES_USER
-      valueFrom:
-        credentialVarRef:
-          compDef: postgresql-12
-          name: postgres
-          optional: false
-          username: Required
-    - name: POSTGRES_PASSWORD
-      valueFrom:
-        credentialVarRef:
-          compDef: postgresql-12
-          name: postgres
-          optional: false
-          password: Required
-  sidecarContainerSpecs:
-    - monitor:
-        kind: metrics
-        scrapeConfig:
-          metricsPath: /metrics
-          metricsPort: http-metrics
-      name: exporter
-      ports:
-        - name: http-metrics
-          containerPort: {{ .Values.metrics.service.port }}
-      image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
-      imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
-      args:
-        - "--extend.query-path=/opt/conf/custom-metrics.yaml"
-        - "--web.listen-address=:{{ .Values.metrics.service.port }}"
-        - "--log.level=info"
-      env:
-        - name: DATA_SOURCE_USER
-          value: $(POSTGRES_USER)
-        - name: DATA_SOURCE_PASS
-          value: $(POSTGRES_PASSWORD)
-        - name: DATA_SOURCE_URI
-          value: "localhost:5432/postgres?sslmode=disable"
-      volumeMounts:
-        - name: postgresql-custom-metrics
-          mountPath: /opt/conf

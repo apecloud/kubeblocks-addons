@@ -11,7 +11,7 @@ Minimal >
 kbcli cluster create my-cluster --cluster-definition greptimedb
 
 Replicas >
-helm install my-cluster ./deploy/greptimedb-cluster
+helm install my-cluster ./addons/greptimedb-cluster
 
 2. Port-forward svc to localhost and connect to GreptimeDB cluster
 

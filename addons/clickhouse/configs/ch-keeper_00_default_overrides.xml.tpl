@@ -23,14 +23,12 @@
 {{- end }}
       </raft_configuration>
   </keeper_server>
-{{- if $.component.monitor.enable }}
-   <!-- Prometheus metrics -->
-   <prometheus>
+  <!-- Prometheus metrics -->
+  <prometheus>
       <endpoint>/metrics</endpoint>
       <port from_env="CLICKHOUSE_METRICS_PORT"></port>
       <metrics>true</metrics>
       <events>true</events>
       <asynchronous_metrics>true</asynchronous_metrics>
   </prometheus>
-{{- end }}
 </clickhouse>

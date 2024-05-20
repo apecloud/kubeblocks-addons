@@ -11,8 +11,17 @@
 image:
   registry: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com
   repository: apecloud/spilo
-  tag: 14.7.2-pgvector-v0.6.1
   digest: ""
+  tags:
+    major12:
+      minor140: 12.14.0-pgvector-v0.6.1
+      minor141: 12.14.1-pgvector-v0.6.1
+      minor150: 12.15.0-pgvector-v0.6.1
+    major14:
+      minor072: 14.7.2-pgvector-v0.6.1
+      minor080: 14.8.0-pgvector-v0.6.1
+    major15:
+      minor070: 15.7.0
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
   ## ref: https://kubernetes.io/docs/user-guide/images/#pre-pulling-images
@@ -26,19 +35,7 @@ image:
   ##   - myRegistryKeySecretName
   ##
   pullSecrets: [ ]
-  ## Set to true if you would like to see extra information on logs
-  ##
-  debug: false
-## Authentication parameters
-##
-auth:
-  ## @param auth.postgresPassword Password for the "postgres" admin user, leave empty 
-  ## for random generated password.
-  ##
-  postgresPassword:
-  ## @param auth.database Name for a custom database to create
-  ##
-  database: "custom_db"
+
 ## Audit settings
 ## @param audit.logHostname Log client hostnames
 ## @param audit.logConnections Add client log-in operations to the log file
@@ -59,10 +56,6 @@ audit:
   logLinePrefix: ""
   logTimezone: ""
 
-## Set PostgreSQL preload extension shared libraries.
-## @param postgresqlSharedPreloadLibraries Shared preload libraries (comma-separated list)
-##
-postgresqlSharedPreloadLibraries: "pg_stat_statements, auto_explain"
 ## Start PostgreSQL pod(s) without limitations on shm memory.
 ## By default, docker and containerd (and possibly other container runtimes) limit `/dev/shm` to `64M`
 ##
@@ -76,14 +69,6 @@ shmVolume:
   ## sizeLimit: 1Gi
   ##
   sizeLimit: ""
-
-## @section PostgreSQL Primary parameters
-##
-primary:
-  ## @param primary.name Name of the primary database (eg primary, master, leader, ...)
-  ##
-  name: primary
-  ## configEnabled: true
 
 ## @section Metrics Parameters
 metrics:
@@ -126,3 +111,15 @@ logConfigs:
 ##   --set enabledClusterVersions={}   # this will disable all cluster versions, the enabledClusterVersions has an empty
 ##                                     # value and the length is 1
 enabledClusterVersions: [ ]
+
+## @param compDefinitionVersion for each ComponentDefinition resources name created by this chart, that can avoid name conflict
+componentDefinitionVersion:
+  postgresql12: "12"
+  postgresql14: "14"
+  postgresql15: "15"
+
+## @param componentServiceVersion define default serviceVersion of each Component
+componentServiceVersion:
+  postgresql12: "12.15.0"
+  postgresql14: "14.8.0"
+  postgresql15: "15.7.0"

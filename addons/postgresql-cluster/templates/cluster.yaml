@@ -1,15 +1,6 @@
 {{- include "kblib.clusterCommon" . }}
-  clusterDefinitionRef: postgresql
-  componentSpecs:
-    - name: postgresql
-      componentDefRef: postgresql
-      {{- include "postgresql-cluster.replicaCount" . | indent 6 }}
-      enabledLogs:
-        - running
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
-      {{- include "kblib.componentMonitor" . | indent 6 }}
-      switchPolicy:
-        type: Noop
-      {{- include "kblib.componentResources" . | indent 6 }}
-      {{- include "kblib.componentStorages" . | indent 6 }}
-      {{- include "kblib.componentServices" . | indent 6 }}
+{{- if .Values.useLegacyCompDef }}
+{{- include "postgresql-cluster.legacyComponentSpec" . }}
+{{- else }}
+{{- include "postgresql-cluster.componentSpec" . }}
+{{- end }}
