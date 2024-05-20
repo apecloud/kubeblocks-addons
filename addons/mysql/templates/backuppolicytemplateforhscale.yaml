@@ -4,12 +4,11 @@ metadata:
   name: mysql-hscale-backup-policy-template
   labels:
     {{- include "mysql.labels" . | nindent 4 }}
-    service-kind/mysql: "true"
 spec:
   clusterDefinitionRef: mysql
   identifier: hscale
   backupPolicies:
-  - componentDefs: [mysql-5.7.44-orc, mysql-5.7.44, mysql-8.0.33-orc, mysql-8.0.33]
+  - componentDefRef: mysql
     target:
       role: secondary
     backupMethods:
@@ -19,15 +18,15 @@ spec:
       envMapping:
         - key: IMAGE_TAG
           valueFrom:
-            componentDef:
-              - names: [ mysql-8.0.33, mysql-8.0.33-orc ]
+            clusterVersionRef:
+              - names: [ mysql-8.0.33 ]
                 mappingValue: "8.0.33-28"
-              - names: [ mysql-5.7.44, mysql-5.7.44-orc]
+              - names: [ mysql-5.7.42 ]
                 mappingValue: "2.4"
         - key: BACKUP_FOR_STANDBY
           valueFrom:
-            componentDef:
-              - names: [ mysql-5.7.44, mysql-5.7.44-orc]
+            clusterVersionRef:
+              - names: [ mysql-5.7.42 ]
                 mappingValue: "true"
       targetVolumes:
         volumeMounts:
@@ -45,39 +44,3 @@ spec:
         volumeMounts:
         - name: data
           mountPath: {{ .Values.dataMountPath }}
-  - componentDefRef: mysql
-    target:
-      role: secondary
-    backupMethods:
-      - name: xtrabackup
-        snapshotVolumes: false
-        actionSetName: mysql-xtrabackup
-        envMapping:
-          - key: IMAGE_TAG
-            valueFrom:
-              clusterVersionRef:
-                - names: [mysql-8.0.33]
-                  mappingValue: "8.0.33-28"
-                - names: [mysql-5.7.42, mysql-5.7.44]
-                  mappingValue: "2.4"
-          - key: BACKUP_FOR_STANDBY
-            valueFrom:
-              clusterVersionRef:
-                - names: [mysql-5.7.42, mysql-5.7.44]
-                  mappingValue: "true"
-        targetVolumes:
-          volumeMounts:
-            - name: data
-              mountPath: {{ .Values.dataMountPath }}
-      - name: volume-snapshot
-        snapshotVolumes: true
-        actionSetName: mysql-volumesnapshot
-        env:
-          - name: RESTORE_STANDBY
-            value: "true"
-        targetVolumes:
-          volumes:
-            - data
-          volumeMounts:
-            - name: data
-              mountPath: {{ .Values.dataMountPath }}
