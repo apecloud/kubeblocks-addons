@@ -120,11 +120,7 @@
       "default": {
         "rootHost": "%",
         "createDatabase": true,
-        "database": "mydb",
-        "username": "u1",
-        "password": "u1",
-        "replicationUser": "replicator",
-        "replicationPassword": ""
+        "database": "mydb"
       },
       "properties": {
         "rootHost": {
@@ -144,30 +140,6 @@
           "description": "Name for a custom database to create.",
           "type": "string",
           "default": "mydb"
-        },
-        "username": {
-          "title": "Username",
-          "description": "Name for a custom user to create.",
-          "type": "string",
-          "default": "u1"
-        },
-        "password": {
-          "title": "Password",
-          "description": "Password for the user.",
-          "type": "string",
-          "default": "u1"
-        },
-        "replicationUser": {
-          "title": "ReplicationUser",
-          "description": "MySQL replication user.",
-          "type": "string",
-          "default": "replicator"
-        },
-        "replicationPassword": {
-          "title": "ReplicationPassword",
-          "description": "MySQL replication user password. Ignored if existing secret is provided.",
-          "type": "string",
-          "default": ""
         }
       }
     },

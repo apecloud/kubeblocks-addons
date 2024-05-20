@@ -38,18 +38,6 @@ auth:
   ## @param auth.database Name for a custom database to create
   ## MYSQL_DATABASE
   database: "mydb"
-  ## @param auth.username Name for a custom user to create
-  ## MYSQL_USER
-  username: "u1"
-  ## MYSQL_PASSWORD
-  password: "u1"
-  ## @param auth.replicationUser MySQL replication user
-  ##
-  replicationUser: "replicator"
-  ## @param auth.replicationPassword MySQL replication user password. Ignored if existing secret is provided
-  ##
-  replicationPassword: ""
-
 
 configTemplate:
 ## @param config template name

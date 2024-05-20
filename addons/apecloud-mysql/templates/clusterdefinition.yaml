@@ -23,6 +23,11 @@ spec:
       compDef: vtcontroller
     - name: vtgate
       compDef: vtgate
+    orders: &orders
+      provision:
+      - mysql
+      - vtcontroller
+      - vtgate
   - name: apecloud-mysql-audit-with-proxy
     components:
     - name: mysql
@@ -31,3 +36,4 @@ spec:
       compDef: vtcontroller
     - name: vtgate
       compDef: vtgate
+    orders: *orders

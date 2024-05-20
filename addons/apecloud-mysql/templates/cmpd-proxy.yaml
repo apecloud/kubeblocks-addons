@@ -153,28 +153,17 @@ spec:
       constraintRef: {{ include "apecloud-mysql.configConstraintVtgateName" . }}
       volumeName: mysql-scale-config
       namespace: {{ .Release.Namespace }}
-  service:
-    ports:
-      - name: serverport
-        port: 15306
-        targetPort: serverport
+  services:
+  - name: vtgate
+    spec:
+      ports:
+        - name: serverport
+          port: 15306
+          targetPort: serverport
   runtime:
     volumes:
       - name: vtgate-log
         emptyDir: { }
-    initContainers:
-      - name: wait-vtctld-ready
-        imagePullPolicy: IfNotPresent
-        image: busybox:1.35
-        env:
-          - name: VTCTLD_HOST
-            value: "$(KB_CLUSTER_NAME)-vtcontroller-headless"
-          - name: VTCTLD_GRPC_PORT
-            value: "15999"
-        command: ["/scripts/wait-for-service.sh", "vtctld", "$(VTCTLD_HOST)", "$(VTCTLD_GRPC_PORT)"]
-        volumeMounts:
-          - name: scripts
-            mountPath: /scripts
     containers:
       - name: vtgate
         image: {{ .Values.wesqlscale.image.registry | default .Values.image.registry }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
