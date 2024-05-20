@@ -26,12 +26,27 @@ spec:
           - name: mysql
             port: 3306
             targetPort: mysql
+      monitor:
+        builtIn: false
+        exporterConfig:
+          scrapePath: /metrics
+          scrapePort: {{ .Values.metrics.service.port }}
+      logConfigs:
+        {{- range $name,$pattern := .Values.logConfigs }}
+        - name: {{ $name }}
+          filePathPattern: {{ $pattern }}
+        {{- end }}
       configSpecs:
         - name: mysql-replication-config
-          templateRef: mysql-8.0-config-template
-          constraintRef: mysql-config-constraints
+          templateRef: oracle-mysql8.0-config-template
+          constraintRef: oracle-mysql8.0-config-constraints
           volumeName: mysql-config
           namespace: {{ .Release.Namespace }}
+        - name: agamotto-configuration
+          templateRef: mysql-agamotto-configuration
+          namespace: {{ .Release.Namespace }}
+          volumeName: agamotto-configuration
+          defaultMode: 0444
       scriptSpecs:
         - name: mysql-scripts
           templateRef: mysql-scripts
@@ -49,17 +64,15 @@ spec:
           - command:
               - bash 
               - -c
-              - |
-                mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog}
-                cp /usr/lib/mysql/plugin/ {{ .Values.dataMountPath }}/plugin -r
-            imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+              - "mkdir -p /var/lib/mysql/{log,binlog}; chown -R mysql:root /var/lib/mysql;"
+            imagePullPolicy: Always
             name: init-data
             volumeMounts:
               - mountPath: {{ .Values.dataMountPath }}
                 name: data
         containers:
           - name: mysql
-            imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+            imagePullPolicy: IfNotPresent
             command:
               - bash 
               - -c
@@ -71,18 +84,10 @@ spec:
                 name: mysql-config
               - name: scripts
                 mountPath: /scripts
-              - mountPath: /kubeblocks
-                name: kubeblocks
             ports:
               - containerPort: 3306
                 name: mysql
-              - containerPort: 3601
-                name: ha
             env:
-              - name: PATH
-                value: /kubeblocks/xtrabackup/bin:/kubeblocks/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-              - name: KB_SERVICE_CHARACTER_TYPE
-                value: mysql
               - name: MYSQL_INITDB_SKIP_TZINFO
                 value: "1"
               - name: SERVICE_PORT
@@ -101,3 +106,40 @@ spec:
                     name: $(CONN_CREDENTIAL_SECRET_NAME)
                     key: password
                     optional: false
+          - name: metrics
+            image:  {{ .Values.metrics.image.registry | default "docker.io" }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
+            imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
+            securityContext:
+              runAsNonRoot: false
+              runAsUser: 0
+            env:
+              - name: DB_TYPE
+                value: MySQL
+              - name: ENDPOINT
+                value: "localhost:3306"
+              - name: MYSQL_USER
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: username
+                    optional: false
+              - name: MYSQL_PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: password
+                    optional: false
+            command: ["/scripts/agamotto.sh"]
+            ports:
+              - name: http-metrics
+                containerPort: {{ .Values.metrics.service.port }}
+            volumeMounts:
+              - name: agamotto-configuration
+                mountPath: /opt/agamotto
+              - name: data
+                mountPath: /data/mysql
+              - name: log-data
+                mountPath: /var/log/kubeblocks
+                readOnly: false
+              - name: scripts
+                mountPath: /scripts

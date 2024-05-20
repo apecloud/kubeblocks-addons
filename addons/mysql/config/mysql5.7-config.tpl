@@ -75,7 +75,6 @@ connect_timeout=10
 port={{ $mysql_port }}
 
 datadir={{ $data_root }}/data
-plugin_dir=/usr/lib64/mysql/plugin/
 
 {{ block "logsBlock" . }}
 log_statements_unsafe_for_binlog=OFF
