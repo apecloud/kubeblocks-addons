@@ -8,9 +8,9 @@ trap : TERM INT
 IFS=',' read -ra BROKER_ARRAY <<< "$NEON_STORAGEBROKER_POD_LIST"
 BROKER_SVC=""
 for pod in "${BROKER_ARRAY[@]}"; do
-    BROKER_SVC+="${pod}.${NEON_STORAGEBROKER_HEADLESS}.default.svc.cluster.local,"
+    BROKER_SVC+="${pod}.${NEON_STORAGEBROKER_HEADLESS}.${KB_NAMESPACE}.svc.cluster.local,"
 done
 BROKER_SVC="${BROKER_SVC%,}"
 
 # Start safekeeper with the dynamically generated broker endpoint
-exec safekeeper --id=1 -D /data --broker-endpoint=http://$BROKER_SVC:50051 -l ${POD_IP}:5454 --listen-http=0.0.0.0:7676
+exec safekeeper --id=1 -D /data --broker-endpoint=http://$BROKER_SVC:$NEON_STORAGEBROKER_PORT -l ${POD_IP}:$SAFEKEEPER_PG_PORT --listen-http=0.0.0.0:$SAFEKEEPER_HTTP_PORT

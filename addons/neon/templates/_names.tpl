@@ -33,13 +33,13 @@ neon-safekeeper
 {{- end -}}
 
 {{/*
-Define neon-storbroker component defintion name
+Define neon-storagebroker component defintion name
 */}}
 {{- define "neon-storagebroker.componentDefName" -}}
 {{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-neon-storbroker
+neon-broker
 {{- else -}}
-{{- printf "neon-storbroker-%s" .Values.compDefinitionVersionSuffix -}}
+{{- printf "neon-broker-%s" .Values.compDefinitionVersionSuffix -}}
 {{- end -}}
 {{- end -}}
 
@@ -65,10 +65,10 @@ Define neon-safekeeper component defintion name prefix
 {{- end -}}
 
 {{/*
-Define neon-storbroker component defintion name prefix
+Define neon-storagebroker component defintion name prefix
 */}}
-{{- define "neon-storbroker.componentDefNamePrefix" -}}
-{{- printf "neon-storbroker-%s" .Values.compDefinitionVersionSuffix -}}
+{{- define "neon-storagebroker.componentDefNamePrefix" -}}
+{{- printf "neon-broker-%s" .Values.compDefinitionVersionSuffix -}}
 {{- end -}}
 
 {{/*

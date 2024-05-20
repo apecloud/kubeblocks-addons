@@ -13,4 +13,4 @@ spec:
       changes:
       serviceVersion: 1.0.0
       images:
-        postgresql: perconalab/neon:pg14-1.0.0
+        neon-compute: perconalab/neon:pg14-1.0.0

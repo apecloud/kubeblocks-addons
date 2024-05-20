@@ -3,7 +3,7 @@ version: latest
 storageClassName: ""
 terminationPolicy: Delete
 
-useLegacyCompDef:  false
+useLegacyCompDef: false
 
 clusterVersionOverride: "pg14-1.0.0"
 

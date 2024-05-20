@@ -19,22 +19,22 @@ spec:
           compDef: {{ include "neon-pageserver.componentDefName" . }}
         - name: neon-safekeeper
           compDef: {{ include "neon-safekeeper.componentDefName" . }}
-        - name: neon-storbroker
+        - name: neon-broker
           compDef: {{ include "neon-storagebroker.componentDefName" . }}
         - name: neon-compute
           compDef: {{ include "neon-compute.componentDefName" . }}
       default: true
       orders:  
         provision:  
-          - neon-storbroker
+          - neon-broker
           - neon-safekeeper,neon-pageserver
           - neon-compute
         terminate:  
-          - neon-storbroker
-          - neon-safekeeper,neon-pageserver
           - neon-compute
+          - neon-safekeeper,neon-pageserver
+          - neon-broker
         update: 
-          - neon-storbroker
+          - neon-broker
           - neon-safekeeper,neon-pageserver
           - neon-compute
   componentDefs:
@@ -101,15 +101,15 @@ spec:
                 set -ex
                 trap : TERM INT
                 /compute.sh
-    - name: neon-storbroker
+    - name: neon-broker
       workloadType: Stateful
       characterType: storagebroker
       podSpec:
         containers:
-          - name: neon-storbroker
+          - name: neon-storagebroker
             volumeMounts:
               - mountPath: /usr/local/neon/storagebroker
-                name: neon-storbroker
+                name: neon-storagebroker
             command:
               - "storage_broker"
               - "-l"
@@ -119,7 +119,7 @@ spec:
       characterType: safekeeper
       componentDefRef:
         - &storagebrokerRef
-          componentDefName: neon-storbroker
+          componentDefName: neon-broker
           componentRefEnv:
             - name: NEON_BROKER_SVC
               valueFrom:

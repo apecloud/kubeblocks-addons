@@ -73,9 +73,30 @@ spec:
           compDef: {{ include "neon-safekeeper.componentDefName" . }}
           optional: true
           instanceNames: Optional
+    - name: NEON_SAFEKEEPERS_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "neon-safekeeper.componentDefName" . }}
+          name: neon-safekeeper
+          port:
+            name: safekeeper-pg
+    - name: NEON_PAGESERVER_PGPORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "neon-pageserver.componentDefName" . }}
+          name: neon-pageserver
+          port:
+            name: pageserver-pg
+    - name: NEON_PAGESERVER_HTTPPORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "neon-pageserver.componentDefName" . }}
+          name: neon-pageserver
+          port:
+            name: pageserver-http
   runtime:
     containers:
-      - name: postgresql
+      - name: neon-compute
         env:
           - name: PGPORT
             value: $(NEON_COMPUTE_PGPORT)
@@ -87,24 +108,24 @@ spec:
             value: $(NEON_COMPUTE_PGPASSWORD)
         image: {{ include "neon-compute.image" . }}
         ports:
-        - containerPort: 55432
-          name: postgresql
+          - containerPort: 55432
+            name: postgresql
         command: [ "/scripts/compute.sh" ]
         volumeMounts:
-        - mountPath: /config
-          name: neon-config
-        - mountPath: /data
-          name: data
-        - name: scripts
-          mountPath: /scripts
-  serviceKind: postgresql
+          - mountPath: /config
+            name: neon-config
+          - mountPath: /data
+            name: data
+          - name: scripts
+            mountPath: /scripts
+  serviceKind: neon-compute
   serviceVersion: {{ .Values.componentServiceVersion }}
   services:
-  - name: neon-compute
-    serviceName: neon-compute
-    spec:
-      ports:
-      - name: postgresql
-        port: 55432
-        protocol: TCP
-      type: ClusterIP
+    - name: neon-compute
+      serviceName: neon-compute
+      spec:
+        ports:
+        - name: postgresql
+          port: 55432
+          protocol: TCP
+        type: ClusterIP

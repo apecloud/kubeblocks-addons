@@ -12,10 +12,10 @@ spec:
         containers:
         - name: postgresql
           image: {{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
-    - componentDefRef: neon-storbroker
+    - componentDefRef: neon-broker
       versionsContext:
         containers:
-        - name: neon-storbroker
+        - name: neon-storagebroker
           image: {{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
     - componentDefRef: neon-safekeeper
       versionsContext:

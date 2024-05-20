@@ -26,7 +26,7 @@ PAGESERVER="${PAGESERVER%,}"
 IFS=',' read -ra SAFEKEEPERS_ARRAY <<< "$NEON_SAFEKEEPERS_POD_LIST"
 SAFEKEEPERS=""
 for pod in "${SAFEKEEPERS_ARRAY[@]}"; do
-    SAFEKEEPERS+="${pod}.${NEON_SAFEKEEPERS_HEADLESS}.$KB_NAMESPACE.svc.cluster.local:5454,"
+    SAFEKEEPERS+="${pod}.${NEON_SAFEKEEPERS_HEADLESS}.$KB_NAMESPACE.svc.cluster.local:$NEON_SAFEKEEPERS_PORT,"
 done
 SAFEKEEPERS="${SAFEKEEPERS%,}" 
 
@@ -35,7 +35,7 @@ echo ${PAGESERVER}
 echo ${SAFEKEEPERS}
 
 echo "Waiting pageserver become ready."
-while ! nc -z $PAGESERVER 6400; do
+while ! nc -z $PAGESERVER $NEON_PAGESERVER_PGPORT; do
      sleep 1;
 done
 echo "Page server is ready."
@@ -47,7 +47,7 @@ PARAMS=(
      -X POST
      -H "Content-Type: application/json"
      -d "{}"
-     http://${PAGESERVER}:9898/v1/tenant/
+     http://${PAGESERVER}:$NEON_PAGESERVER_HTTPPORT/v1/tenant/
 )
 tenant_id=$(curl "${PARAMS[@]}" | sed 's/"//g')
 else
@@ -61,7 +61,7 @@ PARAMS=(
      -X POST
      -H "Content-Type: application/json"
      -d "{\"tenant_id\":\"${tenant_id}\", \"pg_version\": ${PG_VERSION}}"
-     "http://${PAGESERVER}:9898/v1/tenant/${tenant_id}/timeline/"
+     "http://${PAGESERVER}:$NEON_PAGESERVER_HTTPPORT/v1/tenant/${tenant_id}/timeline/"
 )
 result=$(curl "${PARAMS[@]}")
 echo $result | jq .
@@ -82,7 +82,7 @@ PARAMS=(
      -X POST
      -H "Content-Type: application/json"
      -d "{\"tenant_id\":\"${tenant_id}\", \"pg_version\": ${PG_VERSION}, \"ancestor_timeline_id\":\"${TIMELINE}\"}"
-     "http://${PAGESERVER}:9898/v1/tenant/${tenant_id}/timeline/"
+     "http://${PAGESERVER}:$NEON_PAGESERVER_HTTPPORT/v1/tenant/${tenant_id}/timeline/"
 )
 
 result=$(curl "${PARAMS[@]}")
@@ -111,6 +111,6 @@ echo $PWD
 ls -lah /data
 
 /opt/neondatabase-neon/target/release/compute_ctl --pgdata /data/pgdata \
-     -C "postgresql://cloud_admin@localhost:55432/postgres"  \
+     -C "postgresql://$NEON_COMPUTE_PGUSER@localhost:$NEON_COMPUTE_PGPORT/postgres"  \
      -b /opt/neondatabase-neon/pg_install/v14/bin/postgres   \
      -S ${SPEC_FILE}

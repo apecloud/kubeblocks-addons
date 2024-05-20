@@ -25,3 +25,14 @@ clusterDomain: ".cluster.local"
 compDefinitionVersionSuffix: "pg14"
 
 componentServiceVersion: "1.0.0"
+
+safekeeper:
+  pgPort: 5454
+  httpPort: 7676
+
+pageserver:
+  pgPort: 6400
+  httpPort: 9898
+
+storagebroker:
+  port: 50051
