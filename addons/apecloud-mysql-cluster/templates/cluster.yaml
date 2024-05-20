@@ -6,22 +6,20 @@ metadata:
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
   {{- if and (eq .Values.mode "raftGroup") .Values.proxyEnabled }}
   annotations:
-    kubeblocks.io/extra-env: '{"KB_PROXY_ENABLED":"on"}'
+    kubeblocks.io/extra-env: '{"KB_USER_PROXY_ENABLED":"on"}'
   {{- end }}
 spec:
-  clusterVersionRef: {{ .Values.version }}
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
   clusterDefinitionRef: apecloud-mysql # ref clusterdefinition.name
+  topology: {{ include "apecloud-mysql-cluster.topology" . }}
   componentSpecs:
     - name: mysql
-      componentDefRef: mysql # ref clusterdefinition componentDefs.name
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ include "apecloud-mysql-cluster.replicas" . }}
       enabledLogs:
         - slow
         - error
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
       {{- include "kblib.componentServices" . | indent 6 }}

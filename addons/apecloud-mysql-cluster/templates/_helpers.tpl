@@ -13,7 +13,6 @@ The minimum proxy cpu cores is 0.5 and the maximum cpu cores is 64.
 {{- $proxyCPU = 64 }}
 {{- end }}
 - name: vtcontroller
-  componentDefRef: vtcontroller # ref clusterdefinition componentDefs.name
   enabledLogs:
     - error
     - warning
@@ -21,6 +20,7 @@ The minimum proxy cpu cores is 0.5 and the maximum cpu cores is 64.
   volumeClaimTemplates:
     - name: data
       spec:
+        storageClassName: {{ .Values.proxy.storageClassName | quote }}
         accessModes:
           - ReadWriteOnce
         resources:
@@ -32,7 +32,6 @@ The minimum proxy cpu cores is 0.5 and the maximum cpu cores is 64.
       cpu: 500m
       memory: 128Mi
 - name: vtgate
-  componentDefRef: vtgate # ref clusterdefinition componentDefs.name
   replicas: 1
   enabledLogs:
     - error
@@ -59,4 +58,20 @@ raftGroup mode: max(replicas, 3)
 {{- else if eq .Values.mode "raftGroup" }}
 {{- max .Values.replicas 3 }}
 {{- end }}
+{{- end -}}
+
+{{- define "apecloud-mysql-cluster.topology" }}
+{{- if and (eq .Values.mode "raftGroup") .Values.proxyEnabled }}
+  {{- if .Values.auditLogEnabled}}
+    {{- "apecloud-mysql-audit-with-proxy" }}
+  {{- else }}
+    {{- "apecloud-mysql-with-proxy" }}
+  {{- end }}
+{{- else }}
+  {{- if .Values.auditLogEnabled}}
+    {{- "apecloud-mysql-auditlog" }}
+  {{- else }}
+    {{- "apecloud-mysql" }}
+  {{- end }}
+{{- end -}}
 {{- end -}}
