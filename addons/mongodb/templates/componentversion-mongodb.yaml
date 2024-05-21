@@ -1,0 +1,16 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: mongodb
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "mongodb.componentDefName" . }}
+      releases:
+        - 5.0.14
+  releases:
+    - name: 5.0.14
+      changes:
+      serviceVersion: 5.0.14
+      images:
+        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.0

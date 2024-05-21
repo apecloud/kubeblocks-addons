@@ -29,4 +29,4 @@ requests:
 ##
 storage: 20
 
-useLegacyCompDef: true
+useLegacyCompDef: false
