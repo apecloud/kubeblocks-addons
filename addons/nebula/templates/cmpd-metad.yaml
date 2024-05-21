@@ -1,0 +1,65 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: nebula-metad-{{ .Chart.Version }}
+  labels:
+    {{- include "nebula.labels" . | nindent 4 }}
+spec:
+  provider: Community
+  description: {{ .Chart.Description }}
+  serviceKind: nebula
+  serviceVersion: {{ .Chart.AppVersion }}
+  runtime:
+    containers:
+      - name: metad
+        command:
+          - /bin/bash
+          - -c
+          - |
+            set -ex
+            trap : TERM INT
+            exec /usr/local/nebula/bin/nebula-metad --flagfile=/usr/local/nebula/etc/nebula-metad.conf --meta_server_addrs=$NEBULA_METAD_SVC --local_ip=${KB_POD_FQDN}{{ .Values.clusterDomain }}  --daemonize=false
+        imagePullPolicy: {{default .Values.nebula.metad.image.pullPolicy "IfNotPresent"}}
+        ports:
+          - containerPort: 9559
+            name: thrift
+            protocol: TCP
+          - containerPort: 19559
+            name: http
+            protocol: TCP
+          - containerPort: 19560
+            name: http2
+            protocol: TCP
+        # readinessProbe:
+        #   failureThreshold: 3
+        #   httpGet:
+        #     path: /status
+        #     port: http
+        #     scheme: HTTP
+        #   initialDelaySeconds: 10
+        #   periodSeconds: 10
+        #   successThreshold: 1
+        #   timeoutSeconds: 5
+        volumeMounts:
+          - mountPath: /usr/local/nebula/data
+            name: data
+          - mountPath: /usr/local/nebula/logs
+            name: logs
+          - mountPath: /usr/local/nebula/etc
+            name: nebula-metad
+  vars:
+    - name: NEBULA_METAD_SVC
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+      expression: {{ `{{ $hosts := splitList "," .NEBULA_METAD_SVC }}{{ range $idx, $host := $hosts }}{{ $host }}.cluster.local:9559{{ if lt $idx (sub (len $hosts) 1) }},{{ end }}{{ end }}` | toYaml | nindent 8 }}
+  volumes:
+    - name: data
+      needSnapshot: true
+    - name: logs
+  configs:
+    - name: nebula-metad-config
+      templateRef: nebula-metad-config-template
+      namespace: {{ .Release.Namespace }}
+      volumeName: nebula-metad
