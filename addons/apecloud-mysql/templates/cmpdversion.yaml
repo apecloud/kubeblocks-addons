@@ -28,7 +28,7 @@ spec:
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentVersion
 metadata:
-  name: wescale-ctrl
+  name: wescale
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
@@ -38,24 +38,12 @@ spec:
     images:
       etcd: &wescale  {{ .Values.wesqlscale.image.registry | default "docker.io" }}/{{ .Values.wesqlscale.image.repository }}:0.2.7
       vtctld: *wescale
-  compatibilityRules:
-  - releases: [wescale-ctrl-0.2.7]
-    compDefs: [wescale-ctrl]
----
-apiVersion: apps.kubeblocks.io/v1alpha1
-kind: ComponentVersion
-metadata:
-  name: wescale
-  labels:
-    {{- include "apecloud-mysql.labels" . | nindent 4 }}
-spec:
-  releases:
   - name: wescale-0.2.7
     serviceVersion: "0.2.7"
     images:
-      # wait-vtctld-ready: {{ .Values.wesqlscale.registry | default "docker.io" }}/busybox:1.35
-      vtgate:
-        {{ .Values.wesqlscale.image.registry | default "docker.io" }}/{{ .Values.wesqlscale.image.repository }}:0.2.7
+      vtgate: *wescale
   compatibilityRules:
+  - releases: [wescale-ctrl-0.2.7]
+    compDefs: [wescale-ctrl]
   - releases: [wescale-0.2.7]
     compDefs: [wescale]
