@@ -49,14 +49,3 @@ Selector labels
 app.kubernetes.io/name: {{ include "openldap.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
-
-{{/*
-Create the name of the service account to use
-*/}}
-{{- define "openldap.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "openldap.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
-{{- end }}
