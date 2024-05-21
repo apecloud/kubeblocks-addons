@@ -4,4 +4,4 @@ image:
   # registry: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com
   registry: docker.io
   # Overrides the image tag whose default is the chart appVersion.
-  tag: latest
+  tag: 0.11.1
