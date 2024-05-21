@@ -8,8 +8,8 @@ image:
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: 8.0.30-5.beta3.20231215.ge77d836.14
-  audit:
-    tag: 8.0.30-5.beta3.auditlog.20231221.g6ba5e2e.14
+  # audit:
+  #   tag: 8.0.30-5.beta3.auditlog.20231221.g6ba5e2e.14
 
 ## MySQL Cluster parameters
 cluster:
@@ -38,18 +38,6 @@ auth:
   ## @param auth.database Name for a custom database to create
   ## MYSQL_DATABASE
   database: "mydb"
-  ## @param auth.username Name for a custom user to create
-  ## MYSQL_USER
-  username: "u1"
-  ## MYSQL_PASSWORD
-  password: "u1"
-  ## @param auth.replicationUser MySQL replication user
-  ##
-  replicationUser: "replicator"
-  ## @param auth.replicationPassword MySQL replication user password. Ignored if existing secret is provided
-  ##
-  replicationPassword: ""
-
 
 configTemplate:
 ## @param config template name
@@ -79,11 +67,6 @@ vtgateLogConfigs:
   warning: /vtdataroot/vtgate.WARNING
   info: /vtdataroot/vtgate.INFO
   queryLog: /vtdataroot/vtgate_querylog.txt
-
-vtconsensusLogConfigs:
-  error: /vtdataroot/vtconsensus/vtconsensus.ERROR
-  warning: /vtdataroot/vtconsensus/vtconsensus.WARNING
-  info: /vtdataroot/vtconsensus/vtconsensus.INFO
 
 roleProbe:
   failureThreshold: 2
