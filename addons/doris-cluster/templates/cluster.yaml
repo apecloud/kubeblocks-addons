@@ -2,7 +2,6 @@ apiVersion: apps.kubeblocks.io/v1alpha1
 kind: Cluster
 metadata:
   labels: {{- include "common.labels.standard" . | nindent 4 }}
-    clusterdefinition.kubeblocks.io/name: doris
   annotations: {}
   name: {{ .Release.Name }}
   namespace: {{ .Release.Namespace | quote }}
@@ -12,10 +11,8 @@ spec:
     podAntiAffinity: Preferred
     tenancy: SharedNode
     topologyKeys: []
-  clusterDefinitionRef: doris
-  clusterVersionRef: doris-2.0.3
   componentSpecs:
-    - componentDefRef: doris-fe
+    - componentDef: doris-fe
       monitor: true
       name: doris-fe
       replicas: 3
@@ -45,7 +42,7 @@ spec:
               requests:
                 storage: {{ .Values.componentSpecs.fe.volumeClaimTemplates.data.size | quote }}
       tls: false
-    - componentDefRef: doris-be
+    - componentDef: doris-be
       monitor: true
       name: doris-be
       replicas: {{ .Values.componentSpecs.be.replicas }}
@@ -65,7 +62,7 @@ spec:
               requests:
                 storage: {{ .Values.componentSpecs.be.volumeClaimTemplates.data.size | quote }}
       tls: false
-    - componentDefRef: doris-cn
+    - componentDef: doris-cn
       monitor: true
       name: doris-cn
       replicas: {{ .Values.componentSpecs.cn.replicas }}

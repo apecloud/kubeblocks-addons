@@ -1,0 +1,39 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: doris
+  labels:
+    {{- include "doris.labels" . | nindent 4 }}
+    {{- if .Values.commonLabels }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+spec:
+  compatibilityRules:
+    - releases:
+        - fe-2.0.3
+      compDefs:
+        - doris-fe
+    - releases:
+        - cn-2.0.3
+      compDefs:
+        - doris-cn
+    - releases:
+        - be-2.0.3
+      compDefs:
+        - doris-be
+  releases:
+    - name: fe-2.0.3
+      serviceVersion: 2.0.3
+      images:
+        fe: {{ .Values.images.registry }}/{{ .Values.images.doris.fe.repository }}:2.0.3-fe
+        root-script: {{ .Values.images.registry }}/{{ .Values.images.doris.fe.repository }}:2.0.3-fe
+    - name: cn-2.0.3
+      serviceVersion: 2.0.3
+      images:
+        sysctl: {{ .Values.images.registry }}/{{ .Values.images.doris.cn.initrepository | default "docker.io" }}:latest
+        cn: {{ .Values.images.registry }}/{{ .Values.images.doris.cn.repository }}:2.0.3-be
+    - name: be-2.0.3
+      serviceVersion: 2.0.3
+      images:
+        sysctl: {{ .Values.images.registry }}/{{ .Values.images.doris.be.initrepository | default "docker.io" }}:latest
+        be: {{ .Values.images.registry }}/{{ .Values.images.doris.be.repository }}:2.0.3-be
