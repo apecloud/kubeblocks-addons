@@ -4,7 +4,6 @@
 
 nameOverride: ""
 fullnameOverride: ""
-clusterVersionOverride: ""
 
 clusterDomain: ".cluster.local"
 
@@ -15,9 +14,6 @@ images:
   greptimedb:
     repository: docker.io/greptime/greptimedb
     tag: 0.3.2
-  etcd:
-    repository: docker.io/greptime/etcd
-    tag: v3.5.5
 
 ## @param metasrv config
 ##
