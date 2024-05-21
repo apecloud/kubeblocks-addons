@@ -5,6 +5,11 @@ metadata:
   labels:
     {{- include "xinference.labels" . | nindent 4}}
 spec:
+  topologies:
+    - name: cluster
+      components:
+      - name: xinference
+        compDef: xinference
   componentDefs:
     - name: xinference
       workloadType: Stateful
