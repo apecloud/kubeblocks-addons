@@ -12,11 +12,7 @@ The minimum proxy cpu cores is 0.5 and the maximum cpu cores is 64.
 {{- else if gt $proxyCPU 64.0 }}
 {{- $proxyCPU = 64 }}
 {{- end }}
-- name: vtcontroller
-  enabledLogs:
-    - error
-    - warning
-    - info
+- name: wescale-ctrl
   volumeClaimTemplates:
     - name: data
       spec:
@@ -31,7 +27,7 @@ The minimum proxy cpu cores is 0.5 and the maximum cpu cores is 64.
     limits:
       cpu: 500m
       memory: 128Mi
-- name: vtgate
+- name: wescale
   replicas: 1
   enabledLogs:
     - error

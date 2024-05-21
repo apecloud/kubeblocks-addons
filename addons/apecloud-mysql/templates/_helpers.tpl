@@ -180,8 +180,6 @@ lifecycleActions:
       exec:
         command:
           - /scripts/switchover-without-candidate.sh
-    scriptSpecSelectors:
-      - name: apecloud-mysql-scripts
   accountProvision:
     customHandler:
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
@@ -290,7 +288,7 @@ env:
   - name: CELL
     value: {{ .Values.wesqlscale.cell | default "zone1" | quote }}
   - name: ETCD_SERVER
-    value: "$(KB_CLUSTER_NAME)-vtcontroller-headless"
+    value: "$(KB_CLUSTER_NAME)-wescale-ctrl-headless"
   - name: ETCD_PORT
     value: "2379"
   - name: TOPOLOGY_FLAGS
@@ -300,7 +298,7 @@ env:
   - name: VTTABLET_GRPC_PORT
     value: "16100"
   - name: VTCTLD_HOST
-    value: "$(KB_CLUSTER_NAME)-vtcontroller-headless"
+    value: "$(KB_CLUSTER_NAME)-wescale-ctrl-headless"
   - name: VTCTLD_WEB_PORT
     value: "15000"
   - name: SERVICE_PORT

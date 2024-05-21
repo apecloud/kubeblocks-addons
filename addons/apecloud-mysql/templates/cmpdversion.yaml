@@ -9,16 +9,16 @@ spec:
   - name: apecloud-mysql-8.0.30
     serviceVersion: "8.0.30"
     images:
-      mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+      mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.30-5.beta3.20231215.ge77d836.14
       mysql-exporter: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
-      vtablet: {{ .Values.wesqlscale.image.registry | default "docker.io" }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
+      vtablet: {{ .Values.wesqlscale.image.registry | default "docker.io" }}/{{ .Values.wesqlscale.image.repository }}:0.2.7
   - name: apecloud-mysql-auditlog-8.0.30
     serviceVersion: "8.0.30"
     images:
       init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
-      mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+      mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.30-5.beta3.20231215.ge77d836.14
       mysql-exporter: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
-      vtablet: {{ .Values.wesqlscale.image.registry | default "docker.io" }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
+      vtablet: {{ .Values.wesqlscale.image.registry | default "docker.io" }}/{{ .Values.wesqlscale.image.repository }}:0.2.7
   compatibilityRules:
   - releases: [apecloud-mysql-8.0.30]
     compDefs: [apecloud-mysql]
@@ -28,35 +28,34 @@ spec:
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentVersion
 metadata:
-  name: wescale-vtcontroller
+  name: wescale-ctrl
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
   releases:
-  - name: vtcontroller-0.2.7
+  - name: wescale-ctrl-0.2.7
     serviceVersion: "0.2.7"
     images:
-      vtconsensus: &wescale  {{ .Values.wesqlscale.image.registry | default "docker.io" }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
-      etcd: *wescale
+      etcd: &wescale  {{ .Values.wesqlscale.image.registry | default "docker.io" }}/{{ .Values.wesqlscale.image.repository }}:0.2.7
       vtctld: *wescale
   compatibilityRules:
-  - releases: [vtcontroller-0.2.7]
-    compDefs: [vtcontroller]
+  - releases: [wescale-ctrl-0.2.7]
+    compDefs: [wescale-ctrl]
 ---
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentVersion
 metadata:
-  name: wescale-vtgate
+  name: wescale
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
   releases:
-  - name: vtgate-0.2.7
+  - name: wescale-0.2.7
     serviceVersion: "0.2.7"
     images:
       # wait-vtctld-ready: {{ .Values.wesqlscale.registry | default "docker.io" }}/busybox:1.35
       vtgate:
-        {{ .Values.wesqlscale.image.registry | default "docker.io" }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
+        {{ .Values.wesqlscale.image.registry | default "docker.io" }}/{{ .Values.wesqlscale.image.repository }}:0.2.7
   compatibilityRules:
-  - releases: [vtgate-0.2.7]
-    compDefs: [vtgate]
+  - releases: [wescale-0.2.7]
+    compDefs: [wescale]

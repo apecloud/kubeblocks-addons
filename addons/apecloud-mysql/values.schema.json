@@ -258,36 +258,6 @@
         }
       }
     },
-    "vtconsensusLogConfigs": {
-      "title": "VtconsensusLogConfigs",
-      "description": "Log path configs for vtconsensus",
-      "type": "object",
-      "default": {
-        "error": "/vtdataroot/vtconsensus/vtconsensus.ERROR",
-        "warning": "/vtdataroot/vtconsensus/vtconsensus.WARNING",
-        "info": "/vtdataroot/vtconsensus/vtconsensus.INFO"
-      },
-      "properties": {
-        "error": {
-          "title": "Error",
-          "description": "Absolute path for the error log.",
-          "type": "string",
-          "default": "/vtdataroot/vtconsensus/vtconsensus.ERROR"
-        },
-        "warning": {
-          "title": "Warning",
-          "description": "Absolute path for the warning log.",
-          "type": "string",
-          "default": "/vtdataroot/vtconsensus/vtconsensus.WARNING"
-        },
-        "info": {
-          "title": "Info",
-          "description": "Absolute path for the info log.",
-          "type": "string",
-          "default": "/vtdataroot/vtconsensus/vtconsensus.INFO"
-        }
-      }
-    },
     "roleProbe": {
       "title": "RoleProbe",
       "description": "Probe config for MySQL",

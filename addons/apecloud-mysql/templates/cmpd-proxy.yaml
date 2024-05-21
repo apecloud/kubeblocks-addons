@@ -1,13 +1,13 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: vtcontroller
+  name: wescale-ctrl
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
   provider: kubeblocks.io
-  description: vtcontroller
-  serviceKind: vtcontroller
+  description: wescale controller
+  serviceKind: wescale-ctrl
   serviceVersion: "0.2.7"
   scripts:
     - name: apecloud-mysql-scripts
@@ -15,12 +15,6 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
-  configs:
-    - name: vtconsensus-config
-      templateRef: {{ include "apecloud-mysql.configTplVtconsensusName" . }}
-      constraintRef: {{ include "apecloud-mysql.configConstraintVtconsensusName" . }}
-      volumeName: vtconsensus-config
-      namespace: {{ .Release.Namespace }}
   logConfigs:
     {{- range $name,$pattern := .Values.vtconsensusLogConfigs }}
     - name: {{ $name }}
@@ -28,31 +22,6 @@ spec:
     {{- end }}
   runtime:
     containers:
-      - name: vtconsensus
-        image: {{ .Values.wesqlscale.image.registry | default .Values.image.registry }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
-        imagePullPolicy: {{ default "IfNotPresent" .Values.wesqlscale.image.pullPolicy }}
-        ports:
-          - containerPort: 16000
-            name: port
-        env:
-          - name: CELL
-            value: {{ .Values.wesqlscale.cell | default "zone1" | quote }}
-          - name: VTCONSENSUS_PORT
-            value: "16000"
-          - name: ETCD_SERVER
-            value: "localhost"
-          - name: ETCD_PORT
-            value: "2379"
-          - name: TOPOLOGY_FLAGS
-            value: "--topo_implementation etcd2 --topo_global_server_address $(ETCD_SERVER):$(ETCD_PORT) --topo_global_root /vitess/global"
-        command: ["/scripts/vtconsensus.sh"]
-        volumeMounts:
-          - name: scripts
-            mountPath: /scripts
-          - name: vtconsensus-config
-            mountPath: /conf
-          - name: data
-            mountPath: /vtdataroot
       - name: etcd
         image: {{ .Values.wesqlscale.image.registry | default .Values.image.registry }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.wesqlscale.image.pullPolicy }}
@@ -65,7 +34,7 @@ spec:
           - name: ETCDCTL_API
             value: "2"
           - name: ETCD_SERVER
-            value: "$(KB_CLUSTER_NAME)-vtcontroller-headless"
+            value: "$(KB_CLUSTER_NAME)-wescale-ctrl-headless"
           - name: ETCD_PORT
             value: "2379"
           - name: TOPOLOGY_FLAGS
@@ -92,7 +61,7 @@ spec:
           - name: CELL
             value: {{ .Values.wesqlscale.cell | default "zone1" | quote }}
           - name: VTCTLD_SERVER
-            value: "$(KB_CLUSTER_NAME)-vtcontroller-headless"
+            value: "$(KB_CLUSTER_NAME)-wescale-ctrl-headless"
           - name: VTCTLD_WEB_PORT
             value: "15000"
           - name: VTCTLD_GRPC_PORT
@@ -128,13 +97,13 @@ spec:
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: vtgate
+  name: wescale
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
   provider: kubeblocks.io
-  description: vtgate
-  serviceKind: vtgate
+  description: wescale
+  serviceKind: wescale
   serviceVersion: "0.2.7"
   scripts:
     - name: apecloud-mysql-scripts
@@ -187,7 +156,7 @@ spec:
           - name: VTGATE_GRPC_PORT
             value: "15991"
           - name: ETCD_SERVER
-            value: "$(KB_CLUSTER_NAME)-vtcontroller-headless"
+            value: "$(KB_CLUSTER_NAME)-wescale-ctrl-headless"
           - name: ETCD_PORT
             value: "2379"
           - name: TOPOLOGY_FLAGS
