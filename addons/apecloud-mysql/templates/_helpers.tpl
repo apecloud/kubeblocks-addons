@@ -102,17 +102,6 @@ services:
           targetPort: paxos
     podService: true
     disableAutoProvision: true
-configs:
-  - name: mysql-consensusset-config
-    templateRef: {{ include "apecloud-mysql.configTplName" . }}
-    constraintRef: {{ include "apecloud-mysql.configConstraintName" . }}
-    volumeName: mysql-config
-    namespace: {{ .Release.Namespace }}
-  - name: vttablet-config
-    templateRef: {{ include "apecloud-mysql.configTplVttabletName" . }}
-    constraintRef: {{ include "apecloud-mysql.configConstraintVttabletName" . }}
-    volumeName: mysql-scale-config
-    namespace: {{ .Release.Namespace }}
 logConfigs:
   {{- range $name,$pattern := .Values.logConfigs }}
   - name: {{ $name }}
