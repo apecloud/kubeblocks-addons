@@ -10,13 +10,12 @@
     },
     "mode": {
       "title": "Mode",
-      "description": "Cluster topology mode.",
+      "description": "Orchestrator Deploy mode.",
       "type": "string",
-      "default": "standalone",
+      "default": "raft",
       "enum": [
-        "standalone",
-        "replication",
-        "raftGroup"
+        "raft",
+        "shareend"
       ]
     },
     "cpu": {

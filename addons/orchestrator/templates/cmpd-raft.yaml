@@ -1,0 +1,19 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "orchestrator.componentDefName" . }}-raft
+  labels:
+      {{- include "orchestrator.labels" . | nindent 4 }}
+spec:
+  {{- include "orchestrator.cmpd.spec.common" . | nindent 2 }}
+  runtime:
+    containers:
+      - name: orchestrator
+        {{- include "orchestrator.cmpd.spec.runtime.common" . | nindent 8 }}
+        env:
+          - name: WORKDIR
+            value: /data
+          - name: ORC_RAFT_ENABLED
+            value: "true"
+          - name: ORC_BACKEND_DB
+            value: sqlite

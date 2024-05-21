@@ -5,32 +5,13 @@
 image:
   registry:  docker.io
   repository: apecloud/orchestrator
-  pullPolicy: Always
-  # Overrides the image tag whose default is the chart appVersion.
-  #tag: 8.0.33
+  pullPolicy: IfNotPresent
   tag: v3.2.6
-  xtraBackupRepository: perconalab/percona-xtrabackup
 
-imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
-clusterVersionOverride: ""
-
 
 ## @param compDefinitionVersionSuffix for all ComponentDefinition resources name created by this chart, that can avoid name conflict
 ## if you install multiple releases of this chart.
 ## If specified, the component definition will use it as name.
 compDefinitionVersionSuffix: ""
-
-## @param orchestrator the orchestrator configuration
-orchestrator:
-  ## @param orchestrator.metaBackends the meta backend configuration
-  metaBackends:
-    ## @param orchestrator.metaBackends.cluster the cluster name of the meta backend
-    ##
-    cluster: vt
-    namespace: ""
-    database: orchestrator
-  topology:
-    username: orchestrator
-    password: orchestrator
