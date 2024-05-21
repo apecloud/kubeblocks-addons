@@ -8,8 +8,6 @@ image:
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: 8.0.30-5.beta3.20231215.ge77d836.13
-  audit:
-    tag: 8.0.30-5.beta3.auditlog.20231221.g6ba5e2e.13
 
 ## MySQL Cluster parameters
 cluster:

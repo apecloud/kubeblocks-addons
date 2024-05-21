@@ -47,10 +47,10 @@ spec:
             imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
       systemAccountSpec:
         cmdExecutorConfig:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.audit.tag }}
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
       switchoverSpec:
         cmdExecutorConfig:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.audit.tag }}
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
     - componentDefRef: vtcontroller
       versionsContext:
         containers:
