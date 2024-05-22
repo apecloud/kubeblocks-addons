@@ -10,4 +10,6 @@ spec:
 
   # mysql configuration file format
   formatterConfig:
-    format: yaml
+    format: ini
+    iniConfig:
+      sectionName: mysqld

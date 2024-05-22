@@ -37,10 +37,4 @@ spec:
       - -c
       - |
         {{- .Files.Get "dataprotection/restore.sh" | nindent 8 }}
-    postReady:
-    - exec:
-        command:
-        - sh
-        - -c
-        - |
-          rm -rf {{ .Values.dataMountPath }}/data/.restore_new_cluster
+    postReady: []

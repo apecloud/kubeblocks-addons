@@ -76,23 +76,22 @@ port={{ $mysql_port }}
 
 datadir={{ $data_root }}/data
 
+{{- $log_root := printf "%s/log" $data_root }}
+log_error={{ $log_root }}/mysqld-error.log
+slow_query_log_file={{ $log_root }}/mysqld-slowquery.log
+general_log_file={{ $log_root }}/mysqld.log
+
 {{ block "logsBlock" . }}
 log_statements_unsafe_for_binlog=OFF
 log_error_verbosity=2
 log_output=FILE
-{{- $data_root := getVolumePathByName ( index $.podSpec.containers 0 ) "data" }}
 {{- if hasKey $.component "enabledLogs" }}
-{{- if mustHas "error" $.component.enabledLogs }}
-log_error={{ $data_root }}/log/mysqld-error.log
-{{- end }}
 {{- if mustHas "slow" $.component.enabledLogs }}
 slow_query_log=ON
 long_query_time=5
-slow_query_log_file={{ $data_root }}/log/mysqld-slowquery.log
 {{- end }}
 {{- if mustHas "general" $.component.enabledLogs }}
 general_log=ON
-general_log_file={{ $data_root }}/log/mysqld.log
 {{- end }}
 {{- end }}
 {{ end }}
@@ -127,6 +126,15 @@ max_binlog_size=134217728
 # binlog_rows_query_log_events=ON #AWS not set
 # binlog_transaction_dependency_tracking=WRITESET    #Default Commit Order, Aws not set
 log_slave_updates=ON
+
+# audit log
+loose_audit_log_handler=FILE # FILE, SYSLOG
+loose_audit_log_file={{ $data_root }}/auditlog/audit.log
+loose_audit_log_buffer_size=1Mb
+loose_audit_log_policy=ALL # ALL, LOGINS, QUERIES, NONE
+loose_audit_log_strategy=ASYNCHRONOUS
+loose_audit_log_rotate_on_size=10485760
+loose_audit_log_rotations=5
 
 # replay log
 # relay_log_info_repository=TABLE
