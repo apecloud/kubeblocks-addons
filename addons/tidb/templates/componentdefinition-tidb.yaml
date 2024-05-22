@@ -26,13 +26,16 @@ spec:
             echo "start tidb..."
             DOMAIN=$KB_NAMESPACE".svc{{ .Values.clusterDomain }}"
             exec /tidb-server --store=tikv \
-            --advertise-address=${KB_POD_FQDN}:4000 \
+            --advertise-address=${KB_POD_FQDN}{{ .Values.clusterDomain }} \
             --host=0.0.0.0 \
             --path=${KB_CLUSTER_NAME}-tidb-pd.${DOMAIN}:2379 \
-            --log-slow-query=/var/log/tidb/slowlog
+            --log-slow-query=/var/log/tidb/slowlog \
+            --config=/etc/tidb/tidb.toml
         volumeMounts:
           - name: slowlog
             mountPath: /var/log/tidb
+          - name: config
+            mountPath: /etc/tidb
       - name: slowlog
         imagePullPolicy: IfNotPresent
         command:
@@ -48,6 +51,12 @@ spec:
     volumes:
       - name: slowlog
         emptyDir: {}
+  configs:
+    - name: tidb-configuration
+      templateRef: {{ include "tidb.tidb.configTplName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: config
+      defaultMode: 0444
   exporter:
     containerName: tidb
     scrapePort: "10080"

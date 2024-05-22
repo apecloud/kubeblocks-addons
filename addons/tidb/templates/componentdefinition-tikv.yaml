@@ -21,6 +21,8 @@ spec:
         volumeMounts:
           - name: data
             mountPath: /var/lib/tikv
+          - name: config
+            mountPath: /etc/tikv
         command:
           - bin/sh
           - -c
@@ -30,11 +32,18 @@ spec:
             exec /tikv-server --pd=http://${KB_CLUSTER_NAME}-tidb-pd.${DOMAIN}:2379 \
             --data-dir=/var/lib/tikv \
             --addr=0.0.0.0:20160 \
-            --advertise-addr=${KB_POD_FQDN}:20160 \
-            --status-addr=0.0.0.0:20180
+            --advertise-addr=${KB_POD_FQDN}{{ .Values.clusterDomain }}:20160 \
+            --status-addr=0.0.0.0:20180 \
+            --config=/etc/tikv/tikv.toml
   volumes:
     - name: data
       needSnapshot: true
+  configs:
+    - name: tikv-configuration
+      templateRef: {{ include "tidb.tikv.configTplName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: config
+      defaultMode: 0444
   lifecycleActions:
     memberLeave:
       customHandler:

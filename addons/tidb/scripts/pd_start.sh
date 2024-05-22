@@ -16,7 +16,8 @@ ARGS="--name=$HOSTNAME \
     --peer-urls=http://0.0.0.0:2380 \
     --advertise-peer-urls=http://$MY_PEER:2380 \
     --client-urls=http://0.0.0.0:2379 \
-    --advertise-client-urls=http://$MY_PEER:2379"
+    --advertise-client-urls=http://$MY_PEER:2379 \
+    --config=/etc/pd/pd.toml"
 
 if [[ -f $DATA_DIR/join ]]; then
     echo "restarted pod, join cluster"

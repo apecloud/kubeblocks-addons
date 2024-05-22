@@ -44,3 +44,15 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- define "tidb.cmScriptsName" -}}
 tidb-scripts
 {{- end -}}
+
+{{- define "tidb.tidb.configTplName" -}}
+tidb-config-template
+{{- end -}}
+
+{{- define "tidb.tikv.configTplName" -}}
+tikv-config-template
+{{- end -}}
+
+{{- define "tidb.pd.configTplName" -}}
+tidb-pd-config-template
+{{- end -}}
