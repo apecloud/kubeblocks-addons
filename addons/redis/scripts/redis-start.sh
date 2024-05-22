@@ -155,7 +155,7 @@ start_redis_server() {
         exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redisbloom.so ${REDISBLOOM_ARGS}"
     fi
     if [ -f /opt/redis-stack/lib/redisgraph.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redisgears.so ${REDISGRAPH_ARGS}"
+        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redisgraph.so ${REDISGRAPH_ARGS}"
     fi
     if [ -f /opt/redis-stack/lib/rediscompat.so ]; then
         exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/rediscompat.so"
