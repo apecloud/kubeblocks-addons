@@ -21,12 +21,12 @@ spec:
             clusterVersionRef:
               - names: [ mysql-8.0.33 ]
                 mappingValue: "8.0.33-28"
-              - names: [ mysql-5.7.42 ]
+              - names: [ mysql-5.7.44 ]
                 mappingValue: "2.4"
         - key: BACKUP_FOR_STANDBY
           valueFrom:
             clusterVersionRef:
-              - names: [ mysql-5.7.42 ]
+              - names: [ mysql-5.7.44 ]
                 mappingValue: "true"
       targetVolumes:
         volumeMounts:
