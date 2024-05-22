@@ -56,3 +56,15 @@ tikv-config-template
 {{- define "tidb.pd.configTplName" -}}
 tidb-pd-config-template
 {{- end -}}
+
+{{- define "tidb.tidb.configConstraintName" -}}
+tidb-config-constraints
+{{- end -}}
+
+{{- define "tidb.tikv.configConstraintName" -}}
+tikv-config-constraints
+{{- end -}}
+
+{{- define "tidb.pd.configConstraintName" -}}
+tidb-pd-config-constraints
+{{- end -}}

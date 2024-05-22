@@ -38,6 +38,7 @@ spec:
   configs:
     - name: pd-configuration
       templateRef: {{ include "tidb.pd.configTplName" . }}
+      constraintRef: {{ include "tidb.pd.configConstraintName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: config
       defaultMode: 0444
