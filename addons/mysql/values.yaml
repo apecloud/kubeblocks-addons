@@ -63,6 +63,7 @@ clusterVersionOverride: ""
 logConfigs:
   error: /var/lib/mysql/log/mysqld-error.log
   slow: /var/lib/mysql/log/mysqld-slowquery.log
+  auditlog: /var/lib/mysql/auditlog/audit.log*
   # general: /var/lib/mysql/log/mysqld.log
 
 roleProbe:
