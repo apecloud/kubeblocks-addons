@@ -5,8 +5,6 @@ metadata:
   labels:
     {{- include "openldap-cluster.labels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: openldap
-  clusterVersionRef: openldap-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
   terminationPolicy: {{ .Values.terminationPolicy }}
   affinity:
     {{- with $.Values.topologyKeys }}
@@ -17,7 +15,7 @@ spec:
   {{- end }}
   componentSpecs:
     - name: openldap
-      componentDefRef: openldap-compdef
+      componentDef: openldap
       {{- if .Values.replication }}
       replicas: 2
       {{- else }}
@@ -35,7 +33,7 @@ spec:
       {{- end }}
       {{- if .Values.persistence.enabled }}
       volumeClaimTemplates:
-        - name: data # ref clusterdefinition components.containers.volumeMounts.name
+        - name: data # ref componentDefinition.spec.volumes[*].name
           spec:
             storageClassName: {{ .Values.persistence.data.storageClassName }}
             accessModes:
