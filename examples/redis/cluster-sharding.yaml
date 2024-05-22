@@ -20,7 +20,7 @@ spec:
     # The template for generating Components for shards, where each shard consists of one Component. This field is of type ClusterComponentSpec, which encapsulates all the required details and definitions for creating and managing the Components. KubeBlocks uses this template to generate a set of identical Components or shards. All the generated Components will have the same specifications and definitions as specified in the `template` field. This allows for the creation of multiple Components with consistent configurations, enabling sharding and distribution of workloads across Components.
     template:
       name: redis
-      componentDef: redis-cluster-7.0
+      componentDef: redis-cluster-7
       affinity:
         podAntiAffinity: Preferred
         topologyKeys:

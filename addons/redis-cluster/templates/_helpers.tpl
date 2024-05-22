@@ -6,7 +6,7 @@ Define redis cluster shardingSpec with ComponentDefinition.
   shards: {{ .Values.redisCluster.shardCount }}
   template:
     name: redis
-    componentDef: redis-cluster-7.0
+    componentDef: redis-cluster-7
     replicas: {{ .Values.replicas }}
     {{- if .Values.nodePortEnabled }}
     services:
