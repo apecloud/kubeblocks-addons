@@ -7,10 +7,16 @@ spec:
     - compDefs:
         - {{ include "redis.componentDefNamePrefix" . }}
       releases:
-        - 7.0.6-RC8
+        - 7.2.4
+        - 7.0.6
   releases:
-    - name: 7.0.6-RC8  # {{ .Values.image.tag }}
+    - name: 7.2.4
       changes:
-      serviceVersion: 7.0.6 # {{ .Values.componentServiceVersion.redis }}
+      serviceVersion: 7.2.4
       images:
-        redis: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/redis-stack-server:7.0.6-RC8
+        redis: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/redis-stack-server:7.2.0-v10
+    - name: 7.0.6
+      changes:
+      serviceVersion: 7.0.6
+      images:
+        redis: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/redis-stack-server:7.0.6-RC4

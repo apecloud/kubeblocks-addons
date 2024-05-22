@@ -11,7 +11,7 @@ dependencies:
     repository: file://../kblib
     alias: extra
 
-appVersion: "7.0.6"
+appVersion: "7.2.4"
 
 keywords:
   - redis

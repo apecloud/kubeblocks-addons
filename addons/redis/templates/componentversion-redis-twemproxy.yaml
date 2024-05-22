@@ -9,8 +9,8 @@ spec:
       releases:
         - 0.5.0
   releases:
-    - name: 0.5.0  # {{ .Values.redisTwemproxyImage.tag }}
+    - name: 0.5.0
       changes:
-      serviceVersion: 0.5.0  # {{ .Values.componentServiceVersion.twemproxy }}
+      serviceVersion: 0.5.0
       images:
         redis-twemproxy: docker.io/malexer/twemproxy:0.5.0
