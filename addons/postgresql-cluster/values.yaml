@@ -9,6 +9,11 @@ useLegacyCompDef: false
 ##
 version: postgresql-15.7.0
 
+## @param serviceVersion specify the serviceVersion of componentSpec
+## the supported serviceVersion list can be found in the ComponentVersion, such as: 15.7.0, 14.8.0, ...
+##
+serviceVersion: ""
+
 ## @param mode postgresql cluster topology mode, standalone, replication
 ##
 mode: standalone

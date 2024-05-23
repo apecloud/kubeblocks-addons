@@ -20,6 +20,9 @@ Define postgresql ComponentSpec with ComponentDefinition.
   componentSpecs:
     - name: postgresql
       {{- include "postgresql-cluster.replicaCount" . | indent 6 }}
+      {{- if gt (len .Values.serviceVersion) 0 }}
+      serviceVersion: {{ .Values.serviceVersion }}
+      {{- end }}
       enabledLogs:
         - running
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
