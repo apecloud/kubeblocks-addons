@@ -13,16 +13,9 @@ spec:
       - name: sysctl
         image: {{ .Values.image.registry | default "docker.io" }}/busybox:1.35
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
-      {{- if gt (len $.Values.downloadInstallPlugins) 0 }}
-      - name: download-install-plugins
-        image: {{ .Values.image.registry | default "docker.io" }}/busybox:1.35
+      - name: prepare-plugins
+        image: {{ .Values.image.plugin.registry | default "docker.io" }}/{{ .Values.image.plugin.repository}}:{{ default .Chart.AppVersion .Values.image.plugin.tag }}
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
-      {{- end}}
-      {{- if gt (len $.Values.nativeInstallPlugins) 0 }}
-      - name: native-install-plugins
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
-        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
-      {{- end}}
       containers:
       - name: elasticsearch
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
@@ -43,16 +36,9 @@ spec:
       - name: sysctl
         image: {{ .Values.image.registry | default "docker.io" }}/busybox:latest
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
-      {{- if gt (len $.Values.downloadInstallPlugins) 0 }}
-      - name: download-install-plugins
-        image: {{ .Values.image.registry | default "docker.io" }}/busybox:1.35
+      - name: prepare-plugins
+        image: {{ .Values.image.plugin.registry | default "docker.io" }}/{{ .Values.image.plugin.repository}}:{{ default .Chart.AppVersion .Values.image.plugin.tag }}
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
-      {{- end}}
-      {{- if gt (len $.Values.nativeInstallPlugins) 0 }}
-      - name: native-install-plugins
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
-        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
-      {{- end}}
       containers:
       - name: elasticsearch
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
