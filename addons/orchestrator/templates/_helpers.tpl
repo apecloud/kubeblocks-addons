@@ -176,15 +176,6 @@ ports:
     name: http
   - containerPort: 10008
     name: raft
-livenessProbe:
-  failureThreshold: 3
-  httpGet:
-    path: /api/health
-    port: 3000
-    scheme: HTTP
-  periodSeconds: 10
-  successThreshold: 1
-  timeoutSeconds: 3
 readinessProbe:
   failureThreshold: 5
   httpGet:
