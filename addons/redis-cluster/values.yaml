@@ -7,7 +7,15 @@ useLegacyCompDef: false
 
 ## @param version redis cluster version
 ##
-version: redis-7.0.6
+version: redis-7.2.4
+
+## @param serviceVersion specify the serviceVersion of componentSpec
+##
+serviceVersion:
+  redis: ""
+  redisSentinel: ""
+  redisCluster: ""
+  redisTwemproxy: ""
 
 ## @param mode redis cluster topology mode, standalone, replication and cluster
 ## standalone: single redis instance

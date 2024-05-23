@@ -14,6 +14,9 @@ Define redis cluster shardingSpec with ComponentDefinition.
       serviceType: NodePort
       podService: true
     {{- end }}
+    {{- if gt (len .Values.serviceVersion.redisCluster) 0 }}
+    serviceVersion: {{ .Values.serviceVersion.redisCluster }}
+    {{- end }}
     resources:
       limits:
         cpu: {{ .Values.cpu | quote }}
@@ -43,6 +46,9 @@ Define redis ComponentSpec with ComponentDefinition.
     serviceType: NodePort
     podService: true
   {{- end }}
+  {{- if gt (len .Values.serviceVersion.redis) 0 }}
+  serviceVersion: {{ .Values.serviceVersion.redis }}
+  {{- end }}
   enabledLogs:
     - running
   serviceAccountName: {{ include "kblib.serviceAccountName" . }}
@@ -61,6 +67,9 @@ Define redis sentinel ComponentSpec with ComponentDefinition.
   - name: sentinel-advertised
     serviceType: NodePort
     podService: true
+  {{- end }}
+  {{- if gt (len .Values.serviceVersion.redisSentinel) 0 }}
+  serviceVersion: {{ .Values.serviceVersion.redisSentinel }}
   {{- end }}
   resources:
     limits:
@@ -86,6 +95,9 @@ Define redis twemproxy ComponentSpec with ComponentDefinition.
 - name: redis-twemproxy
   serviceAccountName: {{ include "kblib.serviceAccountName" . }}
   replicas: {{ .Values.twemproxy.replicas }}
+  {{- if gt (len .Values.serviceVersion.redisTwemproxy) 0 }}
+  serviceVersion: {{ .Values.serviceVersion.redisTwemproxy }}
+  {{- end }}
   resources:
     limits:
       cpu: {{ .Values.twemproxy.cpu | quote }}
