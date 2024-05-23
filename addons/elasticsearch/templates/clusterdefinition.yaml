@@ -289,14 +289,12 @@ spec:
           - sh
           - -c
           - |
-            if [ ! -d /plugins ]; then
+            if [ -d /plugins ]; then
+              echo "prepare plugins: $(ls /plugins)"
+              cp -r /plugins/* /tmp/plugins/
+            else
               echo "there is no plugins"
-              exit 0
             fi
-            echo "install plugins: $(ls /plugins)"
-            for plugin in `ls /plugins`; do
-              cp -r /plugins/* /opt/bitnami/elasticsearch/plugins/
-            done
           securityContext:
             runAsUser: 0
             privileged: true
@@ -306,6 +304,12 @@ spec:
         containers:
           - name: elasticsearch
             imagePullPolicy: IfNotPresent
+            command:
+            - sh
+            - -c
+            - |
+              sh /mnt/elastic-internal/scripts/install-plugins.sh
+              eswrapper
             securityContext:
               runAsNonRoot: true
               runAsUser: 1001
