@@ -1,0 +1,17 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterDefinition
+metadata:
+  name: {{ include "orchestrator.name" . }}
+  labels:
+    {{- include "orchestrator.labels" . | nindent 4 }}
+spec:
+  topologies:
+  - name: raft
+    default: true
+    components:
+    - name: orchestrator
+      compDef: orchestrator-raft
+  - name: shareend
+    components:
+    - name: orchestrator
+      compDef: orchestrator-shareend

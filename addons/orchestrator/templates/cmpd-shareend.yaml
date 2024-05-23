@@ -1,0 +1,60 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "orchestrator.componentDefName" . }}-shareend
+  labels:
+      {{- include "orchestrator.labels" . | nindent 4 }}
+spec:
+  {{- include "orchestrator.cmpd.spec.common" . | nindent 2 }}
+
+  serviceRefDeclarations:
+    - name: metadb
+      serviceRefDeclarationSpecs:
+        - serviceKind: mysql
+          serviceVersion: "^*"
+
+  vars:
+    - name: META_MYSQL_PORT
+      valueFrom:
+        serviceRefVarRef:
+          name: metadb
+          port: Required
+    - name: META_MYSQL_ENDPOINT
+      valueFrom:
+        serviceRefVarRef:
+          name: metadb
+          endpoint: Required
+    - name: META_MYSQL_USER
+      valueFrom:
+        serviceRefVarRef:
+          name: metadb
+          username: Required
+    - name: META_MYSQL_PASSWORD
+      valueFrom:
+        serviceRefVarRef:
+          name: metadb
+          password: Required
+
+  runtime:
+    volumes:
+    - name: data
+    initContainers:
+      - name: init-meta-database
+        command:
+          - bash
+          - -c
+          - |
+            /scripts/init-meta-database.sh
+        volumeMounts:
+          - name: scripts
+            mountPath: /scripts
+    containers:
+      - name: orchestrator
+        {{- include "orchestrator.cmpd.spec.runtime.common" . | nindent 8 }}
+        env:
+          - name: WORKDIR
+            value: /data
+          - name: ORC_RAFT_ENABLED
+            value: "false"
+          - name: ORC_BACKEND_DB
+            value: mysql
