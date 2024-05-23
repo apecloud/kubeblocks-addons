@@ -1,0 +1,17 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: kafka-combine
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "kafka-combine.componentDefName" . }}
+      releases:
+        - 3.3.2-debian-11-r54
+  releases:
+    - name: 3.3.2-debian-11-r54
+      changes:
+      serviceVersion: 3.3.2
+      images:
+        kafka: docker.io/bitnami/kafka:3.3.2-debian-11-r54
+        jmx-exporter: docker.io/bitnami/jmx-exporter:0.18.0-debian-11-r20

@@ -4,6 +4,13 @@
 ## @param nameOverride
 ## @param fullnameOverride
 clusterVersionOverride: ""
+
+componentServiceVersion:
+  combine: 3.3.2
+  controller: 3.3.2
+  broker: 3.3.2
+  exporter: 1.6.0
+
 nameOverride: ""
 fullnameOverride: ""
 
