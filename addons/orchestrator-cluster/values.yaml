@@ -26,18 +26,25 @@ requests:
 ##
 storage: 20
 
+## @param mode to deploy orchestrator, choose from {shareend, raft}.
+mode: raft
+
 ## @param secret the username and password for orchestrator
 secret:
   TOPOLOGY_PASSWORD: orchestrator
-  TOPOLOGY_USER: orchestrator
-  META_USER: orchestrator
+  # TOPOLOGY_USER: orchestrator
+  # META_USER: orchestrator
   META_PASSWORD: orchestrator
+  META_DATABASE: orchestrator
 
 ## @param serviceReference the reference of orchestrator meta service
 serviceReference:
-  orchestrator:
-    name: mysql-meta
-    namespace: ""
-    cluster: ""
-    port: 3306
-    endpoint: ""
+  metadb:
+    namespace: "default"
+    cluster: "mycluster"
+    credential:
+      name: root
+      component: mysql
+    service:
+      name: ""
+      component: mysql

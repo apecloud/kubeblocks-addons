@@ -1,11 +1,11 @@
 apiVersion: v2
 name: orchestrator
-description: Orchestrator is a MySQL high availability and replication management tool, 
+description: Orchestrator is a MySQL high availability and replication management tool,
   runs as a service and provides command line access, HTTP API and Web interface.
 
 type: application
 
-version: 3.2.6
+version: 0.9.0
 
 # This is the version number of the Orchestrator being deployed
 appVersion: "3.2.6"
@@ -23,6 +23,6 @@ sources:
 - https://github.com/apecloud/kubeblocks/
 
 annotations:
-  addon.kubeblocks.io/kubeblocks-version: ">=0.7.0"
+  addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
   addon.kubeblocks.io/model: "HA"
   addon.kubeblocks.io/provider: "community"

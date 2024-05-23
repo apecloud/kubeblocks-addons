@@ -5,7 +5,4 @@ metadata:
   labels:
     {{- include "orchestrator.labels" . | nindent 4 }}
 data:
-  init-meta-database.sh: |-
-    {{- .Files.Get "scripts/init-meta-database.sh" | nindent 4 }}
-  init-orchestrator.sh: |-
-    {{- .Files.Get "scripts/init-orchestrator.sh" | nindent 4 }}
+  {{- include "orchestrator.extend.scripts" . | nindent 2 }}

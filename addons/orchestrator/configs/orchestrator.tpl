@@ -1,28 +1,29 @@
-{{- $meta_mysql_from_service_ref := fromJson "{}" }}
-{{- if index $.component "serviceReferences" }}
-  {{- range $i, $e := $.component.serviceReferences }}
-    {{- if eq $i "metaMysql" }}
-      {{- $meta_mysql_from_service_ref = $e }}
-      {{- break }}
-    {{- end }}
-  {{- end }}
-{{- end }}
 {
-  "MySQLTopologyCredentialsConfigFile": "/usr/local/share/orchestrator/templates/orc-topology.cnf",
+  "Debug": false,
+  "ListenAddress": ":3000",
+
+  "BackendDB": "${ORC_BACKEND_DB}",
+  "SQLite3DataFile": "${ORC_WORKDIR}/sqlite/orchestrator.db",
+
+  "MySQLTopologyCredentialsConfigFile": "/configs/orc-topology.cnf",
   "MySQLTopologySSLPrivateKeyFile": "",
   "MySQLTopologySSLCertFile": "",
   "MySQLTopologySSLCAFile": "",
   "MySQLTopologySSLSkipVerify": true,
   "MySQLTopologyUseMutualTLS": false,
-  {{- $endpoint :=  splitList ":" $meta_mysql_from_service_ref.spec.endpoint.value | first }}
-  "MySQLOrchestratorHost": {{- printf " \"%s\""   $endpoint}},
-  "MySQLOrchestratorPort": {{- printf " %s" $meta_mysql_from_service_ref.spec.port.value }},
-  "MySQLOrchestratorDatabase": "orchestrator",
-  "MySQLOrchestratorCredentialsConfigFile": "/usr/local/share/orchestrator/templates/orc-backend.cnf",
 
-  "DetectClusterAliasQuery": "select ifnull(max(cluster_name), '') as cluster_alias from kb_orc_meta_cluster.kb_orc_meta_cluster where anchor=1",
+  "MySQLOrchestratorHost": "${META_MYSQL_ENDPOINT}",
+  "MySQLOrchestratorPort": ${META_MYSQL_PORT},
+  "MySQLOrchestratorDatabase": "${ORC_META_DATABASE}",
+  "MySQLOrchestratorCredentialsConfigFile": "/configs/orc-backend.cnf",
+
+  "RaftEnabled": ${ORC_RAFT_ENABLED},
+  "RaftDataDir": "${ORC_WORKDIR}/raft",
+  "RaftBind": "${ORC_POD_NAME}",
+  "DefaultRaftPort": 10008,
+  "RaftNodes": [ ${ORC_PEERS} ],
+
   "ApplyMySQLPromotionAfterMasterFailover": true,
-  "Debug": false,
   "DetachLostReplicasAfterMasterFailover": true,
   "FailMasterPromotionIfSQLThreadNotUpToDate": true,
   "MySQLOrchestratorRejectReadOnly": true,
@@ -30,7 +31,7 @@
   "HostnameResolveMethod": "none",
   "MySQLHostnameResolveMethod": "@@report_host",
   "InstancePollSeconds": 5,
-  "ListenAddress": ":3000",
+
   "MasterFailoverLostInstancesDowntimeMinutes": 10,
 
   "DiscoverByShowSlaveHosts": false,
