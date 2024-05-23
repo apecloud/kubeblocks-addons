@@ -28,7 +28,7 @@ spec:
     - name: pg-basebackup
       snapshotVolumes: false
       actionSetName: postgres-basebackup
-      envMapping:
+      envMapping: &clusterVersionEnvMapping
       - key: IMAGE_TAG
         valueFrom:
           clusterVersionRef:
@@ -69,6 +69,7 @@ spec:
         role: primary
       actionSetName: postgresql-pitr
       snapshotVolumes: false
+      envMapping: *clusterVersionEnvMapping
       targetVolumes:
         volumeMounts:
           - name: data
@@ -98,7 +99,7 @@ spec:
       - name: pg-basebackup
         snapshotVolumes: false
         actionSetName: postgres-basebackup
-        envMapping:
+        envMapping: &compDefEnvMapping
           - key: IMAGE_TAG
             valueFrom:
               componentDef:
@@ -139,6 +140,7 @@ spec:
           role: primary
         actionSetName: postgresql-pitr
         snapshotVolumes: false
+        envMapping: *compDefEnvMapping
         targetVolumes:
           volumeMounts:
             - name: data
