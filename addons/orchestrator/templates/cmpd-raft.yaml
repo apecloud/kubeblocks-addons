@@ -7,6 +7,8 @@ metadata:
 spec:
   {{- include "orchestrator.cmpd.spec.common" . | nindent 2 }}
   runtime:
+    volumes:
+    - name: data
     containers:
       - name: orchestrator
         {{- include "orchestrator.cmpd.spec.runtime.common" . | nindent 8 }}
