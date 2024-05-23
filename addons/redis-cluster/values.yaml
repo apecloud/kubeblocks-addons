@@ -10,6 +10,7 @@ useLegacyCompDef: false
 version: redis-7.2.4
 
 ## @param serviceVersion specify the serviceVersion of componentSpec
+## the supported serviceVersion list can be found in the ComponentVersion, such as "7.2.4" or "7.0.6", etc.
 ##
 serviceVersion:
   redis: ""
