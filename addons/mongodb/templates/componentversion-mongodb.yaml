@@ -13,4 +13,5 @@ spec:
       changes:
       serviceVersion: 5.0.14
       images:
-        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.0
+        mongodb: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/mongo:5.0.14
+        metrics: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/agamotto:0.1.2-beta.1
