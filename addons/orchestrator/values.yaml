@@ -15,3 +15,7 @@ fullnameOverride: ""
 ## if you install multiple releases of this chart.
 ## If specified, the component definition will use it as name.
 compDefinitionVersionSuffix: ""
+
+
+config:
+  dataDir: /data

@@ -6,7 +6,7 @@ Create extra env
 # "ORC_META_USER": "{{ .Values.secret.META_USER | default "orchestrator" }}",
 {{- define "orchestrator-cluster.extra-envs" }}
 {
-"ORC_TOPOLOGY_PASSWORD": "{{ .Values.secret.TOPOLOGY_USER | default "orchestrator" }}",
+"ORC_TOPOLOGY_PASSWORD": "{{ .Values.secret.TOPOLOGY_PASSWORD | default "orchestrator" }}",
 "ORC_META_PASSWORD": "{{ .Values.secret.META_PASSWORD | default "orchestrator" }}",
 "ORC_META_DATABASE": "{{ .Values.secret.META_DATABASE | default "orchestrator" }}"
 }

@@ -96,7 +96,6 @@ Generate scripts
 {{- end }}
 
 
-
 {{- define "orchestrator.cmpd.spec.common" -}}
 provider: kubeblocks
 description: orchestrator is a MySQL high availability and replication management tool
@@ -152,9 +151,6 @@ services:
         - name: http
           port: 80
           targetPort: http
-        - name: prometheus
-          port: 9125
-          targetPort: prometheus
 {{- end }}
 
 
@@ -169,7 +165,7 @@ volumeMounts:
     mountPath: /configs
   - name: scripts
     mountPath: /scripts
-  - mountPath: /data
+  - mountPath:  {{ .Values.config.dataDir }}
     name: data
 ports:
   - containerPort: 3000
