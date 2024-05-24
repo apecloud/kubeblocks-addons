@@ -1,13 +1,11 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: Cluster
 metadata:
-  name: milvus-cluster
+  name: milvus-cluster2
   namespace: default
 spec:
   # Specifies the name of the ClusterTopology to be used when creating the Cluster. This field defines which set of Components, as outlined in the ClusterDefinition, will be used to construct the Cluster based on the named topology.
   topology: cluster
-  # Specifies the name of the ClusterDefinition to use when creating a Cluster.
-  clusterDefinitionRef: milvus
   # Specifies the behavior when a Cluster is deleted.
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
   # - `Halt`: Deletes Cluster resources like Pods and Services but retains Persistent Volume Claims (PVCs), allowing for data preservation while stopping other operations.
@@ -16,14 +14,14 @@ spec:
   terminationPolicy: Delete
   # Defines a set of node affinity scheduling rules for the Cluster's Pods. This field helps control the placement of Pods on nodes within the cluster.
   affinity:
-   # Specifies the anti-affinity level of Pods within a Component. It determines how pods should be spread across nodes to improve availability and performance.
+    # Specifies the anti-affinity level of Pods within a Component. It determines how pods should be spread across nodes to improve availability and performance.
     podAntiAffinity: Preferred
-    # Represents the key of node labels used to define the topology domain for Pod anti-affinity and Pod spread constraints. 
+    # Represents the key of node labels used to define the topology domain for Pod anti-affinity and Pod spread constraints.
     topologyKeys:
-    - kubernetes.io/hostname
-    # Determines the level of resource isolation between Pods. It can have the following values: `SharedNode` and `DedicatedNode`. 
-    # - SharedNode: Allow that multiple Pods may share the same node, which is the default behavior of K8s. 
-    # - DedicatedNode: Each Pod runs on a dedicated node, ensuring that no two Pods share the same node. 
+      - kubernetes.io/hostname
+    # Determines the level of resource isolation between Pods. It can have the following values: `SharedNode` and `DedicatedNode`.
+    # - SharedNode: Allow that multiple Pods may share the same node, which is the default behavior of K8s.
+    # - DedicatedNode: Each Pod runs on a dedicated node, ensuring that no two Pods share the same node.
     tenancy: SharedNode
   # An array that specifies tolerations attached to the Cluster's Pods, allowing them to be scheduled onto nodes with matching taints.
   tolerations:
@@ -35,136 +33,141 @@ spec:
   # Note: `shardingSpecs` and `componentSpecs` cannot both be empty; at least one must be defined to configure a cluster.
   # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
-  - name: proxy
-    serviceAccountName: kb-milvus-cluster
-    replicas: 1
-    resources:
-      limits:
-        cpu: '0.5'
-        memory: 0.5Gi
-      requests:
-        cpu: '0.5'
-        memory: 0.5Gi
-    serviceRefs:
-    - cluster: etcdm-cluster
-      name: milvus-meta-storage
-    - cluster: pulsarm-cluster
-      name: milvus-log-storage
-    - name: milvus-object-storage
-      namespace: default
-      clusterServiceSelector:
-        cluster: miniom-cluster
-        service:
-          component: minio
-          service: headless
-          port: http
-        credential:
-          component: minio
-          name: admin
-  - name: mixcoord
-    serviceAccountName: kb-milvus-cluster
-    replicas: 1
-    resources:
-      limits:
-        cpu: '0.5'
-        memory: 0.5Gi
-      requests:
-        cpu: '0.5'
-        memory: 0.5Gi
-    serviceRefs:
-    - cluster: etcdm-cluster
-      name: milvus-meta-storage
-    - cluster: pulsarm-cluster
-      name: milvus-log-storage
-    - name: milvus-object-storage
-      namespace: default
-      clusterServiceSelector:
-        cluster: miniom-cluster
-        service:
-          component: minio
-          service: headless
-          port: http
-        credential:
-          component: minio
-          name: admin
-  - name: datanode
-    serviceAccountName: kb-milvus-cluster
-    replicas: 1
-    resources:
-      limits:
-        cpu: '0.5'
-        memory: 0.5Gi
-      requests:
-        cpu: '0.5'
-        memory: 0.5Gi
-    serviceRefs:
-    - cluster: etcdm-cluster
-      name: milvus-meta-storage
-    - cluster: pulsarm-cluster
-      name: milvus-log-storage
-    - name: milvus-object-storage
-      namespace: default
-      clusterServiceSelector:
-        cluster: miniom-cluster
-        service:
-          component: minio
-          service: headless
-          port: http
-        credential:
-          component: minio
-          name: admin
-  - name: indexnode
-    serviceAccountName: kb-milvus-cluster
-    replicas: 1
-    resources:
-      limits:
-        cpu: '0.5'
-        memory: 0.5Gi
-      requests:
-        cpu: '0.5'
-        memory: 0.5Gi
-    serviceRefs:
-    - cluster: etcdm-cluster
-      name: milvus-meta-storage
-    - cluster: pulsarm-cluster
-      name: milvus-log-storage
-    - name: milvus-object-storage
-      namespace: default
-      clusterServiceSelector:
-        cluster: miniom-cluster
-        service:
-          component: minio
-          service: headless
-          port: http
-        credential:
-          component: minio
-          name: admin
-  - name: querynode
-    serviceAccountName: kb-milvus-cluster
-    replicas: 1
-    resources:
-      limits:
-        cpu: '0.5'
-        memory: 0.5Gi
-      requests:
-        cpu: '0.5'
-        memory: 0.5Gi
-    serviceRefs:
-    - cluster: etcdm-cluster
-      name: milvus-meta-storage
-    - cluster: pulsarm-cluster
-      name: milvus-log-storage
-    - name: milvus-object-storage
-      namespace: default
-      clusterServiceSelector:
-        cluster: miniom-cluster
-        service:
-          component: minio
-          service: headless
-          port: http
-        credential:
-          component: minio
-          name: admin
+    - name: proxy
+      componentDef: milvus-proxy-0.9.0
+      serviceAccountName: kb-milvus-cluster2
+      replicas: 1
+      resources:
+        limits:
+          cpu: '0.5'
+          memory: 0.5Gi
+        requests:
+          cpu: '0.5'
+          memory: 0.5Gi
+      serviceRefs:
+        - cluster: etcdm-cluster
+          name: milvus-meta-storage
+        - cluster: pulsarm-cluster
+          name: milvus-log-storage
+        - name: milvus-object-storage
+          namespace: default
+          clusterServiceSelector:
+            cluster: miniom-cluster
+            service:
+              component: minio
+              service: headless
+              port: http
+            credential:
+              component: minio
+              name: admin
+    - name: mixcoord
+      componentDef: milvus-mixcoord-0.9.0
+      serviceAccountName: kb-milvus-cluster2
+      replicas: 1
+      resources:
+        limits:
+          cpu: '0.5'
+          memory: 0.5Gi
+        requests:
+          cpu: '0.5'
+          memory: 0.5Gi
+      serviceRefs:
+        - cluster: etcdm-cluster
+          name: milvus-meta-storage
+        - cluster: pulsarm-cluster
+          name: milvus-log-storage
+        - name: milvus-object-storage
+          namespace: default
+          clusterServiceSelector:
+            cluster: miniom-cluster
+            service:
+              component: minio
+              service: headless
+              port: http
+            credential:
+              component: minio
+              name: admin
+    - name: datanode
+      componentDef: milvus-datanode-0.9.0
+      serviceAccountName: kb-milvus-cluster2
+      replicas: 1
+      resources:
+        limits:
+          cpu: '0.5'
+          memory: 0.5Gi
+        requests:
+          cpu: '0.5'
+          memory: 0.5Gi
+      serviceRefs:
+        - cluster: etcdm-cluster
+          name: milvus-meta-storage
+        - cluster: pulsarm-cluster
+          name: milvus-log-storage
+        - name: milvus-object-storage
+          namespace: default
+          clusterServiceSelector:
+            cluster: miniom-cluster
+            service:
+              component: minio
+              service: headless
+              port: http
+            credential:
+              component: minio
+              name: admin
+    - name: indexnode
+      componentDef: milvus-indexnode-0.9.0
+      serviceAccountName: kb-milvus-cluster2
+      replicas: 1
+      resources:
+        limits:
+          cpu: '0.5'
+          memory: 0.5Gi
+        requests:
+          cpu: '0.5'
+          memory: 0.5Gi
+      serviceRefs:
+        - cluster: etcdm-cluster
+          name: milvus-meta-storage
+        - cluster: pulsarm-cluster
+          name: milvus-log-storage
+        - name: milvus-object-storage
+          namespace: default
+          clusterServiceSelector:
+            cluster: miniom-cluster
+            service:
+              component: minio
+              service: headless
+              port: http
+            credential:
+              component: minio
+              name: admin
+    - name: querynode
+      componentDef: milvus-querynode-0.9.0
+      serviceAccountName: kb-milvus-cluster2
+      replicas: 1
+      resources:
+        limits:
+          cpu: '0.5'
+          memory: 0.5Gi
+        requests:
+          cpu: '0.5'
+          memory: 0.5Gi
+      serviceRefs:
+        - cluster: etcdm-cluster
+          name: milvus-meta-storage
+        - cluster: pulsarm-cluster
+          name: milvus-log-storage
+        - name: milvus-object-storage
+          namespace: default
+          clusterServiceSelector:
+            cluster: miniom-cluster
+            service:
+              component: minio
+              service: headless
+              port: http
+            credential:
+              component: minio
+              name: admin
 ---
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: Cluster

@@ -4,8 +4,10 @@ metadata:
   name: milvus-cluster
   namespace: default
 spec:
+  # Specifies the name of the ClusterTopology to be used when creating the Cluster. This field defines which set of Components, as outlined in the ClusterDefinition, will be used to construct the Cluster based on the named topology.
+  topology: standalone
   # Specifies the name of the ClusterDefinition to use when creating a Cluster.
-  clusterDefinitionRef: milvus-2.3.2
+  clusterDefinitionRef: milvus
   # Specifies the behavior when a Cluster is deleted.
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
   # - `Halt`: Deletes Cluster resources like Pods and Services but retains Persistent Volume Claims (PVCs), allowing for data preservation while stopping other operations.
@@ -32,7 +34,6 @@ spec:
   # Specifies a list of ClusterComponentSpec objects used to define the individual components that make up a Cluster. This field allows for detailed configuration of each component within the Cluster. Note: `shardingSpecs` and `componentSpecs` cannot both be empty; at least one must be defined to configure a cluster. ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
   - name: milvus
-    componentDefRef: milvus
     disableExporter: true
     serviceAccountName: kb-milvus-cluster
     replicas: 1
@@ -52,7 +53,6 @@ spec:
           requests:
             storage: 20Gi
   - name: etcd
-    componentDefRef: etcd
     replicas: 1
     resources:
       limits:
@@ -70,7 +70,6 @@ spec:
           requests:
             storage: 20Gi
   - name: minio
-    componentDefRef: minio
     replicas: 1
     resources:
       limits:
