@@ -8,7 +8,7 @@ spec:
   provider: kubeblocks
   description: Xinference is a powerful and versatile library designed to serve language, speech recognition, and multimodal models.
   serviceKind: xinference
-  serviceVersion: 0.11.1
+  serviceVersion: 0.11.0
   updateStrategy: BestEffortParallel
   scripts:
   - name: scripts
@@ -28,6 +28,7 @@ spec:
   runtime:
     containers:
     - name: xinference
+      image:  {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository}}:{{ default .Chart.AppVersion .Values.image.tag }}
       imagePullPolicy: {{default .Values.image.pullPolicy "IfNotPresent"}}
       securityContext:
         runAsUser: 0

@@ -7,14 +7,14 @@ spec:
   - compDefs:
     - xinference
     releases:
-    - 0.11.1
-    - 0.11.1-cpu
+    - 0.11.0
+    - 0.11.0-cpu
   releases:
-  - name: 0.11.1
-    serviceVersion: 0.11.1
+  - name: 0.11.0
+    serviceVersion: 0.11.0
     images:
-      xinference: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v0.11.1
-  - name: 0.11.1-cpu
-    serviceVersion: 0.11.1-cpu
+      xinference: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v0.11.0
+  - name: 0.11.0-cpu
+    serviceVersion: 0.11.0-cpu
     images:
-      xinference: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v0.11.1-cpu
+      xinference: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v0.11.0-cpu
