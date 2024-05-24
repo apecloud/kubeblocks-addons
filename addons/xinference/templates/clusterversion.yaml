@@ -55,4 +55,4 @@ spec:
     versionsContext:
       containers:
       - name: xinference
-        image: docker.io/xprobe/xinference:v0.11.0-cpu
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository}}:v0.11.0-cpu
