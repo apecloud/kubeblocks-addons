@@ -279,7 +279,7 @@ env:
   - name: ETCD_SERVER
     value: {{ .Values.etcd.server  }}
   - name: ETCD_PORT
-    value: {{ .Values.etcd.port }}
+    value: "{{ .Values.etcd.port }}"
   - name: TOPOLOGY_FLAGS
     value: "--topo_implementation etcd2 --topo_global_server_address $(ETCD_SERVER):$(ETCD_PORT) --topo_global_root /vitess/global"
   - name: VTTABLET_PORT
