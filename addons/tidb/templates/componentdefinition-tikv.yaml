@@ -9,6 +9,30 @@ spec:
   description: a distributed transactional key-value database
   updateStrategy: BestEffortParallel
   serviceVersion: "7.1.5" # TODO: is this needed?
+  vars:
+    - name: PD_HOST
+      valueFrom:
+        serviceVarRef:
+          compDef: tidb-pd-7
+          host: Required
+    - name: PD_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: tidb-pd-7
+          port:
+            name: client
+    - name: PD_ADDRESS
+      value: "$(PD_HOST).$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}:$(PD_PORT)"
+    - name: TIKV_HEADLESS_SVC_HOST
+      valueFrom:
+        serviceVarRef:
+          name: headless
+          # FIXME: this has to be optional, cause when component is reconciling,
+          # headless svc is not yet created by instanceset
+          optional: true
+          host: Required
+    - name: TIKV_HEADLESS_SVC_ADDRESS
+      value: "$(TIKV_HEADLESS_SVC_HOST).$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}:20160"
   runtime:
     containers:
       - name: tikv
@@ -29,7 +53,7 @@ spec:
           - |
             echo "start tikv..."
             DOMAIN=$KB_NAMESPACE".svc{{ .Values.clusterDomain }}"
-            exec /tikv-server --pd=http://${KB_CLUSTER_NAME}-tidb-pd.${DOMAIN}:2379 \
+            exec /tikv-server --pd=http://${PD_ADDRESS} \
             --data-dir=/var/lib/tikv \
             --addr=0.0.0.0:20160 \
             --advertise-addr=${KB_POD_FQDN}{{ .Values.clusterDomain }}:20160 \

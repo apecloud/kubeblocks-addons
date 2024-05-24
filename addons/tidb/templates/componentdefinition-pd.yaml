@@ -9,6 +9,9 @@ spec:
   description: tidb's metadata server
   updateStrategy: BestEffortParallel
   serviceVersion: "7.1.5" # TODO: is this needed?
+  vars:
+    - name: DOMAIN
+      value: "$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}"
   runtime:
     containers:
       - name: pd

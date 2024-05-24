@@ -5,8 +5,6 @@
 
 set -exo pipefail
 
-# TODO: clusterDomain 'cluster.local' requires configurable
-DOMAIN=$KB_NAMESPACE".svc.cluster.local"
 SUBDOMAIN=${KB_CLUSTER_COMP_NAME}-headless
 MY_PEER=$KB_POD_FQDN".cluster.local"
 

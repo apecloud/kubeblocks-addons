@@ -2,10 +2,7 @@
 
 set -exo pipefail
 
-DOMAIN=$KB_NAMESPACE".svc.cluster.local"
-PD_ADDRESS="http://${KB_CLUSTER_NAME}-tidb-pd.${DOMAIN}:2379"
-echo "$PD_ADDRESS"
-TIKV_ADDRESS="${KB_LEAVE_MEMBER_POD_NAME}.${KB_CLUSTER_NAME}-tikv-headless.${KB_NAMESPACE}.svc:20160"
+TIKV_ADDRESS="${KB_LEAVE_MEMBER_POD_NAME}.${TIKV_HEADLESS_SVC_ADDRESS}"
 echo "$TIKV_ADDRESS"
 /pd-ctl -u "$PD_ADDRESS" store delete addr "$TIKV_ADDRESS"
 

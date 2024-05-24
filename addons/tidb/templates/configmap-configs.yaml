@@ -28,7 +28,6 @@ metadata:
   labels:
     {{- include "tidb.labels" . | nindent 4 }}
 data:
-# TODO: pd config needs to apply to etcd
   pd.toml: |
     # full example can be seen at:
     # https://github.com/tikv/pd/blob/release-7.5/conf/config.toml
