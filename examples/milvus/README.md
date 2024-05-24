@@ -47,20 +47,18 @@ Create a standalone milvus cluster with specified cluster definition
 ```bash
 kubectl apply -f examples/milvus/cluster-standalone.yaml
 ```
-Create a distributed milvus cluster with specified cluster definition
 ```bash
-#Install minio addon
-helm upgrade -i kb-addon-minio kubeblocks-addons/minio --set accessKey=minioadmin,secretKey=minioadmin,serviceAccount.create=false --version="8.0.17" -n kb-system 
 #Upgrade milvus addon
 helm upgrade -i kb-addon-milvus kubeblocks-addons/milvus --set minio.accessKey=minioadmin,minio.secretKey=minioadmin --version="0.9.0" -n kb-system 
-
+```
+Create a distributed milvus cluster with specified cluster definition
+```bash
 kubectl apply -f examples/milvus/cluster.yaml
 ```
 Starting from kubeblocks 0.9.0, we introduced a more flexible cluster creation method based on components, allowing customization of cluster topology, functionalities and scale according to specific requirements.
 ```bash
 kubectl apply -f examples/milvus/cluster-cmpd.yaml
 ```
-
 
 ### [Vertical scaling](verticalscale.yaml)
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
