@@ -6,7 +6,6 @@ metadata:
     {{- include "etcd-cluster.labels" . | nindent 4 }}
 spec:
   clusterDefinitionRef: etcd
-  clusterVersionRef: etcd-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
   terminationPolicy: {{ .Values.terminationPolicy }}
   affinity:
     {{- with $.Values.topologyKeys }}
@@ -17,10 +16,11 @@ spec:
   {{- end }}
   componentSpecs:
     - name: etcd
-      componentDefRef: etcd
+      {{- if .Chart.AppVersion }}
+      serviceVersion: {{ .Chart.AppVersion }}
+      {{- end }}
       monitor: {{ .Values.monitor.enabled }}
-      replicas: {{ .Values.replicaCount | default "3" }}
-      serviceAccountName: {{ include "etcd-cluster.serviceAccountName" . }}
+      replicas: {{ .Values.replicas | default "3" }}
       {{- with .Values.resources }}
       resources:
         limits:
@@ -32,7 +32,7 @@ spec:
       {{- end }}
       {{- if .Values.persistence.enabled }}
       volumeClaimTemplates:
-        - name: data # ref clusterdefinition components.containers.volumeMounts.name
+        - name: data
           spec:
             storageClassName: {{ .Values.persistence.data.storageClassName }}
             accessModes:
@@ -41,3 +41,15 @@ spec:
               requests:
                 storage: {{ .Values.persistence.data.size }}
       {{- end }}
+  {{- if .Values.service.name }}
+  services:
+    - name: {{ .Values.service.name }}
+      serviceName: {{ .Values.service.name }}
+      spec:
+        type: {{ .Values.service.type }}
+        ports:
+          - port: {{ .Values.service.port }}
+            targetPort: 2379
+      componentSelector: etcd
+      roleSelector: {{ .Values.service.role }}
+  {{- end }}
