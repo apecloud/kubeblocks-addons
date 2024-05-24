@@ -277,9 +277,9 @@ env:
   - name: CELL
     value: {{ .Values.wesqlscale.cell | default "zone1" | quote }}
   - name: ETCD_SERVER
-    value: "$(KB_CLUSTER_NAME)-wescale-ctrl-headless"
+    value: {{ .Values.etcd.server  }}
   - name: ETCD_PORT
-    value: "2379"
+    value: {{ .Values.etcd.port }}
   - name: TOPOLOGY_FLAGS
     value: "--topo_implementation etcd2 --topo_global_server_address $(ETCD_SERVER):$(ETCD_PORT) --topo_global_root /vitess/global"
   - name: VTTABLET_PORT

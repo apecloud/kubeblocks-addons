@@ -67,9 +67,9 @@ spec:
           - name: VTCTLD_GRPC_PORT
             value: "15999"
           - name: ETCD_SERVER
-            value: "localhost"
+            value: {{ .Values.etcd.server  }}
           - name: ETCD_PORT
-            value: "2379"
+            value: {{ .Values.etcd.port  }}
           - name: TOPOLOGY_FLAGS
             value: "--topo_implementation etcd2 --topo_global_server_address $(ETCD_SERVER):$(ETCD_PORT) --topo_global_root /vitess/global"
         command: ["/scripts/vtctld.sh"]
@@ -156,9 +156,9 @@ spec:
           - name: VTGATE_GRPC_PORT
             value: "15991"
           - name: ETCD_SERVER
-            value: "$(KB_CLUSTER_NAME)-wescale-ctrl-headless"
+            value: {{ .Values.etcd.server  }}
           - name: ETCD_PORT
-            value: "2379"
+            value: {{ .Values.etcd.port  }}
           - name: TOPOLOGY_FLAGS
             value: "--topo_implementation etcd2 --topo_global_server_address $(ETCD_SERVER):$(ETCD_PORT) --topo_global_root /vitess/global"
           - name: MYSQL_UNIX_PORT
@@ -174,7 +174,6 @@ spec:
   exporter:
     scrapePath: /metrics
     scrapePort: webport
-
   vars:
     - name: MYSQL_USER
       valueFrom:
