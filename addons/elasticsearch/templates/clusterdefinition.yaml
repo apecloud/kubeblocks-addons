@@ -91,7 +91,7 @@ spec:
             - -c
             - |
               sh /mnt/elastic-internal/scripts/install-plugins.sh
-              eswrapper
+              /bin/tini -- /usr/local/bin/docker-entrypoint.sh
             securityContext:
               runAsNonRoot: true
               runAsUser: 1001
@@ -309,7 +309,7 @@ spec:
             - -c
             - |
               sh /mnt/elastic-internal/scripts/install-plugins.sh
-              eswrapper
+              /bin/tini -- /usr/local/bin/docker-entrypoint.sh
             securityContext:
               runAsNonRoot: true
               runAsUser: 1001
