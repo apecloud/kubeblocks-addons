@@ -51,7 +51,7 @@ Create a distributed milvus cluster with specified cluster definition
 ```bash
 #Install minio addon
 helm upgrade -i kb-addon-minio kubeblocks-addons/minio --set accessKey=minioadmin,secretKey=minioadmin,serviceAccount.create=false --version="8.0.17" -n kb-system 
-#Install milvus
+#Upgrade milvus
 helm upgrade -i kb-addon-milvus kubeblocks-addons/milvus --set minio.accessKey=minioadmin,minio.secretKey=minioadmin --version="0.9.0" -n kb-system 
 
 kubectl apply -f examples/milvus/cluster.yaml
