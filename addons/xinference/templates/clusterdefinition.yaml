@@ -31,11 +31,18 @@ spec:
             volumeMounts:
               - name: scripts
                 mountPath: /scripts
+              - name: models
+                mountPath: /data/kubechat/models
             command:
               - /scripts/start.sh
             ports:
               - name: xinference
                 containerPort: 9997
+        volumes:
+        - hostPath:
+            path: /data/kubechat/models
+            type: DirectoryOrCreate
+          name: models
   connectionCredential:
     username: root
     password: ""
