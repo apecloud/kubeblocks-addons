@@ -56,6 +56,11 @@ helm upgrade -i kb-addon-milvus kubeblocks-addons/milvus --set minio.accessKey=m
 
 kubectl apply -f examples/milvus/cluster.yaml
 ```
+Starting from kubeblocks 0.9.0, we introduced a more flexible cluster creation method based on components, allowing customization of cluster topology, functionalities and scale according to specific requirements.
+```bash
+kubectl apply -f examples/milvus/cluster-cmpd.yaml
+```
+
 
 ### [Vertical scaling](verticalscale.yaml)
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
