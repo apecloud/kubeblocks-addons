@@ -23,6 +23,12 @@ spec:
         volumeName: elasticsearch-config  
         namespace: {{ $.Release.Namespace }}
       workloadType: Stateful
+      scriptSpecs:
+      - name: elasticsearch-scripts
+        templateRef: {{ include "elasticsearch.name" . }}-scripts
+        namespace: {{ .Release.Namespace }}
+        volumeName: scripts
+        defaultMode: 0555
 
       service: # Source: elasticsearch/templates/service.yaml   -> coordinating-only
         ports:
@@ -59,53 +65,33 @@ spec:
           securityContext:
             runAsUser: 0
             privileged: true
-        {{- if .Values.downloadInstallPlugins }}
-        - name: download-install-plugins
+        - name: prepare-plugins
           imagePullPolicy: IfNotPresent
           command:
           - sh
           - -c
           - |
-            echo "install {{ len .Values.downloadInstallPlugins }} plugins"
-            {{- range $plugin := $.Values.downloadInstallPlugins }}
-            wget {{ $plugin.url }}
-            mkdir -p /opt/bitnami/elasticsearch/plugins/{{ $plugin.name }}
-            unzip `basename $plugin.url` -d /opt/bitnami/elasticsearch/plugins/{{ $plugin.name }}
-            {{- end }}
-          securityContext:
-            runAsUser: 0
-            privileged: true
-          volumeMounts:
-          - mountPath: /opt/bitnami/elasticsearch/plugins
-            name: plugins
-        {{- end -}}
-        {{- if .Values.nativeInstallPlugins }}
-        - name: native-install-plugins
-          imagePullPolicy: IfNotPresent
-          command:
-          - sh
-          - -c
-          - |
-            echo "install {{ len .Values.nativeInstallPlugins }} plugins"
-            {{- range $plugin := $.Values.nativeInstallPlugins }}
-            /opt/bitnami/elasticsearch/bin/elasticsearch-plugin list | grep {{ $plugin.name }}
-            if [ $? -eq 0 ]; then
-              echo "Plugin {{ $plugin.name }} already installed"
+            if [ -d /plugins ]; then
+              echo "prepare plugins: $(ls /plugins)"
+              cp -r /plugins/* /tmp/plugins/
             else
-              /opt/bitnami/elasticsearch/bin/elasticsearch-plugin install -b {{ $plugin.url }}
+              echo "there is no plugins"
             fi
-            {{- end }}
           securityContext:
             runAsUser: 0
             privileged: true
           volumeMounts:
-          - mountPath: /opt/bitnami/elasticsearch/plugins
+          - mountPath: /tmp/plugins
             name: plugins
-        {{- end }}
         containers:
           - name: elasticsearch
             imagePullPolicy: IfNotPresent
-
+            command:
+            - sh
+            - -c
+            - |
+              sh /mnt/elastic-internal/scripts/install-plugins.sh
+              /bin/tini -- /usr/local/bin/docker-entrypoint.sh
             securityContext:
               runAsNonRoot: true
               runAsUser: 1001
@@ -158,15 +144,16 @@ spec:
               value: "$(KB_POD_NAME).$(KB_CLUSTER_COMP_NAME)-headless.$(KB_NAMESPACE).svc.cluster.local"
             - name: ELASTICSEARCH_HEAP_SIZE
               value: "128m"
-
             volumeMounts:
               - mountPath: /usr/share/elasticsearch/data
                 name: data
               - mountPath: /usr/share/elasticsearch/config/elasticsearch.yaml
                 subPath: elasticsearch.yaml
                 name: elasticsearch-config
-              - mountPath: /opt/bitnami/elasticsearch/plugins
+              - mountPath: /tmp/plugins
                 name: plugins
+              - mountPath: /mnt/elastic-internal/scripts
+                name: scripts
           - name: metrics
             env:
               - name: SERVICE_PORT
@@ -296,52 +283,33 @@ spec:
           securityContext:
             runAsUser: 0
             privileged: true
-        {{- if $.Values.downloadInstallPlugins }}
-        - name: download-install-plugins
+        - name: install-plugins
           imagePullPolicy: IfNotPresent
           command:
           - sh
           - -c
           - |
-            echo "install {{ len $.Values.downloadInstallPlugins }} plugins"
-            {{- range $plugin := $.Values.downloadInstallPlugins }}
-            wget {{ $plugin.url }}
-            mkdir -p /opt/bitnami/elasticsearch/plugins/{{ $plugin.name }}
-            unzip `basename $plugin.url` -d /opt/bitnami/elasticsearch/plugins/{{ $plugin.name }}
-            {{- end }}
-          securityContext:
-            runAsUser: 0
-            privileged: true
-          volumeMounts:
-          - mountPath: /opt/bitnami/elasticsearch/plugins
-            name: plugins
-        {{- end -}}
-        {{- if $.Values.nativeInstallPlugins }}
-        - name: native-install-plugins
-          imagePullPolicy: IfNotPresent
-          command:
-          - sh
-          - -c
-          - |
-            echo "install {{ len $.Values.nativeInstallPlugins }} plugins"
-            {{- range $plugin := $.Values.nativeInstallPlugins }}
-            /opt/bitnami/elasticsearch/bin/elasticsearch-plugin list | grep {{ $plugin.name }}
-            if [ $? -eq 0 ]; then
-              echo "Plugin {{ $plugin.name }} already installed"
+            if [ -d /plugins ]; then
+              echo "prepare plugins: $(ls /plugins)"
+              cp -r /plugins/* /tmp/plugins/
             else
-              /opt/bitnami/elasticsearch/bin/elasticsearch-plugin install -b {{ $plugin.url }}
+              echo "there is no plugins"
             fi
-            {{- end }}
           securityContext:
             runAsUser: 0
             privileged: true
           volumeMounts:
           - mountPath: /opt/bitnami/elasticsearch/plugins
             name: plugins
-        {{- end }}
         containers:
           - name: elasticsearch
             imagePullPolicy: IfNotPresent
+            command:
+            - sh
+            - -c
+            - |
+              sh /mnt/elastic-internal/scripts/install-plugins.sh
+              /bin/tini -- /usr/local/bin/docker-entrypoint.sh
             securityContext:
               runAsNonRoot: true
               runAsUser: 1001
