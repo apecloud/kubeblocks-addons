@@ -9,7 +9,7 @@ spec:
     - name: "7.1.5"
       serviceVersion: "7.1.5"
       images:
-        pd: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/pd:{{ default .Chart.AppVersion .Values.image.tag }}
+        pd: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/pd:v7.1.5
   compatibilityRules:
     - compDefs:
         - "tidb-pd-7"
@@ -28,7 +28,7 @@ spec:
     - name: "7.1.5"
       serviceVersion: "7.1.5"
       images:
-        tidb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/tidb:{{ default .Chart.AppVersion .Values.image.tag }}
+        tidb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/tidb:v7.1.5
         slowlog: {{ .Values.image.helper.image }}
   compatibilityRules:
     - compDefs:
@@ -48,7 +48,7 @@ spec:
     - name: "7.1.5"
       serviceVersion: "7.1.5"
       images:
-        tikv: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/tikv:{{ default .Chart.AppVersion .Values.image.tag }}
+        tikv: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/tikv:v7.1.5
   compatibilityRules:
     - compDefs:
         - "tikv-7"
