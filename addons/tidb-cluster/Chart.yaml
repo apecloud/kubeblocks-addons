@@ -4,7 +4,7 @@ description: "A TiDB cluster Helm chart for KubeBlocks."
 
 type: application
 
-version: 0.1.0-alpha.1
+version: 0.9.0
 
 appVersion: "v7.1.2"
 
