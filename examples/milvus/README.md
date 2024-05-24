@@ -24,6 +24,7 @@ helm repo update
 # Install KubeBlocks
 helm install kubeblocks kubeblocks/kubeblocks --namespace kb-system --create-namespace --version="0.9.0"
 ```
+
 # Enable milvus
 ```bash
 # Add Helm repo 
@@ -33,7 +34,10 @@ helm repo add kubeblocks-addons https://jihulab.com/api/v4/projects/150246/packa
 # Update helm repo
 helm repo update
 
-helm upgrade -i kb-addon-milvus kubeblocks-addons/milvus --version 2.3.2 -n kb-system 
+#Install milvus addon 
+helm upgrade -i kb-addon-milvus kubeblocks-addons/milvus --version="0.9.0" -n kb-system
+#Install etcd addon 
+helm upgrade -i kb-addon-etcd kubeblocks-addons/etcd --version="0.9.0" -n kb-system  
 ``` 
 
 ## Examples
@@ -43,23 +47,17 @@ Create a standalone milvus cluster with specified cluster definition
 ```bash
 kubectl apply -f examples/milvus/cluster-standalone.yaml
 ```
+```bash
+#Upgrade milvus addon
+helm upgrade -i kb-addon-milvus kubeblocks-addons/milvus --set minio.accessKey=minioadmin,minio.secretKey=minioadmin --version="0.9.0" -n kb-system 
+```
 Create a distributed milvus cluster with specified cluster definition
 ```bash
-#Install minio addon
-helm upgrade -i kb-addon-minio kubeblocks-addons/minio --set accessKey=minioadmin,secretKey=minioadmin,serviceAccount.create=false -n kb-system 
-#Install milvus
-helm upgrade -i kb-addon-milvus kubeblocks-addons/milvus --set minio.accessKey=minioadmin,minio.secretKey=minioadmin -n kb-system 
-#Install etcd addon 
-helm upgrade -i kb-addon-etcd kubeblocks-addons/etcd -n kb-system  
-
-#Create etcd cluster
-helm install milvus-etcd kubeblocks-addons/etcd-cluster
-#Create minio cluster
-helm install milvus-minio kubeblocks-addons/minio-cluster
-#Create pulsar cluster
-helm install milvus-pulsar kubeblocks-addons/pulsar-cluster
-#Create milvus
 kubectl apply -f examples/milvus/cluster.yaml
+```
+Starting from kubeblocks 0.9.0, we introduced a more flexible cluster creation method based on components, allowing customization of cluster topology, functionalities and scale according to specific requirements.
+```bash
+kubectl apply -f examples/milvus/cluster-cmpd.yaml
 ```
 
 ### [Vertical scaling](verticalscale.yaml)
