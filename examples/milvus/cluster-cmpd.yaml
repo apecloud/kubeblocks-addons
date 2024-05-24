@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: Cluster
 metadata:
-  name: milvus-cluster2
+  name: milvus-cluster
   namespace: default
 spec:
   # Specifies the name of the ClusterTopology to be used when creating the Cluster. This field defines which set of Components, as outlined in the ClusterDefinition, will be used to construct the Cluster based on the named topology.
@@ -35,7 +35,7 @@ spec:
   componentSpecs:
     - name: proxy
       componentDef: milvus-proxy-0.9.0
-      serviceAccountName: kb-milvus-cluster2
+      serviceAccountName: kb-milvus-cluster
       replicas: 1
       resources:
         limits:
@@ -62,7 +62,7 @@ spec:
               name: admin
     - name: mixcoord
       componentDef: milvus-mixcoord-0.9.0
-      serviceAccountName: kb-milvus-cluster2
+      serviceAccountName: kb-milvus-cluster
       replicas: 1
       resources:
         limits:
@@ -89,7 +89,7 @@ spec:
               name: admin
     - name: datanode
       componentDef: milvus-datanode-0.9.0
-      serviceAccountName: kb-milvus-cluster2
+      serviceAccountName: kb-milvus-cluster
       replicas: 1
       resources:
         limits:
@@ -116,7 +116,7 @@ spec:
               name: admin
     - name: indexnode
       componentDef: milvus-indexnode-0.9.0
-      serviceAccountName: kb-milvus-cluster2
+      serviceAccountName: kb-milvus-cluster
       replicas: 1
       resources:
         limits:
@@ -143,7 +143,7 @@ spec:
               name: admin
     - name: querynode
       componentDef: milvus-querynode-0.9.0
-      serviceAccountName: kb-milvus-cluster2
+      serviceAccountName: kb-milvus-cluster
       replicas: 1
       resources:
         limits:
