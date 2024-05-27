@@ -252,7 +252,7 @@ spec:
     - name: bookies
       componentDefRef: bookies
       disableExporter: true
-      replicas: 1
+      replicas: 3
       resources:
         limits:
           cpu: '0.5'
@@ -278,7 +278,7 @@ spec:
     - name: zookeeper
       componentDefRef: zookeeper
       disableExporter: true
-      replicas: 1
+      replicas: 3
       resources:
         limits:
           cpu: '0.5'

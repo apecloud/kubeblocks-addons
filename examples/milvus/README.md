@@ -34,10 +34,10 @@ helm repo add kubeblocks-addons https://jihulab.com/api/v4/projects/150246/packa
 # Update helm repo
 helm repo update
 
-#Install milvus addon 
-helm upgrade -i kb-addon-milvus kubeblocks-addons/milvus --version="0.9.0" -n kb-system
 #Install etcd addon 
 helm upgrade -i kb-addon-etcd kubeblocks-addons/etcd --version="0.9.0" -n kb-system  
+#Install milvus addon 
+helm upgrade -i kb-addon-milvus kubeblocks-addons/milvus --version="0.9.0" -n kb-system
 ``` 
 
 ## Examples
