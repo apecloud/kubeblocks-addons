@@ -13,6 +13,8 @@ The minimum proxy cpu cores is 0.5 and the maximum cpu cores is 64.
 {{- $proxyCPU = 64 }}
 {{- end }}
 - name: wescale-ctrl
+  serviceRefs:
+    {{ include "apecloud-mysql-cluster.serviceRef" . | indent 4 }}
   volumeClaimTemplates:
     - name: data
       spec:
@@ -28,6 +30,8 @@ The minimum proxy cpu cores is 0.5 and the maximum cpu cores is 64.
       cpu: 500m
       memory: 128Mi
 - name: wescale
+  serviceRefs:
+    {{ include "apecloud-mysql-cluster.serviceRef" . | indent 4 }}
   replicas: 1
   enabledLogs:
     - error
@@ -70,4 +74,16 @@ raftGroup mode: max(replicas, 3)
     {{- "apecloud-mysql" }}
   {{- end }}
 {{- end -}}
+{{- end -}}
+
+{{- define "apecloud-mysql-cluster.serviceRef" }}
+{{- if eq .Values.etcd.serviceReference.cluster ""}}
+- name: etcd
+  namespace: {{ .Values.etcd.serviceReference.namespace | default .Release.Namespace }}
+  serviceDescriptor: {{ include "kblib.clusterName" . }}-etcd-descriptor
+{{- else}}
+- name: etcd
+  namespace: {{ .Values.etcd.serviceReference.namespace | default .Release.Namespace }}
+  cluster: {{ .Values.etcd.serviceReference.cluster | default (include "kblib.clusterName" .) }}
+{{- end }}
 {{- end -}}

@@ -6,17 +6,18 @@ cell=${CELL:-'zone1'}
 export ETCDCTL_API=2
 
 etcdctl --endpoints "http://${etcd_server}:${etcd_port}" get "/vitess/global" >/dev/null 2>&1
-if [[ $? -ne 0 ]]; then
-  echo "add /vitess/global"
-  etcdctl --endpoints "http://${etcd_server}:${etcd_port}" mkdir /vitess/global
+if [[ $? -eq 1 ]]; then
+  exit 0
 fi
 
-etcdctl --endpoints "http://${etcd_server}:${etcd_port}" get "/vitess/$cell" >/dev/null 2>&1
-if [[ $? -ne 0 ]]; then
-  echo "add /vitess/$cell"
-  etcdctl --endpoints "http://${etcd_server}:${etcd_port}" mkdir /vitess/$cell
-fi
+echo "add /vitess/global"
+etcdctl --endpoints "http://${etcd_server}:${etcd_port}" mkdir /vitess/global
 
+echo "add /vitess/$cell"
+etcdctl --endpoints "http://${etcd_server}:${etcd_port}" mkdir /vitess/$cell
+
+# And also add the CellInfo description for the cell.
+# If the node already exists, it's fine, means we used existing data.
 echo "add $cell CellInfo"
 set +e
 vtctl --topo_implementation etcd2 \

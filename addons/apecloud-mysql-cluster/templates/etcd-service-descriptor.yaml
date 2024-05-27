@@ -1,0 +1,14 @@
+{{- if eq .Values.etcd.serviceReference.cluster ""}}
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ServiceDescriptor
+metadata:
+  name: {{ include "kblib.clusterName" . }}-etcd-descriptor
+  namespace: {{ .Release.Namespace }}
+spec:
+  serviceKind: etcd
+  serviceVersion: {{ .Values.etcd.serviceVersion }}
+  endpoint:
+    value: {{ .Values.etcd.serviceReference.endpoint }}
+  port:
+    value: "{{ .Values.etcd.serviceReference.port }}"
+{{- end }}

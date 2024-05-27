@@ -188,7 +188,11 @@ exporter:
   containerName: mysql-exporter
   scrapePath: /metrics
   scrapePort: http-metrics
-
+serviceRefDeclarations:
+  - name: etcd
+    serviceRefDeclarationSpecs:
+      - serviceKind: etcd
+        serviceVersion: "^*"
 vars:
   - name: MYSQL_ROOT_USER
     valueFrom:
@@ -212,6 +216,18 @@ vars:
         optional: true
         host: Required
         loadBalancer: Required
+  - name: SERVICE_ETCD_PORT
+    valueFrom:
+      serviceRefVarRef:
+        compDef: {{ include "apecloud-mysql.componentDefName" . }}
+        name: etcd
+        port: Required
+  - name: SERVICE_ETCD_ENDPOINT
+    valueFrom:
+      serviceRefVarRef:
+        compDef: {{ include "apecloud-mysql.componentDefName" . }}
+        name: etcd
+        endpoint: Required
 {{- end -}}
 
 
@@ -277,9 +293,9 @@ env:
   - name: CELL
     value: {{ .Values.wesqlscale.cell | default "zone1" | quote }}
   - name: ETCD_SERVER
-    value: {{ .Values.etcd.server  }}
+    value: $(SERVICE_ETCD_ENDPOINT)
   - name: ETCD_PORT
-    value: "{{ .Values.etcd.port }}"
+    value: $(SERVICE_ETCD_PORT)
   - name: TOPOLOGY_FLAGS
     value: "--topo_implementation etcd2 --topo_global_server_address $(ETCD_SERVER):$(ETCD_PORT) --topo_global_root /vitess/global"
   - name: VTTABLET_PORT

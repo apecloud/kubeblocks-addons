@@ -3,6 +3,9 @@ echo "staring etcd."
 etcd_port=${ETCD_PORT:-'2379'}
 etcd_server=${ETCD_SERVER:-'127.0.0.1'}
 
+etcd_port=2379
+
+
 cell=${CELL:-'zone1'}
 export ETCDCTL_API=2
 

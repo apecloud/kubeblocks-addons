@@ -53,3 +53,11 @@ extra:
 ## metrics sidecars
 sidecars:
   - mysql-exporter
+
+etcd:
+  serviceReference:
+    namespace: "default"
+    cluster: ""
+    port: "2379"
+    endpoint: "etcd-cluster-etcd.default.svc.cluster.local"
+  serviceVersion: 3.5.6
