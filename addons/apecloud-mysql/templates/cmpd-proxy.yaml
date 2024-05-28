@@ -1,99 +1,6 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: wescale-ctrl
-  labels:
-    {{- include "apecloud-mysql.labels" . | nindent 4 }}
-spec:
-  provider: kubeblocks.io
-  description: wescale controller
-  serviceKind: wescale-ctrl
-  serviceVersion: "0.2.7"
-  serviceRefDeclarations:
-    - name: etcd
-      serviceRefDeclarationSpecs:
-        - serviceKind: etcd
-          serviceVersion: "^*"
-  scripts:
-    - name: apecloud-mysql-scripts
-      templateRef: {{ include "apecloud-mysql.cmScriptsName" . }}
-      namespace: {{ .Release.Namespace }}
-      volumeName: scripts
-      defaultMode: 0555
-  logConfigs:
-    {{- range $name,$pattern := .Values.vtconsensusLogConfigs }}
-    - name: {{ $name }}
-      filePathPattern: {{ $pattern }}
-    {{- end }}
-  runtime:
-    containers:
-      - name: vtctld
-        image: {{ .Values.wesqlscale.image.registry | default .Values.image.registry }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
-        imagePullPolicy: {{ default "IfNotPresent" .Values.wesqlscale.image.pullPolicy }}
-        ports:
-          - containerPort: 15000
-            name: vtctld-webport
-          - containerPort: 15999
-            name: vtctld-grpcport
-        env:
-          - name: CELL
-            value: {{ .Values.wesqlscale.cell | default "zone1" | quote }}
-          - name: VTCTLD_SERVER
-            value: "$(KB_CLUSTER_NAME)-wescale-ctrl-headless"
-          - name: VTCTLD_WEB_PORT
-            value: "15000"
-          - name: VTCTLD_GRPC_PORT
-            value: "15999"
-          - name: ETCD_SERVER
-            value: $(SERVICE_ETCD_ENDPOINT)
-          - name: ETCD_PORT
-            value: $(SERVICE_ETCD_PORT)
-          - name: TOPOLOGY_FLAGS
-            value: "--topo_implementation etcd2 --topo_global_server_address $(ETCD_SERVER):$(ETCD_PORT) --topo_global_root /vitess/global"
-        command: ["/scripts/vtctld.sh"]
-        volumeMounts:
-          - name: scripts
-            mountPath: /scripts
-          - name: data
-            mountPath: /vtdataroot
-        lifecycle:
-          postStart:
-            exec:
-              command: ["/scripts/etcd-post-start.sh"]
-          preStop:
-            exec:
-              command: ["/scripts/etcd-clean.sh"]
-  vars:
-    - name: MYSQL_ROOT_USER
-      valueFrom:
-        credentialVarRef:
-          compDef: {{ include "apecloud-mysql.componentDefName" . }}
-          name: root
-          optional: false
-          username: Required
-    - name: MYSQL_ROOT_PASSWORD
-      valueFrom:
-        credentialVarRef:
-          compDef: {{ include "apecloud-mysql.componentDefName" . }}
-          name: root
-          optional: false
-          password: Required
-    - name: SERVICE_ETCD_PORT
-      valueFrom:
-        serviceRefVarRef:
-          compDef: wescale-ctrl
-          name: etcd
-          port: Required
-    - name: SERVICE_ETCD_ENDPOINT
-      valueFrom:
-        serviceRefVarRef:
-          compDef: wescale-ctrl
-          name: etcd
-          endpoint: Required
----
-apiVersion: apps.kubeblocks.io/v1alpha1
-kind: ComponentDefinition
-metadata:
   name: wescale
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
@@ -136,6 +43,42 @@ spec:
       - name: vtgate-log
         emptyDir: { }
     containers:
+      - name: vtctld
+        image: {{ .Values.wesqlscale.image.registry | default .Values.image.registry }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.wesqlscale.image.pullPolicy }}
+        ports:
+          - containerPort: 15000
+            name: vtctld-webport
+          - containerPort: 15999
+            name: vtctld-grpcport
+        env:
+          - name: CELL
+            value: {{ .Values.wesqlscale.cell | default "zone1" | quote }}
+          - name: VTCTLD_SERVER
+            value: "$(KB_CLUSTER_NAME)-wescale-ctrl-headless"
+          - name: VTCTLD_WEB_PORT
+            value: "15000"
+          - name: VTCTLD_GRPC_PORT
+            value: "15999"
+          - name: ETCD_SERVER
+            value: $(SERVICE_ETCD_ENDPOINT)
+          - name: ETCD_PORT
+            value: $(SERVICE_ETCD_PORT)
+          - name: TOPOLOGY_FLAGS
+            value: "--topo_implementation etcd2 --topo_global_server_address $(ETCD_SERVER):$(ETCD_PORT) --topo_global_root /vitess/global"
+        command: ["/scripts/vtctld.sh"]
+        volumeMounts:
+          - name: scripts
+            mountPath: /scripts
+          - name: data
+            mountPath: /vtdataroot
+        lifecycle:
+          postStart:
+            exec:
+              command: ["/scripts/etcd-post-start.sh"]
+          preStop:
+            exec:
+              command: ["/scripts/etcd-clean.sh"]
       - name: vtgate
         image: {{ .Values.wesqlscale.image.registry | default .Values.image.registry }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
         imagePullPolicy: IfNotPresent
