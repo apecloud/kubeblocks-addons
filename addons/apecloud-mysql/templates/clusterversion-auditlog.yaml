@@ -1,0 +1,68 @@
+---
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterVersion
+metadata:
+  name: {{ include "apecloud-mysql.clusterVersionAuditLog" . }}
+  labels:
+  {{- include "apecloud-mysql.labels" . | nindent 4 }}
+spec:
+  clusterDefinitionRef: {{ include "apecloud-mysql.clusterDefName" . }}
+  componentVersions:
+    - componentDefRef: mysql
+      configSpecs:
+        - name: mysql-consensusset-config
+          templateRef: {{ include "apecloud-mysql.configTplAuditLogName" . }}
+          constraintRef: {{ include "apecloud-mysql.configConstraintName" . }}
+          volumeName: mysql-config
+          namespace: {{ .Release.Namespace }}
+      versionsContext:
+        initContainers:
+          - command:
+              - bash 
+              - -c
+              - |
+                cp /usr/lib/mysql/plugin/ {{ .Values.mysqlConfigs.dataMountPath }}/plugin -r
+            imagePullPolicy: Always
+            image: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
+            name: init-data
+            volumeMounts:
+              - mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
+                name: data
+        containers:
+          - name: mysql
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+            command:
+              - bash 
+              - -c
+              - |
+                mv {{ .Values.mysqlConfigs.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
+                rm -rf {{ .Values.mysqlConfigs.dataMountPath }}/plugin/
+                /scripts/setup.sh
+          - name: vttablet
+            image: {{ .Values.wesqlscale.image.registry | default .Values.image.registry }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.wesqlscale.image.pullPolicy }}
+      systemAccountSpec:
+        cmdExecutorConfig:
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.audit.tag }}
+      switchoverSpec:
+        cmdExecutorConfig:
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.audit.tag }}
+    - componentDefRef: vtcontroller
+      versionsContext:
+        containers:
+          - name: etcd
+            image: {{ .Values.wesqlscale.image.registry | default .Values.image.registry }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.wesqlscale.image.pullPolicy }}
+          - name: vtctld
+            image: {{ .Values.wesqlscale.image.registry | default .Values.image.registry }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.wesqlscale.image.pullPolicy }}
+          - name: vtconsensus
+            image: {{ .Values.wesqlscale.image.registry | default .Values.image.registry }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.wesqlscale.image.pullPolicy }}
+    - componentDefRef: vtgate
+      versionsContext:
+        containers:
+          - name: vtgate
+            image: {{ .Values.wesqlscale.image.registry | default .Values.image.registry }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.wesqlscale.image.pullPolicy }}
