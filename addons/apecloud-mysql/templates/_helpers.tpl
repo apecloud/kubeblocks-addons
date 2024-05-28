@@ -219,13 +219,11 @@ vars:
   - name: SERVICE_ETCD_PORT
     valueFrom:
       serviceRefVarRef:
-        compDef: {{ include "apecloud-mysql.componentDefName" . }}
         name: etcd
         port: Required
   - name: SERVICE_ETCD_ENDPOINT
     valueFrom:
       serviceRefVarRef:
-        compDef: {{ include "apecloud-mysql.componentDefName" . }}
         name: etcd
         endpoint: Required
 {{- end -}}
