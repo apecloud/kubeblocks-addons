@@ -33,11 +33,16 @@ metadata:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
   releases:
-  - name: wescale-0.2.7
+  - name: wescale-ctrl-0.2.7
     serviceVersion: "0.2.7"
     images:
       vtctld: &wescale  {{ .Values.wesqlscale.image.registry | default "docker.io" }}/{{ .Values.wesqlscale.image.repository }}:0.2.7
+  - name: wescale-0.2.7
+    serviceVersion: "0.2.7"
+    images:
       vtgate: *wescale
   compatibilityRules:
+  - releases: [wescale-ctrl-0.2.7]
+    compDefs: [wescale-ctrl]
   - releases: [wescale-0.2.7]
     compDefs: [wescale]
