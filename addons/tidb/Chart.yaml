@@ -4,7 +4,7 @@ description: "TiDB is an open-source, cloud-native, distributed, MySQL-Compatibl
 
 type: application
 
-version: 0.1.0-alpha.1
+version: 0.9.0
 
 appVersion: "v7.1.2"
 
