@@ -39,16 +39,9 @@ storage: 20
 ##
 proxyEnabled: false
 
-## @param auditLogEnabled if true, enable audit log in apecloud mysql
-auditLogEnabled: false
-
-proxy:
-  storageClassName: ""
-
 ## customized default values to override kblib chart's values
 extra:
   podAntiAffinity: Required
-  disableExporter: true
 
 ## metrics sidecars
 sidecars:

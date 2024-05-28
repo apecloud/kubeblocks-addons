@@ -112,6 +112,14 @@ mysql-scale-vttablet-config-constraints
 {{- end -}}
 {{- end -}}
 
+{{- define "apecloud-mysql.configConstraintVtconsensusName" }}
+{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+mysql-scale-vtconsensus-config-constraints
+{{- else -}}
+{{- .Values.resourceNamePrefix -}}-vtconsensus-config-constraints
+{{- end -}}
+{{- end -}}
+
 {{- define "apecloud-mysql.configConstraintVtgateName" }}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
 mysql-scale-vtgate-config-constraints
@@ -141,6 +149,14 @@ mysql8.0-auditlog-config-template
 vttablet-config-template
 {{- else -}}
 {{- .Values.resourceNamePrefix -}}-vttablet-config-template
+{{- end -}}
+{{- end -}}
+
+{{- define "apecloud-mysql.configTplVtconsensusName" }}
+{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+vtconsensus-config-template
+{{- else -}}
+{{- .Values.resourceNamePrefix -}}-vtconsensus-config-template
 {{- end -}}
 {{- end -}}
 

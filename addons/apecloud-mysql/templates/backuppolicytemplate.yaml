@@ -11,9 +11,9 @@ metadata:
 spec:
   clusterDefinitionRef: {{ include "apecloud-mysql.clusterDefName" . }}
   backupPolicies:
-  - componentDefs:
+  - componentDefRef: mysql
+    componentDefs:
       - {{ include "apecloud-mysql.componentDefName" . }}
-      - {{ include "apecloud-mysql.componentDefName" . }}-auditlog
     target:
       role: follower
       account: root

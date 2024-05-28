@@ -120,7 +120,11 @@
       "default": {
         "rootHost": "%",
         "createDatabase": true,
-        "database": "mydb"
+        "database": "mydb",
+        "username": "u1",
+        "password": "u1",
+        "replicationUser": "replicator",
+        "replicationPassword": ""
       },
       "properties": {
         "rootHost": {
@@ -140,6 +144,30 @@
           "description": "Name for a custom database to create.",
           "type": "string",
           "default": "mydb"
+        },
+        "username": {
+          "title": "Username",
+          "description": "Name for a custom user to create.",
+          "type": "string",
+          "default": "u1"
+        },
+        "password": {
+          "title": "Password",
+          "description": "Password for the user.",
+          "type": "string",
+          "default": "u1"
+        },
+        "replicationUser": {
+          "title": "ReplicationUser",
+          "description": "MySQL replication user.",
+          "type": "string",
+          "default": "replicator"
+        },
+        "replicationPassword": {
+          "title": "ReplicationPassword",
+          "description": "MySQL replication user password. Ignored if existing secret is provided.",
+          "type": "string",
+          "default": ""
         }
       }
     },
@@ -255,6 +283,36 @@
           "description": "Absolute path for the query log.",
           "type": "string",
           "default": "/vtdataroot/vtgate_querylog.txt"
+        }
+      }
+    },
+    "vtconsensusLogConfigs": {
+      "title": "VtconsensusLogConfigs",
+      "description": "Log path configs for vtconsensus",
+      "type": "object",
+      "default": {
+        "error": "/vtdataroot/vtconsensus/vtconsensus.ERROR",
+        "warning": "/vtdataroot/vtconsensus/vtconsensus.WARNING",
+        "info": "/vtdataroot/vtconsensus/vtconsensus.INFO"
+      },
+      "properties": {
+        "error": {
+          "title": "Error",
+          "description": "Absolute path for the error log.",
+          "type": "string",
+          "default": "/vtdataroot/vtconsensus/vtconsensus.ERROR"
+        },
+        "warning": {
+          "title": "Warning",
+          "description": "Absolute path for the warning log.",
+          "type": "string",
+          "default": "/vtdataroot/vtconsensus/vtconsensus.WARNING"
+        },
+        "info": {
+          "title": "Info",
+          "description": "Absolute path for the info log.",
+          "type": "string",
+          "default": "/vtdataroot/vtconsensus/vtconsensus.INFO"
         }
       }
     },

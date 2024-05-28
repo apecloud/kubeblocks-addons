@@ -10,9 +10,9 @@ spec:
   clusterDefinitionRef: {{ include "apecloud-mysql.clusterDefName" . }}
   identifier: hscale
   backupPolicies:
-  - componentDefs:
-      - {{ include "apecloud-mysql.componentDefName" . }}
-      - {{ include "apecloud-mysql.componentDefName" . }}-auditlog
+  - componentDefRef: mysql
+    componentDefs:
+    - {{ include "apecloud-mysql.componentDefName" . }}
     target:
       role: follower
       account: root
