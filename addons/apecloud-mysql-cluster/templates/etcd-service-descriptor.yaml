@@ -1,4 +1,3 @@
-{{- if eq .Values.etcd.serviceReference.cluster ""}}
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ServiceDescriptor
 metadata:
@@ -11,4 +10,3 @@ spec:
     value: {{ .Values.etcd.serviceReference.endpoint }}
   port:
     value: "{{ .Values.etcd.serviceReference.port }}"
-{{- end }}
