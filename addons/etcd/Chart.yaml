@@ -1,6 +1,6 @@
 apiVersion: v2
 name: etcd
-description: etcd is a strongly consistent, distributed key-value store that provides a reliable way to store data that needs to be accessed by a distributed system or cluster of machines.
+description: Etcd is a strongly consistent, distributed key-value store that provides a reliable way to store data that needs to be accessed by a distributed system or cluster of machines.
 
 # A chart can be either an 'application' or a 'library' chart.
 #
@@ -21,7 +21,7 @@ version: 0.9.0
 # incremented each time you make changes to the application. Versions are not expected to
 # follow Semantic Versioning. They should reflect the version the application is using.
 # It is recommended to use it with quotes.
-appVersion: "v3.5.6"
+appVersion: "v3.5.13"
 
 home: https://etcd.io/
 icon: https://bitnami.com/assets/stacks/etcd/img/etcd-stack-220x234.png

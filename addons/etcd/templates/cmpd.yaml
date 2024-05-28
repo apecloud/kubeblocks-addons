@@ -3,15 +3,15 @@ kind: ComponentDefinition
 metadata:
   name: etcd-{{ .Chart.Version }}
   labels:
-    {{- include "etcd.labels" . | nindent 4}}
+    {{- include "etcd.labels" . | nindent 4 }}
 spec:
+  provider: ApeCloud
+  description: {{ .Chart.Description }}
   serviceKind: etcd
-  serviceVersion: {{ .Chart.AppVersion }}
   runtime:
     containers:
       - name: etcd
-        image: {{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
         ports:
           - containerPort: 2379
             name: client
@@ -65,9 +65,18 @@ spec:
             --initial-advertise-peer-urls http://${MY_PEER}:2380 \
             --initial-cluster ${PEERS} \
             --data-dir /var/run/etcd/default.etcd
+  vars:
+    - name: PEER_ENDPOINT
+      valueFrom:
+        serviceVarRef:
+          optional: true
+          host: Required
+          loadBalancer: Required
+  volumes:
+    - name: data
+      needSnapshot: true
   services:
     - name: peer
-      serviceName: peer
       spec:
         ports:
           - name: peer
@@ -75,14 +84,6 @@ spec:
             targetPort: peer
       podService: true
       disableAutoProvision: true
-  vars:
-    - name: PEER_ENDPOINT
-      valueFrom:
-        serviceVarRef:
-          name: peer
-          optional: true
-          host: Required
-          loadBalancer: Required
   updateStrategy: BestEffortParallel
   roles:
     - name: leader
