@@ -50,52 +50,6 @@ app.kubernetes.io/name: {{ include "postgresql.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
-{{/*
-Create the name of the service account to use
-*/}}
-{{- define "postgresql.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "postgresql.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
-{{- end }}
-
-{{/*
-Return true if a configmap object should be created for PostgreSQL primary with the configuration
-*/}}
-{{- define "postgresql.primary.createConfigmap" -}}
-{{- if and (or .Values.primary.configuration .Values.primary.pgHbaConfiguration) (not .Values.primary.existingConfigmap) }}
-    {{- true -}}
-{{- else -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Return PostgreSQL service port
-*/}}
-{{- define "postgresql.service.port" -}}
-{{- .Values.primary.service.ports.postgresql -}}
-{{- end -}}
-
-{{/*
-Return the name for a custom database to create
-*/}}
-{{- define "postgresql.database" -}}
-{{- .Values.auth.database -}}
-{{- end -}}
-
-{{/*
-Get the password key.
-*/}}
-{{/* TODO: use $(RANDOM_PASSWD) instead */}}
-{{- define "postgresql.postgresPassword" -}}
-{{- if or (.Release.IsInstall) (not (lookup "apps.kubeblocks.io/v1alpha1" "ClusterDefinition" "" "postgresql")) -}}
-{{ .Values.auth.postgresPassword | default (randAlphaNum 10) }}
-{{- else -}}
-{{ index (lookup "apps.kubeblocks.io/v1alpha1" "ClusterDefinition" "" "postgresql").spec.connectionCredential "password"}}
-{{- end }}
-{{- end }}
 
 {{/*
 Generate scripts configmap
@@ -124,5 +78,45 @@ Parameters: cvName, values
             {{- true -}}
         {{- end -}}
     {{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define postgresql component defintion name prefix
+*/}}
+{{- define "postgresql.componentDefNamePrefix" -}}
+{{- printf "postgresql-" -}}
+{{- end -}}
+
+{{/*
+Define postgresql12 component defintion name
+*/}}
+{{- define "postgresql.compDefPostgresql12" -}}
+{{- if eq (len .Values.componentDefinitionVersion.postgresql12) 0 -}}
+postgresql-12
+{{- else -}}
+{{ include "postgresql.componentDefNamePrefix" . }}{{ .Values.componentDefinitionVersion.postgresql12 }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define postgresql14 component defintion name
+*/}}
+{{- define "postgresql.compDefPostgresql14" -}}
+{{- if eq (len .Values.componentDefinitionVersion.postgresql14) 0 -}}
+postgresql-14
+{{- else -}}
+{{ include "postgresql.componentDefNamePrefix" . }}{{ .Values.componentDefinitionVersion.postgresql14 }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define postgresql15 component defintion name
+*/}}
+{{- define "postgresql.compDefPostgresql15" -}}
+{{- if eq (len .Values.componentDefinitionVersion.postgresql15) 0 -}}
+postgresql-15
+{{- else -}}
+{{ include "postgresql.componentDefNamePrefix" . }}{{ .Values.componentDefinitionVersion.postgresql15 }}
 {{- end -}}
 {{- end -}}

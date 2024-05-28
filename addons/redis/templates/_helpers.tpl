@@ -9,44 +9,72 @@ Expand the name of the chart.
 Define redis component defintion name
 */}}
 {{- define "redis.componentDefName" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
+{{- if eq (len .Values.compDefinitionVersion.redis) 0 -}}
 redis
 {{- else -}}
-{{- printf "redis-%s" .Values.compDefinitionVersionSuffix -}}
+{{- printf "redis-%s" .Values.compDefinitionVersion.redis -}}
 {{- end -}}
+{{- end -}}
+
+{{/*
+Define redis component defintion name prefix
+*/}}
+{{- define "redis.componentDefNamePrefix" -}}
+{{- printf "redis-%s" .Values.compDefinitionVersion.redis -}}
 {{- end -}}
 
 {{/*
 Define redis-sentinel component defintion name
 */}}
 {{- define "redis-sentinel.componentDefName" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
+{{- if eq (len .Values.compDefinitionVersion.sentinel) 0 -}}
 redis-sentinel
 {{- else -}}
-{{- printf "redis-sentinel-%s" .Values.compDefinitionVersionSuffix -}}
+{{- printf "redis-sentinel-%s" .Values.compDefinitionVersion.sentinel -}}
 {{- end -}}
+{{- end -}}
+
+{{/*
+Define redis-sentinel component defintion name prefix
+*/}}
+{{- define "redis-sentinel.componentDefNamePrefix" -}}
+{{- printf "redis-sentinel-%s" .Values.compDefinitionVersion.sentinel -}}
 {{- end -}}
 
 {{/*
 Define redis-cluster component defintion name
 */}}
 {{- define "redis-cluster.componentDefName" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
+{{- if eq (len .Values.compDefinitionVersion.redisCluster) 0 -}}
 redis-cluster
 {{- else -}}
-{{- printf "redis-cluster-%s" .Values.compDefinitionVersionSuffix -}}
+{{- printf "redis-cluster-%s" .Values.compDefinitionVersion.redisCluster -}}
 {{- end -}}
+{{- end -}}
+
+{{/*
+Define redis-cluster component defintion name prefix
+*/}}
+{{- define "redis-cluster.componentDefNamePrefix" -}}
+{{- printf "redis-cluster-%s" .Values.compDefinitionVersion.redisCluster -}}
 {{- end -}}
 
 {{/*
 Define redis-twemproxy component defintion name
 */}}
 {{- define "redis-twemproxy.componentDefName" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
+{{- if eq (len .Values.compDefinitionVersion.twemproxy) 0 -}}
 redis-twemproxy
 {{- else -}}
-{{- printf "redis-twemproxy-%s" .Values.compDefinitionVersionSuffix -}}
+{{- printf "redis-twemproxy-%s" .Values.compDefinitionVersion.twemproxy -}}
 {{- end -}}
+{{- end -}}
+
+{{/*
+Define redis-twemproxy component defintion name prefix
+*/}}
+{{- define "redis-twemproxy.componentDefNamePrefix" -}}
+{{- printf "redis-twemproxy-%s" .Values.compDefinitionVersion.twemproxy -}}
 {{- end -}}
 
 {{/*
@@ -98,14 +126,14 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Define image
 */}}
 {{- define "redis.image" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major7.minor72 }}
 {{- end }}
 
 {{- define "redis-sentinel.image" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major7.minor72 }}
 {{- end }}
 
-{{- define "redis-proxy.image" -}}
+{{- define "redis-twemproxy.image" -}}
 {{ .Values.redisTwemproxyImage.registry | default "docker.io" }}/{{ .Values.redisTwemproxyImage.repository }}:{{ .Values.redisTwemproxyImage.tag }}
 {{- end }}
 

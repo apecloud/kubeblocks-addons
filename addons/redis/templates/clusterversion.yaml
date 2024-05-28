@@ -34,5 +34,5 @@ spec:
           imagePullPolicy: {{ default .Values.busyboxImage.pullPolicy "IfNotPresent" }}
       containers:
         - name: redis-twemproxy
-          image: {{ include "redis-proxy.image" . }}
+          image: {{ include "redis-twemproxy.image" . }}
           imagePullPolicy: {{ default .Values.redisTwemproxyImage.pullPolicy "IfNotPresent" }}

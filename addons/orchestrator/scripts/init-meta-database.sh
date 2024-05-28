@@ -1,11 +1,11 @@
 #!/bin/sh
-set -ex
-# 定义 MySQL 连接参数
-mysql_port="3306"
-meta_mysql_user="$META_MYSQL_USER"
-meta_mysql_password="$META_MYSQL_PASSWORD"
-meta_mysql_host=${META_MYSQL_ENDPOINT%:*}
-meta_mysql_port=${META_MYSQL_ENDPOINT#*:}
+META_MYSQL_USER=${META_MYSQL_USER:-"orchestrator"}
+ORC_META_USER=${ORC_META_USER:-"orchestrator"}
+
+meta_mysql_user="${META_MYSQL_USER}"
+meta_mysql_password="${META_MYSQL_PASSWORD}"
+meta_mysql_host=${META_MYSQL_ENDPOINT}
+meta_mysql_port=${META_MYSQL_PORT}
 
 meta_user="$ORC_META_USER"
 meta_password="$ORC_META_PASSWORD"
@@ -13,14 +13,12 @@ meta_database="$ORC_META_DATABASE"
 
 # create orchestrator user in mysql
 init_meta_databases() {
-  wait_for_connectivity $meta_mysql_host
-
+  wait_for_connectivity
 
   echo "Create MySQL User and Grant Permissions..."
   mysql -h $meta_mysql_host -P $meta_mysql_port -u $meta_mysql_user -p$meta_mysql_password << EOF
 CREATE USER IF NOT EXISTS '$ORC_META_USER'@'%' IDENTIFIED BY '$ORC_META_PASSWORD';
 EOF
-
 
   mysql -h $meta_mysql_host -P $meta_mysql_port -u $meta_mysql_user -p$meta_mysql_password << EOF
 CREATE DATABASE IF NOT EXISTS $meta_database;

@@ -8,7 +8,7 @@ spec:
   provider: kubeblocks
   description: A Redis v7.0 component definition for Kubernetes
   serviceKind: redis
-  serviceVersion: 7.0.6
+  serviceVersion: {{ .Values.componentServiceVersion.redis }}
   services:
     - name: redis
       serviceName: redis
@@ -169,8 +169,7 @@ spec:
             - /bin/bash
             - -c
             - /scripts/redis-register-to-sentinel.sh
-        ## TODO: the preCondition should be changed to RuntimeReady when KubeBlocks support it
-        preCondition: ComponentReady
+        preCondition: RuntimeReady
     accountProvision:
       customHandler:
         image: {{ include "redis.image" . }}

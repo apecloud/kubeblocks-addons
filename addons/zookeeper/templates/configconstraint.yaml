@@ -20,7 +20,7 @@ spec:
   {{- end}}
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule
-  configSchema:
+  parametersSchema:
     # define parameter validation rules
     topLevelKey: ZookeeperParameter
 

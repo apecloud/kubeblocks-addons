@@ -25,8 +25,6 @@ mysql_port="3306"
 topology_user="$ORC_TOPOLOGY_USER"
 topology_password="$ORC_TOPOLOGY_PASSWORD"
 
-
-replica_count="$KB_REPLICA_COUNT"
 cluster_component_pod_name="$KB_CLUSTER_COMP_NAME"
 component_name="$KB_COMP_NAME"
 kb_cluster_name="$KB_CLUSTER_NAME"
@@ -211,7 +209,6 @@ change_master() {
   mysql -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" << EOF
 SET GLOBAL READ_ONLY=1;
 STOP SLAVE;
-SET GLOBAL SQL_SLAVE_SKIP_COUNTER=1;
 CHANGE MASTER TO
 MASTER_AUTO_POSITION=1,
 MASTER_CONNECT_RETRY=1,

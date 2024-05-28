@@ -1,0 +1,24 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: redis-cluster
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "redis-cluster.componentDefNamePrefix" . }}
+      releases:
+        - 7.2.4
+        - 7.0.6
+  releases:
+    - name: 7.2.4
+      changes:
+      serviceVersion: 7.2.4
+      images:
+        redis-cluster: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/redis-stack-server:7.2.0-v10
+        metrics: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/agamotto:0.1.2-beta.1
+    - name: 7.0.6
+      changes:
+      serviceVersion: 7.0.6
+      images:
+        redis-cluster: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/redis-stack-server:7.0.6-RC4
+        metrics: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/agamotto:0.1.2-beta.1

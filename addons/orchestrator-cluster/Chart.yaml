@@ -5,6 +5,7 @@ name: orchestrator-cluster
 type: application
 version: 0.9.0
 description: orchestrator
+
 dependencies:
   - name: kblib
     version: 0.1.0
@@ -15,7 +16,7 @@ dependencies:
 # rather than the version number of MySQL-Scale itself.
 # From a user's perspective, the version  number of the frontend
 # proxy of the MySQL being used is not relevant.
-appVersion: "8.0.33"
+appVersion: "3.2.6"
 
 keywords:
   - mysql

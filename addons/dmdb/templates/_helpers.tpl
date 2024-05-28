@@ -49,14 +49,3 @@ Selector labels
 app.kubernetes.io/name: {{ include "dmdb.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
-
-{{/*
-Create the name of the service account to use
-*/}}
-{{- define "dmdb.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "dmdb.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
-{{- end }}

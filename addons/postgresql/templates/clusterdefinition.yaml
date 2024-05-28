@@ -31,11 +31,9 @@ spec:
           failureThreshold: 2
           periodSeconds: 1
           timeoutSeconds: 1
-      monitor:
-        builtIn: false
-        exporterConfig:
-          scrapePath: /metrics
-          scrapePort: {{ .Values.metrics.service.port }}
+      exporter:
+        containerName: exporter
+        scrapePath: /metrics
       logConfigs:
         {{- range $name,$pattern := .Values.logConfigs }}
         - name: {{ $name }}
@@ -82,7 +80,7 @@ spec:
       switchoverSpec:
         withCandidate:
           cmdExecutorConfig:
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag }}
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tags.major14.minor072  }}
             command:
               - /bin/bash
               - -c
@@ -90,7 +88,7 @@ spec:
               - curl -s http://$(KB_REPLICATION_PRIMARY_POD_FQDN):8008/switchover -XPOST -d '{"leader":"$(KB_REPLICATION_PRIMARY_POD_NAME)","candidate":"$(KB_SWITCHOVER_CANDIDATE_NAME)"}'
         withoutCandidate:
           cmdExecutorConfig:
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag }}
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tags.major14.minor072  }}
             command:
               - /bin/bash
               - -c
@@ -289,6 +287,34 @@ spec:
                 value: "6432"
               - name: PGBOUNCER_BIND_ADDRESS
                 value: "0.0.0.0"
+          - name: exporter
+            ports:
+              - name: http-metrics
+                containerPort: {{ .Values.metrics.service.port }}
+            image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
+            imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
+            args:
+              - "--extend.query-path=/opt/conf/custom-metrics.yaml"
+              - "--web.listen-address=:{{ .Values.metrics.service.port }}"
+              - "--log.level=info"
+            env:
+              - name: DATA_SOURCE_USER
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: username
+                    optional: false
+              - name: DATA_SOURCE_PASS
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: password
+                    optional: false
+              - name: DATA_SOURCE_URI
+                value: "localhost:5432/postgres?sslmode=disable"
+            volumeMounts:
+              - name: postgresql-custom-metrics
+                mountPath: /opt/conf
         volumes:
           - name: dshm
             emptyDir:
@@ -308,43 +334,9 @@ spec:
                 - path: "component-replicas"
                   fieldRef:
                     fieldPath: metadata.annotations['apps.kubeblocks.io/component-replicas']
-      sidecarContainerSpecs:
-       - monitor:
-           kind: metrics
-           scrapeConfig:
-             metricsPath: /metrics
-             metricsPort: http-metrics
-         name: exporter
-         ports:
-             - name: http-metrics
-               containerPort: {{ .Values.metrics.service.port }}
-         image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
-         imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
-         args:
-           - "--extend.query-path=/opt/conf/custom-metrics.yaml"
-           - "--web.listen-address=:{{ .Values.metrics.service.port }}"
-           - "--log.level=info"
-         env:
-           - name: DATA_SOURCE_USER
-             valueFrom:
-               secretKeyRef:
-                 name: $(CONN_CREDENTIAL_SECRET_NAME)
-                 key: username
-                 optional: false
-           - name: DATA_SOURCE_PASS
-             valueFrom:
-               secretKeyRef:
-                 name: $(CONN_CREDENTIAL_SECRET_NAME)
-                 key: password
-                 optional: false
-           - name: DATA_SOURCE_URI
-             value: "localhost:5432/postgres?sslmode=disable"
-         volumeMounts:
-           - name: postgresql-custom-metrics
-             mountPath: /opt/conf
       systemAccounts:
         cmdExecutorConfig:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag }}
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tags.major14.minor072  }}
           command:
             - psql
           args:
@@ -395,3 +387,13 @@ spec:
               statements:
                 creation: CREATE USER $(USERNAME) WITH REPLICATION PASSWORD '$(PASSWD)';
                 update: ALTER USER $(USERNAME) WITH PASSWORD '$(PASSWD)';
+  topologies:
+    - name: standalone
+      components:
+        - name: postgresql
+          compDef: {{ include "postgresql.componentDefNamePrefix" . }}
+      default: true
+    - name: replication
+      components:
+        - name: postgresql
+          compDef: {{ include "postgresql.componentDefNamePrefix" . }}

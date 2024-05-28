@@ -7,11 +7,11 @@ version: 0.9.0
 description: A Redis Replication Cluster Helm chart for KubeBlocks.
 dependencies:
   - name: kblib
-    version: 0.1.0
-    repository: file://../kblib
+    version: 0.1.1
+    repository: file://../kblib-v2
     alias: extra
 
-appVersion: "7.0.6"
+appVersion: "7.2.4"
 
 keywords:
   - redis

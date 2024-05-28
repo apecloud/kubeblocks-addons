@@ -22,7 +22,7 @@ spec:
             asContainerImage: true
             image:  {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
   # ConfigurationSchema that impose restrictions on engine parameter's rule
-  configSchema:
+  parametersSchema:
     # top level mysql configuration type
     topLevelKey: PGParameter
 

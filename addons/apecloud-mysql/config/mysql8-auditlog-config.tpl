@@ -124,6 +124,18 @@ loose_audit_log_policy=ALL # ALL, LOGINS, QUERIES, NONE
 loose_audit_log_strategy=ASYNCHRONOUS
 loose_audit_log_rotate_on_size=10485760
 loose_audit_log_rotations=5
+## mysql> select host, user from mysql.user;
+## +-----------+------------------+
+## | host      | user             |
+## +-----------+------------------+
+## | %         | root             |
+## | %         | u1               |
+## | localhost | mysql.infoschema |
+## | localhost | mysql.session    |
+## | localhost | mysql.sys        |
+## | localhost | root             |
+## +-----------+------------------+
+loose_audit_log_exclude_accounts=root@%,root@localhost
 
 #innodb
 innodb_doublewrite_batch_size=16

@@ -361,12 +361,30 @@ rebuild_redis_acl_file() {
 }
 
 start_redis_server() {
-    exec redis-server /etc/redis/redis.conf \
-    --loadmodule /opt/redis-stack/lib/redisearch.so ${REDISEARCH_ARGS} \
-    --loadmodule /opt/redis-stack/lib/redisgraph.so ${REDISGRAPH_ARGS} \
-    --loadmodule /opt/redis-stack/lib/redistimeseries.so ${REDISTIMESERIES_ARGS} \
-    --loadmodule /opt/redis-stack/lib/rejson.so ${REDISJSON_ARGS} \
-    --loadmodule /opt/redis-stack/lib/redisbloom.so ${REDISBLOOM_ARGS}
+    exec_cmd="exec redis-server /etc/redis/redis.conf"
+    if [ -f /opt/redis-stack/lib/redisearch.so ]; then
+        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redisearch.so ${REDISEARCH_ARGS}"
+    fi
+    if [ -f /opt/redis-stack/lib/redistimeseries.so ]; then
+        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redistimeseries.so ${REDISTIMESERIES_ARGS}"
+    fi
+    if [ -f /opt/redis-stack/lib/rejson.so ]; then
+        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/rejson.so ${REDISJSON_ARGS}"
+    fi
+    if [ -f /opt/redis-stack/lib/redisbloom.so ]; then
+        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redisbloom.so ${REDISBLOOM_ARGS}"
+    fi
+    if [ -f /opt/redis-stack/lib/redisgraph.so ]; then
+        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redisgraph.so ${REDISGRAPH_ARGS}"
+    fi
+    if [ -f /opt/redis-stack/lib/rediscompat.so ]; then
+        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/rediscompat.so"
+    fi
+    if [ -f /opt/redis-stack/lib/redisgears.so ]; then
+        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redisgears.so v8-plugin-path /opt/redis-stack/lib/libredisgears_v8_plugin.so ${REDISGEARS_ARGS}"
+    fi
+    echo "Starting redis server cmd: $exec_cmd"
+    eval "$exec_cmd"
 }
 
 # build redis cluster configuration redis.conf
