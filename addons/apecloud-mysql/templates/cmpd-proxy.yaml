@@ -187,7 +187,7 @@ spec:
         credentialVarRef:
           compDef: {{ include "apecloud-mysql.componentDefName" . }}
           name: root
-          optional: false
+          optional: false 
           password: Required
     - name: SERVICE_ETCD_PORT
       valueFrom:

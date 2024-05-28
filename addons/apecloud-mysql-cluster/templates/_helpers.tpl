@@ -77,13 +77,7 @@ raftGroup mode: max(replicas, 3)
 {{- end -}}
 
 {{- define "apecloud-mysql-cluster.serviceRef" }}
-{{- if eq .Values.etcd.serviceReference.cluster ""}}
 - name: etcd
-  namespace: {{ .Values.etcd.serviceReference.namespace | default .Release.Namespace }}
+  namespace: {{ .Release.Namespace }}
   serviceDescriptor: {{ include "kblib.clusterName" . }}-etcd-descriptor
-{{- else}}
-- name: etcd
-  namespace: {{ .Values.etcd.serviceReference.namespace | default .Release.Namespace }}
-  cluster: {{ .Values.etcd.serviceReference.cluster | default (include "kblib.clusterName" .) }}
-{{- end }}
 {{- end -}}
