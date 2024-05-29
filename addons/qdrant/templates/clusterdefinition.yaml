@@ -6,6 +6,11 @@ metadata:
   labels:
     {{- include "qdrant.labels" . | nindent 4 }}
 spec:
+  topologies:
+  - name: cluster
+    components:
+    - name: qdrant
+      compDef: qdrant
   type: qdrant
   connectionCredential:
     username: root
