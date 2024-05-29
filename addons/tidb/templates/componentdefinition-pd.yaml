@@ -1,0 +1,105 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: tidb-pd-7
+  labels:
+    {{- include "tidb.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: tidb's metadata server
+  updateStrategy: BestEffortParallel
+  serviceVersion: "7.1.5" # TODO: is this needed?
+  vars:
+    - name: DOMAIN
+      value: "$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}"
+  runtime:
+    containers:
+      - name: pd
+        imagePullPolicy: IfNotPresent
+        ports:
+          - containerPort: 2379
+            name: client
+          - containerPort: 2380
+            name: peer
+        volumeMounts:
+          - name: data
+            mountPath: /var/lib/pd
+          - name: scripts
+            mountPath: /scripts
+          - name: config
+            mountPath: /etc/pd
+        command: [ "/scripts/pd_start.sh" ]
+  volumes:
+    - name: data
+      needSnapshot: true
+  scripts:
+    - name: tidb-scripts
+      templateRef: {{ include "tidb.cmScriptsName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555 # FIXME: kb bug? if this field is not set, permission is wrong
+  configs:
+    - name: pd-configuration
+      templateRef: {{ include "tidb.pd.configTplName" . }}
+      constraintRef: {{ include "tidb.pd.configConstraintName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: config
+      defaultMode: 0444
+  roles:
+    - name: leader
+      serviceable: true
+      votable: true
+      writable: true
+    - name: follower
+      serviceable: true
+      votable: true
+      writable: false
+  lifecycleActions:
+    roleProbe:
+      customHandler:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/pd:{{ default .Chart.AppVersion .Values.image.tag }}
+        exec:
+          command:
+            - bash
+            - -c
+            - |
+              # FIXME: this will fail, no idea why
+              # LEADER_NAME=$(/pd-ctl member | jq -r '.leader.name')
+              MEMBER=$(/pd-ctl member)
+              LEADER_NAME=$(echo $MEMBER | jq -r .leader.name)
+              if [ "$LEADER_NAME" == "$HOSTNAME" ]; then
+                  echo "leader"
+              else
+                  echo "follower"
+              fi
+    memberLeave:
+      customHandler:
+        # FIXME: seems like image is not needed
+        # this action will be executed in lorry container
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/pd:{{ default .Chart.AppVersion .Values.image.tag }}
+        exec:
+          command:
+            - bash
+            - -c
+            - |
+              ADDRESS=${KB_MEMBER_ADDRESSES%%,*}
+              echo $KB_LEAVE_MEMBER_POD_NAME
+              echo $ADDRESS
+              /pd-ctl -u $ADDRESS member delete name $KB_LEAVE_MEMBER_POD_NAME
+  # TODO
+  # systemAccounts:
+  #   - name: root
+  #     initAccount: true
+  exporter:
+    containerName: pd
+    scrapePort: "2379"
+  services:
+    - name: pd
+      spec:
+        ports:
+          - name: client
+            port: 2379
+            targetPort: client
+          - name: peer
+            port: 2380
+            targetPort: peer
