@@ -8,5 +8,3 @@ spec:
   serviceVersion: {{ .Values.etcd.serviceVersion }}
   endpoint:
     value: {{ .Values.etcd.serviceReference.endpoint }}
-  port:
-    value: "{{ .Values.etcd.serviceReference.port }}"

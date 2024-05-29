@@ -25,6 +25,12 @@ spec:
     - name: {{ $name }}
       filePathPattern: {{ $pattern }}
     {{- end }}
+  lifecycleActions:
+    preTerminate:
+      customHandler:
+        image: {{ .Values.wesqlscale.image.registry | default .Values.image.registry }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
+        exec:
+          command: ["/scripts/etcd-clean.sh"]
   runtime:
     containers:
       - name: vtctld
@@ -46,10 +52,6 @@ spec:
             value: "15999"
           - name: ETCD_SERVER
             value: $(SERVICE_ETCD_ENDPOINT)
-          - name: ETCD_PORT
-            value: $(SERVICE_ETCD_PORT)
-          - name: TOPOLOGY_FLAGS
-            value: "--topo_implementation etcd2 --topo_global_server_address $(ETCD_SERVER):$(ETCD_PORT) --topo_global_root /vitess/global"
         command: ["/scripts/vtctld.sh"]
         volumeMounts:
           - name: scripts
@@ -60,9 +62,6 @@ spec:
           postStart:
             exec:
               command: ["/scripts/etcd-post-start.sh"]
-          preStop:
-            exec:
-              command: ["/scripts/etcd-clean.sh"]
   vars:
     - name: MYSQL_ROOT_USER
       valueFrom:
@@ -78,11 +77,6 @@ spec:
           name: root
           optional: false
           password: Required
-    - name: SERVICE_ETCD_PORT
-      valueFrom:
-        serviceRefVarRef:
-          name: etcd
-          port: Required
     - name: SERVICE_ETCD_ENDPOINT
       valueFrom:
         serviceRefVarRef:
@@ -157,10 +151,6 @@ spec:
             value: "15991"
           - name: ETCD_SERVER
             value: $(SERVICE_ETCD_ENDPOINT)
-          - name: ETCD_PORT
-            value: $(SERVICE_ETCD_PORT)
-          - name: TOPOLOGY_FLAGS
-            value: "--topo_implementation etcd2 --topo_global_server_address $(ETCD_SERVER):$(ETCD_PORT) --topo_global_root /vitess/global"
           - name: MYSQL_UNIX_PORT
             value: "/tmp/mysql.sock"
         command: ["/scripts/vtgate.sh"]
@@ -189,11 +179,6 @@ spec:
           name: root
           optional: false 
           password: Required
-    - name: SERVICE_ETCD_PORT
-      valueFrom:
-        serviceRefVarRef:
-          name: etcd
-          port: Required
     - name: SERVICE_ETCD_ENDPOINT
       valueFrom:
         serviceRefVarRef:

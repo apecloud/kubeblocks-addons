@@ -1,12 +1,14 @@
 #!/bin/bash
-etcd_port=${ETCD_PORT:-'2379'}
-etcd_server=${ETCD_SERVER:-'127.0.0.1'}
 
-echo "Deleting all keys with prefix /vitess from Etcd server at ${etcd_server}:${etcd_port}..."
-etcdctl --endpoints=http://${etcd_server}:${etcd_port} del /vitess --prefix
+endpoints=${ETCD_SERVER:-'127.0.0.1:2379'}
+
+ehco $endpoints
+
+echo "Deleting all keys with prefix /vitess/${KB_CLUSTER_NAME} from Etcd server at ${endpoints}..."
+etcdctl --endpoints=http://${endpoints} del /vitess/${KB_CLUSTER_NAME} --prefix
 
 if [ $? -eq 0 ]; then
-    echo "Successfully deleted all keys with prefix /vitess."
+    echo "Successfully deleted all keys with prefix /vitess/$KB_CLUSTER_NAME."
 else
     echo "Failed to delete keys. Please check your Etcd server and try again."
     exit 1

@@ -216,11 +216,6 @@ vars:
         optional: true
         host: Required
         loadBalancer: Required
-  - name: SERVICE_ETCD_PORT
-    valueFrom:
-      serviceRefVarRef:
-        name: etcd
-        port: Required
   - name: SERVICE_ETCD_ENDPOINT
     valueFrom:
       serviceRefVarRef:
@@ -292,14 +287,9 @@ env:
     value: {{ .Values.wesqlscale.cell | default "zone1" | quote }}
   - name: ETCD_SERVER
     value: $(SERVICE_ETCD_ENDPOINT)
-  - name: ETCD_PORT
-    value: $(SERVICE_ETCD_PORT)
-  - name: TOPOLOGY_FLAGS
-    value: "--topo_implementation etcd2 --topo_global_server_address $(ETCD_SERVER):$(ETCD_PORT) --topo_global_root /vitess/global"
   - name: VTTABLET_PORT
     value: "15100"
   - name: VTTABLET_GRPC_PORT
-    value: "16100"
   - name: VTCTLD_HOST
     value: "$(KB_CLUSTER_NAME)-wescale-ctrl-headless"
   - name: VTCTLD_WEB_PORT

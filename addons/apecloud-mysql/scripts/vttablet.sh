@@ -22,7 +22,12 @@ tablet_hostname=$(eval echo \$KB_"$uid"_HOSTNAME)
 printf -v tablet_logfile 'vttablet_%010d_querylog.txt' $uid
 
 tablet_type=replica
-topology_fags=${TOPOLOGY_FLAGS:-'--topo_implementation etcd2 --topo_global_server_address 127.0.0.1:2379 --topo_global_root /vitess/global'}
+
+endpoints=${ETCD_SERVER:-'127.0.0.1:2379'}
+
+ehco $endpoints
+
+topology_fags="--topo_implementation etcd2 --topo_global_server_address ${endpoints} --topo_global_root /vitess/${KB_CLUSTER_NAME}/global"
 
 /scripts/wait-for-service.sh vtctld $vtctld_host $vtctld_web_port
 
