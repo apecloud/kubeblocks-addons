@@ -1,0 +1,33 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterVersion
+metadata:
+  name: victoria-metrics-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
+  labels:
+    {{- include "victoria-metrics.labels" . | nindent 4 }}
+spec:
+  clusterDefinitionRef: victoria-metrics
+  componentVersions:
+    # - componentDefRef: vmsingle
+    #   versionsContext:
+    #     containers:
+    #       - name: vmsingle
+    #         image: {{ .Values.images.vmsingle.registry | default "docker.io" }}/{{ .Values.images.vmsingle.repository }}:{{ .Values.images.vmsingle.tag }}
+    #         imagePullPolicy: {{ default .Values.images.vmsingle.pullPolicy "IfNotPresent" }}
+    - componentDefRef: vminsert
+      versionsContext:
+        containers:
+          - name: victoria-metrics-cluster-vminsert
+            image: {{ .Values.images.vminsert.registry | default "docker.io" }}/{{ .Values.images.vminsert.repository }}:{{ .Values.images.vminsert.tag }}
+            imagePullPolicy: {{ default .Values.images.vminsert.pullPolicy "IfNotPresent" }}
+    - componentDefRef: vmselect
+      versionsContext:
+        containers:
+          - name: victoria-metrics-cluster-vmselect
+            image: {{ .Values.images.vmselect.registry | default "docker.io" }}/{{ .Values.images.vmselect.repository }}:{{ .Values.images.vmselect.tag }}
+            imagePullPolicy: {{ default .Values.images.vmselect.pullPolicy "IfNotPresent" }}
+    - componentDefRef: vmstorage
+      versionsContext:
+        containers:
+          - name: victoria-metrics-cluster-vmstorage
+            image: {{ .Values.images.vmstorage.registry | default "docker.io" }}/{{ .Values.images.vmstorage.repository }}:{{ .Values.images.vmstorage.tag }}
+            imagePullPolicy: {{ default .Values.images.vmstorage.pullPolicy "IfNotPresent" }}

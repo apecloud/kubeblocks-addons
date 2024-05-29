@@ -1,0 +1,278 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "nameOverride": {
+      "title": "Name",
+      "description": "The override name.",
+      "type": "string",
+      "default": ""
+    },
+    "fullnameOverride": {
+      "title": "Fullname",
+      "description": "The override fullname.",
+      "type": "string",
+      "default": ""
+    },
+    "clusterVersionOverride": {
+      "title": "ClusterVersion",
+      "description": "The override cluster version.",
+      "type": "string",
+      "default": ""
+    },
+    "terminationPolicy": {
+      "title": "TerminationPolicy",
+      "description": "The policy of termination.",
+      "type": "string",
+      "default": "Delete",
+      "enum": [
+        "Delete",
+        "DoNotTerminate",
+        "Halt",
+        "WipeOut"
+      ]
+    },
+    "vminsert": {
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "title": "Replicas for vminsert",
+          "description": "The number of replicas for vminsert component.",
+          "type": [
+            "number",
+            "string"
+          ],
+          "default": 1,
+          "minimum": 1,
+          "maximum": 5
+        },
+        "resources": {
+          "type": "object",
+          "properties": {
+            "limits": {
+              "type": "object",
+              "properties": {
+                "memory": {
+                  "title": "Memory(Gi) for vminsert",
+                  "description": "Memory limits for vminsert component, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 0.5,
+                  "minimum": 0.5,
+                  "maximum": 1000
+                },
+                "cpu": {
+                  "title": "CPU for vminsert",
+                  "description": "CPU cores limits for vminsert component.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 0.5,
+                  "minimum": 0.5,
+                  "maximum": 64,
+                  "multipleOf": 0.5
+                }
+              }
+            },
+            "requests": {
+              "type": "object",
+              "properties": {
+                "memory": {
+                  "title": "Memory(Gi) for vminsert",
+                  "description": "Memory requests vminsert component, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 0.5,
+                  "minimum": 0.5,
+                  "maximum": 1000
+                },
+                "cpu": {
+                  "title": "CPU for vminsert",
+                  "description": "CPU cores requests for vminsert component.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 0.5,
+                  "minimum": 0.5,
+                  "maximum": 64,
+                  "multipleOf": 0.5
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "vmselect": {
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "title": "Replicas for vmselect",
+          "description": "The number of replicas for vmselect component.",
+          "type": [
+            "number",
+            "string"
+          ],
+          "default": 1,
+          "minimum": 1,
+          "maximum": 5
+        },
+        "resources": {
+          "type": "object",
+          "properties": {
+            "limits": {
+              "type": "object",
+              "properties": {
+                "memory": {
+                  "title": "Memory(Gi) for vmselect",
+                  "description": "Memory limits for vmselect component, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 0.5,
+                  "minimum": 0.5,
+                  "maximum": 1000
+                },
+                "cpu": {
+                  "title": "CPU for vmselect",
+                  "description": "CPU cores limits for vmselect component.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 0.5,
+                  "minimum": 0.5,
+                  "maximum": 64,
+                  "multipleOf": 0.5
+                }
+              }
+            },
+            "requests": {
+              "type": "object",
+              "properties": {
+                "memory": {
+                  "title": "Memory(Gi) for vmselect",
+                  "description": "Memory requests for vmselect component, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 0.5,
+                  "minimum": 0.5,
+                  "maximum": 1000
+                },
+                "cpu": {
+                  "title": "CPU for vmselect",
+                  "description": "CPU cores requests for vmselect component.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 0.5,
+                  "minimum": 0.5,
+                  "maximum": 64,
+                  "multipleOf": 0.5
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "vmstorage": {
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "title": "Replicas for vmstorage",
+          "description": "The number of replicas for vmstorage component.",
+          "type": [
+            "number",
+            "string"
+          ],
+          "default": 1,
+          "minimum": 1,
+          "maximum": 5
+        },
+        "resources": {
+          "type": "object",
+          "properties": {
+            "limits": {
+              "type": "object",
+              "properties": {
+                "memory": {
+                  "title": "Memory(Gi) for vmstorage",
+                  "description": "Memory limits for vmstorage component, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 0.5,
+                  "minimum": 0.5,
+                  "maximum": 1000
+                },
+                "cpu": {
+                  "title": "CPU for vmstorage",
+                  "description": "CPU cores limits for vmstorage component.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 0.5,
+                  "minimum": 0.5,
+                  "maximum": 64,
+                  "multipleOf": 0.5
+                }
+              }
+            },
+            "requests": {
+              "type": "object",
+              "properties": {
+                "memory": {
+                  "title": "Memory(Gi) requests for vmstorage",
+                  "description": "Memory for vmstorage component, the unit is Gi.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 0.5,
+                  "minimum": 0.5,
+                  "maximum": 1000
+                },
+                "cpu": {
+                  "title": "CPU for vmstorage",
+                  "description": "CPU cores requests for vmstorage component.",
+                  "type": [
+                    "number",
+                    "string"
+                  ],
+                  "default": 0.5,
+                  "minimum": 0.5,
+                  "maximum": 64,
+                  "multipleOf": 0.5
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "storage": {
+      "title": "Storage(Gi)",
+      "description": "Storage size, the unit is Gi.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 10,
+      "minimum": 1,
+      "maximum": 10000
+    }
+  }
+}
