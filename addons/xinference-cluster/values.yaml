@@ -2,12 +2,6 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-## @param version xinference cluster version
-##
-version: xinference-latest
-
-cpuVersion: xinference-cpu-latest
-
 ## @param replicas specify cluster replicas
 ##
 replicas: 1

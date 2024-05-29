@@ -1,20 +1,28 @@
-{{- include "kblib.clusterCommon" . }}
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+spec:
   clusterDefinitionRef: xinference  # ref clusterDefinition.name
-  {{ if .Values.cpuMode }}
-  clusterVersionRef: {{ .Values.cpuVersion }}
-  {{ end }}
+  terminationPolicy:  {{ .Values.extra.terminationPolicy }}
   componentSpecs:
     - name: xinference
-      componentDefRef: xinference # ref clusterDefinition componentDefs.name
+      componentDef: xinference # ref clusterDefinition componentDefs.name
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.replicas }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{ if .Values.cpuMode }}
-      {{- include "kblib.componentResources" . | indent 6 }}
+      serviceVersion: 0.11.1-cpu
       {{ else }}
+      serviceVersion: 0.11.1
       resources:
         limits:
           nvidia.com/gpu: {{ .Values.gpu }}
         requests:
           nvidia.com/gpu: {{ .Values.gpu }}
-      {{ end }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
+      {{- include "kblib.componentServices" . | indent 6 }}
+{{ end }}
