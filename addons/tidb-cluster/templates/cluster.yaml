@@ -5,8 +5,8 @@ metadata:
   labels: {{ include "tidb-cluster.labels" . | nindent 4 }}
 spec:
   clusterDefinitionRef: tidb  # ref clusterdefinition.name
-  clusterVersionRef: tidb-{{ default .Chart.AppVersion .Values.clusterVersionOverride }} # ref clusterversion.name
   terminationPolicy: {{ $.Values.terminationPolicy }}
+  topology: cluster
   affinity:
     {{- with $.Values.topologyKeys }}
     topologyKeys: {{ . | toYaml | nindent 6 }}
@@ -16,10 +16,9 @@ spec:
   {{- end }}
   componentSpecs:
     {{- with $.Values.pd }}
-    - name: pd
-      componentDefRef: pd
+    - name: tidb-pd
       serviceAccountName: {{ include "tidb-cluster.serviceAccountName" $ }}
-      monitor: {{ $.Values.monitor.enabled }}
+      disableExporter: false
       replicas: {{ .replicas | default 3 }}
       {{- with .tolerations }}
       tolerations: {{ .| toYaml | nindent 8 }}
@@ -45,9 +44,8 @@ spec:
     {{- end }}
     {{- with $.Values.tikv }}
     - name: tikv
-      componentDefRef: tikv
       serviceAccountName: {{ include "tidb-cluster.serviceAccountName" $ }}
-      monitor: {{ $.Values.monitor.enabled }}
+      disableExporter: false
       replicas: {{ .replicas | default 3 }}
       {{- with .tolerations }}
       tolerations: {{ .| toYaml | nindent 8 }}
@@ -73,9 +71,8 @@ spec:
     {{- end }}
     {{- with $.Values.tidb }}
     - name: tidb
-      componentDefRef: tidb
       serviceAccountName: {{ include "tidb-cluster.serviceAccountName" $ }}
-      monitor: {{ $.Values.monitor.enabled }}
+      disableExporter: false
       replicas: {{ .replicas | default 2 }}
       {{- with .tolerations }}
       tolerations: {{ .| toYaml | nindent 8 }}
