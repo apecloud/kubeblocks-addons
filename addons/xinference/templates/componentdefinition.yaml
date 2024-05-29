@@ -1,0 +1,51 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: xinference
+  labels:
+    {{- include "xinference.labels" . | nindent 4}}
+spec:
+  provider: kubeblocks
+  description: Xinference is a powerful and versatile library designed to serve language, speech recognition, and multimodal models.
+  serviceKind: xinference
+  serviceVersion: 0.11.0
+  updateStrategy: BestEffortParallel
+  scripts:
+  - name: scripts
+    templateRef: xinference-scripts
+    namespace: {{ .Release.Namespace }}
+    volumeName: scripts
+    defaultMode: 0555
+  services:
+  - name: http
+    serviceName: http
+    spec:
+      ipFamilyPolicy: PreferDualStack
+      ports:
+      - name: http
+        port: 9997
+        targetPort: http
+  runtime:
+    containers:
+    - name: xinference
+      image:  {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository}}:{{ default .Chart.AppVersion .Values.image.tag }}
+      imagePullPolicy: {{default .Values.image.pullPolicy "IfNotPresent"}}
+      securityContext:
+        runAsUser: 0
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - name: scripts
+        mountPath: /scripts
+      - name: models
+        mountPath: /data/kubechat/models
+      command:
+      - /scripts/start.sh
+      ports:
+      - name: http
+        containerPort: 9997
+    volumes:
+    - hostPath:
+        path: /data/kubechat/models
+        type: DirectoryOrCreate
+      name: models

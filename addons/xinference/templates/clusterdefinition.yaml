@@ -5,6 +5,12 @@ metadata:
   labels:
     {{- include "xinference.labels" . | nindent 4}}
 spec:
+  topologies:
+    - name: cluster
+      default: true
+      components:
+      - name: xinference
+        compDef: xinference
   componentDefs:
     - name: xinference
       workloadType: Stateful
@@ -31,11 +37,18 @@ spec:
             volumeMounts:
               - name: scripts
                 mountPath: /scripts
+              - name: models
+                mountPath: /data/kubechat/models
             command:
               - /scripts/start.sh
             ports:
               - name: xinference
                 containerPort: 9997
+        volumes:
+        - hostPath:
+            path: /data/kubechat/models
+            type: DirectoryOrCreate
+          name: models
   connectionCredential:
     username: root
     password: ""
