@@ -36,6 +36,19 @@ spec:
       - name: http
         port: 9200
         targetPort: http
+  lifecycleActions:
+    memberLeave:
+      customHandler:
+        image: {{ .Values.image.tools.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag | default "latest" }}
+        exec:
+          command:
+          - /bin/sh
+          - -c
+          - |
+            echo "member $KB_LEAVE_MEMBER_POD_NAME is leaving"
+            curl -X POST http://127.0.0.1:9200/_cluster/voting_config_exclusions?node_names=$KB_LEAVE_MEMBER_POD_NAME
+        targetPodSelector: Any
+        container: elasticsearch
   runtime:
     containers:
     - env:
