@@ -1,0 +1,41 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: {{ include "mysql.componentDefName" . }}-version
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "mysql.componentDefName" . }}
+      releases:
+        - {{ include "mysql.componentDefName" . }}-5.7.44
+        - {{ include "mysql.componentDefName" . }}-8.0.33
+    - compDefs:
+        - {{ include "mysql.componentDefName" . }}-orc
+      releases:
+        - {{ include "mysql.componentDefName" . }}-5.7.44-orc
+        - {{ include "mysql.componentDefName" . }}-8.0.33-orc
+  releases:
+    - name: {{ include "mysql.componentDefName" . }}-8.0.33
+      changes: mysql component version for orchestrator
+      serviceVersion: 8.0.33
+      images:
+        init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
+        mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+    - name: {{ include "mysql.componentDefName" . }}-8.0.33-orc
+      changes: mysql component version for orchestrator
+      serviceVersion: 8.0.33
+      images:
+        init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
+        mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+    - name: {{ include "mysql.componentDefName" . }}-5.7.44
+      changes: mysql component version for orchestrator
+      serviceVersion: 5.7.44
+      images:
+        init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:5.7.44
+        mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.7.44
+    - name: {{ include "mysql.componentDefName" . }}-5.7.44-orc
+      changes: mysql component version for orchestrator
+      serviceVersion: 5.7.44
+      images:
+        init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:5.7.44
+        mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.7.44

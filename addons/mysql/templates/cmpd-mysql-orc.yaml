@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "mysql.componentDefName" . }}-5.7.44-orc
+  name: {{ include "mysql.componentDefName" . }}-orc
   labels:
       {{- include "mysql.labels" . | nindent 4 }}
 spec:
@@ -10,7 +10,7 @@ spec:
   provider: kubeblocks
   description: mysql 5.7 component definition for Kubernetes
   serviceKind: mysql
-  serviceVersion: "5.7"
+  serviceVersion: 5.7.44
 
   serviceRefDeclarations:
     - name: orchestrator
@@ -28,7 +28,7 @@ spec:
             targetPort: mysql
     - name: mysql
       serviceName: mysql
-      generatePodOrdinalService: true
+      podService: true
       spec:
         ports:
           - name: mysql
@@ -140,7 +140,7 @@ spec:
           - |
             mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog}
             cp /usr/lib/mysql/plugin/ {{ .Values.dataMountPath }}/plugin -r
-        imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
@@ -151,7 +151,7 @@ spec:
             cp -r /usr/bin/jq /kubeblocks/jq
             cp -r /scripts/orchestrator-client /kubeblocks/orchestrator-client
         image: {{ .Values.image.registry | default "docker.io" }}/apecloud/jq:1.7.4
-        imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         name: init-jq
         volumeMounts:
           - mountPath: /kubeblocks
@@ -161,8 +161,8 @@ spec:
           - -r
           - /usr/local/bin/curl
           - /kubeblocks/curl
-        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/curl-static:8.7.1
-        imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
+        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/curl-static:7.67.0
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         name: init-curl
         volumeMounts:
           - mountPath: /kubeblocks
@@ -173,7 +173,7 @@ spec:
           - /xtrabackup-2.4
           - /kubeblocks/xtrabackup
         image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:mysql
-        imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         name: init-xtrabackup
         volumeMounts:
           - mountPath: /kubeblocks
@@ -181,7 +181,7 @@ spec:
     containers:
       - name: mysql
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.7.44
-        imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         lifecycle:
           postStart:
             exec:
@@ -197,14 +197,7 @@ spec:
             if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
               skip_slave_start="ON"
             fi
-            REPORT_HOST=MYSQL_ORDINAL_HOST_${KB_POD_NAME##*-}
-            /scripts/docker-entrypoint-5.7.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) --report-host ${!REPORT_HOST} \
-            --ignore-db-dir=lost+found \
-            --plugin-load-add=rpl_semi_sync_master=semisync_master.so \
-            --plugin-load-add=rpl_semi_sync_slave=semisync_slave.so \
-            --plugin-load-add=audit_log=audit_log.so \
-            --log-bin={{.Values.dataMountPath}}/binlog/$(KB_POD_NAME)-bin \
-            --skip-slave-start=$skip_slave_start
+            /scripts/mysql-entrypoint.sh
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
@@ -247,7 +240,7 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "mysql.componentDefName" . }}-5.7.44-orc
+          compDef: {{ include "mysql.componentDefName" . }}-orc
           name: root
           username: Required
 
@@ -256,7 +249,7 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "mysql.componentDefName" . }}-5.7.44-orc
+          compDef: {{ include "mysql.componentDefName" . }}-orc
           name: root
           password: Required
 
@@ -264,9 +257,8 @@ spec:
     - name: MYSQL_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "mysql.componentDefName" . }}-5.7.44-orc
+          compDef: {{ include "mysql.componentDefName" . }}-orc
           name: mysql
-          generatePodOrdinalServiceVar: true
           optional: true
           port:
             name: mysql
@@ -275,7 +267,7 @@ spec:
     - name: MYSQL_ORDINAL_HOST
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "mysql.componentDefName" . }}-5.7.44-orc
+          compDef: {{ include "mysql.componentDefName" . }}-orc
           name: mysql
           generatePodOrdinalServiceVar: true
           host: Required
@@ -283,13 +275,13 @@ spec:
     - name: ORC_ENDPOINTS
       valueFrom:
         serviceRefVarRef:
-          compDef: {{ include "mysql.componentDefName" . }}-5.7.44-orc
+          compDef: {{ include "mysql.componentDefName" . }}-orc
           name: orchestrator
           endpoint: Required
 
     - name: ORC_PORTS
       valueFrom:
         serviceRefVarRef:
-          compDef: {{ include "mysql.componentDefName" . }}-5.7.44-orc
+          compDef: {{ include "mysql.componentDefName" . }}-orc
           name: orchestrator
           port: Required
