@@ -1,4 +1,7 @@
 #!/bin/bash
+echo "starting vtctl"
+/scripts/etcd-post-start.sh
+
 echo "starting vtctld"
 cell=${CELL:-'zone1'}
 grpc_port=${VTCTLD_GRPC_PORT:-'15999'}
@@ -13,6 +16,9 @@ topology_fags="--topo_implementation etcd2 --topo_global_server_address ${endpoi
 VTDATAROOT=$VTDATAROOT/vtctld
 su vitess <<EOF
 mkdir -p $VTDATAROOT
+if [ -f $VTDATAROOT/vtctld.pid ]; then
+    rm $VTDATAROOT/vtctld.pid
+fi
 exec vtctld \
 $topology_fags \
 --alsologtostderr \

@@ -52,16 +52,14 @@ spec:
             value: "15999"
           - name: ETCD_SERVER
             value: $(SERVICE_ETCD_ENDPOINT)
+          - name: ETCDCTL_API
+            value: "3"
         command: ["/scripts/vtctld.sh"]
         volumeMounts:
           - name: scripts
             mountPath: /scripts
           - name: data
             mountPath: /vtdataroot
-        lifecycle:
-          postStart:
-            exec:
-              command: ["/scripts/etcd-post-start.sh"]
   vars:
     - name: MYSQL_ROOT_USER
       valueFrom:

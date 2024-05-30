@@ -4,6 +4,7 @@ endpoints=${ETCD_SERVER:-'127.0.0.1:2379'}
 
 echo $endpoints
 
+servers=""
 IFS=',' read -ra ADDR <<< "$endpoints"
 for addr in "${ADDR[@]}"; do
   if [[ $addr != http* ]]; then

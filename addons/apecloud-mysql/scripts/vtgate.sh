@@ -16,6 +16,9 @@ topology_fags="--topo_implementation etcd2 --topo_global_server_address ${endpoi
 
 echo "starting vtgate."
 su vitess <<EOF
+if [ -f $VTDATAROOT/vtgate.pid ]; then
+    rm $VTDATAROOT/vtgate.pid
+fi
 exec vtgate \
   $topology_fags \
   --alsologtostderr \

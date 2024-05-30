@@ -36,6 +36,9 @@ echo "starting vttablet for $alias..."
 VTDATAROOT=$VTDATAROOT/vttablet
 su vitess <<EOF
 mkdir -p $VTDATAROOT
+if [ -f $VTDATAROOT/vttablet.pid ]; then
+    rm $VTDATAROOT/vttablet.pid
+fi
 exec vttablet \
 $topology_fags \
 --alsologtostderr \
