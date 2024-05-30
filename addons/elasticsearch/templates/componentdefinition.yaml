@@ -46,7 +46,7 @@ spec:
           - -c
           - |
             echo "member $KB_LEAVE_MEMBER_POD_NAME is leaving"
-            curl -X POST http://127.0.0.1:9200/_cluster/voting_config_exclusions?node_names=$KB_LEAVE_MEMBER_POD_NAME
+            curl -v -X POST http://127.0.0.1:9200/_cluster/voting_config_exclusions?node_names=$KB_LEAVE_MEMBER_POD_NAME
         targetPodSelector: Any
         container: elasticsearch
   runtime:
