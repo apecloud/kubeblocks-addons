@@ -20,7 +20,7 @@ cpu: 1
 
 ## @param memory, the unit is Gi
 ##
-memory: 1
+memory: 2
 
 ## @param requests.cpu if not set, use cpu
 ## @param requests.memory, if not set, use memory

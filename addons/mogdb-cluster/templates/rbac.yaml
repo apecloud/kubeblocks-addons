@@ -27,4 +27,3 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: {{ printf "kb-%s" (include "kblib.clusterName" .) }}
-    namespace: {{ .Release.Namespace }}
