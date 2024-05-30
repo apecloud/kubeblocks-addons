@@ -6,11 +6,10 @@ metadata:
     {{- include "greptimedb.labels" . | nindent 4 }}
 spec:
   clusterDefinitionRef: greptimedb
-  clusterVersionRef: greptimedb-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
+
   terminationPolicy: {{ .Values.terminationPolicy }}
   componentSpecs:
     - name: frontend
-      componentDefRef: frontend
       replicas: {{ .Values.frontend.replicas | default 1 }}
       {{- with  .Values.frontend.resources }}
       resources:
@@ -26,7 +25,6 @@ spec:
         {{- end }}
       {{- end }}
     - name: datanode
-      componentDefRef: datanode
       replicas: {{ .Values.datanode.replicas | default 1 }}
       {{- with .Values.datanode.resources }}
       resources:
@@ -50,7 +48,6 @@ spec:
               requests:
                 storage: {{ .Values.datanode.volume.storage | default "10Gi" }}
     - name: meta
-      componentDefRef: meta
       replicas: {{ .Values.meta.replicas | default 1 }}
       {{- with  .Values.meta.resources }}
       resources:
@@ -66,7 +63,6 @@ spec:
         {{- end }}
       {{- end }}
     - name: etcd
-      componentDefRef: etcd
       replicas: {{ .Values.etcd.replicas | default 1 }}
       {{- with  .Values.etcd.resources }}
       resources:
@@ -82,7 +78,7 @@ spec:
         {{- end }}
       {{- end }}
       volumeClaimTemplates:
-        - name: etcd-storage
+        - name: data
           spec:
             accessModes:
               - ReadWriteOnce

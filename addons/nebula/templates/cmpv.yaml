@@ -1,0 +1,42 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: nebula
+  labels:
+    {{- include "nebula.labels" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - releases:
+        - console-v3.5.0
+      compDefs:
+        - nebula-console
+    - releases:
+        - graphd-v3.5.0
+      compDefs:
+        - nebula-graphd
+    - releases:
+        - metad-v3.5.0
+      compDefs:
+        - nebula-metad
+    - releases:
+        - storaged-v3.5.0
+      compDefs:
+        - nebula-storaged
+  releases:
+    - name: console-v3.5.0
+      serviceVersion: v3.5.0
+      images:
+        console: {{ .Values.nebula.console.image.repository }}:v3.5.0
+    - name: graphd-v3.5.0
+      serviceVersion: v3.5.0
+      images:
+        graphd: {{ .Values.nebula.graphd.image.repository }}:v3.5.0
+    - name: metad-v3.5.0
+      serviceVersion: v3.5.0
+      images:
+        metad: {{ .Values.nebula.metad.image.repository }}:v3.5.0
+    - name: storaged-v3.5.0
+      serviceVersion: v3.5.0
+      images:
+        console: {{ .Values.nebula.storaged.image.repository }}:v3.5.0
+        storaged: {{ .Values.nebula.storaged.image.repository }}:v3.5.0

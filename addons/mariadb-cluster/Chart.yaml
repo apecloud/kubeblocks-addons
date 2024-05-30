@@ -3,7 +3,7 @@ annotations:
 apiVersion: v2
 name: mariadb-cluster
 type: application
-version: 0.8.0
+version: 0.9.0
 description: MariaDB is an open-source relational database management system developed from a branch of MySQL. 
 dependencies:
   - name: kblib

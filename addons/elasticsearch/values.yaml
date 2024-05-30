@@ -19,6 +19,10 @@ image:
     registry: docker.io
     repository: apecloud/elasticsearch-plugins
     tag: "8.8.2"
+  tools:
+    registry: docker.io
+    repository: apecloud/curl-jq
+    tag: latest
 
 imagePullSecrets: [ ]
 nameOverride: ""

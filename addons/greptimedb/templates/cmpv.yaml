@@ -1,0 +1,33 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: greptimedb
+  labels:
+    {{- include "greptimedb.labels" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - releases:
+        - datanode-0.3.2
+      compDefs:
+        - greptimedb-datanode
+    - releases:
+        - frontend-0.3.2
+      compDefs:
+        - greptimedb-frontend
+    - releases:
+        - meta-0.3.2
+      compDefs:
+        - greptimedb-meta
+  releases:
+    - name: datanode-0.3.2
+      serviceVersion: 0.3.2
+      images:
+        datanode: {{ .Values.images.greptimedb.repository }}:0.3.2
+    - name: frontend-0.3.2
+      serviceVersion: 0.3.2
+      images:
+        frontend: {{ .Values.images.greptimedb.repository }}:0.3.2
+    - name: meta-0.3.2
+      serviceVersion: 0.3.2
+      images:
+        meta: {{ .Values.images.greptimedb.repository }}:0.3.2

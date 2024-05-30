@@ -48,10 +48,15 @@ persistence:
 serviceReference:
   zookeeper:
     ## namespace of cluster or serviceDescriptor object
-    namespace: ""
-    ## if zookeeper service is provided by another KubeBlocks Cluster，please specify cluster name which is referenced.
-    ## Please do not specify both cluster and serviceDescriptor at the same time.
-    cluster: ""
+    namespace:
+    ## if zookeeper service is provided by another KubeBlocks Cluster，please specify the cluster or the service which is referenced.
+    ## Please do not specify both cluster/clusterServiceSelector and serviceDescriptor at the same time.
+    cluster:  # the legacy way
+    clusterServiceSelector:
+      cluster:
+      service:
+        component:
+        service:
     ## if zookeeper service is provided by external source, please create the ServiceDescriptor Object of zookeeper in target namespace firstly, then specify the serviceDescriptor name here.
     ## Please do not specify both cluster and serviceDescriptor at the same time.
-    serviceDescriptor: ""
+    serviceDescriptor:

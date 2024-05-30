@@ -4,14 +4,11 @@ metadata:
   name: {{ include "kblib.clusterName" . }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
-  clusterVersionRef: {{ .Values.version }}
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
-  clusterDefinitionRef: mariadb # ref clusterdefinition.name
   componentSpecs:
     - name: mariadb
-      componentDefRef: mariadb-compdef # ref clusterdefinition componentDefs.name
+      componentDef: mariadb
       replicas: {{ include "mariadb-cluster.replicas" . }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentResources" . | indent 6 }}
-      {{- include "kblib.componentServices" . | indent 6 }}
