@@ -6,8 +6,8 @@ metadata:
     {{- include "apecloud-postgresql.labels" . | nindent 4 }}
 spec:
   topologies:
-    - name: apecloud-postgresql
-      default: true
-      components:
-        - name: postgresql
-          compDef: apecloud-postgresql
+  - name: apecloud-postgresql
+    default: true
+    components:
+    - name: postgresql
+      compDef: apecloud-postgresql
