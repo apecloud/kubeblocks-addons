@@ -8,7 +8,7 @@ spec:
   provider: kubeblocks.io
   description: MongoDB is a document database designed for ease of application development and scaling.
   serviceKind: mongodb
-  serviceVersion: "5.0.14"
+  serviceVersion: {{ .Values.componentServiceVersion.mongodb }}
   services:
     - name: default
       serviceName: mongodb
