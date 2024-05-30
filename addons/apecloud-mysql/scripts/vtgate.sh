@@ -10,7 +10,7 @@ mysql_server_socket_path="/tmp/mysql.sock"
 
 endpoints=${ETCD_SERVER:-'127.0.0.1:2379'}
 
-ehco $endpoints
+echo $endpoints
 
 topology_fags="--topo_implementation etcd2 --topo_global_server_address ${endpoints} --topo_global_root /vitess/${KB_CLUSTER_NAME}/global"
 
