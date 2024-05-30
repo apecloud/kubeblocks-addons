@@ -25,3 +25,8 @@ storage: 20
 nameOverride: ""
 
 fullnameOverride: ""
+
+## customized default values to override kblib chart's values
+extra:
+  podAntiAffinity: Required
+  terminationPolicy: Delete
