@@ -8,8 +8,6 @@ spec:
   compatibilityRules:
     - releases:
         - v3.5.6
-        - v3.4.32
-        - v3.5.13
       compDefs:
         - etcd
   releases:
@@ -17,11 +15,3 @@ spec:
       serviceVersion: v3.5.6
       images:
         etcd: {{ .Values.image.repository }}:v3.5.6
-    - name: v3.4.32
-      serviceVersion: v3.4.32
-      images:
-        etcd: {{ .Values.image.repository }}:v3.4.32
-    - name: v3.5.13
-      serviceVersion: v3.5.13
-      images:
-        etcd: {{ .Values.image.repository }}:v3.5.13
