@@ -10,10 +10,11 @@ spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
   clusterDefinitionRef: mysql
+  topology: {{ .Values.topology }}
   componentSpecs:
-    - name: mysql
+    - name: server
       replicas: {{ .Values.replicas }}
-      {{- $clusterversion := .Values.version }}
+      {{- $clusterversion := "mysql" }}
       {{- if .Values.orchestrator.enable }}
       {{- $clusterversion = printf "%s-orc" $clusterversion }}
       {{- end }}
@@ -47,13 +48,7 @@ spec:
       {{- end }}
     {{- if eq .Values.proxysql.enable true }}
     - name: proxysql
-      {{- $version := trimPrefix "mysql-" .Values.version }}
-      {{- $proxyversion := "" }}
-      {{-  if eq "5.7.44" $version }}
-      {{- $proxyversion = "proxy-5.7" }}
-      {{- else }}
-      {{- $proxyversion = printf "proxy-8.0" }}
-      {{- end }}
+      {{- $proxyversion := "proxy" }}
       {{- if .Values.orchestrator.enable }}
       {{- $proxyversion = printf "%s-orc" $proxyversion }}
       {{- end }}

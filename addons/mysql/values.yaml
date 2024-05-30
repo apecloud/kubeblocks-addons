@@ -67,11 +67,6 @@ logConfigs:
   slow: /var/lib/mysql/log/mysqld-slowquery.log
   # general: /var/lib/mysql/log/mysqld.log
 
-roleProbe:
-  failureThreshold: 2
-  periodSeconds: 1
-  timeoutSeconds: 1
-
 metrics:
   image:
     registry: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com
