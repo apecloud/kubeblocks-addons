@@ -13,4 +13,4 @@ spec:
       changes:
       serviceVersion: 1.6.0
       images:
-        kafka-exporter: docker.io/bitnami/kafka-exporter:1.6.0-debian-11-r67
+        kafka-exporter: {{ .Values.images.kafkaExporter.repository }}:{{ .Values.images.kafkaExporter.tag }}
