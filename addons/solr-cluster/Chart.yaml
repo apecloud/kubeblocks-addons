@@ -6,7 +6,7 @@ description: Solr is the popular, blazing-fast, open source enterprise search pl
 type: application
 
 # This is the chart version.
-version: 0.8.0
+version: 0.9.0
 
 # This is the version number of the application being deployed.
 appVersion: "8.11.2"
