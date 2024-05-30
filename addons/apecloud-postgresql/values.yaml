@@ -47,3 +47,12 @@ shmVolume:
   ## sizeLimit: 1Gi
   ##
   sizeLimit: ""
+
+## @param resourceNamePrefix Prefix for all resources name created by this chart, that can avoid name conflict
+## if you install multiple releases of this chart.
+## If specified, the cluster definition will use it as name.
+resourceNamePrefix: ""
+
+## @param componentServiceVersion define default serviceVersion of each Component
+componentServiceVersion:
+  apecloudPostgresql14: "14.11.0"
