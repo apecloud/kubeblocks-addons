@@ -8,6 +8,8 @@ metadata:
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
+  clusterDefinitionRef: elasticsearch
+  clusterVersionRef: {{ .Values.version }}
   componentSpecs:
     - name: elasticsearch # user-defined
       componentDef: es-single-node # ref clusterdefinition componentDefs.name
