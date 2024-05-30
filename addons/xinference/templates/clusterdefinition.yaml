@@ -38,7 +38,7 @@ spec:
               - name: scripts
                 mountPath: /scripts
               - name: models
-                mountPath: /data/kubechat/models
+                mountPath: /xinference/models
             command:
               - /scripts/start.sh
             ports:
@@ -46,7 +46,7 @@ spec:
                 containerPort: 9997
         volumes:
         - hostPath:
-            path: /data/kubechat/models
+            path: /xinference/models
             type: DirectoryOrCreate
           name: models
   connectionCredential:
