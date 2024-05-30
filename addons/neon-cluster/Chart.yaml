@@ -3,7 +3,7 @@ name: neon-cluster
 description: Neon Cluster Helm Chart for KubeBlocks.
 type: application
 version: 0.9.0
-appVersion: "latest"
+appVersion: "pg14-1.0.0"
 home: https://kubeblocks.io/
 icon: https://kubeblocks.io/img/logo.png
 
