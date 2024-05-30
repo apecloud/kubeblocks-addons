@@ -33,6 +33,7 @@ requests:
 ##
 storage: 20
 
+topology: server
 
 persistence:
   ## @param clickhouse[*].persistence.enabled Enable persistence using Persistent Volume Claims

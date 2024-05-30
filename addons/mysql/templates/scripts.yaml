@@ -45,6 +45,8 @@ data:
     {{- .Files.Get "scripts/addition_to_sys_v8.sql" | nindent 4 }}
   roleprobe.sh: |-
     {{- .Files.Get "scripts/roleprobe.sh" | nindent 4 }}
+  mysql-entrypoint.sh: |-
+    {{- .Files.Get "scripts/mysql-entrypoint.sh" | nindent 4 }}
 ---
 apiVersion: v1
 kind: ConfigMap
