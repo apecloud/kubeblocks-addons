@@ -2,6 +2,7 @@
 set -ex
 
 declare -g primary
+declare -g primary_port
 declare -g default_initialize_pod_ordinal
 declare -g headless_postfix="headless"
 
@@ -82,8 +83,7 @@ build_replicaof_config() {
   if [[ "$primary" == *"$KB_POD_NAME"* ]]; then
     echo "primary instance skip create a replication relationship."
   else
-    primary_fqdn="$primary.$KB_CLUSTER_COMP_NAME-$headless_postfix.$KB_NAMESPACE.svc"
-    echo "replicaof $primary_fqdn $service_port" >> /etc/redis/redis.conf
+    echo "replicaof $primary $primary_port" >> /etc/redis/redis.conf
   fi
 }
 
@@ -109,9 +109,9 @@ init_or_get_primary_node() {
 
   # check the primary is real master role or not
   if [ -n "$REDIS_DEFAULT_PASSWORD" ]; then
-    check_kernel_role_cmd="redis-cli -h $primary -p $service_port -a $REDIS_DEFAULT_PASSWORD info replication | grep 'role:' | awk -F: '{print \$2}'"
+    check_kernel_role_cmd="redis-cli -h $primary -p $primary_port -a $REDIS_DEFAULT_PASSWORD info replication | grep 'role:' | awk -F: '{print \$2}'"
   else
-    check_kernel_role_cmd="redis-cli -h $primary -p $service_port info replication | grep 'role:' | awk -F: '{print \$2}'"
+    check_kernel_role_cmd="redis-cli -h $primary -p $primary_port info replication | grep 'role:' | awk -F: '{print \$2}'"
   fi
   retry_times=10
   while true; do
@@ -174,7 +174,8 @@ init_or_get_primary_from_redis_sentinel() {
     fi
 
     # increment the count of this master in the map
-    master_count_map[${REDIS_SENTINEL_INFO[0]}]=$(( ${master_count_map[${REDIS_SENTINEL_INFO[0]}]} + 1 ))
+    host_port_key="${REDIS_SENTINEL_INFO[0]}:${REDIS_SENTINEL_INFO[1]}"
+    master_count_map[$host_port_key]=$(( ${master_count_map[$host_port_key]} + 1 ))
 
     # track the primary host and port from the first sentinel
     if [[ -z "$primary_host" ]] && [[ -z "$primary_port" ]]; then
@@ -198,10 +199,11 @@ init_or_get_primary_from_redis_sentinel() {
 
   # get the primary node with the most counts
   max_count=0
-  for host in "${!master_count_map[@]}"; do
-    if (( ${master_count_map[$host]} > max_count )); then
-      max_count=${master_count_map[$host]}
-      primary=$host
+  for host_port in "${!master_count_map[@]}"; do
+    if (( ${master_count_map[$host_port]} > max_count )); then
+      max_count=${master_count_map[$host_port]}
+      primary=$(echo $host_port | cut -d: -f1)
+      primary_port=$(echo $host_port | cut -d: -f2)
     fi
   done
 }
@@ -210,6 +212,7 @@ get_default_initialize_primary_node() {
   get_minimum_initialize_pod_ordinal
   echo "use default initialize pod_ordinal:$default_initialize_pod_ordinal as primary node."
   primary="$KB_CLUSTER_COMP_NAME-$default_initialize_pod_ordinal.$KB_CLUSTER_COMP_NAME-$headless_postfix.$KB_NAMESPACE"
+  primary_port=$service_port
 }
 
 start_redis_server() {
