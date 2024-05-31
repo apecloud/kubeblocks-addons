@@ -209,6 +209,7 @@ init_or_get_primary_from_redis_sentinel() {
 }
 
 get_default_initialize_primary_node() {
+  # TODO: if has advertise svc and port, we should use it as default primary node info instead of the headless svc
   get_minimum_initialize_pod_ordinal
   echo "use default initialize pod_ordinal:$default_initialize_pod_ordinal as primary node."
   primary="$KB_CLUSTER_COMP_NAME-$default_initialize_pod_ordinal.$KB_CLUSTER_COMP_NAME-$headless_postfix.$KB_NAMESPACE"
