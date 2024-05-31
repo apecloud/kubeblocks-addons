@@ -12,7 +12,7 @@ endpoints=${ETCD_SERVER:-'127.0.0.1:2379'}
 
 echo $endpoints
 
-topology_fags="--topo_implementation etcd2 --topo_global_server_address ${endpoints} --topo_global_root /vitess/${KB_CLUSTER_NAME}/global"
+topology_fags="--topo_implementation etcd2 --topo_global_server_address ${endpoints} --topo_global_root /vitess/${KB_NAMESPACE}/${KB_CLUSTER_NAME}/global"
 
 echo "starting vtgate."
 su vitess <<EOF
