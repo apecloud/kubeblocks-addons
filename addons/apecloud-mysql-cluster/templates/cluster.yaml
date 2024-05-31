@@ -16,6 +16,8 @@ spec:
   componentSpecs:
     - name: mysql
       {{- include "kblib.componentMonitor" . | indent 6 }}
+      serviceRefs:
+        {{ include "apecloud-mysql-cluster.serviceRef" . | indent 8 }}
       replicas: {{ include "apecloud-mysql-cluster.replicas" . }}
       enabledLogs:
         - slow

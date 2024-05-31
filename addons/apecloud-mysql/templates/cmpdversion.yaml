@@ -36,8 +36,7 @@ spec:
   - name: wescale-ctrl-0.2.7
     serviceVersion: "0.2.7"
     images:
-      etcd: &wescale  {{ .Values.wesqlscale.image.registry | default "docker.io" }}/{{ .Values.wesqlscale.image.repository }}:0.2.7
-      vtctld: *wescale
+      vtctld: &wescale  {{ .Values.wesqlscale.image.registry | default "docker.io" }}/{{ .Values.wesqlscale.image.repository }}:0.2.7
   - name: wescale-0.2.7
     serviceVersion: "0.2.7"
     images:
