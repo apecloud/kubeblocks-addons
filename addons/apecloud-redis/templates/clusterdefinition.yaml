@@ -1,0 +1,29 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterDefinition
+metadata:
+  name: apecloud-redis
+  labels:
+    {{- include "redis.labels" . | nindent 4 }}
+spec:
+  topologies:
+    - name: standalone
+      components:
+        - name: redis
+          compDef: {{ include "redis.componentDefNamePrefix" . }}
+      default: true
+    - name: replication
+      components:
+        - name: redis
+          compDef: {{ include "redis.componentDefNamePrefix" . }}
+        - name: redis-sentinel
+          compDef: {{ include "redis-sentinel.componentDefNamePrefix" . }}
+      orders:
+        provision:
+          - redis-sentinel
+          - redis
+        terminate:
+          - redis-sentinel
+          - redis
+        update:
+          - redis-sentinel
+          - redis

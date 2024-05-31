@@ -1,0 +1,26 @@
+apiVersion: v2
+name: apecloud-redis
+description: "Redis is an in-memory database that persists on disk. The data model is key-value, but many different kind of values are supported: Strings, Lists, Sets, Sorted Sets, Hashes, Streams, HyperLogLogs, Bitmaps."
+
+type: application
+
+version: 0.9.0
+
+appVersion: "7.0.15"
+
+home: https://redis.io/
+keywords:
+  - redis
+  - database
+  - nosql
+  - replication
+  - redis cluster
+
+maintainers:
+  - name: ApeCloud
+    url: https://github.com/apecloud/kubeblocks/deploy
+
+annotations:
+    addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
+    addon.kubeblocks.io/model: "key-value"
+    addon.kubeblocks.io/provider: "apecloud"

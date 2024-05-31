@@ -1,0 +1,79 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: redis-physical-backup
+  labels:
+    clusterdefinition.kubeblocks.io/name: redis
+    {{- include "redis.labels" . | nindent 4 }}
+spec:
+  backupType: Full
+  env:
+    - name: DATA_DIR
+      value: {{ .Values.dataMountPath }}
+    - name: DP_DB_PORT
+      value: "6379"
+  backup:
+    preBackup: []
+    postBackup: []
+    backupData:
+      image: {{ include "apecloud-redis.image" . }}
+      runOnTargetPodNode: true
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+      command:
+      - bash
+      - -c
+      - |
+        {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
+  restore:
+    prepareData:
+      image: {{ include "apecloud-redis.image" . }}
+      command:
+      - bash
+      - -c
+      - |
+        {{- .Files.Get "dataprotection/restore.sh" | nindent 8 }}
+    postReady: []
+---
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: redis-cluster-backup
+  labels:
+    clusterdefinition.kubeblocks.io/name: redis-cluster
+    {{- include "redis.labels" . | nindent 4 }}
+spec:
+  backupType: Full
+  env:
+    - name: DATA_DIR
+      value: {{ .Values.dataMountPath }}
+    - name: DP_DB_PORT
+      value: "6379"
+    - name: MODE
+      value: "cluster"
+  backup:
+    preBackup: []
+    postBackup: []
+    backupData:
+      image: {{ include "apecloud-redis.image" . }}
+      runOnTargetPodNode: true
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+      command:
+      - bash
+      - -c
+      - |
+        {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
+  restore:
+    postReady:
+    - job:
+        command:
+        - sh
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/restore-cluster.sh" | nindent 10 }}
+        image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/apecloud/ape-dts:0.1.17
+        onError: Fail
+        runOnTargetPodNode: true

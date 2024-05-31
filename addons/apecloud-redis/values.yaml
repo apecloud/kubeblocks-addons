@@ -1,0 +1,44 @@
+# Default values for apecloud redis.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+## @param compDefinitionVersion for each ComponentDefinition resources name created by this chart, that can avoid name conflict
+## if you install multiple releases of this chart.
+## If specified, the component definition will use it as suffix.
+compDefinitionVersion:
+  redis: "7"
+  sentinel: "7"
+  redisCluster: "7"
+
+## @param componentServiceVersion define default serviceVersion of each Component
+componentServiceVersion:
+  redis: "7.0.15"
+  sentinel: "7.0.15"
+  redisCluster: "7.0.15"
+
+image:
+  repository: apecloud/apecloud-redis
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag:
+    major7:
+      minor70: 7.0.15-debian-testv1
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+clusterVersionOverride: ""
+dataMountPath: /data
+
+logConfigs:
+  running: /data/running.log
+
+metrics:
+  image:
+    # if the value of metrics.image.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
+    registry: ""
+    repository: apecloud/agamotto
+    tag: 0.1.2-beta.1
+    pullPolicy: IfNotPresent
+  service:
+    port: 9121
