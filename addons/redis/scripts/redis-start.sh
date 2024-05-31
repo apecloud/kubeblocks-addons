@@ -160,6 +160,7 @@ init_or_get_primary_from_redis_sentinel() {
   declare -A master_count_map
   local default_redis_primary_host=""
   local default_redis_primary_port=""
+  # TODO: further handling of Sentinel exceptions is required, and the startup of Redis should not strongly depend on the Redis Sentinel component.
   for sentinel_pod in "${sentinel_pod_list[@]}"; do
     sentinel_pod_fqdn="$sentinel_pod.$SENTINEL_HEADLESS_SERVICE_NAME"
     # get redis master node from sentinel
