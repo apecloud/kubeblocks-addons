@@ -11,6 +11,10 @@ terminationPolicy: Delete
 ##
 availabilityPolicy: node
 
+## @param affinityNodeLabels
+##
+affinityNodeLabels: {}
+
 ## @param podAntiAffinity
 ##
 podAntiAffinity: Preferred
