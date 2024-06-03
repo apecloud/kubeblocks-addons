@@ -80,8 +80,8 @@ build_redis_service_port() {
 
 build_replicaof_config() {
   init_or_get_primary_node
-  if [[ "$primary" == *"$KB_POD_NAME"* ]]; then
-    echo "primary instance skip create a replication relationship."
+  if [[ "$primary" == *"$KB_POD_NAME"* ]] || [[ "$primary" == "$KB_HOST_IP" ]]; then
+    echo "primary instance skip create a replication relationship, primary:$primary, pod name:$KB_POD_NAME, host ip:$KB_HOST_IP"
   else
     echo "replicaof $primary $primary_port" >> /etc/redis/redis.conf
   fi
@@ -102,8 +102,8 @@ init_or_get_primary_node() {
   init_or_get_primary_from_redis_sentinel
 
   # skip check role in kernel if the primary contains the pod name
-  if [[ "$primary" == *"$KB_POD_NAME"* ]]; then
-    echo "primary node contains the pod name, skip check role in kernel, primary node: $primary, pod name: $KB_POD_NAME"
+  if [[ "$primary" == *"$KB_POD_NAME"* ]] || [[ "$primary" == "$KB_HOST_IP" ]]; then
+    echo "current pod is primary, skip check role in kernel, primary node: $primary, pod name: $KB_POD_NAME, host ip:$KB_HOST_IP"
     return
   fi
 
