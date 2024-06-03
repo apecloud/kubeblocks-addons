@@ -80,8 +80,8 @@ build_redis_service_port() {
 
 build_replicaof_config() {
   init_or_get_primary_node
-  if [[ "$primary" == *"$KB_POD_NAME"* ]] || [[ "$primary" == "$KB_HOST_IP" ]]; then
-    echo "primary instance skip create a replication relationship, primary:$primary, pod name:$KB_POD_NAME, host ip:$KB_HOST_IP"
+  if check_current_pod_is_primary; then
+    return
   else
     echo "replicaof $primary $primary_port" >> /etc/redis/redis.conf
   fi
@@ -102,8 +102,7 @@ init_or_get_primary_node() {
   init_or_get_primary_from_redis_sentinel
 
   # skip check role in kernel if the primary contains the pod name
-  if [[ "$primary" == *"$KB_POD_NAME"* ]] || [[ "$primary" == "$KB_HOST_IP" ]]; then
-    echo "current pod is primary, skip check role in kernel, primary node: $primary, pod name: $KB_POD_NAME, host ip:$KB_HOST_IP"
+  if check_current_pod_is_primary; then
     return
   fi
 
@@ -257,6 +256,26 @@ get_default_initialize_primary_node() {
   echo "use default initialize pod_ordinal:$default_initialize_pod_ordinal as primary node."
   primary="$KB_CLUSTER_COMP_NAME-$default_initialize_pod_ordinal.$KB_CLUSTER_COMP_NAME-$headless_postfix.$KB_NAMESPACE"
   primary_port=$service_port
+}
+
+check_current_pod_is_primary() {
+  if [[ "$primary" == *"$KB_POD_NAME"* ]]; then
+    echo "current pod is primary, skip check role in kernel, primary node: $primary, pod name:$KB_POD_NAME"
+    return 0
+  fi
+
+  if [ -n "$redis_advertised_svc_host_value" ] && [ -n "$redis_advertised_svc_port_value" ]; then
+    if [[ "$primary" == "$redis_advertised_svc_host_value" ]] && [[ "$primary_port" == "$redis_advertised_svc_port_value" ]]; then
+      echo "current pod is primary, skip check role in kernel, primary node: $primary, advertised ip:$redis_advertised_svc_host_value, advertised port:$redis_advertised_svc_port_value"
+      return 0
+    fi
+  fi
+
+  if [[ "$primary" == "$KB_POD_IP" ]] && [[ "$primary_port" == "$service_port" ]]; then
+    echo "current pod is primary, skip check role in kernel, primary node: $primary, pod ip:$KB_HOST_IP, service port:$service_port"
+    return 0
+  fi
+  return 1
 }
 
 start_redis_server() {
