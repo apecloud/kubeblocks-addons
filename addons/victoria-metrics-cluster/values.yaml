@@ -13,6 +13,26 @@ storageClassName: ""
 ##
 terminationPolicy: "Delete"
 
+## @param replicas specify cluster replicas
+##
+replicas: 1
+
+## @param cpu
+##
+cpu: 0.5
+
+## @param memory, the unit is Gi
+##
+memory: 0.5
+
+requests:
+#  cpu:
+#  memory:
+
+## @param storage size, the unit is Gi
+##
+storage: 20
+
 ## @param vminsert configs
 ##
 vminsert:
@@ -24,18 +44,3 @@ vminsert:
 vmselect:
   replicas: 1
   resources: {}
-
-## @param vmstorage configs
-##
-vmstorage:
-  replicas: 2
-  resources: {}
-    # limits:
-    #   cpu: 0.5
-    #   memory: 0.5
-    # requests:
-    #   cpu: 0.5
-    #   memory: 0.5
-
-  volume:
-    storage: 10

@@ -23,8 +23,44 @@ images:
     # Overrides the image tag whose default is the chart appVersion.
     tag: "v1.100.1-cluster"
 
-enableTCP6: true
+enableTCP6: false
 
 nameOverride: ""
 fullnameOverride: ""
 clusterVersionOverride: ""
+
+## @param resourceNamePrefix Prefix for all resources name created by this chart, that can avoid name conflict
+## if you install multiple releases of this chart.
+## If specified, the cluster definition will use it as name.
+resourceNamePrefix: ""
+
+vmselect:
+  # -- Service port
+  servicePort: 8481
+  # Extra command line arguments for vmselect component
+  extraArgs:
+    envflag.enable: "true"
+    envflag.prefix: VM_
+    loggerFormat: json
+
+vminsert:
+  # -- Service port
+  servicePort: 8480
+  # Extra command line arguments for vmselect component
+  extraArgs:
+    envflag.enable: "true"
+    envflag.prefix: VM_
+    loggerFormat: json
+
+vmstorage:
+  # -- Service port
+  servicePort: 8482
+  # -- Port for accepting connections from vminsert
+  vminsertPort: 8400
+  # -- Port for accepting connections from vmselect
+  vmselectPort: 8401
+  # Extra command line arguments for vmselect component
+  extraArgs:
+    envflag.enable: "true"
+    envflag.prefix: VM_
+    loggerFormat: json
