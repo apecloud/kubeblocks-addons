@@ -158,35 +158,35 @@ init_or_get_primary_from_redis_sentinel() {
   set +f
   IFS="$old_ifs"
   declare -A master_count_map
-  local default_redis_primary_host=""
-  local default_redis_primary_port=""
+  local first_redis_primary_host=""
+  local first_redis_primary_port=""
   # TODO: further handling of Sentinel exceptions is required, and the startup of Redis should not strongly depend on the Redis Sentinel component.
   for sentinel_pod in "${sentinel_pod_list[@]}"; do
     sentinel_pod_fqdn="$sentinel_pod.$SENTINEL_HEADLESS_SERVICE_NAME"
     # get redis master node from sentinel
     # shellcheck disable=SC2207
-    REDIS_SENTINEL_INFO=($(redis-cli -h "$sentinel_pod_fqdn" -p "$SENTINEL_SERVICE_PORT" -a "$SENTINEL_PASSWORD" sentinel get-master-addr-by-name "$KB_CLUSTER_COMP_NAME"))
-    echo "sentinel:$sentinel_pod_fqdn has master info: ${REDIS_SENTINEL_INFO[*]}"
+    REDIS_SENTINEL_PRIMARY_INFO=($(redis-cli -h "$sentinel_pod_fqdn" -p "$SENTINEL_SERVICE_PORT" -a "$SENTINEL_PASSWORD" sentinel get-master-addr-by-name "$KB_CLUSTER_COMP_NAME"))
+    echo "sentinel:$sentinel_pod_fqdn has master info: ${REDIS_SENTINEL_PRIMARY_INFO[*]}"
 
     # check if the sentinel has the master info or master info is empty
-    if [ "${#REDIS_SENTINEL_INFO[@]}" -ne 2 ] || [ -z "${REDIS_SENTINEL_INFO[0]}" ] || [ -z "${REDIS_SENTINEL_INFO[1]}" ] ; then
+    if [ "${#REDIS_SENTINEL_PRIMARY_INFO[@]}" -ne 2 ] || [ -z "${REDIS_SENTINEL_PRIMARY_INFO[0]}" ] || [ -z "${REDIS_SENTINEL_PRIMARY_INFO[1]}" ] ; then
       echo "sentinel:$sentinel_pod_fqdn has no master info, skip this sentinel."
       continue
     fi
 
     # increment the count of this master in the map
-    host_port_key="${REDIS_SENTINEL_INFO[0]}:${REDIS_SENTINEL_INFO[1]}"
+    host_port_key="${REDIS_SENTINEL_PRIMARY_INFO[0]}:${REDIS_SENTINEL_PRIMARY_INFO[1]}"
     master_count_map[$host_port_key]=$(( ${master_count_map[$host_port_key]} + 1 ))
 
     # track the primary host and port from the first sentinel
-    if [[ -z "$primary_host" ]] && [[ -z "$primary_port" ]]; then
-      default_redis_primary_host=${REDIS_SENTINEL_INFO[0]}
-      default_redis_primary_port=${REDIS_SENTINEL_INFO[1]}
+    if [[ -z "$first_redis_primary_host" ]] && [[ -z "$first_redis_primary_port" ]]; then
+      first_redis_primary_host=${REDIS_SENTINEL_PRIMARY_INFO[0]}
+      first_redis_primary_port=${REDIS_SENTINEL_PRIMARY_INFO[1]}
     fi
 
     # log if sentinel has different primary node info
-    if [ "$default_redis_primary_host" != "${REDIS_SENTINEL_INFO[0]}" ] || [ "$default_redis_primary_port" != "${REDIS_SENTINEL_INFO[1]}" ]; then
-      echo "the sentinel:$sentinel_pod_fqdn has different primary node info, default_redis_primary_host=$default_redis_primary_host, default_redis_primary_port=$default_redis_primary_port, current sentinel master host=${REDIS_SENTINEL_INFO[0]}, current sentinel master port=${REDIS_SENTINEL_INFO[1]}"
+    if [ "$first_redis_primary_host" != "${REDIS_SENTINEL_PRIMARY_INFO[0]}" ] || [ "$first_redis_primary_port" != "${REDIS_SENTINEL_PRIMARY_INFO[1]}" ]; then
+      echo "the sentinel:$sentinel_pod_fqdn has different primary node info, first_redis_primary_host=$first_redis_primary_host, first_redis_primary_port=$first_redis_primary_port, current sentinel master host=${REDIS_SENTINEL_PRIMARY_INFO[0]}, current sentinel master port=${REDIS_SENTINEL_PRIMARY_INFO[1]}"
     fi
   done
 
