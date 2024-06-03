@@ -4,13 +4,6 @@ metadata:
   name: redis-cluster
   namespace: default
 spec:
-  # Specifies the name of the ClusterDefinition to use when creating a Cluster.
-  clusterDefinitionRef: redis
-  # Specifies the redis cluster topology defined in ClusterDefinition.Spec.topologies, support standalone, replication, and replication-twemproxy.
-  # - `standalone`: single redis instance
-  # - `replication`: primary-secondary replication with redis sentinel, refer: https://redis.io/docs/management/sentinel
-  # - `replication-twemproxy`: primary-secondary replication with sentinel and twemproxy, it is just a demo for how to use twemproxy with redis, not recommended for production
-  topology: replication
   # Specifies the behavior when a Cluster is deleted.
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
   # - `Halt`: Deletes Cluster resources like Pods and Services but retains Persistent Volume Claims (PVCs), allowing for data preservation while stopping other operations.
