@@ -160,33 +160,33 @@ init_or_get_primary_from_redis_sentinel() {
   declare -A master_count_map
   local first_redis_primary_host=""
   local first_redis_primary_port=""
-  # TODO: further handling of Sentinel exceptions is required, and the startup of Redis should not strongly depend on the Redis Sentinel component.
   for sentinel_pod in "${sentinel_pod_list[@]}"; do
     sentinel_pod_fqdn="$sentinel_pod.$SENTINEL_HEADLESS_SERVICE_NAME"
-    # get redis master node from sentinel
-    # shellcheck disable=SC2207
-    REDIS_SENTINEL_PRIMARY_INFO=($(redis-cli -h "$sentinel_pod_fqdn" -p "$SENTINEL_SERVICE_PORT" -a "$SENTINEL_PASSWORD" sentinel get-master-addr-by-name "$KB_CLUSTER_COMP_NAME"))
-    echo "sentinel:$sentinel_pod_fqdn has master info: ${REDIS_SENTINEL_PRIMARY_INFO[*]}"
 
-    # check if the sentinel has the master info or master info is empty
-    if [ "${#REDIS_SENTINEL_PRIMARY_INFO[@]}" -ne 2 ] || [ -z "${REDIS_SENTINEL_PRIMARY_INFO[0]}" ] || [ -z "${REDIS_SENTINEL_PRIMARY_INFO[1]}" ] ; then
-      echo "sentinel:$sentinel_pod_fqdn has no master info, skip this sentinel."
-      continue
-    fi
+    # get primary info from sentinel
+    if retry_get_master_addr_by_name_from_sentinel "$sentinel_pod_fqdn"; then
+      echo "sentinel:$sentinel_pod_fqdn has master info: ${REDIS_SENTINEL_PRIMARY_INFO[*]}"
+      if [ "${#REDIS_SENTINEL_PRIMARY_INFO[@]}" -ne 2 ] || [ -z "${REDIS_SENTINEL_PRIMARY_INFO[0]}" ] || [ -z "${REDIS_SENTINEL_PRIMARY_INFO[1]}" ]; then
+        echo "Empty primary info retrieved from sentinel: $sentinel_pod_fqdn. Skipping this sentinel."
+        continue
+      fi
 
-    # increment the count of this master in the map
-    host_port_key="${REDIS_SENTINEL_PRIMARY_INFO[0]}:${REDIS_SENTINEL_PRIMARY_INFO[1]}"
-    master_count_map[$host_port_key]=$(( ${master_count_map[$host_port_key]} + 1 ))
+      # increment the count of this master in the map
+      host_port_key="${REDIS_SENTINEL_PRIMARY_INFO[0]}:${REDIS_SENTINEL_PRIMARY_INFO[1]}"
+      master_count_map[$host_port_key]=$((${master_count_map[$host_port_key]} + 1))
 
-    # track the primary host and port from the first sentinel
-    if [[ -z "$first_redis_primary_host" ]] && [[ -z "$first_redis_primary_port" ]]; then
-      first_redis_primary_host=${REDIS_SENTINEL_PRIMARY_INFO[0]}
-      first_redis_primary_port=${REDIS_SENTINEL_PRIMARY_INFO[1]}
-    fi
+      # track the primary host and port from the first sentinel
+      if [[ -z "$first_redis_primary_host" ]] && [[ -z "$first_redis_primary_port" ]]; then
+        first_redis_primary_host=${REDIS_SENTINEL_PRIMARY_INFO[0]}
+        first_redis_primary_port=${REDIS_SENTINEL_PRIMARY_INFO[1]}
+      fi
 
-    # log if sentinel has different primary node info
-    if [ "$first_redis_primary_host" != "${REDIS_SENTINEL_PRIMARY_INFO[0]}" ] || [ "$first_redis_primary_port" != "${REDIS_SENTINEL_PRIMARY_INFO[1]}" ]; then
-      echo "the sentinel:$sentinel_pod_fqdn has different primary node info, first_redis_primary_host=$first_redis_primary_host, first_redis_primary_port=$first_redis_primary_port, current sentinel master host=${REDIS_SENTINEL_PRIMARY_INFO[0]}, current sentinel master port=${REDIS_SENTINEL_PRIMARY_INFO[1]}"
+      # log if sentinel has different primary node info
+      if [ "$first_redis_primary_host" != "${REDIS_SENTINEL_PRIMARY_INFO[0]}" ] || [ "$first_redis_primary_port" != "${REDIS_SENTINEL_PRIMARY_INFO[1]}" ]; then
+        echo "The sentinel:$sentinel_pod_fqdn has different primary node info. First: $first_redis_primary_host:$first_redis_primary_port, Current: ${REDIS_SENTINEL_PRIMARY_INFO[0]}:${REDIS_SENTINEL_PRIMARY_INFO[1]}"
+      fi
+    else
+      echo "Failed to retrieve primary info from sentinel: $sentinel_pod_fqdn. Skipping this sentinel."
     fi
   done
 
@@ -207,6 +207,48 @@ init_or_get_primary_from_redis_sentinel() {
       primary_port=$(echo $host_port | cut -d: -f2)
     fi
   done
+}
+
+retry_get_master_addr_by_name_from_sentinel() {
+  local sentinel_pod_fqdn="$1"
+  local retry_count=0
+  local max_retry=3
+  local retry_delay=2
+  local timeout_value=5
+
+  while [ $retry_count -lt $max_retry ]; do
+    echo "execute command: timeout $timeout_value redis-cli -h $sentinel_pod_fqdn -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD sentinel get-master-addr-by-name $KB_CLUSTER_COMP_NAME"
+    output=$(timeout "$timeout_value" redis-cli -h "$sentinel_pod_fqdn" -p "$SENTINEL_SERVICE_PORT" -a "$SENTINEL_PASSWORD" sentinel get-master-addr-by-name "$KB_CLUSTER_COMP_NAME")
+    exit_code=$?
+
+    if [ $exit_code -eq 0 ]; then
+      old_ifs="$IFS"
+      IFS=$'\n'
+      set -f
+      read -r -d '' -a REDIS_SENTINEL_PRIMARY_INFO <<< "$output"
+      set +f
+      IFS="$old_ifs"
+      if [ "${#REDIS_SENTINEL_PRIMARY_INFO[@]}" -eq 2 ] && [ -n "${REDIS_SENTINEL_PRIMARY_INFO[0]}" ] && [ -n "${REDIS_SENTINEL_PRIMARY_INFO[1]}" ]; then
+        echo "Successfully retrieved primary info from sentinel: $sentinel_pod_fqdn"
+        return 0
+      else
+        echo "Empty primary info retrieved from sentinel: $sentinel_pod_fqdn"
+        return 0
+      fi
+    else
+      if [ $exit_code -eq 124 ]; then
+        echo "Timeout occurred while retrieving primary info from sentinel: $sentinel_pod_fqdn. Retrying..."
+      else
+        echo "Error occurred while retrieving primary info from sentinel: $sentinel_pod_fqdn. Retrying..."
+      fi
+    fi
+
+    retry_count=$((retry_count + 1))
+    sleep $retry_delay
+  done
+
+  echo "Failed to retrieve primary info from sentinel: $sentinel_pod_fqdn after $max_retry retries."
+  return 1
 }
 
 get_default_initialize_primary_node() {
