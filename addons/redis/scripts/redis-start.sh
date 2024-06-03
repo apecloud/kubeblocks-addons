@@ -259,8 +259,9 @@ get_default_initialize_primary_node() {
 }
 
 check_current_pod_is_primary() {
-  if [[ "$primary" == *"$KB_POD_NAME"* ]]; then
-    echo "current pod is primary, skip check role in kernel, primary node: $primary, pod name:$KB_POD_NAME"
+  current_pod="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME"
+  if [[ "$primary" == *"$current_pod"* ]]; then
+    echo "current pod is primary, skip check role in kernel, primary node: $primary, pod name:$current_pod"
     return 0
   fi
 
