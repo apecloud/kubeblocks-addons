@@ -25,10 +25,6 @@ register_to_orchestrator() {
   local instance_url="http://${endpoint}/api/instance/$host_ip/3306"
 
   echo "register first mysql pod to orchestrator..."
-  instanceResponse=$(curl -s -o /dev/null -w "%{http_code}" $instance_url)
-    if [ $instanceResponse -eq 200 ]; then
-      echo "response success"
-    fi
 
   while true; do
     # register to Orchestrator
