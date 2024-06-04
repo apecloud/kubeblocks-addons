@@ -24,3 +24,5 @@ containerPorts:
 logConfigs:
   info: /opt/bitnami/zookeeper/logs/zookeeper-*-server-*.log
   audit: /opt/bitnami/zookeeper/logs/zookeeper_audit.log
+
+dataDir: /bitnami/zookeeper/data

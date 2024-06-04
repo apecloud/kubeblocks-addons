@@ -1,0 +1,25 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: zookeeper-backup-actionset
+spec:
+  backupType: Full
+  env:
+    - name: DATA_DIR
+      value: {{ .Values.dataDir }}
+  backup:
+    backupData:
+      image: {{ include "zookeeper.image" . }}
+      command:
+        - bash
+        - -c
+        - |
+        {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
+  restore:
+    prepareData:
+      image: {{ include "zookeeper.image" . }}
+      command:
+        - bash
+        - -c
+        - |
+        {{- .Files.Get "dataprotection/restore.sh" | nindent 8 }}

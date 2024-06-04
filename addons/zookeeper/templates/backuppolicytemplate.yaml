@@ -1,0 +1,19 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: zookeeper-backup-policy-template
+  labels:
+    clusterdefinition.kubeblocks.io/name: zookeeper
+spec:
+  clusterDefinitionRef: zookeeper
+  backupPolicies:
+  - componentDefRef: zookeeper
+    backupMethods:
+    - name: volume-snapshot
+      snapshotVolumes: true
+      actionSetName: zookeeper-snapshot-actionset
+    schedules:
+    - backupMethod: volume-snapshot
+      enabled: true
+      cronExpression: "0 2 * * *" # Daily at 2 AM
+      retentionPeriod: 7d # Retain for 7 days
