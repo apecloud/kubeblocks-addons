@@ -8,9 +8,30 @@ spec:
   clusterDefinitionRef: victoria-metrics
   clusterVersionRef: victoria-metrics-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
   terminationPolicy: {{ .Values.terminationPolicy }}
+  topology: vm-cluster
   componentSpecs:
+    - name: vmstorage
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+      replicas: {{ .Values.replicas }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
+    - name: vmselect
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+      replicas: {{ .Values.vmselect.replicas }}
+      {{- with .Values.vmselect.resources }}
+      resources:
+        {{- with .limits }}
+        limits:
+          cpu: {{ .cpu | quote }}
+          memory: {{ .memory | quote }}
+        {{- end }}
+        {{- with .requests }}
+        requests:
+          cpu: {{ .cpu | quote }}
+          memory: {{ .memory | quote }}
+        {{- end }}
+      {{- end }}
     - name: vminsert
-      componentDefRef: vminsert
       replicas: {{ .Values.vminsert.replicas | default 1 }}
       {{- with  .Values.vminsert.resources }}
       resources:
@@ -25,44 +46,3 @@ spec:
           memory: {{ .memory | quote }}
         {{- end }}
       {{- end }}
-    - name: vmselect
-      componentDefRef: vmselect
-      replicas: {{ .Values.vmselect.replicas | default 1 }}
-      {{- with .Values.vmselect.resources }}
-      resources:
-        {{- with .limits }}
-        limits:
-          cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
-        {{- end }}
-        {{- with .requests }}
-        requests:
-          cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
-        {{- end }}
-      {{- end }}
-    - name: vmstorage
-      componentDefRef: vmstorage
-      replicas: {{ .Values.vmstorage.replicas | default 1 }}
-      {{- with  .Values.vmstorage.resources }}
-      resources:
-        {{- with .limits }}
-        limits:
-          cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
-        {{- end }}
-        {{- with .requests }}
-        requests:
-          cpu: {{ .cpu | quote }}
-          memory: {{ .memory | quote }}
-        {{- end }}
-      {{- end }}
-      volumeClaimTemplates:
-        - name: vmstorage-volume
-          spec:
-            storageClassName: {{ .Values.storageClassName }}
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: {{ .Values.vmstorage.volume.storage | default "10Gi" }}
