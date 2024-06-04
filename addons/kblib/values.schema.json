@@ -33,6 +33,11 @@
         "zone"
       ]
     },
+    "affinityNodeLabels": {
+      "title": "Affinity Node Labels",
+      "description": "Set the node labels for the affinity",
+      "type": "object"
+    },
     "tenancy": {
       "title": "Tenancy",
       "description": "The tenancy of cluster.",

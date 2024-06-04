@@ -11,6 +11,19 @@ terminationPolicy: Delete
 ##
 availabilityPolicy: node
 
+## @param affinityNodeLabels
+##
+## It accepts a map with label keys and values
+## Example:
+## ```
+## affinityNodeLabels:
+##   key1: val1
+##   key2: val2
+## ```
+## This map will then be set to `cluster.spec.affinity.nodeLabels`
+##
+affinityNodeLabels: {}
+
 ## @param podAntiAffinity
 ##
 podAntiAffinity: Preferred
