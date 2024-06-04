@@ -67,7 +67,7 @@ RETURN (SELECT IF( MEMBER_STATE='ONLINE' AND ((SELECT COUNT(*) FROM
     performance_schema.replication_group_member_stats rgms USING(member_id) WHERE rgms.MEMBER_ID=@@SERVER_UUID);
 END$$
 
-CREATE VIEW IF NOT EXISTS gr_member_routing_candidate_status AS SELECT
+CREATE VIEW gr_member_routing_candidate_status AS SELECT
   sys.gr_member_in_primary_partition() as viable_candidate,
   IF( (SELECT (SELECT GROUP_CONCAT(variable_value) FROM
       performance_schema.global_variables WHERE variable_name IN ('read_only',
