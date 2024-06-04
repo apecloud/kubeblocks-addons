@@ -28,7 +28,7 @@ CREATE FUNCTION IF NOT EXISTS gr_member_in_primary_partition()
     performance_schema.replication_group_member_stats USING(member_id) where member_id=my_id());
 END$$
 
-CREATE VIEW IF NOT EXISTS gr_member_routing_candidate_status AS SELECT
+CREATE VIEW  gr_member_routing_candidate_status AS SELECT
 sys.gr_member_in_primary_partition() as viable_candidate,
 IF( (SELECT (SELECT GROUP_CONCAT(variable_value) FROM
 performance_schema.global_variables WHERE variable_name IN ('read_only',
