@@ -20,22 +20,32 @@ spec:
       serviceVersion: 8.0.33
       images:
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
+        init-syncer: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:latest
+        init-xtrabackup: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:mysql
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
     - name: {{ include "mysql.componentDefName" . }}-8.0.33-orc
       changes: mysql component version for orchestrator
       serviceVersion: 8.0.33
       images:
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
+        init-jq: {{ .Values.image.registry | default "docker.io" }}/apecloud/jq:1.7.4
+        init-curl: {{ .Values.image.registry | default "docker.io" }}/apecloud/curl-static:7.67.0
+        init-xtrabackup: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:mysql
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
     - name: {{ include "mysql.componentDefName" . }}-5.7.44
       changes: mysql component version for orchestrator
       serviceVersion: 5.7.44
       images:
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:5.7.44
+        init-syncer: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:latest
+        init-xtrabackup: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:mysql
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.7.44
     - name: {{ include "mysql.componentDefName" . }}-5.7.44-orc
       changes: mysql component version for orchestrator
       serviceVersion: 5.7.44
       images:
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:5.7.44
+        init-jq: {{ .Values.image.registry | default "docker.io" }}/apecloud/jq:1.7.4
+        init-curl: {{ .Values.image.registry | default "docker.io" }}/apecloud/curl-static:7.67.0
+        init-xtrabackup: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:mysql
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.7.44
