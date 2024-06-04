@@ -9,6 +9,7 @@ spec:
   description: mysql component definition for Kubernetes
   serviceKind: mysql
   serviceVersion: 5.7.44
+  updateStrategy: BestEffortParallel
 
   services:
     - name: mysql-server

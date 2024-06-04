@@ -61,7 +61,9 @@ prepare_orchestrator_env() {
      i=$(($i+1))
      endpoint_name=$(echo "${ORC_ENDPOINTS%%:*}_ORCHESTRATOR_ORDINAL_${i}_PORT_80_TCP" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
    done
-   export ORCHESTRATOR_API=$ORCHESTRATOR_API
+   if [[ ! -z "$ORCHESTRATOR_API" ]]; then
+     ORCHESTRATOR_API=$(echo "${ORC_ENDPOINTS}_SERVICE_HOST" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+   fi
 }
 
 prepare_orchestrator_env
