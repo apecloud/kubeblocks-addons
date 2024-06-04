@@ -60,3 +60,36 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Define component defintion name
+*/}}
+{{- define "vmstroage.componentDefName" -}}
+{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+vmstorage
+{{- else -}}
+{{- .Values.resourceNamePrefix -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define component defintion name
+*/}}
+{{- define "vminsert.componentDefName" -}}
+{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+vminsert
+{{- else -}}
+{{- .Values.resourceNamePrefix -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define component defintion name
+*/}}
+{{- define "vmselect.componentDefName" -}}
+{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+vmselect
+{{- else -}}
+{{- .Values.resourceNamePrefix -}}
+{{- end -}}
+{{- end -}}
