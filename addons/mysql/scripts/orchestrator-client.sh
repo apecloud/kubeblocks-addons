@@ -61,12 +61,15 @@ prepare_orchestrator_env() {
      i=$(($i+1))
      endpoint_name=$(echo "${ORC_ENDPOINTS%%:*}_ORCHESTRATOR_ORDINAL_${i}_PORT_80_TCP" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
    done
-   if [[ ! -z "$ORCHESTRATOR_API" ]]; then
-     ORCHESTRATOR_API=$(echo "${ORC_ENDPOINTS}_SERVICE_HOST" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+   if [[ -z "$ORCHESTRATOR_API" ]]; then
+     ORCHESTRATOR_API=$(echo "http://${ORC_ENDPOINTS}:${ORC_PORTS}" | tr '_' '-'  | tr '[:upper:]' '[:lower:]')
    fi
+   export ORCHESTRATOR_API=$ORCHESTRATOR_API
 }
 
-prepare_orchestrator_env
+if [[ -z "$ORCHESTRATOR_API" ]]; then
+  prepare_orchestrator_env
+fi
 
 orchestrator_api="${ORCHESTRATOR_API:-http://localhost:3000}"
 leader_api=

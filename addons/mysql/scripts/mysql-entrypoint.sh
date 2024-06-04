@@ -1,7 +1,7 @@
 #!/bin/bash
-REPORT_HOST=MYSQL_ORDINAL_HOST_${KB_POD_NAME##*-}
+REPORT_HOST=${KB_CLUSTER_COMP_NAME}-mysql-${KB_POD_NAME##*-}
 if [ "${MYSQL_MAJOR}" = '5.7' ]; then
-  /scripts/docker-entrypoint-5.7.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) --report-host ${!REPORT_HOST} \
+  /scripts/docker-entrypoint-5.7.sh mysqld --server-id $((${KB_POD_NAME##*-} + 1)) --report-host ${REPORT_HOST} \
     --ignore-db-dir=lost+found \
     --plugin-load-add=rpl_semi_sync_master=semisync_master.so \
     --plugin-load-add=rpl_semi_sync_slave=semisync_slave.so \
@@ -9,7 +9,7 @@ if [ "${MYSQL_MAJOR}" = '5.7' ]; then
     --log-bin=/var/lib/mysql/binlog/$(KB_POD_NAME)-bin \
     --skip-slave-start=$skip_slave_start
 else
-docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) --report-host ${!REPORT_HOST} \
+docker-entrypoint.sh mysqld --server-id $((${KB_POD_NAME##*-} + 1)) --report-host ${REPORT_HOST} \
    --ignore-db-dir=lost+found \
    --plugin-load-add=rpl_semi_sync_master=semisync_master.so \
    --plugin-load-add=rpl_semi_sync_slave=semisync_slave.so \
