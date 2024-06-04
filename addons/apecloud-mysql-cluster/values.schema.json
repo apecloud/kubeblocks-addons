@@ -4,7 +4,7 @@
   "properties": {
     "version": {
       "title": "Version",
-      "description": "Cluster version.",
+      "description": "Mysql Component version.",
       "type": "string",
       "default": "8.0.30",
       "enum": [

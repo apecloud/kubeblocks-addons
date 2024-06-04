@@ -2,7 +2,7 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-## @param version MySQL cluster version
+## @param version MySQL component version
 ##
 version: 8.0.30
 

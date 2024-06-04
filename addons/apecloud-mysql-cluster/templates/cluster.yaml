@@ -15,7 +15,7 @@ spec:
   topology: {{ include "apecloud-mysql-cluster.topology" . }}
   componentSpecs:
     - name: mysql
-      serviceVersion: {{ include .Values.version }}
+      serviceVersion: {{ .Values.version }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       serviceRefs:
         {{ include "apecloud-mysql-cluster.serviceRef" . | indent 8 }}
