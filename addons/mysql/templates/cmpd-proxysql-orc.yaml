@@ -9,6 +9,7 @@ spec:
   description: mysql proxy definition for Kubernetes
   serviceKind: proxysql
   serviceVersion: 8.0.0
+  updateStrategy: BestEffortParallel
 
   configs:
     - name: proxy-config

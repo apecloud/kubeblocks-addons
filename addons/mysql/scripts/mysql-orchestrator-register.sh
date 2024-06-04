@@ -9,7 +9,6 @@ mysql_password="$MYSQL_ROOT_PASSWORD"
 topology_user="$ORC_TOPOLOGY_USER"
 topology_password="$ORC_TOPOLOGY_PASSWORD"
 
-cluster_component_pod_name="$KB_CLUSTER_COMP_NAME"
 component_name="$KB_COMP_NAME"
 
 # register first pod to orchestrator
@@ -68,12 +67,10 @@ main() {
   IFS="$old_ifs"
   echo "pod_name_list: $pod_name_list"
 
-  first_mysql_service_host_name=$(echo "${cluster_component_pod_name}_${component_name}_0_SERVICE_HOST" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+  first_mysql_service_host_name=$(echo "${KB_CLUSTER_COMP_NAME}_MYSQL_0_SERVICE_HOST" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
   first_mysql_service_host=${!first_mysql_service_host_name}
 
-  mysql_host_name=MYSQL_ORDINAL_HOST_0
-  HOSTIP=${!mysql_host_name}
-  register_to_orchestrator "$HOSTIP"
+  register_to_orchestrator "$first_mysql_service_host"
 
   echo "Initialization script completed！"
 }

@@ -11,6 +11,7 @@ spec:
   description: mysql 5.7 component definition for Kubernetes
   serviceKind: mysql
   serviceVersion: 5.7.44
+  updateStrategy: BestEffortParallel
 
   serviceRefDeclarations:
     - name: orchestrator

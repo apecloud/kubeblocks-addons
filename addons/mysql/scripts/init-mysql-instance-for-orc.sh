@@ -26,13 +26,11 @@ topology_user="$ORC_TOPOLOGY_USER"
 topology_password="$ORC_TOPOLOGY_PASSWORD"
 
 cluster_component_pod_name="$KB_CLUSTER_COMP_NAME"
-component_name="$KB_COMP_NAME"
-kb_cluster_name="$KB_CLUSTER_NAME"
 
 
 # create orchestrator user in mysql
 create_mysql_user() {
-  local service_name=$(echo "${cluster_component_pod_name}_${component_name}_${i}" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+  local service_name=$(echo "${KB_CLUSTER_COMP_NAME}_MYSQL_${i}" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
 
   mysql_note "Create MySQL User and Grant Permissions..."
 
@@ -103,7 +101,7 @@ wait_for_connectivity() {
 
 setup_master_slave() {
   mysql_note "setup_master_slave"
-  master_host_name=$(echo "${cluster_component_pod_name}_${component_name}_0_SERVICE_HOST" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+  master_host_name=$(echo "${KB_CLUSTER_COMP_NAME}_MYSQL_0_SERVICE_HOST" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
   master_host=${!master_host_name}
   mysql_note "wait_for_connectivity"
   wait_for_connectivity
@@ -112,7 +110,7 @@ setup_master_slave() {
   get_master_from_orc
 
   last_digit=${KB_POD_NAME##*-}
-  self_service_name=$(echo "${cluster_component_pod_name}_${component_name}_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+  self_service_name=$(echo "${KB_CLUSTER_COMP_NAME}_MYSQL_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
   host_name=$(echo "${self_service_name}_SERVICE_HOST" | tr '-' '_'  | tr '[:lower:]' '[:upper:]'  )
 
   # If the cluster is already registered to the Orchestrator and the Master of the cluster is itself, then no action is required.
@@ -135,6 +133,7 @@ setup_master_slave() {
     init_cluster_info_database self_service_name
   # If the master_host is not empty, change master to the master_host.
   else
+
     mysql_note "Wait for master to be ready"
     change_master "$master_host"
   fi
