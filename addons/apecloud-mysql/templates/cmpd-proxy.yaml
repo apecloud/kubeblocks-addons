@@ -37,9 +37,9 @@ spec:
         image: {{ .Values.wesqlscale.image.registry | default .Values.image.registry }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.wesqlscale.image.pullPolicy }}
         ports:
-          - containerPort: 15000
+          - containerPort: {{ .Values.wesqlscale.vtctld.webPort }}
             name: vtctld-webport
-          - containerPort: 15999
+          - containerPort: {{ .Values.wesqlscale.vtctld.grpcPort }}
             name: vtctld-grpcport
         env:
           - name: CELL
@@ -47,9 +47,9 @@ spec:
           - name: VTCTLD_SERVER
             value: "$(KB_CLUSTER_NAME)-wescale-ctrl-headless"
           - name: VTCTLD_WEB_PORT
-            value: "15000"
+            value: "{{ .Values.wesqlscale.vtctld.webPort }}"
           - name: VTCTLD_GRPC_PORT
-            value: "15999"
+            value: "{{ .Values.wesqlscale.vtctld.grpcPort }}"
           - name: ETCD_SERVER
             value: $(SERVICE_ETCD_ENDPOINT)
           - name: ETCDCTL_API
@@ -130,23 +130,23 @@ spec:
         image: {{ .Values.wesqlscale.image.registry | default .Values.image.registry }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
         imagePullPolicy: IfNotPresent
         ports:
-          - containerPort: 15001
+          - containerPort: {{ .Values.wesqlscale.vtgate.webPort }}
             name: webport
-          - containerPort: 15991
+          - containerPort: {{ .Values.wesqlscale.vtgate.grpcPort }}
             name: grpcport
-          - containerPort: 15306
+          - containerPort: {{ .Values.wesqlscale.vtgate.mysqlServerPort }}
             name: serverport
         env:
           - name: CELL
             value: {{ .Values.wesqlscale.cell | default "zone1" | quote }}
           - name: SERVICE_PORT
-            value: "15001"
+            value: "{{ .Values.wesqlscale.vtgate.webPort }}"
           - name: VTGATE_MYSQL_PORT
-            value: "15306"
+            value: "{{ .Values.wesqlscale.vtgate.mysqlServerPort }}"
           - name: VTGATE_WEB_PORT
-            value: "15001"
+            value: "{{ .Values.wesqlscale.vtgate.webPort }}"
           - name: VTGATE_GRPC_PORT
-            value: "15991"
+            value: "{{ .Values.wesqlscale.vtgate.grpcPort }}"
           - name: ETCD_SERVER
             value: $(SERVICE_ETCD_ENDPOINT)
           - name: MYSQL_UNIX_PORT
@@ -158,6 +158,37 @@ spec:
           - name: vtgate-config
             mountPath: /conf
           - name: vtgate-log
+            mountPath: /vtdataroot
+      - name: vtablet
+        image: {{ .Values.wesqlscale.image.registry | default .Values.image.registry }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
+        imagePullPolicy: IfNotPresent
+        ports:
+          - containerPort: {{ .Values.wesqlscale.vttablet.webPort }}
+            name: vttabletport
+          - containerPort: {{ .Values.wesqlscale.vttablet.grpcPort }}
+            name: vttabletgrpc
+        env:
+          - name: CELL
+            value: {{ .Values.wesqlscale.cell | default "zone1" | quote }}
+          - name: ETCD_SERVER
+            value: $(SERVICE_ETCD_ENDPOINT)
+          - name: VTTABLET_PORT
+            value: "{{ .Values.wesqlscale.vttablet.webPort }}"
+          - name: VTTABLET_GRPC_PORT
+            value: "{{ .Values.wesqlscale.vttablet.grpcPort }}"
+          - name: VTCTLD_HOST
+            value: "$(KB_CLUSTER_NAME)-wescale-ctrl-headless"
+          - name: VTCTLD_WEB_PORT
+            value: "{{ .Values.wesqlscale.vtctld.webPort }}"
+          - name: SERVICE_PORT
+            value: "$(VTTABLET_PORT)"
+        command: ["/scripts/vttablet.sh"]
+        volumeMounts:
+          - name: scripts
+            mountPath: /scripts
+          - name: mysql-scale-config
+            mountPath: /conf
+          - name: data
             mountPath: /vtdataroot
   exporter:
     scrapePath: /metrics
@@ -177,6 +208,21 @@ spec:
           name: root
           optional: false 
           password: Required
+    - name: MYSQL_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "apecloud-mysql.componentDefName" . }}
+          name: default
+          optional: true
+          port:
+            name: mysql
+            option: Optional
+    - name: MYSQL_HOST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "apecloud-mysql.componentDefName" . }}
+          optional: true
+          instanceNames: Optional
     - name: SERVICE_ETCD_ENDPOINT
       valueFrom:
         serviceRefVarRef:

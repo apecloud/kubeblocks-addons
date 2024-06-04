@@ -25,8 +25,6 @@ spec:
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command: [ "/scripts/setup.sh" ]
         {{- include "apecloud-mysql.spec.runtime.mysql" . | nindent 8 }}
-      - name: vtablet
-        {{- include "apecloud-mysql.spec.runtime.vtablet" . |  nindent 8 }}
       - name: mysql-exporter
         {{- include "apecloud-mysql.spec.runtime.exporter" . | nindent 8 }}
     volumes:
@@ -77,8 +75,6 @@ spec:
             rm -rf {{ .Values.mysqlConfigs.dataMountPath }}/plugin/
             /scripts/setup.sh
         {{- include "apecloud-mysql.spec.runtime.mysql" . | nindent 8 }}
-      - name: vtablet
-        {{- include "apecloud-mysql.spec.runtime.vtablet" . |  nindent 8 }}
       - name: mysql-exporter
         {{- include "apecloud-mysql.spec.runtime.exporter" . | nindent 8 }}
     volumes:
