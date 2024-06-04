@@ -23,11 +23,11 @@ storage:
 # where to write logging data.
 {{ block "logsBlock" . }}
 systemLog:
-  # destination: file
+  destination: file
   quiet: false
   logAppend: true
   logRotate: reopen
-  # path: /data/mongodb/logs/mongodb.log
+  path: /data/mongodb/logs/mongodb.log
   verbosity: 0
 {{ end }}
 
