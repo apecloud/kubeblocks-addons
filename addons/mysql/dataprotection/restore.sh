@@ -17,7 +17,7 @@ xtrabackup --decompress --remove-original --target-dir=${TMP_DIR}
 xtrabackup --prepare --target-dir=${TMP_DIR}
 xtrabackup --move-back --target-dir=${TMP_DIR} --datadir=${DATA_DIR}/
 
-touch ${DATADIR}/.xtrabackup_restore
+touch ${DATA_DIR}/.xtrabackup_restore
 if [ "${BACKUP_FOR_STANDBY}" != "true" ]; then
    touch ${DATA_DIR}/.restore_new_cluster
 fi
