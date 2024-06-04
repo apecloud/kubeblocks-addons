@@ -3,7 +3,6 @@
 set_config_variables vttablet
 
 cell=${CELL:-'zone1'}
-uid="${KB_POD_NAME##*-}"
 mysql_root=${MYSQL_USER:-'root'}
 mysql_root_passwd=${MYSQL_PASSWORD:-'123456'}
 mysql_port=${MYSQL_PORT:-'3306'}
@@ -11,23 +10,19 @@ port=${VTTABLET_PORT:-'15100'}
 grpc_port=${VTTABLET_GRPC_PORT:-'16100'}
 vtctld_host=${VTCTLD_HOST:-'127.0.0.1'}
 vtctld_web_port=${VTCTLD_WEB_PORT:-'15000'}
+
+uid="${KB_POD_NAME##*-}"
 printf -v alias '%s-%010d' $cell $uid
 printf -v tablet_dir 'vt_%010d' $uid
 tablet_hostname=$(eval echo \$KB_"$uid"_HOSTNAME)
 printf -v tablet_logfile 'vttablet_%010d_querylog.txt' $uid
 
-mysql_hostname=${MYSQL_HOST:-'127.0.0.1'}
+mysql_pods=(${MYSQL_POD_LIST//,/ })
+mysql_pod=${mysql_pods[$uid]}
 
-if [ "$mysql_hostname" == "127.0.0.1" ]; then
-  mysql_server=$mysql_hostname
-else
-  IFS=',' read -ra BROKER_ARRAY <<< "$mysql_hostname"
-  mysql_server=""
-  for pod in "${BROKER_ARRAY[@]}"; do
-      mysql_server+="${pod}.${KB_NAMESPACE}.svc.cluster.local,"
-  done
-  mysql_server="${mysql_server%,}"
-fi
+mysql_server="${mysql_pod}.${MYSQL_HEADLESS}.${KB_NAMESPACE}.svc.cluster.local"
+
+echo $mysql_server
 
 tablet_type=replica
 

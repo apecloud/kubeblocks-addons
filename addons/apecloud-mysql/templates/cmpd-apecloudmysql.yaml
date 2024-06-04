@@ -14,11 +14,6 @@ spec:
       constraintRef: {{ include "apecloud-mysql.configConstraintName" . }}
       volumeName: mysql-config
       namespace: {{ .Release.Namespace }}
-    - name: vttablet-config
-      templateRef: {{ include "apecloud-mysql.configTplVttabletName" . }}
-      constraintRef: {{ include "apecloud-mysql.configConstraintVttabletName" . }}
-      volumeName: mysql-scale-config
-      namespace: {{ .Release.Namespace }}
   runtime:
     containers:
       - name: mysql
@@ -45,11 +40,6 @@ spec:
       templateRef: {{ include "apecloud-mysql.configTplAuditLogName" . }}
       constraintRef: {{ include "apecloud-mysql.configConstraintName" . }}
       volumeName: mysql-config
-      namespace: {{ .Release.Namespace }}
-    - name: vttablet-config
-      templateRef: {{ include "apecloud-mysql.configTplVttabletName" . }}
-      constraintRef: {{ include "apecloud-mysql.configConstraintVttabletName" . }}
-      volumeName: mysql-scale-config
       namespace: {{ .Release.Namespace }}
   runtime:
     initContainers:
