@@ -69,29 +69,14 @@ spec:
             accessMode: Readonly
         updateStrategy: Serial
       probes:
-        roleProbeTimeoutAfterPodsReady: 300
         roleProbe:
           failureThreshold: {{ .Values.roleProbe.failureThreshold }}
           periodSeconds: {{ .Values.roleProbe.periodSeconds }}
           timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
-      switchoverSpec:
-        withCandidate:
-          cmdExecutorConfig:
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag }}
-            command:
-              - /scripts/switchover-with-candidate.sh
-          scriptSpecSelectors:
-            - name: mongodb-scripts
-        withoutCandidate:
-          cmdExecutorConfig:
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag }}
-            command:
-              - /scripts/switchover-without-candidate.sh
-          scriptSpecSelectors:
-            - name: mongodb-scripts
       service:
         ports:
           - name: mongodb
+            targetPort: mongodb
             protocol: TCP
             targetPort: mongodb
             port: 27017
@@ -178,6 +163,134 @@ spec:
                 {{- else }}
                 containerPort: 8888
                 {{- end }}
+            volumeMounts:
+              - name: mongodb-metrics-config
+                mountPath: /opt/conf
+    - name: mongodb-hostnetwork
+      characterType: mongodb
+      scriptSpecs:
+        - name: mongodb-scripts
+          templateRef: mongodb-scripts
+          volumeName: scripts
+          namespace: {{ .Release.Namespace }}
+          defaultMode: 0555
+      configSpecs:
+        - name: mongodb-config
+          templateRef: mongodb5.0-config-template
+          namespace: {{ .Release.Namespace }}
+          volumeName: mongodb-config
+          constraintRef: mongodb-config-constraints
+          keys:
+            - mongodb.conf
+          defaultMode: 256
+        - name: mongodb-metrics-config-new
+          templateRef: mongodb-metrics-config-new
+          namespace: {{ .Release.Namespace }}
+          volumeName: mongodb-metrics-config
+          defaultMode: 0444
+        - name: mongodb-env
+          templateRef: {{ include "mongodb.name" . }}-env-tpl
+          namespace: {{ .Release.Namespace }}
+          volumeName: mongodb-env
+          constraintRef: mongodb-env-constraints
+          keys:
+            - env
+          asEnvFrom:
+            - mongodb
+      logConfigs:
+        {{- range $name,$pattern := .Values.logConfigs }}
+        - name: {{ $name }}
+          filePathPattern: {{ $pattern }}
+        {{- end }}
+      workloadType: Consensus
+      consensusSpec:
+        leader:
+          name: "primary"
+          accessMode: ReadWrite
+        followers:
+          - name: "secondary"
+            accessMode: Readonly
+        updateStrategy: Serial
+      probes:
+        roleProbe:
+          failureThreshold: {{ .Values.roleProbe.failureThreshold }}
+          periodSeconds: {{ .Values.roleProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+      service:
+        ports:
+          - name: mongodb
+            targetPort: mongodb
+            protocol: TCP
+            port: 27017
+      volumeTypes:
+        - name: data
+          type: data
+      podSpec:
+        hostNetwork: true
+        dnsPolicy: ClusterFirstWithHostNet
+        containers:
+          - name: mongodb
+            ports:
+              - name: mongodb
+                protocol: TCP
+                containerPort: 10
+            command:
+              - /scripts/replicaset-setup.sh
+            env:
+              # - name: SERVICE_PORT
+              #   value: "27017"
+              - name: MONGODB_ROOT_USER
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: username
+                    optional: false
+              - name: MONGODB_ROOT_PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: password
+                    optional: false
+            volumeMounts:
+              - mountPath: {{ .Values.dataMountPath }}
+                name: data
+              - mountPath: /etc/mongodb/mongodb.conf
+                name: mongodb-config
+                subPath: mongodb.conf
+              - mountPath: /etc/mongodb/keyfile
+                name: mongodb-config
+                subPath: keyfile
+              - name: scripts
+                mountPath: /scripts
+              # - name: mongodb-env
+              #   mountPath: /none
+          - name: metrics
+            image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
+            imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
+            securityContext:
+              runAsNonRoot: true
+              runAsUser: 1001
+            env:
+              - name: MONGODB_ROOT_USER
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: username
+                    optional: false
+              - name: MONGODB_ROOT_PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: $(CONN_CREDENTIAL_SECRET_NAME)
+                    key: password
+                    optional: false
+            command:
+              - "/bin/agamotto"
+              - "--config=/opt/conf/metrics-config.yaml"
+            ports:
+              - name: http-metrics
+                containerPort: 20
+              - name: http-telemetry
+                containerPort: 21
             volumeMounts:
               - name: mongodb-metrics-config
                 mountPath: /opt/conf
