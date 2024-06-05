@@ -24,6 +24,10 @@ mysql_server="${mysql_pod}.${MYSQL_HEADLESS}.${KB_NAMESPACE}.svc.cluster.local"
 
 echo $mysql_server
 
+export LORRY_HTTP_HOST=$mysql_server
+
+echo "LORRY_HTTP_HOST is set to $LORRY_HTTP_HOST"
+
 tablet_type=replica
 
 endpoints=${ETCD_SERVER:-'127.0.0.1:2379'}
