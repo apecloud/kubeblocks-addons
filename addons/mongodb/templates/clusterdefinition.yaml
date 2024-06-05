@@ -76,7 +76,6 @@ spec:
       service:
         ports:
           - name: mongodb
-            targetPort: mongodb
             protocol: TCP
             targetPort: mongodb
             port: 27017
@@ -219,8 +218,8 @@ spec:
       service:
         ports:
           - name: mongodb
-            targetPort: mongodb
             protocol: TCP
+            targetPort: mongodb
             port: 27017
       volumeTypes:
         - name: data
