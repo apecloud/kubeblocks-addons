@@ -6,7 +6,6 @@ metadata:
     {{- include "victoria-metrics-cluster.labels" . | nindent 4 }}
 spec:
   clusterDefinitionRef: victoria-metrics
-  clusterVersionRef: victoria-metrics-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
   terminationPolicy: {{ .Values.terminationPolicy }}
   topology: vm-cluster
   componentSpecs:
