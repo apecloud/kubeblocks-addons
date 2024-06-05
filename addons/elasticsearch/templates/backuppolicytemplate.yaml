@@ -1,0 +1,37 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: elasticsearch-backup-policy-template
+  labels:
+    clusterdefinition.kubeblocks.io/name: elasticsearch
+    {{- include "elasticsearch.labels" . | nindent 4 }}
+spec:
+  clusterDefinitionRef: elasticsearch
+  backupPolicies:
+  - componentDefs:
+    - es-master
+    - es-data
+    target:
+      role: ""
+      strategy: All
+    backupMethods:
+    - name: full
+      snapshotVolumes: false
+      actionSetName: elasticsearch-physical-backup
+      targetVolumes:
+        volumeMounts:
+        - name: data
+          mountPath: /usr/share/elasticsearch/data
+  - componentDefs:
+    - es-data
+    target:
+      role: ""
+      strategy: All
+    backupMethods:
+    - name: full
+      snapshotVolumes: false
+      actionSetName: elasticsearch-physical-backup
+      targetVolumes:
+        volumeMounts:
+        - name: data
+          mountPath: /usr/share/elasticsearch/data
