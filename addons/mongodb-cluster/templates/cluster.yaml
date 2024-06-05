@@ -16,7 +16,7 @@ spec:
   componentSpecs:
     - name: mongodb
       {{- if .Values.useLegacyCompDef }}
-      componentDefRef: mongodb
+      componentDefRef: {{ include "mongodb-cluster.componentDefRef" $}}
       {{- else }}
       componentDef: mongodb
       {{- end }}
