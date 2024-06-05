@@ -23,6 +23,7 @@
   "DefaultRaftPort": 10008,
   "RaftNodes": [ ${ORC_PEERS} ],
 
+  "DetectClusterAliasQuery": "select ifnull(max(cluster_name), '') as cluster_alias from kb_orc_meta_cluster.kb_orc_meta_cluster where anchor=1",
   "ApplyMySQLPromotionAfterMasterFailover": true,
   "DetachLostReplicasAfterMasterFailover": true,
   "FailMasterPromotionIfSQLThreadNotUpToDate": true,
