@@ -8,7 +8,7 @@ spec:
   provider: kubeblocks
   description: mysql component definition for Kubernetes
   serviceKind: mysql
-  serviceVersion: 5.7.44
+  serviceVersion: 8.0.33
   updateStrategy: BestEffortParallel
 
   services:
@@ -29,7 +29,7 @@ spec:
             targetPort: mysql
   configs:
     - name: mysql-replication-config
-      templateRef: mysql-5.7-config-template
+      templateRef: mysql-8.0-config-template
       constraintRef: mysql-config-constraints
       volumeName: mysql-config
       namespace: {{ .Release.Namespace }}
@@ -82,15 +82,15 @@ spec:
           - /xtrabackup-2.4
           - /kubeblocks/xtrabackup
         image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:mysql
-        imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         name: init-xtrabackup
         volumeMounts:
           - mountPath: /kubeblocks
             name: kubeblocks
     containers:
       - name: mysql
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.7.44
-        imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         command:
           - bash
           - -c
