@@ -25,8 +25,8 @@ storage:
 systemLog:
   destination: file
   quiet: false
-  logAppend: true
-  logRotate: reopen
+  logAppend: false
+  logRotate: rename
   path: /data/mongodb/logs/mongodb.log
   verbosity: 0
 {{ end }}
