@@ -79,7 +79,7 @@ spec:
           runAsGroup: 0
         containers:
           - name: mogdb
-            imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
             command:
               - bash
               - -c
@@ -206,7 +206,7 @@ spec:
               periodSeconds: 3
               timeoutSeconds: 5
           - name: helper
-            imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
             ports:
               - name: helper
                 containerPort: 6543
