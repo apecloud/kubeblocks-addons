@@ -40,7 +40,7 @@ persistence:
     ## @param shard[*].persistence.size Size of data volume
     ##
     size: 4Gi
-  dataLog:
+  log:
     storageClassName:
     ## @param shard[*].persistence.size Size of data volume
     ##
