@@ -21,9 +21,9 @@ spec:
       serviceName: replication
       spec:
         ports:
-          - name: paxos
+          - name: raft
             port: 13306
-            targetPort: paxos
+            targetPort: raft
       podService: true
       disableAutoProvision: true
   volumes:
@@ -166,7 +166,7 @@ spec:
           - containerPort: 5432
             name: tcp-postgresql
           - containerPort: 15432
-            name: paxos
+            name: raft
         securityContext:
           runAsUser: 0
         volumeMounts:
