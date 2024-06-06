@@ -114,7 +114,7 @@ spec:
     containers:
       - name: proxysql
         image: {{ .Values.image.registry | default "docker.io" }}/apecloud/proxysql:2.4.4
-        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
         args:
           - /scripts/proxysql/proxysql-entry.sh
           - --reload
