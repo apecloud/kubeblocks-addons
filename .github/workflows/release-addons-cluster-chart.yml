@@ -1,4 +1,4 @@
-name: Release Chart
+name: Release Addons Cluster Chart
 
 on:
   workflow_dispatch:
@@ -10,53 +10,54 @@ on:
         type: choice
         options:
           - ""
-          - apecloud-mysql
-          - apecloud-postgresql
-          - camellia-redis-proxy
-          - clickhouse
-          - dmdb
-          - doris
-          - elasticsearch
-          - etcd
-          - flink
-          - foxlake
-          - greatsql
-          - greptimedb
-          - halo
-          - influxdb
-          - kafka
-          - llm
-          - mariadb
-          - milvus
-          - minio
-          - mogdb
-          - mongodb
-          - mysql
-          - nebula
-          - neon
-          - oceanbase-ce
-          - official-postgresql
-          - opengauss
-          - openldap
-          - opensearch
-          - oracle
-          - orchestrator
-          - orioledb
-          - polardbx
-          - postgresql
-          - pulsar
-          - qdrant
-          - redis
-          - risingwave
-          - solr
-          - starrocks-ce
-          - tdengine
-          - tidb
-          - victoria-metrics
-          - weaviate
-          - xinference
-          - yashandb
-          - zookeeper
+          - apecloud-mysql-cluster
+          - apecloud-postgresql-cluster
+          - camellia-redis-proxy-cluster
+          - clickhouse-cluster
+          - doris-cluster
+          - elasticsearch-cluster
+          - etcd-cluster
+          - flink-cluster
+          - foxlake-cluster
+          - greatsql-cluster
+          - greptimedb-cluster
+          - halo-cluster
+          - kafka-cluster
+          - kblib
+          - kblib-v2
+          - llm-cluster
+          - mariadb-cluster
+          - milvus-cluster
+          - minio-cluster
+          - mogdb-cluster
+          - mongodb-cluster
+          - mongodb-sharding-cluster
+          - mysql-cluster
+          - nebula-cluster
+          - neon-cluster
+          - oceanbase-ce-cluster
+          - official-postgresql-cluster
+          - opengauss-cluster
+          - openldap-cluster
+          - opensearch-cluster
+          - oracle-cluster
+          - orchestrator-cluster
+          - orioledb-cluster
+          - polardbx-cluster
+          - postgresql-cluster
+          - pulsar-cluster
+          - qdrant-cluster
+          - redis-cluster
+          - risingwave-cluster
+          - solr-cluster
+          - starrocks-ce-cluster
+          - tdengine-cluster
+          - tidb-cluster
+          - victoria-metrics-cluster
+          - weaviate-cluster
+          - xinference-cluster
+          - yashandb-cluster
+          - zookeeper-cluster
       chart_version:
         description: 'release specify chart version or empty to release default'
         required: false
@@ -73,7 +74,7 @@ jobs:
     uses: apecloud/apecloud-cd/.github/workflows/release-charts.yml@v0.1.52
     with:
       VERSION: "${{ inputs.chart_version }}"
-      CHART_DIR: "addons"
+      CHART_DIR: "addons-cluster"
       SPECIFY_CHART: "${{ inputs.chart_dir }}"
       APECD_REF: "v0.1.52"
     secrets: inherit
@@ -83,7 +84,7 @@ jobs:
     uses: apecloud/apecloud-cd/.github/workflows/release-charts.yml@v0.1.52
     with:
       VERSION: "${{ inputs.chart_version }}"
-      CHART_DIR: "addons"
+      CHART_DIR: "addons-cluster"
       SPECIFY_CHART: "${{ inputs.chart_dir }}"
       APECD_REF: "v0.1.52"
       ENABLE_JIHU: false
@@ -99,7 +100,7 @@ jobs:
       - name: get addons chart dir
         id: get_addons_chart_dir
         run: |
-          addons_list=$(ls addons)
+          addons_list=$(ls addons-cluster)
           ADDONS_DIR=""
           for addons_name in $( echo "$addons_list" ); do
               if [[ -z "$ADDONS_DIR" ]]; then
@@ -121,7 +122,7 @@ jobs:
     uses: apecloud/apecloud-cd/.github/workflows/release-charts-jihu.yml@v0.1.52
     with:
       VERSION: "${{ inputs.chart_version }}"
-      CHART_DIR: "addons"
+      CHART_DIR: "addons-cluster"
       SPECIFY_CHART: "${{ matrix.addon-name }}"
       APECD_REF: "v0.1.52"
     secrets: inherit
