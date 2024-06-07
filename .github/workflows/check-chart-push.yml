@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - "addons/**"
+      - "addons-cluster/**"
     branches:
       - '*'
       - '*/*'
@@ -11,9 +12,16 @@ on:
       - '*'
 
 jobs:
-  check-helm:
+  check-addons-helm:
     uses: apecloud/apecloud-cd/.github/workflows/release-charts-check.yml@v0.1.40
     with:
       CHART_DIR: "addons"
+      APECD_REF: "v0.1.40"
+    secrets: inherit
+
+  check-addons-cluster-helm:
+    uses: apecloud/apecloud-cd/.github/workflows/release-charts-check.yml@v0.1.40
+    with:
+      CHART_DIR: "addons-cluster"
       APECD_REF: "v0.1.40"
     secrets: inherit
