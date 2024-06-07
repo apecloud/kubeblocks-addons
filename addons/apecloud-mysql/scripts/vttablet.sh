@@ -1,25 +1,32 @@
 #!/bin/bash
-while [ "$KB_PROXY_ENABLED" != "on" ]
-do
-  sleep 60
-done
-
 . /scripts/set_config_variables.sh
 set_config_variables vttablet
 
 cell=${CELL:-'zone1'}
-uid="${KB_POD_NAME##*-}"
-mysql_root=${MYSQL_ROOT_USER:-'root'}
-mysql_root_passwd=${MYSQL_ROOT_PASSWORD:-'123456'}
+mysql_root=${MYSQL_USER:-'root'}
+mysql_root_passwd=${MYSQL_PASSWORD:-'123456'}
 mysql_port=${MYSQL_PORT:-'3306'}
 port=${VTTABLET_PORT:-'15100'}
 grpc_port=${VTTABLET_GRPC_PORT:-'16100'}
 vtctld_host=${VTCTLD_HOST:-'127.0.0.1'}
 vtctld_web_port=${VTCTLD_WEB_PORT:-'15000'}
+
+uid="${KB_POD_NAME##*-}"
 printf -v alias '%s-%010d' $cell $uid
 printf -v tablet_dir 'vt_%010d' $uid
 tablet_hostname=$(eval echo \$KB_"$uid"_HOSTNAME)
 printf -v tablet_logfile 'vttablet_%010d_querylog.txt' $uid
+
+mysql_pods=(${MYSQL_POD_LIST//,/ })
+mysql_pod=${mysql_pods[$uid]}
+
+mysql_server="${mysql_pod}.${MYSQL_HEADLESS}.${KB_NAMESPACE}.svc.cluster.local"
+
+echo $mysql_server
+
+export LORRY_HTTP_HOST=$mysql_server
+
+echo "LORRY_HTTP_HOST is set to $LORRY_HTTP_HOST"
 
 tablet_type=replica
 
@@ -52,7 +59,7 @@ $(if [ "$enable_query_log" == "true" ]; then echo "--log_queries_to_file $VTDATA
 --file_backup_storage_root $VTDATAROOT/backups \
 --port $port \
 --db_port $mysql_port \
---db_host $tablet_hostname \
+--db_host $mysql_server \
 --db_allprivs_user $mysql_root \
 --db_allprivs_password $mysql_root_passwd \
 --db_dba_user $mysql_root \

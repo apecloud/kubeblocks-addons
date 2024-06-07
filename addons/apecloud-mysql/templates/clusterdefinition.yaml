@@ -19,21 +19,26 @@ spec:
     components:
     - name: mysql
       compDef: apecloud-mysql
-    - name: wescale-ctrl
-      compDef: wescale-ctrl
-    - name: wescale
-      compDef: wescale
+    - name: wescale-vtctld
+      compDef: wescale-vtctld
+    - name: wescale-vtgate
+      compDef: wescale-vtgate
+    - name: wescale-vtablet
+      compDef: wescale-vtablet
     orders: &orders
       provision:
       - mysql
-      - wescale-ctrl
-      - wescale
+      - wescale-vtctld
+      - wescale-vtablet
+      - wescale-vtgate
   - name: apecloud-mysql-audit-with-proxy
     components:
     - name: mysql
       compDef: apecloud-mysql-auditlog
-    - name: wescale-ctrl
-      compDef: wescale-ctrl
-    - name: wescale
-      compDef: wescale
+    - name: wescale-vtctld
+      compDef: wescale-vtctld
+    - name: wescale-vtgate
+      compDef: wescale-vtgate
+    - name: wescale-vtablet
+      compDef: wescale-vtablet
     orders: *orders

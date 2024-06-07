@@ -103,6 +103,16 @@ wesqlscale:
     repository: apecloud/apecloud-mysql-scale
     tag: "0.2.7"
     pullPolicy: IfNotPresent
+  vtctld:
+    webPort: 15000
+    grpcPort: 15999
+  vttablet:
+    webPort: 15100
+    grpcPort: 16100
+  vtgate:
+    webPort: 15001
+    grpcPort: 15991
+    mysqlServerPort: 15306
 
 ## @param resourceNamePrefix Prefix for all resources name created by this chart, that can avoid name conflict
 ## if you install multiple releases of this chart.

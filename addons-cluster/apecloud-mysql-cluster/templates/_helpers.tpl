@@ -12,7 +12,7 @@ The minimum proxy cpu cores is 0.5 and the maximum cpu cores is 64.
 {{- else if gt $proxyCPU 64.0 }}
 {{- $proxyCPU = 64 }}
 {{- end }}
-- name: wescale-ctrl
+- name: wescale-vtctld
   serviceRefs:
     {{ include "apecloud-mysql-cluster.serviceRef" . | indent 4 }}
   volumeClaimTemplates:
@@ -29,7 +29,7 @@ The minimum proxy cpu cores is 0.5 and the maximum cpu cores is 64.
     limits:
       cpu: 500m
       memory: 128Mi
-- name: wescale
+- name: wescale-vtgate
   serviceRefs:
     {{ include "apecloud-mysql-cluster.serviceRef" . | indent 4 }}
   replicas: 1
@@ -38,6 +38,17 @@ The minimum proxy cpu cores is 0.5 and the maximum cpu cores is 64.
     - warning
     - info
     - queryLog
+  resources:
+    requests:
+      cpu: {{ $proxyCPU | quote }}
+      memory: 500Mi
+    limits:
+      cpu: {{ $proxyCPU | quote }}
+      memory: 500Mi
+- name: wescale-vtablet
+  serviceRefs:
+    {{ include "apecloud-mysql-cluster.serviceRef" . | indent 4 }}
+  replicas: {{ include "apecloud-mysql-cluster.replicas" . }}
   resources:
     requests:
       cpu: {{ $proxyCPU | quote }}

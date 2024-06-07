@@ -1,13 +1,13 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: wescale-ctrl
+  name: wescale-vtctld
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
   provider: kubeblocks.io
-  description: wescale controller
-  serviceKind: wescale-ctrl
+  description: wescale-vtctld
+  serviceKind: wescale-vtctld
   serviceVersion: "0.2.7"
   serviceRefDeclarations:
     - name: etcd
@@ -37,19 +37,19 @@ spec:
         image: {{ .Values.wesqlscale.image.registry | default .Values.image.registry }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.wesqlscale.image.pullPolicy }}
         ports:
-          - containerPort: 15000
+          - containerPort: {{ .Values.wesqlscale.vtctld.webPort }}
             name: vtctld-webport
-          - containerPort: 15999
+          - containerPort: {{ .Values.wesqlscale.vtctld.grpcPort }}
             name: vtctld-grpcport
         env:
           - name: CELL
             value: {{ .Values.wesqlscale.cell | default "zone1" | quote }}
           - name: VTCTLD_SERVER
-            value: "$(KB_CLUSTER_NAME)-wescale-ctrl-headless"
+            value: "$(KB_CLUSTER_NAME)-wescale-vtctld-headless"
           - name: VTCTLD_WEB_PORT
-            value: "15000"
+            value: "{{ .Values.wesqlscale.vtctld.webPort }}"
           - name: VTCTLD_GRPC_PORT
-            value: "15999"
+            value: "{{ .Values.wesqlscale.vtctld.grpcPort }}"
           - name: ETCD_SERVER
             value: $(SERVICE_ETCD_ENDPOINT)
           - name: ETCDCTL_API
@@ -84,13 +84,13 @@ spec:
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: wescale
+  name: wescale-vtgate
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
   provider: kubeblocks.io
-  description: wescale
-  serviceKind: wescale
+  description: wescale-vtgate
+  serviceKind: wescale-vtgate
   serviceVersion: "0.2.7"
   serviceRefDeclarations:
     - name: etcd
@@ -130,23 +130,23 @@ spec:
         image: {{ .Values.wesqlscale.image.registry | default .Values.image.registry }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
         imagePullPolicy: IfNotPresent
         ports:
-          - containerPort: 15001
+          - containerPort: {{ .Values.wesqlscale.vtgate.webPort }}
             name: webport
-          - containerPort: 15991
+          - containerPort: {{ .Values.wesqlscale.vtgate.grpcPort }}
             name: grpcport
-          - containerPort: 15306
+          - containerPort: {{ .Values.wesqlscale.vtgate.mysqlServerPort }}
             name: serverport
         env:
           - name: CELL
             value: {{ .Values.wesqlscale.cell | default "zone1" | quote }}
           - name: SERVICE_PORT
-            value: "15001"
+            value: "{{ .Values.wesqlscale.vtgate.webPort }}"
           - name: VTGATE_MYSQL_PORT
-            value: "15306"
+            value: "{{ .Values.wesqlscale.vtgate.mysqlServerPort }}"
           - name: VTGATE_WEB_PORT
-            value: "15001"
+            value: "{{ .Values.wesqlscale.vtgate.webPort }}"
           - name: VTGATE_GRPC_PORT
-            value: "15991"
+            value: "{{ .Values.wesqlscale.vtgate.grpcPort }}"
           - name: ETCD_SERVER
             value: $(SERVICE_ETCD_ENDPOINT)
           - name: MYSQL_UNIX_PORT
@@ -177,6 +177,114 @@ spec:
           name: root
           optional: false 
           password: Required
+    - name: SERVICE_ETCD_ENDPOINT
+      valueFrom:
+        serviceRefVarRef:
+          name: etcd
+          endpoint: Required
+
+---
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: wescale-vtablet
+  labels:
+    {{- include "apecloud-mysql.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks.io
+  description: wescale-vtablet
+  serviceKind: wescale-vtablet
+  serviceVersion: "0.2.7"
+  serviceRefDeclarations:
+    - name: etcd
+      serviceRefDeclarationSpecs:
+        - serviceKind: etcd
+          serviceVersion: "^*"
+  scripts:
+    - name: apecloud-mysql-scripts
+      templateRef: {{ include "apecloud-mysql.cmScriptsName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  configs:
+    - name: vttablet-config
+      templateRef: {{ include "apecloud-mysql.configTplVttabletName" . }}
+      constraintRef: {{ include "apecloud-mysql.configConstraintVttabletName" . }}
+      volumeName: mysql-scale-config
+      namespace: {{ .Release.Namespace }}
+  runtime:
+    containers:
+      - name: vtablet
+        image: {{ .Values.wesqlscale.image.registry | default .Values.image.registry }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
+        imagePullPolicy: IfNotPresent
+        ports:
+          - containerPort: {{ .Values.wesqlscale.vttablet.webPort }}
+            name: vttabletport
+          - containerPort: {{ .Values.wesqlscale.vttablet.grpcPort }}
+            name: vttabletgrpc
+        env:
+          - name: CELL
+            value: {{ .Values.wesqlscale.cell | default "zone1" | quote }}
+          - name: ETCD_SERVER
+            value: $(SERVICE_ETCD_ENDPOINT)
+          - name: VTTABLET_PORT
+            value: "{{ .Values.wesqlscale.vttablet.webPort }}"
+          - name: VTTABLET_GRPC_PORT
+            value: "{{ .Values.wesqlscale.vttablet.grpcPort }}"
+          - name: VTCTLD_HOST
+            value: "$(KB_CLUSTER_NAME)-wescale-vtctld-headless"
+          - name: VTCTLD_WEB_PORT
+            value: "{{ .Values.wesqlscale.vtctld.webPort }}"
+          - name: SERVICE_PORT
+            value: "$(VTTABLET_PORT)"
+        command: ["/scripts/vttablet.sh"]
+        volumeMounts:
+          - name: scripts
+            mountPath: /scripts
+          - name: mysql-scale-config
+            mountPath: /conf
+          - name: data
+            mountPath: /vtdataroot
+  exporter:
+    scrapePath: /metrics
+    scrapePort: webport
+  vars:
+    - name: MYSQL_USER
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "apecloud-mysql.componentDefName" . }}
+          name: root
+          optional: false
+          username: Required
+    - name: MYSQL_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "apecloud-mysql.componentDefName" . }}
+          name: root
+          optional: false 
+          password: Required
+    - name: MYSQL_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "apecloud-mysql.componentDefName" . }}
+          name: default
+          optional: true
+          port:
+            name: mysql
+            option: Optional
+    - name: MYSQL_POD_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "apecloud-mysql.componentDefName" . }}
+          optional: true
+          instanceNames: Optional
+    - name: MYSQL_HEADLESS
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "apecloud-mysql.componentDefName" . }}
+          name: headless
+          optional: true
+          host: Optional
     - name: SERVICE_ETCD_ENDPOINT
       valueFrom:
         serviceRefVarRef:

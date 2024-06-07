@@ -188,11 +188,6 @@ exporter:
   containerName: mysql-exporter
   scrapePath: /metrics
   scrapePort: http-metrics
-serviceRefDeclarations:
-  - name: etcd
-    serviceRefDeclarationSpecs:
-      - serviceKind: etcd
-        serviceVersion: "^*"
 vars:
   - name: MYSQL_ROOT_USER
     valueFrom:
@@ -216,11 +211,6 @@ vars:
         optional: true
         host: Required
         loadBalancer: Required
-  - name: SERVICE_ETCD_ENDPOINT
-    valueFrom:
-      serviceRefVarRef:
-        name: etcd
-        endpoint: Required
 {{- end -}}
 
 
@@ -275,37 +265,6 @@ lifecycle:
     exec:
       command: [ "/scripts/pre-stop.sh" ]
 {{- end -}}
-
-{{- define "apecloud-mysql.spec.runtime.vtablet" -}}
-ports:
-  - containerPort: 15100
-    name: vttabletport
-  - containerPort: 16100
-    name: vttabletgrpc
-env:
-  - name: CELL
-    value: {{ .Values.wesqlscale.cell | default "zone1" | quote }}
-  - name: ETCD_SERVER
-    value: $(SERVICE_ETCD_ENDPOINT)
-  - name: VTTABLET_PORT
-    value: "15100"
-  - name: VTTABLET_GRPC_PORT
-  - name: VTCTLD_HOST
-    value: "$(KB_CLUSTER_NAME)-wescale-ctrl-headless"
-  - name: VTCTLD_WEB_PORT
-    value: "15000"
-  - name: SERVICE_PORT
-    value: "$(VTTABLET_PORT)"
-command: ["/scripts/vttablet.sh"]
-volumeMounts:
-  - name: scripts
-    mountPath: /scripts
-  - name: mysql-scale-config
-    mountPath: /conf
-  - name: data
-    mountPath: /vtdataroot
-{{- end }}
-
 
 {{- define "apecloud-mysql.spec.runtime.exporter" -}}
 command: [ "/scripts/exporter_start.sh" ]
