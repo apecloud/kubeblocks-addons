@@ -16,7 +16,7 @@ spec:
         containers:
           - name: mongodb
             image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
-            imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
       systemAccountSpec:
         cmdExecutorConfig:
           image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
@@ -44,7 +44,7 @@ spec:
         containers:
           - name: mongodb
             image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.2
-            imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
       systemAccountSpec:
         cmdExecutorConfig:
           image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.2
@@ -72,7 +72,7 @@ spec:
         containers:
           - name: mongodb
             image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.4
-            imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
       systemAccountSpec:
         cmdExecutorConfig:
           image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.4
@@ -100,7 +100,7 @@ spec:
         containers:
           - name: mongodb
             image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:6.0
-            imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
       systemAccountSpec:
         cmdExecutorConfig:
           image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:6.0

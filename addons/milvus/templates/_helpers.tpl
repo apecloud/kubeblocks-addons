@@ -154,7 +154,7 @@ Milvus cluster init container - config
 {{- define "milvus.cluster.initContainer.config" }}
 - name: config
   image: {{ .Values.images.milvusTools.repository }}:{{ .Values.images.milvusTools.tag }}
-  imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
+  imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
   command:
     - /cp
     - /run.sh,/merge
@@ -169,7 +169,7 @@ Milvus cluster image
 */}}
 {{- define "milvus.cluster.image" }}
 image: {{ .Values.images.milvus.repository }}:{{ .Values.images.milvus.tag }}
-imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
+imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
 {{- end }}
 
 {{/*

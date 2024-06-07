@@ -14,5 +14,5 @@ spec:
       containers:
         - name: orchestrator
           image: docker.io/bitpoke/mysql-operator-orchestrator:v0.6.3
-          imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+          imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
 
