@@ -10,4 +10,7 @@ volumeClaimTemplates:
       resources:
         requests:
           storage: {{ print .Values.storage "Gi" }}
+      {{- if .Values.storageClassName }}
+      storageClassName: {{ .Values.storageClassName | quote }}
+      {{- end }}
 {{- end }}
