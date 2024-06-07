@@ -54,6 +54,12 @@ spec:
           name: mysql-server
           host: Required
           optional: true
+          multipleClusterObjectOption:
+            strategy: combined
+            combinedOption:
+              flattenFormat:
+                delimiter: "."
+                keyValueDelimiter: "@"
 
     - name: MYSQL_ORDINAL_HOST
       valueFrom:
