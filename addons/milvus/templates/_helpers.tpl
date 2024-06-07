@@ -109,7 +109,7 @@ Milvus image
 */}}
 {{- define "milvus.image" }}
 image: {{ .Values.images.milvus.repository }}:{{ .Values.images.milvus.tag }}
-imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
+imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
 {{- end }}
 
 {{/*
@@ -118,7 +118,7 @@ Milvus init container - setup
 {{- define "milvus.initContainer.setup" }}
 - name: setup
   image: {{ .Values.images.milvusTools.repository }}:{{ .Values.images.milvusTools.tag }}
-  imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
+  imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
   command:
     - /cp
     - /run.sh,/merge
