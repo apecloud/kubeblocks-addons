@@ -34,7 +34,7 @@ spec:
         initContainers:
         - name: oracle-init-container
           image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
-          imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+          imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
           command:
             - /bin/sh
             - -c
@@ -51,7 +51,7 @@ spec:
             volumeMounts:
               - mountPath: /opt/oracle/oradata
                 name: data
-            imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
             securityContext:
               runAsUser: 54321
             ports:
@@ -82,7 +82,7 @@ spec:
               exec:
                 command: [ "/bin/sh", "-c", "if [ -f $ORACLE_BASE/checkDBLockStatus.sh ]; then $ORACLE_BASE/checkDBLockStatus.sh ; else $ORACLE_BASE/checkDBStatus.sh; fi " ]
           - name: exporter
-            imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
             securityContext:
               runAsUser: 1000
             ports:

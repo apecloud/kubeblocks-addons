@@ -113,7 +113,7 @@ spec:
     containers:
       - name: redis-cluster
         image: {{ include "redis.image" . }}
-        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         ports:
           - name: redis-cluster
             containerPort: 6379

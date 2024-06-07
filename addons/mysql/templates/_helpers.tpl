@@ -153,3 +153,7 @@ service:
     metrics:
       receivers: [ apecloudmysql, prometheus ]
 {{- end }}
+
+{{- define "mysql.imagePullPolicy" -}}
+{{ default "IfNotPresent" .Values.image.pullPolicy }}
+{{- end }}

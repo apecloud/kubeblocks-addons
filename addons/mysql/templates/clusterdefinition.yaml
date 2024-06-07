@@ -67,14 +67,14 @@ spec:
               - |
                 mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog}
                 cp /usr/lib/mysql/plugin/ {{ .Values.dataMountPath }}/plugin -r
-            imagePullPolicy: Always
+            imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
             name: init-data
             volumeMounts:
               - mountPath: {{ .Values.dataMountPath }}
                 name: data
         containers:
           - name: mysql
-            imagePullPolicy: IfNotPresent
+            imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
             command:
               - bash 
               - -c
@@ -110,7 +110,7 @@ spec:
                     optional: false
           - name: metrics
             image:  {{ .Values.metrics.image.registry | default "docker.io" }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
-            imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
+            imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
             securityContext:
               runAsNonRoot: false
               runAsUser: 0
