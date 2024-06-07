@@ -37,7 +37,7 @@ spec:
         - name: server
           compDef: {{ include "mysql.componentDefName" . }}-orc
         - name: proxysql
-          compDef: {{ include "proxysql.componentDefName" . }}-orc
+          compDef: {{ include "proxysql.componentDefName" . }}
       orders:
         provision: # The server will start before the proxy is created.
           - server
