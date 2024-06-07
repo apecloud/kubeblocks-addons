@@ -9,6 +9,11 @@ spec:
   description: A PostgreSQL (with Patroni HA) component definition for Kubernetes
   serviceKind: postgresql
   serviceVersion: {{ .Values.componentServiceVersion.postgresql15 }}
+  serviceRefDeclarations:
+    - name: etcd
+      serviceRefDeclarationSpecs:
+        - serviceKind: etcd
+          serviceVersion: "^*"
   services:
     - name: postgresql
       serviceName: postgresql
@@ -70,6 +75,11 @@ spec:
       volumeName: scripts
       defaultMode: 0555
   vars:
+    - name: SERVICE_ETCD_ENDPOINT
+      valueFrom:
+        serviceRefVarRef:
+          name: etcd
+          endpoint: Required
     - name: POSTGRES_USER
       valueFrom:
         credentialVarRef:
@@ -148,6 +158,11 @@ spec:
             value: $(POSTGRES_USER)
           - name: PGPASSWORD
             value: $(POSTGRES_PASSWORD)
+    preTerminate:
+      customHandler:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major15.minor070 }}
+        exec:
+          command: ["/kb-scripts/etcd-clean.sh"]
   runtime:
     securityContext:
       runAsUser: 0
@@ -208,8 +223,10 @@ spec:
           - name: patroni
             containerPort: 8008
         env: ## refer https://github.com/zalando/spilo/blob/master/ENVIRONMENT.rst
-          - name: DCS_ENABLE_KUBERNETES_API
-            value: "true"
+          - name: ETCD_API
+            value: "3"        
+          - name: ETCD_SERVER
+            value: $(SERVICE_ETCD_ENDPOINT)
           - name: KUBERNETES_USE_CONFIGMAPS
             value: "true"
           - name: SCOPE

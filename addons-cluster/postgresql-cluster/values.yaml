@@ -5,13 +5,19 @@
 # if useLegacyCompDef is false ,cluster will be rendered by compDef rather than componentDefRef in cluster definition
 useLegacyCompDef: false
 
+terminationPolicy: "Delete"
+
 ## @param version MySQL cluster version
 ##
 version: postgresql-15.7.0
 
 ## @param mode postgresql cluster topology mode, standalone, replication
 ##
-mode: standalone
+mode: replication
+
+## @param HA server etcd:
+##
+etcdHA: true
 
 ## @param replicas specify cluster replicas
 ##
@@ -39,3 +45,8 @@ storage: 20
 ## @param monitor sidecar
 sidecars:
  - exporter
+
+etcd:
+  serviceReference: 
+    endpoint: "etcd-cluster-etcd.default.svc.cluster.local:2379" # 
+  serviceVersion: 3.5.6
