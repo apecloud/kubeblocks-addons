@@ -14,6 +14,14 @@ Define redis cluster shardingSpec with ComponentDefinition.
       serviceType: NodePort
       podService: true
     {{- end }}
+    systemAccounts:
+    - name: default
+      passwordConfig:
+        length: 10
+        numDigits: 5
+        numSymbols: 0
+        letterCase: MixedCases
+        seed: {{ include "kblib.clusterName" . }}
     resources:
       limits:
         cpu: {{ .Values.cpu | quote }}

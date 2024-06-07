@@ -62,7 +62,7 @@ spec:
           runAsGroup: 103
         containers:
           - name: postgresql
-            imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
             securityContext:
               runAsUser: 0
             command:

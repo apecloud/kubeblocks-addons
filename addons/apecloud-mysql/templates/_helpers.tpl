@@ -270,9 +270,9 @@ lifecycle:
 command: [ "/scripts/exporter_start.sh" ]
 env:
   - name: MYSQLD_EXPORTER_USER
-    value: $(MYSQL_USER)
+    value: $(MYSQL_ROOT_USER)
   - name: MYSQLD_EXPORTER_PASSWORD
-    value: $(MYSQL_PASSWORD)
+    value: $(MYSQL_ROOT_PASSWORD)
   - name: EXPORTER_WEB_PORT
     value: "{{ .Values.metrics.service.port }}"
 image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
