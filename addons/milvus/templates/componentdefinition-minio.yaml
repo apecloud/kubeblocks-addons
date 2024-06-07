@@ -13,7 +13,7 @@ spec:
     initContainers:
       - name: volume-permissions
         image: {{ .Values.images.ostools.repository }}:{{ default .Chart.AppVersion .Values.images.ostools.tag }}
-        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
         command:
           - /bin/bash
           - -ec
@@ -27,7 +27,7 @@ spec:
     containers:
       - name: minio
         image: {{ .Values.images.minio.repository }}:{{ default .Chart.AppVersion .Values.images.minio.tag }}
-        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
         command:
           - /bin/sh
           - -ce

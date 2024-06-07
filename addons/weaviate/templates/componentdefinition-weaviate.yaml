@@ -43,7 +43,7 @@ spec:
     containers:
     - name: weaviate
       image: {{ include "weaviate.image" . }}
-      imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
+      imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
       command:
       - /bin/sh
       - -c
