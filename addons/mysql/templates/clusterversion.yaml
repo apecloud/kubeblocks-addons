@@ -23,6 +23,7 @@ spec:
       initContainers:
       - image: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:{{ .Values.image.tag }}
         name: init-data
+        imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
       - command:
         - cp
         - -r
@@ -30,7 +31,7 @@ spec:
         - /config
         - /kubeblocks/
         image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:latest
-        imagePullPolicy: Always
+        imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
         name: init-syncer
         volumeMounts:
         - mountPath: /kubeblocks
@@ -41,17 +42,15 @@ spec:
         - /xtrabackup-2.4
         - /kubeblocks/xtrabackup
         image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:mysql
-        imagePullPolicy: Always
+        imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
         name: init-xtrabackup
         volumeMounts:
         - mountPath: /kubeblocks
           name: kubeblocks
       containers:
       - name: mysql
-      containers:
-      - name: mysql
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
-        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
         command:
           - syncer
           - --config-path
@@ -97,6 +96,7 @@ spec:
       initContainers:
       - image: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         name: init-data
+        imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
       - command:
         - cp
         - -r
@@ -104,7 +104,7 @@ spec:
         - /config
         - /kubeblocks/
         image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:latest
-        imagePullPolicy: Always
+        imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
         name: init-syncer
         volumeMounts:
         - mountPath: /kubeblocks
@@ -115,7 +115,7 @@ spec:
         - /xtrabackup-8.0
         - /kubeblocks/xtrabackup
         image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:mysql
-        imagePullPolicy: Always
+        imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
         name: init-xtrabackup
         volumeMounts:
         - mountPath: /kubeblocks
@@ -123,7 +123,7 @@ spec:
       containers:
       - name: mysql
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
-        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
         command:
           - syncer
           - --config-path
