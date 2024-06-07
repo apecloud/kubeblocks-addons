@@ -47,7 +47,7 @@ spec:
           fsGroup: 1001
         containers:
           - name: weaviate
-            imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
             command:
             - /bin/sh
             - -c
