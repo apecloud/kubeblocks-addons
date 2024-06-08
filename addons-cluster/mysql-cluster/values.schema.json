@@ -6,10 +6,10 @@
       "title": "Version",
       "description": "Cluster version, run \"kbcli cv list --devel\" to see all versions.",
       "type": "string",
-      "default": "mysql-8.0.33",
+      "default": "mysql-8.0",
       "enum": [
-        "mysql-8.0.33",
-        "mysql-5.7.44"
+        "mysql-8.0",
+        "mysql-5.7"
       ]
     },
     "mode": {

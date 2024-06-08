@@ -4,7 +4,7 @@
 
 ## @param version MySQL cluster version
 ##
-version: mysql-8.0.33
+version: mysql-8.0
 
 ## @param mode MySQL cluster topology mode, standalone, replication or raftGroup
 ##
@@ -34,6 +34,8 @@ requests:
 storage: 20
 
 topology: server
+mysql:
+  version: mysql-8.0
 
 persistence:
   ## @param clickhouse[*].persistence.enabled Enable persistence using Persistent Volume Claims

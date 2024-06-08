@@ -14,7 +14,7 @@ spec:
   componentSpecs:
     - name: server
       replicas: {{ .Values.replicas }}
-      {{- $clusterversion := "mysql" }}
+      {{- $clusterversion := .Values.version }}
       {{- if .Values.orchestrator.enable }}
       {{- $clusterversion = printf "%s-orc" $clusterversion }}
       {{- end }}
@@ -46,13 +46,9 @@ spec:
           cluster: {{ .Values.orchestrator.serviceReference.cluster | default "orc-cluster"}}
         {{- end }}
       {{- end }}
-    {{- if eq .Values.proxysql.enable true }}
+    {{- if eq .Values.topology "server-with-proxy" }}
     - name: proxysql
-      {{- $proxyversion := "proxy" }}
-      {{- if .Values.orchestrator.enable }}
-      {{- $proxyversion = printf "%s-orc" $proxyversion }}
-      {{- end }}
-      componentDef: {{ $proxyversion }} # ref clusterdefinition componentDefs.name
+      componentDef: proxysql # ref clusterdefinition componentDefs.name
       replicas: {{.Values.proxysql.replicas}}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentResources" . | indent 6 }}
