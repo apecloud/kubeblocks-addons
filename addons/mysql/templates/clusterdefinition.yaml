@@ -10,32 +10,12 @@ spec:
     - name: server
       components:
         - name: server
-          compDef: {{ include "mysql.componentDefName" . }}
+          compDef: {{ include "mysql.componentDefName" . }}-8.0
       default: true
-    - name: with-proxy
+    - name: server-with-proxy
       components:
         - name: server
-          compDef: {{ include "mysql.componentDefName" . }}
-        - name: proxysql
-          compDef: {{ include "proxysql.componentDefName" . }}
-      orders:
-        provision: # The server will start before the proxy is created.
-          - server
-          - proxysql
-        terminate: # The proxy will be shut down (destroyed) before the server.
-          - proxysql
-          - server
-        update: # When there are multiple component update operations, follow the order specified here.
-          - server
-          - proxysql
-    - name: ref-orchestrator
-      components:
-        - name: server
-          compDef: {{ include "mysql.componentDefName" . }}-orc
-    - name: ref-orchestrator-with-proxy
-      components:
-        - name: server
-          compDef: {{ include "mysql.componentDefName" . }}-orc
+          compDef: {{ include "mysql.componentDefName" . }}-8.0
         - name: proxysql
           compDef: {{ include "proxysql.componentDefName" . }}
       orders:
