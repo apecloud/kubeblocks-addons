@@ -278,7 +278,7 @@ lifecycleActions:
     customHandler:
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
       exec:
-      command:
+        command:
           - /bin/bash
           - -c
           - |
@@ -323,7 +323,8 @@ lifecycleActions:
         command:
           - bash
           - -c
-          - "/scripts/orchestrator-client -c forget-cluster -i $KB_CLUSTER_NAME;"
+          - sleep 100
+          - "/kubeblocks/orchestrator-client -c forget-cluster -i $KB_CLUSTER_NAME;"
   memberLeave:
     customHandler:
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
