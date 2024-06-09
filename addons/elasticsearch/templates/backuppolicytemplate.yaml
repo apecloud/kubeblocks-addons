@@ -10,14 +10,17 @@ spec:
   backupPolicies:
   - componentDefs:
     - es-data
-    target:
-      role: ""
-      strategy: All
     backupMethods:
     - name: full-backup
+      target:
+        role: ""
+        strategy: Any
       snapshotVolumes: false
       actionSetName: elasticsearch-physical-backup
     - name: setup-keystore
+      target:
+        role: ""
+        strategy: All
       snapshotVolumes: false
       actionSetName: elasticsearch-setup-keystore
       targetVolumes:

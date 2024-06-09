@@ -35,7 +35,13 @@ s3_endpoint=$(getToolConfigValue endpoint)
 s3_bucket=$(getToolConfigValue root)
 
 curl -X POST "${ES_ENDPOINT}/_nodes/reload_secure_settings"
+
+# DP_BACKUP_BASE_PATH is the path to the backup directory
+# pattern: /${namespace}/${clusterName}-${clusterUID}/${componentDef}/${backupName}/${podName}
+# example: /kubeblocks-cloud-ns/x-a3c215fd-1e98-4359-be30-7ad17d08b166/es-data/backup-kubeblocks-cloud-ns-x-20240607144802/x-es-data-1
 base_path=$(dirname "$DP_BACKUP_BASE_PATH")
+base_path=$(dirname "${base_path}")
+base_path=$(dirname "${base_path}")
 base_path=${base_path%/}
 base_path=${base_path#*/}
 
