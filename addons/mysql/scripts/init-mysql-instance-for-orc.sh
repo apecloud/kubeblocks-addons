@@ -197,6 +197,28 @@ get_master_from_orc() {
   return 0
 }
 
+wait_for_connectivity() {
+  local timeout=600
+  local start_time=$(date +%s)
+  local current_time
+
+  echo "Checking mysql connectivity to $meta_mysql_host on port $meta_mysql_port ..."
+  while true; do
+    current_time=$(date +%s)
+    if [ $((current_time - start_time)) -gt $timeout ]; then
+      echo "Timeout waiting for $host to become available."
+      exit 1
+    fi
+    # Send PING and check for mysql response
+    if  mysqladmin -h "$meta_mysql_host" -P $meta_mysql_port -u "$meta_user" -p"$meta_password" PING | grep -q "mysqld is alive"; then
+      echo "$meta_mysql_host is reachable."
+      break
+    fi
+
+    sleep 5
+  done
+}
+
 change_master() {
   mysql_note "Change master"
   master_host=$1
