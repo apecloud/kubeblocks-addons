@@ -85,6 +85,14 @@ spec:
         - -c
         - |
           sh /mnt/elastic-internal/scripts/install-plugins.sh
+          # persistent the elasticsearch.keystore in data volume
+          if [ ! -f /usr/share/elasticsearch/data/elasticsearch.keystore ]; then
+            if [ ! -f /usr/share/elasticsearch/config/elasticsearch.keystore ]; then
+              bin/elasticsearch-keystore create
+            fi
+            mv /usr/share/elasticsearch/config/elasticsearch.keystore /usr/share/elasticsearch/data/elasticsearch.keystore
+          fi
+          ln -s /usr/share/elasticsearch/data/elasticsearch.keystore /usr/share/elasticsearch/config/elasticsearch.keystore
           /bin/tini -- /usr/local/bin/docker-entrypoint.sh
       lifecycle:
         preStop:
@@ -92,7 +100,9 @@ spec:
             command:
             - bash
             - -c
-            - /mnt/elastic-internal/scripts/pre-stop-hook-script.sh
+            - |
+              mv /usr/share/elasticsearch/config/elasticsearch.keystore /usr/share/elasticsearch/data/elasticsearch.keystore
+              /mnt/elastic-internal/scripts/pre-stop-hook-script.sh
       name: elasticsearch
       ports:
       - containerPort: 9200
