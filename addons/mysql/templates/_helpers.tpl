@@ -301,7 +301,7 @@ lifecycleActions:
             address_port=$(echo "$first_line" | awk '{print $1}')
             master_from_orc="${address_port%:*}"
             last_digit=${KB_POD_NAME##*-}
-            self_service_name=$(echo "${KB_CLUSTER_COMP_NAME}_${KB_COMP_NAME}_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+            self_service_name=$(echo "${KB_CLUSTER_COMP_NAME}_mysql_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
             if [ "$master_from_orc" == "${self_service_name}" ]; then
               echo -n "primary"
             else
@@ -323,8 +323,7 @@ lifecycleActions:
         command:
           - bash
           - -c
-          - sleep 100
-          - "/kubeblocks/orchestrator-client -c forget-cluster -i $KB_CLUSTER_NAME;"
+          - "curl http://${ORC_ENDPOINTS%%:*}:${ORC_PORTS}/api/forget-cluster/${KB_CLUSTER_NAME};"
   memberLeave:
     customHandler:
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
@@ -334,7 +333,7 @@ lifecycleActions:
           - -c
           - |
             last_digit=${KB_LEAVE_MEMBER_POD_NAME##*-}
-            self_service_name=$(echo "${KB_CLUSTER_COMP_NAME}_${KB_COMP_NAME}_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+            self_service_name=$(echo "${KB_CLUSTER_COMP_NAME}_mysql_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
             /kubeblocks/orchestrator-client -c forget -i ${self_service_name}:3306
       targetPodSelector: Any
       container: mysql
