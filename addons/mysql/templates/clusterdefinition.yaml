@@ -10,12 +10,12 @@ spec:
     - name: server
       components:
         - name: server
-          compDef: {{ include "mysql.componentDefName" . }}-8.0
+          compDef: {{ include "mysql.componentDefName" . }}-8.0.33
       default: true
     - name: server-with-proxy
       components:
         - name: server
-          compDef: {{ include "mysql.componentDefName" . }}-8.0
+          compDef: {{ include "mysql.componentDefName" . }}-8.0.33
         - name: proxysql
           compDef: {{ include "proxysql.componentDefName" . }}
       orders:
