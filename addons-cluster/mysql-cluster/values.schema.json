@@ -8,8 +8,8 @@
       "type": "string",
       "default": "mysql-8.0",
       "enum": [
-        "mysql-8.0",
-        "mysql-5.7"
+        "mysql-8.0.33",
+        "mysql-5.7.44"
       ]
     },
     "mode": {
