@@ -4,7 +4,7 @@
 
 ## @param version MySQL cluster version
 ##
-version: mysql-8.0
+version: mysql-8.0.33
 
 ## @param mode MySQL cluster topology mode, standalone, replication or raftGroup
 ##
