@@ -1,0 +1,33 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: victoria-metrics
+  labels:
+    {{- include "victoria-metrics.labels" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - releases:
+        - vmstorage-1.0.0
+      compDefs:
+        - vm-storage
+    - releases:
+        - vmselect-1.0.0
+      compDefs:
+        - vm-select
+    - releases:
+        - vminsert-1.0.0
+      compDefs:
+        - vm-insert
+  releases:
+    - name: vmstorage-1.0.0
+      serviceVersion: 1.0.0
+      images:
+        vmstorage: {{ .Values.images.vmstorage.repository }}:{{ .Values.images.tag }}
+    - name: vmselect-1.0.0
+      serviceVersion: 1.0.0
+      images:
+        vmselect: {{ .Values.images.vmselect.repository }}:{{ .Values.images.tag }}
+    - name: vminsert-1.0.0
+      serviceVersion: 1.0.0
+      images:
+        vminsert: {{ .Values.images.vminsert.repository }}:{{ .Values.images.tag }}
