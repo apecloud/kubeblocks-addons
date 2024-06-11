@@ -3,6 +3,7 @@
 if [ "$etcdHA" != "true" ]; then
   exit 0
 fi
+export ETCDCTL_API=${ETCD_API:-'2'}
 
 endpoints=${ETCD_SERVER:-'127.0.0.1:2379'}
 
