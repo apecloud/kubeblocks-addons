@@ -6,12 +6,12 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
   annotations:
-    kubeblocks.io/extra-env: '{"MASTER_COMPONENTS":"es", "DATA_COMPONENTS": "es", "INGEST_COMPONENTS": "es", "TRANSFORM_COMPONENTS": "es"}'
+    kubeblocks.io/extra-env: '{"mdit-roles":"master,data,ingest,transform"}'
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
-    - name: es # user-defined
+    - name: mdit # user-defined
       componentDef: elasticsearch # ref clusterdefinition componentDefs.name
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
