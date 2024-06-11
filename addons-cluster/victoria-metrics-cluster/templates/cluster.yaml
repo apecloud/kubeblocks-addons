@@ -31,6 +31,7 @@ spec:
         {{- end }}
       {{- end }}
     - name: vminsert
+      {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.vminsert.replicas | default 1 }}
       {{- with  .Values.vminsert.resources }}
       resources:
