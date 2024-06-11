@@ -25,7 +25,7 @@ spec:
         - sh
         - -c
         - |
-          {{- .Files.Get "dataprotection/setup-keystore.sh" | nindent 8 }}
+          {{- .Files.Get "dataprotection/setup-keystore.sh" | nindent 10 }}
     - job:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         runOnTargetPodNode: false
