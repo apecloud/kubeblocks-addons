@@ -1,11 +1,12 @@
 {{- $clusterName := $.cluster.metadata.name }}
 {{- $namespace := $.cluster.metadata.namespace }}
 {{- $extraEnv := index $.cluster.metadata.annotations "kubeblocks.io/extra-env" | fromJson }}
-{{- $master_components := index $extraEnv "MASTER_COMPONENTS" | splitList "," }}
-{{- $data_components := index $extraEnv "DATA_COMPONENTS" | default "" | splitList "," }}
-{{- $ingest_components := index $extraEnv "INGEST_COMPONENTS" | default "" | splitList "," }}
-{{- $transform_components := index $extraEnv "TRANSFORM_COMPONENTS" | default "" | splitList "," }}
-{{- $ml_components := index $extraEnv "ML_COMPONENTS" | default "" | splitList "," }}
+{{- $masterComponents := $extraEnv.MASTER_COMPONENTS | splitList "," }}
+{{- $dataComponents := index $extraEnv "DATA_COMPONENTS" | default "" | splitList "," }}
+{{- $ingestComponents := index $extraEnv "INGEST_COMPONENTS" | default "" | splitList "," }}
+{{- $transformComponents := index $extraEnv "TRANSFORM_COMPONENTS" | default "" | splitList "," }}
+{{- $mlComponents := index $extraEnv "ML_COMPONENTS" | default "" | splitList "," }}
+{{- $allComponents := dict "master" $masterComponents "data" $dataComponents "ingest" $ingestComponents "transform" $transformComponents "ml" $mlComponents }}
 
 cluster:
   name: {{ $clusterName }}
@@ -14,7 +15,7 @@ cluster:
       awareness:
         attributes: k8s_node_name
   initial_master_nodes:
-{{- range $i, $name := $master_components }}
+{{- range $i, $name := $masterComponents }}
 {{- range $j, $spec := $.cluster.spec.componentSpecs }}
 {{- if eq $spec.name $name }}
 {{- $replicas := $spec.replicas | int }}
@@ -28,7 +29,7 @@ cluster:
 discovery:
   type: multi-node
   seed_hosts:
-{{- range $i, $name := $master_components }}
+{{- range $i, $name := $masterComponents }}
 {{- range $j, $spec := $.cluster.spec.componentSpecs }}
 {{- if eq $spec.name $name }}
 {{- $replicas := $spec.replicas | int }}
@@ -57,13 +58,19 @@ node:
   store:
     allow_mmap: false
   roles:
-  {{- $allComponents := dict "master" $master_components "data" $data_components "ingest" $ingest_components "transform" $transform_components "ml" $ml_components }}
+  {{- $hasRole := false }}
   {{- range $role, $components := $allComponents }}
     {{- range $i, $e := $components }}
       {{- if eq $e $.component.name }}
+      {{- $hasRole = true }}
   - {{ $role }}
       {{- end }}
     {{- end }}
+  {{- end }}
+  {{- if not $hasRole }}
+  {{- range $role, $components := $allComponents }}
+  - {{ $role }}
+  {{- end }}
   {{- end }}
 
 path:

@@ -5,36 +5,22 @@ metadata:
   name: {{ include "kblib.clusterName" . }}
   namespace: {{ .Release.Namespace }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+  annotations:
+    kubeblocks.io/extra-env: '{"MASTER_COMPONENTS":"m", "DATA_COMPONENTS": "d"}'
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
-    - name: es-master # user-defined
-      componentDef: es-master # ref clusterdefinition componentDefs.name
+    - name: m # user-defined
+      componentDef: elasticsearch # ref clusterdefinition componentDefs.name
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.replicas | default 1 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
       {{- include "kblib.componentServices" . | indent 6 }}
-    - name: es-data # user-defined
-      componentDef: es-data # ref clusterdefinition componentDefs.name
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
-      {{- include "kblib.componentMonitor" . | indent 6 }}
-      replicas: {{ .Values.replicas | default 1 }}
-      {{- include "kblib.componentResources" . | indent 6 }}
-      {{- include "kblib.componentStorages" . | indent 6 }}
-      {{- include "kblib.componentServices" . | indent 6 }}
-    - name: es-ingest # user-defined
-      componentDef: es-ingest # ref clusterdefinition componentDefs.name
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
-      {{- include "kblib.componentMonitor" . | indent 6 }}
-      replicas: {{ .Values.replicas | default 1 }}
-      {{- include "kblib.componentResources" . | indent 6 }}
-      {{- include "kblib.componentStorages" . | indent 6 }}
-      {{- include "kblib.componentServices" . | indent 6 }}
-    - name: es-transform # user-defined
-      componentDef: es-transform # ref clusterdefinition componentDefs.name
+    - name: d # user-defined
+      componentDef: elasticsearch # ref clusterdefinition componentDefs.name
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.replicas | default 1 }}
