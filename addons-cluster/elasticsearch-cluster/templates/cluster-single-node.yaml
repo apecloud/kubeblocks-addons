@@ -5,12 +5,14 @@ metadata:
   name: {{ include "kblib.clusterName" . }}
   namespace: {{ .Release.Namespace }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+  annotations:
+    kubeblocks.io/extra-env: '{"MASTER_COMPONENTS":"es", "DATA_COMPONENTS": "es", "INGEST_COMPONENTS": "es", "TRANSFORM_COMPONENTS": "es"}'
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
-    - name: elasticsearch # user-defined
-      componentDef: es-single-node # ref clusterdefinition componentDefs.name
+    - name: es # user-defined
+      componentDef: elasticsearch # ref clusterdefinition componentDefs.name
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.replicas | default 1 }}
