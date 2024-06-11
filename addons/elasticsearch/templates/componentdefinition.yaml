@@ -1,18 +1,14 @@
-{{- range .Values.components }}
-{{- $component := . -}}
-{{- with $ }}
----
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: es-{{ $component.name }}
+  name: elasticsearch
   labels:
     {{- include "elasticsearch.labels" . | nindent 6 }}
 spec:
   provider: kubeblocks
   description: Elasticsearch is a distributed, RESTful search engine optimized for speed and relevance on production-scale workloads.
   serviceVersion: 8.8.2
-  serviceKind: es-{{ $component.name }}
+  serviceKind: elasticsearch
   updateStrategy: Parallel
   configs:
   - name: es-cm
@@ -76,8 +72,6 @@ spec:
         value: http
       - name: NSS_SDB_USE_CACHE
         value: "no"
-      - name: ELASTICSEARCH_ROLES
-        value: "{{ $component.roles | join "," }}"
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag }}
       imagePullPolicy: {{ .Values.image.pullPolicy }}
       command:
@@ -304,5 +298,3 @@ spec:
       name: elastic-internal-elasticsearch-plugins-local
     - emptyDir: {}
       name: plugins
-{{- end }}
-{{- end }}
