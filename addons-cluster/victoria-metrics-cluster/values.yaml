@@ -4,7 +4,6 @@
 
 nameOverride: ""
 fullnameOverride: ""
-clusterVersionOverride: ""
 
 ## @param storageClassName, storage class name
 ##

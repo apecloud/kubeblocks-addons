@@ -6,7 +6,6 @@ metadata:
     {{- include "victoria-metrics-cluster.labels" . | nindent 4 }}
 spec:
   clusterDefinitionRef: victoria-metrics
-  clusterVersionRef: victoria-metrics-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
   terminationPolicy: {{ .Values.terminationPolicy }}
   topology: vm-cluster
   componentSpecs:
@@ -32,6 +31,7 @@ spec:
         {{- end }}
       {{- end }}
     - name: vminsert
+      {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.vminsert.replicas | default 1 }}
       {{- with  .Values.vminsert.resources }}
       resources:

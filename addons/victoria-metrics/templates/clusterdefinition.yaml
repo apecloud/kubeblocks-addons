@@ -17,5 +17,4 @@ spec:
     orders:
       provision:
         - vmstorage
-        - vminsert
-        - vmselect
+        - vminsert,vmselect
