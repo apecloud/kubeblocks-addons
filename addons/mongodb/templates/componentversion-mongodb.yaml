@@ -1,0 +1,17 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: mongodb
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "mongodb.componentDefName" . }}
+      releases:
+        - 5.0.14
+  releases:
+    - name: 5.0.14
+      changes:
+      serviceVersion: 5.0.14
+      images:
+        mongodb: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/mongo:5.0.14
+        metrics: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/agamotto:0.1.2-beta.1

@@ -22,16 +22,6 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "apecloud-mysql.configTplVtconsensusName" . }}
-  labels:
-    {{- include "apecloud-mysql.labels" . | nindent 4 }}
-data:
-  vtconsensus.cnf: |-
-    {{- .Files.Get "config/mysql-scale-vtconsensus-config.tpl" | nindent 4 }}
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
   name: {{ include "apecloud-mysql.configTplVttabletName" . }}
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
@@ -51,6 +41,8 @@ data:
   reload.yaml: |-
     scripts: reload.tpl
     fileRegex: my.cnf
+    dataType: mysql
+    dsn: '{%- expandenv "${MYSQL_ROOT_USER}:${MYSQL_ROOT_PASSWORD}@(localhost:3306)/" | trim %}'
     formatterConfig:
       format: ini
       iniConfig:

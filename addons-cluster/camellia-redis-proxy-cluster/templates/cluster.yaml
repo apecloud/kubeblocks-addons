@@ -1,0 +1,12 @@
+{{- include "camellia-redis-proxy.clusterCommon" . }}
+  clusterDefinitionRef: camellia-redis-proxy
+  clusterVersionRef: {{ .Values.version }}
+  componentSpecs:
+    - name: proxy
+      componentDef: camellia-redis-proxy
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+      {{- include "camellia-redis-proxy.replicaCount" . | indent 6 }}
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
+      {{- include "kblib.componentServices" . | indent 6 }}

@@ -6,6 +6,11 @@ metadata:
   labels:
     {{- include "qdrant.labels" . | nindent 4 }}
 spec:
+  topologies:
+  - name: cluster
+    components:
+    - name: qdrant
+      compDef: qdrant
   type: qdrant
   connectionCredential:
     username: root
@@ -58,7 +63,7 @@ spec:
           - |
             cp /bin/jq /qdrant/tools/jq
             cp /bin/curl /qdrant/tools/curl
-          imagePullPolicy: {{default .Values.image.pullPolicy "IfNotPresent"}}
+          imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
           terminationMessagePath: /dev/termination-log
           terminationMessagePolicy: File
           volumeMounts:
@@ -66,7 +71,7 @@ spec:
             name: tools
         containers:
           - name: qdrant
-            imagePullPolicy: {{default .Values.image.pullPolicy "IfNotPresent"}}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
             securityContext:
               runAsUser: 0
             livenessProbe:

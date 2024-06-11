@@ -1,0 +1,80 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: vm-storage
+  labels:
+    {{- include "victoria-metrics.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: A VictoriaMetrics component definition for Kubernetes
+  serviceKind: vmstorage
+  serviceVersion: 1.100.1
+  services:
+    - name: vmstorage
+      spec:
+        ports:
+          - port: {{ .Values.vmstorage.servicePort }}
+            targetPort: http
+            protocol: TCP
+            name: http
+          - port: {{ .Values.vmstorage.vmselectPort }}
+            targetPort: vmselect
+            protocol: TCP
+            name: vmselect
+          - port: {{ .Values.vmstorage.vminsertPort }}
+            targetPort: vminsert
+            protocol: TCP
+            name: vminsert
+        podService: true
+  updateStrategy: BestEffortParallel
+  exporter:
+    scrapePath: /metrics
+    scrapePort: http
+  runtime:
+    automountServiceAccountToken: true
+    terminationGracePeriodSeconds: 60
+    containers:
+      - name: vmstorage
+        image: "docker.io/victoriametrics/vmstorage:v1.100.1-cluster"
+        imagePullPolicy: "IfNotPresent"
+        securityContext: { }
+        args:
+          - --retentionPeriod=1
+          - --storageDataPath=/storage
+          {{- range $key, $value := .Values.vmstorage.extraArgs }}
+          - --{{ $key }}={{ $value }}
+          {{- end }}
+          - --httpListenAddr=:{{ .Values.vmstorage.servicePort }}
+          - --vminsertAddr=:{{ .Values.vmstorage.vminsertPort }}
+          - --vmselectAddr=:{{ .Values.vmstorage.vmselectPort }}
+          {{- if .Values.enableTCP6 }}
+          - --enableTCP6=true
+          {{- end }}
+        env:
+          - name: SERVICE_PORT
+            value: "{{ .Values.vmstorage.servicePort }}"
+        ports:
+          - name: http
+            containerPort: {{ .Values.vmstorage.servicePort }}
+          - name: vminsert
+            containerPort: {{ .Values.vmstorage.vminsertPort }}
+          - name: vmselect
+            containerPort: {{ .Values.vmstorage.vmselectPort }}
+        livenessProbe:
+          failureThreshold: 10
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          tcpSocket:
+            port: http
+          timeoutSeconds: 5
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 15
+          timeoutSeconds: 5
+        volumeMounts:
+          - name: data
+            mountPath: /storage

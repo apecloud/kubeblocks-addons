@@ -45,37 +45,61 @@ spec:
         - name: data
           type: data
       podSpec:
+        initContainers:
+          - name: init-syncer
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+            imagePullPolicy: Always
+            command:
+              - sh
+              - -c
+              - "cp -r /bin/syncer /config /kubeblocks/"
+            volumeMounts:
+              - name: kubeblocks
+                mountPath: /kubeblocks
         securityContext:
           runAsUser: 0
           fsGroup: 103
           runAsGroup: 103
         containers:
           - name: postgresql
-            imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
             securityContext:
               runAsUser: 0
             command:
-              - /kb-scripts/setup.sh
+              - /kubeblocks/syncer
+              - --config-path
+              - /kubeblocks/config/components
+              - --port
+              - "3601"
+              - --
+              - docker-entrypoint.sh
+              - --config-file={{ .Values.confPath }}/postgresql.conf
+              - --hba_file={{ .Values.confPath }}/pg_hba.conf
             volumeMounts:
               - name: dshm
                 mountPath: /dev/shm
               - name: data
-                mountPath: /var/lib/postgresql/data
-                subPath: data
+                mountPath: {{ .Values.dataMountPath }}
               - name: postgresql-config
-                mountPath: /var/lib/postgresql/conf
+                mountPath: {{ .Values.confMountPath }}
               - name: scripts
                 mountPath: /kb-scripts
+              - name: kubeblocks
+                mountPath: /kubeblocks
             ports:
               - name: tcp-postgresql
                 containerPort: 5432
             env:
-              - name: KB_PG_CONFIG_PATH
-                value: /var/lib/postgresql/conf/postgresql.conf
-              - name: POSTGRESQL_MASTER_PORT_NUMBER
-                value: "5432"
               - name: ALLOW_NOSSL
                 value: "true"
+              - name: POSTGRESQL_PORT_NUMBER
+                value: "5432"
+              - name: PGDATA
+                value: {{ .Values.dataPath }}
+              - name: PGCONF
+                value: {{ .Values.confPath }}
+              - name: POSTGRESQL_MOUNTED_CONF_DIR
+                value: {{ .Values.confMountPath }}
               - name: POD_IP
                 valueFrom:
                   fieldRef:
@@ -86,8 +110,6 @@ spec:
                   fieldRef:
                     apiVersion: v1
                     fieldPath: metadata.namespace
-              - name: PGDATA
-                value: /var/lib/postgresql/data/data
               - name: POSTGRES_USER
                 valueFrom:
                   secretKeyRef:

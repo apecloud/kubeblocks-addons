@@ -2,6 +2,7 @@
 set -ex
 
 declare -g primary
+declare -g primary_port
 declare -g default_initialize_pod_ordinal
 declare -g headless_postfix="headless"
 
@@ -79,11 +80,10 @@ build_redis_service_port() {
 
 build_replicaof_config() {
   init_or_get_primary_node
-  if [ "$primary" = "$KB_POD_NAME" ]; then
-    echo "primary instance skip create a replication relationship."
+  if check_current_pod_is_primary; then
+    return
   else
-    primary_fqdn="$primary.$KB_CLUSTER_COMP_NAME-$headless_postfix.$KB_NAMESPACE.svc"
-    echo "replicaof $primary_fqdn $service_port" >> /etc/redis/redis.conf
+    echo "replicaof $primary $primary_port" >> /etc/redis/redis.conf
   fi
 }
 
@@ -98,30 +98,19 @@ rebuild_redis_acl_file() {
 }
 
 init_or_get_primary_node() {
-  # TODO: if redis sentinel exist, try to get primary node from redis sentinel
+  # the global primary variable maybe the fqdn format or the primary node ip.
+  init_or_get_primary_from_redis_sentinel
 
-  # if KB_LEADER is not empty, use KB_LEADER as primary node.
-  if [ -n "$KB_LEADER" ]; then
-    echo "KB_LEADER is not empty, use KB_LEADER:$KB_LEADER as primary node."
-    primary="$KB_LEADER"
-  else
-    # if KB_LEADER is empty, it may be the first time to initialize the cluster or there is currently no primary node in the cluster due to various reasons.
-    get_minimum_initialize_pod_ordinal
-    echo "KB_LEADER is empty, use default initialize pod_ordinal:$default_initialize_pod_ordinal as primary node."
-    primary="$KB_CLUSTER_COMP_NAME-$default_initialize_pod_ordinal"
-  fi
-
-  if [ "$primary" = "$KB_POD_NAME" ]; then
-    echo "current pod is primary node, skip check role in kernel"
+  # skip check role in kernel if the primary contains the pod name
+  if check_current_pod_is_primary; then
     return
   fi
 
   # check the primary is real master role or not
-  local primary_fqdn="$primary.$KB_CLUSTER_COMP_NAME-$headless_postfix.$KB_NAMESPACE.svc"
   if [ -n "$REDIS_DEFAULT_PASSWORD" ]; then
-    check_kernel_role_cmd="redis-cli -h $primary_fqdn -p $service_port -a $REDIS_DEFAULT_PASSWORD info replication | grep 'role:' | awk -F: '{print \$2}'"
+    check_kernel_role_cmd="redis-cli -h $primary -p $primary_port -a $REDIS_DEFAULT_PASSWORD info replication | grep 'role:' | awk -F: '{print \$2}'"
   else
-    check_kernel_role_cmd="redis-cli -h $primary_fqdn -p $service_port info replication | grep 'role:' | awk -F: '{print \$2}'"
+    check_kernel_role_cmd="redis-cli -h $primary -p $primary_port info replication | grep 'role:' | awk -F: '{print \$2}'"
   fi
   retry_times=10
   while true; do
@@ -140,13 +129,181 @@ init_or_get_primary_node() {
   done
 }
 
+init_or_get_primary_from_redis_sentinel() {
+  # check redis sentinel component env
+  if [ -z "$SENTINEL_COMPONENT_NAME" ]; then
+    # return default primary node if redis sentinel component name is not set
+    echo "SENTINEL_COMPONENT_NAME env is not set, try to use default primary node."
+    get_default_initialize_primary_node
+    return
+  fi
+
+  # parse redis sentinel pod list from $SENTINEL_POD_NAME_LIST env
+  if [ -z "$SENTINEL_POD_NAME_LIST" ]; then
+    echo "Error: Required environment variable SENTINEL_POD_NAME_LIST: $SENTINEL_POD_NAME_LIST is not set."
+    exit 1
+  fi
+
+  # get redis sentinel headless service name from $SENTINEL_HEADLESS_SERVICE_NAME env
+  if [ -z "$SENTINEL_HEADLESS_SERVICE_NAME" ]; then
+    echo "Error: Required environment variable SENTINEL_HEADLESS_SERVICE_NAME: $SENTINEL_HEADLESS_SERVICE_NAME is not set."
+    exit 1
+  fi
+
+  old_ifs="$IFS"
+  IFS=','
+  set -f
+  read -ra sentinel_pod_list <<< "${SENTINEL_POD_NAME_LIST}"
+  set +f
+  IFS="$old_ifs"
+  declare -A master_count_map
+  local first_redis_primary_host=""
+  local first_redis_primary_port=""
+  for sentinel_pod in "${sentinel_pod_list[@]}"; do
+    sentinel_pod_fqdn="$sentinel_pod.$SENTINEL_HEADLESS_SERVICE_NAME"
+
+    # get primary info from sentinel
+    if retry_get_master_addr_by_name_from_sentinel "$sentinel_pod_fqdn"; then
+      echo "sentinel:$sentinel_pod_fqdn has master info: ${REDIS_SENTINEL_PRIMARY_INFO[*]}"
+      if [ "${#REDIS_SENTINEL_PRIMARY_INFO[@]}" -ne 2 ] || [ -z "${REDIS_SENTINEL_PRIMARY_INFO[0]}" ] || [ -z "${REDIS_SENTINEL_PRIMARY_INFO[1]}" ]; then
+        echo "Empty primary info retrieved from sentinel: $sentinel_pod_fqdn. Skipping this sentinel."
+        continue
+      fi
+
+      # increment the count of this master in the map
+      host_port_key="${REDIS_SENTINEL_PRIMARY_INFO[0]}:${REDIS_SENTINEL_PRIMARY_INFO[1]}"
+      master_count_map[$host_port_key]=$((${master_count_map[$host_port_key]} + 1))
+
+      # track the primary host and port from the first sentinel
+      if [[ -z "$first_redis_primary_host" ]] && [[ -z "$first_redis_primary_port" ]]; then
+        first_redis_primary_host=${REDIS_SENTINEL_PRIMARY_INFO[0]}
+        first_redis_primary_port=${REDIS_SENTINEL_PRIMARY_INFO[1]}
+      fi
+
+      # log if sentinel has different primary node info
+      if [ "$first_redis_primary_host" != "${REDIS_SENTINEL_PRIMARY_INFO[0]}" ] || [ "$first_redis_primary_port" != "${REDIS_SENTINEL_PRIMARY_INFO[1]}" ]; then
+        echo "The sentinel:$sentinel_pod_fqdn has different primary node info. First: $first_redis_primary_host:$first_redis_primary_port, Current: ${REDIS_SENTINEL_PRIMARY_INFO[0]}:${REDIS_SENTINEL_PRIMARY_INFO[1]}"
+      fi
+    else
+      echo "Failed to retrieve primary info from sentinel: $sentinel_pod_fqdn. Skipping this sentinel."
+    fi
+  done
+
+  # if there is no primary node found, use the default primary node
+  echo "get all primary info from redis sentinel master_count_map: ${master_count_map[*]}"
+  if [ ${#master_count_map[@]} -eq 0 ]; then
+    echo "no primary node found from all redis sentinels, use default primary node."
+    get_default_initialize_primary_node
+    return
+  fi
+
+  # get the primary node with the most counts
+  max_count=0
+  for host_port in "${!master_count_map[@]}"; do
+    if (( ${master_count_map[$host_port]} > max_count )); then
+      max_count=${master_count_map[$host_port]}
+      primary=$(echo $host_port | cut -d: -f1)
+      primary_port=$(echo $host_port | cut -d: -f2)
+    fi
+  done
+}
+
+retry_get_master_addr_by_name_from_sentinel() {
+  local sentinel_pod_fqdn="$1"
+  local retry_count=0
+  local max_retry=3
+  local retry_delay=2
+  local timeout_value=5
+
+  while [ $retry_count -lt $max_retry ]; do
+    echo "execute command: timeout $timeout_value redis-cli -h $sentinel_pod_fqdn -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD sentinel get-master-addr-by-name $KB_CLUSTER_COMP_NAME"
+    output=$(timeout "$timeout_value" redis-cli -h "$sentinel_pod_fqdn" -p "$SENTINEL_SERVICE_PORT" -a "$SENTINEL_PASSWORD" sentinel get-master-addr-by-name "$KB_CLUSTER_COMP_NAME")
+    exit_code=$?
+
+    if [ $exit_code -eq 0 ]; then
+      old_ifs="$IFS"
+      IFS=$'\n'
+      set -f
+      read -r -d '' -a REDIS_SENTINEL_PRIMARY_INFO <<< "$output"
+      set +f
+      IFS="$old_ifs"
+      if [ "${#REDIS_SENTINEL_PRIMARY_INFO[@]}" -eq 2 ] && [ -n "${REDIS_SENTINEL_PRIMARY_INFO[0]}" ] && [ -n "${REDIS_SENTINEL_PRIMARY_INFO[1]}" ]; then
+        echo "Successfully retrieved primary info from sentinel: $sentinel_pod_fqdn"
+        return 0
+      else
+        echo "Empty primary info retrieved from sentinel: $sentinel_pod_fqdn"
+        return 0
+      fi
+    else
+      if [ $exit_code -eq 124 ]; then
+        echo "Timeout occurred while retrieving primary info from sentinel: $sentinel_pod_fqdn. Retrying..."
+      else
+        echo "Error occurred while retrieving primary info from sentinel: $sentinel_pod_fqdn. Retrying..."
+      fi
+    fi
+
+    retry_count=$((retry_count + 1))
+    sleep $retry_delay
+  done
+
+  echo "Failed to retrieve primary info from sentinel: $sentinel_pod_fqdn after $max_retry retries."
+  return 1
+}
+
+get_default_initialize_primary_node() {
+  # TODO: if has advertise svc and port, we should use it as default primary node info instead of the headless svc
+  get_minimum_initialize_pod_ordinal
+  echo "use default initialize pod_ordinal:$default_initialize_pod_ordinal as primary node."
+  primary="$KB_CLUSTER_COMP_NAME-$default_initialize_pod_ordinal.$KB_CLUSTER_COMP_NAME-$headless_postfix.$KB_NAMESPACE"
+  primary_port=$service_port
+}
+
+check_current_pod_is_primary() {
+  current_pod="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME"
+  if [[ "$primary" == *"$current_pod"* ]]; then
+    echo "current pod is primary, skip check role in kernel, primary node: $primary, pod name:$current_pod"
+    return 0
+  fi
+
+  if [ -n "$redis_advertised_svc_host_value" ] && [ -n "$redis_advertised_svc_port_value" ]; then
+    if [[ "$primary" == "$redis_advertised_svc_host_value" ]] && [[ "$primary_port" == "$redis_advertised_svc_port_value" ]]; then
+      echo "current pod is primary, skip check role in kernel, primary node: $primary, advertised ip:$redis_advertised_svc_host_value, advertised port:$redis_advertised_svc_port_value"
+      return 0
+    fi
+  fi
+
+  if [[ "$primary" == "$KB_POD_IP" ]] && [[ "$primary_port" == "$service_port" ]]; then
+    echo "current pod is primary, skip check role in kernel, primary node: $primary, pod ip:$KB_HOST_IP, service port:$service_port"
+    return 0
+  fi
+  return 1
+}
+
 start_redis_server() {
-    exec redis-server /etc/redis/redis.conf \
-    --loadmodule /opt/redis-stack/lib/redisearch.so ${REDISEARCH_ARGS} \
-    --loadmodule /opt/redis-stack/lib/redisgraph.so ${REDISGRAPH_ARGS} \
-    --loadmodule /opt/redis-stack/lib/redistimeseries.so ${REDISTIMESERIES_ARGS} \
-    --loadmodule /opt/redis-stack/lib/rejson.so ${REDISJSON_ARGS} \
-    --loadmodule /opt/redis-stack/lib/redisbloom.so ${REDISBLOOM_ARGS}
+    exec_cmd="exec redis-server /etc/redis/redis.conf"
+    if [ -f /opt/redis-stack/lib/redisearch.so ]; then
+        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redisearch.so ${REDISEARCH_ARGS}"
+    fi
+    if [ -f /opt/redis-stack/lib/redistimeseries.so ]; then
+        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redistimeseries.so ${REDISTIMESERIES_ARGS}"
+    fi
+    if [ -f /opt/redis-stack/lib/rejson.so ]; then
+        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/rejson.so ${REDISJSON_ARGS}"
+    fi
+    if [ -f /opt/redis-stack/lib/redisbloom.so ]; then
+        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redisbloom.so ${REDISBLOOM_ARGS}"
+    fi
+    if [ -f /opt/redis-stack/lib/redisgraph.so ]; then
+        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redisgraph.so ${REDISGRAPH_ARGS}"
+    fi
+    if [ -f /opt/redis-stack/lib/rediscompat.so ]; then
+        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/rediscompat.so"
+    fi
+    if [ -f /opt/redis-stack/lib/redisgears.so ]; then
+        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redisgears.so v8-plugin-path /opt/redis-stack/lib/libredisgears_v8_plugin.so ${REDISGEARS_ARGS}"
+    fi
+    echo "Starting redis server cmd: $exec_cmd"
+    eval "$exec_cmd"
 }
 
 parse_redis_advertised_svc_if_exist() {

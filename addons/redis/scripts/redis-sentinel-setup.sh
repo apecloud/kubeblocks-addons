@@ -14,16 +14,16 @@ set -ex
 {{- range $i, $e := $.cluster.spec.componentSpecs }}
   {{- if index $e "componentDefRef" }}
     {{- /* xxxx-7.0 suffix just for compatible config render do not panic, this script has been deprecated in KubeBlock v0.10 */}}
-    {{- if eq $e.componentDefRef "redis-sentinel-7.0" }}
+    {{- if eq $e.componentDefRef "redis-sentinel-7" }}
       {{- $sentinel_component = $e }}
-    {{- else if eq $e.componentDefRef "redis-7.0" }}
+    {{- else if eq $e.componentDefRef "redis-7" }}
       {{- $redis_component = $e }}
     {{- end }}
   {{- end }}
   {{- if index $e "componentDef" }}
-    {{- if eq $e.componentDef "redis-sentinel-7.0" }}
+    {{- if eq $e.componentDef "redis-sentinel-7" }}
       {{- $sentinel_component = $e }}
-    {{- else if eq $e.componentDef "redis-7.0" }}
+    {{- else if eq $e.componentDef "redis-7" }}
       {{- $redis_component = $e }}
     {{- end }}
   {{- end }}

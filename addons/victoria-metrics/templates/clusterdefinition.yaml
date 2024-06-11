@@ -1,0 +1,21 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterDefinition
+metadata:
+  name: victoria-metrics
+  labels:
+    {{- include "victoria-metrics.labels" . | nindent 4 }}
+spec:
+  topologies:
+  - name: vm-cluster
+    components:
+      - name: vminsert
+        compDef: vm-insert
+      - name: vmselect
+        compDef: vm-select
+      - name: vmstorage
+        compDef: vm-storage
+    orders:
+      provision:
+        - vmstorage
+        - vminsert
+        - vmselect

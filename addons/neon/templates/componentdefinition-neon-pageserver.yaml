@@ -1,0 +1,66 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  labels:
+    {{- include "neon.labels" . | nindent 4 }}
+  name: {{ include "neon-pageserver.componentDefName" . }}
+spec:
+  description: A neon pageserver component definition for Kubernetes
+  provider: KubeBlocks
+  scripts:
+    - name: neon-scripts
+      templateRef: neon-scripts
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  vars: 
+    - name: NEON_STORAGEBROKER_HEADLESS
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "neon-storagebroker.componentDefName" . }}
+          name: headless
+          optional: true
+          host: Optional
+    - name: NEON_STORAGEBROKER_POD_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "neon-storagebroker.componentDefName" . }}
+          optional: true
+          instanceNames: Optional
+    - name: NEON_STORAGEBROKER_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "neon-storagebroker.componentDefName" . }}
+          name: neon-storagebroker
+          port: 
+            name: storagebroker
+  runtime:
+    containers:
+      - command: ["/scripts/pageserver_start.sh"]
+        image: {{ include "neon-pageserver.image" . }}
+        name: neon-pageserver
+        env: 
+          - name: PAGEKEEPER_PG_PORT
+            value: "{{ .Values.pageserver.pgPort }}"
+          - name: PAGEKEEPER_HTTP_PORT
+            value: "{{ .Values.pageserver.httpPort }}"
+        volumeMounts:
+          - mountPath: /usr/local/neon/pageserver
+            name: neon-pageserver
+          - name: scripts
+            mountPath: /scripts
+  serviceKind: neon-pageserver
+  serviceVersion: {{ .Values.componentServiceVersion }}
+  services:
+    - name: neon-pageserver
+      serviceName: neon-pageserver
+      spec:
+        type: ClusterIP
+        ports:
+          - name: pageserver-pg
+            port: {{ .Values.pageserver.pgPort }}
+            protocol: TCP
+          - name: pageserver-http 
+            port: {{ .Values.pageserver.httpPort }}
+            protocol: TCP
+        

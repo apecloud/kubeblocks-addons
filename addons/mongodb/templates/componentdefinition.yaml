@@ -8,7 +8,7 @@ spec:
   provider: kubeblocks.io
   description: MongoDB is a document database designed for ease of application development and scaling.
   serviceKind: mongodb
-  serviceVersion: "5.0.14"
+  serviceVersion: {{ .Values.componentServiceVersion.mongodb }}
   services:
     - name: default
       serviceName: mongodb
@@ -104,21 +104,15 @@ spec:
     containers:
       - name: mongodb
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
-        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         ports:
           - name: mongodb
             protocol: TCP
             containerPort: 27017
           - name: ha
             protocol: TCP
-            containerPort: 3701
+            containerPort: 3601
         command:
-          - syncer
-          - --config-path
-          - /kubeblocks/config/components
-          - --port
-          - "3601"
-          - --
           - /scripts/replicaset-setup.sh
         env:
           - name: PATH
@@ -144,6 +138,20 @@ spec:
             mountPath: /scripts
           - mountPath: /kubeblocks
             name: kubeblocks
+      - name: mongodb-plugin
+        image: registry.cn-hangzhou.aliyuncs.com/xuriwuyun/mongodb_plugin:latest
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        ports:
+          - name: engine-plugin
+            protocol: TCP
+            containerPort: 3701
+        command:
+          - mongodb_plugin
+        env:
+          - name: MONGODB_ROOT_USER
+            value: $(MONGODB_USER)
+          - name: MONGODB_ROOT_PASSWORD
+            value: $(MONGODB_PASSWORD)
     volumes:
       {{- if .Values.logCollector.enabled }}
       - name: log-data

@@ -1,0 +1,92 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: solr-{{ .Chart.Version }}
+  labels:
+    {{- include "solr.labels" . | nindent 4 }}
+spec:
+  provider: Community
+  description: {{ .Chart.Description }}
+  serviceKind: {{ .Chart.Name }}
+  serviceVersion: {{ .Chart.AppVersion }}
+  runtime:
+    securityContext:
+      fsGroup: 0
+      runAsGroup: 0
+      runAsNonRoot: true
+      runAsUser: 1001
+    containers:
+      - name: solr
+        image: {{ .Values.images.solr.repository }}:{{ .Values.images.solr.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.solr.pullPolicy }}
+        env:
+          - name: SOLR_ENABLE_CLOUD_MODE
+            value: "yes"
+          - name: SOLR_CLOUD_BOOTSTRAP
+            value: "yes"
+          - name: SOLR_NUMBER_OF_NODES
+            value: "$(KB_REPLICA_COUNT)"
+          - name: SOLR_PORT_NUMBER
+            value: {{ .Values.containerPorts.http | quote }}
+        ports:
+          - name: http
+            containerPort: {{ .Values.containerPorts.http }}
+        livenessProbe:
+          failureThreshold: 6
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+          exec:
+            command:
+              - /bin/bash
+              - -ec
+              - |
+                curl --silent --connect-timeout 15000 http://localhost:${SOLR_PORT_NUMBER}/api/node/health | grep --quiet  '\"status\":\"OK\"'
+        readinessProbe:
+          failureThreshold: 6
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+          exec:
+            command:
+              - /bin/bash
+              - -ec
+              - |
+                curl --silent --connect-timeout 15000 http://localhost:${SOLR_PORT_NUMBER}/api/node/health | grep --quiet  '\"status\":\"OK\"'
+        startupProbe:
+          exec:
+            command:
+              - /bin/bash
+              - -ec
+              - |
+                curl --silent --connect-timeout 15000 http://localhost:${SOLR_PORT_NUMBER}/api/node/health | grep --quiet  '\"status\":\"OK\"'
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          privileged: false
+          runAsGroup: 0
+          runAsNonRoot: true
+          runAsUser: 1001
+        volumeMounts:
+          - name: data
+            mountPath: /bitnami/solr
+  vars:
+    - name: SOLR_ZK_HOSTS
+      valueFrom:
+        serviceRefVarRef:
+          name: zookeeper
+          optional: false
+          endpoint: Required
+  volumes:
+    - name: data
+      needSnapshot: true
+  serviceRefDeclarations:
+    - name: zookeeper
+      serviceRefDeclarationSpecs:
+        - serviceKind: zookeeper
+          serviceVersion: ^3.7.\d{1,2}$
+  updateStrategy: BestEffortParallel

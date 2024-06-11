@@ -36,6 +36,19 @@ spec:
       - name: http
         port: 9200
         targetPort: http
+  lifecycleActions:
+    memberLeave:
+      customHandler:
+        image: {{ .Values.image.tools.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag | default "latest" }}
+        exec:
+          command:
+          - /bin/sh
+          - -c
+          - |
+            echo "member $KB_LEAVE_MEMBER_POD_NAME is leaving"
+            curl -v -X POST http://127.0.0.1:9200/_cluster/voting_config_exclusions?node_names=$KB_LEAVE_MEMBER_POD_NAME
+        targetPodSelector: Any
+        container: elasticsearch
   runtime:
     containers:
     - env:
@@ -67,13 +80,29 @@ spec:
         value: "{{ $component.roles | join "," }}"
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag }}
       imagePullPolicy: {{ .Values.image.pullPolicy }}
+      command:
+        - sh
+        - -c
+        - |
+          sh /mnt/elastic-internal/scripts/install-plugins.sh
+          # persistent the elasticsearch.keystore in data volume
+          if [ ! -f /usr/share/elasticsearch/data/elasticsearch.keystore ]; then
+            if [ ! -f /usr/share/elasticsearch/config/elasticsearch.keystore ]; then
+              bin/elasticsearch-keystore create
+            fi
+            mv /usr/share/elasticsearch/config/elasticsearch.keystore /usr/share/elasticsearch/data/elasticsearch.keystore
+          fi
+          ln -s /usr/share/elasticsearch/data/elasticsearch.keystore /usr/share/elasticsearch/config/elasticsearch.keystore
+          /bin/tini -- /usr/local/bin/docker-entrypoint.sh
       lifecycle:
         preStop:
           exec:
             command:
             - bash
             - -c
-            - /mnt/elastic-internal/scripts/pre-stop-hook-script.sh
+            - |
+              mv /usr/share/elasticsearch/config/elasticsearch.keystore /usr/share/elasticsearch/data/elasticsearch.keystore
+              /mnt/elastic-internal/scripts/pre-stop-hook-script.sh
       name: elasticsearch
       ports:
       - containerPort: 9200
@@ -111,7 +140,6 @@ spec:
         name: elastic-internal-elasticsearch-config-local
       - mountPath: /usr/share/elasticsearch/plugins
         name: elastic-internal-elasticsearch-plugins-local
-        readOnly: true
       - mountPath: /mnt/elastic-internal/scripts
         name: scripts
         readOnly: true
@@ -121,6 +149,8 @@ spec:
         name: log
       - mountPath: /tmp
         name: tmp-volume
+      - mountPath: /tmp/plugins
+        name: plugins
     initContainers:
     - command:
       - bash
@@ -240,51 +270,25 @@ spec:
         name: elastic-internal-elasticsearch-config-local
       - mountPath: /usr/share/elasticsearch/plugins
         name: elastic-internal-elasticsearch-plugins-local
-    {{- if $.Values.downloadInstallPlugins }}
-    - name: download-install-plugins
-      image: docker.io/busybox:1.35
-      imagePullPolicy: {{ .Values.image.pullPolicy }}
+    - name: prepare-plugins
+      image: {{ .Values.image.plugin.registry | default "docker.io" }}/{{ .Values.image.plugin.repository}}:{{ default .Chart.AppVersion .Values.image.plugin.tag }}
+      imagePullPolicy: IfNotPresent
       command:
       - sh
       - -c
       - |
-        echo "install {{ len $.Values.downloadInstallPlugins }} plugins"
-        {{- range $plugin := $.Values.downloadInstallPlugins }}
-        wget --no-check-certificate {{ $plugin.url }}
-        mkdir -p /opt/bitnami/elasticsearch/plugins/{{ $plugin.name }}
-        unzip `basename $plugin.url` -d /opt/bitnami/elasticsearch/plugins/{{ $plugin.name }}
-        {{- end }}
-      securityContext:
-        runAsUser: 0
-        privileged: true
-      volumeMounts:
-      - mountPath: /opt/bitnami/elasticsearch/plugins
-        name: plugins
-    {{- end -}}
-    {{- if $.Values.nativeInstallPlugins }}
-    - name: native-install-plugins
-      image: docker.io/busybox:1.35
-      imagePullPolicy: {{ .Values.image.pullPolicy }}
-      command:
-      - sh
-      - -c
-      - |
-        echo "install {{ len $.Values.nativeInstallPlugins }} plugins"
-        {{- range $plugin := $.Values.nativeInstallPlugins }}
-        /opt/bitnami/elasticsearch/bin/elasticsearch-plugin list | grep {{ $plugin.name }}
-        if [ $? -eq 0 ]; then
-          echo "Plugin {{ $plugin.name }} already installed"
+        if [ -d /plugins ]; then
+          echo "install plugins: $(ls /plugins)"
+          cp -r /plugins/* /tmp/plugins/
         else
-          /opt/bitnami/elasticsearch/bin/elasticsearch-plugin install -b {{ $plugin.url }}
+          echo "there is no plugins"
         fi
-        {{- end }}
       securityContext:
         runAsUser: 0
         privileged: true
       volumeMounts:
-      - mountPath: /opt/bitnami/elasticsearch/plugins
+      - mountPath: /tmp/plugins
         name: plugins
-    {{- end }}
     securityContext:
       fsGroup: 1000
     volumes:
@@ -298,5 +302,7 @@ spec:
       name: elastic-internal-elasticsearch-config-local
     - emptyDir: {}
       name: elastic-internal-elasticsearch-plugins-local
+    - emptyDir: {}
+      name: plugins
 {{- end }}
 {{- end }}

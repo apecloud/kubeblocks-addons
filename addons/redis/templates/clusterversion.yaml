@@ -12,7 +12,7 @@ spec:
       containers:
       - name: redis
         image: {{ include "redis.image" . }}
-        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
     systemAccountSpec:
       cmdExecutorConfig:
         image: {{ include "redis.image" . }}
@@ -21,11 +21,11 @@ spec:
       initContainers:
         - name: init-redis-sentinel
           image: {{ include "redis.image" . }}
-          imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+          imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
       containers:
         - name: redis-sentinel
           image: {{ include "redis.image" . }}
-          imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+          imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
   - componentDefRef: redis-twemproxy
     versionsContext:
       initContainers:

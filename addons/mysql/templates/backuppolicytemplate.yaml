@@ -4,6 +4,7 @@ metadata:
   name: mysql-backup-policy-template
   labels:
     {{- include "mysql.labels" . | nindent 4 }}
+    service-kind/mysql: "true"
   annotations:
     dataprotection.kubeblocks.io/is-default-policy-template: "true"
 spec:
@@ -12,6 +13,7 @@ spec:
   - componentDefs: [mysql-5.7.44-orc, mysql-5.7.44, mysql-8.0.33-orc, mysql-8.0.33]
     target:
       role: secondary
+      account: root
     backupMethods:
     - name: xtrabackup
       snapshotVolumes: false
@@ -39,7 +41,7 @@ spec:
         volumeMounts:
         - name: data
           mountPath: {{ .Values.dataMountPath }}
-    schedules:
+    schedules: &backupschedules
     - backupMethod: xtrabackup
       enabled: false
       cronExpression: "0 18 * * 0"
@@ -48,3 +50,34 @@ spec:
       enabled: false
       cronExpression: "0 18 * * 0"
       retentionPeriod: 7d
+  - componentDefRef: mysql
+    target:
+      role: secondary
+    backupMethods:
+      - name: xtrabackup
+        snapshotVolumes: false
+        actionSetName: mysql-xtrabackup
+        envMapping:
+          - key: IMAGE_TAG
+            valueFrom:
+              clusterVersionRef:
+                - names: [mysql-8.0.33]
+                  mappingValue: "8.0.33-28"
+                - names: [mysql-5.7.44]
+                  mappingValue: "2.4"
+        targetVolumes:
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
+      - name: volume-snapshot
+        snapshotVolumes: true
+        actionSetName: mysql-volumesnapshot
+        target:
+          role: primary
+        targetVolumes:
+          volumes:
+            - data
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
+    schedules: *backupschedules

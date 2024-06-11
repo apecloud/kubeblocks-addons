@@ -109,7 +109,7 @@ Milvus image
 */}}
 {{- define "milvus.image" }}
 image: {{ .Values.images.milvus.repository }}:{{ .Values.images.milvus.tag }}
-imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
+imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
 {{- end }}
 
 {{/*
@@ -118,7 +118,7 @@ Milvus init container - setup
 {{- define "milvus.initContainer.setup" }}
 - name: setup
   image: {{ .Values.images.milvusTools.repository }}:{{ .Values.images.milvusTools.tag }}
-  imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
+  imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
   command:
     - /cp
     - /run.sh,/merge
@@ -280,6 +280,13 @@ Milvus cluster vars for external storage services reference
       name: milvus-meta-storage
       optional: false
       endpoint: Required
+  expression: {{ `{{ index (splitList ":" .ETCD_ENDPOINT) 0 }}:{{ .ETCD_PORT }}` | toYaml }}
+- name: ETCD_PORT
+  valueFrom:
+    serviceRefVarRef:
+      name: milvus-meta-storage
+      optional: false
+      port: Required
 - name: MINIO_SERVER
   valueFrom:
     serviceRefVarRef:
@@ -310,6 +317,7 @@ Milvus cluster vars for external storage services reference
       name: milvus-log-storage
       optional: false
       endpoint: Required
+  expression: {{ `{{ index (splitList ":" .PULSAR_SERVER) 0 }}` | toYaml }}
 - name: PULSAR_PORT
   valueFrom:
     serviceRefVarRef:

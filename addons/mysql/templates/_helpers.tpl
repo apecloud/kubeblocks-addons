@@ -120,3 +120,7 @@ Selector labels
 app.kubernetes.io/name: {{ include "mysql.componentDefName" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+
+{{- define "mysql.imagePullPolicy" -}}
+{{ default "IfNotPresent" .Values.image.pullPolicy }}
+{{- end }}

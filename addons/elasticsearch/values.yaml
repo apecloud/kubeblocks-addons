@@ -15,6 +15,14 @@ image:
   metrics:
     repository: bitnami/elasticsearch-exporter
     tag: "1.5.0-debian-11-r102"
+  plugin:
+    registry: docker.io
+    repository: apecloud/elasticsearch-plugins
+    tag: "8.8.2"
+  tools:
+    registry: docker.io
+    repository: apecloud/curl-jq
+    tag: latest
 
 imagePullSecrets: [ ]
 nameOverride: ""
@@ -86,11 +94,3 @@ components:
   - data
   - ingest
   - transform
-
-nativeInstallPlugins: [ ]
-
-# analysis-ik must be downloaded and installed instead of using the elasticsearch-plugin install command
-# https://github.com/infinilabs/analysis-ik/issues/808
-downloadInstallPlugins: [ ]
-#- name: analysis-ik
-#  url: https://github.com/medcl/elasticsearch-analysis-ik/releases/download/v8.8.2/elasticsearch-analysis-ik-8.8.2.zip
