@@ -23,13 +23,13 @@ spec:
       compDef: wescale-vtctld
     - name: wescale-vtgate
       compDef: wescale-vtgate
-    - name: wescale-vtablet
-      compDef: wescale-vtablet
+    - name: wescale-vttablet
+      compDef: wescale-vttablet
     orders: &orders
       provision:
       - mysql
       - wescale-vtctld
-      - wescale-vtablet
+      - wescale-vttablet
       - wescale-vtgate
   - name: apecloud-mysql-audit-with-proxy
     components:
@@ -39,6 +39,6 @@ spec:
       compDef: wescale-vtctld
     - name: wescale-vtgate
       compDef: wescale-vtgate
-    - name: wescale-vtablet
-      compDef: wescale-vtablet
+    - name: wescale-vttablet
+      compDef: wescale-vttablet
     orders: *orders

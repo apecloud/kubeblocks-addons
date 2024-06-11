@@ -187,13 +187,13 @@ spec:
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: wescale-vtablet
+  name: wescale-vttablet
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
   provider: kubeblocks.io
-  description: wescale-vtablet
-  serviceKind: wescale-vtablet
+  description: wescale-vttablet
+  serviceKind: wescale-vttablet
   serviceVersion: "0.2.7"
   serviceRefDeclarations:
     - name: etcd
@@ -214,7 +214,7 @@ spec:
       namespace: {{ .Release.Namespace }}
   runtime:
     containers:
-      - name: vtablet
+      - name: vttablet
         image: {{ .Values.wesqlscale.image.registry | default .Values.image.registry }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
         imagePullPolicy: IfNotPresent
         ports:

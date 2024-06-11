@@ -45,7 +45,7 @@ The minimum proxy cpu cores is 0.5 and the maximum cpu cores is 64.
     limits:
       cpu: {{ $proxyCPU | quote }}
       memory: 500Mi
-- name: wescale-vtablet
+- name: wescale-vttablet
   serviceRefs:
     {{ include "apecloud-mysql-cluster.serviceRef" . | indent 4 }}
   replicas: {{ include "apecloud-mysql-cluster.replicas" . }}
