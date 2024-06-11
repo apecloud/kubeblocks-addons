@@ -56,25 +56,13 @@ node:
   store:
     allow_mmap: false
   roles:
-  {{- range $i, $e := $master_components }}
-  {{- if eq $e $.component.name }}
-  - master
-  {{- end }}
-  {{- end }}
-  {{- range $i, $e := $data_components }}
-  {{- if eq $e $.component.name }}
-  - data
-  {{- end }}
-  {{- end }}
-  {{- range $i, $e := $ingest_components }}
-  {{- if eq $e $.component.name }}
-  - ingest
-  {{- end }}
-  {{- end }}
-  {{- range $i, $e := $transform_components }}
-  {{- if eq $e $.component.name }}
-  - transform
-  {{- end }}
+  {{- $allComponents := dict "master" $master_components "data" $data_components "ingest" $ingest_components "transform" $transform_components }}
+  {{- range $role, $components := $allComponents }}
+    {{- range $i, $e := $components }}
+      {{- if eq $e $.component.name }}
+  - {{ $role }}
+      {{- end }}
+    {{- end }}
   {{- end }}
 
 path:
