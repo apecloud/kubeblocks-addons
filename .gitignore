@@ -14,6 +14,8 @@
 # helm dependency charts
 addons/**/Chart.lock
 addons/**/charts
+addons-cluster/**/Chart.lock
+addons-cluster/**/charts
 
 # generated temp directory
 temp
