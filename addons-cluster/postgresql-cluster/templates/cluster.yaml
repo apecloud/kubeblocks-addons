@@ -9,7 +9,8 @@ metadata:
     kubeblocks.io/extra-env: '{"etcdHA":"true"}'
   {{- end }}
 spec:
-  terminationPolicy: {{ .Values.terminationPolicy }}
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  {{- include "kblib.affinity" . | indent 2 }}
 {{- if .Values.useLegacyCompDef }}
 {{- include "postgresql-cluster.legacyComponentSpec" . }}
 {{- else }}

@@ -5,8 +5,6 @@
 # if useLegacyCompDef is false ,cluster will be rendered by compDef rather than componentDefRef in cluster definition
 useLegacyCompDef: false
 
-terminationPolicy: "Delete"
-
 ## @param version MySQL cluster version
 ##
 version: postgresql-15.7.0
@@ -46,6 +44,9 @@ storage: 20
 sidecars:
  - exporter
 
+extra:
+  podAntiAffinity: Required
+  
 etcd:
   serviceReference: 
     endpoint: "etcd-cluster-etcd.default.svc.cluster.local:2379" # 
