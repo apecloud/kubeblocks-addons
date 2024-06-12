@@ -1,12 +1,21 @@
 {{- $clusterName := $.cluster.metadata.name }}
+{{- $defaultRoles := "master,data" }}
 {{- $namespace := $.cluster.metadata.namespace }}
-{{- $extraEnv := index $.cluster.metadata.annotations "kubeblocks.io/extra-env" | fromJson }}
-{{- $masterComponents := $extraEnv.MASTER_COMPONENTS | splitList "," }}
-{{- $dataComponents := index $extraEnv "DATA_COMPONENTS" | default "" | splitList "," }}
-{{- $ingestComponents := index $extraEnv "INGEST_COMPONENTS" | default "" | splitList "," }}
-{{- $transformComponents := index $extraEnv "TRANSFORM_COMPONENTS" | default "" | splitList "," }}
-{{- $mlComponents := index $extraEnv "ML_COMPONENTS" | default "" | splitList "," }}
-{{- $allComponents := dict "master" $masterComponents "data" $dataComponents "ingest" $ingestComponents "transform" $transformComponents "ml" $mlComponents }}
+{{- $extraEnv := index $.cluster.metadata.annotations "kubeblocks.io/extra-env" | default "{}" | fromJson }}
+
+{{- $allRoles := fromJson "{}" }}
+{{- range $i, $spec := $.cluster.spec.componentSpecs }}
+    {{- $envName := printf "%s-roles" $spec.name }}
+    {{- $roles := index $extraEnv $envName | default $defaultRoles | splitList "," }}
+    {{- range $j, $role := $roles }}
+        {{- $comps := index $allRoles $role }}
+        {{- if not $comps }}
+            {{- $comps = list }}
+        {{- end }}
+        {{- $allRoles = set $allRoles $role (append $comps $spec.name) }}
+    {{- end }}
+{{- end }}
+{{- $masterComponents := $allRoles.master }}
 
 cluster:
   name: {{ $clusterName }}
@@ -58,19 +67,9 @@ node:
   store:
     allow_mmap: false
   roles:
-  {{- $hasRole := false }}
-  {{- range $role, $components := $allComponents }}
-    {{- range $i, $e := $components }}
-      {{- if eq $e $.component.name }}
-      {{- $hasRole = true }}
-  - {{ $role }}
-      {{- end }}
-    {{- end }}
-  {{- end }}
-  {{- if not $hasRole }}
-  {{- range $role, $components := $allComponents }}
-  - {{ $role }}
-  {{- end }}
+  {{- $myRoles := index $extraEnv (printf "%s-roles" $.component.name) | default $defaultRoles | splitList "," }}
+  {{- range $i, $e := $myRoles }}
+  - {{ $e }}
   {{- end }}
 
 path:
