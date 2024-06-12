@@ -1,0 +1,37 @@
+annotations:
+  category: HA Component
+apiVersion: v2
+name: orchestrator-cluster
+type: application
+version: 0.9.0
+description: orchestrator
+
+dependencies:
+  - name: kblib
+    version: 0.1.0
+    repository: file://../kblib
+    alias: extra
+
+# This is the version number of the MySQL being deployed,
+# rather than the version number of MySQL-Scale itself.
+# From a user's perspective, the version  number of the frontend
+# proxy of the MySQL being used is not relevant.
+appVersion: "3.2.6"
+
+keywords:
+  - mysql
+  - database
+  - sql
+  - cluster
+  - raft
+
+home: https://github.com/apecloud/kubeblocks/deploy/mysql-cluster
+icon: https://kubeblocks.io/img/logo.png
+
+maintainers:
+  - name: ApeCloud
+    url: https://kubeblocks.io/
+
+sources:
+  - https://github.com/apecloud/kubeblocks/
+  - https://github.com/apecloud/kubeblocks/tree/main/deploy/mysql

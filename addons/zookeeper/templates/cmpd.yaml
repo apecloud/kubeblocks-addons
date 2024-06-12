@@ -1,0 +1,110 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: zookeeper-{{ .Chart.Version }}
+  labels:
+    {{- include "zookeeper.labels" . | nindent 4 }}
+spec:
+  provider: ApeCloud
+  description: {{ .Chart.Description }}
+  serviceKind: {{ .Chart.Name }}
+  runtime:
+    securityContext:
+      fsGroup: 0
+      runAsGroup: 0
+      runAsNonRoot: true
+      runAsUser: 1001
+    containers:
+      - name: zookeeper
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
+        command:
+          - /bin/bash
+          - -c
+          - |
+            # Execute entrypoint as usual after obtaining ZOO_SERVER_ID
+            # check ZOO_SERVER_ID in persistent volume via myid
+            # if not present, set based on POD hostname
+            if [[ -f "/bitnami/zookeeper/data/myid" ]]; then
+                export ZOO_SERVER_ID="$(cat /bitnami/zookeeper/data/myid)"
+            else
+                HOSTNAME="$(hostname -s)"
+                if [[ $HOSTNAME =~ (.*)-([0-9]+)$ ]]; then
+                    ORD=${BASH_REMATCH[2]}
+                    export ZOO_SERVER_ID="$((ORD))"
+                else
+                    echo "Failed to get index from hostname $HOSTNAME"
+                    exit 1
+                fi
+            fi
+            exec /opt/bitnami/scripts/zookeeper/entrypoint.sh /opt/bitnami/scripts/zookeeper/run.sh
+        env:
+          - name: ZOO_ENABLE_AUTH
+            value: "yes"
+        ports:
+          - name: client
+            containerPort: 2181
+          - name: quorum
+            containerPort: 2888
+          - name: election
+            containerPort: 3888
+          - name: http
+            containerPort: 8080
+        livenessProbe:
+          failureThreshold: 6
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+          exec:
+            command: [ '/bin/bash', '-c', 'echo "ruok" | timeout 2 nc -w 2 localhost 2181 | grep imok' ]
+        readinessProbe:
+          failureThreshold: 6
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+          exec:
+            command: [ '/bin/bash', '-c', 'echo "ruok" | timeout 2 nc -w 2 localhost 2181 | grep imok' ]
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          privileged: false
+          runAsGroup: 0
+          runAsNonRoot: true
+          runAsUser: 1001
+        volumeMounts:
+          - name: data
+            mountPath: /bitnami/zookeeper/data
+          - name: log
+            mountPath: /bitnami/zookeeper/log
+          - name: config
+            mountPath: /opt/bitnami/zookeeper/conf/zoo.cfg
+            subPath: zoo.cfg
+  vars:
+    - name: ZOOKEEPER_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+  volumes:
+    - name: data
+      needSnapshot: true
+    - name: log
+      needSnapshot: true
+  configs:
+    - name: zookeeper-config
+      namespace: {{ .Release.Namespace }}
+      templateRef: {{ include "zookeeper.name" . }}-config-template
+      constraintRef: {{ include "zookeeper.name" . }}-config-constraints
+      volumeName: config
+      defaultMode: 0755
+      reRenderResourceTypes:
+        - hscale
+  logConfigs:
+    - name: info
+      filePathPattern: /opt/bitnami/zookeeper/logs/zookeeper-*-server-*.log
+    - name: audit
+      filePathPattern: /opt/bitnami/zookeeper/logs/zookeeper_audit.log
+  updateStrategy: BestEffortParallel
