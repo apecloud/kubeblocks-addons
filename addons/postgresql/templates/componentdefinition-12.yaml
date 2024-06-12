@@ -194,6 +194,10 @@ spec:
           runAsUser: 0
         command:
           - /kb-scripts/setup.sh
+        lifecycle:
+          preStop:
+            exec: 
+              command: ["/kb-scripts/etcd-clean.sh"]
         readinessProbe:
           failureThreshold: 3
           initialDelaySeconds: 10
