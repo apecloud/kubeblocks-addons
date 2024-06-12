@@ -14,6 +14,7 @@ spec:
       serviceRefDeclarationSpecs:
         - serviceKind: etcd
           serviceVersion: "^*"
+      optional: true
   services:
     - name: postgresql
       serviceName: postgresql
@@ -81,7 +82,8 @@ spec:
       valueFrom:
         serviceRefVarRef:
           name: etcd
-          endpoint: Required  
+          endpoint: Required
+          optional: true
     - name: POSTGRES_USER
       valueFrom:
         credentialVarRef:

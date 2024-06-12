@@ -44,14 +44,15 @@ extra:
   podAntiAffinity: Required
   
 etcd:
+  proxyEnabled: false
   meta:
-    mode: serviceref  # optional: incluster, serviceref
+    mode: serviceref # optional: incluster, serviceref
     serviceRef:
-      namespace:
-      cluster:
-        name:
-        component:
-        service:
-        port:
+      namespace: 
+      cluster: 
+        name: 
+        component: 
+        service: 
+        port: 
         credential:
       serviceDescriptor: postgres-etcd-descriptor # example: postgres-etcd-descriptor

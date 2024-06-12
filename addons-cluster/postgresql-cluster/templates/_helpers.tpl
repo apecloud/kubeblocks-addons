@@ -27,8 +27,10 @@ Define postgresql ComponentSpec with ComponentDefinition.
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
       {{- include "kblib.componentServices" . | indent 6 }}
+      {{- if .Values.etcd.proxyEnabled }}
       serviceRefs:
       {{ include "postgresql-cluster.serviceRef" . | indent 6 }}
+      {{- end }}
 {{- end }}
 
 {{/*
