@@ -71,7 +71,7 @@ spec:
     effect: NoSchedule
   componentSpecs:
   - name: redis
-    componentDef: redis
+    componentDef: redis-7
     disableExporter: true
     replicas: 1
     resources:

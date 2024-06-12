@@ -99,6 +99,7 @@ spec:
         ports:
           - name: mongodb
             protocol: TCP
+            targetPort: mongodb
             port: 27017
       volumeTypes:
         - name: data

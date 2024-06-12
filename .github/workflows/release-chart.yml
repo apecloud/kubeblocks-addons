@@ -11,90 +11,52 @@ on:
         options:
           - ""
           - apecloud-mysql
-          - apecloud-mysql-cluster
           - apecloud-postgresql
-          - apecloud-postgresql-cluster
           - camellia-redis-proxy
-          - camellia-redis-proxy-cluster
           - clickhouse
-          - clickhouse-cluster
-          - doris
-          - doris-cluster
           - dmdb
+          - doris
           - elasticsearch
-          - elasticsearch-cluster
           - etcd
-          - etcd-cluster
           - flink
-          - flink-cluster
           - foxlake
-          - foxlake-cluster
+          - greatsql
           - greptimedb
-          - greptimedb-cluster
           - halo
-          - halo-cluster
           - influxdb
           - kafka
-          - kafka-cluster
           - llm
-          - llm-cluster
           - mariadb
-          - mariadb-cluster
           - milvus
-          - milvus-cluster
           - minio
-          - minio-cluster
           - mogdb
-          - mogdb-cluster
           - mongodb
-          - mongodb-cluster
-          - mongodb-sharding-cluster
           - mysql
-          - mysql-cluster
           - nebula
-          - nebula-cluster
           - neon
-          - neon-cluster
           - oceanbase-ce
-          - oceanbase-ce-cluster
           - official-postgresql
-          - official-postgresql-cluster
+          - opengauss
           - openldap
-          - openldap-cluster
           - opensearch
-          - opensearch-cluster
           - oracle
-          - oracle-cluster
-          - oracle-mysql
-          - oracle-mysql-cluster
+          - orchestrator
           - orioledb
-          - orioledb-cluster
           - polardbx
-          - polardbx-cluster
           - postgresql
-          - postgresql-cluster
           - pulsar
-          - pulsar-cluster
           - qdrant
-          - qdrant-cluster
           - redis
-          - redis-cluster
           - risingwave
-          - risingwave-cluster
+          - solr
           - starrocks-ce
-          - starrocks-ce-cluster
           - tdengine
-          - tdengine-cluster
           - tidb
-          - tidb-cluster
+          - victoria-metrics
           - weaviate
-          - weaviate-cluster
           - xinference
-          - xinference-cluster
           - yashandb
-          - yashandb-cluster
           - zookeeper
-          - zookeeper-cluster
       chart_version:
         description: 'release specify chart version or empty to release default'
         required: false

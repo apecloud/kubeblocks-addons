@@ -29,7 +29,7 @@ spec:
       podSpec:
         containers:
           - name: xinference
-            imagePullPolicy: {{default .Values.image.pullPolicy "IfNotPresent"}}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
             securityContext:
               runAsUser: 0
             terminationMessagePath: /dev/termination-log
@@ -37,18 +37,22 @@ spec:
             volumeMounts:
               - name: scripts
                 mountPath: /scripts
+              {{- if .Values.modelDir }}
               - name: models
                 mountPath: /xinference/models
+              {{- end }}
             command:
               - /scripts/start.sh
             ports:
               - name: xinference
                 containerPort: 9997
+        {{- if .Values.modelDir }}
         volumes:
         - hostPath:
-            path: /xinference/models
+            path: {{ .Values.modelDir }}
             type: DirectoryOrCreate
           name: models
+        {{- end }}
   connectionCredential:
     username: root
     password: ""

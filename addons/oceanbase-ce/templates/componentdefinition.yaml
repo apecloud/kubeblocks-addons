@@ -59,7 +59,7 @@ items:
             - |
               /scripts/entrypoint.sh
           image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.observer.repository }}:{{ .Values.images.observer.tag }}
-          imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
+          imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
           ports:
             - containerPort: 2881
               name: sql
@@ -105,7 +105,7 @@ items:
               value: "root"
         - name: metrics
           image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.metrics.repository }}:{{ .Values.images.metrics.tag }}
-          imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
+          imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
           command:
             - bash
             - -c
@@ -217,7 +217,7 @@ items:
             - |
               /scripts/entrypoint.sh
           image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.observer.repository }}:{{ .Values.images.observer.tag }}
-          imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
+          imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
           ports:
             - containerPort: 88
               name: sql
@@ -261,7 +261,7 @@ items:
               value: "root"
         - name: metrics
           image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.metrics.repository }}:{{ .Values.images.metrics.tag }}
-          imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
+          imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
           command:
             - bash
             - -c
