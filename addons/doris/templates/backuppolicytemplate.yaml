@@ -7,8 +7,8 @@ metadata:
 spec:
   clusterDefinitionRef: doris  # Specify the scope of which ClusterDef will generate the cluster
   backupPolicies:
-  - componentDefRef: doris-fe   # Specifies the scope to which component is related
-    retentionPeriod: 7d
+  - componentDefs:  # Specifies the scope to which component is related
+    - doris-fe-{{ .Chart.Version}}
     backupMethods:
     - name: dorisbackup
       snapshotVolumes: false

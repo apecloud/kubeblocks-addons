@@ -1,0 +1,108 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: doris-cn-{{ .Chart.Version}}
+  labels:
+    {{- include "doris.labels" . | nindent 4 }}
+    {{- if .Values.commonLabels }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+spec:
+  provider: YQ
+  description: {{ trunc 256 .Chart.Description }}
+  serviceKind: {{ .Chart.Name }}
+  serviceVersion: {{ .Chart.AppVersion }}
+  runtime:
+    initContainers:
+      - name: sysctl
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
+        command:
+          - sh
+          - -c
+          - |
+            set -xe
+            DESIRED="2000000"
+            CURRENT=$(sysctl -n vm.max_map_count)
+            if [ "$DESIRED" -gt "$CURRENT" ]; then
+              sysctl -w vm.max_map_count=$DESIRED
+            fi
+        securityContext:
+          runAsUser: 0
+          privileged: true
+    securityContext:
+      fsGroup: 0
+    volumes:
+      - name: sys
+        hostPath:
+          path: /etc/pki
+    containers:
+      - name: cn
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
+        command:
+          - bash
+          - -c
+          - entry_point.sh
+        env:
+          - name: BUILD_TYPE
+            value: "k8s"
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsUser: 0
+        ports:
+          - name: be-port
+            containerPort: 9060
+          - name: webserver-port
+            containerPort: 8040
+          - name: heartbeat-port
+            containerPort: 9050
+          - name: brpc-port
+            containerPort: 8060
+        volumeMounts:
+          - name: conf
+            mountPath: /opt/apache-doris/be/conf
+          - name: sys
+            mountPath: /etc/pki
+            readOnly: true
+          - name: cn-entrypoint
+            mountPath: /usr/local/bin/entry_point.sh
+            subPath: entry_point.sh
+  vars:
+    - name: MYSQL_ROOT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: doris-fe
+          name: root
+          optional: false
+          password: Required
+  services:
+    - name: cn
+      spec:
+        ports:
+          - name: be-port
+            targetPort: be-port
+            port: 9060
+          - name: webserver-port
+            targetPort: webserver-port
+            port: 8040
+          - name: heartbeat-port
+            targetPort: heartbeat-port
+            port: 9050
+          - name: brpc-port
+            targetPort: brpc-port
+            port: 8060
+  configs:
+    - name: doris-cn-conf-configuration
+      templateRef: {{ include "doris.name" . }}-cn-conf
+      constraintRef: {{ include "doris.name" . }}-cn-config-constraints
+      volumeName: conf
+      namespace: {{ .Release.Namespace }}
+    - name: doris-cn-entrypoint-script
+      templateRef: {{ include "doris.name" . }}-entrypoint
+      volumeName: cn-entrypoint
+      namespace: {{ .Release.Namespace }}
+      defaultMode: 0755
+  monitor:
+    builtIn: false
+    exporterConfig:
+      scrapePort: 8040
+      scrapePath: "/metrics"
