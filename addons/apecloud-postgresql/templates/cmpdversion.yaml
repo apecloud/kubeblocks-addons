@@ -1,0 +1,17 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: apecloud-postgresql
+  labels:
+    {{- include "apecloud-postgresql.labels" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "apecloud-postgresql.compDefApecloudPostgresql14" . }}
+      releases:
+        - 14.11.0
+  releases:
+    - name: 14.11.0
+      serviceVersion: 14.11.0
+      images:
+        postgresql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
