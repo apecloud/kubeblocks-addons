@@ -2,14 +2,16 @@
 set -o errexit
 set -e
 
-if [ "$etcdHA" = "true" ]; then
-  if [ "$ETCD_API" = "3" ]; then
-    export ETCD3_HOST=$ETCD_SERVER
+export ETCDCTL_API=${ETCD_API:-'2'}
+
+if [ -n "$ETCD_SERVER" ]; then
+  echo "ETCD_SERVER is set. Use etcd"
+  export DCS_ENABLE_KUBERNETES_API=""
+  if [ "$ETCDCTL_API" = "3" ]; then
+    export ETCD3_HOSTS=$ETCD_SERVER
   else
-    export ETCD_HOST=$ETCD_SERVER
+    export ETCD_HOSTS=$ETCD_SERVER
   fi
-else
-  export DCS_ENABLE_KUBERNETES_API=true
 fi
 
 # usage: retry <command>

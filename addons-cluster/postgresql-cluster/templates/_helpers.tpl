@@ -52,5 +52,17 @@ Define postgresql ComponentSpec with legacy ClusterDefinition which will be depr
 {{- define "postgresql-cluster.serviceRef" }}
 - name: etcd
   namespace: {{ .Release.Namespace }}
-  serviceDescriptor: {{ include "kblib.clusterName" . }}-etcd-descriptor
+  {{- if eq .Values.etcd.meta.mode "incluster" }}
+  clusterServiceSelector:
+    cluster: {{ .Values.etcd.meta.serviceRef.cluster.name }}
+    service:
+      component: {{ .Values.etcd.meta.serviceRef.cluster.component }}
+      service: {{ .Values.etcd.meta.serviceRef.cluster.service }}
+      port: {{ .Values.etcd.meta.serviceRef.cluster.port }}
+    credential:
+      component: {{ .Values.etcd.meta.serviceRef.cluster.component }}
+      name: {{ .Values.etcd.meta.serviceRef.cluster.credential }}
+  {{- else }}
+  serviceDescriptor: {{ .Values.etcd.meta.serviceRef.serviceDescriptor }}
+  {{- end }}
 {{- end -}}

@@ -75,11 +75,13 @@ spec:
       volumeName: scripts
       defaultMode: 0555
   vars:
-    - name: SERVICE_ETCD_ENDPOINT
+    - name: ETCD_API
+      value: "3"      
+    - name: ETCD_SERVER
       valueFrom:
         serviceRefVarRef:
           name: etcd
-          endpoint: Required
+          endpoint: Required  
     - name: POSTGRES_USER
       valueFrom:
         credentialVarRef:
@@ -223,10 +225,8 @@ spec:
           - name: patroni
             containerPort: 8008
         env: ## refer https://github.com/zalando/spilo/blob/master/ENVIRONMENT.rst
-          - name: ETCD_API
-            value: "3"        
-          - name: ETCD_SERVER
-            value: $(SERVICE_ETCD_ENDPOINT)
+          - name: DCS_ENABLE_KUBERNETES_API
+            value: "true"
           - name: KUBERNETES_USE_CONFIGMAPS
             value: "true"
           - name: SCOPE

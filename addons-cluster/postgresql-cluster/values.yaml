@@ -11,11 +11,7 @@ version: postgresql-15.7.0
 
 ## @param mode postgresql cluster topology mode, standalone, replication
 ##
-mode: replication
-
-## @param HA server etcd:
-##
-etcdHA: true
+mode: standalone
 
 ## @param replicas specify cluster replicas
 ##
@@ -48,6 +44,14 @@ extra:
   podAntiAffinity: Required
   
 etcd:
-  serviceReference: 
-    endpoint: "etcd-cluster-etcd.default.svc.cluster.local:2379" # 
-  serviceVersion: 3.5.6
+  meta:
+    mode: serviceref  # optional: incluster, serviceref
+    serviceRef:
+      namespace:
+      cluster:
+        name:
+        component:
+        service:
+        port:
+        credential:
+      serviceDescriptor: postgres-etcd-descriptor # example: postgres-etcd-descriptor
