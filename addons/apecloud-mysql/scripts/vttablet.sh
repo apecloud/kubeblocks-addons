@@ -52,7 +52,7 @@ $(if [ "$enable_query_log" == "true" ]; then echo "--log_queries_to_file $VTDATA
 --file_backup_storage_root $VTDATAROOT/backups \
 --port $port \
 --db_port $mysql_port \
---db_host $tablet_hostname \
+--db_host 127.0.0.1 \
 --db_allprivs_user $mysql_root \
 --db_allprivs_password $mysql_root_passwd \
 --db_dba_user $mysql_root \
