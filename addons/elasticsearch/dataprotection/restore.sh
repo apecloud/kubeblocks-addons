@@ -44,7 +44,8 @@ cat > /tmp/repository.json<< EOF
     "bucket": "${s3_bucket}",
     "base_path": "${base_path}",
     "client": "default",
-    "path_style_access": true
+    "path_style_access": true,
+    "readonly": true
   }
 }
 EOF
