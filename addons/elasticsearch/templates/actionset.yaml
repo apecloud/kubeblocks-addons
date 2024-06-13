@@ -20,12 +20,6 @@ spec:
         intervalSeconds: 5
   restore:
     postReady:
-    - exec:
-        command:
-        - sh
-        - -c
-        - |
-          {{- .Files.Get "dataprotection/setup-keystore.sh" | nindent 10 }}
     - job:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         runOnTargetPodNode: false
@@ -51,7 +45,7 @@ spec:
       - sh
       - -c
       - |
-        {{- .Files.Get "dataprotection/setup-keystore.sh" | nindent 8 }}
+        {{- .Files.Get "dataprotection/backup-setup-keystore.sh" | nindent 8 }}
       syncProgress:
         enabled: true
         intervalSeconds: 5
@@ -59,6 +53,9 @@ spec:
     postReady:
     - job:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
-        runOnTargetPodNode: false
+        runOnTargetPodNode: true
         command:
-        - "true"
+        - sh
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/restore-setup-keystore.sh" | nindent 10 }}

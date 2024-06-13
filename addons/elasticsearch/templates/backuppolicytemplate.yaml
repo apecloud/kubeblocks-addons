@@ -9,7 +9,7 @@ spec:
   clusterDefinitionRef: elasticsearch
   backupPolicies:
   - componentDefs:
-    - es-data
+    - elasticsearch
     backupMethods:
     - name: full-backup
       target:
@@ -21,21 +21,6 @@ spec:
       target:
         role: ""
         strategy: All
-      snapshotVolumes: false
-      actionSetName: elasticsearch-setup-keystore
-      targetVolumes:
-        volumeMounts:
-        - name: data
-          mountPath: /usr/share/elasticsearch/data
-  - componentDefs:
-    - es-master
-    - es-ingest
-    - es-transform
-    target:
-      role: ""
-      strategy: All
-    backupMethods:
-    - name: setup-keystore
       snapshotVolumes: false
       actionSetName: elasticsearch-setup-keystore
       targetVolumes:

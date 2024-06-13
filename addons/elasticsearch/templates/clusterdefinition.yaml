@@ -6,18 +6,14 @@ metadata:
     {{- include "elasticsearch.labels" . | nindent 4 }}
 spec:
   topologies:
-  - name: es-single-node
-    components:
-    - name: es-single-node
-      compDef: es-single-node
   - name: cluster
     components:
-    - name: es-master
-      compDef: es-master
-    - name: es-data
-      compDef: es-data
-    - name: es-ingest
-      compDef: es-ingest
-    - name: es-transform
-      compDef: es-transform
+    - name: master
+      compDef: elasticsearch
+    - name: data
+      compDef: elasticsearch
+    - name: ingest
+      compDef: elasticsearch
+    - name: transform
+      compDef: elasticsearch
     default: true
