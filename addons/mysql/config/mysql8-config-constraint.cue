@@ -21,7 +21,7 @@
 	// auto generate by cue_generate.go
 
 	// Automatically set all granted roles as active after the user has authenticated successfully.
-	activate_all_roles_on_login: string & "0" | "1" | "OFF" | "ON" | *"0"
+	// activate_all_roles_on_login: string & "0" | "1" | "OFF" | "ON" | *"0"
 
 	// Controls whether user-defined functions that have only an xxx symbol for the main function can be loaded
 	"allow-suspicious-udfs"?: string & "0" | "1" | "OFF" | "ON"
