@@ -27,10 +27,8 @@ function getToolConfigValue() {
 
 s3_endpoint=$(getToolConfigValue endpoint)
 s3_bucket=$(getToolConfigValue root)
-backup_name=$(dirname "${DP_BACKUP_BASE_PATH}")
-backup_name=$(basename "${backup_name}")
+backup_name=$(basename "${DP_BACKUP_BASE_PATH}")
 base_path=$(dirname "${DP_BACKUP_BASE_PATH}")
-base_path=$(dirname "${base_path}")
 base_path=$(dirname "${base_path}")
 base_path=${base_path%/}
 base_path=${base_path#*/}
@@ -51,12 +49,11 @@ cat > /tmp/repository.json<< EOF
 }
 EOF
 
-curl -X PUT "${ES_ENDPOINT}/_snapshot/${REPOSITORY}?pretty" -H 'Content-Type: application/json' -d "@/tmp/repository.json"
-
+curl -f -X PUT "${ES_ENDPOINT}/_snapshot/${REPOSITORY}?pretty" -H 'Content-Type: application/json' -d "@/tmp/repository.json"
 
 # Temporarily stop indexing and turn off the following features:
 # GeoIP database downloader and ILM history store
-curl -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: application/json' -d'
+curl -f -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: application/json' -d'
 {
   "persistent": {
     "ingest.geoip.downloader.enabled": false,
@@ -66,13 +63,13 @@ curl -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: applicat
 '
 
 # ILM
-curl -X POST "${ES_ENDPOINT}/_ilm/stop?pretty"
+curl -f -X POST "${ES_ENDPOINT}/_ilm/stop?pretty"
 
 # Machine Learning
-curl -X POST "${ES_ENDPOINT}/_ml/set_upgrade_mode?enabled=true&pretty"
+curl -f -X POST "${ES_ENDPOINT}/_ml/set_upgrade_mode?enabled=true&pretty"
 
 # Monitoring
-curl -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: application/json' -d'
+curl -f -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: application/json' -d'
 {
   "persistent": {
     "xpack.monitoring.collection.enabled": false
@@ -81,7 +78,7 @@ curl -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: applicat
 '
 
 # Watcher
-curl -X POST "${ES_ENDPOINT}/_watcher/_stop?pretty"
+curl -f -X POST "${ES_ENDPOINT}/_watcher/_stop?pretty"
 
 # Universal Profiling
 # if Universal Profiling index template management is enabled, we should also disable Universal Profiling index template management.
@@ -99,7 +96,7 @@ if [[ "${idx_template_management}" == *"true"* ]]; then
 fi
 
 # Disable destructive_requires_name
-curl -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: application/json' -d'
+curl -f -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: application/json' -d'
 {
   "persistent": {
     "action.destructive_requires_name": false
@@ -108,20 +105,20 @@ curl -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: applicat
 '
 
 # Delete all existing data streams on the cluster.
-curl -X DELETE "${ES_ENDPOINT}/_data_stream/*?expand_wildcards=all&pretty"
+curl -f -X DELETE "${ES_ENDPOINT}/_data_stream/*?expand_wildcards=all&pretty"
 
 # Delete all existing indices on the cluster.
-curl -X DELETE "${ES_ENDPOINT}/*?expand_wildcards=all&pretty"
+curl -f -X DELETE "${ES_ENDPOINT}/*?expand_wildcards=all&pretty"
 
 # Restore the entire snapshot.
-curl -X POST "${ES_ENDPOINT}/_snapshot/${REPOSITORY}/${backup_name}/_restore?pretty" -H 'Content-Type: application/json' -d'
+curl -f -X POST "${ES_ENDPOINT}/_snapshot/${REPOSITORY}/${backup_name}/_restore?pretty" -H 'Content-Type: application/json' -d'
 {
   "indices": "*",
   "include_global_state": true
 }
 '
 
-curl -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: application/json' -d'
+curl -f -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: application/json' -d'
 {
   "persistent": {
     "ingest.geoip.downloader.enabled": true,
@@ -130,11 +127,11 @@ curl -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: applicat
 }
 '
 
-curl -X POST "${ES_ENDPOINT}/_ilm/start?pretty"
+curl -f -X POST "${ES_ENDPOINT}/_ilm/start?pretty"
 
-curl -X POST "${ES_ENDPOINT}/_ml/set_upgrade_mode?enabled=false&pretty"
+curl -f -X POST "${ES_ENDPOINT}/_ml/set_upgrade_mode?enabled=false&pretty"
 
-curl -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: application/json' -d'
+curl -f -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: application/json' -d'
 {
   "persistent": {
     "xpack.monitoring.collection.enabled": true
@@ -142,10 +139,10 @@ curl -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: applicat
 }
 '
 
-curl -X POST "${ES_ENDPOINT}/_watcher/_start?pretty"
+curl -f -X POST "${ES_ENDPOINT}/_watcher/_start?pretty"
 
 if [ "${idx_template_management_is_enabled}" = "True" ]; then
-    curl -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: application/json' -d'
+    curl -f -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: application/json' -d'
     {
       "persistent": {
         "xpack.profiling.templates.enabled": true
@@ -154,7 +151,7 @@ if [ "${idx_template_management_is_enabled}" = "True" ]; then
     '
 fi
 
-curl -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: application/json' -d'
+curl -f -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: application/json' -d'
 {
   "persistent": {
     "action.destructive_requires_name": null
