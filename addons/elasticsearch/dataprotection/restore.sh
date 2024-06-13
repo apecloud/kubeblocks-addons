@@ -27,10 +27,8 @@ function getToolConfigValue() {
 
 s3_endpoint=$(getToolConfigValue endpoint)
 s3_bucket=$(getToolConfigValue root)
-backup_name=$(dirname "${DP_BACKUP_BASE_PATH}")
-backup_name=$(basename "${backup_name}")
+backup_name=$(basename "${DP_BACKUP_BASE_PATH}")
 base_path=$(dirname "${DP_BACKUP_BASE_PATH}")
-base_path=$(dirname "${base_path}")
 base_path=$(dirname "${base_path}")
 base_path=${base_path%/}
 base_path=${base_path#*/}
@@ -46,118 +44,187 @@ cat > /tmp/repository.json<< EOF
     "bucket": "${s3_bucket}",
     "base_path": "${base_path}",
     "client": "default",
-    "path_style_access": true
+    "path_style_access": true,
+    "readonly": true
   }
 }
 EOF
 
-curl -X PUT "${ES_ENDPOINT}/_snapshot/${REPOSITORY}?pretty" -H 'Content-Type: application/json' -d "@/tmp/repository.json"
+curl -f -s -X PUT "${ES_ENDPOINT}/_snapshot/${REPOSITORY}?pretty" -H 'Content-Type: application/json' -d "@/tmp/repository.json"
 
-
-# Temporarily stop indexing and turn off the following features:
-# GeoIP database downloader and ILM history store
-curl -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: application/json' -d'
-{
-  "persistent": {
-    "ingest.geoip.downloader.enabled": false,
-    "indices.lifecycle.history_index_enabled": false
-  }
-}
-'
-
-# ILM
-curl -X POST "${ES_ENDPOINT}/_ilm/stop?pretty"
-
-# Machine Learning
-curl -X POST "${ES_ENDPOINT}/_ml/set_upgrade_mode?enabled=true&pretty"
-
-# Monitoring
-curl -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: application/json' -d'
-{
-  "persistent": {
-    "xpack.monitoring.collection.enabled": false
-  }
-}
-'
-
-# Watcher
-curl -X POST "${ES_ENDPOINT}/_watcher/_stop?pretty"
-
-# Universal Profiling
-# if Universal Profiling index template management is enabled, we should also disable Universal Profiling index template management.
-idx_template_management_is_enabled=False
-idx_template_management=$(curl -X GET "${ES_ENDPOINT}/_cluster/settings?filter_path=**.xpack.profiling.templates.enabled&include_defaults=true&pretty")
-if [[ "${idx_template_management}" == *"true"* ]]; then
-    idx_template_management_is_enabled=True
-    curl -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: application/json' -d'
+function enable_indexing_and_geoip() {
+    switch=$1
+    case $switch in
+    true|false)
+        ;;
+    *)
+        echo "Invalid argument: $switch"
+        exit 1
+        ;;
+    esac
+    curl -f -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: application/json' -d'
     {
       "persistent": {
-        "xpack.profiling.templates.enabled": false
+        "ingest.geoip.downloader.enabled": '$switch',
+        "indices.lifecycle.history_index_enabled": '$switch'
       }
     }
     '
+}
+
+function switch_ilm() {
+    switch=$1
+    case $switch in
+    start|stop)
+        ;;
+    *)
+        echo "Invalid argument: $1"
+        exit 1
+        ;;
+    esac
+    curl -f -s -X POST "${ES_ENDPOINT}/_ilm/${switch}?pretty"
+}
+
+function switch_ml_upgrading() {
+    switch=$1
+    case $switch in
+    true|false)
+        ;;
+    *)
+        echo "Invalid argument: $1"
+        exit 1
+        ;;
+    esac
+    roles=$(curl -f -s -X GET "${ES_ENDPOINT}/_nodes/*?filter_path=nodes.*.roles&pretty")
+    if [[ $roles != *"\"ml\""* ]]; then
+        echo "No ml role found, skip switch ml upgrading"
+        return
+    fi
+    curl -f -s -X POST "${ES_ENDPOINT}/_ml/set_upgrade_mode?enabled=${switch}&pretty"
+}
+
+function enable_monitoring_collections() {
+    switch=$1
+    case $switch in
+    true|false)
+        ;;
+    *)
+        echo "Invalid argument: $1"
+        exit 1
+        ;;
+    esac
+    curl -f -s -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: application/json' -d'
+    {
+      "persistent": {
+        "xpack.monitoring.collection.enabled": '$switch'
+      }
+    }
+    '
+}
+
+function switch_watcher() {
+    switch=$1
+    case $switch in
+    start|stop)
+        ;;
+    *)
+        echo "Invalid argument: $1"
+        exit 1
+        ;;
+    esac
+    curl -f -s -X POST "${ES_ENDPOINT}/_watcher/_${switch}?pretty"
+}
+
+function enable_universal_profiling() {
+    switch=$1
+    case $switch in
+    true|false)
+        ;;
+    *)
+        echo "Invalid argument: $1"
+        exit 1
+        ;;
+    esac
+    curl -f -s -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: application/json' -d'
+    {
+      "persistent": {
+        "xpack.profiling.templates.enabled": '$switch'
+      }
+    }
+   '
+}
+
+function enable_destructive_requires_name() {
+    switch=$1
+    case $switch in
+    true|false|null)
+        ;;
+    *)
+        echo "Invalid argument: $1"
+        exit 1
+        ;;
+    esac
+    curl -f -s -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: application/json' -d'
+    {
+      "persistent": {
+        "action.destructive_requires_name": '$switch'
+      }
+    }
+    '
+}
+
+# Temporarily stop indexing and turn off the following features:
+# GeoIP database downloader and ILM history store
+enable_indexing_and_geoip false
+
+# ILM
+switch_ilm stop
+
+# Machine Learning
+switch_ml_upgrading true
+
+# Monitoring
+enable_monitoring_collections false
+
+# Watcher
+switch_watcher stop
+
+# Universal Profiling
+# if Universal Profiling index template management is enabled, we should also disable Universal Profiling index template management.
+idx_template_management=$(curl -X GET "${ES_ENDPOINT}/_cluster/settings?filter_path=**.xpack.profiling.templates.enabled&include_defaults=true&pretty")
+if [[ "${idx_template_management}" == *"true"* ]]; then
+    enable_universal_profiling false
 fi
 
 # Disable destructive_requires_name
-curl -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: application/json' -d'
-{
-  "persistent": {
-    "action.destructive_requires_name": false
-  }
-}
-'
+enable_destructive_requires_name false
 
 # Delete all existing data streams on the cluster.
-curl -X DELETE "${ES_ENDPOINT}/_data_stream/*?expand_wildcards=all&pretty"
+curl -f -s -X DELETE "${ES_ENDPOINT}/_data_stream/*?expand_wildcards=all&pretty"
 
 # Delete all existing indices on the cluster.
-curl -X DELETE "${ES_ENDPOINT}/*?expand_wildcards=all&pretty"
+curl -f -s -X DELETE "${ES_ENDPOINT}/*?expand_wildcards=all&pretty"
 
 # Restore the entire snapshot.
-curl -X POST "${ES_ENDPOINT}/_snapshot/${REPOSITORY}/${backup_name}/_restore?pretty" -H 'Content-Type: application/json' -d'
+curl -f -s -X POST "${ES_ENDPOINT}/_snapshot/${REPOSITORY}/${backup_name}/_restore?pretty" -H 'Content-Type: application/json' -d'
 {
   "indices": "*",
   "include_global_state": true
 }
 '
 
-curl -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: application/json' -d'
-{
-  "persistent": {
-    "ingest.geoip.downloader.enabled": true,
-    "indices.lifecycle.history_index_enabled": true
-  }
-}
-'
+enable_indexing_and_geoip true
 
-curl -X POST "${ES_ENDPOINT}/_ilm/start?pretty"
+switch_ilm start
 
-curl -X POST "${ES_ENDPOINT}/_ml/set_upgrade_mode?enabled=false&pretty"
+switch_ml_upgrading false
 
-curl -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: application/json' -d'
-{
-  "persistent": {
-    "xpack.monitoring.collection.enabled": true
-  }
-}
-'
+enable_monitoring_collections true
 
-curl -X POST "${ES_ENDPOINT}/_watcher/_start?pretty"
+switch_watcher start
 
-if [ "${idx_template_management_is_enabled}" = "True" ]; then
-    curl -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: application/json' -d'
-    {
-      "persistent": {
-        "xpack.profiling.templates.enabled": true
-      }
-    }
-    '
+if [[ "${idx_template_management}" == *"true"* ]]; then
+    enable_universal_profiling true
 fi
 
-curl -X PUT "${ES_ENDPOINT}/_cluster/settings?pretty" -H 'Content-Type: application/json' -d'
-{
-  "persistent": {
-    "action.destructive_requires_name": null
-  }
-}
-'
+enable_destructive_requires_name null
