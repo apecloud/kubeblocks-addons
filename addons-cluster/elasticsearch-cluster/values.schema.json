@@ -10,16 +10,6 @@
       "minimum": 1,
       "maximum": 5
     },
-    "mode": {
-      "title": "Mode",
-      "description": "Cluster topology mode.",
-      "type": "string",
-      "default": "multi-node",
-      "enum": [
-        "single-node",
-        "multi-node"
-      ]
-    },
     "terminationPolicy": {
       "title": "TerminationPolicy",
       "description": "The policy of termination.",
