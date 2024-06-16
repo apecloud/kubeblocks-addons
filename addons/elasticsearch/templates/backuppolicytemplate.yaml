@@ -8,15 +8,22 @@ metadata:
 spec:
   clusterDefinitionRef: elasticsearch
   backupPolicies:
-  - componentDefRef: elasticsearch
+  - componentDefs:
+    - elasticsearch
     backupMethods:
-    - name: volume-snapshot
-      snapshotVolumes: true
+    - name: full-backup
+      target:
+        role: ""
+        strategy: Any
+      snapshotVolumes: false
+      actionSetName: elasticsearch-physical-backup
+    - name: setup-keystore
+      target:
+        role: ""
+        strategy: All
+      snapshotVolumes: false
+      actionSetName: elasticsearch-setup-keystore
       targetVolumes:
-        volumes:
-        - data
-    schedules:
-    - backupMethod: volume-snapshot
-      enabled: false
-      cronExpression: "0 18 * * 0"
-      retentionPeriod: 7d
+        volumeMounts:
+        - name: data
+          mountPath: /usr/share/elasticsearch/data

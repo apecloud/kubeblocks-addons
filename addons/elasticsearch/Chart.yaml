@@ -15,7 +15,7 @@ type: application
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
 # Versions are expected to follow Semantic Versioning (https://semver.org/)
-version: 0.8.0
+version: 0.9.0
 
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application. Versions are not expected to
@@ -24,6 +24,6 @@ version: 0.8.0
 appVersion: "8.8.2"   # helm search repo bitnami/elasticsearch
 
 annotations:
-  addon.kubeblocks.io/kubeblocks-version: ">=0.8.0"
+  addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
   addon.kubeblocks.io/model: "search-engine"
   addon.kubeblocks.io/provider: "community"

@@ -74,23 +74,3 @@ ingress:
 
 service:
   type: ClusterIP
-
-components:
-- name: master
-  roles:
-  - master
-- name: data
-  roles:
-  - data
-- name: ingest
-  roles:
-  - ingest
-- name: transform
-  roles:
-  - transform
-- name: single-node
-  roles:
-  - master
-  - data
-  - ingest
-  - transform
