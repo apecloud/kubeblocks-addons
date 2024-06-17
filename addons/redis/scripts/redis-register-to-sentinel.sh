@@ -242,6 +242,7 @@ register_to_sentinel_wrapper() {
 
 {{- if index $redis_sentinel_component_spec "replicas" }}
   echo "redis sentinel component replicas found, register to sentinel."
+  sleep 30000
   register_to_sentinel_wrapper
 {{- else }}
   echo "redis sentinel component replicas not found, skip register to sentinel."
