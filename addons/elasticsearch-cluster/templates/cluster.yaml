@@ -1,0 +1,22 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+  annotations:
+    kubeblocks.io/extra-env: '{"mdit-roles":"master,data,ingest,transform"}'
+spec:
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  clusterDefinitionRef: elasticsearch
+  clusterVersionRef: elasticsearch-8.8.2
+  {{- include "kblib.affinity" . | indent 2 }}
+  componentSpecs:
+    - name: mdit # user-defined
+      componentDef: elasticsearch # ref clusterdefinition componentDefs.name
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+      replicas: {{ .Values.replicas | default 1 }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
+      {{- include "kblib.componentServices" . | indent 6 }}
