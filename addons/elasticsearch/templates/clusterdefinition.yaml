@@ -5,15 +5,411 @@ metadata:
   labels:
     {{- include "elasticsearch.labels" . | nindent 4 }}
 spec:
-  topologies:
-  - name: cluster
-    components:
-    - name: master
-      compDef: elasticsearch
-    - name: data
-      compDef: elasticsearch
-    - name: ingest
-      compDef: elasticsearch
-    - name: transform
-      compDef: elasticsearch
-    default: true
+  type: elasticsearch
+  connectionCredential:
+    username: root
+    password: "$(RANDOM_PASSWD)"
+    endpoint: "https://$(SVC_FQDN):$(SVC_PORT_rest-api)"
+    host: "$(SVC_FQDN)"
+    port: "$(SVC_PORT_rest-api)"
+  
+  componentDefs:
+    # single-node
+    - name: elasticsearch
+      characterType: elasticsearch
+      configSpecs: 
+      - name: elasticsearch-config-template
+        templateRef: {{ include "elasticsearch.name" . }}-config
+        volumeName: elasticsearch-config  
+        namespace: {{ $.Release.Namespace }}
+      workloadType: Stateful
+      scriptSpecs:
+      - name: elasticsearch-scripts
+        templateRef: {{ include "elasticsearch.name" . }}-scripts
+        namespace: {{ .Release.Namespace }}
+        volumeName: scripts
+        defaultMode: 0555
+
+      service: # Source: elasticsearch/templates/service.yaml   -> coordinating-only
+        ports:
+          - name: rest-api  # tcp
+            port: 9200
+            targetPort: rest-api
+          - name: transport  # tcp
+            port: 9300
+            targetPort: transport
+          - name: metrics
+            port: 9114
+            targetPort: metrics
+      volumeTypes:
+        - name: data
+          type: data
+
+      podSpec:
+        volumes:
+        - name: plugins
+          emptyDir: {}
+        initContainers:
+        - name: sysctl
+          imagePullPolicy: IfNotPresent
+          command:
+          - sh   
+          - -c
+          - |
+            set -xe
+            DESIRED="262144"
+            CURRENT=$(sysctl -n vm.max_map_count)
+            if [ "$DESIRED" -gt "$CURRENT" ]; then
+              sysctl -w vm.max_map_count=$DESIRED
+            fi
+          securityContext:
+            runAsUser: 0
+            privileged: true
+        - name: prepare-plugins
+          imagePullPolicy: IfNotPresent
+          command:
+          - sh
+          - -c
+          - |
+            if [ -d /plugins ]; then
+              echo "prepare plugins: $(ls /plugins)"
+              cp -r /plugins/* /tmp/plugins/
+            else
+              echo "there is no plugins"
+            fi
+          securityContext:
+            runAsUser: 0
+            privileged: true
+          volumeMounts:
+          - mountPath: /tmp/plugins
+            name: plugins
+        containers:
+          - name: elasticsearch
+            imagePullPolicy: IfNotPresent
+            command:
+            - sh
+            - -c
+            - |
+              sh /mnt/elastic-internal/scripts/install-plugins.sh
+              /bin/tini -- /usr/local/bin/docker-entrypoint.sh
+            securityContext:
+              runAsNonRoot: true
+              runAsUser: 1001
+
+            readinessProbe:
+              tcpSocket:
+                port: 9200
+              periodSeconds: 5
+              timeoutSeconds: 3
+              failureThreshold: 3
+
+            startupProbe:
+              tcpSocket:
+                port: 9200
+              initialDelaySeconds: 5
+              periodSeconds: 10
+              timeoutSeconds: 3
+              failureThreshold: 30
+
+            ports:
+            - name: rest-api
+              containerPort: 9200
+            - name: transport
+              containerPort: 9300
+            - name: metrics
+              containerPort: 9114
+
+            env: 
+            - name: MY_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: BITNAMI_DEBUG
+              value: "true"
+            - name: ELASTICSEARCH_CLUSTER_NAME
+              value: "$(KB_CLUSTER_NAME)"
+            - name: ELASTICSEARCH_IS_DEDICATED_NODE  # is dedicated node
+              value: "no"
+            - name: ELASTICSEARCH_NODE_ROLES  # node type when behaving as a 'dedicated node'
+              value: ""  
+            - name: ELASTICSEARCH_TRANSPORT_PORT_NUMBER
+              value: "9300"
+            - name: ELASTICSEARCH_HTTP_PORT_NUMBER
+              value: "9200"
+            - name: ELASTICSEARCH_CLUSTER_HOSTS
+              value: ""
+            - name: ELASTICSEARCH_CLUSTER_MASTER_SVC
+              value: "$(KB_CLUSTER_NAME)-$(KB_COMP_NAME)-0"
+            - name: ELASTICSEARCH_ADVERTISED_HOSTNAME
+              value: "$(KB_POD_NAME).$(KB_CLUSTER_COMP_NAME)-headless.$(KB_NAMESPACE).svc.cluster.local"
+            - name: ELASTICSEARCH_HEAP_SIZE
+              value: "128m"
+            volumeMounts:
+              - mountPath: /usr/share/elasticsearch/data
+                name: data
+              - mountPath: /usr/share/elasticsearch/config/elasticsearch.yaml
+                subPath: elasticsearch.yaml
+                name: elasticsearch-config
+              - mountPath: /tmp/plugins
+                name: plugins
+              - mountPath: /mnt/elastic-internal/scripts
+                name: scripts
+          - name: metrics
+            env:
+              - name: SERVICE_PORT
+                value: "9114"
+            imagePullPolicy: IfNotPresent
+            command:
+              [ ]
+            args:
+              - --es.uri=http://127.0.0.1:9200
+              - --es.all
+              - --es.ssl-skip-verify
+              - --es.indices
+              - --es.shards
+
+# https://discuss.elastic.co/t/kibana-not-able-to-connect-to-elastic-master-in-kubernetes-from-elastic-helm/185759/5
+          - name: elasticsearch-master-graceful-termination-handler
+            imagePullPolicy: IfNotPresent
+            command:
+            - "sh"
+            - -c
+            - |
+              #!/usr/bin/env bash
+              set -e
+
+              http () {
+                  local path="${1}"
+                  if [ -n "${USERNAME}" ] && [ -n "${PASSWORD}" ]; then
+                    BASIC_AUTH="-u ${USERNAME}:${PASSWORD}"
+                  else
+                    BASIC_AUTH=''
+                  fi
+                  curl -XGET -s -k --fail ${BASIC_AUTH} https://$(KB_CLUSTER_NAME)-$(KB_COMP_NAME)-headless:9200:${path}
+              }
+
+              cleanup () {
+                while true ; do
+                  local master="$(http "/_cat/master?h=node" || echo "")"
+                  if [[ $master == "$(KB_CLUSTER_NAME)-$(KB_COMP_NAME)"* && $master != "${NODE_NAME}" ]]; then
+                    echo "This node is not master."
+                    break
+                  fi
+                  echo "This node is still master, waiting gracefully for it to step down"
+                  sleep 1
+                done
+
+                exit 0
+              }
+
+              trap cleanup TERM
+
+              sleep infinity &
+              wait $!
+
+ #  multi-node
+{{- range $role := .Values.roles }}
+    - name: {{ $role.name }}
+      characterType: elasticsearch
+#      configSpecs:
+#      - name: elasticsearch-config-template
+#        templateRef: elasticsearch-config-template
+#        volumeName: elasticsearch-config
+#        namespace: {{$.Release.Namespace}}
+      workloadType: Stateful
+      statefulSpec:
+        updateStrategy: BestEffortParallel
+      componentDefRef:
+        - componentDefName: master
+          componentRefEnv:
+          - name: ELASTICSEARCH_CLUSTER_MASTER_SVC
+            valueFrom:
+              type: ServiceRef
+          - name: ELASTICSEARCH_CLUSTER_MASTER_HOSTS
+            valueFrom:
+              type: HeadlessServiceRef
+              format: $(POD_NAME)
+              joinWith: " "
+        - componentDefName: data
+          componentRefEnv:
+          - name: ELASTICSEARCH_CLUSTER_DATA_SVC
+            valueFrom:
+              type: ServiceRef
+        - componentDefName: ingest
+          componentRefEnv:
+          - name: ELASTICSEARCH_CLUSTER_INGEST_SVC
+            valueFrom:
+              type: ServiceRef
+        - componentDefName: coordinating
+          componentRefEnv:
+          - name: ELASTICSEARCH_CLUSTER_COORDINATING_SVC
+            valueFrom:
+              type: ServiceRef
+
+      service: # Source: elasticsearch/templates/service.yaml   -> coordinating-only
+        ports:
+          - name: rest-api  # tcp
+            port: 9200
+            targetPort: rest-api
+          - name: transport  # tcp
+            port: 9300
+            targetPort: transport
+      volumeTypes:
+        - name: data
+          type: data
+
+      podSpec:
+        volumes:
+        - name: plugins
+          emptyDir: {}
+        initContainers:
+        - name: sysctl
+          imagePullPolicy: IfNotPresent
+          command:
+          - sh
+          - -c
+          - |
+            set -xe
+            DESIRED="262144"
+            CURRENT=$(sysctl -n vm.max_map_count)
+            if [ "$DESIRED" -gt "$CURRENT" ]; then
+              sysctl -w vm.max_map_count=$DESIRED
+            fi;
+            CURRENT=$(sysctl -n fs.file-max)$;
+            DESIRED="65536";
+            if [ "$DESIRED" -gt "$CURRENT" ]; then
+                sysctl -w fs.file-max=$DESIRED;
+            fi;
+          securityContext:
+            runAsUser: 0
+            privileged: true
+        - name: install-plugins
+          imagePullPolicy: IfNotPresent
+          command:
+          - sh
+          - -c
+          - |
+            if [ -d /plugins ]; then
+              echo "prepare plugins: $(ls /plugins)"
+              cp -r /plugins/* /tmp/plugins/
+            else
+              echo "there is no plugins"
+            fi
+          securityContext:
+            runAsUser: 0
+            privileged: true
+          volumeMounts:
+          - mountPath: /opt/bitnami/elasticsearch/plugins
+            name: plugins
+        containers:
+          - name: elasticsearch
+            imagePullPolicy: IfNotPresent
+            command:
+            - sh
+            - -c
+            - |
+              sh /mnt/elastic-internal/scripts/install-plugins.sh
+              /bin/tini -- /usr/local/bin/docker-entrypoint.sh
+            securityContext:
+              runAsNonRoot: true
+              runAsUser: 1001
+            startupProbe:
+              tcpSocket:
+                port: 9300
+              initialDelaySeconds: 20
+              periodSeconds: 10
+              timeoutSeconds: 5
+              failureThreshold: 30
+            ports:
+            - name: rest-api
+              containerPort: 9200
+            - name: transport
+              containerPort: 9300
+            env:
+            - name: MY_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: BITNAMI_DEBUG
+              value: "true"
+            - name: ELASTICSEARCH_CLUSTER_NAME
+              value: "$(KB_CLUSTER_NAME)"
+            - name: ELASTICSEARCH_IS_DEDICATED_NODE  # is dedicated node
+              value: "yes"
+            - name: ELASTICSEARCH_NODE_ROLES  # node type when behaving as a 'dedicated node'
+              value: {{ $role.role | quote }}
+            - name: ELASTICSEARCH_TRANSPORT_PORT_NUMBER
+              value: "9300"
+            - name: ELASTICSEARCH_HTTP_PORT_NUMBER
+              value: "9200"
+            - name: ELASTICSEARCH_CLUSTER_HOSTS  # discovery.seed_hosts
+              value: "$(ELASTICSEARCH_CLUSTER_MASTER_SVC),$(ELASTICSEARCH_CLUSTER_DATA_SVC),$(ELASTICSEARCH_CLUSTER_INGEST_SVC),$(ELASTICSEARCH_CLUSTER_COORDINATING_SVC)"
+            - name: ELASTICSEARCH_ADVERTISED_HOSTNAME
+              value: "$(KB_POD_NAME).$(KB_CLUSTER_COMP_NAME)-headless.$(KB_NAMESPACE).svc.cluster.local"
+            - name: ELASTICSEARCH_HEAP_SIZE   # TODO this should be calculated based on the memory available to the pod
+              value: {{ $role.heapSize | quote }}
+            livenessProbe:
+              failureThreshold: 5
+              initialDelaySeconds: 180
+              periodSeconds: 10
+              successThreshold: 1
+              timeoutSeconds: 5
+              tcpSocket:
+                port: rest-api
+            readinessProbe:
+              failureThreshold: 5
+              initialDelaySeconds: 90
+              periodSeconds: 10
+              successThreshold: 1
+              timeoutSeconds: 5
+              exec:
+                command:
+                - /opt/bitnami/scripts/elasticsearch/healthcheck.sh
+            volumeMounts:
+              - mountPath: /bitnami/elasticsearch/data
+                name: data
+              - mountPath: /opt/bitnami/elasticsearch/plugins
+                name: plugins
+#              - mountPath: /opt/bitnami/elasticsearch/config/elasticsearch.yml
+#                subPath: elasticsearch.yaml
+#                name: elasticsearch-config
+
+# https://discuss.elastic.co/t/kibana-not-able-to-connect-to-elastic-master-in-kubernetes-from-elastic-helm/185759/5
+          - name: elasticsearch-master-graceful-termination-handler
+            imagePullPolicy: IfNotPresent
+            command:
+            - "sh"
+            - -c
+            - |
+              #!/usr/bin/env bash
+              set -e
+
+              http () {
+                  local path="${1}"
+                  if [ -n "${USERNAME}" ] && [ -n "${PASSWORD}" ]; then
+                    BASIC_AUTH="-u ${USERNAME}:${PASSWORD}"
+                  else
+                    BASIC_AUTH=''
+                  fi
+                  curl -XGET -s -k --fail ${BASIC_AUTH} https://$(KB_CLUSTER_NAME)-$(KB_COMP_NAME)-headless:9200:${path}
+              }
+
+              cleanup () {
+                while true ; do
+                  local master="$(http "/_cat/master?h=node" || echo "")"
+                  if [[ $master == "$(KB_CLUSTER_NAME)-$(KB_COMP_NAME)"* && $master != "${NODE_NAME}" ]]; then
+                    echo "This node is not master."
+                    break
+                  fi
+                  echo "This node is still master, waiting gracefully for it to step down"
+                  sleep 1
+                done
+
+                exit 0
+              }
+
+              trap cleanup TERM
+
+              sleep infinity &
+              wait $!
+{{- end }}

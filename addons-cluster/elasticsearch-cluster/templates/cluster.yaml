@@ -1,22 +1,20 @@
-{{- if eq "single-node" $.Values.mode }}
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: Cluster
 metadata:
   name: {{ include "kblib.clusterName" . }}
   namespace: {{ .Release.Namespace }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+  annotations:
+    kubeblocks.io/extra-env: '{"mdit-roles":"master,data,ingest,transform"}'
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
-  clusterDefinitionRef: elasticsearch
-  clusterVersionRef: {{ .Values.version }}
   componentSpecs:
-    - name: elasticsearch # user-defined
-      componentDef: es-single-node # ref clusterdefinition componentDefs.name
+    - name: mdit # user-defined
+      componentDef: elasticsearch # ref clusterdefinition componentDefs.name
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.replicas | default 1 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
       {{- include "kblib.componentServices" . | indent 6 }}
-{{- end }}
