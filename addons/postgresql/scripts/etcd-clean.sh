@@ -4,9 +4,29 @@ if [ -z "$ETCD_SERVER" ]; then
   exit 0
 fi
 
-echo "Stopping Patroni processes..."
-pkill -f patroni
-sleep 3
+IFS=',' read -ra ADDR <<< "$KB_CLUSTER_COMPONENT_POD_IP_LIST"
+FIRST_IP=${ADDR[0]}
+
+PATRONI_API_URL="http://$FIRST_IP:8008/patroni"
+PATRONI_SHUTDOWN_URL="http://$FIRST_IP:8008/shutdown"
+
+status_code=$(curl -s -o /dev/null -w "%{http_code}" $PATRONI_API_URL)
+
+if [ "$status_code" -ne 200 ]; then
+  echo "Failed to access Patroni API at $PATRONI_API_URL. HTTP response code: $status_code."
+  exit 0
+fi
+
+response=$(curl -s -o /dev/null -w "%{http_code}" -XPOST $PATRONI_SHUTDOWN_URL)
+
+if [ "$response" -eq 200 ]; then
+  echo "Successfully terminated Patroni service at $FIRST_IP."
+else
+  echo "Failed to terminate Patroni service at $FIRST_IP. HTTP response code: $response."
+  sleep 10
+  exit 0
+fi
+sleep 10
 
 export ETCDCTL_API=${ETCD_API:-'2'}
 
