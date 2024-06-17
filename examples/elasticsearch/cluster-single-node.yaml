@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: Cluster
 metadata:
-  name: elasticsearch-cluster1
+  name: elasticsearch-cluster
   namespace: default
 spec:
   # Specifies the behavior when a Cluster is deleted.

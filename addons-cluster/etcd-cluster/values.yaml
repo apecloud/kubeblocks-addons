@@ -1,0 +1,74 @@
+nameOverride: ""
+fullnameOverride: ""
+
+## @param terminationPolicy define Cluster termination policy. One of DoNotTerminate, Halt, Delete, WipeOut.
+##
+terminationPolicy: Delete
+
+## Monitoring configurations
+monitor:
+  ## @param monitor.enabled if `true`, enable Cluster monitor capabilities
+  ##
+  enabled: false
+
+## @param tolerations define global Tolerations for the cluster all pod's assignment
+## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+##
+tolerations: []
+
+## @param topologySpreadConstraints Topology Spread Constraints for pod assignment spread across your cluster among failure-domains. Evaluated as a template
+## Ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/#spread-constraints-for-pods
+##
+topologyKeys:
+  - kubernetes.io/hostname
+
+## @param affinity is affinity setting for etcd cluster pods assignment
+##
+affinity: {}
+
+replicas: 3
+
+## Service configurations
+##
+service:
+  name:
+  ## @param service.type etcd service type, valid options are ExternalName, ClusterIP, NodePort, and LoadBalancer.
+  ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
+  ##
+  type: ClusterIP
+  port: 2379
+  role: leader
+
+resources: { }
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+# requests:
+#   cpu: 100m
+#   memory: 128Mi
+
+## Enable persistence using Persistent Volume Claims
+## ref: https://kubernetes.io/docs/user-guide/persistent-volumes/
+##
+persistence:
+  ## @param shard[*].persistence.enabled Enable persistence using Persistent Volume Claims
+  ##
+  enabled: true
+  ## `data` volume settings
+  ##
+  data:
+    ## @param shard[*].persistence.data.storageClassName Storage class of backing PVC
+    ## If defined, storageClassName: <storageClass>
+    ## If set to "-", storageClassName: "", which disables dynamic provisioning
+    ## If undefined (the default) or set to null, no storageClassName spec is
+    ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+    ##   GKE, AWS & OpenStack)
+    ##
+    storageClassName:
+    ## @param shard[*].persistence.size Size of data volume
+    ##
+    size: 1Gi

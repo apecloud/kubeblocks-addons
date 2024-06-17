@@ -1,0 +1,128 @@
+name: Release Addons Cluster Chart
+
+on:
+  workflow_dispatch:
+    inputs:
+      chart_dir:
+        description: 'release specify chart dir or empty to release all'
+        required: false
+        default: ''
+        type: choice
+        options:
+          - ""
+          - apecloud-mysql-cluster
+          - apecloud-postgresql-cluster
+          - camellia-redis-proxy-cluster
+          - clickhouse-cluster
+          - doris-cluster
+          - elasticsearch-cluster
+          - etcd-cluster
+          - flink-cluster
+          - foxlake-cluster
+          - greatsql-cluster
+          - greptimedb-cluster
+          - halo-cluster
+          - kafka-cluster
+          - kblib
+          - kblib-v2
+          - llm-cluster
+          - mariadb-cluster
+          - milvus-cluster
+          - minio-cluster
+          - mogdb-cluster
+          - mongodb-cluster
+          - mongodb-sharding-cluster
+          - mysql-cluster
+          - nebula-cluster
+          - neon-cluster
+          - oceanbase-ce-cluster
+          - official-postgresql-cluster
+          - opengauss-cluster
+          - openldap-cluster
+          - opensearch-cluster
+          - oracle-cluster
+          - orchestrator-cluster
+          - orioledb-cluster
+          - polardbx-cluster
+          - postgresql-cluster
+          - pulsar-cluster
+          - qdrant-cluster
+          - redis-cluster
+          - risingwave-cluster
+          - solr-cluster
+          - starrocks-ce-cluster
+          - tdengine-cluster
+          - tidb-cluster
+          - victoria-metrics-cluster
+          - weaviate-cluster
+          - xinference-cluster
+          - yashandb-cluster
+          - zookeeper-cluster
+      chart_version:
+        description: 'release specify chart version or empty to release default'
+        required: false
+        default: ''
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
+run-name: Release Chart ${{ inputs.chart_dir }} ${{ inputs.chart_version }}
+
+jobs:
+  release-chart:
+    if: ${{ inputs.chart_dir != '' }}
+    uses: apecloud/apecloud-cd/.github/workflows/release-charts.yml@v0.1.52
+    with:
+      VERSION: "${{ inputs.chart_version }}"
+      CHART_DIR: "addons-cluster"
+      SPECIFY_CHART: "${{ inputs.chart_dir }}"
+      APECD_REF: "v0.1.52"
+    secrets: inherit
+
+  release-chart-all:
+    if: ${{ inputs.chart_dir == '' }}
+    uses: apecloud/apecloud-cd/.github/workflows/release-charts.yml@v0.1.52
+    with:
+      VERSION: "${{ inputs.chart_version }}"
+      CHART_DIR: "addons-cluster"
+      SPECIFY_CHART: "${{ inputs.chart_dir }}"
+      APECD_REF: "v0.1.52"
+      ENABLE_JIHU: false
+    secrets: inherit
+
+  get-addons-chart-dir:
+    if: ${{ inputs.chart_dir == '' }}
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.get_addons_chart_dir.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: get addons chart dir
+        id: get_addons_chart_dir
+        run: |
+          addons_list=$(ls addons-cluster)
+          ADDONS_DIR=""
+          for addons_name in $( echo "$addons_list" ); do
+              if [[ -z "$ADDONS_DIR" ]]; then
+                  ADDONS_DIR="{\"addon-name\":\"$addons_name\"}"
+              else
+                  ADDONS_DIR="$ADDONS_DIR,{\"addon-name\":\"$addons_name\"}"
+              fi
+          done
+          echo "$ADDONS_DIR"
+          echo "matrix={\"include\":[$ADDONS_DIR]}" >> $GITHUB_OUTPUT
+
+
+  release-addons-chart-jihu:
+    needs: [ get-addons-chart-dir ]
+    if: ${{ inputs.chart_dir == '' }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.get-addons-chart-dir.outputs.matrix) }}
+    uses: apecloud/apecloud-cd/.github/workflows/release-charts-jihu.yml@v0.1.52
+    with:
+      VERSION: "${{ inputs.chart_version }}"
+      CHART_DIR: "addons-cluster"
+      SPECIFY_CHART: "${{ matrix.addon-name }}"
+      APECD_REF: "v0.1.52"
+    secrets: inherit

@@ -21,7 +21,7 @@
 {{- $servers := "" }}
 {{- range $i, $e := until $replicas }}
   {{- $podFQDN := printf "%s-%s-%d.%s-%s-headless.%s.svc.%s" $clusterName $component.name $i $clusterName $component.name $namespace $.clusterDomain }}
-  {{- $server := printf "--kafka.server=%s:9092 \\\n" $podFQDN }}
+  {{- $server := printf "--kafka.server=%s:9094 \\\n" $podFQDN }}
   {{- $servers = printf "%s\t%s" $servers $server }}
 {{- end }}
 {{ $servers = trimSuffix " \\\n" $servers}}

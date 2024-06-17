@@ -9,4 +9,3 @@ image:
 
 nameOverride: ""
 fullnameOverride: ""
-clusterVersionOverride: "2.7.4"

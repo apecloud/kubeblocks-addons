@@ -9,6 +9,11 @@ spec:
   description: wescale controller
   serviceKind: wescale-ctrl
   serviceVersion: "0.2.7"
+  serviceRefDeclarations:
+    - name: etcd
+      serviceRefDeclarationSpecs:
+        - serviceKind: etcd
+          serviceVersion: "^*"
   scripts:
     - name: apecloud-mysql-scripts
       templateRef: {{ include "apecloud-mysql.cmScriptsName" . }}
@@ -20,35 +25,14 @@ spec:
     - name: {{ $name }}
       filePathPattern: {{ $pattern }}
     {{- end }}
+  lifecycleActions:
+    preTerminate:
+      customHandler:
+        image: {{ .Values.wesqlscale.image.registry | default .Values.image.registry }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
+        exec:
+          command: ["/scripts/etcd-clean.sh"]
   runtime:
     containers:
-      - name: etcd
-        image: {{ .Values.wesqlscale.image.registry | default .Values.image.registry }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
-        imagePullPolicy: {{ default "IfNotPresent" .Values.wesqlscale.image.pullPolicy }}
-        ports:
-          - containerPort: 2379
-            name: etcd-client
-        env:
-          - name: CELL
-            value: {{ .Values.wesqlscale.cell | default "zone1" | quote }}
-          - name: ETCDCTL_API
-            value: "2"
-          - name: ETCD_SERVER
-            value: "$(KB_CLUSTER_NAME)-wescale-ctrl-headless"
-          - name: ETCD_PORT
-            value: "2379"
-          - name: TOPOLOGY_FLAGS
-            value: "--topo_implementation etcd2 --topo_global_server_address $(ETCD_SERVER):$(ETCD_PORT) --topo_global_root /vitess/global"
-        command: ["/scripts/etcd.sh"]
-        volumeMounts:
-          - name: scripts
-            mountPath: /scripts
-          - name: data
-            mountPath: /vtdataroot
-        lifecycle:
-          postStart:
-            exec:
-              command: ["/scripts/etcd-post-start.sh"]
       - name: vtctld
         image: {{ .Values.wesqlscale.image.registry | default .Values.image.registry }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.wesqlscale.image.pullPolicy }}
@@ -67,11 +51,9 @@ spec:
           - name: VTCTLD_GRPC_PORT
             value: "15999"
           - name: ETCD_SERVER
-            value: "localhost"
-          - name: ETCD_PORT
-            value: "2379"
-          - name: TOPOLOGY_FLAGS
-            value: "--topo_implementation etcd2 --topo_global_server_address $(ETCD_SERVER):$(ETCD_PORT) --topo_global_root /vitess/global"
+            value: $(SERVICE_ETCD_ENDPOINT)
+          - name: ETCDCTL_API
+            value: "3"
         command: ["/scripts/vtctld.sh"]
         volumeMounts:
           - name: scripts
@@ -93,6 +75,11 @@ spec:
           name: root
           optional: false
           password: Required
+    - name: SERVICE_ETCD_ENDPOINT
+      valueFrom:
+        serviceRefVarRef:
+          name: etcd
+          endpoint: Required
 ---
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
@@ -105,6 +92,11 @@ spec:
   description: wescale
   serviceKind: wescale
   serviceVersion: "0.2.7"
+  serviceRefDeclarations:
+    - name: etcd
+      serviceRefDeclarationSpecs:
+        - serviceKind: etcd
+          serviceVersion: "^*"
   scripts:
     - name: apecloud-mysql-scripts
       templateRef: {{ include "apecloud-mysql.cmScriptsName" . }}
@@ -156,11 +148,7 @@ spec:
           - name: VTGATE_GRPC_PORT
             value: "15991"
           - name: ETCD_SERVER
-            value: "$(KB_CLUSTER_NAME)-wescale-ctrl-headless"
-          - name: ETCD_PORT
-            value: "2379"
-          - name: TOPOLOGY_FLAGS
-            value: "--topo_implementation etcd2 --topo_global_server_address $(ETCD_SERVER):$(ETCD_PORT) --topo_global_root /vitess/global"
+            value: $(SERVICE_ETCD_ENDPOINT)
           - name: MYSQL_UNIX_PORT
             value: "/tmp/mysql.sock"
         command: ["/scripts/vtgate.sh"]
@@ -174,7 +162,6 @@ spec:
   exporter:
     scrapePath: /metrics
     scrapePort: webport
-
   vars:
     - name: MYSQL_USER
       valueFrom:
@@ -188,5 +175,10 @@ spec:
         credentialVarRef:
           compDef: {{ include "apecloud-mysql.componentDefName" . }}
           name: root
-          optional: false
+          optional: false 
           password: Required
+    - name: SERVICE_ETCD_ENDPOINT
+      valueFrom:
+        serviceRefVarRef:
+          name: etcd
+          endpoint: Required

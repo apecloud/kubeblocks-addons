@@ -13,3 +13,5 @@ data:
     {{- .Files.Get "scripts/readiness-probe-script.sh" | nindent 4 }}
   suspend.sh: |-
     {{- .Files.Get "scripts/suspend.sh" | nindent 4 }}
+  install-plugins.sh: |-
+    {{- .Files.Get "scripts/install-plugins.sh" | nindent 4 }}

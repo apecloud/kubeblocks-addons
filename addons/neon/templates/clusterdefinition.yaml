@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ClusterDefinition
 metadata:
-  name: neon
+  name: neon 
   labels:
     {{- include "neon.labels" . | nindent 4 }}
 spec:
@@ -12,6 +12,31 @@ spec:
     endpoint: "$(SVC_FQDN):$(SVC_PORT_postgresql)"
     host: "$(SVC_FQDN)"
     port: "$(SVC_PORT_postgresql)"
+  topologies:
+    - name: default
+      components:
+        - name: neon-pageserver
+          compDef: {{ include "neon-pageserver.componentDefName" . }}
+        - name: neon-safekeeper
+          compDef: {{ include "neon-safekeeper.componentDefName" . }}
+        - name: neon-broker
+          compDef: {{ include "neon-storagebroker.componentDefName" . }}
+        - name: neon-compute
+          compDef: {{ include "neon-compute.componentDefName" . }}
+      default: true
+      orders:  
+        provision:  
+          - neon-broker
+          - neon-safekeeper,neon-pageserver
+          - neon-compute
+        terminate:  
+          - neon-compute
+          - neon-safekeeper,neon-pageserver
+          - neon-broker
+        update: 
+          - neon-broker
+          - neon-safekeeper,neon-pageserver
+          - neon-compute
   componentDefs:
     - name: neon-compute
       workloadType: Stateful
@@ -76,8 +101,7 @@ spec:
                 set -ex
                 trap : TERM INT
                 /compute.sh
-
-    - name: neon-storagebroker
+    - name: neon-broker
       workloadType: Stateful
       characterType: storagebroker
       podSpec:
@@ -95,7 +119,7 @@ spec:
       characterType: safekeeper
       componentDefRef:
         - &storagebrokerRef
-          componentDefName: neon-storagebroker
+          componentDefName: neon-broker
           componentRefEnv:
             - name: NEON_BROKER_SVC
               valueFrom:

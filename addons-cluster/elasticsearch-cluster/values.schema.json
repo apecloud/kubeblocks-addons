@@ -1,0 +1,209 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "replicaCount": {
+      "title": "ReplicaCount",
+      "description": "The number of replicas.",
+      "type": "integer",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 5
+    },
+    "terminationPolicy": {
+      "title": "TerminationPolicy",
+      "description": "The policy of termination.",
+      "type": "string",
+      "default": "Delete",
+      "enum": [
+        "Delete",
+        "DoNotTerminate",
+        "Halt",
+        "WipeOut"
+      ]
+    },
+    "imagePullSecrets": {
+      "title": "ImagePullSecrets",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "nameOverride": {
+      "title": "NameOverride",
+      "description": "The override name.",
+      "type": "string",
+      "default": ""
+    },
+    "fullnameOverride": {
+      "title": "FullnameOverride",
+      "description": "The override fullname.",
+      "type": "string",
+      "default": ""
+    },
+    "resources": {
+      "title": "resources",
+      "description": "If you do want to specify resources, uncomment the following lines after 'resources:' in values.yaml",
+      "type": "object",
+      "properties": {
+        "limits": {
+          "type": "object",
+          "properties": {
+            "cpu": {
+              "title": "CPU",
+              "description": "CPU cores.",
+              "type": [
+                "string",
+                "number"
+              ],
+              "default": "100m",
+              "minimum": 0.1,
+              "maximum": 64
+            },
+            "memory": {
+              "title": "Memory(Gi)",
+              "description": "Memory, the unit is Gi",
+              "type": [
+                "string",
+                "number"
+              ],
+              "default": "128Mi",
+              "minimum": 0.125,
+              "maximum": 1000
+            }
+          }
+        },
+        "requests": {
+          "type": "object",
+          "title": "limits",
+          "description": "Resources requests.",
+          "properties": {
+            "cpu": {
+              "title": "CPU",
+              "description": "CPU cores.",
+              "type": [
+                "string",
+                "number"
+              ],
+              "default": "100m",
+              "minimum": 0.1,
+              "maximum": 64
+            },
+            "memory": {
+              "title": "Memory(Gi)",
+              "description": "Memory, the unit is Gi",
+              "type": [
+                "string",
+                "number"
+              ],
+              "default": "128Mi",
+              "minimum": 0.125,
+              "maximum": 1000
+            }
+          }
+        }
+      }
+    },
+    "topologyKeys": {
+      "title": "TopologyKeys",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "default": "kubernetes.io/hostname"
+      }
+    },
+    "monitor": {
+      "title": "Monitor",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "persistence": {
+      "title": "Persistence",
+      "description": "Persistence config.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "storageClassName": {
+              "type": ["string", "null"],
+              "default": null
+            },
+            "size": {
+              "title": "Storage(Gi)",
+              "description": "Storage Size, the unit is Gi.",
+              "type": ["string", "number"],
+              "default": "1Gi",
+              "minimum": 1,
+              "maximum": 10000
+            }
+          }
+        }
+      }
+    },
+    "serviceAccount": {
+      "title": "ServiceAccount",
+      "description": "ServiceAccount",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": ["string", "null"],
+          "default": null
+        }
+      }
+    },
+    "ingress": {
+      "title": "Ingress",
+      "description": "Ingress.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "service": {
+      "title": "Service",
+      "description": "Service.",
+      "type": "object",
+      "default": {
+        "type": "ClusterIP"
+      },
+      "properties": {
+        "type": {
+          "type": "string",
+          "default": "ClusterIP"
+        }
+      }
+    },
+    "roles": {
+      "title": "Roles",
+      "description": "Roles for nodes.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "heapSize": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

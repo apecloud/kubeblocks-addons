@@ -1,0 +1,20 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: xinference
+spec:
+  compatibilityRules:
+  - compDefs:
+    - xinference
+    releases:
+    - 0.11.0
+    - 0.11.0-cpu
+  releases:
+  - name: 0.11.0
+    serviceVersion: 0.11.0
+    images:
+      xinference: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v0.11.0
+  - name: 0.11.0-cpu
+    serviceVersion: 0.11.0-cpu
+    images:
+      xinference: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v0.11.0-cpu

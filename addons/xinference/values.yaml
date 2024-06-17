@@ -4,4 +4,8 @@ image:
   # registry: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com
   registry: docker.io
   # Overrides the image tag whose default is the chart appVersion.
-  tag: latest
+  tag: v0.11.0
+
+# modelDir is the directory where the model is stored in the host.
+# If it is not empty, the modelDir will be mounted to /xinference/models in the container.
+modelDir: ""

@@ -5,78 +5,9 @@ metadata:
   labels:
     {{- include "etcd.labels" . | nindent 4}}
 spec:
-  type: etcd
-  componentDefs:
-    - name: etcd
-      characterType: etcd
-      workloadType: Consensus
-      rsmSpec:
-        roles:
-          - name: leader
-            accessMode: ReadWrite
-            isLeader: true
-            canVote: true
-          - name: follower
-            accessMode: Readonly
-            isLeader: false
-            canVote: true
-        roleProbe:
-          customHandler:
-            - image: quay.io/coreos/etcd:v3.5.6
-              command:
-                - bash
-                - -c
-                - |
-                  Status=$(etcdctl --endpoints=127.0.0.1:2379 endpoint status -w simple --command-timeout=300ms --dial-timeout=100m) &&
-                  IsLeader=$(echo $Status | awk -F ', ' '{print $5}') &&
-                  IsLearner=$(echo $Status | awk -F ', ' '{print $6}') &&
-                  if [ "true" = "$IsLeader" ]; then echo -n "leader"; elif [ "true" = "$IsLearner" ]; then echo -n "learner"; else echo -n "follower"; fi
-          roleUpdateMechanism: DirectAPIServerEventUpdate
-        memberUpdateStrategy: BestEffortParallel
-      service:
-        ports:
-          - name: client
-            port: 2379
-            targetPort: client
-      podSpec:
-        containers:
-          - name: etcd
-            imagePullPolicy: IfNotPresent
-            ports:
-              - containerPort: 2379
-                name: client
-              - containerPort: 2380
-                name: peer
-            volumeMounts:
-              - name: data
-                mountPath: /var/run/etcd
-            command:
-              - bin/sh
-              - -c
-              - |
-                echo "start etcd..."
-                PEERS=""
-                # TODO: clusterDomain 'cluster.local' requires configurable
-                DOMAIN=$KB_NAMESPACE".svc{{ .Values.clusterDomain }}"
-                SUBDOMAIN=${KB_CLUSTER_COMP_NAME}-headless
-                replicas=$(eval echo ${KB_POD_LIST} | tr ',' '\n')
-                for replica in ${replicas}; do
-                    host=${replica}.${SUBDOMAIN}.${DOMAIN}
-                    PEERS="${PEERS}${replica}=http://${host}:2380,"
-                done
-                PEERS=${PEERS%,}
-                # TODO: clusterDomain 'cluster.local' requires configurable
-                MY_PEER=$KB_POD_FQDN{{ .Values.clusterDomain }}
-                exec etcd --name ${HOSTNAME} \
-                --experimental-initial-corrupt-check=true \
-                --listen-peer-urls http://0.0.0.0:2380 \
-                --listen-client-urls http://0.0.0.0:2379 \
-                --advertise-client-urls http://${MY_PEER}:2379 \
-                --initial-advertise-peer-urls http://${MY_PEER}:2380 \
-                --initial-cluster ${PEERS} \
-                --data-dir /var/run/etcd/default.etcd
-  connectionCredential:
-    username: root
-    password: ""
-    endpoint: "$(SVC_FQDN):$(SVC_PORT_client)"
-    port: "$(SVC_PORT_client)"
+  topologies:
+    - name: default
+      default: true
+      components:
+        - name: etcd
+          compDef: etcd

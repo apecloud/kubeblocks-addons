@@ -140,7 +140,7 @@ spec:
           - |
             mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog}
             cp /usr/lib/mysql/plugin/ {{ .Values.dataMountPath }}/plugin -r
-        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
@@ -151,7 +151,7 @@ spec:
             cp -r /usr/bin/jq /kubeblocks/jq
             cp -r /scripts/orchestrator-client /kubeblocks/orchestrator-client
         image: {{ .Values.image.registry | default "docker.io" }}/apecloud/jq:1.7.4
-        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
         name: init-jq
         volumeMounts:
           - mountPath: /kubeblocks
@@ -162,7 +162,7 @@ spec:
           - /usr/local/bin/curl
           - /kubeblocks/curl
         image: {{ .Values.image.registry | default "docker.io" }}/apecloud/curl-static:8.7.1
-        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
         name: init-curl
         volumeMounts:
           - mountPath: /kubeblocks
@@ -173,7 +173,7 @@ spec:
           - /xtrabackup-2.4
           - /kubeblocks/xtrabackup
         image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:mysql
-        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
         name: init-xtrabackup
         volumeMounts:
           - mountPath: /kubeblocks
@@ -181,7 +181,7 @@ spec:
     containers:
       - name: mysql
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.7.44
-        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
         lifecycle:
           postStart:
             exec:
