@@ -27,3 +27,12 @@ spec:
         volumeMounts:
         - name: data
           mountPath: /usr/share/elasticsearch/data
+    schedules:
+    - backupMethod: full-backup
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d
+    - backupMethod: setup-keystore
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d
