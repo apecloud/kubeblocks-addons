@@ -2,12 +2,6 @@
   "$schema": "http://json-schema.org/schema#",
   "type": "object",
   "properties": {
-    "useLegacyCompDef": {
-      "type": "boolean",
-      "default": false,
-      "title": "useLegacyCompDef",
-      "description": "if useLegacyCompDef is false ,cluster will be rendered by compDef rather than componentDefRef in cluster definition"
-    },
     "version": {
       "title": "Version",
       "description": "Cluster version.",
