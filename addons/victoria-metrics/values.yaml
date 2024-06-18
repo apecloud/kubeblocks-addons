@@ -3,18 +3,19 @@
 # Declare variables to be passed into your templates.
 images:
   # Overrides the image tag whose default is the chart appVersion.
+  registry: docker.io
   tag: v1.101.0-cluster
   vmsingle:
-    repository: docker.io/victoriametrics/victoria-metrics
+    repository: victoriametrics/victoria-metrics
     pullPolicy: IfNotPresent
   vminsert:
-    repository: docker.io/victoriametrics/vminsert
+    repository: victoriametrics/vminsert
     pullPolicy: IfNotPresent
   vmselect:
-    repository: docker.io/victoriametrics/vmselect
+    repository: victoriametrics/vmselect
     pullPolicy: IfNotPresent
   vmstorage:
-    repository: docker.io/victoriametrics/vmstorage
+    repository: victoriametrics/vmstorage
     pullPolicy: IfNotPresent
 
 enableTCP6: false
