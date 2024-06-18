@@ -69,15 +69,9 @@ spec:
       votable: true
   lifecycleActions:
     roleProbe:
+      builtinHandler: mongodb
       periodSeconds: {{ .Values.roleProbe.periodSeconds }}
       timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
-      customHandler:
-        grpc:
-          port: 3701
-    memberLeave:
-      customHandler:
-        grpc:
-          port: 3701
       #   container: mongodb
       #   exec:
       #     command:
@@ -95,7 +89,7 @@ spec:
           - /bin/syncer
           - /config
           - /kubeblocks/
-        image: registry.cn-hangzhou.aliyuncs.com/xuriwuyun/syncer:grpc1
+        image: registry.cn-hangzhou.aliyuncs.com/xuriwuyun/syncer:latest
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         name: init-syncer
         volumeMounts:
@@ -144,20 +138,6 @@ spec:
             mountPath: /scripts
           - mountPath: /kubeblocks
             name: kubeblocks
-      - name: mongodb-plugin
-        image: registry.cn-hangzhou.aliyuncs.com/xuriwuyun/mongodb_plugin:latest
-        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
-        ports:
-          - name: engine-plugin
-            protocol: TCP
-            containerPort: 3701
-        command:
-          - mongodb_plugin
-        env:
-          - name: MONGODB_ROOT_USER
-            value: $(MONGODB_USER)
-          - name: MONGODB_ROOT_PASSWORD
-            value: $(MONGODB_PASSWORD)
     volumes:
       {{- if .Values.logCollector.enabled }}
       - name: log-data
