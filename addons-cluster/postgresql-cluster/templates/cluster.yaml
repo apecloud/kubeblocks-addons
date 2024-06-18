@@ -1,6 +1,2 @@
 {{- include "kblib.clusterCommon" . }}
-{{- if .Values.useLegacyCompDef }}
-{{- include "postgresql-cluster.legacyComponentSpec" . }}
-{{- else }}
 {{- include "postgresql-cluster.componentSpec" . }}
-{{- end }}
