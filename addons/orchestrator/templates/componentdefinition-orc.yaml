@@ -85,7 +85,7 @@ spec:
           - -c
           - "/scripts/init-meta-database.sh;"
         image: docker.io/mysql:8.0.33
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         volumeMounts:
           - name: scripts
             mountPath: /scripts
