@@ -65,12 +65,13 @@ extra:
   rbacEnabled: true
 
 orchestrator:
-  enable: false
-  monitor_password: proxysql
-  cluster_password: nb2wZpZ9OXXTF2Mv
+  enable: true
+  # monitor_password: proxysql
+  # cluster_password: nb2wZpZ9OXXTF2Mv
 
   serviceReference:
     namespace: ""
-    cluster: ""
     port: 80
-    endpoint: ""
+    endpoint: "myorc-orchestrator"
+  clusterServiceSelector:
+    cluster: ""

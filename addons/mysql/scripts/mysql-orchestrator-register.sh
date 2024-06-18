@@ -2,14 +2,14 @@
 set -ex
 
 # meta mysql connection parameters
-mysql_port="3306"
-mysql_username="$MYSQL_ROOT_USER"
-mysql_password="$MYSQL_ROOT_PASSWORD"
+# mysql_port="3306"
+# mysql_username="$MYSQL_ROOT_USER"
+# mysql_password="$MYSQL_ROOT_PASSWORD"
 
-topology_user="$ORC_TOPOLOGY_USER"
-topology_password="$ORC_TOPOLOGY_PASSWORD"
+# topology_user="$ORC_TOPOLOGY_USER"
+# topology_password="$ORC_TOPOLOGY_PASSWORD"
 
-component_name="$KB_COMP_NAME"
+# component_name="$KB_COMP_NAME"
 
 # register first pod to orchestrator
 register_to_orchestrator() {
@@ -43,6 +43,7 @@ register_to_orchestrator() {
         echo "response success"
         break
     fi
+    sleep 5
   done
   echo "register $pod_name ($host_ip) to Orchestrator successful."
 }

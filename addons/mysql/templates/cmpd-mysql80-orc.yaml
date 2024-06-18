@@ -6,7 +6,6 @@ metadata:
       {{- include "mysql.labels" . | nindent 4 }}
 spec:
   {{- include "mysql-orc.spec.common" . | nindent 2 }}
-  description: mysql 8.0 component definition for Kubernetes
   serviceVersion: 8.0.33
 
   configs:
@@ -65,25 +64,13 @@ spec:
         env:
           - name: PATH
             value: /kubeblocks/xtrabackup/bin:/kubeblocks/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-          - name: KB_SERVICE_CHARACTER_TYPE
-            value: mysql
           - name: MYSQL_INITDB_SKIP_TZINFO
             value: "1"
-          - name: MYSQL_RANDOM_ROOT_PASSWORD
-            value: ""
-          - name: SERVICE_PORT
-            value: "3306"
           - name: MYSQL_ROOT_HOST
             value: {{ .Values.auth.rootHost | default "%" | quote }}
           - name: ORC_TOPOLOGY_USER
-            value: {{ .Values.orchestrator.topology.password }}
+            value: {{ .Values.orchestrator.topology.username }}
           - name: ORC_TOPOLOGY_PASSWORD
             value: {{ .Values.orchestrator.topology.password }}
           - name: HA_COMPNENT
             value: orchestrator
-          - name: KB_POD_NAME
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: metadata.name
-

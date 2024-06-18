@@ -68,16 +68,5 @@ spec:
             value: mysql
           - name: MYSQL_INITDB_SKIP_TZINFO
             value: "1"
-          - name: MYSQL_RANDOM_ROOT_PASSWORD
-            value: ""
-          - name: SERVICE_PORT
-            value: "3306"
           - name: MYSQL_ROOT_HOST
             value: {{ .Values.auth.rootHost | default "%" | quote }}
-
-          - name: KB_POD_NAME
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: metadata.name
-
