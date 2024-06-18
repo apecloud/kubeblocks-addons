@@ -4,6 +4,7 @@
   componentSpecs:
     - name: proxy
       componentDef: camellia-redis-proxy
+      componentDefRef: camellia-redis-proxy # ref clusterDefinition componentDefs.name, it would be ignored if componentDef is set, just for compatibility
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "camellia-redis-proxy.replicaCount" . | indent 6 }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}

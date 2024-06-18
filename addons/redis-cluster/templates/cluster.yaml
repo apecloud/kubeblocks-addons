@@ -39,6 +39,7 @@
   componentSpecs:
     - name: redis
       componentDef: redis
+      componentDefRef: redis # ref clusterDefinition componentDefs.name, it would be ignored if componentDef is set, just for compatibility
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "redis-cluster.replicaCount" . | indent 6 }}
       enabledLogs:
