@@ -17,14 +17,16 @@ logConfigs: {}
 commonAnnotations: {}
 
 image:
-  repository: docker.io/bitnami/clickhouse
+  registry: docker.io
+  repository: bitnami/clickhouse
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: 22.9.4-debian-11-r1
 
 zookeeper:
   image:
-    repository: docker.io/bitnami/zookeeper
+    registry: docker.io
+    repository: bitnami/zookeeper
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
     tag: 3.8.0-debian-11-r47   
