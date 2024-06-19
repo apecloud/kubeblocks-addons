@@ -94,7 +94,7 @@ spec:
       fsGroup: 1001
     containers:
       - name: kafka
-        image: {{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
+        image: {{ .Values.images.registry | default "docker.io/bitnami/" }}{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
         securityContext:
           allowPrivilegeEscalation: false
@@ -191,7 +191,7 @@ spec:
             mountPath: /tools/server-jaas.properties
             subPath: server-jaas.properties
       - name: jmx-exporter
-        image: {{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
+        image: {{ .Values.images.registry | default "docker.io/bitnami/" }}{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
         securityContext:
           runAsNonRoot: true

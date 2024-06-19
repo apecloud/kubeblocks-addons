@@ -127,9 +127,8 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 
 {{- define "mysql.spec.common" -}}
 provider: kubeblocks
-description: mysql component definition for Kubernetes
 serviceKind: mysql
-serviceVersion: 8.0.33
+description: mysql component definition for Kubernetes
 updateStrategy: BestEffortParallel
 
 services:
@@ -170,17 +169,12 @@ vars:
   - name: MYSQL_ROOT_USER
     valueFrom:
       credentialVarRef:
-        ## reference the current component definition name
-        compDef: {{ include "mysql.componentDefName" . }}
         name: root
         username: Required
-
 
   - name: MYSQL_ROOT_PASSWORD
     valueFrom:
       credentialVarRef:
-        ## reference the current component definition name
-        compDef: {{ include "mysql.componentDefName" . }}
         name: root
         password: Required
 {{- end }}
@@ -212,12 +206,9 @@ vars:
 {{- end }}
 
 {{- define "mysql-orc.spec.common"}}
-labels:
-  kubeblocks.io/ready-without-primary: "true"
 provider: kubeblocks
-description: mysql 5.7 component definition for Kubernetes
+description: mysql component definition for Kubernetes
 serviceKind: mysql
-serviceVersion: 5.7.44
 updateStrategy: BestEffortParallel
 
 serviceRefDeclarations:
@@ -225,6 +216,7 @@ serviceRefDeclarations:
     serviceRefDeclarationSpecs:
       - serviceKind: orchestrator
         serviceVersion: "^*"
+
 services:
   - name: mysql-server
     serviceName: mysql-server
@@ -241,12 +233,7 @@ services:
         - name: mysql
           port: 3306
           targetPort: mysql
-configs:
-  - name: mysql-replication-config
-    templateRef: mysql-5.7-config-template
-    constraintRef: mysql-config-constraints
-    volumeName: mysql-config
-    namespace: {{ .Release.Namespace }}
+
 scripts:
   - name: mysql-scripts
     templateRef: mysql-scripts
@@ -256,6 +243,7 @@ scripts:
 volumes:
   - name: data
     needSnapshot: true
+
 systemAccounts:
   - name: root
     initAccount: true
@@ -272,11 +260,11 @@ roles:
   - name: secondary
     serviceable: true
     writable: false
+
 lifecycleActions:
   roleProbe:
     builtinHandler: custom
     customHandler:
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
       exec:
         command:
           - /bin/bash
@@ -309,32 +297,32 @@ lifecycleActions:
             fi
   postProvision:
     customHandler:
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
       exec:
         command:
           - bash
           - -c
-          - "/scripts/mysql-orchestrator-register.sh;"
-      preCondition: ComponentReady
+          - "/scripts/mysql-orchestrator-register.sh"
+      preCondition: RuntimeReady
   preTerminate:
     customHandler:
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
       exec:
         command:
           - bash
           - -c
-          - "curl http://${ORC_ENDPOINTS%%:*}:${ORC_PORTS}/api/forget-cluster/${KB_CLUSTER_NAME};"
+          - curl http://${ORC_ENDPOINTS%%:*}:${ORC_PORTS}/api/forget-cluster/${KB_CLUSTER_NAME}
   memberLeave:
     customHandler:
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
       exec:
         command:
-          - /bin/sh
+          - /bin/bash
           - -c
           - |
             last_digit=${KB_LEAVE_MEMBER_POD_NAME##*-}
             self_service_name=$(echo "${KB_CLUSTER_COMP_NAME}_mysql_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
-            /kubeblocks/orchestrator-client -c forget -i ${self_service_name}:3306
+            # /kubeblocks/orchestrator-client -c forget -i ${self_service_name}:3306
+            curl http://${ORC_ENDPOINTS%%:*}:${ORC_PORTS}/api/forget/${self_service_name}/3306
       targetPodSelector: Any
       container: mysql
 
@@ -342,49 +330,24 @@ vars:
   - name: MYSQL_ROOT_USER
     valueFrom:
       credentialVarRef:
-        ## reference the current component definition name
-        compDef: {{ include "mysql.componentDefName" . }}
         name: root
         username: Required
-
 
   - name: MYSQL_ROOT_PASSWORD
     valueFrom:
       credentialVarRef:
-        ## reference the current component definition name
-        compDef: {{ include "mysql.componentDefName" . }}
         name: root
         password: Required
-
-
-  - name: MYSQL_PORT
-    valueFrom:
-      serviceVarRef:
-        compDef: {{ include "mysql.componentDefName" . }}
-        name: mysql
-        optional: true
-        port:
-          name: mysql
-          option: Optional
-
-  - name: MYSQL_ORDINAL_HOST
-    valueFrom:
-      serviceVarRef:
-        compDef: {{ include "mysql.componentDefName" . }}
-        name: mysql
-        host: Required
 
   - name: ORC_ENDPOINTS
     valueFrom:
       serviceRefVarRef:
-        compDef: {{ include "mysql.componentDefName" . }}
         name: orchestrator
         endpoint: Required
 
   - name: ORC_PORTS
     valueFrom:
       serviceRefVarRef:
-        compDef: {{ include "mysql.componentDefName" . }}
         name: orchestrator
         port: Required
 {{- end }}

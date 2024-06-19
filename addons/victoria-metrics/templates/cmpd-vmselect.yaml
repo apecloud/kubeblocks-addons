@@ -8,7 +8,7 @@ spec:
   provider: kubeblocks
   description: A VictoriaMetrics component definition for Kubernetes
   serviceKind: vminsert
-  serviceVersion: 1.100.1
+  serviceVersion: 1.0.0
   services:
     - name: vmselect
       spec:
@@ -40,9 +40,8 @@ spec:
     terminationGracePeriodSeconds: 60
     containers:
       - name: vmselect
-        image: "docker.io/victoriametrics/vmselect:v1.100.1-cluster"
-        imagePullPolicy: "IfNotPresent"
-        securityContext: { }
+        imagePullPolicy: {{ .Values.images.vminsert.pullPolicy }}
+        securityContext: {}
         args:
           - --storageNode=$(VMSTORAGE_ADDR)
           - --cacheDataPath=/cache

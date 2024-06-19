@@ -12,24 +12,24 @@ spec:
 #      initContainers:
 #      - name: init-tools
 #        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.obtools.repository }}:{{ .Values.images.obtools.tag }}
-#        imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
+#        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
       containers:
       - name: observer-container
         image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.observer.repository }}:{{ .Values.images.observer.tag }}
-        imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
       - name: metrics
         image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.metrics.repository }}:{{ .Values.images.metrics.tag }}
-        imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
   - componentDefRef: {{ printf "%s-hostnetwork" (include "oceanbase-release.name" .) }}
     versionsContext:
 #      initContainers:
 #      - name: init-tools
 #        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.obtools.repository }}:{{ .Values.images.obtools.tag }}
-#        imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
+#        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
       containers:
       - name: observer-container
         image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.observer.repository }}:{{ .Values.images.observer.tag }}
-        imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
       - name: metrics
         image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.metrics.repository }}:{{ .Values.images.metrics.tag }}
-        imagePullPolicy: {{ default .Values.images.pullPolicy "IfNotPresent" }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
