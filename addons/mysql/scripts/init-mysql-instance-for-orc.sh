@@ -81,11 +81,9 @@ wait_for_connectivity() {
   local start_time=$(date +%s)
   local current_time
 
-  mysql_note "Checking mysql connectivity to $host on port $mysql_port ..."
   while true; do
     current_time=$(date +%s)
     if [ $((current_time - start_time)) -gt $timeout ]; then
-      mysql_note "Timeout waiting for $host to become available."
       exit 1
     fi
 
@@ -103,8 +101,6 @@ setup_master_slave() {
   mysql_note "setup_master_slave"
   master_host_name=$(echo "${KB_CLUSTER_COMP_NAME}_MYSQL_0_SERVICE_HOST" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
   master_host=${!master_host_name}
-  mysql_note "wait_for_connectivity"
-  wait_for_connectivity
 
   master_from_orc=""
   get_master_from_orc
@@ -126,6 +122,7 @@ setup_master_slave() {
   # If the master_host is empty, then this pod is the first one in the cluster, init cluster info database and create user.
   if [[ $master_from_orc == "" && $last_digit -eq 0 ]]; then
     echo "Create MySQL User and Grant Permissions"
+
     if mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e "SELECT 1 FROM mysql.user WHERE user='$topology_user'" 2>/dev/null | grep $topology_user >/dev/null; then
         return 0
     fi
@@ -197,28 +194,6 @@ get_master_from_orc() {
   return 0
 }
 
-wait_for_connectivity() {
-  local timeout=600
-  local start_time=$(date +%s)
-  local current_time
-
-  echo "Checking mysql connectivity to $meta_mysql_host on port $meta_mysql_port ..."
-  while true; do
-    current_time=$(date +%s)
-    if [ $((current_time - start_time)) -gt $timeout ]; then
-      echo "Timeout waiting for $host to become available."
-      exit 1
-    fi
-    # Send PING and check for mysql response
-    if  mysqladmin -h "$meta_mysql_host" -P $meta_mysql_port -u "$meta_user" -p"$meta_password" PING | grep -q "mysqld is alive"; then
-      echo "$meta_mysql_host is reachable."
-      break
-    fi
-
-    sleep 5
-  done
-}
-
 change_master() {
   mysql_note "Change master"
   master_host=$1
@@ -244,6 +219,7 @@ EOF
 
 }
 main() {
+  wait_for_connectivity
   setup_master_slave
   echo "init mysql instance for orc completed"
 

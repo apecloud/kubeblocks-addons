@@ -3,22 +3,22 @@ USE sys;
 
 DELIMITER $$
 
-CREATE FUNCTION IF NOT EXISTS IFZERO(a INT, b INT)
+CREATE FUNCTION IFZERO(a INT, b INT)
     RETURNS INT
     DETERMINISTIC
     RETURN IF(a = 0, b, a)$$
 
-CREATE FUNCTION IF NOT EXISTS LOCATE2(needle TEXT(10000), haystack TEXT(10000), offset INT)
+CREATE FUNCTION LOCATE2(needle TEXT(10000), haystack TEXT(10000), offset INT)
     RETURNS INT
     DETERMINISTIC
     RETURN IFZERO(LOCATE(needle, haystack, offset), LENGTH(haystack) + 1)$$
 
-CREATE FUNCTION IF NOT EXISTS GTID_NORMALIZE(g TEXT(10000))
+CREATE FUNCTION GTID_NORMALIZE(g TEXT(10000))
     RETURNS TEXT(10000)
                 DETERMINISTIC
 RETURN GTID_SUBTRACT(g, '')$$
 
-CREATE FUNCTION IF NOT EXISTS GTID_COUNT(gtid_set TEXT(10000))
+CREATE FUNCTION GTID_COUNT(gtid_set TEXT(10000))
     RETURNS INT
     DETERMINISTIC
 BEGIN
@@ -46,7 +46,7 @@ END WHILE;
 RETURN result;
 END$$
 
-CREATE FUNCTION IF NOT EXISTS gr_applier_queue_length()
+CREATE FUNCTION gr_applier_queue_length()
     RETURNS INT
     DETERMINISTIC
 BEGIN
@@ -56,7 +56,7 @@ WHERE Channel_name = 'group_replication_applier' ), (SELECT
                                                         @@global.GTID_EXECUTED) )));
 END$$
 
-CREATE FUNCTION IF NOT EXISTS gr_member_in_primary_partition()
+CREATE FUNCTION gr_member_in_primary_partition()
     RETURNS VARCHAR(3)
     DETERMINISTIC
 BEGIN
