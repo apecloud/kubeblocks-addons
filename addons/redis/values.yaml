@@ -49,7 +49,6 @@ busyboxImage:
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
-clusterVersionOverride: ""
 dataMountPath: /data
 
 logConfigs:
