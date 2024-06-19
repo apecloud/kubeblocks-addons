@@ -6,7 +6,6 @@ metadata:
       {{- include "mysql.labels" . | nindent 4 }}
 spec:
   {{- include "mysql.spec.common" . | nindent 2 }}
-  description: mysql component definition for Kubernetes
   serviceVersion: 5.7.44
 
   configs:

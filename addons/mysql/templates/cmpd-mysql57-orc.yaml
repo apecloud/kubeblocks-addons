@@ -7,7 +7,25 @@ metadata:
 spec:
   {{- include "mysql-orc.spec.common" . | nindent 2 }}
   serviceVersion: 5.7.44
-
+  lifecycleActions:
+    {{- include "mysql-orc.spec.lifecycle.common" . | nindent 4 }}
+    postProvision:
+      customHandler:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.7.44
+        exec:
+          command:
+            - bash
+            - -c
+            - "/scripts/mysql-orchestrator-register.sh"
+        preCondition: RuntimeReady
+    preTerminate:
+      customHandler:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.7.44
+        exec:
+          command:
+            - bash
+            - -c
+            - curl http://${ORC_ENDPOINTS%%:*}:${ORC_PORTS}/api/forget-cluster/${KB_CLUSTER_NAME}
   configs:
     - name: mysql-replication-config
       templateRef: mysql-5.7-config-template
