@@ -6,7 +6,13 @@ metadata:
       {{- include "orchestrator.labels" . | nindent 4 }}
 spec:
   {{- include "orchestrator.cmpd.spec.common" . | nindent 2 }}
-
+  services:
+    - name: default
+      spec:
+        ports:
+          - name: http
+            port: 80
+            targetPort: http
   serviceRefDeclarations:
     - name: metadb
       serviceRefDeclarationSpecs:
