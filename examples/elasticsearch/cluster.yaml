@@ -3,6 +3,8 @@ kind: Cluster
 metadata:
   name: elasticsearch-cluster
   namespace: default
+  annotations:
+    kubeblocks.io/extra-env: '{"master-roles":"master", "data-roles": "data", "ingest-roles": "ingest", "transform-roles": "transform"}'
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
@@ -32,7 +34,7 @@ spec:
   # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
   - name: master
-    componentDef: es-master
+    componentDef: elasticsearch
     disableExporter: true
     serviceAccountName: kb-elasticsearch-cluster
     replicas: 1
@@ -52,7 +54,7 @@ spec:
           requests:
             storage: 20Gi
   - name: data
-    componentDef: es-data
+    componentDef: elasticsearch
     serviceAccountName: null
     disableExporter: true
     replicas: 1
@@ -72,7 +74,7 @@ spec:
           requests:
             storage: 20Gi
   - name: ingest
-    componentDef: es-ingest
+    componentDef: elasticsearch
     serviceAccountName: null
     disableExporter: true
     replicas: 1
@@ -93,7 +95,7 @@ spec:
             storage: 20Gi
     services: null
   - name: transform
-    componentDef: es-transform
+    componentDef: elasticsearch
     serviceAccountName: null
     disableExporter: true
     replicas: 1
