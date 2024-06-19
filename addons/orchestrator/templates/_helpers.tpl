@@ -143,14 +143,6 @@ scripts:
     volumeName: scripts
     defaultMode: 0555
 
-services:
-  - name: default
-    roleSelector: primary
-    spec:
-      ports:
-        - name: http
-          port: 80
-          targetPort: http
 {{- end }}
 
 
