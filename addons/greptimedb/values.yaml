@@ -12,7 +12,8 @@ clusterDomain: ".cluster.local"
 images:
   pullPolicy: IfNotPresent
   greptimedb:
-    repository: docker.io/greptime/greptimedb
+    registry: docker.io
+    repository: greptime/greptimedb
     tag: 0.3.2
 
 ## @param metasrv config
