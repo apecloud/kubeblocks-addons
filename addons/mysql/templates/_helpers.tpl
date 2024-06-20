@@ -366,15 +366,4 @@ memberLeave:
   volumeMounts:
     - mountPath: /kubeblocks
       name: kubeblocks
-- command:
-    - cp
-    - -r
-    - /xtrabackup-2.4
-    - /kubeblocks/xtrabackup
-  image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:mysql
-  imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
-  name: init-xtrabackup
-  volumeMounts:
-    - mountPath: /kubeblocks
-      name: kubeblocks
 {{- end }}

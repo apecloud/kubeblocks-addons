@@ -107,19 +107,6 @@ mysql_query_rules=
 		flagIN=0
 	}
 )
-mysql_group_replication_hostgroups=
-(
-	{
-		writer_hostgroup = 2
-		backup_writer_hostgroup = 4
-		reader_hostgroup = 3
-		offline_hostgroup = 1
-		active = 1
-		max_writers = 1
-		writer_is_also_reader = 1
-		max_transactions_behind = 0
-	}
-)
 
 proxysql_servers=
 (

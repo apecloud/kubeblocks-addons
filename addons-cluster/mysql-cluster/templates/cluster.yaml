@@ -4,7 +4,9 @@ metadata:
   name: {{ include "kblib.clusterName" . }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
   annotations:
-    kubeblocks.io/enabled-pod-ordinal-svc: mysql,proxysql
+  {{- if eq .Values.topology "server-with-proxy" }}
+    kubeblocks.io/extra-env: '{"PROXY_ENABLED":"on"}'
+  {{- end }}
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
@@ -39,5 +41,8 @@ spec:
     - name: proxysql
       componentDef: proxysql # ref clusterdefinition componentDefs.name
       replicas: {{.Values.proxysql.replicas}}
-      {{- include "kblib.componentResources" . | indent 6 }}
+      resources:
+        limits:
+          cpu: {{ .Values.proxysql.cpu | quote }}
+          memory: {{ print .Values.proxysql.memory "Gi" | quote }}
     {{- end }}

@@ -18,9 +18,11 @@ spec:
       volumeName: proxy-config
       reRenderResourceTypes:
         - hscale
-      asEnvFrom:
+      {{/*
+      injectEnvTo:
         - proxysql
         - proxy
+        */}}
   scripts:
     - name: proxysql-scripts
       templateRef: proxysql-scripts
