@@ -66,14 +66,7 @@ leader=`cat /etc/annotations/leader`
 idx=${KB_POD_NAME##*-}
 current_component_replicas=`cat /etc/annotations/component-replicas`
 echo "current replicas: $current_component_replicas" >> /data/mysql/.kb_pre_stop.log
-if [ ! $idx -lt $current_component_replicas ] && [ $current_component_replicas -ne 0 ]; then 
-    # if idx greater than or equal to current_component_replicas means the cluster's scaling in
-    # put .restore on pvc for next scaling out, if pvc not deleted
-    touch /data/mysql/data/.restore; sync
-    # set wegiht to 0 and switch leader before leader scaling in itself
-    set_my_weight_to_zero
-    switchover
-elif [ $current_component_replicas -eq 0 ]; then
+if [ $current_component_replicas -eq 0 ]; then
     # stop, do nothing.
     echo "stop, do nothing" >> /data/mysql/.kb_pre_stop.log
 else 
