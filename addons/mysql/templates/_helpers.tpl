@@ -134,6 +134,7 @@ updateStrategy: BestEffortParallel
 services:
   - name: mysql-server
     serviceName: mysql-server
+    roleSelector: primary
     spec:
       ports:
         - name: mysql
@@ -182,6 +183,13 @@ lifecycleActions:
     builtinHandler: mysql
     periodSeconds: {{ .Values.roleProbe.periodSeconds }}
     timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+roles:
+  - name: primary
+    serviceable: true
+    writable: true
+  - name: secondary
+    serviceable: true
+    writable: false
 {{- end }}
 
 {{- define "mysql.spec.runtime.common" -}}

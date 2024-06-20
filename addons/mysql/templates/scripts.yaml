@@ -62,7 +62,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: mysql-proxysql-scripts
+  name: proxysql-scripts
   labels:
     {{- include "mysql.labels" . | nindent 4 }}
 data:

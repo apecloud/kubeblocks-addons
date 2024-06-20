@@ -63,16 +63,22 @@ function wait_for_mysql() {
     fi
 }
 
-log "$MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $BACKEND_SERVER 3306"
-wait_for_mysql $MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $BACKEND_SERVER 3306
+log "$MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $BACKEND_SERVER $MYSQL_PORT"
+wait_for_mysql $MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $BACKEND_SERVER $MYSQL_PORT
 
-#additional_sys_query=$(cat /scripts/sql/addition_to_sys_v5.sql)
-#log "mysql version:"
-#if [[ $MYSQL_VERSION == "8"* ]]; then
-    additional_sys_query=$(cat /scripts/sql/addition_to_sys_v8.sql)
-#fi
-log "connecting to mysql $MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $BACKEND_SERVER 3306"
-mysql_exec $MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $BACKEND_SERVER 3306 "$additional_sys_query" $opt
+# mysql_version=$(mysql_exec $MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $BACKEND_SERVER $MYSQL_PORT  'select @@version')
+
+# echo "mysql version $mysql_version"
+# if [[ $mysql_version == *"8"* ]]; then
+#     additional_sys_query=$(cat /scripts/sql/addition_to_sys_v8.sql)
+# elif [[ $mysql_version == *"5"* ]]; then
+#     additional_sys_query=$(cat /scripts/sql/addition_to_sys_v5.sql)
+# else
+#     log "Unsupported mysql version"
+# fi
+
+log "connecting to mysql $MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $BACKEND_SERVER $MYSQL_PORT"
+mysql_exec $MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $BACKEND_SERVER $MYSQL_PORT "$additional_sys_query" $opt
 
 # wait for proxysql process to run
 wait_for_mysql admin admin 127.0.0.1 6032
