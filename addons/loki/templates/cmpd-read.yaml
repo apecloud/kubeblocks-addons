@@ -1,0 +1,87 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: loki-read
+  labels:
+    {{- include "loki.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: A Loki component definition for Kubernetes
+  labels:
+    app.kubernetes.io/part-of: memberlist
+  serviceKind: loki-read
+  serviceVersion: 1.0.0
+  services:
+    - name: loki-read
+      spec:
+        ports:
+          - port: {{ .Values.read.httpMetricsPort }}
+            protocol: TCP
+            name: http-metrics
+            targetPort: http-metrics
+          - port: {{ .Values.read.grpcPort }}
+            protocol: TCP
+            name: grpc
+            targetPort: grpc
+  updateStrategy: BestEffortParallel
+  runtime:
+    automountServiceAccountToken: true
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/component: read
+            topologyKey: kubernetes.io/hostname
+    containers:
+      - name: read
+        imagePullPolicy: {{ .Values.images.read.pullPolicy }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+        args:
+          - -config.file=/etc/loki/config/config.yaml
+          - -target=read
+          - -legacy-read-mode=false
+          - -query-scheduler.use-scheduler-ring=false
+          - -common.compactor-grpc-address=loki-backend.default.svc.cluster.local:9095
+        ports:
+          - containerPort: {{ .Values.read.httpMetricsPort }}
+            name: http-metrics
+            protocol: TCP
+          - containerPort: {{ .Values.read.grpcPort }}
+            name: grpc
+            protocol: TCP
+          - containerPort: {{ .Values.read.httpMemberlistPort }}
+            name: http-memberlist
+            protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /ready
+            port: http-metrics
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        volumeMounts:
+          - mountPath: /etc/loki/config          
+            name: config
+          - mountPath: /etc/loki/runtime-config
+            name: runtime-config
+          - mountPath: /tmp
+            name: tmp
+          - mountPath: /var/loki
+            name: data
+  configs:
+    - name: loki-config
+      templateRef: loki
+      volumeName: config
+      namespace: {{ .Release.Namespace }}
+    - name: loki-runtime-config
+      templateRef: loki-runtime
+      volumeName: runtime-config
+      namespace: {{ .Release.Namespace }}
