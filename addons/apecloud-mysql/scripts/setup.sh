@@ -9,6 +9,31 @@ get_hostname_suffix() {
     fi
 }
 
+get_cluster_members() {
+    local cluster_members=""
+    IFS=',' read -ra PODS <<< "$KB_POD_LIST"
+    for pod in "${PODS[@]}"; do
+        hostname=${pod}.${hostname_suffix}
+        cluster_members="${cluster_members};${hostname}:${MYSQL_CONSENSUS_PORT:-13306}"
+    done
+    echo "${cluster_members#;}"
+}
+
+get_pod_index() {
+    local pod_name="${1:?missing pod name}"
+    local pod_index=0
+
+    IFS=',' read -ra PODS <<< "$KB_POD_LIST"
+    for pod in "${PODS[@]}"; do
+        if [ "$pod" = "$pod_name" ]; then
+            break
+        fi
+        ((pod_index++))
+    done
+    
+    echo "$pod_index"
+}
+
 generate_cluster_info() {
     local pod_name="${KB_POD_NAME:?missing pod name}"
     local cluster_members=""
@@ -29,17 +54,10 @@ generate_cluster_info() {
     fi
     echo "KB_MYSQL_CLUSTER_UID=${KB_MYSQL_CLUSTER_UID}"
 
-    IFS=',' read -ra PODS <<< "$KB_POD_LIST"
-    for pod in "${PODS[@]}"; do
-        hostname=${pod}.${hostname_suffix}
-        echo "${hostname:?missing member hostname}"
-        cluster_members="${cluster_members};${hostname}:${MYSQL_CONSENSUS_PORT:-13306}"
-    done
-
-    export KB_MYSQL_CLUSTER_MEMBERS="${cluster_members#;}"
+    export KB_MYSQL_CLUSTER_MEMBERS=`get_cluster_members`
     echo "${KB_MYSQL_CLUSTER_MEMBERS:?missing cluster members}"
 
-    export KB_MYSQL_CLUSTER_MEMBER_INDEX=${pod_name##*-};
+    export KB_MYSQL_CLUSTER_MEMBER_INDEX=`get_pod_index $pod_name`
     local pod_host=${pod_name}.${hostname_suffix}
     export KB_MYSQL_CLUSTER_MEMBER_HOST=${pod_host:?missing current member hostname}
 
