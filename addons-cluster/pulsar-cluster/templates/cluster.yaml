@@ -79,7 +79,7 @@ spec:
     {{- end }}
     {{- end }}
   componentSpecs:
-  {{- if or (eq .Values.mode "pulsar-enhanced-cluster") (.Values.proxy.enabled) }}
+  {{- if or (eq .Values.mode "pulsar-enhanced-cluster") (and (eq .Values.mode "") .Values.proxy.enabled) }}
     - name: proxy
     {{- if not  $topologyEnable }}
       componentDef: pulsar-proxy
@@ -101,7 +101,7 @@ spec:
       {{- end }}
       {{- end }}
     {{- end }}
-  {{- if or (eq .Values.mode "pulsar-enhanced-cluster") (.Values.bookiesRecovery.enabled) }}
+  {{- if or (eq .Values.mode "pulsar-enhanced-cluster") ( and (eq .Values.mode "") .Values.bookiesRecovery.enabled) }}
     - name: bookies-recovery
     {{- if not $topologyEnable }}
       componentDef: pulsar-bkrecovery
