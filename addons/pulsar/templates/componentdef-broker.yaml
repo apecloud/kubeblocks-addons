@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: pulsar-broker
+  name: pulsar-broker-{{include "pulsar.major.version" .}}
   labels:
       {{- include "pulsar.labels" . | nindent 4 }}
 spec:
@@ -14,7 +14,7 @@ spec:
       valueFrom:
         serviceVarRef:
           compDef: pulsar-broker
-          name: nodeport
+          name: broker-nodeport
           optional: true
           port:
             name: pulsar
@@ -23,7 +23,7 @@ spec:
       valueFrom:
         serviceVarRef:
           compDef: pulsar-broker
-          name: nodeport
+          name: broker-nodeport
           optional: true
           port:
             name: kafka-client
@@ -59,6 +59,7 @@ spec:
       serviceRefDeclarationSpecs:
         - serviceKind: zookeeper
           serviceVersion: ^3.8.\d{1,2}$
+      optional: true
   updateStrategy: BestEffortParallel
   configs:
     - name: broker-env
@@ -73,9 +74,9 @@ spec:
         - init-pulsar-client-config
       volumeName: broker-env
     - name: broker-config
-      templateRef: {{ include "pulsar.name" . }}3-broker-config-tpl
+      templateRef: {{ include "pulsar.name" . }}{{include "pulsar.major.version" .}}-broker-config-tpl
       namespace: {{ .Release.Namespace }}
-      constraintRef: pulsar3-brokers-cc
+      constraintRef: pulsar{{include "pulsar.major.version" .}}-brokers-cc
       volumeName: pulsar-config
   scripts:
     - name: pulsar-scripts

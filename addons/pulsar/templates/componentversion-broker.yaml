@@ -1,0 +1,23 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: pulsar-broker
+spec:
+  compatibilityRules:
+    - compDefs:
+        - pulsar-broker
+      releases:
+        - 2.11.2
+        - 3.0.2
+  releases:
+    - name: 2.11.2
+      changes:
+      serviceVersion: 2.11.2
+      images:
+        broker: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/pulsar:2.11.2
+    - name: 3.0.2
+      changes:
+      serviceVersion: 3.0.2
+      images:
+        broker: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/pulsar:3.0.2
+

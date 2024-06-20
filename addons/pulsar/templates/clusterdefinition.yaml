@@ -631,3 +631,26 @@ spec:
       exporter:
         scrapePath: /metrics
         scrapePort: http
+
+  topologies:
+    - name: pulsar-basic-cluster
+      components:
+        - name: broker
+          compDef: pulsar-broker-{{include "pulsar.major.version" .}}
+        - name: bookies
+          compDef: pulsar-bookkeeper-{{include "pulsar.major.version" .}}
+        - name: zookeeper
+          compDef: pulsar-zookeeper-{{include "pulsar.major.version" .}}
+      default: true
+    - name: pulsar-enhanced-cluster
+      components:
+        - name: broker
+          compDef: pulsar-broker-{{include "pulsar.major.version" .}}
+        - name: bookies
+          compDef: pulsar-bookkeeper-{{include "pulsar.major.version" .}}
+        - name: zookeeper
+          compDef: pulsar-zookeeper-{{include "pulsar.major.version" .}}
+        - name: proxy
+          compDef: pulsar-proxy-{{include "pulsar.major.version" .}}
+        - name: bookies-recovery
+          compDef: pulsar-bkrecovery-{{include "pulsar.major.version" .}}

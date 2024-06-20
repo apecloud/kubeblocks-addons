@@ -73,3 +73,12 @@ Generate scripts configmap
 {{- $.Files.Get $path | nindent 2 }}
 {{- end }}
 {{- end }}
+
+{{/*
+Generate major version of cluster
+*/}}
+{{- define "pulsar.major.version" -}}
+{{- $version := default .Chart.AppVersion .Values.clusterVersionOverride -}}
+{{- $majorVersion := (split "." $version)._0 -}}
+{{- printf "%s" ($majorVersion)}}
+{{- end }}
