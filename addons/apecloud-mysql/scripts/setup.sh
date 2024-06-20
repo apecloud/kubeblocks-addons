@@ -64,7 +64,6 @@ generate_cluster_info() {
     if [ -n "$KB_LEADER" ]; then
         echo "KB_LEADER=${KB_LEADER}"
 
-        local leader_index=${KB_LEADER##*-}
         local leader_host=$KB_LEADER.${hostname_suffix}
         export KB_MYSQL_CLUSTER_LEADER_HOST=${leader_host:?missing leader hostname}
 
