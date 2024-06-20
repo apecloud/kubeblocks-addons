@@ -330,10 +330,10 @@ memberLeave:
         - -c
         - |
           last_digit=${KB_LEAVE_MEMBER_POD_NAME##*-}
-          self_host=${KB_CLUSTER_COMP_NAME}-mysql-${last_digit}
-          mysql -h${self_host} -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" -e "STOP SLAVE";
           self_service_name=$(echo "${KB_CLUSTER_COMP_NAME}_mysql_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
           # /kubeblocks/orchestrator-client -c forget -i ${self_service_name}:3306
+          curl http://${ORC_ENDPOINTS%%:*}:${ORC_PORTS}/api/reset-slave/${self_service_name}/3306
+          sleep 1
           curl http://${ORC_ENDPOINTS%%:*}:${ORC_PORTS}/api/forget/${self_service_name}/3306
     targetPodSelector: Any
     container: mysql
