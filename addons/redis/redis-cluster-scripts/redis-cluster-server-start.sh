@@ -50,6 +50,7 @@ build_cluster_announce_info() {
   else
     echo "redis use kb pod fqdn $kb_pod_fqdn to announce"
     {
+      echo "cluster-announce-ip $KB_POD_IP"
       echo "cluster-announce-hostname $kb_pod_fqdn"
       echo "cluster-preferred-endpoint-type hostname"
     } >> /etc/redis/redis.conf
