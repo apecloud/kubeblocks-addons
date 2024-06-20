@@ -16,9 +16,9 @@ commonLabels: {}
 ##
 images:
   pullPolicy: IfNotPresent
-  weaviate:
-    repository: docker.io/semitechnologies/weaviate
-    tag: 1.19.6
+  registry: docker.io
+  repository: semitechnologies/weaviate
+  tag: 1.19.6
 
 ## @param debugEnabled enables containers' debug logging
 ##
