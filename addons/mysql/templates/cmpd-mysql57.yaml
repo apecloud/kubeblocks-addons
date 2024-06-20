@@ -10,11 +10,10 @@ spec:
 
   configs:
     - name: mysql-replication-config
-      templateRef: mysql-8.0-config-template
+      templateRef: mysql-5.7-config-template
       constraintRef: mysql-config-constraints
       volumeName: mysql-config
       namespace: {{ .Release.Namespace }}
-
   runtime:
     initContainers:
       - image: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:5.7.44
@@ -25,16 +24,22 @@ spec:
           - |
             mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog}
             cp /usr/lib/mysql/plugin/ {{ .Values.dataMountPath }}/plugin -r
-        imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
       {{- include "mysql.spec.runtime.common" . | nindent 6 }}
     containers:
       - name: mysql
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.7.44
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         command:
+          - syncer
+          - --config-path
+          - /kubeblocks/config/components
+          - --port
+          - "3601"
+          - --
           - bash
           - -c
           - |

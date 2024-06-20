@@ -14,7 +14,6 @@ spec:
       constraintRef: mysql-config-constraints
       volumeName: mysql-config
       namespace: {{ .Release.Namespace }}
-
   runtime:
     initContainers:
       - image: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
@@ -25,7 +24,7 @@ spec:
           - |
             mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog}
             cp /usr/lib/mysql/plugin/ {{ .Values.dataMountPath }}/plugin -r
-        imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
@@ -35,6 +34,12 @@ spec:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         command:
+          - syncer
+          - --config-path
+          - /kubeblocks/config/components
+          - --port
+          - "3601"
+          - --
           - bash
           - -c
           - |

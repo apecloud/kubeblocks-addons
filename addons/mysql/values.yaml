@@ -91,3 +91,8 @@ orchestrator:
   topology:
     username: orchestrator
     password: orchestrator
+
+roleProbe:
+  failureThreshold: 2
+  periodSeconds: 1
+  timeoutSeconds: 1

@@ -177,6 +177,11 @@ vars:
       credentialVarRef:
         name: root
         password: Required
+lifecycleActions:
+  roleProbe:
+    builtinHandler: mysql
+    periodSeconds: {{ .Values.roleProbe.periodSeconds }}
+    timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
 {{- end }}
 
 {{- define "mysql.spec.runtime.common" -}}
@@ -187,7 +192,7 @@ vars:
     - /config
     - /kubeblocks/
   image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:latest
-  imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
+  imagePullPolicy: "Always"
   name: init-syncer
   volumeMounts:
     - mountPath: /kubeblocks
