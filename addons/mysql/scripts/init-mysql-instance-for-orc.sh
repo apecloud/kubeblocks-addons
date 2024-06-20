@@ -25,8 +25,6 @@ mysql_port="3306"
 topology_user="$ORC_TOPOLOGY_USER"
 topology_password="$ORC_TOPOLOGY_PASSWORD"
 
-cluster_component_pod_name="$KB_CLUSTER_COMP_NAME"
-
 
 # create orchestrator user in mysql
 create_mysql_user() {
@@ -130,7 +128,6 @@ setup_master_slave() {
     init_cluster_info_database self_service_name
   # If the master_host is not empty, change master to the master_host.
   else
-
     mysql_note "Wait for master to be ready"
     change_master "$master_host"
   fi
@@ -149,7 +146,7 @@ get_master_from_orc() {
       return 0
     fi
 
-    topology_info=$(/scripts/orchestrator-client -c topology -i $kb_cluster_name) || true
+    topology_info=$(/scripts/orchestrator-client -c topology -i $KB_CLUSTER_NAME) || true
     if [[ $topology_info == "" ]]; then
       return 0
     fi
