@@ -174,10 +174,10 @@ check_and_correct_other_primary_nodes() {
       wait_random_second 10 1
       current_announce_ip=$(get_cluster_announce_ip "$node_fqdn" "$node_port")
       echo "original_announce_ip: $original_announce_ip, node_endpoint_with_port: $node_endpoint_with_port, current_announce_ip: $current_announce_ip"
-      # if node_cluster_announce_ip is empty, we need to retry
-      if [ -z "$node_cluster_announce_ip" ]; then
+      # if current_announce_ip is empty, we need to retry
+      if [ -z "$current_announce_ip" ]; then
         wait_random_second 3 1
-        echo "node_cluster_announce_ip is empty, retry..."
+        echo "current_announce_ip is empty, retry..."
         continue
       fi
 
@@ -196,7 +196,7 @@ check_and_correct_other_primary_nodes() {
             shutdown_redis_server
             exit 1
         else
-          echo "Meet the node $node_endpoint_with_port successfully with new announce ip $node_cluster_announce_ip..."
+          echo "Meet the node $node_endpoint_with_port successfully with new announce ip $current_announce_ip..."
           break
         fi
       else
