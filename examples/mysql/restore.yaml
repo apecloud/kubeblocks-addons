@@ -42,7 +42,6 @@ spec:
     enabledLogs:
     - error
     - slow
-    disableExporter: true
     serviceAccountName: kb-mysql-cluster
     replicas: 2
     resources:

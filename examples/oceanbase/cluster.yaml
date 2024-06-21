@@ -7,6 +7,10 @@ metadata:
     #Specify how many clusters to create with-in one ob cluster
     "kubeblocks.io/extra-env": "{\"ZONE_COUNT\":\"3\",\"OB_CLUSTERS_COUNT\":\"1\"}"
 spec:
+  # Specifies the name of the ClusterDefinition to use when creating a Cluster.
+  clusterDefinitionRef: oceanbase
+  # Refers to the ClusterVersion name. Deprecated since v0.9, use ComponentVersion instead. This field is maintained for backward compatibility and its use is discouraged. Existing usage should be updated to the current preferred approach to avoid compatibility issues in future releases.
+  clusterVersionRef: oceanbase-4.2.0.0-100010032023083021
   # Specifies the behavior when a Cluster is deleted.
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
   # - `Halt`: Deletes Cluster resources like Pods and Services but retains Persistent Volume Claims (PVCs), allowing for data preservation while stopping other operations.
@@ -35,7 +39,8 @@ spec:
   # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
   - name: ob-ce
-    componentDef: ob-ce
+    componentDef: oceanbase
+    componentDefRef: oceanbase
     replicas: 3
     resources:
       limits:
