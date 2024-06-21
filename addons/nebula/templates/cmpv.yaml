@@ -26,17 +26,17 @@ spec:
     - name: console-v3.5.0
       serviceVersion: v3.5.0
       images:
-        console: {{ .Values.nebula.console.image.repository }}:v3.5.0
+        console: {{ .Values.nebula.console.image.registry | default "docker.io" }}/{{ .Values.nebula.console.image.repository }}:v3.5.0
     - name: graphd-v3.5.0
       serviceVersion: v3.5.0
       images:
-        graphd: {{ .Values.nebula.graphd.image.repository }}:v3.5.0
+        graphd: {{ .Values.nebula.graphd.image.registry | default "docker.io"}}/{{ .Values.nebula.graphd.image.repository }}:v3.5.0
     - name: metad-v3.5.0
       serviceVersion: v3.5.0
       images:
-        metad: {{ .Values.nebula.metad.image.repository }}:v3.5.0
+        metad: {{ .Values.nebula.metad.image.registry | default "docker.io"}}/{{ .Values.nebula.metad.image.repository }}:v3.5.0
     - name: storaged-v3.5.0
       serviceVersion: v3.5.0
       images:
-        console: {{ .Values.nebula.storaged.image.repository }}:v3.5.0
-        storaged: {{ .Values.nebula.storaged.image.repository }}:v3.5.0
+        console: {{ .Values.nebula.storaged.image.registry | default "docker.io"}}/{{ .Values.nebula.storaged.image.repository }}:v3.5.0
+        storaged: {{ .Values.nebula.storaged.image.registry | default "docker.io"}}/{{ .Values.nebula.storaged.image.repository }}:v3.5.0
