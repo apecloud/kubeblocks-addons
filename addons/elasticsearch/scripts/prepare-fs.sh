@@ -86,6 +86,9 @@ ln_start=$(date +%s)
 
 echo "File linking duration: $(duration $ln_start) sec."
 
+
+
+
 ######################
 #         End        #
 ######################

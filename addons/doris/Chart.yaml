@@ -1,16 +1,18 @@
 apiVersion: v2
 name: doris
-description: A Helm chart for Kubernetes
+description: Apache Doris is a high-performance, real-time analytical database based on MPP architecture. It is known for its speed and ease of use. It only needs sub-second response time to return query results under massive data, which can not only support high-concurrency point query scenarios, but also support high-throughput complex analysis scenarios. Based on this, Apache Doris can better meet the report analysis, AD hoc query, unified warehouse construction, data lake federated query acceleration and other use scenarios, users can build user behavior analysis, AB experiment platform, log retrieval analysis, user portrait analysis, order analysis and other applications on this.
 
 type: application
 
 version: 2.0.3
 
 appVersion: "2.0.3"
+
 keywords:
   - doris
   - fe
   - be
   - cn
+
 maintainers:
   - name: YQ

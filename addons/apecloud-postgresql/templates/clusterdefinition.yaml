@@ -60,9 +60,9 @@ spec:
             image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
             imagePullPolicy: Always
             command:
-            - sh
-            - -c
-            - "cp -r /bin/syncer /config /kubeblocks/"
+              - sh
+              - -c
+              - "cp -r /bin/syncer /config /kubeblocks/"
             volumeMounts:
               - name: data
                 mountPath: {{ .Values.dataMountPath }}
@@ -188,3 +188,13 @@ spec:
               statements:
                 creation: CREATE USER $(USERNAME) SUPERUSER PASSWORD '$(PASSWD)';
                 deletion: DROP USER IF EXISTS $(USERNAME);
+  topologies:
+    - name: standalone
+      components:
+        - name: postgresql
+          compDef: {{ include "apecloud-postgresql.compDefApecloudPostgresql14" . }}
+      default: true
+    - name: raftGroup
+      components:
+        - name: postgresql
+          compDef: {{ include "apecloud-postgresql.compDefApecloudPostgresql14" . }}

@@ -2,26 +2,21 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 images:
+  # Overrides the image tag whose default is the chart appVersion.
+  registry: docker.io
+  tag: v1.101.0-cluster
   vmsingle:
     repository: victoriametrics/victoria-metrics
     pullPolicy: IfNotPresent
-    # Overrides the image tag whose default is the chart appVersion.
-    tag: "v1.100.1"
   vminsert:
     repository: victoriametrics/vminsert
     pullPolicy: IfNotPresent
-    # Overrides the image tag whose default is the chart appVersion.
-    tag: "v1.100.1-cluster"
   vmselect:
     repository: victoriametrics/vmselect
     pullPolicy: IfNotPresent
-    # Overrides the image tag whose default is the chart appVersion.
-    tag: "v1.100.1-cluster"
   vmstorage:
     repository: victoriametrics/vmstorage
     pullPolicy: IfNotPresent
-    # Overrides the image tag whose default is the chart appVersion.
-    tag: "v1.100.1-cluster"
 
 enableTCP6: false
 

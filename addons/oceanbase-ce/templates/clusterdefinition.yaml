@@ -89,9 +89,9 @@ spec:
                 name: workdir
               - name: scripts
                 mountPath: /scripts
-              - name: oceanbase-config
+              - name: {{ printf "%s-config" (include "oceanbase-release.name" .) }}
                 mountPath: /kb-config
-              - name: oceanbase-sysvars
+              - name: {{ printf "%s-sysvars" (include "oceanbase-release.name" .) }}
                 mountPath: /opt/oceanbase/sysvars
             workingDir: /home/admin/workdir
             env:

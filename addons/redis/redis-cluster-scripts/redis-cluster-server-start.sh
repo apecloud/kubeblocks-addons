@@ -50,6 +50,7 @@ build_cluster_announce_info() {
   else
     echo "redis use kb pod fqdn $kb_pod_fqdn to announce"
     {
+      echo "cluster-announce-ip $KB_POD_IP"
       echo "cluster-announce-hostname $kb_pod_fqdn"
       echo "cluster-preferred-endpoint-type hostname"
     } >> /etc/redis/redis.conf
@@ -111,6 +112,18 @@ get_cluster_id() {
   fi
   cluster_id=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $1}')
   echo "$cluster_id"
+}
+
+get_cluster_announce_ip() {
+  local cluster_node="$1"
+  local cluster_node_port="$2"
+  if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+    cluster_nodes_info=$(redis-cli -h "$cluster_node" -p "$cluster_node_port" cluster nodes)
+  else
+    cluster_nodes_info=$(redis-cli -h "$cluster_node" -p "$cluster_node_port" -a "$REDIS_DEFAULT_PASSWORD" cluster nodes)
+  fi
+  cluster_announce_ip=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $2}' | awk -F ':' '{print $1}')
+  echo "$cluster_announce_ip"
 }
 
 is_node_in_cluster() {
@@ -175,6 +188,7 @@ get_current_comp_nodes_for_scale_out_replica() {
     # ip:port without bus port
     node_ip_port=$(echo "$node_ip_port_fields" | awk -F '@' '{print $1}')
     node_bus_port=$(echo "$node_ip_port_fields" | awk -F '@' '{print $2}' | awk -F ',' '{print $1}')
+    node_ip=$(echo "$node_ip_port_fields" | awk -F '@' '{print $1}' | cut -d':' -f1)
     node_port=$(echo "$node_ip_port_fields" | awk -F '@' '{print $1}' | cut -d':' -f2)
     # redis-shard-sxj-0.redis-shard-sxj-headless.default.svc
     node_fqdn=$(echo "$line" | awk '{print $2}' | awk -F ',' '{print $2}')
@@ -182,17 +196,17 @@ get_current_comp_nodes_for_scale_out_replica() {
     if $using_advertised_ports; then
       if [[ ${advertised_ports[$node_port]+_} ]]; then
         if [[ "$node_role" =~ "master" ]]; then
-          current_comp_primary_node+=("$node_ip_port@$node_bus_port")
+          current_comp_primary_node+=("$node_ip#$node_ip_port@$node_bus_port")
         else
-          current_comp_other_nodes+=("$node_ip_port@$node_bus_port")
+          current_comp_other_nodes+=("$node_ip#$node_ip_port@$node_bus_port")
         fi
       fi
     else
       if [[ "$node_fqdn" =~ "$KB_CLUSTER_COMP_NAME"* ]]; then
         if [[ "$node_role" =~ "master" ]]; then
-          current_comp_primary_node+=("$node_fqdn:$SERVICE_PORT@$node_bus_port")
+          current_comp_primary_node+=("$node_ip#$node_fqdn:$SERVICE_PORT@$node_bus_port")
         else
-          current_comp_other_nodes+=("$node_fqdn:$SERVICE_PORT@$node_bus_port")
+          current_comp_other_nodes+=("$node_ip#$node_fqdn:$SERVICE_PORT@$node_bus_port")
         fi
       fi
     fi
@@ -232,10 +246,10 @@ scale_redis_cluster_replica() {
     exit 0
   fi
 
-  # primary_node_info value format: ip:port@bus_port
+  # primary_node_info value format: ip#endpoint:port@bus_port
   primary_node_info=${current_comp_primary_node[0]}
-  primary_node_endpoint_with_port=$(echo "$primary_node_info" | awk -F '@' '{print $1}')
-  primary_node_endpoint=$(echo "$primary_node_info" | awk -F '@' '{print $1}'| awk -F ':' '{print $1}')
+  primary_node_endpoint_with_port=$(echo "$primary_node_info" | awk -F '@' '{print $1}' | awk -F '#' '{print $2}')
+  primary_node_endpoint=$(echo "$primary_node_info" | awk -F '@' '{print $1}' | awk -F '#' '{print $2}' | awk -F ':' '{print $1}')
   primary_node_port=$(echo "$primary_node_info" | awk -F '@' '{print $1}' | awk -F ':' '{print $2}')
   primary_node_bus_port=$(echo "$primary_node_info" | awk -F '@' '{print $2}')
   if is_node_in_cluster "$primary_node_endpoint" "$primary_node_port" "$current_pod_name"; then
@@ -258,11 +272,18 @@ scale_redis_cluster_replica() {
     replicated_command="redis-cli --cluster add-node $current_node_with_port $primary_node_endpoint_with_port --cluster-slave --cluster-master-id $primary_node_cluster_id -a $REDIS_DEFAULT_PASSWORD"
   fi
   echo "Scale out replica replicated command: $replicated_command"
-  if ! $replicated_command
-  then
+  replicated_output=$($replicated_command)
+  replicated_exit_code=$?
+  echo "Scale out replica replicated command result: $replicated_output"
+  if [ $replicated_exit_code -ne 0 ]; then
+    if [[ $replicated_output == *"is not empty"* ]]; then
+      echo "Replica is not empty, Either the node already knows other nodes (check with CLUSTER NODES) or contains some key in database 0"
+    else
       echo "Failed to add the node $current_pod_fqdn to the cluster in scale_redis_cluster_replica, shutdown redis server"
+      echo "Error message: $replicated_output"
       shutdown_redis_server
       exit 1
+    fi
   fi
 
   # cluster meet the primary node until the current node is successfully added to the cluster
@@ -271,11 +292,12 @@ scale_redis_cluster_replica() {
       echo "Node $current_pod_name is successfully added to the cluster."
       break
     fi
+    primary_node_cluster_announce_ip=$(get_cluster_announce_ip "$primary_node_endpoint" "$primary_node_port")
     # send cluster meet command to the primary node
     if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-      meet_command="redis-cli cluster meet $primary_node_endpoint $primary_node_port $primary_node_bus_port"
+      meet_command="redis-cli cluster meet $primary_node_cluster_announce_ip $primary_node_port $primary_node_bus_port"
     else
-      meet_command="redis-cli -a $REDIS_DEFAULT_PASSWORD cluster meet $primary_node_endpoint $primary_node_port $primary_node_bus_port "
+      meet_command="redis-cli -a $REDIS_DEFAULT_PASSWORD cluster meet $primary_node_cluster_announce_ip $primary_node_port $primary_node_bus_port "
     fi
     echo "Scale out replica meet command: $meet_command"
     if ! $meet_command

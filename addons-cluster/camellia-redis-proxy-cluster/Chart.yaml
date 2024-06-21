@@ -7,8 +7,8 @@ version: 0.9.0
 description: A Camellia Redis Proxy Cluster Helm chart for KubeBlocks.
 dependencies:
   - name: kblib
-    version: 0.1.0
-    repository: file://../kblib
+    version: 0.1.1
+    repository: file://../kblib-v2
     alias: extra
 
 appVersion: "1.2.26"

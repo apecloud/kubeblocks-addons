@@ -5,7 +5,7 @@
 image:
   # refer: https://github.com/caojiajun/camellia-jdk21-bootstraps/blob/main/docs/redis-proxy/Dockerfile
   # this is the image of camellia-redis-proxy, which is built from Dockerfile of Apecloud/camellia-redis-proxy forked from caojiajun/camellia-jdk21-bootstraps.
-  registry: ""
+  registry: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com
   repository: apecloud/camellia-redis-proxy
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.

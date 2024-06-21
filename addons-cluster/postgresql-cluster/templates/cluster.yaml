@@ -1,3 +1,4 @@
+
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: Cluster
 metadata:
@@ -12,3 +13,4 @@ spec:
 {{- else }}
 {{- include "postgresql-cluster.componentSpec" . }}
 {{- end }}
+

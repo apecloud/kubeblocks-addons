@@ -2,10 +2,6 @@
 ##
 version: elasticsearch-8.8.2
 
-## @param mode ElasticSearch cluster topology mode, multi-node, single-node
-##
-mode: multi-node
-
 ## @param replicas specify cluster replicas
 ##
 replicas: 1
