@@ -166,13 +166,13 @@ check_and_correct_other_primary_nodes() {
   for node_info in "${other_comp_primary_nodes[@]}"; do
     original_announce_ip=$(echo "$node_info" | awk -F '#' '{print $1}')
     node_endpoint_with_port=$(echo "$node_info" | awk -F '@' '{print $1}' | awk -F '#' '{print $3}')
-    node_fqdn=$(echo "$node_info" | awk -F '#' '{print $2}')
+    node_endpoint=$(echo "$node_endpoint_with_port" | awk -F ':' '{print $1}')
     node_port=$(echo "$node_endpoint_with_port" | awk -F ':' '{print $2}')
     node_bus_port=$(echo "$node_info" | awk -F '@' '{print $2}')
     while true; do
       # random sleep 1-10 seconds
       wait_random_second 10 1
-      current_announce_ip=$(get_cluster_announce_ip "$node_fqdn" "$node_port")
+      current_announce_ip=$(get_cluster_announce_ip "$node_endpoint" "$node_port")
       echo "original_announce_ip: $original_announce_ip, node_endpoint_with_port: $node_endpoint_with_port, current_announce_ip: $current_announce_ip"
       # if current_announce_ip is empty, we need to retry
       if [ -z "$current_announce_ip" ]; then
