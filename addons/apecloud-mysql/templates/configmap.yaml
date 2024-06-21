@@ -52,7 +52,7 @@ data:
     scripts: reload.tpl
     fileRegex: my.cnf
     dataType: mysql
-    dsn: '{%- expandenv "${MYSQL_ROOT_USER}:${MYSQL_ROOT_PASSWORD}@(localhost:3306)/" | trim %}'
+    dsn: '{%- expandenv "${MYSQL_USER}:${MYSQL_PASSWORD}@(localhost:3306)/" | trim %}'
     formatterConfig:
       format: ini
       iniConfig:
