@@ -487,7 +487,7 @@ spec:
         initContainers:
           - name: wait-vtctld-ready
             imagePullPolicy: IfNotPresent
-            image: busybox:1.35
+            image: {{ .Values.image.registry | default "docker.io" }}/apecloud/busybox:1.35
             env:
               - name: VTCTLD_HOST
                 value: "$(KB_CLUSTER_NAME)-vtcontroller-headless"
