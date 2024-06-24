@@ -78,6 +78,9 @@ ln_start=$(date +%s)
     echo "Linking /mnt/elastic-internal/elasticsearch-config/elasticsearch.yml to /mnt/elastic-internal/elasticsearch-config-local/elasticsearch.yml"
     ln -sf /mnt/elastic-internal/elasticsearch-config/elasticsearch.yml /mnt/elastic-internal/elasticsearch-config-local/elasticsearch.yml
 
+    echo "Linking /mnt/elastic-internal/elasticsearch-config/log4j2.properties to /mnt/elastic-internal/elasticsearch-config-local/log4j2.properties"
+    ln -sf /mnt/elastic-internal/elasticsearch-config/log4j2.properties /mnt/elastic-internal/elasticsearch-config-local/log4j2.properties
+
 #    echo "Linking /mnt/elastic-internal/unicast-hosts/unicast_hosts.txt to /mnt/elastic-internal/elasticsearch-config-local/unicast_hosts.txt"
 #    ln -sf /mnt/elastic-internal/unicast-hosts/unicast_hosts.txt /mnt/elastic-internal/elasticsearch-config-local/unicast_hosts.txt
 
