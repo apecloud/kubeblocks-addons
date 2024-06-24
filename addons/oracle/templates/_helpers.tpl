@@ -63,7 +63,7 @@ Create the name of the service account to use
 
 {{- define "oracle.imageRegistry" }}
 {{- if not .Values.image.registry }}
-{{- "infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com" }}
+{{- "apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com" }}
 {{- else }}
 {{- .Values.image.registry }}
 {{- end}}

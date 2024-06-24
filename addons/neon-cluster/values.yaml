@@ -5,7 +5,7 @@ terminationPolicy: Delete
 
 images:
   pg14:
-    registry: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com
+    registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
     repository: apecloud/pg14-disk-test
     tag: test
     pullPolicy: IfNotPresent

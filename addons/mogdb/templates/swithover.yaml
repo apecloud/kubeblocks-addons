@@ -28,7 +28,7 @@ spec:
       spec:
         containers:
           - name: switchover
-            image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks-tools:0.8.2
+            image: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks-tools:0.8.2
             imagePullPolicy: IfNotPresent
             command:
               - /bin/sh
