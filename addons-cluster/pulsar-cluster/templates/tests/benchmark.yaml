@@ -85,7 +85,7 @@ metadata:
 spec:
   containers:
     - name: omb-k2k
-      image: docker.io/apecloud/omb:0.1
+      image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/omb:0.1
       command: ['bin/benchmark']
       args: 
         - --drivers 
