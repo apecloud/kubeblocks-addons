@@ -54,3 +54,45 @@ spec:
         resources:
           requests:
             storage: 20Gi
+---
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: etcd-cluster
+  namespace: default
+spec:
+  clusterDefinitionRef: etcd
+  clusterVersionRef: etcd-v3.5.6
+  terminationPolicy: WipeOut
+  affinity:
+    podAntiAffinity: Preferred
+    topologyKeys:
+      - kubernetes.io/hostname
+    tenancy: SharedNode
+  tolerations:
+    - key: kb-data
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
+  componentSpecs:
+    - name: etcd
+      componentDefRef: etcd
+      disableExporter: true
+      replicas: 3
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
+      serviceAccountName: kb-etcd-cluster
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
