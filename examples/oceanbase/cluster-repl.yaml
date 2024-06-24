@@ -36,8 +36,9 @@ spec:
       effect: NoSchedule
   # Specifies a list of ClusterComponentSpec objects used to define the individual components that make up a Cluster. This field allows for detailed configuration of each component within the Cluster. Note: `shardingSpecs` and `componentSpecs` cannot both be empty; at least one must be defined to configure a cluster. ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
-  - name: ob-ce-0
-    componentDef: oceanbase-repl
+  - name: oceanbase-0
+    componentDefRef: oceanbase
+    componentDef: oceanbase-repl-host
     replicas: 1
     resources:
       limits:
@@ -75,8 +76,9 @@ spec:
         resources:
           requests:
             storage: 20Gi
-  - name: ob-ce-1
-    componentDef: oceanbase-repl
+  - name: oceanbase-1
+    componentDefRef: oceanbase
+    componentDef: oceanbase-repl-host
     replicas: 1
     resources:
       limits:

@@ -5,7 +5,7 @@ metadata:
   namespace: default
   annotations:
     "kubeblocks.io/extra-env": "{\"ZONE_COUNT\":\"3\",\"OB_CLUSTERS_COUNT\":\"1\"}"
-    kubeblocks.io/restore-from-backup: '{"ob-ce":{"connectionPassword":"<backup-connection-password>","name":"oceanbase-cluster-backup","namespace":"default","volumeRestorePolicy":"Parallel"}}'
+    kubeblocks.io/restore-from-backup: '{"oceanbase":{"connectionPassword":"<backup-connection-password>","name":"oceanbase-cluster-backup","namespace":"default","volumeRestorePolicy":"Parallel"}}'
 spec:
   # Specifies the name of the ClusterDefinition to use when creating a Cluster.
   clusterDefinitionRef: oceanbase
@@ -38,8 +38,9 @@ spec:
   # Note: `shardingSpecs` and `componentSpecs` cannot both be empty; at least one must be defined to configure a cluster.
   # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
-  - name: ob-ce
+  - name: oceanbase
     componentDefRef: oceanbase
+    componentDef: oceanbase-hostnetwork
     replicas: 3
     resources:
       limits:

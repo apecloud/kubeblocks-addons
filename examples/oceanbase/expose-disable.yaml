@@ -9,7 +9,7 @@ spec:
   # Lists Expose objects, each specifying a Component and its services to be exposed.
   expose:
     # Specifies the name of the Component.
-  - componentName: ob-ce-0
+  - componentName: oceanbase
     # Specifies a list of OpsService. When an OpsService is exposed, a corresponding ClusterService will be added to `cluster.spec.services`. 
     services:
     - name: internet

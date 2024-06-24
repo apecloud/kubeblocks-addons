@@ -38,9 +38,9 @@ spec:
   # Note: `shardingSpecs` and `componentSpecs` cannot both be empty; at least one must be defined to configure a cluster.
   # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
-  - name: ob-ce
-    componentDef: oceanbase
+  - name: oceanbase
     componentDefRef: oceanbase
+    componentDef: oceanbase-hostnetwork
     replicas: 3
     resources:
       limits:
