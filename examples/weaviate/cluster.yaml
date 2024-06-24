@@ -37,7 +37,6 @@ spec:
   componentSpecs:
   - name: weaviate
     componentDefRef: weaviate
-    disableExporter: true
     serviceAccountName: kb-weaviate-cluster
     replicas: 2
     resources:

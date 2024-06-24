@@ -37,7 +37,6 @@ spec:
   componentSpecs:
   - name: proxy
     componentDef: camellia-redis-proxy
-    disableExporter: true
     serviceAccountName: kb-camellia-cluster
     replicas: 1
     resources:

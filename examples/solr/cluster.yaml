@@ -81,7 +81,6 @@ spec:
   componentSpecs:
     - name: zookeeper
       componentDefRef: zookeeper
-      disableExporter: true
       replicas: 3
       resources:
         limits:

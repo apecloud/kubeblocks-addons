@@ -39,7 +39,6 @@ spec:
     - error
     - general
     - slow
-    disableExporter: true
     replicas: 3
     serviceAccountName: kb-acmysql-cluster
     resources:
@@ -62,7 +61,6 @@ spec:
     - error
     - warning
     - info
-    disableExporter: true
     name: vtcontroller
     replicas: 1
     resources:
@@ -83,7 +81,6 @@ spec:
     - warning
     - info
     - queryLog
-    disableExporter: true
     name: vtgate
     replicas: 1
     resources:

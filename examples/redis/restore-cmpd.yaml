@@ -6,6 +6,10 @@ metadata:
   annotations:
     kubeblocks.io/restore-from-backup: '{"redis":{"connectionPassword":"<backup-connection-password>","name":"redis-cluster-backup","namespace":"default","volumeRestorePolicy":"Parallel"}}'
 spec:
+  # Specifies the name of the ClusterDefinition to use when creating a Cluster.
+  clusterDefinitionRef: redis
+  # Refers to the ClusterVersion name. Deprecated since v0.9, use ComponentVersion instead. This field is maintained for backward compatibility and its use is discouraged. Existing usage should be updated to the current preferred approach to avoid compatibility issues in future releases.
+  clusterVersionRef: redis-7.0.6
   # Specifies the behavior when a Cluster is deleted.
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
   # - `Halt`: Deletes Cluster resources like Pods and Services but retains Persistent Volume Claims (PVCs), allowing for data preservation while stopping other operations.
@@ -18,6 +22,7 @@ spec:
   - name: redis
     # References the name of a ComponentDefinition. The ComponentDefinition specifies the behavior and characteristics of the Component. If both `componentDefRef` and `componentDef` are provided, the `componentDef` will take precedence over `componentDefRef`.
     componentDef: redis
+    componentDefRef: redis-sentinel
     # Specifies a group of affinity scheduling rules for the Component. It allows users to control how the Component's Pods are scheduled onto nodes in the cluster.
     affinity:
       podAntiAffinity: Preferred
@@ -30,8 +35,6 @@ spec:
       operator: Equal
       value: 'true'
       effect: NoSchedule
-    # Determines whether the metrics exporter needs to be published to the service endpoint.  
-    disableExporter: true
     # Specifies which types of logs should be collected for the Cluster. 
     enabledLogs:
     - running
@@ -56,8 +59,9 @@ spec:
         resources:
           requests:
             storage: 30Gi
-  - componentDefRef: redis-sentinel
-    name: redis-sentinel
+  - name: redis-sentinel
+    componentDef: redis-sentinel
+    componentDefRef: redis-sentinel
     replicas: 3
     resources:
       limits:

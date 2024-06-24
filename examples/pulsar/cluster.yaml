@@ -72,7 +72,6 @@ spec:
   componentSpecs:
   - name: pulsar-broker
     componentDefRef: pulsar-broker
-    disableExporter: true
     serviceAccountName: kb-pulsar-cluster
     replicas: 1
     resources:
@@ -92,7 +91,6 @@ spec:
             storage: 20Gi
   - name: pulsar-proxy
     componentDefRef: pulsar-proxy
-    disableExporter: true
     replicas: 1
     resources:
       limits:
@@ -103,7 +101,6 @@ spec:
         memory: 0.5Gi
   - name: bookies
     componentDefRef: bookies
-    disableExporter: true
     replicas: 3
     resources:
       limits:
@@ -129,7 +126,6 @@ spec:
             storage: 20Gi
   - name: bookies-recovery
     componentDefRef: bookies-recovery
-    disableExporter: true
     replicas: 1
     resources:
       limits:
@@ -140,7 +136,6 @@ spec:
         memory: 0.5Gi
   - name: zookeeper
     componentDefRef: zookeeper
-    disableExporter: true
     replicas: 3
     resources:
       limits:
