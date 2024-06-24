@@ -33,11 +33,7 @@ spec:
       serviceName: proxy
       componentSelector: proxy
       spec:
-        {{- if .Values.nodePortEnabled }}
-        type: NodePort
-        {{- else }}
         type: ClusterIP
-        {{- end }}
         ports:
           - name: pulsar
             port: 6650
