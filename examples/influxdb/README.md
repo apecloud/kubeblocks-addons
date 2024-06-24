@@ -33,7 +33,7 @@ helm repo add kubeblocks-addons https://jihulab.com/api/v4/projects/150246/packa
 helm repo update
 
 # Enable influxdb 
-helm upgrade -i kb-addon-influxdb kubeblocks-addons/influxdb --version 0.9.0 -n kb-system  
+helm upgrade -i kb-addon-influxdb kubeblocks-addons/influxdb --version 0.8.0 -n kb-system  
 ``` 
 
 ## Examples

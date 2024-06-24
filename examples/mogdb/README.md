@@ -33,7 +33,7 @@ helm repo add kubeblocks-addons https://jihulab.com/api/v4/projects/150246/packa
 # Update helm repo
 helm repo update
 # Update mogdb to enable hostnetwork
-helm upgrade -i kb-addon-mogdb kubeblocks-addons/mogdb  -n kb-system --version 0.9.0
+helm upgrade -i kb-addon-mogdb kubeblocks-addons/mogdb  -n kb-system --version 0.8.0
 ```
 
 ## Examples

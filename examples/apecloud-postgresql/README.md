@@ -35,7 +35,7 @@ helm repo add kubeblocks-addons https://jihulab.com/api/v4/projects/150246/packa
 helm repo update
 
 # Enable apecloud-postgresql 
-helm upgrade -i kb-addon-apecloud-postgresql kubeblocks-addons/apecloud-postgresql --version 0.9.0-alpha.5 -n kb-system  
+helm upgrade -i kb-addon-apecloud-postgresql kubeblocks-addons/apecloud-postgresql --version 0.8.0-alpha.5 -n kb-system  
 ``` 
 
 ## Examples

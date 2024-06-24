@@ -34,7 +34,7 @@ helm repo add kubeblocks-addons https://jihulab.com/api/v4/projects/150246/packa
 helm repo update
 
 # Enable opengauss 
-helm upgrade -i kb-addon-opengauss kubeblocks-addons/opengauss -n kb-system --version 0.9.0 
+helm upgrade -i kb-addon-opengauss kubeblocks-addons/opengauss --version 0.8.0 -n kb-system 
 ``` 
 
 ## Examples
