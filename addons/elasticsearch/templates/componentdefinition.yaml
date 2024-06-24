@@ -35,7 +35,7 @@ spec:
   lifecycleActions:
     memberLeave:
       customHandler:
-        image: {{ .Values.image.tools.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag | default "latest" }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag | default "latest" }}
         exec:
           command:
           - /bin/sh
@@ -145,6 +145,31 @@ spec:
         name: tmp-volume
       - mountPath: /tmp/plugins
         name: plugins
+    - name: exporter
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag | default "latest" }}
+      command:
+        - /bin/elasticsearch_exporter
+        - "--es.uri=http://localhost:9200"
+      ports:
+      - name: metrics
+        containerPort: 9114
+      env:
+      - name: SERVICE_PORT
+        value: "9114"
+      livenessProbe:
+        httpGet:
+          path: /healthz
+          port: metrics
+        initialDelaySeconds: 5
+        timeoutSeconds: 5
+        periodSeconds: 5
+      readinessProbe:
+        httpGet:
+          path: /healthz
+          port: metrics
+        initialDelaySeconds: 1
+        timeoutSeconds: 5
+        periodSeconds: 5
     initContainers:
     - command:
       - bash
@@ -265,7 +290,7 @@ spec:
       - mountPath: /usr/share/elasticsearch/plugins
         name: elastic-internal-elasticsearch-plugins-local
     - name: prepare-plugins
-      image: {{ .Values.image.plugin.registry | default "docker.io" }}/{{ .Values.image.plugin.repository}}:{{ default .Chart.AppVersion .Values.image.plugin.tag }}
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.plugin.repository}}:{{ default .Chart.AppVersion .Values.image.plugin.tag }}
       imagePullPolicy: IfNotPresent
       command:
       - sh
