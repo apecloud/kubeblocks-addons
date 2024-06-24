@@ -8,3 +8,5 @@ metadata:
 data:
   elasticsearch.yml: |-
     {{- .Files.Get "configs/elasticsearch.yml.tpl" | nindent 4 }}
+  log4j2.properties: |-
+    {{- .Files.Get "configs/log4j2.properties" | nindent 4 }}
