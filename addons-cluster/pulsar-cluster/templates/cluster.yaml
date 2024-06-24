@@ -129,6 +129,12 @@ spec:
       {{- end }}
       {{ include "pulsar-zookeeper-ref" . | nindent 6 }}
       monitor: {{ .Values.monitor.enabled | default false }}
+      {{- if .Values.nodePortEnabled }}
+      services:
+        - name: advertised-listener
+          serviceType: NodePort
+          podService: true
+      {{- end }}
       replicas: {{ .Values.broker.replicaCount | default 3 }}
       {{- with  .Values.broker.resources }}
       resources:

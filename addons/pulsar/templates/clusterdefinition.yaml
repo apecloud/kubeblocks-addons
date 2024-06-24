@@ -642,6 +642,16 @@ spec:
         - name: zookeeper
           compDef: pulsar-zookeeper-{{include "pulsar.major.version" .}}
       default: true
+      orders:
+        provision:
+          - zookeeper
+          - broker,bookies
+        terminate:
+          - broker,bookies
+          - zookeeper
+        update:
+          - zookeeper
+          - broker,bookies
     - name: pulsar-enhanced-cluster
       components:
         - name: broker
@@ -654,3 +664,16 @@ spec:
           compDef: pulsar-proxy-{{include "pulsar.major.version" .}}
         - name: bookies-recovery
           compDef: pulsar-bkrecovery-{{include "pulsar.major.version" .}}
+      orders:
+        provision:
+          - zookeeper,bookies-recovery
+          - broker,bookies
+          - proxy
+        terminate:
+          - proxy
+          - broker,bookies
+          - zookeeper,bookies-recovery
+        update:
+          - zookeeper,bookies-recovery
+          - broker,bookies
+          - proxy

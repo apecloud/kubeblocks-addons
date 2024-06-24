@@ -10,39 +10,27 @@ spec:
   serviceKind: pulsar
   serviceVersion: {{ default .Chart.AppVersion .Values.clusterVersionOverride }}
   vars:
-    - name: NODE_PORT_PULSAR
+    - name: ADVERTISED_PORT_PULSAR
       valueFrom:
         serviceVarRef:
-          compDef: pulsar-broker
-          name: broker-nodeport
+          compDef: pulsar-broker-{{include "pulsar.major.version" .}}
+          name: advertised-listener
           optional: true
           port:
             name: pulsar
             option: Optional
-    - name: NODE_PORT_KAFKA
+    - name: ADVERTISED_PORT_KAFKA
       valueFrom:
         serviceVarRef:
-          compDef: pulsar-broker
-          name: broker-nodeport
+          compDef: pulsar-broker-{{include "pulsar.major.version" .}}
+          name: advertised-listener
           optional: true
           port:
             name: kafka-client
             option: Optional
   services:
-    - name: broker-clusterip
-      serviceName: clusterip
-      podService: true
-      spec:
-        type: ClusterIP
-        ports:
-          - name: pulsar
-            port: 6650
-            targetPort: pulsar
-          - name: kafka-client
-            port: 9092
-            targetPort: kafka-client
-    - name: broker-nodeport
-      serviceName: nodeport
+    - name: advertised-listener
+      serviceName: advertised-listener
       podService: true
       disableAutoProvision: true
       spec:
