@@ -9,6 +9,8 @@ metadata:
     kubeblocks.io/extra-env: '{"mode":"{{ .Values.mode }}"}'
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  clusterDefinitionRef: elasticsearch
+  clusterVersionRef: elasticsearch-8.8.2
   {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
     - name: mdit # user-defined
