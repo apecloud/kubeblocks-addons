@@ -101,32 +101,8 @@ init_or_get_primary_node() {
   # the global primary variable maybe the fqdn format or the primary node ip.
   init_or_get_primary_from_redis_sentinel
 
-  # skip check role in kernel if the primary contains the pod name
-  if check_current_pod_is_primary; then
-    return
-  fi
-
-  # check the primary is real master role or not
-  if [ -n "$REDIS_DEFAULT_PASSWORD" ]; then
-    check_kernel_role_cmd="redis-cli -h $primary -p $primary_port -a $REDIS_DEFAULT_PASSWORD info replication | grep 'role:' | awk -F: '{print \$2}'"
-  else
-    check_kernel_role_cmd="redis-cli -h $primary -p $primary_port info replication | grep 'role:' | awk -F: '{print \$2}'"
-  fi
-  retry_times=10
-  while true; do
-    check_role=$(eval "$check_kernel_role_cmd")
-    if [[ "$check_role" =~ "master" ]]; then
-      break
-    else
-      echo "the selected primary node is not the real master in kernel, existing primary node: $primary, role: $check_role"
-    fi
-    sleep 3
-    retry_times=$((retry_times - 1))
-    if [ $retry_times -eq 0 ]; then
-      echo "check primary node role failed after 20 times, existing primary node: $primary, role: $check_role"
-      exit 1
-    fi
-  done
+  # check the primary node role in kernel
+  # check_pod_is_primary_in_kernel
 }
 
 init_or_get_primary_from_redis_sentinel() {
@@ -277,6 +253,35 @@ check_current_pod_is_primary() {
     return 0
   fi
   return 1
+}
+
+check_pod_is_primary_in_kernel() {
+  # skip check role in kernel if the primary contains the pod name
+  if check_current_pod_is_primary; then
+    return
+  fi
+
+  # check the primary is real master role or not
+  if [ -n "$REDIS_DEFAULT_PASSWORD" ]; then
+    check_kernel_role_cmd="redis-cli -h $primary -p $primary_port -a $REDIS_DEFAULT_PASSWORD info replication | grep 'role:' | awk -F: '{print \$2}'"
+  else
+    check_kernel_role_cmd="redis-cli -h $primary -p $primary_port info replication | grep 'role:' | awk -F: '{print \$2}'"
+  fi
+  retry_times=10
+  while true; do
+    check_role=$(eval "$check_kernel_role_cmd")
+    if [[ "$check_role" =~ "master" ]]; then
+      break
+    else
+      echo "the selected primary node is not the real master in kernel, existing primary node: $primary, role: $check_role"
+    fi
+    sleep 3
+    retry_times=$((retry_times - 1))
+    if [ $retry_times -eq 0 ]; then
+      echo "check primary node role failed after 20 times, existing primary node: $primary, role: $check_role"
+      exit 1
+    fi
+  done
 }
 
 start_redis_server() {
