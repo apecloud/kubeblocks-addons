@@ -2,6 +2,16 @@
   "$schema": "http://json-schema.org/schema#",
   "type": "object",
   "properties": {
+    "mode": {
+      "title": "Mode",
+      "description": "Mode for ElasticSearch",
+      "type": "string",
+      "default": "multi-node",
+      "enum": [
+        "single-node",
+        "multi-node"
+      ]
+    },
     "replicaCount": {
       "title": "ReplicaCount",
       "description": "The number of replicas.",
@@ -9,16 +19,6 @@
       "default": 1,
       "minimum": 1,
       "maximum": 5
-    },
-    "mode": {
-      "title": "Mode",
-      "description": "Cluster topology mode.",
-      "type": "string",
-      "default": "multi-node",
-      "enum": [
-        "single-node",
-        "multi-node"
-      ]
     },
     "terminationPolicy": {
       "title": "TerminationPolicy",

@@ -1,0 +1,25 @@
+{{- if eq .Values.mode "single-node" }}
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+  annotations:
+    kubeblocks.io/extra-env: '{"mode":"{{ .Values.mode }}"}'
+spec:
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  clusterDefinitionRef: elasticsearch
+  clusterVersionRef: elasticsearch-8.8.2
+  {{- include "kblib.affinity" . | indent 2 }}
+  componentSpecs:
+    - name: mdit # user-defined
+      componentDef: elasticsearch # ref ComponentDefinition name
+      componentDefRef: elasticsearch # ref clusterDefinition componentDefs.name, it would be ignored if componentDef is set, just for compatibility
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+      replicas: 1
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
+      {{- include "kblib.componentServices" . | indent 6 }}
+{{- end }}
