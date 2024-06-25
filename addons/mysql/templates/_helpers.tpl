@@ -344,10 +344,11 @@ memberLeave:
         - /bin/bash
         - -c
         - |
+          set +e
           master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i $KB_CLUSTER_NAME)
           last_digit=${KB_LEAVE_MEMBER_POD_NAME##*-}
           self_service_name=$(echo "${KB_CLUSTER_COMP_NAME}_mysql_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
-          if [${self_service_name%%:*} == ${master_from_orc%%:*}]; then
+          if [ "${self_service_name%%:*}" == "${master_from_orc%%:*}" ]; then
             /kubeblocks/orchestrator-client -c force-master-failover -i $KB_CLUSTER_NAME
             local timeout=30
             local start_time=$(date +%s)
@@ -358,19 +359,25 @@ memberLeave:
                 break
               fi
               master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i $KB_CLUSTER_NAME)
-              if [${self_service_name} != master_from_orc]; then
+              if [ "${self_service_name%%:*}" != "${master_from_orc%%:*}" ]; then
                 break
               fi
               sleep 1
             done
-           fi
+          fi
           /kubeblocks/orchestrator-client -c reset-replica -i ${self_service_name}
-          res=$(/kubeblocks/orchestrator-client -c instance -i orc-80-proxy-server-mysql-1) || true
-          while [ ! -z res ]; do
-            /kubeblocks/orchestrator-client -c forget -i ${self_service_name}
+          /kubeblocks/orchestrator-client -c forget -i ${self_service_name}
+          res=$(/kubeblocks/orchestrator-client -c which-cluster-alias -i ${self_service_name})
+          local start_time=$(date +%s)
+          while [ "$res" == "" ]; do
+            current_time=$(date +%s)
+            if [ $((current_time - start_time)) -gt $timeout ]; then
+              break
+            fi
             sleep 1
-            res=$(/kubeblocks/orchestrator-client -c instance -i orc-80-proxy-server-mysql-1) || true
+            res=$(/kubeblocks/orchestrator-client -c instance -i ${self_service_name})
           done
+          /kubeblocks/orchestrator-client -c forget -i ${self_service_name}
 
     targetPodSelector: Any
     container: mysql
