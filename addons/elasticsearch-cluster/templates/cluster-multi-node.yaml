@@ -15,6 +15,7 @@ spec:
   componentSpecs:
     - name: mdit # user-defined
       componentDef: elasticsearch # ref clusterdefinition componentDefs.name
+      componentDefRef: elasticsearch # ref clusterDefinition componentDefs.name, it would be ignored if componentDef is set, just for compatibility
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.replicas | default 1 }}
