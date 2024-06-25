@@ -63,12 +63,11 @@ EOF
   mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD << EOF
 USE kb_orc_meta_cluster;
 INSERT INTO kb_orc_meta_cluster (anchor,host_name,cluster_name, cluster_domain, data_center)
-SELECT 1, '$service_name','$KB_CLUSTER_NAME', '', ''
-    WHERE NOT EXISTS (
-    SELECT 1
-    FROM kb_orc_meta_cluster
-    WHERE anchor = 1
-);
+VALUES (1, '$service_name', '$KB_CLUSTER_NAME', '', '')
+ON DUPLICATE KEY UPDATE
+    cluster_name = VALUES(cluster_name),
+    cluster_domain = VALUES(cluster_domain),
+    data_center = VALUES(data_center);
 EOF
 
 }
@@ -96,6 +95,9 @@ wait_for_connectivity() {
 }
 
 setup_master_slave() {
+
+  mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e "STOP SLAVE;RESET MASTER;RESET SLAVE ALL;";
+
   mysql_note "setup_master_slave"
   master_host_name=$(echo "${KB_CLUSTER_COMP_NAME}_MYSQL_0_SERVICE_HOST" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
   master_host=${!master_host_name}

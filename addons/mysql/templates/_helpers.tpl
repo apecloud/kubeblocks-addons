@@ -298,6 +298,8 @@ vars:
       serviceRefVarRef:
         name: orchestrator
         port: Required
+  - name: DATA_MOUNT
+    value: {{.Values.dataMountPath}}
 {{- end }}
 
 
@@ -342,12 +344,34 @@ memberLeave:
         - /bin/bash
         - -c
         - |
+          master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i $KB_CLUSTER_NAME)
           last_digit=${KB_LEAVE_MEMBER_POD_NAME##*-}
           self_service_name=$(echo "${KB_CLUSTER_COMP_NAME}_mysql_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
-          # /kubeblocks/orchestrator-client -c forget -i ${self_service_name}:3306
-          curl http://${ORC_ENDPOINTS%%:*}:${ORC_PORTS}/api/reset-slave/${self_service_name}/3306
-          sleep 1
-          curl http://${ORC_ENDPOINTS%%:*}:${ORC_PORTS}/api/forget/${self_service_name}/3306
+          if [${self_service_name%%:*} == ${master_from_orc%%:*}]; then
+            /kubeblocks/orchestrator-client -c force-master-failover -i $KB_CLUSTER_NAME
+            local timeout=30
+            local start_time=$(date +%s)
+            local current_time
+            while true; do
+              current_time=$(date +%s)
+              if [ $((current_time - start_time)) -gt $timeout ]; then
+                break
+              fi
+              master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i $KB_CLUSTER_NAME)
+              if [${self_service_name} != master_from_orc]; then
+                break
+              fi
+              sleep 1
+            done
+           fi
+          /kubeblocks/orchestrator-client -c reset-replica -i ${self_service_name}
+          res=$(/kubeblocks/orchestrator-client -c instance -i orc-80-proxy-server-mysql-1) || true
+          while [ ! -z res ]; do
+            /kubeblocks/orchestrator-client -c forget -i ${self_service_name}
+            sleep 1
+            res=$(/kubeblocks/orchestrator-client -c instance -i orc-80-proxy-server-mysql-1) || true
+          done
+
     targetPodSelector: Any
     container: mysql
 {{- end }}
@@ -367,3 +391,33 @@ memberLeave:
     - mountPath: /kubeblocks
       name: kubeblocks
 {{- end }}
+
+master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i $KB_CLUSTER_NAME)
+last_digit=${KB_LEAVE_MEMBER_POD_NAME##*-}
+self_service_name=$(echo "${KB_CLUSTER_COMP_NAME}_mysql_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+if [${self_service_name%%:*} == ${master_from_orc%%:*}]; then
+  /kubeblocks/orchestrator-client -c force-master-failover -i $KB_CLUSTER_NAME
+  local timeout=30
+  local start_time=$(date +%s)
+  local current_time
+  while true; do
+    echo 1
+    current_time=$(date +%s)
+    if [ $((current_time - start_time)) -gt $timeout ]; then
+      break
+    fi
+    master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i $KB_CLUSTER_NAME)
+    if [${self_service_name} != master_from_orc]; then
+      break
+    fi
+    sleep 1
+  done
+fi
+/kubeblocks/orchestrator-client -c reset-replica -i ${self_service_name}
+res=$(/kubeblocks/orchestrator-client -c instance -i ${self_service_name}) || true
+while [ ! -z res ]; do
+  echo 2
+  /kubeblocks/orchestrator-client -c forget -i ${self_service_name}
+  sleep 1
+  res=$(/kubeblocks/orchestrator-client -c instance -i ${self_service_name}) || true
+done
