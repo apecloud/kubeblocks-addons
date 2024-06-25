@@ -199,7 +199,7 @@ register_to_sentinel_wrapper() {
   # get minimum ordinal pod name as default primary node (the same logic as redis initialize primary node selection)
   get_minimum_initialize_pod_ordinal
   default_redis_primary_pod_name="$KB_CLUSTER_COMP_NAME-$default_initialize_pod_ordinal"
-  redis_default_primary_pod_headless_fqdn="$default_redis_primary_pod_name.$KB_CLUSTER_COMP_NAME-$headless_postfix"
+  redis_default_primary_pod_headless_fqdn="$default_redis_primary_pod_name.$KB_CLUSTER_COMP_NAME-$headless_postfix.$KB_NAMESPACE.svc"
   init_redis_service_port
   parse_redis_advertised_svc_if_exist $default_redis_primary_pod_name
 
