@@ -2,6 +2,7 @@
 {{- $defaultRoles := "master,data" }}
 {{- $namespace := $.cluster.metadata.namespace }}
 {{- $extraEnv := index $.cluster.metadata.annotations "kubeblocks.io/extra-env" | default "{}" | fromJson }}
+{{- $mode := index $extraEnv "mode" | default "multi-node" }}
 
 {{- $allRoles := fromJson "{}" }}
 {{- range $i, $spec := $.cluster.spec.componentSpecs }}
@@ -23,6 +24,7 @@ cluster:
     allocation:
       awareness:
         attributes: k8s_node_name
+{{- if eq $mode "multi-node" }}
   initial_master_nodes:
 {{- range $i, $name := $masterComponents }}
 {{- range $j, $spec := $.cluster.spec.componentSpecs }}
@@ -34,9 +36,11 @@ cluster:
 {{- end }}
 {{- end }}
 {{- end }}
+{{- end }}
 
 discovery:
-  type: multi-node
+  type: {{ $mode }}
+{{- if eq $mode "multi-node" }}
   seed_hosts:
 {{- range $i, $name := $masterComponents }}
 {{- range $j, $spec := $.cluster.spec.componentSpecs }}
@@ -44,6 +48,7 @@ discovery:
 {{- $replicas := $spec.replicas | int }}
 {{- range $idx, $e := until $replicas }}
   - {{ printf "%s-%s-%d.%s-%s-headless.%s.svc.%s" $clusterName $name $idx $clusterName $name $namespace $.clusterDomain }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -66,11 +71,13 @@ node:
   name: ${POD_NAME}
   store:
     allow_mmap: false
+{{- if eq $mode "multi-node" }}
   roles:
   {{- $myRoles := index $extraEnv (printf "%s-roles" $.component.name) | default $defaultRoles | splitList "," }}
   {{- range $i, $e := $myRoles }}
   - {{ $e }}
   {{- end }}
+{{- end }}
 
 path:
   data: /usr/share/elasticsearch/data
