@@ -170,10 +170,22 @@ relay_log_index=relay-bin.index
 loose_audit_log_handler=FILE # FILE, SYSLOG
 loose_audit_log_file={{ $data_root }}/auditlog/audit.log
 loose_audit_log_buffer_size=1Mb
-loose_audit_log_policy=ALL # ALL, LOGINS, QUERIES, NONE
+loose_audit_log_policy=QUERIES # ALL, LOGINS, QUERIES, NONE
 loose_audit_log_strategy=ASYNCHRONOUS
 loose_audit_log_rotate_on_size=10485760
 loose_audit_log_rotations=5
+## mysql> select host, user from mysql.user;
+## +-----------+------------------+
+## | host      | user             |
+## +-----------+------------------+
+## | %         | root             |
+## | %         | u1               |
+## | localhost | mysql.infoschema |
+## | localhost | mysql.session    |
+## | localhost | mysql.sys        |
+## | localhost | root             |
+## +-----------+------------------+
+loose_audit_log_exclude_accounts=root@%,root@localhost
 
 # semi sync, it works
 # loose_rpl-semi-sync-source-enabled = 1
