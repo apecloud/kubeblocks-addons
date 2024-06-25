@@ -6,7 +6,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
   annotations:
-    kubeblocks.io/extra-env: '{"mdit-roles":"master,data,ingest,transform","mode":"multi-node"}'
+    kubeblocks.io/extra-env: '{"mdit-roles":"master,data,ingest,transform","mode":"{{ .Values.mode }}"}'
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}

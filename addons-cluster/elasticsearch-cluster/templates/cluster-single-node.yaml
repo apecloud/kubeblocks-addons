@@ -6,7 +6,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
   annotations:
-    kubeblocks.io/extra-env: '{"mode":"single-node"}'
+    kubeblocks.io/extra-env: '{"mode":"{{ .Values.mode }}"}'
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
