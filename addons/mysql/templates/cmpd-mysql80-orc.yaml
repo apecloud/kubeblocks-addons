@@ -1,0 +1,94 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "mysql.componentDefName" . }}-8.0.33-orc
+  labels:
+      {{- include "mysql.labels" . | nindent 4 }}
+spec:
+  {{- include "mysql-orc.spec.common" . | nindent 2 }}
+  serviceVersion: 8.0.33
+  lifecycleActions:
+    {{- include "mysql-orc.spec.lifecycle.common" . | nindent 4 }}
+    postProvision:
+      customHandler:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+        exec:
+          command:
+            - bash
+            - -c
+            - "/scripts/mysql-orchestrator-register.sh"
+        preCondition: RuntimeReady
+    preTerminate:
+      customHandler:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+        exec:
+          command:
+            - bash
+            - -c
+            - curl http://${ORC_ENDPOINTS%%:*}:${ORC_PORTS}/api/forget-cluster/${KB_CLUSTER_NAME}
+  configs:
+    - name: mysql-replication-config
+      templateRef: mysql-8.0-config-template
+      constraintRef: mysql-config-constraints
+      volumeName: mysql-config
+      namespace: {{ .Release.Namespace }}
+  runtime:
+    initContainers:
+      - image: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
+        name: init-data
+        command:
+          - bash
+          - -c
+          - |
+            mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog}
+            cp /usr/lib/mysql/plugin/ {{ .Values.dataMountPath }}/plugin -r
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+      {{- include "mysql-orc.spec.initcontainer.common" . | nindent 6 }}
+    containers:
+      - name: mysql
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        lifecycle:
+          postStart:
+            exec:
+              command: [ "/bin/sh", "-c", "/scripts/init-mysql-instance-for-orc.sh" ]
+        command:
+          - bash
+          - -c
+          - |
+            mv {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
+            rm -rf {{ .Values.dataMountPath }}/plugin
+            chown -R mysql:root {{ .Values.dataMountPath }}
+            skip_slave_start="OFF"
+            if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
+              skip_slave_start="ON"
+            fi
+            /scripts/mysql-entrypoint.sh
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+          - mountPath: /etc/mysql/conf.d
+            name: mysql-config
+          - name: scripts
+            mountPath: /scripts
+          - mountPath: /kubeblocks
+            name: kubeblocks
+        ports:
+          - containerPort: 3306
+            name: mysql
+        env:
+          - name: PATH
+            value: /kubeblocks/xtrabackup/bin:/kubeblocks/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          - name: MYSQL_INITDB_SKIP_TZINFO
+            value: "1"
+          - name: MYSQL_ROOT_HOST
+            value: {{ .Values.auth.rootHost | default "%" | quote }}
+          - name: ORC_TOPOLOGY_USER
+            value: {{ .Values.orchestrator.topology.username }}
+          - name: ORC_TOPOLOGY_PASSWORD
+            value: {{ .Values.orchestrator.topology.password }}
+          - name: HA_COMPNENT
+            value: orchestrator

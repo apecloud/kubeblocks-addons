@@ -1,31 +1,35 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "proxysql.componentDefName" . }}-8.0
+  name: {{ include "proxysql.componentDefName" . }}
   labels:
       {{- include "mysql.labels" . | nindent 4 }}
 spec:
   provider: kubeblocks
   description: mysql proxy definition for Kubernetes
   serviceKind: proxysql
-  serviceVersion: 8.0.0
+  serviceVersion: 2.4.4
+  updateStrategy: BestEffortParallel
 
   configs:
     - name: proxy-config
-      templateRef: mysql-proxysql-config
+      templateRef: proxysql-config
       namespace: {{ .Release.Namespace }}
       volumeName: proxy-config
       reRenderResourceTypes:
-        - replicas
-      asEnvFrom:
+        - hscale
+      {{/*
+      injectEnvTo:
         - proxysql
         - proxy
+        */}}
   scripts:
     - name: proxysql-scripts
-      templateRef: mysql-proxysql-scripts
+      templateRef: proxysql-scripts
       namespace: {{ .Release.Namespace }}
       volumeName: proxysql-scripts
       defaultMode: 0555
+
   services:
     - name: proxy-server
       serviceName: proxy-server
@@ -36,7 +40,7 @@ spec:
             targetPort: db
     - name: proxy-ordinal
       serviceName: proxy-ordinal
-      generatePodOrdinalService: true
+      podService: true
       spec:
         ports:
           - name: admin
@@ -49,67 +53,36 @@ spec:
     - name: BACKEND_SERVER
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "mysql.componentDefName" . }}-8.0.33
+          compDef: {{ include "mysql.componentDefName" . }}
           name: mysql-server
           host: Required
-          optional: true
-
-    - name: MYSQL_ORDINAL_HOST
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "mysql.componentDefName" . }}-8.0.33
-          name: mysql
-          generatePodOrdinalServiceVar: true
-          host: Required
-          optional: true
+          optional: false
 
     - name: MYSQL_ROOT_USER
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "mysql.componentDefName" . }}-8.0.33
+          compDef: {{ include "mysql.componentDefName" . }}
           name: root
           username: Required
-
 
     - name: MYSQL_ROOT_PASSWORD
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "mysql.componentDefName" . }}-8.0.33
+          compDef: {{ include "mysql.componentDefName" . }}
           name: root
           password: Required
-
 
     - name: MYSQL_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "mysql.componentDefName" . }}-8.0.33
-          name: mysql
-          generatePodOrdinalServiceVar: true
-          optional: true
+          compDef: {{ include "mysql.componentDefName" . }}
+          name: mysql-server
+          optional: false
           port:
             name: mysql
-            option: Optional
-
-    - name: PROXYSQL_HOST_NAME
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "proxysql.componentDefName" . }}-8.0
-          name: proxy-ordinal
-          generatePodOrdinalServiceVar: true
-          host: Required
-
-    - name: PROXYSQL_ADMIN_PORT
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "proxysql.componentDefName" . }}-8.0
-          name: proxy-ordinal
-          generatePodOrdinalServiceVar: true
-          port:
-            name: admin
-            option: Optional
-
+            option: Required
 
   runtime:
     volumes:
@@ -120,9 +93,6 @@ spec:
         args:
           - /scripts/proxysql/proxysql-entry.sh
           - --reload
-
-        terminationMessagePath: /dev/termination-log
-        terminationMessagePolicy: File
         volumeMounts:
           - mountPath: /etc/custom-config
             name: proxy-config
@@ -135,8 +105,6 @@ spec:
             value: "false"
           - name: FRONTEND_TLS_ENABLED
             value: "false"
-          - name: MYSQL_VERSION
-            value: 8.0.32
         ports:
           - containerPort: 6033
             name: db

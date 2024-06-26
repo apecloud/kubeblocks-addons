@@ -46,25 +46,15 @@ myname=$(basename $0)
 [ -f /etc/profile.d/orchestrator-client.sh ] && . /etc/profile.d/orchestrator-client.sh
 
 prepare_orchestrator_env() {
-   i=0
-   endpoint_name=$(echo "${ORC_ENDPOINTS%%:*}_ORDINAL_${i}_PORT_80_TCP" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
-   while  [[ -n "${!endpoint_name}" ]]; do
-     endpoint=${!endpoint_name}
-
-     api="http://${endpoint##*://}/api"
-
-     if [[ -z "$ORCHESTRATOR_API" ]]; then
-       ORCHESTRATOR_API="$api"
-     else
-       ORCHESTRATOR_API="$ORCHESTRATOR_API $api"
-     fi
-     i=$(($i+1))
-     endpoint_name=$(echo "${ORC_ENDPOINTS%%:*}_ORCHESTRATOR_ORDINAL_${i}_PORT_80_TCP" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
-   done
+   if [[ -z "$ORCHESTRATOR_API" ]]; then
+     ORCHESTRATOR_API=$(echo "http://${ORC_ENDPOINTS}:${ORC_PORTS}" | tr '_' '-'  | tr '[:upper:]' '[:lower:]')
+   fi
    export ORCHESTRATOR_API=$ORCHESTRATOR_API
 }
 
-prepare_orchestrator_env
+if [[ -z "$ORCHESTRATOR_API" ]]; then
+  prepare_orchestrator_env
+fi
 
 orchestrator_api="${ORCHESTRATOR_API:-http://localhost:3000}"
 leader_api=

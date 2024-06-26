@@ -1,4 +1,5 @@
-{{- if eq .Values.orchestrator.serviceReference.cluster ""}}
+{{- if .Values.orchestrator.enable }}
+{{- if eq .Values.orchestrator.clusterServiceSelector.cluster ""}}
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ServiceDescriptor
 metadata:
@@ -6,9 +7,10 @@ metadata:
   namespace: {{ .Release.Namespace }}
 spec:
   serviceKind: orchestrator
-  serviceVersion: 2.0.23
+  serviceVersion: 3.2.6
   endpoint:
     value: {{ .Values.orchestrator.serviceReference.endpoint }}
   port:
     value: "{{ .Values.orchestrator.serviceReference.port }}"
+{{- end }}
 {{- end }}

@@ -1,103 +1,30 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ClusterDefinition
 metadata:
-  name: mysql
+  name: {{ include "mysql.componentDefName" . }}
   labels:
     {{- include "mysql.labels" . | nindent 4 }}
 spec:
   type: mysql
-  connectionCredential:
-    username: root
-    password: "$(RANDOM_PASSWD)"
-    endpoint: "$(SVC_FQDN):$(SVC_PORT_mysql)"
-    host: "$(SVC_FQDN)"
-    port: "$(SVC_PORT_mysql)"
-  componentDefs:
-    - name: mysql
-      characterType: mysql
-      probes:
-        roleProbe:
-          failureThreshold: {{ .Values.roleProbe.failureThreshold }}
-          periodSeconds: {{ .Values.roleProbe.periodSeconds }}
-          timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
-      workloadType: Replication
-      service:
-        ports:
-          - name: mysql
-            port: 3306
-            targetPort: mysql
-      configSpecs:
-        - name: mysql-replication-config
-          templateRef: mysql-8.0-config-template
-          constraintRef: mysql-config-constraints
-          volumeName: mysql-config
-          namespace: {{ .Release.Namespace }}
-      scriptSpecs:
-        - name: mysql-scripts
-          templateRef: mysql-scripts
-          namespace: {{ .Release.Namespace }}
-          volumeName: scripts
-          defaultMode: 0555
-      volumeTypes:
-        - name: data
-          type: data
-            # horizontalScalePolicy:
-            #   type: CloneVolume
-            #   backupPolicyTemplateName: mysql-hscale-backup-policy-template
-      podSpec:
-        initContainers:
-          - command:
-            - bash 
-            - -c
-            - |
-              mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog}
-              cp /usr/lib/mysql/plugin/ {{ .Values.dataMountPath }}/plugin -r
-            imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
-            name: init-data
-            volumeMounts:
-              - mountPath: {{ .Values.dataMountPath }}
-                name: data
-        containers:
-          - name: mysql
-            imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
-            command:
-              - bash 
-              - -c
-              - "docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1))"
-            volumeMounts:
-              - mountPath: {{ .Values.dataMountPath }}
-                name: data
-              - mountPath: /etc/mysql/conf.d
-                name: mysql-config
-              - name: scripts
-                mountPath: /scripts
-              - mountPath: /kubeblocks
-                name: kubeblocks
-            ports:
-              - containerPort: 3306
-                name: mysql
-              - containerPort: 3601
-                name: ha
-            env:
-              - name: PATH
-                value: /kubeblocks/xtrabackup/bin:/kubeblocks/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-              - name: KB_SERVICE_CHARACTER_TYPE
-                value: mysql
-              - name: MYSQL_INITDB_SKIP_TZINFO
-                value: "1"
-              - name: SERVICE_PORT
-                value: "3306"
-              - name: MYSQL_ROOT_HOST
-                value: {{ .Values.auth.rootHost | default "%" | quote }}
-              - name: MYSQL_ROOT_USER
-                valueFrom:
-                  secretKeyRef:
-                    name: $(CONN_CREDENTIAL_SECRET_NAME)
-                    key: username
-                    optional: false
-              - name: MYSQL_ROOT_PASSWORD
-                valueFrom:
-                  secretKeyRef:
-                    name: $(CONN_CREDENTIAL_SECRET_NAME)
-                    key: password
-                    optional: false
+  topologies:
+    - name: server
+      components:
+        - name: server
+          compDef: {{ include "mysql.componentDefName" . }}-8.0.33
+      default: true
+    - name: server-with-proxy
+      components:
+        - name: server
+          compDef: {{ include "mysql.componentDefName" . }}-8.0.33
+        - name: proxysql
+          compDef: {{ include "proxysql.componentDefName" . }}
+      orders:
+        provision: # The server will start before the proxy is created.
+          - server
+          - proxysql
+        terminate: # The proxy will be shut down (destroyed) before the server.
+          - proxysql
+          - server
+        update: # When there are multiple component update operations, follow the order specified here.
+          - server
+          - proxysql

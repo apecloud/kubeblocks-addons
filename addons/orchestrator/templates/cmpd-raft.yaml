@@ -8,15 +8,6 @@ spec:
   {{- include "orchestrator.cmpd.spec.common" . | nindent 2 }}
   services:
     - name: default
-      roleSelector: primary
-      spec:
-        ports:
-          - name: http
-            port: 80
-            targetPort: http
-    - name: ordinal
-      serviceName: ordinal
-      podService: true
       spec:
         ports:
           - name: http

@@ -2,15 +2,14 @@
 set -ex
 
 # meta mysql connection parameters
-mysql_port="3306"
-mysql_username="$MYSQL_ROOT_USER"
-mysql_password="$MYSQL_ROOT_PASSWORD"
+# mysql_port="3306"
+# mysql_username="$MYSQL_ROOT_USER"
+# mysql_password="$MYSQL_ROOT_PASSWORD"
 
-topology_user="$ORC_TOPOLOGY_USER"
-topology_password="$ORC_TOPOLOGY_PASSWORD"
+# topology_user="$ORC_TOPOLOGY_USER"
+# topology_password="$ORC_TOPOLOGY_PASSWORD"
 
-cluster_component_pod_name="$KB_CLUSTER_COMP_NAME"
-component_name="$KB_COMP_NAME"
+# component_name="$KB_COMP_NAME"
 
 # register first pod to orchestrator
 register_to_orchestrator() {
@@ -26,10 +25,6 @@ register_to_orchestrator() {
   local instance_url="http://${endpoint}/api/instance/$host_ip/3306"
 
   echo "register first mysql pod to orchestrator..."
-  instanceResponse=$(curl -s -o /dev/null -w "%{http_code}" $instance_url)
-    if [ $instanceResponse -eq 200 ]; then
-      echo "response success"
-    fi
 
   while true; do
     # register to Orchestrator
@@ -48,6 +43,7 @@ register_to_orchestrator() {
         echo "response success"
         break
     fi
+    sleep 5
   done
   echo "register $pod_name ($host_ip) to Orchestrator successful."
 }
@@ -68,12 +64,10 @@ main() {
   IFS="$old_ifs"
   echo "pod_name_list: $pod_name_list"
 
-  first_mysql_service_host_name=$(echo "${cluster_component_pod_name}_${component_name}_0_SERVICE_HOST" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+  first_mysql_service_host_name=$(echo "${KB_CLUSTER_COMP_NAME}_MYSQL_0_SERVICE_HOST" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
   first_mysql_service_host=${!first_mysql_service_host_name}
 
-  mysql_host_name=MYSQL_ORDINAL_HOST_0
-  HOSTIP=${!mysql_host_name}
-  register_to_orchestrator "$HOSTIP"
+  register_to_orchestrator "$first_mysql_service_host"
 
   echo "Initialization script completed！"
 }
