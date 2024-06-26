@@ -19,27 +19,6 @@ spec:
         cmdExecutorConfig:
           image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
 
-# ---
-# apiVersion: apps.kubeblocks.io/v1alpha1
-# kind: ClusterVersion
-# metadata:
-#   name: official-postgresql-14.7-zhparser
-#   annotations:
-#     kubeblocks.io/is-default-cluster-version: "false"
-#   labels:
-#     {{- include "official-postgresql.labels" . | nindent 4 }}
-# spec:
-#   clusterDefinitionRef: official-postgresql
-#   componentVersions:
-#     - componentDefRef: postgresql
-#       versionsContext:
-#         containers:
-#           - name: postgresql
-#             image: registry.cn-hangzhou.aliyuncs.com/coscene_devops/postgres:14.7-zhparser
-#       systemAccountSpec:
-#         cmdExecutorConfig:
-#           image: registry.cn-hangzhou.aliyuncs.com/coscene_devops/postgres:14.7-zhparser
-
 ---
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ClusterVersion
@@ -70,3 +49,24 @@ spec:
       systemAccountSpec:
         cmdExecutorConfig:
           image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.15
+
+# ---
+# apiVersion: apps.kubeblocks.io/v1alpha1
+# kind: ClusterVersion
+# metadata:
+#   name: official-postgresql-14.7-zhparser
+#   annotations:
+#     kubeblocks.io/is-default-cluster-version: "false"
+#   labels:
+#     {{- include "official-postgresql.labels" . | nindent 4 }}
+# spec:
+#   clusterDefinitionRef: official-postgresql
+#   componentVersions:
+#     - componentDefRef: postgresql
+#       versionsContext:
+#         containers:
+#           - name: postgresql
+#             image: registry.cn-hangzhou.aliyuncs.com/coscene_devops/postgres:14.7-zhparser
+#       systemAccountSpec:
+#         cmdExecutorConfig:
+#           image: registry.cn-hangzhou.aliyuncs.com/coscene_devops/postgres:14.7-zhparser
