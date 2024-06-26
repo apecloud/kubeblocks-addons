@@ -55,7 +55,7 @@ spec:
             storage: 20Gi
   - name: data
     componentDef: elasticsearch
-    serviceAccountName: null
+    serviceAccountName: kb-elasticsearch-cluster
     disableExporter: true
     replicas: 1
     resources:
@@ -75,7 +75,7 @@ spec:
             storage: 20Gi
   - name: ingest
     componentDef: elasticsearch
-    serviceAccountName: null
+    serviceAccountName: kb-elasticsearch-cluster
     disableExporter: true
     replicas: 1
     resources:
@@ -96,7 +96,7 @@ spec:
     services: null
   - name: transform
     componentDef: elasticsearch
-    serviceAccountName: null
+    serviceAccountName: kb-elasticsearch-cluster
     disableExporter: true
     replicas: 1
     resources:
