@@ -1,19 +1,3 @@
-{{- $client_port_info := getPortByName ( index $.podSpec.containers 0 ) "client" }}
-{{- $client_port := 2181 }}
-{{- if $client_port_info }}
-{{- $client_port = $client_port_info.containerPort | int }}
-{{- end }}
-{{- $quorum_port_info := getPortByName ( index $.podSpec.containers 0 ) "quorum" }}
-{{- $quorum_port := 2888 }}
-{{- if $quorum_port_info }}
-{{- $quorum_port = $quorum_port_info.containerPort | int }}
-{{- end }}
-{{- $election_port_info := getPortByName ( index $.podSpec.containers 0 ) "election" }}
-{{- $election_port := 3888 }}
-{{- if $election_port_info }}
-{{- $election_port = $election_port_info.containerPort | int }}
-{{- end }}
-
 # The number of milliseconds of each tick
 tickTime=2000
 # The number of ticks that the initial
@@ -29,7 +13,7 @@ dataDir=/bitnami/zookeeper/data
 #
 dataLogDir=/bitnami/zookeeper/log
 # the port at which the clients will connect
-clientPort={{- $client_port }}
+clientPort=2181
 # the maximum number of client connections.
 # increase this if you need to handle more clients
 maxClientCnxns=500
@@ -56,17 +40,11 @@ maxClientCnxns=500
 4lw.commands.whitelist=srvr, mntr, ruok, conf
 
 # cluster server list
-{{- $clusterName := $.cluster.metadata.name }}
-{{- $namespace := $.cluster.metadata.namespace }}
-{{- $zk_component := fromJson "{}" }}
-{{- range $i, $e := $.cluster.spec.componentSpecs }}
-  {{- if eq $e.componentDefRef "zookeeper" }}
-    {{- $zk_component = $e }}
-  {{- end }}
-{{- end }}
-
 {{- printf "\n" }}
-{{- $replicas := $zk_component.replicas | int }}
-{{- range $i, $e := until $replicas }}
-  {{- printf "server.%d=%s-%s-%d.%s-%s-headless.%s.svc.cluster.local:%d:%d:participant;0.0.0.0:%d\n" $i $clusterName $zk_component.name $i $clusterName $zk_component.name $namespace $quorum_port $election_port $client_port }}
+{{- $fqnds := splitList "," .ZOOKEEPER_POD_FQDN_LIST }}
+{{- range $i, $fqdn := $fqnds }}
+  {{- $name := index (splitList "." $fqdn) 0 }}
+  {{- $tokens := splitList "-" $name }}
+  {{- $ordinal := index $tokens (sub (len $tokens) 1) }}
+  {{- printf "server.%s=%s.cluster.local:2888:3888:participant;0.0.0.0:2181\n" $ordinal $fqdn }}
 {{- end }}

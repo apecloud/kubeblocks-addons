@@ -1,0 +1,89 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: {{ include "clustername" . }}
+  labels: {{ include "tidb-cluster.labels" . | nindent 4 }}
+spec:
+  clusterDefinitionRef: tidb  # ref clusterdefinition.name
+  terminationPolicy: {{ $.Values.terminationPolicy }}
+  topology: cluster
+  affinity:
+    {{- with $.Values.topologyKeys }}
+    topologyKeys: {{ . | toYaml | nindent 6 }}
+    {{- end }}
+  {{- with $.Values.tolerations }}
+  tolerations: {{ . | toYaml | nindent 4 }}
+  {{- end }}
+  componentSpecs:
+    {{- with $.Values.pd }}
+    - name: tidb-pd
+      serviceAccountName: {{ include "tidb-cluster.serviceAccountName" $ }}
+      disableExporter: false
+      replicas: {{ .replicas | default 3 }}
+      {{- with .tolerations }}
+      tolerations: {{ .| toYaml | nindent 8 }}
+      {{- end }}
+      {{- with .resources }}
+      resources:
+        limits:
+          cpu: {{ .limits.cpu | quote }}
+          memory: {{ .limits.memory | quote }}
+        requests:
+          cpu: {{ .requests.cpu | quote }}
+          memory: {{ .requests.memory | quote }}
+      {{- end }}
+      volumeClaimTemplates:
+      - name: data
+        spec:
+          storageClassName: {{ .persistence.data.storageClassName }}
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: {{ .persistence.data.size }}
+    {{- end }}
+    {{- with $.Values.tikv }}
+    - name: tikv
+      serviceAccountName: {{ include "tidb-cluster.serviceAccountName" $ }}
+      disableExporter: false
+      replicas: {{ .replicas | default 3 }}
+      {{- with .tolerations }}
+      tolerations: {{ .| toYaml | nindent 8 }}
+      {{- end }}
+      {{- with .resources }}
+      resources:
+        limits:
+          cpu: {{ .limits.cpu | quote }}
+          memory: {{ .limits.memory | quote }}
+        requests:
+          cpu: {{ .requests.cpu | quote }}
+          memory: {{ .requests.memory | quote }}
+      {{- end }}
+      volumeClaimTemplates:
+      - name: data
+        spec:
+          storageClassName: {{ .persistence.data.storageClassName }}
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: {{ .persistence.data.size }}
+    {{- end }}
+    {{- with $.Values.tidb }}
+    - name: tidb
+      serviceAccountName: {{ include "tidb-cluster.serviceAccountName" $ }}
+      disableExporter: false
+      replicas: {{ .replicas | default 2 }}
+      {{- with .tolerations }}
+      tolerations: {{ .| toYaml | nindent 8 }}
+      {{- end }}
+      {{- with .resources }}
+      resources:
+        limits:
+          cpu: {{ .limits.cpu | quote }}
+          memory: {{ .limits.memory | quote }}
+        requests:
+          cpu: {{ .requests.cpu | quote }}
+          memory: {{ .requests.memory | quote }}
+      {{- end }}
+    {{- end }}

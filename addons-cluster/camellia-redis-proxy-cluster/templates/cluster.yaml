@@ -1,0 +1,2 @@
+{{- include "kblib.clusterCommon" . }}
+{{- include "camellia-redis-proxy-cluster.componentSpec" . }}

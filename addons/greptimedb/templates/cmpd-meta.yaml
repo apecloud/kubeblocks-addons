@@ -1,0 +1,94 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: greptimedb-meta-{{ .Chart.Version }}
+  labels:
+    {{- include "greptimedb.labels" . | nindent 4 }}
+spec:
+  provider: Community
+  description: {{ .Chart.Description }}
+  serviceKind: {{ .Chart.Name }}
+  serviceVersion: {{ .Chart.AppVersion }}
+  runtime:
+    initContainers:
+      - name: wait-etcd
+        image: busybox:1.35
+        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
+        command:
+          - bin/sh
+          - -c
+          - |
+            until nslookup ${GREPTIMEDB_ETCD_SVC}; do
+              echo "waiting for etcd"; sleep 2;
+            done;
+    containers:
+      - name: meta
+        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /health
+            port: 4000
+            scheme: HTTP
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 3
+        readinessProbe:
+          failureThreshold: 5
+          httpGet:
+            path: /health
+            port: 4000
+            scheme: HTTP
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 3
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        ports:
+          - containerPort: 3002
+            name: grpc
+          - containerPort: 4000
+            name: http
+        volumeMounts:
+          - mountPath: /etc/greptimedb
+            name: meta-config
+        args:
+          - metasrv
+          - start
+          - --bind-addr
+          - 0.0.0.0:3002
+          - --http-addr
+          - 0.0.0.0:4000
+          - --server-addr
+          - $(KB_POD_IP):3002
+          - --store-addr
+          - $(GREPTIMEDB_ETCD_SVC):2379
+          - --config-file
+          - /etc/greptimedb/config.toml
+        env:
+          - name: GREPTIMEDB_METASRV__DISABLE_REGION_FAILOVER
+            value: {{ .Values.meta.disableRegionFailover | quote}}
+    terminationGracePeriodSeconds: 10
+    dnsPolicy: ClusterFirst
+    restartPolicy: Always
+  vars:
+    - name: GREPTIMEDB_ETCD_SVC_DEFAULT
+      value: $(KB_CLUSTER_NAME)-etcd-headless.$(KB_NAMESPACE).svc{{ .Values.clusterDomain}}
+    - name: GREPTIMEDB_ETCD_SVC
+      valueFrom:
+        serviceRefVarRef:
+          name: etcd
+          optional: true
+          endpoint: Required
+      expression: {{ `{{ if index . "GREPTIMEDB_ETCD_SVC" }}{{ .GREPTIMEDB_ETCD_SVC }}{{ else }}{{ .GREPTIMEDB_ETCD_SVC_DEFAULT}}{{ end }}` | toYaml | nindent 8 }}
+  configs:
+    - name: greptimedb-meta
+      templateRef: greptimedb-meta
+      volumeName: meta-config
+      namespace: {{ .Release.Namespace }}
+  serviceRefDeclarations:
+    - name: etcd
+      serviceRefDeclarationSpecs:
+        - serviceKind: etcd
+          serviceVersion: "^v3.*"
+      optional: true

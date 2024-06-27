@@ -1,0 +1,83 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: nebula-graphd-{{ .Chart.Version }}
+  labels:
+    {{- include "nebula.labels" . | nindent 4 }}
+spec:
+  provider: Community
+  description: {{ .Chart.Description }}
+  serviceKind: nebula
+  serviceVersion: {{ .Chart.AppVersion }}
+  runtime:
+    securityContext:
+      fsGroup: 1001
+    containers:
+      - name: graphd
+        command:
+          - /bin/bash
+          - -c
+          - |
+            set -ex
+            trap : TERM INT
+            exec /usr/local/nebula/bin/nebula-graphd --flagfile=/usr/local/nebula/etc/nebula-graphd.conf --meta_server_addrs=$NEBULA_METAD_SVC --local_ip=${KB_POD_FQDN}{{ .Values.clusterDomain }} --daemonize=false
+        imagePullPolicy: {{default .Values.nebula.graphd.image.pullPolicy "IfNotPresent"}}
+        ports:
+          - containerPort: 9669
+            name: thrift
+            protocol: TCP
+          - containerPort: 19669
+            name: http
+            protocol: TCP
+          - containerPort: 19670
+            name: http2
+            protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /status
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        volumeMounts:
+          - mountPath: /usr/local/nebula/data
+            name: data
+          - mountPath: /usr/local/nebula/logs
+            name: logs
+          - mountPath: /usr/local/nebula/etc
+            name: nebula-graphd
+  vars:
+    - name: NEBULA_METAD_SVC
+      valueFrom:
+        componentVarRef:
+          compDef: nebula-metad
+          optional: false
+          podFQDNs: Required
+      expression: {{ `{{ $hosts := splitList "," .NEBULA_METAD_SVC }}{{ range $idx, $host := $hosts }}{{ $host }}.cluster.local:9559{{ if lt $idx (sub (len $hosts) 1) }},{{ end }}{{ end }}` | toYaml | nindent 8 }}
+  volumes:
+    - name: logs
+  services:
+    - name: thrift
+      spec:
+        type: ClusterIP
+        ports:
+          - name: thrift
+            port: 9669
+            targetPort: thrift
+            protocol: TCP
+          - name: http
+            port: 19669
+            targetPort: http
+            protocol: TCP
+          - name: http2
+            port: 19670
+            targetPort: http2
+            protocol: TCP
+  configs:
+    - name: nebula-graphd-config
+      templateRef: nebula-graphd-config-template
+      namespace: {{ .Release.Namespace }}
+      volumeName: nebula-graphd

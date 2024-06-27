@@ -21,16 +21,17 @@ commonLabels: {}
 ## @param application images
 ##
 images:
+  registry: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/
   pullPolicy: IfNotPresent
   kafka:
-    repository: docker.io/bitnami/kafka
+    repository: kafka
 #    tag: 3.4.0-debian-11-r22
     tag: 3.3.2-debian-11-r54
   kafkaExporter:
-    repository: docker.io/bitnami/kafka-exporter
+    repository: kafka-exporter
     tag: 1.6.0-debian-11-r67
   jmxExporter:
-    repository: docker.io/bitnami/jmx-exporter
+    repository: jmx-exporter
     tag: 0.18.0-debian-11-r20
 
 

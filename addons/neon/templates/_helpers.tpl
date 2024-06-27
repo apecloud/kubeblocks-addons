@@ -70,3 +70,15 @@ Generate scripts configmap
 {{- $.Files.Get $path | nindent 2 }}
 {{- end }}
 {{- end }}
+
+{{/*
+Generate config configmap
+*/}}
+{{- define "neon.extend.config" -}}
+{{- range $path, $_ :=  $.Files.Glob "config/**" }}
+{{ $path | base }}: |-
+{{- $.Files.Get $path | nindent 2 }}
+{{- end }}
+{{- end }}
+
+

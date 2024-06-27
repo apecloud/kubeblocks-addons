@@ -1,0 +1,26 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: orchestrator
+  labels:
+    {{- include "orchestrator.labels" . | nindent 4 }}
+spec:
+  releases:
+  - name: orchestrator-3.2.6
+    serviceVersion: 3.2.6
+    images:
+      orchestrator: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v3.2.6
+      init-meta-database: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql:8.0.33
+  - name: orchestrator-raft-3.2.6
+    serviceVersion: 3.2.6
+    images:
+      orchestrator: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v3.2.6
+  compatibilityRules:
+  - compDefs:
+    - orchestrator-shareend
+    releases:
+    - orchestrator-3.2.6
+  - compDefs:
+    - orchestrator-raft
+    releases:
+    - orchestrator-raft-3.2.6

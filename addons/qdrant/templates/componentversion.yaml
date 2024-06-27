@@ -1,0 +1,30 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: qdrant
+spec:
+  compatibilityRules:
+  - compDefs:
+    - qdrant
+    releases:
+    - 1.5.0
+    - 1.7.3
+    - 1.8.1
+    - 1.8.4
+  releases:
+  - name: 1.5.0
+    serviceVersion: 1.5.0
+    images:
+      qdrant: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository}}:v1.5.0
+  - name: 1.7.3
+    serviceVersion: 1.7.3
+    images:
+      qdrant: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository}}:v1.7.3
+  - name: 1.8.1
+    serviceVersion: 1.8.1
+    images:
+      qdrant: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository}}:v1.8.1
+  - name: 1.8.4
+    serviceVersion: 1.8.4
+    images:
+      qdrant: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository}}:v1.8.4

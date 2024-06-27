@@ -1,0 +1,17 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: etcd
+  labels:
+    {{- include "etcd.labels" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - releases:
+        - v3.5.6
+      compDefs:
+        - etcd
+  releases:
+    - name: v3.5.6
+      serviceVersion: v3.5.6
+      images:
+        etcd: {{ .Values.image.repository }}:v3.5.6

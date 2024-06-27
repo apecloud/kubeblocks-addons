@@ -188,7 +188,11 @@ exporter:
   containerName: mysql-exporter
   scrapePath: /metrics
   scrapePort: http-metrics
-
+serviceRefDeclarations:
+  - name: etcd
+    serviceRefDeclarationSpecs:
+      - serviceKind: etcd
+        serviceVersion: "^*"
 vars:
   - name: MYSQL_ROOT_USER
     valueFrom:
@@ -212,6 +216,11 @@ vars:
         optional: true
         host: Required
         loadBalancer: Required
+  - name: SERVICE_ETCD_ENDPOINT
+    valueFrom:
+      serviceRefVarRef:
+        name: etcd
+        endpoint: Required
 {{- end -}}
 
 
@@ -277,15 +286,10 @@ env:
   - name: CELL
     value: {{ .Values.wesqlscale.cell | default "zone1" | quote }}
   - name: ETCD_SERVER
-    value: "$(KB_CLUSTER_NAME)-wescale-ctrl-headless"
-  - name: ETCD_PORT
-    value: "2379"
-  - name: TOPOLOGY_FLAGS
-    value: "--topo_implementation etcd2 --topo_global_server_address $(ETCD_SERVER):$(ETCD_PORT) --topo_global_root /vitess/global"
+    value: $(SERVICE_ETCD_ENDPOINT)
   - name: VTTABLET_PORT
     value: "15100"
   - name: VTTABLET_GRPC_PORT
-    value: "16100"
   - name: VTCTLD_HOST
     value: "$(KB_CLUSTER_NAME)-wescale-ctrl-headless"
   - name: VTCTLD_WEB_PORT
@@ -307,9 +311,9 @@ volumeMounts:
 command: [ "/scripts/exporter_start.sh" ]
 env:
   - name: MYSQLD_EXPORTER_USER
-    value: $(MYSQL_USER)
+    value: $(MYSQL_ROOT_USER)
   - name: MYSQLD_EXPORTER_PASSWORD
-    value: $(MYSQL_PASSWORD)
+    value: $(MYSQL_ROOT_PASSWORD)
   - name: EXPORTER_WEB_PORT
     value: "{{ .Values.metrics.service.port }}"
 image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}

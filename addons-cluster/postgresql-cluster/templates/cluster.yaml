@@ -1,0 +1,2 @@
+{{- include "kblib.clusterCommon" . }}
+{{- include "postgresql-cluster.componentSpec" . }}

@@ -1,0 +1,63 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: dmdb-{{ .Chart.Version }}
+  labels:
+    {{- include "dmdb.labels" . | nindent 4 }}
+spec:
+  provider: Community
+  description: {{ .Chart.Description }}
+  serviceKind: {{ .Chart.Name }}
+  serviceVersion: {{ .Chart.AppVersion }}
+  runtime:
+    containers:
+      - name: dmdb
+        volumeMounts:
+          - mountPath: /opt/dmdata
+            name: data
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        ports:
+          - name: tcp-dmdb
+            containerPort: 5236
+          - name: tcp-dmap
+            containerPort: 4236
+        env:
+          - name: EXTENT_SIZE
+            value: "16"
+          - name: PAGE_SIZE
+            value: "8"
+          - name: LOG_SIZE
+            value: "256"
+          - name: CASE_SENSITIVE
+            value: "1"
+          - name: CHARSET
+            value: "0"
+          - name: LENGTH_IN_CHAR
+            value: "0"
+          - name: BLANK_PAD_MODE
+            value: "1"
+          - name: INSTANCE_BUFFER
+            value: "1000"
+          - name: DB_NAME
+            value: "DM"
+          - name: ARCH_SPACE_LIMIT
+            value: "20480"
+  vars:
+    - name: MONITOR_PWD
+      valueFrom:
+        credentialVarRef:
+          name: MONITOR
+          optional: false
+          password: Required
+  volumes:
+    - name: data
+      needSnapshot: true
+  systemAccounts:
+    - name: MONITOR
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 10
+        numDigits: 3
+        numSymbols: 4
+        letterCase: MixedCases

@@ -99,10 +99,8 @@ datadir={{ $data_root }}/data
 log_statements_unsafe_for_binlog=OFF
 log_error_verbosity=2
 log_output=FILE
-{{- if hasKey $.component "enabledLogs" }}
-{{- if mustHas "error" $.component.enabledLogs }}
 log_error=/data/mysql/log/mysqld-error.log
-{{- end }}
+{{- if hasKey $.component "enabledLogs" }}
 {{- if mustHas "slow" $.component.enabledLogs }}
 slow_query_log=ON
 long_query_time=5
@@ -124,6 +122,18 @@ loose_audit_log_policy=ALL # ALL, LOGINS, QUERIES, NONE
 loose_audit_log_strategy=ASYNCHRONOUS
 loose_audit_log_rotate_on_size=10485760
 loose_audit_log_rotations=5
+## mysql> select host, user from mysql.user;
+## +-----------+------------------+
+## | host      | user             |
+## +-----------+------------------+
+## | %         | root             |
+## | %         | u1               |
+## | localhost | mysql.infoschema |
+## | localhost | mysql.session    |
+## | localhost | mysql.sys        |
+## | localhost | root             |
+## +-----------+------------------+
+loose_audit_log_exclude_accounts=root@%,root@localhost
 
 #innodb
 innodb_doublewrite_batch_size=16

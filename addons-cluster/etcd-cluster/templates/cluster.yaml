@@ -1,0 +1,55 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: {{ include "clustername" . }}
+  labels:
+    {{- include "etcd-cluster.labels" . | nindent 4 }}
+spec:
+  terminationPolicy: {{ .Values.terminationPolicy }}
+  affinity:
+    {{- with $.Values.topologyKeys }}
+    topologyKeys: {{ . | toYaml | nindent 6 }}
+    {{- end }}
+  {{- with $.Values.tolerations }}
+  tolerations: {{ . | toYaml | nindent 4 }}
+  {{- end }}
+  componentSpecs:
+    - name: etcd
+      componentDef: etcd
+      {{- if .Chart.AppVersion }}
+      serviceVersion: {{ .Chart.AppVersion }}
+      {{- end }}
+      monitor: {{ .Values.monitor.enabled }}
+      replicas: {{ .Values.replicas | default "3" }}
+      {{- with .Values.resources }}
+      resources:
+        limits:
+          cpu: {{ .limits.cpu | quote }}
+          memory: {{ .limits.memory | quote }}
+        requests:
+          cpu: {{ .requests.cpu | quote }}
+          memory: {{ .requests.memory | quote }}
+      {{- end }}
+      {{- if .Values.persistence.enabled }}
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: {{ .Values.persistence.data.storageClassName }}
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: {{ .Values.persistence.data.size }}
+      {{- end }}
+  {{- if .Values.service.name }}
+  services:
+    - name: {{ .Values.service.name }}
+      serviceName: {{ .Values.service.name }}
+      spec:
+        type: {{ .Values.service.type }}
+        ports:
+          - port: {{ .Values.service.port }}
+            targetPort: 2379
+      componentSelector: etcd
+      roleSelector: {{ .Values.service.role }}
+  {{- end }}

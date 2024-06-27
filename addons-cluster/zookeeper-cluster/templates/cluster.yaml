@@ -1,0 +1,33 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  labels:
+    {{ include "kblib.clusterLabels" . | nindent 4 }}
+spec:
+  terminationPolicy: {{ .Values.terminationPolicy }}
+  {{- include "kblib.affinity" . | indent 2 }}
+  componentSpecs:
+    - name: zookeeper
+      componentDef: zookeeper
+      replicas: {{ .Values.replicas }}
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: {{ .Values.persistence.data.storageClassName }}
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: {{ .Values.persistence.data.size }}
+        - name: log
+          spec:
+            storageClassName: {{ .Values.persistence.log.storageClassName }}
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: {{ .Values.persistence.log.size }}

@@ -1,0 +1,35 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+  annotations:
+    {{- if eq .Values.mode "shareend" }}
+    {{- include "orchestrator-cluster.annotations.extra-envs" . | nindent 4 }}
+    {{- end }}
+spec:
+  clusterDefinitionRef: orchestrator
+  topology: {{ .Values.mode }}
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  {{- include "kblib.affinity" . | indent 2 }}
+  componentSpecs:
+    - name: orchestrator
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+      replicas: {{ .Values.replicas }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
+      {{- if eq .Values.mode "shareend" }}
+      {{- with .Values.serviceReference.metadb }}
+      serviceRefs:
+        - name: metadb
+          namespace: {{ .namespace | default $.Release.Namespace }}
+          clusterServiceSelector:
+            cluster: {{ .cluster }}
+            credential:
+              name: {{ .credential.name }}
+              component: {{ .credential.component }}
+            service:
+              service: {{ .service.name | default "" | quote }}
+              component: {{ .service.component }}
+      {{- end }}
+      {{- end }}

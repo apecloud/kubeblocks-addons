@@ -169,8 +169,7 @@ spec:
             - /bin/bash
             - -c
             - /scripts/redis-register-to-sentinel.sh
-        ## TODO: the preCondition should be changed to RuntimeReady when KubeBlocks support it
-        preCondition: ComponentReady
+        preCondition: RuntimeReady
     accountProvision:
       customHandler:
         image: {{ include "redis.image" . }}
@@ -184,7 +183,7 @@ spec:
     containers:
       - name: redis
         image: {{ include "redis.image" . }}
-        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         ports:
           - name: redis
             containerPort: 6379

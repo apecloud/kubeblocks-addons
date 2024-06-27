@@ -12,17 +12,19 @@ spec:
   clusterDefinitionRef: mongodb
   componentVersions:
     - componentDefRef: mongodb
-      versionsContext:
+      versionsContext: &version50
         containers:
           - name: mongodb
             image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
-            imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
       systemAccountSpec:
         cmdExecutorConfig:
           image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
       switchoverSpec:
         cmdExecutorConfig:
           image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+    - componentDefRef: mongodb-hostnetwork
+      versionsContext: *version50
 {{- end -}}
 
 {{- $cvName = "mongodb-4.2" -}}
@@ -38,17 +40,19 @@ spec:
   clusterDefinitionRef: mongodb
   componentVersions:
     - componentDefRef: mongodb
-      versionsContext:
+      versionsContext: &version42
         containers:
           - name: mongodb
             image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.2
-            imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
       systemAccountSpec:
         cmdExecutorConfig:
           image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.2
       switchoverSpec:
         cmdExecutorConfig:
           image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.2
+    - componentDefRef: mongodb-hostnetwork
+      versionsContext: *version42
 {{- end -}}
 
 {{- $cvName = "mongodb-4.4" -}}
@@ -62,19 +66,21 @@ metadata:
     {{- include "mongodb.labels" . | nindent 4 }}
 spec:
   clusterDefinitionRef: mongodb
-  componentVersions:
+  componentVersions: 
     - componentDefRef: mongodb
-      versionsContext:
+      versionsContext: &version44
         containers:
           - name: mongodb
             image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.4
-            imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
       systemAccountSpec:
         cmdExecutorConfig:
           image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.4
       switchoverSpec:
         cmdExecutorConfig:
           image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.4
+    - componentDefRef: mongodb-hostnetwork
+      versionsContext: *version44
 {{- end -}}
 
 {{- $cvName = "mongodb-6.0" -}}
@@ -90,15 +96,17 @@ spec:
   clusterDefinitionRef: mongodb
   componentVersions:
     - componentDefRef: mongodb
-      versionsContext:
+      versionsContext: &version60
         containers:
           - name: mongodb
             image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:6.0
-            imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
       systemAccountSpec:
         cmdExecutorConfig:
           image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:6.0
       switchoverSpec:
         cmdExecutorConfig:
           image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:6.0
+    - componentDefRef: mongodb-hostnetwork
+      versionsContext: *version60
 {{- end -}}

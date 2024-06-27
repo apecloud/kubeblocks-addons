@@ -16,7 +16,6 @@ meta_database="$ORC_META_DATABASE"
 init_meta_databases() {
   wait_for_connectivity $meta_mysql_host
 
-
   echo "Create MySQL User and Grant Permissions..."
   mysql -h $meta_mysql_host -P $meta_mysql_port -u $meta_mysql_user -p$meta_mysql_password << EOF
 CREATE USER IF NOT EXISTS '$ORC_META_USER'@'%' IDENTIFIED BY '$ORC_META_PASSWORD';
