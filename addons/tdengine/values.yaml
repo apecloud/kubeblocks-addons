@@ -41,7 +41,7 @@ securityContext: {}
 
 metrics:
   image:
-    registry: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com
+    registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
     repository: apecloud/taoskeeper
     tag: 0.0.5
     pullPolicy: IfNotPresent

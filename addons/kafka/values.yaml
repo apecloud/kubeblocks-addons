@@ -14,7 +14,7 @@ commonLabels: {}
 ## @param application images
 ##
 images:
-  registry: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/
   pullPolicy: IfNotPresent
   kafka:
     repository: kafka

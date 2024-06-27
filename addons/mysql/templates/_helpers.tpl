@@ -199,7 +199,7 @@ roles:
     - /bin/syncer
     - /config
     - /kubeblocks/
-  image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:latest
+  image: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:latest
   imagePullPolicy: "Always"
   name: init-syncer
   volumeMounts:
@@ -210,7 +210,7 @@ roles:
     - -r
     - /xtrabackup-2.4
     - /kubeblocks/xtrabackup
-  image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:mysql
+  image: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:mysql
   imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
   name: init-xtrabackup
   volumeMounts:

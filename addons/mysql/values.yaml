@@ -3,7 +3,7 @@
 # Declare variables to be passed into your templates.
 
 image:
-  registry:  registry.cn-hangzhou.aliyuncs.com
+  registry:  apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
   repository: apecloud/mysql
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
@@ -69,7 +69,7 @@ logConfigs:
 
 metrics:
   image:
-    registry: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com
+    registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
     repository: apecloud/agamotto
     tag: 0.1.2-beta.1
     pullPolicy: IfNotPresent
