@@ -69,7 +69,6 @@ def main(filename):
             re_config = postgresql_conf_to_dict("/home/postgres/pgdata/conf/recovery.conf")
             pitr_config[pitr_config['method']]['recovery_conf'].update(re_config)
             local_config['bootstrap'].update(pitr_config)
-
     # patroni parameters
     if 'bootstrap' not in local_config:
         local_config['bootstrap'] = {}
