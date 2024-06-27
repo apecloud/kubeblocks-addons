@@ -12,7 +12,7 @@ fullnameOverride: ""
 ## @param image.debug Specify if debug values should be set
 ##
 image:
-  registry: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
   repository: apecloud/spilo
   digest: ""
   tags:
