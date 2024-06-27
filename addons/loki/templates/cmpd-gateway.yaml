@@ -1,0 +1,63 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: loki-gateway
+  labels:
+    {{- include "loki.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: A Loki component definition for Kubernetes
+  serviceKind: loki-gateway
+  serviceVersion: 1.0.0
+  services:
+    - name: loki-gateway
+      spec:
+        ports:
+          - port: {{ .Values.gateway.httpMetricsSvcPort }}
+            protocol: TCP
+            name: http-metrics
+            targetPort: http-metrics
+  updateStrategy: BestEffortParallel
+  runtime:
+    automountServiceAccountToken: true
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/component: gateway
+            topologyKey: kubernetes.io/hostname
+    containers:
+      - name: gateway
+        imagePullPolicy: {{ .Values.images.gateway.pullPolicy }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+        ports:
+          - containerPort: {{ .Values.gateway.httpMetricsContainerPort }}
+            name: http-metrics
+            protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            port: http-metrics
+            scheme: HTTP
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+        volumeMounts:
+          - mountPath: /etc/nginx
+            name: config
+          - mountPath: /tmp
+            name: tmp
+          - mountPath: /docker-entrypoint.d
+            name: docker-entrypoint-d-override
+  configs:
+    - name: config-gateway
+      templateRef: loki-gateway
+      volumeName: config
+      namespace: {{ .Release.Namespace }}
