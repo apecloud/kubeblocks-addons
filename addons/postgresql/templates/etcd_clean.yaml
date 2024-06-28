@@ -1,0 +1,97 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
+  name: etcd_clean
+spec:
+  preConditions:
+    - rule:
+        expression: '{{ eq .component.status.phase "Running" }}'
+        message: "Component is not in Running status."
+  componentInfos:
+    - componentDefinitionName: {{ include "postgresql.compDefPostgresql12" . }}
+    - componentDefinitionName: {{ include "postgresql.compDefPostgresql14" . }}
+    - componentDefinitionName: {{ include "postgresql.compDefPostgresql15" . }}
+  podInfoExtractors:
+    - name: myPodInfoExtractors
+      podSelector:
+        role: primary
+        selectionPolicy: All/Any
+        availability: Available/UnAvailable/None
+      vars:
+        - name: ETCD_SERVER
+          valueFrom:
+            envRef:
+              envName: ETCD_SERVER
+        - name: KB_CLUSTER_UID_POSTFIX_8
+          valueFrom:
+            envRef:
+              envName: KB_CLUSTER_UID_POSTFIX_8
+        - name: KB_CLUSTER_COMPONENT_POD_IP_LIST
+          valueFrom:
+            envRef:
+              envName: KB_CLUSTER_COMPONENT_POD_IP_LIST
+        - name: KB_CLUSTER_POD_NAME_LIST
+          valueFrom:
+            envRef:
+              envName: KB_CLUSTER_POD_NAME_LIST
+  actions:
+    - name: etcd-cleanup
+      failurePolicy: Fail
+      workload:
+        targetPodTemplate: availablePod
+        type: Job
+        backoffLimit: 2
+        podSpec:
+          containers:
+            - name: etcd-cleanup
+              image:  skyriseheng/postgres_terminate:latest
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -c
+                - |
+
+                  if [ -z "$ETCD_SERVER" ]; then
+                    exit 0
+                  fi
+
+                  echo "find command kubectl "
+                  if command -v kubectl &> /dev/null
+                  then
+                    for POD_NAME in $KB_CLUSTER_POD_NAME_LIST; do
+                      echo "Executing pkill -f patroni in pod: $POD_NAME"
+                      kubectl exec -n default $POD_NAME -- pkill -f patroni
+                    done
+
+                    sleep 10
+                  fi
+
+                  IFS=',' read -ra ADDR <<< "$KB_CLUSTER_COMPONENT_POD_IP_LIST"
+                  FIRST_IP=${ADDR[0]}
+
+                  export ETCDCTL_API=${ETCD_API:-'3'}
+
+                  endpoints=${ETCD_SERVER:-'127.0.0.1:2379'}
+
+                  servers=""
+                  IFS=',' read -ra ADDR <<< "$endpoints"
+                  for addr in "${ADDR[@]}"; do
+                    if [[ $addr != http* ]]; then
+                      addr="http://$addr"
+                    fi
+                    servers="${servers},${addr}"
+                  done
+
+                  servers=${servers:1}
+
+                  echo $servers
+
+                  echo "Deleting all keys with prefix /service/${KB_CLUSTER_NAME}-${KB_COMP_NAME}-patroni${KB_CLUSTER_UID_POSTFIX_8} from Etcd server at ${endpoints}..."
+                  etcdctl --endpoints $servers del /service/${KB_CLUSTER_NAME}-${KB_COMP_NAME}-patroni${KB_CLUSTER_UID_POSTFIX_8} --prefix
+
+                  if [ $? -eq 0 ]; then
+                      echo "Successfully deleted all keys with prefix /service/${KB_CLUSTER_NAME}-${KB_COMP_NAME}-patroni${KB_CLUSTER_UID_POSTFIX_8}."
+                  else
+                      echo "Failed to delete keys. Please check your Etcd server and try again."
+                      exit 0
+                  fi

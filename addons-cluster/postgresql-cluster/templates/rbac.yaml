@@ -1,1 +1,30 @@
 {{- include "kblib.rbac" . }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ printf "%s-etcd-clean-role" (include "kblib.clusterName" .) }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kblib.clusterLabels" . | nindent 4 }}
+    app.kubernetes.io/required-by: pod
+rules:
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ printf "%s-etcd-clean" (include "kblib.clusterName" .) }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kblib.clusterLabels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ printf "%s-etcd-clean-role" (include "kblib.clusterName" .) }}
+subjects:
+  - kind: ServiceAccount
+    name: kb-postgres # {{ printf "kb-%s" (include "kblib.clusterName" .) }}
+    namespace: {{ .Release.Namespace }}
