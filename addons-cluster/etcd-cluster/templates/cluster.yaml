@@ -5,7 +5,6 @@ metadata:
   labels:
     {{- include "etcd-cluster.labels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: etcd
   terminationPolicy: {{ .Values.terminationPolicy }}
   affinity:
     {{- with $.Values.topologyKeys }}
@@ -16,6 +15,7 @@ spec:
   {{- end }}
   componentSpecs:
     - name: etcd
+      componentDef: etcd
       {{- if .Chart.AppVersion }}
       serviceVersion: {{ .Chart.AppVersion }}
       {{- end }}

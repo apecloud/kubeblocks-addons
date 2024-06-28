@@ -2,29 +2,42 @@
 
 set -ex
 
-get_replica_host() {
-    local id=$1
-    
-    if [ -z "${REPLICATION_ENDPOINT}" ]; then
-        host="KB_${id}_HOSTNAME"
-        echo "${!host}"
-    else
-        endpoints=$(eval echo "${REPLICATION_ENDPOINT}" | tr ',' '\n')
-        for endpoint in ${endpoints}; do
-            host=$(eval echo "${endpoint}" | cut -d ':' -f 1)
-            ip=$(eval echo "${endpoint}" | cut -d ':' -f 2)
-            hostId=$(eval echo "${host}" | grep -oE "[0-9]+\$")
-            if [ "${id}" = "${hostId}" ]; then
-                echo "${ip}"
-                break
-            fi
-        done
+get_hostname_suffix() {
+    IFS='.' read -ra fields <<< "$KB_POD_FQDN"
+    if [ "${#fields[@]}" -gt "2" ]; then
+        echo "${fields[1]}"
     fi
+}
+
+get_cluster_members() {
+    local cluster_members=""
+    IFS=',' read -ra PODS <<< "$KB_POD_LIST"
+    for pod in "${PODS[@]}"; do
+        hostname=${pod}.${hostname_suffix}
+        cluster_members="${cluster_members};${hostname}:${MYSQL_CONSENSUS_PORT:-13306}"
+    done
+    echo "${cluster_members#;}"
+}
+
+get_pod_index() {
+    local pod_name="${1:?missing pod name}"
+    local pod_index=0
+
+    IFS=',' read -ra PODS <<< "$KB_POD_LIST"
+    for pod in "${PODS[@]}"; do
+        if [ "$pod" = "$pod_name" ]; then
+            break
+        fi
+        ((pod_index++))
+    done
+    
+    echo "$pod_index"
 }
 
 generate_cluster_info() {
     local pod_name="${KB_POD_NAME:?missing pod name}"
     local cluster_members=""
+    local hostname_suffix=$(get_hostname_suffix)
 
     export MYSQL_PORT=${MYSQL_PORT:-3306}
     export MYSQL_CONSENSUS_PORT=${MYSQL_CONSENSUS_PORT:-13306}
@@ -41,29 +54,17 @@ generate_cluster_info() {
     fi
     echo "KB_MYSQL_CLUSTER_UID=${KB_MYSQL_CLUSTER_UID}"
 
-    for ((i = 0; i < KB_REPLICA_COUNT; i++)); do
-        if [ $i -gt 0 ]; then
-            cluster_members="${cluster_members};"
-        fi
+    export KB_MYSQL_CLUSTER_MEMBERS=`get_cluster_members`
+    echo "${KB_MYSQL_CLUSTER_MEMBERS:?missing cluster members}"
 
-        host="$(get_replica_host ${i})"
-        echo "${host:?missing member hostname}"
-        cluster_members="${cluster_members}${host}:${MYSQL_CONSENSUS_PORT:-13306}"
-
-        # compatiable with old version images
-        export KB_MYSQL_${i}_HOSTNAME=${host}
-    done
-    export KB_MYSQL_CLUSTER_MEMBERS="${cluster_members}"
-
-    export KB_MYSQL_CLUSTER_MEMBER_INDEX=${pod_name##*-};
-    local pod_host=$(get_replica_host ${KB_MYSQL_CLUSTER_MEMBER_INDEX})
+    export KB_MYSQL_CLUSTER_MEMBER_INDEX=`get_pod_index $pod_name`
+    local pod_host=${pod_name}.${hostname_suffix}
     export KB_MYSQL_CLUSTER_MEMBER_HOST=${pod_host:?missing current member hostname}
 
     if [ -n "$KB_LEADER" ]; then
         echo "KB_LEADER=${KB_LEADER}"
 
-        local leader_index=${KB_LEADER##*-}
-        local leader_host=$(get_replica_host ${leader_index})
+        local leader_host=$KB_LEADER.${hostname_suffix}
         export KB_MYSQL_CLUSTER_LEADER_HOST=${leader_host:?missing leader hostname}
 
         # compatiable with old version images

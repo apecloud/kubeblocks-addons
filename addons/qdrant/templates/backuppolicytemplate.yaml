@@ -21,17 +21,8 @@ spec:
         volumeMounts:
         - name: data
           mountPath: {{ .Values.dataMountPath }}
-    - name: volume-snapshot
-      snapshotVolumes: true
-      targetVolumes:
-        volumes:
-        - data
     schedules: &backupSchedules
     - backupMethod: datafile
-      enabled: false
-      cronExpression: "0 18 * * 0"
-      retentionPeriod: 7d
-    - backupMethod: volume-snapshot
       enabled: false
       cronExpression: "0 18 * * 0"
       retentionPeriod: 7d

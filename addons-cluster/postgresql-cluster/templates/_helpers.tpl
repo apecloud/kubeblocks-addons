@@ -27,6 +27,11 @@ Define postgresql ComponentSpec with ComponentDefinition.
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
       {{- include "kblib.componentServices" . | indent 6 }}
+
+      {{- if .Values.etcd.proxyEnabled }}
+      serviceRefs:
+      {{ include "postgresql-cluster.serviceRef" . | indent 6 }}
+      {{- end }}
 {{- end }}
 
 {{/*
@@ -46,3 +51,22 @@ Define postgresql ComponentSpec with legacy ClusterDefinition which will be depr
       {{- include "kblib.componentStorages" . | indent 6 }}
       {{- include "kblib.componentServices" . | indent 6 }}
 {{- end }}
+
+{{- define "postgresql-cluster.serviceRef" }}
+- name: etcd
+  namespace: {{ .Release.Namespace }}
+  {{- if eq .Values.etcd.meta.mode "incluster" }}
+  clusterServiceSelector:
+    cluster: {{ .Values.etcd.meta.serviceRef.cluster.name }}
+    service:
+      component: {{ .Values.etcd.meta.serviceRef.cluster.component }}
+      service: {{ .Values.etcd.meta.serviceRef.cluster.service }}
+      port: {{ .Values.etcd.meta.serviceRef.cluster.port }}
+    credential:
+      component: {{ .Values.etcd.meta.serviceRef.cluster.component }}
+      name: {{ .Values.etcd.meta.serviceRef.cluster.credential }}
+  {{- else }}
+  serviceDescriptor: {{ .Values.etcd.meta.serviceRef.serviceDescriptor }}
+  {{- end }}
+{{- end -}}
+

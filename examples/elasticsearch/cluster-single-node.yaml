@@ -3,6 +3,8 @@ kind: Cluster
 metadata:
   name: elasticsearch-cluster
   namespace: default
+  annotations:
+    kubeblocks.io/extra-env: '{"elasticsearch-roles":"master,data,ingest,transform"}'
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
@@ -29,8 +31,8 @@ spec:
       effect: NoSchedule
   # Specifies a list of ClusterComponentSpec objects used to define the individual components that make up a Cluster. This field allows for detailed configuration of each component within the Cluster. Note: `shardingSpecs` and `componentSpecs` cannot both be empty; at least one must be defined to configure a cluster. ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
-  - name: es-single-node
-    componentDef: es-single-node
+  - name: elasticsearch
+    componentDef: elasticsearch
     disableExporter: true
     serviceAccountName: kb-elasticsearch-cluster
     replicas: 1

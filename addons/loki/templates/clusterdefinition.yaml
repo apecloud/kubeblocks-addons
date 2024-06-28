@@ -1,0 +1,22 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterDefinition
+metadata:
+  name: loki
+  labels:
+    {{- include "loki.labels" . | nindent 4 }}
+spec:
+  topologies:
+  - name: loki-cluster
+    components:
+      - name: write
+        compDef: loki-write
+      - name: read
+        compDef: loki-read
+      - name: backend
+        compDef: loki-backend
+      - name: gateway
+        compDef: loki-gateway
+    orders:
+      provision:
+        - backend
+        - write,read,gateway

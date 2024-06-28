@@ -1,0 +1,77 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "mysql.componentDefName" . }}-5.7.44
+  labels:
+      {{- include "mysql.labels" . | nindent 4 }}
+spec:
+  {{- include "mysql.spec.common" . | nindent 2 }}
+  serviceVersion: 5.7.44
+
+  configs:
+    - name: mysql-replication-config
+      templateRef: mysql-5.7-config-template
+      constraintRef: mysql-config-constraints
+      volumeName: mysql-config
+      namespace: {{ .Release.Namespace }}
+  runtime:
+    initContainers:
+      - image: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:5.7.44
+        name: init-data
+        command:
+          - bash
+          - -c
+          - |
+            mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog}
+            cp /usr/lib/mysql/plugin/ {{ .Values.dataMountPath }}/plugin -r
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+      {{- include "mysql.spec.runtime.common" . | nindent 6 }}
+    containers:
+      - name: mysql
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.7.44
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        command:
+          - syncer
+          - --config-path
+          - /kubeblocks/config/components
+          - --port
+          - "3601"
+          - --
+          - bash
+          - -c
+          - |
+            mv {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
+            rm -rf {{ .Values.dataMountPath }}/plugin
+            chown -R mysql:root {{ .Values.dataMountPath }}
+            skip_slave_start="OFF"
+            if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
+              skip_slave_start="ON"
+            fi
+            /scripts/mysql-entrypoint.sh
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+          - mountPath: /etc/mysql/conf.d
+            name: mysql-config
+          - name: scripts
+            mountPath: /scripts
+          - mountPath: /kubeblocks
+            name: kubeblocks
+        ports:
+          - containerPort: 3306
+            name: mysql
+          - containerPort: 3601
+            name: ha
+        env:
+          - name: PATH
+            value: /kubeblocks/xtrabackup/bin:/kubeblocks/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          - name: KB_SERVICE_CHARACTER_TYPE
+            value: mysql
+          - name: MYSQL_INITDB_SKIP_TZINFO
+            value: "1"
+          - name: MYSQL_ROOT_HOST
+            value: {{ .Values.auth.rootHost | default "%" | quote }}
+

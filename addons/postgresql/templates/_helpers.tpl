@@ -50,7 +50,6 @@ app.kubernetes.io/name: {{ include "postgresql.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
-
 {{/*
 Generate scripts configmap
 */}}
@@ -60,26 +59,6 @@ Generate scripts configmap
 {{- $.Files.Get $path | nindent 2 }}
 {{- end }}
 {{- end }}
-
-{{/*
-Check if cluster version is enabled, if enabledClusterVersions is empty, return true,
-otherwise, check if the cluster version is in the enabledClusterVersions list, if yes, return true,
-else return false.
-Parameters: cvName, values
-*/}}
-{{- define "postgresql.isClusterVersionEnabled" -}}
-{{- $cvName := .cvName -}}
-{{- $enabledClusterVersions := .values.enabledClusterVersions -}}
-{{- if eq (len $enabledClusterVersions) 0 -}}
-    {{- true -}}
-{{- else -}}
-    {{- range $enabledClusterVersions -}}
-        {{- if eq $cvName . -}}
-            {{- true -}}
-        {{- end -}}
-    {{- end -}}
-{{- end -}}
-{{- end -}}
 
 {{/*
 Define postgresql component defintion name prefix

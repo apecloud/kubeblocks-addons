@@ -1,6 +1,16 @@
-{{- include "kblib.clusterCommon" . }}
+
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+spec:
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  {{- include "kblib.affinity" . | indent 2 }}
 {{- if .Values.useLegacyCompDef }}
 {{- include "postgresql-cluster.legacyComponentSpec" . }}
 {{- else }}
 {{- include "postgresql-cluster.componentSpec" . }}
 {{- end }}
+

@@ -14,7 +14,7 @@ spec:
         image: {{ .Values.image.registry | default "docker.io" }}/busybox:1.35
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
       - name: prepare-plugins
-        image: {{ .Values.image.plugin.registry | default "docker.io" }}/{{ .Values.image.plugin.repository}}:{{ default .Chart.AppVersion .Values.image.plugin.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.plugin.repository}}:{{ default .Chart.AppVersion .Values.image.plugin.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
       containers:
       - name: elasticsearch
@@ -37,7 +37,7 @@ spec:
         image: {{ .Values.image.registry | default "docker.io" }}/busybox:latest
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
       - name: prepare-plugins
-        image: {{ .Values.image.plugin.registry | default "docker.io" }}/{{ .Values.image.plugin.repository}}:{{ default .Chart.AppVersion .Values.image.plugin.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.plugin.repository}}:{{ default .Chart.AppVersion .Values.image.plugin.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
       containers:
       - name: elasticsearch

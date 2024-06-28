@@ -172,7 +172,7 @@ spec:
           - -r
           - /xtrabackup-2.4
           - /kubeblocks/xtrabackup
-        image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:mysql
+        image: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:mysql
         imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
         name: init-xtrabackup
         volumeMounts:

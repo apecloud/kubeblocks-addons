@@ -74,7 +74,7 @@ spec:
           - /bin/syncer
           - /config
           - /kubeblocks/
-        image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:latest
+        image: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:latest
         imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
         name: init-syncer
         volumeMounts:
@@ -85,7 +85,7 @@ spec:
           - -r
           - /xtrabackup-8.0
           - /kubeblocks/xtrabackup
-        image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:mysql
+        image: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:mysql
         imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
         name: init-xtrabackup
         volumeMounts:

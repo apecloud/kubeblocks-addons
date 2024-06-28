@@ -42,7 +42,7 @@ spec:
   runtime:
     containers:
     - name: weaviate
-      image: {{ include "weaviate.image" . }}
+      image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:{{ .Values.images.tag | default "latest" }}
       imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
       command:
       - /bin/sh

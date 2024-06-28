@@ -1,16 +1,16 @@
 {{/*
-Define common fileds of cluster object
+Define camellia redis proxy componentSpec with ComponentDefinition.
 */}}
-{{- define "camellia-redis-proxy.clusterCommon" }}
-apiVersion: apps.kubeblocks.io/v1alpha1
-kind: Cluster
-metadata:
-  name: {{ include "kblib.clusterName" . }}
-  namespace: {{ .Release.Namespace }}
-  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
-spec:
-  terminationPolicy: {{ .Values.extra.terminationPolicy }}
-  {{- include "kblib.affinity" . | indent 2 }}
+{{- define "camellia-redis-proxy-cluster.componentSpec" }}
+  componentSpecs:
+    - name: proxy
+      componentDef: camellia-redis-proxy
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+      {{- include "camellia-redis-proxy.replicaCount" . | indent 6 }}
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
+      {{- include "kblib.componentServices" . | indent 6 }}
 {{- end }}
 
 {{/*

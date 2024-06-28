@@ -9,6 +9,11 @@ spec:
   description: A PostgreSQL (with Patroni HA) component definition for Kubernetes
   serviceKind: postgresql
   serviceVersion: {{ .Values.componentServiceVersion.postgresql14 }}
+  serviceRefDeclarations:
+    - name: etcd
+      serviceRefDeclarationSpecs:
+        - serviceKind: etcd
+          serviceVersion: "^*"
   services:
     - name: postgresql
       serviceName: postgresql
@@ -70,6 +75,13 @@ spec:
       volumeName: scripts
       defaultMode: 0555
   vars:
+    - name: ETCD_API
+      value: "3"        
+    - name: ETCD_SERVER
+      valueFrom:
+        serviceRefVarRef:
+          name: etcd
+          endpoint: Required
     - name: POSTGRES_USER
       valueFrom:
         credentialVarRef:
@@ -148,6 +160,11 @@ spec:
             value: $(POSTGRES_USER)
           - name: PGPASSWORD
             value: $(POSTGRES_PASSWORD)
+    preTerminate:
+      customHandler:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major14.minor080 }}
+        exec:
+          command: ["/kb-scripts/etcd-clean.sh"]
   runtime:
     securityContext:
       runAsUser: 0
@@ -177,6 +194,10 @@ spec:
           runAsUser: 0
         command:
           - /kb-scripts/setup.sh
+        lifecycle:
+          preStop:
+            exec: 
+              command: ["/kb-scripts/etcd-clean.sh"]
         readinessProbe:
           failureThreshold: 3
           initialDelaySeconds: 10
