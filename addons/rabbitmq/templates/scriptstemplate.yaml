@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rabbitmq-scripts
+  labels:
+    {{- include "rabbitmq.labels" . | nindent 4 }}
+data:
+  rabbitmq-setup.sh: |-
+    #!/bin/sh
+    
+    PORT=27018 
+    CONFIG_SVR_NAME=$KB_CLUSTER_NAME"-configsvr"
+    DOMAIN=$CONFIG_SVR_NAME"-headless."$KB_NAMESPACE".svc.cluster.local"

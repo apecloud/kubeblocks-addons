@@ -1,0 +1,16 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: rabbitmq
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "rabbitmq.componentDefName" . }}
+      releases:
+        - 3.13.2
+  releases:
+    - name: 3.13.2
+      changes:
+      serviceVersion: 3.13.2
+      images:
+        rabbitmq: rabbitmq:3.13.2-management
