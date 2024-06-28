@@ -1,0 +1,15 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: gbase
+  labels:
+    {{- include "gbase.labels" . | nindent 4 }}
+spec:
+  releases:
+  - name: gbase-5.0.0
+    serviceVersion: "5.0.0"
+    images:
+      gbase: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+  compatibilityRules:
+  - releases: [gbase-5.0.0]
+    compDefs: [gbase]

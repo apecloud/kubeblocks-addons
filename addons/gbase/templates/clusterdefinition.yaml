@@ -1,0 +1,13 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterDefinition
+metadata:
+  name: {{ include "gbase.clusterDefName" . }}
+  labels:
+    {{- include "gbase.labels" . | nindent 4 }}
+spec:
+  topologies:
+  - name: gbase
+    default: true
+    components:
+    - name: gbase
+      compDef: gbase

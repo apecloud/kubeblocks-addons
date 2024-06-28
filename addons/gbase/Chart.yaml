@@ -1,0 +1,24 @@
+apiVersion: v2
+name: gbase
+description: gbase
+
+type: application
+
+version: 0.9.0
+
+appVersion: "5.0.0"
+
+home: https://kubeblocks.io/
+icon: https://kubeblocks.io/img/logo.png
+
+maintainers:
+- name: ApeCloud
+  url: https://github.com/apecloud/kubeblocks/
+
+sources:
+- https://github.com/apecloud/kubeblocks/
+
+annotations:
+  addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
+  addon.kubeblocks.io/model: "RDBMS"
+  addon.kubeblocks.io/provider: "apecloud"

@@ -1,0 +1,37 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gbase-cluster.labels" . | indent 4 }}
+spec:
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  {{- include "kblib.affinity" . | indent 2 }}
+  clusterDefinitionRef: gbase
+  terminationPolicy: {{ .Values.terminationPolicy }}
+  componentSpecs:
+    - name: gbase
+      replicas: {{ .Values.gbase.replicas }}
+      {{- with  .Values.gbase.resources }}
+      resources:
+        {{- with .limits }}
+        limits:
+          cpu: {{ .cpu | quote }}
+          memory: {{ .memory | quote }}
+            {{- end }}
+            {{- with .requests }}
+        requests:
+          cpu: {{ .cpu | quote }}
+          memory: {{ .memory | quote }}
+        {{- end }}
+      {{- end }}
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: {{ .Values.storageClassName }}
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: {{ .Values.gbase.dataStorage }}
