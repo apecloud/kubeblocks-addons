@@ -1,7 +1,7 @@
 apiVersion: v2
 description: High Performance, Kubernetes Native Object Storage
 name: minio-cluster
-version: 8.0.17
+version: 5.2.0
 appVersion: master
 keywords:
   - storage
