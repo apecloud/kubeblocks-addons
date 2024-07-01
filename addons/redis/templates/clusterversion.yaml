@@ -36,3 +36,45 @@ spec:
         - name: redis-twemproxy
           image: {{ include "redis-twemproxy.image" . }}
           imagePullPolicy: {{ default .Values.redisTwemproxyImage.pullPolicy "IfNotPresent" }}
+
+---
+
+# backward compatibility for older versions before v0.9.0
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterVersion
+metadata:
+  name: redis-7.0.6
+  labels:
+    {{- include "redis.labels" . | nindent 4 }}
+spec:
+  clusterDefinitionRef: redis
+  componentVersions:
+    - componentDefRef: redis
+      versionsContext:
+        containers:
+          - name: redis
+            image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/redis-stack-server:7.0.6-RC8
+            imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+      systemAccountSpec:
+        cmdExecutorConfig:
+          image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/redis-stack-server:7.0.6-RC8
+    - componentDefRef: redis-sentinel
+      versionsContext:
+        initContainers:
+          - name: init-redis-sentinel
+            image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/redis-stack-server:7.0.6-RC8
+            imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        containers:
+          - name: redis-sentinel
+            image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/redis-stack-server:7.0.6-RC8
+            imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+    - componentDefRef: redis-twemproxy
+      versionsContext:
+        initContainers:
+          - name: init-redis-twemproxy
+            image: docker.io/busybox:1.36
+            imagePullPolicy: {{ default .Values.busyboxImage.pullPolicy "IfNotPresent" }}
+        containers:
+          - name: redis-twemproxy
+            image: docker.io/malexer/twemproxy:0.5.0
+            imagePullPolicy: {{ default .Values.redisTwemproxyImage.pullPolicy "IfNotPresent" }}
