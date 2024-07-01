@@ -14,9 +14,12 @@ metadata:
     {{- end }}
   {{- end }}
 spec:
-  clusterDefinitionRef: pulsar
-  clusterVersionRef: {{ .Values.version }}
   terminationPolicy: {{ $.Values.terminationPolicy }}
+  {{- $topologyEnable :=  eq .Values.mode "" | default false }}
+  {{- if $topologyEnable}}
+  clusterDefinitionRef: pulsar
+  topology: {{ .Values.mode }}
+  {{- end }}
   affinity:
     {{- with $.Values.topologyKeys }}
     topologyKeys: {{ . | toYaml | nindent 6 }}
@@ -30,11 +33,7 @@ spec:
       serviceName: proxy
       componentSelector: proxy
       spec:
-        {{- if .Values.nodePortEnabled }}
-        type: NodePort
-        {{- else }}
         type: ClusterIP
-        {{- end }}
         ports:
           - name: pulsar
             port: 6650
@@ -76,10 +75,9 @@ spec:
     {{- end }}
     {{- end }}
   componentSpecs:
-    {{- if .Values.proxy.enabled }}
+  {{- if or (eq .Values.mode "pulsar-enhanced-cluster") (and (not $topologyEnable) .Values.proxy.enabled) }}
     - name: proxy
-      componentDefRef: pulsar-proxy
-      {{- if eq .Values.version "pulsar-3.0.2" }}
+    {{- if not  $topologyEnable }}
       componentDef: pulsar-proxy
       {{- end }}
       {{ include "pulsar-zookeeper-ref" . | nindent 6 }}
@@ -99,13 +97,40 @@ spec:
       {{- end }}
       {{- end }}
     {{- end }}
+  {{- if or (eq .Values.mode "pulsar-enhanced-cluster") ( and (not $topologyEnable) .Values.bookiesRecovery.enabled) }}
+    - name: bookies-recovery
+    {{- if not $topologyEnable }}
+      componentDef: pulsar-bkrecovery
+      {{- end }}
+      {{ include "pulsar-zookeeper-ref" . | nindent 6 }}
+      monitor: {{ .Values.monitor.enabled | default false }}
+      replicas: {{ .Values.bookiesRecovery.replicaCount | default 3 }}
+    {{- with  .Values.bookiesRecovery.resources }}
+      resources:
+      {{- if .limits }}
+        limits:
+          cpu: {{ .limits.cpu | quote }}
+          memory: {{ .limits.memory | quote }}
+      {{- end }}
+      {{- if .requests }}
+        requests:
+          cpu: {{ .requests.cpu | quote }}
+          memory: {{ .requests.memory | quote }}
+      {{- end }}
+      {{- end }}
+  {{- end }}
     - name: broker
-      componentDefRef: pulsar-broker
-      {{- if eq .Values.version "pulsar-3.0.2" }}
+      {{- if not  $topologyEnable }}
       componentDef: pulsar-broker
       {{- end }}
       {{ include "pulsar-zookeeper-ref" . | nindent 6 }}
       monitor: {{ .Values.monitor.enabled | default false }}
+      {{- if .Values.nodePortEnabled }}
+      services:
+        - name: advertised-listener
+          serviceType: NodePort
+          podService: true
+      {{- end }}
       replicas: {{ .Values.broker.replicaCount | default 3 }}
       {{- with  .Values.broker.resources }}
       resources:
@@ -120,32 +145,8 @@ spec:
           memory: {{ .requests.memory | quote }}
       {{- end }}
       {{- end }}
-    {{- if .Values.bookiesRecovery.enabled }}
-    - name: bookies-recovery
-      componentDefRef: bookies-recovery
-      {{- if eq .Values.version "pulsar-3.0.2" }}
-      componentDef: pulsar-bkrecovery
-      {{- end }}
-      {{ include "pulsar-zookeeper-ref" . | nindent 6 }}
-      monitor: {{ .Values.monitor.enabled | default false }}
-      replicas: {{ .Values.bookiesRecovery.replicaCount | default 3 }}
-      {{- with  .Values.bookiesRecovery.resources }}
-      resources:
-      {{- if .limits }}
-        limits:
-          cpu: {{ .limits.cpu | quote }}
-          memory: {{ .limits.memory | quote }}
-      {{- end }}
-      {{- if .requests }}
-        requests:
-          cpu: {{ .requests.cpu | quote }}
-          memory: {{ .requests.memory | quote }}
-      {{- end }}
-      {{- end }}
-    {{- end }}
     - name: bookies
-      componentDefRef: bookies
-      {{- if eq .Values.version "pulsar-3.0.2" }}
+      {{- if not  $topologyEnable }}
       componentDef: pulsar-bookkeeper
       {{- end }}
       {{ include "pulsar-zookeeper-ref" . | nindent 6 }}
@@ -193,8 +194,7 @@ spec:
       {{- end }}
     {{- if not .Values.serviceReference.enabled }}
     - name: zookeeper
-      componentDefRef: zookeeper
-      {{- if eq .Values.version "pulsar-3.0.2" }}
+      {{- if not  $topologyEnable }}
       componentDef: pulsar-zookeeper
       {{- end }}
       monitor: {{ .Values.monitor.enabled | default false }}

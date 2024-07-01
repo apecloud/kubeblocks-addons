@@ -81,16 +81,29 @@ Pulsar ZooKeeper service ref
 serviceRefs:
 - name: pulsarZookeeper
   namespace: {{ .Values.serviceReference.zookeeper.namespace | default .Release.Namespace }}
+  {{- if .Values.serviceReference.zookeeper.clusterServiceSelector }}
+  clusterServiceSelector:
+    cluster: {{ .Values.serviceReference.zookeeper.clusterServiceSelector.cluster }}
+    {{- if .Values.serviceReference.zookeeper.clusterServiceSelector.service}}
+    service:
+    {{- if .Values.serviceReference.zookeeper.clusterServiceSelector.service.component}}
+      component: {{.Values.serviceReference.zookeeper.clusterServiceSelector.service.component}}
+    {{- end}}
+      service: client
+    {{- if .Values.serviceReference.zookeeper.clusterServiceSelector.service.port}}
+      port: {{.Values.serviceReference.zookeeper.clusterServiceSelector.service.port}}
+    {{- end}}
+    {{- end}}
+    {{- if .Values.serviceReference.zookeeper.clusterServiceSelector.credential}}
+    credential:
+      component: {{.Values.serviceReference.zookeeper.clusterServiceSelector.credential.component}}
+      name: {{.Values.serviceReference.zookeeper.clusterServiceSelector.credential.name}}
+    {{- end}}
+  {{- end}}
   {{- if .Values.serviceReference.zookeeper.serviceDescriptor }}
-  serviceDescriptor: {{ .Values.serviceReference.zookeeper.serviceDescriptor }}
-  {{- else }}
-  {{- if .Values.serviceReference.zookeeper.cluster }}
-  cluster: {{ .Values.serviceReference.zookeeper.cluster }}
-  {{- else }}
-  cluster: {{ include "kblib.clusterName" . }}-zookeeper
+    serviceDescriptor: {{.Values.serviceReference.zookeeper.serviceDescriptor}}
   {{- end }}
   {{- end }}
-{{- end}}
 {{- end}}
 }}
 

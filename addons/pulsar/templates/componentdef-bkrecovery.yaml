@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: pulsar-bkrecovery
+  name: pulsar-bkrecovery-{{include "pulsar.major.version" .}}
   labels:
       {{- include "pulsar.labels" . | nindent 4 }}
 spec:
@@ -14,6 +14,7 @@ spec:
       serviceRefDeclarationSpecs:
         - serviceKind: zookeeper
           serviceVersion: ^3.8.\d{1,2}$
+      optional: true
   updateStrategy: BestEffortParallel
   configs:
     - name: bookies-recovery-env

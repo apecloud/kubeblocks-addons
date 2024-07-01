@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: pulsar-broker
+  name: pulsar-broker-{{include "pulsar.major.version" .}}
   labels:
       {{- include "pulsar.labels" . | nindent 4 }}
 spec:
@@ -10,39 +10,27 @@ spec:
   serviceKind: pulsar
   serviceVersion: {{ default .Chart.AppVersion .Values.clusterVersionOverride }}
   vars:
-    - name: NODE_PORT_PULSAR
+    - name: ADVERTISED_PORT_PULSAR
       valueFrom:
         serviceVarRef:
-          compDef: pulsar-broker
-          name: nodeport
+          compDef: pulsar-broker-{{include "pulsar.major.version" .}}
+          name: advertised-listener
           optional: true
           port:
             name: pulsar
             option: Optional
-    - name: NODE_PORT_KAFKA
+    - name: ADVERTISED_PORT_KAFKA
       valueFrom:
         serviceVarRef:
-          compDef: pulsar-broker
-          name: nodeport
+          compDef: pulsar-broker-{{include "pulsar.major.version" .}}
+          name: advertised-listener
           optional: true
           port:
             name: kafka-client
             option: Optional
   services:
-    - name: broker-clusterip
-      serviceName: clusterip
-      podService: true
-      spec:
-        type: ClusterIP
-        ports:
-          - name: pulsar
-            port: 6650
-            targetPort: pulsar
-          - name: kafka-client
-            port: 9092
-            targetPort: kafka-client
-    - name: broker-nodeport
-      serviceName: nodeport
+    - name: advertised-listener
+      serviceName: advertised-listener
       podService: true
       disableAutoProvision: true
       spec:
@@ -59,6 +47,7 @@ spec:
       serviceRefDeclarationSpecs:
         - serviceKind: zookeeper
           serviceVersion: ^3.8.\d{1,2}$
+      optional: true
   updateStrategy: BestEffortParallel
   configs:
     - name: broker-env
@@ -73,9 +62,9 @@ spec:
         - init-pulsar-client-config
       volumeName: broker-env
     - name: broker-config
-      templateRef: {{ include "pulsar.name" . }}3-broker-config-tpl
+      templateRef: {{ include "pulsar.name" . }}{{include "pulsar.major.version" .}}-broker-config-tpl
       namespace: {{ .Release.Namespace }}
-      constraintRef: pulsar3-brokers-cc
+      constraintRef: pulsar{{include "pulsar.major.version" .}}-brokers-cc
       volumeName: pulsar-config
   scripts:
     - name: pulsar-scripts
