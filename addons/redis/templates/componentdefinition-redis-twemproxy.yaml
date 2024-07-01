@@ -47,6 +47,22 @@ spec:
           port:
             name: redis
             option: Required
+    ## the default username of redis connection
+    - name: REDIS_DEFAULT_USER
+      valueFrom:
+        credentialVarRef:
+          ## reference the current component definition name
+          compDef: {{ include "redis.componentDefName" . }}
+          name: default
+          username: Required
+    ## the default password of redis connection
+    - name: REDIS_DEFAULT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          ## reference the current component definition name
+          compDef: {{ include "redis.componentDefName" . }}
+          name: default
+          password: Required
   runtime:
     initContainers:
       - name: init-redis-twemproxy
