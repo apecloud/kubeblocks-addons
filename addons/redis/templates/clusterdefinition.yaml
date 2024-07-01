@@ -213,7 +213,8 @@ spec:
       service:
         ports:
           - name: redis-twemproxy
-            targetPort: redis-twemproxy
+            # for compatibility with existing port named redis-proxy
+            targetPort: redis-proxy
             port: 22121
       scriptSpecs:
         - name: redis-scripts
@@ -243,7 +244,8 @@ spec:
             imagePullPolicy: IfNotPresent
             ports:
               - containerPort: 22121
-                name: redis-twemproxy
+                # for compatibility with existing port named redis-proxy before v0.9.0
+                name: redis-proxy
             volumeMounts:
               - name: data
                 mountPath: {{ .Values.dataMountPath }}
