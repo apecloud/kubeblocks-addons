@@ -44,6 +44,10 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: metadata.namespace
+        - name: RABBITMQ_MNESIA_BASE
+          value: {{ .Value.dataMountPath }}/mnesia
+        - name: RABBITMQ_LOG_BASE
+          value: {{ .Value.dataMountPath }}/logs
         - name: K8S_SERVICE_NAME
           value: hello-world-nodes
         - name: RABBITMQ_ENABLED_PLUGINS_FILE
@@ -79,3 +83,6 @@ spec:
         - containerPort: 15692
           name: prometheus
           protocol: TCP
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
