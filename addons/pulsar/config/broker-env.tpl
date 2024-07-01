@@ -10,20 +10,12 @@ PULSAR_MEM: -XX:MinRAMPercentage=30 -XX:MaxRAMPercentage=30 {{ $MaxDirectMemoryS
 {{- $clusterName := $.cluster.metadata.name }}
 {{- $namespace := $.cluster.metadata.namespace }}
 {{- $pulsar_zk_from_service_ref := fromJson "{}" }}
-{{- $pulsar_zk_from_component := fromJson "{}" }}
 
 {{- if index $.component "serviceReferences" }}
   {{- range $i, $e := $.component.serviceReferences }}
     {{- if eq $i "pulsarZookeeper" }}
       {{- $pulsar_zk_from_service_ref = $e }}
       {{- break }}
-    {{- end }}
-  {{- end }}
-{{- end }}
-{{- range $i, $e := $.cluster.spec.componentSpecs }}
-  {{- if index $e "componentDefRef" }}
-    {{- if eq $e.componentDefRef "zookeeper" }}
-      {{- $pulsar_zk_from_component = $e }}
     {{- end }}
   {{- end }}
 {{- end }}

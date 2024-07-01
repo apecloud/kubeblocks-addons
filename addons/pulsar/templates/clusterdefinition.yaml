@@ -201,12 +201,17 @@ spec:
       characterType: pulsar-proxy
       statefulSpec:
         updateStrategy: BestEffortParallel
-      componentDefRef:
-      - componentDefName: pulsar-broker
-        componentRefEnv:
-        - name: brokerSVC
-          valueFrom:
-            type: ServiceRef
+{{/*      componentDefRef:*/}}
+{{/*      - componentDefName: pulsar-broker*/}}
+{{/*        componentRefEnv:*/}}
+{{/*        - name: brokerSVC*/}}
+{{/*          valueFrom:*/}}
+{{/*            type: ServiceRef*/}}
+      serviceRefDeclarations:
+        - name: pulsarZookeeper
+          serviceRefDeclarationSpecs:
+            - serviceKind: zookeeper
+              serviceVersion: ^3.8.\d{1,2}$
       configSpecs:
         - name: proxy-env
           templateRef: {{ include "pulsar.name" . }}-proxy-env-tpl
@@ -273,10 +278,10 @@ spec:
             {{- end }}
             - name: SERVICE_PORT
               value: "8080"
-            - name: brokerWebServiceURL
-              value: http://$(brokerSVC):80
-            - name: brokerServiceURL
-              value: pulsar://$(brokerSVC):6650
+{{/*            - name: brokerWebServiceURL*/}}
+{{/*              value: http://$(brokerSVC):80*/}}
+{{/*            - name: brokerServiceURL*/}}
+{{/*              value: pulsar://$(brokerSVC):6650*/}}
             - name: clusterName
               value: $(KB_NAMESPACE)-$(KB_CLUSTER_COMP_NAME)
             - name: webServicePort
@@ -451,6 +456,11 @@ spec:
       characterType: pulsar-bookie-recovery
       statefulSpec:
         updateStrategy: BestEffortParallel
+      serviceRefDeclarations:
+        - name: pulsarZookeeper
+          serviceRefDeclarationSpecs:
+            - serviceKind: zookeeper
+              serviceVersion: ^3.8.\d{1,2}$
       configSpecs:
       - name: bookies-recovery-env
         templateRef: {{ include "pulsar.name" . }}-recovery-env-tpl
