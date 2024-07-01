@@ -20,5 +20,5 @@ sources:
   - https://github.com/minio/minio
 
 maintainers:
-  - name: contact
-    email: contact@milvus.io
+  - name: ApeCloud
+    url: https://github.com/apecloud/kubeblocks/deploy
