@@ -17,7 +17,6 @@ spec:
           - name: amqp
             port: 5672
             targetPort: amqp
-      roleSelector: primary
     - name: everypod
       spec:
         ports:

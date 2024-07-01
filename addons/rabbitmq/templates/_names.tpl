@@ -33,7 +33,7 @@ rabbitmq-config-constraints
 
 {{- define "rabbitmq.configTplName" -}}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-rabbitmq5.0-config-template
+rabbitmq-config-template
 {{- else -}}
 {{- .Values.resourceNamePrefix -}}-config-template
 {{- end -}}
