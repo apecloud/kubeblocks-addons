@@ -13,7 +13,8 @@ clusterDomain: cluster.local
 ## Set default image, imageTag, and imagePullPolicy. mode is used to indicate the
 ##
 image:
-  repository: quay.io/minio/minio
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  repository: apecloud/minio
   tag: RELEASE.2024-04-18T19-09-19Z
   pullPolicy: IfNotPresent
 
@@ -24,7 +25,8 @@ imagePullSecrets: []
 ## client used to create a default bucket).
 ##
 mcImage:
-  repository: quay.io/minio/mc
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  repository: apecloud/mc
   tag: RELEASE.2024-04-18T16-45-29Z
   pullPolicy: IfNotPresent
 
@@ -196,27 +198,6 @@ service:
 
 ## Configure Ingress based on the documentation here: https://kubernetes.io/docs/concepts/services-networking/ingress/
 ##
-
-ingress:
-  enabled: false
-  ingressClassName: ~
-  labels: {}
-    # node-role.kubernetes.io/ingress: platform
-  annotations: {}
-    # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
-    # kubernetes.io/ingress.allow-http: "false"
-    # kubernetes.io/ingress.global-static-ip-name: ""
-    # nginx.ingress.kubernetes.io/secure-backends: "true"
-    # nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
-    # nginx.ingress.kubernetes.io/whitelist-source-range: 0.0.0.0/0
-  path: /
-  hosts:
-    - minio-example.local
-  tls: []
-  #  - secretName: chart-example-tls
-  #    hosts:
-  #      - chart-example.local
 
 consoleService:
   type: ClusterIP
