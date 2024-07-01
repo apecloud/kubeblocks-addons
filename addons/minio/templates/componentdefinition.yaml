@@ -1,9 +1,15 @@
-{{ $scheme := "http" }}
-{{- if .Values.tls.enabled }}
-{{ $scheme = "https" }}
-{{ end }}
-
+{{ $poolCount := .Values.pools | int }}
+{{ $nodeCount := .Values.replicas | int }}
+{{ $replicas := mul $poolCount $nodeCount }}
+{{ $drivesPerNode := .Values.drivesPerNode | int }}
+{{ $scheme := .Values.tls.enabled | ternary "https" "http" }}
+{{ $mountPath := .Values.mountPath }}
 {{ $bucketRoot := or ($.Values.bucketRoot) ($.Values.mountPath) }}
+{{ $subPath := .Values.persistence.subPath }}
+{{ $penabled := .Values.persistence.enabled }}
+{{ $accessMode := .Values.persistence.accessMode }}
+{{ $storageClass := .Values.persistence.storageClass }}
+{{ $psize := .Values.persistence.size }}
 
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
@@ -22,18 +28,18 @@ spec:
         command:
           - "/bin/sh"
           - "-ce"
-          - "/usr/bin/docker-entrypoint.sh minio -S {{ .Values.certsPath }} server {{ $bucketRoot }} {{- template "minio.extraArgs" . }}"
+          - "/usr/bin/docker-entrypoint.sh minio server {{- range $i := until $poolCount }}{{ $factor := mul $i $nodeCount }}{{ $endIndex := add $factor $nodeCount }}{{ $beginIndex := mul $i $nodeCount }} {{ $scheme }}://{{ template `minio.fullname` $ }}-{{ `{` }}{{ $beginIndex }}...{{ sub $endIndex 1 }}{{ `}`}}.{{ template `minio.fullname` $ }}-svc.{{ $.Release.Namespace }}.svc.{{ $.Values.clusterDomain }}{{if (gt $drivesPerNode 1)}}{{ $bucketRoot }}-{{ `{` }}0...{{ sub $drivesPerNode 1 }}{{ `}` }}{{ else }}{{ $bucketRoot }}{{end }}{{- end }} -S {{ .Values.certsPath }} --address :{{ .Values.minioAPIPort }} --console-address :{{ .Values.minioConsolePort }} {{- template `minio.extraArgs` . }}"
         env:
-          - name: MINIO_ACCESS_KEY
+          - name: MINIO_ROOT_USER
             valueFrom:
               secretKeyRef:
                 name: {{ template "minio.secretName" . }}
-                key: accesskey
-          - name: MINIO_SECRET_KEY
+                key: rootUser
+          - name: MINIO_ROOT_PASSWORD
             valueFrom:
               secretKeyRef:
                 name: {{ template "minio.secretName" . }}
-                key: secretkey
+                key: rootPassword
         volumeMounts:
           {{- if and .Values.persistence.enabled }}
           - name: export
@@ -43,8 +49,10 @@ spec:
             {{- end }}
           {{- end }}
         ports:
-          - name: {{ $scheme }}
-            containerPort: 9000
+          - name: api
+            containerPort: {{ .Values.minioAPIPort }}
+          - name: console
+            containerPort: {{ .Values.minioConsolePort }}
         {{- if .Values.livenessProbe.enabled }}
         livenessProbe:
           httpGet:
@@ -93,13 +101,34 @@ spec:
       fsGroup: {{ .Values.securityContext.fsGroup }}
     {{- end }}
   volumes:
-    {{- if .Values.persistence.enabled }}
+    {{- if $penabled }}
+    {{- if (gt $drivesPerNode 1) }}
+    {{- range $i := until $drivesPerNode }}
+    - name: export-{{ $i }}
+      mountPath: {{ $mountPath }}-{{ $i }}
+      {{- if and $penabled $subPath }}
+      subPath: {{ $subPath }}
+      {{- end }}
+    {{- end }}
+    {{- else }}
     - name: export
-      needSnapshot: false
+      mountPath: {{ $mountPath }}
+      {{- if and $penabled $subPath }}
+      subPath: {{ $subPath }}
+      {{- end }}
+    {{- end }}
+    {{- end }}
+    {{- if .Values.extraSecret }}
+    - name: extra-secret
+      mountPath: "/tmp/minio-config-env"
+    {{- end }}
+    {{- include "minio.tlsKeysVolumeMount" . | indent 12 }}
+    {{- if .Values.extraVolumeMounts }}
+      {{- toYaml .Values.extraVolumeMounts | nindent 12 }}
     {{- end }}
   services:
-    - name: {{ $scheme }}
-      serviceName: {{ $scheme }}
+    - name: api
+      serviceName: api
       spec:
         type: ClusterIP
         {{- if not (empty .Values.service.clusterIP) }}
