@@ -52,7 +52,7 @@ spec:
         - name: RABBITMQ_USE_LONGNAME
           value: "true"
         - name: RABBITMQ_NODENAME
-          value: rabbit@$(MY_POD_NAME).$(K8S_SERVICE_NAME).$(MY_POD_NAMESPACE)
+          value: rabbit@$(KB_POD_FQDN)
         - name: K8S_HOSTNAME_SUFFIX
           value: .$(K8S_SERVICE_NAME).$(MY_POD_NAMESPACE)
         image: rabbitmq:3.13.2-management
