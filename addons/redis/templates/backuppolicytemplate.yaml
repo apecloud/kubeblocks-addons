@@ -61,4 +61,8 @@ spec:
   #    targetVolumes:
   #      volumes:
   #        - data
-    schedules: *backupschedules
+    schedules:
+      - backupMethod: datafile
+        enabled: false
+        cronExpression: "0 18 * * 0"
+        retentionPeriod: 7d
