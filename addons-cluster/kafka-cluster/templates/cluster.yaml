@@ -11,6 +11,20 @@ spec:
   clusterVersionRef: {{ .Values.version }}
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
+  topology: 
+    {{- if eq "combined" $.Values.mode }}
+      {{- if .Values.monitorEnable }}
+    combined_monitor
+      {{- else }}
+    combined
+      {{- end }}
+    {{- else }}
+      {{- if .Values.monitorEnable }}
+    separated_monitor
+      {{- else }}
+    separated
+      {{- end }}
+    {{- end }}
   services:
     - name: bootstrap
       serviceName: bootstrap
@@ -27,9 +41,10 @@ spec:
             port: 9092
   componentSpecs:
     {{- if eq "combined" $.Values.mode }}
-    - name: broker
+    - name: kafka-combine
+      {{- if .Values.useLegacyCompDef }}
       componentDefRef: kafka-server
-      componentDef: {{ include "kafka-cluster.brokerComponent" . }}
+      {{- end  }}
       tls: {{ $.Values.tlsEnable }}
       {{- if $.Values.tlsEnable }}
       issuer:
@@ -60,9 +75,10 @@ spec:
                 storage: {{ print $.Values.metaStorage "Gi" }}
       {{- end }}
     {{- else }}
-    - name: broker
+    - name: kafka-broker
+      {{- if .Values.useLegacyCompDef }}
       componentDefRef: kafka-broker
-      componentDef: {{ include "kafka-cluster.brokerComponent" . }}
+      {{- end  }}
       tls: {{ $.Values.tlsEnable }}
       {{- if $.Values.tlsEnable }}
       issuer:
@@ -92,9 +108,10 @@ spec:
               requests:
                 storage: {{ print $.Values.metaStorage "Gi" }}
       {{- end }}
-    - name: controller
+    - name: kafka-controller
+      {{- if .Values.useLegacyCompDef }}
       componentDefRef: controller
-      componentDef: "kafka-controller"
+      {{- end  }}
       tls: {{ $.Values.tlsEnable }}
       {{- if $.Values.tlsEnable }}
       issuer:
@@ -117,9 +134,10 @@ spec:
       {{- end }}
     {{- end }}
     {{- if .Values.monitorEnable }}
-    - name: metrics-exp
+    - name: kafka-exporter
+      {{- if .Values.useLegacyCompDef }}
       componentDefRef: kafka-exporter
-      componentDef: kafka-exporter
+      {{- end  }}
       replicas: {{ $.Values.monitorReplicas }}
       monitor: true
       {{- include "kblib.componentResources" . | nindent 6 }}

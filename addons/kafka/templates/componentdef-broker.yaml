@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: kafka-broker
+  name: {{ include "kafka-broker.componentDefName" . }}
   labels:
     {{- include "kafka.labels" . | nindent 4 }}
     {{- if .Values.commonLabels }}
@@ -51,7 +51,7 @@ spec:
   provider: kubeblocks
   description: Kafka broker.
   serviceKind: kafka
-  serviceVersion: {{ default .Chart.AppVersion .Values.clusterVersionOverride }}
+  serviceVersion: {{ .Values.componentServiceVersion.broker }}
   systemAccounts:
     - name: client
       secretRef:

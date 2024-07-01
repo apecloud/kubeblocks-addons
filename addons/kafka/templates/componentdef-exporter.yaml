@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: kafka-exporter
+  name: {{ include "kafka-exporter.componentDefName" . }}
   labels:
     {{- include "kafka.labels" . | nindent 4 }}
     {{- if .Values.commonLabels }}
@@ -17,7 +17,7 @@ spec:
     are simpler to operate for small use cases like a development environment. Combined mode is not recommended in critical
     deployment environments.
   serviceKind: kafka-exporter
-  serviceVersion: {{ default .Chart.AppVersion .Values.clusterVersionOverride }}
+  serviceVersion: {{ .Values.componentServiceVersion.exporter }}
 {{/*  services:*/}}
 {{/*  - name: metrics*/}}
 {{/*    serviceName: metrics*/}}

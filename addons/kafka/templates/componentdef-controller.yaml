@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: kafka-controller
+  name: {{ include "kafka-controller.componentDefName" . }}
   labels:
     {{- include "kafka.labels" . | nindent 4 }}
     {{- if .Values.commonLabels }}
@@ -22,7 +22,7 @@ spec:
   provider: kubeblocks
   description: Kafka controller that act as controllers (kraft) only server.
   serviceKind: kafka-controller
-  serviceVersion: {{ default .Chart.AppVersion .Values.clusterVersionOverride }}
+  serviceVersion: {{ .Values.componentServiceVersion.controller }}
   ## serial is not used because rsm currently does not support kafka's role detection. The lack of role label during restart will affect the pod restart.
   updateStrategy: BestEffortParallel
   monitor:

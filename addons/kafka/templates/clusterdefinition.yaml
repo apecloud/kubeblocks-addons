@@ -18,7 +18,65 @@ spec:
     kraftClusterID: "$(UUID_STR_B64)" 
     clientUser: "client"
     clientPassword: "kubeblocks"
-
+  topologies:
+    - name: combined_monitor
+      default: true
+      components:
+        - name: kafka-combine
+          compDef: {{ include "kafka-combine.componentDefName" . }}
+        - name: kafka-exporter
+          compDef: {{ include "kafka-exporter.componentDefName" . }}
+      orders:
+        provision:
+          - kafka-combine
+          - kafka-exporter
+        terminate:
+          - kafka-exporter
+          - kafka-combine
+        update:
+          - kafka-combine
+          - kafka-exporter
+    - name: combined
+      components:
+        - name: kafka-combine
+          compDef: {{ include "kafka-combine.componentDefName" . }}
+    - name: separated_monitor
+      components:
+        - name: kafka-controller
+          compDef: {{ include "kafka-controller.componentDefName" . }}
+        - name: kafka-broker
+          compDef: {{ include "kafka-broker.componentDefName" . }}
+        - name: kafka-exporter
+          compDef: {{ include "kafka-exporter.componentDefName" . }}
+      orders:
+        provision:
+          - kafka-broker
+          - kafka-controller
+          - kafka-exporter
+        terminate:
+          - kafka-broker
+          - kafka-controller
+          - kafka-exporter
+        update:
+          - kafka-broker
+          - kafka-controller
+          - kafka-exporter
+    - name: separated
+      components:
+        - name: kafka-controller
+          compDef: {{ include "kafka-controller.componentDefName" . }}
+        - name: kafka-broker
+          compDef: {{ include "kafka-broker.componentDefName" . }}
+      orders:
+        provision:
+          - kafka-broker
+          - kafka-controller
+        terminate:
+          - kafka-controller
+          - kafka-broker
+        update:
+          - kafka-broker
+          - kafka-controller
   componentDefs:
     # combined both controller(kraft) and broker. Ref: https://kafka.apache.org/documentation/#kraft_role
     - name: kafka-server
