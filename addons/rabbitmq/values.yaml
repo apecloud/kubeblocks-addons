@@ -33,7 +33,7 @@ logConfigs:
 logCollector:
   enabled: false
 
-dataMountPath: /data/rabbitmq
+dataMountPath: /var/lib/rabbitmq
 
 
 ## @param enabledClusterVersions specifies the enabled cluster versions, if not set, all cluster versions are enabled

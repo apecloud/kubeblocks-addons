@@ -34,9 +34,9 @@
         "string"
       ],
       "default": 0.5,
-      "minimum": 0.5,
+      "minimum": 0.1,
       "maximum": 64,
-      "multipleOf": 0.5
+      "multipleOf": 0.1
     },
     "memory": {
       "title": "Memory(Gi)",
@@ -46,7 +46,7 @@
         "string"
       ],
       "default": 0.5,
-      "minimum": 0.5,
+      "minimum": 0.1,
       "maximum": 1000
     },
     "storage": {
