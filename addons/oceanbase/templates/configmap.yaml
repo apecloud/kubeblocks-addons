@@ -18,15 +18,3 @@ metadata:
 data:
   oceanbase.sysvars: |-
     {{- .Files.Get "config/oceanbase-sysvars.tpl" | nindent 4 }}
-
-
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: oceanbase-inject-env
-  labels:
-    {{- include "oceanbase.labels" . | nindent 4 }}
-data:
-  oceanbase-env: |-
-    {{- .Files.Get "config/oceanbase-inject-env.tpl" | nindent 4 }}
