@@ -4,7 +4,7 @@
   "properties": {
     "useLegacyCompDef": {
       "type": "boolean",
-      "default": false,
+      "default": true,
       "title": "useLegacyCompDef",
       "description": "if useLegacyCompDef is false ,cluster will be rendered by compDef rather than componentDefRef in cluster definition"
     },
