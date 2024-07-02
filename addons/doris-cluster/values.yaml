@@ -1,0 +1,34 @@
+componentSpecs:
+  fe:
+    resources:
+      cpu: "1000m"
+      memory: "2Gi"
+    volumeClaimTemplates:
+      data:
+        size: 20Gi
+
+  be:
+    replicas: 1
+    resources:
+      cpu: "1000m"
+      memory: "2Gi"
+    volumeClaimTemplates:
+      data:
+        size: 20Gi
+
+  cn:
+    replicas: 1
+    resources:
+      cpu: "1000m"
+      memory: "2Gi"
+persistence:
+  fe:
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+  be:
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+
+terminationPolicy: Delete
