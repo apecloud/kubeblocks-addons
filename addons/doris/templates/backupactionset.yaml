@@ -1,0 +1,45 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: {{ include "doris.name" . }}-doris-backup
+  labels:
+    clusterdefinition.kubeblocks.io/name: doris
+spec:
+  backupType: Full
+  env:
+    - name: DATA_DIR
+      value: /opt/apache-doris/fe/backup
+    - name: minio_address
+      value: "s3://doris/test"
+    - name: backup_repository
+      value: minio
+    - name: snapshot_label
+      value: snapshot_label1
+  backup:
+    preBackup: []
+    postBackup: []
+    backupData:
+      image: {{ include "doris.image" . }}
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+      command:
+        - sh
+        - -c
+        - |
+          {{- .Files.Get "script/backup.sh" | nindent 10 }}
+  restore:
+    prepareData:
+      image: {{ include "doris.image" . }}
+      command:
+        - sh
+        - -c
+        - echo "1"
+    postReady:
+    - exec:
+        container: doris-fe
+        command:
+        - sh
+        - -c
+        - |
+          {{- .Files.Get "script/restore.sh" | nindent 10 }}
