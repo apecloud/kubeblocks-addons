@@ -53,15 +53,14 @@ if [ "${ip_changed}" = "false" ] && [ "$RECOVERING" = "True" ]; then
   echo "Check DB Status"
   # pod must be ready to make sure the PER-POD-SVC is working ahead
   create_ready_flag
-  ROOT_PASSWD=$(getRootPasswd "${KB_COMP_NAME}")
       # If at least one server is up, return True
-  until conn_local_obdb_w_port $COMP_MYSQL_PORT "SELECT * FROM DBA_OB_SERVERS\G" ${ROOT_PASSWD}; do
+  until conn_local_obdb_w_port $COMP_MYSQL_PORT "SELECT * FROM DBA_OB_SERVERS\G"; do
     echo "the server is not ready yet, wait for it..."
     sleep 10
   done
 
   curr_pod_ip=$(get_pod_ip ${KB_POD_NAME})
-  until [ -n "$(conn_local_obdb_w_port $COMP_MYSQL_PORT "SELECT * FROM DBA_OB_SERVERS WHERE SVR_IP = '${curr_pod_ip}' and STATUS = 'ACTIVE' and START_SERVICE_TIME IS NOT NULL" ${ROOT_PASSWD})" ]; do
+  until [ -n "$(conn_local_obdb_w_port $COMP_MYSQL_PORT "SELECT * FROM DBA_OB_SERVERS WHERE SVR_IP = '${curr_pod_ip}' and STATUS = 'ACTIVE' and START_SERVICE_TIME IS NOT NULL")" ]; do
     echo "Wait for the server to be ready..."
     sleep 10
   done
