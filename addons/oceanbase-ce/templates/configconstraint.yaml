@@ -133,29 +133,3 @@ spec:
   # configuration file format
   fileFormatConfig:
     format: properties
-
----
-{{- $cc := .Files.Get "config/oceanbase-env-effect-scope.yaml" | fromYaml }}
-apiVersion: apps.kubeblocks.io/v1beta1
-kind: ConfigConstraint
-metadata:
-  name: {{ printf "%s-env-cc" (include "oceanbase-release.name" .) }}
-  labels:
-    {{- include "oceanbase.labels" . | nindent 4 }}
-spec:
-  parametersSchema:
-    topLevelKey: OBPortEnvParameters
-    cue: |-
-      {{- .Files.Get "config/oceanbase-env-constraint.cue" | nindent 6 }}
-
-  {{- if hasKey $cc "immutableParameters" }}
-  immutableParameters:
-    {{- $params := get $cc "immutableParameters" }}
-      {{- range $params }}
-      - {{ . }}
-      {{- end }}
-  {{- end }}
-
-  # mysql configuration file format
-  fileFormatConfig:
-    format: props-plus

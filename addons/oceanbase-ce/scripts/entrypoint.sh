@@ -20,33 +20,19 @@ echo "Recovering: $RECOVERING"
 
 init_port_list
 
-function wait_for_observer_ready {
-  local RETRY_MAX=20
-  local retry_times=0
-  echo "Wait for observer on this node to be ready"
-  until nc -z 127.0.0.1 $COMP_MYSQL_PORT; do
-    echo "observer on this node is not ready, wait for a moment..."
-    retry_times=$(($retry_times+1))
-    sleep 5
-    if [ $retry_times -gt ${RETRY_MAX} ]; then
-      echo "Failed to start server ${KB_POD_IP}:$COMP_RPC_PORT exit..."
-      exit 1
-    fi
-  done
-}
-
 ip_changed="false"
 # If the server is recovering from crash
 if [ $RECOVERING = "True" ]; then
   # If the IP of recovering server changed
   if [ "$(check_if_ip_changed)" = "Changed" ]; then
     ip_changed="true"
-    echo "IP changed, need to rejoin the cluster"
-    clean_dirs
-    echo "Prepare config folders"
-    prepare_dirs
-    echo "Start server"
-    start_observer
+    echo "IP changed, failed to rejoin the cluster"
+    exit 1
+    # clean_dirs
+    # echo "Prepare config folders"
+    # prepare_dirs
+    # echo "Start server"
+    # start_observer
   else
     ip_changed="false"
     echo "IP not changed, use existing configs to start server"
@@ -62,46 +48,51 @@ fi
 
 wait_for_observer_ready
 
-echo "ip_changed:" ${ip_changed}
 if [ "${ip_changed}" = "false" ] && [ "$RECOVERING" = "True" ]; then
   echo "IP not changed, start recovering"
   echo "Check DB Status"
+  # pod must be ready to make sure the PER-POD-SVC is working ahead
+  create_ready_flag
+  ROOT_PASSWD=$(getRootPasswd "${KB_COMP_NAME}")
       # If at least one server is up, return True
-  until conn_local_obdb_w_port $COMP_MYSQL_PORT "SELECT * FROM DBA_OB_SERVERS\G"; do
+  until conn_local_obdb_w_port $COMP_MYSQL_PORT "SELECT * FROM DBA_OB_SERVERS\G" ${ROOT_PASSWD}; do
     echo "the server is not ready yet, wait for it..."
     sleep 10
   done
 
-  until [ -n "$(conn_local_obdb_w_port $COMP_MYSQL_PORT "SELECT * FROM DBA_OB_SERVERS WHERE SVR_IP = '${KB_POD_IP}' and STATUS = 'ACTIVE' and START_SERVICE_TIME IS NOT NULL")" ]; do
+  curr_pod_ip=$(get_pod_ip ${KB_POD_NAME})
+  until [ -n "$(conn_local_obdb_w_port $COMP_MYSQL_PORT "SELECT * FROM DBA_OB_SERVERS WHERE SVR_IP = '${curr_pod_ip}' and STATUS = 'ACTIVE' and START_SERVICE_TIME IS NOT NULL" ${ROOT_PASSWD})" ]; do
     echo "Wait for the server to be ready..."
     sleep 10
   done
-  create_ready_flag
-  sleep infinity
+  echo "Server recovered successfully"
+  wait_for_observer_to_term
 fi
 
 if [ $RECOVERING = "True" ]; then
-  echo "Resolving other servers' IPs"
-  get_pod_ip_list
+  echo "this branch should not be executed, please check the code"
+  exit 1
+  # echo "Resolving other servers' IPs"
+  # get_pod_ip_list
 
-  echo "Checking cluster health"
-  CLUSTER_HEALTHY="$(others_running)"
-  echo "Cluster healthy: $CLUSTER_HEALTHY"
+  # echo "Checking cluster health"
+  # CLUSTER_HEALTHY="$(others_running)"
+  # echo "Cluster healthy: $CLUSTER_HEALTHY"
 
-  # If the OB Cluster is healthy
-  if [ $CLUSTER_HEALTHY = "True" ]; then
-    echo "Add this server to cluster"
-    add_server
-    echo "Delete inactive servers"
-    delete_inactive_servers
+  # # If the OB Cluster is healthy
+  # if [ $CLUSTER_HEALTHY = "True" ]; then
+  #   echo "Add this server to cluster"
+  #   add_server
+  #   echo "Delete inactive servers"
+  #   delete_inactive_servers
 
-    # Recover from crash or rolling update, create ready flag at last
-    echo "Creating readiness flag..."
-    create_ready_flag
-  else
-    echo "Cluster is not healthy, fail to recover and join the cluster"
-    exit 1
-  fi
+  #   # Recover from crash or rolling update, create ready flag at last
+  #   echo "Creating readiness flag..."
+  #   create_ready_flag
+  # else
+  #   echo "Cluster is not healthy, fail to recover and join the cluster"
+  #   exit 1
+  # fi
 else
 
   wait_for_observer_start
@@ -142,5 +133,6 @@ else
     fi
   fi
 fi
+echo "Server started successfully"
 
-sleep infinity
+wait_for_observer_to_term
