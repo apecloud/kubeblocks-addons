@@ -27,20 +27,8 @@ spec:
         cronExpression: "0 18 * * *"
         retentionPeriod: 7d
   - componentDefs:
-      - oceanbase-hostnetwork
-    componentDefRef: oceanbase-hostnetwork
-    backoffLimit: 0
-    backupMethods: *backupMethods
-    schedules: *backupschedules
-  - componentDefs:
     - oceanbase-repl
     componentDefRef: oceanbase-repl
-    backoffLimit: 0
-    backupMethods: *backupMethods
-    schedules: *backupschedules
-  - componentDefs:
-      - oceanbase-repl-host
-    componentDefRef: oceanbase-repl-host
     backoffLimit: 0
     backupMethods: *backupMethods
     schedules: *backupschedules
