@@ -46,3 +46,19 @@ Selector labels
 app.kubernetes.io/name: {{ include "etcd.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+
+{{- define "etcd.configTplName" -}}
+etcd-config-template
+{{- end }}
+
+{{- define "etcd.configConstraintName" -}}
+etcd-config-constraints
+{{- end }}
+
+{{- define "etcd.cmScriptsName" -}}
+etcd-scripts
+{{- end }}
+
+{{- define "etcd.image" -}}
+{{ .Values.image.repository }}:v3.5.6
+{{- end }}

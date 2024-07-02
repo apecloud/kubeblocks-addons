@@ -19,6 +19,11 @@ spec:
       {{- if .Chart.AppVersion }}
       serviceVersion: {{ .Chart.AppVersion }}
       {{- end }}
+      tls: {{ $.Values.tlsEnable }}
+      {{- if $.Values.tlsEnable }}
+      issuer:
+        name: KubeBlocks
+      {{- end }}
       monitor: {{ .Values.monitor.enabled }}
       replicas: {{ .Values.replicas | default "3" }}
       {{- with .Values.resources }}

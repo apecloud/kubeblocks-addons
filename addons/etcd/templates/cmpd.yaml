@@ -20,61 +20,36 @@ spec:
         volumeMounts:
           - name: data
             mountPath: /var/run/etcd
+          - name: config
+            mountPath: /etc/etcd
+          # configMap mount is RO, create a RW emptyDir mount tmp-config https://github.com/kubernetes/kubernetes/issues/62099
+          - name: tmp-config
+            mountPath: /tmp/etcd
         command:
           - /bin/sh
           - -c
           - |
-            echo "start etcd..."
-
-            PEERS=""
-            MY_PEER=""
-
-            echo ${PEER_ENDPOINT}
-            if [ -z "${PEER_ENDPOINT}" ]; then
-                DOMAIN=$KB_NAMESPACE".svc{{ .Values.clusterDomain }}"
-                SUBDOMAIN=${KB_CLUSTER_COMP_NAME}-headless
-                replicas=$(eval echo ${KB_POD_LIST} | tr ',' '\n')
-                for replica in ${replicas}; do
-                    host=${replica}.${SUBDOMAIN}.${DOMAIN}
-                    PEERS="${PEERS}${replica}=http://${host}:2380,"
-                done
-                PEERS=${PEERS%,}
-                MY_PEER=$KB_POD_FQDN{{ .Values.clusterDomain }}
-            else
-                my_id=$(eval echo ${KB_POD_NAME} | grep -oE "[0-9]+\$")
-                endpoints=$(eval echo ${PEER_ENDPOINT} | tr ',' '\n')
-                for endpoint in ${endpoints}; do
-                    host=$(eval echo ${endpoint} | cut -d ':' -f 1)
-                    ip=$(eval echo ${endpoint} | cut -d ':' -f 2)
-                    host_id=$(eval echo ${host} | grep -oE "[0-9]+\$")
-                    hostname=${KB_CLUSTER_COMP_NAME}-${host_id}
-                    PEERS="${PEERS}${hostname}=http://${ip}:2380,"
-                    if [ "${my_id}" = "${host_id}" ]; then
-                        MY_PEER=${ip}
-                    fi
-                done
-                PEERS=${PEERS%,}
-            fi
-            echo "peers: ${PEERS}, my-peer: ${MY_PEER}"
-
-            exec etcd --name ${HOSTNAME} \
-            --experimental-initial-corrupt-check=true \
-            --listen-peer-urls http://0.0.0.0:2380 \
-            --listen-client-urls http://0.0.0.0:2379 \
-            --advertise-client-urls http://${MY_PEER}:2379 \
-            --initial-advertise-peer-urls http://${MY_PEER}:2380 \
-            --initial-cluster ${PEERS} \
-            --data-dir /var/run/etcd/default.etcd
+            {{- .Files.Get "scripts/start.sh" | nindent 12 }}
   vars:
-    - name: PEER_ENDPOINT
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.clusterDomain }}
+    - name: CLUSTER_NAME
+      value: "$(KB_CLUSTER_COMP_NAME)"
+    - name: PEERS
       valueFrom:
-        serviceVarRef:
-          optional: true
-          host: Required
-          loadBalancer: Required
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+    - name: POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          instanceNames: Required
   volumes:
     - name: data
       needSnapshot: true
+    - name: tmp-config
+      emptyDir: {}
   services:
     - name: peer
       spec:
@@ -105,3 +80,10 @@ spec:
               IsLeader=$(echo $Status | awk -F ', ' '{print $5}') &&
               IsLearner=$(echo $Status | awk -F ', ' '{print $6}') &&
               if [ "true" = "$IsLeader" ]; then echo -n "leader"; elif [ "true" = "$IsLearner" ]; then echo -n "learner"; else echo -n "follower"; fi
+  configs:
+    - name: etcd-configuration-tpl
+      templateRef: {{ include "etcd.configTplName" .}}
+      constraintRef: {{ include "etcd.configConstraintName" .}}
+      namespace: {{ .Release.Namespace }}
+      volumeName: config
+      defaultMode: 0666
