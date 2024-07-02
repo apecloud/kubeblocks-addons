@@ -5,7 +5,7 @@ metadata:
   namespace: default
   annotations:
     #Specify how many clusters to create with-in one ob cluster
-    "kubeblocks.io/extra-env": "{\"ZONE_COUNT\":\"3\",\"OB_CLUSTERS_COUNT\":\"1\"}"
+    "kubeblocks.io/extra-env": "{\"TENANT_NAME\":\"tenant3\",\"ZONE_COUNT\":\"3\",\"OB_CLUSTERS_COUNT\":\"1\",\"TENANT_CPU\":\"2\",\"TENANT_MEMORY\":\"2G\",\"TENANT_DISK\":\"5G\"}"
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
