@@ -1,20 +1,6 @@
 # https://github.com/etcd-io/etcd/blob/main/etcd.conf.yml.sample
 # using this config file will ignore ALL command-line flag and environment variables.
 
-{{- $CA_FILE := getCAFile }}
-{{- $CERT_FILE:= getCertFile }}
-{{- $KEY_FILE := getKeyFile }}
-
-{{- define "INIT_PEERS" }}
-  {{- $POD_NAME := splitList "," .POD_NAME_LIST -}}
-  {{- $PEERS := splitList "," .PEERS }}
-  {{- range $idx, $host := $PEERS }}
-    {{- if $idx }},{{ end }}
-    {{- printf "%s=http://%s:2380" (index $POD_NAME $idx) $host }}
-  {{- end }}
-{{- end }}
-{{- template "INIT_PEERS" . -}}
-
 # Human-readable name for this member.
 name: 'default'
 
@@ -72,6 +58,15 @@ discovery-proxy:
 # DNS domain used to bootstrap initial cluster.
 discovery-srv:
 
+{{ define "INIT_PEERS" }}
+  {{- $POD_NAME := splitList "," .POD_NAME_LIST }}
+  {{- $PEERS := splitList "," .PEERS }}
+  {{- range $idx, $host := $PEERS }}
+    {{- if $idx }},{{ end }}
+    {{- printf "%s=http://%s:2380" (index $POD_NAME $idx) $host }}
+  {{- end }}
+{{- end -}}
+
 # Comma separated string of initial cluster configuration for bootstrapping.
 # Example: initial-cluster: "infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380"
 initial-cluster: {{ template "INIT_PEERS" . }}
@@ -106,6 +101,11 @@ proxy-write-timeout: 5000
 # Time (in milliseconds) for a read to timeout.
 proxy-read-timeout: 0
 
+{{- if $.component.tlsConfig }}
+{{- $CA_FILE := getCAFile }}
+{{- $CERT_FILE := getCertFile }}
+{{- $KEY_FILE := getKeyFile }}
+
 client-transport-security:
   # Path to the client server TLS cert file.
   cert-file: {{$CERT_FILE}}
@@ -114,7 +114,7 @@ client-transport-security:
   key-file: {{$KEY_FILE}}
 
   # Enable client cert authentication.
-  client-cert-auth: {{ $.component.tlsConfig.enable }}
+  client-cert-auth: true
 
   # Path to the client server TLS trusted CA cert file.
   trusted-ca-file: {{$CA_FILE}}
@@ -130,7 +130,7 @@ peer-transport-security:
   key-file: {{$KEY_FILE}}
 
   # Enable peer client cert authentication.
-  client-cert-auth: {{ $.component.tlsConfig.enable }}
+  client-cert-auth: true
 
   # Path to the peer server TLS trusted CA cert file.
   trusted-ca-file: {{$CA_FILE}}
@@ -143,6 +143,8 @@ peer-transport-security:
 
   # Allowed TLS hostname for inter peer authentication.
   allowed-hostname:
+
+{{- end }}
 
 # The validity period of the self-signed certificate, the unit is year.
 self-signed-cert-validity: 1
