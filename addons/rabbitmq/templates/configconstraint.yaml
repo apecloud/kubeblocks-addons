@@ -1,0 +1,22 @@
+apiVersion: apps.kubeblocks.io/v1beta1
+kind: ConfigConstraint
+metadata:
+  name: rabbitmq-env-constraints
+  labels:
+    {{- include "rabbitmq.labels" . | nindent 4 }}
+spec:
+  # rabbitmq configuration file format
+  fileFormatConfig:
+    format: ini
+---
+
+apiVersion: apps.kubeblocks.io/v1beta1
+kind: ConfigConstraint
+metadata:
+  name: rabbitmq-config-constraints
+  labels:
+    {{- include "rabbitmq.labels" . | nindent 4 }}
+spec:
+  # rabbitmq configuration file format
+  fileFormatConfig:
+    format: ini
