@@ -11,7 +11,7 @@ items:
   spec:
     provider: &obprovider community
     serviceKind: &obsvckind oceanbase
-    serviceVersion: &obver 4.2.0
+    serviceVersion: &obver 4.3.0
     description: &obdesc "Unlimited scalable distributed database for data-intensive transactional and real-time operational analytics workloads, with ultra-fast performance that has once achieved world records in the TPC-C benchmark test."
     services: &observices
       - name: ordinal
