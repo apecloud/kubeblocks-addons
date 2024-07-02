@@ -5,6 +5,8 @@ COPY docker/custom-scripts/package-all-helm-charts.sh /tmp/package-all-helm-char
 
 COPY addons addons
 
+COPY addons-cluster/kblib addons-cluster/kblib
+
 RUN bash /tmp/package-all-helm-charts.sh /tmp/charts
 
 RUN rm -rf addons
