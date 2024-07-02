@@ -13,7 +13,7 @@ kubectl create -f https://github.com/apecloud/kubeblocks/releases/download/v0.9.
 # If github is not accessible or very slow for you, please use following command instead
 kubectl create -f https://jihulab.com/api/v4/projects/98723/packages/generic/kubeblocks/v0.9.0/kubeblocks_crds.yaml
 
-# Add Helm repo 
+# Add Helm repo
 helm repo add kubeblocks https://apecloud.github.io/helm-charts
 # If github is not accessible or very slow for you, please use following repo instead
 helm repo add kubeblocks https://jihulab.com/api/v4/projects/85949/packages/helm/stable
@@ -26,37 +26,35 @@ helm install kubeblocks kubeblocks/kubeblocks --namespace kb-system --create-nam
 ```
 Enable oceanbase
 ```bash
-# Add Helm repo 
+# Add Helm repo
 helm repo add kubeblocks-addons https://apecloud.github.io/helm-charts
 # If github is not accessible or very slow for you, please use following repo instead
 helm repo add kubeblocks-addons https://jihulab.com/api/v4/projects/150246/packages/helm/stable
 # Update helm repo
 helm repo update
 
-# Enable oceanbase 
-helm upgrade -i oceanbase-ce kubeblocks-addons/oceanbase-ce --version 0.9.0 -n kb-system  
-``` 
+# Enable oceanbase
+helm upgrade -i oceanbase-ce kubeblocks-addons/oceanbase-ce --version 0.9.0 -n kb-system
+```
 
 ## Examples
 
-### [Create](cluster.yaml) 
+### [Create](cluster.yaml)
 Create a distributed oceanbase cluster
 ```bash
 kubectl apply -f examples/oceanbase/cluster.yaml
 ```
-Create a primary and standby oceanbase cluster 
+Create a primary and standby oceanbase cluster
 ```bash
 kubectl apply -f examples/oceanbase/cluster-repl.yaml
 ```
 
 Please note that not all operations are currently supported for all topologies. We plan to extend this capability soon.
 
-|                                   | cmpd | Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart | Stop/Start | Configure | Expose | Switchover | 
+|                                   | cmpd | Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart | Stop/Start | Configure | Expose | Switchover |
 |-----------------------------------|------|------------------------|-----------------------|--------------|---------|----------|---------|--------|----------|
-| Distributed<br/>container network |  ob-ce    | Supported  | Not support           | Not support  | Not support |Not support |Supported |Not support| N/A      |
-| Distributed<br/>host network       |  ob-ce-hostnetwork    | Supported | Supported             | Not support  | Supported | Supported |Supported|Not support | N/A      |
-| Primary/Standby<br/>container network |  ob-ce-repl    | Not support | Not support           | Not support  |Not support |Not support |Supported|Supported | Supported |
-| Primary/Standby<br/>host network   |   ob-ce-repl-host   | Not support   | Supported          | Not support  |Supported | Supported |Supported|Supported | Supported |
+| Distributed<br/>host network       |  ob-ce   | Supported | Supported             | Not support  | Supported | Supported |Supported|Not support | N/A      |
+| Primary/Standby<br/>host network   |   ob-ce-repl   | Not support   | Supported          | Not support  |Supported | Supported |Supported|Supported | Supported |
 
 
 ### [Horizontal scaling](horizontalscale.yaml)
@@ -102,8 +100,8 @@ BackupRepo is the storage repository for backup data, using the full backup and 
 kubectl create secret generic <storage-provider>-credential-for-backuprepo\
   --from-literal=accessKeyId=<ACCESS KEY> \
   --from-literal=secretAccessKey=<SECRET KEY> \
-  -n kb-system 
-  
+  -n kb-system
+
 kubectl apply -f examples/oceanbase/backuprepo.yaml
 ```
 
