@@ -48,7 +48,7 @@ spec:
       versionsContext:
         initContainers:
           - name: download
-            image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/baichuan-llama-7b:ggmlv3.q4_0
+            image: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/baichuan-llama-7b:ggmlv3.q4_0
             command: ["sh", "-c", "cp /models/baichuan-llama-7b.ggmlv3.q4_0.bin /models-target/"]
             volumeMounts:
               - name: models
@@ -78,7 +78,7 @@ spec:
       versionsContext:
         initContainers:
           - name: download
-            image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/baichuan2-13b-gguf:ggml-model-q4
+            image: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/baichuan2-13b-gguf:ggml-model-q4
             command: ["sh", "-c", "cp /models/ggml-model-q4.gguf /models-target/"]
             volumeMounts:
               - name: models
@@ -108,7 +108,7 @@ spec:
       versionsContext:
         initContainers:
           - name: download
-            image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/replit-code-3b:ggml-model-f16
+            image: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/replit-code-3b:ggml-model-f16
             command: ["sh", "-c", "cp /models/ggml-model-f16.gguf /models-target/"]
             volumeMounts:
               - name: models
@@ -138,7 +138,7 @@ spec:
       versionsContext:
         initContainers:
           - name: download
-            image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/codeshell-7b-chat:codeshell-chat-q4_0
+            image: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/codeshell-7b-chat:codeshell-chat-q4_0
             command: ["sh", "-c", "cp /models/codeshell-chat-q4_0.gguf /models-target/"]
             volumeMounts:
               - name: models

@@ -53,20 +53,20 @@ spec:
       versionsContext:
         containers:
           - name: redis
-            image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/redis-stack-server:7.0.6-RC8
+            image: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/redis-stack-server:7.0.6-RC8
             imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
       systemAccountSpec:
         cmdExecutorConfig:
-          image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/redis-stack-server:7.0.6-RC8
+          image: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/redis-stack-server:7.0.6-RC8
     - componentDefRef: redis-sentinel
       versionsContext:
         initContainers:
           - name: init-redis-sentinel
-            image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/redis-stack-server:7.0.6-RC8
+            image: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/redis-stack-server:7.0.6-RC8
             imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         containers:
           - name: redis-sentinel
-            image: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/redis-stack-server:7.0.6-RC8
+            image: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/redis-stack-server:7.0.6-RC8
             imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
     - componentDefRef: redis-twemproxy
       versionsContext:
