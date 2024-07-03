@@ -30,6 +30,14 @@ spec:
       volumeName: rabbitmq-config
       namespace: {{ .Release.Namespace }}
       defaultMode: 0644  # for only read
+  systemAccounts:
+    - name: root
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 8
+        numSymbols: 0
+        letterCase: MixedCases
   runtime:
     containers:
       - name: rabbitmq
@@ -41,7 +49,6 @@ spec:
             chown rabbitmq:rabbitmq /var/lib/rabbitmq/.erlang.cookie
             chmod 400 /var/lib/rabbitmq/.erlang.cookie
             /opt/rabbitmq/sbin/rabbitmq-server
-
         env:
         - name: MY_POD_NAME
           valueFrom:
@@ -101,3 +108,18 @@ spec:
           - mountPath: /root/erlang.cookie
             name: rabbitmq-config
             subPath: .erlang.cookie
+  vars:
+    - name: RABBITMQ_DEFAULT_USER
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "rabbitmq.componentDefName" . }}
+          name: root
+          optional: false
+          username: Required
+    - name: RABBITMQ_DEFAULT_PASS
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "rabbitmq.componentDefName" . }}
+          name: root
+          optional: false
+          password: Required
