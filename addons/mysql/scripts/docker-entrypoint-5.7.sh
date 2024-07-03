@@ -382,7 +382,7 @@ restore_standby_from_xtrabackup() {
        continue
      fi
      if [[ ! -z "${PURGED_GTID}" ]]; then
-       if [[ $line != *"="* ]]; then
+       if [[ "$line" != *"="* ]]; then
           NEXT_GTID=$(echo ${line} | awk -F "'" '{print $1}')
           PURGED_GTID="${PURGED_GTID}${NEXT_GTID}"
           continue
