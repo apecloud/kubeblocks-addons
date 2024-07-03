@@ -80,7 +80,7 @@ metrics:
   ## if the value of metrics.image.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
   image:
     registry: ""
-    repository: bitnami/mysqld-exporter
+    repository: apecloud/mysqld-exporter
     tag: 0.15.1
     pullPolicy: IfNotPresent
 
