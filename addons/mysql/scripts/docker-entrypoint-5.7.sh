@@ -375,7 +375,21 @@ restore_standby_from_xtrabackup() {
   mysql_note "Starting temporary server"
   docker_temp_server_start "$@"
   mysql_note "Temporary server started."
-  PURGED_GTID=$(cat ${DATADIR}/xtrabackup_info | grep "binlog_pos" | awk -F "GTID of the last change '" '{print $2}' | awk -F "'" '{print $1}')
+  PURGED_GTID=""
+  while IFS= read -r line; do
+     if [[ "$line" == *"GTID of the last change"* ]]; then
+       PURGED_GTID=$(echo ${line} | grep "binlog_pos" | awk -F "GTID of the last change '" '{print $2}' | awk -F "'" '{print $1}')
+       continue
+     fi
+     if [[ ! -z "${PURGED_GTID}" ]]; then
+       if [[ $line != *"="* ]]; then
+          NEXT_GTID=$(echo ${line} | awk -F "'" '{print $1}')
+          PURGED_GTID="${PURGED_GTID}${NEXT_GTID}"
+          continue
+       fi
+       break
+     fi
+  done < ${DATADIR}/xtrabackup_info
   mysql_note "set the gtid_purged ${PURGED_GTID}."
 	docker_process_sql --database=mysql <<-EOSQL
 		STOP SLAVE;
