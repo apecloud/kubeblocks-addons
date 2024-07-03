@@ -199,7 +199,7 @@ roles:
     - /bin/syncer
     - /config
     - /kubeblocks/
-  image: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:latest
+  image: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:1.0.0
   imagePullPolicy: "Always"
   name: init-syncer
   volumeMounts:

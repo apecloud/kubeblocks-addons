@@ -74,7 +74,7 @@ spec:
           - /bin/syncer
           - /config
           - /kubeblocks/
-        image: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:latest
+        image: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:1.0.0
         imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
         name: init-syncer
         volumeMounts:

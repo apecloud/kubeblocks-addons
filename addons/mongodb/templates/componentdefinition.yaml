@@ -89,7 +89,7 @@ spec:
           - /bin/syncer
           - /config
           - /kubeblocks/
-        image: registry.cn-hangzhou.aliyuncs.com/xuriwuyun/syncer:latest
+        image: registry.cn-hangzhou.aliyuncs.com/xuriwuyun/syncer:1.0.0
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         name: init-syncer
         volumeMounts:
