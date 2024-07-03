@@ -12,10 +12,10 @@
       "title": "Mode",
       "description": "Cluster topology mode.",
       "type": "string",
-      "default": "standalone",
+      "default": "singlenode",
       "enum": [
-        "standalone",
-        "replicaset"
+        "singlenode",
+        "clustermode"
       ]
     },
     "replicas": {

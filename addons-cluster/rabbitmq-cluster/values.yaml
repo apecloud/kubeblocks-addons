@@ -8,7 +8,7 @@ version: rabbitmq-3.13.2
 
 ## @param mode cluster topology mode, standalone or replicaset
 ##
-mode: standalone
+mode: singlenode
 
 ## @param cpu
 ##
