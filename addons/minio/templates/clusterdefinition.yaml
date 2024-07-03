@@ -11,7 +11,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ClusterDefinition
 metadata:
-  name: minio-{{ .Chart.Version }}
+  name: minio
 spec:
   type: minio
   connectionCredential:
