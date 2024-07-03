@@ -48,7 +48,7 @@ spec:
             cp /root/erlang.cookie /var/lib/rabbitmq/.erlang.cookie
             chown rabbitmq:rabbitmq /var/lib/rabbitmq/.erlang.cookie
             chmod 400 /var/lib/rabbitmq/.erlang.cookie
-            /opt/rabbitmq/sbin/rabbitmq-server
+            exec /opt/rabbitmq/sbin/rabbitmq-server
         env:
         - name: MY_POD_NAME
           valueFrom:
