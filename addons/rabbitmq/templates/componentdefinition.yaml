@@ -24,7 +24,7 @@ spec:
             port: 5672
             targetPort: amqp
   configs:
-    - name: rabbitmq-config
+    - name: config
       templateRef: {{ include "rabbitmq.configTplName" . }}
       constraintRef: {{ include "rabbitmq.configConstraintName" . }}
       volumeName: rabbitmq-config

@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: rabbitmq-config-template
+  name: {{ include "rabbitmq.name" . }}-config-template
   labels:
     {{- include "rabbitmq.labels" . | nindent 4 }}
 data:
