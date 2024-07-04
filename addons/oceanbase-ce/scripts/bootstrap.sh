@@ -13,17 +13,18 @@
 #
 
 source /scripts/sql.sh
+source /scripts/utils.sh
 
 ZONE_COUNT=${ZONE_COUNT:-3}
 WAIT_SERVER_SLEEP_TIME="${WAIT_SERVER_SLEEP_TIME:-10}"
 WAIT_K8S_DNS_READY_TIME="${WAIT_K8S_DNS_READY_TIME:-10}"
-SVC_NAME="${KB_CLUSTER_COMP_NAME}-headless.${KB_NAMESPACE}.svc"
-HOSTNAME=$(hostname)
+SUBDOMAIN=${KB_CLUSTER_COMP_NAME}-headless
 REP_USER=${REP_USER:-rep_user}
 REP_PASSWD=${REP_PASSWD:-rep_user}
 OB_DEBUG=${OB_DEBUG:-true}
 OB_HOME_DIR=${OB_HOME_DIR:-/home/admin/oceanbase}
 OB_CLUSTERS_COUNT=${OB_CLUSTERS_COUNT:-1}
+OB_USE_CLUSTER_IP=${OB_USE_CLUSTER_IP:-enabled}
 
 ORDINAL_INDEX=$(echo $KB_POD_NAME | awk -F '-' '{print $(NF)}')
 COMPONENT_INDEX=$(echo $KB_POD_NAME | awk -F '-' '{print $(NF-1)}')
@@ -45,22 +46,6 @@ function init_port_list {
     RPC_PORTS+=(2882)
     COMP_NAMES+=(${components_prefix}-${i})
   done
-
-  {{- range $i, $e := $.dynamicCompInfos }}
-    {{- $mysql_port_info := getPortByName ( index $e.containers 0 ) "sql" }}
-    {{- $rpc_port_info := getPortByName ( index $e.containers 0 ) "rpc" }}
-    {{- $mysql_port := 2881 }}
-    {{- if $mysql_port_info }}
-      {{- $mysql_port = $mysql_port_info.hostPort }}
-    {{- end }}
-    {{- $rpc_port := 2882 }}
-    {{- if $rpc_port_info }}
-      {{- $rpc_port = $rpc_port_info.hostPort }}
-    {{- end }}
-    MYSQL_PORTS[{{ $i }}]={{$mysql_port}}
-    RPC_PORTS[{{ $i }}]={{$rpc_port}}
-    COMP_NAMES[{{ $i }}]={{$e.name}}
-  {{- end }}
 
   comp_ports_json="{}"
   for ((i=0; i<${#COMP_NAMES[@]}; i++))
@@ -88,29 +73,7 @@ function get_pod_ip_list {
   # Get every replica's IP
   for i in $(seq 0 $(($KB_REPLICA_COUNT-1))); do
     local replica_hostname="${KB_CLUSTER_COMP_NAME}-${i}"
-    local replica_ip=""
-    if [ $i -ne $ORDINAL_INDEX ]; then
-      echo "nslookup $replica_hostname.$SVC_NAME"
-      local elapsed_time=0
-      while [ $elapsed_time -lt $wait_time ]; do
-        replica_ip=$(nslookup $replica_hostname.$SVC_NAME | tail -n 2 | grep -P "(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})" --only-matching)
-        if [ $? -ne 0 ]; then
-          echo "$replica_hostname.$SVC_NAME is not ready yet"
-          sleep 10
-          elapsed_time=$((elapsed_time + 10))
-        else
-          echo "$replica_hostname.$SVC_NAME is ready"
-          echo "nslookup $replica_hostname.$SVC_NAME success, IP: $replica_ip"
-          break
-        fi
-      done
-      if [ $elapsed_time -ge $wait_time ]; then
-        echo "Failed to get the IP of $replica_hostname.$SVC_NAME, exit..."
-        exit 1
-      fi
-    else
-      replica_ip=$KB_POD_IP
-    fi
+    local replica_ip=$(get_pod_ip ${replica_hostname})
 
     IP_LIST+=("$replica_ip")
 
@@ -174,17 +137,17 @@ function start_observer {
 
   # check if file exists
   if [ -f "/kb-config/oceanbase.conf" ]; then
-    echo "observer.conf.bin exists, start observer with existing configs"
+    echo "/kb-config/oceanbase.conf exists, start observer with configs"
     customized_config=$(cat "/kb-config/oceanbase.conf" | sed 's/ \+/ /g' | tr '\n' ',')
     # remove all spaces and the last comma
     customized_config=$(echo "$customized_config"  | sed 's/,$//' | sed 's/^,//')
     echo "customized_config: $customized_config"
     default_configs=$customized_config
   fi
-
+  curr_pod_ip=$(get_pod_ip ${KB_POD_NAME})
   /home/admin/oceanbase/bin/observer --appname ${KB_CLUSTER_COMP_NAME} \
     --cluster_id $((${COMPONENT_INDEX}+1)) --zone $ZONE_NAME \
-    -I ${KB_POD_IP} \
+    -I ${curr_pod_ip} \
     -d ${OB_HOME_DIR}/store/ \
     -l ${loglevel} -o config_additional_dir=${OB_HOME_DIR}/store/etc,${default_configs}
 }
@@ -234,28 +197,16 @@ function others_running {
 }
 
 function bootstrap_obcluster {
-  for i in $(seq 0 $(($KB_REPLICA_COUNT-1))); do
-    local replica_hostname="${KB_CLUSTER_COMP_NAME}-${i}"
-    local replica_ip=""
-    while true; do
-      replica_ip=$(nslookup $replica_hostname.$SVC_NAME | tail -n 2 | grep -P "(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})" --only-matching)
-      # check if the IP is empty
-      if [ -z "$replica_ip" ]; then
-        echo "nslookup $replica_hostname.$SVC_NAME failed, wait for a moment..."
-        sleep $WAIT_K8S_DNS_READY_TIME
-      else
-        echo "nslookup $replica_hostname.$SVC_NAME success, IP: $replica_ip"
-        break
-      fi
-    done
-    echo "hostname.svc:" $replica_hostname.$SVC_NAME "ip:" $replica_ip
+  for i in $(seq 0 $(($ZONE_COUNT-1))); do
+    replica_hostname="${KB_CLUSTER_COMP_NAME}-${i}"
+    replica_ip=$(get_pod_ip ${replica_hostname})
     while true; do
       nc -z $replica_ip $COMP_MYSQL_PORT
       if [ $? -ne 0 ]; then
-        echo "Replica $replica_hostname.$SVC_NAME is not up yet"
+        echo "Replica $replica_hostname is not up yet"
         sleep $WAIT_SERVER_SLEEP_TIME
       else
-        echo "Replica $replica_hostname.$SVC_NAME is up"
+        echo "Replica $replica_hostname is up"
         break
       fi
     done
@@ -297,8 +248,10 @@ function add_server {
 
     local RETRY_MAX=5
     local retry_times=0
-    until conn_remote_w_port ${IP_LIST[$i]} $COMP_MYSQL_PORT "ALTER SYSTEM ADD SERVER '${KB_POD_IP}:${COMP_RPC_PORT}' ZONE '${ZONE_NAME}'"; do
-      echo "Failed to add server ${KB_POD_IP}:$COMP_RPC_PORT to the cluster, retry..."
+
+    curr_pod_ip=$(get_pod_ip ${KB_POD_NAME})
+    until conn_remote_w_port ${IP_LIST[$i]} $COMP_MYSQL_PORT "ALTER SYSTEM ADD SERVER '${curr_pod_ip}:${COMP_RPC_PORT}' ZONE '${ZONE_NAME}'"; do
+      echo "Failed to add server to the cluster, retry..."
       retry_times=$(($retry_times+1))
       sleep $((3*${retry_times}))
       if [ $retry_times -gt ${RETRY_MAX} ]; then
@@ -307,7 +260,7 @@ function add_server {
       fi
     done
 
-    until [ -n "$(conn_remote_obdb_w_port ${IP_LIST[$i]} $COMP_MYSQL_PORT "SELECT * FROM DBA_OB_SERVERS WHERE SVR_IP = '${KB_POD_IP}' and STATUS = 'ACTIVE' and START_SERVICE_TIME IS NOT NULL")" ]; do
+    until [ -n "$(conn_remote_obdb_w_port ${IP_LIST[$i]} $COMP_MYSQL_PORT "SELECT * FROM DBA_OB_SERVERS WHERE SVR_IP = '${curr_pod_ip}' and STATUS = 'ACTIVE' and START_SERVICE_TIME IS NOT NULL")" ]; do
       echo "Wait for the server to be ready..."
       sleep 10
     done
@@ -318,9 +271,10 @@ function add_server {
 }
 
 function check_if_ip_changed {
-  if [ -z "$(cat /home/admin/data-file/etc/observer.conf.bin | grep ${KB_POD_IP})" ]; then
-    echo "Changed"
-  else
+  curr_pod_ip=$(get_pod_ip ${KB_POD_NAME})
+  if [ -z "$(cat /home/admin/data-file/etc/observer.conf.bin | grep ${curr_pod_ip})" ]; then
+     echo "Changed"
+   else
     echo "Not Changed"
   fi
 }
@@ -442,28 +396,21 @@ function create_secondary_tenant {
   components_prefix=$(echo "${KB_CLUSTER_COMP_NAME}" | awk -F'-' '{NF--; print}' OFS='-')
   for i in $(seq 1 $(($OB_CLUSTERS_COUNT-1))); do
     next_comp_name="${components_prefix}-${i}"
-    local replica_hostname="${next_comp_name}-0.${next_comp_name}-headless.${KB_NAMESPACE}.svc"
-    local replica_ip=""
-    while true; do
-      replica_ip=$(nslookup $replica_hostname | tail -n 2 | grep -P "(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})" --only-matching)
-      # check if the IP is empty
-      if [ -z "$replica_ip" ]; then
-        echo "nslookup $replica_hostname failed, wait for a moment..."
-        sleep $WAIT_K8S_DNS_READY_TIME
-      else
-        echo "nslookup $replica_hostname success, IP: $replica_ip"
-        break
-      fi
-    done
+    replica_hostname=${next_comp_name}-ordinal-0
+    echo "replica_hostname: $replica_hostname"
+    replica_ip=$(get_pod_ip_by_hostname ${replica_hostname})
+    echo "replica_ip: $replica_ip"
     secondary_tenant_ip+=("$replica_ip")
-    secondary_tenant_port+=${MYSQL_PORTS[$i]}
+    secondary_tenant_port+=(${MYSQL_PORTS[$i]})
   done
   echo "secondary ip list: ${secondary_tenant_ip[*]}"
+  echo "secondary port list: ${secondary_tenant_port[*]}"
 
   # for each ip in ip list, create secondary tenant
   for ((i=0; i<${#secondary_tenant_ip[@]}; i++)); do
     echo "create resource unit and pool for tenant ${secondary_tenant_name}"
     echo "remote ip: ${ip}"
+    echo "remote port: ${port}"
     local ip=${secondary_tenant_ip[$i]}
     local port=${secondary_tenant_port[$i]}
     # wait until the server is up
@@ -520,7 +467,22 @@ function wait_for_observer_start {
   done
 
   if [ $elapsed_time -ge $wait_time ]; then
-    echo "Failed to init server ${KB_POD_IP}:$COMP_RPC_PORT exit..."
+    echo "Failed to init server exit..."
     exit 1
   fi
 }
+
+function wait_for_observer_ready {
+  local RETRY_MAX=20
+  local retry_times=0
+  echo "Wait for observer on this node to be ready"
+  until nc -z 127.0.0.1 $COMP_MYSQL_PORT; do
+    echo "observer on this node is not ready, wait for a moment..."
+    retry_times=$(($retry_times+1))
+    sleep 5
+    if [ $retry_times -gt ${RETRY_MAX} ]; then
+      echo "Failed to start server exit..."
+      exit 1
+    fi
+  done
+ }

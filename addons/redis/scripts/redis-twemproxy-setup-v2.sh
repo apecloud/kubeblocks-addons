@@ -10,11 +10,12 @@ build_redis_twemproxy_conf() {
 
   echo "alpha:" > /etc/proxy/nutcracker.conf
   # shellcheck disable=SC2129
-  echo "  listen: 127.0.0.1:22121" >> /etc/proxy/nutcracker.conf
+  echo "  listen: 0.0.0.0:22121" >> /etc/proxy/nutcracker.conf
   echo "  hash: fnv1a_64" >> /etc/proxy/nutcracker.conf
   echo "  distribution: ketama" >> /etc/proxy/nutcracker.conf
   echo "  auto_eject_hosts: true" >> /etc/proxy/nutcracker.conf
   echo "  redis: true" >> /etc/proxy/nutcracker.conf
+  echo "  redis_auth: $REDIS_DEFAULT_PASSWORD" >> /etc/proxy/nutcracker.conf
   echo "  server_retry_timeout: 2000" >> /etc/proxy/nutcracker.conf
   echo "  server_failure_limit: 1" >> /etc/proxy/nutcracker.conf
   echo "  servers:" >> /etc/proxy/nutcracker.conf
