@@ -60,3 +60,19 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{- define "elasticsearch-8.8.2.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.8.2
+{{- end }}
+
+{{- define "elasticsearch-7.10.1.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:7.10.1
+{{- end }}
+
+{{- define "elasticsearch-7.7.1.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:7.7.1
+{{- end }}
+
+{{- define "elasticsearch-exporter.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag | default "latest" }}
+{{- end }}

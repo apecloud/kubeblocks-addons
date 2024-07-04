@@ -75,10 +75,9 @@ node:
   store:
     allow_mmap: false
 {{- if eq $mode "multi-node" }}
-  roles:
   {{- $myRoles := index $extraEnv (printf "%s-roles" $.component.name) | default $defaultRoles | splitList "," }}
   {{- range $i, $e := $myRoles }}
-  - {{ $e }}
+  {{ $e }}: true
   {{- end }}
 {{- end }}
 
