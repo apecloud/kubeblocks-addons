@@ -9,10 +9,13 @@ spec:
     releases:
     - 8.8.2
   - compDefs:
-    - elasticsearch-7
+    - elasticsearch-7.10
+    releases:
+    - 7.10.1
+  - compDefs:
+    - elasticsearch-7.7
     releases:
     - 7.7.1
-    - 7.10.1
   releases:
   - name: 7.7.1
     serviceVersion: 7.7.1

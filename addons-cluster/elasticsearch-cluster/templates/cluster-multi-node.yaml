@@ -12,7 +12,7 @@ spec:
   {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
     - name: mdit # user-defined
-      componentDef: elasticsearch # ref clusterdefinition componentDefs.name
+      componentDef: elasticsearch-8 # ref clusterdefinition componentDefs.name
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.replicas | default 1 }}

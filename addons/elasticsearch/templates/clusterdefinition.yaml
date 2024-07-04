@@ -6,14 +6,34 @@ metadata:
     {{- include "elasticsearch.labels" . | nindent 4 }}
 spec:
   topologies:
-  - name: cluster
+  - name: single-node
+    components:
+    - name: mdit
+      compDef: elasticsearch
+  - name: multi-node
     components:
     - name: master
       compDef: elasticsearch
-    - name: data
-      compDef: elasticsearch
-    - name: ingest
-      compDef: elasticsearch
-    - name: transform
+    - name: dit
       compDef: elasticsearch
     default: true
+  - name: m-dit
+    components:
+    - name: master
+      compDef: elasticsearch
+    - name: dit
+      compDef: elasticsearch
+  - name: mdit
+    components:
+    - name: mdit
+      compDef: elasticsearch
+  - name: m-d-i-t
+    components:
+    - name: m
+      compDef: elasticsearch
+    - name: d
+      compDef: elasticsearch
+    - name: i
+      compDef: elasticsearch
+    - name: t
+      compDef: elasticsearch
