@@ -22,5 +22,5 @@ maintainers:
 
 annotations:
     addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
-    addon.kubeblocks.io/model: "document"
+    addon.kubeblocks.io/model: "message"
     addon.kubeblocks.io/provider: "apecloud"
