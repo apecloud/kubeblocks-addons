@@ -41,7 +41,23 @@ spec:
             command:
               - "/bin/sh"
               - "-ce"
-              - "/usr/bin/docker-entrypoint.sh minio server {{ $scheme }}://$KB_CLUSTER_COMP_NAME-{0...$((KB_REPLICA_COUNT-1))}.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.{{ $.Values.clusterDomain }}{{ $bucketRoot }} -S {{ .Values.certsPath }} --address :{{ .Values.minioAPIPort }} --console-address :{{ .Values.minioConsolePort }} {{- template `minio.extraArgs` . }}"
+              - |
+                replicas=(2 4)
+
+                server=""
+                for ((i=0; i < ${#replicas[@]}; i++)); do
+                    if [ $i -eq 0 ]; then
+                        cur=${replicas[i]}
+                        server+="{{ $scheme }}://$KB_CLUSTER_COMP_NAME-{0...$((cur-1))}.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.{{ $.Values.clusterDomain }}{{ $bucketRoot }}"
+                    else
+                        prev=${replicas[i-1]}
+                        cur=${replicas[i]}
+                        server+=" {{ $scheme }}://$KB_CLUSTER_COMP_NAME-{$((prev))...$((cur-1))}.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.{{ $.Values.clusterDomain }}{{ $bucketRoot }}"
+                    fi
+                done
+
+                cmd="/usr/bin/docker-entrypoint.sh minio server "$server" -S {{ .Values.certsPath }} --address :{{ .Values.minioAPIPort }} --console-address :{{ .Values.minioConsolePort }} {{- template `minio.extraArgs` . }}"
+                $cmd
             env:
               - name: MINIO_ROOT_USER
                 valueFrom:
