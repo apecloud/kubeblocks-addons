@@ -65,13 +65,13 @@ spec:
         - name: RABBITMQ_LOG_BASE
           value: {{ .Values.dataMountPath }}/logs
         - name: K8S_SERVICE_NAME
-          value: hello-world-nodes
+          value: $(KB_CLUSTER_COMP_NAME)-headless
         - name: RABBITMQ_ENABLED_PLUGINS_FILE
           value: /operator/enabled_plugins
         - name: RABBITMQ_USE_LONGNAME
           value: "true"
         - name: RABBITMQ_NODENAME
-          value: rabbit@$(KB_POD_FQDN)
+          value: rabbit@$(KB_POD_NAME).$(K8S_SERVICE_NAME).$(MY_POD_NAMESPACE)
         - name: K8S_HOSTNAME_SUFFIX
           value: .$(K8S_SERVICE_NAME).$(MY_POD_NAMESPACE)
         image: rabbitmq:3.13.2-management
