@@ -23,7 +23,7 @@ loopback_users.guest = false
 ## Send all logs to stdout/TTY. Necessary to see logs when running via
 ## a container
 log.console = true
-log.console.level = debug
+log.console.level = info
 
 queue_master_locator                       = min-masters
 disk_free_limit.absolute                   = 2GB

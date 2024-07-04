@@ -9,6 +9,8 @@ data:
     {{- .Files.Get "config/rabbitmq-config.tpl" | nindent 4 }}
   .erlang.cookie: |-
     {{- .Files.Get "config/erlang.cookie.tpl" | nindent 4 }}
+  enabled_plugins: |-
+    {{- .Files.Get "config/enabled_plugins.tpl" | nindent 4 }}
 ---
 
 apiVersion: v1

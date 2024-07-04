@@ -67,7 +67,7 @@ spec:
         - name: K8S_SERVICE_NAME
           value: $(KB_CLUSTER_COMP_NAME)-headless
         - name: RABBITMQ_ENABLED_PLUGINS_FILE
-          value: /operator/enabled_plugins
+          value: /etc/rabbitmq/enabled_plugins
         - name: RABBITMQ_USE_LONGNAME
           value: "true"
         - name: RABBITMQ_NODENAME
@@ -108,6 +108,9 @@ spec:
           - mountPath: /root/erlang.cookie
             name: rabbitmq-config
             subPath: .erlang.cookie
+          - mountPath: /etc/rabbitmq/enabled_plugins
+            name: rabbitmq-config
+            subPath: enabled_plugins
   vars:
     - name: RABBITMQ_DEFAULT_USER
       valueFrom:
