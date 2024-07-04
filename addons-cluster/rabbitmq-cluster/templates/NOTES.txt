@@ -4,7 +4,8 @@ To get RabbitMQ connection address accessed from within your cluster:
 
     export RABBITMQ_ADDRESS=$(kubectl get secret --namespace {{ .Release.Namespace }} -l app.kubernetes.io/managed-by=kubeblocks,app.kubernetes.io/instance={{ .Release.Name }} -o jsonpath="{.items[0].data.headlessEndpoint}" | base64 -d)
 
-To get erland cookie run:
+To get erlang cookie run:
+
     export ERLANG_COOKIE=$(kubectl get configmap --namespace {{ .Release.Namespace }} {{ .Release.Name }}-rabbitmq-config -o jsonpath="{.data.\.erlang\.cookie}")
 
 To get the root password run:
@@ -17,5 +18,5 @@ To connect to your database, create a RabbitMQ client container:
 
 Then, run the following command:
 
-    rabbitmqctl --node rabbitmq@$RABBITMQ_ADDRESS cluster_status
+    rabbitmqctl --node rabbit@$RABBITMQ_ADDRESS cluster_status
 
