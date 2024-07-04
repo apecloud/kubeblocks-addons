@@ -39,7 +39,10 @@ cluster:
 {{- end }}
 
 discovery:
+# the default of discovery.type is multi-node, but can't set it to multi-node explicitly in 7.x version
+{{- if eq $mode "single-node" }}
   type: {{ $mode }}
+{{- end }}
 {{- if eq $mode "multi-node" }}
   seed_hosts:
 {{- range $i, $name := $masterComponents }}
