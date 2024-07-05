@@ -2,7 +2,7 @@ apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ClusterVersion
 metadata:
     # major version of the component defined in values.yaml
-    name: minio-{{ .Chart.Version }}
+    name: minio-{{ .Values.clusterVersion }}
 spec:
   clusterDefinitionRef: minio
   componentVersions:
