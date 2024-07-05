@@ -12,7 +12,7 @@ spec:
   - componentDefRef: mongodb
     target:
       role: secondary
-    backupMethods:
+    backupMethods: &backupMethods
     - name: dump
       snapshotVolumes: false
       actionSetName: mongodb-dump
@@ -42,6 +42,24 @@ spec:
         volumeMounts:
         - name: data
           mountPath: {{ .Values.dataMountPath }}
+    schedules: &backupSchedules
+      - backupMethod: dump
+        enabled: false
+        cronExpression: "0 18 * * *"
+        retentionPeriod: 7d
+      - backupMethod: datafile
+        enabled: false
+        cronExpression: "0 18 * * *"
+        retentionPeriod: 7d
+      - backupMethod: volume-snapshot
+        enabled: false
+        cronExpression: "0 18 * * *"
+        retentionPeriod: 7d
+  - componentDefRef: mongodb-hostnetwork
+    target:
+      role: secondary
+    backupMethods: *backupMethods
+    schedules: *backupSchedules
   - componentDefs: [mongodb]
     target:
       role: secondary
@@ -66,16 +84,4 @@ spec:
           volumeMounts:
             - name: data
               mountPath: {{ .Values.dataMountPath }}
-    schedules:
-    - backupMethod: dump
-      enabled: false
-      cronExpression: "0 18 * * *"
-      retentionPeriod: 7d
-    - backupMethod: datafile
-      enabled: false
-      cronExpression: "0 18 * * *"
-      retentionPeriod: 7d
-    - backupMethod: volume-snapshot
-      enabled: false
-      cronExpression: "0 18 * * *"
-      retentionPeriod: 7d
+    schedules: *backupSchedules
