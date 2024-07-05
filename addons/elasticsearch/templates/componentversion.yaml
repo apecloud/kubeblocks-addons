@@ -5,7 +5,7 @@ metadata:
 spec:
   compatibilityRules:
   - compDefs:
-    - elasticsearch-8
+    - elasticsearch-8.8
     releases:
     - 8.8.2
   - compDefs:

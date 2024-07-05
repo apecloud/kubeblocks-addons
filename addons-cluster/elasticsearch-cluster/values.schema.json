@@ -2,11 +2,11 @@
   "$schema": "http://json-schema.org/schema#",
   "type": "object",
   "properties": {
-    "version": {
-      "title": "Version",
-      "description": "Service version.",
+    "serviceVersion": {
+      "title": "ServiceVersion",
+      "description": "The version of ElasticSearch.",
       "type": "string",
-      "default": "8.8.2"
+      "default": "8.8"
     },
     "mode": {
       "title": "Mode",
@@ -33,7 +33,7 @@
         "number",
         "string"
       ],
-      "default": 0.5,
+      "default": 1,
       "minimum": 0.5,
       "maximum": 64,
       "multipleOf": 0.5
@@ -45,8 +45,8 @@
         "number",
         "string"
       ],
-      "default": 0.5,
-      "minimum": 0.5,
+      "default": 2,
+      "minimum": 1,
       "maximum": 1000
     },
     "storage": {

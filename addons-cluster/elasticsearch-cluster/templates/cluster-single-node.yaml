@@ -11,8 +11,8 @@ spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
-    - name: mdit # user-defined
-      componentDef: elasticsearch-8 # ref clusterdefinition componentDefs.name
+    - name: mdit
+      componentDef: elasticsearch-{{ .Values.serviceVersion }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "elasticsearch-cluster.replicaCount" . | indent 6 }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
