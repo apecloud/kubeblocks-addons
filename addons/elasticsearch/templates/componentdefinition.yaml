@@ -5,7 +5,7 @@ items:
 - apiVersion: apps.kubeblocks.io/v1alpha1
   kind: ComponentDefinition
   metadata:
-    name: elasticsearch-8
+    name: elasticsearch-8.8
     labels:
       {{- include "elasticsearch.labels" . | nindent 6 }}
   spec:
