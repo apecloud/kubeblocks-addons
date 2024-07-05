@@ -60,3 +60,11 @@ Create the name of the service account to use
 {{- define "elasticsearch-cluster.serviceAccountName" -}}
 {{- default (printf "kb-%s" (include "clustername" .)) .Values.serviceAccount.name }}
 {{- end }}
+
+{{- define "elasticsearch-cluster.replicaCount" }}
+{{- if eq .Values.mode "single-node" }}
+replicas: 1
+{{- else if eq .Values.mode "multi-node" }}
+replicas: {{ max .Values.replicas 3 }}
+{{- end }}
+{{- end }}
