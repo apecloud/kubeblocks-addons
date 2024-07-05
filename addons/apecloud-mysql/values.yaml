@@ -79,8 +79,8 @@ logCollector:
 metrics:
   ## if the value of metrics.image.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
   image:
-    registry: docker.io
-    repository: bitnami/mysqld-exporter
+    registry: ""
+    repository: apecloud/mysqld-exporter
     tag: 0.15.1
     pullPolicy: IfNotPresent
 
