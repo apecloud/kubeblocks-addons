@@ -1,70 +1,166 @@
-{{ $scheme := "http" }}
-{{- if .Values.tls.enabled }}
-{{ $scheme = "https" }}
-{{ end }}
-
+{{ $drivesPerNode := .Values.drivesPerNode | int }}
+{{ $scheme := .Values.tls.enabled | ternary "https" "http" }}
+{{ $mountPath := .Values.mountPath }}
 {{ $bucketRoot := or ($.Values.bucketRoot) ($.Values.mountPath) }}
+{{ $subPath := .Values.persistence.subPath }}
+{{ $penabled := .Values.persistence.enabled }}
+{{ $accessMode := .Values.persistence.accessMode }}
+{{ $storageClass := .Values.persistence.storageClass }}
+{{ $psize := .Values.persistence.size }}
 
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ClusterDefinition
 metadata:
-  name: minio-{{ .Chart.Version }}
+  name: minio
 spec:
   type: minio
   connectionCredential:
-    {{- if .Values.accessKey }}
-    accesskey: {{ .Values.accessKey | toString | quote }}
+    {{- if .Values.rootUser }}
+    rootUser: {{ .Values.rootUser | toString | quote }}
     {{- else }}
-    accesskey: "$(RANDOM_PASSWD)"
+    rootUser: "$(RANDOM_PASSWD)"
     {{- end }}
-    {{- if .Values.secretKey }}
-    secretkey: {{ .Values.secretKey | toString | quote }}
+    {{- if .Values.rootPassword }}
+    rootPassword: {{ .Values.rootPassword | toString | quote }}
     {{- else }}
-    secretkey: "$(RANDOM_PASSWD)"
+    rootPassword: "$(RANDOM_PASSWD)"
     {{- end }}
-    endpoint: "$(SVC_FQDN):$(SVC_PORT_{{ $scheme }})"
+    endpoint: "$(SVC_FQDN):$(SVC_PORT_api)"
     host: "$(SVC_FQDN)"
-    port: "$(SVC_PORT_{{ $scheme }})"
+    port: "$(SVC_PORT_api)"
+    consoleEndpoint: "$(SVC_FQDN):$(SVC_PORT_console)"
   componentDefs:
     - name: minio
       characterType: minio
       workloadType: Stateful
+      configSpecs:
+        - name: minio-configuration
+          templateRef: minio-configuration
+          namespace: {{ .Release.Namespace }}
+          volumeName: minio-config
+          defaultMode: 0777
       podSpec:
+        initContainers:
+          - name: tools
+            image: {{ .Values.image.registry | default "docker.io" }}/apecloud/kubeblocks-tools:0.8.2
+            imagePullPolicy: IfNotPresent
+            command:
+              - /bin/sh
+              - -ce
+              - |
+                name="$KB_CLUSTER_COMP_NAME"-minio-configuration
+                namespace="$KB_NAMESPACE"
+                key="MINIO_REPLICAS_HISTORY"
+
+                cur=$(kubectl get configmaps "$name" -n "$namespace" -o jsonpath="{.data.$key}")
+                cur=$(echo "$cur" | tr -d '[]')
+
+                if [[ -z "$cur" ]]; then
+                  new="[$KB_COMP_REPLICAS]"
+                else
+                  IFS=',' set -- $cur
+                  array="$@"
+
+                  last=$(echo $array | awk '{print $NF}')
+
+                  if [[ "$last" == "$KB_COMP_REPLICAS" ]]; then
+                    new="[$cur]"
+                  else
+                    new="[$cur,$KB_COMP_REPLICAS]"
+                  fi
+                fi
+
+                kubectl patch configmap "$name" -n "$namespace" --type strategic -p "{\"data\":{\"$key\":\"$new\"}}"
+
+                echo "ConfigMap $name updated successfully with $key=$new"
         containers:
           - name: {{ .Chart.Name }}
-            image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
             imagePullPolicy: {{ .Values.image.pullPolicy }}
             command:
               - "/bin/sh"
               - "-ce"
-              - "/usr/bin/docker-entrypoint.sh minio -S {{ .Values.certsPath }} server {{ $bucketRoot }} {{- template "minio.extraArgs" . }}"
+              - |
+                FILE="/minio-config/MINIO_REPLICAS_HISTORY"
+                if [ ! -f "$FILE" ]; then
+                  echo "minio config don't existed"
+                  exit
+                fi
+
+                # read the content
+                content=$(cat "$FILE")
+
+                content=$(echo "$content" | tr -d '[]')
+
+                IFS=',' read -r -a replicas <<< "$content"
+
+                server=""
+                for ((i=0; i < ${#replicas[@]}; i++)); do
+                    if [ $i -eq 0 ]; then
+                        cur=${replicas[i]}
+                        server+="{{ $scheme }}://$KB_CLUSTER_COMP_NAME-{0...$((cur-1))}.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.{{ $.Values.clusterDomain }}{{ $bucketRoot }}"
+                    else
+                        prev=${replicas[i-1]}
+                        cur=${replicas[i]}
+                        server+=" {{ $scheme }}://$KB_CLUSTER_COMP_NAME-{$((prev))...$((cur-1))}.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.{{ $.Values.clusterDomain }}{{ $bucketRoot }}"
+                    fi
+                done
+
+                echo "the minio server pool is $server"
+
+                cmd="/usr/bin/docker-entrypoint.sh minio server "$server" -S {{ .Values.certsPath }} --address :{{ .Values.minioAPIPort }} --console-address :{{ .Values.minioConsolePort }} {{- template `minio.extraArgs` . }}"
+                $cmd
             env:
-              - name: MINIO_ACCESS_KEY
+              - name: MINIO_ROOT_USER
                 valueFrom:
                   secretKeyRef:
                     name: $(CONN_CREDENTIAL_SECRET_NAME)
-                    key: accesskey
-              - name: MINIO_SECRET_KEY
+                    key: rootUser
+              - name: MINIO_ROOT_PASSWORD
                 valueFrom:
                   secretKeyRef:
                     name: $(CONN_CREDENTIAL_SECRET_NAME)
-                    key: secretkey
+                    key: rootPassword
+              - name: MINIO_BROWSER_LOGIN_ANIMATION 
+                value: "off"
             volumeMounts:
-              {{- if and .Values.persistence.enabled }}
-              - name: data
-                mountPath: {{ .Values.mountPath }}
-                {{- if .Values.persistence.subPath }}
-                subPath: "{{ .Values.persistence.subPath }}"
+              {{- if $penabled }}
+              {{- if (gt $drivesPerNode 1) }}
+              {{- range $i := until $drivesPerNode }}
+              - name: export-{{ $i }}
+                mountPath: {{ $mountPath }}-{{ $i }}
+                {{- if and $penabled $subPath }}
+                subPath: {{ $subPath }}
                 {{- end }}
               {{- end }}
+              {{- else }}
+              - name: data
+                mountPath: {{ $mountPath }}
+                {{- if and $penabled $subPath }}
+                subPath: {{ $subPath }}
+                {{- end }}
+              {{- end }}
+              {{- end }}
+              {{- if .Values.extraSecret }}
+              - name: extra-secret
+                mountPath: "/tmp/minio-config-env"
+              {{- end }}
+              {{- include "minio.tlsKeysVolumeMount" . | indent 12 }}
+              {{- if .Values.extraVolumeMounts }}
+                {{- toYaml .Values.extraVolumeMounts | nindent 12 }}
+              {{- end }}
+              - name: minio-config
+                mountPath: /minio-config
             ports:
-              - name: {{ $scheme }}
-                containerPort: 9000
-            {{- if .Values.livenessProbe.enabled }}
+              - name: api
+                containerPort: {{ .Values.minioAPIPort }}
+              - name: console
+                containerPort: {{ .Values.minioConsolePort }}
+                        {{- if .Values.livenessProbe.enabled }}
             livenessProbe:
               httpGet:
                 path: /minio/health/live
-                port: {{ $scheme }}
+                port: api
                 scheme: {{ $scheme | upper }}
               initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
               periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
@@ -75,7 +171,7 @@ spec:
             {{- if .Values.readinessProbe.enabled }}
             readinessProbe:
               tcpSocket:
-                port: {{ $scheme }}
+                port: api
               initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
               periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
               timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
@@ -85,7 +181,7 @@ spec:
             {{- if .Values.startupProbe.enabled }}
             startupProbe:
               tcpSocket:
-                port: {{ $scheme }}
+                port: api
               initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
               periodSeconds: {{ .Values.startupProbe.periodSeconds }}
               timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds }}
@@ -111,13 +207,21 @@ spec:
         {{- end }}
       service:
         ports:
-          - name: {{ $scheme }}
+          - name: api
             port: {{ .Values.service.port }}
             protocol: TCP
             {{- if (and (eq .Values.service.type "NodePort") ( .Values.service.nodePort)) }}
             nodePort: {{ .Values.service.nodePort }}
             {{- else }}
-            targetPort: 9000
+            targetPort: {{ .Values.minioAPIPort }}
+            {{- end }}
+          - name: console
+            port: {{ .Values.consoleService.port }}
+            protocol: TCP
+            {{- if (and (eq .Values.consoleService.type "NodePort") ( .Values.consoleService.nodePort)) }}
+            nodePort: {{ .Values.consoleService.nodePort }}
+            {{- else }}
+            targetPort: {{ .Values.minioConsolePort }}
             {{- end }}
       statefulSpec:
         updateStrategy: BestEffortParallel

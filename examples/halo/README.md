@@ -34,7 +34,9 @@ helm repo add kubeblocks-addons https://jihulab.com/api/v4/projects/150246/packa
 helm repo update
 
 # Enable halo 
-helm upgrade -i halo kubeblocks-addons/halo --version 0.2.0 -n kb-system  
+helm upgrade -i halo kubeblocks-addons/halo --version 0.2.0 -n kb-system 
+# Enable etcd 
+helm upgrade -i kb-addon-etcd kubeblocks-addons/etcd --version 0.9.0 -n kb-system 
 ``` 
 
 ## Examples
@@ -81,5 +83,7 @@ If you want to delete the cluster and all its resource, you can modify the termi
 kubectl patch cluster halo-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
 kubectl delete cluster halo-cluster
+
+kubectl delete cluster etcd-cluster
 
 ```

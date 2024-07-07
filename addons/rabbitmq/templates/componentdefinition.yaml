@@ -1,0 +1,128 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "rabbitmq.componentDefName" . }}
+  labels:
+    {{- include "rabbitmq.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks.io
+  description: RabbitMQ is a reliable and mature messaging and streaming broker.
+  serviceKind: rabbitmq
+  serviceVersion: {{ .Values.componentServiceVersion.rabbitmq }}
+  services:
+    - name: default
+      serviceName: rabbitmq
+      spec:
+        ports:
+          - name: amqp
+            port: 5672
+            targetPort: amqp
+    - name: everypod
+      spec:
+        ports:
+          - name: amqp
+            port: 5672
+            targetPort: amqp
+  configs:
+    - name: config
+      templateRef: {{ include "rabbitmq.configTplName" . }}
+      constraintRef: {{ include "rabbitmq.configConstraintName" . }}
+      volumeName: rabbitmq-config
+      namespace: {{ .Release.Namespace }}
+      defaultMode: 0644  # for only read
+  systemAccounts:
+    - name: root
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 8
+        numSymbols: 0
+        letterCase: MixedCases
+  runtime:
+    containers:
+      - name: rabbitmq
+        command:
+          - /bin/sh
+          - -c
+          - |
+            cp /root/erlang.cookie /var/lib/rabbitmq/.erlang.cookie
+            chown rabbitmq:rabbitmq /var/lib/rabbitmq/.erlang.cookie
+            chmod 400 /var/lib/rabbitmq/.erlang.cookie
+            exec /opt/rabbitmq/sbin/rabbitmq-server
+        env:
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: MY_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: RABBITMQ_MNESIA_BASE
+          value: {{ .Values.dataMountPath }}/mnesia
+        - name: RABBITMQ_LOG_BASE
+          value: {{ .Values.dataMountPath }}/logs
+        - name: K8S_SERVICE_NAME
+          value: $(KB_CLUSTER_COMP_NAME)-headless
+        - name: RABBITMQ_ENABLED_PLUGINS_FILE
+          value: /etc/rabbitmq/enabled_plugins
+        - name: RABBITMQ_USE_LONGNAME
+          value: "true"
+        - name: RABBITMQ_NODENAME
+          value: rabbit@$(KB_POD_NAME).$(K8S_SERVICE_NAME).$(MY_POD_NAMESPACE)
+        - name: K8S_HOSTNAME_SUFFIX
+          value: .$(K8S_SERVICE_NAME).$(MY_POD_NAMESPACE)
+        image: rabbitmq:3.13.2-management
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - /bin/bash
+              - -c
+              - if [ ! -z "$(cat /etc/pod-info/skipPreStopChecks)" ]; then exit 0; fi;
+                rabbitmq-upgrade await_online_quorum_plus_one -t 604800 && rabbitmq-upgrade
+                await_online_synchronized_mirror -t 604800 && rabbitmq-upgrade drain -t
+                604800
+        ports:
+        - containerPort: 4369
+          name: epmd
+          protocol: TCP
+        - containerPort: 5672
+          name: amqp
+          protocol: TCP
+        - containerPort: 15672
+          name: management
+          protocol: TCP
+        - containerPort: 15692
+          name: prometheus
+          protocol: TCP
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+          - mountPath: /etc/rabbitmq/conf.d/12-kubeblocks.conf
+            name: rabbitmq-config
+            subPath: rabbitmq.conf
+          - mountPath: /root/erlang.cookie
+            name: rabbitmq-config
+            subPath: .erlang.cookie
+          - mountPath: /etc/rabbitmq/enabled_plugins
+            name: rabbitmq-config
+            subPath: enabled_plugins
+  vars:
+    - name: RABBITMQ_DEFAULT_USER
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "rabbitmq.componentDefName" . }}
+          name: root
+          optional: false
+          username: Required
+    - name: RABBITMQ_DEFAULT_PASS
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "rabbitmq.componentDefName" . }}
+          name: root
+          optional: false
+          password: Required

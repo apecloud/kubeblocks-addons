@@ -1,12 +1,8 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ template "minio.fullname" . }}-init-script
+  name: minio-configuration
   labels:
-    app: {{ template "minio.name" . }}
-    chart: {{ template "minio.chart" . }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    {{- include "minio.labels" . | nindent 4 }}
 data:
-  init: |-
-{{ include (print $.Template.BasePath "/_helper_create_bucket.txt") . | indent 4 }}
+  MINIO_REPLICAS_HISTORY: "[]"

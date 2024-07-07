@@ -1,0 +1,43 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: elasticsearch
+spec:
+  compatibilityRules:
+  - compDefs:
+    - elasticsearch-8.8
+    releases:
+    - 8.8.2
+  - compDefs:
+    - elasticsearch-7.10
+    releases:
+    - 7.10.1
+  - compDefs:
+    - elasticsearch-7.7
+    releases:
+    - 7.7.1
+  releases:
+  - name: 7.7.1
+    serviceVersion: 7.7.1
+    images:
+      elasticsearch: {{ include "elasticsearch-7.7.1.image" . }}
+      elastic-internal-init-filesystem: {{ include "elasticsearch-7.7.1.image" . }}
+      elastic-internal-suspend: {{ include "elasticsearch-7.7.1.image" . }}
+      prepare-plugins: {{ include "elasticsearch-7.7.1.image" . }}
+      exporter: {{ include "elasticsearch-exporter.image" . }}
+  - name: 7.10.1
+    serviceVersion: 7.10.1
+    images:
+      elasticsearch: {{ include "elasticsearch-7.10.1.image" . }}
+      elastic-internal-init-filesystem: {{ include "elasticsearch-7.10.1.image" . }}
+      elastic-internal-suspend: {{ include "elasticsearch-7.10.1.image" . }}
+      prepare-plugins: {{ include "elasticsearch-7.10.1.image" . }}
+      exporter: {{ include "elasticsearch-exporter.image" . }}
+  - name: 8.8.2
+    serviceVersion: 8.8.2
+    images:
+      elasticsearch: {{ include "elasticsearch-8.8.2.image" . }}
+      elastic-internal-init-filesystem: {{ include "elasticsearch-8.8.2.image" . }}
+      elastic-internal-suspend: {{ include "elasticsearch-8.8.2.image" . }}
+      prepare-plugins: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.plugin.repository}}:{{ default .Chart.AppVersion .Values.image.plugin.tag }}
+      exporter: {{ include "elasticsearch-exporter.image" . }}

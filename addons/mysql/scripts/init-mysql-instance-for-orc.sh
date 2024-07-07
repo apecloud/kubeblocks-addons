@@ -25,14 +25,10 @@ mysql_port="3306"
 topology_user="$ORC_TOPOLOGY_USER"
 topology_password="$ORC_TOPOLOGY_PASSWORD"
 
-cluster_component_pod_name="$KB_CLUSTER_COMP_NAME"
-component_name="$KB_COMP_NAME"
-kb_cluster_name="$KB_CLUSTER_NAME"
-
 
 # create orchestrator user in mysql
 create_mysql_user() {
-  local service_name=$(echo "${cluster_component_pod_name}_${component_name}_${i}" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+  local service_name=$(echo "${KB_CLUSTER_COMP_NAME}_MYSQL_${i}" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
 
   mysql_note "Create MySQL User and Grant Permissions..."
 
@@ -59,20 +55,19 @@ init_cluster_info_database() {
 CREATE DATABASE IF NOT EXISTS kb_orc_meta_cluster;
 EOF
   mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e 'source /scripts/cluster-info.sql'
-  if [ "${MYSQL_MAJOR}" = '5.7' ]; then
-  mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e 'source /scripts/addition_to_sys_v5.sql'
-  else
-  mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e 'source /scripts/addition_to_sys_v8.sql'
-  fi
+  #  if [ "${MYSQL_MAJOR}" = '5.7' ]; then
+  #  mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e 'source /scripts/addition_to_sys_v5.sql'
+  #  else
+  #  mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e 'source /scripts/addition_to_sys_v8.sql'
+  #  fi
   mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD << EOF
 USE kb_orc_meta_cluster;
 INSERT INTO kb_orc_meta_cluster (anchor,host_name,cluster_name, cluster_domain, data_center)
-SELECT 1, '$service_name','$KB_CLUSTER_NAME', '', ''
-    WHERE NOT EXISTS (
-    SELECT 1
-    FROM kb_orc_meta_cluster
-    WHERE anchor = 1
-);
+VALUES (1, '$service_name', '$KB_CLUSTER_NAME', '', '')
+ON DUPLICATE KEY UPDATE
+    cluster_name = VALUES(cluster_name),
+    cluster_domain = VALUES(cluster_domain),
+    data_center = VALUES(data_center);
 EOF
 
 }
@@ -83,11 +78,9 @@ wait_for_connectivity() {
   local start_time=$(date +%s)
   local current_time
 
-  mysql_note "Checking mysql connectivity to $host on port $mysql_port ..."
   while true; do
     current_time=$(date +%s)
     if [ $((current_time - start_time)) -gt $timeout ]; then
-      mysql_note "Timeout waiting for $host to become available."
       exit 1
     fi
 
@@ -102,17 +95,18 @@ wait_for_connectivity() {
 }
 
 setup_master_slave() {
+
+  mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e "STOP SLAVE;RESET MASTER;RESET SLAVE ALL;";
+
   mysql_note "setup_master_slave"
-  master_host_name=$(echo "${cluster_component_pod_name}_${component_name}_0_SERVICE_HOST" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+  master_host_name=$(echo "${KB_CLUSTER_COMP_NAME}_MYSQL_0_SERVICE_HOST" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
   master_host=${!master_host_name}
-  mysql_note "wait_for_connectivity"
-  wait_for_connectivity
 
   master_from_orc=""
   get_master_from_orc
 
   last_digit=${KB_POD_NAME##*-}
-  self_service_name=$(echo "${cluster_component_pod_name}_${component_name}_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+  self_service_name=$(echo "${KB_CLUSTER_COMP_NAME}_MYSQL_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
   host_name=$(echo "${self_service_name}_SERVICE_HOST" | tr '-' '_'  | tr '[:lower:]' '[:upper:]'  )
 
   # If the cluster is already registered to the Orchestrator and the Master of the cluster is itself, then no action is required.
@@ -128,6 +122,7 @@ setup_master_slave() {
   # If the master_host is empty, then this pod is the first one in the cluster, init cluster info database and create user.
   if [[ $master_from_orc == "" && $last_digit -eq 0 ]]; then
     echo "Create MySQL User and Grant Permissions"
+
     if mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e "SELECT 1 FROM mysql.user WHERE user='$topology_user'" 2>/dev/null | grep $topology_user >/dev/null; then
         return 0
     fi
@@ -153,7 +148,7 @@ get_master_from_orc() {
       return 0
     fi
 
-    topology_info=$(/scripts/orchestrator-client -c topology -i $kb_cluster_name) || true
+    topology_info=$(/scripts/orchestrator-client -c topology -i $KB_CLUSTER_NAME) || true
     if [[ $topology_info == "" ]]; then
       return 0
     fi
@@ -223,6 +218,7 @@ EOF
 
 }
 main() {
+  wait_for_connectivity
   setup_master_slave
   echo "init mysql instance for orc completed"
 

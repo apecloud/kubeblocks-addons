@@ -3,11 +3,11 @@
 # Declare variables to be passed into your templates.
 
 images:
-  registry: docker.io
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
   pullPolicy: IfNotPresent
   observer:
     repository: apecloud/oceanbase
-    tag: 4.2.0.0-100010032023083021
+    tag: 4.3.0.1-100000242024032211
   metrics:
     repository: apecloud/obagent
     tag: 4.2.1-100000092023101717
@@ -23,4 +23,4 @@ roleProbe:
 
 nameOverride: ""
 fullnameOverride: ""
-clusterVersionOverride: "4.2.0.0-100010032023083021"
+clusterVersionOverride: "4.3.0.1-100000242024032211"

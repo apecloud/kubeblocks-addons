@@ -95,7 +95,7 @@ spec:
                 EOF
                 [[ -d "$PGHOST" ]] || (mkdir -p $PGHOST && chown omm $PGHOST)
 
-                hostname=`hostname`
+                hostname=$KB_POD_NAME
                 [[ "$hostname" =~ -([0-9]+)$ ]] || exit 1
                 ordinal=${BASH_REMATCH[1]}
                 if [[ $ordinal -eq 0 ]];then
@@ -111,11 +111,18 @@ spec:
                     ha_service_port=$(expr $pgport + 2)
 
                   cat >/tmp/replconninfo.conf
-                  for ((i=0; i<$ordinal; i++)); do
-                    echo "$hostname $PodIP" |ncat --send-only ${KB_CLUSTER_COMP_NAME}-${i}.${KB_CLUSTER_COMP_NAME}-headless 6543
-                    remote_ip=`ping ${KB_CLUSTER_COMP_NAME}-${i}.${KB_CLUSTER_COMP_NAME}-headless -c 1 | sed '1{s/[^(]*(//;s/).*//;q}'`
 
-                    echo "replconninfo$((i+1)) = 'localhost=$PodIP localport=${ha_port} localservice=${ha_service_port} remotehost=$remote_ip remoteport=${ha_port} remoteservice=${ha_service_port}'" >> /tmp/replconninfo.conf
+                  replicas=$(eval echo ${KB_POD_LIST} | tr ',' '\n')
+                  SUBDOMAIN=${KB_CLUSTER_COMP_NAME}-headless
+                  for replica in ${replicas}; do
+                    host=${replica}.${SUBDOMAIN}
+                    host_ordinal=$(echo $replica | awk -F '-' '{print $(NF)}')
+                    if [ $host_ordinal -ge $ordinal ];then
+                      break
+                    fi
+                    echo "$hostname $PodIP" |ncat --send-only $host 6543
+                    remote_ip=`ping $host -c 1 | sed '1{s/[^(]*(//;s/).*//;q}'`
+                    echo "replconninfo$((host_ordinal+1)) = 'localhost=$PodIP localport=${ha_port} localservice=${ha_service_port} remotehost=$remote_ip remoteport=${ha_port} remoteservice=${ha_service_port}'" >> /tmp/replconninfo.conf
                   done
 
                   #echo "$hostname $PodIP" |ncat --send-only ${KB_CLUSTER_COMP_NAME}-0.${KB_CLUSTER_COMP_NAME}-headless 6543

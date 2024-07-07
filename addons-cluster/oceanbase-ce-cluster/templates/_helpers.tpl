@@ -79,29 +79,36 @@ Create extra env
 }
 {{- end }}
 
-{{/*
-Create extra envs annotations
-*/}}
-{{- define "oceanbase-cluster.annotations.extra-envs" }}
-"kubeblocks.io/extra-env": {{ include "oceanbase-cluster.extra-envs" . | nospace  | quote }}
-{{- end }}
 
 {{- define "oceanbase-release.name" }}
 {{- print "ob-ce" }}
 {{- end }}
 
 {{- define "oceanbase-cluster.compdef" }}
-{{- if eq .Values.hostnetwork "enabled" }}
-  {{- if gt (int .Values.obClusters) 1 }}
-  {{- printf "%s-repl-host" (include "oceanbase-release.name" .)}}
-  {{- else }}
-  {{- printf "%s-hostnetwork" (include "oceanbase-release.name" .)}}
-  {{- end }}
-{{- else }}
   {{- if gt (int .Values.obClusters) 1 }}
   {{- printf "%s-repl" (include "oceanbase-release.name" .)}}
   {{- else }}
   {{- include "oceanbase-release.name" . }}
   {{- end }}
-{{- end -}}
 {{- end }}
+
+
+{{- define "oceanbase-cluster.annotations.extra-envs" -}}
+ "kubeblocks.io/extra-env": {{ include "oceanbase-cluster.extra-envs" . | nospace  | quote }}
+{{- end -}}
+
+{{/*
+Define oceanbase cluster annotation pod-ordinal-svc feature gate.
+*/}}
+{{- define "oceanbase-cluster.featureGate" -}}
+kubeblocks.io/enabled-pod-ordinal-svc: {{ include "observers" . | quote}}
+{{- end -}}
+
+{{- define "observers" -}}
+{{- $observers := list -}}
+{{- $nodeCount := .Values.obClusters | int }}
+{{- range $idx := until $nodeCount -}}
+{{- $observers = print "ob-bundle-" $idx | append $observers -}}
+{{- end -}}
+{{- join "," $observers -}}
+{{- end -}}

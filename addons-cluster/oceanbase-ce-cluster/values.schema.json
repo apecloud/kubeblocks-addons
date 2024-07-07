@@ -6,7 +6,7 @@
             "title": "Version",
             "description": "Cluster version.",
             "type": "string",
-            "default": "oceanbase-4.2.0.0-100010032023083021"
+            "default": "ob-ce-4.3.0.1-100000242024032211"
         },
         "obClusters": {
             "title": "ObClusters",
@@ -91,18 +91,8 @@
                 "string"
             ],
             "default": 20,
-            "minimum": 10,
+            "minimum": 1,
             "maximum": 100
-        },
-        "hostnetwork": {
-            "title": "Host Network",
-            "description": "Enable or Disable Pod Host Network.",
-            "type": "string",
-            "default": "enabled",
-            "enum": [
-                "enabled",
-                "disabled"
-            ]
         }
     },
     "required": [

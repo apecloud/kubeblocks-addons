@@ -55,9 +55,14 @@ spec:
         volumeMounts:
           - name: data
             mountPath: {{ .Values.dataMountPath }}
-    - name: volume-snapshot
-      snapshotVolumes: true
-      targetVolumes:
-        volumes:
-          - data
-    schedules: *backupschedules
+  #  TODO: support it when kb support to input the specified component name for sharding cluster.
+  #  - name: volume-snapshot
+  #    snapshotVolumes: true
+  #    targetVolumes:
+  #      volumes:
+  #        - data
+    schedules:
+      - backupMethod: datafile
+        enabled: false
+        cronExpression: "0 18 * * 0"
+        retentionPeriod: 7d

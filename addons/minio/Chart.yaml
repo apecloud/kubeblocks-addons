@@ -1,7 +1,7 @@
 apiVersion: v1
 description: High Performance, Kubernetes Native Object Storage
 name: minio
-version: 8.0.17
+version: 5.2.0
 appVersion: master
 keywords:
   - storage
@@ -14,5 +14,10 @@ sources:
   - https://github.com/minio/minio
 
 maintainers:
-  - name: contact
-    email: contact@milvus.io
+  - name: ApeCloud
+    url: https://github.com/apecloud/kubeblocks/deploy
+
+annotations:
+    addon.kubeblocks.io/kubeblocks-version: ">=0.8.0"
+    addon.kubeblocks.io/model: "object-storage"
+    addon.kubeblocks.io/provider: "community"

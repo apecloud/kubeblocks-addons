@@ -2,6 +2,18 @@
 set -o errexit
 set -e
 
+export ETCDCTL_API=${ETCD_API:-'2'}
+
+if [ -n "$ETCD_SERVER" ]; then
+  echo "ETCD_SERVER is set. Use etcd"
+  export DCS_ENABLE_KUBERNETES_API=""
+  if [ "$ETCDCTL_API" = "3" ]; then
+    export ETCD3_HOSTS=$ETCD_SERVER
+  else
+    export ETCD_HOSTS=$ETCD_SERVER
+  fi
+fi
+
 # usage: retry <command>
 # e.g. retry pg_isready -U postgres -h $primary_fqdn -p 5432
 function retry {

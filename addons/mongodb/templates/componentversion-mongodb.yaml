@@ -13,5 +13,5 @@ spec:
       changes:
       serviceVersion: 5.0.14
       images:
-        mongodb: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/mongo:5.0.14
-        metrics: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/agamotto:0.1.2-beta.1
+        mongodb: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/mongo:5.0.14
+        metrics: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/agamotto:0.1.2-beta.1

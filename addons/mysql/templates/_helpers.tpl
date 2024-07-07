@@ -88,7 +88,7 @@ Define mysql component defintion name
 */}}
 {{- define "proxysql.componentDefName" -}}
 {{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-proxy
+proxysql
 {{- else -}}
 {{- printf "proxysql-%s" .Values.compDefinitionVersionSuffix -}}
 {{- end -}}
@@ -123,4 +123,278 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 
 {{- define "mysql.imagePullPolicy" -}}
 {{ default "IfNotPresent" .Values.image.pullPolicy }}
+{{- end }}
+
+{{- define "mysql.spec.common" -}}
+provider: kubeblocks
+serviceKind: mysql
+description: mysql component definition for Kubernetes
+updateStrategy: BestEffortParallel
+
+services:
+  - name: mysql-server
+    serviceName: mysql-server
+    roleSelector: primary
+    spec:
+      ports:
+        - name: mysql
+          port: 3306
+          targetPort: mysql
+  - name: mysql
+    serviceName: mysql
+    podService: true
+    spec:
+      ports:
+        - name: mysql
+          port: 3306
+          targetPort: mysql
+
+scripts:
+  - name: mysql-scripts
+    templateRef: mysql-scripts
+    namespace: {{ .Release.Namespace }}
+    volumeName: scripts
+    defaultMode: 0555
+volumes:
+  - name: data
+    needSnapshot: true
+systemAccounts:
+  - name: root
+    initAccount: true
+    passwordGenerationPolicy:
+      length: 10
+      numDigits: 5
+      numSymbols: 0
+      letterCase: MixedCases
+vars:
+  - name: MYSQL_ROOT_USER
+    valueFrom:
+      credentialVarRef:
+        name: root
+        username: Required
+
+  - name: MYSQL_ROOT_PASSWORD
+    valueFrom:
+      credentialVarRef:
+        name: root
+        password: Required
+lifecycleActions:
+  roleProbe:
+    builtinHandler: mysql
+    periodSeconds: {{ .Values.roleProbe.periodSeconds }}
+    timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+roles:
+  - name: primary
+    serviceable: true
+    writable: true
+  - name: secondary
+    serviceable: true
+    writable: false
+{{- end }}
+
+{{- define "mysql.spec.runtime.common" -}}
+- command:
+    - cp
+    - -r
+    - /bin/syncer
+    - /config
+    - /kubeblocks/
+  image: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:0.1.0
+  imagePullPolicy: "Always"
+  name: init-syncer
+  volumeMounts:
+    - mountPath: /kubeblocks
+      name: kubeblocks
+- command:
+    - cp
+    - -r
+    - /xtrabackup-2.4
+    - /kubeblocks/xtrabackup
+  image: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:mysql
+  imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+  name: init-xtrabackup
+  volumeMounts:
+    - mountPath: /kubeblocks
+      name: kubeblocks
+{{- end }}
+
+{{- define "mysql-orc.spec.common"}}
+provider: kubeblocks
+description: mysql component definition for Kubernetes
+serviceKind: mysql
+updateStrategy: BestEffortParallel
+
+serviceRefDeclarations:
+  - name: orchestrator
+    serviceRefDeclarationSpecs:
+      - serviceKind: orchestrator
+        serviceVersion: "^*"
+
+services:
+  - name: mysql-server
+    serviceName: mysql-server
+    spec:
+      ports:
+        - name: mysql
+          port: 3306
+          targetPort: mysql
+  - name: mysql
+    serviceName: mysql
+    podService: true
+    spec:
+      ports:
+        - name: mysql
+          port: 3306
+          targetPort: mysql
+
+scripts:
+  - name: mysql-scripts
+    templateRef: mysql-scripts
+    namespace: {{ .Release.Namespace }}
+    volumeName: scripts
+    defaultMode: 0555
+volumes:
+  - name: data
+    needSnapshot: true
+
+systemAccounts:
+  - name: root
+    initAccount: true
+    passwordGenerationPolicy:
+      length: 10
+      numDigits: 5
+      numSymbols: 0
+      letterCase: MixedCases
+
+roles:
+  - name: primary
+    serviceable: true
+    writable: true
+  - name: secondary
+    serviceable: true
+    writable: false
+
+vars:
+  - name: MYSQL_ROOT_USER
+    valueFrom:
+      credentialVarRef:
+        name: root
+        username: Required
+
+  - name: MYSQL_ROOT_PASSWORD
+    valueFrom:
+      credentialVarRef:
+        name: root
+        password: Required
+
+  - name: ORC_ENDPOINTS
+    valueFrom:
+      serviceRefVarRef:
+        name: orchestrator
+        endpoint: Required
+
+  - name: ORC_PORTS
+    valueFrom:
+      serviceRefVarRef:
+        name: orchestrator
+        port: Required
+  - name: DATA_MOUNT
+    value: {{.Values.dataMountPath}}
+{{- end }}
+
+
+{{- define "mysql-orc.spec.lifecycle.common" }}
+roleProbe:
+  builtinHandler: custom
+  customHandler:
+    exec:
+      command:
+        - /bin/bash
+        - -c
+        - |
+          topology_info=$(/kubeblocks/orchestrator-client -c topology -i $KB_CLUSTER_NAME) || true
+          if [[ $topology_info == "" ]]; then
+            echo -n "secondary"
+            exit 0
+          fi
+
+          first_line=$(echo "$topology_info" | head -n 1)
+          cleaned_line=$(echo "$first_line" | tr -d '[]')
+          old_ifs="$IFS"
+          IFS=',' read -ra status_array <<< "$cleaned_line"
+          IFS="$old_ifs"
+          status="${status_array[1]}"
+          if  [ "$status" != "ok" ]; then
+            exit 0
+          fi
+
+          address_port=$(echo "$first_line" | awk '{print $1}')
+          master_from_orc="${address_port%:*}"
+          last_digit=${KB_POD_NAME##*-}
+          self_service_name=$(echo "${KB_CLUSTER_COMP_NAME}_mysql_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+          if [ "$master_from_orc" == "${self_service_name}" ]; then
+            echo -n "primary"
+          else
+            echo -n "secondary"
+          fi
+memberLeave:
+  customHandler:
+    exec:
+      command:
+        - /bin/bash
+        - -c
+        - |
+          set +e
+          master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i $KB_CLUSTER_NAME)
+          last_digit=${KB_LEAVE_MEMBER_POD_NAME##*-}
+          self_service_name=$(echo "${KB_CLUSTER_COMP_NAME}_mysql_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+          if [ "${self_service_name%%:*}" == "${master_from_orc%%:*}" ]; then
+            /kubeblocks/orchestrator-client -c force-master-failover -i $KB_CLUSTER_NAME
+            local timeout=30
+            local start_time=$(date +%s)
+            local current_time
+            while true; do
+              current_time=$(date +%s)
+              if [ $((current_time - start_time)) -gt $timeout ]; then
+                break
+              fi
+              master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i $KB_CLUSTER_NAME)
+              if [ "${self_service_name%%:*}" != "${master_from_orc%%:*}" ]; then
+                break
+              fi
+              sleep 1
+            done
+          fi
+          /kubeblocks/orchestrator-client -c reset-replica -i ${self_service_name}
+          /kubeblocks/orchestrator-client -c forget -i ${self_service_name}
+          res=$(/kubeblocks/orchestrator-client -c which-cluster-alias -i ${self_service_name})
+          local start_time=$(date +%s)
+          while [ "$res" == "" ]; do
+            current_time=$(date +%s)
+            if [ $((current_time - start_time)) -gt $timeout ]; then
+              break
+            fi
+            sleep 1
+            res=$(/kubeblocks/orchestrator-client -c instance -i ${self_service_name})
+          done
+          /kubeblocks/orchestrator-client -c forget -i ${self_service_name}
+
+    targetPodSelector: Any
+    container: mysql
+{{- end }}
+
+{{- define "mysql-orc.spec.initcontainer.common"}}
+- command:
+    - /bin/sh
+    - -c
+    - |
+      cp -r /usr/bin/jq /kubeblocks/jq
+      cp -r /scripts/orchestrator-client /kubeblocks/orchestrator-client
+      cp -r /usr/local/bin/curl /kubeblocks/curl
+  image: {{ .Values.image.registry | default "docker.io" }}/apecloud/orc-tools:1.0.1
+  imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+  name: init-jq
+  volumeMounts:
+    - mountPath: /kubeblocks
+      name: kubeblocks
 {{- end }}

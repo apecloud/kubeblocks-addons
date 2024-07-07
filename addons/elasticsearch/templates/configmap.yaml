@@ -8,3 +8,32 @@ metadata:
 data:
   elasticsearch.yml: |-
     {{- .Files.Get "configs/elasticsearch.yml.tpl" | nindent 4 }}
+  log4j2.properties: |-
+    {{- .Files.Get "configs/elasticsearch-8.8-log4j2.properties" | nindent 4 }}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "elasticsearch.name" . }}-config-7.10
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+  {{- include "elasticsearch.labels" . | nindent 4 }}
+data:
+  elasticsearch.yml: |-
+    {{- .Files.Get "configs/elasticsearch.yml.tpl" | nindent 4 }}
+  log4j2.properties: |-
+    {{- .Files.Get "configs/elasticsearch-7.10-log4j2.properties" | nindent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "elasticsearch.name" . }}-config-7.7
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+  {{- include "elasticsearch.labels" . | nindent 4 }}
+data:
+  elasticsearch.yml: |-
+    {{- .Files.Get "configs/elasticsearch-7.7.yml.tpl" | nindent 4 }}
+  log4j2.properties: |-
+    {{- .Files.Get "configs/elasticsearch-7.7-log4j2.properties" | nindent 4 }}

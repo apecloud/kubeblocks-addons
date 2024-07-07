@@ -24,5 +24,4 @@ OWNERS
 
 # component definition
 templates/componentdefinition.yaml
-templates/configmap.yaml
 templates/secrets.yaml

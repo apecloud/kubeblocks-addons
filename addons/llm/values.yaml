@@ -1,7 +1,7 @@
 image:
   repository: apecloud/vllm
   pullPolicy: IfNotPresent
-  registry: infracreate-registry.cn-zhangjiakou.cr.aliyuncs.com
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
   # Overrides the image tag whose default is the chart appVersion.
   tag: v0.2.7-amd64
 imageDev:

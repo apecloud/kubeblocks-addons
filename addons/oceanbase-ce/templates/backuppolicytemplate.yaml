@@ -28,20 +28,8 @@ spec:
         cronExpression: "0 18 * * *"
         retentionPeriod: 7d
   - componentDefs:
-    -  {{ printf "%s-hostnetwork" (include "oceanbase-release.name" .) }}
-    componentDefRef: {{ printf "%s-hostnetwork" (include "oceanbase-release.name" .) }}
-    backoffLimit: 0
-    backupMethods: *backupMethods
-    schedules: *backupschedules
-  - componentDefs:
     - {{ printf "%s-repl" (include "oceanbase-release.name" .) }}
     componentDefRef: oceanbase-repl
-    backoffLimit: 0
-    backupMethods: *backupMethods
-    schedules: *backupschedules
-  - componentDefs:
-    - {{ printf "%s-repl-host" (include "oceanbase-release.name" .) }}
-    componentDefRef:  {{ printf "%s-repl-host" (include "oceanbase-release.name" .) }}
     backoffLimit: 0
     backupMethods: *backupMethods
     schedules: *backupschedules
