@@ -4,8 +4,10 @@ set -e
 mkdir -p /opt/bitnami/pgbouncer/conf/ /opt/bitnami/pgbouncer/logs/ /opt/bitnami/pgbouncer/tmp/
 cp /home/pgbouncer/conf/pgbouncer.ini /opt/bitnami/pgbouncer/conf/
 echo "\"$POSTGRESQL_USERNAME\" \"$POSTGRESQL_PASSWORD\"" > /opt/bitnami/pgbouncer/conf/userlist.txt
+# shellcheck disable=SC2129
 echo -e "\\n[databases]" >> /opt/bitnami/pgbouncer/conf/pgbouncer.ini
 echo "postgres=host=$KB_POD_IP port=5432 dbname=postgres" >> /opt/bitnami/pgbouncer/conf/pgbouncer.ini
+echo "*=host=$KB_POD_IP port=5432" >> /opt/bitnami/pgbouncer/conf/pgbouncer.ini
 chmod +777 /opt/bitnami/pgbouncer/conf/pgbouncer.ini
 chmod +777 /opt/bitnami/pgbouncer/conf/userlist.txt
 useradd pgbouncer
