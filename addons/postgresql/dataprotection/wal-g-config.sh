@@ -22,4 +22,5 @@ function config_wal_g() {
 }
 
 config_wal_g "$(dirname $(dirname $DP_BACKUP_BASE_PATH))/wal-g"
+echo "{}" >"${DP_BACKUP_INFO_FILE}"
 sync
