@@ -10,11 +10,14 @@ terminationPolicy: WipeOut
 commonAnnotations:
   resource.kubeblocks.io/ignore-constraint: "true"
 
+image:
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+
 ## @param mode pulsar cluster topology mode: pulsar-basic-cluster and pulsar-enhanced-cluster
 ## pulsar-basic-cluster: contains broker, zookeeper and bookkeeper
 ## pulsar-enhanced-cluster: contains broker, zookeeper, bookkeeper, proxy and bkrecovery
 ## If you want to use any other topologies, such as adding only a proxy to the pulsar-basic-cluster, this parameter needs to be set to "".
-mode: pulsar-basic-cluster
+mode: pulsar-enhanced-cluster
 
 ## Monitoring configurations
 monitor:
@@ -72,10 +75,10 @@ bookies:
     enabled: true
     data:
       storageClassName:
-      size: 20Gi
+      size: 8Gi
     log:
       storageClassName:
-      size: 20Gi
+      size: 8Gi
 
 ## Bookies-recovery configuration
 bookiesRecovery:
@@ -99,7 +102,7 @@ bookiesRecovery:
 zookeeper:
   ## @param zookeeper.replicaCount Number of Zookeeper replicas
   ##
-  replicaCount: 3
+  replicaCount: 1
 
   ## Zookeeper workload pod resource requests and limits
   ## ref: http://kubernetes.io/docs/user-guide/compute-resources/
@@ -119,10 +122,10 @@ zookeeper:
     enabled: true
     data:
       storageClassName:
-      size: 20Gi
+      size: 8Gi
     log:
       storageClassName:
-      size: 20Gi
+      size: 8Gi
 
   ## @param keeper.tolerations Tolerations for *Keeper pods assignment
   ## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/

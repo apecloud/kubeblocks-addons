@@ -14,10 +14,10 @@ spec:
       changes:
       serviceVersion: 2.11.2
       images:
-        broker: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/pulsar:2.11.2
+        broker: {{.Values.image.registry}}/apecloud/pulsar:2.11.2
     - name: 3.0.2
       changes:
       serviceVersion: 3.0.2
       images:
-        broker: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/pulsar:3.0.2
+        broker: {{.Values.image.registry}}/apecloud/pulsar:3.0.2
 
