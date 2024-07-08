@@ -1,5 +1,5 @@
 #!/bin/bash
-echo "waiting zookeeper ready..."
+echo "waiting zookeeper:${zkServers} ready..."
 zkDomain="${zkServers%%:*}"
 until echo ruok | nc -q 1 ${zkDomain} 2181 | grep imok; do
   sleep 1;
