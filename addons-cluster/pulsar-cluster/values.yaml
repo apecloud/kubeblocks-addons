@@ -1,6 +1,6 @@
 ## @param version Pulsar Cluster version
 ##
-version: pulsar-2.11.2
+version: pulsar-3.0.2
 
 ## @param terminationPolicy define Cluster termination policy. One of DoNotTerminate, Halt, Delete, WipeOut.
 ##
@@ -9,6 +9,15 @@ terminationPolicy: WipeOut
 ## Annotation configurations
 commonAnnotations:
   resource.kubeblocks.io/ignore-constraint: "true"
+
+image:
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+
+## @param mode pulsar cluster topology mode: pulsar-basic-cluster and pulsar-enhanced-cluster
+## pulsar-basic-cluster: contains broker, zookeeper and bookkeeper
+## pulsar-enhanced-cluster: contains broker, zookeeper, bookkeeper, proxy and bkrecovery
+## If you want to use any other topologies, such as adding only a proxy to the pulsar-basic-cluster, this parameter needs to be set to "".
+mode: pulsar-enhanced-cluster
 
 ## Monitoring configurations
 monitor:
@@ -66,10 +75,10 @@ bookies:
     enabled: true
     data:
       storageClassName:
-      size: 20Gi
+      size: 8Gi
     log:
       storageClassName:
-      size: 20Gi
+      size: 8Gi
 
 ## Bookies-recovery configuration
 bookiesRecovery:
@@ -93,7 +102,7 @@ bookiesRecovery:
 zookeeper:
   ## @param zookeeper.replicaCount Number of Zookeeper replicas
   ##
-  replicaCount: 3
+  replicaCount: 1
 
   ## Zookeeper workload pod resource requests and limits
   ## ref: http://kubernetes.io/docs/user-guide/compute-resources/
@@ -113,10 +122,10 @@ zookeeper:
     enabled: true
     data:
       storageClassName:
-      size: 20Gi
+      size: 8Gi
     log:
       storageClassName:
-      size: 20Gi
+      size: 8Gi
 
   ## @param keeper.tolerations Tolerations for *Keeper pods assignment
   ## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
@@ -125,7 +134,7 @@ zookeeper:
 
 broker:
   ## @param broker.replicaCount Number of Broker replicas
-  replicaCount: 3
+  replicaCount: 1
 
   resources:
     # We usually recommend not to specify default resources and to leave this as a conscious
@@ -183,7 +192,16 @@ serviceReference:
     namespace: ""
     ## if zookeeper service is provided by another KubeBlocks Cluster，please specify cluster name which is referenced.
     ## Please do not specify both cluster and serviceDescriptor at the same time.
-    cluster: ""
+    clusterServiceSelector:
+      cluster:
+      service:
+        component:
+        service:
+        port:
+      credential:
+        component:
+        name:
+
     ## if zookeeper service is provided by external source, please create the ServiceDescriptor Object of zookeeper in target namespace firstly, then specify the serviceDescriptor name here.
     ## Please do not specify both cluster and serviceDescriptor at the same time.
     serviceDescriptor: ""

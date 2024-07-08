@@ -54,7 +54,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Create full image name
 */}}
 {{- define "pulsar.imageFullName" -}}
-{{- printf "%s/%s:%s" ( .image.registry | default .root.Values.image.registry ) ( .image.repository | default .root.Values.image.repository ) ( .image.tag | default .root.Values.image.tag | default .root.Chart.AppVersion ) -}}
+{{- printf "%s/%s:%s" ( .image.registry | default .root.Values.image.registry ) (  .image.repository | default .root.Values.image.repository ) ( .image.tag | default .root.Values.image.tag | default .root.Chart.AppVersion ) -}}
 {{- end -}}
 
 {{/*
@@ -72,4 +72,13 @@ Generate scripts configmap
 {{ $path | base }}: |-
 {{- $.Files.Get $path | nindent 2 }}
 {{- end }}
+{{- end }}
+
+{{/*
+Generate major version of cluster
+*/}}
+{{- define "pulsar.major.version" -}}
+{{- $version := default .Chart.AppVersion .Values.clusterVersionOverride -}}
+{{- $majorVersion := (split "." $version)._0 -}}
+{{- printf "%s" ($majorVersion)}}
 {{- end }}
