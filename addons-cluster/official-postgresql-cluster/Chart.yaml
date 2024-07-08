@@ -1,7 +1,7 @@
 apiVersion: v2
 name: official-postgresql-cluster
 type: application
-version: 0.8.0
+version: 0.9.0
 description: A Official PostgreSQL cluster definition Helm chart for Kubernetes
 
 dependencies:
