@@ -14,15 +14,26 @@ spec:
       replicas: {{ .Values.replicas }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{ if .Values.cpuMode }}
-      serviceVersion: 0.11.1-cpu
+      serviceVersion: 0.11.0-cpu
       {{ else }}
-      serviceVersion: 0.11.1
+      serviceVersion: 0.11.0
+      instances:
+        - name: xinference
+          volumeMounts:
+            - name: shm-size
+              mountPath: /dev/shm
+          volumes:
+            - name: shm-size
+              emptyDir:
+                medium: Memory
+                sizeLimit: {{ .Values.shmSize }}
       resources:
         limits:
           nvidia.com/gpu: {{ .Values.gpu }}
+          cpu: {{ .Values.cpu | quote }}
+          memory: {{ print .Values.memory "Gi" | quote }}
         requests:
           nvidia.com/gpu: {{ .Values.gpu }}
-      {{- include "kblib.componentResources" . | indent 6 }}
-      {{- include "kblib.componentStorages" . | indent 6 }}
-      {{- include "kblib.componentServices" . | indent 6 }}
+          cpu: {{ .Values.cpu | quote }}
+          memory: {{ print .Values.memory "Gi" | quote }}
 {{ end }}
