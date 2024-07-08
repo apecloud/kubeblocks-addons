@@ -1,0 +1,17 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: kafka-controller
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "kafka-controller.componentDefName" . }}
+      releases:
+        - 3.3.2-debian-11-r54
+  releases:
+    - name: 3.3.2-debian-11-r54
+      changes:
+      serviceVersion: 3.3.2
+      images:
+        kafka: {{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
+        jmx-exporter:  {{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
