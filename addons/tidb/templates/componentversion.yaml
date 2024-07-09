@@ -68,4 +68,5 @@ spec:
     - compDefs:
         - "tikv-7"
       releases:
+        - "7.1.5"
         - "7.5.2"

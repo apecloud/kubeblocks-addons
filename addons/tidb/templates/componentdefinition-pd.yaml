@@ -8,7 +8,6 @@ spec:
   provider: kubeblocks
   description: tidb's metadata server
   updateStrategy: BestEffortParallel
-  serviceVersion: "7.1.5" # TODO: is this needed? test it
   vars:
     - name: DOMAIN
       value: "$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}"

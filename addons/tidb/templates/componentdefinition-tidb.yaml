@@ -8,7 +8,6 @@ spec:
   provider: kubeblocks
   description: tidb's SQL layer
   serviceKind: MySQL
-  serviceVersion: "7.1.5"
   updateStrategy: BestEffortParallel
   runtime:
     containers:

@@ -8,7 +8,6 @@ spec:
   provider: kubeblocks
   description: a distributed transactional key-value database
   updateStrategy: BestEffortParallel
-  serviceVersion: "7.1.5" # TODO: is this needed?
   vars:
     - name: PD_HOST
       valueFrom:
