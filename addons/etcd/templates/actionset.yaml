@@ -1,0 +1,28 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: {{ include "etcd.backupActionSetName" .}}
+  labels:
+    {{- include "etcd.labels" . | nindent 4 }}
+spec:
+  backupType: Full
+  backup:
+    backupData:
+      image: {{ include "etcd.image" . }}
+      syncProgress:
+        enabled: false
+        intervalSeconds: 5
+      command:
+      - bash
+      - -c
+      - |
+        {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
+  restore:
+    postReady:
+    - job:
+        image: {{ include "etcd.image" . }}
+        command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/restore.sh" | nindent 12 }}

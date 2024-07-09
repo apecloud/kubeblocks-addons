@@ -1,0 +1,21 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: etcd-backup-policy-template
+  labels:
+    {{- include "etcd.labels" . | nindent 4 }}
+    clusterdefinition.kubeblocks.io/name: etcd
+spec:
+  clusterDefinitionRef: etcd
+  backupPolicies:
+    - componentDefs:
+      - etcd-{{ .Chart.Version }}
+      backupMethods:
+        - name: {{ include "etcd.backupActionSetName" .}}
+          snapshotVolumes: false
+          actionSetName: {{ include "etcd.backupActionSetName" .}}
+      schedules:
+        - backupMethod: {{ include "etcd.backupActionSetName" .}}
+          enabled: true
+          cronExpression: "0 18 * * 0"
+          retentionPeriod: 7d

@@ -1,11 +1,21 @@
 # https://github.com/etcd-io/etcd/blob/main/etcd.conf.yml.sample
 # using this config file will ignore ALL command-line flag and environment variables.
 
+{{- $peerProtocol := "http" -}}
+{{- if $.component.tlsConfig -}}
+  {{- $peerProtocol = "https" -}}
+{{- end -}}
+
+{{- $clientProtocol := "http" -}}
+{{- if $.component.tlsConfig -}}
+  {{- $clientProtocol = "https" -}}
+{{- end -}}
+
 # Human-readable name for this member.
 name: 'default'
 
 # Path to the data directory.
-data-dir: /var/run/etcd/default.etcd
+data-dir: {{ .DATA_DIR }}
 
 # Path to the dedicated wal directory.
 wal-dir:
@@ -24,10 +34,10 @@ election-timeout: 1000
 quota-backend-bytes: 0
 
 # List of comma separated URLs to listen on for peer traffic.
-listen-peer-urls: http://0.0.0.0:2380
+listen-peer-urls: {{$peerProtocol}}://0.0.0.0:2380
 
 # List of comma separated URLs to listen on for client traffic.
-listen-client-urls: http://0.0.0.0:2379
+listen-client-urls: {{$clientProtocol}}://0.0.0.0:2379
 
 # Maximum number of snapshot files to retain (0 is unlimited).
 max-snapshots: 5
@@ -40,11 +50,11 @@ cors:
 
 # List of this member's peer URLs to advertise to the rest of the cluster.
 # The URLs needed to be a comma-separated list.
-initial-advertise-peer-urls: http://0.0.0.0:2380
+initial-advertise-peer-urls: {{$peerProtocol}}://0.0.0.0:2380
 
 # List of this member's client URLs to advertise to the public.
 # The URLs needed to be a comma-separated list.
-advertise-client-urls: http://0.0.0.0:2379
+advertise-client-urls: {{$clientProtocol}}://0.0.0.0:2379
 
 # Discovery URL used to bootstrap the cluster.
 discovery:
@@ -59,11 +69,15 @@ discovery-proxy:
 discovery-srv:
 
 {{ define "INIT_PEERS" }}
+  {{- $peerProtocol := "http" -}}
+  {{- if $.component.tlsConfig -}}
+    {{- $peerProtocol = "https" -}}
+  {{- end -}}
   {{- $POD_NAME := splitList "," .POD_NAME_LIST }}
   {{- $PEERS := splitList "," .PEERS }}
   {{- range $idx, $host := $PEERS }}
     {{- if $idx }},{{ end }}
-    {{- printf "%s=http://%s:2380" (index $POD_NAME $idx) $host }}
+    {{- printf "%s=%s://%s:2380" (index $POD_NAME $idx) $peerProtocol $host }}
   {{- end }}
 {{- end -}}
 

@@ -47,18 +47,37 @@ app.kubernetes.io/name: {{ include "etcd.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
+{{/*
+Define config template name
+*/}}
 {{- define "etcd.configTplName" -}}
 etcd-config-template
 {{- end }}
 
+{{/*
+Define config constriant name
+*/}}
 {{- define "etcd.configConstraintName" -}}
 etcd-config-constraints
 {{- end }}
 
+{{/*
+Define configmap name
+*/}}
 {{- define "etcd.cmScriptsName" -}}
 etcd-scripts
 {{- end }}
 
+{{/*
+Define default image
+*/}}
 {{- define "etcd.image" -}}
-{{ .Values.image.repository }}:v3.5.6
+{{ .Values.image.repository }}:{{ .Values.image.tag }}
 {{- end }}
+
+{{/*
+Define etcdctl backup actionSet name
+*/}}
+{{- define "etcd.backupActionSetName" -}}
+etcdctl-backup
+{{- end -}}

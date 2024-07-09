@@ -19,7 +19,7 @@ spec:
             name: peer
         volumeMounts:
           - name: data
-            mountPath: /var/run/etcd
+            mountPath: {{ .Values.dataMountPath }}
           - name: config
             mountPath: /etc/etcd
           # configMap mount is RO, create a RW emptyDir mount tmp-config https://github.com/kubernetes/kubernetes/issues/62099
@@ -30,9 +30,14 @@ spec:
           - -c
           - |
             {{- .Files.Get "scripts/start.sh" | nindent 12 }}
+    volumes:
+    - name: tmp-config
+      emptyDir: {}
   vars:
     - name: CLUSTER_DOMAIN
       value: {{ .Values.clusterDomain }}
+    - name: DATA_DIR
+      value: {{ .Values.dataDir }}
     - name: CLUSTER_NAME
       value: "$(KB_CLUSTER_COMP_NAME)"
     - name: PEERS
@@ -48,8 +53,6 @@ spec:
   volumes:
     - name: data
       needSnapshot: true
-    - name: tmp-config
-      emptyDir: {}
   services:
     - name: peer
       spec:
