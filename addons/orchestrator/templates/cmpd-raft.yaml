@@ -6,16 +6,44 @@ metadata:
       {{- include "orchestrator.labels" . | nindent 4 }}
 spec:
   {{- include "orchestrator.cmpd.spec.common" . | nindent 2 }}
+  roles:
+    - name: primary
+      serviceable: true
+      writable: true
+      votable: true
+    - name: secondary
+      serviceable: true
+      writable: false
+      votable: true
+
+  lifecycleActions:
+    roleProbe:
+      builtinHandler: custom
+      customHandler:
+        exec:
+          command:
+            - /bin/bash
+            - -c
+            - |
+              role=$(curl -s http://127.0.0.1:3000/api/leader-check)
+              if [[ $role == "\"OK\"" ]]; then
+                echo -n "primary"
+              elif [[ $role == "\"Not leader\"" ]]; then
+                echo -n "secondary"
+              else
+                echo -n ""
+              fi
+
   services:
     - name: default
+      roleSelector: primary
       spec:
         ports:
           - name: http
             port: 80
             targetPort: http
+
   runtime:
-    volumes:
-    - name: data
     containers:
       - name: orchestrator
         {{- include "orchestrator.cmpd.spec.runtime.common" . | nindent 8 }}

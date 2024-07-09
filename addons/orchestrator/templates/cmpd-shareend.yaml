@@ -42,8 +42,6 @@ spec:
           password: Required
 
   runtime:
-    volumes:
-    - name: data
     initContainers:
       - name: init-meta-database
         command:
