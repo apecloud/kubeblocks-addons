@@ -17,6 +17,10 @@ ARGS="--name=$HOSTNAME \
     --advertise-client-urls=http://$MY_PEER:2379 \
     --config=/etc/pd/pd.toml"
 
+# The /join detection is from tidb-operator's script.
+# Normally when a pod restarts, pd reads cluster info from its persistent storage,
+# and does not need --join args. So I suppose this is for the circumstance that
+# a pod fails when during the cluster joining process.
 if [[ -f $DATA_DIR/join ]]; then
     echo "restarted pod, join cluster"
     join=$(cat $DATA_DIR/join | tr "," "\n" | awk -F'=' '{print $2}' | tr "\n" ",")
