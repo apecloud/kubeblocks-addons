@@ -9,11 +9,11 @@ spec:
   clusterDefinitionRef: qdrant # ref clusterdefinition.name
   terminationPolicy:  {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
-  serviceAccountName: {{ include "kblib.serviceAccountName" . }}
   componentSpecs:
-    - name: qdrant # user-defined
-      componentDefRef: qdrant # ref clusterdefinition components.name
-      componentDef: qdrant # ref componentdefinition
+    - name: qdrant
+      componentDefRef: qdrant
+      componentDef: qdrant
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.replicas | default 1 }}
       {{- include "kblib.componentResources" . | indent 6 }}
