@@ -42,7 +42,7 @@ wal-g backup-fetch ${DATA_DIR} ${backupName}
 
 # 3. config restore script
 touch ${DATA_DIR}/recovery.signal;
-mkdir -p ${RESTORE_SCRIPT_DIR};
+mkdir -p ${RESTORE_SCRIPT_DIR} && chmod 777 -R ${RESTORE_SCRIPT_DIR};
 echo "#!/bin/bash" > ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
 echo "[[ -d '${DATA_DIR}.old' ]] && mv -f ${DATA_DIR}.old/* ${DATA_DIR}/;" >> ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
 echo "sync;" >> ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
@@ -53,8 +53,8 @@ config_wal_g_for_fetch_wal_log "${backupRepoPath}"
 
 # 5. config restore command
 mkdir -p ${CONF_DIR} && chmod 777 -R ${CONF_DIR};
-PG_DATA=/home/postgres/pgdata
-echo "restore_command='envdir ${PG_DATA}/wal-g/restore-env ${PG_DATA}/wal-g/wal-g wal-fetch %f %p >> ${PG_DATA}/kb_restore/wal-g.log 2>&1'" > ${CONF_DIR}/recovery.conf;
+WALG_DIR=/home/postgres/pgdata/wal-g
+echo "restore_command='envdir ${WALG_DIR}/restore-env ${WALG_DIR}/wal-g wal-fetch %f %p >> ${RESTORE_SCRIPT_DIR}/wal-g.log 2>&1'" > ${CONF_DIR}/recovery.conf;
 if [[ ! -z ${DP_RESTORE_TIME} ]]; then
    echo "recovery_target_time='${DP_RESTORE_TIME}'" >> ${CONF_DIR}/recovery.conf;
    echo "recovery_target_action='promote'" >> ${CONF_DIR}/recovery.conf;
