@@ -83,10 +83,6 @@ spec:
               echo $KB_LEAVE_MEMBER_POD_NAME
               echo $ADDRESS
               /pd-ctl -u $ADDRESS member delete name $KB_LEAVE_MEMBER_POD_NAME
-  # TODO
-  # systemAccounts:
-  #   - name: root
-  #     initAccount: true
   exporter:
     containerName: pd
     scrapePort: "2379"

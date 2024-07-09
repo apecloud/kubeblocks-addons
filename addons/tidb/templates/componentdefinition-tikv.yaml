@@ -67,7 +67,6 @@ spec:
       constraintRef: {{ include "tidb.tikv.configConstraintName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: config
-      defaultMode: 0444
   lifecycleActions:
     memberLeave:
       customHandler:
