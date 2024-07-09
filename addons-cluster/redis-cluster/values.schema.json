@@ -17,7 +17,6 @@
         "standalone",
         "replication",
         "cluster",
-        "sentinel",
         "replication-twemproxy"
       ]
     },

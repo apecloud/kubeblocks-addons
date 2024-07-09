@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: pulsar-bookkeeper
+  name: pulsar-bookkeeper-{{include "pulsar.major.version" .}}
   labels:
       {{- include "pulsar.labels" . | nindent 4 }}
 spec:
@@ -14,6 +14,7 @@ spec:
       serviceRefDeclarationSpecs:
         - serviceKind: zookeeper
           serviceVersion: ^3.8.\d{1,2}$
+      optional: true
   updateStrategy: BestEffortParallel
   configs:
     - name: bookies-env
@@ -27,10 +28,10 @@ spec:
         - init-bookies
         - bookies
     - name: bookies-config
-      templateRef: {{ include "pulsar.name" . }}3-bookies-config-tpl
+      templateRef: {{ include "pulsar.name" . }}{{include "pulsar.major.version" .}}-bookies-config-tpl
       namespace: {{ .Release.Namespace }}
       volumeName: pulsar-bookies-config
-      constraintRef: pulsar3-bookies-cc
+      constraintRef: pulsar{{include "pulsar.major.version" .}}-bookies-cc
   scripts:
     - name: pulsar-scripts
       templateRef: {{ include "pulsar.name" . }}-scripts

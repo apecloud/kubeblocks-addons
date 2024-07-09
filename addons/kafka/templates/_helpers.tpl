@@ -49,3 +49,48 @@ Selector labels
 app.kubernetes.io/name: {{ include "kafka.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+
+
+{{/*
+Define kafka.combine component defintion name
+*/}}
+{{- define "kafka-combine.componentDefName" -}}
+{{- if eq (len .Values.clusterVersionOverride) 0 -}}
+kafka-combine
+{{- else -}}
+{{- printf "kafka-combine-%s" .Values.clusterVersionOverride -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define kafka-exporter component defintion name
+*/}}
+{{- define "kafka-exporter.componentDefName" -}}
+{{- if eq (len .Values.clusterVersionOverride) 0 -}}
+kafka-exporter
+{{- else -}}
+{{- printf "kafka-exporter-%s" .Values.clusterVersionOverride -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define kafka-controller component defintion name
+*/}}
+{{- define "kafka-controller.componentDefName" -}}
+{{- if eq (len .Values.clusterVersionOverride) 0 -}}
+kafka-controller
+{{- else -}}
+{{- printf "kafka-controller-%s" .Values.clusterVersionOverride -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define kafka-broker component defintion name
+*/}}
+{{- define "kafka-broker.componentDefName" -}}
+{{- if eq (len .Values.clusterVersionOverride) 0 -}}
+kafka-broker
+{{- else -}}
+{{- printf "kafka-broker-%s" .Values.clusterVersionOverride -}}
+{{- end -}}
+{{- end -}}

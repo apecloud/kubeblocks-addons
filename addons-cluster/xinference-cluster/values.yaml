@@ -8,14 +8,16 @@ replicas: 1
 
 ## @param cpu
 ##
-cpu: 2
+cpu: 0
 
 ## @param memory, the unit is Gi
 ##
-memory: 6
+memory: 0
 
 ## @param gpu
 ##
 gpu: 1
 
 cpuMode: false
+
+shmSize: 64Mi

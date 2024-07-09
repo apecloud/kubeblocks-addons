@@ -39,6 +39,11 @@ set -e
 writeSentinelInBaseBackupPath "${backup_base_path}" "wal-g-backup-repo.path"
 PGHOST=${DP_DB_HOST} PGUSER=${DP_DB_USER} PGPORT=5432 wal-g backup-push ${DATA_DIR} 2>&1 | tee result.txt
 
+set +e
+echo "switch wal log"
+PSQL="psql -h ${KB_CLUSTER_NAME}-${KB_COMP_NAME} -U ${DP_DB_USER} -d postgres"
+${PSQL} -c "select pg_switch_wal();"
+
 # 2. get backup name of the wal-g
 backupName=$(get_backup_name)
 if [[ -z ${backupName} ]] || [[ ${backupName} != "base_"* ]];then
