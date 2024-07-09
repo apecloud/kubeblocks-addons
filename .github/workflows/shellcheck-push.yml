@@ -1,0 +1,63 @@
+name: Shell Check
+
+on:
+  push:
+#    paths:
+#      - '**.sh'
+    branches:
+      - '*'
+      - '*/*'
+    tags-ignore:
+      - '*'
+
+env:
+  BASE_BRANCH: origin/main
+
+jobs:
+  shell-check:
+    runs-on: ubuntu-latest
+    needs: [ base-commitid ]
+    steps:
+      - name: Cancel Previous Runs
+        if: github.ref_name != 'main'
+        uses: styfle/cancel-workflow-action@0.11.0
+        with:
+          all_but_latest: true
+          access_token: ${{ github.token }}
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get base commit id
+        id: get_base_commit_id
+        env:
+          REF_NAME: ${{ github.base_ref }}
+        run: |
+          BASE_COMMITID=`bash .github/utils/utils.sh --type 1 \
+              --branch-name "${{ env.REF_NAME }}" \
+              --base-branch "${{ env.BASE_BRANCH }}"`
+
+          echo "BASE_COMMITID:$BASE_COMMITID"
+          echo BASE_COMMITID=$BASE_COMMITID >> $GITHUB_ENV
+
+      - name: Get file path
+        id: get_file_path
+        run: |
+          FILE_PATH=`git diff --name-only HEAD ${{ env.BASE_COMMITID }}`
+          echo "FILE_PATH: $FILE_PATH"
+          SHELL_FILE_PATH=""
+          for filePath in $(echo "$FILE_PATH"); do
+              if [[ "${filePath}" == *".sh" ]]; then
+                  SHELL_FILE_PATH="${SHELL_FILE_PATH} ${filePath}"
+              fi
+          done
+          echo shell_file_path=$SHELL_FILE_PATH >> $GITHUB_OUTPUT
+
+      - name: Check scripts with Shellcheck
+        uses: essentialkaos/shellcheck-action@v1
+        if: ${{ steps.get_file_path.outputs.shell_file_path }}
+        with:
+          files: ${{ steps.get_file_path.outputs.shell_file_path }}
+          severity: error
+          format: tty
