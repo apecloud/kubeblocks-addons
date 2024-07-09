@@ -4,7 +4,7 @@ ORC_META_USER=${ORC_META_USER:-"orchestrator"}
 
 meta_mysql_user="${META_MYSQL_USER}"
 meta_mysql_password="${META_MYSQL_PASSWORD}"
-meta_mysql_host=${META_MYSQL_ENDPOINT}
+meta_mysql_host=${META_MYSQL_ENDPOINT%%:*}
 meta_mysql_port=${META_MYSQL_PORT}
 
 meta_user="$ORC_META_USER"
