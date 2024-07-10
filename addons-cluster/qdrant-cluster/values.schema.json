@@ -23,7 +23,7 @@
         "number",
         "string"
       ],
-      "default": 0.5,
+      "default": 1,
       "minimum": 0.5,
       "maximum": 64,
       "multipleOf": 0.5
