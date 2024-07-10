@@ -1,12 +1,11 @@
 #!/bin/sh
 set -ex
 
-# Function to convert comma-separated string to array
 convert_to_array() {
   var="$1"
   oldIFS="$IFS"
   IFS=','
-  set -- "$var"
+  set -- $var
   IFS="$oldIFS"
   echo "$@"
 }
@@ -23,6 +22,7 @@ build_redis_twemproxy_conf() {
   # The format of REDIS_SERVICE_PORTS is "redis0:6379,redis1:6379"
   service_names_array=$(convert_to_array "$REDIS_SERVICE_NAMES")
   service_ports_array=$(convert_to_array "$REDIS_SERVICE_PORTS")
+  echo "service_names_array: $service_names_array, service_ports_array: $service_ports_array"
 
   # Initialize servers variable
   servers=""
@@ -31,10 +31,12 @@ build_redis_twemproxy_conf() {
     service_name_key="${service_name_entry%%:*}"
     service_name_value="${service_name_entry#*:}"
 
+    echo "service_name_key: $service_name_key, service_name_value: $service_name_value"
     # Find the corresponding port entry
     for service_port_entry in $service_ports_array; do
       service_port_key="${service_port_entry%%:*}"
       service_port_value="${service_port_entry#*:}"
+      echo "service_port_key: $service_port_key, service_port_value: $service_port_value"
 
       if [ "$service_name_key" = "$service_port_key" ]; then
         # Append to servers string
