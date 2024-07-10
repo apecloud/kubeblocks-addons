@@ -4,14 +4,14 @@
   "properties": {
     "version": {
       "type": "string",
-      "default": "mogdb-5.0.0"
+      "default": "5.0.5"
     },
     "mode": {
       "type": "string",
       "default": "standalone",
       "enum": [
         "standalone",
-	"replication"
+        "replication"
       ]
     },
     "replicas": {
