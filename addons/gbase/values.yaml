@@ -9,6 +9,11 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: latest
 
+gbaseConfigs:
+  dataMountPath: /data
+  service: 
+    port: 5432
+
 ## MySQL Cluster parameters
 cluster:
   ## CLUSTER_ID

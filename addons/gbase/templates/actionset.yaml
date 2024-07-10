@@ -1,0 +1,44 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: gbase-backup
+  labels:
+    clusterdefinition.kubeblocks.io/name: apecloud-mysql
+spec:
+  backupType: Full
+  env:
+    - name: DATA_DIR
+      value: {{ .Values.gbaseConfigs.dataMountPath }}
+    - name: ID_RSA
+      valueFrom:
+        secretKeyRef:
+          name: gbase-ssh-rsa-secret
+          key: id_rsa
+    - name: ID_RSA_PUB
+      valueFrom:
+        secretKeyRef:
+          name: my-ssh-key-secret
+          key: id_rsa.pub
+  backup:
+    preBackup: []
+    postBackup: []
+    backupData:
+      image: {{ include "gbase.bakcupToolImage" . }}
+      runOnTargetPodNode: true
+      command:
+      - /bin/bash
+      - -c
+      - |
+        {{- .Files.Get "dataprotection/gbase_backup.sh" | nindent 8 }}
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+  restore:
+    prepareData:
+      image: {{ include "gbase.bakcupToolImage" . }}
+      command:
+      - /bin/bash
+      - -c
+      - |
+        {{- .Files.Get "dataprotection/gbase_restore.sh" | nindent 8 }}
+    postReady: []

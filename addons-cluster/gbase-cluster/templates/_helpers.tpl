@@ -47,3 +47,16 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 helm.sh/chart: {{ include "gbase-cluster.chart" . }}
 {{- end }}
+
+{{/*
+Define replicas.
+standalone mode: 1
+raftGroup mode: max(replicas, 3)
+*/}}
+{{- define "gbase-cluster.replicas" }}
+{{- if eq .Values.mode "standalone" }}
+{{- 1 }}
+{{- else if eq .Values.mode "raftGroup" }}
+{{- max .Values.gbase.replicas 3 }}
+{{- end }}
+{{- end -}}

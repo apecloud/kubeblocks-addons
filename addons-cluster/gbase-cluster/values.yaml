@@ -2,15 +2,18 @@
 version: latest
 storageClassName: ""
 
+## @param mode MySQL cluster topology mode, standalone, raftGroup
+##
+mode: raftGroup
 
-terminationPolicy: Delete
+sshKeySecret: gbase-ssh-rsa-secret
 
 useLegacyCompDef: false
 
 clusterVersionOverride: "gbase8c-5.0.0"
 
 gbase:
-  replicas: 1
+  replicas: 2
   resources:
     requests:
       cpu: "1000m"

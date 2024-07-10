@@ -1,0 +1,30 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: gbase-backup-policy-template
+  labels:
+    clusterdefinition.kubeblocks.io/name: {{ include "gbase.clusterDefName" . }}
+    {{- include "gbase.labels" . | nindent 4 }}
+  annotations:
+    dataprotection.kubeblocks.io/is-default-policy-template: "true"
+spec:
+  clusterDefinitionRef: {{ include "gbase.clusterDefName" . }}
+  backupPolicies:
+  - componentDefs:
+      - {{ include "gbase.componentDefName" . }}
+    target:
+      role: primary
+      account: kbadmin
+    backupMethods:
+    - name: gs-probackup
+      snapshotVolumes: false
+      actionSetName: gbase-backup
+      targetVolumes:
+        volumeMounts:
+        - name: data
+          mountPath: {{ .Values.gbaseConfigs.dataMountPath }}
+    schedules:
+    - backupMethod: gs-probackup
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d

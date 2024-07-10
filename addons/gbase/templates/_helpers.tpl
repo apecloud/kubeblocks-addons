@@ -81,3 +81,11 @@ Generate config configmap
 {{- $.Files.Get $path | nindent 2 }}
 {{- end }}
 {{- end }}
+
+
+{{/*
+Backup Tool image
+*/}}
+{{- define "gbase.bakcupToolImage" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+{{- end }}
