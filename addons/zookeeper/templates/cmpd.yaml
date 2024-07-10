@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: zookeeper-{{ .Chart.Version }}
+  name: zookeeper
   labels:
     {{- include "zookeeper.labels" . | nindent 4 }}
 spec:
@@ -68,7 +68,6 @@ spec:
               | $GREP Mode`
               mode=$(echo "$STAT" | awk -F': ' '{print $2}' | awk '{RS=""; ORS=""; print}' )
               echo -n ${mode}
-      container: zookeeper
 
   runtime:
     securityContext:
@@ -102,6 +101,8 @@ spec:
         env:
           - name: ZOO_ENABLE_AUTH
             value: "yes"
+          - name: SERVICE_PORT
+            value: {{ .Values.metrics.port | quote }}
         ports:
           - name: client
             containerPort: 2181
