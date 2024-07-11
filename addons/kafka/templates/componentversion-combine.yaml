@@ -13,5 +13,5 @@ spec:
       changes:
       serviceVersion: 3.3.2
       images:
-        kafka: {{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
-        jmx-exporter:  {{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
+        kafka: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
+        jmx-exporter:  {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
