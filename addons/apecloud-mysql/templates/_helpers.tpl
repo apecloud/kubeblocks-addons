@@ -169,21 +169,21 @@ lifecycleActions:
       exec:
         command:
           - /scripts/switchover-without-candidate.sh
-  accountProvision:
-    customHandler:
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
-      exec:
-        command:
-          - mysql
-        args:
-          - -u$(MYSQL_ROOT_USER)
-          - -p$(MYSQL_ROOT_PASSWORD)
-          - -P$(MYSQL_PORT)
-          - -h$(KB_ACCOUNT_ENDPOINT)
-          - -e
-          - $(KB_ACCOUNT_STATEMENT)
-      targetPodSelector: Role
-      matchingKey: leader
+  # accountProvision:
+  #   customHandler:
+  #     image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+  #     exec:
+  #       command:
+  #         - mysql
+  #       args:
+  #         - -u$(MYSQL_ROOT_USER)
+  #         - -p$(MYSQL_ROOT_PASSWORD)
+  #         - -P$(MYSQL_PORT)
+  #         - -h$(KB_ACCOUNT_ENDPOINT)
+  #         - -e
+  #         - $(KB_ACCOUNT_STATEMENT)
+  #     targetPodSelector: Role
+  #     matchingKey: leader
 exporter:
   containerName: mysql-exporter
   scrapePath: /metrics
