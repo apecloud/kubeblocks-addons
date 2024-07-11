@@ -4,9 +4,10 @@
 
 fullnameOverride:
 
-## @param version Qdrant cluster version
+## @param serviceVersion Qdrant service version
 ##
-version: qdrant-1.10.0
+serviceVersion: 1.10.0
+
 
 ## @param replicas specify cluster replicas
 ##
@@ -28,7 +29,3 @@ storage: 20
 extra:
   podAntiAffinity: Required
   terminationPolicy: Delete
-
-
-serviceAccount:
-  name:

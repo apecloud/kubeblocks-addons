@@ -2,19 +2,19 @@
   "$schema": "http://json-schema.org/schema#",
   "type": "object",
   "properties": {
-    "version": {
-      "title": "Version",
-      "description": "Cluster version.",
+    "serviceVersion": {
+      "title": "ServiceVersion",
+      "description": "The version of Qdrant.",
       "type": "string",
-      "default": "qdrant-1.10.0"
+      "default": "1.10.1"
     },
     "replicas": {
       "title": "Replicas",
-      "description": "The number of replicas, for standalone mode, the replicas is 1, for replication mode, the default replicas is 2.",
+      "description": "The number of replicas.",
       "type": "integer",
       "default": 1,
       "minimum": 1,
-      "maximum": 5
+      "maximum": 16
     },
     "cpu": {
       "title": "CPU",
