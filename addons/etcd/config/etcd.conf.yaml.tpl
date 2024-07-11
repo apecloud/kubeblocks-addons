@@ -92,7 +92,7 @@ initial-cluster-token: 'etcd-cluster'
 initial-cluster-state: 'new'
 
 # Reject reconfiguration requests that would cause quorum loss.
-strict-reconfig-check: false
+strict-reconfig-check: true
 
 # Enable runtime profiling data via HTTP server
 enable-pprof: true

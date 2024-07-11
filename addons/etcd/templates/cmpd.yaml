@@ -62,7 +62,8 @@ spec:
             targetPort: peer
       podService: true
       disableAutoProvision: true
-  updateStrategy: BestEffortParallel
+  # reference: https://etcd.io/docs/v3.5/op-guide/runtime-configuration/ single member changes is better
+  updateStrategy: Serial
   roles:
     - name: leader
       serviceable: true
@@ -75,7 +76,7 @@ spec:
   lifecycleActions:
     roleProbe:
       customHandler:
-        image: quay.io/coreos/etcd:v3.5.6
+        image: {{ include "etcd.image" .}}
         exec:
           command:
             - |
@@ -83,6 +84,42 @@ spec:
               IsLeader=$(echo $Status | awk -F ', ' '{print $5}') &&
               IsLearner=$(echo $Status | awk -F ', ' '{print $6}') &&
               if [ "true" = "$IsLeader" ]; then echo -n "leader"; elif [ "true" = "$IsLearner" ]; then echo -n "learner"; else echo -n "follower"; fi
+    memberJoin:
+      customHandler:
+        image: {{ include "etcd.image" .}}
+        exec:
+          command:
+            - bash
+            - -c
+            - |
+              {{- .Files.Get "scripts/etcd-member-join.sh" | nindent 14 }}
+    memberLeave:
+      customHandler:
+        image: {{ include "etcd.image" .}}
+        exec:
+          command:
+            - bash
+            - -c
+            - |
+              {{- .Files.Get "scripts/etcd-member-leave.sh" | nindent 14 }}
+    switchover:
+      withCandidate:
+        image: {{ include "etcd.image" .}}
+        exec:
+          command:
+          - bash
+          - -c
+          - |
+            {{- .Files.Get "scripts/switchover-with-candidate.sh" | nindent 12 }}
+      withoutCandidate:
+        image: {{ include "etcd.image" .}}
+        exec:
+          command:
+          - bash
+          - -c
+          - |
+            {{- .Files.Get "scripts/switchover-without-candidate.sh" | nindent 12 }}
+    reconfigure:
   configs:
     - name: etcd-configuration-tpl
       templateRef: {{ include "etcd.configTplName" .}}
