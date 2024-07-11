@@ -43,7 +43,7 @@ spec:
       fsGroup: 1001
     containers:
     - name: kafka-exporter
-      image: {{ .Values.images.kafkaExporter.repository }}:{{ .Values.images.kafkaExporter.tag }}
+      image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafkaExporter.repository }}:{{ .Values.images.kafkaExporter.tag }}
       imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
       securityContext:
         runAsNonRoot: true
