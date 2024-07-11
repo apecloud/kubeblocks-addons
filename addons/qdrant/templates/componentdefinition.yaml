@@ -8,7 +8,7 @@ spec:
   provider: kubeblocks
   description: High-performance, massive-scale Vector Database for the next generation of AI.
   serviceKind: qdrant
-  serviceVersion: 1.8.4
+  serviceVersion: 1.10.0
   updateStrategy: BestEffortParallel
   services:
   - name: qdrant
