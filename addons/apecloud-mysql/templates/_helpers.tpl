@@ -169,6 +169,7 @@ lifecycleActions:
       exec:
         command:
           - /scripts/switchover-without-candidate.sh
+  {{/*
   accountProvision:
     customHandler:
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
@@ -183,7 +184,8 @@ lifecycleActions:
           - -e
           - $(KB_ACCOUNT_STATEMENT)
       targetPodSelector: Role
-      matchingKey: leader
+      matchingKey: leader 
+   */}}
 exporter:
   containerName: mysql-exporter
   scrapePath: /metrics

@@ -93,6 +93,7 @@ spec:
       builtinHandler: apecloud-postgresql
       periodSeconds: 1
       timeoutSeconds: 1
+    {{/*
     accountProvision:
       customHandler:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
@@ -108,6 +109,7 @@ spec:
             value: $(POSTGRES_USER)
           - name: PGPASSWORD
             value: $(POSTGRES_PASSWORD)
+    */}}
   runtime:
     initContainers:
       - command:
