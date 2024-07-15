@@ -6,7 +6,7 @@ Expand the name of the chart.
 {{- end }}
 
 {{/*
-Define redis component defintion name
+Define redis component definition name
 */}}
 {{- define "redis.componentDefName" -}}
 {{- if eq (len .Values.compDefinitionVersion.redis) 0 -}}
@@ -17,14 +17,14 @@ redis
 {{- end -}}
 
 {{/*
-Define redis component defintion name prefix
+Define redis component definition name prefix
 */}}
 {{- define "redis.componentDefNamePrefix" -}}
 {{- printf "redis-%s" .Values.compDefinitionVersion.redis -}}
 {{- end -}}
 
 {{/*
-Define redis-sentinel component defintion name
+Define redis-sentinel component definition name
 */}}
 {{- define "redis-sentinel.componentDefName" -}}
 {{- if eq (len .Values.compDefinitionVersion.sentinel) 0 -}}
@@ -35,14 +35,14 @@ redis-sentinel
 {{- end -}}
 
 {{/*
-Define redis-sentinel component defintion name prefix
+Define redis-sentinel component definition name prefix
 */}}
 {{- define "redis-sentinel.componentDefNamePrefix" -}}
 {{- printf "redis-sentinel-%s" .Values.compDefinitionVersion.sentinel -}}
 {{- end -}}
 
 {{/*
-Define redis-cluster component defintion name
+Define redis-cluster component definition name
 */}}
 {{- define "redis-cluster.componentDefName" -}}
 {{- if eq (len .Values.compDefinitionVersion.redisCluster) 0 -}}
@@ -53,14 +53,14 @@ redis-cluster
 {{- end -}}
 
 {{/*
-Define redis-cluster component defintion name prefix
+Define redis-cluster component definition name prefix
 */}}
 {{- define "redis-cluster.componentDefNamePrefix" -}}
 {{- printf "redis-cluster-%s" .Values.compDefinitionVersion.redisCluster -}}
 {{- end -}}
 
 {{/*
-Define redis-twemproxy component defintion name
+Define redis-twemproxy component definition name
 */}}
 {{- define "redis-twemproxy.componentDefName" -}}
 {{- if eq (len .Values.compDefinitionVersion.twemproxy) 0 -}}
@@ -71,7 +71,7 @@ redis-twemproxy
 {{- end -}}
 
 {{/*
-Define redis-twemproxy component defintion name prefix
+Define redis-twemproxy component definition name prefix
 */}}
 {{- define "redis-twemproxy.componentDefNamePrefix" -}}
 {{- printf "redis-twemproxy-%s" .Values.compDefinitionVersion.twemproxy -}}

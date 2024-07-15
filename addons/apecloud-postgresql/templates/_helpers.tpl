@@ -43,14 +43,14 @@ Generate scripts configmap
 {{- end }}
 
 {{/*
-Define apecloud-postgresql component defintion name prefix
+Define apecloud-postgresql component definition name prefix
 */}}
 {{- define "apecloud-postgresql.componentDefNamePrefix" -}}
 {{- printf "apecloud-postgresql-" -}}
 {{- end -}}
 
 {{/*
-Define apecloud-postgresql14 component defintion name
+Define apecloud-postgresql14 component definition name
 */}}
 {{- define "apecloud-postgresql.compDefApecloudPostgresql14" -}}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}

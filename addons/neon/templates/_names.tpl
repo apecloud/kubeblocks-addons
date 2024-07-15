@@ -1,6 +1,6 @@
 
 {{/*
-Define neon-compute component defintion name
+Define neon-compute component definition name
 */}}
 {{- define "neon-compute.componentDefName" -}}
 {{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
@@ -11,7 +11,7 @@ neon-compute
 {{- end -}}
 
 {{/*
-Define neon-pageserver component defintion name
+Define neon-pageserver component definition name
 */}}
 {{- define "neon-pageserver.componentDefName" -}}
 {{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
@@ -22,7 +22,7 @@ neon-pageserver
 {{- end -}}
 
 {{/*
-Define neon-safekeeper component defintion name
+Define neon-safekeeper component definition name
 */}}
 {{- define "neon-safekeeper.componentDefName" -}}
 {{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
@@ -33,7 +33,7 @@ neon-safekeeper
 {{- end -}}
 
 {{/*
-Define neon-storagebroker component defintion name
+Define neon-storagebroker component definition name
 */}}
 {{- define "neon-storagebroker.componentDefName" -}}
 {{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
@@ -44,28 +44,28 @@ neon-broker
 {{- end -}}
 
 {{/*
-Define neon-compute component defintion name prefix
+Define neon-compute component definition name prefix
 */}}
 {{- define "neon-compute.componentDefNamePrefix" -}}
 {{- printf "neon-compute-%s" .Values.compDefinitionVersionSuffix -}}
 {{- end -}}
 
 {{/*
-Define neon-pageserver component defintion name prefix
+Define neon-pageserver component definition name prefix
 */}}
 {{- define "neon-pageserver.componentDefNamePrefix" -}}
 {{- printf "neon-pageserver-%s" .Values.compDefinitionVersionSuffix -}}
 {{- end -}}
 
 {{/*
-Define neon-safekeeper component defintion name prefix
+Define neon-safekeeper component definition name prefix
 */}}
 {{- define "neon-safekeeper.componentDefNamePrefix" -}}
 {{- printf "neon-safekeeper-%s" .Values.compDefinitionVersionSuffix -}}
 {{- end -}}
 
 {{/*
-Define neon-storagebroker component defintion name prefix
+Define neon-storagebroker component definition name prefix
 */}}
 {{- define "neon-storagebroker.componentDefNamePrefix" -}}
 {{- printf "neon-broker-%s" .Values.compDefinitionVersionSuffix -}}
