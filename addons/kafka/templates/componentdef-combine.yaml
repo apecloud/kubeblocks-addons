@@ -39,7 +39,7 @@ spec:
     - name: BROKER_NODE_PORT
       valueFrom:
         serviceVarRef:
-          compDef: kafka-combine
+          compDef: kafka-broker
           name: broker-nodeport
           optional: true
           port:

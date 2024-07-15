@@ -14,6 +14,7 @@ spec:
   services:
     - name: broker
       serviceName: broker
+      podService: true 
       spec:
         type: ClusterIP
         ports:
@@ -22,6 +23,7 @@ spec:
             targetPort: kafka-client
     - name: broker-nodeport
       serviceName: broker-nodeport
+      podService: true 
       spec:
         type: NodePort
         ports:
