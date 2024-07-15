@@ -4,9 +4,9 @@
 
 fullnameOverride:
 
-## @param serviceVersion Qdrant service version
+## @param version Qdrant service version
 ##
-serviceVersion: 1.10.0
+version: 1.10.0
 
 
 ## @param replicas specify cluster replicas

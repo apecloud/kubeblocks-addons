@@ -60,3 +60,7 @@ Create the name of the service account to use
 {{- define "qdrant.serviceAccountName" -}}
 {{- default (printf "kb-%s" (include "clustername" .)) .Values.serviceAccount.name }}
 {{- end }}
+
+{{- define "qdrant.version" }}
+{{- trimPrefix "qdrant-" .Values.version }}
+{{- end }}

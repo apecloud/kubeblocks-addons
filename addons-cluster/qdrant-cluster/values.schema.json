@@ -2,11 +2,11 @@
   "$schema": "http://json-schema.org/schema#",
   "type": "object",
   "properties": {
-    "serviceVersion": {
-      "title": "ServiceVersion",
+    "version": {
+      "title": "Version",
       "description": "The version of Qdrant.",
       "type": "string",
-      "default": "1.10.1"
+      "default": "1.10.0"
     },
     "replicas": {
       "title": "Replicas",
