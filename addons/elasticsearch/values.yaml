@@ -25,6 +25,10 @@ image:
     repository: apecloud/curl-jq
     tag: latest
 
+exporter:
+  service:
+    port: 9114
+
 imagePullSecrets: [ ]
 nameOverride: ""
 fullnameOverride: ""
