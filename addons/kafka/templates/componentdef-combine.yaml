@@ -12,10 +12,18 @@ metadata:
   {{- end }}
 spec:
   services:
+    - name: broker
+      serviceName: broker
+      podService: true 
+      spec:
+        type: ClusterIP
+        ports:
+          - name: broker
+            port: 9092
+            targetPort: kafka-client
     - name: broker-nodeport
       serviceName: broker-nodeport
       podService: true 
-      disableAutoProvision: true
       spec:
         type: NodePort
         ports:
