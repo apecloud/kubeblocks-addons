@@ -8,7 +8,6 @@ metadata:
     {{- include "kafka-cluster.brokerAddrFeatureGate" . | nindent 4 }}
 spec:
   clusterDefinitionRef: kafka # ref clusterdefinition.name
-  clusterVersionRef: {{ .Values.version }}
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
   topology: 

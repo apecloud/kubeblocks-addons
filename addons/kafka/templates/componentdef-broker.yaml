@@ -14,7 +14,6 @@ spec:
   services:
     - name: broker
       serviceName: broker
-      generatePodOrdinalService: true
       spec:
         type: ClusterIP
         ports:
@@ -23,7 +22,6 @@ spec:
             targetPort: kafka-client
     - name: broker-nodeport
       serviceName: broker-nodeport
-      generatePodOrdinalService: true
       spec:
         type: NodePort
         ports:
@@ -43,9 +41,8 @@ spec:
         serviceVarRef:
           compDef: kafka-broker
           name: broker-nodeport
-          generatePodOrdinalServiceVar: true
           optional: true
-          nodePort:
+          port:
             name: broker
             option: Optional
   provider: kubeblocks
