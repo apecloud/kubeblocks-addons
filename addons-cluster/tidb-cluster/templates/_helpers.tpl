@@ -36,9 +36,7 @@ Common labels
 {{- define "tidb-cluster.labels" -}}
 helm.sh/chart: {{ include "tidb-cluster.chart" . }}
 {{ include "tidb-cluster.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-{{- end }}
+app.kubernetes.io/version: {{ default .Chart.AppVersion .Values.appVersionOverride | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 

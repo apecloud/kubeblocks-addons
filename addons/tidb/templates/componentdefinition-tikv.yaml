@@ -8,7 +8,6 @@ spec:
   provider: kubeblocks
   description: a distributed transactional key-value database
   updateStrategy: BestEffortParallel
-  serviceVersion: "7.1.5" # TODO: is this needed?
   vars:
     - name: PD_HOST
       valueFrom:
@@ -68,7 +67,6 @@ spec:
       constraintRef: {{ include "tidb.tikv.configConstraintName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: config
-      defaultMode: 0444
   lifecycleActions:
     memberLeave:
       customHandler:
