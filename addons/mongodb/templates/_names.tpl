@@ -83,7 +83,7 @@ Define cluster version with auditlog
 {{- end -}}
 
 {{/*
-Define component defintion name
+Define component definition name
 */}}
 {{- define "mongodb.componentDefName" -}}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}

@@ -62,7 +62,7 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
-Define component defintion name
+Define component definition name
 */}}
 {{- define "vmstroage.componentDefName" -}}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
@@ -73,7 +73,7 @@ vmstorage
 {{- end -}}
 
 {{/*
-Define component defintion name
+Define component definition name
 */}}
 {{- define "vminsert.componentDefName" -}}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
@@ -84,7 +84,7 @@ vminsert
 {{- end -}}
 
 {{/*
-Define component defintion name
+Define component definition name
 */}}
 {{- define "vmselect.componentDefName" -}}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}

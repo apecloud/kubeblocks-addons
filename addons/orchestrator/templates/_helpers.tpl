@@ -63,7 +63,7 @@ Create the name of the service account to use
 
 
 {{/*
-Define mysql component defintion name
+Define mysql component definition name
 */}}
 {{- define "orchestrator.componentDefName" -}}
 {{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}

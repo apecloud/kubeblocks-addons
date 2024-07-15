@@ -6,7 +6,7 @@ Expand the name of the chart.
 {{- end }}
 
 {{/*
-Define redis component defintion name
+Define redis component definition name
 */}}
 {{- define "camellia-redis-proxy.componentDefName" -}}
 {{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
