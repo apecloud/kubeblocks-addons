@@ -5,7 +5,7 @@ metadata:
   namespace: default
   annotations:
     # kafka broker's jvm heap setting
-    "kubeblocks.io/extra-env": '{"KB_KAFKA_ENABLE_SASL":"false","KB_KAFKA_BROKER_HEAP":"-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64","KB_KAFKA_CONTROLLER_HEAP":"-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64","KB_KAFKA_PUBLIC_ACCESS":"false", "KB_KAFKA_BROKER_NODEPORT": "false"}'
+    "kubeblocks.io/extra-env": '{"KB_KAFKA_ENABLE_SASL":"false","KB_KAFKA_BROKER_HEAP":"-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64","KB_KAFKA_CONTROLLER_HEAP":"-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64","KB_KAFKA_PUBLIC_ACCESS":"false"}'
     # Define kafka cluster annotation keys for nodeport feature gate.
     kubeblocks.io/enabled-pod-ordinal-svc: broker
     # enable NodePort
@@ -38,6 +38,11 @@ spec:
     componentDef: kafka-broker
     tls: false
     replicas: 1
+    # The commented out nodeport service below shows the declaration to enable the nodeport feature gate
+    #    services:
+    #      - name: advertised-listener
+    #        podService: true
+    #        serviceType: NodePort
     affinity:
       podAntiAffinity: Preferred
       topologyKeys:
