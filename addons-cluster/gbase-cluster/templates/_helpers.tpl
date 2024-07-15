@@ -50,13 +50,93 @@ helm.sh/chart: {{ include "gbase-cluster.chart" . }}
 
 {{/*
 Define replicas.
-standalone mode: 1
-raftGroup mode: max(replicas, 3)
 */}}
 {{- define "gbase-cluster.replicas" }}
-{{- if eq .Values.mode "standalone" }}
-{{- 1 }}
-{{- else if eq .Values.mode "raftGroup" }}
-{{- max .Values.gbase.replicas 3 }}
-{{- end }}
+{{- .Component.replicas }}
+{{- end -}}
+
+{{- define "gbase-cluster.volumeClaimTemplates" }}
+volumeClaimTemplates:
+  - name: data
+    spec:
+      storageClassName: {{ .Values.storageClassName }}
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: {{ .Component.dataStorage }}
+{{- end -}}
+
+{{- define "gbase-cluster.resources" }}
+resources:
+  limits:
+    cpu: {{ .Component.resources.limits.cpu | quote }}
+    memory: {{ .Component.resources.limits.memory | quote }}
+  requests:
+    cpu: {{ .Component.resources.requests.cpu | quote }}
+    memory: {{ .Component.resources.requests.memory | quote }}
+{{- end -}}
+
+{{/*
+gbase replication mode
+*/}}
+{{- define "gbase-cluster.single.specs" }}
+{{- $component := .Values.replication }}
+- name: gbase-single
+  replicas: {{ include "gbase-cluster.replicas" (dict "Values" .Values "Component" $component) }}
+  {{ include "gbase-cluster.resources" (dict "Values" .Values "Component" $component) | indent 2 }}
+  {{ include "gbase-cluster.volumeClaimTemplates" (dict "Values" .Values "Component" $component) | indent 2 }}
+{{- end -}}
+
+
+{{- define "gbase-cluster.datanode.shard.specs" }}
+{{- $component := .Values.distribution.datanode }}
+- name: datanode-shard
+  shards: {{ .Values.distribution.datanode.shardCount }}
+  template:
+    name: gbase-datanode
+    componentDef: gbase-datanode
+    replicas: {{ include "gbase-cluster.replicas" (dict "Values" .Values "Component" $component) }}
+    {{ include "gbase-cluster.resources" (dict "Values" .Values "Component" $component) | indent 4 }}
+    {{ include "gbase-cluster.volumeClaimTemplates" (dict "Values" .Values "Component" $component) | indent 4 }}
+{{- end -}}
+
+{{- define "gbase-cluster.datanode.specs" }}
+{{- $component := .Values.distribution.datanode }}
+- name: gbase-datanode
+  replicas: {{ include "gbase-cluster.replicas" (dict "Values" .Values "Component" $component) }}
+  {{ include "gbase-cluster.resources" (dict "Values" .Values "Component" $component) | indent 2 }}
+  {{ include "gbase-cluster.volumeClaimTemplates" (dict "Values" .Values "Component" $component) | indent 2 }}
+{{- end -}}
+
+{{- define "gbase-cluster.ghaServer.specs" }}
+{{- $component := .Values.distribution.gha_server }}
+- name: gbase-gha-server
+  replicas: {{ include "gbase-cluster.replicas" (dict "Values" .Values "Component" $component) }}
+  {{ include "gbase-cluster.resources" (dict "Values" .Values "Component" $component) | indent 2 }}
+  {{ include "gbase-cluster.volumeClaimTemplates" (dict "Values" .Values "Component" $component) | indent 2 }}
+{{- end -}}
+
+{{- define "gbase-cluster.dcs.specs" }}
+{{- $component := .Values.distribution.dcs }}
+- name: gbase-dcs
+  replicas: {{ include "gbase-cluster.replicas" (dict "Values" .Values "Component" $component) }}
+  {{ include "gbase-cluster.resources" (dict "Values" .Values "Component" $component) | indent 2 }}
+  {{ include "gbase-cluster.volumeClaimTemplates" (dict "Values" .Values "Component" $component) | indent 2 }}
+{{- end -}}
+
+{{- define "gbase-cluster.gtm.specs" }}
+{{- $component := .Values.distribution.gtm }}
+- name: gbase-gtm
+  replicas: {{ include "gbase-cluster.replicas" (dict "Values" .Values "Component" $component) }}
+  {{ include "gbase-cluster.resources" (dict "Values" .Values "Component" $component) | indent 2 }}
+  {{ include "gbase-cluster.volumeClaimTemplates" (dict "Values" .Values "Component" $component) | indent 2 }}
+{{- end -}}
+
+{{- define "gbase-cluster.coord.specs" }}
+{{- $component := .Values.distribution.coordinator }}
+- name: gbase-gha-coord
+  replicas: {{ include "gbase-cluster.replicas" (dict "Values" .Values "Component" $component) }}
+  {{ include "gbase-cluster.resources" (dict "Values" .Values "Component" $component) | indent 2 }}
+  {{ include "gbase-cluster.volumeClaimTemplates" (dict "Values" .Values "Component" $component) | indent 2 }}
 {{- end -}}

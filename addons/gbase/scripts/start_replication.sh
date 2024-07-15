@@ -22,14 +22,14 @@ handle_error() {
   exit 0
 }
 
-IP_LIST=()
+NAMESPACE=$KB_NAMESPACE
 
-function  check_ssh_port {
+function check_host_ready {
   local ip=$1
-  nc -zv -w5 $ip 22 &> /dev/null
+  ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=5 gbase@$ip exit &> /dev/null
   return $?
 }
-
+ 
 function get_pod_ip_list {
   local SVC_NAME="${KB_CLUSTER_COMP_NAME}-headless.${KB_NAMESPACE}.svc"
   local wait_time=600
@@ -61,12 +61,8 @@ function get_pod_ip_list {
     IP_LIST+=("$replica_ip")
   done
 
-  echo "get_pod_ip_list: ${IP_LIST[*]}"
+  echo "get_pod_ip_list: ${IP_LIST[@]}"
 }
-
-echo "get pod ip list..."
-
-get_pod_ip_list
 
 echo "configure ssh..."
 
@@ -78,17 +74,23 @@ chmod 700 /home/gbase/.ssh
 chmod 600 /home/gbase/.ssh/id_rsa /home/gbase/.ssh/authorized_keys
 
 echo "complete ssh configure"
+CURRENT_POD_NAME=$(hostname)
+if [[ ${CURRENT_POD_NAME: -1} != "0" ]]; then
+  exit 0
+fi
 
-sleep 10
+echo "get pod ip list..."
+
+get_pod_ip_list
 
 echo "wait all pod to ready..."
 all_pods_ready=false
 while [ "$all_pods_ready" = false ]; do
   all_pods_ready=true
   
-  for ip in "${IP_LIST[*]}"; do
+  for ip in "${IP_LIST[@]}"; do
     
-    if check_ssh_port $ip; then
+    if ! check_host_ready $ip; then
       echo "Pod at IP $ip SSH service is ready."
     else
       all_pods_ready=false
@@ -100,47 +102,37 @@ while [ "$all_pods_ready" = false ]; do
   fi
 done
 
+echo ${IP_LIST[@]}
 echo "generating gbase.yaml..."
 
-dcs_ips=$(python3 /scripts/generate_yaml.py "${IP_LIST[@]}")
+dcs_ips=$(python3 /scripts/generate_replica_yaml.py "${IP_LIST[@]}")
 
 echo "YAML file has been generated and saved to /home/gbase/gbase_package/gbase.yaml"
 
 echo "DCS IPs: $dcs_ips"
 
-CURRENT_POD_NAME=$(hostname)
-
 firstStart=false
 
 if ! sudo -u gbase -i command -v gha_ctl &> /dev/null; then
-  if [[ ${CURRENT_POD_NAME: -1} == "0" ]]; then
-    echo "install gha_ctl......"
-    GLOBAL_OUTPUT=$(sudo -i -u gbase /home/gbase/gbase_package/script/gha_ctl install -p /home/gbase/gbase_package -c gbase 2>&1)
-    echo "gha_ctl install node log:"
-    echo "$GLOBAL_OUTPUT"
-  fi
+  echo "install gha_ctl......"
+  GLOBAL_OUTPUT=$(sudo -i -u gbase /home/gbase/gbase_package/script/gha_ctl install -p /home/gbase/gbase_package -c gbase 2>&1)
+  echo "gha_ctl install node log:"
+  echo "$GLOBAL_OUTPUT"
   firstStart=true
 fi
 
-if [[ ${CURRENT_POD_NAME: -1} == "0" ]]; then
-  echo "gha_ctl start......"
-  GLOBAL_OUTPUT=$(sudo -i -u gbase /home/gbase/gbase_package/script/gha_ctl start all -l $dcs_ips 2>&1)
-  echo "gha_ctl start node log:"
-  echo "$GLOBAL_OUTPUT"
-fi
+echo "gha_ctl start......"
+GLOBAL_OUTPUT=$(sudo -i -u gbase /home/gbase/gbase_package/script/gha_ctl start all -l $dcs_ips 2>&1)
+echo "gha_ctl start node log:"
+echo "$GLOBAL_OUTPUT"
 
-if [[ ${firstStart} == true ]]; then
+if  [[ ${firstStart} == true ]]; then
   /home/gbase/gbase_db/app/bin/gs_guc reload -Z coordinator -N all -I all -h "host all all 0.0.0.0/0 sha256"
   /home/gbase/gbase_db/app/bin/gs_guc reload -Z coordinator -N all -I all -c "listen_addresses='*'"
 
   /home/gbase/gbase_db/app/bin/gsql -p ${server_port} -U ${GBASE_USER} -d postgres <<EOF
-ALTER USER ${GBASE_USER} PASSWORD '${GBASE_PASSWORD}';
-CREATE USER ${KBADMIN_USER} WITH SYSADMIN PASSWORD '${KBADMIN_PASSWORD}';
+  ALTER USER gbase PASSWORD '${GBASE_PASSWORD}';
 EOF
-
-  if [ -d /${DATA_DIR}/backup ]; then
-    /home/gbase/gbase_db/app/bin/gsql -p ${server_port} -U ${GBASE_USER} -d postgres -f /home/gbase/backup/backup.sql
-  fi
 fi
 
 echo "Script execution completed."

@@ -1,0 +1,80 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "gbase.componentDefName" . }}-single
+  labels:
+    {{- include "gbase.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks.io
+  description: gabse 8c single node
+  serviceKind: gbase
+  serviceVersion: 5.0.0
+  configs:
+    - name: gbase-config
+      templateRef: {{ include "gbase.cmConfigName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: gbase-config
+      defaultMode: 0444
+  scripts:
+    - name: gbase-scripts
+      templateRef: {{ include "gbase.cmScriptsName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555 
+  systemAccounts:
+    - name: gbase
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 8
+        numSymbols: 0
+        letterCase: MixedCases
+  vars:
+    - name: GBASE_USER
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "gbase.componentDefName" . }}
+          name: gbase
+          optional: false
+          username: Required
+    - name: GBASE_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "gbase.componentDefName" . }}
+          name: gbase
+          optional: false
+          password: Required   
+  updateStrategy: Parallel
+  podManagementPolicy: Parallel
+  runtime:
+    containers:
+      - name: gbase
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command: ["/usr/sbin/init"]
+        ports:
+          - name: gbase-dataport
+            containerPort: {{ .Values.gbaseConfigs.service.port }}
+        lifecycle:
+          postStart:
+            exec:
+              command: ["/scripts/node_setup.sh"]
+        securityContext:
+          privileged: true
+          runAsUser: 0
+        env:
+          - name : server_port
+            value: "{{ .Values.gbaseConfigs.service.port }}"
+        volumeMounts:
+          - mountPath: /config
+            name: gbase-config
+          - mountPath: /data
+            name: data
+          - name: scripts
+            mountPath: /scripts
+          - name: ssh-key
+            mountPath: /ssh-key
+            readOnly: true
+    volumes:
+    - name: ssh-key
+      secret:
+        secretName: gbase-ssh-rsa-secret

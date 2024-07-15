@@ -9,7 +9,13 @@ spec:
   - name: gbase-5.0.0
     serviceVersion: "5.0.0"
     images:
-      gbase: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+      gbase: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.gbase.repository }}:{{ .Values.image.gbase.tag }} 
   compatibilityRules:
   - releases: [gbase-5.0.0]
-    compDefs: [gbase]
+    compDefs: 
+      - {{ include "gbase.componentDefName" . }}-gha-server
+      - {{ include "gbase.componentDefName" . }}-gtm
+      - {{ include "gbase.componentDefName" . }}-dcs
+      - {{ include "gbase.componentDefName" . }}-datanode
+      - {{ include "gbase.componentDefName" . }}-coordinator
+      - {{ include "gbase.componentDefName" . }}-single

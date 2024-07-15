@@ -13,30 +13,6 @@ data = {
         }
     ],
     'dcs': [{'host': ip, 'port': 2379} for ip in kb_pod_list],
-    'gtm': [
-        {
-            'gtm1': {
-                'host': kb_pod_list[0],
-                'agent_host': kb_pod_list[0],
-                'role': 'primary',
-                'port': 6666,
-                'agent_port': 8001,
-                'work_dir': '/data/gtm/gtm1'
-            }
-        }
-    ],
-    'coordinator': [
-        {
-            'cn1': {
-                'host': kb_pod_list[0],
-                'agent_host': kb_pod_list[0],
-                'role': 'primary',
-                'port': 5432,
-                'agent_port': 8003,
-                'work_dir': '/data/coord/cn1'
-            }
-        }
-    ],
     'datanode': []
 }
 
@@ -58,26 +34,10 @@ for i, ip in enumerate(kb_pod_list):
     port += 1
     agent_port += 1
 
-port = 20010
-for i, ip in enumerate(kb_pod_list):
-    dn2.append({
-        f'dn2_{i+1}': {
-            'host': ip,
-            'agent_host': ip,
-            'role': 'primary' if i == 0 else 'standby',
-            'port': port,
-            'agent_port': agent_port,
-            'work_dir': f'/data/dn2/dn2_{i+1}'
-        }
-    })
-    port += 1
-    agent_port += 1
-
 data['datanode'].append({'dn1': dn1})
-data['datanode'].append({'dn2': dn2})
 
 data['env'] = {
-    'cluster_type': 'multiple-nodes',
+    'cluster_type': 'single-inst',
     'pkg_path': '/home/gbase/gbase_package',
     'prefix': '/home/gbase/gbase_db',
     'version': 'V5_S3.0.0B76',

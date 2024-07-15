@@ -4,10 +4,14 @@
 
 image:
   registry: registry.cn-hangzhou.aliyuncs.com
-  repository:  skyrise/gbase8c
-  pullPolicy: IfNotPresent
-  # Overrides the image tag whose default is the chart appVersion.
-  tag: latest
+  gbase:
+    repository:  skyrise/gbase8c
+    pullPolicy: IfNotPresent
+    tag: latest
+  tool:
+    repository:  skyrise/gbase_tools
+    pullPolicy: IfNotPresent
+    tag: latest
 
 gbaseConfigs:
   dataMountPath: /data

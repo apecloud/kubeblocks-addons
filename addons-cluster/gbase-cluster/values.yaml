@@ -2,9 +2,9 @@
 version: latest
 storageClassName: ""
 
-## @param mode MySQL cluster topology mode, standalone, raftGroup
+## @param mode MySQL cluster topology mode, distribution, replication
 ##
-mode: raftGroup
+mode: replication
 
 sshKeySecret: gbase-ssh-rsa-secret
 
@@ -12,13 +12,67 @@ useLegacyCompDef: false
 
 clusterVersionOverride: "gbase8c-5.0.0"
 
-gbase:
-  replicas: 2
+replication:
+  replicas: 2 # single or replication
   resources:
     requests:
-      cpu: "1000m"
-      memory: "4Gi"
+      cpu: "500m"
+      memory: "500Mi"
     limits:
       cpu: "1"
-      memory: "8Gi"
-  dataStorage: "40Gi"
+      memory: "2Gi"
+  dataStorage: "20Gi"
+
+
+distribution:
+  datanode: 
+    shardCount: 3
+    replicas: 3
+    resources:
+      requests:
+        cpu: "1000m"
+        memory: "4Gi"
+      limits:
+        cpu: "1"
+        memory: "8Gi"
+    dataStorage: "10Gi"
+  gtm:
+    replicas: 2
+    resources:
+      requests:
+        cpu: "1000m"
+        memory: "4Gi"
+      limits:
+        cpu: "1"
+        memory: "8Gi"
+    dataStorage: "10Gi"
+  dcs:
+    replicas: 3
+    resources:
+      requests:
+        cpu: "1000m"
+        memory: "4Gi"
+      limits:
+        cpu: "1"
+        memory: "8Gi"
+    dataStorage: "10Gi"
+  gha_server:
+    replicas: 1
+    resources:
+      requests:
+        cpu: "1000m"
+        memory: "4Gi"
+      limits:
+        cpu: "1"
+        memory: "8Gi"
+    dataStorage: "10Gi"
+  coordinator:
+    replicas: 2
+    resources:
+      requests:
+        cpu: "1000m"
+        memory: "4Gi"
+      limits:
+        cpu: "1"
+        memory: "8Gi"
+    dataStorage: "10Gi"

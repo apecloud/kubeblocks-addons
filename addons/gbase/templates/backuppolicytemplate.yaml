@@ -11,7 +11,7 @@ spec:
   clusterDefinitionRef: {{ include "gbase.clusterDefName" . }}
   backupPolicies:
   - componentDefs:
-      - {{ include "gbase.componentDefName" . }}
+      - {{ include "gbase.componentDefName" . }}-single
     target:
       role: primary
       account: kbadmin

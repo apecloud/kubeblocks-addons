@@ -6,8 +6,20 @@ metadata:
     {{- include "gbase.labels" . | nindent 4 }}
 spec:
   topologies:
-  - name: gbase
+  - name: distribution
+    components:
+    - name: gbase-gha-server
+      compDef: {{ include "gbase.componentDefName" . }}-gha-server
+    - name: gbase-dcs
+      compDef: {{ include "gbase.componentDefName" . }}-dcs
+    - name: gbase-datanode
+      compDef: {{ include "gbase.componentDefName" . }}-datanode
+    - name: gbase-gtm
+      compDef: {{ include "gbase.componentDefName" . }}-gtm
+    - name: gbase-gha-coord
+      compDef: {{ include "gbase.componentDefName" . }}-coordinator
+  - name: replication
     default: true
     components:
-    - name: gbase
-      compDef: gbase
+    - name: gbase-single
+      compDef: {{ include "gbase.componentDefName" . }}-single

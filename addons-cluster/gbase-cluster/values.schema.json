@@ -12,10 +12,10 @@
       "title": "Mode",
       "description": "Cluster topology mode.",
       "type": "string",
-      "default": "standalone",
+      "default": "replication",
       "enum": [
-        "standalone",
-        "raftGroup"
+        "distribution",
+        "replication"
       ]
     },
     "replicas": {
