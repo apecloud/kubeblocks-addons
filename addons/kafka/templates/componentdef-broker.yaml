@@ -15,9 +15,8 @@ spec:
     - name: advertised-listener
       serviceName: advertised-listener
       podService: true
-      disableAutoProvision: true
       spec:
-        type: NodePort
+        type: ClusterIP
         ports:
           - name: broker
             port: 9092

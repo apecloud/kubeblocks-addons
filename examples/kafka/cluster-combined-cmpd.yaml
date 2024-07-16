@@ -13,23 +13,6 @@ spec:
   # - `Delete`: Extends the `Halt` policy by also removing PVCs, leading to a thorough cleanup while removing all persistent data.
   # - `WipeOut`: An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss.
   terminationPolicy: Delete
-  # Defines the list of services that are exposed by a Cluster. This field allows selected components, either from `componentSpecs` or `shardingSpecs`, to be exposed as cluster-level services. Services defined here can be referenced by other clusters using the ServiceRefClusterSelector.
-  services:
-    # Defines the list of services that are exposed by a Cluster. This field allows selected components, either from `componentSpecs` or `shardingSpecs`, to be exposed as cluster-level services. Services defined here can be referenced by other clusters using the ServiceRefClusterSelector.
-  - name: bootstrap
-    # Defines the list of services that are exposed by a Cluster. This field allows selected components, either from `componentSpecs` or `shardingSpecs`, to be exposed as cluster-level services. Services defined here can be referenced by other clusters using the ServiceRefClusterSelector.
-    serviceName: bootstrap
-    # Defines the list of services that are exposed by a Cluster. This field allows selected components, either from `componentSpecs` or `shardingSpecs`, to be exposed as cluster-level services. Services defined here can be referenced by other clusters using the ServiceRefClusterSelector.
-    componentSelector: broker
-    # Defines the list of services that are exposed by a Cluster. This field allows selected components, either from `componentSpecs` or `shardingSpecs`, to be exposed as cluster-level services. Services defined here can be referenced by other clusters using the ServiceRefClusterSelector.
-    spec:
-      # - ClusterIP
-      # - NodePort
-      type: ClusterIP
-      ports:
-      - name: kafka-client
-        targetPort: 9092
-        port: 9092
   # Specifies a list of ClusterComponentSpec objects used to define the individual components that make up a Cluster. This field allows for detailed configuration of each component within the Cluster. Note: `shardingSpecs` and `componentSpecs` cannot both be empty; at least one must be defined to configure a cluster. ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
   - name: broker
@@ -37,11 +20,11 @@ spec:
     tls: false
     replicas: 1
     serviceVersion: 3.3.2
-    # Explicitly enable the 'advertised-listener' component service. Once enabled, it supports accessing the Kafka cluster in the network accessible by NodePort
-    #    services:
-    #      - name: advertised-listener
-    #        podService: true
-    #        serviceType: NodePort
+    services:
+# If enable client protocol in NodePort network type
+#      - name: advertised-listener
+#        podService: true
+#        serviceType: NodePort
     affinity:
       podAntiAffinity: Preferred
       topologyKeys:

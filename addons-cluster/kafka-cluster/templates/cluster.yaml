@@ -25,16 +25,6 @@ spec:
     separated
       {{- end }}
     {{- end }}
-  services:
-    - name: bootstrap
-      serviceName: bootstrap
-      componentSelector: broker
-      spec:
-        type: ClusterIP
-        ports:
-          - name: kafka-client
-            targetPort: 9092
-            port: 9092
   componentSpecs:
     {{- if eq "combined" $.Values.mode }}
     - name: kafka-combine
@@ -50,11 +40,13 @@ spec:
       monitor: {{ $.Values.monitorEnable }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       services:
-        {{- if $.Values.nodePortEnabled }}
         - name: advertised-listener
+        {{- if $.Values.nodePortEnabled }}
           serviceType: NodePort
-          podService: true
+        {{- else }}
+          serviceType: ClusterIP
         {{- end }}
+          podService: true
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- if $.Values.storageEnable }}
       volumeClaimTemplates:
@@ -89,11 +81,13 @@ spec:
       monitor: {{ $.Values.monitorEnable }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       services:
-        {{- if $.Values.nodePortEnabled }}
         - name: advertised-listener
+        {{- if $.Values.nodePortEnabled }}
           serviceType: NodePort
-          podService: true
+        {{- else }}
+          serviceType: ClusterIP
         {{- end }}
+          podService: true
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- if $.Values.storageEnable }}
       volumeClaimTemplates:

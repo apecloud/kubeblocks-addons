@@ -165,15 +165,15 @@ if [[ "broker,controller" = "$KAFKA_CFG_PROCESS_ROLES" ]] || [[ "broker" = "$KAF
     headless_domain="${KB_POD_FQDN}${cluster_domain}"
     parse_advertised_svc_if_exist
 
-    if [ -n "$advertised_svc_host_value" ] && [ -n "$advertised_svc_port_value" ]; then
-    # enable NodePort, use node ip + mapped port as client connection
-    nodeport_domain="${advertised_svc_host_value}:${advertised_svc_port_value}"
-    export KAFKA_CFG_ADVERTISED_LISTENERS="INTERNAL://${headless_domain}:9094,CLIENT://${nodeport_domain}"
-    echo "[cfg]KAFKA_CFG_ADVERTISED_LISTENERS=$KAFKA_CFG_ADVERTISED_LISTENERS"
+    if [ -n "$advertised_svc_host_value" ] && [ -n "$advertised_svc_port_value" ] && [ "$advertised_svc_port_value" != "9092" ]; then
+        # enable NodePort, use node ip + mapped port as client connection
+        nodeport_domain="${advertised_svc_host_value}:${advertised_svc_port_value}"
+        export KAFKA_CFG_ADVERTISED_LISTENERS="INTERNAL://${headless_domain}:9094,CLIENT://${nodeport_domain}"
+        echo "[cfg]KAFKA_CFG_ADVERTISED_LISTENERS=$KAFKA_CFG_ADVERTISED_LISTENERS"
     else
-    # default, use headless service url as client connection
-    export KAFKA_CFG_ADVERTISED_LISTENERS="INTERNAL://${headless_domain}:9094,CLIENT://${headless_domain}:9092"
-    echo "[cfg]KAFKA_CFG_ADVERTISED_LISTENERS=$KAFKA_CFG_ADVERTISED_LISTENERS"
+        # default, use headless service url as client connection
+        export KAFKA_CFG_ADVERTISED_LISTENERS="INTERNAL://${headless_domain}:9094,CLIENT://${headless_domain}:9092"
+        echo "[cfg]KAFKA_CFG_ADVERTISED_LISTENERS=$KAFKA_CFG_ADVERTISED_LISTENERS"
     fi
 fi
 
