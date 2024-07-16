@@ -1,5 +1,5 @@
 #!/bin/bash
-set -ex
+set -e
 
 declare -g primary
 declare -g primary_port
@@ -192,7 +192,7 @@ retry_get_master_addr_by_name_from_sentinel() {
   local timeout_value=5
 
   while [ $retry_count -lt $max_retry ]; do
-    echo "execute command: timeout $timeout_value redis-cli -h $sentinel_pod_fqdn -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD sentinel get-master-addr-by-name $KB_CLUSTER_COMP_NAME"
+    echo "execute command: timeout $timeout_value redis-cli -h $sentinel_pod_fqdn -p $SENTINEL_SERVICE_PORT -a ********* sentinel get-master-addr-by-name $KB_CLUSTER_COMP_NAME"
     output=$(timeout "$timeout_value" redis-cli -h "$sentinel_pod_fqdn" -p "$SENTINEL_SERVICE_PORT" -a "$SENTINEL_PASSWORD" sentinel get-master-addr-by-name "$KB_CLUSTER_COMP_NAME")
     exit_code=$?
 
@@ -271,6 +271,7 @@ check_pod_is_primary_in_kernel() {
   while true; do
     check_role=$(eval "$check_kernel_role_cmd")
     if [[ "$check_role" =~ "master" ]]; then
+      echo "the selected primary node is the real master in kernel, primary node: $primary, role: $check_role"
       break
     else
       echo "the selected primary node is not the real master in kernel, existing primary node: $primary, role: $check_role"

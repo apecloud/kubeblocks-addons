@@ -1,5 +1,5 @@
 #!/bin/bash
-set -ex
+set -e
 
 load_redis_template_conf() {
   echo "include /etc/conf/redis.conf" >> /etc/redis/redis.conf
@@ -18,6 +18,7 @@ build_redis_default_accounts() {
     echo "protected-mode no" >> /etc/redis/redis.conf
   fi
   echo "aclfile /data/users.acl" >> /etc/redis/redis.conf
+  echo "build redis default accounts succeeded!"
 }
 
 build_announce_ip_and_port() {
@@ -33,6 +34,7 @@ build_announce_ip_and_port() {
     echo "redis use kb pod fqdn $kb_pod_fqdn to announce"
     echo "replica-announce-ip $kb_pod_fqdn" >> /etc/redis/redis.conf
   fi
+  echo "build announce ip and port succeeded!"
 }
 
 build_cluster_announce_info() {
@@ -55,6 +57,7 @@ build_cluster_announce_info() {
       echo "cluster-preferred-endpoint-type hostname"
     } >> /etc/redis/redis.conf
   fi
+  echo "build cluster announce info succeeded!"
 }
 
 build_redis_cluster_service_port() {
@@ -70,6 +73,7 @@ build_redis_cluster_service_port() {
     echo "port $service_port"
     echo "cluster-port $cluster_bus_port"
   } >> /etc/redis/redis.conf
+  echo "build redis cluster service port succeeded!"
 }
 
 shutdown_redis_server() {
@@ -78,6 +82,7 @@ shutdown_redis_server() {
   else
     redis-cli -h 127.0.0.1 -p "$service_port" shutdown
   fi
+  echo "Shutdown redis server succeeded!"
 }
 
 # usage: retry <command>
@@ -85,12 +90,12 @@ retry() {
   local max_attempts=20
   local attempt=1
   until "$@" || [ $attempt -eq $max_attempts ]; do
-    echo "Command '$*' failed. Attempt $attempt of $max_attempts. Retrying in 5 seconds..."
+    echo "Command execute failed. Attempt $attempt of $max_attempts. Retrying in 5 seconds..."
     attempt=$((attempt + 1))
     sleep 3
   done
   if [ $attempt -eq $max_attempts ]; then
-    echo "Command '$*' failed after $max_attempts attempts. shutdown redis-server..."
+    echo "Command execute failed after $max_attempts attempts. shutdown redis-server..."
     shutdown_redis_server
   fi
 }
@@ -164,6 +169,7 @@ check_and_correct_other_primary_nodes() {
 
   # node_info value format: cluster_announce_ip#pod_fqdn#endpoint:port@bus_port
   for node_info in "${other_comp_primary_nodes[@]}"; do
+    echo "Checking and correcting the node $node_info..."
     original_announce_ip=$(echo "$node_info" | awk -F '#' '{print $1}')
     node_endpoint_with_port=$(echo "$node_info" | awk -F '@' '{print $1}' | awk -F '#' '{print $3}')
     node_endpoint=$(echo "$node_endpoint_with_port" | awk -F ':' '{print $1}')
@@ -185,11 +191,12 @@ check_and_correct_other_primary_nodes() {
       if [ "$original_announce_ip" != "$current_announce_ip" ]; then
         # send cluster meet command to the primary node
         if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+          echo "redis-cli -h $current_primary_endpoint -p $current_primary_port cluster meet $current_announce_ip $node_port $node_bus_port"
           meet_command="redis-cli -h $current_primary_endpoint -p $current_primary_port cluster meet $current_announce_ip $node_port $node_bus_port"
         else
+          echo "redis-cli -h $current_primary_endpoint -p $current_primary_port -a \$REDIS_DEFAULT_PASSWORD cluster meet $current_announce_ip $node_port $node_bus_port"
           meet_command="redis-cli -h $current_primary_endpoint -p $current_primary_port -a $REDIS_DEFAULT_PASSWORD cluster meet $current_announce_ip $node_port $node_bus_port"
         fi
-        echo "Check and correct other primary nodes meet command: $meet_command"
         if ! $meet_command
         then
             echo "Failed to meet the node $node_endpoint_with_port in check_and_correct_other_primary_nodes"
@@ -204,6 +211,7 @@ check_and_correct_other_primary_nodes() {
         break
       fi
     done
+    echo "Checking and correcting the node $node_info finished..."
   done
 }
 
@@ -331,6 +339,7 @@ scale_redis_cluster_replica() {
   primary_node_port=$(echo "$primary_node_endpoint_with_port" | awk -F ':' '{print $2}')
   primary_node_fqdn=$(echo "$primary_node_info" | awk -F '#' '{print $2}')
   primary_node_bus_port=$(echo "$primary_node_info" | awk -F '@' '{print $2}')
+  echo "check node in cluster: primary_node_endpoint: $primary_node_endpoint, primary_node_port: $primary_node_port, current_pod_name: $current_pod_name"
   if is_node_in_cluster "$primary_node_endpoint" "$primary_node_port" "$current_pod_name"; then
     # if current pod is primary node, check the others primary info, if the others primary node info is expired, send cluster meet command again
     current_pod_with_svc="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME"
@@ -341,6 +350,7 @@ scale_redis_cluster_replica() {
     echo "Node $current_pod_name is already in the cluster, skipping scale out replica..."
     exit 0
   fi
+  echo "Pod $current_pod_name is not in the cluster, continue to scale out replica..."
 
   # add the current node as a replica of the primary node
   primary_node_cluster_id=$(get_cluster_id "$primary_node_endpoint" "$primary_node_port")
@@ -352,11 +362,12 @@ scale_redis_cluster_replica() {
   # current_node_with_port do not use advertised svc and port, because advertised svc and port are not ready when Pod is not Ready.
   current_node_with_port="$current_pod_fqdn:$service_port"
   if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+    echo "Scale out replica with command: redis-cli --cluster add-node $current_node_with_port $primary_node_endpoint_with_port --cluster-slave --cluster-master-id $primary_node_cluster_id"
     replicated_command="redis-cli --cluster add-node $current_node_with_port $primary_node_endpoint_with_port --cluster-slave --cluster-master-id $primary_node_cluster_id"
   else
+    echo "Scale out replica with command: redis-cli --cluster add-node $current_node_with_port $primary_node_endpoint_with_port --cluster-slave --cluster-master-id $primary_node_cluster_id -a \$REDIS_DEFAULT_PASSWORD"
     replicated_command="redis-cli --cluster add-node $current_node_with_port $primary_node_endpoint_with_port --cluster-slave --cluster-master-id $primary_node_cluster_id -a $REDIS_DEFAULT_PASSWORD"
   fi
-  echo "Scale out replica replicated command: $replicated_command"
   replicated_output=$($replicated_command)
   replicated_exit_code=$?
   echo "Scale out replica replicated command result: $replicated_output"
@@ -380,11 +391,12 @@ scale_redis_cluster_replica() {
     primary_node_cluster_announce_ip=$(get_cluster_announce_ip "$primary_node_endpoint" "$primary_node_port")
     # send cluster meet command to the primary node
     if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+      echo "Scale out replica meet command: redis-cli cluster meet $primary_node_cluster_announce_ip $primary_node_port $primary_node_bus_port"
       meet_command="redis-cli cluster meet $primary_node_cluster_announce_ip $primary_node_port $primary_node_bus_port"
     else
+      echo "cale out replica meet command: redis-cli -a \$REDIS_DEFAULT_PASSWORD cluster meet $primary_node_cluster_announce_ip $primary_node_port $primary_node_bus_port"
       meet_command="redis-cli -a $REDIS_DEFAULT_PASSWORD cluster meet $primary_node_cluster_announce_ip $primary_node_port $primary_node_bus_port "
     fi
-    echo "Scale out replica meet command: $meet_command"
     if ! $meet_command
     then
         echo "Failed to meet the node $primary_node_endpoint_with_port in scale_redis_cluster_replica, shutdown redis server"

@@ -1,5 +1,5 @@
 #!/bin/sh
-set -ex
+set -e
 
 # Based on the Component Definition API, Redis Sentinel deployed independently
 
@@ -32,9 +32,11 @@ build_redis_sentinel_conf() {
     echo "sentinel announce-hostnames yes"
   } >> /data/sentinel/redis-sentinel.conf
   if [ -n "$SENTINEL_PASSWORD" ]; then
+    echo "build redis sentinel user and password!"
     echo "sentinel sentinel-user $SENTINEL_USER" >> /data/sentinel/redis-sentinel.conf
     echo "sentinel sentinel-pass $SENTINEL_PASSWORD" >> /data/sentinel/redis-sentinel.conf
   fi
+  echo "build redis sentinel conf succeeded!"
 }
 
 start_redis_sentinel_server() {

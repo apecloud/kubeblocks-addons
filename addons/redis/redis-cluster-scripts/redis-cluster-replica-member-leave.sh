@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -ex
+set -e
 
 # remove_replica_from_shard_if_need removes the current pod from the cluster if it is a replica
 # TODO: remove it from preStop hook and it should be implemented in memberLeave lifecycleAction in KubeBlocks
@@ -30,11 +30,12 @@ remove_replica_from_shard_if_need() {
     current_node_cluster_id=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $1}')
     current_node_ip_and_port=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $2}' | cut -d'@' -f1)
     if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+      echo "Remove replica from shard executing command: redis-cli --cluster del-node $current_node_ip_and_port $current_node_cluster_id"
       del_node_command="redis-cli --cluster del-node $current_node_ip_and_port $current_node_cluster_id"
     else
+      echo "Remove replica from shard executing command: redis-cli --cluster del-node $current_node_ip_and_port $current_node_cluster_id -a \$REDIS_DEFAULT_PASSWORD"
       del_node_command="redis-cli --cluster del-node $current_node_ip_and_port $current_node_cluster_id -a $REDIS_DEFAULT_PASSWORD"
     fi
-    echo "Remove replica from shard executing command: $del_node_command"
     for ((i=1; i<=20; i++)); do
       if $del_node_command; then
         echo "Successfully removed replica from shard."

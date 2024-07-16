@@ -1,5 +1,5 @@
 #!/bin/bash
-set -ex
+set -e
 
 # Based on the Component Definition API, Redis deployed independently, this script is used to register Redis to Sentinel.
 # And the script will only be executed once during the initialization of the Redis cluster.
@@ -153,7 +153,7 @@ register_to_sentinel() {
 
   # function to execute and log redis-cli command
   execute_redis_cli() {
-    echo "Executing: redis-cli -h $sentinel_host -p $sentinel_port -a $SENTINEL_PASSWORD $*"
+    echo "Executing: redis-cli -h $sentinel_host -p $sentinel_port -a \$SENTINEL_PASSWORD $*"
     local output
     output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" -a "$SENTINEL_PASSWORD" "$@")
     local status=$?

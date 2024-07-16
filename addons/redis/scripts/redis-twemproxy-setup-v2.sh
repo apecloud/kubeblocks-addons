@@ -1,5 +1,5 @@
 #!/bin/sh
-set -ex
+set -e
 
 convert_to_array() {
   var="$1"
@@ -65,7 +65,7 @@ build_redis_twemproxy_conf() {
     value="${env_var#*=}"
     if [ -n "$value" ]; then
       if [ -n "$last_value" ] && [ "$last_value" != "$value" ]; then
-        echo "Conflicting env:$env_var of redis password values found: $last_value and $value, all the components' password of redis server must be the same."
+        echo "Error: conflicting env $env_var of redis password values found, all the components' password of redis server must be the same."
         exit 1
       fi
       last_value="$value"
