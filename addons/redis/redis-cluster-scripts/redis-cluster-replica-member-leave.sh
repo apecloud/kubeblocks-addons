@@ -39,7 +39,6 @@ remove_replica_from_shard_if_need() {
       echo "Remove replica from shard executing command: redis-cli --cluster del-node $current_node_ip_and_port $current_node_cluster_id -a \$REDIS_DEFAULT_PASSWORD"
       del_node_command="redis-cli --cluster del-node $current_node_ip_and_port $current_node_cluster_id -a $REDIS_DEFAULT_PASSWORD"
     fi
-    set -x
     for ((i=1; i<=20; i++)); do
       if $del_node_command; then
         echo "Successfully removed replica from shard."
@@ -49,6 +48,7 @@ remove_replica_from_shard_if_need() {
         sleep $((RANDOM % 3 + 1))
       fi
     done
+    set -x
 
     if [ "$i" -eq 20 ]; then
       echo "Failed to remove replica from shard after 20 attempts."

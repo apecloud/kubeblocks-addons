@@ -273,7 +273,6 @@ check_pod_is_primary_in_kernel() {
   else
     check_kernel_role_cmd="redis-cli -h $primary -p $primary_port info replication | grep 'role:' | awk -F: '{print \$2}'"
   fi
-  set -x
   retry_times=10
   while true; do
     check_role=$(eval "$check_kernel_role_cmd")
@@ -289,6 +288,7 @@ check_pod_is_primary_in_kernel() {
       exit 1
     fi
   done
+  set -x
 }
 
 start_redis_server() {

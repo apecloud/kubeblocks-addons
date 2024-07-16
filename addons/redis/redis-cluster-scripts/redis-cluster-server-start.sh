@@ -206,7 +206,6 @@ check_and_correct_other_primary_nodes() {
           echo "Check and correct other primary nodes meet command: redis-cli -h $current_primary_endpoint -p $current_primary_port -a \$REDIS_DEFAULT_PASSWORD cluster meet $current_announce_ip $node_port $node_bus_port"
           meet_command="redis-cli -h $current_primary_endpoint -p $current_primary_port -a $REDIS_DEFAULT_PASSWORD cluster meet $current_announce_ip $node_port $node_bus_port"
         fi
-        set -x
         if ! $meet_command
         then
             echo "Failed to meet the node $node_endpoint_with_port in check_and_correct_other_primary_nodes"
@@ -216,6 +215,7 @@ check_and_correct_other_primary_nodes() {
           echo "Meet the node $node_endpoint_with_port successfully with new announce ip $current_announce_ip..."
           break
         fi
+        set -x
       else
         echo "node_info $node_info is correct, skipping..."
         break
@@ -379,9 +379,9 @@ scale_redis_cluster_replica() {
     echo "Scale out replica replicated command: redis-cli --cluster add-node $current_node_with_port $primary_node_endpoint_with_port --cluster-slave --cluster-master-id $primary_node_cluster_id -a \$REDIS_DEFAULT_PASSWORD"
     replicated_command="redis-cli --cluster add-node $current_node_with_port $primary_node_endpoint_with_port --cluster-slave --cluster-master-id $primary_node_cluster_id -a $REDIS_DEFAULT_PASSWORD"
   fi
-  set -x
   replicated_output=$($replicated_command)
   replicated_exit_code=$?
+  set -x
   echo "Scale out replica replicated command result: $replicated_output"
   if [ $replicated_exit_code -ne 0 ]; then
     if [[ $replicated_output == *"is not empty"* ]]; then
@@ -410,13 +410,13 @@ scale_redis_cluster_replica() {
       echo "Scale out replica meet command: redis-cli -a \$REDIS_DEFAULT_PASSWORD cluster meet $primary_node_cluster_announce_ip $primary_node_port $primary_node_bus_port"
       meet_command="redis-cli -a $REDIS_DEFAULT_PASSWORD cluster meet $primary_node_cluster_announce_ip $primary_node_port $primary_node_bus_port "
     fi
-    set -x
     if ! $meet_command
     then
         echo "Failed to meet the node $primary_node_endpoint_with_port in scale_redis_cluster_replica, shutdown redis server"
         shutdown_redis_server
         exit 1
     fi
+    set -x
     sleep 3
   done
   exit 0

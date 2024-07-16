@@ -461,11 +461,11 @@ initialize_redis_cluster() {
     echo "initialize command: redis-cli --cluster create $primary_nodes -a \$REDIS_DEFAULT_PASSWORD --cluster-yes"
     initialize_command="redis-cli --cluster create $primary_nodes -a $REDIS_DEFAULT_PASSWORD --cluster-yes"
   fi
-  set -x
   if ! $initialize_command; then
     echo "Failed to create Redis Cluster"
     exit 1
   fi
+  set -x
 
   # get the first primary node to check the cluster
   first_primary_node=$(echo "$primary_nodes" | awk '{print $1}')
@@ -507,11 +507,11 @@ initialize_redis_cluster() {
       echo "replicated command: redis-cli --cluster add-node $secondary_endpoint_with_port $mapping_primary_endpoint_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id -a \$REDIS_DEFAULT_PASSWORD"
       replicated_command="redis-cli --cluster add-node $secondary_endpoint_with_port $mapping_primary_endpoint_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id -a $REDIS_DEFAULT_PASSWORD"
     fi
-    set -x
     if ! $replicated_command; then
       echo "Failed to add the node $secondary_pod_name to the cluster in initialize_redis_cluster"
       exit 1
     fi
+    set -x
     # waiting for all nodes sync the information
     wait_random_second 5 1
   done
@@ -571,11 +571,11 @@ scale_out_redis_cluster_shard() {
       echo "replicated command: redis-cli --cluster add-node $scale_out_shard_default_other_node $primary_node_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id -a \$REDIS_DEFAULT_PASSWORD"
       replicated_command="redis-cli --cluster add-node $scale_out_shard_default_other_node $primary_node_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id -a $REDIS_DEFAULT_PASSWORD"
     fi
-    set -x
     if ! $replicated_command; then
       echo "Failed to add the node $scale_out_shard_default_other_node to the cluster"
       exit 1
     fi
+    set -x
   done
 
   # do the reshard
@@ -593,12 +593,12 @@ scale_out_redis_cluster_shard() {
       echo "reshard command: redis-cli --cluster reshard $primary_node_with_port --cluster-from all --cluster-to $mapping_primary_cluster_id --cluster-slots $slots_per_shard -a \$REDIS_DEFAULT_PASSWORD --cluster-yes"
       reshard_command="redis-cli --cluster reshard $primary_node_with_port --cluster-from all --cluster-to $mapping_primary_cluster_id --cluster-slots $slots_per_shard -a $REDIS_DEFAULT_PASSWORD --cluster-yes"
   fi
-  set -x
   if ! $reshard_command
   then
       echo "Failed to reshard the cluster"
       exit 1
   fi
+  set -x
 
   # rebalance the cluster
   #  if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
@@ -653,12 +653,12 @@ scale_in_redis_cluster_shard() {
       echo "set current component slot to 0 by rebalance command: redis-cli --cluster rebalance $primary_node --cluster-weight $primary_node_cluster_id=0 --cluster-yes -a \$REDIS_DEFAULT_PASSWORD"
       rebalance_command="redis-cli --cluster rebalance $primary_node --cluster-weight $primary_node_cluster_id=0 --cluster-yes -a $REDIS_DEFAULT_PASSWORD"
     fi
-    set -x
     if ! $rebalance_command
     then
       echo "Failed to rebalance the cluster for the current component when scaling in"
       exit 1
     fi
+    set -x
   done
 
   wait_random_second 10 5
@@ -676,12 +676,12 @@ scale_in_redis_cluster_shard() {
       echo "del-node command: redis-cli --cluster del-node $available_node $node_to_del_cluster_id -p $SERVICE_PORT -a \$REDIS_DEFAULT_PASSWORD"
       del_node_command="redis-cli --cluster del-node $available_node $node_to_del_cluster_id -p $SERVICE_PORT -a $REDIS_DEFAULT_PASSWORD"
     fi
-    set -x
     if ! $del_node_command
     then
       echo "Failed to delete the node $node_to_del from the cluster when scaling in"
       exit 1
     fi
+    set -x
   done
 }
 
