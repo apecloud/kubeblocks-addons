@@ -58,12 +58,12 @@ parse_command_line() {
 }
 
 set_base_commit_id() {
-    if [[ ! -z "$BASE_COMMIT" ]]; then
+    if [[ -n "$BASE_COMMIT" ]]; then
         BASE_COMMIT_ID=$BASE_COMMIT
         return
     fi
-    base_branch_commits="$( git rev-list $BASE_BRANCH -n 100 )"
-    current_branch_commits="$( git rev-list $BRANCH_NAME -n 50 )"
+    base_branch_commits="$( git rev-list "$BASE_BRANCH" -n 100 )"
+    current_branch_commits="$( git rev-list "$BRANCH_NAME" -n 50 )"
     for base_commit_id in $( echo "$base_branch_commits" ); do
         found=false
         for cur_commit_id in $( echo "$current_branch_commits" ); do
