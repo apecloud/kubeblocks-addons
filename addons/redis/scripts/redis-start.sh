@@ -38,6 +38,7 @@ load_redis_template_conf() {
 }
 
 build_redis_default_accounts() {
+  set +x
   if [ -n "$REDIS_REPL_PASSWORD" ]; then
     echo "masteruser $REDIS_REPL_USER" >> /etc/redis/redis.conf
     echo "masterauth $REDIS_REPL_PASSWORD" >> /etc/redis/redis.conf
@@ -52,7 +53,9 @@ build_redis_default_accounts() {
   else
     echo "protected-mode no" >> /etc/redis/redis.conf
   fi
+  set -x
   echo "aclfile /data/users.acl" >> /etc/redis/redis.conf
+  echo "build default accounts succeeded!"
 }
 
 build_announce_ip_and_port() {
@@ -192,8 +195,10 @@ retry_get_master_addr_by_name_from_sentinel() {
   local timeout_value=5
 
   while [ $retry_count -lt $max_retry ]; do
-    echo "execute command: timeout $timeout_value redis-cli -h $sentinel_pod_fqdn -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD sentinel get-master-addr-by-name $KB_CLUSTER_COMP_NAME"
+    set +x
+    echo "execute command: timeout $timeout_value redis-cli -h $sentinel_pod_fqdn -p $SENTINEL_SERVICE_PORT -a ******** sentinel get-master-addr-by-name $KB_CLUSTER_COMP_NAME"
     output=$(timeout "$timeout_value" redis-cli -h "$sentinel_pod_fqdn" -p "$SENTINEL_SERVICE_PORT" -a "$SENTINEL_PASSWORD" sentinel get-master-addr-by-name "$KB_CLUSTER_COMP_NAME")
+    set -x
     exit_code=$?
 
     if [ $exit_code -eq 0 ]; then
@@ -262,6 +267,7 @@ check_pod_is_primary_in_kernel() {
   fi
 
   # check the primary is real master role or not
+  set +x
   if [ -n "$REDIS_DEFAULT_PASSWORD" ]; then
     check_kernel_role_cmd="redis-cli -h $primary -p $primary_port -a $REDIS_DEFAULT_PASSWORD info replication | grep 'role:' | awk -F: '{print \$2}'"
   else
@@ -282,6 +288,7 @@ check_pod_is_primary_in_kernel() {
       exit 1
     fi
   done
+  set -x
 }
 
 start_redis_server() {
