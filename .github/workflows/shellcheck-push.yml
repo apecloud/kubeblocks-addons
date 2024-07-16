@@ -2,8 +2,6 @@ name: Shell Check
 
 on:
   push:
-#    paths:
-#      - '**.sh'
     branches:
       - '*'
       - '*/*'
