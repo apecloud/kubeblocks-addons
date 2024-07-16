@@ -165,6 +165,7 @@ if [[ "broker,controller" = "$KAFKA_CFG_PROCESS_ROLES" ]] || [[ "broker" = "$KAF
     headless_domain="${KB_POD_FQDN}${cluster_domain}"
     parse_advertised_svc_if_exist
 
+    # Todo: currently only nodeport and clusterip network modes are supported. LoadBalance is not supported yet and needs future support.
     if [ -n "$advertised_svc_host_value" ] && [ -n "$advertised_svc_port_value" ] && [ "$advertised_svc_port_value" != "9092" ]; then
         # enable NodePort, use node ip + mapped port as client connection
         nodeport_domain="${advertised_svc_host_value}:${advertised_svc_port_value}"
