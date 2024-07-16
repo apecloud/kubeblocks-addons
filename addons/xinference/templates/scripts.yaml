@@ -5,6 +5,7 @@ metadata:
   labels:
     {{- include "xinference.labels" . | nindent 4 }}
 data:
+{{- if .Values.distributed }}
   start.sh: |
     #!/bin/bash
     # ref xinference doc: https://inference.readthedocs.io/zh-cn/latest/getting_started/using_xinference.html
@@ -17,3 +18,8 @@ data:
       worker_host=`env | grep "KB_XINFERENCE_${ordinal}_HOSTNAME" | awk -F= '{print $2}'`
       xinference-worker -e "http://${KB_XINFERENCE_0_HOSTNAME}:9997" -H "${worker_host}"
     fi
+{{ else }}
+  start.sh: |
+    #!/bin/bash
+    xinference --host 0.0.0.0
+{{ end }}
