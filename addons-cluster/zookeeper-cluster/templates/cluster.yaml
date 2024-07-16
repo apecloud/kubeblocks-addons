@@ -5,19 +5,17 @@ metadata:
   labels:
     {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: zookeeper
-  clusterVersionRef: zookeeper-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
   terminationPolicy: {{ .Values.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
     - name: zookeeper
-      componentDefRef: zookeeper
+      componentDef: zookeeper
       replicas: {{ .Values.replicas }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       volumeClaimTemplates:
-        - name: data # ref clusterdefinition components.containers.volumeMounts.name
+        - name: data
           spec:
             storageClassName: {{ .Values.persistence.data.storageClassName }}
             accessModes:
@@ -25,11 +23,11 @@ spec:
             resources:
               requests:
                 storage: {{ .Values.persistence.data.size }}
-        - name: data-log # ref clusterdefinition components.containers.volumeMounts.name
+        - name: log
           spec:
-            storageClassName: {{ .Values.persistence.dataLog.storageClassName }}
+            storageClassName: {{ .Values.persistence.log.storageClassName }}
             accessModes:
               - ReadWriteOnce
             resources:
               requests:
-                storage: {{ .Values.persistence.dataLog.size }}
+                storage: {{ .Values.persistence.log.size }}

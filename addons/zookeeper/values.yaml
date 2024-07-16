@@ -2,25 +2,13 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-# clusterVersionOverride
-
 images:
-  zookeeper:
-    repository: bitnami/zookeeper
-    pullPolicy: IfNotPresent
-    tag: 3.7
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  repository: apecloud/zookeeper
+  pullPolicy: IfNotPresent
 
-## @param containerPorts.client ZooKeeper client container port
-## @param containerPorts.tls ZooKeeper TLS container port
-## @param containerPorts.follower ZooKeeper follower container port
-## @param containerPorts.election ZooKeeper election container port
-##
-containerPorts:
-  client: 2181
-  quorum: 2888
-  election: 3888
-  http: 8080
+  tag: 3.7.2
 
-logConfigs:
-  info: /opt/bitnami/zookeeper/logs/zookeeper-*-server-*.log
-  audit: /opt/bitnami/zookeeper/logs/zookeeper_audit.log
+metrics:
+  enabled: true
+  port: 7000

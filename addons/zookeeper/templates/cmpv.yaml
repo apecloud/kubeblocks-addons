@@ -1,0 +1,27 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: zookeeper
+  labels:
+    {{- include "zookeeper.labels" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - releases:
+        - 3.7.2
+        - 3.8.4
+        - 3.9.2
+      compDefs:
+        - zookeeper
+  releases:
+    - name: 3.7.2
+      serviceVersion: 3.7.2
+      images:
+        zookeeper: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:3.7.2
+    - name: 3.8.4
+      serviceVersion: 3.8.4
+      images:
+        zookeeper: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:3.8.4
+    - name: 3.9.2
+      serviceVersion: 3.9.2
+      images:
+        zookeeper: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:3.9.2
