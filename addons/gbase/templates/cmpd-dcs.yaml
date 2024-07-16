@@ -24,6 +24,8 @@ spec:
   updateStrategy: Parallel
   podManagementPolicy: Parallel
   runtime:
+    nodeSelector:
+      gbase: "true"
     containers:
       - name: gbase
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}

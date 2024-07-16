@@ -47,13 +47,12 @@ spec:
   updateStrategy: Parallel
   podManagementPolicy: Parallel
   runtime:
+    nodeSelector:
+      gbase: "true"
     containers:
       - name: gbase
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command: ["/usr/sbin/init"]
-        ports:
-          - name: gbase-dataport
-            containerPort: {{ .Values.gbaseConfigs.service.port }}
         lifecycle:
           postStart:
             exec:
@@ -64,6 +63,13 @@ spec:
         env:
           - name : server_port
             value: "{{ .Values.gbaseConfigs.service.port }}"
+        ports:
+          - name: dbport
+            containerPort: 5432
+          - name: sshport
+            containerPort: 22
+          - name: etcdport
+            containerPort: 2379
         volumeMounts:
           - mountPath: /config
             name: gbase-config

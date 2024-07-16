@@ -1,1 +1,1 @@
-Installed neon-cluster!
+Installed gbase-cluster!
