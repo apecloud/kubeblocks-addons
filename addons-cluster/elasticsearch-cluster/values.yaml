@@ -1,6 +1,6 @@
-## @param serviceVersion ElasticSearch service version
+## @param version ElasticSearch service version
 ##
-serviceVersion: "8.8"
+version: "8.8.2"
 
 ## @param mode ElasticSearch cluster topology mode, single-node or multi-node
 ##

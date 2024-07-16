@@ -14,6 +14,10 @@ items:
     serviceVersion: 8.8.2
     serviceKind: &serviceKind elasticsearch
     updateStrategy: &updateStrategy Parallel
+    exporter: &exporter
+      containerName: exporter
+      scrapePath: /metrics
+      scrapePort: {{ .Values.exporter.service.port | quote}}
     configs:
     - name: es-cm
       templateRef: {{ include "elasticsearch.name" . }}-config
@@ -161,10 +165,10 @@ items:
           - "--es.uri=http://localhost:9200"
         ports:
         - name: metrics
-          containerPort: 9114
+          containerPort: {{.Values.exporter.service.port}}
         env:
         - name: SERVICE_PORT
-          value: "9114"
+          value: {{.Values.exporter.service.port | quote }}
         livenessProbe:
           httpGet:
             path: /healthz
@@ -347,6 +351,7 @@ items:
     serviceVersion: 7.10.1
     serviceKind: *serviceKind
     updateStrategy: *updateStrategy
+    exporter: *exporter
     configs:
     - name: es-cm
       templateRef: {{ include "elasticsearch.name" . }}-config-7.10
@@ -369,6 +374,7 @@ items:
     serviceVersion: 7.7.1
     serviceKind: *serviceKind
     updateStrategy: *updateStrategy
+    exporter: *exporter
     configs:
     - name: es-cm
       templateRef: {{ include "elasticsearch.name" . }}-config-7.7

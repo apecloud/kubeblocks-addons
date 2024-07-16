@@ -61,14 +61,14 @@ Generate scripts configmap
 {{- end }}
 
 {{/*
-Define postgresql component defintion name prefix
+Define postgresql component definition name prefix
 */}}
 {{- define "postgresql.componentDefNamePrefix" -}}
 {{- printf "postgresql-" -}}
 {{- end -}}
 
 {{/*
-Define postgresql12 component defintion name
+Define postgresql12 component definition name
 */}}
 {{- define "postgresql.compDefPostgresql12" -}}
 {{- if eq (len .Values.componentDefinitionVersion.postgresql12) 0 -}}
@@ -79,7 +79,7 @@ postgresql-12
 {{- end -}}
 
 {{/*
-Define postgresql14 component defintion name
+Define postgresql14 component definition name
 */}}
 {{- define "postgresql.compDefPostgresql14" -}}
 {{- if eq (len .Values.componentDefinitionVersion.postgresql14) 0 -}}
@@ -90,7 +90,7 @@ postgresql-14
 {{- end -}}
 
 {{/*
-Define postgresql15 component defintion name
+Define postgresql15 component definition name
 */}}
 {{- define "postgresql.compDefPostgresql15" -}}
 {{- if eq (len .Values.componentDefinitionVersion.postgresql15) 0 -}}

@@ -8,7 +8,6 @@ spec:
   provider: kubeblocks
   description: tidb's SQL layer
   serviceKind: MySQL
-  serviceVersion: "7.1.5"
   updateStrategy: BestEffortParallel
   runtime:
     containers:
@@ -57,7 +56,18 @@ spec:
       constraintRef: {{ include "tidb.tidb.configConstraintName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: config
-      defaultMode: 0444
+  # TODO: account provision is unsupported for now because lorry doesn't support accountProvision lifecycle action
+  # systemAccounts:
+  #   - name: root
+  # lifecycleActions:
+  #   accountProvision:
+  #     customHandler:
+  #       image: {{ .Values.image.registry | default "docker.io" }}/imega/mysql-client:10.6.4
+  #       exec:
+  #         command:
+  #         - mysql
+  #         args:
+  #         - 
   exporter:
     containerName: tidb
     scrapePort: "10080"

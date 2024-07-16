@@ -8,6 +8,68 @@ spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
+
+  services:
+    - name: default
+      spec:
+        ports:
+          - name: client
+            port: 2181
+          - name: quorum
+            port: 2888
+          - name: http
+            port: 8080
+      roleSelector: leader
+    - name: readonly
+      serviceName: readonly
+      spec:
+        ports:
+          - name: client
+            port: 2181
+          - name: quorum
+            port: 2888
+          - name: http
+            port: 8080
+
+  roles:
+    - name: leader
+      serviceable: true
+      writable: true
+      votable: true
+    - name: follower
+      serviceable: true
+      writable: false
+      votable: true
+    - name: observer
+      serviceable: false
+      writable: false
+      votable: false
+
+  lifecycleActions:
+    roleProbe:
+      builtinHandler: custom
+      customHandler:
+        exec:
+          command:
+            - /bin/bash
+            - -c
+            - |
+              ZOOBIN="/opt/bitnami/zookeeper/bin"
+              ZOOBINDIR="$(cd "${ZOOBIN}"; pwd)"
+              . "$ZOOBINDIR"/zkEnv.sh > /dev/null
+
+              isSSL="false"
+              clientPortAddress="localhost"
+              clientPort=2181
+              GREP=grep
+              STAT=`"$JAVA" "-Dzookeeper.log.dir=${ZOO_LOG_DIR}" "-Dzookeeper.log.file=${ZOO_LOG_FILE}" \
+              -cp "$CLASSPATH" $CLIENT_JVMFLAGS $JVMFLAGS org.apache.zookeeper.client.FourLetterWordMain \
+              $clientPortAddress $clientPort srvr $isSSL 2> /dev/null    \
+              | $GREP Mode`
+              mode=$(echo "$STAT" | awk -F': ' '{print $2}' | awk '{RS=""; ORS=""; print}' )
+              echo -n ${mode}
+      container: zookeeper
+
   runtime:
     securityContext:
       fsGroup: 0
@@ -49,6 +111,8 @@ spec:
             containerPort: 3888
           - name: http
             containerPort: 8080
+          - name: metrics
+            containerPort: {{ .Values.metrics.port }}
         livenessProbe:
           failureThreshold: 6
           initialDelaySeconds: 30
@@ -88,6 +152,11 @@ spec:
         componentVarRef:
           optional: false
           podFQDNs: Required
+    - name: ZOOKEEPER_METRICS_MONITOR
+      value: {{ .Values.metrics.enabled | quote }}
+    - name: ZOOKEEPER_METRICS_PORT
+      value: {{ .Values.metrics.port | quote }}
+
   volumes:
     - name: data
       needSnapshot: true
@@ -102,9 +171,4 @@ spec:
       defaultMode: 0755
       reRenderResourceTypes:
         - hscale
-  logConfigs:
-    - name: info
-      filePathPattern: /opt/bitnami/zookeeper/logs/zookeeper-*-server-*.log
-    - name: audit
-      filePathPattern: /opt/bitnami/zookeeper/logs/zookeeper_audit.log
   updateStrategy: BestEffortParallel

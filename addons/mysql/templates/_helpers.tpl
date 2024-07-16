@@ -62,7 +62,7 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
-Define mysql component defintion name
+Define mysql component definition name
 */}}
 {{- define "mysql.componentDefName" -}}
 {{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
@@ -73,7 +73,7 @@ mysql
 {{- end -}}
 
 {{/*
-Define mysql component defintion name
+Define mysql component definition name
 */}}
 {{- define "orchestrator.serviceRefName" -}}
 {{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
@@ -84,7 +84,7 @@ orchestrator
 {{- end -}}
 
 {{/*
-Define mysql component defintion name
+Define mysql component definition name
 */}}
 {{- define "proxysql.componentDefName" -}}
 {{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}

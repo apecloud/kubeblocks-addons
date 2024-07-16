@@ -146,6 +146,8 @@ spec:
           args:
             - curl -s http://$(KB_REPLICATION_PRIMARY_POD_FQDN):8008/switchover -XPOST -d '{"leader":"$(KB_REPLICATION_PRIMARY_POD_NAME)"}'
     accountProvision:
+      builtinHandler: postgresql
+    {{/*
       customHandler:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.15.0-pgvector-v0.6.1
         exec:
@@ -160,6 +162,7 @@ spec:
             value: $(POSTGRES_USER)
           - name: PGPASSWORD
             value: $(POSTGRES_PASSWORD)
+    */}}
     preTerminate:
       customHandler:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:12.15.0-pgvector-v0.6.1

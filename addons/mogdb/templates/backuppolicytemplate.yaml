@@ -3,31 +3,35 @@ kind: BackupPolicyTemplate
 metadata:
   name: mogdb-backup-policy-template
   labels:
-    clusterdefinition.kubeblocks.io/name: postgresql
     {{- include "mogdb.labels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: mogdb
   backupPolicies:
-  - componentDefRef: mogdb
-#    target:
-#      role: primary
+  - componentDefs: [mogdb-5]
+    target:
+      role: secondary
+      account: root
     backupMethods:
     - name: mogdb-basebackup
-      snapshotVolumes: false
       actionSetName: mogdb-basebackup
+      snapshotVolumes: false
       envMapping:
       - key: IMAGE_TAG
         valueFrom:
-          clusterVersionRef:
-          - names: [mogdb-5.0.5]
+          componentDef:
+          - names: [mogdb-5]
             mappingValue: "5.0.5"
       targetVolumes:
         volumeMounts:
         - name: data
           mountPath: {{ .Values.dataMountPath }}
+        volumes:
+        - data
     - name: volume-snapshot
       snapshotVolumes: true
       targetVolumes:
+        volumeMounts:
+        - name: data
+          mountPath: {{ .Values.dataMountPath }}
         volumes:
         - data
     schedules:

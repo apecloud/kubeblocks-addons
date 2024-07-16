@@ -3,5 +3,12 @@
 # Declare variables to be passed into your templates.
 
 images:
-  repository: bitnami/zookeeper
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  repository: apecloud/zookeeper
   pullPolicy: IfNotPresent
+
+  tag: 3.7.2
+
+metrics:
+  enabled: true
+  port: 7000
