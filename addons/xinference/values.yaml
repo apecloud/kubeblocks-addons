@@ -9,3 +9,5 @@ image:
 # modelDir is the directory where the model is stored in the host.
 # If it is not empty, the modelDir will be mounted to /xinference/models in the container.
 modelDir: ""
+
+distributed: false
