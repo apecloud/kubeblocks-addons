@@ -12,18 +12,10 @@ metadata:
   {{- end }}
 spec:
   services:
-    - name: broker
-      serviceName: broker
-      generatePodOrdinalService: true
-      spec:
-        type: ClusterIP
-        ports:
-          - name: broker
-            port: 9092
-            targetPort: kafka-client
-    - name: broker-nodeport
-      serviceName: broker-nodeport
-      generatePodOrdinalService: true
+    - name: advertised-listener
+      serviceName: advertised-listener
+      podService: true
+      disableAutoProvision: true
       spec:
         type: NodePort
         ports:
@@ -37,15 +29,13 @@ spec:
           name: admin
           username: Required
           optional: false
-      ## if the kafka NodePort type Service with name suffix broker-{0,1...} is set, the BROKER_NODE_PORT_{0,1...} will be available
-    - name: BROKER_NODE_PORT
+    - name: BROKER_ADVERTISED_PORT
       valueFrom:
         serviceVarRef:
-          compDef: kafka-broker
-          name: broker-nodeport
-          generatePodOrdinalServiceVar: true
+          compDef: {{ include "kafka-broker.componentDefName" . }}
+          name: advertised-listener
           optional: true
-          nodePort:
+          port:
             name: broker
             option: Optional
   provider: kubeblocks
