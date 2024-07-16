@@ -130,6 +130,7 @@ register_to_sentinel() {
 
   # check sentinel host and redis primary host connectivity
   wait_for_connectivity() {
+    set +x
     local host=$1
     local port=$2
     local password=$3
@@ -146,16 +147,17 @@ register_to_sentinel() {
         echo "$host is reachable on port $port."
         break
       fi
-
       sleep 5
     done
+    set -x
   }
 
   # function to execute and log redis-cli command
   execute_redis_cli() {
-    echo "Executing: redis-cli -h $sentinel_host -p $sentinel_port -a $SENTINEL_PASSWORD $*"
     local output
+    set +x
     output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" -a "$SENTINEL_PASSWORD" "$@")
+    set -x
     local status=$?
     echo "$output" # Print command output
 
@@ -167,18 +169,22 @@ register_to_sentinel() {
     fi
   }
 
+  set +x
   # Check connectivity to sentinel host
   wait_for_connectivity "$sentinel_host" "$sentinel_port" "$SENTINEL_PASSWORD"
   # Check connectivity to Redis primary host
   wait_for_connectivity "$redis_primary_host" "$redis_primary_port" "$REDIS_DEFAULT_PASSWORD"
+  set -x
 
   # Register and configure the Redis primary with Sentinel
   execute_redis_cli SENTINEL monitor "$master_name" "$redis_primary_host" "$redis_primary_port" 2
   execute_redis_cli SENTINEL set "$master_name" down-after-milliseconds 5000
   execute_redis_cli SENTINEL set "$master_name" failover-timeout 60000
   execute_redis_cli SENTINEL set "$master_name" parallel-syncs 1
+  set +x
   execute_redis_cli SENTINEL set "$master_name" auth-user "$REDIS_SENTINEL_USER"
   execute_redis_cli SENTINEL set "$master_name" auth-pass "$REDIS_SENTINEL_PASSWORD"
+  set -x
 
   echo "redis sentinel register to $sentinel_host succeeded!"
 }

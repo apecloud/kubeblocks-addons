@@ -61,11 +61,12 @@ build_redis_twemproxy_conf() {
   # All the components' password of redis server must be the same, So we find the first environment variable that starts with REDIS_DEFAULT_PASSWORD
   REDIS_AUTH_PASSWORD=""
   last_value=""
+  set +x
   for env_var in $(env | grep -E '^REDIS_DEFAULT_PASSWORD'); do
     value="${env_var#*=}"
     if [ -n "$value" ]; then
       if [ -n "$last_value" ] && [ "$last_value" != "$value" ]; then
-        echo "Conflicting env:$env_var of redis password values found: $last_value and $value, all the components' password of redis server must be the same."
+        echo "Error conflicting env $env_var of redis password values found, all the components' password of redis server must be the same."
         exit 1
       fi
       last_value="$value"
@@ -91,6 +92,8 @@ build_redis_twemproxy_conf() {
     echo "  servers:"
     printf "%b" "$servers"
   } > /etc/proxy/nutcracker.conf
+  set -x
+  echo "build redis twemproxy conf done!"
 }
 
 build_redis_twemproxy_conf
