@@ -9,7 +9,7 @@ on:
       - '*'
 
 env:
-  BASE_BRANCH: origin/main
+  BASE_BRANCH: origin/release-0.9
 
 jobs:
   shell-check:
