@@ -101,7 +101,6 @@ main() {
         ;;
         *)
             show_help
-            break
         ;;
     esac
 }
