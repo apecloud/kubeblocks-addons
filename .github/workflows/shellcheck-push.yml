@@ -33,7 +33,7 @@ jobs:
       - name: Get base commit id
         id: get_base_commit_id
         env:
-          REF_NAME: ${{ github.base_ref }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
           BASE_COMMITID=`bash .github/utils/utils.sh --type 1 \
               --branch-name "${{ env.REF_NAME }}" \
