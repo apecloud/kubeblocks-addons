@@ -501,10 +501,10 @@ initialize_redis_cluster() {
     fi
     set +x
     if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-      echo "replicated command: redis-cli --cluster add-node $secondary_endpoint_with_port $mapping_primary_endpoint_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id"
+      echo "initialize cluster secondary add-node command: redis-cli --cluster add-node $secondary_endpoint_with_port $mapping_primary_endpoint_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id"
       replicated_command="redis-cli --cluster add-node $secondary_endpoint_with_port $mapping_primary_endpoint_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id"
     else
-      echo "replicated command: redis-cli --cluster add-node $secondary_endpoint_with_port $mapping_primary_endpoint_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id -a \$REDIS_DEFAULT_PASSWORD"
+      echo "initialize cluster secondary add-node command: redis-cli --cluster add-node $secondary_endpoint_with_port $mapping_primary_endpoint_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id -a \$REDIS_DEFAULT_PASSWORD"
       replicated_command="redis-cli --cluster add-node $secondary_endpoint_with_port $mapping_primary_endpoint_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id -a $REDIS_DEFAULT_PASSWORD"
     fi
     if ! $replicated_command; then
@@ -547,10 +547,10 @@ scale_out_redis_cluster_shard() {
     scale_out_shard_default_primary_node="${scale_out_shard_default_primary_node[$primary_pod_name]}"
     set +x
     if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-      echo "redis-cli --cluster add-node $scale_out_shard_default_primary_node $available_node"
+      echo "scale out shard primary add-node command: redis-cli --cluster add-node $scale_out_shard_default_primary_node $available_node"
       redis-cli --cluster add-node "$scale_out_shard_default_primary_node" "$available_node"
     else
-      echo "redis-cli --cluster add-node $scale_out_shard_default_primary_node $available_node -a \$REDIS_DEFAULT_PASSWORD"
+      echo "scale out shard primary add-node command: redis-cli --cluster add-node $scale_out_shard_default_primary_node $available_node -a \$REDIS_DEFAULT_PASSWORD"
       redis-cli --cluster add-node "$scale_out_shard_default_primary_node" "$available_node" -a "$REDIS_DEFAULT_PASSWORD"
     fi
     set -x
@@ -565,10 +565,10 @@ scale_out_redis_cluster_shard() {
     echo "primary_node_with_port: $primary_node_with_port, primary_node_fqdn: $primary_node_fqdn, mapping_primary_cluster_id: $mapping_primary_cluster_id"
     set +x
     if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-      echo "replicated command: redis-cli --cluster add-node $scale_out_shard_default_other_node $primary_node_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id"
+      echo "scale out shard secondary add-node command: redis-cli --cluster add-node $scale_out_shard_default_other_node $primary_node_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id"
       replicated_command="redis-cli --cluster add-node $scale_out_shard_default_other_node $primary_node_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id"
     else
-      echo "replicated command: redis-cli --cluster add-node $scale_out_shard_default_other_node $primary_node_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id -a \$REDIS_DEFAULT_PASSWORD"
+      echo "scale out shard secondary add-node command: redis-cli --cluster add-node $scale_out_shard_default_other_node $primary_node_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id -a \$REDIS_DEFAULT_PASSWORD"
       replicated_command="redis-cli --cluster add-node $scale_out_shard_default_other_node $primary_node_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id -a $REDIS_DEFAULT_PASSWORD"
     fi
     if ! $replicated_command; then
@@ -587,10 +587,10 @@ scale_out_redis_cluster_shard() {
   slots_per_shard=$((total_slots / shard_count))
   set +x
   if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-      echo "reshard command: redis-cli --cluster reshard $primary_node_with_port --cluster-from all --cluster-to $mapping_primary_cluster_id --cluster-slots $slots_per_shard --cluster-yes"
+      echo "scale out shard reshard command: redis-cli --cluster reshard $primary_node_with_port --cluster-from all --cluster-to $mapping_primary_cluster_id --cluster-slots $slots_per_shard --cluster-yes"
       reshard_command="redis-cli --cluster reshard $primary_node_with_port --cluster-from all --cluster-to $mapping_primary_cluster_id --cluster-slots $slots_per_shard --cluster-yes"
   else
-      echo "reshard command: redis-cli --cluster reshard $primary_node_with_port --cluster-from all --cluster-to $mapping_primary_cluster_id --cluster-slots $slots_per_shard -a \$REDIS_DEFAULT_PASSWORD --cluster-yes"
+      echo "scale out shard reshard command: redis-cli --cluster reshard $primary_node_with_port --cluster-from all --cluster-to $mapping_primary_cluster_id --cluster-slots $slots_per_shard -a \$REDIS_DEFAULT_PASSWORD --cluster-yes"
       reshard_command="redis-cli --cluster reshard $primary_node_with_port --cluster-from all --cluster-to $mapping_primary_cluster_id --cluster-slots $slots_per_shard -a $REDIS_DEFAULT_PASSWORD --cluster-yes"
   fi
   if ! $reshard_command
