@@ -180,7 +180,7 @@
           "datasource": {
             "uid": "$datasource"
           },
-          "expr": "elasticsearch_cluster_health_status{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\",color=\"red\"}==1 or (elasticsearch_cluster_health_status{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\",color=\"green\"}==1)+4 or (elasticsearch_cluster_health_status{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\",color=\"yellow\"}==1)+22",
+          "expr": "elasticsearch_cluster_health_status{pod=~\"$instance\",cluster=\"$cluster\",color=\"red\"}==1 or (elasticsearch_cluster_health_status{pod=~\"$instance\",cluster=\"$cluster\",color=\"green\"}==1)+4 or (elasticsearch_cluster_health_status{pod=~\"$instance\",cluster=\"$cluster\",color=\"yellow\"}==1)+22",
           "format": "time_series",
           "instant": true,
           "interval": "",
@@ -276,7 +276,7 @@
           "datasource": {
             "uid": "$datasource"
           },
-          "expr": "count(elasticsearch_breakers_tripped{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}>0)",
+          "expr": "count(elasticsearch_breakers_tripped{pod=~\"$instance\",cluster=\"$cluster\"}>0)",
           "format": "time_series",
           "instant": true,
           "intervalFactor": 2,
@@ -357,7 +357,7 @@
           "datasource": {
             "uid": "$datasource"
           },
-          "expr": "sum (elasticsearch_process_cpu_percent{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"} ) / count (elasticsearch_process_cpu_percent{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"} )",
+          "expr": "sum (elasticsearch_process_cpu_percent{pod=~\"$instance\",cluster=\"$cluster\"} ) / count (elasticsearch_process_cpu_percent{pod=~\"$instance\",cluster=\"$cluster\"} )",
           "format": "time_series",
           "instant": true,
           "interval": "",
@@ -441,7 +441,7 @@
           "datasource": {
             "uid": "$datasource"
           },
-          "expr": "sum (elasticsearch_jvm_memory_used_bytes{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}) / sum (elasticsearch_jvm_memory_max_bytes{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}) * 100",
+          "expr": "sum (elasticsearch_jvm_memory_used_bytes{pod=~\"$instance\",cluster=\"$cluster\"}) / sum (elasticsearch_jvm_memory_max_bytes{pod=~\"$instance\",cluster=\"$cluster\"}) * 100",
           "format": "time_series",
           "instant": true,
           "interval": "",
@@ -522,7 +522,7 @@
           "datasource": {
             "uid": "$datasource"
           },
-          "expr": "elasticsearch_cluster_health_number_of_nodes{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}",
+          "expr": "elasticsearch_cluster_health_number_of_nodes{pod=~\"$instance\",cluster=\"$cluster\"}",
           "format": "time_series",
           "instant": true,
           "interval": "",
@@ -603,7 +603,7 @@
           "datasource": {
             "uid": "$datasource"
           },
-          "expr": "elasticsearch_cluster_health_number_of_data_nodes{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}",
+          "expr": "elasticsearch_cluster_health_number_of_data_nodes{pod=~\"$instance\",cluster=\"$cluster\"}",
           "format": "time_series",
           "instant": true,
           "interval": "",
@@ -689,7 +689,7 @@
           "datasource": {
             "uid": "$datasource"
           },
-          "expr": "elasticsearch_cluster_health_number_of_pending_tasks{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}",
+          "expr": "elasticsearch_cluster_health_number_of_pending_tasks{pod=~\"$instance\",cluster=\"$cluster\"}",
           "format": "time_series",
           "instant": true,
           "interval": "",
@@ -759,7 +759,7 @@
           "datasource": {
             "uid": "$datasource"
           },
-          "expr": "sum (elasticsearch_process_open_files_count{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"})",
+          "expr": "sum (elasticsearch_process_open_files_count{pod=~\"$instance\",cluster=\"$cluster\"})",
           "format": "time_series",
           "instant": true,
           "interval": "",
@@ -868,7 +868,7 @@
           "datasource": {
             "uid": "$datasource"
           },
-          "expr": "elasticsearch_cluster_health_active_primary_shards{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}",
+          "expr": "elasticsearch_cluster_health_active_primary_shards{pod=~\"$instance\",cluster=\"$cluster\"}",
           "format": "time_series",
           "instant": true,
           "intervalFactor": 2,
@@ -948,7 +948,7 @@
           "datasource": {
             "uid": "$datasource"
           },
-          "expr": "elasticsearch_cluster_health_active_shards{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}",
+          "expr": "elasticsearch_cluster_health_active_shards{pod=~\"$instance\",cluster=\"$cluster\"}",
           "format": "time_series",
           "instant": true,
           "intervalFactor": 2,
@@ -1028,7 +1028,7 @@
           "datasource": {
             "uid": "$datasource"
           },
-          "expr": "elasticsearch_cluster_health_initializing_shards{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}",
+          "expr": "elasticsearch_cluster_health_initializing_shards{pod=~\"$instance\",cluster=\"$cluster\"}",
           "format": "time_series",
           "instant": true,
           "interval": "",
@@ -1109,7 +1109,7 @@
           "datasource": {
             "uid": "$datasource"
           },
-          "expr": "elasticsearch_cluster_health_relocating_shards{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}",
+          "expr": "elasticsearch_cluster_health_relocating_shards{pod=~\"$instance\",cluster=\"$cluster\"}",
           "format": "time_series",
           "instant": true,
           "intervalFactor": 2,
@@ -1189,7 +1189,7 @@
           "datasource": {
             "uid": "$datasource"
           },
-          "expr": "elasticsearch_cluster_health_delayed_unassigned_shards{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"} ",
+          "expr": "elasticsearch_cluster_health_delayed_unassigned_shards{pod=~\"$instance\",cluster=\"$cluster\"} ",
           "format": "time_series",
           "instant": true,
           "intervalFactor": 2,
@@ -1269,7 +1269,7 @@
           "datasource": {
             "uid": "$datasource"
           },
-          "expr": "elasticsearch_cluster_health_unassigned_shards{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"} ",
+          "expr": "elasticsearch_cluster_health_unassigned_shards{pod=~\"$instance\",cluster=\"$cluster\"} ",
           "format": "time_series",
           "instant": true,
           "intervalFactor": 2,
@@ -1359,7 +1359,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "irate(elasticsearch_jvm_gc_collection_seconds_count{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "irate(elasticsearch_jvm_gc_collection_seconds_count{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -1465,7 +1465,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "irate(elasticsearch_jvm_gc_collection_seconds_sum{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "irate(elasticsearch_jvm_gc_collection_seconds_sum{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -1590,7 +1590,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "irate(elasticsearch_indices_translog_operations{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "irate(elasticsearch_indices_translog_operations{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}}",
@@ -1683,7 +1683,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "irate(elasticsearch_indices_translog_size_in_bytes{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "irate(elasticsearch_indices_translog_size_in_bytes{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}}",
@@ -1803,7 +1803,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "elasticsearch_breakers_tripped{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}",
+              "expr": "elasticsearch_breakers_tripped{pod=~\"$instance\",cluster=\"$cluster\"}",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}}: {{breaker}}",
@@ -1896,7 +1896,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "elasticsearch_breakers_estimated_size_bytes{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}",
+              "expr": "elasticsearch_breakers_estimated_size_bytes{pod=~\"$instance\",cluster=\"$cluster\"}",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}}: {{breaker}}",
@@ -1906,7 +1906,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "elasticsearch_breakers_limit_size_bytes{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}",
+              "expr": "elasticsearch_breakers_limit_size_bytes{pod=~\"$instance\",cluster=\"$cluster\"}",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}}: limit for {{breaker}}",
@@ -2028,7 +2028,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "elasticsearch_os_load1{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}",
+              "expr": "elasticsearch_os_load1{pod=~\"$instance\",cluster=\"$cluster\"}",
               "format": "time_series",
               "instant": false,
               "interval": "",
@@ -2042,7 +2042,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "elasticsearch_os_load5{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}",
+              "expr": "elasticsearch_os_load5{pod=~\"$instance\",cluster=\"$cluster\"}",
               "format": "time_series",
               "instant": false,
               "interval": "",
@@ -2056,7 +2056,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "elasticsearch_os_load15{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}",
+              "expr": "elasticsearch_os_load15{pod=~\"$instance\",cluster=\"$cluster\"}",
               "format": "time_series",
               "instant": false,
               "interval": "",
@@ -2159,7 +2159,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "elasticsearch_process_cpu_percent{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}",
+              "expr": "elasticsearch_process_cpu_percent{pod=~\"$instance\",cluster=\"$cluster\"}",
               "format": "time_series",
               "instant": false,
               "interval": "",
@@ -2262,7 +2262,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "elasticsearch_jvm_memory_used_bytes{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}",
+              "expr": "elasticsearch_jvm_memory_used_bytes{pod=~\"$instance\",cluster=\"$cluster\"}",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -2275,7 +2275,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "elasticsearch_jvm_memory_max_bytes{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}",
+              "expr": "elasticsearch_jvm_memory_max_bytes{pod=~\"$instance\",cluster=\"$cluster\"}",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}} max: {{area}}",
@@ -2286,7 +2286,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "elasticsearch_jvm_memory_pool_peak_used_bytes{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}",
+              "expr": "elasticsearch_jvm_memory_pool_peak_used_bytes{pod=~\"$instance\",cluster=\"$cluster\"}",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}} peak used pool: {{pool}}",
@@ -2385,7 +2385,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "elasticsearch_jvm_memory_committed_bytes{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}",
+              "expr": "elasticsearch_jvm_memory_committed_bytes{pod=~\"$instance\",cluster=\"$cluster\"}",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}} committed: {{area}}",
@@ -2396,7 +2396,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "elasticsearch_jvm_memory_max_bytes{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}",
+              "expr": "elasticsearch_jvm_memory_max_bytes{pod=~\"$instance\",cluster=\"$cluster\"}",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}} max: {{area}}",
@@ -2528,7 +2528,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "1-(elasticsearch_filesystem_data_available_bytes{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}/elasticsearch_filesystem_data_size_bytes{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"})",
+              "expr": "1-(elasticsearch_filesystem_data_available_bytes{pod=~\"$instance\",cluster=\"$cluster\"}/elasticsearch_filesystem_data_size_bytes{pod=~\"$instance\",cluster=\"$cluster\"})",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -2656,7 +2656,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "irate(elasticsearch_transport_tx_size_bytes_total{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "irate(elasticsearch_transport_tx_size_bytes_total{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -2668,7 +2668,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "-irate(elasticsearch_transport_rx_size_bytes_total{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "-irate(elasticsearch_transport_rx_size_bytes_total{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}}: received",
@@ -2795,7 +2795,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "elasticsearch_indices_docs{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}",
+              "expr": "elasticsearch_indices_docs{pod=~\"$instance\",cluster=\"$cluster\"}",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -2894,7 +2894,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "irate(elasticsearch_indices_indexing_index_total{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "irate(elasticsearch_indices_indexing_index_total{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -2995,7 +2995,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "irate(elasticsearch_indices_docs_deleted{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "irate(elasticsearch_indices_docs_deleted{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -3094,7 +3094,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "rate(elasticsearch_indices_merges_docs_total{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "rate(elasticsearch_indices_merges_docs_total{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -3193,7 +3193,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "irate(elasticsearch_indices_merges_total_size_bytes_total{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "irate(elasticsearch_indices_merges_total_size_bytes_total{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -3318,7 +3318,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "irate(elasticsearch_indices_search_query_time_seconds{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval]) ",
+              "expr": "irate(elasticsearch_indices_search_query_time_seconds{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval]) ",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -3416,7 +3416,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "irate(elasticsearch_indices_indexing_index_time_seconds_total{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "irate(elasticsearch_indices_indexing_index_time_seconds_total{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -3516,7 +3516,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "irate(elasticsearch_indices_merges_total_time_seconds_total{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "irate(elasticsearch_indices_merges_total_time_seconds_total{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -3616,7 +3616,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "irate(elasticsearch_indices_store_throttle_time_seconds_total{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "irate(elasticsearch_indices_store_throttle_time_seconds_total{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -3743,7 +3743,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "rate(elasticsearch_indices_indexing_index_total{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "rate(elasticsearch_indices_indexing_index_total{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -3756,7 +3756,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "rate(elasticsearch_indices_search_query_total{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "rate(elasticsearch_indices_search_query_total{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}}: query",
@@ -3767,7 +3767,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "rate(elasticsearch_indices_search_fetch_total{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "rate(elasticsearch_indices_search_fetch_total{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}}: fetch",
@@ -3778,7 +3778,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "rate(elasticsearch_indices_merges_total{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "rate(elasticsearch_indices_merges_total{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}}: merges",
@@ -3789,7 +3789,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "rate(elasticsearch_indices_refresh_total{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "rate(elasticsearch_indices_refresh_total{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}}: refresh",
@@ -3800,7 +3800,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "rate(elasticsearch_indices_flush_total{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "rate(elasticsearch_indices_flush_total{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}}: flush",
@@ -3811,7 +3811,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "rate(elasticsearch_indices_get_exists_total{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "rate(elasticsearch_indices_get_exists_total{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}}: get_exists",
@@ -3822,7 +3822,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "rate(elasticsearch_indices_get_missing_total{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "rate(elasticsearch_indices_get_missing_total{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}}: get_missing",
@@ -3833,7 +3833,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "rate(elasticsearch_indices_get_tota{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "rate(elasticsearch_indices_get_tota{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}}: get",
@@ -3844,7 +3844,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "rate(elasticsearch_indices_indexing_delete_total{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "rate(elasticsearch_indices_indexing_delete_total{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}}: indexing_delete",
@@ -3942,7 +3942,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "irate(elasticsearch_indices_indexing_index_time_seconds_total{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "irate(elasticsearch_indices_indexing_index_time_seconds_total{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -3955,7 +3955,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "irate(elasticsearch_indices_search_query_time_seconds{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "irate(elasticsearch_indices_search_query_time_seconds{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}}: query",
@@ -3966,7 +3966,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "irate(elasticsearch_indices_search_fetch_time_seconds{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "irate(elasticsearch_indices_search_fetch_time_seconds{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}}: fetch",
@@ -3977,7 +3977,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "irate(elasticsearch_indices_merges_total_time_seconds_total{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "irate(elasticsearch_indices_merges_total_time_seconds_total{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}}: merges",
@@ -3988,7 +3988,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "irate(elasticsearch_indices_refresh_time_seconds_total{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "irate(elasticsearch_indices_refresh_time_seconds_total{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}}: refresh",
@@ -3999,7 +3999,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "irate(elasticsearch_indices_flush_time_seconds{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "irate(elasticsearch_indices_flush_time_seconds{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}}: flush",
@@ -4010,7 +4010,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "irate(elasticsearch_indices_get_exists_time_seconds{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "irate(elasticsearch_indices_get_exists_time_seconds{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}}: get_exists",
@@ -4021,7 +4021,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "irate(elasticsearch_indices_get_time_seconds{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "irate(elasticsearch_indices_get_time_seconds{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}}: get_time",
@@ -4032,7 +4032,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "irate(elasticsearch_indices_get_missing_time_seconds{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "irate(elasticsearch_indices_get_missing_time_seconds{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}}: get_missing",
@@ -4043,7 +4043,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "irate(elasticsearch_indices_indexing_delete_time_seconds_total{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "irate(elasticsearch_indices_indexing_delete_time_seconds_total{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}}: indexing_delete",
@@ -4054,7 +4054,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "irate(elasticsearch_indices_get_time_seconds{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "irate(elasticsearch_indices_get_time_seconds{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}}: get",
@@ -4179,7 +4179,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "irate(elasticsearch_thread_pool_rejected_count{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "irate(elasticsearch_thread_pool_rejected_count{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}}: {{ type }}",
@@ -4278,7 +4278,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "elasticsearch_thread_pool_active_count{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}",
+              "expr": "elasticsearch_thread_pool_active_count{pod=~\"$instance\",cluster=\"$cluster\"}",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}}: {{ type }}",
@@ -4378,7 +4378,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "elasticsearch_thread_pool_active_count{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}",
+              "expr": "elasticsearch_thread_pool_active_count{pod=~\"$instance\",cluster=\"$cluster\"}",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}}: {{ type }}",
@@ -4477,7 +4477,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "irate(elasticsearch_thread_pool_completed_count{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "irate(elasticsearch_thread_pool_completed_count{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}}: {{ type }}",
@@ -4601,7 +4601,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "elasticsearch_indices_fielddata_memory_size_bytes{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}",
+              "expr": "elasticsearch_indices_fielddata_memory_size_bytes{pod=~\"$instance\",cluster=\"$cluster\"}",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -4701,7 +4701,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "rate(elasticsearch_indices_fielddata_evictions{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "rate(elasticsearch_indices_fielddata_evictions{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -4801,7 +4801,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "elasticsearch_indices_query_cache_memory_size_bytes{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}",
+              "expr": "elasticsearch_indices_query_cache_memory_size_bytes{pod=~\"$instance\",cluster=\"$cluster\"}",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -4901,7 +4901,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "rate(elasticsearch_indices_query_cache_evictions{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "rate(elasticsearch_indices_query_cache_evictions{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -5001,7 +5001,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "rate(elasticsearch_indices_filter_cache_evictions{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}[$__rate_interval])",
+              "expr": "rate(elasticsearch_indices_filter_cache_evictions{pod=~\"$instance\",cluster=\"$cluster\"}[$__rate_interval])",
               "format": "time_series",
               "interval": "",
               "intervalFactor": 2,
@@ -5128,7 +5128,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "elasticsearch_indices_segments_count{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}",
+              "expr": "elasticsearch_indices_segments_count{pod=~\"$instance\",cluster=\"$cluster\"}",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}}",
@@ -5223,7 +5223,7 @@
               "datasource": {
                 "uid": "$datasource"
               },
-              "expr": "elasticsearch_indices_segments_memory_bytes{pod=~\"$instance\",app_kubernetes_io_instance=\"$cluster\"}",
+              "expr": "elasticsearch_indices_segments_memory_bytes{pod=~\"$instance\",cluster=\"$cluster\"}",
               "format": "time_series",
               "intervalFactor": 2,
               "legendFormat": "{{name}}",
@@ -6017,7 +6017,7 @@
         "datasource": {
           "uid": "$datasource"
         },
-        "definition": "label_values(elasticsearch_indices_docs,app_kubernetes_io_instance)",
+        "definition": "label_values(elasticsearch_indices_docs,cluster)",
         "hide": 0,
         "includeAll": false,
         "label": "",
@@ -6025,7 +6025,7 @@
         "name": "cluster",
         "options": [],
         "query": {
-          "query": "label_values(elasticsearch_indices_docs,app_kubernetes_io_instance)",
+          "query": "label_values(elasticsearch_indices_docs,cluster)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,
@@ -6044,7 +6044,7 @@
         "datasource": {
           "uid": "$datasource"
         },
-        "definition": "label_values(elasticsearch_indices_docs{app_kubernetes_io_instance=\"$cluster\"},pod)",
+        "definition": "label_values(elasticsearch_indices_docs{cluster=\"$cluster\"},pod)",
         "hide": 0,
         "includeAll": false,
         "label": "",
@@ -6052,7 +6052,7 @@
         "name": "instance",
         "options": [],
         "query": {
-          "query": "label_values(elasticsearch_indices_docs{app_kubernetes_io_instance=\"$cluster\"},pod)",
+          "query": "label_values(elasticsearch_indices_docs{cluster=\"$cluster\"},pod)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,
