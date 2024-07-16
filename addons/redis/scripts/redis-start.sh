@@ -16,6 +16,7 @@ load_redis_template_conf() {
 }
 
 build_redis_default_accounts() {
+  set +x
   if [ -n "$REDIS_REPL_PASSWORD" ]; then
     echo "masteruser $REDIS_REPL_USER" >> /etc/redis/redis.conf
     echo "masterauth $REDIS_REPL_PASSWORD" >> /etc/redis/redis.conf
@@ -30,7 +31,9 @@ build_redis_default_accounts() {
   else
     echo "protected-mode no" >> /etc/redis/redis.conf
   fi
+  set -x
   echo "aclfile /data/users.acl" >> /etc/redis/redis.conf
+  echo "build default accounts succeeded!"
 }
 
 build_announce_ip_and_port() {
@@ -94,11 +97,13 @@ init_or_get_primary_node() {
 
   # check the primary is real master role or not
   local primary_fqdn="$primary.$KB_CLUSTER_COMP_NAME-$headless_postfix.$KB_NAMESPACE.svc"
+  set +x
   if [ -n "$REDIS_DEFAULT_PASSWORD" ]; then
     check_kernel_role_cmd="redis-cli -h $primary_fqdn -p $service_port -a $REDIS_DEFAULT_PASSWORD info replication | grep 'role:' | awk -F: '{print \$2}'"
   else
     check_kernel_role_cmd="redis-cli -h $primary_fqdn -p $service_port info replication | grep 'role:' | awk -F: '{print \$2}'"
   fi
+  echo "check primary node role in kernel command: $check_kernel_role_cmd" | sed "s/$REDIS_DEFAULT_PASSWORD/********/g"
   retry_times=10
   while true; do
     check_role=$(eval "$check_kernel_role_cmd")
@@ -114,6 +119,7 @@ init_or_get_primary_node() {
       exit 1
     fi
   done
+  set -x
 }
 
 parse_redis_advertised_svc_if_exist() {

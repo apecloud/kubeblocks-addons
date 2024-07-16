@@ -54,6 +54,7 @@ register_to_sentinel() {
     fi
   }
 
+  set +x
   # Check connectivity to sentinel host
   wait_for_connectivity "$sentinel_host" "$sentinel_port" "$SENTINEL_PASSWORD"
   # Check connectivity to Redis primary host
@@ -66,6 +67,7 @@ register_to_sentinel() {
   execute_redis_cli SENTINEL set "$master_name" parallel-syncs 1
   execute_redis_cli SENTINEL set "$master_name" auth-user "$REDIS_SENTINEL_USER"
   execute_redis_cli SENTINEL set "$master_name" auth-pass "$REDIS_SENTINEL_PASSWORD"
+  set -x
 
   echo "redis sentinel register to $sentinel_host succeeded!"
 }

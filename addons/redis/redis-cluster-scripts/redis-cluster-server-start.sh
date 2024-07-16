@@ -6,6 +6,7 @@ load_redis_template_conf() {
 }
 
 build_redis_default_accounts() {
+  set +x
   if [ ! -z "$REDIS_REPL_PASSWORD" ]; then
     echo "masteruser $REDIS_REPL_USER" >> /etc/redis/redis.conf
     echo "masterauth $REDIS_REPL_PASSWORD" >> /etc/redis/redis.conf
@@ -17,7 +18,9 @@ build_redis_default_accounts() {
   else
     echo "protected-mode no" >> /etc/redis/redis.conf
   fi
+  set -x
   echo "aclfile /data/users.acl" >> /etc/redis/redis.conf
+  echo "build redis cluster default accounts succeeded!"
 }
 
 build_announce_ip_and_port() {
