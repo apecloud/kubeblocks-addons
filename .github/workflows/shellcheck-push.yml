@@ -16,14 +16,15 @@ env:
 jobs:
   shell-check:
     runs-on: ubuntu-latest
-    needs: [ base-commitid ]
     steps:
       - name: Cancel Previous Runs
-        if: github.ref_name != 'main'
+        if: ${{ github.ref_name != 'main' }}
         uses: styfle/cancel-workflow-action@0.11.0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         with:
           all_but_latest: true
-          access_token: ${{ github.token }}
+          access_token: ${{ env.GITHUB_TOKEN }}
 
       - uses: actions/checkout@v4
         with:
