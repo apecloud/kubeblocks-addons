@@ -23,15 +23,27 @@ printf -v tablet_logfile 'vttablet_%010d_querylog.txt' $uid
 
 tablet_type=replica
 
-endpoints=${ETCD_SERVER:-'127.0.0.1:2379'}
+/scripts/wait-for-service.sh vtctld $vtctld_host $vtctld_web_port
+
+echo "starting vttablet for $alias..."
+
+if [ -n "$ETCD_LOCAL_POD_LIST" ]; then
+  IFS=',' read -ra ETCD_POD_ARRAY <<< "$ETCD_LOCAL_POD_LIST"
+  endpoints=""
+  for pod in "${ETCD_POD_ARRAY[@]}"; do
+    endpoints+="${pod}.${ETCD_LOCAL_HEADLESS}.${KB_NAMESPACE}.svc.cluster.local:${ETCD_LOCAL_PORT},"
+  done
+  endpoints="${endpoints%,}"
+elif [ -n "$SERVICE_ETCD_ENDPOINT" ]; then
+  endpoints="$SERVICE_ETCD_ENDPOINT"
+else
+  echo "Both ETCD_LOCAL_POD_LIST and SERVICE_ETCD_ENDPOINT are empty. Cannot proceed."
+  exit 1
+fi
 
 echo $endpoints
 
 topology_fags="--topo_implementation etcd2 --topo_global_server_address ${endpoints} --topo_global_root /vitess/${KB_NAMESPACE}/${KB_CLUSTER_NAME}/global"
-
-/scripts/wait-for-service.sh vtctld $vtctld_host $vtctld_web_port
-
-echo "starting vttablet for $alias..."
 
 VTDATAROOT=$VTDATAROOT/vttablet
 su vitess <<EOF

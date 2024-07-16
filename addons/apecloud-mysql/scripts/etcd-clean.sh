@@ -1,6 +1,11 @@
 #!/bin/bash
 
-endpoints=${ETCD_SERVER:-'127.0.0.1:2379'}
+if [ -n "$SERVICE_ETCD_ENDPOINT" ] && [ -z "$ETCD_LOCAL_POD_LIST" ]; then
+  endpoints=$SERVICE_ETCD_ENDPOINT
+else
+# local etcd no need to clean
+  exit 0 
+fi
 
 echo $endpoints
 

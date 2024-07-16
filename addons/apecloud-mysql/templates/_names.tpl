@@ -167,3 +167,11 @@ apecloud-mysql-scripts
 {{- .Values.resourceNamePrefix -}}-scripts
 {{- end -}}
 {{- end -}}
+
+{{- define "apecloud-etcd.componentDefName" -}}
+{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+etcd
+{{- else -}}
+{{- .Values.resourceNamePrefix -}}
+{{- end -}}
+{{- end -}}

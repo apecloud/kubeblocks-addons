@@ -1,15 +1,24 @@
 #!/bin/bash
 echo "starting vtctl"
+
+if [ -n "$ETCD_LOCAL_POD_LIST" ]; then
+  IFS=',' read -ra ETCD_POD_ARRAY <<< "$ETCD_LOCAL_POD_LIST"
+  endpoints=""
+  for pod in "${ETCD_POD_ARRAY[@]}"; do
+    endpoints+="${pod}.${ETCD_LOCAL_HEADLESS}.${KB_NAMESPACE}.svc.cluster.local:${ETCD_LOCAL_PORT},"
+  done
+  endpoints="${endpoints%,}"
+fi
+
+echo $endpoints
+
 /scripts/etcd-post-start.sh
 
 echo "starting vtctld"
+
 cell=${CELL:-'zone1'}
 grpc_port=${VTCTLD_GRPC_PORT:-'15999'}
 vtctld_web_port=${VTCTLD_WEB_PORT:-'15000'}
-
-endpoints=${ETCD_SERVER:-'127.0.0.1:2379'}
-
-echo $endpoints
 
 topology_fags="--topo_implementation etcd2 --topo_global_server_address ${endpoints} --topo_global_root /vitess/${KB_NAMESPACE}/${KB_CLUSTER_NAME}/global"
 

@@ -8,7 +8,19 @@ grpc_port=${VTGATE_GRPC_PORT:-'15991'}
 mysql_server_port=${VTGATE_MYSQL_PORT:-'15306'}
 mysql_server_socket_path="/tmp/mysql.sock"
 
-endpoints=${ETCD_SERVER:-'127.0.0.1:2379'}
+if [ -n "$ETCD_LOCAL_POD_LIST" ]; then
+  IFS=',' read -ra ETCD_POD_ARRAY <<< "$ETCD_LOCAL_POD_LIST"
+  endpoints=""
+  for pod in "${ETCD_POD_ARRAY[@]}"; do
+    endpoints+="${pod}.${ETCD_LOCAL_HEADLESS}.${KB_NAMESPACE}.svc.cluster.local:${ETCD_LOCAL_PORT},"
+  done
+  endpoints="${endpoints%,}"
+elif [ -n "$SERVICE_ETCD_ENDPOINT" ]; then
+  endpoints="$SERVICE_ETCD_ENDPOINT"
+else
+  echo "Both ETCD_LOCAL_POD_LIST and SERVICE_ETCD_ENDPOINT are empty. Cannot proceed."
+  exit 1
+fi
 
 echo $endpoints
 

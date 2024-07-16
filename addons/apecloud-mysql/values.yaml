@@ -108,3 +108,7 @@ wesqlscale:
 ## if you install multiple releases of this chart.
 ## If specified, the cluster definition will use it as name.
 resourceNamePrefix: ""
+
+etcd:
+  apeiVersion: "2"
+  port: 2379

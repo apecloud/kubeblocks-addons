@@ -62,10 +62,18 @@ raftGroup mode: max(replicas, 3)
 
 {{- define "apecloud-mysql-cluster.topology" }}
 {{- if and (eq .Values.mode "raftGroup") .Values.proxyEnabled }}
-  {{- if .Values.auditLogEnabled}}
-    {{- "apecloud-mysql-audit-with-proxy" }}
+  {{- if .Values.localEtcd }}
+    {{- if .Values.auditLogEnabled }}
+      {{- "apecloud-mysql-audit-proxy-etcd" }}
+    {{- else }}
+      {{- "apecloud-mysql-proxy-etcd" }}
+    {{- end }}
   {{- else }}
-    {{- "apecloud-mysql-with-proxy" }}
+    {{- if .Values.auditLogEnabled }}
+      {{- "apecloud-mysql-audit-with-proxy" }}
+    {{- else }}
+      {{- "apecloud-mysql-with-proxy" }}
+    {{- end }}
   {{- end }}
 {{- else }}
   {{- if .Values.auditLogEnabled}}
@@ -80,4 +88,25 @@ raftGroup mode: max(replicas, 3)
 - name: etcd
   namespace: {{ .Release.Namespace }}
   serviceDescriptor: {{ include "kblib.clusterName" . }}-etcd-descriptor
+{{- end -}}
+
+{{- define "apecloud-mysql-cluster.etcdComponents" }}
+- name: etcd
+  volumeClaimTemplates:
+    - name: data
+      spec:
+        storageClassName: {{ .Values.proxy.storageClassName | quote }}
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 20Gi
+  replicas: {{ .Values.etcd.replicas }}
+  resources:
+    requests:
+      cpu: 500m
+      memory: 500Mi
+    limits:
+      cpu: 500m
+      memory: 500Mi
 {{- end -}}
