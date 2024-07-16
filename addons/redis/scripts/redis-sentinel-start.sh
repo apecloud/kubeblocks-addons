@@ -22,6 +22,7 @@ set -ex
 {{- /* build redis engine service */}}
 {{- $primary_svc := printf "%s-%s.%s.svc" $clusterName $redis_component.name $namespace }}
 echo "Waiting for redis service {{ $primary_svc }} to be ready..."
+set +x
 if [ ! -z "$REDIS_DEFAULT_PASSWORD" ]; then
   timeout 300 sh -c 'until redis-cli -h {{ $primary_svc }} -p 6379 -a $REDIS_DEFAULT_PASSWORD ping; do sleep 2; done'
 else
@@ -31,6 +32,7 @@ if [ $? -ne 0 ]; then
   echo "Redis service is not ready, exiting..."
   exit 1
 fi
+set -x
 echo "Redis service ready, Starting sentinel..."
 kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc"
 echo "sentinel announce-ip $kb_pod_fqdn" >> /etc/sentinel/redis-sentinel.conf

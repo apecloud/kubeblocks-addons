@@ -1,5 +1,5 @@
 #!/bin/sh
-set -ex
+set -e
 
 # Based on the ClusterDefinition API, redis sentinel deployed with redis together, it will be deprecated in the future.
 
