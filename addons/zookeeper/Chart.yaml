@@ -13,8 +13,7 @@ icon: https://www.apache.org/logos/res/zookeeper/zookeeper.png
 keywords:
   - zookeeper
   - synchronization
-  - naming
-  - etcd
+  - middleware
 
 maintainers:
   - name: ApeCloud
@@ -24,5 +23,5 @@ maintainers:
 
 annotations:
     addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
-    addon.kubeblocks.io/model: "other"
+    addon.kubeblocks.io/model: "middleware"
     addon.kubeblocks.io/provider: "community"
