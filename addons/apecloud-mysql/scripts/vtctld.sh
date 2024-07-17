@@ -1,13 +1,11 @@
 #!/bin/bash
 echo "starting vtctl"
 
-if [ -n "$ETCD_LOCAL_POD_LIST" ]; then
-  IFS=',' read -ra ETCD_POD_ARRAY <<< "$ETCD_LOCAL_POD_LIST"
-  endpoints=""
-  for pod in "${ETCD_POD_ARRAY[@]}"; do
-    endpoints+="${pod}.${ETCD_LOCAL_HEADLESS}.${KB_NAMESPACE}.svc.cluster.local:${ETCD_LOCAL_PORT},"
-  done
-  endpoints="${endpoints%,}"
+if [ -n "$SERVICE_ETCD_ENDPOINT" ]; then
+  endpoints="$SERVICE_ETCD_ENDPOINT"
+else
+  echo "SERVICE_ETCD_ENDPOINT is empty. Cannot proceed."
+  exit 1
 fi
 
 echo $endpoints

@@ -2,16 +2,6 @@
   "$schema": "http://json-schema.org/schema#",
   "type": "object",
   "properties": {
-    "etcd": {
-      "type": "object",
-      "properties": {
-        "replicas": {
-          "type": "integer",
-          "enum": [1],
-          "description": "The number of replicas for the etcd service, which must be 1."
-        }
-      }
-    },
     "version": {
       "title": "Version",
       "description": "Cluster version.",

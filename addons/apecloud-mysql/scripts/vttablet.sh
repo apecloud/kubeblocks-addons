@@ -27,17 +27,10 @@ tablet_type=replica
 
 echo "starting vttablet for $alias..."
 
-if [ -n "$ETCD_LOCAL_POD_LIST" ]; then
-  IFS=',' read -ra ETCD_POD_ARRAY <<< "$ETCD_LOCAL_POD_LIST"
-  endpoints=""
-  for pod in "${ETCD_POD_ARRAY[@]}"; do
-    endpoints+="${pod}.${ETCD_LOCAL_HEADLESS}.${KB_NAMESPACE}.svc.cluster.local:${ETCD_LOCAL_PORT},"
-  done
-  endpoints="${endpoints%,}"
-elif [ -n "$SERVICE_ETCD_ENDPOINT" ]; then
+if [ -n "$SERVICE_ETCD_ENDPOINT" ]; then
   endpoints="$SERVICE_ETCD_ENDPOINT"
 else
-  echo "Both ETCD_LOCAL_POD_LIST and SERVICE_ETCD_ENDPOINT are empty. Cannot proceed."
+  echo "SERVICE_ETCD_ENDPOINT is empty. Cannot proceed."
   exit 1
 fi
 

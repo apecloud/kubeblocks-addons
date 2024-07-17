@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ -n "$SERVICE_ETCD_ENDPOINT" ] && [ -z "$ETCD_LOCAL_POD_LIST" ]; then
+if [ -n "$SERVICE_ETCD_ENDPOINT" ]; then
   endpoints=$SERVICE_ETCD_ENDPOINT
 else
 # local etcd no need to clean

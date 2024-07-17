@@ -54,7 +54,7 @@ spec:
           - name: ETCD_SERVER
             value: $(SERVICE_ETCD_ENDPOINT)
           - name: ETCDCTL_API
-            value: {{ .Values.etcd.apiVersion | default "3" | quote }}
+            value: "3"
         command: ["/scripts/vtctld.sh"]
         volumeMounts:
           - name: scripts
@@ -82,28 +82,6 @@ spec:
           name: etcd
           endpoint: Required
           optional: true
-    - name: ETCD_LOCAL_POD_LIST
-      valueFrom:
-        componentVarRef:
-          compDef: {{ include "apecloud-etcd.componentDefName" . }}
-          optional: true
-          instanceNames: Optional
-    - name: ETCD_LOCAL_HEADLESS
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "apecloud-etcd.componentDefName" . }}
-          name: headless
-          optional: true
-          host: Optional
-    - name: ETCD_LOCAL_PORT
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "apecloud-etcd.componentDefName" . }}
-          name: etcd
-          optional: true
-          port:
-            name: etcd-client
-            option: Optional
 ---
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
@@ -208,71 +186,3 @@ spec:
           name: etcd
           endpoint: Required
           optional: true
-    - name: ETCD_LOCAL_POD_LIST
-      valueFrom:
-        componentVarRef:
-          compDef: {{ include "apecloud-etcd.componentDefName" . }}
-          optional: true
-          instanceNames: Optional
-    - name: ETCD_LOCAL_HEADLESS
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "apecloud-etcd.componentDefName" . }}
-          name: headless
-          optional: true
-          host: Optional
-    - name: ETCD_LOCAL_PORT
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "apecloud-etcd.componentDefName" . }}
-          name: etcd
-          optional: true
-          port:
-            name: etcd-client
-            option: Optional
----
-apiVersion: apps.kubeblocks.io/v1alpha1
-kind: ComponentDefinition
-metadata:
-  name: {{ include "apecloud-etcd.componentDefName" . }}
-  labels:
-    {{- include "apecloud-mysql.labels" . | nindent 4 }}
-spec:
-  provider: kubeblocks.io
-  description: etcd
-  serviceKind: etcd
-  serviceVersion: "0.2.7"
-  scripts:
-    - name: apecloud-mysql-scripts
-      templateRef: {{ include "apecloud-mysql.cmScriptsName" . }}
-      namespace: {{ .Release.Namespace }}
-      volumeName: scripts
-      defaultMode: 0555
-  services:
-  - name: etcd
-    spec:
-      ports:
-        - name: etcd-client
-          port: {{ .Values.etcd.port | default 2379}}
-          targetPort: etcd-client
-  runtime:
-    containers:
-      - name: etcd
-        image: {{ .Values.wesqlscale.image.registry | default .Values.image.registry }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
-        imagePullPolicy: {{ default "IfNotPresent" .Values.wesqlscale.image.pullPolicy }}
-        ports:
-          - containerPort: {{ .Values.etcd.port | default 2379}}
-            name: etcd-client
-        env:
-          - name: ETCDCTL_API
-            value: {{ .Values.etcd.apiVersion | default "3" | quote }}
-          - name: ETCD_PORT
-            value: {{ .Values.etcd.port | default "2379" | quote }}
-          - name: CELL
-            value: {{ .Values.wesqlscale.cell | default "zone1" | quote }}
-        command: ["/scripts/etcd.sh"]
-        volumeMounts:
-          - name: scripts
-            mountPath: /scripts
-          - name: data
-            mountPath: /vtdataroot

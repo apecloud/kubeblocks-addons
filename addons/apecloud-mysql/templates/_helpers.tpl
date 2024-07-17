@@ -169,7 +169,7 @@ lifecycleActions:
       exec:
         command:
           - /scripts/switchover-without-candidate.sh
-  {{/*
+ 
   accountProvision:
     customHandler:
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
@@ -185,7 +185,7 @@ lifecycleActions:
           - $(KB_ACCOUNT_STATEMENT)
       targetPodSelector: Role
       matchingKey: leader 
-   */}}
+
 exporter:
   containerName: mysql-exporter
   scrapePath: /metrics
@@ -225,28 +225,6 @@ vars:
         name: etcd
         endpoint: Required
         optional: true
-  - name: ETCD_LOCAL_POD_LIST
-    valueFrom:
-      componentVarRef:
-        compDef: {{ include "apecloud-etcd.componentDefName" . }}
-        optional: true
-        instanceNames: Optional
-  - name: ETCD_LOCAL_HEADLESS
-    valueFrom:
-      serviceVarRef:
-        compDef: {{ include "apecloud-etcd.componentDefName" . }}
-        name: headless
-        optional: true
-        host: Optional
-  - name: ETCD_LOCAL_PORT
-    valueFrom:
-      serviceVarRef:
-        compDef: {{ include "apecloud-etcd.componentDefName" . }}
-        name: etcd
-        optional: true
-        port:
-          name: etcd-client
-          option: Optional
 {{- end -}}
 
 {{- define "apecloud-mysql.spec.runtime.mysql" -}}

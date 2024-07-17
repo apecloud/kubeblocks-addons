@@ -39,26 +39,26 @@ spec:
     orders: *orders
   - name: apecloud-mysql-proxy-etcd
     components:
-    - name: etcd
-      compDef: etcd
     - name: mysql
       compDef: apecloud-mysql
+    - name: etcd
+      compDef: etcd-0.9.0
     - name: wescale-ctrl
       compDef: wescale-ctrl
     - name: wescale
       compDef: wescale
     orders: &orders2
       provision:
-      - etcd
       - mysql
+      - etcd
       - wescale-ctrl
       - wescale
   - name: apecloud-mysql-audit-proxy-etcd
     components:
-    - name: etcd
-      compDef: etcd
     - name: mysql
       compDef: apecloud-mysql-auditlog
+    - name: etcd
+      compDef: etcd-0.9.0
     - name: wescale-ctrl
       compDef: wescale-ctrl
     - name: wescale

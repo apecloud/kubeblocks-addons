@@ -1,0 +1,4 @@
+{{- $namespace := .Release.Namespace }}
+{{- if not (lookup "apps.kubeblocks.io/v1alpha1" "ComponentDefinition" $namespace .Values.etcd.etcdCrdName) }}
+  {{- fail (printf "The ComponentDefinition %s is required but does not exist in namespace %s." .Values.etcd.etcdCrdName $namespace) }}
+{{- end }}

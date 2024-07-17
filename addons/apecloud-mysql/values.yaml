@@ -110,5 +110,4 @@ wesqlscale:
 resourceNamePrefix: ""
 
 etcd:
-  apeiVersion: "2"
-  port: 2379
+  etcdCrdName: etcd-0.9.0

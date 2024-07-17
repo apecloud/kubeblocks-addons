@@ -100,7 +100,7 @@ raftGroup mode: max(replicas, 3)
           - ReadWriteOnce
         resources:
           requests:
-            storage: 20Gi
+            storage: {{ .Values.etcd.resources.storage }}
   replicas: {{ .Values.etcd.replicas }}
   resources:
     requests:
