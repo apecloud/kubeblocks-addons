@@ -4,7 +4,7 @@ storageClassName: ""
 
 ## @param mode MySQL cluster topology mode, distribution, replication
 ##
-mode: distribution
+mode: replication
 
 sshKeySecret: gbase-ssh-rsa-secret
 
