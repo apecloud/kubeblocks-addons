@@ -3,7 +3,7 @@
 # Declare variables to be passed into your templates.
 images:
   # Overrides the image tag whose default is the chart appVersion.
-  registry: docker.mirrors.ustc.edu.cn
+  registry: https://dockerhub.icu
   tag: v1.101.0-cluster
   vmsingle:
     repository: victoriametrics/victoria-metrics
