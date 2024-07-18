@@ -102,7 +102,7 @@ spec:
         podSpec:
           containers:
           - name: kafka-topic
-            image: docker.io/bitnami/kafka:3.3.2-debian-11-r54
+            image: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kafka:3.3.2-debian-11-r54
             imagePullPolicy: IfNotPresent
             command:
             - bash
