@@ -60,6 +60,8 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: metadata.namespace
+        - name: SERVICE_PORT
+          value: "15692"
         - name: RABBITMQ_MNESIA_BASE
           value: {{ .Values.dataMountPath }}/mnesia
         - name: RABBITMQ_LOG_BASE
@@ -95,6 +97,9 @@ spec:
           protocol: TCP
         - containerPort: 15672
           name: management
+          protocol: TCP
+        - containerPort: 25672
+          name: communication
           protocol: TCP
         - containerPort: 15692
           name: prometheus
