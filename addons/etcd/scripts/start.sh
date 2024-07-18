@@ -15,7 +15,7 @@ else
     peer_protocol="http"
 fi
 
-# member join need to reset initial-cluster, cause configmap will not be updated when environment variables change
+# when a member joins, initial-cluster needs to be reset because configmap will not update automatically
 MY_PEER=${KB_POD_FQDN}${CLUSTER_DOMAIN}
 PEERS=""
 DOMAIN=$KB_NAMESPACE".svc"$CLUSTER_DOMAIN
@@ -26,20 +26,22 @@ while [ $i -lt $KB_REPLICA_COUNT ]; do
     fi; 
     host=$(eval echo \$KB_"$i"_HOSTNAME)
     host=$host"."$DOMAIN
-    hostname=${KB_CLUSTER_COMP_NAME}-${i}
-    PEERS="$PEERS$hostname=${peer_protocol}://$host:2380"
+    replica_hostname=${KB_CLUSTER_COMP_NAME}-${i}
+    PEERS="${PEERS}${replica_hostname}=${peer_protocol}://$host:2380"
     i=$(( i + 1))
 done
 
+# discovery config
 sed -i "s#name:.*#name: ${HOSTNAME}#g" $tmpconf
 sed -i "s#\(initial-advertise-peer-urls: https\?\).*#\\1://${MY_PEER}:2380#g" $tmpconf
 sed -i "s#\(advertise-client-urls: https\?\).*#\\1://${MY_PEER}:2379#g" $tmpconf
-sed -i "s#initial-cluster:.*#initial-cluster: ${PEERS}#g" $tmpconf
 
-# hscale member join
+# tls config
+sed -i "s#allowed-hostname:.*#allowed-hostname:#g" $tmpconf
+# TEST: etcdctl --cacert=/etc/pki/tls/ca.crt --cert=/etc/pki/tls/tls.crt --key=/etc/pki/tls/tls.key member list
+
+# member join reconfiguration
+# sed -i "s#initial-cluster:.*#initial-cluster: ${PEERS}#g" $tmpconf
 # sed -i "s#initial-cluster-state:.*#initial-cluster-state: existing#g" $tmpconf
 
-cat $tmpconf
 exec etcd --config-file $tmpconf
-
-# TLS TEST: etcdctl --cacert=/etc/pki/tls/ca.crt --cert=/etc/pki/tls/tls.crt --key=/etc/pki/tls/tls.key member list 

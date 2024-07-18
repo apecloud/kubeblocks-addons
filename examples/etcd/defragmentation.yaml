@@ -1,0 +1,18 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: etcd-defragmentation
+  namespace: default
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: etcd-cluster
+  type: Custom
+  # Lists Custom objects, each specifying a Component to perform a custom operation.
+  custom:
+    # Specifies the name of the Component.
+    components:
+      - componentName: etcd
+    # Specifies the name of the Custom operation to perform, which is defined in the Component resource.
+    opsDefinitionName: etcd-defragmentation
+  # Specifies the maximum number of seconds the OpsRequest will wait for its start conditions to be met before aborting. If set to 0 (default), the start conditions must be met immediately for the OpsRequest to proceed.
+  preConditionDeadlineSeconds: 0

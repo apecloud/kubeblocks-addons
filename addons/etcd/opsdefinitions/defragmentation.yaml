@@ -1,0 +1,29 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
+  name: etcd-defragmentation
+spec:
+  preConditions:
+    - rule:
+        expression: '{{ eq .component.status.phase "Running" }}'
+        message: "Component is not in Running status."
+  componentInfos:
+  - componentDefinitionName: etcd-0.9.0
+  actions:
+    - name: etcd-defragmentation
+      failurePolicy: Fail
+      workload:
+        type: Job
+        backoffLimit: 2
+        podSpec:
+          containers:
+            - name: etcd-defragmentation
+              image: '{{ .Values.image.repository }}:{{ .Values.image.tag }}'
+              imagePullPolicy: IfNotPresent
+              command:
+                - bash
+                - -c
+                - |
+                  set -e
+                  ENDPOINT=http://${KB_CLUSTER_COMP_NAME}-0.${KB_COMP_HEADLESS_SVC_NAME}.${KB_OPS_NAMESPACE}.svc.cluster.local:2379
+                  etcdctl defrag --endpoints=$ENDPOINT
