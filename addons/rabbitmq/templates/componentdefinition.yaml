@@ -60,6 +60,8 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: metadata.namespace
+        - name: SERVICE_PORT
+          value: "15692"
         - name: RABBITMQ_MNESIA_BASE
           value: {{ .Values.dataMountPath }}/mnesia
         - name: RABBITMQ_LOG_BASE
@@ -74,7 +76,7 @@ spec:
           value: rabbit@$(KB_POD_NAME).$(K8S_SERVICE_NAME).$(MY_POD_NAMESPACE)
         - name: K8S_HOSTNAME_SUFFIX
           value: .$(K8S_SERVICE_NAME).$(MY_POD_NAMESPACE)
-        image: rabbitmq:3.13.2-management
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         lifecycle:
           preStop:
@@ -95,6 +97,9 @@ spec:
           protocol: TCP
         - containerPort: 15672
           name: management
+          protocol: TCP
+        - containerPort: 25672
+          name: communication
           protocol: TCP
         - containerPort: 15692
           name: prometheus

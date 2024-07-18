@@ -4,27 +4,17 @@
   "properties": {
     "version": {
       "title": "Version",
-      "description": "Cluster version.",
+      "description": "The version of Qdrant.",
       "type": "string",
-      "default": "qdrant-1.5.0"
-    },
-    "mode": {
-      "title": "Mode",
-      "description": "Cluster topology mode.",
-      "type": "string",
-      "default": "standalone",
-      "enum": [
-        "standalone",
-        "replication"
-      ]
+      "default": "1.10.0"
     },
     "replicas": {
       "title": "Replicas",
-      "description": "The number of replicas, for standalone mode, the replicas is 1, for replication mode, the default replicas is 2.",
+      "description": "The number of replicas.",
       "type": "integer",
       "default": 1,
       "minimum": 1,
-      "maximum": 5
+      "maximum": 16
     },
     "cpu": {
       "title": "CPU",
@@ -33,7 +23,7 @@
         "number",
         "string"
       ],
-      "default": 0.5,
+      "default": 1,
       "minimum": 0.5,
       "maximum": 64,
       "multipleOf": 0.5

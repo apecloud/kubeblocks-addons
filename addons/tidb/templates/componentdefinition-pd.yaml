@@ -8,7 +8,6 @@ spec:
   provider: kubeblocks
   description: tidb's metadata server
   updateStrategy: BestEffortParallel
-  serviceVersion: "7.1.5" # TODO: is this needed?
   vars:
     - name: DOMAIN
       value: "$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}"
@@ -37,14 +36,12 @@ spec:
       templateRef: {{ include "tidb.cmScriptsName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
-      defaultMode: 0555 # FIXME: kb bug? if this field is not set, permission is wrong
   configs:
     - name: pd-configuration
       templateRef: {{ include "tidb.pd.configTplName" . }}
       constraintRef: {{ include "tidb.pd.configConstraintName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: config
-      defaultMode: 0444
   roles:
     - name: leader
       serviceable: true
@@ -86,10 +83,6 @@ spec:
               echo $KB_LEAVE_MEMBER_POD_NAME
               echo $ADDRESS
               /pd-ctl -u $ADDRESS member delete name $KB_LEAVE_MEMBER_POD_NAME
-  # TODO
-  # systemAccounts:
-  #   - name: root
-  #     initAccount: true
   exporter:
     containerName: pd
     scrapePort: "2379"

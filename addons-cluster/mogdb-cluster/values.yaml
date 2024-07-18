@@ -4,7 +4,7 @@
 
 ## @param version OpenGauss cluster version
 ##
-version: mogdb-5.0.5
+version: 5.0.5
 
 ## @param mode postgresql cluster topology mode, standalone, replication
 ##
@@ -32,3 +32,6 @@ requests:
 ## @param storage size, the unit is Gi
 ##
 storage: 20
+
+extra:
+  disableExporter: false

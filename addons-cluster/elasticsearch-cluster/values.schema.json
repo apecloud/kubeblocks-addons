@@ -2,11 +2,11 @@
   "$schema": "http://json-schema.org/schema#",
   "type": "object",
   "properties": {
-    "serviceVersion": {
-      "title": "ServiceVersion",
+    "version": {
+      "title": "Version",
       "description": "The version of ElasticSearch.",
       "type": "string",
-      "default": "8.8"
+      "default": "8.8.2"
     },
     "mode": {
       "title": "Mode",

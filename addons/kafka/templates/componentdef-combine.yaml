@@ -12,20 +12,11 @@ metadata:
   {{- end }}
 spec:
   services:
-    - name: broker
-      serviceName: broker
-      generatePodOrdinalService: true
+    - name: advertised-listener
+      serviceName: advertised-listener
+      podService: true
       spec:
         type: ClusterIP
-        ports:
-          - name: broker
-            port: 9092
-            targetPort: kafka-client
-    - name: broker-nodeport
-      serviceName: broker-nodeport
-      generatePodOrdinalService: true
-      spec:
-        type: NodePort
         ports:
           - name: broker
             port: 9092
@@ -37,15 +28,14 @@ spec:
           name: admin
           username: Required
           optional: false
-      ## if the kafka NodePort type Service with name suffix broker-{0,1...} is set, the BROKER_NODE_PORT_{0,1...} will be available
-    - name: BROKER_NODE_PORT
+    ## Todo: currently only nodeport and clusterip network modes are supported. LoadBalance is not supported yet and needs future support.
+    - name: BROKER_ADVERTISED_PORT
       valueFrom:
         serviceVarRef:
-          compDef: kafka-combine
-          name: broker-nodeport
-          generatePodOrdinalServiceVar: true
+          compDef: {{ include "kafka-combine.componentDefName" . }}
+          name: advertised-listener
           optional: true
-          nodePort:
+          port:
             name: broker
             option: Optional
   provider: kubeblocks
@@ -97,7 +87,7 @@ spec:
       fsGroup: 1001
     containers:
       - name: kafka
-        image: {{ .Values.images.registry | default "docker.io/bitnami/" }}{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
+        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
         securityContext:
           allowPrivilegeEscalation: false
@@ -194,7 +184,7 @@ spec:
             mountPath: /tools/server-jaas.properties
             subPath: server-jaas.properties
       - name: jmx-exporter
-        image: {{ .Values.images.registry | default "docker.io/bitnami/" }}{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
+        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
         securityContext:
           runAsNonRoot: true

@@ -14,10 +14,12 @@ reset_redis_sentinel_conf() {
     sed -i "/sentinel announce-ip/d" /data/sentinel/redis-sentinel.conf
     sed -i "/sentinel resolve-hostnames/d" /data/sentinel/redis-sentinel.conf
     sed -i "/sentinel announce-hostnames/d" /data/sentinel/redis-sentinel.conf
+    set +x
     if [ -n "$SENTINEL_PASSWORD" ]; then
       sed -i "/sentinel sentinel-user/d" /data/sentinel/redis-sentinel.conf
       sed -i "/sentinel sentinel-pass/d" /data/sentinel/redis-sentinel.conf
     fi
+    set -x
     sed -i "/port $sentinel_port/d" /data/sentinel/redis-sentinel.conf
   fi
 }
@@ -31,10 +33,13 @@ build_redis_sentinel_conf() {
     echo "sentinel resolve-hostnames yes"
     echo "sentinel announce-hostnames yes"
   } >> /data/sentinel/redis-sentinel.conf
+  set +x
   if [ -n "$SENTINEL_PASSWORD" ]; then
     echo "sentinel sentinel-user $SENTINEL_USER" >> /data/sentinel/redis-sentinel.conf
     echo "sentinel sentinel-pass $SENTINEL_PASSWORD" >> /data/sentinel/redis-sentinel.conf
   fi
+  set -x
+  echo "build redis sentinel conf succeeded!"
 }
 
 start_redis_sentinel_server() {

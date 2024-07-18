@@ -170,6 +170,8 @@ lifecycleActions:
         command:
           - /scripts/switchover-without-candidate.sh
   accountProvision:
+    builtinHandler: wesql
+  {{/*
     customHandler:
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
       exec:
@@ -183,7 +185,8 @@ lifecycleActions:
           - -e
           - $(KB_ACCOUNT_STATEMENT)
       targetPodSelector: Role
-      matchingKey: leader
+      matchingKey: leader 
+   */}}
 exporter:
   containerName: mysql-exporter
   scrapePath: /metrics

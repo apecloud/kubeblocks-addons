@@ -68,3 +68,7 @@ replicas: 1
 replicas: {{ max .Values.replicas 3 }}
 {{- end }}
 {{- end }}
+
+{{- define "elasticsearch.version" }}
+{{- trimPrefix "elasticsearch-" .Values.version }}
+{{- end }}

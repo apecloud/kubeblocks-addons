@@ -4,8 +4,8 @@ metadata:
   name: {{ include "kblib.clusterName" . }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
   annotations:
-    "kubeblocks.io/extra-env": '{"KB_KAFKA_ENABLE_SASL":"{{ $.Values.saslEnable }}","KB_KAFKA_BROKER_HEAP":"{{ $.Values.brokerHeap }}","KB_KAFKA_CONTROLLER_HEAP":"{{ $.Values.controllerHeap }}","KB_KAFKA_PUBLIC_ACCESS":"{{ $.Values.extra.publiclyAccessible }}", "KB_KAFKA_BROKER_NODEPORT": "{{ $.Values.nodePortEnabled }}"}'
-    {{- include "kafka-cluster.brokerAddrFeatureGate" . | nindent 4 }}
+    "kubeblocks.io/extra-env": '{"KB_KAFKA_ENABLE_SASL":"{{ $.Values.saslEnable }}","KB_KAFKA_BROKER_HEAP":"{{ $.Values.brokerHeap }}","KB_KAFKA_CONTROLLER_HEAP":"{{ $.Values.controllerHeap }}","KB_KAFKA_PUBLIC_ACCESS":"{{ $.Values.extra.publiclyAccessible }}"}'
+{{/*    {{- include "kafka-cluster.brokerAddrFeatureGate" . | nindent 4 }}*/}}
 spec:
   clusterDefinitionRef: kafka # ref clusterdefinition.name
   clusterVersionRef: {{ .Values.version }}
@@ -25,20 +25,6 @@ spec:
     separated
       {{- end }}
     {{- end }}
-  services:
-    - name: bootstrap
-      serviceName: bootstrap
-      componentSelector: broker
-      spec:
-        {{- if .Values.nodePortEnabled }}
-        type: NodePort
-        {{- else }}
-        type: ClusterIP
-        {{- end }}
-        ports:
-          - name: kafka-client
-            targetPort: 9092
-            port: 9092
   componentSpecs:
     {{- if eq "combined" $.Values.mode }}
     - name: kafka-combine
@@ -53,8 +39,15 @@ spec:
       replicas: {{ $.Values.replicas }}
       monitor: {{ $.Values.monitorEnable }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      services:
+        - name: advertised-listener
+        {{- if $.Values.nodePortEnabled }}
+          serviceType: NodePort
+        {{- else }}
+          serviceType: ClusterIP
+        {{- end }}
+          podService: true
       {{- include "kblib.componentResources" . | indent 6 }}
-      {{- include "kblib.componentServices" . | indent 6 }}
       {{- if $.Values.storageEnable }}
       volumeClaimTemplates:
         - name: data
@@ -87,8 +80,15 @@ spec:
       replicas: {{ $.Values.brokerReplicas }}
       monitor: {{ $.Values.monitorEnable }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      services:
+        - name: advertised-listener
+        {{- if $.Values.nodePortEnabled }}
+          serviceType: NodePort
+        {{- else }}
+          serviceType: ClusterIP
+        {{- end }}
+          podService: true
       {{- include "kblib.componentResources" . | indent 6 }}
-      {{- include "kblib.componentServices" . | indent 6 }}
       {{- if $.Values.storageEnable }}
       volumeClaimTemplates:
         - name: data

@@ -16,12 +16,12 @@ spec:
     - name: 3.7.2
       serviceVersion: 3.7.2
       images:
-        zookeeper: {{ .Values.images.repository }}:3.7.2
+        zookeeper: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:3.7.2
     - name: 3.8.4
       serviceVersion: 3.8.4
       images:
-        zookeeper: {{ .Values.images.repository }}:3.8.4
+        zookeeper: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:3.8.4
     - name: 3.9.2
       serviceVersion: 3.9.2
       images:
-        zookeeper: {{ .Values.images.repository }}:3.9.2
+        zookeeper: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:3.9.2

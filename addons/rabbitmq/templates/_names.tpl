@@ -10,7 +10,7 @@ rabbitmq
 {{- end -}}
 
 {{/*
-Define component defintion name
+Define component definition name
 */}}
 {{- define "rabbitmq.componentDefName" -}}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}

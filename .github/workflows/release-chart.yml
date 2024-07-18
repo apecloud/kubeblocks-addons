@@ -46,6 +46,7 @@ on:
           - postgresql
           - pulsar
           - qdrant
+          - rabbitmq
           - redis
           - risingwave
           - solr

@@ -10,11 +10,13 @@ remove_replica_from_shard_if_need() {
   current_pod_fqdn="$current_pod_name.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc"
 
   # get the cluster nodes info
+  set +x
   if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
     cluster_nodes_info=$(redis-cli -h "$current_pod_fqdn" cluster nodes)
   else
     cluster_nodes_info=$(redis-cli -h "$current_pod_fqdn" -a "$REDIS_DEFAULT_PASSWORD" cluster nodes)
   fi
+  set -x
   echo "Cluster nodes info: $cluster_nodes_info"
 
   # if the cluster_nodes_info contains only one line, it means that the cluster not be initialized
@@ -29,12 +31,13 @@ remove_replica_from_shard_if_need() {
     echo "Current node $current_pod_name is a slave, removing it from the cluster..."
     current_node_cluster_id=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $1}')
     current_node_ip_and_port=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $2}' | cut -d'@' -f1)
+    set +x
     if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
       del_node_command="redis-cli --cluster del-node $current_node_ip_and_port $current_node_cluster_id"
     else
       del_node_command="redis-cli --cluster del-node $current_node_ip_and_port $current_node_cluster_id -a $REDIS_DEFAULT_PASSWORD"
     fi
-    echo "Remove replica from shard executing command: $del_node_command"
+    echo "remove replica from shard executing command: $del_node_command" | sed "s/$REDIS_DEFAULT_PASSWORD/********/g"
     for ((i=1; i<=20; i++)); do
       if $del_node_command; then
         echo "Successfully removed replica from shard."
@@ -44,6 +47,7 @@ remove_replica_from_shard_if_need() {
         sleep $((RANDOM % 3 + 1))
       fi
     done
+    set -x
 
     if [ "$i" -eq 20 ]; then
       echo "Failed to remove replica from shard after 20 attempts."
@@ -51,11 +55,13 @@ remove_replica_from_shard_if_need() {
     fi
 
     # check if the current node is removed from the cluster
+    set +x
     if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
       cluster_nodes_info=$(redis-cli -h "$current_pod_fqdn" cluster nodes)
     else
       cluster_nodes_info=$(redis-cli -h "$current_pod_fqdn" -a "$REDIS_DEFAULT_PASSWORD" cluster nodes)
     fi
+    set -x
     echo "Cluster nodes info: $cluster_nodes_info"
 
     if [ "$(echo "$cluster_nodes_info" | wc -l)" -le 1 ]; then
@@ -71,11 +77,13 @@ remove_replica_from_shard_if_need() {
 }
 
 save_acl() {
+  set +x
   if [ -n "$REDIS_DEFAULT_PASSWORD" ]; then
     redis-cli -h 127.0.0.1 -p 6379 -a "$REDIS_DEFAULT_PASSWORD" acl save
   else
     redis-cli -h 127.0.0.1 -p 6379 acl save
   fi
+  set -x
 }
 
 save_acl

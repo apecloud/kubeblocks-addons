@@ -32,9 +32,11 @@ maxClientCnxns=500
 ## Metrics Providers
 #
 # https://prometheus.io Metrics Exporter
-# metricsProvider.className=org.apache.zookeeper.metrics.prometheus.PrometheusMetricsProvider
-# metricsProvider.httpPort=7000
-# metricsProvider.exportJvmInfo=true
+{{ if .ZOOKEEPER_METRICS_MONITOR }}
+  {{- printf "metricsProvider.className=org.apache.zookeeper.metrics.prometheus.PrometheusMetricsProvider\n" }}
+  {{- printf "metricsProvider.httpPort=%s\n" .ZOOKEEPER_METRICS_PORT}}
+  {{- printf "metricsProvider.exportJvmInfo=true\n" }}
+{{- end }}
 
 # whitelist
 4lw.commands.whitelist=srvr, mntr, ruok, conf
@@ -46,5 +48,5 @@ maxClientCnxns=500
   {{- $name := index (splitList "." $fqdn) 0 }}
   {{- $tokens := splitList "-" $name }}
   {{- $ordinal := index $tokens (sub (len $tokens) 1) }}
-  {{- printf "server.%s=%s.cluster.local:2888:3888:participant;0.0.0.0:2181\n" $ordinal $fqdn }}
+  {{- printf "server.%s=%s:2888:3888:participant;0.0.0.0:2181\n" $ordinal $fqdn }}
 {{- end }}

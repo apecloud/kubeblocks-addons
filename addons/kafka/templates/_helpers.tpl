@@ -52,7 +52,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 
 
 {{/*
-Define kafka.combine component defintion name
+Define kafka.combine component definition name
 */}}
 {{- define "kafka-combine.componentDefName" -}}
 {{- if eq (len .Values.clusterVersionOverride) 0 -}}
@@ -63,7 +63,7 @@ kafka-combine
 {{- end -}}
 
 {{/*
-Define kafka-exporter component defintion name
+Define kafka-exporter component definition name
 */}}
 {{- define "kafka-exporter.componentDefName" -}}
 {{- if eq (len .Values.clusterVersionOverride) 0 -}}
@@ -74,7 +74,7 @@ kafka-exporter
 {{- end -}}
 
 {{/*
-Define kafka-controller component defintion name
+Define kafka-controller component definition name
 */}}
 {{- define "kafka-controller.componentDefName" -}}
 {{- if eq (len .Values.clusterVersionOverride) 0 -}}
@@ -85,7 +85,7 @@ kafka-controller
 {{- end -}}
 
 {{/*
-Define kafka-broker component defintion name
+Define kafka-broker component definition name
 */}}
 {{- define "kafka-broker.componentDefName" -}}
 {{- if eq (len .Values.clusterVersionOverride) 0 -}}
