@@ -19,8 +19,15 @@ if [ "$(datasafed list ${backupFile})" == "${backupFile}" ]; then
 else
     datasafed pull "${DP_BACKUP_NAME}.tar.gz" - | tar -xzvf - -C ${DATA_DIR}
 fi
-ENDPOINTS=$DP_DB_HOST:
 
-# https://etcd.io/docs/v3.5/op-guide/recovery/ restoring with revision bump
-etcdctl --endpoints=$ENDPOINTS snapshot restore ${DATA_DIR}/${DP_BACKUP_NAME} --bump-revision 1000000000 --mark-compacted
+ENDPOINTS=${DP_DB_HOST}.default.svc.cluster.local:2379
+tlsDir=$TLS_DIR
+
+# https://etcd.io/docs/v3.5/op-guide/recovery/ restoring with revision bump if needed
+if [ -d $tlsDir ]; then
+    etcdctl --endpoints=$ENDPOINTS --cacert=${tlsDir}/ca.crt --cert=${tlsDir}/tls.crt --key=${tlsDir}/tls.key snapshot restore ${DATA_DIR}/${DP_BACKUP_NAME}
+else
+    etcdctl --endpoints=$ENDPOINTS snapshot restore ${DATA_DIR}/${DP_BACKUP_NAME}
+fi
+
 rm -rf ${data_protection_file} && sync

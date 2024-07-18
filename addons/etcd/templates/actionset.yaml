@@ -9,6 +9,7 @@ spec:
   backup:
     backupData:
       image: {{ include "etcd.image" . }}
+      runOnTargetPodNode: true
       syncProgress:
         enabled: false
         intervalSeconds: 5
@@ -21,6 +22,7 @@ spec:
     postReady:
     - job:
         image: {{ include "etcd.image" . }}
+        runOnTargetPodNode: true
         command:
         - bash
         - -c

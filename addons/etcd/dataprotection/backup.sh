@@ -19,11 +19,16 @@ function handle_exit() {
 trap handle_exit EXIT
 
 # use etcdctl create snapshot
-# TODO use tls file when tls enabled
-ENDPOINTS=$DP_DB_HOST:2379
-echo "etcd endpoints: $ENDPOINTS"
-etcdctl --endpoints=$ENDPOINTS snapshot save ${DP_BACKUP_NAME}
-etcdctl --endpoints=$ENDPOINTS --write-out=table snapshot status ${DP_BACKUP_NAME}
+tlsDir=$TLS_DIR
+ENDPOINTS=${DP_DB_HOST}.default.svc.cluster.local:2379
+
+if [ -d $tlsDir ]; then
+  etcdctl --endpoints=$ENDPOINTS --cacert=${tlsDir}/ca.crt --cert=${tlsDir}/tls.crt --key=${tlsDir}/tls.key snapshot save ${DP_BACKUP_NAME}
+  etcdctl --endpoints=$ENDPOINTS --cacert=${tlsDir}/ca.crt --cert=${tlsDir}/tls.crt --key=${tlsDir}/tls.key --write-out=table snapshot status ${DP_BACKUP_NAME}
+else
+  etcdctl --endpoints=$ENDPOINTS snapshot save ${DP_BACKUP_NAME}
+  etcdctl --endpoints=$ENDPOINTS --write-out=table snapshot status ${DP_BACKUP_NAME}
+fi
 
 # use datasafed to get backup size
 # if we do not write into $DP_BACKUP_INFO_FILE, the backup job will stuck
@@ -34,4 +39,3 @@ tar -cvf - ${DP_BACKUP_NAME} | datasafed push -z zstd-fastest - "${DP_BACKUP_NAM
 
 TOTAL_SIZE=$(datasafed stat ${DP_BACKUP_NAME} | grep TotalSize | awk '{print $2}')
 echo "{\"totalSize\":\"$TOTAL_SIZE\"}" >"${DP_BACKUP_INFO_FILE}" && sync
-

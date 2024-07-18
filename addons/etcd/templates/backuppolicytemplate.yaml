@@ -10,12 +10,20 @@ spec:
   backupPolicies:
     - componentDefs:
       - etcd-{{ .Chart.Version }}
+      target:
+        role: leader
       backupMethods:
         - name: {{ include "etcd.backupActionSetName" .}}
           snapshotVolumes: false
           actionSetName: {{ include "etcd.backupActionSetName" .}}
+          targetVolumes:
+            volumes:
+            - tls
+            volumeMounts:
+            - name: tls
+              mountPath: /etc/pki/tls
       schedules:
         - backupMethod: {{ include "etcd.backupActionSetName" .}}
-          enabled: true
+          enabled: false
           cronExpression: "0 18 * * 0"
           retentionPeriod: 7d

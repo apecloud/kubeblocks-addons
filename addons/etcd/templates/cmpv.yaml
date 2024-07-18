@@ -7,11 +7,11 @@ metadata:
 spec:
   compatibilityRules:
     - releases:
-        - v3.5.6
+        - {{ .Values.image.tag }}
       compDefs:
         - etcd
   releases:
-    - name: v3.5.6
-      serviceVersion: v3.5.6
+    - name: {{ .Values.image.tag }}
+      serviceVersion: {{ .Values.image.tag }}
       images:
-        etcd: {{ .Values.image.repository }}:v3.5.6
+        etcd: {{ .Values.image.repository }}:{{ .Values.image.tag }}

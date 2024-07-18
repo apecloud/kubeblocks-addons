@@ -8,6 +8,8 @@ clusterDomain: ".cluster.local"
 dataMountPath: /var/run/etcd
 dataDir: /var/run/etcd/default.etcd
 
+tlsDir: /etc/pki/tls
+
 image:
   repository: quay.io/coreos/etcd
   tag: v3.5.6

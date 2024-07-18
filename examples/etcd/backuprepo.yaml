@@ -30,7 +30,7 @@ spec:
     region: cn-northwest-1
   # References to the secret that holds the credentials for the `StorageProvider`.
   # kubectl create secret generic s3-credential-for-backuprepo --from-literal=accessKeyId=* --from-literal=secretAccessKey=* --namespace=kb-system
-  credential: 
+  credential:
     # name is unique within a namespace to reference a secret resource.
     name: s3-credential-for-backuprepo
     # namespace defines the space within which the secret name must be unique.
