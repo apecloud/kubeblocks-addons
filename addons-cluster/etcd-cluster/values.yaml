@@ -9,7 +9,7 @@ terminationPolicy: Delete
 monitor:
   ## @param monitor.enabled if `true`, enable Cluster monitor capabilities
   ##
-  enabled: false
+  enabled: true
 
 ## @param tolerations define global Tolerations for the cluster all pod's assignment
 ## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
@@ -74,4 +74,3 @@ persistence:
     size: 1Gi
 
 tlsEnable: false
-# 

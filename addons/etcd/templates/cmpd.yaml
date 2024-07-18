@@ -38,8 +38,12 @@ spec:
       value: {{ .Values.clusterDomain }}
     - name: DATA_DIR
       value: {{ .Values.dataDir }}
+    - name: DATA_MOUNT_PATH
+      value: {{ .Values.dataMountPath }}
     - name: CLUSTER_NAME
       value: "$(KB_CLUSTER_COMP_NAME)"
+    - name: TLS_DIR
+      value: {{ .Values.tlsDir }}
     - name: PEERS
       valueFrom:
         componentVarRef:
@@ -75,15 +79,14 @@ spec:
       votable: true
   lifecycleActions:
     roleProbe:
+      builtinHandler: custom
       customHandler:
         image: {{ include "etcd.image" .}}
+        container: etcd
         exec:
           command:
             - |
-              Status=$(etcdctl --endpoints=127.0.0.1:2379 endpoint status -w simple --command-timeout=300ms --dial-timeout=100m) &&
-              IsLeader=$(echo $Status | awk -F ', ' '{print $5}') &&
-              IsLearner=$(echo $Status | awk -F ', ' '{print $6}') &&
-              if [ "true" = "$IsLeader" ]; then echo -n "leader"; elif [ "true" = "$IsLearner" ]; then echo -n "learner"; else echo -n "follower"; fi
+              {{- .Files.Get "scripts/role-probe-script.sh" | nindent 14 }}
     memberJoin:
       customHandler:
         image: {{ include "etcd.image" .}}
@@ -127,3 +130,8 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: config
       defaultMode: 0666
+  exporter:
+    containerName: etcd
+    scrapePort: "2379"
+    scrapePath: /metrics
+    scrapeScheme: http
