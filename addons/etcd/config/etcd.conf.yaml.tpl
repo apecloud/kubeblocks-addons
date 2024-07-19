@@ -3,12 +3,16 @@
 
 {{- $peerProtocol := "http" -}}
 {{- if $.component.tlsConfig -}}
-  {{- $peerProtocol = "https" -}}
+  {{- if eq .PEER_TLS "true" -}}
+    {{- $peerProtocol = "https" -}}
+  {{- end -}}
 {{- end -}}
 
 {{- $clientProtocol := "http" -}}
 {{- if $.component.tlsConfig -}}
-  {{- $clientProtocol = "https" -}}
+  {{- if eq .CLIENT_TLS "true" -}}
+    {{- $clientProtocol = "https" -}}
+  {{- end -}}
 {{- end -}}
 
 # Human-readable name for this member.
@@ -68,17 +72,19 @@ discovery-proxy:
 # DNS domain used to bootstrap initial cluster.
 discovery-srv:
 
-{{ define "INIT_PEERS" }}
+{{- define "INIT_PEERS" -}}
   {{- $peerProtocol := "http" -}}
   {{- if $.component.tlsConfig -}}
-    {{- $peerProtocol = "https" -}}
+    {{- if eq .PEER_TLS "true" -}}
+      {{- $peerProtocol = "https" -}}
+    {{- end -}}
   {{- end -}}
-  {{- $POD_NAME := splitList "," .POD_NAME_LIST }}
-  {{- $PEERS := splitList "," .PEERS }}
-  {{- range $idx, $host := $PEERS }}
-    {{- if $idx }},{{ end }}
-    {{- printf "%s=%s://%s:2380" (index $POD_NAME $idx) $peerProtocol $host }}
-  {{- end }}
+  {{- $POD_NAME := splitList "," .POD_NAME_LIST -}}
+  {{- $PEERS := splitList "," .PEERS -}}
+  {{- range $idx, $host := $PEERS -}}
+    {{- if $idx -}},{{- end -}}
+    {{- printf "%s=%s://%s:2380" (index $POD_NAME $idx) $peerProtocol $host -}}
+  {{- end -}}
 {{- end -}}
 
 # Comma separated string of initial cluster configuration for bootstrapping.
@@ -115,11 +121,13 @@ proxy-write-timeout: 5000
 # Time (in milliseconds) for a read to timeout.
 proxy-read-timeout: 0
 
-{{- if $.component.tlsConfig }}
-{{- $CA_FILE := getCAFile }}
-{{- $CERT_FILE := getCertFile }}
-{{- $KEY_FILE := getKeyFile }}
+{{- if $.component.tlsConfig -}}
 
+{{- $CA_FILE := getCAFile -}}
+{{- $CERT_FILE := getCertFile -}}
+{{- $KEY_FILE := getKeyFile -}}
+
+{{- if eq $clientProtocol "https" -}}
 client-transport-security:
   # Path to the client server TLS cert file.
   cert-file: {{$CERT_FILE}}
@@ -135,7 +143,9 @@ client-transport-security:
 
   # Client TLS using generated certificates
   auto-tls: false
+{{- end -}}
 
+{{- if eq $peerProtocol "https" -}}
 peer-transport-security:
   # Path to the peer server TLS cert file.
   cert-file: {{$CERT_FILE}}
@@ -157,14 +167,15 @@ peer-transport-security:
 
   # Allowed TLS hostname for inter peer authentication.
   allowed-hostname:
+{{- end -}}
 
-{{- end }}
+{{- end -}}
 
 # The validity period of the self-signed certificate, the unit is year.
 self-signed-cert-validity: 1
 
-# Enable debug-level logging for etcd.
-log-level: debug
+# Enable info-level logging for etcd.
+log-level: info
 
 logger: zap
 

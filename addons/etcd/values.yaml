@@ -10,6 +10,12 @@ dataDir: /var/run/etcd/default.etcd
 
 tlsDir: /etc/pki/tls
 
+# These TLS settings are used to configure two kind of TLS for etcd
+# They will only take effect when 'etcd-cluster.Values.tlsEnable' is set to true
+tls:
+  client: true
+  peer: true
+
 image:
   repository: quay.io/coreos/etcd
   tag: v3.5.6
