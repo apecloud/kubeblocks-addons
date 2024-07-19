@@ -10,6 +10,9 @@ image:
   #tag: 8.0.33
   tag: 5.7.44
   xtraBackupRepository: apecloud/percona-xtrabackup
+  syncer:
+    repository: apecloud/syncer
+    tag: "0.1.2"
 
 ## MySQL Cluster parameters
 cluster:
