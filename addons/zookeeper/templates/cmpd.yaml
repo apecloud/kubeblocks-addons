@@ -54,8 +54,6 @@ spec:
             - /bin/bash
             - -c
             - |
-              ZOOBIN="/opt/bitnami/zookeeper/bin"
-              ZOOBINDIR="$(cd "${ZOOBIN}"; pwd)"
               . "$ZOOBINDIR"/zkEnv.sh > /dev/null
 
               isSSL="false"
@@ -67,7 +65,11 @@ spec:
               $clientPortAddress $clientPort srvr $isSSL 2> /dev/null    \
               | $GREP Mode`
               mode=$(echo "$STAT" | awk -F': ' '{print $2}' | awk '{RS=""; ORS=""; print}' )
-              echo -n ${mode}
+              if [[ "$mode" == "standalone" ]]; then
+                echo -n "leader"
+              else
+                echo -n ${mode}
+              fi
 
   runtime:
     securityContext:
@@ -99,6 +101,10 @@ spec:
             fi
             exec /opt/bitnami/scripts/zookeeper/entrypoint.sh /opt/bitnami/scripts/zookeeper/run.sh
         env:
+          - name: ZOOBINDIR
+            value: "/opt/bitnami/zookeeper/bin"
+          - name: ZOOBIN
+            value: "/opt/bitnami/zookeeper/bin"
           - name: ZOO_ENABLE_AUTH
             value: "yes"
           - name: SERVICE_PORT
@@ -147,6 +153,9 @@ spec:
           - name: config
             mountPath: /opt/bitnami/zookeeper/conf/zoo.cfg
             subPath: zoo.cfg
+          - name: config-log
+            mountPath: /opt/bitnami/zookeeper/conf/logback.xml
+            subPath: logback.xml
   vars:
     - name: ZOOKEEPER_POD_FQDN_LIST
       valueFrom:
@@ -172,4 +181,8 @@ spec:
       defaultMode: 0755
       reRenderResourceTypes:
         - hscale
+    - name: zookeeper-log
+      namespace: {{ .Release.Namespace }}
+      templateRef: {{ include "zookeeper.name" . }}-configmap
+      volumeName: config-log
   updateStrategy: BestEffortParallel
