@@ -89,8 +89,8 @@ spec:
           - /bin/syncer
           - /config
           - /kubeblocks/
-        image: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:0.1.0
-        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         name: init-syncer
         volumeMounts:
           - mountPath: /kubeblocks
