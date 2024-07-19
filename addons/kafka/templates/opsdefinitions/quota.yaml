@@ -4,9 +4,7 @@ metadata:
   name: kafka-quota
 spec:
   preConditions:
-    - rule:
-        expression: '{{ eq .component.status.phase "Running" }}'
-        message: "Component is not in Running status."
+    {{- .Files.Get "opsdefinitions/quota-preconditions" | nindent 4 }}
   componentInfos:
   - componentDefinitionName: kafka-broker
     accountName: client
@@ -56,8 +54,8 @@ spec:
         podSpec:
           containers:
             - name: kafka-topic
-              image: docker.io/bitnami/kafka:3.3.2-debian-11-r54
-              imagePullPolicy: IfNotPresent
+              image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
+              imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
               command:
                 - bash
                 - -c
