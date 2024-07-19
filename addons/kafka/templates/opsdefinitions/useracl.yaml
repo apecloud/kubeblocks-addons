@@ -4,7 +4,7 @@ metadata:
   name: kafka-user-acl
 spec:
   preConditions:
-    {{- .Files.Get "opsdefinitions/topic-preconditions" | nindent 4 }}
+    {{- .Files.Get "opsdefinitions/useracl-preconditions" | nindent 4 }}
   componentInfos:
   - componentDefinitionName: kafka-broker
     accountName: client
