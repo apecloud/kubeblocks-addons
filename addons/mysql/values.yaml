@@ -12,6 +12,9 @@ image:
   tag: 5.7.44
   xtraBackupRepository: perconalab/percona-xtrabackup
   xtraBackupRegistry: docker.io
+  syncer:
+    repository: apecloud/syncer
+    tag: "0.1.2"
 
 ## MySQL Cluster parameters
 cluster:
