@@ -4,19 +4,22 @@
 images:
   # Overrides the image tag whose default is the chart appVersion.
   registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
-  tag: v1.101.0-cluster
   vmsingle:
-    repository: victoriametrics/victoria-metrics
+    repository: apecloud/victoria-metrics
     pullPolicy: IfNotPresent
+    tag: v1.101.0
   vminsert:
-    repository: victoriametrics/vminsert
+    repository: apecloud/vminsert
     pullPolicy: IfNotPresent
+    tag: v1.101.0-cluster
   vmselect:
-    repository: victoriametrics/vmselect
+    repository: apecloud/vmselect
     pullPolicy: IfNotPresent
+    tag: v1.101.0-cluster
   vmstorage:
-    repository: victoriametrics/vmstorage
+    repository: apecloud/vmstorage
     pullPolicy: IfNotPresent
+    tag: v1.101.0-cluster
 
 enableTCP6: false
 
