@@ -27,11 +27,15 @@ spec:
       injectEnvTo:
         - init-bookies
         - bookies
+      reRenderResourceTypes:
+        - vscale
     - name: bookies-config
       templateRef: {{ include "pulsar.name" . }}{{include "pulsar.major.version" .}}-bookies-config-tpl
       namespace: {{ .Release.Namespace }}
       volumeName: pulsar-bookies-config
       constraintRef: pulsar{{include "pulsar.major.version" .}}-bookies-cc
+      reRenderResourceTypes:
+        - vscale
   scripts:
     - name: pulsar-scripts
       templateRef: {{ include "pulsar.name" . }}-scripts
