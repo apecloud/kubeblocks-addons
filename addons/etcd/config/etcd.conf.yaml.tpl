@@ -72,7 +72,7 @@ discovery-proxy:
 # DNS domain used to bootstrap initial cluster.
 discovery-srv:
 
-{{- define "INIT_PEERS" -}}
+{{ define "INIT_PEERS" -}}
   {{- $peerProtocol := "http" -}}
   {{- if $.component.tlsConfig -}}
     {{- if eq .PEER_TLS "true" -}}
@@ -121,7 +121,7 @@ proxy-write-timeout: 5000
 # Time (in milliseconds) for a read to timeout.
 proxy-read-timeout: 0
 
-{{- if $.component.tlsConfig -}}
+{{ if $.component.tlsConfig -}}
 
 {{- $CA_FILE := getCAFile -}}
 {{- $CERT_FILE := getCertFile -}}
@@ -143,9 +143,9 @@ client-transport-security:
 
   # Client TLS using generated certificates
   auto-tls: false
-{{- end -}}
+{{- end }}
 
-{{- if eq $peerProtocol "https" -}}
+{{ if eq $peerProtocol "https" }}
 peer-transport-security:
   # Path to the peer server TLS cert file.
   cert-file: {{$CERT_FILE}}
@@ -167,7 +167,8 @@ peer-transport-security:
 
   # Allowed TLS hostname for inter peer authentication.
   allowed-hostname:
-{{- end -}}
+
+{{ end -}}
 
 {{- end -}}
 

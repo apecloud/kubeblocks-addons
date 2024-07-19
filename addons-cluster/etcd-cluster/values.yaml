@@ -74,3 +74,5 @@ persistence:
     size: 1Gi
 
 tlsEnable: false
+
+disableExporter: false

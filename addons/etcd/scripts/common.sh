@@ -1,5 +1,5 @@
 # config file used to bootstrap the etcd cluster
-configFile="/tmp/etcd/etcd.conf"
+configFile=$TMP_CONFIG_PATH
 
 function checkBackupFile() {
   local back_file=$1

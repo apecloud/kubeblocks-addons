@@ -10,6 +10,9 @@ dataDir: /var/run/etcd/default.etcd
 
 tlsDir: /etc/pki/tls
 
+# a copy version of /etc/etcd/etcd.conf but add some modification
+tmpConfigPath: /var/run/etcd/etcd.conf
+
 # These TLS settings are used to configure two kind of TLS for etcd
 # They will only take effect when 'etcd-cluster.Values.tlsEnable' is set to true
 tls:

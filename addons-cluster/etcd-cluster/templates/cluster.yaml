@@ -25,7 +25,7 @@ spec:
         name: KubeBlocks
       {{- end }}
       monitor: {{ .Values.monitor.enabled }}
-      disableExporter: false
+      disableExporter: {{ .Values.disableExporter }}
       replicas: {{ .Values.replicas | default "3" }}
       {{- with .Values.resources }}
       resources:

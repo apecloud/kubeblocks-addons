@@ -22,17 +22,11 @@ spec:
             mountPath: {{ .Values.dataMountPath }}
           - name: config
             mountPath: /etc/etcd
-          # configMap mount is RO, create a RW emptyDir mount tmp-config https://github.com/kubernetes/kubernetes/issues/62099
-          - name: tmp-config
-            mountPath: /tmp/etcd
+          - name: scripts
+            mountPath: /scripts
         command:
-          - /bin/sh
-          - -c
-          - |
-            {{- .Files.Get "scripts/start.sh" | nindent 12 }}
-    volumes:
-    - name: tmp-config
-      emptyDir: {}
+          - /bin/bash
+          - /scripts/start.sh
   vars:
     - name: CLUSTER_DOMAIN
       value: {{ .Values.clusterDomain }}
@@ -45,9 +39,11 @@ spec:
     - name: TLS_DIR
       value: {{ .Values.tlsDir }}
     - name: CLIENT_TLS
-      value: {{ .Values.tls.client }}
+      value: "{{ .Values.tls.client }}"
     - name: PEER_TLS
-      value: {{ .Values.tls.peer }}
+      value: "{{ .Values.tls.peer }}"
+    - name: TMP_CONFIG_PATH
+      value: {{ .Values.tmpConfigPath }}
     - name: PEERS
       valueFrom:
         componentVarRef:
@@ -89,7 +85,10 @@ spec:
         container: etcd
         exec:
           command:
+            - bash
+            - -c
             - |
+              {{- .Files.Get "scripts/common.sh" | nindent 14 }}
               {{- .Files.Get "scripts/role-probe-script.sh" | nindent 14 }}
     memberJoin:
       customHandler:
@@ -99,6 +98,7 @@ spec:
             - bash
             - -c
             - |
+              {{- .Files.Get "scripts/common.sh" | nindent 14 }}
               {{- .Files.Get "scripts/etcd-member-join.sh" | nindent 14 }}
     memberLeave:
       customHandler:
@@ -108,6 +108,7 @@ spec:
             - bash
             - -c
             - |
+              {{- .Files.Get "scripts/common.sh" | nindent 14 }}
               {{- .Files.Get "scripts/etcd-member-leave.sh" | nindent 14 }}
     switchover:
       withCandidate:
@@ -117,6 +118,7 @@ spec:
           - bash
           - -c
           - |
+            {{- .Files.Get "scripts/common.sh" | nindent 12 }}
             {{- .Files.Get "scripts/switchover-with-candidate.sh" | nindent 12 }}
       withoutCandidate:
         image: {{ include "etcd.image" .}}
@@ -125,6 +127,7 @@ spec:
           - bash
           - -c
           - |
+            {{- .Files.Get "scripts/common.sh" | nindent 12 }}
             {{- .Files.Get "scripts/switchover-without-candidate.sh" | nindent 12 }}
     reconfigure:
   configs:
@@ -134,6 +137,11 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: config
       defaultMode: 0666
+    - name: etcd-scripts
+      templateRef: {{ include "etcd.cmScriptsName" .}}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
   exporter:
     containerName: etcd
     scrapePort: "2379"

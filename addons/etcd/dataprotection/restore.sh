@@ -1,4 +1,10 @@
+#!/bin/bash
 set -exo pipefail
+
+CUR_PATH="$(dirname "${BASH_SOURCE[0]}")"
+# shellcheck source=./common.sh
+source "${CUR_PATH}/common.sh"
+
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 

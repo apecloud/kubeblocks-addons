@@ -2,7 +2,7 @@
 
 set -exo pipefail
 
-leader_endpoints=${KB_CONSENSUS_LEADER_POD_FQDN}:2379
+leader_endpoints=${KB_LEADER_POD_FQDN}:2379
 leader_id=$(etcdctl --endpoints=$leader_endpoints endpoint status | awk -F', ' '{print $2}')
 
 member_ids=$(etcdctl --endpoints=$leader_endpoints member list | awk -F', ' '{print $1}')
