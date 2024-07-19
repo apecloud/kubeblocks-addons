@@ -50,3 +50,6 @@ maxClientCnxns=500
   {{- $ordinal := index $tokens (sub (len $tokens) 1) }}
   {{- printf "server.%s=%s:2888:3888:participant;0.0.0.0:2181\n" $ordinal $fqdn }}
 {{- end }}
+
+# logging
+audit.enable=true
