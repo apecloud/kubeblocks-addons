@@ -27,6 +27,8 @@ spec:
       injectEnvTo:
         - proxy
         - check-broker
+      reRenderResourceTypes:
+        - vscale
     - name: proxy-config
       templateRef: {{ include "pulsar.name" . }}{{include "pulsar.major.version" .}}-proxy-config-tpl
       namespace: {{ .Release.Namespace }}

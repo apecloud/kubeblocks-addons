@@ -27,6 +27,8 @@ spec:
         - bookies-recovery
         - check-bookies
       volumeName: recovery-config-env
+      reRenderResourceTypes:
+        - vscale
   scripts:
     - name: pulsar-scripts
       templateRef: {{ include "pulsar.name" . }}-scripts
