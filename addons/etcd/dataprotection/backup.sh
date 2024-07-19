@@ -2,6 +2,10 @@
 
 set -exo pipefail
 
+CUR_PATH="$(dirname "${BASH_SOURCE[0]}")"
+# shellcheck source=./common.sh
+source "${CUR_PATH}/common.sh"
+
 cat /etc/datasafed/datasafed.conf
 toolConfig=/etc/datasafed/datasafed.conf
 
@@ -19,16 +23,12 @@ function handle_exit() {
 trap handle_exit EXIT
 
 # use etcdctl create snapshot
-tlsDir=$TLS_DIR
-ENDPOINTS=${DP_DB_HOST}.default.svc.cluster.local:2379
+ENDPOINTS=${DP_DB_HOST}.${KB_NAMESPACE}.svc${CLUSTER_DOMAIN}:2379
 
-if [ -d $tlsDir ]; then
-  etcdctl --endpoints=$ENDPOINTS --cacert=${tlsDir}/ca.crt --cert=${tlsDir}/tls.crt --key=${tlsDir}/tls.key snapshot save ${DP_BACKUP_NAME}
-  etcdctl --endpoints=$ENDPOINTS --cacert=${tlsDir}/ca.crt --cert=${tlsDir}/tls.crt --key=${tlsDir}/tls.key --write-out=table snapshot status ${DP_BACKUP_NAME}
-else
-  etcdctl --endpoints=$ENDPOINTS snapshot save ${DP_BACKUP_NAME}
-  etcdctl --endpoints=$ENDPOINTS --write-out=table snapshot status ${DP_BACKUP_NAME}
-fi
+execEtcdctl ${ENDPOINTS} snapshot save ${DP_BACKUP_NAME}
+
+# check the backup file, make sure it is not empty
+checkBackupFile ${DP_BACKUP_NAME}
 
 # use datasafed to get backup size
 # if we do not write into $DP_BACKUP_INFO_FILE, the backup job will stuck
