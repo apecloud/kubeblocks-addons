@@ -60,7 +60,7 @@ spec:
       - name: HOST_TYPE
         value: FQDN
       - name: TZ
-        value: Asia/Shanghai
+        value: {{ .Values.timezone }}
       - name: POD_NAME
         valueFrom:
           fieldRef:
