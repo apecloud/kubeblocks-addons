@@ -12,13 +12,8 @@ image:
   pullPolicy: IfNotPresent
   fe:
     repository: starrocks/fe-ubuntu
-    tag: 3.3.0
   be:
     repository: starrocks/be-ubuntu
-    tag: 3.3.0
-  cn:
-    repository: starrocks/cn-ubuntu
-    tag: 3.3.0
 
 fe:
   config: |

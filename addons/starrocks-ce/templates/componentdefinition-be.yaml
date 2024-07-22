@@ -6,9 +6,8 @@ metadata:
     {{- include "starrocks.labels" . | nindent 4 }}
 spec:
   provider: kubeblocks
-  description: A StarRocks BE v{{.Chart.AppVersion}} component definition for Kubernetes
+  description: A StarRocks BE component definition for Kubernetes
   serviceKind: starrocks-be
-  serviceVersion: {{.Chart.AppVersion}}
   updateStrategy: BestEffortParallel
   services:
   - name: be
@@ -49,7 +48,6 @@ spec:
   runtime:
     containers:
     - name: be
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.be.repository }}:{{ default .Values.image.be.tag }}
       imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
       command:
       - bash
@@ -60,7 +58,7 @@ spec:
       - name: HOST_TYPE
         value: FQDN
       - name: TZ
-        value: Asia/Shanghai
+        value: {{ .Values.timezone }}
       - name: POD_NAME
         valueFrom:
           fieldRef:
