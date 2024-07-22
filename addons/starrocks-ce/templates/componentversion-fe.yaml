@@ -1,0 +1,20 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: {{ include "fe.componentDefName" . }}
+spec:
+  compatibilityRules:
+  - compDefs:
+    - {{ include "fe.componentDefName" . }}
+    releases:
+    - 3.2.2
+    - 3.3.0
+  releases:
+  - name: 3.2.2
+    serviceVersion: 3.2.2
+    images:
+      fe: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.fe.repository }}:3.2.2
+  - name: 3.3.0
+    serviceVersion: 3.3.0
+    images:
+      fe: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.fe.repository }}:3.3.0
