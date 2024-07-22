@@ -28,5 +28,3 @@ nameOverride: ""
 fullnameOverride: ""
 
 clusterVersionOverride: ""
-
-enableStorageServiceRef: false
