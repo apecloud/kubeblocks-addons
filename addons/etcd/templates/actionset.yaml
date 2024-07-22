@@ -8,23 +8,23 @@ spec:
   backupType: Full
   backup:
     backupData:
-      image: {{ include "etcd.image" . }}
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v3.5.6
       runOnTargetPodNode: true
       syncProgress:
         enabled: false
         intervalSeconds: 5
       command:
-      - bash
+      - /bin/bash
       - -c
       - |
         {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
   restore:
     postReady:
     - job:
-        image: {{ include "etcd.image" . }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v3.5.6
         runOnTargetPodNode: true
         command:
-        - bash
+        - /bin/bash
         - -c
         - |
           {{- .Files.Get "dataprotection/restore.sh" | nindent 12 }}

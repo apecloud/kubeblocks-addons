@@ -69,13 +69,6 @@ etcd-scripts
 {{- end }}
 
 {{/*
-Define default image
-*/}}
-{{- define "etcd.image" -}}
-{{ .Values.image.repository }}:{{ .Values.image.tag }}
-{{- end }}
-
-{{/*
 Define etcdctl backup actionSet name
 */}}
 {{- define "etcd.backupActionSetName" -}}

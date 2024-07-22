@@ -1,0 +1,151 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: etcd-v3.5.6
+  labels:
+    {{- include "etcd.labels" . | nindent 4 }}
+spec:
+  provider: ApeCloud
+  description: {{ .Chart.Description }}
+  serviceKind: etcd
+  serviceVersion: v3.5.6
+  runtime:
+    containers:
+      - name: etcd
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v3.5.6
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+          - containerPort: 2379
+            name: client
+          - containerPort: 2380
+            name: peer
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
+          - name: config
+            mountPath: /etc/etcd
+          - name: scripts
+            mountPath: /scripts
+        command:
+          - /bin/bash
+          - /scripts/start.sh
+  vars:
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.clusterDomain }}
+    - name: DATA_DIR
+      value: {{ .Values.dataDir }}
+    - name: DATA_MOUNT_PATH
+      value: {{ .Values.dataMountPath }}
+    - name: CLUSTER_NAME
+      value: "$(KB_CLUSTER_COMP_NAME)"
+    - name: TLS_DIR
+      value: {{ .Values.tlsDir }}
+    - name: CLIENT_TLS
+      value: "{{ .Values.tls.client }}"
+    - name: PEER_TLS
+      value: "{{ .Values.tls.peer }}"
+    - name: TMP_CONFIG_PATH
+      value: {{ .Values.tmpConfigPath }}
+    - name: PEERS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+    - name: POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          instanceNames: Required
+  volumes:
+    - name: data
+      needSnapshot: true
+  services:
+    - name: peer
+      spec:
+        ports:
+          - name: peer
+            port: 2380
+            targetPort: peer
+      podService: true
+      disableAutoProvision: true
+  # reference: https://etcd.io/docs/v3.5/op-guide/runtime-configuration/ single member changes is better
+  updateStrategy: Serial
+  roles:
+    - name: leader
+      serviceable: true
+      writable: true
+      votable: true
+    - name: follower
+      serviceable: true
+      writable: false
+      votable: true
+  lifecycleActions:
+    roleProbe:
+      builtinHandler: custom
+      customHandler:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v3.5.6
+        container: etcd
+        exec:
+          command:
+            - /bin/bash
+            - -c
+            - |
+              {{- .Files.Get "scripts/common.sh" | nindent 14 }}
+              {{- .Files.Get "scripts/role-probe-script.sh" | nindent 14 }}
+    memberJoin:
+      customHandler:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v3.5.6
+        exec:
+          command:
+            - /bin/bash
+            - -c
+            - |
+              {{- .Files.Get "scripts/common.sh" | nindent 14 }}
+              {{- .Files.Get "scripts/etcd-member-join.sh" | nindent 14 }}
+    memberLeave:
+      customHandler:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v3.5.6
+        exec:
+          command:
+            - /bin/bash
+            - -c
+            - |
+              {{- .Files.Get "scripts/common.sh" | nindent 14 }}
+              {{- .Files.Get "scripts/etcd-member-leave.sh" | nindent 14 }}
+    switchover:
+      withCandidate:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v3.5.6
+        exec:
+          command:
+          - /bin/bash
+          - -c
+          - |
+            {{- .Files.Get "scripts/common.sh" | nindent 12 }}
+            {{- .Files.Get "scripts/switchover-with-candidate.sh" | nindent 12 }}
+      withoutCandidate:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v3.5.6
+        exec:
+          command:
+          - /bin/bash
+          - -c
+          - |
+            {{- .Files.Get "scripts/common.sh" | nindent 12 }}
+            {{- .Files.Get "scripts/switchover-without-candidate.sh" | nindent 12 }}
+    reconfigure:
+  configs:
+    - name: etcd-configuration-tpl
+      templateRef: {{ include "etcd.configTplName" .}}
+      constraintRef: {{ include "etcd.configConstraintName" .}}
+      namespace: {{ .Release.Namespace }}
+      volumeName: config
+      defaultMode: 0666
+    - name: etcd-scripts
+      templateRef: {{ include "etcd.cmScriptsName" .}}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  exporter:
+    containerName: etcd
+    scrapePort: "2379"
+    scrapePath: /metrics
+    scrapeScheme: http
