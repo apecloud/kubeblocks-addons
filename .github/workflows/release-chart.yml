@@ -26,6 +26,7 @@ on:
           - influxdb
           - kafka
           - llm
+          - loki
           - mariadb
           - milvus
           - minio
