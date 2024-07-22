@@ -5,5 +5,5 @@ metadata:
   namespace: default
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: pika-cluster
+  clusterRef: pika-cluster
   type: Start

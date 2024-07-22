@@ -5,7 +5,7 @@ metadata:
   namespace: default
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: oceanbase-cluster
+  clusterRef: oceanbase-cluster
   # Specifies a component and its configuration updates. This field is deprecated and replaced by `reconfigures`.
   reconfigure:
     # Specifies the name of the Component.
@@ -27,6 +27,4 @@ spec:
           value: 2G
       # Specifies the name of the configuration template.
       name: oceanbase-config
-  # Specifies the maximum number of seconds the OpsRequest will wait for its start conditions to be met before aborting. If set to 0 (default), the start conditions must be met immediately for the OpsRequest to proceed.
-  preConditionDeadlineSeconds: 0
   type: Reconfiguring
