@@ -15,13 +15,13 @@ roleProbe:
 
 # Related image configurations.
 image:
-  registry:
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
 
 images:
   polardbx:
     pullPolicy: IfNotPresent
     # Repo of polardbx default images. Default is polardbx.
-    repository: polardbx
+    repository: apecloud
 
     # Images for xstore(DN) tools updater.
     toolsUpdater:
@@ -55,13 +55,13 @@ images:
 
   # Tool image settings for gms initialization
   mysql:
-    repository: mysql
+    repository: apecloud/mysql
     pullPolicy: IfNotPresent
     tag: "8.0.30"
 
   # Images for DN exporter
   prom:
-    repository: prom
+    repository: apecloud
     pullPolicy: IfNotPresent
     mysqld_exporter:
       name: mysqld-exporter
