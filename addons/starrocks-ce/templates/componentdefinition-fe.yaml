@@ -6,11 +6,10 @@ metadata:
     {{ include "starrocks.labels" . | nindent 4 }}
 spec:
   provider: kubeblocks
-  description: A StarRocks FE v{{ .Chart.AppVersion }} component definition for Kubernetes
+  description: A StarRocks FE component definition for Kubernetes
   # The FE can only perform leader election when the majority of members are active.
   updateStrategy: Parallel
   serviceKind: starrocks-fe
-  serviceVersion: {{.Chart.AppVersion}}
   services:
   - name: fe
     serviceName: fe
@@ -42,16 +41,6 @@ spec:
       numDigits: 5
       numSymbols: 0
       letterCase: MixedCases
-  lifecycleActions:
-    accountProvision:
-      customHandler:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.fe.repository }}:{{ default .Values.image.fe.tag }}
-        exec:
-          command:
-          - /bin/bash
-          - -c
-          - |
-            mysql -P{{ .Values.fe.queryPort }} -h127.0.0.1 -u${STARROCKS_USER} -e "SET PASSWORD = PASSWORD('${STARROCKS_PASSWORD}')"
   configs:
     - name: fe-cm
       templateRef: {{ include "starrocks.name" . }}-fe-cm
@@ -88,7 +77,6 @@ spec:
   runtime:
     containers:
     - name: fe
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.fe.repository }}:{{ default .Values.image.fe.tag }}
       imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
       command:
       - bash
