@@ -1,0 +1,25 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: halo-backup-policy-template
+  labels:
+    clusterdefinition.kubeblocks.io/name: halo
+    {{- include "halo.labels" . | nindent 4 }}
+spec:
+  clusterDefinitionRef: halo
+  backupPolicies:
+  - componentDefRef: halo
+    backupMethods:
+    - name: pg-basebackup
+      snapshotVolumes: false
+      actionSetName: pg-basebackup
+      targetVolumes:
+        volumeMounts:
+        - name: data
+          mountPath: {{ .Values.dataMountPath }}
+    schedules: 
+    - backupMethod: pg-basebackup
+      enabled: false
+      cronExpression: "*/5 * * * *"
+      retentionPeriod: 7d
+
