@@ -52,6 +52,7 @@ be:
     brpc_port = 8060
     sys_log_level = INFO
     default_rowset_type = beta
+    starlet_use_star_cache = true
   probe:
     # failureThreshold will be set in the helm template
     httpGet:

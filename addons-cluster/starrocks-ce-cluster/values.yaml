@@ -1,6 +1,6 @@
-## @param mode StarRocks cluster topology mode, shared-nothing, shared-data
+## @param version StarRocks cluster version
 ##
-mode: shared-nothing
+version: 3.3.0
 
 ## @param replicas specify cluster replicas
 ##
@@ -29,9 +29,4 @@ fullnameOverride: ""
 
 clusterVersionOverride: ""
 
-# Default values for starrocks-cluster.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
-# if useLegacyCompDef is false ,cluster will be rendered by compDef rather than componentDefRef in cluster definition
-useLegacyCompDef: true
-
+enableStorageServiceRef: false
