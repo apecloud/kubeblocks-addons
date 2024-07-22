@@ -14,7 +14,7 @@ spec:
             image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.repository | default "polardbx"  }}/{{ .Values.images.polardbx.dn.name}}:{{.Values.images.polardbx.dn.tag}}
             imagePullPolicy: {{ default "IfNotPresent" .Values.images.polardbx.pullPolicy }}
           - name: exporter
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.prom.repository }}/{{ .Values.images.prom.mysqld_exporter.name}}:{{.Values.images.prom.mysqld_exporter.tag}}
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.prom.repository  | default "prom" }}/{{ .Values.images.prom.mysqld_exporter.name}}:{{.Values.images.prom.mysqld_exporter.tag}}
             imagePullPolicy: {{ default "IfNotPresent" .Values.images.prom.pullPolicy }}
         initContainers:
           - name: tools-updater
@@ -27,7 +27,7 @@ spec:
             image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.repository | default "polardbx"  }}/{{ .Values.images.polardbx.dn.name}}:{{.Values.images.polardbx.dn.tag}}
             imagePullPolicy: {{ default "IfNotPresent" .Values.images.polardbx.pullPolicy }}
           - name: exporter
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.prom.repository }}/{{ .Values.images.prom.mysqld_exporter.name}}:{{.Values.images.prom.mysqld_exporter.tag}}
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.prom.repository | default "prom" }}/{{ .Values.images.prom.mysqld_exporter.name}}:{{.Values.images.prom.mysqld_exporter.tag}}
             imagePullPolicy: {{ default "IfNotPresent" .Values.images.prom.pullPolicy }}
         initContainers:
           - name: tools-updater

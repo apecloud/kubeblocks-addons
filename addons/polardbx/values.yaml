@@ -62,7 +62,7 @@ images:
 
   # Images for DN exporter
   prom:
-    repository: prom
+    repository:
     pullPolicy: IfNotPresent
     mysqld_exporter:
       name: mysqld-exporter
