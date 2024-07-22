@@ -26,6 +26,7 @@ on:
           - kblib
           - kblib-v2
           - llm-cluster
+          - loki-cluster
           - mariadb-cluster
           - milvus-cluster
           - minio-cluster
