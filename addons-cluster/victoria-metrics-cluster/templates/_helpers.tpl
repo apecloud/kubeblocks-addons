@@ -62,5 +62,5 @@ Create the name of the service account to use
 {{- end }}
 
 {{- define "clustername" -}}
-{{ include "victoria-metrics-cluster.fullname" .}}
+{{- .Release.Name | trunc 63 | trimSuffix "-" }}
 {{- end}}
