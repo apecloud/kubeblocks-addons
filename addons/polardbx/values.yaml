@@ -21,7 +21,7 @@ images:
   polardbx:
     pullPolicy: IfNotPresent
     # Repo of polardbx default images. Default is polardbx.
-    repository: polardbx
+    repository:
 
     # Images for xstore(DN) tools updater.
     toolsUpdater:
@@ -55,8 +55,9 @@ images:
 
   # Tool image settings for gms initialization
   mysql:
-    repository: mysql
+    repository:
     pullPolicy: IfNotPresent
+    name: mysql
     tag: "8.0.30"
 
   # Images for DN exporter
