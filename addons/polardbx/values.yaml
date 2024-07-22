@@ -9,7 +9,7 @@ roleProbe:
   periodSeconds: 1
   timeoutSeconds: 1
   image:
-    repository: arey
+    repository:
     name: mysql-client
     tag: latest
 
