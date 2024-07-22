@@ -1,0 +1,96 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "version": {
+      "title": "Version",
+      "description": "The version of StarRocks.",
+      "type": "string",
+      "default": "3.3.0"
+    },
+    "replicas": {
+      "title": "FE Replicas",
+      "description": "The number of replicas for FE.",
+      "type": "integer",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 5
+    },
+    "cpu": {
+      "title": "FE CPU",
+      "description": "FE CPU cores.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 1,
+      "minimum": 0.5,
+      "maximum": 64,
+      "multipleOf": 0.5
+    },
+    "memory": {
+      "title": "FE Memory(Gi)",
+      "description": "FE Memory, the unit is Gi.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 2,
+      "minimum": 1,
+      "maximum": 1000
+    },
+    "storage": {
+      "title": "FE Storage(Gi)",
+      "description": "FE Storage size, the unit is Gi.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 20,
+      "minimum": 1,
+      "maximum": 10000
+    },
+    "beReplicas": {
+      "title": "BE Replicas",
+      "description": "The number of replicas for BE.",
+      "type": "integer",
+      "default": 1,
+      "minimum": 1,
+      "maximum": 5
+    },
+    "beCPU": {
+      "title": "BE CPU",
+      "description": "BE CPU cores.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 1,
+      "minimum": 0.5,
+      "maximum": 64,
+      "multipleOf": 0.5
+    },
+    "beMemory": {
+      "title": "BE Memory(Gi)",
+      "description": "BE Memory, the unit is Gi.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 2,
+      "minimum": 1,
+      "maximum": 1000
+    },
+    "beStorage": {
+      "title": "BE Storage(Gi)",
+      "description": "BE Storage size, the unit is Gi.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 20,
+      "minimum": 1,
+      "maximum": 10000
+    }
+  }
+}

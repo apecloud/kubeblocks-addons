@@ -6,19 +6,23 @@ metadata:
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
   clusterDefinitionRef: {{ include "starrocks-release.name" .}}
-  clusterVersionRef: {{ printf "%s-%s" (include "starrocks-release.name" .) (default .Chart.AppVersion .Values.clusterVersionOverride) }}
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  topology: shared-nothing
   {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
     - name: fe
-      componentDefRef: fe
+      componentDef: starrocks-ce-fe
       {{- include "kblib.componentMonitor" . | indent 6 }}
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      serviceVersion: {{ include "starrocks.version" . }}
       replicas: {{ .Values.replicas | default 1 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
       {{- include "kblib.componentServices" . | indent 6 }}
     - name: be
-      componentDefRef: be
+      componentDef: starrocks-ce-be
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      serviceVersion: {{ include "starrocks.version" . }}
       replicas: {{ index .Values.beReplicas | default 1 }}
       resources:
         limits:
@@ -28,7 +32,7 @@ spec:
           cpu: {{ .Values.beCPU | quote }}
           memory: {{ print .Values.beMemory "Gi" | quote }}
       volumeClaimTemplates:
-      - name: data # ref clusterdefinition components.containers.volumeMounts.name
+      - name: data
         spec:
           accessModes:
           - ReadWriteOnce
