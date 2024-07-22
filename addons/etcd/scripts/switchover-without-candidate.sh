@@ -2,23 +2,27 @@
 
 set -exo pipefail
 
-leader_endpoints=${KB_LEADER_POD_FQDN}:2379
-leader_id=$(etcdctl --endpoints=$leader_endpoints endpoint status | awk -F', ' '{print $2}')
+leaderEndpoint=${KB_LEADER_POD_FQDN}:2379
+candidateEndpoint=""
 
-member_ids=$(etcdctl --endpoints=$leader_endpoints member list | awk -F', ' '{print $1}')
-random_candidate_id=$(echo "$member_ids" | grep -v "$leader_id" | awk 'NR==1')
+# see common.sh, this function may change leaderEndpoint
+updateLeaderIfNeeded 3
 
-if [ -z "$random_candidate_id" ]; then
+leaderID=$(etcdctl --endpoints=$leaderEndpoint endpoint status | awk -F', ' '{print $2}')
+peerIDs=$(etcdctl --endpoints=$leaderEndpoint member list | awk -F', ' '{print $1}')
+randomCandidateID=$(echo "$peerIDs" | grep -v "$leaderID" | awk 'NR==1')
+
+if [ -z "$randomCandidateID" ]; then
   echo "no candidate found"
   exit 1
 fi
 
-etcdctl --endpoints=$leader_endpoints move-leader $random_candidate_id
+etcdctl --endpoints=$leaderEndpoint move-leader $randomCandidateID
 
-status=$(etcdctl --endpoints=$leader_endpoints endpoint status)
-is_leader=$(echo $status | awk -F ', ' '{print $5}')
+status=$(etcdctl --endpoints=$leaderEndpoint endpoint status)
+isLeader=$(echo $status | awk -F ', ' '{print $5}')
 
-if [ "false" == $is_leader ]; then
+if [ $isLeader = "false" ]; then
   echo "switchover successfully"
 else
   echo "switchover failed, please check!"

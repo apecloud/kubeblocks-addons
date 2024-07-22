@@ -2,8 +2,8 @@
 configFile=$TMP_CONFIG_PATH
 
 function checkBackupFile() {
-  local back_file=$1
-  output=$(etcdutl --endpoints=$ENDPOINTS --write-out=table snapshot status ${back_file})
+  local backupFile=$1
+  output=$(etcdutl --endpoints=$ENDPOINTS --write-out=table snapshot status ${backupFile})
   # Check if the command was successful
   if [ $? -ne 0 ]; then
     echo "ERROR: Failed to check the backup file with etcdutl"
@@ -62,5 +62,32 @@ function execEtcdctl() {
   else
     echo "etcdctl command failed"
     exit 1
+  fi
+}
+
+function updateLeaderIfNeeded() {
+  local retries=$1
+
+  if [ $retries -le 0 ]; then
+    echo "Maximum number of retries reached, leader is not ready"
+    exit 1
+  fi
+
+  status=$(execEtcdctl ${leaderEndpoint} endpoint status)
+  isLeader=$(echo $status | awk -F ', ' '{print $5}')
+  if [ $isLeader = "false" ]; then
+    echo "leader out of status, try to redirect to leader"
+    peerEndpoints=$(execEtcdctl ${leaderEndpoint} member list | awk -F', ' '{print $5}' | tr '\n' ',' | sed 's#,$##')
+    leaderEndpoint=$(execEtcdctl ${peerEndpoints} endpoint status | awk -F', ' '$5=="true" {print $1}')
+    if [ $leaderEndpoint = "" ]; then
+      echo "leader is not ready, wait for 2s..."
+      sleep 2
+      echo $(updateLeaderIfNeeded $leaderEndpoint $candidateEndpoint $((retries-1)) )
+    fi
+  fi
+
+  if [ $leaderEndpoint = $candidateEndpoint ]; then
+    echo "leader is the same as candidate, no need to switch"
+    exit 0
   fi
 }

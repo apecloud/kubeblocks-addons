@@ -2,14 +2,17 @@
 
 set -exo pipefail
 
-leaderEndpoints=${KB_CONSENSUS_LEADER_POD_FQDN}:2379
-candidateEndpoints=${KB_SWITCHOVER_CANDIDATE_FQDN}:2379
+leaderEndpoint=${KB_LEADER_POD_FQDN}:2379
+candidateEndpoint=${KB_SWITCHOVER_CANDIDATE_FQDN}:2379
 
-candidateID=$(execEtcdctl $candidateEndpoints endpoint status | awk -F', ' '{print $2}')
-execEtcdctl $leaderEndpoints move-leader $candidateID
+# see common.sh, this function may change leaderEndpoint
+updateLeaderIfNeeded 3
 
-status=$(execEtcdctl $leaderEndpoints endpoint status)
-isLeader=$(echo $status | awk -F ', ' '{print $5}')
+candidateID=$(execEtcdctl ${candidateEndpoint} endpoint status | awk -F', ' '{print $2}')
+execEtcdctl ${leaderEndpoint} move-leader $candidateID
+
+status=$(execEtcdctl ${candidateEndpoint} endpoint status)
+isLeader=$(echo ${status} | awk -F ', ' '{print $5}')
 
 if [ $isLeader = "false" ]; then
   echo "switchover successfully"
