@@ -110,4 +110,4 @@ wesqlscale:
 resourceNamePrefix: ""
 
 etcd:
-  etcdCrdName: etcd-0.9.0
+  etcdCmpdName: etcd-0.9.0

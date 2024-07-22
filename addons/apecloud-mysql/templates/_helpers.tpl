@@ -225,6 +225,28 @@ vars:
         name: etcd
         endpoint: Required
         optional: true
+  - name: LOCAL_ETCD_POD_LIST
+    valueFrom:
+      componentVarRef:
+        compDef: {{ .Values.etcd.etcdCmpdName }}
+        optional: true
+        instanceNames: Optional
+  - name: LOCAL_ETCD_HEADLESS
+    valueFrom:
+      serviceVarRef:
+        compDef: {{ .Values.etcd.etcdCmpdName }}
+        name: headless
+        optional: true
+        host: Optional
+  - name: LOCAL_ETCD_PORT
+    valueFrom:
+      serviceVarRef:
+        compDef: {{ .Values.etcd.etcdCmpdName }}
+        name: headless
+        optional: true
+        port: 
+          name: client
+          option: Optional
 {{- end -}}
 
 {{- define "apecloud-mysql.spec.runtime.mysql" -}}

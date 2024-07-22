@@ -1,4 +1,4 @@
-{{- if and (eq .Values.mode "raftGroup") .Values.proxyEnabled }}
+{{- if and (eq .Values.mode "raftGroup") .Values.proxyEnabled (not .Values.enableLocalEtcd) }}
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ServiceDescriptor
 metadata:
@@ -8,9 +8,5 @@ spec:
   serviceKind: etcd
   serviceVersion: {{ .Values.etcd.serviceVersion }}
   endpoint:
-    {{- if .Values.localEtcd }}
-    value: {{ include "kblib.clusterName" . }}-etcd-headless.default.svc.cluster.local:2379
-    {{- else }}
     value: {{ .Values.etcd.serviceReference.endpoint }}
-    {{- end }}
 {{- end -}}
