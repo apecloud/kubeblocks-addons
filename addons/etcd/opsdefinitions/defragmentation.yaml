@@ -8,7 +8,7 @@ spec:
         expression: '{{ eq .component.status.phase "Running" }}'
         message: "Component is not in Running status."
   componentInfos:
-  - componentDefinitionName: etcd-0.9.0
+  - componentDefinitionName: etcd-v3.5.15
   actions:
     - name: etcd-defragmentation
       failurePolicy: Fail
@@ -18,7 +18,7 @@ spec:
         podSpec:
           containers:
             - name: etcd-defragmentation
-              image: '{{ .Values.image.repository }}:{{ .Values.image.tag }}'
+              image: quay.io/coreos/etcd:v3.5.6
               imagePullPolicy: IfNotPresent
               command:
                 - bash

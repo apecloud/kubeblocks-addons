@@ -1,33 +1,30 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: etcd-v3.5.15
+  name: etcd-{{ .Values.image.tag.major3.minor515 }}
   labels:
     {{- include "etcd.labels" . | nindent 4 }}
 spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: etcd
-  serviceVersion: v3.5.15
+  serviceVersion: {{ .Values.image.tag.major3.minor515 }}
   runtime:
     initContainers:
       - name: inject-shell
         image: {{ .Values.busyboxImage.registry | default "docker.io" }}/{{ .Values.busyboxImage.repository }}:{{ default .Values.busyboxImage.tag }}
         imagePullPolicy: {{default .Values.busyboxImage.pullPolicy "IfNotPresent"}}
         volumeMounts:
-        - name: data
-          mountPath: {{ .Values.dataMountPath }}
+          - name: shell
+            mountPath: /shell
         command:
-          - bin/ash
+          - bin/sh
           - -c
           - |
-            cp /bin/ash {{ .Values.dataMountPath }}/ash
-            
-            echo "$(cd {{ .Values.dataMountPath }} && pwd && ls)"
-            sleep 100
+            cp /bin/* /shell
     containers:
       - name: etcd
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v3.5.15
+        image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor515 }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         ports:
           - containerPort: 2379
@@ -41,9 +38,19 @@ spec:
             mountPath: /etc/etcd
           - name: scripts
             mountPath: /scripts
+          - name: shell
+            mountPath: /shell
         command:
-          - {{ .Values.dataMountPath }}/ash
-          - /scripts/start.sh
+          - /shell/sh
+          - -c
+          - |
+            export PATH=$PATH:/shell
+            # for convenient to use the default shell path
+            copy /shell/sh /bin
+            /scripts/start.sh
+    volumes:
+      - name: shell
+        emptyDir: {}
   vars:
     - name: CLUSTER_DOMAIN
       value: {{ .Values.clusterDomain }}
@@ -98,50 +105,52 @@ spec:
     roleProbe:
       builtinHandler: custom
       customHandler:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v3.5.15
+        image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
         container: etcd
         exec:
           command:
-            - {{ .Values.dataMountPath }}/ash
+            - /bin/sh
             - -c
             - |
               {{- .Files.Get "scripts/common.sh" | nindent 14 }}
               {{- .Files.Get "scripts/role-probe-script.sh" | nindent 14 }}
     memberJoin:
       customHandler:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v3.5.15
+        image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
         exec:
           command:
-            - {{ .Values.dataMountPath }}/ash
+            - /bin/sh
             - -c
             - |
+              export PATH=$PATH:/shell
               {{- .Files.Get "scripts/common.sh" | nindent 14 }}
               {{- .Files.Get "scripts/etcd-member-join.sh" | nindent 14 }}
     memberLeave:
       customHandler:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v3.5.15
+        image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
         exec:
           command:
-            - {{ .Values.dataMountPath }}/ash
+            - /bin/sh
             - -c
             - |
+              export PATH=$PATH:/shell
               {{- .Files.Get "scripts/common.sh" | nindent 14 }}
               {{- .Files.Get "scripts/etcd-member-leave.sh" | nindent 14 }}
     switchover:
       withCandidate:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v3.5.15
+        image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
         exec:
           command:
-          - {{ .Values.dataMountPath }}/ash
+          - /bin/sh
           - -c
           - |
             {{- .Files.Get "scripts/common.sh" | nindent 12 }}
             {{- .Files.Get "scripts/switchover-with-candidate.sh" | nindent 12 }}
       withoutCandidate:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v3.5.15
+        image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
         exec:
           command:
-          - {{ .Values.dataMountPath }}/ash
+          - /bin/sh
           - -c
           - |
             {{- .Files.Get "scripts/common.sh" | nindent 12 }}
@@ -154,6 +163,8 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: config
       defaultMode: 0666
+      reRenderResourceTypes:
+        - hscale
     - name: etcd-scripts
       templateRef: {{ include "etcd.cmScriptsName" .}}
       namespace: {{ .Release.Namespace }}

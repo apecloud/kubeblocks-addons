@@ -1,18 +1,18 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: etcd-v3.5.6
+  name: etcd-{{ .Values.image.tag.major3.minor56 }}
   labels:
     {{- include "etcd.labels" . | nindent 4 }}
 spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: etcd
-  serviceVersion: v3.5.6
+  serviceVersion: {{ .Values.image.tag.major3.minor56 }}
   runtime:
     containers:
       - name: etcd
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v3.5.6
+        image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         ports:
           - containerPort: 2379
@@ -83,7 +83,7 @@ spec:
     roleProbe:
       builtinHandler: custom
       customHandler:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v3.5.6
+        image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
         container: etcd
         exec:
           command:
@@ -94,7 +94,7 @@ spec:
               {{- .Files.Get "scripts/role-probe-script.sh" | nindent 14 }}
     memberJoin:
       customHandler:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v3.5.6
+        image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
         exec:
           command:
             - /bin/bash
@@ -104,7 +104,7 @@ spec:
               {{- .Files.Get "scripts/etcd-member-join.sh" | nindent 14 }}
     memberLeave:
       customHandler:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v3.5.6
+        image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
         exec:
           command:
             - /bin/bash
@@ -114,7 +114,7 @@ spec:
               {{- .Files.Get "scripts/etcd-member-leave.sh" | nindent 14 }}
     switchover:
       withCandidate:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v3.5.6
+        image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
         exec:
           command:
           - /bin/bash
@@ -123,7 +123,7 @@ spec:
             {{- .Files.Get "scripts/common.sh" | nindent 12 }}
             {{- .Files.Get "scripts/switchover-with-candidate.sh" | nindent 12 }}
       withoutCandidate:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v3.5.6
+        image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
         exec:
           command:
           - /bin/bash

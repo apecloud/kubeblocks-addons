@@ -20,18 +20,20 @@ tls:
   peer: true
 
 image:
-  registry: docker.io
-  repository: quay.io/coreos/etcd
+  registry: quay.io/coreos
+  repository: etcd
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag:
     major3:
+      # latest etcd version build with busybox
       minor56: v3.5.6
+      # latest etcd version build with distroless(default)
       minor515: v3.5.15
 
 busyboxImage:
   registry: docker.io
   repository: busybox
   pullPolicy: IfNotPresent
-  # Overrides the image tag whose default is the chart appVersion.
-  tag: 1.35
+  # use static compile version
+  tag: 1.35-musl
