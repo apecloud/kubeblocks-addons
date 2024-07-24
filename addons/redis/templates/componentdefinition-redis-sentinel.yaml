@@ -79,8 +79,8 @@ spec:
   lifecycleActions:
     accountProvision:
       customHandler:
-        image: {{ include "redis.image" . }}
         exec:
+          image: {{ include "redis.image" . }}
           command:
             - sh
             - -c

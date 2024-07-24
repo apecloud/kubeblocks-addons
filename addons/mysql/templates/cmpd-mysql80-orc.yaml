@@ -11,8 +11,8 @@ spec:
     {{- include "mysql-orc.spec.lifecycle.common" . | nindent 4 }}
     postProvision:
       customHandler:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
         exec:
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
           command:
             - bash
             - -c
@@ -20,8 +20,8 @@ spec:
         preCondition: RuntimeReady
     preTerminate:
       customHandler:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
         exec:
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
           command:
             - bash
             - -c

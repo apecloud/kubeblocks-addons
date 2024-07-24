@@ -28,8 +28,8 @@ spec:
   lifecycleActions:
     preTerminate:
       customHandler:
-        image: {{ .Values.wesqlscale.image.registry | default .Values.image.registry }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
         exec:
+          image: {{ .Values.wesqlscale.image.registry | default .Values.image.registry }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
           command: ["/scripts/etcd-clean.sh"]
   runtime:
     containers:
