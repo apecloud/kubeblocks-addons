@@ -8,7 +8,6 @@ spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
-
   services:
     - name: default
       spec:
@@ -30,7 +29,6 @@ spec:
             port: 2888
           - name: http
             port: 8080
-
   roles:
     - name: leader
       serviceable: true
@@ -44,7 +42,6 @@ spec:
       serviceable: false
       writable: false
       votable: false
-
   lifecycleActions:
     roleProbe:
       builtinHandler: custom
@@ -68,8 +65,7 @@ spec:
               | $GREP Mode`
               mode=$(echo "$STAT" | awk -F': ' '{print $2}' | awk '{RS=""; ORS=""; print}' )
               echo -n ${mode}
-      container: zookeeper
-
+          container: zookeeper
   runtime:
     securityContext:
       fsGroup: 0
@@ -156,7 +152,6 @@ spec:
       value: {{ .Values.metrics.enabled | quote }}
     - name: ZOOKEEPER_METRICS_PORT
       value: {{ .Values.metrics.port | quote }}
-
   volumes:
     - name: data
       needSnapshot: true

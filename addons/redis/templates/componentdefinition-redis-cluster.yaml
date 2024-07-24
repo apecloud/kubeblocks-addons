@@ -168,8 +168,8 @@ spec:
       timeoutSeconds: 1
     postProvision:
       customHandler:
-        image: {{ include "redis.image" . }}
         exec:
+          image: {{ include "redis.image" . }}
           command:
             - /bin/bash
             - -c
@@ -180,8 +180,8 @@ spec:
           maxRetries: 10
     preTerminate:
       customHandler:
-        image: {{ include "redis.image" . }}
         exec:
+          image: {{ include "redis.image" . }}
           command:
             - /bin/bash
             - -c
