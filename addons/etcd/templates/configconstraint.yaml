@@ -7,17 +7,6 @@ metadata:
 spec:
   fileFormatConfig:
     format: yaml
-  # reloadAction:
-  #   targetPodSelector:
-  #     matchLabels:
-  #       kubeblocks.io/role: leader
-  #   shellTrigger:
-  #     sync: true
-  #     command:
-  #       - "update-etcd-config.sh"
-  #     scriptConfig:
-  #       scriptConfigMapRef: {{ include "etcd.cmScriptsName" . }}
-  #       namespace: {{ .Release.Namespace }}
   staticParameters:
     - name
     - data-dir

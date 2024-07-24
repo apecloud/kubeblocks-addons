@@ -5,26 +5,35 @@ metadata:
   labels:
     {{- include "etcd.labels" . | nindent 4 }}
 spec:
+  env:
+    - name: TLS_DIR
+      value: {{ .Values.tlsDir }}
+    - name: TMP_CONFIG_PATH
+      value: {{ .Values.tmpConfigPath}}
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.clusterDomain }}
   backupType: Full
   backup:
     backupData:
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v3.5.6
+      image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
       runOnTargetPodNode: true
       syncProgress:
         enabled: false
         intervalSeconds: 5
       command:
-      - /bin/bash
+      - /bin/sh
       - -c
       - |
+        {{- .Files.Get "scripts/common.sh" | nindent 8 }}
         {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
   restore:
     postReady:
     - job:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v3.5.6
+        image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
         runOnTargetPodNode: true
         command:
-        - /bin/bash
+        - /bin/sh
         - -c
         - |
+          {{- .Files.Get "scripts/common.sh" | nindent 12 }}
           {{- .Files.Get "dataprotection/restore.sh" | nindent 12 }}

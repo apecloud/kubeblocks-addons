@@ -1,9 +1,5 @@
-#!/bin/bash
-set -exo pipefail
-
-CUR_PATH="$(dirname "${BASH_SOURCE[0]}")"
-# shellcheck source=./common.sh
-source "${CUR_PATH}/common.sh"
+#!/bin/sh
+set -ex
 
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
@@ -20,7 +16,7 @@ fi
 touch ${data_protection_file}
 
 remoteBackupFile="${DP_BACKUP_NAME}.tar.zst"
-if [ "$(datasafed list ${remoteBackupFile})" == "${remoteBackupFile}" ]; then
+if [ "$(datasafed list ${remoteBackupFile})" = "${remoteBackupFile}" ]; then
   datasafed pull -d zstd-fastest "${remoteBackupFile}" - | tar -xvf - -C ${DATA_DIR}
 else
   datasafed pull "${DP_BACKUP_NAME}.tar.gz" - | tar -xzvf - -C ${DATA_DIR}
@@ -29,7 +25,7 @@ fi
 backupFile=${DATA_DIR}/${DP_BACKUP_NAME}
 ENDPOINTS=${DP_DB_HOST}.${KB_NAMESPACE}.svc${CLUSTER_DOMAIN}:2379
 
-check_backup_file ${backupFile}
+checkBackupFile ${backupFile}
 
 # https://etcd.io/docs/v3.5/op-guide/recovery/ restoring with revision bump if needed
 execEtcdctl $ENDPOINTS snapshot restore ${backupFile}

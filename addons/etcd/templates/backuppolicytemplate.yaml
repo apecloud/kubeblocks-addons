@@ -9,7 +9,7 @@ spec:
   clusterDefinitionRef: etcd
   backupPolicies:
     - componentDefs:
-      - etcd-{{ .Chart.Version }}
+      - etcd-{{ .Values.image.tag.major3.minor515 }}
       target:
         role: leader
       backupMethods:
@@ -19,9 +19,12 @@ spec:
           targetVolumes:
             volumes:
             - tls
+            - data
             volumeMounts:
             - name: tls
               mountPath: /etc/pki/tls
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
       schedules:
         - backupMethod: {{ include "etcd.backupActionSetName" .}}
           enabled: false

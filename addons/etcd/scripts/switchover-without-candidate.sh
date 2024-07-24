@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/bin/sh
 
-set -exo pipefail
+set -ex
 
 leaderEndpoint=${KB_LEADER_POD_FQDN}:2379
 candidateEndpoint=""

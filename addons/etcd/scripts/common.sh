@@ -1,29 +1,35 @@
 # config file used to bootstrap the etcd cluster
 configFile=$TMP_CONFIG_PATH
 
-function checkBackupFile() {
+checkBackupFile() {
   local backupFile=$1
-  output=$(etcdutl --endpoints=$ENDPOINTS --write-out=table snapshot status ${backupFile})
-  # Check if the command was successful
+  output=$(etcdutl snapshot status ${backupFile})
+  # check if the command was successful
   if [ $? -ne 0 ]; then
     echo "ERROR: Failed to check the backup file with etcdutl"
     exit 1
   fi
-  # Extract the total key from the output
-  totalKey=$(echo "${output}" | awk '/TOTAL KEYS/ {getline; getline; print;}' | awk '{print $6}')
-  # Check if total key is a number
-  if ! [[ $totalKey =~ ^[0-9]+$ ]]; then
-    echo "ERROR: The value of 'totalKey' is not a valid number."
-    exit 1
-  fi
-  # Check if total key is too small
-  if [ "$totalKey" -le 8 ]; then
-    echo "WARNING: The value of 'totalKey' is less or equal the 8(initial number of 3 etcd cluster)."
+  # extract the total key from the output
+  totalKey=$(echo $output | awk -F', ' '{print $3}')
+  # check if total key is a number
+  case $totalKey in
+    *[!0-9]*)
+      echo "ERROR: snapshot totalKey is not a valid number."
+      exit 1
+      ;;
+  esac
+
+  # define a threshold to check if the total key count is too low
+  # '8' is the initial count for a 3-replica etcd cluster
+  # consider increasing this value when dealing with larger etcd clusters
+  threshold=8 #[modifiable]
+  if [ "$totalKey" -lt $threshold ]; then
+    echo "WARNING: snapshot totalKey is less than the threshold"
     exit 1
   fi
 }
 
-function getClientProtocol() {
+getClientProtocol() {
   # check client tls if is enabled
   line=$(grep 'advertise-client-urls' ${configFile})
   if echo $line | grep -q 'https'; then
@@ -33,7 +39,7 @@ function getClientProtocol() {
   fi
 }
 
-function getPeerProtocol() {
+getPeerProtocol() {
   # check peer tls if is enabled
   line=$(grep 'initial-advertise-peer-urls' ${configFile})
   if echo $line | grep -q 'https'; then
@@ -43,20 +49,21 @@ function getPeerProtocol() {
   fi
 }
 
-function execEtcdctl() {
+execEtcdctl() {
   local endpoints=$1
+  shift
   clientProtocol=$(getClientProtocol)
   tlsDir=$TLS_DIR
-  # Check if the clientProtocol is https and the tlsDir is not empty
+  # check if the clientProtocol is https and the tlsDir is not empty
   if [ $clientProtocol = "https" ] && [ -d "$tlsDir" ] && [ -s "${tlsDir}/ca.crt" ] && [ -s "${tlsDir}/tls.crt" ] && [ -s "${tlsDir}/tls.key" ]; then
-    etcdctl --endpoints=${endpoints} --cacert=${tlsDir}/ca.crt --cert=${tlsDir}/tls.crt --key=${tlsDir}/tls.key "${@:2}"
+    etcdctl --endpoints=${endpoints} --cacert=${tlsDir}/ca.crt --cert=${tlsDir}/tls.crt --key=${tlsDir}/tls.key $@
   elif [ $clientProtocol = "http" ]; then
-    etcdctl --endpoints=${endpoints} "${@:2}"
+    etcdctl --endpoints=${endpoints} $@
   else
     echo "ERROR: bad etcdctl args: clientProtocol:${clientProtocol}, endpoints:${endpoints}, tlsDir:${tlsDir}, please check!"
     exit 1
   fi
-  # Check if the etcdctl command was successful
+  # check if the etcdctl command was successful
   if [ $? -eq 0 ]; then
     echo "etcdctl command was successful"
   else
@@ -65,7 +72,7 @@ function execEtcdctl() {
   fi
 }
 
-function updateLeaderIfNeeded() {
+updateLeaderIfNeeded() {
   local retries=$1
 
   if [ $retries -le 0 ]; then
@@ -76,13 +83,13 @@ function updateLeaderIfNeeded() {
   status=$(execEtcdctl ${leaderEndpoint} endpoint status)
   isLeader=$(echo $status | awk -F ', ' '{print $5}')
   if [ $isLeader = "false" ]; then
-    echo "leader out of status, try to redirect to leader"
+    echo "leader out of status, try to redirect to new leader"
     peerEndpoints=$(execEtcdctl ${leaderEndpoint} member list | awk -F', ' '{print $5}' | tr '\n' ',' | sed 's#,$##')
     leaderEndpoint=$(execEtcdctl ${peerEndpoints} endpoint status | awk -F', ' '$5=="true" {print $1}')
     if [ $leaderEndpoint = "" ]; then
       echo "leader is not ready, wait for 2s..."
       sleep 2
-      echo $(updateLeaderIfNeeded $leaderEndpoint $candidateEndpoint $((retries-1)) )
+      echo $(updateLeaderIfNeeded $(expr $retries - 1))
     fi
   fi
 

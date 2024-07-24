@@ -1,6 +1,6 @@
-#!/bin/bash
 echo "start etcd..."
-CUR_PATH="$(dirname "${BASH_SOURCE[0]}")"
+
+CUR_PATH=$(cd "$(dirname "$0")"; pwd)
 # shellcheck source=./common.sh
 source "${CUR_PATH}/common.sh"
 
@@ -23,19 +23,6 @@ fi
 
 # when a member joins, initial-cluster needs to be reset because configmap will not update automatically
 MY_PEER=${KB_POD_FQDN}${CLUSTER_DOMAIN}
-PEERS=""
-DOMAIN=$KB_NAMESPACE".svc"$CLUSTER_DOMAIN
-i=0 
-while [ $i -lt $KB_REPLICA_COUNT ]; do
-    if [ $i -ne 0 ]; then
-        PEERS="$PEERS,";
-    fi; 
-    host=$(eval echo \$KB_"$i"_HOSTNAME)
-    host=$host"."$DOMAIN
-    replica_hostname=${KB_CLUSTER_COMP_NAME}-${i}
-    PEERS="${PEERS}${replica_hostname}=${peer_protocol}://$host:2380"
-    i=$(( i + 1))
-done
 
 # discovery config
 sed -i "s#name:.*#name: ${HOSTNAME}#g" $tmpconf
