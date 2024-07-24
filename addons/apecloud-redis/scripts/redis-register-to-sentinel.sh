@@ -146,12 +146,14 @@ register_to_sentinel() {
         echo "$host is reachable on port $port."
         break
       fi
+
       sleep 5
     done
   }
 
   # function to execute and log redis-cli command
   execute_redis_cli() {
+    echo "Executing: redis-cli -h $sentinel_host -p $sentinel_port -a $SENTINEL_PASSWORD $*"
     local output
     output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" -a "$SENTINEL_PASSWORD" "$@")
     local status=$?
@@ -165,7 +167,6 @@ register_to_sentinel() {
     fi
   }
 
-  set +x
   # Check connectivity to sentinel host
   wait_for_connectivity "$sentinel_host" "$sentinel_port" "$SENTINEL_PASSWORD"
   # Check connectivity to Redis primary host
@@ -178,7 +179,6 @@ register_to_sentinel() {
   execute_redis_cli SENTINEL set "$master_name" parallel-syncs 1
   execute_redis_cli SENTINEL set "$master_name" auth-user "$REDIS_SENTINEL_USER"
   execute_redis_cli SENTINEL set "$master_name" auth-pass "$REDIS_SENTINEL_PASSWORD"
-  set -x
 
   echo "redis sentinel register to $sentinel_host succeeded!"
 }
@@ -199,7 +199,7 @@ register_to_sentinel_wrapper() {
   # get minimum ordinal pod name as default primary node (the same logic as redis initialize primary node selection)
   get_minimum_initialize_pod_ordinal
   default_redis_primary_pod_name="$KB_CLUSTER_COMP_NAME-$default_initialize_pod_ordinal"
-  redis_default_primary_pod_headless_fqdn="$default_redis_primary_pod_name.$KB_CLUSTER_COMP_NAME-$headless_postfix.$KB_NAMESPACE.svc"
+  redis_default_primary_pod_headless_fqdn="$default_redis_primary_pod_name.$KB_CLUSTER_COMP_NAME-$headless_postfix"
   init_redis_service_port
   parse_redis_advertised_svc_if_exist $default_redis_primary_pod_name
 
@@ -242,7 +242,7 @@ register_to_sentinel_wrapper() {
 
 {{- if index $redis_sentinel_component_spec "replicas" }}
   echo "redis sentinel component replicas found, register to sentinel."
-  sleep 30000
+  sleep 3000
   register_to_sentinel_wrapper
 {{- else }}
   echo "redis sentinel component replicas not found, skip register to sentinel."

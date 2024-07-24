@@ -1,0 +1,16 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: redis-sentinel
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "redis-sentinel.componentDefNamePrefix" . }}
+      releases:
+        - 7.0.15
+  releases:
+    - name: 7.0.15
+      changes:
+      serviceVersion: 7.0.15
+      images:
+        redis-sentinel: apecloud/apecloud-redis:7.0.15-debian-testv1
