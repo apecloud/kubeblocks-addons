@@ -55,6 +55,8 @@ spec:
             value: $(SERVICE_ETCD_ENDPOINT)
           - name: ETCDCTL_API
             value: "3"
+          - name: CLUSTER_DOMAIN
+            value: {{ .Values.clusterDomain }}
         command: ["/scripts/vtctld.sh"]
         volumeMounts:
           - name: scripts
@@ -176,6 +178,8 @@ spec:
             value: $(SERVICE_ETCD_ENDPOINT)
           - name: MYSQL_UNIX_PORT
             value: "/tmp/mysql.sock"
+          - name: CLUSTER_DOMAIN
+            value: {{ .Values.clusterDomain }}
         command: ["/scripts/vtgate.sh"]
         volumeMounts:
           - name: scripts

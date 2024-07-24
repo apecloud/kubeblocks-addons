@@ -170,7 +170,7 @@ lifecycleActions:
         command:
           - /scripts/switchover-without-candidate.sh
   accountProvision:
-    builtinHandler: wesql
+   # builtinHandler: wesql
   {{/*
     customHandler:
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
@@ -282,6 +282,8 @@ env:
     value: $(KB_CLUSTER_UID)
   - name: KB_MYSQL_N
     value: $(KB_REPLICA_COUNT)
+  - name: CLUSTER_DOMAIN
+    value: {{ .Values.clusterDomain }}
 volumeMounts:
   - mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
     name: data

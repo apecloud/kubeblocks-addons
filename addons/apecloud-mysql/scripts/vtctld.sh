@@ -5,7 +5,7 @@ if [ -n "$LOCAL_ETCD_POD_LIST" ]; then
   IFS=',' read -ra ETCD_POD_ARRAY <<< "$LOCAL_ETCD_POD_LIST"
   endpoints=""
   for pod in "${ETCD_POD_ARRAY[@]}"; do
-    endpoints+="${pod}.${LOCAL_ETCD_HEADLESS}.${KB_NAMESPACE}.svc.cluster.local:${LOCAL_ETCD_PORT},"
+    endpoints+="${pod}.${LOCAL_ETCD_HEADLESS}.${KB_NAMESPACE}.svc${CLUSTER_DOMAIN}:${LOCAL_ETCD_PORT},"
   done
   endpoints="${endpoints%,}"
 elif [ -n "$SERVICE_ETCD_ENDPOINT" ]; then

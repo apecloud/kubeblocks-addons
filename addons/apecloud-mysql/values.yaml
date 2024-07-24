@@ -111,3 +111,5 @@ resourceNamePrefix: ""
 
 etcd:
   etcdCmpdName: etcd-0.9.0
+
+clusterDomain: ".cluster.local"
