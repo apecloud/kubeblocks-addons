@@ -139,6 +139,8 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: config
       defaultMode: 0666
+      reRenderResourceTypes:
+        - hscale
     - name: etcd-scripts
       templateRef: {{ include "etcd.cmScriptsName" .}}
       namespace: {{ .Release.Namespace }}
