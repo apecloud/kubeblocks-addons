@@ -6,14 +6,9 @@ metadata:
     {{- include "zookeeper.labels" . | nindent 4 }}
 spec:
   backupType: Full
-  env:
-    - name: DATA_DIR
-      value: ""
-    - name: DATA_LOG_DIR
-      value: ""
   backup:
     backupData:
-      image: {{ .Values.images.registry | default "docker.io" }}/apecloud/zoocreeper:latest
+      image: {{ .Values.images.registry | default "docker.io" }}/apecloud/zoocreeper:1.0.1
       runOnTargetPodNode: true
       command:
         - sh
@@ -27,7 +22,7 @@ spec:
   restore:
     postReady:
       - job:
-          image: {{ .Values.images.registry | default "docker.io" }}/apecloud/zoocreeper:latest
+          image: {{ .Values.images.registry | default "docker.io" }}/apecloud/zoocreeper:1.0.1
           runOnTargetPodNode: true
           command:
             - sh
