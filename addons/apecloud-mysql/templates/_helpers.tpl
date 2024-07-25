@@ -170,7 +170,7 @@ lifecycleActions:
         command:
           - /scripts/switchover-without-candidate.sh
   accountProvision:
-   # builtinHandler: wesql
+    builtinHandler: wesql
   {{/*
     customHandler:
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}

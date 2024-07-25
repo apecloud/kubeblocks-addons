@@ -63,6 +63,7 @@ etcd:
   serviceReference:
     endpoint: "" # ex: etcd-cluster-etcd-headless.default.svc.cluster.local:2379
   serviceVersion: 3.5.6
+  etcdctlApi: "3" # the etcd tool etcdctl api version
   replicas: 3 # no support other num
   resources:
     storage: 20Gi

@@ -53,8 +53,6 @@ spec:
             value: "15999"
           - name: ETCD_SERVER
             value: $(SERVICE_ETCD_ENDPOINT)
-          - name: ETCDCTL_API
-            value: "3"
           - name: CLUSTER_DOMAIN
             value: {{ .Values.clusterDomain }}
         command: ["/scripts/vtctld.sh"]
