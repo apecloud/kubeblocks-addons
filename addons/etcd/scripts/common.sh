@@ -85,12 +85,12 @@ updateLeaderIfNeeded() {
   isLeader=$(echo $status | awk -F ', ' '{print $5}')
   if [ $isLeader = "false" ]; then
     echo "leader out of status, try to redirect to new leader"
-    peerEndpoints=$(execEtcdctl ${leaderEndpoint} member list | awk -F', ' '{print $5}' | tr '\n' ',' | sed 's#,$##')
-    leaderEndpoint=$(execEtcdctl ${peerEndpoints} endpoint status | awk -F', ' '$5=="true" {print $1}')
+    peerEndpoints=$(execEtcdctl "$leaderEndpoint" member list | awk -F', ' '{print $5}' | tr '\n' ',' | sed 's#,$##')
+    leaderEndpoint=$(execEtcdctl "$peerEndpoints" endpoint status | awk -F', ' '$5=="true" {print $1}')
     if [ $leaderEndpoint = "" ]; then
       echo "leader is not ready, wait for 2s..."
       sleep 2
-      echo $(updateLeaderIfNeeded $(expr $retries - 1))
+      updateLeaderIfNeeded $(expr $retries - 1)
     fi
   fi
 
