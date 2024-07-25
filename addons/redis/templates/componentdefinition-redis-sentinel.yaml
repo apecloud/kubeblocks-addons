@@ -76,6 +76,15 @@ spec:
           name: default
           optional: false
           password: Required
+    ## the default password of redis connection
+    - name: REDIS_DEFAULT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          ## reference the current component definition name
+          compDef: {{ include "redis.componentDefName" . }}
+          name: default
+          optional: true
+          password: Optional
   lifecycleActions:
     accountProvision:
       customHandler:
