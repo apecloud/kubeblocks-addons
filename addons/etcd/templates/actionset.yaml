@@ -13,7 +13,7 @@ spec:
     - name: CLUSTER_DOMAIN
       value: {{ .Values.clusterDomain }}
     - name: BACKUP_KEY_THRESHOLD
-      value: {{ .Values.backupKeyThreshold }}
+      value: "{{ .Values.backupKeyThreshold }}"
   backupType: Full
   backup:
     backupData:
