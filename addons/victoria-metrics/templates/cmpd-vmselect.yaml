@@ -7,7 +7,7 @@ metadata:
 spec:
   provider: kubeblocks
   description: A VictoriaMetrics component definition for Kubernetes
-  serviceKind: vminsert
+  serviceKind: vmselect
   serviceVersion: 1.0.0
   services:
     - name: vmselect

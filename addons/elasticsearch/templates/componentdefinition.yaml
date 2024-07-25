@@ -11,7 +11,6 @@ items:
   spec:
     provider: &provider kubeblocks
     description: &description Elasticsearch is a distributed, RESTful search engine optimized for speed and relevance on production-scale workloads.
-    serviceVersion: 8.8.2
     serviceKind: &serviceKind elasticsearch
     updateStrategy: &updateStrategy Parallel
     exporter: &exporter
@@ -43,16 +42,16 @@ items:
     lifecycleActions: &lifecycleActions
       memberLeave:
         customHandler:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag | default "latest" }}
           exec:
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag | default "latest" }}
             command:
             - /bin/sh
             - -c
             - |
               echo "member $KB_LEAVE_MEMBER_POD_NAME is leaving"
               curl --fail -v -X POST http://127.0.0.1:9200/_cluster/voting_config_exclusions?node_names=$KB_LEAVE_MEMBER_POD_NAME
-          targetPodSelector: Any
-          container: elasticsearch
+            targetPodSelector: Any
+            container: elasticsearch
     runtime: &runtime
       containers:
       - env:
@@ -80,7 +79,6 @@ items:
           value: http
         - name: NSS_SDB_USE_CACHE
           value: "no"
-        image: {{ include "elasticsearch-8.8.2.image" . }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         command:
           - sh
@@ -159,7 +157,6 @@ items:
         - mountPath: /tmp/plugins
           name: plugins
       - name: exporter
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag | default "latest" }}
         command:
           - /bin/elasticsearch_exporter
           - "--es.uri=http://localhost:9200"
@@ -213,7 +210,6 @@ items:
           value: http
         - name: NSS_SDB_USE_CACHE
           value: "no"
-        image: {{ include "elasticsearch-8.8.2.image" . }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         name: elastic-internal-init-filesystem
         securityContext:
@@ -273,7 +269,6 @@ items:
           value: http
         - name: NSS_SDB_USE_CACHE
           value: "no"
-        image: {{ include "elasticsearch-8.8.2.image" . }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         name: elastic-internal-suspend
         securityContext:
@@ -305,7 +300,6 @@ items:
         - mountPath: /usr/share/elasticsearch/plugins
           name: elastic-internal-elasticsearch-plugins-local
       - name: prepare-plugins
-        image: {{ include "elasticsearch-8.8.2.image" . }}
         imagePullPolicy: IfNotPresent
         command:
         - sh
@@ -348,7 +342,6 @@ items:
   spec:
     provider: *provider
     description: *description
-    serviceVersion: 7.10.1
     serviceKind: *serviceKind
     updateStrategy: *updateStrategy
     exporter: *exporter
@@ -371,7 +364,6 @@ items:
   spec:
     provider: *provider
     description: *description
-    serviceVersion: 7.7.1
     serviceKind: *serviceKind
     updateStrategy: *updateStrategy
     exporter: *exporter
@@ -385,14 +377,14 @@ items:
     lifecycleActions:
       memberLeave:
         customHandler:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag | default "latest" }}
           exec:
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag | default "latest" }}
             command:
             - /bin/sh
             - -c
             - |
               echo "member $KB_LEAVE_MEMBER_POD_NAME is leaving"
               curl --fail -v -X POST http://127.0.0.1:9200/_cluster/voting_config_exclusions/$KB_LEAVE_MEMBER_POD_NAME
-          targetPodSelector: Any
-          container: elasticsearch
+            targetPodSelector: Any
+            container: elasticsearch
     runtime: *runtime

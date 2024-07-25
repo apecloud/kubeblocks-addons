@@ -74,3 +74,11 @@ be.conf: |
 {{ .Values.be.config | indent 2 }}
 {{- end }}
 {{- end }}
+
+{{- define "fe.componentDefName" -}}
+{{ include "starrocks.name" . }}-fe
+{{- end -}}
+
+{{- define "be.componentDefName" -}}
+{{ include "starrocks.name" . }}-be
+{{- end -}}

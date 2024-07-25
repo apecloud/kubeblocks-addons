@@ -1,14 +1,13 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: zookeeper-{{ .Chart.Version }}
+  name: zookeeper
   labels:
     {{- include "zookeeper.labels" . | nindent 4 }}
 spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
-
   services:
     - name: default
       spec:
@@ -30,7 +29,6 @@ spec:
             port: 2888
           - name: http
             port: 8080
-
   roles:
     - name: leader
       serviceable: true
@@ -44,7 +42,6 @@ spec:
       serviceable: false
       writable: false
       votable: false
-
   lifecycleActions:
     roleProbe:
       builtinHandler: custom
@@ -54,8 +51,6 @@ spec:
             - /bin/bash
             - -c
             - |
-              ZOOBIN="/opt/bitnami/zookeeper/bin"
-              ZOOBINDIR="$(cd "${ZOOBIN}"; pwd)"
               . "$ZOOBINDIR"/zkEnv.sh > /dev/null
 
               isSSL="false"
@@ -67,9 +62,11 @@ spec:
               $clientPortAddress $clientPort srvr $isSSL 2> /dev/null    \
               | $GREP Mode`
               mode=$(echo "$STAT" | awk -F': ' '{print $2}' | awk '{RS=""; ORS=""; print}' )
-              echo -n ${mode}
-      container: zookeeper
-
+              if [[ "$mode" == "standalone" ]]; then
+                echo -n "leader"
+              else
+                echo -n ${mode}
+              fi
   runtime:
     securityContext:
       fsGroup: 0
@@ -100,8 +97,14 @@ spec:
             fi
             exec /opt/bitnami/scripts/zookeeper/entrypoint.sh /opt/bitnami/scripts/zookeeper/run.sh
         env:
+          - name: ZOOBINDIR
+            value: "/opt/bitnami/zookeeper/bin"
+          - name: ZOOBIN
+            value: "/opt/bitnami/zookeeper/bin"
           - name: ZOO_ENABLE_AUTH
             value: "yes"
+          - name: SERVICE_PORT
+            value: {{ .Values.metrics.port | quote }}
         ports:
           - name: client
             containerPort: 2181
@@ -146,6 +149,9 @@ spec:
           - name: config
             mountPath: /opt/bitnami/zookeeper/conf/zoo.cfg
             subPath: zoo.cfg
+          - name: config-log
+            mountPath: /opt/bitnami/zookeeper/conf/logback.xml
+            subPath: logback.xml
   vars:
     - name: ZOOKEEPER_POD_FQDN_LIST
       valueFrom:
@@ -156,7 +162,6 @@ spec:
       value: {{ .Values.metrics.enabled | quote }}
     - name: ZOOKEEPER_METRICS_PORT
       value: {{ .Values.metrics.port | quote }}
-
   volumes:
     - name: data
       needSnapshot: true
@@ -171,4 +176,8 @@ spec:
       defaultMode: 0755
       reRenderResourceTypes:
         - hscale
+    - name: zookeeper-log
+      namespace: {{ .Release.Namespace }}
+      templateRef: {{ include "zookeeper.name" . }}-configmap
+      volumeName: config-log
   updateStrategy: BestEffortParallel

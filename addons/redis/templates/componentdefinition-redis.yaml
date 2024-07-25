@@ -99,7 +99,7 @@ spec:
           optional: true
           port:
             name: redis-advertised
-            option: Optional
+            option: Required
     ## the redis advertised service name list for each pod, the value format is "pod1Svc,pod2Svc,..."
     - name: REDIS_ADVERTISED_SVC_NAME
       valueFrom:
@@ -107,7 +107,7 @@ spec:
           compDef: {{ include "redis.componentDefName" . }}
           name: redis-advertised
           optional: true
-          host: Optional
+          host: Required
     ## the username of redis sentinel for redis connection, it is optional
     - name: SENTINEL_USER
       valueFrom:
@@ -163,8 +163,8 @@ spec:
       timeoutSeconds: 1
     postProvision:
       customHandler:
-        image: {{ include "redis.image" . }}
         exec:
+          image: {{ include "redis.image" . }}
           command:
             - /bin/bash
             - -c
@@ -172,8 +172,8 @@ spec:
         preCondition: RuntimeReady
     accountProvision:
       customHandler:
-        image: {{ include "redis.image" . }}
         exec:
+          image: {{ include "redis.image" . }}
           command:
             - sh
             - -c

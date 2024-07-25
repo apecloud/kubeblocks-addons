@@ -160,13 +160,13 @@ lifecycleActions:
     timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
   switchover:
     withCandidate:
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag }}
       exec:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag }}
         command:
           - /scripts/switchover-with-candidate.sh
     withoutCandidate:
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag }}
       exec:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag }}
         command:
           - /scripts/switchover-without-candidate.sh
   accountProvision:
