@@ -1,3 +1,5 @@
+#!/bin/sh
+
 # config file used to bootstrap the etcd cluster
 configFile=$TMP_CONFIG_PATH
 
@@ -56,9 +58,9 @@ execEtcdctl() {
   tlsDir=$TLS_DIR
   # check if the clientProtocol is https and the tlsDir is not empty
   if [ $clientProtocol = "https" ] && [ -d "$tlsDir" ] && [ -s "${tlsDir}/ca.crt" ] && [ -s "${tlsDir}/tls.crt" ] && [ -s "${tlsDir}/tls.key" ]; then
-    etcdctl --endpoints=${endpoints} --cacert=${tlsDir}/ca.crt --cert=${tlsDir}/tls.crt --key=${tlsDir}/tls.key $@
+    etcdctl --endpoints=${endpoints} --cacert=${tlsDir}/ca.crt --cert=${tlsDir}/tls.crt --key=${tlsDir}/tls.key "$@"
   elif [ $clientProtocol = "http" ]; then
-    etcdctl --endpoints=${endpoints} $@
+    etcdctl --endpoints=${endpoints} "$@"
   else
     echo "ERROR: bad etcdctl args: clientProtocol:${clientProtocol}, endpoints:${endpoints}, tlsDir:${tlsDir}, please check!"
     exit 1

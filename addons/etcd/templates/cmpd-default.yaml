@@ -46,7 +46,7 @@ spec:
           - |
             export PATH=$PATH:/shell
             # for convenient to use the default shell path
-            copy /shell/sh /bin
+            cp /shell/sh /bin
             /scripts/start.sh
     volumes:
       - name: shell

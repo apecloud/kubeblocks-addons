@@ -27,7 +27,7 @@ spec:
           - name: scripts
             mountPath: /scripts
         command:
-          - /bin/bash
+          - /bin/sh
           - /scripts/start.sh
   vars:
     - name: CLUSTER_DOMAIN
@@ -83,50 +83,49 @@ spec:
     roleProbe:
       builtinHandler: custom
       customHandler:
-        image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
-        container: etcd
         exec:
+          image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
           command:
-            - /bin/bash
+            - /bin/sh
             - -c
             - |
               {{- .Files.Get "scripts/common.sh" | nindent 14 }}
               {{- .Files.Get "scripts/role-probe-script.sh" | nindent 14 }}
     memberJoin:
       customHandler:
-        image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
         exec:
+          image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
           command:
-            - /bin/bash
+            - /bin/sh
             - -c
             - |
               {{- .Files.Get "scripts/common.sh" | nindent 14 }}
               {{- .Files.Get "scripts/etcd-member-join.sh" | nindent 14 }}
     memberLeave:
       customHandler:
-        image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
         exec:
+          image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
           command:
-            - /bin/bash
+            - /bin/sh
             - -c
             - |
               {{- .Files.Get "scripts/common.sh" | nindent 14 }}
               {{- .Files.Get "scripts/etcd-member-leave.sh" | nindent 14 }}
     switchover:
       withCandidate:
-        image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
         exec:
+          image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
           command:
-          - /bin/bash
+          - /bin/sh
           - -c
           - |
             {{- .Files.Get "scripts/common.sh" | nindent 12 }}
             {{- .Files.Get "scripts/switchover-with-candidate.sh" | nindent 12 }}
       withoutCandidate:
-        image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
         exec:
+          image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
           command:
-          - /bin/bash
+          - /bin/sh
           - -c
           - |
             {{- .Files.Get "scripts/common.sh" | nindent 12 }}

@@ -1,3 +1,5 @@
+#!/bin/sh
+
 echo "start etcd..."
 
 CUR_PATH=$(cd "$(dirname "$0")"; pwd)
@@ -8,7 +10,7 @@ source "${CUR_PATH}/common.sh"
 # etcd ignores command-line flags and environment variables if a configuration file is provided.
 # need to copy the configuration file and modify it
 export conf=/etc/etcd/etcd.conf
-export tmpconf=/var/run/etcd/etcd.conf
+export tmpconf=$TMP_CONFIG_PATH
 
 cp $conf $tmpconf
 

@@ -9,8 +9,8 @@ mkdir -p ${DATA_DIR}
 res=$(find ${DATA_DIR} -type f)
 data_protection_file=${DATA_DIR}/.kb-data-protection
 if [ ! -z "${res}" ] && [ ! -f ${data_protection_file} ]; then
-	echo "${DATA_DIR} is not empty! Please make sure that the directory is empty before restoring the backup."
-	exit 1
+  echo "${DATA_DIR} is not empty! Please make sure that the directory is empty before restoring the backup."
+  exit 1
 fi
 
 touch ${data_protection_file}
