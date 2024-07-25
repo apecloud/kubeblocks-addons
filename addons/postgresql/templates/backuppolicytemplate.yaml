@@ -133,6 +133,7 @@ spec:
       - name: wal-g
         target:
           role: secondary
+          account: postgres
         actionSetName: postgres-wal-g
         snapshotVolumes: false
         targetVolumes:
@@ -142,6 +143,7 @@ spec:
       - name: archive-wal
         target:
           role: primary
+          account: postgres
         actionSetName: postgresql-pitr
         snapshotVolumes: false
         envMapping: *compDefEnvMapping
