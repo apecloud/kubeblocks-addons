@@ -12,6 +12,8 @@ spec:
       value: {{ .Values.tmpConfigPath}}
     - name: CLUSTER_DOMAIN
       value: {{ .Values.clusterDomain }}
+    - name: BACKUP_KEY_THRESHOLD
+      value: {{ .Values.backupKeyThreshold }}
   backupType: Full
   backup:
     backupData:
