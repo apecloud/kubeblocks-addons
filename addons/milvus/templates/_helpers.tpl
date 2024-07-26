@@ -243,16 +243,6 @@ Milvus user config - cluster
 {{- end }}
 
 {{/*
-Milvus monitor
-*/}}
-{{- define "milvus.monitor" }}
-# builtIn: false
-# exporterConfig:
-#   scrapePath: /metrics
-#   scrapePort: 9091
-{{- end }}
-
-{{/*
 Milvus cluster external storage services reference
 */}}
 {{- define "milvus.cluster.serviceRef" }}

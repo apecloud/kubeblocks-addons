@@ -13,7 +13,6 @@ kind: ClusterDefinition
 metadata:
   name: minio
 spec:
-  type: minio
   connectionCredential:
     {{- if .Values.rootUser }}
     rootUser: {{ .Values.rootUser | toString | quote }}

@@ -21,11 +21,6 @@ spec:
             targetPort: console-port
             port: 16379
   updateStrategy: BestEffortParallel
-  monitor:
-    builtIn: false
-    exporterConfig:
-      scrapePort: {{ .Values.metrics.service.port }}
-      scrapePath: "/metrics"
   configs:
     - name: application-config
       templateRef: camellia-redis-proxy-application-config-template

@@ -49,11 +49,6 @@ spec:
           - name: metrics
             port: 9104
             targetPort: 9104
-      monitor:
-        builtIn: false
-        exporterConfig:
-          scrapePort: 9104
-          scrapePath: "/metrics"
       podSpec:
         volumes: &xstoreVolumes
           - emptyDir: {}
@@ -255,11 +250,6 @@ spec:
           - name: mysql
             port: 3306
             targetPort: 3306
-      monitor:
-        builtIn: false
-        exporterConfig:
-          scrapePort: 9104
-          scrapePath: "/metrics"
       podSpec:
         volumes: *xstoreVolumes
         initContainers: *xsotreInitContainers
@@ -332,11 +322,6 @@ spec:
           - name: metrics
             port: 9104
             targetPort: 9104
-      monitor:
-        builtIn: false
-        exporterConfig:
-          scrapePort: 9104
-          scrapePath: "/metrics"
       podSpec:
         shareProcessNamespace: true  # For jmx collector
         volumes:
@@ -587,11 +572,6 @@ spec:
           - name: metrics
             port: 9104
             targetPort: 9104
-      monitor:
-        builtIn: false
-        exporterConfig:
-          scrapePort: 9104
-          scrapePath: "/metrics"
       podSpec:
         initContainers:
           - name: wait-cn-ready

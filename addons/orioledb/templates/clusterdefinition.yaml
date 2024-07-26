@@ -5,7 +5,6 @@ metadata:
   labels:
     {{- include "orioledb.labels" . | nindent 4 }}
 spec:
-  type: orioledb
   connectionCredential:
     username: postgres
     password: "$(RANDOM_PASSWD)"
@@ -38,11 +37,6 @@ spec:
           failureThreshold: 2
           periodSeconds: 1
           timeoutSeconds: 1
-      monitor:
-        builtIn: false
-        exporterConfig:
-          scrapePath: /metrics
-          scrapePort: {{ .Values.metrics.service.port }}
       logConfigs:
         {{- range $name,$pattern := .Values.logConfigs }}
         - name: {{ $name }}

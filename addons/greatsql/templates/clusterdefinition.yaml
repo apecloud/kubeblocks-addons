@@ -18,10 +18,6 @@ spec:
           - name: greatsql
             port: 3306
             targetPort: greatsql
-      monitor:
-        exporterConfig:
-          scrapePort: 9104
-          scrapePath: "/metrics"
       volumeTypes:
         - name: data
           type: data

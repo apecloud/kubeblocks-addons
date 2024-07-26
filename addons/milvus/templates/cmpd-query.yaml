@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: milvus-mixcoord-{{ .Chart.Version }}
+  name: milvus-querynode-{{ .Chart.Version }}
   labels:
     {{- include "milvus.labels" . | nindent 4 }}
 spec:
@@ -13,18 +13,14 @@ spec:
     initContainers:
       {{- include "milvus.initContainer.setup" . | indent 6 }}
     containers:
-      - name: mixcoord
+      - name: querynode
         {{- include "milvus.image" . | indent 8 }}
         args:
           - /milvus/tools/delegate-run.sh
           - /milvus/tools/run.sh
           - milvus
           - run
-          - mixture
-          - -rootcoord
-          - -querycoord
-          - -datacoord
-          - -indexcoord
+          - querynode
         env:
           {{- include "milvus.env.cacheSize" . | indent 10 }}
         volumeMounts:
@@ -41,7 +37,5 @@ spec:
     {{- include "milvus.cluster.serviceRefVars" . | indent 4 }}
   configs:
     {{- include "milvus.config.cluster" . | indent 4 }}
-  #monitor:
-  #  {{- include "milvus.monitor" . | indent 4 }}
   serviceRefDeclarations:
     {{- include "milvus.cluster.serviceRef" . | indent 4 }}
