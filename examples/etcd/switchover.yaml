@@ -13,4 +13,4 @@ spec:
     # Specifies the instance to become the primary or leader during a switchover operation. The value of `instanceName` can be either: 
     # - "*" (wildcard value): - Indicates no specific instance is designated as the primary or leader.
     # - A valid instance name (pod name)
-    instanceName: 'etcd-cluster-etcd-2'
+    instanceName: '*'

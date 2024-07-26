@@ -8,13 +8,13 @@ candidateEndpoint=${KB_SWITCHOVER_CANDIDATE_FQDN}:2379
 # see common.sh, this function may change leaderEndpoint
 updateLeaderIfNeeded 3
 
-candidateID=$(execEtcdctl ${candidateEndpoint} endpoint status | awk -F', ' '{print $2}')
-execEtcdctl ${leaderEndpoint} move-leader $candidateID
+candidateID=$(execEtcdctlNoCheckTLS ${candidateEndpoint} endpoint status | awk -F', ' '{print $2}')
+execEtcdctlNoCheckTLS ${leaderEndpoint} move-leader $candidateID
 
-status=$(execEtcdctl ${candidateEndpoint} endpoint status)
+status=$(execEtcdctlNoCheckTLS ${candidateEndpoint} endpoint status)
 isLeader=$(echo ${status} | awk -F ', ' '{print $5}')
 
-if [ $isLeader = "false" ]; then
+if [ $isLeader = "true" ]; then
   echo "switchover successfully"
 else
   echo "switchover failed, please check!"

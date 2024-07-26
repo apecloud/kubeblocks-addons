@@ -8,8 +8,8 @@ candidateEndpoint=""
 # see common.sh, this function may change leaderEndpoint
 updateLeaderIfNeeded 3
 
-leaderID=$(etcdctl --endpoints=$leaderEndpoint endpoint status | awk -F', ' '{print $2}')
-peerIDs=$(etcdctl --endpoints=$leaderEndpoint member list | awk -F', ' '{print $1}')
+leaderID=$(execEtcdctlNoCheckTLS ${leaderEndpoint} endpoint status | awk -F', ' '{print $2}')
+peerIDs=$(execEtcdctlNoCheckTLS ${leaderEndpoint} member list | awk -F', ' '{print $1}')
 randomCandidateID=$(echo "$peerIDs" | grep -v "$leaderID" | awk 'NR==1')
 
 if [ -z "$randomCandidateID" ]; then
@@ -17,9 +17,9 @@ if [ -z "$randomCandidateID" ]; then
   exit 1
 fi
 
-etcdctl --endpoints=$leaderEndpoint move-leader $randomCandidateID
+execEtcdctlNoCheckTLS $leaderEndpoint move-leader $randomCandidateID
 
-status=$(etcdctl --endpoints=$leaderEndpoint endpoint status)
+status=$(execEtcdctlNoCheckTLS $leaderEndpoint endpoint status)
 isLeader=$(echo $status | awk -F ', ' '{print $5}')
 
 if [ $isLeader = "false" ]; then
