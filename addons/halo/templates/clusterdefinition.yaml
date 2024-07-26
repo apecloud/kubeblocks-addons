@@ -16,16 +16,6 @@ spec:
     - name: halo
       workloadType: Replication  
       characterType: halo
-      customLabelSpecs:
-        - key: apps.kubeblocks.halo.patroni/scope
-          value: "$(KB_CLUSTER_NAME)-$(KB_COMP_NAME)-patroni$(KB_CLUSTER_UID_POSTFIX_8)"
-          resources:
-            - gvk: "v1/Pod"
-              selector:
-                app.kubernetes.io/managed-by: kubeblocks
-            - gvk: "apps/v1/StatefulSet"
-              selector:
-                app.kubernetes.io/managed-by: kubeblocks
       rsmSpec:
         roles:
           - name: primary
