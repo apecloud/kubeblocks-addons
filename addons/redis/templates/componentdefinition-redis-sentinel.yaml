@@ -85,6 +85,19 @@ spec:
           name: default
           optional: true
           password: Optional
+    - name: SENTINEL_POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "redis-sentinel.componentDefName" . }}
+          optional: true
+          instanceNames: Optional
+    - name: SENTINEL_HEADLESS_SERVICE_NAME
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redis-sentinel.componentDefName" . }}
+          name: headless
+          optional: true
+          host: Optional
   lifecycleActions:
     accountProvision:
       customHandler:
@@ -111,6 +124,10 @@ spec:
       env:
         - name: SENTINEL_SERVICE_PORT
           value: "26379"
+        - name: REDIS_SENTINEL_USER
+          value: "kbreplicator-sentinel"
+        - name: REDIS_SENTINEL_PASSWORD
+          value: $(REDIS_DEFAULT_PASSWORD)
       command:
         - /bin/bash
       args:

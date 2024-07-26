@@ -53,25 +53,56 @@ check_register_sentinel_conf() {
 }
 
 register_sentinel_conf() {
+  if [[ -n "${SENTINEL_POD_NAME_LIST}" ]]; then
+    old_ifs="$IFS"
+    IFS=','
+    set -f
+    read -ra sentinel_pod <<< "${SENTINEL_POD_NAME_LIST}"
+    set +f
+    IFS="$old_ifs"
 
-  if [[ -n "$KB_ITS_0_HOSTNAME" ]]; then
-    sentinel_pod_fqdn="$KB_ITS_0_HOSTNAME"
-    output=$(redis-cli -h "$sentinel_pod_fqdn" -p 26379 -a "$SENTINEL_PASSWORD" sentinel masters)
+    if [[ -n "${sentinel_pod[0]}" ]]; then
+      sentinel_pod_fqdn="${sentinel_pod[0]}.$SENTINEL_HEADLESS_SERVICE_NAME"
+      output=$(redis-cli -h "$sentinel_pod_fqdn" -p 26379 -a "$SENTINEL_PASSWORD" sentinel masters)
+    else
+      echo "Sentinel Pod list is empty."
+    fi
+  else
+    echo "SENTINEL_POD_NAME_LIST environment variable is not set or empty."
   fi
 
-  if [ -n "$output" ]; then
-    master_name=$(echo "$output" | awk '/^name$/ {getline; print}')
-    master_ip=$(echo "$output" | awk '/^ip$/ {getline; print}')
-    master_port=$(echo "$output" | awk '/^port$/ {getline; print}')
-    echo "Master Name: $master_name, IP: $master_ip, Port: $master_port"
+  if [[ -n "$output" ]]; then
+    master_name=""
+    master_ip=""
+    master_port=""
+    while read -r line; do
+      case "$line" in
+        name)
+          read -r master_name
+          ;;
+        ip)
+          read -r master_ip
+          ;;
+        port)
+          read -r master_port
+          ;;
+      esac
 
-    echo "sentinel monitor $master_name $master_ip $master_port 2" >> /data/sentinel/redis-sentinel.conf
-    echo "sentinel down-after-milliseconds $master_name 5000" >> /data/sentinel/redis-sentinel.conf
-    echo "sentinel failover-timeout $master_name 60000" >> /data/sentinel/redis-sentinel.conf
-    echo "sentinel parallel-syncs $master_name 1" >> /data/sentinel/redis-sentinel.conf
-    echo "sentinel auth-user $master_name $REDIS_SENTINEL_USER" >> /data/sentinel/redis-sentinel.conf
-    echo "sentinel auth-pass $master_name $REDIS_SENTINEL_PASSWORD" >> /data/sentinel/redis-sentinel.conf
+      if [[ -n "$master_name" && -n "$master_ip" && -n "$master_port" ]]; then
+        echo "Master Name: $master_name, IP: $master_ip, Port: $master_port"
 
+        echo "sentinel monitor $master_name $master_ip $master_port 2" >> /data/sentinel/redis-sentinel.conf
+        echo "sentinel down-after-milliseconds $master_name 5000" >> /data/sentinel/redis-sentinel.conf
+        echo "sentinel failover-timeout $master_name 60000" >> /data/sentinel/redis-sentinel.conf
+        echo "sentinel parallel-syncs $master_name 1" >> /data/sentinel/redis-sentinel.conf
+        echo "sentinel auth-user $master_name $REDIS_SENTINEL_USER" >> /data/sentinel/redis-sentinel.conf
+        echo "sentinel auth-pass $master_name $REDIS_SENTINEL_PASSWORD" >> /data/sentinel/redis-sentinel.conf
+
+        master_name=""
+        master_ip=""
+        master_port=""
+      fi
+    done <<< "$output"
   else
     echo "Warning: Could not connect to Redis Sentinel or no masters found."
   fi
