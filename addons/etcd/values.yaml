@@ -8,7 +8,7 @@ clusterDomain: ".cluster.local"
 dataMountPath: /var/run/etcd
 dataDir: /var/run/etcd/default.etcd
 
-tlsDir: /etc/pki/tls
+tlsMountPath: /etc/pki/tls
 
 # a copy version of /etc/etcd/etcd.conf but add some modification
 tmpConfigPath: /var/run/etcd/etcd.conf

@@ -54,7 +54,7 @@ execEtcdctl() {
   local endpoints=$1
   shift
   clientProtocol=$(getClientProtocol)
-  tlsDir=$TLS_DIR
+  tlsDir=$TLS_MOUNT_PATH
   # check if the clientProtocol is https and the tlsDir is not empty
   if [ $clientProtocol = "https" ] && [ -d "$tlsDir" ] && [ -s "${tlsDir}/ca.crt" ] && [ -s "${tlsDir}/tls.crt" ] && [ -s "${tlsDir}/tls.key" ]; then
     etcdctl --endpoints=${endpoints} --cacert=${tlsDir}/ca.crt --cert=${tlsDir}/tls.crt --key=${tlsDir}/tls.key "$@"

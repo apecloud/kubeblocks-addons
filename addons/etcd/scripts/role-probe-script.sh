@@ -1,6 +1,5 @@
 #!/bin/sh
 
-tlsDir=$TLS_DIR
 status=$(execEtcdctl 127.0.0.1:2379 endpoint status --command-timeout=300ms --dial-timeout=100m)
 IsLeader=$(echo $status | awk -F ', ' '{print $5}')
 IsLearner=$(echo $status | awk -F ', ' '{print $6}')

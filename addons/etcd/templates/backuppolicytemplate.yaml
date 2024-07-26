@@ -22,7 +22,7 @@ spec:
             - data
             volumeMounts:
             - name: tls
-              mountPath: /etc/pki/tls
+              mountPath: {{ .Values.tlsMountPath }}
             - name: data
               mountPath: {{ .Values.dataMountPath }}
       schedules:

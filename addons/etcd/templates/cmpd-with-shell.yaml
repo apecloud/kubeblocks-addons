@@ -38,8 +38,8 @@ spec:
       value: {{ .Values.dataMountPath }}
     - name: CLUSTER_NAME
       value: "$(KB_CLUSTER_COMP_NAME)"
-    - name: TLS_DIR
-      value: {{ .Values.tlsDir }}
+    - name: TLS_MOUNT_PATH
+      value: {{ .Values.tlsMountPath }}
     - name: CLIENT_TLS
       value: "{{ .Values.tls.client }}"
     - name: PEER_TLS

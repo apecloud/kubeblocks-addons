@@ -7,7 +7,7 @@ metadata:
 spec:
   env:
     - name: TLS_DIR
-      value: {{ .Values.tlsDir }}
+      value: {{ .Values.tlsMountPath }}
     - name: TMP_CONFIG_PATH
       value: {{ .Values.tmpConfigPath}}
     - name: CLUSTER_DOMAIN

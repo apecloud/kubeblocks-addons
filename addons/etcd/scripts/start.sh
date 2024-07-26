@@ -23,7 +23,6 @@ else
     peer_protocol="http"
 fi
 
-# when a member joins, initial-cluster needs to be reset because configmap will not update automatically
 MY_PEER=${KB_POD_FQDN}${CLUSTER_DOMAIN}
 
 # discovery config
@@ -36,7 +35,6 @@ sed -i "s#allowed-hostname:.*#allowed-hostname:#g" $tmpconf
 # TEST: etcdctl --cacert=/etc/pki/tls/ca.crt --cert=/etc/pki/tls/tls.crt --key=/etc/pki/tls/tls.key member list
 
 # member join reconfiguration
-# sed -i "s#initial-cluster:.*#initial-cluster: ${PEERS}#g" $tmpconf
 # sed -i "s#initial-cluster-state:.*#initial-cluster-state: existing#g" $tmpconf
 cat $tmpconf
 
