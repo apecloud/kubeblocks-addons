@@ -46,7 +46,7 @@ Usage:
 Result:
     The minimum lexicographically order pod name
 Example:
-    minimumPod=$(minLexicographicalOrderPod "pod-0,pod-1,pod-2") # pod1
+    minimumPod=$(minLexicographicalOrderPod "pod-0,pod-1,pod-2") # pod0
     minimumPod=$(minLexicographicalOrderPod "") # use the default KB_POD_LIST env variable
 */}}
 {{- define "kblib.pods.minLexicographicalOrderPod" }}

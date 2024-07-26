@@ -15,4 +15,4 @@ data:
     {{- include "kblib.envs.envsExist" $ | nindent 4 }}
   {{- with include "redis.extend.scripts" . }}
   {{- . | nindent 2 }}
-    {{- end }}
+  {{- end }}
