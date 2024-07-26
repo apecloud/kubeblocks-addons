@@ -18,8 +18,6 @@ touch ${data_protection_file}
 remoteBackupFile="${DP_BACKUP_NAME}.tar.zst"
 if [ "$(datasafed list ${remoteBackupFile})" = "${remoteBackupFile}" ]; then
   datasafed pull -d zstd-fastest "${remoteBackupFile}" - | tar -xvf - -C ${DATA_DIR}
-else
-  datasafed pull "${DP_BACKUP_NAME}.tar.gz" - | tar -xzvf - -C ${DATA_DIR}
 fi
 
 backupFile=${DATA_DIR}/${DP_BACKUP_NAME}
