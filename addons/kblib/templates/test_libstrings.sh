@@ -2,6 +2,8 @@
 
 source "./test_utils.sh"
 
+## TODO: We should not redefine the function here.
+
 split() {
   local string="$1"
   local separator="${2:-,}"
@@ -225,5 +227,5 @@ run_all_tests() {
   run_test test_trimSuffix "strings.trimSuffix"
 }
 
-# main run All tests
+# main run all tests
 run_all_tests
