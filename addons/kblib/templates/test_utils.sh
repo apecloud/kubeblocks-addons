@@ -30,6 +30,19 @@ assert_false() {
   fi
 }
 
+assert_result_contains() {
+  local error_output=$1
+  local expected_substring=$2
+  local test_case=$3
+
+  if [[ "$error_output" == *"$expected_substring"* ]]; then
+    echo "Passed: Test case '$test_case' passed: error contains expected substring"
+  else
+    echo "Error: Test case '$test_case' failed: error does not contain expected substring"
+    return 1
+  fi
+}
+
 run_test() {
   local test_func=$1
   local test_case=$2

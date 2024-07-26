@@ -4,8 +4,16 @@ source "./test_utils.sh"
 
 ## TODO: We should not redefine the function here.
 
-getPodList() {
-  local podListStr="${1:-${KB_POD_LIST}}"
+getPodListFromEnv() {
+  local envName="${1:-KB_POD_LIST}"
+
+  # Check if the environment variable exists
+  if [[ -z "${!envName}" ]]; then
+    echo "failed to get pod list cause environment variable '$envName' does not exist" >&2
+    return 1
+  fi
+
+  local podListStr="${!envName}"
   local podList=()
 
   IFS=',' read -ra podList <<< "$podListStr"
@@ -31,18 +39,26 @@ minLexicographicalOrderPod() {
 
 # Tests defined below
 
-test_getPodList() {
+test_getPodListFromEnv() {
   local test_case=$1
   local result
 
-  export KB_POD_LIST="pod1,pod2,pod3"
+  getPodListFromEnv ""
+  assert_false $? "$test_case (non-existing default KB_POD_LIST env)"
 
-  result=$(getPodList "pod1,pod2,pod3")
-  assert_equal "$result" "pod1 pod2 pod3" "$test_case (explicit pod list)"
+  export TEST_POD_LIST="pod1,pod2,pod3"
+  export KB_POD_LIST="kb_pod1,kb_pod2,kb_pod3"
 
-  result=$(getPodList "")
-  assert_equal "$result" "pod1 pod2 pod3" "$test_case (default pod list)"
+  result=$(getPodListFromEnv "TEST_POD_LIST")
+  assert_equal "$result" "pod1 pod2 pod3" "$test_case (existing provided env)"
 
+  result=$(getPodListFromEnv "")
+  assert_equal "$result" "kb_pod1 kb_pod2 kb_pod3" "$test_case (existing default KB_POD_LIST env)"
+
+  getPodListFromEnv "NON_EXISTENT_ENV"
+  assert_false $? "$test_case (non-existing default KB_POD_LIST env)"
+
+  unset TEST_POD_LIST
   unset KB_POD_LIST
 }
 
@@ -68,7 +84,7 @@ test_minLexicographicalOrderPod() {
 }
 
 run_all_tests() {
-  run_test test_getPodList "kblib.pods.getPodList"
+  run_test test_getPodListFromEnv "kblib.pods.getPodListFromEnv"
   run_test test_minLexicographicalOrderPod "kblib.pods.minLexicographicalOrderPod"
 }
 
