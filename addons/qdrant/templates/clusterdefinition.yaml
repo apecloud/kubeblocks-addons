@@ -23,11 +23,6 @@ spec:
       workloadType: Stateful
       characterType: qdrant
       probes:
-      monitor:
-        builtIn: false
-        exporterConfig:
-          scrapePath: /metrics
-          scrapePort: 6333
       logConfigs:
       scriptSpecs:
       - name: qdrant-scripts

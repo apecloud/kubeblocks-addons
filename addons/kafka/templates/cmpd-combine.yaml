@@ -56,11 +56,6 @@ spec:
         namespace: {{ .Release.Namespace }}
   ## serial is not used because rsm currently does not support kafka's role detection. The lack of role label during restart will affect the pod restart.
   updateStrategy: BestEffortParallel
-  monitor:
-    builtIn: false
-    exporterConfig:
-      scrapePath: /metrics
-      scrapePort: 5556
   configs:
     - name: kafka-configuration-tpl
       constraintRef: {{ include "kafka.name" . }}-cc

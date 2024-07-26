@@ -26,11 +26,6 @@ spec:
             port: 6041
             protocol: TCP
             targetPort: taos-adapter
-      monitor:
-        builtIn: false
-        exporterConfig:
-          scrapePath: /metrics
-          scrapePort: {{ .Values.metrics.service.port }}
       configSpecs:
         - name: tdengine-taos-config
           templateRef: tdengine-config-template

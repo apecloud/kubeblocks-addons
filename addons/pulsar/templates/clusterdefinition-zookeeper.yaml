@@ -103,6 +103,3 @@ spec:
                 mountPath: /kb-scripts
               - name: zookeeper-config-env
                 mountPath: /opt/pulsar/none
-      exporter:
-        scrapePath: /metrics
-        scrapePort: http
