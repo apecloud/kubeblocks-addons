@@ -1,6 +1,9 @@
 #!/bin/bash
 set -ex
 
+# the scripts is mounted to /scripts defined in the cmpd
+source /scripts/common.sh
+
 declare -g primary
 declare -g primary_port
 declare -g default_initialize_pod_ordinal
@@ -10,27 +13,6 @@ extract_ordinal_from_object_name() {
   local object_name="$1"
   local ordinal="${object_name##*-}"
   echo "$ordinal"
-}
-
-get_minimum_initialize_pod_ordinal() {
-  if [ -z "$KB_POD_LIST" ]; then
-    echo "KB_POD_LIST is empty, use default initialize pod_ordinal:0 as primary node."
-    default_initialize_pod_ordinal=0
-    return
-  fi
-
-  # parse minimum ordinal from env $KB_POD_LIST, the value format is "pod1,pod2,..."
-  IFS=',' read -ra pod_list <<< "$KB_POD_LIST"
-  for pod in "${pod_list[@]}"; do
-    if [ -z "$default_initialize_pod_ordinal" ]; then
-      default_initialize_pod_ordinal=$(extract_ordinal_from_object_name "$pod")
-      continue
-    fi
-    pod_ordinal=$(extract_ordinal_from_object_name "$pod")
-    if [ "$pod_ordinal" -lt "$default_initialize_pod_ordinal" ]; then
-      default_initialize_pod_ordinal="$pod_ordinal"
-    fi
-  done
 }
 
 load_redis_template_conf() {
@@ -233,9 +215,9 @@ retry_get_master_addr_by_name_from_sentinel() {
 
 get_default_initialize_primary_node() {
   # TODO: if has advertise svc and port, we should use it as default primary node info instead of the headless svc
-  get_minimum_initialize_pod_ordinal
-  echo "use default initialize pod_ordinal:$default_initialize_pod_ordinal as primary node."
-  primary="$KB_CLUSTER_COMP_NAME-$default_initialize_pod_ordinal.$KB_CLUSTER_COMP_NAME-$headless_postfix.$KB_NAMESPACE"
+  min_lex_pod=$(minLexicographicalOrderPod "$KB_POD_LIST")
+  echo "get the minimum lexicographical order pod name: $min_lex_pod as default primary node"
+  primary="$min_lex_pod.$KB_CLUSTER_COMP_NAME-$headless_postfix.$KB_NAMESPACE"
   primary_port=$service_port
 }
 
