@@ -1,6 +1,6 @@
 {{/*
 Library of pods related functions implemented in Bash. Currently, the following functions are available:
-- getPodList: Get the list of pods from the provided environment variable or the default KB_POD_LIST environment variable.
+- getPodListFromEnv: Get the list of pods from the provided environment variable or the default KB_POD_LIST environment variable.
 - minLexicographicalOrderPod: Get the minimum lexicographically pod name from the given pod list or the default KB_POD_LIST environment variable.
 */}}
 
