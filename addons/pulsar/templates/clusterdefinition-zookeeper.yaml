@@ -5,7 +5,6 @@ metadata:
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
-  type: zookeeper
   connectionCredential:
     username: ""
     password: ""

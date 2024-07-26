@@ -5,7 +5,6 @@ metadata:
   labels:
     {{- include "risingwave.labels" . | nindent 4 }}
 spec:
-  type: risingwave
   connectionCredential:
     username: "root"
     password: ""

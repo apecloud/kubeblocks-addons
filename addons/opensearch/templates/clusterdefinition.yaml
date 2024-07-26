@@ -5,7 +5,6 @@ metadata:
   labels:
     {{- include "opensearch.labels" . | nindent 4 }}
 spec:
-  type: opensearch
   connectionCredential:
     username: root
     password: "$(RANDOM_PASSWD)"
