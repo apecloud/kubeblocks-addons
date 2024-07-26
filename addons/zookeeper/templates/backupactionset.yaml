@@ -1,0 +1,31 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: zookeeper-backup-zoocreeper
+  labels:
+    {{- include "zookeeper.labels" . | nindent 4 }}
+spec:
+  backupType: Full
+  backup:
+    backupData:
+      image: {{ .Values.images.registry | default "docker.io" }}/apecloud/zoocreeper:1.0.1
+      runOnTargetPodNode: true
+      command:
+        - sh
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/backup.sh" | nindent 10 }}
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+
+  restore:
+    postReady:
+      - job:
+          image: {{ .Values.images.registry | default "docker.io" }}/apecloud/zoocreeper:1.0.1
+          runOnTargetPodNode: true
+          command:
+            - sh
+            - -c
+            - |
+              {{- .Files.Get "dataprotection/restore.sh" | nindent 14 }}

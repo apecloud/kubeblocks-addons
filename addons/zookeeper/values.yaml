@@ -12,3 +12,7 @@ images:
 metrics:
   enabled: true
   port: 7000
+
+zookeeper:
+  dataDir: /bitnami/zookeeper/data
+  dataLogDir: /bitnami/zookeeper/log
