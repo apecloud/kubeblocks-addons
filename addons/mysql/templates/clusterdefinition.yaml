@@ -5,7 +5,6 @@ metadata:
   labels:
     {{- include "mysql.labels" . | nindent 4 }}
 spec:
-  type: mysql
   topologies:
     - name: server
       components:
