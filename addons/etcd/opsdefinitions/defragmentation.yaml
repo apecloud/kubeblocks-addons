@@ -25,5 +25,5 @@ spec:
                 - -c
                 - |
                   set -e
-                  ENDPOINT=http://${KB_CLUSTER_COMP_NAME}-0.${KB_COMP_HEADLESS_SVC_NAME}.${KB_OPS_NAMESPACE}.svc.cluster.local:2379
+                  ENDPOINT=http://${KB_CLUSTER_COMP_NAME}-0.${KB_COMP_HEADLESS_SVC_NAME}.${KB_OPS_NAMESPACE}.svc${CLUSTER_DOMAIN}:2379
                   etcdctl defrag --endpoints=$ENDPOINT
