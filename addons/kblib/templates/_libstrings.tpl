@@ -1,7 +1,15 @@
 {{/*
-Library of string functions implemented in Bash.
+Library of string functions implemented in Bash. Currently, the following functions are available:
+- split(string, separator): Split a string into an array of strings based on a separator.
+- contains(string, substring): Check if a string contains a substring.
+- hasPrefix(string, prefix): Check if a string starts with a prefix.
+- hasSuffix(string, suffix): Check if a string ends with a suffix.
+- replace(string, old, new, count): Replace a substring with a new string for a specified number of occurrences.
+- replaceAll(string, old, new): Replace all occurrences of a substring with a new string.
+- trim(string, cutset): Remove leading and trailing characters from a string based on a set of characters.
+- trimPrefix(string, prefix): Remove a prefix from a string if it exists.
+- trimSuffix(string, suffix): Remove a suffix from a string if it exists.
 */}}
-
 
 {{/*
 This function is used to split a string into an array of strings.
@@ -176,5 +184,76 @@ replaceAll() {
 }
 {{- end }}
 
+{{/*
+Trim returns a slice of the string s with all leading and
+trailing Unicode code points contained in cutset removed.
 
+Usage:
+    `trim "string" "cutset"`
+Result:
+    String with leading and trailing Unicode code points in cutset removed
+Example:
+    result=$(trim "1234string1234" "1234")
+    echo "$result"
+*/}}
+{{- define "kblib.strings.trim" -}}
+trim() {
+  local string="$1"
+  local cutset="$2"
 
+  string="${string#"${string%%[^$cutset]*}"}"
+  string="${string%"${string##*[^$cutset]}"}"
+
+  echo "$string"
+}
+{{- end -}}
+
+{{/*
+TrimPrefix returns s without the provided leading prefix string.
+If s doesn't start with prefix, s is returned unchanged.
+
+Usage:
+    `trimPrefix "string" "prefix"`
+Result:
+    String with the provided leading prefix removed
+Example:
+    result=$(trimPrefix "hello world" "hello ")
+    echo "$result"
+*/}}
+{{- define "kblib.strings.trimPrefix" -}}
+trimPrefix() {
+  local string="$1"
+  local prefix="$2"
+
+  if [[ "$string" == "$prefix"* ]]; then
+    string="${string#"$prefix"}"
+  fi
+
+  echo "$string"
+}
+{{- end -}}
+
+{{/*
+TrimSuffix returns s without the provided trailing suffix string.
+If s doesn't end with suffix, s is returned unchanged.
+
+Usage:
+    `trimSuffix "string" "suffix"`
+Result:
+    String with the provided trailing suffix removed
+Example:
+    result=$(trimSuffix "hello world" " world")
+    echo "$result"
+*/}}
+{{- define "kblib.strings.trimSuffix" -}}
+trimSuffix() {
+  local string="$1"
+  local suffix="$2"
+
+  if [[ "$string" == *"$suffix" ]]; then
+    string="${string%"$suffix"}"
+  fi
+
+  echo "$string"
+}
+{{- end -}}

@@ -83,6 +83,38 @@ replaceAll() {
   echo "${string//$old/$new}"
 }
 
+trim() {
+  local string="$1"
+  local cutset="$2"
+
+  string="${string#"${string%%[^$cutset]*}"}"
+  string="${string%"${string##*[^$cutset]}"}"
+
+  echo "$string"
+}
+
+trimPrefix() {
+  local string="$1"
+  local prefix="$2"
+
+  if [[ "$string" == "$prefix"* ]]; then
+    string="${string#"$prefix"}"
+  fi
+
+  echo "$string"
+}
+
+trimSuffix() {
+  local string="$1"
+  local suffix="$2"
+
+  if [[ "$string" == *"$suffix" ]]; then
+    string="${string%"$suffix"}"
+  fi
+
+  echo "$string"
+}
+
 test_split() {
   local test_case=$1
   local result
@@ -140,6 +172,39 @@ test_replaceAll() {
   assert_equal "$result" "hi world hi" "$test_case (replace all)"
 }
 
+test_trim() {
+  local test_case=$1
+  local result
+  result=$(trim "1234string1234" "1234")
+  assert_equal "$result" "string" "$test_case (trim both sides)"
+
+  result=$(trim "1234string" "1234")
+  assert_equal "$result" "string" "$test_case (trim left side)"
+
+  result=$(trim "string1234" "1234")
+  assert_equal "$result" "string" "$test_case (trim right side)"
+}
+
+test_trimPrefix() {
+  local test_case=$1
+  local result
+  result=$(trimPrefix "hello world" "hello ")
+  assert_equal "$result" "world" "$test_case (trim prefix)"
+
+  result=$(trimPrefix "hello world" "foo")
+  assert_equal "$result" "hello world" "$test_case (no prefix)"
+}
+
+test_trimSuffix() {
+  local test_case=$1
+  local result
+  result=$(trimSuffix "hello world" " world")
+  assert_equal "$result" "hello" "$test_case (trim suffix)"
+
+  result=$(trimSuffix "hello world" "foo")
+  assert_equal "$result" "hello world" "$test_case (no suffix)"
+}
+
 run_all_tests() {
   run_test test_split "strings.split"
 
@@ -152,6 +217,12 @@ run_all_tests() {
   run_test test_replace "strings.replace"
 
   run_test test_replaceAll "strings.replaceAll"
+
+  run_test test_trim "strings.trim"
+
+  run_test test_trimPrefix "strings.trimPrefix"
+
+  run_test test_trimSuffix "strings.trimSuffix"
 }
 
 # main run All tests
