@@ -80,12 +80,6 @@ spec:
   componentDefs:
     # combined both controller(kraft) and broker. Ref: https://kafka.apache.org/documentation/#kraft_role
     - name: kafka-server
-      description: |-
-        Kafka servers that act as both brokers and controllers are referred to as "combined" servers. Combined servers
-        are simpler to operate for small use cases like a development environment. The key disadvantage is that the
-        controller will be less isolated from the rest of the system. For example, it is not possible to roll or scale
-        the controllers separately from the brokers in combined mode. Combined mode is not recommended in critical
-        deployment environments.
       workloadType: Stateful # Consensus
       characterType: kafka
       probes:
@@ -251,8 +245,6 @@ spec:
                 mountPath: /etc/jmx-kafka
 
     - name: kafka-broker
-      description: |-
-        Kafka broker.
       workloadType: Stateful
       characterType: kafka
       probes:
@@ -415,8 +407,6 @@ spec:
 
     # controller(kraft) Ref: https://kafka.apache.org/documentation/#kraft_role
     - name: controller
-      description: |-
-        Kafka controller that act as controllers (kraft) only server.
       workloadType: Stateful # Consensus
       characterType: kafka
       probes:
