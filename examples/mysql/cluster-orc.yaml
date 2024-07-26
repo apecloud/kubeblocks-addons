@@ -32,7 +32,7 @@ spec:
   # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
   - name: mysql
-    componentDef: mysql-8.0.33
+    componentDef: mysql-8.0.33-orc
     disableExporter: true
     replicas: 1
     serviceAccountName: kb-mysql-cluster
@@ -51,3 +51,65 @@ spec:
         resources:
           requests:
             storage: 20Gi
+    serviceRefs:
+        - name: orchestrator
+          serviceDescriptor: mysql-cluster-orc-service
+          namespace: default
+---
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: orcm-cluster
+  namespace: default
+  annotations:
+    "kubeblocks.io/extra-env": '{"ORC_TOPOLOGY_PASSWORD":"orchestrator","ORC_META_PASSWORD":"orchestrator","ORC_META_DATABASE":"orchestrator"}'
+spec:
+  terminationPolicy: Delete
+  affinity:
+    podAntiAffinity: Preferred
+    topologyKeys:
+      - kubernetes.io/hostname
+    tenancy: SharedNode
+  tolerations:
+    - key: kb-data
+      operator: Equal
+      value: 'true'
+      effect: NoSchedule
+  componentSpecs:
+    - name: orchestrator
+      componentDef: orchestrator-raft
+      disableExporter: true
+      replicas: 3
+      resources:
+        requests:
+          cpu: '0.5'
+          memory: 0.5Gi
+        limits:
+          cpu: '0.5'
+          memory: 0.5Gi
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+---
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ServiceDescriptor
+metadata:
+  name: mysql-cluster-orc-service
+  namespace: default
+spec:
+  # Specifies the type or nature of the service.
+  # Should represent a well-known application cluster type, such as {mysql, redis, zookeeper}.
+  serviceKind: orchestrator
+  # Represents the version of the service reference.
+  serviceVersion: 3.2.6
+  # Represents the endpoint of the service connection credential.
+  endpoint:
+    value: "orcm-cluster-orchestrator"
+  # Represents the port of the service connection credential.
+  port:
+    value: "80"
