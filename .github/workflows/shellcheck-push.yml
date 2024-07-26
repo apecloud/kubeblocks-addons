@@ -47,7 +47,7 @@ jobs:
           echo "FILE_PATH: $FILE_PATH"
           SHELL_FILE_PATH=""
           for filePath in $(echo "$FILE_PATH"); do
-              if [[ "${filePath}" == *".sh" && -f "${filePath" ]]; then
+              if [[ "${filePath}" == *".sh" && -f "${filePath}" ]]; then
                   SHELL_FILE_PATH="${SHELL_FILE_PATH} ${filePath}"
               fi
           done
