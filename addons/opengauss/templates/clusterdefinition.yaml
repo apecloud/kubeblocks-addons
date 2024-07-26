@@ -5,7 +5,6 @@ metadata:
   labels:
     {{- include "opengauss.labels" . | nindent 4 }}
 spec:
-  type: opengauss
   connectionCredential:
     username: kbadmin
     password: "p@ssW0rd1"

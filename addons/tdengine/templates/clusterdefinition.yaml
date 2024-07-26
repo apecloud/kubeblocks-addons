@@ -5,7 +5,6 @@ metadata:
   labels:
     {{- include "tdengine.labels" . | nindent 4 }}
 spec:
-  type: tdengine
   connectionCredential:
     username: {{ .Values.defaultAuth.username }}
     password: {{ .Values.defaultAuth.password }}
