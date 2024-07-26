@@ -23,11 +23,6 @@ spec:
       workloadType: Stateful
       characterType: clickhouse
       probes:
-      monitor:
-        builtIn: false
-        exporterConfig:
-          scrapePath: /metrics
-          scrapePort: 8001
       logConfigs:
         {{- range $name, $pattern := .Values.logConfigs }}
         - name: {{ $name }}
@@ -157,11 +152,6 @@ spec:
       workloadType: Stateful # Consensus
       characterType: zookeeper
       probes:
-      monitor:
-        builtIn: false
-        exporterConfig:
-          scrapePath: /metrics
-          scrapePort: 8001
       logConfigs:
         {{- range $name,$pattern := .Values.logConfigs }}
         - name: {{ $name }}
@@ -249,11 +239,6 @@ spec:
       #     failureThreshold: {{ .Values.zookeeper.roleProbe.failureThreshold }}
       #     periodSeconds: {{ .Values.zookeeper.roleProbe.periodSeconds }}
       #     successThreshold: {{ .Values.zookeeper.roleProbe.successThreshold }}
-      monitor:
-        builtIn: false
-        exporterConfig:
-          scrapePath: /metrics
-          scrapePort: 9141
       logConfigs:
         {{- range $name,$pattern := .Values.zookeeper.logConfigs }}
         - name: {{ $name }}

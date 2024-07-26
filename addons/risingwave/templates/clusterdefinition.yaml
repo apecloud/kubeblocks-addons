@@ -22,11 +22,6 @@ spec:
       - name: metaSvc
         valueFrom:
           type: ServiceRef
-    monitor:
-      builtIn: true
-      exporterConfig:
-        scrapePort: metrics
-        scrapePath: /metrics
     configSpecs:
     - name: risingwave-configuration
       templateRef: {{ include "risingwave.name" . }}-conf-tpl
@@ -108,11 +103,6 @@ spec:
       - name: connectorSvc
         valueFrom:
           type: ServiceRef
-    monitor:
-      builtIn: true
-      exporterConfig:
-        scrapePort: metrics
-        scrapePath: /metrics
     configSpecs:
     - name: risingwave-configuration
       templateRef: {{ include "risingwave.name" . }}-conf-tpl
@@ -203,11 +193,6 @@ spec:
       - name: metaSvc
         valueFrom:
           type: ServiceRef
-    monitor:
-      builtIn: true
-      exporterConfig:
-        scrapePort: metrics
-        scrapePath: /metrics
     configSpecs:
     - name: risingwave-configuration
       templateRef: {{ include "risingwave.name" . }}-conf-tpl
@@ -294,11 +279,6 @@ spec:
       - name: connectorSvc
         valueFrom:
           type: ServiceRef
-    monitor:
-      builtIn: true
-      exporterConfig:
-        scrapePort: metrics
-        scrapePath: /metrics
     configSpecs:
     - name: risingwave-configuration
       templateRef: {{ include "risingwave.name" . }}-conf-tpl
@@ -383,11 +363,6 @@ spec:
     statelessSpec:
       updateStrategy:
         type: Recreate
-    monitor:
-      builtIn: false
-      exporterConfig:
-        scrapePort: metrics
-        scrapePath: /metrics
     configSpecs:
     - name: risingwave-configuration
       templateRef: {{ include "risingwave.name" . }}-conf-tpl

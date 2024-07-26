@@ -23,11 +23,6 @@ spec:
   volumes:
     - name: data
       needSnapshot: true
-  monitor:
-    builtIn: false
-    exporterConfig:
-      scrapePort: 2112
-      scrapePath: "/metrics"
   configs:
     - name: weaviate-config-template
       templateRef: weaviate-config-template
