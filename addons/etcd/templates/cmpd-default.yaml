@@ -121,7 +121,6 @@ spec:
             - /bin/sh
             - -c
             - |
-              export PATH=$PATH:/shell
               {{- .Files.Get "scripts/common.sh" | nindent 14 }}
               {{- .Files.Get "scripts/etcd-member-join.sh" | nindent 14 }}
     memberLeave:
@@ -132,7 +131,6 @@ spec:
             - /bin/sh
             - -c
             - |
-              export PATH=$PATH:/shell
               {{- .Files.Get "scripts/common.sh" | nindent 14 }}
               {{- .Files.Get "scripts/etcd-member-leave.sh" | nindent 14 }}
     switchover:
