@@ -96,7 +96,11 @@ register_sentinel_conf() {
         echo "sentinel failover-timeout $master_name 60000" >> /data/sentinel/redis-sentinel.conf
         echo "sentinel parallel-syncs $master_name 1" >> /data/sentinel/redis-sentinel.conf
         echo "sentinel auth-user $master_name $REDIS_SENTINEL_USER" >> /data/sentinel/redis-sentinel.conf
-        echo "sentinel auth-pass $master_name $REDIS_SENTINEL_PASSWORD" >> /data/sentinel/redis-sentinel.conf
+        cmpd_name="${master_name#*-}"
+        cmpd_name_upper=$(echo "$cmpd_name" | tr '[:lower:]' '[:upper:]')
+        var_name="REDIS_DEFAULT_PASSWORD_${cmpd_name_upper}"
+        auth_pass="${!var_name}"
+        echo "sentinel auth-pass $master_name $auth_pass" >> /data/sentinel/redis-sentinel.conf
 
         master_name=""
         master_ip=""

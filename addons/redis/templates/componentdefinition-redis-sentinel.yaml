@@ -85,6 +85,8 @@ spec:
           name: default
           optional: true
           password: Optional
+          multipleClusterObjectOption:
+            strategy: individual
     - name: SENTINEL_POD_NAME_LIST
       valueFrom:
         componentVarRef:
@@ -126,8 +128,6 @@ spec:
           value: "26379"
         - name: REDIS_SENTINEL_USER
           value: "kbreplicator-sentinel"
-        - name: REDIS_SENTINEL_PASSWORD
-          value: $(REDIS_DEFAULT_PASSWORD)
       command:
         - /bin/bash
       args:
