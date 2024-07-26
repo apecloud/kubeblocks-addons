@@ -51,8 +51,6 @@ spec:
             value: "15000"
           - name: VTCTLD_GRPC_PORT
             value: "15999"
-          - name: ETCD_SERVER
-            value: $(SERVICE_ETCD_ENDPOINT)
           - name: CLUSTER_DOMAIN
             value: {{ .Values.clusterDomain }}
         command: ["/scripts/vtctld.sh"]
@@ -172,8 +170,6 @@ spec:
             value: "15001"
           - name: VTGATE_GRPC_PORT
             value: "15991"
-          - name: ETCD_SERVER
-            value: $(SERVICE_ETCD_ENDPOINT)
           - name: MYSQL_UNIX_PORT
             value: "/tmp/mysql.sock"
           - name: CLUSTER_DOMAIN

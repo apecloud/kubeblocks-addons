@@ -313,8 +313,6 @@ ports:
 env:
   - name: CELL
     value: {{ .Values.wesqlscale.cell | default "zone1" | quote }}
-  - name: ETCD_SERVER
-    value: $(SERVICE_ETCD_ENDPOINT)
   - name: VTTABLET_PORT
     value: "15100"
   - name: VTTABLET_GRPC_PORT

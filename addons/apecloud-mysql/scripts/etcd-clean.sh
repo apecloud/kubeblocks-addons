@@ -25,10 +25,10 @@ echo $servers
 echo "Deleting all keys with prefix /vitess/${KB_NAMESPACE}/${KB_CLUSTER_NAME} from Etcd server at ${endpoints}..."
 
 # Set different deletion methods according to different etcdctl versions.
-if [[ ${ETCDCTL_API} == "3" ]]; then
-  etcdctl --endpoints $servers del /vitess/${KB_NAMESPACE}/${KB_CLUSTER_NAME} --prefix
-else 
+if [[ ${ETCDCTL_API} == "2" ]]; then
   etcdctl --endpoints $servers rm -r /vitess/${KB_NAMESPACE}/${KB_CLUSTER_NAME}
+else 
+  etcdctl --endpoints $servers del /vitess/${KB_NAMESPACE}/${KB_CLUSTER_NAME} --prefix
 fi
 
 if [ $? -eq 0 ]; then

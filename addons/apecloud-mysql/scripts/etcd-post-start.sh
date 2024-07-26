@@ -28,23 +28,22 @@ servers=${servers:1}
 
 echo $servers
 
-if [[ ${ETCDCTL_API} == "3" ]]; then
-  # etcdctl API 3 manages data in key-value pairs, eliminating the need to create additional directories.
-  output=$(etcdctl --endpoints="${servers}" get "/vitess/${KB_NAMESPACE}/${KB_CLUSTER_NAME}/$cell" --prefix --keys-only)
-  if [[ -n $output ]]; then
-    exit 0
-  fi
-else
+if [[ ${ETCDCTL_API} == "2" ]]; then
   # etcdctl API 2 manages data in a directory-based format, requiring directories to be created in advance.
   etcdctl --endpoints=${servers} get "/vitess/${KB_NAMESPACE}/${KB_CLUSTER_NAME}/$cell" >/dev/null 2>&1
   if [[ $? -eq 0 ]]; then
     exit 0
   fi
-
   echo "add /vitess/$KB_NAMESPACE/$KB_CLUSTER_NAME/global"
   etcdctl --endpoints=${servers} mkdir /vitess/${KB_NAMESPACE}/${KB_CLUSTER_NAME}/global
   echo "add /vitess/$KB_NAMESPACE/$KB_CLUSTER_NAME/$cell"
   etcdctl --endpoints=${servers} mkdir /vitess/${KB_NAMESPACE}/${KB_CLUSTER_NAME}/$cell
+else
+  # etcdctl API 3 manages data in key-value pairs, eliminating the need to create additional directories.
+  output=$(etcdctl --endpoints="${servers}" get "/vitess/${KB_NAMESPACE}/${KB_CLUSTER_NAME}/$cell" --prefix --keys-only)
+  if [[ -n $output ]]; then
+    exit 0
+  fi
 fi
 
 echo "add $cell CellInfo"
