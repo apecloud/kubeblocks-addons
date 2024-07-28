@@ -14,25 +14,14 @@ export tmpconf=$TMP_CONFIG_PATH
 
 cp $conf $tmpconf
 
-# peer tls check
-initial_advertise_peer_urls=$(sed -n 's/^initial-advertise-peer-urls: //p' $tmpconf)
-peer_protocol=""
-if echo "$initial_advertise_peer_urls" | grep -q "https" ; then
-    peer_protocol="https"
-else
-    peer_protocol="http"
-fi
-
 MY_PEER=${KB_POD_FQDN}${CLUSTER_DOMAIN}
 
 # discovery config
-sed -i "s#name:.*#name: ${HOSTNAME}#g" $tmpconf
+sed -i "s#^name:.*#name: ${HOSTNAME}#g" $tmpconf
 sed -i "s#\(initial-advertise-peer-urls: https\?\).*#\\1://${MY_PEER}:2380#g" $tmpconf
 sed -i "s#\(advertise-client-urls: https\?\).*#\\1://${MY_PEER}:2379#g" $tmpconf
 
-# tls config
-sed -i "s#allowed-hostname:.*#allowed-hostname:#g" $tmpconf
-# TEST: etcdctl --cacert=/etc/pki/tls/ca.crt --cert=/etc/pki/tls/tls.crt --key=/etc/pki/tls/tls.key member list
+# tls test: etcdctl --cacert=/etc/pki/tls/ca.crt --cert=/etc/pki/tls/tls.crt --key=/etc/pki/tls/tls.key member list
 
 # member join reconfiguration
 # sed -i "s#initial-cluster-state:.*#initial-cluster-state: existing#g" $tmpconf
