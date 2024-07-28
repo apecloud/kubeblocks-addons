@@ -19,10 +19,9 @@ tls:
   client: true
   peer: true
 
-
 # define a threshold to check if backup total key is too low
-# '8' is the initial count for a 3-replica etcd cluster
-# consider increasing this value when dealing with larger etcd clusters
+# '6' is the initial count of key number for 1-replica etcd cluster
+# consider increasing this value when dealing with production-grade etcd cluster
 backupKeyThreshold: 6
 
 image:

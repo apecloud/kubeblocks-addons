@@ -22,7 +22,7 @@ checkBackupFile() {
   esac
 
   # define a threshold to check if the total key count is too low
-  # consider increasing this value when dealing with larger etcd clusters
+  # consider increasing this value when dealing with production-grade etcd cluster
   threshold=$BACKUP_KEY_THRESHOLD #[modifiable]
   if [ "$totalKey" -lt $threshold ]; then
     echo "WARNING: snapshot totalKey is less than the threshold"
