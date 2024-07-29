@@ -226,19 +226,12 @@ vars:
         name: etcd
         endpoint: Required
         optional: true
-  - name: LOCAL_ETCD_POD_LIST
+  - name: LOCAL_ETCD_POD_FQDN
     valueFrom:
       componentVarRef:
         compDef: {{ .Values.etcd.etcdCmpdName }}
-        optional: true
-        instanceNames: Optional
-  - name: LOCAL_ETCD_HEADLESS
-    valueFrom:
-      serviceVarRef:
-        compDef: {{ .Values.etcd.etcdCmpdName }}
-        name: headless
-        optional: true
-        host: Optional
+        optional: false
+        podFQDNs: Required
   - name: LOCAL_ETCD_PORT
     valueFrom:
       serviceVarRef:

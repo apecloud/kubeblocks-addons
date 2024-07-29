@@ -8,11 +8,11 @@ grpc_port=${VTGATE_GRPC_PORT:-'15991'}
 mysql_server_port=${VTGATE_MYSQL_PORT:-'15306'}
 mysql_server_socket_path="/tmp/mysql.sock"
 
-if [ -n "$LOCAL_ETCD_POD_LIST" ]; then
-  IFS=',' read -ra ETCD_POD_ARRAY <<< "$LOCAL_ETCD_POD_LIST"
+if [ -n "$LOCAL_ETCD_POD_FQDN" ]; then
+  IFS=',' read -ra ETCD_FDQN_ARRAY <<< "$LOCAL_ETCD_POD_FQDN"
   endpoints=""
-  for pod in "${ETCD_POD_ARRAY[@]}"; do
-    endpoints+="${pod}.${LOCAL_ETCD_HEADLESS}.${KB_NAMESPACE}.svc${CLUSTER_DOMAIN}:${LOCAL_ETCD_PORT},"
+  for fdqd in "${ETCD_FDQN_ARRAY[@]}"; do
+    endpoints+="${fdqd}:${LOCAL_ETCD_PORT},"
   done
   endpoints="${endpoints%,}"
 elif [ -n "$SERVICE_ETCD_ENDPOINT" ]; then
