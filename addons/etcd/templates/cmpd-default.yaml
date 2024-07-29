@@ -135,6 +135,9 @@ spec:
               {{- .Files.Get "scripts/etcd-member-leave.sh" | nindent 14 }}
     switchover:
       withCandidate:
+        env:
+          - name: CLUSTER_DOMAIN
+            value: {{ .Values.clusterDomain }}
         exec:
           image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
           command:
@@ -144,6 +147,9 @@ spec:
             {{- .Files.Get "scripts/common.sh" | nindent 12 }}
             {{- .Files.Get "scripts/switchover-with-candidate.sh" | nindent 12 }}
       withoutCandidate:
+        env:
+          - name: CLUSTER_DOMAIN
+            value: {{ .Values.clusterDomain }}
         exec:
           image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
           command:

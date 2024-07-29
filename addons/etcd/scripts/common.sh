@@ -93,7 +93,7 @@ updateLeaderIfNeeded() {
 
   status=$(execEtcdctlNoCheckTLS ${leaderEndpoint} endpoint status)
   isLeader=$(echo $status | awk -F ', ' '{print $5}')
-  if [ $isLeader = "false" ]; then
+  if [ "$isLeader" = "false" ]; then
     echo "leader out of status, try to redirect to new leader"
     peerEndpoints=$(execEtcdctlNoCheckTLS "$leaderEndpoint" member list | awk -F', ' '{print $5}' | tr '\n' ',' | sed 's#,$##')
     leaderEndpoint=$(execEtcdctlNoCheckTLS "$peerEndpoints" endpoint status | awk -F', ' '$5=="true" {print $1}')
@@ -102,10 +102,5 @@ updateLeaderIfNeeded() {
       sleep 2
       updateLeaderIfNeeded $(expr $retries - 1)
     fi
-  fi
-
-  if [ $leaderEndpoint = $candidateEndpoint ]; then
-    echo "leader is the same as candidate, no need to switch"
-    exit 0
   fi
 }
