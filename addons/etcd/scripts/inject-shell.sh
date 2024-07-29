@@ -2,11 +2,18 @@
 
 # inject shell if needed
 
-busybox="busybox"
-distroless="distroless"
+busyboxAction() {
+  # copy sh to /shell in order to adapt distroless entrypoint
+  cp /bin/sh /shell
+}
 
-# only check image type but not availability
-versionCheck() {
+distrolessAction() {
+  echo "etcd image build with distroless, injecting brinaries in order to run scripts"
+  cp /bin/* /shell
+}
+
+# versionCheck only check image type but not availability
+checkVersionAndInject() {
   local version=$1
   echo "$version" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'
   if [ $? -ne 0 ]; then
@@ -21,23 +28,14 @@ versionCheck() {
 
   # <=3.3 || <= 3.4.22 || <=3.5.6 all use busybox https://github.com/etcd-io/etcd/tree/main/CHANGELOG
   if [ $major -lt 3 ] || ([ $major -eq 3 ] && [ $minor -lt 4 ]); then
-    echo $busybox
+    busyboxAction
   elif [ $major -eq 3 ] && [ $minor -eq 4 ] && [ $patch -le 22 ]; then
-    echo $busybox
+    busyboxAction
   elif [ $major -eq 3 ] && [ $minor -eq 5 ] && [ $patch -le 6 ]; then
-    echo $busybox
+    busyboxAction
   else
-    echo $distroless
+    distrolessAction
   fi
 }
 
-res=$(versionCheck $ETCD_VERSION)
-
-if [ "$res" == "$distroless" ]; then
-  # inject brinaries to distroless image
-  echo "etcd image build with distroless, injecting brinaries in order to run scripts"
-  cp /bin/* /shell
-else
-  # copy sh to /shell in order to adapt distroless entrypoint
-  cp /bin/sh /shell
-fi
+checkVersionAndInject $ETCD_VERSION
