@@ -79,11 +79,24 @@ discovery-srv:
       {{- $peerProtocol = "https" -}}
     {{- end -}}
   {{- end -}}
-  {{- $POD_NAME := splitList "," .POD_NAME_LIST -}}
-  {{- $PEERS := splitList "," .PEERS -}}
-  {{- range $idx, $host := $PEERS -}}
-    {{- if $idx -}},{{- end -}}
-    {{- printf "%s=%s://%s:2380" (index $POD_NAME $idx) $peerProtocol $host -}}
+
+  {{- $PEER_ENDPOINT := getEnvByName ( index $.podSpec.containers 0 ) "PEER_ENDPOINT" -}}
+  {{- if ne $PEER_ENDPOINT "" -}}
+    {{- $endpoints := splitList "," $PEER_ENDPOINT -}}
+    {{- range $idx, $endpoint := $endpoints -}}
+      {{- if $idx -}},{{- end -}}
+      {{- $hostname := index (splitList ":" $endpoint) 0 -}}
+      {{- $ip := index (splitList ":" $endpoint) 1 -}}
+      {{- $peerURL := printf "%s=%s://%s:2380" $hostname $peerProtocol $ip -}}
+      {{- print $peerURL -}}
+    {{- end -}}
+  {{- else if .PEER_FQDNS -}}
+    {{- $peerfqdns := splitList "," .PEER_FQDNS -}}
+    {{- range $idx, $fqdn := $peerfqdns -}}
+      {{- if $idx -}},{{- end -}}
+      {{- $hostname := index (splitList "." $fqdn) 0 -}}
+      {{- printf "%s=%s://%s:2380" $hostname $peerProtocol $fqdn -}}
+    {{- end -}}
   {{- end -}}
 {{- end -}}
 

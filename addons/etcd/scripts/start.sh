@@ -12,6 +12,18 @@ cp $conf $tmpconf
 
 MY_PEER=${KB_POD_FQDN}${CLUSTER_DOMAIN}
 
+if [ ! -z "$PEER_ENDPOINT" ]; then
+  echo "loadBalancer mode, need to adapt pod FQDN to balance IP"
+  endpoints=$(echo "$PEER_ENDPOINT" | tr ',' '\n')
+  myEndpoint=$(echo "$endpoints" | grep $HOSTNAME)
+  if [ -z "$myEndpoint" ]; then
+    echo "ERROR: host name not found in peer endpoints"
+    exit 1
+  fi
+  # eg. etcd-cluster-etcd-0:127.0.0.1
+  MY_PEER=$(echo "$myEndpoint" | cut -d: -f2)
+fi
+
 # discovery config
 sed -i "s#^name:.*#name: ${HOSTNAME}#g" $tmpconf
 sed -i "s#\(initial-advertise-peer-urls: https\?\).*#\\1://${MY_PEER}:2380#g" $tmpconf

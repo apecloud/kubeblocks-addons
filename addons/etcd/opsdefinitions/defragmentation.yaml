@@ -81,5 +81,5 @@ spec:
                   for PEER in $(echo $PEERS | tr ',' ' '); do
                     ENDPOINTS="${ENDPOINTS}${PEER}:2379,"
                   done
-                  ENDPOINTS=$(echo ${ENDPOINTS} | sed 's/,$//')
+                  ENDPOINTS=${ENDPOINTS%,}
                   execEtcdctl "${ENDPOINTS}" defrag

@@ -15,6 +15,12 @@ spec:
   {{- end }}
   componentSpecs:
     - name: etcd
+      {{- if .Values.LoadBalancer }}
+      services:
+        - name: peer
+          serviceType: LoadBalancer
+          podService: true
+      {{- end }}
       componentDef: etcd
       {{- if .Chart.AppVersion }}
       serviceVersion: {{ .Chart.AppVersion }}

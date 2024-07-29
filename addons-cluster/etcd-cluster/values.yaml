@@ -76,3 +76,6 @@ persistence:
 tlsEnable: false
 
 disableExporter: false
+
+# when loadBalancer is set to true, TLS will fail due to CA wildcard mismatch
+loadBalancer: false

@@ -70,11 +70,17 @@ spec:
       value: "{{ .Values.tls.peer }}"
     - name: TMP_CONFIG_PATH
       value: {{ .Values.tmpConfigPath }}
-    - name: PEERS
+    - name: PEER_FQDNS
       valueFrom:
         componentVarRef:
           optional: false
           podFQDNs: Required
+    - name: PEER_ENDPOINT
+      valueFrom:
+        serviceVarRef:
+          optional: true
+          host: Required
+          loadBalancer: Required
     - name: POD_NAME_LIST
       valueFrom:
         componentVarRef:
