@@ -30,7 +30,7 @@ spec:
         - name: data
           mountPath: /var/run/etcd
   componentInfos:
-  - componentDefinitionName: etcd-v3.5.15
+  - componentDefinitionName: etcd
   actions:
     - name: etcd-defragmentation
       failurePolicy: Fail

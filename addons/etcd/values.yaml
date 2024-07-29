@@ -31,10 +31,11 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag:
     major3:
-      # latest etcd version build with busybox
-      minor56: v3.5.6
-      # latest etcd version build with distroless(default)
-      minor515: v3.5.15
+      minor5: 
+        # latest version build with busybox brinaries
+        patch6: v3.5.6
+        # latest version build with distroless(default)
+        patch15: v3.5.15
 
 busyboxImage:
   registry: docker.io

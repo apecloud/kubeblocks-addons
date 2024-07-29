@@ -1,18 +1,30 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: etcd-{{ .Values.image.tag.major3.minor56 }}
+  name: etcd
   labels:
     {{- include "etcd.labels" . | nindent 4 }}
 spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
-  serviceKind: etcd
-  serviceVersion: {{ .Values.image.tag.major3.minor56 }}
+  serviceKind: {{ .Chart.Name }}
+  serviceVersion: {{ .Chart.AppVersion }}
   runtime:
+    initContainers:
+      - name: inject-shell
+        image: {{ .Values.busyboxImage.registry | default "docker.io" }}/{{ .Values.busyboxImage.repository }}:{{ default .Values.busyboxImage.tag }}
+        imagePullPolicy: {{default .Values.busyboxImage.pullPolicy "IfNotPresent"}}
+        volumeMounts:
+          - name: shell
+            mountPath: /shell
+        command:
+          - bin/sh
+          - -c
+          - |
+            {{- .Files.Get "scripts/inject-shell.sh" | nindent 14 }}
     containers:
       - name: etcd
-        image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
+        image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch15 }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         ports:
           - containerPort: 2379
@@ -26,16 +38,28 @@ spec:
             mountPath: /etc/etcd
           - name: scripts
             mountPath: /scripts
+          - name: shell
+            mountPath: /shell
         command:
-          - /bin/sh
-          - /scripts/start.sh
+          - /shell/sh
+          - -c
+          - |
+            export PATH=$PATH:/shell
+            # for convenient to use the same entrypoint
+            if [ ! -e /bin/sh ]; then
+              cp /shell/sh /bin
+            fi
+            /scripts/start.sh
+    volumes:
+      - name: shell
+        emptyDir: {}
   vars:
+    - name: ETCD_VERSION
+      value: {{ .Chart.AppVersion }}
     - name: CLUSTER_DOMAIN
       value: {{ .Values.clusterDomain }}
     - name: DATA_DIR
       value: {{ .Values.dataDir }}
-    - name: DATA_MOUNT_PATH
-      value: {{ .Values.dataMountPath }}
     - name: CLUSTER_NAME
       value: "$(KB_CLUSTER_COMP_NAME)"
     - name: TLS_MOUNT_PATH
@@ -84,7 +108,7 @@ spec:
       builtinHandler: custom
       customHandler:
         exec:
-          image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
+          image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
           command:
             - /bin/sh
             - -c
@@ -94,7 +118,7 @@ spec:
     memberJoin:
       customHandler:
         exec:
-          image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
+          image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
           command:
             - /bin/sh
             - -c
@@ -104,7 +128,7 @@ spec:
     memberLeave:
       customHandler:
         exec:
-          image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
+          image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
           command:
             - /bin/sh
             - -c
@@ -117,7 +141,7 @@ spec:
           - name: CLUSTER_DOMAIN
             value: {{ .Values.clusterDomain }}
         exec:
-          image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
+          image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
           command:
           - /bin/sh
           - -c
@@ -129,7 +153,7 @@ spec:
           - name: CLUSTER_DOMAIN
             value: {{ .Values.clusterDomain }}
         exec:
-          image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
+          image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
           command:
           - /bin/sh
           - -c

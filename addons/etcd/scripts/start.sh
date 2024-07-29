@@ -2,10 +2,6 @@
 
 echo "start etcd..."
 
-CUR_PATH=$(cd "$(dirname "$0")"; pwd)
-# shellcheck source=./common.sh
-source "${CUR_PATH}/common.sh"
-
 # According to https://etcd.io/docs/v3.5/op-guide/configuration/ 
 # etcd ignores command-line flags and environment variables if a configuration file is provided.
 # need to copy the configuration file and modify it

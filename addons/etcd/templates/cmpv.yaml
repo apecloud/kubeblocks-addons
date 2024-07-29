@@ -6,10 +6,8 @@ metadata:
     {{- include "etcd.labels" . | nindent 4 }}
 spec:
   compatibilityRules:
-    - compDefs: [etcd-v3.5.6]
-      releases: [v3.5.6]
-    - compDefs: [etcd-v3.5.15]
-      releases: [v3.5.15]
+    - compDefs: [etcd]
+      releases: [v3.5.6, v3.5.15]
   releases:
     - name: v3.5.6
       serviceVersion: v3.5.6

@@ -9,7 +9,7 @@ spec:
   clusterDefinitionRef: etcd
   backupPolicies:
     - componentDefs:
-      - etcd-{{ .Values.image.tag.major3.minor515 }}
+      - etcd
       target:
         role: leader
       backupMethods:
