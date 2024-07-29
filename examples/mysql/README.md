@@ -42,9 +42,13 @@ helm upgrade -i kb-addon-mysql kubeblocks-addons/mysql --version 0.9.1 -n kb-sys
 ## Examples
 
 ### [Create](cluster.yaml) 
-Create an mysql cluster with specified cluster definition 
+Create a MySQL cluster that uses the built-in HA manager
 ```bash
 kubectl apply -f examples/mysql/cluster.yaml
+```
+Create a MySQL cluster that uses the Orchestrator HA manager
+```bash
+kubectl apply -f examples/mysql/cluster-orc.yaml
 ```
 
 ### [Horizontal scaling](horizontalscale.yaml)

@@ -58,3 +58,4 @@ orchestrator:
     endpoint: "myorc-orchestrator"
   clusterServiceSelector:
     cluster: ""
+    portName: "http"

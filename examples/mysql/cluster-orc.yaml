@@ -1,11 +1,8 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: Cluster
 metadata:
-  name: oceanbase-cluster
+  name: mysql-cluster
   namespace: default
-  annotations:
-    #Specify how many clusters to create with-in one ob cluster
-    "kubeblocks.io/extra-env": "{\"TENANT_NAME\":\"tenant3\",\"ZONE_COUNT\":\"3\",\"OB_CLUSTERS_COUNT\":\"1\",\"TENANT_CPU\":\"2\",\"TENANT_MEMORY\":\"2G\",\"TENANT_DISK\":\"5G\"}"
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
@@ -17,42 +14,62 @@ spec:
   # Note: `shardingSpecs` and `componentSpecs` cannot both be empty; at least one must be defined to configure a cluster.
   # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
-  - name: ob-ce
-    componentDef: ob-ce
-    replicas: 3
+  - name: mysql
+    componentDef: mysql-8.0.33-orc
+    disableExporter: true
+    replicas: 1
+    serviceAccountName: kb-mysql-cluster
     resources:
       limits:
-        cpu: '3'
-        memory: 8Gi
+        cpu: '0.5'
+        memory: 0.5Gi
       requests:
-        cpu: '3'
-        memory: 8Gi
+        cpu: '0.5'
+        memory: 0.5Gi
     volumeClaimTemplates:
-    - name: data-file
-      spec:
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: 50Gi
-    - name: data-log
-      spec:
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: 50Gi
-    - name: log
-      spec:
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: 10Gi
-    - name: workdir
+    - name: data
       spec:
         accessModes:
         - ReadWriteOnce
         resources:
           requests:
             storage: 20Gi
+    serviceRefs:
+        - name: orchestrator
+          namespace: default
+          clusterServiceSelector:
+            cluster: orchestratorm-cluster
+            service:
+              component: orchestrator
+              service: orchestrator
+              port: http
+---
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: orchestratorm-cluster
+  namespace: default
+  annotations:
+    "kubeblocks.io/extra-env": '{"ORC_TOPOLOGY_PASSWORD":"orchestrator","ORC_META_PASSWORD":"orchestrator","ORC_META_DATABASE":"orchestrator"}'
+spec:
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: orchestrator
+      componentDef: orchestrator-raft
+      disableExporter: true
+      replicas: 3
+      resources:
+        requests:
+          cpu: '0.5'
+          memory: 0.5Gi
+        limits:
+          cpu: '0.5'
+          memory: 0.5Gi
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
