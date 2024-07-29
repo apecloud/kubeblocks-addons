@@ -10,6 +10,13 @@ spec:
   topology: {{ .Values.mode }}
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
+  services:
+    - name: orchestrator
+      componentSelector: orchestrator
+      spec:
+        ports:
+          - name: http
+            port: 80
   componentSpecs:
     - name: orchestrator
       {{- include "kblib.componentMonitor" . | indent 6 }}

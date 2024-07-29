@@ -35,7 +35,7 @@ spec:
               fi
 
   services:
-    - name: default
+    - name: orchestrator
       roleSelector: primary
       spec:
         ports:

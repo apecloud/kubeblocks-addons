@@ -29,12 +29,13 @@ spec:
           serviceDescriptor: {{ include "kblib.clusterName" . }}-orc-descriptor
         {{- else }}
         - name: orchestrator
+          namespace: {{ .Values.orchestrator.serviceReference.namespace | default .Release.Namespace }}
           clusterServiceSelector:
             cluster:  {{ .Values.orchestrator.clusterServiceSelector.cluster }}
             service:
               component: orchestrator
-              service: ""
-              port: "80"
+              service: orchestrator
+              port:  {{ .Values.orchestrator.clusterServiceSelector.portName }}
         {{- end }}
       {{- end }}
     {{- if eq .Values.topology "server-with-proxy" }}
