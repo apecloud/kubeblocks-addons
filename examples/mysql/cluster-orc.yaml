@@ -59,7 +59,7 @@ spec:
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: Cluster
 metadata:
-  name: orcm-cluster
+  name: orchestratorm-cluster
   namespace: default
   annotations:
     "kubeblocks.io/extra-env": '{"ORC_TOPOLOGY_PASSWORD":"orchestrator","ORC_META_PASSWORD":"orchestrator","ORC_META_DATABASE":"orchestrator"}'
@@ -109,7 +109,7 @@ spec:
   serviceVersion: 3.2.6
   # Represents the endpoint of the service connection credential.
   endpoint:
-    value: "orcm-cluster-orchestrator"
+    value: "orchestratorm-cluster-orchestrator"
   # Represents the port of the service connection credential.
   port:
     value: "80"

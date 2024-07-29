@@ -41,8 +41,8 @@ helm upgrade -i kb-addon-orchestrator kubeblocks-addons/orchestrator --version 0
 ## Examples
 
 ### [Create](cluster.yaml) 
-Orchestrator has two modes: raft and shareend.
-Create a orchestrator cluster with specified cluster definition.
+Orchestrator cluster has two modes: raft and share-backend.
+Create a orchestrator cluster with specified component definition.
 ```bash
 kubectl apply -f examples/orchestrator/cluster-raft.yaml
 ```

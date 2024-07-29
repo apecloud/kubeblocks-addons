@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: Cluster
 metadata:
-  name: orch-cluster
+  name: orchestrator-cluster
   namespace: default
   annotations:
     "kubeblocks.io/extra-env": '{"ORC_TOPOLOGY_PASSWORD":"orchestrator","ORC_META_PASSWORD":"orchestrator","ORC_META_DATABASE":"orchestrator"}'
