@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ROOT>
   <CLUSTER>
-    <PARAM name="clusterName" value="Cluster_template" />
-    <PARAM name="nodeNames" value="babba87376fc"/>
-    <PARAM name="gaussdbAppPath" value="/opt/database/install/app" />
-    <PARAM name="gaussdbLogPath" value="/var/log/omm" />
-    <PARAM name="tmpMppdbPath" value="/opt/database/tmp"/>
-    <PARAM name="gaussdbToolPath" value="/opt/database/install/om" />
-    <PARAM name="corePath" value="/opt/database/corefile"/>
-    <PARAM name="backIp1s" value="127.0.0.1"/>
+    <PARAM name="clusterName" value="cluster" />
+    <PARAM name="nodeNames" value="node1_hostname,node2_hostname"/>
+    <PARAM name="gaussdbAppPath" value="/data/database/install/app" />
+    <PARAM name="gaussdbLogPath" value="/data/log/omm" />
+    <PARAM name="tmpMppdbPath" value="/data/database/tmp"/>
+    <PARAM name="gaussdbToolPath" value="/data/database/install/om" />
+    <PARAM name="corePath" value="/data/database/corefile"/>
+    <PARAM name="backIp1s" value="192.168.0.1,192.168.0.2"/>
     <PARAM name="sshPort" value="22" />
   </CLUSTER>
 
   <DEVICELIST>
-    <DEVICE sn="babba87376fc">
-      <PARAM name="name" value="babba87376fc"/>
+    <DEVICE sn="hostname1">
+      <PARAM name="name" value="hostname1"/>
       <PARAM name="azName" value="AZ1"/>
       <PARAM name="azPriority" value="1"/>
       <PARAM name="backIp1" value="127.0.0.1"/>
@@ -22,8 +22,39 @@
       <!-- dn -->
       <PARAM name="dataNum" value="1"/>
       <PARAM name="dataPortBase" value="15400"/>
-      <PARAM name="dataNode1" value="/opt/database/install/data/dn"/>
+      <PARAM name="dataNode1" value="/data/database/install/data/dn"/>
       <PARAM name="dataNode1_syncNum" value="0"/>
     </DEVICE>
-  </DEVICELIST>
 </ROOT>
+
+
+  <DEVICELIST>
+    <DEVICE sn="node1_hostname">
+      <PARAM name="name" value="node1_hostname"/>
+      <PARAM name="azName" value="AZ1"/>
+      <PARAM name="azPriority" value="1"/>
+      <PARAM name="backIp1" value="192.168.0.1"/>
+      <PARAM name="sshIp1" value="192.168.0.1"/>
+      <!-- dn -->
+      <PARAM name="dataNum" value="1"/>
+      <PARAM name="dataPortBase" value="15400"/>
+      <PARAM name="dataNode1" value="/opt/database/install/data/dn,node2_hostname,/opt/database/install/data/dn"/>
+      <PARAM name="dataNode1_syncNum" value="0"/>
+      <PARAM name="cmsNum" value="1"/>
+      <PARAM name="cmDir" value="/data/gbase/install/cm"/>
+      <PARAM name="cmServerPortBase" value="15300"/>
+      <PARAM name="cmServerListenIp1" value="192.168.0.1,192.168.0.2"/>
+      <PARAM name="cmServerHaIp1" value="192.168.0.1,192.168.0.2"/>
+      <PARAM name="cmServerlevel" value="1"/>
+      <PARAM name="cmServerRelation" value="node1_hostname,node2_hostname"/>
+    </DEVICE>
+    <DEVICE sn="node2_hostname">
+      <PARAM name="name" value="node2_hostname"/>
+      <PARAM name="azName" value="AZ1"/>
+      <PARAM name="azPriority" value="1"/>
+      <PARAM name="backIp1" value="192.168.0.2"/>
+      <PARAM name="sshIp1" value="192.168.0.2"/>
+      <PARAM name="cmDir" value="/data/gbase/install/cm"/>
+      <PARAM name="cmServerPortStandby" value="15300"/>
+    </DEVICE>
+  </DEVICELIST>

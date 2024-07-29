@@ -14,28 +14,14 @@ spec:
   componentSpecs:
     {{- include "gbase-cluster.single.specs" . | indent 4 }}
   {{- else }}
-  topology: distribution
   shardingSpecs:
-  - name: datanode-shard
-    shards: 3
-    template:
-      name: gbase-datanode
-      componentDef: gbase-datanode
-      replicas: 3
-      resources:
-        limits:
-          cpu: 1000m
-          memory:  2Gi
-        requests:
-          cpu: 1000m
-          memory:  2Gi
-      volumeClaimTemplates:
-        - name: data
-          spec:
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-              storage: 20Gi
-  
+    {{ include "gbase-cluster.datanode.shard.specs" . | indent 4  }}
+  componentSpecs:
+    {{ include "gbase-cluster.ghaServer.specs" . | indent 4 }}
+    {{ include "gbase-cluster.dcs.specs" . | indent 4 }}
+    {{ include "gbase-cluster.gtm.specs" . | indent 4 }}
+    {{ include "gbase-cluster.coord.specs" . | indent 4 }}
   {{- end }}
+  
+
+  

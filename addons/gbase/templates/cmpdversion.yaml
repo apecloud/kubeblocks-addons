@@ -10,6 +10,7 @@ spec:
     serviceVersion: "5.0.0"
     images:
       gbase: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.gbase.repository }}:{{ .Values.image.gbase.tag }} 
+      exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }} 
   compatibilityRules:
   - releases: [gbase-5.0.0]
     compDefs: 

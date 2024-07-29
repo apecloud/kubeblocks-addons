@@ -5,46 +5,22 @@
 image:
   registry: registry.cn-hangzhou.aliyuncs.com
   gbase:
-    repository:  skyrise/gbase8c
+    repository:  skyrise/gbase8c_pb_v5_5
+    pullPolicy: IfNotPresent
+    tag: "2.0"
+  exporter: 
+    repository:  skyrise/exporter
     pullPolicy: IfNotPresent
     tag: latest
   tool:
     repository:  skyrise/gbase_tools
     pullPolicy: IfNotPresent
-    tag: latest
+    tag: "2.0"
 
 gbaseConfigs:
   dataMountPath: /data
   service: 
-    port: 5432
-
-## MySQL Cluster parameters
-cluster:
-  ## CLUSTER_ID
-  clusterId: "1"
-  ## CLUSTER_START_INDEX
-  clusterStartIndex: "1"
-  ## @param cluster.replicaSetCount
-  replicaSetCount: 3
-  ## MYSQL_TEMPLATE_CONFIG
-  templateConfig:
-  ## MYSQL_CUSTOM_CONFIG
-  customConfig:
-  ## MYSQL_DYNAMIC_CONFIG
-  dynamicConfig:
-  ## KB_EMBEDDED_WESQL
-  kbWeSQLImage: "1"
-
-## MySQL Authentication parameters
-auth:
-  ## MYSQL_ROOT_HOST
-  rootHost: "%"
-  ## @param auth.createDatabase Whether to create the .Values.auth.database or not
-  ##
-  createDatabase: true
-  ## @param auth.database Name for a custom database to create
-  ## MYSQL_DATABASE
-  database: "mydb"
+    port: 15400
 
 configTemplate:
 ## @param config template name
@@ -55,63 +31,9 @@ nameOverride: ""
 fullnameOverride: ""
 clusterVersionOverride: ""
 
-auditlogSubVersion: "1"
-
-mysqlConfigs:
-  dataMountPath: /data/mysql
-  dataDir: /data/mysql/data
-  logBin: /data/mysql/binlog/mysql-bin
-
-
-logConfigs:
-  error: /data/mysql/log/mysqld-error.log
-  slow: /data/mysql/log/mysqld-slowquery.log
-  general: /data/mysql/log/mysqld.log
-  auditlog: /data/mysql/auditlog/audit.log*
-
-vtgateLogConfigs:
-  error: /vtdataroot/vtgate.ERROR
-  warning: /vtdataroot/vtgate.WARNING
-  info: /vtdataroot/vtgate.INFO
-  queryLog: /vtdataroot/vtgate_querylog.txt
-
 roleProbe:
-  failureThreshold: 2
-  periodSeconds: 1
-  timeoutSeconds: 1
+  periodSeconds: 30
+  initialDelaySeconds: 10
+  timeoutSeconds: 10
 
-logCollector:
-  enabled: false
-
-metrics:
-  ## if the value of metrics.image.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
-  image:
-    registry: docker.io
-    repository: bitnami/mysqld-exporter
-    tag: 0.15.1
-    pullPolicy: IfNotPresent
-
-  service:
-    port: 9104
-
-backupTool:
-  image:
-    # if the value of backupTool.image.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
-    registry: ""
-    repository: apecloud/apecloud-xtrabackup
-    tag: "8.0"
-    pullPolicy: IfNotPresent
-
-wesqlscale:
-  cell: "zone1"
-  image:
-    # if the value of wesqlscale.image.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
-    registry: ""
-    repository: apecloud/apecloud-mysql-scale
-    tag: "0.2.7"
-    pullPolicy: IfNotPresent
-
-## @param resourceNamePrefix Prefix for all resources name created by this chart, that can avoid name conflict
-## if you install multiple releases of this chart.
-## If specified, the cluster definition will use it as name.
 resourceNamePrefix: ""
