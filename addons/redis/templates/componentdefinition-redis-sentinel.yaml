@@ -84,7 +84,7 @@ spec:
           compDef: {{ include "redis.componentDefName" . }}
           name: default
           optional: true
-          password: Optional
+          password: Required
           multipleClusterObjectOption:
             strategy: individual
     - name: SENTINEL_POD_NAME_LIST
@@ -99,7 +99,13 @@ spec:
           compDef: {{ include "redis-sentinel.componentDefName" . }}
           name: headless
           optional: true
-          host: Optional
+          host: Required
+    - name: SENTINEL_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "redis-sentinel.componentDefName" . }}
+          optional: false
+          podFQDNs: Required
   lifecycleActions:
     accountProvision:
       customHandler:
