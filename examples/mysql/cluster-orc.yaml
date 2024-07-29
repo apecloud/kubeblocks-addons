@@ -36,8 +36,13 @@ spec:
             storage: 20Gi
     serviceRefs:
         - name: orchestrator
-          serviceDescriptor: mysql-cluster-orc-service
           namespace: default
+          clusterServiceSelector:
+            cluster: orchestratorm-cluster
+            service:
+              component: orchestrator
+              service: orchestrator
+              port: http
 ---
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: Cluster
@@ -68,21 +73,3 @@ spec:
             resources:
               requests:
                 storage: 20Gi
----
-apiVersion: apps.kubeblocks.io/v1alpha1
-kind: ServiceDescriptor
-metadata:
-  name: mysql-cluster-orc-service
-  namespace: default
-spec:
-  # Specifies the type or nature of the service.
-  # Should represent a well-known application cluster type, such as {mysql, redis, zookeeper}.
-  serviceKind: orchestrator
-  # Represents the version of the service reference.
-  serviceVersion: 3.2.6
-  # Represents the endpoint of the service connection credential.
-  endpoint:
-    value: "orchestratorm-cluster-orchestrator"
-  # Represents the port of the service connection credential.
-  port:
-    value: "80"
