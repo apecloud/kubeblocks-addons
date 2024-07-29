@@ -66,6 +66,7 @@ spec:
       podSpec:
         containers:
           - name: postgresql
+            image: {{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
             volumeMounts:
               - name: data
                 mountPath: /data
@@ -106,6 +107,7 @@ spec:
       podSpec:
         containers:
           - name: neon-storagebroker
+            image: {{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
             volumeMounts:
               - mountPath: /usr/local/neon/storagebroker
                 name: neon-storagebroker
@@ -133,6 +135,7 @@ spec:
       podSpec:
         containers:
           - name: neon-safekeeper
+            image: {{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
             volumeMounts:
               - mountPath: /usr/local/neon/safekeeper
                 name: neon-safekeeper
@@ -161,6 +164,7 @@ spec:
       podSpec:
         containers:
           - name: neon-pageserver
+            image: {{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
             volumeMounts:
               - mountPath: /usr/local/neon/pageserver
                 name: neon-pageserver

@@ -6,9 +6,6 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
-
-clusterVersionOverride: ""
-
 ## @param application images
 ##
 images:

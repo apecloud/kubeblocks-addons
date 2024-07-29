@@ -62,6 +62,7 @@ spec:
           runAsGroup: 103
         containers:
           - name: opengauss
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
             imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
             command:
               - sh

@@ -38,6 +38,8 @@ spec:
     podSpec:
       containers:
       - name: frontend
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -122,6 +124,8 @@ spec:
     podSpec:
       containers:
       - name: meta
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -209,6 +213,8 @@ spec:
     podSpec:
       containers:
       - name: compactor
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -301,6 +307,8 @@ spec:
     podSpec:
       containers:
       - name: compute
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -385,6 +393,8 @@ spec:
     podSpec:
       containers:
       - name: connector
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:

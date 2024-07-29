@@ -119,6 +119,12 @@ spec:
           fsGroup: 1001
         containers:
           - name: kafka
+            image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
+            securityContext:
+              allowPrivilegeEscalation: false
+              runAsNonRoot: true
+              runAsUser: 1001
             command:
               - /scripts/kafka-server-setup.sh
             env:
@@ -217,8 +223,12 @@ spec:
               - name: tools
                 mountPath: /tools/server-jaas.properties
                 subPath: server-jaas.properties
-
           - name: jmx-exporter
+            image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
+            securityContext:
+              runAsNonRoot: true
+              runAsUser: 1001
             command:
               - java
             args:
@@ -237,7 +247,6 @@ spec:
             volumeMounts:
               - name: jmx-config
                 mountPath: /etc/jmx-kafka
-
     - name: kafka-broker
       workloadType: Stateful
       characterType: kafka
@@ -276,6 +285,12 @@ spec:
           fsGroup: 1001
         containers:
           - name: kafka
+            image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
+            securityContext:
+              allowPrivilegeEscalation: false
+              runAsNonRoot: true
+              runAsUser: 1001
             command:
               - /scripts/kafka-server-setup.sh
             env:
@@ -375,6 +390,11 @@ spec:
                 mountPath: /tools/server-jaas.properties
                 subPath: server-jaas.properties
           - name: jmx-exporter
+            image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
+            securityContext:
+              runAsNonRoot: true
+              runAsUser: 1001
             command:
               - java
             args:
@@ -393,7 +413,6 @@ spec:
             env:
               - name: SERVICE_PORT
                 value: "5556"
-
     # controller(kraft) Ref: https://kafka.apache.org/documentation/#kraft_role
     - name: controller
       workloadType: Stateful # Consensus
@@ -428,6 +447,12 @@ spec:
           fsGroup: 1001
         containers:
           - name: kafka
+            image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
+            securityContext:
+              allowPrivilegeEscalation: false
+              runAsNonRoot: true
+              runAsUser: 1001
             command:
               - /scripts/kafka-server-setup.sh
             env:
@@ -507,6 +532,11 @@ spec:
                 mountPath: /opt/bitnami/scripts/kafka-env.sh
                 subPath: kafka-env.sh
           - name: jmx-exporter
+            image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
+            securityContext:
+              runAsNonRoot: true
+              runAsUser: 1001
             command:
               - java
             args:
@@ -525,7 +555,6 @@ spec:
             env:
               - name: SERVICE_PORT
                 value: "5556"
-
     - name: kafka-exporter
       workloadType: Stateless
       scriptSpecs:
@@ -545,6 +574,11 @@ spec:
           fsGroup: 1001
         containers:
           - name: kafka-exporter
+            image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafkaExporter.repository }}:{{ .Values.images.kafkaExporter.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
+            securityContext:
+              runAsNonRoot: true
+              runAsUser: 1001
             env:
               - name: SERVICE_PORT
                 value: "9308"

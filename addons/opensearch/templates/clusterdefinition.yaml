@@ -34,7 +34,8 @@ spec:
       podSpec:
         initContainers:
         - name: fsgroup-volume
-          imagePullPolicy: IfNotPresent
+          image: {{ .Values.image.registry | default "docker.io" }}/apecloud/alpine:3.16
+          imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
           command: ['sh', '-c']
           args:
           - 'chown -R 1000:1000 /usr/share/opensearch/data'
@@ -44,7 +45,8 @@ spec:
           - name: data
             mountPath: /usr/share/opensearch/data
         - name: sysctl
-          imagePullPolicy: IfNotPresent
+          image: {{ .Values.image.registry | default "docker.io" }}/apecloud/alpine:3.16
+          imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
           command:
           - sh
           - -c
@@ -60,7 +62,8 @@ spec:
             privileged: true
         containers:
           - name: opensearch
-            imagePullPolicy: IfNotPresent
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
             readinessProbe:
               tcpSocket:
                 port: 9200
@@ -105,7 +108,8 @@ spec:
                 subPath: opensearch.yaml
                 name: opensearch-config
           - name: opensearch-master-graceful-termination-handler
-            imagePullPolicy: IfNotPresent
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
             command:
             - "sh"
             - -c
@@ -152,7 +156,8 @@ spec:
       podSpec:
         containers:
         - name: dashboard
-          imagePullPolicy: "{{ .Values.image.pullPolicy }}"
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dashboard.repository }}:{{ default .Chart.AppVersion .Values.image.dashboard.tag }}
+          imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
           command:
           - sh
           - -c
