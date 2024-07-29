@@ -391,7 +391,7 @@ memberLeave:
       cp -r /usr/bin/jq /kubeblocks/jq
       cp -r /scripts/orchestrator-client /kubeblocks/orchestrator-client
       cp -r /usr/local/bin/curl /kubeblocks/curl
-  image: {{ .Values.image.registry | default "docker.io" }}/apecloud/orc-tools:1.0.1
+  image: {{ .Values.image.registry | default "docker.io" }}/apecloud/orc-tools:1.0.2
   imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
   name: init-jq
   volumeMounts:
