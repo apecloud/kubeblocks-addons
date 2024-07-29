@@ -5,7 +5,6 @@ metadata:
   labels:
     {{- include "neon.labels" . | nindent 4 }}
 spec:
-  type: postgresql
   connectionCredential:
     username: cloud_admin
     password: "$(RANDOM_PASSWD)"

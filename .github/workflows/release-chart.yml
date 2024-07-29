@@ -22,7 +22,6 @@ on:
           - foxlake
           - greatsql
           - greptimedb
-          - halo
           - influxdb
           - kafka
           - llm

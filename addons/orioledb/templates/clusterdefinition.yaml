@@ -5,7 +5,6 @@ metadata:
   labels:
     {{- include "orioledb.labels" . | nindent 4 }}
 spec:
-  type: orioledb
   connectionCredential:
     username: postgres
     password: "$(RANDOM_PASSWD)"
@@ -33,26 +32,11 @@ spec:
               - -c
             args:
               - curl -s http://$(KB_REPLICATION_PRIMARY_POD_FQDN):8008/switchover -XPOST -d '{"leader":"$(KB_REPLICATION_PRIMARY_POD_NAME)"}'
-      customLabelSpecs:
-        - key: apps.kubeblocks.postgres.patroni/scope
-          value: "$(KB_CLUSTER_NAME)-$(KB_COMP_NAME)-patroni$(KB_CLUSTER_UID_POSTFIX_8)"
-          resources:
-            - gvk: "v1/Pod"
-              selector:
-                app.kubernetes.io/managed-by: kubeblocks
-            - gvk: "apps/v1/StatefulSet"
-              selector:
-                app.kubernetes.io/managed-by: kubeblocks
       probes:
         roleProbe:
           failureThreshold: 2
           periodSeconds: 1
           timeoutSeconds: 1
-      monitor:
-        builtIn: false
-        exporterConfig:
-          scrapePath: /metrics
-          scrapePort: {{ .Values.metrics.service.port }}
       logConfigs:
         {{- range $name,$pattern := .Values.logConfigs }}
         - name: {{ $name }}

@@ -6,7 +6,6 @@ metadata:
   labels:
     {{- include "weaviate.labels" . | nindent 4 }}
 spec:
-  type: weaviate
   connectionCredential:
     username: root
     password: "$(RANDOM_PASSWD)"
@@ -18,11 +17,6 @@ spec:
       workloadType: Stateful
       characterType: weaviate
       probes:
-      monitor:
-        builtIn: false
-        exporterConfig:
-          scrapePath: /metrics
-          scrapePort: 2112
       logConfigs:
       configSpecs:
         - name: weaviate-config-template

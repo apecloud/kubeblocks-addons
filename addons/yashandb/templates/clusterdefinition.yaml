@@ -5,7 +5,6 @@ metadata:
   labels:
     {{- include "yashandb.labels" . | nindent 4 }}
 spec:
-  type: yashandb
   connectionCredential:
     username: sys
     password: "yasdb_123"
