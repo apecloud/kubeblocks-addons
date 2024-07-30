@@ -230,7 +230,7 @@ vars:
     valueFrom:
       componentVarRef:
         compDef: {{ .Values.etcd.etcdCmpdName }}
-        optional: false
+        optional: true
         podFQDNs: Required
   - name: LOCAL_ETCD_PORT
     valueFrom:
