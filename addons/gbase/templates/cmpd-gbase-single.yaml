@@ -172,7 +172,6 @@ spec:
   runtime:
     containers:
       - name: gbase
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.gbase.repository }}:{{ .Values.image.gbase.tag }} 
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.gbase.pullPolicy }}
         command: ["/sbin/init"]
         lifecycle:
@@ -204,7 +203,6 @@ spec:
             mountPath: /sys/fs/cgroup
             readOnly: true
       - name: exporter
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }} 
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.exporter.pullPolicy }}
         command: ["/scripts/exporter-start.sh"]
         ports:
