@@ -2,9 +2,6 @@
 ##
 version: pulsar-3.0.2
 
-## @param terminationPolicy define Cluster termination policy. One of DoNotTerminate, Halt, Delete, WipeOut.
-##
-terminationPolicy: WipeOut
 
 ## Annotation configurations
 commonAnnotations:

@@ -14,7 +14,7 @@ metadata:
     {{- end }}
   {{- end }}
 spec:
-  terminationPolicy: {{ $.Values.terminationPolicy }}
+  terminationPolicy: {{ $.Values.extra.terminationPolicy }}
   {{- $topologyEnable :=  eq .Values.mode "" | default false }}
   {{- if $topologyEnable}}
   clusterDefinitionRef: pulsar
