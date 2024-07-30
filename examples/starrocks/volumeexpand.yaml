@@ -13,5 +13,5 @@ spec:
   - componentName: be
     # volumeClaimTemplates specifies the storage size and volumeClaimTemplate name.
     volumeClaimTemplates:
-    - name: be-storage
+    - name: data
       storage: 30Gi
