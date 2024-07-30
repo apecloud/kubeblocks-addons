@@ -4,7 +4,7 @@ description: Apache ZooKeeper is a centralized service for maintaining configura
 
 type: application
 
-version: 0.9.0
+version: 1.0.0-alpha.0
 
 appVersion: "3.7.2"
 
