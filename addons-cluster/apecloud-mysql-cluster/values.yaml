@@ -36,8 +36,13 @@ storage: 20
 ## @param proxyEnabled if true, enable the proxy
 ## if mode is standalone, proxyEnabled is always false
 ## if mode is raftGroup, proxyEnabled can be true or false
-##
+## 
 proxyEnabled: false
+
+## @param localEtcdEnabled if true, use the local etcd
+## if mode is standalone, localEtcdEnabled is always false
+## if mode is raftGroup, localEtcdEnabled can be true
+localEtcdEnabled: false
 
 ## @param auditLogEnabled if true, enable audit log in apecloud mysql
 auditLogEnabled: false
@@ -56,5 +61,9 @@ sidecars:
 
 etcd:
   serviceReference:
-    endpoint: "etcd-cluster-etcd.default.svc.cluster.local:2379" # node1:2379,node2:2379,node3:2379
+    endpoint: "" # ex: etcd-cluster-etcd-headless.default.svc.cluster.local:2379
   serviceVersion: 3.5.6
+  etcdctlApi: "3" # the etcd tool etcdctl api version
+  replicas: 3 # no support other num
+  resources:
+    storage: 20Gi

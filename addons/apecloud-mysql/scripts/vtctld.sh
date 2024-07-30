@@ -1,15 +1,29 @@
 #!/bin/bash
 echo "starting vtctl"
+
+if [ -n "$LOCAL_ETCD_POD_FQDN" ]; then
+  IFS=',' read -ra ETCD_FDQN_ARRAY <<< "$LOCAL_ETCD_POD_FQDN"
+  endpoints=""
+  for fdqd in "${ETCD_FDQN_ARRAY[@]}"; do
+    endpoints+="${fdqd}:${LOCAL_ETCD_PORT},"
+  done
+  endpoints="${endpoints%,}"
+elif [ -n "$SERVICE_ETCD_ENDPOINT" ]; then
+  endpoints="$SERVICE_ETCD_ENDPOINT"
+else
+  echo "Both LOCAL_POD_ETCD_LIST and SERVICE_ETCD_ENDPOINT are empty. Cannot proceed."
+  exit 1
+fi
+
+echo $endpoints
+
 /scripts/etcd-post-start.sh
 
 echo "starting vtctld"
+
 cell=${CELL:-'zone1'}
 grpc_port=${VTCTLD_GRPC_PORT:-'15999'}
 vtctld_web_port=${VTCTLD_WEB_PORT:-'15000'}
-
-endpoints=${ETCD_SERVER:-'127.0.0.1:2379'}
-
-echo $endpoints
 
 topology_fags="--topo_implementation etcd2 --topo_global_server_address ${endpoints} --topo_global_root /vitess/${KB_NAMESPACE}/${KB_CLUSTER_NAME}/global"
 
