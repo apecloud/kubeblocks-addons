@@ -4,7 +4,7 @@ description: A Official PostgreSQL cluster definition Helm chart for Kubernetes
 
 type: application
 
-version: 0.9.0
+version: 1.0.0-alpha.0
 
 # The helm chart contains multiple kernel versions of Official PostgreSQL.
 # appVersion should be consistent with the highest PostgreSQL kernel version.
