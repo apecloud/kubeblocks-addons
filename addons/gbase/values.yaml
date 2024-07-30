@@ -22,6 +22,10 @@ gbaseConfigs:
   service: 
     port: 15400
 
+metrics:
+  service:
+    port: 9187
+
 configTemplate:
 ## @param config template name
 ## name: mysql-3node-tpl-8.0

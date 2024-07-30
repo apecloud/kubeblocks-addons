@@ -30,5 +30,11 @@ echo 'StrictHostKeyChecking no' >> /root/.ssh/config
 echo 'UserKnownHostsFile ~/.ssh/known_hosts' >> /root/.ssh/config
 chmod 644 /root/.ssh/config
 
+sudo chown -R gbase:gbase /data
+
+echo "root:$GBASE_PASSWORD" | sudo chpasswd
+echo "gbase:$GBASE_PASSWORD" | sudo chpasswd
+
 echo "complete ssh configure"
+
 

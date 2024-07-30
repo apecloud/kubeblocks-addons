@@ -84,7 +84,7 @@ function wait_for_pods_ready {
   done
 }
 
-/scripts/set_ssh.sh
+/scripts/set_trust.sh
 
 echo "get pod ip list..."
 echo "gha_server node ip list: "
@@ -158,13 +158,13 @@ if [[ ${firstStart} == true ]]; then
   /home/gbase/gbase_db/app/bin/gs_guc reload -Z coordinator -N all -I all -h "host all all 0.0.0.0/0 sha256"
   /home/gbase/gbase_db/app/bin/gs_guc reload -Z coordinator -N all -I all -c "listen_addresses='*'"
 
-  /home/gbase/gbase_db/app/bin/gsql -p ${server_port} -U ${GBASE_USER} -d postgres <<EOF
+  /home/gbase/gbase_db/app/bin/gsql -p ${gbase_service_port} -U ${GBASE_USER} -d postgres <<EOF
 ALTER USER ${GBASE_USER} PASSWORD '${GBASE_PASSWORD}';
 EOF
 fi
 
 if [ -d /${DATA_DIR}/backup ]; then
-  /home/gbase/gbase_db/app/bin/gsql -p ${server_port} -U ${GBASE_USER} -d postgres -f /home/gbase/backup/backup.sql
+  /home/gbase/gbase_db/app/bin/gsql -p ${gbase_service_port} -U ${GBASE_USER} -d postgres -f /home/gbase/backup/backup.sql
 fi
 
 echo "Script execution completed."

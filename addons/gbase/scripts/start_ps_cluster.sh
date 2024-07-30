@@ -1,14 +1,6 @@
 #!/bin/bash
-
-IP_LIST=("${KB_POD_IP}")
-HOSTNAME_LIST=("${KB_CLUSTER_COMP_NAME}-0")
-
-function check_host_ready {
-  local ip=$1
-  #ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=5 gbase@$ip exit &> /dev/null
-  timeout 5 bash -c "</dev/tcp/$ip/22" 2>/dev/null
-  return $?
-}
+IP_LIST="${KB_POD_IP}"
+HOSTNAME_LIST="${KB_POD_NAME}"
 
 function get_pod_ip_list {
   local SVC_NAME="${KB_CLUSTER_COMP_NAME}-headless.${KB_NAMESPACE}.svc"
@@ -35,26 +27,34 @@ function get_pod_ip_list {
 
     if [ -z "$replica_ip" ]; then
       echo "Failed to get the IP of $replica_hostname.$SVC_NAME, exiting..."
-      exit 0
+      exit 1
     fi
 
-    IP_LIST+=("$replica_ip")
-    HOSTNAME_LIST+=("$replica_hostname")
+    # Append the IP and hostname to the lists
+    IP_LIST="${IP_LIST},${replica_ip}"
+    HOSTNAME_LIST="${HOSTNAME_LIST},${replica_hostname}"
   done
 
-  IP_LIST_COMMA=$(IFS=,; echo "${IP_LIST[*]}")
-  HOSTNAME_LIST_COMMA=$(IFS=,; echo "${HOSTNAME_LIST[*]}")
-  echo "get_pod_ip_list: ${IP_LIST[@]}"
-  echo "hostnames: ${HOSTNAME_LIST[@]}"
+  echo "get_pod_ip_list: ${IP_LIST}"
+  echo "hostnames: ${HOSTNAME_LIST}"
+}
+
+function check_host_ready {
+  local ip=$1
+  #ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=5 gbase@$ip exit &> /dev/null
+  timeout 5 bash -c "</dev/tcp/$ip/22" 2>/dev/null
+  return $?
 }
 
 function wait_pod_ready {
+  # Convert comma-separated string to array
+  IFS=',' read -r -a ip_array <<< "$IP_LIST"
+  
   all_pods_ready=false
   while [ "$all_pods_ready" = false ]; do
     all_pods_ready=true
-    
-    for ip in "${IP_LIST[@]}"; do
-      if ! check_host_ready $ip; then
+    for ip in "${ip_array[@]}"; do
+      if ! check_host_ready "$ip"; then
         echo "Pod at IP $ip SSH service is not ready."
         all_pods_ready=false
       else
@@ -76,7 +76,7 @@ wait_pod_ready
 
 if ! sudo -u gbase -i command -v gsql &> /dev/null; then
   echo "generating cluster.xml..."
-  python3 /scripts/generate_replica_xml.py "${HOSTNAME_LIST_COMMA}" "${IP_LIST_COMMA}"
+  python3 /scripts/generate_replica_xml.py "${HOSTNAME_LIST}" "${IP_LIST}"
   echo "YAML file has been generated and saved to /home/gbase/cluster.xml"
 
   echo "gs_preinstall......"
@@ -158,7 +158,7 @@ EOF
   sudo -i -u gbase gs_guc reload -N all -I all -h "host all all 0.0.0.0/0 sha256"
   sudo -i -u gbase gs_guc reload -I all -c "listen_addresses='*'"
   
-  sudo -i -u gbase gsql -p ${server_port} -U ${GBASE_USER} -d postgres <<EOF
+  sudo -i -u gbase gsql -p ${gbase_service_port} -U ${GBASE_USER} -d postgres <<EOF
 ALTER USER ${GBASE_USER} PASSWORD '${GBASE_PASSWORD}';
 CREATE USER ${KBADMIN_USER} WITH SYSADMIN PASSWORD '${KBADMIN_PASSWORD}';
 EOF

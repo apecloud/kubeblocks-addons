@@ -127,7 +127,7 @@ spec:
           privileged: true
           runAsUser: 0
         env:
-          - name : server_port
+          - name : gbase_service_port
             value: "5432"
         volumeMounts:
           - mountPath: /config

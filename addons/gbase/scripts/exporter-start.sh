@@ -1,6 +1,3 @@
 #!/bin/bash   
 
-export DATA_SOURCE_NAME="postgresql://postgres@localhost:15400/postgres?sslmode=disable"
-
-
-docker-entrypoint.sh opengauss_exporter
+docker-entrypoint.sh opengauss_exporter --url="postgresql://${KBADMIN_USER}:${KBADMIN_PASSWORD}@localhost:${gbase_service_port}/postgres"

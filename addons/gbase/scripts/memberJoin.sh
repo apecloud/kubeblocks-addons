@@ -23,28 +23,59 @@ while IFS= read -r line; do
     IP_LIST+=("${BASH_REMATCH[1]}")
   fi
 done <<< "$output"
-IP_LIST_COMMA=$(IFS=,; echo "${IP_LIST[*]}")
-HOSTNAME_LIST_COMMA=$(IFS=,; echo "${HOSTNAME_LIST[*]}")
-echo $IP_LIST_COMMA
-echo $HOSTNAME_LIST_COMMA
+
+echo "IP_LIST: ${IP_LIST[@]}"
+echo "HOSTNAME_LIST: ${HOSTNAME_LIST[@]}"
 
 # find join_pod_ip in cluster
 if [[ " ${IP_LIST[@]} " =~ " ${JOIN_POD_IP} " ]]; then
   exit 0
 else
   # config hostname trust (gbase needed)
-  echo "$JOIN_POD_IP $JOIN_POD_NAME" | sudo tee -a /etc/hosts
+  IP_LIST+=("$JOIN_POD_IP")
+  HOSTNAME_LIST+=("$JOIN_POD_NAME")
 
-  # join new node ip and host
-  IP_LIST_COMMA="$IP_LIST_COMMA,$JOIN_POD_IP"
-  HOSTNAME_LIST_COMMA="$HOSTNAME_LIST_COMMA,$JOIN_POD_NAME"
+  # Generate comma-separated lists for the XML generation
+  IP_LIST_COMMA=$(IFS=','; echo "${IP_LIST[*]}")
+  HOSTNAME_LIST_COMMA=$(IFS=','; echo "${HOSTNAME_LIST[*]}")
 
-  echo "${HOSTNAME_LIST_COMMA[@]}"
-  echo "${IP_LIST_COMMA[@]}"
+  TEMP_FILE=$(mktemp)
+  cp /etc/hosts "$TEMP_FILE"
+
+  for index in "${!IP_LIST[@]}"; do
+    NODE_IP="${IP_LIST[$index]}"
+    NODE_NAME="${HOSTNAME_LIST[$index]}"
+    
+    # Check if the IP already exists in /etc/hosts
+    if grep -q "^$NODE_IP\b" "$TEMP_FILE"; then
+      # Check if the hostname is already associated with the IP
+      if grep -q "^$NODE_IP\b.*\b$NODE_NAME\b" "$TEMP_FILE"; then
+        echo "IP $NODE_IP with hostname $NODE_NAME already exists, skipping..."
+        continue
+      else
+        # If the hostname does not exist, replace the entire line
+        sed -i "/^$NODE_IP\b/c\\$NODE_IP $NODE_NAME" "$TEMP_FILE"
+        echo "Replaced entry for IP $NODE_IP with hostname $NODE_NAME"
+      fi
+    else
+      # If the hostname exists
+      if grep -q "[[:space:]]$NODE_NAME\b" "$TEMP_FILE"; then
+        sed -i "/[[:space:]]$NODE_NAME\b/c\\$NODE_IP $NODE_NAME" "$TEMP_FILE"
+        echo "Updated entry for hostname $NODE_NAME with IP $NODE_IP"
+      else
+        # If neither the IP nor the hostname exists, add a new entry
+        echo "$NODE_IP $NODE_NAME" | tee -a "$TEMP_FILE" > /dev/null
+        echo "Adding new entry for $NODE_IP $NODE_NAME"
+      fi
+    fi
+  done
+
+  # Replace /etc/hosts with the modified temporary file
+  sudo cp "$TEMP_FILE" /etc/hosts
+  sudo rm "$TEMP_FILE"
 
   # generate new cluster xml
-  python3 /scripts/generate_replica_xml.py "${HOSTNAME_LIST_COMMA[@]}" "${IP_LIST_COMMA[@]}"
-  
+  python3 /scripts/generate_replica_xml.py "$HOSTNAME_LIST_COMMA" "$IP_LIST_COMMA"
   /home/gbase/gbase_package/script/gs_expansion -U gbase -G gbase -X /home/gbase/cluster.xml -h $JOIN_POD_IP
 
   # check expansion success or fail

@@ -1,6 +1,6 @@
 #!/bin/bash     
         
-remote_command="gs_om -t status -h $HOSTNAME"
+remote_command="gs_om -t status -h $KB_POD_NAME"
 output=$(sshpass -p "$GBASE_PASSWORD" ssh -o StrictHostKeyChecking=no gbase@$KB_POD_FQDN "$remote_command")
 if [ $? -ne 0 ]; then
     echo -n "role probe error"

@@ -9,6 +9,19 @@ spec:
   description: gabse 8c single node
   serviceKind: gbase
   serviceVersion: 5.0.0
+  services:
+    - name: default
+      serviceName: gbase
+      spec:
+        ports:
+          - name: gbase
+            port: {{ .Values.gbaseConfigs.service.port }}
+            targetPort: gbase
+      roleSelector: primary
+  exporter:
+    containerName: exporter
+    scrapePath: /metrics
+    scrapePort: http-metrics
   configs:
     - name: gbase-config
       templateRef: {{ include "gbase.cmConfigName" . }}
@@ -90,8 +103,7 @@ spec:
               remote_command="gs_om -t status -h $HOSTNAME"
               output=$(timeout 10s sshpass -p "$GBASE_PASSWORD" ssh -o StrictHostKeyChecking=no gbase@$KB_POD_FQDN "$remote_command")
               instance_role=$(echo "$output" | grep -A 20 "node_name\s*:\s*$POD_NAME" | grep "instance_role" | awk '{print $3}')
-       
-              if [ $HOSTNAME == "gbase-cluster-gbase-single-0" ]; then
+              if [[ "$instance_role" == "Primary" ]]; then
                 echo -n "primary" 
               else
                 echo -n "standby" 
@@ -118,8 +130,6 @@ spec:
                 exit 1
               fi
     memberJoin: 
-      timeoutSeconds: 3600
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.gbase.repository }}:{{ .Values.image.gbase.tag }} 
       customHandler:
         exec:
           command:
@@ -128,8 +138,6 @@ spec:
             - |  
               sshpass -p "$GBASE_PASSWORD" ssh -o StrictHostKeyChecking=no root@${KB_CLUSTER_COMP_NAME}-0.${KB_CLUSTER_COMP_NAME}-headless.${KB_NAMESPACE}.svc "/scripts/memberJoin.sh $KB_NEW_MEMBER_POD_NAME $KB_NEW_MEMBER_POD_IP"    
     memberLeave: 
-      timeoutSeconds: 3600
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.gbase.repository }}:{{ .Values.image.gbase.tag }} 
       customHandler:
         exec:
           command: 
@@ -175,15 +183,13 @@ spec:
           privileged: true
           runAsUser: 0
         env:
-          - name : server_port
+          - name: gbase_service_port
             value: "{{ .Values.gbaseConfigs.service.port }}"
         ports:
           - name: dbport
             containerPort: {{ .Values.gbaseConfigs.service.port }}
           - name: sshport
             containerPort: 22
-          - name: etcdport
-            containerPort: 2379
         volumeMounts:
           - mountPath: /config
             name: gbase-config
@@ -201,18 +207,13 @@ spec:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }} 
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.exporter.pullPolicy }}
         command: ["/scripts/exporter-start.sh"]
-        securityContext:
-          privileged: true
+        ports:
+          - name: http-metrics
+            containerPort: {{ .Values.metrics.service.port }}
         env:
-          - name: GS_PORT
-            value: "15400"
-          - name: GS_PASSWORD
-            value: "22"
+          - name: gbase_service_port
+            value: "{{ .Values.gbaseConfigs.service.port }}"
         volumeMounts:
-          - mountPath: /config
-            name: gbase-config
-          - mountPath: /data
-            name: data
           - name: scripts
             mountPath: /scripts     
     volumes:
