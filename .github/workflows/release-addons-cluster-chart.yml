@@ -18,7 +18,6 @@ on:
           - elasticsearch-cluster
           - etcd-cluster
           - flink-cluster
-          - foxlake-cluster
           - greatsql-cluster
           - greptimedb-cluster
           - kafka-cluster

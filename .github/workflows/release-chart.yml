@@ -19,7 +19,6 @@ on:
           - elasticsearch
           - etcd
           - flink
-          - foxlake
           - greatsql
           - greptimedb
           - influxdb
