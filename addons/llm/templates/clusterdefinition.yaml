@@ -29,6 +29,7 @@ spec:
             emptyDir: {}
         containers:
           - name: vllm
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository}}:{{ default .Chart.AppVersion .Values.image.tag }}
             imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
             securityContext:
               runAsUser: 0
@@ -81,6 +82,7 @@ spec:
             emptyDir: {}
         containers:
           - name: ggml
+            image: {{ .Values.imageDev.registry | default .Values.image.registry }}/{{ .Values.imageDev.repository}}:{{ default .Chart.AppVersion .Values.imageDev.tagNew}}
             imagePullPolicy: {{default .Values.imageDev.pullPolicy "IfNotPresent"}}
             securityContext:
               runAsUser: 0
@@ -95,6 +97,9 @@ spec:
                 mountPath: /scripts
             command:
               - /scripts/start.sh
+            env:
+              - name: MODEL
+                value: /app/model.gguf
             ports:
               - name: model
                 containerPort: 8000

@@ -10,8 +10,6 @@ fullnameOverride: ""
 ##
 clusterDomain: cluster.local
 
-clusterVersion: "20240629"
-
 ## Set default image, imageTag, and imagePullPolicy. mode is used to indicate the
 ##
 image:

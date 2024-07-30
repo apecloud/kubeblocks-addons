@@ -65,6 +65,8 @@ spec:
             type: RuntimeDefault
         containers:
           - name: clickhouse
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:{{ default .Chart.AppVersion .Values.image.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
             securityContext:
               allowPrivilegeEscalation: false
               capabilities:
@@ -177,6 +179,8 @@ spec:
             type: RuntimeDefault
         containers:
           - name: clickhouse
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:{{ default .Chart.AppVersion .Values.image.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
             securityContext:
               allowPrivilegeEscalation: false
               capabilities:
@@ -271,6 +275,8 @@ spec:
         initContainers:
         containers:
           - name: zookeeper
+            image: {{ .Values.zookeeper.image.registry | default "docker.io" }}/{{ .Values.zookeeper.image.repository | default "bitnami/zookeeper" }}:{{ .Values.zookeeper.image.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.zookeeper.image.pullPolicy }}
             securityContext:
               allowPrivilegeEscalation: false
               runAsNonRoot: true

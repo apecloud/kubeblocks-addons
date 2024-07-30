@@ -33,6 +33,8 @@ spec:
         {{- end }}
         containers:
           - name: jobmanager-main-container
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.jobmanager.repository }}:{{ .Values.image.jobmanager.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
             command:
               - /scripts/setup.sh
             args:
@@ -77,6 +79,8 @@ spec:
         {{- end }}
         containers:
           - name: taskmanager-main-container
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.taskmanager.repository }}:{{ .Values.image.taskmanager.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
             command:
               - /scripts/setup.sh
             args:

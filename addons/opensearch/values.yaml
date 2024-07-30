@@ -17,7 +17,6 @@ image:
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
-clusterVersionOverride: ""
 
 serviceAccount:
   # Specifies whether a service account should be created

@@ -24,15 +24,12 @@ To deploy the OpenTenBase add-on on your Kubernetes cluster, follow these steps:
 $ helm install opentenbase ./opentenbase
 ```
 
-Check the ClusterDefinition and ClusterVersion:
+Check the ClusterDefinition:
 
 ```bash
 $ kubectl get cd opentenbase
 NAME          MAIN-COMPONENT-NAME   STATUS      AGE
 opentenbase   gtm                   Available   11m
-
-$ kubectl get cv |grep opentenbase
-opentenbase-2.5.0     opentenbase          Available   12m
 ```
 
 ## Create an OpenTenBase Cluster
