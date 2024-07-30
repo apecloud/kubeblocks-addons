@@ -47,24 +47,27 @@ check_register_sentinel_conf() {
     echo "normal start"
   else
     echo "horizontal scaling"
-    register_sentinel_conf
-    touch /data/sentinel/init_done.conf
+    if register_sentinel_conf; then
+      touch /data/sentinel/init_done.conf
+    else
+      echo "register_sentinel_conf failed"
+      exit 1
+    fi
   fi
 }
 
 register_sentinel_conf() {
-    if [[ -n "${SENTINEL_POD_NAME_LIST}" ]]; then
+    if [[ -n "${SENTINEL_POD_FQDN_LIST}" ]]; then
         old_ifs="$IFS"
         IFS=','
         set -f
-        read -ra sentinel_pod <<< "${SENTINEL_POD_NAME_LIST}"
+        read -ra sentinel_pod_fqdn_list <<< "${SENTINEL_POD_FQDN_LIST}"
         set +f
         IFS="$old_ifs"
 
         output=""
         set +e
-        for pod in "${sentinel_pod[@]}"; do
-            sentinel_pod_fqdn="${pod}.$SENTINEL_HEADLESS_SERVICE_NAME"
+        for sentinel_pod_fqdn in "${sentinel_pod_fqdn_list[@]}"; do
             temp_output=$(redis-cli -h "$sentinel_pod_fqdn" -p 26379 -a "$SENTINEL_PASSWORD" sentinel masters 2>/dev/null)
             if [[ -n "$temp_output" ]]; then
                 output="$temp_output"
@@ -74,6 +77,7 @@ register_sentinel_conf() {
         set -e
     else
         echo "SENTINEL_POD_NAME_LIST environment variable is not set or empty."
+        return 1
     fi
 
     if [[ -n "$output" ]]; then
@@ -101,10 +105,9 @@ register_sentinel_conf() {
                 echo "sentinel failover-timeout $master_name 60000" >> /data/sentinel/redis-sentinel.conf
                 echo "sentinel parallel-syncs $master_name 1" >> /data/sentinel/redis-sentinel.conf
                 echo "sentinel auth-user $master_name $REDIS_SENTINEL_USER" >> /data/sentinel/redis-sentinel.conf
-                comp_name="${master_name%-*}"
+                comp_name="${master_name##*-}"
                 comp_name_upper=$(echo "$comp_name" | tr '[:lower:]' '[:upper:]')
-                set +x
-                if [[ -n "$REDIS_DEFAULT_PASSWORD" ]]; then
+                if [[ -v REDIS_DEFAULT_PASSWORD ]]; then
                     var_name="REDIS_DEFAULT_PASSWORD_${comp_name_upper}"
                     if [[ -n "${!var_name}" ]]; then
                       auth_pass="${!var_name}"
@@ -116,14 +119,13 @@ register_sentinel_conf() {
                     echo "REDIS_DEFAULT_PASSWORD is not set"
                     return 1
                 fi
-                set -x
                 master_name=""
                 master_ip=""
                 master_port=""
             fi
         done <<< "$output"
     else
-        echo "Warning: Could not connect to Redis Sentinel or no masters found."
+        echo "Initialization in progress, or unable to connect to Redis Sentinel, or no master nodes found."
     fi
 }
 
