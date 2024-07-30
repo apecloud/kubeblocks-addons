@@ -1,6 +1,5 @@
 # Default values for RisingWave.
 
-clusterVersionOverride: ""
 nameOverride: ""
 fullnameOverride: ""
 

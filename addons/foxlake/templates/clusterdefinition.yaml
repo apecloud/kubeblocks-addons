@@ -42,6 +42,8 @@ spec:
                 cpu: "10m"
                 memory: "64Mi"
           - name: foxlake-gms-initializer
+            image: {{ .Values.images.foxlake.repository }}:{{ .Values.images.foxlake.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.images.foxlake.pullPolicy }}
             env:
               - name: initializeGms
                 value: "true"
@@ -52,6 +54,8 @@ spec:
                 memory: "1Gi"
         containers:
           - name: foxlake
+            image: {{ .Values.images.foxlake.repository }}:{{ .Values.images.foxlake.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.images.foxlake.pullPolicy }}
             ports:
               - containerPort: 10030
                 name: mpp
@@ -112,6 +116,8 @@ spec:
       podSpec:
         containers:
           - name: mysql
+            image: {{ .Values.images.mysql.repository }}:{{ .Values.images.mysql.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.images.mysql.pullPolicy }}
             env:
               - name: MYSQL_ROOT_PASSWORD
                 valueFrom:

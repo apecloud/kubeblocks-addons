@@ -34,5 +34,3 @@ auth:
 
 nameOverride: ""
 fullnameOverride: ""
-
-clusterVersionOverride: "8.0.32"

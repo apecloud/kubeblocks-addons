@@ -57,6 +57,8 @@ spec:
 #                mountPath: /kb_tools
         containers:
           - name: observer-container
+            image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.observer.repository }}:{{ .Values.images.observer.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
             command:
               - bash
               - -c
@@ -115,6 +117,8 @@ spec:
               - name: OB_SERVICE_PORT
                 value: "2881"
           - name: metrics
+            image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.metrics.repository }}:{{ .Values.images.metrics.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
             command:
               - bash
               - -c

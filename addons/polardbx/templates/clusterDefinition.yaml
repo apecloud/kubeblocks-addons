@@ -79,6 +79,8 @@ spec:
             name: podinfo
         initContainers: &xsotreInitContainers
           - name: tools-updater
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.repository }}/{{ .Values.images.polardbx.toolsUpdater.name }}:{{.Values.images.polardbx.toolsUpdater.tag}}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.images.polardbx.pullPolicy }}
             command: ["/bin/ash"]
             args: ["-c", "./hack/update.sh /target"]
             env:
@@ -92,6 +94,8 @@ spec:
                 mountPath: /target
         containers:
           - name: engine
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.repository }}/{{ .Values.images.polardbx.dn.name}}:{{.Values.images.polardbx.dn.tag}}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.images.polardbx.pullPolicy }}
             command: ["/scripts/xstore-setup.sh"]
             lifecycle:
               postStart:
@@ -188,7 +192,8 @@ spec:
               - name: podinfo
                 mountPath: /etc/podinfo
           - name: exporter
-            imagePullPolicy: IfNotPresent
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.prom.repository }}/{{ .Values.images.prom.mysqld_exporter.name}}:{{.Values.images.prom.mysqld_exporter.tag}}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.images.prom.pullPolicy }}
             ports:
               - name: metrics
                 containerPort: 9104
@@ -255,6 +260,8 @@ spec:
         initContainers: *xsotreInitContainers
         containers:
           - name: engine
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.repository }}/{{ .Values.images.polardbx.dn.name}}:{{.Values.images.polardbx.dn.tag}}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.images.polardbx.pullPolicy }}
             command: [ "/scripts/xstore-setup.sh" ]
             lifecycle:
               postStart:
@@ -274,7 +281,8 @@ spec:
               timeoutSeconds: 30
             volumeMounts: *xstoreEngineVolumeMounts
           - name: exporter
-            imagePullPolicy: IfNotPresent
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.prom.repository }}/{{ .Values.images.prom.mysqld_exporter.name}}:{{.Values.images.prom.mysqld_exporter.tag}}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.images.prom.pullPolicy }}
             ports:
               - name: metrics
                 containerPort: 9104
@@ -329,6 +337,8 @@ spec:
             emptyDir: {}
         initContainers:
           - name: metadb-init
+            image:  {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.mysql.repository }}:{{ .Values.images.mysql.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.images.mysql.pullPolicy }}
             command: ["/scripts/metadb-setup.sh"]
             env:
             - name: metaDbAddr
@@ -366,6 +376,9 @@ spec:
               - name: shared
                 mountPath: /shared
           - name: init
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.repository }}/{{ .Values.images.polardbx.init.name }}:{{.Values.images.polardbx.init.tag}}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.images.polardbx.pullPolicy }}
+
             command: [ "sh" ]
             args: [ "-c", 'source /shared/env.sh && /polardbx-init' ]
             env: &cnEngineEnv
@@ -471,6 +484,8 @@ spec:
                 mountPath: /shared
         containers:
           - name: engine
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.repository }}/{{ .Values.images.polardbx.cn.name}}:{{.Values.images.polardbx.cn.tag}}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.images.polardbx.pullPolicy }}
             command:
               - /bin/bash
               - -c
@@ -527,6 +542,8 @@ spec:
               - name: shared
                 mountPath: /shared
           - name: exporter
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.repository }}/{{ .Values.images.polardbx.exporter.name}}:{{.Values.images.polardbx.exporter.tag}}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.images.polardbx.pullPolicy }}
             args:
              - -collectors.process
              - -collectors.jvm
@@ -575,6 +592,8 @@ spec:
       podSpec:
         initContainers:
           - name: wait-cn-ready
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.mysql.repository }}:{{ .Values.images.mysql.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.images.mysql.pullPolicy }}
             command:
               - bin/sh
               - -c
@@ -598,6 +617,8 @@ spec:
                     optional: false
         containers:
           - name: engine
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.repository }}/{{ .Values.images.polardbx.cdc.name}}:{{.Values.images.polardbx.cdc.tag}}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.images.polardbx.pullPolicy }}
             env:
               - name: switchCloud
                 value: aliyun
@@ -669,6 +690,8 @@ spec:
               - name: log
                 mountPath: /home/admin/logs
           - name: exporter
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.repository }}/{{ .Values.images.polardbx.exporter.name}}:{{.Values.images.polardbx.exporter.tag}}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.images.polardbx.pullPolicy }}
             args:
               - -web.listen-addr=:9104
               - -web.metrics-path=/metrics
