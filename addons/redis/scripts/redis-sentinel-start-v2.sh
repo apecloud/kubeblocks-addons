@@ -47,16 +47,16 @@ recover_registered_redis_servers_if_needed() {
     echo "normal start"
   else
     echo "horizontal scaling"
-    if register_sentinel_conf; then
+    if recover_registered_redis_servers; then
       touch /data/sentinel/init_done.conf
     else
-      echo "recover_registered_redis_servers"
+      echo "recover_registered_redis_servers failed"
       exit 1
     fi
   fi
 }
 
-register_sentinel_conf() {
+recover_registered_redis_servers() {
     if [[ -n "${SENTINEL_POD_FQDN_LIST}" ]]; then
         old_ifs="$IFS"
         IFS=','
