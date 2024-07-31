@@ -76,7 +76,7 @@ register_sentinel_conf() {
         done
         set -e
     else
-        echo "SENTINEL_POD_NAME_LIST environment variable is not set or empty."
+        echo "SENTINEL_POD_FQDN_LIST environment variable is not set or empty."
         return 1
     fi
 
