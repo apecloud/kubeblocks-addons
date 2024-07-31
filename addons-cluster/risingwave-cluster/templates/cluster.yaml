@@ -5,11 +5,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{ include "risingwave-cluster.labels" . | nindent 4 }}
-  annotations:
-    {{ include "risingwave-cluster.annotations.extra-envs" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: risingwave
-  clusterVersionRef: risingwave-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
   terminationPolicy: {{ .Values.terminationPolicy }}
   affinity:
     {{- with $.Values.topologyKeys }}
@@ -19,9 +15,11 @@ spec:
   tolerations: {{ . | toYaml | nindent 4 }}
   {{- end }}
   componentSpecs:
-  - componentDefRef: frontend
+  - componentDef: risingwave-frontend
     name: frontend
     replicas: {{ .Values.risingwave.frontend.replicas }}
+    env:
+      {{ include "risingwave-cluster.envs" . | nindent 6 }}
     serviceAccountName: {{ include "risingwave-cluster.serviceAccountName" . }}
     {{- with .Values.risingwave.frontend.resources }}
     resources:
@@ -36,9 +34,11 @@ spec:
         memory: {{ .requests.memory | quote }}
     {{- end }}
     {{- end }}
-  - componentDefRef: meta
+  - componentDef: risingwave-meta
     name: meta
     replicas: {{ .Values.risingwave.meta.replicas }}
+    env:
+      {{ include "risingwave-cluster.envs" . | nindent 6 }}
     serviceAccountName: {{ include "risingwave-cluster.serviceAccountName" . }}
     {{- with .Values.risingwave.meta.resources }}
     resources:
@@ -53,9 +53,11 @@ spec:
         memory: {{ .requests.memory | quote }}
     {{- end }}
     {{- end }}
-  - componentDefRef: compute
+  - componentDef: risingwave-compute
     name: compute
     replicas: {{ .Values.risingwave.compute.replicas }}
+    env:
+      {{ include "risingwave-cluster.envs" . | nindent 6 }}
     serviceAccountName: {{ include "risingwave-cluster.serviceAccountName" . }}
     {{- with .Values.risingwave.compute.resources }}
     resources:
@@ -70,9 +72,11 @@ spec:
         memory: {{ .requests.memory | quote }}
     {{- end }}
     {{- end }}
-  - componentDefRef: compactor
+  - componentDef: risingwave-compactor
     name: compactor
     replicas: {{ .Values.risingwave.compactor.replicas }}
+    env:
+      {{ include "risingwave-cluster.envs" . | nindent 6 }}
     serviceAccountName: {{ include "risingwave-cluster.serviceAccountName" . }}
     {{- with .Values.risingwave.compactor.resources }}
     resources:
@@ -87,9 +91,11 @@ spec:
         memory: {{ .requests.memory | quote }}
     {{- end }}
     {{- end }}
-  - componentDefRef: connector
+  - componentDef: risingwave-connector
     name: connector
     replicas: {{ .Values.risingwave.connector.replicas }}
+    env:
+      {{ include "risingwave-cluster.envs" . | nindent 6 }}
     serviceAccountName: {{ include "risingwave-cluster.serviceAccountName" . }}
     {{- with .Values.risingwave.connector.resources }}
     resources:
