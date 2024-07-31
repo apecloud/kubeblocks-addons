@@ -9,15 +9,6 @@ fullnameOverride: ""
 ##
 images:
   pullPolicy: IfNotPresent
-  milvus:
-    repository: milvusdb/milvus
-    tag: v2.3.2
-  milvusTools:
-    repository: milvusdb/milvus-operator
-    tag: v0.8.4
-  etcd:
-    repository: docker.io/milvusdb/etcd
-    tag: 3.5.5-r2
   minio:
     repository: docker.io/minio/minio
     tag: RELEASE.2022-03-17T06-34-49Z

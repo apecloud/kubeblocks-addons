@@ -36,9 +36,6 @@ Common labels
 {{- define "milvus.labels" -}}
 helm.sh/chart: {{ include "milvus.chart" . }}
 {{ include "milvus.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-{{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
@@ -108,7 +105,6 @@ readinessProbe:
 Milvus image
 */}}
 {{- define "milvus.image" }}
-image: {{ .Values.images.milvus.repository }}:{{ .Values.images.milvus.tag }}
 imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
 {{- end }}
 
@@ -117,7 +113,6 @@ Milvus init container - setup
 */}}
 {{- define "milvus.initContainer.setup" }}
 - name: setup
-  image: {{ .Values.images.milvusTools.repository }}:{{ .Values.images.milvusTools.tag }}
   imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
   command:
     - /cp

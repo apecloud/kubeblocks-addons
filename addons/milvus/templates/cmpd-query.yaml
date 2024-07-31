@@ -8,7 +8,6 @@ spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
-  serviceVersion: {{ .Chart.AppVersion }}
   runtime:
     initContainers:
       {{- include "milvus.initContainer.setup" . | indent 6 }}
