@@ -77,7 +77,7 @@ spec:
           optional: false
           password: Required
     ## the default password of redis connection
-    - name: REDIS_DEFAULT_PASSWORD
+    - name: REDIS_SENTINEL_PASSWORD
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name

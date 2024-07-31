@@ -42,7 +42,7 @@ build_redis_sentinel_conf() {
   echo "build redis sentinel conf succeeded!"
 }
 
-check_register_sentinel_conf() {
+recover_registered_redis_servers_if_needed() {
   if [ -f /data/sentinel/init_done.conf ]; then
     echo "normal start"
   else
@@ -50,7 +50,7 @@ check_register_sentinel_conf() {
     if register_sentinel_conf; then
       touch /data/sentinel/init_done.conf
     else
-      echo "register_sentinel_conf failed"
+      echo "recover_registered_redis_servers"
       exit 1
     fi
   fi
@@ -95,30 +95,50 @@ register_sentinel_conf() {
                 port)
                     read -r master_port
                     ;;
+                down-after-milliseconds)
+                    read -r master_down_after_milliseconds
+                    ;;
+                quorum)
+                    read -r master_quorum
+                    ;;
+                failover-timeout)
+                    read -r master_failover_timeout
+                    ;;
+                parallel-syncs)
+                    read -r master_parallel_syncs
+                    ;;
             esac
 
-            if [[ -n "$master_name" && -n "$master_ip" && -n "$master_port" ]]; then
-                echo "Master Name: $master_name, IP: $master_ip, Port: $master_port"
+                if [[ -n "$master_name" && -n "$master_ip" && -n "$master_port" && \
+                      -n "$master_down_after_milliseconds" && -n "$master_failover_timeout" && \
+                      -n "$master_parallel_syncs" && -n "$master_quorum" ]]; then
+                echo "Master Name: $master_name, IP: $master_ip, Port: $master_port, \
+                down-after-milliseconds: $master_down_after_milliseconds, \
+                failover-timeout: $master_failover_timeout, \
+                parallel-syncs: $master_parallel_syncs, quorum: $master_quorum"
 
-                echo "sentinel monitor $master_name $master_ip $master_port 2" >> /data/sentinel/redis-sentinel.conf
-                echo "sentinel down-after-milliseconds $master_name 5000" >> /data/sentinel/redis-sentinel.conf
-                echo "sentinel failover-timeout $master_name 60000" >> /data/sentinel/redis-sentinel.conf
-                echo "sentinel parallel-syncs $master_name 1" >> /data/sentinel/redis-sentinel.conf
+                echo "sentinel monitor $master_name $master_ip $master_port $master_quorum" >> /data/sentinel/redis-sentinel.conf
+                echo "sentinel down-after-milliseconds $master_name $master_down_after_milliseconds" >> /data/sentinel/redis-sentinel.conf
+                echo "sentinel failover-timeout $master_name $master_failover_timeout" >> /data/sentinel/redis-sentinel.conf
+                echo "sentinel parallel-syncs $master_name $master_parallel_syncs" >> /data/sentinel/redis-sentinel.conf
                 echo "sentinel auth-user $master_name $REDIS_SENTINEL_USER" >> /data/sentinel/redis-sentinel.conf
-                comp_name="${master_name##*-}"
+                cluster_name="$KB_CLUSTER_NAME"
+                comp_name="${master_name#"$cluster_name"-}"
                 comp_name_upper=$(echo "$comp_name" | tr '[:lower:]' '[:upper:]')
-                if [[ -v REDIS_DEFAULT_PASSWORD ]]; then
-                    var_name="REDIS_DEFAULT_PASSWORD_${comp_name_upper}"
+                set +x
+                if [[ -v REDIS_SENTINEL_PASSWORD ]]; then
+                    var_name="REDIS_SENTINEL_PASSWORD_${comp_name_upper}"
                     if [[ -n "${!var_name}" ]]; then
                       auth_pass="${!var_name}"
                     else
-                      auth_pass="$REDIS_DEFAULT_PASSWORD"
+                      auth_pass="$REDIS_SENTINEL_PASSWORD"
                     fi
                     echo "sentinel auth-pass $master_name $auth_pass" >> /data/sentinel/redis-sentinel.conf
                 else
-                    echo "REDIS_DEFAULT_PASSWORD is not set"
+                    echo "REDIS_SENTINEL_PASSWORD is not set"
                     return 1
                 fi
+                set -x
                 master_name=""
                 master_ip=""
                 master_port=""
@@ -137,5 +157,5 @@ start_redis_sentinel_server() {
 
 reset_redis_sentinel_conf
 build_redis_sentinel_conf
-check_register_sentinel_conf
+recover_registered_redis_servers_if_needed
 start_redis_sentinel_server
