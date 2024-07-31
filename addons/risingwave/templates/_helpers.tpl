@@ -42,15 +42,83 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
 {{/*
-Create full image name
+Default config template.
 */}}
-{{- define "risingwave.imageFullName" -}}
-{{- printf "%s:%s" .Values.image.repository ( .Values.image.tag | default .Chart.AppVersion ) -}}
-{{- end -}}
+{{- define "risingwave.conftpl.default" }}
+- name: risingwave-configuration
+  templateRef: {{ include "risingwave.name" . }}-conf-tpl
+  namespace: {{ .Release.Namespace }}
+  volumeName: risingwave-configuration
+{{- end }}
 
 {{/*
-Create image pull policy
+Volume mount for default config template.
 */}}
-{{- define "risingwave.imagePullPolicy" -}}
-{{- printf "%s" ( .Values.image.pullPolicy | default "IfNotPresent" ) -}}
-{{- end -}}
+{{- define "risingwave.volumeMount.conftpl.default" }}
+- name: risingwave-configuration
+  mountPath: /risingwave/config
+{{- end }}
+
+{{/*
+Liveness probe.
+*/}}
+{{- define "risingwave.probe.liveness" }}
+livenessProbe:
+  failureThreshold: 3
+  tcpSocket:
+    port: svc
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  successThreshold: 1
+  timeoutSeconds: 30
+{{- end }}
+
+{{/*
+Readiness probe.
+*/}}
+{{- define "risingwave.probe.readiness" }}
+readinessProbe:
+  failureThreshold: 3
+  tcpSocket:
+    port: svc
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  successThreshold: 1
+  timeoutSeconds: 30
+{{- end }}
+
+{{/*
+Default security context.
+*/}}
+{{- define "risingwave.securityContext" }}
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  privileged: false
+{{- end }}
+
+{{/*
+Connector service vars.
+*/}}
+{{- define "risingwave.vars.connector" }}
+- name: CONNECTOR_SVC
+  valueFrom:
+    serviceVarRef:
+      compDef: risingwave-connector
+      optional: false
+      host: Required
+{{- end }}
+
+{{/*
+Meta service vars.
+*/}}
+{{- define "risingwave.vars.meta" }}
+- name: META_SVC
+  valueFrom:
+    serviceVarRef:
+      compDef: risingwave-meta
+      optional: false
+      host: Required
+{{- end }}
