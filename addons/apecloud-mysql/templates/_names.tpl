@@ -76,13 +76,6 @@ ac-mysql-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
 {{- end -}}
 
 {{/*
-Define cluster version with auditlog
-*/}}
-{{- define "apecloud-mysql.clusterVersionAuditLog" -}}
-{{- include "apecloud-mysql.clusterVersion" . }}-{{ default "1" .Values.auditlogSubVersion }}
-{{- end -}}
-
-{{/*
 Define component definition name
 */}}
 {{- define "apecloud-mysql.componentDefName" -}}
@@ -125,14 +118,6 @@ mysql-scale-vtgate-config-constraints
 mysql8.0-config-template
 {{- else -}}
 {{- .Values.resourceNamePrefix -}}-config-template
-{{- end -}}
-{{- end -}}
-
-{{- define "apecloud-mysql.configTplAuditLogName" -}}
-{{- if eq (len .Values.resourceNamePrefix) 0 -}}
-mysql8.0-auditlog-config-template
-{{- else -}}
-{{- .Values.resourceNamePrefix -}}-auditlog-config-template
 {{- end -}}
 {{- end -}}
 
