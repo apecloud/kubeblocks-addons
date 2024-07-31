@@ -55,7 +55,7 @@ def generate_xml(hostnames, ips):
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
-        print("Usage: python generate_xml.py <hostname_list> <ip_list>")
+        print("Usage: python generate_HA_cluster_xml.py <hostname_list> <ip_list>")
         sys.exit(1)
 
     hostnames = sys.argv[1]

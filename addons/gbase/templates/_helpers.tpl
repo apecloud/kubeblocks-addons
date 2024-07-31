@@ -87,5 +87,5 @@ Generate config configmap
 Backup Tool image
 */}}
 {{- define "gbase.bakcupToolImage" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tool.repository }}:{{ .Values.image.tool.tag }}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.gbase.repository }}:{{ .Values.image.gbase.tag }} 
 {{- end }}

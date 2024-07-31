@@ -3,7 +3,7 @@ kind: ActionSet
 metadata:
   name: gbase-backup
   labels:
-    clusterdefinition.kubeblocks.io/name: apecloud-mysql
+    clusterdefinition.kubeblocks.io/name: {{ include "gbase.clusterDefName" . }}
 spec:
   backupType: Full
   env:
@@ -17,7 +17,7 @@ spec:
     - name: ID_RSA_PUB
       valueFrom:
         secretKeyRef:
-          name: my-ssh-key-secret
+          name: gbase-ssh-rsa-secret
           key: id_rsa.pub
   backup:
     preBackup: []

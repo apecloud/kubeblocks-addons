@@ -19,7 +19,7 @@ cluster_state=$(echo "$output" | grep "cluster_state" | awk '{print $3}')
 
 # only node-0 execute install or cluster start 
 if [[ ${KB_POD_NAME: -1} == "0" ]]; then
-  /scripts/start_ps_cluster.sh 
+  /scripts/start_HA_cluster.sh
   exit 0
 fi
 

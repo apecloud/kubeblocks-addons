@@ -12,10 +12,8 @@ function remote_file_exists() {
     echo "false"
 }
 
-mkdir -p ${DATA_DIR};
-
 if [ $(remote_file_exists "${DP_BACKUP_NAME}.tar.gz") == "true" ]; then
-   datasafed pull -d zstd-fastest "${DP_BACKUP_NAME}.tar.gz" - | tar -xvf - -C "${DATA_DIR}/backup/"
+   datasafed pull -d zstd-fastest "${DP_BACKUP_NAME}.tar.gz" - | tar -xzvf - -C  /
    echo "done!";
    exit 0
 fi

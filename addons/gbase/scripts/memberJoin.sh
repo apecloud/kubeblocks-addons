@@ -75,7 +75,7 @@ else
   sudo rm "$TEMP_FILE"
 
   # generate new cluster xml
-  python3 /scripts/generate_replica_xml.py "$HOSTNAME_LIST_COMMA" "$IP_LIST_COMMA"
+  python3 /scripts/generate_HA_cluster_xml.py "$HOSTNAME_LIST_COMMA" "$IP_LIST_COMMA"
   /home/gbase/gbase_package/script/gs_expansion -U gbase -G gbase -X /home/gbase/cluster.xml -h $JOIN_POD_IP
 
   # check expansion success or fail

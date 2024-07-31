@@ -19,15 +19,14 @@ export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 
 START_TIME=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 
-if [ -d "/home/gbase/backup" ]; then
-    sudo rm -rf /home/gbase/backup
-fi
-sudo -u gbase mkdir -p /${DATA_DIR}/backup
+sudo -i -u gbase gs_probackup init -B /${DATA_DIR}/backup
+sudo -i -u gbase gs_probackup add-instance -B /${DATA_DIR}/backup/ -D /data/database/install/data/dn --instance kb_backup
+sudo -i -u gbase gs_probackup backup -B /${DATA_DIR}/backup --instance kb_backup -b FULL 
+# gs_probackup backup --remote-host=192.168.20.69 --remote-user=gbase --remote-path=/opt/database/install/app/bin/gs_probackup   -B  /data/backup  --instance kb_backup -b FULL -p 15400 -d gbase 
 
-/home/gbase/gbase_db/app/bin/gs_dumpall -f /home/gbase/backup/backup.sql -p ${DP_DB_PORT} -h ${DP_DB_HOST} -U ${DP_DB_USER} -W ${DP_DB_PASSWORD}
 
-tar -C /home/gbase/backup/ -czvf /home/gbase/${DP_BACKUP_NAME}.tar.gz backup.sql
-datasafed push "/home/gbase/${DP_BACKUP_NAME}.tar.gz"
+tar -czvf /${DATA_DIR}/${DP_BACKUP_NAME}.tar.gz  /${DATA_DIR}/backup 
+datasafed push "/${DATA_DIR}/${DP_BACKUP_NAME}.tar.gz" "/${DP_BACKUP_NAME}.tar.gz"
 
 STOP_TIME=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')

@@ -76,7 +76,7 @@ wait_pod_ready
 
 if ! sudo -u gbase -i command -v gsql &> /dev/null; then
   echo "generating cluster.xml..."
-  python3 /scripts/generate_replica_xml.py "${HOSTNAME_LIST}" "${IP_LIST}"
+  python3 /scripts/generate_HA_cluster_xml.py "${HOSTNAME_LIST}" "${IP_LIST}"
   echo "YAML file has been generated and saved to /home/gbase/cluster.xml"
 
   echo "gs_preinstall......"
@@ -168,7 +168,6 @@ fi
 echo "gbase cluster starting..."
 sudo -i -u gbase gs_om -t start
 echo "gbase cluster start success"
-
 
 echo "Script execution completed."
 exit 0

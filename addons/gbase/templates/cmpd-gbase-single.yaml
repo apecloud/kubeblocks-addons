@@ -33,7 +33,7 @@ spec:
       templateRef: {{ include "gbase.cmScriptsName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
-      defaultMode: 0555 
+      defaultMode: 0555
   systemAccounts:
     - name: gbase
       initAccount: true

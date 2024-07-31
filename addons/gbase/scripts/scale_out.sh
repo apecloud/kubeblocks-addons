@@ -10,8 +10,9 @@ for POD_NAME in "${KB_POD_ARRAY[@]}"; do
     instance_role=$(echo "$output" | grep -A 20 "node_name\s*:\s*$POD_NAME" | grep "instance_role" | awk '{print $3}')
     echo $output
     echo $instance_role
-    if [[ "$instance_role" == "Primary" ]]; then
-        #  cluster exist , but now node not in cluster, scale out 
+    if [[ "$instance_role" == "Primary" || "$instance_role" == "Normal" ]]; then
+        # Primary = HA mode;  Normal = single node -> HA mode
+        # cluster exist , but now node not in cluster, scale out 
         echo "success begin"
         sshpass -p "$GBASE_PASSWORD" ssh -o StrictHostKeyChecking=no root@${KB_CLUSTER_COMP_NAME}-0.${KB_CLUSTER_COMP_NAME}-headless.${KB_NAMESPACE}.svc "/scripts/memberJoin.sh $KB_POD_NAME $KB_POD_IP"  
         echo "success end"

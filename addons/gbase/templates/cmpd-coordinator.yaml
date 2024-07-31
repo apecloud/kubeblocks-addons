@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "gbase.componentDefName" . }}-coordinator
+  name: {{ include "gbase.componentDefName" . }}-coord
   labels:
     {{- include "gbase.labels" . | nindent 4 }}
 spec:

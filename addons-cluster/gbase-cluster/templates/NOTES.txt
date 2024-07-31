@@ -1,1 +1,4 @@
+Congratulations on successfully deploying the GBase 8c database cluster.
+Please note that during the startup of the database, pod-0 will act as the primary node and will execute the database installation operations for all nodes. This process takes approximately 7-10 minutes, so please be patient.
+Currently, the GBase 8c database only supports primary-standby HA mode and does not support distributed mode.
 Installed gbase-cluster!

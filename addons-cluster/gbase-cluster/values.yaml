@@ -1,14 +1,12 @@
-## cluster settings for neon
+## cluster settings for gbase
 version: latest
 storageClassName: ""
 
-## @param mode MySQL cluster topology mode, distribution, replication
+## @param mode gbase cluster topology mode, distribution, HA
 ##
-mode: replication
+mode: HA
 
 sshKeySecret: gbase-ssh-rsa-secret
-
-useLegacyCompDef: false
 
 clusterVersionOverride: "gbase8c-5.0.0"
 
@@ -22,7 +20,6 @@ replication:
       cpu: "1"
       memory: "4Gi"
   dataStorage: "20Gi"
-
 
 distribution:
   datanode: 

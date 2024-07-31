@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# only cm server exist can use, can future implementation.
+
 switchover_command="cm_ctl switchover -A"
 
 switchover_command="cm_ctl switchover -A"

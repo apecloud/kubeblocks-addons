@@ -1,21 +1,17 @@
-# Default values for apecloud-mysql.
+# Default values for gbase addon
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
 image:
-  registry: registry.cn-hangzhou.aliyuncs.com
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
   gbase:
-    repository:  skyrise/gbase8c_pb_v5_5
+    repository:  apecloud/gbase8c_ha
     pullPolicy: IfNotPresent
-    tag: "2.0"
+    tag: "5.5"
   exporter: 
-    repository:  skyrise/exporter
+    repository:  apecloud/gbase-exporter
     pullPolicy: IfNotPresent
     tag: latest
-  tool:
-    repository:  skyrise/gbase_tools
-    pullPolicy: IfNotPresent
-    tag: "2.0"
 
 gbaseConfigs:
   dataMountPath: /data
@@ -25,10 +21,6 @@ gbaseConfigs:
 metrics:
   service:
     port: 9187
-
-configTemplate:
-## @param config template name
-## name: mysql-3node-tpl-8.0
 
 imagePullSecrets: [ ]
 nameOverride: ""

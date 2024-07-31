@@ -135,7 +135,7 @@ gbase replication mode
 
 {{- define "gbase-cluster.coord.specs" }}
 {{- $component := .Values.distribution.coordinator }}
-- name: gbase-gha-coord
+- name: gbase-coord
   replicas: {{ include "gbase-cluster.replicas" (dict "Values" .Values "Component" $component) }}
   {{ include "gbase-cluster.resources" (dict "Values" .Values "Component" $component) | indent 2 }}
   {{ include "gbase-cluster.volumeClaimTemplates" (dict "Values" .Values "Component" $component) | indent 2 }}
