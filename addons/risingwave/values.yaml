@@ -3,8 +3,16 @@
 nameOverride: ""
 fullnameOverride: ""
 
+## @param commonLabels Labels to add to all deployed objects
+##
+commonLabels: { }
+
+commonAnnotations: { }
+
 ## RisingWave image
+##
 image:
   repository: ghcr.io/risingwavelabs/risingwave
   pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
   tag: v1.0.0

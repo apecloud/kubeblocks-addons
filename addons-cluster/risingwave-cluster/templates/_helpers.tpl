@@ -69,33 +69,32 @@ hummock+s3://{{ .Values.risingwave.stateStore.s3 }}
 {{- end }}
 
 {{/*
-Cluster envs.
+Create extra env
 */}}
-{{- define "risingwave-cluster.envs" }}
-- name: RW_STATE_STORE
-  value: hummock+s3://{{ .Values.risingwave.stateStore.s3.bucket }}
-- name: AWS_REGION
-  value: {{ .Values.risingwave.stateStore.s3.region }}
+{{- define "risingwawve-cluster.extra-envs" }}
+{
+"RW_STATE_STORE": "hummock+s3://{{ .Values.risingwave.stateStore.s3.bucket }}",
+"AWS_REGION": "{{ .Values.risingwave.stateStore.s3.region }}",
 {{- if eq .Values.risingwave.stateStore.s3.authentication.serviceAccountName "" }}
-- name: AWS_ACCESS_KEY_ID
-  value: {{ .Values.risingwave.stateStore.s3.authentication.accessKey }}
-- name: AWS_SECRET_ACCESS_KEY
-  value: {{ .Values.risingwave.stateStore.s3.authentication.secretAccessKey }}
+"AWS_ACCESS_KEY_ID": "{{ .Values.risingwave.stateStore.s3.authentication.accessKey }}",
+"AWS_SECRET_ACCESS_KEY": "{{ .Values.risingwave.stateStore.s3.authentication.secretAccessKey }}",
 {{- end }}
-- name: RW_DATA_DIRECTORY
-  value: {{ .Values.risingwave.stateStore.dataDirectory }}
+"RW_DATA_DIRECTORY": "{{ .Values.risingwave.stateStore.dataDirectory }}",
 {{- if .Values.risingwave.stateStore.s3.endpoint }}
-- name: RW_S3_ENDPOINT
-  value: {{ .Values.risingwave.stateStore.s3.endpoint }}
+"RW_S3_ENDPOINT": "{{ .Values.risingwave.stateStore.s3.endpoint }}",
 {{- end }}
 {{- if .Values.risingwave.metaStore.etcd.authentication.enabled }}
-- name: RW_ETCD_USERNAME
-  value: {{ .Values.risingwave.metaStore.etcd.authentication.username }}
-- name: RW_ETCD_PASSWORD
-  value: {{ .Values.risingwave.metaStore.etcd.authentication.password }}
+"RW_ETCD_USERNAME": "{{ .Values.risingwave.metaStore.etcd.authentication.username }}",
+"RW_ETCD_PASSWORD": "{{ .Values.risingwave.metaStore.etcd.authentication.password }}",
 {{- end }}
-- name: RW_ETCD_ENDPOINTS
-  value: {{ .Values.risingwave.metaStore.etcd.endpoints }}
-- name: RW_ETCD_AUTH
-  value: {{ .Values.risingwave.metaStore.etcd.authentication.enabled}}
+"RW_ETCD_ENDPOINTS": "{{ .Values.risingwave.metaStore.etcd.endpoints }}",
+"RW_ETCD_AUTH": "{{ .Values.risingwave.metaStore.etcd.authentication.enabled}}"
+}
+{{- end }}
+
+{{/*
+Create the hummock option
+*/}}
+{{- define "risingwave-cluster.annotations.extra-envs" }}
+"kubeblocks.io/extra-env": {{ include "risingwawve-cluster.extra-envs" . | nospace  | quote }}
 {{- end }}
