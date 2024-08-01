@@ -11,17 +11,3 @@ spec:
     components:
     - name: gbase-ha
       compDef: {{ include "gbase.componentDefName" . }}-ha
-  # distribution mode currently non-functional
-  - name: distribution
-    components:
-    - name: gbase-datanode
-      compDef: {{ include "gbase.componentDefName" . }}-datanode
-    - name: gbase-gha-server
-      compDef:  {{ include "gbase.componentDefName" . }}-gha-server
-    - name: gbase-gtm
-      compDef:  {{ include "gbase.componentDefName" . }}-gtm
-    - name: gbase-dcs
-      compDef:  {{ include "gbase.componentDefName" . }}-dcs
-    - name: gbase-coord
-      compDef: {{ include "gbase.componentDefName" . }}-coord
-

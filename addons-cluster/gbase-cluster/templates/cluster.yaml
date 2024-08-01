@@ -9,17 +9,6 @@ spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
   clusterDefinitionRef: gbase
-  {{- if eq .Values.mode "HA" }}
   topology: HA_mode
   componentSpecs:
     {{- include "gbase-cluster.HA.specs" . | indent 4 }}
-  {{- else }}
-  topology: distribution
-  shardingSpecs:
-    {{ include "gbase-cluster.datanode.shard.specs" . | indent 4  }}
-  componentSpecs:
-    {{ include "gbase-cluster.ghaServer.specs" . | indent 4 }}
-    {{ include "gbase-cluster.dcs.specs" . | indent 4 }}
-    {{ include "gbase-cluster.gtm.specs" . | indent 4 }}
-    {{ include "gbase-cluster.coord.specs" . | indent 4 }}
-  {{- end }}

@@ -2,8 +2,8 @@
 version: latest
 storageClassName: ""
 
-## @param mode gbase cluster topology mode, distribution, HA
-##
+## @param mode gbase cluster topology mode, distribution or HA. 
+## distribution now is no functional
 mode: HA
 
 sshKeySecret: gbase-ssh-rsa-secret
@@ -20,56 +20,3 @@ replication:
       cpu: "1"
       memory: "4Gi"
   dataStorage: "20Gi"
-
-distribution:
-  datanode: 
-    shardCount: 1
-    replicas: 3
-    resources:
-      requests:
-        cpu: "1000m"
-        memory: "2Gi"
-      limits:
-        cpu: "1"
-        memory: "2Gi"
-    dataStorage: "20Gi"
-  gtm:
-    replicas: 2
-    resources:
-      requests:
-        cpu: "1000m"
-        memory: "2Gi"
-      limits:
-        cpu: "1"
-        memory: "2Gi"
-    dataStorage: "20Gi"
-  dcs:
-    replicas: 3
-    resources:
-      requests:
-        cpu: "1000m"
-        memory: "2Gi"
-      limits:
-        cpu: "1"
-        memory: "2Gi"
-    dataStorage: "20Gi"
-  gha_server:
-    replicas: 1
-    resources:
-      requests:
-        cpu: "1000m"
-        memory: "2Gi"
-      limits:
-        cpu: "1"
-        memory: "2Gi"
-    dataStorage: "20Gi"
-  coordinator:
-    replicas: 2
-    resources:
-      requests:
-        cpu: "1000m"
-        memory: "2Gi"
-      limits:
-        cpu: "1"
-        memory: "2Gi"
-    dataStorage: "20Gi"
