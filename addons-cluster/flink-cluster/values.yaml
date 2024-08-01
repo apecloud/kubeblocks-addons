@@ -1,6 +1,5 @@
 terminationPolicy: Delete
 
-clusterVersionOverride: ""
 nameOverride: ""
 fullnameOverride: ""
 
