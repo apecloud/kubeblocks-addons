@@ -2,40 +2,9 @@
 
 source "./test_utils.sh"
 
-## TODO: We should not redefine the function here.
+convert_tpl_to_bash "_libpods.tpl" "libpods.sh"
 
-getPodListFromEnv() {
-  local envName="${1:-KB_POD_LIST}"
-
-  # Check if the environment variable exists
-  if [[ -z "${!envName}" ]]; then
-    echo "failed to get pod list cause environment variable '$envName' does not exist" >&2
-    return 1
-  fi
-
-  local podListStr="${!envName}"
-  local podList=()
-
-  IFS=',' read -ra podList <<< "$podListStr"
-
-  echo "${podList[@]}"
-}
-
-minLexicographicalOrderPod() {
-  local podListStr="${1:-${KB_POD_LIST}}"
-  local podList=()
-
-  IFS=',' read -ra podList <<< "$podListStr"
-
-  local minimumPod="${podList[0]}"
-  for pod in "${podList[@]}"; do
-    if [[ "$pod" < "$minimumPod" ]]; then
-      minimumPod="$pod"
-    fi
-  done
-
-  echo "$minimumPod"
-}
+source "./libpods.sh"
 
 # Tests defined below
 
@@ -90,3 +59,6 @@ run_all_tests() {
 
 # main run all tests
 run_all_tests
+
+# cleanup
+rm -f "libpods.sh"

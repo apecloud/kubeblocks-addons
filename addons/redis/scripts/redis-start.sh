@@ -6,7 +6,6 @@ source /scripts/common.sh
 
 declare -g primary
 declare -g primary_port
-declare -g default_initialize_pod_ordinal
 declare -g headless_postfix="headless"
 
 extract_ordinal_from_object_name() {

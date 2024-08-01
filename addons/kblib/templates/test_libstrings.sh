@@ -2,120 +2,11 @@
 
 source "./test_utils.sh"
 
-## TODO: We should not redefine the function here.
+convert_tpl_to_bash "_libstrings.tpl" "libstrings.sh"
 
-split() {
-  local string="$1"
-  local separator="${2:-,}"
-  local array=()
+source "./libstrings.sh"
 
-  IFS="$separator" read -ra array <<< "$string"
-
-  echo "${array[@]}"
-}
-
-contains() {
-  local string="$1"
-  local substring="$2"
-
-  if [[ "$string" == *"$substring"* ]]; then
-    return 0
-  else
-    return 1
-  fi
-}
-
-hasPrefix() {
-  local string="$1"
-  local prefix="$2"
-
-  if [[ "$string" == "$prefix"* ]]; then
-    return 0
-  else
-    return 1
-  fi
-}
-
-hasSuffix() {
-  local string="$1"
-  local suffix="$2"
-
-  if [[ "$string" == *"$suffix" ]]; then
-    return 0
-  else
-    return 1
-  fi
-}
-
-replace() {
-  local string="$1"
-  local old="$2"
-  local new="$3"
-  local n=$4
-
-  if [[ -z "$old" ]]; then
-    echo "$string"
-    return
-  fi
-
-  local count=0
-  local result=""
-
-  while [[ "$string" == *"$old"* && (n -lt 0 || count -lt n) ]]; do
-    local index=${string%%$old*}
-    result+="${index}${new}"
-    string="${string#*$old}"
-    ((count++))
-  done
-
-  result+="$string"
-  echo "$result"
-}
-
-replaceAll() {
-  local string="$1"
-  local old="$2"
-  local new="$3"
-
-  if [[ -z "$old" ]]; then
-    echo "$string"
-    return
-  fi
-
-  echo "${string//$old/$new}"
-}
-
-trim() {
-  local string="$1"
-  local cutset="$2"
-
-  string="${string#"${string%%[^$cutset]*}"}"
-  string="${string%"${string##*[^$cutset]}"}"
-
-  echo "$string"
-}
-
-trimPrefix() {
-  local string="$1"
-  local prefix="$2"
-
-  if [[ "$string" == "$prefix"* ]]; then
-    string="${string#"$prefix"}"
-  fi
-
-  echo "$string"
-}
-
-trimSuffix() {
-  local string="$1"
-  local suffix="$2"
-
-  if [[ "$string" == *"$suffix" ]]; then
-    string="${string%"$suffix"}"
-  fi
-
-  echo "$string"
-}
+# test cases
 
 test_split() {
   local test_case=$1
@@ -229,3 +120,6 @@ run_all_tests() {
 
 # main run all tests
 run_all_tests
+
+# clean up
+rm -f "libstrings.sh"

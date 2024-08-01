@@ -1,5 +1,17 @@
 #!/bin/bash
 
+convert_tpl_to_bash() {
+  local input_file="$1"
+  local output_file="$2"
+
+  sed -e '/^{{\/\*$/,/^\*\/}}$/d' \
+      -e '/^{{-.*}}/d' \
+      -e 's/{{- define ".*" }}//' \
+      -e 's/{{- end }}//' \
+      "$input_file" > "$output_file"
+  echo "Converted $input_file to $output_file successfully"
+}
+
 assert_equal() {
   local test_case=$3
   if [[ "$1" == "$2" ]]; then

@@ -2,38 +2,9 @@
 
 source "./test_utils.sh"
 
-## TODO: We should not redefine the function here.
+convert_tpl_to_bash "_libenvs.tpl" "libenvs.sh"
 
-envExist() {
-  local envName="$1"
-
-  if [[ -z "${!envName}" ]]; then
-    echo "false, $envName does not exist"
-    return 1
-  fi
-
-  echo "true, $envName exists"
-  return 0
-}
-
-envsExist() {
-  local envList=("$@")
-  local missingEnvs=()
-
-  for env in "${envList[@]}"; do
-    if [[ -z "${!env}" ]]; then
-      missingEnvs+=("$env")
-    fi
-  done
-
-  if [[ ${#missingEnvs[@]} -eq 0 ]]; then
-    echo "true, all environment variables exist"
-    return 0
-  else
-    echo "false, the following environment variables do not exist: ${missingEnvs[*]}"
-    return 1
-  fi
-}
+source "./libenvs.sh"
 
 # Tests defined below
 
@@ -76,3 +47,6 @@ run_all_tests() {
 
 # main run all tests
 run_all_tests
+
+# clean up
+rm -f "libenvs.sh"
