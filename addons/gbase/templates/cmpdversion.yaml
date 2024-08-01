@@ -23,7 +23,7 @@ spec:
       - {{ include "gbase.componentDefName" . }}-dcs
       - {{ include "gbase.componentDefName" . }}-datanode
       - {{ include "gbase.componentDefName" . }}-coordinator
-      - {{ include "gbase.componentDefName" . }}-single
+      - {{ include "gbase.componentDefName" . }}-ha
   - releases: [gbase-ps-5.0.0]
     compDefs: 
-      - {{ include "gbase.componentDefName" . }}-single
+      - {{ include "gbase.componentDefName" . }}-ha

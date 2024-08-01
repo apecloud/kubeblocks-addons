@@ -1,0 +1,49 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "gbase.componentDefName" . }}-datanode
+  labels:
+    {{- include "gbase.labels" . | nindent 4 }}
+spec:
+  description: gabse 8c datanode 
+  {{ include "gbase.distribution.cmpd.spec" . | nindent 2}}
+---
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "gbase.componentDefName" . }}-coord
+  labels:
+    {{- include "gbase.labels" . | nindent 4 }}
+spec:
+  description: gabse 8c coordinator node
+  {{ include "gbase.distribution.cmpd.spec" . | nindent 2}}
+---
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "gbase.componentDefName" . }}-dcs
+  labels:
+    {{- include "gbase.labels" . | nindent 4 }}
+spec:
+  description: gabse 8c dcs node
+  {{ include "gbase.distribution.cmpd.spec" . | nindent 2}}
+---
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "gbase.componentDefName" . }}-gha-server
+  labels:
+    {{- include "gbase.labels" . | nindent 4 }}
+spec:
+  description: gabse 8c gha-server node
+  {{ include "gbase.distribution.cmpd.spec" . | nindent 2}}
+---
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "gbase.componentDefName" . }}-gtm
+  labels:
+    {{- include "gbase.labels" . | nindent 4 }}
+spec:
+  description: gabse 8c gtm node
+  {{ include "gbase.distribution.cmpd.spec" . | nindent 2}}

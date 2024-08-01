@@ -1,12 +1,12 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "gbase.componentDefName" . }}-single
+  name: {{ include "gbase.componentDefName" . }}-ha
   labels:
     {{- include "gbase.labels" . | nindent 4 }}
 spec:
   provider: kubeblocks.io
-  description: gabse 8c single node
+  description: gabse 8c HA node
   serviceKind: gbase
   serviceVersion: 5.0.0
   services:
@@ -215,9 +215,6 @@ spec:
           - name: scripts
             mountPath: /scripts     
     volumes:
-    - name: ssh-key
-      secret:
-        secretName: gbase-ssh-rsa-secret
     - name: cgroup
       hostPath:
         path: /sys/fs/cgroup

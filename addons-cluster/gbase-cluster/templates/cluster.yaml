@@ -12,7 +12,7 @@ spec:
   {{- if eq .Values.mode "HA" }}
   topology: HA_mode
   componentSpecs:
-    {{- include "gbase-cluster.single.specs" . | indent 4 }}
+    {{- include "gbase-cluster.HA.specs" . | indent 4 }}
   {{- else }}
   topology: distribution
   shardingSpecs:
@@ -23,6 +23,3 @@ spec:
     {{ include "gbase-cluster.gtm.specs" . | indent 4 }}
     {{ include "gbase-cluster.coord.specs" . | indent 4 }}
   {{- end }}
-  
-
-  

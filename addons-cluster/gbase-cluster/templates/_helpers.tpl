@@ -77,13 +77,21 @@ resources:
     memory: {{ .Component.resources.requests.memory | quote }}
 {{- end -}}
 
+{{- define "gbase-cluster.volumes" }}
+volumes:
+  - name: ssh-key
+    secret:
+      secretName: {{ .Values.sshKeySecret }}
+{{- end -}}
+
 {{/*
 gbase replication mode
 */}}
-{{- define "gbase-cluster.single.specs" }}
+{{- define "gbase-cluster.HA.specs" }}
 {{- $component := .Values.replication }}
-- name: gbase-single
+- name: gbase-ha
   replicas: {{ include "gbase-cluster.replicas" (dict "Values" .Values "Component" $component) }}
+  {{ include "gbase-cluster.volumes" . | indent 2 }}
   {{ include "gbase-cluster.resources" (dict "Values" .Values "Component" $component) | indent 2 }}
   {{ include "gbase-cluster.volumeClaimTemplates" (dict "Values" .Values "Component" $component) | indent 2 }}
 {{- end -}}
@@ -97,6 +105,7 @@ gbase replication mode
     name: gbase-datanode
     componentDef: gbase-datanode
     replicas: {{ include "gbase-cluster.replicas" (dict "Values" .Values "Component" $component) }}
+    {{ include "gbase-cluster.volumes" . | indent 4 }}
     {{ include "gbase-cluster.resources" (dict "Values" .Values "Component" $component) | indent 4 }}
     {{ include "gbase-cluster.volumeClaimTemplates" (dict "Values" .Values "Component" $component) | indent 4 }}
 {{- end -}}
@@ -105,6 +114,7 @@ gbase replication mode
 {{- $component := .Values.distribution.datanode }}
 - name: gbase-datanode
   replicas: {{ include "gbase-cluster.replicas" (dict "Values" .Values "Component" $component) }}
+  {{ include "gbase-cluster.volumes" . | indent 2 }}
   {{ include "gbase-cluster.resources" (dict "Values" .Values "Component" $component) | indent 2 }}
   {{ include "gbase-cluster.volumeClaimTemplates" (dict "Values" .Values "Component" $component) | indent 2 }}
 {{- end -}}
@@ -113,6 +123,7 @@ gbase replication mode
 {{- $component := .Values.distribution.gha_server }}
 - name: gbase-gha-server
   replicas: {{ include "gbase-cluster.replicas" (dict "Values" .Values "Component" $component) }}
+  {{ include "gbase-cluster.volumes" . | indent 2 }}
   {{ include "gbase-cluster.resources" (dict "Values" .Values "Component" $component) | indent 2 }}
   {{ include "gbase-cluster.volumeClaimTemplates" (dict "Values" .Values "Component" $component) | indent 2 }}
 {{- end -}}
@@ -121,6 +132,7 @@ gbase replication mode
 {{- $component := .Values.distribution.dcs }}
 - name: gbase-dcs
   replicas: {{ include "gbase-cluster.replicas" (dict "Values" .Values "Component" $component) }}
+  {{ include "gbase-cluster.volumes" . | indent 2 }}
   {{ include "gbase-cluster.resources" (dict "Values" .Values "Component" $component) | indent 2 }}
   {{ include "gbase-cluster.volumeClaimTemplates" (dict "Values" .Values "Component" $component) | indent 2 }}
 {{- end -}}
@@ -129,6 +141,7 @@ gbase replication mode
 {{- $component := .Values.distribution.gtm }}
 - name: gbase-gtm
   replicas: {{ include "gbase-cluster.replicas" (dict "Values" .Values "Component" $component) }}
+  {{ include "gbase-cluster.volumes" . | indent 2 }}
   {{ include "gbase-cluster.resources" (dict "Values" .Values "Component" $component) | indent 2 }}
   {{ include "gbase-cluster.volumeClaimTemplates" (dict "Values" .Values "Component" $component) | indent 2 }}
 {{- end -}}
@@ -137,6 +150,7 @@ gbase replication mode
 {{- $component := .Values.distribution.coordinator }}
 - name: gbase-coord
   replicas: {{ include "gbase-cluster.replicas" (dict "Values" .Values "Component" $component) }}
+  {{ include "gbase-cluster.volumes" . | indent 2 }}
   {{ include "gbase-cluster.resources" (dict "Values" .Values "Component" $component) | indent 2 }}
   {{ include "gbase-cluster.volumeClaimTemplates" (dict "Values" .Values "Component" $component) | indent 2 }}
 {{- end -}}

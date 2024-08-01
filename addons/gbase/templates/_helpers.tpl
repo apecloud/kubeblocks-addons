@@ -89,3 +89,54 @@ Backup Tool image
 {{- define "gbase.bakcupToolImage" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.gbase.repository }}:{{ .Values.image.gbase.tag }} 
 {{- end }}
+
+
+{{/*
+distribution node cmpd spec template 
+*/}}
+{{- define "gbase.distribution.cmpd.spec" -}}
+provider: kubeblocks.io
+serviceKind: gbase
+serviceVersion: 5.0.0
+configs:
+  - name: gbase-config
+    templateRef: {{ include "gbase.cmConfigName" . }}
+    namespace: {{ .Release.Namespace }}
+    volumeName: gbase-config
+    defaultMode: 0444
+scripts:
+  - name: gbase-scripts
+    templateRef: {{ include "gbase.cmScriptsName" . }}
+    namespace: {{ .Release.Namespace }}
+    volumeName: scripts
+    defaultMode: 0555 
+updateStrategy: Parallel
+podManagementPolicy: Parallel
+{{ include "gbase.distribution.cmpd.runtime" . }}
+{{- end }}
+
+
+{{- define "gbase.distribution.cmpd.runtime" -}}
+runtime:
+  containers:
+    - name: gbase
+      imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+      command: ["/usr/sbin/init"]
+      lifecycle:
+        postStart:
+          exec:
+            command: ["/scripts/start_distribution.sh"]
+      securityContext:
+        privileged: true
+        runAsUser: 0
+      volumeMounts:
+        - mountPath: /config
+          name: gbase-config
+        - mountPath: /data
+          name: data
+        - name: scripts
+          mountPath: /scripts
+        - name: ssh-key
+          mountPath: /ssh-key
+          readOnly: true
+{{- end }}

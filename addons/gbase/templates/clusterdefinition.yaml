@@ -9,8 +9,8 @@ spec:
   - name: HA_mode
     default: true
     components:
-    - name: gbase-single
-      compDef: {{ include "gbase.componentDefName" . }}-single
+    - name: gbase-ha
+      compDef: {{ include "gbase.componentDefName" . }}-ha
   # distribution mode currently non-functional
   - name: distribution
     components:
