@@ -67,24 +67,12 @@ raftGroup mode: max(replicas, 3)
 {{- define "apecloud-mysql-cluster.topology" }}
 {{- if and (eq .Values.mode "raftGroup") .Values.proxyEnabled }}
   {{- if .Values.localEtcdEnabled }}
-    {{- if .Values.auditLogEnabled }}
-      {{- "apecloud-mysql-audit-proxy-etcd" }}
-    {{- else }}
-      {{- "apecloud-mysql-proxy-etcd" }}
-    {{- end }}
+    {{- "apecloud-mysql-proxy-etcd" }}
   {{- else }}
-    {{- if .Values.auditLogEnabled }}
-      {{- "apecloud-mysql-audit-with-proxy" }}
-    {{- else }}
-      {{- "apecloud-mysql-with-proxy" }}
-    {{- end }}
+    {{- "apecloud-mysql-proxy" }}
   {{- end }}
 {{- else }}
-  {{- if .Values.auditLogEnabled}}
-    {{- "apecloud-mysql-auditlog" }}
-  {{- else }}
-    {{- "apecloud-mysql" }}
-  {{- end }}
+  {{- "apecloud-mysql" }}
 {{- end -}}
 {{- end -}}
 

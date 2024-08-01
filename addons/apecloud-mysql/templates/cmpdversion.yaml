@@ -9,12 +9,6 @@ spec:
   - name: apecloud-mysql-8.0.30
     serviceVersion: "8.0.30"
     images:
-      mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.30-5.beta3.20240330.g94d1caf.15
-      mysql-exporter: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
-      vtablet: {{ .Values.wesqlscale.image.registry | default "docker.io" }}/{{ .Values.wesqlscale.image.repository }}:0.2.7
-  - name: apecloud-mysql-auditlog-8.0.30
-    serviceVersion: "8.0.30"
-    images:
       init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
       mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.30-5.beta3.20240330.g94d1caf.15
       mysql-exporter: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
@@ -22,8 +16,6 @@ spec:
   compatibilityRules:
   - releases: [apecloud-mysql-8.0.30]
     compDefs: [apecloud-mysql]
-  - releases: [apecloud-mysql-auditlog-8.0.30]
-    compDefs: [apecloud-mysql-auditlog]
 ---
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentVersion
