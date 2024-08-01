@@ -4,8 +4,6 @@ metadata:
   name: {{ include "clustername" . }}
   labels: {{ include "opensearch-cluster.labels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: opensearch  # ref clusterdefinition.name
-  clusterVersionRef: opensearch-{{ default .Chart.AppVersion .Values.clusterVersionOverride }} # ref clusterversion.name
   terminationPolicy: {{ .Values.terminationPolicy }}
   affinity:
     {{- with .Values.topologyKeys }}
@@ -15,8 +13,8 @@ spec:
   tolerations: {{ . | toYaml | nindent 4 }}
   {{- end }}
   componentSpecs:
-    - name: opensearch # user-defined
-      componentDefRef: opensearch # ref clusterdefinition componentDefs.name
+    - name: opensearch
+      componentDef: opensearch
       monitor: {{ .Values.monitor.enabled | default false }}
       replicas: {{ .Values.replicaCount | default 3 }}
       {{- with  .Values.resources }}
@@ -30,7 +28,7 @@ spec:
       {{- end }}
       {{- if .Values.persistence.enabled }}
       volumeClaimTemplates:
-        - name: data # ref clusterdefinition components.containers.volumeMounts.name
+        - name: data
           spec:
             storageClassName: {{ .Values.persistence.data.storageClassName }}
             accessModes:
@@ -39,8 +37,8 @@ spec:
               requests:
                 storage: {{ .Values.persistence.data.size }}
       {{- end }}
-    - name: dashboard # user-defined
-      componentDefRef: dashboard # ref clusterdefinition componentDefs.name
+    - name: dashboard
+      componentDef: opensearch-dashboard
       replicas: {{ .Values.dashboard.replicaCount | default 1 }}
       {{- with  .Values.dashboard.resources }}
       resources:
