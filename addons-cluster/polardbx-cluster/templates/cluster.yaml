@@ -5,12 +5,10 @@ metadata:
   labels:
     {{ include "polardbx.labels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: polardbx
-  clusterVersionRef: polardbx-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
   terminationPolicy: {{ .Values.polardbx.terminationPolicy }}
   componentSpecs:
     - name: gms
-      componentDefRef: gms
+      componentDef: polardbx-gms
       replicas: {{ .Values.gms.replicas }}
       {{- with  .Values.gms.resources }}
       resources:
@@ -27,7 +25,7 @@ spec:
       {{- end }}
       {{- if .Values.gms.persistence.enabled }}
       volumeClaimTemplates:
-        - name: data   # ref clusterdefinition components.containers.volumeMounts.name
+        - name: data
           spec:
             accessModes:
               - ReadWriteOnce
@@ -38,7 +36,7 @@ spec:
     {{- $i := 0 }}
     {{- range .Values.dn }}
     - name: dn-{{ $i }}
-      componentDefRef: dn
+      componentDef: polardbx-dn
       replicas: {{ .replicas }}
       {{- with  .resources }}
       resources:
@@ -55,7 +53,7 @@ spec:
       {{- end }}
       {{- if .persistence.enabled }}
       volumeClaimTemplates:
-        - name: data   # ref clusterdefinition components.containers.volumeMounts.name
+        - name: data
           spec:
             accessModes:
               - ReadWriteOnce
@@ -66,7 +64,7 @@ spec:
       {{- $i = add1 $i }}
     {{- end }}
     - name: cn
-      componentDefRef: cn
+      componentDef: polardbx-cn
       replicas: {{ .Values.cn.replicas }}
       {{- with  .Values.cn.resources }}
       resources:
@@ -82,7 +80,7 @@ spec:
         {{- end }}
       {{- end }}
     - name: cdc
-      componentDefRef: cdc
+      componentDef: polardbx-cdc
       replicas: {{ .Values.cdc.replicas }}
       {{- with  .Values.cn.resources }}
       resources:
