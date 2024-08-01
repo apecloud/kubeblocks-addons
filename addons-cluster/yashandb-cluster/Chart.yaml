@@ -6,6 +6,7 @@ type: application
 version: 1.0.0-alpha.0
 
 description: YashanDB is an independent-developed next generation analytic database
+
 dependencies:
   - name: kblib
     version: 0.1.0
