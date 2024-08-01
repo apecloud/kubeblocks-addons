@@ -1,8 +1,7 @@
 {{- include "kblib.clusterCommon" . }}
-  clusterDefinitionRef: orioledb
   componentSpecs:
     - name: orioledb
-      componentDefRef: orioledb
+      componentDef: orioledb
       serviceRefs:
       - name: etcdService
         cluster: {{ .Values.etcd.cluster | default "etcd" }}
