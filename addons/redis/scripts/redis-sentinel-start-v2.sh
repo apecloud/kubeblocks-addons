@@ -66,15 +66,17 @@ recover_registered_redis_servers() {
         IFS="$old_ifs"
 
         output=""
-        set +e
         for sentinel_pod_fqdn in "${sentinel_pod_fqdn_list[@]}"; do
-            temp_output=$(redis-cli -h "$sentinel_pod_fqdn" -p 26379 -a "$SENTINEL_PASSWORD" sentinel masters 2>/dev/null)
-            if [[ -n "$temp_output" ]]; then
-                output="$temp_output"
-                break
-            fi
+          if [ -n "$SENTINEL_PASSWORD" ]; then
+            temp_output=$(redis-cli -h "$sentinel_pod_fqdn" -p 26379 -a "$SENTINEL_PASSWORD" sentinel masters 2>/dev/null || true)
+          else
+            temp_output=$(redis-cli -h "$sentinel_pod_fqdn" -p 26379 sentinel masters 2>/dev/null || true)
+          fi
+          if [[ -n "$temp_output" ]]; then
+              output="$temp_output"
+              break
+          fi
         done
-        set -e
     else
         echo "SENTINEL_POD_FQDN_LIST environment variable is not set or empty."
         return 1
@@ -84,6 +86,10 @@ recover_registered_redis_servers() {
         master_name=""
         master_ip=""
         master_port=""
+        master_down_after_milliseconds=""
+        master_quorum=""
+        master_failover_timeout=""
+        master_parallel_syncs=""
         while read -r line; do
             case "$line" in
                 name)
@@ -109,39 +115,43 @@ recover_registered_redis_servers() {
                     ;;
             esac
 
-                if [[ -n "$master_name" && -n "$master_ip" && -n "$master_port" && \
-                      -n "$master_down_after_milliseconds" && -n "$master_failover_timeout" && \
-                      -n "$master_parallel_syncs" && -n "$master_quorum" ]]; then
-                echo "Master Name: $master_name, IP: $master_ip, Port: $master_port, \
-                down-after-milliseconds: $master_down_after_milliseconds, \
-                failover-timeout: $master_failover_timeout, \
-                parallel-syncs: $master_parallel_syncs, quorum: $master_quorum"
+            if [[ -n "$master_name" && -n "$master_ip" && -n "$master_port" && \
+                  -n "$master_down_after_milliseconds" && -n "$master_failover_timeout" && \
+                  -n "$master_parallel_syncs" && -n "$master_quorum" ]]; then
+            echo "Master Name: $master_name, IP: $master_ip, Port: $master_port, \
+            down-after-milliseconds: $master_down_after_milliseconds, \
+            failover-timeout: $master_failover_timeout, \
+            parallel-syncs: $master_parallel_syncs, quorum: $master_quorum"
 
-                echo "sentinel monitor $master_name $master_ip $master_port $master_quorum" >> /data/sentinel/redis-sentinel.conf
-                echo "sentinel down-after-milliseconds $master_name $master_down_after_milliseconds" >> /data/sentinel/redis-sentinel.conf
-                echo "sentinel failover-timeout $master_name $master_failover_timeout" >> /data/sentinel/redis-sentinel.conf
-                echo "sentinel parallel-syncs $master_name $master_parallel_syncs" >> /data/sentinel/redis-sentinel.conf
-                echo "sentinel auth-user $master_name $REDIS_SENTINEL_USER" >> /data/sentinel/redis-sentinel.conf
-                cluster_name="$KB_CLUSTER_NAME"
-                comp_name="${master_name#"$cluster_name"-}"
-                comp_name_upper=$(echo "$comp_name" | tr '[:lower:]' '[:upper:]')
-                set +x
-                if [[ -v REDIS_SENTINEL_PASSWORD ]]; then
-                    var_name="REDIS_SENTINEL_PASSWORD_${comp_name_upper}"
-                    if [[ -n "${!var_name}" ]]; then
-                      auth_pass="${!var_name}"
-                    else
-                      auth_pass="$REDIS_SENTINEL_PASSWORD"
-                    fi
-                    echo "sentinel auth-pass $master_name $auth_pass" >> /data/sentinel/redis-sentinel.conf
+            echo "sentinel monitor $master_name $master_ip $master_port $master_quorum" >> /data/sentinel/redis-sentinel.conf
+            echo "sentinel down-after-milliseconds $master_name $master_down_after_milliseconds" >> /data/sentinel/redis-sentinel.conf
+            echo "sentinel failover-timeout $master_name $master_failover_timeout" >> /data/sentinel/redis-sentinel.conf
+            echo "sentinel parallel-syncs $master_name $master_parallel_syncs" >> /data/sentinel/redis-sentinel.conf
+            echo "sentinel auth-user $master_name $REDIS_SENTINEL_USER" >> /data/sentinel/redis-sentinel.conf
+            cluster_name="$KB_CLUSTER_NAME"
+            comp_name="${master_name#"$cluster_name"-}"
+            comp_name_upper=$(echo "$comp_name" | tr '[:lower:]' '[:upper:]')
+            set +x
+            if [[ -v REDIS_SENTINEL_PASSWORD ]]; then
+                var_name="REDIS_SENTINEL_PASSWORD_${comp_name_upper}"
+                if [[ -n "${!var_name}" ]]; then
+                  auth_pass="${!var_name}"
                 else
-                    echo "REDIS_SENTINEL_PASSWORD is not set"
-                    return 1
+                  auth_pass="$REDIS_SENTINEL_PASSWORD"
                 fi
-                set -x
-                master_name=""
-                master_ip=""
-                master_port=""
+                echo "sentinel auth-pass $master_name $auth_pass" >> /data/sentinel/redis-sentinel.conf
+            else
+                echo "REDIS_SENTINEL_PASSWORD is not set"
+                return 1
+            fi
+            set -x
+            master_name=""
+            master_ip=""
+            master_port=""
+            master_down_after_milliseconds=""
+            master_quorum=""
+            master_failover_timeout=""
+            master_parallel_syncs=""
             fi
         done <<< "$output"
     else

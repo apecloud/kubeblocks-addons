@@ -2,6 +2,7 @@
 set -ex
 
 declare -g redis_default_service_port=26379
+declare -A master_slave_counts
 
 offline_sentinel() {
 
@@ -38,13 +39,42 @@ offline_sentinel() {
       else
         redis-cli -h "$host" -p "$port" sentinel reset "*"
       fi
-
-      if [ $? -eq 0 ]; then
-        echo "Successfully issued reset command on $host:$port"
+      if [ -n "$SENTINEL_PASSWORD" ]; then
+        output=$(redis-cli -h "$host" -p "$port" -a "$SENTINEL_PASSWORD" sentinel masters)
       else
-        echo "Failed to issue reset command on $host:$port"
+        output=$(redis-cli -h "$host" -p "$port" sentinel masters)
+      fi
+      if [[ -n "$output" ]]; then
+          master_name=""
+          num_slaves=""
+          while read -r line; do
+              case "$line" in
+                  name)
+                      read -r master_name
+                      ;;
+                  num-slaves)
+                      read -r num_slaves
+                      ;;
+              esac
+              if [[ -n "$master_name" && -n "$num_slaves" ]]; then
+                echo "Master Name: $master_name, num-slaves: $num_slaves"
+                if [[ -z "${master_slave_counts[$master_name]}" ]]; then
+                  master_slave_counts[$master_name]=$num_slaves
+                else
+                  if [[ "${master_slave_counts[$master_name]}" -ne "$num_slaves" ]]; then
+                    echo "The number of slaves does not match the previous count; reset failed."
+                    exit 1
+                  fi
+                fi
+              master_name=""
+              num_slaves=""
+              fi
+          done <<< "$output"
+      else
+          echo "unable to connect to Redis Sentinel, or no master nodes found."
       fi
     fi
   done
+  echo "reset successful"
 }
 offline_sentinel
