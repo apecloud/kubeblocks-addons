@@ -1,0 +1,54 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: flink-jobmanager-{{ .Chart.Version }}
+  labels:
+    {{- include "flink.labels" . | nindent 4 }}
+spec:
+  provider: ApeCloud
+  description: {{ .Chart.Description }}
+  serviceKind: {{ .Chart.Name }}
+  serviceVersion: {{ .Chart.AppVersion }}
+  runtime:
+    {{- with .Values.taskmanager }}
+    securityContext:
+      {{- toYaml .podSecurityContext | nindent 10 }}
+    {{- end }}
+    containers:
+      - name: taskmanager-main-container
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.taskmanager.repository }}:{{ .Values.image.taskmanager.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+          - /scripts/setup.sh
+        args:
+          - taskmanager
+        ports:
+          - name: data
+            containerPort: 6121
+          - name: rpc
+            containerPort: 6122
+            protocol: TCP
+        env:
+          - name: TASK_MANAGER_PROCESS_SIZE
+            valueFrom:
+              resourceFieldRef:
+                containerName: taskmanager-main-container
+                resource: limits.memory
+        {{- with .Values.taskmanager }}
+          - name: TASK_MANAGER_NUMBER_OF_TASK_SLOTS
+            value: {{ .numberOfTaskSlots | quote }}
+        {{- end }}
+        {{- with .Values.taskmanager }}
+        securityContext:
+          {{- toYaml .containerSecurityContext | nindent 14 }}
+        {{- end }}
+        volumeMounts:
+          - name: scripts
+            mountPath: /scripts
+            readOnly: true
+  scripts:
+    - name: flink-scripts
+      templateRef: flink-scripts
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 493
