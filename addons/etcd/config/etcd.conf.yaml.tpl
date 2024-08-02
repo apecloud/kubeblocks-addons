@@ -80,9 +80,8 @@ discovery-srv:
     {{- end -}}
   {{- end -}}
 
-  {{- $PEER_ENDPOINT := getEnvByName ( index $.podSpec.containers 0 ) "PEER_ENDPOINT" -}}
-  {{- if ne $PEER_ENDPOINT "" -}}
-    {{- $endpoints := splitList "," $PEER_ENDPOINT -}}
+  {{- if index . "PEER_ENDPOINT" -}}
+    {{- $endpoints := splitList "," .PEER_ENDPOINT -}}
     {{- range $idx, $endpoint := $endpoints -}}
       {{- if $idx -}},{{- end -}}
       {{- $hostname := index (splitList ":" $endpoint) 0 -}}

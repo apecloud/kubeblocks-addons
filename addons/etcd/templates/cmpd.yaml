@@ -24,7 +24,6 @@ spec:
             {{- .Files.Get "scripts/inject-shell.sh" | nindent 14 }}
     containers:
       - name: etcd
-        image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch15 }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         ports:
           - containerPort: 2379
@@ -81,11 +80,6 @@ spec:
           optional: true
           host: Required
           loadBalancer: Required
-    - name: POD_NAME_LIST
-      valueFrom:
-        componentVarRef:
-          optional: false
-          instanceNames: Required
   volumes:
     - name: data
       needSnapshot: true

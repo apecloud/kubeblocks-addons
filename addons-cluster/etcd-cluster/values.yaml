@@ -5,11 +5,8 @@ fullnameOverride: ""
 ##
 terminationPolicy: Delete
 
-## Monitoring configurations
-monitor:
-  ## @param monitor.enabled if `true`, enable Cluster monitor capabilities
-  ##
-  enabled: true
+## @param disableExporter Disable Monitoring exporter
+disableExporter: false
 
 ## @param tolerations define global Tolerations for the cluster all pod's assignment
 ## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
@@ -34,10 +31,15 @@ service:
   name:
   ## @param service.type etcd service type, valid options are ExternalName, ClusterIP, NodePort, and LoadBalancer.
   ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
-  ##
+  ## when service.type is set to LoadBalancer, TLS will fail due to CA wildcard mismatch
   type: ClusterIP
   port: 2379
   role: leader
+  ## @param nodePort is optional, if service type is NodePort, by default and for convenience, 
+  ## the Kubernetes control plane will allocate a port from a range (default: 30000-32767)
+  nodePort:
+  ## @param annotations is optional, if service type is LoadBalancer, you may need to specify annotations for Cloud Provider
+  annotations: { }
 
 resources: { }
   # We usually recommend not to specify default resources and to leave this as a conscious
@@ -73,9 +75,5 @@ persistence:
     ##
     size: 1Gi
 
+## @param tlsEnable Enable TLS for etcd cluster
 tlsEnable: false
-
-disableExporter: false
-
-# when loadBalancer is set to true, TLS will fail due to CA wildcard mismatch
-loadBalancer: false

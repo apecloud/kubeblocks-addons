@@ -7,30 +7,32 @@ metadata:
 spec:
   terminationPolicy: {{ .Values.terminationPolicy }}
   affinity:
-    {{- with $.Values.topologyKeys }}
+    {{- with .Values.topologyKeys }}
     topologyKeys: {{ . | toYaml | nindent 6 }}
     {{- end }}
-  {{- with $.Values.tolerations }}
+  {{- with .Values.tolerations }}
   tolerations: {{ . | toYaml | nindent 4 }}
   {{- end }}
   componentSpecs:
     - name: etcd
-      {{- if .Values.LoadBalancer }}
+      {{- if eq .Values.service.type  "LoadBalancer" }}
       services:
         - name: peer
           serviceType: LoadBalancer
           podService: true
+          {{- with .Values.service.annotations }}
+          annotations: {{ . | toYaml | nindent 12 }}
+          {{- end }}
       {{- end }}
       componentDef: etcd
       {{- if .Chart.AppVersion }}
       serviceVersion: {{ .Chart.AppVersion }}
       {{- end }}
-      tls: {{ $.Values.tlsEnable }}
-      {{- if $.Values.tlsEnable }}
+      tls: {{ .Values.tlsEnable }}
+      {{- if .Values.tlsEnable }}
       issuer:
         name: KubeBlocks
       {{- end }}
-      monitor: {{ .Values.monitor.enabled }}
       disableExporter: {{ .Values.disableExporter }}
       replicas: {{ .Values.replicas | default "3" }}
       {{- with .Values.resources }}
@@ -57,11 +59,19 @@ spec:
   services:
     - name: {{ .Values.service.name }}
       serviceName: {{ .Values.service.name }}
+      {{- if and (eq .Values.service.type "LoadBalancer") (not (empty .Values.service.annotations)) }}
+      annotations: {{ .Values.service.annotations | toYaml | nindent 8 }}
+      {{- end }}
       spec:
         type: {{ .Values.service.type }}
         ports:
           - port: {{ .Values.service.port }}
             targetPort: 2379
+            {{- if and (eq .Values.service.type "NodePort") (not (empty .Values.service.nodePort)) }}
+            nodePort: {{ .Values.service.nodePort }}
+            {{- end }}
       componentSelector: etcd
+      {{- if ne .Values.service.type "LoadBalancer" }}
       roleSelector: {{ .Values.service.role }}
+      {{- end }}
   {{- end }}
