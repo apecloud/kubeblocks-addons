@@ -65,24 +65,6 @@ mongodb
 {{- end -}}
 
 {{/*
-Define cluster version
-*/}}
-{{- define "mongodb.clusterVersion" -}}
-{{- if eq (len .Values.resourceNamePrefix) 0 -}}
-mongodb-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
-{{- else -}}
-{{- .Values.resourceNamePrefix -}}-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Define cluster version with auditlog
-*/}}
-{{- define "mongodb.clusterVersionAuditLog" -}}
-{{- include "mongodb.clusterVersion" . }}-{{ default "1" .Values.auditlogSubVersion }}
-{{- end -}}
-
-{{/*
 Define component definition name
 */}}
 {{- define "mongodb.componentDefName" -}}

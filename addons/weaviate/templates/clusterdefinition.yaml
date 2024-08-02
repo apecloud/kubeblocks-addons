@@ -41,6 +41,7 @@ spec:
           fsGroup: 1001
         containers:
           - name: weaviate
+            image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:{{ .Values.images.tag | default "latest" }}
             imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
             command:
             - /bin/sh

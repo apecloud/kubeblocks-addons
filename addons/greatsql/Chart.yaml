@@ -5,7 +5,7 @@ description: GreatSQL is a high performance open source relational database mana
 type: application
 
 # This is the version number of the helm chart.
-version: 0.1.0
+version: 1.0.0-alpha.0
 
 appVersion: "GreatSQL8.0.32-25"
 

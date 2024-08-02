@@ -36,6 +36,16 @@ spec:
             - broker
             - init-pulsar-client-config
           volumeName: broker-env
+        # - name: broker-config
+        #   templateRef: {{ include "pulsar.name" . }}2-broker-config-tpl
+        #   namespace: {{ .Release.Namespace }}
+        #   constraintRef: pulsar2-brokers-cc
+        #   volumeName: pulsar-config
+        - name: broker-config
+          templateRef: {{ include "pulsar.name" . }}3-broker-config-tpl
+          namespace: {{ .Release.Namespace }}
+          constraintRef: pulsar3-brokers-cc
+          volumeName: pulsar-config
       scriptSpecs:
         - name: pulsar-scripts
           templateRef: {{ include "pulsar.name" . }}-scripts
@@ -64,6 +74,10 @@ spec:
           runAsGroup: 0
         initContainers:
           - name: init-broker-cluster
+            # image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v2_11_2.broker "root" .) }}"
+            # imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v2_11_2.broker "root" .) }}"
+            image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v3_0_2.broker "root" .) }}"
+            imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v3_0_2.broker "root" .) }}"
             command:
               - /kb-scripts/init-broker.sh
             env:
@@ -83,6 +97,10 @@ spec:
               - name: scripts
                 mountPath: /kb-scripts
           - name: init-sysctl
+            # image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v2_11_2.broker "root" .) }}"
+            # imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v2_11_2.broker "root" .) }}"
+            image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v3_0_2.broker "root" .) }}"
+            imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v3_0_2.broker "root" .) }}"
             command:
               - /kb-scripts/init-broker-sysctl.sh
             securityContext:
@@ -94,6 +112,10 @@ spec:
                 mountPath: /kb-scripts
         containers:
           - name: broker
+            # image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v2_11_2.broker "root" .) }}"
+            # imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v2_11_2.broker "root" .) }}"
+            image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v3_0_2.broker "root" .) }}"
+            imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v3_0_2.broker "root" .) }}"
             securityContext:
               allowPrivilegeEscalation: false
               runAsNonRoot: true
@@ -218,6 +240,16 @@ spec:
             - conf
           injectEnvTo:
             - proxy
+        # - name: proxy-config
+        #   templateRef: {{ include "pulsar.name" . }}2-proxy-config-tpl
+        #   namespace: {{ .Release.Namespace }}
+        #   volumeName: pulsar-proxy-config
+        #   constraintRef: pulsar2-proxy-cc
+        - name: proxy-config
+          templateRef: {{ include "pulsar.name" . }}3-proxy-config-tpl
+          namespace: {{ .Release.Namespace }}
+          volumeName: pulsar-proxy-config
+          constraintRef: pulsar3-proxy-cc
       scriptSpecs:
         - name: pulsar-scripts
           templateRef: {{ include "pulsar.name" . }}-scripts
@@ -240,6 +272,10 @@ spec:
           runAsGroup: 0
         initContainers:
           - name: check-broker
+            # image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v2_11_2.proxy "root" .) }}"
+            # imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v2_11_2.proxy "root" .) }}"
+            image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v3_0_2.proxy "root" .) }}"
+            imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v3_0_2.proxy "root" .) }}"
             command:
               - /kb-scripts/init-proxy.sh
             volumeMounts:
@@ -254,6 +290,10 @@ spec:
             {{- end }}
         containers:
           - name: proxy
+            # image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v2_11_2.proxy "root" .) }}"
+            # imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v2_11_2.proxy "root" .) }}"
+            image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v3_0_2.proxy "root" .) }}"
+            imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v3_0_2.proxy "root" .) }}"
             command:
               - /kb-scripts/start-proxy.sh
             securityContext:
@@ -345,6 +385,16 @@ spec:
           injectEnvTo:
             - init-bookies
             - bookies
+        # - name: bookies-config
+        #   templateRef: {{ include "pulsar.name" . }}2-bookies-config-tpl
+        #   namespace: {{ .Release.Namespace }}
+        #   volumeName: pulsar-bookies-config
+        #   constraintRef: pulsar2-bookies-cc
+        - name: bookies-config
+          templateRef: {{ include "pulsar.name" . }}3-bookies-config-tpl
+          namespace: {{ .Release.Namespace }}
+          volumeName: pulsar-bookies-config
+          constraintRef: pulsar3-bookies-cc
       scriptSpecs:
         - name: pulsar-scripts
           templateRef: {{ include "pulsar.name" . }}-scripts
@@ -354,6 +404,10 @@ spec:
       podSpec:
         initContainers:
           - name: init-bookies
+            # image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v2_11_2.bookie "root" .) }}" 
+            # imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v2_11_2.bookie "root" .) }}"
+            image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v3_0_2.bookie "root" .) }}"
+            imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v3_0_2.bookie "root" .) }}"
             command:
               - /kb-scripts/init-bookies.sh
             env:
@@ -370,6 +424,10 @@ spec:
                 mountPath: /kb-scripts
         containers:
           - name: bookies
+            # image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v2_11_2.bookie "root" .) }}"
+            # imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v2_11_2.bookie "root" .) }}"
+            image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v3_0_2.bookie "root" .) }}"
+            imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v3_0_2.bookie "root" .) }}"
             command:
               - /kb-scripts/start-bookies.sh
             env:
@@ -476,6 +534,10 @@ spec:
           runAsGroup: 0
         initContainers:
           - name: check-bookies
+            # image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v2_11_2.bookie "root" .) }}" 
+            # imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v2_11_2.bookie "root" .) }}"
+            image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v3_0_2.bookie "root" .) }}"
+            imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v3_0_2.bookie "root" .) }}"
             command:
             - /kb-scripts/check-bookies.sh
             env:
@@ -494,6 +556,10 @@ spec:
               runAsUser: 0
         containers:
           - name: bookies-recovery
+            # image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v2_11_2.bookie "root" .) }}" 
+            # imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v2_11_2.bookie "root" .) }}"
+            image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v3_0_2.bookie "root" .) }}"
+            imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v3_0_2.bookie "root" .) }}"
             securityContext:
               allowPrivilegeEscalation: false
               runAsNonRoot: true
@@ -566,6 +632,10 @@ spec:
           runAsUser: 10000
         containers:
           - name: zookeeper
+            # image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v2_11_2.zookeeper "root" .) }}"
+            # imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v2_11_2.zookeeper "root" .) }}"
+            image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v3_0_2.zookeeper "root" .) }}"
+            imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v3_0_2.zookeeper "root" .) }}"
             command:
               - /kb-scripts/start-zookeeper.sh
             env:

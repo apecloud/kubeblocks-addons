@@ -44,7 +44,8 @@ spec:
       podSpec:
         containers:
           - name: tdengine
-            imagePullPolicy: IfNotPresent
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
             ports:
               - name: taosd
                 containerPort: 6030

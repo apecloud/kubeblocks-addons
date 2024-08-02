@@ -2,7 +2,7 @@ apiVersion: v2
 name: nebula-cluster
 description: Nebula Graph Cluster Helm Chart for KubeBlocks.
 type: application
-version: 0.5.1-beta.0
+version: 1.0.0-alpha.0
 appVersion: "v3.5.0"
 maintainers:
   - name: Shanshan Ying

@@ -14,8 +14,6 @@ image:
     repository: apecloud/syncer
     tag: "latest"
 
-clusterVersionOverride: ""
-
 dataMountPath: /postgresql/volume_data
 confMountPath: /postgresql/mount_conf
 

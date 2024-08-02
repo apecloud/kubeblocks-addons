@@ -31,6 +31,8 @@ spec:
       podSpec:
         containers:
           - name: mongos
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
             ports:
               - name: mongos
                 containerPort: 27017
@@ -70,6 +72,8 @@ spec:
       podSpec:
         containers:
           - name: configsvr
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
             ports:
               - name: configsvr
                 containerPort: 27018
@@ -120,6 +124,7 @@ spec:
       podSpec:
         containers:
           - name: shard
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
             ports:
               - name: shard
                 containerPort: 27018
@@ -141,6 +146,8 @@ spec:
                 mountPath: /scripts/replicaset-post-start.sh
                 subPath: replicaset-post-start.sh
           - name: agent
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
             command:
               - /scripts/shard-agent.sh
             volumeMounts:

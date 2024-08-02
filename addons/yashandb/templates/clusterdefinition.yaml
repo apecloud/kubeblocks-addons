@@ -54,7 +54,8 @@ spec:
                 name: data
         containers:
           - name: yashandb-container
-            imagePullPolicy: IfNotPresent
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
             securityContext:
               allowPrivilegeEscalation: false
               runAsUser: 1000
