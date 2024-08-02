@@ -81,7 +81,7 @@ recover_registered_redis_servers() {
         echo "SENTINEL_POD_FQDN_LIST environment variable is not set or empty."
         return 1
     fi
-
+    #TODO:Check if the sentinel has been deleted before, as adding a new sentinel might read the past configuration, leading to conflicts with the current setup.
     if [[ -n "$output" ]]; then
         master_name=""
         master_ip=""
