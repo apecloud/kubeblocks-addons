@@ -9,7 +9,7 @@
 # This chart uses format like {{ .Values.version }} to reference the values in the parent chart.
 #
 
-apiVersion: v1
+apiVersion: v2
 name: kblib
 description: A Library Helm chart used for building the foundation of common utilities for KubeBlocks Addons, including various common script tools, configuration template definitions, etc.
 type: library
