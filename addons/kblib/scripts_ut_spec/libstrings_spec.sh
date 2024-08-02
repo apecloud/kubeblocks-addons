@@ -1,9 +1,9 @@
 #shellcheck shell=bash
 
-source kblib/scripts_ut/utils.sh
+source ./utils.sh
 
-libstrings_tpl_file="kblib/templates/_libstrings.tpl"
-libstrings_file="kblib/scripts_ut/libstrings.sh"
+libstrings_tpl_file="../templates/_libstrings.tpl"
+libstrings_file="./libstrings.sh"
 
 convert_tpl_to_bash $libstrings_tpl_file $libstrings_file
 

@@ -9,5 +9,4 @@ convert_tpl_to_bash() {
       -e 's/{{- define ".*" }}//' \
       -e 's/{{- end }}//' \
       "$input_file" > "$output_file"
-  echo "Converted $input_file to $output_file successfully"
 }

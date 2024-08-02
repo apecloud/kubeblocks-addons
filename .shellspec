@@ -1,0 +1,21 @@
+ # the spec_helper can be used to set shell options for all specfiles, define global functions,check the execution shell, load custom matchers, etc.
+# It is loaded from SHELLSPEC_LOAD_PATH using the --require option.
+--require spec_helper
+
+# by default, all the specfiles named with "*_spec.sh" in the "**/scripts_ut_spec" directory will be executed
+--default-path "**/scripts_ut_spec"
+
+# by default, the execution directory for testing is where the specfile is located
+--execdir @specfile
+
+# By default only shell scripts whose names contain .sh are coverage targeted. If you want to include other files, you need to adjust options with --kcov-options.
+# --kcov-options "--include-path=. --path-strip-level=1"
+# --kcov-options "--include-pattern=.sh"
+# --kcov-options "--exclude-pattern=/.shellspec,/spec/,/coverage/,/report/"
+
+## Example: Include script "myprog" with no extension
+# --kcov-options "--include-pattern=.sh,myprog"
+
+## Example: Only specified files/directories
+# --kcov-options "--include-pattern=myprog,/lib/"
+

@@ -40,6 +40,7 @@ SC_BUILD_DIR := shellcheck-build
 SC_DOWNLOAD_FILE := shellcheck-$(SC_VERSION).$(OS).$(ARCH).tar.xz
 SC_OPTIONS ?= --format=tty --severity=error
 SHELLCHECK_FILE ?=
+SHELLSPEC_LOAD_PATH ?= ./shellspec
 
 .PHONY: help
 help: ##    Display this help.
@@ -80,3 +81,19 @@ ifeq (, $(SHELLCHECK_FILE))
 else
 	@shellcheck $(SC_OPTIONS) $(SHELLCHECK_FILE)
 endif
+
+.PHONY: install-shellspec
+install-shellspec: ## Install shellspec if necessary.
+ifeq (, $(shell which shellspec))
+	@echo "Installing ShellSpec..."
+	@curl -fsSL https://git.io/shellspec | sh -s -- --yes
+	@echo "ShellSpec Successfully installed"
+	@shellspec --version
+else
+	@echo "ShellSpec is detected: "$(shell which shellspec)
+	@shellspec --version
+endif
+
+.PHONY: scripts-test
+scripts-test: install-shellspec ## Run shellspec tests.
+	@shellspec --load-path $(SHELLSPEC_LOAD_PATH)

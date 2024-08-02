@@ -1,9 +1,9 @@
 #shellcheck shell=bash
 
-source kblib/scripts_ut/utils.sh
+source ./utils.sh
 
-libenvs_tpl_file="kblib/templates/_libenvs.tpl"
-libenvs_file="kblib/scripts_ut/libenvs.sh"
+libenvs_tpl_file="../templates/_libenvs.tpl"
+libenvs_file="./libenvs.sh"
 
 convert_tpl_to_bash $libenvs_tpl_file $libenvs_file
 

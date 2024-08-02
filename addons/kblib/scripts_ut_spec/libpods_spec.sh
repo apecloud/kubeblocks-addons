@@ -1,9 +1,9 @@
 #shellcheck shell=bash
 
-source kblib/scripts_ut/utils.sh
+source ./utils.sh
 
-libpods_tpl_file="kblib/templates/_libpods.tpl"
-libpods_file="kblib/scripts_ut/libpods.sh"
+libpods_tpl_file="../templates/_libpods.tpl"
+libpods_file="./libpods.sh"
 
 convert_tpl_to_bash $libpods_tpl_file $libpods_file
 
