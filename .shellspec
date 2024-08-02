@@ -2,8 +2,8 @@
 # It is loaded from SHELLSPEC_LOAD_PATH using the --require option.
 --require spec_helper
 
-# by default, all the specfiles named with "*_spec.sh" in the "**/scripts_ut_spec" directory will be executed
---default-path "**/scripts_ut_spec"
+# by default, all the specfiles named with "*_spec.sh" in the "**/scripts-ut-spec" directory will be executed
+--default-path "**/scripts-ut-spec"
 
 # by default, the execution directory for testing is where the specfile is located
 --execdir @specfile

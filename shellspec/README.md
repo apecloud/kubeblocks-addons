@@ -26,7 +26,7 @@ Examples:
             expected: "pod-0"
                  got: "pod-1"
 
-          # addons/kblib/scripts_ut_spec/libpods_spec.sh:91
+          # addons/kblib/scripts-ut-spec/libpods_spec.sh:91
 
 Finished in 0.53 seconds (user 0.62 seconds, sys 0.13 seconds)
 34 examples, 1 failure
@@ -34,7 +34,7 @@ Finished in 0.53 seconds (user 0.62 seconds, sys 0.13 seconds)
 
 Failure examples / Errors: (Listed here affect your suite's status)
 
-shellspec addons/kblib/scripts_ut_spec/libpods_spec.sh:89 # 1) kubeblocks pods library tests minLexicographicalOrderPod with setting KB_POD_LIST env variable minLexicographicalOrderPod should return pod-1 FAILED
+shellspec addons/kblib/scripts-ut-spec/libpods_spec.sh:89 # 1) kubeblocks pods library tests minLexicographicalOrderPod with setting KB_POD_LIST env variable minLexicographicalOrderPod should return pod-1 FAILED
 
 make: *** [scripts-test] Error 101
 ```
@@ -48,7 +48,7 @@ First, you need to install shellspec. For installation instructions, please refe
 an example of the output:
 
 ```bash
-➜  kubeblocks-addons git:(main) ✗ /opt/homebrew/bin/shellspec --load-path ./shellspec addons/kblib/scripts_ut_spec/libpods_spec.sh
+➜  kubeblocks-addons git:(main) ✗ /opt/homebrew/bin/shellspec --load-path ./shellspec addons/kblib/scripts-ut-spec/libpods_spec.sh
 Running: /bin/sh [bash 3.2.57(1)-release]
 .........F
 
@@ -61,7 +61,7 @@ Examples:
             expected: "pod-0"
                  got: "pod-1"
 
-          # addons/kblib/scripts_ut_spec/libpods_spec.sh:91
+          # addons/kblib/scripts-ut-spec/libpods_spec.sh:91
 
 Finished in 0.28 seconds (user 0.26 seconds, sys 0.05 seconds)
 10 examples, 1 failure
@@ -69,7 +69,7 @@ Finished in 0.28 seconds (user 0.26 seconds, sys 0.05 seconds)
 
 Failure examples / Errors: (Listed here affect your suite's status)
 
-shellspec addons/kblib/scripts_ut_spec/libpods_spec.sh:89 # 1) kubeblocks pods library tests minLexicographicalOrderPod with setting KB_POD_LIST env variable minLexicographicalOrderPod should return pod-1 FAILED
+shellspec addons/kblib/scripts-ut-spec/libpods_spec.sh:89 # 1) kubeblocks pods library tests minLexicographicalOrderPod with setting KB_POD_LIST env variable minLexicographicalOrderPod should return pod-1 FAILED
 ```
 
 # Start to write unit test cases for KubeBlocks Addons

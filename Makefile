@@ -86,7 +86,7 @@ SHELLSPEC_LOCAL_INSTALL_PATH := /usr/local/shellspec
 SHELLSPEC_LOCAL_INSTALL_TAR_GZ_FILE := shellspec-dist.tar.gz
 SHELLSPEC_BIN_PATH := $(PREFIX)/bin
 SHELLSPEC_LOAD_PATH ?= ./shellspec
-SHELLSPEC_DEFAULT_PATH ?= "**/scripts_ut_spec"
+SHELLSPEC_DEFAULT_PATH ?= "**/scripts-ut-spec"
 
 # shellspec is a full-featured BDD unit testing framework for all kinds of shells, details: https://github.com/shellspec/shellspec
 .PHONY: install-shellspec
