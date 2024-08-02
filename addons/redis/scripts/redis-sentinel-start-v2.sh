@@ -145,6 +145,7 @@ recover_registered_redis_servers() {
                 return 1
             fi
             set -x
+            sleep 30
             master_name=""
             master_ip=""
             master_port=""
