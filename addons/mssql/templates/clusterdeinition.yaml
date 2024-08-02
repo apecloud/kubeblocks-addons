@@ -1,0 +1,13 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterDefinition
+metadata:
+  name: mssql
+  labels:
+    {{- include "mssql.labels" . | nindent 4 }}
+spec:
+  topologies:
+    - name: single-node
+      default: true
+      components:
+        - name: mssql
+          compDef: mssql

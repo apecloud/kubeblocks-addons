@@ -1,0 +1,18 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: mssql
+  labels:
+    {{- include "mssql.labels" . | nindent 4 }}
+spec:
+  releases:
+  - name: mssql-2022-latest
+    serviceVersion: 2022-latest
+    images:
+      mssql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+      exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporterRepository }}:{{ .Values.image.exporterTag }}
+  compatibilityRules:
+  - releases:
+    - mssql-2022-latest
+    compDefs:
+    - mssql

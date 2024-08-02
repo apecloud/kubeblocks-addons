@@ -1,0 +1,96 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: mssql
+  annotations:
+    app.kubeblocks.io/skip-immutable-check: "true"
+    apps.kubeblocks.io/horizontal-scale-backup-policy-template: "mssql-backup-policy-template"
+  labels:
+    {{- include "mssql.labels" . | nindent 4 }}
+spec:
+  provider: ApeCloud
+  description: {{ .Chart.Description }}
+  serviceKind: {{ .Chart.Name }}
+  serviceVersion: {{ .Chart.AppVersion }}
+  # can not update to Parallel.
+  podManagementPolicy: OrderedReady
+  services:
+    - name: default
+      serviceName: mssql
+      spec:
+        ports:
+          - name: tcp-mssql
+            port: 1433
+            targetPort: tcp-mssql
+  scripts:
+    - name: mssql-scripts
+      templateRef: mssql-scripts
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  runtime:
+    terminationGracePeriodSeconds: 300
+    containers:
+      - name: mssql
+        volumeMounts:
+          - mountPath: /var/opt/mssql
+            name: mssql
+          - name: scripts
+            mountPath: /scripts
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+          - bash
+          - -c
+          - |
+            /scripts/entrypoint.sh
+        ports:
+          - name: tcp-mssql
+            containerPort: 1433
+        env:
+          - name: ACCEPT_EULA
+            value: "Y"
+          - name: MSSQL_ENABLE_HADR
+            value: "1"
+          - name: MSSQL_AGENT_ENABLED
+            value: "1"
+  vars:
+    - name: MSSQL_SA_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: sysdba
+          optional: false
+          password: Required
+  volumes:
+    - name: mssql
+      needSnapshot: true
+  systemAccounts:
+    - name: sysdba
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 10
+        numDigits: 3
+        numSymbols: 0
+        letterCase: MixedCases
+  roles:
+    - name: primary
+      serviceable: true
+      writable: true
+      votable: true
+    - name: secondary
+      serviceable: true
+      writable: false
+      votable: true
+  lifecycleActions:
+    roleProbe:
+      periodSeconds: {{ .Values.roleProbe.periodSeconds }}
+      timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+      builtinHandler: custom
+      customHandler:
+        container: mssql
+        exec:
+          command:
+            - bash
+            - -c
+            - |
+              {{- .Files.Get "scripts/role_probe.sh" | nindent 14 }}
