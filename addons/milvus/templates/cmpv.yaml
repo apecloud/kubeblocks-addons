@@ -1,0 +1,63 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: milvus
+  labels:
+    {{- include "milvus.labels" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - releases:
+        - v2.3.2-standalone
+      compDefs:
+        - milvus-standalone
+    - releases:
+        - v2.3.2-mixcoord
+      compDefs:
+        - milvus-mixcoord
+    - releases:
+        - v2.3.2-proxy
+      compDefs:
+        - milvus-proxy
+    - releases:
+        - v2.3.2-querynode
+      compDefs:
+        - milvus-querynode
+    - releases:
+        - v2.3.2-indexnode
+      compDefs:
+        - milvus-indexnode
+    - releases:
+        - v2.3.2-datanode
+      compDefs:
+        - milvus-datanode
+  releases:
+    - name: v2.3.2-standalone
+      serviceVersion: v2.3.2
+      images:
+        setup: milvusdb/milvus-operator:v0.8.4
+        milvus: milvusdb/milvus:v2.3.2
+    - name: v2.3.2-mixcoord
+      serviceVersion: v2.3.2
+      images:
+        setup: milvusdb/milvus-operator:v0.8.4
+        mixcoord: milvusdb/milvus:v2.3.2
+    - name: v2.3.2-proxy
+      serviceVersion: v2.3.2
+      images:
+        setup: milvusdb/milvus-operator:v0.8.4
+        proxy: milvusdb/milvus:v2.3.2
+    - name: v2.3.2-querynode
+      serviceVersion: v2.3.2
+      images:
+        setup: milvusdb/milvus-operator:v0.8.4
+        querynode: milvusdb/milvus:v2.3.2
+    - name: v2.3.2-indexnode
+      serviceVersion: v2.3.2
+      images:
+        setup: milvusdb/milvus-operator:v0.8.4
+        indexnode: milvusdb/milvus:v2.3.2
+    - name: v2.3.2-datanode
+      serviceVersion: v2.3.2
+      images:
+        setup: milvusdb/milvus-operator:v0.8.4
+        datanode: milvusdb/milvus:v2.3.2
