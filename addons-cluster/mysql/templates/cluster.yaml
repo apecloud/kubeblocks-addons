@@ -1,0 +1,49 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+  annotations:
+  {{- if eq .Values.topology "server-with-proxy" }}
+    kubeblocks.io/extra-env: '{"PROXY_ENABLED":"on"}'
+  {{- end }}
+spec:
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  {{- include "kblib.affinity" . | indent 2 }}
+  componentSpecs:
+    - name: server
+      replicas: {{ .Values.replicas }}
+      {{- $compdef := .Values.version }}
+      {{- if .Values.orchestrator.enable }}
+      {{- $compdef = printf "%s-orc" $compdef }}
+      {{- end }}
+      componentDef: {{ $compdef }}
+      {{- include "mysql-cluster.replicaCount" . | indent 6 }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
+      {{- if .Values.orchestrator.enable }}
+      serviceRefs:
+        {{- if eq .Values.orchestrator.clusterServiceSelector.cluster ""}}
+        - name: orchestrator
+          namespace: {{ .Values.orchestrator.serviceReference.namespace | default .Release.Namespace }}
+          serviceDescriptor: {{ include "kblib.clusterName" . }}-orc-descriptor
+        {{- else }}
+        - name: orchestrator
+          namespace: {{ .Values.orchestrator.serviceReference.namespace | default .Release.Namespace }}
+          clusterServiceSelector:
+            cluster:  {{ .Values.orchestrator.clusterServiceSelector.cluster }}
+            service:
+              component: orchestrator
+              service: orchestrator
+              port:  {{ .Values.orchestrator.clusterServiceSelector.portName }}
+        {{- end }}
+      {{- end }}
+    {{- if eq .Values.topology "server-with-proxy" }}
+    - name: proxysql
+      componentDef: proxysql # ref clusterdefinition componentDefs.name
+      replicas: {{.Values.proxysql.replicas}}
+      resources:
+        limits:
+          cpu: {{ .Values.proxysql.cpu | quote }}
+          memory: {{ print .Values.proxysql.memory "Gi" | quote }}
+    {{- end }}
