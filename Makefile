@@ -40,7 +40,6 @@ SC_BUILD_DIR := shellcheck-build
 SC_DOWNLOAD_FILE := shellcheck-$(SC_VERSION).$(OS).$(ARCH).tar.xz
 SC_OPTIONS ?= --format=tty --severity=error
 SHELLCHECK_FILE ?=
-SHELLSPEC_LOAD_PATH ?= ./shellspec
 
 .PHONY: help
 help: ##    Display this help.
@@ -82,6 +81,7 @@ else
 	@shellcheck $(SC_OPTIONS) $(SHELLCHECK_FILE)
 endif
 
+# shellspec is a full-featured BDD unit testing framework for all kinds of shells, details: https://github.com/shellspec/shellspec
 .PHONY: install-shellspec
 install-shellspec: ## Install shellspec if necessary.
 ifeq (, $(shell which shellspec))
@@ -94,6 +94,10 @@ else
 	@shellspec --version
 endif
 
+SHELLSPEC_LOAD_PATH ?= ./shellspec
+SHELLSPEC_DEFAULT_PATH ?= "**/scripts_ut_spec"
+
+# run shellspec tests
 .PHONY: scripts-test
 scripts-test: install-shellspec ## Run shellspec tests.
-	@shellspec --load-path $(SHELLSPEC_LOAD_PATH)
+	@shellspec --load-path $(SHELLSPEC_LOAD_PATH) --default-path $(SHELLSPEC_DEFAULT_PATH)
