@@ -1,0 +1,140 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: clickhouse-{{ .Chart.Version }}
+  labels:
+    {{- include "clickhouse.labels" . | nindent 4 }}
+    {{- if .Values.commonLabels }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  provider: ApeCloud
+  description: {{ .Chart.Description }}
+  serviceKind: {{ .Chart.Name }}
+  serviceVersion: {{ .Chart.AppVersion }}
+  runtime:
+    securityContext:
+      fsGroup: 1001
+      seccompProfile:
+        type: RuntimeDefault
+    containers:
+      - name: clickhouse
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:{{ default .Chart.AppVersion .Values.image.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          runAsNonRoot: true
+          runAsUser: 1001
+        env:
+          - name: BITNAMI_DEBUG
+            value: "false"
+          - name: CLICKHOUSE_HTTP_PORT
+            value: "8123"
+          - name: CLICKHOUSE_TCP_PORT
+            value: "9000"
+          - name: CLICKHOUSE_MYSQL_PORT
+            value: "9004"
+          - name: CLICKHOUSE_POSTGRESQL_PORT
+            value: "9005"
+          - name: CLICKHOUSE_INTERSERVER_HTTP_PORT
+            value: "9009"
+          - name: CLICKHOUSE_METRICS_PORT
+            value: "8001"
+          - name: CLICKHOUSE_SHARD_ID
+            value: "$(KB_COMP_NAME)"
+          - name: SERVICE_PORT
+            value: "$(CLICKHOUSE_METRICS_PORT)"
+          - name: CLICKHOUSE_REPLICA_ID
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+        ports:
+          - name: http
+            containerPort: 8123
+          - name: tcp
+            containerPort: 9000
+          - name: tcp-postgresql
+            containerPort: 9005
+          - name: tcp-mysql
+            containerPort: 9004
+          - name: http-intersrv
+            containerPort: 9009
+          - name: http-metrics
+            containerPort: 8001
+        livenessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+          httpGet:
+            path: /ping
+            port: http
+        readinessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 1
+          httpGet:
+            path: /ping
+            port: http
+        volumeMounts:
+          - name: data
+            mountPath: /bitnami/clickhouse
+          - name: config
+            mountPath: /bitnami/clickhouse/etc/conf.d/default
+          - name: user-config
+            mountPath: /bitnami/clickhouse/etc/users.d/default
+  vars:
+    - name: CLICKHOUSE_ADMIN_USER
+      value: admin
+    - name: CLICKHOUSE_ADMIN_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          optional: false
+          password: Required
+  volumes:
+    - name: data
+  services:
+    - name: default
+      spec:
+        ports:
+          - name: http
+            targetPort: http
+            port: 8123
+          - name: tcp
+            targetPort: tcp
+            port: 9000
+          - name: tcp-mysql
+            targetPort: tcp-mysql
+            port: 9004
+          - name: tcp-postgresql
+            targetPort: tcp-postgresql
+            port: 9005
+          - name: http-intersrv
+            targetPort: http-intersrv
+            port: 9009
+          - name: http-metrics
+            targetPort: http-metrics
+            port: 8001
+  configs:
+    - name: clickhouse-tpl
+      templateRef: clickhouse-tpl
+      volumeName: config
+      namespace: {{ .Release.Namespace }}
+    - name: clickhouse-user-tpl
+      templateRef: clickhouse-user-tpl
+      volumeName: user-config
+      namespace: {{ .Release.Namespace }}
+      constraintRef: clickhouse-constraints
+  systemAccounts:
+    - name: admin
+      initAccount: true
