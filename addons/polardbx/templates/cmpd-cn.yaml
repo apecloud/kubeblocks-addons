@@ -1,0 +1,280 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: polardbx-cn-{{ .Chart.Version }}
+  labels:
+    {{- include "polardbx.labels" . | nindent 4 }}
+spec:
+  provider: Community
+  description: {{ .Chart.Description }}
+  serviceKind: {{ .Chart.Name }}
+  serviceVersion: {{ .Chart.AppVersion }}
+  runtime:
+    shareProcessNamespace: true  # For jmx collector
+    volumes:
+      - name: shared
+        emptyDir: { }
+    initContainers:
+      - name: metadb-init
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.mysql.repository }}:{{ .Values.images.mysql.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.mysql.pullPolicy }}
+        command: [ "/scripts/metadb-setup.sh" ]
+        env:
+          - name: metaDbAddr
+            value: "$(GMS_SVC_NAME):$(GMS_SVC_PORT)"
+          - name: metaDbName
+            value: "polardbx_meta_db"
+          - name: metaDbUser
+            value: $(SERVICE_USER)
+          - name: metaDbNonEncPasswd
+            value: $(SERVICE_PASSWORD)
+          - name: dnPasswordKey
+            value: "$(metaDbNonEncPasswd)$(metaDbNonEncPasswd)"
+          - name: switchCloud
+            value: aliyun
+          - name: metaDbConn
+            value: "mysql -h$(GMS_SVC_NAME) -P3306 -u$(metaDbUser) -p$(metaDbNonEncPasswd) -D$(metaDbName)"
+        volumeMounts:
+          - name: scripts
+            mountPath: /scripts/metadb-setup.sh
+            subPath: metadb-setup.sh
+          - name: scripts
+            mountPath: /scripts/gms-init.sql
+            subPath: gms-init.sql
+          - name: scripts
+            mountPath: /scripts/gms-metadata.tpl
+            subPath: gms-metadata.tpl
+          - name: shared
+            mountPath: /shared
+      - name: init
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.repository }}/{{ .Values.images.polardbx.init.name }}:{{.Values.images.polardbx.init.tag}}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.polardbx.pullPolicy }}
+        command: [ "sh" ]
+        args: [ "-c", 'source /shared/env.sh && /polardbx-init' ]
+        env: &cnEngineEnv
+          - name: POD_ID
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          - name: HOST_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.hostIP
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: spec.nodeName
+          - name: metaDbAddr
+            value: "$(GMS_SVC_NAME):$(GMS_SVC_PORT)"
+          - name: metaDbName
+            value: "polardbx_meta_db"
+          - name: metaDbUser
+            value: $(SERVICE_USER)
+          - name: metaDbNonEncPasswd
+            value: $(SERVICE_PASSWORD)
+          - name: switchCloud
+            value: aliyun
+          - name: metaDbConn
+            value: "mysql -h$(GMS_SVC_NAME) -P3306 -u$(metaDbUser) -p$(metaDbPasswd) -D$(metaDbName)"
+          - name: dnPasswordKey
+            value: "$(metaDbNonEncPasswd)$(metaDbNonEncPasswd)"
+          - name: metaDbXprotoPort
+            value: "0"
+          - name: storageDbXprotoPort
+            value: "0"
+          - name: instanceId
+            value: "$(KB_CLUSTER_NAME)"
+          - name: instanceType
+            value: "0"
+          - name: serverPort
+            value: "3306"
+          - name: mgrPort
+            value: "3406"
+          - name: mppPort
+            value: "3506"
+          - name: htapPort
+            value: "3606"
+          - name: logPort
+            value: "8507"
+          - name: ins_id
+            value: dummy
+          - name: polarx_dummy_log_port
+            value: "$(logPort)"
+          - name: polarx_dummy_ssh_port
+            value: "-1"
+          - name: cpuCore
+            valueFrom:
+              resourceFieldRef:
+                containerName: engine
+                resource: limits.cpu
+          - name: memSize
+            valueFrom:
+              resourceFieldRef:
+                containerName: engine
+                resource: limits.memory
+          - name: cpu_cores
+            valueFrom:
+              resourceFieldRef:
+                containerName: engine
+                resource: limits.cpu
+          - name: memory
+            valueFrom:
+              resourceFieldRef:
+                containerName: engine
+                resource: limits.memory
+          - name: galaxyXProtocol
+            value: "1"
+          - name: processorHandler
+            value: "1"
+          - name: processors
+            value: "1"
+          - name: serverExecutor
+            value: "1024"
+          - name: TDDL_OPTS
+            value: -Dpod.id=$(POD_ID) -XX:+UnlockExperimentalVMOptions -XX:+UseWisp2 -Dio.grpc.netty.shaded.io.netty.transport.noNative=true
+              -Dio.netty.transport.noNative=true -DinstanceVersion=8.0.3
+        volumeMounts:
+          - name: shared
+            mountPath: /shared
+    containers:
+      - name: engine
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.repository }}/{{ .Values.images.polardbx.cn.name}}:{{.Values.images.polardbx.cn.tag}}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.polardbx.pullPolicy }}
+        command:
+          - /bin/bash
+          - -c
+        args:
+          - "source /shared/env.sh && /home/admin/entrypoint.sh 20"
+        env: *cnEngineEnv
+        ports:
+          - containerPort: 3306
+            name: mysql
+            protocol: TCP
+          - containerPort: 3406
+            name: mgr
+            protocol: TCP
+          - containerPort: 3506
+            name: mpp
+            protocol: TCP
+          - containerPort: 3606
+            name: htap
+            protocol: TCP
+          - containerPort: 8507
+            name: log
+            protocol: TCP
+        startupProbe:
+          failureThreshold: 60
+          tcpSocket:
+            port: mysql
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 30
+        livenessProbe:
+          failureThreshold: 60
+          tcpSocket:
+            port: mysql
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 30
+        readinessProbe:
+          failureThreshold: 60
+          tcpSocket:
+            port: mysql
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 30
+        volumeMounts:
+          - name: tmp
+            mountPath: /tmp
+          - name: polardbx-log
+            mountPath: /home/admin/drds-server/logs
+          - name: polardbx-spill
+            mountPath: /home/admin/drds-server/spill
+          - name: shared
+            mountPath: /shared
+      - name: exporter
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.repository }}/{{ .Values.images.polardbx.exporter.name}}:{{.Values.images.polardbx.exporter.tag}}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.polardbx.pullPolicy }}
+        args:
+          - -collectors.process
+          - -collectors.jvm
+          - -target.type=CN
+          - -target.port=3406
+          - -web.listen-addr=:9104
+          - -web.metrics-path=/metrics
+        env:
+          - name: GOMAXPROCS
+            value: "1"
+        ports:
+          - containerPort: 9104
+            name: metrics
+            protocol: TCP
+        volumeMounts:
+          - name: tmp
+            mountPath: /tmp
+  vars:
+    - name: SERVICE_USER
+      value: polardbx_root
+    - name: SERVICE_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: polardbx-gms
+          name: polardbx_root
+          optional: false
+          password: Required
+    - name: GMS_SVC_NAME
+      valueFrom:
+        serviceVarRef:
+          compDef: polardbx-gms
+          optional: false
+          host: Required
+    - name: GMS_SVC_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: polardbx-gms
+          optional: false
+          port:
+            name: mysql
+            option: Required
+    - name: DN_HEADLESS_SVC_NAME
+      valueFrom:
+        serviceVarRef:
+          compDef: polardbx-dn
+          optional: false
+          name: headless
+          host: Required
+    - name: DN_SVC_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: polardbx-dn
+          optional: false
+          port:
+            name: mysql
+            option: Required
+  service:
+    - name: default
+      spec:
+        ports:
+          - name: mysql
+            port: 3306
+            targetPort: 3306
+          - name: metrics
+            port: 9104
+            targetPort: 9104
+  scripts:
+    - name: polardbx-scripts
+      templateRef: polardbx-scripts
+      volumeName: scripts
+      namespace: {{ .Release.Namespace }}
+      defaultMode: 0555
