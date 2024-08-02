@@ -1,8 +1,7 @@
 {{- include "kblib.clusterCommon" . }}
-  clusterDefinitionRef: opengauss
   componentSpecs:
     - name: opengauss
-      componentDefRef: opengauss
+      componentDef: opengauss
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "opengauss-cluster.replicaCount" . | indent 6 }}
       enabledLogs:
