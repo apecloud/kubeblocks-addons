@@ -11,7 +11,7 @@ spec:
   topology: apecloud-postgresql
   componentSpecs:
     - name: postgresql
-      componentDef: postgresql # ref clusterdefinition componentDefs.name
+      componentDef: postgresql
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ include "apecloud-postgresql-cluster.replicas" . }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}

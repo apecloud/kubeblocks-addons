@@ -8,8 +8,6 @@ metadata:
     {{- include "oceanbase-cluster.annotations.extra-envs" . | nindent 4 }}
     {{- include "oceanbase-cluster.featureGate" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: {{ include "oceanbase-release.name" .}}
-  clusterVersionRef: {{ .Values.version }}
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
   {{- if gt (int .Values.obClusters) 1 }}
@@ -28,7 +26,6 @@ spec:
   {{- range $i, $e := until (int .Values.obClusters) }}
     - name: ob-bundle-{{ $i }}
       componentDef: {{ include "oceanbase-cluster.compdef" $}}
-      componentDefRef: {{ include "oceanbase-cluster.compdef" $}}
       replicas: {{ max $.Values.zoneCount $.Values.replicas}}
       {{- include "kblib.componentResources" $ | indent 6 }}
       volumeClaimTemplates:

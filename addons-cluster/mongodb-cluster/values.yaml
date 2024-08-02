@@ -30,4 +30,3 @@ requests:
 storage: 20
 
 hostnetwork: "enabled"
-useLegacyCompDef: false
