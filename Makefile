@@ -96,10 +96,11 @@ ifeq (, $(shell which shellspec))
 	@sudo mkdir -p $(SHELLSPEC_LOCAL_INSTALL_PATH)
 	@if [ ! -d "$(SHELLSPEC_LOCAL_INSTALL_PATH)/shellspec" ]; then \
 		echo "Downloading ShellSpec..."; \
-		@cd $(SHELLSPEC_LOCAL_INSTALL_PATH) && sudo wget https://github.com/shellspec/shellspec/releases/download/$(SHELLSPEC_VERSION)/$(SHELLSPEC_LOCAL_INSTALL_TAR_GZ_FILE); \
-		@cd $(SHELLSPEC_LOCAL_INSTALL_PATH) && sudo tar xzvf $(SHELLSPEC_LOCAL_INSTALL_TAR_GZ_FILE); \
+		sudo wget -P $(SHELLSPEC_LOCAL_INSTALL_PATH) https://github.com/shellspec/shellspec/releases/download/$(SHELLSPEC_VERSION)/$(SHELLSPEC_LOCAL_INSTALL_TAR_GZ_FILE); \
+		sudo tar -xzvf $(SHELLSPEC_LOCAL_INSTALL_PATH)/$(SHELLSPEC_LOCAL_INSTALL_TAR_GZ_FILE) -C $(SHELLSPEC_LOCAL_INSTALL_PATH); \
+		echo "Downloaded ShellSpec and extracted successfully"; \
 	fi
-	@sudo ln -s $(SHELLSPEC_DOWNLOAD_PREFIX_PATH)/shellspec/shellspec $(SHELLSPEC_BIN_PATH)/shellspec
+	@sudo ln -s $(SHELLSPEC_LOCAL_INSTALL_PATH)/shellspec/shellspec $(SHELLSPEC_BIN_PATH)/shellspec
 	@shellspec --version
 	@echo "ShellSpec installed successfully"
 else
