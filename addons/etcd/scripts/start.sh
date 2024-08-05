@@ -17,11 +17,11 @@ if [ ! -z "$PEER_ENDPOINT" ]; then
   endpoints=$(echo "$PEER_ENDPOINT" | tr ',' '\n')
   myEndpoint=$(echo "$endpoints" | grep $HOSTNAME)
   if [ -z "$myEndpoint" ]; then
-    echo "ERROR: host name not found in peer endpoints"
-    exit 1
+    echo "WARNING: host name not found in peer endpoints, please set podService to true if you want to bootstrap multi-cluster etcd"
+  else
+    # e.g. etcd-cluster-etcd-0:127.0.0.1
+    MY_PEER=$(echo "$myEndpoint" | cut -d: -f2)
   fi
-  # eg. etcd-cluster-etcd-0:127.0.0.1
-  MY_PEER=$(echo "$myEndpoint" | cut -d: -f2)
 fi
 
 # discovery config

@@ -15,13 +15,13 @@ spec:
   {{- end }}
   componentSpecs:
     - name: etcd
-      {{- if eq .Values.service.type  "LoadBalancer" }}
+      {{- if .Values.peerService.name }}
       services:
-        - name: peer
-          serviceType: LoadBalancer
+        - name: {{ .Values.peerService.name }}
+          serviceType: {{ .Values.peerService.type }}
           podService: true
-          {{- with .Values.service.annotations }}
-          annotations: {{ . | toYaml | nindent 12 }}
+          {{- if and (eq .Values.peerService.type "LoadBalancer") (not (empty .Values.peerService.annotations)) }}
+          annotations:  {{ .Values.peerService.annotations | toYaml | nindent 12 }}
           {{- end }}
       {{- end }}
       componentDef: etcd
@@ -55,23 +55,23 @@ spec:
               requests:
                 storage: {{ .Values.persistence.data.size }}
       {{- end }}
-  {{- if .Values.service.name }}
+  {{- if .Values.clientService.name }}
   services:
-    - name: {{ .Values.service.name }}
-      serviceName: {{ .Values.service.name }}
-      {{- if and (eq .Values.service.type "LoadBalancer") (not (empty .Values.service.annotations)) }}
-      annotations: {{ .Values.service.annotations | toYaml | nindent 8 }}
+    - name: {{ .Values.clientService.name }}
+      serviceName: {{ .Values.clientService.name }}
+      {{- if and (eq .Values.clientService.type "LoadBalancer") (not (empty .Values.clientService.annotations)) }}
+      annotations: {{ .Values.clientService.annotations | toYaml | nindent 8 }}
       {{- end }}
       spec:
-        type: {{ .Values.service.type }}
+        type: {{ .Values.clientService.type }}
         ports:
-          - port: {{ .Values.service.port }}
+          - port: {{ .Values.clientService.port }}
             targetPort: 2379
-            {{- if and (eq .Values.service.type "NodePort") (not (empty .Values.service.nodePort)) }}
-            nodePort: {{ .Values.service.nodePort }}
+            {{- if.Values.clientService.nodePort }}
+            nodePort: {{ .Values.clientService.nodePort }}
             {{- end }}
       componentSelector: etcd
-      {{- if ne .Values.service.type "LoadBalancer" }}
-      roleSelector: {{ .Values.service.role }}
+      {{- if ne .Values.clientService.type "LoadBalancer" }}
+      roleSelector: {{ .Values.clientService.role }}
       {{- end }}
   {{- end }}

@@ -26,19 +26,32 @@ affinity: {}
 replicas: 3
 
 ## Service configurations
-##
-service:
-  name:
-  ## @param service.type etcd service type, valid options are ExternalName, ClusterIP, NodePort, and LoadBalancer.
+## set service name to enable peerService and clientService
+
+## peerService is the configuration for etcd peer communication
+## Not required to setup peerService if you're using a single k8s cluster
+## Recommended to use LoadBalancer for multi-cluster etcd setups
+## Enabling multi-cluster etcd wil make TLS fail due to CA wildcard mismatches
+peerService:
+  name: peer
+  ## @param type etcd peerService type, the recommended options is LoadBalancer.
   ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
-  ## when service.type is set to LoadBalancer, TLS will fail due to CA wildcard mismatch
+  type: LoadBalancer
+  ## @param annotations is optional, if peerService type is LoadBalancer, you may need to specify annotations for Cloud Provider
+  annotations: { }
+
+## clientService is the configuration for etcd client communication
+clientService:
+  name: client
+  ## @param type etcd service type, valid options are ExternalName, ClusterIP, NodePort, and LoadBalancer.
+  ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
   type: ClusterIP
   port: 2379
   role: leader
-  ## @param nodePort is optional, if service type is NodePort, by default and for convenience, 
+  ## @param nodePort is optional, if clientService type is NodePort, by default and for convenience, 
   ## the Kubernetes control plane will allocate a port from a range (default: 30000-32767)
   nodePort:
-  ## @param annotations is optional, if service type is LoadBalancer, you may need to specify annotations for Cloud Provider
+  ## @param annotations is optional, if clientService type is LoadBalancer, you may need to specify annotations for Cloud Provider
   annotations: { }
 
 resources: { }

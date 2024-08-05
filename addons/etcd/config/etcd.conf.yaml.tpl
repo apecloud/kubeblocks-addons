@@ -2,14 +2,11 @@
 # using this config file will ignore ALL command-line flag and environment variables.
 
 {{- $peerProtocol := "http" -}}
+{{- $clientProtocol := "http" -}}
 {{- if $.component.tlsConfig -}}
   {{- if eq .PEER_TLS "true" -}}
     {{- $peerProtocol = "https" -}}
   {{- end -}}
-{{- end -}}
-
-{{- $clientProtocol := "http" -}}
-{{- if $.component.tlsConfig -}}
   {{- if eq .CLIENT_TLS "true" -}}
     {{- $clientProtocol = "https" -}}
   {{- end -}}
@@ -74,13 +71,11 @@ discovery-srv:
 
 {{ define "INIT_PEERS" -}}
   {{- $peerProtocol := "http" -}}
-  {{- if $.component.tlsConfig -}}
-    {{- if eq .PEER_TLS "true" -}}
-      {{- $peerProtocol = "https" -}}
-    {{- end -}}
+  {{- if and $.component.tlsConfig (eq .PEER_TLS "true") -}}
+    {{- $peerProtocol = "https" -}}
   {{- end -}}
 
-  {{- if index . "PEER_ENDPOINT" -}}
+  {{- if and (index . "PEER_ENDPOINT") (contains "," .PEER_ENDPOINT) -}}
     {{- $endpoints := splitList "," .PEER_ENDPOINT -}}
     {{- range $idx, $endpoint := $endpoints -}}
       {{- if $idx -}},{{- end -}}

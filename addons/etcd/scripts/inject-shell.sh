@@ -27,7 +27,7 @@ checkVersionAndInject() {
   patch=$(echo "$versionParse" | cut -d. -f3)
 
   # <=3.3 || <= 3.4.22 || <=3.5.6 all use busybox https://github.com/etcd-io/etcd/tree/main/CHANGELOG
-  if [ $major -lt 3 ] || ([ $major -eq 3 ] && [ $minor -lt 4 ]); then
+  if [ $major -lt 3 ] || ([ $major -eq 3 ] && [ $minor -le 3 ]); then
     busyboxAction
   elif [ $major -eq 3 ] && [ $minor -eq 4 ] && [ $patch -le 22 ]; then
     busyboxAction
