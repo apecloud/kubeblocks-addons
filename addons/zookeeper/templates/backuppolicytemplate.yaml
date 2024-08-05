@@ -1,13 +1,14 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: BackupPolicyTemplate
 metadata:
-  name: {{ include "zookeeper.fullname" . }}-backup-policy-template
+  name: zookeeper-backup-policy-template
   labels:
     {{- include "zookeeper.labels" . | nindent 4 }}
     service-kind/zookeeper: "true"
   annotations:
     dataprotection.kubeblocks.io/is-default-policy-template: "true"
 spec:
+  clusterDefinitionRef: zookeeper
   backupPolicies:
     - componentDefs: [zookeeper]
       target:
@@ -22,3 +23,8 @@ spec:
                 mountPath: /bitnami/zookeeper/data
               - name: snapshot-log
                 mountPath: /bitnami/zookeeper/log
+      schedules:
+        - backupMethod: zoocreeper
+          enabled: false
+          cronExpression: "0 18 * * 0"
+          retentionPeriod: 7d
