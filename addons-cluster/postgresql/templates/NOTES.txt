@@ -1,0 +1,2 @@
+1. By default, the helm chart will create a PostgreSQL (with Patroni HA) cluster with the same version as the Chart appVersion.
+
