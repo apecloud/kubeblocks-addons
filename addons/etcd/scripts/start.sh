@@ -19,7 +19,8 @@ if [ ! -z "$PEER_ENDPOINT" ]; then
   if [ -z "$myEndpoint" ]; then
     echo "WARNING: host name not found in peer endpoints, please set podService to true if you want to bootstrap multi-cluster etcd"
   else
-    # e.g. etcd-cluster-etcd-0:127.0.0.1
+    # e.g.1 etcd-cluster-etcd-0
+    # e.g.2 etcd-cluster-etcd-0:127.0.0.1
     MY_PEER=$(echo "$myEndpoint" | cut -d: -f2)
   fi
 fi

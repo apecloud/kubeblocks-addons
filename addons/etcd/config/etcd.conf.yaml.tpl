@@ -80,9 +80,12 @@ discovery-srv:
     {{- range $idx, $endpoint := $endpoints -}}
       {{- if $idx -}},{{- end -}}
       {{- $hostname := index (splitList ":" $endpoint) 0 -}}
-      {{- $ip := index (splitList ":" $endpoint) 1 -}}
-      {{- $peerURL := printf "%s=%s://%s:2380" $hostname $peerProtocol $ip -}}
-      {{- print $peerURL -}}
+      {{- if contains ":" $endpoint }}
+        {{- $ip := index (splitList ":" $endpoint) 1 -}}
+        {{- printf "%s=%s://%s:2380" $hostname $peerProtocol $ip -}}
+      {{- else -}}
+        {{- printf "%s=%s://%s:2380" $hostname $peerProtocol $hostname -}}
+      {{- end -}}
     {{- end -}}
   {{- else if .PEER_FQDNS -}}
     {{- $peerfqdns := splitList "," .PEER_FQDNS -}}
