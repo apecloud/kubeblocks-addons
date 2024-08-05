@@ -6,22 +6,8 @@ replicaCount: 1
 
 terminationPolicy: Delete
 
-imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
-
-podAnnotations: {}
-
-podSecurityContext: {}
-  # fsGroup: 2000
-
-securityContext: {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
 
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious
@@ -41,11 +27,7 @@ ingress:
 service:
   type: ClusterIP
 
-nodeSelector: {}
-
 tolerations: []
-
-affinity: {}
 
 topologyKeys:
 - kubernetes.io/hostname

@@ -7,9 +7,6 @@ type: application
 # This is the chart version
 version: 1.0.0-alpha.0
 
-# This is the version number of milvus
-appVersion: 2.3.2
-
 home: https://milvus.io/
 icon: https://github.com/milvus-io/artwork/blob/master/horizontal/color/milvus-horizontal-color.png
 

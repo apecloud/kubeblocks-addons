@@ -4,7 +4,6 @@ metadata:
   name: {{ include "flink-cluster.fullname" . }}
   labels: {{ include "flink-cluster.labels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: flink  # ref clusterdefinition.name
   terminationPolicy: {{ .Values.terminationPolicy }}
   affinity:
     {{- with .Values.topologyKeys }}
@@ -14,8 +13,8 @@ spec:
   tolerations: {{ . | toYaml | nindent 4 }}
   {{- end }}
   componentSpecs:
-    - name: jobmanager # user-defined
-      componentDefRef: jobmanager # ref clusterdefinition componentDefs.name
+    - name: jobmanager
+      componentDef: flink-jobmanager
       replicas: {{ .Values.jobmanager.replicaCount | default 1 }}
       {{- with  .Values.jobmanager.resources }}
       resources:
@@ -26,8 +25,8 @@ spec:
           cpu: {{ .requests.cpu | quote }}
           memory: {{ .requests.memory | quote }}
       {{- end }}
-    - name: taskmanager # user-defined
-      componentDefRef: taskmanager # ref clusterdefinition componentDefs.name
+    - name: taskmanager
+      componentDef: flink-taskmanager
       replicas: {{ .Values.taskmanager.replicaCount | default 1 }}
       {{- with  .Values.taskmanager.resources }}
       resources:

@@ -4,7 +4,6 @@ metadata:
   name: {{ include "clustername" . }}
   labels: {{ include "clickhouse-cluster.labels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: clickhouse  # ref clusterdefinition.name
   terminationPolicy: {{ $.Values.extra.terminationPolicy }}
   affinity:
     {{- with $.Values.topologyKeys }}
@@ -16,7 +15,7 @@ spec:
   componentSpecs:
     {{- range $i := until (.Values.shardCount|int) }}
     - name: shard-{{ $i }}
-      componentDefRef: clickhouse
+      componentDef: clickhouse
       monitor: {{ $.Values.monitor.enabled }}
       replicas: {{ $.Values.clickhouse.replicaCount | default 2 }}
       serviceAccountName: {{ include "clickhouse-cluster.serviceAccountName" $ }}
@@ -47,10 +46,10 @@ spec:
     {{- if (gt ($.Values.shardCount|int) 1) }}
     - {{- if $.Values.useClickHouseKeeper }}
       name: ch-keeper
-      componentDefRef: ch-keeper
+      componentDef: clickhouse-keeper
       {{- else }}
       name: zookeeper
-      componentDefRef: zookeeper
+      componentDef: zookeeper
       {{- end }}
       monitor: {{ $.Values.monitor.enabled }}
       replicas: {{ $.Values.keeper.replicaCount }}

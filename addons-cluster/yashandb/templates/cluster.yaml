@@ -6,10 +6,9 @@ metadata:
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
-  clusterDefinitionRef: yashandb
   componentSpecs:
     - name: yashan-comp
-      componentDefRef: yashandb-compdef # ref clusterdefinition componentDefs.name
+      componentDef: yashandb
       replicas: {{ .Values.replicas }}
       {{- include "kblib.componentStorages" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
