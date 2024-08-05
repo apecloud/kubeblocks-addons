@@ -9,7 +9,7 @@ spec:
   clusterDefinitionRef: greatsql # ref clusterdefinition.name
   componentSpecs:
     - name: greatsql
-      componentDefRef: greatsql-compdef # ref clusterdefinition componentDefs.name
+      componentDefRef: greatsql-compdef
       replicas: {{ include "greatsql-cluster.replicas" . }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentResources" . | indent 6 }}

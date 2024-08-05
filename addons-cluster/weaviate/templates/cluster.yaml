@@ -4,7 +4,6 @@ metadata:
   name: {{ include "clustername" . }}
   labels: {{ include "weaviate.labels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: weaviate # ref clusterdefinition.name
   terminationPolicy: {{ .Values.terminationPolicy }}
   affinity:
     {{- with .Values.topologyKeys }}
@@ -14,8 +13,8 @@ spec:
   tolerations: {{ . | toYaml | nindent 4 }}
   {{- end }}
   componentSpecs:
-    - name: weaviate # user-defined
-      componentDefRef: weaviate # ref clusterdefinition components.name
+    - name: weaviate
+      componentDef: weaviate
       monitor: {{ .Values.monitor.enabled | default false }}
       replicas: {{ .Values.replicaCount | default 1 }}
       {{- with  .Values.resources }}

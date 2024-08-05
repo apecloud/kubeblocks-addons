@@ -1,4 +1,3 @@
-
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: Cluster
 metadata:
@@ -8,9 +7,5 @@ metadata:
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
-{{- if .Values.useLegacyCompDef }}
-{{- include "postgresql-cluster.legacyComponentSpec" . }}
-{{- else }}
-{{- include "postgresql-cluster.componentSpec" . }}
-{{- end }}
+  {{- include "postgresql-cluster.componentSpec" . }}
 

@@ -10,7 +10,7 @@ spec:
   componentSpecs:
     - name: neon-compute
       {{- if .Values.useLegacyCompDef }}
-      componentDefRef: neon-compute
+      componentDef: neon-compute
       {{- end }}
       replicas: {{ .Values.compute.replicas }}
       {{- with  .Values.compute.resources }}
@@ -37,7 +37,7 @@ spec:
                 storage: {{ .Values.safekeeper.dataStorage }}
     - name: neon-broker
       {{- if .Values.useLegacyCompDef }}
-      componentDefRef: neon-broker
+      componentDef: neon-broker
       {{- end }}
       replicas: 1
       {{- with  .Values.storagebroker.resources }}
@@ -64,7 +64,7 @@ spec:
                 storage: {{ .Values.storagebroker.dataStorage }}
     - name: neon-safekeeper
       {{- if .Values.useLegacyCompDef }}
-      componentDefRef: neon-safekeeper
+      componentDef: neon-safekeeper
       {{- end }}
       replicas: {{ .Values.safekeeper.replicas }}
       {{- with  .Values.safekeeper.resources }}
@@ -91,7 +91,7 @@ spec:
                 storage: {{ .Values.safekeeper.dataStorage }}
     - name: neon-pageserver
       {{- if .Values.useLegacyCompDef }}
-      componentDefRef: neon-pageserver
+      componentDef: neon-pageserver
       {{- end }}
       replicas: {{ .Values.pageserver.replicas }}
       {{- with  .Values.safekeeper.resources }}

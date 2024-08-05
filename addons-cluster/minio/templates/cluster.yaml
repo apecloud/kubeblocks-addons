@@ -1,8 +1,7 @@
 {{- include "kblib.clusterCommon" . }}
-  clusterDefinitionRef: minio-{{ .Chart.Version }}
   componentSpecs:
     - name: minio
-      componentDefRef: minio
+      componentDef: minio
       replicas: {{ .Values.replicas }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}

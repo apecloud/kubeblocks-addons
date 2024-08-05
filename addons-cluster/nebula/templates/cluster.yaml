@@ -24,7 +24,6 @@ spec:
         {{- end }}
       {{- end }}
     - name: graphd
-      componentDefRef: nebula-graphd
       replicas: {{ .Values.nebula.graphd.replicas }}
       {{- with  .Values.nebula.graphd.resources }}
       resources:

@@ -10,7 +10,6 @@ metadata:
   annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
   {{- end }}
 spec:
-  clusterDefinitionRef: pulsar-zookeeper
   terminationPolicy: {{ $.Values.terminationPolicy }}
   affinity:
     {{- with $.Values.topologyKeys }}
@@ -21,7 +20,7 @@ spec:
   {{- end }}
   componentSpecs:
     - name: zookeeper
-      componentDefRef: zookeeper
+      componentDef: zookeeper
       monitor: {{ .Values.monitor.enabled | default false }}
       replicas: {{ .Values.zookeeper.replicaCount | default 3 }}
       {{- with  .Values.zookeeper.resources }}

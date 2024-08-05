@@ -28,7 +28,7 @@ spec:
     {{- if eq "combined" $.Values.mode }}
     - name: kafka-combine
       {{- if .Values.useLegacyCompDef }}
-      componentDefRef: kafka-server
+      componentDef: kafka-server
       {{- end  }}
       tls: {{ $.Values.tlsEnable }}
       {{- if $.Values.tlsEnable }}
@@ -69,7 +69,7 @@ spec:
     {{- else }}
     - name: kafka-broker
       {{- if .Values.useLegacyCompDef }}
-      componentDefRef: kafka-broker
+      componentDef: kafka-broker
       {{- end  }}
       tls: {{ $.Values.tlsEnable }}
       {{- if $.Values.tlsEnable }}
@@ -109,7 +109,7 @@ spec:
       {{- end }}
     - name: kafka-controller
       {{- if .Values.useLegacyCompDef }}
-      componentDefRef: controller
+      componentDef: controller
       {{- end  }}
       tls: {{ $.Values.tlsEnable }}
       {{- if $.Values.tlsEnable }}
@@ -135,7 +135,7 @@ spec:
     {{- if .Values.monitorEnable }}
     - name: kafka-exporter
       {{- if .Values.useLegacyCompDef }}
-      componentDefRef: kafka-exporter
+      componentDef: kafka-exporter
       {{- end  }}
       replicas: {{ $.Values.monitorReplicas }}
       monitor: true
