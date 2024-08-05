@@ -56,6 +56,22 @@ recover_registered_redis_servers_if_needed() {
   fi
 }
 
+reset_redis_sentinel_monitor_conf() {
+    echo "reset sentinel monitor configuration file if there are any residual configurations "
+    if [ -f /data/sentinel/redis-sentinel.conf ]; then
+      sed -i "/sentinel monitor/d" /data/sentinel/redis-sentinel.conf
+      sed -i "/sentinel sentinel down-after-milliseconds/d" /data/sentinel/redis-sentinel.conf
+      sed -i "/sentinel failover-timeout/d" /data/sentinel/redis-sentinel.conf
+      sed -i "/sentinel parallel-syncs/d" /data/sentinel/redis-sentinel.conf
+      set +x
+      if [[ -v REDIS_SENTINEL_PASSWORD ]]; then
+        sed -i "/sentinel auth-user/d" /data/sentinel/redis-sentinel.conf
+        sed -i "/sentinel auth-pass/d" /data/sentinel/redis-sentinel.conf
+      fi
+      set -x
+    fi
+}
+
 recover_registered_redis_servers() {
     if [[ -n "${SENTINEL_POD_FQDN_LIST}" ]]; then
         old_ifs="$IFS"
@@ -66,30 +82,76 @@ recover_registered_redis_servers() {
         IFS="$old_ifs"
 
         output=""
+        local max_retries=5
+        local retry_count=0
+        local success=false
         for sentinel_pod_fqdn in "${sentinel_pod_fqdn_list[@]}"; do
-          if [ -n "$SENTINEL_PASSWORD" ]; then
-            temp_output=$(redis-cli -h "$sentinel_pod_fqdn" -p 26379 -a "$SENTINEL_PASSWORD" sentinel masters 2>/dev/null || true)
-          else
-            temp_output=$(redis-cli -h "$sentinel_pod_fqdn" -p 26379 sentinel masters 2>/dev/null || true)
-          fi
-          if [[ -n "$temp_output" ]]; then
-              output="$temp_output"
+          while [ $retry_count -lt $max_retries ]; do
+            if [ -n "$SENTINEL_PASSWORD" ]; then
+              temp_output=$(redis-cli -h "$sentinel_pod_fqdn" -p "$sentinel_port" -a "$SENTINEL_PASSWORD" sentinel masters 2>/dev/null || true)
+            else
+              temp_output=$(redis-cli -h "$sentinel_pod_fqdn" -p "$sentinel_port" sentinel masters 2>/dev/null || true)
+            fi
+            #
+            if [ $? -eq 0 ]; then
+              echo "$sentinel_pod_fqdn is reachable on port $sentinel_port."
+              success=true
               break
+            else
+              retry_count=$((retry_count + 1))
+              echo "timeout waiting for $sentinel_pod_fqdn to become available $retry_count/$max_retries failed. Retrying..."
+              sleep 1
+            fi
+            if [ "$success" = true ]; then
+              echo "connected to the sentinel successfully after $retry_count retries"
+            else
+              echo "sentinel is either starting up or encountering an issue."
+            fi
+          done
+
+          if [[ -n "$temp_output" ]]; then
+            while read -r line; do
+              case "$line" in
+                name)
+                  read -r pre_master_name
+                  ;;
+                ip)
+                  read -r pre_master_ip
+                  ;;
+                port)
+                  read -r pre_master_port
+                  ;;
+              esac
+            done <<< "$temp_output"
+
+            if [[ -z "$reference_master_name" && -z "$reference_master_ip" && -z "$reference_master_port" ]]; then
+              reference_master_name="$master_name"
+              reference_master_ip="$master_ip"
+              reference_master_port="$master_port"
+            else
+              if [[ "$pre_master_name" != "$reference_master_name" || "$pre_master_ip" != "$reference_master_ip" || "$pre_master_port" != "$reference_master_port" ]]; then
+                echo "the masters of the sentinels are different, configuration error."
+                return 1
+              fi
+            fi
+            output="$temp_output"
           fi
         done
+
+        if [ -n "$output" ]; then
+          echo "$output"
+        else
+          echo "sentinel is either initializing or has no monitored master nodes."
+        fi
     else
         echo "SENTINEL_POD_FQDN_LIST environment variable is not set or empty."
         return 1
     fi
-    #TODO:Check if the sentinel has been deleted before, as adding a new sentinel might read the past configuration, leading to conflicts with the current setup.
+
     if [[ -n "$output" ]]; then
-        master_name=""
-        master_ip=""
-        master_port=""
-        master_down_after_milliseconds=""
-        master_quorum=""
-        master_failover_timeout=""
-        master_parallel_syncs=""
+        reset_redis_sentinel_monitor_conf
+        local master_name master_ip master_port
+        local master_down_after_milliseconds master_quorum master_failover_timeout master_parallel_syncs
         while read -r line; do
             case "$line" in
                 name)
@@ -122,7 +184,6 @@ recover_registered_redis_servers() {
             down-after-milliseconds: $master_down_after_milliseconds, \
             failover-timeout: $master_failover_timeout, \
             parallel-syncs: $master_parallel_syncs, quorum: $master_quorum"
-
             echo "sentinel monitor $master_name $master_ip $master_port $master_quorum" >> /data/sentinel/redis-sentinel.conf
             echo "sentinel down-after-milliseconds $master_name $master_down_after_milliseconds" >> /data/sentinel/redis-sentinel.conf
             echo "sentinel failover-timeout $master_name $master_failover_timeout" >> /data/sentinel/redis-sentinel.conf
@@ -141,22 +202,17 @@ recover_registered_redis_servers() {
                 fi
                 echo "sentinel auth-pass $master_name $auth_pass" >> /data/sentinel/redis-sentinel.conf
             else
-                echo "REDIS_SENTINEL_PASSWORD is not set"
+                echo "REDIS_SENTINEL_PASSWORD environment variable is not set"
                 return 1
             fi
             set -x
             sleep 30
-            master_name=""
-            master_ip=""
-            master_port=""
-            master_down_after_milliseconds=""
-            master_quorum=""
-            master_failover_timeout=""
-            master_parallel_syncs=""
+            master_name="" master_ip="" master_port="" master_down_after_milliseconds=""
+            master_quorum="" master_failover_timeout="" master_parallel_syncs=""
             fi
         done <<< "$output"
     else
-        echo "Initialization in progress, or unable to connect to Redis Sentinel, or no master nodes found."
+        echo "initialization in progress, or unable to connect to redis sentinel, or no master nodes found."
     fi
 }
 
