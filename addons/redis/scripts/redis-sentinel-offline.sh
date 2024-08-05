@@ -101,8 +101,10 @@ member_leave_sentinel() {
 
       if [ "$sentinel_name" != "$sentinel_leave_member_name" ]; then
         if [ -n "$SENTINEL_PASSWORD" ]; then
+          wait_for_connectivity "$host" "$redis_default_service_port" "$SENTINEL_PASSWORD"
           output=$(redis-cli -h "$host" -p "$redis_default_service_port" -a "$SENTINEL_PASSWORD" sentinel masters)
         else
+          wait_for_connectivity "$host" "$redis_default_service_port"
           output=$(redis-cli -h "$host" -p "$redis_default_service_port" sentinel masters)
         fi
         if [[ -n "$output" ]]; then
