@@ -10,9 +10,39 @@ spec:
         - {{ include "rabbitmq.componentDefName" . }}
       releases:
         - 3.13.2
+        - 3.12.13
+        - 3.11.28
+        - 3.10.25
+        - 3.9.29
+        - 3.8.14
   releases:
     - name: 3.13.2
       changes:
       serviceVersion: 3.13.2
       images:
         rabbitmq: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+    - name: 3.12.14
+      changes:
+      serviceVersion: 3.12.14
+      images:
+        rabbitmq: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:3.12.14-management
+    - name: 3.11.28
+      changes:
+      serviceVersion: 3.11.28
+      images:
+        rabbitmq: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:3.11.28-management
+    - name: 3.10.25
+      changes:
+      serviceVersion: 3.10.25
+      images:
+        rabbitmq: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:3.10.25-management
+    - name: 3.9.29
+      changes:
+      serviceVersion: 3.9.29
+      images:
+        rabbitmq: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:3.9.29-management
+    - name: 3.8.14
+      changes:
+      serviceVersion: 3.8.14
+      images:
+        rabbitmq: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:3.8.14-management
