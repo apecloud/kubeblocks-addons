@@ -120,6 +120,8 @@ spec:
             value: "yes"
           - name: SERVICE_PORT
             value: {{ .Values.metrics.port | quote }}
+          - name: ZOO_LOG4J_PROP
+            value: "INFO,ROLLINGFILE,TRACEFILE"
         ports:
           - name: client
             containerPort: 2181
