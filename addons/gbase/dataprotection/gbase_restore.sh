@@ -12,8 +12,14 @@ function remote_file_exists() {
     echo "false"
 }
 
-if [ $(remote_file_exists "${DP_BACKUP_NAME}.tar.gz") == "true" ]; then
-   datasafed pull -d zstd-fastest "${DP_BACKUP_NAME}.tar.gz" - | tar -xzvf - -C  /
-   echo "done!";
-   exit 0
+if [[ $(remote_file_exists "${DP_BACKUP_NAME}.tar.gz") == "true" ]]; then
+  echo "Backup file ${DP_BACKUP_NAME}.tar.gz exists. Proceeding with download and extraction..."
+
+  datasafed pull "${DP_BACKUP_NAME}.tar.gz" - | tar -xzvf - -C "/"
+  echo "DP_BACKUP_NAME=${DP_BACKUP_NAME}" > /data/backup/envfile
+  echo "Done!"
+  exit 0
+else
+  echo "Backup ${DP_BACKUP_NAME}.tar.gz does not exist."
+  exit 1
 fi

@@ -6,12 +6,12 @@ metadata:
     {{- include "gbase.labels" . | nindent 4 }}
 spec:
   releases:
-  - name: gbase-ha-5.0.0
+  - name: gbase-replica-5.0.0
     serviceVersion: "5.0.0"
     images:   
       gbase: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.gbase.repository }}:{{ .Values.image.gbase.tag }} 
       exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }} 
   compatibilityRules:
-  - releases: [gbase-ha-5.0.0]
+  - releases: [gbase-replica-5.0.0]
     compDefs: 
-      - {{ include "gbase.componentDefName" . }}-ha
+      - {{ include "gbase.componentDefName" . }}-replica

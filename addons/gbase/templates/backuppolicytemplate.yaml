@@ -11,10 +11,10 @@ spec:
   clusterDefinitionRef: {{ include "gbase.clusterDefName" . }}
   backupPolicies:
   - componentDefs:
-      - {{ include "gbase.componentDefName" . }}-ha
+      - {{ include "gbase.componentDefName" . }}-replication
     target:
-      role: primary
-      account: kbadmin
+      role: standby
+      account: gbase
     backupMethods:
     - name: gs-probackup
       snapshotVolumes: false

@@ -52,7 +52,11 @@ helm.sh/chart: {{ include "gbase-cluster.chart" . }}
 Define replicas.
 */}}
 {{- define "gbase-cluster.replicas" }}
+{{- if eq .Values.mode "standalone" }}
+{{- 1 }}
+{{- else }}
 {{- .Component.replicas }}
+{{- end }}
 {{- end -}}
 
 {{- define "gbase-cluster.volumeClaimTemplates" }}
@@ -87,9 +91,9 @@ volumes:
 {{/*
 gbase replication mode
 */}}
-{{- define "gbase-cluster.HA.specs" }}
+{{- define "gbase-cluster.replication.specs" }}
 {{- $component := .Values.replication }}
-- name: gbase-ha
+- name: gbase-replica
   replicas: {{ include "gbase-cluster.replicas" (dict "Values" .Values "Component" $component) }}
   {{ include "gbase-cluster.volumes" . | indent 2 }}
   {{ include "gbase-cluster.resources" (dict "Values" .Values "Component" $component) | indent 2 }}

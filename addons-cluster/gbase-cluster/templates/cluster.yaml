@@ -9,6 +9,6 @@ spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
   clusterDefinitionRef: gbase
-  topology: HA_mode
+  topology: replication
   componentSpecs:
-    {{- include "gbase-cluster.HA.specs" . | indent 4 }}
+    {{- include "gbase-cluster.replication.specs" . | indent 4 }}

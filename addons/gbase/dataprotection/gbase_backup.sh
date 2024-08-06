@@ -9,6 +9,7 @@ function handle_exit() {
   if [ $exit_code -ne 0 ]; then
     echo "failed with exit code $exit_code"
     touch "${DP_BACKUP_INFO_FILE}.exit"
+    sleep 1500 
     exit 1
   fi
 }
@@ -19,14 +20,23 @@ export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 
 START_TIME=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 
-sudo -i -u gbase gs_probackup init -B /${DATA_DIR}/backup
-sudo -i -u gbase gs_probackup add-instance -B /${DATA_DIR}/backup/ -D /data/database/install/data/dn --instance kb_backup
-sudo -i -u gbase gs_probackup backup -B /${DATA_DIR}/backup --instance kb_backup -b FULL 
-# gs_probackup backup --remote-host=192.168.20.69 --remote-user=gbase --remote-path=/opt/database/install/app/bin/gs_probackup   -B  /data/backup  --instance kb_backup -b FULL -p 15400 -d gbase 
+REMOTE_COMMANDS=$(cat <<EOF
+    sudo -i -u gbase gs_probackup init -B ${DATA_DIR}/backup
+    sudo -i -u gbase gs_probackup add-instance -B ${DATA_DIR}/backup/ -D /data/database/install/data/dn --instance ${DP_BACKUP_NAME} -d postgres -p 15400
+    sudo -i -u gbase gs_probackup backup -B ${DATA_DIR}/backup/ -D /data/database/install/data/dn --instance ${DP_BACKUP_NAME} -d postgres -p 15400 -b FULL
+EOF
+)
+
+# Execute remote backup commands via SSH
+sshpass -p "${DP_DB_PASSWORD}" ssh -o StrictHostKeyChecking=no gbase@${DP_DB_HOST} "${REMOTE_COMMANDS}"
+
+tar -czvf ${DATA_DIR}/${DP_BACKUP_NAME}.tar.gz ${DATA_DIR}/backup
 
 
-tar -czvf /${DATA_DIR}/${DP_BACKUP_NAME}.tar.gz  /${DATA_DIR}/backup 
 datasafed push "/${DATA_DIR}/${DP_BACKUP_NAME}.tar.gz" "/${DP_BACKUP_NAME}.tar.gz"
+
+rm -rf ${DATA_DIR}/${DP_BACKUP_NAME}.tar.gz ${DATA_DIR}/backup/
+echo "Backup completed and downloaded to ${LOCAL_DEST_DIR}"
 
 STOP_TIME=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')

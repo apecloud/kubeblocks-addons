@@ -68,20 +68,29 @@ function wait_pod_ready {
   done
 }
 
+function restore_data {
+  source /data/backup/envfile  
+  sudo -i -u gbase gs_om -t stop
+
+
+  sudo rm -rf /data/database/install/data/dn
+  sudo -i -u gbase gs_probackup restore -B /data/backup --instance ${DP_BACKUP_NAME} -D /data/database/install/data/dn
+  echo "restore data success"
+}
+
 echo "get pod ip list..."
 get_pod_ip_list
 
 echo "wait all pod to ready..."
 wait_pod_ready
 
-if ! sudo -u gbase -i command -v gsql &> /dev/null; then
-  echo "generating cluster.xml..."
-  python3 /scripts/generate_HA_cluster_xml.py "${HOSTNAME_LIST}" "${IP_LIST}"
-  echo "YAML file has been generated and saved to /home/gbase/cluster.xml"
+echo "generating cluster.xml..."
+python3 /scripts/generate_HA_cluster_xml.py "${HOSTNAME_LIST}" "${IP_LIST}"
+echo "YAML file has been generated and saved to /home/gbase/cluster.xml"
 
-  echo "gs_preinstall......"
+echo "gs_preinstall......"
 
-  expect << EOF
+expect << EOF
 log_user 1
 set timeout 1800
 
@@ -115,9 +124,10 @@ if { [catch wait result] } {
     puts "Interact completed successfully: $result"
 }
 EOF
-  sudo chown -R gbase:gbase /home/gbase/ # special needed
-  echo "now install begin..."
+sudo chown -R gbase:gbase /home/gbase/ # special needed
 
+if [ ! -d "/data/database/install/data/dn" ] || [ ! "$(ls -A /data/database/install/data/dn)" ]; then
+  echo "now install begin..."
   expect << EOF
 log_user 1
 set timeout 1800
@@ -152,21 +162,22 @@ if { [catch wait result] } {
     puts "Interact completed successfully: $result"
 }
 EOF
-
   echo "install success"
+
+  # try to restore data:
+  if [[ -d "/data/backup" ]]; then
+    restore_data
+  fi
 
   sudo -i -u gbase gs_guc reload -N all -I all -h "host all all 0.0.0.0/0 sha256"
   sudo -i -u gbase gs_guc reload -I all -c "listen_addresses='*'"
-  
-  sudo -i -u gbase gsql -p ${gbase_service_port} -U ${GBASE_USER} -d postgres <<EOF
-ALTER USER ${GBASE_USER} PASSWORD '${GBASE_PASSWORD}';
-CREATE USER ${KBADMIN_USER} WITH SYSADMIN PASSWORD '${KBADMIN_PASSWORD}';
-EOF
   echo "configure success"
+else 
+  /scripts/restart_conf.sh "${HOSTNAME_LIST}" "${IP_LIST}"
 fi
 
 echo "gbase cluster starting..."
-sudo -i -u gbase gs_om -t start
+sudo -i -u gbase gs_om -t restart
 echo "gbase cluster start success"
 
 echo "Script execution completed."

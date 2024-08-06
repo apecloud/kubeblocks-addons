@@ -12,10 +12,11 @@
       "title": "Mode",
       "description": "Cluster topology mode.",
       "type": "string",
-      "default": "HA",
+      "default": "replication",
       "enum": [
         "distribution",
-        "HA"
+        "replication",
+        "standalone"
       ]
     },
     "replicas": {

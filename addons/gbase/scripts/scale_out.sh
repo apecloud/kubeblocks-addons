@@ -11,7 +11,7 @@ for POD_NAME in "${KB_POD_ARRAY[@]}"; do
     echo $output
     echo $instance_role
     if [[ "$instance_role" == "Primary" || "$instance_role" == "Normal" ]]; then
-        # Primary = HA mode;  Normal = single node -> HA mode
+        # Primary = replication mode;  Normal = standalone node -> replication mode
         # cluster exist , but now node not in cluster, scale out 
         echo "success begin"
         sshpass -p "$GBASE_PASSWORD" ssh -o StrictHostKeyChecking=no root@${KB_CLUSTER_COMP_NAME}-0.${KB_CLUSTER_COMP_NAME}-headless.${KB_NAMESPACE}.svc "/scripts/memberJoin.sh $KB_POD_NAME $KB_POD_IP"  

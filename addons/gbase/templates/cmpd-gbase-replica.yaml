@@ -1,12 +1,12 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "gbase.componentDefName" . }}-ha
+  name: {{ include "gbase.componentDefName" . }}-replica
   labels:
     {{- include "gbase.labels" . | nindent 4 }}
 spec:
   provider: kubeblocks.io
-  description: gabse 8c HA node
+  description: gabse 8c replication node
   serviceKind: gbase
   serviceVersion: 5.0.0
   services:
@@ -42,13 +42,6 @@ spec:
         numDigits: 8
         numSymbols: 1
         letterCase: MixedCases
-    - name: kbadmin
-      statement: CREATE USER $(USERNAME) WITH SYSADMIN PASSWORD '$(PASSWD)';
-      passwordGenerationPolicy:
-        length: 16
-        numDigits: 8
-        numSymbols: 1
-        letterCase: MixedCases
   vars:
     - name: GBASE_USER
       valueFrom:
@@ -62,20 +55,6 @@ spec:
         credentialVarRef:
           compDef: {{ include "gbase.componentDefName" . }}
           name: gbase
-          optional: false
-          password: Required   
-    - name: KBADMIN_USER
-      valueFrom:
-        credentialVarRef:
-          compDef: {{ include "gbase.componentDefName" . }}
-          name: kbadmin
-          optional: false
-          username: Required
-    - name: KBADMIN_PASSWORD
-      valueFrom:
-        credentialVarRef:
-          compDef: {{ include "gbase.componentDefName" . }}
-          name: kbadmin
           optional: false
           password: Required   
   updateStrategy: Parallel
@@ -162,13 +141,6 @@ spec:
               done
               echo "No primary node found. Exiting."
               exit 1
-    accountProvision:
-      customHandler:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.gbase.repository }}:{{ .Values.image.gbase.tag }} 
-        exec:
-          command: ["echo", "success"]
-        targetPodSelector: Role
-        matchingKey: primary
   runtime:
     containers:
       - name: gbase

@@ -2,16 +2,16 @@
 version: latest
 storageClassName: ""
 
-## @param mode gbase cluster topology mode, distribution or HA. 
+## @param mode gbase cluster topology mode, standalone or replication or distribution. 
 ## distribution now is no functional
-mode: HA
+mode: replication
 
 sshKeySecret: gbase-ssh-rsa-secret
 
 clusterVersionOverride: "gbase8c-5.0.0"
 
 replication:
-  replicas: 2 # single or replication
+  replicas: 2
   resources:
     requests:
       cpu: "500m"
