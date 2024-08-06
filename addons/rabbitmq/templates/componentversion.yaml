@@ -10,7 +10,7 @@ spec:
         - {{ include "rabbitmq.componentDefName" . }}
       releases:
         - 3.13.2
-        - 3.12.13
+        - 3.12.14
         - 3.11.28
         - 3.10.25
         - 3.9.29
