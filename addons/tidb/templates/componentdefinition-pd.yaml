@@ -53,21 +53,22 @@ spec:
       writable: false
   lifecycleActions:
     roleProbe:
-      exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/pd:{{ default .Chart.AppVersion .Values.image.tag }}
-        command:
-          - bash
-          - -c
-          - |
-            # FIXME: this will fail, no idea why
-            # LEADER_NAME=$(/pd-ctl member | jq -r '.leader.name')
-            MEMBER=$(/pd-ctl member)
-            LEADER_NAME=$(echo $MEMBER | jq -r .leader.name)
-            if [ "$LEADER_NAME" == "$HOSTNAME" ]; then
-                echo "leader"
-            else
-                echo "follower"
-            fi
+      customHandler:
+        exec:
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/pd:{{ default .Chart.AppVersion .Values.image.tag }}
+          command:
+            - bash
+            - -c
+            - |
+              # FIXME: this will fail, no idea why
+              # LEADER_NAME=$(/pd-ctl member | jq -r '.leader.name')
+              MEMBER=$(/pd-ctl member)
+              LEADER_NAME=$(echo $MEMBER | jq -r .leader.name)
+              if [ "$LEADER_NAME" == "$HOSTNAME" ]; then
+                  echo "leader"
+              else
+                  echo "follower"
+              fi
     memberLeave:
       customHandler:
         exec:

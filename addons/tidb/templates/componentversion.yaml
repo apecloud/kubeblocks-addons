@@ -14,12 +14,17 @@ spec:
       serviceVersion: "7.1.5"
       images:
         pd: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/pd:v7.1.5
+    - name: "6.5.10"
+      serviceVersion: "6.5.10"
+      images:
+        pd: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/pd:v6.5.10
   compatibilityRules:
     - compDefs:
         - "tidb-pd-7"
       releases:
         - "7.1.5"
         - "7.5.2"
+        - "6.5.10"
 
 ---
 apiVersion: apps.kubeblocks.io/v1alpha1
@@ -40,12 +45,18 @@ spec:
       images:
         tidb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/tidb:v7.1.5
         slowlog: {{ .Values.image.helper.image }}
+    - name: "6.5.10"
+      serviceVersion: "6.5.10"
+      images:
+        tidb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/tidb:v6.5.10
+        slowlog: {{ .Values.image.helper.image }}
   compatibilityRules:
     - compDefs:
         - "tidb-7"
       releases:
         - "7.1.5"
         - "7.5.2"
+        - "6.5.10"
 
 ---
 apiVersion: apps.kubeblocks.io/v1alpha1
@@ -64,9 +75,14 @@ spec:
       serviceVersion: "7.1.5"
       images:
         tikv: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/tikv:v7.1.5
+    - name: "6.5.10"
+      serviceVersion: "6.5.10"
+      images:
+        tikv: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/tikv:v6.5.10
   compatibilityRules:
     - compDefs:
         - "tikv-7"
       releases:
         - "7.1.5"
         - "7.5.2"
+        - "6.5.10"
