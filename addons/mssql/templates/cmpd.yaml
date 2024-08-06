@@ -32,6 +32,8 @@ spec:
     terminationGracePeriodSeconds: 300
     containers:
       - name: mssql
+        securityContext:
+          runAsUser: 0
         volumeMounts:
           - mountPath: /var/opt/mssql
             name: mssql

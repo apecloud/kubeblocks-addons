@@ -6,13 +6,12 @@ metadata:
     {{- include "mssql.labels" . | nindent 4 }}
 spec:
   releases:
-  - name: mssql-2022-latest
-    serviceVersion: 2022-latest
+  - name: mssql-2022
+    serviceVersion: 2022.0.0
     images:
       mssql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
-      exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporterRepository }}:{{ .Values.image.exporterTag }}
   compatibilityRules:
   - releases:
-    - mssql-2022-latest
+    - mssql-2022
     compDefs:
     - mssql

@@ -1,0 +1,19 @@
+# Default values for mssql-cluster.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+
+nameOverride: ""
+fullnameOverride: ""
+
+replicas: 1
+monitorReplicas: 1
+storage:
+  storageClassName: ""
+  mssqlDataSize: 20
+  mssqlArchSize: 20
+  mssqlLogSize: 20
+  monitorDataSize: 20
+
+cpu: 1
+memory: 2

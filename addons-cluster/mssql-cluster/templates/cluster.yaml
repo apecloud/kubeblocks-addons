@@ -1,0 +1,23 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  labels:
+    {{- include "mssql.labels" . | nindent 4 }}
+spec:
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  {{- include "kblib.affinity" . | indent 2 }}
+  clusterDefinitionRef: mssql
+  componentSpecs:
+    - componentDef: mssql
+      name: mssql
+      replicas: {{ $.Values.replicas }}
+      {{- include "kblib.componentResources" $ | indent 6 }}
+      volumeClaimTemplates:
+        - name: mssql
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: {{ print $.Values.storage.mssqlDataSize "Gi" }}

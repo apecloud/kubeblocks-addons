@@ -1,0 +1,128 @@
+{
+    "$schema": "http://json-schema.org/schema#",
+    "type": "object",
+    "properties": {
+        "monitorReplicas": {
+            "title": "MonitorReplicas",
+            "description": "The number of monitor replicas.",
+            "type": [
+              "integer"
+          ],
+            "default": 1,
+            "minimum": 1,
+            "maximum": 3
+        },
+        "replicas": {
+            "title": "Replicas",
+            "description": "The number of replicas.",
+            "type": [
+              "integer"
+          ],
+            "minimum": 1,
+            "maximum": 9
+        },
+        "storage": {
+            "type": "object",
+            "properties": {
+                "mssqlArchSize": {
+                    "title": "Arch Storage(Gi)",
+                    "description": "arch log storage, the unit is Gi.",
+                    "type": [
+                        "number",
+                        "string"
+                    ],
+                    "default": 20,
+                    "minimum": 20,
+                    "maximum": 10000
+                },
+                "mssqlDataSize": {
+                    "title": "Data Storage(Gi)",
+                    "description": "Data Storage size, the unit is Gi.",
+                    "type": [
+                        "number",
+                        "string"
+                    ],
+                    "default": 20,
+                    "minimum": 20,
+                    "maximum": 10000
+                },
+                "mssqlLogSize": {
+                    "title": "Log Storage(Gi)",
+                    "description": "Log Storage size, the unit is Gi.",
+                    "type": [
+                        "number",
+                        "string"
+                    ],
+                    "default": 20,
+                    "minimum": 10,
+                    "maximum": 100
+                },
+                "monitorDataSize": {
+                    "title": "Data Storage for monitor(Gi)",
+                    "description": "Data Storage size for monitor, the unit is Gi.",
+                    "type": [
+                        "number",
+                        "string"
+                    ],
+                    "default": 20,
+                    "minimum": 10,
+                    "maximum": 100
+                }
+            }
+        },
+        "tenant": {
+            "type": "object",
+            "properties": {
+                "unicode_flag": {
+                    "title": "Character Set",
+                    "description": "character set, enum values:[0(GB18030),1(UTF-8),2(EUC-KR)].",
+                    "type": "string",
+                    "default": "1",
+                    "enum": [
+                        "0",
+                        "1",
+                        "2"
+                    ]
+                },
+                "length_in_char": {
+                    "title": "Length in char",
+                    "description": "Is the length of VARCHAR type measured in characters, enum:[0(N), 1(Y)]",
+                    "type": "string",
+                    "default": "1",
+                    "enum": [
+                        "0",
+                        "1"
+                    ]
+                },
+                "case_sensitive": {
+                    "title": "Case Sensitive",
+                    "description": "Case Sensitive, enum:[0(N), 1(Y)]",
+                    "type": "string",
+                    "default": "0",
+                    "enum": [
+                        "0",
+                        "1"
+                    ]
+                },
+                "blank_pad_mode": {
+                    "title": "Blank pad mode",
+                    "description": "blank pad mode, enum:[0, 1]",
+                    "type": "string",
+                    "default": "0",
+                    "enum": [
+                        "0",
+                        "1"
+                    ]
+                },
+                "oguid": {
+                    "title": "OGUID",
+                    "description": "Unique identifier code for data protection, range:0~2147483647",
+                    "type": "integer",
+                    "default": 1,
+                    "minimum": 0,
+                    "maximum": 2147483647
+                }
+            }
+        }
+    }
+}
