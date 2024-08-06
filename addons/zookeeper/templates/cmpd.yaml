@@ -57,28 +57,27 @@ spec:
   lifecycleActions:
     roleProbe:
       builtinHandler: custom
-      customHandler:
-        exec:
-          command:
-            - /bin/bash
-            - -c
-            - |
-              . "$ZOOBINDIR"/zkEnv.sh > /dev/null
+      exec:
+        command:
+          - /bin/bash
+          - -c
+          - |
+            . "$ZOOBINDIR"/zkEnv.sh > /dev/null
 
-              isSSL="false"
-              clientPortAddress="localhost"
-              clientPort=2181
-              GREP=grep
-              STAT=`"$JAVA" "-Dzookeeper.log.dir=${ZOO_LOG_DIR}" "-Dzookeeper.log.file=${ZOO_LOG_FILE}" \
-              -cp "$CLASSPATH" $CLIENT_JVMFLAGS $JVMFLAGS org.apache.zookeeper.client.FourLetterWordMain \
-              $clientPortAddress $clientPort srvr $isSSL 2> /dev/null    \
-              | $GREP Mode`
-              mode=$(echo "$STAT" | awk -F': ' '{print $2}' | awk '{RS=""; ORS=""; print}' )
-              if [[ "$mode" == "standalone" ]]; then
-                echo -n "leader"
-              else
-                echo -n ${mode}
-              fi
+            isSSL="false"
+            clientPortAddress="localhost"
+            clientPort=2181
+            GREP=grep
+            STAT=`"$JAVA" "-Dzookeeper.log.dir=${ZOO_LOG_DIR}" "-Dzookeeper.log.file=${ZOO_LOG_FILE}" \
+            -cp "$CLASSPATH" $CLIENT_JVMFLAGS $JVMFLAGS org.apache.zookeeper.client.FourLetterWordMain \
+            $clientPortAddress $clientPort srvr $isSSL 2> /dev/null    \
+            | $GREP Mode`
+            mode=$(echo "$STAT" | awk -F': ' '{print $2}' | awk '{RS=""; ORS=""; print}' )
+            if [[ "$mode" == "standalone" ]]; then
+              echo -n "leader"
+            else
+              echo -n ${mode}
+            fi
   runtime:
     volumes:
       - name: snapshot-log
@@ -170,6 +169,9 @@ spec:
           - name: config-log
             mountPath: /opt/bitnami/zookeeper/conf/logback.xml
             subPath: logback.xml
+          - name: config-log
+            mountPath: /opt/bitnami/zookeeper/conf/log4j.properties
+            subPath: log4j.properties
   vars:
     - name: ZOOKEEPER_POD_FQDN_LIST
       valueFrom:
