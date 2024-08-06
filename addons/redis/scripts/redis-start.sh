@@ -1,12 +1,45 @@
 #!/bin/bash
-set -ex
 
-# the scripts is mounted to /scripts defined in the cmpd
-source /scripts/common.sh
+# This is magic for shellspec ut framework. "test" is a `test [expression]` well known as a shell command.
+# Normally test without [expression] returns false. It means that __() { :; }
+# function is defined if this script runs directly.
+#
+# shellspec overrides the test command and returns true *once*. It means that
+# __() function defined internally by shellspec is called.
+#
+# In other words. If not in test mode, __ is just a comment. If test mode, __
+# is a interception point.
+# you should set ut_mode="true" when you want to run the script in shellspec file.
+ut_mode="false"
+test || __() {
+  set -ex;
+}
 
-declare -g primary
-declare -g primary_port
-declare -g headless_postfix="headless"
+primary=""
+primary_port="6379"
+headless_postfix="headless"
+redis_template_conf="/etc/conf/redis.conf"
+redis_real_conf="/etc/redis/redis.conf"
+redis_acl_file="/data/users.acl"
+
+load_common_library() {
+  # the common.sh scripts is mounted to the same path which is defined in the cmpd.spec.scripts
+  common_library_file="/scripts/common.sh"
+  # shellcheck disable=SC1090
+  source "${common_library_file}"
+}
+
+set_xtrace() {
+  if [ "false" == "$ut_mode" ]; then
+    set -x
+  fi
+}
+
+unset_xtrace() {
+  if [ "false" == "$ut_mode" ]; then
+    set +x
+  fi
+}
 
 extract_ordinal_from_object_name() {
   local object_name="$1"
@@ -15,27 +48,27 @@ extract_ordinal_from_object_name() {
 }
 
 load_redis_template_conf() {
-  echo "include /etc/conf/redis.conf" >> /etc/redis/redis.conf
+  echo "include $redis_template_conf" >> $redis_real_conf
 }
 
 build_redis_default_accounts() {
-  set +x
+  unset_xtrace
   if [ -n "$REDIS_REPL_PASSWORD" ]; then
-    echo "masteruser $REDIS_REPL_USER" >> /etc/redis/redis.conf
-    echo "masterauth $REDIS_REPL_PASSWORD" >> /etc/redis/redis.conf
-    echo "user $REDIS_REPL_USER on +psync +replconf +ping >$REDIS_REPL_PASSWORD" >> /data/users.acl
+    echo "masteruser $REDIS_REPL_USER" >> $redis_real_conf
+    echo "masterauth $REDIS_REPL_PASSWORD" >> $redis_real_conf
+    echo "user $REDIS_REPL_USER on +psync +replconf +ping >$REDIS_REPL_PASSWORD" >> $redis_acl_file
   fi
   if [ -n "$REDIS_SENTINEL_PASSWORD" ]; then
-    echo "user $REDIS_SENTINEL_USER on allchannels +multi +slaveof +ping +exec +subscribe +config|rewrite +role +publish +info +client|setname +client|kill +script|kill >$REDIS_SENTINEL_PASSWORD" >> /data/users.acl
+    echo "user $REDIS_SENTINEL_USER on allchannels +multi +slaveof +ping +exec +subscribe +config|rewrite +role +publish +info +client|setname +client|kill +script|kill >$REDIS_SENTINEL_PASSWORD" >> $redis_acl_file
   fi
   if [ -n "$REDIS_DEFAULT_PASSWORD" ]; then
-    echo "protected-mode yes" >> /etc/redis/redis.conf
-    echo "user default on >$REDIS_DEFAULT_PASSWORD ~* &* +@all " >> /data/users.acl
+    echo "protected-mode yes" >> $redis_real_conf
+    echo "user default on >$REDIS_DEFAULT_PASSWORD ~* &* +@all " >> $redis_acl_file
   else
-    echo "protected-mode no" >> /etc/redis/redis.conf
+    echo "protected-mode no" >> $redis_real_conf
   fi
-  set -x
-  echo "aclfile /data/users.acl" >> /etc/redis/redis.conf
+  set_xtrace
+  echo "aclfile /data/users.acl" >> $redis_real_conf
   echo "build default accounts succeeded!"
 }
 
@@ -46,11 +79,11 @@ build_announce_ip_and_port() {
     {
       echo "replica-announce-port $redis_advertised_svc_port_value"
       echo "replica-announce-ip $redis_advertised_svc_host_value"
-    } >> /etc/redis/redis.conf
+    } >> $redis_real_conf
   else
     kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc"
     echo "redis use kb pod fqdn $kb_pod_fqdn to announce"
-    echo "replica-announce-ip $kb_pod_fqdn" >> /etc/redis/redis.conf
+    echo "replica-announce-ip $kb_pod_fqdn" >> $redis_real_conf
   fi
 }
 
@@ -59,7 +92,7 @@ build_redis_service_port() {
   if [ -n "$SERVICE_PORT" ]; then
     service_port=$SERVICE_PORT
   fi
-  echo "port $service_port" >> /etc/redis/redis.conf
+  echo "port $service_port" >> $redis_real_conf
 }
 
 build_replicaof_config() {
@@ -67,17 +100,17 @@ build_replicaof_config() {
   if check_current_pod_is_primary; then
     return
   else
-    echo "replicaof $primary $primary_port" >> /etc/redis/redis.conf
+    echo "replicaof $primary $primary_port" >> $redis_real_conf
   fi
 }
 
 rebuild_redis_acl_file() {
-  if [ -f /data/users.acl ]; then
-    sed -i "/user default on/d" /data/users.acl
-    sed -i "/user $REDIS_REPL_USER on/d" /data/users.acl
-    sed -i "/user $REDIS_SENTINEL_USER on/d" /data/users.acl
+  if [ -f $redis_acl_file ]; then
+    sed -i "/user default on/d" $redis_acl_file
+    sed -i "/user $REDIS_REPL_USER on/d" $redis_acl_file
+    sed -i "/user $REDIS_SENTINEL_USER on/d" $redis_acl_file
   else
-    touch /data/users.acl
+    touch $redis_acl_file
   fi
 }
 
@@ -176,10 +209,10 @@ retry_get_master_addr_by_name_from_sentinel() {
   local timeout_value=5
 
   while [ $retry_count -lt $max_retry ]; do
-    set +x
+    unset_xtrace
     echo "execute command: timeout $timeout_value redis-cli -h $sentinel_pod_fqdn -p $SENTINEL_SERVICE_PORT -a ******** sentinel get-master-addr-by-name $KB_CLUSTER_COMP_NAME"
     output=$(timeout "$timeout_value" redis-cli -h "$sentinel_pod_fqdn" -p "$SENTINEL_SERVICE_PORT" -a "$SENTINEL_PASSWORD" sentinel get-master-addr-by-name "$KB_CLUSTER_COMP_NAME")
-    set -x
+    set_xtrace
     exit_code=$?
 
     if [ $exit_code -eq 0 ]; then
@@ -248,7 +281,7 @@ check_pod_is_primary_in_kernel() {
   fi
 
   # check the primary is real master role or not
-  set +x
+  unset_xtrace
   if [ -n "$REDIS_DEFAULT_PASSWORD" ]; then
     check_kernel_role_cmd="redis-cli -h $primary -p $primary_port -a $REDIS_DEFAULT_PASSWORD info replication | grep 'role:' | awk -F: '{print \$2}'"
   else
@@ -269,7 +302,7 @@ check_pod_is_primary_in_kernel() {
       exit 1
     fi
   done
-  set -x
+  set_xtrace
 }
 
 start_redis_server() {
@@ -342,6 +375,11 @@ build_redis_conf() {
   build_redis_default_accounts
 }
 
+# When included from shellspec, __SOURCED__ variable defined and script
+# end here. The script path is assigned to the __SOURCED__ variable.
+${__SOURCED__:+false} : || return 0
+
+load_common_library
 parse_redis_advertised_svc_if_exist "$KB_POD_NAME"
 build_redis_conf
 start_redis_server
