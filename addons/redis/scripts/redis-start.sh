@@ -256,19 +256,20 @@ get_default_initialize_primary_node() {
 check_current_pod_is_primary() {
   current_pod="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME"
   if [[ "$primary" == *"$current_pod"* ]]; then
-    echo "current pod is primary, skip check role in kernel, primary node: $primary, pod name:$current_pod"
+    echo "current pod is primary with name mapping, primary node: $primary, pod name:$current_pod"
     return 0
   fi
 
   if [ -n "$redis_advertised_svc_host_value" ] && [ -n "$redis_advertised_svc_port_value" ]; then
     if [[ "$primary" == "$redis_advertised_svc_host_value" ]] && [[ "$primary_port" == "$redis_advertised_svc_port_value" ]]; then
-      echo "current pod is primary, skip check role in kernel, primary node: $primary, advertised ip:$redis_advertised_svc_host_value, advertised port:$redis_advertised_svc_port_value"
+      echo "current pod is primary with advertised svc mapping, primary: $primary, primary port: $primary_port, advertised ip:$redis_advertised_svc_host_value, advertised port:$redis_advertised_svc_port_value"
       return 0
     fi
+    echo "redis advertised svc host and port exist but not match, primary: $primary, primary port: $primary_port, advertised ip:$redis_advertised_svc_host_value, advertised port:$redis_advertised_svc_port_value"
   fi
 
   if [[ "$primary" == "$KB_POD_IP" ]] && [[ "$primary_port" == "$service_port" ]]; then
-    echo "current pod is primary, skip check role in kernel, primary node: $primary, pod ip:$KB_HOST_IP, service port:$service_port"
+    echo "current pod is primary with pod ip mapping, primary node: $primary, pod ip:$KB_POD_IP, service port:$service_port"
     return 0
   fi
   return 1

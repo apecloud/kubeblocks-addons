@@ -196,9 +196,6 @@ spec:
             mountPath: /scripts
           - name: redis-conf
             mountPath: /etc/redis
-          ## deprecated since v0.8.3, do not use it
-          - name: pod-info
-            mountPath: /kb-podinfo
         env:
           - name: SERVICE_PORT
             value: "6379"
@@ -255,14 +252,3 @@ spec:
         volumeMounts:
           - name: redis-metrics-config
             mountPath: /opt/conf
-    volumes:
-      ## deprecated since v0.8.3, do not use it
-      - name: pod-info
-        downwardAPI:
-          items:
-            - path: "primary-pod"
-              fieldRef:
-                fieldPath: metadata.annotations['rs.apps.kubeblocks.io/primary']
-            - path: "component-replicas"
-              fieldRef:
-                fieldPath: metadata.annotations['apps.kubeblocks.io/component-replicas']
