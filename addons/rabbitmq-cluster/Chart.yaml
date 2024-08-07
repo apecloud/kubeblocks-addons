@@ -3,7 +3,7 @@ annotations:
 apiVersion: v2
 name: rabbitmq-cluster
 type: application
-version: 1.0.0-alpha.0
+version: 0.8.0
 description: A RabbitMQ cluster Helm chart for KubeBlocks
 dependencies:
   - name: kblib
