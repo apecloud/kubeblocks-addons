@@ -1,28 +1,29 @@
 {{/*
 Library of common utility functions implemented in Bash. Currently, the following functions are available:
-- execute_cmd_with_retry: Execute a Bash function with retry capability.
+- call_func_with_retry: Call a bash function with retry capability.
 */}}
 
 {{/*
 This function is used to execute a Bash function with retry capability.
 
 Usage:
-    execute_cmd_with_retry <function_name> <max_retries> <retry_interval>
+    call_func_with_retry <max_retries> <retry_interval> <function_name> [arg1] [arg2] ...
 Arguments:
-    - function_name: The name of the Bash function to execute. The function can accept any number of arguments.
     - max_retries: The maximum number of retries if the function fails.
     - retry_interval: The interval (in seconds) between each retry attempt.
+    - function_name: The name of the Bash function to execute. The function can accept any number of arguments.
+    - arg1, arg2, ... (optional): Arguments to pass to the function.
 Result:
     The result of the executed Bash function.
 Example:
-    execute_cmd_with_retry "my_function" 3 5
-    execute_cmd_with_retry "my_function" 3 5 arg1 arg2 arg3
+    call_func_with_retry 2 1 "my_function"
+    call_func_with_retry 3 5 "my_function" "arg1" "arg2"
 */}}
-{{- define "kblib.commons.execute_cmd_with_retry" }}
-execute_cmd_with_retry() {
-  local function_name="$1"
-  local max_retries="$2"
-  local retry_interval="$3"
+{{- define "kblib.commons.call_func_with_retry" }}
+call_func_with_retry() {
+  local max_retries="$1"
+  local retry_interval="$2"
+  local function_name="$3"
   shift 3
 
   local retries=0
@@ -35,7 +36,7 @@ execute_cmd_with_retry() {
         echo "Function '$function_name' failed after $max_retries retries."
         return 1
       fi
-      echo "Function '$function_name' failed. Retrying in $retry_interval seconds..."
+      echo "Function '$function_name' failed in $retries times. Retrying in $retry_interval seconds..."
       sleep $retry_interval
     fi
   done
