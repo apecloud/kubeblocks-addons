@@ -11,12 +11,12 @@ Describe 'kubeblocks envs library tests'
   cleanup() { rm -f $libenvs_file; }
   AfterAll 'cleanup'
 
-  Describe 'envExist'
+  Describe 'env_exist'
     Include $libenvs_file
 
     Context 'when the environment variable does not exist'
       It 'should return false'
-        When call envExist "NON_EXISTENT_ENV"
+        When call env_exist "NON_EXISTENT_ENV"
         The output should eq "false, NON_EXISTENT_ENV does not exist"
         The status should be failure
       End
@@ -29,14 +29,14 @@ Describe 'kubeblocks envs library tests'
       Before 'setup'
 
       It 'should return true'
-        When call envExist "EXISTENT_ENV"
+        When call env_exist "EXISTENT_ENV"
         The output should eq "true, EXISTENT_ENV exists"
         The status should be success
       End
     End
   End
 
-  Describe 'envsExist'
+  Describe 'env_exists'
     Include $libenvs_file
 
     Context 'when all environment variables exist'
@@ -48,7 +48,7 @@ Describe 'kubeblocks envs library tests'
       Before 'setup'
 
       It 'should return true'
-        When call envsExist "ENV1" "ENV2" "ENV3"
+        When call env_exists "ENV1" "ENV2" "ENV3"
         The output should eq "true, all environment variables exist"
         The status should be success
       End
@@ -62,7 +62,7 @@ Describe 'kubeblocks envs library tests'
       Before 'setup'
 
       It 'should return false'
-        When call envsExist "ENV1" "ENV2" "ENV3"
+        When call env_exists "ENV1" "ENV2" "ENV3"
         The output should eq "false, the following environment variables do not exist: ENV2"
         The status should be failure
       End
@@ -70,7 +70,7 @@ Describe 'kubeblocks envs library tests'
 
     Context 'when all environment variables do not exist'
       It 'should return false'
-        When call envsExist "ENV1" "ENV2" "ENV3"
+        When call env_exists "ENV1" "ENV2" "ENV3"
         The output should eq "false, the following environment variables do not exist: ENV1 ENV2 ENV3"
         The status should be failure
       End
