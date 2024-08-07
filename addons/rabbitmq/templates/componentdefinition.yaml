@@ -11,13 +11,6 @@ spec:
   serviceVersion: {{ .Values.componentServiceVersion.rabbitmq }}
   services:
     - name: default
-      serviceName: rabbitmq
-      spec:
-        ports:
-          - name: amqp
-            port: 5672
-            targetPort: amqp
-    - name: everypod
       spec:
         ports:
           - name: amqp
