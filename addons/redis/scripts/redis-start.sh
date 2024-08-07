@@ -97,7 +97,7 @@ build_redis_service_port() {
 }
 
 build_replicaof_config() {
-  init_or_get_primary_node
+  init_or_get_primary_from_redis_sentinel
   if check_current_pod_is_primary; then
     return
   else
@@ -113,11 +113,6 @@ rebuild_redis_acl_file() {
   else
     touch $redis_acl_file
   fi
-}
-
-init_or_get_primary_node() {
-  # the global primary variable maybe the fqdn format or the primary node ip.
-  init_or_get_primary_from_redis_sentinel
 }
 
 init_or_get_primary_from_redis_sentinel() {
@@ -194,42 +189,50 @@ init_or_get_primary_from_redis_sentinel() {
   done
 }
 
+build_sentinel_get_master_addr_by_name_command() {
+  local sentinel_pod_fqdn="$1"
+  local timeout_value=5
+  echo "timeout $timeout_value redis-cli -h $sentinel_pod_fqdn -p $SENTINEL_SERVICE_PORT -a ******** sentinel get-master-addr-by-name $KB_CLUSTER_COMP_NAME"
+}
+
+get_master_addr_by_name_from_sentinel() {
+  local get_master_addr_by_name_command
+  local sentinel_pod_fqdn="$1"
+  get_master_addr_by_name_command=$(build_sentinel_get_master_addr_by_name_command "$sentinel_pod_fqdn")
+  unset_xtrace
+  echo "execute get-master-addr-by-name command: $get_master_addr_by_name_command"
+  output=$(eval "$get_master_addr_by_name_command")
+  exit_code=$?
+  set_xtrace
+
+  if [ $exit_code -eq 0 ]; then
+    old_ifs="$IFS"
+    IFS=$'\n'
+    set -f
+    read -r -d '' -a REDIS_SENTINEL_PRIMARY_INFO <<< "$output"
+    set +f
+    IFS="$old_ifs"
+    if [ "${#REDIS_SENTINEL_PRIMARY_INFO[@]}" -eq 2 ] && [ -n "${REDIS_SENTINEL_PRIMARY_INFO[0]}" ] && [ -n "${REDIS_SENTINEL_PRIMARY_INFO[1]}" ]; then
+      echo "Successfully retrieved primary info from sentinel"
+      return 0
+    else
+      echo "Empty primary info retrieved from sentinel"
+      return 1
+    fi
+  else
+    if [ $exit_code -eq 124 ]; then
+      echo "Timeout occurred while retrieving primary info from sentinel. Retrying..."
+    else
+      echo "Error occurred while retrieving primary info from sentinel. Retrying..."
+    fi
+    return 1
+  fi
+}
+
 retry_get_master_addr_by_name_from_sentinel() {
   local sentinel_pod_fqdn="$1"
   local max_retry=3
   local retry_delay=2
-  local timeout_value=5
-
-  get_master_addr_by_name_from_sentinel() {
-    unset_xtrace
-    echo "execute command: timeout $timeout_value redis-cli -h $sentinel_pod_fqdn -p $SENTINEL_SERVICE_PORT -a ******** sentinel get-master-addr-by-name $KB_CLUSTER_COMP_NAME"
-    output=$(timeout "$timeout_value" redis-cli -h "$sentinel_pod_fqdn" -p "$SENTINEL_SERVICE_PORT" -a "$SENTINEL_PASSWORD" sentinel get-master-addr-by-name "$KB_CLUSTER_COMP_NAME")
-    set_xtrace
-    exit_code=$?
-
-    if [ $exit_code -eq 0 ]; then
-      old_ifs="$IFS"
-      IFS=$'\n'
-      set -f
-      read -r -d '' -a REDIS_SENTINEL_PRIMARY_INFO <<< "$output"
-      set +f
-      IFS="$old_ifs"
-      if [ "${#REDIS_SENTINEL_PRIMARY_INFO[@]}" -eq 2 ] && [ -n "${REDIS_SENTINEL_PRIMARY_INFO[0]}" ] && [ -n "${REDIS_SENTINEL_PRIMARY_INFO[1]}" ]; then
-        echo "Successfully retrieved primary info from sentinel: $sentinel_pod_fqdn"
-        return 0
-      else
-        echo "Empty primary info retrieved from sentinel: $sentinel_pod_fqdn"
-        return 1
-      fi
-    else
-      if [ $exit_code -eq 124 ]; then
-        echo "Timeout occurred while retrieving primary info from sentinel: $sentinel_pod_fqdn. Retrying..."
-      else
-        echo "Error occurred while retrieving primary info from sentinel: $sentinel_pod_fqdn. Retrying..."
-      fi
-      return 1
-    fi
-  }
 
   if call_func_with_retry "$max_retry" "$retry_delay" get_master_addr_by_name_from_sentinel "$sentinel_pod_fqdn"; then
     return 0
