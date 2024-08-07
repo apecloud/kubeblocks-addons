@@ -2,13 +2,13 @@
 Library of string functions implemented in Bash. Currently, the following functions are available:
 - split(string, separator): Split a string into an array of strings based on a separator.
 - contains(string, substring): Check if a string contains a substring.
-- hasPrefix(string, prefix): Check if a string starts with a prefix.
-- hasSuffix(string, suffix): Check if a string ends with a suffix.
+- has_prefix(string, prefix): Check if a string starts with a prefix.
+- has_suffix(string, suffix): Check if a string ends with a suffix.
 - replace(string, old, new, count): Replace a substring with a new string for a specified number of occurrences.
-- replaceAll(string, old, new): Replace all occurrences of a substring with a new string.
+- replace_all(string, old, new): Replace all occurrences of a substring with a new string.
 - trim(string, cutset): Remove leading and trailing characters from a string based on a set of characters.
-- trimPrefix(string, prefix): Remove a prefix from a string if it exists.
-- trimSuffix(string, suffix): Remove a suffix from a string if it exists.
+- trim_prefix(string, prefix): Remove a prefix from a string if it exists.
+- trim_suffix(string, suffix): Remove a suffix from a string if it exists.
 */}}
 
 {{/*
@@ -69,18 +69,18 @@ contains() {
 This function checks if a string starts with a prefix.
 
 Usage:
-    `hasPrefix "string" "prefix"`
+    `has_prefix "string" "prefix"`
 Result:
     Returns 0 (true) if the string starts with the prefix, otherwise returns 1 (false).
 Example:
-    if hasPrefix "hello world" "hello"; then
+    if has_prefix "hello world" "hello"; then
         echo "The string starts with 'hello'"
     else
         echo "The string does not start with 'hello'"
     fi
 */}}
-{{- define "kblib.strings.hasPrefix" }}
-hasPrefix() {
+{{- define "kblib.strings.has_prefix" }}
+has_prefix() {
   local string="$1"
   local prefix="$2"
 
@@ -96,18 +96,18 @@ hasPrefix() {
 This function checks if a string ends with a suffix.
 
 Usage:
-    `hasSuffix "string" "suffix"`
+    `has_suffix "string" "suffix"`
 Result:
     Returns 0 (true) if the string ends with the suffix, otherwise returns 1 (false).
 Example:
-    if hasSuffix "hello world" "world"; then
+    if has_suffix "hello world" "world"; then
         echo "The string ends with 'world'"
     else
         echo "The string does not end with 'world'"
     fi
 */}}
-{{- define "kblib.strings.hasSuffix" }}
-hasSuffix() {
+{{- define "kblib.strings.has_suffix" }}
+has_suffix() {
   local string="$1"
   local suffix="$2"
 
@@ -162,15 +162,15 @@ replace() {
 This function replaces all occurrences of a substring with a replacement string.
 
 Usage:
-    `replaceAll "string" "old" "new"`
+    `replace_all "string" "old" "new"`
 Result:
     Returns the modified string with all the replacements.
 Example:
-    result=$(replaceAll "hello world hello" "hello" "hi")
+    result=$(replace_all "hello world hello" "hello" "hi")
     echo "$result"
 */}}
-{{- define "kblib.strings.replaceAll" }}
-replaceAll() {
+{{- define "kblib.strings.replace_all" }}
+replace_all() {
   local string="$1"
   local old="$2"
   local new="$3"
@@ -209,19 +209,19 @@ trim() {
 {{- end -}}
 
 {{/*
-TrimPrefix returns s without the provided leading prefix string.
+trim_prefix returns s without the provided leading prefix string.
 If s doesn't start with prefix, s is returned unchanged.
 
 Usage:
-    `trimPrefix "string" "prefix"`
+    `trim_prefix "string" "prefix"`
 Result:
     String with the provided leading prefix removed
 Example:
-    result=$(trimPrefix "hello world" "hello ")
+    result=$(trim_prefix "hello world" "hello ")
     echo "$result"
 */}}
-{{- define "kblib.strings.trimPrefix" -}}
-trimPrefix() {
+{{- define "kblib.strings.trim_prefix" -}}
+trim_prefix() {
   local string="$1"
   local prefix="$2"
 
@@ -234,19 +234,19 @@ trimPrefix() {
 {{- end -}}
 
 {{/*
-TrimSuffix returns s without the provided trailing suffix string.
+trim_suffix returns s without the provided trailing suffix string.
 If s doesn't end with suffix, s is returned unchanged.
 
 Usage:
-    `trimSuffix "string" "suffix"`
+    `trim_suffix "string" "suffix"`
 Result:
     String with the provided trailing suffix removed
 Example:
-    result=$(trimSuffix "hello world" " world")
+    result=$(trim_suffix "hello world" " world")
     echo "$result"
 */}}
-{{- define "kblib.strings.trimSuffix" -}}
-trimSuffix() {
+{{- define "kblib.strings.trim_suffix" -}}
+trim_suffix() {
   local string="$1"
   local suffix="$2"
 

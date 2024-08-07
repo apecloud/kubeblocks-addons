@@ -37,26 +37,26 @@ Describe 'kubeblocks strings library tests'
     End
   End
 
-  Describe 'hasPrefix'
+  Describe 'has_prefix'
     It 'should return true when has prefix'
-      When call hasPrefix "hello world" "hello"
+      When call has_prefix "hello world" "hello"
       The status should be success
     End
 
     It 'should return false when no prefix'
-      When call hasPrefix "hello world" "world"
+      When call has_prefix "hello world" "world"
       The status should be failure
     End
   End
 
-  Describe 'hasSuffix'
+  Describe 'has_suffix'
     It 'should return true when has suffix'
-      When call hasSuffix "hello world" "world"
+      When call has_suffix "hello world" "world"
       The status should be success
     End
 
     It 'should return false when no suffix'
-      When call hasSuffix "hello world" "hello"
+      When call has_suffix "hello world" "hello"
       The status should be failure
     End
   End
@@ -78,9 +78,9 @@ Describe 'kubeblocks strings library tests'
     End
   End
 
-  Describe 'replaceAll'
+  Describe 'replace_all'
     It 'should replace all occurrences'
-      When call replaceAll "hello world hello" "hello" "hi"
+      When call replace_all "hello world hello" "hello" "hi"
       The output should eq "hi world hi"
     End
   End
@@ -102,26 +102,26 @@ Describe 'kubeblocks strings library tests'
     End
   End
 
-  Describe 'trimPrefix'
+  Describe 'trim_prefix'
     It 'should trim prefix'
-      When call trimPrefix "hello world" "hello "
+      When call trim_prefix "hello world" "hello "
       The output should eq "world"
     End
 
     It 'should not trim when no prefix'
-      When call trimPrefix "hello world" "foo"
+      When call trim_prefix "hello world" "foo"
       The output should eq "hello world"
     End
   End
 
-  Describe 'trimSuffix'
+  Describe 'trim_suffix'
     It 'should trim suffix'
-      When call trimSuffix "hello world" " world"
+      When call trim_suffix "hello world" " world"
       The output should eq "hello"
     End
 
     It 'should not trim when no suffix'
-      When call trimSuffix "hello world" "foo"
+      When call trim_suffix "hello world" "foo"
       The output should eq "hello world"
     End
   End
