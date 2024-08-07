@@ -167,11 +167,6 @@ spec:
           - name: PGPASSWORD
             value: $(POSTGRES_PASSWORD)
     */}}
-    preTerminate:
-      customHandler:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major15.minor070 }}
-        exec:
-          command: ["/kb-scripts/etcd-clean.sh"]
   runtime:
     securityContext:
       runAsUser: 0
@@ -201,6 +196,10 @@ spec:
           runAsUser: 0
         command:
           - /kb-scripts/setup.sh
+        lifecycle:
+          preStop:
+            exec: 
+              command: ["/kb-scripts/etcd-clean.sh"]
         readinessProbe:
           failureThreshold: 3
           initialDelaySeconds: 10
