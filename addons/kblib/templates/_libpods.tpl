@@ -30,7 +30,12 @@ get_pod_list_from_env() {
   local pod_list_str="${!env_name}"
   local pod_list=()
 
-  IFS=',' read -ra pod_list <<< "$pod_list_str"
+  old_ifs="$IFS"
+  IFS=','
+  set -f
+  read -ra pod_list <<< "$pod_list_str"
+  set +f
+  IFS="$old_ifs"
 
   echo "${pod_list[@]}"
 }
@@ -54,7 +59,12 @@ min_lexicographical_order_pod() {
   local pod_list_str="${1:-${KB_POD_LIST}}"
   local pod_list=()
 
-  IFS=',' read -ra pod_list <<< "$pod_list_str"
+  old_ifs="$IFS"
+  IFS=','
+  set -f
+  read -ra pod_list <<< "$pod_list_str"
+  set +f
+  IFS="$old_ifs"
 
   local minimum_pod="${pod_list[0]}"
   for pod in "${pod_list[@]}"; do

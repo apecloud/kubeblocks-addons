@@ -27,7 +27,6 @@ env_exist() {
     return 1
   fi
 
-  echo "true, $env_name exists"
   return 0
 }
 {{- end }}
@@ -58,7 +57,6 @@ env_exists() {
   done
 
   if [[ ${#missing_envs[@]} -eq 0 ]]; then
-    echo "true, all environment variables exist"
     return 0
   else
     echo "false, the following environment variables do not exist: ${missing_envs[*]}"

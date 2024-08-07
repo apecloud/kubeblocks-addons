@@ -13,6 +13,22 @@ Describe 'kubeblocks strings library tests'
 
   Include $libstrings_file
 
+  Describe 'is_empty'
+    Context 'when the string is empty'
+      It 'should return true'
+        When call is_empty ""
+        The status should be success
+      End
+    End
+
+    Context 'when the string is not empty'
+      It 'should return false'
+        When call is_empty "hello"
+        The status should be failure
+      End
+    End
+  End
+
   Describe 'split'
     It 'should split with default separator'
       When call split "a,b,c"

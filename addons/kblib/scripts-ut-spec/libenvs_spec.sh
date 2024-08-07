@@ -30,7 +30,6 @@ Describe 'kubeblocks envs library tests'
 
       It 'should return true'
         When call env_exist "EXISTENT_ENV"
-        The output should eq "true, EXISTENT_ENV exists"
         The status should be success
       End
     End
@@ -49,7 +48,6 @@ Describe 'kubeblocks envs library tests'
 
       It 'should return true'
         When call env_exists "ENV1" "ENV2" "ENV3"
-        The output should eq "true, all environment variables exist"
         The status should be success
       End
     End

@@ -7,9 +7,11 @@ metadata:
 data:
   common.sh: |-
     #!/bin/bash
+    {{- include "kblib.commons.call_func_with_retry" $ | nindent 4 }}
     {{- include "kblib.pods.min_lexicographical_order_pod" $ | nindent 4 }}
     {{- include "kblib.pods.get_pod_list_from_env" $ | nindent 4 }}
     {{- include "kblib.strings.contains" $ | nindent 4 }}
+    {{- include "kblib.strings.is_empty" $ | nindent 4 }}
     {{- include "kblib.strings.split" $ | nindent 4 }}
     {{- include "kblib.envs.env_exist" $ | nindent 4 }}
     {{- include "kblib.envs.env_exists" $ | nindent 4 }}

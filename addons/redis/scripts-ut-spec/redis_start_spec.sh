@@ -72,7 +72,7 @@ Describe "Redis Start Bash Script Tests"
       It "builds default accounts correctly when all password envs are set"
         When call build_redis_default_accounts
         The status should be success
-        The stdout should eq "build default accounts succeeded!"
+        The stdout should include "build default accounts succeeded!"
         The contents of file "$redis_real_conf" should include "masteruser $REDIS_REPL_USER"
         The contents of file "$redis_real_conf" should include "masterauth $REDIS_REPL_PASSWORD"
         The contents of file "$redis_real_conf" should include "protected-mode yes"
@@ -99,7 +99,7 @@ Describe "Redis Start Bash Script Tests"
       It "builds default accounts correctly when only default password env is set"
         When call build_redis_default_accounts
         The status should be success
-        The stdout should eq "build default accounts succeeded!"
+        The stdout should include "build default accounts succeeded!"
         The contents of file "$redis_real_conf" should include "protected-mode yes"
         The contents of file "$redis_real_conf" should include "aclfile /data/users.acl"
         The contents of file "$redis_acl_file" should include "user default on >$REDIS_DEFAULT_PASSWORD ~* &* +@all"
@@ -116,7 +116,7 @@ Describe "Redis Start Bash Script Tests"
       It "disables protected mode when no password env is set"
         When call build_redis_default_accounts
         The status should be success
-        The stdout should eq "build default accounts succeeded!"
+        The stdout should include "build default accounts succeeded!"
         The contents of file "$redis_real_conf" should include "protected-mode no"
       End
     End
@@ -129,7 +129,7 @@ Describe "Redis Start Bash Script Tests"
       When call build_announce_ip_and_port
       The contents of file "$redis_real_conf" should include "replica-announce-port $redis_advertised_svc_port_value"
       The contents of file "$redis_real_conf" should include "replica-announce-ip $redis_advertised_svc_host_value"
-      The stdout should eq "redis use nodeport $redis_advertised_svc_host_value:$redis_advertised_svc_port_value to announce"
+      The stdout should include "redis use nodeport $redis_advertised_svc_host_value:$redis_advertised_svc_port_value to announce"
     End
 
     It "builds announce ip and port correctly when advertised svc is not enabled"
@@ -140,7 +140,7 @@ Describe "Redis Start Bash Script Tests"
       KB_NAMESPACE="default"
       When call build_announce_ip_and_port
       The contents of file "./redis.conf" should include "replica-announce-ip $KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc"
-      The stdout should eq "redis use kb pod fqdn $KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc to announce"
+      The stdout should include "redis use kb pod fqdn $KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc to announce"
     End
   End
 
@@ -155,6 +155,7 @@ Describe "Redis Start Bash Script Tests"
       unset SERVICE_PORT
       When call build_redis_service_port
       The contents of file "$redis_real_conf" should include "port 6379"
+      The stdout should include "false, SERVICE_PORT does not exist"
     End
   End
 

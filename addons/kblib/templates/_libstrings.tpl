@@ -1,5 +1,6 @@
 {{/*
 Library of string functions implemented in Bash. Currently, the following functions are available:
+- is_empty(string): Check if a string is empty.
 - split(string, separator): Split a string into an array of strings based on a separator.
 - contains(string, substring): Check if a string contains a substring.
 - has_prefix(string, prefix): Check if a string starts with a prefix.
@@ -10,6 +11,32 @@ Library of string functions implemented in Bash. Currently, the following functi
 - trim_prefix(string, prefix): Remove a prefix from a string if it exists.
 - trim_suffix(string, suffix): Remove a suffix from a string if it exists.
 */}}
+
+{{/*
+This function checks if a string is empty.
+
+Usage:
+    `is_empty "string"`
+Result:
+    Returns 0 (true) if the string is empty, otherwise returns 1 (false).
+Example:
+    if is_empty ""; then
+        echo "The string is empty"
+    else
+        echo "The string is not empty"
+    fi
+*/}}
+{{- define "kblib.strings.is_empty" }}
+is_empty() {
+  local string="$1"
+
+  if [[ -z "$string" ]]; then
+    return 0
+  else
+    return 1
+  fi
+}
+{{- end }}
 
 {{/*
 This function is used to split a string into an array of strings.
@@ -30,7 +57,12 @@ split() {
   local separator="${2:-,}"
   local array=()
 
-  IFS="$separator" read -ra array <<< "$string"
+  old_ifs="$IFS"
+  IFS="$separator"
+  set -f
+  read -ra array <<< "$string"
+  set +f
+  IFS="$old_ifs"
 
   echo "${array[@]}"
 }

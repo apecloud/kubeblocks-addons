@@ -53,15 +53,15 @@ load_redis_template_conf() {
 
 build_redis_default_accounts() {
   unset_xtrace
-  if [ -n "$REDIS_REPL_PASSWORD" ]; then
+  if env_exist REDIS_REPL_PASSWORD; then
     echo "masteruser $REDIS_REPL_USER" >> $redis_real_conf
     echo "masterauth $REDIS_REPL_PASSWORD" >> $redis_real_conf
     echo "user $REDIS_REPL_USER on +psync +replconf +ping >$REDIS_REPL_PASSWORD" >> $redis_acl_file
   fi
-  if [ -n "$REDIS_SENTINEL_PASSWORD" ]; then
+  if env_exist REDIS_SENTINEL_PASSWORD; then
     echo "user $REDIS_SENTINEL_USER on allchannels +multi +slaveof +ping +exec +subscribe +config|rewrite +role +publish +info +client|setname +client|kill +script|kill >$REDIS_SENTINEL_PASSWORD" >> $redis_acl_file
   fi
-  if [ -n "$REDIS_DEFAULT_PASSWORD" ]; then
+  if env_exist REDIS_DEFAULT_PASSWORD; then
     echo "protected-mode yes" >> $redis_real_conf
     echo "user default on >$REDIS_DEFAULT_PASSWORD ~* &* +@all " >> $redis_acl_file
   else
@@ -74,7 +74,7 @@ build_redis_default_accounts() {
 
 build_announce_ip_and_port() {
   # build announce ip and port according to whether the advertised svc is enabled
-  if [ -n "$redis_advertised_svc_host_value" ] && [ -n "$redis_advertised_svc_port_value" ]; then
+  if env_exists redis_advertised_svc_host_value redis_advertised_svc_port_value; then
     echo "redis use nodeport $redis_advertised_svc_host_value:$redis_advertised_svc_port_value to announce"
     {
       echo "replica-announce-port $redis_advertised_svc_port_value"
@@ -89,7 +89,8 @@ build_announce_ip_and_port() {
 
 build_redis_service_port() {
   service_port=6379
-  if [ -n "$SERVICE_PORT" ]; then
+  if env_exist SERVICE_PORT; then
+    # shellcheck disable=SC2153
     service_port=$SERVICE_PORT
   fi
   echo "port $service_port" >> $redis_real_conf
@@ -121,7 +122,7 @@ init_or_get_primary_node() {
 
 init_or_get_primary_from_redis_sentinel() {
   # check redis sentinel component env
-  if [ -z "$SENTINEL_COMPONENT_NAME" ]; then
+  if ! env_exist SENTINEL_COMPONENT_NAME; then
     # return default primary node if redis sentinel component name is not set
     echo "SENTINEL_COMPONENT_NAME env is not set, try to use default primary node."
     get_default_initialize_primary_node
@@ -129,23 +130,18 @@ init_or_get_primary_from_redis_sentinel() {
   fi
 
   # parse redis sentinel pod list from $SENTINEL_POD_NAME_LIST env
-  if [ -z "$SENTINEL_POD_NAME_LIST" ]; then
+  if ! env_exist SENTINEL_POD_NAME_LIST; then
     echo "Error: Required environment variable SENTINEL_POD_NAME_LIST: $SENTINEL_POD_NAME_LIST is not set."
     exit 1
   fi
 
   # get redis sentinel headless service name from $SENTINEL_HEADLESS_SERVICE_NAME env
-  if [ -z "$SENTINEL_HEADLESS_SERVICE_NAME" ]; then
+  if ! env_exist SENTINEL_HEADLESS_SERVICE_NAME; then
     echo "Error: Required environment variable SENTINEL_HEADLESS_SERVICE_NAME: $SENTINEL_HEADLESS_SERVICE_NAME is not set."
     exit 1
   fi
 
-  old_ifs="$IFS"
-  IFS=','
-  set -f
-  read -ra sentinel_pod_list <<< "${SENTINEL_POD_NAME_LIST}"
-  set +f
-  IFS="$old_ifs"
+  sentinel_pod_list=$(get_pod_list_from_env "SENTINEL_POD_NAME_LIST")
   declare -A master_count_map
   local first_redis_primary_host=""
   local first_redis_primary_port=""
@@ -165,7 +161,7 @@ init_or_get_primary_from_redis_sentinel() {
       master_count_map[$host_port_key]=$((${master_count_map[$host_port_key]} + 1))
 
       # track the primary host and port from the first sentinel
-      if [[ -z "$first_redis_primary_host" ]] && [[ -z "$first_redis_primary_port" ]]; then
+      if is_empty "$first_redis_primary_host" && is_empty "$first_redis_primary_port"; then
         first_redis_primary_host=${REDIS_SENTINEL_PRIMARY_INFO[0]}
         first_redis_primary_port=${REDIS_SENTINEL_PRIMARY_INFO[1]}
       fi
@@ -200,12 +196,11 @@ init_or_get_primary_from_redis_sentinel() {
 
 retry_get_master_addr_by_name_from_sentinel() {
   local sentinel_pod_fqdn="$1"
-  local retry_count=0
   local max_retry=3
   local retry_delay=2
   local timeout_value=5
 
-  while [ $retry_count -lt $max_retry ]; do
+  get_master_addr_by_name_from_sentinel() {
     unset_xtrace
     echo "execute command: timeout $timeout_value redis-cli -h $sentinel_pod_fqdn -p $SENTINEL_SERVICE_PORT -a ******** sentinel get-master-addr-by-name $KB_CLUSTER_COMP_NAME"
     output=$(timeout "$timeout_value" redis-cli -h "$sentinel_pod_fqdn" -p "$SENTINEL_SERVICE_PORT" -a "$SENTINEL_PASSWORD" sentinel get-master-addr-by-name "$KB_CLUSTER_COMP_NAME")
@@ -224,7 +219,7 @@ retry_get_master_addr_by_name_from_sentinel() {
         return 0
       else
         echo "Empty primary info retrieved from sentinel: $sentinel_pod_fqdn"
-        return 0
+        return 1
       fi
     else
       if [ $exit_code -eq 124 ]; then
@@ -232,14 +227,16 @@ retry_get_master_addr_by_name_from_sentinel() {
       else
         echo "Error occurred while retrieving primary info from sentinel: $sentinel_pod_fqdn. Retrying..."
       fi
+      return 1
     fi
+  }
 
-    retry_count=$((retry_count + 1))
-    sleep $retry_delay
-  done
-
-  echo "Failed to retrieve primary info from sentinel: $sentinel_pod_fqdn after $max_retry retries."
-  return 1
+  if call_func_with_retry "$max_retry" "$retry_delay" get_master_addr_by_name_from_sentinel "$sentinel_pod_fqdn"; then
+    return 0
+  else
+    echo "Failed to retrieve primary info from sentinel: $sentinel_pod_fqdn after $max_retry retries."
+    return 1
+  fi
 }
 
 get_default_initialize_primary_node() {
