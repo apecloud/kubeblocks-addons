@@ -69,6 +69,8 @@ on:
           - pulsar-cluster
           - qdrant
           - qdrant-cluster
+          - rabbitmq
+          - rabbitmq-cluster
           - redis
           - redis-cluster
           - risingwave
