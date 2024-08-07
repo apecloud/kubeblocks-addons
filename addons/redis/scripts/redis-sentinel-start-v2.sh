@@ -2,6 +2,13 @@
 set -ex
 
 # Based on the Component Definition API, Redis Sentinel deployed independently
+check_redis_sentinel_member_leave_status() {
+  if [ -f /data/sentinel/member_leave.conf ]; then
+    echo "sentinel is performing a member leave operation and will not continue to start"
+    exit 1
+  fi
+}
+
 
 reset_redis_sentinel_conf() {
   echo "reset redis sentinel conf"
@@ -92,22 +99,39 @@ recover_registered_redis_servers() {
             else
               temp_output=$(redis-cli -h "$sentinel_pod_fqdn" -p "$sentinel_port" sentinel masters 2>/dev/null || true)
             fi
-            #
-            if [ $? -eq 0 ]; then
-              echo "$sentinel_pod_fqdn is reachable on port $sentinel_port."
-              success=true
-              break
+            if [ -n "$temp_output" ]; then
+              disconnected=false
+              while read -r line; do
+                  case "$line" in
+                      flags)
+                          read -r master_flags
+                          if [[ "$master_flags" == *"disconnected"* ]]; then
+                              disconnected=true
+                          fi
+                          ;;
+                  esac
+                  master_flags=""
+              done <<< "$temp_output"
+              if [ "$disconnected" = true ]; then
+                  retry_count=$((retry_count + 1))
+                  echo "one or more masters are disconnected. $retry_count/$max_retries failed. retrying..."
+              else
+                  echo "all masters are reachable."
+                  success=true
+                  output="$temp_output"
+                  break
+              fi
             else
               retry_count=$((retry_count + 1))
-              echo "timeout waiting for $sentinel_pod_fqdn to become available $retry_count/$max_retries failed. Retrying..."
-              sleep 1
+              echo "timeout waiting for $host to become available $retry_count/$max_retries failed. retrying..."
             fi
-            if [ "$success" = true ]; then
-              echo "connected to the sentinel successfully after $retry_count retries"
-            else
-              echo "sentinel is either starting up or encountering an issue."
-            fi
+            sleep 1
           done
+          if [ "$success" = true ]; then
+            echo "connected to the sentinel successfully after $retry_count retries"
+          else
+            echo "sentinel is either starting up or encountering an issue."
+          fi
 
           if [[ -n "$temp_output" ]]; then
             while read -r line; do
@@ -222,6 +246,7 @@ start_redis_sentinel_server() {
   echo "Start redis sentinel server succeeded!"
 }
 
+check_redis_sentinel_member_leave_status
 reset_redis_sentinel_conf
 build_redis_sentinel_conf
 recover_registered_redis_servers_if_needed

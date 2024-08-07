@@ -2,39 +2,7 @@
 set -ex
 
 declare -g redis_default_service_port=26379
-
-wait_for_connectivity() {
-  local host=$1
-  local port=$2
-  local password=$3
-  local timeout=600
-  local start_time
-  local current_time
-  start_time=$(date +%s)
-  echo "Checking connectivity to $host on port $port using redis-cli..."
-  while true; do
-    current_time=$(date +%s)
-    if [ $((current_time - start_time)) -gt $timeout ]; then
-      echo "Timeout waiting for $host to become available."
-      exit 1
-    fi
-
-    # Send PING and check for PONG response
-    if [ -n "$password" ]; then
-      if redis-cli -h "$host" -p "$port" -a "$password" PING | grep -q "PONG"; then
-        echo "$host is reachable on port $port."
-        break
-      fi
-    else
-      if redis-cli -h "$host" -p "$port" PING | grep -q "PONG"; then
-        echo "$host is reachable on port $port."
-        break
-      fi
-    fi
-
-    sleep 5
-  done
-}
+declare -A master_slave_counts
 
 member_leave_sentinel() {
   if [ -z "$KB_LEAVE_MEMBER_POD_IP" ]; then
@@ -62,12 +30,34 @@ member_leave_sentinel() {
   set +f
   IFS="$old_ifs"
 
-  if [ -n "$SENTINEL_PASSWORD" ]; then
-    wait_for_connectivity "$sentinel_leave_member_ip" "$redis_default_service_port" "$SENTINEL_PASSWORD"
-    redis-cli -h "$sentinel_leave_member_ip" -p "$redis_default_service_port" -a "$SENTINEL_PASSWORD" shutdown
+  touch /data/sentinel/member_leave.conf
+
+  local max_retries=5
+  local retry_count=0
+  local success=false
+  while [ $retry_count -lt $max_retries ]; do
+      if [ -n "$SENTINEL_PASSWORD" ]; then
+          if redis-cli -h "$sentinel_leave_member_ip" -p "$redis_default_service_port" -a "$SENTINEL_PASSWORD" shutdown 2>/dev/null; then
+              echo "$sentinel_leave_member_ip is reachable on port $redis_default_service_port."
+              success=true
+              break
+          fi
+      else
+          if redis-cli -h "$sentinel_leave_member_ip" -p "$redis_default_service_port" shutdown 2>/dev/null; then
+              echo "$sentinel_leave_member_ip is reachable on port $redis_default_service_port."
+              success=true
+              break
+          fi
+      fi
+
+      retry_count=$((retry_count + 1))
+      echo "timeout waiting for $sentinel_leave_member_ip to become available $retry_count/$max_retries failed. retrying..."
+      sleep 1
+  done
+  if [ "$success" = true ]; then
+      echo "connected to the sentinel successfully after $retry_count retries"
   else
-    wait_for_connectivity "$sentinel_leave_member_ip" "$redis_default_service_port"
-    redis-cli -h "$sentinel_leave_member_ip" -p "$redis_default_service_port" shutdown
+      echo "sentinel cannot connect, it is either faulty or has already been shut down"
   fi
 
   for sentinel_pod in "${sentinel_pod_list[@]}"; do
@@ -80,16 +70,38 @@ member_leave_sentinel() {
     fi
     #TODO:check if there is an ongoing HA switchover Before executing the reset command
     if [ "$sentinel_name" != "$sentinel_leave_member_name" ]; then
-      if [ -n "$SENTINEL_PASSWORD" ]; then
-        wait_for_connectivity "$host" "$redis_default_service_port" "$SENTINEL_PASSWORD"
-        redis-cli -h "$host" -p "$redis_default_service_port" -a "$SENTINEL_PASSWORD" sentinel reset "*"
-      else
-        wait_for_connectivity "$host" "$redis_default_service_port"
-        redis-cli -h "$host" -p "$redis_default_service_port" sentinel reset "*"
-      fi
+        retry_count=0
+        max_retries=3
+        success=false
+        while [ $retry_count -lt $max_retries ]; do
+            if [ -n "$SENTINEL_PASSWORD" ]; then
+                if redis-cli -h "$host" -p "$redis_default_service_port" -a "$SENTINEL_PASSWORD" sentinel reset "*" 2>/dev/null; then
+                    echo "sentinel is resetting at $host on port $redis_default_service_port."
+                    success=true
+                    break
+                fi
+            else
+                if redis-cli -h "$host" -p "$redis_default_service_port" sentinel reset "*" 2>/dev/null; then
+                    echo "sentinel is resetting at $host on port $redis_default_service_port."
+                    success=true
+                    break
+                fi
+            fi
+
+            retry_count=$((retry_count + 1))
+            echo "retry $retry_count/$max_retries for sentinel reset at $host failed. retrying..."
+            sleep 1
+        done
+
+        if [ "$success" = true ]; then
+            echo "connected to the sentinel successfully after $retry_count retries"
+            sleep 3
+        else
+            echo "sentinel connect failed after $max_retries retries, it is either faulty or has already been shut down."
+        fi
     fi
   done
-  #TODO: Check that all the Sentinels agree about the number of Sentinels currently active
+  #Check that all the Sentinels agree about the number of Sentinels currently active
   for sentinel_pod in "${sentinel_pod_list[@]}"; do
       host=$(echo "$sentinel_pod" | cut -d ':' -f 1)
       port=$(echo "$sentinel_pod" | cut -d ':' -f 2)
@@ -100,44 +112,80 @@ member_leave_sentinel() {
       fi
 
       if [ "$sentinel_name" != "$sentinel_leave_member_name" ]; then
-        if [ -n "$SENTINEL_PASSWORD" ]; then
-          wait_for_connectivity "$host" "$redis_default_service_port" "$SENTINEL_PASSWORD"
-          output=$(redis-cli -h "$host" -p "$redis_default_service_port" -a "$SENTINEL_PASSWORD" sentinel masters)
+        max_retries=3
+        retry_count=0
+        success=false
+        while [ $retry_count -lt $max_retries ]; do
+          if [ -n "$SENTINEL_PASSWORD" ]; then
+            temp_output=$(redis-cli -h "$host" -p "$port" -a "$SENTINEL_PASSWORD" sentinel masters 2>/dev/null || true)
+          else
+            temp_output=$(redis-cli -h "$host" -p "$port" sentinel masters 2>/dev/null || true)
+          fi
+          if [ -n "$temp_output" ]; then
+            disconnected=false
+            while read -r line; do
+                case "$line" in
+                    flags)
+                        read -r master_flags
+                        if [[ "$master_flags" == *"disconnected"* ]]; then
+                            disconnected=true
+                        fi
+                        ;;
+                esac
+                master_flags=""
+            done <<< "$temp_output"
+            if [ "$disconnected" = true ]; then
+                retry_count=$((retry_count + 1))
+                echo "one or more masters are disconnected. $retry_count/$max_retries failed. retrying..."
+            else
+                echo "all masters are reachable."
+                success=true
+                output="$temp_output"
+                break
+            fi
+          else
+            retry_count=$((retry_count + 1))
+            echo "timeout waiting for $host to become available $retry_count/$max_retries failed. retrying..."
+          fi
+          sleep 1
+        done
+        if [ "$success" = true ]; then
+          echo "connected to the sentinel successfully after $retry_count retries"
         else
-          wait_for_connectivity "$host" "$redis_default_service_port"
-          output=$(redis-cli -h "$host" -p "$redis_default_service_port" sentinel masters)
+          echo "sentinel connect failed after $max_retries retries, it is either faulty or has already been shut down."
         fi
         if [[ -n "$output" ]]; then
-            master_name=""
-            num_slaves=""
+            local master_name
+            local num_other_sentinels
             while read -r line; do
                 case "$line" in
                     name)
                         read -r master_name
                         ;;
-                    num-slaves)
-                        read -r num_slaves
+                    num-other-sentinels)
+                        read -r num_other_sentinels
                         ;;
                 esac
-                if [[ -n "$master_name" && -n "$num_slaves" ]]; then
-                  echo "Master Name: $master_name, num-slaves: $num_slaves"
+                if [[ -n "$master_name" && -n "$num_other_sentinels" ]]; then
+                  echo "master name: $master_name, num-other-sentinels: $num_other_sentinels"
                   if [[ -z "${master_slave_counts[$master_name]}" ]]; then
-                    master_slave_counts[$master_name]=$num_slaves
+                    master_slave_counts[$master_name]=$num_other_sentinels
                   else
-                    if [[ "${master_slave_counts[$master_name]}" -ne "$num_slaves" ]]; then
+                    if [[ "${master_slave_counts[$master_name]}" -ne "$num_other_sentinels" ]]; then
                       echo "The number of slaves does not match the previous count; reset failed."
                       exit 1
                     fi
                   fi
                 master_name=""
-                num_slaves=""
+                num_other_sentinels=""
                 fi
             done <<< "$output"
         else
-            echo "unable to connect to Redis Sentinel, or no master nodes found."
+            echo "unable to connect to redis sentinel, or no master nodes found."
+            exit 1
         fi
       fi
-    done
+  done
 }
 
 member_leave_sentinel
