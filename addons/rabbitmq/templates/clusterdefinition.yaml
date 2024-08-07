@@ -1,0 +1,23 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterDefinition
+metadata:
+  name: rabbitmq
+  labels:
+    {{- include "rabbitmq.labels" . | nindent 4 }}
+spec:
+  type: mongodb
+  componentDefs:
+    - name: mongodb
+      characterType: mongodb
+      workloadType: Stateful
+      podSpec:
+        containers:
+          - name: rabbitmq
+            command:
+              - /bin/sh
+              - -c
+              - |
+                cp /root/erlang.cookie /var/lib/rabbitmq/.erlang.cookie
+                chown rabbitmq:rabbitmq /var/lib/rabbitmq/.erlang.cookie
+                chmod 400 /var/lib/rabbitmq/.erlang.cookie
+                exec /opt/rabbitmq/sbin/rabbitmq-server

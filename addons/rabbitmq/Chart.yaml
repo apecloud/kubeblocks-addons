@@ -1,0 +1,26 @@
+apiVersion: v2
+name: rabbitmq
+description: RabbitMQ is a reliable and mature messaging and streaming broker.
+
+type: application
+
+version: 0.8.0
+
+appVersion: "3.13.2"
+
+home: https://www.rabbitmq.com/
+icon: https://www.rabbitmq.com/img/rabbitmq-logo-with-name.svg
+keywords:
+  - rabbitmq
+  - database
+  - message
+  - broker
+
+maintainers:
+  - name: xuriwuyun
+    url: https://github.com/apecloud/kubeblocks/deploy
+
+annotations:
+    addon.kubeblocks.io/kubeblocks-version: ">=0.8.0"
+    addon.kubeblocks.io/model: "message"
+    addon.kubeblocks.io/provider: "apecloud"
