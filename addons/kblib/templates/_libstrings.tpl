@@ -1,6 +1,7 @@
 {{/*
 Library of string functions implemented in Bash. Currently, the following functions are available:
 - is_empty(string): Check if a string is empty.
+- equals(string1, string2): Check if two strings are equal.
 - split(string, separator): Split a string into an array of strings based on a separator.
 - contains(string, substring): Check if a string contains a substring.
 - has_prefix(string, prefix): Check if a string starts with a prefix.
@@ -31,6 +32,33 @@ is_empty() {
   local string="$1"
 
   if [[ -z "$string" ]]; then
+    return 0
+  else
+    return 1
+  fi
+}
+{{- end }}
+
+{{/*
+This function checks if two strings are equal.
+
+Usage:
+    `equals "string1" "string2"`
+Result:
+    Returns 0 (true) if the strings are equal, otherwise returns 1 (false).
+Example:
+    if equals "hello" "hello"; then
+        echo "The strings are equal"
+    else
+        echo "The strings are not equal"
+    fi
+*/}}
+{{- define "kblib.strings.equals" }}
+equals() {
+  local string1="$1"
+  local string2="$2"
+
+  if [[ "$string1" == "$string2" ]]; then
     return 0
   else
     return 1

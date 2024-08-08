@@ -1,5 +1,26 @@
 #!/bin/bash
-set -ex
+
+# shellcheck disable=SC2128
+# shellcheck disable=SC2207
+
+# This is magic for shellspec ut framework. "test" is a `test [expression]` well known as a shell command.
+# Normally test without [expression] returns false. It means that __() { :; }
+# function is defined if this script runs directly.
+#
+# shellspec overrides the test command and returns true *once*. It means that
+# __() function defined internally by shellspec is called.
+#
+# In other words. If not in test mode, __ is just a comment. If test mode, __
+# is a interception point.
+#
+# you should set ut_mode="true" when you want to run the script in shellspec file.
+#
+# shellcheck disable=SC2034
+ut_mode="false"
+test || __() {
+  # when running in non-unit test mode, set the options "set -ex".
+  set -ex;
+}
 
 # declare the global variables for initialize redis cluster
 declare -gA initialize_redis_cluster_primary_nodes
@@ -9,6 +30,13 @@ declare -gA initialize_pod_name_to_advertise_host_port_map
 # declare the global variables for scale out redis cluster shard
 declare -gA scale_out_shard_default_primary_node
 declare -gA scale_out_shard_default_other_nodes
+
+load_common_library() {
+  # the common.sh scripts is mounted to the same path which is defined in the cmpd.spec.scripts
+  common_library_file="/scripts/common.sh"
+  # shellcheck disable=SC1090
+  source "${common_library_file}"
+}
 
 # initialize the other component and pods info
 init_other_components_and_pods_info() {
@@ -107,34 +135,29 @@ find_exist_available_node() {
 }
 
 # usage: parse_host_ip_from_built_in_envs <pod_name>
+# $KB_CLUSTER_COMPONENT_POD_NAME_LIST and $KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST are built-in envs in KubeBlocks postProvision lifecycle action.
 parse_host_ip_from_built_in_envs() {
   local given_pod_name="$1"
   local all_pod_name_list="$2"
   local all_pod_host_ip_list="$3"
 
-  if [ -z "$all_pod_name_list" ] || [ -z "$all_pod_host_ip_list" ]; then
+  if is_empty "$all_pod_name_list" || is_empty "$all_pod_host_ip_list"; then
     echo "Error: Required environment variables all_pod_name_lis or all_pod_host_ip_list are not set."
     exit 1
   fi
 
-  old_ifs="$IFS"
-  IFS=','
-  set -f
-  pod_name_list="$all_pod_name_list"
-  pod_ip_list="$all_pod_host_ip_list"
-  set +f
-  IFS="$old_ifs"
-
+  pod_name_list=($(split "$all_pod_name_list" ","))
+  pod_ip_list=($(split "$all_pod_host_ip_list" ","))
   while [ -n "$pod_name_list" ]; do
     pod_name="${pod_name_list%%,*}"
     host_ip="${pod_ip_list%%,*}"
 
-    if [ "$pod_name" = "$given_pod_name" ]; then
+    if equals "$pod_name" "$given_pod_name"; then
       echo "$host_ip"
       return 0
     fi
 
-    if [ "$pod_name_list" = "$pod_name" ]; then
+    if equals "$pod_name_list" "$pod_name"; then
       pod_name_list=''
       pod_ip_list=''
     else
@@ -696,8 +719,16 @@ initialize_or_scale_out_redis_cluster() {
     fi
 }
 
+# This is magic for shellspec ut framework.
+# Sometime, functions are defined in a single shell script.
+# You will want to test it. but you do not want to run the script.
+# When included from shellspec, __SOURCED__ variable defined and script
+# end here. The script path is assigned to the __SOURCED__ variable.
+${__SOURCED__:+false} : || return 0
+
 # main
 if [ $# -eq 1 ]; then
+  load_common_library
   case $1 in
   --help)
     echo "Usage: $0 [options]"

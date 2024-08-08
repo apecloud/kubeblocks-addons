@@ -29,6 +29,22 @@ Describe 'kubeblocks strings library tests'
     End
   End
 
+  Describe 'equals'
+    Context 'when the strings are equal'
+      It 'should return true'
+        When call equals "hello" "hello"
+        The status should be success
+      End
+    End
+
+    Context 'when the strings are not equal'
+      It 'should return false'
+        When call equals "hello" "hello1"
+        The status should be failure
+      End
+    End
+  End
+
   Describe 'split'
     It 'should split with default separator'
       When call split "a,b,c"

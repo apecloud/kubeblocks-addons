@@ -15,6 +15,7 @@
 # you should set ut_mode="true" when you want to run the script in shellspec file.
 ut_mode="false"
 test || __() {
+  # when running in non-unit test mode, set the options "set -ex".
   set -ex;
 }
 
@@ -43,6 +44,7 @@ unset_xtrace() {
   fi
 }
 
+# TODO: it will be removed in the future
 extract_ordinal_from_object_name() {
   local object_name="$1"
   local ordinal="${object_name##*-}"
@@ -76,7 +78,7 @@ build_redis_default_accounts() {
 
 build_announce_ip_and_port() {
   # build announce ip and port according to whether the advertised svc is enabled
-  if env_exists redis_advertised_svc_host_value redis_advertised_svc_port_value; then
+  if ! is_empty redis_advertised_svc_host_value && ! is_empty redis_advertised_svc_port_value; then
     echo "redis use nodeport $redis_advertised_svc_host_value:$redis_advertised_svc_port_value to announce"
     {
       echo "replica-announce-port $redis_advertised_svc_port_value"
@@ -160,7 +162,7 @@ init_or_get_primary_from_redis_sentinel() {
       fi
 
       # log if sentinel has different primary node info
-      if [ "$first_redis_primary_host" != "${REDIS_SENTINEL_PRIMARY_INFO[0]}" ] || [ "$first_redis_primary_port" != "${REDIS_SENTINEL_PRIMARY_INFO[1]}" ]; then
+      if ! equals "$first_redis_primary_host" "${REDIS_SENTINEL_PRIMARY_INFO[0]}" || ! equals "$first_redis_primary_port" "${REDIS_SENTINEL_PRIMARY_INFO[1]}"; then
         echo "The sentinel:$sentinel_pod_fqdn has different primary node info. First: $first_redis_primary_host:$first_redis_primary_port, Current: ${REDIS_SENTINEL_PRIMARY_INFO[0]}:${REDIS_SENTINEL_PRIMARY_INFO[1]}"
       fi
     else
@@ -225,13 +227,10 @@ get_master_addr_by_name_from_sentinel() {
 
 retry_get_master_addr_by_name_from_sentinel() {
   local sentinel_pod_fqdn="$1"
-  local max_retry=3
-  local retry_delay=2
-
-  if call_func_with_retry "$max_retry" "$retry_delay" get_master_addr_by_name_from_sentinel "$sentinel_pod_fqdn"; then
+  if call_func_with_retry 3 2 get_master_addr_by_name_from_sentinel "$sentinel_pod_fqdn"; then
     return 0
   else
-    echo "Failed to retrieve primary info from sentinel: $sentinel_pod_fqdn after $max_retry retries."
+    echo "Failed to retrieve primary info from sentinel: $sentinel_pod_fqdn after 3 retries."
     return 1
   fi
 }
@@ -251,20 +250,20 @@ get_default_initialize_primary_node() {
 
 check_current_pod_is_primary() {
   current_pod="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME"
-  if [[ "$primary" == *"$current_pod"* ]]; then
+  if contains "$primary" "$current_pod"; then
     echo "current pod is primary with name mapping, primary node: $primary, pod name:$current_pod"
     return 0
   fi
 
-  if [ -n "$redis_advertised_svc_host_value" ] && [ -n "$redis_advertised_svc_port_value" ]; then
-    if [[ "$primary" == "$redis_advertised_svc_host_value" ]] && [[ "$primary_port" == "$redis_advertised_svc_port_value" ]]; then
+  if ! is_empty redis_advertised_svc_host_value && ! is_empty redis_advertised_svc_port_value; then
+    if equals "$primary" "$redis_advertised_svc_host_value" && equals "$primary_port" "$redis_advertised_svc_port_value"; then
       echo "current pod is primary with advertised svc mapping, primary: $primary, primary port: $primary_port, advertised ip:$redis_advertised_svc_host_value, advertised port:$redis_advertised_svc_port_value"
       return 0
     fi
     echo "redis advertised svc host and port exist but not match, primary: $primary, primary port: $primary_port, advertised ip:$redis_advertised_svc_host_value, advertised port:$redis_advertised_svc_port_value"
   fi
 
-  if [[ "$primary" == "$KB_POD_IP" ]] && [[ "$primary_port" == "$service_port" ]]; then
+  if equals "$primary" "$KB_POD_IP" && equals "$primary_port" "$service_port"; then
     echo "current pod is primary with pod ip mapping, primary node: $primary, pod ip:$KB_POD_IP, service port:$service_port"
     return 0
   fi
@@ -325,7 +324,7 @@ parse_redis_advertised_svc_if_exist() {
     fi
   done
 
-  if [[ "$found" == false ]]; then
+  if equals "$found" false; then
     echo "Error: No matching svcName and port found for podName '$pod_name', REDIS_ADVERTISED_PORT: $REDIS_ADVERTISED_PORT. Exiting."
     exit 1
   fi
@@ -341,10 +340,14 @@ build_redis_conf() {
   build_redis_default_accounts
 }
 
+# This is magic for shellspec ut framework.
+# Sometime, functions are defined in a single shell script.
+# You will want to test it. but you do not want to run the script.
 # When included from shellspec, __SOURCED__ variable defined and script
 # end here. The script path is assigned to the __SOURCED__ variable.
 ${__SOURCED__:+false} : || return 0
 
+# main
 load_common_library
 parse_redis_advertised_svc_if_exist "$KB_POD_NAME"
 build_redis_conf
