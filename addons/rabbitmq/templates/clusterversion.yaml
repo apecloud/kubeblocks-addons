@@ -1,0 +1,17 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterVersion
+metadata:
+  name: rabbitmq-3.13.2
+  annotations:
+    kubeblocks.io/is-default-cluster-version: "true"
+  labels:
+    {{- include "rabbitmq.labels" . | nindent 4 }}
+spec:
+  clusterDefinitionRef: rabbitmq
+  componentVersions:
+    - componentDefRef: rabbitmq
+      versionsContext: 
+        containers:
+          - name: rabbitmq
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
