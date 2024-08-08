@@ -23,23 +23,7 @@ memory: 2
 #  cpu: 1
 #  memory: 1
 
-persistence:
-  ## `data` volume settings
-  ##
-  data:
-    ## @param shard[*].persistence.data.storageClassName Storage class of backing PVC
-    ## If defined, storageClassName: <storageClass>
-    ## If set to "-", storageClassName: "", which disables dynamic provisioning
-    ## If undefined (the default) or set to null, no storageClassName spec is
-    ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
-    ##   GKE, AWS & OpenStack)
-    ##
-    storageClassName:
-    ## @param shard[*].persistence.size Size of data volume
-    ##
-    size: 4Gi
-  log:
-    storageClassName:
-    ## @param shard[*].persistence.size Size of data volume
-    ##
-    size: 4Gi
+
+storage: 10
+
+log: 2

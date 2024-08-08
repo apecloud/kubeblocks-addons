@@ -14,20 +14,24 @@ spec:
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
+      {{- include "kblib.componentServices" . | indent 6 }}
       volumeClaimTemplates:
-        - name: data
+        - name: data # ref clusterDefinition components.containers.volumeMounts.name
           spec:
-            storageClassName: {{ .Values.persistence.data.storageClassName }}
             accessModes:
               - ReadWriteOnce
             resources:
               requests:
-                storage: {{ .Values.persistence.data.size }}
+                storage: {{ print .Values.storage "Gi" }}
+            {{- if .Values.storageClassName }}
+            storageClassName: {{ .Values.storageClassName | quote }}
+            {{- end }}
         - name: log
           spec:
-            storageClassName: {{ .Values.persistence.log.storageClassName }}
+            storageClassName: {{ .Values.storageClassName }}
             accessModes:
               - ReadWriteOnce
             resources:
               requests:
-                storage: {{ .Values.persistence.log.size }}
+                storage: {{ print .Values.log "Gi" }}
