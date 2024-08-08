@@ -2,13 +2,6 @@
 set -ex
 
 # Based on the Component Definition API, Redis Sentinel deployed independently
-check_redis_sentinel_member_leave_status() {
-  if [ -f /data/sentinel/member_leave.conf ]; then
-    echo "sentinel is performing a member leave operation and will not continue to start"
-    exit 1
-  fi
-}
-
 
 reset_redis_sentinel_conf() {
   echo "reset redis sentinel conf"
@@ -246,7 +239,6 @@ start_redis_sentinel_server() {
   echo "Start redis sentinel server succeeded!"
 }
 
-check_redis_sentinel_member_leave_status
 reset_redis_sentinel_conf
 build_redis_sentinel_conf
 recover_registered_redis_servers_if_needed
