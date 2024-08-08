@@ -205,7 +205,7 @@ get_master_addr_by_name_from_sentinel() {
   set_xtrace
 
   if [ $exit_code -eq 0 ]; then
-    REDIS_SENTINEL_PRIMARY_INFO=($(split "$output" $'\n'))
+    read -r -d '' -a REDIS_SENTINEL_PRIMARY_INFO <<< "$output"
     if [ "${#REDIS_SENTINEL_PRIMARY_INFO[@]}" -eq 2 ] && [ -n "${REDIS_SENTINEL_PRIMARY_INFO[0]}" ] && [ -n "${REDIS_SENTINEL_PRIMARY_INFO[1]}" ]; then
       echo "Successfully retrieved primary info from sentinel"
       return 0

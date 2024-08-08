@@ -80,18 +80,17 @@ extract_ordinal_from_object_name() {
 parse_redis_advertised_svc_if_exist() {
   local pod_name="$1"
 
-  if [[ -z "${REDIS_ADVERTISED_PORT}" ]]; then
+  if ! env_exist REDIS_ADVERTISED_PORT; then
     echo "Environment variable REDIS_ADVERTISED_PORT not found. Ignoring."
     return 0
   fi
 
-  # the value format of REDIS_ADVERTISED_PORT is "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."
-  IFS=',' read -ra advertised_ports <<< "${REDIS_ADVERTISED_PORT}"
-
   local found=false
   pod_name_ordinal=$(extract_ordinal_from_object_name "$pod_name")
+  # the value format of REDIS_ADVERTISED_PORT is "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."
+  advertised_ports=($(split "$REDIS_ADVERTISED_PORT" ","))
   for advertised_port in "${advertised_ports[@]}"; do
-    IFS=':' read -ra parts <<< "$advertised_port"
+    parts=($(split "$advertised_port" ":"))
     local svc_name="${parts[0]}"
     local port="${parts[1]}"
     svc_name_ordinal=$(extract_ordinal_from_object_name "$svc_name")
@@ -191,10 +190,10 @@ register_to_sentinel_wrapper() {
   fi
 
   # get minimum lexicographical order pod name as default primary node (the same logic as redis initialize primary node selection)
-  default_redis_primary_pod_name=$(min_lexicographical_order_pod "$KB_POD_LIST")
-  redis_default_primary_pod_headless_fqdn="$default_redis_primary_pod_name.$KB_CLUSTER_COMP_NAME-$headless_postfix.$KB_NAMESPACE.svc"
+  redis_default_primary_pod_name=$(min_lexicographical_order_pod "$KB_POD_LIST")
+  redis_default_primary_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$REDIS_POD_FQDN_LIST" "$redis_default_primary_pod_name")
   init_redis_service_port
-  parse_redis_advertised_svc_if_exist $default_redis_primary_pod_name
+  parse_redis_advertised_svc_if_exist $redis_default_primary_pod_name
 
   sentinel_pod_fqdn_list=($(split "$SENTINEL_POD_FQDN_LIST" ","))
   for sentinel_pod_fqdn in "${sentinel_pod_fqdn_list[@]}"; do
@@ -202,8 +201,8 @@ register_to_sentinel_wrapper() {
       echo "register to sentinel:$sentinel_pod_fqdn with advertised service: redis_advertised_svc_host_value=$redis_advertised_svc_host_value, redis_advertised_svc_port_value=$redis_advertised_svc_port_value"
       register_to_sentinel "$sentinel_pod_fqdn" "$KB_CLUSTER_COMP_NAME" "$redis_advertised_svc_host_value" "$redis_advertised_svc_port_value"
     else
-      echo "register to sentinel:$sentinel_pod_fqdn with ClusterIP service: redis_default_primary_pod_fqdn=$redis_default_primary_pod_headless_fqdn, redis_default_service_port=$redis_default_service_port"
-      register_to_sentinel "$sentinel_pod_fqdn" "$KB_CLUSTER_COMP_NAME" "$redis_default_primary_pod_headless_fqdn" "$redis_default_service_port"
+      echo "register to sentinel:$sentinel_pod_fqdn with ClusterIP service: redis_default_primary_pod_fqdn=$redis_default_primary_pod_fqdn, redis_default_service_port=$redis_default_service_port"
+      register_to_sentinel "$sentinel_pod_fqdn" "$KB_CLUSTER_COMP_NAME" "$redis_default_primary_pod_fqdn" "$redis_default_service_port"
     fi
   done
 }
