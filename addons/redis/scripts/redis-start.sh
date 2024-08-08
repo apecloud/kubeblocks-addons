@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# shellcheck disable=SC2153
+# shellcheck disable=SC2207
+
 # This is magic for shellspec ut framework. "test" is a `test [expression]` well known as a shell command.
 # Normally test without [expression] returns false. It means that __() { :; }
 # function is defined if this script runs directly.
@@ -17,7 +20,6 @@ test || __() {
 
 primary=""
 primary_port="6379"
-headless_postfix="headless"
 redis_template_conf="/etc/conf/redis.conf"
 redis_real_conf="/etc/redis/redis.conf"
 redis_acl_file="/data/users.acl"
@@ -81,16 +83,19 @@ build_announce_ip_and_port() {
       echo "replica-announce-ip $redis_advertised_svc_host_value"
     } >> $redis_real_conf
   else
-    kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc"
-    echo "redis use kb pod fqdn $kb_pod_fqdn to announce"
-    echo "replica-announce-ip $kb_pod_fqdn" >> $redis_real_conf
+    current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$REDIS_POD_FQDN_LIST" "$KB_POD_NAME")
+    if is_empty "$current_pod_fqdn"; then
+      echo "Error: Failed to get current pod: $KB_POD_NAME fqdn from redis pod fqdn list: $REDIS_POD_FQDN_LIST. Exiting."
+      exit 1
+    fi
+    echo "redis use kb pod fqdn $current_pod_fqdn to announce"
+    echo "replica-announce-ip $current_pod_fqdn" >> $redis_real_conf
   fi
 }
 
 build_redis_service_port() {
   service_port=6379
   if env_exist SERVICE_PORT; then
-    # shellcheck disable=SC2153
     service_port=$SERVICE_PORT
   fi
   echo "port $service_port" >> $redis_real_conf
@@ -124,25 +129,18 @@ init_or_get_primary_from_redis_sentinel() {
     return
   fi
 
-  # parse redis sentinel pod list from $SENTINEL_POD_NAME_LIST env
-  if ! env_exist SENTINEL_POD_NAME_LIST; then
-    echo "Error: Required environment variable SENTINEL_POD_NAME_LIST: $SENTINEL_POD_NAME_LIST is not set."
+  # parse redis sentinel pod fqdn list from $SENTINEL_POD_FQDN_LIST env
+  if ! env_exist SENTINEL_POD_FQDN_LIST; then
+    echo "Error: Required environment variable SENTINEL_POD_FQDN_LIST is not set."
     exit 1
   fi
 
-  # get redis sentinel headless service name from $SENTINEL_HEADLESS_SERVICE_NAME env
-  if ! env_exist SENTINEL_HEADLESS_SERVICE_NAME; then
-    echo "Error: Required environment variable SENTINEL_HEADLESS_SERVICE_NAME: $SENTINEL_HEADLESS_SERVICE_NAME is not set."
-    exit 1
-  fi
-
-  sentinel_pod_list=$(get_pod_list_from_env "SENTINEL_POD_NAME_LIST")
   declare -A master_count_map
   local first_redis_primary_host=""
   local first_redis_primary_port=""
-  for sentinel_pod in "${sentinel_pod_list[@]}"; do
-    sentinel_pod_fqdn="$sentinel_pod.$SENTINEL_HEADLESS_SERVICE_NAME"
 
+  sentinel_pod_fqdn_list=($(split "$SENTINEL_POD_FQDN_LIST" ","))
+  for sentinel_pod_fqdn in "${sentinel_pod_fqdn_list[@]}"; do
     # get primary info from sentinel
     if retry_get_master_addr_by_name_from_sentinel "$sentinel_pod_fqdn"; then
       echo "sentinel:$sentinel_pod_fqdn has master info: ${REDIS_SENTINEL_PRIMARY_INFO[*]}"
@@ -207,12 +205,7 @@ get_master_addr_by_name_from_sentinel() {
   set_xtrace
 
   if [ $exit_code -eq 0 ]; then
-    old_ifs="$IFS"
-    IFS=$'\n'
-    set -f
-    read -r -d '' -a REDIS_SENTINEL_PRIMARY_INFO <<< "$output"
-    set +f
-    IFS="$old_ifs"
+    REDIS_SENTINEL_PRIMARY_INFO=($(split "$output" $'\n'))
     if [ "${#REDIS_SENTINEL_PRIMARY_INFO[@]}" -eq 2 ] && [ -n "${REDIS_SENTINEL_PRIMARY_INFO[0]}" ] && [ -n "${REDIS_SENTINEL_PRIMARY_INFO[1]}" ]; then
       echo "Successfully retrieved primary info from sentinel"
       return 0
@@ -244,10 +237,15 @@ retry_get_master_addr_by_name_from_sentinel() {
 }
 
 get_default_initialize_primary_node() {
-  # TODO: if has advertise svc and port, we should use it as default primary node info instead of the headless svc
+  # TODO: if has advertise svc and port, we should use it as default primary node info instead of the fqdn
   min_lex_pod=$(min_lexicographical_order_pod "$KB_POD_LIST")
-  echo "get the minimum lexicographical order pod name: $min_lex_pod as default primary node"
-  primary="$min_lex_pod.$KB_CLUSTER_COMP_NAME-$headless_postfix.$KB_NAMESPACE"
+  min_lex_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$REDIS_POD_FQDN_LIST" "$min_lex_pod")
+  if is_empty "$min_lex_pod_fqdn"; then
+    echo "Error: Failed to get min lexicographical order pod: $KB_POD_NAME fqdn from redis pod fqdn list: $REDIS_POD_FQDN_LIST. Exiting."
+    exit 1
+  fi
+  echo "get the minimum lexicographical order pod name: $min_lex_pod_fqdn as default primary node"
+  primary="$min_lex_pod_fqdn"
   primary_port=$service_port
 }
 
@@ -300,21 +298,21 @@ start_redis_server() {
     eval "$exec_cmd"
 }
 
+# TODO: if instanceTemplate is specified, the pod service could not be parsed from the pod ordinal.
 parse_redis_advertised_svc_if_exist() {
   local pod_name="$1"
 
-  if [[ -z "${REDIS_ADVERTISED_PORT}" ]]; then
+  if ! env_exist REDIS_ADVERTISED_PORT; then
     echo "Environment variable REDIS_ADVERTISED_PORT not found. Ignoring."
     return 0
   fi
 
-  # the value format of REDIS_ADVERTISED_PORT is "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."
-  IFS=',' read -ra advertised_ports <<< "${REDIS_ADVERTISED_PORT}"
-
   local found=false
   pod_name_ordinal=$(extract_ordinal_from_object_name "$pod_name")
+  # the value format of REDIS_ADVERTISED_PORT is "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."
+  advertised_ports=($(split "$REDIS_ADVERTISED_PORT" ","))
   for advertised_port in "${advertised_ports[@]}"; do
-    IFS=':' read -ra parts <<< "$advertised_port"
+    parts=($(split "$advertised_port" ":"))
     local svc_name="${parts[0]}"
     local port="${parts[1]}"
     svc_name_ordinal=$(extract_ordinal_from_object_name "$svc_name")

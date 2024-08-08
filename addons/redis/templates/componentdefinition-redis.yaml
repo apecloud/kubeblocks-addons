@@ -108,6 +108,12 @@ spec:
           name: redis-advertised
           optional: true
           host: Required
+    ## the redis pod fqdn list for each pod, the value format is "pod1FQDN,pod2FQDN,..."
+    - name: REDIS_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "redis.componentDefName" . }}
+          podFQDNs: Required
     ## the username of redis sentinel for redis connection, it is optional
     - name: SENTINEL_USER
       valueFrom:
@@ -116,7 +122,7 @@ spec:
           compDef: {{ include "redis-sentinel.componentDefName" . }}
           name: default
           optional: true
-          username: Optional
+          username: Required
     ## the password of redis sentinel for redis connection, it is optional
     - name: SENTINEL_PASSWORD
       valueFrom:
@@ -125,7 +131,7 @@ spec:
           compDef: {{ include "redis-sentinel.componentDefName" . }}
           name: default
           optional: true
-          password: Optional
+          password: Required
     - name: SENTINEL_COMPONENT_DEFINITION_NAME
       value: {{ include "redis-sentinel.componentDefName" . }}
     - name: SENTINEL_COMPONENT_NAME
@@ -133,14 +139,7 @@ spec:
         componentVarRef:
           compDef: {{ include "redis-sentinel.componentDefName" . }}
           optional: true
-          componentName: Optional
-    - name: SENTINEL_HEADLESS_SERVICE_NAME
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "redis-sentinel.componentDefName" . }}
-          name: headless
-          optional: true
-          host: Optional
+          componentName: Required
     - name: SENTINEL_SERVICE_PORT
       valueFrom:
         serviceVarRef:
@@ -149,13 +148,19 @@ spec:
           optional: true
           port:
             name: redis-sentinel
-            option: Optional
+            option: Required
     - name: SENTINEL_POD_NAME_LIST
       valueFrom:
         componentVarRef:
           compDef: {{ include "redis-sentinel.componentDefName" . }}
           optional: true
-          instanceNames: Optional
+          instanceNames: Required
+    - name: SENTINEL_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "redis-sentinel.componentDefName" . }}
+          optional: true
+          podFQDNs: Required
   lifecycleActions:
     roleProbe:
       builtinHandler: redis

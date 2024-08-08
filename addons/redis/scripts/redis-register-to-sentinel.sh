@@ -1,14 +1,34 @@
 #!/bin/bash
-set -ex
 
 # Based on the Component Definition API, Redis deployed independently, this script is used to register Redis to Sentinel.
 # And the script will only be executed once during the initialization of the Redis cluster.
 
-declare -g default_initialize_pod_ordinal
-declare -g redis_advertised_svc_host_value
-declare -g redis_advertised_svc_port_value
-declare -g headless_postfix="headless"
-declare -g redis_default_service_port=6379
+# This is magic for shellspec ut framework. "test" is a `test [expression]` well known as a shell command.
+# Normally test without [expression] returns false. It means that __() { :; }
+# function is defined if this script runs directly.
+#
+# shellspec overrides the test command and returns true *once*. It means that
+# __() function defined internally by shellspec is called.
+#
+# In other words. If not in test mode, __ is just a comment. If test mode, __
+# is a interception point.
+# you should set ut_mode="true" when you want to run the script in shellspec file.
+ut_mode="false"
+test || __() {
+  set -ex;
+}
+
+redis_advertised_svc_host_value=""
+redis_advertised_svc_port_value=""
+headless_postfix="headless"
+redis_default_service_port=6379
+
+load_common_library() {
+  # the common.sh scripts is mounted to the same path which is defined in the cmpd.spec.scripts
+  common_library_file="/scripts/common.sh"
+  # shellcheck disable=SC1090
+  source "${common_library_file}"
+}
 
 init_redis_service_port() {
   if [ -n "$SERVICE_PORT" ]; then
@@ -16,45 +36,18 @@ init_redis_service_port() {
   fi
 }
 
-get_minimum_initialize_pod_ordinal() {
-  if [ -z "$KB_POD_LIST" ]; then
-    echo "KB_POD_LIST is empty, use default initialize pod_ordinal:0 as primary node."
-    default_initialize_pod_ordinal=0
-    return
-  fi
-
-  # parse minimum ordinal from env $KB_POD_LIST, the value format is "pod1,pod2,..."
-  IFS=',' read -ra pod_list <<< "$KB_POD_LIST"
-  for pod in "${pod_list[@]}"; do
-    if [ -z "$default_initialize_pod_ordinal" ]; then
-      default_initialize_pod_ordinal=$(extract_ordinal_from_object_name "$pod")
-      continue
-    fi
-    pod_ordinal=$(extract_ordinal_from_object_name "$pod")
-    if [ "$pod_ordinal" -lt "$default_initialize_pod_ordinal" ]; then
-      default_initialize_pod_ordinal="$pod_ordinal"
-    fi
-  done
-}
-
 # usage: parse_host_ip_from_built_in_envs <pod_name>
 # $KB_CLUSTER_COMPONENT_POD_NAME_LIST and $KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST are built-in envs in KubeBlocks postProvision lifecycle action.
 parse_host_ip_from_built_in_envs() {
   local given_pod_name="$1"
 
-  if [ -z "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" ] || [ -z "$KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST" ]; then
+  if ! env_exists KB_CLUSTER_COMPONENT_POD_NAME_LIST KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST; then
     echo "Error: Required environment variables KB_CLUSTER_COMPONENT_POD_NAME_LIST or KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST are not set."
     exit 1
   fi
 
-  old_ifs="$IFS"
-  IFS=','
-  set -f
-  pod_name_list="$KB_CLUSTER_COMPONENT_POD_NAME_LIST"
-  pod_ip_list="$KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST"
-  set +f
-  IFS="$old_ifs"
-
+  pod_name_list=($(split "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" ","))
+  pod_ip_list=($(split "$KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST" ","))
   while [ -n "$pod_name_list" ]; do
     pod_name="${pod_name_list%%,*}"
     host_ip="${pod_ip_list%%,*}"
@@ -83,6 +76,7 @@ extract_ordinal_from_object_name() {
   echo "$ordinal"
 }
 
+# TODO: if instanceTemplate is specified, the pod service could not be parsed from the pod ordinal.
 parse_redis_advertised_svc_if_exist() {
   local pod_name="$1"
 
@@ -184,33 +178,26 @@ register_to_sentinel() {
 }
 
 register_to_sentinel_wrapper() {
-  # parse redis sentinel pod list from $SENTINEL_POD_NAME_LIST env
-  if [ -z "$SENTINEL_POD_NAME_LIST" ]; then
-    echo "Error: Required environment variable SENTINEL_POD_NAME_LIST: $SENTINEL_POD_NAME_LIST is not set."
+  # check required environment variables, we use KB_CLUSTER_COMP_NAME as the master_name registered to sentinel
+  if  ! env_exists KB_CLUSTER_COMP_NAME KB_POD_LIST; then
+    echo "Error: Required environment variable KB_CLUSTER_COMP_NAME and KB_POD_LIST is not set."
     exit 1
   fi
 
-  # get redis sentinel headless service name from $SENTINEL_HEADLESS_SERVICE_NAME env
-  if [ -z "$SENTINEL_HEADLESS_SERVICE_NAME" ]; then
-    echo "Error: Required environment variable SENTINEL_HEADLESS_SERVICE_NAME: $SENTINEL_HEADLESS_SERVICE_NAME is not set."
+  # parse redis sentinel pod fqdn list from $SENTINEL_POD_FQDN_LIST env
+  if ! env_exist SENTINEL_POD_FQDN_LIST; then
+    echo "Error: Required environment variable SENTINEL_POD_FQDN_LIST is not set."
     exit 1
   fi
 
-  # get minimum ordinal pod name as default primary node (the same logic as redis initialize primary node selection)
-  get_minimum_initialize_pod_ordinal
-  default_redis_primary_pod_name="$KB_CLUSTER_COMP_NAME-$default_initialize_pod_ordinal"
+  # get minimum lexicographical order pod name as default primary node (the same logic as redis initialize primary node selection)
+  default_redis_primary_pod_name=$(min_lexicographical_order_pod "$KB_POD_LIST")
   redis_default_primary_pod_headless_fqdn="$default_redis_primary_pod_name.$KB_CLUSTER_COMP_NAME-$headless_postfix.$KB_NAMESPACE.svc"
   init_redis_service_port
   parse_redis_advertised_svc_if_exist $default_redis_primary_pod_name
 
-  old_ifs="$IFS"
-  IFS=','
-  set -f
-  read -ra sentinel_pod_list <<< "${SENTINEL_POD_NAME_LIST}"
-  set +f
-  IFS="$old_ifs"
-  for sentinel_pod in "${sentinel_pod_list[@]}"; do
-    sentinel_pod_fqdn="$sentinel_pod.$SENTINEL_HEADLESS_SERVICE_NAME"
+  sentinel_pod_fqdn_list=($(split "$SENTINEL_POD_FQDN_LIST" ","))
+  for sentinel_pod_fqdn in "${sentinel_pod_fqdn_list[@]}"; do
     if [ -n "$redis_advertised_svc_host_value" ] && [ -n "$redis_advertised_svc_port_value" ]; then
       echo "register to sentinel:$sentinel_pod_fqdn with advertised service: redis_advertised_svc_host_value=$redis_advertised_svc_host_value, redis_advertised_svc_port_value=$redis_advertised_svc_port_value"
       register_to_sentinel "$sentinel_pod_fqdn" "$KB_CLUSTER_COMP_NAME" "$redis_advertised_svc_host_value" "$redis_advertised_svc_port_value"
@@ -220,6 +207,13 @@ register_to_sentinel_wrapper() {
     fi
   done
 }
+
+# When included from shellspec, __SOURCED__ variable defined and script
+# end here. The script path is assigned to the __SOURCED__ variable.
+${__SOURCED__:+false} : || return 0
+
+# main
+load_common_library
 
 # TODO: replace the following code with checking env $SENTINEL_COMPONENT_NAME defined in ComponentDefinition.Spec.Vars API
 {{- $defaultSentinelComponentName := "redis-sentinel" }}

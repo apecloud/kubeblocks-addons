@@ -76,3 +76,8 @@ min_lexicographical_order_pod() {
   echo "$minimum_pod"
 }
 {{- end }}
+
+
+{{- define "kblib.pods.get_target_pod_fqdn_from_pod_fqdn_vars" }}
+
+{{- end }}
