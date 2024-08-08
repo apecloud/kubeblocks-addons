@@ -192,16 +192,17 @@ init_or_get_primary_from_redis_sentinel() {
 build_sentinel_get_master_addr_by_name_command() {
   local sentinel_pod_fqdn="$1"
   local timeout_value=5
-  echo "timeout $timeout_value redis-cli -h $sentinel_pod_fqdn -p $SENTINEL_SERVICE_PORT -a ******** sentinel get-master-addr-by-name $KB_CLUSTER_COMP_NAME"
+  # TODO: replace $SENTINEL_SERVICE_PORT with each sentinel pod's port when sentinel service port is not the same, for example in HostNetwork mode
+  echo "timeout $timeout_value redis-cli -h $sentinel_pod_fqdn -p $SENTINEL_SERVICE_PORT -a  $SENTINEL_PASSWORD sentinel get-master-addr-by-name $KB_CLUSTER_COMP_NAME"
 }
 
 get_master_addr_by_name_from_sentinel() {
-  local get_master_addr_by_name_command
+  local master_addr_by_name_command
   local sentinel_pod_fqdn="$1"
-  get_master_addr_by_name_command=$(build_sentinel_get_master_addr_by_name_command "$sentinel_pod_fqdn")
   unset_xtrace
-  echo "execute get-master-addr-by-name command: $get_master_addr_by_name_command"
-  output=$(eval "$get_master_addr_by_name_command")
+  master_addr_by_name_command=$(build_sentinel_get_master_addr_by_name_command "$sentinel_pod_fqdn")
+  echo "execute get-master-addr-by-name command: $master_addr_by_name_command" | sed "s/$SENTINEL_PASSWORD/********/g"
+  output=$(eval "$master_addr_by_name_command")
   exit_code=$?
   set_xtrace
 
