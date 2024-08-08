@@ -29,7 +29,9 @@ spec:
             {{- end }}
         - name: log
           spec:
-            storageClassName: {{ .Values.storageClassName }}
+            {{- if .Values.storageClassName }}
+            storageClassName: {{ .Values.storageClassName | quote  }}
+            {{- end }}
             accessModes:
               - ReadWriteOnce
             resources:
