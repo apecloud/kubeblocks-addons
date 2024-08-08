@@ -74,8 +74,9 @@ discovery-srv:
   {{- if and $.component.tlsConfig (eq .PEER_TLS "true") -}}
     {{- $peerProtocol = "https" -}}
   {{- end -}}
-
-  {{- if and (index . "PEER_ENDPOINT") (contains "," .PEER_ENDPOINT) -}}
+  {{- $regIPv4 := "^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$" -}}
+  {{- $regIPv6 := "^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$" -}}
+  {{- if and (index . "PEER_ENDPOINT") (or (contains "," .PEER_ENDPOINT) (not (or (regexMatch $regIPv4 .PEER_ENDPOINT) (regexMatch $regIPv6 .PEER_ENDPOINT)))) -}}
     {{- $endpoints := splitList "," .PEER_ENDPOINT -}}
     {{- range $idx, $endpoint := $endpoints -}}
       {{- if $idx -}},{{- end -}}

@@ -9,4 +9,4 @@ if [ $leaverEndpoint = "" ]; then
 fi
 
 ETCDID=$(execEtcdctl $leaverEndpoint endpoint status | awk -F', ' '{print $2}')
-execEtcdctl $leaverEndpoint member remove $ETCDID
+execEtcdctl $KB_MEMBER_ADDRESSES member remove $ETCDID
