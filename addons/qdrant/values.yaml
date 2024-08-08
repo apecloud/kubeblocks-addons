@@ -14,8 +14,8 @@ commonLabels: {}
 ## @param application images
 ##
 image:
-  registry: docker.io
-  repository: qdrant/qdrant
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  repository: apecloud/qdrant
   pullPolicy: IfNotPresent
   tag: "v1.8.4"
   tools:
