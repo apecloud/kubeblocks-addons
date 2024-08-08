@@ -21,16 +21,6 @@ spec:
     template:
       name: redis
       componentDef: redis-cluster-7
-      affinity:
-        podAntiAffinity: Preferred
-        topologyKeys:
-        - kubernetes.io/hostname
-        tenancy: SharedNode
-      tolerations:
-      - key: kb-data
-        operator: Equal
-        value: 'true'
-        effect: NoSchedule
       disableExporter: true
       enabledLogs:
       - running

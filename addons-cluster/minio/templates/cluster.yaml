@@ -1,0 +1,10 @@
+{{- include "kblib.clusterCommon" . }}
+  componentSpecs:
+    - name: minio
+      componentDef: minio
+      replicas: {{ .Values.replicas }}
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
+      {{- include "kblib.componentServices" . | indent 6 }}

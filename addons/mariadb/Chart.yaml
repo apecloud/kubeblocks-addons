@@ -5,7 +5,7 @@ description: MariaDB is a high performance open source relational database manag
 type: application
 
 # This is the version number of the helm chart.
-version: 0.9.0
+version: 1.0.0-alpha.0
 
 # This is the version number of the MARIADB being deployed,
 appVersion: "10.6.15"

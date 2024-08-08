@@ -3,7 +3,7 @@ name: greptimedb
 description: An open-source, cloud-native, distributed time-series database with PromQL/SQL/Python supported.
 
 # This is the chart version
-version: 0.9.0
+version: 1.0.0-alpha.0
 
 # This is the version number of greptimedb
 appVersion: "0.3.2"

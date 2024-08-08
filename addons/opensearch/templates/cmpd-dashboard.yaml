@@ -1,0 +1,70 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: opensearch-dashboard-{{ .Chart.Version }}
+  labels:
+    {{- include "opensearch.labels" . | nindent 4 }}
+spec:
+  provider: Community
+  description: {{ .Chart.Description }}
+  serviceKind: {{ .Chart.Name }}
+  serviceVersion: {{ .Chart.AppVersion }}
+  runtime:
+    containers:
+      - name: dashboard
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dashboard.repository }}:{{ default .Chart.AppVersion .Values.image.dashboard.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+          - sh
+          - -c
+          - |
+            #!/usr/bin/bash
+            set -e
+            bash opensearch-dashboards-docker-entrypoint.sh opensearch-dashboards
+        env:
+          - name: OPENSEARCH_HOSTS
+            value: $(OPENSEARCH_HOST)
+          - name: SERVER_HOST
+            value: "0.0.0.0"
+        startupProbe:
+          tcpSocket:
+            port: 5601
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 20
+          successThreshold: 1
+          initialDelaySeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 5601
+          periodSeconds: 20
+          timeoutSeconds: 5
+          failureThreshold: 10
+          successThreshold: 1
+          initialDelaySeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: 5601
+          periodSeconds: 20
+          timeoutSeconds: 5
+          failureThreshold: 10
+          successThreshold: 1
+          initialDelaySeconds: 10
+        ports:
+          - containerPort: 5601
+            name: http
+            protocol: TCP
+  vars:
+    - name: OPENSEARCH_HOST
+      valueFrom:
+        serviceVarRef:
+          compDef: opensearch
+          optional: false
+          Host: Required
+  services:
+    - name: default
+      spec:
+        ports:
+          - name: http
+            port: 5601
+            targetPort: http

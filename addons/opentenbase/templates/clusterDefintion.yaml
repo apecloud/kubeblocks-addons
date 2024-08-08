@@ -65,6 +65,8 @@ spec:
           fsGroupChangePolicy: OnRootMismatch
         containers:
           - name: gtm
+            image: {{ .Values.images.registry }}/{{ .Values.images.repository}}:{{.Values.images.tag}}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
             command:
               - bash
               - /scripts/gtm_entrypoint
@@ -163,6 +165,8 @@ spec:
           fsGroupChangePolicy: OnRootMismatch
         containers:
           - name: dn
+            image: {{ .Values.images.registry }}/{{ .Values.images.repository}}:{{.Values.images.tag}}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
             command:
               - bash
               - /scripts/dn_entrypoint
@@ -260,6 +264,8 @@ spec:
           fsGroupChangePolicy: OnRootMismatch
         containers:
           - name: cn
+            image: {{ .Values.images.registry }}/{{ .Values.images.repository}}:{{.Values.images.tag}}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
             command:
               - /bin/bash
               - /scripts/cn_entrypoint

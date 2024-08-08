@@ -11,11 +11,7 @@ spec:
     components:
     - name: mysql
       compDef: apecloud-mysql
-  - name: apecloud-mysql-auditlog
-    components:
-    - name: mysql
-      compDef: apecloud-mysql-auditlog
-  - name: apecloud-mysql-with-proxy
+  - name: apecloud-mysql-proxy
     components:
     - name: mysql
       compDef: apecloud-mysql
@@ -23,17 +19,24 @@ spec:
       compDef: wescale-ctrl
     - name: wescale
       compDef: wescale
-    orders: &orders
+    orders:
       provision:
       - mysql
       - wescale-ctrl
       - wescale
-  - name: apecloud-mysql-audit-with-proxy
+  - name: apecloud-mysql-proxy-etcd
     components:
     - name: mysql
-      compDef: apecloud-mysql-auditlog
+      compDef: apecloud-mysql
+    - name: etcd
+      compDef: {{ .Values.etcd.etcdCmpdName }}
     - name: wescale-ctrl
       compDef: wescale-ctrl
     - name: wescale
       compDef: wescale
-    orders: *orders
+    orders:
+      provision:
+      - etcd
+      - mysql
+      - wescale-ctrl
+      - wescale

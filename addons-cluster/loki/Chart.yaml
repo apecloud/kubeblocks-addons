@@ -1,0 +1,20 @@
+apiVersion: v2
+name: loki-cluster
+description: A loki cluster Helm chart for KubeBlocks.
+
+type: application
+
+version: 1.0.0-alpha.0
+
+appVersion: "3.0.0"
+
+keywords:
+  - loki
+  - database
+  - cluster
+
+dependencies:
+  - name: kblib
+    version: 0.1.0
+    repository: file://../kblib
+    alias: extra

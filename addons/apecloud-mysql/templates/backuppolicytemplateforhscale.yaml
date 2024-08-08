@@ -12,7 +12,6 @@ spec:
   backupPolicies:
   - componentDefs:
       - {{ include "apecloud-mysql.componentDefName" . }}
-      - {{ include "apecloud-mysql.componentDefName" . }}-auditlog
     target:
       role: follower
       account: root

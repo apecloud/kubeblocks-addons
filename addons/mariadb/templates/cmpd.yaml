@@ -55,7 +55,3 @@ spec:
         numDigits: 3
         numSymbols: 4
         letterCase: MixedCases
-  monitor:
-    exporterConfig:
-      scrapePort: 9104
-      scrapePath: "/metrics"

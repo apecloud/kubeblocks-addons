@@ -5,4 +5,14 @@ metadata:
   labels:
     {{- include "redis.labels" . | nindent 4 }}
 data:
-  {{- include "redis.extend.scripts" . | nindent 2 }}
+  common.sh: |-
+    #!/bin/bash
+    {{- include "kblib.pods.minLexicographicalOrderPod" $ | nindent 4 }}
+    {{- include "kblib.pods.getPodListFromEnv" $ | nindent 4 }}
+    {{- include "kblib.strings.contains" $ | nindent 4 }}
+    {{- include "kblib.strings.split" $ | nindent 4 }}
+    {{- include "kblib.envs.envExist" $ | nindent 4 }}
+    {{- include "kblib.envs.envsExist" $ | nindent 4 }}
+  {{- with include "redis.extend.scripts" . }}
+  {{- . | nindent 2 }}
+  {{- end }}

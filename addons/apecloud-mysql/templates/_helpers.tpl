@@ -196,6 +196,7 @@ serviceRefDeclarations:
     serviceRefDeclarationSpecs:
       - serviceKind: etcd
         serviceVersion: "^*"
+    optional: true
 vars:
   - name: MYSQL_ROOT_USER
     valueFrom:
@@ -224,8 +225,23 @@ vars:
       serviceRefVarRef:
         name: etcd
         endpoint: Required
+        optional: true
+  - name: LOCAL_ETCD_POD_FQDN
+    valueFrom:
+      componentVarRef:
+        compDef: {{ .Values.etcd.etcdCmpdName }}
+        optional: true
+        podFQDNs: Required
+  - name: LOCAL_ETCD_PORT
+    valueFrom:
+      serviceVarRef:
+        compDef: {{ .Values.etcd.etcdCmpdName }}
+        name: headless
+        optional: true
+        port: 
+          name: client
+          option: Optional
 {{- end -}}
-
 
 {{- define "apecloud-mysql.spec.runtime.mysql" -}}
 env:
@@ -259,6 +275,8 @@ env:
     value: $(KB_CLUSTER_UID)
   - name: KB_MYSQL_N
     value: $(KB_REPLICA_COUNT)
+  - name: CLUSTER_DOMAIN
+    value: {{ .Values.clusterDomain }}
 volumeMounts:
   - mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
     name: data
@@ -288,8 +306,6 @@ ports:
 env:
   - name: CELL
     value: {{ .Values.wesqlscale.cell | default "zone1" | quote }}
-  - name: ETCD_SERVER
-    value: $(SERVICE_ETCD_ENDPOINT)
   - name: VTTABLET_PORT
     value: "15100"
   - name: VTTABLET_GRPC_PORT

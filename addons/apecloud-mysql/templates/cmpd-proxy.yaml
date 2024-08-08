@@ -14,6 +14,7 @@ spec:
       serviceRefDeclarationSpecs:
         - serviceKind: etcd
           serviceVersion: "^*"
+      optional: true
   scripts:
     - name: apecloud-mysql-scripts
       templateRef: {{ include "apecloud-mysql.cmScriptsName" . }}
@@ -50,10 +51,8 @@ spec:
             value: "15000"
           - name: VTCTLD_GRPC_PORT
             value: "15999"
-          - name: ETCD_SERVER
-            value: $(SERVICE_ETCD_ENDPOINT)
-          - name: ETCDCTL_API
-            value: "3"
+          - name: CLUSTER_DOMAIN
+            value: {{ .Values.clusterDomain }}
         command: ["/scripts/vtctld.sh"]
         volumeMounts:
           - name: scripts
@@ -80,6 +79,22 @@ spec:
         serviceRefVarRef:
           name: etcd
           endpoint: Required
+          optional: true
+    - name: LOCAL_ETCD_POD_FQDN
+      valueFrom:
+        componentVarRef:
+          compDef: {{ .Values.etcd.etcdCmpdName }}
+          optional: true
+          podFQDNs: Required
+    - name: LOCAL_ETCD_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ .Values.etcd.etcdCmpdName }}
+          name: headless
+          optional: true
+          port: 
+            name: client
+            option: Optional
 ---
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
@@ -97,6 +112,7 @@ spec:
       serviceRefDeclarationSpecs:
         - serviceKind: etcd
           serviceVersion: "^*"
+      optional: true
   scripts:
     - name: apecloud-mysql-scripts
       templateRef: {{ include "apecloud-mysql.cmScriptsName" . }}
@@ -147,10 +163,10 @@ spec:
             value: "15001"
           - name: VTGATE_GRPC_PORT
             value: "15991"
-          - name: ETCD_SERVER
-            value: $(SERVICE_ETCD_ENDPOINT)
           - name: MYSQL_UNIX_PORT
             value: "/tmp/mysql.sock"
+          - name: CLUSTER_DOMAIN
+            value: {{ .Values.clusterDomain }}
         command: ["/scripts/vtgate.sh"]
         volumeMounts:
           - name: scripts
@@ -182,3 +198,19 @@ spec:
         serviceRefVarRef:
           name: etcd
           endpoint: Required
+          optional: true
+    - name: LOCAL_ETCD_POD_FQDN
+      valueFrom:
+        componentVarRef:
+          compDef: {{ .Values.etcd.etcdCmpdName }}
+          optional: true
+          podFQDNs: Required
+    - name: LOCAL_ETCD_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ .Values.etcd.etcdCmpdName }}
+          name: headless
+          optional: true
+          port: 
+            name: client
+            option: Optional
