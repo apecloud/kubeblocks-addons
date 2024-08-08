@@ -4,10 +4,10 @@
 
 image:
   # registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
-  registry: mcr.microsoft.com
-  repository: mssql/server
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  repository: apecloud/mssql
   pullPolicy: IfNotPresent
-  tag: "2022-latest"
+  tag: 2022.0.0
 nameOverride: ""
 fullnameOverride: ""
 
