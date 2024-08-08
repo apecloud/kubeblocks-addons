@@ -25,7 +25,7 @@ spec:
           command:
             - bash
             - -c
-            - curl http://${ORC_ENDPOINTS%%:*}:${ORC_PORTS}/api/forget-cluster/${KB_CLUSTER_NAME}
+            - curl http://${ORC_ENDPOINTS%%:*}:${ORC_PORTS}/api/forget-cluster/${KB_CLUSTER_NAME} || true
   configs:
     - name: mysql-replication-config
       templateRef: mysql-5.7-config-template
