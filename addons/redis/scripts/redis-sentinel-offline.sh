@@ -3,9 +3,12 @@ set -ex
 
 declare -g redis_default_service_port=26379
 declare -A master_slave_counts
+declare -g sentinel_leave_member_name
+declare -g sentinel_leave_member_ip
+declare -a sentinel_pod_list
 
-member_leave_sentinel() {
-  if [ -z "$KB_LEAVE_MEMBER_POD_IP" ]; then
+redis_sentinel_member_get() {
+    if [ -z "$KB_LEAVE_MEMBER_POD_IP" ]; then
     echo "Error: Required environment variable KB_LEAVE_MEMBER_POD_IP is not set."
     exit 1
   fi
@@ -29,7 +32,9 @@ member_leave_sentinel() {
   read -ra sentinel_pod_list <<< "${KB_MEMBER_ADDRESSES}"
   set +f
   IFS="$old_ifs"
+}
 
+redis_sentinel_remove_monitor() {
   local max_retries=3
   local retry_count=0
   local success=false
@@ -84,14 +89,16 @@ member_leave_sentinel() {
           if [[ -n "$master_name" ]]; then
             echo "master name: $master_name"
             redis-cli -h "$sentinel_leave_member_ip" -p "$redis_default_service_port" -a "$SENTINEL_PASSWORD" SENTINEL REMOVE "$master_name"
+            echo "sentinel no longer monitors $master_name"
           master_name=""
           fi
       done <<< "$output"
   else
       echo "unable to connect to redis sentinel, or no master nodes found."
   fi
+}
 
-  #sentinel reset *
+redis_sentinel_reset_all() {
   for sentinel_pod in "${sentinel_pod_list[@]}"; do
     host=$(echo "$sentinel_pod" | cut -d ':' -f 1)
     port=$(echo "$sentinel_pod" | cut -d ':' -f 2)
@@ -130,10 +137,15 @@ member_leave_sentinel() {
             sleep 3
         else
             echo "sentinel connect failed after $max_retries retries."
+            exit 1
         fi
     fi
   done
-  #Check that all the Sentinels agree about the number of Sentinels currently active
+  echo "all sentinels have been successfully reset."
+}
+
+#Check that all the Sentinels agree about the number of Sentinels currently active
+check_all_sentinel_agreement() {
   for sentinel_pod in "${sentinel_pod_list[@]}"; do
       host=$(echo "$sentinel_pod" | cut -d ':' -f 1)
       port=$(echo "$sentinel_pod" | cut -d ':' -f 2)
@@ -148,6 +160,7 @@ member_leave_sentinel() {
         max_retries=3
         retry_count=0
         success=false
+        output=""
         while [ $retry_count -lt $max_retries ]; do
           if [ -n "$SENTINEL_PASSWORD" ]; then
             temp_output=$(redis-cli -h "$host" -p "$port" -a "$SENTINEL_PASSWORD" SENTINEL MASTERS 2>/dev/null || true)
@@ -218,6 +231,13 @@ member_leave_sentinel() {
         fi
       fi
   done
+}
+
+member_leave_sentinel() {
+  redis_sentinel_member_get
+  redis_sentinel_remove_monitor
+  redis_sentinel_reset_all
+  check_all_sentinel_agreement
 }
 
 member_leave_sentinel
