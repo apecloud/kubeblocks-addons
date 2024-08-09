@@ -78,7 +78,7 @@ build_redis_default_accounts() {
 
 build_announce_ip_and_port() {
   # build announce ip and port according to whether the advertised svc is enabled
-  if ! is_empty redis_advertised_svc_host_value && ! is_empty redis_advertised_svc_port_value; then
+  if ! is_empty "$redis_advertised_svc_host_value" && ! is_empty "$redis_advertised_svc_port_value"; then
     echo "redis use nodeport $redis_advertised_svc_host_value:$redis_advertised_svc_port_value to announce"
     {
       echo "replica-announce-port $redis_advertised_svc_port_value"
@@ -114,9 +114,9 @@ build_replicaof_config() {
 
 rebuild_redis_acl_file() {
   if [ -f $redis_acl_file ]; then
-    sed -i "/user default on/d" $redis_acl_file
-    sed -i "/user $REDIS_REPL_USER on/d" $redis_acl_file
-    sed -i "/user $REDIS_SENTINEL_USER on/d" $redis_acl_file
+    sed -i '' "/user default on/d" $redis_acl_file
+    sed -i '' "/user $REDIS_REPL_USER on/d" $redis_acl_file
+    sed -i '' "/user $REDIS_SENTINEL_USER on/d" $redis_acl_file
   else
     touch $redis_acl_file
   fi
@@ -144,7 +144,7 @@ init_or_get_primary_from_redis_sentinel() {
   sentinel_pod_fqdn_list=($(split "$SENTINEL_POD_FQDN_LIST" ","))
   for sentinel_pod_fqdn in "${sentinel_pod_fqdn_list[@]}"; do
     # get primary info from sentinel
-    if retry_get_master_addr_by_name_from_sentinel "$sentinel_pod_fqdn"; then
+    if retry_get_master_addr_by_name_from_sentinel 3 2 "$sentinel_pod_fqdn"; then
       echo "sentinel:$sentinel_pod_fqdn has master info: ${REDIS_SENTINEL_PRIMARY_INFO[*]}"
       if [ "${#REDIS_SENTINEL_PRIMARY_INFO[@]}" -ne 2 ] || [ -z "${REDIS_SENTINEL_PRIMARY_INFO[0]}" ] || [ -z "${REDIS_SENTINEL_PRIMARY_INFO[1]}" ]; then
         echo "Empty primary info retrieved from sentinel: $sentinel_pod_fqdn. Skipping this sentinel."
@@ -193,7 +193,7 @@ build_sentinel_get_master_addr_by_name_command() {
   local sentinel_pod_fqdn="$1"
   local timeout_value=5
   # TODO: replace $SENTINEL_SERVICE_PORT with each sentinel pod's port when sentinel service port is not the same, for example in HostNetwork mode
-  echo "timeout $timeout_value redis-cli -h $sentinel_pod_fqdn -p $SENTINEL_SERVICE_PORT -a  $SENTINEL_PASSWORD sentinel get-master-addr-by-name $KB_CLUSTER_COMP_NAME"
+  echo "timeout $timeout_value redis-cli -h $sentinel_pod_fqdn -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD sentinel get-master-addr-by-name $KB_CLUSTER_COMP_NAME"
 }
 
 get_master_addr_by_name_from_sentinel() {
@@ -226,11 +226,13 @@ get_master_addr_by_name_from_sentinel() {
 }
 
 retry_get_master_addr_by_name_from_sentinel() {
-  local sentinel_pod_fqdn="$1"
-  if call_func_with_retry 3 2 get_master_addr_by_name_from_sentinel "$sentinel_pod_fqdn"; then
+  local max_retry="$1"
+  local retry_delay="$2"
+  local sentinel_pod_fqdn="$3"
+  if call_func_with_retry "$max_retry" "$retry_delay" get_master_addr_by_name_from_sentinel "$sentinel_pod_fqdn"; then
     return 0
   else
-    echo "Failed to retrieve primary info from sentinel: $sentinel_pod_fqdn after 3 retries."
+    echo "Failed to retrieve primary info from sentinel: $sentinel_pod_fqdn after $max_retry retries."
     return 1
   fi
 }
@@ -255,7 +257,7 @@ check_current_pod_is_primary() {
     return 0
   fi
 
-  if ! is_empty redis_advertised_svc_host_value && ! is_empty redis_advertised_svc_port_value; then
+  if ! is_empty "$redis_advertised_svc_host_value" && ! is_empty "$redis_advertised_svc_port_value"; then
     if equals "$primary" "$redis_advertised_svc_host_value" && equals "$primary_port" "$redis_advertised_svc_port_value"; then
       echo "current pod is primary with advertised svc mapping, primary: $primary, primary port: $primary_port, advertised ip:$redis_advertised_svc_host_value, advertised port:$redis_advertised_svc_port_value"
       return 0
