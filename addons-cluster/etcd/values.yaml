@@ -5,11 +5,8 @@ fullnameOverride: ""
 ##
 terminationPolicy: Delete
 
-## Monitoring configurations
-monitor:
-  ## @param monitor.enabled if `true`, enable Cluster monitor capabilities
-  ##
-  enabled: false
+## @param disableExporter Disable Monitoring exporter
+disableExporter: false
 
 ## @param tolerations define global Tolerations for the cluster all pod's assignment
 ## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
@@ -29,15 +26,33 @@ affinity: {}
 replicas: 3
 
 ## Service configurations
-##
-service:
+## set service name to enable peerService and clientService
+
+## peerService is the configuration for etcd peer communication
+## Not required to setup peerService if you're using a single k8s cluster
+## Recommended to use LoadBalancer for multi-cluster etcd setups
+## Enabling multi-cluster etcd wil make TLS fail due to CA wildcard mismatches
+peerService:
   name:
-  ## @param service.type etcd service type, valid options are ExternalName, ClusterIP, NodePort, and LoadBalancer.
+  ## @param type etcd peerService type, the recommended options is LoadBalancer.
   ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
-  ##
+  type: LoadBalancer
+  ## @param annotations is optional, if peerService type is LoadBalancer, you may need to specify annotations for Cloud Provider
+  annotations: { }
+
+## clientService is the configuration for etcd client communication
+clientService:
+  name:
+  ## @param type etcd service type, valid options are ExternalName, ClusterIP, NodePort, and LoadBalancer.
+  ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
   type: ClusterIP
   port: 2379
   role: leader
+  ## @param nodePort is optional, if clientService type is NodePort, by default and for convenience, 
+  ## the Kubernetes control plane will allocate a port from a range (default: 30000-32767)
+  nodePort:
+  ## @param annotations is optional, if clientService type is LoadBalancer, you may need to specify annotations for Cloud Provider
+  annotations: { }
 
 resources: { }
   # We usually recommend not to specify default resources and to leave this as a conscious
@@ -72,3 +87,6 @@ persistence:
     ## @param shard[*].persistence.size Size of data volume
     ##
     size: 1Gi
+
+## @param tlsEnable Enable TLS for etcd cluster
+tlsEnable: false

@@ -1,0 +1,41 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: {{ include "etcd.backupActionSetName" .}}
+  labels:
+    {{- include "etcd.labels" . | nindent 4 }}
+spec:
+  env:
+    - name: TLS_DIR
+      value: {{ .Values.tlsMountPath }}
+    - name: TMP_CONFIG_PATH
+      value: {{ .Values.tmpConfigPath}}
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.clusterDomain }}
+    - name: BACKUP_KEY_THRESHOLD
+      value: "{{ .Values.backupKeyThreshold }}"
+  backupType: Full
+  backup:
+    backupData:
+      image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
+      runOnTargetPodNode: true
+      syncProgress:
+        enabled: false
+        intervalSeconds: 5
+      command:
+      - /bin/sh
+      - -c
+      - |
+        {{- .Files.Get "scripts/common.sh" | nindent 8 }}
+        {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
+  restore:
+    postReady:
+    - job:
+        image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
+        runOnTargetPodNode: true
+        command:
+        - /bin/sh
+        - -c
+        - |
+          {{- .Files.Get "scripts/common.sh" | nindent 12 }}
+          {{- .Files.Get "dataprotection/restore.sh" | nindent 12 }}

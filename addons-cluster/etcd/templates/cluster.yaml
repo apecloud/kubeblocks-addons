@@ -7,19 +7,33 @@ metadata:
 spec:
   terminationPolicy: {{ .Values.terminationPolicy }}
   affinity:
-    {{- with $.Values.topologyKeys }}
+    {{- with .Values.topologyKeys }}
     topologyKeys: {{ . | toYaml | nindent 6 }}
     {{- end }}
-  {{- with $.Values.tolerations }}
+  {{- with .Values.tolerations }}
   tolerations: {{ . | toYaml | nindent 4 }}
   {{- end }}
   componentSpecs:
     - name: etcd
+      {{- if .Values.peerService.name }}
+      services:
+        - name: {{ .Values.peerService.name }}
+          serviceType: {{ .Values.peerService.type }}
+          podService: true
+          {{- if and (eq .Values.peerService.type "LoadBalancer") (not (empty .Values.peerService.annotations)) }}
+          annotations:  {{ .Values.peerService.annotations | toYaml | nindent 12 }}
+          {{- end }}
+      {{- end }}
       componentDef: etcd
       {{- if .Chart.AppVersion }}
       serviceVersion: {{ .Chart.AppVersion }}
       {{- end }}
-      monitor: {{ .Values.monitor.enabled }}
+      tls: {{ .Values.tlsEnable }}
+      {{- if .Values.tlsEnable }}
+      issuer:
+        name: KubeBlocks
+      {{- end }}
+      disableExporter: {{ .Values.disableExporter }}
       replicas: {{ .Values.replicas | default "3" }}
       {{- with .Values.resources }}
       resources:
@@ -41,15 +55,23 @@ spec:
               requests:
                 storage: {{ .Values.persistence.data.size }}
       {{- end }}
-  {{- if .Values.service.name }}
+  {{- if .Values.clientService.name }}
   services:
-    - name: {{ .Values.service.name }}
-      serviceName: {{ .Values.service.name }}
+    - name: {{ .Values.clientService.name }}
+      serviceName: {{ .Values.clientService.name }}
+      {{- if and (eq .Values.clientService.type "LoadBalancer") (not (empty .Values.clientService.annotations)) }}
+      annotations: {{ .Values.clientService.annotations | toYaml | nindent 8 }}
+      {{- end }}
       spec:
-        type: {{ .Values.service.type }}
+        type: {{ .Values.clientService.type }}
         ports:
-          - port: {{ .Values.service.port }}
+          - port: {{ .Values.clientService.port }}
             targetPort: 2379
+            {{- if.Values.clientService.nodePort }}
+            nodePort: {{ .Values.clientService.nodePort }}
+            {{- end }}
       componentSelector: etcd
-      roleSelector: {{ .Values.service.role }}
+      {{- if ne .Values.clientService.type "LoadBalancer" }}
+      roleSelector: {{ .Values.clientService.role }}
+      {{- end }}
   {{- end }}
