@@ -8,7 +8,19 @@ grpc_port=${VTGATE_GRPC_PORT:-'15991'}
 mysql_server_port=${VTGATE_MYSQL_PORT:-'15306'}
 mysql_server_socket_path="/tmp/mysql.sock"
 
-endpoints=${ETCD_SERVER:-'127.0.0.1:2379'}
+if [ -n "$LOCAL_ETCD_POD_FQDN" ]; then
+  IFS=',' read -ra ETCD_FDQN_ARRAY <<< "$LOCAL_ETCD_POD_FQDN"
+  endpoints=""
+  for fdqd in "${ETCD_FDQN_ARRAY[@]}"; do
+    endpoints+="${fdqd}:${LOCAL_ETCD_PORT},"
+  done
+  endpoints="${endpoints%,}"
+elif [ -n "$SERVICE_ETCD_ENDPOINT" ]; then
+  endpoints="$SERVICE_ETCD_ENDPOINT"
+else
+  echo "Both LOCAL_POD_ETCD_LIST and SERVICE_ETCD_ENDPOINT are empty. Cannot proceed."
+  exit 1
+fi
 
 echo $endpoints
 

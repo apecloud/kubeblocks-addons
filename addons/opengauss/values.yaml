@@ -2,15 +2,12 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-replicaCount: 1
-
 image:
   registry: docker.io
   repository: apecloud/opengauss
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: 3.0.0
-
 
 shmVolume:
   ## @param shmVolume.enabled Enable emptyDir volume for /dev/shm for PostgreSQL pod(s)
@@ -25,7 +22,6 @@ shmVolume:
 
 logConfigs:
   running: /var/lib/opengauss/data/pg_log/postgresql-*
-
 
 ## @section Metrics Parameters
 metrics:

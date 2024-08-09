@@ -9,9 +9,9 @@ syncLimit=30
 # the directory where the snapshot is stored.
 # do not use /tmp for storage, /tmp here is just
 # example sakes.
-dataDir=/bitnami/zookeeper/data
+dataDir={{ .ZOOKEEPER_DATA_DIR }}
 #
-dataLogDir=/bitnami/zookeeper/log
+dataLogDir={{ .ZOOKEEPER_DATA_LOG_DIR }}
 # the port at which the clients will connect
 clientPort=2181
 # the maximum number of client connections.
@@ -48,7 +48,12 @@ maxClientCnxns=500
   {{- $name := index (splitList "." $fqdn) 0 }}
   {{- $tokens := splitList "-" $name }}
   {{- $ordinal := index $tokens (sub (len $tokens) 1) }}
-  {{- printf "server.%s=%s:2888:3888:participant;0.0.0.0:2181\n" $ordinal $fqdn }}
+  {{- if ge $i 3 }}
+    {{- printf "server.%s=%s:2888:3888:observer;0.0.0.0:2181\n" $ordinal $fqdn }}
+    {{- printf "peerType=observer\n" }}
+  {{- else }}
+    {{- printf "server.%s=%s:2888:3888:participant;0.0.0.0:2181\n" $ordinal $fqdn }}
+  {{- end }}
 {{- end }}
 
 # logging

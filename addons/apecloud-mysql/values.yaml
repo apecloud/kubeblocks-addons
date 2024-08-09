@@ -108,3 +108,8 @@ wesqlscale:
 ## if you install multiple releases of this chart.
 ## If specified, the cluster definition will use it as name.
 resourceNamePrefix: ""
+
+etcd:
+  etcdCmpdName: etcd-0.9.0
+
+clusterDomain: ".cluster.local"

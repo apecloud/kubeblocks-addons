@@ -13,10 +13,8 @@ imagePullSecrets: []
 
 ## Common override values:
 ##
-## @param clusterVersionOverride
 ## @param nameOverride
 ## @param fullnameOverride
-clusterVersionOverride: ""
 nameOverride: ""
 fullnameOverride: ""
 

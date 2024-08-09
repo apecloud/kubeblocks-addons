@@ -80,3 +80,36 @@ ifeq (, $(SHELLCHECK_FILE))
 else
 	@shellcheck $(SC_OPTIONS) $(SHELLCHECK_FILE)
 endif
+
+SHELLSPEC_VERSION ?= 0.28.1
+SHELLSPEC_LOCAL_INSTALL_PATH := /usr/local/shellspec
+SHELLSPEC_LOCAL_INSTALL_TAR_GZ_FILE := shellspec-dist.tar.gz
+SHELLSPEC_BIN_PATH := $(PREFIX)/bin
+SHELLSPEC_LOAD_PATH ?= ./shellspec
+SHELLSPEC_DEFAULT_PATH ?= "**/scripts-ut-spec"
+SHELLSPEC_DEFAULT_SHELL ?= bash
+
+# shellspec is a full-featured BDD unit testing framework for all kinds of shells, details: https://github.com/shellspec/shellspec
+.PHONY: install-shellspec
+install-shellspec: ## Install shellspec if necessary.
+ifeq (, $(shell which shellspec))
+	@echo "Installing ShellSpec..."
+	@sudo mkdir -p $(SHELLSPEC_LOCAL_INSTALL_PATH)
+	@if [ ! -d "$(SHELLSPEC_LOCAL_INSTALL_PATH)/shellspec" ]; then \
+		echo "Downloading ShellSpec..."; \
+		sudo wget -P $(SHELLSPEC_LOCAL_INSTALL_PATH) https://github.com/shellspec/shellspec/releases/download/$(SHELLSPEC_VERSION)/$(SHELLSPEC_LOCAL_INSTALL_TAR_GZ_FILE); \
+		sudo tar -xzf $(SHELLSPEC_LOCAL_INSTALL_PATH)/$(SHELLSPEC_LOCAL_INSTALL_TAR_GZ_FILE) -C $(SHELLSPEC_LOCAL_INSTALL_PATH); \
+		echo "Downloaded ShellSpec and extracted successfully"; \
+	fi
+	@sudo ln -s $(SHELLSPEC_LOCAL_INSTALL_PATH)/shellspec/shellspec $(SHELLSPEC_BIN_PATH)/shellspec
+	@shellspec --version
+	@echo "ShellSpec installed successfully"
+else
+	@echo "ShellSpec is already installed in : "$(shell which shellspec)
+	@shellspec --version
+endif
+
+# run shellspec tests
+.PHONY: scripts-test
+scripts-test: install-shellspec ## Run shellspec tests.
+	@shellspec --load-path $(SHELLSPEC_LOAD_PATH) --default-path $(SHELLSPEC_DEFAULT_PATH) --shell $(SHELLSPEC_DEFAULT_SHELL) --format documentation

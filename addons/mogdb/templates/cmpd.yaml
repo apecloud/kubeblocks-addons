@@ -111,7 +111,7 @@ spec:
           - bash
           - -c
           - |
-            set -ex
+            set -x
             MogDB_Role=
             REPL_CONN_INFO=
 

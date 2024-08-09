@@ -1,0 +1,69 @@
+# Default values for apecloud-mysql-cluster.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+## @param version MySQL cluster version
+##
+version: ac-mysql-8.0.30
+
+## @param mode MySQL cluster topology mode, standalone, raftGroup
+##
+mode: standalone
+
+## @param replicas specify cluster replicas
+##
+replicas: 1
+
+## @param cpu
+##
+cpu: 0.5
+
+## @param memory, the unit is Gi
+##
+memory: 0.5
+
+## @param requests.cpu if not set, use cpu
+## @param requests.memory, if not set, use memory
+##
+requests:
+#  cpu:
+#  memory:
+
+## @param storage size, the unit is Gi
+##
+storage: 20
+
+## @param proxyEnabled if true, enable the proxy
+## if mode is standalone, proxyEnabled is always false
+## if mode is raftGroup, proxyEnabled can be true or false
+## 
+proxyEnabled: false
+
+## @param localEtcdEnabled if true, use the local etcd
+## if mode is standalone, localEtcdEnabled is always false
+## if mode is raftGroup, localEtcdEnabled can be true
+localEtcdEnabled: false
+
+## @param auditLogEnabled if true, enable audit log in apecloud mysql
+auditLogEnabled: false
+
+proxy:
+  storageClassName: ""
+
+## customized default values to override kblib chart's values
+extra:
+  podAntiAffinity: Required
+  disableExporter: true
+
+## metrics sidecars
+sidecars:
+  - mysql-exporter
+
+etcd:
+  serviceReference:
+    endpoint: "" # ex: etcd-cluster-etcd-headless.default.svc.cluster.local:2379
+  serviceVersion: 3.5.6
+  etcdctlApi: "3" # the etcd tool etcdctl api version
+  replicas: 3 # no support other num
+  resources:
+    storage: 20Gi
