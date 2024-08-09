@@ -377,19 +377,37 @@ scale_redis_cluster_replica() {
     replicated_command="redis-cli --cluster add-node $current_node_with_port $primary_node_endpoint_with_port --cluster-slave --cluster-master-id $primary_node_cluster_id -a $REDIS_DEFAULT_PASSWORD"
   fi
   echo "scale out replica replicated command: $replicated_command" | sed "s/$REDIS_DEFAULT_PASSWORD/********/g"
-  replicated_output=$($replicated_command)
-  replicated_exit_code=$?
-  set -x
-  echo "Scale out replica replicated command result: $replicated_output"
-  if [ $replicated_exit_code -ne 0 ]; then
+  # Keep trying until add-node is done.
+  # And the current_pod_fqdn DNS cache time is normally 30 seconds, thus make 30 attempts
+  local max_attempts=30
+  local attempt=1
+
+  while [ $attempt -le $max_attempts ]
+  do
+    # Avoid exiting with non-zero code and avoid printing password 
+    set +ex
+    replicated_output=$($replicated_command)
+    replicated_exit_code=$?
+    set -ex
+    echo "Attempt $attempt: Scale out replica replicated command result: $replicated_output"
+    if [ $replicated_exit_code -eq 0 ]; then
+      break
+    fi
     if [[ $replicated_output == *"is not empty"* ]]; then
       echo "Replica is not empty, Either the node already knows other nodes (check with CLUSTER NODES) or contains some key in database 0"
+      break
     else
-      echo "Failed to add the node $current_pod_fqdn to the cluster in scale_redis_cluster_replica, shutdown redis server"
+      echo "Failed to add the node $current_pod_fqdn to the cluster in scale_redis_cluster_replica"
       echo "Error message: $replicated_output"
-      shutdown_redis_server
-      exit 1
     fi
+    attempt=$((attempt + 1))
+    sleep 1
+  done
+
+  if [ $attempt -gt $max_attempts ]; then
+    echo "Failed to add the node to cluster after $attempt attempts, abort and shutdown redis server"
+    shutdown_redis_server
+    exit 1
   fi
 
   # cluster meet the primary node until the current node is successfully added to the cluster
@@ -400,7 +418,7 @@ scale_redis_cluster_replica() {
     fi
     primary_node_cluster_announce_ip=$(get_cluster_announce_ip "$primary_node_endpoint" "$primary_node_port")
     # send cluster meet command to the primary node
-    set +x
+    set +ex
     if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
       meet_command="redis-cli cluster meet $primary_node_cluster_announce_ip $primary_node_port $primary_node_bus_port"
     else
@@ -413,7 +431,7 @@ scale_redis_cluster_replica() {
         shutdown_redis_server
         exit 1
     fi
-    set -x
+    set -ex
     sleep 3
   done
   exit 0
