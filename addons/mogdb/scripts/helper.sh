@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 
-set -ex
+set -e
 cat >>/home/omm/.profile <<-EOF
 export PGHOST="/var/lib/mogdb/tmp"
 EOF
