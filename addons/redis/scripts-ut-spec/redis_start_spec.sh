@@ -1,13 +1,14 @@
 #shellcheck shell=bash
 
 # we need bash 4 or higher to run this script in some cases
-check_shell_type_and_version_valid() {
+should_skip_when_shell_type_and_version_invalid() {
   # validate_shell_type_and_version defined in shellspec/spec_helper.sh used to validate the expected shell type and version this script needs to run.
   if validate_shell_type_and_version "bash" 4 &>/dev/null; then
-    return 0
+    # should not skip
+    return 1
   fi
   echo "Skip case because bash version 4 or higher is not installed."
-  return 1
+  return 0
 }
 
 source ./utils.sh
@@ -445,7 +446,6 @@ Describe "Redis Start Bash Script Tests"
   End
 
   Describe "init_or_get_primary_from_redis_sentinel()"
-    Skip if "shell type and version unmatch, please check!" ! check_shell_type_and_version_valid
     Context "when SENTINEL_COMPONENT_NAME is not set"
       setup() {
         primary=""
@@ -455,17 +455,18 @@ Describe "Redis Start Bash Script Tests"
       Before "setup"
 
       It "gets default primary node if SENTINEL_COMPONENT_NAME is not set"
+        Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
         get_default_initialize_primary_node() {
           # shellcheck disable=SC2034
           primary="fake-primary"
           # shellcheck disable=SC2034
-          primary_port="fake-primary=port"
+          primary_port="fake-primary-port"
         }
         When call init_or_get_primary_from_redis_sentinel
         The status should be success
         The stdout should include "SENTINEL_COMPONENT_NAME env is not set, try to use default primary node"
         The variable primary should eq "fake-primary"
-        The variable primary_port should eq "fake-primary=port"
+        The variable primary_port should eq "fake-primary-port"
       End
     End
 
@@ -482,6 +483,7 @@ Describe "Redis Start Bash Script Tests"
       After "un_setup"
 
       It "exits with error if SENTINEL_POD_FQDN_LIST is not set"
+        Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
         When run init_or_get_primary_from_redis_sentinel
         The status should be failure
         The stdout should include "Error: Required environment variable SENTINEL_POD_FQDN_LIST is not set."
@@ -502,6 +504,7 @@ Describe "Redis Start Bash Script Tests"
       After "un_setup"
 
       It "retrieves primary info from multiple sentinels and selects the one with max count"
+        Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
         build_sentinel_get_master_addr_by_name_command() {
           mock_output="172.18.0.3 31081"
           # shellcheck disable=SC2028
@@ -517,51 +520,17 @@ Describe "Redis Start Bash Script Tests"
         # mock sed command execute error in get_master_addr_by_name_from_sentinel
         The stderr should include "first RE may not be empty"
       End
-
-      It "handles empty primary info retrieved from sentinel"
-        stub retry_get_master_addr_by_name_from_sentinel
-          REDIS_SENTINEL_PRIMARY_INFO=()
-          return 0
-        End
-        stub retry_get_master_addr_by_name_from_sentinel
-          REDIS_SENTINEL_PRIMARY_INFO=(
-            "10.0.0.1"
-            "6379"
-          )
-          return 0
-        End
-        When call init_or_get_primary_from_redis_sentinel
-        The status should be success
-        The variable primary should eq "10.0.0.1"
-        The variable primary_port should eq "6379"
-        The stdout should include "Empty primary info retrieved from sentinel: sentinel-0.redis-sentinel-headless. Skipping this sentinel."
-        The stdout should include "sentinel:sentinel-1.redis-sentinel-headless has master info"
-      End
-
-      It "handles failure to retrieve primary info from sentinel"
-        stub retry_get_master_addr_by_name_from_sentinel
-          return 1
-        End
-        stub retry_get_master_addr_by_name_from_sentinel
-          REDIS_SENTINEL_PRIMARY_INFO=(
-            "10.0.0.1"
-            "6379"
-          )
-          return 0
-        End
-        When call init_or_get_primary_from_redis_sentinel
-        The status should be success
-        The variable primary should eq "10.0.0.1"
-        The variable primary_port should eq "6379"
-        The stdout should include "Failed to retrieve primary info from sentinel: sentinel-0.redis-sentinel-headless. Skipping this sentinel."
-        The stdout should include "sentinel:sentinel-1.redis-sentinel-headless has master info"
-      End
     End
 
-    Context "when no primary info is retrieved from sentinels"
+    Context "when empty primary info is retrieved from sentinels"
       setup() {
+        # shellcheck disable=SC2034
+        retry_times=1
+        # shellcheck disable=SC2034
+        retry_delay_second=1
+        export KB_POD_LIST="redis-1,redis-0"
         export SENTINEL_COMPONENT_NAME="redis-sentinel"
-        export SENTINEL_POD_FQDN_LIST="sentinel-0.redis-sentinel-headless,sentinel-1.redis-sentinel-headless,sentinel-2.redis-sentinel-headless"
+        export SENTINEL_POD_FQDN_LIST="sentinel-0.redis-sentinel-headless,sentinel-1.redis-sentinel-headless"
       }
       Before "setup"
 
@@ -571,41 +540,27 @@ Describe "Redis Start Bash Script Tests"
       }
       After "un_setup"
 
-      It "gets default primary node if no primary info retrieved from all sentinels"
-        stub retry_get_master_addr_by_name_from_sentinel
-          return 1
-        End
-        stub get_default_initialize_primary_node
-          true
-        End
+      It "handles empty primary info retrieved from sentinel"
+        Skip if "shell type and version unmatch, please check!" should_skip_when_shell_type_and_version_invalid
+        build_sentinel_get_master_addr_by_name_command() {
+          echo "echo ''"
+        }
+        get_default_initialize_primary_node() {
+          # shellcheck disable=SC2034
+          primary="fake-primary1"
+          # shellcheck disable=SC2034
+          primary_port="fake-primary-port1"
+        }
         When call init_or_get_primary_from_redis_sentinel
         The status should be success
+        The stdout should include "Empty primary info retrieved from sentinel"
+        The stdout should include "Failed to retrieve primary info from sentinel: sentinel-1.redis-sentinel-headless"
         The stdout should include "no primary node found from all redis sentinels, use default primary node."
+        The variable primary should eq "fake-primary1"
+        The variable primary_port should eq "fake-primary-port1"
+        # mock sed command execute error in get_master_addr_by_name_from_sentinel
+        The stderr should include "first RE may not be empty"
       End
     End
   End
-#
-#  Describe "start_redis_server()"
-#    It "starts redis server with default configuration"
-#      When run start_redis_server
-#      The status should be success
-#      The stdout should include "exec redis-server /etc/redis/redis.conf"
-#    End
-#
-#    It "starts redis server with loadmodule configuration"
-#      mkdir -p /opt/redis-stack/lib
-#      touch /opt/redis-stack/lib/redisearch.so
-#      touch /opt/redis-stack/lib/redistimeseries.so
-#      touch /opt/redis-stack/lib/redisbloom.so
-#      export REDISEARCH_ARGS="--arg1 value1"
-#      export REDISTIMESERIES_ARGS="--arg2 value2"
-#      export REDISBLOOM_ARGS="--arg3 value3"
-#      When run start_redis_server
-#      The status should be success
-#      The stdout should include "exec redis-server /etc/redis/redis.conf"
-#      The stdout should include "--loadmodule /opt/redis-stack/lib/redisearch.so --arg1 value1"
-#      The stdout should include "--loadmodule /opt/redis-stack/lib/redistimeseries.so --arg2 value2"
-#      The stdout should include "--loadmodule /opt/redis-stack/lib/redisbloom.so --arg3 value3"
-#    End
-#  End
 End

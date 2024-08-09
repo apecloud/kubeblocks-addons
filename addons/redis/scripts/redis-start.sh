@@ -24,6 +24,8 @@ primary_port="6379"
 redis_template_conf="/etc/conf/redis.conf"
 redis_real_conf="/etc/redis/redis.conf"
 redis_acl_file="/data/users.acl"
+retry_times=3
+retry_delay_second=2
 
 load_common_library() {
   # the common.sh scripts is mounted to the same path which is defined in the cmpd.spec.scripts
@@ -140,11 +142,10 @@ init_or_get_primary_from_redis_sentinel() {
   declare -A master_count_map
   local first_redis_primary_host=""
   local first_redis_primary_port=""
-
   sentinel_pod_fqdn_list=($(split "$SENTINEL_POD_FQDN_LIST" ","))
   for sentinel_pod_fqdn in "${sentinel_pod_fqdn_list[@]}"; do
     # get primary info from sentinel
-    if retry_get_master_addr_by_name_from_sentinel 3 2 "$sentinel_pod_fqdn"; then
+    if retry_get_master_addr_by_name_from_sentinel $retry_times $retry_delay_second "$sentinel_pod_fqdn"; then
       echo "sentinel:$sentinel_pod_fqdn has master info: ${REDIS_SENTINEL_PRIMARY_INFO[*]}"
       if [ "${#REDIS_SENTINEL_PRIMARY_INFO[@]}" -ne 2 ] || [ -z "${REDIS_SENTINEL_PRIMARY_INFO[0]}" ] || [ -z "${REDIS_SENTINEL_PRIMARY_INFO[1]}" ]; then
         echo "Empty primary info retrieved from sentinel: $sentinel_pod_fqdn. Skipping this sentinel."
