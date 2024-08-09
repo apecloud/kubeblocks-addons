@@ -70,6 +70,7 @@ Define redis sentinel ComponentSpec with ComponentDefinition.
     serviceType: NodePort
     podService: true
   {{- end }}
+  serviceAccountName: {{ include "kblib.serviceAccountName" . }}
   resources:
     limits:
       cpu: {{ .Values.sentinel.cpu | quote }}
