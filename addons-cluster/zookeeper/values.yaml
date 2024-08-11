@@ -26,4 +26,4 @@ memory: 2
 
 storage: 10
 
-log: 2
+logStorage: 2
