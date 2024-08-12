@@ -23,5 +23,5 @@ spec:
       changes:
       serviceVersion: 2.8.1
       images: 
-        kafka: registry.cn-hangzhou.aliyuncs.com/skyrise/kafka:2.8.1-debian-11-r7  # {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
+        kafka: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:2.8.1-debian-11-r7
         jmx-exporter: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
