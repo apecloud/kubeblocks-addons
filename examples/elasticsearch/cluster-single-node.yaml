@@ -15,7 +15,7 @@ spec:
   # Specifies a list of ClusterComponentSpec objects used to define the individual components that make up a Cluster. This field allows for detailed configuration of each component within the Cluster. Note: `shardingSpecs` and `componentSpecs` cannot both be empty; at least one must be defined to configure a cluster. ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
   - name: elasticsearch
-    componentDef: elasticsearch
+    componentDef: elasticsearch-8.8
     disableExporter: true
     serviceAccountName: kb-elasticsearch-cluster
     replicas: 1

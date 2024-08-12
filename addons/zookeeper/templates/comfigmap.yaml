@@ -7,3 +7,5 @@ metadata:
 data:
   logback.xml: |-
     {{- .Files.Get "config/logback.xml" | nindent 4 }}
+  log4j.properties: |-
+    {{- .Files.Get "config/log4j.properties" | nindent 4 }}

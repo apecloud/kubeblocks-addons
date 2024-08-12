@@ -17,7 +17,7 @@ spec:
   # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
   - name: master
-    componentDef: elasticsearch
+    componentDef: elasticsearch-8.8
     disableExporter: true
     serviceAccountName: kb-elasticsearch-cluster
     replicas: 1
@@ -37,7 +37,7 @@ spec:
           requests:
             storage: 20Gi
   - name: data
-    componentDef: elasticsearch
+    componentDef: elasticsearch-8.8
     serviceAccountName: kb-elasticsearch-cluster
     disableExporter: true
     replicas: 1
@@ -57,7 +57,7 @@ spec:
           requests:
             storage: 20Gi
   - name: ingest
-    componentDef: elasticsearch
+    componentDef: elasticsearch-8.8
     serviceAccountName: kb-elasticsearch-cluster
     disableExporter: true
     replicas: 1
@@ -78,7 +78,7 @@ spec:
             storage: 20Gi
     services: null
   - name: transform
-    componentDef: elasticsearch
+    componentDef: elasticsearch-8.8
     serviceAccountName: kb-elasticsearch-cluster
     disableExporter: true
     replicas: 1
