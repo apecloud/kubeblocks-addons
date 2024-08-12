@@ -4,7 +4,7 @@
 
 ## @param version cluster version
 ##
-version: rabbitmq-3.13.2
+version: 3.13.2
 
 ## @param mode cluster topology mode, singlenode or clustermode
 ##

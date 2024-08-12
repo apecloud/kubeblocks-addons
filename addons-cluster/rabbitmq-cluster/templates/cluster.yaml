@@ -10,6 +10,7 @@ spec:
   componentSpecs:
     - name: rabbitmq
       componentDef: rabbitmq
+      serviceVersion: {{ .Values.version }}
       {{- include "rabbitmq-cluster.replicaCount" . | indent 6 }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentResources" . | indent 6 }}
