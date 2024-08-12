@@ -7,7 +7,7 @@ description: A PostgreSQL (with Patroni HA) cluster Helm chart for KubeBlocks.
 dependencies:
   - name: kblib
     version: 0.1.1
-    repository: file://../kblib-v2
+    repository: file://../kblib
     alias: extra
 
 # appVersion specifies the version of the PostgreSQL (with Patroni HA) database to be created.
