@@ -34,6 +34,9 @@ data:
       format: ini
       iniConfig:
         sectionName: mysqld
+
+    dataType: mysql
+    dsn: '{%- expandenv "${MYSQL_ROOT_USER}:${MYSQL_ROOT_PASSWORD}@(localhost:3306)/" | trim %}'
 ---
 apiVersion: v1
 kind: ConfigMap
