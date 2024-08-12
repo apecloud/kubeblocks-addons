@@ -157,12 +157,10 @@ metadata:
   name: etcdm-cluster
   namespace: default
 spec:
-  clusterDefinitionRef: etcd
-  clusterVersionRef: etcd-v3.5.6
   terminationPolicy: WipeOut
   componentSpecs:
     - name: etcd
-      componentDefRef: etcd
+      componentDef: etcd
       replicas: 1
       resources:
         limits:

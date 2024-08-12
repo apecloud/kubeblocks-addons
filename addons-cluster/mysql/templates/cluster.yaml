@@ -11,7 +11,7 @@ spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
-    - name: server
+    - name: mysql
       replicas: {{ .Values.replicas }}
       {{- $compdef := .Values.version }}
       {{- if .Values.orchestrator.enable }}

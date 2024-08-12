@@ -1,0 +1,2 @@
+According to https://etcd.io/docs/v3.5/op-guide/configuration/, etcd ignores command-line flags and environment variables if a configuration file is provided.
+Any modifications to the ConfigMap won't take immediate effect as we need to adjust the copied configuration file before etcd starts.

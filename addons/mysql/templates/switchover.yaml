@@ -1,0 +1,37 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
+  name: mysql-orc-switchover
+spec:
+  targetPodTemplates:
+    - name: availablePod
+      podSelector:
+        availability: Available
+        selectionPolicy: Any
+  parametersSchema:
+    openAPIV3Schema:
+      properties:
+        primary:
+          description: "old primary instance name(pod Name)."
+          type: string
+        candidate:
+          description: |
+            candidate instance name(pod Name). if candidate is not empty, will promote it to primary.
+            otherwise promote a randomly selected pod to primary.
+          type: string
+      type: object
+  actions:
+    - name: switchover
+      failurePolicy: Fail
+      workload:
+        type: Job
+        backoffLimit: 0
+        podSpec:
+          containers:
+            - name: switchover
+              image: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/orc-tools:1.0.3
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -c
+                - /usr/scripts/orchestrator-client -c graceful-master-takeover-auto -d ${candidate} -i ${KB_CLUSTER_NAME}

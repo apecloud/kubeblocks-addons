@@ -1,0 +1,1 @@
+{{- .Files.Get "opsdefinitions/defragmentation.yaml" | nindent 0 }}
