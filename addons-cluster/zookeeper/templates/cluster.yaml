@@ -14,7 +14,6 @@ spec:
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
-      {{- include "kblib.componentServices" . | indent 6 }}
       volumeClaimTemplates:
         - name: data # ref clusterDefinition components.containers.volumeMounts.name
           spec:

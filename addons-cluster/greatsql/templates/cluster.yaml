@@ -13,4 +13,3 @@ spec:
       replicas: {{ include "greatsql-cluster.replicas" . }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentResources" . | indent 6 }}
-      {{- include "kblib.componentServices" . | indent 6 }}

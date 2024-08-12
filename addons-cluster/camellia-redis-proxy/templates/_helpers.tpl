@@ -10,7 +10,6 @@ Define camellia redis proxy componentSpec with ComponentDefinition.
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
-      {{- include "kblib.componentServices" . | indent 6 }}
 {{- end }}
 
 {{/*
