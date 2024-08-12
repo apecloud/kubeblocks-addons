@@ -12,7 +12,6 @@ spec:
   runtime:
     initContainers:
       - name: inject-shell
-        image: {{ .Values.busyboxImage.registry | default "docker.io" }}/{{ .Values.busyboxImage.repository }}:{{ default .Values.busyboxImage.tag }}
         imagePullPolicy: {{default .Values.busyboxImage.pullPolicy "IfNotPresent"}}
         volumeMounts:
           - name: shell
