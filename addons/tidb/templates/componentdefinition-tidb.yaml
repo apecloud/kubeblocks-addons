@@ -40,7 +40,7 @@ spec:
             exec /tidb-server --store=tikv \
             --advertise-address=${KB_POD_FQDN}{{ .Values.clusterDomain }} \
             --host=0.0.0.0 \
-            --path=${PD_ADDRESS}:2379 \
+            --path=${PD_ADDRESS} \
             --log-slow-query=/var/log/tidb/slowlog \
             --config=/etc/tidb/tidb.toml
         volumeMounts:
