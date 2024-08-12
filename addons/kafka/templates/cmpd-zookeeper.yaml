@@ -1,0 +1,175 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "kafka-zookeeper.componentDefName"  . }}
+  labels:
+    {{- include "kafka.labels" . | nindent 4 }}
+spec:
+  provider: ApeCloud
+  description: "kakfa zookeeper"
+  serviceKind: kafka-zookeeper
+  roles:
+    - name: leader
+      serviceable: true
+      writable: true
+      votable: true
+    - name: follower
+      serviceable: true
+      writable: false
+      votable: true
+    - name: observer
+      serviceable: false
+      writable: false
+      votable: false
+  lifecycleActions:
+    roleProbe:
+      builtinHandler: custom
+      customHandler:
+        exec:
+          command:
+            - /bin/bash
+            - -c
+            - |
+              . "$ZOOBINDIR"/zkEnv.sh > /dev/null
+
+              isSSL="false"
+              clientPortAddress="localhost"
+              clientPort=2181
+              GREP=grep
+              STAT=`"$JAVA" "-Dzookeeper.log.dir=${ZOO_LOG_DIR}" "-Dzookeeper.log.file=${ZOO_LOG_FILE}" \
+              -cp "$CLASSPATH" $CLIENT_JVMFLAGS $JVMFLAGS org.apache.zookeeper.client.FourLetterWordMain \
+              $clientPortAddress $clientPort srvr $isSSL 2> /dev/null    \
+              | $GREP Mode`
+              mode=$(echo "$STAT" | awk -F': ' '{print $2}' | awk '{RS=""; ORS=""; print}' )
+              if [[ "$mode" == "standalone" ]]; then
+                echo -n "leader"
+              else
+                echo -n ${mode}
+              fi
+  runtime:
+    volumes:
+      - name: snapshot-log
+        emptyDir: {}
+    securityContext:
+      fsGroup: 0
+      runAsGroup: 0
+      runAsNonRoot: true
+      runAsUser: 1001
+    containers:
+      - name: zookeeper
+        imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
+        command:
+          - /bin/bash
+          - -c
+          - |
+            # Execute entrypoint as usual after obtaining ZOO_SERVER_ID
+            # check ZOO_SERVER_ID in persistent volume via myid
+            # if not present, set based on POD hostname
+            if [[ -f "/bitnami/zookeeper/data/myid" ]]; then
+                export ZOO_SERVER_ID="$(cat /bitnami/zookeeper/data/myid)"
+            else
+                HOSTNAME="$(hostname -s)"
+                if [[ $HOSTNAME =~ (.*)-([0-9]+)$ ]]; then
+                    ORD=${BASH_REMATCH[2]}
+                    export ZOO_SERVER_ID="$((ORD))"
+                else
+                    echo "Failed to get index from hostname $HOSTNAME"
+                    exit 1
+                fi
+            fi
+            exec /opt/bitnami/scripts/zookeeper/entrypoint.sh /opt/bitnami/scripts/zookeeper/run.sh
+        env:
+          - name: ZOOBINDIR
+            value: "/opt/bitnami/zookeeper/bin"
+          - name: ZOOBIN
+            value: "/opt/bitnami/zookeeper/bin"
+          - name: ALLOW_ANONYMOUS_LOGIN
+            value: "yes"
+          - name: SERVICE_PORT
+            value: {{ .Values.zookeeper.metrics.port | quote }}
+        ports:
+          - name: client
+            containerPort: 2181
+          - name: quorum
+            containerPort: 2888
+          - name: election
+            containerPort: 3888
+          - name: http
+            containerPort: 8080
+          - name: metrics
+            containerPort: {{ .Values.zookeeper.metrics.port }}
+        livenessProbe:
+          failureThreshold: 6
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+          exec:
+            command: [ '/bin/bash', '-c', 'echo "ruok" | timeout 2 nc -w 2 localhost 2181 | grep imok' ]
+        readinessProbe:
+          failureThreshold: 6
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+          exec:
+            command: [ '/bin/bash', '-c', 'echo "ruok" | timeout 2 nc -w 2 localhost 2181 | grep imok' ]
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          privileged: false
+          runAsGroup: 0
+          runAsNonRoot: true
+          runAsUser: 1001
+        volumeMounts:
+          - name: data
+            mountPath: /bitnami/zookeeper/data
+          - name: snapshot-log
+            mountPath: /bitnami/zookeeper/log
+          - name: log
+            mountPath: /opt/bitnami/zookeeper/logs
+          - name: config
+            mountPath: /opt/bitnami/zookeeper/conf/zoo.cfg
+            subPath: zoo.cfg
+          - name: config-log
+            mountPath: /opt/bitnami/zookeeper/conf/logback.xml
+            subPath: logback.xml
+          - name: scripts
+            mountPath: /scripts/start-zookeeper.sh
+            subPath: start-zookeeper.sh
+  vars:
+    - name: ZOOKEEPER_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+    - name: ZOOKEEPER_METRICS_MONITOR
+      value: {{ .Values.zookeeper.metrics.enabled | quote }}
+    - name: ZOOKEEPER_METRICS_PORT
+      value: {{ .Values.zookeeper.metrics.port | quote }}
+    - name: ZOOKEEPER_DATA_DIR
+      value: {{ .Values.zookeeper.dataDir }}
+    - name: ZOOKEEPER_DATA_LOG_DIR
+      value: {{ .Values.zookeeper.dataLogDir }}
+  scripts:
+    - name: kafka-scripts-tpl
+      templateRef: {{ include "kafka.name" . }}-server-scripts-tpl
+      volumeName: scripts
+      namespace: {{ .Release.Namespace }}
+      defaultMode: 0755
+  configs:
+    - name: zookeeper-config
+      namespace: {{ .Release.Namespace }}
+      templateRef: {{ include "kafka.name" . }}-zookeeper-config-template
+      constraintRef: {{ include "kafka.name" . }}-zookeeper-config-constraints
+      volumeName: config
+      defaultMode: 0766
+      reRenderResourceTypes:
+        - hscale
+    - name: zookeeper-log
+      namespace: {{ .Release.Namespace }}
+      templateRef: {{ include "kafka.name" . }}-zookeeper-configmap
+      volumeName: config-log
+  updateStrategy: BestEffortParallel

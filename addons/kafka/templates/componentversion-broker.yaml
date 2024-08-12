@@ -5,12 +5,23 @@ metadata:
 spec:
   compatibilityRules:
     - compDefs:
-        - {{ include "kafka-broker.componentDefName" . }}
+        - "{{ include "kafka-broker.componentDefName" . }}-3.3.2"
       releases:
         - 3.3.2-debian-11-r54
+    - compDefs:
+        - "{{ include "kafka-broker.componentDefName" . }}-2.8.1"
+      releases:
+        - 2.8.1-debian-11-r7
   releases:
     - name: 3.3.2-debian-11-r54
       changes:
       serviceVersion: 3.3.2
       images:
         kafka: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
+        jmx-exporter: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
+    - name: 2.8.1-debian-11-r7
+      changes:
+      serviceVersion: 2.8.1
+      images: 
+        kafka: registry.cn-hangzhou.aliyuncs.com/skyrise/kafka:2.8.1-debian-11-r7  # {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
+        jmx-exporter: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}

@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "kafka-broker.componentDefName" . }}
+  name: "{{ include "kafka-broker.componentDefName" . }}-2.8.1"
   labels:
     {{- include "kafka.labels" . | nindent 4 }}
     {{- if .Values.commonLabels }}
@@ -32,16 +32,22 @@ spec:
     - name: BROKER_ADVERTISED_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "kafka-broker.componentDefName" . }}
+          compDef: "{{ include "kafka-broker.componentDefName" . }}-2.8.1"
           name: advertised-listener
           optional: true
           port:
             name: broker
             option: Optional
+    - name: ZOOKEEPER_POD_FQDN
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "kafka-zookeeper.componentDefName"  . }}
+          optional: true
+          podFQDNs: Required
   provider: kubeblocks
   description: Kafka broker.
   serviceKind: kafka
-  serviceVersion: {{ .Values.componentServiceVersion.broker }}
+  serviceVersion: "2.8.1"
   systemAccounts:
     - name: client
       secretRef:
@@ -55,8 +61,8 @@ spec:
   updateStrategy: BestEffortParallel
   configs:
     - name: kafka-configuration-tpl
-      constraintRef: {{ include "kafka.name" . }}-cc
-      templateRef: {{ include "kafka.name" . }}-configuration-tpl
+      constraintRef: {{ include "kafka.name" . }}-2.8.1-cc
+      templateRef: {{ include "kafka.name" . }}-2.8.1-configuration-tpl
       volumeName: kafka-config
       namespace: {{ .Release.Namespace }}
     - name: {{ include "kafka.name" . }}-jmx-configuration-tpl
@@ -79,14 +85,13 @@ spec:
       fsGroup: 1001
     containers:
       - name: kafka
-        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
         securityContext:
           allowPrivilegeEscalation: false
           runAsNonRoot: true
           runAsUser: 1001
         command:
-          - /scripts/kafka-server-setup.sh
+          - /scripts/kafka-server-zk-setup.sh
         env:
           - name: BITNAMI_DEBUG
             value: {{ .Values.debugEnabled | quote }}
@@ -95,18 +100,14 @@ spec:
             # value: "$(KB_POD_IP)"
           - name: MY_POD_NAME
             value: "$(KB_POD_NAME)"
-          - name: KAFKA_ENABLE_KRAFT
-            value: "yes"
-          - name: KAFKA_CFG_PROCESS_ROLES
-            value: "broker"
-          - name: KAFKA_CFG_CONTROLLER_LISTENER_NAMES # required for KRaft
-            value: "CONTROLLER"
           - name: KAFKA_CFG_INTER_BROKER_LISTENER_NAME
             value: "INTERNAL"
-          - name: KAFKA_CFG_LISTENERS # required for KRaft
+          - name: KAFKA_ENABLE_KRAFT
+            value: "no"
+          - name: KAFKA_CFG_LISTENERS 
             value: "INTERNAL://:9094,CLIENT://:9092"
           - name: KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP
-            value: "INTERNAL:PLAINTEXT,CLIENT:PLAINTEXT,CONTROLLER:PLAINTEXT"
+            value: "INTERNAL:PLAINTEXT,CLIENT:PLAINTEXT"
           - name: KAFKA_CFG_ADVERTISED_LISTENERS
             # value: "INTERNAL://$(KB_POD_NAME).$(KB_CLUSTER_COMP_NAME)-headless.$(KB_NAMESPACE).svc:9094,CLIENT://$(KB_POD_NAME).$(KB_CLUSTER_COMP_NAME)-headless.$(KB_NAMESPACE).svc:9092"
             value: "INTERNAL://$(KB_POD_IP):9094,CLIENT://$(KB_POD_IP):9092"
@@ -127,8 +128,6 @@ spec:
             value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
           - name: SERVER_PROP_FILE
             value: /scripts/server.properties
-          - name: KAFKA_KRAFT_CLUSTER_ID
-            value: $(KB_CLUSTER_UID)
           - name: KAFKA_CFG_SUPER_USERS
             value: "User:$(SUPER_USER)"
           # - name: KB_KAFKA_ENABLE_SASL  # enable the SASL with plain mode
@@ -137,6 +136,8 @@ spec:
             value: /tools/server-jaas.properties
           - name: BROKER_MIN_NODE_ID
             value: {{ .Values.kafkaBroker.minNodeId | quote }}
+          - name: ZOOKEEPER_CLIENT_PORT
+            value: "2181"
         ports:
           - name: kafka-client
             containerPort: 9092
@@ -164,8 +165,8 @@ spec:
           - name: metadata
             mountPath: /bitnami/kafka/metadata
           - name: scripts
-            mountPath: /scripts/kafka-server-setup.sh
-            subPath: kafka-server-setup.sh
+            mountPath: /scripts/kafka-server-zk-setup.sh
+            subPath: kafka-server-zk-setup.sh
           - name: kafka-config
             mountPath: /scripts/server.properties
             subPath: server.properties
@@ -176,7 +177,6 @@ spec:
             mountPath: /tools/server-jaas.properties
             subPath: server-jaas.properties
       - name: jmx-exporter
-        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
         securityContext:
           runAsNonRoot: true

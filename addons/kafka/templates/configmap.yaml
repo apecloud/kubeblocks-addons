@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "kafka.name" . }}-configuration-tpl
+  name: {{ include "kafka.name" . }}-3.3.2-configuration-tpl
   namespace: {{ .Release.Namespace | quote }}
   labels: {{- include "common.labels.standard" . | nindent 4 }}
     {{- if .Values.commonLabels }}
@@ -12,8 +12,7 @@ metadata:
   {{- end }}
 data:
   server.properties: |-
-    {{- .Files.Get "configs/kafka-server.prop.tpl" | nindent 4 }}
-
+    {{- .Files.Get "configs/3.3.2/kafka-server.prop.tpl" | nindent 4 }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -73,3 +72,35 @@ data:
         name: kafka_server_socket_server_metrics_$3
         labels:
           listener: $1
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "kafka.name" . }}-2.8.1-configuration-tpl
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "common.labels.standard" . | nindent 4 }}
+    {{- if .Values.commonLabels }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  server.properties: |-
+    {{- .Files.Get "configs/2.8.1/kafka-server.prop.tpl" | nindent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "kafka.name" . }}-zookeeper-config-template
+data:
+  zoo.cfg: |-
+    {{- .Files.Get "configs/2.8.1/zookeeper-config.tpl" | nindent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "kafka.name" . }}-zookeeper-configmap
+data:
+  logback.xml: |-
+    {{- .Files.Get "configs/2.8.1/zookeeper-logback.xml" | nindent 4 }}

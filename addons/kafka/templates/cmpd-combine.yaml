@@ -58,8 +58,8 @@ spec:
   updateStrategy: BestEffortParallel
   configs:
     - name: kafka-configuration-tpl
-      constraintRef: {{ include "kafka.name" . }}-cc
-      templateRef: {{ include "kafka.name" . }}-configuration-tpl
+      constraintRef: {{ include "kafka.name" . }}-3.3.2-cc
+      templateRef: {{ include "kafka.name" . }}-3.3.2-configuration-tpl
       volumeName: kafka-config
       namespace: {{ .Release.Namespace }}
     - name: {{ include "kafka.name" . }}-jmx-configuration-tpl
@@ -82,7 +82,6 @@ spec:
       fsGroup: 1001
     containers:
       - name: kafka
-        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
         securityContext:
           allowPrivilegeEscalation: false
@@ -179,7 +178,6 @@ spec:
             mountPath: /tools/server-jaas.properties
             subPath: server-jaas.properties
       - name: jmx-exporter
-        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
         securityContext:
           runAsNonRoot: true

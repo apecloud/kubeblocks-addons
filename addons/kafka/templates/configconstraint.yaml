@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
-  name: {{ include "kafka.name" . }}-cc
+  name: {{ include "kafka.name" . }}-3.3.2-cc
   labels:
     {{- include "kafka.labels" . | nindent 4 }}
     {{- if .Values.commonLabels }}
@@ -19,7 +19,63 @@ spec:
 
     # schemaInJSON: auto generate from cue scripts
     cue: |-
-      {{- .Files.Get "configs/kafka-server-constraint.cue" | nindent 6 }}
+      {{- .Files.Get "configs/3.3.2/kafka-server-constraint.cue" | nindent 6 }}
 
   fileFormatConfig:
     format: properties
+---
+apiVersion: apps.kubeblocks.io/v1beta1
+kind: ConfigConstraint
+metadata:
+  name: {{ include "kafka.name" . }}-2.8.1-cc
+  labels:
+    {{- include "kafka.labels" . | nindent 4 }}
+    {{- if .Values.commonLabels }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+
+  # ConfigurationSchema that impose restrictions on engine parameter's rule
+  parametersSchema:
+    # top level mysql configuration type
+    topLevelKey: KafkaParameter
+
+    # schemaInJSON: auto generate from cue scripts
+    cue: |-
+      {{- .Files.Get "configs/2.8.1/kafka-server-constraint.cue" | nindent 6 }}
+
+  fileFormatConfig:
+    format: properties
+---
+{{- $cc := .Files.Get "config/2.8.1/zookeeper-config-effect-scope.yaml" | fromYaml }}
+apiVersion: apps.kubeblocks.io/v1beta1
+kind: ConfigConstraint
+metadata:
+  name: {{ include "kafka.name" . }}-zookeeper-config-constraints
+  labels:
+    {{- include "kafka.labels" . | nindent 4 }}
+spec:
+  # zookeeper configuration file format
+  fileFormatConfig:
+    format: props-plus
+
+  ## define immutable parameter list
+  {{- if hasKey $cc "immutableParameters" }}
+  immutableParameters:
+    {{- $params := get $cc "immutableParameters" }}
+    {{- range $params }}
+    - {{ . }}
+    {{- end }}
+  {{- end}}
+
+  # ConfigurationSchema that impose restrictions on engine parameter's rule
+  parametersSchema:
+    # define parameter validation rules
+    topLevelKey: ZookeeperParameter
+
+    cue: |-
+      {{- .Files.Get "config/2.8.1/zookeeper-config-constraint.cue" | nindent 6 }}
+  

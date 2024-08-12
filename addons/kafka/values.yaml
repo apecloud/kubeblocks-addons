@@ -21,12 +21,24 @@ commonLabels: {}
 ## @param application images
 ##
 images:
+
   registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
   pullPolicy: IfNotPresent
   kafka:
     repository: apecloud/kafka
 #    tag: 3.4.0-debian-11-r22
     tag: 3.3.2-debian-11-r54
+
+  kafka2.8.1:
+    registry: registry.cn-hangzhou.aliyuncs.com
+    pullPolicy: IfNotPresent
+    repository: skyrise/kafka
+    tag: "2.8.1"
+
+  zookeeper:
+    repository: apecloud/zookeeper
+    tag: 3.7.2
+
   kafkaExporter:
     repository: apecloud/kafka-exporter
     tag: 1.6.0-debian-11-r67
@@ -61,3 +73,10 @@ storageClassParameters:
   metadata:
     awsEBSVolumeType: io2
     awsEBSEnableBlockExpress: false
+
+zookeeper:
+  dataDir: /bitnami/zookeeper/data
+  dataLogDir: /bitnami/zookeeper/log
+  metrics:
+    enabled: true
+    port: 7000

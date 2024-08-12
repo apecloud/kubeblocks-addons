@@ -10,133 +10,24 @@ spec:
   clusterDefinitionRef: kafka # ref clusterdefinition.name
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
-  topology: 
-    {{- if eq "combined" $.Values.mode }}
-      {{- if .Values.monitorEnable }}
-    combined_monitor
-      {{- else }}
-    combined
-      {{- end }}
-    {{- else }}
-      {{- if .Values.monitorEnable }}
-    separated_monitor
-      {{- else }}
-    separated
-      {{- end }}
-    {{- end }}
+  topology: {{- include "kafka-cluster.topology" . | indent 2 }}
   componentSpecs:
     {{- if eq "combined" $.Values.mode }}
     - name: kafka-combine
-      {{- if .Values.useLegacyCompDef }}
-      componentDef: kafka-server
-      {{- end  }}
-      tls: {{ $.Values.tlsEnable }}
-      {{- if $.Values.tlsEnable }}
-      issuer:
-        name: KubeBlocks
-      {{- end }}
-      replicas: {{ $.Values.replicas }}
-      monitor: {{ $.Values.monitorEnable }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
-      services:
-        - name: advertised-listener
-        {{- if $.Values.nodePortEnabled }}
-          serviceType: NodePort
-        {{- else }}
-          serviceType: ClusterIP
-        {{- end }}
-          podService: true
-      {{- include "kblib.componentResources" . | indent 6 }}
-      {{- if $.Values.storageEnable }}
-      volumeClaimTemplates:
-        - name: data
-          spec:
-            storageClassName: {{ $.Values.storageClassName }}
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: {{ print $.Values.storage "Gi" }}
-        - name: metadata
-          spec:
-            storageClassName: {{ $.Values.metaStorageClassName }}
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: {{ print $.Values.metaStorage "Gi" }}
-      {{- end }}
+      {{- include "kafka-cluster.combine-componentSpec" . | nindent 6 }}
     {{- else }}
     - name: kafka-broker
-      {{- if .Values.useLegacyCompDef }}
-      componentDef: kafka-broker
-      {{- end  }}
-      tls: {{ $.Values.tlsEnable }}
-      {{- if $.Values.tlsEnable }}
-      issuer:
-        name: KubeBlocks
-      {{- end }}
-      replicas: {{ $.Values.brokerReplicas }}
-      monitor: {{ $.Values.monitorEnable }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
-      services:
-        - name: advertised-listener
-        {{- if $.Values.nodePortEnabled }}
-          serviceType: NodePort
-        {{- else }}
-          serviceType: ClusterIP
-        {{- end }}
-          podService: true
-      {{- include "kblib.componentResources" . | indent 6 }}
-      {{- if $.Values.storageEnable }}
-      volumeClaimTemplates:
-        - name: data
-          spec:
-            storageClassName: {{ $.Values.storageClassName }}
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: {{ print $.Values.storage "Gi" }}
-        - name: metadata
-          spec:
-            storageClassName: {{ $.Values.metaStorageClassName }}
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: {{ print $.Values.metaStorage "Gi" }}
-      {{- end }}
+      {{- include "kafka-cluster.broker-componentSpec" . | nindent 6 }}
+      {{- if eq "withZookeeper" $.Values.mode }}
+    - name: kafka-zookeeper
+      {{- include "kafka-cluster.zookeeper-componentSpec" . | nindent 6 }}
+      {{- else }}
     - name: kafka-controller
-      {{- if .Values.useLegacyCompDef }}
-      componentDef: controller
-      {{- end  }}
-      tls: {{ $.Values.tlsEnable }}
-      {{- if $.Values.tlsEnable }}
-      issuer:
-        name: KubeBlocks
-      {{- end }}
-      replicas: {{ $.Values.controllerReplicas }}
-      monitor: {{ $.Values.monitorEnable }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
-      {{- include "kblib.componentResources" . | indent 6 }}
-      {{- if $.Values.storageEnable }}
-      volumeClaimTemplates:
-        - name: metadata
-          spec:
-            storageClassName: {{ $.Values.metaStorageClassName }}
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: {{ print $.Values.metaStorage "Gi" }}
+      {{- include "kafka-cluster.controller-componentSpec" . | nindent 6 }}
       {{- end }}
     {{- end }}
     {{- if .Values.monitorEnable }}
     - name: kafka-exporter
-      {{- if .Values.useLegacyCompDef }}
-      componentDef: kafka-exporter
-      {{- end  }}
       replicas: {{ $.Values.monitorReplicas }}
       monitor: true
       {{- include "kblib.componentResources" . | nindent 6 }}

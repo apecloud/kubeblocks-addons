@@ -1,0 +1,15 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: kafka-zookeeper
+spec:
+  compatibilityRules:
+    - releases:
+        - 3.7.2
+      compDefs:
+        - kafka-zookeeper
+  releases:
+    - name: 3.7.2
+      serviceVersion: 3.7.2
+      images:
+        zookeeper: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.zookeeper.repository }}:3.7.2

@@ -38,7 +38,7 @@ spec:
         - name: kafka-controller
           compDef: {{ include "kafka-controller.componentDefName" . }}
         - name: kafka-broker
-          compDef: {{ include "kafka-broker.componentDefName" . }}
+          compDef: "{{ include "kafka-broker.componentDefName" . }}-3.3.2"
         - name: kafka-exporter
           compDef: {{ include "kafka-exporter.componentDefName" . }}
       orders:
@@ -59,7 +59,7 @@ spec:
         - name: kafka-controller
           compDef: {{ include "kafka-controller.componentDefName" . }}
         - name: kafka-broker
-          compDef: {{ include "kafka-broker.componentDefName" . }}
+          compDef: "{{ include "kafka-broker.componentDefName" . }}-3.3.2"
       orders:
         provision:
           - kafka-broker
@@ -70,3 +70,41 @@ spec:
         update:
           - kafka-broker
           - kafka-controller
+    - name: with_zookeeper
+      components:
+        - name: kafka-zookeeper
+          compDef: {{ include "kafka-zookeeper.componentDefName" . }}
+        - name: kafka-broker
+          compDef: "{{ include "kafka-broker.componentDefName" . }}-2.8.1"
+      orders:
+        provision:
+          - kafka-zookeeper
+          - kafka-broker
+        terminate:
+          - kafka-broker
+          - kafka-zookeeper
+        update:
+          - kafka-zookeeper
+          - kafka-broker
+    - name: with_zookeeper_monitor
+      components:
+        - name: kafka-zookeeper
+          compDef: {{ include "kafka-zookeeper.componentDefName" . }}
+        - name: kafka-broker
+          compDef: "{{ include "kafka-broker.componentDefName" . }}-2.8.1"
+        - name: kafka-exporter
+          compDef: {{ include "kafka-exporter.componentDefName" . }}
+      orders:
+        provision:
+          - kafka-zookeeper
+          - kafka-broker
+          - kafka-exporter
+        terminate:
+          - kafka-broker
+          - kafka-zookeeper
+          - kafka-exporter
+        update:
+          - kafka-zookeeper
+          - kafka-broker
+          - kafka-exporter
+    

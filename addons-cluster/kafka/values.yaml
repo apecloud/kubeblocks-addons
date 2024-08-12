@@ -4,7 +4,7 @@ version: kafka-3.3.2
 
 ## @param mode for Kafka cluster mode, 'combined' is combined Kafka controller (KRaft) and broker,
 ## 'separated' is a Kafka KRaft and Kafka broker cluster.
-##
+## 'withZookeeper 'is a Kafka using Zookeeper, now only support kafka 2.8.2
 mode: combined
 
 # Enable TLS
@@ -69,4 +69,11 @@ controllerHeap: -XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64
 ## @param nodePortEnabled
 nodePortEnabled: false
 
-useLegacyCompDef: false
+zookeeper:
+  replicas: 3
+  data:
+    storageClassName:
+    size: 20Gi
+  log:
+    storageClassName:
+    size: 20Gi

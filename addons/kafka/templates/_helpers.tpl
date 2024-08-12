@@ -94,3 +94,12 @@ kafka-broker
 {{- printf "kafka-broker-%s" .Values.clusterVersionOverride -}}
 {{- end -}}
 {{- end -}}
+
+
+{{- define "kafka-zookeeper.componentDefName" -}}
+{{- if eq (len .Values.clusterVersionOverride) 0 -}}
+kafka-zookeeper
+{{- else -}}
+{{- printf "kafka-zookeeper-%s" .Values.clusterVersionOverride -}}
+{{- end -}}
+{{- end -}}

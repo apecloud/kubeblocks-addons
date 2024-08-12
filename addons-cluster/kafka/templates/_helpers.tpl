@@ -82,3 +82,122 @@ kubeblocks.io/enabled-node-port-svc: broker
 kubeblocks.io/disabled-cluster-ip-svc: broker
 {{- end }}
 {{- end }}
+
+{{- define "kafka-cluster.metadata" -}}
+- name: metadata
+  spec:
+    storageClassName: {{ $.Values.metaStorageClassName }}
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: {{ print $.Values.metaStorage "Gi" }}
+{{- end }}
+
+
+{{- define "kafka-cluster.commonSpec" -}}
+serviceAccountName: {{ include "kblib.serviceAccountName" .}}
+monitor: {{ $.Values.monitorEnable }}
+services:
+  - name: advertised-listener
+  {{- if $.Values.nodePortEnabled }}
+    serviceType: NodePort
+  {{- else }}
+    serviceType: ClusterIP
+  {{- end }}
+    podService: true
+{{- include "kblib.componentResources" . }}
+{{- if $.Values.storageEnable }}
+volumeClaimTemplates:
+  - name: data
+    spec:
+      storageClassName: {{ $.Values.storageClassName }}
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: {{ print $.Values.storage "Gi" }}
+{{- include "kafka-cluster.metadata" . | nindent 2 }}
+{{- end }}
+{{- end }}
+
+{{- define "kafka-cluster.tls" -}}
+tls: {{ $.Values.tlsEnable }}
+{{- if $.Values.tlsEnable }}
+issuer:
+  name: KubeBlocks
+{{- end }}
+{{- end }}
+
+{{- define "kafka-zookeeper-VCT" -}}
+volumeClaimTemplates:
+  - name: data
+    spec:
+      storageClassName: {{ .Values.zookeeper.data.storageClassName }}
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: {{ .Values.zookeeper.data.size }}
+  - name: log
+    spec:
+      storageClassName: {{ .Values.zookeeper.log.storageClassName }}
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: {{ .Values.zookeeper.log.size }}
+{{- end }}
+
+{{- define "kafka-cluster.topology" -}}
+  {{- if .Values.monitorEnable -}}
+    {{- if eq "withZookeeper" $.Values.mode -}}
+with_zookeeper_monitor
+    {{- else if eq "combined" $.Values.mode -}}
+combined_monitor  
+    {{- else -}}
+separated_monitor
+    {{- end -}}
+  {{- else -}}
+    {{- if eq "withZookeeper" $.Values.mode -}}
+with_zookeeper
+    {{- else if eq "combined" $.Values.mode -}}
+combined
+    {{- else -}}
+separated
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+
+{{- define "kafka-cluster.combine-componentSpec" -}}
+{{- include "kafka-cluster.tls" . }}
+replicas: {{ $.Values.replicas }}
+monitor: {{ $.Values.monitorEnable }}
+{{- include "kafka-cluster.commonSpec" . | nindent 0 }}
+{{- end }}
+
+{{- define "kafka-cluster.broker-componentSpec" -}}
+{{- include "kafka-cluster.tls" . }}
+replicas: {{ $.Values.brokerReplicas }}
+{{- include "kafka-cluster.commonSpec" . | nindent 0}}
+{{- end }}
+
+{{- define "kafka-cluster.zookeeper-componentSpec" }}
+replicas: {{ .Values.zookeeper.replicas }} 
+serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+{{- include "kblib.componentMonitor" . }}
+{{- include "kblib.componentResources" . }}
+{{- include "kafka-zookeeper-VCT" . | nindent 0}}
+{{- end }}
+
+{{- define "kafka-cluster.controller-componentSpec" -}}
+{{- include "kafka-cluster.tls" . }}
+replicas: {{ $.Values.controllerReplicas }}
+monitor: {{ $.Values.monitorEnable }}
+serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+{{- include "kblib.componentResources" . }}
+{{- if $.Values.storageEnable }}
+volumeClaimTemplates:
+  {{- include "kafka-cluster.metadata" . | nindent 2 }}
+{{- end }}
+{{- end }}

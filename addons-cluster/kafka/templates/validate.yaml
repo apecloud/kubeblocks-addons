@@ -21,8 +21,8 @@
   {{- end }}
 {{- end }}
 
-{{- if and ( ne .Values.mode "combined" ) ( ne .Values.mode "separated" ) }}
-  {{ fail "'mode' value should either 'combined' or 'separated'." }}
+{{- if and ( ne .Values.mode "combined" ) ( ne .Values.mode "separated" )  ( ne .Values.mode "withZookeeper" )}}
+  {{ fail "'mode' value should either 'combined' or 'separated' or 'withZookeeper'. " }}
 {{- end }}
 
 {{/*
