@@ -20,7 +20,7 @@ spec:
       changes:
       serviceVersion: 3.13.2
       images:
-        rabbitmq: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        rabbitmq: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:3.13.2-management
     - name: 3.12.14
       changes:
       serviceVersion: 3.12.14
