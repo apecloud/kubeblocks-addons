@@ -47,6 +47,7 @@ on:
           - postgresql-cluster
           - pulsar-cluster
           - qdrant-cluster
+          - rabbitmq-cluster
           - redis-cluster
           - risingwave-cluster
           - solr-cluster
