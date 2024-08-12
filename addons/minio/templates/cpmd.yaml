@@ -116,6 +116,22 @@ spec:
           - name: console
             protocol: TCP
             containerPort: {{ .Values.minioConsolePort }}
+        readinessProbe:
+          tcpSocket:
+            port: api
+          initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+          successThreshold: {{ .Values.readinessProbe.successThreshold }}
+          failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+        startupProbe:
+          tcpSocket:
+            port: api
+          initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.startupProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds }}
+          successThreshold: {{ .Values.startupProbe.successThreshold }}
+          failureThreshold: {{ .Values.startupProbe.failureThreshold }} 
         env:
           - name: MINIO_ROOT_USER
             value: $(MINIO_ROOT_USER)
