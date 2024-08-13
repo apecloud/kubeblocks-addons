@@ -9,9 +9,9 @@ spec:
       releases:
         - 3.3.2-debian-11-r54
     - compDefs:
-        - "{{ include "kafka-broker.componentDefName" . }}-2.8.1"
+        - "{{ include "kafka-broker.componentDefName" . }}-2.8.2"
       releases:
-        - 2.8.1-debian-11-r7
+        - 2.8.2-debian-11-r7
   releases:
     - name: 3.3.2-debian-11-r54
       changes:
@@ -19,9 +19,9 @@ spec:
       images:
         kafka: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
         jmx-exporter: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
-    - name: 2.8.1-debian-11-r7
+    - name: 2.8.2-debian-11-r7
       changes:
-      serviceVersion: 2.8.1
-      images: 
-        kafka: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:2.8.1-debian-11-r7
+      serviceVersion: 2.8.2
+      images: # registry.cn-hangzhou.aliyuncs.com/skyrise/kafka:2.8.1-debian-11-r7
+        kafka:  apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kafka:2.8.2  #{{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:2.8.2-debian-11-r7
         jmx-exporter: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}

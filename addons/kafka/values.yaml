@@ -27,7 +27,7 @@ images:
   kafka:
     repository: apecloud/kafka
 #    tag: 3.4.0-debian-11-r22
-#    tag: 2.8.1-debian-11-r7
+#    tag: 2.8.2-debian-11-r7
     tag: 3.3.2-debian-11-r54
 
   zookeeper:

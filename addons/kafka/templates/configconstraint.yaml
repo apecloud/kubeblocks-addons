@@ -27,7 +27,7 @@ spec:
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
-  name: {{ include "kafka.name" . }}-2.8.1-cc
+  name: {{ include "kafka.name" . }}-2.8.2-cc
   labels:
     {{- include "kafka.labels" . | nindent 4 }}
     {{- if .Values.commonLabels }}
@@ -45,12 +45,12 @@ spec:
 
     # schemaInJSON: auto generate from cue scripts
     cue: |-
-      {{- .Files.Get "configs/2.8.1/kafka-server-constraint.cue" | nindent 6 }}
+      {{- .Files.Get "configs/2.8.2/kafka-server-constraint.cue" | nindent 6 }}
 
   fileFormatConfig:
     format: properties
 ---
-{{- $cc := .Files.Get "config/2.8.1/zookeeper-config-effect-scope.yaml" | fromYaml }}
+{{- $cc := .Files.Get "config/2.8.2/zookeeper-config-effect-scope.yaml" | fromYaml }}
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
@@ -77,5 +77,5 @@ spec:
     topLevelKey: ZookeeperParameter
 
     cue: |-
-      {{- .Files.Get "config/2.8.1/zookeeper-config-constraint.cue" | nindent 6 }}
+      {{- .Files.Get "config/2.8.2/zookeeper-config-constraint.cue" | nindent 6 }}
   

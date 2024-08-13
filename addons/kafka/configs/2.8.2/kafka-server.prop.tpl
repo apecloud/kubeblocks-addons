@@ -1,4 +1,4 @@
-# broker config. generate according to https://github.com/apache/kafka/blob/2.8.1/core/src/main/scala/kafka/server/KafkaConfig.scala
+# broker config. generate according to https://github.com/apache/kafka/blob/2.8.2/core/src/main/scala/kafka/server/KafkaConfig.scala
 
 # Default Topic Configuration
 log.segment.bytes=1073741824
@@ -245,7 +245,7 @@ ssl.truststore.type=JKS
 # acl
 allow.everyone.if.no.acl.found=true
 
-# inter.broker.protocol.version=2.8
+# inter.broker.protocol.version=3.4-IV0
 # broker.id.generation.enable=true
 # reserved.broker.max.id=1000
 # broker.id=-1
@@ -255,16 +255,16 @@ zookeeper.connection.timeout.ms=3000
 # zookeeper.set.acl=false
 # zookeeper.max.in.flight.requests=10
 # zookeeper.ssl.client.enable=false
-# zookeeper.clientCnxnSocket=org.apache.zookeeper.ClientCnxnSocketNetty
+zookeeper.clientCnxnSocket=org.apache.zookeeper.ClientCnxnSocketNetty
 # zookeeper.ssl.keystore.location=
 # zookeeper.ssl.keystore.password=
 # zookeeper.ssl.keystore.type=
 # zookeeper.ssl.truststore.location=
 # zookeeper.ssl.truststore.password=
 # zookeeper.ssl.truststore.type=
-# zookeeper.ssl.protocol=TLSv1.3
-# zookeeper.ssl.enabled.protocols=TLSv1.2,TLSv1.3
-# zookeeper.ssl.cipher.suites=TLS_AES_256_GCM_SHA384
+zookeeper.ssl.protocol=TLSv1.3
+zookeeper.ssl.enabled.protocols=TLSv1.2,TLSv1.3
+zookeeper.ssl.cipher.suites=TLS_AES_256_GCM_SHA384
 # zookeeper.ssl.endpoint.identification.algorithm=HTTPS
 # zookeeper.ssl.crl.enable=false
 # zookeeper.ssl.ocsp.enable=false

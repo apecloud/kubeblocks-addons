@@ -13,7 +13,7 @@
   echo "[tls]KAFKA_TLS_CLIENT_AUTH=$KAFKA_TLS_CLIENT_AUTH"
 
   # override TLS protocol
-  export KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,CLIENT:SSL
+  export KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:PLAINTEXT,CLIENT:SSL
   echo "KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=$KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP"
   # Todo: enable encrypted transmission inside the service
   #export KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:SSL,INTERNAL:SSL,CLIENT:SSL
@@ -86,7 +86,7 @@ if [[ "true" == "$KB_KAFKA_ENABLE_SASL" ]]; then
     cp ${KB_KAFKA_SASL_CONFIG_PATH} /opt/bitnami/kafka/config/kafka_jaas.conf
     echo "[sasl]do: cp ${KB_KAFKA_SASL_CONFIG_PATH} /opt/bitnami/kafka/config/kafka_jaas.conf "
   fi
-  export KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,INTERNAL:SASL_PLAINTEXT,CLIENT:SASL_PLAINTEXT
+  export KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:SASL_PLAINTEXT,CLIENT:SASL_PLAINTEXT
   echo "[sasl]KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=$KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP"
   export KAFKA_CFG_SASL_ENABLED_MECHANISMS="PLAIN"
   echo "[sasl]export KAFKA_CFG_SASL_ENABLED_MECHANISMS=${KAFKA_CFG_SASL_ENABLED_MECHANISMS}"
@@ -123,6 +123,11 @@ if [[ -n "$KAFKA_CFG_K8S_NODEPORT" ]];then
     echo "[cfg]KAFKA_CFG_INTER_BROKER_LISTENER_NAME=$KAFKA_CFG_INTER_BROKER_LISTENER_NAME"
   fi
 fi
+
+echo "listeners=$KAFKA_CFG_LISTENERS" >>  /opt/bitnami/kafka/config/server.properties
+echo "listener.security.protocol.map=$KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP" >>  /opt/bitnami/kafka/config/server.properties
+echo "advertised.listeners=$KAFKA_CFG_ADVERTISED_LISTENERS" >>  /opt/bitnami/kafka/config/server.properties
+echo "inter.broker.listener.name=$KAFKA_CFG_INTER_BROKER_LISTENER_NAME"  >>  /opt/bitnami/kafka/config/server.properties
 
 # cfg setting
 if [[ "broker" = "$KAFKA_CFG_PROCESS_ROLES" ]]; then

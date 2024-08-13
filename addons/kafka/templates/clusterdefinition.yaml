@@ -75,7 +75,7 @@ spec:
         - name: kafka-zookeeper
           compDef: {{ include "kafka-zookeeper.componentDefName" . }}
         - name: kafka-broker
-          compDef: "{{ include "kafka-broker.componentDefName" . }}-2.8.1"
+          compDef: "{{ include "kafka-broker.componentDefName" . }}-2.8.2"
       orders:
         provision:
           - kafka-zookeeper
@@ -91,7 +91,7 @@ spec:
         - name: kafka-zookeeper
           compDef: {{ include "kafka-zookeeper.componentDefName" . }}
         - name: kafka-broker
-          compDef: "{{ include "kafka-broker.componentDefName" . }}-2.8.1"
+          compDef: "{{ include "kafka-broker.componentDefName" . }}-2.8.2"
         - name: kafka-exporter
           compDef: {{ include "kafka-exporter.componentDefName" . }}
       orders:

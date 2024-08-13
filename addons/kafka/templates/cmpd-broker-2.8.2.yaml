@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: "{{ include "kafka-broker.componentDefName" . }}-2.8.1"
+  name: "{{ include "kafka-broker.componentDefName" . }}-2.8.2"
   labels:
     {{- include "kafka.labels" . | nindent 4 }}
     {{- if .Values.commonLabels }}
@@ -32,7 +32,7 @@ spec:
     - name: BROKER_ADVERTISED_PORT
       valueFrom:
         serviceVarRef:
-          compDef: "{{ include "kafka-broker.componentDefName" . }}-2.8.1"
+          compDef: "{{ include "kafka-broker.componentDefName" . }}-2.8.2"
           name: advertised-listener
           optional: true
           port:
@@ -47,7 +47,7 @@ spec:
   provider: kubeblocks
   description: Kafka broker.
   serviceKind: kafka
-  serviceVersion: "2.8.1"
+  serviceVersion: "2.8.2"
   systemAccounts:
     - name: client
       secretRef:
@@ -61,8 +61,8 @@ spec:
   updateStrategy: BestEffortParallel
   configs:
     - name: kafka-configuration-tpl
-      constraintRef: {{ include "kafka.name" . }}-2.8.1-cc
-      templateRef: {{ include "kafka.name" . }}-2.8.1-configuration-tpl
+      constraintRef: {{ include "kafka.name" . }}-2.8.2-cc
+      templateRef: {{ include "kafka.name" . }}-2.8.2-configuration-tpl
       volumeName: kafka-config
       namespace: {{ .Release.Namespace }}
     - name: {{ include "kafka.name" . }}-jmx-configuration-tpl
