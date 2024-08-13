@@ -30,3 +30,4 @@ fullnameOverride: ""
 extra:
   podAntiAffinity: Required
   terminationPolicy: Delete
+  rbacEnabled: true
