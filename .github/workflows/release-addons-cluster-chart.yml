@@ -22,7 +22,6 @@ on:
           - greptimedb-cluster
           - kafka-cluster
           - kblib
-          - kblib-v2
           - llm-cluster
           - loki-cluster
           - mariadb-cluster

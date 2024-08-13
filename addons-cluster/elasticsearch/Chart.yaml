@@ -25,6 +25,6 @@ appVersion: "8.8.2"
 
 dependencies:
 - name: kblib
-  version: 0.1.0
+  version: 0.1.1
   repository: file://../kblib
   alias: extra

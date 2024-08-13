@@ -8,7 +8,7 @@ description: ApeCloud MySQL is a database that is compatible with MySQL syntax a
   through the utilization of the RAFT consensus protocol.
 dependencies:
   - name: kblib
-    version: 0.1.0
+    version: 0.1.1
     repository: file://../kblib
     alias: extra
 
