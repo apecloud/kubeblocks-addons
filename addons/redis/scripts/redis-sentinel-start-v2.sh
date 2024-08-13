@@ -39,7 +39,7 @@ reset_redis_sentinel_conf() {
   fi
   mkdir -p /data/sentinel
   if [ -f $redis_sentinel_real_conf ]; then
-    sed -i "" "/sentinel announce-ip/d"
+    sed -i "" "/sentinel announce-ip/d" $redis_sentinel_real_conf
     sed -i "" "/sentinel resolve-hostnames/d" $redis_sentinel_real_conf
     sed -i "" "/sentinel announce-hostnames/d" $redis_sentinel_real_conf
     unset_xtrace_when_ut_mode_false

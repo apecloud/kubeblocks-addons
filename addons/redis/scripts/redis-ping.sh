@@ -32,7 +32,7 @@ check_redis_ok() {
   else
     cmd="redis-cli -h localhost -p 6379 ping"
   fi
-  response=$(timeout -s 3 "$1" "$cmd")
+  response=$(timeout -s 3 $1 $cmd)
   if [ $? -eq 124 ]; then
     echo "Timed out"
     exit 1

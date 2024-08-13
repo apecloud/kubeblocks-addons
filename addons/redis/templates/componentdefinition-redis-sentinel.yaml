@@ -112,15 +112,15 @@ spec:
             - "redis-cli -h $(KB_ACCOUNT_ENDPOINT) -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -h $(KB_ACCOUNT_ENDPOINT) -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD acl save "
     memberLeave:
       customHandler:
-        image: {{ include "redis-sentinel.image" . }}
         exec:
+          image: {{ include "redis-sentinel.image" . }}
           command:
             - /bin/bash
             - -c
             - |
             {{- .Files.Get "scripts/redis-sentinel-offline.sh" | nindent 14 }}
-        targetPodSelector: Any
-        container: redis-sentinel
+          targetPodSelector: Any
+          container: redis-sentinel
   runtime:
     containers:
     - name: redis-sentinel
