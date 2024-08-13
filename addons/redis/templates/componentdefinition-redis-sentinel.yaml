@@ -90,6 +90,16 @@ spec:
           compDef: {{ include "redis-sentinel.componentDefName" . }}
           optional: false
           podFQDNs: Required
+    ## the password of redis for redis sentinel connection, which is only used to recover redis servers when scale-out redis sentinel.
+    - name: REDIS_SENTINEL_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "redis.componentDefName" . }}
+          name: default
+          optional: true
+          password: Required
+          multipleClusterObjectOption:
+            strategy: individual
   lifecycleActions:
     accountProvision:
       customHandler:
@@ -100,6 +110,17 @@ spec:
             - -c
           args:
             - "redis-cli -h $(KB_ACCOUNT_ENDPOINT) -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -h $(KB_ACCOUNT_ENDPOINT) -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD acl save "
+    memberLeave:
+      customHandler:
+        image: {{ include "redis-sentinel.image" . }}
+        exec:
+          command:
+            - /bin/bash
+            - -c
+            - |
+            {{- .Files.Get "scripts/redis-sentinel-offline.sh" | nindent 14 }}
+        targetPodSelector: Any
+        container: redis-sentinel
   runtime:
     containers:
     - name: redis-sentinel
@@ -131,6 +152,9 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: status.hostIP
+        ## the username of redis for redis sentinel connection which is only used to recover redis servers when scale-out redis sentinel.
+        - name: REDIS_SENTINEL_USER
+          value: "kbreplicator-sentinel"
       command:
         - /bin/bash
       args:
