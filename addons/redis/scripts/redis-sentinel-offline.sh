@@ -1,5 +1,33 @@
 #!/bin/bash
-set -ex
+
+# This is magic for shellspec ut framework. "test" is a `test [expression]` well known as a shell command.
+# Normally test without [expression] returns false. It means that __() { :; }
+# function is defined if this script runs directly.
+#
+# shellspec overrides the test command and returns true *once*. It means that
+# __() function defined internally by shellspec is called.
+#
+# In other words. If not in test mode, __ is just a comment. If test mode, __
+# is a interception point.
+# you should set ut_mode="true" when you want to run the script in shellspec file.
+ut_mode="false"
+test || __() {
+  set -ex;
+}
+
+load_common_library() {
+  # the common.sh scripts is mounted to the same path which is defined in the cmpd.spec.scripts
+  common_library_file="/scripts/common.sh"
+  # shellcheck disable=SC1090
+  source "${common_library_file}"
+}
+
+redis_sentinel_sleep(){
+  time="$1"
+  if [ "false" == "$ut_mode" ]; then
+    sleep "$time"
+  fi
+}
 
 declare -g redis_default_service_port=26379
 declare -A master_slave_counts
@@ -34,17 +62,24 @@ redis_sentinel_member_get() {
   IFS="$old_ifs"
 }
 
+temp_output=""
+redis_sentinel_get_masters() {
+  local host="$1"
+  local port="$2"
+  if [ -n "$SENTINEL_PASSWORD" ]; then
+    temp_output=$(redis-cli -h "$host" -p "$port" -a "$SENTINEL_PASSWORD" SENTINEL MASTERS 2>/dev/null || true)
+  else
+    temp_output=$(redis-cli -h "$host" -p "$port" SENTINEL MASTERS 2>/dev/null || true)
+  fi
+}
+
 redis_sentinel_remove_monitor() {
   local max_retries=3
   local retry_count=0
   local success=false
   local output=""
   while [ $retry_count -lt $max_retries ]; do
-    if [ -n "$SENTINEL_PASSWORD" ]; then
-      temp_output=$(redis-cli -h "$sentinel_leave_member_ip" -p "$redis_default_service_port" -a "$SENTINEL_PASSWORD" SENTINEL MASTERS 2>/dev/null || true)
-    else
-      temp_output=$(redis-cli -h "$sentinel_leave_member_ip" -p "$redis_default_service_port" SENTINEL MASTERS 2>/dev/null || true)
-    fi
+    redis_sentinel_get_masters "$sentinel_leave_member_ip" "$redis_default_service_port" 
     if [ -n "$temp_output" ]; then
       disconnected=false
       while read -r line; do
@@ -71,7 +106,7 @@ redis_sentinel_remove_monitor() {
       retry_count=$((retry_count + 1))
       echo "timeout waiting for $host to become available $retry_count/$max_retries failed. retrying..."
     fi
-    sleep 1
+   redis_sentinel_sleep 1
   done
   if [ "$success" = true ]; then
     echo "connected to the sentinel successfully after $retry_count retries"
@@ -129,12 +164,12 @@ redis_sentinel_reset_all() {
 
             retry_count=$((retry_count + 1))
             echo "retry $retry_count/$max_retries for sentinel reset at $host failed. retrying..."
-            sleep 1
+            redis_sentinel_sleep 1
         done
 
         if [ "$success" = true ]; then
             echo "connected to the sentinel successfully after $retry_count retries"
-            sleep 3
+            redis_sentinel_sleep 3
         else
             echo "sentinel connect failed after $max_retries retries."
             exit 1
@@ -150,8 +185,7 @@ check_all_sentinel_agreement() {
       host=$(echo "$sentinel_pod" | cut -d ':' -f 1)
       port=$(echo "$sentinel_pod" | cut -d ':' -f 2)
       sentinel_name="${host%%.*}"
-      output=""
-
+      echo "sentinel_pod $sentinel_pod"
       if [ -n "$port" ]; then
         redis_default_service_port="$port"
       fi
@@ -162,11 +196,7 @@ check_all_sentinel_agreement() {
         success=false
         output=""
         while [ $retry_count -lt $max_retries ]; do
-          if [ -n "$SENTINEL_PASSWORD" ]; then
-            temp_output=$(redis-cli -h "$host" -p "$port" -a "$SENTINEL_PASSWORD" SENTINEL MASTERS 2>/dev/null || true)
-          else
-            temp_output=$(redis-cli -h "$host" -p "$port" SENTINEL MASTERS 2>/dev/null || true)
-          fi
+          redis_sentinel_get_masters "$host" "$port"
           if [ -n "$temp_output" ]; then
             disconnected=false
             while read -r line; do
@@ -193,7 +223,7 @@ check_all_sentinel_agreement() {
             retry_count=$((retry_count + 1))
             echo "timeout waiting for $host to become available $retry_count/$max_retries failed. retrying..."
           fi
-          sleep 1
+          redis_sentinel_sleep 1
         done
         if [ "$success" = true ]; then
           echo "connected to the sentinel successfully after $retry_count retries"
@@ -231,13 +261,15 @@ check_all_sentinel_agreement() {
         fi
       fi
   done
+  echo "all the sentinels agree about the number of sentinels currently active"
 }
 
-member_leave_sentinel() {
-  redis_sentinel_member_get
-  redis_sentinel_remove_monitor
-  redis_sentinel_reset_all
-  check_all_sentinel_agreement
-}
+# When included from shellspec, __SOURCED__ variable defined and script
+# end here. The script path is assigned to the __SOURCED__ variable.
+${__SOURCED__:+false} : || return 0
 
-member_leave_sentinel
+load_common_library
+redis_sentinel_member_get
+redis_sentinel_remove_monitor
+redis_sentinel_reset_all
+check_all_sentinel_agreement
