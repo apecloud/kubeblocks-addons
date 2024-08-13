@@ -29,7 +29,7 @@ spec:
       volumeName: scripts
       defaultMode: 0555
   runtime:
-    terminationGracePeriodSeconds: 300
+    terminationGracePeriodSeconds: 30
     containers:
       - name: mssql
         securityContext:

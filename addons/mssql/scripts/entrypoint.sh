@@ -49,22 +49,20 @@ CREATE AVAILABILITY GROUP [ag1]
       FOR REPLICA ON
 EOF
   )
-  KB_POD_LIST="mssql-mssql-0,mssql-mssql-1,mssql-mssql-2"
-  KB_CLUSTER_COMP_NAME="mssql-mssql"
   IFS=',' read -ra pods <<< "$KB_POD_LIST"
   for i in "${!pods[@]}"; do
     pod_dns="${pods[$i]}.$KB_CLUSTER_COMP_NAME-headless"
     conf=$(cat <<EOF
          N'${pods[$i]}'
          WITH (
-              ENDPOINT_URL = N'tcp://$pod_dns:<5022>',
+              ENDPOINT_URL = N'tcp://$pod_dns:5022',
               AVAILABILITY_MODE = SYNCHRONOUS_COMMIT,
               FAILOVER_MODE = EXTERNAL,
               SEEDING_MODE = AUTOMATIC
               )
 EOF
     )
-    create_ag_sql="$create_ag_sql\n$conf"
+    create_ag_sql="$create_ag_sql $conf"
     if [[ $i -eq $((${#pods[@]} - 1)) ]]; then
       create_ag_sql="$create_ag_sql;"
     else
@@ -72,18 +70,41 @@ EOF
     fi
   done
   # TODO: ag1
-  create_ag_sql="$create_ag_sql\nALTER AVAILABILITY GROUP [ag1] GRANT CREATE ANY DATABASE;"
+  create_ag_sql="$create_ag_sql ALTER AVAILABILITY GROUP [ag1] GRANT CREATE ANY DATABASE;"
 }
 function create_ag {
   build_create_ag_sql
   conn_local "$create_ag_sql"
 }
 
+function wait_for_sqlservr_ready {
+  while true; do
+    conn_local "select 1"
+    if [ $? -eq 0 ]; then
+      break
+    fi
+    sleep 5
+  done
+}
+
 function configure_ag {
+  wait_for_sqlservr_ready
   create_certificate
   create_mirroring_endpoint
+  create_ag
 }
-configure_ag
+
+function wait_for_sqlservr_to_term {
+  while true; do
+    if [ -z "$(pidof sqlservr)" ]; then
+      exit 1
+    fi
+    sleep 5
+  done
+}
 
 /opt/mssql/bin/mssql-conf set hadr.hadrenabled 1
+
+configure_ag | tee -a ag.log &
+
 /opt/mssql/bin/sqlservr
