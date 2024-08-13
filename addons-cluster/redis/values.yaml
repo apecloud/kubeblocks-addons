@@ -68,3 +68,5 @@ sentinel:
 redisCluster:
   shardCount: 3
 
+extra:
+  rbacEnabled: true
