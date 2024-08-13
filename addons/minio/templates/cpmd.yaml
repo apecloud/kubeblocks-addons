@@ -54,7 +54,7 @@ spec:
     initContainers:
     - command:
       - /bin/sh
-      - ce
+      - -ce
       - |
         name="$KB_CLUSTER_COMP_NAME"-minio-configuration
         namespace="$KB_NAMESPACE"
@@ -84,7 +84,7 @@ spec:
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /bin/sh
-          - ce
+          - -ce
           - |
             FILE="/minio-config/MINIO_REPLICAS_HISTORY"
             if [ ! -f "$FILE" ]; then
@@ -144,6 +144,6 @@ spec:
             mountPath: {{ $mountPath }}
           - name: minio-config
             mountPath: /minio-config
-    volumes:
-      - name: export
-        emptyDir: {}
+  volumes:
+  - name: export
+    needSnapshot: true
