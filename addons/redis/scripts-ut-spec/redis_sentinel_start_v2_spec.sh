@@ -28,9 +28,8 @@ Describe "Redis Start Sentinel Bash Script Tests"
     setup() {
         echo "" > $redis_sentinel_real_conf
         sentinel_port="26379"
-        KB_POD_NAME="redis-redis-sentinel-0"
-        KB_CLUSTER_COMP_NAME="redis-cluster-redis-sentinel-headless"
-        KB_NAMESPACE="test"
+        CURRENT_POD_NAME="redis-redis-sentinel-0"
+        SENTINEL_POD_FQDN_LIST="redis-redis-sentinel-0.redis-redis-sentinel-headless.default.svc.cluster.local,redis-redis-sentinel-1.redis-redis-sentinel-headless.default.svc.cluster.local"
         SENTINEL_USER="default"
         SENTINEL_PASSWORD="sentinel_password"
       }
@@ -38,9 +37,7 @@ Describe "Redis Start Sentinel Bash Script Tests"
 
       un_setup() {
         unset sentinel_port
-        unset KB_POD_NAME
-        unset KB_CLUSTER_COMP_NAME
-        unset KB_NAMESPACE
+        unset CURRENT_POD_NAME
         unset SENTINEL_USER
         unset SENTINEL_PASSWOR
       }
@@ -51,7 +48,7 @@ Describe "Redis Start Sentinel Bash Script Tests"
       The status should be success
       The stdout should include "build redis sentinel conf succeeded!"
       The contents of file "$redis_sentinel_real_conf" should include "port $sentinel_port"
-      The contents of file "$redis_sentinel_real_conf" should include "sentinel announce-ip $KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc"
+      The contents of file "$redis_sentinel_real_conf" should include "sentinel announce-ip $CURRENT_POD_NAME.redis-redis-sentinel-headless.default.svc.cluster.local"
       The contents of file "$redis_sentinel_real_conf" should include "resolve-hostnames yes"
       The contents of file "$redis_sentinel_real_conf" should include "announce-hostnames yes"
       The contents of file "$redis_sentinel_real_conf" should include "sentinel sentinel-user $SENTINEL_USER"
@@ -69,18 +66,6 @@ Describe "Redis Start Sentinel Bash Script Tests"
       unset REDIS_SENTINEL_PASSWORD
     }
     After 'un_setup'
-    reset_redis_sentinel_monitor_conf() {
-      if [ -f $redis_sentinel_real_conf ]; then
-        sed -i "" "/sentinel monitor/d" $redis_sentinel_real_conf
-        sed -i "" "/sentinel down-after-milliseconds/d" $redis_sentinel_real_conf
-        sed -i "" "/sentinel failover-timeout/d" $redis_sentinel_real_conf
-        sed -i "" "/sentinel parallel-syncs/d" $redis_sentinel_real_conf
-        if [[ -v REDIS_SENTINEL_PASSWORD ]]; then
-          sed -i "" "/sentinel auth-user/d" $redis_sentinel_real_conf
-          sed -i "" "/sentinel auth-pass/d" $redis_sentinel_real_conf
-        fi
-      fi
-    }
     Context "one redis matser monitor"
       setup() {
           SENTINEL_POD_FQDN_LIST="redis-redis-sentinel-0.redis-redis-sentinel-headless.test.svc,\

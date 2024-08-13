@@ -58,16 +58,16 @@ reset_redis_sentinel_conf() {
   fi
   mkdir -p /data/sentinel
   if [ -f $redis_sentinel_real_conf ]; then
-    sed -i "/sentinel announce-ip/d" 
-    sed -i "/sentinel resolve-hostnames/d" $redis_sentinel_real_conf
-    sed -i "/sentinel announce-hostnames/d" $redis_sentinel_real_conf
+    sed -i "" "/sentinel announce-ip/d"
+    sed -i "" "/sentinel resolve-hostnames/d" $redis_sentinel_real_conf
+    sed -i "" "/sentinel announce-hostnames/d" $redis_sentinel_real_conf
     unset_xtrace
     if [ -n "$SENTINEL_PASSWORD" ]; then
-      sed -i "/sentinel sentinel-user/d" $redis_sentinel_real_conf
-      sed -i "/sentinel sentinel-pass/d" $redis_sentinel_real_conf
+      sed -i "" "/sentinel sentinel-user/d" $redis_sentinel_real_conf
+      sed -i "" "/sentinel sentinel-pass/d" $redis_sentinel_real_conf
     fi
     set_xtrace
-    sed -i "/port $sentinel_port/d" $redis_sentinel_real_conf
+    sed -i "" "/port $sentinel_port/d" $redis_sentinel_real_conf
   fi
 }
 
@@ -110,14 +110,14 @@ recover_registered_redis_servers_if_needed() {
 reset_redis_sentinel_monitor_conf() {
     echo "reset sentinel monitor configuration file if there are any residual configurations "
     if [ -f $redis_sentinel_real_conf ]; then
-      sed -i "/sentinel monitor/d" $redis_sentinel_real_conf
-      sed -i "/sentinel down-after-milliseconds/d" $redis_sentinel_real_conf
-      sed -i "/sentinel failover-timeout/d" $redis_sentinel_real_conf
-      sed -i "/sentinel parallel-syncs/d" $redis_sentinel_real_conf
+      sed -i "" "/sentinel monitor/d" $redis_sentinel_real_conf
+      sed -i "" "/sentinel down-after-milliseconds/d" $redis_sentinel_real_conf
+      sed -i "" "/sentinel failover-timeout/d" $redis_sentinel_real_conf
+      sed -i "" "/sentinel parallel-syncs/d" $redis_sentinel_real_conf
       unset_xtrace
       if [[ -v REDIS_SENTINEL_PASSWORD ]]; then
-        sed -i "/sentinel auth-user/d" $redis_sentinel_real_conf
-        sed -i "/sentinel auth-pass/d" $redis_sentinel_real_conf
+        sed -i "" "/sentinel auth-user/d" $redis_sentinel_real_conf
+        sed -i "" "/sentinel auth-pass/d" $redis_sentinel_real_conf
       fi
       set_xtrace
     fi

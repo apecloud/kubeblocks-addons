@@ -146,7 +146,7 @@ Describe "Redis Start Bash Script Tests"
     It "builds announce ip and port correctly when advertised svc is not enabled"
       unset redis_advertised_svc_host_value
       unset redis_advertised_svc_port_value
-      export KB_POD_NAME="redis-redis-0"
+      export CURRENT_POD_NAME="redis-redis-0"
       export REDIS_POD_FQDN_LIST="redis-redis-0.redis-redis.default.svc.cluster.local,redis-redis-1.redis-redis.default.svc.cluster.local"
       When call build_announce_ip_and_port
       The contents of file "$redis_real_conf" should include "replica-announce-ip redis-redis-0.redis-redis.default.svc.cluster.local"
@@ -156,7 +156,7 @@ Describe "Redis Start Bash Script Tests"
     It "exits with error when failed to get current pod fqdn"
       unset redis_advertised_svc_host_value
       unset redis_advertised_svc_port_value
-      export KB_POD_NAME="redis-redis-2"
+      export CURRENT_POD_NAME="redis-redis-2"
       export REDIS_POD_FQDN_LIST="redis-redis-0.redis-redis.default,redis-redis-1.redis-redis.default"
       When run build_announce_ip_and_port
       The status should be failure
@@ -182,7 +182,7 @@ Describe "Redis Start Bash Script Tests"
   Describe "parse_redis_advertised_svc_if_exist()"
     It "parses redis advertised service correctly when matching svc is found"
       export REDIS_ADVERTISED_PORT="redis-redis-redis-advertised-0:31000,redis-redis-redis-advertised-1:32000"
-      export KB_HOST_IP="10.0.0.1"
+      export CURRENT_POD_HOST_IP="10.0.0.1"
       When call parse_redis_advertised_svc_if_exist "redis-redis-0"
       The variable redis_advertised_svc_port_value should eq "31000"
       The variable redis_advertised_svc_host_value should eq "10.0.0.1"
@@ -191,7 +191,7 @@ Describe "Redis Start Bash Script Tests"
 
     It "exits with error when no matching svc is found"
       export REDIS_ADVERTISED_PORT="redis-redis-redis-advertised-0:31000,redis-redis-redis-advertised-1:32000"
-      export KB_HOST_IP="10.0.0.2"
+      export CURRENT_POD_HOST_IP="10.0.0.2"
       When run parse_redis_advertised_svc_if_exist "redis-redis-2"
       The status should be failure
       The stdout should include "Error: No matching svcName and port found for podName 'redis-redis-2'"
@@ -208,14 +208,14 @@ Describe "Redis Start Bash Script Tests"
   Describe "check_current_pod_is_primary()"
     Context 'mapping with pod name'
       un_setup() {
-        unset KB_POD_NAME
+        unset CURRENT_POD_NAME
         unset KB_CLUSTER_COMP_NAME
         unset primary
       }
       After 'un_setup'
 
       It "returns true when current pod name matches the primary"
-        export KB_POD_NAME="redis-redis-0"
+        export CURRENT_POD_NAME="redis-redis-0"
         export KB_CLUSTER_COMP_NAME="redis-redis"
         primary="redis-redis-0.redis-redis-headless.default"
         When call check_current_pod_is_primary
@@ -224,7 +224,7 @@ Describe "Redis Start Bash Script Tests"
       End
 
       It "returns false when current pod does not match the primary"
-        export KB_POD_NAME="redis-redis-1"
+        export CURRENT_POD_NAME="redis-redis-1"
         export KB_CLUSTER_COMP_NAME="redis-redis"
         primary="redis-redis-0.redis-redis-headless.default"
         When call check_current_pod_is_primary
@@ -234,8 +234,8 @@ Describe "Redis Start Bash Script Tests"
 
     Context 'mapping with pod ip and service port'
       setup() {
-        export KB_POD_NAME="redis-redis-0"
-        export KB_POD_IP="10.0.0.1"
+        export CURRENT_POD_NAME="redis-redis-0"
+        export CURRENT_POD_IP="10.0.0.1"
         service_port="6379"
         primary="10.0.0.1"
         primary_port="6379"
@@ -243,8 +243,8 @@ Describe "Redis Start Bash Script Tests"
       Before "setup"
 
       un_setup() {
-        unset KB_POD_IP
-        unset KB_POD_NAME
+        unset CURRENT_POD_IP
+        unset CURRENT_POD_NAME
         unset service_port
         unset primary
         unset primary_port
@@ -260,8 +260,8 @@ Describe "Redis Start Bash Script Tests"
 
     Context 'mapping with advertised svc host and port'
       setup() {
-        export KB_POD_NAME="redis-redis-0"
-        export KB_POD_IP="10.0.0.1"
+        export CURRENT_POD_NAME="redis-redis-0"
+        export CURRENT_POD_IP="10.0.0.1"
         service_port="6379"
         redis_advertised_svc_host_value="172.0.0.1"
         redis_advertised_svc_port_value="31000"
@@ -269,7 +269,7 @@ Describe "Redis Start Bash Script Tests"
       Before "setup"
 
       un_setup() {
-        unset KB_POD_IP
+        unset CURRENT_POD_IP
         unset service_port
         unset primary
         unset primary_port
@@ -440,7 +440,7 @@ Describe "Redis Start Bash Script Tests"
       It "exits with error if failed to get min lexicographical order pod fqdn"
         When run get_default_initialize_primary_node
         The status should be failure
-        The stdout should include "Error: Failed to get min lexicographical order pod: $KB_POD_NAME fqdn from redis pod fqdn list: redis-2.redis-headless.default,redis-1.redis-headless.default. Exiting."
+        The stdout should include "Error: Failed to get min lexicographical order pod: $CURRENT_POD_NAME fqdn from redis pod fqdn list: redis-2.redis-headless.default,redis-1.redis-headless.default. Exiting."
       End
     End
   End
