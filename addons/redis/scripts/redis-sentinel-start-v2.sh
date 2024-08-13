@@ -28,25 +28,6 @@ load_common_library() {
   source "${common_library_file}"
 }
 
-set_xtrace() {
-  if [ "false" == "$ut_mode" ]; then
-    set -x
-  fi
-}
-
-unset_xtrace() {
-  if [ "false" == "$ut_mode" ]; then
-    set +x
-  fi
-}
-
-redis_sentinel_sleep(){
-  time="$1"
-  if [ "false" == "$ut_mode" ]; then
-    sleep "$time"
-  fi
-}
-
 redis_sentinel_real_conf="/data/sentinel/redis-sentinel.conf"
 redis_sentinel_init_conf="/data/sentinel/init_done.conf"
 
@@ -61,12 +42,12 @@ reset_redis_sentinel_conf() {
     sed -i "" "/sentinel announce-ip/d"
     sed -i "" "/sentinel resolve-hostnames/d" $redis_sentinel_real_conf
     sed -i "" "/sentinel announce-hostnames/d" $redis_sentinel_real_conf
-    unset_xtrace
+    unset_xtrace_when_ut_mode_false
     if [ -n "$SENTINEL_PASSWORD" ]; then
       sed -i "" "/sentinel sentinel-user/d" $redis_sentinel_real_conf
       sed -i "" "/sentinel sentinel-pass/d" $redis_sentinel_real_conf
     fi
-    set_xtrace
+    set_xtrace_when_ut_mode_false
     sed -i "" "/port $sentinel_port/d" $redis_sentinel_real_conf
   fi
 }
@@ -84,14 +65,14 @@ build_redis_sentinel_conf() {
     echo "sentinel resolve-hostnames yes"
     echo "sentinel announce-hostnames yes"
   } >> $redis_sentinel_real_conf
-  unset_xtrace
+  unset_xtrace_when_ut_mode_false
   if [ -n "$SENTINEL_PASSWORD" ]; then
     {
       echo "sentinel sentinel-user $SENTINEL_USER"
       echo "sentinel sentinel-pass $SENTINEL_PASSWORD"
     } >> $redis_sentinel_real_conf
   fi
-  set_xtrace
+  set_xtrace_when_ut_mode_false
   echo "build redis sentinel conf succeeded!"
 }
 
@@ -116,12 +97,12 @@ reset_redis_sentinel_monitor_conf() {
       sed -i "" "/sentinel down-after-milliseconds/d" $redis_sentinel_real_conf
       sed -i "" "/sentinel failover-timeout/d" $redis_sentinel_real_conf
       sed -i "" "/sentinel parallel-syncs/d" $redis_sentinel_real_conf
-      unset_xtrace
+      unset_xtrace_when_ut_mode_false
       if [[ -v REDIS_SENTINEL_PASSWORD ]]; then
         sed -i "" "/sentinel auth-user/d" $redis_sentinel_real_conf
         sed -i "" "/sentinel auth-pass/d" $redis_sentinel_real_conf
       fi
-      set_xtrace
+      set_xtrace_when_ut_mode_false
     fi
 }
 
@@ -176,7 +157,7 @@ recover_registered_redis_servers() {
         retry_count=$((retry_count + 1))
         echo "timeout waiting for $host to become available $retry_count/$max_retries failed. retrying..."
       fi
-      redis_sentinel_sleep 1
+      sleep_when_ut_mode_false 1
     done
     if [ "$success" = true ]; then
       echo "connected to the sentinel successfully after $retry_count retries"
@@ -256,7 +237,7 @@ recover_registered_redis_servers() {
       cluster_name="$KB_CLUSTER_NAME"
       comp_name="${master_name#"$cluster_name"-}"
       comp_name_upper=$(echo "$comp_name" | tr '[:lower:]' '[:upper:]')
-      unset_xtrace
+      unset_xtrace_when_ut_mode_false
       if ! env_exist REDIS_SENTINEL_PASSWORD; then
         echo "REDIS_SENTINEL_PASSWORD environment variable is not set"
         return 1
@@ -275,8 +256,8 @@ recover_registered_redis_servers() {
         echo "sentinel auth-user $master_name $REDIS_SENTINEL_USER"
         echo "sentinel auth-pass $master_name $auth_pass"
       } >> $redis_sentinel_real_conf
-      set_xtrace
-      redis_sentinel_sleep 30
+      set_xtrace_when_ut_mode_false
+      sleep_when_ut_mode_false 30
       master_name="" master_ip="" master_port="" master_down_after_milliseconds=""
       master_quorum="" master_failover_timeout="" master_parallel_syncs=""
     fi

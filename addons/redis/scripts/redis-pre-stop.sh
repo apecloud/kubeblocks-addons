@@ -26,19 +26,17 @@ load_common_library() {
   source "${common_library_file}"
 }
 
-check_redis_sentinel_ok() {
-  if [ -n "$SENTINEL_PASSWORD" ]; then
-    cmd="redis-cli -h localhost -p 26379 -a $SENTINEL_PASSWORD ping"
+acl_save_before_stop() {
+  if env_exist REDIS_DEFAULT_PASSWORD; then
+    acl_save_command="redis-cli -h 127.0.0.1 -p 6379 -a $REDIS_DEFAULT_PASSWORD acl save"
   else
-    cmd="redis-cli -h localhost -p 26379 ping"
+    acl_save_command="redis-cli -h 127.0.0.1 -p 6379 acl save"
   fi
-  response=$(timeout -s 3 "$1" "$cmd")
-  if [ $? -eq 124 ]; then
-    echo "Timed out"
-    exit 1
-  fi
-  if [ "$response" != "PONG" ]; then
-    echo "$response"
+  echo "acl save command: $acl_save_command" | sed "s/$REDIS_DEFAULT_PASSWORD/********/g"
+  if output=$($acl_save_command 2>&1); then
+    echo "acl save command executed successfully: $output"
+  else
+    echo "failed to execute acl save command: $output"
     exit 1
   fi
 }
@@ -52,4 +50,4 @@ ${__SOURCED__:+false} : || return 0
 
 # main
 load_common_library
-check_redis_sentinel_ok 5
+acl_save_before_stop

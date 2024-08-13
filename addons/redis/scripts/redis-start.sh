@@ -34,18 +34,6 @@ load_common_library() {
   source "${common_library_file}"
 }
 
-set_xtrace() {
-  if [ "false" == "$ut_mode" ]; then
-    set -x
-  fi
-}
-
-unset_xtrace() {
-  if [ "false" == "$ut_mode" ]; then
-    set +x
-  fi
-}
-
 # TODO: it will be removed in the future
 extract_ordinal_from_object_name() {
   local object_name="$1"
@@ -58,7 +46,7 @@ load_redis_template_conf() {
 }
 
 build_redis_default_accounts() {
-  unset_xtrace
+  unset_xtrace_when_ut_mode_false
   if env_exist REDIS_REPL_PASSWORD; then
     echo "masteruser $REDIS_REPL_USER" >> $redis_real_conf
     echo "masterauth $REDIS_REPL_PASSWORD" >> $redis_real_conf
@@ -73,7 +61,7 @@ build_redis_default_accounts() {
   else
     echo "protected-mode no" >> $redis_real_conf
   fi
-  set_xtrace
+  set_xtrace_when_ut_mode_false
   echo "aclfile /data/users.acl" >> $redis_real_conf
   echo "build default accounts succeeded!"
 }
@@ -200,12 +188,12 @@ build_sentinel_get_master_addr_by_name_command() {
 get_master_addr_by_name_from_sentinel() {
   local master_addr_by_name_command
   local sentinel_pod_fqdn="$1"
-  unset_xtrace
+  unset_xtrace_when_ut_mode_false
   master_addr_by_name_command=$(build_sentinel_get_master_addr_by_name_command "$sentinel_pod_fqdn")
   echo "execute get-master-addr-by-name command: $master_addr_by_name_command" | sed "s/$SENTINEL_PASSWORD/********/g"
   output=$(eval "$master_addr_by_name_command")
   exit_code=$?
-  set_xtrace
+  set_xtrace_when_ut_mode_false
 
   if [ $exit_code -eq 0 ]; then
     read -r -d '' -a REDIS_SENTINEL_PRIMARY_INFO <<< "$output"

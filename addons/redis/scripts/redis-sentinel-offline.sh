@@ -22,13 +22,6 @@ load_common_library() {
   source "${common_library_file}"
 }
 
-redis_sentinel_sleep(){
-  time="$1"
-  if [ "false" == "$ut_mode" ]; then
-    sleep "$time"
-  fi
-}
-
 declare -g redis_default_service_port=26379
 declare -A master_slave_counts
 declare -g sentinel_leave_member_name
@@ -106,7 +99,7 @@ redis_sentinel_remove_monitor() {
       retry_count=$((retry_count + 1))
       echo "timeout waiting for $host to become available $retry_count/$max_retries failed. retrying..."
     fi
-   redis_sentinel_sleep 1
+   sleep_when_ut_mode_false 1
   done
   if [ "$success" = true ]; then
     echo "connected to the sentinel successfully after $retry_count retries"
@@ -164,12 +157,12 @@ redis_sentinel_reset_all() {
 
             retry_count=$((retry_count + 1))
             echo "retry $retry_count/$max_retries for sentinel reset at $host failed. retrying..."
-            redis_sentinel_sleep 1
+            sleep_when_ut_mode_false 1
         done
 
         if [ "$success" = true ]; then
             echo "connected to the sentinel successfully after $retry_count retries"
-            redis_sentinel_sleep 3
+            sleep_when_ut_mode_false 3
         else
             echo "sentinel connect failed after $max_retries retries."
             exit 1
@@ -223,7 +216,7 @@ check_all_sentinel_agreement() {
             retry_count=$((retry_count + 1))
             echo "timeout waiting for $host to become available $retry_count/$max_retries failed. retrying..."
           fi
-          redis_sentinel_sleep 1
+          sleep_when_ut_mode_false 1
         done
         if [ "$success" = true ]; then
           echo "connected to the sentinel successfully after $retry_count retries"

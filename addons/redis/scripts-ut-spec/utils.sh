@@ -21,10 +21,12 @@ generate_common_library() {
   libstrings_tpl_file="../../kblib/templates/_libstrings.tpl"
   libenvs_tpl_file="../../kblib/templates/_libenvs.tpl"
   libcompvars_tpl_file="../../kblib/templates/_libcompvars.tpl"
+  libututils_tpl_file="../../kblib/templates/_libututils.tpl"
 
   convert_tpl_to_bash $libcommons_tpl_file "$library_file"
   convert_tpl_to_bash $libpods_tpl_file "$library_file"
   convert_tpl_to_bash $libstrings_tpl_file "$library_file"
   convert_tpl_to_bash $libenvs_tpl_file "$library_file"
   convert_tpl_to_bash $libcompvars_tpl_file "$library_file"
+  convert_tpl_to_bash $libututils_tpl_file "$library_file"
 }
