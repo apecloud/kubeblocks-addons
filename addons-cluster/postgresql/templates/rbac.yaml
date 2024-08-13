@@ -1,1 +1,37 @@
 {{- include "kblib.rbac" . }}
+---
+{{- if .Values.etcd.proxyEnabled }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: {{ printf "%s-etcd-clean-role" (include "kblib.clusterName" .) }}
+  labels: 
+    {{ include "kblib.clusterLabels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": "post-install, pre-delete"
+    "helm.sh/hook-weight": "0"
+rules:
+- apiGroups: [""]
+  resources: ["pods/exec"]
+  verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ printf "%s-etcd-clean" (include "kblib.clusterName" .) }}
+  namespace: {{ .Release.Namespace }} 
+  labels: 
+    {{ include "kblib.clusterLabels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": "post-install, pre-delete"
+    "helm.sh/hook-weight": "0"
+subjects:
+- kind: ServiceAccount
+  name: kb-{{ include "kblib.clusterName" . }}
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: Role
+  name: {{ printf "%s-etcd-clean-role" (include "kblib.clusterName" .) }}
+  apiGroup: rbac.authorization.k8s.io
+{{ end }}

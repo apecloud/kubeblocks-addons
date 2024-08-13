@@ -149,6 +149,11 @@ spec:
             - -c
           args:
             - curl -s http://$(KB_REPLICATION_PRIMARY_POD_FQDN):8008/switchover -XPOST -d '{"leader":"$(KB_REPLICATION_PRIMARY_POD_NAME)"}'
+    preTerminate:
+      customHandler:
+        exec:
+          image: registry.cn-hangzhou.aliyuncs.com/skyrise/gbase-tool:latest
+          command: ["/kb-scripts/etcd-clean.sh"]
     accountProvision:
       builtinHandler: postgresql
     {{/*
@@ -196,10 +201,6 @@ spec:
           runAsUser: 0
         command:
           - /kb-scripts/setup.sh
-        lifecycle:
-          preStop:
-            exec: 
-              command: ["/kb-scripts/etcd-clean.sh"]
         readinessProbe:
           failureThreshold: 3
           initialDelaySeconds: 10
