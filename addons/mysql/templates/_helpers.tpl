@@ -400,7 +400,7 @@ memberLeave:
       name: kubeblocks
 {{- end }}
 
-{{- define "mysql.spec.runtime.mysql" -}}
+{{- define "mysql-orc.spec.runtime.mysql" -}}
 imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
 lifecycle:
   postStart:

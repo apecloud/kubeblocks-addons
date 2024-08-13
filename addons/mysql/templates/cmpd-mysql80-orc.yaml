@@ -52,6 +52,6 @@ spec:
     containers:
       - name: mysql
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
-        {{- include "mysql.spec.runtime.mysql" . | nindent 8 }}
+        {{- include "mysql-orc.spec.runtime.mysql" . | nindent 8 }}
       - name: mysql-exporter
         {{- include "mysql.spec.runtime.exporter" . | nindent 8 }}
