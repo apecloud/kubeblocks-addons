@@ -108,11 +108,19 @@ spec:
           name: redis-advertised
           optional: true
           host: Required
+    ## the redis pod name list for each pod, the value format is "pod1,pod2,..."
+    - name: REDIS_POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "redis.componentDefName" . }}
+          optional: false
+          instanceNames: Required
     ## the redis pod fqdn list for each pod, the value format is "pod1FQDN,pod2FQDN,..."
     - name: REDIS_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
           compDef: {{ include "redis.componentDefName" . }}
+          optional: false
           podFQDNs: Required
     ## the username of redis sentinel for redis connection, it is optional
     - name: SENTINEL_USER
@@ -216,6 +224,21 @@ spec:
           ## the password of redis for redis sentinel connection
           - name: REDIS_SENTINEL_PASSWORD
             value: $(REDIS_DEFAULT_PASSWORD)
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: CURRENT_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          - name: CURRENT_POD_HOST_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.hostIP
         command: [ "/scripts/redis-start.sh" ]
         readinessProbe:
           initialDelaySeconds: 10

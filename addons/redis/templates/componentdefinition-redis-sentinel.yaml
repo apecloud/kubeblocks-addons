@@ -76,6 +76,20 @@ spec:
           name: default
           optional: false
           password: Required
+    ## the sentinel pod name list
+    - name: SENTINEL_POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "redis-sentinel.componentDefName" . }}
+          optional: false
+          instanceNames: Required
+    ## the sentinel pod fqdn list
+    - name: SENTINEL_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "redis-sentinel.componentDefName" . }}
+          optional: false
+          podFQDNs: Required
   lifecycleActions:
     accountProvision:
       customHandler:
@@ -102,6 +116,21 @@ spec:
       env:
         - name: SENTINEL_SERVICE_PORT
           value: "26379"
+        - name: CURRENT_POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: CURRENT_POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: CURRENT_POD_HOST_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
       command:
         - /bin/bash
       args:

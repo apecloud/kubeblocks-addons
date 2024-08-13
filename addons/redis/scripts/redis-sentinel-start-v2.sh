@@ -51,10 +51,14 @@ reset_redis_sentinel_conf() {
 
 build_redis_sentinel_conf() {
   echo "build redis sentinel conf"
-  kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc"
+  current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$SENTINEL_POD_FQDN_LIST" "$CURRENT_POD_NAME")
+  if is_empty "$current_pod_fqdn"; then
+    echo "Error: Failed to get current pod: $CURRENT_POD_NAME fqdn from sentinel pod fqdn list: $SENTINEL_POD_FQDN_LIST. Exiting."
+    exit 1
+  fi
   {
     echo "port $sentinel_port"
-    echo "sentinel announce-ip $kb_pod_fqdn"
+    echo "sentinel announce-ip $current_pod_fqdn"
     echo "sentinel resolve-hostnames yes"
     echo "sentinel announce-hostnames yes"
   } >> /data/sentinel/redis-sentinel.conf

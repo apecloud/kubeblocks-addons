@@ -71,7 +71,8 @@ parse_redis_advertised_svc_if_exist() {
     if [[ "$svc_name_ordinal" == "$pod_name_ordinal" ]]; then
       echo "Found matching svcName and port for podName '$pod_name', REDIS_ADVERTISED_PORT: $REDIS_ADVERTISED_PORT. svcName: $svc_name, port: $port."
       redis_advertised_svc_port_value="$port"
-      redis_advertised_svc_host_value="$KB_HOST_IP"
+      # TODO: get the host ip from env defined in the action context.
+      redis_advertised_svc_host_value="$CURRENT_POD_HOST_IP"
       found=true
       break
     fi
@@ -152,8 +153,8 @@ register_to_sentinel() {
 
 register_to_sentinel_wrapper() {
   # check required environment variables, we use KB_CLUSTER_COMP_NAME as the master_name registered to sentinel
-  if  ! env_exists KB_CLUSTER_COMP_NAME KB_POD_LIST; then
-    echo "Error: Required environment variable KB_CLUSTER_COMP_NAME and KB_POD_LIST is not set."
+  if  ! env_exists KB_CLUSTER_COMP_NAME REDIS_POD_NAME_LIST; then
+    echo "Error: Required environment variable KB_CLUSTER_COMP_NAME and REDIS_POD_NAME_LIST is not set."
     exit 1
   fi
 
@@ -164,7 +165,7 @@ register_to_sentinel_wrapper() {
   fi
 
   # get minimum lexicographical order pod name as default primary node (the same logic as redis initialize primary node selection)
-  redis_default_primary_pod_name=$(min_lexicographical_order_pod "$KB_POD_LIST")
+  redis_default_primary_pod_name=$(min_lexicographical_order_pod "$REDIS_POD_NAME_LIST")
   redis_default_primary_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$REDIS_POD_FQDN_LIST" "$redis_default_primary_pod_name")
   init_redis_service_port
   parse_redis_advertised_svc_if_exist "$redis_default_primary_pod_name"

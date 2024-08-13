@@ -87,9 +87,9 @@ build_announce_ip_and_port() {
       echo "replica-announce-ip $redis_advertised_svc_host_value"
     } >> $redis_real_conf
   else
-    current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$REDIS_POD_FQDN_LIST" "$KB_POD_NAME")
+    current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$REDIS_POD_FQDN_LIST" "$CURRENT_POD_NAME")
     if is_empty "$current_pod_fqdn"; then
-      echo "Error: Failed to get current pod: $KB_POD_NAME fqdn from redis pod fqdn list: $REDIS_POD_FQDN_LIST. Exiting."
+      echo "Error: Failed to get current pod: $CURRENT_POD_NAME fqdn from redis pod fqdn list: $REDIS_POD_FQDN_LIST. Exiting."
       exit 1
     fi
     echo "redis use kb pod fqdn $current_pod_fqdn to announce"
@@ -240,10 +240,10 @@ retry_get_master_addr_by_name_from_sentinel() {
 
 get_default_initialize_primary_node() {
   # TODO: if has advertise svc and port, we should use it as default primary node info instead of the fqdn
-  min_lex_pod=$(min_lexicographical_order_pod "$KB_POD_LIST")
+  min_lex_pod=$(min_lexicographical_order_pod "$REDIS_POD_NAME_LIST")
   min_lex_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$REDIS_POD_FQDN_LIST" "$min_lex_pod")
   if is_empty "$min_lex_pod_fqdn"; then
-    echo "Error: Failed to get min lexicographical order pod: $KB_POD_NAME fqdn from redis pod fqdn list: $REDIS_POD_FQDN_LIST. Exiting."
+    echo "Error: Failed to get min lexicographical order pod: $CURRENT_POD_NAME fqdn from redis pod fqdn list: $REDIS_POD_FQDN_LIST. Exiting."
     exit 1
   fi
   echo "get the minimum lexicographical order pod name: $min_lex_pod_fqdn as default primary node"
@@ -252,7 +252,7 @@ get_default_initialize_primary_node() {
 }
 
 check_current_pod_is_primary() {
-  current_pod="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME"
+  current_pod="$CURRENT_POD_NAME.$KB_CLUSTER_COMP_NAME"
   if contains "$primary" "$current_pod"; then
     echo "current pod is primary with name mapping, primary node: $primary, pod name:$current_pod"
     return 0
@@ -266,8 +266,8 @@ check_current_pod_is_primary() {
     echo "redis advertised svc host and port exist but not match, primary: $primary, primary port: $primary_port, advertised ip:$redis_advertised_svc_host_value, advertised port:$redis_advertised_svc_port_value"
   fi
 
-  if equals "$primary" "$KB_POD_IP" && equals "$primary_port" "$service_port"; then
-    echo "current pod is primary with pod ip mapping, primary node: $primary, pod ip:$KB_POD_IP, service port:$service_port"
+  if equals "$primary" "$CURRENT_POD_IP" && equals "$primary_port" "$service_port"; then
+    echo "current pod is primary with pod ip mapping, primary node: $primary, pod ip:$CURRENT_POD_IP, service port:$service_port"
     return 0
   fi
   return 1
@@ -321,7 +321,7 @@ parse_redis_advertised_svc_if_exist() {
     if [[ "$svc_name_ordinal" == "$pod_name_ordinal" ]]; then
       echo "Found matching svcName and port for podName '$pod_name', REDIS_ADVERTISED_PORT: $REDIS_ADVERTISED_PORT. svcName: $svc_name, port: $port."
       redis_advertised_svc_port_value="$port"
-      redis_advertised_svc_host_value="$KB_HOST_IP"
+      redis_advertised_svc_host_value="$CURRENT_POD_HOST_IP"
       found=true
       break
     fi
@@ -352,6 +352,6 @@ ${__SOURCED__:+false} : || return 0
 
 # main
 load_common_library
-parse_redis_advertised_svc_if_exist "$KB_POD_NAME"
+parse_redis_advertised_svc_if_exist "$CURRENT_POD_NAME"
 build_redis_conf
 start_redis_server
