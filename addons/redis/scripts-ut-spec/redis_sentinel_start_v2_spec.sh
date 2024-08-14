@@ -1,4 +1,5 @@
-#shellcheck shell=bash
+# shellcheck shell=bash
+# shellcheck disable=SC2034
 
 source ./utils.sh
 
@@ -12,8 +13,8 @@ Describe "Redis Start Sentinel Bash Script Tests"
 
   init() {
     redis_sentinel_real_conf="./redis_sentinel.conf"
+    redis_sentinel_real_conf_bak="./redis_sentinel.conf.bak"
     # set ut_mode to true to hack control flow in the script
-    # shellcheck disable=SC2034
     ut_mode="true"
   }
   BeforeAll "init"

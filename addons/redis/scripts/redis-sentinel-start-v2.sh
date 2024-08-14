@@ -28,7 +28,9 @@ load_common_library() {
   source "${common_library_file}"
 }
 
+redis_sentinel_conf_dir="/data/sentinel"
 redis_sentinel_real_conf="/data/sentinel/redis-sentinel.conf"
+redis_sentinel_real_conf_bak="/data/sentinel/redis-sentinel.conf.bak"
 redis_sentinel_init_conf="/data/sentinel/init_done.conf"
 
 reset_redis_sentinel_conf() {
@@ -37,23 +39,28 @@ reset_redis_sentinel_conf() {
   if env_exist SENTINEL_SERVICE_PORT; then
     sentinel_port=$SENTINEL_SERVICE_PORT
   fi
-  mkdir -p /data/sentinel
+  mkdir -p $redis_sentinel_conf_dir
   if [ -f $redis_sentinel_real_conf ]; then
-    sed -i "" "/sentinel announce-ip/d" $redis_sentinel_real_conf
-    sed -i "" "/sentinel resolve-hostnames/d" $redis_sentinel_real_conf
-    sed -i "" "/sentinel announce-hostnames/d" $redis_sentinel_real_conf
+    sed "/sentinel announce-ip/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
+    sed "/sentinel resolve-hostnames/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
+    sed "/sentinel announce-hostnames/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
     unset_xtrace_when_ut_mode_false
     if [ -n "$SENTINEL_PASSWORD" ]; then
-      sed -i "" "/sentinel sentinel-user/d" $redis_sentinel_real_conf
-      sed -i "" "/sentinel sentinel-pass/d" $redis_sentinel_real_conf
+      sed "/sentinel sentinel-user/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
+      sed "/sentinel sentinel-pass/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
     fi
     set_xtrace_when_ut_mode_false
-    sed -i "" "/port $sentinel_port/d" $redis_sentinel_real_conf
+    sed -i "" "/port $sentinel_port/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
   fi
 }
 
 build_redis_sentinel_conf() {
   echo "build redis sentinel conf"
+  if ! env_exist SENTINEL_POD_FQDN_LIST; then
+    echo "Error: Required environment variable SENTINEL_POD_FQDN_LIST is not set."
+    exit 1
+  fi
+  # shellcheck disable=SC2153
   current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$SENTINEL_POD_FQDN_LIST" "$CURRENT_POD_NAME")
   if is_empty "$current_pod_fqdn"; then
     echo "Error: Failed to get current pod: $CURRENT_POD_NAME fqdn from sentinel pod fqdn list: $SENTINEL_POD_FQDN_LIST. Exiting."
@@ -93,14 +100,14 @@ recover_registered_redis_servers_if_needed() {
 reset_redis_sentinel_monitor_conf() {
     echo "reset sentinel monitor configuration file if there are any residual configurations "
     if [ -f $redis_sentinel_real_conf ]; then
-      sed -i "" "/sentinel monitor/d" $redis_sentinel_real_conf
-      sed -i "" "/sentinel down-after-milliseconds/d" $redis_sentinel_real_conf
-      sed -i "" "/sentinel failover-timeout/d" $redis_sentinel_real_conf
-      sed -i "" "/sentinel parallel-syncs/d" $redis_sentinel_real_conf
+      sed "/sentinel monitor/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
+      sed "/sentinel down-after-milliseconds/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
+      sed "/sentinel failover-timeout/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
+      sed "/sentinel parallel-syncs/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
       unset_xtrace_when_ut_mode_false
       if [[ -v REDIS_SENTINEL_PASSWORD ]]; then
-        sed -i "" "/sentinel auth-user/d" $redis_sentinel_real_conf
-        sed -i "" "/sentinel auth-pass/d" $redis_sentinel_real_conf
+        sed "/sentinel auth-user/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
+        sed "/sentinel auth-pass/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
       fi
       set_xtrace_when_ut_mode_false
     fi

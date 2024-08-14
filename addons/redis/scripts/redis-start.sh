@@ -2,6 +2,7 @@
 
 # shellcheck disable=SC2153
 # shellcheck disable=SC2207
+# shellcheck disable=SC2034
 
 # This is magic for shellspec ut framework. "test" is a `test [expression]` well known as a shell command.
 # Normally test without [expression] returns false. It means that __() { :; }
@@ -24,6 +25,7 @@ primary_port="6379"
 redis_template_conf="/etc/conf/redis.conf"
 redis_real_conf="/etc/redis/redis.conf"
 redis_acl_file="/data/users.acl"
+redis_acl_file_bak="/data/users.acl"
 retry_times=3
 retry_delay_second=2
 
@@ -104,9 +106,9 @@ build_replicaof_config() {
 
 rebuild_redis_acl_file() {
   if [ -f $redis_acl_file ]; then
-    sed -i '' "/user default on/d" $redis_acl_file
-    sed -i '' "/user $REDIS_REPL_USER on/d" $redis_acl_file
-    sed -i '' "/user $REDIS_SENTINEL_USER on/d" $redis_acl_file
+    sed "/user default on/d" $redis_acl_file > $redis_acl_file_bak && mv $redis_acl_file_bak $redis_acl_file
+    sed "/user $REDIS_REPL_USER on/d" $redis_acl_file > $redis_acl_file_bak && mv $redis_acl_file_bak $redis_acl_file
+    sed "/user $REDIS_SENTINEL_USER on/d" $redis_acl_file > $redis_acl_file_bak && mv $redis_acl_file_bak $redis_acl_file
   else
     touch $redis_acl_file
   fi

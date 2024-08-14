@@ -1,4 +1,5 @@
-#shellcheck shell=bash
+# shellcheck shell=bash
+# shellcheck disable=SC2034
 
 # we need bash 4 or higher to run this script in some cases
 should_skip_when_shell_type_and_version_invalid() {
@@ -27,8 +28,8 @@ Describe "Redis Start Bash Script Tests"
     # override name of redis related file defined in redis-start.sh because default conf /etc/redis/redis.conf does not exist
     redis_real_conf="./redis.conf"
     redis_acl_file="./users.acl"
+    redis_acl_file_bak="./users.acl.bak"
     # set ut_mode to true to hack control flow in the script
-    # shellcheck disable=SC2034
     ut_mode="true"
   }
   BeforeAll "init"
