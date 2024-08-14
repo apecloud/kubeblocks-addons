@@ -16,7 +16,7 @@
 ut_mode="false"
 test || __() {
   # when running in non-unit test mode, set the options "set -e".
-  set -e;
+  set -ex;
 }
 
 load_common_library() {
@@ -27,12 +27,14 @@ load_common_library() {
 }
 
 check_redis_ok() {
+  unset_xtrace_when_ut_mode_false
   if env_exist REDIS_DEFAULT_PASSWORD; then
     cmd="redis-cli -h localhost -p 6379 -a $REDIS_DEFAULT_PASSWORD ping"
   else
     cmd="redis-cli -h localhost -p 6379 ping"
   fi
-  response=$(timeout -s 3 $1 $cmd)
+  response=$($cmd)
+  set_xtrace_when_ut_mode_false
   if [ $? -eq 124 ]; then
     echo "Timed out"
     exit 1

@@ -16,7 +16,7 @@
 ut_mode="false"
 test || __() {
   # when running in non-unit test mode, set the options "set -e".
-  set -e;
+  set -ex;
 }
 
 load_common_library() {
@@ -27,19 +27,21 @@ load_common_library() {
 }
 
 check_redis_sentinel_ok() {
+  unset_xtrace_when_ut_mode_false
   if [ -n "$SENTINEL_PASSWORD" ]; then
     cmd="redis-cli -h localhost -p 26379 -a $SENTINEL_PASSWORD ping"
   else
     cmd="redis-cli -h localhost -p 26379 ping"
   fi
-  response=$(timeout -s 3 $1 $cmd)
+  response=$($cmd)
+  set_xtrace_when_ut_mode_false
   if [ $? -eq 124 ]; then
     echo "Timed out"
-    exit 1
+    return 1
   fi
   if [ "$response" != "PONG" ]; then
     echo "$response"
-    exit 1
+    return 1
   fi
 }
 
@@ -52,4 +54,4 @@ ${__SOURCED__:+false} : || return 0
 
 # main
 load_common_library
-check_redis_sentinel_ok 5
+check_redis_sentinel_ok || exit 1
