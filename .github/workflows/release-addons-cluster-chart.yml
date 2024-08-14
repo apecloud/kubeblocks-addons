@@ -14,7 +14,6 @@ on:
           - apecloud-postgresql
           - camellia-redis-proxy
           - clickhouse
-          - doris
           - elasticsearch
           - etcd
           - flink
