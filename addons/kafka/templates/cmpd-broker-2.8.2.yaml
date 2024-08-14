@@ -136,6 +136,8 @@ spec:
             value: /tools/server-jaas.properties
           - name: BROKER_MIN_NODE_ID
             value: {{ .Values.kafkaBroker.minNodeId | quote }}
+          - name: ZOOKEEPER_CLIENT_PORT
+            value: "2181"
         ports:
           - name: kafka-client
             containerPort: 9092
