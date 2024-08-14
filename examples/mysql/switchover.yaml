@@ -13,7 +13,5 @@ spec:
         parameters:
           - name: candidate
             value: mysql-cluster-mysql-mysql-1
-          - name: orcClusterName
-            value: orchestrator-cluster
     opsDefinitionName: mysql-orc-switchover
 
