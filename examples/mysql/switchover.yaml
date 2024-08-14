@@ -4,7 +4,7 @@ metadata:
   name: mysql-switchover
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: mysql-orc
+  clusterName: mysql-cluster
   type: Custom
   # Lists Switchover objects, each specifying a Component to perform the switchover operation.
   custom:
@@ -12,8 +12,8 @@ spec:
       - componentName: mysql
         parameters:
           - name: candidate
-            value: mysql-orc-mysql-mysql-1
+            value: mysql-cluster-mysql-mysql-1
           - name: orcClusterName
-            value: orc-raft
+            value: orchestrator-cluster
     opsDefinitionName: mysql-orc-switchover
 
