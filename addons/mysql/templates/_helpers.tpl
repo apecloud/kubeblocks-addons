@@ -375,6 +375,8 @@ accountProvision:
     targetPodSelector: Role
     matchingKey: primary
 roleProbe:
+  periodSeconds: {{ .Values.roleProbe.periodSeconds }}
+  timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
   exec:
     env:
       - name: PATH

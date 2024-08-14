@@ -38,7 +38,6 @@ GRANT SUPER, PROCESS, REPLICATION SLAVE, RELOAD ON *.* TO '$topology_user'@'%';
 GRANT SELECT ON mysql.slave_master_info TO '$topology_user'@'%';
 GRANT DROP ON _pseudo_gtid_.* to '$topology_user'@'%';
 GRANT ALL ON kb_orc_meta_cluster.* TO '$topology_user'@'%';
-set global slave_net_timeout = 4;
 EOF
 
   mysql_note "Create MySQL User and Grant Permissions completed."
@@ -86,20 +85,21 @@ wait_for_connectivity() {
       mysql_note "mysql is reachable."
       break
     fi
-
     sleep 5
   done
 }
 
-setup_semi_sync() {
+init_semi_sync_config() {
   mysql_note "setup semi_sync"
   if [[ "${MYSQL_MAJOR}" == "5.7" ]]; then
     mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD << EOF
-SET GLOBAL rpl_semi_sync_replica_enabled = 1;
-SET GLOBAL rpl_semi_sync_source_enabled = 1;
+SET GLOBAL slave_net_timeout = 4;
+SET GLOBAL rpl_semi_sync_slave_enabled = 1;
+SET GLOBAL rpl_semi_sync_master_enabled = 1;
 EOF
   else
     mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD << EOF
+SET GLOBAL slave_net_timeout = 4;
 SET GLOBAL rpl_semi_sync_replica_enabled = 1;
 SET GLOBAL rpl_semi_sync_source_enabled = 1;
 EOF
@@ -134,7 +134,7 @@ setup_master_slave() {
   fi
 
   # setup semi sync for master-slave replication
-  setup_semi_sync
+  init_semi_sync_config
   # If the master_host is empty, then this pod is the first one in the cluster, init cluster info database and create user.
   if [[ $master_from_orc == "" && $self_last_digit -eq 0 ]]; then
     echo "Create MySQL User and Grant Permissions"
@@ -236,7 +236,6 @@ SET GLOBAL READ_ONLY=1;
 SET GLOBAL SUPER_READ_ONLY=1;
 STOP SLAVE;
 CHANGE MASTER TO
-GET_MASTER_PUBLIC_KEY=1,
 MASTER_AUTO_POSITION=1,
 MASTER_CONNECT_RETRY=1,
 MASTER_RETRY_COUNT=86400,
