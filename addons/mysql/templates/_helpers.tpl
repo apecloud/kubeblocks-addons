@@ -450,7 +450,7 @@ command:
   - bash
   - -c
   - |
-    mysqld_exporter --mysqld.username=${MYSQLD_EXPORTER_USER} --web.listen-address=:${EXPORTER_WEB_PORT} --log.level=info
+    mysqld_exporter --mysqld.username=${MYSQLD_EXPORTER_USER} --web.listen-address=:${EXPORTER_WEB_PORT} --log.level={{.Values.metrics.logLevel}}
 env:
   - name: MYSQLD_EXPORTER_USER
     value: $(MYSQL_ROOT_USER)

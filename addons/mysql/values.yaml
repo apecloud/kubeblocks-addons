@@ -77,6 +77,8 @@ metrics:
     tag: 0.15.1
     pullPolicy: IfNotPresent
 
+  logLevel: "info"
+
   service:
     port: 9104
 
