@@ -2,24 +2,18 @@ apiVersion: apps.kubeblocks.io/v1alpha1
 kind: Cluster
 metadata:
   name: {{ include "kblib.clusterName" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "minio.labels" . | nindent 4 }}
+    {{- include "kblib.clusterLabels" . | nindent 4 }}
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
-  - componentDef: {{ include "minio-cluster.compdef" $}}
+  - componentDef: minio 
     env:
     - name: MINIO_BUCKETS
       value: {{ .Values.buckets }}
     name: minio
     replicas: {{ .Values.replicas }}
-    volumeClaimTemplates:
-    - name: data
-      spec:
-        storageClassName: {{ $.Values.storageClassName }}
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: {{ print $.Values.storage "Gi" }}
+    {{- include "kblib.componentResources" . | indent 6 }}
+    {{- include "kblib.componentStorages" . | indent 6 }}
