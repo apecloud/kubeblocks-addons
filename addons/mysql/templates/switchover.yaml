@@ -6,8 +6,17 @@ spec:
   parametersSchema:
     openAPIV3Schema:
       properties:
-        primary:
-          description: "old primary instance name(pod Name)."
+        orcEndpoint:
+          description: |
+            orchestrator endpoint. The MySQL cluster needs to be registered with Orchestrator to
+            utilize the high availability features. If both the endpoint and the cluster exist,
+            the endpoint is given priority.
+          type: string
+        orcClusterName:
+          description: |
+            orchestrator cluster name. The MySQL cluster needs to be registered with Orchestrator to
+            utilize the high availability features. If both the endpoint and the cluster exist,
+            the endpoint is given priority.
           type: string
         candidate:
           description: |
@@ -29,4 +38,17 @@ spec:
               command:
                 - /bin/sh
                 - -c
-                - /usr/scripts/orchestrator-client -c graceful-master-takeover-auto -d ${candidate} -i ${KB_CLUSTER_NAME}
+                - |
+                  echo "switch over the primary to ${candidate} "
+                  if [ -n "$orcEndpoint" ]; then
+                    ORCHESTRATOR_API=http://${orcEndpoint##*//}
+                  elif [ -n "$orcClusterName" ]; then
+                    endpoint_name=$(echo "${orcClusterName}_ORCHESTRATOR_PORT" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+                    eval endpoint=\${${endpoint_name}}
+                    ORCHESTRATOR_API=http://${endpoint##*//}
+                  else
+                    echo "please provide either orcEndpoint or orcClusterName !!!"
+                    exit 1
+                  fi
+                  echo "API address is : ${ORCHESTRATOR_API}/api/graceful-master-takeover-auto/${candidate}"
+                  curl -s ${ORCHESTRATOR_API}/api/graceful-master-takeover-auto/${candidate}
