@@ -402,14 +402,14 @@ Describe "Redis Start Bash Script Tests"
   Describe "get_default_initialize_primary_node()"
     Context "when min lexicographical order pod fqdn exists"
       setup() {
-        export KB_POD_LIST="redis-2,redis-1,redis-0"
+        export REDIS_POD_NAME_LIST="redis-2,redis-1,redis-0"
         export REDIS_POD_FQDN_LIST="redis-2.redis-headless.default,redis-1.redis-headless.default,redis-0.redis-headless.default"
         service_port="6379"
       }
       Before "setup"
 
       un_setup() {
-        unset KB_POD_LIST
+        unset REDIS_POD_NAME_LIST
         unset REDIS_POD_FQDN_LIST
         unset service_port
       }
@@ -425,14 +425,14 @@ Describe "Redis Start Bash Script Tests"
 
     Context "when min lexicographical order pod fqdn does not exist"
       setup() {
-        export KB_POD_LIST="redis-2,redis-1,redis-0"
+        export REDIS_POD_NAME_LIST="redis-2,redis-1,redis-0"
         export REDIS_POD_FQDN_LIST="redis-2.redis-headless.default,redis-1.redis-headless.default"
         service_port="6379"
       }
       Before "setup"
 
       un_setup() {
-        unset KB_POD_LIST
+        unset REDIS_POD_NAME_LIST
         unset REDIS_POD_FQDN_LIST
         unset service_port
       }
@@ -529,7 +529,7 @@ Describe "Redis Start Bash Script Tests"
         retry_times=1
         # shellcheck disable=SC2034
         retry_delay_second=1
-        export KB_POD_LIST="redis-1,redis-0"
+        export REDIS_POD_NAME_LIST="redis-1,redis-0"
         export SENTINEL_COMPONENT_NAME="redis-sentinel"
         export SENTINEL_POD_FQDN_LIST="sentinel-0.redis-sentinel-headless,sentinel-1.redis-sentinel-headless"
       }
