@@ -27,7 +27,7 @@ Describe "Redis Sentinel Offline Script Tests"
     sentinel_leave_member_name=""
     sentinel_leave_member_ip=""
     sentinel_pod_list=()
-
+    # set ut_mode to true to hack control flow in the script
     ut_mode="true"
   }
   BeforeAll "setup"
@@ -40,6 +40,7 @@ Describe "Redis Sentinel Offline Script Tests"
     unset sentinel_leave_member_name
     unset sentinel_leave_member_ip
     unset sentinel_pod_list
+    rm -f $common_library_file;
   }
   AfterAll "cleanup"
 

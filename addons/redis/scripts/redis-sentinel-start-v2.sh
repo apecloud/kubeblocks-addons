@@ -50,7 +50,7 @@ reset_redis_sentinel_conf() {
       sed "/sentinel sentinel-pass/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
     fi
     set_xtrace_when_ut_mode_false
-    sed -i "" "/port $sentinel_port/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
+    sed "/port $sentinel_port/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
   fi
 }
 

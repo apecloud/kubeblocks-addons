@@ -84,6 +84,72 @@ parse_redis_advertised_svc_if_exist() {
   fi
 }
 
+construct_sentinel_sub_command() {
+  local command=$1
+  local master_name=$2
+  local redis_primary_host=$3
+  local redis_primary_port=$4
+
+  case $command in
+    "monitor")
+      echo "SENTINEL monitor $master_name $redis_primary_host $redis_primary_port 2"
+      ;;
+    "down-after-milliseconds")
+      echo "SENTINEL set $master_name down-after-milliseconds 5000"
+      ;;
+    "failover-timeout")
+      echo "SENTINEL set $master_name failover-timeout 60000"
+      ;;
+    "parallel-syncs")
+      echo "SENTINEL set $master_name parallel-syncs 1"
+      ;;
+    "auth-user")
+      echo "SENTINEL set $master_name auth-user $REDIS_SENTINEL_USER"
+      ;;
+    "auth-pass")
+      echo "SENTINEL set $master_name auth-pass $REDIS_SENTINEL_PASSWORD"
+      ;;
+    *)
+      echo "Unknown command: $command"
+      return 1
+      ;;
+  esac
+}
+
+check_connectivity() {
+  local host=$1
+  local port=$2
+  local password=$3
+  echo "Checking connectivity to $host on port $port using redis-cli..."
+  if redis-cli -h "$host" -p "$port" -a "$password" PING | grep -q "PONG"; then
+    echo "$host is reachable on port $port."
+    return 0
+  else
+    echo "$host is not reachable on port $port."
+    return 1
+  fi
+}
+
+# function to execute and log redis-cli command
+execute_sentinel_sub_command() {
+  local sentinel_host=$1
+  local sentinel_port=$2
+  local command=$3
+
+  local output
+  output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" -a "$SENTINEL_PASSWORD" $command)
+  local status=$?
+  echo "$output"
+
+  if [ $status -ne 0 ] || ! equals "$output" "OK"; then
+    echo "Command failed with status $status or output not OK."
+    return 1
+  else
+    echo "Command executed successfully."
+    return 0
+  fi
+}
+
 # usage: register_to_sentinel <sentinel_host> <master_name> <redis_primary_host> <redis_primary_port>
 # redis sentinel configuration refer: https://redis.io/docs/management/sentinel/#configuring-sentinel
 register_to_sentinel() {
@@ -92,62 +158,20 @@ register_to_sentinel() {
   local sentinel_port=${SENTINEL_SERVICE_PORT:-26379}
   local redis_primary_host=$3
   local redis_primary_port=$4
-  local timeout=600
-  local start_time=$(date +%s)
-  local current_time
-
-  # check sentinel host and redis primary host connectivity
-  wait_for_connectivity() {
-    local host=$1
-    local port=$2
-    local password=$3
-    echo "Checking connectivity to $host on port $port using redis-cli..."
-    while true; do
-      current_time=$(date +%s)
-      if [ $((current_time - start_time)) -gt $timeout ]; then
-        echo "Timeout waiting for $host to become available."
-        exit 1
-      fi
-
-      # Send PING and check for PONG response
-      if redis-cli -h "$host" -p "$port" -a "$password" PING | grep -q "PONG"; then
-        echo "$host is reachable on port $port."
-        break
-      fi
-      sleep 5
-    done
-  }
-
-  # function to execute and log redis-cli command
-  execute_redis_cli() {
-    local output
-    output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" -a "$SENTINEL_PASSWORD" "$@")
-    local status=$?
-    echo "$output"
-
-    if [ $status -ne 0 ] || ! equals "$output" "OK"; then
-      echo "Command failed with status $status or output not OK."
-      exit 1
-    else
-      echo "Command executed successfully."
-    fi
-  }
 
   unset_xtrace_when_ut_mode_false
-  # Check connectivity to sentinel host
-  wait_for_connectivity "$sentinel_host" "$sentinel_port" "$SENTINEL_PASSWORD"
-  # Check connectivity to Redis primary host
-  wait_for_connectivity "$redis_primary_host" "$redis_primary_port" "$REDIS_DEFAULT_PASSWORD"
+  # Check connectivity to sentinel host and redis primary host
+  call_func_with_retry 3 5 check_connectivity "$sentinel_host" "$sentinel_port" "$SENTINEL_PASSWORD" || exit 1
+  call_func_with_retry 3 5 check_connectivity "$redis_primary_host" "$redis_primary_port" "$REDIS_DEFAULT_PASSWORD" || exit 1
 
-  # Register and configure the Redis primary with Sentinel
-  execute_redis_cli SENTINEL monitor "$master_name" "$redis_primary_host" "$redis_primary_port" 2
-  execute_redis_cli SENTINEL set "$master_name" down-after-milliseconds 5000
-  execute_redis_cli SENTINEL set "$master_name" failover-timeout 60000
-  execute_redis_cli SENTINEL set "$master_name" parallel-syncs 1
-  execute_redis_cli SENTINEL set "$master_name" auth-user "$REDIS_SENTINEL_USER"
-  execute_redis_cli SENTINEL set "$master_name" auth-pass "$REDIS_SENTINEL_PASSWORD"
+  # Register and configure the Redis primary to redis sentinel
+  sentinel_commands=("monitor" "down-after-milliseconds" "failover-timeout" "parallel-syncs" "auth-user" "auth-pass")
+  for cmd in "${sentinel_commands[@]}"
+  do
+    sentinel_cli_cmd=$(construct_sentinel_sub_command "$cmd" "$master_name" "$redis_primary_host" "$redis_primary_port")
+    call_func_with_retry 3 5 execute_sentinel_sub_command "$sentinel_host" "$sentinel_port" "$sentinel_cli_cmd"
+  done
   set_xtrace_when_ut_mode_false
-
   echo "redis sentinel register to $sentinel_host succeeded!"
 }
 
@@ -155,13 +179,13 @@ register_to_sentinel_wrapper() {
   # check required environment variables, we use KB_CLUSTER_COMP_NAME as the master_name registered to sentinel
   if  ! env_exists KB_CLUSTER_COMP_NAME REDIS_POD_NAME_LIST; then
     echo "Error: Required environment variable KB_CLUSTER_COMP_NAME and REDIS_POD_NAME_LIST is not set."
-    exit 1
+    return 1
   fi
 
   # parse redis sentinel pod fqdn list from $SENTINEL_POD_FQDN_LIST env
   if ! env_exist SENTINEL_POD_FQDN_LIST; then
     echo "Error: Required environment variable SENTINEL_POD_FQDN_LIST is not set."
-    exit 1
+    return 1
   fi
 
   # get minimum lexicographical order pod name as default primary node (the same logic as redis initialize primary node selection)
@@ -176,7 +200,7 @@ register_to_sentinel_wrapper() {
       echo "register to sentinel:$sentinel_pod_fqdn with advertised service: redis_advertised_svc_host_value=$redis_advertised_svc_host_value, redis_advertised_svc_port_value=$redis_advertised_svc_port_value"
       register_to_sentinel "$sentinel_pod_fqdn" "$KB_CLUSTER_COMP_NAME" "$redis_advertised_svc_host_value" "$redis_advertised_svc_port_value"
     else
-      echo "register to sentinel:$sentinel_pod_fqdn with ClusterIP service: redis_default_primary_pod_fqdn=$redis_default_primary_pod_fqdn, redis_default_service_port=$redis_default_service_port"
+      echo "register to sentinel:$sentinel_pod_fqdn with pod fqdn: redis_default_primary_pod_fqdn=$redis_default_primary_pod_fqdn, redis_default_service_port=$redis_default_service_port"
       register_to_sentinel "$sentinel_pod_fqdn" "$KB_CLUSTER_COMP_NAME" "$redis_default_primary_pod_fqdn" "$redis_default_service_port"
     fi
   done
@@ -185,10 +209,13 @@ register_to_sentinel_wrapper() {
 register_to_sentinel_if_needed() {
   if env_exist SENTINEL_COMPONENT_NAME; then
     echo "redis sentinel component found, register to redis sentinel."
-    register_to_sentinel_wrapper
+    if ! register_to_sentinel_wrapper; then
+      echo "Failed to register to sentinel."
+      exit 1
+    fi
   else
     echo "redis sentinel component not found, skip register to sentinel."
-    exit 0
+    return 0
   fi
 }
 
