@@ -3,6 +3,8 @@ kind: Cluster
 metadata:
   name: acmysql-cluster-restore
   namespace: default
+  labels: 
+    auditLogEnabled: "false"
   annotations:
     kubeblocks.io/restore-from-backup: '{"mysql":{"connectionPassword":"<backup-connection-password>","name":"acmysql-cluster-backup","namespace":"default","volumeRestorePolicy":"Parallel"}}'
 spec:

@@ -110,6 +110,6 @@ wesqlscale:
 resourceNamePrefix: ""
 
 etcd:
-  etcdCmpdName: etcd-0.9.0
+  etcdCmpdName: etcd-1.0.0-alpha.0
 
 clusterDomain: ".cluster.local"
