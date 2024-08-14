@@ -8,7 +8,7 @@ should_skip_when_shell_type_and_version_invalid() {
     # should not skip
     return 1
   fi
-  echo "Skip case because bash version 4 or higher is not installed."
+  echo "redis_start_spec.sh skip case because dependency bash version 4 or higher is not installed."
   return 0
 }
 

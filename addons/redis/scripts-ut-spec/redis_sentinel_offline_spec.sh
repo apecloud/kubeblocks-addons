@@ -1,6 +1,12 @@
 # shellcheck shell=bash
 # shellcheck disable=SC2034
 
+# validate_shell_type_and_version defined in shellspec/spec_helper.sh used to validate the expected shell type and version this script needs to run.
+if ! validate_shell_type_and_version "bash" 4 &>/dev/null; then
+  echo "redis_sentinel_offline_spec.sh skip all cases because dependency bash version 4 or higher is not installed."
+  exit 0
+fi
+
 source ./utils.sh
 
 # The unit test needs to rely on the common library functions defined in kblib.
