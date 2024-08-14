@@ -3,21 +3,18 @@ kind: OpsDefinition
 metadata:
   name: mysql-orc-switchover
 spec:
+  podInfoExtractors:
+    - name: orcInfo
+      podSelector:
+        multiPodSelectionPolicy: Any
+      env:
+        - name: ORC_ENDPOINTS
+          valueFrom:
+            envRef:
+              envName: ORC_ENDPOINTS
   parametersSchema:
     openAPIV3Schema:
       properties:
-        orcEndpoint:
-          description: |
-            orchestrator endpoint. The MySQL cluster needs to be registered with Orchestrator to
-            utilize the high availability features. If both the endpoint and the cluster exist,
-            the endpoint is given priority.
-          type: string
-        orcClusterName:
-          description: |
-            orchestrator cluster name. The MySQL cluster needs to be registered with Orchestrator to
-            utilize the high availability features. If both the endpoint and the cluster exist,
-            the endpoint is given priority.
-          type: string
         candidate:
           description: |
             candidate instance name(pod Name). if candidate is not empty, will promote it to primary.
@@ -30,6 +27,7 @@ spec:
       workload:
         type: Job
         backoffLimit: 0
+        podInfoExtractorName: orcInfo
         podSpec:
           containers:
             - name: switchover
@@ -39,16 +37,4 @@ spec:
                 - /bin/sh
                 - -c
                 - |
-                  echo "switch over the primary to ${candidate} "
-                  if [ -n "$orcEndpoint" ]; then
-                    ORCHESTRATOR_API=http://${orcEndpoint##*//}
-                  elif [ -n "$orcClusterName" ]; then
-                    endpoint_name=$(echo "${orcClusterName}_ORCHESTRATOR_PORT" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
-                    eval endpoint=\${${endpoint_name}}
-                    ORCHESTRATOR_API=http://${endpoint##*//}
-                  else
-                    echo "please provide either orcEndpoint or orcClusterName !!!"
-                    exit 1
-                  fi
-                  echo "API address is : ${ORCHESTRATOR_API}/api/graceful-master-takeover-auto/${candidate}"
-                  curl -s ${ORCHESTRATOR_API}/api/graceful-master-takeover-auto/${candidate}
+                  curl -s http://${ORC_ENDPOINTS}/api/graceful-master-takeover-auto/${candidate}
