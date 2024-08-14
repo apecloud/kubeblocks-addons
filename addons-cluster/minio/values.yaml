@@ -4,6 +4,8 @@
 
 replicas: 2
 
+buckets: ""
+
 #resources
 cpu: 1
 memory: 1
