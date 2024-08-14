@@ -3,17 +3,18 @@ kind: Cluster
 metadata:
   name: {{ include "kblib.clusterName" . }}
   namespace: {{ .Release.Namespace }}
-  labels:
-    {{- include "kblib.clusterLabels" . | nindent 4 }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
-  {{- include "kblib.affinity" . | indent 2 }}
+  {{ include "kblib.affinity" . | indent 2 }}
   componentSpecs:
-  - componentDef: minio 
-    env:
-    - name: MINIO_BUCKETS
-      value: {{ .Values.buckets }}
-    name: minio
-    replicas: {{ .Values.replicas }}
-    {{- include "kblib.componentResources" . | indent 6 }}
-    {{- include "kblib.componentStorages" . | indent 6 }}
+    - componentDef: minio 
+      name: minio
+      replicas: {{ .Values.replicas }}
+      env:
+      - name: MINIO_BUCKETS
+        value: {{ .Values.buckets }}
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
