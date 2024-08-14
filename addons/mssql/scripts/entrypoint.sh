@@ -69,7 +69,6 @@ EOF
       create_ag_sql="$create_ag_sql,"
     fi
   done
-  # TODO: ag1
   create_ag_sql="$create_ag_sql ALTER AVAILABILITY GROUP [ag1] GRANT CREATE ANY DATABASE;"
 }
 function create_ag {
@@ -103,8 +102,113 @@ function wait_for_sqlservr_to_term {
   done
 }
 
+function join_ag {
+  conn_local "ALTER AVAILABILITY GROUP [ag1] JOIN WITH (CLUSTER_TYPE = EXTERNAL); ALTER AVAILABILITY GROUP [ag1] GRANT CREATE ANY DATABASE;"
+}
+
+corosync_key_base64="jKtEuwcK9yQfoL+dR2P73pi0HCv3rszYmD1avcBsK2ctEsSpDfyPqV9/7SjWx/Cst1w6VRJdupzxk0kAHANeRgmsE6sBQgfFgxXkkBSnUtPvpvpQkQIApCi0WmrBAm+2k41UuYYj+wo4nFW0nLnNvQX0xxWWn+QsklD82e1JUzENLewimqeIJNXvMC0IYoQadEEoUYGAn+vIGUbL5l2kb7GnASJqwa0yQ8Mw/K3tfwm5sl62p9SB4G8jA/6DAIoPe7I+s58Xq1O8+BAoWKn58219A/iyEStx4OgQoqUVMU+dY6HVsbwr2Wfs1daXmTf/sc6m+3+nqBvG2OHQ4zKYMw=="
+function create_corosync_key {
+  echo $corosync_key_base64 | base64 -d > /etc/corosync/authkey
+}
+
+function create_corosync_conf {
+  corosync_conf=$(cat <<EOF
+totem {
+    version: 2
+    cluster_name: agclustername
+    transport: udpu
+    crypto_cipher: none
+    crypto_hash: none
+}
+logging {
+    fileline: off
+    to_stderr: yes
+    to_logfile: yes
+    logfile: /var/log/corosync/corosync.log
+    to_syslog: yes
+    debug: off
+    logger_subsys {
+        subsys: QUORUM
+        debug: off
+    }
+}
+quorum {
+    provider: corosync_votequorum
+}
+nodelist {
+
+EOF
+  )
+  IFS=',' read -ra pods <<< "$KB_POD_LIST"
+  for i in "${!pods[@]}"; do
+    pod_dns="${pods[$i]}.$KB_CLUSTER_COMP_NAME-headless"
+    node_conf=$(cat <<EOF
+    node {
+        name: ${pods[$i]}
+        nodeid: $(($i+1))
+        ring0_addr: $pod_dns
+    }
+
+EOF
+    )
+    corosync_conf="$corosync_conf$node_conf"
+  done
+  corosync_conf="$corosync_conf}"
+  echo "$corosync_conf" > /etc/corosync/corosync.conf
+}
+
+# TODO: generate password
+password='ComplexP@$$w0rd!'
+function run_create_login_sql {
+  create_login_sql=$(cat <<EOF
+USE [master]
+GO
+CREATE LOGIN [pacemakerLogin] with PASSWORD= N'$password';
+
+ALTER SERVER ROLE [sysadmin] ADD MEMBER [pacemakerLogin];
+EOF
+  )
+  conn_local "$create_login_sql"
+}
+
+function save_credential {
+  echo 'pacemakerLogin' >> ~/pacemaker-passwd
+  echo '$password' >> ~/pacemaker-passwd
+  sudo mv ~/pacemaker-passwd /var/opt/mssql/secrets/passwd
+  sudo chown root:root /var/opt/mssql/secrets/passwd
+  sudo chmod 400 /var/opt/mssql/secrets/passwd # Only readable by root
+}
+
+function create_pacemaker_login {
+  create_corosync_key
+  create_corosync_conf
+  systemctl restart pacemaker corosync
+  crm status
+  run_create_login_sql
+  save_credential
+}
+
+function grant_permissions {
+  grant_permissions_sql=$(cat <<EOF
+  GRANT ALTER, CONTROL, VIEW DEFINITION ON AVAILABILITY GROUP::ag1 TO pacemakerLogin
+  GRANT VIEW SERVER STATE TO pacemakerLogin
+EOF
+  )
+  conn_local "$grant_permissions_sql"
+}
+
 /opt/mssql/bin/mssql-conf set hadr.hadrenabled 1
 
-configure_ag | tee -a ag.log &
+IFS=',' read -ra pods <<< "$KB_POD_LIST";
+if [ "${pods[0]}" = "$KB_POD_NAME" ]; then
+  # choose the first pod to create ag
+  configure_ag | tee -a ag.log &
+else
+  # the others join the ag
+  join_ag | tee -a ag.log &
+fi
+
+create_pacemaker_login
+grant_permissions
 
 /opt/mssql/bin/sqlservr
