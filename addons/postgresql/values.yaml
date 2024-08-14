@@ -25,6 +25,7 @@ image:
       minor080: 14.8.0-pgvector-v0.6.1
     major15:
       minor070: 15.7.0
+
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
   ## ref: https://kubernetes.io/docs/user-guide/images/#pre-pulling-images
@@ -38,6 +39,11 @@ image:
   ##   - myRegistryKeySecretName
   ##
   pullSecrets: [ ]
+
+etcdCleanToolsImage: 
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  repository: apecloud/etcd_clean_tools
+  tags: latest
 
 ## Audit settings
 ## @param audit.logHostname Log client hostnames

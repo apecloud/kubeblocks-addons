@@ -152,7 +152,7 @@ spec:
     preTerminate:
       customHandler:
         exec:
-          image: registry.cn-hangzhou.aliyuncs.com/skyrise/gbase-tool:latest
+          image: {{ .Values.etcdCleanToolsImage.registry | default "docker.io" }}/{{ .Values.etcdCleanToolsImage.repository }}:{{ .Values.etcdCleanToolsImage.tags }}
           command: ["/kb-scripts/etcd-clean.sh"]
     accountProvision:
       builtinHandler: postgresql
