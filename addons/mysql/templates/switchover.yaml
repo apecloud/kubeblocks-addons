@@ -3,11 +3,6 @@ kind: OpsDefinition
 metadata:
   name: mysql-orc-switchover
 spec:
-  targetPodTemplates:
-    - name: availablePod
-      podSelector:
-        availability: Available
-        selectionPolicy: Any
   parametersSchema:
     openAPIV3Schema:
       properties:
