@@ -300,6 +300,11 @@ vars:
         port: Required
   - name: DATA_MOUNT
     value: {{.Values.dataMountPath}}
+
+exporter:
+  containerName: mysql-exporter
+  scrapePath: /metrics
+  scrapePort: http-metrics
 {{- end }}
 
 
@@ -394,3 +399,72 @@ memberLeave:
     - mountPath: /kubeblocks
       name: kubeblocks
 {{- end }}
+
+{{- define "mysql-orc.spec.runtime.mysql" -}}
+imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+lifecycle:
+  postStart:
+    exec:
+      command: [ "/bin/sh", "-c", "/scripts/init-mysql-instance-for-orc.sh" ]
+command:
+  - bash
+  - -c
+  - |
+    mv {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
+    rm -rf {{ .Values.dataMountPath }}/plugin
+    chown -R mysql:root {{ .Values.dataMountPath }}
+    skip_slave_start="OFF"
+    if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
+      skip_slave_start="ON"
+    fi
+    /scripts/mysql-entrypoint.sh
+volumeMounts:
+  - mountPath: {{ .Values.dataMountPath }}
+    name: data
+  - mountPath: /etc/mysql/conf.d
+    name: mysql-config
+  - name: scripts
+    mountPath: /scripts
+  - mountPath: /kubeblocks
+    name: kubeblocks
+ports:
+  - containerPort: 3306
+    name: mysql
+env:
+  - name: PATH
+    value: /kubeblocks/xtrabackup/bin:/kubeblocks/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+  - name: MYSQL_INITDB_SKIP_TZINFO
+    value: "1"
+  - name: MYSQL_ROOT_HOST
+    value: {{ .Values.auth.rootHost | default "%" | quote }}
+  - name: ORC_TOPOLOGY_USER
+    value: {{ .Values.orchestrator.topology.username }}
+  - name: ORC_TOPOLOGY_PASSWORD
+    value: {{ .Values.orchestrator.topology.password }}
+  - name: HA_COMPNENT
+    value: orchestrator
+{{- end -}}
+
+{{- define "mysql.spec.runtime.exporter" -}}
+command:
+  - bash
+  - -c
+  - |
+    mysqld_exporter --mysqld.username=${MYSQLD_EXPORTER_USER} --web.listen-address=:${EXPORTER_WEB_PORT} --log.level={{.Values.metrics.logLevel}}
+env:
+  - name: MYSQLD_EXPORTER_USER
+    value: $(MYSQL_ROOT_USER)
+  - name: MYSQLD_EXPORTER_PASSWORD
+    value: $(MYSQL_ROOT_PASSWORD)
+  - name: EXPORTER_WEB_PORT
+    value: "{{ .Values.metrics.service.port }}"
+image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
+imagePullPolicy: IfNotPresent
+ports:
+  - name: http-metrics
+    containerPort: {{ .Values.metrics.service.port }}
+volumeMounts:
+  - name: scripts
+    mountPath: /scripts
+{{- end -}}
+
