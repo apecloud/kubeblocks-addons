@@ -2,18 +2,6 @@
   "$schema": "http://json-schema.org/schema#",
   "type": "object",
   "properties": {
-    "nameOverride": {
-      "title": "Name Override",
-      "description": "Override the name of the chart",
-      "type": "string",
-      "default": ""
-    },
-    "fullnameOverride": {
-      "title": "Full Name Override",
-      "description": "Override the full name of the chart",
-      "type": "string",
-      "default": ""
-    },
     "tolerations": {
       "title": "Tolerations",
       "description": "Define global Tolerations for the cluster all pod's assignment",
@@ -114,9 +102,77 @@
     },
     "resources": {
       "title": "Resources",
-      "description": "Resource requests and limits",
+      "description": "Resource requests and limits for etcd component",
       "type": "object",
-      "default": {}
+      "properties": {
+        "limits": {
+          "type": "object",
+          "properties": {
+            "memory": {
+              "title": "Memory(Gi)",
+              "description": "Memory limits for etcd component, the unit is Gi.",
+              "type": [
+                "number",
+                "string"
+              ],
+              "default": 0,
+              "minimum": 0,
+              "maximum": 1000
+            },
+            "cpu": {
+              "title": "CPU",
+              "description": "CPU cores limits for etcd component.",
+              "type": [
+                "number",
+                "string"
+              ],
+              "default": 0,
+              "minimum": 0,
+              "maximum": 64,
+              "multipleOf": 0.5
+            }
+          }
+        },
+        "requests": {
+          "type": "object",
+          "properties": {
+            "memory": {
+              "title": "Memory(Gi)",
+              "description": "Memory requests etcd component, the unit is Gi.",
+              "type": [
+                "number",
+                "string"
+              ],
+              "default": 0,
+              "minimum": 0,
+              "maximum": 1000
+            },
+            "cpu": {
+              "title": "CPU",
+              "description": "CPU cores requests for etcd component.",
+              "type": [
+                "number",
+                "string"
+              ],
+              "default": 0,
+              "minimum": 0,
+              "maximum": 64,
+              "multipleOf": 0.5
+            },
+            "storage": {
+              "title": "Storage(Gi)",
+              "description": "Storage requests for etcd component, the unit is Gi.",
+              "type": [
+                "number",
+                "string"
+              ],
+              "default": 0,
+              "minimum": 0,
+              "maximum": 10000
+            }
+          }
+        }
+      }
     },
     "persistence": {
       "title": "Persistence",

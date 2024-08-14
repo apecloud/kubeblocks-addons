@@ -64,9 +64,10 @@ resources: { }
   # limits:
   #   cpu: 100m
   #   memory: 128Mi
-# requests:
-#   cpu: 100m
-#   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+  #   storage: 1Gi
 
 ## Enable persistence using Persistent Volume Claims
 ## ref: https://kubernetes.io/docs/user-guide/persistent-volumes/
