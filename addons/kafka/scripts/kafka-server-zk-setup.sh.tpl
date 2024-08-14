@@ -46,9 +46,7 @@
   fi
   export KAFKA_TLS_TRUSTSTORE_FILE="/opt/bitnami/kafka/config/certs/kafka.truststore.pem"
   echo "[tls]KAFKA_TLS_TRUSTSTORE_FILE=$KAFKA_TLS_TRUSTSTORE_FILE"
-  echo "[tls]ssl.endpoint.identification.algorithm=" >> /opt/bitnami/kafka/config/kraft/server.properties
-  echo "[tls]ssl.endpoint.identification.algorithm=" >> /opt/bitnami/kafka/config/server.properties
-  
+
 {{- end }}
 
 # cfg setting with props
@@ -92,7 +90,6 @@ if [[ "true" == "$KB_KAFKA_ENABLE_SASL" ]]; then
   echo "[sasl]export KAFKA_CFG_SASL_ENABLED_MECHANISMS=${KAFKA_CFG_SASL_ENABLED_MECHANISMS}"
   export KAFKA_CFG_SASL_MECHANISM_INTER_BROKER_PROTOCOL="PLAIN"
   echo "[sasl]export KAFKA_CFG_SASL_MECHANISM_INTER_BROKER_PROTOCOL=${KAFKA_CFG_SASL_MECHANISM_INTER_BROKER_PROTOCOL}"
-  
 fi
 
 IFS=',' read -ra ZOOKEEPER_FDQN_ARRAY <<< "$ZOOKEEPER_POD_FQDN"
@@ -102,10 +99,7 @@ for fdqd in "${ZOOKEEPER_FDQN_ARRAY[@]}"; do
 done
 endpoints="${endpoints%,}"
 export KAFKA_CFG_ZOOKEEPER_CONNECT=$endpoints
-
-echo "zookeeper.connect=$KAFKA_CFG_ZOOKEEPER_CONNECT" >> /opt/bitnami/kafka/config/server.properties
-echo "zookeeper.session.timeout.ms=18000" >> /opt/bitnami/kafka/config/server.properties
-echo "zookeeper.connection.timeout.ms=6000" >> /opt/bitnami/kafka/config/server.properties
+echo "[cfg]KAFKA_CFG_ZOOKEEPER_CONNECT=${KAFKA_CFG_ZOOKEEPER_CONNECT}"
 
 # jvm setting
 if [[ -n "$KB_KAFKA_BROKER_HEAP" ]]; then
@@ -123,11 +117,6 @@ if [[ -n "$KAFKA_CFG_K8S_NODEPORT" ]];then
     echo "[cfg]KAFKA_CFG_INTER_BROKER_LISTENER_NAME=$KAFKA_CFG_INTER_BROKER_LISTENER_NAME"
   fi
 fi
-
-echo "listeners=$KAFKA_CFG_LISTENERS" >>  /opt/bitnami/kafka/config/server.properties
-echo "listener.security.protocol.map=$KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP" >>  /opt/bitnami/kafka/config/server.properties
-echo "advertised.listeners=$KAFKA_CFG_ADVERTISED_LISTENERS" >>  /opt/bitnami/kafka/config/server.properties
-echo "inter.broker.listener.name=$KAFKA_CFG_INTER_BROKER_LISTENER_NAME"  >>  /opt/bitnami/kafka/config/server.properties
 
 # cfg setting
 if [[ "broker" = "$KAFKA_CFG_PROCESS_ROLES" ]]; then
