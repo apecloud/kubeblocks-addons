@@ -12,6 +12,6 @@ spec:
       - componentName: mysql
         parameters:
           - name: candidate
-            value: mysql-cluster-server-mysql-1
+            value: mysql-cluster-mysql-mysql-1
     opsDefinitionName: mysql-orc-switchover
 

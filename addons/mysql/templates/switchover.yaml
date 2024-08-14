@@ -3,12 +3,18 @@ kind: OpsDefinition
 metadata:
   name: mysql-orc-switchover
 spec:
+  podInfoExtractors:
+    - name: orcInfo
+      podSelector:
+        multiPodSelectionPolicy: Any
+      env:
+        - name: ORC_ENDPOINTS
+          valueFrom:
+            envRef:
+              envName: ORC_ENDPOINTS
   parametersSchema:
     openAPIV3Schema:
       properties:
-        primary:
-          description: "old primary instance name(pod Name)."
-          type: string
         candidate:
           description: |
             candidate instance name(pod Name). if candidate is not empty, will promote it to primary.
@@ -21,6 +27,7 @@ spec:
       workload:
         type: Job
         backoffLimit: 0
+        podInfoExtractorName: orcInfo
         podSpec:
           containers:
             - name: switchover
@@ -29,4 +36,5 @@ spec:
               command:
                 - /bin/sh
                 - -c
-                - /usr/scripts/orchestrator-client -c graceful-master-takeover-auto -d ${candidate} -i ${KB_CLUSTER_NAME}
+                - |
+                  curl -s http://${ORC_ENDPOINTS}/api/graceful-master-takeover-auto/${candidate}
