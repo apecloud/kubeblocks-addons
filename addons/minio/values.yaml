@@ -111,14 +111,6 @@ existingSecret: ""
 certsPath: "/etc/minio/certs/"
 configPathmc: "/etc/minio/mc/"
 
-## Path where PV would be mounted on the MinIO Pod
-mountPath: "/export"
-## Override the root directory which the minio server should serve from.
-## If left empty, it defaults to the value of {{ .Values.mountPath }}
-## If defined, it must be a sub-directory of the path specified in {{ .Values.mountPath }}
-##
-bucketRoot: ""
-
 # Number of drives attached to a node
 drivesPerNode: 1
 # Number of MinIO containers running
@@ -408,28 +400,8 @@ makeServiceAccountJob:
   exitCommand: ""
 
 ## List of buckets to be created after minio install
-##
-buckets: []
-  #   # Name of the bucket
-  # - name: bucket1
-  #   # Policy to be set on the
-  #   # bucket [none|download|upload|public]
-  #   policy: none
-  #   # Purge if bucket exists already
-  #   purge: false
-  #   # set versioning for
-  #   # bucket [true|false]
-  #   versioning: false # remove this key if you do not want versioning feature
-  #   # set objectlocking for
-  #   # bucket [true|false] NOTE: versioning is enabled by default if you use locking
-  #   objectlocking: false
-  # - name: bucket2
-  #   policy: none
-  #   purge: false
-  #   versioning: true
-  #   # set objectlocking for
-  #   # bucket [true|false] NOTE: versioning is enabled by default if you use locking
-  #   objectlocking: false
+## example: "bucket1,bucket2"
+buckets: ""
 
 ## Additional Annotations for the Kubernetes Job makeBucketJob
 makeBucketJob:
