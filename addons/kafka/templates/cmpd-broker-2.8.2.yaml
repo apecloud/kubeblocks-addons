@@ -100,11 +100,11 @@ spec:
             # value: "$(KB_POD_IP)"
           - name: MY_POD_NAME
             value: "$(KB_POD_NAME)"
-          - name: KAFKA_CFG_INTER_BROKER_LISTENER_NAME
-            value: "INTERNAL"
           - name: KAFKA_ENABLE_KRAFT
             value: "no"
-          - name: KAFKA_CFG_LISTENERS 
+          - name: KAFKA_CFG_INTER_BROKER_LISTENER_NAME
+            value: "INTERNAL"
+          - name: KAFKA_CFG_LISTENERS
             value: "INTERNAL://:9094,CLIENT://:9092"
           - name: KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP
             value: "INTERNAL:PLAINTEXT,CLIENT:PLAINTEXT"
@@ -136,8 +136,6 @@ spec:
             value: /tools/server-jaas.properties
           - name: BROKER_MIN_NODE_ID
             value: {{ .Values.kafkaBroker.minNodeId | quote }}
-          - name: ZOOKEEPER_CLIENT_PORT
-            value: "2181"
         ports:
           - name: kafka-client
             containerPort: 9092

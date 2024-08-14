@@ -24,7 +24,7 @@
   PEM_CA="$KB_TLS_CERT_PATH/ca.crt"
   PEM_CERT="$KB_TLS_CERT_PATH/tls.crt"
   PEM_KEY="$KB_TLS_CERT_PATH/tls.key"
-  if [[ -f "$PEM_CERT" ]] && [[ -f "$PEM_KEY" ]]; then
+  if [[ -f "$PEM_CERT" ]] && [[ -f "$PEM_KEY" ]] && [[ -f "$PEM_CA" ]]; then
       CERT_DIR="/opt/bitnami/kafka/config/certs"
       PEM_CA_LOCATION="${CERT_DIR}/kafka.truststore.pem"
       PEM_CERT_LOCATION="${CERT_DIR}/kafka.keystore.pem"
@@ -107,25 +107,67 @@ if [[ -n "$KB_KAFKA_BROKER_HEAP" ]]; then
   echo "[jvm][KB_KAFKA_BROKER_HEAP]export KAFKA_HEAP_OPTS=${KB_KAFKA_BROKER_HEAP}"
 fi
 
-# for support access Kafka brokers from outside the k8s cluster
-if [[ -n "$KAFKA_CFG_K8S_NODEPORT" ]];then
-  if [[ "broker" = "$KAFKA_CFG_PROCESS_ROLES" ]]; then
-    export KAFKA_CFG_ADVERTISED_LISTENERS="PLAINTEXT://${KB_HOST_IP}:${KAFKA_CFG_K8S_NODEPORT}"
-    echo "[cfg]KAFKA_CFG_ADVERTISED_LISTENERS=$KAFKA_CFG_ADVERTISED_LISTENERS"
-    echo "[cfg]KAFKA_CFG_LISTENERS=$KAFKA_CFG_LISTENERS"
-    echo "[cfg]KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=$KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP"
-    echo "[cfg]KAFKA_CFG_INTER_BROKER_LISTENER_NAME=$KAFKA_CFG_INTER_BROKER_LISTENER_NAME"
-  fi
-fi
+extract_ordinal_from_object_name() {
+    local object_name="$1"
+    local ordinal="${object_name##*-}"
+    echo "$ordinal"
+}
+
+parse_advertised_svc_if_exist() {
+    local pod_name="${KB_POD_NAME}"
+
+    if [[ -z "${BROKER_ADVERTISED_PORT}" ]]; then
+        echo "Environment variable BROKER_ADVERTISED_PORT not found. Ignoring."
+        return 0
+    fi
+
+    # the value format of BROKER_ADVERTISED_PORT is "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."
+    IFS=',' read -ra advertised_ports <<< "${BROKER_ADVERTISED_PORT}"
+    echo "find advertised_ports:${advertised_ports}"
+    local found=false
+    pod_name_ordinal=$(extract_ordinal_from_object_name "$pod_name")
+    echo "find pod_name_ordinal:${pod_name_ordinal}"
+    for advertised_port in "${advertised_ports[@]}"; do
+        IFS=':' read -ra parts <<< "$advertised_port"
+        local svc_name="${parts[0]}"
+        local port="${parts[1]}"
+        svc_name_ordinal=$(extract_ordinal_from_object_name "$svc_name")
+        echo "find svc_name:${svc_name},port:${port},svc_name_ordinal:${svc_name_ordinal}"
+        if [[ "$svc_name_ordinal" == "$pod_name_ordinal" ]]; then
+            echo "Found matching svcName and port for podName '$pod_name', BROKER_ADVERTISED_PORT: $BROKER_ADVERTISED_PORT. svcName: $svc_name, port: $port."
+            advertised_svc_port_value="$port"
+            advertised_svc_host_value="$KB_HOST_IP"
+            found=true
+            break
+        fi
+    done
+
+    if [[ "$found" == false ]]; then
+        echo "Error: No matching svcName and port found for podName '$pod_name', BROKER_ADVERTISED_PORT: $BROKER_ADVERTISED_PORT. Exiting."
+        exit 1
+    fi
+}
 
 # cfg setting
-if [[ "broker" = "$KAFKA_CFG_PROCESS_ROLES" ]]; then
-    INDEX=$(echo $KB_POD_NAME | grep -o "\-[0-9]\+\$")
-    INDEX=${INDEX#-}
-    BROKER_NODE_ID=$(( $INDEX + $BROKER_MIN_NODE_ID ))
-    export KAFKA_CFG_NODE_ID="$BROKER_NODE_ID"
-    export KAFKA_CFG_BROKER_ID="$BROKER_NODE_ID"
-    echo "[cfg]KAFKA_CFG_NODE_ID=$KAFKA_CFG_NODE_ID"
+headless_domain="${KB_POD_FQDN}${cluster_domain}"
+parse_advertised_svc_if_exist
+
+# Todo: currently only nodeport and clusterip network modes are supported. LoadBalance is not supported yet and needs future support.
+if [ -n "$advertised_svc_host_value" ] && [ -n "$advertised_svc_port_value" ] && [ "$advertised_svc_port_value" != "9092" ]; then
+    # enable NodePort, use node ip + mapped port as client connection
+    nodeport_domain="${advertised_svc_host_value}:${advertised_svc_port_value}"
+    export KAFKA_CFG_ADVERTISED_LISTENERS="INTERNAL://${headless_domain}:9094,CLIENT://${nodeport_domain}"
+    echo "[cfg]KAFKA_CFG_ADVERTISED_LISTENERS=$KAFKA_CFG_ADVERTISED_LISTENERS"
+else
+    # default, use headless service url as client connection
+    export KAFKA_CFG_ADVERTISED_LISTENERS="INTERNAL://${headless_domain}:9094,CLIENT://${headless_domain}:9092"
+    echo "[cfg]KAFKA_CFG_ADVERTISED_LISTENERS=$KAFKA_CFG_ADVERTISED_LISTENERS"
 fi
+INDEX=$(echo $KB_POD_NAME | grep -o "\-[0-9]\+\$")
+INDEX=${INDEX#-}
+BROKER_NODE_ID=$(( $INDEX + $BROKER_MIN_NODE_ID ))
+export KAFKA_CFG_BROKER_ID="$BROKER_NODE_ID"
+echo "[cfg]KAFKA_CFG_BROKER_ID=$BROKER_NODE_ID"
+
 
 exec /entrypoint.sh /run.sh
