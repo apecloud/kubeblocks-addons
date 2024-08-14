@@ -15,7 +15,6 @@ on:
           - camellia-redis-proxy
           - clickhouse
           - dmdb
-          - doris
           - elasticsearch
           - etcd
           - flink
