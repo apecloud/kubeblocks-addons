@@ -12,8 +12,8 @@ image:
   tag: 1.2.26
 
 busyboxImage:
-  registry: docker.io
-  repository: busybox
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  repository: apecloud/busybox
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: 1.36

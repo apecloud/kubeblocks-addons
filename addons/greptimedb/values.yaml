@@ -12,8 +12,8 @@ clusterDomain: ".cluster.local"
 images:
   pullPolicy: IfNotPresent
   greptimedb:
-    registry: docker.io
-    repository: greptime/greptimedb
+    registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+    repository: apecloud/greptimedb
     tag: 0.3.2
 
 ## @param metasrv config
