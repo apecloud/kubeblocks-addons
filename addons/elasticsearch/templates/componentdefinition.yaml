@@ -5,7 +5,9 @@ items:
 - apiVersion: apps.kubeblocks.io/v1alpha1
   kind: ComponentDefinition
   metadata:
-    name: elasticsearch-8.8
+    name: elasticsearch-8
+    annotations:
+      apps.kubeblocks.io/skip-immutable-check: "true"
     labels:
       {{- include "elasticsearch.labels" . | nindent 6 }}
   spec:
@@ -41,8 +43,10 @@ items:
           targetPort: http
     lifecycleActions: &lifecycleActions
       memberLeave:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag | default "latest" }}
+        targetPodSelector: Any
+        container: elasticsearch
         customHandler:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag | default "latest" }}
           exec:
             command:
             - /bin/sh
@@ -50,8 +54,6 @@ items:
             - |
               echo "member $KB_LEAVE_MEMBER_POD_NAME is leaving"
               curl --fail -v -X POST http://127.0.0.1:9200/_cluster/voting_config_exclusions?node_names=$KB_LEAVE_MEMBER_POD_NAME
-          targetPodSelector: Any
-          container: elasticsearch
     runtime: &runtime
       containers:
       - env:
@@ -336,7 +338,9 @@ items:
 - apiVersion: apps.kubeblocks.io/v1alpha1
   kind: ComponentDefinition
   metadata:
-    name: elasticsearch-7.10
+    name: elasticsearch-7
+    annotations:
+      apps.kubeblocks.io/skip-immutable-check: "true"
     labels:
       {{- include "elasticsearch.labels" . | nindent 6 }}
   spec:
@@ -347,29 +351,7 @@ items:
     exporter: *exporter
     configs:
     - name: es-cm
-      templateRef: {{ include "elasticsearch.name" . }}-config-7.10
-      namespace: {{ .Release.Namespace }}
-      volumeName: es-cm
-    scripts: *scripts
-    services: *services
-    lifecycleActions: *lifecycleActions
-    runtime: *runtime
-
-- apiVersion: apps.kubeblocks.io/v1alpha1
-  kind: ComponentDefinition
-  metadata:
-    name: elasticsearch-7.7
-    labels:
-      {{- include "elasticsearch.labels" . | nindent 6 }}
-  spec:
-    provider: *provider
-    description: *description
-    serviceKind: *serviceKind
-    updateStrategy: *updateStrategy
-    exporter: *exporter
-    configs:
-    - name: es-cm
-      templateRef: {{ include "elasticsearch.name" . }}-config-7.7
+      templateRef: {{ include "elasticsearch.name" . }}-config-7
       namespace: {{ .Release.Namespace }}
       volumeName: es-cm
     scripts: *scripts
@@ -378,13 +360,22 @@ items:
       memberLeave:
         customHandler:
           image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag | default "latest" }}
+          targetPodSelector: Any
+          container: elasticsearch
           exec:
             command:
             - /bin/sh
             - -c
             - |
+              # https://www.elastic.co/guide/en/elasticsearch/reference/7.7/add-elasticsearch-nodes.html
+              set -x
+              endpoint=http://127.0.0.1:9200
               echo "member $KB_LEAVE_MEMBER_POD_NAME is leaving"
-              curl --fail -v -X POST http://127.0.0.1:9200/_cluster/voting_config_exclusions/$KB_LEAVE_MEMBER_POD_NAME
-          targetPodSelector: Any
-          container: elasticsearch
+              version=`curl --fail -v -s ${endpoint} | jq -r .version.number`
+              version=${version%.*}
+              if awk "BEGIN {exit !($version < 7.8)}"; then
+                curl --fail -v -X POST ${endpoint}/_cluster/voting_config_exclusions/$KB_LEAVE_MEMBER_POD_NAME
+              else
+                curl --fail -v -X POST ${endpoint}/_cluster/voting_config_exclusions?node_names=$KB_LEAVE_MEMBER_POD_NAME
+              fi
     runtime: *runtime
