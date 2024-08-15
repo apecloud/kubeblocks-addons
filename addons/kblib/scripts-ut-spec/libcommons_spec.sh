@@ -49,8 +49,8 @@ Describe 'kubeblocks commons library tests'
       It 'should retry the function and fail after reaching the maximum retries'
         When call call_func_with_retry 2 1 failing_function "arg1" "arg2"
         The output should include "Failing function called with arguments: arg1 arg2"
-        The output should include "Function 'failing_function' failed in 1 times. Retrying in 1 seconds..."
-        The output should include "Function 'failing_function' failed after 2 retries."
+        The stderr should include "Function 'failing_function' failed in 1 times. Retrying in 1 seconds..."
+        The stderr should include "Function 'failing_function' failed after 2 retries."
         The status should be failure
       End
     End
@@ -72,7 +72,7 @@ Describe 'kubeblocks commons library tests'
         FAILS_ON_FIRST_CALL=0
         When call call_func_with_retry 3 1 fails_on_first_call_only
         The output should include "Function fails on first call"
-        The output should include "Function 'fails_on_first_call_only' failed in 1 times. Retrying in 1 seconds..."
+        The stderr should include "Function 'fails_on_first_call_only' failed in 1 times. Retrying in 1 seconds..."
         The output should include "Function succeeds on subsequent calls"
         The status should be success
       End

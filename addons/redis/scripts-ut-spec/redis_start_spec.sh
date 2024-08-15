@@ -396,6 +396,7 @@ Describe "Redis Start Bash Script Tests"
       When call retry_get_master_addr_by_name_from_sentinel 1 1 "sentinel1.redis-sentinel-headless"
       The status should be failure
       The stdout should include "Failed to retrieve primary info from sentinel"
+      The stderr should include "Function 'get_master_addr_by_name_from_sentinel' failed after 1 retries"
     End
   End
 

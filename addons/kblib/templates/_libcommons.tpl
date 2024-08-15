@@ -33,10 +33,10 @@ call_func_with_retry() {
     else
       retries=$((retries + 1))
       if [[ $retries -eq $max_retries ]]; then
-        echo "Function '$function_name' failed after $max_retries retries."
+        echo "Function '$function_name' failed after $max_retries retries." >&2
         return 1
       fi
-      echo "Function '$function_name' failed in $retries times. Retrying in $retry_interval seconds..."
+      echo "Function '$function_name' failed in $retries times. Retrying in $retry_interval seconds..." >&2
       sleep $retry_interval
     fi
   done
