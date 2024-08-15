@@ -43,10 +43,8 @@ items:
           targetPort: http
     lifecycleActions: &lifecycleActions
       memberLeave:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag | default "latest" }}
-        targetPodSelector: Any
-        container: elasticsearch
         customHandler:
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag | default "latest" }}
           exec:
             command:
             - /bin/sh
@@ -54,6 +52,8 @@ items:
             - |
               echo "member $KB_LEAVE_MEMBER_POD_NAME is leaving"
               curl --fail -v -X POST http://127.0.0.1:9200/_cluster/voting_config_exclusions?node_names=$KB_LEAVE_MEMBER_POD_NAME
+          targetPodSelector: Any
+          container: elasticsearch
     runtime: &runtime
       containers:
       - env:
@@ -359,10 +359,8 @@ items:
     lifecycleActions:
       memberLeave:
         customHandler:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag | default "latest" }}
-          targetPodSelector: Any
-          container: elasticsearch
           exec:
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag | default "latest" }}
             command:
             - /bin/sh
             - -c
@@ -378,4 +376,6 @@ items:
               else
                 curl --fail -v -X POST ${endpoint}/_cluster/voting_config_exclusions?node_names=$KB_LEAVE_MEMBER_POD_NAME
               fi
+            targetPodSelector: Any
+            container: elasticsearch
     runtime: *runtime
