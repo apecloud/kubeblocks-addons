@@ -71,18 +71,6 @@ execEtcdctl() {
   fi
 }
 
-# this function will be deprecated in the future
-execEtcdctlNoCheckTLS() {
-  local endpoints=$1
-  shift
-  etcdctl --endpoints=${endpoints} "$@"
-  # check if the etcdctl command was successful
-  if [ $? -ne 0 ]; then
-    echo "etcdctl command failed"
-    exit 1
-  fi
-}
-
 updateLeaderIfNeeded() {
   local retries=$1
 
@@ -91,12 +79,12 @@ updateLeaderIfNeeded() {
     exit 1
   fi
 
-  status=$(execEtcdctlNoCheckTLS ${leaderEndpoint} endpoint status)
+  status=$(execEtcdctl ${leaderEndpoint} endpoint status)
   isLeader=$(echo $status | awk -F ', ' '{print $5}')
   if [ "$isLeader" = "false" ]; then
     echo "leader out of status, try to redirect to new leader"
-    peerEndpoints=$(execEtcdctlNoCheckTLS "$leaderEndpoint" member list | awk -F', ' '{print $5}' | tr '\n' ',' | sed 's#,$##')
-    leaderEndpoint=$(execEtcdctlNoCheckTLS "$peerEndpoints" endpoint status | awk -F', ' '$5=="true" {print $1}')
+    peerEndpoints=$(execEtcdctl "$leaderEndpoint" member list | awk -F', ' '{print $5}' | tr '\n' ',' | sed 's#,$##')
+    leaderEndpoint=$(execEtcdctl "$peerEndpoints" endpoint status | awk -F', ' '$5=="true" {print $1}')
     if [ $leaderEndpoint = "" ]; then
       echo "leader is not ready, wait for 2s..."
       sleep 2
