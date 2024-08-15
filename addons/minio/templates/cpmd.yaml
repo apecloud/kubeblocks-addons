@@ -18,7 +18,6 @@ spec:
       passwordGenerationPolicy:
         length: 16
         numDigits: 8
-        numSymbols: 2
         letterCase: MixedCases
 
   vars:
