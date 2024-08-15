@@ -69,18 +69,19 @@ spec:
       votable: true
   lifecycleActions:
     roleProbe:
-      builtinHandler: mongodb
       periodSeconds: {{ .Values.roleProbe.periodSeconds }}
       timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
-      #   container: mongodb
-      #   exec:
-      #     command:
-      #       - bash
-      #       - -c
-      #       - |
-      #         Status=$(export CLIENT=`which mongosh>/dev/null&&echo mongosh||echo mongo`; $CLIENT -u $KB_SERVICE_USER -p $KB_SERVICE_PASSWORD 127.0.0.1:27017 --quiet --eval "JSON.stringify(rs.status())") &&
-      #         MyState=$(echo $Status | jq '.myState') &&
-      #         echo $Status | jq ".members[] | select(.state == ($MyState | tonumber)) | .stateStr" |tr '[:upper:]' '[:lower:]'|uniq| xargs echo -n
+      exec:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
+        command:
+          - dbctl
+          - getrole
+    memberPeave:
+      exec:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
+        command:
+          - dbctl
+          - leavemember
   runtime:
     initContainers:
       - command:
@@ -88,13 +89,14 @@ spec:
           - -r
           - /bin/syncer
           - /config
-          - /kubeblocks/
+          - /syncer/
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        #image: registry.cn-hangzhou.aliyuncs.com/xuriwuyun/syncer:latest
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         name: init-syncer
         volumeMounts:
-          - mountPath: /kubeblocks
-            name: kubeblocks
+          - mountPath: /syncer
+            name: syncer
     containers:
       - name: mongodb
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
@@ -109,14 +111,14 @@ spec:
         command:
           - syncer
           - --config-path
-          - /kubeblocks/config/components
+          - /syncer/config/components
           - --port
           - "3601"
           - --
           - /scripts/replicaset-setup.sh
         env:
           - name: PATH
-            value: /kubeblocks/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+            value: /syncer/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
           - name: KB_SERVICE_CHARACTER_TYPE
             value: mongodb
           - name: SERVICE_PORT
@@ -136,8 +138,8 @@ spec:
             subPath: keyfile
           - name: scripts
             mountPath: /scripts
-          - mountPath: /kubeblocks
-            name: kubeblocks
+          - mountPath: /syncer
+            name: syncer
     volumes:
       {{- if .Values.logCollector.enabled }}
       - name: log-data
@@ -146,6 +148,8 @@ spec:
           type: DirectoryOrCreate
       {{- end }}
   vars:
+    - name: KB_ENGINE_TYPE
+      value: mongodb
     - name: MONGODB_USER
       valueFrom:
         credentialVarRef:
