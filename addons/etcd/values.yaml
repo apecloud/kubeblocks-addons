@@ -25,8 +25,8 @@ tls:
 backupKeyThreshold: 6
 
 image:
-  registry: quay.io/coreos
-  repository: etcd
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  repository: apecloud/etcd
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag:
@@ -38,8 +38,8 @@ image:
         patch15: v3.5.15
 
 busyboxImage:
-  registry: docker.io
-  repository: busybox
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  repository: apecloud/busybox
   pullPolicy: IfNotPresent
   # use static compile version
   tag: 1.35-musl

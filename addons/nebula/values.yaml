@@ -5,29 +5,29 @@ nebula:
   graphd:
     ## @param nebula.graphd.image, container image settings
     image:
-      registry: docker.io
-      repository: vesoft/nebula-graphd
+      registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+      repository: apecloud/nebula-graphd
       tag: v3.5.0
       pullPolicy: IfNotPresent
   metad:
     ## @param nebula.metad.image, container image settings
     image:
-      registry: docker.io
-      repository: vesoft/nebula-metad
+      registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+      repository: apecloud/nebula-metad
       tag: v3.5.0
       pullPolicy: IfNotPresent
   storaged:
     ## @param nebula.storaged.image, container image settings
     image:
-      registry: docker.io
-      repository: vesoft/nebula-storaged
+      registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+      repository: apecloud/nebula-storaged
       tag: v3.5.0
       pullPolicy: IfNotPresent
   console:
     ## @param nebula.console.image, container image settings
     image:
-      registry: docker.io
-      repository: vesoft/nebula-console
+      registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+      repository: apecloud/nebula-console
       tag: v3.5.0
       pullPolicy: IfNotPresent
 

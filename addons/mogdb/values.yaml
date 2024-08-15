@@ -5,8 +5,8 @@
 replicaCount: 1
 
 image:
-  registry: swr.cn-north-4.myhuaweicloud.com
-  repository: mogdb/mogdb
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  repository: apecloud/mogdb
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: 5.0.5
@@ -40,8 +40,8 @@ metrics:
   ## @param metrics.image.pullSecrets Specify image pull secrets
   ##
   image:
-    registry: swr.cn-north-4.myhuaweicloud.com
-    repository: mogdb-cloud/mogdb-exporter
+    registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+    repository: apecloud/mogdb-exporter
     tag: 3.1.0
     pullPolicy: IfNotPresent
   service:

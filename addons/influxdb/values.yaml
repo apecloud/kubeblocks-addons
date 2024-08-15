@@ -2,13 +2,13 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 image:
-  registry: docker.io
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
   pullPolicy: IfNotPresent
   influxdb:
-    repository: bitnami/influxdb
+    repository: apecloud/influxdb
     tag: 2.7.4-debian-11-r0
   init:
-    repository: bitnami/os-shell
+    repository: apecloud/os-shell
     tag: 11-debian-11-r93
 
 nameOverride: ""

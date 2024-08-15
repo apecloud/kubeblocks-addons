@@ -33,15 +33,15 @@ image:
       minor72: 7.2.0-v10
 
 redisTwemproxyImage:
-  registry: docker.io
-  repository: malexer/twemproxy
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  repository: apecloud/twemproxy
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: 0.5.0
 
 busyboxImage:
-  registry: docker.io
-  repository: busybox
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  repository: apecloud/busybox
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: 1.36

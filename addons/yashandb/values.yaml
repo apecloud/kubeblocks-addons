@@ -3,8 +3,8 @@
 # Declare variables to be passed into your templates.
 
 image:
-  registry: registry.cn-shenzhen.aliyuncs.com
-  repository: jesseatyashan/yashandb-personal
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  repository: apecloud/yashandb-personal
   tag: 23.1.1.100
 
 logConfigs:
