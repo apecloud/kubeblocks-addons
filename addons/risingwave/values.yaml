@@ -5,6 +5,7 @@ fullnameOverride: ""
 
 ## RisingWave image
 image:
-  repository: ghcr.io/risingwavelabs/risingwave
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  repository: apecloud/risingwave
   pullPolicy: IfNotPresent
   tag: v1.0.0

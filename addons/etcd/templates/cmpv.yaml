@@ -12,8 +12,8 @@ spec:
     - name: v3.5.6
       serviceVersion: v3.5.6
       images:
-        etcd: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:v3.5.6
+        etcd: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v3.5.6
     - name: v3.5.15
       serviceVersion: v3.5.15
       images:
-        etcd: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository}}:v3.5.15
+        etcd: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository}}:v3.5.15
