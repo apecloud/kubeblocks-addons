@@ -100,10 +100,12 @@ init_or_get_primary_node() {
   set +x
   if [ -n "$REDIS_DEFAULT_PASSWORD" ]; then
     check_kernel_role_cmd="redis-cli -h $primary_fqdn -p $service_port -a $REDIS_DEFAULT_PASSWORD info replication | grep 'role:' | awk -F: '{print \$2}'"
+    logging_mask_check_kernel_role_cmd="${check_kernel_role_cmd/$REDIS_DEFAULT_PASSWORD/********}"
   else
     check_kernel_role_cmd="redis-cli -h $primary_fqdn -p $service_port info replication | grep 'role:' | awk -F: '{print \$2}'"
+    logging_mask_check_kernel_role_cmd="$check_kernel_role_cmd"
   fi
-  echo "check primary node role in kernel command: $check_kernel_role_cmd" | sed "s/$REDIS_DEFAULT_PASSWORD/********/g"
+  echo "check primary node role in kernel command: $logging_mask_check_kernel_role_cmd"
   retry_times=10
   while true; do
     check_role=$(eval "$check_kernel_role_cmd")
