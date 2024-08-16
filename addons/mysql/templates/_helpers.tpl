@@ -224,17 +224,6 @@ roles:
   volumeMounts:
     - mountPath: /tools
       name: tools
-- command:
-    - cp
-    - -r
-    - /xtrabackup-2.4
-    - /tools/xtrabackup
-  image: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:mysql
-  imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
-  name: init-xtrabackup
-  volumeMounts:
-    - mountPath: /tools
-      name: tools
 {{- end }}
 
 {{- define "mysql-orc.spec.common"}}
