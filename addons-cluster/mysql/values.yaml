@@ -12,7 +12,7 @@ mode: standalone
 
 ## @param replicas specify cluster replicas
 ##
-replicas: 1
+replicas: 2
 
 ## @param cpu
 ##
