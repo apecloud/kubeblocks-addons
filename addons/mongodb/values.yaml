@@ -12,8 +12,8 @@ image:
     repository: apecloud/syncer
     tag: "0.1.8"
   dbctl:
-    repository: apecloud/lorry
-    tag: "0.1.0"
+    repository: apecloud/dbctl
+    tag: "0.1.1"
 
 componentServiceVersion:
   mongodb: 5.0.14

@@ -72,31 +72,48 @@ spec:
       periodSeconds: {{ .Values.roleProbe.periodSeconds }}
       timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
       exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
+        container: mongodb
         command:
-          - dbctl
+          - /tools/dbctl
+          - --config-path
+          - /tools/config/dbctl/components
+          - mongodb
           - getrole
     memberLeave:
       exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
+        container: mongodb
         command:
-          - dbctl
+          - /tools/dbctl
+          - --config-path
+          - /tools/config/dbctl/components
+          -  mongodb
           - leavemember
   runtime:
     initContainers:
       - command:
           - cp
           - -r
+          - /bin/dbctl
+          - /config
+          - /tools/
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        name: init-dbctl
+        volumeMounts:
+          - mountPath: /tools
+            name: tools
+      - command:
+          - cp
+          - -r
           - /bin/syncer
           - /config
-          - /syncer/
+          - /tools/
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        #image: registry.cn-hangzhou.aliyuncs.com/xuriwuyun/syncer:latest
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         name: init-syncer
         volumeMounts:
-          - mountPath: /syncer
-            name: syncer
+          - mountPath: /tools
+            name: tools
     containers:
       - name: mongodb
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
@@ -111,14 +128,14 @@ spec:
         command:
           - syncer
           - --config-path
-          - /syncer/config/components
+          - /tools/config/components
           - --port
           - "3601"
           - --
           - /scripts/replicaset-setup.sh
         env:
           - name: PATH
-            value: /syncer/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+            value: /tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
           - name: KB_SERVICE_CHARACTER_TYPE
             value: mongodb
           - name: SERVICE_PORT
@@ -138,8 +155,8 @@ spec:
             subPath: keyfile
           - name: scripts
             mountPath: /scripts
-          - mountPath: /syncer
-            name: syncer
+          - mountPath: /tools
+            name: tools
     volumes:
       {{- if .Values.logCollector.enabled }}
       - name: log-data
@@ -148,8 +165,6 @@ spec:
           type: DirectoryOrCreate
       {{- end }}
   vars:
-    - name: KB_ENGINE_TYPE
-      value: mongodb
     - name: MONGODB_USER
       valueFrom:
         credentialVarRef:
