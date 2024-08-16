@@ -228,10 +228,12 @@ initialize_or_scale_out_redis_cluster() {
         set +x
         if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
             initialize_command="redis-cli --cluster create $primary_nodes --cluster-yes"
+            logging_mask_initialize_command="$initialize_command"
         else
             initialize_command="redis-cli --cluster create $primary_nodes -a $REDIS_DEFAULT_PASSWORD --cluster-yes"
+            logging_mask_initialize_command="${initialize_command/$REDIS_DEFAULT_PASSWORD/********}"
         fi
-        echo "initialize cluster command: $initialize_command" | sed "s/$REDIS_DEFAULT_PASSWORD/********/g"
+        echo "initialize cluster command: $logging_mask_initialize_command"
         yes yes | $initialize_command || true
 
         # get the first primary node to check the cluster
@@ -259,10 +261,12 @@ initialize_or_scale_out_redis_cluster() {
             set +x
             if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
                 replicated_command="redis-cli --cluster add-node $secondary_node $mapping_primary_fqdn_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id"
+                logging_mask_replicated_command="$replicated_command"
             else
                 replicated_command="redis-cli --cluster add-node $secondary_node $mapping_primary_fqdn_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id -a $REDIS_DEFAULT_PASSWORD"
+                logging_mask_replicated_command="${replicated_command/$REDIS_DEFAULT_PASSWORD/********}"
             fi
-            echo "initialize cluster replicated command: $replicated_command" | sed "s/$REDIS_DEFAULT_PASSWORD/********/g"
+            echo "initialize cluster replicated command: $logging_mask_replicated_command"
             yes yes | $replicated_command || true
             set -x
         done
