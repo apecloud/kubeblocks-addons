@@ -20,7 +20,7 @@ spec:
           - |
             trap : TERM INT
             exec /usr/local/nebula/bin/nebula-storaged --flagfile=/usr/local/nebula/etc/nebula-storaged.conf --meta_server_addrs=$NEBULA_METAD_SVC --local_ip=$KB_POD_FQDN"{{ .Values.clusterDomain }}" --daemonize=false
-        imagePullPolicy: {{default .Values.nebula.storaged.image.pullPolicy "IfNotPresent"}}
+        imagePullPolicy: {{default .Values.nebula.images.pullPolicy "IfNotPresent"}}
         ports:
           - containerPort: 9779
             name: thrift
@@ -52,7 +52,7 @@ spec:
           - mountPath: /usr/local/nebula/logs
             name: logs
       - name: console
-        imagePullPolicy: {{default .Values.nebula.metad.image.pullPolicy "IfNotPresent"}}
+        imagePullPolicy: {{default .Values.nebula.images.pullPolicy "IfNotPresent"}}
         command: [ "/bin/sh" ]
         args: [ "-c", "trap : TERM INT; sleep infinity & wait" ]
         lifecycle:

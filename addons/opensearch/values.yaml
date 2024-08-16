@@ -5,13 +5,13 @@
 replicaCount: 1
 
 image:
-  registry: docker.io
-  repository: opensearchproject/opensearch
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  repository: apecloud/opensearch
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
   dashboard:
-    repository: opensearchproject/opensearch-dashboards
+    repository: apecloud/opensearch-dashboards
     tag: ""
 
 nameOverride: ""

@@ -12,8 +12,9 @@ image:
   tag: 1.2.26
 
 busyboxImage:
-  registry: docker.io
-  repository: busybox
+  # if the value of busyboxImage.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
+  registry: ""
+  repository: apecloud/busybox
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: 1.36

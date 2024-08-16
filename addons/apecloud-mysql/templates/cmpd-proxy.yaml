@@ -30,12 +30,12 @@ spec:
     preTerminate:
       customHandler:
         exec:
-          image: {{ .Values.wesqlscale.image.registry | default .Values.image.registry }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
+          image: {{ .Values.wesqlscale.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
           command: ["/scripts/etcd-clean.sh"]
   runtime:
     containers:
       - name: vtctld
-        image: {{ .Values.wesqlscale.image.registry | default .Values.image.registry }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
+        image: {{ .Values.wesqlscale.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.wesqlscale.image.pullPolicy }}
         ports:
           - containerPort: 15000
@@ -143,7 +143,7 @@ spec:
         emptyDir: { }
     containers:
       - name: vtgate
-        image: {{ .Values.wesqlscale.image.registry | default .Values.image.registry }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
+        image: {{ .Values.wesqlscale.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
         imagePullPolicy: IfNotPresent
         ports:
           - containerPort: 15001

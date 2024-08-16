@@ -17,7 +17,7 @@ spec:
   backupType: Full
   backup:
     backupData:
-      image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
       runOnTargetPodNode: true
       syncProgress:
         enabled: false
@@ -31,7 +31,7 @@ spec:
   restore:
     postReady:
     - job:
-        image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
         runOnTargetPodNode: true
         command:
         - /bin/sh

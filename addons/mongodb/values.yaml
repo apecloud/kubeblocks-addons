@@ -10,6 +10,9 @@ image:
   tag: 5.0.14 # 6.0.3-debian-11-r0
   syncer:
     repository: apecloud/syncer
+    tag: "0.1.8"
+  dbctl:
+    repository: apecloud/dbctl
     tag: "0.1.2"
 
 componentServiceVersion:
