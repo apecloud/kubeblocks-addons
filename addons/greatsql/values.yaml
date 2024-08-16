@@ -1,10 +1,10 @@
 image:
-  registry: docker.io
-  repository: greatsql/greatsql
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  repository: apecloud/greatsql
   pullPolicy: IfNotPresent
   tag: 8.0.32-25
   prom:
-    repository: prom
+    repository: apecloud
     pullPolicy: IfNotPresent
     mysqld_exporter:
       name: mysqld-exporter

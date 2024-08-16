@@ -4,7 +4,8 @@
 
 images:
   solr:
-    repository: bitnami/solr
+    registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+    repository: apecloud/solr
     pullPolicy: IfNotPresent
     tag: 8.11.2
 

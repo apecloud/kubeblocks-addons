@@ -26,16 +26,16 @@ spec:
     - name: write-1.0.0
       serviceVersion: 1.0.0
       images:
-        write: {{ .Values.images.write.repository }}:{{ .Values.images.write.tag }}
+        write: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.write.repository }}:{{ .Values.images.write.tag }}
     - name: read-1.0.0
       serviceVersion: 1.0.0
       images:
-        read: {{ .Values.images.read.repository }}:{{ .Values.images.read.tag }}
+        read: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.read.repository }}:{{ .Values.images.read.tag }}
     - name: backend-1.0.0
       serviceVersion: 1.0.0
       images:
-        backend: {{ .Values.images.backend.repository }}:{{ .Values.images.backend.tag }}
+        backend: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.backend.repository }}:{{ .Values.images.backend.tag }}
     - name: gateway-1.0.0
       serviceVersion: 1.0.0
       images:
-        gateway: {{ .Values.images.gateway.repository }}:{{ .Values.images.gateway.tag }}
+        gateway: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.gateway.repository }}:{{ .Values.images.gateway.tag }}

@@ -134,11 +134,11 @@ Define image
 {{- end }}
 
 {{- define "redis-twemproxy.image" -}}
-{{ .Values.redisTwemproxyImage.registry | default "docker.io" }}/{{ .Values.redisTwemproxyImage.repository }}:{{ .Values.redisTwemproxyImage.tag }}
+{{ .Values.redisTwemproxyImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.redisTwemproxyImage.repository }}:{{ .Values.redisTwemproxyImage.tag }}
 {{- end }}
 
 {{- define "busybox.image" -}}
-{{ .Values.busyboxImage.registry | default "docker.io"}}/{{ .Values.busyboxImage.repository}}:{{ .Values.busyboxImage.tag }}
+{{ .Values.busyboxImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.busyboxImage.repository}}:{{ .Values.busyboxImage.tag }}
 {{- end }}}
 
 

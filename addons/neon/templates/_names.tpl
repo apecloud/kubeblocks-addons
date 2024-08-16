@@ -75,17 +75,17 @@ Define neon-storagebroker component definition name prefix
 Define image
 */}}
 {{- define "neon-compute.image" -}}
-{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
 {{- end }}
 
 {{- define "neon-pageserver.image" -}}
-{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
 {{- end }}
 
 {{- define "neon-safekeeper.image" -}}
-{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
 {{- end }}
 
 {{- define "neon-storagebroker.image" -}}
-{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
 {{- end }}

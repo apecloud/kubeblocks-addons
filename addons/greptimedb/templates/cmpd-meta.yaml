@@ -12,7 +12,7 @@ spec:
   runtime:
     initContainers:
       - name: wait-etcd
-        image: busybox:1.35
+        image: {{ .Values.images.busybox.registry | default (.Values.images.registry | default "docker.io") }}/{{ .Values.images.busybox.repository }}:{{ .Values.images.busybox.tag }}
         imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
         command:
           - bin/sh
