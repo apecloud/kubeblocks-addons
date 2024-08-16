@@ -323,6 +323,13 @@ Describe "Redis Start Bash Script Tests"
     It "builds sentinel get-master-addr-by-name command correctly"
       export KB_CLUSTER_COMP_NAME="redis-redis"
       export SENTINEL_SERVICE_PORT="26379"
+      When call build_sentinel_get_master_addr_by_name_command "sentinel1.redis-sentinel-headless"
+      The output should eq "timeout 5 redis-cli -h sentinel1.redis-sentinel-headless -p 26379 sentinel get-master-addr-by-name redis-redis"
+    End
+
+    It "builds sentinel get-master-addr-by-name command correctly"
+      export KB_CLUSTER_COMP_NAME="redis-redis"
+      export SENTINEL_SERVICE_PORT="26379"
       export SENTINEL_PASSWORD="sentinel_password"
       When call build_sentinel_get_master_addr_by_name_command "sentinel1.redis-sentinel-headless"
       The output should eq "timeout 5 redis-cli -h sentinel1.redis-sentinel-headless -p 26379 -a sentinel_password sentinel get-master-addr-by-name redis-redis"
@@ -330,6 +337,28 @@ Describe "Redis Start Bash Script Tests"
   End
 
   Describe "get_master_addr_by_name_from_sentinel()"
+    It "handles empty sentinel password"
+      unset SENTINEL_PASSWORD
+      build_sentinel_get_master_addr_by_name_command() {
+        echo "echo $SENTINEL_PASSWORD 1111"
+      }
+      When call get_master_addr_by_name_from_sentinel "sentinel1.redis-sentinel-headless"
+      The status should be failure
+      The stdout should include "Empty primary info retrieved from sentinel"
+      The stdout should include "execute get-master-addr-by-name command: echo  1111"
+    End
+
+    It "handles not empty sentinel password"
+      SENTINEL_PASSWORD="sentinel_password"
+      build_sentinel_get_master_addr_by_name_command() {
+        echo "echo $SENTINEL_PASSWORD"
+      }
+      When call get_master_addr_by_name_from_sentinel "sentinel1.redis-sentinel-headless"
+      The status should be failure
+      The stdout should include "Empty primary info retrieved from sentinel"
+      The stdout should include "execute get-master-addr-by-name command: echo ********"
+    End
+
     It "retrieves primary info from sentinel successfully"
       # Mock the command to get redis master addr info from sentinel
       build_sentinel_get_master_addr_by_name_command() {
@@ -340,8 +369,6 @@ Describe "Redis Start Bash Script Tests"
       When call get_master_addr_by_name_from_sentinel "sentinel1.redis-sentinel-headless"
       The status should be success
       The stdout should include "Successfully retrieved primary info from sentinel"
-      # mock sed command execute error in get_master_addr_by_name_from_sentinel
-      The stderr should include "first RE may not be empty"
     End
 
     It "handles empty primary info from sentinel"
@@ -351,8 +378,6 @@ Describe "Redis Start Bash Script Tests"
       When call get_master_addr_by_name_from_sentinel "sentinel1.redis-sentinel-headless"
       The status should be failure
       The stdout should include "Empty primary info retrieved from sentinel"
-      # mock sed command execute error in get_master_addr_by_name_from_sentinel
-      The stderr should include "first RE may not be empty"
     End
 
     It "retries on timeout error from sentinel"
@@ -362,8 +387,6 @@ Describe "Redis Start Bash Script Tests"
       When call get_master_addr_by_name_from_sentinel "sentinel1.redis-sentinel-headless"
       The status should be failure
       The stdout should include "Timeout occurred while retrieving primary info from sentinel. Retrying..."
-      # mock sed command execute error in get_master_addr_by_name_from_sentinel
-      The stderr should include "first RE may not be empty"
     End
 
     It "retries on other errors from sentinel"
@@ -373,8 +396,6 @@ Describe "Redis Start Bash Script Tests"
       When call get_master_addr_by_name_from_sentinel "sentinel1.redis-sentinel-headless"
       The status should be failure
       The stdout should include "Error occurred while retrieving primary info from sentinel. Retrying..."
-      # mock sed command execute error in get_master_addr_by_name_from_sentinel
-      The stderr should include "first RE may not be empty"
     End
   End
 
@@ -519,8 +540,6 @@ Describe "Redis Start Bash Script Tests"
         The stdout should include "sentinel:sentinel-0.redis-sentinel-headless has master info: 172.18.0.3 31081"
         The stdout should include "sentinel:sentinel-1.redis-sentinel-headless has master info: 172.18.0.3 31081"
         The stdout should include "sentinel:sentinel-2.redis-sentinel-headless has master info: 172.18.0.3 31081"
-        # mock sed command execute error in get_master_addr_by_name_from_sentinel
-        The stderr should include "first RE may not be empty"
       End
     End
 
@@ -558,10 +577,9 @@ Describe "Redis Start Bash Script Tests"
         The stdout should include "Empty primary info retrieved from sentinel"
         The stdout should include "Failed to retrieve primary info from sentinel: sentinel-1.redis-sentinel-headless"
         The stdout should include "no primary node found from all redis sentinels, use default primary node."
+        The stderr should include "Function 'get_master_addr_by_name_from_sentinel' failed after 1 retries"
         The variable primary should eq "fake-primary1"
         The variable primary_port should eq "fake-primary-port1"
-        # mock sed command execute error in get_master_addr_by_name_from_sentinel
-        The stderr should include "first RE may not be empty"
       End
     End
   End
