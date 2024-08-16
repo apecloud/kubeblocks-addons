@@ -34,12 +34,12 @@ spec:
       serviceVersion: "7.5.2"
       images:
         tidb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/tidb:v7.5.2
-        slowlog: {{ .Values.image.helper.registry | default .Values.image.registry }}/{{ .Values.image.helper.repository | default .Values.image.repository }}/{{ .Values.image.helper.image }}
+        slowlog: {{ .Values.image.helper.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.helper.repository }}/{{ .Values.image.helper.tag }}
     - name: "7.1.5"
       serviceVersion: "7.1.5"
       images:
         tidb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/tidb:v7.1.5
-        slowlog: {{ .Values.image.helper.registry | default .Values.image.registry }}/{{ .Values.image.helper.repository | default .Values.image.repository }}/{{ .Values.image.helper.image }}
+        slowlog: {{ .Values.image.helper.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.helper.repository }}/{{ .Values.image.helper.tag }}
   compatibilityRules:
     - compDefs:
         - "tidb-7"

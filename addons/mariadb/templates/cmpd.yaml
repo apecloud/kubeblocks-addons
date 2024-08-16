@@ -22,7 +22,7 @@ spec:
           - name: MARIADB_ROOT_HOST
             value: {{ .Values.auth.rootHost | default "%" | quote }}
       - name: exporter
-        image: {{ .Values.image.prom.repository }}/{{ .Values.image.prom.exporter.name}}:{{.Values.image.prom.exporter.tag}}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.prom.repository }}/{{ .Values.image.prom.exporter.name}}:{{.Values.image.prom.exporter.tag}}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         ports:
           - name: metrics

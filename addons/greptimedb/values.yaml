@@ -10,11 +10,20 @@ clusterDomain: ".cluster.local"
 ## @param application images
 ##
 images:
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
   pullPolicy: IfNotPresent
   greptimedb:
-    registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+    registry: ""
     repository: apecloud/greptimedb
     tag: 0.3.2
+  initializer:
+    registry: ""
+    repository: apecloud/greptimedb-initializer
+    tag: 0.1.0-alpha.12
+  busybox:
+    registry: ""
+    repository: apecloud/busybox
+    tag: 1.35
 
 ## @param metasrv config
 ##

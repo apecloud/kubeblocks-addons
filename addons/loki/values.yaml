@@ -20,6 +20,11 @@ images:
     tag: 1.24-alpine
     repository: apecloud/nginx-unprivileged
     pullPolicy: IfNotPresent
+sidecarImage:
+  registry: ""
+  repository: apecloud/k8s-sidecar
+  pullPolicy: IfNotPresent
+  tag: 1.24.3
 
 nameOverride: ""
 fullnameOverride: ""

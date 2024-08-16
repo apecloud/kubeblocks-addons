@@ -34,30 +34,30 @@ spec:
     - name: v2.3.2-standalone
       serviceVersion: v2.3.2
       images:
-        setup: {{ .Values.images.operator.registry | default .Values.images.registry }}/{{ .Values.images.operator.repository }}:{{ .Values.images.operator.tag }}
-        milvus: {{ .Values.images.milvus.registry | default .Values.images.registry }}/{{ .Values.images.milvus.repository }}:{{ .Values.images.milvus.tag }}
+        setup: {{ .Values.images.operator.registry | default ( .Values.images.registry | default "docker.io" )  }}/{{ .Values.images.operator.repository }}:{{ .Values.images.operator.tag }}
+        milvus: {{ .Values.images.milvus.registry | default ( .Values.images.registry | default "docker.io" )  }}/{{ .Values.images.milvus.repository }}:{{ .Values.images.milvus.tag }}
     - name: v2.3.2-mixcoord
       serviceVersion: v2.3.2
       images:
-        setup: {{ .Values.images.operator.registry | default .Values.images.registry }}/{{ .Values.images.operator.repository }}:{{ .Values.images.operator.tag }}
-        mixcoord: {{ .Values.images.milvus.registry | default .Values.images.registry }}/{{ .Values.images.milvus.repository }}:{{ .Values.images.milvus.tag }}
+        setup: {{ .Values.images.operator.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.operator.repository }}:{{ .Values.images.operator.tag }}
+        mixcoord: {{ .Values.images.milvus.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.milvus.repository }}:{{ .Values.images.milvus.tag }}
     - name: v2.3.2-proxy
       serviceVersion: v2.3.2
       images:
-        setup: {{ .Values.images.operator.registry | default .Values.images.registry }}/{{ .Values.images.operator.repository }}:{{ .Values.images.operator.tag }}
-        proxy: {{ .Values.images.milvus.registry | default .Values.images.registry }}/{{ .Values.images.milvus.repository }}:{{ .Values.images.milvus.tag }}
+        setup: {{ .Values.images.operator.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.operator.repository }}:{{ .Values.images.operator.tag }}
+        proxy: {{ .Values.images.milvus.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.milvus.repository }}:{{ .Values.images.milvus.tag }}
     - name: v2.3.2-querynode
       serviceVersion: v2.3.2
       images:
-        setup: {{ .Values.images.operator.registry | default .Values.images.registry }}/{{ .Values.images.operator.repository }}:{{ .Values.images.operator.tag }}
-        querynode: {{ .Values.images.milvus.registry | default .Values.images.registry }}/{{ .Values.images.milvus.repository }}:{{ .Values.images.milvus.tag }}
+        setup: {{ .Values.images.operator.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.operator.repository }}:{{ .Values.images.operator.tag }}
+        querynode: {{ .Values.images.milvus.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.milvus.repository }}:{{ .Values.images.milvus.tag }}
     - name: v2.3.2-indexnode
       serviceVersion: v2.3.2
       images:
-        setup: {{ .Values.images.operator.registry | default .Values.images.registry }}/{{ .Values.images.operator.repository }}:{{ .Values.images.operator.tag }}
+        setup: {{ .Values.images.operator.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.operator.repository }}:{{ .Values.images.operator.tag }}
         indexnode: {{ .Values.images.milvus.registry | default .Values.images.registry }}/{{ .Values.images.milvus.repository }}:{{ .Values.images.milvus.tag }}
     - name: v2.3.2-datanode
       serviceVersion: v2.3.2
       images:
-        setup: {{ .Values.images.operator.registry | default .Values.images.registry }}/{{ .Values.images.operator.repository }}:{{ .Values.images.operator.tag }}
-        datanode: {{ .Values.images.milvus.registry | default .Values.images.registry }}/{{ .Values.images.milvus.repository }}:{{ .Values.images.milvus.tag }}
+        setup: {{ .Values.images.operator.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.operator.repository }}:{{ .Values.images.operator.tag }}
+        datanode: {{ .Values.images.milvus.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.milvus.repository }}:{{ .Values.images.milvus.tag }}

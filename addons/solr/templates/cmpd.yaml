@@ -17,7 +17,7 @@ spec:
       runAsUser: 1001
     containers:
       - name: solr
-        image: {{ .Values.images.solr.registry }}/{{ .Values.images.solr.repository }}:{{ .Values.images.solr.tag }}
+        image: {{ .Values.images.solr.registry | default "docker.io" }}/{{ .Values.images.solr.repository }}:{{ .Values.images.solr.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.solr.pullPolicy }}
         env:
           - name: SOLR_ENABLE_CLOUD_MODE

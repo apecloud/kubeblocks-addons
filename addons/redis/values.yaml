@@ -33,14 +33,16 @@ image:
       minor72: 7.2.0-v10
 
 redisTwemproxyImage:
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  # if the value of redisTwemproxyImage.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
+  registry: ""
   repository: apecloud/twemproxy
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: 0.5.0
 
 busyboxImage:
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  # if the value of busyboxImage.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
+  registry: ""
   repository: apecloud/busybox
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.

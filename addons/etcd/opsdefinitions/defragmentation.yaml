@@ -41,7 +41,7 @@ spec:
         podSpec:
           containers:
             - name: etcd-defragmentation
-              image: quay.io/coreos/etcd:v3.5.6
+              image: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/etcd:v3.5.6
               imagePullPolicy: IfNotPresent
               command:
                 - sh
