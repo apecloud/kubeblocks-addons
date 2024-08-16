@@ -456,10 +456,12 @@ initialize_redis_cluster() {
   set +x
   if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
     initialize_command="redis-cli --cluster create $primary_nodes --cluster-yes"
+    logging_mask_initialize_command="$initialize_command"
   else
     initialize_command="redis-cli --cluster create $primary_nodes -a $REDIS_DEFAULT_PASSWORD --cluster-yes"
+    logging_mask_initialize_command="${initialize_command/$REDIS_DEFAULT_PASSWORD/********}"
   fi
-  echo "initialize cluster command: $initialize_command" | sed "s/$REDIS_DEFAULT_PASSWORD/********/g"
+  echo "initialize cluster command: $logging_mask_initialize_command"
   if ! $initialize_command; then
     echo "Failed to create Redis Cluster"
     exit 1
@@ -501,10 +503,12 @@ initialize_redis_cluster() {
     set +x
     if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
       replicated_command="redis-cli --cluster add-node $secondary_endpoint_with_port $mapping_primary_endpoint_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id"
+      logging_mask_replicated_command="$replicated_command"
     else
       replicated_command="redis-cli --cluster add-node $secondary_endpoint_with_port $mapping_primary_endpoint_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id -a $REDIS_DEFAULT_PASSWORD"
+      logging_mask_replicated_command="${replicated_command/$REDIS_DEFAULT_PASSWORD/********}"
     fi
-    echo "initialize cluster secondary add-node command: $replicated_command" | sed "s/$REDIS_DEFAULT_PASSWORD/********/g"
+    echo "initialize cluster secondary add-node command: $logging_mask_replicated_command"
     if ! $replicated_command; then
       echo "Failed to add the node $secondary_pod_name to the cluster in initialize_redis_cluster"
       exit 1
@@ -546,10 +550,12 @@ scale_out_redis_cluster_shard() {
     set +x
     if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
       add_node_command="redis-cli --cluster add-node $scale_out_shard_default_primary_node $available_node"
+      logging_mask_add_node_command="$add_node_command"
     else
       add_node_command="redis-cli --cluster add-node $scale_out_shard_default_primary_node $available_node -a $REDIS_DEFAULT_PASSWORD"
+      logging_mask_add_node_command="${add_node_command/$REDIS_DEFAULT_PASSWORD/********}"
     fi
-    echo "scale out shard primary add-node command: $add_node_command" | sed "s/$REDIS_DEFAULT_PASSWORD/********/g"
+    echo "scale out shard primary add-node command: $logging_mask_add_node_command"
     if ! $add_node_command; then
       echo "Failed to add the node $scale_out_shard_default_primary_node to the cluster"
       exit 1
@@ -567,10 +573,12 @@ scale_out_redis_cluster_shard() {
     set +x
     if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
       replicated_command="redis-cli --cluster add-node $scale_out_shard_default_other_node $primary_node_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id"
+      logging_mask_replicated_command="$replicated_command"
     else
       replicated_command="redis-cli --cluster add-node $scale_out_shard_default_other_node $primary_node_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id -a $REDIS_DEFAULT_PASSWORD"
+      logging_mask_replicated_command="${replicated_command/$REDIS_DEFAULT_PASSWORD/********}"
     fi
-    echo "scale out shard secondary replicated command: $replicated_command" | sed "s/$REDIS_DEFAULT_PASSWORD/********/g"
+    echo "scale out shard secondary replicated command: $logging_mask_replicated_command"
     if ! $replicated_command; then
       echo "Failed to add the node $scale_out_shard_default_other_node to the cluster"
       exit 1
@@ -588,10 +596,12 @@ scale_out_redis_cluster_shard() {
   set +x
   if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
       reshard_command="redis-cli --cluster reshard $primary_node_with_port --cluster-from all --cluster-to $mapping_primary_cluster_id --cluster-slots $slots_per_shard --cluster-yes"
+      logging_mask_reshard_command="$reshard_command"
   else
       reshard_command="redis-cli --cluster reshard $primary_node_with_port --cluster-from all --cluster-to $mapping_primary_cluster_id --cluster-slots $slots_per_shard -a $REDIS_DEFAULT_PASSWORD --cluster-yes"
+      logging_mask_reshard_command="${reshard_command/$REDIS_DEFAULT_PASSWORD/********}"
   fi
-  echo "scale out shard reshard command: $reshard_command" | sed "s/$REDIS_DEFAULT_PASSWORD/********/g"
+  echo "scale out shard reshard command: $logging_mask_reshard_command"
   if ! $reshard_command
   then
       echo "Failed to reshard the cluster"
@@ -647,10 +657,12 @@ scale_in_redis_cluster_shard() {
     set +x
     if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
       rebalance_command="redis-cli --cluster rebalance $primary_node --cluster-weight $primary_node_cluster_id=0 --cluster-yes "
+      logging_mask_rebalance_command="$rebalance_command"
     else
       rebalance_command="redis-cli --cluster rebalance $primary_node --cluster-weight $primary_node_cluster_id=0 --cluster-yes -a $REDIS_DEFAULT_PASSWORD"
+      logging_mask_rebalance_command="${rebalance_command/$REDIS_DEFAULT_PASSWORD/********}"
     fi
-    echo "set current component slot to 0 by rebalance command: $rebalance_command" | sed "s/$REDIS_DEFAULT_PASSWORD/********/g"
+    echo "set current component slot to 0 by rebalance command: $logging_mask_rebalance_command"
     if ! $rebalance_command
     then
       echo "Failed to rebalance the cluster for the current component when scaling in"
@@ -669,10 +681,12 @@ scale_in_redis_cluster_shard() {
     set +x
     if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
       del_node_command="redis-cli --cluster del-node $available_node $node_to_del_cluster_id -p $SERVICE_PORT"
+      logging_mask_del_node_command="$del_node_command"
     else
       del_node_command="redis-cli --cluster del-node $available_node $node_to_del_cluster_id -p $SERVICE_PORT -a $REDIS_DEFAULT_PASSWORD"
+      logging_mask_del_node_command="${del_node_command/$REDIS_DEFAULT_PASSWORD/********}"
     fi
-    echo "del-node command: $del_node_command" | sed "s/$REDIS_DEFAULT_PASSWORD/********/g"
+    echo "del-node command: $logging_mask_del_node_command"
     if ! $del_node_command
     then
       echo "Failed to delete the node $node_to_del from the cluster when scaling in"

@@ -34,10 +34,12 @@ remove_replica_from_shard_if_need() {
     set +x
     if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
       del_node_command="redis-cli --cluster del-node $current_node_ip_and_port $current_node_cluster_id"
+      logging_mask_del_node_command="$del_node_command"
     else
       del_node_command="redis-cli --cluster del-node $current_node_ip_and_port $current_node_cluster_id -a $REDIS_DEFAULT_PASSWORD"
+      logging_mask_del_node_command="${del_node_command/$REDIS_DEFAULT_PASSWORD/********}"
     fi
-    echo "remove replica from shard executing command: $del_node_command" | sed "s/$REDIS_DEFAULT_PASSWORD/********/g"
+    echo "remove replica from shard executing command: $logging_mask_del_node_command"
     for ((i=1; i<=20; i++)); do
       if $del_node_command; then
         echo "Successfully removed replica from shard."
