@@ -15,6 +15,9 @@ image:
   syncer:
     repository: apecloud/syncer
     tag: "0.1.2"
+  dbctl:
+    repository: apecloud/dbctl
+    tag: "0.1.2"
 
 ## MySQL Cluster parameters
 cluster:
