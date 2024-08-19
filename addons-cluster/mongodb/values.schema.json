@@ -6,7 +6,15 @@
       "title": "Version",
       "description": "Cluster version.",
       "type": "string",
-      "default": "6.0.16"
+      "default": "6.0.16",
+      "enum": [
+        "7.0.12",
+        "6.0.16",
+        "5.0.28",
+        "4.4.29",
+        "4.2.24",
+        "4.0.28"
+      ]
     },
     "mode": {
       "title": "Mode",
