@@ -4,6 +4,8 @@ metadata:
   name: {{ include "kblib.clusterName" . }}
   labels:
     {{ include "kblib.clusterLabels" . | nindent 4 }}
+  annotations:
+      {{- include "zookeeper-cluster.annotations.extra-envs" . | nindent 4 }}
 spec:
   terminationPolicy: {{ .Values.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
