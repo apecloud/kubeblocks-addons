@@ -37,10 +37,23 @@ Starting from kubeblocks 0.9.0, we introduced a more flexible cluster creation m
 ```bash
 kubectl apply -f examples/apecloud-mysql/cluster-cmpd.yaml
 ```
+
 ### [Horizontal scaling](horizontalscale.yaml)
 Horizontal scaling out or in specified components replicas in the cluster
 ```bash
 kubectl apply -f examples/apecloud-mysql/horizontalscale.yaml
+```
+
+### [Offline Instances](offlineinstance.yaml)
+Offline specified instances.
+```bash
+kubectl apply -f examples/apecloud-mysql/offlineinstance.yaml
+```
+
+### [Online Instances](onlineinstance.yaml)
+Online specified instances.
+```bash
+kubectl apply -f examples/apecloud-mysql/onlineinstance.yaml
 ```
 
 ### [Vertical scaling](verticalscale.yaml)

@@ -43,6 +43,18 @@ Horizontal scaling out or in specified components replicas in the cluster
 kubectl apply -f examples/postgresql/horizontalscale.yaml
 ```
 
+### [Offline Instances](offlineinstance.yaml)
+Offline specified instances.
+```bash
+kubectl apply -f examples/postgresql/offlineinstance.yaml
+```
+
+### [Online Instances](onlineinstance.yaml)
+Online specified instances.
+```bash
+kubectl apply -f examples/postgresql/onlineinstance.yaml
+```
+
 ### [Vertical scaling](verticalscale.yaml)
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
 ```bash
