@@ -22,12 +22,12 @@ spec:
     - name: vmstorage-1.0.0
       serviceVersion: 1.0.0
       images:
-        vmstorage: {{ .Values.images.registry }}/{{ .Values.images.vmstorage.repository }}:{{ .Values.images.vmstorage.tag }}
+        vmstorage: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.vmstorage.repository }}:{{ .Values.images.vmstorage.tag }}
     - name: vmselect-1.0.0
       serviceVersion: 1.0.0
       images:
-        vmselect: {{ .Values.images.registry }}/{{ .Values.images.vmselect.repository }}:{{ .Values.images.vmselect.tag }}
+        vmselect: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.vmselect.repository }}:{{ .Values.images.vmselect.tag }}
     - name: vminsert-1.0.0
       serviceVersion: 1.0.0
       images:
-        vminsert: {{ .Values.images.registry }}/{{ .Values.images.vminsert.repository }}:{{ .Values.images.vminsert.tag }}
+        vminsert: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.vminsert.repository }}:{{ .Values.images.vminsert.tag }}

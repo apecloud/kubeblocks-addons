@@ -57,7 +57,7 @@ spec:
           exec:
             command: [ "/bin/sh", "-c", "if [ -f $ORACLE_BASE/checkDBLockStatus.sh ]; then $ORACLE_BASE/checkDBLockStatus.sh ; else $ORACLE_BASE/checkDBStatus.sh; fi " ]
       - name: exporter
-        image: {{ .Values.exporter.image.registry | default .Values.image.registry }}/{{ .Values.exporter.image.repository }}:{{  .Values.exporter.image.tag }}
+        image: {{ .Values.exporter.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.exporter.image.repository }}:{{  .Values.exporter.image.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         securityContext:
           runAsUser: 1000

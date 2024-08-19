@@ -5,7 +5,9 @@
 {{- $mode := index $extraEnv "mode" | default "multi-node" }}
 
 {{- $allRoles := fromJson "{}" }}
+{{- $esVersion := "0.1.0" }}
 {{- range $i, $spec := $.cluster.spec.componentSpecs }}
+    {{- $esVersion = $spec.serviceVersion }}
     {{- $envName := printf "%s-roles" $spec.name }}
     {{- $roles := index $extraEnv $envName | default $defaultRoles | splitList "," }}
     {{- range $j, $role := $roles }}
@@ -75,9 +77,17 @@ node:
   store:
     allow_mmap: false
 {{- if eq $mode "multi-node" }}
+# https://www.elastic.co/guide/en/elasticsearch/reference/7.7/modules-node.html
   {{- $myRoles := index $extraEnv (printf "%s-roles" $.component.name) | default $defaultRoles | splitList "," }}
+  {{- if semverCompare "<7.9" $esVersion }}
   {{- range $i, $e := $myRoles }}
   {{ $e }}: true
+  {{- end }}
+  {{- else }}
+  roles:
+  {{- range $i, $e := $myRoles }}
+  - {{ $e }}
+  {{- end }}
   {{- end }}
 {{- end }}
 

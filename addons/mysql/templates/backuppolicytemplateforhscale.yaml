@@ -6,7 +6,6 @@ metadata:
     {{- include "mysql.labels" . | nindent 4 }}
     service-kind/mysql: "true"
 spec:
-  clusterDefinitionRef: mysql
   identifier: hscale
   backupPolicies:
   - componentDefs: [mysql-5.7.44-orc, mysql-5.7.44, mysql-8.0.33-orc, mysql-8.0.33]
@@ -45,39 +44,3 @@ spec:
         volumeMounts:
         - name: data
           mountPath: {{ .Values.dataMountPath }}
-  - componentDefRef: mysql
-    target:
-      role: secondary
-    backupMethods:
-      - name: xtrabackup
-        snapshotVolumes: false
-        actionSetName: mysql-xtrabackup
-        envMapping:
-          - key: IMAGE_TAG
-            valueFrom:
-              componentDef:
-                - names: [ mysql-8.0.33, mysql-8.0.33-orc ]
-                  mappingValue: "8.0.33-28"
-                - names: [ mysql-5.7.44, mysql-5.7.44-orc]
-                  mappingValue: "2.4"
-          - key: BACKUP_FOR_STANDBY
-            valueFrom:
-              componentDef:
-                - names: [ mysql-5.7.44, mysql-5.7.44-orc]
-                  mappingValue: "true"
-        targetVolumes:
-          volumeMounts:
-            - name: data
-              mountPath: {{ .Values.dataMountPath }}
-      - name: volume-snapshot
-        snapshotVolumes: true
-        actionSetName: mysql-volumesnapshot
-        env:
-          - name: RESTORE_STANDBY
-            value: "true"
-        targetVolumes:
-          volumes:
-            - data
-          volumeMounts:
-            - name: data
-              mountPath: {{ .Values.dataMountPath }}

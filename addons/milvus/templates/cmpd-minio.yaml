@@ -12,7 +12,7 @@ spec:
   runtime:
     initContainers:
       - name: volume-permissions
-        image: {{ .Values.images.ostools.repository }}:{{ .Values.images.ostools.tag }}
+        image: {{ .Values.images.ostools.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.ostools.repository }}:{{ .Values.images.ostools.tag }}
         imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
         command:
           - /bin/bash
@@ -26,7 +26,7 @@ spec:
             mountPath: /export
     containers:
       - name: minio
-        image: {{ .Values.images.minio.repository }}:{{ .Values.images.minio.tag }}
+        image: {{ .Values.images.minio.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.minio.repository }}:{{ .Values.images.minio.tag }}
         imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
         command:
           - /bin/sh

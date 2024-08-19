@@ -18,6 +18,7 @@ spec:
       {{- $compdef = printf "%s-orc" $compdef }}
       {{- end }}
       componentDef: {{ $compdef }}
+      {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "mysql-cluster.replicaCount" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
