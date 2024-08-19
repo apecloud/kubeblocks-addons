@@ -35,25 +35,25 @@ mv_start=$(date +%s)
     if [[ -z "$(ls -A /usr/share/elasticsearch/config)" ]]; then
         echo "Empty dir /usr/share/elasticsearch/config"
     else
-        echo "Copying /usr/share/elasticsearch/config/* to /mnt/elastic-internal/elasticsearch-config-local/"
+        echo "Copying /usr/share/elasticsearch/config/* to /mnt/local-config/"
         # Use "yes" and "-f" as we want the init container to be idempotent and not to fail when executed more than once.
-        yes | cp -avf /usr/share/elasticsearch/config/* /mnt/elastic-internal/elasticsearch-config-local/
+        yes | cp -avf /usr/share/elasticsearch/config/* /mnt/local-config/
     fi
 
     if [[ -z "$(ls -A /usr/share/elasticsearch/plugins)" ]]; then
         echo "Empty dir /usr/share/elasticsearch/plugins"
     else
-        echo "Copying /usr/share/elasticsearch/plugins/* to /mnt/elastic-internal/elasticsearch-plugins-local/"
+        echo "Copying /usr/share/elasticsearch/plugins/* to /mnt/local-plugins/"
         # Use "yes" and "-f" as we want the init container to be idempotent and not to fail when executed more than once.
-        yes | cp -avf /usr/share/elasticsearch/plugins/* /mnt/elastic-internal/elasticsearch-plugins-local/
+        yes | cp -avf /usr/share/elasticsearch/plugins/* /mnt/local-plugins/
     fi
 
     if [[ -z "$(ls -A /usr/share/elasticsearch/bin)" ]]; then
         echo "Empty dir /usr/share/elasticsearch/bin"
     else
-        echo "Copying /usr/share/elasticsearch/bin/* to /mnt/elastic-internal/elasticsearch-bin-local/"
+        echo "Copying /usr/share/elasticsearch/bin/* to /mnt/local-bin/"
         # Use "yes" and "-f" as we want the init container to be idempotent and not to fail when executed more than once.
-        yes | cp -avf /usr/share/elasticsearch/bin/* /mnt/elastic-internal/elasticsearch-bin-local/
+        yes | cp -avf /usr/share/elasticsearch/bin/* /mnt/local-bin/
     fi
 
 echo "Files copy duration: $(duration $mv_start) sec."
@@ -66,26 +66,26 @@ echo "Files copy duration: $(duration $mv_start) sec."
 # to a volume, to be used by the ES container
 ln_start=$(date +%s)
 
-#    echo "Linking /mnt/elastic-internal/xpack-file-realm/users to /mnt/elastic-internal/elasticsearch-config-local/users"
-#    ln -sf /mnt/elastic-internal/xpack-file-realm/users /mnt/elastic-internal/elasticsearch-config-local/users
+#    echo "Linking /mnt/elastic-internal/xpack-file-realm/users to /mnt/local-config/users"
+#    ln -sf /mnt/elastic-internal/xpack-file-realm/users /mnt/local-config/users
 
-#    echo "Linking /mnt/elastic-internal/xpack-file-realm/roles.yml to /mnt/elastic-internal/elasticsearch-config-local/roles.yml"
-#    ln -sf /mnt/elastic-internal/xpack-file-realm/roles.yml /mnt/elastic-internal/elasticsearch-config-local/roles.yml
+#    echo "Linking /mnt/elastic-internal/xpack-file-realm/roles.yml to /mnt/local-config/roles.yml"
+#    ln -sf /mnt/elastic-internal/xpack-file-realm/roles.yml /mnt/local-config/roles.yml
 
-#    echo "Linking /mnt/elastic-internal/xpack-file-realm/users_roles to /mnt/elastic-internal/elasticsearch-config-local/users_roles"
-#    ln -sf /mnt/elastic-internal/xpack-file-realm/users_roles /mnt/elastic-internal/elasticsearch-config-local/users_roles
+#    echo "Linking /mnt/elastic-internal/xpack-file-realm/users_roles to /mnt/local-config/users_roles"
+#    ln -sf /mnt/elastic-internal/xpack-file-realm/users_roles /mnt/local-config/users_roles
 
-    echo "Linking /mnt/elastic-internal/elasticsearch-config/elasticsearch.yml to /mnt/elastic-internal/elasticsearch-config-local/elasticsearch.yml"
-    ln -sf /mnt/elastic-internal/elasticsearch-config/elasticsearch.yml /mnt/elastic-internal/elasticsearch-config-local/elasticsearch.yml
+    echo "Linking /mnt/remote-config/elasticsearch.yml to /mnt/local-config/elasticsearch.yml"
+    ln -sf /mnt/remote-config/elasticsearch.yml /mnt/local-config/elasticsearch.yml
 
-    echo "Linking /mnt/elastic-internal/elasticsearch-config/log4j2.properties to /mnt/elastic-internal/elasticsearch-config-local/log4j2.properties"
-    ln -sf /mnt/elastic-internal/elasticsearch-config/log4j2.properties /mnt/elastic-internal/elasticsearch-config-local/log4j2.properties
+    echo "Linking /mnt/remote-config/log4j2.properties to /mnt/local-config/log4j2.properties"
+    ln -sf /mnt/remote-config/log4j2.properties /mnt/local-config/log4j2.properties
 
-#    echo "Linking /mnt/elastic-internal/unicast-hosts/unicast_hosts.txt to /mnt/elastic-internal/elasticsearch-config-local/unicast_hosts.txt"
-#    ln -sf /mnt/elastic-internal/unicast-hosts/unicast_hosts.txt /mnt/elastic-internal/elasticsearch-config-local/unicast_hosts.txt
+#    echo "Linking /mnt/elastic-internal/unicast-hosts/unicast_hosts.txt to /mnt/local-config/unicast_hosts.txt"
+#    ln -sf /mnt/elastic-internal/unicast-hosts/unicast_hosts.txt /mnt/local-config/unicast_hosts.txt
 
-#    echo "Linking /mnt/elastic-internal/xpack-file-realm/service_tokens to /mnt/elastic-internal/elasticsearch-config-local/service_tokens"
-#    ln -sf /mnt/elastic-internal/xpack-file-realm/service_tokens /mnt/elastic-internal/elasticsearch-config-local/service_tokens
+#    echo "Linking /mnt/elastic-internal/xpack-file-realm/service_tokens to /mnt/local-config/service_tokens"
+#    ln -sf /mnt/elastic-internal/xpack-file-realm/service_tokens /mnt/local-config/service_tokens
 
 echo "File linking duration: $(duration $ln_start) sec."
 
