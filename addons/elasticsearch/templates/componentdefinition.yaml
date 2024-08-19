@@ -86,7 +86,6 @@ items:
           - sh
           - -c
           - |
-            sh /mnt/remote-scripts/install-plugins.sh
             if [ -f /bin/tini ]; then
               /bin/tini -- /usr/local/bin/docker-entrypoint.sh
             else
@@ -172,47 +171,39 @@ items:
           timeoutSeconds: 5
           periodSeconds: 5
       initContainers:
+      - name: prepare-plugins
+        imagePullPolicy: IfNotPresent
+        command:
+        - sh
+        - -c
+        - |
+          if [ -d /plugins ]; then
+            echo "install plugins: $(ls /plugins)"
+            cp -r /plugins/* /tmp/plugins/
+          else
+            echo "there is no plugins"
+          fi
+        securityContext:
+          runAsUser: 0
+          privileged: true
+        volumeMounts:
+        - mountPath: /tmp/plugins
+          name: plugins
       - command:
-        - bash
+        - sh
         - -c
         - |
           set -x
           sh /mnt/remote-scripts/install-plugins.sh
           sh /mnt/remote-scripts/prepare-fs.sh
-        env:
-        - name: POD_IP
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: status.podIP
-        - name: POD_NAME
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: metadata.name
-        - name: NODE_NAME
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: spec.nodeName
-        - name: NAMESPACE
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: metadata.namespace
-        - name: READINESS_PROBE_PROTOCOL
-          value: http
-        - name: NSS_SDB_USE_CACHE
-          value: "no"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
-        name: init-filesystem
+        name: install-plugins
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
             drop:
             - ALL
           privileged: false
-          readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 1000
         volumeMounts:
@@ -228,8 +219,8 @@ items:
           name: local-config
         - mountPath: /mnt/local-plugins
           name: local-plugins
-        - mountPath: /tmp
-          name: tmp-volume
+        - mountPath: /tmp/plugins
+          name: plugins
       securityContext:
         fsGroup: 1000
       volumes:
@@ -243,6 +234,8 @@ items:
         name: local-config
       - emptyDir: {}
         name: local-plugins
+      - emptyDir: {}
+        name: plugins
 
 - apiVersion: apps.kubeblocks.io/v1alpha1
   kind: ComponentDefinition
