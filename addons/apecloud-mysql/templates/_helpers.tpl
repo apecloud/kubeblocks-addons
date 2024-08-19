@@ -155,9 +155,25 @@ roles:
     votable: false
 lifecycleActions:
   roleProbe:
-    builtinHandler: wesql
     periodSeconds: {{ .Values.roleProbe.periodSeconds }}
     timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+    exec:
+      container: mysql
+      command:
+        - /tools/dbctl
+        - --config-path
+        - /tools/config/dbctl/components
+        - wesql
+        - getrole
+  memberLeave:
+    exec:
+      container: mysql
+      command:
+        - /tools/dbctl
+        - --config-path
+        - /tools/config/dbctl/components
+        -  wesql
+        - leavemember
   switchover:
     withCandidate:
       exec:
@@ -286,6 +302,8 @@ volumeMounts:
     mountPath: /scripts
   - name: annotations
     mountPath: /etc/annotations
+  - mountPath: /tools
+    name: tools
 ports:
   - containerPort: 3306
     name: mysql

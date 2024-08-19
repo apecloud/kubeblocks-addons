@@ -10,6 +10,9 @@ image:
   tag: 8.0.30-5.beta3.20240330.g94d1caf.15
   # audit:
   #   tag: 8.0.30-5.beta3.auditlog.20231221.g6ba5e2e.14
+  dbctl:
+    repository: apecloud/dbctl
+    tag: "0.1.2"
 
 ## MySQL Cluster parameters
 cluster:
@@ -110,6 +113,6 @@ wesqlscale:
 resourceNamePrefix: ""
 
 etcd:
-  etcdCmpdName: etcd-1.0.0-alpha.0
+  etcdCmpdName: etcd
 
 clusterDomain: ".cluster.local"
