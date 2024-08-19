@@ -43,9 +43,10 @@ appendfsync everysec
 no-appendfsync-on-rewrite no
 auto-aof-rewrite-percentage 100
 auto-aof-rewrite-min-size 64mb
+aof-disable-auto-gc no
 aof-load-truncated yes
 aof-use-rdb-preamble yes
-aof-timestamp-enabled no
+aof-timestamp-enabled yes
 slowlog-log-slower-than 10000
 slowlog-max-len 128
 latency-monitor-threshold 0

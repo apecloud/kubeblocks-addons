@@ -14,20 +14,31 @@ spec:
     target:
       role: secondary
     backupMethods: &backupMethods
-    - name: datafile
+    - name: rdb
       snapshotVolumes: false
       actionSetName: redis-physical-backup
       targetVolumes:
         volumeMounts:
         - name: data
           mountPath: {{ .Values.dataMountPath }}
+    - name: aof
+      snapshotVolumes: false
+      actionSetName: redis-pitr-backup
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
     - name: volume-snapshot
       snapshotVolumes: true
       targetVolumes:
         volumes:
         - data
     schedules: &backupschedules
-    - backupMethod: datafile
+    - backupMethod: rdb
+      enabled: false
+      cronExpression: "0 18 * * 0"
+      retentionPeriod: 7d
+    - backupMethod: aof
       enabled: false
       cronExpression: "0 18 * * 0"
       retentionPeriod: 7d
@@ -48,7 +59,7 @@ spec:
       role: secondary
       account: default
     backupMethods:
-    - name: datafile
+    - name: rdb
       snapshotVolumes: false
       actionSetName: redis-cluster-backup
       targetVolumes:
@@ -62,7 +73,7 @@ spec:
   #      volumes:
   #        - data
     schedules:
-      - backupMethod: datafile
+      - backupMethod: rdb
         enabled: false
         cronExpression: "0 18 * * 0"
         retentionPeriod: 7d
