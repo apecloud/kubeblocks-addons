@@ -1,0 +1,20 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: mongo-onlineinstance
+  namespace: default
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: mongo-cluster
+  # Instructs the system to bypass pre-checks (including cluster state checks and customized pre-conditions hooks) and immediately execute the opsRequest, except for the opsRequest of 'Start' type, which will still undergo pre-checks even if `force` is true.  Note: Once set, the `force` field is immutable and cannot be updated.
+  force: false
+  type: HorizontalScaling
+  # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired replica changes, configurations for new instances, modifications for existing instances, and take offline/online the specified instances.
+  horizontalScaling:
+    # Specifies the name of the Component.
+  - componentName: mongodb
+    # Specifies the replica changes for scaling out components and instance templates, and brings offline instances back online. Can be used in conjunction with the "scaleIn" operation.
+    scaleOut:
+      # Specifies the instances in the offline list to bring back online.
+      offlineInstancesToOnline:
+      - mongo-cluster-mongodb-0
