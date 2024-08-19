@@ -17,4 +17,4 @@ spec:
     scaleOut:
       # Specifies the instances in the offline list to bring back online.
       offlineInstancesToOnline:
-      - redis-cluster-redis-0
+      - redis-cluster-redis-1

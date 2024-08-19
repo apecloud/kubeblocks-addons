@@ -17,4 +17,4 @@ spec:
     scaleIn:
       # Specifies the instance names that need to be taken offline.
       onlineInstancesToOffline:
-      - mysql-cluster-mysql-0
+      - mysql-cluster-mysql-1

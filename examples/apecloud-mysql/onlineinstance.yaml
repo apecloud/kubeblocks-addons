@@ -17,4 +17,4 @@ spec:
     scaleOut:
       # Specifies the instances in the offline list to bring back online.
       offlineInstancesToOnline:
-      - acmysql-cluster-mysql-0
+      - acmysql-cluster-mysql-1

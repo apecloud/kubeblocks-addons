@@ -17,4 +17,4 @@ spec:
     scaleOut:
       # Specifies the instances in the offline list to bring back online.
       offlineInstancesToOnline:
-      - pg-cluster-postgresql-0
+      - pg-cluster-postgresql-1

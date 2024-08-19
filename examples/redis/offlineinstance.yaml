@@ -17,4 +17,4 @@ spec:
     scaleIn:
       # Specifies the instance names that need to be taken offline.
       onlineInstancesToOffline:
-      - redis-cluster-redis-0
+      - redis-cluster-redis-1
