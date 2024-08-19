@@ -129,9 +129,16 @@ spec:
       passwordGenerationPolicy: *defaultPasswdGenerationPolicy
   lifecycleActions:
     roleProbe:
-      builtinHandler: postgresql
       periodSeconds: 1
       timeoutSeconds: 1
+      exec:
+        container: postgresql
+        command:
+          - /tools/dbctl
+          - --config-path
+          - /tools/config/dbctl/components
+          - postgresql
+          - getrole
     switchover:
       withCandidate:
         exec:
@@ -193,6 +200,18 @@ spec:
             mountPath: /kb-scripts
           - name: pod-info
             mountPath: /kb-podinfo
+      - command:
+          - cp
+          - -r
+          - /bin/dbctl
+          - /config
+          - /tools/
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        name: init-dbctl
+        volumeMounts:
+          - mountPath: /tools
+            name: tools
     containers:
       - name: postgresql
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major15.minor070 }}
@@ -226,6 +245,8 @@ spec:
             mountPath: /kb-scripts
           - name: pod-info
             mountPath: /kb-podinfo
+          - mountPath: /tools
+            name: tools
         ports:
           - name: tcp-postgresql
             containerPort: 5432

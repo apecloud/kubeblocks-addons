@@ -12,7 +12,10 @@ image:
   debug: false
   syncer:
     repository: apecloud/syncer
-    tag: "latest"
+    tag: "0.1.8"
+  dbctl:
+    repository: apecloud/dbctl
+    tag: "0.1.2"
 
 dataMountPath: /postgresql/volume_data
 confMountPath: /postgresql/mount_conf
