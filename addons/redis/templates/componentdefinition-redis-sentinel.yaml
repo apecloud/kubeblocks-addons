@@ -91,15 +91,16 @@ spec:
           optional: false
           podFQDNs: Required
     ## the password of redis for redis sentinel connection, which is only used to recover redis servers when scale-out redis sentinel.
-    - name: REDIS_SENTINEL_PASSWORD
-      valueFrom:
-        credentialVarRef:
-          compDef: {{ include "redis.componentDefName" . }}
-          name: default
-          optional: true
-          password: Required
-          multipleClusterObjectOption:
-            strategy: individual
+    ## TODO: Obtaining the redis password here will cause a circular dependency issue, which will lead to the abnormal restart of the Redis Sentinel pod, details refer to redis-sentinel-member-join.sh
+{{/*    - name: REDIS_SENTINEL_PASSWORD*/}}
+{{/*      valueFrom:*/}}
+{{/*        credentialVarRef:*/}}
+{{/*          compDef: {{ include "redis.componentDefName" . }}*/}}
+{{/*          name: default*/}}
+{{/*          optional: true*/}}
+{{/*          password: Required*/}}
+{{/*          multipleClusterObjectOption:*/}}
+{{/*            strategy: individual*/}}
   lifecycleActions:
     accountProvision:
       exec:
@@ -116,7 +117,7 @@ spec:
           - /bin/bash
           - -c
           - |
-          {{- .Files.Get "scripts/redis-sentinel-offline.sh" | nindent 14 }}
+          {{- .Files.Get "scripts/redis-sentinel-member-leave.sh" | nindent 14 }}
         targetPodSelector: Any
         container: redis-sentinel
   runtime:

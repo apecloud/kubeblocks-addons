@@ -3,7 +3,7 @@
 
 # validate_shell_type_and_version defined in shellspec/spec_helper.sh used to validate the expected shell type and version this script needs to run.
 if ! validate_shell_type_and_version "bash" 4 &>/dev/null; then
-  echo "redis_sentinel_offline_spec.sh skip all cases because dependency bash version 4 or higher is not installed."
+  echo "redis_sentinel_member_leave_spec.sh skip all cases because dependency bash version 4 or higher is not installed."
   exit 0
 fi
 
@@ -14,9 +14,9 @@ source ./utils.sh
 common_library_file="./common.sh"
 generate_common_library $common_library_file
 
-Describe "Redis Sentinel Offline Script Tests"
+Describe "Redis Sentinel Member Leave Script Tests"
 
-  Include ../scripts/redis-sentinel-offline.sh
+  Include ../scripts/redis-sentinel-member-leave.sh
   Include $common_library_file
 
   setup() {

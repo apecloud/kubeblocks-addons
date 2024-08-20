@@ -45,6 +45,15 @@ check_redis_sentinel_ok() {
   fi
 }
 
+retry_check_redis_sentinel_ok() {
+  if call_func_with_retry 5 3 check_redis_sentinel_ok; then
+    return 0
+  else
+    echo "Redis sentinel is not running."
+    return 1
+  fi
+}
+
 # This is magic for shellspec ut framework.
 # Sometime, functions are defined in a single shell script.
 # You will want to test it. but you do not want to run the script.
@@ -54,4 +63,4 @@ ${__SOURCED__:+false} : || return 0
 
 # main
 load_common_library
-check_redis_sentinel_ok || exit 1
+retry_check_redis_sentinel_ok || exit 1
