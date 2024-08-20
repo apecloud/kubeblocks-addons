@@ -1,8 +1,7 @@
 ## @section OrioleDB common parameters
 
 image:
-#  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  registry: docker.io
   repository: apecloud/orioledb
   tag: beta1
   pullPolicy: IfNotPresent

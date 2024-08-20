@@ -12,17 +12,22 @@ jobs:
   check-addons-helm:
     name: check addons helm
     if: github.event.review.state == 'approved'
-    uses: apecloud/apecloud-cd/.github/workflows/release-charts-check.yml@v0.1.40
+    strategy:
+      fail-fast: false
+      matrix:
+        registry: [ "", "dockerhub", "aliyun" ]
+    uses: apecloud/apecloud-cd/.github/workflows/release-charts-check.yml@v0.1.68
     with:
       CHART_DIR: "addons"
-      APECD_REF: "v0.1.40"
+      APECD_REF: "v0.1.68"
+      SET_REGISTRY: "${{ matrix.registry }}"
     secrets: inherit
 
   check-addons-cluster-helm:
     name: check addons cluster helm
     if: github.event.review.state == 'approved'
-    uses: apecloud/apecloud-cd/.github/workflows/release-charts-check.yml@v0.1.40
+    uses: apecloud/apecloud-cd/.github/workflows/release-charts-check.yml@v0.1.68
     with:
       CHART_DIR: "addons-cluster"
-      APECD_REF: "v0.1.40"
+      APECD_REF: "v0.1.68"
     secrets: inherit

@@ -8,12 +8,12 @@ clusterVersionOverride: ""
 timezone: Asia/Shanghai
 
 image:
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  registry: docker.io
   pullPolicy: IfNotPresent
   fe:
-    repository: apecloud/fe-ubuntu
+    repository: starrocks/fe-ubuntu
   be:
-    repository: apecloud/be-ubuntu
+    repository: starrocks/be-ubuntu
 
 fe:
   config: |
