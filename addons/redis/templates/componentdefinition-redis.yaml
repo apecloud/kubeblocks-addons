@@ -122,6 +122,13 @@ spec:
           compDef: {{ include "redis.componentDefName" . }}
           optional: false
           podFQDNs: Required
+    ## the component name of redis sentinel when redis sentinel is enabled
+    - name: SENTINEL_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "redis-sentinel.componentDefName" . }}
+          optional: true
+          componentName: Required
     ## the username of redis sentinel for redis connection, it is optional
     - name: SENTINEL_USER
       valueFrom:
@@ -140,14 +147,6 @@ spec:
           name: default
           optional: true
           password: Required
-    - name: SENTINEL_COMPONENT_DEFINITION_NAME
-      value: {{ include "redis-sentinel.componentDefName" . }}
-    - name: SENTINEL_COMPONENT_NAME
-      valueFrom:
-        componentVarRef:
-          compDef: {{ include "redis-sentinel.componentDefName" . }}
-          optional: true
-          componentName: Required
     - name: SENTINEL_SERVICE_PORT
       valueFrom:
         serviceVarRef:
