@@ -12,6 +12,8 @@ fullnameOverride: ""
 ## @param image.debug Specify if debug values should be set
 ##
 image:
+  # refer: https://github.com/apecloud-inc/spilo/blob/main/postgres-appliance/Dockerfile
+  # this is the image of postgresql, which is built from Dockerfile of apecloud-inc/spilo forked from zalando/spilo.
   registry: docker.io
   repository: apecloud/spilo
   digest: ""
@@ -25,6 +27,8 @@ image:
       minor080: 14.8.0-pgvector-v0.6.1
     major15:
       minor070: 15.7.0
+
+  # refer: https://github.com/apecloud/dbctl/blob/main/docker/Dockerfile
   dbctl:
     repository: apecloud/dbctl
     tag: "0.1.2"

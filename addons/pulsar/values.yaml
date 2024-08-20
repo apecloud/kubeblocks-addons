@@ -43,7 +43,7 @@ images:
 
   v2_11_2:
     bookie:
-      repository: ""
+      repository: apecloud/pulsar
       pullPolicy: ""
       tag: ""
 

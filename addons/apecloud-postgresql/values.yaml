@@ -13,6 +13,8 @@ image:
   syncer:
     repository: apecloud/syncer
     tag: "0.1.8"
+
+  # refer: https://github.com/apecloud/dbctl/blob/main/docker/Dockerfile
   dbctl:
     repository: apecloud/dbctl
     tag: "0.1.2"

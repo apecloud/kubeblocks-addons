@@ -10,6 +10,7 @@ image:
   tag: 8.0.30-5.beta3.20240330.g94d1caf.15
   # audit:
   #   tag: 8.0.30-5.beta3.auditlog.20231221.g6ba5e2e.14
+  # refer: https://github.com/apecloud/dbctl/blob/main/docker/Dockerfile
   dbctl:
     repository: apecloud/dbctl
     tag: "0.1.2"
