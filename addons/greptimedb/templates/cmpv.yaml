@@ -22,12 +22,12 @@ spec:
     - name: datanode-0.3.2
       serviceVersion: 0.3.2
       images:
-        datanode: {{ .Values.images.greptimedb.registry | default .Values.images.registry }}/{{ .Values.images.greptimedb.repository }}:0.3.2
+        datanode: {{ .Values.images.greptimedb.registry | default .Values.images.registry }}/{{ .Values.images.greptimedb.repository }}:{{ .Values.images.greptimedb.tag }}
     - name: frontend-0.3.2
       serviceVersion: 0.3.2
       images:
-        frontend: {{ .Values.images.greptimedb.registry | default .Values.images.registry }}/{{ .Values.images.greptimedb.repository }}:0.3.2
+        frontend: {{ .Values.images.greptimedb.registry | default .Values.images.registry }}/{{ .Values.images.greptimedb.repository }}:{{ .Values.images.greptimedb.tag }}
     - name: meta-0.3.2
       serviceVersion: 0.3.2
       images:
-        meta: {{ .Values.images.greptimedb.registry | default .Values.images.registry }}/{{ .Values.images.greptimedb.repository }}:0.3.2
+        meta: {{ .Values.images.greptimedb.registry | default .Values.images.registry }}/{{ .Values.images.greptimedb.repository }}:{{ .Values.images.greptimedb.tag }}

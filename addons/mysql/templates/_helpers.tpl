@@ -210,7 +210,7 @@ roles:
     - -r
     - /xtrabackup-2.4
     - /kubeblocks/xtrabackup
-  image: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:mysql
+  image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
   imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
   name: init-xtrabackup
   volumeMounts:

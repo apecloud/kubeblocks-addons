@@ -99,3 +99,38 @@ postgresql-15
 {{ include "postgresql.componentDefNamePrefix" . }}{{ .Values.componentDefinitionVersion.postgresql15 }}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Define image
+*/}}
+{{- define "redis.image140" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor140 }}
+{{- end }}
+
+{{- define "redis.image141" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor141 }}
+{{- end }}
+
+{{- define "redis.image150" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor150 }}
+{{- end }}
+
+{{- define "redis.image072" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major14.minor072 }}
+{{- end }}
+
+{{- define "redis.image080" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major14.minor080 }}
+{{- end }}
+
+{{- define "redis.image070" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major15.minor070 }}
+{{- end }}
+
+{{- define "pgbouncer.image" -}}
+{{ .Values.pgbouncer.image.registry | default (.Values.image.registry | default "docker.io") }}/{{ .Values.pgbouncer.image.repository }}:{{ .Values.pgbouncer.image.tag }}
+{{- end }}
+
+{{- define "metrics.image" -}}
+{{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
+{{- end }}

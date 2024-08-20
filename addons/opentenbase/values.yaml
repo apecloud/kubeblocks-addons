@@ -4,7 +4,7 @@
 
 # Related image configurations.
 images:
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
-  repository: apecloud/opentenbase
+  registry: docker.io
+  repository: domainlau/opentenbase
   tag: v2.5.0
   pullPolicy: IfNotPresent

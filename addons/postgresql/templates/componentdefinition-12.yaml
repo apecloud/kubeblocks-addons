@@ -140,7 +140,7 @@ spec:
     switchover:
       withCandidate:
         exec:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor150 }}
+          image: {{ include "redis.image150" . }}
           command:
             - /bin/bash
             - -c
@@ -148,7 +148,7 @@ spec:
             - curl -s http://$(KB_REPLICATION_PRIMARY_POD_FQDN):8008/switchover -XPOST -d '{"leader":"$(KB_REPLICATION_PRIMARY_POD_NAME)","candidate":"$(KB_SWITCHOVER_CANDIDATE_NAME)"}'
       withoutCandidate:
         exec:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor150 }}
+          image: {{ include "redis.image150" . }}
           command:
             - /bin/bash
             - -c
@@ -158,7 +158,7 @@ spec:
       builtinHandler: postgresql
     {{/*
       customHandler:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor150 }}
+        image: {{ include "redis.image150" . }}
         exec:
           command:
             - psql
@@ -174,7 +174,7 @@ spec:
     */}}
     preTerminate:
       customHandler:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor150 }}
+        image: {{ include "redis.image150" . }}
         exec:
           command: ["/kb-scripts/etcd-clean.sh"]
   runtime:
@@ -185,7 +185,7 @@ spec:
       fsGroupChangePolicy: OnRootMismatch
     initContainers:
       - name: pg-init-container
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor150 }}
+        image: {{ include "redis.image150" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/init_container.sh
@@ -212,7 +212,7 @@ spec:
             name: tools
     containers:
       - name: postgresql
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor150 }}
+        image: {{ include "redis.image150" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         securityContext:
           runAsUser: 0
@@ -308,7 +308,7 @@ spec:
           - name: PGPASSWORD
             value: $(POSTGRES_PASSWORD)
       - name: pgbouncer
-        image: {{ .Values.pgbouncer.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.pgbouncer.image.repository }}:{{ default .Values.pgbouncer.image.tag }}
+        image: {{ include "pgbouncer.image" . }}
         imagePullPolicy: {{ .Values.pgbouncer.image.pullPolicy | quote }}
         securityContext:
           runAsUser: 0
@@ -360,7 +360,7 @@ spec:
         ports:
           - name: http-metrics
             containerPort: {{ .Values.metrics.service.port }}
-        image: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
+        image: {{ include "metrics.image" . }}
         imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
         args:
           - "--extend.query-path=/opt/conf/custom-metrics.yaml"

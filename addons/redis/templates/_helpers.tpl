@@ -129,8 +129,16 @@ Define image
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major7.minor72 }}
 {{- end }}
 
+{{- define "redis.image70" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major7.minor70 }}
+{{- end }}
+
 {{- define "redis-sentinel.image" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major7.minor72 }}
+{{- end }}
+
+{{- define "redis-sentinel.image70" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major7.minor70 }}
 {{- end }}
 
 {{- define "redis-twemproxy.image" -}}
@@ -139,6 +147,14 @@ Define image
 
 {{- define "busybox.image" -}}
 {{ .Values.busyboxImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.busyboxImage.repository}}:{{ .Values.busyboxImage.tag }}
+{{- end }}}
+
+{{- define "metrics.image" -}}
+{{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository}}:{{ .Values.metrics.image.tag }}
+{{- end }}}
+
+{{- define "apeDts.image" -}}
+{{ .Values.image.apeDts.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.apeDts.repository}}:{{ .Values.image.apeDts.tag }}
 {{- end }}}
 
 

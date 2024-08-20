@@ -8,7 +8,7 @@ commonAnnotations:
   resource.kubeblocks.io/ignore-constraint: "true"
 
 image:
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  registry: docker.io
 
 ## @param mode pulsar cluster topology mode: pulsar-basic-cluster and pulsar-enhanced-cluster
 ## pulsar-basic-cluster: contains broker, zookeeper and bookkeeper

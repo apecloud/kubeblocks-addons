@@ -15,8 +15,8 @@ commonLabels: {}
 ##
 images:
   pullPolicy: IfNotPresent
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
-  repository: apecloud/weaviate
+  registry: docker.io
+  repository: semitechnologies/weaviate
   tag: 1.19.6
 
 ## @param debugEnabled enables containers' debug logging
@@ -303,8 +303,8 @@ modules:
     # The configuration below is ignored if enabled==false
     fullnameOverride: contextionary
     tag: en0.16.0-v1.0.2
-    repo: apecloud/contextionary
-    registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+    repo: semitechnologies/contextionary
+    registry: docker.io
     replicas: 1
     envconfig:
       occurrence_weight_linear_factor: 0.75
@@ -352,8 +352,8 @@ modules:
     # https://weaviate.io/developers/weaviate/modules/retriever-vectorizer-modules/text2vec-transformers
     # for all supported models or build your own container.
     tag: distilbert-base-uncased
-    repo: apecloud/transformers-inference
-    registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+    repo: semitechnologies/transformers-inference
+    registry: docker.io
     replicas: 1
     fullnameOverride: transformers-inference
     probeInitialDelaySeconds: 120
@@ -406,8 +406,8 @@ modules:
         inferenceUrl: {}
 
         tag: facebook-dpr-ctx_encoder-single-nq-base
-        repo: apecloud/transformers-inference
-        registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+        repo: semitechnologies/transformers-inference
+        registry: docker.io
         replicas: 1
         fullnameOverride: transformers-inference-passage
         envconfig:
@@ -452,8 +452,8 @@ modules:
         inferenceUrl: {}
 
         tag: facebook-dpr-question_encoder-single-nq-base
-        repo: apecloud/transformers-inference
-        registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+        repo: semitechnologies/transformers-inference
+        registry: docker.io
         replicas: 1
         fullnameOverride: transformers-inference-query
         envconfig:
@@ -556,8 +556,8 @@ modules:
     # https://weaviate.io/developers/weaviate/modules/retriever-vectorizer-modules/multi2vec-clip
     # for all supported models or build your own container.
     tag: sentence-transformers-clip-ViT-B-32-multilingual-v1
-    repo: apecloud/multi2vec-clip
-    registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+    repo: semitechnologies/multi2vec-clip
+    registry: docker.io
     replicas: 1
     fullnameOverride: clip-inference
     envconfig:
@@ -597,8 +597,8 @@ modules:
     # You can do so by setting a value for the `inferenceUrl` here AND by setting the `enable` to `false`
     inferenceUrl: {}
     tag: bert-large-uncased-whole-word-masking-finetuned-squad-34d66b1
-    repo: apecloud/qna-transformers
-    registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+    repo: semitechnologies/qna-transformers
+    registry: docker.io
     replicas: 1
     fullnameOverride: qna-transformers
     envconfig:
@@ -676,8 +676,8 @@ modules:
     # You can do so by setting a value for the `inferenceUrl` here AND by setting the `enable` to `false`
     inferenceUrl: {}
     tag: resnet50
-    repo: apecloud/img2vec-pytorch
-    registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+    repo: semitechnologies/img2vec-pytorch
+    registry: docker.io
     replicas: 1
     fullnameOverride: img2vec-neural
     envconfig:
@@ -729,8 +729,8 @@ modules:
     # You can do so by setting a value for the `inferenceUrl` here AND by setting the `enable` to `false`
     inferenceUrl: {}
     tag: pyspellchecker-en
-    repo: apecloud/text-spellcheck-model
-    registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+    repo: semitechnologies/text-spellcheck-model
+    registry: docker.io
     replicas: 1
     fullnameOverride: text-spellcheck
 
@@ -765,8 +765,8 @@ modules:
     # You can do so by setting a value for the `inferenceUrl` here AND by setting the `enable` to `false`
     inferenceUrl: {}
     tag: dbmdz-bert-large-cased-finetuned-conll03-english-0.0.2
-    repo: apecloud/ner-transformers
-    registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+    repo: semitechnologies/ner-transformers
+    registry: docker.io
     replicas: 1
     fullnameOverride: ner-transformers
     envconfig:
@@ -817,8 +817,8 @@ modules:
     # You can do so by setting a value for the `inferenceUrl` here AND by setting the `enable` to `false`
     inferenceUrl: {}
     tag: facebook-bart-large-cnn-1.0.0
-    repo: apecloud/sum-transformers
-    registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+    repo: semitechnologies/sum-transformers
+    registry: docker.io
     replicas: 1
     fullnameOverride: sum-transformers
     envconfig:
