@@ -6,15 +6,15 @@ nameOverride: ""
 fullnameOverride: ""
 
 image:
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  registry: docker.io
   init:
-    repository: apecloud/busybox
+    repository: busybox
     tag: 1.28
   jobmanager:
-    repository: apecloud/flink
+    repository: flink
     tag: 1.16
   taskmanager:
-    repository: apecloud/flink
+    repository: flink
     tag: 1.16
   pullPolicy: IfNotPresent
 

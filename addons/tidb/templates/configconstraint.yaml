@@ -55,7 +55,7 @@ spec:
               - cp
               - /pd-ctl
               - /kb-tools/pd-ctl
-            image: "{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/pd:{{ default .Chart.AppVersion .Values.image.tag }}"
+            image: "{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"
 
   dynamicParameters:
     - log.level
