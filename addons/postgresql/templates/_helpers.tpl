@@ -103,20 +103,12 @@ postgresql-15
 {{/*
 Define image
 */}}
-{{- define "postgresql.image140" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor140 }}
-{{- end }}
-
-{{- define "postgresql.image141" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor141 }}
+{{- define "postgresql.repository" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}
 {{- end }}
 
 {{- define "postgresql.image150" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor150 }}
-{{- end }}
-
-{{- define "postgresql.image072" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major14.minor072 }}
 {{- end }}
 
 {{- define "postgresql.image080" -}}
@@ -125,6 +117,10 @@ Define image
 
 {{- define "postgresql.image070" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major15.minor070 }}
+{{- end }}
+
+{{- define "pgbouncer.repository" -}}
+{{ .Values.pgbouncer.image.registry | default (.Values.image.registry | default "docker.io") }}/{{ .Values.pgbouncer.image.repository }}
 {{- end }}
 
 {{- define "pgbouncer.image" -}}

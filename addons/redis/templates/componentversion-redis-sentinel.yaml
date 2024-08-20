@@ -14,9 +14,9 @@ spec:
       changes:
       serviceVersion: 7.2.4
       images:
-        redis-sentinel: {{ include "redis-sentinel.image" . }}
+        redis-sentinel: {{ include "redis-sentinel.repository" . }}:7.2.0-v10
     - name: 7.0.6
       changes:
       serviceVersion: 7.0.6
       images:
-        redis-sentinel: {{ include "redis-sentinel.image70" . }}
+        redis-sentinel: {{ include "redis-sentinel.repository" . }}:7.0.6-RC4
