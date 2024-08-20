@@ -103,27 +103,27 @@ postgresql-15
 {{/*
 Define image
 */}}
-{{- define "redis.image140" -}}
+{{- define "postgresql.image140" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor140 }}
 {{- end }}
 
-{{- define "redis.image141" -}}
+{{- define "postgresql.image141" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor141 }}
 {{- end }}
 
-{{- define "redis.image150" -}}
+{{- define "postgresql.image150" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor150 }}
 {{- end }}
 
-{{- define "redis.image072" -}}
+{{- define "postgresql.image072" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major14.minor072 }}
 {{- end }}
 
-{{- define "redis.image080" -}}
+{{- define "postgresql.image080" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major14.minor080 }}
 {{- end }}
 
-{{- define "redis.image070" -}}
+{{- define "postgresql.image070" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major15.minor070 }}
 {{- end }}
 

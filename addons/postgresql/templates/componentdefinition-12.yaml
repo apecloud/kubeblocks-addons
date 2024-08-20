@@ -140,7 +140,7 @@ spec:
     switchover:
       withCandidate:
         exec:
-          image: {{ include "redis.image150" . }}
+          image: {{ include "postgresql.image150" . }}
           command:
             - /bin/bash
             - -c
@@ -148,7 +148,7 @@ spec:
             - curl -s http://$(KB_REPLICATION_PRIMARY_POD_FQDN):8008/switchover -XPOST -d '{"leader":"$(KB_REPLICATION_PRIMARY_POD_NAME)","candidate":"$(KB_SWITCHOVER_CANDIDATE_NAME)"}'
       withoutCandidate:
         exec:
-          image: {{ include "redis.image150" . }}
+          image: {{ include "postgresql.image150" . }}
           command:
             - /bin/bash
             - -c
@@ -158,7 +158,7 @@ spec:
       builtinHandler: postgresql
     {{/*
       customHandler:
-        image: {{ include "redis.image150" . }}
+        image: {{ include "postgresql.image150" . }}
         exec:
           command:
             - psql
@@ -174,7 +174,7 @@ spec:
     */}}
     preTerminate:
       customHandler:
-        image: {{ include "redis.image150" . }}
+        image: {{ include "postgresql.image150" . }}
         exec:
           command: ["/kb-scripts/etcd-clean.sh"]
   runtime:
@@ -185,7 +185,7 @@ spec:
       fsGroupChangePolicy: OnRootMismatch
     initContainers:
       - name: pg-init-container
-        image: {{ include "redis.image150" . }}
+        image: {{ include "postgresql.image150" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/init_container.sh
@@ -212,7 +212,7 @@ spec:
             name: tools
     containers:
       - name: postgresql
-        image: {{ include "redis.image150" . }}
+        image: {{ include "postgresql.image150" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         securityContext:
           runAsUser: 0
