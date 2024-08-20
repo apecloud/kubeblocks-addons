@@ -171,28 +171,46 @@ spec:
           podFQDNs: Required
   lifecycleActions:
     roleProbe:
-      builtinHandler: redis
       periodSeconds: 1
       timeoutSeconds: 1
+      exec:
+        container: redis
+        command:
+          - /tools/dbctl
+          - --config-path
+          - /tools/config/dbctl/components
+          - redis
+          - getrole
     postProvision:
-      customHandler:
-        exec:
-          image: {{ include "redis.image" . }}
-          command:
-            - /bin/bash
-            - -c
-            - /scripts/redis-register-to-sentinel.sh
-        preCondition: RuntimeReady
+      exec:
+        container: redis
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/redis-register-to-sentinel.sh
+      preCondition: RuntimeReady
     accountProvision:
-      customHandler:
-        exec:
-          image: {{ include "redis.image" . }}
-          command:
-            - sh
-            - -c
-          args:
-            - "redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD acl save "
+      exec:
+        container: redis
+        command:
+          - sh
+          - -c
+        args:
+          - "redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD acl save "
   runtime:
+    initContainers:
+      - name: init-dbctl
+        command:
+          - cp
+          - -r
+          - /bin/dbctl
+          - /config
+          - /tools/
+        image: {{ .Values.dbctlImage.registry | default "docker.io" }}/{{ .Values.dbctlImage.repository }}:{{ .Values.dbctlImage.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.dbctlImage.pullPolicy }}
+        volumeMounts:
+          - mountPath: /tools
+            name: tools
     containers:
       - name: redis
         image: {{ include "redis.image" . }}
@@ -209,6 +227,8 @@ spec:
             mountPath: /scripts
           - name: redis-conf
             mountPath: /etc/redis
+          - mountPath: /tools
+            name: tools
         env:
           - name: SERVICE_PORT
             value: "6379"

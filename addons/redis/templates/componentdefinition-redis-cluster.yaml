@@ -165,32 +165,50 @@ spec:
           host: Required
   lifecycleActions:
     roleProbe:
-      builtinHandler: redis
       periodSeconds: 1
       timeoutSeconds: 1
+      exec:
+        container: redis-cluster
+        command:
+          - /tools/dbctl
+          - --config-path
+          - /tools/config/dbctl/components
+          - redis
+          - getrole
     postProvision:
-      customHandler:
-        exec:
-          image: {{ include "redis.image" . }}
-          command:
-            - /bin/bash
-            - -c
-            - /scripts/redis-cluster-manage.sh --post-provision
-        ## TODO: the preCondition should be changed to RuntimeReady when KubeBlocks support it
-        preCondition: ComponentReady
-        retryPolicy:
-          maxRetries: 10
+      exec:
+        container: redis-cluster
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/redis-cluster-manage.sh --post-provision
+      ## TODO: the preCondition should be changed to RuntimeReady when KubeBlocks support it
+      preCondition: ComponentReady
+      retryPolicy:
+        maxRetries: 10
     preTerminate:
-      customHandler:
-        exec:
-          image: {{ include "redis.image" . }}
-          command:
-            - /bin/bash
-            - -c
-            - /scripts/redis-cluster-manage.sh --pre-terminate
-        retryPolicy:
-          maxRetries: 10
+      exec:
+        container: redis-cluster
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/redis-cluster-manage.sh --pre-terminate
+      retryPolicy:
+        maxRetries: 10
   runtime:
+    initContainers:
+      - name: init-dbctl
+        command:
+          - cp
+          - -r
+          - /bin/dbctl
+          - /config
+          - /tools/
+        image: {{ .Values.dbctlImage.registry | default "docker.io" }}/{{ .Values.dbctlImage.repository }}:{{ .Values.dbctlImage.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.dbctlImage.pullPolicy }}
+        volumeMounts:
+          - mountPath: /tools
+            name: tools
     containers:
       - name: redis-cluster
         image: {{ include "redis.image" . }}
@@ -209,6 +227,8 @@ spec:
             mountPath: /scripts
           - name: redis-conf
             mountPath: /etc/redis
+          - mountPath: /tools
+            name: tools
         env:
           - name: SERVICE_PORT
             value: "6379"
