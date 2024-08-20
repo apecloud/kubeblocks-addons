@@ -24,7 +24,6 @@ cluster:
     allocation:
       awareness:
         attributes: k8s_node_name
-  max_voting_config_exclusions: 1
 {{- if eq $mode "multi-node" }}
   initial_master_nodes:
 {{- range $i, $name := $masterComponents }}
