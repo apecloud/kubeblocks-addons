@@ -4,8 +4,6 @@ metadata:
   name: {{ include "kblib.clusterName" . }}
   labels:
     {{ include "kblib.clusterLabels" . | nindent 4 }}
-  annotations:
-      {{- include "zookeeper-cluster.annotations.extra-envs" . | nindent 4 }}
 spec:
   terminationPolicy: {{ .Values.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
@@ -17,6 +15,9 @@ spec:
       serviceVersion: {{ .Values.version }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
+      env:
+        - name: ZOOKEEPER_IMAGE_VERSION
+          value: "{{ .Values.version }}"
       volumeClaimTemplates:
         - name: data # ref clusterDefinition components.containers.volumeMounts.name
           spec:
