@@ -39,6 +39,7 @@ function aof_base_file() {
 
 function get_backup_files_prefix() {
   local base_file=${1}
+  # use the creation time of the base file as the start time
   echo "$(stat -c %Y "$base_file")".${global_backup_seq}
 }
 
@@ -127,7 +128,7 @@ function save_backup_status() {
   fi
   global_old_size=${total_size}
   local start_time=$(datasafed list / | awk -F '.' '{print $1}' | sort | head -n 1)
-  DP_save_backup_status_info "${total_size}" "${start_time}" "${global_aof_last_modify_time}"
+  DP_save_backup_status_info "${total_size}" "${start_time}" "$(date +%s)"
 }
 
 trap "echo 'Terminating...' && sync && ${connect_url} CONFIG SET aof-disable-auto-gc no && exit 0" TERM
