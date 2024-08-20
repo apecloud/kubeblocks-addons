@@ -142,7 +142,7 @@ spec:
     switchover:
       withCandidate:
         exec:
-          image: {{ include "postgresql.image070" . }}
+          image: {{ include "postgresql.image.major15.minor070" . }}
           command:
             - /bin/bash
             - -c
@@ -150,7 +150,7 @@ spec:
             - curl -s http://$(KB_REPLICATION_PRIMARY_POD_FQDN):8008/switchover -XPOST -d '{"leader":"$(KB_REPLICATION_PRIMARY_POD_NAME)","candidate":"$(KB_SWITCHOVER_CANDIDATE_NAME)"}'
       withoutCandidate:
         exec:
-          image: {{ include "postgresql.image070" . }}
+          image: {{ include "postgresql.image.major15.minor070" . }}
           command:
             - /bin/bash
             - -c
@@ -160,7 +160,7 @@ spec:
       builtinHandler: postgresql
     {{/*
       customHandler:
-        image: {{ include "postgresql.image070" . }}
+        image: {{ include "postgresql.image.major15.minor070" . }}
         exec:
           command:
             - psql
@@ -176,7 +176,7 @@ spec:
     */}}
     preTerminate:
       customHandler:
-        image: {{ include "postgresql.image070" . }}
+        image: {{ include "postgresql.image.major15.minor070" . }}
         exec:
           command: ["/kb-scripts/etcd-clean.sh"]
   runtime:
@@ -187,7 +187,7 @@ spec:
       fsGroupChangePolicy: OnRootMismatch
     initContainers:
       - name: pg-init-container
-        image: {{ include "postgresql.image070" . }}
+        image: {{ include "postgresql.image.major15.minor070" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/init_container.sh
@@ -214,7 +214,7 @@ spec:
             name: tools
     containers:
       - name: postgresql
-        image: {{ include "postgresql.image070" . }}
+        image: {{ include "postgresql.image.major15.minor070" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         securityContext:
           runAsUser: 0

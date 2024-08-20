@@ -107,15 +107,15 @@ Define image
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}
 {{- end }}
 
-{{- define "postgresql.image150" -}}
+{{- define "postgresql.image.major12.minor150" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor150 }}
 {{- end }}
 
-{{- define "postgresql.image080" -}}
+{{- define "postgresql.image.major14.minor080" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major14.minor080 }}
 {{- end }}
 
-{{- define "postgresql.image070" -}}
+{{- define "postgresql.image.major15.minor070" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major15.minor070 }}
 {{- end }}
 
