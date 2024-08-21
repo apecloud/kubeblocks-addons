@@ -114,7 +114,7 @@ spec:
         componentVarRef:
           compDef: {{ include "redis.componentDefName" . }}
           optional: false
-          instanceNames: Required
+          podNames: Required
     ## the redis pod fqdn list for each pod, the value format is "pod1FQDN,pod2FQDN,..."
     - name: REDIS_POD_FQDN_LIST
       valueFrom:
@@ -161,7 +161,7 @@ spec:
         componentVarRef:
           compDef: {{ include "redis-sentinel.componentDefName" . }}
           optional: true
-          instanceNames: Required
+          podNames: Required
     - name: SENTINEL_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
