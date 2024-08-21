@@ -55,18 +55,17 @@ config_wal_g_for_fetch_wal_log "${backupRepoPath}"
 mkdir -p ${CONF_DIR} && chmod 777 -R ${CONF_DIR};
 WALG_DIR=/home/postgres/pgdata/wal-g
 
-cat << EOF > "${CONF_DIR}/recovery.conf"
-restore_command='envdir ${WALG_DIR}/restore-env ${WALG_DIR}/wal-g wal-fetch %f %p >> ${RESTORE_SCRIPT_DIR}/wal-g.log 2>&1'
-EOF
-
+restore_command_str="envdir ${WALG_DIR}/restore-env ${WALG_DIR}/wal-g wal-fetch %f %p >> ${RESTORE_SCRIPT_DIR}/wal-g.log 2>&1"
 if [[ ! -z "${DP_RESTORE_TIMESTAMP}" ]]; then
-    cat << EOF >> "${CONF_DIR}/recovery.conf"
+    cat << EOF > "${CONF_DIR}/recovery.conf"
+restore_command='${restore_command_str}'
 recovery_target_time='$( date -d "@${DP_RESTORE_TIMESTAMP}" '+%F %T%::z' )'
 recovery_target_action='promote'
 recovery_target_timeline='latest'
 EOF
 else
-    cat << EOF >> "${CONF_DIR}/recovery.conf"
+    cat << EOF > "${CONF_DIR}/recovery.conf"
+restore_command='${restore_command_str}'
 recovery_target='immediate'
 recovery_target_action='promote'
 EOF
