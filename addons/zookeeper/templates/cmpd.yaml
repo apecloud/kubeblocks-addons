@@ -45,7 +45,6 @@ spec:
       votable: false
   lifecycleActions:
     roleProbe:
-      builtinHandler: custom
       exec:
         command:
           - /bin/bash
@@ -89,6 +88,11 @@ spec:
             value: {{ .Values.metrics.port | quote }}
           - name: ZOO_LOG4J_PROP
             value: "INFO,ROLLINGFILE,TRACEFILE,CONSOLE"
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
         ports:
           - name: client
             containerPort: 2181
