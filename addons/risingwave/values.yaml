@@ -5,6 +5,7 @@ fullnameOverride: ""
 
 ## RisingWave image
 image:
-  repository: ghcr.io/risingwavelabs/risingwave
+  registry: ghcr.io
+  repository: risingwavelabs/risingwave
   pullPolicy: IfNotPresent
   tag: v1.0.0

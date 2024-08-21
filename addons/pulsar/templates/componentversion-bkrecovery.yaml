@@ -14,9 +14,9 @@ spec:
       changes:
       serviceVersion: 2.11.2
       images:
-        bookies-recovery: {{.Values.image.registry}}/apecloud/pulsar:2.11.2
+        bookies-recovery: {{.Values.image.registry | default "docker.io" }}/{{ .Values.images.v2_11_2.bookie.repository }}:2.11.2
     - name: 3.0.2
       changes:
       serviceVersion: 3.0.2
       images:
-        bookies-recovery: {{.Values.image.registry}}/apecloud/pulsar:3.0.2
+        bookies-recovery: {{.Values.image.registry | default "docker.io" }}/{{ .Values.images.v3_0_2.bookie.repository }}:3.0.2

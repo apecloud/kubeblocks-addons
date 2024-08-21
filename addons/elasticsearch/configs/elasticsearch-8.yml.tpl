@@ -75,6 +75,7 @@ node:
   store:
     allow_mmap: false
 {{- if eq $mode "multi-node" }}
+# https://www.elastic.co/guide/en/elasticsearch/reference/7.7/modules-node.html
   roles:
   {{- $myRoles := index $extraEnv (printf "%s-roles" $.component.name) | default $defaultRoles | splitList "," }}
   {{- range $i, $e := $myRoles }}

@@ -10,6 +10,7 @@ spec:
   componentSpecs:
     - name: mongodb
       componentDef: mongodb
+      serviceVersion: {{ .Values.version }}
       {{- include "mongodb-cluster.replicaCount" . | indent 6 }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentResources" . | indent 6 }}

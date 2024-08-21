@@ -3,6 +3,8 @@ kind: Cluster
 metadata:
   name: acmysql-cluster
   namespace: default
+  labels: 
+    auditLogEnabled: "false"
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.

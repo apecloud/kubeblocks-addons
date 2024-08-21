@@ -106,7 +106,7 @@ spec:
     roleProbe:
       builtinHandler: custom
       exec:
-        image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
         command:
           - /bin/sh
           - -c
@@ -116,7 +116,7 @@ spec:
     memberJoin:
       customHandler:
         exec:
-          image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
           command:
             - /bin/sh
             - -c
@@ -126,7 +126,7 @@ spec:
     memberLeave:
       customHandler:
         exec:
-          image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
           command:
             - /bin/sh
             - -c
@@ -136,7 +136,7 @@ spec:
     switchover:
       withCandidate:
         exec:
-          image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
           env:
             - name: CLUSTER_DOMAIN
               value: {{ .Values.clusterDomain }}
@@ -148,7 +148,7 @@ spec:
             {{- .Files.Get "scripts/switchover-with-candidate.sh" | nindent 12 }}
       withoutCandidate:
         exec:
-          image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
           env:
             - name: CLUSTER_DOMAIN
               value: {{ .Values.clusterDomain }}

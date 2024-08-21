@@ -47,7 +47,7 @@ spec:
           - name: shared
             mountPath: /shared
       - name: init
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.repository }}/{{ .Values.images.polardbx.init.name }}:{{.Values.images.polardbx.init.tag}}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.init.repository }}:{{.Values.images.polardbx.init.tag}}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.polardbx.pullPolicy }}
         command: [ "sh" ]
         args: [ "-c", 'source /shared/env.sh && /polardbx-init' ]
@@ -146,7 +146,7 @@ spec:
             mountPath: /shared
     containers:
       - name: engine
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.repository }}/{{ .Values.images.polardbx.cn.name}}:{{.Values.images.polardbx.cn.tag}}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.cn.repository}}:{{.Values.images.polardbx.cn.tag}}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.polardbx.pullPolicy }}
         command:
           - /bin/bash
@@ -204,7 +204,7 @@ spec:
           - name: shared
             mountPath: /shared
       - name: exporter
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.repository }}/{{ .Values.images.polardbx.exporter.name}}:{{.Values.images.polardbx.exporter.tag}}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.exporter.repository}}:{{.Values.images.polardbx.exporter.tag}}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.polardbx.pullPolicy }}
         args:
           - -collectors.process
