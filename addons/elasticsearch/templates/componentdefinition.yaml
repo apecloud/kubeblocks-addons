@@ -109,7 +109,6 @@ items:
           - sh
           - -c
           - |
-            sh /mnt/elastic-internal/scripts/install-plugins.sh
             if [ -f /bin/tini ]; then
               /bin/tini -- /usr/local/bin/docker-entrypoint.sh
             else
@@ -122,7 +121,7 @@ items:
               - bash
               - -c
               - |
-                /mnt/elastic-internal/scripts/pre-stop-hook-script.sh
+                /mnt/remote-scripts/pre-stop-hook-script.sh
         name: elasticsearch
         ports:
         - containerPort: 9200
@@ -136,7 +135,7 @@ items:
             command:
             - bash
             - -c
-            - /mnt/elastic-internal/scripts/readiness-probe-script.sh
+            - /mnt/remote-scripts/readiness-probe-script.sh
           failureThreshold: 3
           initialDelaySeconds: 10
           periodSeconds: 5
@@ -152,26 +151,24 @@ items:
           runAsNonRoot: true
           runAsUser: 1000
         volumeMounts:
-        - mountPath: /mnt/elastic-internal/elasticsearch-config
-          name: es-cm
-          readOnly: true
         - mountPath: /usr/share/elasticsearch/bin
-          name: elastic-internal-elasticsearch-bin-local
+          name: local-bin
         - mountPath: /usr/share/elasticsearch/config
-          name: elastic-internal-elasticsearch-config-local
+          name: local-config
         - mountPath: /usr/share/elasticsearch/plugins
-          name: elastic-internal-elasticsearch-plugins-local
-        - mountPath: /mnt/elastic-internal/scripts
-          name: scripts
-          readOnly: true
+          name: local-plugins
         - mountPath: /usr/share/elasticsearch/data
           name: data
         - mountPath: /usr/share/elasticsearch/logs
           name: log
+        - mountPath: /mnt/remote-config
+          name: es-cm
+          readOnly: true
+        - mountPath: /mnt/remote-scripts
+          name: scripts
+          readOnly: true
         - mountPath: /tmp
           name: tmp-volume
-        - mountPath: /tmp/plugins
-          name: plugins
       - name: exporter
         command:
           - /bin/elasticsearch_exporter
@@ -197,124 +194,6 @@ items:
           timeoutSeconds: 5
           periodSeconds: 5
       initContainers:
-      - command:
-        - bash
-        - -c
-        - /mnt/elastic-internal/scripts/prepare-fs.sh
-        env:
-        - name: POD_IP
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: status.podIP
-        - name: POD_NAME
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: metadata.name
-        - name: NODE_NAME
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: spec.nodeName
-        - name: NAMESPACE
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: metadata.namespace
-        - name: READINESS_PROBE_PROTOCOL
-          value: http
-        - name: NSS_SDB_USE_CACHE
-          value: "no"
-        imagePullPolicy: {{ .Values.image.pullPolicy }}
-        name: elastic-internal-init-filesystem
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-            - ALL
-          privileged: false
-          readOnlyRootFilesystem: true
-          runAsNonRoot: true
-          runAsUser: 1000
-        volumeMounts:
-        - mountPath: /mnt/elastic-internal/elasticsearch-config
-          name: es-cm
-          readOnly: true
-        - mountPath: /mnt/elastic-internal/scripts
-          name: scripts
-          readOnly: true
-        - mountPath: /usr/share/elasticsearch/data
-          name: data
-        - mountPath: /usr/share/elasticsearch/logs
-          name: log
-        - mountPath: /tmp
-          name: tmp-volume
-        - mountPath: /mnt/elastic-internal/elasticsearch-bin-local
-          name: elastic-internal-elasticsearch-bin-local
-        - mountPath: /mnt/elastic-internal/elasticsearch-config-local
-          name: elastic-internal-elasticsearch-config-local
-        - mountPath: /mnt/elastic-internal/elasticsearch-plugins-local
-          name: elastic-internal-elasticsearch-plugins-local
-      - command:
-        - bash
-        - -c
-        - /mnt/elastic-internal/scripts/suspend.sh
-        env:
-        - name: POD_IP
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: status.podIP
-        - name: POD_NAME
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: metadata.name
-        - name: NODE_NAME
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: spec.nodeName
-        - name: NAMESPACE
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: metadata.namespace
-        - name: READINESS_PROBE_PROTOCOL
-          value: http
-        - name: NSS_SDB_USE_CACHE
-          value: "no"
-        imagePullPolicy: {{ .Values.image.pullPolicy }}
-        name: elastic-internal-suspend
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-            - ALL
-          privileged: false
-          readOnlyRootFilesystem: true
-          runAsNonRoot: true
-          runAsUser: 1000
-        volumeMounts:
-        - mountPath: /mnt/elastic-internal/elasticsearch-config
-          name: es-cm
-          readOnly: true
-        - mountPath: /mnt/elastic-internal/scripts
-          name: scripts
-          readOnly: true
-        - mountPath: /usr/share/elasticsearch/data
-          name: data
-        - mountPath: /usr/share/elasticsearch/logs
-          name: log
-        - mountPath: /tmp
-          name: tmp-volume
-        - mountPath: /usr/share/elasticsearch/bin
-          name: elastic-internal-elasticsearch-bin-local
-        - mountPath: /usr/share/elasticsearch/config
-          name: elastic-internal-elasticsearch-config-local
-        - mountPath: /usr/share/elasticsearch/plugins
-          name: elastic-internal-elasticsearch-plugins-local
       - name: prepare-plugins
         imagePullPolicy: IfNotPresent
         command:
@@ -333,6 +212,38 @@ items:
         volumeMounts:
         - mountPath: /tmp/plugins
           name: plugins
+      - command:
+        - sh
+        - -c
+        - |
+          set -x
+          sh /mnt/remote-scripts/install-plugins.sh
+          sh /mnt/remote-scripts/prepare-fs.sh
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        name: install-plugins
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          privileged: false
+          runAsNonRoot: true
+          runAsUser: 1000
+        volumeMounts:
+        - mountPath: /mnt/remote-config
+          name: es-cm
+          readOnly: true
+        - mountPath: /mnt/remote-scripts
+          name: scripts
+          readOnly: true
+        - mountPath: /mnt/local-bin
+          name: local-bin
+        - mountPath: /mnt/local-config
+          name: local-config
+        - mountPath: /mnt/local-plugins
+          name: local-plugins
+        - mountPath: /tmp/plugins
+          name: plugins
       securityContext:
         fsGroup: 1000
       volumes:
@@ -341,11 +252,11 @@ items:
       - emptyDir: { }
         name: tmp-volume
       - emptyDir: {}
-        name: elastic-internal-elasticsearch-bin-local
+        name: local-bin
       - emptyDir: {}
-        name: elastic-internal-elasticsearch-config-local
+        name: local-config
       - emptyDir: {}
-        name: elastic-internal-elasticsearch-plugins-local
+        name: local-plugins
       - emptyDir: {}
         name: plugins
 
