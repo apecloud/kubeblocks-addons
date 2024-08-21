@@ -43,7 +43,7 @@ Describe "Redis Sentinel Member Join Script Tests"
       unset REDIS_SENTINEL_PASSWORD
     }
     After 'un_setup'
-    Context "one redis matser monitor"
+    Context "one redis master monitor"
       setup() {
           SENTINEL_POD_FQDN_LIST="redis-redis-sentinel-0.redis-redis-sentinel-headless.test.svc,\
           redis-redis-sentinel-1.redis-redis-sentinel-headless.test.svc,\
@@ -51,6 +51,7 @@ Describe "Redis Sentinel Member Join Script Tests"
           REDIS_SENTINEL_USER="sentinel_user"
           REDIS_SENTINEL_PASSWORD="redis_sentinel_password"
           SENTINEL_PASSWORD="sentinel_password"
+          CLUSTER_NAME="redis"
       }
       Before 'setup'
 
@@ -112,7 +113,7 @@ Describe "Redis Sentinel Member Join Script Tests"
           SENTINEL_PASSWORD="sentinel_password"
           REDIS_SENTINEL_PASSWORD_REDIS0="redis0_sentinel_password"
           REDIS_SENTINEL_PASSWORD_REDIS1="redis1_sentinel_password"
-          KB_CLUSTER_NAME="redis"
+          CLUSTER_NAME="redis"
       }
       Before 'setup'
 
@@ -123,7 +124,7 @@ Describe "Redis Sentinel Member Join Script Tests"
         unset SENTINEL_PASSWORD
         unset REDIS_SENTINEL_PASSWORD_REDIS0
         unset REDIS_SENTINEL_PASSWORD_REDIS1
-        unset KB_CLUSTER_NAME
+        unset CLUSTER_NAME
       }
       After 'un_setup'
       It "when mutil redis master monitor and is reachable"

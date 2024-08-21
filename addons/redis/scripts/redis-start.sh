@@ -185,9 +185,9 @@ build_sentinel_get_master_addr_by_name_command() {
   local timeout_value=5
   # TODO: replace $SENTINEL_SERVICE_PORT with each sentinel pod's port when sentinel service port is not the same, for example in HostNetwork mode
   if is_empty "$SENTINEL_PASSWORD"; then
-    echo "timeout $timeout_value redis-cli -h $sentinel_pod_fqdn -p $SENTINEL_SERVICE_PORT sentinel get-master-addr-by-name $KB_CLUSTER_COMP_NAME"
+    echo "timeout $timeout_value redis-cli -h $sentinel_pod_fqdn -p $SENTINEL_SERVICE_PORT sentinel get-master-addr-by-name $REDIS_COMPONENT_NAME"
   else
-    echo "timeout $timeout_value redis-cli -h $sentinel_pod_fqdn -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD sentinel get-master-addr-by-name $KB_CLUSTER_COMP_NAME"
+    echo "timeout $timeout_value redis-cli -h $sentinel_pod_fqdn -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD sentinel get-master-addr-by-name $REDIS_COMPONENT_NAME"
   fi
 }
 
@@ -247,7 +247,7 @@ get_default_initialize_primary_node() {
 }
 
 check_current_pod_is_primary() {
-  current_pod="$CURRENT_POD_NAME.$KB_CLUSTER_COMP_NAME"
+  current_pod="$CURRENT_POD_NAME.$REDIS_COMPONENT_NAME"
   if contains "$primary" "$current_pod"; then
     echo "current pod is primary with name mapping, primary node: $primary, pod name:$current_pod"
     return 0

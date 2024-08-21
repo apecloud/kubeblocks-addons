@@ -210,14 +210,14 @@ Describe "Redis Start Bash Script Tests"
     Context 'mapping with pod name'
       un_setup() {
         unset CURRENT_POD_NAME
-        unset KB_CLUSTER_COMP_NAME
+        unset REDIS_COMPONENT_NAME
         unset primary
       }
       After 'un_setup'
 
       It "returns true when current pod name matches the primary"
         export CURRENT_POD_NAME="redis-redis-0"
-        export KB_CLUSTER_COMP_NAME="redis-redis"
+        export REDIS_COMPONENT_NAME="redis-redis"
         primary="redis-redis-0.redis-redis-headless.default"
         When call check_current_pod_is_primary
         The status should be success
@@ -226,7 +226,7 @@ Describe "Redis Start Bash Script Tests"
 
       It "returns false when current pod does not match the primary"
         export CURRENT_POD_NAME="redis-redis-1"
-        export KB_CLUSTER_COMP_NAME="redis-redis"
+        export REDIS_COMPONENT_NAME="redis-redis"
         primary="redis-redis-0.redis-redis-headless.default"
         When call check_current_pod_is_primary
         The status should be failure
@@ -321,14 +321,14 @@ Describe "Redis Start Bash Script Tests"
 
   Describe "build_sentinel_get_master_addr_by_name_command()"
     It "builds sentinel get-master-addr-by-name command correctly"
-      export KB_CLUSTER_COMP_NAME="redis-redis"
+      export REDIS_COMPONENT_NAME="redis-redis"
       export SENTINEL_SERVICE_PORT="26379"
       When call build_sentinel_get_master_addr_by_name_command "sentinel1.redis-sentinel-headless"
       The output should eq "timeout 5 redis-cli -h sentinel1.redis-sentinel-headless -p 26379 sentinel get-master-addr-by-name redis-redis"
     End
 
     It "builds sentinel get-master-addr-by-name command correctly"
-      export KB_CLUSTER_COMP_NAME="redis-redis"
+      export REDIS_COMPONENT_NAME="redis-redis"
       export SENTINEL_SERVICE_PORT="26379"
       export SENTINEL_PASSWORD="sentinel_password"
       When call build_sentinel_get_master_addr_by_name_command "sentinel1.redis-sentinel-headless"

@@ -70,6 +70,11 @@ spec:
         letterCase: MixedCases
         seed: 5wM4uhmKV1Ohy087
   vars:
+    ## the name of current cluster instance
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
     ## the default username of redis connection
     - name: REDIS_DEFAULT_USER
       valueFrom:

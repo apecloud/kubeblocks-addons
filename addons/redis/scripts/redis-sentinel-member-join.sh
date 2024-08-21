@@ -189,7 +189,12 @@ recover_registered_redis_servers() {
       down-after-milliseconds: $master_down_after_milliseconds, \
       failover-timeout: $master_failover_timeout, \
       parallel-syncs: $master_parallel_syncs, quorum: $master_quorum"
-      cluster_name="$KB_CLUSTER_NAME"
+      if ! env_exist CLUSTER_NAME; then
+        echo "CLUSTER_NAME environment variable is not set"
+        return 1
+      fi
+      # shellcheck disable=SC2153
+      cluster_name="$CLUSTER_NAME"
       comp_name="${master_name#"$cluster_name"-}"
       comp_name_upper=$(echo "$comp_name" | tr '[:lower:]' '[:upper:]')
       unset_xtrace_when_ut_mode_false

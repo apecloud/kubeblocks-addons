@@ -176,9 +176,9 @@ register_to_sentinel() {
 }
 
 register_to_sentinel_wrapper() {
-  # check required environment variables, we use KB_CLUSTER_COMP_NAME as the master_name registered to sentinel
-  if  ! env_exists KB_CLUSTER_COMP_NAME REDIS_POD_NAME_LIST; then
-    echo "Error: Required environment variable KB_CLUSTER_COMP_NAME and REDIS_POD_NAME_LIST is not set."
+  # check required environment variables, we use REDIS_COMPONENT_NAME as the master_name registered to sentinel
+  if  ! env_exists REDIS_COMPONENT_NAME REDIS_POD_NAME_LIST; then
+    echo "Error: Required environment variable REDIS_COMPONENT_NAME and REDIS_POD_NAME_LIST is not set."
     return 1
   fi
 
@@ -198,10 +198,10 @@ register_to_sentinel_wrapper() {
   for sentinel_pod_fqdn in "${sentinel_pod_fqdn_list[@]}"; do
     if ! is_empty "$redis_advertised_svc_host_value" && ! is_empty "$redis_advertised_svc_port_value"; then
       echo "register to sentinel:$sentinel_pod_fqdn with advertised service: redis_advertised_svc_host_value=$redis_advertised_svc_host_value, redis_advertised_svc_port_value=$redis_advertised_svc_port_value"
-      register_to_sentinel "$sentinel_pod_fqdn" "$KB_CLUSTER_COMP_NAME" "$redis_advertised_svc_host_value" "$redis_advertised_svc_port_value"
+      register_to_sentinel "$sentinel_pod_fqdn" "$REDIS_COMPONENT_NAME" "$redis_advertised_svc_host_value" "$redis_advertised_svc_port_value"
     else
       echo "register to sentinel:$sentinel_pod_fqdn with pod fqdn: redis_default_primary_pod_fqdn=$redis_default_primary_pod_fqdn, redis_default_service_port=$redis_default_service_port"
-      register_to_sentinel "$sentinel_pod_fqdn" "$KB_CLUSTER_COMP_NAME" "$redis_default_primary_pod_fqdn" "$redis_default_service_port"
+      register_to_sentinel "$sentinel_pod_fqdn" "$REDIS_COMPONENT_NAME" "$redis_default_primary_pod_fqdn" "$redis_default_service_port"
     fi
   done
 }

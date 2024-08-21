@@ -86,7 +86,7 @@ Describe 'register_to_sentinel.sh'
       SENTINEL_POD_FQDN_LIST="redis-redis-sentinel-0.redis-redis-sentinel-headless.default.svc.cluster.local,redis-redis-sentinel-1.redis-redis-sentinel-headless.default.svc.cluster.local"
       REDIS_POD_NAME_LIST='redis-redis-0,redis-redis-1'
       REDIS_POD_FQDN_LIST="redis-redis-0.redis-redis.default.svc.cluster.local,redis-redis-1.redis-redis.default.svc.cluster.local"
-      KB_CLUSTER_COMP_NAME='redis-redis'
+      REDIS_COMPONENT_NAME='redis-redis'
 
       When call register_to_sentinel_wrapper
       The status should be success
@@ -99,7 +99,7 @@ Describe 'register_to_sentinel.sh'
       REDIS_POD_NAME_LIST='redis-redis-0,redis-redis-1'
       REDIS_ADVERTISED_PORT="redis-redis-redis-advertised-0:31001,redis-redis-redis-advertised-1:32002"
       CURRENT_POD_HOST_IP='10.0.0.1'
-      KB_CLUSTER_COMP_NAME='redis-redis'
+      REDIS_COMPONENT_NAME='redis-redis'
 
       When call register_to_sentinel_wrapper
       The status should be success
@@ -108,7 +108,7 @@ Describe 'register_to_sentinel.sh'
     End
 
     It 'fails if required env vars SENTINEL_POD_FQDN_LIST are not set'
-      KB_CLUSTER_COMP_NAME='redis-redis'
+      REDIS_COMPONENT_NAME='redis-redis'
       REDIS_POD_NAME_LIST='redis-redis-0,redis-redis-1'
       unset SENTINEL_POD_FQDN_LIST
       When call register_to_sentinel_wrapper
@@ -116,10 +116,10 @@ Describe 'register_to_sentinel.sh'
       The stdout should include "Required environment variable SENTINEL_POD_FQDN_LIST is not set"
     End
 
-    It 'fails if required env vars KB_CLUSTER_COMP_NAME and REDIS_POD_NAME_LIST are not set'
-      unset KB_CLUSTER_COMP_NAME REDIS_POD_NAME_LIST
+    It 'fails if required env vars REDIS_COMPONENT_NAME and REDIS_POD_NAME_LIST are not set'
+      unset REDIS_COMPONENT_NAME REDIS_POD_NAME_LIST
       When call register_to_sentinel_wrapper
-      The stdout should include "Required environment variable KB_CLUSTER_COMP_NAME and REDIS_POD_NAME_LIST is not set"
+      The stdout should include "Required environment variable REDIS_COMPONENT_NAME and REDIS_POD_NAME_LIST is not set"
       The status should be failure
     End
   End

@@ -58,6 +58,11 @@ spec:
         numSymbols: 0
         letterCase: MixedCases
   vars:
+    ## the name of current cluster instance
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
     ## the username of redis sentinel
     - name: SENTINEL_USER
       valueFrom:
@@ -82,7 +87,7 @@ spec:
         componentVarRef:
           compDef: {{ include "redis-sentinel.componentDefName" . }}
           optional: false
-          instanceNames: Required
+          podNames: Required
     ## the sentinel pod fqdn list
     - name: SENTINEL_POD_FQDN_LIST
       valueFrom:

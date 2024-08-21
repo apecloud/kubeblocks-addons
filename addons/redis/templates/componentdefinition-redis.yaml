@@ -74,6 +74,11 @@ spec:
         numSymbols: 0
         letterCase: MixedCases
   vars:
+    ## the name of current cluster instance
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
     ## the default username of redis connection
     - name: REDIS_DEFAULT_USER
       valueFrom:
@@ -122,7 +127,14 @@ spec:
           compDef: {{ include "redis.componentDefName" . }}
           optional: false
           podFQDNs: Required
-    ## the component name of redis sentinel when redis sentinel is enabled
+    ## the component name of redis, it's the fullname of redis component
+    - name: REDIS_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "redis.componentDefName" . }}
+          optional: false
+          componentName: Required
+    ## the component name of redis sentinel when redis sentinel is enabled, it's the fullname of redis-sentinel component
     - name: SENTINEL_COMPONENT_NAME
       valueFrom:
         componentVarRef:
