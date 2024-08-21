@@ -17,7 +17,7 @@ function version_lt() { test "$(echo "$@" | tr " " "\n" | sort -rV | head -n 1)"
 function version_ge() { test "$(echo "$@" | tr " " "\n" | sort -rV | head -n 1)" == "$1"; }
 
 
-if [ -z "${ZOOKEEPER_IMAGE_VERSION}" ] || [ version_lt "3.6.0" "${ZOOKEEPER_IMAGE_VERSION%%-*}" ]  ; then
+if [ -z "${ZOOKEEPER_IMAGE_VERSION}" ] ||  version_lt "3.6.0" "${ZOOKEEPER_IMAGE_VERSION%%-*}"  ; then
   scripts_path="/opt/bitnami/scripts/zookeeper"
 else
   scripts_path=""
