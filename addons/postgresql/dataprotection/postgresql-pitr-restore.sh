@@ -26,10 +26,12 @@ echo "#!/bin/bash" > ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
 echo "[[ -d '${DATA_DIR}.old' ]] && mv -f ${DATA_DIR}.old/* ${DATA_DIR}/;" >> ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
 echo "sync;" >> ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
 chmod +x ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
-echo "restore_command='case "%f" in *history) cp ${PITR_DIR}/%f %p ;; *) mv ${PITR_DIR}/%f %p ;; esac'" > ${CONF_DIR}/recovery.conf;
-echo "recovery_target_time='${DP_RESTORE_TIME}'" >> ${CONF_DIR}/recovery.conf;
-echo "recovery_target_action='promote'" >> ${CONF_DIR}/recovery.conf;
-echo "recovery_target_timeline='latest'" >> ${CONF_DIR}/recovery.conf;
+cat << EOF >> "${CONF_DIR}/recovery.conf"
+restore_command='case "%f" in *history) cp ${PITR_DIR}/%f %p ;; *) mv ${PITR_DIR}/%f %p ;; esac'
+recovery_target_time='$( date -d "@${DP_RESTORE_TIMESTAMP}" '+%F %T%::z' )'
+recovery_target_action='promote'
+recovery_target_timeline='latest'
+EOF
 mv ${DATA_DIR} ${DATA_DIR}.old;
 DP_log "done.";
 sync;
