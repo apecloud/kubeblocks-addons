@@ -12,7 +12,7 @@ spec:
       componentDef: zookeeper
       replicas: {{ .Values.replicas }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
-      serviceVersion: {{ .Values.serviceVersion }}
+      serviceVersion: {{ .Values.version }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       env:

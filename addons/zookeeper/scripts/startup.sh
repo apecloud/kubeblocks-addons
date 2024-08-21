@@ -3,9 +3,6 @@
 # Execute entrypoint as usual after obtaining ZOO_SERVER_ID
 # check ZOO_SERVER_ID in persistent volume via myid
 # if not present, set based on POD hostname
-# Execute entrypoint as usual after obtaining ZOO_SERVER_ID
-# check ZOO_SERVER_ID in persistent volume via myid
-# if not present, set based on POD hostname
 if [[ -f "/bitnami/zookeeper/data/myid" ]]; then
   export ZOO_SERVER_ID="$(cat /bitnami/zookeeper/data/myid)"
 else
@@ -20,7 +17,7 @@ function version_lt() { test "$(echo "$@" | tr " " "\n" | sort -rV | head -n 1)"
 function version_ge() { test "$(echo "$@" | tr " " "\n" | sort -rV | head -n 1)" == "$1"; }
 
 
-if [ version_lt "3.6.0" "${ZOOKEEPER_IMAGE_VERSION%%-*}" ] || [ -z "${ZOOKEEPER_IMAGE_VERSION}" ]; then
+if [ -z "${ZOOKEEPER_IMAGE_VERSION}" ] || [ version_lt "3.6.0" "${ZOOKEEPER_IMAGE_VERSION%%-*}" ]  ; then
   scripts_path="/opt/bitnami/scripts/zookeeper"
 else
   scripts_path=""

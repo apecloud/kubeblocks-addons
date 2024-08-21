@@ -16,7 +16,7 @@ spec:
             port: 2181
           - name: quorum
             port: 2888
-          - name: http
+          - name: admin
             port: 8080
       roleSelector: leader
     - name: readonly
@@ -27,7 +27,7 @@ spec:
             port: 2181
           - name: quorum
             port: 2888
-          - name: http
+          - name: admin
             port: 8080
 
   roles:
@@ -100,7 +100,7 @@ spec:
             containerPort: 2888
           - name: election
             containerPort: 3888
-          - name: http
+          - name: admin
             containerPort: 8080
           - name: metrics
             containerPort: {{ .Values.metrics.port }}
