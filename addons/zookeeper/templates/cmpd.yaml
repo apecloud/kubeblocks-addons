@@ -16,7 +16,7 @@ spec:
             port: 2181
           - name: quorum
             port: 2888
-          - name: http
+          - name: admin
             port: 8080
       roleSelector: leader
     - name: readonly
@@ -27,19 +27,8 @@ spec:
             port: 2181
           - name: quorum
             port: 2888
-          - name: http
+          - name: admin
             port: 8080
-    - name: ordinal
-      serviceName: ordinal
-      spec:
-        ports:
-          - name: client
-            port: 2181
-          - name: quorum
-            port: 2888
-          - name: http
-            port: 8080
-      podService: true
 
   roles:
     - name: leader
@@ -57,28 +46,20 @@ spec:
   lifecycleActions:
     roleProbe:
       builtinHandler: custom
-      customHandler:
-        exec:
-          command:
-            - /bin/bash
-            - -c
-            - |
-              . "$ZOOBINDIR"/zkEnv.sh > /dev/null
-
-              isSSL="false"
-              clientPortAddress="localhost"
-              clientPort=2181
-              GREP=grep
-              STAT=`"$JAVA" "-Dzookeeper.log.dir=${ZOO_LOG_DIR}" "-Dzookeeper.log.file=${ZOO_LOG_FILE}" \
-              -cp "$CLASSPATH" $CLIENT_JVMFLAGS $JVMFLAGS org.apache.zookeeper.client.FourLetterWordMain \
-              $clientPortAddress $clientPort srvr $isSSL 2> /dev/null    \
-              | $GREP Mode`
-              mode=$(echo "$STAT" | awk -F': ' '{print $2}' | awk '{RS=""; ORS=""; print}' )
-              if [[ "$mode" == "standalone" ]]; then
-                echo -n "leader"
-              else
-                echo -n ${mode}
-              fi
+      exec:
+        command:
+          - /bin/bash
+          - -c
+          - |
+            . "$ZOOBINDIR"/zkEnv.sh > /dev/null
+            STAT=$(java -cp "$CLASSPATH" $CLIENT_JVMFLAGS $JVMFLAGS org.apache.zookeeper.client.FourLetterWordMain \
+            localhost 2181 srvr 2> /dev/null  | grep Mode)
+            mode=$(echo "$STAT" | awk -F': ' '{print $2}' | awk '{RS=""; ORS=""; print}' )
+            if [[ "$mode" == "standalone" ]]; then
+              echo -n "leader"
+            else
+              echo -n ${mode}
+            fi
   runtime:
     volumes:
       - name: snapshot-log
@@ -96,22 +77,7 @@ spec:
           - /bin/bash
           - -c
           - |
-            # Execute entrypoint as usual after obtaining ZOO_SERVER_ID
-            # check ZOO_SERVER_ID in persistent volume via myid
-            # if not present, set based on POD hostname
-            if [[ -f "/bitnami/zookeeper/data/myid" ]]; then
-                export ZOO_SERVER_ID="$(cat /bitnami/zookeeper/data/myid)"
-            else
-                HOSTNAME="$(hostname -s)"
-                if [[ $HOSTNAME =~ (.*)-([0-9]+)$ ]]; then
-                    ORD=${BASH_REMATCH[2]}
-                    export ZOO_SERVER_ID="$((ORD))"
-                else
-                    echo "Failed to get index from hostname $HOSTNAME"
-                    exit 1
-                fi
-            fi
-            exec /opt/bitnami/scripts/zookeeper/entrypoint.sh /opt/bitnami/scripts/zookeeper/run.sh
+            /kubeblocks/scripts/startup.sh
         env:
           - name: ZOOBINDIR
             value: "/opt/bitnami/zookeeper/bin"
@@ -122,7 +88,12 @@ spec:
           - name: SERVICE_PORT
             value: {{ .Values.metrics.port | quote }}
           - name: ZOO_LOG4J_PROP
-            value: "INFO,ROLLINGFILE,TRACEFILE"
+            value: "INFO,ROLLINGFILE,TRACEFILE,CONSOLE"
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
         ports:
           - name: client
             containerPort: 2181
@@ -130,7 +101,7 @@ spec:
             containerPort: 2888
           - name: election
             containerPort: 3888
-          - name: http
+          - name: admin
             containerPort: 8080
           - name: metrics
             containerPort: {{ .Values.metrics.port }}
@@ -141,7 +112,13 @@ spec:
           successThreshold: 1
           timeoutSeconds: 5
           exec:
-            command: [ '/bin/bash', '-c', 'echo "ruok" | timeout 2 nc -w 2 localhost 2181 | grep imok' ]
+            command:
+              - /bin/bash
+              - -c
+              - |
+                . "$ZOOBINDIR"/zkEnv.sh > /dev/null
+                java -cp "$CLASSPATH" $CLIENT_JVMFLAGS $JVMFLAGS org.apache.zookeeper.client.FourLetterWordMain \
+                localhost 2181 ruok | grep imok
         readinessProbe:
           failureThreshold: 6
           initialDelaySeconds: 5
@@ -149,7 +126,13 @@ spec:
           successThreshold: 1
           timeoutSeconds: 5
           exec:
-            command: [ '/bin/bash', '-c', 'echo "ruok" | timeout 2 nc -w 2 localhost 2181 | grep imok' ]
+            command:
+              - bash
+              - -c
+              - |
+                . "$ZOOBINDIR"/zkEnv.sh > /dev/null
+                java -cp "$CLASSPATH" $CLIENT_JVMFLAGS $JVMFLAGS org.apache.zookeeper.client.FourLetterWordMain \
+                localhost 2181 ruok | grep imok
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -175,6 +158,8 @@ spec:
           - name: config-log
             mountPath: /opt/bitnami/zookeeper/conf/log4j.properties
             subPath: log4j.properties
+          - name: scripts
+            mountPath: /kubeblocks/scripts
   vars:
     - name: ZOOKEEPER_POD_FQDN_LIST
       valueFrom:
@@ -190,6 +175,12 @@ spec:
     - name: ZOOKEEPER_DATA_LOG_DIR
       value: {{ .Values.zookeeper.dataLogDir }}
 
+  scripts:
+    - name: zookeeper-scripts
+      templateRef: {{ include "zookeeper.name" . }}-scripts
+      volumeName: scripts
+      namespace: {{ .Release.Namespace }}
+      defaultMode: 0755
 
   configs:
     - name: zookeeper-config

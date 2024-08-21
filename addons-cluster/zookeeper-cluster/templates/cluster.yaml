@@ -12,9 +12,13 @@ spec:
       componentDef: zookeeper
       replicas: {{ .Values.replicas }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      serviceVersion: {{ .Values.version }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentServices" . | indent 6 }}
+      env:
+        - name: ZOOKEEPER_IMAGE_VERSION
+          value: "{{ .Values.serviceVersion }}"
       volumeClaimTemplates:
         - name: data # ref clusterDefinition components.containers.volumeMounts.name
           spec:
