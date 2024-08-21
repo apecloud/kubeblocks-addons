@@ -155,7 +155,7 @@ spec:
         componentVarRef:
           compDef: {{ include "redis-sentinel.componentDefName" . }}
           optional: true
-          instanceNames: Optional
+          podNames: Optional
   lifecycleActions:
     roleProbe:
       builtinHandler: redis

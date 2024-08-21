@@ -66,13 +66,13 @@ spec:
         componentVarRef:
           compDef: {{ include "neon-pageserver.componentDefName" . }}
           optional: true
-          instanceNames: Optional
+          podNames: Optional
     - name: NEON_SAFEKEEPERS_POD_LIST
       valueFrom:
         componentVarRef:
           compDef: {{ include "neon-safekeeper.componentDefName" . }}
           optional: true
-          instanceNames: Optional
+          podNames: Optional
     - name: NEON_SAFEKEEPERS_PORT
       valueFrom:
         serviceVarRef:
