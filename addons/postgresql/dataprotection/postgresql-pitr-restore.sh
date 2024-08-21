@@ -26,7 +26,7 @@ echo "#!/bin/bash" > ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
 echo "[[ -d '${DATA_DIR}.old' ]] && mv -f ${DATA_DIR}.old/* ${DATA_DIR}/;" >> ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
 echo "sync;" >> ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
 chmod +x ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
-cat << EOF >> "${CONF_DIR}/recovery.conf"
+cat << EOF > "${CONF_DIR}/recovery.conf"
 restore_command='case "%f" in *history) cp ${PITR_DIR}/%f %p ;; *) mv ${PITR_DIR}/%f %p ;; esac'
 recovery_target_time='$( date -d "@${DP_RESTORE_TIMESTAMP}" '+%F %T%::z' )'
 recovery_target_action='promote'
