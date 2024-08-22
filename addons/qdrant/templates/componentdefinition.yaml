@@ -23,16 +23,15 @@ spec:
         targetPort: grpc-qdrant
   lifecycleActions:
     memberLeave:
-      customHandler:
-        exec:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag | default "latest" }}
-          command:
-          - /bin/sh
-          - -c
-          - |
-            {{- .Files.Get "scripts/qdrant-member-leave.sh" | nindent 12 }}
-          targetPodSelector: Any
-          container: qdrant
+      exec:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag | default "latest" }}
+        command:
+        - /bin/sh
+        - -c
+        - |
+          {{- .Files.Get "scripts/qdrant-member-leave.sh" | nindent 12 }}
+        targetPodSelector: Any
+        container: qdrant
   configs:
   - name: qdrant-config-template
     templateRef: qdrant-config-template

@@ -10,22 +10,20 @@ spec:
   lifecycleActions:
     {{- include "mysql-orc.spec.lifecycle.common" . | nindent 4 }}
     postProvision:
-      customHandler:
-        exec:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
-          command:
-            - bash
-            - -c
-            - "/scripts/mysql-orchestrator-register.sh"
-        preCondition: RuntimeReady
+      exec:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+        command:
+          - bash
+          - -c
+          - "/scripts/mysql-orchestrator-register.sh"
+      preCondition: RuntimeReady
     preTerminate:
-      customHandler:
-        exec:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
-          command:
-            - bash
-            - -c
-            - curl http://${ORC_ENDPOINTS%%:*}:${ORC_PORTS}/api/forget-cluster/${KB_CLUSTER_NAME} || true
+      exec:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+        command:
+          - bash
+          - -c
+          - curl http://${ORC_ENDPOINTS%%:*}:${ORC_PORTS}/api/forget-cluster/${KB_CLUSTER_NAME} || true
   configs:
     - name: mysql-replication-config
       templateRef: mysql-8.0-config-template

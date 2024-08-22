@@ -69,19 +69,18 @@ spec:
                 echo "follower"
             fi
     memberLeave:
-      customHandler:
-        exec:
-          # FIXME: seems like image is not needed
-          # this action will be executed in lorry container
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
-          command:
-            - bash
-            - -c
-            - |
-              ADDRESS=${KB_MEMBER_ADDRESSES%%,*}
-              echo $KB_LEAVE_MEMBER_POD_NAME
-              echo $ADDRESS
-              /pd-ctl -u $ADDRESS member delete name $KB_LEAVE_MEMBER_POD_NAME
+      exec:
+        # FIXME: seems like image is not needed
+        # this action will be executed in lorry container
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
+        command:
+          - bash
+          - -c
+          - |
+            ADDRESS=${KB_MEMBER_ADDRESSES%%,*}
+            echo $KB_LEAVE_MEMBER_POD_NAME
+            echo $ADDRESS
+            /pd-ctl -u $ADDRESS member delete name $KB_LEAVE_MEMBER_POD_NAME
   exporter:
     containerName: pd
     scrapePort: "2379"
