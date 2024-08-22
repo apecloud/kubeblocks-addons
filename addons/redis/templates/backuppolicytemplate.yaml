@@ -8,40 +8,34 @@ metadata:
     service-kind/redis-cluster: "true"
     {{- include "redis.labels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: redis
   backupPolicies:
-  - componentDefRef: redis
-    target:
-      role: secondary
-    backupMethods: &backupMethods
-    - name: datafile
-      snapshotVolumes: false
-      actionSetName: redis-physical-backup
-      targetVolumes:
-        volumeMounts:
-        - name: data
-          mountPath: {{ .Values.dataMountPath }}
-    - name: volume-snapshot
-      snapshotVolumes: true
-      targetVolumes:
-        volumes:
-        - data
-    schedules: &backupschedules
-    - backupMethod: datafile
-      enabled: false
-      cronExpression: "0 18 * * 0"
-      retentionPeriod: 7d
-    - backupMethod: volume-snapshot
-      enabled: false
-      cronExpression: "0 18 * * 0"
-      retentionPeriod: 7d
   - componentDefs:
       - {{ include "redis.componentDefName" . }}
     target:
       role: secondary
       account: default
-    backupMethods: *backupMethods
-    schedules: *backupschedules
+    backupMethods:
+      - name: datafile
+        snapshotVolumes: false
+        actionSetName: redis-physical-backup
+        targetVolumes:
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
+      - name: volume-snapshot
+        snapshotVolumes: true
+        targetVolumes:
+          volumes:
+            - data
+    schedules:
+      - backupMethod: datafile
+        enabled: false
+        cronExpression: "0 18 * * 0"
+        retentionPeriod: 7d
+      - backupMethod: volume-snapshot
+        enabled: false
+        cronExpression: "0 18 * * 0"
+        retentionPeriod: 7d
   - componentDefs:
       - {{ include "redis-cluster.componentDefName" . }}
     target:
