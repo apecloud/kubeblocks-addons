@@ -162,23 +162,21 @@ spec:
       periodSeconds: 1
       timeoutSeconds: 1
     postProvision:
-      customHandler:
-        exec:
-          image: {{ include "redis.image" . }}
-          command:
-            - /bin/bash
-            - -c
-            - /scripts/redis-register-to-sentinel.sh
-        preCondition: RuntimeReady
+      exec:
+        image: {{ include "redis.image" . }}
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/redis-register-to-sentinel.sh
+      preCondition: RuntimeReady
     accountProvision:
-      customHandler:
-        exec:
-          image: {{ include "redis.image" . }}
-          command:
-            - sh
-            - -c
-          args:
-            - "redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD acl save "
+      exec:
+        image: {{ include "redis.image" . }}
+        command:
+          - sh
+          - -c
+        args:
+          - "redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD acl save "
   runtime:
     containers:
       - name: redis
