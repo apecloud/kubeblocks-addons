@@ -7,6 +7,7 @@ metadata:
 spec:
   compatibilityRules:
     - releases:
+        - 3.4.14
         - 3.6.4
         - 3.7.2
         - 3.8.4
@@ -14,6 +15,10 @@ spec:
       compDefs:
         - zookeeper
   releases:
+    - name: 3.4.14
+      serviceVersion: 3.4.14
+      images:
+        zookeeper: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:3.4.14
     - name: 3.6.4
       serviceVersion: 3.6.4
       images:

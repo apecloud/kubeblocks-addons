@@ -7,7 +7,6 @@ metadata:
     service-kind/mysql: "true"
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: {{ include "apecloud-mysql.clusterDefName" . }}
   identifier: hscale
   backupPolicies:
   - componentDefs:

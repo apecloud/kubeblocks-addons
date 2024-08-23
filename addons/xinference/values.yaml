@@ -1,7 +1,6 @@
 image:
   repository: xprobe/xinference
   pullPolicy: IfNotPresent
-  # registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
   registry: docker.io
   # Overrides the image tag whose default is the chart appVersion.
   tag: v0.11.0

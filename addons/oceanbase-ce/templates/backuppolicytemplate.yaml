@@ -8,11 +8,9 @@ metadata:
   annotations:
     dataprotection.kubeblocks.io/is-default-policy-template: "true"
 spec:
-  clusterDefinitionRef: {{ include "oceanbase-release.name" . }}
   backupPolicies:
   - componentDefs:
     - {{ include "oceanbase-release.name" . }}
-    componentDefRef: {{ include "oceanbase-release.name" . }}
     backoffLimit: 0
     backupMethods: &backupMethods
       - name: full
@@ -29,7 +27,6 @@ spec:
         retentionPeriod: 7d
   - componentDefs:
     - {{ printf "%s-repl" (include "oceanbase-release.name" .) }}
-    componentDefRef: oceanbase-repl
     backoffLimit: 0
     backupMethods: *backupMethods
     schedules: *backupschedules
