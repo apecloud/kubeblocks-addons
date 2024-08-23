@@ -54,14 +54,21 @@ config_wal_g_for_fetch_wal_log "${backupRepoPath}"
 # 5. config restore command
 mkdir -p ${CONF_DIR} && chmod 777 -R ${CONF_DIR};
 WALG_DIR=/home/postgres/pgdata/wal-g
-echo "restore_command='envdir ${WALG_DIR}/restore-env ${WALG_DIR}/wal-g wal-fetch %f %p >> ${RESTORE_SCRIPT_DIR}/wal-g.log 2>&1'" > ${CONF_DIR}/recovery.conf;
-if [[ ! -z ${DP_RESTORE_TIME} ]]; then
-   echo "recovery_target_time='${DP_RESTORE_TIME}'" >> ${CONF_DIR}/recovery.conf;
-   echo "recovery_target_action='promote'" >> ${CONF_DIR}/recovery.conf;
-   echo "recovery_target_timeline='latest'" >> ${CONF_DIR}/recovery.conf;
+
+restore_command_str="envdir ${WALG_DIR}/restore-env ${WALG_DIR}/wal-g wal-fetch %f %p >> ${RESTORE_SCRIPT_DIR}/wal-g.log 2>&1"
+if [[ ! -z "${DP_RESTORE_TIMESTAMP}" ]]; then
+    cat << EOF > "${CONF_DIR}/recovery.conf"
+restore_command='${restore_command_str}'
+recovery_target_time='$( date -d "@${DP_RESTORE_TIMESTAMP}" '+%F %T%::z' )'
+recovery_target_action='promote'
+recovery_target_timeline='latest'
+EOF
 else
-   echo "recovery_target='immediate'" >> ${CONF_DIR}/recovery.conf;
-   echo "recovery_target_action='promote'" >> ${CONF_DIR}/recovery.conf;
+    cat << EOF > "${CONF_DIR}/recovery.conf"
+restore_command='${restore_command_str}'
+recovery_target='immediate'
+recovery_target_action='promote'
+EOF
 fi
 # this step is necessary, data dir must be empty for patroni
 mv ${DATA_DIR} ${DATA_DIR}.old
