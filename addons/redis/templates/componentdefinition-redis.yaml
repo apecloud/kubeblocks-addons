@@ -224,6 +224,8 @@ spec:
           - /bin/bash
           - -c
           - /scripts/redis-register-to-sentinel.sh
+        targetPodSelector: Role
+        matchingKey: primary
         ## all lifecycle actions share the same env
         env:
           - name: CURRENT_POD_NAME
