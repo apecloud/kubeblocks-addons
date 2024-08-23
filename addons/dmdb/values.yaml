@@ -5,11 +5,11 @@
 replicaCount: 1
 
 image:
-  registry: biu.harbor.cn
-  repository: dm/dm8_single
+  registry: docker.io
+  repository: biaobes/dm8_single
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "0.3.0"
+  tag: "0.1.0"
 
 imagePullSecrets: []
 nameOverride: ""
@@ -36,8 +36,8 @@ resources: {}
 exporter:
   image: 
     # if the value of exporter.image.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
-    registry: biu.harbor.cn
-    repository: monitor/exporter/dmdb_exporter
+    registry: docker.io
+    repository: biaobes/dmdb_exporter
     tag: 0.1.0
 
   service:
