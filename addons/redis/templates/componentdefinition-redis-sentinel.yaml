@@ -63,6 +63,9 @@ spec:
       valueFrom:
         clusterVarRef:
           clusterName: Required
+    ## the service port of redis sentinel
+    - name: SENTINEL_SERVICE_PORT
+      value: "26379"
     ## the username of redis sentinel
     - name: SENTINEL_USER
       valueFrom:
@@ -95,6 +98,9 @@ spec:
           compDef: {{ include "redis-sentinel.componentDefName" . }}
           optional: false
           podFQDNs: Required
+    ## the username of redis for redis sentinel connection which is only used to recover redis servers when scale-out redis sentinel.
+    - name: REDIS_SENTINEL_USER
+      value: "kbreplicator-sentinel"
     ## the password of redis for redis sentinel connection, which is only used to recover redis servers when scale-out redis sentinel.
     ## TODO: Obtaining the redis password here will cause a circular dependency issue, which will lead to the abnormal restart of the Redis Sentinel pod, details refer to redis-sentinel-member-join.sh
 {{/*    - name: REDIS_SENTINEL_PASSWORD*/}}
@@ -139,8 +145,6 @@ spec:
         - name: scripts
           mountPath: /scripts
       env:
-        - name: SENTINEL_SERVICE_PORT
-          value: "26379"
         - name: CURRENT_POD_NAME
           valueFrom:
             fieldRef:
@@ -156,9 +160,6 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: status.hostIP
-        ## the username of redis for redis sentinel connection which is only used to recover redis servers when scale-out redis sentinel.
-        - name: REDIS_SENTINEL_USER
-          value: "kbreplicator-sentinel"
       command:
         - /bin/bash
       args:
