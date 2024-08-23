@@ -309,9 +309,6 @@
 	// Sets the number of digits displayed for floating-point values.
 	extra_float_digits?: int & >=-15 & <=3
 
-	// Forces use of parallel query facilities.
-	force_parallel_mode?: bool & false | true
-
 	// Sets the FROM-list size beyond which subqueries are not collapsed.
 	from_collapse_limit?: int & >=1 & <=2147483647
 
@@ -1035,9 +1032,6 @@
 
 	// Vacuum cost for a page not found in the buffer cache.
 	vacuum_cost_page_miss: int & >=0 & <=10000 | *5
-
-	// Number of transactions by which VACUUM and HOT cleanup should be deferred, if any.
-	vacuum_defer_cleanup_age?: int & >=0 & <=1000000
 
 	// Specifies the maximum age (in transactions) that a table's pg_class.relfrozenxid field can attain before VACUUM takes extraordinary measures to avoid system-wide transaction ID wraparound failure
 	vacuum_failsafe_age: int & >=0 & <=2100000000 | *2100000000
