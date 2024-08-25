@@ -23,4 +23,4 @@
 .vscode/
 
 # Dockerfile dirs
-orchestrator
+vllm

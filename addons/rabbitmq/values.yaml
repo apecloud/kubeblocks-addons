@@ -4,7 +4,7 @@
 
 image:
   registry: docker.io
-  repository: apecloud/rabbitmq
+  repository: rabbitmq
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: 3.13.2-management
