@@ -1,12 +1,21 @@
 immutableParameters:
+  - clientPort
   - dataDir
   - dataLogDir
   - standaloneEnabled
   - reconfigEnabled
   - dynamicConfigFile
 
-#staticParameters:
-#  - zookeeperSessionExpiredPolicy
-#
+# If the staticParameters do not match, it is considered that the parameter is of the dynamicParameters type
+staticParameters:
+  - none
+
 #dynamicParameters:
-#  - forceDeleteNamespaceAllowed
+#  - syncLimit
+#  - 4lw.commands.whitelist
+#  - autopurge.purgeInterval
+#  - autopurge.snapRetainCount
+#  - initLimit
+#  - maxClientCnxns
+#  - maxSessionTimeout
+#  - tickTime

@@ -6,6 +6,10 @@ metadata:
   labels:
     {{- include "zookeeper.labels" . | nindent 4 }}
 spec:
+  reloadAction:
+    autoTrigger:
+      processName: zookeeper
+
   # zookeeper configuration file format
   fileFormatConfig:
     format: props-plus
@@ -14,6 +18,22 @@ spec:
   {{- if hasKey $cc "immutableParameters" }}
   immutableParameters:
     {{- $params := get $cc "immutableParameters" }}
+    {{- range $params }}
+    - {{ . }}
+    {{- end }}
+  {{- end}}
+
+  {{- if hasKey $cc "dynamicParameters" }}
+  dynamicParameters:
+    {{- $params := get $cc "dynamicParameters" }}
+    {{- range $params }}
+    - {{ . }}
+    {{- end }}
+  {{- end}}
+
+  {{- if hasKey $cc "staticParameters" }}
+  staticParameters:
+    {{- $params := get $cc "staticParameters" }}
     {{- range $params }}
     - {{ . }}
     {{- end }}
