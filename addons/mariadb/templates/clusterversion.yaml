@@ -12,5 +12,5 @@ spec:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
       - name: mysql-exporter
-        image: {{ .Values.image.prom.repository }}/{{ .Values.image.prom.mysqld_exporter.name}}:{{.Values.image.prom.mysqld_exporter.tag}}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.prom.mysqld_exporter.repository }}:{{.Values.image.prom.mysqld_exporter.tag}}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}

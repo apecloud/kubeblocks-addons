@@ -7,10 +7,9 @@ image:
   pullPolicy: IfNotPresent
   tag: 10.6.15
   prom:
-    repository: prom
     pullPolicy: IfNotPresent
     mysqld_exporter:
-      name: mysqld-exporter
+      repository: prom/mysqld-exporter
       tag: v0.14.0
 
 ## MySQL Authentication parameters
