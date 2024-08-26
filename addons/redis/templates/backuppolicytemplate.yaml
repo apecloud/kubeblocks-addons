@@ -7,6 +7,18 @@ metadata:
     service-kind/redis: "true"
     service-kind/redis-cluster: "true"
     {{- include "redis.labels" . | nindent 4 }}
+  annotations:
+    dataprotection.kubeblocks.io/reconfigure-ref: |
+      {
+        "name": "redis-replication-config",
+        "key": "redis.conf",
+        "enable": {
+          "aof": [{"key": "aof-timestamp-enabled","value": "yes"}]
+        },
+        "disable": {
+          "aof": [{ "key": "aof-timestamp-enabled","value": "no"}]
+        }
+      }
 spec:
   clusterDefinitionRef: redis
   backupPolicies:
