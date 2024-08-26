@@ -21,14 +21,17 @@ commonLabels: {}
 ## @param application images
 ##
 images:
-
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  registry: docker.io
   pullPolicy: IfNotPresent
   kafka:
-    repository: apecloud/kafka
+    repository: bitnami/kafka
 #    tag: 3.4.0-debian-11-r22
 #    tag: 2.8.2-debian-11-r7
     tag: 3.3.2-debian-11-r54
+
+  apecloudKafka:
+    repository: apecloud/kafka
+    tag: "2.8.2"
 
   zookeeper:
     repository: apecloud/zookeeper

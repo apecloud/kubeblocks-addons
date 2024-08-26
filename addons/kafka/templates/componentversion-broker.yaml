@@ -23,5 +23,5 @@ spec:
       changes:
       serviceVersion: 2.8.2
       images:
-        kafka: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:2.8.2
+        kafka: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.apecloudKafka.repository }}:{{ .Values.images.apecloudKafka.tag }}
         jmx-exporter: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
