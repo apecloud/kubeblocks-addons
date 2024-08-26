@@ -33,14 +33,14 @@
       console
       Add "console" to root logger if you want to use this
     -->
-<!--    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">-->
-<!--        <encoder>-->
-<!--            <pattern>%d{ISO8601} [myid:%X{myid}] - %-5p [%t:%C{1}@%L] - %m%n</pattern>-->
-<!--        </encoder>-->
-<!--        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">-->
-<!--            <level>${zookeeper.console.threshold}</level>-->
-<!--        </filter>-->
-<!--    </appender>-->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{ISO8601} [myid:%X{myid}] - %-5p [%t:%C{1}@%L] - %m%n</pattern>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>${zookeeper.console.threshold}</level>
+        </filter>
+    </appender>
 
     <!--
       Add ROLLINGFILE to root logger to get log file output
@@ -107,7 +107,7 @@
     </logger>
 
     <root level="INFO">
-<!--        <appender-ref ref="CONSOLE" />-->
+        <appender-ref ref="CONSOLE" />
         <appender-ref ref="ROLLINGFILE" />
         <appender-ref ref="TRACEFILE" />
     </root>

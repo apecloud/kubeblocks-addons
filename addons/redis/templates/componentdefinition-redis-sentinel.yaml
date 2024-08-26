@@ -95,23 +95,21 @@ spec:
           podFQDNs: Required
   lifecycleActions:
     accountProvision:
-      customHandler:
-        exec:
-          image: {{ include "redis.image" . }}
-          command:
-            - sh
-            - -c
-          args:
-            - "redis-cli -h $(KB_ACCOUNT_ENDPOINT) -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -h $(KB_ACCOUNT_ENDPOINT) -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD acl save "
+      exec:
+        image: {{ include "redis.image" . }}
+        command:
+          - sh
+          - -c
+        args:
+          - "redis-cli -h $(KB_ACCOUNT_ENDPOINT) -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -h $(KB_ACCOUNT_ENDPOINT) -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD acl save "
     memberLeave:
-      customHandler:
+      exec:
         image: {{ include "redis-sentinel.image" . }}
-        exec:
-          command:
-            - /bin/bash
-            - -c
-            - |
-            {{- .Files.Get "scripts/redis-sentinel-offline.sh" | nindent 14 }}
+        command:
+          - /bin/bash
+          - -c
+          - |
+          {{- .Files.Get "scripts/redis-sentinel-offline.sh" | nindent 14 }}
         targetPodSelector: Any
         container: redis-sentinel
   runtime:

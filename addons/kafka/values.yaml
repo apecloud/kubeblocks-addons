@@ -38,10 +38,10 @@ images:
     tag: 3.7.2
 
   kafkaExporter:
-    repository: apecloud/kafka-exporter
+    repository: bitnami/kafka-exporter
     tag: 1.6.0-debian-11-r67
   jmxExporter:
-    repository: apecloud/jmx-exporter
+    repository: bitnami/jmx-exporter
     tag: 0.18.0-debian-11-r20
 
 
