@@ -50,7 +50,7 @@ spec:
         - postgresql.conf
       namespace: {{ .Release.Namespace }}
       volumeName: postgresql-config
-      defaultMode: 0444
+      defaultMode: 0777
     - name: pgbouncer-configuration
       templateRef: pgbouncer-configuration
       keys:
