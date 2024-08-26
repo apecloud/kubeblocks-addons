@@ -2,209 +2,47 @@
   "$schema": "http://json-schema.org/schema#",
   "type": "object",
   "properties": {
-    "tolerations": {
-      "title": "Tolerations",
-      "description": "Define global Tolerations for the cluster all pod's assignment",
-      "type": "array",
-      "items": {
-        "type": "object"
-      },
-      "default": []
-    },
-    "topologySpreadConstraints": {
-      "title": "Topology Spread Constraints",
-      "description": "Topology Spread Constraints for pod assignment spread across your cluster among failure-domains.",
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "default": ["kubernetes.io/hostname"]
-    },
-    "affinity": {
-      "title": "Affinity",
-      "description": "Affinity setting for etcd cluster pods assignment",
-      "type": "object",
-      "default": {}
-    },
     "replicas": {
       "title": "Replicas",
-      "description": "Number of replicas",
+      "description": "The number of replicas, the default replicas is 3.",
       "type": "integer",
-      "default": 3
+      "default": 3,
+      "minimum": 1,
+      "maximum": 5
     },
-    "peerService": {
-      "title": "Peer Service",
-      "description": "Configuration for etcd peer communication, not required to setup peerService if you're using a single k8s cluster",
-      "type": "object",
-      "properties": {
-        "name": {
-          "title": "Peer Service Name",
-          "description": "When name is not empty, peerService will be enabled",
-          "type": "string",
-          "default": ""
-        },
-        "type": {
-          "title": "Peer Service Type",
-          "description": "Etcd peerService type, recommended option is LoadBalancer",
-          "type": "string",
-          "default": "LoadBalancer"
-        },
-        "annotations": {
-          "title": "Peer Service Annotations",
-          "description": "Optional annotations for Cloud Provider if peerService type is LoadBalancer",
-          "type": "object",
-          "default": {}
-        }
-      }
+    "cpu": {
+      "title": "CPU",
+      "description": "CPU cores.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 0.5,
+      "minimum": 0.5,
+      "maximum": 64,
+      "multipleOf": 0.5
     },
-    "clientService": {
-      "title": "Client Service",
-      "description": "Configuration for etcd client communication",
-      "type": "object",
-      "properties": {
-        "name": {
-          "title": "Client Service Name",
-          "description": "When name is not empty, clientService will be enabled",
-          "type": "string",
-          "default": ""
-        },
-        "type": {
-          "title": "Client Service Type",
-          "description": "Etcd service type, valid options are ExternalName, ClusterIP, NodePort, and LoadBalancer",
-          "type": "string",
-          "default": "ClusterIP"
-        },
-        "port": {
-          "title": "Client Service Port",
-          "description": "Port for clientService",
-          "type": "integer",
-          "default": 2379
-        },
-        "role": {
-          "title": "Client Service Role",
-          "description": "Role for clientService",
-          "type": "string",
-          "default": "leader"
-        },
-        "nodePort": {
-          "title": "Client Service NodePort",
-          "description": "Optional nodePort if clientService type is NodePort",
-          "type": ["integer", "null"],
-          "default": null
-        },
-        "annotations": {
-          "title": "Client Service Annotations",
-          "description": "Optional annotations for Cloud Provider if clientService type is LoadBalancer",
-          "type": "object",
-          "default": {}
-        }
-      }
+    "memory": {
+      "title": "Memory(Gi)",
+      "description": "Memory, the unit is Gi.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 0.5,
+      "minimum": 0.5,
+      "maximum": 1000
     },
-    "resources": {
-      "title": "Resources",
-      "description": "Resource requests and limits for etcd component",
-      "type": "object",
-      "properties": {
-        "limits": {
-          "type": "object",
-          "properties": {
-            "memory": {
-              "title": "Memory(Gi)",
-              "description": "Memory limits for etcd component, the unit is Gi.",
-              "type": [
-                "number",
-                "string"
-              ],
-              "default": 0,
-              "minimum": 0,
-              "maximum": 1000
-            },
-            "cpu": {
-              "title": "CPU",
-              "description": "CPU cores limits for etcd component.",
-              "type": [
-                "number",
-                "string"
-              ],
-              "default": 0,
-              "minimum": 0,
-              "maximum": 64,
-              "multipleOf": 0.5
-            }
-          }
-        },
-        "requests": {
-          "type": "object",
-          "properties": {
-            "memory": {
-              "title": "Memory(Gi)",
-              "description": "Memory requests etcd component, the unit is Gi.",
-              "type": [
-                "number",
-                "string"
-              ],
-              "default": 0,
-              "minimum": 0,
-              "maximum": 1000
-            },
-            "cpu": {
-              "title": "CPU",
-              "description": "CPU cores requests for etcd component.",
-              "type": [
-                "number",
-                "string"
-              ],
-              "default": 0,
-              "minimum": 0,
-              "maximum": 64,
-              "multipleOf": 0.5
-            },
-            "storage": {
-              "title": "Storage(Gi)",
-              "description": "Storage requests for etcd component, the unit is Gi.",
-              "type": [
-                "number",
-                "string"
-              ],
-              "default": 0,
-              "minimum": 0,
-              "maximum": 10000
-            }
-          }
-        }
-      }
-    },
-    "persistence": {
-      "title": "Persistence",
-      "description": "Enable persistence using Persistent Volume Claims",
-      "type": "object",
-      "properties": {
-        "enabled": {
-          "title": "Persistence Enabled",
-          "description": "Enable persistence using Persistent Volume Claims",
-          "type": "boolean",
-          "default": true
-        },
-        "data": {
-          "title": "Persistence Data",
-          "description": "Data volume settings",
-          "type": "object",
-          "properties": {
-            "storageClassName": {
-              "title": "Storage Class Name",
-              "description": "Storage class of backing PVC",
-              "type": ["string", "null"],
-              "default": null
-            },
-            "size": {
-              "title": "Data Volume Size",
-              "description": "Size of data volume",
-              "type": "string",
-              "default": "1Gi"
-            }
-          }
-        }
-      }
+    "storage": {
+      "title": "Storage(Gi)",
+      "description": "Data Storage size, the unit is Gi.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 10,
+      "minimum": 1,
+      "maximum": 10000
     },
     "tlsEnable": {
       "title": "TLS Enable",

@@ -31,13 +31,8 @@ replicas: 3
 ## peerService is the configuration for etcd peer communication
 ## Not required to setup peerService if you're using a single k8s cluster
 ## Recommended to use LoadBalancer for multi-cluster etcd setups
-## Enabling multi-cluster etcd wil make TLS fail due to CA wildcard mismatches
 peerService:
-  ## @param name, when name is not "", peerService will be enabled
-  name: ""
-  ## @param type etcd peerService type, the recommended options is LoadBalancer.
-  ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
-  type: LoadBalancer
+  enabled: false
   ## @param annotations is optional, if peerService type is LoadBalancer, you may need to specify annotations for Cloud Provider
   annotations: { }
 
@@ -56,6 +51,20 @@ clientService:
   ## @param annotations is optional, if clientService type is LoadBalancer, you may need to specify annotations for Cloud Provider
   annotations: { }
 
+## @param cpu
+##
+cpu: 0.5
+
+## @param memory, the unit is Gi
+##
+memory: 0.5
+
+## @param storage size, the unit is Gi
+##
+storage: 20
+
+## @param resources.requests.cpu if not set, use cpu
+## @param resources.requests.memory, if not set, use memory
 resources: { }
   # We usually recommend not to specify default resources and to leave this as a conscious
   # choice for the user. This also increases chances charts run on environments with little

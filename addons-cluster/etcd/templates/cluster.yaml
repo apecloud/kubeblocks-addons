@@ -15,10 +15,10 @@ spec:
   {{- end }}
   componentSpecs:
     - name: etcd
-      {{- if .Values.peerService.name }}
+      {{- if .Values.peerService.enabled }}
       services:
-        - name: {{ .Values.peerService.name }}
-          serviceType: {{ .Values.peerService.type }}
+        - name: peer
+          serviceType: LoadBalancer
           podService: true
           {{- if and (eq .Values.peerService.type "LoadBalancer") (not (empty .Values.peerService.annotations)) }}
           annotations:  {{ .Values.peerService.annotations | toYaml | nindent 12 }}
