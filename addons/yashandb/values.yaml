@@ -7,6 +7,12 @@ image:
   repository: jesseatyashan/yashandb-personal
   tag: 23.1.1.100
 
+busyboxImage:
+  # if the value of busyboxImage.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
+  registry: docker.io
+  repository: busybox
+  pullPolicy: IfNotPresent
+  tag: 1.35
 
 logConfigs:
   run: /home/yashan/mydb/yasdb_data/log/run/run.log

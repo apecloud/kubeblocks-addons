@@ -76,5 +76,5 @@ Generate scripts configmap
 Backup Tool image
 */}}
 {{- define "apecloud-mysql.bakcupToolImage" -}}
-{{ .Values.backupTool.image.registry | default .Values.image.registry }}/{{ .Values.backupTool.image.repository}}:{{ .Values.backupTool.image.tag }}
+{{ .Values.backupTool.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.backupTool.image.repository}}:{{ .Values.backupTool.image.tag }}
 {{- end }}

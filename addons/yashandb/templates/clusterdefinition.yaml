@@ -41,7 +41,7 @@ spec:
         # dnsPolicy: ClusterFirstWithHostNet
         initContainers:
           - name: volume-permissions
-            image: busybox:1.35
+            image: {{ .Values.busyboxImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.busyboxImage.repository}}:{{ .Values.busyboxImage.tag }}
             imagePullPolicy: IfNotPresent
             command:
               - /bin/sh

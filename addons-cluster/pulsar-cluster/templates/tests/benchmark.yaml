@@ -85,7 +85,7 @@ metadata:
 spec:
   containers:
     - name: omb-k2k
-      image: {{.Values.image.registry}}/apecloud/omb:0.1
+      image: {{ .Values.image.registry | default "docker.io" }}/apecloud/omb:0.1
       command: ['bin/benchmark']
       args: 
         - --drivers 

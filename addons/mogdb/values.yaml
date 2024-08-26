@@ -11,6 +11,13 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: 5.0.5
 
+tools:
+  # refer: https://github.com/apecloud/kubeblocks/blob/main/docker/Dockerfile-tools
+  image:
+    registry: docker.io
+    repository: apecloud/kubeblocks-tools
+    tag: 0.8.2
+    pullPolicy: IfNotPresent
 
 dataMountPath: /var/lib/mogdb
 
@@ -40,7 +47,8 @@ metrics:
   ## @param metrics.image.pullSecrets Specify image pull secrets
   ##
   image:
-    registry: swr.cn-north-4.myhuaweicloud.com
+    # if the value of metrics.image.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
+    registry: ""
     repository: mogdb-cloud/mogdb-exporter
     tag: 3.1.0
     pullPolicy: IfNotPresent

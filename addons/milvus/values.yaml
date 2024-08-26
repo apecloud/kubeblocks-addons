@@ -8,20 +8,26 @@ fullnameOverride: ""
 ## @param application images
 ##
 images:
+  registry: docker.io
   pullPolicy: IfNotPresent
   milvus:
+    registry: ""
     repository: milvusdb/milvus
     tag: v2.3.2
   milvusTools:
+    registry: ""
     repository: milvusdb/milvus-operator
     tag: v0.8.4
   etcd:
-    repository: docker.io/milvusdb/etcd
+    registry: ""
+    repository: milvusdb/etcd
     tag: 3.5.5-r2
   minio:
-    repository: docker.io/minio/minio
+    registry: ""
+    repository: minio/minio
     tag: RELEASE.2022-03-17T06-34-49Z
   ostools:
+    registry: ""
     repository: bitnami/os-shell
     tag: 11-debian-11-r90
 

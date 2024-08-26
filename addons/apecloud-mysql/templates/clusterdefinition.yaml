@@ -228,7 +228,7 @@ spec:
                     optional: false
               - name: EXPORTER_WEB_PORT
                 value: "{{ .Values.metrics.service.port }}"
-            image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
+            image: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
             imagePullPolicy: IfNotPresent
             ports:
               - name: http-metrics
@@ -463,8 +463,8 @@ spec:
             emptyDir: { }
         initContainers:
           - name: wait-vtctld-ready
-            imagePullPolicy: IfNotPresent
-            image: {{ .Values.image.registry | default "docker.io" }}/apecloud/busybox:1.35
+            imagePullPolicy: {{ default "IfNotPresent" .Values.busybox.image.pullPolicy }}
+            image: {{ .Values.busybox.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.busybox.image.repository }}:{{ .Values.busybox.image.tag }}
             env:
               - name: VTCTLD_HOST
                 value: "$(KB_CLUSTER_NAME)-vtcontroller-headless"

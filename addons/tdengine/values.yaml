@@ -41,7 +41,8 @@ securityContext: {}
 
 metrics:
   image:
-    registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+    # if the value of metrics.image.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
+    registry: ""
     repository: apecloud/taoskeeper
     tag: 0.0.5
     pullPolicy: IfNotPresent

@@ -11,29 +11,29 @@ spec:
     versionsContext:
       containers:
       - name: meta
-        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
   - componentDefRef: frontend
     versionsContext:
       containers:
       - name: frontend
-        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
   - componentDefRef: compute
     versionsContext:
       containers:
       - name: compute
-        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
   - componentDefRef: compactor
     versionsContext:
       containers:
       - name: compactor
-        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
   - componentDefRef: connector
     versionsContext:
       containers:
       - name: connector
-        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}

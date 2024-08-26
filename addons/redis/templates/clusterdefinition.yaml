@@ -123,7 +123,7 @@ spec:
                     - -c
                     - /scripts/redis-preStop.sh
           - name: metrics
-            image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
+            image: {{ include "metrics.image" . }}
             imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
             securityContext:
               runAsNonRoot: true

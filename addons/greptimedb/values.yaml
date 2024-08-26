@@ -12,12 +12,23 @@ clusterDomain: ".cluster.local"
 ##
 images:
   pullPolicy: IfNotPresent
+  registry: docker.io
   greptimedb:
-    repository: docker.io/greptime/greptimedb
+    registry: ""
+    repository: greptime/greptimedb
     tag: 0.3.2
   etcd:
-    repository: docker.io/greptime/etcd
+    registry: ""
+    repository: greptime/etcd
     tag: v3.5.5
+  initializer:
+    registry: ""
+    repository: greptime/greptimedb-initializer
+    tag: 0.1.0-alpha.12
+  busybox:
+    registry: ""
+    repository: busybox
+    tag: 1.35
 
 ## @param metasrv config
 ##

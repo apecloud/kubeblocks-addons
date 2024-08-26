@@ -16,7 +16,7 @@ spec:
     preBackup: []
     postBackup: []
     backupData:
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:$(IMAGE_TAG)
+      image: {{ include "postgresql.repository" . }}:$(IMAGE_TAG)
       runOnTargetPodNode: false
       command:
       - bash
@@ -29,7 +29,7 @@ spec:
         intervalSeconds: 5
   restore:
     prepareData:
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:$(IMAGE_TAG)
+      image: {{ include "postgresql.repository" . }}:$(IMAGE_TAG)
       command:
       - bash
       - -c

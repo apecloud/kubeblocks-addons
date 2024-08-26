@@ -15,4 +15,4 @@ spec:
           - name: oracle
             image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
           - name: exporter
-            image: {{ .Values.exporter.image.registry | default $imageRegistry  }}/{{ .Values.exporter.image.repository }}:{{  .Values.exporter.image.tag }}
+            image: {{ .Values.exporter.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.exporter.image.repository }}:{{  .Values.exporter.image.tag }}

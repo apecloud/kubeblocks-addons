@@ -7,13 +7,13 @@ replicaCount: 1
 image:
   # bitnami/elasticsearch
   # docker pull bitnami/elasticsearch
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
-  repository: apecloud/elasticsearch
+  registry: docker.io
+  repository: elasticsearch
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: "8.8.2"
   exporter:
-    repository: apecloud/elasticsearch-exporter
+    repository: prometheuscommunity/elasticsearch-exporter
     tag: "v1.7.0"
   plugin:
     repository: apecloud/elasticsearch-plugins

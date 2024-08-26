@@ -9,7 +9,9 @@
 ## @param image.debug Specify if debug values should be set
 ##
 image:
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  # refer: https://github.com/apecloud-inc/spilo/blob/main/postgres-appliance/Dockerfile
+  # this is the image of postgresql, which is built from Dockerfile of apecloud-inc/spilo forked from zalando/spilo.
+  registry: docker.io
   repository: apecloud/spilo
   digest: ""
   tags:

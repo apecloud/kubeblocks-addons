@@ -3,7 +3,7 @@
 # Declare variables to be passed into your templates.
 
 image:
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  registry: docker.io
   repository: apecloud/mongo
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
@@ -12,6 +12,8 @@ image:
     repository: apecloud/syncer
     tag: "0.1.2"
 
+# refer: https://github.com/apecloud/wal-g/blob/kb-dev/docker/wal-g/Dockerfile-mongo
+# this image is built from Dockerfile of apecloud/wal-g forked from wal-g/wal-g.
 walg:
   repository: apecloud/wal-g
   tag: mongo-latest

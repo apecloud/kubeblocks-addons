@@ -8,8 +8,14 @@ roleProbe:
   failureThreshold: 2
   periodSeconds: 1
   timeoutSeconds: 1
+  image:
+    repository: arey/mysql-client
+    tag: latest
 
 # Related image configurations.
+image:
+  registry: docker.io
+
 images:
   polardbx:
     pullPolicy: IfNotPresent

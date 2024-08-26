@@ -71,22 +71,22 @@ run-name: Release Chart ${{ inputs.chart_dir }} ${{ inputs.chart_version }}
 jobs:
   release-chart:
     if: ${{ inputs.chart_dir != '' }}
-    uses: apecloud/apecloud-cd/.github/workflows/release-charts.yml@v0.1.52
+    uses: apecloud/apecloud-cd/.github/workflows/release-charts.yml@v0.1.68
     with:
       VERSION: "${{ inputs.chart_version }}"
       CHART_DIR: "addons"
       SPECIFY_CHART: "${{ inputs.chart_dir }}"
-      APECD_REF: "v0.1.52"
+      APECD_REF: "v0.1.68"
     secrets: inherit
 
   release-chart-all:
     if: ${{ inputs.chart_dir == '' }}
-    uses: apecloud/apecloud-cd/.github/workflows/release-charts.yml@v0.1.52
+    uses: apecloud/apecloud-cd/.github/workflows/release-charts.yml@v0.1.68
     with:
       VERSION: "${{ inputs.chart_version }}"
       CHART_DIR: "addons"
       SPECIFY_CHART: "${{ inputs.chart_dir }}"
-      APECD_REF: "v0.1.52"
+      APECD_REF: "v0.1.68"
       ENABLE_JIHU: false
     secrets: inherit
 
@@ -119,10 +119,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.get-addons-chart-dir.outputs.matrix) }}
-    uses: apecloud/apecloud-cd/.github/workflows/release-charts-jihu.yml@v0.1.52
+    uses: apecloud/apecloud-cd/.github/workflows/release-charts-jihu.yml@v0.1.68
     with:
       VERSION: "${{ inputs.chart_version }}"
       CHART_DIR: "addons"
       SPECIFY_CHART: "${{ matrix.addon-name }}"
-      APECD_REF: "v0.1.52"
+      APECD_REF: "v0.1.68"
     secrets: inherit

@@ -108,7 +108,7 @@ readinessProbe:
 Milvus image
 */}}
 {{- define "milvus.image" }}
-image: {{ .Values.images.milvus.repository }}:{{ .Values.images.milvus.tag }}
+image: {{ .Values.images.milvus.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.milvus.repository }}:{{ .Values.images.milvus.tag }}
 imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
 {{- end }}
 
@@ -117,7 +117,7 @@ Milvus init container - setup
 */}}
 {{- define "milvus.initContainer.setup" }}
 - name: setup
-  image: {{ .Values.images.milvusTools.repository }}:{{ .Values.images.milvusTools.tag }}
+  image: {{ .Values.images.milvusTools.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.milvusTools.repository }}:{{ .Values.images.milvusTools.tag }}
   imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
   command:
     - /cp
