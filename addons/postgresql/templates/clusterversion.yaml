@@ -265,7 +265,7 @@ spec:
       configSpecs:
         - name: postgresql-configuration
           templateRef: postgresql16-configuration
-          constraintRef: postgresql15-cc
+          constraintRef: postgresql16-cc
           keys:
             - postgresql.conf
           namespace: {{ .Release.Namespace }}
