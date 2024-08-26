@@ -1,14 +1,14 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: postgresql-15
+  name: postgresql-16
   labels:
     {{- include "postgresql.labels" . | nindent 4 }}
 spec:
   provider: kubeblocks
   description: A PostgreSQL (with Patroni HA) component definition for Kubernetes
   serviceKind: postgresql
-  serviceVersion: 15.7.0
+  serviceVersion: 16.4.0
   services:
     - name: postgresql
       serviceName: postgresql
@@ -44,8 +44,8 @@ spec:
     scrapePath: /metrics
   configs:
     - name: postgresql-configuration
-      templateRef: postgresql15-configuration
-      constraintRef: postgresql15-cc
+      templateRef: postgresql16-configuration
+      constraintRef: postgresql16-cc
       keys:
         - postgresql.conf
       namespace: {{ .Release.Namespace }}
@@ -59,7 +59,7 @@ spec:
       volumeName: pgbouncer-config
       defaultMode: 0777
     - name: postgresql-custom-metrics
-      templateRef: postgresql15-custom-metrics
+      templateRef: postgresql16-custom-metrics
       namespace: {{ .Release.Namespace }}
       volumeName: postgresql-custom-metrics
       defaultMode: 0444
@@ -96,6 +96,21 @@ spec:
     - name: kbreplicator
       statement: CREATE USER $(USERNAME) WITH REPLICATION PASSWORD '$(PASSWD)';
       passwordGenerationPolicy: *defaultPasswdGenerationPolicy
+  vars:
+    - name: POSTGRES_USER
+      valueFrom:
+        credentialVarRef:
+          compDef: postgresql-16
+          name: postgres
+          optional: false
+          username: Required
+    - name: POSTGRES_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: postgresql-16
+          name: postgres
+          optional: false
+          password: Required
   lifecycleActions:
     roleProbe:
       builtinHandler: postgresql
@@ -103,7 +118,7 @@ spec:
       timeoutSeconds: 1
     switchover:
       withCandidate:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:15.7.0
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major16.minor040 }}
         exec:
           command:
             - /bin/bash
@@ -111,7 +126,7 @@ spec:
           args:
             - curl -s http://$(KB_REPLICATION_PRIMARY_POD_FQDN):8008/switchover -XPOST -d '{"leader":"$(KB_REPLICATION_PRIMARY_POD_NAME)","candidate":"$(KB_SWITCHOVER_CANDIDATE_NAME)"}'
       withoutCandidate:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:15.7.0
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major16.minor040 }}
         exec:
           command:
             - /bin/bash
@@ -120,7 +135,7 @@ spec:
             - curl -s http://$(KB_REPLICATION_PRIMARY_POD_FQDN):8008/switchover -XPOST -d '{"leader":"$(KB_REPLICATION_PRIMARY_POD_NAME)"}'
     accountProvision:
       customHandler:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:15.7.0
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major16.minor040 }}
         exec:
           command:
             - psql
@@ -141,7 +156,7 @@ spec:
       fsGroupChangePolicy: OnRootMismatch
     initContainers:
       - name: pg-init-container
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:15.7.0
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major16.minor040 }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/init_container.sh
@@ -156,7 +171,7 @@ spec:
             mountPath: /kb-podinfo
     containers:
       - name: postgresql
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:15.7.0
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major16.minor040 }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         securityContext:
           runAsUser: 0
@@ -330,18 +345,3 @@ spec:
             - path: "component-replicas"
               fieldRef:
                 fieldPath: metadata.annotations['apps.kubeblocks.io/component-replicas']
-  vars:
-    - name: POSTGRES_USER
-      valueFrom:
-        credentialVarRef:
-          compDef: postgresql-15
-          name: postgres
-          optional: false
-          username: Required
-    - name: POSTGRES_PASSWORD
-      valueFrom:
-        credentialVarRef:
-          compDef: postgresql-15
-          name: postgres
-          optional: false
-          password: Required

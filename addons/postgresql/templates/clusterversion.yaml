@@ -246,3 +246,49 @@ spec:
         cmdExecutorConfig:
           image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major15.minor070 }}
 {{- end -}}
+
+{{- $cvName = "postgresql-16.4.0" -}}
+{{ if eq (include "postgresql.isClusterVersionEnabled" (dict "cvName" $cvName "values" .Values)) "true" }}
+---
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterVersion
+metadata:
+  name: {{ $cvName }}
+  annotations:
+    kubeblocks.io/is-default-cluster-version: "false"
+  labels:
+   {{- include "postgresql.labels" . | nindent 4 }}
+spec:
+  clusterDefinitionRef: postgresql
+  componentVersions:
+    - componentDefRef: postgresql
+      configSpecs:
+        - name: postgresql-configuration
+          templateRef: postgresql16-configuration
+          constraintRef: postgresql16-cc
+          keys:
+            - postgresql.conf
+          namespace: {{ .Release.Namespace }}
+          volumeName: postgresql-config
+          defaultMode: 0777
+        - name: postgresql-custom-metrics
+          templateRef: postgresql16-custom-metrics
+          namespace: {{ .Release.Namespace }}
+          volumeName: postgresql-custom-metrics
+          defaultMode: 0777
+      versionsContext:
+        initContainers:
+          - name: pg-init-container
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major16.minor040 }}
+        containers:
+          - name: postgresql
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major16.minor040 }}
+          - name: pgbouncer
+            image: {{ .Values.pgbouncer.image.registry | default .Values.image.registry }}/{{ .Values.pgbouncer.image.repository }}:{{ .Values.pgbouncer.image.tag }}
+      systemAccountSpec:
+        cmdExecutorConfig:
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major16.minor040 }}
+      switchoverSpec:
+        cmdExecutorConfig:
+          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major16.minor040 }}
+{{- end -}}
