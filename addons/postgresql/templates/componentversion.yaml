@@ -24,35 +24,35 @@ spec:
       changes:
       serviceVersion: 12.14.0
       images:
-        postgresql: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/spilo:12.14.0-pgvector-v0.6.1
-        pgbouncer: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/pgbouncer:1.19.0
+        postgresql: {{ include "postgresql.repository" . }}:12.14.0-pgvector-v0.6.1
+        pgbouncer: {{ include "pgbouncer.repository" . }}:1.19.0
     - name: 12.14.1
       changes:
       serviceVersion: 12.14.1
       images:
-        postgresql: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/spilo:12.14.1-pgvector-v0.6.1
-        pgbouncer: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/pgbouncer:1.19.0
+        postgresql: {{ include "postgresql.repository" . }}:12.14.1-pgvector-v0.6.1
+        pgbouncer: {{ include "pgbouncer.repository" . }}:1.19.0
     - name: 12.15.0
       changes:
       serviceVersion: 12.15.0 # {{ .Values.componentServiceVersion.postgresql12  }}
       images:
-        postgresql: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/spilo:12.15.0-pgvector-v0.6.1
-        pgbouncer: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/pgbouncer:1.19.0
+        postgresql: {{ include "postgresql.repository" . }}:12.15.0-pgvector-v0.6.1
+        pgbouncer: {{ include "pgbouncer.repository" . }}:1.19.0
     - name: 14.7.2
       changes:
       serviceVersion: 14.7.2
       images:
-        postgresql: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/spilo:14.7.2-pgvector-v0.6.1
-        pgbouncer: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/pgbouncer:1.19.0
+        postgresql: {{ include "postgresql.repository" . }}:14.7.2-pgvector-v0.6.1
+        pgbouncer: {{ include "pgbouncer.repository" . }}:1.19.0
     - name: 14.8.0
       changes:
       serviceVersion: 14.8.0 # {{ .Values.componentServiceVersion.postgresql14  }}
       images:
-        postgresql: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/spilo:14.8.0-pgvector-v0.6.1
-        pgbouncer: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/pgbouncer:1.19.0
+        postgresql: {{ include "postgresql.repository" . }}:14.8.0-pgvector-v0.6.1
+        pgbouncer: {{ include "pgbouncer.repository" . }}:1.19.0
     - name: 15.7.0
       changes:
       serviceVersion: 15.7.0 # {{ .Values.componentServiceVersion.postgresql15  }}
       images:
-        postgresql: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/spilo:15.7.0
-        pgbouncer: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/pgbouncer:1.19.0
+        postgresql: {{ include "postgresql.repository" . }}:15.7.0
+        pgbouncer: {{ include "pgbouncer.repository" . }}:1.19.0

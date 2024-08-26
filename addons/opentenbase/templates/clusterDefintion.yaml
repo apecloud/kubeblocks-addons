@@ -38,7 +38,7 @@ spec:
             isLeader: false
         roleProbe:
           customHandler:
-            - image: {{ .Values.images.registry }}/{{ .Values.images.repository}}:{{ .Values.images.tag }}
+            - image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository}}:{{ .Values.images.tag }}
               command:
                 - /bin/bash
                 - -c
@@ -65,7 +65,7 @@ spec:
           fsGroupChangePolicy: OnRootMismatch
         containers:
           - name: gtm
-            image: {{ .Values.images.registry }}/{{ .Values.images.repository}}:{{.Values.images.tag}}
+            image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository}}:{{.Values.images.tag}}
             imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
             command:
               - bash
@@ -128,7 +128,7 @@ spec:
             isLeader: false
         roleProbe:
           customHandler:
-            - image: {{ .Values.images.registry }}/{{ .Values.images.repository}}:{{ .Values.images.tag }}
+            - image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository}}:{{ .Values.images.tag }}
               command:
                 - /bin/bash
                 - -c
@@ -165,7 +165,7 @@ spec:
           fsGroupChangePolicy: OnRootMismatch
         containers:
           - name: dn
-            image: {{ .Values.images.registry }}/{{ .Values.images.repository}}:{{.Values.images.tag}}
+            image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository}}:{{.Values.images.tag}}
             imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
             command:
               - bash
@@ -236,7 +236,7 @@ spec:
             isLeader: false
         roleProbe:
           customHandler:
-            - image: {{ .Values.images.registry }}/{{ .Values.images.repository}}:{{ .Values.images.tag }}
+            - image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository}}:{{ .Values.images.tag }}
               command:
                 - /bin/bash
                 - -c
@@ -264,7 +264,7 @@ spec:
           fsGroupChangePolicy: OnRootMismatch
         containers:
           - name: cn
-            image: {{ .Values.images.registry }}/{{ .Values.images.repository}}:{{.Values.images.tag}}
+            image: {{ .Values.images.registry  | default "docker.io" }}/{{ .Values.images.repository}}:{{.Values.images.tag}}
             imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
             command:
               - /bin/bash

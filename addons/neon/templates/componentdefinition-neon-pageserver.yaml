@@ -26,7 +26,7 @@ spec:
         componentVarRef:
           compDef: {{ include "neon-storagebroker.componentDefName" . }}
           optional: true
-          instanceNames: Optional
+          podNames: Optional
     - name: NEON_STORAGEBROKER_PORT
       valueFrom:
         serviceVarRef:

@@ -74,6 +74,6 @@ spec:
         - -c
         - |
           {{- .Files.Get "dataprotection/restore-cluster.sh" | nindent 10 }}
-        image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/apecloud/ape-dts:0.1.17
+        image: {{ include "apeDts.image" . }}
         onError: Fail
         runOnTargetPodNode: true

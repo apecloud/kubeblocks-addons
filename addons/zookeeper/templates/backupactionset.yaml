@@ -8,7 +8,7 @@ spec:
   backupType: Full
   backup:
     backupData:
-      image: {{ .Values.images.registry | default "docker.io" }}/apecloud/zoocreeper:1.0.1
+      image: {{ .Values.images.zoocreeper.registry | default (.Values.images.registry | default "docker.io") }}/{{ .Values.images.zoocreeper.repository }}:{{ .Values.images.zoocreeper.tag }}
       runOnTargetPodNode: true
       command:
         - sh
@@ -22,7 +22,7 @@ spec:
   restore:
     postReady:
       - job:
-          image: {{ .Values.images.registry | default "docker.io" }}/apecloud/zoocreeper:1.0.1
+          image: {{ .Values.images.zoocreeper.registry | default (.Values.images.registry | default "docker.io") }}/{{ .Values.images.zoocreeper.repository }}:{{ .Values.images.zoocreeper.tag }}
           runOnTargetPodNode: true
           command:
             - sh

@@ -180,9 +180,16 @@ vars:
         password: Required
 lifecycleActions:
   roleProbe:
-    builtinHandler: mysql
     periodSeconds: {{ .Values.roleProbe.periodSeconds }}
     timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+    exec:
+      container: mysql
+      command:
+        - /tools/dbctl
+        - --config-path
+        - /tools/config/dbctl/components
+        - mysql
+        - getrole
 roles:
   - name: primary
     serviceable: true
@@ -198,24 +205,25 @@ roles:
     - -r
     - /bin/syncer
     - /config
-    - /kubeblocks/
+    - /tools/
   image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
   imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
   name: init-syncer
   volumeMounts:
-    - mountPath: /kubeblocks
-      name: kubeblocks
+    - mountPath: /tools
+      name: tools
 - command:
     - cp
     - -r
-    - /xtrabackup-2.4
-    - /kubeblocks/xtrabackup
-  image: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/syncer:mysql
+    - /bin/dbctl
+    - /config
+    - /tools/
+  image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
   imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
-  name: init-xtrabackup
+  name: init-dbctl
   volumeMounts:
-    - mountPath: /kubeblocks
-      name: kubeblocks
+    - mountPath: /tools
+      name: tools
 {{- end }}
 
 {{- define "mysql-orc.spec.common"}}
@@ -310,7 +318,6 @@ exporter:
 
 {{- define "mysql-orc.spec.lifecycle.common" }}
 roleProbe:
-  builtinHandler: custom
   exec:
     command:
       - /bin/bash
@@ -342,46 +349,45 @@ roleProbe:
           echo -n "secondary"
         fi
 memberLeave:
-  customHandler:
-    exec:
-      command:
-        - /bin/bash
-        - -c
-        - |
-          set +e
-          master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i $KB_CLUSTER_NAME)
-          last_digit=${KB_LEAVE_MEMBER_POD_NAME##*-}
-          self_service_name=$(echo "${KB_CLUSTER_COMP_NAME}_mysql_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
-          if [ "${self_service_name%%:*}" == "${master_from_orc%%:*}" ]; then
-            /kubeblocks/orchestrator-client -c force-master-failover -i $KB_CLUSTER_NAME
-            local timeout=30
-            local start_time=$(date +%s)
-            local current_time
-            while true; do
-              current_time=$(date +%s)
-              if [ $((current_time - start_time)) -gt $timeout ]; then
-                break
-              fi
-              master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i $KB_CLUSTER_NAME)
-              if [ "${self_service_name%%:*}" != "${master_from_orc%%:*}" ]; then
-                break
-              fi
-              sleep 1
-            done
-          fi
-          /kubeblocks/orchestrator-client -c reset-replica -i ${self_service_name}
-          /kubeblocks/orchestrator-client -c forget -i ${self_service_name}
-          res=$(/kubeblocks/orchestrator-client -c which-cluster-alias -i ${self_service_name})
+  exec:
+    command:
+      - /bin/bash
+      - -c
+      - |
+        set +e
+        master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i $KB_CLUSTER_NAME)
+        last_digit=${KB_LEAVE_MEMBER_POD_NAME##*-}
+        self_service_name=$(echo "${KB_CLUSTER_COMP_NAME}_mysql_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+        if [ "${self_service_name%%:*}" == "${master_from_orc%%:*}" ]; then
+          /kubeblocks/orchestrator-client -c force-master-failover -i $KB_CLUSTER_NAME
+          local timeout=30
           local start_time=$(date +%s)
-          while [ "$res" == "" ]; do
+          local current_time
+          while true; do
             current_time=$(date +%s)
             if [ $((current_time - start_time)) -gt $timeout ]; then
               break
             fi
+            master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i $KB_CLUSTER_NAME)
+            if [ "${self_service_name%%:*}" != "${master_from_orc%%:*}" ]; then
+              break
+            fi
             sleep 1
-            res=$(/kubeblocks/orchestrator-client -c instance -i ${self_service_name})
           done
-          /kubeblocks/orchestrator-client -c forget -i ${self_service_name}
+        fi
+        /kubeblocks/orchestrator-client -c reset-replica -i ${self_service_name}
+        /kubeblocks/orchestrator-client -c forget -i ${self_service_name}
+        res=$(/kubeblocks/orchestrator-client -c which-cluster-alias -i ${self_service_name})
+        local start_time=$(date +%s)
+        while [ "$res" == "" ]; do
+          current_time=$(date +%s)
+          if [ $((current_time - start_time)) -gt $timeout ]; then
+            break
+          fi
+          sleep 1
+          res=$(/kubeblocks/orchestrator-client -c instance -i ${self_service_name})
+        done
+        /kubeblocks/orchestrator-client -c forget -i ${self_service_name}
 {{- end }}
 
 {{- define "mysql-orc.spec.initcontainer.common"}}
@@ -458,7 +464,7 @@ env:
     value: $(MYSQL_ROOT_PASSWORD)
   - name: EXPORTER_WEB_PORT
     value: "{{ .Values.metrics.service.port }}"
-image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
+image: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
 imagePullPolicy: IfNotPresent
 ports:
   - name: http-metrics

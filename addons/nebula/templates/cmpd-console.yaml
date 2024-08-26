@@ -12,7 +12,7 @@ spec:
   runtime:
     containers:
       - name: console
-        imagePullPolicy: {{default .Values.nebula.metad.image.pullPolicy "IfNotPresent"}}
+        imagePullPolicy: {{default .Values.nebula.images.pullPolicy "IfNotPresent"}}
         command: [ "/bin/sh" ]
         args: [ "-c", "trap : TERM INT; sleep infinity & wait" ]
   vars:

@@ -6,10 +6,10 @@ metadata:
     clusterdefinition.kubeblocks.io/name: mariadb
     {{- include "mariadb.labels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: mariadb
   backupPolicies:
-  - componentDefRef: mariadb-compdef
-    backupMethods: &backupMethods
+  - componentDefs:
+      - mariadb-{{ .Chart.Version }}
+    backupMethods:
       - name: mariadb-backup
         snapshotVolumes: false
         actionSetName: mariadb-physical-backup
@@ -17,7 +17,7 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /var/lib/mysql
-    schedules: &backupschedules
+    schedules:
       - backupMethod: mariadb-backup
         enabled: false
         cronExpression: "0 18 * * *"

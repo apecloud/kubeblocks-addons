@@ -69,14 +69,13 @@ spec:
       volumeName: config
   lifecycleActions:
     memberLeave:
-      customHandler:
-        exec:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/pd:{{ default .Chart.AppVersion .Values.image.tag }}
-          command:
-            - bash
-            - -c
-            - |
-              {{- .Files.Get "scripts/tikv_member_leave.sh" | nindent 14 }}
+      exec:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
+        command:
+          - bash
+          - -c
+          - |
+            {{- .Files.Get "scripts/tikv_member_leave.sh" | nindent 14 }}
   exporter:
     containerName: tikv
     scrapePort: "20180"
