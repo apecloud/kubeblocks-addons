@@ -1,0 +1,40 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
+  name: mysql-orc-switchover
+spec:
+  podInfoExtractors:
+    - name: orcInfo
+      podSelector:
+        multiPodSelectionPolicy: Any
+      env:
+        - name: ORC_ENDPOINTS
+          valueFrom:
+            envRef:
+              envName: ORC_ENDPOINTS
+  parametersSchema:
+    openAPIV3Schema:
+      properties:
+        candidate:
+          description: |
+            candidate instance name(pod Name). if candidate is not empty, will promote it to primary.
+            otherwise promote a randomly selected pod to primary.
+          type: string
+      type: object
+  actions:
+    - name: switchover
+      failurePolicy: Fail
+      workload:
+        type: Job
+        backoffLimit: 0
+        podInfoExtractorName: orcInfo
+        podSpec:
+          containers:
+            - name: switchover
+              image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.orcTools.repository }}:{{ .Values.image.orcTools.tag }}
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  curl -s http://${ORC_ENDPOINTS}/api/graceful-master-takeover-auto/${candidate}

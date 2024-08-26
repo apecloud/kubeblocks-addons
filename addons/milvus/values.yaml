@@ -8,13 +8,25 @@ fullnameOverride: ""
 ## @param application images
 ##
 images:
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
   pullPolicy: IfNotPresent
   minio:
-    repository: docker.io/minio/minio
+    registry: ""
+    repository: apecloud/minio
     tag: RELEASE.2022-03-17T06-34-49Z
   ostools:
-    repository: bitnami/os-shell
+    registry: ""
+    repository: apecloud/os-shell
     tag: 11-debian-11-r90
+  operator:
+    registry: ""
+    repository: apecloud/milvus-operator
+    tag: v0.8.4
+  milvus:
+    registry: ""
+    repository: apecloud/milvus
+    tag: v2.3.2
+  
 
 livenessProbe:
   enabled: true

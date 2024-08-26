@@ -8,7 +8,7 @@ description: orchestrator
 
 dependencies:
   - name: kblib
-    version: 0.1.0
+    version: 0.1.1
     repository: file://../kblib
     alias: extra
 

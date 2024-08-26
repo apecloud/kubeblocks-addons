@@ -6,12 +6,14 @@ metadata:
     {{- include "etcd.labels" . | nindent 4 }}
 spec:
   compatibilityRules:
-    - releases:
-        - v3.5.6
-      compDefs:
-        - etcd
+    - compDefs: [etcd]
+      releases: [v3.5.6, v3.5.15]
   releases:
     - name: v3.5.6
       serviceVersion: v3.5.6
       images:
-        etcd: {{ .Values.image.repository }}:v3.5.6
+        etcd: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v3.5.6
+    - name: v3.5.15
+      serviceVersion: v3.5.15
+      images:
+        etcd: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository}}:v3.5.15

@@ -1,19 +1,13 @@
-# Default values for minio-cluster.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
+# Default values for minio cluster
+# This is a YAML-formatted file
+# Declare variables to be passed into your templates
 
-## @param replicas specify cluster replicas
-##
 replicas: 2
 
-## @param cpu
-##
-cpu: 0.5
+buckets: ""
 
-## @param memory, the unit is Gi
-##
-memory: 0.5
-
-## @param storage size, the unit is Gi
-##
+#resources
+cpu: 1
+memory: 1
+storageClassName: ""
 storage: 20

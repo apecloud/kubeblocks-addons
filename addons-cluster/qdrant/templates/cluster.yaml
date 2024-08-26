@@ -18,4 +18,3 @@ spec:
       replicas: {{ .Values.replicas | default 1 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
-      {{- include "kblib.componentServices" . | indent 6 }}

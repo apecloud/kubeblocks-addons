@@ -1,0 +1,61 @@
+apiVersion: apps.kubeblocks.io/v1beta1
+kind: ConfigConstraint
+metadata:
+  name: {{ include "etcd.configConstraintName" . }}
+  labels:
+    {{- include "etcd.labels" . | nindent 4 }}
+spec:
+  fileFormatConfig:
+    format: yaml
+  staticParameters:
+    - name
+    - data-dir
+    - wal-dir
+    - snapshot-count
+    - heartbeat-interval
+    - election-timeout
+    - quota-backend-bytes
+    - listen-peer-urls
+    - listen-client-urls
+    - max-snapshots
+    - max-wals
+    - cors
+    - initial-advertise-peer-urls
+    - advertise-client-urls
+    - discovery
+    - discovery-fallback
+    - discovery-proxy
+    - discovery-srv
+    - initial-cluster
+    - initial-cluster-token
+    - initial-cluster-state
+    - strict-reconfig-check
+    - enable-pprof
+    - proxy
+    - proxy-failure-wait
+    - proxy-refresh-interval
+    - proxy-dial-timeout
+    - proxy-write-timeout
+    - proxy-read-timeout
+    - client-transport-security.cert-file
+    - client-transport-security.key-file
+    - client-transport-security.client-cert-auth
+    - client-transport-security.trusted-ca-file
+    - client-transport-security.auto-tls
+    - peer-transport-security.cert-file
+    - peer-transport-security.key-file
+    - peer-transport-security.client-cert-auth
+    - peer-transport-security.trusted-ca-file
+    - peer-transport-security.auto-tls
+    - peer-transport-security.allowed-cn
+    - peer-transport-security.allowed-hostname
+    - self-signed-cert-validity
+    - log-level
+    - logger
+    - log-outputs
+    - force-new-cluster
+    - auto-compaction-mode
+    - auto-compaction-retention
+    - cipher-suites
+    - tls-min-version
+    - tls-max-version

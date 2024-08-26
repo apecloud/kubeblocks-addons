@@ -11,13 +11,14 @@ spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
-    - name: server
+    - name: mysql
       replicas: {{ .Values.replicas }}
       {{- $compdef := .Values.version }}
       {{- if .Values.orchestrator.enable }}
       {{- $compdef = printf "%s-orc" $compdef }}
       {{- end }}
       componentDef: {{ $compdef }}
+      {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "mysql-cluster.replicaCount" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}

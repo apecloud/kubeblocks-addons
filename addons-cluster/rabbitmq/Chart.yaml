@@ -7,7 +7,7 @@ version: 1.0.0-alpha.0
 description: A RabbitMQ cluster Helm chart for KubeBlocks
 dependencies:
   - name: kblib
-    version: 0.1.0
+    version: 0.1.1
     repository: file://../kblib
     alias: extra
 

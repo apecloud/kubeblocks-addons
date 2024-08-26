@@ -4,6 +4,43 @@ fullnameOverride: ""
 
 clusterDomain: ".cluster.local"
 
+# volume backup
+dataMountPath: /var/run/etcd
+dataDir: /var/run/etcd/default.etcd
+
+tlsMountPath: /etc/pki/tls
+
+# a copy version of /etc/etcd/etcd.conf but add some modification
+tmpConfigPath: /var/run/etcd/etcd.conf
+
+# These TLS settings are used to configure two kind of TLS for etcd
+# They will only take effect when 'etcd-cluster.Values.tlsEnable' is set to true
+tls:
+  client: true
+  peer: true
+
+# define a threshold to check if backup total key is too low
+# '6' is the initial count of key number for 1-replica etcd cluster
+# consider increasing this value when dealing with production-grade etcd cluster
+backupKeyThreshold: 6
+
 image:
-  repository: quay.io/coreos/etcd
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  repository: apecloud/etcd
   pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag:
+    major3:
+      minor5: 
+        # latest version build with busybox brinaries
+        patch6: v3.5.6
+        # latest version build with distroless(default)
+        patch15: v3.5.15
+
+busyboxImage:
+  # if the value of busyboxImage.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
+  registry: ""
+  repository: apecloud/busybox
+  pullPolicy: IfNotPresent
+  # use static compile version
+  tag: 1.35-musl
