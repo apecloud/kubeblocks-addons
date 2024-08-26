@@ -1,9 +1,9 @@
 version: latest
 
 image:
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  registry: docker.io
   # -- Neondatabase image repository
-  repository: apecloud/neon
+  repository: perconalab/neon
   # -- Overrides the image tag whose default is the chart appVersion.
   tag: "pg14-1.0.0"
 

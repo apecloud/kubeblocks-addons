@@ -2,6 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: minio-configuration
+  namespace: {{ .Release.Namespace | quote }}
   labels:
     {{- include "minio.labels" . | nindent 4 }}
 data:

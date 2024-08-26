@@ -12,8 +12,8 @@ commonLabels: {}
 commonAnnotations: {}
 
 image:
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
-  repository: apecloud/clickhouse
+  registry: docker.io
+  repository: bitnami/clickhouse
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: 22.9.4-debian-11-r1

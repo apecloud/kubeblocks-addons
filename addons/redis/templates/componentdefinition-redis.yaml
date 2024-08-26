@@ -155,30 +155,28 @@ spec:
         componentVarRef:
           compDef: {{ include "redis-sentinel.componentDefName" . }}
           optional: true
-          instanceNames: Optional
+          podNames: Optional
   lifecycleActions:
     roleProbe:
       builtinHandler: redis
       periodSeconds: 1
       timeoutSeconds: 1
     postProvision:
-      customHandler:
-        exec:
-          image: {{ include "redis.image" . }}
-          command:
-            - /bin/bash
-            - -c
-            - /scripts/redis-register-to-sentinel.sh
-        preCondition: RuntimeReady
+      exec:
+        image: {{ include "redis.image" . }}
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/redis-register-to-sentinel.sh
+      preCondition: RuntimeReady
     accountProvision:
-      customHandler:
-        exec:
-          image: {{ include "redis.image" . }}
-          command:
-            - sh
-            - -c
-          args:
-            - "redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD acl save "
+      exec:
+        image: {{ include "redis.image" . }}
+        command:
+          - sh
+          - -c
+        args:
+          - "redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD acl save "
   runtime:
     containers:
       - name: redis
@@ -234,7 +232,7 @@ spec:
                 - -c
                 - /scripts/redis-preStop.sh
       - name: metrics
-        image: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
+        image: {{ include "metrics.image" . }}
         imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
         securityContext:
           runAsNonRoot: true

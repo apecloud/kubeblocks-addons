@@ -1,13 +1,12 @@
 image:
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
-  repository: apecloud/greatsql
+  registry: docker.io
+  repository: greatsql/greatsql
   pullPolicy: IfNotPresent
   tag: 8.0.32-25
   prom:
-    repository: apecloud
     pullPolicy: IfNotPresent
     mysqld_exporter:
-      name: mysqld-exporter
+      repository: prom/mysqld-exporter
       tag: v0.14.0
 
 ## MySQL Authentication parameters

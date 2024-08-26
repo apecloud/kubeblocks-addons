@@ -29,7 +29,7 @@ spec:
             value: $(SERVICE_PASSWORD)
     containers:
       - name: engine
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.repository }}/{{ .Values.images.polardbx.cdc.name}}:{{.Values.images.polardbx.cdc.tag}}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.cdc.repository}}:{{.Values.images.polardbx.cdc.tag}}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.polardbx.pullPolicy }}
         env:
           - name: switchCloud
@@ -82,7 +82,7 @@ spec:
           - name: log
             mountPath: /home/admin/logs
       - name: exporter
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.repository }}/{{ .Values.images.polardbx.exporter.name}}:{{.Values.images.polardbx.exporter.tag}}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.exporter.repository}}:{{.Values.images.polardbx.exporter.tag}}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.polardbx.pullPolicy }}
         args:
           - -web.listen-addr=:9104

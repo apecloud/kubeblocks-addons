@@ -2,6 +2,10 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+## @param version cluster version
+##
+version: 3.9.2
+
 terminationPolicy: Delete
 
 ## @param replicas specify cluster replicas

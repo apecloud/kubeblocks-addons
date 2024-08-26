@@ -19,7 +19,7 @@ spec:
     preBackup: []
     postBackup: []
     backupData:
-      image: {{ .Values.image.xtraBackupRegistry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.xtraBackupRepository }}:$(IMAGE_TAG)
+      image: {{ .Values.image.xtraBackup.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.xtraBackup.repository }}:$(IMAGE_TAG)
       runOnTargetPodNode: true
       command:
       - bash
@@ -31,7 +31,7 @@ spec:
         intervalSeconds: 5
   restore:
     prepareData:
-      image: {{ .Values.image.xtraBackupRegistry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.xtraBackupRepository }}:$(IMAGE_TAG)
+      image: {{ .Values.image.xtraBackup.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.xtraBackup.repository }}:$(IMAGE_TAG)
       command:
       - bash
       - -c

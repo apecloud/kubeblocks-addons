@@ -3,7 +3,7 @@
 # Declare variables to be passed into your templates.
 
 images:
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  registry: docker.io
   pullPolicy: IfNotPresent
   observer:
     repository: apecloud/oceanbase
