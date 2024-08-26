@@ -14,7 +14,7 @@ spec:
     target:
       role: secondary
     backupMethods: &backupMethods
-    - name: rdb
+    - name: datafile
       snapshotVolumes: false
       actionSetName: redis-physical-backup
       targetVolumes:
@@ -34,7 +34,7 @@ spec:
         volumes:
         - data
     schedules: &backupschedules
-    - backupMethod: rdb
+    - backupMethod: datafile
       enabled: false
       cronExpression: "0 18 * * 0"
       retentionPeriod: 7d
@@ -59,7 +59,7 @@ spec:
       role: secondary
       account: default
     backupMethods:
-    - name: rdb
+    - name: datafile
       snapshotVolumes: false
       actionSetName: redis-cluster-backup
       targetVolumes:
@@ -73,7 +73,7 @@ spec:
   #      volumes:
   #        - data
     schedules:
-      - backupMethod: rdb
+      - backupMethod: datafile
         enabled: false
         cronExpression: "0 18 * * 0"
         retentionPeriod: 7d

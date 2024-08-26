@@ -6,7 +6,7 @@ function truncate_aof() {
   local temp_file="${aof_file}.tmp"
   local found=false
   local restore_time=$(date -d "$DP_RESTORE_TIME" +%s)
-
+  touch "$temp_file"
   while IFS= read -r line; do
     if [[ "$line" == \#TS:* ]]; then
       local timestamp=$(echo ${line#\#TS:} | tr -d '\r')
@@ -29,7 +29,7 @@ function truncate_aof() {
 function get_files_to_restore() {
   local restore_time=$(date -d "$DP_RESTORE_TIME" +%s)
 
-  local filename=$(datasafed list / | sort -t '.' -k1,1r | awk -v rt="$restore_time" -F '.' '$1 <= rt {print; exit}')
+  local filename=$(datasafed list / | sort -Vr | awk -v rt="$restore_time" -F '.' '$1 <= rt {print; exit}')
   if [ -z "$filename" ]; then
     DP_log "No backup found for the given restore time: $DP_RESTORE_TIME"
     exit 0

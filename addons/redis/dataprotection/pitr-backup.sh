@@ -14,16 +14,24 @@ AOF_MANIFEST_FILE="${AOF_FILE_PREFIX}.manifest"
 
 mkdir -p "${AOF_DIR}"
 
-function get_backup_seq() {
-  local remote_aof_seq=$(datasafed list -d / | sort -nr | head -n 1 | awk -F '.' '{print $2}')
-  local local_aof_seq=$(awk '/type i/ { print $4 }' "${AOF_MANIFEST_FILE}")
-  if [[ -z "$remote_aof_seq" ]] || ! [[ "$remote_aof_seq" =~ ^[0-9]+$ ]]; then
-    echo 1
+function get_base_file_ctime() {
+  local base_file=${1}
+  if [ "$BASE_FILE_SUFFIX" = "base.rdb" ]; then
+    # use the creation time of the base file as the start time
+    echo $(redis-check-rdb "$base_file" | grep 'ctime' | awk -F"'" '{print $2}')
+    return
   fi
-  [ "$local_aof_seq" -lt "$remote_aof_seq" ] && echo "$local_aof_seq" || echo "$remote_aof_seq"
-}
 
-global_backup_seq=$(get_backup_seq)
+  # for aof base file
+  # extract the timestamp from the first line of base_file
+  timestamp=$(head -n 1 "$base_file" | grep -oP '(?<=#TS:)\d+')
+
+  # ff no timestamp is found, get the file creation time
+  if [ -z "$timestamp" ]; then
+    timestamp=$(stat -c %W "$base_file")
+  fi
+  echo "$timestamp"
+}
 
 function aof_incr_file() {
   local seq=$1
@@ -37,10 +45,33 @@ function aof_base_file() {
   echo "${AOF_FILE_PREFIX}.${seq}.${BASE_FILE_SUFFIX}"
 }
 
+function get_backup_seq() {
+  local remote_aof_dir=$(datasafed list -d / | sort -Vr | head -n 1)
+  local remote_aof_seq=$(echo "$remote_aof_dir" | awk -F '.' '{print $2}')
+  if [[ -z "$remote_aof_seq" ]] || ! [[ "$remote_aof_seq" =~ ^[0-9]+$ ]]; then
+    echo 1
+    return
+  fi
+
+  local remote_base_file_ctime=$(echo "$remote_aof_dir" | awk -F '.' '{print $1}')
+  local local_aof_seq=$(awk '/type i/ { print $4 }' "${AOF_MANIFEST_FILE}")
+  local local_base_file_ctime=$(get_base_file_ctime "$(aof_base_file "$local_aof_seq")")
+
+  if [ "$remote_base_file_ctime" -gt "$local_base_file_ctime" ] ||
+   { [ "$remote_base_file_ctime" -eq "$local_base_file_ctime" ] && [ "$remote_aof_seq" -gt "$local_aof_seq" ]; }; then
+    # in replication mode, when failover happens, if the backup process switch to a new target, we should
+    # call BGREWRITEAOF to make sure record from a new start time, which guarantees the consistency of data and continuity of time.
+    ${connect_url} BGREWRITEAOF  >/dev/null 2>&1
+  fi
+
+  [ "$local_aof_seq" -lt "$remote_aof_seq" ] && echo "$local_aof_seq" || echo "$remote_aof_seq"
+}
+
+global_backup_seq=$(get_backup_seq)
+
 function get_backup_files_prefix() {
   local base_file=${1}
-  # use the creation time of the base file as the start time
-  echo "$(stat -c %Y "$base_file")".${global_backup_seq}
+  echo "$(get_base_file_ctime "$base_file")"."$global_backup_seq"
 }
 
 # generate backup manifest file for remote backup
@@ -62,7 +93,7 @@ function archive_pair_files() {
   local backup_manifest="$APPEND_FILE_NAME.manifest"
 
   if [ ! -f "$incr_file" ] || [ ! -f "$base_file" ]; then
-    DP_log "Files: $incr_file or $base_file do not exist"
+    DP_log "archive_pair_files: $incr_file or $base_file do not exist"
     return
   fi
 
@@ -86,8 +117,13 @@ function update_aof_file() {
   local backup_files_prefix=$(get_backup_files_prefix $base_file)
   local backup_manifest="$(generate_backup_manifest)"
 
+  if [ ! -f "$incr_file" ] || [ ! -f "$base_file" ]; then
+    DP_log "update_aof_file: $incr_file or $base_file do not exist"
+    return
+  fi
+
   # create a directory for backup files we are tracking, and after a aof rewrite, we will archive them in to a tar.zst file
-  if [ $(stat -c %Y "${base_file}") -gt ${global_aof_last_modify_time} ]; then
+  if [ $(get_base_file_ctime "$base_file") -gt ${global_aof_last_modify_time} ]; then
     datasafed push "${base_file}" "${backup_files_prefix}.dir/${AOF_DIR}/$(basename "${base_file}")"
     datasafed push "${backup_manifest}" "${backup_files_prefix}.dir/${backup_manifest}"
     datasafed push "${DATA_DIR}/users.acl" "${backup_files_prefix}.dir/users.acl"
@@ -114,12 +150,6 @@ function purge_expired_files() {
   fi
 }
 
-function set_conf() {
-  ${connect_url} CONFIG SET appendonly yes
-  ${connect_url} CONFIG SET aof-disable-auto-gc yes
-  ${connect_url} CONFIG SET aof-timestamp-enabled yes
-}
-
 function save_backup_status() {
   # if no size changes, return
   local total_size=$(datasafed stat / | grep TotalSize | awk '{print $2}')
@@ -128,13 +158,32 @@ function save_backup_status() {
   fi
   global_old_size=${total_size}
   local start_time=$(datasafed list / | awk -F '.' '{print $1}' | sort | head -n 1)
+  if [ -z "$start_time" ]; then
+    start_time=$(date +%s)
+    DP_log "save_backup_status: empty start_time from backup repo, use current time"
+  fi
   DP_save_backup_status_info "${total_size}" "${start_time}" "$(date +%s)"
 }
 
+function check_conf() {
+  disable_gc=$(${connect_url} CONFIG GET aof-disable-auto-gc 2>/dev/null | awk 'NR==2')
+
+  if [ "$disable_gc" == "no" ]; then
+    ${connect_url} CONFIG SET aof-disable-auto-gc yes
+    DP_log "aof-disable-auto-gc set to yes"
+  fi
+}
+
+# archived files named as ${base_file_ctime}.${seq}.suffix
+# we use {base_file_ctime} to track files between different target pods in replication mode and used for restore
+# every time a failover happens, we will choose to track the new one target pod with the latest {base_file_ctime}, keep
+# time increasing, and use {seq} to track the selected one target pod`s incremental backup files
+
 trap "echo 'Terminating...' && sync && ${connect_url} CONFIG SET aof-disable-auto-gc no && exit 0" TERM
 echo "INFO: start to backup"
-set_conf
 while true; do
+  check_conf
+
   aof_seq=$(awk '/type i/ { print $4 }' "${AOF_MANIFEST_FILE}")
   while [ "${global_backup_seq}" -lt "${aof_seq}" ]; do
     archive_pair_files
