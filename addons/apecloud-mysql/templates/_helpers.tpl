@@ -155,9 +155,25 @@ roles:
     votable: false
 lifecycleActions:
   roleProbe:
-    builtinHandler: wesql
     periodSeconds: {{ .Values.roleProbe.periodSeconds }}
     timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+    exec:
+      container: mysql
+      command:
+        - /tools/dbctl
+        - --config-path
+        - /tools/config/dbctl/components
+        - wesql
+        - getrole
+  memberLeave:
+    exec:
+      container: mysql
+      command:
+        - /tools/dbctl
+        - --config-path
+        - /tools/config/dbctl/components
+        -  wesql
+        - leavemember
   switchover:
     withCandidate:
       exec:
@@ -172,18 +188,17 @@ lifecycleActions:
   accountProvision:
     builtinHandler: wesql
   {{/*
-    customHandler:
+    exec:
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
-      exec:
-        command:
-          - mysql
-        args:
-          - -u$(MYSQL_ROOT_USER)
-          - -p$(MYSQL_ROOT_PASSWORD)
-          - -P$(MYSQL_PORT)
-          - -h$(KB_ACCOUNT_ENDPOINT)
-          - -e
-          - $(KB_ACCOUNT_STATEMENT)
+      command:
+        - mysql
+      args:
+        - -u$(MYSQL_ROOT_USER)
+        - -p$(MYSQL_ROOT_PASSWORD)
+        - -P$(MYSQL_PORT)
+        - -h$(KB_ACCOUNT_ENDPOINT)
+        - -e
+        - $(KB_ACCOUNT_STATEMENT)
       targetPodSelector: Role
       matchingKey: leader 
    */}}
@@ -286,6 +301,8 @@ volumeMounts:
     mountPath: /scripts
   - name: annotations
     mountPath: /etc/annotations
+  - mountPath: /tools
+    name: tools
 ports:
   - containerPort: 3306
     name: mysql

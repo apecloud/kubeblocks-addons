@@ -46,7 +46,7 @@ spec:
                     name: $(CONN_CREDENTIAL_SECRET_NAME)
                     key: password
           - name: mysql-exporter
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.prom.repository }}/{{ .Values.image.prom.mysqld_exporter.name}}:{{.Values.image.prom.mysqld_exporter.tag}}
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.prom.mysqld_exporter.repository}}:{{.Values.image.prom.mysqld_exporter.tag}}
             imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
             ports:
               - name: metrics

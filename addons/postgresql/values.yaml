@@ -12,7 +12,9 @@ fullnameOverride: ""
 ## @param image.debug Specify if debug values should be set
 ##
 image:
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  # refer: https://github.com/apecloud-inc/spilo/blob/main/postgres-appliance/Dockerfile
+  # this is the image of postgresql, which is built from Dockerfile of apecloud-inc/spilo forked from zalando/spilo.
+  registry: docker.io
   repository: apecloud/spilo
   digest: ""
   tags:
@@ -25,6 +27,11 @@ image:
       minor080: 14.8.0-pgvector-v0.6.1
     major15:
       minor070: 15.7.0
+
+  # refer: https://github.com/apecloud/dbctl/blob/main/docker/Dockerfile
+  dbctl:
+    repository: apecloud/dbctl
+    tag: "0.1.2"
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
   ## ref: https://kubernetes.io/docs/user-guide/images/#pre-pulling-images
@@ -85,7 +92,7 @@ metrics:
   image:
     # if the value of metrics.image.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
     registry: ""
-    repository: apecloud/postgres-exporter
+    repository: prometheuscommunity/postgres-exporter
     tag: v0.15.0
     pullPolicy: IfNotPresent
   service:
@@ -97,7 +104,7 @@ pgbouncer:
     # refer: https://hub.docker.com/r/bitnami/pgbouncer
     # if the value of pgbouncer.image.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
     registry: ""
-    repository: apecloud/pgbouncer
+    repository: bitnami/pgbouncer
     tag: 1.19.0
     pullPolicy: IfNotPresent
 

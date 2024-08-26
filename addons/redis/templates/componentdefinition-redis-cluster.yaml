@@ -169,27 +169,25 @@ spec:
       periodSeconds: 1
       timeoutSeconds: 1
     postProvision:
-      customHandler:
-        exec:
-          image: {{ include "redis.image" . }}
-          command:
-            - /bin/bash
-            - -c
-            - /scripts/redis-cluster-manage.sh --post-provision
-        ## TODO: the preCondition should be changed to RuntimeReady when KubeBlocks support it
-        preCondition: ComponentReady
-        retryPolicy:
-          maxRetries: 10
+      exec:
+        image: {{ include "redis.image" . }}
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/redis-cluster-manage.sh --post-provision
+      ## TODO: the preCondition should be changed to RuntimeReady when KubeBlocks support it
+      preCondition: ComponentReady
+      retryPolicy:
+        maxRetries: 10
     preTerminate:
-      customHandler:
-        exec:
-          image: {{ include "redis.image" . }}
-          command:
-            - /bin/bash
-            - -c
-            - /scripts/redis-cluster-manage.sh --pre-terminate
-        retryPolicy:
-          maxRetries: 10
+      exec:
+        image: {{ include "redis.image" . }}
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/redis-cluster-manage.sh --pre-terminate
+      retryPolicy:
+        maxRetries: 10
   runtime:
     containers:
       - name: redis-cluster
@@ -238,7 +236,7 @@ spec:
                 - -c
                 - /scripts/redis-cluster-replica-member-leave.sh
       - name: metrics
-        image: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
+        image: {{ include "metrics.image" . }}
         imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
         securityContext:
           runAsNonRoot: true

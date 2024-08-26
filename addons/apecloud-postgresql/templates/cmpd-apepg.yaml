@@ -90,21 +90,36 @@ spec:
       statement: CREATE USER $(USERNAME) SUPERUSER PASSWORD '$(PASSWD)';
   lifecycleActions:
     roleProbe:
-      builtinHandler: apecloud-postgresql
       periodSeconds: 1
       timeoutSeconds: 1
+      exec:
+        container: postgresql
+        command:
+          - /tools/dbctl
+          - --config-path
+          - /tools/config/dbctl/components
+          - apecloud-postgresql
+          - getrole
+    memberLeave:
+      exec:
+        container: postgresql
+        command:
+          - /tools/dbctl
+          - --config-path
+          - /tools/config/dbctl/components
+          -  apecloud-postgresql
+          - leavemember
     accountProvision:
       builtinHandler: apecloud-postgresql
     {{/*
-      customHandler:
+      exec:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
-        exec:
-          command:
-            - psql
-          args:
-            - -h$(KB_ACCOUNT_ENDPOINT)
-            - -c
-            - $(KB_ACCOUNT_STATEMENT)
+        command:
+          - psql
+        args:
+          - -h$(KB_ACCOUNT_ENDPOINT)
+          - -c
+          - $(KB_ACCOUNT_STATEMENT)
         env:
           - name: PGUSER
             value: $(POSTGRES_USER)
@@ -116,18 +131,30 @@ spec:
       - command:
           - sh
           - -c
-          - cp -r /bin/syncer /config /kubeblocks/
+          - cp -r /bin/syncer /config /tools/
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         name: init-syncer
         volumeMounts:
-          - mountPath: /kubeblocks
-            name: kubeblocks
+          - mountPath: /tools
+            name: tools
+      - command:
+          - cp
+          - -r
+          - /bin/dbctl
+          - /config
+          - /tools/
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        name: init-dbctl
+        volumeMounts:
+          - mountPath: /tools
+            name: tools
     containers:
       - command:
-          - /kubeblocks/syncer
+          - /tools/syncer
           - --config-path
-          - /kubeblocks/config/components
+          - /tools/config/components
           - --port
           - '3601'
           - --
@@ -181,8 +208,8 @@ spec:
             name: postgresql-config
           - mountPath: /kb-scripts
             name: scripts
-          - mountPath: /kubeblocks
-            name: kubeblocks
+          - mountPath: /tools
+            name: tools
     volumes:
       - emptyDir:
           medium: Memory

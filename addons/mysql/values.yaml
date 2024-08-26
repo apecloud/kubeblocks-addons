@@ -3,22 +3,24 @@
 # Declare variables to be passed into your templates.
 
 image:
-  registry:  apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
-  repository: apecloud/mysql
+  registry:  docker.io
+  repository: mysql
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   # example for mysql 8.0
   #tag: 8.0.33
   tag: 5.7.44
-  xtraBackupRepository: apecloud/percona-xtrabackup
-  # if the value of image.xtraBackupRegistry.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
-  xtraBackupRegistry: ""
+  xtraBackup:
+    # if the value of image.xtraBackup.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
+    registry: ""
+    repository: perconalab/percona-xtrabackup
   syncer:
     repository: apecloud/syncer
     tag: 0.1.8
   dbctl:
     repository: apecloud/dbctl
     tag: 0.1.2
+  # refer: addons/mysql/orc-tools/Dockerfile
   orcTools:
     repository: apecloud/orc-tools
     tag: 1.0.3
@@ -81,7 +83,7 @@ metrics:
   image:
     # if the value of metrics.image.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
     registry: ""
-    repository: apecloud/mysqld-exporter
+    repository: bitnami/mysqld-exporter
     tag: 0.15.1
     pullPolicy: IfNotPresent
 

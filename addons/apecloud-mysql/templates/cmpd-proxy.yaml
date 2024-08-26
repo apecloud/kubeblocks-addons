@@ -28,10 +28,9 @@ spec:
     {{- end }}
   lifecycleActions:
     preTerminate:
-      customHandler:
-        exec:
-          image: {{ .Values.wesqlscale.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
-          command: ["/scripts/etcd-clean.sh"]
+      exec:
+        image: {{ .Values.wesqlscale.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
+        command: ["/scripts/etcd-clean.sh"]
   runtime:
     containers:
       - name: vtctld
