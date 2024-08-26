@@ -57,7 +57,7 @@ spec:
         - pgbouncer.ini
       namespace: {{ .Release.Namespace }}
       volumeName: pgbouncer-config
-      defaultMode: 0444
+      defaultMode: 0777
     - name: postgresql-custom-metrics
       templateRef: postgresql16-custom-metrics
       namespace: {{ .Release.Namespace }}
