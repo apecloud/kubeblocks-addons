@@ -24,22 +24,22 @@ load_common_library() {
   source "${common_library_file}"
 }
 
-switchoverWithCandidate() {
+switchover_with_candidate() {
   local current_pod_fqdn=$1
-  local current_primary_pod_fqdn=$2
-  local candidate_pod_fqdn=$3
+  local current_primary_pod_name=$2
+  local candidate_pod_name=$3
   # TODO: check the role in kernel before switchover
   # shellcheck disable=SC2016
-  curl -s http://$(current_pod_fqdn):8008/switchover -XPOST -d '{"leader":"$(current_primary_pod_fqdn)","candidate":"$(candidate_pod_fqdn)"}'
+  curl -s http://$(current_pod_fqdn):8008/switchover -XPOST -d '{"leader":"$(current_primary_pod_name)","candidate":"$(candidate_pod_name)"}'
   # TODO: check switchover result
 }
 
-switchoverWithoutCandidate() {
+switchover_without_candidate() {
   local current_pod_fqdn=$1
-  local current_primary_pod_fqdn=$2
+  local current_primary_pod_name=$2
   # TODO: check the role in kernel before switchover
   # shellcheck disable=SC2016
-  curl -s http://$(current_pod_fqdn):8008/switchover -XPOST -d '{"leader":"$(current_primary_pod_fqdn)"}'
+  curl -s http://$(current_pod_fqdn):8008/switchover -XPOST -d '{"leader":"$(current_primary_pod_name)"}'
   # TODO: check switchover result
 }
 
@@ -70,17 +70,11 @@ switchover() {
     exit 1
   fi
 
-  current_primary_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$POSTGRES_POD_FQDN_LIST" "$CURRENT_PRIMARY_POD_NAME")
-  if is_empty "$current_primary_pod_fqdn"; then
-    echo "Error: Failed to get current primary pod fqdn: $CURRENT_PRIMARY_POD_NAME from postgres pod fqdn list: $POSTGRES_POD_FQDN_LIST. Exiting."
-    exit 1
-  fi
-
-  # KB_SWITCHOVER_CANDIDATE_FQDN is built-in env in the switchover action injected by the KubeBlocks controller
-  if ! is_empty "$KB_SWITCHOVER_CANDIDATE_FQDN"; then
-    switchoverWithCandidate "$current_pod_fqdn" "$current_primary_pod_fqdn" "$KB_SWITCHOVER_CANDIDATE_FQDN"
+  # KB_SWITCHOVER_CANDIDATE_NAME is built-in env in the switchover action injected by the KubeBlocks controller
+  if ! is_empty "$KB_SWITCHOVER_CANDIDATE_NAME"; then
+    switchover_with_candidate "$current_pod_fqdn" "$POSTGRES_PRIMARY_POD_NAME" "$KB_SWITCHOVER_CANDIDATE_NAME"
   else
-    switchoverWithoutCandidate "$current_pod_fqdn" "$current_primary_pod_fqdn"
+    switchover_without_candidate "$current_pod_fqdn" "$POSTGRES_PRIMARY_POD_NAME"
   fi
 }
 
