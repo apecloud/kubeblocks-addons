@@ -16,6 +16,9 @@ spec:
           - name: amqp
             port: 5672
             targetPort: amqp
+          - name: management
+            port: 15672
+            targetPort: management
   configs:
     - name: config
       templateRef: {{ include "rabbitmq.configTplName" . }}
