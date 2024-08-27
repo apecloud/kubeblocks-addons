@@ -97,7 +97,7 @@ spec:
         componentVarRef:
           compDef: {{ include "postgresql.compDefPostgresql14" . }}
           optional: false
-          componentShortName: Required
+          shortName: Required
     ## the etcd version if postgres patroni use etcd as DCS
     - name: PATRONI_DCS_ETCD_VERSION
       value: "3"
