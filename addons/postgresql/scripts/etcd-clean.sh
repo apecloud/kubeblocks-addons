@@ -28,7 +28,7 @@ else
 fi
 sleep 10
 
-export ETCDCTL_API=${ETCD_API:-'2'}
+export ETCDCTL_API=${PATRONI_DCS_ETCD_VERSION:-'2'}
 
 endpoints=${ETCD_SERVER:-'127.0.0.1:2379'}
 

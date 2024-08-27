@@ -10,6 +10,13 @@ version: 1.0.0-alpha.0
 # appVersion should be consistent with the highest PostgreSQL (with Patroni HA) kernel version.
 appVersion: "15.7.0"
 
+# Add a dependency to the kubeblocks definition library chart
+dependencies:
+  - name: kblib
+    version: 0.1.0
+    repository: file://../kblib
+    alias: extra
+
 home: https://kubeblocks.io/
 icon: https://kubeblocks.io/img/logo.png
 
