@@ -226,7 +226,7 @@ spec:
         image: {{ include "postgresql.image.major14.minor080" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
-          - /kb-scripts/init_container.sh
+          - /kb-scripts/postgres-pre-setup.sh
         volumeMounts:
           - name: data
             mountPath: /home/postgres/pgdata
@@ -253,7 +253,7 @@ spec:
         securityContext:
           runAsUser: 0
         command:
-          - /kb-scripts/setup.sh
+          - /kb-scripts/postgres-setup.sh
         readinessProbe:
           failureThreshold: 3
           initialDelaySeconds: 10
@@ -360,7 +360,7 @@ spec:
           - name: scripts
             mountPath: /kb-scripts
         command:
-          - /kb-scripts/pgbouncer_setup.sh
+          - /kb-scripts/pgbouncer-setup.sh
         livenessProbe:
           failureThreshold: 3
           initialDelaySeconds: 15
