@@ -98,6 +98,12 @@ spec:
           name: postgres
           optional: false
           password: Required
+    - name: REPLICATION_PRIMARY_POD_FQDN
+      valueFrom:
+        componentVarRef:
+          podFQDNsForRole:
+            role: primary
+            option: Optional
   systemAccounts:
     - name: postgres
       initAccount: true
@@ -138,22 +144,18 @@ spec:
           - postgresql
           - getrole
     switchover:
-      withCandidate:
-        exec:
-          image: {{ include "postgresql.image.major12.minor150" . }}
-          command:
-            - /bin/bash
-            - -c
-          args:
-            - curl -s http://$(KB_REPLICATION_PRIMARY_POD_FQDN):8008/switchover -XPOST -d '{"leader":"$(KB_REPLICATION_PRIMARY_POD_NAME)","candidate":"$(KB_SWITCHOVER_CANDIDATE_NAME)"}'
-      withoutCandidate:
-        exec:
-          image: {{ include "postgresql.image.major12.minor150" . }}
-          command:
-            - /bin/bash
-            - -c
-          args:
-            - curl -s http://$(KB_REPLICATION_PRIMARY_POD_FQDN):8008/switchover -XPOST -d '{"leader":"$(KB_REPLICATION_PRIMARY_POD_NAME)"}'
+      exec:
+        image: {{ include "postgresql.image.major12.minor150" . }}
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -ex
+          if [ -z "$KB_SWITCHOVER_CANDIDATE_FQDN" ]; then
+              curl -s http://$(REPLICATION_PRIMARY_POD_FQDN):8008/switchover -XPOST -d '{"leader":"$(REPLICATION_PRIMARY_POD_NAME)"}'
+          else
+              curl -s http://$(REPLICATION_PRIMARY_POD_FQDN):8008/switchover -XPOST -d '{"leader":"$(REPLICATION_PRIMARY_POD_NAME)","candidate":"$(KB_SWITCHOVER_CANDIDATE_NAME)"}'
+          fi
     accountProvision:
       builtinHandler: postgresql
     {{/*

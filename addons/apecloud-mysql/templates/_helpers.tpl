@@ -175,16 +175,18 @@ lifecycleActions:
         -  wesql
         - leavemember
   switchover:
-    withCandidate:
-      exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag }}
-        command:
-          - /scripts/switchover-with-candidate.sh
-    withoutCandidate:
-      exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag }}
-        command:
-          - /scripts/switchover-without-candidate.sh
+    exec:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag }}
+      command:
+        - /bin/bash
+        - -c
+        - |
+          set -ex
+          if [ -z "$KB_SWITCHOVER_CANDIDATE_FQDN" ]; then
+              /scripts/switchover-without-candidate.sh
+          else
+              /scripts/switchover-with-candidate.sh
+          fi
   accountProvision:
     builtinHandler: wesql
   {{/*
