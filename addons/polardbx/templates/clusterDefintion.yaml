@@ -34,7 +34,7 @@ spec:
         roleProbe:
           roleUpdateMechanism: DirectAPIServerEventUpdate
           customHandler:
-            - image: "arey/mysql-client:latest"
+            - image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.roleProbe.image.repository }}:{{ .Values.roleProbe.image.tag }}
               command:
                 - sh
                 - -c
@@ -243,7 +243,7 @@ spec:
         roleProbe:
           roleUpdateMechanism: DirectAPIServerEventUpdate
           customHandler:
-            - image: "arey/mysql-client:latest"
+            - image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.roleProbe.image.repository }}:{{ .Values.roleProbe.image.tag }}
               command:
                 - sh
                 - -c

@@ -15,8 +15,8 @@ clusterVersion: "20240629"
 ## Set default image, imageTag, and imagePullPolicy. mode is used to indicate the
 ##
 image:
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
-  repository: apecloud/minio
+  registry: docker.io
+  repository: minio/minio
   tag: RELEASE.2024-06-29T01-20-47Z
   pullPolicy: IfNotPresent
 
@@ -27,8 +27,8 @@ imagePullSecrets: []
 ## client used to create a default bucket).
 ##
 mcImage:
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
-  repository: apecloud/mc
+  registry: ""
+  repository: minio/mc
   tag: RELEASE.2024-04-18T16-45-29Z
   pullPolicy: IfNotPresent
 

@@ -243,7 +243,7 @@ spec:
                 cpu: 500m
                 memory: 64Mi
           - name: exporter
-            image:  {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
+            image:  {{ .Values.metrics.image.registry | default ( .Values.image.registry  | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
             imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
 #            command:
 #              - bash

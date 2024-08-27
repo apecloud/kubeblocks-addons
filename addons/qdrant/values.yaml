@@ -14,13 +14,13 @@ commonLabels: {}
 ## @param application images
 ##
 image:
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
-  repository: apecloud/qdrant
+  registry: docker.io
+  repository: qdrant/qdrant
   pullPolicy: IfNotPresent
   tag: "v1.8.4"
   tools:
     repository: apecloud/curl-jq
-    tag: latest
+    tag: 0.1.0
 
 ## @param debugEnabled enables containers' debug logging
 ##

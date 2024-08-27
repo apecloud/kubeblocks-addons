@@ -17,16 +17,17 @@ logConfigs: {}
 commonAnnotations: {}
 
 image:
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
-  repository: apecloud/clickhouse
+  registry: docker.io
+  repository: bitnami/clickhouse
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: 22.9.4-debian-11-r1
 
 zookeeper:
   image:
-    registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
-    repository: apecloud/zookeeper
+    # if the value of zookeeper.image.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
+    registry: ""
+    repository: bitnami/zookeeper
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
     tag: 3.8.0-debian-11-r47

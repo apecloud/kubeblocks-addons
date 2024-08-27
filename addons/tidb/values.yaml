@@ -4,12 +4,20 @@
 
 image:
   registry: docker.io
-  repository: pingcap
+  pd:
+    repository: pingcap/pd
+  tidb:
+    repository: pingcap/tidb
+  tikv:
+    repository: pingcap/tikv
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: "v7.1.2"
   helper:
-    image: "busybox:1.35"
+    ## if the value of image.helper.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
+    registry: ""
+    image: "busybox"
+    tag: 1.35
     pullPolicy: IfNotPresent
 
 clusterVersionOverride: ""

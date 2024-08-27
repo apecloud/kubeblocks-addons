@@ -26,7 +26,7 @@ spec:
       podSpec:
         containers:
           - name: nebula-console
-            imagePullPolicy: {{default .Values.nebula.metad.image.pullPolicy "IfNotPresent"}}
+            imagePullPolicy: {{default .Values.nebula.images.metad.pullPolicy "IfNotPresent"}}
             command: ["/bin/sh"]
             args: ["-c", "trap : TERM INT; sleep infinity & wait"]
     - name: nebula-graphd
@@ -72,7 +72,7 @@ spec:
                 set -ex
                 trap : TERM INT
                 exec /usr/local/nebula/bin/nebula-graphd --flagfile=/usr/local/nebula/etc/nebula-graphd.conf --meta_server_addrs=$NEBULA_METAD_SVC --local_ip=${KB_POD_FQDN}{{ .Values.clusterDomain }} --daemonize=false
-            imagePullPolicy: {{default .Values.nebula.graphd.image.pullPolicy "IfNotPresent"}}
+            imagePullPolicy: {{default .Values.nebula.images.graphd.pullPolicy "IfNotPresent"}}
             ports:
               - containerPort: 9669
                 name: thrift
@@ -120,7 +120,7 @@ spec:
                 set -ex
                 trap : TERM INT
                 exec /usr/local/nebula/bin/nebula-metad --flagfile=/usr/local/nebula/etc/nebula-metad.conf --meta_server_addrs=$NEBULA_METAD_SVC --local_ip=${KB_POD_FQDN}{{ .Values.clusterDomain }}  --daemonize=false
-            imagePullPolicy: {{default .Values.nebula.metad.image.pullPolicy "IfNotPresent"}}
+            imagePullPolicy: {{default .Values.nebula.images.metad.pullPolicy "IfNotPresent"}}
             ports:
             - containerPort: 9559
               name: thrift
@@ -176,7 +176,7 @@ spec:
               - |
                 trap : TERM INT
                 exec /usr/local/nebula/bin/nebula-storaged --flagfile=/usr/local/nebula/etc/nebula-storaged.conf --meta_server_addrs=$NEBULA_METAD_SVC --local_ip=$KB_POD_FQDN"{{ .Values.clusterDomain }}" --daemonize=false
-            imagePullPolicy: {{default .Values.nebula.storaged.image.pullPolicy "IfNotPresent"}}
+            imagePullPolicy: {{default .Values.nebula.images.storaged.pullPolicy "IfNotPresent"}}
             ports:
               - containerPort: 9779
                 name: thrift
@@ -208,7 +208,7 @@ spec:
               - mountPath: /usr/local/nebula/logs
                 name: logs
           - name: nebula-console
-            imagePullPolicy: {{default .Values.nebula.metad.image.pullPolicy "IfNotPresent"}}
+            imagePullPolicy: {{default .Values.nebula.images.metad.pullPolicy "IfNotPresent"}}
             command: ["/bin/sh"]
             args: ["-c", "trap : TERM INT; sleep infinity & wait"]
             lifecycle:

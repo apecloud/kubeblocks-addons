@@ -53,28 +53,28 @@ spec:
       versionsContext:
         containers:
           - name: redis
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:7.0.6-RC8
+            image: {{ include "redis.repository" . }}:7.0.6-RC8
             imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
       systemAccountSpec:
         cmdExecutorConfig:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:7.0.6-RC8
+          image: {{ include "redis.repository" . }}:7.0.6-RC8
     - componentDefRef: redis-sentinel
       versionsContext:
         initContainers:
           - name: init-redis-sentinel
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:7.0.6-RC8
+            image: {{ include "redis.repository" . }}:7.0.6-RC8
             imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         containers:
           - name: redis-sentinel
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:7.0.6-RC8
+            image: {{ include "redis.repository" . }}:7.0.6-RC8
             imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
     - componentDefRef: redis-twemproxy
       versionsContext:
         initContainers:
           - name: init-redis-twemproxy
-            image: {{ .Values.busyboxImage.registry | default "docker.io"}}/{{ .Values.busyboxImage.repository}}:1.36
+            image: {{ include "busybox.repository" . }}:1.36
             imagePullPolicy: {{ default .Values.busyboxImage.pullPolicy "IfNotPresent" }}
         containers:
           - name: redis-twemproxy
-            image: {{ .Values.redisTwemproxyImage.registry | default "docker.io" }}/{{ .Values.redisTwemproxyImage.repository }}:0.5.0
+            image: {{ include "redis-twemproxy.repository" . }}:0.5.0
             imagePullPolicy: {{ default .Values.redisTwemproxyImage.pullPolicy "IfNotPresent" }}

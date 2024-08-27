@@ -103,7 +103,7 @@ spec:
       timeoutSeconds: 1
     switchover:
       withCandidate:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:14.8.0-pgvector-v0.6.1
+        image: {{ include "postgresql.repository" . }}:14.8.0-pgvector-v0.6.1
         exec:
           command:
             - /bin/bash
@@ -111,7 +111,7 @@ spec:
           args:
             - curl -s http://$(KB_REPLICATION_PRIMARY_POD_FQDN):8008/switchover -XPOST -d '{"leader":"$(KB_REPLICATION_PRIMARY_POD_NAME)","candidate":"$(KB_SWITCHOVER_CANDIDATE_NAME)"}'
       withoutCandidate:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:14.8.0-pgvector-v0.6.1
+        image: {{ include "postgresql.repository" . }}:14.8.0-pgvector-v0.6.1
         exec:
           command:
             - /bin/bash
@@ -120,7 +120,7 @@ spec:
             - curl -s http://$(KB_REPLICATION_PRIMARY_POD_FQDN):8008/switchover -XPOST -d '{"leader":"$(KB_REPLICATION_PRIMARY_POD_NAME)"}'
     accountProvision:
       customHandler:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:14.8.0-pgvector-v0.6.1
+        image: {{ include "postgresql.repository" . }}:14.8.0-pgvector-v0.6.1
         exec:
           command:
             - psql
@@ -141,7 +141,7 @@ spec:
       fsGroupChangePolicy: OnRootMismatch
     initContainers:
       - name: pg-init-container
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:14.8.0-pgvector-v0.6.1
+        image: {{ include "postgresql.repository" . }}:14.8.0-pgvector-v0.6.1
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/init_container.sh
@@ -156,7 +156,7 @@ spec:
             mountPath: /kb-podinfo
     containers:
       - name: postgresql
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:14.8.0-pgvector-v0.6.1
+        image: {{ include "postgresql.repository" . }}:14.8.0-pgvector-v0.6.1
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         securityContext:
           runAsUser: 0
@@ -246,7 +246,7 @@ spec:
           - name: PGPASSWORD
             value: $(POSTGRES_PASSWORD)
       - name: pgbouncer
-        image: {{ .Values.pgbouncer.image.registry | default .Values.image.registry }}/{{ .Values.pgbouncer.image.repository }}:{{ default .Values.pgbouncer.image.tag }}
+        image: {{ include "pgbouncer.image" . }}
         imagePullPolicy: {{ .Values.pgbouncer.image.pullPolicy | quote }}
         securityContext:
           runAsUser: 0
@@ -298,7 +298,7 @@ spec:
         ports:
           - name: http-metrics
             containerPort: {{ .Values.metrics.service.port }}
-        image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
+        image: {{ include "metrics.image" . }}
         imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
         args:
           - "--extend.query-path=/opt/conf/custom-metrics.yaml"

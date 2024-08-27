@@ -5,14 +5,15 @@
 image:
   # refer: https://github.com/caojiajun/camellia-jdk21-bootstraps/blob/main/docs/redis-proxy/Dockerfile
   # this is the image of camellia-redis-proxy, which is built from Dockerfile of Apecloud/camellia-redis-proxy forked from caojiajun/camellia-jdk21-bootstraps.
-  registry: ""
+  registry: docker.io
   repository: apecloud/camellia-redis-proxy
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: 1.2.26
 
 busyboxImage:
-  registry: docker.io
+  # if the value of busyboxImage.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
+  registry: ""
   repository: busybox
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.

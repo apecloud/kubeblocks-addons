@@ -35,7 +35,7 @@ spec:
       podSpec:
         containers:
           - name: switchover
-            image: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/kubeblocks-tools:0.8.2
+            image: {{ .Values.tools.image.registry | default "docker.io" }}/{{ .Values.tools.image.repository }}:{{ .Values.tools.image.tag }}
             imagePullPolicy: IfNotPresent
             command:
               - /bin/sh

@@ -29,6 +29,6 @@ spec:
       versionsContext:
         containers:
           - name: zookeeper
-            image: {{ .Values.zookeeper.image.registry | default "docker.io" }}/{{ .Values.zookeeper.image.repository | default "bitnami/zookeeper" }}:{{ .Values.zookeeper.image.tag }}
+            image: {{ .Values.zookeeper.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.zookeeper.image.repository | default "bitnami/zookeeper" }}:{{ .Values.zookeeper.image.tag }}
             imagePullPolicy: {{ default "IfNotPresent" .Values.zookeeper.image.pullPolicy }}
   

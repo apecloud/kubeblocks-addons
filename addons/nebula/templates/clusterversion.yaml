@@ -11,21 +11,21 @@ spec:
       versionsContext:
         containers:
         - name: nebula-console
-          image: {{ .Values.nebula.console.image.repository }}:{{ default .Chart.AppVersion .Values.nebula.console.image.tag }}
+          image: {{ .Values.nebula.images.console.registry | default ( .Values.nebula.images.registry | default "docker.io" ) }}/{{ .Values.nebula.images.console.repository }}:{{ .Values.nebula.images.console.tag }}
     - componentDefRef: nebula-graphd
       versionsContext:
         containers:
         - name: nebula-graphd
-          image: {{ .Values.nebula.graphd.image.repository }}:{{ default .Chart.AppVersion .Values.nebula.graphd.image.tag }}
+          image: {{ .Values.nebula.images.graphd.registry | default ( .Values.nebula.images.registry | default "docker.io" ) }}/{{ .Values.nebula.images.graphd.repository }}:{{ .Values.nebula.images.graphd.tag }}
     - componentDefRef: nebula-metad
       versionsContext:
         containers:
         - name: nebula-metad
-          image: {{ .Values.nebula.metad.image.repository }}:{{ default .Chart.AppVersion .Values.nebula.metad.image.tag }}
+          image: {{ .Values.nebula.images.metad.registry | default ( .Values.nebula.images.registry | default "docker.io" ) }}/{{ .Values.nebula.images.metad.repository }}:{{ .Values.nebula.images.metad.tag }}
     - componentDefRef: nebula-storaged
       versionsContext:
         containers:
         - name: nebula-storaged
-          image: {{ .Values.nebula.storaged.image.repository }}:{{ default .Chart.AppVersion .Values.nebula.storaged.image.tag }}
+          image:  {{ .Values.nebula.images.storaged.registry | default ( .Values.nebula.images.registry | default "docker.io" ) }}/{{ .Values.nebula.images.storaged.repository }}:{{ .Values.nebula.images.storaged.tag }}
         - name: nebula-console
-          image: {{ .Values.nebula.console.image.repository }}:{{ default .Chart.AppVersion .Values.nebula.console.image.tag }}
+          image: {{ .Values.nebula.images.console.registry | default ( .Values.nebula.images.registry | default "docker.io" ) }}/{{ .Values.nebula.images.console.repository }}:{{ .Values.nebula.images.console.tag }}

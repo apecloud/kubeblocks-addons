@@ -36,7 +36,7 @@ spec:
             canVote: true
         roleProbe:
           customHandler:
-            - image: {{ .Values.image.registry }}/{{ .Values.image.repository}}:{{.Values.image.tag}}
+            - image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository}}:{{.Values.image.tag}}
               command: 
                 - |
                   Status=$(curl -s http://localhost:8008) && 
@@ -71,7 +71,7 @@ spec:
       switchoverSpec:
         withCandidate:
           cmdExecutorConfig:
-            image: {{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
             command:
               - /bin/bash
               - -c
@@ -79,7 +79,7 @@ spec:
               - curl -s http://$(KB_REPLICATION_PRIMARY_POD_FQDN):8008/switchover -XPOST -d '{"leader":"$(KB_REPLICATION_PRIMARY_POD_NAME)","candidate":"$(KB_SWITCHOVER_CANDIDATE_NAME)"}'
         withoutCandidate:
           cmdExecutorConfig:
-            image: {{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
             command:
               - /bin/bash
               - -c
@@ -92,7 +92,7 @@ spec:
           runAsGroup: 3000
         containers:
           - name: halo
-            image: {{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
             imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
             securityContext:
               runAsUser: 0

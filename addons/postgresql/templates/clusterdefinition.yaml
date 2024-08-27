@@ -80,7 +80,7 @@ spec:
       switchoverSpec:
         withCandidate:
           cmdExecutorConfig:
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tags.major14.minor072  }}
+            image: {{ include "postgresql.image.major14.minor072" . }}
             command:
               - /bin/bash
               - -c
@@ -88,7 +88,7 @@ spec:
               - curl -s http://$(KB_REPLICATION_PRIMARY_POD_FQDN):8008/switchover -XPOST -d '{"leader":"$(KB_REPLICATION_PRIMARY_POD_NAME)","candidate":"$(KB_SWITCHOVER_CANDIDATE_NAME)"}'
         withoutCandidate:
           cmdExecutorConfig:
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tags.major14.minor072  }}
+            image: {{ include "postgresql.image.major14.minor072" . }}
             command:
               - /bin/bash
               - -c
@@ -231,7 +231,7 @@ spec:
                     key: password
                     optional: false
           - name: pgbouncer
-            image: {{ .Values.pgbouncer.image.registry | default .Values.image.registry }}/{{ .Values.pgbouncer.image.repository }}:{{ default .Values.pgbouncer.image.tag }}
+            image: {{ include "pgbouncer.image" . }}
             imagePullPolicy: {{ .Values.pgbouncer.image.pullPolicy | quote }}
             securityContext:
               runAsUser: 0
@@ -291,7 +291,7 @@ spec:
             ports:
               - name: http-metrics
                 containerPort: {{ .Values.metrics.service.port }}
-            image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
+            image: {{ include "metrics.image" . }}
             imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
             args:
               - "--extend.query-path=/opt/conf/custom-metrics.yaml"
@@ -336,7 +336,7 @@ spec:
                     fieldPath: metadata.annotations['apps.kubeblocks.io/component-replicas']
       systemAccounts:
         cmdExecutorConfig:
-          image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tags.major14.minor072  }}
+          image: {{ include "postgresql.image.major14.minor072" . }}
           command:
             - psql
           args:

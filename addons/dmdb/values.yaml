@@ -36,7 +36,7 @@ resources: {}
 exporter:
   image: 
     # if the value of exporter.image.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
-    registry: docker.io
+    registry: ""
     repository: biaobes/dmdb_exporter
     tag: 0.1.0
 
