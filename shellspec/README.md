@@ -18,8 +18,8 @@ ShellSpec is detected: /opt/homebrew/bin/shellspec
 ..............F...................
 
 Examples:
-  1) kubeblocks pods library tests minLexicographicalOrderPod with setting KB_POD_LIST env variable minLexicographicalOrderPod should return pod-1
-     When call minLexicographicalOrderPod pod-pod-0,pod-1,pod-pod-1
+  1) kubeblocks pods library tests min_lexicographical_order_pod with setting KB_POD_LIST env variable min_lexicographical_order_pod should return pod-1
+     When call min_lexicographical_order_pod pod-pod-0,pod-1,pod-pod-1
 
      1.1) The output should eq pod-0
 
@@ -34,7 +34,7 @@ Finished in 0.53 seconds (user 0.62 seconds, sys 0.13 seconds)
 
 Failure examples / Errors: (Listed here affect your suite's status)
 
-shellspec addons/kblib/scripts-ut-spec/libpods_spec.sh:89 # 1) kubeblocks pods library tests minLexicographicalOrderPod with setting KB_POD_LIST env variable minLexicographicalOrderPod should return pod-1 FAILED
+shellspec addons/kblib/scripts-ut-spec/libpods_spec.sh:89 # 1) kubeblocks pods library tests min_lexicographical_order_pod with setting KB_POD_LIST env variable min_lexicographical_order_pod should return pod-1 FAILED
 
 make: *** [scripts-test] Error 101
 ```
@@ -53,8 +53,8 @@ Running: /bin/sh [bash 3.2.57(1)-release]
 .........F
 
 Examples:
-  1) kubeblocks pods library tests minLexicographicalOrderPod with setting KB_POD_LIST env variable minLexicographicalOrderPod should return pod-1
-     When call minLexicographicalOrderPod pod-pod-0,pod-1,pod-pod-1
+  1) kubeblocks pods library tests min_lexicographical_order_pod with setting KB_POD_LIST env variable min_lexicographical_order_pod should return pod-1
+     When call min_lexicographical_order_pod pod-pod-0,pod-1,pod-pod-1
 
      1.1) The output should eq pod-0
 
@@ -69,7 +69,7 @@ Finished in 0.28 seconds (user 0.26 seconds, sys 0.05 seconds)
 
 Failure examples / Errors: (Listed here affect your suite's status)
 
-shellspec addons/kblib/scripts-ut-spec/libpods_spec.sh:89 # 1) kubeblocks pods library tests minLexicographicalOrderPod with setting KB_POD_LIST env variable minLexicographicalOrderPod should return pod-1 FAILED
+shellspec addons/kblib/scripts-ut-spec/libpods_spec.sh:89 # 1) kubeblocks pods library tests min_lexicographical_order_pod with setting KB_POD_LIST env variable min_lexicographical_order_pod should return pod-1 FAILED
 ```
 
 # Start to write unit test cases for KubeBlocks Addons

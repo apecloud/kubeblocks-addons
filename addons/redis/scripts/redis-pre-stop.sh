@@ -16,7 +16,7 @@
 ut_mode="false"
 test || __() {
   # when running in non-unit test mode, set the options "set -e".
-  set -ex;
+  set -e;
 }
 
 load_common_library() {
@@ -26,31 +26,20 @@ load_common_library() {
   source "${common_library_file}"
 }
 
-check_redis_sentinel_ok() {
-  unset_xtrace_when_ut_mode_false
-  if [ -n "$SENTINEL_PASSWORD" ]; then
-    cmd="redis-cli -h localhost -p 26379 -a $SENTINEL_PASSWORD ping"
+acl_save_before_stop() {
+  if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
+    acl_save_command="redis-cli -h 127.0.0.1 -p 6379 -a $REDIS_DEFAULT_PASSWORD acl save"
+    logging_mask_acl_save_command="${acl_save_command/$REDIS_DEFAULT_PASSWORD/********}"
   else
-    cmd="redis-cli -h localhost -p 26379 ping"
+    acl_save_command="redis-cli -h 127.0.0.1 -p 6379 acl save"
+    logging_mask_acl_save_command="$acl_save_command"
   fi
-  response=$($cmd)
-  set_xtrace_when_ut_mode_false
-  if [ $? -eq 124 ]; then
-    echo "Timed out"
-    return 1
-  fi
-  if [ "$response" != "PONG" ]; then
-    echo "$response"
-    return 1
-  fi
-}
-
-retry_check_redis_sentinel_ok() {
-  if call_func_with_retry 5 3 check_redis_sentinel_ok; then
-    return 0
+  echo "acl save command: $logging_mask_acl_save_command"
+  if output=$($acl_save_command 2>&1); then
+    echo "acl save command executed successfully: $output"
   else
-    echo "Redis sentinel is not running."
-    return 1
+    echo "failed to execute acl save command: $output"
+    exit 1
   fi
 }
 
@@ -63,4 +52,4 @@ ${__SOURCED__:+false} : || return 0
 
 # main
 load_common_library
-retry_check_redis_sentinel_ok || exit 1
+acl_save_before_stop
