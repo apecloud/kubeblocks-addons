@@ -12,6 +12,7 @@ spec:
   - componentDefRef: mysql
     target:
       role: secondary
+      fallBackRole: primary
     backupMethods:
     - name: xtrabackup
       snapshotVolumes: false
