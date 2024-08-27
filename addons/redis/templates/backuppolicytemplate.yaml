@@ -13,6 +13,7 @@ spec:
       - {{ include "redis.componentDefName" . }}
     target:
       role: secondary
+      fallbackRole: primary
       account: default
     backupMethods:
       - name: datafile
@@ -40,6 +41,7 @@ spec:
       - {{ include "redis-cluster.componentDefName" . }}
     target:
       role: secondary
+      fallbackRole: primary
       account: default
     backupMethods:
     - name: datafile
