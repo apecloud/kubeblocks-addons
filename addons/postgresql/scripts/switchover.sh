@@ -28,15 +28,19 @@ switchoverWithCandidate() {
   local current_pod_fqdn=$1
   local current_primary_pod_fqdn=$2
   local candidate_pod_fqdn=$3
+  # TODO: check the role in kernel before switchover
   # shellcheck disable=SC2016
   curl -s http://$(current_pod_fqdn):8008/switchover -XPOST -d '{"leader":"$(current_primary_pod_fqdn)","candidate":"$(candidate_pod_fqdn)"}'
+  # TODO: check switchover result
 }
 
 switchoverWithoutCandidate() {
   local current_pod_fqdn=$1
   local current_primary_pod_fqdn=$2
+  # TODO: check the role in kernel before switchover
   # shellcheck disable=SC2016
   curl -s http://$(current_pod_fqdn):8008/switchover -XPOST -d '{"leader":"$(current_primary_pod_fqdn)"}'
+  # TODO: check switchover result
 }
 
 switchover() {
