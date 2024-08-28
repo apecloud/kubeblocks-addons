@@ -47,6 +47,19 @@ items:
         defaultMode: 0555
     runtime: &obruntime
       terminationGracePeriodSeconds: 60
+      initContainers:
+        - command:
+            - cp
+            - -r
+            - /bin/dbctl
+            - /config
+            - /tools/
+          image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.dbctl.repository }}:{{ .Values.images.dbctl.tag }}
+          imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
+          name: init-dbctl
+          volumeMounts:
+            - mountPath: /tools
+              name: tools
       containers:
         - name: observer-container
           command:
@@ -87,6 +100,8 @@ items:
               mountPath: /kb-config
             - name: {{ printf "%s-sysvars" (include "oceanbase-release.name" .) }}
               mountPath: /opt/oceanbase/sysvars
+            - mountPath: /tools
+              name: tools
           workingDir: /home/admin/workdir
           env:
             - name: LD_LIBRARY_PATH
@@ -185,9 +200,16 @@ items:
         votable: true
     lifecycleActions: &oblifecycle
       roleProbe:
-        builtinHandler: oceanbase
         periodSeconds: {{ .Values.roleProbe.periodSeconds }}
         timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+        exec:
+          container: observer-container
+          command:
+            - /tools/dbctl
+            - --config-path
+            - /tools/config/dbctl/components
+            - oceanbase
+            - getrole
     labels: &oblabels
       kubeblocks.io/ready-without-primary: "true"
     runtime: *obruntime
