@@ -11,7 +11,7 @@ spec:
     versionsContext:
       initContainers:
       - name: sysctl
-        image: {{ .Values.image.registry | default "docker.io" }}/busybox:1.35
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.busybox.repository}}:{{ .Values.image.busybox.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
       - name: prepare-plugins
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.plugin.repository}}:{{ default .Chart.AppVersion .Values.image.plugin.tag }}
