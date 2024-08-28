@@ -21,6 +21,8 @@ spec:
         - key: IMAGE_TAG
           valueFrom:
             clusterVersionRef:
+            - names: [mysql-8.4.2]
+              mappingValue: "8.4.0-1"
             - names: [mysql-8.0.33]
               mappingValue: "8.0.33-28"
             - names: [mysql-5.7.42, mysql-5.7.44]
