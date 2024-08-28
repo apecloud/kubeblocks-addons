@@ -13,6 +13,7 @@ clusterDomain: cluster.local
 ## Set default image, imageTag, and imagePullPolicy. mode is used to indicate the
 ##
 image:
+  registry: docker.io
   repository: minio/minio
   tag: RELEASE.2021-02-14T04-01-33Z
   pullPolicy: IfNotPresent
@@ -21,6 +22,7 @@ image:
 ## client used to create a default bucket).
 ##
 mcImage:
+  registry: ""
   repository: minio/mc
   tag: RELEASE.2021-02-14T04-28-06Z
   pullPolicy: IfNotPresent
@@ -29,6 +31,7 @@ mcImage:
 ## process used to create secret for prometheus ServiceMonitor).
 ##
 helmKubectlJqImage:
+  registry: ""
   repository: bskim45/helm-kubectl-jq
   tag: 3.1.0
   pullPolicy: IfNotPresent

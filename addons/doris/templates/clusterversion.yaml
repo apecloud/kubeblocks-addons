@@ -14,13 +14,13 @@ spec:
       versionsContext:
         containers:
           - name: doris-fe
-            image: {{ .Values.images.registry }}/{{ .Values.images.doris.fe.repository }}:{{ default .Chart.AppVersion .Values.images.doris.fe.tag }}
+            image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.doris.fe.repository }}:{{ default .Chart.AppVersion .Values.images.doris.fe.tag }}
             imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
             securityContext:
               allowPrivilegeEscalation: false
               runAsUser: 0
           - name: mysql-root-script
-            image: {{ .Values.images.registry }}/{{ .Values.images.doris.fe.repository }}:{{ default .Chart.AppVersion .Values.images.doris.fe.tag }}
+            image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.doris.fe.repository }}:{{ default .Chart.AppVersion .Values.images.doris.fe.tag }}
             imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
             securityContext:
               allowPrivilegeEscalation: false
@@ -29,11 +29,11 @@ spec:
       versionsContext:
         initContainers:
           - name: sysctl
-            image: {{ .Values.images.registry }}/{{ .Values.images.doris.cn.initrepository | default "docker.io" }}:{{ .Values.images.doris.cn.inittag }}
+            image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.init.repository }}:{{ .Values.images.init.tag }}
             imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
         containers:
           - name: doris-cn
-            image: {{ .Values.images.registry }}/{{ .Values.images.doris.cn.repository }}:{{ default .Chart.AppVersion .Values.images.doris.cn.tag }}
+            image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.doris.cn.repository }}:{{ default .Chart.AppVersion .Values.images.doris.cn.tag }}
             imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
             securityContext:
               allowPrivilegeEscalation: false
@@ -42,11 +42,11 @@ spec:
       versionsContext:
         initContainers:
           - name: sysctl
-            image: {{ .Values.images.registry }}/{{ .Values.images.doris.be.initrepository | default "docker.io" }}:{{ .Values.images.doris.be.inittag }}
+            image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.init.repository }}:{{ .Values.images.init.tag }}
             imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
         containers:
           - name: doris-be
-            image: {{ .Values.images.registry }}/{{ .Values.images.doris.be.repository }}:{{ default .Chart.AppVersion .Values.images.doris.be.tag }}
+            image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.doris.be.repository }}:{{ default .Chart.AppVersion .Values.images.doris.be.tag }}
             imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
             securityContext:
               allowPrivilegeEscalation: false

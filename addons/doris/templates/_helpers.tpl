@@ -71,5 +71,5 @@ app.kubernetes.io/name: {{ include "doris.name" . }}
 Define image
 */}}
 {{- define "doris.image" -}}
-{{ .Values.images.doris.fe.repository }}:{{ .Values.images.doris.fe.tag }}
+{{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.doris.fe.repository }}:{{ .Values.images.doris.fe.tag }}
 {{- end }}

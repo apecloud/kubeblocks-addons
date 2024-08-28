@@ -7,21 +7,21 @@ image:
   # Redis Stack Server, which combines open source Redis with RediSearch, RedisJSON, RedisGraph, RedisTimeSeries, and RedisBloom,
   # is dual-licensed under the Redis Source Available License (RSALv2), as described below, and the Server Side Public License (SSPL)
   # For information about licensing per version, see https://redis.io/docs/stack/license/
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  registry: docker.io
   repository: apecloud/redis-stack-server
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: 7.0.6-RC8
 
 redisTwemproxyImage:
-  registry: docker.io
+  registry: ""
   repository: malexer/twemproxy
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: 0.5.0
 
 busyboxImage:
-  registry: docker.io
+  registry: ""
   repository: busybox
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.

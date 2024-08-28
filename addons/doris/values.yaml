@@ -15,21 +15,20 @@ commonLabels:
 ## @param application images
 ##
 images:
-  registry: registry.cn-hangzhou.aliyuncs.com/yq_doris
+  registry: registry.cn-hangzhou.aliyuncs.com
   pullPolicy: IfNotPresent
+  init:
+    repository: yq_doris/busybox
+    tag: latest
   doris:
     fe:
-      repository: apache-doris
+      repository: yq_doris/apache-doris
       tag: 2.0.3-fe
     be:
-      initrepository: busybox
-      inittag: latest
-      repository: apache-doris
+      repository: yq_doris/apache-doris
       tag: 2.0.3-be
     cn:
-      initrepository: busybox
-      inittag: latest
-      repository: apache-doris
+      repository: yq_doris/apache-doris
       tag: 2.0.3-be
 ## @param fe env FE_INIT_NUMBER
 ##

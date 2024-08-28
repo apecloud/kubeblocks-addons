@@ -201,7 +201,7 @@ spec:
             exec:
               command: [ "/scripts/pre-stop.sh" ]
       - name: metrics
-        image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
+        image: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
         imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
         command: [ "/scripts/agamotto.sh" ]
         env:

@@ -6,6 +6,11 @@ image:
   repository: mysql
   pullPolicy: IfNotPresent
   tag: 8.0.32
+  xtraBackupRepository: apecloud/percona-xtrabackup
+  prom:
+    mysqld_exporter:
+      repository: prom/mysqld-exporter
+      tag: v0.14.0
 
 ## MySQL Authentication parameters
 auth:

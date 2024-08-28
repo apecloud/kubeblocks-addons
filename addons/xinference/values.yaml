@@ -5,6 +5,17 @@ image:
   registry: docker.io
   # Overrides the image tag whose default is the chart appVersion.
   tag: v0.11.0
+  latest:
+    repository: apecloud/xinference
+    tag: latest-cpu
+model:
+  # if the value of model.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
+  registry: ""
+  baichuan2_7b:
+      ggml:
+        repository: apecloud/baichuan2-7b-gguf
+        version: ggml-model-q4
+
 
 # modelDir is the directory where the model is stored in the host.
 # If it is not empty, the modelDir will be mounted to /xinference/models in the container.

@@ -153,7 +153,7 @@ Milvus cluster init container - config
 */}}
 {{- define "milvus.cluster.initContainer.config" }}
 - name: config
-  image: {{ .Values.images.milvusTools.repository }}:{{ .Values.images.milvusTools.tag }}
+  image: {{ .Values.images.milvusTools.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.milvusTools.repository }}:{{ .Values.images.milvusTools.tag }}
   imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
   command:
     - /cp
@@ -168,7 +168,7 @@ Milvus cluster init container - config
 Milvus cluster image
 */}}
 {{- define "milvus.cluster.image" }}
-image: {{ .Values.images.milvus.repository }}:{{ .Values.images.milvus.tag }}
+image: {{ .Values.images.milvus.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.milvus.repository }}:{{ .Values.images.milvus.tag }}
 imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
 {{- end }}
 

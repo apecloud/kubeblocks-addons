@@ -10,6 +10,16 @@ image:
   #tag: 8.0.33
   tag: v3.2.6
   xtraBackupRepository: perconalab/percona-xtrabackup
+operator:
+  # if the value of operator.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
+  registry: ""
+  repository: bitpoke/mysql-operator-orchestrator
+  tag: v0.6.3
+mysql:
+  # if the value of mysql.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
+  registry: ""
+  repository: mysql
+  tag: 8.0.33
 
 imagePullSecrets: []
 nameOverride: ""

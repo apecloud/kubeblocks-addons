@@ -9,7 +9,7 @@
 ## @param image.debug Specify if debug values should be set
 ##
 image:
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  registry: docker.io
   repository: apecloud/spilo
   digest: ""
   tags:
