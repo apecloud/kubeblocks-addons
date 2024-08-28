@@ -1,22 +1,5 @@
 #!/bin/bash
 
-# This is magic for shellspec ut framework. "test" is a `test [expression]` well known as a shell command.
-# Normally test without [expression] returns false. It means that __() { :; }
-# function is defined if this script runs directly.
-#
-# shellspec overrides the test command and returns true *once*. It means that
-# __() function defined internally by shellspec is called.
-#
-# In other words. If not in test mode, __ is just a comment. If test mode, __
-# is a interception point.
-# you should set ut_mode="true" when you want to run the script in shellspec file.
-# shellcheck disable=SC2034
-ut_mode="false"
-test || __() {
-  # when running in non-unit test mode, set the options "set -ex".
-  set -ex;
-}
-
 load_common_library() {
   # the common.sh scripts is mounted to the same path which is defined in the cmpd.spec.scripts
   common_library_file="/kb-scripts/common.sh"
@@ -27,6 +10,7 @@ load_common_library() {
 switchover_with_candidate() {
   local current_pod_fqdn=$1
   local current_primary_pod_name=$2
+  # shellcheck disable=SC2034
   local candidate_pod_name=$3
   # TODO: check the role in kernel before switchover
   # shellcheck disable=SC2016
@@ -36,6 +20,7 @@ switchover_with_candidate() {
 
 switchover_without_candidate() {
   local current_pod_fqdn=$1
+  # shellcheck disable=SC2034
   local current_primary_pod_name=$2
   # TODO: check the role in kernel before switchover
   # shellcheck disable=SC2016

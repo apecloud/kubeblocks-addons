@@ -1,21 +1,6 @@
 #!/bin/bash
 
-# This is magic for shellspec ut framework. "test" is a `test [expression]` well known as a shell command.
-# Normally test without [expression] returns false. It means that __() { :; }
-# function is defined if this script runs directly.
-#
-# shellspec overrides the test command and returns true *once*. It means that
-# __() function defined internally by shellspec is called.
-#
-# In other words. If not in test mode, __ is just a comment. If test mode, __
-# is a interception point.
-# you should set ut_mode="true" when you want to run the script in shellspec file.
-# shellcheck disable=SC2034
-ut_mode="false"
-test || __() {
-  # when running in non-unit test mode, set the options "set -ex".
-  set -ex;
-}
+tmp_patroni_yaml="tmp_patroni.yaml"
 
 load_common_library() {
   # the common.sh scripts is mounted to the same path which is defined in the cmpd.spec.scripts
@@ -41,9 +26,9 @@ regenerate_spilo_configuration_and_start_postgres() {
   if [ -f "${RESTORE_DATA_DIR}"/kb_restore.signal ]; then
       chown -R postgres "${RESTORE_DATA_DIR}"
   fi
-  python3 /kb-scripts/generate_patroni_yaml.py tmp_patroni.yaml
+  python3 /kb-scripts/generate_patroni_yaml.py $tmp_patroni_yaml
   # SPILO_CONFIGURATION is defined by spilo image
-  SPILO_CONFIGURATION=$(cat tmp_patroni.yaml)
+  SPILO_CONFIGURATION=$(cat $tmp_patroni_yaml)
   export SPILO_CONFIGURATION
   exec /launch.sh init
 }

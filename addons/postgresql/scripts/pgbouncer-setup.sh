@@ -1,21 +1,11 @@
 #!/bin/bash
 
-# This is magic for shellspec ut framework. "test" is a `test [expression]` well known as a shell command.
-# Normally test without [expression] returns false. It means that __() { :; }
-# function is defined if this script runs directly.
-#
-# shellspec overrides the test command and returns true *once*. It means that
-# __() function defined internally by shellspec is called.
-#
-# In other words. If not in test mode, __ is just a comment. If test mode, __
-# is a interception point.
-# you should set ut_mode="true" when you want to run the script in shellspec file.
-# shellcheck disable=SC2034
-ut_mode="false"
-test || __() {
-  # when running in non-unit test mode, set the options "set -ex".
-  set -ex;
-}
+pgbouncer_template_conf_file="/home/pgbouncer/conf/pgbouncer.ini"
+pgbouncer_conf_dir="/opt/bitnami/pgbouncer/conf/"
+pgbouncer_log_dir="/opt/bitnami/pgbouncer/logs/"
+pgbouncer_tmp_dir="/opt/bitnami/pgbouncer/tmp/"
+pgbouncer_conf_file="/opt/bitnami/pgbouncer/conf/pgbouncer.ini"
+pgbouncer_user_list_file="/opt/bitnami/pgbouncer/conf/userlist.txt"
 
 load_common_library() {
   # the common.sh scripts is mounted to the same path which is defined in the cmpd.spec.scripts
@@ -30,17 +20,17 @@ build_pgbouncer_conf() {
     exit 1
   fi
 
-  mkdir -p /opt/bitnami/pgbouncer/conf/ /opt/bitnami/pgbouncer/logs/ /opt/bitnami/pgbouncer/tmp/
-  cp /home/pgbouncer/conf/pgbouncer.ini /opt/bitnami/pgbouncer/conf/
-  echo "\"$POSTGRESQL_USERNAME\" \"$POSTGRESQL_PASSWORD\"" > /opt/bitnami/pgbouncer/conf/userlist.txt
+  mkdir -p $pgbouncer_conf_dir $pgbouncer_log_dir $pgbouncer_tmp_dir
+  cp $pgbouncer_template_conf_file $pgbouncer_conf_dir
+  echo "\"$POSTGRESQL_USERNAME\" \"$POSTGRESQL_PASSWORD\"" > $pgbouncer_user_list_file
   # shellcheck disable=SC2129
-  echo -e "\\n[databases]" >> /opt/bitnami/pgbouncer/conf/pgbouncer.ini
-  echo "postgres=host=$CURRENT_POD_IP port=5432 dbname=postgres" >> /opt/bitnami/pgbouncer/conf/pgbouncer.ini
-  echo "*=host=$CURRENT_POD_IP port=5432" >> /opt/bitnami/pgbouncer/conf/pgbouncer.ini
-  chmod +777 /opt/bitnami/pgbouncer/conf/pgbouncer.ini
-  chmod +777 /opt/bitnami/pgbouncer/conf/userlist.txt
+  echo -e "\\n[databases]" >> $pgbouncer_conf_file
+  echo "postgres=host=$CURRENT_POD_IP port=5432 dbname=postgres" >> $pgbouncer_conf_file
+  echo "*=host=$CURRENT_POD_IP port=5432" >> $pgbouncer_conf_file
+  chmod 777 $pgbouncer_conf_file
+  chmod 777 $pgbouncer_user_list_file
   useradd pgbouncer
-  chown -R pgbouncer:pgbouncer /opt/bitnami/pgbouncer/conf/ /opt/bitnami/pgbouncer/logs/ /opt/bitnami/pgbouncer/tmp/
+  chown -R pgbouncer:pgbouncer $pgbouncer_conf_dir $pgbouncer_log_dir $pgbouncer_tmp_dir
 }
 
 start_pgbouncer() {
