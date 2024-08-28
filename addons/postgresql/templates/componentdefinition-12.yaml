@@ -11,6 +11,7 @@ spec:
   serviceVersion: {{ .Values.componentServiceVersion.postgresql12 }}
   serviceRefDeclarations:
     - name: etcd
+      optional: true
       serviceRefDeclarationSpecs:
         - serviceKind: etcd
           serviceVersion: "^*"

@@ -67,8 +67,8 @@ read_rnd_buffer_size={{ $read_rnd_buffer_size }}
 join_buffer_size={{ $join_buffer_size }}
 sort_buffer_size={{ $sort_buffer_size }}
 
-#default_authentication_plugin=mysql_native_password    #From mysql8.0.23 is deprecated.
-authentication_policy=mysql_native_password,
+# default_authentication_plugin=mysql_native_password    #From mysql8.0.23 is deprecated.
+# authentication_policy=mysql_native_password,
 back_log=5285
 host_cache_size=867
 connect_timeout=10

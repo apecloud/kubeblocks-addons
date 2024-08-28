@@ -9,6 +9,7 @@ spec:
   - componentDefs: [mogdb-5]
     target:
       role: secondary
+      fallbackRole: primary
       account: root
     backupMethods:
     - name: mogdb-basebackup
