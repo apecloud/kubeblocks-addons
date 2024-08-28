@@ -33,8 +33,7 @@ replicas: 3
 ## Recommended to use LoadBalancer for multi-cluster etcd setups
 ## Enabling multi-cluster etcd wil make TLS fail due to CA wildcard mismatches
 peerService:
-  ## @param name, when name is not "", peerService will be enabled
-  name: ""
+  name:
   ## @param type etcd peerService type, the recommended options is LoadBalancer.
   ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
   type: LoadBalancer
@@ -43,8 +42,7 @@ peerService:
 
 ## clientService is the configuration for etcd client communication
 clientService:
-  ## @param name, when name is not "", clientService will be enabled
-  name: ""
+  name:
   ## @param type etcd service type, valid options are ExternalName, ClusterIP, NodePort, and LoadBalancer.
   ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
   type: ClusterIP
@@ -64,10 +62,9 @@ resources: { }
   # limits:
   #   cpu: 100m
   #   memory: 128Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 128Mi
-  #   storage: 1Gi
+# requests:
+#   cpu: 100m
+#   memory: 128Mi
 
 ## Enable persistence using Persistent Volume Claims
 ## ref: https://kubernetes.io/docs/user-guide/persistent-volumes/
