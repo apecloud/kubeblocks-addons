@@ -112,7 +112,7 @@ spec:
   lifecycleActions:
     roleProbe:
       exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
+        image: {{ .Values.image.registry | default "gcr.io" }}/{{ .Values.image.repository | default "etcd-development/etcd"}}:{{ .Values.image.tag.major3.minor5.patch6 }}
         command:
           - /bin/sh
           - -c
@@ -121,7 +121,7 @@ spec:
             {{- .Files.Get "scripts/role-probe-script.sh" | nindent 14 }}
     memberJoin:
       exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
+        image: {{ .Values.image.registry | default "gcr.io" }}/{{ .Values.image.repository | default "etcd-development/etcd"}}:{{ .Values.image.tag.major3.minor5.patch6 }}
         command:
           - /bin/sh
           - -c
@@ -130,7 +130,7 @@ spec:
             {{- .Files.Get "scripts/etcd-member-join.sh" | nindent 14 }}
     memberLeave:
       exec:
-        image: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
+        image: {{ .Values.image.registry | default "gcr.io" }}/{{ .Values.image.repository | default "etcd-development/etcd"}}:{{ .Values.image.tag.major3.minor5.patch6 }}
         container: etcd
         command:
           - /bin/sh
@@ -140,10 +140,7 @@ spec:
             {{- .Files.Get "scripts/etcd-member-leave.sh" | nindent 14 }}
     switchover:
       exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
-        env:
-          - name: CLUSTER_DOMAIN
-            value: {{ .Values.clusterDomain }}
+        image: {{ .Values.image.registry | default "gcr.io" }}/{{ .Values.image.repository | default "etcd-development/etcd"}}:{{ .Values.image.tag.major3.minor5.patch6 }}
         command:
         - /bin/sh
         - -c
