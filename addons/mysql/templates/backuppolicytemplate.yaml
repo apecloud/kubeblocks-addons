@@ -9,7 +9,7 @@ metadata:
     dataprotection.kubeblocks.io/is-default-policy-template: "true"
 spec:
   backupPolicies:
-  - componentDefs: [mysql-5.7.44-orc, mysql-5.7.44, mysql-8.0.33-orc, mysql-8.0.33]
+  - componentDefs: [mysql-5.7.44-orc, mysql-5.7.44, mysql-8.0.33-orc, mysql-8.0.33, mysql-8.4.2]
     target:
       role: secondary
       fallbackRole: primary
@@ -22,6 +22,8 @@ spec:
         - key: IMAGE_TAG
           valueFrom:
             componentDef:
+            - names: [mysql-8.4.2]
+              mappingValue: "8.4.0-1"
             - names: [mysql-8.0.33, mysql-8.0.33-orc ]
               mappingValue: "8.0.33-28"
             - names: [ mysql-5.7.44, mysql-5.7.44-orc]
