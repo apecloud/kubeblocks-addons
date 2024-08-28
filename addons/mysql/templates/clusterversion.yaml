@@ -39,9 +39,9 @@ spec:
       - command:
         - cp
         - -r
-        - /xtrabackup-2.4
+        - /xtrabackup
         - /kubeblocks/xtrabackup
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:mysql
+        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:2.4
         imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
         name: init-xtrabackup
         volumeMounts:
@@ -112,9 +112,9 @@ spec:
       - command:
         - cp
         - -r
-        - /xtrabackup-8.0
+        - /xtrabackup
         - /kubeblocks/xtrabackup
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:mysql
+        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.0
         imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
         name: init-xtrabackup
         volumeMounts:
@@ -150,3 +150,72 @@ spec:
     systemAccountSpec:
       cmdExecutorConfig:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+
+---
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterVersion
+metadata:
+  name: mysql-8.4.2
+  labels:
+    {{- include "mysql.labels" . | nindent 4 }}
+spec:
+  clusterDefinitionRef: mysql
+  componentVersions:
+  - componentDefRef: mysql
+    versionsContext:
+      initContainers:
+      # auditlog does not support 8.4.2 yet!
+      - image: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
+        name: init-data
+        imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
+      - command:
+        - cp
+        - -r
+        - /bin/syncer
+        - /config
+        - /kubeblocks/
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
+        name: init-syncer
+        volumeMounts:
+        - mountPath: /kubeblocks
+          name: kubeblocks
+      - command:
+        - cp
+        - -r
+        - /xtrabackup
+        - /kubeblocks/xtrabackup
+        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.4
+        imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
+        name: init-xtrabackup
+        volumeMounts:
+        - mountPath: /kubeblocks
+          name: kubeblocks
+      containers:
+      - name: mysql
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.4.2
+        imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
+        command:
+          - syncer
+          - --config-path
+          - /kubeblocks/config/components
+          - --port
+          - "3601"
+          - --
+          - bash 
+          - -c
+          - |
+            rm -rf {{ .Values.dataMountPath }}/plugin
+            chown -R mysql:root {{ .Values.dataMountPath }}
+            skip_replica_start="OFF"
+            if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
+              skip_replica_start="ON"
+            fi
+            docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) \
+            --plugin-load-add=rpl_semi_sync_source=semisync_source.so \
+            --plugin-load-add=rpl_semi_sync_replica=semisync_replica.so \
+            --log-bin={{.Values.dataMountPath}}/binlog/$(KB_POD_NAME)-bin \
+            --skip-replica-start=$skip_replica_start
+    systemAccountSpec:
+      cmdExecutorConfig:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.4.2
