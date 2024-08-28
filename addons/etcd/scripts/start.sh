@@ -21,7 +21,11 @@ if [ ! -z "$PEER_ENDPOINT" ]; then
   else
     # e.g.1 etcd-cluster-etcd-0
     # e.g.2 etcd-cluster-etcd-0:127.0.0.1
-    MY_PEER=$(echo "$myEndpoint" | cut -d: -f2)
+    if [ echo "$myEndpoint" | grep -q ":" ]; then
+      MY_PEER=$(echo "$myEndpoint" | cut -d: -f2)
+    else
+      MY_PEER=$myEndpoint
+    fi
   fi
 fi
 
