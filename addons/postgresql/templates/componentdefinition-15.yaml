@@ -211,10 +211,6 @@ spec:
           - name: PGPASSWORD
             value: $(POSTGRES_PASSWORD)
     */}}
-    preTerminate:
-      exec:
-        container: postgresql
-        command: ["/kb-scripts/etcd-clean.sh"]
   runtime:
     securityContext:
       runAsUser: 0
