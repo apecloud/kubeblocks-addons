@@ -180,9 +180,16 @@ vars:
         password: Required
 lifecycleActions:
   roleProbe:
-    builtinHandler: mysql
     periodSeconds: {{ .Values.roleProbe.periodSeconds }}
     timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+    exec:
+      container: mysql
+      command:
+        - /tools/dbctl
+        - --config-path
+        - /tools/config/dbctl/components
+        - mysql
+        - getrole
 roles:
   - name: primary
     serviceable: true
@@ -198,24 +205,25 @@ roles:
     - -r
     - /bin/syncer
     - /config
-    - /kubeblocks/
+    - /tools/
   image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
   imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
   name: init-syncer
   volumeMounts:
-    - mountPath: /kubeblocks
-      name: kubeblocks
+    - mountPath: /tools
+      name: tools
 - command:
     - cp
     - -r
-    - /xtrabackup-2.4
-    - /kubeblocks/xtrabackup
-  image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+    - /bin/dbctl
+    - /config
+    - /tools/
+  image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
   imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
-  name: init-xtrabackup
+  name: init-dbctl
   volumeMounts:
-    - mountPath: /kubeblocks
-      name: kubeblocks
+    - mountPath: /tools
+      name: tools
 {{- end }}
 
 {{- define "mysql-orc.spec.common"}}

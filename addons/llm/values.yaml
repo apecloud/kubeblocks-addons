@@ -5,18 +5,10 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: v0.2.7-amd64
 imageDev:
+  # refer: ghcr.io/abetlen/llama-cpp-python:latest
   repository: apecloud/llama-cpp-python
   pullPolicy: IfNotPresent
   # if the value of imageDev.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
   registry: ""
   # Overrides the image tag whose default is the chart appVersion.
-  tag: 0.1.0
   tagNew: 0.1.0-new
-  tagCodeShell: 0.1.0-codeshell
-model:
-  # if the value of model.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
-  registry: ""
-  baichuan2_7b:
-      ggml:
-        repository: apecloud/baichuan2-7b-gguf
-        version: ggml-model-q4

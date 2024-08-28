@@ -11,6 +11,7 @@ spec:
   - componentDefs: [mongodb]
     target:
       role: secondary
+      fallbackRole: primary
       account: root
     backupMethods:
       - name: dump

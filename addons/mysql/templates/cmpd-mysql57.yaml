@@ -30,6 +30,17 @@ spec:
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
+      - command:
+          - cp
+          - -r
+          - /xtrabackup
+          - /tools/xtrabackup
+        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:2.4
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        name: init-xtrabackup
+        volumeMounts:
+          - mountPath: /tools
+            name: tools
       {{- include "mysql.spec.runtime.common" . | nindent 6 }}
     containers:
       - name: mysql
@@ -38,7 +49,7 @@ spec:
         command:
           - syncer
           - --config-path
-          - /kubeblocks/config/components
+          - /tools/config/components
           - --port
           - "3601"
           - --
@@ -60,8 +71,8 @@ spec:
             name: mysql-config
           - name: scripts
             mountPath: /scripts
-          - mountPath: /kubeblocks
-            name: kubeblocks
+          - mountPath: /tools
+            name: tools
         ports:
           - containerPort: 3306
             name: mysql
@@ -69,7 +80,7 @@ spec:
             name: ha
         env:
           - name: PATH
-            value: /kubeblocks/xtrabackup/bin:/kubeblocks/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+            value: /tools/xtrabackup/bin:/tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
           - name: KB_SERVICE_CHARACTER_TYPE
             value: mysql
           - name: MYSQL_INITDB_SKIP_TZINFO
