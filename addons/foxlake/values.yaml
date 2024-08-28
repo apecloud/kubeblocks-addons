@@ -12,12 +12,23 @@ clusterVersionOverride: ""
 ## @param application images
 ##
 images:
+  registry: docker.io
   pullPolicy: IfNotPresent
   foxlake:
+    # if the value of images.foxlake.registry is not specified using `--set`, it will be set to the value of 'images.registry' by default
+    registry: ""
     repository: apecloud/foxlake
     pullPolicy: IfNotPresent
     tag: "main"
   mysql:
+    # if the value of images.mysql.registry is not specified using `--set`, it will be set to the value of 'images.registry' by default
+    registry: ""
     repository: mysql
     pullPolicy: IfNotPresent
     tag: "8.0.30"
+  busybox:
+    # if the value of images.busybox.registry is not specified using `--set`, it will be set to the value of 'images.registry' by default
+    registry: ""
+    repository: busybox
+    pullPolicy: IfNotPresent
+    tag: "1.35"

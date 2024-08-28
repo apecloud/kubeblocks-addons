@@ -13,6 +13,6 @@ spec:
     versionsContext:
       containers:
         - name: orchestrator
-          image: docker.io/bitpoke/mysql-operator-orchestrator:v0.6.3
+          image: {{ .Values.operator.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.operator.repository }}:{{ .Values.operator.tag }}
           imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
 

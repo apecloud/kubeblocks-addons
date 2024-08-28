@@ -6,6 +6,7 @@
 
 images:
   zookeeper:
+    registry: docker.io
     repository: bitnami/zookeeper
     pullPolicy: IfNotPresent
     tag: 3.7

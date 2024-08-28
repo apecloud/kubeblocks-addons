@@ -65,5 +65,5 @@ weaviate
 Define image
 */}}
 {{- define "weaviate.image" -}}
-{{ .Values.images.weaviate.repository }}:{{ default .Chart.AppVersion .Values.images.weaviate.tag }}
+{{ .Values.images.weaviate.registry | default "docker.io" }}/{{ .Values.images.weaviate.repository }}:{{ default .Chart.AppVersion .Values.images.weaviate.tag }}
 {{- end }}

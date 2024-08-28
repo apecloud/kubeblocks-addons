@@ -11,4 +11,4 @@ spec:
       versionsContext:
         containers:
           - name: weaviate
-            image: {{ .Values.images.weaviate.repository }}:{{ default .Chart.AppVersion .Values.images.weaviate.tag }}
+            image: {{ .Values.images.weaviate.registry | default "docker.io" }}/{{ .Values.images.weaviate.repository }}:{{ default .Chart.AppVersion .Values.images.weaviate.tag }}

@@ -45,7 +45,7 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 Create full image name
 */}}
 {{- define "risingwave.imageFullName" -}}
-{{- printf "%s:%s" .Values.image.repository ( .Values.image.tag | default .Chart.AppVersion ) -}}
+{{- printf "%s/%s:%s" ( .Values.image.registry | default "docker.io" ) .Values.image.repository ( .Values.image.tag | default .Chart.AppVersion ) -}}
 {{- end -}}
 
 {{/*

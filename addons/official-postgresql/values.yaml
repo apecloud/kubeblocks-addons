@@ -6,6 +6,10 @@ image:
   registry: docker.io
   repository: postgres
   tag: 14.7
+  zhparser:
+    registry: registry.cn-hangzhou.aliyuncs.com
+    repository: coscene_devops/postgres
+    tag: 14.7-zhparser
   digest: ""
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'

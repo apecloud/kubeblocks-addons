@@ -13,7 +13,8 @@ commonAnnotations: { }
 ## RisingWave image
 ##
 image:
-  repository: ghcr.io/risingwavelabs/risingwave
+  registry: ghcr.io
+  repository: risingwavelabs/risingwave
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: v1.0.0

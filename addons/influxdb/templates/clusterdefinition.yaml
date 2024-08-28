@@ -29,7 +29,7 @@ spec:
       podSpec:
         initContainers:
           - name: init-chmod-data
-            image: docker.io/bitnami/os-shell:11-debian-11-r93
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.init.repository }}:{{ .Values.image.init.tag }}
             imagePullPolicy: IfNotPresent
             command:
               - /bin/bash
@@ -45,7 +45,7 @@ spec:
                 mountPath: /bitnami/influxdb
         containers:
           - name: influxdb
-            image: docker.io/bitnami/influxdb:2.7.4-debian-11-r0
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.influxdb.repository }}:{{ .Values.image.influxdb.tag }}
             imagePullPolicy: "IfNotPresent"
             securityContext:
               allowPrivilegeEscalation: false

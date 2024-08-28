@@ -3,7 +3,7 @@
 # Declare variables to be passed into your templates.
 
 image:
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  registry: docker.io
   repository: apecloud/rabbitmq
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.

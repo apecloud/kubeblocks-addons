@@ -1,6 +1,7 @@
 version: latest
 
 image:
+  registry: docker.io
   # -- Neondatabase image repository
   repository: perconalab/neon
   # -- Overrides the image tag whose default is the chart appVersion.

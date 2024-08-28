@@ -11,5 +11,5 @@ spec:
       versionsContext:
         containers:
           - name: etcd
-            image: {{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
             imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}

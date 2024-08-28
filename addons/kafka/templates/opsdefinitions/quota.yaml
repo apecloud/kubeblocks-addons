@@ -50,7 +50,7 @@ spec:
       spec:
         containers:
         - name: kafka-topic
-          image: docker.io/bitnami/kafka:3.3.2-debian-11-r54
+          image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
           imagePullPolicy: IfNotPresent
           command:
           - bash
@@ -101,7 +101,3 @@ spec:
             addCommandArg add-config "${quotas}"
             echo ${command}
             eval ${command}
-  preConditions:
-  - rule:
-      expression: '{{ eq .component.status.phase "Running" }}'
-      message: "Component is not in Running status."

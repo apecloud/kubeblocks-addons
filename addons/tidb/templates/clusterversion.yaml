@@ -11,20 +11,20 @@ spec:
     versionsContext:
       containers:
       - name: pd
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/pd:{{ default .Chart.AppVersion .Values.image.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
   - componentDefRef: tikv
     versionsContext:
       containers:
       - name: tikv
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/tikv:{{ default .Chart.AppVersion .Values.image.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tikv.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
   - componentDefRef: tidb
     versionsContext:
       containers:
       - name: tidb
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/tidb:{{ default .Chart.AppVersion .Values.image.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tidb.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
       - name: slowlog
-        image: {{ .Values.image.helper.image }}
+        image: {{ .Values.image.helper.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.helper.repository }}/{{ .Values.image.helper.tag }}
         imagePullPolicy: {{ default .Values.image.helper.pullPolicy "IfNotPresent" }}

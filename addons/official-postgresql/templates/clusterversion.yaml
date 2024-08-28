@@ -35,10 +35,10 @@ spec:
       versionsContext:
         containers:
           - name: postgresql
-            image: registry.cn-hangzhou.aliyuncs.com/coscene_devops/postgres:14.7-zhparser
+            image: {{ .Values.image.zhparser.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.zhparser.repository }}:{{ .Values.image.zhparser.tag }}
       systemAccountSpec:
         cmdExecutorConfig:
-          image: registry.cn-hangzhou.aliyuncs.com/coscene_devops/postgres:14.7-zhparser
+          image: {{ .Values.image.zhparser.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.zhparser.repository }}:{{ .Values.image.zhparser.tag }}
 
 ---
 apiVersion: apps.kubeblocks.io/v1alpha1

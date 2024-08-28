@@ -2,29 +2,32 @@ nebula:
   ## @param nebula.version, version of nebula-graph
   ## more info: check https://docs.nebula-graph.io/ for latest and LTS versions
   version: v3.5.0
-  graphd:
-    ## @param nebula.graphd.image, container image settings
-    image:
-      repository: docker.io/vesoft/nebula-graphd
+  images:
+    registry: docker.io
+    pullPolicy: IfNotPresent
+    ## @param nebula.images.graphd, container image settings
+    graphd:
+      # if the value of nebula.images.graphd.registry is not specified using `--set`, it will be set to the value of 'nebula.images.registry' by default
+      registry: ""
+      repository: vesoft/nebula-graphd
       tag: v3.5.0
-      pullPolicy: IfNotPresent
-  metad:
-    ## @param nebula.metad.image, container image settings
-    image:
-      repository: docker.io/vesoft/nebula-metad
+    ## @param nebula.images.metad, container image settings
+    metad:
+      # if the value of nebula.images.metad.registry is not specified using `--set`, it will be set to the value of 'nebula.images.registry' by default
+      registry: ""
+      repository: vesoft/nebula-metad
       tag: v3.5.0
-      pullPolicy: IfNotPresent
-  storaged:
-    ## @param nebula.storaged.image, container image settings
-    image:
-      repository: docker.io/vesoft/nebula-storaged
+    ## @param nebula.images.storaged, container image settings
+    storaged:
+      # if the value of nebula.images.storaged.registry is not specified using `--set`, it will be set to the value of 'nebula.images.registry' by default
+      registry: ""
+      repository: vesoft/nebula-storaged
       tag: v3.5.0
-      pullPolicy: IfNotPresent
-  console:
-    ## @param nebula.console.image, container image settings
-    image:
-      repository: docker.io/vesoft/nebula-console
+    ## @param nebula.images.console, container image settings
+    console:
+      # if the value of nebula.images.console.registry is not specified using `--set`, it will be set to the value of 'nebula.images.registry' by default
+      registry: ""
+      repository: vesoft/nebula-console
       tag: v3.5.0
-      pullPolicy: IfNotPresent
 
 clusterDomain: ".cluster.local"
