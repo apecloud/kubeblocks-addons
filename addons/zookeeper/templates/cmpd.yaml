@@ -19,8 +19,8 @@ spec:
           - name: admin
             port: 8080
       roleSelector: leader
-    - name: readonly
-      serviceName: readonly
+    - name: readable
+      serviceName: readable
       spec:
         ports:
           - name: client
