@@ -35,7 +35,7 @@ spec:
             topologyKey: kubernetes.io/hostname
     containers:
       - name: loki-sc-rules
-        image: {{ .Values.images.sidecar.registry | default "docker.io"}}/{{ .Values.images.sidecar.repository }}:{{ .Values.images.sidecar.tag }}
+        image: {{ .Values.images.registry | default "docker.io"}}/{{ .Values.images.sidecar.repository }}:{{ .Values.images.sidecar.tag }}
         imagePullPolicy: IfNotPresent
         env:
           - name: METHOD

@@ -2,27 +2,26 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 images:
-  registry: docker.io
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
   # Overrides the image tag whose default is the chart appVersion.
   write:
     tag: 3.0.0
-    repository: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/loki
+    repository: apecloud/loki
     pullPolicy: IfNotPresent
   read:
     tag: 3.0.0
-    repository: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/loki
+    repository: apecloud/loki
     pullPolicy: IfNotPresent
   backend:
     tag: 3.0.0
-    repository: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/loki
+    repository: apecloud/loki
     pullPolicy: IfNotPresent
   gateway:
     tag: 1.24-alpine
-    repository: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/nginx-unprivileged
+    repository: apecloud/nginx-unprivileged
     pullPolicy: IfNotPresent
   sidecar:
     tag: 1.24.3
-    registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
     repository: apecloud/k8s-sidecar
     pullPolicy: IfNotPresent
 sidecarImage:
