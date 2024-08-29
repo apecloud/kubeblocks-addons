@@ -1,68 +1,72 @@
 {{/*
 Library of pods related functions implemented in Bash. Currently, the following functions are available:
-- getPodListFromEnv: Get the list of pods from the provided environment variable or the default KB_POD_LIST environment variable.
-- minLexicographicalOrderPod: Get the minimum lexicographically pod name from the given pod list or the default KB_POD_LIST environment variable.
+- get_pod_list_from_env: Get the list of pods from the provided environment variable.
+- min_lexicographical_order_pod: Get the minimum lexicographically pod name from the given pod list.
 */}}
 
 {{/*
 This function is used to get the list of pods from the provided environment variable.
 If the environment variable does not exist, an error is returned.
-If no environment variable name is provided, it defaults to KB_POD_LIST.
 
 Usage:
-    getPodListFromEnv "ENV_VAR_NAME"
-    getPodListFromEnv ""
+    get_pod_list_from_env "ENV_VAR_NAME"
 Result:
     An array of pod names
 Example:
-    pods=$(getPodListFromEnv "MY_POD_LIST")
-    pods=$(getPodListFromEnv "")
+    pods=$(get_pod_list_from_env "MY_POD_LIST")
 */}}
-{{- define "kblib.pods.getPodListFromEnv" }}
-getPodListFromEnv() {
-  local envName="${1:-KB_POD_LIST}"
+{{- define "kblib.pods.get_pod_list_from_env" }}
+get_pod_list_from_env() {
+  local env_name="${1}"
 
-  if [[ -z "${!envName}" ]]; then
-    echo "failed to get pod list cause environment variable '$envName' does not exist" >&2
+  if [[ -z "${!env_name}" ]]; then
+    echo "failed to get pod list cause environment variable '$env_name' does not exist" >&2
     return 1
   fi
 
-  local podListStr="${!envName}"
-  local podList=()
+  local pod_list_str="${!env_name}"
+  local pod_list=()
 
-  IFS=',' read -ra podList <<< "$podListStr"
+  old_ifs="$IFS"
+  IFS=','
+  set -f
+  read -ra pod_list <<< "$pod_list_str"
+  set +f
+  IFS="$old_ifs"
 
-  echo "${podList[@]}"
+  echo "${pod_list[@]}"
 }
 {{- end }}
 
 {{/*
 This function is used to get the minimum lexicographically pod name from the pod list.
-if the parameter is not provided, it will use the default pod list from KB_POD_LIST environment variable.
 
 Usage:
-    minLexicographicalOrderPod "pod1,pod2,pod3"
-    minLexicographicalOrderPod ""
+    min_lexicographical_order_pod "pod1,pod2,pod3"
 Result:
     The minimum lexicographically order pod name
 Example:
-    minimumPod=$(minLexicographicalOrderPod "pod-0,pod-1,pod-2") # pod0
-    minimumPod=$(minLexicographicalOrderPod "") # use the default KB_POD_LIST env variable
+    minimum_pod=$(min_lexicographical_order_pod "pod-0,pod-1,pod-2") # pod0
 */}}
-{{- define "kblib.pods.minLexicographicalOrderPod" }}
-minLexicographicalOrderPod() {
-  local podListStr="${1:-${KB_POD_LIST}}"
-  local podList=()
+{{- define "kblib.pods.min_lexicographical_order_pod" }}
+min_lexicographical_order_pod() {
+  local pod_list_str="${1}"
+  local pod_list=()
 
-  IFS=',' read -ra podList <<< "$podListStr"
+  old_ifs="$IFS"
+  IFS=','
+  set -f
+  read -ra pod_list <<< "$pod_list_str"
+  set +f
+  IFS="$old_ifs"
 
-  local minimumPod="${podList[0]}"
-  for pod in "${podList[@]}"; do
-    if [[ "$pod" < "$minimumPod" ]]; then
-      minimumPod="$pod"
+  local minimum_pod="${pod_list[0]}"
+  for pod in "${pod_list[@]}"; do
+    if [[ "$pod" < "$minimum_pod" ]]; then
+      minimum_pod="$pod"
     fi
   done
 
-  echo "$minimumPod"
+  echo "$minimum_pod"
 }
 {{- end }}

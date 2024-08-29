@@ -6,17 +6,17 @@ metadata:
     clusterdefinition.kubeblocks.io/name: weaviate
     {{- include "weaviate.labels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: weaviate
   backupPolicies:
-  - componentDefRef: weaviate
+  - componentDefs:
+      - {{ include "weaviate.componentDefName" . }}
     backupMethods:
-    - name: volume-snapshot
-      snapshotVolumes: true
-      targetVolumes:
-        volumes:
-        - data
+      - name: volume-snapshot
+        snapshotVolumes: true
+        targetVolumes:
+          volumes:
+            - data
     schedules:
-    - backupMethod: volume-snapshot
-      enabled: false
-      cronExpression: "0 18 * * 0"
-      retentionPeriod: 7d
+      - backupMethod: volume-snapshot
+        enabled: false
+        cronExpression: "0 18 * * 0"
+        retentionPeriod: 7d

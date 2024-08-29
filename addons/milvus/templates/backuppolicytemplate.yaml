@@ -6,17 +6,17 @@ metadata:
     clusterdefinition.kubeblocks.io/name: milvus-{{ .Chart.Version }}
     {{- include "milvus.labels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: milvus
   backupPolicies:
-  - componentDefRef: milvus
+  - componentDefs:
+      - milvus-standalone
     backupMethods:
-    - name: volume-snapshot
-      snapshotVolumes: true
-      targetVolumes:
-        volumes:
-        - data
+      - name: volume-snapshot
+        snapshotVolumes: true
+        targetVolumes:
+          volumes:
+            - data
     schedules:
-    - backupMethod: volume-snapshot
-      enabled: false
-      retentionPeriod: 7d
-      cronExpression: "0 18 * * 0"
+      - backupMethod: volume-snapshot
+        enabled: false
+        retentionPeriod: 7d
+        cronExpression: "0 18 * * 0"

@@ -17,7 +17,7 @@ debugEnabled: false
 ## Default Pulsar image
 image:
   ## image.registry is the top level registry config
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  registry: docker.io
   repository: apecloud/pulsar
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
@@ -43,7 +43,7 @@ images:
 
   v2_11_2:
     bookie:
-      repository: ""
+      repository: apecloud/pulsar
       pullPolicy: ""
       tag: ""
 

@@ -6,7 +6,6 @@ metadata:
     clusterdefinition.kubeblocks.io/name: elasticsearch
     {{- include "elasticsearch.labels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: elasticsearch
   backupPolicies:
   - componentDefs:
     - elasticsearch

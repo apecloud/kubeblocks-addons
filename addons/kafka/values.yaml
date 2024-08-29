@@ -21,17 +21,17 @@ commonLabels: {}
 ## @param application images
 ##
 images:
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  registry: docker.io
   pullPolicy: IfNotPresent
   kafka:
-    repository: apecloud/kafka
+    repository: bitnami/kafka
 #    tag: 3.4.0-debian-11-r22
     tag: 3.3.2-debian-11-r54
   kafkaExporter:
-    repository: apecloud/kafka-exporter
+    repository: bitnami/kafka-exporter
     tag: 1.6.0-debian-11-r67
   jmxExporter:
-    repository: apecloud/jmx-exporter
+    repository: bitnami/jmx-exporter
     tag: 0.18.0-debian-11-r20
 
 

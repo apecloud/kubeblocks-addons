@@ -70,6 +70,16 @@ spec:
         letterCase: MixedCases
         seed: 5wM4uhmKV1Ohy087
   vars:
+    ## the name of current cluster instance
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    ## the service port of redis
+    - name: SERVICE_PORT
+      value: "6379"
+    - name: CLUSTER_BUS_PORT
+      value: "16379"
     ## the default username of redis connection
     - name: REDIS_DEFAULT_USER
       valueFrom:
@@ -80,6 +90,17 @@ spec:
           username: Required
     ## the default password of redis connection
     - name: REDIS_DEFAULT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          ## reference the current component definition name
+          compDef: {{ include "redis-cluster.componentDefName" . }}
+          name: default
+          password: Required
+    ## the username of redis primary-secondary replication
+    - name: REDIS_REPL_USER
+      value: "kbreplicator"
+    ## the password of redis primary-secondary replication shared the same password with default password
+    - name: REDIS_REPL_PASSWORD
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
@@ -165,32 +186,66 @@ spec:
           host: Required
   lifecycleActions:
     roleProbe:
-      builtinHandler: redis
       periodSeconds: 1
       timeoutSeconds: 1
+      exec:
+        container: redis-cluster
+        command:
+          - /tools/dbctl
+          - --config-path
+          - /tools/config/dbctl/components
+          - redis
+          - getrole
     postProvision:
-      customHandler:
-        exec:
-          image: {{ include "redis.image" . }}
-          command:
-            - /bin/bash
-            - -c
-            - /scripts/redis-cluster-manage.sh --post-provision
-        ## TODO: the preCondition should be changed to RuntimeReady when KubeBlocks support it
-        preCondition: ComponentReady
-        retryPolicy:
-          maxRetries: 10
+      exec:
+        container: redis-cluster
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/redis-cluster-manage.sh --post-provision
+        ## all lifecycle actions share the same env
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: CURRENT_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          - name: CURRENT_POD_HOST_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.hostIP
+      preCondition: RuntimeReady
+      retryPolicy:
+        maxRetries: 10
     preTerminate:
-      customHandler:
-        exec:
-          image: {{ include "redis.image" . }}
-          command:
-            - /bin/bash
-            - -c
-            - /scripts/redis-cluster-manage.sh --pre-terminate
-        retryPolicy:
-          maxRetries: 10
+      exec:
+        container: redis-cluster
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/redis-cluster-manage.sh --pre-terminate
+      retryPolicy:
+        maxRetries: 10
   runtime:
+    initContainers:
+      - name: init-dbctl
+        command:
+          - cp
+          - -r
+          - /bin/dbctl
+          - /config
+          - /tools/
+        image: {{ .Values.dbctlImage.registry | default "docker.io" }}/{{ .Values.dbctlImage.repository }}:{{ .Values.dbctlImage.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.dbctlImage.pullPolicy }}
+        volumeMounts:
+          - mountPath: /tools
+            name: tools
     containers:
       - name: redis-cluster
         image: {{ include "redis.image" . }}
@@ -209,15 +264,24 @@ spec:
             mountPath: /scripts
           - name: redis-conf
             mountPath: /etc/redis
+          - mountPath: /tools
+            name: tools
         env:
-          - name: SERVICE_PORT
-            value: "6379"
-          - name: CLUSTER_BUS_PORT
-            value: "16379"
-          - name: REDIS_REPL_USER
-            value: "kbreplicator"
-          - name: REDIS_REPL_PASSWORD
-            value: $(REDIS_DEFAULT_PASSWORD)
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: CURRENT_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          - name: CURRENT_POD_HOST_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.hostIP
         command: [ "/scripts/redis-cluster-server-start.sh" ]
         readinessProbe:
           initialDelaySeconds: 10
@@ -238,7 +302,7 @@ spec:
                 - -c
                 - /scripts/redis-cluster-replica-member-leave.sh
       - name: metrics
-        image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
+        image: {{ include "metrics.image" . }}
         imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
         securityContext:
           runAsNonRoot: true

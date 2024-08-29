@@ -21,7 +21,3 @@
 *.tmproj
 # OWNERS file for Kubernetes
 OWNERS
-
-# component definition
-templates/componentdefinition.yaml
-templates/secrets.yaml

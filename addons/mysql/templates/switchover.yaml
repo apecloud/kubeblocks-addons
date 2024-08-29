@@ -3,17 +3,18 @@ kind: OpsDefinition
 metadata:
   name: mysql-orc-switchover
 spec:
-  targetPodTemplates:
-    - name: availablePod
+  podInfoExtractors:
+    - name: orcInfo
       podSelector:
-        availability: Available
-        selectionPolicy: Any
+        multiPodSelectionPolicy: Any
+      env:
+        - name: ORC_ENDPOINTS
+          valueFrom:
+            envRef:
+              envName: ORC_ENDPOINTS
   parametersSchema:
     openAPIV3Schema:
       properties:
-        primary:
-          description: "old primary instance name(pod Name)."
-          type: string
         candidate:
           description: |
             candidate instance name(pod Name). if candidate is not empty, will promote it to primary.
@@ -26,12 +27,14 @@ spec:
       workload:
         type: Job
         backoffLimit: 0
+        podInfoExtractorName: orcInfo
         podSpec:
           containers:
             - name: switchover
-              image: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/orc-tools:1.0.3
+              image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.orcTools.repository }}:{{ .Values.image.orcTools.tag }}
               imagePullPolicy: IfNotPresent
               command:
                 - /bin/sh
                 - -c
-                - /usr/scripts/orchestrator-client -c graceful-master-takeover-auto -d ${candidate} -i ${KB_CLUSTER_NAME}
+                - |
+                  curl -s http://${ORC_ENDPOINTS}/api/graceful-master-takeover-auto/${candidate}

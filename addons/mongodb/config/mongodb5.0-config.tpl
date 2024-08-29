@@ -16,8 +16,6 @@
 # where and how to store data.
 storage:
   dbPath: {{ $mongodb_root }}/db
-  journal:
-    enabled: true
   directoryPerDB: true
 
 # where to write logging data.

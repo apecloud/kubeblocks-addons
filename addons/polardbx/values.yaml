@@ -7,48 +7,46 @@ roleProbe:
   periodSeconds: 1
   timeoutSeconds: 1
   image:
-    repository: arey
-    name: mysql-client
+    repository: arey/mysql-client
     tag: latest
 
 # Related image configurations.
 image:
-  registry:
+  registry: docker.io
 
 images:
   polardbx:
     pullPolicy: IfNotPresent
     # Repo of polardbx default images. Default is polardbx.
-    repository: polardbx
 
     # Images for xstore(DN) tools updater.
     toolsUpdater:
-      name: xstore-tools
+      repository: polardbx/xstore-tools
       tag: v1.5.0
 
     # Image for DN engine
     dn:
-      name: polardbx-engine-2.0
+      repository: polardbx/polardbx-engine-2.0
       tag: 80-8.0.18-20231101115000
 
     # Image for CN engine
     cn:
-      name: polardbx-sql
+      repository: polardbx/polardbx-sql
       tag: 5.4.18-20231101115000
 
     # Image for CN initialization
     init:
-      name: polardbx-init
+      repository: polardbx/polardbx-init
       tag: v1.5.0
 
     # Image for CN engine
     cdc:
-      name: polardbx-cdc
+      repository: polardbx/polardbx-cdc
       tag: 5.4.18-20231101115000
 
     # Image for CN&CDC exporter
     exporter:
-      name: polardbx-exporter
+      repository: polardbx/polardbx-exporter
       tag: v1.5.0
 
   # Tool image settings for gms initialization
@@ -59,8 +57,7 @@ images:
 
   # Images for DN exporter
   prom:
-    repository: prom
     pullPolicy: IfNotPresent
     mysqld_exporter:
-      name: mysqld-exporter
+      repository: prom/mysqld-exporter
       tag: v0.14.0

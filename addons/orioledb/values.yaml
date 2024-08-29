@@ -1,8 +1,8 @@
 ## @section OrioleDB common parameters
 
 image:
-#  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  # refer: https://github.com/orioledb/orioledb/blob/main/Dockerfile
+  registry: docker.io
   repository: apecloud/orioledb
   tag: beta1
   pullPolicy: IfNotPresent
@@ -87,7 +87,7 @@ pgbouncer:
     # refer: https://hub.docker.com/r/bitnami/pgbouncer
     # if the value of pgbouncer.image.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
     registry: ""
-    repository: apecloud/pgbouncer
+    repository: bitnami/pgbouncer
     tag: 1.19.0
     pullPolicy: IfNotPresent
 

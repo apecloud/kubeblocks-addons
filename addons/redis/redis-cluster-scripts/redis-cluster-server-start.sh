@@ -201,10 +201,12 @@ check_and_correct_other_primary_nodes() {
         set +x
         if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
           meet_command="redis-cli -h $current_primary_endpoint -p $current_primary_port cluster meet $current_announce_ip $node_port $node_bus_port"
+          logging_mask_meet_command="$meet_command"
         else
           meet_command="redis-cli -h $current_primary_endpoint -p $current_primary_port -a $REDIS_DEFAULT_PASSWORD cluster meet $current_announce_ip $node_port $node_bus_port"
+          logging_mask_meet_command="${meet_command/$REDIS_DEFAULT_PASSWORD/********}"
         fi
-        echo "check and correct other primary nodes meet command: $meet_command" | sed "s/$REDIS_DEFAULT_PASSWORD/********/g"
+        echo "check and correct other primary nodes meet command: $logging_mask_meet_command"
         if ! $meet_command
         then
             echo "Failed to meet the node $node_endpoint_with_port in check_and_correct_other_primary_nodes"
@@ -373,10 +375,12 @@ scale_redis_cluster_replica() {
   set +x
   if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
     replicated_command="redis-cli --cluster add-node $current_node_with_port $primary_node_endpoint_with_port --cluster-slave --cluster-master-id $primary_node_cluster_id"
+    logging_mask_replicated_command="$replicated_command"
   else
     replicated_command="redis-cli --cluster add-node $current_node_with_port $primary_node_endpoint_with_port --cluster-slave --cluster-master-id $primary_node_cluster_id -a $REDIS_DEFAULT_PASSWORD"
+    logging_mask_replicated_command="${replicated_command/$REDIS_DEFAULT_PASSWORD/********}"
   fi
-  echo "scale out replica replicated command: $replicated_command" | sed "s/$REDIS_DEFAULT_PASSWORD/********/g"
+  echo "scale out replica replicated command: $logging_mask_replicated_command"
   replicated_output=$($replicated_command)
   replicated_exit_code=$?
   set -x
@@ -403,10 +407,12 @@ scale_redis_cluster_replica() {
     set +x
     if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
       meet_command="redis-cli cluster meet $primary_node_cluster_announce_ip $primary_node_port $primary_node_bus_port"
+      logging_mask_meet_command="$meet_command"
     else
       meet_command="redis-cli -a $REDIS_DEFAULT_PASSWORD cluster meet $primary_node_cluster_announce_ip $primary_node_port $primary_node_bus_port "
+      logging_mask_meet_command="${meet_command/$REDIS_DEFAULT_PASSWORD/********}"
     fi
-    echo "scale out replica meet command: $meet_command" | sed "s/$REDIS_DEFAULT_PASSWORD/********/g"
+    echo "scale out replica meet command: $logging_mask_meet_command"
     if ! $meet_command
     then
         echo "Failed to meet the node $primary_node_endpoint_with_port in scale_redis_cluster_replica, shutdown redis server"
