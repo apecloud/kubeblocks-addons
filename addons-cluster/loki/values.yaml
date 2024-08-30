@@ -1,0 +1,304 @@
+# Default values for loki-cluster.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+loki:
+  server:
+    http_listen_port: 3100
+    grpc_listen_port: 9095
+    http_server_read_timeout: 600s
+    http_server_write_timeout: 600s
+
+  config: |
+    {{- if .Values.enterprise.enabled}}
+    {{- tpl .Values.enterprise.config . }}
+    {{- else }}
+    auth_enabled: {{ .Values.loki.auth_enabled }}
+    {{- end }}
+    
+    server:
+      http_listen_port: 3100
+      grpc_listen_port: 9095
+      {{- with .Values.loki.extraServerConfig }}
+      {{- toYaml . | nindent 2 }}
+      {{- end }}
+    
+    memberlist:
+      join_members:
+        - {{ include "loki-cluster.name" . }}-memberlist
+    
+    {{- if .Values.loki.commonConfig}}
+    common:
+    {{- toYaml .Values.loki.commonConfig | nindent 2}}
+      storage:
+      {{- include "loki-cluster.commonStorageConfig" . | nindent 4}}
+    {{- end}}
+    
+    limits_config:
+      reject_old_samples: true
+      reject_old_samples_max_age: 168h
+      max_cache_freshness_per_query: 10m
+      split_queries_by_interval: 15m
+      query_timeout: 300s
+      volume_enabled: true
+    
+    {{- with .Values.loki.memcached.chunk_cache }}
+    {{- if and .enabled .host }}
+    chunk_store_config:
+      chunk_cache_config:
+        memcached:
+          batch_size: {{ .batch_size }}
+          parallelism: {{ .parallelism }}
+        memcached_client:
+          host: {{ .host }}
+          service: {{ .service }}
+    {{- end }}
+    {{- end }}
+    
+    {{- if .Values.loki.schemaConfig}}
+    schema_config:
+    {{- toYaml .Values.loki.schemaConfig | nindent 2}}
+    {{- else }}
+    schema_config:
+      configs:
+        - from: 2022-01-11
+          store: boltdb-shipper
+          {{- if eq .Values.loki.storage.type "s3" }}
+          object_store: s3
+          {{- else if eq .Values.loki.storage.type "gcs" }}
+          object_store: gcs
+          {{- else }}
+          object_store: filesystem
+          {{- end }}
+          schema: v12
+          index:
+            prefix: loki_index_
+            period: 24h
+    {{- end }}
+    
+    {{- if or .Values.minio.enabled (eq .Values.loki.storage.type "s3") (eq .Values.loki.storage.type "gcs") }}
+    ruler:
+      storage:
+      {{- include "loki-cluster.rulerStorageConfig" . | nindent 4}}
+    {{- end -}}
+    
+    {{- with .Values.loki.memcached.results_cache }}
+    query_range:
+      align_queries_with_step: true
+      {{- if and .enabled .host }}
+      cache_results: {{ .enabled }}
+      results_cache:
+        cache:
+          default_validity: {{ .default_validity }}
+          memcached_client:
+            host: {{ .host }}
+            service: {{ .service }}
+            timeout: {{ .timeout }}
+      {{- end }}
+    {{- end }}
+    
+    {{- with .Values.loki.storage_config }}
+    storage_config:
+      {{- tpl (. | toYaml) $ | nindent 4 }}
+    {{- end }}
+    
+    {{- with .Values.loki.query_scheduler }}
+    query_scheduler:
+      {{- tpl (. | toYaml) $ | nindent 4 }}
+    {{- end }}
+
+
+
+  auth_enabled: false
+
+  commonConfig:
+    path_prefix: /var/loki
+    replication_factor: 3
+
+  storage:
+    bucketNames:
+      chunks: chunks
+      ruler: ruler
+      admin: admin
+    type: null
+    s3:
+      s3: null
+      endpoint: null
+      region: null
+      secretAccessKey: null
+      accessKeyId: null
+      s3ForcePathStyle: true
+      insecure: false
+    gcs:
+      chunkBufferSize: 0
+      requestTimeout: "0s"
+      enableHttp2: true
+    azure:
+      accountName: null
+      accountKey: null
+      connectionString: null
+      useManagedIdentity: false
+      useFederatedToken: false
+      userAssignedId: null
+      requestTimeout: null
+      endpointSuffix: null
+    swift:
+      auth_version: null
+      auth_url: null
+      internal: null
+      username: null
+      user_domain_name: null
+      user_domain_id: null
+      user_id: null
+      password: null
+      domain_id: null
+      domain_name: null
+      project_id: null
+      project_name: null
+      project_domain_id: null
+      project_domain_name: null
+      region_name: null
+      container_name: null
+      max_retries: null
+      connect_timeout: null
+      request_timeout: null
+    local:
+      chunks_directory: /var/loki/chunks
+      rules_directory: /var/loki/rules
+
+  memcached:
+    chunk_cache:
+      enabled: false
+      host: ""
+      service: "memcached-client"
+      batch_size: 256
+      parallelism: 10
+    results_cache:
+      enabled: false
+      host: ""
+      service: "memcached-client"
+      timeout: "500ms"
+      default_validity: "12h"
+
+  schemaConfig:
+    configs:
+      - from: 2024-04-01
+        store: tsdb
+        object_store: null
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+
+  storage_config:
+    hedging:
+      at: "250ms"
+      max_per_second: 20
+      up_to: 3
+
+  querier:
+    # Default is 4, if you have enough memory and CPU you can increase, reduce if OOMing
+    max_concurrent: 4
+
+  query_scheduler: {}
+  structuredConfig: {}
+  runtimeConfig: {}
+  tenants: []
+global:
+  # -- configures cluster domain ("cluster.local" by default)
+  clusterDomain: "cluster.local"
+  # -- configures DNS service name
+  dnsService: "kube-dns"
+  # -- configures DNS service namespace
+  dnsNamespace: "kube-system"
+
+enterprise:
+  enabled: false
+
+
+read:
+  replicas: 1
+  httpMetricsPort: 3100
+  grpcPort: 9095
+  httpMemberlistPort: 7946
+
+write:
+  replicas: 1
+  httpMetricsPort: 3100
+  grpcPort: 9095
+  httpMemberlistPort: 7946
+
+backend:
+  replicas: 1
+  httpMetricsPort: 3100
+  grpcPort: 9095
+  httpMemberlistPort: 7946
+
+gateway:
+  replicas: 1
+  basicAuth:
+    # -- Enables basic authentication for the gateway
+    enabled: false
+  nginxConfig:
+    # -- Which schema to be used when building URLs. Can be 'http' or 'https'.
+    schema: http
+    # -- Enable listener for IPv6, disable on IPv4-only systems
+    enableIPv6: true
+    # -- NGINX log format
+    logFormat: |-
+      main '$remote_addr - $remote_user [$time_local]  $status '
+              '"$request" $body_bytes_sent "$http_referer" '
+              '"$http_user_agent" "$http_x_forwarded_for"';
+    # -- Allows appending custom configuration to the server block
+    serverSnippet: ""
+    # -- Allows appending custom configuration to the http block, passed through the `tpl` function to allow templating
+    httpSnippet: >-
+      {{ if .Values.loki.tenants }}proxy_set_header X-Scope-OrgID $remote_user;{{ end }}
+    # -- Whether ssl should be appended to the listen directive of the server block or not.
+    ssl: false
+    # -- Override Read URL
+    customReadUrl: null
+    # -- Override Write URL
+    customWriteUrl: null
+    # -- Override Backend URL
+    customBackendUrl: null
+    # -- Allows overriding the DNS resolver address nginx will use.
+    resolver: ""
+    # -- Config file contents for Nginx. Passed through the `tpl` function to allow templating
+    # @default -- See values.yaml
+    file: |
+      {{- include "loki-cluster.nginxFile" . | indent 2 -}}
+  httpMetricsContainerPort: 8080
+  httpMetricsSvcPort: 80
+
+nameOverride: ""
+fullnameOverride: ""
+minio:
+  enabled: false
+## @param storageClassName, storage class name
+##
+storageClassName: ""
+## @param terminationPolicy, temination policy for loki-cluster
+##
+terminationPolicy: "Delete"
+
+## @param replicas specify cluster replicas
+##
+replicas: 1
+
+## @param cpu
+##
+cpu: 0.5
+
+## @param memory, the unit is Gi
+##
+memory: 0.5
+
+requests:
+#  cpu:
+#  memory:
+
+## @param storage size, the unit is Gi
+##
+storage: 20
+
+

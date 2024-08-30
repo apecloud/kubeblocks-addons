@@ -1,0 +1,41 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: loki
+  labels:
+    {{- include "loki.labels" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - releases:
+        - write-1.0.0
+      compDefs:
+        - loki-write
+    - releases:
+        - read-1.0.0
+      compDefs:
+        - loki-read
+    - releases:
+        - backend-1.0.0
+      compDefs:
+        - loki-backend
+    - releases:
+        - gateway-1.0.0
+      compDefs:
+        - loki-gateway
+  releases:
+    - name: write-1.0.0
+      serviceVersion: 1.0.0
+      images:
+        write: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.write.repository }}:{{ .Values.images.write.tag }}
+    - name: read-1.0.0
+      serviceVersion: 1.0.0
+      images:
+        read: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.read.repository }}:{{ .Values.images.read.tag }}
+    - name: backend-1.0.0
+      serviceVersion: 1.0.0
+      images:
+        backend: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.backend.repository }}:{{ .Values.images.backend.tag }}
+    - name: gateway-1.0.0
+      serviceVersion: 1.0.0
+      images:
+        gateway: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.gateway.repository }}:{{ .Values.images.gateway.tag }}

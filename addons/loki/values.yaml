@@ -1,0 +1,104 @@
+# Default values for victoria-metrics.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+images:
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  # Overrides the image tag whose default is the chart appVersion.
+  write:
+    tag: 3.0.0
+    repository: apecloud/loki
+    pullPolicy: IfNotPresent
+  read:
+    tag: 3.0.0
+    repository: apecloud/loki
+    pullPolicy: IfNotPresent
+  backend:
+    tag: 3.0.0
+    repository: apecloud/loki
+    pullPolicy: IfNotPresent
+  gateway:
+    tag: 1.24-alpine
+    repository: apecloud/nginx-unprivileged
+    pullPolicy: IfNotPresent
+  sidecar:
+    tag: 1.24.3
+    repository: apecloud/k8s-sidecar
+    pullPolicy: IfNotPresent
+sidecarImage:
+  registry: ""
+  repository: kiwigrid/k8s-sidecar
+  pullPolicy: IfNotPresent
+  tag: 1.24.3
+
+nameOverride: ""
+fullnameOverride: ""
+clusterVersionOverride: ""
+
+## @param resourceNamePrefix Prefix for all resources name created by this chart, that can avoid name conflict
+## if you install multiple releases of this chart.
+## If specified, the cluster definition will use it as name.
+resourceNamePrefix: ""
+
+
+global:
+  # -- configures cluster domain ("cluster.local" by default)
+  clusterDomain: "cluster.local"
+  # -- configures DNS service name
+  dnsService: "kube-dns"
+  # -- configures DNS service namespace
+  dnsNamespace: "kube-system"
+
+enterprise:
+  enabled: false
+
+
+read:
+  httpMetricsPort: 3100
+  grpcPort: 9095
+  httpMemberlistPort: 7946
+
+write:
+  httpMetricsPort: 3100
+  grpcPort: 9095
+  httpMemberlistPort: 7946
+
+backend:
+  httpMetricsPort: 3100
+  grpcPort: 9095
+  httpMemberlistPort: 7946
+
+gateway:
+  basicAuth:
+    # -- Enables basic authentication for the gateway
+    enabled: false
+  nginxConfig:
+    # -- Which schema to be used when building URLs. Can be 'http' or 'https'.
+    schema: http
+    # -- Enable listener for IPv6, disable on IPv4-only systems
+    enableIPv6: true
+    # -- NGINX log format
+    logFormat: |-
+      main '$remote_addr - $remote_user [$time_local]  $status '
+              '"$request" $body_bytes_sent "$http_referer" '
+              '"$http_user_agent" "$http_x_forwarded_for"';
+    # -- Allows appending custom configuration to the server block
+    serverSnippet: ""
+    # -- Allows appending custom configuration to the http block, passed through the `tpl` function to allow templating
+    httpSnippet: >-
+      {{ if .Values.loki.tenants }}proxy_set_header X-Scope-OrgID $remote_user;{{ end }}
+    # -- Whether ssl should be appended to the listen directive of the server block or not.
+    ssl: false
+    # -- Override Read URL
+    customReadUrl: null
+    # -- Override Write URL
+    customWriteUrl: null
+    # -- Override Backend URL
+    customBackendUrl: null
+    # -- Allows overriding the DNS resolver address nginx will use.
+    resolver: ""
+    # -- Config file contents for Nginx. Passed through the `tpl` function to allow templating
+    # @default -- See values.yaml
+    file: |
+      {{- include "loki.nginxFile" . | indent 2 -}}
+  httpMetricsContainerPort: 8080
+  httpMetricsSvcPort: 80
