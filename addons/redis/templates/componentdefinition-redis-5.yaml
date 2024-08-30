@@ -1,0 +1,252 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "redis5.componentDefName" . }}
+  labels:
+    {{- include "redis.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: A Redis v5.0 component definition for Kubernetes
+  serviceKind: redis
+  serviceVersion: {{ .Values.componentServiceVersion.redis5 }}
+  services:
+    - name: redis
+      serviceName: redis
+      spec:
+        ports:
+          - name: redis
+            port: 6379
+            targetPort: redis
+      roleSelector: primary
+    - name: redis-advertised
+      serviceName: redis-advertised
+      spec:
+        ## the type can override in cluster componentSpec services, type can be NodePort, LoadBalancer
+        type: NodePort
+        ports:
+          - name: redis-advertised
+            port: 6379
+            targetPort: redis
+      podService: true
+      disableAutoProvision: true
+  updateStrategy: BestEffortParallel
+  volumes:
+    - name: data
+      needSnapshot: true
+  roles:
+    - name: primary
+      serviceable: true
+      writable: true
+    - name: secondary
+      serviceable: false
+      writable: false
+  logConfigs:
+    {{- range $name,$pattern := .Values.logConfigs }}
+    - name: {{ $name }}
+      filePathPattern: {{ $pattern }}
+    {{- end }}
+  configs:
+    - name: redis-replication-config
+      templateRef: redis5-config-template
+      constraintRef: redis5-config-constraints
+      namespace: {{ .Release.Namespace }}
+      volumeName: redis-config
+      reRenderResourceTypes:
+        - vscale
+    - name: redis5-metrics-config
+      templateRef: redis5-metrics-config
+      namespace: {{ .Release.Namespace }}
+      volumeName: redis5-metrics-config
+      defaultMode: 0444
+  scripts:
+    - name: redis-scripts
+      templateRef: redis-scripts
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  systemAccounts:
+    ## TODO: the other accounts should be created for backward compatibility
+    - name: default
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 10
+        numDigits: 5
+        numSymbols: 0
+        letterCase: MixedCases
+  vars:
+    ## the default username of redis connection
+    - name: REDIS_DEFAULT_USER
+      valueFrom:
+        credentialVarRef:
+          ## reference the current component definition name
+          compDef: {{ include "redis5.componentDefName" . }}
+          name: default
+          username: Required
+    ## the default password of redis connection
+    - name: REDIS_DEFAULT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          ## reference the current component definition name
+          compDef: {{ include "redis5.componentDefName" . }}
+          name: default
+          password: Required
+    ## the redis advertised service port list for each pod, the value format is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."
+    - name: REDIS_ADVERTISED_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redis5.componentDefName" . }}
+          name: redis-advertised
+          optional: true
+          port:
+            name: redis-advertised
+            option: Required
+    ## the redis advertised service name list for each pod, the value format is "pod1Svc,pod2Svc,..."
+    - name: REDIS_ADVERTISED_SVC_NAME
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redis5.componentDefName" . }}
+          name: redis-advertised
+          optional: true
+          host: Required
+    ## the username of redis sentinel for redis connection, it is optional
+    - name: SENTINEL_USER
+      valueFrom:
+        credentialVarRef:
+          ## reference the redis-sentinel component definition name
+          compDef: {{ include "redis5-sentinel.componentDefName" . }}
+          name: default
+          optional: true
+          username: Optional
+    ## the password of redis sentinel for redis connection, it is optional
+    - name: SENTINEL_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          ## reference the redis-sentinel component definition name
+          compDef: {{ include "redis5-sentinel.componentDefName" . }}
+          name: default
+          optional: true
+          password: Optional
+    - name: SENTINEL_COMPONENT_DEFINITION_NAME
+      value: {{ include "redis5-sentinel.componentDefName" . }}
+    - name: SENTINEL_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "redis5-sentinel.componentDefName" . }}
+          optional: true
+          componentName: Optional
+    - name: SENTINEL_HEADLESS_SERVICE_NAME
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redis5-sentinel.componentDefName" . }}
+          name: headless
+          optional: true
+          host: Optional
+    - name: SENTINEL_SERVICE_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redis5-sentinel.componentDefName" . }}
+          name: redis-sentinel
+          optional: true
+          port:
+            name: redis-sentinel
+            option: Optional
+    - name: SENTINEL_POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "redis5-sentinel.componentDefName" . }}
+          optional: true
+          instanceNames: Optional
+  lifecycleActions:
+    roleProbe:
+      builtinHandler: redis
+      periodSeconds: 1
+      timeoutSeconds: 1
+    postProvision:
+      customHandler:
+        image: {{ include "redis5.image" . }}
+        exec:
+          command:
+            - /bin/bash
+            - -c
+            - /scripts/redis-5-register-to-sentinel.sh
+        preCondition: RuntimeReady
+  runtime:
+    containers:
+      - name: redis
+        image: {{ include "redis5.image" . }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        ports:
+          - name: redis
+            containerPort: 6379
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
+          - name: redis-config
+            mountPath: /etc/conf
+          - name: scripts
+            mountPath: /scripts
+          - name: redis-conf
+            mountPath: /etc/redis
+          ## deprecated since v0.8.3, do not use it
+          - name: pod-info
+            mountPath: /kb-podinfo
+        env:
+          - name: SERVICE_PORT
+            value: "6379"
+          ## the username of redis primary-secondary replication
+          - name: REDIS_REPL_USER
+            value: "kbreplicator"
+          ## the password of redis primary-secondary replication
+          - name: REDIS_REPL_PASSWORD
+            value: $(REDIS_DEFAULT_PASSWORD)
+          ## the username of redis for redis sentinel connection
+          - name: REDIS_SENTINEL_USER
+            value: "$(REDIS_REPL_USER)-sentinel"
+          ## the password of redis for redis sentinel connection
+          - name: REDIS_SENTINEL_PASSWORD
+            value: $(REDIS_DEFAULT_PASSWORD)
+        command: [ "/scripts/redis-5-start.sh" ]
+        readinessProbe:
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 1
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command:
+              - sh
+              - -c
+              - /scripts/redis-ping.sh 1
+      - name: metrics
+        image: {{ include "metrics.image" . }}
+        imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+        env:
+          - name: ENDPOINT
+            value: {{ printf "localhost:6379" }}
+          - name: REDIS_USER
+            value: $(REDIS_DEFAULT_USER)
+          - name: REDIS_PASSWORD
+            value: $(REDIS_DEFAULT_PASSWORD)
+        command:
+          - "/bin/agamotto"
+          - "--config=/opt/conf/metrics-config-5.yaml"
+        ports:
+          - name: http-metrics
+            containerPort: {{ .Values.metrics.service.port }}
+        volumeMounts:
+          - name: redis5-metrics-config
+            mountPath: /opt/conf
+    volumes:
+      ## deprecated since v0.8.3, do not use it
+      - name: pod-info
+        downwardAPI:
+          items:
+            - path: "primary-pod"
+              fieldRef:
+                fieldPath: metadata.annotations['rs.apps.kubeblocks.io/primary']
+            - path: "component-replicas"
+              fieldRef:
+                fieldPath: metadata.annotations['apps.kubeblocks.io/component-replicas']

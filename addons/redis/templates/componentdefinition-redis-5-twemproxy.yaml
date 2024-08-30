@@ -1,0 +1,110 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "redis-5-twemproxy.componentDefName" . }}
+  labels:
+    {{- include "redis.labels" . | nindent 4 }}
+spec:
+  provider: KubeBlocks
+  description: A Twemproxy component definition for Kubernetes
+  serviceKind: redis-twemproxy
+  serviceVersion: {{ .Values.componentServiceVersion.twemproxy }}
+  services:
+    - name: twemproxy
+      serviceName: twemproxy
+      spec:
+        type: ClusterIP
+        ports:
+          - name: redis-twemproxy
+            port: 22121
+            targetPort: redis-twemproxy
+  scripts:
+    - defaultMode: 365
+      name: redis-scripts
+      namespace: {{ .Release.Namespace }}
+      templateRef: redis-scripts
+      volumeName: scripts
+  volumes:
+    - highWatermark: 0
+      name: data
+      needSnapshot: false
+  vars:
+    ## reference to the all redis components service, the format is "redis0:redis-redis0-redis,redis1:redis-redis1-redis"
+    - name: REDIS_SERVICE_NAMES
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redis5.componentDefName" . }}
+          name: redis
+          optional: false
+          host: Required
+          multipleClusterObjectOption:
+            strategy: combined
+    ## reference to the all redis components service port, the format is "redis0:6379,redis1:6379"
+    - name: REDIS_SERVICE_PORTS
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redis5.componentDefName" . }}
+          name: redis
+          optional: false
+          port:
+            name: redis
+            option: Required
+          multipleClusterObjectOption:
+            strategy: combined
+    ## the default username of all redis components, it will generate a set of variables with the component name suffix like "REDIS_DEFAULT_USER_REDIS0", "REDIS_DEFAULT_USER_REDIS1"
+    - name: REDIS_DEFAULT_USER
+      valueFrom:
+        credentialVarRef:
+          ## reference the current component definition name
+          compDef: {{ include "redis5.componentDefName" . }}
+          name: default
+          username: Required
+          multipleClusterObjectOption:
+            strategy: individual
+    ## the default password of all redis components, it will generate a set of variables with the component name suffix like "REDIS_DEFAULT_PASSWORD_REDIS0", "REDIS_DEFAULT_PASSWORD_REDIS1"
+    - name: REDIS_DEFAULT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          ## reference the current component definition name
+          compDef: {{ include "redis5.componentDefName" . }}
+          name: default
+          password: Required
+          multipleClusterObjectOption:
+            strategy: individual
+  runtime:
+    initContainers:
+      - name: init-redis-twemproxy
+        image: {{ include "busybox.image" . }}
+        imagePullPolicy: {{ default .Values.busyboxImage.pullPolicy "IfNotPresent" }}
+        command:
+          - /scripts/redis-twemproxy-setup-v2.sh
+        volumeMounts:
+          - mountPath: /data
+            name: data
+          - mountPath: /etc/conf
+            name: redis-config
+          - mountPath: /etc/proxy
+            name: proxy-conf
+          - mountPath: /scripts
+            name: scripts
+    containers:
+    - name: redis-twemproxy
+      image: {{ include "redis-twemproxy.image" . }}
+      imagePullPolicy: {{ default .Values.redisTwemproxyImage.pullPolicy "IfNotPresent" }}
+      command:
+        - sh
+        - -c
+        - nutcracker -c /etc/proxy/nutcracker.conf -v 4 -m 16384
+      ports:
+      - containerPort: 22121
+        name: redis-twemproxy
+      volumeMounts:
+      - mountPath: /data
+        name: data
+      - mountPath: /etc/conf
+        name: redis-config
+      - mountPath: /etc/proxy
+        name: proxy-conf
+      - mountPath: /scripts
+        name: scripts
+

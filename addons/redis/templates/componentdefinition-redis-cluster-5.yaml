@@ -1,0 +1,259 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "redis5-cluster.componentDefName" . }}
+  labels:
+    {{- include "redis.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: An official v5.0 Redis Cluster(distributed implementation of Redis) component definition for Kubernetes
+  serviceKind: redis-cluster
+  serviceVersion: {{ .Values.componentServiceVersion.redisCluster5 }}
+  services:
+    - name: redis-advertised
+      serviceName: redis-advertised
+      spec:
+        ## the type can override in cluster componentSpec services
+        type: NodePort
+        ports:
+        - name: redis-advertised
+          port: 6379
+          targetPort: redis-cluster
+        - name: advertised-bus
+          port: 16379
+          targetPort: cluster-bus
+      podService: true
+      disableAutoProvision: true
+  updateStrategy: BestEffortParallel
+  volumes:
+    - name: data
+      needSnapshot: true
+  roles:
+    - name: primary
+      serviceable: true
+      writable: true
+    - name: secondary
+      serviceable: false
+      writable: false
+  logConfigs:
+    {{- range $name,$pattern := .Values.logConfigs }}
+    - name: {{ $name }}
+      filePathPattern: {{ $pattern }}
+    {{- end }}
+  configs:
+    - name: redis-cluster5-config
+      templateRef: redis-cluster5-config-template
+      constraintRef: redis-cluster5-config-constraints
+      namespace: {{ .Release.Namespace }}
+      volumeName: redis-cluster5-config
+    - name: redis5-metrics-config
+      templateRef: redis5-metrics-config
+      namespace: {{ .Release.Namespace }}
+      volumeName: redis5-metrics-config
+      defaultMode: 0444
+  scripts:
+    - name: redis-cluster-scripts
+      templateRef: redis-cluster-scripts
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  systemAccounts:
+    ## TODO: the other accounts should be created for backward compatibility
+    - name: default
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 10
+        numDigits: 5
+        numSymbols: 0
+        letterCase: MixedCases
+        seed: 5wM4uhmKV1Ohy087
+  vars:
+    ## the default username of redis connection
+    - name: REDIS_DEFAULT_USER
+      valueFrom:
+        credentialVarRef:
+          ## reference the current component definition name
+          compDef: {{ include "redis5-cluster.componentDefName" . }}
+          name: default
+          username: Required
+    ## the default password of redis connection
+    - name: REDIS_DEFAULT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          ## reference the current component definition name
+          compDef: {{ include "redis5-cluster.componentDefName" . }}
+          name: default
+          password: Required
+    ## the redis cluster advertised service port list for each pod of current shard, the value format is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."
+    - name: REDIS_CLUSTER_ADVERTISED_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redis5-cluster.componentDefName" . }}
+          name: redis-advertised
+          optional: true
+          port:
+            name: redis-advertised
+            option: Required
+    ## the redis cluster advertised service bus port list for each pod of current shard, the value format is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."
+    - name: REDIS_CLUSTER_ADVERTISED_BUS_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redis5-cluster.componentDefName" . }}
+          name: redis-advertised
+          optional: true
+          port:
+            name: advertised-bus
+            option: Required
+    ## the redis cluster advertised service name list for each pod of current shard, the value format is "pod1Svc,pod2Svc,..."
+    - name: REDIS_CLUSTER_ADVERTISED_SVC_NAME
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redis5-cluster.componentDefName" . }}
+          name: redis-advertised
+          optional: true
+          host: Required
+    ## the redis cluster advertised service port list for each pod of all shard pods
+    ## the value format is like "shard-98x@redis-shard-98x-redis-advertised-0:32024,redis-shard-98x-redis-advertised-1:31318.shard-cq7@redis-shard-cq7-redis-advertised-0:31828,redis-shard-cq7-redis-advertised-1:32000"
+    - name: REDIS_CLUSTER_ALL_SHARDS_ADVERTISED_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redis5-cluster.componentDefName" . }}
+          name: redis-advertised
+          optional: true
+          multipleClusterObjectOption:
+            strategy: combined
+            combinedOption:
+              flattenFormat:
+                delimiter: "."
+                keyValueDelimiter: "@"
+          port:
+            name: redis-advertised
+            option: Required
+    ## the redis cluster advertised service bus port list for each pod of all shard pods
+    ## the value format is like "shard-98x@redis-shard-98x-redis-advertised-0:30654,redis-shard-98x-redis-advertised-1:30971.shard-cq7@redis-shard-cq7-redis-advertised-0:32555,redis-shard-cq7-redis-advertised-1:32368"
+    - name: REDIS_CLUSTER_ALL_SHARDS_ADVERTISED_BUS_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redis5-cluster.componentDefName" . }}
+          name: redis-advertised
+          optional: true
+          multipleClusterObjectOption:
+            strategy: combined
+            combinedOption:
+              flattenFormat:
+                delimiter: "."
+                keyValueDelimiter: "@"
+          port:
+            name: advertised-bus
+            option: Required
+    ## the redis cluster advertised service name list for each pod of all shard pods.
+    ## the value format is like "shard-98x@redis-shard-98x-redis-advertised-0,redis-shard-98x-redis-advertised-1.shard-cq7@redis-shard-cq7-redis-advertised-0,redis-shard-cq7-redis-advertised-1"
+    - name: REDIS_CLUSTER_ALL_SHARDS_ADVERTISED_SVC_NAME
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redis5-cluster.componentDefName" . }}
+          name: redis-advertised
+          optional: true
+          multipleClusterObjectOption:
+            strategy: combined
+            combinedOption:
+              flattenFormat:
+                delimiter: "."
+                keyValueDelimiter: "@"
+          host: Required
+  lifecycleActions:
+    roleProbe:
+      builtinHandler: redis
+      periodSeconds: 1
+      timeoutSeconds: 1
+    postProvision:
+      customHandler:
+        image: {{ include "redis5.image" . }}
+        exec:
+          command:
+            - /bin/bash
+            - -c
+            - /scripts/redis-cluster-manage.sh --post-provision
+        ## TODO: the preCondition should be changed to RuntimeReady when KubeBlocks support it
+        preCondition: ComponentReady
+        retryPolicy:
+          maxRetries: 10
+    preTerminate:
+      customHandler:
+        image: {{ include "redis5.image" . }}
+        exec:
+          command:
+            - /bin/bash
+            - -c
+            - /scripts/redis-cluster-manage.sh --pre-terminate
+        retryPolicy:
+          maxRetries: 10
+  runtime:
+    containers:
+      - name: redis-cluster
+        image: {{ include "redis5.image" . }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        ports:
+          - name: redis-cluster
+            containerPort: 6379
+          - name: cluster-bus
+            containerPort: 16379
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
+          - name: redis-cluster5-config
+            mountPath: /etc/conf
+          - name: scripts
+            mountPath: /scripts
+          - name: redis-conf
+            mountPath: /etc/redis
+        env:
+          - name: SERVICE_PORT
+            value: "6379"
+          - name: CLUSTER_BUS_PORT
+            value: "16379"
+          - name: REDIS_REPL_USER
+            value: "kbreplicator"
+          - name: REDIS_REPL_PASSWORD
+            value: $(REDIS_DEFAULT_PASSWORD)
+        command: [ "/scripts/redis-cluster-server-start.sh" ]
+        readinessProbe:
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 1
+          successThreshold: 1
+          failureThreshold: 5
+          exec:
+            command:
+              - sh
+              - -c
+              - /scripts/redis-ping.sh 1
+        lifecycle:
+          preStop:
+            exec:
+              command:
+                - /bin/bash
+                - -c
+                - /scripts/redis-cluster-replica-member-leave.sh
+      - name: metrics
+        image: {{ include "metrics.image" . }}
+        imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+        env:
+          - name: ENDPOINT
+            value: {{ printf "localhost:6379" }}
+          - name: REDIS_USER
+            value: $(REDIS_DEFAULT_USER)
+          - name: REDIS_PASSWORD
+            value: $(REDIS_DEFAULT_PASSWORD)
+        command:
+          - "/bin/agamotto"
+          - "--config=/opt/conf/metrics-config-5.yaml"
+        ports:
+          - name: http-metrics
+            containerPort: {{ .Values.metrics.service.port }}
+        volumeMounts:
+          - name: redis5-metrics-config
+            mountPath: /opt/conf

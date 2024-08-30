@@ -11,12 +11,16 @@ set -ex
   {{- if index $e "componentDefRef" }}
     {{- if eq $e.componentDefRef "redis-7" }}
       {{- $redis_component = $e }}
+    {{- else if eq $e.componentDefRef "redis-5" }}
+      {{- $redis_component = $e }}
     {{- else if eq $e.componentDefRef "redis" }}
       {{- $redis_component = $e }}
     {{- end }}
   {{- end }}
   {{- if index $e "componentDef" }}
     {{- if eq $e.componentDef "redis-7" }}
+      {{- $redis_component = $e }}
+    {{- else if eq $e.componentDef "redis-5" }}
       {{- $redis_component = $e }}
     {{- else if eq $e.componentDef "redis" }}
       {{- $redis_component = $e }}

@@ -7,15 +7,21 @@
 ## If specified, the component definition will use it as suffix.
 compDefinitionVersion:
   redis: "7"
+  redis5: "5"
   sentinel: "7"
+  sentinel5: "5"
   redisCluster: "7"
+  redisCluster5: "5"
   twemproxy: "0.5"
 
 ## @param componentServiceVersion define default serviceVersion of each Component
 componentServiceVersion:
   redis: "7.2.4"
+  redis5: "5.0.10"
   sentinel: "7.2.4"
+  sentinel5: "5.0.10"
   redisCluster: "7.2.4"
+  redisCluster5: "5.0.10"
   twemproxy: "0.5.0"
 
 image:
@@ -35,6 +41,19 @@ image:
     registry: ""
     repository: apecloud/ape-dts
     tag: 0.1.17
+
+CommunityEditionImage:
+  # refer: https://redis.io/docs/stack/
+  # Redis Stack Server, which combines open source Redis with RediSearch, RedisJSON, RedisGraph, RedisTimeSeries, and RedisBloom,
+  # is dual-licensed under the Redis Source Available License (RSALv2), as described below, and the Server Side Public License (SSPL)
+  # For information about licensing per version, see https://redis.io/docs/stack/license/
+  registry: docker.io
+  repository: redis
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag:
+    major5:
+      minor50: 5.0.10
 
 redisTwemproxyImage:
   registry: ""
