@@ -109,23 +109,23 @@ spec:
         numSymbols: 0
         letterCase: MixedCases
     - name: kbadmin
-      statement: CREATE USER $(USERNAME) SUPERUSER PASSWORD '$(PASSWD)';
+      statement: CREATE USER ${KB_ACCOUNT_NAME} SUPERUSER PASSWORD '${KB_ACCOUNT_PASSWORD}';
       passwordGenerationPolicy: &defaultPasswdGenerationPolicy
         length: 10
         numDigits: 5
         numSymbols: 0
         letterCase: MixedCases
     - name: kbdataprotection
-      statement: CREATE USER $(USERNAME) SUPERUSER PASSWORD '$(PASSWD)';
+      statement: CREATE USER ${KB_ACCOUNT_NAME} SUPERUSER PASSWORD '${KB_ACCOUNT_PASSWORD}';
       passwordGenerationPolicy: *defaultPasswdGenerationPolicy
     - name: kbprobe
-      statement: CREATE USER $(USERNAME) WITH PASSWORD '$(PASSWD)';  GRANT pg_monitor TO $(USERNAME);
+      statement: CREATE USER ${KB_ACCOUNT_NAME} WITH PASSWORD '${KB_ACCOUNT_PASSWORD}';  GRANT pg_monitor TO ${KB_ACCOUNT_NAME};
       passwordGenerationPolicy: *defaultPasswdGenerationPolicy
     - name: kbmonitoring
-      statement: CREATE USER $(USERNAME) WITH PASSWORD '$(PASSWD)';  GRANT pg_monitor TO $(USERNAME);
+      statement: CREATE USER ${KB_ACCOUNT_NAME} WITH PASSWORD '${KB_ACCOUNT_PASSWORD}';  GRANT pg_monitor TO ${KB_ACCOUNT_NAME};
       passwordGenerationPolicy: *defaultPasswdGenerationPolicy
     - name: kbreplicator
-      statement: CREATE USER $(USERNAME) WITH REPLICATION PASSWORD '$(PASSWD)';
+      statement: CREATE USER ${KB_ACCOUNT_NAME} WITH REPLICATION PASSWORD '${KB_ACCOUNT_PASSWORD}';
       passwordGenerationPolicy: *defaultPasswdGenerationPolicy
   lifecycleActions:
     roleProbe:
@@ -157,22 +157,21 @@ spec:
           args:
             - curl -s http://$(KB_REPLICATION_PRIMARY_POD_FQDN):8008/switchover -XPOST -d '{"leader":"$(KB_REPLICATION_PRIMARY_POD_NAME)"}'
     accountProvision:
-      builtinHandler: postgresql
-    {{/*
       exec:
-        image: {{ include "postgresql.image.major14.minor080" . }}
+        container: postgresql
         command:
-          - psql
-        args:
-          - -h$(KB_ACCOUNT_ENDPOINT)
+          - bash
           - -c
-          - $(KB_ACCOUNT_STATEMENT)
+          - |
+            eval statement=\"${KB_ACCOUNT_STATEMENT}\"
+            psql -h 127.0.0.1 -c "${statement}"
         env:
           - name: PGUSER
             value: $(POSTGRES_USER)
           - name: PGPASSWORD
             value: $(POSTGRES_PASSWORD)
-    */}}
+        targetPodSelector: Role
+        matchingKey: primary 
     preTerminate:
       exec:
         image: {{ include "postgresql.image.major14.minor080" . }}
