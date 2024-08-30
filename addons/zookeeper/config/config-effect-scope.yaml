@@ -7,15 +7,8 @@ immutableParameters:
   - dynamicConfigFile
 
 # If the staticParameters do not match, it is considered that the parameter is of the dynamicParameters type
-staticParameters:
-  - none
+#staticParameters:
+#  - none
 
-#dynamicParameters:
-#  - syncLimit
-#  - 4lw.commands.whitelist
-#  - autopurge.purgeInterval
-#  - autopurge.snapRetainCount
-#  - initLimit
-#  - maxClientCnxns
-#  - maxSessionTimeout
-#  - tickTime
+dynamicParameters:
+  - none
