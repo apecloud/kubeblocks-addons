@@ -119,13 +119,13 @@ loki:
       chunks: chunks
       ruler: ruler
       admin: admin
-    type: s3
+    type: null
     s3:
       s3: null
-      endpoint: gemini-minio.kb-system.svc:9000
+      endpoint: null
       region: null
-      secretAccessKey: supersecret
-      accessKeyId: enterprise-logs
+      secretAccessKey: null
+      accessKeyId: null
       s3ForcePathStyle: true
       insecure: false
     gcs:
@@ -183,7 +183,7 @@ loki:
     configs:
       - from: 2024-04-01
         store: tsdb
-        object_store: s3
+        object_store: null
         schema: v13
         index:
           prefix: loki_index_
