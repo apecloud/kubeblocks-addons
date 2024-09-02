@@ -16,5 +16,5 @@ keywords:
 dependencies:
   - name: kblib
     version: 0.1.1
-    repository: file://../kblib
+    repository: file://../kblib-v2
     alias: extra
