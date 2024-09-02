@@ -108,69 +108,6 @@ Docker image name
 {{- if .Values.enterprise.enabled -}}{{- include "loki.enterpriseImage" . -}}{{- else -}}{{- include "loki.lokiImage" . -}}{{- end -}}
 {{- end -}}
 
-{{/*
-Generated storage config for loki common config
-*/}}
-{{- define "loki.commonStorageConfig" -}}
-{{- if .Values.minio.enabled -}}
-s3:
-  endpoint: {{ include "loki.minio" $ }}
-  bucketnames: {{ $.Values.loki.storage.bucketNames.chunks }}
-  secret_access_key: supersecret
-  access_key_id: enterprise-logs
-  s3forcepathstyle: true
-  insecure: true
-{{- else if eq .Values.loki.storage.type "s3" -}}
-{{- with .Values.loki.storage.s3 }}
-s3:
-  {{- with .s3 }}
-  s3: {{ . }}
-  {{- end }}
-  {{- with .endpoint }}
-  endpoint: {{ . }}
-  {{- end }}
-  {{- with .region }}
-  region: {{ . }}
-  {{- end}}
-  bucketnames: {{ $.Values.loki.storage.bucketNames.chunks }}
-  {{- with .secretAccessKey }}
-  secret_access_key: {{ . }}
-  {{- end }}
-  {{- with .accessKeyId }}
-  access_key_id: {{ . }}
-  {{- end }}
-  s3forcepathstyle: {{ .s3ForcePathStyle }}
-  insecure: {{ .insecure }}
-{{- end -}}
-{{- else if eq .Values.loki.storage.type "gcs" -}}
-{{- with .Values.loki.storage.gcs }}
-gcs:
-  bucket_name: {{ $.Values.loki.storage.bucketNames.chunks }}
-  chunk_buffer_size: {{ .chunkBufferSize }}
-  request_timeout: {{ .requestTimeout }}
-  enable_http2: {{ .enableHttp2}}
-{{- end -}}
-{{- else -}}
-{{- with .Values.loki.storage.local }}
-filesystem:
-  chunks_directory: {{ .chunks_directory }}
-  rules_directory: {{ .rules_directory }}
-{{- end -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Storage config for ruler
-*/}}
-{{- define "loki.rulerStorageConfig" -}}
-{{- if or .Values.minio.enabled (eq .Values.loki.storage.type "s3") -}}
-s3:
-  bucketnames: {{ $.Values.loki.storage.bucketNames.ruler }}
-{{- else if eq .Values.loki.storage.type "gcs" -}}
-gcs:
-  bucket_name: {{ $.Values.loki.storage.bucketNames.ruler }}
-{{- end -}}
-{{- end -}}
 
 {{/*
 Memcached Docker image
@@ -187,59 +124,6 @@ Memcached Exporter Docker image
 {{- $dict := dict "service" .Values.memcachedExporter.image "global" .Values.global.image -}}
 {{- include "loki.image" $dict -}}
 {{- end }}
-
-{{/*
-Return the appropriate apiVersion for ingress.
-*/}}
-{{- define "loki.ingress.apiVersion" -}}
-  {{- if and (.Capabilities.APIVersions.Has "networking.k8s.io/v1") (semverCompare ">= 1.19-0" .Capabilities.KubeVersion.Version) -}}
-      {{- print "networking.k8s.io/v1" -}}
-  {{- else if .Capabilities.APIVersions.Has "networking.k8s.io/v1beta1" -}}
-    {{- print "networking.k8s.io/v1beta1" -}}
-  {{- else -}}
-    {{- print "extensions/v1beta1" -}}
-  {{- end -}}
-{{- end -}}
-
-{{/*
-Return if ingress is stable.
-*/}}
-{{- define "loki.ingress.isStable" -}}
-  {{- eq (include "loki.ingress.apiVersion" .) "networking.k8s.io/v1" -}}
-{{- end -}}
-
-{{/*
-Return if ingress supports ingressClassName.
-*/}}
-{{- define "loki.ingress.supportsIngressClassName" -}}
-  {{- or (eq (include "loki.ingress.isStable" .) "true") (and (eq (include "loki.ingress.apiVersion" .) "networking.k8s.io/v1beta1") (semverCompare ">= 1.18-0" .Capabilities.KubeVersion.Version)) -}}
-{{- end -}}
-
-{{/*
-Return if ingress supports pathType.
-*/}}
-{{- define "loki.ingress.supportsPathType" -}}
-  {{- or (eq (include "loki.ingress.isStable" .) "true") (and (eq (include "loki.ingress.apiVersion" .) "networking.k8s.io/v1beta1") (semverCompare ">= 1.18-0" .Capabilities.KubeVersion.Version)) -}}
-{{- end -}}
-
-{{/*
-Create the service endpoint including port for MinIO.
-*/}}
-{{- define "loki.minio" -}}
-{{- if .Values.minio.enabled -}}
-{{- printf "%s-%s.%s.svc:%s" .Release.Name "minio" .Release.Namespace (.Values.minio.service.port | toString) -}}
-{{- end -}}
-{{- end -}}
-
-{{/* Return the appropriate apiVersion for PodDisruptionBudget. */}}
-{{- define "loki.podDisruptionBudget.apiVersion" -}}
-  {{- if and (.Capabilities.APIVersions.Has "policy/v1") (semverCompare ">= 1.21-0" .Capabilities.KubeVersion.Version) -}}
-    {{- print "policy/v1" -}}
-  {{- else -}}
-    {{- print "policy/v1beta1" -}}
-  {{- end -}}
-{{- end -}}
-
 {{/* Snippet for the nginx file used by gateway */}}
 {{- define "loki.nginxFile" }}
 worker_processes  5;  ## Default: 1
@@ -314,7 +198,6 @@ http {
       return 200 'OK';
       auth_basic off;
     }
-
     ########################################################
     # Configure backend targets
 
@@ -639,29 +522,3 @@ query-scheduler fullname
 {{- define "loki.querySchedulerFullname" -}}
 {{ include "loki.fullname" . }}-query-scheduler
 {{- end }}
-
-{{/*
-Return if deployment mode is simple scalable
-*/}}
-{{- define "loki.deployment.isScalable" -}}
-  {{- and (eq (include "loki.isUsingObjectStorage" . ) "true") (or (eq .Values.deploymentMode "SingleBinary<->SimpleScalable") (eq .Values.deploymentMode "SimpleScalable") (eq .Values.deploymentMode "SimpleScalable<->Distributed")) }}
-{{- end -}}
-
-{{/*
-Return if deployment mode is single binary
-*/}}
-{{- define "loki.deployment.isSingleBinary" -}}
-  {{- or (eq .Values.deploymentMode "SingleBinary") (eq .Values.deploymentMode "SingleBinary<->SimpleScalable") }}
-{{- end -}}
-
-{{/*
-Return if deployment mode is distributed
-*/}}
-{{- define "loki.deployment.isDistributed" -}}
-  {{- and (eq (include "loki.isUsingObjectStorage" . ) "true") (or (eq .Values.deploymentMode "Distributed") (eq .Values.deploymentMode "SimpleScalable<->Distributed")) }}
-{{- end -}}
-
-{{/* Determine if deployment is using object storage */}}
-{{- define "loki.isUsingObjectStorage" -}}
-{{- or (eq .Values.loki.storage.type "gcs") (eq .Values.loki.storage.type "s3") (eq .Values.loki.storage.type "azure") (eq .Values.loki.storage.type "swift") (eq .Values.loki.storage.type "alibabacloud") -}}
-{{- end -}}
