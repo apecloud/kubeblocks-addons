@@ -61,6 +61,8 @@ spec:
         - broker
         - init-pulsar-client-config
       volumeName: broker-env
+      reRenderResourceTypes:
+        - vscale
     - name: broker-config
       templateRef: {{ include "pulsar.name" . }}{{include "pulsar.major.version" .}}-broker-config-tpl
       namespace: {{ .Release.Namespace }}
