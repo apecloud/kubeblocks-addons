@@ -40,6 +40,10 @@ spec:
     - name: {{ $name }}
       filePathPattern: {{ $pattern }}
     {{- end }}
+  exporter:
+    containerName: metrics
+    scrapePath: /metrics
+    scrapePort: http-metrics
   configs:
     - name: redis-cluster-config
       templateRef: redis-cluster7-config-template
