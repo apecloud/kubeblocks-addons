@@ -8,6 +8,10 @@ version: 1.0.0-alpha.0
 
 appVersion: "personal-23.1.1.100"
 
+maintainers:
+  - name: shanshanying
+    url: https://github.com/apecloud/kubeblocks/
+
 annotations:
   addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
   addon.kubeblocks.io/model: "RDBMS"

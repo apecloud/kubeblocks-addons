@@ -8,6 +8,10 @@ version: 1.0.0-alpha.0
 
 appVersion: "3.0.0"
 
+maintainers:
+  - name: Chen-speculation
+    url: https://github.com/apecloud/kubeblocks/
+
 annotations:
   addon.kubeblocks.io/kubeblocks-version: ">=0.8.0"
   addon.kubeblocks.io/model: "tsdb"

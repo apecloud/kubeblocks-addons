@@ -16,8 +16,8 @@ keywords:
   - nosql
 
 maintainers:
-  - name: ApeCloud
-    url: https://github.com/apecloud/kubeblocks/deploy
+  - name: Y-Rookie
+    url: https://github.com/apecloud/kubeblocks/
 
 annotations:
     addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
