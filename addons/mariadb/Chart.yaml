@@ -14,8 +14,8 @@ home: https://kubeblocks.io/
 icon: https://github.com/apecloud/kubeblocks/raw/main/img/logo.png
 
 maintainers:
-- name: yinmin
-  url: https://github.com/apecloud/kubeblocks/
+  - name: yinmin
+    url: https://github.com/apecloud/kubeblocks/
 
 
 sources:

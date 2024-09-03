@@ -15,8 +15,8 @@ icon: https://github.com/apecloud/kubeblocks/raw/main/img/logo.png
 
 
 maintainers:
-- name: ApeCloud
-  url: https://github.com/apecloud/kubeblocks/
+  - name: ldming
+    url: https://github.com/apecloud/kubeblocks/
 
 
 sources:

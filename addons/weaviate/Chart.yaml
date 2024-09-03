@@ -15,7 +15,7 @@ icon: https://weaviate.tech/images/logo_with_text.svg
 
 
 maintainers:
-  - name: ApeCloud
+  - name: iziang
     url: https://github.com/apecloud/kubeblocks/
 
 

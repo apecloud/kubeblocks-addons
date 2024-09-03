@@ -14,5 +14,5 @@ sources:
   - https://flink.apache.org/
 
 maintainers:
-- name: ApeCloud
-  url: https://github.com/apecloud/kubeblocks/
+  - name: shanshanying
+    url: https://github.com/apecloud/kubeblocks/
