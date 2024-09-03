@@ -24,6 +24,8 @@ version: 1.0.0-alpha.0
 appVersion: "3.3.0"
 
 maintainers:
+  - name: yandongxiao
+    url: https://github.com/yandongxiao
   - name: iziang
     url: https://github.com/apecloud/kubeblocks/
 
