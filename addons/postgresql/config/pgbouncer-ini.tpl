@@ -19,4 +19,3 @@ ignore_startup_parameters = extra_float_digits
 max_client_conn = {{ $max_client_conn }}
 admin_users = postgres
 ;;; [database]
-;;; config default database in pgbouncer_setup.sh

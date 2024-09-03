@@ -5,4 +5,11 @@ metadata:
   labels:
     {{- include "postgresql.labels" . | nindent 4 }}
 data:
-  {{- include "postgresql.extend.scripts" . | nindent 2 }}
+  common.sh: |-
+    #!/bin/bash
+    {{- include "kblib.compvars.get_target_pod_fqdn_from_pod_fqdn_vars" $ | nindent 4 }}
+    {{- include "kblib.strings.is_empty" $ | nindent 4 }}
+    {{- include "kblib.strings.split" $ | nindent 4 }}
+  {{- with include "postgresql.extend.scripts" . }}
+  {{- . | nindent 2 }}
+  {{- end }}
