@@ -24,6 +24,8 @@ version: 1.0.0-alpha.0
 appVersion: "5.0.5"
 
 maintainers:
+  - name: yabinji
+    url: https://github.com/yabinji
   - name: shanshanying
     url: https://github.com/apecloud/kubeblocks/
 

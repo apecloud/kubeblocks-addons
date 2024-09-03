@@ -9,6 +9,8 @@ version: 1.0.0-alpha.0
 appVersion: "personal-23.1.1.100"
 
 maintainers:
+  - name: JesseAtSZ
+    url: https://github.com/JesseAtSZ
   - name: shanshanying
     url: https://github.com/apecloud/kubeblocks/
 

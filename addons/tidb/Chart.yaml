@@ -9,6 +9,8 @@ version: 1.0.0-alpha.0
 appVersion: "v7.1.5"
 
 maintainers:
+  - name: csuzhangxc
+    url: https://github.com/csuzhangxc
   - name: cjc7373
     url: https://github.com/apecloud/kubeblocks/
 
