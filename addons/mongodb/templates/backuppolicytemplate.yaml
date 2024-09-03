@@ -78,6 +78,22 @@ spec:
           volumeMounts:
             - name: data
               mountPath: {{ .Values.dataMountPath }}
+        envMapping:
+          - key: IMAGE_TAG
+            valueFrom:
+              serviceVersion:
+                - names: ["7.0.12"]
+                  mappingValue: "7.0.12"
+                - names: ["6.0.16"]
+                  mappingValue: "6.0.16"
+                - names: ["5.0.28"]
+                  mappingValue: "5.0.28"
+                - names: ["4.4.29"]
+                  mappingValue: "4.4.29"
+                - names: ["4.2.24"]
+                  mappingValue: "4.2.24"
+                - names: ["4.0.28"]
+                  mappingValue: "4.0.28"
       - name: volume-snapshot
         snapshotVolumes: true
         actionSetName: mongodb-volumesnapshot
