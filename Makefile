@@ -113,3 +113,11 @@ endif
 .PHONY: scripts-test
 scripts-test: install-shellspec ##    Run shellspec unit test cases.
 	@shellspec --load-path $(SHELLSPEC_LOAD_PATH) --default-path $(SHELLSPEC_DEFAULT_PATH) --shell $(SHELLSPEC_DEFAULT_SHELL)
+
+
+SHELLSPEC_INCLUDE_PATH := $(shell ./utils/get_shellspec_include_path.sh)
+
+# run shellspec tests with coverage report
+.PHONY: scripts-test-kcov
+scripts-test-kcov: install-shellspec ##    Run shellspec unit test cases.
+	@shellspec --load-path $(SHELLSPEC_LOAD_PATH) --default-path $(SHELLSPEC_DEFAULT_PATH) --shell $(SHELLSPEC_DEFAULT_SHELL) --kcov --kcov-options "--include-path=$(SHELLSPEC_INCLUDE_PATH) --path-strip-level=1"

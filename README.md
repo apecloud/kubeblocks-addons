@@ -1,6 +1,8 @@
 # kubeblocks-addons
 KubeBlocks add-ons.
 
+[![codecov](https://codecov.io/gh/apecloud/kubeblocks-addons/graph/badge.svg?token=NGTPFMY8NG)](https://codecov.io/gh/apecloud/kubeblocks-addons)
+
 ## Add-on Tutorial
 > NOTE: This tutorial is applicable for KubeBlocks version 0.9.0.
 
