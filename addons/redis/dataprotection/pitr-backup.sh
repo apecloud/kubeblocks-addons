@@ -166,8 +166,14 @@ function save_backup_status() {
 }
 
 function check_conf() {
-  disable_gc=$(${connect_url} CONFIG GET aof-disable-auto-gc 2>/dev/null | awk 'NR==2')
+  aof_timestamp_enabled=$(${connect_url} CONFIG GET aof-timestamp-enabled 2>/dev/null | awk 'NR==2')
+  if [ "$aof_timestamp_enabled" == "no" ]; then
+    DP_error_log "aof-timestamp-enabled is not set to yes, set it to yes by 'kbcli cluster edit-config' or 'kbcli cluster configure'"
+    ${connect_url} CONFIG SET aof-disable-auto-gc no
+    exit 1
+  fi
 
+  disable_gc=$(${connect_url} CONFIG GET aof-disable-auto-gc 2>/dev/null | awk 'NR==2')
   if [ "$disable_gc" == "no" ]; then
     ${connect_url} CONFIG SET aof-disable-auto-gc yes
     DP_log "aof-disable-auto-gc set to yes"
