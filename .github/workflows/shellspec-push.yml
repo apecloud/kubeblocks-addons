@@ -53,16 +53,16 @@ jobs:
           echo shell_file_path=$SHELL_FILE_PATH >> $GITHUB_OUTPUT
 
       - name: Install kcov
-        if: ${{ steps.get_file_path.outputs.shell_file_path }}
+        if: ${{ steps.get_file_path.outputs.shell_file_path || github.ref_name == 'main' }}
         run: sudo apt-get install -y bash kcov
 
       - name: shellspec test
-        if: ${{ steps.get_file_path.outputs.shell_file_path }}
+        if: ${{ steps.get_file_path.outputs.shell_file_path || github.ref_name == 'main' }}
         run: |
           make scripts-test-kcov
 
       - name: Upload coverage
-        if: ${{ steps.get_file_path.outputs.shell_file_path }}
+        if: ${{ steps.get_file_path.outputs.shell_file_path || github.ref_name == 'main' }}
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         run: |
