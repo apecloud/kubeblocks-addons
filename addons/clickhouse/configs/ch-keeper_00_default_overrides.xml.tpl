@@ -13,11 +13,10 @@
           <raft_logs_level>warning</raft_logs_level>
       </coordination_settings>
       <raft_configuration>
-{{- $replicas := $.component.replicas | int }}
-{{- range $i, $e := until $replicas }}
+{{- range $id, $host := splitList "," .CH_KEEPER_POD_FQDN_LIST }}
         <server>
-          <id>{{ $i | int | add1 }}</id>
-          <hostname>{{ $clusterName }}-{{ $.component.name }}-{{ $i }}.{{ $clusterName }}-{{ $.component.name }}-headless.{{ $namespace }}.svc.{{- $.clusterDomain }}</hostname>
+          <id>{{ $id | add1 }}</id>
+          <hostname>{{ $host }}</hostname>
           <port from_env="CLICKHOUSE_KEEPER_RAFT_PORT"></port>
         </server>
 {{- end }}

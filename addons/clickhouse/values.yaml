@@ -9,6 +9,8 @@ fullnameOverride: ""
 ##
 commonLabels: {}
 
+logConfigs: {}
+
 commonAnnotations: {}
 
 image:

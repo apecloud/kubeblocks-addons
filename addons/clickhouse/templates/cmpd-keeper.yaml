@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: clickhouse-keeper-{{ .Chart.Version }}
+  name: clickhouse-keeper-22
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
     {{- if .Values.commonLabels }}
@@ -13,8 +13,46 @@ metadata:
 spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
-  serviceKind: {{ .Chart.Name }}
-  serviceVersion: {{ .Chart.AppVersion }}
+  serviceKind: clickhouse-keeper
+  serviceVersion: 22.9.4
+  services:
+    - name: default
+      spec:
+        ports:
+          - name: tcp
+            targetPort: tcp
+            port: 2181
+          - name: http-metrics
+            targetPort: http-metrics
+            port: 8001
+  logConfigs:
+    {{- range $name, $pattern := .Values.logConfigs }}
+    - name: {{ $name }}
+      filePathPattern: {{ $pattern }}
+    {{- end }}
+  exporter:
+    scrapePath: /metrics
+    scrapePort: "8001"
+  configs:
+    - name: clickhouse-keeper-tpl
+      templateRef: clickhouse-keeper-tpl
+      volumeName: config
+      namespace: {{ .Release.Namespace }}
+  systemAccounts:
+    - name: admin
+      initAccount: true
+  vars:
+    - name: CLICKHOUSE_ADMIN_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          optional: false
+          password: Required
+    - name: CH_KEEPER_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
   runtime:
     securityContext:
       fsGroup: 1001
@@ -22,8 +60,8 @@ spec:
         type: RuntimeDefault
     containers:
       - name: clickhouse
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:{{ default .Chart.AppVersion .Values.image.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:{{ default .Chart.AppVersion .Values.image.tag }}
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -46,36 +84,27 @@ spec:
           - name: tcp
             containerPort: 2181
           - name: raft
-            containerPort: 9444
+            containerPort: 9181
           - name: http-metrics
             containerPort: 8001
+        # livenessProbe:
+        #   failureThreshold: 6
+        #   initialDelaySeconds: 30
+        #   periodSeconds: 10
+        #   successThreshold: 1
+        #   timeoutSeconds: 5
+        #   exec:
+        #     command: ['/bin/bash', '-c', 'echo "ruok" | timeout 2 nc -w 2 localhost 2181 | grep imok']
+        # readinessProbe:
+        #   failureThreshold: 6
+        #   initialDelaySeconds: 5
+        #   periodSeconds: 10
+        #   successThreshold: 1
+        #   timeoutSeconds: 5
+        #   exec:
+        #     command: ['/bin/bash', '-c', 'echo "ruok" | timeout 2 nc -w 2 localhost 2181 | grep imok']
         volumeMounts:
           - name: data
             mountPath: /bitnami/clickhouse
           - name: config
             mountPath: /bitnami/clickhouse/etc/conf.d/default
-  vars:
-    - name: CLICKHOUSE_ADMIN_PASSWORD
-      valueFrom:
-        credentialVarRef:
-          compDef: clickhouse
-          name: admin
-          optional: false
-          password: Required
-  volumes:
-    - name: data
-  services:
-    - name: default
-      spec:
-        ports:
-          - name: tcp
-            targetPort: tcp
-            port: 2181
-          - name: http-metrics
-            targetPort: http-metrics
-            port: 8001
-  configs:
-    - name: clickhouse-keeper-tpl
-      templateRef: clickhouse-keeper-tpl
-      volumeName: config
-      namespace: {{ .Release.Namespace }}
