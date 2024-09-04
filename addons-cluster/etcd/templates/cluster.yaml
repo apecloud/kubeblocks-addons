@@ -18,7 +18,7 @@ spec:
       {{- if .Values.peerService.enabled }}
       services:
         - name: peer
-          serviceType: LoadBalancer
+          serviceType: {{ .Values.peerService.type }}
           podService: true
           {{- if and (eq .Values.peerService.type "LoadBalancer") (not (empty .Values.peerService.annotations)) }}
           annotations:  {{ .Values.peerService.annotations | toYaml | nindent 12 }}

@@ -32,7 +32,10 @@ replicas: 3
 ## Not required to setup peerService if you're using a single k8s cluster
 ## Recommended to use LoadBalancer for multi-cluster etcd setups
 peerService:
+  ## @param enabled, Enable peerService(no need to enable for single cluster)
   enabled: false
+  ## @param type, service type for etcd peers, default peer service for single cluster use headless ClusterIP, valid option is LoadBalancer, will support NodePort in the future.
+  type: LoadBalancer
   ## @param annotations is optional, if peerService type is LoadBalancer, you may need to specify annotations for Cloud Provider
   annotations: { }
 
