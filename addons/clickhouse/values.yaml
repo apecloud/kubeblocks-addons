@@ -38,13 +38,4 @@ zookeeper:
     periodSeconds: 1
     successThreshold: 1
 
-  ## @param configuration Configure ZooKeeper with a custom zoo.cfg file
-  ## e.g:
-  ## configuration: |-
-  ##   deploy-working-dir=/bitnami/geode/data
-  ##   log-level=info
-  ##   ...
-  ##
-  configuration: ""
-
 clusterDomain: ".cluster.local"

@@ -11,6 +11,21 @@ metadata:
   annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
   {{- end }}
 spec:
+  topologies:
+    - name: standalone
+      components:
+        - name: clickhouse
+          compDef: clickhouse
+    - name: clickhouse-cluster
+      components:
+        - name: clickhouse
+          compDef: clickhouse-22
+        - name: ch-keeper
+          compDef: clickhouse-keeper-22
+      orders:
+        provision:
+          - ch-keeper
+          - clickhouse
   type: clickhouse
   connectionCredential:
     username: "admin"
@@ -240,151 +255,3 @@ spec:
                 mountPath: /bitnami/clickhouse
               - name: config
                 mountPath: /bitnami/clickhouse/etc/conf.d/default
-
-    - name: zookeeper
-      workloadType: Stateful #Consensus
-      characterType: zookeeper
-      # probes:
-      #   roleProbe:
-      #     cmd: "stat | grep 'Leader'"
-      #     failureThreshold: {{ .Values.zookeeper.roleProbe.failureThreshold }}
-      #     periodSeconds: {{ .Values.zookeeper.roleProbe.periodSeconds }}
-      #     successThreshold: {{ .Values.zookeeper.roleProbe.successThreshold }}
-      monitor:
-        builtIn: false
-        exporterConfig:
-          scrapePath: /metrics
-          scrapePort: 9141
-      logConfigs:
-        {{- range $name,$pattern := .Values.zookeeper.logConfigs }}
-        - name: {{ $name }}
-          filePathPattern: {{ $pattern }}
-        {{- end }}
-      configSpecs:
-      {{- if .Values.zookeeper.configuration }}
-        - name: zookeeper-tpl
-          templateRef: zookeeper-tpl
-          namespace: {{ .Release.Namespace }}
-          volumeName: config
-      {{- end }}
-      scriptSpecs:
-        - name: zookeeper-scripts-tpl
-          templateRef: zookeeper-scripts-tpl
-          namespace: {{ .Release.Namespace }}
-          volumeName: scripts
-          defaultMode: 0755
-      service:
-        ports:
-          - name: tcp-client
-            port: 2181
-            targetPort: client
-          - name: metrics
-            port: 9141
-            targetPort: metrics
-      podSpec:
-        securityContext:
-          fsGroup: 1001
-        initContainers:
-        containers:
-          - name: zookeeper
-            securityContext:
-              allowPrivilegeEscalation: false
-              runAsNonRoot: true
-              runAsUser: 1001
-            command:
-              - /scripts/setup.sh
-            resources:
-              limits: {}
-              requests:
-                cpu: 250m
-                memory: 256Mi
-            env:
-              - name: POD_NAME
-                valueFrom:
-                  fieldRef:
-                    apiVersion: v1
-                    fieldPath: metadata.name
-              - name: BITNAMI_DEBUG
-                value: "false"
-              - name: ZOO_DATA_LOG_DIR
-                value: ""
-              - name: ZOO_PORT_NUMBER
-                value: "2181"
-              - name: ZOO_TICK_TIME
-                value: "2000"
-              - name: ZOO_INIT_LIMIT
-                value: "10"
-              - name: ZOO_SYNC_LIMIT
-                value: "5"
-              - name: ZOO_PRE_ALLOC_SIZE
-                value: "65536"
-              - name: ZOO_SNAPCOUNT
-                value: "100000"
-              - name: ZOO_MAX_CLIENT_CNXNS
-                value: "60"
-              - name: ZOO_4LW_COMMANDS_WHITELIST
-                value: "srvr, mntr, ruok"
-              - name: ZOO_LISTEN_ALLIPS_ENABLED
-                value: "no"
-              - name: ZOO_AUTOPURGE_INTERVAL
-                value: "0"
-              - name: ZOO_AUTOPURGE_RETAIN_COUNT
-                value: "3"
-              - name: ZOO_MAX_SESSION_TIMEOUT
-                value: "40000"
-              # HACK: hack for single ZK node only
-              - name: ZOO_SERVERS
-                value: "$(KB_POD_NAME).$(KB_CLUSTER_COMP_NAME).$(KB_NAMESPACE).svc.cluster.local:2888:3888::1"
-                # value: myck-zookeeper-0.myck-zookeeper-headless.$(POD_NAMESPACE).svc:2888:3888::1 myck-zookeeper-1.myck-zookeeper-headless.$(POD_NAMESPACE).svc:2888:3888::2 myck-zookeeper-2.myck-zookeeper-headless.$(POD_NAMESPACE).svc:2888:3888::3 
-              - name: ZOO_ENABLE_AUTH
-                value: "no"
-              - name: ZOO_ENABLE_QUORUM_AUTH
-                value: "no"
-              - name: ZOO_HEAP_SIZE
-                value: "1024"
-              - name: ZOO_LOG_LEVEL
-                value: "ERROR"
-              - name: ALLOW_ANONYMOUS_LOGIN
-                value: "yes"
-              - name: ZOO_ENABLE_PROMETHEUS_METRICS
-                value: "yes"
-              - name: ZOO_PROMETHEUS_METRICS_PORT_NUMBER
-                value: "9141"
-              - name: POD_NAME
-                value: "$(KB_POD_NAME)"
-              - name: POD_NAMESPACE
-                value: "$(KB_NAMESPACE)"
-              - name: SERVICE_PORT
-                value: "$(ZOO_PROMETHEUS_METRICS_PORT_NUMBER)"
-              # TODO: using componentDefRef to inject zookeeper or keeper env
-            ports:
-              - name: client
-                containerPort: 2181
-              - name: follower
-                containerPort: 2888
-              - name: election
-                containerPort: 3888
-              - name: metrics
-                containerPort: 9141
-            livenessProbe:
-              failureThreshold: 6
-              initialDelaySeconds: 30
-              periodSeconds: 10
-              successThreshold: 1
-              timeoutSeconds: 5
-              exec:
-                command: ['/bin/bash', '-c', 'echo "ruok" | timeout 2 nc -w 2 localhost 2181 | grep imok']
-            readinessProbe:
-              failureThreshold: 6
-              initialDelaySeconds: 5
-              periodSeconds: 10
-              successThreshold: 1
-              timeoutSeconds: 5
-              exec:
-                command: ['/bin/bash', '-c', 'echo "ruok" | timeout 2 nc -w 2 localhost 2181 | grep imok']
-            volumeMounts:
-              - name: scripts
-                mountPath: /scripts/setup.sh
-                subPath: setup.sh
-              - name: data
-                mountPath: /bitnami/zookeeper
