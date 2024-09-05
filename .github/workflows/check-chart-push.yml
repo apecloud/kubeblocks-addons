@@ -6,10 +6,9 @@ on:
       - "addons/**"
       - "addons-cluster/**"
     branches:
-      - '*'
-      - '*/*'
+      - '**'
     tags-ignore:
-      - '*'
+      - '**'
 
 jobs:
   check-addons-helm:

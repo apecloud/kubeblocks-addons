@@ -1,0 +1,26 @@
+name: ShellSpec Test PR Review
+
+on:
+  pull_request_review:
+    paths:
+      - "addons/*/scripts-ut-spec/**"
+    types: [submitted]
+
+
+jobs:
+  shellspec-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.11.0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          all_but_latest: true
+          access_token: ${{ env.GITHUB_TOKEN }}
+
+      - uses: actions/checkout@v4
+
+      - name: shellspec test
+        run: |
+          make scripts-test
