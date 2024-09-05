@@ -60,3 +60,139 @@ Create the name of the service account to use
 {{- define "clickhouse-cluster.serviceAccountName" -}}
 {{- default (printf "kb-%s" (include "clustername" .)) .Values.serviceAccount.name }}
 {{- end }}
+
+{{/*
+Create the name of the service account to use
+*/}}
+{{- define "clickhouse-ch-component" -}}
+- name: clickhouse
+  replicas: {{ $.Values.clickhouse.replicaCount | default 2 }}
+  serviceAccountName: {{ include "clickhouse-cluster.serviceAccountName" $ }}
+  {{- with $.Values.clickhouse.tolerations }}
+  tolerations: {{ .| toYaml | nindent 8 }}
+  {{- end }}
+  {{- with $.Values.clickhouse.resources }}
+  resources:
+    limits:
+      cpu: {{ $.Values.clickhouse.limits.cpu | quote }}
+      memory: {{ $.Values.clickhouse.limits.memory | quote }}
+    requests:
+      cpu: {{ $.Values.clickhouse.requests.cpu | quote }}
+      memory: {{ $.Values.clickhouse.requests.memory | quote }}
+  {{- end }}
+  {{- if $.Values.clickhouse.persistence.enabled }}
+  volumeClaimTemplates:
+    - name: data
+      spec:
+        storageClassName: {{ $.Values.clickhouse.persistence.data.storageClassName }}
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ $.Values.clickhouse.persistence.data.size }}
+  {{- end }}
+{{- end }}
+
+{{/*
+Create the name of the service account to use
+*/}}
+{{- define "clickhouse-keeper-component" -}}
+- name: ch-keeper
+  componentDef: clickhouse-keeper-24
+  replicas: {{ .Values.keeper.replicaCount }}
+  {{- with .Values.clickhouse.tolerations }}
+  tolerations: {{ .| toYaml | nindent 8 }}
+  {{- end }}
+  {{- with $.Values.keeper.resources }}
+  resources:
+    limits:
+      cpu: {{ .limits.cpu | quote }}
+      memory: {{ .limits.memory | quote }}
+    requests:
+      cpu: {{ .requests.cpu | quote }}
+      memory: {{ .requests.memory | quote }}
+  {{- end }}
+  {{- if $.Values.keeper.persistence.enabled }}
+  volumeClaimTemplates:
+    - name: data
+      spec:
+        storageClassName: {{ $.Values.keeper.persistence.data.storageClassName }}
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ $.Values.keeper.persistence.data.size }}
+  {{- end }}
+{{- end }}
+
+{{/*
+Create the name of the service account to use
+*/}}
+{{- define "clickhouse-sharding-component" -}}
+- name: shard
+  shards: {{ .Values.shardCount }}
+  template:
+    name: clickhouse
+    componentDef: clickhouse-24
+    replicas: {{ $.Values.clickhouse.replicaCount | default 2 }}
+    serviceAccountName: {{ include "clickhouse-cluster.serviceAccountName" $ }}
+    {{- with $.Values.clickhouse.tolerations }}
+    tolerations: {{ .| toYaml | nindent 8 }}
+    {{- end }}
+    {{- with $.Values.clickhouse.resources }}
+    resources:
+      limits:
+        cpu: {{ $.Values.clickhouse.limits.cpu | quote }}
+        memory: {{ $.Values.clickhouse.limits.memory | quote }}
+      requests:
+        cpu: {{ $.Values.clickhouse.requests.cpu | quote }}
+        memory: {{ $.Values.clickhouse.requests.memory | quote }}
+    {{- end }}
+    {{- if $.Values.clickhouse.persistence.enabled }}
+    volumeClaimTemplates:
+      - name: data
+        spec:
+          storageClassName: {{ $.Values.clickhouse.persistence.data.storageClassName }}
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: {{ $.Values.clickhouse.persistence.data.size }}
+    {{- end }}
+{{- end }}
+
+{{/*
+Create the name of the service account to use
+*/}}
+{{- define "clickhouse-nosharding-component" -}}
+{{- range $i := until (.Values.shardCount | int) }}
+- name: shard-{{ $i }}
+  componentDef: clickhouse-24
+  replicas: {{ $.Values.clickhouse.replicaCount | default 2 }}
+  disableExporter: false
+  serviceAccountName: {{ include "clickhouse-cluster.serviceAccountName" $ }}
+  {{- with $.Values.clickhouse.tolerations }}
+  tolerations: {{ .| toYaml | nindent 8 }}
+  {{- end }}
+  {{- with $.Values.clickhouse.resources }}
+  resources:
+    limits:
+      cpu: {{ $.Values.clickhouse.limits.cpu | quote }}
+      memory: {{ $.Values.clickhouse.limits.memory | quote }}
+    requests:
+      cpu: {{ $.Values.clickhouse.requests.cpu | quote }}
+      memory: {{ $.Values.clickhouse.requests.memory | quote }}
+  {{- end }}
+  {{- if $.Values.clickhouse.persistence.enabled }}
+  volumeClaimTemplates:
+    - name: data
+      spec:
+        storageClassName: {{ $.Values.clickhouse.persistence.data.storageClassName }}
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: {{ $.Values.clickhouse.persistence.data.size }}
+  {{- end }}
+{{- end }}
+{{- end }}

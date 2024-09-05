@@ -11,7 +11,7 @@ appVersion: 22.9.4
 dependencies:
   - name: kblib
     version: 0.1.0
-    repository: file://../kblib
+    repository: file://../kblib-v2
     alias: extra
 
 
