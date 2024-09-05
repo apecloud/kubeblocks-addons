@@ -12,10 +12,10 @@ switchoverWithCandidate() {
     exit 0
   fi
   
-  candidateID=$(execEtcdctlNoCheckTLS ${candidateEndpoint} endpoint status | awk -F', ' '{print $2}')
-  execEtcdctlNoCheckTLS ${leaderEndpoint} move-leader $candidateID
+  candidateID=$(execEtcdctl ${candidateEndpoint} endpoint status | awk -F', ' '{print $2}')
+  execEtcdctl ${leaderEndpoint} move-leader $candidateID
   
-  status=$(execEtcdctlNoCheckTLS ${candidateEndpoint} endpoint status)
+  status=$(execEtcdctl ${candidateEndpoint} endpoint status)
   isLeader=$(echo ${status} | awk -F ', ' '{print $5}')
   
   if [ "$isLeader" = "true" ]; then
@@ -38,8 +38,8 @@ switchoverWithoutCandidate() {
     exit 0
   fi
   
-  leaderID=$(execEtcdctlNoCheckTLS ${leaderEndpoint} endpoint status | awk -F', ' '{print $2}')
-  peerIDs=$(execEtcdctlNoCheckTLS ${leaderEndpoint} member list | awk -F', ' '{print $1}')
+  leaderID=$(execEtcdctl ${leaderEndpoint} endpoint status | awk -F', ' '{print $2}')
+  peerIDs=$(execEtcdctl ${leaderEndpoint} member list | awk -F', ' '{print $1}')
   randomCandidateID=$(echo "$peerIDs" | grep -v "$leaderID" | awk 'NR==1')
   
   if [ -z "$randomCandidateID" ]; then
@@ -47,9 +47,9 @@ switchoverWithoutCandidate() {
     exit 1
   fi
   
-  execEtcdctlNoCheckTLS $leaderEndpoint move-leader $randomCandidateID
+  execEtcdctl $leaderEndpoint move-leader $randomCandidateID
   
-  status=$(execEtcdctlNoCheckTLS $leaderEndpoint endpoint status)
+  status=$(execEtcdctl $leaderEndpoint endpoint status)
   isLeader=$(echo $status | awk -F ', ' '{print $5}')
   
   if [ "$isLeader" = "false" ]; then

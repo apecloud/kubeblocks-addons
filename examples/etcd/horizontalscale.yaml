@@ -13,4 +13,7 @@ spec:
     # - etcd
   - componentName: etcd
     # Specifies the number of total replicas.
-    replicas: 3
+    scaleIn:
+      instances:
+        - name: etcd-0
+          replicaChanges: 1

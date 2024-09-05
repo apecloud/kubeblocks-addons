@@ -34,6 +34,10 @@ spec:
         name: KubeBlocks
       {{- end }}
       disableExporter: {{ .Values.disableExporter }}
+      instances:
+        - name: etcd-0
+        - name: etcd-1
+        - name: etcd-2
       replicas: {{ .Values.replicas | default "3" }}
       {{- with .Values.resources }}
       resources:

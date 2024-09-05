@@ -113,6 +113,7 @@ spec:
     roleProbe:
       exec:
         image: {{ .Values.image.registry | default "gcr.io" }}/{{ .Values.image.repository | default "etcd-development/etcd"}}:{{ .Values.image.tag.major3.minor5.patch6 }}
+        container: etcd
         command:
           - /bin/sh
           - -c
@@ -122,6 +123,7 @@ spec:
     memberJoin:
       exec:
         image: {{ .Values.image.registry | default "gcr.io" }}/{{ .Values.image.repository | default "etcd-development/etcd"}}:{{ .Values.image.tag.major3.minor5.patch6 }}
+        container: etcd
         command:
           - /bin/sh
           - -c
@@ -141,6 +143,7 @@ spec:
     switchover:
       exec:
         image: {{ .Values.image.registry | default "gcr.io" }}/{{ .Values.image.repository | default "etcd-development/etcd"}}:{{ .Values.image.tag.major3.minor5.patch6 }}
+        container: etcd
         command:
         - /bin/sh
         - -c

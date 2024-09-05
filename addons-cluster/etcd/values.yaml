@@ -42,10 +42,10 @@ peerService:
 
 ## clientService is the configuration for etcd client communication
 clientService:
-  name:
+  name: "client"
   ## @param type etcd service type, valid options are ExternalName, ClusterIP, NodePort, and LoadBalancer.
   ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
-  type: ClusterIP
+  type: NodePort
   port: 2379
   role: leader
   ## @param nodePort is optional, if clientService type is NodePort, by default and for convenience, 
