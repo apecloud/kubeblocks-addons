@@ -48,6 +48,14 @@ imagePullSecrets:
 {{- end }}
 
 {{/*
+Selector labels
+*/}}
+{{- define "nebula.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "nebula.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{/*
 Nebula cluster labels
 */}}
 {{- define "nebula.labels" -}}
@@ -56,4 +64,5 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 helm.sh/chart: {{ include "nebula.chart" . }}
+{{ include "nebula.selectorLabels" . }}
 {{- end }}

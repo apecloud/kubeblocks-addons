@@ -10,8 +10,8 @@
 
 # By default only shell scripts whose names contain .sh are coverage targeted. If you want to include other files, you need to adjust options with --kcov-options.
 # --kcov-options "--include-path=. --path-strip-level=1"
-# --kcov-options "--include-pattern=.sh"
-# --kcov-options "--exclude-pattern=/.shellspec,/spec/,/coverage/,/report/"
+--kcov-options "--include-pattern=.sh"
+--kcov-options "--exclude-pattern=/.shellspec,/spec/,/coverage/,/report/"
 
 ## Example: Include script "myprog" with no extension
 # --kcov-options "--include-pattern=.sh,myprog"

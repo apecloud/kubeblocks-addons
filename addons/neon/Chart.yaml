@@ -8,7 +8,7 @@ home: https://kubeblocks.io/
 icon: https://kubeblocks.io/img/logo.png
 
 maintainers:
-  - name: ApeCloud
+  - name: skyrise
     url: https://github.com/apecloud/kubeblocks/
 
 sources:

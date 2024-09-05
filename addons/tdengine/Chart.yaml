@@ -35,8 +35,8 @@ sources:
 dependencies: []
 
 maintainers:
-- name: ApeCloud
-  url: https://github.com/apecloud/kubeblocks/deploy
+  - name: leon-inf
+    url: https://github.com/apecloud/kubeblocks/
 
 icon: "https://www.taosdata.com/images/taosdata-logo.png"
 

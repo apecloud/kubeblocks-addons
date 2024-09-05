@@ -1,4 +1,4 @@
-name: Shell Check
+name: ShellSpec Test
 
 on:
   push:
@@ -11,7 +11,7 @@ env:
   BASE_BRANCH: origin/main
 
 jobs:
-  shell-check:
+  shellspec-test:
     runs-on: ubuntu-latest
     steps:
       - name: Cancel Previous Runs
@@ -46,18 +46,25 @@ jobs:
           echo "FILE_PATH: $FILE_PATH"
           SHELL_FILE_PATH=""
           for filePath in $(echo "$FILE_PATH"); do
-              if [[ "${filePath}" == *".sh" && -f "${filePath}" ]]; then
+              if [[ "${filePath}" == *"addons/"*"/scripts-ut-spec/"* && -f "${filePath}" ]]; then
                   SHELL_FILE_PATH="${SHELL_FILE_PATH} ${filePath}"
               fi
           done
           echo shell_file_path=$SHELL_FILE_PATH >> $GITHUB_OUTPUT
 
-      - name: Check scripts with Shellcheck
-        uses: essentialkaos/shellcheck-action@v1
-        if: ${{ steps.get_file_path.outputs.shell_file_path }}
+      - name: Install kcov
+        if: ${{ steps.get_file_path.outputs.shell_file_path || github.ref_name == 'main' }}
+        run: sudo apt-get install -y bash kcov
+
+      - name: shellspec test
+        if: ${{ steps.get_file_path.outputs.shell_file_path || github.ref_name == 'main' }}
+        run: |
+          make scripts-test-kcov
+
+      - name: Upload coverage
+        if: ${{ steps.get_file_path.outputs.shell_file_path || github.ref_name == 'main' }}
         env:
-          SHELLCHECK_OPTS: -e SC1087
-        with:
-          files: ${{ steps.get_file_path.outputs.shell_file_path }}
-          severity: error
-          format: tty
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        run: |
+          bash <(curl -s https://codecov.io/bash) -s coverage
+

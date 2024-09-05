@@ -14,8 +14,8 @@ keywords:
 home: https://www.opentenbase.org/
 
 maintainers:
-  - name: Liu Dongming
-    email: ldming101@gmail.com
+  - name: ldming
+    url: https://github.com/apecloud/kubeblocks/
 
 annotations:
     addon.kubeblocks.io/kubeblocks-version: ">=0.8.0"
