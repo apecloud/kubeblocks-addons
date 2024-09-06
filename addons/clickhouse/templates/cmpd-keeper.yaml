@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: clickhouse-keeper-24
+  name: ch-keeper-24
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
     {{- if .Values.commonLabels }}
