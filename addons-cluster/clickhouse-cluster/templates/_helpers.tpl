@@ -66,6 +66,7 @@ Create the name of the service account to use
 */}}
 {{- define "clickhouse-ch-component" -}}
 - name: clickhouse
+  componentDef: clickhouse-24
   replicas: {{ $.Values.clickhouse.replicaCount | default 2 }}
   serviceAccountName: {{ include "clickhouse-cluster.serviceAccountName" $ }}
   {{- with $.Values.clickhouse.tolerations }}
@@ -98,7 +99,7 @@ Create the name of the service account to use
 */}}
 {{- define "clickhouse-keeper-component" -}}
 - name: ch-keeper
-  componentDef: clickhouse-keeper-24
+  componentDef: ch-keeper-24
   replicas: {{ .Values.keeper.replicaCount }}
   {{- with .Values.clickhouse.tolerations }}
   tolerations: {{ .| toYaml | nindent 8 }}
