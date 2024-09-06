@@ -53,6 +53,8 @@ spec:
         componentVarRef:
           optional: false
           podFQDNs: Required
+  updateStrategy: Serial
+  podManagementPolicy: Parallel
   runtime:
     securityContext:
       fsGroup: 1001
