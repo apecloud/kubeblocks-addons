@@ -9,7 +9,7 @@ spec:
   reloadAction:
     tplScriptTrigger:
       sync: true
-      scriptConfigMapRef: patroni-reload-script
+      scriptConfigMapRef: {{ include "postgresql.patroniReloadScriptsTemplate" . }}
       namespace: {{ .Release.Namespace }}
     ## update patroni master
     targetPodSelector:
