@@ -6,12 +6,16 @@ metadata:
     {{- include "etcd.labels" . | nindent 4 }}
 spec:
   compatibilityRules:
-    - releases:
-        - v3.5.6
-      compDefs:
-        - etcd
+    - compDefs: [etcd]
+      releases: [v3.5.6, v3.5.15]
   releases:
     - name: v3.5.6
       serviceVersion: v3.5.6
       images:
-        etcd: {{ .Values.image.repository }}:v3.5.6
+        inject-shell: {{ .Values.busyboxImage.registry | default "docker.io" }}/{{ .Values.busyboxImage.repository }}:{{ default .Values.busyboxImage.tag }}
+        etcd: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:v3.5.6
+    - name: v3.5.15
+      serviceVersion: v3.5.15
+      images:
+        inject-shell: {{ .Values.busyboxImage.registry | default "docker.io" }}/{{ .Values.busyboxImage.repository }}:{{ default .Values.busyboxImage.tag }}
+        etcd: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository}}:v3.5.15

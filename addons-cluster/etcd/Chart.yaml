@@ -21,11 +21,11 @@ version: 1.0.0-alpha.0
 # incremented each time you make changes to the application. Versions are not expected to
 # follow Semantic Versioning. They should reflect the version the application is using.
 # It is recommended to use it with quotes.
-appVersion: "v3.5.6"
+appVersion: "v3.5.15"
 
 dependencies:
   - name: kblib
-    version: 0.1.0
+    version: 0.1.1
     repository: file://../kblib
     alias: extra
 

@@ -19,81 +19,11 @@ metadata:
         }
       }
 spec:
-  clusterDefinitionRef: postgresql
   backupPolicies:
-  - componentDefRef: postgresql
-    target:
-      role: secondary
-    backupMethods:
-    - name: pg-basebackup
-      snapshotVolumes: false
-      actionSetName: postgres-basebackup
-      envMapping: &clusterVersionEnvMapping
-      - key: IMAGE_TAG
-        valueFrom:
-          clusterVersionRef:
-          - names: [postgresql-12.14.0, postgresql-12.14.1, postgresql-12.15.0]
-            mappingValue: "12.15.0-pgvector-v0.6.1"
-          - names: [postgresql-14.7.2-pgvector-v0.6.1, postgresql-14.8.0]
-            mappingValue: "14.8.0-pgvector-v0.6.1"
-      targetVolumes:
-        volumeMounts:
-        - name: data
-          mountPath: {{ .Values.dataMountPath }}
-    - name: volume-snapshot
-      snapshotVolumes: true
-      targetVolumes:
-        volumes:
-        - data
-    - name: config-wal-g
-      target:
-        role: ""
-        strategy: All
-      actionSetName: postgres-config-wal-g
-      snapshotVolumes: false
-      targetVolumes:
-        volumeMounts:
-          - name: data
-            mountPath: {{ .Values.dataMountPath }}
-    - name: wal-g
-      target:
-        role: secondary
-      actionSetName: postgres-wal-g
-      snapshotVolumes: false
-      targetVolumes:
-        volumeMounts:
-          - name: data
-            mountPath: {{ .Values.dataMountPath }}
-    - name: archive-wal
-      target:
-        role: primary
-      actionSetName: postgresql-pitr
-      snapshotVolumes: false
-      envMapping: *clusterVersionEnvMapping
-      targetVolumes:
-        volumeMounts:
-          - name: data
-            mountPath: {{ .Values.dataMountPath }}
-    schedules: &backupschedules
-    - backupMethod: pg-basebackup
-      enabled: false
-      cronExpression: "0 18 * * *"
-      retentionPeriod: 7d
-    - backupMethod: volume-snapshot
-      enabled: false
-      cronExpression: "0 18 * * *"
-      retentionPeriod: 7d
-    - backupMethod: wal-g
-      enabled: false
-      cronExpression: "0 18 * * *"
-      retentionPeriod: 7d
-    - backupMethod: archive-wal
-      enabled: false
-      cronExpression: "*/5 * * * *"
-      retentionPeriod: 8d
   - componentDefs: [postgresql-14, postgresql-12]
     target:
       role: secondary
+      fallbackRole: primary
       account: postgres
     backupMethods:
       - name: pg-basebackup
@@ -131,6 +61,7 @@ spec:
       - name: wal-g
         target:
           role: secondary
+          fallbackRole: primary
           account: postgres
         actionSetName: postgres-wal-g
         snapshotVolumes: false
@@ -149,4 +80,20 @@ spec:
           volumeMounts:
             - name: data
               mountPath: {{ .Values.dataMountPath }}
-    schedules: *backupschedules
+    schedules:
+      - backupMethod: pg-basebackup
+        enabled: false
+        cronExpression: "0 18 * * *"
+        retentionPeriod: 7d
+      - backupMethod: volume-snapshot
+        enabled: false
+        cronExpression: "0 18 * * *"
+        retentionPeriod: 7d
+      - backupMethod: wal-g
+        enabled: false
+        cronExpression: "0 18 * * *"
+        retentionPeriod: 7d
+      - backupMethod: archive-wal
+        enabled: false
+        cronExpression: "*/5 * * * *"
+        retentionPeriod: 8d

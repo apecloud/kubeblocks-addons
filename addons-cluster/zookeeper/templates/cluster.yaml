@@ -12,22 +12,30 @@ spec:
       componentDef: zookeeper
       replicas: {{ .Values.replicas }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      serviceVersion: {{ .Values.version }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
+      env:
+        - name: ZOOKEEPER_IMAGE_VERSION
+          value: "{{ .Values.serviceVersion }}"
       volumeClaimTemplates:
-        - name: data
+        - name: data # ref clusterDefinition components.containers.volumeMounts.name
           spec:
-            storageClassName: {{ .Values.persistence.data.storageClassName }}
             accessModes:
               - ReadWriteOnce
             resources:
               requests:
-                storage: {{ .Values.persistence.data.size }}
+                storage: {{ print .Values.storage "Gi" }}
+            {{- if .Values.storageClassName }}
+            storageClassName: {{ .Values.storageClassName | quote }}
+            {{- end }}
         - name: log
           spec:
-            storageClassName: {{ .Values.persistence.log.storageClassName }}
+            {{- if .Values.storageClassName }}
+            storageClassName: {{ .Values.storageClassName | quote  }}
+            {{- end }}
             accessModes:
               - ReadWriteOnce
             resources:
               requests:
-                storage: {{ .Values.persistence.log.size }}
+                storage: {{ print .Values.logStorage "Gi" }}

@@ -9,12 +9,12 @@ spec:
   - name: orchestrator-3.2.6
     serviceVersion: 3.2.6
     images:
-      orchestrator: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v3.2.6
+      orchestrator: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
       init-meta-database: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql:8.0.33
   - name: orchestrator-raft-3.2.6
     serviceVersion: 3.2.6
     images:
-      orchestrator: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v3.2.6
+      orchestrator: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
   compatibilityRules:
   - compDefs:
     - orchestrator-shareend

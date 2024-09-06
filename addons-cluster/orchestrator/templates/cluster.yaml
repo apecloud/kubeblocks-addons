@@ -15,7 +15,7 @@ spec:
       componentSelector: orchestrator
       spec:
         ports:
-          - name: http
+          - name: orc-http
             port: 80
   componentSpecs:
     - name: orchestrator

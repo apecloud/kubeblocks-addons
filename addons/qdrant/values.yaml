@@ -20,7 +20,7 @@ image:
   tag: "v1.8.4"
   tools:
     repository: apecloud/curl-jq
-    tag: latest
+    tag: 0.1.0
 
 ## @param debugEnabled enables containers' debug logging
 ##

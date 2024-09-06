@@ -8,11 +8,11 @@ metadata:
   annotations:
     dataprotection.kubeblocks.io/is-default-policy-template: "true"
 spec:
-  clusterDefinitionRef: zookeeper
   backupPolicies:
     - componentDefs: [zookeeper]
       target:
         role: follower
+        fallbackRole: leader
       backupMethods:
         - name: zoocreeper
           snapshotVolumes: false

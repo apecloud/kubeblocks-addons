@@ -86,19 +86,19 @@ spec:
 
   lifecycleActions:
     roleProbe:
-      builtinHandler: custom
-      customHandler:
-        exec:
-          command:
-            - /bin/bash
-            - -c
-            - |
-              role=$(gsql -h 127.0.0.1 -p 26000  -U ${MOGDB_USER} -W "${MOGDB_PASSWORD}" -dpostgres -t -c "select local_role from pg_stat_get_stream_replications() limit 1" | xargs echo -n)
-              if [[ "$role"x == "Normal"x || "$role"x == "Primary"x ]]; then
-                echo -n "primary"
-              else
-                echo -n "secondary"
-              fi
+      exec:
+        container: mogdb
+        command:
+          - /bin/bash
+          - -c
+          - |
+            PATH=/usr/local/mogdb/bin:$PATH
+            role=$(gsql -h 127.0.0.1 -p 26000  -U ${MOGDB_USER} -W "${MOGDB_PASSWORD}" -dpostgres -t -c "select local_role from pg_stat_get_stream_replications() limit 1" | xargs echo -n)
+            if [[ "$role"x == "Normal"x || "$role"x == "Primary"x ]]; then
+              echo -n "primary"
+            else
+              echo -n "secondary"
+            fi
   runtime:
     shareProcessNamespace: true
     securityContext:
@@ -111,7 +111,7 @@ spec:
           - bash
           - -c
           - |
-            set -ex
+            set -x
             MogDB_Role=
             REPL_CONN_INFO=
 

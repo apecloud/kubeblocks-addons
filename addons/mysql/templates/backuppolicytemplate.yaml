@@ -8,11 +8,11 @@ metadata:
   annotations:
     dataprotection.kubeblocks.io/is-default-policy-template: "true"
 spec:
-  clusterDefinitionRef: mysql
   backupPolicies:
-  - componentDefs: [mysql-5.7.44-orc, mysql-5.7.44, mysql-8.0.33-orc, mysql-8.0.33]
+  - componentDefs: [mysql-5.7.44-orc, mysql-5.7.44, mysql-8.0.33-orc, mysql-8.0.33, mysql-8.4.2]
     target:
       role: secondary
+      fallbackRole: primary
       account: root
     backupMethods:
     - name: xtrabackup
@@ -22,6 +22,8 @@ spec:
         - key: IMAGE_TAG
           valueFrom:
             componentDef:
+            - names: [mysql-8.4.2]
+              mappingValue: "8.4.0-1"
             - names: [mysql-8.0.33, mysql-8.0.33-orc ]
               mappingValue: "8.0.33-28"
             - names: [ mysql-5.7.44, mysql-5.7.44-orc]
@@ -41,7 +43,7 @@ spec:
         volumeMounts:
         - name: data
           mountPath: {{ .Values.dataMountPath }}
-    schedules: &backupschedules
+    schedules:
     - backupMethod: xtrabackup
       enabled: false
       cronExpression: "0 18 * * 0"
@@ -50,34 +52,3 @@ spec:
       enabled: false
       cronExpression: "0 18 * * 0"
       retentionPeriod: 7d
-  - componentDefRef: mysql
-    target:
-      role: secondary
-    backupMethods:
-      - name: xtrabackup
-        snapshotVolumes: false
-        actionSetName: mysql-xtrabackup
-        envMapping:
-          - key: IMAGE_TAG
-            valueFrom:
-              clusterVersionRef:
-                - names: [mysql-8.0.33]
-                  mappingValue: "8.0.33-28"
-                - names: [mysql-5.7.44]
-                  mappingValue: "2.4"
-        targetVolumes:
-          volumeMounts:
-            - name: data
-              mountPath: {{ .Values.dataMountPath }}
-      - name: volume-snapshot
-        snapshotVolumes: true
-        actionSetName: mysql-volumesnapshot
-        target:
-          role: primary
-        targetVolumes:
-          volumes:
-            - data
-          volumeMounts:
-            - name: data
-              mountPath: {{ .Values.dataMountPath }}
-    schedules: *backupschedules

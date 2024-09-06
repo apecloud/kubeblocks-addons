@@ -9,15 +9,15 @@ spec:
     - name: "7.5.2"
       serviceVersion: "7.5.2"
       images:
-        pd: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/pd:v7.5.2
+        pd: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v7.5.2
     - name: "7.1.5"
       serviceVersion: "7.1.5"
       images:
-        pd: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/pd:v7.1.5
+        pd: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v7.1.5
     - name: "6.5.10"
       serviceVersion: "6.5.10"
       images:
-        pd: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/pd:v6.5.10
+        pd: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v6.5.10
   compatibilityRules:
     - compDefs:
         - "tidb-pd-7"
@@ -38,13 +38,13 @@ spec:
     - name: "7.5.2"
       serviceVersion: "7.5.2"
       images:
-        tidb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/tidb:v7.5.2
-        slowlog: {{ .Values.image.helper.image }}
+        tidb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tidb.repository }}:v7.5.2
+        slowlog: {{ .Values.image.helper.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.helper.repository }}/{{ .Values.image.helper.tag }}
     - name: "7.1.5"
       serviceVersion: "7.1.5"
       images:
-        tidb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/tidb:v7.1.5
-        slowlog: {{ .Values.image.helper.image }}
+        tidb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tidb.repository }}:v7.1.5
+        slowlog: {{ .Values.image.helper.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.helper.repository }}/{{ .Values.image.helper.tag }}
     - name: "6.5.10"
       serviceVersion: "6.5.10"
       images:
@@ -70,15 +70,15 @@ spec:
     - name: "7.5.2"
       serviceVersion: "7.5.2"
       images:
-        tikv: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/tikv:v7.5.2
+        tikv: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tikv.repository }}:v7.5.2
     - name: "7.1.5"
       serviceVersion: "7.1.5"
       images:
-        tikv: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/tikv:v7.1.5
+        tikv: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tikv.repository }}:v7.1.5
     - name: "6.5.10"
       serviceVersion: "6.5.10"
       images:
-        tikv: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}/tikv:v6.5.10
+        tikv: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tikv.repository }}:v6.5.10
   compatibilityRules:
     - compDefs:
         - "tikv-7"

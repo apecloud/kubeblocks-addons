@@ -10,9 +10,9 @@ spec:
     - name: orchestrator
       spec:
         ports:
-          - name: http
+          - name: orc-http
             port: 80
-            targetPort: http
+            targetPort: orc-http
   serviceRefDeclarations:
     - name: metadb
       serviceRefDeclarationSpecs:

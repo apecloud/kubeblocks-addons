@@ -58,6 +58,14 @@ spec:
         numSymbols: 0
         letterCase: MixedCases
   vars:
+    ## the name of current cluster instance
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    ## the service port of redis sentinel
+    - name: SENTINEL_SERVICE_PORT
+      value: "26379"
     ## the username of redis sentinel
     - name: SENTINEL_USER
       valueFrom:
@@ -76,16 +84,53 @@ spec:
           name: default
           optional: false
           password: Required
+    ## the sentinel pod name list
+    - name: SENTINEL_POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "redis-sentinel.componentDefName" . }}
+          optional: false
+          podNames: Required
+    ## the sentinel pod fqdn list
+    - name: SENTINEL_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "redis-sentinel.componentDefName" . }}
+          optional: false
+          podFQDNs: Required
+    ## the username of redis for redis sentinel connection which is only used to recover redis servers when scale-out redis sentinel.
+    - name: REDIS_SENTINEL_USER
+      value: "kbreplicator-sentinel"
+    ## the password of redis for redis sentinel connection, which is only used to recover redis servers when scale-out redis sentinel.
+    ## TODO: Obtaining the redis password here will cause a circular dependency issue, which will lead to the abnormal restart of the Redis Sentinel pod, details refer to redis-sentinel-member-join.sh
+{{/*    - name: REDIS_SENTINEL_PASSWORD*/}}
+{{/*      valueFrom:*/}}
+{{/*        credentialVarRef:*/}}
+{{/*          compDef: {{ include "redis.componentDefName" . }}*/}}
+{{/*          name: default*/}}
+{{/*          optional: true*/}}
+{{/*          password: Required*/}}
+{{/*          multipleClusterObjectOption:*/}}
+{{/*            strategy: individual*/}}
   lifecycleActions:
     accountProvision:
-      customHandler:
-        exec:
-          image: {{ include "redis.image" . }}
-          command:
-            - sh
-            - -c
-          args:
-            - "redis-cli -h $(KB_ACCOUNT_ENDPOINT) -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -h $(KB_ACCOUNT_ENDPOINT) -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD acl save "
+      exec:
+        image: {{ include "redis-sentinel.image" . }}
+        command:
+          - sh
+          - -c
+        args:
+          - "redis-cli -h $(KB_ACCOUNT_ENDPOINT) -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -h $(KB_ACCOUNT_ENDPOINT) -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD acl save "
+    memberLeave:
+      exec:
+        image: {{ include "redis-sentinel.image" . }}
+        command:
+          - /bin/bash
+          - -c
+          - |
+          {{- .Files.Get "scripts/redis-sentinel-member-leave.sh" | nindent 14 }}
+        targetPodSelector: Any
+        container: redis-sentinel
   runtime:
     containers:
     - name: redis-sentinel
@@ -100,8 +145,21 @@ spec:
         - name: scripts
           mountPath: /scripts
       env:
-        - name: SENTINEL_SERVICE_PORT
-          value: "26379"
+        - name: CURRENT_POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: CURRENT_POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: CURRENT_POD_HOST_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.hostIP
       command:
         - /bin/bash
       args:
@@ -123,15 +181,15 @@ spec:
           command:
             - sh
             - -c
-            - /scripts/redis-sentinel-ping.sh 5
+            - /scripts/redis-sentinel-ping.sh
       readinessProbe:
         initialDelaySeconds: 10
         periodSeconds: 5
-        timeoutSeconds: 1
+        timeoutSeconds: 5
         successThreshold: 1
         failureThreshold: 5
         exec:
           command:
             - sh
             - -c
-            - /scripts/redis-sentinel-ping.sh 1
+            - /scripts/redis-sentinel-ping.sh

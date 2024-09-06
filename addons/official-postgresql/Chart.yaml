@@ -14,7 +14,7 @@ home: https://kubeblocks.io/
 icon: https://kubeblocks.io/img/logo.png
 
 maintainers:
-  - name: ApeCloud
+  - name: kizuna-lek
     url: https://github.com/apecloud/kubeblocks/
 
 sources:
@@ -23,4 +23,4 @@ sources:
 annotations:
   addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
   addon.kubeblocks.io/model: "RDBMS"
-  addon.kubeblocks.io/provider: "apecloud"
+  addon.kubeblocks.io/provider: "community"

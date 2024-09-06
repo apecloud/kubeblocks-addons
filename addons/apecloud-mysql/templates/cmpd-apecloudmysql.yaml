@@ -33,6 +33,18 @@ spec:
       volumeMounts:
         - mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
           name: data
+    - command:
+      - cp
+      - -r
+      - /bin/dbctl
+      - /config
+      - /tools/
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
+      imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+      name: init-dbctl
+      volumeMounts:
+        - mountPath: /tools
+          name: tools
     containers:
       - name: mysql
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}

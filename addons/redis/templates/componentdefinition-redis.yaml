@@ -45,6 +45,10 @@ spec:
     - name: {{ $name }}
       filePathPattern: {{ $pattern }}
     {{- end }}
+  exporter:
+    containerName: metrics
+    scrapePath: /metrics
+    scrapePort: http-metrics
   configs:
     - name: redis-replication-config
       templateRef: redis7-config-template
@@ -74,6 +78,14 @@ spec:
         numSymbols: 0
         letterCase: MixedCases
   vars:
+    ## the name of current cluster instance
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    ## the service port of redis
+    - name: SERVICE_PORT
+      value: "6379"
     ## the default username of redis connection
     - name: REDIS_DEFAULT_USER
       valueFrom:
@@ -84,6 +96,28 @@ spec:
           username: Required
     ## the default password of redis connection
     - name: REDIS_DEFAULT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          ## reference the current component definition name
+          compDef: {{ include "redis.componentDefName" . }}
+          name: default
+          password: Required
+    ## the username of redis primary-secondary replication
+    - name: REDIS_REPL_USER
+      value: "kbreplicator"
+    ## the password of redis primary-secondary replication shared the same password with default password
+    - name: REDIS_REPL_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          ## reference the current component definition name
+          compDef: {{ include "redis.componentDefName" . }}
+          name: default
+          password: Required
+    ## the username of redis for redis sentinel connection
+    - name: REDIS_SENTINEL_USER
+      value: "kbreplicator-sentinel"
+    ## the password of redis for redis sentinel connection shared the same password with default password
+    - name: REDIS_SENTINEL_PASSWORD
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
@@ -108,6 +142,34 @@ spec:
           name: redis-advertised
           optional: true
           host: Required
+    ## the redis pod name list for each pod, the value format is "pod1,pod2,..."
+    - name: REDIS_POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "redis.componentDefName" . }}
+          optional: false
+          podNames: Required
+    ## the redis pod fqdn list for each pod, the value format is "pod1FQDN,pod2FQDN,..."
+    - name: REDIS_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "redis.componentDefName" . }}
+          optional: false
+          podFQDNs: Required
+    ## the component name of redis, it's the fullname of redis component
+    - name: REDIS_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "redis.componentDefName" . }}
+          optional: false
+          componentName: Required
+    ## the component name of redis sentinel when redis sentinel is enabled, it's the fullname of redis-sentinel component
+    - name: SENTINEL_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "redis-sentinel.componentDefName" . }}
+          optional: true
+          componentName: Required
     ## the username of redis sentinel for redis connection, it is optional
     - name: SENTINEL_USER
       valueFrom:
@@ -116,7 +178,7 @@ spec:
           compDef: {{ include "redis-sentinel.componentDefName" . }}
           name: default
           optional: true
-          username: Optional
+          username: Required
     ## the password of redis sentinel for redis connection, it is optional
     - name: SENTINEL_PASSWORD
       valueFrom:
@@ -125,22 +187,7 @@ spec:
           compDef: {{ include "redis-sentinel.componentDefName" . }}
           name: default
           optional: true
-          password: Optional
-    - name: SENTINEL_COMPONENT_DEFINITION_NAME
-      value: {{ include "redis-sentinel.componentDefName" . }}
-    - name: SENTINEL_COMPONENT_NAME
-      valueFrom:
-        componentVarRef:
-          compDef: {{ include "redis-sentinel.componentDefName" . }}
-          optional: true
-          componentName: Optional
-    - name: SENTINEL_HEADLESS_SERVICE_NAME
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "redis-sentinel.componentDefName" . }}
-          name: headless
-          optional: true
-          host: Optional
+          password: Required
     - name: SENTINEL_SERVICE_PORT
       valueFrom:
         serviceVarRef:
@@ -149,37 +196,80 @@ spec:
           optional: true
           port:
             name: redis-sentinel
-            option: Optional
+            option: Required
     - name: SENTINEL_POD_NAME_LIST
       valueFrom:
         componentVarRef:
           compDef: {{ include "redis-sentinel.componentDefName" . }}
           optional: true
-          instanceNames: Optional
+          podNames: Required
+    - name: SENTINEL_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "redis-sentinel.componentDefName" . }}
+          optional: true
+          podFQDNs: Required
   lifecycleActions:
     roleProbe:
-      builtinHandler: redis
       periodSeconds: 1
       timeoutSeconds: 1
+      exec:
+        container: redis
+        command:
+          - /tools/dbctl
+          - --config-path
+          - /tools/config/dbctl/components
+          - redis
+          - getrole
     postProvision:
-      customHandler:
-        exec:
-          image: {{ include "redis.image" . }}
-          command:
-            - /bin/bash
-            - -c
-            - /scripts/redis-register-to-sentinel.sh
-        preCondition: RuntimeReady
+      exec:
+        container: redis
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/redis-register-to-sentinel.sh
+        targetPodSelector: Role
+        matchingKey: primary
+        ## all lifecycle actions share the same env
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: CURRENT_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          - name: CURRENT_POD_HOST_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.hostIP
+      preCondition: RuntimeReady
     accountProvision:
-      customHandler:
-        exec:
-          image: {{ include "redis.image" . }}
-          command:
-            - sh
-            - -c
-          args:
-            - "redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD acl save "
+      exec:
+        container: redis
+        command:
+          - sh
+          - -c
+        args:
+          - "redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD acl save "
   runtime:
+    initContainers:
+      - name: init-dbctl
+        command:
+          - cp
+          - -r
+          - /bin/dbctl
+          - /config
+          - /tools/
+        image: {{ .Values.dbctlImage.registry | default "docker.io" }}/{{ .Values.dbctlImage.repository }}:{{ .Values.dbctlImage.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.dbctlImage.pullPolicy }}
+        volumeMounts:
+          - mountPath: /tools
+            name: tools
     containers:
       - name: redis
         image: {{ include "redis.image" . }}
@@ -196,24 +286,24 @@ spec:
             mountPath: /scripts
           - name: redis-conf
             mountPath: /etc/redis
-          ## deprecated since v0.8.3, do not use it
-          - name: pod-info
-            mountPath: /kb-podinfo
+          - mountPath: /tools
+            name: tools
         env:
-          - name: SERVICE_PORT
-            value: "6379"
-          ## the username of redis primary-secondary replication
-          - name: REDIS_REPL_USER
-            value: "kbreplicator"
-          ## the password of redis primary-secondary replication
-          - name: REDIS_REPL_PASSWORD
-            value: $(REDIS_DEFAULT_PASSWORD)
-          ## the username of redis for redis sentinel connection
-          - name: REDIS_SENTINEL_USER
-            value: "$(REDIS_REPL_USER)-sentinel"
-          ## the password of redis for redis sentinel connection
-          - name: REDIS_SENTINEL_PASSWORD
-            value: $(REDIS_DEFAULT_PASSWORD)
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: CURRENT_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          - name: CURRENT_POD_HOST_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.hostIP
         command: [ "/scripts/redis-start.sh" ]
         readinessProbe:
           initialDelaySeconds: 10
@@ -225,16 +315,16 @@ spec:
             command:
               - sh
               - -c
-              - /scripts/redis-ping.sh 1
+              - /scripts/redis-ping.sh
         lifecycle:
           preStop:
             exec:
               command:
                 - /bin/bash
                 - -c
-                - /scripts/redis-preStop.sh
+                - /scripts/redis-pre-stop.sh
       - name: metrics
-        image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
+        image: {{ include "metrics.image" . }}
         imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
         securityContext:
           runAsNonRoot: true
@@ -255,14 +345,3 @@ spec:
         volumeMounts:
           - name: redis-metrics-config
             mountPath: /opt/conf
-    volumes:
-      ## deprecated since v0.8.3, do not use it
-      - name: pod-info
-        downwardAPI:
-          items:
-            - path: "primary-pod"
-              fieldRef:
-                fieldPath: metadata.annotations['rs.apps.kubeblocks.io/primary']
-            - path: "component-replicas"
-              fieldRef:
-                fieldPath: metadata.annotations['apps.kubeblocks.io/component-replicas']

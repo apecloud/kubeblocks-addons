@@ -10,54 +10,51 @@ on:
         type: choice
         options:
           - ""
-          - apecloud-mysql-cluster
-          - apecloud-postgresql-cluster
-          - camellia-redis-proxy-cluster
-          - clickhouse-cluster
-          - doris-cluster
-          - elasticsearch-cluster
-          - etcd-cluster
-          - flink-cluster
-          - greatsql-cluster
-          - greptimedb-cluster
-          - kafka-cluster
-          - kblib
-          - kblib-v2
-          - llm-cluster
-          - loki-cluster
-          - mariadb-cluster
-          - milvus-cluster
-          - minio-cluster
-          - mogdb-cluster
-          - mongodb-cluster
-          - mongodb-sharding-cluster
-          - mysql-cluster
-          - nebula-cluster
-          - neon-cluster
-          - oceanbase-ce-cluster
-          - official-postgresql-cluster
-          - opengauss-cluster
-          - openldap-cluster
-          - opensearch-cluster
-          - oracle-cluster
-          - orchestrator-cluster
-          - orioledb-cluster
-          - polardbx-cluster
-          - postgresql-cluster
-          - pulsar-cluster
-          - qdrant-cluster
-          - rabbitmq-cluster
-          - redis-cluster
-          - risingwave-cluster
-          - solr-cluster
-          - starrocks-ce-cluster
-          - tdengine-cluster
-          - tidb-cluster
-          - victoria-metrics-cluster
-          - weaviate-cluster
-          - xinference-cluster
-          - yashandb-cluster
-          - zookeeper-cluster
+          - apecloud-mysql
+          - apecloud-postgresql
+          - camellia-redis-proxy
+          - clickhouse
+          - elasticsearch
+          - etcd
+          - flink
+          - greatsql
+          - greptimedb
+          - kafka
+          - llm
+          - loki
+          - mariadb
+          - milvus
+          - minio
+          - mogdb
+          - mongodb
+          - mongodb-sharding
+          - mysql
+          - nebula
+          - neon
+          - oceanbase-ce
+          - official-postgresql
+          - opengauss
+          - openldap
+          - opensearch
+          - oracle
+          - orchestrator
+          - orioledb
+          - polardbx
+          - postgresql
+          - pulsar
+          - qdrant
+          - rabbitmq
+          - redis
+          - risingwave
+          - solr
+          - starrocks-ce
+          - tdengine
+          - tidb
+          - victoria-metrics
+          - weaviate
+          - xinference
+          - yashandb
+          - zookeeper
       chart_version:
         description: 'release specify chart version or empty to release default'
         required: false
@@ -71,23 +68,23 @@ run-name: Release Chart ${{ inputs.chart_dir }} ${{ inputs.chart_version }}
 jobs:
   release-chart:
     if: ${{ inputs.chart_dir != '' }}
-    uses: apecloud/apecloud-cd/.github/workflows/release-charts.yml@v0.1.52
+    uses: apecloud/apecloud-cd/.github/workflows/release-charts.yml@v0.1.68
     with:
       VERSION: "${{ inputs.chart_version }}"
       CHART_DIR: "addons-cluster"
       SPECIFY_CHART: "${{ inputs.chart_dir }}"
-      APECD_REF: "v0.1.52"
+      APECD_REF: "v0.1.68"
       PROJECT_ID: "150246"
     secrets: inherit
 
   release-chart-all:
     if: ${{ inputs.chart_dir == '' }}
-    uses: apecloud/apecloud-cd/.github/workflows/release-charts.yml@v0.1.52
+    uses: apecloud/apecloud-cd/.github/workflows/release-charts.yml@v0.1.68
     with:
       VERSION: "${{ inputs.chart_version }}"
       CHART_DIR: "addons-cluster"
       SPECIFY_CHART: "${{ inputs.chart_dir }}"
-      APECD_REF: "v0.1.52"
+      APECD_REF: "v0.1.68"
       ENABLE_JIHU: false
       PROJECT_ID: "150246"
     secrets: inherit
@@ -121,11 +118,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.get-addons-chart-dir.outputs.matrix) }}
-    uses: apecloud/apecloud-cd/.github/workflows/release-charts-jihu.yml@v0.1.52
+    uses: apecloud/apecloud-cd/.github/workflows/release-charts-jihu.yml@v0.1.68
     with:
       VERSION: "${{ inputs.chart_version }}"
       CHART_DIR: "addons-cluster"
       SPECIFY_CHART: "${{ matrix.addon-name }}"
-      APECD_REF: "v0.1.52"
+      APECD_REF: "v0.1.68"
       PROJECT_ID: "150246"
     secrets: inherit

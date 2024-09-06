@@ -91,7 +91,7 @@ SHELLSPEC_DEFAULT_SHELL ?= bash
 
 # shellspec is a full-featured BDD unit testing framework for all kinds of shells, details: https://github.com/shellspec/shellspec
 .PHONY: install-shellspec
-install-shellspec: ## Install shellspec if necessary.
+install-shellspec: ##  Download and Install shellspec ut framework if necessary.
 ifeq (, $(shell which shellspec))
 	@echo "Installing ShellSpec..."
 	@sudo mkdir -p $(SHELLSPEC_LOCAL_INSTALL_PATH)
@@ -111,5 +111,13 @@ endif
 
 # run shellspec tests
 .PHONY: scripts-test
-scripts-test: install-shellspec ## Run shellspec tests.
-	@shellspec --load-path $(SHELLSPEC_LOAD_PATH) --default-path $(SHELLSPEC_DEFAULT_PATH) --shell $(SHELLSPEC_DEFAULT_SHELL) --format documentation
+scripts-test: install-shellspec ##    Run shellspec unit test cases.
+	@shellspec --load-path $(SHELLSPEC_LOAD_PATH) --default-path $(SHELLSPEC_DEFAULT_PATH) --shell $(SHELLSPEC_DEFAULT_SHELL)
+
+
+SHELLSPEC_INCLUDE_PATH := $(shell ./utils/get_shellspec_include_path.sh)
+
+# run shellspec tests with coverage report
+.PHONY: scripts-test-kcov
+scripts-test-kcov: install-shellspec ##    Run shellspec unit test cases.
+	@shellspec --load-path $(SHELLSPEC_LOAD_PATH) --default-path $(SHELLSPEC_DEFAULT_PATH) --shell $(SHELLSPEC_DEFAULT_SHELL) --kcov --kcov-options "--include-path=$(SHELLSPEC_INCLUDE_PATH) --path-strip-level=1"

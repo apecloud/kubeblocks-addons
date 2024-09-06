@@ -12,12 +12,11 @@ spec:
   {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
     - name: mdit
-      componentDef: elasticsearch
+      componentDef: elasticsearch-{{ include "elasticsearch.majorVersion" . }}
       serviceVersion: {{ include "elasticsearch.version" . }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "elasticsearch-cluster.replicaCount" . | indent 6 }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
-      {{- include "kblib.componentServices" . | indent 6 }}
 {{- end }}

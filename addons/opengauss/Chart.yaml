@@ -23,7 +23,11 @@ version: 1.0.0-alpha.0
 # It is recommended to use it with quotes.
 appVersion: "5.0.0"
 
+maintainers:
+  - name: 1aal
+    url: https://github.com/apecloud/kubeblocks/
+
 annotations:
   addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
   addon.kubeblocks.io/model: "RDBMS"
-  addon.kubeblocks.io/provider: "apecloud"
+  addon.kubeblocks.io/provider: "community"

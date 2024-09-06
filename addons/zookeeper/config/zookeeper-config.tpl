@@ -49,12 +49,13 @@ maxClientCnxns=500
   {{- $tokens := splitList "-" $name }}
   {{- $ordinal := index $tokens (sub (len $tokens) 1) }}
   {{- if ge $i 3 }}
-    {{- printf "server.%s=%s:2888:3888:observer;0.0.0.0:2181\n" $ordinal $fqdn }}
-    {{- printf "peerType=observer\n" }}
+    {{- printf "server.%s=%s:2888:3888:observer\n" $ordinal $fqdn }}
   {{- else }}
-    {{- printf "server.%s=%s:2888:3888:participant;0.0.0.0:2181\n" $ordinal $fqdn }}
+    {{- printf "server.%s=%s:2888:3888:participant\n" $ordinal $fqdn }}
   {{- end }}
 {{- end }}
+
+
 
 # logging
 audit.enable=true

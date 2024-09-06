@@ -76,7 +76,7 @@ Generate scripts configmap
 Backup Tool image
 */}}
 {{- define "apecloud-mysql.bakcupToolImage" -}}
-{{ .Values.backupTool.image.registry | default .Values.image.registry }}/{{ .Values.backupTool.image.repository}}:{{ .Values.backupTool.image.tag }}
+{{ .Values.backupTool.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.backupTool.image.repository}}:{{ .Values.backupTool.image.tag }}
 {{- end }}
 
 
@@ -122,23 +122,23 @@ systemAccounts:
       numSymbols: 0
       letterCase: MixedCases
   - name: kbadmin
-    statement: CREATE USER $(USERNAME) IDENTIFIED BY '$(PASSWD)'; GRANT ALL PRIVILEGES ON *.* TO $(USERNAME);
+    statement: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT ALL PRIVILEGES ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
     passwordGenerationPolicy: &defaultPasswordGenerationPolicy
       length: 16
       numDigits: 8
       numSymbols: 0
       letterCase: MixedCases
   - name: kbdataprotection
-    statement: CREATE USER $(USERNAME) IDENTIFIED BY '$(PASSWD)';GRANT RELOAD, LOCK TABLES, PROCESS, REPLICATION CLIENT ON *.* TO $(USERNAME); GRANT LOCK TABLES,RELOAD,PROCESS,REPLICATION CLIENT, SUPER,SELECT,EVENT,TRIGGER,SHOW VIEW ON *.* TO $(USERNAME);
+    statement: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}';GRANT RELOAD, LOCK TABLES, PROCESS, REPLICATION CLIENT ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT LOCK TABLES,RELOAD,PROCESS,REPLICATION CLIENT, SUPER,SELECT,EVENT,TRIGGER,SHOW VIEW ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
     passwordGenerationPolicy: *defaultPasswordGenerationPolicy
   - name: kbprobe
-    statement: CREATE USER $(USERNAME) IDENTIFIED BY '$(PASSWD)'; GRANT REPLICATION CLIENT, PROCESS ON *.* TO $(USERNAME); GRANT SELECT ON performance_schema.* TO $(USERNAME);
+    statement: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, PROCESS ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT SELECT ON performance_schema.* TO ${KB_ACCOUNT_NAME};
     passwordGenerationPolicy: *defaultPasswordGenerationPolicy
   - name: kbmonitoring
-    statement: CREATE USER $(USERNAME) IDENTIFIED BY '$(PASSWD)'; GRANT REPLICATION CLIENT, PROCESS ON *.* TO $(USERNAME); GRANT SELECT ON performance_schema.* TO $(USERNAME);
+    statement: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, PROCESS ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT SELECT ON performance_schema.* TO ${KB_ACCOUNT_NAME};
     passwordGenerationPolicy: *defaultPasswordGenerationPolicy
   - name: kbreplicator
-    statement: CREATE USER $(USERNAME) IDENTIFIED BY '$(PASSWD)'; GRANT REPLICATION SLAVE ON *.* TO $(USERNAME) WITH GRANT OPTION;
+    statement: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION SLAVE ON ${ALL_DB} TO ${KB_ACCOUNT_NAME} WITH GRANT OPTION;
     passwordGenerationPolicy: *defaultPasswordGenerationPolicy
 roles:
   - name: leader
@@ -155,9 +155,25 @@ roles:
     votable: false
 lifecycleActions:
   roleProbe:
-    builtinHandler: wesql
     periodSeconds: {{ .Values.roleProbe.periodSeconds }}
     timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+    exec:
+      container: mysql
+      command:
+        - /tools/dbctl
+        - --config-path
+        - /tools/config/dbctl/components
+        - wesql
+        - getrole
+  memberLeave:
+    exec:
+      container: mysql
+      command:
+        - /tools/dbctl
+        - --config-path
+        - /tools/config/dbctl/components
+        -  wesql
+        - leavemember
   switchover:
     withCandidate:
       exec:
@@ -170,23 +186,18 @@ lifecycleActions:
         command:
           - /scripts/switchover-without-candidate.sh
   accountProvision:
-    builtinHandler: wesql
-  {{/*
-    customHandler:
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
-      exec:
-        command:
-          - mysql
-        args:
-          - -u$(MYSQL_ROOT_USER)
-          - -p$(MYSQL_ROOT_PASSWORD)
-          - -P$(MYSQL_PORT)
-          - -h$(KB_ACCOUNT_ENDPOINT)
-          - -e
-          - $(KB_ACCOUNT_STATEMENT)
+    exec:
+      container: mysql
+      command:
+        - bash
+        - -c
+        - |
+          set -ex
+          ALL_DB='*.*'
+          eval statement=\"${KB_ACCOUNT_STATEMENT}\"
+          mysql -u${MYSQL_ROOT_USER} -p${MYSQL_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement}"
       targetPodSelector: Role
       matchingKey: leader 
-   */}}
 exporter:
   containerName: mysql-exporter
   scrapePath: /metrics
@@ -286,6 +297,8 @@ volumeMounts:
     mountPath: /scripts
   - name: annotations
     mountPath: /etc/annotations
+  - mountPath: /tools
+    name: tools
 ports:
   - containerPort: 3306
     name: mysql
@@ -335,7 +348,7 @@ env:
     value: $(MYSQL_ROOT_PASSWORD)
   - name: EXPORTER_WEB_PORT
     value: "{{ .Values.metrics.service.port }}"
-image: {{ .Values.metrics.image.registry | default .Values.image.registry }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
+image: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
 imagePullPolicy: IfNotPresent
 ports:
   - name: http-metrics

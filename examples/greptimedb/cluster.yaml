@@ -6,8 +6,6 @@ metadata:
 spec:
   # Specifies the name of the ClusterDefinition to use when creating a Cluster.
   clusterDefinitionRef: greptimedb
-  # Refers to the ClusterVersion name. Deprecated since v0.9, use ComponentVersion instead. This field is maintained for backward compatibility and its use is discouraged. Existing usage should be updated to the current preferred approach to avoid compatibility issues in future releases.
-  clusterVersionRef: greptimedb-0.3.2
   # Specifies the behavior when a Cluster is deleted.
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
   # - `Halt`: Deletes Cluster resources like Pods and Services but retains Persistent Volume Claims (PVCs), allowing for data preservation while stopping other operations.
@@ -19,7 +17,7 @@ spec:
   # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
   - name: frontend
-    componentDefRef: frontend
+    componentDef: greptimedb-frontend
     serviceAccountName: kb-greptimedb-cluster
     replicas: 1
     resources:
@@ -30,7 +28,7 @@ spec:
         cpu: '0.5'
         memory: 0.5Gi
   - name: datanode
-    componentDefRef: datanode
+    componentDef: greptimedb-datanode
     replicas: 1
     resources:
       limits:
@@ -48,7 +46,7 @@ spec:
           requests:
             storage: 20Gi
   - name: meta
-    componentDefRef: meta
+    componentDef: greptimedb-meta
     replicas: 1
     resources:
       limits:
@@ -58,7 +56,7 @@ spec:
         cpu: '0.5'
         memory: 0.5Gi
   - name: etcd
-    componentDefRef: etcd
+    componentDef: etcd
     replicas: 3
     resources:
       limits:
@@ -68,7 +66,7 @@ spec:
         cpu: '0.5'
         memory: 0.5Gi
     volumeClaimTemplates:
-    - name: etcd-storage
+    - name: data
       spec:
         accessModes:
         - ReadWriteOnce

@@ -18,30 +18,28 @@ spec:
 
   lifecycleActions:
     roleProbe:
-      builtinHandler: custom
-      customHandler:
-        exec:
-          command:
-            - /bin/bash
-            - -c
-            - |
-              role=$(curl -s http://127.0.0.1:3000/api/leader-check)
-              if [[ $role == "\"OK\"" ]]; then
-                echo -n "primary"
-              elif [[ $role == "\"Not leader\"" ]]; then
-                echo -n "secondary"
-              else
-                echo -n ""
-              fi
+      exec:
+        command:
+          - /bin/bash
+          - -c
+          - |
+            role=$(curl -s http://127.0.0.1:3000/api/leader-check)
+            if [[ $role == "\"OK\"" ]]; then
+              echo -n "primary"
+            elif [[ $role == "\"Not leader\"" ]]; then
+              echo -n "secondary"
+            else
+              echo -n ""
+            fi
 
   services:
     - name: orchestrator
       roleSelector: primary
       spec:
         ports:
-          - name: http
+          - name: orc-http
             port: 80
-            targetPort: http
+            targetPort: orc-http
 
   runtime:
     containers:

@@ -9,12 +9,12 @@ metadata:
   annotations:
     dataprotection.kubeblocks.io/is-default-policy-template: "true"
 spec:
-  clusterDefinitionRef: {{ include "apecloud-mysql.clusterDefName" . }}
   backupPolicies:
   - componentDefs:
       - {{ include "apecloud-mysql.componentDefName" . }}
     target:
       role: follower
+      fallbackRole: leader
       account: root
     backupMethods:
     - name: xtrabackup

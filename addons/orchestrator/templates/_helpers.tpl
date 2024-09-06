@@ -134,7 +134,7 @@ volumeMounts:
     name: data
 ports:
   - containerPort: 3000
-    name: http
+    name: orc-http
   - containerPort: 10008
     name: raft
 readinessProbe:

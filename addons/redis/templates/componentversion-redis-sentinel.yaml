@@ -14,9 +14,9 @@ spec:
       changes:
       serviceVersion: 7.2.4
       images:
-        redis-sentinel: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/redis-stack-server:7.2.0-v10
+        redis-sentinel: {{ include "redis-sentinel.repository" . }}:7.2.0-v10
     - name: 7.0.6
       changes:
       serviceVersion: 7.0.6
       images:
-        redis-sentinel: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/redis-stack-server:7.0.6-RC4
+        redis-sentinel: {{ include "redis-sentinel.repository" . }}:7.0.6-RC4
