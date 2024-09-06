@@ -69,6 +69,13 @@ spec:
               - ALL
           runAsNonRoot: true
           runAsUser: 1001
+        command:
+          - bash
+          - -xc
+          - |
+            HOSTNAME="$(hostname -s)"
+            export CH_KEEPER_ID=${HOSTNAME##*-}
+            exec /opt/bitnami/scripts/clickhouse/entrypoint.sh /opt/bitnami/scripts/clickhouse/run.sh -- --listen_host=0.0.0.0
         env:
           - name: BITNAMI_DEBUG
             value: "false"
