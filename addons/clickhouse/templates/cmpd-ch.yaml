@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: clickhouse-22
+  name: clickhouse-24
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
     {{- if .Values.commonLabels }}
@@ -14,7 +14,7 @@ spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
-  serviceVersion: 22.9.4
+  serviceVersion: "24.3.10"
   services:
     - name: default
       spec:
@@ -65,7 +65,7 @@ spec:
       valueFrom:
         credentialVarRef:
           name: admin
-          compDef: clickhouse-keeper-22
+          compDef: clickhouse-keeper-24
           optional: false
           password: Required
     - name: CLICKHOUSE_POD_FQDN_LIST
@@ -76,7 +76,7 @@ spec:
     - name: CH_KEEPER_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
-          compDef: clickhouse-keeper-22
+          compDef: clickhouse-keeper-24
           optional: false
           podFQDNs: Required
   runtime:
