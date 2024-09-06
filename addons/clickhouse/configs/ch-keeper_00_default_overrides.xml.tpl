@@ -4,7 +4,7 @@
   <listen_host>0.0.0.0</listen_host>
   <keeper_server>
       <tcp_port from_env="CLICKHOUSE_KEEPER_TCP_PORT"></tcp_port>
-      <server_id>1</server_id>
+      <server_id from_env="CH_KEEPER_ID"></server_id>
       <log_storage_path>/var/lib/clickhouse/coordination/log</log_storage_path>
       <snapshot_storage_path>/var/lib/clickhouse/coordination/snapshots</snapshot_storage_path>
       <coordination_settings>
@@ -15,7 +15,7 @@
       <raft_configuration>
 {{- range $id, $host := splitList "," .CH_KEEPER_POD_FQDN_LIST }}
         <server>
-          <id>{{ $id | add1 }}</id>
+          <id>{{ $id }}</id>
           <hostname>{{ $host }}</hostname>
           <port from_env="CLICKHOUSE_KEEPER_RAFT_PORT"></port>
         </server>

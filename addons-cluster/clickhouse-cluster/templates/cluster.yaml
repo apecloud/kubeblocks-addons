@@ -17,9 +17,9 @@ spec:
   componentSpecs:
     {{- range $i := until (.Values.shardCount|int) }}
     - name: shard-{{ $i }}
-      componentDefRef: clickhouse
-      monitor: {{ $.Values.monitor.enabled }}
+      componentDef: clickhouse-22
       replicas: {{ $.Values.clickhouse.replicaCount | default 2 }}
+      disableExporter: false
       serviceAccountName: {{ include "clickhouse-cluster.serviceAccountName" $ }}
       {{- with $.Values.clickhouse.tolerations }}
       tolerations: {{ .| toYaml | nindent 8 }}
@@ -46,15 +46,10 @@ spec:
       {{- end }}
     {{- end }}
     {{- if (gt ($.Values.shardCount|int) 1) }}
-    - {{- if $.Values.useClickHouseKeeper }}
-      name: ch-keeper
-      componentDefRef: ch-keeper
-      {{- else }}
-      name: zookeeper
-      componentDefRef: zookeeper
-      {{- end }}
-      monitor: {{ $.Values.monitor.enabled }}
+    - name: ch-keeper
+      componentDef: clickhouse-keeper-22
       replicas: {{ $.Values.keeper.replicaCount }}
+      disableExporter: false
       {{- with .tolerations }}
       tolerations: {{ .| toYaml | nindent 8 }}
       {{- end }}
