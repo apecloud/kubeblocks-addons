@@ -58,7 +58,7 @@ spec:
       reRenderResourceTypes:
         - vscale
     - name: pgbouncer-configuration
-      templateRef: pgbouncer-configuration
+      templateRef: {{ include "pgbouncer.configurationTemplate" . }}
       keys:
         - pgbouncer.ini
       namespace: {{ .Release.Namespace }}
