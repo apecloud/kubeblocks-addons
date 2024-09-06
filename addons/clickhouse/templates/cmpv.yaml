@@ -19,7 +19,7 @@ spec:
     - releases:
         - 24.3.10
       compDefs:
-        - clickhouse-keeper-24
+        - ch-keeper-24
   releases:
     - name: 24.3.10
       serviceVersion: 24.3.10

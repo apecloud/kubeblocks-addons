@@ -15,13 +15,13 @@ spec:
     - name: standalone
       components:
         - name: clickhouse
-          compDef: clickhouse
+          compDef: clickhouse-24
     - name: clickhouse-cluster
       components:
         - name: clickhouse
-          compDef: clickhouse-22
+          compDef: clickhouse-24
         - name: ch-keeper
-          compDef: clickhouse-keeper-22
+          compDef: ch-keeper-24
       orders:
         provision:
           - ch-keeper

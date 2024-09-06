@@ -6,14 +6,13 @@ type: application
 
 version: 1.0.0-alpha.0
 
-appVersion: 22.9.4
+appVersion: 24.3.10
 
 dependencies:
   - name: kblib
     version: 0.1.1
-    repository: file://../kblib
+    repository: file://../kblib-v2
     alias: extra
-
 
 home: https://clickhouse.com/
 icon: https://bitnami.com/assets/stacks/clickhouse/img/clickhouse-stack-220x234.png
