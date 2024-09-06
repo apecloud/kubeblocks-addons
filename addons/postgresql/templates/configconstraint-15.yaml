@@ -2,7 +2,7 @@
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
-  name: postgresql15-cc
+  name: {{ include "postgresql15.configConstraint" . }}
   labels:
     {{- include "postgresql.labels" . | nindent 4 }}
 spec:

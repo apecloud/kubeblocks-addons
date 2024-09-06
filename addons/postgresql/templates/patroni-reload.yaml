@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: patroni-reload-script
+  name: {{ include "postgresql.patroniReloadScriptsTemplate" . }}
   labels:
     {{- include "postgresql.labels" . | nindent 4 }}
 data:

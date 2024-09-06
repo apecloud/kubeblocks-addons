@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: postgresql15-configuration
+  name: {{ include "postgresql15.configurationTemplate" . }}
   labels:
     {{- include "postgresql.labels" . | nindent 4 }}
 data:
