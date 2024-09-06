@@ -14,6 +14,9 @@ spec:
       replicas: {{ .Values.replicas }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
+      env:
+        - name: RETENTION_PERIOD
+          value: "{{ .Values.retentionPeriod }}"
     - name: vmselect
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.vmselect.replicas }}

@@ -32,6 +32,8 @@ requests:
 ##
 storage: 20
 
+retentionPeriod: 30d
+
 ## @param vminsert configs
 ##
 vminsert:
