@@ -24,6 +24,13 @@ Define redis component definition name prefix
 {{- end -}}
 
 {{/*
+Define redis component definition name regular rxpression pattern
+*/}}
+{{- define "redis.componentDefNameRegexPattern" -}}
+{{- printf "redis-\\d{1,2}" -}}
+{{- end -}}
+
+{{/*
 Define redis-sentinel component definition name
 */}}
 {{- define "redis-sentinel.componentDefName" -}}
@@ -39,6 +46,13 @@ Define redis-sentinel component definition name prefix
 */}}
 {{- define "redis-sentinel.componentDefNamePrefix" -}}
 {{- printf "redis-sentinel-%s" .Values.compDefinitionVersion.sentinel -}}
+{{- end -}}
+
+{{/*
+Define redis-sentinel component definition name regular rxpression pattern
+*/}}
+{{- define "redis-sentinel.componentDefNameRegexPattern" -}}
+{{- printf "redis-sentinel-\\d{1,2}" -}}
 {{- end -}}
 
 {{/*
@@ -60,6 +74,13 @@ Define redis-cluster component definition name prefix
 {{- end -}}
 
 {{/*
+Define redis-cluster component definition name regular rxpression pattern
+*/}}
+{{- define "redis-cluster.componentDefNameRegexPattern" -}}
+{{- printf "redis-cluster-\\d{1,2}" -}}
+{{- end -}}
+
+{{/*
 Define redis-twemproxy component definition name
 */}}
 {{- define "redis-twemproxy.componentDefName" -}}
@@ -75,6 +96,13 @@ Define redis-twemproxy component definition name prefix
 */}}
 {{- define "redis-twemproxy.componentDefNamePrefix" -}}
 {{- printf "redis-twemproxy-%s" .Values.compDefinitionVersion.twemproxy -}}
+{{- end -}}
+
+{{/*
+Define redis-twemproxy component definition name regular rxpression pattern
+*/}}
+{{- define "redis-twemproxy.componentDefNameRegexPattern" -}}
+{{- printf "redis-twemproxy-*" -}}
 {{- end -}}
 
 {{/*

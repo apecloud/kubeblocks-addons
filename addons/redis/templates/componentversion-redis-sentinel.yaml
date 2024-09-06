@@ -5,7 +5,7 @@ metadata:
 spec:
   compatibilityRules:
     - compDefs:
-        - {{ include "redis-sentinel.componentDefNamePrefix" . }}
+        - {{ include "redis-sentinel.componentDefNameRegexPattern" . }}
       releases:
         - 7.2.4
         - 7.0.6

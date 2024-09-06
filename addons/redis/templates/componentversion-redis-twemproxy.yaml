@@ -5,7 +5,7 @@ metadata:
 spec:
   compatibilityRules:
     - compDefs:
-        - {{ include "redis-twemproxy.componentDefNamePrefix" . }}
+        - {{ include "redis-twemproxy.componentDefNameRegexPattern" . }}
       releases:
         - 0.5.0
   releases:

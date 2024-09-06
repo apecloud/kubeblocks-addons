@@ -5,7 +5,7 @@ metadata:
 spec:
   compatibilityRules:
     - compDefs:
-        - {{ include "redis.componentDefNamePrefix" . }}
+        - {{ include "redis.componentDefNameRegexPattern" . }}
       releases:
         - 7.2.4
         - 7.0.6

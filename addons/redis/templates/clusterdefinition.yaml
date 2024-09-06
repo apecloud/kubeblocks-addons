@@ -9,14 +9,14 @@ spec:
     - name: standalone
       components:
         - name: redis
-          compDef: {{ include "redis.componentDefNamePrefix" . }}
+          compDef: {{ include "redis.componentDefNameRegexPattern" . }}
       default: true
     - name: replication
       components:
         - name: redis
-          compDef: {{ include "redis.componentDefNamePrefix" . }}
+          compDef: {{ include "redis.componentDefNameRegexPattern" . }}
         - name: redis-sentinel
-          compDef: {{ include "redis-sentinel.componentDefNamePrefix" . }}
+          compDef: {{ include "redis-sentinel.componentDefNameRegexPattern" . }}
       orders:
         provision:
           - redis-sentinel
@@ -30,11 +30,11 @@ spec:
     - name: replication-twemproxy
       components:
         - name: redis
-          compDef: {{ include "redis.componentDefNamePrefix" . }}
+          compDef: {{ include "redis.componentDefNameRegexPattern" . }}
         - name: redis-sentinel
-          compDef: {{ include "redis-sentinel.componentDefNamePrefix" . }}
+          compDef: {{ include "redis-sentinel.componentDefNameRegexPattern" . }}
         - name: redis-twemproxy
-          compDef: {{ include "redis-twemproxy.componentDefNamePrefix" . }}
+          compDef: {{ include "redis-twemproxy.componentDefNameRegexPattern" . }}
       orders:
         provision:
           - redis-sentinel
