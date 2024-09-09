@@ -25,7 +25,7 @@ image:
   debug: false
   syncer:
     repository: apecloud/syncer
-    tag: "0.1.1"
+    tag: "0.2.0"
 
 dataMountPath: /postgresql/volume_data
 confMountPath: /postgresql/mount_conf
