@@ -4,6 +4,8 @@ metadata:
   name: {{ include "pgbouncer.configurationTemplate" . }}
   labels:
     {{- include "postgresql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "postgresql.annotations" . | nindent 4 }}
 data:
   pgbouncer.ini: |-
     {{- .Files.Get "config/pgbouncer-ini.tpl" | nindent 4 }}

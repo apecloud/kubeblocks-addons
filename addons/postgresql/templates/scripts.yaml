@@ -4,6 +4,8 @@ metadata:
   name: {{ include "postgresql.scriptsTemplate" . }}
   labels:
     {{- include "postgresql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "postgresql.annotations" . | nindent 4 }}
 data:
   common.sh: |-
     #!/bin/bash
