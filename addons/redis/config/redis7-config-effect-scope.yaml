@@ -5,4 +5,4 @@ staticParameters:
   - maxclients
 
 dynamicParameters:
-  ## -
+  - aof-timestamp-enabled
