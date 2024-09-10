@@ -1,0 +1,29 @@
+apiVersion: apps.kubeblocks.io/v1beta1
+kind: ConfigConstraint
+metadata:
+  name: clickhouse-env
+  labels:
+    {{- include "clickhouse.labels" . | nindent 4 }}
+    {{- if .Values.commonLabels }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+spec:
+  # mysql configuration file format
+  fileFormatConfig:
+    format: dotenv
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sshd-env-tpl
+  labels: {{- include "common.labels.standard" . | nindent 4 }}
+    {{- if .Values.commonLabels }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  sshd-config: |
+    {{- .Files.Get "configs/ssh-env-tp.tpl" | nindent 4 }}
