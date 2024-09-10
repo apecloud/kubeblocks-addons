@@ -23,6 +23,13 @@ spec:
           volumeMounts:
             - name: data
               mountPath: {{ .Values.dataMountPath }}
+      - name: aof
+        snapshotVolumes: false
+        actionSetName: redis-pitr-backup
+        targetVolumes:
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
       - name: volume-snapshot
         snapshotVolumes: true
         targetVolumes:
@@ -30,6 +37,10 @@ spec:
             - data
     schedules:
       - backupMethod: datafile
+        enabled: false
+        cronExpression: "0 18 * * 0"
+        retentionPeriod: 7d
+      - backupMethod: aof
         enabled: false
         cronExpression: "0 18 * * 0"
         retentionPeriod: 7d
