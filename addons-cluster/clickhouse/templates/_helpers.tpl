@@ -62,7 +62,7 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+Define clickhouse componentSpec with ComponentDefinition.
 */}}
 {{- define "clickhouse-ch-component" -}}
 - name: clickhouse
@@ -95,7 +95,7 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+Define clickhouse keeper componentSpec with ComponentDefinition.
 */}}
 {{- define "clickhouse-keeper-component" -}}
 - name: ch-keeper
@@ -127,7 +127,7 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+Define clickhouse shardingComponentSpec with ComponentDefinition.
 */}}
 {{- define "clickhouse-sharding-component" -}}
 - name: shard
@@ -163,7 +163,7 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+Define clickhouse componentSpec with compatible ComponentDefinition API
 */}}
 {{- define "clickhouse-nosharding-component" -}}
 {{- range $i := until (.Values.shardCount | int) }}
