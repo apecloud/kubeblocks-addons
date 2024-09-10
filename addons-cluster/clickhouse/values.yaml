@@ -47,7 +47,7 @@ clickhouse:
     persistence:
       ## @param clickhouse[*].persistence.enabled Enable persistence using Persistent Volume Claims
       ##
-      enabled: false
+      enabled: true
       ## `data` volume settings
       ##
       data:
@@ -162,7 +162,7 @@ keeper:
     #   memory: 128Mi
 
   persistence:
-    enabled: false
+    enabled: true
     data:
       storageClassName:
       size: 8Gi
