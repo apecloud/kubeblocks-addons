@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: clickhouse-keeper-{{ .Chart.Version }}
+  name: clickhouse-keeper
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
     {{- if .Values.commonLabels }}
@@ -22,7 +22,6 @@ spec:
         type: RuntimeDefault
     containers:
       - name: clickhouse
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:{{ default .Chart.AppVersion .Values.image.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         securityContext:
           allowPrivilegeEscalation: false
@@ -31,21 +30,45 @@ spec:
               - ALL
           runAsNonRoot: true
           runAsUser: 1001
+        command:
+          - /bin/bash
+          - -c
+          - |
+            cp /bitnami/clickhouse/etc/conf.d/default/ch-keeper_00_default_overrides.xml.xml /etc/clickhouse-server/conf.d/
+            cp /bitnami/clickhouse/etc/users.d/default/user.xml /etc/clickhouse-server/users.d/
+            cat /etc/clickhouse-server/conf.d/ch-keeper_00_default_overrides.xml
+            clickhouse-server --config-file=/etc/clickhouse-server/config.xml
         env:
           - name: BITNAMI_DEBUG
             value: "false"
-          - name: CLICKHOUSE_KEEPER_TCP_PORT
+          - name: ZOOKEEPER_TCP_PORT
             value: "2181"
-          - name: CLICKHOUSE_KEEPER_RAFT_PORT
+          - name: ZOOKEEPER_TCP_TLS_PORT
+            value: "2281"
+          - name: CLICKHOUSE_KEEPER_TCP_PORT
             value: "9181"
+          - name: CLICKHOUSE_KEEPER_RAFT_PORT
+            value: "9234"
+          - name: CLICKHOUSE_KEEPER_TCP_TLS_PORT
+            value: "9281"
+          - name: CLICKHOUSE_KEEPER_RAFT_TLS_PORT
+            value: "9444"
           - name: CLICKHOUSE_METRICS_PORT
             value: "8001"
           - name: SERVICE_PORT
             value: "$(CLICKHOUSE_METRICS_PORT)"
         ports:
-          - name: tcp
+          - name: zk-tcp
             containerPort: 2181
-          - name: raft
+          - name: zk-tls-tcp
+            containerPort: 2281
+          - name: ch-k-tcp
+            containerPort: 9181
+          - name: ch-k-raft
+            containerPort: 9234
+          - name: ch-k-tcp-tls
+            containerPort: 9281
+          - name: ch-k-raft-tls
             containerPort: 9444
           - name: http-metrics
             containerPort: 8001
@@ -74,6 +97,12 @@ spec:
           - name: http-metrics
             targetPort: http-metrics
             port: 8001
+          - name: https
+            targetPort: https
+            port: 8443
+          - name: native-secure
+            targetPort: native-secure
+            port: 9440
   configs:
     - name: clickhouse-keeper-tpl
       templateRef: clickhouse-keeper-tpl

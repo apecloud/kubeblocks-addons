@@ -17,7 +17,7 @@ service:
   ## 
   type: ClusterIP
 
-shardCount: 1
+shardCount: 2
 
 ## ClickHouse per shard component configurations
 ##
@@ -283,3 +283,6 @@ fullnameOverride: ""
 # The RBAC permission used by cluster component pod, now include event.create
 serviceAccount:
   name: ""
+
+## @param tlsEnable Enable TLS for clickhouse cluster
+tlsEnable: true

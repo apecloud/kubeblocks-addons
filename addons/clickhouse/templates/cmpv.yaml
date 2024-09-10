@@ -1,0 +1,31 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: clickhouse
+  labels:
+    {{- include "clickhouse.labels" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs: [clickhouse]
+      releases: [22.9.4]
+  releases:
+    - name: 22.9.4
+      serviceVersion: 22.9.4
+      images:
+        clickhouse: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:{{ default .Chart.AppVersion .Values.image.tag }}
+---
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: clickhouse-keeper
+  labels:
+    {{- include "clickhouse.labels" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs: [clickhouse-keeper]
+      releases: [22.9.4]
+  releases:
+    - name: 22.9.4
+      serviceVersion: 22.9.4
+      images:
+        clickhouse: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:{{ default .Chart.AppVersion .Values.image.tag }}

@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: clickhouse-{{ .Chart.Version }}
+  name: clickhouse
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
     {{- if .Values.commonLabels }}
@@ -22,7 +22,6 @@ spec:
         type: RuntimeDefault
     containers:
       - name: clickhouse
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:{{ default .Chart.AppVersion .Values.image.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         securityContext:
           allowPrivilegeEscalation: false
@@ -31,11 +30,22 @@ spec:
               - ALL
           runAsNonRoot: true
           runAsUser: 1001
+        command:
+          - /bin/bash
+          - -c
+          - |
+            cp /bitnami/clickhouse/etc/conf.d/default/00_default_overrides.xml /etc/clickhouse-server/conf.d/
+            cp /bitnami/clickhouse/etc/users.d/default/user.xml /etc/clickhouse-server/users.d/
+            echo $PEER_FQDNS
+            cat /etc/clickhouse-server/conf.d/00_default_overrides.xml
+            clickhouse-server --config-file=/etc/clickhouse-server/config.xml
         env:
           - name: BITNAMI_DEBUG
             value: "false"
           - name: CLICKHOUSE_HTTP_PORT
             value: "8123"
+          - name: CLICKHOUSE_HTTPS_PORT
+            value: "8443"
           - name: CLICKHOUSE_TCP_PORT
             value: "9000"
           - name: CLICKHOUSE_MYSQL_PORT
@@ -44,6 +54,10 @@ spec:
             value: "9005"
           - name: CLICKHOUSE_INTERSERVER_HTTP_PORT
             value: "9009"
+          - name: CLICKHOUSE_INTERSERVER_HTTPS_PORT
+            value: "9010"
+          - name: CLICKHOUSE_NATIVE_SECURE_PORT
+            value: "9440"
           - name: CLICKHOUSE_METRICS_PORT
             value: "8001"
           - name: CLICKHOUSE_SHARD_ID
@@ -67,6 +81,12 @@ spec:
             containerPort: 9009
           - name: http-metrics
             containerPort: 8001
+          - name: https
+            containerPort: 8443
+          - name: inter-https
+            containerPort: 9010
+          - name: native-secure
+            containerPort: 9440
         livenessProbe:
           failureThreshold: 3
           initialDelaySeconds: 10
@@ -101,6 +121,11 @@ spec:
           name: admin
           optional: false
           password: Required
+    - name: PEER_FQDNS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
   volumes:
     - name: data
   services:
@@ -125,6 +150,12 @@ spec:
           - name: http-metrics
             targetPort: http-metrics
             port: 8001
+          - name: https
+            targetPort: https
+            port: 8443
+          - name: native-secure
+            targetPort: native-secure
+            port: 9440
   configs:
     - name: clickhouse-tpl
       templateRef: clickhouse-tpl

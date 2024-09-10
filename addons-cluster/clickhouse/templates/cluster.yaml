@@ -42,9 +42,14 @@ spec:
               requests:
                 storage: {{ $.Values.clickhouse.persistence.data.size }}
       {{- end }}
+      tls: {{ $.Values.tlsEnable }}
+      {{- if $.Values.tlsEnable }}
+      issuer:
+        name: KubeBlocks
+      {{- end }}
     {{- end }}
     {{- if (gt ($.Values.shardCount|int) 1) }}
-    - {{- if $.Values.useClickHouseKeeper }}
+    - {{ if $.Values.useClickHouseKeeper -}}
       name: ch-keeper
       componentDef: clickhouse-keeper
       {{- else }}
@@ -52,7 +57,7 @@ spec:
       componentDef: zookeeper
       {{- end }}
       monitor: {{ $.Values.monitor.enabled }}
-      replicas: {{ $.Values.keeper.replicaCount }}
+      replicas: {{ $.Values.keeper.replicaCount | default 1 }}
       {{- with .tolerations }}
       tolerations: {{ .| toYaml | nindent 8 }}
       {{- end }}
@@ -75,5 +80,10 @@ spec:
             resources:
               requests:
                 storage: {{ $.Values.keeper.persistence.data.size }}
+      {{- end }}
+      tls: {{ $.Values.tlsEnable }}
+      {{- if $.Values.tlsEnable }}
+      issuer:
+        name: KubeBlocks
       {{- end }}
     {{- end }}
