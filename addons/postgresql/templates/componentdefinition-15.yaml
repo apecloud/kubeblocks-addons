@@ -4,6 +4,8 @@ metadata:
   name: {{ include "postgresql15.compDefName" . }}
   labels:
     {{- include "postgresql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "postgresql.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
   description: A PostgreSQL (with Patroni HA) component definition for Kubernetes

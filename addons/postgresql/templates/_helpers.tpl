@@ -43,6 +43,13 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
 {{/*
+Common annotations
+*/}}
+{{- define "postgresql.annotations" -}}
+helm.sh/resource-policy: keep
+{{- end }}
+
+{{/*
 Selector labels
 */}}
 {{- define "postgresql.selectorLabels" -}}
