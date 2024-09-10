@@ -9,6 +9,20 @@ spec:
   description: tidb's SQL layer
   serviceKind: MySQL
   updateStrategy: BestEffortParallel
+  vars:
+    - name: PD_HOST
+      valueFrom:
+        serviceVarRef:
+          compDef: tidb-pd-7
+          host: Required
+    - name: PD_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: tidb-pd-7
+          port:
+            name: client
+    - name: PD_ADDRESS
+      value: "$(PD_HOST).$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}:$(PD_PORT)"
   runtime:
     containers:
       - name: tidb
@@ -23,11 +37,10 @@ spec:
           - -c
           - |
             echo "start tidb..."
-            DOMAIN=$KB_NAMESPACE".svc{{ .Values.clusterDomain }}"
             exec /tidb-server --store=tikv \
             --advertise-address=${KB_POD_FQDN}{{ .Values.clusterDomain }} \
             --host=0.0.0.0 \
-            --path=${KB_CLUSTER_NAME}-tidb-pd.${DOMAIN}:2379 \
+            --path=${PD_ADDRESS} \
             --log-slow-query=/var/log/tidb/slowlog \
             --config=/etc/tidb/tidb.toml
         volumeMounts:
