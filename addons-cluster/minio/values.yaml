@@ -5,6 +5,8 @@
 replicas: 2
 
 buckets: ""
+user: ""
+password: ""
 
 #resources
 cpu: 1
