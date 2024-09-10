@@ -25,7 +25,7 @@ spec:
             targetPort: vminsert
             protocol: TCP
             name: vminsert
-        podService: true
+      podService: true
   updateStrategy: BestEffortParallel
   exporter:
     scrapePath: /metrics
