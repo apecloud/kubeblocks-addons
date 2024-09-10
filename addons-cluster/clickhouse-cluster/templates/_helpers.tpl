@@ -75,13 +75,12 @@ Create the name of the service account to use
   {{- with $.Values.clickhouse.resources }}
   resources:
     limits:
-      cpu: {{ $.Values.clickhouse.limits.cpu | quote }}
-      memory: {{ $.Values.clickhouse.limits.memory | quote }}
+      cpu: {{ .limits.cpu | quote }}
+      memory: {{ .limits.memory | quote }}
     requests:
-      cpu: {{ $.Values.clickhouse.requests.cpu | quote }}
-      memory: {{ $.Values.clickhouse.requests.memory | quote }}
+      cpu: {{ .requests.cpu | quote }}
+      memory: {{ .requests.memory | quote }}
   {{- end }}
-  {{- if $.Values.clickhouse.persistence.enabled }}
   volumeClaimTemplates:
     - name: data
       spec:
@@ -91,7 +90,6 @@ Create the name of the service account to use
         resources:
           requests:
             storage: {{ $.Values.clickhouse.persistence.data.size }}
-  {{- end }}
 {{- end }}
 
 {{/*
@@ -113,7 +111,6 @@ Create the name of the service account to use
       cpu: {{ .requests.cpu | quote }}
       memory: {{ .requests.memory | quote }}
   {{- end }}
-  {{- if $.Values.keeper.persistence.enabled }}
   volumeClaimTemplates:
     - name: data
       spec:
@@ -123,7 +120,6 @@ Create the name of the service account to use
         resources:
           requests:
             storage: {{ $.Values.keeper.persistence.data.size }}
-  {{- end }}
 {{- end }}
 
 {{/*
@@ -143,13 +139,12 @@ Create the name of the service account to use
     {{- with $.Values.clickhouse.resources }}
     resources:
       limits:
-        cpu: {{ $.Values.clickhouse.limits.cpu | quote }}
-        memory: {{ $.Values.clickhouse.limits.memory | quote }}
+        cpu: {{ .limits.cpu | quote }}
+        memory: {{ .limits.memory | quote }}
       requests:
-        cpu: {{ $.Values.clickhouse.requests.cpu | quote }}
-        memory: {{ $.Values.clickhouse.requests.memory | quote }}
+        cpu: {{ .requests.cpu | quote }}
+        memory: {{ .requests.memory | quote }}
     {{- end }}
-    {{- if $.Values.clickhouse.persistence.enabled }}
     volumeClaimTemplates:
       - name: data
         spec:
@@ -159,7 +154,6 @@ Create the name of the service account to use
           resources:
             requests:
               storage: {{ $.Values.clickhouse.persistence.data.size }}
-    {{- end }}
 {{- end }}
 
 {{/*
@@ -178,13 +172,12 @@ Create the name of the service account to use
   {{- with $.Values.clickhouse.resources }}
   resources:
     limits:
-      cpu: {{ $.Values.clickhouse.limits.cpu | quote }}
-      memory: {{ $.Values.clickhouse.limits.memory | quote }}
+      cpu: {{ .limits.cpu | quote }}
+      memory: {{ .limits.memory | quote }}
     requests:
-      cpu: {{ $.Values.clickhouse.requests.cpu | quote }}
-      memory: {{ $.Values.clickhouse.requests.memory | quote }}
+      cpu: {{ .requests.cpu | quote }}
+      memory: {{ .requests.memory | quote }}
   {{- end }}
-  {{- if $.Values.clickhouse.persistence.enabled }}
   volumeClaimTemplates:
     - name: data
       spec:
@@ -194,6 +187,5 @@ Create the name of the service account to use
         resources:
           requests:
             storage: {{ $.Values.clickhouse.persistence.data.size }}
-  {{- end }}
 {{- end }}
 {{- end }}
