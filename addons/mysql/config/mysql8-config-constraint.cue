@@ -69,7 +69,7 @@
 	binlog_expire_logs_seconds: int & >=0 & <=4294967295 | *2592000
 
 	// Row-based, Statement-based or Mixed replication
-	binlog_format?: string & "ROW" | "STATEMENT" | "MIXED" | "row" | "statement" | "mixed"
+	binlog_format?: string & "ROW" | "STATEMENT" | "MIXED"
 
 	// Controls how many microseconds the binary log commit waits before synchronizing the binary log file to disk.
 	binlog_group_commit_sync_delay?: int & >=0 & <=1000000
@@ -87,10 +87,10 @@
 	binlog_order_commits?: string & "0" | "1" | "OFF" | "ON"
 
 	// Whether the server logs full or minimal rows with row-based replication.
-	binlog_row_image?: string & "FULL" | "MINIMAL" | "NOBLOB" | "full" | "minimal" | "noblob"
+	binlog_row_image?: string & "FULL" | "MINIMAL" | "NOBLOB"
 
 	// Controls whether metadata is logged using FULL or MINIMAL format. FULL causes all metadata to be logged; MINIMAL means that only metadata actually required by slave is logged. Default: MINIMAL.
-	binlog_row_metadata?: string & "FULL" | "MINIMAL" | "full" | "minimal"
+	binlog_row_metadata?: string & "FULL" | "MINIMAL"
 
 	// When enabled, it causes a MySQL 5.6.2 or later server to write informational log events such as row query log events into its binary log.
 	binlog_rows_query_log_events?: string & "0" | "1" | "OFF" | "ON"
