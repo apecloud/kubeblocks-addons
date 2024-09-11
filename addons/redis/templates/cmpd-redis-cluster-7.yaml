@@ -110,7 +110,7 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef:{{ include "redisCluster7.cmpdName" . }}
+          compDef: {{ include "redisCluster7.cmpdName" . }}
           name: default
           password: Required
     ## the redis cluster advertised service port list for each pod of current shard, the value format is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."

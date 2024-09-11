@@ -175,14 +175,14 @@ redis-cluster7-config-template-{{ .Chart.Version }}
 Define redis 7.X component script template name
 */}}
 {{- define "redis7.scriptsTemplate" -}}
-redis7-scripts-{{ .Chart.Version }}
+redis7-scripts-template-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define redis cluster 7.X component script template name
 */}}
 {{- define "redisCluster7.scriptsTemplate" -}}
-redis-cluster7-scripts-{{ .Chart.Version }}
+redis-cluster7-scripts-template-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
