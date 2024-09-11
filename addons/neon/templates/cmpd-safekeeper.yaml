@@ -1,11 +1,11 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
   labels:
     {{- include "neon.labels" . | nindent 4 }}
-  name: {{ include "neon-pageserver.componentDefName" . }}
+  name: {{ include "neon-safekeeper.componentDefName" . }}
 spec:
-  description: A neon pageserver component definition for Kubernetes
+  description: A neon safekeeper component definition for Kubernetes
   provider: KubeBlocks
   scripts:
     - name: neon-scripts
@@ -36,31 +36,35 @@ spec:
             name: storagebroker
   runtime:
     containers:
-      - command: ["/scripts/pageserver_start.sh"]
-        image: {{ include "neon-pageserver.image" . }}
-        name: neon-pageserver
-        env: 
-          - name: PAGEKEEPER_PG_PORT
-            value: "{{ .Values.pageserver.pgPort }}"
-          - name: PAGEKEEPER_HTTP_PORT
-            value: "{{ .Values.pageserver.httpPort }}"
+      - command: ["/scripts/sakekeeper_start.sh"]
+        env:
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          - name: SAFEKEEPER_PG_PORT
+            value: "{{ .Values.safekeeper.pgPort }}"
+          - name: SAFEKEEPER_HTTP_PORT
+            value: "{{ .Values.safekeeper.httpPort }}"
+        image: {{ include "neon-safekeeper.image" . }}
+        name: neon-safekeeper
         volumeMounts:
-          - mountPath: /usr/local/neon/pageserver
-            name: neon-pageserver
           - name: scripts
             mountPath: /scripts
-  serviceKind: neon-pageserver
+          - mountPath: /usr/local/neon/safekeeper
+            name: neon-safekeeper
+  serviceKind: neon-safekeeper
   serviceVersion: {{ .Values.componentServiceVersion }}
   services:
-    - name: neon-pageserver
-      serviceName: neon-pageserver
+    - name: neon-safekeeper
+      serviceName: neon-safekeeper
       spec:
         type: ClusterIP
         ports:
-          - name: pageserver-pg
-            port: {{ .Values.pageserver.pgPort }}
+          - name: safekeeper-pg
+            port: {{ .Values.safekeeper.pgPort }}
             protocol: TCP
-          - name: pageserver-http 
-            port: {{ .Values.pageserver.httpPort }}
+          - name: safekeeper-http
+            port: {{ .Values.safekeeper.httpPort }}
             protocol: TCP
         
