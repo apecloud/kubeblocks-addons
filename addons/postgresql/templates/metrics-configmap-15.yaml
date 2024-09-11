@@ -4,8 +4,6 @@ metadata:
   name: {{ include "postgresql15.metricsConfiguration" . }}
   labels:
       {{- include "postgresql.labels" . | nindent 4 }}
-  annotations:
-    {{- include "postgresql.annotations" . | nindent 4 }}
 data:
   custom-metrics.yaml: |-
     pg_postmaster:
