@@ -12,7 +12,7 @@ spec:
   - componentDefRef: mongodb
     target:
       role: secondary
-      fallBackRole: primary
+      fallbackRole: primary
     backupMethods: &backupMethods
     - name: dump
       snapshotVolumes: false
@@ -59,13 +59,13 @@ spec:
   - componentDefRef: mongodb-hostnetwork
     target:
       role: secondary
-      fallBackRole: primary
+      fallbackRole: primary
     backupMethods: *backupMethods
     schedules: *backupSchedules
   - componentDefs: [mongodb]
     target:
       role: secondary
-      fallBackRole: primary
+      fallbackRole: primary
       account: root
     backupMethods:
       - name: dump

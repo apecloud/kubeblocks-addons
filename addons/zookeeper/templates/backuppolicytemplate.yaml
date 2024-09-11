@@ -13,7 +13,7 @@ spec:
     - componentDefs: [zookeeper]
       target:
         role: follower
-        fallBackRole: leader
+        fallbackRole: leader
       backupMethods:
         - name: zoocreeper
           snapshotVolumes: false

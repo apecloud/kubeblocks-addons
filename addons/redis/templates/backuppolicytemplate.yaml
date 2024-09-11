@@ -13,7 +13,7 @@ spec:
   - componentDefRef: redis
     target:
       role: secondary
-      fallBackRole: primary
+      fallbackRole: primary
     backupMethods: &backupMethods
     - name: datafile
       snapshotVolumes: false
@@ -51,7 +51,7 @@ spec:
       - {{ include "redis.componentDefName" . }}
     target:
       role: secondary
-      fallBackRole: primary
+      fallbackRole: primary
       account: default
     backupMethods: *backupMethods
     schedules: *backupschedules
@@ -59,7 +59,7 @@ spec:
       - {{ include "redis-cluster.componentDefName" . }}
     target:
       role: secondary
-      fallBackRole: primary
+      fallbackRole: primary
       account: default
     backupMethods:
     - name: datafile

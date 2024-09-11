@@ -24,7 +24,7 @@ spec:
   - componentDefRef: postgresql
     target:
       role: secondary
-      fallBackRole: primary
+      fallbackRole: primary
     backupMethods:
     - name: pg-basebackup
       snapshotVolumes: false
@@ -61,7 +61,7 @@ spec:
     - name: wal-g
       target:
         role: secondary
-        fallBackRole: primary
+        fallbackRole: primary
       actionSetName: postgres-wal-g
       snapshotVolumes: false
       targetVolumes:
@@ -98,7 +98,7 @@ spec:
   - componentDefs: [postgresql-14, postgresql-12]
     target:
       role: secondary
-      fallBackRole: primary
+      fallbackRole: primary
       account: postgres
     backupMethods:
       - name: pg-basebackup
@@ -136,7 +136,7 @@ spec:
       - name: wal-g
         target:
           role: secondary
-          fallBackRole: primary
+          fallbackRole: primary
           account: postgres
         actionSetName: postgres-wal-g
         snapshotVolumes: false
