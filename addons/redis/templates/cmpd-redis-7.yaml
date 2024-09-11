@@ -1,14 +1,16 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "redis.componentDefName" . }}
+  name: {{ include "redis7.cmpdName" . }}
   labels:
     {{- include "redis.labels" . | nindent 4 }}
+  annotations:
+    {{- include "redis.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
   description: A Redis v7.0 component definition for Kubernetes
   serviceKind: redis
-  serviceVersion: {{ .Values.componentServiceVersion.redis }}
+  serviceVersion: {{ .Values.defaultServiceVersion.redis.major7 }}
   services:
     - name: redis
       serviceName: redis
@@ -51,20 +53,20 @@ spec:
     scrapePort: http-metrics
   configs:
     - name: redis-replication-config
-      templateRef: redis7-config-template
-      constraintRef: redis7-config-constraints
+      templateRef: {{ include "redis7.configurationTemplate" . }}
+      constraintRef: {{ include "redis7.configConstraint" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: redis-config
       reRenderResourceTypes:
         - vscale
     - name: redis-metrics-config
-      templateRef: redis-metrics-config
+      templateRef: {{ include "redis.metricsConfiguration" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: redis-metrics-config
       defaultMode: 0444
   scripts:
     - name: redis-scripts
-      templateRef: redis-scripts
+      templateRef: {{ include "redis7.scriptsTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
@@ -91,7 +93,7 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "redis.componentDefName" . }}
+          compDef: {{ include "redis7.cmpdName" . }}
           name: default
           username: Required
     ## the default password of redis connection
@@ -99,7 +101,7 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "redis.componentDefName" . }}
+          compDef: {{ include "redis7.cmpdName" . }}
           name: default
           password: Required
     ## the username of redis primary-secondary replication
@@ -110,7 +112,7 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "redis.componentDefName" . }}
+          compDef: {{ include "redis7.cmpdName" . }}
           name: default
           password: Required
     ## the username of redis for redis sentinel connection
@@ -121,14 +123,14 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "redis.componentDefName" . }}
+          compDef: {{ include "redis7.cmpdName" . }}
           name: default
           password: Required
     ## the redis advertised service port list for each pod, the value format is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."
     - name: REDIS_ADVERTISED_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redis.componentDefName" . }}
+          compDef: {{ include "redis7.cmpdName" . }}
           name: redis-advertised
           optional: true
           port:
@@ -138,7 +140,7 @@ spec:
     - name: REDIS_ADVERTISED_SVC_NAME
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redis.componentDefName" . }}
+          compDef: {{ include "redis7.cmpdName" . }}
           name: redis-advertised
           optional: true
           host: Required
@@ -146,28 +148,28 @@ spec:
     - name: REDIS_POD_NAME_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ include "redis.componentDefName" . }}
+          compDef: {{ include "redis7.cmpdName" . }}
           optional: false
           podNames: Required
     ## the redis pod fqdn list for each pod, the value format is "pod1FQDN,pod2FQDN,..."
     - name: REDIS_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ include "redis.componentDefName" . }}
+          compDef: {{ include "redis7.cmpdName" . }}
           optional: false
           podFQDNs: Required
     ## the component name of redis, it's the fullname of redis component
     - name: REDIS_COMPONENT_NAME
       valueFrom:
         componentVarRef:
-          compDef: {{ include "redis.componentDefName" . }}
+          compDef: {{ include "redis7.cmpdName" . }}
           optional: false
           componentName: Required
     ## the component name of redis sentinel when redis sentinel is enabled, it's the fullname of redis-sentinel component
     - name: SENTINEL_COMPONENT_NAME
       valueFrom:
         componentVarRef:
-          compDef: {{ include "redis-sentinel.componentDefName" . }}
+          compDef: {{ include "redisSentinel7.cmpdName" . }}
           optional: true
           componentName: Required
     ## the username of redis sentinel for redis connection, it is optional
@@ -175,7 +177,7 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the redis-sentinel component definition name
-          compDef: {{ include "redis-sentinel.componentDefName" . }}
+          compDef: {{ include "redisSentinel7.cmpdName" . }}
           name: default
           optional: true
           username: Required
@@ -184,14 +186,14 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the redis-sentinel component definition name
-          compDef: {{ include "redis-sentinel.componentDefName" . }}
+          compDef: {{ include "redisSentinel7.cmpdName" . }}
           name: default
           optional: true
           password: Required
     - name: SENTINEL_SERVICE_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redis-sentinel.componentDefName" . }}
+          compDef: {{ include "redisSentinel7.cmpdName" . }}
           name: redis-sentinel
           optional: true
           port:
@@ -200,13 +202,13 @@ spec:
     - name: SENTINEL_POD_NAME_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ include "redis-sentinel.componentDefName" . }}
+          compDef: {{ include "redisSentinel7.cmpdName" . }}
           optional: true
           podNames: Required
     - name: SENTINEL_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ include "redis-sentinel.componentDefName" . }}
+          compDef: {{ include "redisSentinel7.cmpdName" . }}
           optional: true
           podFQDNs: Required
   lifecycleActions:
@@ -272,7 +274,7 @@ spec:
             name: tools
     containers:
       - name: redis
-        image: {{ include "redis.image" . }}
+        image: {{ include "redis7.image" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         ports:
           - name: redis

@@ -1,14 +1,16 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "redis-cluster.componentDefName" . }}
+  name: {{ include "redisCluster7.cmpdName" . }}
   labels:
     {{- include "redis.labels" . | nindent 4 }}
+  annotations:
+    {{- include "redis.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
   description: An official v7.0 Redis Cluster(distributed implementation of Redis) component definition for Kubernetes
   serviceKind: redis-cluster
-  serviceVersion: {{ .Values.componentServiceVersion.redisCluster }}
+  serviceVersion: {{ .Values.defaultServiceVersion.redisCluster.major7 }}
   services:
     - name: redis-advertised
       serviceName: redis-advertised
@@ -46,20 +48,20 @@ spec:
     scrapePort: http-metrics
   configs:
     - name: redis-cluster-config
-      templateRef: redis-cluster7-config-template
-      constraintRef: redis-cluster7-config-constraints
+      templateRef: {{ include "redisCluster7.configurationTemplate" . }}
+      constraintRef: {{ include "redisCluster7.configConstraint" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: redis-cluster-config
       reRenderResourceTypes:
         - vscale
     - name: redis-metrics-config
-      templateRef: redis-metrics-config
+      templateRef: {{ include "redis.metricsConfiguration" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: redis-metrics-config
       defaultMode: 0444
   scripts:
     - name: redis-cluster-scripts
-      templateRef: redis-cluster-scripts
+      templateRef: {{ include "redisCluster7.scriptsTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
@@ -89,7 +91,7 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "redis-cluster.componentDefName" . }}
+          compDef: {{ include "redisCluster7.cmpdName" . }}
           name: default
           username: Required
     ## the default password of redis connection
@@ -97,7 +99,7 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "redis-cluster.componentDefName" . }}
+          compDef: {{ include "redisCluster7.cmpdName" . }}
           name: default
           password: Required
     ## the username of redis primary-secondary replication
@@ -108,14 +110,14 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "redis-cluster.componentDefName" . }}
+          compDef:{{ include "redisCluster7.cmpdName" . }}
           name: default
           password: Required
     ## the redis cluster advertised service port list for each pod of current shard, the value format is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."
     - name: REDIS_CLUSTER_ADVERTISED_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redis-cluster.componentDefName" . }}
+          compDef: {{ include "redisCluster7.cmpdName" . }}
           name: redis-advertised
           optional: true
           port:
@@ -125,7 +127,7 @@ spec:
     - name: REDIS_CLUSTER_ADVERTISED_BUS_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redis-cluster.componentDefName" . }}
+          compDef: {{ include "redisCluster7.cmpdName" . }}
           name: redis-advertised
           optional: true
           port:
@@ -135,7 +137,7 @@ spec:
     - name: REDIS_CLUSTER_ADVERTISED_SVC_NAME
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redis-cluster.componentDefName" . }}
+          compDef: {{ include "redisCluster7.cmpdName" . }}
           name: redis-advertised
           optional: true
           host: Required
@@ -144,7 +146,7 @@ spec:
     - name: REDIS_CLUSTER_ALL_SHARDS_ADVERTISED_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redis-cluster.componentDefName" . }}
+          compDef: {{ include "redisCluster7.cmpdName" . }}
           name: redis-advertised
           optional: true
           multipleClusterObjectOption:
@@ -161,7 +163,7 @@ spec:
     - name: REDIS_CLUSTER_ALL_SHARDS_ADVERTISED_BUS_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redis-cluster.componentDefName" . }}
+          compDef: {{ include "redisCluster7.cmpdName" . }}
           name: redis-advertised
           optional: true
           multipleClusterObjectOption:
@@ -178,7 +180,7 @@ spec:
     - name: REDIS_CLUSTER_ALL_SHARDS_ADVERTISED_SVC_NAME
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redis-cluster.componentDefName" . }}
+          compDef: {{ include "redisCluster7.cmpdName" . }}
           name: redis-advertised
           optional: true
           multipleClusterObjectOption:
@@ -252,7 +254,7 @@ spec:
             name: tools
     containers:
       - name: redis-cluster
-        image: {{ include "redis.image" . }}
+        image: {{ include "redis7.image" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         ports:
           - name: redis-cluster

@@ -2,7 +2,7 @@
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
-  name: redis7-config-constraints
+  name: {{ include "redis7.configConstraint" . }}
   labels:
     {{- include "redis.labels" . | nindent 4 }}
 spec:
