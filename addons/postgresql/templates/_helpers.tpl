@@ -167,42 +167,42 @@ postgresql15-configuration-{{ .Chart.Version }}
 Define postgresql12 component config constraint name
 */}}
 {{- define "postgresql12.configConstraint" -}}
-postgresql12-cc-{{ .Chart.Version }}
+postgresql12-cc
 {{- end -}}
 
 {{/*
 Define postgresql14 component config constraint name
 */}}
 {{- define "postgresql14.configConstraint" -}}
-postgresql14-cc-{{ .Chart.Version }}
+postgresql14-cc
 {{- end -}}
 
 {{/*
 Define postgresql15 component config constraint name
 */}}
 {{- define "postgresql15.configConstraint" -}}
-postgresql15-cc-{{ .Chart.Version }}
+postgresql15-cc
 {{- end -}}
 
 {{/*
 Define postgresql12 component metrice configuration name
 */}}
 {{- define "postgresql12.metricsConfiguration" -}}
-postgresql12-custom-metrics-{{ .Chart.Version }}
+postgresql12-custom-metrics
 {{- end -}}
 
 {{/*
 Define postgresql14 component metrice configuration name
 */}}
 {{- define "postgresql14.metricsConfiguration" -}}
-postgresql14-custom-metrics-{{ .Chart.Version }}
+postgresql14-custom-metrics
 {{- end -}}
 
 {{/*
 Define postgresql15 component metrice configuration name
 */}}
 {{- define "postgresql15.metricsConfiguration" -}}
-postgresql15-custom-metrics-{{ .Chart.Version }}
+postgresql15-custom-metrics
 {{- end -}}
 
 {{/*
