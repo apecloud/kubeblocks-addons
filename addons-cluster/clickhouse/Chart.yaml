@@ -11,15 +11,15 @@ appVersion: 24.3.10
 dependencies:
   - name: kblib
     version: 0.1.1
-    repository: file://../kblib-v2
+    repository: file://../kblib
     alias: extra
 
 home: https://clickhouse.com/
 icon: https://bitnami.com/assets/stacks/clickhouse/img/clickhouse-stack-220x234.png
 keywords:
-- database
-- sharding
+  - database
+  - sharding
 
 maintainers:
-- name: Nash Tsai
-  url: https://github.com/apecloud/kubeblocks/deploy
+  - name: ApeCloud
+    url: https://kubeblocks.io/
