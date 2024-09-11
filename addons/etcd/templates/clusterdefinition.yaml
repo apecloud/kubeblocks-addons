@@ -10,6 +10,13 @@ spec:
     - name: etcd
       characterType: etcd
       workloadType: Consensus
+      consensusSpec:
+        leader:
+          name: leader
+          accessMode: ReadWrite
+        followers:
+          - name: follower
+            accessMode: Readonly
       rsmSpec:
         roles:
           - name: leader
