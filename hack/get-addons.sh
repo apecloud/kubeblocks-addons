@@ -18,18 +18,18 @@ for d in $(find ./addons -type d  -not -name "common" -not -name "kblib" -not -n
     helm template addon addons/$dir_name > /tmp/rendered.yaml
 
     # prase from ComponentVersion
-    version_lines=$(cat "/tmp/rendered.yaml" | yq e '. | select(.kind == "ComponentVersion")'  | yq '.metadata.name + "-" +.spec.releases[].serviceVersion' -N | sort)
+    version_lines=$(cat "/tmp/rendered.yaml" | yq e '. | select(.kind == "ComponentVersion")'  | yq '.metadata.name + "-" +.spec.releases[].serviceVersion' -N | sort | uniq)
     # if version_lines is empty, try to get version from ComponentDefinition
     if [[ -z $version_lines ]]; then
-      version_lines=$(cat "/tmp/rendered.yaml"  | yq e '. | select(.kind == "ComponentDefinition")'  | yq '.spec.serviceKind + "-" +.spec.serviceVersion' -N | sort)
+      version_lines=$(cat "/tmp/rendered.yaml"  | yq e '. | select(.kind == "ComponentDefinition")'  | yq '.spec.serviceKind + "-" +.spec.serviceVersion' -N | sort | uniq)
     fi
     # if version_lines is empty, try to get version from List of ComponentDefinition
     if [[ -z $version_lines ]]; then
-      version_lines=$(cat "/tmp/rendered.yaml"  | yq e '. | select(.kind == "List") | .items[0] | select(.kind == "ComponentDefinition") | .spec.serviceKind + "-" +.spec.serviceVersion' -N | sort)
+      version_lines=$(cat "/tmp/rendered.yaml"  | yq e '. | select(.kind == "List") | .items[0] | select(.kind == "ComponentDefinition") | .spec.serviceKind + "-" +.spec.serviceVersion' -N | sort | uniq)
     fi
     # if version_lines is empty, try to get version from clusterdefintioin
     if [[ -z $version_lines ]]; then
-      version_lines=$(cat "/tmp/rendered.yaml"  | yq  e '. | select(.kind == "ClusterDefinition") | .spec.componentDefs[].podSpec.containers[0].image | sub(".*/", "") | sub(":", "-")' -N | sort)
+      version_lines=$(cat "/tmp/rendered.yaml"  | yq  e '. | select(.kind == "ClusterDefinition") | .spec.componentDefs[].podSpec.containers[0].image | sub(".*/", "") | sub(":", "-")' -N | sort | uniq)
     fi
 
     # version_lines=$(helm template addon addons/$dir_name | grep -A 5 'kind: ComponentVersion' | grep '  name:' | awk '{print $2}' | cut -d '-' -f 2- | sort)
