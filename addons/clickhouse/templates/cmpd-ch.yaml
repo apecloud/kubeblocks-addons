@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: clickhouse-{{ .Chart.Version }}
+  name: clickhouse-24
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
     {{- if .Values.commonLabels }}
@@ -14,7 +14,71 @@ spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
-  serviceVersion: {{ .Chart.AppVersion }}
+  serviceVersion: "24.3.10"
+  services:
+    - name: default
+      spec:
+        ports:
+          - name: http
+            targetPort: http
+            port: 8123
+          - name: tcp
+            targetPort: tcp
+            port: 9000
+          - name: tcp-mysql
+            targetPort: tcp-mysql
+            port: 9004
+          - name: tcp-postgresql
+            targetPort: tcp-postgresql
+            port: 9005
+          - name: http-intersrv
+            targetPort: http-intersrv
+            port: 9009
+          - name: http-metrics
+            targetPort: http-metrics
+            port: 8001
+  logConfigs:
+    {{- range $name, $pattern := .Values.logConfigs }}
+    - name: {{ $name }}
+      filePathPattern: {{ $pattern }}
+    {{- end }}
+  exporter:
+    scrapePath: /metrics
+    scrapePort: "8001"
+  configs:
+    - name: clickhouse-tpl
+      templateRef: clickhouse-tpl
+      volumeName: config
+      namespace: {{ .Release.Namespace }}
+    - name: clickhouse-user-tpl
+      templateRef: clickhouse-user-tpl
+      volumeName: user-config
+      namespace: {{ .Release.Namespace }}
+      constraintRef: clickhouse-constraints
+  systemAccounts:
+    - name: admin
+      initAccount: true
+  vars:
+    - name: CLICKHOUSE_ADMIN_USER
+      value: admin
+    - name: CLICKHOUSE_ADMIN_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          compDef: ch-keeper-24
+          optional: false
+          password: Required
+    - name: CLICKHOUSE_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+    - name: CH_KEEPER_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: ch-keeper-24
+          optional: false
+          podFQDNs: Required
   runtime:
     securityContext:
       fsGroup: 1001
@@ -22,8 +86,8 @@ spec:
         type: RuntimeDefault
     containers:
       - name: clickhouse
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:{{ default .Chart.AppVersion .Values.image.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:{{ default .Chart.AppVersion .Values.image.tag }}
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -92,49 +156,3 @@ spec:
             mountPath: /bitnami/clickhouse/etc/conf.d/default
           - name: user-config
             mountPath: /bitnami/clickhouse/etc/users.d/default
-  vars:
-    - name: CLICKHOUSE_ADMIN_USER
-      value: admin
-    - name: CLICKHOUSE_ADMIN_PASSWORD
-      valueFrom:
-        credentialVarRef:
-          name: admin
-          optional: false
-          password: Required
-  volumes:
-    - name: data
-  services:
-    - name: default
-      spec:
-        ports:
-          - name: http
-            targetPort: http
-            port: 8123
-          - name: tcp
-            targetPort: tcp
-            port: 9000
-          - name: tcp-mysql
-            targetPort: tcp-mysql
-            port: 9004
-          - name: tcp-postgresql
-            targetPort: tcp-postgresql
-            port: 9005
-          - name: http-intersrv
-            targetPort: http-intersrv
-            port: 9009
-          - name: http-metrics
-            targetPort: http-metrics
-            port: 8001
-  configs:
-    - name: clickhouse-tpl
-      templateRef: clickhouse-tpl
-      volumeName: config
-      namespace: {{ .Release.Namespace }}
-    - name: clickhouse-user-tpl
-      templateRef: clickhouse-user-tpl
-      volumeName: user-config
-      namespace: {{ .Release.Namespace }}
-      constraintRef: clickhouse-constraints
-  systemAccounts:
-    - name: admin
-      initAccount: true
