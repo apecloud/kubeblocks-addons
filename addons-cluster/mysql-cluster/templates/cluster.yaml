@@ -12,6 +12,7 @@ spec:
   clusterDefinitionRef: mysql # ref clusterdefinition.name
   componentSpecs:
     - name: mysql
+      componentDef: {{ .Values.compdef }}
       componentDefRef: mysql # ref clusterdefinition componentDefs.name
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "mysql-cluster.replicaCount" . | indent 6 }}

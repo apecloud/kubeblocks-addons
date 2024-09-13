@@ -1,0 +1,94 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "mysql.componentDefName80" . }}
+  labels:
+      {{- include "mysql.labels" . | nindent 4 }}
+spec:
+  {{- include "mysql.spec.common" . | nindent 2 }}
+  serviceVersion: 8.0.33
+
+  configs:
+    - name: mysql-replication-config
+      templateRef: oracle-mysql8.0-config-template
+      constraintRef: oracle-mysql8.0-config-constraints
+      volumeName: mysql-config
+      namespace: {{ .Release.Namespace }}
+      reRenderResourceTypes:
+        - vscale
+  runtime:
+    initContainers:
+      - image: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
+        name: init-data
+        command:
+          - bash
+          - -c
+          - |
+            mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog}
+            cp /usr/lib/mysql/plugin/ {{ .Values.dataMountPath }}/plugin -r
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+      - command:
+          - cp
+          - -r
+          - /xtrabackup
+          - /tools/xtrabackup
+        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.0
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        name: init-xtrabackup
+        volumeMounts:
+          - mountPath: /tools
+            name: tools
+      {{- include "mysql.spec.runtime.common" . | nindent 6 }}
+    containers:
+      - name: mysql
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        command:
+          - syncer
+          - --config-path
+          - /tools/config/components
+          - --port
+          - "3601"
+          - --
+          - bash
+          - -c
+          - |
+            mv {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
+            rm -rf {{ .Values.dataMountPath }}/plugin
+            chown -R mysql:root {{ .Values.dataMountPath }}
+            skip_slave_start="OFF"
+            if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
+              skip_slave_start="ON"
+            fi
+            docker-entrypoint.sh mysqld --server-id $(( ${KB_POD_NAME##*-} + 1)) \
+            --plugin-load-add=rpl_semi_sync_source=semisync_source.so \
+            --plugin-load-add=rpl_semi_sync_replica=semisync_replica.so \
+            --plugin-load-add=audit_log=audit_log.so \
+            --log-bin={{.Values.dataMountPath}}/binlog/$(KB_POD_NAME)-bin \
+            --skip-replica-start=$skip_replica_start
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+          - mountPath: /etc/mysql/conf.d
+            name: mysql-config
+          - name: scripts
+            mountPath: /scripts
+          - mountPath: /tools
+            name: tools
+        ports:
+          - containerPort: 3306
+            name: mysql
+          - containerPort: 3601
+            name: ha
+        env:
+          - name: PATH
+            value: /tools/xtrabackup/bin:/tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          - name: KB_SERVICE_CHARACTER_TYPE
+            value: mysql
+          - name: MYSQL_INITDB_SKIP_TZINFO
+            value: "1"
+          - name: MYSQL_ROOT_HOST
+            value: {{ .Values.auth.rootHost | default "%" | quote }}

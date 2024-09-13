@@ -32,3 +32,5 @@ requests:
 ## @param storage size, the unit is Gi
 ##
 storage: 20
+
+compdef: mysql-8.0
