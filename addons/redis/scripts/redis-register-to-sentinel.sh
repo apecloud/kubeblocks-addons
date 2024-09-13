@@ -1,5 +1,4 @@
 #!/bin/bash
-# shellcheck disable=SC1054,SC1073,SC1036,SC1056,SC1072
 set -ex
 
 # Based on the Component Definition API, Redis deployed independently, this script is used to register Redis to Sentinel.
@@ -231,6 +230,7 @@ register_to_sentinel_wrapper() {
   done
 }
 
+# shellcheck disable=SC1054,SC1073,SC1036,SC1056,SC1072
 # TODO: replace the following code with checking env $SENTINEL_COMPONENT_NAME defined in ComponentDefinition.Spec.Vars API
 {{- $defaultSentinelComponentName := "redis-sentinel" }}
 {{- $envSentinelComponentName := getEnvByName ( index $.podSpec.containers 0 ) "SENTINEL_COMPONENT_DEFINITION_NAME" }}
