@@ -19,6 +19,17 @@
         "raftGroup"
       ]
     },
+    "compdef": {
+      "title": "componentdefinition",
+      "description": "Cluster component definition.",
+      "type": "string",
+      "default": "mysql-8.0",
+      "enum": [
+        "mysql-5.7",
+        "mysql-8.0",
+        "mysql-8.4"
+      ]
+    },
     "replicas": {
       "title": "Replicas",
       "description": "The number of replicas.",

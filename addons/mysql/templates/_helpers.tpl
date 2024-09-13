@@ -62,6 +62,79 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
+Define mysql component definition name
+*/}}
+{{- define "mysql.componentDefName" -}}
+{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
+mysql
+{{- else -}}
+{{- printf "mysql-%s" .Values.compDefinitionVersionSuffix -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define mysql component definition regex regular
+*/}}
+{{- define "mysql.componentDefRegex" -}}
+^mysql-\d+\.\d+.*$
+{{- end -}}
+
+{{/*
+Define mysql component definition name
+*/}}
+{{- define "mysql.componentDefName57" -}}
+{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
+mysql-5.7
+{{- else -}}
+{{- printf "mysql-5.7-%s" .Values.compDefinitionVersionSuffix -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define mysql component definition name
+*/}}
+{{- define "mysql.componentDefNameOrc57" -}}
+{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
+mysql-orc-5.7
+{{- else -}}
+{{- printf "mysql-orc-5.7-%s" .Values.compDefinitionVersionSuffix -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define mysql component definition name
+*/}}
+{{- define "mysql.componentDefName80" -}}
+{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
+mysql-8.0
+{{- else -}}
+{{- printf "mysql-8.0-%s" .Values.compDefinitionVersionSuffix -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define mysql component definition name
+*/}}
+{{- define "mysql.componentDefNameOrc80" -}}
+{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
+mysql-orc-8.0
+{{- else -}}
+{{- printf "mysql-orc-8.0-%s" .Values.compDefinitionVersionSuffix -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define mysql component definition name
+*/}}
+{{- define "mysql.componentDefName84" -}}
+{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
+mysql-8.4
+{{- else -}}
+{{- printf "mysql-8.4-%s" .Values.compDefinitionVersionSuffix -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 apecloud-otel config
 */}}
 {{- define "agamotto.config" -}}
@@ -157,3 +230,109 @@ service:
 {{- define "mysql.imagePullPolicy" -}}
 {{ default "IfNotPresent" .Values.image.pullPolicy }}
 {{- end }}
+
+{{- define "mysql.spec.common" -}}
+provider: kubeblocks
+serviceKind: mysql
+description: mysql component definition for Kubernetes
+updateStrategy: BestEffortParallel
+
+services:
+  - name: mysql-server
+    serviceName: mysql-server
+    roleSelector: primary
+    spec:
+      ports:
+        - name: mysql
+          port: 3306
+          targetPort: mysql
+  - name: mysql
+    serviceName: mysql
+    podService: true
+    spec:
+      ports:
+        - name: mysql
+          port: 3306
+          targetPort: mysql
+
+scripts:
+  - name: mysql-scripts
+    templateRef: mysql-scripts
+    namespace: {{ .Release.Namespace }}
+    volumeName: scripts
+    defaultMode: 0555
+volumes:
+  - name: data
+    needSnapshot: true
+systemAccounts:
+  - name: root
+    initAccount: true
+    passwordGenerationPolicy:
+      length: 10
+      numDigits: 5
+      numSymbols: 0
+      letterCase: MixedCases
+vars:
+  - name: MYSQL_ROOT_USER
+    valueFrom:
+      credentialVarRef:
+        name: root
+        username: Required
+
+  - name: MYSQL_ROOT_PASSWORD
+    valueFrom:
+      credentialVarRef:
+        name: root
+        password: Required
+lifecycleActions:
+  roleProbe:
+    builtinHandler: mysql
+    periodSeconds: {{ .Values.roleProbe.periodSeconds }}
+    timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+roles:
+  - name: primary
+    serviceable: true
+    writable: true
+  - name: secondary
+    serviceable: true
+    writable: false
+{{- end }}
+
+{{- define "mysql.spec.runtime.common" -}}
+- command:
+    - cp
+    - -r
+    - /bin/syncer
+    - /config
+    - /tools/
+  image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+  imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+  name: init-syncer
+  volumeMounts:
+    - mountPath: /tools
+      name: tools
+{{- end }}
+
+{{- define "mysql.spec.runtime.exporter" -}}
+command:
+  - bash
+  - -c
+  - |
+    mysqld_exporter --mysqld.username=${MYSQLD_EXPORTER_USER} --web.listen-address=:${EXPORTER_WEB_PORT} --log.level={{.Values.metrics.logLevel}}
+env:
+  - name: MYSQLD_EXPORTER_USER
+    value: $(MYSQL_ROOT_USER)
+  - name: MYSQLD_EXPORTER_PASSWORD
+    value: $(MYSQL_ROOT_PASSWORD)
+  - name: EXPORTER_WEB_PORT
+    value: "{{ .Values.metrics.service.port }}"
+image: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
+imagePullPolicy: IfNotPresent
+ports:
+  - name: http-metrics
+    containerPort: {{ .Values.metrics.service.port }}
+volumeMounts:
+  - name: scripts
+    mountPath: /scripts
+{{- end -}}
+
