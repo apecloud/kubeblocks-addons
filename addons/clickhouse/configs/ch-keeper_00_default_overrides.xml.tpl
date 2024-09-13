@@ -4,7 +4,7 @@
   <listen_host>0.0.0.0</listen_host>
   <keeper_server>
       <tcp_port from_env="CLICKHOUSE_KEEPER_TCP_PORT"></tcp_port>
-      <server_id>1</server_id>
+      <server_id from_env="CH_KEEPER_ID"></server_id>
       <log_storage_path>/var/lib/clickhouse/coordination/log</log_storage_path>
       <snapshot_storage_path>/var/lib/clickhouse/coordination/snapshots</snapshot_storage_path>
       <coordination_settings>
@@ -13,11 +13,10 @@
           <raft_logs_level>warning</raft_logs_level>
       </coordination_settings>
       <raft_configuration>
-{{- $replicas := $.component.replicas | int }}
-{{- range $i, $e := until $replicas }}
+{{- range $id, $host := splitList "," .CH_KEEPER_POD_FQDN_LIST }}
         <server>
-          <id>{{ $i | int | add1 }}</id>
-          <hostname>{{ $clusterName }}-{{ $.component.name }}-{{ $i }}.{{ $clusterName }}-{{ $.component.name }}-headless.{{ $namespace }}.svc.{{- $.clusterDomain }}</hostname>
+          <id>{{ $id }}</id>
+          <hostname>{{ $host }}</hostname>
           <port from_env="CLICKHOUSE_KEEPER_RAFT_PORT"></port>
         </server>
 {{- end }}
