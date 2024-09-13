@@ -20,6 +20,8 @@ keywords:
 maintainers:
   - name: GreptimeTeam
     url: https://github.com/GreptimeTeam
+  - name: sh2
+    url: https://github.com/sh2
 
 annotations:
     addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"

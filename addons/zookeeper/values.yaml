@@ -8,6 +8,7 @@ images:
   pullPolicy: IfNotPresent
 
   tag: 3.7.2
+  # refer: addons/zookeeper/zoocreeper/Dockerfile
   zoocreeper:
     registry: ""
     repository: apecloud/zoocreeper

@@ -8,7 +8,7 @@ type: application
 
 version: 1.0.0-alpha.0
 
-appVersion: 22.9.4
+appVersion: 24.3.10
 
 home: https://clickhouse.com/
 icon: https://bitnami.com/assets/stacks/clickhouse/img/clickhouse-stack-220x234.png
@@ -24,10 +24,10 @@ dependencies:
   version: 2.x.x
 
 maintainers:
-- name: Nash Tsai
-  url: https://github.com/apecloud/kubeblocks/deploy
+  - name: sophon-zt
+    url: https://github.com/apecloud/kubeblocks/
 
 annotations:
   addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
   addon.kubeblocks.io/model: "RDBMS"
-  addon.kubeblocks.io/provider: "apecloud"
+  addon.kubeblocks.io/provider: "community"

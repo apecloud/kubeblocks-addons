@@ -1,4 +1,11 @@
-#shellcheck shell=bash
+# shellcheck shell=bash
+# shellcheck disable=SC2034
+
+# validate_shell_type_and_version defined in shellspec/spec_helper.sh used to validate the expected shell type and version this script needs to run.
+if ! validate_shell_type_and_version "bash" 4 &>/dev/null; then
+  echo "redis_sentinel_member_leave_spec.sh skip all cases because dependency bash version 4 or higher is not installed."
+  exit 0
+fi
 
 source ./utils.sh
 
@@ -7,9 +14,9 @@ source ./utils.sh
 common_library_file="./common.sh"
 generate_common_library $common_library_file
 
-Describe "Redis Sentinel Offline Script Tests"
+Describe "Redis Sentinel Member Leave Script Tests"
 
-  Include ../scripts/redis-sentinel-offline.sh
+  Include ../scripts/redis-sentinel-member-leave.sh
   Include $common_library_file
 
   setup() {
@@ -20,7 +27,7 @@ Describe "Redis Sentinel Offline Script Tests"
     sentinel_leave_member_name=""
     sentinel_leave_member_ip=""
     sentinel_pod_list=()
-
+    # set ut_mode to true to hack control flow in the script
     ut_mode="true"
   }
   BeforeAll "setup"
@@ -33,6 +40,7 @@ Describe "Redis Sentinel Offline Script Tests"
     unset sentinel_leave_member_name
     unset sentinel_leave_member_ip
     unset sentinel_pod_list
+    rm -f $common_library_file;
   }
   AfterAll "cleanup"
 

@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: clickhouse
+  name: clickhouse-24
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
     {{- if .Values.commonLabels }}
@@ -14,7 +14,7 @@ spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
-  serviceVersion: {{ .Chart.AppVersion }}
+  serviceVersion: "24.3.10"
   runtime:
     securityContext:
       fsGroup: 1001
@@ -95,6 +95,28 @@ spec:
             mountPath: /bitnami/clickhouse/etc/conf.d/default
           - name: user-config
             mountPath: /bitnami/clickhouse/etc/users.d/default
+  updateStrategy: BestEffortParallel
+  logConfigs:
+    {{- range $name, $pattern := .Values.logConfigs }}
+    - name: {{ $name }}
+      filePathPattern: {{ $pattern }}
+    {{- end }}
+  exporter:
+    scrapePath: /metrics
+    scrapePort: "8001"
+  configs:
+    - name: clickhouse-tpl
+      templateRef: clickhouse-tpl
+      volumeName: config
+      namespace: {{ .Release.Namespace }}
+    - name: clickhouse-user-tpl
+      templateRef: clickhouse-user-tpl
+      volumeName: user-config
+      namespace: {{ .Release.Namespace }}
+      constraintRef: clickhouse-constraints
+  systemAccounts:
+    - name: admin
+      initAccount: true
   vars:
     - name: CLICKHOUSE_ADMIN_USER
       value: admin
@@ -102,11 +124,18 @@ spec:
       valueFrom:
         credentialVarRef:
           name: admin
+          compDef: ch-keeper-24
           optional: false
           password: Required
-    - name: PEER_FQDNS
+    - name: CLICKHOUSE_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
+          optional: false
+          podFQDNs: Required
+    - name: CH_KEEPER_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: ch-keeper-24
           optional: false
           podFQDNs: Required
   volumes:
@@ -142,17 +171,3 @@ spec:
           - name: tcp-secure
             targetPort: tcp-secure
             port: 9440
-  updateStrategy: BestEffortParallel
-  configs:
-    - name: clickhouse-tpl
-      templateRef: clickhouse-tpl
-      volumeName: config
-      namespace: {{ .Release.Namespace }}
-    - name: clickhouse-user-tpl
-      templateRef: clickhouse-user-tpl
-      volumeName: user-config
-      namespace: {{ .Release.Namespace }}
-      constraintRef: clickhouse-constraints
-  systemAccounts:
-    - name: admin
-      initAccount: true

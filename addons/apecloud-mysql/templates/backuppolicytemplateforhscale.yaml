@@ -13,6 +13,7 @@ spec:
       - {{ include "apecloud-mysql.componentDefName" . }}
     target:
       role: follower
+      fallbackRole: leader
       account: root
     backupMethods:
     - name: volume-snapshot

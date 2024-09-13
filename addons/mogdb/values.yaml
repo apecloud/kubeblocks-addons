@@ -12,6 +12,7 @@ image:
   tag: 5.0.5
 
 tools:
+  # refer: https://github.com/apecloud/kubeblocks/blob/main/docker/Dockerfile-tools
   image:
     registry: docker.io
     repository: apecloud/kubeblocks-tools

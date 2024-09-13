@@ -1,0 +1,70 @@
+name: ShellSpec Test
+
+on:
+  push:
+    branches:
+      - '**'
+    tags-ignore:
+      - '**'
+
+env:
+  BASE_BRANCH: origin/main
+
+jobs:
+  shellspec-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel Previous Runs
+        if: ${{ github.ref_name != 'main' }}
+        uses: styfle/cancel-workflow-action@0.11.0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          all_but_latest: true
+          access_token: ${{ env.GITHUB_TOKEN }}
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get base commit id
+        id: get_base_commit_id
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          BASE_COMMITID=`bash .github/utils/utils.sh --type 1 \
+              --branch-name "${{ env.REF_NAME }}" \
+              --base-branch "${{ env.BASE_BRANCH }}"`
+
+          echo "BASE_COMMITID:$BASE_COMMITID"
+          echo BASE_COMMITID=$BASE_COMMITID >> $GITHUB_ENV
+
+      - name: Get file path
+        id: get_file_path
+        run: |
+          FILE_PATH=`git diff --name-only HEAD ${{ env.BASE_COMMITID }}`
+          echo "FILE_PATH: $FILE_PATH"
+          SHELL_FILE_PATH=""
+          for filePath in $(echo "$FILE_PATH"); do
+              if [[ "${filePath}" == *"addons/"*"/scripts-ut-spec/"* && -f "${filePath}" ]]; then
+                  SHELL_FILE_PATH="${SHELL_FILE_PATH} ${filePath}"
+              fi
+          done
+          echo shell_file_path=$SHELL_FILE_PATH >> $GITHUB_OUTPUT
+
+      - name: Install kcov
+        if: ${{ steps.get_file_path.outputs.shell_file_path || github.ref_name == 'main' }}
+        run: sudo apt-get install -y bash kcov
+
+      - name: shellspec test
+        if: ${{ steps.get_file_path.outputs.shell_file_path || github.ref_name == 'main' }}
+        run: |
+          make scripts-test-kcov
+
+      - name: Upload coverage
+        if: ${{ steps.get_file_path.outputs.shell_file_path || github.ref_name == 'main' }}
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        run: |
+          bash <(curl -s https://codecov.io/bash) -s coverage
+

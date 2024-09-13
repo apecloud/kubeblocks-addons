@@ -16,51 +16,50 @@
   <interserver_http_port replace="replace" from_env="CLICKHOUSE_INTERSERVER_HTTP_PORT"/>
   {{- end }}
   <keeper_server>
-    {{- range $.cluster.spec.componentSpecs }}
+      {{- range $.cluster.spec.componentSpecs }}
       {{- $compIter := . }}
       {{- if (eq $compIter.componentDef "clickhouse-keeper") }}
-        {{- $useZookeeper = false }}
+      {{- $useZookeeper = false }}
       {{- end }}
-    {{- end }}
-    {{- if $.component.tlsConfig }}
-    {{- if eq $useZookeeper false }}
-    <tcp_port_secure replace="replace" from_env="CLICKHOUSE_KEEPER_TCP_TLS_PORT"/>
-    {{- else }}
-    <tcp_port replace="replace" from_env="ZOOKEEPER_TCP_TLS_PORT"/>
-    {{- end }}
-    <secure>1</secure>
-    {{- else }}
-    {{- if eq $useZookeeper false }}
-    <tcp_port_secure replace="replace" from_env="CLICKHOUSE_KEEPER_TCP_PORT"/>
-    {{- else }}
-    <tcp_port replace="replace" from_env="ZOOKEEPER_TCP_PORT"/>
-    {{- end }}
-    {{- end }}
-    <server_id from_env="KEEPER_REPLICA_ID"/>
-    <log_storage_path>/var/lib/clickhouse/coordination/log</log_storage_path>
-    <snapshot_storage_path>/var/lib/clickhouse/coordination/snapshots</snapshot_storage_path>
-    <coordination_settings>
-      <operation_timeout_ms>10000</operation_timeout_ms>
-      <session_timeout_ms>30000</session_timeout_ms>
-      <raft_logs_level>warning</raft_logs_level>
-    </coordination_settings>
-    <raft_configuration>
+      {{- end }}
+      {{- if $.component.tlsConfig }}
+      {{- if eq $useZookeeper false }}
+      <tcp_port_secure replace="replace" from_env="CLICKHOUSE_KEEPER_TCP_TLS_PORT"/>
+      {{- else }}
+      <tcp_port replace="replace" from_env="ZOOKEEPER_TCP_TLS_PORT"/>
+      {{- end }}
+      <secure>1</secure>
+      {{- else }}
+      {{- if eq $useZookeeper false }}
+      <tcp_port_secure replace="replace" from_env="CLICKHOUSE_KEEPER_TCP_PORT"/>
+      {{- else }}
+      <tcp_port replace="replace" from_env="ZOOKEEPER_TCP_PORT"/>
+      {{- end }}
+      {{- end }}
+      <server_id from_env="CH_KEEPER_ID"/>
+      <log_storage_path>/var/lib/clickhouse/coordination/log</log_storage_path>
+      <snapshot_storage_path>/var/lib/clickhouse/coordination/snapshots</snapshot_storage_path>
+      <coordination_settings>
+          <operation_timeout_ms>10000</operation_timeout_ms>
+          <session_timeout_ms>30000</session_timeout_ms>
+          <raft_logs_level>warning</raft_logs_level>
+      </coordination_settings>
+      <raft_configuration>
       {{- if $.component.tlsConfig }}
       <secure>true</secure>
       {{- end }}
-      {{- $replicas := $.component.replicas | int }}
-      {{- range $i, $e := until $replicas }}
-      <server>
-        <id>{{ $i | int }}</id>
-        <hostname>{{ $clusterName }}-{{ $.component.name }}-{{ $i }}.{{ $clusterName }}-{{ $.component.name }}-headless.{{ $namespace }}.svc.{{- $.clusterDomain }}</hostname>
-        {{- if $.component.tlsConfig }}
-        <port replace="replace" from_env="CLICKHOUSE_KEEPER_RAFT_TLS_PORT"/>
-        {{- else }}
-        <port replace="replace" from_env="CLICKHOUSE_KEEPER_RAFT_PORT"/>
+      {{- range $id, $host := splitList "," .CH_KEEPER_POD_FQDN_LIST }}
+        <server>
+          <id>{{ $id }}</id>
+          <hostname>{{ $host }}</hostname>
+          {{- if $.component.tlsConfig }}
+          <port replace="replace" from_env="CLICKHOUSE_KEEPER_RAFT_TLS_PORT"/>
+          {{- else }}
+          <port replace="replace" from_env="CLICKHOUSE_KEEPER_RAFT_PORT"/>
+          {{- end }}
+        </server>
         {{- end }}
-      </server>
-      {{- end }}
-    </raft_configuration>
+      </raft_configuration>
   </keeper_server>
   <!-- Prometheus metrics -->
   <prometheus>

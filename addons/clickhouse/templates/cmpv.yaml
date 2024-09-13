@@ -1,31 +1,27 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentVersion
 metadata:
-  name: clickhouse
+  name: clickhouse-cluster
   labels:
-    {{- include "clickhouse.labels" . | nindent 4 }}
+      {{- include "clickhouse.labels" . | nindent 4 }}
+      {{- if .Values.commonLabels }}
+      {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
+      {{- end }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
 spec:
   compatibilityRules:
-    - compDefs: [clickhouse]
-      releases: [22.9.4]
+    - releases:
+        - 24.3.10
+      compDefs:
+        - clickhouse-24
+    - releases:
+        - 24.3.10
+      compDefs:
+        - ch-keeper-24
   releases:
-    - name: 22.9.4
-      serviceVersion: 22.9.4
-      images:
-        clickhouse: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:{{ default .Chart.AppVersion .Values.image.tag }}
----
-apiVersion: apps.kubeblocks.io/v1alpha1
-kind: ComponentVersion
-metadata:
-  name: clickhouse-keeper
-  labels:
-    {{- include "clickhouse.labels" . | nindent 4 }}
-spec:
-  compatibilityRules:
-    - compDefs: [clickhouse-keeper]
-      releases: [22.9.4]
-  releases:
-    - name: 22.9.4
-      serviceVersion: 22.9.4
+    - name: 24.3.10
+      serviceVersion: 24.3.10
       images:
         clickhouse: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:{{ default .Chart.AppVersion .Values.image.tag }}

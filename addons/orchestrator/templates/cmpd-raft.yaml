@@ -37,9 +37,9 @@ spec:
       roleSelector: primary
       spec:
         ports:
-          - name: http
+          - name: orc-http
             port: 80
-            targetPort: http
+            targetPort: orc-http
 
   runtime:
     containers:

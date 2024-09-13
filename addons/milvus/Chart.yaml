@@ -11,7 +11,7 @@ home: https://milvus.io/
 icon: https://github.com/milvus-io/artwork/blob/master/horizontal/color/milvus-horizontal-color.png
 
 maintainers:
-  - name: ApeCloud
+  - name: leon-inf
     url: https://github.com/apecloud/kubeblocks/
 
 sources:

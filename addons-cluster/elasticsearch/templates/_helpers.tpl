@@ -72,3 +72,8 @@ replicas: {{ max .Values.replicas 3 }}
 {{- define "elasticsearch.version" }}
 {{- trimPrefix "elasticsearch-" .Values.version }}
 {{- end }}
+
+{{- define "elasticsearch.majorVersion" }}
+{{- $version := semver (include "elasticsearch.version" .) }}
+{{- printf "%d" $version.Major }}
+{{- end }}

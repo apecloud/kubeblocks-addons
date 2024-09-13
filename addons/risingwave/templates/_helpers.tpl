@@ -31,10 +31,19 @@ Create chart name and version as used by the chart label.
 {{- end }}
 
 {{/*
+Selector labels
+*/}}
+{{- define "risingwave.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "risingwave.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{/*
 Common labels
 */}}
 {{- define "risingwave.labels" -}}
 helm.sh/chart: {{ include "risingwave.chart" . }}
+{{ include "risingwave.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}

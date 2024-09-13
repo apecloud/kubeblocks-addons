@@ -15,7 +15,7 @@ image:
   exporter:
     repository: prometheuscommunity/elasticsearch-exporter
     tag: "v1.7.0"
-  # refer: https://github.com/apecloud/kubeblocks-addons/blob/main/addons/elasticsearch/plugins/Dockerfile
+  # refer: addons/elasticsearch/plugins/Dockerfile
   plugin:
     repository: apecloud/elasticsearch-plugins
     tag: "8.8.2"

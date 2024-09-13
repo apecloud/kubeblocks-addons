@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: clickhouse-keeper
+  name: ch-keeper-24
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
     {{- if .Values.commonLabels }}
@@ -13,8 +13,89 @@ metadata:
 spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
-  serviceKind: {{ .Chart.Name }}
-  serviceVersion: {{ .Chart.AppVersion }}
+  serviceKind: clickhouse-keeper
+  serviceVersion: "24.3.10"
+  services:
+    - name: default
+      spec:
+        ports:
+          # clickhouse ports
+          - name: http
+            targetPort: http
+            port: 8123
+          - name: https
+            targetPort: https
+            port: 8443
+          - name: tcp
+            targetPort: tcp
+            port: 9000
+          - name: tcp-mysql
+            targetPort: tcp-mysql
+            port: 9004
+          - name: tcp-postgresql
+            targetPort: tcp-postgresql
+            port: 9005
+          - name: http-intersrv
+            targetPort: http-intersrv
+            port: 9009
+          - name: https-intersrv
+            targetPort: https-intersrv
+            port: 9010
+          # keeper ports
+          - name: zk-tcp
+            targetPort: zk-tcp
+            port: 2181
+          - name: zk-tls-tcp
+            targetPort: zk-tls-tcp
+            port: 2281
+          - name: http-metrics
+            targetPort: http-metrics
+            port: 8001
+          - name: chk-tcp
+            targetPort: chk-tcp
+            port: 9181
+          - name: chk-raft
+            targetPort: chk-raft
+            port: 9234
+          - name: chk-tcp-tls
+            targetPort: chk-tcp-tls
+            port: 9281
+          - name: tcp-secure
+            targetPort: tcp-secure
+            port: 9440
+  logConfigs:
+    {{- range $name, $pattern := .Values.logConfigs }}
+    - name: {{ $name }}
+      filePathPattern: {{ $pattern }}
+    {{- end }}
+  exporter:
+    scrapePath: /metrics
+    scrapePort: "8001"
+  configs:
+    - name: clickhouse-keeper-tpl
+      templateRef: clickhouse-keeper-tpl
+      volumeName: config
+      namespace: {{ .Release.Namespace }}
+  systemAccounts:
+    - name: admin
+      initAccount: true
+  vars:
+    - name: CLICKHOUSE_ADMIN_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: ^clickhouse$
+          name: admin
+          optional: false
+          password: Required
+          multipleClusterObjectOption:
+            strategy: individual
+    - name: CH_KEEPER_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+  updateStrategy: Serial
+  podManagementPolicy: Parallel
   runtime:
     securityContext:
       fsGroup: 1001
@@ -31,13 +112,17 @@ spec:
           runAsNonRoot: true
           runAsUser: 1001
         command:
-          - /bin/bash
-          - -c
+          - bash
+          - -xc
           - |
-            KEEPER_REPLICA_ID=$(echo $KEEPER_REPLICA_ID | grep -o '[0-9]*$')
-            cp /bitnami/clickhouse/etc/conf.d/default/ch-keeper_00_default_overrides.xml /etc/clickhouse-server/conf.d/
-            cat /etc/clickhouse-server/conf.d/ch-keeper_00_default_overrides.xml
-            clickhouse-server --config-file=/etc/clickhouse-server/config.xml
+            HOSTNAME="$(hostname -s)"
+            export CH_KEEPER_ID=${HOSTNAME##*-}
+            exec /opt/bitnami/scripts/clickhouse/entrypoint.sh /opt/bitnami/scripts/clickhouse/run.sh -- --listen_host=0.0.0.0
+
+            # KEEPER_REPLICA_ID=$(echo $KEEPER_REPLICA_ID | grep -o '[0-9]*$')
+            # cp /bitnami/clickhouse/etc/conf.d/default/ch-keeper_00_default_overrides.xml /etc/clickhouse-server/conf.d/
+            # cat /etc/clickhouse-server/conf.d/ch-keeper_00_default_overrides.xml
+            # clickhouse-server --config-file=/etc/clickhouse-server/config.xml
         env:
           - name: BITNAMI_DEBUG
             value: "false"
@@ -110,74 +195,26 @@ spec:
             containerPort: 9281
           - name: chk-raft-tls
             containerPort: 9444
+        # livenessProbe:
+        #   failureThreshold: 6
+        #   initialDelaySeconds: 30
+        #   periodSeconds: 10
+        #   successThreshold: 1
+        #   timeoutSeconds: 5
+        #   exec:
+        #     command: ['/bin/bash', '-c', 'echo "ruok" | timeout 2 nc -w 2 localhost 2181 | grep imok']
+        # readinessProbe:
+        #   failureThreshold: 6
+        #   initialDelaySeconds: 5
+        #   periodSeconds: 10
+        #   successThreshold: 1
+        #   timeoutSeconds: 5
+        #   exec:
+        #     command: ['/bin/bash', '-c', 'echo "ruok" | timeout 2 nc -w 2 localhost 2181 | grep imok']
         volumeMounts:
           - name: data
             mountPath: /bitnami/clickhouse
           - name: config
             mountPath: /bitnami/clickhouse/etc/conf.d/default
-  vars:
-    - name: CLICKHOUSE_ADMIN_PASSWORD
-      valueFrom:
-        credentialVarRef:
-          compDef: ^clickhouse$
-          name: admin
-          optional: false
-          password: Required
-          multipleClusterObjectOption:
-            strategy: individual
-  updateStrategy: BestEffortParallel
   volumes:
     - name: data
-  services:
-    - name: default
-      spec:
-        ports:
-          # clickhouse ports
-          - name: http
-            targetPort: http
-            port: 8123
-          - name: https
-            targetPort: https
-            port: 8443
-          - name: tcp
-            targetPort: tcp
-            port: 9000
-          - name: tcp-mysql
-            targetPort: tcp-mysql
-            port: 9004
-          - name: tcp-postgresql
-            targetPort: tcp-postgresql
-            port: 9005
-          - name: http-intersrv
-            targetPort: http-intersrv
-            port: 9009
-          - name: https-intersrv
-            targetPort: https-intersrv
-            port: 9010
-          # keeper ports
-          - name: zk-tcp
-            targetPort: zk-tcp
-            port: 2181
-          - name: zk-tls-tcp
-            targetPort: zk-tls-tcp
-            port: 2281
-          - name: http-metrics
-            targetPort: http-metrics
-            port: 8001
-          - name: chk-tcp
-            targetPort: chk-tcp
-            port: 9181
-          - name: chk-raft
-            targetPort: chk-raft
-            port: 9234
-          - name: chk-tcp-tls
-            targetPort: chk-tcp-tls
-            port: 9281
-          - name: tcp-secure
-            targetPort: tcp-secure
-            port: 9440
-  configs:
-    - name: clickhouse-keeper-tpl
-      templateRef: clickhouse-keeper-tpl
-      volumeName: config
-      namespace: {{ .Release.Namespace }}
