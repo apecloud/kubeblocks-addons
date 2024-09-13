@@ -57,7 +57,7 @@ spec:
       componentDef: zookeeper
       {{- end }}
       monitor: {{ $.Values.monitor.enabled }}
-      replicas: {{ $.Values.keeper.replicaCount | default 1 }}
+      replicas: {{ $.Values.keeper.replicaCount }}
       {{- with .tolerations }}
       tolerations: {{ .| toYaml | nindent 8 }}
       {{- end }}

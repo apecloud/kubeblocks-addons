@@ -36,7 +36,6 @@ spec:
           - |
             cp /bitnami/clickhouse/etc/conf.d/default/00_default_overrides.xml /etc/clickhouse-server/conf.d/
             cp /bitnami/clickhouse/etc/users.d/default/user.xml /etc/clickhouse-server/users.d/
-            echo $PEER_FQDNS
             cat /etc/clickhouse-server/conf.d/00_default_overrides.xml
             clickhouse-server --config-file=/etc/clickhouse-server/config.xml
         env:
@@ -56,7 +55,9 @@ spec:
             value: "9009"
           - name: CLICKHOUSE_INTERSERVER_HTTPS_PORT
             value: "9010"
-          - name: CLICKHOUSE_NATIVE_SECURE_PORT
+          - name: CLICKHOUSE_KEEPER_TCP_TLS_PORT
+            value: "9281"
+          - name: CLICKHOUSE_TCP_SECURE_PORT
             value: "9440"
           - name: CLICKHOUSE_METRICS_PORT
             value: "8001"
@@ -69,42 +70,24 @@ spec:
               fieldRef:
                 fieldPath: metadata.name
         ports:
-          - name: http
-            containerPort: 8123
-          - name: tcp
-            containerPort: 9000
-          - name: tcp-postgresql
-            containerPort: 9005
-          - name: tcp-mysql
-            containerPort: 9004
-          - name: http-intersrv
-            containerPort: 9009
           - name: http-metrics
             containerPort: 8001
+          - name: http
+            containerPort: 8123
           - name: https
             containerPort: 8443
-          - name: inter-https
+          - name: tcp
+            containerPort: 9000
+          - name: tcp-mysql
+            containerPort: 9004
+          - name: tcp-postgresql
+            containerPort: 9005
+          - name: http-intersrv
+            containerPort: 9009
+          - name: https-intersrv
             containerPort: 9010
-          - name: native-secure
+          - name: tcp-secure
             containerPort: 9440
-        livenessProbe:
-          failureThreshold: 3
-          initialDelaySeconds: 10
-          periodSeconds: 10
-          successThreshold: 1
-          timeoutSeconds: 1
-          httpGet:
-            path: /ping
-            port: http
-        readinessProbe:
-          failureThreshold: 3
-          initialDelaySeconds: 10
-          periodSeconds: 10
-          successThreshold: 1
-          timeoutSeconds: 1
-          httpGet:
-            path: /ping
-            port: http
         volumeMounts:
           - name: data
             mountPath: /bitnami/clickhouse
@@ -132,9 +115,15 @@ spec:
     - name: default
       spec:
         ports:
+          - name: http-metrics
+            targetPort: http-metrics
+            port: 8001
           - name: http
             targetPort: http
             port: 8123
+          - name: https
+            targetPort: https
+            port: 8443
           - name: tcp
             targetPort: tcp
             port: 9000
@@ -147,15 +136,13 @@ spec:
           - name: http-intersrv
             targetPort: http-intersrv
             port: 9009
-          - name: http-metrics
-            targetPort: http-metrics
-            port: 8001
-          - name: https
-            targetPort: https
-            port: 8443
-          - name: native-secure
-            targetPort: native-secure
+          - name: https-intersrv
+            targetPort: https-intersrv
+            port: 9010
+          - name: tcp-secure
+            targetPort: tcp-secure
             port: 9440
+  updateStrategy: BestEffortParallel
   configs:
     - name: clickhouse-tpl
       templateRef: clickhouse-tpl

@@ -141,7 +141,7 @@ useClickHouseKeeper: true
 keeper:
   ## @param keeper.replicaCount Number of Zookeeper/ClickHouse Keeper replicas
   ##
-  replicaCount: 1
+  replicaCount: 3
 
   ## Zookeeper/ClickHouse Keeper workload pod resource requests and limits
   ## ref: http://kubernetes.io/docs/user-guide/compute-resources/

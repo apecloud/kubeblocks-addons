@@ -40,5 +40,5 @@ metadata:
   annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
   {{- end }}
 data:
-  00_default_overrides.xml: |
+  ch-keeper_00_default_overrides.xml: |
     {{- .Files.Get "configs/ch-keeper_00_default_overrides.xml.tpl" | nindent 4 }}

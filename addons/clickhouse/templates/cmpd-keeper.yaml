@@ -34,8 +34,8 @@ spec:
           - /bin/bash
           - -c
           - |
-            cp /bitnami/clickhouse/etc/conf.d/default/ch-keeper_00_default_overrides.xml.xml /etc/clickhouse-server/conf.d/
-            cp /bitnami/clickhouse/etc/users.d/default/user.xml /etc/clickhouse-server/users.d/
+            KEEPER_REPLICA_ID=$(echo $KEEPER_REPLICA_ID | grep -o '[0-9]*$')
+            cp /bitnami/clickhouse/etc/conf.d/default/ch-keeper_00_default_overrides.xml /etc/clickhouse-server/conf.d/
             cat /etc/clickhouse-server/conf.d/ch-keeper_00_default_overrides.xml
             clickhouse-server --config-file=/etc/clickhouse-server/config.xml
         env:
@@ -45,33 +45,71 @@ spec:
             value: "2181"
           - name: ZOOKEEPER_TCP_TLS_PORT
             value: "2281"
+          - name: CLICKHOUSE_HTTP_PORT
+            value: "8123"
+          - name: CLICKHOUSE_HTTPS_PORT
+            value: "8443"
+          - name: CLICKHOUSE_TCP_PORT
+            value: "9000"
+          - name: CLICKHOUSE_MYSQL_PORT
+            value: "9004"
+          - name: CLICKHOUSE_POSTGRESQL_PORT
+            value: "9005"
+          - name: CLICKHOUSE_INTERSERVER_HTTP_PORT
+            value: "9009"
+          - name: CLICKHOUSE_INTERSERVER_HTTPS_PORT
+            value: "9010"
           - name: CLICKHOUSE_KEEPER_TCP_PORT
             value: "9181"
           - name: CLICKHOUSE_KEEPER_RAFT_PORT
             value: "9234"
           - name: CLICKHOUSE_KEEPER_TCP_TLS_PORT
             value: "9281"
+          - name: CLICKHOUSE_TCP_SECURE_PORT
+            value: "9440"
           - name: CLICKHOUSE_KEEPER_RAFT_TLS_PORT
             value: "9444"
           - name: CLICKHOUSE_METRICS_PORT
             value: "8001"
           - name: SERVICE_PORT
             value: "$(CLICKHOUSE_METRICS_PORT)"
+          - name: KEEPER_REPLICA_ID
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
         ports:
+          # clickhouse ports
+          - name: http
+            containerPort: 8123
+          - name: https
+            containerPort: 8443
+          - name: tcp
+            containerPort: 9000
+          - name: tcp-mysql
+            containerPort: 9004
+          - name: tcp-postgresql
+            containerPort: 9005
+          - name: http-intersrv
+            containerPort: 9009
+          - name: https-intersrv
+            containerPort: 9010
+          - name: tcp-secure
+            containerPort: 9440
+          # keeper ports
           - name: zk-tcp
             containerPort: 2181
           - name: zk-tls-tcp
             containerPort: 2281
-          - name: ch-k-tcp
-            containerPort: 9181
-          - name: ch-k-raft
-            containerPort: 9234
-          - name: ch-k-tcp-tls
-            containerPort: 9281
-          - name: ch-k-raft-tls
-            containerPort: 9444
           - name: http-metrics
             containerPort: 8001
+          - name: chk-tcp
+            containerPort: 9181
+          - name: chk-raft
+            containerPort: 9234
+          - name: chk-tcp-tls
+            containerPort: 9281
+          - name: chk-raft-tls
+            containerPort: 9444
         volumeMounts:
           - name: data
             mountPath: /bitnami/clickhouse
@@ -81,27 +119,62 @@ spec:
     - name: CLICKHOUSE_ADMIN_PASSWORD
       valueFrom:
         credentialVarRef:
-          compDef: clickhouse
+          compDef: ^clickhouse$
           name: admin
           optional: false
           password: Required
+          multipleClusterObjectOption:
+            strategy: individual
+  updateStrategy: BestEffortParallel
   volumes:
     - name: data
   services:
     - name: default
       spec:
         ports:
-          - name: tcp
-            targetPort: tcp
-            port: 2181
-          - name: http-metrics
-            targetPort: http-metrics
-            port: 8001
+          # clickhouse ports
+          - name: http
+            targetPort: http
+            port: 8123
           - name: https
             targetPort: https
             port: 8443
-          - name: native-secure
-            targetPort: native-secure
+          - name: tcp
+            targetPort: tcp
+            port: 9000
+          - name: tcp-mysql
+            targetPort: tcp-mysql
+            port: 9004
+          - name: tcp-postgresql
+            targetPort: tcp-postgresql
+            port: 9005
+          - name: http-intersrv
+            targetPort: http-intersrv
+            port: 9009
+          - name: https-intersrv
+            targetPort: https-intersrv
+            port: 9010
+          # keeper ports
+          - name: zk-tcp
+            targetPort: zk-tcp
+            port: 2181
+          - name: zk-tls-tcp
+            targetPort: zk-tls-tcp
+            port: 2281
+          - name: http-metrics
+            targetPort: http-metrics
+            port: 8001
+          - name: chk-tcp
+            targetPort: chk-tcp
+            port: 9181
+          - name: chk-raft
+            targetPort: chk-raft
+            port: 9234
+          - name: chk-tcp-tls
+            targetPort: chk-tcp-tls
+            port: 9281
+          - name: tcp-secure
+            targetPort: tcp-secure
             port: 9440
   configs:
     - name: clickhouse-keeper-tpl
