@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC1054,SC1073,SC1036,SC1056,SC1072
 set -ex
 
 # Based on the Component Definition API, Redis deployed independently, this script is used to register Redis to Sentinel.
