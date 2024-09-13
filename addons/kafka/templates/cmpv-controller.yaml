@@ -1,11 +1,11 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1
 kind: ComponentVersion
 metadata:
-  name: kafka-broker
+  name: kafka-controller
 spec:
   compatibilityRules:
     - compDefs:
-        - {{ include "kafka-broker.componentDefName" . }}
+        - {{ include "kafka-controller.componentDefName" . }}
       releases:
         - 3.3.2-debian-11-r54
   releases:
@@ -14,3 +14,4 @@ spec:
       serviceVersion: 3.3.2
       images:
         kafka: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
+        jmx-exporter:  {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}

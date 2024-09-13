@@ -1,11 +1,11 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1
 kind: ComponentVersion
 metadata:
-  name: kafka-controller
+  name: kafka-combine
 spec:
   compatibilityRules:
     - compDefs:
-        - {{ include "kafka-controller.componentDefName" . }}
+        - {{ include "kafka-combine.componentDefName" . }}
       releases:
         - 3.3.2-debian-11-r54
   releases:
