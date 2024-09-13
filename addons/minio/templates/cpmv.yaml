@@ -7,11 +7,11 @@ metadata:
 spec:
   compatibilityRules:
     - releases:
-        - minio-1.0.0
+        - 2024.6.29
       compDefs:
         - minio
   releases:
-    - name: minio-1.0.0
-      serviceVersion: 1.0.0
+    - name: 2024.6.29
+      serviceVersion: 2024.6.29
       images:
         minio: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
