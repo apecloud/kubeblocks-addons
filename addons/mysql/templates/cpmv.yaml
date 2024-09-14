@@ -7,10 +7,16 @@ metadata:
 spec:
   compatibilityRules:
     - compDefs:
-        - {{ include "mysql.componentDefRegex" . }}
+        - {{ include "mysql.componentDefName57" . }}
       releases:
         - 5.7.44
+    - compDefs:
+        - {{ include "mysql.componentDefName80" . }}
+      releases:
         - 8.0.33
+    - compDefs:
+        - {{ include "mysql.componentDefName84" . }}
+      releases:
         - 8.4.2
   releases:
     - name: 5.7.44
