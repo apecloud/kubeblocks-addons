@@ -188,6 +188,7 @@ spec:
           - getrole
     switchover:
       exec:
+        image: {{ include "postgresql.image.major14.minor080" . }}
         container: postgresql
         command: ["/kb-scripts/switchover.sh"]
         env:
@@ -198,6 +199,7 @@ spec:
                 fieldPath: metadata.name
     accountProvision:
       exec:
+        image: {{ include "postgresql.image.major14.minor080" . }}
         container: postgresql
         command:
           - bash
