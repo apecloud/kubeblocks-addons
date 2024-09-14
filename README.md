@@ -37,7 +37,7 @@ KubeBlocks add-ons.
 | minio | minio-1.0.0-alpha.0 | High Performance, Kubernetes Native Object Storage | fengluodb |
 | mogdb | mogdb-5.0.5 | A Helm chart for Kubernetes | yabinji shanshanying |
 | mongodb | mongodb-4.0.28<br>mongodb-4.2.24<br>mongodb-4.4.29<br>mongodb-5.0.28<br>mongodb-6.0.16<br>mongodb-7.0.12 | MongoDB is a document database designed for ease of application development and scaling. | xuriwuyun |
-| mysql | mysql-5.7.44<br>mysql-8.0.33<br>mysql-8.4.2<br>proxysql-2.4.4 | MySQL is a widely used, open-source relational database management system (RDBMS) | xuriwuyun |
+| mysql | mysql-5.7.44<br>mysql-8.0.33<br>mysql-8.4.2<br>mysql-orc-5.7.44<br>mysql-orc-8.0.33<br>mysql-proxysql-2.4.4 | MySQL is a widely used, open-source relational database management system (RDBMS) | xuriwuyun |
 | nebula | nebula-v3.5.0 | NebulaGraph is a popular open-source graph database that can handle large volumes of data with milliseconds of latency, scale up quickly, and have the ability to perform fast graph analytics. | Shanshan Ying Xuntao Cheng |
 | neon | neon-broker-1.0.0<br>neon-compute-1.0.0<br>neon-pageserver-1.0.0<br>neon-safekeeper-1.0.0 | Neon is a serverless open-source alternative to AWS Aurora Postgres. It separates storage and compute and substitutes the PostgreSQL storage layer by redistributing data across a cluster of nodes. | skyrise |
 | oceanbase-ce | oceanbase-4.3.0 | Unlimited scalable distributed database for data-intensive transactional and real-time operational analytics workloads, with ultra-fast performance that has once achieved world records in the TPC-C benchmark test. OceanBase has served over 400 customers across the globe and has been supporting all mission critical systems in Alipay. | Powerfool shanshanying |
