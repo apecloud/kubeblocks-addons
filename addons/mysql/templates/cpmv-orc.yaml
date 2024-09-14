@@ -7,9 +7,12 @@ metadata:
 spec:
   compatibilityRules:
     - compDefs:
-        - mysql-orc
+        - {{ include "mysql.componentDefNameOrc57" . }}
       releases:
         - 5.7.44
+    - compDefs:
+        - {{ include "mysql.componentDefNameOrc80" . }}
+      releases:
         - 8.0.33
   releases:
     - name: 5.7.44
