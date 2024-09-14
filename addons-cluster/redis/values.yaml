@@ -70,3 +70,6 @@ redisCluster:
 
 extra:
   rbacEnabled: true
+
+prometheus:
+  enabled: false

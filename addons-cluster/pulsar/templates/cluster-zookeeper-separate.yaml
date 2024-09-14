@@ -1,6 +1,6 @@
 {{- if .Values.serviceReference.enabled }}
 {{- if and (not .Values.serviceReference.zookeeper.serviceDescriptor) (not .Values.serviceReference.zookeeper.cluster) }}
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: {{ include "kblib.clusterName" . }}-zookeeper
