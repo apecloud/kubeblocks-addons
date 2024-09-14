@@ -1,0 +1,16 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: kafka-exporter
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "kafka-exporter.componentDefName" . }}
+      releases:
+        - 1.6.0-debian-11-r67
+  releases:
+    - name: 1.6.0-debian-11-r67
+      changes:
+      serviceVersion: 1.6.0
+      images:
+        kafka-exporter: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafkaExporter.repository }}:{{ .Values.images.kafkaExporter.tag }}

@@ -1,4 +1,4 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1
 kind: ClusterDefinition
 metadata:
   name: {{ include "postgresql.clusterDefinition" . }}
@@ -9,9 +9,9 @@ spec:
     - name: standalone
       components:
         - name: postgresql
-          compDef: {{ include "postgresql.componentDefNamePrefix" . }}
+          compDef: postgresql
       default: true
     - name: replication
       components:
         - name: postgresql
-          compDef: {{ include "postgresql.componentDefNamePrefix" . }}
+          compDef: postgresql

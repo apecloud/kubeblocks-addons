@@ -1,0 +1,100 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: pulsar-zookeeper-{{include "pulsar.major.version" .}}
+  labels:
+      {{- include "pulsar.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: Pulsar zookeeper.
+  serviceKind: pulsar
+  serviceVersion: {{ default .Chart.AppVersion .Values.clusterVersionOverride }}
+  updateStrategy: BestEffortParallel
+  configs:
+    - name: zookeeper-env
+      templateRef: {{ include "pulsar.name" . }}-zookeeper-env-tpl
+      namespace: {{ .Release.Namespace }}
+      volumeName: zookeeper-config-env
+      constraintRef: pulsar-env-constraints
+      keys:
+        - conf
+      injectEnvTo:
+        - zookeeper
+  scripts:
+    - name: pulsar-scripts
+      templateRef: {{ include "pulsar.name" . }}-scripts
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  runtime:
+    securityContext:
+      fsGroup: 0
+      runAsGroup: 0
+      runAsNonRoot: true
+      runAsUser: 10000
+    containers:
+      - name: zookeeper
+        image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v3_0_2.zookeeper "root" .) }}"
+        imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v3_0_2.zookeeper "root" .) }}"
+        command:
+          - /kb-scripts/start-zookeeper.sh
+        env:
+          {{- if .Values.debugEnabled }}
+          - name: PULSAR_LOG_ROOT_LEVEL
+            value: DEBUG
+          - name: PULSAR_LOG_LEVEL
+            value: DEBUG
+          {{- end }}
+          - name: SERVICE_PORT
+            value: "8000"
+          - name: EXTERNAL_PROVIDED_SERVERS
+            value: "false"
+          - name: OPTS
+            value: "-Dlog4j2.formatMsgNoLookups=true"
+        ports:
+          - name: client
+            containerPort: 2181
+          - name: tcp-quorum
+            containerPort: 2888
+          - name: tcp-election
+            containerPort: 3888
+          - name: http
+            containerPort: 8000
+        livenessProbe:
+          exec:
+            command:
+              - bash
+              - -c
+              - echo ruok | nc -q 1 localhost 2181 | grep imok
+          failureThreshold: 10
+          initialDelaySeconds: 5
+          periodSeconds: 30
+          successThreshold: 1
+          timeoutSeconds: 30
+        resources:
+          requests:
+            cpu: 50m
+            memory: 256Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          privileged: false
+          runAsGroup: 0
+          runAsNonRoot: true
+          runAsUser: 10000
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+          - mountPath: /pulsar/data
+            name: data
+          - mountPath: /pulsar/data-log
+            name: data-log
+          - name: scripts
+            mountPath: /kb-scripts
+          - name: zookeeper-config-env
+            mountPath: /opt/pulsar/none
+  exporter:
+    scrapePath: /metrics
+    scrapePort: http

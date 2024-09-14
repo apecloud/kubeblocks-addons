@@ -1,0 +1,17 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: mysql-proxysql
+  labels:
+    {{- include "mysql.labels" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - mysql-proxy
+      releases:
+        - 2.4.4
+  releases:
+    - name: 2.4.4
+      serviceVersion: 2.4.4
+      images:
+        proxysql: {{ .Values.image.registry | default "docker.io" }}/apecloud/proxysql:2.4.4
