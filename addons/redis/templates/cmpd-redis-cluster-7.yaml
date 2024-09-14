@@ -204,6 +204,7 @@ spec:
           - getrole
     postProvision:
       exec:
+        image: {{ include "redis7.image" . }}
         container: redis-cluster
         command:
           - /bin/bash
@@ -231,6 +232,7 @@ spec:
         maxRetries: 10
     preTerminate:
       exec:
+        image: {{ include "redis7.image" . }}
         container: redis-cluster
         command:
           - /bin/bash

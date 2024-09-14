@@ -112,6 +112,7 @@ spec:
     accountProvision:
       exec:
         image: {{ include "redisSentinel7.image" . }}
+        container: redis-sentinel
         command:
           - sh
           - -c
@@ -120,13 +121,13 @@ spec:
     memberLeave:
       exec:
         image: {{ include "redisSentinel7.image" . }}
+        container: redis-sentinel
         command:
           - /bin/bash
           - -c
           - |
           {{- .Files.Get "scripts/redis-sentinel-member-leave.sh" | nindent 14 }}
         targetPodSelector: Any
-        container: redis-sentinel
   runtime:
     containers:
     - name: redis-sentinel

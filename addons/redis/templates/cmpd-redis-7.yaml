@@ -225,6 +225,7 @@ spec:
           - getrole
     postProvision:
       exec:
+        image: {{ include "redis7.image" . }}
         container: redis
         command:
           - /bin/bash
@@ -252,6 +253,7 @@ spec:
       preCondition: RuntimeReady
     accountProvision:
       exec:
+        image: {{ include "redis7.image" . }}
         container: redis
         command:
           - sh
