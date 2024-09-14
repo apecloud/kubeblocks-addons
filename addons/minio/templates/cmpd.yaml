@@ -10,7 +10,7 @@ spec:
   provider: kubeblocks
   description: Minio is a High Performance Object Storage.
   serviceKind: minio
-  serviceVersion: {{ .Chart.Version }}
+  serviceVersion: {{ .Values.componentServiceVersion.minio }}
 
   systemAccounts:
     - name: root
