@@ -1,0 +1,24 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: mysql-orc
+  labels:
+    {{- include "mysql.labels" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - mysql-orc
+      releases:
+        - 5.7.44
+        - 8.0.33
+  releases:
+    - name: 5.7.44
+      serviceVersion: 5.7.44
+      images:
+        mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.7.44
+        init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:5.7.44
+    - name: 8.0.33
+      serviceVersion: 8.0.33
+      images:
+        mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+        init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33

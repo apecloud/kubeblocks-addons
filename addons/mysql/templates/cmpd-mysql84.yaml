@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "mysql.componentDefName" . }}-8.4.2
+  name: {{ include "mysql.componentDefName84" . }}
   labels:
       {{- include "mysql.labels" . | nindent 4 }}
 spec:
