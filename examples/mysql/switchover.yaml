@@ -5,12 +5,16 @@ metadata:
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: mysql-cluster
-  type: Switchover
-  # Lists Switchover objects, each specifying a Component to perform the switchover operation.
-  switchover:
+  # Specifies a custom operation defined by OpsDefinition, which is 'switchover' in this case.
+  type: Custom
+  custom:
+    # Specifies the name of OpsDefinition.
+    opsDefinitionName: switchover
+    components:
     # Specifies the name of the Component.
-  - componentName: mysql
-    # Specifies the instance to become the primary or leader during a switchover operation. The value of `instanceName` can be either: 
-    # - "*" (wildcard value): - Indicates no specific instance is designated as the primary or leader.
-    # - A valid instance name (pod name)
-    instanceName: '*'
+    - componentName: mysql
+      parameters:
+      # Specifies the instance to become the primary or leader during a switchover operation.
+      # If not specified, KubeBlocks will promote a randomly selected instance
+      - name: candidate
+        value: ""
