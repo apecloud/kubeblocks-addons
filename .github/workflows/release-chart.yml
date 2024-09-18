@@ -18,7 +18,6 @@ on:
           - elasticsearch
           - etcd
           - flink
-          - greatsql
           - greptimedb
           - influxdb
           - kafka
