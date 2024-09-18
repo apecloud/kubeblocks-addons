@@ -24,13 +24,13 @@
 	// activate_all_roles_on_login: string & "0" | "1" | "OFF" | "ON" | *"0"
 
 	// Controls whether user-defined functions that have only an xxx symbol for the main function can be loaded
-	"allow-suspicious-udfs"?: string & "0" | "1" | "OFF" | "ON"
+	"allow-suspicious-udfs"?: string & "OFF" | "ON"
 
 	// Sets the autocommit mode
-	autocommit?: string & "0" | "1" | "OFF" | "ON"
+	autocommit?: string & "OFF" | "ON"
 
 	// Controls whether the server autogenerates SSL key and certificate files in the data directory, if they do not already exist.
-	auto_generate_certs?: string & "0" | "1" | "OFF" | "ON"
+	auto_generate_certs?: string & "OFF" | "ON"
 
 	// Intended for use with master-to-master replication, and can be used to control the operation of AUTO_INCREMENT columns
 	auto_increment_increment?: int & >=1 & <=65535
@@ -39,10 +39,10 @@
 	auto_increment_offset?: int & >=1 & <=65535
 
 	// When this variable has a value of 1 (the default), the server automatically grants the EXECUTE and ALTER ROUTINE privileges to the creator of a stored routine, if the user cannot already execute and alter or drop the routine.
-	automatic_sp_privileges?: string & "0" | "1" | "OFF" | "ON"
+	automatic_sp_privileges?: string & "OFF" | "ON"
 
 	// This variable controls whether ALTER TABLE implicitly upgrades temporal columns found to be in pre-5.6.4 format.
-	avoid_temporal_upgrade?: string & "0" | "1" | "OFF" | "ON"
+	avoid_temporal_upgrade?: string & "OFF" | "ON"
 
 	// The number of outstanding connection requests MySQL can have
 	back_log?: int & >=1 & <=65535
@@ -50,7 +50,7 @@
 	// The MySQL installation base directory.
 	basedir?: string
 
-	big_tables: string & "0" | "1" | "OFF" | "ON" | *"0"
+	big_tables: string & "OFF" | "ON" | *"OFF"
 
 	bind_address?: string
 
@@ -60,7 +60,7 @@
 	// When enabled, this variable causes the master to write a checksum for each event in the binary log.
 	binlog_checksum?: string & "NONE" | "CRC32"
 
-	binlog_direct_non_transactional_updates: string & "0" | "1" | "OFF" | "ON" | *"0"
+	binlog_direct_non_transactional_updates: string & "OFF" | "ON" | *"OFF"
 
 	// Controls what happens when the server cannot write to the binary log.
 	binlog_error_action?: string & "IGNORE_ERROR" | "ABORT_SERVER"
@@ -78,13 +78,13 @@
 	binlog_group_commit_sync_no_delay_count?: int & >=0 & <=1000000
 
 	// Controls how binary logs are iterated during GTID recovery
-	binlog_gtid_simple_recovery?: string & "0" | "1" | "OFF" | "ON"
+	binlog_gtid_simple_recovery?: string & "OFF" | "ON"
 
 	// How long in microseconds to keep reading transactions from the flush queue before proceeding with the group commit (and syncing the log to disk, if sync_binlog is greater than 0). If the value is 0 (the default), there is no timeout and the server keeps reading new transactions until the queue is empty.
 	binlog_max_flush_queue_time?: int & >=0 & <=100000
 
 	// If this variable is enabled (the default), transactions are committed in the same order they are written to the binary log. If disabled, transactions may be committed in parallel.
-	binlog_order_commits?: string & "0" | "1" | "OFF" | "ON"
+	binlog_order_commits?: string & "OFF" | "ON"
 
 	// Whether the server logs full or minimal rows with row-based replication.
 	binlog_row_image?: string & "FULL" | "MINIMAL" | "NOBLOB"
@@ -93,7 +93,7 @@
 	binlog_row_metadata?: string & "FULL" | "MINIMAL"
 
 	// When enabled, it causes a MySQL 5.6.2 or later server to write informational log events such as row query log events into its binary log.
-	binlog_rows_query_log_events?: string & "0" | "1" | "OFF" | "ON"
+	binlog_rows_query_log_events?: string & "OFF" | "ON"
 
 	// When set to PARTIAL_JSON, this option enables a space-efficient row-based binary log format for UPDATE statements that modify a JSON value using only the functions JSON_SET, JSON_REPLACE, and JSON_REMOVE. For such updates, only the modified parts of the JSON document are included in the binary log, so small changes of big documents may need significantly less space.
 	binlog_row_value_options?: string & "PARTIAL_JSON"
@@ -114,7 +114,7 @@
 	bulk_insert_buffer_size?: int & >=0 & <=18446744073709547520
 
 	// Auto generate RSA keys at server startup if corresponding system variables are not specified and key files are not present at the default location.
-	caching_sha2_password_auto_generate_rsa_keys: string & "0" | "1" | "OFF" | "ON" | *"1"
+	caching_sha2_password_auto_generate_rsa_keys: string & "OFF" | "ON" | *"ON"
 
 	// A fully qualified path to the private RSA key used for authentication.
 	caching_sha2_password_private_key_path?: string
@@ -126,7 +126,7 @@
 	character_set_client?: string & "big5" | "dec8" | "cp850" | "hp8" | "koi8r" | "latin1" | "latin2" | "swe7" | "ascii" | "ujis" | "sjis" | "hebrew" | "tis620" | "euckr" | "koi8u" | "gb2312" | "greek" | "cp1250" | "gbk" | "latin5" | "armscii8" | "utf8" | "cp866" | "keybcs2" | "macce" | "macroman" | "cp852" | "latin7" | "utf8mb4" | "cp1251" | "cp1256" | "cp1257" | "binary" | "geostd8" | "cp932" | "eucjpms"
 
 	// Don't ignore character set information sent by the client.
-	"character-set-client-handshake"?: string & "0" | "1" | "OFF" | "ON"
+	"character-set-client-handshake"?: string & "OFF" | "ON"
 
 	// The character set used for literals that do not have a character set introducer and for number-to-string conversion.
 	character_set_connection?: string & "big5" | "dec8" | "cp850" | "hp8" | "koi8r" | "latin1" | "latin2" | "swe7" | "ascii" | "ujis" | "sjis" | "hebrew" | "tis620" | "euckr" | "koi8u" | "gb2312" | "greek" | "cp1250" | "gbk" | "latin5" | "armscii8" | "utf8" | "ucs2" | "cp866" | "keybcs2" | "macce" | "macroman" | "cp852" | "latin7" | "utf8mb4" | "cp1251" | "utf16" | "cp1256" | "cp1257" | "utf32" | "binary" | "geostd8" | "cp932" | "eucjpms"
@@ -146,7 +146,7 @@
 	character_set_server?: string & "big5" | "dec8" | "cp850" | "hp8" | "koi8r" | "latin1" | "latin2" | "swe7" | "ascii" | "ujis" | "sjis" | "hebrew" | "tis620" | "euckr" | "koi8u" | "gb2312" | "greek" | "cp1250" | "gbk" | "latin5" | "armscii8" | "utf8" | "ucs2" | "cp866" | "keybcs2" | "macce" | "macroman" | "cp852" | "latin7" | "utf8mb4" | "cp1251" | "utf16" | "cp1256" | "cp1257" | "utf32" | "binary" | "geostd8" | "cp932" | "eucjpms"
 
 	// Controls whether the mysql_native_password and sha256_password built-in authentication plugins support proxy users.
-	check_proxy_users?: string & "0" | "1" | "OFF" | "ON"
+	check_proxy_users?: string & "OFF" | "ON"
 
 	// The collation of the connection character set.
 	collation_connection?: string & "big5_chinese_ci" | "big5_bin" | "dec8_swedish_ci" | "dec8_bin" | "cp850_general_ci" | "cp850_bin" | "hp8_english_ci" | "hp8_bin" | "koi8r_general_ci" | "koi8r_bin" | "latin1_german1_ci" | "latin1_swedish_ci" | "latin1_danish_ci" | "latin1_german2_ci" | "latin1_bin" | "latin1_general_ci" | "latin1_general_cs" | "latin1_spanish_ci" | "latin2_czech_cs" | "latin2_general_ci" | "latin2_hungarian_ci" | "latin2_croatian_ci" | "latin2_bin" | "swe7_swedish_ci" | "swe7_bin" | "ascii_general_ci" | "ascii_bin" | "ujis_japanese_ci" | "ujis_bin" | "sjis_japanese_ci" | "sjis_bin" | "hebrew_general_ci" | "hebrew_bin" | "tis620_thai_ci" | "tis620_bin" | "euckr_korean_ci" | "euckr_bin" | "koi8u_general_ci" | "koi8u_bin" | "gb2312_chinese_ci" | "gb2312_bin" | "greek_general_ci" | "greek_bin" | "cp1250_general_ci" | "cp1250_czech_cs" | "cp1250_croatian_ci" | "cp1250_bin" | "cp1250_polish_ci" | "gbk_chinese_ci" | "gbk_bin" | "latin5_turkish_ci" | "latin5_bin" | "armscii8_general_ci" | "armscii8_bin" | "utf8_general_ci" | "utf8_bin" | "utf8_unicode_ci" | "utf8_icelandic_ci" | "utf8_latvian_ci" | "utf8_romanian_ci" | "utf8_slovenian_ci" | "utf8_polish_ci" | "utf8_estonian_ci" | "utf8_spanish_ci" | "utf8_swedish_ci" | "utf8_turkish_ci" | "utf8_czech_ci" | "utf8_danish_ci" | "utf8_lithuanian_ci" | "utf8_slovak_ci" | "utf8_spanish2_ci" | "utf8_roman_ci" | "utf8_persian_ci" | "utf8_esperanto_ci" | "utf8_hungarian_ci" | "utf8_sinhala_ci" | "ucs2_general_ci" | "ucs2_bin" | "ucs2_unicode_ci" | "ucs2_icelandic_ci" | "ucs2_latvian_ci" | "ucs2_romanian_ci" | "ucs2_slovenian_ci" | "ucs2_polish_ci" | "ucs2_estonian_ci" | "ucs2_spanish_ci" | "ucs2_swedish_ci" | "ucs2_turkish_ci" | "ucs2_czech_ci" | "ucs2_danish_ci" | "ucs2_lithuanian_ci" | "ucs2_slovak_ci" | "ucs2_spanish2_ci" | "ucs2_roman_ci" | "ucs2_persian_ci" | "ucs2_esperanto_ci" | "ucs2_hungarian_ci" | "ucs2_sinhala_ci" | "cp866_general_ci" | "cp866_bin" | "keybcs2_general_ci" | "keybcs2_bin" | "macce_general_ci" | "macce_bin" | "macroman_general_ci" | "macroman_bin" | "cp852_general_ci" | "cp852_bin" | "latin7_estonian_cs" | "latin7_general_ci" | "latin7_general_cs" | "latin7_bin" | "utf8mb4_general_ci" | "utf8mb4_bin" | "utf8mb4_unicode_ci" | "utf8mb4_icelandic_ci" | "utf8mb4_latvian_ci" | "utf8mb4_romanian_ci" | "utf8mb4_slovenian_ci" | "utf8mb4_polish_ci" | "utf8mb4_estonian_ci" | "utf8mb4_spanish_ci" | "utf8mb4_swedish_ci" | "utf8mb4_turkish_ci" | "utf8mb4_czech_ci" | "utf8mb4_danish_ci" | "utf8mb4_lithuanian_ci" | "utf8mb4_slovak_ci" | "utf8mb4_spanish2_ci" | "utf8mb4_roman_ci" | "utf8mb4_persian_ci" | "utf8mb4_esperanto_ci" | "utf8mb4_hungarian_ci" | "utf8mb4_sinhala_ci" | "cp1251_bulgarian_ci" | "cp1251_ukrainian_ci" | "cp1251_bin" | "cp1251_general_ci" | "cp1251_general_cs" | "utf16_general_ci" | "utf16_bin" | "utf16_unicode_ci" | "utf16_icelandic_ci" | "utf16_latvian_ci" | "utf16_romanian_ci" | "utf16_slovenian_ci" | "utf16_polish_ci" | "utf16_estonian_ci" | "utf16_spanish_ci" | "utf16_swedish_ci" | "utf16_turkish_ci" | "utf16_czech_ci" | "utf16_danish_ci" | "utf16_lithuanian_ci" | "utf16_slovak_ci" | "utf16_spanish2_ci" | "utf16_roman_ci" | "utf16_persian_ci" | "utf16_esperanto_ci" | "utf16_hungarian_ci" | "utf16_sinhala_ci" | "cp1256_general_ci" | "cp1256_bin" | "cp1257_lithuanian_ci" | "cp1257_bin" | "cp1257_general_ci" | "utf32_general_ci" | "utf32_bin" | "utf32_unicode_ci" | "utf32_icelandic_ci" | "utf32_latvian_ci" | "utf32_romanian_ci" | "utf32_slovenian_ci" | "utf32_polish_ci" | "utf32_estonian_ci" | "utf32_spanish_ci" | "utf32_swedish_ci" | "utf32_turkish_ci" | "utf32_czech_ci" | "utf32_danish_ci" | "utf32_lithuanian_ci" | "utf32_slovak_ci" | "utf32_spanish2_ci" | "utf32_roman_ci" | "utf32_persian_ci" | "utf32_esperanto_ci" | "utf32_hungarian_ci" | "utf32_sinhala_ci" | "binary" | "geostd8_general_ci" | "geostd8_bin" | "cp932_japanese_ci" | "cp932_bin" | "eucjpms_japanese_ci" | "eucjpms_bin"
@@ -166,13 +166,13 @@
 	connect_timeout?: int & >=2 & <=31536000
 
 	// Write a core file if mysqld dies.
-	"core-file"?: string & "0" | "1" | "OFF" | "ON"
+	"core-file"?: string & "OFF" | "ON"
 
 	// smartengine enable
-	"smartengine"?: string & "0" | "1" | "OFF" | "ON"
+	"smartengine"?: string & "OFF" | "ON"
 
 	// smartengine enable
-	"loose_smartengine"?: string & "0" | "1" | "OFF" | "ON"
+	"loose_smartengine"?: string & "OFF" | "ON"
 
 	// Abort a recursive common table expression if it does more than this number of iterations.
 	cte_max_recursion_depth: int & >=0 & <=4294967295 | *1000
@@ -217,13 +217,13 @@
 	disabled_storage_engines?: string
 
 	// Controls how the server handles clients with expired passwords:
-	disconnect_on_expired_password?: string & "0" | "1" | "OFF" | "ON"
+	disconnect_on_expired_password?: string & "OFF" | "ON"
 
 	// Number of digits by which to increase the scale of the result of division operations.
 	div_precision_increment?: int & >=0 & <=30
 
 	// Whether optimizer JSON output should add end markers.
-	end_markers_in_json?: string & "0" | "1" | "OFF" | "ON"
+	end_markers_in_json?: string & "OFF" | "ON"
 
 	// Prevents execution of statements that cannot be logged in a transactionally safe manner
 	enforce_gtid_consistency?: string & "OFF" | "WARN" | "ON"
@@ -237,15 +237,15 @@
 	expire_logs_days: int & >=0 & <=4294967295 | *2592000
 
 	// Needed for 5.6.7
-	explicit_defaults_for_timestamp: string & "0" | "1" | "OFF" | "ON" | *"1"
+	explicit_defaults_for_timestamp: string & "OFF" | "ON" | *"ON"
 
 	// If ON, the server flushes all changes to disk after each SQL statement.
-	flush?: string & "0" | "1" | "OFF" | "ON"
+	flush?: string & "OFF" | "ON"
 
 	// Frees up resources and synchronize unflushed data to disk. Recommended only on systems with minimal resources.
 	flush_time?: int & >=0 & <=31536000
 
-	foreign_key_checks: string & "0" | "1" | "OFF" | "ON" | *"1"
+	foreign_key_checks: string & "OFF" | "ON" | *"ON"
 
 	// The list of operators supported by boolean full-text searches
 	ft_boolean_syntax?: string
@@ -263,7 +263,7 @@
 	ft_stopword_file?: string & "/dev/null"
 
 	// Whether the general query log is enabled
-	general_log?: string & "0" | "1" | "OFF" | "ON"
+	general_log?: string & "OFF" | "ON"
 
 	// Location of mysql general log.
 	general_log_file?: string
@@ -274,7 +274,7 @@
 	// Compress the mysql.gtid_executed table each time this many transactions have taken place.
 	gtid_executed_compression_period?: int & >=0 & <=4294967295
 
-	gtid_mode?: string & "0" | "OFF" | "ON" | "1"
+	gtid_mode?: string & "OFF" | "ON"
 
 	// Controls whether GTID based logging is enabled and what type of transactions the logs can contain
 	"gtid-mode"?: string & "OFF" | "OFF_PERMISSIVE" | "ON_PERMISSIVE" | "ON"
@@ -301,13 +301,13 @@
 	init_slave?: string
 
 	// Enables InnoDB Adaptive Flushing (default=on for RDS)
-	innodb_adaptive_flushing?: string & "0" | "1" | "OFF" | "ON"
+	innodb_adaptive_flushing?: string & "OFF" | "ON"
 
 	// Low water mark representing percentage of redo log capacity at which adaptive flushing is enabled.
 	innodb_adaptive_flushing_lwm?: int & >=0 & <=70
 
 	// Whether innodb adaptive hash indexes are enabled or disabled
-	innodb_adaptive_hash_index?: string & "0" | "1" | "OFF" | "ON"
+	innodb_adaptive_hash_index?: string & "OFF" | "ON"
 
 	// Partitions the adaptive hash index search system.
 	innodb_adaptive_hash_index_parts?: int & >=1 & <=512
@@ -325,10 +325,10 @@
 	innodb_buffer_pool_chunk_size?: int & >=1048576 & <=4294967295
 
 	// Specifies whether to record the pages cached in the InnoDB buffer pool when the MySQL server is shut down.
-	innodb_buffer_pool_dump_at_shutdown?: string & "0" | "1" | "OFF" | "ON"
+	innodb_buffer_pool_dump_at_shutdown?: string & "OFF" | "ON"
 
 	// Immediately records the pages cached in the InnoDB buffer pool.
-	innodb_buffer_pool_dump_now?: string & "0" | "1" | "OFF" | "ON"
+	innodb_buffer_pool_dump_now?: string & "OFF" | "ON"
 
 	// Specifies the percentage of the most recently used pages for each buffer pool to read out and dump.
 	innodb_buffer_pool_dump_pct?: int & >=1 & <=100
@@ -340,13 +340,13 @@
 	innodb_buffer_pool_instances?: int & >=1 & <=64
 
 	// Interrupts the process of restoring InnoDB buffer pool contents triggered by innodb_buffer_pool_load_at_startup or innodb_buffer_pool_load_now.
-	innodb_buffer_pool_load_abort?: string & "0" | "1" | "OFF" | "ON"
+	innodb_buffer_pool_load_abort?: string & "OFF" | "ON"
 
 	// Specifies that, on MySQL server startup, the InnoDB buffer pool is automatically warmed up by loading the same pages it held at an earlier time.
-	innodb_buffer_pool_load_at_startup?: string & "0" | "1" | "OFF" | "ON"
+	innodb_buffer_pool_load_at_startup?: string & "OFF" | "ON"
 
 	// Immediately warms up the InnoDB buffer pool by loading a set of data pages, without waiting for a server restart.
-	innodb_buffer_pool_load_now?: string & "0" | "1" | "OFF" | "ON"
+	innodb_buffer_pool_load_now?: string & "OFF" | "ON"
 
 	// The size in bytes of the memory buffer innodb uses to cache data and indexes of its tables
 	innodb_buffer_pool_size?: int & >=5242880 & <=18446744073709551615 @k8sResource(quantity)
@@ -358,13 +358,13 @@
 	innodb_change_buffer_max_size?: int & >=0 & <=50
 
 	// This is a debug option that is only intended for expert debugging use. It disables checkpoints so that a deliberate server exit always initiates InnoDB recovery.
-	innodb_checkpoint_disabled?: string & "0" | "1" | "OFF" | "ON"
+	innodb_checkpoint_disabled?: string & "OFF" | "ON"
 
 	// Specifies how to generate and verify the checksum stored in each disk block of each InnoDB tablespace.
 	innodb_checksum_algorithm?: string & "crc32" | "innodb" | "none" | "strict_crc32" | "strict_innodb" | "strict_none"
 
 	// Enables per-index compression-related statistics in the INFORMATION_SCHEMA.INNODB_CMP_PER_INDEX table.
-	innodb_cmp_per_index_enabled?: string & "0" | "1" | "OFF" | "ON"
+	innodb_cmp_per_index_enabled?: string & "OFF" | "ON"
 
 	// The number of threads that can commit at the same time.
 	innodb_commit_concurrency?: int & >=0 & <=1000
@@ -387,13 +387,13 @@
 	innodb_data_home_dir?: string
 
 	// Enable this debug option to reset DDL log crash injection counters to 1.
-	innodb_ddl_log_crash_reset_debug?: string & "0" | "1" | "OFF" | "ON"
+	innodb_ddl_log_crash_reset_debug?: string & "OFF" | "ON"
 
 	// This option is used to disable deadlock detection.
-	innodb_deadlock_detect?: string & "0" | "1" | "OFF" | "ON"
+	innodb_deadlock_detect?: string & "OFF" | "ON"
 
 	// Automatically scale innodb_buffer_pool_size and innodb_log_file_size based on system memory. Also set innodb_flush_method=O_DIRECT_NO_FSYNC, if supported.
-	innodb_dedicated_server?: string & "0" | "1" | "OFF" | "ON"
+	innodb_dedicated_server?: string & "OFF" | "ON"
 
 	// Defines the default row format for InnoDB tables (including user-created InnoDB temporary tables).
 	innodb_default_row_format?: string & "DYNAMIC" | "COMPACT" | "REDUNDANT"
@@ -402,9 +402,9 @@
 	innodb_directories?: string
 
 	// If enabled, this variable disables the operating system file system cache for merge-sort temporary files.
-	innodb_disable_sort_file_cache?: string & "0" | "1" | "OFF" | "ON"
+	innodb_disable_sort_file_cache?: string & "OFF" | "ON"
 
-	innodb_doublewrite: string & "0" | "1" | "OFF" | "ON" | *"1"
+	innodb_doublewrite: string & "OFF" | "ON" | *"ON"
 
 	// Defines the number of doublewrite pages to write in a batch.
 	innodb_doublewrite_batch_size: int & >=0 & <=256 | *16
@@ -419,7 +419,7 @@
 	innodb_fast_shutdown?: int & 0 | 1 | 2
 
 	// Use tablespaces or files for Innodb.
-	innodb_file_per_table: string & "0" | "1" | "OFF" | "ON" | *"1"
+	innodb_file_per_table: string & "OFF" | "ON" | *"ON"
 
 	// Defines the percentage of space on each B-tree page that is filled during a sorted index build, with the remaining space reserved for future index growth.
 	innodb_fill_factor?: int & >=10 & <=100
@@ -440,10 +440,10 @@
 	innodb_flush_neighbors?: int & >=0 & <=2
 
 	// Ignore the innodb_io_capacity setting to be ignored for bursts of I/O activity that occur at checkpoints.
-	innodb_flush_sync?: string & "0" | "1" | "OFF" | "ON"
+	innodb_flush_sync?: string & "OFF" | "ON"
 
 	// Lets InnoDB load tables at startup that are marked as corrupted
-	innodb_force_load_corrupted?: string & "0" | "1" | "OFF" | "ON"
+	innodb_force_load_corrupted?: string & "OFF" | "ON"
 
 	innodb_force_recovery: int & >=0 & <=6 | *0
 
@@ -454,10 +454,10 @@
 	innodb_ft_cache_size?: int & >=0 & <=4294967295
 
 	// Whether to enable additional full-text search (FTS) diagnostic output.
-	innodb_ft_enable_diag_print?: string & "0" | "1" | "OFF" | "ON"
+	innodb_ft_enable_diag_print?: string & "OFF" | "ON"
 
 	// Specifies that a set of stopwords is associated with an InnoDB FULLTEXT index at the time the index is created.
-	innodb_ft_enable_stopword?: string & "0" | "1" | "OFF" | "ON"
+	innodb_ft_enable_stopword?: string & "OFF" | "ON"
 
 	// Maximum length of words that are stored in an InnoDB FULLTEXT index.
 	innodb_ft_max_token_size?: int & >=10 & <=252
@@ -496,10 +496,10 @@
 	innodb_log_buffer_size: int & >=262144 & <=4294967295 | *8388608
 
 	// Enables or disables checksums for redo log pages.
-	innodb_log_checksums?: string & "0" | "1" | "OFF" | "ON"
+	innodb_log_checksums?: string & "OFF" | "ON"
 
 	// Specifies whether images of re-compressed pages are stored in InnoDB redo logs.
-	innodb_log_compressed_pages?: string & "0" | "1" | "OFF" | "ON"
+	innodb_log_compressed_pages?: string & "OFF" | "ON"
 
 	innodb_log_files_in_group: int & >=2 & <=100 | *2
 
@@ -564,7 +564,7 @@
 	innodb_open_files?: int & >=10 & <=4294967295
 
 	// Changes the way the OPTIMIZE TABLE statement operates on InnoDB tables.
-	innodb_optimize_fulltext_only?: string & "0" | "1" | "OFF" | "ON"
+	innodb_optimize_fulltext_only?: string & "OFF" | "ON"
 
 	// The number of page cleaner threads that flush dirty pages from buffer pool instances.
 	innodb_page_cleaners?: int & >=1 & <=64
@@ -576,10 +576,10 @@
 	innodb_parallel_read_threads?: int & >=1 & <=256
 
 	// When this option is enabled, information about all deadlocks in InnoDB user transactions is recorded in the mysqld error log.
-	innodb_print_all_deadlocks?: string & "0" | "1" | "OFF" | "ON"
+	innodb_print_all_deadlocks?: string & "OFF" | "ON"
 
 	// Enabling this option causes MySQL to write DDL logs to stderr.
-	innodb_print_ddl_logs: string & "0" | "1" | "OFF" | "ON" | *"0"
+	innodb_print_ddl_logs: string & "OFF" | "ON" | *"OFF"
 
 	// The granularity of changes, expressed in units of redo log records, that trigger a purge operation, flushing the changed buffer pool blocks to disk
 	innodb_purge_batch_size?: int & >=1 & <=5000
@@ -591,7 +591,7 @@
 	innodb_purge_threads: int & >=1 & <=32 | *1
 
 	// Enables or disables Innodb Random Read Ahead
-	innodb_random_read_ahead?: string & "0" | "1" | "OFF" | "ON"
+	innodb_random_read_ahead?: string & "OFF" | "ON"
 
 	// Controls the sensitivity of linear read-ahead that InnoDB uses to prefetch pages into the buffer cache.
 	innodb_read_ahead_threshold?: int & >=0 & <=64
@@ -600,16 +600,16 @@
 	innodb_read_io_threads?: int & >=1 & <=64
 
 	// Starts the server in read-only mode.
-	innodb_read_only?: string & "0" | "1" | "OFF" | "ON"
+	innodb_read_only?: string & "OFF" | "ON"
 
 	// Controls encryption of redo log data for tables encrypted using the InnoDB tablespace encryption feature.
-	innodb_redo_log_encrypt: string & "0" | "1" | "OFF" | "ON" | *"0"
+	innodb_redo_log_encrypt: string & "OFF" | "ON" | *"OFF"
 
 	// The replication thread delay (in ms) on a slave server if innodb_thread_concurrency is reached.
 	innodb_replication_delay?: int & >=0 & <=4294967295
 
 	// Controls whether timeouts rollback the last statement or the entire transaction
-	innodb_rollback_on_timeout?: string & "0" | "1" | "OFF" | "ON"
+	innodb_rollback_on_timeout?: string & "OFF" | "ON"
 
 	// Defines how many of the rollback segments in the system tablespace that InnoDB uses within a transaction.
 	innodb_rollback_segments?: int & >=1 & <=128
@@ -627,19 +627,19 @@
 	innodb_spin_wait_delay?: int & >=0 & <=4294967295
 
 	// Causes InnoDB to automatically recalculate persistent statistics after the data in a table is changed substantially.
-	innodb_stats_auto_recalc?: string & "0" | "1" | "OFF" | "ON"
+	innodb_stats_auto_recalc?: string & "OFF" | "ON"
 
 	// When innodb_stats_include_delete_marked is enabled, ANALYZE TABLE considers delete-marked records when recalculating statistics.
-	innodb_stats_include_delete_marked: string & "0" | "1" | "OFF" | "ON" | *"0"
+	innodb_stats_include_delete_marked: string & "OFF" | "ON" | *"OFF"
 
 	// How the server treats NULL values when collecting statistics about the distribution of index values for InnoDB tables.
 	innodb_stats_method?: string & "nulls_equal" | "nulls_unequal" | "nulls_ignored"
 
 	// Controls whether table and index stats are updated when getting status information via SHOW STATUS or the INFORMATION_SCHEMA
-	innodb_stats_on_metadata?: string & "0" | "1" | "OFF" | "ON"
+	innodb_stats_on_metadata?: string & "OFF" | "ON"
 
 	// Specifies whether the InnoDB index statistics produced by the ANALYZE TABLE command are stored on disk.
-	innodb_stats_persistent?: string & "OFF" | "ON" | "0" | "1"
+	innodb_stats_persistent?: string & "OFF" | "ON"
 
 	// The number of index pages to sample when estimating cardinality and other statistics for an indexed column, such as those calculated by ANALYZE TABLE.
 	innodb_stats_persistent_sample_pages?: int & >=0 & <=18446744073709551615
@@ -648,13 +648,13 @@
 	innodb_stats_transient_sample_pages?: int & >=0 & <=18446744073709551615
 
 	// Enables or disables periodic output for the standard InnoDB Monitor.
-	innodb_status_output?: string & "0" | "1" | "OFF" | "ON"
+	innodb_status_output?: string & "OFF" | "ON"
 
 	// Enables or disables the InnoDB Lock Monitor.
-	innodb_status_output_locks?: string & "0" | "1" | "OFF" | "ON"
+	innodb_status_output_locks?: string & "OFF" | "ON"
 
 	// Whether InnoDB returns errors rather than warnings for exceptional conditions.
-	innodb_strict_mode?: string & "0" | "1" | "OFF" | "ON"
+	innodb_strict_mode?: string & "OFF" | "ON"
 
 	// Splits an internal data structure used to coordinate threads, for higher concurrency in workloads with large numbers of waiting threads.
 	innodb_sync_array_size?: int & >=1 & <=1024
@@ -663,7 +663,7 @@
 	innodb_sync_spin_loops?: int & >=0 & <=9223372036854775807
 
 	// If autocommit = 0, innodb honors LOCK TABLES
-	innodb_table_locks?: string & "0" | "1" | "OFF" | "ON"
+	innodb_table_locks?: string & "OFF" | "ON"
 
 	// Specifies the path, file name, and file size for InnoDB temporary table tablespace data files.
 	innodb_temp_data_file_path?: string
@@ -680,16 +680,16 @@
 	innodb_undo_directory?: string
 
 	// Controls encryption of undo log data for tables encrypted using the InnoDB tablespace encryption feature.
-	innodb_undo_log_encrypt: string & "0" | "1" | "OFF" | "ON" | *"0"
+	innodb_undo_log_encrypt: string & "OFF" | "ON" | *"OFF"
 
 	// Undo tablespaces that exceed the threshold value defined by innodb_max_undo_log_size are marked for truncation.
-	innodb_undo_log_truncate?: string & "0" | "1" | "OFF" | "ON"
+	innodb_undo_log_truncate?: string & "OFF" | "ON"
 
 	// The number of tablespace files that the undo logs are divided between, when you use a non-zero innodb_undo_logs setting.
 	innodb_undo_tablespaces?: int & >=0 & <=126
 
 	// Controls whether or not MySQL uses Linux native asynchronous IO.
-	innodb_use_native_aio?: string & "0" | "1" | "OFF" | "ON"
+	innodb_use_native_aio?: string & "OFF" | "ON"
 
 	// The number of I/O threads for write operations in InnoDB.
 	innodb_write_io_threads?: int & >=1 & <=64
@@ -704,7 +704,7 @@
 	join_buffer_size?: int & >=128 & <=18446744073709547520
 
 	// Suppress behavior to overwrite MyISAM file created in DATA DIRECTORY or INDEX DIRECTORY.
-	keep_files_on_create?: string & "0" | "1" | "OFF" | "ON"
+	keep_files_on_create?: string & "OFF" | "ON"
 
 	// Increase the buffer size to get better index handling used for index blocks (for all reads and multiple writes).
 	key_buffer_size: int & >=8 & <=9223372036854771712 | *16777216
@@ -718,9 +718,9 @@
 	// The division point between the hot and warm sub-chains of the key cache buffer chain. The value is the percentage of the buffer chain to use for the warm sub-chain.
 	key_cache_division_limit?: int & >=1 & <=100
 
-	keyring_operations: string & "0" | "1" | "OFF" | "ON" | *"1"
+	keyring_operations: string & "OFF" | "ON" | *"ON"
 
-	large_pages: string & "0" | "1" | "OFF" | "ON" | *"0"
+	large_pages: string & "OFF" | "ON" | *"OFF"
 
 	lc_messages?: string
 
@@ -730,7 +730,7 @@
 	lc_time_names?: string & "ar_AE" | "ar_BH" | "ar_DZ" | "ar_EG" | "ar_IN" | "ar_IQ" | "ar_JO" | "ar_KW" | "ar_LB" | "ar_LY" | "ar_MA" | "ar_OM" | "ar_QA" | "ar_SA" | "ar_SD" | "ar_SY" | "ar_TN" | "ar_YE" | "be_BY" | "bg_BG" | "ca_ES" | "cs_CZ" | "da_DK" | "de_AT" | "de_BE" | "de_CH" | "de_DE" | "de_LU" | "el_GR" | "en_AU" | "en_CA" | "en_GB" | "en_IN" | "en_NZ" | "en_PH" | "en_US" | "en_ZA" | "en_ZW" | "es_AR" | "es_BO" | "es_CL" | "es_CO" | "es_CR" | "es_DO" | "es_EC" | "es_ES" | "es_GT" | "es_HN" | "es_MX" | "es_NI" | "es_PA" | "es_PE" | "es_PR" | "es_PY" | "es_SV" | "es_US" | "es_UY" | "es_VE" | "et_EE" | "eu_ES" | "fi_FI" | "fo_FO" | "fr_BE" | "fr_CA" | "fr_CH" | "fr_FR" | "fr_LU" | "gl_ES" | "gu_IN" | "he_IL" | "hi_IN" | "hr_HR" | "hu_HU" | "id_ID" | "is_IS" | "it_CH" | "it_IT" | "ja_JP" | "ko_KR" | "lt_LT" | "lv_LV" | "mk_MK" | "mn_MN" | "ms_MY" | "nb_NO" | "nl_BE" | "nl_NL" | "no_NO" | "pl_PL" | "pt_BR" | "pt_PT" | "ro_RO" | "ru_RU" | "ru_UA" | "sk_SK" | "sl_SI" | "sq_AL" | "sr_RS" | "sv_FI" | "sv_SE" | "ta_IN" | "te_IN" | "th_TH" | "tr_TR" | "uk_UA" | "ur_PK" | "vi_VN" | "zh_CN" | "zh_HK" | "zh_TW"
 
 	// Controls whetther LOCAL is supported for LOAD DATA INFILE
-	local_infile: string & "0" | "1" | "OFF" | "ON" | *"1"
+	local_infile: string & "OFF" | "ON" | *"ON"
 
 	// Specifies the timeout in seconds for attempts to acquire metadata locks
 	lock_wait_timeout?: int & >=1 & <=31536000
@@ -745,10 +745,10 @@
 	log_bin_index?: string
 
 	// Enforces restrictions on stored functions / triggers - logging for replication.
-	log_bin_trust_function_creators?: string & "0" | "1" | "OFF" | "ON"
+	log_bin_trust_function_creators?: string & "OFF" | "ON"
 
 	// Whether MySQL writes binary log events using a Version 1 or Version 2 logging events
-	log_bin_use_v1_row_events?: string & "0" | "1" | "OFF" | "ON"
+	log_bin_use_v1_row_events?: string & "OFF" | "ON"
 
 	// Location of error log.
 	log_error?: string
@@ -762,25 +762,25 @@
 	log_output?: string & "TABLE" | "FILE" | "NONE"
 
 	// Logs queries that are expected to retrieve all rows to slow query log
-	log_queries_not_using_indexes?: string & "0" | "1" | "OFF" | "ON"
+	log_queries_not_using_indexes?: string & "OFF" | "ON"
 
 	// Allow for chain replication - ingression
-	log_slave_updates: string & "0" | "1" | "OFF" | "ON" | *"1"
+	log_slave_updates: string & "OFF" | "ON" | *"ON"
 
 	// Include slow administrative statements in the statements written to the slow query log.
-	log_slow_admin_statements?: string & "0" | "1" | "OFF" | "ON"
+	log_slow_admin_statements?: string & "OFF" | "ON"
 
 	// When the slow query log is enabled and the output destination as FILE, additional information related to the slow query is written to the slow query log file. TABLE output is unaffected.
 	log_slow_extra?: string & "ON" | "OFF"
 
 	// When the slow query log is enabled, this variable enables logging for queries that have taken more than long_query_time seconds to execute on the slave.
-	log_slow_slave_statements?: string & "0" | "1" | "OFF" | "ON"
+	log_slow_slave_statements?: string & "OFF" | "ON"
 
 	// If error 1592 is encountered, controls whether the generated warnings are added to the error log or not.
-	log_statements_unsafe_for_binlog: string & "0" | "1" | "OFF" | "ON" | *"0"
+	log_statements_unsafe_for_binlog: string & "OFF" | "ON" | *"OFF"
 
 	// Whether to write error log output to syslog.
-	log_syslog?: string & "0" | "1" | "OFF" | "ON"
+	log_syslog?: string & "OFF" | "ON"
 
 	// Limits the number of such queries per minute that can be written to the slow query log.
 	log_throttle_queries_not_using_indexes?: int & >=0 & <=4294967295
@@ -791,13 +791,13 @@
 	// Defines what MySQL considers long queries
 	long_query_time?: float & >=0 & <=3.1536e+07
 
-	lower_case_file_system?: string & "0" | "1" | "OFF" | "ON"
+	lower_case_file_system?: string & "OFF" | "ON"
 
 	// Affects how the server handles identifier case sensitivity
 	lower_case_table_names?: int & >=0 & <=1
 
 	// INSERT, UPDATE, DELETE, and LOCK TABLE WRITE wait until no pending SELECT. Affects only storage engines that use only table-level locking (MyISAM, MEMORY, MERGE).
-	low_priority_updates?: string & "0" | "1" | "OFF" | "ON"
+	low_priority_updates?: string & "OFF" | "ON"
 
 	// All the specified roles are always considered granted to every user and they can't be revoked. Mandatory roles still require activation unless they are made into default roles. The granted roles will not be visible in the mysql.role_edges table.
 	mandatory_roles?: string
@@ -808,7 +808,7 @@
 	"master-info-repository"?: string & "FILE" | "TABLE"
 
 	// Enabling this variable causes the master to examine checksums when reading from the binary log.
-	master_verify_checksum?: string & "0" | "1" | "OFF" | "ON"
+	master_verify_checksum?: string & "OFF" | "ON"
 
 	// This value by default is small, to catch large (possibly incorrect) packets. Must be increased if using large BLOB columns or long strings. As big as largest BLOB.
 	max_allowed_packet?: int & >=16777216 & <=1073741824
@@ -899,10 +899,10 @@
 	myisam_stats_method?: string & "nulls_equal" | "nulls_unequal" | "nulls_ignored"
 
 	// Memory mapping for reading and writing MyISAM tables.
-	myisam_use_mmap?: string & "0" | "1" | "OFF" | "ON"
+	myisam_use_mmap?: string & "OFF" | "ON"
 
 	// This variable controls whether the mysql_native_password built-in authentication plugin supports proxy users.
-	mysql_native_password_proxy_users?: string & "0" | "1" | "OFF" | "ON"
+	mysql_native_password_proxy_users?: string & "OFF" | "ON"
 
 	mysqlx_bind_address?: string
 
@@ -962,17 +962,17 @@
 	ngram_token_size?: int & >=1 & <=10
 
 	// Whether the server is in offline mode.
-	offline_mode?: string & "0" | "1" | "OFF" | "ON"
+	offline_mode?: string & "OFF" | "ON"
 
-	old_alter_table: string & "0" | "1" | "OFF" | "ON" | *"0"
+	old_alter_table: string & "OFF" | "ON" | *"OFF"
 
 	// Enable old-style user limits.
-	"old-style-user-limits"?: string & "0" | "1" | "OFF" | "ON"
+	"old-style-user-limits"?: string & "OFF" | "ON"
 
 	open_files_limit: int | *5000
 
 	// Controls the heuristics applied during query optimization to prune less-promising partial plans from the optimizer search space.
-	optimizer_prune_level?: string & "0" | "1" | "OFF" | "ON"
+	optimizer_prune_level?: string & "OFF" | "ON"
 
 	// The maximum depth of search performed by the query optimizer.
 	optimizer_search_depth?: int & >=0 & <=62
@@ -1007,7 +1007,7 @@
 	password_reuse_interval: int & >=0 & <=4294967295 | *0
 
 	// Enables or disables the Performance Schema
-	performance_schema: string & "0" | "1" | "OFF" | "ON" | *"0"
+	performance_schema: string & "OFF" | "ON" | *"OFF"
 
 	// The number of rows in the Performance Schema accounts table.
 	performance_schema_accounts_size?: int & >=-1 & <=1048576
@@ -1139,7 +1139,7 @@
 	performance_schema_users_size?: int & >=-1 & <=1048576
 
 	// Whether to load persisted configuration settings from the mysqld-auto.cnf file in the data directory.
-	persisted_globals_load: string & "0" | "1" | "OFF" | "ON" | *"0"
+	persisted_globals_load: string & "OFF" | "ON" | *"OFF"
 
 	// The path name of the process ID file. This file is used by other programs such as MySQLd_safe to determine the server's process ID.
 	pid_file?: string
@@ -1204,10 +1204,10 @@
 	// This option causes the server to log its relay log info to a file or a table.
 	relay_log_info_repository?: string & "FILE" | "TABLE"
 
-	relay_log_purge: string & "0" | "1" | "OFF" | "ON" | *"TRUE"
+	relay_log_purge: string & "OFF" | "ON" | *"ON"
 
 	// Enables automatic relay log recovery immediately following server startup.
-	relay_log_recovery: string & "0" | "1" | "OFF" | "ON" | *"1"
+	relay_log_recovery: string & "OFF" | "ON" | *"ON"
 
 	relay_log_space_limit: int & >=0 & <=18446744073709551615 | *0
 
@@ -1238,7 +1238,7 @@
 	report_user?: string
 
 	// Whether client connections to the server are required to use some form of secure transport.
-	require_secure_transport?: string & "0" | "1" | "OFF" | "ON"
+	require_secure_transport?: string & "OFF" | "ON"
 
 	resultset_metadata?: string & "FULL" | "NONE"
 
@@ -1255,7 +1255,7 @@
 	rpl_stop_slave_timeout?: int & >=2 & <=31536000
 
 	// If this option is enabled, a user cannot create new MySQL users by using the GRANT statement unless the user has the INSERT privilege for the mysql.user table or any column in the table.
-	"safe-user-create"?: string & "0" | "1" | "OFF" | "ON"
+	"safe-user-create"?: string & "OFF" | "ON"
 
 	// Defines a limit for the number of schema definition objects, both used and unused, that can be kept in the dictionary object cache.
 	schema_definition_cache: int & >=256 & <=524288 | *256
@@ -1267,13 +1267,13 @@
 	server_id?: int
 
 	// Enables a tracker for capturing GTIDs and returning them in the OK packet.
-	session_track_gtids?: string & "0" | "1" | "OFF" | "ON"
+	session_track_gtids?: string & "OFF" | "ON"
 
 	// Whether the server tracks changes to the default schema and notifies the client when changes occur.
-	session_track_schema?: string & "0" | "1" | "OFF" | "ON"
+	session_track_schema?: string & "OFF" | "ON"
 
 	// Whether the server tracks changes to the session state and notifies the client when changes occur.
-	session_track_state_change?: string & "0" | "1" | "OFF" | "ON"
+	session_track_state_change?: string & "OFF" | "ON"
 
 	// Whether the server tracks changes to the session system variables and notifies the client when changes occur.
 	session_track_system_variables?: string & "time_zone" | "autocommit" | "character_set_client" | "character_set_results" | "character_set_connection"
@@ -1282,38 +1282,38 @@
 	session_track_transaction_info?: string & "OFF" | "STATE" | "CHARACTERISTICS"
 
 	// Controls whether the server autogenerates RSA private/public key-pair files in the data directory.
-	sha256_password_auto_generate_rsa_keys?: string & "0" | "1" | "OFF" | "ON"
+	sha256_password_auto_generate_rsa_keys?: string & "OFF" | "ON"
 
 	sha256_password_private_key_path?: string
 
 	// Controls whether the sha256_password built-in authentication plugin supports proxy users.
-	sha256_password_proxy_users?: string & "0" | "1" | "OFF" | "ON"
+	sha256_password_proxy_users?: string & "OFF" | "ON"
 
 	sha256_password_public_key_path?: string
 
 	// When this option is enabled, it increases the verbosity of 'SHOW CREATE TABLE'.
-	show_create_table_verbosity: string & "0" | "1" | "OFF" | "ON" | *"0"
+	show_create_table_verbosity: string & "OFF" | "ON" | *"OFF"
 
 	// Whether SHOW CREATE TABLE output includes comments to flag temporal columns found to be in pre-5.6.4 format.
-	show_old_temporals?: string & "0" | "1" | "OFF" | "ON"
+	show_old_temporals?: string & "OFF" | "ON"
 
 	// Ignore character set information sent by the client.
-	"skip-character-set-client-handshake"?: string & "0" | "1" | "OFF" | "ON"
+	"skip-character-set-client-handshake"?: string & "OFF" | "ON"
 
 	// Uses OS locking instead of internal
-	skip_external_locking?: string & "0" | "1" | "OFF" | "ON"
+	skip_external_locking?: string & "OFF" | "ON"
 
 	// Host names are not resolved. All Host column values in the grant tables must be IP numbers or localhost.
-	skip_name_resolve?: string & "0" | "1" | "OFF" | "ON"
+	skip_name_resolve?: string & "OFF" | "ON"
 
 	// SHOW DATABASES statement is allowed only to users who have the SHOW DATABASES privilege
-	skip_show_database?: string & "0" | "1" | "OFF" | "ON"
+	skip_show_database?: string & "OFF" | "ON"
 
 	// Tells the slave server not to start the slave threads when the server starts.
-	"skip-slave-start": string & "0" | "1" | "OFF" | "ON" | *"1"
+	"skip-slave-start": string & "OFF" | "ON" | *"ON"
 
 	// Whether or not batched updates are enabled on replication slaves.
-	slave_allow_batching?: string & "0" | "1" | "OFF" | "ON"
+	slave_allow_batching?: string & "OFF" | "ON"
 
 	// Sets the maximum number of transactions that can be processed by a multi-threaded slave before a checkpoint operation is called to update its status as shown by SHOW SLAVE STATUS.
 	slave_checkpoint_group?: int & >=32 & <=524280
@@ -1322,7 +1322,7 @@
 	slave_checkpoint_period?: int & >=1 & <=4294967295
 
 	// Whether to use compression of the slave/master protocol if both the slave and the master support it.
-	slave_compressed_protocol?: string & "0" | "1" | "OFF" | "ON"
+	slave_compressed_protocol?: string & "OFF" | "ON"
 
 	// slave_exec_mode controls how a replication thread resolves conflicts and errors during replication.
 	slave_exec_mode?: string & "IDEMPOTENT" | "STRICT"
@@ -1342,13 +1342,13 @@
 	slave_pending_jobs_size_max?: int & >=1024 & <=18446744073709547520
 
 	// Enable parallel execution on the slave of all uncommitted threads already in the prepare phase, without violating consistency.
-	slave_preserve_commit_order?: string & "0" | "1" | "OFF" | "ON"
+	slave_preserve_commit_order?: string & "OFF" | "ON"
 
 	// When preparing batches of rows for row-based logging and replication, this variable controls how the rows are searched for matches???that is, whether or not hashing is used for searches using a primary or unique key, using some other key, or using no key at all.
 	slave_rows_search_algorithms?: string & "TABLE_SCAN" | "INDEX_SCAN" | "HASH_SCAN"
 
 	// When this option is enabled, the slave examines checksums read from the relay log, in the event of a mismatch, the slave stops with an error.
-	slave_sql_verify_checksum?: string & "0" | "1" | "OFF" | "ON"
+	slave_sql_verify_checksum?: string & "OFF" | "ON"
 
 	// If a replication slave SQL thread fails to execute a transaction because of an InnoDB deadlock or because the transaction's execution time exceeded InnoDB's innodb_lock_wait_timeout, it automatically retries slave_transaction_retries times before stopping with an error.
 	slave_transaction_retries?: int & >=0 & <=18446744073709551615
@@ -1360,7 +1360,7 @@
 	slow_launch_time?: int & >=0 & <=31536000
 
 	// Enable or disable the slow query log
-	slow_query_log?: string & "0" | "1" | "OFF" | "ON"
+	slow_query_log?: string & "OFF" | "ON"
 
 	// Location of the mysql slow query log file.
 	slow_query_log_file?: string
@@ -1371,32 +1371,32 @@
 	// Larger value improves perf for ORDER BY or GROUP BY operations.
 	sort_buffer_size?: int & >=32768 & <=18446744073709551615
 
-	sql_auto_is_null: string & "0" | "1" | "OFF" | "ON" | *"0"
+	sql_auto_is_null: string & "OFF" | "ON" | *"OFF"
 
 	sql_big_selects: int & >=1 & <=18446744073709551615 | *18446744073709551615
 
-	sql_buffer_result: string & "0" | "1" | "OFF" | "ON" | *"0"
+	sql_buffer_result: string & "OFF" | "ON" | *"OFF"
 
-	sql_log_off: string & "0" | "1" | "OFF" | "ON" | *"0"
+	sql_log_off: string & "OFF" | "ON" | *"OFF"
 
 	// Current SQL Server Mode.
 	sql_mode?: string & "ALLOW_INVALID_DATES" | "ANSI_QUOTES" | "ERROR_FOR_DIVISION_BY_ZERO" | "HIGH_NOT_PRECEDENCE" | "IGNORE_SPACE" | "NO_AUTO_VALUE_ON_ZERO" | "NO_BACKSLASH_ESCAPES" | "NO_DIR_IN_CREATE" | "NO_ENGINE_SUBSTITUTION" | "NO_UNSIGNED_SUBTRACTION" | "NO_ZERO_DATE" | "NO_ZERO_IN_DATE" | "ONLY_FULL_GROUP_BY" | "PAD_CHAR_TO_FULL_LENGTH" | "PIPES_AS_CONCAT" | "REAL_AS_FLOAT" | "STRICT_ALL_TABLES" | "STRICT_TRANS_TABLES" | "ANSI" | "TRADITIONAL"
 
-	sql_notes: string & "0" | "1" | "OFF" | "ON" | *"1"
+	sql_notes: string & "OFF" | "ON" | *"ON"
 
-	sql_quote_show_create: string & "0" | "1" | "OFF" | "ON" | *"1"
+	sql_quote_show_create: string & "OFF" | "ON" | *"ON"
 
 	// Whether statements that create new tables or alter the structure of existing tables enforce the requirement that tables have a primary key.
-	sql_require_primary_key?: string & "0" | "1" | "OFF" | "ON"
+	sql_require_primary_key?: string & "OFF" | "ON"
 
-	sql_safe_updates: string & "0" | "1" | "OFF" | "ON" | *"0"
+	sql_safe_updates: string & "OFF" | "ON" | *"OFF"
 
 	// The maximum number of rows to return from SELECT statements.
 	sql_select_limit?: int & >=0 & <=18446744073709551615
 
 	sql_slave_skip_counter?: int
 
-	sql_warnings: string & "0" | "1" | "OFF" | "ON" | *"0"
+	sql_warnings: string & "OFF" | "ON" | *"OFF"
 
 	ssl_ca?: string
 
@@ -1423,7 +1423,7 @@
 	stored_program_definition_cache: int & >=256 & <=524288 | *256
 
 	// Whether client connections to the server are required to use some form of secure transport.
-	super_read_only?: string & "0" | "1" | "OFF" | "ON"
+	super_read_only?: string & "OFF" | "ON"
 
 	// Sync binlog (MySQL flush to disk or rely on OS)
 	sync_binlog: int & >=0 & <=18446744073709547520 | *1
@@ -1438,7 +1438,7 @@
 	sync_relay_log_info?: int & >=0 & <=18446744073709547520
 
 	// Causes SYSYDATE() to be an alias for NOW(). Replication related
-	"sysdate-is-now"?: string & "0" | "1" | "OFF" | "ON"
+	"sysdate-is-now"?: string & "OFF" | "ON"
 
 	system_time_zone?: string
 
@@ -1495,10 +1495,10 @@
 	// Reserved for future use.
 	transaction_write_set_extraction?: string & "OFF" | "MURMUR32"
 
-	unique_checks: string & "0" | "1" | "OFF" | "ON" | *"1"
+	unique_checks: string & "OFF" | "ON" | *"ON"
 
 	// This variable controls whether updates to a view can be made when the view does not contain all columns of the primary key defined in the underlying table, if the update statement contains a LIMIT clause (Often generated by GUI tools).
-	updatable_views_with_limit?: string & "0" | "1" | "OFF" | "ON"
+	updatable_views_with_limit?: string & "OFF" | "ON"
 
 	// This option controls how the server loads the validate_password plugin at startup.
 	"validate-password"?: string & "ON" | "OFF" | "FORCE" | "FORCE_PLUS_PERMANENT"
@@ -1533,7 +1533,7 @@
 	wait_timeout?: int & >=1 & <=31536000
 
 	// For SQL window functions, determines whether to enable inversion optimization for moving window frames also for floating values.
-	windowing_use_high_precision: string & "0" | "1" | "OFF" | "ON" | *"1"
+	windowing_use_high_precision: string & "OFF" | "ON" | *"ON"
 
 	// other parameters
 	// reference mysql parameters
