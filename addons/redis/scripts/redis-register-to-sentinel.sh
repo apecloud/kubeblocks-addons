@@ -171,8 +171,17 @@ register_to_sentinel() {
   # Check connectivity to Redis primary host
   wait_for_connectivity "$redis_primary_host" "$redis_primary_port" "$REDIS_DEFAULT_PASSWORD"
 
-  # Register and configure the Redis primary with Sentinel
-  execute_redis_cli SENTINEL monitor "$master_name" "$redis_primary_host" "$redis_primary_port" 2
+  # Check if Sentinel is already monitoring the Redis primary
+  master_addr=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" -a "$SENTINEL_PASSWORD" SENTINEL get-master-addr-by-name "$master_name")
+
+  if [ -z "$master_addr" ]; then
+    echo "Sentinel is not monitoring $master_name. Registering it..."
+    # Register the Redis primary with Sentinel
+    execute_redis_cli SENTINEL monitor "$master_name" "$redis_primary_host" "$redis_primary_port" 2
+  else
+    echo "Sentinel is already monitoring $master_name at $master_addr. Skipping monitor registration."
+  fi
+  #configure the Redis primary with Sentinel
   execute_redis_cli SENTINEL set "$master_name" down-after-milliseconds 5000
   execute_redis_cli SENTINEL set "$master_name" failover-timeout 60000
   execute_redis_cli SENTINEL set "$master_name" parallel-syncs 1
@@ -221,6 +230,7 @@ register_to_sentinel_wrapper() {
   done
 }
 
+# shellcheck disable=SC1054,SC1073,SC1036,SC1056,SC1072
 # TODO: replace the following code with checking env $SENTINEL_COMPONENT_NAME defined in ComponentDefinition.Spec.Vars API
 {{- $defaultSentinelComponentName := "redis-sentinel" }}
 {{- $envSentinelComponentName := getEnvByName ( index $.podSpec.containers 0 ) "SENTINEL_COMPONENT_DEFINITION_NAME" }}
