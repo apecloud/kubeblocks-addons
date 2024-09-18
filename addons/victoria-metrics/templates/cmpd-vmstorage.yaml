@@ -38,8 +38,8 @@ spec:
         imagePullPolicy: {{ .Values.images.vminsert.pullPolicy }}
         securityContext: {}
         args:
-          - --retentionPeriod=1
           - --storageDataPath=/storage
+          - --retentionPeriod=$(RETENTION_PERIOD)
           {{- range $key, $value := .Values.vmstorage.extraArgs }}
           - --{{ $key }}={{ $value }}
           {{- end }}
