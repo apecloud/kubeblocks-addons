@@ -19,6 +19,12 @@ spec:
         - 8.0.37
         - 8.0.38
         - 8.0.39
+    - compDefs:
+        - {{ include "mysql.componentDefName" . }}-8.4.2
+      releases:
+        - 8.4.0
+        - 8.4.1
+        - 8.4.2
   releases:
     - name: 8.0.30
       changes:
@@ -28,6 +34,7 @@ spec:
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.0
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
     - name: 8.0.31
       changes:
       serviceVersion: 8.0.31
@@ -36,6 +43,7 @@ spec:
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.0
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
     - name: 8.0.32
       changes:
       serviceVersion: 8.0.32
@@ -44,6 +52,7 @@ spec:
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.0
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
     - name: 8.0.33
       changes:
       serviceVersion: 8.0.33
@@ -52,6 +61,7 @@ spec:
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.0
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
     - name: 8.0.34
       changes:
       serviceVersion: 8.0.34
@@ -60,6 +70,7 @@ spec:
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.0
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
     - name: 8.0.35
       changes:
       serviceVersion: 8.0.35
@@ -68,6 +79,7 @@ spec:
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.0
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
     - name: 8.0.36
       changes:
       serviceVersion: 8.0.36
@@ -76,6 +88,7 @@ spec:
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.0
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
     - name: 8.0.37
       changes:
       serviceVersion: 8.0.37
@@ -84,6 +97,7 @@ spec:
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.0
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
     - name: 8.0.38
       changes:
       serviceVersion: 8.0.38
@@ -92,6 +106,7 @@ spec:
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.0
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
     - name: 8.0.39
       changes:
       serviceVersion: 8.0.39
@@ -100,3 +115,28 @@ spec:
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.0
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
+    - name: 8.4.0
+      changes:
+      serviceVersion: 8.4.0
+      images:
+        mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.4.0
+        init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.4
+        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
+    - name: 8.4.1
+      changes:
+      serviceVersion: 8.4.1
+      images:
+        mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.4.1
+        init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.4
+        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
+    - name: 8.4.2
+      changes:
+      serviceVersion: 8.4.2
+      images:
+        mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.4.2
+        init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.4
+        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
