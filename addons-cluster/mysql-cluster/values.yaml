@@ -34,3 +34,4 @@ requests:
 storage: 20
 
 compdef: mysql-8.0
+useLegacyCompDef: true

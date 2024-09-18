@@ -12,8 +12,12 @@ spec:
   clusterDefinitionRef: mysql # ref clusterdefinition.name
   componentSpecs:
     - name: mysql
-      componentDef: {{ .Values.compdef }}
+      {{- if .Values.useLegacyCompDef }}
       componentDefRef: mysql # ref clusterdefinition componentDefs.name
+      {{- else }}
+      componentDef: {{ .Values.compdef }}
+      {{- end}}
+
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "mysql-cluster.replicaCount" . | indent 6 }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
