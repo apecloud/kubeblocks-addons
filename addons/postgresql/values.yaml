@@ -27,6 +27,8 @@ image:
       minor080: 14.8.0-pgvector-v0.6.1
     major15:
       minor070: 15.7.0
+    major16:
+      minor040: 16.4.0
 
   # refer: https://github.com/apecloud/dbctl/blob/main/docker/Dockerfile
   dbctl:
@@ -114,14 +116,17 @@ dataMountPath: /home/postgres/pgdata
 logConfigs:
   running: /home/postgres/pgdata/pgroot/data/log/postgresql-*
 
-## @param compDefinitionVersion for each ComponentDefinition resources name created by this chart, that can avoid name conflict
-componentDefinitionVersion:
-  postgresql12: "12"
-  postgresql14: "14"
-  postgresql15: "15"
+## @param cmpdVersionPrefix for each ComponentDefinition resources name created by this chart, that can avoid name conflict
+## If specified, the component definition will use it as prefix.
+cmpdVersionPrefix:
+  postgresql12: "postgresql-12"
+  postgresql14: "postgresql-14"
+  postgresql15: "postgresql-15"
+  postgresql16: "postgresql-16"
 
 ## @param componentServiceVersion define default serviceVersion of each Component
 componentServiceVersion:
   postgresql12: "12.15.0"
   postgresql14: "14.8.0"
   postgresql15: "15.7.0"
+  postgresql16: "16.4.0"
