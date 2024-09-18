@@ -1,27 +1,34 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "redis-cluster.componentDefName" . }}
+  name: {{ include "redis7.cmpdName" . }}
   labels:
     {{- include "redis.labels" . | nindent 4 }}
+  annotations:
+    {{- include "redis.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
-  description: An official v7.0 Redis Cluster(distributed implementation of Redis) component definition for Kubernetes
-  serviceKind: redis-cluster
-  serviceVersion: {{ .Values.componentServiceVersion.redisCluster }}
+  description: A Redis v7.0 component definition for Kubernetes
+  serviceKind: redis
+  serviceVersion: {{ .Values.defaultServiceVersion.redis.major7 }}
   services:
+    - name: redis
+      serviceName: redis
+      spec:
+        ports:
+          - name: redis
+            port: 6379
+            targetPort: redis
+      roleSelector: primary
     - name: redis-advertised
       serviceName: redis-advertised
       spec:
-        ## the type can override in cluster componentSpec services
+        ## the type can override in cluster componentSpec services, type can be NodePort, LoadBalancer
         type: NodePort
         ports:
-        - name: redis-advertised
-          port: 6379
-          targetPort: redis-cluster
-        - name: advertised-bus
-          port: 16379
-          targetPort: cluster-bus
+          - name: redis-advertised
+            port: 6379
+            targetPort: redis
       podService: true
       disableAutoProvision: true
   updateStrategy: BestEffortParallel
@@ -45,21 +52,21 @@ spec:
     scrapePath: /metrics
     scrapePort: http-metrics
   configs:
-    - name: redis-cluster-config
-      templateRef: redis-cluster7-config-template
-      constraintRef: redis-cluster7-config-constraints
+    - name: redis-replication-config
+      templateRef: {{ include "redis7.configurationTemplate" . }}
+      constraintRef: {{ include "redis7.configConstraint" . }}
       namespace: {{ .Release.Namespace }}
-      volumeName: redis-cluster-config
+      volumeName: redis-config
       reRenderResourceTypes:
         - vscale
     - name: redis-metrics-config
-      templateRef: redis-metrics-config
+      templateRef: {{ include "redis.metricsConfiguration" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: redis-metrics-config
       defaultMode: 0444
   scripts:
-    - name: redis-cluster-scripts
-      templateRef: redis-cluster-scripts
+    - name: redis-scripts
+      templateRef: {{ include "redis7.scriptsTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
@@ -72,7 +79,6 @@ spec:
         numDigits: 5
         numSymbols: 0
         letterCase: MixedCases
-        seed: 5wM4uhmKV1Ohy087
   vars:
     ## the name of current cluster instance
     - name: CLUSTER_NAME
@@ -82,14 +88,12 @@ spec:
     ## the service port of redis
     - name: SERVICE_PORT
       value: "6379"
-    - name: CLUSTER_BUS_PORT
-      value: "16379"
     ## the default username of redis connection
     - name: REDIS_DEFAULT_USER
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "redis-cluster.componentDefName" . }}
+          compDef: {{ include "redis7.cmpdName" . }}
           name: default
           username: Required
     ## the default password of redis connection
@@ -97,7 +101,7 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "redis-cluster.componentDefName" . }}
+          compDef: {{ include "redis7.cmpdName" . }}
           name: default
           password: Required
     ## the username of redis primary-secondary replication
@@ -108,92 +112,111 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "redis-cluster.componentDefName" . }}
+          compDef: {{ include "redis7.cmpdName" . }}
           name: default
           password: Required
-    ## the redis cluster advertised service port list for each pod of current shard, the value format is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."
-    - name: REDIS_CLUSTER_ADVERTISED_PORT
+    ## the username of redis for redis sentinel connection
+    - name: REDIS_SENTINEL_USER
+      value: "kbreplicator-sentinel"
+    ## the password of redis for redis sentinel connection shared the same password with default password
+    - name: REDIS_SENTINEL_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          ## reference the current component definition name
+          compDef: {{ include "redis7.cmpdName" . }}
+          name: default
+          password: Required
+    ## the redis advertised service port list for each pod, the value format is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."
+    - name: REDIS_ADVERTISED_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redis-cluster.componentDefName" . }}
+          compDef: {{ include "redis7.cmpdName" . }}
           name: redis-advertised
           optional: true
           port:
             name: redis-advertised
             option: Required
-    ## the redis cluster advertised service bus port list for each pod of current shard, the value format is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."
-    - name: REDIS_CLUSTER_ADVERTISED_BUS_PORT
+    ## the redis advertised service name list for each pod, the value format is "pod1Svc,pod2Svc,..."
+    - name: REDIS_ADVERTISED_SVC_NAME
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redis-cluster.componentDefName" . }}
-          name: redis-advertised
-          optional: true
-          port:
-            name: advertised-bus
-            option: Required
-    ## the redis cluster advertised service name list for each pod of current shard, the value format is "pod1Svc,pod2Svc,..."
-    - name: REDIS_CLUSTER_ADVERTISED_SVC_NAME
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "redis-cluster.componentDefName" . }}
+          compDef: {{ include "redis7.cmpdName" . }}
           name: redis-advertised
           optional: true
           host: Required
-    ## the redis cluster advertised service port list for each pod of all shard pods
-    ## the value format is like "shard-98x@redis-shard-98x-redis-advertised-0:32024,redis-shard-98x-redis-advertised-1:31318.shard-cq7@redis-shard-cq7-redis-advertised-0:31828,redis-shard-cq7-redis-advertised-1:32000"
-    - name: REDIS_CLUSTER_ALL_SHARDS_ADVERTISED_PORT
+    ## the redis pod name list for each pod, the value format is "pod1,pod2,..."
+    - name: REDIS_POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "redis7.cmpdName" . }}
+          optional: false
+          podNames: Required
+    ## the redis pod fqdn list for each pod, the value format is "pod1FQDN,pod2FQDN,..."
+    - name: REDIS_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "redis7.cmpdName" . }}
+          optional: false
+          podFQDNs: Required
+    ## the component name of redis, it's the fullname of redis component
+    - name: REDIS_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "redis7.cmpdName" . }}
+          optional: false
+          componentName: Required
+    ## the component name of redis sentinel when redis sentinel is enabled, it's the fullname of redis-sentinel component
+    - name: SENTINEL_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "redisSentinel7.cmpdName" . }}
+          optional: true
+          componentName: Required
+    ## the username of redis sentinel for redis connection, it is optional
+    - name: SENTINEL_USER
+      valueFrom:
+        credentialVarRef:
+          ## reference the redis-sentinel component definition name
+          compDef: {{ include "redisSentinel7.cmpdName" . }}
+          name: default
+          optional: true
+          username: Required
+    ## the password of redis sentinel for redis connection, it is optional
+    - name: SENTINEL_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          ## reference the redis-sentinel component definition name
+          compDef: {{ include "redisSentinel7.cmpdName" . }}
+          name: default
+          optional: true
+          password: Required
+    - name: SENTINEL_SERVICE_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redis-cluster.componentDefName" . }}
-          name: redis-advertised
+          compDef: {{ include "redisSentinel7.cmpdName" . }}
+          name: redis-sentinel
           optional: true
-          multipleClusterObjectOption:
-            strategy: combined
-            combinedOption:
-              flattenFormat:
-                delimiter: "."
-                keyValueDelimiter: "@"
           port:
-            name: redis-advertised
+            name: redis-sentinel
             option: Required
-    ## the redis cluster advertised service bus port list for each pod of all shard pods
-    ## the value format is like "shard-98x@redis-shard-98x-redis-advertised-0:30654,redis-shard-98x-redis-advertised-1:30971.shard-cq7@redis-shard-cq7-redis-advertised-0:32555,redis-shard-cq7-redis-advertised-1:32368"
-    - name: REDIS_CLUSTER_ALL_SHARDS_ADVERTISED_BUS_PORT
+    - name: SENTINEL_POD_NAME_LIST
       valueFrom:
-        serviceVarRef:
-          compDef: {{ include "redis-cluster.componentDefName" . }}
-          name: redis-advertised
+        componentVarRef:
+          compDef: {{ include "redisSentinel7.cmpdName" . }}
           optional: true
-          multipleClusterObjectOption:
-            strategy: combined
-            combinedOption:
-              flattenFormat:
-                delimiter: "."
-                keyValueDelimiter: "@"
-          port:
-            name: advertised-bus
-            option: Required
-    ## the redis cluster advertised service name list for each pod of all shard pods.
-    ## the value format is like "shard-98x@redis-shard-98x-redis-advertised-0,redis-shard-98x-redis-advertised-1.shard-cq7@redis-shard-cq7-redis-advertised-0,redis-shard-cq7-redis-advertised-1"
-    - name: REDIS_CLUSTER_ALL_SHARDS_ADVERTISED_SVC_NAME
+          podNames: Required
+    - name: SENTINEL_POD_FQDN_LIST
       valueFrom:
-        serviceVarRef:
-          compDef: {{ include "redis-cluster.componentDefName" . }}
-          name: redis-advertised
+        componentVarRef:
+          compDef: {{ include "redisSentinel7.cmpdName" . }}
           optional: true
-          multipleClusterObjectOption:
-            strategy: combined
-            combinedOption:
-              flattenFormat:
-                delimiter: "."
-                keyValueDelimiter: "@"
-          host: Required
+          podFQDNs: Required
   lifecycleActions:
     roleProbe:
       periodSeconds: 1
       timeoutSeconds: 1
       exec:
-        container: redis-cluster
+        container: redis
         command:
           - /tools/dbctl
           - --config-path
@@ -202,11 +225,14 @@ spec:
           - getrole
     postProvision:
       exec:
-        container: redis-cluster
+        image: {{ include "redis7.image" . }}
+        container: redis
         command:
           - /bin/bash
           - -c
-          - /scripts/redis-cluster-manage.sh --post-provision
+          - /scripts/redis-register-to-sentinel.sh
+        targetPodSelector: Role
+        matchingKey: primary
         ## all lifecycle actions share the same env
         env:
           - name: CURRENT_POD_NAME
@@ -225,17 +251,15 @@ spec:
                 apiVersion: v1
                 fieldPath: status.hostIP
       preCondition: RuntimeReady
-      retryPolicy:
-        maxRetries: 10
-    preTerminate:
+    accountProvision:
       exec:
-        container: redis-cluster
+        image: {{ include "redis7.image" . }}
+        container: redis
         command:
-          - /bin/bash
+          - sh
           - -c
-          - /scripts/redis-cluster-manage.sh --pre-terminate
-      retryPolicy:
-        maxRetries: 10
+        args:
+          - "redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD acl save "
   runtime:
     initContainers:
       - name: init-dbctl
@@ -251,18 +275,16 @@ spec:
           - mountPath: /tools
             name: tools
     containers:
-      - name: redis-cluster
-        image: {{ include "redis.image" . }}
+      - name: redis
+        image: {{ include "redis7.image" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         ports:
-          - name: redis-cluster
+          - name: redis
             containerPort: 6379
-          - name: cluster-bus
-            containerPort: 16379
         volumeMounts:
           - name: data
             mountPath: {{ .Values.dataMountPath }}
-          - name: redis-cluster-config
+          - name: redis-config
             mountPath: /etc/conf
           - name: scripts
             mountPath: /scripts
@@ -286,7 +308,7 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: status.hostIP
-        command: [ "/scripts/redis-cluster-server-start.sh" ]
+        command: [ "/scripts/redis-start.sh" ]
         readinessProbe:
           initialDelaySeconds: 10
           periodSeconds: 5
@@ -297,14 +319,14 @@ spec:
             command:
               - sh
               - -c
-              - /scripts/redis-ping.sh 1
+              - /scripts/redis-ping.sh
         lifecycle:
           preStop:
             exec:
               command:
                 - /bin/bash
                 - -c
-                - /scripts/redis-cluster-replica-member-leave.sh
+                - /scripts/redis-pre-stop.sh
       - name: metrics
         image: {{ include "metrics.image" . }}
         imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}

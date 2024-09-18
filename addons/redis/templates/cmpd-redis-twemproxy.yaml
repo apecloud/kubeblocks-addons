@@ -1,14 +1,16 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "redis-twemproxy.componentDefName" . }}
+  name: {{ include "redisTwemproxy05.cmpdName" . }}
   labels:
     {{- include "redis.labels" . | nindent 4 }}
+  annotations:
+    {{- include "redis.annotations" . | nindent 4 }}
 spec:
   provider: KubeBlocks
   description: A Twemproxy component definition for Kubernetes
   serviceKind: redis-twemproxy
-  serviceVersion: {{ .Values.componentServiceVersion.twemproxy }}
+  serviceVersion: {{ .Values.defaultServiceVersion.redisTwemproxy.major }}
   services:
     - name: twemproxy
       serviceName: twemproxy
@@ -19,11 +21,11 @@ spec:
             port: 22121
             targetPort: redis-twemproxy
   scripts:
-    - defaultMode: 365
-      name: redis-scripts
-      namespace: {{ .Release.Namespace }}
-      templateRef: redis-scripts
+    - name: redis-scripts
+      templateRef: {{ include "redis7.scriptsTemplate" . }}
       volumeName: scripts
+      namespace: {{ .Release.Namespace }}
+      defaultMode: 365
   volumes:
     - highWatermark: 0
       name: data
@@ -33,7 +35,7 @@ spec:
     - name: REDIS_SERVICE_NAMES
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redis.componentDefName" . }}
+          compDef: {{ include "redis.cmpdRegexpPattern" . }}
           name: redis
           optional: false
           host: Required
@@ -43,7 +45,7 @@ spec:
     - name: REDIS_SERVICE_PORTS
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redis.componentDefName" . }}
+          compDef: {{ include "redis.cmpdRegexpPattern" . }}
           name: redis
           optional: false
           port:
@@ -55,8 +57,7 @@ spec:
     - name: REDIS_DEFAULT_USER
       valueFrom:
         credentialVarRef:
-          ## reference the current component definition name
-          compDef: {{ include "redis.componentDefName" . }}
+          compDef: {{ include "redis.cmpdRegexpPattern" . }}
           name: default
           username: Required
           multipleClusterObjectOption:
@@ -65,8 +66,7 @@ spec:
     - name: REDIS_DEFAULT_PASSWORD
       valueFrom:
         credentialVarRef:
-          ## reference the current component definition name
-          compDef: {{ include "redis.componentDefName" . }}
+          compDef: {{ include "redis.cmpdRegexpPattern" . }}
           name: default
           password: Required
           multipleClusterObjectOption:
@@ -89,7 +89,7 @@ spec:
             name: scripts
     containers:
     - name: redis-twemproxy
-      image: {{ include "redis-twemproxy.image" . }}
+      image: {{ include "redisTwemproxy05.image" . }}
       imagePullPolicy: {{ default .Values.redisTwemproxyImage.pullPolicy "IfNotPresent" }}
       command:
         - sh

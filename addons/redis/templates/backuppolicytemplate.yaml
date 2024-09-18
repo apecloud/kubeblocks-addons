@@ -10,7 +10,7 @@ metadata:
 spec:
   backupPolicies:
   - componentDefs:
-      - {{ include "redis.componentDefName" . }}
+      - {{ include "redis7.cmpdName" . }}
     target:
       role: secondary
       fallbackRole: primary
@@ -49,7 +49,7 @@ spec:
         cronExpression: "0 18 * * 0"
         retentionPeriod: 7d
   - componentDefs:
-      - {{ include "redis-cluster.componentDefName" . }}
+      - {{ include "redisCluster7.cmpdName" . }}
     target:
       role: secondary
       fallbackRole: primary

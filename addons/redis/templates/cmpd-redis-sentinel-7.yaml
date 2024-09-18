@@ -1,14 +1,16 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "redis-sentinel.componentDefName" . }}
+  name: {{ include "redisSentinel7.cmpdName" . }}
   labels:
     {{- include "redis.labels" . | nindent 4 }}
+  annotations:
+    {{- include "redis.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
   description: A Redis Sentinel v7.0 component definition for Kubernetes
   serviceKind: redis-sentinel
-  serviceVersion: {{ .Values.componentServiceVersion.sentinel }}
+  serviceVersion: {{ .Values.defaultServiceVersion.redisSentinel.major7 }}
   services:
     - name: redis-sentinel
       serviceName: redis-sentinel
@@ -36,15 +38,9 @@ spec:
     - name: {{ $name }}
       filePathPattern: {{ $pattern }}
     {{- end }}
-  configs:
-    - name: redis-replication-config
-      templateRef: redis7-config-template
-      constraintRef: redis7-config-constraints
-      namespace: {{ .Release.Namespace }}
-      volumeName: redis-config
   scripts:
     - name: redis-scripts
-      templateRef: redis-scripts
+      templateRef: {{ include "redis7.scriptsTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
@@ -71,7 +67,7 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the redis-sentinel component definition name
-          compDef: {{ include "redis-sentinel.componentDefName" . }}
+          compDef: {{ include "redisSentinel7.cmpdName" . }}
           name: default
           optional: false
           username: Required
@@ -80,7 +76,7 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the redis-sentinel component definition name
-          compDef: {{ include "redis-sentinel.componentDefName" . }}
+          compDef: {{ include "redisSentinel7.cmpdName" . }}
           name: default
           optional: false
           password: Required
@@ -88,14 +84,14 @@ spec:
     - name: SENTINEL_POD_NAME_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ include "redis-sentinel.componentDefName" . }}
+          compDef: {{ include "redisSentinel7.cmpdName" . }}
           optional: false
           podNames: Required
     ## the sentinel pod fqdn list
     - name: SENTINEL_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ include "redis-sentinel.componentDefName" . }}
+          compDef: {{ include "redisSentinel7.cmpdName" . }}
           optional: false
           podFQDNs: Required
     ## the username of redis for redis sentinel connection which is only used to recover redis servers when scale-out redis sentinel.
@@ -106,7 +102,7 @@ spec:
 {{/*    - name: REDIS_SENTINEL_PASSWORD*/}}
 {{/*      valueFrom:*/}}
 {{/*        credentialVarRef:*/}}
-{{/*          compDef: {{ include "redis.componentDefName" . }}*/}}
+{{/*          compDef: {{ include "redis7.cmpdName" . }}*/}}
 {{/*          name: default*/}}
 {{/*          optional: true*/}}
 {{/*          password: Required*/}}
@@ -115,7 +111,8 @@ spec:
   lifecycleActions:
     accountProvision:
       exec:
-        image: {{ include "redis-sentinel.image" . }}
+        image: {{ include "redisSentinel7.image" . }}
+        container: redis-sentinel
         command:
           - sh
           - -c
@@ -123,18 +120,18 @@ spec:
           - "redis-cli -h $(KB_ACCOUNT_ENDPOINT) -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -h $(KB_ACCOUNT_ENDPOINT) -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD acl save "
     memberLeave:
       exec:
-        image: {{ include "redis-sentinel.image" . }}
+        image: {{ include "redisSentinel7.image" . }}
+        container: redis-sentinel
         command:
           - /bin/bash
           - -c
           - |
           {{- .Files.Get "scripts/redis-sentinel-member-leave.sh" | nindent 14 }}
         targetPodSelector: Any
-        container: redis-sentinel
   runtime:
     containers:
     - name: redis-sentinel
-      image: {{ include "redis-sentinel.image" . }}
+      image: {{ include "redisSentinel7.image" . }}
       imagePullPolicy: IfNotPresent
       ports:
         - containerPort: 26379

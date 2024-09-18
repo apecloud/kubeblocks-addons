@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: redis-metrics-config
+  name: {{ include "redis.metricsConfiguration" . }}
   labels:
     {{- include "redis.labels" . | nindent 4 }}
 data:
