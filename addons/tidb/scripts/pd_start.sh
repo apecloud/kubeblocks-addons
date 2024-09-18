@@ -29,6 +29,12 @@ if [[ -f $DATA_DIR/join ]]; then
 elif [[ ! -d $DATA_DIR/member/wal ]]; then
     echo "first started pod"
     replicas=$(echo "${KB_POD_LIST}" | tr ',' '\n')
+    # FIXME: Relying on leader status to determine whether to join or initialize a cluster 
+    # is unreliable. Consider a scenario with 3 pods: 2 start normally, while the 3rd pod 
+    # pulls image slowly and is still initializing. During this time, the PD cluster 
+    # achieves quorum and begins to work, thus KB's role probe succeeds. 
+    # When the third pod eventually starts, it mistakenly attempts to join the 
+    # cluster based on the KB_LEADER env, leading to a failure.
     if [[ -n $KB_LEADER || -n $KB_FOLLOWERS ]]; then
         echo "joining an existing cluster"
         join=""

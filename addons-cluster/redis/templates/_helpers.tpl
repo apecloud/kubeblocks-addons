@@ -8,6 +8,7 @@ Define redis cluster shardingSpec with ComponentDefinition.
     name: redis
     componentDef: redis-cluster-7
     replicas: {{ .Values.replicas }}
+    {{- include "redis-cluster.exporter" . | indent 4 }}
     {{- if .Values.nodePortEnabled }}
     services:
     - name: redis-advertised
@@ -45,6 +46,7 @@ Define redis ComponentSpec with ComponentDefinition.
 {{- define "redis-cluster.componentSpec" }}
 - name: redis
   {{- include "redis-cluster.replicaCount" . | indent 2 }}
+  {{- include "redis-cluster.exporter" . | indent 2 }}
   {{- if .Values.nodePortEnabled }}
   services:
   - name: redis-advertised
@@ -124,4 +126,25 @@ Define redis cluster sharding count.
 */}}
 {{- define "redis-cluster.shards" }}
 shards: {{ max .Values.redisCluster.shardCount 3 }}
+{{- end }}
+
+
+{{/*
+Define redis cluster prometheus exporter.
+*/}}
+{{- define "redis-cluster.exporter" }}
+{{- if or .Values.prometheus.enabled ( not .Values.extra.disableExporter ) }}
+disableExporter: false
+{{- else }}
+disableExporter: true
+{{- end }}
+{{- end }}
+
+{{/*
+Selector labels
+*/}}
+{{- define "redis-cluster.selectorLabels" -}}
+app.kubernetes.io/instance: {{ include "kblib.clusterName" . | quote }}
+app.kubernetes.io/managed-by: "kubeblocks"
+apps.kubeblocks.io/component-name: "redis"
 {{- end }}

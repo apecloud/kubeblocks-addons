@@ -14,37 +14,25 @@
   <!-- Cluster configuration - Any update of the shards and replicas requires helm upgrade -->
   <remote_servers>
     <default>
-{{- range $.cluster.spec.componentSpecs }}
-  {{ $compIter := . }}
-  {{- if eq $compIter.componentDefRef "clickhouse" }}
       <shard>
-    {{- $replicas := $compIter.replicas | int }}
-    {{- range $i, $_e := until $replicas }}
+    {{- range $_, $host := splitList "," .CLICKHOUSE_POD_FQDN_LIST }}
         <replica>
-            <host>{{ $clusterName }}-{{ $compIter.name }}-{{ $i }}.{{ $clusterName }}-{{ $compIter.name }}-headless.{{ $namespace }}.svc.{{- $.clusterDomain }}</host>
+            <host>{{ $host }}</host>
             <port>9000</port>
         </replica>
     {{- end }}
       </shard>
-  {{- end }}
-{{- end }}
     </default>
   </remote_servers>
-{{- range $.cluster.spec.componentSpecs }}
-  {{ $compIter := . }}
-  {{- if or (eq $compIter.componentDefRef "zookeeper") (eq $compIter.componentDefRef "ch-keeper") }}
   <!-- Zookeeper configuration -->
   <zookeeper>
-    {{- $replicas := $compIter.replicas | int }}
-    {{- range $i, $_e := until $replicas }}
+    {{- range $_, $host := splitList "," .CH_KEEPER_POD_FQDN_LIST }}
     <node>
-      <host>{{ $clusterName }}-{{ $compIter.name }}-{{ $i }}.{{ $clusterName }}-{{ $compIter.name }}-headless.{{ $namespace }}.svc.{{- $.clusterDomain }}</host>
+      <host>{{ $host }}</host>
       <port>2181</port>
     </node>
     {{- end }}
   </zookeeper>
-  {{- end }}
-{{- end }}
   <!-- Prometheus metrics -->
   <prometheus>
     <endpoint>/metrics</endpoint>

@@ -1,0 +1,17 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: minio
+  labels:
+    {{- include "minio.labels" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - releases:
+        - 2024.6.29
+      compDefs:
+        - minio
+  releases:
+    - name: 2024.6.29
+      serviceVersion: 2024.6.29
+      images:
+        minio: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
