@@ -98,7 +98,7 @@ spec:
     preBackup: []
     postBackup: []
     backupData:
-      image: {{ include "redis.image" . }}
+      image: {{ include "redis7.image" . }}
       runOnTargetPodNode: true
       syncProgress:
         enabled: true
@@ -112,7 +112,7 @@ spec:
         {{- .Files.Get "dataprotection/pitr-backup.sh" | nindent 8 }}
   restore:
     prepareData:
-      image: {{ include "redis.image" . }}
+      image: {{ include "redis7.image" . }}
       command:
       - bash
       - -c
