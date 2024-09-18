@@ -5,7 +5,7 @@ metadata:
   labels: 
     {{- include "loki-cluster.labels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: loki
+  clusterDef: loki
   terminationPolicy: {{ .Values.terminationPolicy }}
   topology: loki-cluster
   componentSpecs:

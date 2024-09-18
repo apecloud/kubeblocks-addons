@@ -5,7 +5,7 @@ metadata:
   labels:
     {{ include "nebula-cluster.labels" . | indent 4 }}
 spec:
-  clusterDefinitionRef: nebula
+  clusterDef: nebula
   terminationPolicy: {{ .Values.nebula.terminationPolicy }}
   componentSpecs:
     - name: console

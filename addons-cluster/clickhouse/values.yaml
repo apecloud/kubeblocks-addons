@@ -3,12 +3,6 @@
 ##
 terminationPolicy: Halt
 
-## Monitoring configurations
-monitor:
-  ## @param monitor.enabled if `true`, enable Cluster monitor capabilities
-  ##
-  enabled: false
-
 ## Service configurations
 ##
 service:

@@ -7,7 +7,7 @@ metadata:
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
-  clusterDefinitionRef: apecloud-postgresql
+  clusterDef: apecloud-postgresql
   topology: apecloud-postgresql
   componentSpecs:
     - name: postgresql

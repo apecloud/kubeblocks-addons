@@ -6,7 +6,7 @@ metadata:
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
-  clusterDefinitionRef: greatsql # ref clusterdefinition.name
+  clusterDef: greatsql # ref clusterdefinition.name
   componentSpecs:
     - name: greatsql
       componentDefRef: greatsql-compdef

@@ -1,6 +1,6 @@
 {{- include "kblib.clusterCommon" . }}
 {{- if eq (.Values.shardCount | int) 1 }}
-  clusterDefinitionRef: clickhouse
+  clusterDef: clickhouse
   topology: clickhouse-cluster
 {{- end }}
   componentSpecs:
