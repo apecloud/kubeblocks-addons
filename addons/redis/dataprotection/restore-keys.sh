@@ -31,13 +31,10 @@ local function migrate_key(key)
 
         if ok then
             success = true
-        else
-            redis.log(redis.LOG_WARNING, "Migration failed for key " .. key .. " on attempt " .. attempt .. ": " .. err)
         end
     end
 
     if not success then
-        redis.log(redis.LOG_ERR, "Migration failed for key " .. key .. " after " .. retry_limit .. " attempts")
         return "Migration failed for key " .. key
     end
     return nil
@@ -52,7 +49,7 @@ repeat
     local keys = scan_result[2]
 
     for i, key in ipairs(keys) do
-        local result = migrate_key(key, db)
+        local result = migrate_key(key)
         if result then
             migration_failed = true
         end
@@ -87,7 +84,12 @@ for db in $(seq 0 $((DB_COUNT - 1))); do
     for pattern in "${patterns_array[@]}"; do
         (
             #echo "Migrating pattern '$pattern' from database '$db'"
-            redis-cli  --eval <(echo "$LUA_SCRIPT") , "$pattern" "$DP_DB_HOST" "$DP_DB_PORT" "$db" "$REDIS_DEFAULT_USER" "$REDIS_DEFAULT_PASSWORD"
+            output=$(redis-cli  --eval <(echo "$LUA_SCRIPT") , "$pattern" "$DP_DB_HOST" "$DP_DB_PORT" "$db" "$REDIS_DEFAULT_USER" "$REDIS_DEFAULT_PASSWORD")
+            echo "$output"
+            # Check the output for errors
+            if [[ "$output" == *"errors"* ]] && [[ "$DP_RESTORE_KEY_IGNORE_ERRORS" != "true" ]]; then
+                exit 1
+            fi
         ) &
         pids+=($!)
     done
@@ -95,6 +97,10 @@ done
 
 for pid in "${pids[@]}"; do
     wait $pid
+    if [ $? -ne 0 ]; then
+        echo "A migration process failed. Exiting..."
+        exit 1
+    fi
 done
 
 # as the MIGRATE command transform data in binary format, which will corrupt aof file, we need to trigger BGREWRITEAOF after migration.
