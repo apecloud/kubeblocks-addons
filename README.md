@@ -34,7 +34,7 @@ KubeBlocks add-ons.
 | loki | loki-1.0.0 | Loki is a horizontally-scalable, highly-available, multi-tenant log aggregation system inspired by Prometheus. It is designed to be very cost effective and easy to operate. | Chen-speculation |
 | mariadb | mariadb-10.6.15 | MariaDB is a high performance open source relational database management system that is widely used for web and application servers | yinmin |
 | milvus | milvus-v2.3.2 | A cloud-native vector database, storage for next generation AI applications. | leon-inf |
-| minio | minio-2024.6.29 | High Performance, Kubernetes Native Object Storage | fengluodb |
+| minio | minio-1.0.0-alpha.0 | High Performance, Kubernetes Native Object Storage | fengluodb |
 | mogdb | mogdb-5.0.5 | A Helm chart for Kubernetes | yabinji shanshanying |
 | mongodb | mongodb-4.0.28<br>mongodb-4.2.24<br>mongodb-4.4.29<br>mongodb-5.0.28<br>mongodb-6.0.16<br>mongodb-7.0.12 | MongoDB is a document database designed for ease of application development and scaling. | xuriwuyun |
 | mysql | mysql-5.7.44<br>mysql-8.0.33<br>mysql-8.4.2<br>mysql-orc-5.7.44<br>mysql-orc-8.0.33<br>mysql-proxysql-2.4.4 | MySQL is a widely used, open-source relational database management system (RDBMS) | xuriwuyun |
