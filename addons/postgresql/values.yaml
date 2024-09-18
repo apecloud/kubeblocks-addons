@@ -49,26 +49,6 @@ image:
   ##
   pullSecrets: [ ]
 
-## Audit settings
-## @param audit.logHostname Log client hostnames
-## @param audit.logConnections Add client log-in operations to the log file
-## @param audit.logDisconnections Add client log-outs operations to the log file
-## @param audit.pgAuditLog Add operations to log using the pgAudit extension
-## @param audit.pgAuditLogCatalog Log catalog using pgAudit
-## @param audit.clientMinMessages Message log level to share with the user
-## @param audit.logLinePrefix Template for log line prefix (default if not set)
-## @param audit.logTimezone Timezone for the log timestamps
-##
-audit:
-  logHostname: false
-  logConnections: false
-  logDisconnections: false
-  pgAuditLog: ""
-  pgAuditLogCatalog: "off"
-  clientMinMessages: error
-  logLinePrefix: ""
-  logTimezone: ""
-
 ## Start PostgreSQL pod(s) without limitations on shm memory.
 ## By default, docker and containerd (and possibly other container runtimes) limit `/dev/shm` to `64M`
 ##
