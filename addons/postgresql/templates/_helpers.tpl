@@ -95,7 +95,8 @@ Define postgresql 12 component definition name prefix
 {{- if eq (len .Values.cmpdVersionPrefix.postgresql12) 0 -}}
 {{- printf "postgresql-12-" -}}
 {{- else -}}
-{{ .Values.cmpdVersionPrefix.postgresql12 }}-
+{{- printf "%s-" .Values.cmpdVersionPrefix.postgresql12 -}}
+{{- end -}}
 {{- end -}}
 
 {{/*
@@ -105,7 +106,7 @@ Define postgresql 14 component definition name prefix
 {{- if eq (len .Values.cmpdVersionPrefix.postgresql14) 0 -}}
 {{- printf "postgresql-14-" -}}
 {{- else -}}
-{{ .Values.cmpdVersionPrefix.postgresql14 }}-
+{{- printf "%s-" .Values.cmpdVersionPrefix.postgresql14 -}}
 {{- end -}}
 {{- end -}}
 
@@ -116,7 +117,8 @@ Define postgresql 15 component definition name prefix
 {{- if eq (len .Values.cmpdVersionPrefix.postgresql15) 0 -}}
 {{- printf "postgresql-15-" -}}
 {{- else -}}
-{{ .Values.cmpdVersionPrefix.postgresql15 }}-
+{{- printf "%s-" .Values.cmpdVersionPrefix.postgresql15 -}}
+{{- end -}}
 {{- end -}}
 
 {{/*
@@ -126,7 +128,8 @@ Define postgresql 16 component definition name prefix
 {{- if eq (len .Values.cmpdVersionPrefix.postgresql16) 0 -}}
 {{- printf "postgresql-16-" -}}
 {{- else -}}
-{{ .Values.cmpdVersionPrefix.postgresql16 }}-
+{{- printf "%s-" .Values.cmpdVersionPrefix.postgresql16 -}}
+{{- end -}}
 {{- end -}}
 
 {{/*
