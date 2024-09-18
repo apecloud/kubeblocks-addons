@@ -9,9 +9,9 @@ spec:
     - name: standalone
       components:
         - name: postgresql
-          compDef: postgresql
+          compDef: {{ include "postgresql.componentDefNamePrefix" . }}
       default: true
     - name: replication
       components:
         - name: postgresql
-          compDef: postgresql
+          compDef: {{ include "postgresql.componentDefNamePrefix" . }}

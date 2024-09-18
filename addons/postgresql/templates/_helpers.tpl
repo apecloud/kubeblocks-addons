@@ -92,31 +92,54 @@ Define postgresql component definition name prefix
 Define postgresql 12 component definition name prefix
 */}}
 {{- define "postgresql12.componentDefNamePrefix" -}}
+{{- if eq (len .Values.cmpdVersionPrefix.postgresql12) 0 -}}
 {{- printf "postgresql-12-" -}}
+{{- else -}}
+{{- printf "%s-" .Values.cmpdVersionPrefix.postgresql12 -}}
+{{- end -}}
 {{- end -}}
 
 {{/*
 Define postgresql 14 component definition name prefix
 */}}
 {{- define "postgresql14.componentDefNamePrefix" -}}
+{{- if eq (len .Values.cmpdVersionPrefix.postgresql14) 0 -}}
 {{- printf "postgresql-14-" -}}
+{{- else -}}
+{{- printf "%s-" .Values.cmpdVersionPrefix.postgresql14 -}}
+{{- end -}}
 {{- end -}}
 
 {{/*
 Define postgresql 15 component definition name prefix
 */}}
 {{- define "postgresql15.componentDefNamePrefix" -}}
+{{- if eq (len .Values.cmpdVersionPrefix.postgresql15) 0 -}}
 {{- printf "postgresql-15-" -}}
+{{- else -}}
+{{- printf "%s-" .Values.cmpdVersionPrefix.postgresql15 -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define postgresql 16 component definition name prefix
+*/}}
+{{- define "postgresql16.componentDefNamePrefix" -}}
+{{- if eq (len .Values.cmpdVersionPrefix.postgresql16) 0 -}}
+{{- printf "postgresql-16-" -}}
+{{- else -}}
+{{- printf "%s-" .Values.cmpdVersionPrefix.postgresql16 -}}
+{{- end -}}
 {{- end -}}
 
 {{/*
 Define postgresql12 component definition name
 */}}
 {{- define "postgresql12.compDefName" -}}
-{{- if eq (len .Values.componentDefinitionVersion.postgresql12) 0 -}}
+{{- if eq (len .Values.cmpdVersionPrefix.postgresql12) 0 -}}
 postgresql-12-{{ .Chart.Version }}
 {{- else -}}
-{{ include "postgresql.componentDefNamePrefix" . }}{{ .Values.componentDefinitionVersion.postgresql12 }}-{{ .Chart.Version }}
+{{ .Values.cmpdVersionPrefix.postgresql12 }}-{{ .Chart.Version }}
 {{- end -}}
 {{- end -}}
 
@@ -124,10 +147,10 @@ postgresql-12-{{ .Chart.Version }}
 Define postgresql14 component definition name with Chart.Version suffix
 */}}
 {{- define "postgresql14.compDefName" -}}
-{{- if eq (len .Values.componentDefinitionVersion.postgresql14) 0 -}}
+{{- if eq (len .Values.cmpdVersionPrefix.postgresql14) 0 -}}
 postgresql-14-{{ .Chart.Version }}
 {{- else -}}
-{{ include "postgresql.componentDefNamePrefix" . }}{{ .Values.componentDefinitionVersion.postgresql14 }}-{{ .Chart.Version }}
+{{ .Values.cmpdVersionPrefix.postgresql14 }}-{{ .Chart.Version }}
 {{- end -}}
 {{- end -}}
 
@@ -135,10 +158,21 @@ postgresql-14-{{ .Chart.Version }}
 Define postgresql15 component definition name
 */}}
 {{- define "postgresql15.compDefName" -}}
-{{- if eq (len .Values.componentDefinitionVersion.postgresql15) 0 -}}
+{{- if eq (len .Values.cmpdVersionPrefix.postgresql15) 0 -}}
 postgresql-15-{{ .Chart.Version }}
 {{- else -}}
-{{ include "postgresql.componentDefNamePrefix" . }}{{ .Values.componentDefinitionVersion.postgresql15 }}-{{ .Chart.Version }}
+{{ .Values.cmpdVersionPrefix.postgresql15 }}-{{ .Chart.Version }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define postgresql16 component definition name
+*/}}
+{{- define "postgresql16.compDefName" -}}
+{{- if eq (len .Values.cmpdVersionPrefix.postgresql16) 0 -}}
+postgresql-15-{{ .Chart.Version }}
+{{- else -}}
+{{ .Values.cmpdVersionPrefix.postgresql16 }}-{{ .Chart.Version }}
 {{- end -}}
 {{- end -}}
 
@@ -164,6 +198,13 @@ postgresql15-configuration-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
+Define postgresql16 component configuration template name
+*/}}
+{{- define "postgresql16.configurationTemplate" -}}
+postgresql16-configuration-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
 Define postgresql12 component config constraint name
 */}}
 {{- define "postgresql12.configConstraint" -}}
@@ -185,6 +226,13 @@ postgresql15-cc
 {{- end -}}
 
 {{/*
+Define postgresql16 component config constraint name
+*/}}
+{{- define "postgresql16.configConstraint" -}}
+postgresql16-cc
+{{- end -}}
+
+{{/*
 Define postgresql12 component metrice configuration name
 */}}
 {{- define "postgresql12.metricsConfiguration" -}}
@@ -203,6 +251,13 @@ Define postgresql15 component metrice configuration name
 */}}
 {{- define "postgresql15.metricsConfiguration" -}}
 postgresql15-custom-metrics
+{{- end -}}
+
+{{/*
+Define postgresql16 component metrice configuration name
+*/}}
+{{- define "postgresql16.metricsConfiguration" -}}
+postgresql16-custom-metrics
 {{- end -}}
 
 {{/*
@@ -243,6 +298,10 @@ Define image
 
 {{- define "postgresql.image.major15.minor070" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major15.minor070 }}
+{{- end }}
+
+{{- define "postgresql.image.major16.minor040" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major16.minor040 }}
 {{- end }}
 
 {{- define "pgbouncer.repository" -}}

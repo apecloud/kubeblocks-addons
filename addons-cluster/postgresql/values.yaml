@@ -2,9 +2,9 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-## @param version MySQL cluster version
+## @param version, mapping cluster.spec.componentSpec[].serviceVersion which defined in ComponentVersion
 ##
-version: postgresql-15.7.0
+version: 16.4.0
 
 ## @param mode postgresql cluster topology mode, standalone, replication
 ##
