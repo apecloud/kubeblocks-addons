@@ -164,9 +164,20 @@ register_to_sentinel() {
   call_func_with_retry 3 5 check_connectivity "$sentinel_host" "$sentinel_port" "$SENTINEL_PASSWORD" || exit 1
   call_func_with_retry 3 5 check_connectivity "$redis_primary_host" "$redis_primary_port" "$REDIS_DEFAULT_PASSWORD" || exit 1
 
-  # Register and configure the Redis primary to redis sentinel
-  sentinel_commands=("monitor" "down-after-milliseconds" "failover-timeout" "parallel-syncs" "auth-user" "auth-pass")
-  for cmd in "${sentinel_commands[@]}"
+# Check if Sentinel is already monitoring the Redis primary
+  master_addr=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" -a "$SENTINEL_PASSWORD" SENTINEL get-master-addr-by-name "$master_name")
+
+  if is_empty "$master_addr"; then
+    echo "Sentinel is not monitoring $master_name. Registering it..."
+    # Register the Redis primary with Sentinel
+    sentinel_cli_cmd="SENTINEL monitor $master_name $redis_primary_host $redis_primary_port 2"
+    call_func_with_retry 3 5 execute_sentinel_sub_command "$sentinel_host" "$sentinel_port" "$sentinel_cli_cmd"
+  else
+    echo "Sentinel is already monitoring $master_name at $master_addr. Skipping monitor registration."
+  fi
+  #configure the Redis primary with Sentinel
+  sentinel_configure_commands=("down-after-milliseconds" "failover-timeout" "parallel-syncs" "auth-user" "auth-pass")
+  for cmd in "${sentinel_configure_commands[@]}"
   do
     sentinel_cli_cmd=$(construct_sentinel_sub_command "$cmd" "$master_name" "$redis_primary_host" "$redis_primary_port")
     call_func_with_retry 3 5 execute_sentinel_sub_command "$sentinel_host" "$sentinel_port" "$sentinel_cli_cmd"
