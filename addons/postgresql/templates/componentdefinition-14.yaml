@@ -1,9 +1,11 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "postgresql.compDefPostgresql14" . }}
+  name: {{ include "postgresql14.compDefName" . }}
   labels:
     {{- include "postgresql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "postgresql.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
   description: A PostgreSQL (with Patroni HA) component definition for Kubernetes
@@ -48,8 +50,8 @@ spec:
     scrapePath: /metrics
   configs:
     - name: postgresql-configuration
-      templateRef: postgresql14-configuration
-      constraintRef: postgresql14-cc
+      templateRef: {{ include "postgresql14.configurationTemplate" . }}
+      constraintRef: {{ include "postgresql14.configConstraint" . }}
       keys:
         - postgresql.conf
       namespace: {{ .Release.Namespace }}
@@ -58,20 +60,20 @@ spec:
       reRenderResourceTypes:
         - vscale
     - name: pgbouncer-configuration
-      templateRef: pgbouncer-configuration
+      templateRef: {{ include "pgbouncer.configurationTemplate" . }}
       keys:
         - pgbouncer.ini
       namespace: {{ .Release.Namespace }}
       volumeName: pgbouncer-config
       defaultMode: 0777
     - name: postgresql-custom-metrics
-      templateRef: postgresql14-custom-metrics
+      templateRef: {{ include "postgresql14.metricsConfiguration" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: postgresql-custom-metrics
       defaultMode: 0444
   scripts:
     - name: postgresql-scripts
-      templateRef: postgresql-scripts
+      templateRef: {{ include "postgresql.scriptsTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
@@ -88,14 +90,14 @@ spec:
     - name: POSTGRES_COMPONENT_NAME
       valueFrom:
         componentVarRef:
-          compDef: {{ include "postgresql.compDefPostgresql14" . }}
+          compDef: {{ include "postgresql14.compDefName" . }}
           optional: false
           componentName: Required
     ## the component short name of postgres, it's the short name of postgres component without clusterName prefix
     - name: POSTGRES_COMPONENT_SHORT_NAME
       valueFrom:
         componentVarRef:
-          compDef: {{ include "postgresql.compDefPostgresql14" . }}
+          compDef: {{ include "postgresql14.compDefName" . }}
           optional: false
           shortName: Required
     ## the etcd version if postgres patroni use etcd as DCS
@@ -111,14 +113,14 @@ spec:
     - name: POSTGRES_USER
       valueFrom:
         credentialVarRef:
-          compDef: {{ include "postgresql.compDefPostgresql14" . }}
+          compDef: {{ include "postgresql14.compDefName" . }}
           name: postgres
           optional: false
           username: Required
     - name: POSTGRES_PASSWORD
       valueFrom:
         credentialVarRef:
-          compDef: {{ include "postgresql.compDefPostgresql14" . }}
+          compDef: {{ include "postgresql14.compDefName" . }}
           name: postgres
           optional: false
           password: Required
@@ -126,21 +128,21 @@ spec:
     - name: POSTGRES_POD_NAME_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ include "postgresql.compDefPostgresql14" . }}
+          compDef: {{ include "postgresql14.compDefName" . }}
           optional: false
           podNames: Required
     ## the postgres pod fqdn list for each pod, the value format is "pod1FQDN,pod2FQDN,..."
     - name: POSTGRES_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ include "postgresql.compDefPostgresql14" . }}
+          compDef: {{ include "postgresql14.compDefName" . }}
           optional: false
           podFQDNs: Required
     ## the postgres primary pod name which is dynamically selected, caution to use it
     - name: POSTGRES_PRIMARY_POD_NAME
       valueFrom:
         componentVarRef:
-          compDef: {{ include "postgresql.compDefPostgresql14" . }}
+          compDef: {{ include "postgresql14.compDefName" . }}
           optional: true
           podNamesForRole:
             role: primary
@@ -186,6 +188,7 @@ spec:
           - getrole
     switchover:
       exec:
+        image: {{ include "postgresql.image.major14.minor080" . }}
         container: postgresql
         command: ["/kb-scripts/switchover.sh"]
         env:
@@ -196,6 +199,7 @@ spec:
                 fieldPath: metadata.name
     accountProvision:
       exec:
+        image: {{ include "postgresql.image.major14.minor080" . }}
         container: postgresql
         command:
           - bash

@@ -1,22 +1,22 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentVersion
 metadata:
-  name: postgresql
+  name: {{ include "postgresql.componentVersion" . }}
 spec:
   compatibilityRules:
     - compDefs:
-        - {{ include "postgresql.compDefPostgresql12" . }}
+        - {{ include "postgresql12.componentDefNamePrefix" . }}
       releases:
         - 12.14.0
         - 12.14.1
         - 12.15.0
     - compDefs:
-        - {{ include "postgresql.compDefPostgresql14" . }}
+        - {{ include "postgresql14.componentDefNamePrefix" . }}
       releases:
         - 14.7.2
         - 14.8.0
     - compDefs:
-        - {{ include "postgresql.compDefPostgresql15" . }}
+        - {{ include "postgresql15.componentDefNamePrefix" . }}
       releases:
         - 15.7.0
   releases:

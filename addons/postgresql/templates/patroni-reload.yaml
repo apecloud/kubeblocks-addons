@@ -1,9 +1,11 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: patroni-reload-script
+  name: {{ include "postgresql.patroniReloadScriptsTemplate" . }}
   labels:
     {{- include "postgresql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "postgresql.annotations" . | nindent 4 }}
 data:
   patroni_reload.tpl: |-
     {{- .Files.Get "config/patroni-reload.tpl" | nindent 4 }}

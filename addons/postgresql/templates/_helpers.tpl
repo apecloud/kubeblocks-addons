@@ -43,6 +43,13 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
 {{/*
+Common annotations
+*/}}
+{{- define "postgresql.annotations" -}}
+helm.sh/resource-policy: keep
+{{- end }}
+
+{{/*
 Selector labels
 */}}
 {{- define "postgresql.selectorLabels" -}}
@@ -61,6 +68,20 @@ Generate scripts configmap
 {{- end }}
 
 {{/*
+Define postgresql cluster definition name
+*/}}
+{{- define "postgresql.clusterDefinition" -}}
+postgresql
+{{- end -}}
+
+{{/*
+Define postgresql component version name
+*/}}
+{{- define "postgresql.componentVersion" -}}
+postgresql
+{{- end -}}
+
+{{/*
 Define postgresql component definition name prefix
 */}}
 {{- define "postgresql.componentDefNamePrefix" -}}
@@ -68,36 +89,141 @@ Define postgresql component definition name prefix
 {{- end -}}
 
 {{/*
+Define postgresql 12 component definition name prefix
+*/}}
+{{- define "postgresql12.componentDefNamePrefix" -}}
+{{- printf "postgresql-12-" -}}
+{{- end -}}
+
+{{/*
+Define postgresql 14 component definition name prefix
+*/}}
+{{- define "postgresql14.componentDefNamePrefix" -}}
+{{- printf "postgresql-14-" -}}
+{{- end -}}
+
+{{/*
+Define postgresql 15 component definition name prefix
+*/}}
+{{- define "postgresql15.componentDefNamePrefix" -}}
+{{- printf "postgresql-15-" -}}
+{{- end -}}
+
+{{/*
 Define postgresql12 component definition name
 */}}
-{{- define "postgresql.compDefPostgresql12" -}}
+{{- define "postgresql12.compDefName" -}}
 {{- if eq (len .Values.componentDefinitionVersion.postgresql12) 0 -}}
-postgresql-12
+postgresql-12-{{ .Chart.Version }}
 {{- else -}}
-{{ include "postgresql.componentDefNamePrefix" . }}{{ .Values.componentDefinitionVersion.postgresql12 }}
+{{ include "postgresql.componentDefNamePrefix" . }}{{ .Values.componentDefinitionVersion.postgresql12 }}-{{ .Chart.Version }}
 {{- end -}}
 {{- end -}}
 
 {{/*
-Define postgresql14 component definition name
+Define postgresql14 component definition name with Chart.Version suffix
 */}}
-{{- define "postgresql.compDefPostgresql14" -}}
+{{- define "postgresql14.compDefName" -}}
 {{- if eq (len .Values.componentDefinitionVersion.postgresql14) 0 -}}
-postgresql-14
+postgresql-14-{{ .Chart.Version }}
 {{- else -}}
-{{ include "postgresql.componentDefNamePrefix" . }}{{ .Values.componentDefinitionVersion.postgresql14 }}
+{{ include "postgresql.componentDefNamePrefix" . }}{{ .Values.componentDefinitionVersion.postgresql14 }}-{{ .Chart.Version }}
 {{- end -}}
 {{- end -}}
 
 {{/*
 Define postgresql15 component definition name
 */}}
-{{- define "postgresql.compDefPostgresql15" -}}
+{{- define "postgresql15.compDefName" -}}
 {{- if eq (len .Values.componentDefinitionVersion.postgresql15) 0 -}}
-postgresql-15
+postgresql-15-{{ .Chart.Version }}
 {{- else -}}
-{{ include "postgresql.componentDefNamePrefix" . }}{{ .Values.componentDefinitionVersion.postgresql15 }}
+{{ include "postgresql.componentDefNamePrefix" . }}{{ .Values.componentDefinitionVersion.postgresql15 }}-{{ .Chart.Version }}
 {{- end -}}
+{{- end -}}
+
+{{/*
+Define postgresql12 component configuration template name
+*/}}
+{{- define "postgresql12.configurationTemplate" -}}
+postgresql12-configuration-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define postgresql14 component configuration template name
+*/}}
+{{- define "postgresql14.configurationTemplate" -}}
+postgresql14-configuration-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define postgresql15 component configuration template name
+*/}}
+{{- define "postgresql15.configurationTemplate" -}}
+postgresql15-configuration-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define postgresql12 component config constraint name
+*/}}
+{{- define "postgresql12.configConstraint" -}}
+postgresql12-cc
+{{- end -}}
+
+{{/*
+Define postgresql14 component config constraint name
+*/}}
+{{- define "postgresql14.configConstraint" -}}
+postgresql14-cc
+{{- end -}}
+
+{{/*
+Define postgresql15 component config constraint name
+*/}}
+{{- define "postgresql15.configConstraint" -}}
+postgresql15-cc
+{{- end -}}
+
+{{/*
+Define postgresql12 component metrice configuration name
+*/}}
+{{- define "postgresql12.metricsConfiguration" -}}
+postgresql12-custom-metrics
+{{- end -}}
+
+{{/*
+Define postgresql14 component metrice configuration name
+*/}}
+{{- define "postgresql14.metricsConfiguration" -}}
+postgresql14-custom-metrics
+{{- end -}}
+
+{{/*
+Define postgresql15 component metrice configuration name
+*/}}
+{{- define "postgresql15.metricsConfiguration" -}}
+postgresql15-custom-metrics
+{{- end -}}
+
+{{/*
+Define postgresql scripts configMap template name
+*/}}
+{{- define "postgresql.scriptsTemplate" -}}
+postgresql-scripts-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define postgresql patroni reload scripts template name
+*/}}
+{{- define "postgresql.patroniReloadScriptsTemplate" -}}
+patroni-reload-scripts-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define pgbouncer configuration template name
+*/}}
+{{- define "pgbouncer.configurationTemplate" -}}
+pgbouncer-configuration-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
