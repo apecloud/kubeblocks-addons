@@ -24,6 +24,7 @@ spec:
       - {{ include "postgresql12.compDefName" . }}
       - {{ include "postgresql14.compDefName" . }}
       - {{ include "postgresql15.compDefName" . }}
+      - {{ include "postgresql16.compDefName" . }}
     target:
       role: secondary
       fallbackRole: primary
@@ -45,6 +46,9 @@ spec:
                 - names:
                     - {{ include "postgresql15.compDefName" . }}
                   mappingValue: "15.7.0"
+                - names:
+                    - {{ include "postgresql16.compDefName" . }}
+                  mappingValue: "16.4.0"
         targetVolumes:
           volumeMounts:
             - name: data

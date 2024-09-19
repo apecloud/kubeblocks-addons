@@ -2,7 +2,7 @@
 #PGParameter: {
 	// Allows tablespaces directly inside pg_tblspc, for testing, pg version: 15
 	allow_in_place_tablespaces?: bool
-	// Allows modification of the structure of system tables as well as certain other risky actions on system tables. This is otherwise not allowed even for superusers. Ill-advised use of this setting can cause irretrievable data loss or seriously corrupt the database system. 
+	// Allows modification of the structure of system tables as well as certain other risky actions on system tables. This is otherwise not allowed even for superusers. Ill-advised use of this setting can cause irretrievable data loss or seriously corrupt the database system.
 	allow_system_table_mods?: bool
 	// Sets the application name to be reported in statistics and logs.
 	application_name?: string
@@ -292,9 +292,6 @@
 	// Sets the number of digits displayed for floating-point values.
 	extra_float_digits?: int & >=-15 & <=3
 
-	// Forces use of parallel query facilities.
-	force_parallel_mode?: bool & false | true
-
 	// Sets the FROM-list size beyond which subqueries are not collapsed.
 	from_collapse_limit?: int & >=1 & <=2147483647
 
@@ -346,7 +343,7 @@
 	// Use of huge pages on Linux.
 	huge_pages?: string & "on" | "off" | "try"
 
-	// The size of huge page that should be requested. Controls the size of huge pages, when they are enabled with huge_pages. The default is zero (0). When set to 0, the default huge page size on the system will be used. This parameter can only be set at server start. 
+	// The size of huge page that should be requested. Controls the size of huge pages, when they are enabled with huge_pages. The default is zero (0). When set to 0, the default huge page size on the system will be used. This parameter can only be set at server start.
 	huge_page_size?: int & >=0 & <=2147483647 @storeResource(1KB)
 
 	// Sets the servers ident configuration file.
@@ -481,7 +478,7 @@
 	// (kB) Automatic log file rotation will occur after N kilobytes.
 	log_rotation_size?: int & >=0 & <=2097151 @storeResource(1KB)
 
-	// Time between progress updates for long-running startup operations. Sets the amount of time after which the startup process will log a message about a long-running operation that is still in progress, as well as the interval between further progress messages for that operation. The default is 10 seconds. A setting of 0 disables the feature. If this value is specified without units, it is taken as milliseconds. This setting is applied separately to each operation. This parameter can only be set in the postgresql.conf file or on the server command line.  
+	// Time between progress updates for long-running startup operations. Sets the amount of time after which the startup process will log a message about a long-running operation that is still in progress, as well as the interval between further progress messages for that operation. The default is 10 seconds. A setting of 0 disables the feature. If this value is specified without units, it is taken as milliseconds. This setting is applied separately to each operation. This parameter can only be set in the postgresql.conf file or on the server command line.
 	log_startup_progress_interval: int & >=0 & <=2147483647 @timeDurationResource()
 
 	// Sets the type of statements logged.
@@ -577,7 +574,7 @@
 	// (8kB) Sets the minimum amount of index data for a parallel scan.
 	min_parallel_index_scan_size?: int & >=0 & <=715827882 @storeResource(8KB)
 
-	// Sets the minimum size of relations to be considered for parallel scan. Sets the minimum size of relations to be considered for parallel scan. 
+	// Sets the minimum size of relations to be considered for parallel scan. Sets the minimum size of relations to be considered for parallel scan.
 	min_parallel_relation_size?: int & >=0 & <=715827882 @storeResource(8KB)
 
 	// (8kB) Sets the minimum amount of table data for a parallel scan.
@@ -1019,9 +1016,6 @@
 	// Vacuum cost for a page not found in the buffer cache.
 	vacuum_cost_page_miss: int & >=0 & <=10000 | *5
 
-	// Number of transactions by which VACUUM and HOT cleanup should be deferred, if any.
-	vacuum_defer_cleanup_age?: int & >=0 & <=1000000
-
 	// Specifies the maximum age (in transactions) that a table's pg_class.relfrozenxid field can attain before VACUUM takes extraordinary measures to avoid system-wide transaction ID wraparound failure
 	vacuum_failsafe_age: int & >=0 & <=2100000000 | *2100000000
 
@@ -1049,7 +1043,7 @@
 	// Sets the WAL resource managers for which WAL consistency checks are done.
 	wal_consistency_checking?: string
 
-	// Buffer size for reading ahead in the WAL during recovery. 
+	// Buffer size for reading ahead in the WAL during recovery.
 	wal_decode_buffer_size: int & >=65536 & <=1073741823 | *524288 @storeResource()
 
 	// (MB) Sets the size of WAL files held for standby servers.

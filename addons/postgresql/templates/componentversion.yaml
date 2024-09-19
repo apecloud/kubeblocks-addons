@@ -19,6 +19,10 @@ spec:
         - {{ include "postgresql15.componentDefNamePrefix" . }}
       releases:
         - 15.7.0
+    - compDefs:
+        - {{ include "postgresql16.componentDefNamePrefix" . }}
+      releases:
+        - 16.4.0
   releases:
     - name: 12.14.0
       changes:
@@ -55,4 +59,10 @@ spec:
       serviceVersion: 15.7.0 # {{ .Values.componentServiceVersion.postgresql15  }}
       images:
         postgresql: {{ include "postgresql.repository" . }}:15.7.0
+        pgbouncer: {{ include "pgbouncer.repository" . }}:1.19.0
+    - name: 16.4.0
+      changes:
+      serviceVersion: 16.4.0 # {{ .Values.componentServiceVersion.postgresql16  }}
+      images:
+        postgresql: {{ include "postgresql.repository" . }}:16.4.0
         pgbouncer: {{ include "pgbouncer.repository" . }}:1.19.0
