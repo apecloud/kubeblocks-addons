@@ -42,7 +42,7 @@ spec:
         - -c
         - |
           {{- .Files.Get "dataprotection/restore-keys.sh" | nindent 10 }}
-        image: {{ include "redis.image" . }}
+        image: {{ include "redis7.image" . }}
         onError: Fail
         runOnTargetPodNode: true
 ---
@@ -138,7 +138,7 @@ spec:
         - -c
         - |
           {{- .Files.Get "dataprotection/restore-keys.sh" | nindent 10 }}
-        image: {{ include "redis.image" . }}
+        image: {{ include "redis7.image" . }}
         onError: Fail
         runOnTargetPodNode: true
     baseBackupRequired: false
