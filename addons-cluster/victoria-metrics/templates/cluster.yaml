@@ -5,7 +5,7 @@ metadata:
   labels: 
     {{- include "victoria-metrics-cluster.labels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: victoria-metrics
+  clusterDef: victoria-metrics
   terminationPolicy: {{ .Values.terminationPolicy }}
   topology: vm-cluster
   componentSpecs:

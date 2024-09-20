@@ -5,8 +5,7 @@ metadata:
   labels: 
     {{- include "greptimedb.labels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: greptimedb
-
+  clusterDef: greptimedb
   terminationPolicy: {{ .Values.terminationPolicy }}
   componentSpecs:
     - name: frontend

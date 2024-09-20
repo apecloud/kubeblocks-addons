@@ -6,7 +6,7 @@ metadata:
   name: {{ include "kblib.clusterName" . }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: milvus
+  clusterDef: milvus
   topology: cluster
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
