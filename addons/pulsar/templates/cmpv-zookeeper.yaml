@@ -2,6 +2,8 @@ apiVersion: apps.kubeblocks.io/v1
 kind: ComponentVersion
 metadata:
   name: pulsar-zookeeper
+  labels:
+    {{- include "pulsar.labels" . | nindent 4 }}
 spec:
   compatibilityRules:
     - compDefs:

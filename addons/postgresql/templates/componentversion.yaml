@@ -2,6 +2,8 @@ apiVersion: apps.kubeblocks.io/v1
 kind: ComponentVersion
 metadata:
   name: {{ include "postgresql.componentVersion" . }}
+  labels:
+    {{- include "postgresql.labels" . | nindent 4 }}
 spec:
   compatibilityRules:
     - compDefs:
