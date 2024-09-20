@@ -2,6 +2,8 @@ apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentVersion
 metadata:
   name: xinference
+  labels:
+    {{- include "xinference.labels" . | nindent 4}}
 spec:
   compatibilityRules:
   - compDefs:
