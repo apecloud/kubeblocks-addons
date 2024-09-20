@@ -277,13 +277,13 @@ get_current_comp_nodes_for_scale_in() {
     return
   fi
 
-  # if the $REDIS_CLUSTER_ADVERTISED_PORT is set, parse the advertised ports
-  # the value format of $REDIS_CLUSTER_ADVERTISED_PORT is "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."
+  # if the $CURRENT_SHARD_ADVERTISED_PORT is set, parse the advertised ports
+  # the value format of $CURRENT_SHARD_ADVERTISED_PORT is "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."
   declare -A advertised_ports
   local using_advertised_ports=false
-  if [ -n "$REDIS_CLUSTER_ADVERTISED_PORT" ]; then
+  if [ -n "$CURRENT_SHARD_ADVERTISED_PORT" ]; then
     using_advertised_ports=true
-    IFS=',' read -ra ADDR <<< "$REDIS_CLUSTER_ADVERTISED_PORT"
+    IFS=',' read -ra ADDR <<< "$CURRENT_SHARD_ADVERTISED_PORT"
     for i in "${ADDR[@]}"; do
       port=$(echo $i | cut -d':' -f2)
       advertised_ports[$port]=1
@@ -336,13 +336,13 @@ init_current_comp_default_nodes_for_scale_out() {
   local pod_host_ip
   for pod_name in $(echo "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" | tr ',' ' '); do
     pod_name_ordinal=$(extract_ordinal_from_object_name "$pod_name")
-    ## if the REDIS_CLUSTER_ADVERTISED_PORT is set, use the advertised port
-    ## the value format of REDIS_CLUSTER_ADVERTISED_PORT is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."
-    if [ -n "$REDIS_CLUSTER_ADVERTISED_PORT" ]; then
+    ## if the CURRENT_SHARD_ADVERTISED_PORT is set, use the advertised port
+    ## the value format of CURRENT_SHARD_ADVERTISED_PORT is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."
+    if [ -n "$CURRENT_SHARD_ADVERTISED_PORT" ]; then
       old_ifs="$IFS"
       IFS=','
       set -f
-      read -ra advertised_infos <<< "$REDIS_CLUSTER_ADVERTISED_PORT"
+      read -ra advertised_infos <<< "$CURRENT_SHARD_ADVERTISED_PORT"
       set +f
       IFS="$old_ifs"
       found_advertised_port=false

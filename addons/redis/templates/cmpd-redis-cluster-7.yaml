@@ -90,16 +90,12 @@ spec:
     - name: REDIS_DEFAULT_USER
       valueFrom:
         credentialVarRef:
-          ## reference the current component definition name
-          compDef: {{ include "redisCluster7.cmpdName" . }}
           name: default
           username: Required
     ## the default password of redis connection
     - name: REDIS_DEFAULT_PASSWORD
       valueFrom:
         credentialVarRef:
-          ## reference the current component definition name
-          compDef: {{ include "redisCluster7.cmpdName" . }}
           name: default
           password: Required
     ## the username of redis primary-secondary replication
@@ -109,35 +105,48 @@ spec:
     - name: REDIS_REPL_PASSWORD
       valueFrom:
         credentialVarRef:
-          ## reference the current component definition name
-          compDef: {{ include "redisCluster7.cmpdName" . }}
           name: default
           password: Required
+    ## the pod name list for current shard pod, the value format is "shard1:shard1Pod1,shard1Pod2@shard2:shard2Pod1,shard2Pod2"
+    - name: CURRENT_SHARD_POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podNames: Required
+    ## the pod fqdn list for current shard pod, the value format is "pod1FQDN,pod2FQDN"
+    - name: CURRENT_SHARD_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+    ## the component name of current shard
+    - name: CURRENT_SHARD_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
     ## the redis cluster advertised service port list for each pod of current shard, the value format is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."
-    - name: REDIS_CLUSTER_ADVERTISED_PORT
+    - name: CURRENT_SHARD_ADVERTISED_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redisCluster7.cmpdName" . }}
           name: redis-advertised
           optional: true
           port:
             name: redis-advertised
             option: Required
     ## the redis cluster advertised service bus port list for each pod of current shard, the value format is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."
-    - name: REDIS_CLUSTER_ADVERTISED_BUS_PORT
+    - name: CURRENT_SHARD_ADVERTISED_BUS_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redisCluster7.cmpdName" . }}
           name: redis-advertised
           optional: true
           port:
             name: advertised-bus
             option: Required
     ## the redis cluster advertised service name list for each pod of current shard, the value format is "pod1Svc,pod2Svc,..."
-    - name: REDIS_CLUSTER_ADVERTISED_SVC_NAME
+    - name: CURRENT_SHARD_ADVERTISED_SVC_NAME
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redisCluster7.cmpdName" . }}
           name: redis-advertised
           optional: true
           host: Required
@@ -190,6 +199,14 @@ spec:
                 delimiter: "."
                 keyValueDelimiter: "@"
           host: Required
+    ## the primary pod name which is dynamically selected, caution to use it
+    - name: CURRENT_PRIMARY_POD_NAME
+      valueFrom:
+      componentVarRef:
+        optional: true
+        podNamesForRole:
+          role: primary
+          option: Optional
   lifecycleActions:
     roleProbe:
       periodSeconds: 1
