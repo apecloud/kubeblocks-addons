@@ -4,7 +4,6 @@ metadata:
   name: {{ include "kblib.clusterName" . }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
   annotations:
-    "kubeblocks.io/extra-env": '{"KB_KAFKA_ENABLE_SASL":"{{ $.Values.saslEnable }}","KB_KAFKA_BROKER_HEAP":"{{ $.Values.brokerHeap }}","KB_KAFKA_CONTROLLER_HEAP":"{{ $.Values.controllerHeap }}","KB_KAFKA_PUBLIC_ACCESS":"{{ $.Values.extra.publiclyAccessible }}"}'
 {{/*    {{- include "kafka-cluster.brokerAddrFeatureGate" . | nindent 4 }}*/}}
 spec:
   clusterDef: kafka # ref clusterdefinition.name
@@ -30,6 +29,15 @@ spec:
       {{- if .Values.useLegacyCompDef }}
       componentDef: kafka-server
       {{- end  }}
+      env:
+        - name: KB_KAFKA_ENABLE_SASL
+          value: "{{ $.Values.saslEnable }}"
+        - name: KB_KAFKA_BROKER_HEAP
+          value: "{{ $.Values.brokerHeap }}"
+        - name: KB_KAFKA_CONTROLLER_HEAP
+          value: "{{ $.Values.controllerHeap }}"
+        - name: KB_KAFKA_PUBLIC_ACCESS
+          value: "{{ $.Values.extra.publiclyAccessible }}"
       tls: {{ $.Values.tlsEnable }}
       {{- if $.Values.tlsEnable }}
       issuer:
@@ -70,6 +78,15 @@ spec:
       {{- if .Values.useLegacyCompDef }}
       componentDef: kafka-broker
       {{- end  }}
+      env:
+        - name: KB_KAFKA_ENABLE_SASL
+          value: "{{ $.Values.saslEnable }}"
+        - name: KB_KAFKA_BROKER_HEAP
+          value: "{{ $.Values.brokerHeap }}"
+        - name: KB_KAFKA_CONTROLLER_HEAP
+          value: "{{ $.Values.controllerHeap }}"
+        - name: KB_KAFKA_PUBLIC_ACCESS
+          value: "{{ $.Values.extra.publiclyAccessible }}"
       tls: {{ $.Values.tlsEnable }}
       {{- if $.Values.tlsEnable }}
       issuer:
@@ -109,6 +126,15 @@ spec:
       {{- if .Values.useLegacyCompDef }}
       componentDef: controller
       {{- end  }}
+      env:
+        - name: KB_KAFKA_ENABLE_SASL
+          value: "{{ $.Values.saslEnable }}"
+        - name: KB_KAFKA_BROKER_HEAP
+          value: "{{ $.Values.brokerHeap }}"
+        - name: KB_KAFKA_CONTROLLER_HEAP
+          value: "{{ $.Values.controllerHeap }}"
+        - name: KB_KAFKA_PUBLIC_ACCESS
+          value: "{{ $.Values.extra.publiclyAccessible }}"
       tls: {{ $.Values.tlsEnable }}
       {{- if $.Values.tlsEnable }}
       issuer:
@@ -134,6 +160,15 @@ spec:
       {{- if .Values.useLegacyCompDef }}
       componentDef: kafka-exporter
       {{- end  }}
+      env:
+        - name: KB_KAFKA_ENABLE_SASL
+          value: "{{ $.Values.saslEnable }}"
+        - name: KB_KAFKA_BROKER_HEAP
+          value: "{{ $.Values.brokerHeap }}"
+        - name: KB_KAFKA_CONTROLLER_HEAP
+          value: "{{ $.Values.controllerHeap }}"
+        - name: KB_KAFKA_PUBLIC_ACCESS
+          value: "{{ $.Values.extra.publiclyAccessible }}"
       replicas: {{ $.Values.monitorReplicas }}
       {{- include "kblib.componentResources" . | nindent 6 }}
     {{- end }}

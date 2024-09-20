@@ -5,8 +5,6 @@ metadata:
   name: {{ include "kblib.clusterName" . }}
   namespace: {{ .Release.Namespace }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
-  annotations:
-    kubeblocks.io/extra-env: '{"mdit-roles":"master,data,ingest,transform","mode":"{{ .Values.mode }}"}'
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
@@ -14,6 +12,11 @@ spec:
     - name: mdit
       componentDef: elasticsearch-{{ include "elasticsearch.majorVersion" . }}
       serviceVersion: {{ include "elasticsearch.version" . }}
+      env:
+        - name: mdit-roles
+          value: "master,data,ingest,transform"
+        - name: mode
+          value: {{ .Values.mode }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "elasticsearch-cluster.replicaCount" . | indent 6 }}
       {{- include "kblib.componentMonitor" . | indent 6 }}

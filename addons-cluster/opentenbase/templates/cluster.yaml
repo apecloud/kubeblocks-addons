@@ -2,14 +2,17 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: {{ include "opentenbase.name" . }}
-  annotations:
-    kubeblocks.io/extra-env: {{ include "opentenbase.extraEnv" . | squote }}
 spec:
   clusterDef: opentenbase
   terminationPolicy: {{ .Values.terminationPolicy }}
   componentSpecs:
     - name: gtm
       componentDefRef: gtm
+      env:
+        - name: DATANODE_COUNT
+          value: "{{ len .Values.dn }}"
+        - name: COORDINATOR_COUNT
+          value: "{{ len .Values.cn }}"
       replicas: {{ .Values.gtm.replicas }}
       {{- with  .Values.gtm.resources }}
       resources:
@@ -38,6 +41,11 @@ spec:
     {{- range .Values.dn }}
     - name: dn-{{ $i }}
       componentDefRef: dn
+      env:
+        - name: DATANODE_COUNT
+          value: "{{ len .Values.dn }}"
+        - name: COORDINATOR_COUNT
+          value: "{{ len .Values.cn }}"
       replicas: {{ .replicas }}
       {{- with  .resources }}
       resources:
@@ -68,6 +76,11 @@ spec:
     {{- range .Values.cn }}
     - name: cn-{{ $j }}
       componentDefRef: cn
+      env:
+        - name: DATANODE_COUNT
+          value: "{{ len .Values.dn }}"
+        - name: COORDINATOR_COUNT
+          value: "{{ len .Values.cn }}"
       replicas: {{ .replicas }}
       {{- with  .resources }}
       resources:

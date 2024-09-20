@@ -5,7 +5,6 @@ metadata:
   labels:
     {{- include "oceanbase.labels" . | nindent 4 }}
   annotations:
-    {{- include "oceanbase-cluster.annotations.extra-envs" . | nindent 4 }}
     {{- include "oceanbase-cluster.featureGate" . | nindent 4 }}
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
@@ -26,6 +25,7 @@ spec:
   {{- range $i, $e := until (int .Values.obClusters) }}
     - name: ob-bundle-{{ $i }}
       componentDef: {{ include "oceanbase-cluster.compdef" $}}
+      {{- include "oceanbase-cluster.extra-envs" $ | indent 6 }}
       replicas: {{ max $.Values.zoneCount $.Values.replicas}}
       {{- include "kblib.componentResources" $ | indent 6 }}
       volumeClaimTemplates:

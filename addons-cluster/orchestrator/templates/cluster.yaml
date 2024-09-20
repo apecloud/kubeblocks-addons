@@ -3,8 +3,6 @@ kind: Cluster
 metadata:
   name: {{ include "kblib.clusterName" . }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
-  annotations:
-    {{- include "orchestrator-cluster.annotations.extra-envs" . | nindent 4 }}
 spec:
   clusterDef: orchestrator
   topology: {{ .Values.mode }}
@@ -19,6 +17,13 @@ spec:
             port: 80
   componentSpecs:
     - name: orchestrator
+      env:
+        - name: ORC_TOPOLOGY_PASSWORD
+          value: {{ .Values.secret.TOPOLOGY_PASSWORD | default "orchestrator" }}
+        - name: ORC_META_PASSWORD
+          value: {{ .Values.secret.META_PASSWORD | default "orchestrator" }}
+        - name: ORC_META_DATABASE
+          value: {{ .Values.secret.META_DATABASE | default "orchestrator" }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.replicas }}
       {{- include "kblib.componentResources" . | indent 6 }}

@@ -4,8 +4,6 @@ metadata:
   name: {{ include "kblib.clusterName" . }}
   namespace: {{ .Release.Namespace }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
-  annotations:
-    "kubeblocks.io/extra-env": "{\"MODEL_NAME\":\"{{ .Values.model }}\", \"EXTRA_ARGS\":\"{{ .Values.extraArgs }}\", \"MODEL_URL\":\"{{ .Values.url }}\", \"QUANTIZE\":\"{{ .Values.quantize }}\"}"
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
@@ -14,6 +12,15 @@ spec:
   componentSpecs:
     - name: ggml
       componentDefRef: ggml
+      env:
+        - name: MODEL_NAME
+          value: {{ .Values.model }}
+        - name: EXTRA_ARGS
+          value: {{ .Values.extraArgs }}
+        - name: MODEL_URL
+          value: {{ .Values.url }}
+        - name: QUANTIZE
+          value: {{ .Values.quantize }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.replicas }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
@@ -23,6 +30,15 @@ spec:
   componentSpecs:
     - name: vllm
       componentDefRef: vllm
+      env:
+        - name: MODEL_NAME
+          value: {{ .Values.model }}
+        - name: EXTRA_ARGS
+          value: {{ .Values.extraArgs }}
+        - name: MODEL_URL
+          value: {{ .Values.url }}
+        - name: QUANTIZE
+          value: {{ .Values.quantize }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.replicas }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
