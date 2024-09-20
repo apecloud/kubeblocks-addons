@@ -1,0 +1,25 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: pulsar-broker
+  labels:
+    {{- include "pulsar.labels" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - pulsar-broker
+      releases:
+        - 2.11.2
+        - 3.0.2
+  releases:
+    - name: 2.11.2
+      changes:
+      serviceVersion: 2.11.2
+      images:
+        broker: {{.Values.image.registry | default "docker.io" }}/{{ .Values.images.v2_11_2.broker.repository }}:2.11.2
+    - name: 3.0.2
+      changes:
+      serviceVersion: 3.0.2
+      images:
+        broker: {{.Values.image.registry | default "docker.io" }}/{{ .Values.images.v3_0_2.broker.repository }}:3.0.2
+

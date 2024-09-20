@@ -15,7 +15,7 @@ replicas: {{ max .Values.replicas 2 }}
 Define postgresql ComponentSpec with ComponentDefinition.
 */}}
 {{- define "postgresql-cluster.componentSpec" }}
-  clusterDefinitionRef: postgresql
+  clusterDef: postgresql
   topology: {{ .Values.mode }}
   componentSpecs:
     - name: {{ include "postgresql-cluster.component-name" . }}

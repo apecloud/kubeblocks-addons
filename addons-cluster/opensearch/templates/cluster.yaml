@@ -1,4 +1,4 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: {{ include "clustername" . }}
@@ -15,7 +15,6 @@ spec:
   componentSpecs:
     - name: opensearch
       componentDef: opensearch
-      monitor: {{ .Values.monitor.enabled | default false }}
       replicas: {{ .Values.replicaCount | default 3 }}
       {{- with  .Values.resources }}
       resources:

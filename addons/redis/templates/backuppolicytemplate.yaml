@@ -10,7 +10,7 @@ metadata:
 spec:
   backupPolicies:
   - componentDefs:
-      - {{ include "redis.componentDefName" . }}
+      - {{ include "redis7.cmpdName" . }}
     target:
       role: secondary
       fallbackRole: primary
@@ -19,6 +19,13 @@ spec:
       - name: datafile
         snapshotVolumes: false
         actionSetName: redis-physical-backup
+        targetVolumes:
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
+      - name: aof
+        snapshotVolumes: false
+        actionSetName: redis-pitr-backup
         targetVolumes:
           volumeMounts:
             - name: data
@@ -33,12 +40,16 @@ spec:
         enabled: false
         cronExpression: "0 18 * * 0"
         retentionPeriod: 7d
+      - backupMethod: aof
+        enabled: false
+        cronExpression: "0 18 * * 0"
+        retentionPeriod: 7d
       - backupMethod: volume-snapshot
         enabled: false
         cronExpression: "0 18 * * 0"
         retentionPeriod: 7d
   - componentDefs:
-      - {{ include "redis-cluster.componentDefName" . }}
+      - {{ include "redisCluster7.cmpdName" . }}
     target:
       role: secondary
       fallbackRole: primary

@@ -1,0 +1,26 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: redis
+  labels:
+    {{- include "redis.labels" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "redis7.cmpdRegexpPattern" . }}
+      releases:
+        - 7.2.4
+        - 7.0.6
+  releases:
+    - name: 7.2.4
+      changes:
+      serviceVersion: 7.2.4
+      images:
+        redis: {{ include "redis.repository" . }}:7.2.0-v10
+        metrics: {{ include "metrics.repository" . }}:0.1.2-beta.1
+    - name: 7.0.6
+      changes:
+      serviceVersion: 7.0.6
+      images:
+        redis: {{ include "redis.repository" . }}:7.0.6-RC4
+        metrics: {{ include "metrics.repository" . }}:0.1.2-beta.1

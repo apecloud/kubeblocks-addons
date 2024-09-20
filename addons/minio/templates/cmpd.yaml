@@ -1,6 +1,6 @@
 {{ $scheme := .Values.tls.enabled | ternary "https" "http" }}
 
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
   name: minio
@@ -10,7 +10,7 @@ spec:
   provider: kubeblocks
   description: Minio is a High Performance Object Storage.
   serviceKind: minio
-  serviceVersion: {{ .Chart.Version }}
+  serviceVersion: {{ .Values.componentServiceVersion.minio }}
 
   systemAccounts:
     - name: root

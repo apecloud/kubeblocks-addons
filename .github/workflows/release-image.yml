@@ -26,5 +26,4 @@ jobs:
       APECD_REF: "v0.1.55"
       DOCKERFILE_PATH: "./docker/Dockerfile-charts"
       REMOVE_PREFIX: false
-      GITHUB_REPO: "apecloud/apecloud-addons"
     secrets: inherit

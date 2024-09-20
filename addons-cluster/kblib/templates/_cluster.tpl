@@ -2,7 +2,7 @@
 Define common fileds of cluster object
 */}}
 {{- define "kblib.clusterCommon" }}
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: {{ include "kblib.clusterName" . }}

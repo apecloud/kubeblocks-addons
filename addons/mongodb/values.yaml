@@ -10,7 +10,7 @@ image:
   tag: 5.0.14 # 6.0.3-debian-11-r0
   syncer:
     repository: apecloud/syncer
-    tag: "0.1.8"
+    tag: "0.2.0"
 
   # refer: https://github.com/apecloud/dbctl/blob/main/docker/Dockerfile
   dbctl:

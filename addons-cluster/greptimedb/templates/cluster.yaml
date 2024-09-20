@@ -1,12 +1,11 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: {{ include "clustername" . }}
   labels: 
     {{- include "greptimedb.labels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: greptimedb
-
+  clusterDef: greptimedb
   terminationPolicy: {{ .Values.terminationPolicy }}
   componentSpecs:
     - name: frontend

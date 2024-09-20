@@ -1,0 +1,147 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: pulsar-proxy-{{include "pulsar.major.version" .}}
+  labels:
+      {{- include "pulsar.labels" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: Pulsar proxy.
+  serviceKind: pulsar
+  serviceVersion: {{ default .Chart.AppVersion .Values.clusterVersionOverride }}
+  serviceRefDeclarations:
+    - name: pulsarZookeeper
+      serviceRefDeclarationSpecs:
+        - serviceKind: zookeeper
+          serviceVersion: ^3.8.\d{1,2}$
+      optional: true
+  updateStrategy: BestEffortParallel
+  configs:
+    - name: proxy-env
+      templateRef: {{ include "pulsar.name" . }}-proxy-env-tpl
+      namespace: {{ .Release.Namespace }}
+      volumeName: proxy-env
+      constraintRef: pulsar-env-constraints
+      keys:
+        - conf
+      injectEnvTo:
+        - proxy
+        - check-broker
+      reRenderResourceTypes:
+        - vscale
+    - name: proxy-config
+      templateRef: {{ include "pulsar.name" . }}{{include "pulsar.major.version" .}}-proxy-config-tpl
+      namespace: {{ .Release.Namespace }}
+      volumeName: pulsar-proxy-config
+      constraintRef: pulsar{{include "pulsar.major.version" .}}-proxy-cc
+  scripts:
+    - name: pulsar-scripts
+      templateRef: {{ include "pulsar.name" . }}-scripts
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  runtime:
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 10000
+      fsGroup: 0
+      runAsGroup: 0
+    initContainers:
+      - name: check-broker
+        image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v3_0_2.proxy "root" .) }}"
+        imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v3_0_2.proxy "root" .) }}"
+        command:
+          - /kb-scripts/init-proxy.sh
+        volumeMounts:
+          - name: scripts
+            mountPath: /kb-scripts
+          - name: proxy-env
+            mountPath: /opt/pulsar/none
+        env:
+        {{- if .Values.debugEnabled }}
+          - name: PULSAR_LOG_ROOT_LEVEL
+            value: DEBUG
+          - name: PULSAR_LOG_LEVEL
+            value: DEBUG
+        {{- end }}
+    containers:
+      - name: proxy
+        image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v3_0_2.proxy "root" .) }}"
+        imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v3_0_2.proxy "root" .) }}"
+        command:
+          - /kb-scripts/start-proxy.sh
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 10000
+          capabilities:
+            drop:
+              - ALL
+          privileged: false
+          runAsGroup: 0
+        env:
+        {{- if .Values.debugEnabled }}
+          - name: PULSAR_LOG_ROOT_LEVEL
+            value: DEBUG
+          - name: PULSAR_LOG_LEVEL
+            value: DEBUG
+        {{- end }}
+          - name: SERVICE_PORT
+            value: "8080"
+          - name: clusterName
+            value: $(KB_NAMESPACE)-$(KB_CLUSTER_COMP_NAME)
+          - name: webServicePort
+            value: "8080"
+            ## in order to avoid the kb complex service association logic involved when using brokers,
+            ## zk-based service discovery is used here to build the proxy.
+            ## but this is not secure to use service discovery(https://pulsar.apache.org/docs/3.0.x/administration-proxy/#use-service-discovery).
+            ## Todo: it needs to be iterated into the broker address in subsequent versions.
+{{/*          - name: brokerWebServiceURL*/}}
+{{/*            value: http://$(brokerSVC):80*/}}
+{{/*          - name: brokerServiceURL*/}}
+{{/*            value: pulsar://$(brokerSVC):6650*/}}
+        ports:
+          - name: pulsar
+            containerPort: 6650
+          - name: http
+            containerPort: 8080
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /status.html
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 100
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /status.html
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 100
+        startupProbe:
+          failureThreshold: 20
+          httpGet:
+            path: /status.html
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 100
+        volumeMounts:
+          - name: scripts
+            mountPath: /kb-scripts
+          - name: proxy-env
+            mountPath: /opt/pulsar/none
+          - name: pulsar-proxy-config
+            mountPath: /opt/pulsar/conf
+  exporter:
+    scrapePath: /metrics/
+    scrapePort: http

@@ -1,7 +1,9 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1
 kind: ComponentVersion
 metadata:
   name: {{ include "be.componentDefName" . }}
+  labels:
+    {{- include "starrocks.labels" . | nindent 4 }}
 spec:
   compatibilityRules:
   - compDefs:
