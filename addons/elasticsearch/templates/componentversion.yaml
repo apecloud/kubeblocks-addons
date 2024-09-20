@@ -2,6 +2,8 @@ apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentVersion
 metadata:
   name: elasticsearch
+  labels:
+    {{- include "elasticsearch.labels" . | nindent 4 }}
 spec:
   compatibilityRules:
   - compDefs:
