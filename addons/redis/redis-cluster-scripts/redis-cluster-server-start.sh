@@ -3,6 +3,7 @@
 # shellcheck disable=SC2153
 # shellcheck disable=SC2207
 # shellcheck disable=SC2034
+# shellcheck disable=SC1090
 
 # This is magic for shellspec ut framework. "test" is a `test [expression]` well known as a shell command.
 # Normally test without [expression] returns false. It means that __() { :; }
@@ -30,190 +31,13 @@ retry_times=3
 check_ready_times=30
 retry_delay_second=2
 
-load_common_library() {
-  # the common.sh scripts is mounted to the same path which is defined in the cmpd.spec.scripts
-  common_library_file="/scripts/common.sh"
-  # shellcheck disable=SC1090
-  source "${common_library_file}"
-}
-
-shutdown_redis_server() {
-  unset_xtrace_when_ut_mode_false
-  if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
-    redis-cli -h 127.0.0.1 -p "$service_port" -a "$REDIS_DEFAULT_PASSWORD" shutdown
-  else
-    redis-cli -h 127.0.0.1 -p "$service_port" shutdown
-  fi
-  set_xtrace_when_ut_mode_false
-  echo "shutdown redis server succeeded!"
-}
-
-check_redis_server_ready() {
-  unset_xtrace_when_ut_mode_false
-  local max_retry=10
-  local retry_interval=5
-  check_ready_cmd="redis-cli -h 127.0.0.1 -p $service_port ping"
-  if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
-    check_ready_cmd="redis-cli -h 127.0.0.1 -p $service_port -a $REDIS_DEFAULT_PASSWORD ping"
-  fi
-  set_xtrace_when_ut_mode_false
-  output=$($check_ready_cmd)
-  status=$?
-  if [ $status -ne 0 ] || [ "$output" != "PONG" ] ; then
-    echo "Failed to execute the check ready command: $check_ready_cmd" >&2
-    return 1
-  fi
-}
-
-extract_ordinal_from_object_name() {
-  local object_name="$1"
-  local ordinal="${object_name##*-}"
-  echo "$ordinal"
-}
-
-parse_advertised_port() {
-  local pod_name="$1"
-  local advertised_ports="$2"
-  local pod_name_ordinal
-  local found=false
-
-  pod_name_ordinal=$(extract_ordinal_from_object_name "$pod_name")
-  IFS=',' read -ra ports_array <<< "$advertised_ports"
-  for entry in "${ports_array[@]}"; do
-    IFS=':' read -ra parts <<< "$entry"
-    local svc_name="${parts[0]}"
-    local port="${parts[1]}"
-    local svc_name_ordinal
-
-    svc_name_ordinal=$(extract_ordinal_from_object_name "$svc_name")
-    if [[ "$svc_name_ordinal" == "$pod_name_ordinal" ]]; then
-      echo "$port"
-      found=true
-      return 0
-    fi
-  done
-
-  if [[ "$found" == false ]]; then
-    return 1
-  fi
-}
-
-get_cluster_nodes_info() {
-  local cluster_node="$1"
-  local cluster_node_port="$2"
-  unset_xtrace_when_ut_mode_false
-  local command="redis-cli -h $cluster_node -p $cluster_node_port cluster nodes"
-  if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
-    command="redis-cli -h $cluster_node -p $cluster_node_port -a $REDIS_DEFAULT_PASSWORD cluster nodes"
-  fi
-  set_xtrace_when_ut_mode_false
-  cluster_nodes_info=$($command)
-  status=$?
-  if [ $status -ne 0 ]; then
-    echo "Failed to execute the get cluster id command: $command" >&2
-    return 1
-  fi
-  echo "$cluster_nodes_info"
-  return 0
-}
-
-get_cluster_id() {
-  local cluster_node="$1"
-  local cluster_node_port="$2"
-  cluster_nodes_info=$(get_cluster_nodes_info "$cluster_node" "$cluster_node_port")
-  status=$?
-  if [ $status -ne 0 ]; then
-    echo "Failed to get cluster nodes info in get_cluster_id: $command" >&2
-    return 1
-  fi
-  cluster_id=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $1}')
-  echo "$cluster_id"
-  return 0
-}
-
-get_cluster_announce_ip() {
-  local cluster_node="$1"
-  local cluster_node_port="$2"
-  cluster_nodes_info=$(get_cluster_nodes_info "$cluster_node" "$cluster_node_port")
-  status=$?
-  if [ $status -ne 0 ]; then
-    echo "Failed to get cluster nodes info in get_cluster_announce_ip: $command" >&2
-    return 1
-  fi
-  cluster_announce_ip=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $2}' | awk -F ':' '{print $1}')
-  echo "$cluster_announce_ip"
-  return 0
-}
-
-check_node_in_cluster() {
-  local cluster_node="$1"
-  local cluster_node_port="$2"
-  local node_name="$3"
-  cluster_nodes_info=$(get_cluster_nodes_info "$cluster_node" "$cluster_node_port")
-  status=$?
-  if [ $status -ne 0 ]; then
-    echo "Failed to get cluster nodes info in check_node_in_cluster: $command" >&2
-    return 1
-  fi
-  # if the cluster_nodes_info contains multiple lines and the node_name is in the cluster_nodes_info, return true
-  if [ "$(echo "$cluster_nodes_info" | wc -l)" -gt 1 ] && echo "$cluster_nodes_info" | grep -q "$node_name"; then
-    return 0
-  else
-    return 1
-  fi
-}
-
-get_cluster_id_with_retry() {
-  local cluster_node="$1"
-  local cluster_node_port="$2"
-  # call the execute_get_cluster_id_command function with call_func_with_retry function and get the output
-  cluster_id=$(call_func_with_retry $retry_times $retry_delay_second get_cluster_id "$cluster_node" "$cluster_node_port")
-  status=$?
-  if [ $status -ne 0 ]; then
-    echo "Failed to get the cluster id of the cluster node $cluster_node:$cluster_node_port after retry" >&2
-    return 1
-  fi
-  echo "$cluster_id"
-  return 0
-}
-
-get_cluster_announce_ip_with_retry() {
-  local cluster_node="$1"
-  local cluster_node_port="$2"
-  # call the execute_get_cluster_announce_ip_command function with call_func_with_retry function and get the output
-  cluster_announce_ip=$(call_func_with_retry $retry_times $retry_delay_second get_cluster_announce_ip "$cluster_node" "$cluster_node_port")
-  status=$?
-  if [ $status -ne 0 ]; then
-    echo "Failed to get the cluster announce ip of the cluster node $cluster_node:$cluster_node_port after retry" >&2
-    return 1
-  fi
-  echo "$cluster_announce_ip"
-  return 0
-}
-
-check_node_in_cluster_with_retry() {
-  local cluster_node="$1"
-  local cluster_node_port="$2"
-  local node_name="$3"
-  # call the execute_check_node_in_cluster_command function with call_func_with_retry function and get the output
-  check_result=$(call_func_with_retry $retry_times $retry_delay_second check_node_in_cluster "$cluster_node" "$cluster_node_port" "$node_name")
-  status=$?
-  if [ $status -ne 0 ]; then
-    echo "Failed to check the node $node_name in the cluster node $cluster_node:$cluster_node_port after retry" >&2
-    return 1
-  fi
-  return 0
-}
-
-check_redis_server_ready_with_retry() {
-  # call the execute_check_redis_server_ready_command function with call_func_with_retry function and get the output
-  check_result=$(call_func_with_retry $check_ready_times $retry_delay_second check_redis_server_ready)
-  status=$?
-  if [ $status -ne 0 ]; then
-    echo "Failed to check the redis server ready after retry" >&2
-    return 1
-  fi
-  return 0
+load_redis_cluster_common_utils() {
+  # the common.sh and redis-cluster-common.sh scripts are defined in the redis-cluster-scripts-template configmap
+  # and are mounted to the same path which defined in the cmpd.spec.scripts
+  kblib_common_library_file="/scripts/common.sh"
+  redis_cluster_common_library_file="/scripts/redis-cluster-common.sh"
+  source "${kblib_common_library_file}"
+  source "${redis_cluster_common_library_file}"
 }
 
 check_and_correct_other_primary_nodes() {
@@ -257,7 +81,7 @@ check_and_correct_other_primary_nodes() {
         if ! $meet_command
         then
             echo "Failed to meet the node $node_endpoint_with_port in check_and_correct_other_primary_nodes"
-            shutdown_redis_server
+            shutdown_redis_server "$service_port"
             exit 1
         else
           echo "Meet the node $node_endpoint_with_port successfully with new announce ip $current_announce_ip..."
@@ -374,8 +198,8 @@ scale_redis_cluster_replica() {
 
   # get the current component nodes for scale out replica
   target_node_name=$(get_min_lexicographical_order_pod "$CURRENT_SHARD_POD_NAME_LIST")
-  if ! is_empty "$CURRENT_PRIMARY_POD_NAME"; then
-    target_node_name="$CURRENT_PRIMARY_POD_NAME"
+  if ! is_empty "$CURRENT_SHARD_PRIMARY_POD_NAME"; then
+    target_node_name="$CURRENT_SHARD_PRIMARY_POD_NAME"
   fi
   target_node_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$CURRENT_SHARD_POD_FQDN_LIST" "$target_node_name")
   if is_empty "$target_node_fqdn"; then
@@ -414,7 +238,7 @@ scale_redis_cluster_replica() {
   status=$?
   if is_empty "$primary_node_cluster_id" || [ $status -ne 0 ]; then
     echo "Failed to get the cluster id of the primary node $primary_node_endpoint_with_port"
-    shutdown_redis_server
+    shutdown_redis_server "$service_port"
     exit 1
   fi
   # current_node_with_port do not use advertised svc and port, because advertised svc and port are not ready when Pod is not Ready.
@@ -439,7 +263,7 @@ scale_redis_cluster_replica() {
     else
       echo "Failed to add the node $current_pod_fqdn to the cluster in scale_redis_cluster_replica, shutdown redis server"
       echo "Error message: $replicated_output"
-      shutdown_redis_server
+      shutdown_redis_server "$service_port"
       exit 1
     fi
   fi
@@ -464,7 +288,7 @@ scale_redis_cluster_replica() {
     if ! $meet_command
     then
         echo "Failed to meet the node $primary_node_endpoint_with_port in scale_redis_cluster_replica, shutdown redis server"
-        shutdown_redis_server
+        shutdown_redis_server "$service_port"
         exit 1
     fi
     set_xtrace_when_ut_mode_false
@@ -633,6 +457,7 @@ build_redis_conf() {
 # end here. The script path is assigned to the __SOURCED__ variable.
 ${__SOURCED__:+false} : || return 0
 
+load_redis_cluster_common_utils
 parse_current_pod_advertised_svc_if_exist
 build_redis_conf
 # TODO: move to memberJoin action in the future
