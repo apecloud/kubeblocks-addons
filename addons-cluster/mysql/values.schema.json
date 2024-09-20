@@ -13,9 +13,9 @@
         "mysql-5.7.44"
       ]
     },
-    "mode": {
-      "title": "Mode",
-      "description": "Cluster topology mode.",
+    "topology": {
+      "title": "Topology",
+      "description": "Cluster topology.",
       "type": "string",
       "default": "standalone",
       "enum": [

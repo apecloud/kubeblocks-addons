@@ -1,4 +1,4 @@
-{{- if eq .Values.mode "cluster" }}
+{{- if eq .Values.topology "cluster" }}
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: Cluster
 metadata:

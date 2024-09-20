@@ -53,19 +53,19 @@ The minimum proxy cpu cores is 0.5 and the maximum cpu cores is 64.
 
 {{/*
 Define replicas.
-standalone mode: 1
-raftGroup mode: max(replicas, 3)
+standalone topology: 1
+raftGroup topology: max(replicas, 3)
 */}}
 {{- define "apecloud-mysql-cluster.replicas" }}
-{{- if eq .Values.mode "standalone" }}
+{{- if eq .Values.topology "standalone" }}
 {{- 1 }}
-{{- else if eq .Values.mode "raftGroup" }}
+{{- else if eq .Values.topology "raftGroup" }}
 {{- max .Values.replicas 3 }}
 {{- end }}
 {{- end -}}
 
 {{- define "apecloud-mysql-cluster.topology" }}
-{{- if and (eq .Values.mode "raftGroup") .Values.proxyEnabled }}
+{{- if and (eq .Values.topology "raftGroup") .Values.proxyEnabled }}
   {{- if .Values.localEtcdEnabled }}
     {{- "apecloud-mysql-proxy-etcd" }}
   {{- else }}

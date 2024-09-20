@@ -62,9 +62,9 @@ Create the name of the service account to use
 {{- end }}
 
 {{- define "elasticsearch-cluster.replicaCount" }}
-{{- if eq .Values.mode "single-node" }}
+{{- if eq .Values.topology "single-node" }}
 replicas: 1
-{{- else if eq .Values.mode "multi-node" }}
+{{- else if eq .Values.topology "multi-node" }}
 replicas: {{ max .Values.replicas 3 }}
 {{- end }}
 {{- end }}

@@ -6,17 +6,17 @@
 ##
 version: redis-7.0.6
 
-## @param mode redis cluster topology mode, standalone, replication and cluster
+## @param topology redis cluster topology, standalone, replication and cluster
 ## standalone: single redis instance
 ## replication: primary-secondary replication with redis sentinel, refer: https://redis.io/docs/management/sentinel
 ## replication-twemproxy: primary-secondary replication with sentinel and twemproxy, it is just a demo for how to use twemproxy with redis, not recommended for production
-## cluster: official redis cluster, refer: https://redis.io/docs/reference/cluster-spec. if mode is cluster, please set useLegacyCompDef to false.
-mode: replication
+## cluster: official redis cluster, refer: https://redis.io/docs/reference/cluster-spec. if topology is cluster, please set useLegacyCompDef to false.
+topology: replication
 
 ## @param replicas specify replicas of replication
-## if mode is standalone, replicas should be 1
-## if mode is replication and replicas is 2, it means 1 primary and 1 secondary
-## if mode is cluster and replicas is 2, it means every shard has 1 primary and 1 secondary, the count of shards is specified by redisCluster.shardCount
+## if topology is standalone, replicas should be 1
+## if topology is replication and replicas is 2, it means 1 primary and 1 secondary
+## if topology is cluster and replicas is 2, it means every shard has 1 primary and 1 secondary, the count of shards is specified by redisCluster.shardCount
 replicas: 2
 
 ## @param cpu
@@ -63,7 +63,7 @@ sentinel:
   storage: 20
   replicas: 3
 
-## if mode is cluster, specify the redis cluster parameters
+## if topology is cluster, specify the redis cluster parameters
 ## @param redisCluster.shardCount specify the number of shards in the cluster, the minimum value is 3
 redisCluster:
   shardCount: 3

@@ -1,4 +1,4 @@
-{{- if and (eq .Values.mode "raftGroup") .Values.proxyEnabled (not .Values.localEtcdEnabled) }}
+{{- if and (eq .Values.topology "raftGroup") .Values.proxyEnabled (not .Values.localEtcdEnabled) }}
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ServiceDescriptor
 metadata:

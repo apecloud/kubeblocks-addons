@@ -1,18 +1,18 @@
 {{/*
 Define replica count.
-standalone mode: 1
-replication mode: 2
-raftGroup mode: 3 or more
+standalone topology: 1
+replication topology: 2
+raftGroup topology: 3 or more
 
-orchestrator mode: 2 or more
+orchestrator topology: 2 or more
 */}}
 {{- define "mysql-cluster.replicaCount" -}}
 {{- if .Values.orchestrator.enable }}
 replicas: {{ max .Values.replicas 2 }}
 {{- else }}
-    {{- if eq .Values.mode "standalone" }}
+    {{- if eq .Values.topology "standalone" }}
 replicas: 1
-    {{- else if eq .Values.mode "replication" }}
+    {{- else if eq .Values.topology "replication" }}
 replicas: {{ max .Values.replicas 2 }}
     {{- else }}
 replicas: {{ max .Values.replicas 3 }}

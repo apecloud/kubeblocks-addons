@@ -6,7 +6,7 @@
       "type": "string",
       "default": "opengauss-5.0.0"
     },
-    "mode": {
+    "topology": {
       "type": "string",
       "default": "standalone",
       "enum": [

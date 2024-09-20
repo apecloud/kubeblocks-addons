@@ -1,4 +1,4 @@
-{{- if eq .Values.mode "multi-node" }}
+{{- if eq .Values.topology "multi-node" }}
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: Cluster
 metadata:
@@ -6,7 +6,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
   annotations:
-    kubeblocks.io/extra-env: '{"mdit-roles":"master,data,ingest,transform","mode":"{{ .Values.mode }}"}'
+    kubeblocks.io/extra-env: '{"mdit-roles":"master,data,ingest,transform","mode":"{{ .Values.topology }}"}'
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}

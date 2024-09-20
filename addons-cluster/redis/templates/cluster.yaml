@@ -1,4 +1,4 @@
-{{- if eq .Values.mode "cluster" }}
+{{- if eq .Values.topology "cluster" }}
   {{- /* TODO: when clusterDefinition topology supports sharding, migrate the cluster mode to topology as well */ -}}
   {{- include "kblib.clusterCommon" . }}
   shardingSpecs:
@@ -6,12 +6,12 @@
 {{- else }}
   {{- include "kblib.clusterCommon" . }}
   clusterDefinitionRef: redis
-  topology: {{ .Values.mode }}
+  topology: {{ .Values.topology }}
   componentSpecs:
-  {{- if eq .Values.mode "replication" }}
+  {{- if eq .Values.topology "replication" }}
     {{- include "redis-cluster.componentSpec" . | indent 2 }}
     {{- include "redis-cluster.sentinelComponentSpec" . | indent 2 }}
-  {{- else if eq .Values.mode "replication-twemproxy" }}
+  {{- else if eq .Values.topology "replication-twemproxy" }}
     {{- include "redis-cluster.componentSpec" . | indent 2 }}
     {{- include "redis-cluster.sentinelComponentSpec" . | indent 2 }}
     {{- include "redis-cluster.twemproxyComponentSpec" . | indent 2 }}

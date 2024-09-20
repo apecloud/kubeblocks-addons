@@ -2,10 +2,10 @@
 ##
 version: kafka-3.3.2
 
-## @param mode for Kafka cluster mode, 'combined' is combined Kafka controller (KRaft) and broker,
+## @param topology for Kafka cluster topology, 'combined' is combined Kafka controller (KRaft) and broker,
 ## 'separated' is a Kafka KRaft and Kafka broker cluster.
 ##
-mode: combined
+topology: combined
 
 # Enable TLS
 # Todo: Monitoring is not supported when tls is enabled
@@ -44,15 +44,15 @@ metaStorage: 5
 
 metaStorageClassName:
 
-## kafka replicas for combined mode
+## kafka replicas for combined topology
 replicas: 1
 
 ## kafka broker replicas
-## only effective when clusterMode='separated'
+## only effective when topology='separated'
 brokerReplicas: 1
 
 ## kafka controller replicas
-## only effective when clusterMode='separated'
+## only effective when topology='separated'
 controllerReplicas: 1
 
 ## kafka monitor component replicas
@@ -63,7 +63,7 @@ monitorReplicas: 1
 brokerHeap: -XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64
 
 ## kafka broker's jvm heap setting
-## only effective when clusterMode='separated'
+## only effective when topology='separated'
 controllerHeap: -XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64
 
 ## @param nodePortEnabled

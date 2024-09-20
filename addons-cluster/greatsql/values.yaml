@@ -1,6 +1,6 @@
 version: greatsql-8.0.32
 
-mode: standalone
+topology: standalone
 
 ## @param replicas specify cluster replicas
 ##

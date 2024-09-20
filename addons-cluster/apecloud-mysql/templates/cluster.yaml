@@ -6,7 +6,7 @@ metadata:
   labels: 
     {{ include "kblib.clusterLabels" . | nindent 4 }}
     auditLogEnabled: "{{ .Values.auditLogEnabled }}"
-  {{- if and (eq .Values.mode "raftGroup") .Values.proxyEnabled }}
+  {{- if and (eq .Values.topology "raftGroup") .Values.proxyEnabled }}
   annotations:
     kubeblocks.io/extra-env: '{"KB_PROXY_ENABLED":"on","ETCDCTL_API": "{{ .Values.etcd.etcdctlApi}}"}'
   {{- end }}
@@ -18,7 +18,7 @@ spec:
   componentSpecs:
     - name: mysql
       {{- include "kblib.componentMonitor" . | indent 6 }}
-      {{- if and (eq .Values.mode "raftGroup") .Values.proxyEnabled (not .Values.localEtcdEnabled) }}
+      {{- if and (eq .Values.topology "raftGroup") .Values.proxyEnabled (not .Values.localEtcdEnabled) }}
       serviceRefs:
         {{ include "apecloud-mysql-cluster.serviceRef" . | indent 8 }}
       {{- end }}
@@ -28,7 +28,7 @@ spec:
         - error
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
-      {{- if and (eq .Values.mode "raftGroup") .Values.proxyEnabled }}
+      {{- if and (eq .Values.topology "raftGroup") .Values.proxyEnabled }}
       {{- include "apecloud-mysql-cluster.proxyComponents" . | indent 4 }}
         {{- if .Values.localEtcdEnabled }}
       {{- include "apecloud-mysql-cluster.etcdComponents" . | indent 4 }}

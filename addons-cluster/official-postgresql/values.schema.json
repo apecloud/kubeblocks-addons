@@ -8,9 +8,9 @@
       "type": "string",
       "default": "official-postgresql-14.7"
     },
-    "mode": {
-      "title": "Mode",
-      "description": "Cluster topology mode.",
+    "topology": {
+      "title": "Topology",
+      "description": "Cluster topology.",
       "type": "string",
       "default": "standalone",
       "enum": [
@@ -20,7 +20,7 @@
     },
     "replicas": {
       "title": "Replicas",
-      "description": "The number of replicas, for standalone mode, the replicas is 1, for replication mode, the default replicas is 2.",
+      "description": "The number of replicas, for standalone topology, the replicas is 1, for replication mode, the default replicas is 2.",
       "type": "integer",
       "default": 1,
       "minimum": 1,

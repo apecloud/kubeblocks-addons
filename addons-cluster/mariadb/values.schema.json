@@ -8,9 +8,9 @@
       "type": "string",
       "default": "mariadb-10.6.15"
     },
-    "mode": {
-      "title": "Mode",
-      "description": "Cluster topology mode.",
+    "topology": {
+      "title": "Topology",
+      "description": "Cluster topology topology.",
       "type": "string",
       "default": "standalone",
       "enum": [
@@ -19,7 +19,7 @@
     },
     "replicas": {
       "title": "Replicas",
-      "description": "The number of replicas, for standalone mode, the replicas is 1.",
+      "description": "The number of replicas, for standalone topology, the replicas is 1.",
       "type": "integer",
       "default": 1,
       "minimum": 1,

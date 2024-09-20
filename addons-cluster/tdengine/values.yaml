@@ -6,9 +6,9 @@
 ##
 version: tdengine-3.0.5.0
 
-## @param mode TDengine cluster topology mode: standalone(=1) or raftGroup(=3)
+## @param topology TDengine cluster topology: standalone(=1) or raftGroup(=3)
 ##
-mode: raftGroup
+topology: raftGroup
 
 ## @param replicas specify cluster replicas
 ##

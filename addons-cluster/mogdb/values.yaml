@@ -1,4 +1,4 @@
-# Default values for OpenGauss standalone Mode
+# Default values for OpenGauss standalone topology
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
@@ -6,9 +6,9 @@
 ##
 version: 5.0.5
 
-## @param mode postgresql cluster topology mode, standalone, replication
+## @param topology postgresql cluster topology, standalone, replication
 ##
-mode: replication
+topology: replication
 
 ## @param replicas specify cluster replicas
 ##

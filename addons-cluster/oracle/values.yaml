@@ -1,4 +1,4 @@
-# Default values for OpenGauss standalone Mode
+# Default values for OpenGauss standalone topology
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
@@ -6,9 +6,9 @@
 ##
 version: oracle-19.3.0-ee
 
-## @param mode postgresql cluster topology mode, standalone, replication
+## @param topology postgresql cluster topology, standalone, replication
 ##
-mode: standalone
+topology: standalone
 
 ## @param replicas specify cluster replicas
 ##

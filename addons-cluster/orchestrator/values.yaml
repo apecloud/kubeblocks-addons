@@ -26,8 +26,8 @@ requests:
 ##
 storage: 20
 
-## @param mode to deploy orchestrator, choose from {shareend, raft}.
-mode: raft
+## @param topology to deploy orchestrator, choose from {shareend, raft}.
+topology: raft
 
 ## @param secret the username and password for orchestrator
 secret:

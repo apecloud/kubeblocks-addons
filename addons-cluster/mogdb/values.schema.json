@@ -6,7 +6,7 @@
       "type": "string",
       "default": "5.0.5"
     },
-    "mode": {
+    "topology": {
       "type": "string",
       "default": "standalone",
       "enum": [

@@ -8,9 +8,9 @@
       "type": "string",
       "default": "redis-7.0.6"
     },
-    "mode": {
-      "title": "Mode",
-      "description": "Cluster topology mode.",
+    "topology": {
+      "title": "Topology",
+      "description": "Cluster topology topology.",
       "type": "string",
       "default": "replication",
       "enum": [
@@ -22,7 +22,7 @@
     },
     "replicas": {
       "title": "Replicas",
-      "description": "The number of replicas, for standalone mode, the replicas is 1, for replication mode, the default replicas is 2.",
+      "description": "The number of replicas, for standalone topology, the replicas is 1, for replication topology, the default replicas is 2.",
       "type": "integer",
       "default": 1,
       "minimum": 1,
@@ -154,7 +154,7 @@
       }
     },
     "redisCluster":{
-      "title": "The official redis cluster mode",
+      "title": "The official redis cluster topology",
       "type": "object",
       "properties": {
         "shardCount": {

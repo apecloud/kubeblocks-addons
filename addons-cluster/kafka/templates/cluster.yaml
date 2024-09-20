@@ -11,7 +11,7 @@ spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
   topology: 
-    {{- if eq "combined" $.Values.mode }}
+    {{- if eq "combined" $.Values.topology }}
       {{- if .Values.monitorEnable }}
     combined_monitor
       {{- else }}
@@ -25,7 +25,7 @@ spec:
       {{- end }}
     {{- end }}
   componentSpecs:
-    {{- if eq "combined" $.Values.mode }}
+    {{- if eq "combined" $.Values.topology }}
     - name: kafka-combine
       {{- if .Values.useLegacyCompDef }}
       componentDef: kafka-server

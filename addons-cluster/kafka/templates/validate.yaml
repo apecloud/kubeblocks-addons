@@ -21,8 +21,8 @@
   {{- end }}
 {{- end }}
 
-{{- if and ( ne .Values.mode "combined" ) ( ne .Values.mode "separated" ) }}
-  {{ fail "'mode' value should either 'combined' or 'separated'." }}
+{{- if and ( ne .Values.topology "combined" ) ( ne .Values.topology "separated" ) }}
+  {{ fail "'topology' value should either 'combined' or 'separated'." }}
 {{- end }}
 
 {{/*

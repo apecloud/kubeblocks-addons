@@ -6,9 +6,9 @@
 ##
 version: 3.13.2
 
-## @param mode cluster topology mode, singlenode or clustermode
+## @param topology cluster topology, singlenode or clustermode
 ##
-mode: singlenode
+topology: singlenode
 
 ## @param cpu
 ##

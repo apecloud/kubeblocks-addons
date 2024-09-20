@@ -6,7 +6,7 @@
       "type": "string",
       "default": "orioledb-beta1"
     },
-    "mode": {
+    "topology": {
       "type": "string",
       "default": "standalone",
       "enum": [

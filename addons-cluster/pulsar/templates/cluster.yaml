@@ -15,10 +15,10 @@ metadata:
   {{- end }}
 spec:
   terminationPolicy: {{ $.Values.extra.terminationPolicy }}
-  {{- $topologyEnable :=  eq .Values.mode "" | default false }}
+  {{- $topologyEnable :=  eq .Values.topology "" | default false }}
   {{- if $topologyEnable}}
   clusterDefinitionRef: pulsar
-  topology: {{ .Values.mode }}
+  topology: {{ .Values.topology }}
   {{- end }}
   affinity:
     {{- with $.Values.topologyKeys }}
@@ -75,7 +75,7 @@ spec:
     {{- end }}
     {{- end }}
   componentSpecs:
-  {{- if or (eq .Values.mode "pulsar-enhanced-cluster") (and (not $topologyEnable) .Values.proxy.enabled) }}
+  {{- if or (eq .Values.topology "pulsar-enhanced-cluster") (and (not $topologyEnable) .Values.proxy.enabled) }}
     - name: proxy
     {{- if not  $topologyEnable }}
       componentDef: pulsar-proxy
@@ -97,7 +97,7 @@ spec:
       {{- end }}
       {{- end }}
     {{- end }}
-  {{- if or (eq .Values.mode "pulsar-enhanced-cluster") ( and (not $topologyEnable) .Values.bookiesRecovery.enabled) }}
+  {{- if or (eq .Values.topology "pulsar-enhanced-cluster") ( and (not $topologyEnable) .Values.bookiesRecovery.enabled) }}
     - name: bookies-recovery
     {{- if not $topologyEnable }}
       componentDef: pulsar-bkrecovery

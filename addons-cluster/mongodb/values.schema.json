@@ -16,9 +16,9 @@
         "4.0.28"
       ]
     },
-    "mode": {
-      "title": "Mode",
-      "description": "Cluster topology mode.",
+    "topology": {
+      "title": "Topology",
+      "description": "Cluster topology.",
       "type": "string",
       "default": "standalone",
       "enum": [
@@ -28,7 +28,7 @@
     },
     "replicas": {
       "title": "Replicas",
-      "description": "The number of replicas, for standalone mode, the replicas is 1, for replicaset mode, the default replicas is 3.",
+      "description": "The number of replicas, for standalone topology, the replicas is 1, for replicaset topology, the default replicas is 3.",
       "type": "integer",
       "default": 1,
       "minimum": 1,

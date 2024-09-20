@@ -1,4 +1,4 @@
-{{- if eq .Values.mode "standalone" }}
+{{- if eq .Values.topology "standalone" }}
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: Cluster
 metadata:

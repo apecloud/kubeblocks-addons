@@ -2,9 +2,9 @@
 ##
 version: "8.8.2"
 
-## @param mode ElasticSearch cluster topology mode, single-node or multi-node
+## @param topology ElasticSearch cluster topology, single-node or multi-node
 ##
-mode: multi-node
+topology: multi-node
 
 ## @param replicas specify cluster replicas
 ##

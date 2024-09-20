@@ -1,10 +1,10 @@
 {{/*
 Define replica count.
-standalone mode: 1
-raftGroup mode: 3 or more
+standalone topology: 1
+raftGroup topology: 3 or more
 */}}
 {{- define "tdengine-cluster.replicaCount" -}}
-{{- if eq .Values.mode "standalone" }}
+{{- if eq .Values.topology "standalone" }}
 replicas: 1
 {{- else }}
 replicas: {{ max .Values.replicas 3 }}

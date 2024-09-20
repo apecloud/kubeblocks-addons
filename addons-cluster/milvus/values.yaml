@@ -5,11 +5,11 @@
 nameOverride: ""
 fullnameOverride: ""
 
-## Mode of the cluster, optional: standalone, cluster
-mode:
+## topology of the cluster, optional: standalone, cluster
+topology:
   standalone
 
-##### parameters for standalone mode
+##### parameters for standalone topology
 replicas: 1
 
 persistence:
@@ -18,7 +18,7 @@ persistence:
     storageClassName:
     size: 10Gi
 
-##### parameters for cluster mode
+##### parameters for cluster topology
 proxy:
   enabled: true
   replicas: 1

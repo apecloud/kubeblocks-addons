@@ -10,7 +10,7 @@
         },
         "obClusters": {
             "title": "ObClusters",
-            "description": "OceanBase Clusters, for standalone mode, set to 1, for primary-secondary mode, set to 2.",
+            "description": "OceanBase Clusters, for standalone topology, set to 1, for primary-secondary topology, set to 2.",
             "type": [
                 "integer"
             ],

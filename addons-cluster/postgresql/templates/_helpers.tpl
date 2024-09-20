@@ -1,12 +1,12 @@
 {{/*
 Define replica count.
-standalone mode: 1
-replication mode: 2
+standalone topology: 1
+replication topology: 2
 */}}
 {{- define "postgresql-cluster.replicaCount" }}
-{{- if eq .Values.mode "standalone" }}
+{{- if eq .Values.topology "standalone" }}
 replicas: 1
-{{- else if eq .Values.mode "replication" }}
+{{- else if eq .Values.topology "replication" }}
 replicas: {{ max .Values.replicas 2 }}
 {{- end }}
 {{- end }}
@@ -16,7 +16,7 @@ Define postgresql ComponentSpec with ComponentDefinition.
 */}}
 {{- define "postgresql-cluster.componentSpec" }}
   clusterDefinitionRef: postgresql
-  topology: {{ .Values.mode }}
+  topology: {{ .Values.topology }}
   componentSpecs:
     - name: {{ include "postgresql-cluster.component-name" . }}
       labels:

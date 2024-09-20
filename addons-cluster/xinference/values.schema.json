@@ -10,7 +10,7 @@
     },
     "replicas": {
       "title": "Replicas",
-      "description": "The number of replicas, for standalone mode, the replicas is 1, for replication mode, the default replicas is 2.",
+      "description": "The number of replicas, for standalone topology, the replicas is 1, for replication topology, the default replicas is 2.",
       "type": "integer",
       "default": 1,
       "minimum": 1,

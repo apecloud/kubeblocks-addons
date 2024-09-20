@@ -8,9 +8,9 @@
       "type": "string",
       "default": "tdengine-3.0.5.0"
     },
-    "mode": {
-      "title": "Mode",
-      "description": "Cluster topology mode.",
+    "topology": {
+      "title": "Topology",
+      "description": "Cluster topology.",
       "type": "string",
       "default": "raftGroup",
       "enum": [

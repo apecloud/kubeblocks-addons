@@ -8,9 +8,9 @@
       "type": "string",
       "default": "8.8.2"
     },
-    "mode": {
-      "title": "Mode",
-      "description": "Mode for ElasticSearch",
+    "topology": {
+      "title": "Topology",
+      "description": "Topology for ElasticSearch",
       "type": "string",
       "default": "multi-node",
       "enum": [
@@ -20,7 +20,7 @@
     },
     "replicas": {
       "title": "Replicas",
-      "description": "The number of replicas, for single-node mode, the replicas is 1, for multi-node mode, the default replicas is 3.",
+      "description": "The number of replicas, for single-node topology, the replicas is 1, for multi-node topology, the default replicas is 3.",
       "type": "integer",
       "default": 1,
       "minimum": 1,

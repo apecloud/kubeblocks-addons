@@ -1,4 +1,4 @@
-{{- if eq .Values.mode "single-node" }}
+{{- if eq .Values.topology "single-node" }}
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: Cluster
 metadata:
@@ -6,7 +6,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
   annotations:
-    kubeblocks.io/extra-env: '{"mode":"{{ .Values.mode }}"}'
+    kubeblocks.io/extra-env: '{"mode":"{{ .Values.topology }}"}'
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}

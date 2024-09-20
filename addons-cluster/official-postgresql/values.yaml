@@ -6,9 +6,9 @@
 ##
 version: official-postgresql-14.7
 
-## @param mode postgresql cluster topology mode, standalone, replication
+## @param topology postgresql cluster topology, standalone, replication
 ##
-mode: standalone
+topology: standalone
 
 ## @param replicas specify cluster replicas
 ##

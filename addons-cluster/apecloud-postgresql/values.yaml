@@ -6,9 +6,9 @@
 ##
 version: ac-postgresql-14.10
 
-## @param mode postgresql cluster topology mode, standalone, raftGroup
+## @param topology postgresql cluster topology, standalone, raftGroup
 ##
-mode: standalone
+topology: standalone
 
 ## @param replicas specify cluster replicas
 ##

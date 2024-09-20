@@ -65,7 +65,7 @@ Create the name of the service account to use
 Define kafka broker component name
 */}}
 {{- define "kafka-cluster.brokerComponent" -}}
-{{- if eq .Values.mode "combined" }}
+{{- if eq .Values.topology "combined" }}
 {{- printf "kafka-combine" -}}
 {{ else }}
 {{- printf "kafka-broker" -}}

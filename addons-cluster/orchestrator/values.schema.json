@@ -8,15 +8,23 @@
       "type": "string",
       "default": "ac-mysql-8.0.30"
     },
-    "mode": {
-      "title": "Mode",
-      "description": "Orchestrator Deploy mode.",
+    "topology": {
+      "title": "Topology",
+      "description": "Orchestrator Deploy topology.",
       "type": "string",
       "default": "raft",
       "enum": [
         "raft",
         "shareend"
       ]
+    },
+    "replicas": {
+      "title": "Replicas",
+      "description": "The number of replicas。",
+      "type": "integer",
+      "default": 3,
+      "minimum": 1,
+      "maximum": 5
     },
     "cpu": {
       "title": "CPU",

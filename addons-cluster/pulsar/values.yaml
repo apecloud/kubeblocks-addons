@@ -10,11 +10,11 @@ commonAnnotations:
 image:
   registry: docker.io
 
-## @param mode pulsar cluster topology mode: pulsar-basic-cluster and pulsar-enhanced-cluster
+## @param topology pulsar cluster topology: pulsar-basic-cluster and pulsar-enhanced-cluster
 ## pulsar-basic-cluster: contains broker, zookeeper and bookkeeper
 ## pulsar-enhanced-cluster: contains broker, zookeeper, bookkeeper, proxy and bkrecovery
 ## If you want to use any other topologies, such as adding only a proxy to the pulsar-basic-cluster, this parameter needs to be set to "".
-mode: pulsar-enhanced-cluster
+topology: pulsar-enhanced-cluster
 
 ## Monitoring configurations
 monitor:

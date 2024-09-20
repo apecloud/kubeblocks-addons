@@ -6,9 +6,9 @@
 ##
 version: orioledb-beta1
 
-## @param mode OrioleDB cluster topology mode, standalone, replication
+## @param topology OrioleDB cluster topology, standalone, replication
 ##
-mode: standalone
+topology: standalone
 
 ## @param replicas specify cluster replicas
 ##

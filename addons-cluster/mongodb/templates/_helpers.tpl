@@ -1,13 +1,13 @@
 {{/*
 Define replica count.
-standalone mode: 1
-replicaset mode: 3
+standalone topology: 1
+replicaset topology: 3
 */}}
 
 {{- define "mongodb-cluster.replicaCount" }}
-{{- if eq .Values.mode "standalone" }}
+{{- if eq .Values.topology "standalone" }}
 replicas: 1
-{{- else if eq .Values.mode "replicaset" }}
+{{- else if eq .Values.topology "replicaset" }}
 replicas: {{ max .Values.replicas 3 }}
 {{- end }}
 {{- end }}
