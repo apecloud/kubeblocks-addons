@@ -24,6 +24,33 @@ retry_times=3
 check_ready_times=30
 retry_delay_second=2
 
+# usage: sleep_random_second <max_time> <min_time>
+sleep_random_second() {
+  local max_time="$1"
+  local min_time="$2"
+  local random_time=$((RANDOM % (max_time - min_time + 1) + min_time))
+  echo "Sleeping for $random_time seconds"
+  sleep "$random_time"
+}
+
+
+## the component names of all shard
+## the value format of ALL_SHARDS_COMPONENT_SHORT_NAMES is like "shard-98x:shard-98x,shard-cq7:shard-cq7,shard-hy7:shard-hy7"
+## return the component names of all shards with the format "shard-98x,shard-cq7,shard-hy7"
+parse_all_shards_components_vars() {
+  local all_shards_components
+  if is_empty "$ALL_SHARDS_COMPONENT_SHORT_NAMES"; then
+    echo "Error: Required environment variable ALL_SHARDS_COMPONENT_SHORT_NAMES is not set."
+    exit 1
+  fi
+  all_shards_component_shortname_pairs=$(split "$ALL_SHARDS_COMPONENT_SHORT_NAMES" ",")
+  for pair in $all_shards_component_shortname_pairs; do
+    shard_name=$(split "$pair" ":")
+    all_shards_components="$all_shards_components,$shard_name"
+  done
+  echo "$all_shards_components"
+}
+
 shutdown_redis_server() {
   local service_port="$1"
   unset_xtrace_when_ut_mode_false
@@ -86,6 +113,25 @@ parse_advertised_port() {
   fi
 }
 
+get_cluster_info() {
+  local cluster_node="$1"
+  local cluster_node_port="$2"
+  unset_xtrace_when_ut_mode_false
+  local command="redis-cli -h $cluster_node -p $cluster_node_port cluster info"
+  if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
+    command="redis-cli -h $cluster_node -p $cluster_node_port -a $REDIS_DEFAULT_PASSWORD cluster info"
+  fi
+  set_xtrace_when_ut_mode_false
+  cluster_info=$($command)
+  status=$?
+  if [ $status -ne 0 ]; then
+    echo "Failed to execute the get cluster info command" >&2
+    return 1
+  fi
+  echo "$cluster_info"
+  return 0
+}
+
 get_cluster_nodes_info() {
   local cluster_node="$1"
   local cluster_node_port="$2"
@@ -98,7 +144,7 @@ get_cluster_nodes_info() {
   cluster_nodes_info=$($command)
   status=$?
   if [ $status -ne 0 ]; then
-    echo "Failed to execute the get cluster id command: $command" >&2
+    echo "Failed to execute the get cluster nodes info command" >&2
     return 1
   fi
   echo "$cluster_nodes_info"
@@ -111,7 +157,7 @@ get_cluster_id() {
   cluster_nodes_info=$(get_cluster_nodes_info "$cluster_node" "$cluster_node_port")
   status=$?
   if [ $status -ne 0 ]; then
-    echo "Failed to get cluster nodes info in get_cluster_id: $command" >&2
+    echo "Failed to get cluster nodes info in get_cluster_id" >&2
     return 1
   fi
   cluster_id=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $1}')
@@ -125,7 +171,7 @@ get_cluster_announce_ip() {
   cluster_nodes_info=$(get_cluster_nodes_info "$cluster_node" "$cluster_node_port")
   status=$?
   if [ $status -ne 0 ]; then
-    echo "Failed to get cluster nodes info in get_cluster_announce_ip: $command" >&2
+    echo "Failed to get cluster nodes info in get_cluster_announce_ip" >&2
     return 1
   fi
   cluster_announce_ip=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $2}' | awk -F ':' '{print $1}')
@@ -140,7 +186,7 @@ check_node_in_cluster() {
   cluster_nodes_info=$(get_cluster_nodes_info "$cluster_node" "$cluster_node_port")
   status=$?
   if [ $status -ne 0 ]; then
-    echo "Failed to get cluster nodes info in check_node_in_cluster: $command" >&2
+    echo "Failed to get cluster nodes info in check_node_in_cluster" >&2
     return 1
   fi
   # if the cluster_nodes_info contains multiple lines and the node_name is in the cluster_nodes_info, return true
@@ -216,4 +262,50 @@ check_redis_server_ready_with_retry() {
     return 1
   fi
   return 0
+}
+
+# check redis cluster all slots are covered
+check_slots_covered() {
+  # cluster_node_endpoint_wth_port is the target node endpoint with port, for example 172.0.0.1:6379
+  local node_endpoint_wth_port="$1"
+  local cluster_service_port="$2"
+  unset_xtrace_when_ut_mode_false
+  if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+    check=$(redis-cli --cluster check "$node_endpoint_wth_port" -p "$cluster_service_port")
+  else
+    check=$(redis-cli --cluster check "$node_endpoint_wth_port" -p "$cluster_service_port" -a "$REDIS_DEFAULT_PASSWORD" )
+  fi
+  set_xtrace_when_ut_mode_false
+  if contains "$check" "All 16384 slots covered"; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+# check if the cluster has been initialized
+check_cluster_initialized() {
+  local cluster_node_list="$1"
+  # all cluster node share the same service port
+  local cluster_node_service_port="$2"
+  if is_empty "$cluster_node_list" || is_empty "$cluster_node_service_port"; then
+    echo "Error: Required environment variable cluster_node_list or cluster_node_service_port  is not set."
+    exit 1
+  fi
+
+  for pod_ip in $(echo "$cluster_node_list" | tr ',' ' '); do
+    cluster_info=$(get_cluster_info "$pod_ip" "$cluster_node_service_port")
+    status=$?
+    if [ $status -ne 0 ]; then
+      echo "Failed to get cluster info in check_cluster_initialized" >&2
+      exit 1
+    fi
+    cluster_state=$(echo "$cluster_info" | grep -oP '(?<=cluster_state:)[^\s]+')
+    if is_empty "$cluster_state" || equals "$cluster_state" "ok"; then
+      echo "Redis Cluster already initialized"
+      return 0
+    fi
+  done
+  echo "Redis Cluster not initialized" >&2
+  return 1
 }
