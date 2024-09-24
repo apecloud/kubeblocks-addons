@@ -292,7 +292,7 @@ sharding:
 
 ## @param tlsEnable Enable TLS for clickhouse cluster
 tls:
-  enabled: true
+  enabled: false
   # KubeBlocks or UserProvided
   issuer: UserProvided
   # if issuer is UserProvided, will automatically generate tls file based on the following values
