@@ -67,8 +67,6 @@ TLS file
 {{- define "clickhouse-cluster.tls" -}}
 tls: {{ $.Values.tls.enabled }}
 {{- if $.Values.tls.enabled }}
-{{- $ca := genCA "KubeBlocks" 36500 }}
-{{- $cert := genSignedCert .Values.tls.hostname (list "127.0.0.1" "::1") (list "localhost" .Values.tls.hostname) 36500 $ca }}
 issuer:
   name: {{ $.Values.tls.issuer }}
   {{- if eq $.Values.tls.issuer "UserProvided" }}

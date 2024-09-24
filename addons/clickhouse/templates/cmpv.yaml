@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentVersion
 metadata:
-  name: clickhouse-cluster
+  name: clickhouse
   labels:
       {{- include "clickhouse.labels" . | nindent 4 }}
       {{- if .Values.commonLabels }}

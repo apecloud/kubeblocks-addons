@@ -295,6 +295,5 @@ tls:
   enabled: false
   # KubeBlocks or UserProvided
   issuer: UserProvided
-  # if issuer is UserProvided, will automatically generate tls file based on the following values
-  hostname: clickhouse.local
+  # if issuer is UserProvided, will automatically generate tls file by cluster-tls-secrets.yaml
   secretName: clickhouse-cluster-tls
