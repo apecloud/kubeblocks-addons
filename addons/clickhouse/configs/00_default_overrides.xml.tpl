@@ -42,31 +42,16 @@
       </shard>
     </default>
   </remote_servers>
-  {{- $usechk := true -}}
-  {{- range $.cluster.spec.componentSpecs }}
-  {{- $compIter := . }}
-  {{- if eq $compIter.componentDef "zookeeper" }}
-  {{- $usechk = false }}
-  {{- end }}
-  {{- end }}
   <!-- Zookeeper configuration -->
   <zookeeper>
     {{- range $_, $host := splitList "," .CH_KEEPER_POD_FQDN_LIST }}
     <node>
       <host>{{ $host }}</host>
       {{- if $.component.tlsConfig }}
-      {{- if eq $usechk true }}
       <port replace="replace" from_env="CLICKHOUSE_KEEPER_TCP_TLS_PORT"/>
-      {{- else }}
-      <port replace="replace" from_env="ZOOKEEPER_TCP_TLS_PORT"/>
-      {{- end }}
       <secure>1</secure>
       {{- else }}
-      {{- if eq $usechk true }}
       <port replace="replace" from_env="CLICKHOUSE_KEEPER_TCP_PORT"/>
-      {{- else }}
-      <port replace="replace" from_env="ZOOKEEPER_TCP_PORT"/>
-      {{- end }}
       {{- end }}
     </node>
     {{- end }}
@@ -79,6 +64,17 @@
     <events>true</events>
     <asynchronous_metrics>true</asynchronous_metrics>
   </prometheus>
+  <protocols>
+    <prometheus_protocol>
+      <type>prometheus</type>
+      <description>prometheus protocol</description>
+    </prometheus_protocol>
+    <prometheus_secure>
+      <type>tls</type>
+      <impl>prometheus_protocol</impl>
+      <description>prometheus over https</description>
+    </prometheus_secure>
+  </protocols>
   <!-- tls configuration -->
   {{- if $.component.tlsConfig -}}
   {{- $CA_FILE := getCAFile -}}
@@ -122,5 +118,3 @@
   </grpc>
   {{- end }}
 </clickhouse>
-<!-- clickhouse-client - -secure - -password $CLICKHOUSE_ADMIN_PASSWORD -->
-<!-- openssl s_client -connect clickhouse-cluster-ch-keeper-0.clickhouse-cluster-ch-keeper-headless.default.svc.cluster.local:9281 -CAfile /etc/pki/tls/ca.crt -->

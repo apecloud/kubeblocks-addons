@@ -15,9 +15,4 @@
   shardingSpecs:
   {{- include "clickhouse-sharding-component" . | nindent 4 }}
   {{- end }}
-  tls: {{ $.Values.tlsEnable }}
-  {{- if $.Values.tlsEnable }}
-  issuer:
-    name: KubeBlocks
-  {{- end }}
 {{- end }}

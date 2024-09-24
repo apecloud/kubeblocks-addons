@@ -1,6 +1,5 @@
 {{- $clusterName := $.cluster.metadata.name }}
 {{- $namespace := $.cluster.metadata.namespace }}
-{{- $useZookeeper := true -}}
 <clickhouse>
   <listen_host>0.0.0.0</listen_host>
   {{- if $.component.tlsConfig }}
@@ -16,25 +15,11 @@
   <interserver_http_port replace="replace" from_env="CLICKHOUSE_INTERSERVER_HTTP_PORT"/>
   {{- end }}
   <keeper_server>
-      {{- range $.cluster.spec.componentSpecs }}
-      {{- $compIter := . }}
-      {{- if (eq $compIter.componentDef "clickhouse-keeper") }}
-      {{- $useZookeeper = false }}
-      {{- end }}
-      {{- end }}
       {{- if $.component.tlsConfig }}
-      {{- if eq $useZookeeper false }}
       <tcp_port_secure replace="replace" from_env="CLICKHOUSE_KEEPER_TCP_TLS_PORT"/>
-      {{- else }}
-      <tcp_port replace="replace" from_env="ZOOKEEPER_TCP_TLS_PORT"/>
-      {{- end }}
       <secure>1</secure>
       {{- else }}
-      {{- if eq $useZookeeper false }}
       <tcp_port_secure replace="replace" from_env="CLICKHOUSE_KEEPER_TCP_PORT"/>
-      {{- else }}
-      <tcp_port replace="replace" from_env="ZOOKEEPER_TCP_PORT"/>
-      {{- end }}
       {{- end }}
       <server_id from_env="CH_KEEPER_ID"/>
       <log_storage_path>/var/lib/clickhouse/coordination/log</log_storage_path>
@@ -69,6 +54,17 @@
     <events>true</events>
     <asynchronous_metrics>true</asynchronous_metrics>
   </prometheus>
+  <protocols>
+    <prometheus_protocol>
+      <type>prometheus</type>
+      <description>prometheus protocol</description>
+    </prometheus_protocol>
+    <prometheus_secure>
+      <type>tls</type>
+      <impl>prometheus_protocol</impl>
+      <description>prometheus over https</description>
+    </prometheus_secure>
+  </protocols>
   <!-- tls configuration -->
   {{- if $.component.tlsConfig -}}
   {{- $CA_FILE := getCAFile -}}
@@ -78,7 +74,6 @@
     <server>
       <certificateFile>{{$CERT_FILE}}</certificateFile>
       <privateKeyFile>{{$KEY_FILE}}</privateKeyFile>
-      <!--TODO add this speed up file <dhParamsFile>/etc/clickhouse-server/dhparam.pem</dhParamsFile> -->
       <verificationMode>relaxed</verificationMode>
       <caConfig>{{$CA_FILE}}</caConfig>
       <cacheSessions>true</cacheSessions>
