@@ -66,17 +66,23 @@ Create the name of the service account to use
 Create extra env
 */}}
 {{- define "oceanbase-cluster.extra-envs" }}
-{
-{{- if .Values.tenant }}
-"TENANT_NAME": "{{ .Values.tenant.name }}",
-"TENANT_CPU": "{{ min (sub .Values.cpu 1) .Values.tenant.max_cpu }}",
-"TENANT_MEMORY": "{{ print (min (sub .Values.memory  2) .Values.tenant.memory_size) "G" }}",
-"TENANT_DISK": "{{ print (.Values.tenant.log_disk_size | default 5) "G" }}",
-{{- end }}
-"ZONE_COUNT": "{{ .Values.zoneCount | default "1" }}",
-"OB_CLUSTERS_COUNT": "{{ .Values.obClusters | default "1" }}",
-"OB_DEBUG": "{{ .Values.debug | default "false" }}"
-}
+env:
+  {{- if .Values.tenant }}
+  - name: TENANT_NAME
+    value: "{{ .Values.tenant.name }}"
+  - name: TENANT_CPU
+    value: "{{ min (sub .Values.cpu 1) .Values.tenant.max_cpu }}"
+  - name: TENANT_MEMORY
+    value: "{{ print (min (sub .Values.memory  2) .Values.tenant.memory_size) "G" }}"
+  - name: TENANT_DISK
+    value: "{{ print (.Values.tenant.log_disk_size | default 5) "G" }}"
+  {{- end }}
+  - name: ZONE_COUNT
+    value: "{{ .Values.zoneCount | default "1" }}"
+  - name: OB_CLUSTERS_COUNT
+    value: "{{ .Values.obClusters | default "1" }}"
+  - name: OB_DEBUG
+    value: "{{ .Values.debug | default "false" }}"
 {{- end }}
 
 
@@ -92,10 +98,6 @@ Create extra env
   {{- end }}
 {{- end }}
 
-
-{{- define "oceanbase-cluster.annotations.extra-envs" -}}
- "kubeblocks.io/extra-env": {{ include "oceanbase-cluster.extra-envs" . | nospace  | quote }}
-{{- end -}}
 
 {{/*
 Define oceanbase cluster annotation pod-ordinal-svc feature gate.
