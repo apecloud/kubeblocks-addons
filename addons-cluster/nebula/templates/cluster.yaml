@@ -1,11 +1,11 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: {{ include "nebula-cluster.name" . }}
   labels:
     {{ include "nebula-cluster.labels" . | indent 4 }}
 spec:
-  clusterDefinitionRef: nebula
+  clusterDef: nebula
   terminationPolicy: {{ .Values.nebula.terminationPolicy }}
   componentSpecs:
     - name: console

@@ -1,0 +1,24 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: redis-sentinel
+  labels:
+    {{- include "redis.labels" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "redisSentinel7.cmpdRegexpPattern" . }}
+      releases:
+        - 7.2.4
+        - 7.0.6
+  releases:
+    - name: 7.2.4
+      changes:
+      serviceVersion: 7.2.4
+      images:
+        redis-sentinel: {{ include "redisSentinel.repository" . }}:7.2.0-v10
+    - name: 7.0.6
+      changes:
+      serviceVersion: 7.0.6
+      images:
+        redis-sentinel: {{ include "redisSentinel.repository" . }}:7.0.6-RC4

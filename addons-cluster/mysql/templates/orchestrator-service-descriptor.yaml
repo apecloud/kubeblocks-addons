@@ -1,6 +1,6 @@
 {{- if .Values.orchestrator.enable }}
 {{- if eq .Values.orchestrator.clusterServiceSelector.cluster ""}}
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1
 kind: ServiceDescriptor
 metadata:
   name: {{ include "kblib.clusterName" . }}-orc-descriptor

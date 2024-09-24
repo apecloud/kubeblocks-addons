@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: postgresql15-custom-metrics
+  name: {{ include "postgresql15.metricsConfiguration" . }}
   labels:
       {{- include "postgresql.labels" . | nindent 4 }}
 data:

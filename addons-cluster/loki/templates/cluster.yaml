@@ -1,11 +1,11 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: {{ include "clustername" . }}
   labels: 
     {{- include "loki-cluster.labels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: loki
+  clusterDef: loki
   terminationPolicy: {{ .Values.terminationPolicy }}
   topology: loki-cluster
   componentSpecs:

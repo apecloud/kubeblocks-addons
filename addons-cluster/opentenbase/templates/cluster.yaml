@@ -1,11 +1,11 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: {{ include "opentenbase.name" . }}
   annotations:
     kubeblocks.io/extra-env: {{ include "opentenbase.extraEnv" . | squote }}
 spec:
-  clusterDefinitionRef: opentenbase
+  clusterDef: opentenbase
   terminationPolicy: {{ .Values.terminationPolicy }}
   componentSpecs:
     - name: gtm

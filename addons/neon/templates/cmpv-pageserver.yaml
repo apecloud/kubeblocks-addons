@@ -1,0 +1,18 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: neon-pageserver
+  labels:
+    {{- include "neon.labels" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "neon-pageserver.componentDefNamePrefix" . }}
+      releases:
+        - pg14-1.0.0
+  releases:
+    - name: pg14-1.0.0  
+      changes:
+      serviceVersion: 1.0.0
+      images:
+        neon-pageserver: perconalab/neon:pg14-1.0.0

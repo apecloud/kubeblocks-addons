@@ -41,6 +41,8 @@
 
 	appendonly?: string & "yes" | "no"
 
+	"aof-timestamp-enabled"?: string & "yes" | "no"
+
 	"client-output-buffer-limit-normal-hard-limit": int | *0
 
 	"client-output-buffer-limit-normal-soft-limit": int | *0

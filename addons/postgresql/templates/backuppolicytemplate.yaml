@@ -20,7 +20,11 @@ metadata:
       }
 spec:
   backupPolicies:
-  - componentDefs: [postgresql-14, postgresql-12]
+  - componentDefs:
+      - {{ include "postgresql12.compDefName" . }}
+      - {{ include "postgresql14.compDefName" . }}
+      - {{ include "postgresql15.compDefName" . }}
+      - {{ include "postgresql16.compDefName" . }}
     target:
       role: secondary
       fallbackRole: primary
@@ -33,12 +37,18 @@ spec:
           - key: IMAGE_TAG
             valueFrom:
               componentDef:
-                - names: [postgresql-12]
+                - names:
+                    - {{ include "postgresql12.compDefName" . }}
                   mappingValue: "12.15.0-pgvector-v0.6.1"
-                - names: [postgresql-14]
+                - names:
+                    - {{ include "postgresql14.compDefName" . }}
                   mappingValue: "14.8.0-pgvector-v0.6.1"
-                - names: [postgresql-15]
+                - names:
+                    - {{ include "postgresql15.compDefName" . }}
                   mappingValue: "15.7.0"
+                - names:
+                    - {{ include "postgresql16.compDefName" . }}
+                  mappingValue: "16.4.0"
         targetVolumes:
           volumeMounts:
             - name: data

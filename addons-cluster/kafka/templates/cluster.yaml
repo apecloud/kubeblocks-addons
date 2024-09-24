@@ -1,4 +1,4 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: {{ include "kblib.clusterName" . }}
@@ -7,7 +7,7 @@ metadata:
     "kubeblocks.io/extra-env": '{"KB_KAFKA_ENABLE_SASL":"{{ $.Values.saslEnable }}","KB_KAFKA_BROKER_HEAP":"{{ $.Values.brokerHeap }}","KB_KAFKA_CONTROLLER_HEAP":"{{ $.Values.controllerHeap }}","KB_KAFKA_PUBLIC_ACCESS":"{{ $.Values.extra.publiclyAccessible }}"}'
 {{/*    {{- include "kafka-cluster.brokerAddrFeatureGate" . | nindent 4 }}*/}}
 spec:
-  clusterDefinitionRef: kafka # ref clusterdefinition.name
+  clusterDef: kafka # ref clusterdefinition.name
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
   topology: 
@@ -36,7 +36,6 @@ spec:
         name: KubeBlocks
       {{- end }}
       replicas: {{ $.Values.replicas }}
-      monitor: {{ $.Values.monitorEnable }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       services:
         - name: advertised-listener
@@ -77,7 +76,6 @@ spec:
         name: KubeBlocks
       {{- end }}
       replicas: {{ $.Values.brokerReplicas }}
-      monitor: {{ $.Values.monitorEnable }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       services:
         - name: advertised-listener
@@ -117,7 +115,6 @@ spec:
         name: KubeBlocks
       {{- end }}
       replicas: {{ $.Values.controllerReplicas }}
-      monitor: {{ $.Values.monitorEnable }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- if $.Values.storageEnable }}
@@ -138,6 +135,5 @@ spec:
       componentDef: kafka-exporter
       {{- end  }}
       replicas: {{ $.Values.monitorReplicas }}
-      monitor: true
       {{- include "kblib.componentResources" . | nindent 6 }}
     {{- end }}

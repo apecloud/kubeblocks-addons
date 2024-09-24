@@ -1,4 +1,4 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1
 kind: ComponentVersion
 metadata:
   name: tidb-pd
@@ -27,7 +27,7 @@ spec:
         - "6.5.10"
 
 ---
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1
 kind: ComponentVersion
 metadata:
   name: tidb
@@ -59,7 +59,7 @@ spec:
         - "6.5.10"
 
 ---
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1
 kind: ComponentVersion
 metadata:
   name: tikv

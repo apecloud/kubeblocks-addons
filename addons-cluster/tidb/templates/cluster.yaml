@@ -1,10 +1,10 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: {{ include "clustername" . }}
   labels: {{ include "tidb-cluster.labels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: tidb  # ref clusterdefinition.name
+  clusterDef: tidb  # ref clusterdefinition.name
   terminationPolicy: {{ $.Values.terminationPolicy }}
   topology: cluster
   affinity:

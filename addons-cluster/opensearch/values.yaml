@@ -32,9 +32,6 @@ tolerations: []
 topologyKeys:
 - kubernetes.io/hostname
 
-monitor:
-  enabled: false
-
 persistence:
   enabled: true
   data:

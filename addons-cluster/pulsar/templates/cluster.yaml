@@ -1,4 +1,4 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: {{ include "kblib.clusterName" . }}
@@ -17,7 +17,7 @@ spec:
   terminationPolicy: {{ $.Values.extra.terminationPolicy }}
   {{- $topologyEnable :=  eq .Values.mode "" | default false }}
   {{- if $topologyEnable}}
-  clusterDefinitionRef: pulsar
+  clusterDef: pulsar
   topology: {{ .Values.mode }}
   {{- end }}
   affinity:
@@ -81,7 +81,6 @@ spec:
       componentDef: pulsar-proxy
       {{- end }}
       {{ include "pulsar-zookeeper-ref" . | nindent 6 }}
-      monitor: {{ .Values.monitor.enabled | default false }}
       replicas: {{ .Values.proxy.replicaCount | default 3 }}
       {{- with  .Values.proxy.resources }}
       resources:
@@ -103,7 +102,6 @@ spec:
       componentDef: pulsar-bkrecovery
       {{- end }}
       {{ include "pulsar-zookeeper-ref" . | nindent 6 }}
-      monitor: {{ .Values.monitor.enabled | default false }}
       replicas: {{ .Values.bookiesRecovery.replicaCount | default 3 }}
     {{- with  .Values.bookiesRecovery.resources }}
       resources:
@@ -124,7 +122,6 @@ spec:
       componentDef: pulsar-broker
       {{- end }}
       {{ include "pulsar-zookeeper-ref" . | nindent 6 }}
-      monitor: {{ .Values.monitor.enabled | default false }}
       {{- if .Values.nodePortEnabled }}
       services:
         - name: advertised-listener
@@ -150,7 +147,6 @@ spec:
       componentDef: pulsar-bookkeeper
       {{- end }}
       {{ include "pulsar-zookeeper-ref" . | nindent 6 }}
-      monitor: {{ .Values.monitor.enabled | default false }}
       {{- $bookiesReplicas := .Values.bookies.replicaCount }}
       {{- if and ( eq (int $bookiesReplicas) 3 ) ( eq .Values.bookies.mode "generic" ) }}
         {{- $bookiesReplicas = 4 }}
@@ -197,7 +193,6 @@ spec:
       {{- if not  $topologyEnable }}
       componentDef: pulsar-zookeeper
       {{- end }}
-      monitor: {{ .Values.monitor.enabled | default false }}
       replicas: {{ .Values.zookeeper.replicaCount | default 3 }}
       {{- with  .Values.zookeeper.resources }}
       resources:

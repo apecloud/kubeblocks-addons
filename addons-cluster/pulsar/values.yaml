@@ -16,12 +16,6 @@ image:
 ## If you want to use any other topologies, such as adding only a proxy to the pulsar-basic-cluster, this parameter needs to be set to "".
 mode: pulsar-enhanced-cluster
 
-## Monitoring configurations
-monitor:
-  ## @param monitor.enabled if `true`, enable Cluster monitor capabilities
-  ##
-  enabled: false
-
 ## Service configurations
 ##
 service:

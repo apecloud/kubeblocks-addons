@@ -1,4 +1,4 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1
 kind: ClusterDefinition
 metadata:
   name: redis
@@ -9,14 +9,14 @@ spec:
     - name: standalone
       components:
         - name: redis
-          compDef: {{ include "redis.componentDefNamePrefix" . }}
+          compDef: {{ include "redis.cmpdRegexpPattern" . }}
       default: true
     - name: replication
       components:
         - name: redis
-          compDef: {{ include "redis.componentDefNamePrefix" . }}
+          compDef:  {{ include "redis.cmpdRegexpPattern" . }}
         - name: redis-sentinel
-          compDef: {{ include "redis-sentinel.componentDefNamePrefix" . }}
+          compDef:  {{ include "redisSentinel.cmpdRegexpPattern" . }}
       orders:
         provision:
           - redis-sentinel
@@ -30,11 +30,11 @@ spec:
     - name: replication-twemproxy
       components:
         - name: redis
-          compDef: {{ include "redis.componentDefNamePrefix" . }}
+          compDef: {{ include "redis.cmpdRegexpPattern" . }}
         - name: redis-sentinel
-          compDef: {{ include "redis-sentinel.componentDefNamePrefix" . }}
+          compDef: {{ include "redisSentinel.cmpdRegexpPattern" . }}
         - name: redis-twemproxy
-          compDef: {{ include "redis-twemproxy.componentDefNamePrefix" . }}
+          compDef: {{ include "redisTwemproxy.cmpdRegexpPattern" . }}
       orders:
         provision:
           - redis-sentinel
