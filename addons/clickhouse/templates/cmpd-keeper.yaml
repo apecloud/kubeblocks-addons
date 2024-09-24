@@ -101,12 +101,6 @@ spec:
           - name: tcp
             targetPort: tcp
             port: 9000
-          - name: tcp-mysql
-            targetPort: tcp-mysql
-            port: 9004
-          - name: tcp-postgresql
-            targetPort: tcp-postgresql
-            port: 9005
           - name: http-intersrv
             targetPort: http-intersrv
             port: 9009
@@ -154,10 +148,6 @@ spec:
       value: "8443"
     - name: CLICKHOUSE_TCP_PORT
       value: "9000"
-    - name: CLICKHOUSE_MYSQL_PORT
-      value: "9004"
-    - name: CLICKHOUSE_POSTGRESQL_PORT
-      value: "9005"
     - name: CLICKHOUSE_INTERSERVER_HTTP_PORT
       value: "9009"
     - name: CLICKHOUSE_INTERSERVER_HTTPS_PORT
@@ -174,8 +164,6 @@ spec:
       value: "9444"
     - name: CLICKHOUSE_METRICS_PORT
       value: "8001"
-    - name: SERVICE_PORT
-      value: "$(CLICKHOUSE_METRICS_PORT)"
     - name: KEEPER_REPLICA_ID
       value: "$(KB_POD_NAME)"
     - name: CLICKHOUSE_ADMIN_PASSWORD

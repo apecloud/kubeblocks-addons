@@ -19,7 +19,7 @@
       <tcp_port_secure replace="replace" from_env="CLICKHOUSE_KEEPER_TCP_TLS_PORT"/>
       <secure>1</secure>
       {{- else }}
-      <tcp_port_secure replace="replace" from_env="CLICKHOUSE_KEEPER_TCP_PORT"/>
+      <tcp_port replace="replace" from_env="CLICKHOUSE_KEEPER_TCP_PORT"/>
       {{- end }}
       <server_id from_env="CH_KEEPER_ID"/>
       <log_storage_path>/var/lib/clickhouse/coordination/log</log_storage_path>
@@ -54,6 +54,11 @@
     <events>true</events>
     <asynchronous_metrics>true</asynchronous_metrics>
   </prometheus>
+  <!-- tls configuration -->
+  {{- if $.component.tlsConfig -}}
+  {{- $CA_FILE := getCAFile -}}
+  {{- $CERT_FILE := getCertFile -}}
+  {{- $KEY_FILE := getKeyFile -}}
   <protocols>
     <prometheus_protocol>
       <type>prometheus</type>
@@ -63,13 +68,10 @@
       <type>tls</type>
       <impl>prometheus_protocol</impl>
       <description>prometheus over https</description>
+      <certificateFile>{{$CERT_FILE}}</certificateFile>
+      <privateKeyFile>{{$KEY_FILE}}</privateKeyFile>
     </prometheus_secure>
   </protocols>
-  <!-- tls configuration -->
-  {{- if $.component.tlsConfig -}}
-  {{- $CA_FILE := getCAFile -}}
-  {{- $CERT_FILE := getCertFile -}}
-  {{- $KEY_FILE := getKeyFile -}}
   <openSSL>
     <server>
       <certificateFile>{{$CERT_FILE}}</certificateFile>

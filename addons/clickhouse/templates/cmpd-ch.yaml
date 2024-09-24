@@ -98,6 +98,8 @@ spec:
       value: "9009"
     - name: CLICKHOUSE_INTERSERVER_HTTPS_PORT
       value: "9010"
+    - name: CLICKHOUSE_KEEPER_TCP_PORT
+      value: "9181"
     - name: CLICKHOUSE_KEEPER_TCP_TLS_PORT
       value: "9281"
     - name: CLICKHOUSE_TCP_SECURE_PORT
@@ -106,10 +108,8 @@ spec:
       value: "8001"
     - name: CLICKHOUSE_SHARD_ID
       value: "$(KB_COMP_NAME)"
-    - name: KEEPER_REPLICA_ID
+    - name: CLICKHOUSE_REPLICA_ID
       value: "$(KB_POD_NAME)"
-    - name: SERVICE_PORT
-      value: "$(CLICKHOUSE_METRICS_PORT)"
     - name: CLICKHOUSE_ADMIN_USER
       value: admin
     - name: CLICKHOUSE_ADMIN_PASSWORD

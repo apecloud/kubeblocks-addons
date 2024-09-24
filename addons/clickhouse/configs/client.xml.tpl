@@ -8,8 +8,6 @@
   <secure>true</secure>
   <openSSL>
     <client>
-      <certificateFile>{{$CERT_FILE}}</certificateFile>
-      <privateKeyFile>{{$KEY_FILE}}</privateKeyFile>
       <caConfig>{{$CA_FILE}}</caConfig>
     </client>
   </openSSL>

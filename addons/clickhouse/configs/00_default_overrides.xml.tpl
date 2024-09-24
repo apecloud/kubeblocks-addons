@@ -64,6 +64,11 @@
     <events>true</events>
     <asynchronous_metrics>true</asynchronous_metrics>
   </prometheus>
+  <!-- tls configuration -->
+  {{- if $.component.tlsConfig -}}
+  {{- $CA_FILE := getCAFile -}}
+  {{- $CERT_FILE := getCertFile -}}
+  {{- $KEY_FILE := getKeyFile }}
   <protocols>
     <prometheus_protocol>
       <type>prometheus</type>
@@ -73,13 +78,10 @@
       <type>tls</type>
       <impl>prometheus_protocol</impl>
       <description>prometheus over https</description>
+      <certificateFile>{{$CERT_FILE}}</certificateFile>
+      <privateKeyFile>{{$KEY_FILE}}</privateKeyFile>
     </prometheus_secure>
   </protocols>
-  <!-- tls configuration -->
-  {{- if $.component.tlsConfig -}}
-  {{- $CA_FILE := getCAFile -}}
-  {{- $CERT_FILE := getCertFile -}}
-  {{- $KEY_FILE := getKeyFile }}
   <openSSL>
     <server>
       <certificateFile>{{$CERT_FILE}}</certificateFile>
