@@ -160,9 +160,13 @@ get_master_addr_by_name(){
   if [ $status -ne 0 ]; then
     echo "Command failed with status $status."
     return 1
-  else
+  fi
+  if echo "$output" | grep -E '^[a-zA-Z0-9-]+\.[a-zA-Z0-9-]+\.default\.svc$' > /dev/null || is_empty "$output"; then
     echo "$output"
     return 0
+  else
+    echo "Command failed with $output"
+    return 1
   fi
 }
 
