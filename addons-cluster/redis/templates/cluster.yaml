@@ -5,7 +5,7 @@
   {{- include "redis-cluster.shardingSpec" . | indent 2 }}
 {{- else }}
   {{- include "kblib.clusterCommon" . }}
-  clusterDef: redis
+  clusterDefinitionRef: redis
   topology: {{ .Values.mode }}
   componentSpecs:
   {{- if eq .Values.mode "replication" }}

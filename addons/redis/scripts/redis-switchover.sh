@@ -1,22 +1,24 @@
 #!/bin/bash
 set -ex
 
-if ! env_exist SENTINEL_POD_FQDN_LIST; then
-    echo "Error: Required environment variable SENTINEL_POD_FQDN_LIST: $SENTINEL_POD_FQDN_LIST is not set."
-    exit 1
-fi
+load_common_library() {
+  # the common.sh scripts is mounted to the same path which is defined in the cmpd.spec.scripts
+  common_library_file="/scripts/common.sh"
+  # shellcheck disable=SC1090
+  source "${common_library_file}"
+}
 
-if ! env_exist REDIS_COMPONENT_NAME; then
-    echo "Error: Required environment variable REDIS_COMPONENT_NAME: $REDIS_COMPONENT_NAME is not set."
-    exit 1
-fi
+check_environment_exist(){
+    if ! env_exist SENTINEL_POD_FQDN_LIST; then
+        echo "Error: Required environment variable SENTINEL_POD_FQDN_LIST: $SENTINEL_POD_FQDN_LIST is not set."
+        exit 1
+    fi
 
-old_ifs="$IFS"
-IFS=','
-set -f
-read -ra sentinel_pod_fqdn_list <<< "${SENTINEL_POD_FQDN_LIST}"
-set +f
-IFS="$old_ifs"
+    if ! env_exist REDIS_COMPONENT_NAME; then
+        echo "Error: Required environment variable REDIS_COMPONENT_NAME: $REDIS_COMPONENT_NAME is not set."
+        exit 1
+    fi
+}
 
 check_connectivity() {
   local host=$1
@@ -119,6 +121,12 @@ switchoverWithCandidate() {
         call_func_with_retry 3 5 execute_sub_command "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$redis_set_switchover_cmd"
     fi
     # TODO: check the role in kernel before switchover
+    old_ifs="$IFS"
+    IFS=','
+    set -f
+    read -ra sentinel_pod_fqdn_list <<< "${SENTINEL_POD_FQDN_LIST}"
+    set +f
+    IFS="$old_ifs"
     master_name="$REDIS_COMPONENT_NAME"
     local success=false
 
@@ -143,6 +151,12 @@ switchoverWithCandidate() {
 
 switchoverWithoutCandidate() {
     # TODO: check the role in kernel before switchover
+    old_ifs="$IFS"
+    IFS=','
+    set -f
+    read -ra sentinel_pod_fqdn_list <<< "${SENTINEL_POD_FQDN_LIST}"
+    set +f
+    IFS="$old_ifs"
     master_name="$REDIS_COMPONENT_NAME"
     local success=false
 
@@ -160,6 +174,8 @@ switchoverWithoutCandidate() {
     # TODO: check switchover result
 }
 
+load_common_library
+check_environment_exist
 if ! env_exist KB_SWITCHOVER_CANDIDATE_FQDN; then
     switchoverWithoutCandidate
 else
