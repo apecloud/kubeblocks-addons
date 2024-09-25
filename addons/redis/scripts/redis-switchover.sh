@@ -1,12 +1,12 @@
 #!/bin/bash
 set -ex
 
-if ! env_exists "$SENTINEL_POD_FQDN_LIST"; then
+if ! env_exist SENTINEL_POD_FQDN_LIST; then
     echo "Error: Required environment variable SENTINEL_POD_FQDN_LIST: $SENTINEL_POD_FQDN_LIST is not set."
     exit 1
 fi
 
-if ! env_exists "$REDIS_COMPONENT_NAME"; then
+if ! env_exist REDIS_COMPONENT_NAME; then
     echo "Error: Required environment variable REDIS_COMPONENT_NAME: $REDIS_COMPONENT_NAME is not set."
     exit 1
 fi
@@ -96,11 +96,6 @@ redis_config_get(){
 }
 
 switchoverWithCandidate() {
-    if is_empty "$KB_SWITCHOVER_CANDIDATE_FQDN"; then
-        echo "Error: Required environment variable KB_SWITCHOVER_CANDIDATE_FQDN: $KB_SWITCHOVER_CANDIDATE_FQDN is not set."
-        exit 1
-    fi
-
     redis_get_cmd="CONFIG GET replica-priority"
     redis_set_switchover_cmd="CONFIG SET replica-priority 1"
 
@@ -165,7 +160,7 @@ switchoverWithoutCandidate() {
     # TODO: check switchover result
 }
 
-if is_empty "$KB_SWITCHOVER_CANDIDATE_FQDN"; then
+if ! env_exist KB_SWITCHOVER_CANDIDATE_FQDN; then
     switchoverWithoutCandidate
 else
     switchoverWithCandidate
