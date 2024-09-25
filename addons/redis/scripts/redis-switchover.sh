@@ -101,13 +101,13 @@ switchoverWithCandidate() {
     redis_get_cmd="CONFIG GET replica-priority"
     redis_set_switchover_cmd="CONFIG SET replica-priority 1"
 
-    if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+    if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
         call_func_with_retry 3 5 check_connectivity "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$REDIS_DEFAULT_PASSWORD" || exit 1
     else
         call_func_with_retry 3 5 check_connectivity "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" || exit 1
     fi
 
-    if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+    if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
         current_replica_priority=$(redis_config_get "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$REDIS_DEFAULT_PASSWORD" "$redis_get_cmd" | sed -n '2p')
     else 
         current_replica_priority=$(redis_config_get "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$redis_get_cmd" | sed -n '2p')
@@ -115,7 +115,7 @@ switchoverWithCandidate() {
 
     redis_set_recover_cmd="CONFIG SET replica-priority $current_replica_priority"
 
-    if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+    if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
         call_func_with_retry 3 5 execute_sub_command "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$REDIS_DEFAULT_PASSWORD" "$redis_set_switchover_cmd"
     else
         call_func_with_retry 3 5 execute_sub_command "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$redis_set_switchover_cmd"
@@ -142,7 +142,7 @@ switchoverWithCandidate() {
         exit 1
     fi
     # TODO: check switchover result
-    if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+    if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
         call_func_with_retry 3 5 execute_sub_command "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$REDIS_DEFAULT_PASSWORD" "$redis_set_recover_cmd"
     else
         call_func_with_retry 3 5 execute_sub_command "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$redis_set_recover_cmd"
