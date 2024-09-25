@@ -8,41 +8,41 @@ metadata:
     {{- include "mongodb.labels" . | nindent 4 }}
 spec:
   backupPolicies:
-    - componentDefs: [mongodb]
-      target:
-        role: secondary
-        fallbackRole: primary
-        account: root
-      backupMethods:
-        - name: dump
-          snapshotVolumes: false
-          actionSetName: mongodb-dump
-        - name: datafile
-          snapshotVolumes: false
-          actionSetName: mongodb-physical-backup
-          targetVolumes:
-            volumeMounts:
-              - name: data
-                mountPath: {{ .Values.dataMountPath }}
-        - name: volume-snapshot
-          snapshotVolumes: true
-          actionSetName: mongodb-volumesnapshot
-          targetVolumes:
-            volumes:
-              - data
-            volumeMounts:
-              - name: data
-                mountPath: {{ .Values.dataMountPath }}
-      schedules:
-        - backupMethod: dump
-          enabled: false
-          cronExpression: "0 18 * * *"
-          retentionPeriod: 7d
-        - backupMethod: datafile
-          enabled: false
-          cronExpression: "0 18 * * *"
-          retentionPeriod: 7d
-        - backupMethod: volume-snapshot
-          enabled: false
-          cronExpression: "0 18 * * *"
-          retentionPeriod: 7d
+  - componentDefs: [mongodb]
+    target:
+      role: secondary
+      fallbackRole: primary
+      account: root
+    backupMethods:
+      - name: dump
+        snapshotVolumes: false
+        actionSetName: mongodb-dump
+      - name: datafile
+        snapshotVolumes: false
+        actionSetName: mongodb-physical-backup
+        targetVolumes:
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
+      - name: volume-snapshot
+        snapshotVolumes: true
+        actionSetName: mongodb-volumesnapshot
+        targetVolumes:
+          volumes:
+            - data
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
+    schedules:
+      - backupMethod: dump
+        enabled: false
+        cronExpression: "0 18 * * *"
+        retentionPeriod: 7d
+      - backupMethod: datafile
+        enabled: false
+        cronExpression: "0 18 * * *"
+        retentionPeriod: 7d
+      - backupMethod: volume-snapshot
+        enabled: false
+        cronExpression: "0 18 * * *"
+        retentionPeriod: 7d
