@@ -11,6 +11,7 @@ spec:
   description: A PostgreSQL (with Patroni HA) component definition for Kubernetes
   serviceKind: postgresql
   serviceVersion: {{ .Values.componentServiceVersion.postgresql15 }}
+  backupPolicyTemplateName: postgresql-backup-policy-template
   serviceRefDeclarations:
     - name: etcd
       serviceRefDeclarationSpecs:
