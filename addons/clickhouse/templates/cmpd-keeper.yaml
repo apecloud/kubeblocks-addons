@@ -45,19 +45,15 @@ spec:
             containerPort: 8443
           - name: tcp
             containerPort: 9000
-          - name: tcp-mysql
-            containerPort: 9004
-          - name: tcp-postgresql
-            containerPort: 9005
           - name: http-intersrv
             containerPort: 9009
           - name: https-intersrv
             containerPort: 9010
           - name: tcp-secure
             containerPort: 9440
-          # keeper ports
           - name: http-metrics
             containerPort: 8001
+          # keeper ports
           - name: chk-tcp
             containerPort: 9181
           - name: chk-raft
