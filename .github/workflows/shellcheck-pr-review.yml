@@ -61,8 +61,6 @@ jobs:
       - name: Check scripts with Shellcheck
         uses: essentialkaos/shellcheck-action@v1
         if: ${{ steps.get_file_path.outputs.shell_file_path }}
-        env:
-          SHELLCHECK_OPTS: -e SC1087
         with:
           files: ${{ steps.get_file_path.outputs.shell_file_path }}
           severity: error
