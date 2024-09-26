@@ -1,0 +1,68 @@
+name: Shell Check PR Review
+
+on:
+  pull_request_review:
+    paths:
+      - "**.sh"
+    types: [submitted]
+
+
+env:
+  BASE_BRANCH: origin/main
+
+jobs:
+  shellspec-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.11.0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          all_but_latest: true
+          access_token: ${{ env.GITHUB_TOKEN }}
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+
+      - name: Get base commit id
+        id: get_base_commit_id
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          HEAD_REF="${{ env.HEAD_REF }}"
+          if [[ "${HEAD_REF}" != "main" ]]; then
+              git checkout -b ${HEAD_REF} --track origin/${HEAD_REF}
+          fi
+          BASE_COMMITID=`bash .github/utils/utils.sh --type 1 \
+              --branch-name "${HEAD_REF}" \
+              --base-branch "${{ env.BASE_BRANCH }}"`
+
+          echo "BASE_COMMITID:$BASE_COMMITID"
+          echo BASE_COMMITID=$BASE_COMMITID >> $GITHUB_ENV
+
+      - name: Get file path
+        id: get_file_path
+        run: |
+          FILE_PATH=`git diff --name-only HEAD ${{ env.BASE_COMMITID }}`
+          echo "FILE_PATH: $FILE_PATH"
+          SHELL_FILE_PATH=""
+          for filePath in $(echo "$FILE_PATH"); do
+              if [[ "${filePath}" == *".sh" && -f "${filePath}" ]]; then
+                  SHELL_FILE_PATH="${SHELL_FILE_PATH} ${filePath}"
+              fi
+          done
+          echo shell_file_path=$SHELL_FILE_PATH >> $GITHUB_OUTPUT
+
+      - name: Check scripts with Shellcheck
+        uses: essentialkaos/shellcheck-action@v1
+        if: ${{ steps.get_file_path.outputs.shell_file_path }}
+        env:
+          SHELLCHECK_OPTS: -e SC1087
+        with:
+          files: ${{ steps.get_file_path.outputs.shell_file_path }}
+          severity: error
+          format: tty
