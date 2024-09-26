@@ -11,7 +11,7 @@ env:
   BASE_BRANCH: origin/main
 
 jobs:
-  shellspec-test:
+  shell-check-pr:
     if: github.event.review.state == 'approved'
     runs-on: ubuntu-latest
     steps:
