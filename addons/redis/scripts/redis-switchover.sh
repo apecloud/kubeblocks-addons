@@ -1,5 +1,25 @@
 #!/bin/bash
-set -ex
+
+# Based on the Component Definition API, Redis Sentinel deployed independently
+
+# This is magic for shellspec ut framework. "test" is a `test [expression]` well known as a shell command.
+# Normally test without [expression] returns false. It means that __() { :; }
+# function is defined if this script runs directly.
+#
+# shellspec overrides the test command and returns true *once*. It means that
+# __() function defined internally by shellspec is called.
+#
+# In other words. If not in test mode, __ is just a comment. If test mode, __
+# is a interception point.
+#
+# you should set ut_mode="true" when you want to run the script in shellspec file.
+#
+# shellcheck disable=SC2034
+ut_mode="false"
+test || __() {
+  # when running in non-unit test mode, set the options "set -ex".
+  set -ex;
+}
 
 load_common_library() {
   # the common.sh scripts is mounted to the same path which is defined in the cmpd.spec.scripts
@@ -100,7 +120,7 @@ redis_config_get(){
 switchoverWithCandidate() {
     redis_get_cmd="CONFIG GET replica-priority"
     redis_set_switchover_cmd="CONFIG SET replica-priority 1"
-
+    unset_xtrace_when_ut_mode_false
     if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
         call_func_with_retry 3 5 check_connectivity "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$REDIS_DEFAULT_PASSWORD" || exit 1
     else
@@ -116,10 +136,11 @@ switchoverWithCandidate() {
     redis_set_recover_cmd="CONFIG SET replica-priority $current_replica_priority"
 
     if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
-        call_func_with_retry 3 5 execute_sub_command "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$REDIS_DEFAULT_PASSWORD" "$redis_set_switchover_cmd"
+        call_func_with_retry 3 5 execute_sub_command "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$REDIS_DEFAULT_PASSWORD" "$redis_set_switchover_cmd" || exit 1
     else
-        call_func_with_retry 3 5 execute_sub_command "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$redis_set_switchover_cmd"
+        call_func_with_retry 3 5 execute_sub_command "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$redis_set_switchover_cmd" || exit 1
     fi
+    set_xtrace_when_ut_mode_false
     # TODO: check the role in kernel before switchover
     old_ifs="$IFS"
     IFS=','
@@ -132,6 +153,7 @@ switchoverWithCandidate() {
 
     for sentinel_pod_fqdn in "${sentinel_pod_fqdn_list[@]}"; do
         if call_func_with_retry 3 5 execute_sub_command "$sentinel_pod_fqdn" "26379" "$SENTINEL_PASSWORD" "SENTINEL FAILOVER $master_name"; then
+            echo "Sentinel failover start with $sentinel_pod_fqdn, Switchover is processing"
             success=true
             break
         fi
@@ -143,9 +165,9 @@ switchoverWithCandidate() {
     fi
     # TODO: check switchover result
     if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
-        call_func_with_retry 3 5 execute_sub_command "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$REDIS_DEFAULT_PASSWORD" "$redis_set_recover_cmd"
+        call_func_with_retry 3 5 execute_sub_command "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$REDIS_DEFAULT_PASSWORD" "$redis_set_recover_cmd" || exit 1
     else
-        call_func_with_retry 3 5 execute_sub_command "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$redis_set_recover_cmd"
+        call_func_with_retry 3 5 execute_sub_command "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$redis_set_recover_cmd" || exit 1
     fi
 }
 
@@ -162,6 +184,7 @@ switchoverWithoutCandidate() {
 
     for sentinel_pod_fqdn in "${sentinel_pod_fqdn_list[@]}"; do
         if call_func_with_retry 3 5 execute_sub_command "$sentinel_pod_fqdn" "26379" "$SENTINEL_PASSWORD" "SENTINEL FAILOVER $master_name"; then
+            echo "Sentinel failover start with $sentinel_pod_fqdn, Switchover is processing"
             success=true
             break
         fi
@@ -174,6 +197,14 @@ switchoverWithoutCandidate() {
     # TODO: check switchover result
 }
 
+# This is magic for shellspec ut framework.
+# Sometime, functions are defined in a single shell script.
+# You will want to test it. but you do not want to run the script.
+# When included from shellspec, __SOURCED__ variable defined and script
+# end here. The script path is assigned to the __SOURCED__ variable.
+${__SOURCED__:+false} : || return 0
+
+#main
 load_common_library
 check_environment_exist
 if ! env_exist KB_SWITCHOVER_CANDIDATE_FQDN; then
