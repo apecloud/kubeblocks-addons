@@ -184,9 +184,11 @@ register_to_sentinel() {
   call_func_with_retry 3 5 check_connectivity "$sentinel_host" "$sentinel_port" "$SENTINEL_PASSWORD" || exit 1
   call_func_with_retry 3 5 check_connectivity "$redis_primary_host" "$redis_primary_port" "$REDIS_DEFAULT_PASSWORD" || exit 1
 
-# Check if Sentinel is already monitoring the Redis primary
-  master_addr=$(get_master_addr_by_name "$sentinel_host" "$sentinel_port" "SENTINEL get-master-addr-by-name $master_name")
-
+  # Check if Sentinel is already monitoring the Redis primary
+  if ! master_addr=$(call_func_with_retry 3 5 get_master_addr_by_name "$sentinel_host" "$sentinel_port" "SENTINEL get-master-addr-by-name $master_name"); then
+    echo "Failed to get master address after maximum retries." >&2
+    exit 1
+  fi
   if is_empty "$master_addr"; then
     echo "Sentinel is not monitoring $master_name. Registering it..."
     # Register the Redis primary with Sentinel
