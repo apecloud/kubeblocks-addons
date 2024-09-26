@@ -12,6 +12,7 @@ env:
 
 jobs:
   shellspec-test:
+    if: github.event.review.state == 'approved'
     runs-on: ubuntu-latest
     steps:
       - name: Cancel Previous Runs
