@@ -106,7 +106,6 @@ spec:
           - cp
           - -r
           - /bin/syncer
-          - /config
           - /tools/
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
@@ -127,24 +126,22 @@ spec:
             containerPort: 3601
         command:
           - syncer
-          - --config-path
-          - /tools/config/components
           - --port
           - "3601"
           - --
           - /scripts/replicaset-setup.sh
         env:
-          - name: KB_POD_NAME
+          - name: SYNCER_POD_NAME
             valueFrom:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.name
-          - name: KB_POD_UID
+          - name: SYNCER_POD_UID
             valueFrom:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.uid
-          - name: KB_POD_IP
+          - name: SYNCER_POD_IP
             valueFrom:
               fieldRef:
                 apiVersion: v1
