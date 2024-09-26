@@ -8,7 +8,7 @@ type: application
 
 version: 1.0.0-alpha.0
 
-appVersion: 24.3.10
+appVersion: 24.8.3
 
 home: https://clickhouse.com/
 icon: https://bitnami.com/assets/stacks/clickhouse/img/clickhouse-stack-220x234.png
