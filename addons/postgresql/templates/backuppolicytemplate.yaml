@@ -18,6 +18,8 @@ metadata:
       }
 spec:
   serviceKind: PostgreSQL
+  compDefs:
+    - ^postgresql-\d+.*$
   target:
     role: secondary
     fallbackRole: primary
