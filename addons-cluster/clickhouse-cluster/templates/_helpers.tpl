@@ -62,7 +62,25 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+TLS file
+*/}}
+{{- define "clickhouse-cluster.tls" -}}
+tls: {{ $.Values.tls.enabled }}
+{{- if $.Values.tls.enabled }}
+issuer:
+  name: {{ $.Values.tls.issuer }}
+  {{- if eq $.Values.tls.issuer "UserProvided" }}
+  secretRef:
+    name: {{ $.Values.tls.secretName }}
+    ca: ca.crt
+    cert: tls.crt
+    key: tls.key
+  {{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
+Define clickhouse componentSpec with ComponentDefinition.
 */}}
 {{- define "clickhouse-ch-component" -}}
 - name: clickhouse
@@ -90,10 +108,11 @@ Create the name of the service account to use
         resources:
           requests:
             storage: {{ $.Values.clickhouse.persistence.data.size }}
+{{ include "clickhouse-cluster.tls" . | indent 2 }}
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+Define clickhouse keeper componentSpec with ComponentDefinition.
 */}}
 {{- define "clickhouse-keeper-component" -}}
 - name: ch-keeper
@@ -120,10 +139,11 @@ Create the name of the service account to use
         resources:
           requests:
             storage: {{ $.Values.keeper.persistence.data.size }}
+{{ include "clickhouse-cluster.tls" . | indent 2 }}
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+Define clickhouse shardingComponentSpec with ComponentDefinition.
 */}}
 {{- define "clickhouse-sharding-component" -}}
 - name: shard
@@ -154,10 +174,11 @@ Create the name of the service account to use
           resources:
             requests:
               storage: {{ $.Values.clickhouse.persistence.data.size }}
+{{ include "clickhouse-cluster.tls" . | indent 4 }}
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+Define clickhouse componentSpec with compatible ComponentDefinition API
 */}}
 {{- define "clickhouse-nosharding-component" -}}
 {{- range $i := until (.Values.shardCount | int) }}
@@ -187,5 +208,6 @@ Create the name of the service account to use
         resources:
           requests:
             storage: {{ $.Values.clickhouse.persistence.data.size }}
+{{ include "clickhouse-cluster.tls" . | indent 2 }}
 {{- end }}
 {{- end }}
