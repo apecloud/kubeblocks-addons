@@ -6,8 +6,8 @@ metadata:
     {{- include "mongodb.labels" . | nindent 4 }}
 spec:
   topologies:
-    - name: default
+    - name: replicaset
       components:
         - name: mongodb
-          compDef: {{ include "mongodb.componentDefName" . }}
+          compDef: {{ include "mongodb.componentDefNamePrefix" . }}
       default: true

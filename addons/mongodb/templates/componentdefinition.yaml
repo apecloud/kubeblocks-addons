@@ -1,9 +1,11 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "mongodb.componentDefName" . }}
+  name: {{ include "mongodb.compDefName" . }}
   labels:
     {{- include "mongodb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mongodb.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks.io
   description: MongoDB is a document database designed for ease of application development and scaling.
