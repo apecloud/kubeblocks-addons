@@ -62,6 +62,24 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
+TLS file
+*/}}
+{{- define "clickhouse-cluster.tls" -}}
+tls: {{ $.Values.tls.enabled }}
+{{- if $.Values.tls.enabled }}
+issuer:
+  name: {{ $.Values.tls.issuer }}
+  {{- if eq $.Values.tls.issuer "UserProvided" }}
+  secretRef:
+    name: {{ $.Values.tls.secretName }}
+    ca: ca.crt
+    cert: tls.crt
+    key: tls.key
+  {{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
 Define clickhouse componentSpec with ComponentDefinition.
 */}}
 {{- define "clickhouse-ch-component" -}}
@@ -90,6 +108,7 @@ Define clickhouse componentSpec with ComponentDefinition.
         resources:
           requests:
             storage: {{ $.Values.clickhouse.persistence.data.size }}
+{{ include "clickhouse-cluster.tls" . | indent 2 }}
 {{- end }}
 
 {{/*
@@ -120,6 +139,7 @@ Define clickhouse keeper componentSpec with ComponentDefinition.
         resources:
           requests:
             storage: {{ $.Values.keeper.persistence.data.size }}
+{{ include "clickhouse-cluster.tls" . | indent 2 }}
 {{- end }}
 
 {{/*
@@ -154,6 +174,7 @@ Define clickhouse shardingComponentSpec with ComponentDefinition.
           resources:
             requests:
               storage: {{ $.Values.clickhouse.persistence.data.size }}
+{{ include "clickhouse-cluster.tls" . | indent 4 }}
 {{- end }}
 
 {{/*
@@ -187,5 +208,6 @@ Define clickhouse componentSpec with compatible ComponentDefinition API
         resources:
           requests:
             storage: {{ $.Values.clickhouse.persistence.data.size }}
+{{ include "clickhouse-cluster.tls" . | indent 2 }}
 {{- end }}
 {{- end }}
