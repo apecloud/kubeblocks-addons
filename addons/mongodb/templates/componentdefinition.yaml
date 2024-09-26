@@ -79,22 +79,6 @@ spec:
           - /tools/config/dbctl/components
           - mongodb
           - getrole
-        env:
-          - name: KB_POD_NAME
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: metadata.name
-          - name: KB_POD_UID
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: metadata.uid
-          - name: KB_POD_IP
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: status.podIP
     memberLeave:
       exec:
         container: mongodb
