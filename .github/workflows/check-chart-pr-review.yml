@@ -9,7 +9,7 @@ on:
 
 
 jobs:
-  check-addons-helm:
+  check-addons-helm-pr:
     name: check addons helm
     if: github.event.review.state == 'approved'
     strategy:
@@ -23,7 +23,7 @@ jobs:
       SET_REGISTRY: "${{ matrix.registry }}"
     secrets: inherit
 
-  check-addons-cluster-helm:
+  check-addons-cluster-helm-pr:
     name: check addons cluster helm
     if: github.event.review.state == 'approved'
     uses: apecloud/apecloud-cd/.github/workflows/release-charts-check.yml@v0.1.68
