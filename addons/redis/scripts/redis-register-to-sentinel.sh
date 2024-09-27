@@ -158,14 +158,14 @@ get_master_addr_by_name(){
   output=$(redis-cli -h "$sentinel_host" -p "$sentinel_port" -a "$SENTINEL_PASSWORD" $command)
   local status=$?
   if [ $status -ne 0 ]; then
-    echo "Command failed with status $status."
+    echo "Command failed with status $status." >&2
     return 1
   fi
   if echo "$output" | grep -E '^[a-zA-Z0-9-]+\.[a-zA-Z0-9-]+\.default\.svc$' > /dev/null || is_empty "$output"; then
     echo "$output"
     return 0
   else
-    echo "Command failed with $output"
+    echo "Command failed with $output" >&2
     return 1
   fi
 }
