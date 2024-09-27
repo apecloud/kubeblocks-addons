@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "redisCluster7.configurationTemplate" . }}
+  labels:
+    {{- include "redis.labels" . | nindent 4 }}
+  annotations:
+    {{- include "redis.annotations" . | nindent 4 }}
+data:
+  redis.conf: |-
+    {{- .Files.Get "config/redis-cluster7-config.tpl" | nindent 4 }}

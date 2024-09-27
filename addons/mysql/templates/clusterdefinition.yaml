@@ -1,7 +1,7 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1
 kind: ClusterDefinition
 metadata:
-  name: {{ include "mysql.componentDefName" . }}
+  name: mysql
   labels:
     {{- include "mysql.labels" . | nindent 4 }}
 spec:
@@ -9,12 +9,16 @@ spec:
     - name: server
       components:
         - name: server
-          compDef: {{ include "mysql.componentDefName" . }}-8.0.33
+          compDef: {{ include "mysql.componentDefRegex" . }}
       default: true
+    - name: server-with-orc
+      components:
+        - name: server
+          compDef: mysql-orc
     - name: server-with-proxy
       components:
         - name: server
-          compDef: {{ include "mysql.componentDefName" . }}-8.0.33
+          compDef: {{ include "mysql.componentDefRegex" . }}
         - name: proxysql
           compDef: {{ include "proxysql.componentDefName" . }}
       orders:

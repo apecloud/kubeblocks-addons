@@ -2,7 +2,7 @@ apiVersion: v1
 kind: List
 metadata:
 items:
-- apiVersion: apps.kubeblocks.io/v1alpha1
+- apiVersion: apps.kubeblocks.io/v1
   kind: ComponentDefinition
   metadata:
     name: elasticsearch-8
@@ -259,7 +259,7 @@ items:
       - emptyDir: {}
         name: plugins
 
-- apiVersion: apps.kubeblocks.io/v1alpha1
+- apiVersion: apps.kubeblocks.io/v1
   kind: ComponentDefinition
   metadata:
     name: elasticsearch-7

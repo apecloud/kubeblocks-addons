@@ -62,13 +62,64 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
+Define mysql component definition regex regular
+*/}}
+{{- define "mysql.componentDefRegex" -}}
+^mysql-\d+\.\d+.*$
+{{- end -}}
+
+{{/*
 Define mysql component definition name
 */}}
-{{- define "mysql.componentDefName" -}}
+{{- define "mysql.componentDefName57" -}}
 {{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-mysql
+mysql-5.7
 {{- else -}}
-{{- printf "mysql-%s" .Values.compDefinitionVersionSuffix -}}
+{{- printf "mysql-5.7-%s" .Values.compDefinitionVersionSuffix -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define mysql component definition name
+*/}}
+{{- define "mysql.componentDefNameOrc57" -}}
+{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
+mysql-orc-5.7
+{{- else -}}
+{{- printf "mysql-orc-5.7-%s" .Values.compDefinitionVersionSuffix -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define mysql component definition name
+*/}}
+{{- define "mysql.componentDefName80" -}}
+{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
+mysql-8.0
+{{- else -}}
+{{- printf "mysql-8.0-%s" .Values.compDefinitionVersionSuffix -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define mysql component definition name
+*/}}
+{{- define "mysql.componentDefNameOrc80" -}}
+{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
+mysql-orc-8.0
+{{- else -}}
+{{- printf "mysql-orc-8.0-%s" .Values.compDefinitionVersionSuffix -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define mysql component definition name
+*/}}
+{{- define "mysql.componentDefName84" -}}
+{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
+mysql-8.4
+{{- else -}}
+{{- printf "mysql-8.4-%s" .Values.compDefinitionVersionSuffix -}}
 {{- end -}}
 {{- end -}}
 
@@ -88,9 +139,9 @@ Define mysql component definition name
 */}}
 {{- define "proxysql.componentDefName" -}}
 {{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-proxysql
+mysql-proxysql
 {{- else -}}
-{{- printf "proxysql-%s" .Values.compDefinitionVersionSuffix -}}
+{{- printf "mysql-proxysql-%s" .Values.compDefinitionVersionSuffix -}}
 {{- end -}}
 {{- end -}}
 
@@ -117,7 +168,7 @@ Create chart name and version as used by the chart label.
 Selector labels
 */}}
 {{- define "proxysql.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "mysql.componentDefName" . }}
+app.kubernetes.io/name: {{ include "proxysql.componentDefName" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 

@@ -70,7 +70,11 @@ replicas: {{ max .Values.replicas 3 }}
 {{- end }}
 
 {{- define "elasticsearch.version" }}
+{{- if .Values.version }}
 {{- trimPrefix "elasticsearch-" .Values.version }}
+{{- else }}
+{{- .Chart.AppVersion }}
+{{- end }}
 {{- end }}
 
 {{- define "elasticsearch.majorVersion" }}

@@ -49,6 +49,10 @@ vminsert:
     envflag.enable: "true"
     envflag.prefix: VM_
     loggerFormat: json
+    maxLabelsPerTimeseries: 60
+    maxLabelValueLen: 16384
+    disableReroutingOnUnavailable: false
+    disableRerouting: true
 
 vmstorage:
   # -- Service port

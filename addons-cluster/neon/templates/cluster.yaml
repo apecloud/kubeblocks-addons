@@ -1,11 +1,11 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: {{ .Release.Name }}
   labels:
     {{- include "neon-cluster.labels" . | indent 4 }}
 spec:
-  clusterDefinitionRef: neon
+  clusterDef: neon
   terminationPolicy: {{ .Values.terminationPolicy }}
   componentSpecs:
     - name: neon-compute

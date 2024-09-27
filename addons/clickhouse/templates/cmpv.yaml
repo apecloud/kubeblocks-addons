@@ -1,0 +1,27 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: clickhouse
+  labels:
+      {{- include "clickhouse.labels" . | nindent 4 }}
+      {{- if .Values.commonLabels }}
+      {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
+      {{- end }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  compatibilityRules:
+    - releases:
+        - 24.8.3
+      compDefs:
+        - clickhouse-24
+    - releases:
+        - 24.8.3
+      compDefs:
+        - ch-keeper-24
+  releases:
+    - name: 24.8.3
+      serviceVersion: 24.8.3
+      images:
+        clickhouse: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:{{ default .Chart.AppVersion .Values.image.tag }}

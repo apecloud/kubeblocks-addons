@@ -1,4 +1,4 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: {{ include "kblib.clusterName" . }}
@@ -13,7 +13,7 @@ metadata:
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
-  clusterDefinitionRef: apecloud-mysql # ref clusterdefinition.name
+  clusterDef: apecloud-mysql # ref clusterdefinition.name
   topology: {{ include "apecloud-mysql-cluster.topology" . }}
   componentSpecs:
     - name: mysql

@@ -1,0 +1,18 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: redis-twemproxy
+  labels:
+    {{- include "redis.labels" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "redisTwemproxy05.cmpdRegexpPattern" . }}
+      releases:
+        - 0.5.0
+  releases:
+    - name: 0.5.0
+      changes:
+      serviceVersion: 0.5.0
+      images:
+        redis-twemproxy: {{ include "redisTwemproxy.repository" . }}:0.5.0

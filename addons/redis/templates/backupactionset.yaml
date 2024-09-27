@@ -16,7 +16,7 @@ spec:
     preBackup: []
     postBackup: []
     backupData:
-      image: {{ include "redis.image" . }}
+      image: {{ include "redis7.image" . }}
       runOnTargetPodNode: true
       syncProgress:
         enabled: true
@@ -28,13 +28,23 @@ spec:
         {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
   restore:
     prepareData:
-      image: {{ include "redis.image" . }}
+      image: {{ include "redis7.image" . }}
       command:
       - bash
       - -c
       - |
+        {{- .Files.Get "dataprotection/switch-data-dir.sh" | nindent 8 }}
         {{- .Files.Get "dataprotection/restore.sh" | nindent 8 }}
-    postReady: []
+    postReady:
+    - job:
+        command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/restore-keys.sh" | nindent 10 }}
+        image: {{ include "redis7.image" . }}
+        onError: Fail
+        runOnTargetPodNode: true
 ---
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
@@ -56,7 +66,7 @@ spec:
     preBackup: []
     postBackup: []
     backupData:
-      image: {{ include "redis.image" . }}
+      image: {{ include "redis7.image" . }}
       runOnTargetPodNode: true
       syncProgress:
         enabled: true
@@ -77,3 +87,58 @@ spec:
         image: {{ include "apeDts.image" . }}
         onError: Fail
         runOnTargetPodNode: true
+---
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: redis-pitr-backup
+  labels:
+    clusterdefinition.kubeblocks.io/name: redis
+    {{- include "redis.labels" . | nindent 4 }}
+spec:
+  backupType: Continuous
+  env:
+    - name: DATA_DIR
+      value: {{ .Values.dataMountPath }}
+    - name: DP_DB_PORT
+      value: "6379"
+    - name: LOG_ARCHIVE_SECONDS
+      value: "3"
+  backup:
+    preBackup: []
+    postBackup: []
+    backupData:
+      image: {{ include "redis7.image" . }}
+      runOnTargetPodNode: true
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+      command:
+      - bash
+      - -c
+      - |
+        #!/bin/bash
+        {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 8 }}
+        {{- .Files.Get "dataprotection/pitr-backup.sh" | nindent 8 }}
+  restore:
+    prepareData:
+      image: {{ include "redis7.image" . }}
+      command:
+      - bash
+      - -c
+      - |
+        #!/bin/bash
+        {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 8 }}
+        {{- .Files.Get "dataprotection/switch-data-dir.sh" | nindent 8 }}
+        {{- .Files.Get "dataprotection/pitr-restore.sh" | nindent 8 }}
+    postReady:
+    - job:
+        command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/restore-keys.sh" | nindent 10 }}
+        image: {{ include "redis7.image" . }}
+        onError: Fail
+        runOnTargetPodNode: true
+    baseBackupRequired: false

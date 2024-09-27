@@ -3,12 +3,6 @@
 ##
 terminationPolicy: Halt
 
-## Monitoring configurations
-monitor:
-  ## @param monitor.enabled if `true`, enable Cluster monitor capabilities
-  ##
-  enabled: false
-
 ## Service configurations
 ##
 service:
@@ -47,7 +41,7 @@ clickhouse:
     persistence:
       ## @param clickhouse[*].persistence.enabled Enable persistence using Persistent Volume Claims
       ##
-      enabled: false
+      enabled: true
       ## `data` volume settings
       ##
       data:
@@ -162,7 +156,7 @@ keeper:
     #   memory: 128Mi
 
   persistence:
-    enabled: false
+    enabled: true
     data:
       storageClassName:
       size: 8Gi
@@ -283,3 +277,17 @@ fullnameOverride: ""
 # The RBAC permission used by cluster component pod, now include event.create
 serviceAccount:
   name: ""
+
+extra:
+  rbacEnabled: false
+
+sharding:
+  enabled: false
+
+## @param tlsEnable Enable TLS for clickhouse cluster
+tls:
+  enabled: false
+  # KubeBlocks or UserProvided
+  issuer: UserProvided
+  # if issuer is UserProvided, will automatically generate tls file by cluster-tls-secrets.yaml
+  secretName: clickhouse-cluster-tls
