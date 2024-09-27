@@ -1,92 +1,67 @@
+## @param nameOverride Override the app name
 nameOverride: ""
+
+## @param fullnameOverride Override the full app name
 fullnameOverride: ""
 
-## @param terminationPolicy define Cluster termination policy. One of DoNotTerminate, Halt, Delete, WipeOut.
-##
+## @param terminationPolicy Define Cluster termination policy. One of DoNotTerminate, Halt, Delete, WipeOut.
 terminationPolicy: Delete
 
-## @param disableExporter Disable Monitoring exporter
-disableExporter: false
-
-## @param tolerations define global Tolerations for the cluster all pod's assignment
+## @param tolerations Define global Tolerations for the cluster all pod's assignment
 ## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
-##
 tolerations: []
 
-## @param topologySpreadConstraints Topology Spread Constraints for pod assignment spread across your cluster among failure-domains. Evaluated as a template
-## Ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/#spread-constraints-for-pods
-##
-topologyKeys:
-  - kubernetes.io/hostname
-
-## @param affinity is affinity setting for etcd cluster pods assignment
-##
+## @param affinity Affinity setting for etcd cluster pods assignment
 affinity: {}
 
+## @param replicas Number of replicas for the etcd cluster
 replicas: 3
 
 ## Service configurations
 ## set service name to enable peerService and clientService
 
-## peerService is the configuration for etcd peer communication
-## Not required to setup peerService if you're using a single k8s cluster
-## Recommended to use LoadBalancer for multi-cluster etcd setups
-## Enabling multi-cluster etcd wil make TLS fail due to CA wildcard mismatches
+## @param peerService.enabled Enable peerService (no need to enable for single cluster)
 peerService:
-  name:
-  ## @param type etcd peerService type, the recommended options is LoadBalancer.
-  ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
+  enabled: false
+  ## @param peerService.type Service type for etcd peers, default peer service for single cluster use headless ClusterIP, valid option is LoadBalancer, will support NodePort in the future.
   type: LoadBalancer
-  ## @param annotations is optional, if peerService type is LoadBalancer, you may need to specify annotations for Cloud Provider
-  annotations: { }
+  ## @param peerService.annotations Optional, if peerService type is LoadBalancer, you may need to specify annotations for Cloud Provider
+  annotations: {}
 
 ## clientService is the configuration for etcd client communication
 clientService:
-  name: "client"
-  ## @param type etcd service type, valid options are ExternalName, ClusterIP, NodePort, and LoadBalancer.
+  name: ""
+  ## @param clientService.type etcd service type, valid options are ExternalName, ClusterIP, NodePort, and LoadBalancer.
   ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
-  type: NodePort
+  type: ClusterIP
   port: 2379
   role: leader
-  ## @param nodePort is optional, if clientService type is NodePort, by default and for convenience, 
-  ## the Kubernetes control plane will allocate a port from a range (default: 30000-32767)
+  ## @param clientService.nodePort Optional, if clientService type is NodePort, by default and for convenience, the Kubernetes control plane will allocate a port from a range (default: 30000-32767)
   nodePort:
-  ## @param annotations is optional, if clientService type is LoadBalancer, you may need to specify annotations for Cloud Provider
-  annotations: { }
+  ## @param clientService.annotations Optional, if clientService type is LoadBalancer, you may need to specify annotations for Cloud Provider
+  annotations: {}
 
-resources: { }
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-  # limits:
-  #   cpu: 100m
-  #   memory: 128Mi
+## @param cpu CPU resource request for each etcd pod
+cpu: 0.5
+## @param memory Memory resource request for each etcd pod, the unit is Gi
+memory: 0.5
+## @param storage Storage size for each etcd pod, the unit is Gi
+storage: 10
+
+## @param requests.cpu If not set, use cpu
+## @param requests.memory If not set, use memory
 # requests:
 #   cpu: 100m
 #   memory: 128Mi
 
-## Enable persistence using Persistent Volume Claims
-## ref: https://kubernetes.io/docs/user-guide/persistent-volumes/
-##
-persistence:
-  ## @param shard[*].persistence.enabled Enable persistence using Persistent Volume Claims
-  ##
-  enabled: true
-  ## `data` volume settings
-  ##
-  data:
-    ## @param shard[*].persistence.data.storageClassName Storage class of backing PVC
-    ## If defined, storageClassName: <storageClass>
-    ## If set to "-", storageClassName: "", which disables dynamic provisioning
-    ## If undefined (the default) or set to null, no storageClassName spec is
-    ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
-    ##   GKE, AWS & OpenStack)
-    ##
-    storageClassName:
-    ## @param shard[*].persistence.size Size of data volume
-    ##
-    size: 1Gi
+## @param persistence using Persistent Volume Claims
+persistence: true
+## @param storageClassName, storage class name
+storageClassName:
 
 ## @param tlsEnable Enable TLS for etcd cluster
 tlsEnable: false
+
+## Customized default values to override kblib chart's values
+extra:
+  disableExporter: false

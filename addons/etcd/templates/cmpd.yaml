@@ -48,6 +48,12 @@ spec:
               cp /shell/sh /bin
             fi
             /scripts/start.sh
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
     volumes:
       - name: shell
         emptyDir: {}
@@ -86,6 +92,15 @@ spec:
           podFQDNsForRole:
             role: leader
             option: Required
+    - name: ETCD_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
   volumes:
     - name: data
       needSnapshot: true

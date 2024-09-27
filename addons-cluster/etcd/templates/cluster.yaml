@@ -6,18 +6,18 @@ metadata:
     {{- include "etcd-cluster.labels" . | nindent 4 }}
 spec:
   terminationPolicy: {{ .Values.terminationPolicy }}
-  affinity:
-    {{- with .Values.topologyKeys }}
-    topologyKeys: {{ . | toYaml | nindent 6 }}
+  schedulingPolicy:
+    {{- with  .Values.affinity }}
+    affinity: {{ . | toYaml | nindent 6 }}
     {{- end }}
-  {{- with .Values.tolerations }}
-  tolerations: {{ . | toYaml | nindent 4 }}
-  {{- end }}
+    {{- with .Values.tolerations }}
+    tolerations: {{ . | toYaml | nindent 6 }}
+    {{- end }}
   componentSpecs:
     - name: etcd
-      {{- if .Values.peerService.name }}
+      {{- if .Values.peerService.enabled }}
       services:
-        - name: {{ .Values.peerService.name }}
+        - name: peer
           serviceType: {{ .Values.peerService.type }}
           podService: true
           {{- if and (eq .Values.peerService.type "LoadBalancer") (not (empty .Values.peerService.annotations)) }}
@@ -33,11 +33,6 @@ spec:
       issuer:
         name: KubeBlocks
       {{- end }}
-      disableExporter: {{ .Values.disableExporter }}
-      instances:
-        - name: etcd-0
-        - name: etcd-1
-        - name: etcd-2
       replicas: {{ .Values.replicas | default "3" }}
       {{- with .Values.resources }}
       resources:
@@ -48,17 +43,11 @@ spec:
           cpu: {{ .requests.cpu | quote }}
           memory: {{ .requests.memory | quote }}
       {{- end }}
-      {{- if .Values.persistence.enabled }}
-      volumeClaimTemplates:
-        - name: data
-          spec:
-            storageClassName: {{ .Values.persistence.data.storageClassName }}
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: {{ .Values.persistence.data.size }}
+      {{- if .Values.persistence }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
       {{- end }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentMonitor" . | indent 6 }}
   {{- if .Values.clientService.name }}
   services:
     - name: {{ .Values.clientService.name }}
