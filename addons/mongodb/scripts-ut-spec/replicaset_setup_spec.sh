@@ -2,8 +2,14 @@
 # shellcheck disable=SC2034
 
 
+# validate_shell_type_and_version defined in shellspec/spec_helper.sh used to validate the expected shell type and version this script needs to run.
+if ! validate_shell_type_and_version "bash" 4 &>/dev/null; then
+  echo "replicaset_setup_spec.sh skip all cases because dependency bash version 4 or higher is not installed."
+  exit 0
+fi
 
-Describe "PgBouncer Configuration and Startup Script Tests"
+
+Describe "Mongodb Startup Script Tests"
 
   init() {
     DATA_VOLUME="./mongodb_data"
