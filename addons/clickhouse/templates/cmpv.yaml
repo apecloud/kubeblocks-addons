@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentVersion
 metadata:
-  name: clickhouse-cluster
+  name: clickhouse
   labels:
       {{- include "clickhouse.labels" . | nindent 4 }}
       {{- if .Values.commonLabels }}
@@ -13,15 +13,15 @@ metadata:
 spec:
   compatibilityRules:
     - releases:
-        - 24.3.10
+        - 24.8.3
       compDefs:
         - clickhouse-24
     - releases:
-        - 24.3.10
+        - 24.8.3
       compDefs:
         - ch-keeper-24
   releases:
-    - name: 24.3.10
-      serviceVersion: 24.3.10
+    - name: 24.8.3
+      serviceVersion: 24.8.3
       images:
         clickhouse: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:{{ default .Chart.AppVersion .Values.image.tag }}

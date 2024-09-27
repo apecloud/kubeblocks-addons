@@ -283,3 +283,11 @@ extra:
 
 sharding:
   enabled: false
+
+## @param tlsEnable Enable TLS for clickhouse cluster
+tls:
+  enabled: false
+  # KubeBlocks or UserProvided
+  issuer: UserProvided
+  # if issuer is UserProvided, will automatically generate tls file by cluster-tls-secrets.yaml
+  secretName: clickhouse-cluster-tls
