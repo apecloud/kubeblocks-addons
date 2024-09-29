@@ -28,7 +28,6 @@ spec:
         - cp
         - -r
         - /bin/syncer
-        - /config
         - /kubeblocks/
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
@@ -53,8 +52,6 @@ spec:
         imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
         command:
           - syncer
-          - --config-path
-          - /kubeblocks/config/components
           - --port
           - "3601"
           - --
@@ -101,7 +98,6 @@ spec:
         - cp
         - -r
         - /bin/syncer
-        - /config
         - /kubeblocks/
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
@@ -126,8 +122,6 @@ spec:
         imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
         command:
           - syncer
-          - --config-path
-          - /kubeblocks/config/components
           - --port
           - "3601"
           - --
@@ -172,7 +166,6 @@ spec:
         - cp
         - -r
         - /bin/syncer
-        - /config
         - /kubeblocks/
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
@@ -197,8 +190,6 @@ spec:
         imagePullPolicy: {{ include "mysql.imagePullPolicy" . }}
         command:
           - syncer
-          - --config-path
-          - /kubeblocks/config/components
           - --port
           - "3601"
           - --
