@@ -33,11 +33,10 @@ sleep_random_second() {
   sleep "$random_time"
 }
 
-
 ## the component names of all shard
 ## the value format of ALL_SHARDS_COMPONENT_SHORT_NAMES is like "shard-98x:shard-98x,shard-cq7:shard-cq7,shard-hy7:shard-hy7"
 ## return the component names of all shards with the format "shard-98x,shard-cq7,shard-hy7"
-parse_all_shards_components_vars() {
+get_all_shards_components() {
   local all_shards_components
   if is_empty "$ALL_SHARDS_COMPONENT_SHORT_NAMES"; then
     echo "Error: Required environment variable ALL_SHARDS_COMPONENT_SHORT_NAMES is not set."
@@ -49,6 +48,28 @@ parse_all_shards_components_vars() {
     all_shards_components="$all_shards_components,$shard_name"
   done
   echo "$all_shards_components"
+}
+
+## the pod names of all shard, there are some environment variables name prefix with "ALL_SHARDS_POD_NAME_LIST" and
+## suffix with the shard name, like "ALL_SHARDS_POD_NAME_LIST_SHARD_98X", "ALL_SHARDS_POD_NAME_LIST_SHARD_CQ7", "ALL_SHARDS_POD_NAME_LIST_SHARD_HY7"
+## - ALL_SHARDS_POD_NAME_LIST_SHARD_98X="redis-shard-98x-0,redis-shard-98x-1"
+## - ALL_SHARDS_POD_NAME_LIST_SHARD_CQ7="redis-shard-cq7-0,redis-shard-cq7-1"
+## - ALL_SHARDS_POD_NAME_LIST_SHARD_HY7="redis-shard-hy7-0,redis-shard-hy7-1"
+get_all_shards_pods() {
+  ## list all Envs name prefix with ALL_SHARDS_POD_NAME_LIST and get them value combined with ","
+  local all_shards_pods
+  envs=$(env | grep "^ALL_SHARDS_POD_NAME_LIST" | awk -F '=' '{print $2}')
+  while read -r line; do
+    ## remove the \n at the end of the string
+    line=$(echo "$line" | tr -d '\n')
+
+    ## remove the , at the beginning of the string
+    if is_empty "$all_shards_pods"; then
+      all_shards_pods="${line}"
+      continue
+    fi
+    all_shards_pods="$all_shards_pods,${line}"
+  done <<< "$envs"
 }
 
 shutdown_redis_server() {

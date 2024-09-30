@@ -258,7 +258,7 @@ init_current_comp_default_nodes_for_scale_out() {
   local pod_host_ip
   local min_lexicographical_pod_name
   local min_lexicographical_pod_ordinal
-  min_lexicographical_pod_name=$(get_min_lexicographical_order_pod "$KB_CLUSTER_COMPONENT_POD_NAME_LIST")
+  min_lexicographical_pod_name=$(min_lexicographical_order_pod "$KB_CLUSTER_COMPONENT_POD_NAME_LIST")
   min_lexicographical_pod_ordinal=$(extract_ordinal_from_object_name "$min_lexicographical_pod_name")
   if is_empty "$min_lexicographical_pod_ordinal"; then
     echo "Failed to get the ordinal of the min lexicographical pod $min_lexicographical_pod_name in init_current_comp_default_nodes_for_scale_out"
@@ -322,7 +322,7 @@ gen_initialize_redis_cluster_node() {
   local pod_host_ip
   local min_lexicographical_pod_name
   local min_lexicographical_pod_ordinal
-  min_lexicographical_pod_name=$(get_min_lexicographical_order_pod "$KB_CLUSTER_POD_NAME_LIST")
+  min_lexicographical_pod_name=$(min_lexicographical_order_pod "$KB_CLUSTER_POD_NAME_LIST")
   min_lexicographical_pod_ordinal=$(extract_ordinal_from_object_name "$min_lexicographical_pod_name")
   if is_empty "$min_lexicographical_pod_ordinal"; then
     echo "Failed to get the ordinal of the min lexicographical pod $min_lexicographical_pod_name in gen_initialize_redis_cluster_node"

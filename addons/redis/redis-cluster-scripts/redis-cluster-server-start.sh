@@ -197,7 +197,7 @@ scale_redis_cluster_replica() {
   fi
 
   # get the current component nodes for scale out replica
-  target_node_name=$(get_min_lexicographical_order_pod "$CURRENT_SHARD_POD_NAME_LIST")
+  target_node_name=$(min_lexicographical_order_pod "$CURRENT_SHARD_POD_NAME_LIST")
   if ! is_empty "$CURRENT_SHARD_PRIMARY_POD_NAME"; then
     target_node_name="$CURRENT_SHARD_PRIMARY_POD_NAME"
   fi

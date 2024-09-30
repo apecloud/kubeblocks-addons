@@ -107,7 +107,7 @@ spec:
         credentialVarRef:
           name: default
           password: Required
-    ## the pod name list for current shard pod, the value format is "shard1:shard1Pod1,shard1Pod2@shard2:shard2Pod1,shard2Pod2"
+    ## the pod name list for current shard pod, the value format is "pod1,pod2"
     - name: CURRENT_SHARD_POD_NAME_LIST
       valueFrom:
         componentVarRef:
