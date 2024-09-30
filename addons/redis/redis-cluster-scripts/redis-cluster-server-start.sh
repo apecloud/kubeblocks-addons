@@ -315,7 +315,7 @@ build_redis_default_accounts() {
     echo "protected-mode no" >> $redis_real_conf
   fi
   set_xtrace_when_ut_mode_false
-  echo "aclfile $redis_acl_file" >> $redis_real_conf
+  echo "aclfile /data/users.acl" >> $redis_real_conf
   echo "build redis default accounts succeeded!"
 }
 
