@@ -21,7 +21,6 @@ spec:
   componentSpecs:
     - name: zookeeper
       componentDef: zookeeper
-      monitor: {{ .Values.monitor.enabled | default false }}
       replicas: {{ .Values.zookeeper.replicaCount | default 3 }}
       {{- with  .Values.zookeeper.resources }}
       resources:

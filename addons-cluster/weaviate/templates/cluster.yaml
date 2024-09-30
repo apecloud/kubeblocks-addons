@@ -15,7 +15,6 @@ spec:
   componentSpecs:
     - name: weaviate
       componentDef: weaviate
-      monitor: {{ .Values.monitor.enabled | default false }}
       replicas: {{ .Values.replicaCount | default 1 }}
       {{- with  .Values.resources }}
       resources:

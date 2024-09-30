@@ -17,7 +17,6 @@ on:
           - elasticsearch
           - etcd
           - flink
-          - greatsql
           - greptimedb
           - kafka
           - llm
@@ -27,7 +26,6 @@ on:
           - minio
           - mogdb
           - mongodb
-          - mongodb-sharding
           - mysql
           - nebula
           - neon

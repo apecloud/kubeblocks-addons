@@ -5,7 +5,7 @@ metadata:
   annotations:
     kubeblocks.io/extra-env: {{ include "opentenbase.extraEnv" . | squote }}
 spec:
-  clusterDefinitionRef: opentenbase
+  clusterDef: opentenbase
   terminationPolicy: {{ .Values.terminationPolicy }}
   componentSpecs:
     - name: gtm

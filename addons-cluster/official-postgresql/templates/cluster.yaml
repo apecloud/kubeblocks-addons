@@ -1,5 +1,5 @@
 {{- include "kblib.clusterCommon" . }}
-  clusterDefinitionRef: official-postgresql
+  clusterDef: official-postgresql
   componentSpecs:
     - name: postgresql
       componentDefRef: postgresql

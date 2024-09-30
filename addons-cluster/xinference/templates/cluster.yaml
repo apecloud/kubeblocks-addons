@@ -5,7 +5,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: xinference
+  clusterDef: xinference
   terminationPolicy:  {{ .Values.extra.terminationPolicy }}
   componentSpecs:
     - name: xinference

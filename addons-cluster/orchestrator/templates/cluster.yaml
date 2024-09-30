@@ -6,7 +6,7 @@ metadata:
   annotations:
     {{- include "orchestrator-cluster.annotations.extra-envs" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: orchestrator
+  clusterDef: orchestrator
   topology: {{ .Values.mode }}
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}

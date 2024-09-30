@@ -2,6 +2,8 @@ apiVersion: apps.kubeblocks.io/v1
 kind: ComponentVersion
 metadata:
   name: kafka-controller
+  labels:
+    {{- include "kafka.labels" . | nindent 4 }}
 spec:
   compatibilityRules:
     - compDefs:
