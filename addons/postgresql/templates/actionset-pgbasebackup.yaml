@@ -11,7 +11,7 @@ spec:
     - name: DATA_DIR
       value: {{ .Values.dataMountPath }}/pgroot/data
     - name: IMAGE_TAG
-      value: 14.8.0-pgvector-v0.6.1
+      value: 16.4.0-pgvector-v0.7.4
   backup:
     preBackup: []
     postBackup: []
