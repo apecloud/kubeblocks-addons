@@ -75,25 +75,14 @@ check_and_correct_other_primary_nodes() {
       # if original_announce_ip not equal to current_announce_ip, we need to correct it with the current_announce_ip
       if ! equals "$original_announce_ip" "$current_announce_ip"; then
         # send cluster meet command to the primary node
-        unset_xtrace_when_ut_mode_false
-        if is_empty "$REDIS_DEFAULT_PASSWORD"; then
-          meet_command="redis-cli -h $current_primary_endpoint -p $current_primary_port cluster meet $current_announce_ip $node_port $node_bus_port"
-          logging_mask_meet_command="$meet_command"
-        else
-          meet_command="redis-cli -h $current_primary_endpoint -p $current_primary_port -a $REDIS_DEFAULT_PASSWORD cluster meet $current_announce_ip $node_port $node_bus_port"
-          logging_mask_meet_command="${meet_command/$REDIS_DEFAULT_PASSWORD/********}"
-        fi
-        echo "check and correct other primary nodes meet command: $logging_mask_meet_command"
-        if ! $meet_command
-        then
-            echo "Failed to meet the node $node_endpoint_with_port in check_and_correct_other_primary_nodes"
-            shutdown_redis_server "$service_port"
-            exit 1
-        else
+        if send_cluster_meet_with_retry "$current_primary_endpoint" "$current_primary_port" "$current_announce_ip" "$node_port" "$node_bus_port"; then
           echo "Meet the node $node_endpoint_with_port successfully with new announce ip $current_announce_ip..."
           break
+        else
+          echo "Failed to meet the node $node_endpoint_with_port in check_and_correct_other_primary_nodes" >&2
+          shutdown_redis_server "$service_port"
+          exit 1
         fi
-        set_xtrace_when_ut_mode_false
       else
         echo "node_info $node_info is correct, skipping..."
         break

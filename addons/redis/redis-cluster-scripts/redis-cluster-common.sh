@@ -134,6 +134,33 @@ parse_advertised_port() {
   fi
 }
 
+send_cluster_meet() {
+  local primary_endpoint="$1"
+  local primary_port="$2"
+  local announce_ip="$3"
+  local announce_port="$4"
+  local announce_bus_port="$5"
+
+  unset_xtrace_when_ut_mode_false
+  if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+    meet_command="redis-cli -h $primary_endpoint -p $primary_port cluster meet $announce_ip $announce_port $announce_bus_port"
+    logging_mask_meet_command="$meet_command"
+  else
+    meet_command="redis-cli -h $primary_endpoint -p $primary_port -a $REDIS_DEFAULT_PASSWORD cluster meet $announce_ip $announce_port $announce_bus_port"
+    logging_mask_meet_command="${meet_command/$REDIS_DEFAULT_PASSWORD/********}"
+  fi
+  echo "check and correct other primary nodes meet command: $logging_mask_meet_command"
+  if ! $meet_command
+  then
+      echo "Failed to meet the node $announce_ip:$announce_port in check_and_correct_other_primary_nodes" >&2
+      return 1
+  else
+    echo "Meet the node $announce_ip:$announce_port successfully with new announce ip $announce_ip..." >&2
+    return 0
+  fi
+  set_xtrace_when_ut_mode_false
+}
+
 get_cluster_info() {
   local cluster_node="$1"
   local cluster_node_port="$2"
@@ -216,6 +243,21 @@ check_node_in_cluster() {
   else
     return 1
   fi
+}
+
+send_cluster_meet_with_retry() {
+  local primary_endpoint="$1"
+  local primary_port="$2"
+  local announce_ip="$3"
+  local announce_port="$4"
+  local announce_bus_port="$5"
+  send_cluster_meet_result=$(call_func_with_retry $retry_times $retry_delay_second send_cluster_meet "$primary_endpoint" "$primary_port" "$announce_ip" "$announce_port" "$announce_bus_port")
+  status=$?
+  if [ $status -ne 0 ]; then
+    echo "Failed to meet the node $announce_ip:$announce_port in check_and_correct_other_primary_nodes after retry" >&2
+    return 1
+  fi
+  return 0
 }
 
 get_cluster_nodes_info_with_retry() {
