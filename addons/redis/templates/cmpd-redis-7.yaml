@@ -260,6 +260,15 @@ spec:
           - -c
         args:
           - "redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD acl save "
+    switchover:
+      exec:
+        image: {{ include "redis7.image" . }}
+        container: redis
+        command:
+          - /bin/bash
+          - -c
+          - |
+            {{- .Files.Get "scripts/redis-switchover.sh" | nindent 14 }}
   runtime:
     initContainers:
       - name: init-dbctl
