@@ -93,15 +93,17 @@ init_other_components_and_pods_info() {
     fi
 
     # skip the pod belongs to the deleting component
-    pod_name_prefix=$(extract_pod_name_prefix "${pod_names[$index]}")
-    if echo "${deleting_components[@]}" | grep -q "$pod_name_prefix"; then
-      echo "skip the pod ${pod_names[$index]} as it belongs to the deleting component $pod_name_prefix"
-      continue
-    fi
+    for deleting_comp in "${deleting_components[@]}"; do
+      if echo "${pod_names[$index]}" | grep "$deleting_comp-"; then
+        echo "skip the pod ${pod_names[$index]} as it belongs the deleting component $deleting_comp"
+        continue 2
+      fi
+    done
 
     other_undeleted_component_pod_ips+=("${pod_ips[$index]}")
     other_undeleted_component_pod_names+=("${pod_names[$index]}")
 
+    # TODO: resolve the pod fqdn from the Vars
     pod_name_prefix=$(extract_pod_name_prefix "${pod_names[$index]}")
     pod_fqdn="${pod_names[$index]}.$pod_name_prefix-headless"
     other_undeleted_component_nodes+=("$pod_fqdn:$SERVICE_PORT")
@@ -145,38 +147,37 @@ parse_host_ip_from_built_in_envs() {
   local all_pod_host_ip_list="$3"
 
   if is_empty "$all_pod_name_list" || is_empty "$all_pod_host_ip_list"; then
-    echo "Error: Required environment variables all_pod_name_lis or all_pod_host_ip_list are not set."
-    exit 1
+    echo "Error: Required environment variables all_pod_name_lis or all_pod_host_ip_list are not set." >&2
+    return 1
   fi
 
   pod_name_list=($(split "$all_pod_name_list" ","))
   pod_ip_list=($(split "$all_pod_host_ip_list" ","))
-  while [ -n "$pod_name_list" ]; do
-    pod_name="${pod_name_list%%,*}"
-    host_ip="${pod_ip_list%%,*}"
-
+  while [ -n "${pod_name_list[0]}" ]; do
+    pod_name="${pod_name_list[0]}"
+    host_ip="${pod_ip_list[0]}"
     if equals "$pod_name" "$given_pod_name"; then
       echo "$host_ip"
       return 0
     fi
 
-    if equals "$pod_name_list" "$pod_name"; then
-      pod_name_list=''
-      pod_ip_list=''
+    if equals "${pod_name_list[-1]}" "$pod_name"; then
+      pod_name_list=()
+      pod_ip_list=()
     else
-      pod_name_list="${pod_name_list#*,}"
-      pod_ip_list="${pod_ip_list#*,}"
+      pod_name_list=("${pod_name_list[@]:1}")
+      pod_ip_list=("${pod_ip_list[@]:1}")
     fi
   done
 
-  echo "parse_host_ip_from_built_in_envs the given pod name $given_pod_name not found."
-  exit 1
+  echo "parse_host_ip_from_built_in_envs the given pod name $given_pod_name not found." >&2
+  return 1
 }
 
 extract_pod_name_prefix() {
   local pod_name="$1"
   # shellcheck disable=SC2001
-  prefix=$(echo "$pod_name" | sed 's/-[0-9]\+$//')
+  prefix=$(echo "$pod_name" | sed 's/-[0-9]*$//')
   echo "$prefix"
 }
 
@@ -184,13 +185,12 @@ extract_pod_name_prefix() {
 get_current_comp_nodes_for_scale_in() {
   local cluster_node="$1"
   local cluster_node_port="$2"
-  set +x
-  if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-    cluster_nodes_info=$(redis-cli -h "$cluster_node" -p "$cluster_node_port" cluster nodes)
-  else
-    cluster_nodes_info=$(redis-cli -h "$cluster_node" -p "$cluster_node_port" -a "$REDIS_DEFAULT_PASSWORD" cluster nodes)
+  cluster_nodes_info=$(get_cluster_nodes_info "$cluster_node" "$cluster_node_port")
+  status=$?
+  if [ $status -ne 0 ]; then
+    echo "Failed to get cluster nodes info in get_current_comp_nodes_for_scale_in" >&2
+    return 1
   fi
-  set -x
 
   current_comp_primary_node=()
   current_comp_other_nodes=()

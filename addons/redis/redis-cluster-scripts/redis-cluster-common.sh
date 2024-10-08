@@ -72,6 +72,27 @@ get_all_shards_pods() {
   done <<< "$envs"
 }
 
+## the pod fqdn list for all shard pod, it will generate a set of variables with the shard name suffix like:
+## - ALL_SHARDS_POD_FQDN_LIST_SHARD_98X="redis-shard-98x-0.redis-shard-98x-headless.default.cluster.local,redis-shard-98x-1.redis-shard-98x-headless.default.cluster.local"
+## - ALL_SHARDS_POD_FQDN_LIST_SHARD_CQ7="redis-shard-cq7-0.redis-shard-cq7-headless.default.cluster.local,redis-shard-cq7-1.redis-shard-cq7-headless.default.cluster.local"
+## - ALL_SHARDS_POD_FQDN_LIST_SHARD_HY7="redis-shard-hy7-0.redis-shard-hy7-headless.default.cluster.local,redis-shard-hy7-1.redis-shard-hy7-headless.default.cluster.local"
+get_all_shards_pod_fqdns() {
+  ## list all Envs name prefix with ALL_SHARDS_POD_FQDN_LIST and get them value combined with ","
+  local all_shards_pod_fqdns
+  envs=$(env | grep "^ALL_SHARDS_POD_FQDN_LIST" | awk -F '=' '{print $2}')
+  while read -r line; do
+    ## remove the \n at the end of the string
+    line=$(echo "$line" | tr -d '\n')
+
+    ## remove the , at the beginning of the string
+    if is_empty "$all_shards_pod_fqdns"; then
+      all_shards_pod_fqdns="${line}"
+      continue
+    fi
+    all_shards_pod_fqdns="$all_shards_pod_fqdns,${line}"
+  done <<< "$envs"
+}
+
 shutdown_redis_server() {
   local service_port="$1"
   unset_xtrace_when_ut_mode_false

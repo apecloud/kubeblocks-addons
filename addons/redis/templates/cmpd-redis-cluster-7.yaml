@@ -183,7 +183,7 @@ spec:
       valueFrom:
         componentVarRef:
           compDef: {{ include "redisCluster7.cmpdName" . }}
-          optional: true
+          optional: false
           podNames: Required
           multipleClusterObjectOption:
             strategy: individual
@@ -194,7 +194,8 @@ spec:
     - name: ALL_SHARDS_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
-          optional: true
+          compDef: {{ include "redisCluster7.cmpdName" . }}
+          optional: false
           podFQDNs: Required
           multipleClusterObjectOption:
             strategy: individual
