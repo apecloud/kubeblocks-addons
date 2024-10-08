@@ -219,4 +219,94 @@ Describe "Redis Cluster Server Start Bash Script Tests"
       The contents of file "$redis_acl_file" should eq ""
     End
   End
+
+  Describe "parse_current_pod_advertised_svc_if_exist()"
+    Context "when both CURRENT_SHARD_ADVERTISED_PORT and CURRENT_SHARD_ADVERTISED_BUS_PORT are set"
+      setup() {
+        export CURRENT_POD_HOST_IP="172.0.0.1"
+        export CURRENT_POD_NAME="redis-redis-0"
+        export CURRENT_SHARD_ADVERTISED_PORT="redis-redis-0:31000,redis-redis-1:31001"
+        export CURRENT_SHARD_ADVERTISED_BUS_PORT="redis-redis-0:31888,redis-redis-1:31889"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset CURRENT_POD_HOST_IP
+        unset CURRENT_POD_NAME
+        unset CURRENT_SHARD_ADVERTISED_PORT
+        unset CURRENT_SHARD_ADVERTISED_BUS_PORT
+      }
+      After "un_setup"
+
+      It "parses advertised service correctly"
+        When call parse_current_pod_advertised_svc_if_exist
+        The variable redis_advertised_svc_port_value should equal "31000"
+        The variable redis_advertised_svc_bus_port_value should equal "31888"
+        The variable redis_advertised_svc_host_value should equal "172.0.0.1"
+      End
+    End
+
+    Context "when CURRENT_SHARD_ADVERTISED_PORT or CURRENT_SHARD_ADVERTISED_BUS_PORT is not set"
+      setup() {
+        unset CURRENT_POD_HOST_IP
+        unset CURRENT_POD_NAME
+        unset CURRENT_SHARD_ADVERTISED_PORT
+        unset CURRENT_SHARD_ADVERTISED_BUS_PORT
+      }
+      Before "setup"
+
+      It "ignores parsing when CURRENT_SHARD_ADVERTISED_PORT and CURRENT_SHARD_ADVERTISED_BUS_PORT are not set"
+        When call parse_current_pod_advertised_svc_if_exist
+        The stdout should include "Environment variable CURRENT_SHARD_ADVERTISED_PORT and CURRENT_SHARD_ADVERTISED_BUS_PORT not found. Ignoring."
+      End
+    End
+
+    Context "when CURRENT_SHARD_ADVERTISED_PORT is invalid"
+      setup() {
+        export CURRENT_POD_HOST_IP="172.0.0.1"
+        export CURRENT_POD_NAME="redis-redis-1"
+        export CURRENT_SHARD_ADVERTISED_PORT="redis-redis-0:31000,redis-redis-1"
+        export CURRENT_SHARD_ADVERTISED_BUS_PORT="redis-redis-0:31888,redis-redis-1:32222"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset CURRENT_POD_HOST_IP
+        unset CURRENT_POD_NAME
+        unset CURRENT_SHARD_ADVERTISED_PORT
+        unset CURRENT_SHARD_ADVERTISED_BUS_PORT
+      }
+      After "un_setup"
+
+      It "exits with error when CURRENT_SHARD_ADVERTISED_PORT is invalid"
+        When run parse_current_pod_advertised_svc_if_exist
+        The status should be failure
+        The stdout should include "Exiting due to error in CURRENT_SHARD_ADVERTISED_PORT."
+      End
+    End
+
+    Context "when CURRENT_SHARD_ADVERTISED_BUS_PORT is invalid"
+      setup() {
+        export CURRENT_POD_HOST_IP="172.0.0.1"
+        export CURRENT_POD_NAME="redis-redis-1"
+        export CURRENT_SHARD_ADVERTISED_PORT="redis-redis-0:31000,redis-redis-1:31001"
+        export CURRENT_SHARD_ADVERTISED_BUS_PORT="redis-redis-0:31888,redis-redis-1"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset CURRENT_POD_HOST_IP
+        unset CURRENT_POD_NAME
+        unset CURRENT_SHARD_ADVERTISED_PORT
+        unset CURRENT_SHARD_ADVERTISED_BUS_PORT
+      }
+      After "un_setup"
+
+      It "exits with error when CURRENT_SHARD_ADVERTISED_BUS_PORT is invalid"
+        When run parse_current_pod_advertised_svc_if_exist
+        The status should be failure
+        The stdout should include "Exiting due to error in CURRENT_SHARD_ADVERTISED_BUS_PORT."
+      End
+    End
+  End
 End
