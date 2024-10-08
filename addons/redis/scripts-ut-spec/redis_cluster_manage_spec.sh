@@ -202,4 +202,239 @@ Describe "Redis Cluster Manage Bash Script Tests"
     End
   End
 
+  Describe "init_current_comp_default_nodes_for_scale_out()"
+    Context "when using advertised ports"
+      min_lexicographical_order_pod() {
+        echo "redis-shard-sxj-0"
+      }
+
+      parse_host_ip_from_built_in_envs() {
+        case "$1" in
+          "redis-shard-sxj-0")
+            echo "10.42.0.1"
+            ;;
+          "redis-shard-sxj-1")
+            echo "10.42.0.2"
+            ;;
+        esac
+      }
+
+      setup() {
+        declare -gA scale_out_shard_default_primary_node
+        declare -gA scale_out_shard_default_other_nodes
+        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="redis-shard-sxj-0,redis-shard-sxj-1"
+        export CURRENT_SHARD_ADVERTISED_PORT="redis-shard-sxj-0:31000,redis-shard-sxj-1:31001"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
+        unset CURRENT_SHARD_ADVERTISED_PORT
+      }
+      After "un_setup"
+
+      It "initializes default nodes correctly when using advertised ports"
+        When call init_current_comp_default_nodes_for_scale_out
+        The status should be success
+        The variable scale_out_shard_default_primary_node['redis-shard-sxj-0'] should equal "10.42.0.1:31000"
+        The variable scale_out_shard_default_other_nodes['redis-shard-sxj-1'] should equal "10.42.0.2:31001"
+      End
+    End
+
+    Context "when not using advertised ports"
+      min_lexicographical_order_pod() {
+        echo "redis-shard-sxj-0"
+      }
+
+      get_target_pod_fqdn_from_pod_fqdn_vars() {
+        case "$1" in
+          "redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc.cluster.local")
+            case "$2" in
+              "redis-shard-sxj-0")
+                echo "redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local"
+                ;;
+              "redis-shard-sxj-1")
+                echo "redis-shard-sxj-1.redis-shard-sxj-headless.default.svc.cluster.local"
+                ;;
+            esac
+            ;;
+        esac
+      }
+
+      setup() {
+        declare -gA scale_out_shard_default_primary_node
+        declare -gA scale_out_shard_default_other_nodes
+        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="redis-shard-sxj-0,redis-shard-sxj-1"
+        export CURRENT_SHARD_POD_FQDN_LIST="redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc.cluster.local"
+        export SERVICE_PORT="6379"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
+        unset CURRENT_SHARD_POD_FQDN_LIST
+        unset SERVICE_PORT
+      }
+      After "un_setup"
+
+      It "initializes default nodes correctly when not using advertised ports"
+        When call init_current_comp_default_nodes_for_scale_out
+        The status should be success
+        The variable scale_out_shard_default_primary_node['redis-shard-sxj-0'] should equal "redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local:6379"
+        The variable scale_out_shard_default_other_nodes['redis-shard-sxj-1'] should equal "redis-shard-sxj-1.redis-shard-sxj-headless.default.svc.cluster.local:6379"
+      End
+    End
+
+    Context "when failed to get ordinal of min lexicographical pod"
+      min_lexicographical_order_pod() {
+        echo "redis-shard-sxj-0"
+      }
+
+      extract_ordinal_from_object_name() {
+        return 1
+      }
+
+      setup() {
+        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="redis-shard-sxj-0,redis-shard-sxj-1"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
+      }
+      After "un_setup"
+
+      It "exits with error when failed to get ordinal of min lexicographical pod"
+        When run init_current_comp_default_nodes_for_scale_out
+        The status should be failure
+        The stderr should include "Failed to get the ordinal of the min lexicographical pod redis-shard-sxj-0 in init_current_comp_default_nodes_for_scale_out"
+      End
+    End
+
+    Context "when failed to get host ip of pod"
+      min_lexicographical_order_pod() {
+        echo "redis-shard-sxj-0"
+      }
+
+      extract_ordinal_from_object_name() {
+        case "$1" in
+          "redis-shard-sxj-0")
+            echo "0"
+            ;;
+          "redis-shard-sxj-1")
+            echo "1"
+            ;;
+        esac
+      }
+
+      parse_host_ip_from_built_in_envs() {
+        return 1
+      }
+
+      setup() {
+        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="redis-shard-sxj-0,redis-shard-sxj-1"
+        export CURRENT_SHARD_ADVERTISED_PORT="redis-shard-sxj-0:31000,redis-shard-sxj-1:31001"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
+        unset CURRENT_SHARD_ADVERTISED_PORT
+      }
+      After "un_setup"
+
+      It "exits with error when failed to get host ip of pod"
+        When run init_current_comp_default_nodes_for_scale_out
+        The status should be failure
+        The stderr should include "Failed to get the host ip of the pod redis-shard-sxj-0"
+      End
+    End
+
+    Context "when advertised port not found for pod"
+      min_lexicographical_order_pod() {
+        echo "redis-shard-sxj-0"
+      }
+
+      extract_ordinal_from_object_name() {
+        case "$1" in
+          "redis-shard-sxj-0")
+            echo "0"
+            ;;
+          "redis-shard-sxj-1")
+            echo "1"
+            ;;
+        esac
+      }
+
+      parse_host_ip_from_built_in_envs() {
+        case "$1" in
+          "redis-shard-sxj-0")
+            echo "10.42.0.1"
+            ;;
+          "redis-shard-sxj-1")
+            echo "10.42.0.2"
+            ;;
+        esac
+      }
+
+      setup() {
+        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="redis-shard-sxj-0,redis-shard-sxj-1"
+        export CURRENT_SHARD_ADVERTISED_PORT="redis-shard-sxj-0:31000"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
+        unset CURRENT_SHARD_ADVERTISED_PORT
+      }
+      After "un_setup"
+
+      It "exits with error when advertised port not found for pod"
+        When run init_current_comp_default_nodes_for_scale_out
+        The status should be failure
+        The stderr should include "Advertised port not found for pod redis-shard-sxj-1"
+      End
+    End
+
+    Context "when failed to get pod fqdn"
+      min_lexicographical_order_pod() {
+        echo "redis-shard-sxj-0"
+      }
+
+      extract_ordinal_from_object_name() {
+        case "$1" in
+          "redis-shard-sxj-0")
+            echo "0"
+            ;;
+          "redis-shard-sxj-1")
+            echo "1"
+            ;;
+        esac
+      }
+
+      get_target_pod_fqdn_from_pod_fqdn_vars() {
+        return 1
+      }
+
+      setup() {
+        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="redis-shard-sxj-0,redis-shard-sxj-1"
+        export CURRENT_SHARD_POD_FQDN_LIST="redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc.cluster.local"
+        export SERVICE_PORT="6379"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
+        unset CURRENT_SHARD_POD_FQDN_LIST
+        unset SERVICE_PORT
+      }
+      After "un_setup"
+
+      It "exits with error when failed to get pod fqdn"
+        When run init_current_comp_default_nodes_for_scale_out
+        The status should be failure
+        The stderr should include "Error: Failed to get current pod: redis-shard-sxj-0 fqdn from current shard pod fqdn list: redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc.cluster.local. Exiting."
+      End
+    End
+  End
 End

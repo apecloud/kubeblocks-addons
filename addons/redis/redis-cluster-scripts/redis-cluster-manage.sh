@@ -261,15 +261,20 @@ init_current_comp_default_nodes_for_scale_out() {
   min_lexicographical_pod_name=$(min_lexicographical_order_pod "$KB_CLUSTER_COMPONENT_POD_NAME_LIST")
   min_lexicographical_pod_ordinal=$(extract_ordinal_from_object_name "$min_lexicographical_pod_name")
   if is_empty "$min_lexicographical_pod_ordinal"; then
-    echo "Failed to get the ordinal of the min lexicographical pod $min_lexicographical_pod_name in init_current_comp_default_nodes_for_scale_out"
-    exit 1
+    echo "Failed to get the ordinal of the min lexicographical pod $min_lexicographical_pod_name in init_current_comp_default_nodes_for_scale_out" >&2
+    return 1
   fi
   for pod_name in $(echo "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" | tr ',' ' '); do
     pod_name_ordinal=$(extract_ordinal_from_object_name "$pod_name")
     ## if the CURRENT_SHARD_ADVERTISED_PORT is set, use the advertised port
     ## the value format of CURRENT_SHARD_ADVERTISED_PORT is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."
     if ! is_empty "$CURRENT_SHARD_ADVERTISED_PORT"; then
+      old_ifs="$IFS"
+      IFS=','
+      set -f
       read -ra advertised_infos <<< "$CURRENT_SHARD_ADVERTISED_PORT"
+      set +f
+      IFS="$old_ifs"
       found_advertised_port=false
       for advertised_info in "${advertised_infos[@]}"; do
         advertised_svc=$(echo "$advertised_info" | cut -d':' -f1)
@@ -278,8 +283,8 @@ init_current_comp_default_nodes_for_scale_out() {
         if [ "$pod_name_ordinal" == "$advertised_svc_ordinal" ]; then
           pod_host_ip=$(parse_host_ip_from_built_in_envs "$pod_name" "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" "$KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST")
           if is_empty "$pod_host_ip"; then
-            echo "Failed to get the host ip of the pod $pod_name"
-            exit 1
+            echo "Failed to get the host ip of the pod $pod_name" >&2
+            return 1
           fi
           if equals "$pod_name_ordinal" "$min_lexicographical_pod_ordinal"; then
             scale_out_shard_default_primary_node["$pod_name"]="$pod_host_ip:$advertised_port"
@@ -291,16 +296,16 @@ init_current_comp_default_nodes_for_scale_out() {
         fi
       done
       if [ "$found_advertised_port" = false ]; then
-        echo "Advertised port not found for pod $pod_name"
-        exit 1
+        echo "Advertised port not found for pod $pod_name" >&2
+        return 1
       fi
     else
       local pod_fqdn
       local port=$SERVICE_PORT
       pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$CURRENT_SHARD_POD_FQDN_LIST" "$pod_name")
       if is_empty "$pod_fqdn"; then
-        echo "Error: Failed to get current pod: $pod_name fqdn from current shard pod fqdn list: $CURRENT_SHARD_POD_FQDN_LIST. Exiting."
-        exit 1
+        echo "Error: Failed to get current pod: $pod_name fqdn from current shard pod fqdn list: $CURRENT_SHARD_POD_FQDN_LIST. Exiting." >&2
+        return 1
       fi
       if equals "$pod_name_ordinal" "$min_lexicographical_pod_ordinal"; then
         scale_out_shard_default_primary_node["$pod_name"]="$pod_fqdn:$port"
@@ -309,6 +314,7 @@ init_current_comp_default_nodes_for_scale_out() {
       fi
     fi
   done
+  return 0
 }
 
 # initialize the redis cluster primary and secondary nodes, use the min lexicographical pod of each shard as the primary nodes by default.
@@ -480,7 +486,12 @@ scale_out_redis_cluster_shard() {
   fi
 
   init_other_components_and_pods_info "$CURRENT_SHARD_COMPONENT_SHORT_NAME" "$KB_CLUSTER_POD_IP_LIST" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_COMPONENT_LIST" "$KB_CLUSTER_COMPONENT_DELETING_LIST" "$KB_CLUSTER_COMPONENT_UNDELETED_LIST"
-  init_current_comp_default_nodes_for_scale_out
+  if init_current_comp_default_nodes_for_scale_out; then
+    echo "Redis cluster scale out shard default primary and secondary nodes successfully"
+  else
+    echo "Failed to initialize the default primary and secondary nodes for scale out"
+    exit 1
+  fi
 
   # check the current component shard whether is already scaled out
   if [ ${#scale_out_shard_default_primary_node[@]} -eq 0 ]; then
