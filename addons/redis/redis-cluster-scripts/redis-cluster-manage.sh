@@ -405,116 +405,6 @@ gen_initialize_redis_cluster_secondary_nodes() {
   gen_initialize_redis_cluster_node "false"
 }
 
-build_redis_cluster_create_command() {
-  local primary_nodes="$1"
-  unset_xtrace_when_ut_mode_false
-  if is_empty "$REDIS_DEFAULT_PASSWORD"; then
-    initialize_command="redis-cli --cluster create $primary_nodes --cluster-yes"
-    logging_mask_initialize_command="$initialize_command"
-  else
-    initialize_command="redis-cli --cluster create $primary_nodes -a $REDIS_DEFAULT_PASSWORD --cluster-yes"
-    logging_mask_initialize_command="${initialize_command/$REDIS_DEFAULT_PASSWORD/********}"
-  fi
-  echo "initialize cluster command: $logging_mask_initialize_command" >&2
-  set_xtrace_when_ut_mode_false
-  echo "$initialize_command"
-}
-
-build_secondary_replicated_command() {
-  local secondary_endpoint_with_port="$1"
-  local mapping_primary_endpoint_with_port="$2"
-  local mapping_primary_cluster_id="$3"
-  unset_xtrace_when_ut_mode_false
-  if is_empty "$REDIS_DEFAULT_PASSWORD"; then
-    replicated_command="redis-cli --cluster add-node $secondary_endpoint_with_port $mapping_primary_endpoint_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id"
-    logging_mask_replicated_command="$replicated_command"
-  else
-    replicated_command="redis-cli --cluster add-node $secondary_endpoint_with_port $mapping_primary_endpoint_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id -a $REDIS_DEFAULT_PASSWORD"
-    logging_mask_replicated_command="${replicated_command/$REDIS_DEFAULT_PASSWORD/********}"
-  fi
-  echo "initialize cluster secondary add-node command: $logging_mask_replicated_command" >&2
-  set_xtrace_when_ut_mode_false
-  echo "$replicated_command"
-}
-
-build_scale_out_shard_primary_join_command() {
-  local scale_out_shard_default_primary_endpoint_with_port="$1"
-  local exist_available_node="$2"
-  unset_xtrace_when_ut_mode_false
-  if is_empty "$REDIS_DEFAULT_PASSWORD"; then
-    add_node_command="redis-cli --cluster add-node $scale_out_shard_default_primary_endpoint_with_port $exist_available_node"
-    logging_mask_add_node_command="$add_node_command"
-  else
-    add_node_command="redis-cli --cluster add-node $scale_out_shard_default_primary_endpoint_with_port $exist_available_node -a $REDIS_DEFAULT_PASSWORD"
-    logging_mask_add_node_command="${add_node_command/$REDIS_DEFAULT_PASSWORD/********}"
-  fi
-  echo "scale out shard primary add-node command: $logging_mask_add_node_command" >&2
-  set_xtrace_when_ut_mode_false
-  echo "$add_node_command"
-}
-
-build_reshard_command() {
-  local primary_node_with_port="$1"
-  local mapping_primary_cluster_id="$2"
-  local slots_per_shard="$3"
-  unset_xtrace_when_ut_mode_false
-  if is_empty "$REDIS_DEFAULT_PASSWORD"; then
-    reshard_command="redis-cli --cluster reshard $primary_node_with_port --cluster-from all --cluster-to $mapping_primary_cluster_id --cluster-slots $slots_per_shard --cluster-yes"
-    logging_mask_reshard_command="$reshard_command"
-  else
-    reshard_command="redis-cli --cluster reshard $primary_node_with_port --cluster-from all --cluster-to $mapping_primary_cluster_id --cluster-slots $slots_per_shard -a $REDIS_DEFAULT_PASSWORD --cluster-yes"
-    logging_mask_reshard_command="${reshard_command/$REDIS_DEFAULT_PASSWORD/********}"
-  fi
-  echo "scale out shard reshard command: $logging_mask_reshard_command" >&2
-  set_xtrace_when_ut_mode_false
-  echo "$reshard_command"
-}
-
-create_redis_cluster() {
-  local primary_nodes="$1"
-  initialize_command=$(build_redis_cluster_create_command "$primary_nodes")
-  if ! $initialize_command; then
-    echo "Failed to create Redis Cluster" >&2
-    return 1
-  fi
-  return 0
-}
-
-secondary_replicated_to_primary() {
-  local secondary_endpoint_with_port="$1"
-  local mapping_primary_endpoint_with_port="$2"
-  local mapping_primary_cluster_id="$3"
-  replicated_command=$(build_secondary_replicated_command "$secondary_endpoint_with_port" "$mapping_primary_endpoint_with_port" "$mapping_primary_cluster_id")
-  if ! $replicated_command; then
-    echo "Failed to add the node $secondary_pod_name to the cluster" >&2
-    return 1
-  fi
-  return 0
-}
-
-scale_out_shard_primary_join_cluster() {
-  local scale_out_shard_default_primary_endpoint_with_port="$1"
-  local exist_available_node="$2"
-  add_node_command=$(build_scale_out_shard_primary_join_command "$scale_out_shard_default_primary_endpoint_with_port" "$exist_available_node")
-  if ! $add_node_command; then
-    echo "Failed to add the node $scale_out_shard_default_primary_endpoint_with_port to the cluster" >&2
-    return 1
-  fi
-  return 0
-}
-
-scale_out_shard_reshard() {
-  local primary_node_with_port="$1"
-  local mapping_primary_cluster_id="$2"
-  local slots_per_shard="$3"
-  reshard_command=$(build_reshard_command "$primary_node_with_port" "$mapping_primary_cluster_id" "$slots_per_shard")
-  if ! $reshard_command; then
-    echo "Failed to reshard the cluster" >&2
-    return 1
-  fi
-  return 0
-}
-
 initialize_redis_cluster() {
   if is_empty "$KB_CLUSTER_POD_NAME_LIST" || is_empty "$KB_CLUSTER_POD_HOST_IP_LIST"; then
     echo "Error: Required environment variable KB_CLUSTER_POD_NAME_LIST and KB_CLUSTER_POD_HOST_IP_LIST are not set when initializing redis cluster"
@@ -571,15 +461,15 @@ initialize_redis_cluster() {
       echo "Failed to get the cluster id from cluster nodes of the mapping primary node: $mapping_primary_endpoint_with_port"
       exit 1
     fi
-
-    if secondary_replicated_to_primary "$secondary_endpoint_with_port" "$mapping_primary_endpoint_with_port" "$mapping_primary_cluster_id"; then
-      echo "Redis cluster initialized secondary node $secondary_pod_name successfully"
-    else
-      echo "Failed to initialize the secondary node $secondary_pod_name"
+    replicated_output=$(secondary_replicated_to_primary "$current_node_with_port" "$primary_node_endpoint_with_port" "$primary_node_cluster_id")
+    status=$?
+    if [ $status -ne 0 ] ; then
+      echo "Failed to initialize the secondary node $secondary_pod_name, secondary replicated output: $replicated_output" >&2
       exit 1
     fi
+    echo "Redis cluster initialized secondary node $secondary_pod_name successfully"
     # waiting for all nodes sync the information
-    sleep_random_second 5 1
+    sleep_when_ut_mode_false 5
   done
 }
 
@@ -626,7 +516,7 @@ scale_out_redis_cluster_shard() {
   done
 
   # waiting for all nodes sync the information
-  sleep_random_second 10 5
+  sleep_when_ut_mode_false 5
 
   # add the secondary nodes to replicate the primary node
   local scale_out_shard_secondary_node
@@ -717,7 +607,7 @@ scale_in_redis_cluster_shard() {
     set -x
   done
 
-  sleep_random_second 10 5
+  sleep_when_ut_mode_false 5
 
   # delete the current component nodes from the cluster
   for node_to_del in "${current_comp_primary_node[@]}" "${current_comp_other_nodes[@]}"; do

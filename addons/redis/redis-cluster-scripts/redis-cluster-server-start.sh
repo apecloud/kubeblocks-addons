@@ -182,7 +182,7 @@ scale_redis_cluster_replica() {
   if check_redis_server_ready_with_retry ; then
     echo "Redis server is ready, continue to scale out replica..."
   else
-    echo "Redis server is not ready, exit scale out replica..."
+    echo "Redis server is not ready, exit scale out replica..." >&2
     exit 1
   fi
 
@@ -193,7 +193,7 @@ scale_redis_cluster_replica() {
   fi
   target_node_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$CURRENT_SHARD_POD_FQDN_LIST" "$target_node_name")
   if is_empty "$target_node_fqdn"; then
-    echo "Error: Failed to get target node fqdn from current shard pod fqdn list: $CURRENT_SHARD_POD_FQDN_LIST. Exiting."
+    echo "Error: Failed to get target node fqdn from current shard pod fqdn list: $CURRENT_SHARD_POD_FQDN_LIST. Exiting." >&2
     exit 1
   fi
   # get the current component nodes for scale out replica
@@ -227,32 +227,20 @@ scale_redis_cluster_replica() {
   primary_node_cluster_id=$(get_cluster_id_with_retry "$primary_node_endpoint" "$primary_node_port")
   status=$?
   if is_empty "$primary_node_cluster_id" || [ $status -ne 0 ]; then
-    echo "Failed to get the cluster id of the primary node $primary_node_endpoint_with_port"
+    echo "Failed to get the cluster id of the primary node $primary_node_endpoint_with_port" >&2
     shutdown_redis_server "$service_port"
     exit 1
   fi
   # current_node_with_port do not use advertised svc and port, because advertised svc and port are not ready when Pod is not Ready.
   current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$CURRENT_SHARD_POD_FQDN_LIST" "$CURRENT_POD_NAME")
   current_node_with_port="$current_pod_fqdn:$service_port"
-  unset_xtrace_when_ut_mode_false
-  if is_empty "$REDIS_DEFAULT_PASSWORD"; then
-    replicated_command="redis-cli --cluster add-node $current_node_with_port $primary_node_endpoint_with_port --cluster-slave --cluster-master-id $primary_node_cluster_id"
-    logging_mask_replicated_command="$replicated_command"
-  else
-    replicated_command="redis-cli --cluster add-node $current_node_with_port $primary_node_endpoint_with_port --cluster-slave --cluster-master-id $primary_node_cluster_id -a $REDIS_DEFAULT_PASSWORD"
-    logging_mask_replicated_command="${replicated_command/$REDIS_DEFAULT_PASSWORD/********}"
-  fi
-  echo "scale out replica replicated command: $logging_mask_replicated_command"
-  replicated_output=$($replicated_command)
-  replicated_exit_code=$?
-  set_xtrace_when_ut_mode_false
-  echo "Scale out replica replicated command result: $replicated_output"
-  if [ $replicated_exit_code -ne 0 ]; then
+  replicated_output=$(secondary_replicated_to_primary "$current_node_with_port" "$primary_node_endpoint_with_port" "$primary_node_cluster_id")
+  status=$?
+  if [ $status -ne 0 ] ; then
     if contains "$replicated_output" "is not empty"; then
       echo "Replica is not empty, Either the node already knows other nodes (check with CLUSTER NODES) or contains some key in database 0"
     else
-      echo "Failed to add the node $current_pod_fqdn to the cluster in scale_redis_cluster_replica, shutdown redis server"
-      echo "Error message: $replicated_output"
+      echo "Failed to add the node $current_pod_fqdn to the cluster in scale_redis_cluster_replica, Error message: $replicated_output, shutdown redis server" >&2
       shutdown_redis_server "$service_port"
       exit 1
     fi
@@ -266,23 +254,14 @@ scale_redis_cluster_replica() {
     fi
     primary_node_cluster_announce_ip=$(get_cluster_announce_ip_with_retry "$primary_node_endpoint" "$primary_node_port")
     # send cluster meet command to the primary node
-    unset_xtrace_when_ut_mode_false
-    if is_empty "$REDIS_DEFAULT_PASSWORD"; then
-      meet_command="redis-cli cluster meet $primary_node_cluster_announce_ip $primary_node_port $primary_node_bus_port"
-      logging_mask_meet_command="$meet_command"
+    if send_cluster_meet_with_retry "127.0.0.1" "$service_port" "$primary_node_cluster_announce_ip" "$primary_node_port" "$primary_node_bus_port"; then
+      echo "scale out replica meet the node $primary_node_endpoint_with_port successfully..."
+      sleep_when_ut_mode_false 3
     else
-      meet_command="redis-cli -a $REDIS_DEFAULT_PASSWORD cluster meet $primary_node_cluster_announce_ip $primary_node_port $primary_node_bus_port"
-      logging_mask_meet_command="${meet_command/$REDIS_DEFAULT_PASSWORD/********}"
+      echo "Failed to meet the node $primary_node_endpoint_with_port in scale_redis_cluster_replica, shutdown redis server" >&2
+      shutdown_redis_server "$service_port"
+      exit 1
     fi
-    echo "scale out replica meet command: $logging_mask_meet_command"
-    if ! $meet_command
-    then
-        echo "Failed to meet the node $primary_node_endpoint_with_port in scale_redis_cluster_replica, shutdown redis server"
-        shutdown_redis_server "$service_port"
-        exit 1
-    fi
-    set_xtrace_when_ut_mode_false
-    sleep 3
   done
   exit 0
 }

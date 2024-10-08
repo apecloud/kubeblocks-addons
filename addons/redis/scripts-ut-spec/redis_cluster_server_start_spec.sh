@@ -507,4 +507,352 @@ Describe "Redis Cluster Server Start Bash Script Tests"
       End
     End
   End
+
+  Describe "scale_redis_cluster_replica()"
+    Context "when redis server is not ready"
+      check_redis_server_ready_with_retry() {
+        return 1
+      }
+
+      It "exits when redis server is not ready"
+        When run scale_redis_cluster_replica
+        The status should be failure
+        The stderr should include "Redis server is not ready, exit scale out replica..."
+      End
+    End
+
+    Context "when current pod is already in the cluster"
+      check_redis_server_ready_with_retry() {
+        return 0
+      }
+
+      min_lexicographical_order_pod() {
+        echo "redis-shard-sxj-0"
+      }
+
+      get_target_pod_fqdn_from_pod_fqdn_vars() {
+        echo "redis-shard-sxj-0.redis-shard-sxj-headless.default.svc"
+      }
+
+      get_current_comp_nodes_for_scale_out_replica() {
+        current_comp_primary_node+=("10.42.0.227#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc:6379@16379")
+      }
+
+      check_node_in_cluster_with_retry() {
+        return 0
+      }
+
+      setup() {
+        export CURRENT_SHARD_POD_NAME_LIST="redis-shard-sxj-0,redis-shard-sxj-1"
+        export CURRENT_POD_NAME="redis-shard-sxj-0"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset CURRENT_SHARD_POD_NAME_LIST
+        unset CURRENT_POD_NAME
+      }
+      After "un_setup"
+
+      It "exits when current pod is already in the cluster"
+        When run scale_redis_cluster_replica
+        The status should be success
+        The stdout should include "Node redis-shard-sxj-0 is already in the cluster, skipping scale out replica..."
+      End
+    End
+
+    Context "when current pod is primary node"
+      check_redis_server_ready_with_retry() {
+        return 0
+      }
+
+      min_lexicographical_order_pod() {
+        echo "redis-shard-sxj-0"
+      }
+
+      get_target_pod_fqdn_from_pod_fqdn_vars() {
+        echo "redis-shard-sxj-0.redis-shard-sxj-headless.default.svc"
+      }
+
+      get_current_comp_nodes_for_scale_out_replica() {
+        current_comp_primary_node+=("10.42.0.227#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc:6379@16379")
+      }
+
+      check_node_in_cluster_with_retry() {
+        return 0
+      }
+
+      check_and_correct_other_primary_nodes() {
+        true
+      }
+
+      setup() {
+        export CURRENT_SHARD_POD_NAME_LIST="redis-shard-sxj-0,redis-shard-sxj-1"
+        export CURRENT_POD_NAME="redis-shard-sxj-0"
+        export CURRENT_SHARD_COMPONENT_NAME="redis-shard-sxj"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset CURRENT_SHARD_POD_NAME_LIST
+        unset CURRENT_POD_NAME
+        unset CURRENT_SHARD_COMPONENT_NAME
+      }
+      After "un_setup"
+
+      It "checks and corrects other primary nodes when current pod is primary node"
+        When run scale_redis_cluster_replica
+        The status should be success
+        The stdout should include "Current pod redis-shard-sxj-0 is primary node, check and correct other primary nodes..."
+      End
+    End
+
+    Context "when current pod is not in the cluster"
+      check_redis_server_ready_with_retry() {
+        return 0
+      }
+
+      min_lexicographical_order_pod() {
+        echo "redis-shard-sxj-0"
+      }
+
+      get_target_pod_fqdn_from_pod_fqdn_vars() {
+        echo "redis-shard-sxj-0.redis-shard-sxj-headless.default.svc"
+      }
+
+      get_current_comp_nodes_for_scale_out_replica() {
+        current_comp_primary_node+=("10.42.0.227#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc:6379@16379")
+      }
+
+      check_node_in_cluster_with_retry() {
+        return 1
+      }
+
+      get_cluster_id_with_retry() {
+        echo "4958e6dca033cd1b321922508553fab869a29d"
+      }
+
+      secondary_replicated_to_primary() {
+        echo "OK"
+        return 0
+      }
+
+      check_node_in_cluster() {
+        return 0
+      }
+
+      get_cluster_announce_ip_with_retry() {
+        echo "10.42.0.227"
+      }
+
+      send_cluster_meet_with_retry() {
+        return 0
+      }
+
+      setup() {
+        export CURRENT_SHARD_POD_NAME_LIST="redis-shard-sxj-0,redis-shard-sxj-1"
+        export CURRENT_SHARD_POD_FQDN_LIST="redis-shard-sxj-0.redis-shard-sxj-headless.default.svc,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc"
+        export CURRENT_POD_NAME="redis-shard-sxj-1"
+        export service_port="6379"
+        ut_mode="true"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset CURRENT_SHARD_POD_NAME_LIST
+        unset CURRENT_SHARD_POD_FQDN_LIST
+        unset CURRENT_POD_NAME
+        unset service_port
+        unset ut_mode
+      }
+      After "un_setup"
+
+      It "scales out replica successfully"
+        When run scale_redis_cluster_replica
+        The status should be success
+        The stdout should include "Node redis-shard-sxj-1 is successfully added to the cluster."
+      End
+    End
+
+    Context "when failed to get cluster id of primary node"
+      check_redis_server_ready_with_retry() {
+        return 0
+      }
+
+      min_lexicographical_order_pod() {
+        echo "redis-shard-sxj-0"
+      }
+
+      get_target_pod_fqdn_from_pod_fqdn_vars() {
+        echo "redis-shard-sxj-0.redis-shard-sxj-headless.default.svc"
+      }
+
+      get_current_comp_nodes_for_scale_out_replica() {
+        current_comp_primary_node+=("10.42.0.227#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc:6379@16379")
+      }
+
+      check_node_in_cluster_with_retry() {
+        return 1
+      }
+
+      get_cluster_id_with_retry() {
+        return 1
+      }
+
+      shutdown_redis_server() {
+        true
+      }
+
+      setup() {
+        export CURRENT_SHARD_POD_NAME_LIST="redis-shard-sxj-0,redis-shard-sxj-1"
+        export CURRENT_SHARD_POD_FQDN_LIST="redis-shard-sxj-0.redis-shard-sxj-headless.default.svc,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc"
+        export CURRENT_POD_NAME="redis-shard-sxj-1"
+        export service_port="6379"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset CURRENT_SHARD_POD_NAME_LIST
+        unset CURRENT_SHARD_POD_FQDN_LIST
+        unset CURRENT_POD_NAME
+        unset service_port
+      }
+      After "un_setup"
+
+      It "exits with error when failed to get cluster id of primary node"
+        When run scale_redis_cluster_replica
+        The status should be failure
+        The stdout should include "Redis server is ready, continue to scale out replica"
+        The stderr should include "Failed to get the cluster id of the primary node redis-shard-sxj-0.redis-shard-sxj-headless.default.svc:6379"
+      End
+    End
+
+    Context "when failed to add current node as replica"
+      check_redis_server_ready_with_retry() {
+        return 0
+      }
+
+      min_lexicographical_order_pod() {
+        echo "redis-shard-sxj-0"
+      }
+
+      get_target_pod_fqdn_from_pod_fqdn_vars() {
+        echo "redis-shard-sxj-0.redis-shard-sxj-headless.default.svc"
+      }
+
+      get_current_comp_nodes_for_scale_out_replica() {
+        current_comp_primary_node+=("10.42.0.227#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc:6379@16379")
+      }
+
+      check_node_in_cluster_with_retry() {
+        return 1
+      }
+
+      get_cluster_id_with_retry() {
+        echo "4958e6dca033cd1b321922508553fab869a29d"
+      }
+
+      secondary_replicated_to_primary() {
+        echo "Error"
+        return 1
+      }
+
+      shutdown_redis_server() {
+        true
+      }
+
+      setup() {
+        export CURRENT_SHARD_POD_NAME_LIST="redis-shard-sxj-0,redis-shard-sxj-1"
+        export CURRENT_SHARD_POD_FQDN_LIST="redis-shard-sxj-0.redis-shard-sxj-headless.default.svc,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc"
+        export CURRENT_POD_NAME="redis-shard-sxj-1"
+        export service_port="6379"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset CURRENT_SHARD_POD_NAME_LIST
+        unset CURRENT_SHARD_POD_FQDN_LIST
+        unset CURRENT_POD_NAME
+        unset service_port
+      }
+      After "un_setup"
+
+      It "exits with error when failed to add current node as replica"
+        When run scale_redis_cluster_replica
+        The status should be failure
+        The stdout should include "Redis server is ready, continue to scale out replica"
+        The stderr should include "Failed to add the node redis-shard-sxj-0.redis-shard-sxj-headless.default.svc to the cluster in scale_redis_cluster_replica"
+      End
+    End
+
+    Context "when failed to meet primary node"
+      check_redis_server_ready_with_retry() {
+        return 0
+      }
+
+      min_lexicographical_order_pod() {
+        echo "redis-shard-sxj-0"
+      }
+
+      get_target_pod_fqdn_from_pod_fqdn_vars() {
+        echo "redis-shard-sxj-0.redis-shard-sxj-headless.default.svc"
+      }
+
+      get_current_comp_nodes_for_scale_out_replica() {
+        current_comp_primary_node+=("10.42.0.227#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc:6379@16379")
+      }
+
+      check_node_in_cluster_with_retry() {
+        return 1
+      }
+
+      get_cluster_id_with_retry() {
+        echo "4958e6dca033cd1b321922508553fab869a29d"
+      }
+
+      secondary_replicated_to_primary() {
+        echo "OK"
+        return 0
+      }
+
+      check_node_in_cluster() {
+        return 1
+      }
+
+      get_cluster_announce_ip_with_retry() {
+        echo "10.42.0.227"
+      }
+
+      send_cluster_meet_with_retry() {
+        return 1
+      }
+
+      shutdown_redis_server() {
+        true
+      }
+
+      setup() {
+        export CURRENT_SHARD_POD_NAME_LIST="redis-shard-sxj-0,redis-shard-sxj-1"
+        export CURRENT_SHARD_POD_FQDN_LIST="redis-shard-sxj-0.redis-shard-sxj-headless.default.svc,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc"
+        export CURRENT_POD_NAME="redis-shard-sxj-1"
+        export service_port="6379"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset CURRENT_SHARD_POD_NAME_LIST
+        unset CURRENT_SHARD_POD_FQDN_LIST
+        unset CURRENT_POD_NAME
+        unset service_port
+      }
+      After "un_setup"
+
+      It "exits with error when failed to meet primary node"
+        When run scale_redis_cluster_replica
+        The status should be failure
+        The stdout should include "Redis server is ready, continue to scale out replica"
+        The stderr should include "Failed to meet the node redis-shard-sxj-0.redis-shard-sxj-headless.default.svc:6379 in scale_redis_cluster_replica, shutdown redis server"
+      End
+    End
+  End
 End
