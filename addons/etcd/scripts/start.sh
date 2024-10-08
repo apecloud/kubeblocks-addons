@@ -10,7 +10,7 @@ export tmpconf=$TMP_CONFIG_PATH
 
 cp $conf $tmpconf
 
-MY_PEER=${KB_POD_FQDN}${CLUSTER_DOMAIN}
+MY_PEER=${POD_NAME}.${ETCD_COMPONENT_NAME}-headless.${CLUSTER_NAMESPACE}.svc${CLUSTER_DOMAIN}
 
 if [ ! -z "$PEER_ENDPOINT" ]; then
   echo "loadBalancer mode, need to adapt pod FQDN to balance IP"
@@ -21,7 +21,11 @@ if [ ! -z "$PEER_ENDPOINT" ]; then
   else
     # e.g.1 etcd-cluster-etcd-0
     # e.g.2 etcd-cluster-etcd-0:127.0.0.1
-    MY_PEER=$(echo "$myEndpoint" | cut -d: -f2)
+    if echo "$myEndpoint" | grep -q ":"; then
+      MY_PEER=$(echo "$myEndpoint" | cut -d: -f2)
+    else
+      MY_PEER=$myEndpoint
+    fi
   fi
 fi
 
