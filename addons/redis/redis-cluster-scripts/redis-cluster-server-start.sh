@@ -31,6 +31,12 @@ retry_times=3
 check_ready_times=30
 retry_delay_second=2
 
+# variables for scale out replica
+current_comp_primary_node=()
+current_comp_other_nodes=()
+other_comp_primary_nodes=()
+other_comp_other_nodes=()
+
 load_redis_cluster_common_utils() {
   # the common.sh and redis-cluster-common.sh scripts are defined in the redis-cluster-scripts-template configmap
   # and are mounted to the same path which defined in the cmpd.spec.scripts
@@ -103,7 +109,7 @@ get_current_comp_nodes_for_scale_out_replica() {
   cluster_nodes_info=$(get_cluster_nodes_info "$cluster_node" "$cluster_node_port")
   status=$?
   if [ $status -ne 0 ]; then
-    echo "Failed to get cluster nodes info in get_current_comp_nodes_for_scale_out_replica: $command" >&2
+    echo "Failed to get cluster nodes info in get_current_comp_nodes_for_scale_out_replica: $cluster_nodes_info" >&2
     return 1
   fi
 
@@ -112,11 +118,6 @@ get_current_comp_nodes_for_scale_out_replica() {
     echo "Cluster nodes info contains only one line, returning..."
     return
   fi
-
-  current_comp_primary_node=()
-  current_comp_other_nodes=()
-  other_comp_primary_nodes=()
-  other_comp_other_nodes=()
 
   # if the $CURRENT_SHARD_ADVERTISED_PORT is set, parse the advertised ports, advertised_ports records the advertised ports of the current shard
   # the value format of $CURRENT_SHARD_ADVERTISED_PORT is "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."

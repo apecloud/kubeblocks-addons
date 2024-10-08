@@ -309,4 +309,82 @@ Describe "Redis Cluster Server Start Bash Script Tests"
       End
     End
   End
+
+  Describe "get_current_comp_nodes_for_scale_out_replica()"
+    Context "when cluster nodes info contains only one line"
+      get_cluster_nodes_info() {
+        cluster_nodes_info="4958e6dca033cd1b321922508553fab869a29d 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287"
+        echo "$cluster_nodes_info"
+      }
+      It "returns early when cluster nodes info contains only one line"
+        When call get_current_comp_nodes_for_scale_out_replica "redis-shard-sxj-0.redis-shard-sxj-headless.default.svc" "6379"
+        The stdout should include "Cluster nodes info contains only one line, returning..."
+      End
+    End
+
+    Context "when using advertised ports"
+      get_cluster_nodes_info() {
+        cluster_nodes_info="4958e6dca033cd1b321922508553fab869a29d 10.42.0.227:31000@32000,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287"$'\n'"7381c6dca033cd1b321922508553fab869a29e 10.42.0.228:31001@32001,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc slave 4958e6dca033cd1b321922508553fab869a29d 0 1711958289570 4 connected"$'\n'"8492e6dca033cd1b321922508553fab869a29f 10.42.0.229:32222@32223,redis-shard-abc-0.redis-shard-abc-headless.default.svc master - 0 1711958289570 5 connected 1365-2729 6827-8191 12288-13652"
+        echo "$cluster_nodes_info"
+      }
+
+      setup() {
+        export CURRENT_SHARD_ADVERTISED_PORT="redis-shard-sxj-0:31000,redis-shard-sxj-1:31001"
+        export CURRENT_SHARD_ADVERTISED_BUS_PORT="redis-shard-sxj-0:32000,redis-shard-sxj-1:32001"
+        export current_comp_primary_node=()
+        export current_comp_other_nodes=()
+        export other_comp_primary_nodes=()
+      }
+      Before "setup"
+
+      un_setup() {
+        unset CURRENT_SHARD_ADVERTISED_PORT
+        unset CURRENT_SHARD_ADVERTISED_BUS_PORT
+        unset cluster_nodes_info
+      }
+      After "un_setup"
+
+      It "parses current component nodes correctly when using advertised ports"
+        When call get_current_comp_nodes_for_scale_out_replica "redis-shard-sxj-0.redis-shard-sxj-headless.default.svc" "6379"
+        The status should be success
+        The variable current_comp_primary_node should equal "10.42.0.227#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#10.42.0.227:31000@32000"
+        The variable current_comp_other_nodes should equal "10.42.0.228#redis-shard-sxj-1.redis-shard-sxj-headless.default.svc#10.42.0.228:31001@32001"
+        The variable other_comp_primary_nodes should equal "10.42.0.229#redis-shard-abc-0.redis-shard-abc-headless.default.svc#10.42.0.229:32222@32223"
+        The stdout should include "other_comp_other_nodes: "
+      End
+    End
+
+    Context "when not using advertised ports"
+      get_cluster_nodes_info() {
+        cluster_nodes_info="4958e6dca033cd1b321922508553fab869a29d 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287"$'\n'"7381c6dca033cd1b321922508553fab869a29e 10.42.0.228:6379@16379,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc slave 4958e6dca033cd1b321922508553fab869a29d 0 1711958289570 4 connected"$'\n'"8492e6dca033cd1b321922508553fab869a29f 10.42.0.229:6379@16379,redis-shard-abc-0.redis-shard-abc-headless.default.svc master - 0 1711958289570 5 connected 1365-2729 6827-8191 12288-13652"
+        echo "$cluster_nodes_info"
+      }
+      setup() {
+        unset CURRENT_SHARD_ADVERTISED_PORT
+        unset CURRENT_SHARD_ADVERTISED_BUS_PORT
+        export CURRENT_SHARD_COMPONENT_NAME="redis-shard-sxj"
+        export SERVICE_PORT="6379"
+        export current_comp_primary_node=()
+        export current_comp_other_nodes=()
+        export other_comp_primary_nodes=()
+        export other_comp_other_nodes=()
+      }
+      Before "setup"
+
+      un_setup() {
+        unset CURRENT_SHARD_COMPONENT_NAME
+        unset SERVICE_PORT
+        unset cluster_nodes_info
+      }
+      After "un_setup"
+
+      It "parses current component nodes correctly when not using advertised ports"
+        When call get_current_comp_nodes_for_scale_out_replica "redis-shard-sxj-0.redis-shard-sxj-headless.default.svc" "6379"
+        The variable current_comp_primary_node should equal "10.42.0.227#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc:6379@16379"
+        The variable current_comp_other_nodes should equal "10.42.0.228#redis-shard-sxj-1.redis-shard-sxj-headless.default.svc#redis-shard-sxj-1.redis-shard-sxj-headless.default.svc:6379@16379"
+        The variable other_comp_primary_nodes should equal "10.42.0.229#redis-shard-abc-0.redis-shard-abc-headless.default.svc#redis-shard-abc-0.redis-shard-abc-headless.default.svc:6379@16379"
+        The stdout should include "other_comp_other_nodes: "
+      End
+    End
+  End
 End
