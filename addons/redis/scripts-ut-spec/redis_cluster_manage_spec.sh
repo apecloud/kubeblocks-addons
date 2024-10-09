@@ -1004,4 +1004,407 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
       End
     End
   End
+
+  Describe "scale_out_redis_cluster_shard()"
+    Context "when required environment variables are not set"
+      setup() {
+        export CURRENT_SHARD_COMPONENT_SHORT_NAME=""
+        export KB_CLUSTER_POD_NAME_LIST=""
+        export KB_CLUSTER_POD_HOST_IP_LIST=""
+        export KB_CLUSTER_COMPONENT_POD_NAME_LIST=""
+        export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST=""
+      }
+      Before "setup"
+
+      un_setup() {
+        unset CURRENT_SHARD_COMPONENT_SHORT_NAME
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
+        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
+      }
+      After "un_setup"
+
+      It "returns error when required environment variables are not set"
+        When call scale_out_redis_cluster_shard
+        The status should be failure
+        The error should include "Error: Required environment variable CURRENT_SHARD_COMPONENT_SHORT_NAME, KB_CLUSTER_POD_NAME_LIST, KB_CLUSTER_POD_HOST_IP_LIST, KB_CLUSTER_COMPONENT_POD_NAME_LIST and KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST are not set when scale out redis cluster shard"
+      End
+    End
+
+    Context "when failed to initialize the default primary and secondary nodes for scale out"
+      init_current_comp_default_nodes_for_scale_out() {
+        return 1
+      }
+
+      setup() {
+        export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
+        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
+        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
+        export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
+        export KB_CLUSTER_POD_IP_LIST="10.42.0.1,10.42.0.2"
+        export KB_CLUSTER_COMPONENT_LIST="redis-shard-98x"
+        export KB_CLUSTER_COMPONENT_DELETING_LIST=""
+        export KB_CLUSTER_COMPONENT_UNDELETED_LIST="redis-shard-98x"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset CURRENT_SHARD_COMPONENT_SHORT_NAME
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
+        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
+        unset KB_CLUSTER_POD_IP_LIST
+        unset KB_CLUSTER_COMPONENT_LIST
+        unset KB_CLUSTER_COMPONENT_DELETING_LIST
+        unset KB_CLUSTER_COMPONENT_UNDELETED_LIST
+      }
+      After "un_setup"
+
+      It "returns error when failed to initialize the default primary and secondary nodes for scale out"
+        When call scale_out_redis_cluster_shard
+        The status should be failure
+        The error should include "Failed to initialize the default primary and secondary nodes for scale out"
+        The stdout should include "skip the pod redis-shard-98x-1 as it belongs the component shard-98x"
+      End
+    End
+
+    Context "when failed to generate primary nodes when scaling out"
+      init_current_comp_default_nodes_for_scale_out() {
+        declare -gA scale_out_shard_default_primary_node
+        scale_out_shard_default_primary_node=()
+      }
+
+      setup() {
+        export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
+        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
+        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
+        export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
+        export KB_CLUSTER_POD_IP_LIST="10.42.0.1,10.42.0.2"
+        export KB_CLUSTER_COMPONENT_LIST="redis-shard-98x"
+        export KB_CLUSTER_COMPONENT_DELETING_LIST=""
+        export KB_CLUSTER_COMPONENT_UNDELETED_LIST="redis-shard-98x"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset CURRENT_SHARD_COMPONENT_SHORT_NAME
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
+        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
+        unset KB_CLUSTER_POD_IP_LIST
+        unset KB_CLUSTER_COMPONENT_LIST
+        unset KB_CLUSTER_COMPONENT_DELETING_LIST
+        unset KB_CLUSTER_COMPONENT_UNDELETED_LIST
+      }
+      After "un_setup"
+
+      It "returns error when failed to generate primary nodes when scaling out"
+        When call scale_out_redis_cluster_shard
+        The status should be failure
+        The error should include "Failed to generate primary nodes when scaling out"
+        The stdout should include "Redis cluster scale out shard default primary and secondary nodes successfully"
+      End
+    End
+
+    Context "when the current component shard is already scaled out"
+      init_current_comp_default_nodes_for_scale_out() {
+        declare -gA scale_out_shard_default_primary_node
+        scale_out_shard_default_primary_node["redis-shard-98x-0"]="10.42.0.1:6379"
+      }
+
+      get_cluster_id() {
+        echo "cluster_id_123"
+      }
+
+      check_slots_covered() {
+        return 0
+      }
+
+      setup() {
+        export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
+        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
+        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
+        export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
+        export KB_CLUSTER_POD_IP_LIST="10.42.0.1,10.42.0.2"
+        export KB_CLUSTER_COMPONENT_LIST="redis-shard-98x"
+        export KB_CLUSTER_COMPONENT_DELETING_LIST=""
+        export KB_CLUSTER_COMPONENT_UNDELETED_LIST="redis-shard-98x"
+        export SERVICE_PORT="6379"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset CURRENT_SHARD_COMPONENT_SHORT_NAME
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
+        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
+        unset KB_CLUSTER_POD_IP_LIST
+        unset KB_CLUSTER_COMPONENT_LIST
+        unset KB_CLUSTER_COMPONENT_DELETING_LIST
+        unset KB_CLUSTER_COMPONENT_UNDELETED_LIST
+        unset SERVICE_PORT
+      }
+      After "un_setup"
+
+      It "returns success when the current component shard is already scaled out"
+        When call scale_out_redis_cluster_shard
+        The status should be success
+        The output should include "The current component shard is already scaled out, no need to scale out again."
+      End
+    End
+
+    Context "when no exist available node found or cluster status is not ok"
+      init_current_comp_default_nodes_for_scale_out() {
+        declare -gA scale_out_shard_default_primary_node
+        scale_out_shard_default_primary_node["redis-shard-98x-0"]="10.42.0.1:6379"
+      }
+
+      get_cluster_id() {
+        echo "cluster_id_123"
+      }
+
+      check_slots_covered() {
+        return 1
+      }
+
+      find_exist_available_node() {
+        echo ""
+      }
+
+      setup() {
+        export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
+        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
+        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
+        export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
+        export KB_CLUSTER_POD_IP_LIST="10.42.0.1,10.42.0.2"
+        export KB_CLUSTER_COMPONENT_LIST="redis-shard-98x"
+        export KB_CLUSTER_COMPONENT_DELETING_LIST=""
+        export KB_CLUSTER_COMPONENT_UNDELETED_LIST="redis-shard-98x"
+        export SERVICE_PORT="6379"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset CURRENT_SHARD_COMPONENT_SHORT_NAME
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
+        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
+        unset KB_CLUSTER_POD_IP_LIST
+        unset KB_CLUSTER_COMPONENT_LIST
+        unset KB_CLUSTER_COMPONENT_DELETING_LIST
+        unset KB_CLUSTER_COMPONENT_UNDELETED_LIST
+        unset SERVICE_PORT
+      }
+      After "un_setup"
+
+      It "returns error when no exist available node found or cluster status is not ok"
+        When call scale_out_redis_cluster_shard
+        The status should be failure
+        The error should include "No exist available node found or cluster status is not ok"
+        The stdout should include "Redis cluster scale out shard default primary and secondary nodes successfully"
+      End
+    End
+
+    Context "when failed to scale out shard primary node"
+      init_current_comp_default_nodes_for_scale_out() {
+        declare -gA scale_out_shard_default_primary_node
+        scale_out_shard_default_primary_node["redis-shard-98x-0"]="10.42.0.1:6379"
+      }
+
+      get_cluster_id() {
+        echo "cluster_id_123"
+      }
+
+      check_slots_covered() {
+        return 1
+      }
+
+      find_exist_available_node() {
+        echo "10.42.0.2:6379"
+      }
+
+      scale_out_shard_primary_join_cluster() {
+        return 1
+      }
+
+      setup() {
+        export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
+        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
+        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
+        export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
+        export KB_CLUSTER_POD_IP_LIST="10.42.0.1,10.42.0.2"
+        export KB_CLUSTER_COMPONENT_LIST="redis-shard-98x"
+        export KB_CLUSTER_COMPONENT_DELETING_LIST=""
+        export KB_CLUSTER_COMPONENT_UNDELETED_LIST="redis-shard-98x"
+        export SERVICE_PORT="6379"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset CURRENT_SHARD_COMPONENT_SHORT_NAME
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
+        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
+        unset KB_CLUSTER_POD_IP_LIST
+        unset KB_CLUSTER_COMPONENT_LIST
+        unset KB_CLUSTER_COMPONENT_DELETING_LIST
+        unset KB_CLUSTER_COMPONENT_UNDELETED_LIST
+        unset SERVICE_PORT
+      }
+      After "un_setup"
+
+      It "returns error when failed to scale out shard primary node"
+        When call scale_out_redis_cluster_shard
+        The status should be failure
+        The error should include "Failed to scale out shard primary node redis-shard-98x-0"
+        The stdout should include "Redis cluster scale out shard default primary and secondary nodes successfully"
+      End
+    End
+
+    Context "when failed to scale out shard secondary node"
+      init_current_comp_default_nodes_for_scale_out() {
+        declare -gA scale_out_shard_default_primary_node
+        scale_out_shard_default_primary_node["redis-shard-98x-0"]="10.42.0.1:6379"
+        declare -gA scale_out_shard_default_other_nodes
+        scale_out_shard_default_other_nodes["redis-shard-98x-1"]="10.42.0.2:6379"
+      }
+
+      get_cluster_id() {
+        echo "cluster_id_123"
+      }
+
+      check_slots_covered() {
+        return 1
+      }
+
+      find_exist_available_node() {
+        echo "10.42.0.3:6379"
+      }
+
+      scale_out_shard_primary_join_cluster() {
+        return 0
+      }
+
+      secondary_replicated_to_primary() {
+        return 1
+      }
+
+      setup() {
+        export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
+        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
+        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
+        export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
+        export KB_CLUSTER_POD_IP_LIST="10.42.0.1,10.42.0.2"
+        export KB_CLUSTER_COMPONENT_LIST="redis-shard-98x"
+        export KB_CLUSTER_COMPONENT_DELETING_LIST=""
+        export KB_CLUSTER_COMPONENT_UNDELETED_LIST="redis-shard-98x"
+        export SERVICE_PORT="6379"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset CURRENT_SHARD_COMPONENT_SHORT_NAME
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
+        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
+        unset KB_CLUSTER_POD_IP_LIST
+        unset KB_CLUSTER_COMPONENT_LIST
+        unset KB_CLUSTER_COMPONENT_DELETING_LIST
+        unset KB_CLUSTER_COMPONENT_UNDELETED_LIST
+        unset SERVICE_PORT
+      }
+      After "un_setup"
+
+      It "returns error when failed to scale out shard secondary node"
+        When call scale_out_redis_cluster_shard
+        The status should be failure
+        The error should include "Failed to scale out shard secondary node redis-shard-98x-1"
+        The stdout should include "Redis cluster scale out shard primary node redis-shard-98x-0 successfully"
+        The stdout should include "primary_node_with_port: 10.42.0.1:6379, primary_node_fqdn: 10.42.0.1, mapping_primary_cluster_id: cluster_id_123"
+      End
+    End
+
+    Context "when failed to scale out shard reshard"
+      init_current_comp_default_nodes_for_scale_out() {
+        declare -gA scale_out_shard_default_primary_node
+        scale_out_shard_default_primary_node["redis-shard-98x-0"]="10.42.0.1:6379"
+        declare -gA scale_out_shard_default_other_nodes
+        scale_out_shard_default_other_nodes["redis-shard-98x-1"]="10.42.0.2:6379"
+      }
+
+      get_cluster_id() {
+        echo "cluster_id_123"
+      }
+
+      check_slots_covered() {
+        return 1
+      }
+
+      find_exist_available_node() {
+        echo "10.42.0.3:6379"
+      }
+
+      scale_out_shard_primary_join_cluster() {
+        return 0
+      }
+
+      secondary_replicated_to_primary() {
+        return 0
+      }
+
+      scale_out_shard_reshard() {
+        return 1
+      }
+
+      setup() {
+        export CURRENT_SHARD_COMPONENT_SHORT_NAME="redis-shard-98x"
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1"
+        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4"
+        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
+        export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
+        export KB_CLUSTER_POD_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4"
+        export KB_CLUSTER_COMPONENT_LIST="redis-shard-98x,redis-shard-7hy"
+        export KB_CLUSTER_COMPONENT_DELETING_LIST=""
+        export KB_CLUSTER_COMPONENT_UNDELETED_LIST="redis-shard-98x,redis-shard-7hy"
+        export KB_CLUSTER_COMP_NAME="redis-shard-98x"
+        export SERVICE_PORT="6379"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset CURRENT_SHARD_COMPONENT_SHORT_NAME
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
+        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
+        unset KB_CLUSTER_POD_IP_LIST
+        unset KB_CLUSTER_COMPONENT_LIST
+        unset KB_CLUSTER_COMPONENT_DELETING_LIST
+        unset KB_CLUSTER_COMPONENT_UNDELETED_LIST
+        unset KB_CLUSTER_COMP_NAME
+        unset SERVICE_PORT
+      }
+      After "un_setup"
+
+      It "returns error when failed to scale out shard reshard"
+        When call scale_out_redis_cluster_shard
+        The status should be failure
+        The error should include "Failed to scale out shard reshard"
+        The stdout should include "Redis cluster scale out shard secondary node redis-shard-98x-1 successfully"
+      End
+    End
+  End
 End

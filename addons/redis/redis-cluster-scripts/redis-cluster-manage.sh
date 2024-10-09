@@ -490,22 +490,22 @@ initialize_redis_cluster() {
 
 scale_out_redis_cluster_shard() {
   if is_empty "$CURRENT_SHARD_COMPONENT_SHORT_NAME" || is_empty "$KB_CLUSTER_POD_NAME_LIST" || is_empty "$KB_CLUSTER_POD_HOST_IP_LIST" || is_empty "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" || is_empty "$KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST"; then
-    echo "Error: Required environment variable CURRENT_SHARD_COMPONENT_SHORT_NAME, KB_CLUSTER_POD_NAME_LIST, KB_CLUSTER_POD_HOST_IP_LIST, KB_CLUSTER_COMPONENT_POD_NAME_LIST and KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST are not set when scale out redis cluster shard"
-    exit 1
+    echo "Error: Required environment variable CURRENT_SHARD_COMPONENT_SHORT_NAME, KB_CLUSTER_POD_NAME_LIST, KB_CLUSTER_POD_HOST_IP_LIST, KB_CLUSTER_COMPONENT_POD_NAME_LIST and KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST are not set when scale out redis cluster shard" >&2
+    return 1
   fi
 
   init_other_components_and_pods_info "$CURRENT_SHARD_COMPONENT_SHORT_NAME" "$KB_CLUSTER_POD_IP_LIST" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_COMPONENT_LIST" "$KB_CLUSTER_COMPONENT_DELETING_LIST" "$KB_CLUSTER_COMPONENT_UNDELETED_LIST"
   if init_current_comp_default_nodes_for_scale_out; then
     echo "Redis cluster scale out shard default primary and secondary nodes successfully"
   else
-    echo "Failed to initialize the default primary and secondary nodes for scale out"
-    exit 1
+    echo "Failed to initialize the default primary and secondary nodes for scale out" >&2
+    return 1
   fi
 
   # check the current component shard whether is already scaled out
   if [ ${#scale_out_shard_default_primary_node[@]} -eq 0 ]; then
-    echo "Failed to generate primary nodes when scaling out"
-    exit 1
+    echo "Failed to generate primary nodes when scaling out" >&2
+    return 1
   fi
   primary_node_with_port=$(echo "${scale_out_shard_default_primary_node[*]}" | awk '{print $1}')
   primary_node_fqdn=$(echo "$primary_node_with_port" | awk -F ':' '{print $1}')
@@ -513,14 +513,14 @@ scale_out_redis_cluster_shard() {
   mapping_primary_cluster_id=$(get_cluster_id "$primary_node_fqdn" "$primary_node_port")
   if check_slots_covered "$primary_node_with_port" "$SERVICE_PORT"; then
     echo "The current component shard is already scaled out, no need to scale out again."
-    exit 0
+    return 0
   fi
 
   # find the exist available node which is not in the current component
   available_node=$(find_exist_available_node)
   if is_empty "$available_node"; then
-    echo "No exist available node found or cluster status is not ok"
-    exit 1
+    echo "No exist available node found or cluster status is not ok" >&2
+    return 1
   fi
 
   # add the primary node for the current shard
@@ -530,8 +530,8 @@ scale_out_redis_cluster_shard() {
     if scale_out_shard_primary_join_cluster "$scale_out_shard_default_primary" "$available_node"; then
       echo "Redis cluster scale out shard primary node $primary_pod_name successfully"
     else
-      echo "Failed to scale out shard primary node $primary_pod_name"
-      exit 1
+      echo "Failed to scale out shard primary node $primary_pod_name" >&2
+      return 1
     fi
   done
 
@@ -546,8 +546,8 @@ scale_out_redis_cluster_shard() {
     if secondary_replicated_to_primary "$scale_out_shard_secondary_node" "$primary_node_with_port" "$mapping_primary_cluster_id"; then
       echo "Redis cluster scale out shard secondary node $secondary_pod_name successfully"
     else
-      echo "Failed to scale out shard secondary node $secondary_pod_name"
-      exit 1
+      echo "Failed to scale out shard secondary node $secondary_pod_name" >&2
+      return 1
     fi
   done
 
@@ -566,11 +566,12 @@ scale_out_redis_cluster_shard() {
   if scale_out_shard_reshard "$primary_node_with_port" "$mapping_primary_cluster_id" "$slots_per_shard"; then
     echo "Redis cluster scale out shard reshard successfully"
   else
-    echo "Failed to scale out shard reshard"
-    exit 1
+    echo "Failed to scale out shard reshard" >&2
+    return 1
   fi
 
   # TODO: rebalance the cluster
+  return 0
 }
 
 scale_in_redis_cluster_shard() {
@@ -657,7 +658,7 @@ initialize_or_scale_out_redis_cluster() {
     sleep_random_second 10 1
 
     if is_empty "$KB_CLUSTER_POD_IP_LIST" || is_empty "$SERVICE_PORT"; then
-      echo "Error: Required environment variable KB_CLUSTER_POD_IP_LIST and SERVICE_PORT is not set."
+      echo "Error: Required environment variable KB_CLUSTER_POD_IP_LIST and SERVICE_PORT is not set." >&2
       exit 1
     fi
 
@@ -667,12 +668,17 @@ initialize_or_scale_out_redis_cluster() {
         if initialize_redis_cluster; then
             echo "Redis Cluster initialized successfully"
         else
-            echo "Failed to initialize Redis Cluster"
+            echo "Failed to initialize Redis Cluster" >&2
             exit 1
         fi
     else
         echo "Redis Cluster already initialized, scaling out the shard..."
-        scale_out_redis_cluster_shard
+        if scale_out_redis_cluster_shard; then
+            echo "Redis Cluster scale out shard successfully"
+        else
+            echo "Failed to scale out Redis Cluster shard" >&2
+            exit 1
+        fi
     fi
 }
 
