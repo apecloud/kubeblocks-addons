@@ -59,7 +59,7 @@ Define vanilla-postgresql 14 component definition name with Chart.Version suffix
 {{- if eq (len .Values.cmpdVersionPrefix.vanillaPostgresql14) 0 -}}
 vanilla-postgresql-14
 {{- else -}}
-{{ .Values.cmpdVersionPrefix.vanillaPostgresql12 }}
+{{ .Values.cmpdVersionPrefix.vanillaPostgresql14 }}
 {{- end -}}
 {{- end -}}
 
