@@ -39,16 +39,17 @@ sleep_random_second_when_ut_mode_false() {
 ## the value format of ALL_SHARDS_COMPONENT_SHORT_NAMES is like "shard-98x:shard-98x,shard-cq7:shard-cq7,shard-hy7:shard-hy7"
 ## return the component names of all shards with the format "shard-98x,shard-cq7,shard-hy7"
 get_all_shards_components() {
-  local all_shards_components
+  local all_shards_components=""
   if is_empty "$ALL_SHARDS_COMPONENT_SHORT_NAMES"; then
     echo "Error: Required environment variable ALL_SHARDS_COMPONENT_SHORT_NAMES is not set." >&2
     return 1
   fi
-  all_shards_component_shortname_pairs=$(split "$ALL_SHARDS_COMPONENT_SHORT_NAMES" ",")
-  for pair in $all_shards_component_shortname_pairs; do
-    shard_name=$(split "$pair" ":")
-    all_shards_components="$all_shards_components,$shard_name"
+  IFS=',' read -ra all_shards_component_shortname_pairs <<< "$ALL_SHARDS_COMPONENT_SHORT_NAMES"
+  for pair in "${all_shards_component_shortname_pairs[@]}"; do
+    IFS=':' read -r shard_name _ <<< "$pair"
+    all_shards_components="${all_shards_components},${shard_name}"
   done
+  all_shards_components="${all_shards_components#,}"
   echo "$all_shards_components"
   return 0
 }
@@ -58,20 +59,20 @@ get_all_shards_components() {
 ## - ALL_SHARDS_POD_NAME_LIST_SHARD_98X="redis-shard-98x-0,redis-shard-98x-1"
 ## - ALL_SHARDS_POD_NAME_LIST_SHARD_CQ7="redis-shard-cq7-0,redis-shard-cq7-1"
 ## - ALL_SHARDS_POD_NAME_LIST_SHARD_HY7="redis-shard-hy7-0,redis-shard-hy7-1"
+## return the pod names of all shards combined with ","
 get_all_shards_pods() {
   ## list all Envs name prefix with ALL_SHARDS_POD_NAME_LIST and get them value combined with ","
-  local all_shards_pods
-  envs=$(env | grep "^ALL_SHARDS_POD_NAME_LIST" | awk -F '=' '{print $2}')
-  while read -r line; do
-    ## remove the \n at the end of the string
-    line=$(echo "$line" | tr -d '\n')
-
-    ## remove the , at the beginning of the string
-    if is_empty "$all_shards_pods"; then
-      all_shards_pods="${line}"
-      continue
+  local envs
+  local all_shards_pods=""
+  envs=$(env | grep "^ALL_SHARDS_POD_NAME_LIST" | sort)
+  while IFS='=' read -r env_name env_value; do
+    if ! is_empty "$env_value"; then
+      if is_empty "$all_shards_pods"; then
+        all_shards_pods="$env_value"
+      else
+        all_shards_pods="$all_shards_pods,$env_value"
+      fi
     fi
-    all_shards_pods="$all_shards_pods,${line}"
   done <<< "$envs"
   echo "$all_shards_pods"
   return 0
@@ -81,20 +82,20 @@ get_all_shards_pods() {
 ## - ALL_SHARDS_POD_FQDN_LIST_SHARD_98X="redis-shard-98x-0.redis-shard-98x-headless.default.cluster.local,redis-shard-98x-1.redis-shard-98x-headless.default.cluster.local"
 ## - ALL_SHARDS_POD_FQDN_LIST_SHARD_CQ7="redis-shard-cq7-0.redis-shard-cq7-headless.default.cluster.local,redis-shard-cq7-1.redis-shard-cq7-headless.default.cluster.local"
 ## - ALL_SHARDS_POD_FQDN_LIST_SHARD_HY7="redis-shard-hy7-0.redis-shard-hy7-headless.default.cluster.local,redis-shard-hy7-1.redis-shard-hy7-headless.default.cluster.local"
+## return the pod fqdn list for all shard pod combined with ","
 get_all_shards_pod_fqdns() {
   ## list all Envs name prefix with ALL_SHARDS_POD_FQDN_LIST and get them value combined with ","
-  local all_shards_pod_fqdns
-  envs=$(env | grep "^ALL_SHARDS_POD_FQDN_LIST" | awk -F '=' '{print $2}')
-  while read -r line; do
-    ## remove the \n at the end of the string
-    line=$(echo "$line" | tr -d '\n')
-
-    ## remove the , at the beginning of the string
-    if is_empty "$all_shards_pod_fqdns"; then
-      all_shards_pod_fqdns="${line}"
-      continue
+  local envs
+  local all_shards_pod_fqdns=""
+  envs=$(env | grep "^ALL_SHARDS_POD_FQDN_LIST" | sort)
+  while IFS='=' read -r env_name env_value; do
+    if [[ -n "$env_value" ]]; then
+      if [[ -z "$all_shards_pod_fqdns" ]]; then
+        all_shards_pod_fqdns="$env_value"
+      else
+        all_shards_pod_fqdns="$all_shards_pod_fqdns,$env_value"
+      fi
     fi
-    all_shards_pod_fqdns="$all_shards_pod_fqdns,${line}"
   done <<< "$envs"
   echo "$all_shards_pod_fqdns"
   return 0
