@@ -697,4 +697,311 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
       The status should be success
     End
   End
+
+  Describe "initialize_redis_cluster()"
+    Context "when KB_CLUSTER_POD_NAME_LIST or KB_CLUSTER_POD_HOST_IP_LIST is empty"
+      setup() {
+        export KB_CLUSTER_POD_NAME_LIST=""
+        export KB_CLUSTER_POD_HOST_IP_LIST=""
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset KB_CLUSTER_POD_HOST_IP_LIST
+      }
+      After "un_setup"
+
+      It "exits with error when KB_CLUSTER_POD_NAME_LIST or KB_CLUSTER_POD_HOST_IP_LIST is empty"
+        When run initialize_redis_cluster
+        The status should be failure
+        The stderr should include "Error: Required environment variable KB_CLUSTER_POD_NAME_LIST and KB_CLUSTER_POD_HOST_IP_LIST are not set when initializing redis cluster"
+      End
+    End
+
+    Context "when failed to get primary nodes or primary nodes count is less than 3"
+      gen_initialize_redis_cluster_primary_node() {
+        declare -gA initialize_redis_cluster_primary_nodes
+      }
+
+      setup() {
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
+        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset KB_CLUSTER_POD_HOST_IP_LIST
+      }
+      After "un_setup"
+
+      It "exits with error when failed to get primary nodes or primary nodes count is less than 3"
+        When run initialize_redis_cluster
+        The status should be failure
+        The stderr should include "Failed to get primary nodes or the primary nodes count is less than 3"
+      End
+    End
+
+    Context "when failed to create redis cluster when initializing"
+      gen_initialize_redis_cluster_primary_node() {
+        declare -gA initialize_redis_cluster_primary_nodes
+        initialize_redis_cluster_primary_nodes["redis-shard-98x-0"]="10.42.0.1:6379"
+        initialize_redis_cluster_primary_nodes["redis-shard-7hy-0"]="10.42.0.3:6379"
+        initialize_redis_cluster_primary_nodes["redis-shard-jwl-0"]="10.42.0.5:6379"
+      }
+
+      create_redis_cluster() {
+        return 1
+      }
+
+      setup() {
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
+        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset KB_CLUSTER_POD_HOST_IP_LIST
+      }
+      After "un_setup"
+
+      It "exits with error when failed to create redis cluster when initializing"
+        When run initialize_redis_cluster
+        The status should be failure
+        The stderr should include "Failed to create redis cluster when initializing"
+      End
+    End
+
+    Context "when failed to check slots covered"
+      gen_initialize_redis_cluster_primary_node() {
+        declare -gA initialize_redis_cluster_primary_nodes
+        initialize_redis_cluster_primary_nodes["redis-shard-98x-0"]="10.42.0.1:6379"
+        initialize_redis_cluster_primary_nodes["redis-shard-7hy-0"]="10.42.0.3:6379"
+        initialize_redis_cluster_primary_nodes["redis-shard-jwl-0"]="10.42.0.5:6379"
+      }
+
+      create_redis_cluster() {
+        return 0
+      }
+
+      check_slots_covered() {
+        return 1
+      }
+
+      setup() {
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
+        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6"
+        export SERVICE_PORT="6379"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset SERVICE_PORT
+      }
+      After "un_setup"
+
+      It "exits with error when failed to check slots covered"
+        When run initialize_redis_cluster
+        The status should be failure
+        The stderr should include "Failed to create redis cluster when checking slots covered"
+        The stdout should include "Redis cluster initialized primary nodes successfully, cluster nodes: 10.42.0.1:6379 10.42.0.5:6379 10.42.0.3:6379"
+      End
+    End
+
+    Context "when no secondary nodes to initialize"
+      gen_initialize_redis_cluster_primary_node() {
+        declare -gA initialize_redis_cluster_primary_nodes
+        initialize_redis_cluster_primary_nodes["redis-shard-98x-0"]="10.42.0.1:6379"
+        initialize_redis_cluster_primary_nodes["redis-shard-7hy-0"]="10.42.0.3:6379"
+        initialize_redis_cluster_primary_nodes["redis-shard-jwl-0"]="10.42.0.5:6379"
+      }
+
+      create_redis_cluster() {
+        return 0
+      }
+
+      check_slots_covered() {
+        return 0
+      }
+
+      gen_initialize_redis_cluster_secondary_nodes() {
+        declare -gA initialize_redis_cluster_secondary_nodes
+      }
+
+      setup() {
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
+        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6"
+        export SERVICE_PORT="6379"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset SERVICE_PORT
+      }
+      After "un_setup"
+
+      It "returns when no secondary nodes to initialize"
+        When run initialize_redis_cluster
+        The status should be success
+        The output should include "No secondary nodes to initialize"
+      End
+    End
+
+    Context "when failed to find the mapping primary node for secondary node"
+      gen_initialize_redis_cluster_primary_node() {
+        declare -gA initialize_redis_cluster_primary_nodes
+        initialize_redis_cluster_primary_nodes["redis-shard-98x-0"]="10.42.0.1:6379"
+        initialize_redis_cluster_primary_nodes["redis-shard-7hy-0"]="10.42.0.3:6379"
+        initialize_redis_cluster_primary_nodes["redis-shard-jwl-0"]="10.42.0.5:6379"
+      }
+
+      create_redis_cluster() {
+        return 0
+      }
+
+      check_slots_covered() {
+        return 0
+      }
+
+      gen_initialize_redis_cluster_secondary_nodes() {
+        declare -gA initialize_redis_cluster_secondary_nodes
+        initialize_redis_cluster_secondary_nodes["redis-shard-98x-1"]="10.42.0.2:6379"
+      }
+
+      setup() {
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
+        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6"
+        export SERVICE_PORT="6379"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset SERVICE_PORT
+      }
+      After "un_setup"
+
+      declare -gA initialize_pod_name_to_advertise_host_port_map
+      initialize_pod_name_to_advertise_host_port_map=()
+
+      It "exits with error when failed to find the mapping primary node for secondary node"
+        When run initialize_redis_cluster
+        The status should be failure
+        The stderr should include "Failed to find the mapping primary node for secondary node: redis-shard-98x-1"
+        The stdout should include "Redis cluster initialized primary nodes successfully, cluster nodes: 10.42.0.1:6379 10.42.0.5:6379 10.42.0.3:6379"
+        The stdout should include "Redis cluster check primary nodes slots covered successfully"
+      End
+    End
+
+    Context "when failed to get the cluster id from cluster nodes of the mapping primary node"
+      gen_initialize_redis_cluster_primary_node() {
+        declare -gA initialize_redis_cluster_primary_nodes
+        initialize_redis_cluster_primary_nodes["redis-shard-98x-0"]="10.42.0.1:6379"
+        initialize_redis_cluster_primary_nodes["redis-shard-7hy-0"]="10.42.0.3:6379"
+        initialize_redis_cluster_primary_nodes["redis-shard-jwl-0"]="10.42.0.5:6379"
+      }
+
+      create_redis_cluster() {
+        return 0
+      }
+
+      check_slots_covered() {
+        return 0
+      }
+
+      gen_initialize_redis_cluster_secondary_nodes() {
+        declare -gA initialize_redis_cluster_secondary_nodes
+        initialize_redis_cluster_secondary_nodes["redis-shard-98x-1"]="10.42.0.2:6379"
+      }
+
+      declare -gA initialize_pod_name_to_advertise_host_port_map
+      initialize_pod_name_to_advertise_host_port_map["redis-shard-98x-0"]="10.42.0.1:6379"
+
+      get_cluster_id() {
+        echo ""
+      }
+
+      setup() {
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
+        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6"
+        export SERVICE_PORT="6379"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset SERVICE_PORT
+      }
+      After "un_setup"
+
+      It "exits with error when failed to get the cluster id from cluster nodes of the mapping primary node"
+        When run initialize_redis_cluster
+        The status should be failure
+        The stderr should include "Failed to get the cluster id from cluster nodes of the mapping primary node: 10.42.0.1:6379"
+        The stdout should include "mapping_primary_fqdn: 10.42.0.1, mapping_primary_endpoint_with_port: 10.42.0.1:6379, mapping_primary_cluster_id: "
+      End
+    End
+
+    Context "when failed to initialize the secondary node"
+      gen_initialize_redis_cluster_primary_node() {
+        declare -gA initialize_redis_cluster_primary_nodes
+        initialize_redis_cluster_primary_nodes["redis-shard-98x-0"]="10.42.0.1:6379"
+        initialize_redis_cluster_primary_nodes["redis-shard-7hy-0"]="10.42.0.3:6379"
+        initialize_redis_cluster_primary_nodes["redis-shard-jwl-0"]="10.42.0.5:6379"
+      }
+
+      create_redis_cluster() {
+        return 0
+      }
+
+      check_slots_covered() {
+        return 0
+      }
+
+      gen_initialize_redis_cluster_secondary_nodes() {
+        declare -gA initialize_redis_cluster_secondary_nodes
+        initialize_redis_cluster_secondary_nodes["redis-shard-98x-1"]="10.42.0.2:6379"
+      }
+
+      declare -gA initialize_pod_name_to_advertise_host_port_map
+      initialize_pod_name_to_advertise_host_port_map["redis-shard-98x-0"]="10.42.0.1:6379"
+
+      get_cluster_id() {
+        echo "cluster_id_123"
+      }
+
+      secondary_replicated_to_primary() {
+        return 1
+      }
+
+      setup() {
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
+        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6"
+        export SERVICE_PORT="6379"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset SERVICE_PORT
+      }
+      After "un_setup"
+
+      It "exits with error when failed to initialize the secondary node"
+        When run initialize_redis_cluster
+        The status should be failure
+        The stderr should include "Failed to initialize the secondary node redis-shard-98x-1, secondary replicated output:"
+        The stdout should include "mapping_primary_fqdn: 10.42.0.1, mapping_primary_endpoint_with_port: 10.42.0.1:6379, mapping_primary_cluster_id: cluster_id_123"
+      End
+    End
+  End
 End

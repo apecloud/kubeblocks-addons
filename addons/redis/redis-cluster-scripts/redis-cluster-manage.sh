@@ -421,15 +421,15 @@ gen_initialize_redis_cluster_secondary_nodes() {
 
 initialize_redis_cluster() {
   if is_empty "$KB_CLUSTER_POD_NAME_LIST" || is_empty "$KB_CLUSTER_POD_HOST_IP_LIST"; then
-    echo "Error: Required environment variable KB_CLUSTER_POD_NAME_LIST and KB_CLUSTER_POD_HOST_IP_LIST are not set when initializing redis cluster"
-    exit 1
+    echo "Error: Required environment variable KB_CLUSTER_POD_NAME_LIST and KB_CLUSTER_POD_HOST_IP_LIST are not set when initializing redis cluster" >&2
+    return 1
   fi
 
   # initialize all the primary nodes
   gen_initialize_redis_cluster_primary_node
   if [ ${#initialize_redis_cluster_primary_nodes[@]} -eq 0 ] || [ ${#initialize_redis_cluster_primary_nodes[@]} -lt 3 ]; then
-    echo "Failed to get primary nodes or the primary nodes count is less than 3"
-    exit 1
+    echo "Failed to get primary nodes or the primary nodes count is less than 3" >&2
+    return 1
   fi
   local primary_nodes=""
   for primary_pod_name in "${!initialize_redis_cluster_primary_nodes[@]}"; do
@@ -439,8 +439,8 @@ initialize_redis_cluster() {
   if create_redis_cluster "$primary_nodes"; then
     echo "Redis cluster initialized primary nodes successfully, cluster nodes: $primary_nodes"
   else
-    echo "Failed to create redis cluster when initializing"
-    exit 1
+    echo "Failed to create redis cluster when initializing" >&2
+    return 1
   fi
 
   # get the first primary node to check the cluster
@@ -448,15 +448,15 @@ initialize_redis_cluster() {
   if check_slots_covered "$first_primary_node" "$SERVICE_PORT"; then
     echo "Redis cluster check primary nodes slots covered successfully."
   else
-    echo "Failed to create redis cluster when checking slots covered"
-    exit 1
+    echo "Failed to create redis cluster when checking slots covered" >&2
+    return 1
   fi
 
   # initialize all the secondary nodes
   gen_initialize_redis_cluster_secondary_nodes
   if [ ${#initialize_redis_cluster_secondary_nodes[@]} -eq 0 ]; then
     echo "No secondary nodes to initialize"
-    return
+    return 0
   fi
   for secondary_pod_name in "${!initialize_redis_cluster_secondary_nodes[@]}"; do
     secondary_endpoint_with_port=${initialize_redis_cluster_secondary_nodes["$secondary_pod_name"]}
@@ -464,27 +464,28 @@ initialize_redis_cluster() {
     mapping_primary_pod_name=$(echo "$secondary_pod_name" | sed 's/-[0-9]*$/-0/')
     mapping_primary_endpoint_with_port=${initialize_pod_name_to_advertise_host_port_map["$mapping_primary_pod_name"]}
     if is_empty "$mapping_primary_endpoint_with_port"; then
-      echo "Failed to find the mapping primary node for secondary node: $secondary_pod_name"
-      exit 1
+      echo "Failed to find the mapping primary node for secondary node: $secondary_pod_name" >&2
+      return 1
     fi
     mapping_primary_endpoint=$(echo "$mapping_primary_endpoint_with_port" | cut -d':' -f1)
     mapping_primary_port=$(echo "$mapping_primary_endpoint_with_port" | cut -d':' -f2)
     mapping_primary_cluster_id=$(get_cluster_id "$mapping_primary_endpoint" "$mapping_primary_port")
     echo "mapping_primary_fqdn: $mapping_primary_endpoint, mapping_primary_endpoint_with_port: $mapping_primary_endpoint_with_port, mapping_primary_cluster_id: $mapping_primary_cluster_id"
     if is_empty "$mapping_primary_cluster_id"; then
-      echo "Failed to get the cluster id from cluster nodes of the mapping primary node: $mapping_primary_endpoint_with_port"
-      exit 1
+      echo "Failed to get the cluster id from cluster nodes of the mapping primary node: $mapping_primary_endpoint_with_port" >&2
+      return 1
     fi
-    replicated_output=$(secondary_replicated_to_primary "$current_node_with_port" "$primary_node_endpoint_with_port" "$primary_node_cluster_id")
+    replicated_output=$(secondary_replicated_to_primary "$secondary_endpoint_with_port" "$mapping_primary_endpoint_with_port" "$mapping_primary_cluster_id")
     status=$?
     if [ $status -ne 0 ] ; then
       echo "Failed to initialize the secondary node $secondary_pod_name, secondary replicated output: $replicated_output" >&2
-      exit 1
+      return 1
     fi
     echo "Redis cluster initialized secondary node $secondary_pod_name successfully"
     # waiting for all nodes sync the information
     sleep_when_ut_mode_false 5
   done
+  return 0
 }
 
 scale_out_redis_cluster_shard() {
@@ -663,7 +664,12 @@ initialize_or_scale_out_redis_cluster() {
     # if the cluster is not initialized, initialize it
     if ! check_cluster_initialized "$KB_CLUSTER_POD_IP_LIST" "$SERVICE_PORT"; then
         echo "Redis Cluster not initialized, initializing..."
-        initialize_redis_cluster
+        if initialize_redis_cluster; then
+            echo "Redis Cluster initialized successfully"
+        else
+            echo "Failed to initialize Redis Cluster"
+            exit 1
+        fi
     else
         echo "Redis Cluster already initialized, scaling out the shard..."
         scale_out_redis_cluster_shard
