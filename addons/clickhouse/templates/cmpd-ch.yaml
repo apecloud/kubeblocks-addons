@@ -55,6 +55,15 @@ spec:
       volumeName: user-config
       namespace: {{ .Release.Namespace }}
       constraintRef: clickhouse-constraints
+    - name: sshkey-env
+      templateRef: sshd-env-tpl
+      namespace: {{ .Release.Namespace }}
+      asSecret: true
+      volumeName: "sshd"
+      injectEnvTo:
+        - clickhouse
+        - config-manager
+      constraintRef: clickhouse-env
   systemAccounts:
     - name: admin
       initAccount: true
@@ -156,3 +165,5 @@ spec:
             mountPath: /bitnami/clickhouse/etc/conf.d/default
           - name: user-config
             mountPath: /bitnami/clickhouse/etc/users.d/default
+          - name: sshd
+            mountPath: /opt/sshd
