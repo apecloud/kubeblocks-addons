@@ -1,16 +1,11 @@
 # shellcheck shell=bash
 # shellcheck disable=SC2034
 
-# we need bash 4 or higher to run this script in some cases
-should_skip_when_shell_type_and_version_invalid() {
-  # validate_shell_type_and_version defined in shellspec/spec_helper.sh used to validate the expected shell type and version this script needs to run.
-  if validate_shell_type_and_version "bash" 4 &>/dev/null; then
-    # should not skip
-    return 1
-  fi
+# validate_shell_type_and_version defined in shellspec/spec_helper.sh used to validate the expected shell type and version this script needs to run.
+if ! validate_shell_type_and_version "bash" 4 &>/dev/null; then
   echo "redis_cluster_manage_spec.sh skip cases because dependency bash version 4 or higher is not installed."
-  return 0
-}
+  exit 0
+fi
 
 source ./utils.sh
 

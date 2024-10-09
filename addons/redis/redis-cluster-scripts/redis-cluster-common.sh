@@ -498,6 +498,20 @@ build_del_node_command() {
   echo "$del_node_command"
 }
 
+build_acl_save_command() {
+  unset_xtrace_when_ut_mode_false
+  if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
+    acl_save_command="redis-cli -h 127.0.0.1 -p 6379 -a $REDIS_DEFAULT_PASSWORD acl save"
+    logging_mask_acl_save_command="${acl_save_command/$REDIS_DEFAULT_PASSWORD/********}"
+  else
+    acl_save_command="redis-cli -h 127.0.0.1 -p 6379 acl save"
+    logging_mask_acl_save_command="$acl_save_command"
+  fi
+  echo "acl save command: $logging_mask_acl_save_command" >&2
+  set_xtrace_when_ut_mode_false
+  echo "$acl_save_command"
+}
+
 create_redis_cluster() {
   local primary_nodes="$1"
   initialize_command=$(build_redis_cluster_create_command "$primary_nodes")
@@ -563,6 +577,48 @@ scale_in_shard_del_node() {
   del_node_command=$(build_del_node_command "$available_node" "$node_to_del_cluster_id")
   if ! $del_node_command; then
     echo "Failed to delete the node $available_node from the cluster when scale_in_shard_del_node" >&2
+    return 1
+  fi
+  return 0
+}
+
+secondary_member_leave_del_node() {
+  local available_node="$1"
+  local node_to_del_cluster_id="$2"
+  del_node_command=$(build_del_node_command "$available_node" "$node_to_del_cluster_id")
+  if ! $del_node_command; then
+    echo "Failed to delete the node $available_node from the cluster when secondary_member_leave_del_node" >&2
+    return 1
+  fi
+  return 0
+}
+
+secondary_member_leave_del_node_with_retry() {
+  local available_node="$1"
+  local node_to_del_cluster_id="$2"
+  check_result=$(call_func_with_retry $check_ready_times $retry_delay_second secondary_member_leave_del_node "$available_node" "$node_to_del_cluster_id")
+  status=$?
+  if [ $status -ne 0 ]; then
+    echo "Failed to remove replica when member leave after retry" >&2
+    return 1
+  fi
+  return 0
+}
+
+execute_acl_save() {
+  acl_save_command=$(build_acl_save_command)
+  if ! $acl_save_command; then
+    echo "Failed to execute acl save command" >&2
+    return 1
+  fi
+  return 0
+}
+
+execute_acl_save_with_retry() {
+  check_result=$(call_func_with_retry $check_ready_times $retry_delay_second execute_acl_save)
+  status=$?
+  if [ $status -ne 0 ]; then
+    echo "Failed to execute acl save command after retry" >&2
     return 1
   fi
   return 0

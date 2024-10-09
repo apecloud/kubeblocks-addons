@@ -37,7 +37,7 @@ remove_replica_from_shard_if_need() {
   # initialize the current pod info
   current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$CURRENT_SHARD_POD_FQDN_LIST" "$CURRENT_POD_NAME")
   if is_empty "$current_pod_fqdn"; then
-    echo "Error: Failed to get current pod: $CURRENT_POD_NAME fqdn from current shard pod fqdn list: $CURRENT_SHARD_POD_FQDN_LIST. Exiting."
+    echo "Error: Failed to get current pod: $CURRENT_POD_NAME fqdn from current shard pod fqdn list: $CURRENT_SHARD_POD_FQDN_LIST. Exiting." >&2
     exit 1
   fi
 
@@ -53,7 +53,7 @@ remove_replica_from_shard_if_need() {
   # if the cluster_nodes_info contains only one line, it means that the cluster not be initialized
   if [ "$(echo "$cluster_nodes_info" | wc -l)" -le 1 ]; then
     echo "Cluster nodes info contains only one line or is empty, returning..."
-    return
+    return 0
   fi
 
   # get the current node role, if the current node is a slave, remove it from the cluster
@@ -62,29 +62,11 @@ remove_replica_from_shard_if_need() {
     echo "Current node $CURRENT_POD_NAME is a slave, removing it from the cluster..."
     current_node_cluster_id=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $1}')
     current_node_ip_and_port=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $2}' | cut -d'@' -f1)
-    unset_xtrace_when_ut_mode_false
-    if is_empty "$REDIS_DEFAULT_PASSWORD"; then
-      del_node_command="redis-cli --cluster del-node $current_node_ip_and_port $current_node_cluster_id"
-      logging_mask_del_node_command="$del_node_command"
+    if secondary_member_leave_del_node_with_retry "$current_node_ip_and_port" "$current_node_cluster_id"; then
+      echo "Successfully removed replica from shard."
     else
-      del_node_command="redis-cli --cluster del-node $current_node_ip_and_port $current_node_cluster_id -a $REDIS_DEFAULT_PASSWORD"
-      logging_mask_del_node_command="${del_node_command/$REDIS_DEFAULT_PASSWORD/********}"
-    fi
-    echo "remove replica from shard executing command: $logging_mask_del_node_command"
-    for ((i=1; i<=20; i++)); do
-      if $del_node_command; then
-        echo "Successfully removed replica from shard."
-        break
-      else
-        echo "Failed to remove replica from shard. Retrying... (Attempt $i/20)"
-        sleep $((RANDOM % 3 + 1))
-      fi
-    done
-    set_xtrace_when_ut_mode_false
-
-    if [ "$i" -eq 20 ]; then
-      echo "Failed to remove replica from shard after 20 attempts."
-      exit 1
+      echo "Failed to remove replica from shard." >&2
+      return 1
     fi
 
     # check if the current node is removed from the cluster
@@ -92,36 +74,20 @@ remove_replica_from_shard_if_need() {
     status=$?
     if [ $status -ne 0 ]; then
       echo "Failed to get cluster nodes info in remove_replica_from_shard_if_need" >&2
-      exit 1
+      return 1
     fi
 
     if [ "$(echo "$cluster_nodes_info" | wc -l)" -le 1 ]; then
       echo "successfully removed replica from shard."
       return
     else
-      echo "Failed to remove replica from shard."
-      exit 1
+      echo "Failed to remove replica from shard." >&2
+      return 1
     fi
   else
     echo "Current node $CURRENT_POD_NAME is a master, no need to remove it from the cluster."
   fi
-}
-
-acl_save_before_stop() {
-  if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
-    acl_save_command="redis-cli -h 127.0.0.1 -p 6379 -a $REDIS_DEFAULT_PASSWORD acl save"
-    logging_mask_acl_save_command="${acl_save_command/$REDIS_DEFAULT_PASSWORD/********}"
-  else
-    acl_save_command="redis-cli -h 127.0.0.1 -p 6379 acl save"
-    logging_mask_acl_save_command="$acl_save_command"
-  fi
-  echo "acl save command: $logging_mask_acl_save_command"
-  if output=$($acl_save_command 2>&1); then
-    echo "acl save command executed successfully: $output"
-  else
-    echo "failed to execute acl save command: $output"
-    exit 1
-  fi
+  return 0
 }
 
 # This is magic for shellspec ut framework.
@@ -131,6 +97,12 @@ acl_save_before_stop() {
 # end here. The script path is assigned to the __SOURCED__ variable.
 ${__SOURCED__:+false} : || return 0
 
+# main
 load_redis_cluster_common_utils
-acl_save_before_stop
+if execute_acl_save_with_retry; then
+  echo "acl save command executed successfully."
+else
+  echo "failed to execute acl save command." >&2
+  return 1
+fi
 remove_replica_from_shard_if_need
