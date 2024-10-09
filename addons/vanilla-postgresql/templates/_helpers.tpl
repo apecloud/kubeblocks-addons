@@ -280,4 +280,7 @@ env:
     value: $(POSTGRES_USER)
   - name: PGPASSWORD
     value: $(POSTGRES_PASSWORD)
+  # fixme: only used for lorry in 0.9
+  - name: KB_SERVICE_CHARACTER_TYPE
+    value: postgresql
 {{- end -}}

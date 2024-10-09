@@ -50,8 +50,8 @@ cmpdVersionPrefix:
 
 ## @param componentServiceVersion define default serviceVersion of each Component
 componentServiceVersion:
-  vanillaPostgresql12: "12.15"
-  vanillaPostgresql14: "14.7"
+  vanillaPostgresql12: 12.15.0
+  vanillaPostgresql14: 14.7.0
 
 shmVolume:
   ## @param shmVolume.enabled Enable emptyDir volume for /dev/shm for PostgreSQL pod(s)
