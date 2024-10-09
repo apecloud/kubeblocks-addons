@@ -282,7 +282,8 @@ init_current_comp_default_nodes_for_scale_out() {
         advertised_svc_ordinal=$(extract_ordinal_from_object_name "$advertised_svc")
         if [ "$pod_name_ordinal" == "$advertised_svc_ordinal" ]; then
           pod_host_ip=$(parse_host_ip_from_built_in_envs "$pod_name" "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" "$KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST")
-          if is_empty "$pod_host_ip"; then
+          status=$?
+          if is_empty "$pod_host_ip" || [ $status -ne 0 ]; then
             echo "Failed to get the host ip of the pod $pod_name" >&2
             return 1
           fi
@@ -331,8 +332,8 @@ gen_initialize_redis_cluster_node() {
   min_lexicographical_pod_name=$(min_lexicographical_order_pod "$KB_CLUSTER_POD_NAME_LIST")
   min_lexicographical_pod_ordinal=$(extract_ordinal_from_object_name "$min_lexicographical_pod_name")
   if is_empty "$min_lexicographical_pod_ordinal"; then
-    echo "Failed to get the ordinal of the min lexicographical pod $min_lexicographical_pod_name in gen_initialize_redis_cluster_node"
-    exit 1
+    echo "Failed to get the ordinal of the min lexicographical pod $min_lexicographical_pod_name in gen_initialize_redis_cluster_node" >&2
+    return 1
   fi
 
   for pod_name in $(echo "$KB_CLUSTER_POD_NAME_LIST" | tr ',' ' '); do
@@ -370,9 +371,10 @@ gen_initialize_redis_cluster_node() {
           shard_advertised_svc_ordinal=$(extract_ordinal_from_object_name "$shard_advertised_svc")
           if [ "$pod_name_ordinal" == "$shard_advertised_svc_ordinal" ]; then
             pod_host_ip=$(parse_host_ip_from_built_in_envs "$pod_name" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_POD_HOST_IP_LIST")
-            if is_empty "$pod_host_ip"; then
-              echo "Failed to get the host ip of the pod $pod_name"
-              exit 1
+            status=$?
+            if is_empty "$pod_host_ip" || [ $status -ne 0 ]; then
+              echo "Failed to get the host ip of the pod $pod_name" >&2
+              return 1
             fi
             if [ "$is_primary" = true ]; then
               initialize_redis_cluster_primary_nodes["$pod_name"]="$pod_host_ip:$shard_advertised_port"
@@ -387,11 +389,16 @@ gen_initialize_redis_cluster_node() {
     else
       local pod_fqdn
       local port=$SERVICE_PORT
-     ## TODO: fixme, the $KB_CLUSTER_POD_FQDN_LIST is not exist in the current context
-      pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$KB_CLUSTER_POD_FQDN_LIST" "$pod_name")
+      local all_shard_pod_fqdns
+      all_shard_pod_fqdns=$(get_all_shards_pod_fqdns)
+      if is_empty "$all_shard_pod_fqdns"; then
+        echo "Failed to get all shard pod fqdns from vars env ALL_SHARDS_POD_FQDN_LIST" >&2
+        return 1
+      fi
+      pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$all_shard_pod_fqdns" "$pod_name")
       if is_empty "$pod_fqdn"; then
-        echo "Error: Failed to get current pod: $pod_name fqdn from all shard pod fqdn list: $KB_CLUSTER_POD_FQDN_LIST. Exiting."
-        exit 1
+        echo "Error: Failed to get current pod: $pod_name fqdn from all shard pod fqdn list: $all_shard_pod_fqdns. Exiting." >&2
+        return 1
       fi
       if equals "$is_primary" "true"; then
         initialize_redis_cluster_primary_nodes["$pod_name"]="$pod_fqdn:$port"
@@ -401,6 +408,7 @@ gen_initialize_redis_cluster_node() {
       initialize_pod_name_to_advertise_host_port_map["$pod_name"]="$pod_fqdn:$port"
     fi
   done
+  return 0
 }
 
 gen_initialize_redis_cluster_primary_node() {

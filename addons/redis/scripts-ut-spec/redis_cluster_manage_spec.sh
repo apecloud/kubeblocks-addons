@@ -437,4 +437,264 @@ Describe "Redis Cluster Manage Bash Script Tests"
       End
     End
   End
+
+  Describe "gen_initialize_redis_cluster_node()"
+    Context "when is_primary is true and using advertised ports"
+      setup() {
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
+        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6"
+        export ALL_SHARDS_ADVERTISED_PORT="shard-98x@redis-shard-98x-redis-advertised-0:32024,redis-shard-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:32025,redis-shard-7hy-redis-advertised-1:31319.shard-jwl@redis-shard-jwl-redis-advertised-0:32026,redis-shard-jwl-redis-advertised-1:31320"
+        declare -gA initialize_redis_cluster_primary_nodes
+        declare -gA initialize_redis_cluster_secondary_nodes
+        declare -gA initialize_pod_name_to_advertise_host_port_map
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset ALL_SHARDS_ADVERTISED_PORT
+      }
+      After "un_setup"
+
+      It "initializes primary nodes correctly when using advertised ports"
+        When call gen_initialize_redis_cluster_node "true"
+        The status should be success
+        The variable initialize_redis_cluster_primary_nodes["redis-shard-98x-0"] should equal "10.42.0.1:32024"
+        The variable initialize_redis_cluster_primary_nodes["redis-shard-7hy-0"] should equal "10.42.0.3:32025"
+        The variable initialize_redis_cluster_primary_nodes["redis-shard-jwl-0"] should equal "10.42.0.5:32026"
+        The variable initialize_pod_name_to_advertise_host_port_map["redis-shard-98x-0"] should equal "10.42.0.1:32024"
+        The variable initialize_pod_name_to_advertise_host_port_map["redis-shard-7hy-0"] should equal "10.42.0.3:32025"
+        The variable initialize_pod_name_to_advertise_host_port_map["redis-shard-jwl-0"] should equal "10.42.0.5:32026"
+        The variable initialize_redis_cluster_secondary_nodes["redis-shard-98x-1"] should be blank
+        The variable initialize_redis_cluster_secondary_nodes["redis-shard-7hy-1"] should be blank
+        The variable initialize_redis_cluster_secondary_nodes["redis-shard-jwl-1"] should be blank
+      End
+    End
+
+    Context "when is_primary is false and using advertised ports"
+      setup() {
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
+        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6"
+        export ALL_SHARDS_ADVERTISED_PORT="shard-98x@redis-shard-98x-redis-advertised-0:32024,redis-shard-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:32025,redis-shard-7hy-redis-advertised-1:31319.shard-jwl@redis-shard-jwl-redis-advertised-0:32026,redis-shard-jwl-redis-advertised-1:31320"
+        declare -gA initialize_redis_cluster_primary_nodes
+        declare -gA initialize_redis_cluster_secondary_nodes
+        declare -gA initialize_pod_name_to_advertise_host_port_map
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset ALL_SHARDS_ADVERTISED_PORT
+      }
+      After "un_setup"
+
+      It "initializes secondary nodes correctly when using advertised ports"
+        When call gen_initialize_redis_cluster_node "false"
+        The status should be success
+        The variable initialize_redis_cluster_secondary_nodes["redis-shard-98x-1"] should equal "10.42.0.2:31318"
+        The variable initialize_redis_cluster_secondary_nodes["redis-shard-7hy-1"] should equal "10.42.0.4:31319"
+        The variable initialize_redis_cluster_secondary_nodes["redis-shard-jwl-1"] should equal "10.42.0.6:31320"
+        The variable initialize_pod_name_to_advertise_host_port_map["redis-shard-98x-1"] should equal "10.42.0.2:31318"
+        The variable initialize_pod_name_to_advertise_host_port_map["redis-shard-7hy-1"] should equal "10.42.0.4:31319"
+        The variable initialize_pod_name_to_advertise_host_port_map["redis-shard-jwl-1"] should equal "10.42.0.6:31320"
+        The variable initialize_redis_cluster_primary_nodes['redis-shard-98x-0'] should be blank
+        The variable initialize_redis_cluster_primary_nodes['redis-shard-7hy-0'] should be blank
+        The variable initialize_redis_cluster_primary_nodes['redis-shard-jwl-0'] should be blank
+      End
+    End
+
+    Context "when is_primary is true and not using advertised ports"
+      get_all_shards_pod_fqdns() {
+        echo "redis-shard-98x-0.namespace.svc.cluster.local,redis-shard-98x-1.namespace.svc.cluster.local,redis-shard-7hy-0.namespace.svc.cluster.local,redis-shard-7hy-1.namespace.svc.cluster.local,redis-shard-jwl-0.namespace.svc.cluster.local,redis-shard-jwl-1.namespace.svc.cluster.local"
+      }
+
+      setup() {
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
+        export SERVICE_PORT="6379"
+        declare -gA initialize_redis_cluster_primary_nodes
+        declare -gA initialize_redis_cluster_secondary_nodes
+        declare -gA initialize_pod_name_to_advertise_host_port_map
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset SERVICE_PORT
+      }
+      After "un_setup"
+
+      It "initializes primary nodes correctly when not using advertised ports"
+        When call gen_initialize_redis_cluster_node "true"
+        The status should be success
+        The variable initialize_redis_cluster_primary_nodes["redis-shard-98x-0"] should equal "redis-shard-98x-0.namespace.svc.cluster.local:6379"
+        The variable initialize_redis_cluster_primary_nodes["redis-shard-7hy-0"] should equal "redis-shard-7hy-0.namespace.svc.cluster.local:6379"
+        The variable initialize_redis_cluster_primary_nodes["redis-shard-jwl-0"] should equal "redis-shard-jwl-0.namespace.svc.cluster.local:6379"
+        The variable initialize_pod_name_to_advertise_host_port_map["redis-shard-98x-0"] should equal "redis-shard-98x-0.namespace.svc.cluster.local:6379"
+        The variable initialize_pod_name_to_advertise_host_port_map["redis-shard-7hy-0"] should equal "redis-shard-7hy-0.namespace.svc.cluster.local:6379"
+        The variable initialize_pod_name_to_advertise_host_port_map["redis-shard-jwl-0"] should equal "redis-shard-jwl-0.namespace.svc.cluster.local:6379"
+        The variable initialize_redis_cluster_secondary_nodes["redis-shard-98x-1"] should be blank
+        The variable initialize_redis_cluster_secondary_nodes["redis-shard-7hy-1"] should be blank
+        The variable initialize_redis_cluster_secondary_nodes["redis-shard-jwl-1"] should be blank
+      End
+    End
+
+    Context "when is_primary is false and not using advertised ports"
+      get_all_shards_pod_fqdns() {
+        echo "redis-shard-98x-0.namespace.svc.cluster.local,redis-shard-98x-1.namespace.svc.cluster.local,redis-shard-7hy-0.namespace.svc.cluster.local,redis-shard-7hy-1.namespace.svc.cluster.local,redis-shard-jwl-0.namespace.svc.cluster.local,redis-shard-jwl-1.namespace.svc.cluster.local"
+      }
+
+      setup() {
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
+        export SERVICE_PORT="6379"
+        declare -gA initialize_redis_cluster_primary_nodes
+        declare -gA initialize_redis_cluster_secondary_nodes
+        declare -gA initialize_pod_name_to_advertise_host_port_map
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset SERVICE_PORT
+      }
+      After "un_setup"
+
+      It "initializes secondary nodes correctly when not using advertised ports"
+        When call gen_initialize_redis_cluster_node "false"
+        The status should be success
+        The variable initialize_redis_cluster_secondary_nodes["redis-shard-98x-1"] should equal "redis-shard-98x-1.namespace.svc.cluster.local:6379"
+        The variable initialize_redis_cluster_secondary_nodes["redis-shard-7hy-1"] should equal "redis-shard-7hy-1.namespace.svc.cluster.local:6379"
+        The variable initialize_redis_cluster_secondary_nodes["redis-shard-jwl-1"] should equal "redis-shard-jwl-1.namespace.svc.cluster.local:6379"
+        The variable initialize_pod_name_to_advertise_host_port_map["redis-shard-98x-1"] should equal "redis-shard-98x-1.namespace.svc.cluster.local:6379"
+        The variable initialize_pod_name_to_advertise_host_port_map["redis-shard-7hy-1"] should equal "redis-shard-7hy-1.namespace.svc.cluster.local:6379"
+        The variable initialize_pod_name_to_advertise_host_port_map["redis-shard-jwl-1"] should equal "redis-shard-jwl-1.namespace.svc.cluster.local:6379"
+        The variable initialize_redis_cluster_primary_nodes['redis-shard-98x-0'] should be blank
+        The variable initialize_redis_cluster_primary_nodes['redis-shard-7hy-0'] should be blank
+        The variable initialize_redis_cluster_primary_nodes['redis-shard-jwl-0'] should be blank
+      End
+    End
+
+    Context "when failed to get ordinal of min lexicographical pod"
+      extract_ordinal_from_object_name() {
+        return 1
+      }
+
+      setup() {
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_POD_NAME_LIST
+      }
+      After "un_setup"
+
+      It "returns error when failed to get ordinal of min lexicographical pod"
+        When call gen_initialize_redis_cluster_node "true"
+        The status should be failure
+        The error should include "Failed to get the ordinal of the min lexicographical pod redis-shard-7hy-0 in gen_initialize_redis_cluster_node"
+      End
+    End
+
+    Context "when failed to get host ip of pod"
+      parse_host_ip_from_built_in_envs() {
+        echo ""
+        return 1
+      }
+
+      setup() {
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
+        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6"
+        export ALL_SHARDS_ADVERTISED_PORT="shard-98x@redis-shard-98x-redis-advertised-0:32024,redis-shar
+d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:32025,redis-shard-7hy-redis-advertised-1:31319.shard-jwl@redis-shard-jwl-redis-advertised-0:32026,redis-shard-jwl-redis-advertised-1:31320"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset ALL_SHARDS_ADVERTISED_PORT
+      }
+      After "un_setup"
+
+      It "exits with error when failed to get host ip of pod"
+        When run gen_initialize_redis_cluster_node "true"
+        The status should be failure
+        The stderr should include "Failed to get the host ip of the pod redis-shard-98x-0"
+      End
+    End
+
+    Context "when failed to get all shard pod fqdns"
+      get_all_shards_pod_fqdns() {
+        echo ""
+      }
+
+      setup() {
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
+        export SERVICE_PORT="6379"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset SERVICE_PORT
+      }
+      After "un_setup"
+
+      It "returns error when failed to get all shard pod fqdns"
+        When call gen_initialize_redis_cluster_node "true"
+        The status should be failure
+        The error should include "Failed to get all shard pod fqdns from vars env ALL_SHARDS_POD_FQDN_LIST"
+      End
+    End
+
+    Context "when failed to get target pod fqdn"
+      get_all_shards_pod_fqdns() {
+        echo "redis-shard-98x-0.namespace.svc.cluster.local,redis-shard-98x-1.namespace.svc.cluster.local,redis-shard-7hy-0.namespace.svc.cluster.local,redis-shard-7hy-1.namespace.svc.cluster.local,redis-shard-jwl-0.namespace.svc.cluster.local,redis-shard-jwl-1.namespace.svc.cluster.local"
+      }
+
+      get_target_pod_fqdn_from_pod_fqdn_vars() {
+        echo ""
+      }
+
+      setup() {
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
+        export SERVICE_PORT="6379"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset SERVICE_PORT
+      }
+      After "un_setup"
+
+      It "returns error when failed to get target pod fqdn"
+        When call gen_initialize_redis_cluster_node "true"
+        The status should be failure
+        The stderr should include "Error: Failed to get current pod: redis-shard-98x-0 fqdn from all shard pod fqdn list"
+      End
+    End
+  End
+
+  Describe "gen_initialize_redis_cluster_primary_node()"
+    It "calls gen_initialize_redis_cluster_node with 'true'"
+      gen_initialize_redis_cluster_node() {
+        [ "$1" = "true" ]
+      }
+      When call gen_initialize_redis_cluster_primary_node
+      The status should be success
+    End
+  End
+
+  Describe "gen_initialize_redis_cluster_secondary_nodes()"
+    It "calls gen_initialize_redis_cluster_node with 'false'"
+      gen_initialize_redis_cluster_node() {
+        [ "$1" = "false" ]
+      }
+      When call gen_initialize_redis_cluster_secondary_nodes
+      The status should be success
+    End
+  End
 End

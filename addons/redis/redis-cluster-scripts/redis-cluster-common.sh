@@ -39,8 +39,8 @@ sleep_random_second() {
 get_all_shards_components() {
   local all_shards_components
   if is_empty "$ALL_SHARDS_COMPONENT_SHORT_NAMES"; then
-    echo "Error: Required environment variable ALL_SHARDS_COMPONENT_SHORT_NAMES is not set."
-    exit 1
+    echo "Error: Required environment variable ALL_SHARDS_COMPONENT_SHORT_NAMES is not set." >&2
+    return 1
   fi
   all_shards_component_shortname_pairs=$(split "$ALL_SHARDS_COMPONENT_SHORT_NAMES" ",")
   for pair in $all_shards_component_shortname_pairs; do
@@ -48,6 +48,7 @@ get_all_shards_components() {
     all_shards_components="$all_shards_components,$shard_name"
   done
   echo "$all_shards_components"
+  return 0
 }
 
 ## the pod names of all shard, there are some environment variables name prefix with "ALL_SHARDS_POD_NAME_LIST" and
@@ -70,6 +71,8 @@ get_all_shards_pods() {
     fi
     all_shards_pods="$all_shards_pods,${line}"
   done <<< "$envs"
+  echo "$all_shards_pods"
+  return 0
 }
 
 ## the pod fqdn list for all shard pod, it will generate a set of variables with the shard name suffix like:
@@ -91,6 +94,8 @@ get_all_shards_pod_fqdns() {
     fi
     all_shards_pod_fqdns="$all_shards_pod_fqdns,${line}"
   done <<< "$envs"
+  echo "$all_shards_pod_fqdns"
+  return 0
 }
 
 shutdown_redis_server() {
