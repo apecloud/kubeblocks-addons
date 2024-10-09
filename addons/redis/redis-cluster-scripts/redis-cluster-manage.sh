@@ -578,12 +578,12 @@ scale_in_redis_cluster_shard() {
   # check KB_CLUSTER_COMPONENT_IS_SCALING_IN env
   if is_empty "$KB_CLUSTER_COMPONENT_IS_SCALING_IN"; then
     echo "The KB_CLUSTER_COMPONENT_IS_SCALING_IN env is not set, skip scaling in"
-    exit 0
+    return 0
   fi
 
   if is_empty "$CURRENT_SHARD_COMPONENT_SHORT_NAME" || is_empty "$KB_CLUSTER_POD_NAME_LIST" || is_empty "$KB_CLUSTER_POD_HOST_IP_LIST" || is_empty "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" || is_empty "$KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST"; then
-    echo "Error: Required environment variable CURRENT_SHARD_COMPONENT_SHORT_NAME, KB_CLUSTER_POD_NAME_LIST, KB_CLUSTER_POD_HOST_IP_LIST, KB_CLUSTER_COMPONENT_POD_NAME_LIST and KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST are not set when scale in redis cluster shard"
-    exit 1
+    echo "Error: Required environment variable CURRENT_SHARD_COMPONENT_SHORT_NAME, KB_CLUSTER_POD_NAME_LIST, KB_CLUSTER_POD_HOST_IP_LIST, KB_CLUSTER_COMPONENT_POD_NAME_LIST and KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST are not set when scale in redis cluster shard" >&2
+    return 1
   fi
 
   # init information for the other components and pods
@@ -596,61 +596,44 @@ scale_in_redis_cluster_shard() {
   # Check if the number of shards in the cluster is less than 3 after scaling down.
   current_comp_pod_count=0
   for pod_name in $(echo "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" | tr ',' ' '); do
-    if [[ "$pod_name" == "$KB_CLUSTER_COMP_NAME"* ]]; then
+    if [[ "$pod_name" == "$CURRENT_SHARD_COMPONENT_NAME"* ]]; then
       current_comp_pod_count=$((current_comp_pod_count + 1))
     fi
   done
   shard_count=$((${#other_undeleted_component_nodes[@]} / current_comp_pod_count))
   if [ $shard_count -lt 3 ]; then
-    echo "The number of shards in the cluster is less than 3 after scaling in, please check."
-    exit 1
+    echo "The number of shards in the cluster is less than 3 after scaling in, please check." >&2
+    return 1
   fi
 
-  # set the current component slot to 0 by rebalance command
+  # set the current shard component slot to 0 by rebalance command
   for primary_node in "${current_comp_primary_node[@]}"; do
     primary_node_fqdn=$(echo "$primary_node" | awk -F ':' '{print $1}')
     primary_node_port=$(echo "$primary_node" | awk -F ':' '{print $2}')
     primary_node_cluster_id=$(get_cluster_id "$primary_node_fqdn" "$primary_node_port")
-    set +x
-    if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-      rebalance_command="redis-cli --cluster rebalance $primary_node --cluster-weight $primary_node_cluster_id=0 --cluster-yes "
-      logging_mask_rebalance_command="$rebalance_command"
+    if scale_in_shard_rebalance_to_zero "$primary_node" "$primary_node_cluster_id"; then
+      echo "Redis cluster scale in shard rebalance to zero successfully"
     else
-      rebalance_command="redis-cli --cluster rebalance $primary_node --cluster-weight $primary_node_cluster_id=0 --cluster-yes -a $REDIS_DEFAULT_PASSWORD"
-      logging_mask_rebalance_command="${rebalance_command/$REDIS_DEFAULT_PASSWORD/********}"
+      echo "Failed to rebalance the cluster for the current component when scaling in" >&2
+      return 1
     fi
-    echo "set current component slot to 0 by rebalance command: $logging_mask_rebalance_command"
-    if ! $rebalance_command
-    then
-      echo "Failed to rebalance the cluster for the current component when scaling in"
-      exit 1
-    fi
-    set -x
   done
 
   sleep_when_ut_mode_false 5
 
-  # delete the current component nodes from the cluster
+  # delete the current shard component nodes from the cluster
   for node_to_del in "${current_comp_primary_node[@]}" "${current_comp_other_nodes[@]}"; do
     node_to_del_fqdn=$(echo "$node_to_del" | awk -F ':' '{print $1}')
     node_to_del_port=$(echo "$node_to_del" | awk -F ':' '{print $2}')
     node_to_del_cluster_id=$(get_cluster_id "$node_to_del_fqdn" "$node_to_del_port")
-    set +x
-    if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-      del_node_command="redis-cli --cluster del-node $available_node $node_to_del_cluster_id -p $SERVICE_PORT"
-      logging_mask_del_node_command="$del_node_command"
+    if scale_in_shard_del_node "$available_node" "$node_to_del_cluster_id"; then
+      echo "Redis cluster scale in shard delete node $node_to_del successfully"
     else
-      del_node_command="redis-cli --cluster del-node $available_node $node_to_del_cluster_id -p $SERVICE_PORT -a $REDIS_DEFAULT_PASSWORD"
-      logging_mask_del_node_command="${del_node_command/$REDIS_DEFAULT_PASSWORD/********}"
+      echo "Failed to delete the node $node_to_del from the cluster when scaling in" >&2
+      return 1
     fi
-    echo "del-node command: $logging_mask_del_node_command"
-    if ! $del_node_command
-    then
-      echo "Failed to delete the node $node_to_del from the cluster when scaling in"
-      exit 1
-    fi
-    set -x
   done
+  return 0
 }
 
 initialize_or_scale_out_redis_cluster() {
@@ -706,7 +689,12 @@ if [ $# -eq 1 ]; then
     exit 0
     ;;
   --pre-terminate)
-    scale_in_redis_cluster_shard
+    if scale_in_redis_cluster_shard; then
+      echo "Redis Cluster scale in shard successfully"
+    else
+      echo "Failed to scale in Redis Cluster shard" >&2
+      exit 1
+    fi
     exit 0
     ;;
   *)

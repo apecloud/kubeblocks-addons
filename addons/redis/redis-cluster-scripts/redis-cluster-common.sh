@@ -464,6 +464,38 @@ build_reshard_command() {
   echo "$reshard_command"
 }
 
+build_rebalance_to_zero_command() {
+  local node_with_port="$1"
+  local node_cluster_id="$2"
+  unset_xtrace_when_ut_mode_false
+  if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+    rebalance_command="redis-cli --cluster rebalance $primary_node --cluster-weight $primary_node_cluster_id=0 --cluster-yes "
+    logging_mask_rebalance_command="$rebalance_command"
+  else
+    rebalance_command="redis-cli --cluster rebalance $primary_node --cluster-weight $primary_node_cluster_id=0 --cluster-yes -a $REDIS_DEFAULT_PASSWORD"
+    logging_mask_rebalance_command="${rebalance_command/$REDIS_DEFAULT_PASSWORD/********}"
+  fi
+  echo "set current component slot to 0 by rebalance command: $logging_mask_rebalance_command"
+  set_xtrace_when_ut_mode_false
+  echo "$rebalance_command"
+}
+
+build_del_node_command() {
+  local available_node="$1"
+  local node_to_del_cluster_id="$2"
+  unset_xtrace_when_ut_mode_false
+  if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+    del_node_command="redis-cli --cluster del-node $available_node $node_to_del_cluster_id -p $SERVICE_PORT"
+    logging_mask_del_node_command="$del_node_command"
+  else
+    del_node_command="redis-cli --cluster del-node $available_node $node_to_del_cluster_id -p $SERVICE_PORT -a $REDIS_DEFAULT_PASSWORD"
+    logging_mask_del_node_command="${del_node_command/$REDIS_DEFAULT_PASSWORD/********}"
+  fi
+  echo "del node command: $logging_mask_del_node_command" >&2
+  set_xtrace_when_ut_mode_false
+  echo "$del_node_command"
+}
+
 create_redis_cluster() {
   local primary_nodes="$1"
   initialize_command=$(build_redis_cluster_create_command "$primary_nodes")
@@ -494,7 +526,7 @@ scale_out_shard_primary_join_cluster() {
   local exist_available_node="$2"
   add_node_command=$(build_scale_out_shard_primary_join_command "$scale_out_shard_default_primary_endpoint_with_port" "$exist_available_node")
   if ! $add_node_command; then
-    echo "Failed to add the node $scale_out_shard_default_primary_endpoint_with_port to the cluster" >&2
+    echo "Failed to add the node $scale_out_shard_default_primary_endpoint_with_port to the cluster when scale_out_shard_primary_join_cluster" >&2
     return 1
   fi
   return 0
@@ -506,7 +538,29 @@ scale_out_shard_reshard() {
   local slots_per_shard="$3"
   reshard_command=$(build_reshard_command "$primary_node_with_port" "$mapping_primary_cluster_id" "$slots_per_shard")
   if ! $reshard_command; then
-    echo "Failed to reshard the cluster" >&2
+    echo "Failed to reshard the cluster when scale_out_shard_reshard" >&2
+    return 1
+  fi
+  return 0
+}
+
+scale_in_shard_rebalance_to_zero() {
+  local node_with_port="$1"
+  local node_cluster_id="$2"
+  rebalance_command=$(build_rebalance_to_zero_command "$node_with_port" "$node_cluster_id")
+  if ! $rebalance_command; then
+    echo "Failed to rebalance the cluster when scale_in_shard_rebalance_to_zero" >&2
+    return 1
+  fi
+  return 0
+}
+
+scale_in_shard_del_node() {
+  local available_node="$1"
+  local node_to_del_cluster_id="$2"
+  del_node_command=$(build_del_node_command "$available_node" "$node_to_del_cluster_id")
+  if ! $del_node_command; then
+    echo "Failed to delete the node $available_node from the cluster when scale_in_shard_del_node" >&2
     return 1
   fi
   return 0

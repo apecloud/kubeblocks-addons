@@ -1407,4 +1407,278 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
       End
     End
   End
+
+  Describe "scale_in_redis_cluster_shard()"
+    Context "when KB_CLUSTER_COMPONENT_IS_SCALING_IN env is not set"
+      setup() {
+        export KB_CLUSTER_COMPONENT_IS_SCALING_IN=""
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_COMPONENT_IS_SCALING_IN
+      }
+      After "un_setup"
+
+      It "returns 0 when KB_CLUSTER_COMPONENT_IS_SCALING_IN env is not set"
+        When call scale_in_redis_cluster_shard
+        The status should be success
+        The output should include "The KB_CLUSTER_COMPONENT_IS_SCALING_IN env is not set, skip scaling in"
+      End
+    End
+
+    Context "when required environment variables are not set"
+      setup() {
+        export KB_CLUSTER_COMPONENT_IS_SCALING_IN="true"
+        export CURRENT_SHARD_COMPONENT_SHORT_NAME=""
+        export KB_CLUSTER_POD_NAME_LIST=""
+        export KB_CLUSTER_POD_HOST_IP_LIST=""
+        export KB_CLUSTER_COMPONENT_POD_NAME_LIST=""
+        export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST=""
+        export SERVICE_PORT="6379"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_COMPONENT_IS_SCALING_IN
+        unset CURRENT_SHARD_COMPONENT_SHORT_NAME
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
+        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
+      }
+      After "un_setup"
+
+      It "returns 1 when required environment variables are not set"
+        When call scale_in_redis_cluster_shard
+        The status should be failure
+        The error should include "Error: Required environment variable CURRENT_SHARD_COMPONENT_SHORT_NAME, KB_CLUSTER_POD_NAME_LIST, KB_CLUSTER_POD_HOST_IP_LIST, KB_CLUSTER_COMPONENT_POD_NAME_LIST and KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST are not set when scale in redis cluster shard"
+      End
+    End
+
+    Context "when the number of shards in the cluster is less than 3 after scaling down"
+      find_exist_available_node() {
+        echo "redis-shard-98x-0.namespace.svc.cluster.local:6379"
+      }
+
+      get_current_comp_nodes_for_scale_in() {
+        current_comp_primary_node=("redis-shard-98x-0.namespace.svc.cluster.local:6379")
+        current_comp_other_nodes=("redis-shard-98x-1.namespace.svc.cluster.local:6379")
+      }
+
+      setup() {
+        export KB_CLUSTER_COMPONENT_IS_SCALING_IN="true"
+        export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
+        export CURRENT_SHARD_COMPONENT_NAME="redis-shard-98x"
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0"
+        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5"
+        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
+        export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
+        export KB_CLUSTER_POD_IP_LIST="172.42.0.1,172.42.0.2,172.42.0.3,172.42.0.4,172.42.0.5"
+        export KB_CLUSTER_COMPONENT_LIST="redis-shard-98x,redis-shard-7hy,redis-shard-jwl"
+        export KB_CLUSTER_COMPONENT_DELETING_LIST=""
+        export KB_CLUSTER_COMPONENT_UNDELETED_LIST="redis-shard-98x,redis-shard-7hy,redis-shard-jwl"
+        export SERVICE_PORT="6379"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_COMPONENT_IS_SCALING_IN
+        unset CURRENT_SHARD_COMPONENT_SHORT_NAME
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
+        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
+        unset KB_CLUSTER_POD_IP_LIST
+        unset KB_CLUSTER_COMPONENT_LIST
+        unset KB_CLUSTER_COMPONENT_DELETING_LIST
+        unset KB_CLUSTER_COMPONENT_UNDELETED_LIST
+      }
+      After "un_setup"
+
+      It "returns 1 when the number of shards in the cluster is less than 3 after scaling down"
+        When call scale_in_redis_cluster_shard
+        The status should be failure
+        The error should include "The number of shards in the cluster is less than 3 after scaling in, please check."
+        The stdout should include "other_undeleted_component_nodes: redis-shard-7hy-0.redis-shard-7hy-headless:6379 redis-shard-7hy-1.redis-shard-7hy-headless:6379 redis-shard-jwl-0.redis-shard-jwl-headless:6379"
+      End
+    End
+
+    Context "when scaling in redis cluster shard successfully"
+      find_exist_available_node() {
+        echo "redis-shard-98x-0.namespace.svc.cluster.local:6379"
+      }
+
+      get_current_comp_nodes_for_scale_in() {
+        current_comp_primary_node=("redis-shard-98x-0.namespace.svc.cluster.local:6379")
+        current_comp_other_nodes=("redis-shard-98x-1.namespace.svc.cluster.local:6379")
+      }
+
+      get_cluster_id() {
+        echo "cluster_id_123"
+      }
+
+      scale_in_shard_rebalance_to_zero() {
+        return 0
+      }
+
+      scale_in_shard_del_node() {
+        return 0
+      }
+
+      setup() {
+        export KB_CLUSTER_COMPONENT_IS_SCALING_IN="true"
+        export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
+        export CURRENT_SHARD_COMPONENT_NAME="redis-shard-98x"
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1,redis-shard-kpl-0,redis-shard-kpl-1"
+        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6,10.42.0.7,10.42.0.8"
+        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
+        export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
+        export KB_CLUSTER_POD_IP_LIST="172.42.0.1,172.42.0.2,172.42.0.3,172.42.0.4,172.42.0.5,172.42.0.6,172.42.0.7,172.42.0.8"
+        export KB_CLUSTER_COMPONENT_LIST="redis-shard-98x,redis-shard-7hy,redis-shard-jwl,redis-shard-kpl"
+        export KB_CLUSTER_COMPONENT_DELETING_LIST=""
+        export KB_CLUSTER_COMPONENT_UNDELETED_LIST="redis-shard-98x,redis-shard-7hy,redis-shard-jwl,redis-shard-kpl"
+        export SERVICE_PORT="6379"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_COMPONENT_IS_SCALING_IN
+        unset CURRENT_SHARD_COMPONENT_SHORT_NAME
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
+        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
+        unset KB_CLUSTER_POD_IP_LIST
+        unset KB_CLUSTER_COMPONENT_LIST
+        unset KB_CLUSTER_COMPONENT_DELETING_LIST
+        unset KB_CLUSTER_COMPONENT_UNDELETED_LIST
+      }
+      After "un_setup"
+
+      It "returns 0 when scaling in redis cluster shard successfully"
+        When call scale_in_redis_cluster_shard
+        The status should be success
+        The output should include "Redis cluster scale in shard rebalance to zero successfully"
+        The output should include "Redis cluster scale in shard delete node redis-shard-98x-0.namespace.svc.cluster.local:6379 successfully"
+        The output should include "Redis cluster scale in shard delete node redis-shard-98x-1.namespace.svc.cluster.local:6379 successfully"
+      End
+    End
+
+    Context "when failed to rebalance the cluster for the current component when scaling in"
+      find_exist_available_node() {
+        echo "redis-shard-98x-0.namespace.svc.cluster.local:6379"
+      }
+
+      get_current_comp_nodes_for_scale_in() {
+        current_comp_primary_node=("redis-shard-98x-0.namespace.svc.cluster.local:6379")
+        current_comp_other_nodes=("redis-shard-98x-1.namespace.svc.cluster.local:6379")
+      }
+
+      get_cluster_id() {
+        echo "cluster_id_123"
+      }
+
+      scale_in_shard_rebalance_to_zero() {
+        return 1
+      }
+
+      setup() {
+        export KB_CLUSTER_COMPONENT_IS_SCALING_IN="true"
+        export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
+        export CURRENT_SHARD_COMPONENT_NAME="redis-shard-98x"
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1,redis-shard-kpl-0,redis-shard-kpl-1"
+        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6,10.42.0.7,10.42.0.8"
+        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
+        export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
+        export KB_CLUSTER_POD_IP_LIST="172.42.0.1,172.42.0.2,172.42.0.3,172.42.0.4,172.42.0.5,172.42.0.6,172.42.0.7,172.42.0.8"
+        export KB_CLUSTER_COMPONENT_LIST="redis-shard-98x,redis-shard-7hy,redis-shard-jwl,redis-shard-kpl"
+        export KB_CLUSTER_COMPONENT_DELETING_LIST=""
+        export KB_CLUSTER_COMPONENT_UNDELETED_LIST="redis-shard-98x,redis-shard-7hy,redis-shard-jwl,redis-shard-kpl"
+        export SERVICE_PORT="6379"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_COMPONENT_IS_SCALING_IN
+        unset CURRENT_SHARD_COMPONENT_SHORT_NAME
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
+        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
+        unset KB_CLUSTER_POD_IP_LIST
+        unset KB_CLUSTER_COMPONENT_LIST
+        unset KB_CLUSTER_COMPONENT_DELETING_LIST
+        unset KB_CLUSTER_COMPONENT_UNDELETED_LIST
+      }
+      After "un_setup"
+
+      It "returns 1 when failed to rebalance the cluster for the current component when scaling in"
+        When call scale_in_redis_cluster_shard
+        The status should be failure
+        The error should include "Failed to rebalance the cluster for the current component when scaling in"
+        The stdout should include "other_undeleted_component_nodes: redis-shard-7hy-0.redis-shard-7hy-headless:6379 redis-shard-7hy-1.redis-shard-7hy-headless:6379 redis-shard-jwl-0.redis-shard-jwl-headless:6379 redis-shard-jwl-1.redis-shard-jwl-headless:6379 redis-shard-kpl-0.redis-shard-kpl-headless:6379 redis-shard-kpl-1.redis-shard-kpl-headless:637"
+      End
+    End
+
+    Context "when failed to delete the node from the cluster when scaling in"
+      find_exist_available_node() {
+        echo "redis-shard-98x-0.namespace.svc.cluster.local:6379"
+      }
+
+      get_current_comp_nodes_for_scale_in() {
+        current_comp_primary_node=("redis-shard-98x-0.namespace.svc.cluster.local:6379")
+        current_comp_other_nodes=("redis-shard-98x-1.namespace.svc.cluster.local:6379")
+      }
+
+      get_cluster_id() {
+        echo "cluster_id_123"
+      }
+
+      scale_in_shard_rebalance_to_zero() {
+        return 0
+      }
+
+      scale_in_shard_del_node() {
+        return 1
+      }
+
+      setup() {
+        export KB_CLUSTER_COMPONENT_IS_SCALING_IN="true"
+        export CURRENT_SHARD_COMPONENT_SHORT_NAME="shard-98x"
+        export CURRENT_SHARD_COMPONENT_NAME="redis-shard-98x"
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1,redis-shard-kpl-0,redis-shard-kpl-1"
+        export KB_CLUSTER_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2,10.42.0.3,10.42.0.4,10.42.0.5,10.42.0.6,10.42.0.7,10.42.0.8"
+        export KB_CLUSTER_COMPONENT_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1"
+        export KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST="10.42.0.1,10.42.0.2"
+        export KB_CLUSTER_POD_IP_LIST="172.42.0.1,172.42.0.2,172.42.0.3,172.42.0.4,172.42.0.5,172.42.0.6,172.42.0.7,172.42.0.8"
+        export KB_CLUSTER_COMPONENT_LIST="redis-shard-98x,redis-shard-7hy,redis-shard-jwl,redis-shard-kpl"
+        export KB_CLUSTER_COMPONENT_DELETING_LIST=""
+        export KB_CLUSTER_COMPONENT_UNDELETED_LIST="redis-shard-98x,redis-shard-7hy,redis-shard-jwl,redis-shard-kpl"
+        export SERVICE_PORT="6379"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_COMPONENT_IS_SCALING_IN
+        unset CURRENT_SHARD_COMPONENT_SHORT_NAME
+        unset KB_CLUSTER_POD_NAME_LIST
+        unset KB_CLUSTER_POD_HOST_IP_LIST
+        unset KB_CLUSTER_COMPONENT_POD_NAME_LIST
+        unset KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST
+        unset KB_CLUSTER_POD_IP_LIST
+        unset KB_CLUSTER_COMPONENT_LIST
+        unset KB_CLUSTER_COMPONENT_DELETING_LIST
+        unset KB_CLUSTER_COMPONENT_UNDELETED_LIST
+      }
+      After "un_setup"
+
+      It "returns 1 when failed to delete the node from the cluster when scaling in"
+        When call scale_in_redis_cluster_shard
+        The status should be failure
+        The error should include "Failed to delete the node redis-shard-98x-0.namespace.svc.cluster.local:6379 from the cluster when scaling in"
+        The stdout should include "Redis cluster scale in shard rebalance to zero successfully"
+      End
+    End
+  End
 End
