@@ -638,11 +638,11 @@ scale_in_redis_cluster_shard() {
 
 initialize_or_scale_out_redis_cluster() {
     # TODO: remove random sleep, it's a workaround for the multi components initialization parallelism issue
-    sleep_random_second 10 1
+    sleep_random_second_when_ut_mode_false 10 1
 
     if is_empty "$KB_CLUSTER_POD_IP_LIST" || is_empty "$SERVICE_PORT"; then
       echo "Error: Required environment variable KB_CLUSTER_POD_IP_LIST and SERVICE_PORT is not set." >&2
-      exit 1
+      return 1
     fi
 
     # if the cluster is not initialized, initialize it
@@ -652,7 +652,7 @@ initialize_or_scale_out_redis_cluster() {
             echo "Redis Cluster initialized successfully"
         else
             echo "Failed to initialize Redis Cluster" >&2
-            exit 1
+            return 1
         fi
     else
         echo "Redis Cluster already initialized, scaling out the shard..."
@@ -660,9 +660,10 @@ initialize_or_scale_out_redis_cluster() {
             echo "Redis Cluster scale out shard successfully"
         else
             echo "Failed to scale out Redis Cluster shard" >&2
-            exit 1
+            return 1
         fi
     fi
+    return 0
 }
 
 # This is magic for shellspec ut framework.
@@ -685,7 +686,12 @@ if [ $# -eq 1 ]; then
     exit 0
     ;;
   --post-provision)
-    initialize_or_scale_out_redis_cluster
+    if initialize_or_scale_out_redis_cluster; then
+      echo "Redis Cluster initialized or scale out shard successfully"
+    else
+      echo "Failed to initialize or scale out Redis Cluster shard" >&2
+      exit 1
+    fi
     exit 0
     ;;
   --pre-terminate)

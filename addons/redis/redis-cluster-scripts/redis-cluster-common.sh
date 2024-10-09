@@ -24,13 +24,15 @@ retry_times=3
 check_ready_times=30
 retry_delay_second=2
 
-# usage: sleep_random_second <max_time> <min_time>
-sleep_random_second() {
-  local max_time="$1"
-  local min_time="$2"
-  local random_time=$((RANDOM % (max_time - min_time + 1) + min_time))
-  echo "Sleeping for $random_time seconds"
-  sleep "$random_time"
+# usage: sleep_random_second_when_ut_mode_false <max_time> <min_time>
+sleep_random_second_when_ut_mode_false() {
+  if [ "false" == "$ut_mode" ]; then
+    local max_time="$1"
+    local min_time="$2"
+    local random_time=$((RANDOM % (max_time - min_time + 1) + min_time))
+    echo "Sleeping for $random_time seconds"
+    sleep "$random_time"
+  fi
 }
 
 ## the component names of all shard

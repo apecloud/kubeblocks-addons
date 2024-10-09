@@ -1681,4 +1681,142 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
       End
     End
   End
+
+  Describe "initialize_or_scale_out_redis_cluster()"
+    Context "when required environment variables are not set"
+      setup() {
+        export KB_CLUSTER_POD_IP_LIST=""
+        export SERVICE_PORT=""
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_POD_IP_LIST
+        unset SERVICE_PORT
+      }
+      After "un_setup"
+
+      It "exits with status 1 when required environment variables are not set"
+        When run initialize_or_scale_out_redis_cluster
+        The status should be failure
+        The stderr should include "Error: Required environment variable KB_CLUSTER_POD_IP_LIST and SERVICE_PORT is not set."
+      End
+    End
+
+    Context "when Redis Cluster is not initialized"
+      check_cluster_initialized() {
+        return 1
+      }
+
+      initialize_redis_cluster() {
+        return 0
+      }
+
+      setup() {
+        export KB_CLUSTER_POD_IP_LIST="172.42.0.1,172.42.0.2,172.42.0.3,172.42.0.4,172.42.0.5,172.42.0.6"
+        export SERVICE_PORT="6379"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_POD_IP_LIST
+        unset SERVICE_PORT
+      }
+      After "un_setup"
+
+      It "initializes Redis Cluster successfully"
+        When run initialize_or_scale_out_redis_cluster
+        The status should be success
+        The output should include "Redis Cluster not initialized, initializing..."
+        The output should include "Redis Cluster initialized successfully"
+      End
+    End
+
+    Context "when Redis Cluster is already initialized"
+      check_cluster_initialized() {
+        return 0
+      }
+
+      scale_out_redis_cluster_shard() {
+        return 0
+      }
+
+      setup() {
+        export KB_CLUSTER_POD_IP_LIST="172.42.0.1,172.42.0.2,172.42.0.3,172.42.0.4,172.42.0.5,172.42.0.6"
+        export SERVICE_PORT="6379"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_POD_IP_LIST
+        unset SERVICE_PORT
+      }
+      After "un_setup"
+
+      It "scales out Redis Cluster shard successfully"
+        When run initialize_or_scale_out_redis_cluster
+        The status should be success
+        The output should include "Redis Cluster already initialized, scaling out the shard..."
+        The output should include "Redis Cluster scale out shard successfully"
+      End
+    End
+
+    Context "when failed to initialize Redis Cluster"
+      check_cluster_initialized() {
+        return 1
+      }
+
+      initialize_redis_cluster() {
+        return 1
+      }
+
+      setup() {
+        export KB_CLUSTER_POD_IP_LIST="172.42.0.1,172.42.0.2,172.42.0.3,172.42.0.4,172.42.0.5,172.42.0.6"
+        export SERVICE_PORT="6379"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_POD_IP_LIST
+        unset SERVICE_PORT
+      }
+      After "un_setup"
+
+      It "exits with status 1 when failed to initialize Redis Cluster"
+        When run initialize_or_scale_out_redis_cluster
+        The status should be failure
+        The stderr should include "Failed to initialize Redis Cluster"
+        The stdout should include "Redis Cluster not initialized, initializing.."
+      End
+    End
+
+    Context "when failed to scale out Redis Cluster shard"
+      check_cluster_initialized() {
+        return 0
+      }
+
+      scale_out_redis_cluster_shard() {
+        return 1
+      }
+
+      setup() {
+        export KB_CLUSTER_POD_IP_LIST="172.42.0.1,172.42.0.2,172.42.0.3,172.42.0.4,172.42.0.5,172.42.0.6"
+        export SERVICE_PORT="6379"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset KB_CLUSTER_POD_IP_LIST
+        unset SERVICE_PORT
+      }
+      After "un_setup"
+
+      It "exits with status 1 when failed to scale out Redis Cluster shard"
+        When run initialize_or_scale_out_redis_cluster
+        The status should be failure
+        The stderr should include "Failed to scale out Redis Cluster shard"
+        The stdout should include "Redis Cluster already initialized, scaling out the shard..."
+      End
+    End
+  End
 End
