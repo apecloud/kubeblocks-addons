@@ -1,9 +1,9 @@
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
-  name: official-postgresql14-cc
+  name: {{ include "vanilla-postgresql14.configConstraint" . }}
   labels:
-    {{- include "official-postgresql.labels" . | nindent 4 }}
+    {{- include "vanilla-postgresql.labels" . | nindent 4 }}
 spec:
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:
