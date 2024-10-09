@@ -1,11 +1,11 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: offpg-cluster
+  name: vanpg-cluster
   namespace: default
 spec:
   # Specifies the name of the ClusterDefinition to use when creating a Cluster.
-  clusterDefinitionRef: official-postgresql
+  clusterDefinitionRef: vanilla-postgresql
   # Specifies the behavior when a Cluster is deleted.
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
   # - `Halt`: Deletes Cluster resources like Pods and Services but retains Persistent Volume Claims (PVCs), allowing for data preservation while stopping other operations.
@@ -17,8 +17,8 @@ spec:
   # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
   - name: postgresql
-    componentDefRef: postgresql
-    serviceAccountName: kb-offpg-cluster
+    componentDef: vanilla-postgresql
+    serviceAccountName: kb-vanpg-cluster
     replicas: 2
     resources:
       limits:

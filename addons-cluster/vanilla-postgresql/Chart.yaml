@@ -10,8 +10,8 @@ dependencies:
     repository: file://../kblib
     alias: extra
 
-# appVersion specifies the version of the Official PostgreSQL database to be created.
-# The current default value is the highest version of the Official PostgreSQL supported in KubeBlocks.
+# appVersion specifies the version of the Vanilla PostgreSQL database to be created.
+# The current default value is the highest version of the Vanilla PostgreSQL supported in KubeBlocks.
 appVersion: "14.7"
 
 keywords:
