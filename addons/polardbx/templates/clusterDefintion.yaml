@@ -20,7 +20,7 @@ spec:
           volumeName: scripts
           namespace: {{ .Release.Namespace }}
           defaultMode: 0555
-      workloadType: Consensus
+      workloadType: Stateful
       characterType: polardbx
       rsmSpec:
         roles:
@@ -38,7 +38,7 @@ spec:
               command:
                 - sh
                 - -c
-                - | 
+                - |
                   mysql -h127.0.0.1 -P3306 -uroot -N -B -e "select role from information_schema.alisql_cluster_local" | xargs echo -n
         memberUpdateStrategy: Serial
       service:
@@ -218,7 +218,7 @@ spec:
           volumeName: scripts
           namespace: {{ .Release.Namespace }}
           defaultMode: 0555
-      workloadType: Consensus
+      workloadType: Stateful
       characterType: polardbx
       componentDefRef:
         - &gmsRef
