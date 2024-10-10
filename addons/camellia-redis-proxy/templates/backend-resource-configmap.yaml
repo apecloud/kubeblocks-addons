@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: camellia-redis-proxy-backend-resource-template
-  labels:
-    {{- include "camellia-redis-proxy.labels" . | nindent 4 }}
-data:
-  resource-table.json: |-
-    {{- .Files.Get "config/camellia-redis-proxy-backend-resource-config.tpl" | nindent 4 }}
