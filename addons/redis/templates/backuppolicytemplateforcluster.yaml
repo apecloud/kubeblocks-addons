@@ -1,0 +1,33 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: redis-cluster-backup-policy-template
+  labels:
+    {{- include "redis.labels" . | nindent 4 }}
+spec:
+  serviceKind: Redis
+  compDefs:
+      - redis-cluster
+  target:
+    role: secondary
+    fallbackRole: primary
+    account: default
+  backupMethods:
+  - name: datafile
+    snapshotVolumes: false
+    actionSetName: redis-cluster-backup
+    targetVolumes:
+      volumeMounts:
+        - name: data
+          mountPath: { { .Values.dataMountPath } }
+  #  TODO: support it when kb support to input the specified component name for sharding cluster.
+  #  - name: volume-snapshot
+  #    snapshotVolumes: true
+  #    targetVolumes:
+  #      volumes:
+  #        - data
+  schedules:
+    - backupMethod: datafile
+      enabled: false
+      cronExpression: "0 18 * * 0"
+      retentionPeriod: 7d
