@@ -1,10 +1,8 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: BackupPolicyTemplate
 metadata:
   name: postgresql-backup-policy-template
   labels:
-    clusterdefinition.kubeblocks.io/name: postgresql
-    service-kind/postgresql: "true"
     {{- include "postgresql.labels" . | nindent 4 }}
   annotations:
     dataprotection.kubeblocks.io/reconfigure-ref: |
@@ -19,91 +17,88 @@ metadata:
         }
       }
 spec:
-  backupPolicies:
-  - componentDefs:
-      - {{ include "postgresql12.compDefName" . }}
-      - {{ include "postgresql14.compDefName" . }}
-      - {{ include "postgresql15.compDefName" . }}
-      - {{ include "postgresql16.compDefName" . }}
-    target:
-      role: secondary
-      fallbackRole: primary
-      account: postgres
-    backupMethods:
-      - name: pg-basebackup
-        snapshotVolumes: false
-        actionSetName: postgres-basebackup
-        envMapping: &compDefEnvMapping
-          - key: IMAGE_TAG
-            valueFrom:
-              componentDef:
-                - names:
-                    - {{ include "postgresql12.compDefName" . }}
-                  mappingValue: "12.15.0-pgvector-v0.6.1"
-                - names:
-                    - {{ include "postgresql14.compDefName" . }}
-                  mappingValue: "14.8.0-pgvector-v0.6.1"
-                - names:
-                    - {{ include "postgresql15.compDefName" . }}
-                  mappingValue: "15.7.0"
-                - names:
-                    - {{ include "postgresql16.compDefName" . }}
-                  mappingValue: "16.4.0"
-        targetVolumes:
-          volumeMounts:
-            - name: data
-              mountPath: {{ .Values.dataMountPath }}
-      - name: volume-snapshot
-        snapshotVolumes: true
-        targetVolumes:
-          volumes:
-            - data
-      - name: config-wal-g
-        target:
-          role: ""
-          strategy: All
-        actionSetName: postgres-config-wal-g
-        snapshotVolumes: false
-        targetVolumes:
-          volumeMounts:
-            - name: data
-              mountPath: {{ .Values.dataMountPath }}
-      - name: wal-g
-        target:
-          role: secondary
-          fallbackRole: primary
-          account: postgres
-        actionSetName: postgres-wal-g
-        snapshotVolumes: false
-        targetVolumes:
-          volumeMounts:
-            - name: data
-              mountPath: {{ .Values.dataMountPath }}
-      - name: archive-wal
-        target:
-          role: primary
-          account: postgres
-        actionSetName: postgresql-pitr
-        snapshotVolumes: false
-        envMapping: *compDefEnvMapping
-        targetVolumes:
-          volumeMounts:
-            - name: data
-              mountPath: {{ .Values.dataMountPath }}
-    schedules:
-      - backupMethod: pg-basebackup
-        enabled: false
-        cronExpression: "0 18 * * *"
-        retentionPeriod: 7d
-      - backupMethod: volume-snapshot
-        enabled: false
-        cronExpression: "0 18 * * *"
-        retentionPeriod: 7d
-      - backupMethod: wal-g
-        enabled: false
-        cronExpression: "0 18 * * *"
-        retentionPeriod: 7d
-      - backupMethod: archive-wal
-        enabled: false
-        cronExpression: "*/5 * * * *"
-        retentionPeriod: 8d
+  serviceKind: PostgreSQL
+  compDefs:
+    - postgresql-\d+
+  target:
+    role: secondary
+    fallbackRole: primary
+    account: postgres
+  backupMethods:
+    - name: pg-basebackup
+      snapshotVolumes: false
+      actionSetName: postgres-basebackup
+      env: &compDefEnvMapping
+        - name: IMAGE_TAG
+          valueFrom:
+            versionMapping:
+              - serviceVersions:
+                  - "12"
+                mappedValue: "12.15.0-pgvector-v0.6.1"
+              - serviceVersions:
+                  - "14"
+                mappedValue: "14.8.0-pgvector-v0.6.1"
+              - serviceVersions:
+                  - "15"
+                mappedValue: "15.7.0"
+              - serviceVersions:
+                  - "16"
+                mappedValue: "16.4.0"
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
+    - name: volume-snapshot
+      snapshotVolumes: true
+      targetVolumes:
+        volumes:
+          - data
+    - name: config-wal-g
+      target:
+        role: ""
+        strategy: All
+      actionSetName: postgres-config-wal-g
+      snapshotVolumes: false
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
+    - name: wal-g
+      target:
+        role: secondary
+        fallbackRole: primary
+        account: postgres
+      actionSetName: postgres-wal-g
+      snapshotVolumes: false
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
+    - name: archive-wal
+      target:
+        role: primary
+        account: postgres
+      actionSetName: postgresql-pitr
+      snapshotVolumes: false
+      env: *compDefEnvMapping
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
+  schedules:
+    - backupMethod: pg-basebackup
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d
+    - backupMethod: volume-snapshot
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d
+    - backupMethod: wal-g
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d
+    - backupMethod: archive-wal
+      enabled: false
+      cronExpression: "*/5 * * * *"
+      retentionPeriod: 8d

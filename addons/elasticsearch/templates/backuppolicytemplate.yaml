@@ -1,15 +1,14 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: BackupPolicyTemplate
 metadata:
   name: elasticsearch-backup-policy-template
   labels:
-    clusterdefinition.kubeblocks.io/name: elasticsearch
     {{- include "elasticsearch.labels" . | nindent 4 }}
 spec:
-  backupPolicies:
-  - componentDefs:
+  serviceKind: Elasticsearch
+  compDefs:
     - elasticsearch
-    backupMethods:
+  backupMethods:
     - name: full-backup
       target:
         role: ""
@@ -26,7 +25,7 @@ spec:
         volumeMounts:
         - name: data
           mountPath: /usr/share/elasticsearch/data
-    schedules:
+  schedules:
     - backupMethod: full-backup
       enabled: false
       cronExpression: "0 18 * * *"

@@ -1,22 +1,18 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: BackupPolicyTemplate
 metadata:
   name: {{ include "apecloud-mysql.backupPolicyTemplateName" . }}
   labels:
-    clusterdefinition.kubeblocks.io/name: apecloud-mysql
-    service-kind/mysql: "true"
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
-  annotations:
-    dataprotection.kubeblocks.io/is-default-policy-template: "true"
 spec:
-  backupPolicies:
-  - componentDefs:
-      - {{ include "apecloud-mysql.componentDefName" . }}
-    target:
-      role: follower
-      fallbackRole: leader
-      account: root
-    backupMethods:
+  serviceKind: ApeCloudMySQL
+  compDefs:
+   - {{ include "apecloud-mysql.componentDefName" . }}
+  target:
+    role: follower
+    fallbackRole: leader
+    account: root
+  backupMethods:
     - name: xtrabackup
       snapshotVolumes: false
       actionSetName: {{ include "apecloud-mysql.xtrabackupActionSetName" . }}
@@ -33,7 +29,7 @@ spec:
         volumeMounts:
         - name: data
           mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
-    schedules:
+  schedules:
     - backupMethod: xtrabackup
       enabled: false
       cronExpression: "0 18 * * *"

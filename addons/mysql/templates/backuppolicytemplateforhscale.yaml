@@ -1,34 +1,35 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: BackupPolicyTemplate
 metadata:
   name: mysql-hscale-backup-policy-template
   labels:
     {{- include "mysql.labels" . | nindent 4 }}
-    service-kind/mysql: "true"
 spec:
-  identifier: hscale
-  backupPolicies:
-  - componentDefs: [mysql-5.7.44-orc, mysql-5.7.44, mysql-8.0.33-orc, mysql-8.0.33]
-    target:
-      role: secondary
-      fallbackRole: primary
-    backupMethods:
+  serviceKind: MySQL
+  compDefs: [^mysql-\d+.*$]
+  target:
+    role: secondary
+    fallbackRole: primary
+  backupMethods:
     - name: xtrabackup
       snapshotVolumes: false
       actionSetName: mysql-xtrabackup
-      envMapping:
-        - key: IMAGE_TAG
+      env:
+        - name: IMAGE_TAG
           valueFrom:
-            componentDef:
-              - names: [ mysql-8.0.33, mysql-8.0.33-orc ]
-                mappingValue: "8.0.33-28"
-              - names: [ mysql-5.7.44, mysql-5.7.44-orc]
-                mappingValue: "2.4"
-        - key: BACKUP_FOR_STANDBY
+            versionMapping:
+              - serviceVersions:
+                  - "8.4"
+                mappedValue: "8.4.0-1"
+              - serviceVersions: [ "8.0" ]
+                mappedValue: "8.0.33-28"
+              - serviceVersions: [ "5.7" ]
+                mappedValue: "2.4"
+        - name: BACKUP_FOR_STANDBY
           valueFrom:
-            componentDef:
-              - names: [ mysql-5.7.44, mysql-5.7.44-orc]
-                mappingValue: "true"
+            versionMapping:
+              - serviceVersions: [ "5.7" ]
+                mappedValue: "true"
       targetVolumes:
         volumeMounts:
           - name: data

@@ -1,21 +1,18 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: BackupPolicyTemplate
 metadata:
   name: {{ include "apecloud-mysql.hscaleBackupPolicyTemplateName" . }}
   labels:
-    clusterdefinition.kubeblocks.io/name: apecloud-mysql
-    service-kind/mysql: "true"
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
 spec:
-  identifier: hscale
-  backupPolicies:
-  - componentDefs:
-      - {{ include "apecloud-mysql.componentDefName" . }}
-    target:
-      role: follower
-      fallbackRole: leader
-      account: root
-    backupMethods:
+  serviceKind: ApeCloudMySQL
+  compDefs:
+    - {{ include "apecloud-mysql.componentDefName" . }}
+  target:
+    role: follower
+    fallbackRole: leader
+    account: root
+  backupMethods:
     - name: volume-snapshot
       snapshotVolumes: true
       actionSetName: {{ include "apecloud-mysql.vsActionSetName" . }}
