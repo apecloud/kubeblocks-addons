@@ -201,6 +201,11 @@ vars:
         name: postgres
         optional: false
         password: Required
+lifecycleActions:
+  roleProbe:
+    builtinHandler: postgresql
+    periodSeconds: 1
+    timeoutSeconds: 1
 systemAccounts:
   - name: postgres
     initAccount: true
@@ -219,7 +224,7 @@ initContainers:
     command:
       - sh
       - -c
-      - "cp -r /bin/syncer /config /kubeblocks/"
+      - "cp -r /bin/syncer /kubeblocks/"
     volumeMounts:
       - name: kubeblocks
         mountPath: /kubeblocks
@@ -280,7 +285,7 @@ env:
     value: $(POSTGRES_USER)
   - name: PGPASSWORD
     value: $(POSTGRES_PASSWORD)
-  # fixme: only used for lorry in 0.9
-  - name: KB_SERVICE_CHARACTER_TYPE
-    value: postgresql
+  # used by syncer
+  - name: KB_ENGINE_TYPE
+    value: vanilla-postgresql
 {{- end -}}

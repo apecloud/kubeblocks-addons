@@ -6,7 +6,7 @@ metadata:
     {{- include "vanilla-postgresql.labels" . | nindent 4 }}
 spec:
   {{- include "vanilla-postgresql.spec.common" . | nindent 2 }}
-  serviceVersion: {{ .Values.componentServiceVersion.vanillaPostgresql12 }}
+  serviceVersion: {{ .Values.componentServiceVersion.vanillaPostgresql14 }}
   configs:
     - name: vanilla-postgresql-configuration
       templateRef: {{ include "vanilla-postgresql14.configurationTemplate" . }}
