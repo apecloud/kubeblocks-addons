@@ -1,13 +1,20 @@
-{{- include "kblib.clusterCommon" . }}
-  clusterDef: vanilla-postgresql
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+spec:
+  clusterDefinitionRef: vanilla-postgresql
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
     - name: postgresql
-      componentDef: vanilla-postgresql
-        {{- include "kblib.componentMonitor" . | indent 6 }}
-        {{- include "vanilla-postgresql-cluster.replicaCount" . | indent 6 }}
+      componentDef: {{ .Values.compDef }}
+            {{- include "kblib.componentMonitor" . | indent 6 }}
+            {{- include "vanilla-postgresql-cluster.replicaCount" . | indent 6 }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
-        {{- include "kblib.componentResources" . | indent 6 }}
-        {{- include "kblib.componentStorages" . | indent 6 }}
+            {{- include "kblib.componentResources" . | indent 6 }}
+            {{- include "kblib.componentStorages" . | indent 6 }}
       enabledLogs:
         - running
       serviceVersion: {{ .Values.version }}
