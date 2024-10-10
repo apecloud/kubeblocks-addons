@@ -36,7 +36,7 @@ on:
           - nebula-cluster
           - neon-cluster
           - oceanbase-ce-cluster
-          - official-postgresql-cluster
+          - vanilla-postgresql-cluster
           - opengauss-cluster
           - openldap-cluster
           - opensearch-cluster
