@@ -1,3 +1,0 @@
-Grafana dashboards are copied from pingcap repos according to https://docs.pingcap.com/tidb/stable/deploy-monitoring-services#step-2-import-a-grafana-dashboard
-
-Backup/restore only supports minio.
