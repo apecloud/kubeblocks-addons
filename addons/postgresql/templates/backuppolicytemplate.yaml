@@ -39,6 +39,8 @@ spec:
             mappingValue: "14.8.0-pgvector-v0.6.1"
           - names: [postgresql-15.7.0]
             mappingValue: "15.7.0"
+          - names: [ postgresql-16.4.0 ]
+            mappingValue: "16.4.0"
       targetVolumes:
         volumeMounts:
         - name: data
@@ -114,6 +116,8 @@ spec:
                   mappingValue: "14.8.0-pgvector-v0.6.1"
                 - names: [postgresql-15]
                   mappingValue: "15.7.0"
+                - names: [postgresql-16]
+                  mappingValue: "16.4.0"
         targetVolumes:
           volumeMounts:
             - name: data
