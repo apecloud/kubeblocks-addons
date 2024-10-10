@@ -381,8 +381,8 @@ check_cluster_initialized() {
   # all cluster node share the same service port
   local cluster_node_service_port="$2"
   if is_empty "$cluster_node_list" || is_empty "$cluster_node_service_port"; then
-    echo "Error: Required environment variable cluster_node_list or cluster_node_service_port  is not set."
-    exit 1
+    echo "Error: Required environment variable cluster_node_list or cluster_node_service_port  is not set." >&2
+    return 1
   fi
 
   for pod_ip in $(echo "$cluster_node_list" | tr ',' ' '); do
@@ -390,9 +390,9 @@ check_cluster_initialized() {
     status=$?
     if [ $status -ne 0 ]; then
       echo "Failed to get cluster info in check_cluster_initialized" >&2
-      exit 1
+      return 1
     fi
-    cluster_state=$(echo "$cluster_info" | grep -oP '(?<=cluster_state:)[^\s]+')
+    cluster_state=$(echo "$cluster_info" | awk -F: '/cluster_state/{print $2}' | tr -d '[:space:]')
     if is_empty "$cluster_state" || equals "$cluster_state" "ok"; then
       echo "Redis Cluster already initialized"
       return 0
@@ -472,13 +472,13 @@ build_rebalance_to_zero_command() {
   local node_cluster_id="$2"
   unset_xtrace_when_ut_mode_false
   if is_empty "$REDIS_DEFAULT_PASSWORD"; then
-    rebalance_command="redis-cli --cluster rebalance $primary_node --cluster-weight $primary_node_cluster_id=0 --cluster-yes "
+    rebalance_command="redis-cli --cluster rebalance $node_with_port --cluster-weight $node_cluster_id=0 --cluster-yes "
     logging_mask_rebalance_command="$rebalance_command"
   else
-    rebalance_command="redis-cli --cluster rebalance $primary_node --cluster-weight $primary_node_cluster_id=0 --cluster-yes -a $REDIS_DEFAULT_PASSWORD"
+    rebalance_command="redis-cli --cluster rebalance $node_with_port --cluster-weight $node_cluster_id=0 --cluster-yes -a $REDIS_DEFAULT_PASSWORD"
     logging_mask_rebalance_command="${rebalance_command/$REDIS_DEFAULT_PASSWORD/********}"
   fi
-  echo "set current component slot to 0 by rebalance command: $logging_mask_rebalance_command"
+  echo "set current component slot to 0 by rebalance command: $logging_mask_rebalance_command" >&2
   set_xtrace_when_ut_mode_false
   echo "$rebalance_command"
 }
