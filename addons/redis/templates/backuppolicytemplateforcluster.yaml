@@ -19,7 +19,7 @@ spec:
     targetVolumes:
       volumeMounts:
         - name: data
-          mountPath: { { .Values.dataMountPath } }
+          mountPath: {{ .Values.dataMountPath }}
   #  TODO: support it when kb support to input the specified component name for sharding cluster.
   #  - name: volume-snapshot
   #    snapshotVolumes: true
