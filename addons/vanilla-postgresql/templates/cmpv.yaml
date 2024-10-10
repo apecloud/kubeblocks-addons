@@ -1,0 +1,27 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: {{ include "vanilla-postgresql.componentVersion" . }}
+  labels:
+    {{- include "vanilla-postgresql.labels" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "vanilla-postgresql12.componentDefNamePrefix" . }}
+      releases:
+        - 12.15.0
+    - compDefs:
+        - {{ include "vanilla-postgresql14.componentDefNamePrefix" . }}
+      releases:
+        - 14.7.0
+  releases:
+    - name: 12.15.0
+      changes:
+      serviceVersion: 12.15.0 # {{ .Values.componentServiceVersion.vanillaPostgresql12  }}
+      images:
+        postgresql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor15 }}
+    - name: 14.7.0
+      changes:
+      serviceVersion: 14.7.0
+      images:
+        postgresql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major14.minor07 }}

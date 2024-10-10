@@ -1,0 +1,13 @@
+{{- include "kblib.clusterCommon" . }}
+clusterDef: vanilla-postgresql
+componentSpecs:
+  - name: postgresql
+    componentDef: vanilla-postgresql
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+      {{- include "vanilla-postgresql-cluster.replicaCount" . | indent 6 }}
+    serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
+    enabledLogs:
+      - running
+    serviceVersion: {{ .Values.version }}

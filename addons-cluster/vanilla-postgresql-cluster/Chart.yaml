@@ -1,8 +1,8 @@
 apiVersion: v2
-name: official-postgresql-cluster
+name: vanilla-postgresql-cluster
 type: application
 version: 0.9.0
-description: A Official PostgreSQL cluster definition Helm chart for Kubernetes
+description: A Vanilla PostgreSQL cluster Helm chart for Kubernetes
 
 dependencies:
   - name: kblib
@@ -21,8 +21,9 @@ keywords:
   - database
   - sql
   - cluster
+  - vanilla
 
-home: https://github.com/apecloud/kubeblocks/tree/main/deploy/apecloud-postgresql-cluster
+home: https://github.com/apecloud/kubeblocks/tree/main/deploy/vanilla-postgresql-cluster
 icon: https://kubeblocks.io/img/logo.png
 
 maintainers:
@@ -31,9 +32,9 @@ maintainers:
 
 sources:
   - https://github.com/apecloud/kubeblocks/
-  - https://github.com/apecloud/kubeblocks/tree/main/deploy/apecloud-postgresql
+  - https://github.com/apecloud/kubeblocks/tree/main/deploy/vanilla-postgresql
 
 annotations:
-  kubeblocks.io/clusterVersions: "14.8.0,12.15.0"
+  kubeblocks.io/clusterVersions: "14.7.0,12.15.0"
   kubeblocks.io/multiCV: "true"
   category: Database

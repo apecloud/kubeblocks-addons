@@ -1,6 +1,6 @@
-# official-postgresql
+# vanilla-postgresql
 
-Official-postgresql is an official PostgreSQL cluster definition Helm chart for Kubernetes
+vanilla-postgresql is a vanilla PostgreSQL cluster definition Helm chart for Kubernetes
 
 ## Prerequisites
 
@@ -24,7 +24,7 @@ helm repo update
 # Install KubeBlocks
 helm install kubeblocks kubeblocks/kubeblocks --namespace kb-system --create-namespace --version="0.9.0"
 ```
-Enable official-postgresql
+Enable vanilla-postgresql
 ```bash
 # Add Helm repo 
 helm repo add kubeblocks-addons https://apecloud.github.io/helm-charts
@@ -33,58 +33,58 @@ helm repo add kubeblocks-addons https://jihulab.com/api/v4/projects/150246/packa
 # Update helm repo
 helm repo update
 
-# Enable official-postgresql 
-helm upgrade -i kb-addon-official-postgresql kubeblocks-addons/official-postgresql --version 0.9.0 -n kb-system  
+# Enable vanilla-postgresql 
+helm upgrade -i kb-addon-vanilla-postgresql kubeblocks-addons/vanilla-postgresql --version 0.9.0 -n kb-system  
 ``` 
 
 ## Examples
 
 ### [Create](cluster.yaml) 
-Create a official-postgresql cluster with specified cluster definition 
+Create a vanilla-postgresql cluster with specified cluster definition 
 ```bash
-kubectl apply -f examples/official-postgresql/cluster.yaml
+kubectl apply -f examples/vanilla-postgresql/cluster.yaml
 ```
 
 ### [Horizontal scaling](horizontalscale.yaml)
 Horizontal scaling out or in specified components replicas in the cluster
 ```bash
-kubectl apply -f examples/official-postgresql/horizontalscale.yaml
+kubectl apply -f examples/vanilla-postgresql/horizontalscale.yaml
 ```
 
 ### [Vertical scaling](verticalscale.yaml)
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
 ```bash
-kubectl apply -f examples/official-postgresql/verticalscale.yaml
+kubectl apply -f examples/vanilla-postgresql/verticalscale.yaml
 ```
 
 ### [Expand volume](volumeexpand.yaml)
 Increase size of volume storage with the specified components in the cluster
 ```bash
-kubectl apply -f examples/official-postgresql/volumeexpand.yaml
+kubectl apply -f examples/vanilla-postgresql/volumeexpand.yaml
 ```
 
 ### [Restart](restart.yaml)
 Restart the specified components in the cluster
 ```bash
-kubectl apply -f examples/official-postgresql/restart.yaml
+kubectl apply -f examples/vanilla-postgresql/restart.yaml
 ```
 
 ### [Stop](stop.yaml)
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 ```bash
-kubectl apply -f examples/official-postgresql/stop.yaml
+kubectl apply -f examples/vanilla-postgresql/stop.yaml
 ```
 
 ### [Start](start.yaml)
 Start the stopped cluster
 ```bash
-kubectl apply -f examples/official-postgresql/start.yaml
+kubectl apply -f examples/vanilla-postgresql/start.yaml
 ```
 
 ### Delete
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 ```bash
-kubectl patch cluster offpg-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster vanpg-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster offpg-cluster
+kubectl delete cluster vanpg-cluster
 ```

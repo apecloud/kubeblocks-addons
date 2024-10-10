@@ -35,7 +35,7 @@ on:
           - nebula
           - neon
           - oceanbase-ce
-          - official-postgresql
+          - vanilla-postgresql
           - opengauss
           - openldap
           - opensearch
