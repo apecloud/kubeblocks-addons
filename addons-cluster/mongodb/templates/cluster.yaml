@@ -7,9 +7,10 @@ metadata:
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
+  clusterDef: mongodb
+  topology: replicaset
   componentSpecs:
     - name: mongodb
-      componentDef: mongodb
       serviceVersion: {{ .Values.version }}
       {{- include "mongodb-cluster.replicaCount" . | indent 6 }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}

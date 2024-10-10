@@ -1,9 +1,11 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "mongodb.componentDefName" . }}
+  name: {{ include "mongodb.compDefName" . }}
   labels:
     {{- include "mongodb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mongodb.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks.io
   description: MongoDB is a document database designed for ease of application development and scaling.
@@ -106,7 +108,6 @@ spec:
           - cp
           - -r
           - /bin/syncer
-          - /config
           - /tools/
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
@@ -127,13 +128,26 @@ spec:
             containerPort: 3601
         command:
           - syncer
-          - --config-path
-          - /tools/config/components
           - --port
           - "3601"
           - --
           - /scripts/replicaset-setup.sh
         env:
+          - name: SYNCER_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: SYNCER_POD_UID
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.uid
+          - name: SYNCER_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
           - name: PATH
             value: /tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
           - name: KB_SERVICE_CHARACTER_TYPE
