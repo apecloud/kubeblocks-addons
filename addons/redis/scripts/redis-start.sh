@@ -25,7 +25,7 @@ primary_port="6379"
 redis_template_conf="/etc/conf/redis.conf"
 redis_real_conf="/etc/redis/redis.conf"
 redis_acl_file="/data/users.acl"
-redis_acl_file_bak="/data/users.acl"
+redis_acl_file_bak="/data/users.acl.bak"
 retry_times=3
 retry_delay_second=2
 
@@ -49,15 +49,15 @@ load_redis_template_conf() {
 
 build_redis_default_accounts() {
   unset_xtrace_when_ut_mode_false
-  if env_exist REDIS_REPL_PASSWORD; then
+  if ! is_empty "$REDIS_REPL_PASSWORD"; then
     echo "masteruser $REDIS_REPL_USER" >> $redis_real_conf
     echo "masterauth $REDIS_REPL_PASSWORD" >> $redis_real_conf
     echo "user $REDIS_REPL_USER on +psync +replconf +ping >$REDIS_REPL_PASSWORD" >> $redis_acl_file
   fi
-  if env_exist REDIS_SENTINEL_PASSWORD; then
+  if ! is_empty "$REDIS_SENTINEL_PASSWORD"; then
     echo "user $REDIS_SENTINEL_USER on allchannels +multi +slaveof +ping +exec +subscribe +config|rewrite +role +publish +info +client|setname +client|kill +script|kill >$REDIS_SENTINEL_PASSWORD" >> $redis_acl_file
   fi
-  if env_exist REDIS_DEFAULT_PASSWORD; then
+  if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
     echo "protected-mode yes" >> $redis_real_conf
     echo "user default on >$REDIS_DEFAULT_PASSWORD ~* &* +@all " >> $redis_acl_file
   else
