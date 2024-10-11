@@ -4,7 +4,7 @@ description: A PostgreSQL (with Patroni HA) cluster definition Helm chart for Ku
 
 type: application
 
-version: 1.0.0-alpha.1
+version: 1.0.0-alpha.0
 
 # The helm chart contains multiple kernel versions of PostgreSQL (with Patroni HA),
 # appVersion should be consistent with the highest PostgreSQL (with Patroni HA) kernel version.
