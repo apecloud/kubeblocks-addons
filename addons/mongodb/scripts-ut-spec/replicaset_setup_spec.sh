@@ -37,7 +37,7 @@ Describe "Mongodb Startup Script Tests"
     It "start successfully"
       exec1() {
         touch $START_SUCCESS_FILE
-        echo $@
+        echo "$@"
       }
 
       When run source ../scripts/replicaset-setup.tpl
@@ -54,7 +54,7 @@ Describe "Mongodb Startup Script Tests"
 
     It "start failed"
       exec1() {
-        echo $@>&2
+        echo "$@">&2
         return 1
       }
 
