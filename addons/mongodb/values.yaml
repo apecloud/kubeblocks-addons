@@ -15,7 +15,7 @@ image:
   # refer: https://github.com/apecloud/dbctl/blob/main/docker/Dockerfile
   dbctl:
     repository: apecloud/dbctl
-    tag: "0.1.2"
+    tag: "0.1.5"
 
 componentServiceVersion:
   mongodb: 5.0.14

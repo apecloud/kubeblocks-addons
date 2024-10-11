@@ -295,7 +295,7 @@ spec:
           - name: KUBERNETES_ROLE_LABEL
             value: "apps.kubeblocks.postgres.patroni/role"
           - name: KUBERNETES_LABELS
-            value: '{"app.kubernetes.io/instance":"$(CLUSTER_NAME)","apps.kubeblocks.io/component-name":"$(POSTGRES_COMPONENT_SHORT_NAME)","apps.kubeblocks.postgres.patroni/scope":"$(POSTGRES_COMPONENT_NAME)"}'
+            value: '{"app.kubernetes.io/managed-by":"kubeblocks","app.kubernetes.io/instance":"$(CLUSTER_NAME)","apps.kubeblocks.io/component-name":"$(POSTGRES_COMPONENT_SHORT_NAME)","apps.kubeblocks.postgres.patroni/scope":"$(POSTGRES_COMPONENT_NAME)"}'
           - name: RESTORE_DATA_DIR
             value: /home/postgres/pgdata/kb_restore
           - name: KB_PG_CONFIG_PATH
