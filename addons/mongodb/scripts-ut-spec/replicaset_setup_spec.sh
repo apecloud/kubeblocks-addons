@@ -3,10 +3,10 @@
 
 
 # validate_shell_type_and_version defined in shellspec/spec_helper.sh used to validate the expected shell type and version this script needs to run.
-if ! validate_shell_type_and_version "bash" 4 &>/dev/null; then
-  echo "replicaset_setup_spec.sh skip all cases because dependency bash version 4 or higher is not installed."
-  exit 0
-fi
+# if ! validate_shell_type_and_version "bash" &>/dev/null; then
+#   echo "mongodb replicaset_setup_spec.sh skip all cases because dependency bash is not installed."
+#   exit 0
+# fi
 
 
 Describe "Mongodb Startup Script Tests"
@@ -25,17 +25,17 @@ Describe "Mongodb Startup Script Tests"
 
   Describe "start replicaset without backup file"
     setup() {
-      alias exec=exec1
+      alias exec1=exec1
     }
     Before 'setup'
 
     un_setup() {
-      unalias exec
+      unalias exec1
     }
     After 'un_setup'
 
     It "start successfully"
-      exec1() {
+      exec() {
         touch $START_SUCCESS_FILE
         echo "$@"
       }
@@ -53,7 +53,7 @@ Describe "Mongodb Startup Script Tests"
     End
 
     It "start failed"
-      exec1() {
+      exec() {
         echo "$@">&2
         return 1
       }
