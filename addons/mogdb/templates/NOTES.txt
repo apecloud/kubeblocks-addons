@@ -1,3 +1,0 @@
-Standalone MogDB cluster-definition and cluster-version in Kubeblocks
-
-Using `kbcli cluster create --cluster-definition mogdb` to create a MogDB cluster
