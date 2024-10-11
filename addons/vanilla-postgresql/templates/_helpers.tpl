@@ -163,7 +163,7 @@ Generate scripts configmap
 {{- define "vanilla-postgresql.spec.common" -}}
 provider: kubeblocks
 description: {{ .Chart.Description }}
-serviceKind: {{ .Chart.Name }}
+serviceKind: postgresql
 logConfigs:
   {{- range $name,$pattern := .Values.logConfigs }}
   - name: {{ $name }}
