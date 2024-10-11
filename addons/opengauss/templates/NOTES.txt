@@ -1,3 +1,0 @@
-Standalone OpenGauss cluster-definition and cluster-version in Kubeblocks
-
-Using `kbcli cluster create --cluster-definition opengauss` to create a OpenGauss cluster
