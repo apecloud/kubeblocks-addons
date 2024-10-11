@@ -6,12 +6,8 @@ metadata:
     {{- include "vanilla-postgresql.labels" . | nindent 4 }}
 spec:
   topologies:
-    - name: standalone
+    - name: vanilla-postgresql
       components:
         - name: postgresql
           compDef: {{ include "vanilla-postgresql.componentDefNamePrefix" . }}
       default: true
-    - name: replication
-      components:
-        - name: postgresql
-          compDef: {{ include "vanilla-postgresql.componentDefNamePrefix" . }}

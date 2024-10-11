@@ -219,7 +219,6 @@ systemAccounts:
 {{- define "vanilla-postgresql.spec.runtime.common" -}}
 initContainers:
   - name: init-syncer
-    image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
     imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
     command:
       - sh
@@ -242,50 +241,50 @@ volumes:
 {{- end -}}
 
 {{- define "vanilla-postgresql.spec.runtime.container.common" -}}
-name: postgresql
-imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
-securityContext:
-  runAsUser: 0
-command:
-  - /kubeblocks/syncer
-  - --config-path
-  - /kubeblocks/config/components
-  - --port
-  - "3601"
-  - --
-  - docker-entrypoint.sh
-  - --config-file={{ .Values.confPath }}/postgresql.conf
-  - --hba_file={{ .Values.confPath }}/pg_hba.conf
-volumeMounts:
-  - name: dshm
-    mountPath: /dev/shm
-  - name: data
-    mountPath: {{ .Values.dataMountPath }}
-  - name: postgresql-config
-    mountPath: {{ .Values.confMountPath }}
-  - name: scripts
-    mountPath: /kb-scripts
-  - name: kubeblocks
-    mountPath: /kubeblocks
-ports:
-  - name: tcp-postgresql
-    containerPort: 5432
-env:
-  - name: ALLOW_NOSSL
-    value: "true"
-  - name: POSTGRESQL_PORT_NUMBER
-    value: "5432"
-  - name: PGDATA
-    value: {{ .Values.dataPath }}
-  - name: PGCONF
-    value: {{ .Values.confPath }}
-  - name: POSTGRESQL_MOUNTED_CONF_DIR
-    value: {{ .Values.confMountPath }}
-  - name: PGUSER
-    value: $(POSTGRES_USER)
-  - name: PGPASSWORD
-    value: $(POSTGRES_PASSWORD)
-  # used by syncer
-  - name: KB_ENGINE_TYPE
-    value: vanilla-postgresql
+- name: postgresql
+  imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+  securityContext:
+    runAsUser: 0
+  command:
+    - /kubeblocks/syncer
+    - --config-path
+    - /kubeblocks/config/components
+    - --port
+    - "3601"
+    - --
+    - docker-entrypoint.sh
+    - --config-file={{ .Values.confPath }}/postgresql.conf
+    - --hba_file={{ .Values.confPath }}/pg_hba.conf
+  volumeMounts:
+    - name: dshm
+      mountPath: /dev/shm
+    - name: data
+      mountPath: {{ .Values.dataMountPath }}
+    - name: postgresql-config
+      mountPath: {{ .Values.confMountPath }}
+    - name: scripts
+      mountPath: /kb-scripts
+    - name: kubeblocks
+      mountPath: /kubeblocks
+  ports:
+    - name: tcp-postgresql
+      containerPort: 5432
+  env:
+    - name: ALLOW_NOSSL
+      value: "true"
+    - name: POSTGRESQL_PORT_NUMBER
+      value: "5432"
+    - name: PGDATA
+      value: {{ .Values.dataPath }}
+    - name: PGCONF
+      value: {{ .Values.confPath }}
+    - name: POSTGRESQL_MOUNTED_CONF_DIR
+      value: {{ .Values.confMountPath }}
+    - name: PGUSER
+      value: $(POSTGRES_USER)
+    - name: PGPASSWORD
+      value: $(POSTGRES_PASSWORD)
+    # used by syncer
+    - name: KB_ENGINE_TYPE
+      value: vanilla-postgresql
 {{- end -}}

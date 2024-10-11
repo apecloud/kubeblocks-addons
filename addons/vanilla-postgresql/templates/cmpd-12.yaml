@@ -25,5 +25,4 @@ spec:
   runtime:
     {{- include "vanilla-postgresql.spec.runtime.common" . | nindent 4 }}
     containers:
-      - image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor15 }}
-        {{- include "vanilla-postgresql.spec.runtime.container.common" . | nindent 8 }}
+    {{- include "vanilla-postgresql.spec.runtime.container.common" . | nindent 6 }}

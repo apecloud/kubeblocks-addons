@@ -5,7 +5,7 @@ nameOverride: ""
 fullnameOverride: ""
 
 image:
-  registry: docker.io
+  registry: m.daocloud.io/docker.io
   repository: postgres
   digest: ""
   tags:
