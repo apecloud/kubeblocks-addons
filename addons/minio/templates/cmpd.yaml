@@ -52,8 +52,9 @@ spec:
   lifecycleActions:
     roleProbe:
       exec:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         command:
-          - /bin/sh
+          - /bin/bash
           - -c
           - |
             mc config host add minio http://127.0.0.1:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD
