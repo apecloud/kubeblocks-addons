@@ -1,30 +1,27 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: BackupPolicyTemplate
 metadata:
   name: zookeeper-backup-policy-template
   labels:
     {{- include "zookeeper.labels" . | nindent 4 }}
-    service-kind/zookeeper: "true"
-  annotations:
-    dataprotection.kubeblocks.io/is-default-policy-template: "true"
 spec:
-  backupPolicies:
-    - componentDefs: [zookeeper]
-      target:
-        role: follower
-        fallbackRole: leader
-      backupMethods:
-        - name: zoocreeper
-          snapshotVolumes: false
-          actionSetName: zookeeper-backup-zoocreeper
-          targetVolumes:
-            volumeMounts:
-              - name: data
-                mountPath: /bitnami/zookeeper/data
-              - name: snapshot-log
-                mountPath: /bitnami/zookeeper/log
-      schedules:
-        - backupMethod: zoocreeper
-          enabled: false
-          cronExpression: "0 18 * * 0"
-          retentionPeriod: 7d
+  serviceKind: Zookeeper
+  compDefs: [zookeeper]
+  target:
+    role: follower
+    fallbackRole: leader
+  backupMethods:
+    - name: zoocreeper
+      snapshotVolumes: false
+      actionSetName: zookeeper-backup-zoocreeper
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: /bitnami/zookeeper/data
+          - name: snapshot-log
+            mountPath: /bitnami/zookeeper/log
+  schedules:
+    - backupMethod: zoocreeper
+      enabled: false
+      cronExpression: "0 18 * * 0"
+      retentionPeriod: 7d

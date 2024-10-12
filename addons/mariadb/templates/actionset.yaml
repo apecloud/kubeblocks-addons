@@ -3,8 +3,6 @@ kind: ActionSet
 metadata:
   name: mariadb-physical-backup
   labels:
-    clusterdefinition.kubeblocks.io/name: mariadb
-    dataprotection.kubeblocks.io/is-default-policy-template: "true"
     {{- include "mariadb.labels" . | nindent 4 }}
 spec:
   env:

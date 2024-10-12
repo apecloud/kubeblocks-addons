@@ -1,15 +1,14 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: BackupPolicyTemplate
 metadata:
   name: tidb-backup-policy-template
   labels:
     {{- include "tidb.labels" . | nindent 4 }}
-    clusterdefinition.kubeblocks.io/name: tidb
 spec:
-  backupPolicies:
-    - componentDefs:
-        - tidb-pd-7
-      backupMethods:
-        - name: br
-          snapshotVolumes: false
-          actionSetName: tidb-actionset
+  serviceKind: Tidb
+  compDefs:
+    - tidb-pd-7
+  backupMethods:
+    - name: br
+      snapshotVolumes: false
+      actionSetName: tidb-actionset

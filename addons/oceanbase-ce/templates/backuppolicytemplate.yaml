@@ -1,32 +1,22 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: BackupPolicyTemplate
 metadata:
-  name: {{ printf "%s-backup-policy-template" (include "oceanbase-release.name" .) }}
-  labels:
-    clusterdefinition.kubeblocks.io/name: {{ include "oceanbase-release.name" . }}
-    service-kind/oceanbase: "true"
-  annotations:
-    dataprotection.kubeblocks.io/is-default-policy-template: "true"
+  name: {{ printf "%s-backup-policy-template" (include "oceanbase-release.name" .) }}\
 spec:
-  backupPolicies:
-  - componentDefs:
+  serviceKind: Oceanbase
+  compDefs:
     - {{ include "oceanbase-release.name" . }}
-    backoffLimit: 0
-    backupMethods: &backupMethods
-      - name: full
-        snapshotVolumes: false
-        actionSetName: {{ printf "%s-physical-backup" (include "oceanbase-release.name" .) }}
-        targetVolumes:
-          volumeMounts:
-            - name: workdir
-              mountPath: /home/admin/workdir
-    schedules: &backupschedules
-      - backupMethod: full
-        enabled: false
-        cronExpression: "0 18 * * *"
-        retentionPeriod: 7d
-  - componentDefs:
-    - {{ printf "%s-repl" (include "oceanbase-release.name" .) }}
-    backoffLimit: 0
-    backupMethods: *backupMethods
-    schedules: *backupschedules
+  backoffLimit: 0
+  backupMethods:
+    - name: full
+      snapshotVolumes: false
+      actionSetName: {{ printf "%s-physical-backup" (include "oceanbase-release.name" .) }}
+      targetVolumes:
+        volumeMounts:
+          - name: workdir
+            mountPath: /home/admin/workdir
+  schedules:
+    - backupMethod: full
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d
