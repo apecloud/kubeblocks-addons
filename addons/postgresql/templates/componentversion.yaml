@@ -48,6 +48,9 @@ spec:
       changes:
       serviceVersion: 14.7.2
       images:
+        pg-init-container: {{ include "postgresql.repository" . }}:14.7.2-pgvector-v0.6.1
+        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
+        exporter: {{ include "metrics.image" . }}
         postgresql: {{ include "postgresql.repository" . }}:14.7.2-pgvector-v0.6.1
         pgbouncer: {{ include "pgbouncer.repository" . }}:1.19.0
     - name: 14.8.0
