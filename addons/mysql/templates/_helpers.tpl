@@ -261,6 +261,11 @@ scripts:
     namespace: {{ .Release.Namespace }}
     volumeName: scripts
     defaultMode: 0555
+logConfigs:
+  {{- range $name,$pattern := .Values.logConfigs }}
+  - name: {{ $name }}
+    filePathPattern: {{ $pattern }}
+  {{- end }}
 volumes:
   - name: data
     needSnapshot: true

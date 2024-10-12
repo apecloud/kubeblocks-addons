@@ -17,7 +17,9 @@ spec:
       {{- else }}
       componentDef: {{ .Values.compdef }}
       {{- end}}
-
+      enabledLogs:
+      - error
+      - slow
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "mysql-cluster.replicaCount" . | indent 6 }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
