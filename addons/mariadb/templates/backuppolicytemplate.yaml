@@ -3,7 +3,7 @@ kind: BackupPolicyTemplate
 metadata:
   name: mariadb-backup-policy-template
   labels:
-    clusterdefinition.kubeblocks.io/name: mariadb
+    {{- include "mariadb.labels" . | nindent 4 }}
 spec:
   serviceKind: Mariadb
   compDefs:
