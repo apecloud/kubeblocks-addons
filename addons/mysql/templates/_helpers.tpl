@@ -72,7 +72,7 @@ Define mysql component definition regex regular
 Define mysql component definition name
 */}}
 {{- define "mysql.componentDefName57" -}}
-{{- if gt (len .Values.compDefinitionVersionSuffix) 0 -}}
+{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
 mysql-5.7
 {{- else -}}
 {{- printf "mysql-5.7-%s" .Values.compDefinitionVersionSuffix -}}
@@ -83,7 +83,7 @@ mysql-5.7
 Define mysql component definition name
 */}}
 {{- define "mysql.componentDefNameOrc57" -}}
-{{- if gt (len .Values.compDefinitionVersionSuffix) 0 -}}
+{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
 mysql-orc-5.7
 {{- else -}}
 {{- printf "mysql-orc-5.7-%s" .Values.compDefinitionVersionSuffix -}}
@@ -94,7 +94,7 @@ mysql-orc-5.7
 Define mysql component definition name
 */}}
 {{- define "mysql.componentDefName80" -}}
-{{- if gt (len .Values.compDefinitionVersionSuffix) 0 -}}
+{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
 mysql-8.0
 {{- else -}}
 {{- printf "mysql-8.0-%s" .Values.compDefinitionVersionSuffix -}}
@@ -105,7 +105,7 @@ mysql-8.0
 Define mysql component definition name
 */}}
 {{- define "mysql.componentDefNameOrc80" -}}
-{{- if gt (len .Values.compDefinitionVersionSuffix) 0 -}}
+{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
 mysql-orc-8.0
 {{- else -}}
 {{- printf "mysql-orc-8.0-%s" .Values.compDefinitionVersionSuffix -}}
@@ -116,7 +116,7 @@ mysql-orc-8.0
 Define mysql component definition name
 */}}
 {{- define "mysql.componentDefName84" -}}
-{{- if gt (len .Values.compDefinitionVersionSuffix) 0 -}}
+{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
 mysql-8.4
 {{- else -}}
 {{- printf "mysql-8.4-%s" .Values.compDefinitionVersionSuffix -}}
@@ -500,6 +500,8 @@ env:
     value: {{ .Values.orchestrator.topology.password }}
   - name: HA_COMPNENT
     value: orchestrator
+  - name: SERVICE_PORT
+    value: "3306"
 {{- end -}}
 
 {{- define "mysql.spec.runtime.exporter" -}}

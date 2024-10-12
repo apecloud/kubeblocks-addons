@@ -33,8 +33,18 @@ spec:
       - bash
       - -c
       - |
+        {{- .Files.Get "dataprotection/switch-data-dir.sh" | nindent 8 }}
         {{- .Files.Get "dataprotection/restore.sh" | nindent 8 }}
-    postReady: []
+    postReady:
+    - job:
+        command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/restore-keys.sh" | nindent 10 }}
+        image: {{ include "redis7.image" . }}
+        onError: Fail
+        runOnTargetPodNode: true
 ---
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
@@ -119,6 +129,16 @@ spec:
       - |
         #!/bin/bash
         {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 8 }}
+        {{- .Files.Get "dataprotection/switch-data-dir.sh" | nindent 8 }}
         {{- .Files.Get "dataprotection/pitr-restore.sh" | nindent 8 }}
-    postReady: []
+    postReady:
+    - job:
+        command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/restore-keys.sh" | nindent 10 }}
+        image: {{ include "redis7.image" . }}
+        onError: Fail
+        runOnTargetPodNode: true
     baseBackupRequired: false

@@ -87,4 +87,6 @@ spec:
             value: "1"
           - name: MYSQL_ROOT_HOST
             value: {{ .Values.auth.rootHost | default "%" | quote }}
+          - name: SERVICE_PORT
+            value: "3306"
 
