@@ -1,11 +1,11 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
-  name: offpg-verticalscaling
+  name: vanpg-verticalscaling
   namespace: default
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: offpg-cluster
+  clusterName: vanpg-cluster
   type: VerticalScaling
   # Lists VerticalScaling objects, each specifying a component and its desired compute resources for vertical scaling. 
   verticalScaling:

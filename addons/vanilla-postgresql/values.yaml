@@ -1,12 +1,19 @@
-# Default values for apecloud-postgresql.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+nameOverride: ""
+fullnameOverride: ""
+
 image:
-  registry: docker.io
+  registry: m.daocloud.io/docker.io
   repository: postgres
-  tag: 14.7
   digest: ""
+  tags:
+    major12:
+      minor15: 12.15
+    major14:
+      minor07: 14.7
+
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
   ## ref: https://kubernetes.io/docs/user-guide/images/#pre-pulling-images
@@ -20,12 +27,10 @@ image:
   ##   - myRegistryKeySecretName
   ##
   pullSecrets: [ ]
-  ## Set to true if you would like to see extra information on logs
-  ##
-  debug: false
+
   syncer:
     repository: apecloud/syncer
-    tag: "0.2.0"
+    tag: "0.3.2"
 
 dataMountPath: /postgresql/volume_data
 confMountPath: /postgresql/mount_conf
@@ -33,23 +38,20 @@ confMountPath: /postgresql/mount_conf
 dataPath: /postgresql/volume_data/data
 confPath: /postgresql/volume_data/conf
 
-## Authentication parameters
-##
-auth:
-  ## @param auth.postgresPassword Password for the "postgres" admin user, leave empty
-  ## for random generated password.
-  ##
-  postgresPassword:
-  ## @param auth.database Name for a custom database to create
-  ##
-  database: "custom_db"
-## Set PostgreSQL preload extension shared libraries.
-## @param postgresqlSharedPreloadLibraries Shared preload libraries (comma-separated list)
-##
-postgresqlSharedPreloadLibraries: "pg_stat_statements, auto_explain"
-## Start PostgreSQL pod(s) without limitations on shm memory.
-## By default, docker and containerd (and possibly other container runtimes) limit `/dev/shm` to `64M`
-##
+logConfigs:
+  running: /postgresql/volume_data/data/log/postgresql-*
+
+## @param cmpdVersionPrefix for each ComponentDefinition resources name created by this chart, that can avoid name conflict
+## If specified, the component definition will use it as prefix.
+cmpdVersionPrefix:
+  vanillaPostgresql12: "vanilla-postgresql-12"
+  vanillaPostgresql14: "vanilla-postgresql-14"
+
+## @param componentServiceVersion define default serviceVersion of each Component
+componentServiceVersion:
+  vanillaPostgresql12: 12.15.0
+  vanillaPostgresql14: 14.7.0
+
 shmVolume:
   ## @param shmVolume.enabled Enable emptyDir volume for /dev/shm for PostgreSQL pod(s)
   ##
@@ -60,8 +62,3 @@ shmVolume:
   ## sizeLimit: 1Gi
   ##
   sizeLimit: ""
-
-roleProbe:
-  failureThreshold: 2
-  periodSeconds: 1
-  timeoutSeconds: 1

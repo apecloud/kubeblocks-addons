@@ -40,7 +40,6 @@ KubeBlocks add-ons.
 | nebula | nebula-console-v3.5.0<br>nebula-graphd-v3.5.0<br>nebula-metad-v3.5.0<br>nebula-storaged-v3.5.0 | NebulaGraph is a popular open-source graph database that can handle large volumes of data with milliseconds of latency, scale up quickly, and have the ability to perform fast graph analytics. | Shanshan Ying Xuntao Cheng |
 | neon | neon-pg14-1.0.0 | Neon is a serverless open-source alternative to AWS Aurora Postgres. It separates storage and compute and substitutes the PostgreSQL storage layer by redistributing data across a cluster of nodes. | ApeCloud |
 | oceanbase-ce | oceanbase-4.3.0 | Unlimited scalable distributed database for data-intensive transactional and real-time operational analytics workloads, with ultra-fast performance that has once achieved world records in the TPC-C benchmark test. OceanBase has served over 400 customers across the globe and has been supporting all mission critical systems in Alipay. |  |
-| official-postgresql | postgres-12.15<br>postgres-14.7 | A Official PostgreSQL cluster definition Helm chart for Kubernetes | ApeCloud |
 | opengauss | opengauss-3.0.0 | A Helm chart for Kubernetes |  |
 | openldap | openldap-1.5.0 | The OpenLDAP Project is a collaborative effort to develop a robust, commercial-grade, fully featured, and open source LDAP suite of applications and development tools. This chart provides KubeBlocks' | kissycn |
 | opensearch | opensearch-2.7.0<br>opensearch-dashboards-2.7.0 | Open source distributed and RESTful search engine. |  |
@@ -58,6 +57,7 @@ KubeBlocks add-ons.
 | starrocks-ce | starrocks-ce-be-3.2.2<br>starrocks-ce-be-3.3.0<br>starrocks-ce-fe-3.2.2<br>starrocks-ce-fe-3.3.0 | A Linux Foundation project, is the next-generation data platform designed to make data-intensive real-time analytics fast and easy. |  |
 | tdengine | tdengine-3.0.5.0 | TDengine is an open source, high-performance, cloud native time-series database optimized for Internet of Things (IoT), Connected Cars, Industrial IoT and DevOps. | ApeCloud |
 | tidb | busybox-1.35<br>pd-v7.1.2<br>tidb-v7.1.2<br>tikv-v7.1.2 | TiDB is an open-source, cloud-native, distributed, MySQL-Compatible database for elastic scale and real-time analytics. |  |
+| vanilla-postgresql | vanilla-postgresql-12.15.0<br>vanilla-postgresql-14.7.0 | Vanilla-PostgreSQL is compatible with the native PostgreSQL kernel, enabling it to quickly provide HA solutions for various variants based on the native PostgreSQL kernel. | ApeCloud |
 | victoria-metrics | minsert-1.0.0<br>mselect-1.0.0<br>mstorage-1.0.0 | VictoriaMetrics is a fast, cost-effective and scalable monitoring solution and time series database. |  |
 | weaviate | weaviate-1.23.1 | Weaviate is an open-source vector database. It allows you to store data objects and vector embeddings from your favorite ML-models, and scale seamlessly into billions of data objects. | ApeCloud |
 | xinference | xinference-0.11.0 | Xorbits Inference(Xinference) is a powerful and versatile library designed to serve language, speech recognition, and multimodal models. |  |

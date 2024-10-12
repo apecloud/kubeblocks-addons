@@ -1,14 +1,10 @@
-# Default values for Official PostgreSQL.
+# Default values for Vanilla PostgreSQL.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
 ## @param version Postgresql cluster version
 ##
-version: official-postgresql-14.7
-
-## @param mode postgresql cluster topology mode, standalone, replication
-##
-mode: standalone
+version: 14.7.0
 
 ## @param replicas specify cluster replicas
 ##
@@ -32,3 +28,5 @@ requests:
 ## @param storage size, the unit is Gi
 ##
 storage: 20
+
+compDef: vanilla-postgresql-14
