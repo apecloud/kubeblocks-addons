@@ -13,9 +13,9 @@ spec:
       serviceVersion: v3.5.6
       images:
         inject-shell: {{ .Values.busyboxImage.registry | default "docker.io" }}/{{ .Values.busyboxImage.repository }}:{{ default .Values.busyboxImage.tag }}
-        etcd: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository }}:v3.5.6
+        etcd: {{ .Values.image.registry | default "gcr.io" }}/{{ .Values.image.repository | default "etcd-development/etcd"}}:v3.5.6
     - name: v3.5.15
       serviceVersion: v3.5.15
       images:
         inject-shell: {{ .Values.busyboxImage.registry | default "docker.io" }}/{{ .Values.busyboxImage.repository }}:{{ default .Values.busyboxImage.tag }}
-        etcd: {{ .Values.image.registry | default "gcr.io/etcd-development" }}/{{ .Values.image.repository}}:v3.5.15
+        etcd: {{ .Values.image.registry | default "gcr.io" }}/{{ .Values.image.repository | default "etcd-development/etcd"}}:v3.5.15
