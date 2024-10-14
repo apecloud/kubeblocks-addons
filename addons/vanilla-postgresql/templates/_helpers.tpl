@@ -64,6 +64,17 @@ vanilla-postgresql-14
 {{- end -}}
 
 {{/*
+Define vanilla-postgresql 15 component definition name with Chart.Version suffix
+*/}}
+{{- define "vanilla-postgresql15.compDefName" -}}
+{{- if eq (len .Values.cmpdVersionPrefix.vanillaPostgresql15) 0 -}}
+vanilla-postgresql-15
+{{- else -}}
+{{ .Values.cmpdVersionPrefix.vanillaPostgresql15 }}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Expand the name of the chart.
 */}}
 {{- define "vanilla-postgresql.name" -}}
@@ -130,6 +141,13 @@ vanilla-postgresql14-configuration
 {{- end -}}
 
 {{/*
+Define postgresql15 component configuration template name
+*/}}
+{{- define "vanilla-postgresql15.configurationTemplate" -}}
+vanilla-postgresql15-configuration
+{{- end -}}
+
+{{/*
 Define postgresql12 component config constraint name
 */}}
 {{- define "vanilla-postgresql12.configConstraint" -}}
@@ -144,6 +162,13 @@ vanilla-postgresql14-cc
 {{- end -}}
 
 {{/*
+Define postgresql14 component config constraint name
+*/}}
+{{- define "vanilla-postgresql15.configConstraint" -}}
+vanilla-postgresql15-cc
+{{- end -}}
+
+{{/*
 Define postgresql scripts configMap template name
 */}}
 {{- define "vanilla-postgresql.scriptsTemplate" -}}
@@ -155,6 +180,16 @@ Generate scripts configmap
 */}}
 {{- define "vanilla-postgresql.extend.scripts" -}}
 {{- range $path, $_ :=  $.Files.Glob "scripts/**" }}
+{{ $path | base }}: |-
+{{- $.Files.Get $path | nindent 2 }}
+{{- end }}
+{{- end }}
+
+{{/*
+Generate scripts configmap
+*/}}
+{{- define "vanilla-postgresql.extend.reload.scripts" -}}
+{{- range $path, $_ :=  $.Files.Glob "reloader/**" }}
 {{ $path | base }}: |-
 {{- $.Files.Get $path | nindent 2 }}
 {{- end }}
