@@ -33,7 +33,7 @@
 	archive_command?: string
 
 	// Allows archiving of WAL files using "archive_command".
-	archive_mode?: string & "always" | " on" | " off" | *"off"
+	archive_mode?: string & "always" | "on" | "off" | *"off"
 
 	// Forces a switch to the next WAL file if a new file has not been started within N seconds.
 	archive_timeout?: int & >= 0 & <= 1073741823 | *0 @timeDurationResource(1s)
@@ -90,7 +90,7 @@
 	backend_flush_after?: int & >= 0 & <= 256 | *0 @storeResource(8KB)
 
 	// Sets whether "\'" is allowed in string literals.
-	backslash_quote?: string & "safe_encoding" | " on" | " off" | *"safe_encoding"
+	backslash_quote?: string & "safe_encoding" | "on" | "off" | *"safe_encoding"
 
 	// Log backtrace for errors in these functions.
 	backtrace_functions?: string
@@ -114,7 +114,7 @@
 	bonjour_name?: string
 
 	// Sets the output format for bytea.
-	bytea_output?: string & "escape" | " hex" | *"hex"
+	bytea_output?: string & "escape" | "hex" | *"hex"
 
 	// Check function bodies during CREATE FUNCTION.
 	check_function_bodies?: bool & true | false | *true
@@ -138,7 +138,7 @@
 	client_encoding?: string | *"SQL_ASCII"
 
 	// Sets the message levels that are sent to the client.
-	client_min_messages?: string & "debug5" | " debug4" | " debug3" | " debug2" | " debug1" | " log" | " notice" | " warning" | " error" | *"notice"
+	client_min_messages?: string & "debug5" | "debug4" | "debug3" | "debug2" | "debug1" | "log" | "notice" | "warning" | "error" | *"notice"
 
 	// Sets the name of the cluster, which is included in the process title.
 	cluster_name?: string
@@ -150,13 +150,13 @@
 	commit_siblings?: int & >= 0 & <= 1000 | *5
 
 	// Compute query identifiers.
-	compute_query_id?: string & "auto" | " regress" | " on" | " off" | *"auto"
+	compute_query_id?: string & "auto" | "regress" | "on" | "off" | *"auto"
 
 	// Sets the server's main configuration file.
 	config_file?: string
 
 	// Enables the planner to use constraints to optimize queries.
-	constraint_exclusion?: string & "partition" | " on" | " off" | *"partition"
+	constraint_exclusion?: string & "partition" | "on" | "off" | *"partition"
 
 	// Sets the planner's estimate of the cost of processing each index entry during an index scan.
 	cpu_index_tuple_cost?: float & >= 0 & <= 1.79769e+308 | *0.005
@@ -213,13 +213,13 @@
 	default_text_search_config?: string | *"pg_catalog.simple"
 
 	// Sets the default compression method for compressible values.
-	default_toast_compression?: string & "pglz" | " lz4" | *"pglz"
+	default_toast_compression?: string & "pglz" | "lz4" | *"pglz"
 
 	// Sets the default deferrable status of new transactions.
 	default_transaction_deferrable?: bool & true | false | *false
 
 	// Sets the transaction isolation level of each new transaction.
-	default_transaction_isolation?: string & "serializable" | " repeatable read" | " read committed" | " read uncommitted" | *"read committed"
+	default_transaction_isolation?: string & "serializable" | "repeatable read" | "read committed" | "read uncommitted" | *"read committed"
 
 	// Sets the default read-only status of new transactions.
 	default_transaction_read_only?: bool & true | false | *false
@@ -228,7 +228,7 @@
 	dynamic_library_path?: string | *"$libdir"
 
 	// Selects the dynamic shared memory implementation used.
-	dynamic_shared_memory_type?: string & "posix" | " sysv" | " mmap" | *"posix"
+	dynamic_shared_memory_type?: string & "posix" | "sysv" | "mmap" | *"posix"
 
 	// Sets the planner's assumption about the size of the data cache.
 	effective_cache_size?: int & >= 1 & <= 2147483647 | *524288 @storeResource(8KB)
@@ -312,7 +312,7 @@
 	extra_float_digits?: int & >= -15 & <= 3 | *1
 
 	// Forces use of parallel query facilities.
-	force_parallel_mode?: string & "off" | " on" | " regress" | *"off"
+	force_parallel_mode?: string & "off" | "on" | "regress" | *"off"
 
 	// Sets the FROM-list size beyond which subqueries are not collapsed.
 	from_collapse_limit?: int & >= 1 & <= 2147483647 | *8
@@ -363,7 +363,7 @@
 	hot_standby_feedback?: bool & true | false | *false
 
 	// Use of huge pages on Linux.
-	huge_pages?: string & "off" | " on" | " try" | *"try"
+	huge_pages?: string & "off" | "on" | "try" | *"try"
 
 	// The size of huge page that should be requested.
 	huge_page_size?: int & >= 0 & <= 2147483647 | *0 @storeResource(1KB)
@@ -387,7 +387,7 @@
 	ignore_system_indexes?: bool & true | false | *false
 
 	// Sets the display format for interval values.
-	IntervalStyle?: string & "postgres" | " postgres_verbose" | " sql_standard" | " iso_8601" | *"postgres"
+	IntervalStyle?: string & "postgres" | "postgres_verbose" | "sql_standard" | "iso_8601" | *"postgres"
 
 	// Allow JIT compilation.
 	jit?: bool & true | false | *true
@@ -474,7 +474,7 @@
 	log_duration?: bool & true | false | *false
 
 	// Sets the verbosity of logged messages.
-	log_error_verbosity?: string & "terse" | " default" | " verbose" | *"default"
+	log_error_verbosity?: string & "terse" | "default" | "verbose" | *"default"
 
 	// Writes executor performance statistics to the server log.
 	log_executor_stats?: bool & true | false | *false
@@ -507,10 +507,10 @@
 	log_min_duration_statement?: int & >= -1 & <= 2147483647 | *-1 @timeDurationResource()
 
 	// Causes all statements generating error at or above this level to be logged.
-	log_min_error_statement?: string & "debug5" | " debug4" | " debug3" | " debug2" | " debug1" | " info" | " notice" | " warning" | " error" | " log" | " fatal" | " panic" | *"error"
+	log_min_error_statement?: string & "debug5" | "debug4" | "debug3" | "debug2" | "debug1" | "info" | "notice" | "warning" | "error" | "log" | "fatal" | "panic" | *"error"
 
 	// Sets the message levels that are logged.
-	log_min_messages?: string & "debug5" | " debug4" | " debug3" | " debug2" | " debug1" | " info" | " notice" | " warning" | " error" | " log" | " fatal" | " panic" | *"warning"
+	log_min_messages?: string & "debug5" | "debug4" | "debug3" | "debug2" | "debug1" | "info" | "notice" | "warning" | "error" | "log" | "fatal" | "panic" | *"warning"
 
 	// Sets the maximum length in bytes of data logged for bind parameter values when logging statements.
 	log_parameter_max_length?: int & >= -1 & <= 1073741823 | *-1 @storeResource(B)
@@ -537,7 +537,7 @@
 	log_rotation_size?: int & >= 0 & <= 2097151 | *10240 @storeResource(1KB)
 
 	// Sets the type of statements logged.
-	log_statement?: string & "none" | " ddl" | " mod" | " all" | *"none"
+	log_statement?: string & "none" | "ddl" | "mod" | "all" | *"none"
 
 	// Fraction of statements exceeding "log_min_duration_sample" to be logged.
 	log_statement_sample_rate?: float & >= 0 & <= 1 | *1
@@ -648,10 +648,10 @@
 	parallel_tuple_cost?: float & >= 0 & <= 1.79769e+308 | *0.1
 
 	// Chooses the algorithm for encrypting passwords.
-	password_encryption?: string & "md5" | " scram-sha-256" | *"scram-sha-256"
+	password_encryption?: string & "md5" | "scram-sha-256" | *"scram-sha-256"
 
 	// Controls the planner's selection of custom or generic plan.
-	plan_cache_mode?: string & "auto" | " force_generic_plan" | " force_custom_plan" | *"auto"
+	plan_cache_mode?: string & "auto" | "force_generic_plan" | "force_custom_plan" | *"auto"
 
 	// Sets the TCP port the server listens on.
 	port?: int & >= 1 & <= 65535 | *5432
@@ -681,7 +681,7 @@
 	recovery_end_command?: string
 
 	// Sets the method for synchronizing the data directory before crash recovery.
-	recovery_init_sync_method?: string & "fsync" | " syncfs" | *"fsync"
+	recovery_init_sync_method?: string & "fsync" | "syncfs" | *"fsync"
 
 	// Sets the minimum delay for applying changes during recovery.
 	recovery_min_apply_delay?: int & >= 0 & <= 2147483647 | *0 @timeDurationResource()
@@ -690,7 +690,7 @@
 	recovery_target?: string
 
 	// Sets the action to perform upon reaching the recovery target.
-	recovery_target_action?: string & "pause" | " promote" | " shutdown" | *"pause"
+	recovery_target_action?: string & "pause" | "promote" | "shutdown" | *"pause"
 
 	// Sets whether to include or exclude transaction with recovery target.
 	recovery_target_inclusive?: bool & true | false | *true
@@ -726,7 +726,7 @@
 	row_security?: bool & true | false | *true
 
 	// Sets the schema search order for names that are not schema-qualified.
-	search_path?: search_path?: string | *"$user", public
+	search_path?: search_path?: string | *'"$user", public'
 
 	// Sets the planner's estimate of the cost of a sequentially fetched disk page.
 	seq_page_cost?: float & >= 0 & <= 1.79769e+308 | *1
@@ -735,13 +735,13 @@
 	session_preload_libraries?: string
 
 	// Sets the session's behavior for triggers and rewrite rules.
-	session_replication_role?: string & "origin" | " replica" | " local" | *"origin"
+	session_replication_role?: string & "origin" | "replica" | "local" | *"origin"
 
 	// Sets the number of shared memory buffers used by the server.
 	shared_buffers?: int & >= 16 & <= 1073741823 | *1024 @storeResource(8KB)
 
 	// Selects the shared memory implementation used for the main shared memory region.
-	shared_memory_type?: string & "sysv" | " mmap" | *"mmap"
+	shared_memory_type?: string & "sysv" | "mmap" | *"mmap"
 
 	// Lists shared libraries to preload into server.
 	shared_preload_libraries?: string
@@ -774,10 +774,10 @@
 	ssl_key_file?: string | *"server.key"
 
 	// Sets the maximum SSL/TLS protocol version to use.
-	ssl_max_protocol_version?: string & "" | " TLSv1" | " TLSv1.1" | " TLSv1.2" | " TLSv1.3"
+	ssl_max_protocol_version?: string & "" | "TLSv1" | "TLSv1.1" | "TLSv1.2" | "TLSv1.3"
 
 	// Sets the minimum SSL/TLS protocol version to use.
-	ssl_min_protocol_version?: string & "TLSv1" | " TLSv1.1" | " TLSv1.2" | " TLSv1.3" | *"TLSv1.2"
+	ssl_min_protocol_version?: string & "TLSv1" | "TLSv1.1" | "TLSv1.2" | "TLSv1.3" | *"TLSv1.2"
 
 	// Command to obtain passphrases for SSL.
 	ssl_passphrase_command?: string
@@ -804,13 +804,13 @@
 	synchronize_seqscans?: bool & true | false | *true
 
 	// Sets the current transaction's synchronization level.
-	synchronous_commit?: string & "local" | " remote_write" | " remote_apply" | " on" | " off" | *"on"
+	synchronous_commit?: string & "local" | "remote_write" | "remote_apply" | "on" | "off" | *"on"
 
 	// List of names of potential synchronous standbys.
 	synchronous_standby_names?: string
 
 	// Sets the syslog "facility" to be used when syslog enabled.
-	syslog_facility?: string & "local0" | " local1" | " local2" | " local3" | " local4" | " local5" | " local6" | " local7" | *"local0"
+	syslog_facility?: string & "local0" | "local1" | "local2" | "local3" | "local4" | "local5" | "local6" | "local7" | *"local0"
 
 	// Sets the program name used to identify PostgreSQL messages in syslog.
 	syslog_ident?: string | *"postgres"
@@ -852,7 +852,7 @@
 	trace_notify?: bool & true | false | *false
 
 	// Enables logging of recovery-related debugging information.
-	trace_recovery_messages?: string & "debug5" | " debug4" | " debug3" | " debug2" | " debug1" | " log" | " notice" | " warning" | " error" | *"log"
+	trace_recovery_messages?: string & "debug5" | "debug4" | "debug3" | "debug2" | "debug1" | "log" | "notice" | "warning" | "error" | *"log"
 
 	// Emit information about resource usage in sorting.
 	trace_sort?: bool & true | false | *false
@@ -870,7 +870,7 @@
 	track_counts?: bool & true | false | *true
 
 	// Collects function-level statistics on database activity.
-	track_functions?: string & "none" | " pl" | " all" | *"none"
+	track_functions?: string & "none" | "pl" | "all" | *"none"
 
 	// Collects timing statistics for database I/O activity.
 	track_io_timing?: bool & true | false | *false
@@ -882,7 +882,7 @@
 	transaction_deferrable?: bool & true | false | *false
 
 	// Sets the current transaction's isolation level.
-	transaction_isolation?: string & "serializable" | " repeatable read" | " read committed" | " read uncommitted" | *"read committed"
+	transaction_isolation?: string & "serializable" | "repeatable read" | "read committed" | "read uncommitted" | *"read committed"
 
 	// Sets the current transaction's read-only status.
 	transaction_read_only?: bool & true | false | *false
@@ -954,7 +954,7 @@
 	wal_keep_size?: int & >= 0 & <= 2147483647 | *0 @storeResource(1MB)
 
 	// Sets the level of information written to the WAL.
-	wal_level?: string & "minimal" | " replica" | " logical" | *"replica"
+	wal_level?: string & "minimal" | "replica" | "logical" | *"replica"
 
 	// Writes full pages to WAL when first modified after a checkpoint, even for a non-critical modification.
 	wal_log_hints?: bool & true | false | *false
@@ -981,7 +981,7 @@
 	wal_skip_threshold?: int & >= 0 & <= 2147483647 | *2048 @storeResource(1KB)
 
 	// Selects the method used for forcing WAL updates to disk.
-	wal_sync_method?: string & "fsync" | " fdatasync" | " open_sync" | " open_datasync" | *"fdatasync"
+	wal_sync_method?: string & "fsync" | "fdatasync" | "open_sync" | "open_datasync" | *"fdatasync"
 
 	// Time between WAL flushes performed in the WAL writer.
 	wal_writer_delay?: int & >= 1 & <= 10000 | *200 @timeDurationResource()
@@ -993,10 +993,10 @@
 	work_mem?: int & >= 64 & <= 2147483647 | *4096 @storeResource(1KB)
 
 	// Sets how binary values are to be encoded in XML.
-	xmlbinary?: string & "base64" | " hex" | *"base64"
+	xmlbinary?: string & "base64" | "hex" | *"base64"
 
 	// Sets whether XML data in implicit parsing and serialization operations is to be considered as documents or content fragments.
-	xmloption?: string & "content" | " document" | *"content"
+	xmloption?: string & "content" | "document" | *"content"
 
 	// Continues processing past damaged page headers.
 	zero_damaged_pages?: bool & true | false | *false
