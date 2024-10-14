@@ -6,16 +6,23 @@ metadata:
   labels:
     {{- include "vanilla-postgresql.labels" . | nindent 4 }}
 spec:
-  # ConfigurationSchema that impose restrictions on engine parameter's rule
-  parametersSchema:
-    # top level pg configuration type
-    topLevelKey: PGParameter
+  reloadAction:
+    shellTrigger:
+      sync: true
+      command:
+        - "update-parameter.sh"
+      scriptConfig:
+        scriptConfigMapRef: reload-tools-script
+        namespace: {{ .Release.Namespace }}
+      toolsSetup:
+        mountPoint: /kb_tools
+        toolConfigs:
+          - name: kb-tools
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor15 }}
+            asContainerImage: true
 
-    # schemaInJSON: auto generate from cue scripts
-    # example: ../../pkg/configuration/testdata/mysql_openapi.json
-    cue: |-
-      {{- .Files.Get "config/pg12-config-constraint.cue" | nindent 6 }}
-    # configuration file format
+  mergeReloadAndRestart: false
+  reloadStaticParamsBeforeRestart: true
 
   ##  require db instance restart
   ## define static parameter list
