@@ -50,8 +50,6 @@ spec:
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         command:
           - syncer
-          - --config-path
-          - /tools/config/components
           - --port
           - "3601"
           - --
@@ -91,3 +89,19 @@ spec:
             value: {{ .Values.auth.rootHost | default "%" | quote }}
           - name: SERVICE_PORT
             value: "3306"
+          - name: SYNCER_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: SYNCER_POD_UID
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.uid
+          - name: SYNCER_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+
