@@ -65,11 +65,7 @@ Create the name of the service account to use
 Define mysql component definition name prefix
 */}}
 {{- define "mysql.cmpdNamePrefix" -}}
-{{- if eq (len .Values.cmpdNamePrefix) 0 -}}
-mysql
-{{- else -}}
-{{- .Values.cmpdNamePrefix -}}
-{{- end -}}
+{{- default "mysql" .Values.cmpdNamePrefix -}}
 {{- end -}}
 
 {{/*
