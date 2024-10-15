@@ -23,6 +23,13 @@ version: 1.0.0-alpha.0
 # It is recommended to use it with quotes.
 appVersion: "v3.5.15"
 
+# Add a dependency to the kubeblocks definition library chart
+dependencies:
+  - name: kblib
+    version: 0.1.0
+    repository: file://../kblib
+    alias: extra
+
 home: https://etcd.io/
 icon: https://bitnami.com/assets/stacks/etcd/img/etcd-stack-220x234.png
 keywords:

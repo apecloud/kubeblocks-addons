@@ -18,10 +18,15 @@ trap handle_exit EXIT
 # use etcdctl create snapshot
 ENDPOINTS=${DP_DB_HOST}.${KB_NAMESPACE}.svc${CLUSTER_DOMAIN}:2379
 
-execEtcdctl ${ENDPOINTS} snapshot save ${DP_BACKUP_NAME}
+exec_etcdctl "${ENDPOINTS}" snapshot save "${DP_BACKUP_NAME}"
 
 # check the backup file, make sure it is not empty
-checkBackupFile ${DP_BACKUP_NAME}
+if check_backup_file "${DP_BACKUP_NAME}"; then
+  echo "Backup file is valid"
+else
+  echo "Backup file is invalid"
+  exit 1
+fi
 
 # use datasafed to get backup size
 # if we do not write into $DP_BACKUP_INFO_FILE, the backup job will stuck

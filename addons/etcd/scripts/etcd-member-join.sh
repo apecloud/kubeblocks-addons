@@ -1,5 +1,9 @@
 #!/bin/sh
 
-set -exo pipefail
-echo "etcd member join..."
-# TODO
+main() {
+  # TODO
+  echo "etcd member join is not yet implemented. Exiting."
+}
+
+# main
+main
