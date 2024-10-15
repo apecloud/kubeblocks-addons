@@ -5,7 +5,7 @@ nameOverride: ""
 fullnameOverride: ""
 
 image:
-  registry: docker.io
+  registry: docker.m.daocloud.io
   repository: postgres
   digest: ""
   tags:
@@ -55,6 +55,7 @@ cmpdVersionPrefix:
 componentServiceVersion:
   vanillaPostgresql12: 12.15.0
   vanillaPostgresql14: 14.7.0
+  vanillaPostgresql15: 15.7.0
 
 shmVolume:
   ## @param shmVolume.enabled Enable emptyDir volume for /dev/shm for PostgreSQL pod(s)
