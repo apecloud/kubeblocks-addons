@@ -62,65 +62,63 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
+Define mysql component definition name prefix
+*/}}
+{{- define "mysql.cmpdNamePrefix" -}}
+{{- if eq (len .Values.cmpdNamePrefix) 0 -}}
+mysql
+{{- else -}}
+{{- .Values.cmpdNamePrefix -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define mysql orc component definition name prefix
+*/}}
+{{- define "mysql.cmpdOrcNamePrefix" -}}
+{{ include "mysql.cmpdNamePrefix" . }}-orc
+{{- end -}}
+
+{{/*
 Define mysql component definition regex regular
 */}}
 {{- define "mysql.componentDefRegex" -}}
-^mysql-\d+\.\d+.*$
+{{- printf "^%s" (include "mysql.cmpdNamePrefix" .) -}}-\d+\.\d+.*$
 {{- end -}}
 
 {{/*
 Define mysql component definition name
 */}}
 {{- define "mysql.componentDefName57" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-mysql-5.7
-{{- else -}}
-{{- printf "mysql-5.7-%s" .Values.compDefinitionVersionSuffix -}}
-{{- end -}}
+{{- printf "%s-5.7-%s" (include "mysql.cmpdNamePrefix" .) .Chart.Version -}}
 {{- end -}}
 
 {{/*
 Define mysql component definition name
 */}}
 {{- define "mysql.componentDefNameOrc57" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-mysql-orc-5.7
-{{- else -}}
-{{- printf "mysql-orc-5.7-%s" .Values.compDefinitionVersionSuffix -}}
-{{- end -}}
+{{- printf "%s-5.7-%s" (include "mysql.cmpdOrcNamePrefix" .) .Chart.Version -}}
 {{- end -}}
 
 {{/*
 Define mysql component definition name
 */}}
 {{- define "mysql.componentDefName80" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-mysql-8.0
-{{- else -}}
-{{- printf "mysql-8.0-%s" .Values.compDefinitionVersionSuffix -}}
-{{- end -}}
+{{- printf "%s-8.0-%s" (include "mysql.cmpdNamePrefix" .) .Chart.Version -}}
 {{- end -}}
 
 {{/*
 Define mysql component definition name
 */}}
 {{- define "mysql.componentDefNameOrc80" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-mysql-orc-8.0
-{{- else -}}
-{{- printf "mysql-orc-8.0-%s" .Values.compDefinitionVersionSuffix -}}
-{{- end -}}
+{{- printf "%s-8.0-%s" (include "mysql.cmpdOrcNamePrefix" .) .Chart.Version -}}
 {{- end -}}
 
 {{/*
 Define mysql component definition name
 */}}
 {{- define "mysql.componentDefName84" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-mysql-8.4
-{{- else -}}
-{{- printf "mysql-8.4-%s" .Values.compDefinitionVersionSuffix -}}
-{{- end -}}
+{{- printf "%s-8.4-%s" (include "mysql.cmpdNamePrefix" .) .Chart.Version -}}
 {{- end -}}
 
 {{/*
@@ -138,11 +136,7 @@ orchestrator
 Define mysql component definition name
 */}}
 {{- define "proxysql.componentDefName" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-mysql-proxysql
-{{- else -}}
-{{- printf "mysql-proxysql-%s" .Values.compDefinitionVersionSuffix -}}
-{{- end -}}
+{{- printf "%s-proxysql-%s" (include "mysql.cmpdNamePrefix" .) .Chart.Version -}}
 {{- end -}}
 
 {{/*
@@ -174,6 +168,13 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 
 {{- define "mysql.imagePullPolicy" -}}
 {{ default "IfNotPresent" .Values.image.pullPolicy }}
+{{- end }}
+
+{{/*
+Common annotations
+*/}}
+{{- define "mysql.annotations" -}}
+helm.sh/resource-policy: keep              
 {{- end }}
 
 {{- define "mysql.spec.common" -}}
