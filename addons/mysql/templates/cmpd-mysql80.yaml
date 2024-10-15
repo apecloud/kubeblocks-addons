@@ -4,6 +4,8 @@ metadata:
   name: {{ include "mysql.componentDefName80" . }}
   labels:
       {{- include "mysql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mysql.annotations" . | nindent 4 }}
 spec:
   {{- include "mysql.spec.common" . | nindent 2 }}
   serviceVersion: 8.0.33

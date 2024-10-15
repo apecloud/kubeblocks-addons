@@ -14,7 +14,7 @@ spec:
     - name: server-with-orc
       components:
         - name: server
-          compDef: mysql-orc
+          compDef: {{ include "mysql.cmpdOrcNamePrefix" . }}
     - name: server-with-proxy
       components:
         - name: server

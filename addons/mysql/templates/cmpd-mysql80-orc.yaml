@@ -4,6 +4,8 @@ metadata:
   name: {{ include "mysql.componentDefNameOrc80" . }}
   labels:
       {{- include "mysql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mysql.annotations" . | nindent 4 }}
 spec:
   {{- include "mysql-orc.spec.common" . | nindent 2 }}
   serviceVersion: 8.0.33
