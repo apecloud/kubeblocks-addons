@@ -124,17 +124,6 @@ Define mysql component definition name
 {{/*
 Define mysql component definition name
 */}}
-{{- define "orchestrator.serviceRefName" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-orchestrator
-{{- else -}}
-{{- printf "orchestrator-%s" .Values.compDefinitionVersionSuffix -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Define mysql component definition name
-*/}}
 {{- define "proxysql.componentDefName" -}}
 {{- printf "%s-proxysql-%s" (include "mysql.cmpdNamePrefix" .) .Chart.Version -}}
 {{- end -}}
