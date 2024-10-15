@@ -65,7 +65,6 @@ spec:
       valueFrom:
         credentialVarRef:
           name: admin
-          compDef: ch-keeper-24
           optional: false
           password: Required
     - name: CLICKHOUSE_POD_FQDN_LIST
@@ -77,7 +76,7 @@ spec:
       valueFrom:
         componentVarRef:
           compDef: ch-keeper-24
-          optional: false
+          optional: true
           podFQDNs: Required
   runtime:
     securityContext:

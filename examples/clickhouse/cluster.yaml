@@ -6,8 +6,10 @@ metadata:
 spec:
   # Specifies the name of the ClusterDefinition to use when creating a Cluster.
   clusterDefinitionRef: clickhouse
-  # Refers to the ClusterVersion name. Deprecated since v0.9, use ComponentVersion instead. This field is maintained for backward compatibility and its use is discouraged. Existing usage should be updated to the current preferred approach to avoid compatibility issues in future releases.
-  clusterVersionRef: clickhouse-22.9.4
+  # Specifies the clickhouse cluster topology defined in ClusterDefinition.Spec.topologies, support standalone, clickhouse-cluster
+  # - `standalone`: single clickhouse instance
+  # - `clickhouse-cluster`: clickhouse cluster with clickhouse-keeper
+  topology: clickhouse-cluster
   # Specifies the behavior when a Cluster is deleted.
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
   # - `Halt`: Deletes Cluster resources like Pods and Services but retains Persistent Volume Claims (PVCs), allowing for data preservation while stopping other operations.
@@ -18,12 +20,12 @@ spec:
   affinity:
    # Specifies the anti-affinity level of Pods within a Component. It determines how pods should be spread across nodes to improve availability and performance.
     podAntiAffinity: Preferred
-    # Represents the key of node labels used to define the topology domain for Pod anti-affinity and Pod spread constraints. 
+    # Represents the key of node labels used to define the topology domain for Pod anti-affinity and Pod spread constraints.
     topologyKeys:
       - kubernetes.io/hostname
-    # Determines the level of resource isolation between Pods. It can have the following values: `SharedNode` and `DedicatedNode`. 
-    # - SharedNode: Allow that multiple Pods may share the same node, which is the default behavior of K8s. 
-    # - DedicatedNode: Each Pod runs on a dedicated node, ensuring that no two Pods share the same node. 
+    # Determines the level of resource isolation between Pods. It can have the following values: `SharedNode` and `DedicatedNode`.
+    # - SharedNode: Allow that multiple Pods may share the same node, which is the default behavior of K8s.
+    # - DedicatedNode: Each Pod runs on a dedicated node, ensuring that no two Pods share the same node.
     tenancy: SharedNode
   # An array that specifies tolerations attached to the Cluster's Pods, allowing them to be scheduled onto nodes with matching taints.
   tolerations:
@@ -36,28 +38,8 @@ spec:
   # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
     - name: clickhouse
-      componentDefRef: clickhouse
-      serviceAccountName: kb-clickhouse-cluster
-      replicas: 1
-      resources:
-        limits:
-          cpu: '0.5'
-          memory: 1Gi
-        requests:
-          cpu: '0.5'
-          memory: 1Gi
-      volumeClaimTemplates:
-        - name: data
-          spec:
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: 20Gi
-    - name: clickhouse-1
-      componentDefRef: clickhouse
-      serviceAccountName: kb-clickhouse-cluster
-      replicas: 1
+      componentDef: clickhouse-24
+      replicas: 2
       resources:
         limits:
           cpu: '0.5'
@@ -74,8 +56,7 @@ spec:
               requests:
                 storage: 20Gi
     - name: ch-keeper
-      componentDefRef: ch-keeper
-      serviceAccountName: kb-clickhouse-cluster
+      componentDef: ch-keeper-24
       replicas: 1
       resources:
         limits:
