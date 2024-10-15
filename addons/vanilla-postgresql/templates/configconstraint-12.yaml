@@ -24,6 +24,17 @@ spec:
   mergeReloadAndRestart: false
   reloadStaticParamsBeforeRestart: true
 
+  # ConfigurationSchema that impose restrictions on engine parameter's rule
+  parametersSchema:
+    # top level pg configuration type
+    topLevelKey: PGParameter
+
+    # schemaInJSON: auto generate from cue scripts
+    # example: ../../pkg/configuration/testdata/mysql_openapi.json
+    cue: |-
+      {{- .Files.Get "config/pg12-config-constraint.cue" | nindent 6 }}
+    # configuration file format
+
   ##  require db instance restart
   ## define static parameter list
   {{- if hasKey $cc "staticParameters" }}
