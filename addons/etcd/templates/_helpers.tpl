@@ -48,6 +48,13 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
+Common annotations
+*/}}
+{{- define "etcd.annotations" -}}
+helm.sh/resource-policy: keep
+{{- end }}
+
+{{/*
 Define config template name
 */}}
 {{- define "etcd.configTplName" -}}

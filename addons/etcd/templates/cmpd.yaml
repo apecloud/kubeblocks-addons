@@ -4,6 +4,8 @@ metadata:
   name: etcd
   labels:
     {{- include "etcd.labels" . | nindent 4 }}
+  annotations:
+    {{- include "etcd.annotations" . | nindent 4 }}
 spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
@@ -19,11 +21,16 @@ spec:
         command:
           - bin/sh
           - -c
-          - |
-            {{- .Files.Get "scripts/inject-shell.sh" | nindent 14 }}
+          - scripts/inject-shell.sh
     containers:
       - name: etcd
         imagePullPolicy: {{ .Values.image.pullPolicy }}
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
         ports:
           - containerPort: 2379
             name: client
@@ -54,12 +61,12 @@ spec:
   vars:
     - name: ETCD_VERSION
       value: {{ .Chart.AppVersion }}
-    - name: CLUSTER_DOMAIN
-      value: {{ .Values.clusterDomain }}
     - name: DATA_DIR
       value: {{ .Values.dataDir }}
     - name: CLUSTER_NAME
-      value: "$(KB_CLUSTER_COMP_NAME)"
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
     - name: TLS_MOUNT_PATH
       value: {{ .Values.tlsMountPath }}
     - name: CLIENT_TLS
@@ -116,47 +123,28 @@ spec:
         command:
           - /bin/sh
           - -c
-          - |
-            {{- .Files.Get "scripts/common.sh" | nindent 14 }}
-            {{- .Files.Get "scripts/role-probe-script.sh" | nindent 14 }}
+          - scripts/role-probe-script.sh
     memberJoin:
       exec:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
         command:
           - /bin/sh
           - -c
-          - |
-            {{- .Files.Get "scripts/common.sh" | nindent 14 }}
-            {{- .Files.Get "scripts/etcd-member-join.sh" | nindent 14 }}
+          - scripts/etcd-member-leave.sh
     memberLeave:
       exec:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
         command:
           - /bin/sh
           - -c
-          - |
-            {{- .Files.Get "scripts/common.sh" | nindent 14 }}
-            {{- .Files.Get "scripts/etcd-member-leave.sh" | nindent 14 }}
+          - scripts/etcd-member-leave.sh
     switchover:
       exec:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
-        env:
-          - name: CLUSTER_DOMAIN
-            value: {{ .Values.clusterDomain }}
         command:
-        - /bin/sh
-        - -c
-        - |
-          set -ex
-
-          {{- .Files.Get "scripts/common.sh" | nindent 12 }}
-          {{- .Files.Get "scripts/switchover.sh" | nindent 12 }}
-
-          if [ -z "$KB_SWITCHOVER_CANDIDATE_FQDN" ]; then
-              switchoverWithoutCandidate
-          else
-              switchoverWithCandidate
-          fi
+          - /bin/sh
+          - -c
+          - scripts/switchover.sh
   configs:
     - name: etcd-configuration-tpl
       templateRef: {{ include "etcd.configTplName" .}}

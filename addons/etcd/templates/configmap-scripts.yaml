@@ -5,6 +5,11 @@ metadata:
   labels:
     {{- include "etcd.labels" . | nindent 4 }}
 data:
+  kb-common.sh: |-
+    #!/bin/bash
+    {{- include "kblib.commons.call_func_with_retry" $ | nindent 4 }}
+    {{- include "kblib.compvars.get_target_pod_fqdn_from_pod_fqdn_vars" $ | nindent 4 }}
+    {{- include "kblib.strings.is_empty" $ | nindent 4 }}
   {{- range $path, $_ :=  $.Files.Glob "scripts/**" }}
   {{ $path | base }}: |-
   {{- $.Files.Get $path | nindent 4 }}

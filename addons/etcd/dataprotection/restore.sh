@@ -8,14 +8,19 @@ RESTORE_DIR=/restore
 mkdir -p ${RESTORE_DIR}
 
 remoteBackupFile="${DP_BACKUP_NAME}.tar.zst"
-if [ "$(datasafed list ${remoteBackupFile})" = "${remoteBackupFile}" ]; then
+if [ "$(datasafed list "${remoteBackupFile}")" = "${remoteBackupFile}" ]; then
   datasafed pull -d zstd-fastest "${remoteBackupFile}" - | tar -xvf - -C ${RESTORE_DIR}
 fi
 
 backupFile=${RESTORE_DIR}/${DP_BACKUP_NAME}
 ENDPOINTS=${DP_DB_HOST}.${KB_NAMESPACE}.svc${CLUSTER_DOMAIN}:2379
 
-checkBackupFile ${backupFile}
+if check_backup_file "${backupFile}"; then
+  echo "Backup file is valid"
+else
+  echo "Backup file is invalid"
+  exit 1
+fi
 
 # https://etcd.io/docs/v3.5/op-guide/recovery/ restoring with revision bump if needed
-execEtcdctl $ENDPOINTS snapshot restore ${backupFile}
+exec_etcdctl "$ENDPOINTS" snapshot restore "${backupFile}"
