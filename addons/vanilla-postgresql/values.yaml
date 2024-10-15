@@ -13,6 +13,9 @@ image:
       minor15: 12.15
     major14:
       minor07: 14.7
+    major15:
+      minor07: 15.7
+
 
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
@@ -46,6 +49,7 @@ logConfigs:
 cmpdVersionPrefix:
   vanillaPostgresql12: "vanilla-postgresql-12"
   vanillaPostgresql14: "vanilla-postgresql-14"
+  vanillaPostgresql15: "vanilla-postgresql-15"
 
 ## @param componentServiceVersion define default serviceVersion of each Component
 componentServiceVersion:
