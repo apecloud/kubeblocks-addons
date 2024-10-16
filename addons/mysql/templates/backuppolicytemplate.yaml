@@ -3,6 +3,7 @@ kind: BackupPolicyTemplate
 metadata:
   name: mysql-backup-policy-template
   labels:
+    clusterdefinition.kubeblocks.io/name: mysql
     {{- include "mysql.labels" . | nindent 4 }}
   annotations:
     dataprotection.kubeblocks.io/is-default-policy-template: "true"
