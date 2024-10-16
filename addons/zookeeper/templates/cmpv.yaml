@@ -13,7 +13,7 @@ spec:
         - 3.8.4
         - 3.9.2
       compDefs:
-        - zookeeper
+        - {{ include "zookeeper.cmpdRegexpPattern" . }}
   releases:
     - name: 3.4.14
       serviceVersion: 3.4.14

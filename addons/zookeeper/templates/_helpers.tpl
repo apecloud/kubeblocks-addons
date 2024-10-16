@@ -61,3 +61,17 @@ helm.sh/resource-policy: keep
 {{- define "zoocreeper.image" -}}
 {{ .Values.zoocreeperImage.registry | default (.Values.zoocreeperImage.registry | default "docker.io") }}/{{ .Values.zoocreeperImage.repository }}:{{ .Values.zoocreeperImage.tag }}
 {{- end }}}
+
+{{/*
+Define zookeeper component definition name
+*/}}
+{{- define "zookeeper.cmpdName" -}}
+zookeeper-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define zookeeper component definition regular expression name prefix
+*/}}
+{{- define "zookeeper.cmpdRegexpPattern" -}}
+^zookeeper-*
+{{- end -}}

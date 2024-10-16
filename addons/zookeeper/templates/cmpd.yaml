@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: zookeeper
+  name: {{ include "zookeeper.cmpdName" . }}
   labels:
     {{- include "zookeeper.labels" . | nindent 4 }}
   annotations:
@@ -31,7 +31,6 @@ spec:
             port: 2888
           - name: admin
             port: 8080
-
   roles:
     - name: leader
       serviceable: true
@@ -45,6 +44,40 @@ spec:
       serviceable: false
       writable: false
       votable: false
+  updateStrategy: BestEffortParallel
+  vars:
+    - name: ZOOKEEPER_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+    - name: ZOOKEEPER_METRICS_MONITOR
+      value: {{ .Values.metrics.enabled | quote }}
+    - name: ZOOKEEPER_METRICS_PORT
+      value: {{ .Values.metrics.port | quote }}
+    - name: ZOOKEEPER_DATA_DIR
+      value: {{ .Values.zookeeper.dataDir }}
+    - name: ZOOKEEPER_DATA_LOG_DIR
+      value: {{ .Values.zookeeper.dataLogDir }}
+  scripts:
+    - name: zookeeper-scripts
+      templateRef: {{ include "zookeeper.name" . }}-scripts
+      volumeName: scripts
+      namespace: {{ .Release.Namespace }}
+      defaultMode: 0755
+  configs:
+    - name: zookeeper-config
+      namespace: {{ .Release.Namespace }}
+      templateRef: {{ include "zookeeper.name" . }}-config-template
+      constraintRef: {{ include "zookeeper.name" . }}-config-constraints
+      volumeName: config
+      defaultMode: 0755
+      reRenderResourceTypes:
+        - hscale
+    - name: zookeeper-log
+      namespace: {{ .Release.Namespace }}
+      templateRef: {{ include "zookeeper.name" . }}-configmap
+      volumeName: config-log
   lifecycleActions:
     roleProbe:
       exec:
@@ -65,7 +98,6 @@ spec:
     volumes:
       - name: snapshot-log
         emptyDir: {}
-
     securityContext:
       fsGroup: 0
       runAsGroup: 0
@@ -161,39 +193,3 @@ spec:
             subPath: log4j.properties
           - name: scripts
             mountPath: /kubeblocks/scripts
-  vars:
-    - name: ZOOKEEPER_POD_FQDN_LIST
-      valueFrom:
-        componentVarRef:
-          optional: false
-          podFQDNs: Required
-    - name: ZOOKEEPER_METRICS_MONITOR
-      value: {{ .Values.metrics.enabled | quote }}
-    - name: ZOOKEEPER_METRICS_PORT
-      value: {{ .Values.metrics.port | quote }}
-    - name: ZOOKEEPER_DATA_DIR
-      value: {{ .Values.zookeeper.dataDir }}
-    - name: ZOOKEEPER_DATA_LOG_DIR
-      value: {{ .Values.zookeeper.dataLogDir }}
-
-  scripts:
-    - name: zookeeper-scripts
-      templateRef: {{ include "zookeeper.name" . }}-scripts
-      volumeName: scripts
-      namespace: {{ .Release.Namespace }}
-      defaultMode: 0755
-
-  configs:
-    - name: zookeeper-config
-      namespace: {{ .Release.Namespace }}
-      templateRef: {{ include "zookeeper.name" . }}-config-template
-      constraintRef: {{ include "zookeeper.name" . }}-config-constraints
-      volumeName: config
-      defaultMode: 0755
-      reRenderResourceTypes:
-        - hscale
-    - name: zookeeper-log
-      namespace: {{ .Release.Namespace }}
-      templateRef: {{ include "zookeeper.name" . }}-configmap
-      volumeName: config-log
-  updateStrategy: BestEffortParallel
