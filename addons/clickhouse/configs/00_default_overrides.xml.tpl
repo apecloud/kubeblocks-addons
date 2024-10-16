@@ -34,8 +34,8 @@
     </node>
     {{- end }}
   </zookeeper>
-  <!-- Prometheus metrics -->
   {{- end }}
+  <!-- Prometheus metrics -->
   <prometheus>
     <endpoint>/metrics</endpoint>
     <port from_env="CLICKHOUSE_METRICS_PORT"></port>
