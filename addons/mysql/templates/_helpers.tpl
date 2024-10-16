@@ -169,17 +169,8 @@ description: mysql component definition for Kubernetes
 updateStrategy: BestEffortParallel
 
 services:
-  - name: mysql-server
-    serviceName: mysql-server
+  - name: default
     roleSelector: primary
-    spec:
-      ports:
-        - name: mysql
-          port: 3306
-          targetPort: mysql
-  - name: mysql
-    serviceName: mysql
-    podService: true
     spec:
       ports:
         - name: mysql
