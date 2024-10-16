@@ -500,6 +500,8 @@ env:
     value: {{ .Values.orchestrator.topology.password }}
   - name: HA_COMPNENT
     value: orchestrator
+  - name: SERVICE_PORT
+    value: "3306"
 {{- end -}}
 
 {{- define "mysql.spec.runtime.exporter" -}}
