@@ -36,8 +36,6 @@ spec:
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         command:
           - syncer
-          - --config-path
-          - /tools/config/components
           - --port
           - "3601"
           - --
