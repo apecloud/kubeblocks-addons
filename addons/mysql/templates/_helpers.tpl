@@ -478,6 +478,21 @@ env:
     value: orchestrator
   - name: SERVICE_PORT
     value: "3306"
+ - name: SYNCER_POD_NAME
+   valueFrom:
+     fieldRef:
+       apiVersion: v1
+       fieldPath: metadata.name
+ - name: SYNCER_POD_UID
+   valueFrom:
+     fieldRef:
+       apiVersion: v1
+       fieldPath: metadata.uid
+ - name: SYNCER_POD_IP
+   valueFrom:
+     fieldRef:
+       apiVersion: v1
+       fieldPath: status.podIP
 {{- end -}}
 
 {{- define "mysql.spec.runtime.exporter" -}}

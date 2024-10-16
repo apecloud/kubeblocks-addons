@@ -50,12 +50,11 @@ spec:
             if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
               skip_slave_start="ON"
             fi
-            REPORT_HOST=${KB_CLUSTER_COMP_NAME}-mysql-${KB_POD_NAME##*-}
-            SERVICE_ID=$((${KB_POD_NAME##*-} + 1))
-            docker-entrypoint.sh mysqld --server-id $SERVICE_ID --report-host ${REPORT_HOST} \
+            SERVICE_ID=$((${SYNCER_POD_NAME##*-} + 1))
+            docker-entrypoint.sh mysqld --server-id $SERVICE_ID \
                --plugin-load-add=rpl_semi_sync_source=semisync_source.so \
                --plugin-load-add=rpl_semi_sync_replica=semisync_replica.so \
-               --log-bin=/var/lib/mysql/binlog/${KB_POD_NAME}-bin \
+               --log-bin=/var/lib/mysql/binlog/${SYNCER_POD_NAME}-bin \
                --skip-slave-start=$skip_slave_start
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
