@@ -85,15 +85,7 @@ spec:
           - /bin/bash
           - -c
           - |
-            . "$ZOOBINDIR"/zkEnv.sh > /dev/null
-            STAT=$(java -cp "$CLASSPATH" $CLIENT_JVMFLAGS $JVMFLAGS org.apache.zookeeper.client.FourLetterWordMain \
-            localhost 2181 srvr 2> /dev/null  | grep Mode)
-            mode=$(echo "$STAT" | awk -F': ' '{print $2}' | awk '{RS=""; ORS=""; print}' )
-            if [[ "$mode" == "standalone" ]]; then
-              echo -n "leader"
-            else
-              echo -n ${mode}
-            fi
+            /kubeblocks/scripts/roleprobe.sh
   runtime:
     volumes:
       - name: snapshot-log
