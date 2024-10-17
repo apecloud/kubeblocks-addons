@@ -63,9 +63,8 @@ spec:
             if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
               skip_slave_start="ON"
             fi
-            /scripts/mysql-entrypoint.sh
             SERVICE_ID=$((${SYNCER_POD_NAME##*-} + 1))
-            /scripts/docker-entrypoint-5.7.sh mysqld --server-id $SERVICE_ID \
+            docker-entrypoint.sh mysqld --server-id $SERVICE_ID \
               --ignore-db-dir=lost+found \
               --plugin-load-add=rpl_semi_sync_master=semisync_master.so \
               --plugin-load-add=rpl_semi_sync_slave=semisync_slave.so \
