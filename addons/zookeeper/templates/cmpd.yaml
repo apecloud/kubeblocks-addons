@@ -81,6 +81,7 @@ spec:
   lifecycleActions:
     roleProbe:
       exec:
+        container: zookeeper
         command:
           - /bin/bash
           - -c

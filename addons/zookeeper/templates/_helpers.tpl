@@ -73,7 +73,7 @@ zookeeper-{{ .Chart.Version }}
 Define zookeeper component definition regular expression name prefix
 */}}
 {{- define "zookeeper.cmpdRegexpPattern" -}}
-^zookeeper-*
+^zookeeper-
 {{- end -}}
 
 {{/*

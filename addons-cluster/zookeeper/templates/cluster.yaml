@@ -9,7 +9,8 @@ spec:
   {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
     - name: zookeeper
-      componentDef: zookeeper
+      ## TODO: use regex pattern when cluster validation supported
+      componentDef: zookeeper-{{ .Chart.Version }}
       replicas: {{ .Values.replicas }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       serviceVersion: {{ .Values.version }}

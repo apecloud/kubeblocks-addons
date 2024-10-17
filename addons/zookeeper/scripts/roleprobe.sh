@@ -9,8 +9,7 @@ load_zk_env() {
 
 get_zookeeper_mode() {
   local stat
-  stat=$(java -cp "$CLASSPATH" "$CLIENT_JVMFLAGS" "$JVMFLAGS" org.apache.zookeeper.client.FourLetterWordMain \
-    localhost 2181 srvr 2> /dev/null | grep Mode)
+  stat=$(java -cp "$CLASSPATH" $CLIENT_JVMFLAGS $JVMFLAGS org.apache.zookeeper.client.FourLetterWordMain localhost 2181 srvr 2> /dev/null | grep Mode)
   echo "$stat" | awk -F': ' '{print $2}' | awk '{RS=""; ORS=""; print}'
 }
 
