@@ -13,25 +13,30 @@ spec:
         - 3.8.4
         - 3.9.2
       compDefs:
-        - zookeeper
+        - {{ include "zookeeper.cmpdRegexpPattern" . }}
   releases:
     - name: 3.4.14
       serviceVersion: 3.4.14
       images:
         zookeeper: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:3.4.14
+        roleprobe: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:3.4.14
     - name: 3.6.4
       serviceVersion: 3.6.4
       images:
         zookeeper: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:3.6.4
+        roleprobe: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:3.6.4
     - name: 3.7.2
       serviceVersion: 3.7.2
       images:
         zookeeper: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:3.7.2
+        roleprobe: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:3.7.2
     - name: 3.8.4
       serviceVersion: 3.8.4
       images:
         zookeeper: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:3.8.4
+        roleprobe: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:3.8.4
     - name: 3.9.2
       serviceVersion: 3.9.2
       images:
         zookeeper: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:3.9.2
+        roleprobe: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:3.9.2
