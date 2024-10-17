@@ -203,7 +203,7 @@
 	foreign_key_checks?: bool & true | false | *true
 
 	// The list of operators supported by boolean full-text searches performed using IN BOOLEAN MODE.
-	ft_boolean_syntax?: ft_boolean_syntax?: string | *'+ -><()~*:""&|'
+	ft_boolean_syntax?: string | *'+ -><()~*:""&|'
 
 	// The maximum length of the word to be included in a MyISAM FULLTEXT index.FULLTEXT indexes on MyISAM tables must be rebuilt after changing this variable.
 	ft_max_word_len?: int & >= 10 & <= 84 | *84
