@@ -10,16 +10,16 @@ load_zk_env() {
 get_zookeeper_mode() {
   local stat
   stat=$(java -cp "$CLASSPATH" $CLIENT_JVMFLAGS $JVMFLAGS org.apache.zookeeper.client.FourLetterWordMain localhost 2181 srvr 2> /dev/null | grep Mode)
-  echo "$stat" | awk -F': ' '{print $2}' | awk '{RS=""; ORS=""; print}'
+  echo "$stat" | awk -F': ' '{print $2}' | tr -d '[:space:]\n'
 }
 
 get_zk_role() {
   local mode
   mode=$(get_zookeeper_mode)
   if [[ "$mode" == "standalone" ]]; then
-    echo "leader"
+    printf "leader"
   else
-    echo "$mode"
+    printf "%s" "$mode"
   fi
 }
 
