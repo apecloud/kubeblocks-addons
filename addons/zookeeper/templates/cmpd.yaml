@@ -59,6 +59,16 @@ spec:
       value: {{ .Values.zookeeper.dataDir }}
     - name: ZOOKEEPER_DATA_LOG_DIR
       value: {{ .Values.zookeeper.dataLogDir }}
+    - name: ZOOBINDIR
+      value: "/opt/bitnami/zookeeper/bin"
+    - name: ZOOBIN
+      value: "/opt/bitnami/zookeeper/bin"
+    - name: ZOO_ENABLE_AUTH
+      value: "yes"
+    - name: SERVICE_PORT
+      value: {{ .Values.metrics.port | quote }}
+    - name: ZOO_LOG4J_PROP
+      value: "INFO,ROLLINGFILE,TRACEFILE,CONSOLE"
   scripts:
     - name: zookeeper-scripts
       templateRef: {{ include "zookeeper.scriptsTplName" . }}
@@ -105,16 +115,6 @@ spec:
           - |
             /kubeblocks/scripts/startup.sh
         env:
-          - name: ZOOBINDIR
-            value: "/opt/bitnami/zookeeper/bin"
-          - name: ZOOBIN
-            value: "/opt/bitnami/zookeeper/bin"
-          - name: ZOO_ENABLE_AUTH
-            value: "yes"
-          - name: SERVICE_PORT
-            value: {{ .Values.metrics.port | quote }}
-          - name: ZOO_LOG4J_PROP
-            value: "INFO,ROLLINGFILE,TRACEFILE,CONSOLE"
           - name: CURRENT_POD_NAME
             valueFrom:
               fieldRef:
