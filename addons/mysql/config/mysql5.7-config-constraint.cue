@@ -16,12 +16,6 @@
 //along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #MysqlParameter: {
-	// This variable is available only if the authentication_windows Windows authentication plugin is enabled and debugging code is enabled.
-	authentication_windows_log_level?: int & >= 0 & <= 4 | *2
-
-	// This variable is available only if the authentication_windows Windows authentication plugin is enabled.
-	authentication_windows_use_principal_name?: bool & true | false | *true
-
 	// This variable is available if the server was compiled using OpenSSL (see Section 6.3.4, “SSL Library-Dependent Capabilities”).
 	auto_generate_certs?: bool & true | false | *true
 
@@ -1077,24 +1071,6 @@
 
 	// no-threadsone-thread-per-connectionloaded-dynamicallyThe thread-handling model used by the server for connection threads.
 	thread_handling?: string & "no-threads" | "one-thread-per-connection" | "loaded-dynamically" | *"one-thread-per-connection"
-
-	// This variable controls which algorithm the thread pool plugin uses:A value of 0 (the default) uses a conservative low-concurrency algorithm which is most well tested and is known to produce very good results.A value of 1 increases the concurrency and uses a more aggressive algorithm which at times has been known to perform 5–10% better on optimal thread counts, but has degrading performance as the number of connections increases.
-	thread_pool_algorithm?: int & >= 0 & <= 1 | *0
-
-	// This variable affects queuing of new statements prior to execution.
-	thread_pool_high_priority_connection?: int & >= 0 & <= 1 | *0
-
-	// The maximum permitted number of unused threads in the thread pool.
-	thread_pool_max_unused_threads?: int & >= 0 & <= 4096 | *0
-
-	// This variable affects statements waiting for execution in the low-priority queue.
-	thread_pool_prio_kickup_timer?: int & >= 0 & <= 4294967294 | *1000
-
-	// The number of thread groups in the thread pool.
-	thread_pool_size?: int & >= 1 & <= 64 | *16
-
-	// This variable affects executing statements.
-	thread_pool_stall_limit?: int & >= 4 & <= 600 | *6
 
 	// The stack size for each thread.
 	thread_stack?: int & >= 131072 & <= 18446744073709550592 | *262144
