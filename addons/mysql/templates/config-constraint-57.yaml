@@ -1,8 +1,8 @@
-{{- $cc := .Files.Get "config/mysql8-config-effect-scope.yaml" | fromYaml }}
+{{- $cc := .Files.Get "config/mysql5.7-config-effect-scope.yaml" | fromYaml }}
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
-  name: mysql-config-constraints
+  name: mysql-5.7-config-constraints
   labels:
     {{- include "mysql.labels" . | nindent 4 }}
 spec:
@@ -11,6 +11,7 @@ spec:
   reloadAction:
     tplScriptTrigger:
       sync: true
+      # still share same reload scripts with 8.0
       scriptConfigMapRef: mysql8.0-reload-script
       namespace: {{ .Release.Namespace }}
 
@@ -23,7 +24,7 @@ spec:
     # schemaInJSON: auto generate from cue scripts
     # example: ../../pkg/configuration/testdata/mysql_openapi.json
     cue: |-
-      {{- .Files.Get "config/mysql8-config-constraint.cue" | nindent 6 }}
+      {{- .Files.Get "config/mysql5.7-config-constraint.cue" | nindent 6 }}
 
   ## define static parameter list
   {{- if hasKey $cc "staticParameters" }}
@@ -34,7 +35,7 @@ spec:
     {{- end }}
   {{- end}}
 
-  ## define dynamic parameter list
+      ## define dynamic parameter list
   {{- if hasKey $cc "dynamicParameters" }}
   dynamicParameters:
    {{- $params := get $cc "dynamicParameters" }}
@@ -43,7 +44,7 @@ spec:
    {{- end }}
  {{- end}}
 
- ## define immutable parameter list, this feature is not currently supported.
+      ## define immutable parameter list, this feature is not currently supported.
  {{- if hasKey $cc "immutableParameters" }}
   immutableParameters:
    {{- $params := get $cc "immutableParameters" }}
@@ -53,7 +54,7 @@ spec:
  {{- end}}
 
 
-  # mysql configuration file format
+    # mysql configuration file format
   fileFormatConfig:
     format: ini
     iniConfig:
