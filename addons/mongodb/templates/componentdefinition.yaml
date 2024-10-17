@@ -87,7 +87,6 @@ spec:
           - cp
           - -r
           - /bin/syncer
-          - /config
           - /kubeblocks/
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
@@ -108,8 +107,6 @@ spec:
             containerPort: 3601
         command:
           - syncer
-          - --config-path
-          - /kubeblocks/config/components
           - --port
           - "3601"
           - --
