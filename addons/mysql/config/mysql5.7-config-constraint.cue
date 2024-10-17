@@ -35,7 +35,7 @@
 	back_log?: int & >= 1 & <= 65535
 
 	// The path to the MySQL installation base directory.big_tables
-	basedir?: string | *"configuration-dependent default"
+	basedir?: string
 
 	// If enabled, the server stores all temporary tables on disk rather than in memory.
 	big_tables?: bool & true | false | *false
