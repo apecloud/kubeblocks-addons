@@ -1,0 +1,28 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "vanilla-postgresql15.compDefName" . }}
+  labels:
+    {{- include "vanilla-postgresql.labels" . | nindent 4 }}
+spec:
+  {{- include "vanilla-postgresql.spec.common" . | nindent 2 }}
+  serviceVersion: {{ .Values.componentServiceVersion.vanillaPostgresql15 }}
+  configs:
+    - name: vanilla-postgresql-configuration
+      templateRef: {{ include "vanilla-postgresql15.configurationTemplate" . }}
+      constraintRef: {{ include "vanilla-postgresql15.configConstraint" . }}
+      keys:
+        - postgresql.conf
+      namespace: {{ .Release.Namespace }}
+      volumeName: postgresql-config
+      defaultMode: 0444
+  scripts:
+    - name: vanilla-postgresql-scripts
+      templateRef: {{ include "vanilla-postgresql.scriptsTemplate" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  runtime:
+    {{- include "vanilla-postgresql.spec.runtime.common" . | nindent 4 }}
+    containers:
+    {{- include "vanilla-postgresql.spec.runtime.container.common" . | nindent 6 }}
