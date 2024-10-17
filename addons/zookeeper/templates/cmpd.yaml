@@ -61,22 +61,22 @@ spec:
       value: {{ .Values.zookeeper.dataLogDir }}
   scripts:
     - name: zookeeper-scripts
-      templateRef: {{ include "zookeeper.name" . }}-scripts
+      templateRef: {{ include "zookeeper.scriptsTplName" . }}
       volumeName: scripts
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755
   configs:
     - name: zookeeper-config
       namespace: {{ .Release.Namespace }}
-      templateRef: {{ include "zookeeper.name" . }}-config-template
-      constraintRef: {{ include "zookeeper.name" . }}-config-constraints
+      templateRef: {{ include "zookeeper.configTplName" . }}
+      constraintRef: {{ include "zookeeper.configConstraintName" . }}
       volumeName: config
       defaultMode: 0755
       reRenderResourceTypes:
         - hscale
     - name: zookeeper-log
       namespace: {{ .Release.Namespace }}
-      templateRef: {{ include "zookeeper.name" . }}-configmap
+      templateRef: {{ include "zookeeper.logConfigTplName" . }}
       volumeName: config-log
   lifecycleActions:
     roleProbe:

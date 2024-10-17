@@ -75,3 +75,31 @@ Define zookeeper component definition regular expression name prefix
 {{- define "zookeeper.cmpdRegexpPattern" -}}
 ^zookeeper-*
 {{- end -}}
+
+{{/*
+Define zookeeper scripts template name
+*/}}
+{{- define "zookeeper.scriptsTplName" -}}
+zookeeper-scripts
+{{- end -}}
+
+{{/*
+Define zookeeper config template name
+*/}}
+{{- define "zookeeper.configTplName" -}}
+zookeeper-config-template
+{{- end -}}
+
+{{/*
+Define zookeeper config constraint name
+*/}}
+{{- define "zookeeper.configConstraintName" -}}
+zookeeper-config-constraints
+{{- end -}}
+
+{{/*
+Define zookeeper log config template name
+*/}}
+{{- define "zookeeper.logConfigTplName" -}}
+zookeeper-log-config-template
+{{- end -}}

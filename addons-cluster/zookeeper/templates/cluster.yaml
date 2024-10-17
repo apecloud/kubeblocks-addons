@@ -17,7 +17,7 @@ spec:
       {{- include "kblib.componentResources" . | indent 6 }}
       env:
         - name: ZOOKEEPER_IMAGE_VERSION
-          value: "{{ .Values.serviceVersion }}"
+          value: "{{ .Values.version }}"
       volumeClaimTemplates:
         - name: data
           spec:

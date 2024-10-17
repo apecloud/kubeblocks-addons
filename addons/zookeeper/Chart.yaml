@@ -16,7 +16,7 @@ keywords:
   - middleware
 
 maintainers:
-  - name: kubeblocks
+  - name: kubeJocker
     url: https://github.com/apecloud/kubeblocks/
   - name: kissycn
     url: https://github.com/kissycn

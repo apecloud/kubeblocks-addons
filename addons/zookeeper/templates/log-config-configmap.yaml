@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "zookeeper.name" . }}-configmap
+  name: {{ include "zookeeper.logConfigTplName" . }}
   labels:
     {{- include "zookeeper.labels" . | nindent 4 }}
 data:
