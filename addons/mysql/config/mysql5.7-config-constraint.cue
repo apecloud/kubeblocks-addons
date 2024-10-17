@@ -314,7 +314,7 @@
 	innodb_buffer_pool_load_now?: bool & true | false | *false
 
 	// The size in bytes of the buffer pool, the memory area where InnoDB caches table and index data.
-	innodb_buffer_pool_size?: int | *134217728
+	innodb_buffer_pool_size?: int & >=5242880 & <=18446744073709551615 @k8sResource(quantity)
 
 	// Maximum size for the InnoDBchange buffer, as a percentage of the total size of the buffer pool.
 	innodb_change_buffer_max_size?: int & >= 0 & <= 50 | *25
