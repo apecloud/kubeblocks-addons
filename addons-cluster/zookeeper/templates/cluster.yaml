@@ -10,7 +10,7 @@ spec:
   componentSpecs:
     - name: zookeeper
       ## TODO: use regex pattern when cluster validation supported
-      componentDef: zookeeper-{{ .Chart.Version }}
+      componentDef: zookeeper
       replicas: {{ .Values.replicas }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       serviceVersion: {{ .Values.version }}
