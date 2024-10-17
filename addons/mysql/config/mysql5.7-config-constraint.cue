@@ -68,7 +68,7 @@
 	binlog_order_commits?: string & "OFF" | "ON" | *"ON"
 
 	// full (Log all columns)minimal (Log only changed columns, and columns needed to identify rows)noblob (Log all columns, except for unneeded BLOB and TEXT columns)For MySQL row-based replication, this variable determines how row images are written to the binary log.In MySQL row-based replication, each row change event contains two images, a “before” image whose columns are matched against when searching for the row to be updated, and an “after” image containing the changes.
-	binlog_row_image?: string & "full " | "minimal " | "noblob " | *"full"
+	binlog_row_image?: string & "FULL" | "MINIMAL" | "NOBLOB" | *"FULL"
 
 	// This system variable affects row-based logging only.
 	binlog_rows_query_log_events?: string & "OFF" | "ON" | *"OFF"

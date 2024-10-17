@@ -49,7 +49,7 @@ thread_stack={{ $thread_stack }}
 thread_cache_size=60
 # ulimit -n
 open_files_limit=1048576
-local_infile=true
+local_infile=ON
 sql_mode=NO_ENGINE_SUBSTITUTION
 #Default 4000
 table_open_cache=4000
@@ -87,11 +87,11 @@ log_error_verbosity=2
 log_output=FILE
 {{- if hasKey $.component "enabledLogs" }}
 {{- if mustHas "slow" $.component.enabledLogs }}
-slow_query_log=true
+slow_query_log=ON
 long_query_time=5
 {{- end }}
 {{- if mustHas "general" $.component.enabledLogs }}
-general_log=true
+general_log=ON
 {{- end }}
 {{- end }}
 {{ end }}
@@ -116,16 +116,16 @@ key_buffer_size=16777216
 binlog_cache_size={{ $binlog_cache_size }}
 # AWS binlog_format=MIXED, Aliyun is ROW
 binlog_format=MIXED
-binlog_row_image=full
+binlog_row_image=FULL
 # Aliyun AWS binlog_order_commits=ON
-binlog_order_commits=true
+binlog_order_commits=ON
 log-bin={{ $data_root }}/binlog/mysql-bin
 log_bin_index={{ $data_root }}/binlog/mysql-bin.index
 expire_logs_days=7
 max_binlog_size=134217728
 # binlog_rows_query_log_events=ON #AWS not set
 # binlog_transaction_dependency_tracking=WRITESET    #Default Commit Order, Aws not set
-log_slave_updates=true
+log_slave_updates=ON
 
 # audit log
 loose_audit_log_handler=FILE # FILE, SYSLOG
