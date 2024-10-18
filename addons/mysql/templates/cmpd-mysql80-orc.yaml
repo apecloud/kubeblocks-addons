@@ -29,7 +29,7 @@ spec:
   configs:
     - name: mysql-replication-config
       templateRef: mysql-8.0-config-template
-      constraintRef: mysql-config-constraints
+      constraintRef: mysql-8.0-config-constraints
       volumeName: mysql-config
       namespace: {{ .Release.Namespace }}
       reRenderResourceTypes:
