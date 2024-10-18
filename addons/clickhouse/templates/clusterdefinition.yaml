@@ -44,4 +44,4 @@ spec:
     - name: clickhouse
       {{- include "clickhouse.clusterComponent" . | nindent 6 }}
     - name: ch-keeper
-      {{- include "clickhouse-keeper.clusterComponent" .| nindent 6 }}
+      {{- include "clickhouse-keeper.clusterComponent" . | nindent 6 }}

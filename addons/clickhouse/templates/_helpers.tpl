@@ -304,11 +304,6 @@ podSpec:
         runAsUser: 1001
       command:
         - /scripts/setup.sh
-      resources:
-        limits: {}
-        requests:
-          cpu: 250m
-          memory: 256Mi
       env:
         - name: POD_NAME
           valueFrom:
