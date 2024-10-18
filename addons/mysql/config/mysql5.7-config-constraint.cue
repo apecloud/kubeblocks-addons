@@ -17,7 +17,7 @@
 
 #MysqlParameter: {
 	// This variable is available if the server was compiled using OpenSSL (see Section 6.3.4, “SSL Library-Dependent Capabilities”).
-	auto_generate_certs?: bool & true | false | *true
+	auto_generate_certs?: string & "OFF" | "ON" | *"ON"
 
 	// auto_increment_increment and auto_increment_offset are intended for use with source-to-source replication, and can be used to control the operation of AUTO_INCREMENT columns.
 	auto_increment_increment?: int & >= 1 & <= 65535 | *1
@@ -26,10 +26,10 @@
 	auto_increment_offset?: int & >= 1 & <= 65535 | *1
 
 	// The autocommit mode.
-	autocommit?: bool & true | false | *true
+	autocommit?: string & "OFF" | "ON" | *"ON"
 
 	// When this variable has a value of 1 (the default), the server automatically grants the EXECUTE and ALTER ROUTINE privileges to the creator of a stored routine, if the user cannot already execute and alter or drop the routine.
-	automatic_sp_privileges?: bool & true | false | *true
+	automatic_sp_privileges?: string & "OFF" | "ON" | *"ON"
 
 	// The number of outstanding connection requests MySQL can have.
 	back_log?: int & >= 1 & <= 65535
@@ -38,7 +38,7 @@
 	basedir?: string
 
 	// If enabled, the server stores all temporary tables on disk rather than in memory.
-	big_tables?: bool & true | false | *false
+	big_tables?: string & "OFF" | "ON" | *"OFF"
 
 	// The MySQL server listens on a single network socket for TCP/IP connections.
 	bind_address?: string | *"*"
@@ -50,7 +50,7 @@
 	binlog_checksum?: string | *"CRC32"
 
 	// Due to concurrency issues, a replica can become inconsistent when a transaction contains updates to both transactional and nontransactional tables.
-	binlog_direct_non_transactional_updates?: bool & true | false | *false
+	binlog_direct_non_transactional_updates?: string & "OFF" | "ON" | *"OFF"
 
 	// IGNORE_ERRORABORT_SERVERControls what happens when the server encounters an error such as not being able to write to, flush or synchronize the binary log, which can cause the source's binary log to become inconsistent and replicas to lose synchronization.In MySQL 5.7.7 and higher, this variable defaults to ABORT_SERVER, which makes the server halt logging and shut down whenever it encounters such an error with the binary log.
 	binlog_error_action?: string & "IGNORE_ERROR" | "ABORT_SERVER" | *"ABORT_SERVER"
@@ -65,13 +65,13 @@
 	binlog_group_commit_sync_no_delay_count?: int & >= 0 & <= 100000 | *0
 
 	// When this variable is enabled on a replication source server (which is the default), transaction commit instructions issued to storage engines are serialized on a single thread, so that transactions are always committed in the same order as they are written to the binary log.
-	binlog_order_commits?: bool & true | false | *true
+	binlog_order_commits?: string & "OFF" | "ON" | *"ON"
 
 	// full (Log all columns)minimal (Log only changed columns, and columns needed to identify rows)noblob (Log all columns, except for unneeded BLOB and TEXT columns)For MySQL row-based replication, this variable determines how row images are written to the binary log.In MySQL row-based replication, each row change event contains two images, a “before” image whose columns are matched against when searching for the row to be updated, and an “after” image containing the changes.
-	binlog_row_image?: string & "full " | "minimal " | "noblob " | *"full"
+	binlog_row_image?: string & "FULL" | "MINIMAL" | "NOBLOB" | *"FULL"
 
 	// This system variable affects row-based logging only.
-	binlog_rows_query_log_events?: bool & true | false | *false
+	binlog_rows_query_log_events?: string & "OFF" | "ON" | *"OFF"
 
 	// This variable determines the size of the cache for the binary log to hold nontransactional statements issued during a transaction.Separate binary log transaction and statement caches are allocated for each client if the server supports any transactional storage engines and if the server has the binary log enabled (--log-bin option).
 	binlog_stmt_cache_size?: int & >= 4096 & <= 18446744073709547520 | *32768
@@ -107,7 +107,7 @@
 	character_sets_dir?: string
 
 	// Some authentication plugins implement proxy user mapping for themselves (for example, the PAM and Windows authentication plugins).
-	check_proxy_users?: bool & true | false | *false
+	check_proxy_users?: string & "OFF" | "ON" | *"OFF"
 
 	// The collation of the connection character set.
 	collation_connection?: string
@@ -128,25 +128,7 @@
 	connect_timeout?: int & >= 2 & <= 31536000 | *10
 
 	// Whether to write a core file if the server unexpectedly exits.
-	core_file?: bool & true | false | *false
-
-	// Enable this option on the source server to use the InnoDB memcached plugin (daemon_memcached) with the MySQL binary log.
-	daemon_memcached_enable_binlog?: bool & true | false | *false
-
-	// Specifies the shared library that implements the InnoDB memcached plugin.For more information, see Section 14.21.3, “Setting Up the InnoDB memcached Plugin”.daemon_memcached_engine_lib_path
-	daemon_memcached_engine_lib_name?: string | *"innodb_engine.so"
-
-	// The path of the directory containing the shared library that implements the InnoDBmemcached plugin.
-	daemon_memcached_engine_lib_path?: string | *"NULL"
-
-	// Used to pass space-separated memcached options to the underlying memcached memory object caching daemon on startup.
-	daemon_memcached_option?: string
-
-	// Specifies how many memcached read operations (get operations) to perform before doing a COMMIT to start a new transaction.
-	daemon_memcached_r_batch_size?: int & >= 1 & <= 1073741824 | *1
-
-	// Specifies how many memcached write operations, such as add, set, and incr, to perform before doing a COMMIT to start a new transaction.
-	daemon_memcached_w_batch_size?: int & >= 1 & <= 1048576 | *1
+	core_file?: string & "OFF" | "ON" | *"OFF"
 
 	// The path to the MySQL server data directory.
 	datadir?: string
@@ -173,13 +155,13 @@
 	disabled_storage_engines?: string | *"empty string"
 
 	// This variable controls how the server handles clients with expired passwords:If the client indicates that it can handle expired passwords, the value of disconnect_on_expired_password is irrelevant.
-	disconnect_on_expired_password?: bool & true | false | *true
+	disconnect_on_expired_password?: string & "OFF" | "ON" | *"ON"
 
 	// This variable indicates the number of digits by which to increase the scale of the result of division operations performed with the / operator.
 	div_precision_increment?: int & >= 0 & <= 30 | *4
 
 	// Whether optimizer JSON output should add end markers.
-	end_markers_in_json?: bool & true | false | *false
+	end_markers_in_json?: string & "OFF" | "ON" | *"OFF"
 
 	// This variable indicates the number of equality ranges in an equality comparison condition when the optimizer should switch from using index dives to index statistics in estimating the number of qualifying rows.
 	eq_range_index_dive_limit?: int & >= 0 & <= 4294967295 | *200
@@ -194,13 +176,13 @@
 	external_user?: string
 
 	// If ON, the server flushes (synchronizes) all changes to disk after each SQL statement.
-	flush?: bool & true | false | *false
+	flush?: string & "OFF" | "ON" | *"OFF"
 
 	// If this is set to a nonzero value, all tables are closed every flush_time seconds to free up resources and synchronize unflushed data to disk.
 	flush_time?: int & >= 0 & <= 31536000 | *0
 
 	// If set to 1 (the default), foreign key constraints are checked.
-	foreign_key_checks?: bool & true | false | *true
+	foreign_key_checks?: string & "OFF" | "ON" | *"ON"
 
 	// The list of operators supported by boolean full-text searches performed using IN BOOLEAN MODE.
 	ft_boolean_syntax?: string | *'+ -><()~*:""&|'
@@ -218,10 +200,10 @@
 	ft_stopword_file?: string
 
 	// Whether the general query log is enabled.
-	general_log?: bool & true | false | *false
+	general_log?: string & "OFF" | "ON" | *"OFF"
 
 	// The name of the general query log file.
-	general_log_file?: string | *"host_name.log"
+	general_log_file?: string
 
 	// The maximum permitted result length in bytes for the GROUP_CONCAT() function.
 	group_concat_max_len?: int & >= 4 & <= 18446744073709551615 | *1024
@@ -230,7 +212,7 @@
 	have_ssl?: string
 
 	// Whether the statement execution timeout feature is available (see Statement Execution Time Optimizer Hints).
-	have_statement_timeout?: bool & true | false
+	have_statement_timeout?: string & "OFF" | "ON"
 
 	// The MySQL server maintains an in-memory host cache that contains client host name and IP address information and is used to avoid Domain Name System (DNS) lookups; see Section 5.1.11.2, “DNS Lookups and the Host Cache”.The host_cache_size variable controls the size of the host cache, as well as the size of the Performance Schema host_cache table that exposes the cache contents.
 	host_cache_size?: int & >= 0 & <= 65536
@@ -245,13 +227,13 @@
 	init_file?: string
 
 	// Specifies whether to dynamically adjust the rate of flushing dirty pages in the InnoDBbuffer pool based on the workload.
-	innodb_adaptive_flushing?: bool & true | false | *true
+	innodb_adaptive_flushing?: string & "OFF" | "ON" | *"ON"
 
 	// Defines the low water mark representing percentage of redo log capacity at which adaptive flushing is enabled.
 	innodb_adaptive_flushing_lwm?: int & >= 0 & <= 70 | *10
 
 	// Whether the InnoDBadaptive hash index is enabled or disabled.
-	innodb_adaptive_hash_index?: bool & true | false | *true
+	innodb_adaptive_hash_index?: string & "OFF" | "ON" | *"ON"
 
 	// Partitions the adaptive hash index search system.
 	innodb_adaptive_hash_index_parts?: int & >= 1 & <= 512 | *8
@@ -263,13 +245,13 @@
 	innodb_api_bk_commit_interval?: int & >= 1 & <= 1073741824 | *5
 
 	// Use this option to disable row locks when InnoDB memcached performs DML operations.
-	innodb_api_disable_rowlock?: bool & true | false | *false
+	innodb_api_disable_rowlock?: string & "OFF" | "ON" | *"OFF"
 
 	// Lets you use the InnoDBmemcached plugin with the MySQL binary log.
-	innodb_api_enable_binlog?: bool & true | false | *false
+	innodb_api_enable_binlog?: string & "OFF" | "ON" | *"OFF"
 
 	// Locks the table used by the InnoDBmemcached plugin, so that it cannot be dropped or altered by DDL through the SQL interface.
-	innodb_api_enable_mdl?: bool & true | false | *false
+	innodb_api_enable_mdl?: string & "OFF" | "ON" | *"OFF"
 
 	// Controls the transaction isolation level on queries processed by the memcached interface.
 	innodb_api_trx_level?: int & >= 0 & <= 3 | *0
@@ -284,28 +266,28 @@
 	innodb_buffer_pool_chunk_size?: int | *134217728
 
 	// Specifies whether to record the pages cached in the InnoDBbuffer pool when the MySQL server is shut down, to shorten the warmup process at the next restart.
-	innodb_buffer_pool_dump_at_shutdown?: bool & true | false | *true
+	innodb_buffer_pool_dump_at_shutdown?: string & "OFF" | "ON" | *"ON"
 
 	// Immediately makes a record of pages cached in the InnoDBbuffer pool.
-	innodb_buffer_pool_dump_now?: bool & true | false | *false
+	innodb_buffer_pool_dump_now?: string & "OFF" | "ON" | *"OFF"
 
 	// Specifies the percentage of the most recently used pages for each buffer pool to read out and dump.
 	innodb_buffer_pool_dump_pct?: int & >= 1 & <= 100 | *25
 
 	// Specifies the name of the file that holds the list of tablespace IDs and page IDs produced by innodb_buffer_pool_dump_at_shutdown or innodb_buffer_pool_dump_now.
-	innodb_buffer_pool_filename?: string | *"ib_buffer_pool"
+	innodb_buffer_pool_filename?: string
 
 	// The number of regions that the InnoDBbuffer pool is divided into.
 	innodb_buffer_pool_instances?: int & >= 1 & <= 64
 
 	// Interrupts the process of restoring InnoDBbuffer pool contents triggered by innodb_buffer_pool_load_at_startup or innodb_buffer_pool_load_now.Enabling innodb_buffer_pool_load_abort triggers the abort action but does not alter the variable setting, which always remains OFF or 0.
-	innodb_buffer_pool_load_abort?: bool & true | false | *false
+	innodb_buffer_pool_load_abort?: string & "OFF" | "ON" | *"OFF"
 
 	// Specifies that, on MySQL server startup, the InnoDBbuffer pool is automatically warmed up by loading the same pages it held at an earlier time.
-	innodb_buffer_pool_load_at_startup?: bool & true | false | *true
+	innodb_buffer_pool_load_at_startup?: string & "OFF" | "ON" | *"ON"
 
 	// Immediately warms up the InnoDBbuffer pool by loading data pages without waiting for a server restart.
-	innodb_buffer_pool_load_now?: bool & true | false | *false
+	innodb_buffer_pool_load_now?: string & "OFF" | "ON" | *"OFF"
 
 	// The size in bytes of the buffer pool, the memory area where InnoDB caches table and index data.
 	innodb_buffer_pool_size?: int & >=5242880 & <=18446744073709551615 @k8sResource(quantity)
@@ -323,7 +305,7 @@
 	innodb_checksum_algorithm?: string & "crc32" | "strict_crc32" | "innodb" | "strict_innodb" | "none" | "strict_none" | *"crc32"
 
 	// Enables per-index compression-related statistics in the Information Schema INNODB_CMP_PER_INDEX table.
-	innodb_cmp_per_index_enabled?: bool & true | false | *false
+	innodb_cmp_per_index_enabled?: string & "OFF" | "ON" | *"OFF"
 
 	// The number of threads that can commit at the same time.
 	innodb_commit_concurrency?: int & >= 0 & <= 1000 | *0
@@ -353,13 +335,13 @@
 	innodb_default_row_format?: string & "REDUNDANT" | "COMPACT" | "DYNAMIC" | *"DYNAMIC"
 
 	// Disables resizing of the InnoDB buffer pool.
-	innodb_disable_resize_buffer_pool_debug?: bool & true | false | *true
+	innodb_disable_resize_buffer_pool_debug?: string & "OFF" | "ON" | *"ON"
 
 	// Disables the operating system file system cache for merge-sort temporary files.
-	innodb_disable_sort_file_cache?: bool & true | false | *false
+	innodb_disable_sort_file_cache?: string & "OFF" | "ON" | *"OFF"
 
 	// When enabled (the default), InnoDB stores all data twice, first to the doublewrite buffer, then to the actual data files.
-	innodb_doublewrite?: bool & true | false | *true
+	innodb_doublewrite?: string & "OFF" | "ON" | *"ON"
 
 	// 012The InnoDBshutdown mode.
 	innodb_fast_shutdown?: int | *1
@@ -368,7 +350,7 @@
 	innodb_fil_make_page_dirty_debug?: int | *0
 
 	// When innodb_file_per_table is enabled, tables are created in file-per-table tablespaces by default.
-	innodb_file_per_table?: bool & true | false | *true
+	innodb_file_per_table?: string & "OFF" | "ON" | *"ON"
 
 	// InnoDB performs a bulk load when creating or rebuilding indexes.
 	innodb_fill_factor?: int & >= 10 & <= 100 | *100
@@ -386,13 +368,13 @@
 	innodb_flush_neighbors?: string | *"1"
 
 	// The innodb_flush_sync variable, which is enabled by default, causes the innodb_io_capacity setting to be ignored during bursts of I/O activity that occur at checkpoints.
-	innodb_flush_sync?: bool & true | false | *true
+	innodb_flush_sync?: string & "OFF" | "ON" | *"ON"
 
 	// Number of iterations for which InnoDB keeps the previously calculated snapshot of the flushing state, controlling how quickly adaptive flushing responds to changing workloads.
 	innodb_flushing_avg_loops?: int & >= 1 & <= 1000 | *30
 
 	// Permits InnoDB to load tables at startup that are marked as corrupted.
-	innodb_force_load_corrupted?: bool & true | false | *false
+	innodb_force_load_corrupted?: string & "OFF" | "ON" | *"OFF"
 
 	// The crash recovery mode, typically only changed in serious troubleshooting situations.
 	innodb_force_recovery?: int & >= 0 & <= 6 | *0
@@ -404,10 +386,10 @@
 	innodb_ft_cache_size?: int & >= 1600000 & <= 80000000 | *8000000
 
 	// Whether to enable additional full-text search (FTS) diagnostic output.
-	innodb_ft_enable_diag_print?: bool & true | false | *false
+	innodb_ft_enable_diag_print?: string & "OFF" | "ON" | *"OFF"
 
 	// Specifies that a set of stopwords is associated with an InnoDB FULLTEXT index at the time the index is created.
-	innodb_ft_enable_stopword?: bool & true | false | *true
+	innodb_ft_enable_stopword?: string & "OFF" | "ON" | *"ON"
 
 	// Maximum character length of words that are stored in an InnoDB FULLTEXT index.
 	innodb_ft_max_token_size?: int & >= 10 & <= 84 | *84
@@ -449,13 +431,13 @@
 	innodb_log_buffer_size?: int & >= 1048576 & <= 4294967295 | *16777216
 
 	// Enable this debug option to force InnoDB to write a checkpoint.
-	innodb_log_checkpoint_now?: bool & true | false | *false
+	innodb_log_checkpoint_now?: string & "OFF" | "ON" | *"OFF"
 
 	// Enables or disables checksums for redo log pages.innodb_log_checksums=ON enables the CRC-32C checksum algorithm for redo log pages.
-	innodb_log_checksums?: bool & true | false | *true
+	innodb_log_checksums?: string & "OFF" | "ON" | *"ON"
 
 	// Specifies whether images of re-compressedpages are written to the redo log.
-	innodb_log_compressed_pages?: bool & true | false | *true
+	innodb_log_compressed_pages?: string & "OFF" | "ON" | *"ON"
 
 	// The size in bytes of each log file in a log group.
 	innodb_log_file_size?: int | *50331648
@@ -503,7 +485,7 @@
 	innodb_monitor_reset_all?: string & "counter" | "module" | "pattern" | "all" | *"NULL"
 
 	// Enables the NUMA interleave memory policy for allocation of the InnoDB buffer pool.
-	innodb_numa_interleave?: bool & true | false | *false
+	innodb_numa_interleave?: string & "OFF" | "ON" | *"OFF"
 
 	// Specifies the approximate percentage of the InnoDBbuffer pool used for the old block sublist.
 	innodb_old_blocks_pct?: int & >= 5 & <= 95 | *37
@@ -518,7 +500,7 @@
 	innodb_open_files?: int & >= 10 & <= 2147483647
 
 	// Changes the way OPTIMIZE TABLE operates on InnoDB tables.
-	innodb_optimize_fulltext_only?: bool & true | false | *false
+	innodb_optimize_fulltext_only?: string & "OFF" | "ON" | *"OFF"
 
 	// The number of page cleaner threads that flush dirty pages from buffer pool instances.
 	innodb_page_cleaners?: int & >= 1 & <= 64 | *4
@@ -527,7 +509,7 @@
 	innodb_page_size?: string | *"16384"
 
 	// When this option is enabled, information about all deadlocks in InnoDB user transactions is recorded in the mysqld error log.
-	innodb_print_all_deadlocks?: bool & true | false | *false
+	innodb_print_all_deadlocks?: string & "OFF" | "ON" | *"OFF"
 
 	// Defines the number of undo log pages that purge parses and processes in one batch from the history list.
 	innodb_purge_batch_size?: int & >= 1 & <= 5000 | *300
@@ -539,7 +521,7 @@
 	innodb_purge_threads?: int & >= 1 & <= 32 | *4
 
 	// Enables the random read-ahead technique for optimizing InnoDB I/O.For details about performance considerations for different types of read-ahead requests, see Section 14.8.3.4, “Configuring InnoDB Buffer Pool Prefetching (Read-Ahead)”.
-	innodb_random_read_ahead?: bool & true | false | *false
+	innodb_random_read_ahead?: string & "OFF" | "ON" | *"OFF"
 
 	// Controls the sensitivity of linear read-ahead that InnoDB uses to prefetch pages into the buffer pool.
 	innodb_read_ahead_threshold?: int & >= 0 & <= 64 | *56
@@ -548,13 +530,13 @@
 	innodb_read_io_threads?: int & >= 1 & <= 64 | *4
 
 	// Starts InnoDB in read-only mode.
-	innodb_read_only?: bool & true | false | *false
+	innodb_read_only?: string & "OFF" | "ON" | *"OFF"
 
 	// The replication thread delay in milliseconds on a replica server if innodb_thread_concurrency is reached.innodb_rollback_on_timeout
 	innodb_replication_delay?: int & >= 0 & <= 4294967295 | *0
 
 	// InnoDB rolls back only the last statement on a transaction timeout by default.
-	innodb_rollback_on_timeout?: bool & true | false | *false
+	innodb_rollback_on_timeout?: string & "OFF" | "ON" | *"OFF"
 
 	// Defines the number of rollback segments used by InnoDB for transactions that generate undo records.
 	innodb_rollback_segments?: int & >= 1 & <= 128 | *128
@@ -569,16 +551,16 @@
 	innodb_spin_wait_delay?: int | *6
 
 	// Causes InnoDB to automatically recalculate persistent statistics after the data in a table is changed substantially.
-	innodb_stats_auto_recalc?: bool & true | false | *true
+	innodb_stats_auto_recalc?: string & "OFF" | "ON" | *"ON"
 
 	// nulls_equalnulls_unequalnulls_ignoredHow the server treats NULL values when collecting statistics about the distribution of index values for InnoDB tables.
 	innodb_stats_method?: string & "nulls_equal" | "nulls_unequal" | "nulls_ignored" | *"nulls_equal"
 
 	// This option only applies when optimizer statistics are configured to be non-persistent.
-	innodb_stats_on_metadata?: bool & true | false | *false
+	innodb_stats_on_metadata?: string & "OFF" | "ON" | *"OFF"
 
 	// Specifies whether InnoDB index statistics are persisted to disk.
-	innodb_stats_persistent?: bool & true | false | *true
+	innodb_stats_persistent?: string & "OFF" | "ON" | *"ON"
 
 	// The number of index pages to sample when estimating cardinality and other statistics for an indexed column, such as those calculated by ANALYZE TABLE.
 	innodb_stats_persistent_sample_pages?: int & >= 1 & <= 18446744073709551615 | *20
@@ -587,25 +569,25 @@
 	innodb_stats_transient_sample_pages?: int & >= 1 & <= 18446744073709551615 | *8
 
 	// Enables or disables periodic output for the standard InnoDB Monitor.
-	innodb_status_output?: bool & true | false | *false
+	innodb_status_output?: string & "OFF" | "ON" | *"OFF"
 
 	// Enables or disables the InnoDB Lock Monitor.
-	innodb_status_output_locks?: bool & true | false | *false
+	innodb_status_output_locks?: string & "OFF" | "ON" | *"OFF"
 
 	// When innodb_strict_mode is enabled, InnoDB returns errors rather than warnings when checking for invalid or incompatible table options.It checks that KEY_BLOCK_SIZE, ROW_FORMAT, DATA DIRECTORY, TEMPORARY, and TABLESPACE options are compatible with each other and other settings.innodb_strict_mode=ON also enables a row size check when creating or altering a table, to prevent INSERT or UPDATE from failing due to the record being too large for the selected page size.You can enable or disable innodb_strict_mode on the command line when starting mysqld, or in a MySQL configuration file.
-	innodb_strict_mode?: bool & true | false | *true
+	innodb_strict_mode?: string & "OFF" | "ON" | *"ON"
 
 	// Defines the size of the mutex/lock wait array.
 	innodb_sync_array_size?: int & >= 1 & <= 1024 | *1
 
 	// Enables sync debug checking for the InnoDB storage engine.
-	innodb_sync_debug?: bool & true | false | *false
+	innodb_sync_debug?: string & "OFF" | "ON" | *"OFF"
 
 	// The number of times a thread waits for an InnoDB mutex to be freed before the thread is suspended.innodb_sync_debug
 	innodb_sync_spin_loops?: int & >= 0 & <= 4294967295 | *30
 
 	// If autocommit = 0, InnoDB honors LOCK TABLES; MySQL does not return from LOCK TABLES ...
-	innodb_table_locks?: bool & true | false | *true
+	innodb_table_locks?: string & "OFF" | "ON" | *"ON"
 
 	// Defines the relative path, name, size, and attributes of InnoDBtemporary tablespace data files.
 	innodb_temp_data_file_path?: string | *"ibtmp1:12M:autoextend"
@@ -617,7 +599,7 @@
 	innodb_thread_sleep_delay?: int & >= 0 & <= 1000000 | *10000
 
 	// Pauses purging of delete-marked records while allowing the purge view to be updated.
-	innodb_trx_purge_view_update_only_debug?: bool & true | false | *false
+	innodb_trx_purge_view_update_only_debug?: string & "OFF" | "ON" | *"OFF"
 
 	// Sets a debug flag that limits TRX_RSEG_N_SLOTS to a given value for the trx_rsegf_undo_find_free function that looks for free slots for undo log segments.
 	innodb_trx_rseg_n_slots_debug?: int & >= 0 & <= 1024 | *0
@@ -626,10 +608,10 @@
 	innodb_undo_directory?: string
 
 	// When enabled, undo tablespaces that exceed the threshold value defined by innodb_max_undo_log_size are marked for truncation.
-	innodb_undo_log_truncate?: bool & true | false | *false
+	innodb_undo_log_truncate?: string & "OFF" | "ON" | *"OFF"
 
 	// Specifies whether to use the Linux asynchronous I/O subsystem.
-	innodb_use_native_aio?: bool & true | false | *true
+	innodb_use_native_aio?: string & "OFF" | "ON" | *"ON"
 
 	// The number of I/O threads for write operations in InnoDB.
 	innodb_write_io_threads?: int & >= 1 & <= 64 | *4
@@ -641,7 +623,7 @@
 	internal_tmp_disk_storage_engine?: string & "MYISAM" | "INNODB" | *"INNODB"
 
 	// If a MyISAM table is created with no DATA DIRECTORY option, the .MYD file is created in the database directory.
-	keep_files_on_create?: bool & true | false | *false
+	keep_files_on_create?: string & "OFF" | "ON" | *"OFF"
 
 	// Index blocks for MyISAM tables are buffered and are shared by all threads.
 	key_buffer_size?: int | *8388608
@@ -656,7 +638,7 @@
 	key_cache_division_limit?: int & >= 1 & <= 100 | *100
 
 	// Whether mysqld was compiled with options for large file support.large_pages
-	large_files_support?: bool & true | false
+	large_files_support?: string & "OFF" | "ON"
 
 	// If large page support is enabled, this shows the size of memory pages.
 	large_page_size?: int & >= 0 & <= 65535 | *0
@@ -674,16 +656,16 @@
 	license?: string | *"GPL"
 
 	// This variable controls server-side LOCAL capability for LOAD DATA statements.
-	local_infile?: bool & true | false | *true
+	local_infile?: string & "OFF" | "ON" | *"ON"
 
 	// This variable specifies the timeout in seconds for attempts to acquire metadata locks.
 	lock_wait_timeout?: int & >= 1 & <= 31536000 | *31536000
 
 	// Whether mysqld was locked in memory with --memlock.log_error
-	locked_in_memory?: bool & true | false | *false
+	locked_in_memory?: string & "OFF" | "ON" | *"OFF"
 
 	// Whether the binary log is enabled.
-	log_bin?: bool & true | false
+	log_bin?: string & "OFF" | "ON"
 
 	// Holds the base name and path for the binary log files, which can be set with the --log-bin server option.
 	log_bin_basename?: string
@@ -692,13 +674,13 @@
 	log_bin_index?: string
 
 	// This variable applies when binary logging is enabled.
-	log_bin_trust_function_creators?: bool & true | false | *false
+	log_bin_trust_function_creators?: string & "OFF" | "ON" | *"OFF"
 
 	// Whether Version 2 binary logging is in use.
-	log_bin_use_v1_row_events?: bool & true | false | *false
+	log_bin_use_v1_row_events?: string & "OFF" | "ON" | *"OFF"
 
 	// This variable affects binary logging of user-management statements.
-	log_builtin_as_identified_by_password?: bool & true | false | *false
+	log_builtin_as_identified_by_password?: string & "OFF" | "ON" | *"OFF"
 
 	// The error log output destination.
 	log_error?: string
@@ -710,19 +692,19 @@
 	log_output?: string & "TABLE" | "FILE" | "NONE" | *"FILE"
 
 	// If you enable this variable with the slow query log enabled, queries that are expected to retrieve all rows are logged.
-	log_queries_not_using_indexes?: bool & true | false | *false
+	log_queries_not_using_indexes?: string & "OFF" | "ON" | *"OFF"
 
 	// Whether updates received by a replica server from a source server should be logged to the replica's own binary log.Normally, a replica does not log to its own binary log any updates that are received from a source server.
-	log_slave_updates?: bool & true | false | *false
+	log_slave_updates?: string & "OFF" | "ON" | *"OFF"
 
 	// Include slow administrative statements in the statements written to the slow query log.
-	log_slow_admin_statements?: bool & true | false | *false
+	log_slow_admin_statements?: string & "OFF" | "ON" | *"OFF"
 
 	// The facility for error log output written to syslog (what type of program is sending the message).
 	log_syslog_facility?: string | *"daemon"
 
 	// Whether to include the server process ID in each line of error log output written to syslog.
-	log_syslog_include_pid?: bool & true | false | *true
+	log_syslog_include_pid?: string & "OFF" | "ON" | *"ON"
 
 	// The tag to be added to the server identifier in error log output written to syslog.
 	log_syslog_tag?: string | *"empty string"
@@ -737,13 +719,13 @@
 	long_query_time?: int & >= 0 & <= 31536000 | *10
 
 	// If set to 1, all INSERT, UPDATE, DELETE, and LOCK TABLE WRITE statements wait until there is no pending SELECT or LOCK TABLE READ on the affected table.
-	low_priority_updates?: bool & true | false | *false
+	low_priority_updates?: string & "OFF" | "ON" | *"OFF"
 
 	// This variable describes the case sensitivity of file names on the file system where the data directory is located.
-	lower_case_file_system?: bool & true | false
+	lower_case_file_system?: string & "OFF" | "ON"
 
 	// Enabling this variable causes the source to verify events read from the binary log by examining checksums, and to stop with an error in the event of a mismatch.
-	master_verify_checksum?: bool & true | false | *false
+	master_verify_checksum?: string & "OFF" | "ON" | *"OFF"
 
 	// The maximum size of one packet or any generated/intermediate string, or any parameter sent by the mysql_stmt_send_long_data() C API function.
 	max_allowed_packet?: int & >= 1024 & <= 1073741824 | *4194304
@@ -818,10 +800,10 @@
 	myisam_stats_method?: string & "nulls_unequal" | "nulls_equal" | "nulls_ignored" | *"nulls_unequal"
 
 	// Use memory mapping for reading and writing MyISAM tables.mysql_native_password_proxy_users
-	myisam_use_mmap?: bool & true | false | *false
+	myisam_use_mmap?: string & "OFF" | "ON" | *"OFF"
 
 	// This variable controls whether the mysql_native_password built-in authentication plugin supports proxy users.
-	mysql_native_password_proxy_users?: bool & true | false | *false
+	mysql_native_password_proxy_users?: string & "OFF" | "ON" | *"OFF"
 
 	// Each client thread is associated with a connection buffer and result buffer.
 	net_buffer_length?: int & >= 1024 & <= 1048576 | *16384
@@ -839,13 +821,13 @@
 	ngram_token_size?: int & >= 1 & <= 10 | *2
 
 	// Whether the server is in “offline mode”, which has these characteristics:Connected client users who do not have the SUPER privilege are disconnected on the next request, with an appropriate error.
-	offline_mode?: bool & true | false | *false
+	offline_mode?: string & "OFF" | "ON" | *"OFF"
 
 	// old is a compatibility variable.
-	old?: bool & true | false | *false
+	old?: string & "OFF" | "ON" | *"OFF"
 
 	// When this variable is enabled, the server does not use the optimized method of processing an ALTER TABLE operation.
-	old_alter_table?: bool & true | false | *false
+	old_alter_table?: string & "OFF" | "ON" | *"OFF"
 
 	// The number of file descriptors available to mysqld from the operating system:At startup, mysqld reserves descriptors with setrlimit(), using the value requested at by setting this variable directly or by using the --open-files-limit option to mysqld_safe.
 	open_files_limit?: int
@@ -875,7 +857,7 @@
 	pid_file?: string
 
 	// The path name of the plugin directory.If the plugin directory is writable by the server, it may be possible for a user to write executable code to a file in the directory using SELECT ...
-	plugin_dir?: string | *"BASEDIR/lib/plugin"
+	plugin_dir?: string
 
 	// The number of the port on which the server listens for TCP/IP connections.
 	port?: int & >= 0 & <= 65535 | *3306
@@ -890,7 +872,7 @@
 	proxy_user?: string
 
 	// This system variable is for internal server use.
-	pseudo_slave_mode?: bool & true | false
+	pseudo_slave_mode?: string & "OFF" | "ON"
 
 	// This variable is for internal server use.Changing the session value of the pseudo_thread_id system variable changes the value returned by the CONNECTION_ID() function.query_alloc_block_size
 	pseudo_thread_id?: int & >= 0 & <= 2147483647 | *2147483647
@@ -914,16 +896,16 @@
 	read_buffer_size?: int & >= 8192 & <= 2147479552 | *131072
 
 	// If the read_only system variable is enabled, the server permits no client updates except from users who have the SUPER privilege.
-	read_only?: bool & true | false | *false
+	read_only?: string & "OFF" | "ON" | *"OFF"
 
 	// This variable is used for reads from MyISAM tables, and, for any storage engine, for Multi-Range Read optimization.When reading rows from a MyISAM table in sorted order following a key-sorting operation, the rows are read through this buffer to avoid disk seeks.
 	read_rnd_buffer_size?: int & >= 1 & <= 2147483647 | *262144
 
 	// Whether client connections to the server are required to use some form of secure transport.
-	require_secure_transport?: bool & true | false | *false
+	require_secure_transport?: string & "OFF" | "ON" | *"OFF"
 
 	// Controls whether semisynchronous replication is enabled on the source.
-	rpl_semi_sync_master_enabled?: bool & true | false | *false
+	rpl_semi_sync_master_enabled?: string & "OFF" | "ON" | *"OFF"
 
 	// A value in milliseconds that controls how long the source waits on a commit for acknowledgment from a replica before timing out and reverting to asynchronous replication.
 	rpl_semi_sync_master_timeout?: int & >= 0 & <= 4294967295 | *10000
@@ -935,7 +917,7 @@
 	rpl_semi_sync_master_wait_for_slave_count?: int & >= 1 & <= 65535 | *1
 
 	// Controls whether the source waits for the timeout period configured by rpl_semi_sync_master_timeout to expire, even if the replica count drops to less than the number of replicas configured by rpl_semi_sync_master_wait_for_slave_count during the timeout period.When the value of rpl_semi_sync_master_wait_no_slave is ON (the default), it is permissible for the replica count to drop to less than rpl_semi_sync_master_wait_for_slave_count during the timeout period.
-	rpl_semi_sync_master_wait_no_slave?: bool & true | false | *true
+	rpl_semi_sync_master_wait_no_slave?: string & "OFF" | "ON" | *"ON"
 
 	// AFTER_SYNCAFTER_COMMITThis variable controls the point at which a semisynchronous source waits for replica acknowledgment of transaction receipt before returning a status to the client that committed the transaction.
 	rpl_semi_sync_master_wait_point?: string & "AFTER_SYNC" | "AFTER_COMMIT" | *"AFTER_SYNC"
@@ -947,10 +929,10 @@
 	session_track_gtids?: string & "OFF" | "OWN_GTID" | "ALL_GTIDS" | *"OFF"
 
 	// Controls whether the server tracks when the default schema (database) is set within the current session and notifies the client to make the schema name available.If the schema name tracker is enabled, name notification occurs each time the default schema is set, even if the new schema name is the same as the old.For more information about session state tracking, see Section 5.1.15, “Server Tracking of Client Session State”.session_track_state_change
-	session_track_schema?: bool & true | false | *true
+	session_track_schema?: string & "OFF" | "ON" | *"ON"
 
 	// Controls whether the server tracks changes to the state of the current session and notifies the client when state changes occur.
-	session_track_state_change?: bool & true | false | *false
+	session_track_state_change?: string & "OFF" | "ON" | *"OFF"
 
 	// Controls whether the server tracks assignments to session system variables and notifies the client of the name and value of each assigned variable.
 	session_track_system_variables?: string | *"time_zone, autocommit, character_set_client, character_set_results, character_set_connection"
@@ -959,97 +941,97 @@
 	session_track_transaction_info?: string & "OFF" | "STATE" | "CHARACTERISTICS" | *"OFF"
 
 	// This variable is available if the server was compiled using OpenSSL (see Section 6.3.4, “SSL Library-Dependent Capabilities”).
-	sha256_password_auto_generate_rsa_keys?: bool & true | false | *true
+	sha256_password_auto_generate_rsa_keys?: string & "OFF" | "ON" | *"ON"
 
 	// This variable is available if MySQL was compiled using OpenSSL (see Section 6.3.4, “SSL Library-Dependent Capabilities”).
-	sha256_password_private_key_path?: string | *"private_key.pem"
+	sha256_password_private_key_path?: string
 
 	// This variable controls whether the sha256_password built-in authentication plugin supports proxy users.
-	sha256_password_proxy_users?: bool & true | false | *false
+	sha256_password_proxy_users?: string & "OFF" | "ON" | *"OFF"
 
 	// This variable is available if MySQL was compiled using OpenSSL (see Section 6.3.4, “SSL Library-Dependent Capabilities”).
-	sha256_password_public_key_path?: string | *"public_key.pem"
+	sha256_password_public_key_path?: string
 
 	// This is OFF if mysqld uses external locking (system locking), ON if external locking is disabled.
-	skip_external_locking?: bool & true | false | *true
+	skip_external_locking?: string & "OFF" | "ON" | *"ON"
 
 	// Whether to resolve host names when checking client connections.
-	skip_name_resolve?: bool & true | false | *false
+	skip_name_resolve?: string & "OFF" | "ON" | *"OFF"
 
 	// This variable controls whether the server permits TCP/IP connections.
-	skip_networking?: bool & true | false | *false
+	skip_networking?: string & "OFF" | "ON" | *"OFF"
 
 	// This prevents people from using the SHOW DATABASES statement if they do not have the SHOW DATABASES privilege.
-	skip_show_database?: bool & true | false | *false
+	skip_show_database?: string & "OFF" | "ON" | *"OFF"
 
 	// If creating a thread takes longer than this many seconds, the server increments the Slow_launch_threads status variable.slow_query_log
 	slow_launch_time?: int & >= 0 & <= 31536000 | *2
 
 	// Whether the slow query log is enabled.
-	slow_query_log?: bool & true | false | *false
+	slow_query_log?: string & "OFF" | "ON" | *"OFF"
 
 	// The name of the slow query log file.
-	slow_query_log_file?: string | *"host_name-slow.log"
+	slow_query_log_file?: string
 
 	// If this variable is enabled, then after a statement that successfully inserts an automatically generated AUTO_INCREMENT value, you can find that value by issuing a statement of the following form:If the statement returns a row, the value returned is the same as if you invoked the LAST_INSERT_ID() function.
-	sql_auto_is_null?: bool & true | false | *false
+	sql_auto_is_null?: string & "OFF" | "ON" | *"OFF"
 
 	// If set to OFF, MySQL aborts SELECT statements that are likely to take a very long time to execute (that is, statements for which the optimizer estimates that the number of examined rows exceeds the value of max_join_size).
-	sql_big_selects?: bool & true | false | *true
+	sql_big_selects?: string & "OFF" | "ON" | *"ON"
 
 	// If enabled, sql_buffer_result forces results from SELECT statements to be put into temporary tables.
-	sql_buffer_result?: bool & true | false | *false
+	sql_buffer_result?: string & "OFF" | "ON" | *"OFF"
 
 	// This variable controls whether logging to the binary log is enabled for the current session (assuming that the binary log itself is enabled).
-	sql_log_bin?: bool & true | false | *true
+	sql_log_bin?: string & "OFF" | "ON" | *"ON"
 
 	// OFF (enable logging)ON (disable logging)This variable controls whether logging to the general query log is disabled for the current session (assuming that the general query log itself is enabled).
-	sql_log_off?: bool & true | false | *false
+	sql_log_off?: string & "OFF" | "ON" | *"OFF"
 
 	// ALLOW_INVALID_DATESANSI_QUOTESERROR_FOR_DIVISION_BY_ZEROHIGH_NOT_PRECEDENCEIGNORE_SPACENO_AUTO_CREATE_USERNO_AUTO_VALUE_ON_ZERONO_BACKSLASH_ESCAPESNO_DIR_IN_CREATENO_ENGINE_SUBSTITUTIONNO_FIELD_OPTIONSNO_KEY_OPTIONSNO_TABLE_OPTIONSNO_UNSIGNED_SUBTRACTIONNO_ZERO_DATENO_ZERO_IN_DATEONLY_FULL_GROUP_BYPAD_CHAR_TO_FULL_LENGTHPIPES_AS_CONCATREAL_AS_FLOATSTRICT_ALL_TABLESSTRICT_TRANS_TABLESThe current server SQL mode, which can be set dynamically.
 	sql_mode?: string & "ALLOW_INVALID_DATES" | "ANSI_QUOTES" | "ERROR_FOR_DIVISION_BY_ZERO" | "HIGH_NOT_PRECEDENCE" | "IGNORE_SPACE" | "NO_AUTO_CREATE_USER" | "NO_AUTO_VALUE_ON_ZERO" | "NO_BACKSLASH_ESCAPES" | "NO_DIR_IN_CREATE" | "NO_ENGINE_SUBSTITUTION" | "NO_FIELD_OPTIONS" | "NO_KEY_OPTIONS" | "NO_TABLE_OPTIONS" | "NO_UNSIGNED_SUBTRACTION" | "NO_ZERO_DATE" | "NO_ZERO_IN_DATE" | "ONLY_FULL_GROUP_BY" | "PAD_CHAR_TO_FULL_LENGTH" | "PIPES_AS_CONCAT" | "REAL_AS_FLOAT" | "STRICT_ALL_TABLES" | "STRICT_TRANS_TABLES" | *"ONLY_FULL_GROUP_BY STRICT_TRANS_TABLES NO_ZERO_IN_DATE NO_ZERO_DATE ERROR_FOR_DIVISION_BY_ZERO NO_AUTO_CREATE_USER NO_ENGINE_SUBSTITUTION"
 
 	// If enabled (the default), diagnostics of Note level increment warning_count and the server records them.
-	sql_notes?: bool & true | false | *true
+	sql_notes?: string & "OFF" | "ON" | *"ON"
 
 	// If enabled (the default), the server quotes identifiers for SHOW CREATE TABLE and SHOW CREATE DATABASE statements.
-	sql_quote_show_create?: bool & true | false | *true
+	sql_quote_show_create?: string & "OFF" | "ON" | *"ON"
 
 	// If this variable is enabled, UPDATE and DELETE statements that do not use a key in the WHERE clause or a LIMIT clause produce an error.
-	sql_safe_updates?: bool & true | false | *false
+	sql_safe_updates?: string & "OFF" | "ON" | *"OFF"
 
 	// The maximum number of rows to return from SELECT statements.
 	sql_select_limit?: int & >= 0 & <= 18446744073709551615 | *18446744073709551615
 
 	// This variable controls whether single-row INSERT statements produce an information string if warnings occur.
-	sql_warnings?: bool & true | false | *false
+	sql_warnings?: string & "OFF" | "ON" | *"OFF"
 
 	// The path name of the Certificate Authority (CA) certificate file in PEM format.
-	ssl_ca?: string | *"NULL"
+	ssl_ca?: string
 
 	// The path name of the directory that contains trusted SSL Certificate Authority (CA) certificate files in PEM format.
-	ssl_capath?: string | *"NULL"
+	ssl_capath?: string
 
 	// The path name of the server SSL public key certificate file in PEM format.If the server is started with ssl_cert set to a certificate that uses any restricted cipher or cipher category, the server starts with support for encrypted connections disabled.
-	ssl_cert?: string | *"NULL"
+	ssl_cert?: string
 
 	// The list of permissible ciphers for connection encryption.
 	ssl_cipher?: string | *"NULL"
 
 	// The path name of the file containing certificate revocation lists in PEM format.
-	ssl_crl?: string | *"NULL"
+	ssl_crl?: string
 
 	// The path of the directory that contains certificate revocation-list files in PEM format.
-	ssl_crlpath?: string | *"NULL"
+	ssl_crlpath?: string
 
 	// The path name of the server SSL private key file in PEM format.
-	ssl_key?: string | *"NULL"
+	ssl_key?: string
 
 	// Sets a soft upper limit for the number of cached stored routines per connection.
 	stored_program_cache?: int & >= 16 & <= 524288 | *256
 
 	// If the read_only system variable is enabled, the server permits no client updates except from users who have the SUPER privilege.
-	super_read_only?: bool & true | false | *false
+	super_read_only?: string & "OFF" | "ON" | *"OFF"
 
 	// Controls how often the MySQL server synchronizes the binary log to disk.sync_binlog=0: Disables synchronization of the binary log to disk by the MySQL server.
 	sync_binlog?: int & >= 0 & <= 4294967295 | *1
@@ -1097,10 +1079,10 @@
 	transaction_write_set_extraction?: string | *"OFF"
 
 	// If set to 1 (the default), uniqueness checks for secondary indexes in InnoDB tables are performed.
-	unique_checks?: bool & true | false | *true
+	unique_checks?: string & "OFF" | "ON" | *"ON"
 
 	// This variable controls whether updates to a view can be made when the view does not contain all columns of the primary key defined in the underlying table, if the update statement contains a LIMIT clause.
-	updatable_views_with_limit?: bool & true | false | *false
+	updatable_views_with_limit?: string & "OFF" | "ON" | *"OFF"
 
 	// The CMake configuration program has a COMPILATION_COMMENT option that permits a comment to be specified when building MySQL.
 	version_comment?: string
