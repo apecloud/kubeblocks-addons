@@ -335,6 +335,11 @@ vars:
         port: Required
   - name: DATA_MOUNT
     value: {{.Values.dataMountPath}}
+  - name: MYSQL_POD_FQDN_LIST
+    valueFrom:
+      componentVarRef:
+        optional: false
+        podNames: Required
 
 exporter:
   containerName: mysql-exporter

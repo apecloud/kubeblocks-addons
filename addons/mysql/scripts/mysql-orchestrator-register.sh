@@ -52,14 +52,14 @@ register_to_orchestrator() {
 # and get the topology information of the current cluster from the orchestrator
 main() {
 
-  if [ -z "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" ] || [ -z "$KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST" ]; then
-    echo "Error: Required environment variables KB_CLUSTER_COMPONENT_POD_NAME_LIST or KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST are not set."
+  if [ -z "$MSYQL_POD_NAME_LIST" ] || [ -z "$MSYQL_POD_HOST_IP_LIST" ]; then
+    echo "Error: Required environment variables MYSQL_POD_NAME_LIST or MSYQL_POD_HOST_IP_LIST are not set."
     exit 1
   fi
 
   old_ifs="$IFS"
   IFS=','
-  pod_name_list=($KB_CLUSTER_COMPONENT_POD_NAME_LIST)
+  pod_name_list=($MYSQL_POD_NAME_LIST)
   pod_ip_list=($KB_CLUSTER_COMPONENT_POD_IP_LIST)
   IFS="$old_ifs"
   echo "pod_name_list: $pod_name_list"
