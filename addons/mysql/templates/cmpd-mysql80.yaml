@@ -56,8 +56,7 @@ spec:
           - bash
           - -c
           - |
-            mv {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
-            rm -rf {{ .Values.dataMountPath }}/plugin
+            cp {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
             chown -R mysql:root {{ .Values.dataMountPath }}
             skip_slave_start="OFF"
             if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
