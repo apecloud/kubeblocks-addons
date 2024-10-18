@@ -51,41 +51,27 @@ app.kubernetes.io/name: {{ include "rabbitmq.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
+{{/*
+Common annotations
+*/}}
+{{- define "rabbitmq.annotations" -}}
+helm.sh/resource-policy: keep              
+{{- end }}
 
 {{/*
-Return rabbitmq service port
+Define rabbitmq component definition name prefix
 */}}
-{{- define "rabbitmq.service.port" -}}
-{{- .Values.primary.service.ports.rabbitmq -}}
+{{- define "rabbitmq.cmpdNamePrefix" -}}
+{{- printf "rabbitmq-" -}}
 {{- end -}}
 
 {{/*
-Get the password key.
+Define rabbitmq component definition name
 */}}
-{{- define "rabbitmq.password" -}}
-{{- if or (.Release.IsInstall) (not (lookup "apps.kubeblocks.io/v1alpha1" "ClusterDefinition" "" "rabbitmq")) -}}
-{{ .Values.auth.password | default "$(RANDOM_PASSWD)"}}
+{{- define "rabbitmq.cmpdName" -}}
+{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+{{ include "rabbitmq.cmpdNamePrefix" . }}{{ .Chart.Version }}
 {{- else -}}
-{{ index (lookup "apps.kubeblocks.io/v1alpha1" "ClusterDefinition" "" "rabbitmq").spec.connectionCredential "password"}}
-{{- end }}
-{{- end }}
-
-{{/*
-Check if cluster version is enabled, if enabledClusterVersions is empty, return true,
-otherwise, check if the cluster version is in the enabledClusterVersions list, if yes, return true,
-else return false.
-Parameters: cvName, values
-*/}}
-{{- define "rabbitmq.isClusterVersionEnabled" -}}
-{{- $cvName := .cvName -}}
-{{- $enabledClusterVersions := .values.enabledClusterVersions -}}
-{{- if eq (len $enabledClusterVersions) 0 -}}
-    {{- true -}}
-{{- else -}}
-    {{- range $enabledClusterVersions -}}
-        {{- if eq $cvName . -}}
-            {{- true -}}
-        {{- end -}}
-    {{- end -}}
+{{ .Values.resourceNamePrefix}}-{{ .Chart.Version }}
 {{- end -}}
 {{- end -}}
