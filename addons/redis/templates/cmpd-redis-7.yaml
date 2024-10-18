@@ -223,6 +223,12 @@ spec:
           - /tools/config/dbctl/components
           - redis
           - getrole
+        env:
+          - name: KB_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
     postProvision:
       exec:
         image: {{ include "redis7.image" . }}

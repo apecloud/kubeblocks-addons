@@ -17,7 +17,7 @@ mode: replication
 ## if mode is standalone, replicas should be 1
 ## if mode is replication and replicas is 2, it means 1 primary and 1 secondary
 ## if mode is cluster and replicas is 2, it means every shard has 1 primary and 1 secondary, the count of shards is specified by redisCluster.shardCount
-replicas: 2
+replicas: 4
 
 ## @param cpu
 ##
