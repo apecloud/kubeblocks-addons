@@ -3,7 +3,10 @@ kind: BackupPolicyTemplate
 metadata:
   name: vanilla-postgresql-backup-policy-template
   labels:
+    clusterdefinition.kubeblocks.io/name: vanilla-postgresql
     {{- include "vanilla-postgresql.labels" . | nindent 4 }}
+  annotations:
+    dataprotection.kubeblocks.io/is-default-policy-template: "true"
 spec:
   backupPolicies:
   - componentDefs:
