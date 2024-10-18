@@ -39,10 +39,10 @@ generate_server_pool() {
   echo "$server"
 }
 
-startup() {
+build_startup_cmd() {
   if [ ! -f "$replicas_history_file" ]; then
-    echo "minio config don't existed"
-    exit 1
+    echo "minio config don't existed" >&2
+    return 1
   fi
 
   buckets="$MINIO_BUCKETS"
@@ -51,12 +51,23 @@ startup() {
   fi
 
   replicas=$(read_replicas_history "$replicas_history_file")
-  echo "the minio replicas history is $replicas"
+  echo "the minio replicas history is $replicas" >&2
 
   server=$(generate_server_pool $replicas)
-  echo "the minio server pool is $server"
+  echo "the minio server pool is $server" >&2
 
   cmd="/usr/bin/docker-entrypoint.sh minio server $server -S $CERTS_PATH --address :$MINIO_API_PORT --console-address :$MINIO_CONSOLE_PORT"
+  echo "$cmd"
+  return 0
+}
+
+startup() {
+  cmd=$(build_startup_cmd)
+  status=$?
+  if [ $status -ne 0 ]; then
+    echo "Failed to build startup command" >&2
+    exit 1
+  fi
   echo "Starting minio server with command: $cmd"
   eval "$cmd"
 }
