@@ -5,8 +5,8 @@ nameOverride: ""
 fullnameOverride: ""
 
 image:
-  registry: docker.io
-  repository: postgres
+  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
+  repository: apecloud/postgres
   digest: ""
   tags:
     major12:

@@ -1,19 +1,19 @@
 {{/*
-Define postgresql cluster definition name
+Define vanilla-postgresql cluster definition name
 */}}
 {{- define "vanilla-postgresql.clusterDefinition" -}}
 vanilla-postgresql
 {{- end -}}
 
 {{/*
-Define postgresql component version name
+Define vanilla-postgresql component version name
 */}}
 {{- define "vanilla-postgresql.componentVersion" -}}
 vanilla-postgresql
 {{- end -}}
 
 {{/*
-Define postgresql component definition name prefix
+Define vanilla-postgresql component definition name prefix
 */}}
 {{- define "vanilla-postgresql.componentDefNamePrefix" -}}
 {{- printf "vanilla-postgresql-" -}}
@@ -127,49 +127,49 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
 {{/*
-Define vanillaPostgresql12 component configuration template name
+Define vanilla-postgresql 12 component configuration template name
 */}}
 {{- define "vanilla-postgresql12.configurationTemplate" -}}
 vanilla-postgresql12-configuration
 {{- end -}}
 
 {{/*
-Define postgresql14 component configuration template name
+Define vanilla-postgresql 14 component configuration template name
 */}}
 {{- define "vanilla-postgresql14.configurationTemplate" -}}
 vanilla-postgresql14-configuration
 {{- end -}}
 
 {{/*
-Define postgresql15 component configuration template name
+Define vanilla-postgresql 15 component configuration template name
 */}}
 {{- define "vanilla-postgresql15.configurationTemplate" -}}
 vanilla-postgresql15-configuration
 {{- end -}}
 
 {{/*
-Define postgresql12 component config constraint name
+Define vanilla-postgresql 12 component config constraint name
 */}}
 {{- define "vanilla-postgresql12.configConstraint" -}}
 vanilla-postgresql12-cc
 {{- end -}}
 
 {{/*
-Define postgresql14 component config constraint name
+Define vanilla-postgresql 14 component config constraint name
 */}}
 {{- define "vanilla-postgresql14.configConstraint" -}}
 vanilla-postgresql14-cc
 {{- end -}}
 
 {{/*
-Define postgresql14 component config constraint name
+Define vanilla-postgresql 15 component config constraint name
 */}}
 {{- define "vanilla-postgresql15.configConstraint" -}}
 vanilla-postgresql15-cc
 {{- end -}}
 
 {{/*
-Define postgresql scripts configMap template name
+Define vanilla-postgresql scripts configMap template name
 */}}
 {{- define "vanilla-postgresql.scriptsTemplate" -}}
 vanilla-postgresql-scripts
@@ -194,6 +194,13 @@ Generate scripts configmap
 {{- $.Files.Get $path | nindent 2 }}
 {{- end }}
 {{- end }}
+
+{{/*
+Define vanilla-postgresql base backup actionset name
+*/}}
+{{- define "vanilla-postgresql.actionset.basebackup" -}}
+vanilla-pg-basebackup
+{{- end -}}
 
 {{- define "vanilla-postgresql.spec.common" -}}
 provider: kubeblocks
