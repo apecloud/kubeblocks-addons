@@ -1,4 +1,4 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1
 kind: ComponentVersion
 metadata:
   name: minio
@@ -9,7 +9,7 @@ spec:
     - releases:
         - 2024.6.29
       compDefs:
-        - minio
+        - {{ include "minio.cmpdRegexpPattern" . }}
   releases:
     - name: 2024.6.29
       serviceVersion: 2024.6.29
