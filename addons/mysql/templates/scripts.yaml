@@ -5,8 +5,6 @@ metadata:
   labels:
     {{- include "mysql.labels" . | nindent 4 }}
 data:
-  docker-entrypoint-5.7.sh: |-
-    {{- .Files.Get "scripts/docker-entrypoint-5.7.sh" | nindent 4 }}
   mysql-orchestrator-register.sh: |-
     {{- .Files.Get "scripts/mysql-orchestrator-register.sh" | nindent 4 }}
   init-mysql-instance-for-orc.sh: |-

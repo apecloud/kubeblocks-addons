@@ -4,6 +4,8 @@ metadata:
   name: {{ include "proxysql.componentDefName" . }}
   labels:
       {{- include "mysql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mysql.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
   description: mysql proxy definition for Kubernetes
