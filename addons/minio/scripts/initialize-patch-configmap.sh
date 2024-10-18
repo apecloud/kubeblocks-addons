@@ -1,44 +1,43 @@
-#!/bin/bash
+#!/bin/sh
 
 get_current_cm_key_value() {
-  local name=$1
-  local namespace=$2
-  local key=$3
+  name="$1"
+  namespace="$2"
+  key="$3"
 
   kubectl get configmaps "$name" -n "$namespace" -o jsonpath="{.data.$key}" | tr -d '[]'
 }
 
 update_cm_key_value() {
-  local name=$1
-  local namespace=$2
-  local key=$3
-  local new_value=$4
+  name="$1"
+  namespace="$2"
+  key="$3"
+  new_value="$4"
 
   kubectl patch configmap "$name" -n "$namespace" --type strategic -p "{\"data\":{\"$key\":\"$new_value\"}}"
 }
 
 get_cm_key_new_value() {
-  local cur=$1
-  local replicas=$2
+  cur="$1"
+  replicas="$2"
 
-  if [[ -z "$cur" ]]; then
-    echo "[$replicas]"
+  if [ -z "$cur" ]; then
+    printf "[%s]" "$replicas"
   else
-    IFS=',' read -ra array <<< "$cur"
-    last=${array[-1]}
-    if [[ "$last" == "$replicas" ]]; then
-      echo "[$cur]"
+    last=$(echo "$cur" | awk -F, '{print $NF}')
+    if [ "$last" = "$replicas" ]; then
+      printf "[%s]" "$cur"
     else
-      echo "[$cur,$replicas]"
+      printf "[%s,%s]" "$cur" "$replicas"
     fi
   fi
 }
 
 update_configmap() {
-  local name="$MINIO_COMPONENT_NAME-minio-configuration"
-  local namespace="$CLUSTER_NAMESPACE"
-  local key="MINIO_REPLICAS_HISTORY"
-  local replicas="$MINIO_COMP_REPLICAS"
+  name="$MINIO_COMPONENT_NAME-minio-configuration"
+  namespace="$CLUSTER_NAMESPACE"
+  key="MINIO_REPLICAS_HISTORY"
+  replicas="$MINIO_COMP_REPLICAS"
 
   cur=$(get_current_cm_key_value "$name" "$namespace" "$key")
   new=$(get_cm_key_new_value "$cur" "$replicas")

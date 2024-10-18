@@ -73,15 +73,15 @@ spec:
         clusterVarRef:
           namespace: Required
     - name: CLUSTER_DOMAIN
-      value: {{ .Values.clusterDomain }}
+      value: {{ .Values.clusterDomain | quote }}
     - name: CERTS_PATH
-      value: {{ .Values.certsPath }}
+      value: {{ .Values.certsPath | quote }}
     - name: MINIO_API_PORT
-      value: {{ .Values.minioAPIPort }}
+      value: {{ .Values.minioAPIPort | quote }}
     - name: MINIO_CONSOLE_PORT
-      value: {{ .Values.minioConsolePort }}
+      value: {{ .Values.minioConsolePort | quote}}
     - name: HTTP_PROTOCOL
-      value: {{ .Values.tls.enabled | ternary "https" "http" }}
+      value: {{ .Values.tls.enabled | ternary "https" "http" | quote }}
   lifecycleActions:
     roleProbe:
       exec:
@@ -96,8 +96,8 @@ spec:
       image: {{ .Values.image.registry | default "docker.io" }}/apecloud/kubeblocks-tools:0.8.2
       imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
       command:
-      - /bin/bash
-      - -c
+      - /bin/sh
+      - -ce
       - /scripts/initialize-patch-configmap.sh
       volumeMounts:
         - name: scripts
