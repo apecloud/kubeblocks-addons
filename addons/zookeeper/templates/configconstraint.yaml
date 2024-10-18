@@ -2,7 +2,7 @@
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
-  name: {{ include "zookeeper.name" . }}-config-constraints
+  name: {{ include "zookeeper.configConstraintName" . }}
   labels:
     {{- include "zookeeper.labels" . | nindent 4 }}
 spec:
