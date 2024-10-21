@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: loki-backend
+  name: {{ include "loki.backendCmpdName" . }}
   labels:
     {{- include "loki.labels" . | nindent 4 }}
   annotations:

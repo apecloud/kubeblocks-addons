@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: loki-read
+  name: {{ include "loki.readCmpdName" . }}
   labels:
     {{- include "loki.labels" . | nindent 4 }}
   annotations:

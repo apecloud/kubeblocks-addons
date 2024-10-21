@@ -506,3 +506,60 @@ query-scheduler fullname
 {{- define "loki.querySchedulerFullname" -}}
 {{ include "loki.fullname" . }}-query-scheduler
 {{- end }}
+
+{{/*
+Define loki backend component definition name
+*/}}
+{{- define "loki.backendCmpdName" -}}
+loki-backend-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define loki backend component definition regular expression name prefix
+*/}}
+{{- define "loki.backendCmpdRegexpPattern" -}}
+^loki-backend-
+{{- end -}}
+
+{{/*
+Define loki gateway component definition name
+*/}}
+{{- define "loki.gatewayCmpdName" -}}
+loki-gateway-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define loki backend component definition regular expression name prefix
+*/}}
+{{- define "loki.gatewayCmpdRegexpPattern" -}}
+^loki-gateway-
+{{- end -}}
+
+{{/*
+Define loki read component definition name
+*/}}
+{{- define "loki.readCmpdName" -}}
+loki-read-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define loki read component definition regular expression name prefix
+*/}}
+{{- define "loki.readCmpdRegexpPattern" -}}
+^loki-read-
+{{- end -}}
+
+
+{{/*
+Define loki write component definition name
+*/}}
+{{- define "loki.writeCmpdName" -}}
+loki-write-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define loki write component definition regular expression name prefix
+*/}}
+{{- define "loki.writeCmpdRegexpPattern" -}}
+^loki-write-
+{{- end -}}
