@@ -61,10 +61,12 @@ spec:
       value: {{ .Values.zookeeper.dataLogDir }}
     - name: ZOOBINDIR
       value: "/opt/bitnami/zookeeper/bin"
+    ## this var is used in the ZkServer.sh of bitnami image version 3.4
     - name: ZOOBIN
       value: "/opt/bitnami/zookeeper/bin"
     - name: ZOO_ENABLE_AUTH
       value: "yes"
+    ## this var needs to be preserved as Gemini will utilize this variable
     - name: SERVICE_PORT
       value: {{ .Values.metrics.port | quote }}
     - name: ZOO_LOG4J_PROP
