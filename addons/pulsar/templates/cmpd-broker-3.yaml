@@ -1,19 +1,21 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: pulsar-broker-{{include "pulsar.major.version" .}}
+  name: {{ include "pulsar3.brokerCmpdName" . }}
   labels:
-      {{- include "pulsar.labels" . | nindent 4 }}
+    {{- include "pulsar.labels" . | nindent 4 }}
+  annotations:
+    {{- include "pulsar.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
-  description: Pulsar broker.
+  description: Pulsar broker component definition
   serviceKind: pulsar
-  serviceVersion: {{ default .Chart.AppVersion .Values.clusterVersionOverride }}
+  serviceVersion: {{ .Values.defaultServiceVersion.broker.major3 }}
   vars:
     - name: ADVERTISED_PORT_PULSAR
       valueFrom:
         serviceVarRef:
-          compDef: pulsar-broker-{{include "pulsar.major.version" .}}
+          compDef: {{ include "pulsar3.brokerCmpdRegexPattern" . }}
           name: advertised-listener
           optional: true
           port:
@@ -22,7 +24,7 @@ spec:
     - name: ADVERTISED_PORT_KAFKA
       valueFrom:
         serviceVarRef:
-          compDef: pulsar-broker-{{include "pulsar.major.version" .}}
+          compDef: {{ include "pulsar3.brokerCmpdRegexPattern" . }}
           name: advertised-listener
           optional: true
           port:
@@ -51,9 +53,9 @@ spec:
   updateStrategy: BestEffortParallel
   configs:
     - name: broker-env
-      templateRef: {{ include "pulsar.name" . }}-broker-env-tpl
+      templateRef: {{ include "pulsar.brokerEnvTplName" . }}
       namespace: {{ .Release.Namespace }}
-      constraintRef: pulsar-env-constraints
+      constraintRef: {{ include "pulsar.envConstraintName" . }}
       keys:
         - conf
       injectEnvTo:
@@ -64,16 +66,19 @@ spec:
       reRenderResourceTypes:
         - vscale
     - name: broker-config
-      templateRef: {{ include "pulsar.name" . }}{{include "pulsar.major.version" .}}-broker-config-tpl
+      templateRef: {{ include "pulsar3.brokerConfigTplName" . }}
       namespace: {{ .Release.Namespace }}
-      constraintRef: pulsar{{include "pulsar.major.version" .}}-brokers-cc
+      constraintRef: {{ include "pulsar3.brokerConfigConstraintName" . }}
       volumeName: pulsar-config
   scripts:
     - name: pulsar-scripts
-      templateRef: {{ include "pulsar.name" . }}-scripts
+      templateRef: {{ include "pulsar.scriptsTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
+  exporter:
+    scrapePath: /metrics/
+    scrapePort: http
   runtime:
     securityContext:
       runAsNonRoot: true
@@ -82,8 +87,8 @@ spec:
       runAsGroup: 0
     initContainers:
       - name: init-broker-cluster
-        image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v3_0_2.broker "root" .) }}"
-        imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v3_0_2.broker "root" .) }}"
+        image: {{ include "pulsar3.brokerImage" . }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/init-broker.sh
         env:
@@ -103,8 +108,8 @@ spec:
           - name: scripts
             mountPath: /kb-scripts
       - name: init-sysctl
-        image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v3_0_2.broker "root" .) }}"
-        imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v3_0_2.broker "root" .) }}"
+        image: {{ include "pulsar3.brokerImage" . }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/init-broker-sysctl.sh
         securityContext:
@@ -125,8 +130,8 @@ spec:
               - ALL
           privileged: false
           runAsGroup: 0
-        image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v3_0_2.broker "root" .) }}"
-        imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v3_0_2.broker "root" .) }}"
+        image: {{ include "pulsar3.brokerImage" . }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/start-broker.sh
         resources:
@@ -208,6 +213,3 @@ spec:
             mountPath: /opt/pulsar/conf
           - name: broker-env
             mountPath: /opt/pulsar/none
-  exporter:
-    scrapePath: /metrics/
-    scrapePort: http

@@ -1,31 +1,36 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: pulsar-zookeeper-{{include "pulsar.major.version" .}}
+  name: {{ include "pulsar3.zookeeperCmpdName" . }}
   labels:
-      {{- include "pulsar.labels" . | nindent 4 }}
+    {{- include "pulsar.labels" . | nindent 4 }}
+  annotations:
+    {{- include "pulsar.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
-  description: Pulsar zookeeper.
+  description: Pulsar zookeeper component definition
   serviceKind: pulsar
-  serviceVersion: {{ default .Chart.AppVersion .Values.clusterVersionOverride }}
+  serviceVersion: {{ .Values.defaultServiceVersion.zookeeper.major3 }}
   updateStrategy: BestEffortParallel
   configs:
     - name: zookeeper-env
-      templateRef: {{ include "pulsar.name" . }}-zookeeper-env-tpl
+      templateRef: {{ include "pulsar.zookeeperEnvTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: zookeeper-config-env
-      constraintRef: pulsar-env-constraints
+      constraintRef: {{ include "pulsar.envConstraintName" . }}
       keys:
         - conf
       injectEnvTo:
         - zookeeper
   scripts:
     - name: pulsar-scripts
-      templateRef: {{ include "pulsar.name" . }}-scripts
+      templateRef: {{ include "pulsar.scriptsTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
+  exporter:
+    scrapePath: /metrics
+    scrapePort: http
   runtime:
     securityContext:
       fsGroup: 0
@@ -34,8 +39,8 @@ spec:
       runAsUser: 10000
     containers:
       - name: zookeeper
-        image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v3_0_2.zookeeper "root" .) }}"
-        imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v3_0_2.zookeeper "root" .) }}"
+        image: {{ include "pulsar3.zookeeperImage" . }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/start-zookeeper.sh
         env:
@@ -95,6 +100,3 @@ spec:
             mountPath: /kb-scripts
           - name: zookeeper-config-env
             mountPath: /opt/pulsar/none
-  exporter:
-    scrapePath: /metrics
-    scrapePort: http

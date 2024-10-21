@@ -1,14 +1,8 @@
 # Default values for Pulsar.
 
-clusterVersionOverride: ""
 nameOverride: ""
+
 fullnameOverride: ""
-
-## @param commonLabels Labels to add to all deployed objects
-##
-commonLabels: {}
-
-commonAnnotations: {}
 
 ## @param debugEnabled 
 #
@@ -95,8 +89,25 @@ metrics:
   service:
     port: 1234
 
-
 clusterDomain: ".cluster.local"
 
 # cloud provider: ["aws","gcp","aliyun","tencentCloud", "huaweiCloud", "azure"]
 cloudProvider: ""
+
+## @param define default serviceVersion of each Component
+defaultServiceVersion:
+  recovery:
+    major2: "2.11.2"
+    major3: "3.0.2"
+  bookkeeper:
+    major2: "2.11.2"
+    major3: "3.0.2"
+  broker:
+    major2: "2.11.2"
+    major3: "3.0.2"
+  proxy:
+    major2: "2.11.2"
+    major3: "3.0.2"
+  zookeeper:
+    major2: "2.11.2"
+    major3: "3.0.2"
