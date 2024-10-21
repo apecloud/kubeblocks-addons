@@ -1,0 +1,47 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: SidecarDefinition
+metadata:
+  name: wescale
+  labels:
+    {{- include "apecloud-mysql.labels" . | nindent 4 }}
+spec:
+  name: vtablet
+  owner: wescale
+  selectors:
+    - apecloud-mysql
+  containers:
+    - name: vtablet
+      command: ["/wescale-scripts/vttablet.sh"]
+      env:
+        - name: CELL
+          value: {{ .Values.wesqlscale.cell | default "zone1" | quote }}
+        - name: VTTABLET_PORT
+          value: "15100"
+        - name: VTTABLET_GRPC_PORT
+        - name: VTCTLD_HOST
+          value: "$(KB_CLUSTER_NAME)-wescale-ctrl-headless"
+        - name: VTCTLD_WEB_PORT
+          value: "15000"
+        - name: SERVICE_PORT
+          value: "$(VTTABLET_PORT)"
+      ports:
+        - containerPort: 15100
+          name: vttabletport
+        - containerPort: 16100
+          name: vttabletgrpc
+      volumeMounts:
+        - name: mysql-scale-config
+          mountPath: /conf
+        - name: mysql-scale-script
+          mountPath: /wescale-scripts
+        # - name: data
+        #   mountPath: /vtdataroot
+  configs:
+    - name: wescale-vttablet-config
+      templateRef: {{ include "apecloud-mysql.configTplVttabletName" . }}
+      volumeName: mysql-scale-config
+  scripts:
+    - name: wescale-vttablet-script
+      templateRef: {{ include "apecloud-mysql.scriptTplVttabletName" . }}
+      volumeName: mysql-scale-script
+  # TODO: shared volumes
