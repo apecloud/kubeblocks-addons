@@ -6,7 +6,8 @@ metadata:
     {{- include "zookeeper.labels" . | nindent 4 }}
 spec:
   serviceKind: Zookeeper
-  compDefs: [zookeeper]
+  compDefs:
+    - {{ include "zookeeper.cmpdRegexpPattern" . }}
   target:
     role: follower
     fallbackRole: leader

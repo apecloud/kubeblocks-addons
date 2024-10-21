@@ -49,3 +49,57 @@ Selector labels
 app.kubernetes.io/name: {{ include "zookeeper.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+
+{{/*
+Common annotations
+*/}}
+{{- define "zookeeper.annotations" -}}
+helm.sh/resource-policy: keep
+{{- end }}
+
+
+{{- define "zoocreeper.image" -}}
+{{ .Values.zoocreeperImage.registry | default (.Values.zoocreeperImage.registry | default "docker.io") }}/{{ .Values.zoocreeperImage.repository }}:{{ .Values.zoocreeperImage.tag }}
+{{- end }}}
+
+{{/*
+Define zookeeper component definition name
+*/}}
+{{- define "zookeeper.cmpdName" -}}
+zookeeper-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define zookeeper component definition regular expression name prefix
+*/}}
+{{- define "zookeeper.cmpdRegexpPattern" -}}
+^zookeeper-
+{{- end -}}
+
+{{/*
+Define zookeeper scripts template name
+*/}}
+{{- define "zookeeper.scriptsTplName" -}}
+zookeeper-scripts
+{{- end -}}
+
+{{/*
+Define zookeeper config template name
+*/}}
+{{- define "zookeeper.configTplName" -}}
+zookeeper-config-template
+{{- end -}}
+
+{{/*
+Define zookeeper config constraint name
+*/}}
+{{- define "zookeeper.configConstraintName" -}}
+zookeeper-config-constraints
+{{- end -}}
+
+{{/*
+Define zookeeper log config template name
+*/}}
+{{- define "zookeeper.logConfigTplName" -}}
+zookeeper-log-config-template
+{{- end -}}
