@@ -23,6 +23,16 @@ spec:
             protocol: TCP
             name: grpc
             targetPort: grpc
+  configs:
+    - name: loki-config
+      ## TODO: this cmpd is currently unavailable. It requires adding configuration templates.
+      templateRef: loki
+      volumeName: config
+      namespace: {{ .Release.Namespace }}
+    - name: loki-runtime-config
+      templateRef: loki-runtime
+      volumeName: runtime-config
+      namespace: {{ .Release.Namespace }}
   updateStrategy: BestEffortParallel
   runtime:
     automountServiceAccountToken: true
@@ -97,12 +107,3 @@ spec:
             name: data
           - mountPath: /rules
             name: sc-rules-volume
-  configs:
-    - name: loki-config
-      templateRef: loki
-      volumeName: config
-      namespace: {{ .Release.Namespace }}
-    - name: loki-runtime-config
-      templateRef: loki-runtime
-      volumeName: runtime-config
-      namespace: {{ .Release.Namespace }}

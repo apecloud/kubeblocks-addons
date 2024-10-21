@@ -17,6 +17,12 @@ spec:
             protocol: TCP
             name: http-metrics
             targetPort: http-metrics
+  configs:
+    - name: config-gateway
+      ## TODO: this cmpd is currently unavailable. It requires adding configuration templates.
+      templateRef: loki-gateway
+      volumeName: config
+      namespace: {{ .Release.Namespace }}
   updateStrategy: BestEffortParallel
   runtime:
     automountServiceAccountToken: true
@@ -56,8 +62,3 @@ spec:
             name: tmp
           - mountPath: /docker-entrypoint.d
             name: docker-entrypoint-d-override
-  configs:
-    - name: config-gateway
-      templateRef: loki-gateway
-      volumeName: config
-      namespace: {{ .Release.Namespace }}

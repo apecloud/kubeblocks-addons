@@ -24,18 +24,6 @@ If release name contains chart name it will be used as a full name.
 {{- end }}
 {{- end }}
 
-{{/* Create a default storage config that uses filesystem storage
-This is required for CI, but Loki will not be queryable with this default
-applied, thus it is encouraged that users override this.
-*/}}
-{{- define "loki.storageConfig" -}}
-{{- if .Values.loki.storageConfig -}}
-{{- .Values.loki.storageConfig | toYaml | nindent 4 -}}
-{{- else }}
-{{- .Values.loki.defaultStorageConfig | toYaml | nindent 4 }}
-{{- end}}
-{{- end}}
-
 {{/*
 Create chart name and version as used by the chart label.
 */}}
@@ -62,17 +50,6 @@ Selector labels
 app.kubernetes.io/name: {{ include "loki.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
-
-{{/*
-Create the name of the service account to use
-*/}}
-{{- define "loki.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create -}}
-    {{ default (include "loki.name" .) .Values.serviceAccount.name }}
-{{- else -}}
-    {{ default "default" .Values.serviceAccount.name }}
-{{- end -}}
-{{- end -}}
 
 {{/*
 Base template for building docker image reference
