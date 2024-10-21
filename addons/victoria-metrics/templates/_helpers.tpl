@@ -98,10 +98,3 @@ Define victoria-metrics select component definition regular expression name pref
 {{- define "vmselect.cmpdRegexpPattern" -}}
 ^vmselect-
 {{- end -}}
-
-{{/*
-Define victoria-metrics config name
-*/}}
-{{- define "victoria-metrics.configName" -}}
-{{ include "victoria-metrics.name" . }}-config
-{{- end -}}
