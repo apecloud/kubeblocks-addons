@@ -1,0 +1,34 @@
+# Default values for apecloud-mysql.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+imagePullSecrets: [ ]
+nameOverride: ""
+fullnameOverride: ""
+clusterVersionOverride: ""
+
+vtgateLogConfigs:
+  error: /vtdataroot/vtgate.ERROR
+  warning: /vtdataroot/vtgate.WARNING
+  info: /vtdataroot/vtgate.INFO
+  queryLog: /vtdataroot/vtgate_querylog.txt
+
+wesqlscale:
+  cell: "zone1"
+  image:
+    # refer: https://github.com/wesql/wescale/blob/main/docker/wesqlscale/Dockerfile.release
+    # if the value of wesqlscale.image.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
+    registry: ""
+    repository: apecloud/apecloud-mysql-scale
+    tag: "0.2.7"
+    pullPolicy: IfNotPresent
+
+## @param resourceNamePrefix Prefix for all resources name created by this chart, that can avoid name conflict
+## if you install multiple releases of this chart.
+## If specified, the cluster definition will use it as name.
+resourceNamePrefix: ""
+
+etcd:
+  etcdCmpdName: etcd
+
+clusterDomain: ".cluster.local"

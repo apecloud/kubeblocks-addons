@@ -97,22 +97,6 @@ mysql8.0-config-constraints
 {{- end -}}
 {{- end -}}
 
-{{- define "apecloud-mysql.configConstraintVttabletName" }}
-{{- if eq (len .Values.resourceNamePrefix) 0 -}}
-mysql-scale-vttablet-config-constraints
-{{- else -}}
-{{- .Values.resourceNamePrefix -}}-vttablet-config-constraints
-{{- end -}}
-{{- end -}}
-
-{{- define "apecloud-mysql.configConstraintVtgateName" }}
-{{- if eq (len .Values.resourceNamePrefix) 0 -}}
-mysql-scale-vtgate-config-constraints
-{{- else -}}
-{{- .Values.resourceNamePrefix -}}-vtgate-config-constraints
-{{- end -}}
-{{- end -}}
-
 {{- define "apecloud-mysql.configTplName" -}}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
 mysql8.0-config-template

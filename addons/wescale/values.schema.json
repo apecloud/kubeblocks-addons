@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "nameOverride": {
+      "title": "NameOverride",
+      "description": "Override name for K8s object metadata name.",
+      "type": "string",
+      "default": ""
+    },
+    "fullnameOverride": {
+      "title": "FullnameOverride",
+      "description": "Override fullname for fully qualified app name.",
+      "type": "string",
+      "default": ""
+    },
+    "clusterVersionOverride": {
+      "title": "ClusterVersionOverride",
+      "description": "Override cluster version in the metadata name of the ClusterVersion.",
+      "type": "string",
+      "default": ""
+    },
+    "vtgateLogConfigs": {
+      "title": "VtgateLogConfigs",
+      "description": "Log path configs for vtgate",
+      "type": "object",
+      "default": {
+        "error": "/vtdataroot/vtgate.ERROR",
+        "warning": "/vtdataroot/vtgate.WARNING",
+        "info": "/vtdataroot/vtgate.INFO",
+        "queryLog": "/vtdataroot/vtgate_querylog.txt"
+      },
+      "properties": {
+        "error": {
+          "title": "Error",
+          "description": "Absolute path for the error log.",
+          "type": "string",
+          "default": "/vtdataroot/vtgate.ERROR"
+        },
+        "warning": {
+          "title": "Warning",
+          "description": "Absolute path for the warning log.",
+          "type": "string",
+          "default": "/vtdataroot/vtgate.WARNING"
+        },
+        "info": {
+          "title": "Info",
+          "description": "Absolute path for the info log.",
+          "type": "string",
+          "default": "/vtdataroot/vtgate.INFO"
+        },
+        "queryLog": {
+          "title": "QueryLog",
+          "description": "Absolute path for the query log.",
+          "type": "string",
+          "default": "/vtdataroot/vtgate_querylog.txt"
+        }
+      }
+    },
+    "wesqlscale": {
+      "title": "Wesqlscale",
+      "description": "Configs for wesqlscale container of MySQL",
+      "type": "object",
+      "default": {
+        "cell": "zone1",
+        "image": {
+          "registry": "",
+          "repository": "apecloud/apecloud-mysql-scale",
+          "tag": "0.1.1",
+          "pullPolicy": "IfNotPresent"
+        }
+      },
+      "properties": {
+        "cell": {
+          "title": "Cell",
+          "description": "Cell.",
+          "type": "string",
+          "default": "zone1"
+        },
+        "image": {
+          "title": "Image",
+          "description": "Image.",
+          "type": "object",
+          "default": {
+            "registry": "",
+            "repository": "apecloud/apecloud-mysql-scale",
+            "tag": "0.1.1",
+            "pullPolicy": "IfNotPresent"
+          },
+          "properties": {
+            "registry": {
+              "title": "Registry",
+              "description": "Registry to download the image.",
+              "type": "string",
+              "default": ""
+            },
+            "repository": {
+              "title": "Repository.",
+              "description": "Image repository under the registry",
+              "type": "string",
+              "default": "apecloud/apecloud-mysql-scale"
+            },
+            "pullPolicy": {
+              "title": "PullPolicy",
+              "description": "Image pull policy.",
+              "type": "string",
+              "default": "IfNotPresent",
+              "enum": [
+                "IfNotPresent",
+                "Always",
+                "Never"
+              ]
+            },
+            "tag": {
+              "title": "Tag",
+              "description": "Image tag.",
+              "type": "string",
+              "default": "0.1.1"
+            }
+          }
+        }
+      }
+    }
+  }
+}
