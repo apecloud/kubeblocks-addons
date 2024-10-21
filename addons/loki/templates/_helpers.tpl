@@ -52,6 +52,13 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
+Common annotations
+*/}}
+{{- define "loki.annotations" -}}
+helm.sh/resource-policy: keep
+{{- end }}
+
+{{/*
 Base template for building docker image reference
 */}}
 {{- define "loki.baseImage" }}

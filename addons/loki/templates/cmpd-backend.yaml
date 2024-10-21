@@ -4,6 +4,8 @@ metadata:
   name: loki-backend
   labels:
     {{- include "loki.labels" . | nindent 4 }}
+  annotations:
+    {{- include "loki.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
   description: A Loki component definition for Kubernetes
