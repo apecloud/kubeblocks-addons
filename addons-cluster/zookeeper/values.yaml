@@ -27,7 +27,11 @@ memory: 2
 #  cpu: 1
 #  memory: 1
 
-
+## @param storage, the unit is Gi
 storage: 10
 
+## @param log storage, the unit is Gi
 logStorage: 2
+
+## sc for log and data
+storageClassName:
