@@ -107,7 +107,7 @@ pulsar-bookies-recovery-3-{{ .Chart.Version }}
 {{/*
 Define pulsar v2.X bookies reovery component definition name
 */}}
-{{- define "pulsar3.bkRecoveryCmpdName" -}}
+{{- define "pulsar2.bkRecoveryCmpdName" -}}
 pulsar-bookies-recovery-2-{{ .Chart.Version }}
 {{- end -}}
 

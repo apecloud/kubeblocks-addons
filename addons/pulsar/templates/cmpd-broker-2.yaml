@@ -1,0 +1,215 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "pulsar2.brokerCmpdName" . }}
+  labels:
+    {{- include "pulsar.labels" . | nindent 4 }}
+  annotations:
+    {{- include "pulsar.annotations" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: Pulsar broker component definition
+  serviceKind: pulsar
+  serviceVersion: {{ .Values.defaultServiceVersion.broker.major2 }}
+  vars:
+    - name: ADVERTISED_PORT_PULSAR
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "pulsar2.brokerCmpdRegexPattern" . }}
+          name: advertised-listener
+          optional: true
+          port:
+            name: pulsar
+            option: Optional
+    - name: ADVERTISED_PORT_KAFKA
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "pulsar2.brokerCmpdRegexPattern" . }}
+          name: advertised-listener
+          optional: true
+          port:
+            name: kafka-client
+            option: Optional
+  services:
+    - name: advertised-listener
+      serviceName: advertised-listener
+      podService: true
+      disableAutoProvision: true
+      spec:
+        type: NodePort
+        ports:
+          - name: pulsar
+            port: 6650
+            targetPort: pulsar
+          - name: kafka-client
+            port: 9092
+            targetPort: kafka-client
+  serviceRefDeclarations:
+    - name: pulsarZookeeper
+      serviceRefDeclarationSpecs:
+        - serviceKind: zookeeper
+          serviceVersion: ^3.8.\d{1,2}$
+      optional: true
+  updateStrategy: BestEffortParallel
+  configs:
+    - name: broker-env
+      templateRef: {{ include "pulsar.brokerEnvTplName" . }}
+      namespace: {{ .Release.Namespace }}
+      constraintRef: {{ include "pulsar.envConstraintName" . }}
+      keys:
+        - conf
+      injectEnvTo:
+        - init-broker-cluster
+        - broker
+        - init-pulsar-client-config
+      volumeName: broker-env
+      reRenderResourceTypes:
+        - vscale
+    - name: broker-config
+      templateRef: {{ include "pulsar2.brokerConfigTplName" . }}
+      namespace: {{ .Release.Namespace }}
+      constraintRef: {{ include "pulsar2.brokerConfigConstraintName" . }}
+      volumeName: pulsar-config
+  scripts:
+    - name: pulsar-scripts
+      templateRef: {{ include "pulsar.scriptsTplName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  exporter:
+    scrapePath: /metrics/
+    scrapePort: http
+  runtime:
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 10000
+      fsGroup: 0
+      runAsGroup: 0
+    initContainers:
+      - name: init-broker-cluster
+        image: {{ include "pulsar2.brokerImage" . }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+          - /kb-scripts/init-broker.sh
+        env:
+            {{- if .Values.debugEnabled }}
+          - name: PULSAR_LOG_ROOT_LEVEL
+            value: DEBUG
+          - name: PULSAR_LOG_LEVEL
+            value: DEBUG
+            {{- end }}
+          - name: brokerServiceUrl
+            value: pulsar://$(KB_CLUSTER_NAME)-broker-bootstrap.$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}:6650
+          - name: clusterName
+            value: $(KB_NAMESPACE)-$(KB_CLUSTER_COMP_NAME)
+          - name: webServiceUrl
+            value: http://$(KB_CLUSTER_NAME)-broker-bootstrap.$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}:80
+        volumeMounts:
+          - name: scripts
+            mountPath: /kb-scripts
+      - name: init-sysctl
+        image: {{ include "pulsar2.brokerImage" . }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+          - /kb-scripts/init-broker-sysctl.sh
+        securityContext:
+          privileged: true
+          runAsNonRoot: false
+          runAsUser: 0
+        volumeMounts:
+          - name: scripts
+            mountPath: /kb-scripts
+    containers:
+      - name: broker
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 10000
+          capabilities:
+            drop:
+              - ALL
+          privileged: false
+          runAsGroup: 0
+        image: {{ include "pulsar2.brokerImage" . }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+          - /kb-scripts/start-broker.sh
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+        env:
+            {{- if .Values.debugEnabled }}
+          - name: PULSAR_LOG_ROOT_LEVEL
+            value: DEBUG
+          - name: PULSAR_LOG_LEVEL
+            value: DEBUG
+            {{- end }}
+          - name: clusterName
+            value: $(KB_NAMESPACE)-$(KB_CLUSTER_COMP_NAME)
+          - name: SERVICE_PORT
+            value: "8080"
+          - name: brokerServiceUrl
+            value: pulsar://$(KB_CLUSTER_NAME)-broker-bootstrap.$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}:6650
+          - name: webServiceUrl
+            value: http://$(KB_CLUSTER_NAME)-broker-bootstrap.$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}:80
+          - name: POD_NAME
+            value: $(KB_POD_NAME)
+          - name: PULSAR_PREFIX_internalListenerName
+            value: cluster
+          - name: PULSAR_PREFIX_advertisedListeners
+            value: cluster:pulsar://$(POD_NAME).$(KB_CLUSTER_COMP_NAME)-headless.$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}:6650
+          # KoP configs:
+          #   https://github.com/streamnative/kop/blob/branch-3.0.0.4/docs/configuration.md#configuration
+          - name: PULSAR_PREFIX_allowAutoTopicCreationType
+            value: partitioned
+          - name: PULSAR_PREFIX_kafkaProtocolMap
+            value: "CLIENT:PLAINTEXT"
+          - name: PULSAR_PREFIX_kafkaListeners
+            value: CLIENT://0.0.0.0:9092
+          - name: PULSAR_PREFIX_kafkaAdvertisedListeners
+            value: CLIENT://$(POD_NAME).$(KB_CLUSTER_COMP_NAME)-headless.$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}:9092
+        ports:
+          - name: pulsar
+            containerPort: 6650
+          - name: http
+            containerPort: 8080
+          - name: kafka-client
+            containerPort: 9092
+        livenessProbe:
+          failureThreshold: 30
+          httpGet:
+            path: /status.html
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 100
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /status.html
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 100
+        startupProbe:
+          failureThreshold: 30
+          httpGet:
+            path: /status.html
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 100
+        volumeMounts:
+          - name: scripts
+            mountPath: /kb-scripts
+          - name: pulsar-config
+            mountPath: /opt/pulsar/conf
+          - name: broker-env
+            mountPath: /opt/pulsar/none
