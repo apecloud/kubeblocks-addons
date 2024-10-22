@@ -47,6 +47,28 @@ spec:
   exporter:
     scrapePath: /metrics
     scrapePort: http
+  vars:
+    - name: CLUSTER_DOMAIN
+      value: .{{ .Values.clusterDomain }}
+    - name: BOOKKEEPER_COMP_REPLICAS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          replicas: Required
+  lifecycleActions:
+    memberLeave:
+      exec:
+        container: bookies
+        command:
+          - /bin/bash
+          - -c
+          - /kb-scripts/bookies-member-leave.sh
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
   runtime:
     initContainers:
       - name: init-bookies
@@ -66,6 +88,12 @@ spec:
         volumeMounts:
           - name: scripts
             mountPath: /kb-scripts
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
     containers:
       - name: bookies
         image:  {{ include "pulsar2.bookiesImage" . }}
@@ -82,11 +110,12 @@ spec:
           - name: SERVICE_PORT
             value: "8000"
           - name: cluster_domain
-            value: {{ .Values.clusterDomain }}
-        lifecycle:
-          preStop:
-            exec:
-              command: [ "/kb-scripts/prestop-bookies.sh" ]
+            value: $(CLUSTER_DOMAIN)
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
         livenessProbe:
           failureThreshold: 60
           httpGet:

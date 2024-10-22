@@ -45,6 +45,16 @@ spec:
   exporter:
     scrapePath: /metrics/
     scrapePort: http
+  vars:
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: PROXY_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
   runtime:
     securityContext:
       runAsNonRoot: true
@@ -53,7 +63,7 @@ spec:
       runAsGroup: 0
     initContainers:
       - name: check-broker
-        image: {{ include "pulsar3.brokerImage" . }}
+        image: {{ include "pulsar3.proxyImage" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/init-proxy.sh
@@ -71,7 +81,7 @@ spec:
         {{- end }}
     containers:
       - name: proxy
-        image: {{ include "pulsar3.brokerImage" . }}
+        image: {{ include "pulsar3.proxyImage" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/start-proxy.sh
@@ -94,7 +104,7 @@ spec:
           - name: SERVICE_PORT
             value: "8080"
           - name: clusterName
-            value: $(KB_NAMESPACE)-$(KB_CLUSTER_COMP_NAME)
+            value: $(CLUSTER_NAMESPACE)-$(PROXY_COMPONENT_NAME)
           - name: webServicePort
             value: "8080"
             ## in order to avoid the kb complex service association logic involved when using brokers,
