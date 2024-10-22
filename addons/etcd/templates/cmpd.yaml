@@ -13,15 +13,29 @@ spec:
   serviceVersion: {{ .Chart.AppVersion }}
   runtime:
     initContainers:
-      - name: inject-shell
+      - name: inject-brinaries
         imagePullPolicy: {{default .Values.busyboxImage.pullPolicy "IfNotPresent"}}
         volumeMounts:
+          - name: scripts
+            mountPath: /scripts
           - name: shell
             mountPath: /shell
         command:
-          - bin/sh
+          - /bin/sh
           - -c
-          - scripts/inject-shell.sh
+          - scripts/inject-brinaries.sh
+      - name: inject-bash
+        imagePullPolicy: {{default .Values.bashImage.pullPolicy "IfNotPresent"}}
+        volumeMounts:
+          - name: scripts
+            mountPath: /scripts
+          - name: shell
+            mountPath: /shell
+        command:
+          - /usr/bin/env
+          - bash
+          - -c
+          - scripts/inject-bash.sh
     containers:
       - name: etcd
         imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -45,12 +59,13 @@ spec:
           - |
             export PATH=$PATH:/shell
             # for convenient to use the same entrypoint
-            if [ ! -e /bin/sh ]; then
-              cp /shell/sh /bin
+            if [ ! -e /bin/bash ]; then
+              cp /shell/lib/* /lib
+              cp /shell/bash /bin
             fi
             /scripts/start.sh
         env:
-          - name: POD_NAME
+          - name: CURRENT_POD_NAME
             valueFrom:
               fieldRef:
                 apiVersion: v1
@@ -131,7 +146,7 @@ spec:
         image: {{ .Values.image.registry | default "gcr.io" }}/{{ .Values.image.repository | default "etcd-development/etcd"}}:{{ .Values.image.tag.major3.minor5.patch6 }}
         container: etcd
         command:
-          - /bin/sh
+          - /bin/bash
           - -c
           - scripts/role-probe-script.sh
     memberJoin:
@@ -139,7 +154,7 @@ spec:
         image: {{ .Values.image.registry | default "gcr.io" }}/{{ .Values.image.repository | default "etcd-development/etcd"}}:{{ .Values.image.tag.major3.minor5.patch6 }}
         container: etcd
         command:
-          - /bin/sh
+          - /bin/bash
           - -c
           - scripts/etcd-member-leave.sh
     memberLeave:
@@ -147,7 +162,7 @@ spec:
         image: {{ .Values.image.registry | default "gcr.io" }}/{{ .Values.image.repository | default "etcd-development/etcd"}}:{{ .Values.image.tag.major3.minor5.patch6 }}
         container: etcd
         command:
-          - /bin/sh
+          - /bin/bash
           - -c
           - scripts/etcd-member-leave.sh
     switchover:
@@ -155,7 +170,7 @@ spec:
         image: {{ .Values.image.registry | default "gcr.io" }}/{{ .Values.image.repository | default "etcd-development/etcd"}}:{{ .Values.image.tag.major3.minor5.patch6 }}
         container: etcd
         command:
-          - /bin/sh
+          - /bin/bash
           - -c
           - scripts/switchover.sh
   configs:

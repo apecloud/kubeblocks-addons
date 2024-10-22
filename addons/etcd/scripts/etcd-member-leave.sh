@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # This is magic for shellspec ut framework. "test" is a `test [expression]` well known as a shell command.
 # Normally test without [expression] returns false. It means that __() { :; }

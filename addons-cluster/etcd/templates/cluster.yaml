@@ -34,18 +34,7 @@ spec:
         name: KubeBlocks
       {{- end }}
       replicas: {{ .Values.replicas | default "3" }}
-      {{- with .Values.resources }}
-      resources:
-        limits:
-          cpu: {{ .limits.cpu | quote }}
-          memory: {{ .limits.memory | quote }}
-        requests:
-          cpu: {{ .requests.cpu | quote }}
-          memory: {{ .requests.memory | quote }}
-      {{- end }}
-      {{- if .Values.persistence }}
       {{- include "kblib.componentStorages" . | indent 6 }}
-      {{- end }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
   {{- if .Values.clientService.name }}

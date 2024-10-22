@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 load_common_library() {
   # the kb-common.sh and common.sh scripts are defined in the scripts-template configmap

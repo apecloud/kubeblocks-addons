@@ -54,8 +54,6 @@ storage: 10
 #   cpu: 100m
 #   memory: 128Mi
 
-## @param persistence using Persistent Volume Claims
-persistence: true
 ## @param storageClassName, storage class name
 storageClassName:
 

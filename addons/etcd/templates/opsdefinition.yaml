@@ -45,7 +45,7 @@ spec:
                 - sh
                 - -c
                 - |
-                   get_client_protocol() {
+                  get_client_protocol() {
                     # check client tls if is enabled
                     line=$(grep 'advertise-client-urls' ${TMP_CONFIG_PATH})
                     if echo $line | grep -q 'https'; then
@@ -54,7 +54,7 @@ spec:
                       echo "http"
                     fi
                   }
-                  
+
                   exec_etcdctl() {
                     local endpoints=$1
                     shift

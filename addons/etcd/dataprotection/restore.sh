@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -ex
 
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"

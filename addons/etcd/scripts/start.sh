@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 default_template_conf="/etc/etcd/etcd.conf"
 real_conf="$TMP_CONFIG_PATH"
@@ -88,9 +88,6 @@ rebuild_etcd_conf() {
 }
 
 main() {
-  # load common library
-  load_common_library
-
   # rebuild etcd configuration
   if rebuild_etcd_conf; then
     log "Rebuilt etcd configuration successfully."
@@ -112,4 +109,5 @@ main() {
 ${__SOURCED__:+false} : || return 0
 
 # main
+load_common_library
 main "$@"

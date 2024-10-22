@@ -1,17 +1,6 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
-load_common_library() {
-  # the kb-common.sh and common.sh scripts are defined in the scripts-template configmap
-  # and are mounted to the same path which defined in the cmpd.spec.scripts
-  kblib_common_library_file="/scripts/kb-common.sh"
-  etcd_common_library_file="/scripts/common.sh"
-  # shellcheck source=/scripts/kb-common.sh
-  . "${kblib_common_library_file}"
-  # shellcheck source=/scripts/common.sh
-  . "${etcd_common_library_file}"
-}
-
-inject_binaries() {
+inject_bash() {
   version="$1"
 
   echo "$version" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$' || {
@@ -24,11 +13,13 @@ inject_binaries() {
   patch=$(echo "$version" | cut -d. -f3)
 
   # <=3.3 || <= 3.4.22 || <=3.5.6 all use busybox https://github.com/etcd-io/etcd/tree/main/CHANGELOG
-  if [ "$major" -lt 3 ] || { [ "$major" -eq 3 ] && { [ "$minor" -le 3 ] || { [ "$minor" -eq 4 ] && [ "$patch" -le 22 ]; } || { [ "$minor" -eq 5 ] && [ "$patch" -le 6 ]; }; }; }; then
-    cp /bin/sh /shell
-  else
+  # shellcheck disable=SC2235
+  if ! ([ "$major" -lt 3 ] || { [ "$major" -eq 3 ] && { [ "$minor" -le 3 ] || { [ "$minor" -eq 4 ] && [ "$patch" -le 22 ]; } || { [ "$minor" -eq 5 ] && [ "$patch" -le 6 ]; }; }; };) then
     echo "etcd image build with distroless, injecting brinaries in order to run scripts"
-    cp /bin/* /shell
+    mkdir -p /shell/lib
+    cp /usr/local/bin/bash /shell
+    cp /lib/ld-musl-aarch64.so.1 /shell/lib/ld-musl-aarch64.so.1
+    cp /usr/lib/libncursesw.so.6 /shell/lib/libncursesw.so.6
   fi
   return 0
 }
@@ -39,10 +30,10 @@ main() {
     exit 1
   fi
 
-  if inject_binaries "$ETCD_VERSION"; then
-    echo "Binaries injected successfully"
+  if inject_bash "$ETCD_VERSION"; then
+    echo "Bash injected successfully"
   else
-    echo "Failed to inject binaries" >&2
+    echo "Failed to inject bash" >&2
     exit 1
   fi
 }
@@ -55,5 +46,4 @@ main() {
 ${__SOURCED__:+false} : || return 0
 
 # main
-load_common_library
 main
