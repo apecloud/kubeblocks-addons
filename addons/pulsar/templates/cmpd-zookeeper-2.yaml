@@ -31,6 +31,12 @@ spec:
   exporter:
     scrapePath: /metrics
     scrapePort: http
+  vars:
+    - name: ZK_POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          optional: true
+          podNames: Required
   runtime:
     securityContext:
       fsGroup: 0

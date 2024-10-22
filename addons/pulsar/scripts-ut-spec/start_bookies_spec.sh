@@ -14,7 +14,7 @@ source ./utils.sh
 common_library_file="./common.sh"
 generate_common_library $common_library_file
 
-Describe "Pulsar Init Broker Bash Script Tests"
+Describe "Pulsar Start Bookies Bash Script Tests"
   # load the scripts to be tested and dependencies
   Include ../scripts/start-bookies.sh
   Include $common_library_file

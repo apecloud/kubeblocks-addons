@@ -7,7 +7,7 @@ if ! validate_shell_type_and_version "bash" 4 &>/dev/null; then
   exit 0
 fi
 
-Describe "Pulsar Init Broker Bash Script Tests"
+Describe "Pulsar Init Proxy Bash Script Tests"
   # load the scripts to be tested and dependencies
   Include ../scripts/init-proxy.sh
 
