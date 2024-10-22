@@ -104,12 +104,14 @@ setup_master_slave() {
   IFS=',' read -r -a replicas <<< "${MYSQL_POD_FQDN_LIST}"
   IFS="$old_ifs"
 
-  master_host=${replicas[0]}
+  master_fqdn=${replicas[0]}
+  master_last_digit=${master_fqdn##*-}
+  master_host=$(echo "${KB_CLUSTER_COMP_NAME}_MYSQL_${master_last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
   master_from_orc=""
   get_master_from_orc
 
-  last_digit=${SYNCER_POD_NAME##*-}
-  self_service_name=$(echo "${KB_CLUSTER_COMP_NAME}_MYSQL_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+  self_last_digit=${SYNCER_POD_NAME##*-}
+  self_service_name=$(echo "${KB_CLUSTER_COMP_NAME}_MYSQL_${self_last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
 
   # If the cluster is already registered to the Orchestrator and the Master of the cluster is itself, then no action is required.
   if [ "$master_from_orc" == "${self_service_name}" ]; then
@@ -123,7 +125,7 @@ setup_master_slave() {
 
 
   # If the master_host is empty, then this pod is the first one in the cluster, init cluster info database and create user.
-  if [[ $master_from_orc == "" && $last_digit -eq 0 ]]; then
+  if [[ $master_from_orc == "" && $self_last_digit -eq 0 ]]; then
     echo "Create MySQL User and Grant Permissions"
 
     if mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e "SELECT 1 FROM mysql.user WHERE user='$topology_user'" 2>/dev/null | grep $topology_user >/dev/null; then
@@ -208,6 +210,7 @@ change_master() {
 SET GLOBAL READ_ONLY=1;
 STOP SLAVE;
 CHANGE MASTER TO
+GET_MASTER_PUBLIC_KEY=1,
 MASTER_AUTO_POSITION=1,
 MASTER_CONNECT_RETRY=1,
 MASTER_RETRY_COUNT=86400,
