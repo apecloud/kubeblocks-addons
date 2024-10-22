@@ -3,12 +3,12 @@
 inject_binaries() {
   version="$1"
 
-  echo "$version" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$' || {
+  echo "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || {
     echo "Invalid version format, check ETCD_VERSION" >&2
     return 1
   }
 
-  major=$(echo "$version" | cut -d. -f1 | sed 's/^v//')
+  major=$(echo "$version" | cut -d. -f1)
   minor=$(echo "$version" | cut -d. -f2)
   patch=$(echo "$version" | cut -d. -f3)
 

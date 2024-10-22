@@ -19,7 +19,7 @@ image:
     tag: 0.2.0
   dbctl:
     repository: apecloud/dbctl
-    tag: 0.1.2
+    tag: 0.1.5
   # refer: addons/mysql/orc-tools/Dockerfile
   orcTools:
     repository: apecloud/orc-tools

@@ -8,6 +8,9 @@
 # by default, the execution directory for testing is where the specfile is located
 --execdir @specfile
 
+# by default, use the bash shell. if not set, run source may use a shell different from the one used to run the specfile (it seems to be a bug)
+--shell bash
+
 # By default only shell scripts whose names contain .sh are coverage targeted. If you want to include other files, you need to adjust options with --kcov-options.
 # --kcov-options "--include-path=. --path-strip-level=1"
 --kcov-options "--include-pattern=.sh"

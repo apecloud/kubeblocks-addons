@@ -4,11 +4,10 @@ metadata:
   name: etcd-backup-policy-template
   labels:
     {{- include "etcd.labels" . | nindent 4 }}
-    clusterdefinition.kubeblocks.io/name: etcd
 spec:
-  serviceKind: etcd
+  serviceKind: ETCD
   compDefs:
-    - etcd
+  - etcd
   target:
     role: leader
   backupMethods:

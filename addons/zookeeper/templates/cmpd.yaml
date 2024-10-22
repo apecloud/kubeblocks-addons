@@ -1,9 +1,11 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: zookeeper
+  name: {{ include "zookeeper.cmpdName" . }}
   labels:
     {{- include "zookeeper.labels" . | nindent 4 }}
+  annotations:
+    {{- include "zookeeper.annotations" . | nindent 4 }}
 spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
@@ -29,7 +31,6 @@ spec:
             port: 2888
           - name: admin
             port: 8080
-
   roles:
     - name: leader
       serviceable: true
@@ -43,27 +44,65 @@ spec:
       serviceable: false
       writable: false
       votable: false
+  updateStrategy: BestEffortParallel
+  vars:
+    - name: ZOOKEEPER_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+    - name: ZOOKEEPER_METRICS_MONITOR
+      value: {{ .Values.metrics.enabled | quote }}
+    - name: ZOOKEEPER_METRICS_PORT
+      value: {{ .Values.metrics.port | quote }}
+    - name: ZOOKEEPER_DATA_DIR
+      value: {{ .Values.zookeeper.dataDir }}
+    - name: ZOOKEEPER_DATA_LOG_DIR
+      value: {{ .Values.zookeeper.dataLogDir }}
+    - name: ZOOBINDIR
+      value: "/opt/bitnami/zookeeper/bin"
+    ## this var is used in the ZkServer.sh of bitnami image version 3.4
+    - name: ZOOBIN
+      value: "/opt/bitnami/zookeeper/bin"
+    - name: ZOO_ENABLE_AUTH
+      value: "yes"
+    ## this var needs to be preserved as Gemini will utilize this variable
+    - name: SERVICE_PORT
+      value: {{ .Values.metrics.port | quote }}
+    - name: ZOO_LOG4J_PROP
+      value: "INFO,ROLLINGFILE,TRACEFILE,CONSOLE"
+  scripts:
+    - name: zookeeper-scripts
+      templateRef: {{ include "zookeeper.scriptsTplName" . }}
+      volumeName: scripts
+      namespace: {{ .Release.Namespace }}
+      defaultMode: 0755
+  configs:
+    - name: zookeeper-config
+      namespace: {{ .Release.Namespace }}
+      templateRef: {{ include "zookeeper.configTplName" . }}
+      constraintRef: {{ include "zookeeper.configConstraintName" . }}
+      volumeName: config
+      defaultMode: 0755
+      reRenderResourceTypes:
+        - hscale
+    - name: zookeeper-log
+      namespace: {{ .Release.Namespace }}
+      templateRef: {{ include "zookeeper.logConfigTplName" . }}
+      volumeName: config-log
   lifecycleActions:
     roleProbe:
       exec:
+        container: zookeeper
         command:
           - /bin/bash
           - -c
           - |
-            . "$ZOOBINDIR"/zkEnv.sh > /dev/null
-            STAT=$(java -cp "$CLASSPATH" $CLIENT_JVMFLAGS $JVMFLAGS org.apache.zookeeper.client.FourLetterWordMain \
-            localhost 2181 srvr 2> /dev/null  | grep Mode)
-            mode=$(echo "$STAT" | awk -F': ' '{print $2}' | awk '{RS=""; ORS=""; print}' )
-            if [[ "$mode" == "standalone" ]]; then
-              echo -n "leader"
-            else
-              echo -n ${mode}
-            fi
+            /kubeblocks/scripts/roleprobe.sh
   runtime:
     volumes:
       - name: snapshot-log
         emptyDir: {}
-
     securityContext:
       fsGroup: 0
       runAsGroup: 0
@@ -78,16 +117,6 @@ spec:
           - |
             /kubeblocks/scripts/startup.sh
         env:
-          - name: ZOOBINDIR
-            value: "/opt/bitnami/zookeeper/bin"
-          - name: ZOOBIN
-            value: "/opt/bitnami/zookeeper/bin"
-          - name: ZOO_ENABLE_AUTH
-            value: "yes"
-          - name: SERVICE_PORT
-            value: {{ .Values.metrics.port | quote }}
-          - name: ZOO_LOG4J_PROP
-            value: "INFO,ROLLINGFILE,TRACEFILE,CONSOLE"
           - name: CURRENT_POD_NAME
             valueFrom:
               fieldRef:
@@ -159,39 +188,3 @@ spec:
             subPath: log4j.properties
           - name: scripts
             mountPath: /kubeblocks/scripts
-  vars:
-    - name: ZOOKEEPER_POD_FQDN_LIST
-      valueFrom:
-        componentVarRef:
-          optional: false
-          podFQDNs: Required
-    - name: ZOOKEEPER_METRICS_MONITOR
-      value: {{ .Values.metrics.enabled | quote }}
-    - name: ZOOKEEPER_METRICS_PORT
-      value: {{ .Values.metrics.port | quote }}
-    - name: ZOOKEEPER_DATA_DIR
-      value: {{ .Values.zookeeper.dataDir }}
-    - name: ZOOKEEPER_DATA_LOG_DIR
-      value: {{ .Values.zookeeper.dataLogDir }}
-
-  scripts:
-    - name: zookeeper-scripts
-      templateRef: {{ include "zookeeper.name" . }}-scripts
-      volumeName: scripts
-      namespace: {{ .Release.Namespace }}
-      defaultMode: 0755
-
-  configs:
-    - name: zookeeper-config
-      namespace: {{ .Release.Namespace }}
-      templateRef: {{ include "zookeeper.name" . }}-config-template
-      constraintRef: {{ include "zookeeper.name" . }}-config-constraints
-      volumeName: config
-      defaultMode: 0755
-      reRenderResourceTypes:
-        - hscale
-    - name: zookeeper-log
-      namespace: {{ .Release.Namespace }}
-      templateRef: {{ include "zookeeper.name" . }}-configmap
-      volumeName: config-log
-  updateStrategy: BestEffortParallel

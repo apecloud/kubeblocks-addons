@@ -12,7 +12,7 @@
   {{- if not .Values.sharding.enabled }}
   {{- include "clickhouse-nosharding-component" . | nindent 4 }}
   {{- else }}
-  shardingSpecs:
+  shardings:
   {{- include "clickhouse-sharding-component" . | nindent 4 }}
   {{- end }}
 {{- end }}

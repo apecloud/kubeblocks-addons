@@ -4,9 +4,9 @@
   "properties": {
     "version": {
       "title": "Version",
-      "description": "Cluster version.",
+      "description": "service version.",
       "type": "string",
-      "default": "postgresql-15.7.0"
+      "default": "15.7.0"
     },
     "mode": {
       "title": "Mode",
