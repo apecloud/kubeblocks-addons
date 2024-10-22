@@ -12,6 +12,16 @@ spec:
   serviceKind: pulsar
   serviceVersion: {{ .Values.defaultServiceVersion.broker.major3 }}
   vars:
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.clusterDomain }}
     - name: ADVERTISED_PORT_PULSAR
       valueFrom:
         serviceVarRef:
@@ -30,6 +40,12 @@ spec:
           port:
             name: kafka-client
             option: Optional
+    - name: BROKER_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "pulsar3.brokerCmpdRegexPattern" . }}
+          optional: false
+          componentName: Required
   services:
     - name: advertised-listener
       serviceName: advertised-listener
@@ -99,11 +115,11 @@ spec:
             value: DEBUG
             {{- end }}
           - name: brokerServiceUrl
-            value: pulsar://$(KB_CLUSTER_NAME)-broker-bootstrap.$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}:6650
+            value: pulsar://$(CLUSTER_NAME)-broker-bootstrap.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN):6650
           - name: clusterName
             value: $(KB_NAMESPACE)-$(KB_CLUSTER_COMP_NAME)
           - name: webServiceUrl
-            value: http://$(KB_CLUSTER_NAME)-broker-bootstrap.$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}:80
+            value: http://$(CLUSTER_NAME)-broker-bootstrap.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN):80
         volumeMounts:
           - name: scripts
             mountPath: /kb-scripts
@@ -146,19 +162,22 @@ spec:
             value: DEBUG
             {{- end }}
           - name: clusterName
-            value: $(KB_NAMESPACE)-$(KB_CLUSTER_COMP_NAME)
+            value: $(CLUSTER_NAMESPACE)-$(BROKER_COMPONENT_NAME)
           - name: SERVICE_PORT
             value: "8080"
           - name: brokerServiceUrl
-            value: pulsar://$(KB_CLUSTER_NAME)-broker-bootstrap.$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}:6650
+            value: pulsar://$(CLUSTER_NAME)-broker-bootstrap.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN):6650
           - name: webServiceUrl
-            value: http://$(KB_CLUSTER_NAME)-broker-bootstrap.$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}:80
+            value: http://$(CLUSTER_NAME)-broker-bootstrap.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN):80
           - name: POD_NAME
-            value: $(KB_POD_NAME)
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
           - name: PULSAR_PREFIX_internalListenerName
             value: cluster
           - name: PULSAR_PREFIX_advertisedListeners
-            value: cluster:pulsar://$(POD_NAME).$(KB_CLUSTER_COMP_NAME)-headless.$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}:6650
+            value: cluster:pulsar://$(POD_NAME).$(BROKER_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN):6650
           # KoP configs:
           #   https://github.com/streamnative/kop/blob/branch-3.0.0.4/docs/configuration.md#configuration
           - name: PULSAR_PREFIX_allowAutoTopicCreationType
@@ -168,7 +187,7 @@ spec:
           - name: PULSAR_PREFIX_kafkaListeners
             value: CLIENT://0.0.0.0:9092
           - name: PULSAR_PREFIX_kafkaAdvertisedListeners
-            value: CLIENT://$(POD_NAME).$(KB_CLUSTER_COMP_NAME)-headless.$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}:9092
+            value: CLIENT://$(POD_NAME).$(BROKER_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN):9092
         ports:
           - name: pulsar
             containerPort: 6650
