@@ -48,13 +48,16 @@ spec:
     scrapePath: /metrics
     scrapePort: http
   vars:
-    - name: CLUSTER_DOMAIN
-      value: .{{ .Values.clusterDomain }}
     - name: BOOKKEEPER_COMP_REPLICAS
       valueFrom:
         componentVarRef:
           optional: false
           replicas: Required
+    - name: BOOKKEEPER_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: true
+          podFQDNs: Required
   lifecycleActions:
     memberLeave:
       exec:
@@ -109,8 +112,6 @@ spec:
         {{- end }}
           - name: SERVICE_PORT
             value: "8000"
-          - name: cluster_domain
-            value: $(CLUSTER_DOMAIN)
           - name: CURRENT_POD_NAME
             valueFrom:
               fieldRef:
