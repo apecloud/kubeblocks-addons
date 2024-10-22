@@ -59,16 +59,6 @@ helm.sh/resource-policy: keep
 {{- end }}
 
 {{/*
-Generate minio scripts configmap
-*/}}
-{{- define "minio.extend.scripts" -}}
-{{- range $path, $_ :=  $.Files.Glob "scripts/**" }}
-{{ $path | base }}: |-
-{{- $.Files.Get $path | nindent 2 }}
-{{- end }}
-{{- end }}
-
-{{/*
 Define minio component definition name
 */}}
 {{- define "minio.cmpdName" -}}

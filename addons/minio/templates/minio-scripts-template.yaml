@@ -5,6 +5,4 @@ metadata:
   labels:
     {{- include "minio.labels" . | nindent 4 }}
 data:
-  {{- with include "minio.extend.scripts" . }}
-  {{- . | nindent 2 }}
-  {{- end }}
+{{ (.Files.Glob "scripts/*.sh").AsConfig | indent 2 }}
