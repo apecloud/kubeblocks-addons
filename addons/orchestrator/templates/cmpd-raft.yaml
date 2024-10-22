@@ -28,7 +28,7 @@ spec:
     roleProbe:
       exec:
         command:
-          - /bin/bash
+          - /bin/sh
           - -c
           - |
             role=$(curl -s http://127.0.0.1:3000/api/leader-check)

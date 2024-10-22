@@ -40,11 +40,13 @@ register_to_orchestrator() {
 # and Orchestrator will obtain the entire MySQL cluster topology info from this instance.
 register_first_mysql_instance() {
 
-  # get first MySQL instance host name.
-  first_mysql_service_host_name=$(echo "${KB_CLUSTER_COMP_NAME}_MYSQL_0_SERVICE_HOST" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
-  first_mysql_service_host=${!first_mysql_service_host_name}
-
-  register_to_orchestrator "$first_mysql_service_host"
+  oldIFS="$IFS"
+  IFS=',' read -r -a replicas <<< "${MYSQL_POD_FQDN_LIST}"
+  IFS="$old_ifs"
+  fqdn_name=${replicas[0]}
+  last_digit=${fqdn_name##*-}
+  first_mysql_instance=${KB_CLUSTER_COMP_NAME}-mysql-${last_digit}.${KB_NAMESPACE}
+  register_to_orchestrator "$first_mysql_instance"
 
   echo "Initialization script completed！"
 }

@@ -14,6 +14,7 @@ spec:
     postProvision:
       exec:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+        container: mysql
         command:
           - bash
           - -c

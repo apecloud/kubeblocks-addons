@@ -99,15 +99,17 @@ setup_master_slave() {
   mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e "STOP SLAVE;RESET MASTER;RESET SLAVE ALL;";
 
   mysql_note "setup_master_slave"
-  master_host_name=$(echo "${KB_CLUSTER_COMP_NAME}_MYSQL_0_SERVICE_HOST" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
-  master_host=${!master_host_name}
 
+  oldIFS="$IFS"
+  IFS=',' read -r -a replicas <<< "${MYSQL_POD_FQDN_LIST}"
+  IFS="$old_ifs"
+
+  master_host=${replicas[0]}
   master_from_orc=""
   get_master_from_orc
 
-  last_digit=${KB_POD_NAME##*-}
+  last_digit=${SYNCER_POD_NAME##*-}
   self_service_name=$(echo "${KB_CLUSTER_COMP_NAME}_MYSQL_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
-  host_name=$(echo "${self_service_name}_SERVICE_HOST" | tr '-' '_'  | tr '[:lower:]' '[:upper:]'  )
 
   # If the cluster is already registered to the Orchestrator and the Master of the cluster is itself, then no action is required.
   if [ "$master_from_orc" == "${self_service_name}" ]; then
@@ -118,6 +120,7 @@ setup_master_slave() {
   if [[ $master_from_orc != "" ]]; then
     master_host=$master_from_orc
   fi
+
 
   # If the master_host is empty, then this pod is the first one in the cluster, init cluster info database and create user.
   if [[ $master_from_orc == "" && $last_digit -eq 0 ]]; then

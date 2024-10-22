@@ -462,14 +462,14 @@ volumeMounts:
     name: mysql-config
   - name: scripts
     mountPath: /scripts
-  - mountPath: /kubeblocks
+  - mountPath: /kubeblocks-tools
     name: kubeblocks
 ports:
   - containerPort: 3306
     name: mysql
 env:
   - name: PATH
-    value: /kubeblocks/xtrabackup/bin:/kubeblocks/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    value: /kubeblocks/xtrabackup/bin:/kubeblocks/:/kubeblocks-tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
   - name: MYSQL_INITDB_SKIP_TZINFO
     value: "1"
   - name: MYSQL_ROOT_HOST
