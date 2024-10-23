@@ -50,11 +50,11 @@ spec:
   systemAccounts:
     - name: client
       secretRef:
-        name: {{ include "kafka.name" . }}-client-secret
+        name: {{ include "kafka.defaultClientSystemAccountSecretName" . }}
         namespace: {{ .Release.Namespace }}
     - name: admin
       secretRef:
-        name: {{ include "kafka.name" . }}-superusers-secret
+        name: {{ include "kafka.defaultSpuerUserSystemAccountSecretName" . }}
         namespace: {{ .Release.Namespace }}
   ## serial is not used because rsm currently does not support kafka's role detection. The lack of role label during restart will affect the pod restart.
   updateStrategy: BestEffortParallel

@@ -147,3 +147,17 @@ Define kafka tools scripts tpl name
 {{- define "kafka.toolsScriptsTplName" -}}
 kafka-scripts-tools-tpl
 {{- end -}}
+
+{{/*
+Define kafka default client system account secret name
+*/}}
+{{- define "kafka.defaultClientSystemAccountSecretName" -}}
+kafka-client-secret
+{{- end -}}
+
+{{/*
+Define kafka default superuser system account secret name
+*/}}
+{{- define "kafka.defaultSpuerUserSystemAccountSecretName" -}}
+kafka-superusers-secret
+{{- end -}}

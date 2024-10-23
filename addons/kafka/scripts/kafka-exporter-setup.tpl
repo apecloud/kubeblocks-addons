@@ -30,3 +30,4 @@ exec kafka_exporter --web.listen-address=:9308 \
   --tls.enabled \
 {{- end }}
 {{ $servers }}
+
