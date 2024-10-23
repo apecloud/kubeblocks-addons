@@ -117,7 +117,7 @@ spec:
           - name: brokerServiceUrl
             value: pulsar://$(CLUSTER_NAME)-broker-bootstrap.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN):6650
           - name: clusterName
-            value: $(KB_NAMESPACE)-$(KB_CLUSTER_COMP_NAME)
+            value: $(CLUSTER_NAMESPACE)-$(BROKER_COMPONENT_NAME)
           - name: webServiceUrl
             value: http://$(CLUSTER_NAME)-broker-bootstrap.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN):80
           - name: POD_NAME
