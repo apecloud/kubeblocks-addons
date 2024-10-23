@@ -23,6 +23,9 @@ spec:
       serviceRefs:
         - name: metadb
           namespace: {{ .namespace | default $.Release.Namespace }}
+          {{- if .isConnectionCredential }}
+          cluster: {{ .cluster }}
+          {{- else }}
           clusterServiceSelector:
             cluster: {{ .cluster }}
             credential:
@@ -31,5 +34,6 @@ spec:
             service:
               service: {{ .service.name | default "" | quote }}
               component: {{ .service.component }}
+          {{- end }}
       {{- end }}
       {{- end }}

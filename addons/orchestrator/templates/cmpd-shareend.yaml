@@ -6,7 +6,13 @@ metadata:
       {{- include "orchestrator.labels" . | nindent 4 }}
 spec:
   {{- include "orchestrator.cmpd.spec.common" . | nindent 2 }}
-
+  services:
+    - name: orchestrator
+      spec:
+        ports:
+          - name: orc-http
+            port: 80
+            targetPort: orc-http
   serviceRefDeclarations:
     - name: metadb
       serviceRefDeclarationSpecs:
@@ -36,8 +42,6 @@ spec:
           password: Required
 
   runtime:
-    volumes:
-    - name: data
     initContainers:
       - name: init-meta-database
         command:

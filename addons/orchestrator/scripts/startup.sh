@@ -36,7 +36,7 @@ sed -i "s|\${ORC_BACKEND_DB}|${ORC_BACKEND_DB}|g" $WORKDIR/orchestrator.conf.jso
 # set workdir
 sed -i "s|\${ORC_WORKDIR}|${WORKDIR}|g" $WORKDIR/orchestrator.conf.json
 # set orch backed db info
-sed -i "s/\${META_MYSQL_ENDPOINT}/$META_MYSQL_ENDPOINT/g" $WORKDIR/orchestrator.conf.json
+sed -i "s/\${META_MYSQL_ENDPOINT}/${META_MYSQL_ENDPOINT%%:*}/g" $WORKDIR/orchestrator.conf.json
 sed -i "s/\${META_MYSQL_PORT}/$META_MYSQL_PORT/g" $WORKDIR/orchestrator.conf.json
 sed -i "s/\${ORC_META_DATABASE}/$ORC_META_DATABASE/g" $WORKDIR/orchestrator.conf.json
 
@@ -47,6 +47,7 @@ sed -i "s|\${ORC_RAFT_ENABLED}|${ORC_RAFT_ENABLED}|g" $WORKDIR/orchestrator.conf
 sed -i "s|\${ORC_PEERS}|${ORC_PEERS}|g" $WORKDIR/orchestrator.conf.json
 sed -i "s|\${ORC_POD_NAME}|${ORC_POD_NAME}|g" $WORKDIR/orchestrator.conf.json
 
-cat $WORKDIR/orchestrator.conf.json
+# set meta host
+sed -i "s|\${META_MYSQL_ENDPOINT}|${META_MYSQL_ENDPOINT%%:*}|g" $WORKDIR/orchestrator.conf.json
 
 /usr/local/orchestrator/orchestrator -quiet -config $WORKDIR/orchestrator.conf.json http
