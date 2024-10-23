@@ -1,14 +1,16 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: pulsar-proxy-{{include "pulsar.major.version" .}}
+  name: {{ include "pulsar3.proxyCmpdName" . }}
   labels:
-      {{- include "pulsar.labels" . | nindent 4 }}
+    {{- include "pulsar.labels" . | nindent 4 }}
+  annotations:
+    {{- include "pulsar.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
-  description: Pulsar proxy.
+  description: Pulsar proxy component definition
   serviceKind: pulsar
-  serviceVersion: {{ default .Chart.AppVersion .Values.clusterVersionOverride }}
+  serviceVersion: {{ .Values.defaultServiceVersion.proxy.major3 }}
   serviceRefDeclarations:
     - name: pulsarZookeeper
       serviceRefDeclarationSpecs:
@@ -18,10 +20,10 @@ spec:
   updateStrategy: BestEffortParallel
   configs:
     - name: proxy-env
-      templateRef: {{ include "pulsar.name" . }}-proxy-env-tpl
+      templateRef: {{ include "pulsar.proxyEnvTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: proxy-env
-      constraintRef: pulsar-env-constraints
+      constraintRef: {{ include "pulsar.envConstraintName" . }}
       keys:
         - conf
       injectEnvTo:
@@ -30,16 +32,29 @@ spec:
       reRenderResourceTypes:
         - vscale
     - name: proxy-config
-      templateRef: {{ include "pulsar.name" . }}{{include "pulsar.major.version" .}}-proxy-config-tpl
+      templateRef: {{ include "pulsar3.proxyConfigTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: pulsar-proxy-config
-      constraintRef: pulsar{{include "pulsar.major.version" .}}-proxy-cc
+      constraintRef: {{ include "pulsar3.proxyConfigConstraintName" . }}
   scripts:
     - name: pulsar-scripts
-      templateRef: {{ include "pulsar.name" . }}-scripts
+      templateRef: {{ include "pulsar.scriptsTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
+  exporter:
+    scrapePath: /metrics/
+    scrapePort: http
+  vars:
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: PROXY_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
   runtime:
     securityContext:
       runAsNonRoot: true
@@ -48,8 +63,8 @@ spec:
       runAsGroup: 0
     initContainers:
       - name: check-broker
-        image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v3_0_2.proxy "root" .) }}"
-        imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v3_0_2.proxy "root" .) }}"
+        image: {{ include "pulsar3.proxyImage" . }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/init-proxy.sh
         volumeMounts:
@@ -66,8 +81,8 @@ spec:
         {{- end }}
     containers:
       - name: proxy
-        image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v3_0_2.proxy "root" .) }}"
-        imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v3_0_2.proxy "root" .) }}"
+        image: {{ include "pulsar3.proxyImage" . }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/start-proxy.sh
         securityContext:
@@ -89,7 +104,7 @@ spec:
           - name: SERVICE_PORT
             value: "8080"
           - name: clusterName
-            value: $(KB_NAMESPACE)-$(KB_CLUSTER_COMP_NAME)
+            value: $(CLUSTER_NAMESPACE)-$(PROXY_COMPONENT_NAME)
           - name: webServicePort
             value: "8080"
             ## in order to avoid the kb complex service association logic involved when using brokers,
@@ -142,6 +157,3 @@ spec:
             mountPath: /opt/pulsar/none
           - name: pulsar-proxy-config
             mountPath: /opt/pulsar/conf
-  exporter:
-    scrapePath: /metrics/
-    scrapePort: http

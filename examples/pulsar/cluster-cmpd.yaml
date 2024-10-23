@@ -107,7 +107,7 @@ spec:
           requests:
             storage: 20Gi
   - name: bookies-recovery
-    componentDef: pulsar-bkrecovery
+    componentDef: pulsar-bookies-recovery
     replicas: 1
     resources:
       limits:

@@ -1,14 +1,16 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: pulsar-bkrecovery-{{include "pulsar.major.version" .}}
+  name: {{ include "pulsar3.bkRecoveryCmpdName" . }}
   labels:
-      {{- include "pulsar.labels" . | nindent 4 }}
+    {{- include "pulsar.labels" . | nindent 4 }}
+  annotations:
+    {{- include "pulsar.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
-  description: Pulsar bookies auto-recovery.
+  description: Pulsar bookies recovery component definition
   serviceKind: pulsar
-  serviceVersion: {{ default .Chart.AppVersion .Values.clusterVersionOverride }}
+  serviceVersion: {{ .Values.defaultServiceVersion.recovery.major3 }}
   serviceRefDeclarations:
     - name: pulsarZookeeper
       serviceRefDeclarationSpecs:
@@ -18,9 +20,9 @@ spec:
   updateStrategy: BestEffortParallel
   configs:
     - name: bookies-recovery-env
-      templateRef: {{ include "pulsar.name" . }}-recovery-env-tpl
+      templateRef:  {{ include "pulsar.bookiesRecoveryEnvTplName" . }}
       namespace: {{ .Release.Namespace }}
-      constraintRef: pulsar-env-constraints
+      constraintRef: {{ include "pulsar.envConstraintName" . }}
       keys:
         - conf
       injectEnvTo:
@@ -31,10 +33,13 @@ spec:
         - vscale
   scripts:
     - name: pulsar-scripts
-      templateRef: {{ include "pulsar.name" . }}-scripts
+      templateRef: {{ include "pulsar.scriptsTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
+  exporter:
+    scrapePath: /metrics
+    scrapePort: http
   runtime:
     securityContext:
       runAsNonRoot: true
@@ -43,8 +48,8 @@ spec:
       runAsGroup: 0
     initContainers:
       - name: check-bookies
-        image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v3_0_2.bookie "root" .) }}"
-        imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v3_0_2.bookie "root" .) }}"
+        image: {{ include "pulsar3.bookiesImage" . }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/check-bookies.sh
         env:
@@ -72,8 +77,8 @@ spec:
               - ALL
           privileged: false
           runAsGroup: 0
-        image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v3_0_2.bookie "root" .) }}"
-        imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v3_0_2.bookie "root" .) }}"
+        image: {{ include "pulsar3.bookiesImage" . }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/start-bookies-recovery.sh
         env:
@@ -103,6 +108,3 @@ spec:
             mountPath: /kb-scripts
           - name: recovery-config-env
             mountPath: /opt/pulsar/none
-  exporter:
-    scrapePath: /metrics
-    scrapePort: http

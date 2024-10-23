@@ -99,7 +99,7 @@ spec:
   {{- if or (eq .Values.mode "pulsar-enhanced-cluster") ( and (not $topologyEnable) .Values.bookiesRecovery.enabled) }}
     - name: bookies-recovery
     {{- if not $topologyEnable }}
-      componentDef: pulsar-bkrecovery
+      componentDef: pulsar-bookies-recovery
       {{- end }}
       {{ include "pulsar-zookeeper-ref" . | nindent 6 }}
       replicas: {{ .Values.bookiesRecovery.replicaCount | default 3 }}

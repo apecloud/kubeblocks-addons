@@ -1,13 +1,14 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentVersion
 metadata:
-  name: pulsar-bkrecovery
+  name: pulsar-bookies-recovery
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
   compatibilityRules:
     - compDefs:
-        - pulsar-bkrecovery
+        ## regex pattern for bookies recovery component definition match pulsar 2.X and 3.X
+        - {{ include "pulsar.bkRecoveryCmpdRegexPattern" . }}
       releases:
         - 2.11.2
         - 3.0.2

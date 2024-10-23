@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
-  name: pulsar-env-constraints
+  name: {{ include "pulsar.envConstraintName" . }}
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
@@ -13,27 +13,12 @@ spec:
     format: yaml
 
 ---
-apiVersion: apps.kubeblocks.io/v1beta1
-kind: ConfigConstraint
-metadata:
-  name: pulsar-common-constraints
-  labels:
-    {{- include "pulsar.labels" . | nindent 4 }}
-spec:
-  parametersSchema:
-    cue: ""
-
-  # pulsar configuration file format
-  fileFormatConfig:
-    format: props-plus
-
----
 
 {{- $cc := .Files.Get "config/2.11.2/broker-config-effect-scope.yaml" | fromYaml }}
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
-  name: pulsar2-brokers-cc
+  name: {{ include "pulsar2.brokerConfigConstraintName" . }}
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
@@ -91,7 +76,7 @@ spec:
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
-  name: pulsar3-brokers-cc
+  name: {{ include "pulsar3.brokerConfigConstraintName" . }}
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
@@ -148,7 +133,7 @@ spec:
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
-  name: pulsar2-bookies-cc
+  name: {{ include "pulsar2.bookiesConfigConstraintName" . }}
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
@@ -165,7 +150,7 @@ spec:
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
-  name: pulsar3-bookies-cc
+  name: {{ include "pulsar3.bookiesConfigConstraintName" . }}
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
@@ -182,7 +167,7 @@ spec:
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
-  name: pulsar2-proxy-cc
+  name: {{ include "pulsar2.proxyConfigConstraintName" . }}
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
@@ -199,7 +184,7 @@ spec:
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
-  name: pulsar3-proxy-cc
+  name: {{ include "pulsar3.proxyConfigConstraintName" . }}
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 spec:
