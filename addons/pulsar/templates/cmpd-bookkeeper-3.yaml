@@ -1,0 +1,164 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "pulsar3.bookkeeperCmpdName" . }}
+  labels:
+    {{- include "pulsar.labels" . | nindent 4 }}
+  annotations:
+    {{- include "pulsar.annotations" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: Pulsar bookkeeper component definition
+  serviceKind: pulsar
+  serviceVersion: {{ .Values.defaultServiceVersion.bookkeeper.major3 }}
+  serviceRefDeclarations:
+    - name: pulsarZookeeper
+      serviceRefDeclarationSpecs:
+        - serviceKind: zookeeper
+          serviceVersion: ^3.8.\d{1,2}$
+      optional: true
+  updateStrategy: BestEffortParallel
+  configs:
+    - name: bookies-env
+      templateRef: {{ include "pulsar.bookiesEnvTplName" . }}
+      namespace: {{ .Release.Namespace }}
+      constraintRef: {{ include "pulsar.envConstraintName" . }}
+      volumeName: bookies-env
+      keys:
+        - conf
+      injectEnvTo:
+        - init-bookies
+        - bookies
+      reRenderResourceTypes:
+        - vscale
+    - name: bookies-config
+      templateRef: {{ include "pulsar3.bookiesConfigTplName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: pulsar-bookies-config
+      constraintRef: {{ include "pulsar3.bookiesConfigConstraintName" . }}
+      reRenderResourceTypes:
+        - vscale
+  scripts:
+    - name: pulsar-scripts
+      templateRef: {{ include "pulsar.scriptsTplName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  exporter:
+    scrapePath: /metrics
+    scrapePort: http
+  vars:
+    - name: BOOKKEEPER_COMP_REPLICAS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          replicas: Required
+    - name: BOOKKEEPER_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: true
+          podFQDNs: Required
+  lifecycleActions:
+    memberLeave:
+      exec:
+        container: bookies
+        command:
+          - /bin/bash
+          - -c
+          - /kb-scripts/bookies-member-leave.sh
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+  runtime:
+    initContainers:
+      - name: init-bookies
+        image: {{ include "pulsar3.bookiesImage" . }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+          - /kb-scripts/init-bookies.sh
+        env:
+        {{- if .Values.debugEnabled }}
+          - name: PULSAR_LOG_ROOT_LEVEL
+            value: DEBUG
+          - name: PULSAR_LOG_LEVEL
+            value: DEBUG
+        {{- end }}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+          - name: scripts
+            mountPath: /kb-scripts
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+    containers:
+      - name: bookies
+        image:  {{ include "pulsar3.bookiesImage" . }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+          - /kb-scripts/start-bookies.sh
+        env:
+        {{- if .Values.debugEnabled }}
+          - name: PULSAR_LOG_ROOT_LEVEL
+            value: DEBUG
+          - name: PULSAR_LOG_LEVEL
+            value: DEBUG
+        {{- end }}
+          - name: SERVICE_PORT
+            value: "8000"
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+        livenessProbe:
+          failureThreshold: 60
+          httpGet:
+            path: /api/v1/bookie/state
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          successThreshold: 1
+          timeoutSeconds: 5
+        ports:
+          - name: http
+            containerPort: 8000
+          - name: bookie
+            containerPort: 3181
+        readinessProbe:
+          failureThreshold: 60
+          httpGet:
+            path: /api/v1/bookie/is_ready
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          successThreshold: 1
+          timeoutSeconds: 5
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+        securityContext:
+          runAsUser: 0
+          runAsGroup: 10000
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+          - mountPath: /pulsar/data/bookkeeper/journal
+            name: journal
+          - mountPath: /pulsar/data/bookkeeper/ledgers
+            name: ledgers
+          - name: scripts
+            mountPath: /kb-scripts
+          - name: bookies-env
+            mountPath: /opt/pulsar/none
+          - name: pulsar-bookies-config
+            mountPath: /opt/pulsar/conf

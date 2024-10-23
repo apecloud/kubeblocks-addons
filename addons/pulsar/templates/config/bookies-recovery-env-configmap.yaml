@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "pulsar.name" . }}-recovery-env-tpl
+  name: {{ include "pulsar.bookiesRecoveryEnvTplName" . }}
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 data:
