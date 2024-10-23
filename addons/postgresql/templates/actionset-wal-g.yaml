@@ -20,6 +20,8 @@ spec:
         - bash
         - -c
         - |
+          #!/bin/bash
+          {{- .Files.Get "scripts/lib-logging.sh" | nindent 10 }}
           {{- .Files.Get "dataprotection/wal-g-config.sh" | nindent 10 }}
       syncProgress:
         enabled: false
@@ -53,6 +55,8 @@ spec:
         - bash
         - -c
         - |
+          #!/bin/bash
+          {{- .Files.Get "scripts/lib-logging.sh" | nindent 10 }}
           {{- .Files.Get "dataprotection/wal-g-backup.sh" | nindent 10 }}
       syncProgress:
         enabled: true
@@ -63,6 +67,8 @@ spec:
         - bash
         - -c
         - |
+          #!/bin/bash
+          {{- .Files.Get "scripts/lib-logging.sh" | nindent 10 }}
           {{- .Files.Get "dataprotection/wal-g-delete.sh" | nindent 10 }}
   restore:
     prepareData:
@@ -71,5 +77,7 @@ spec:
         - bash
         - -c
         - |
+          #!/bin/bash
+          {{- .Files.Get "scripts/lib-logging.sh" | nindent 10 }}
           {{- .Files.Get "dataprotection/wal-g-restore.sh" | nindent 10 }}
     postReady: []
