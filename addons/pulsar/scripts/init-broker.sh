@@ -85,11 +85,6 @@ init_broker() {
   fi
 
   initialize_cluster_metadata "$clusterName" "$zookeeperServers" "$webServiceUrl" "$brokerServiceUrl"
-  quit_script
-}
-
-quit_script() {
-  (curl -sf -XPOST http://127.0.0.1:15020/quitquitquit || true) && exit 0
 }
 
 # This is magic for shellspec ut framework.

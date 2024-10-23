@@ -91,21 +91,21 @@ Generate major version of cluster
 {{- end }}
 
 {{/*
-Define pulsar bookies reovery component definition regex pattern
+Define pulsar bookies recovery component definition regex pattern
 */}}
 {{- define "pulsar.bkRecoveryCmpdRegexPattern" -}}
 ^pulsar-bookies-recovery-
 {{- end -}}
 
 {{/*
-Define pulsar v3.X bookies reovery component definition name
+Define pulsar v3.X bookies recovery component definition name
 */}}
 {{- define "pulsar3.bkRecoveryCmpdName" -}}
 pulsar-bookies-recovery-3-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
-Define pulsar v2.X bookies reovery component definition name
+Define pulsar v2.X bookies recovery component definition name
 */}}
 {{- define "pulsar2.bkRecoveryCmpdName" -}}
 pulsar-bookies-recovery-2-{{ .Chart.Version }}
@@ -154,7 +154,7 @@ Define pulsar v3.X broker component definition regex pattern
 {{- end -}}
 
 {{/*
-Define pulsar v2.X bookies reovery component definition name
+Define pulsar v2.X broker component definition name
 */}}
 {{- define "pulsar2.brokerCmpdName" -}}
 pulsar-broker-2-{{ .Chart.Version }}
@@ -182,7 +182,7 @@ pulsar-proxy-3-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
-Define pulsar v2.X bookies reovery component definition name
+Define pulsar v2.X proxy component definition name
 */}}
 {{- define "pulsar2.proxyCmpdName" -}}
 pulsar-proxy-2-{{ .Chart.Version }}
@@ -266,28 +266,28 @@ pulsar-env-constraints
 {{- end -}}
 
 {{/*
-Define pulsar v3.X bookies recovery config tpl name
+Define pulsar v3.X bookies config tpl name
 */}}
 {{- define "pulsar3.bookiesConfigTplName" -}}
 pulsar3-bookies-config-tpl
 {{- end -}}
 
 {{/*
-Define pulsar v2.X bookies recovery config tpl name
+Define pulsar v2.X bookies config tpl name
 */}}
 {{- define "pulsar2.bookiesConfigTplName" -}}
 pulsar2-bookies-config-tpl
 {{- end -}}
 
 {{/*
-Define pulsar v3.X bookies recovery config constraint name
+Define pulsar v3.X bookies config constraint name
 */}}
 {{- define "pulsar3.bookiesConfigConstraintName" -}}
 pulsar3-bookies-config-constraint
 {{- end -}}
 
 {{/*
-Define pulsar v2.X bookies recovery config constraint name
+Define pulsar v2.X bookies config constraint name
 */}}
 {{- define "pulsar2.bookiesConfigConstraintName" -}}
 pulsar2-bookies-config-constraint
