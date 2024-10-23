@@ -24,18 +24,6 @@ If release name contains chart name it will be used as a full name.
 {{- end }}
 {{- end }}
 
-{{/* Create a default storage config that uses filesystem storage
-This is required for CI, but Loki will not be queryable with this default
-applied, thus it is encouraged that users override this.
-*/}}
-{{- define "loki.storageConfig" -}}
-{{- if .Values.loki.storageConfig -}}
-{{- .Values.loki.storageConfig | toYaml | nindent 4 -}}
-{{- else }}
-{{- .Values.loki.defaultStorageConfig | toYaml | nindent 4 }}
-{{- end}}
-{{- end}}
-
 {{/*
 Create chart name and version as used by the chart label.
 */}}
@@ -64,15 +52,11 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+Common annotations
 */}}
-{{- define "loki.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create -}}
-    {{ default (include "loki.name" .) .Values.serviceAccount.name }}
-{{- else -}}
-    {{ default "default" .Values.serviceAccount.name }}
-{{- end -}}
-{{- end -}}
+{{- define "loki.annotations" -}}
+helm.sh/resource-policy: keep
+{{- end }}
 
 {{/*
 Base template for building docker image reference
@@ -522,3 +506,60 @@ query-scheduler fullname
 {{- define "loki.querySchedulerFullname" -}}
 {{ include "loki.fullname" . }}-query-scheduler
 {{- end }}
+
+{{/*
+Define loki backend component definition name
+*/}}
+{{- define "loki.backendCmpdName" -}}
+loki-backend-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define loki backend component definition regular expression name prefix
+*/}}
+{{- define "loki.backendCmpdRegexpPattern" -}}
+^loki-backend-
+{{- end -}}
+
+{{/*
+Define loki gateway component definition name
+*/}}
+{{- define "loki.gatewayCmpdName" -}}
+loki-gateway-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define loki backend component definition regular expression name prefix
+*/}}
+{{- define "loki.gatewayCmpdRegexpPattern" -}}
+^loki-gateway-
+{{- end -}}
+
+{{/*
+Define loki read component definition name
+*/}}
+{{- define "loki.readCmpdName" -}}
+loki-read-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define loki read component definition regular expression name prefix
+*/}}
+{{- define "loki.readCmpdRegexpPattern" -}}
+^loki-read-
+{{- end -}}
+
+
+{{/*
+Define loki write component definition name
+*/}}
+{{- define "loki.writeCmpdName" -}}
+loki-write-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define loki write component definition regular expression name prefix
+*/}}
+{{- define "loki.writeCmpdRegexpPattern" -}}
+^loki-write-
+{{- end -}}

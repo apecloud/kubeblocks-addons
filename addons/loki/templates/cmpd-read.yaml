@@ -1,9 +1,11 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: loki-read
+  name: {{ include "loki.readCmpdName" . }}
   labels:
     {{- include "loki.labels" . | nindent 4 }}
+  annotations:
+    {{- include "loki.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
   description: A Loki component definition for Kubernetes
@@ -23,6 +25,16 @@ spec:
             protocol: TCP
             name: grpc
             targetPort: grpc
+  configs:
+    - name: loki-config
+      ## TODO: this cmpd is currently unavailable. It requires adding configuration templates.
+      templateRef: loki
+      volumeName: config
+      namespace: {{ .Release.Namespace }}
+    - name: loki-runtime-config
+      templateRef: loki-runtime
+      volumeName: runtime-config
+      namespace: {{ .Release.Namespace }}
   updateStrategy: BestEffortParallel
   runtime:
     automountServiceAccountToken: true
@@ -76,12 +88,3 @@ spec:
             name: tmp
           - mountPath: /var/loki
             name: data
-  configs:
-    - name: loki-config
-      templateRef: loki
-      volumeName: config
-      namespace: {{ .Release.Namespace }}
-    - name: loki-runtime-config
-      templateRef: loki-runtime
-      volumeName: runtime-config
-      namespace: {{ .Release.Namespace }}
