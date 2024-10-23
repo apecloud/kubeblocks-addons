@@ -15,6 +15,6 @@ maintainers:
     url: https://github.com/apecloud/kubeblocks/
 
 annotations:
-  addon.kubeblocks.io/kubeblocks-version: ">=0.8.0"
+  addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
   addon.kubeblocks.io/model: "tsdb"
   addon.kubeblocks.io/provider: "community"

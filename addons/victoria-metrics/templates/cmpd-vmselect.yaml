@@ -1,9 +1,11 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: vm-select
+  name: {{ include "vmselect.componentDefName" . }}
   labels:
     {{- include "victoria-metrics.labels" . | nindent 4 }}
+  annotations:
+    {{- include "victoria-metrics.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
   description: A VictoriaMetrics component definition for Kubernetes
