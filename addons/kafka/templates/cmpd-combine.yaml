@@ -13,6 +13,13 @@ metadata:
     {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
     {{- end }}
 spec:
+  provider: kubeblocks
+  description: |-
+    Kafka servers that act as both brokers and controllers are referred to as "combined" servers. Combined servers
+    are simpler to operate for small use cases like a development environment. Combined mode is not recommended in critical
+    deployment environments.
+  serviceKind: kafka
+  serviceVersion: {{ .Values.defaultServiceVersion.combine }}
   services:
     - name: advertised-listener
       serviceName: advertised-listener
@@ -34,19 +41,12 @@ spec:
     - name: BROKER_ADVERTISED_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "kafka-combine.componentDefName" . }}
+          compDef: {{ include "kafka-combine.cmpdRegexpPattern" . }}
           name: advertised-listener
           optional: true
           port:
             name: broker
             option: Optional
-  provider: kubeblocks
-  description: |-
-    Kafka servers that act as both brokers and controllers are referred to as "combined" servers. Combined servers
-    are simpler to operate for small use cases like a development environment. Combined mode is not recommended in critical
-    deployment environments.
-  serviceKind: kafka
-  serviceVersion: {{ .Values.componentServiceVersion.combine }}
   systemAccounts:
     - name: client
       secretRef:
@@ -60,22 +60,22 @@ spec:
   updateStrategy: BestEffortParallel
   configs:
     - name: kafka-configuration-tpl
-      constraintRef: {{ include "kafka.name" . }}-cc
-      templateRef: {{ include "kafka.name" . }}-configuration-tpl
+      constraintRef: {{ include "kafka.configConstraintName" . }}
+      templateRef: {{ include "kafka.configurationTplName" . }}
       volumeName: kafka-config
       namespace: {{ .Release.Namespace }}
-    - name: {{ include "kafka.name" . }}-jmx-configuration-tpl
-      templateRef: {{ include "kafka.name" . }}-jmx-configuration-tpl
+    - name: kafka-jmx-configuration-tpl
+      templateRef: {{ include "kafka.jmxConfigurationTplName" . }}
       volumeName: jmx-config
       namespace: {{ .Release.Namespace }}
   scripts:
     - name: kafka-scripts-tpl
-      templateRef: {{ include "kafka.name" . }}-server-scripts-tpl
+      templateRef: {{ include "kafka.serverScriptsTplName" . }}
       volumeName: scripts
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755
     - name: kafka-scripts-tools-tpl
-      templateRef: {{ include "kafka.name" . }}-scripts-tools-tpl
+      templateRef: {{ include "kafka.toolsScriptsTplName" . }}
       volumeName: tools
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755

@@ -13,33 +13,33 @@ metadata:
     {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
     {{- end }}
 spec:
+  provider: kubeblocks
+  description: Kafka controller that act as controllers (kraft) only server.
+  serviceKind: kafka-controller
+  serviceVersion: {{ .Values.defaultServiceVersion.controller }}
   vars:
     - name: SUPER_USER
       valueFrom:
         credentialVarRef:
           name: admin
-          compDef: kafka-broker
+          compDef: {{ include "kafka-broker.cmpdRegexpPattern" . }}
           username: Required
           optional: false
-  provider: kubeblocks
-  description: Kafka controller that act as controllers (kraft) only server.
-  serviceKind: kafka-controller
-  serviceVersion: {{ .Values.componentServiceVersion.controller }}
   ## serial is not used because rsm currently does not support kafka's role detection. The lack of role label during restart will affect the pod restart.
   updateStrategy: BestEffortParallel
   configs:
     - name: kafka-configuration-tpl
-      constraintRef: {{ include "kafka.name" . }}-cc
-      templateRef: {{ include "kafka.name" . }}-configuration-tpl
+      constraintRef: {{ include "kafka.configConstraintName" . }}
+      templateRef: {{ include "kafka.configurationTplName" . }}
       volumeName: kafka-config
       namespace: {{ .Release.Namespace }}
     - name: kafka-jmx-configuration-tpl
-      templateRef: {{ include "kafka.name" . }}-jmx-configuration-tpl
+      templateRef: {{ include "kafka.jmxConfigurationTplName" . }}
       volumeName: jmx-config
       namespace: {{ .Release.Namespace }}
   scripts:
     - name: kafka-scripts-tpl
-      templateRef: {{ include "kafka.name" . }}-server-scripts-tpl
+      templateRef: {{ include "kafka.serverScriptsTplName" . }}
       volumeName: scripts
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755

@@ -120,3 +120,30 @@ Define kafka config constraint name
 kafka-config-constraints
 {{- end -}}
 
+{{/*
+Define kafka configuration tpl name
+*/}}
+{{- define "kafka.configurationTplName" -}}
+kafka-configuration-tpl
+{{- end -}}
+
+{{/*
+Define kafka jmx configuration tpl name
+*/}}
+{{- define "kafka.jmxConfigurationTplName" -}}
+kafka-jmx-configuration-tpl
+{{- end -}}
+
+{{/*
+Define kafka server scripts tpl name
+*/}}
+{{- define "kafka.serverScriptsTplName" -}}
+kafka-server-scripts-tpl
+{{- end -}}
+
+{{/*
+Define kafka tools scripts tpl name
+*/}}
+{{- define "kafka.toolsScriptsTplName" -}}
+kafka-scripts-tools-tpl
+{{- end -}}
