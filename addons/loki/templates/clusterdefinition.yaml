@@ -9,13 +9,13 @@ spec:
   - name: loki-cluster
     components:
       - name: write
-        compDef: loki-write
+        compDef: {{ include "loki.writeCmpdRegexpPattern" . }}
       - name: read
-        compDef: loki-read
+        compDef: {{ include "loki.readCmpdRegexpPattern" . }}
       - name: backend
-        compDef: loki-backend
+        compDef: {{ include "loki.backendCmpdRegexpPattern" . }}
       - name: gateway
-        compDef: loki-gateway
+        compDef: {{ include "loki.gatewayCmpdRegexpPattern" . }}
     orders:
       provision:
         - backend

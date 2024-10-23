@@ -9,19 +9,19 @@ spec:
     - releases:
         - write-1.0.0
       compDefs:
-        - loki-write
+        - {{ include "loki.writeCmpdRegexpPattern" . }}
     - releases:
         - read-1.0.0
       compDefs:
-        - loki-read
+        - {{ include "loki.readCmpdRegexpPattern" . }}
     - releases:
         - backend-1.0.0
       compDefs:
-        - loki-backend
+        - {{ include "loki.backendCmpdRegexpPattern" . }}
     - releases:
         - gateway-1.0.0
       compDefs:
-        - loki-gateway
+        - {{ include "loki.gatewayCmpdRegexpPattern" . }}
   releases:
     - name: write-1.0.0
       serviceVersion: 1.0.0
