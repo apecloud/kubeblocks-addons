@@ -21,3 +21,6 @@
 .idea/
 *.tmproj
 .vscode/
+
+# Dockerfile dirs
+orchestrator
