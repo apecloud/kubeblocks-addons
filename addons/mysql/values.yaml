@@ -110,9 +110,3 @@ roleProbe:
 ## @param cmpdNamePrefix for each ComponentDefinition resources name created by this chart, that can avoid name conflict
 ## If specified, the component definition will use it as prefix.
 cmpdNamePrefix: "mysql"
-
-## @param componentServiceVersion define default serviceVersion of each Component
-componentServiceVersion:
-  mysql5.7: "5.7.0"
-  mysql8.0: "8.0.0"
-  mysql8.4: "8.4.0"

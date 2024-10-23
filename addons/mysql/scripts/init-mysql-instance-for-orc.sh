@@ -100,9 +100,7 @@ setup_master_slave() {
 
   mysql_note "setup_master_slave"
 
-  oldIFS="$IFS"
   IFS=',' read -r -a replicas <<< "${MYSQL_POD_FQDN_LIST}"
-  IFS="$old_ifs"
 
   master_fqdn=${replicas[0]}
   master_last_digit=${master_fqdn##*-}
@@ -167,9 +165,7 @@ get_master_from_orc() {
     cleaned_line=$(echo "$first_line" | tr -d '[]')
 
     # Parse the status variables using comma as the delimiter
-    old_ifs="$IFS"
     IFS=',' read -ra status_array <<< "$cleaned_line"
-    IFS="$old_ifs"
 
     # Save individual status variables
     lag="${status_array[0]}"
