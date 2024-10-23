@@ -120,6 +120,16 @@ spec:
             value: $(KB_NAMESPACE)-$(KB_CLUSTER_COMP_NAME)
           - name: webServiceUrl
             value: http://$(CLUSTER_NAME)-broker-bootstrap.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN):80
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: POD_HOST_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.hostIP
         volumeMounts:
           - name: scripts
             mountPath: /kb-scripts
@@ -132,6 +142,17 @@ spec:
           privileged: true
           runAsNonRoot: false
           runAsUser: 0
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: POD_HOST_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.hostIP
         volumeMounts:
           - name: scripts
             mountPath: /kb-scripts
