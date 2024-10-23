@@ -21,6 +21,21 @@ spec:
   serviceKind: kafka-exporter
   serviceVersion: {{ .Values.defaultServiceVersion.exporter }}
   updateStrategy: BestEffortParallel
+  vars:
+    ## when server mode is kafka-broker
+    - name: BROKER_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "kafka-broker.cmpdRegexpPattern" . }}
+          optional: true
+          podFQDNs: Required
+    ## when server mode is kafka-combine
+    - name: COMBINE_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "kafka-combine.cmpdRegexpPattern" . }}
+          optional: true
+          podFQDNs: Required
   scripts:
   - name: kafka-scripts-tpl
     templateRef: {{ include "kafka.serverScriptsTplName" . }}
