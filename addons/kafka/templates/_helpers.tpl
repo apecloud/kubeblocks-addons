@@ -50,47 +50,73 @@ app.kubernetes.io/name: {{ include "kafka.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
+{{/*
+Common annotations
+*/}}
+{{- define "kafka.annotations" -}}
+helm.sh/resource-policy: keep
+{{- end }}
 
 {{/*
 Define kafka.combine component definition name
 */}}
 {{- define "kafka-combine.componentDefName" -}}
-{{- if eq (len .Values.clusterVersionOverride) 0 -}}
-kafka-combine
-{{- else -}}
-{{- printf "kafka-combine-%s" .Values.clusterVersionOverride -}}
+kafka-combine-{{ .Chart.Version }}
 {{- end -}}
+
+{{/*
+Define kafka.combine component definition regex pattern
+*/}}
+{{- define "kafka-combine.cmpdRegexpPattern" -}}
+^kafka-combine-
 {{- end -}}
 
 {{/*
 Define kafka-exporter component definition name
 */}}
 {{- define "kafka-exporter.componentDefName" -}}
-{{- if eq (len .Values.clusterVersionOverride) 0 -}}
-kafka-exporter
-{{- else -}}
-{{- printf "kafka-exporter-%s" .Values.clusterVersionOverride -}}
+kafka-exporter-{{ .Chart.Version }}
 {{- end -}}
+
+{{/*
+Define kafka-exporter component definition regex pattern
+*/}}
+{{- define "kafka-exporter.cmpdRegexpPattern" -}}
+^kafka-exporter-
 {{- end -}}
 
 {{/*
 Define kafka-controller component definition name
 */}}
 {{- define "kafka-controller.componentDefName" -}}
-{{- if eq (len .Values.clusterVersionOverride) 0 -}}
-kafka-controller
-{{- else -}}
-{{- printf "kafka-controller-%s" .Values.clusterVersionOverride -}}
+kafka-controller-{{ .Chart.Version }}
 {{- end -}}
+
+{{/*
+Define kafka-controller component definition regex pattern
+*/}}
+{{- define "kafka-controller.cmpdRegexpPattern" -}}
+^kafka-controller-
 {{- end -}}
 
 {{/*
 Define kafka-broker component definition name
 */}}
 {{- define "kafka-broker.componentDefName" -}}
-{{- if eq (len .Values.clusterVersionOverride) 0 -}}
-kafka-broker
-{{- else -}}
-{{- printf "kafka-broker-%s" .Values.clusterVersionOverride -}}
+kafka-broker-{{ .Chart.Version }}
 {{- end -}}
+
+{{/*
+Define kafka-broker component definition regex pattern
+*/}}
+{{- define "kafka-broker.cmpdRegexpPattern" -}}
+^kafka-broker-
 {{- end -}}
+
+{{/*
+Define kafka config constraint name
+*/}}
+{{- define "kafka.configConstraintName" -}}
+kafka-config-constraints
+{{- end -}}
+

@@ -12,6 +12,7 @@ componentServiceVersion:
   exporter: 1.6.0
 
 nameOverride: ""
+
 fullnameOverride: ""
 
 ## @param commonLabels Labels to add to all deployed objects
