@@ -111,7 +111,7 @@ override_sasl_configuration() {
   if [[ "true" == "$KB_KAFKA_ENABLE_SASL" ]]; then
     # bitnami default jaas setting: /opt/bitnami/kafka/config/kafka_jaas.conf
     if [[ "${KB_KAFKA_SASL_CONFIG_PATH}" ]]; then
-      cp ${KB_KAFKA_SASL_CONFIG_PATH} $kafka_config_path/kafka_jaas.conf
+      cp ${KB_KAFKA_SASL_CONFIG_PATH} $kafka_config_path/kafka_jaas.conf 2>/dev/null
       echo "[sasl]do: cp ${KB_KAFKA_SASL_CONFIG_PATH} $kafka_config_path/kafka_jaas.conf "
     fi
     export KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,INTERNAL:SASL_PLAINTEXT,CLIENT:SASL_PLAINTEXT

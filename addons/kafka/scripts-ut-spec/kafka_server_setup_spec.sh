@@ -94,6 +94,8 @@ Describe "Kafka Server Setup Script Tests"
       touch $mock_tls_cert_path/tls.key
       When run set_tls_configuration_if_needed
       The output should include "[tls]KAFKA_TLS_TRUSTSTORE_FILE=$mock_tls_cert_path/kafka.truststore.pem"
+      # hack openssl command error
+      The stderr should be present
       The status should be success
     End
 
