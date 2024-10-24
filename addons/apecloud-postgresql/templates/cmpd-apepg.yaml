@@ -113,16 +113,16 @@ spec:
       - command:
           - sh
           - -c
-          - cp -r /bin/syncer /kubeblocks/
+          - cp -r /bin/syncer /tools/
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         name: init-syncer
         volumeMounts:
-          - mountPath: /kubeblocks
-            name: kubeblocks
+          - mountPath: /tools
+            name: tools
     containers:
       - command:
-          - /kubeblocks/syncer
+          - /tools/syncer
           - --port
           - '3601'
           - --
@@ -141,10 +141,6 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.namespace
-          - name: POSTGRES_USER
-            value: $(POSTGRES_USER)
-          - name: POSTGRES_PASSWORD
-            value: $(POSTGRES_PASSWORD)
           - name: PGUSER
             value: $(POSTGRES_USER)
           - name: PGPASSWORD
@@ -176,8 +172,8 @@ spec:
             name: postgresql-config
           - mountPath: /kb-scripts
             name: scripts
-          - mountPath: /kubeblocks
-            name: kubeblocks
+          - mountPath: /tools
+            name: tools
     volumes:
       - emptyDir:
           medium: Memory

@@ -78,7 +78,7 @@ spec:
             securityContext:
               runAsUser: 0
             command:
-              - /kubeblocks/syncer
+              - /tools/syncer
               - --port
               - "3601"
               - --
@@ -93,8 +93,8 @@ spec:
                 mountPath: {{ .Values.confMountPath }}
               - name: scripts
                 mountPath: /kb-scripts
-              - name: kubeblocks
-                mountPath: /kubeblocks
+              - name: tools
+                mountPath: /tools
             ports:
               - name: tcp-postgresql
                 containerPort: 5432
@@ -137,6 +137,8 @@ spec:
                     name: $(CONN_CREDENTIAL_SECRET_NAME)
                     key: password
                     optional: false
+              - name: KB_SERVICE_CHARACTER_TYPE
+                value: apecloud-postgresql
               - name: POSTGRESQL_PORT_NUMBER
                 value: "5432"
               - name: PGDATA
