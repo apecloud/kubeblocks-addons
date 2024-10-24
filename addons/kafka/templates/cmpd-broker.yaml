@@ -28,12 +28,33 @@ spec:
             port: 9092
             targetPort: kafka-client
   vars:
+    - name: CLUSTER_UID
+      valueFrom:
+        clusterVarRef:
+          clusterUID: Required
     - name: SUPER_USER
       valueFrom:
         credentialVarRef:
           name: admin
           username: Required
           optional: false
+    - name: CONTROLLER_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "kafka-controller.cmpdRegexpPattern" . }}
+          optional: false
+          podFQDNs: Required
+    - name: CONTROLLER_POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "kafka-controller.cmpdRegexpPattern" . }}
+          optional: false
+          podNames: Required
+    - name: COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
     ## Todo: currently only nodeport and clusterIp network modes are supported. LoadBalance is not supported yet and needs future support.
     - name: BROKER_ADVERTISED_PORT
       valueFrom:
@@ -93,10 +114,15 @@ spec:
           - name: BITNAMI_DEBUG
             value: {{ .Values.debugEnabled | quote }}
           - name: MY_POD_IP
-            value: "$(KB_PODIP)"
-            # value: "$(KB_POD_IP)"
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
           - name: MY_POD_NAME
-            value: "$(KB_POD_NAME)"
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
           - name: KAFKA_ENABLE_KRAFT
             value: "yes"
           - name: KAFKA_CFG_PROCESS_ROLES
@@ -130,7 +156,7 @@ spec:
           - name: SERVER_PROP_FILE
             value: /scripts/server.properties
           - name: KAFKA_KRAFT_CLUSTER_ID
-            value: $(KB_CLUSTER_UID)
+            value: $(CLUSTER_UID)
           - name: KAFKA_CFG_SUPER_USERS
             value: "User:$(SUPER_USER)"
           # - name: KB_KAFKA_ENABLE_SASL  # enable the SASL with plain mode
