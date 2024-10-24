@@ -37,6 +37,17 @@ spec:
     - command:
       - cp
       - -r
+      - /bin/syncer
+      - /tools/
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+      imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+      name: init-syncer
+      volumeMounts:
+        - mountPath: /tools
+          name: tools
+    - command:
+      - cp
+      - -r
       - /bin/dbctl
       - /config
       - /tools/
@@ -50,6 +61,10 @@ spec:
       - name: mysql
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command: 
+          - syncer
+          - --port
+          - "3601"
+          - --
           - bash
           - -c
           - |
