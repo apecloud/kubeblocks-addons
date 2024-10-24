@@ -71,8 +71,6 @@ configTemplate:
 
 imagePullSecrets: []
 nameOverride: ""
-fullnameOverride: ""
-clusterVersionOverride: ""
 
 logConfigs:
   error: /var/lib/mysql/log/mysqld-error.log
