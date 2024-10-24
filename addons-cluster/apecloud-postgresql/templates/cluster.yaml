@@ -6,12 +6,11 @@ metadata:
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
-  {{- include "kblib.affinity" . | indent 2 }}
   clusterDef: apecloud-postgresql
   topology: apecloud-postgresql
   componentSpecs:
     - name: postgresql
-      componentDef: postgresql
+      componentDef: apecloud-postgresql14
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ include "apecloud-postgresql-cluster.replicas" . }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}

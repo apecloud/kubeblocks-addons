@@ -15,7 +15,7 @@ for d in $(find ./addons -type d  -not -name "common" -not -name "kblib" -not -n
     dir_name=$(basename $d)
 
     helm dependency build addons/$dir_name --skip-refresh > /dev/null 2>&1
-    helm template addon addons/$dir_name > /tmp/rendered.yaml
+    helm template addon addons/$dir_name --dependency-update > /tmp/rendered.yaml
 
     # prase from ComponentVersion
     version_lines=$(cat "/tmp/rendered.yaml" | yq e '. | select(.kind == "ComponentVersion")'  | yq '.metadata.name + "-" +.spec.releases[].serviceVersion' -N | sort | uniq)
