@@ -12,9 +12,7 @@ image:
 componentServiceVersion:
   rabbitmq: 3.13.2
 
-clusterVersionOverride: ""
 nameOverride: ""
-fullnameOverride: ""
 
 ## Authentication parameters
 ##
