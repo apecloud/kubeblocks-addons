@@ -57,17 +57,3 @@ Common annotations
 {{- define "rabbitmq.annotations" -}}
 helm.sh/resource-policy: keep              
 {{- end }}
-
-{{/*
-Define rabbitmq component definition name prefix
-*/}}
-{{- define "rabbitmq.cmpdNamePrefix" -}}
-{{- default "rabbitmq" .Values.resourceNamePrefix -}}-
-{{- end -}}
-
-{{/*
-Define rabbitmq component definition name
-*/}}
-{{- define "rabbitmq.cmpdName" -}}
-{{ include "rabbitmq.cmpdNamePrefix" . }}{{ .Chart.Version }}
-{{- end -}}

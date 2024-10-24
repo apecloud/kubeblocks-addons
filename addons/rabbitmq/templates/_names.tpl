@@ -10,14 +10,17 @@ rabbitmq
 {{- end -}}
 
 {{/*
-Define component definition name
+Define rabbitmq component definition name prefix
 */}}
-{{- define "rabbitmq.componentDefName" -}}
-{{- if eq (len .Values.resourceNamePrefix) 0 -}}
-rabbitmq
-{{- else -}}
-{{- .Values.resourceNamePrefix -}}
+{{- define "rabbitmq.cmpdNamePrefix" -}}
+{{- default "rabbitmq" .Values.resourceNamePrefix -}}-
 {{- end -}}
+
+{{/*
+Define rabbitmq component definition name
+*/}}
+{{- define "rabbitmq.cmpdName" -}}
+{{ include "rabbitmq.cmpdNamePrefix" . }}{{ .Chart.Version }}
 {{- end -}}
 
 {{/*

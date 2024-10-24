@@ -121,14 +121,14 @@ spec:
     - name: RABBITMQ_DEFAULT_USER
       valueFrom:
         credentialVarRef:
-          compDef: {{ include "rabbitmq.componentDefName" . }}
+          compDef: {{ include "rabbitmq.cmpdName" . }}
           name: root
           optional: false
           username: Required
     - name: RABBITMQ_DEFAULT_PASS
       valueFrom:
         credentialVarRef:
-          compDef: {{ include "rabbitmq.componentDefName" . }}
+          compDef: {{ include "rabbitmq.cmpdName" . }}
           name: root
           optional: false
           password: Required
