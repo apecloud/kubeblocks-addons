@@ -124,6 +124,11 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.name
+          - name: MY_POD_HOST_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.hostIP
           - name: KAFKA_ENABLE_KRAFT
             value: "yes"
           - name: KAFKA_CFG_PROCESS_ROLES

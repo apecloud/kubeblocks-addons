@@ -1,9 +1,5 @@
 #!/bin/bash
 
-kafka_config_certs_path="/opt/bitnami/kafka/config/certs"
-kafka_kraft_config_path="/opt/bitnami/kafka/config/kraft"
-kafka_config_path="/opt/bitnami/kafka/config"
-
 # shellcheck disable=SC2153
 # shellcheck disable=SC2034
 ut_mode="false"
@@ -11,6 +7,10 @@ test || __() {
   # when running in non-unit test mode, set the options "set -ex".
   set -ex;
 }
+
+kafka_config_certs_path="/opt/bitnami/kafka/config/certs"
+kafka_kraft_config_path="/opt/bitnami/kafka/config/kraft"
+kafka_config_path="/opt/bitnami/kafka/config"
 
 load_common_library() {
   # the common.sh scripts is mounted to the same path which is defined in the cmpd.spec.scripts
@@ -171,7 +171,7 @@ parse_advertised_svc_if_exist() {
     if [[ "$svc_name_ordinal" == "$pod_name_ordinal" ]]; then
       echo "Found matching svcName and port for podName '$pod_name', BROKER_ADVERTISED_PORT: $BROKER_ADVERTISED_PORT. svcName: $svc_name, port: $port."
       advertised_svc_port_value="$port"
-      advertised_svc_host_value="$KB_HOST_IP"
+      advertised_svc_host_value="$MY_POD_HOST_IP"
       found=true
       break
     fi

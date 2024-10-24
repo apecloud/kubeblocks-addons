@@ -25,10 +25,12 @@ Describe "Kafka Server Setup Script Tests"
     kafka_config_certs_path="./certs"
     kafka_kraft_config_path="./kraft"
     kafka_config_path="./config"
+    kafka_cfg_dir="./cfg"
     mkdir -p $mock_tls_cert_path
     mkdir -p $kafka_config_certs_path
     mkdir -p $kafka_kraft_config_path
     mkdir -p $kafka_config_path
+    mkdir -p $kafka_cfg_dir
   }
   BeforeAll "init"
 
@@ -38,6 +40,7 @@ Describe "Kafka Server Setup Script Tests"
     rm -fr $kafka_config_certs_path;
     rm -fr $kafka_kraft_config_path;
     rm -fr $kafka_config_path;
+    rm -fr $kafka_cfg_dir;
   }
   AfterAll 'cleanup'
 
@@ -59,6 +62,7 @@ Describe "Kafka Server Setup Script Tests"
     unset KAFKA_KRAFT_CLUSTER_ID
     unset KB_KAFKA_BROKER_HEAP
     unset KB_KAFKA_CONTROLLER_HEAP
+    unset KAFKA_CFG_METADATA_LOG_DIR
   }
 
   Describe "set_tls_configuration_if_needed()"
@@ -191,6 +195,60 @@ Describe "Kafka Server Setup Script Tests"
       un_setup
       When run generate_kraft_cluster_id
       The output should not include "KAFKA_KRAFT_CLUSTER_ID"
+      The status should be success
+    End
+  End
+
+  Describe "set_cfg_metadata()"
+    It "removes quorum-state file when broker restarts"
+      un_setup
+      KAFKA_CFG_PROCESS_ROLES="broker"
+      KAFKA_CFG_METADATA_LOG_DIR="$kafka_cfg_dir/log"
+      mkdir -p "$KAFKA_CFG_METADATA_LOG_DIR/__cluster_metadata-0"
+      touch "$KAFKA_CFG_METADATA_LOG_DIR/__cluster_metadata-0/quorum-state"
+      When run set_cfg_metadata
+      The status should be failure
+      The output should include "[action]Removing quorum-state file when restart."
+      The stderr should include "Failed to get current pod"
+    End
+
+    It "sets advertised.listeners for broker role"
+      un_setup
+      KAFKA_CFG_PROCESS_ROLES="broker"
+      MY_POD_NAME="kafka-broker-0"
+      KB_HOST_IP="192.168.0.1"
+      POD_FQDN_LIST="kafka-broker-0.kafka.svc.cluster.local"
+      BROKER_ADVERTISED_PORT="kafka-broker-0:9092"
+      BROKER_MIN_NODE_ID=1
+      When run set_cfg_metadata
+      The output should include "KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://kafka-broker-0.kafka.svc.cluster.local:9094,CLIENT://kafka-broker-0.kafka.svc.cluster.local:9092"
+      The output should include "Found matching svcName and port for podName 'kafka-broker-0', BROKER_ADVERTISED_PORT: kafka-broker-0:9092. svcName: kafka-broker-0, port: 9092"
+      The status should be success
+    End
+
+    It "handles errors when advertised service not found"
+      un_setup
+      KAFKA_CFG_PROCESS_ROLES="broker"
+      MY_POD_NAME="kafka-broker-0"
+      POD_FQDN_LIST="kafka-broker-0.kafka.svc.cluster.local"
+      BROKER_ADVERTISED_PORT="kafka-broker-1:9092"
+      When run set_cfg_metadata
+      The stderr should include "Error: No matching svcName and port found for podName 'kafka-broker-0'"
+      The stderr should include "Error: Failed to parse advertised svc from BROKER_ADVERTISED_PORT"
+      The stdout should include "find svc_name:kafka-broker-1,port:9092,svc_name_ordinal:1"
+      The status should be failure
+    End
+
+    It "handles errors when advertised service is found"
+      un_setup
+      KAFKA_CFG_PROCESS_ROLES="broker"
+      MY_POD_NAME="kafka-broker-0"
+      MY_POD_HOST_IP="127.0.0.2"
+      POD_FQDN_LIST="kafka-broker-0.kafka.svc.cluster.local"
+      BROKER_ADVERTISED_PORT="kafka-broker-0:39092"
+      BROKER_MIN_NODE_ID=1
+      When run set_cfg_metadata
+      The output should include "KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://kafka-broker-0.kafka.svc.cluster.local:9094,CLIENT://127.0.0.2:39092"
       The status should be success
     End
   End
