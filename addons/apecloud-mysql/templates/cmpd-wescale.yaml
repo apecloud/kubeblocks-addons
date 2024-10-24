@@ -1,9 +1,11 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: wescale
+  name: {{ include "apecloud-mysql.cmpdNameWescale" . }}
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "apecloud-mysql.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks.io
   description: wescale
@@ -84,14 +86,14 @@ spec:
     - name: MYSQL_USER
       valueFrom:
         credentialVarRef:
-          compDef: {{ include "apecloud-mysql.componentDefName" . }}
+          compDef: {{ include "apecloud-mysql.cmpdNameApecloudMySQL" . }}
           name: root
           optional: false
           username: Required
     - name: MYSQL_PASSWORD
       valueFrom:
         credentialVarRef:
-          compDef: {{ include "apecloud-mysql.componentDefName" . }}
+          compDef: {{ include "apecloud-mysql.cmpdNameApecloudMySQL" . }}
           name: root
           optional: false 
           password: Required

@@ -1,9 +1,11 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: wescale-ctrl
+  name: {{ include "apecloud-mysql.cmpdNameWescaleCtrl" . }}
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "apecloud-mysql.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks.io
   description: wescale controller
@@ -21,11 +23,6 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
-  logConfigs:
-    {{- range $name,$pattern := .Values.vtconsensusLogConfigs }}
-    - name: {{ $name }}
-      filePathPattern: {{ $pattern }}
-    {{- end }}
   lifecycleActions:
     preTerminate:
       exec:
@@ -62,14 +59,14 @@ spec:
     - name: MYSQL_ROOT_USER
       valueFrom:
         credentialVarRef:
-          compDef: {{ include "apecloud-mysql.componentDefName" . }}
+          compDef: {{ include "apecloud-mysql.cmpdNameApecloudMySQL" . }}
           name: root
           optional: false
           username: Required
     - name: MYSQL_ROOT_PASSWORD
       valueFrom:
         credentialVarRef:
-          compDef: {{ include "apecloud-mysql.componentDefName" . }}
+          compDef: {{ include "apecloud-mysql.cmpdNameApecloudMySQL" . }}
           name: root
           optional: false
           password: Required

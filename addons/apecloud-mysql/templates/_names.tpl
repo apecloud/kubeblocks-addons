@@ -76,14 +76,45 @@ ac-mysql-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
 {{- end -}}
 
 {{/*
-Define component definition name
+Define apecloud-mysql component definition name prefix
 */}}
-{{- define "apecloud-mysql.componentDefName" -}}
-{{- if eq (len .Values.resourceNamePrefix) 0 -}}
-apecloud-mysql
-{{- else -}}
-{{- .Values.resourceNamePrefix -}}
+{{- define "apecloud-mysql.cmpdNameApecloudMySQLPrefix" -}}
+{{- .Values.resourceNamePrefix -}}-apecloud-mysql-
 {{- end -}}
+
+{{/*
+Define wescale component definition name prefix
+*/}}
+{{- define "apecloud-mysql.cmpdNameWescalePrefix" -}}
+{{- .Values.resourceNamePrefix -}}-wescale-
+{{- end -}}
+
+{{/*
+Define wescale controller component definition name prefix
+*/}}
+{{- define "apecloud-mysql.cmpdNameWescaleCtrlPrefix" -}}
+{{- .Values.resourceNamePrefix -}}-wescale-controller-
+{{- end -}}
+
+{{/*
+Define apecloud-mysql component definition name
+*/}}
+{{- define "apecloud-mysql.cmpdNameApecloudMySQL" -}}
+{{ include "apecloud-mysql.cmpdNameApecloudMySQLPrefix" . }}{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define wescale component definition name
+*/}}
+{{- define "apecloud-mysql.cmpdNameWescale" -}}
+{{ include "apecloud-mysql.cmpdNameWescalePrefix" . }}{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define wescale-controller component definition name
+*/}}
+{{- define "apecloud-mysql.cmpdNameWescaleCtrl" -}}
+{{ include "apecloud-mysql.cmpdNameWescaleCtrlPrefix" . }}{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
