@@ -1,9 +1,11 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "rabbitmq.componentDefName" . }}
+  name: {{ include "rabbitmq.cmpdName" . }}
   labels:
     {{- include "rabbitmq.labels" . | nindent 4 }}
+  annotations:
+    {{- include "rabbitmq.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks.io
   description: RabbitMQ is a reliable and mature messaging and streaming broker.
@@ -69,7 +71,7 @@ spec:
         - name: RABBITMQ_USE_LONGNAME
           value: "true"
         - name: RABBITMQ_NODENAME
-          value: rabbit@$(KB_POD_NAME).$(K8S_SERVICE_NAME).$(MY_POD_NAMESPACE)
+          value: rabbit@$(MY_POD_NAME).$(K8S_SERVICE_NAME).$(MY_POD_NAMESPACE)
         - name: K8S_HOSTNAME_SUFFIX
           value: .$(K8S_SERVICE_NAME).$(MY_POD_NAMESPACE)
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
@@ -119,14 +121,14 @@ spec:
     - name: RABBITMQ_DEFAULT_USER
       valueFrom:
         credentialVarRef:
-          compDef: {{ include "rabbitmq.componentDefName" . }}
+          compDef: {{ include "rabbitmq.cmpdName" . }}
           name: root
           optional: false
           username: Required
     - name: RABBITMQ_DEFAULT_PASS
       valueFrom:
         credentialVarRef:
-          compDef: {{ include "rabbitmq.componentDefName" . }}
+          compDef: {{ include "rabbitmq.cmpdName" . }}
           name: root
           optional: false
           password: Required
