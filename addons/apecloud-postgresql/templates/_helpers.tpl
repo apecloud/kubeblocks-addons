@@ -41,3 +41,20 @@ Generate scripts configmap
 {{- $.Files.Get $path | nindent 2 }}
 {{- end }}
 {{- end }}
+
+{{/*
+Define apecloud-postgresql component definition name prefix
+*/}}
+{{- define "apecloud-postgresql.componentDefNamePrefix" -}}
+{{- printf "apecloud-postgresql-" -}}
+{{- end -}}
+{{/*
+Define apecloud-postgresql14 component definition name
+*/}}
+{{- define "apecloud-postgresql.compDefApecloudPostgresql14" -}}
+{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+apecloud-postgresql14
+{{- else -}}
+{{- .Values.resourceNamePrefix -}}
+{{- end -}}
+{{- end -}}
