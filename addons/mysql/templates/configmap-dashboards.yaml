@@ -8,7 +8,7 @@ items:
 - apiVersion: v1
   kind: ConfigMap
   metadata:
-    name: {{ printf "%s-grafana-%s" (include "mysql.fullname" $) $dashboardName | trunc 63 | trimSuffix "-" }}
+    name: {{ printf "%s-grafana-%s" $.Release.Name $dashboardName | trunc 63 | trimSuffix "-" }}
     labels:
       grafana_dashboard: "1"
       app: {{ template "mysql.name" $ }}-grafana

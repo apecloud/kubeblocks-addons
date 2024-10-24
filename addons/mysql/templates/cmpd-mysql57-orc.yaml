@@ -4,6 +4,8 @@ metadata:
   name: {{ include "mysql.componentDefNameOrc57" . }}
   labels:
       {{- include "mysql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mysql.annotations" . | nindent 4 }}
 spec:
   {{- include "mysql-orc.spec.common" . | nindent 2 }}
   serviceVersion: 5.7.44
@@ -12,6 +14,7 @@ spec:
     postProvision:
       exec:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.7.44
+        container: mysql
         command:
           - bash
           - -c

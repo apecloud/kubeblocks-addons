@@ -6,24 +6,6 @@ Expand the name of the chart.
 {{- end }}
 
 {{/*
-Create a default fully qualified app name.
-We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
-If release name contains chart name it will be used as a full name.
-*/}}
-{{- define "mysql.fullname" -}}
-{{- if .Values.fullnameOverride }}
-{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
-{{- else }}
-{{- $name := default .Chart.Name .Values.nameOverride }}
-{{- if contains $name .Release.Name }}
-{{- .Release.Name | trunc 63 | trimSuffix "-" }}
-{{- else }}
-{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
-{{- end }}
-{{- end }}
-{{- end }}
-
-{{/*
 Create chart name and version as used by the chart label.
 */}}
 {{- define "mysql.chart" -}}
@@ -49,101 +31,6 @@ Selector labels
 app.kubernetes.io/name: {{ include "mysql.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
-
-{{/*
-Create the name of the service account to use
-*/}}
-{{- define "mysql.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "mysql.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
-{{- end }}
-
-{{/*
-Define mysql component definition regex regular
-*/}}
-{{- define "mysql.componentDefRegex" -}}
-^mysql-\d+\.\d+.*$
-{{- end -}}
-
-{{/*
-Define mysql component definition name
-*/}}
-{{- define "mysql.componentDefName57" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-mysql-5.7
-{{- else -}}
-{{- printf "mysql-5.7-%s" .Values.compDefinitionVersionSuffix -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Define mysql component definition name
-*/}}
-{{- define "mysql.componentDefNameOrc57" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-mysql-orc-5.7
-{{- else -}}
-{{- printf "mysql-orc-5.7-%s" .Values.compDefinitionVersionSuffix -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Define mysql component definition name
-*/}}
-{{- define "mysql.componentDefName80" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-mysql-8.0
-{{- else -}}
-{{- printf "mysql-8.0-%s" .Values.compDefinitionVersionSuffix -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Define mysql component definition name
-*/}}
-{{- define "mysql.componentDefNameOrc80" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-mysql-orc-8.0
-{{- else -}}
-{{- printf "mysql-orc-8.0-%s" .Values.compDefinitionVersionSuffix -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Define mysql component definition name
-*/}}
-{{- define "mysql.componentDefName84" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-mysql-8.4
-{{- else -}}
-{{- printf "mysql-8.4-%s" .Values.compDefinitionVersionSuffix -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Define mysql component definition name
-*/}}
-{{- define "orchestrator.serviceRefName" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-orchestrator
-{{- else -}}
-{{- printf "orchestrator-%s" .Values.compDefinitionVersionSuffix -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Define mysql component definition name
-*/}}
-{{- define "proxysql.componentDefName" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-mysql-proxysql
-{{- else -}}
-{{- printf "mysql-proxysql-%s" .Values.compDefinitionVersionSuffix -}}
-{{- end -}}
-{{- end -}}
 
 {{/*
 Common labels
@@ -176,6 +63,13 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{ default "IfNotPresent" .Values.image.pullPolicy }}
 {{- end }}
 
+{{/*
+Common annotations
+*/}}
+{{- define "mysql.annotations" -}}
+helm.sh/resource-policy: keep              
+{{- end }}
+
 {{- define "mysql.spec.common" -}}
 provider: kubeblocks
 serviceKind: mysql
@@ -183,17 +77,8 @@ description: mysql component definition for Kubernetes
 updateStrategy: BestEffortParallel
 
 services:
-  - name: mysql-server
-    serviceName: mysql-server
+  - name: default
     roleSelector: primary
-    spec:
-      ports:
-        - name: mysql
-          port: 3306
-          targetPort: mysql
-  - name: mysql
-    serviceName: mysql
-    podService: true
     spec:
       ports:
         - name: mysql
@@ -255,7 +140,6 @@ roles:
     - cp
     - -r
     - /bin/syncer
-    - /config
     - /tools/
   image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
   imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
@@ -359,6 +243,11 @@ vars:
         port: Required
   - name: DATA_MOUNT
     value: {{.Values.dataMountPath}}
+  - name: MYSQL_POD_FQDN_LIST
+    valueFrom:
+      componentVarRef:
+        optional: false
+        podNames: Required
 
 exporter:
   containerName: mysql-exporter
@@ -382,9 +271,7 @@ roleProbe:
 
         first_line=$(echo "$topology_info" | head -n 1)
         cleaned_line=$(echo "$first_line" | tr -d '[]')
-        old_ifs="$IFS"
         IFS=',' read -ra status_array <<< "$cleaned_line"
-        IFS="$old_ifs"
         status="${status_array[1]}"
         if  [ "$status" != "ok" ]; then
           exit 0
@@ -467,8 +354,7 @@ command:
   - bash
   - -c
   - |
-    mv {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
-    rm -rf {{ .Values.dataMountPath }}/plugin
+    cp {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
     chown -R mysql:root {{ .Values.dataMountPath }}
     skip_slave_start="OFF"
     if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
@@ -482,14 +368,14 @@ volumeMounts:
     name: mysql-config
   - name: scripts
     mountPath: /scripts
-  - mountPath: /kubeblocks
+  - mountPath: /kubeblocks-tools
     name: kubeblocks
 ports:
   - containerPort: 3306
     name: mysql
 env:
   - name: PATH
-    value: /kubeblocks/xtrabackup/bin:/kubeblocks/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    value: /kubeblocks/xtrabackup/bin:/kubeblocks/:/kubeblocks-tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
   - name: MYSQL_INITDB_SKIP_TZINFO
     value: "1"
   - name: MYSQL_ROOT_HOST
@@ -502,6 +388,21 @@ env:
     value: orchestrator
   - name: SERVICE_PORT
     value: "3306"
+  - name: SYNCER_POD_NAME
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.name
+  - name: SYNCER_POD_UID
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.uid
+  - name: SYNCER_POD_IP
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: status.podIP
 {{- end -}}
 
 {{- define "mysql.spec.runtime.exporter" -}}

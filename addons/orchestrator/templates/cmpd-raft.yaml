@@ -16,11 +16,19 @@ spec:
       writable: false
       votable: true
 
+  vars:
+    - name: ORC_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "orchestrator.componentDefName" . }}
+          optional: false
+          podFQDNs: Required
+
   lifecycleActions:
     roleProbe:
       exec:
         command:
-          - /bin/bash
+          - /bin/sh
           - -c
           - |
             role=$(curl -s http://127.0.0.1:3000/api/leader-check)
@@ -52,3 +60,8 @@ spec:
             value: "true"
           - name: ORC_BACKEND_DB
             value: sqlite
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name

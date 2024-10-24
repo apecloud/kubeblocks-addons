@@ -12,11 +12,11 @@ ORC_META_DATABASE=${ORC_META_DATABASE:-orchestrator}
 mkdir -p $WORKDIR
 mkdir -p $WORKDIR/raft $WORKDIR/sqlite
 
-SUBDOMAIN=${KB_CLUSTER_COMP_NAME}-headless
-replicas=$(eval echo ${KB_POD_LIST} | tr ',' '\n')
+SUBDOMAIN=${KB_CLUSTER_COMP_NAME}-headless.${KB_NAMESPACE}.svc.cluster.local
+replicas=$(eval echo ${ORC_POD_FQDN_LIST} | tr ',' '\n')
 PEERS=""
 for replica in ${replicas}; do
-    host=${replica}.${SUBDOMAIN}
+    host=${replica}
     PEERS="${PEERS},\"${host}\""
 done
 # remove the first comma
@@ -24,7 +24,7 @@ PEERS=${PEERS#,}
 
 if [ $ORC_RAFT_ENABLED == 'true' ]; then
   ORC_PEERS=$PEERS
-  ORC_POD_NAME=${KB_POD_NAME}.${SUBDOMAIN}
+  ORC_POD_NAME=${CURRENT_POD_NAME}.${SUBDOMAIN}
 else
   ORC_PEERS=""
   ORC_POD_NAME=""
