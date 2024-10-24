@@ -20,6 +20,9 @@ spec:
         - bash
         - -c
         - |
+          #!/bin/bash
+          {{- include "kblib.logs.format_log_content" $ | nindent 10 }}
+          {{- include "kblib.logs.setup_logging" $ | nindent 10 }}
           {{- .Files.Get "dataprotection/wal-g-config.sh" | nindent 10 }}
       syncProgress:
         enabled: false
@@ -53,6 +56,9 @@ spec:
         - bash
         - -c
         - |
+          #!/bin/bash
+          {{- include "kblib.logs.format_log_content" $ | nindent 10 }}
+          {{- include "kblib.logs.setup_logging" $ | nindent 10 }}
           {{- .Files.Get "dataprotection/wal-g-backup.sh" | nindent 10 }}
       syncProgress:
         enabled: true
@@ -63,6 +69,9 @@ spec:
         - bash
         - -c
         - |
+          #!/bin/bash
+          {{- include "kblib.logs.format_log_content" $ | nindent 10 }}
+          {{- include "kblib.logs.setup_logging" $ | nindent 10 }}
           {{- .Files.Get "dataprotection/wal-g-delete.sh" | nindent 10 }}
   restore:
     prepareData:
@@ -71,5 +80,8 @@ spec:
         - bash
         - -c
         - |
+          #!/bin/bash
+          {{- include "kblib.logs.format_log_content" $ | nindent 10 }}
+          {{- include "kblib.logs.setup_logging" $ | nindent 10 }}
           {{- .Files.Get "dataprotection/wal-g-restore.sh" | nindent 10 }}
     postReady: []

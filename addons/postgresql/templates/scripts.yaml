@@ -12,6 +12,8 @@ data:
     {{- include "kblib.compvars.get_target_pod_fqdn_from_pod_fqdn_vars" $ | nindent 4 }}
     {{- include "kblib.strings.is_empty" $ | nindent 4 }}
     {{- include "kblib.strings.split" $ | nindent 4 }}
+    {{- include "kblib.logs.format_log_content" $ | nindent 4 }}
+    {{- include "kblib.logs.setup_logging" $ | nindent 4 }}
   {{- with include "postgresql.extend.scripts" . }}
   {{- . | nindent 2 }}
   {{- end }}
