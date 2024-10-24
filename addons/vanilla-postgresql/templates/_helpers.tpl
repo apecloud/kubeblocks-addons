@@ -290,8 +290,6 @@ volumes:
     runAsUser: 0
   command:
     - /kubeblocks/syncer
-    - --config-path
-    - /kubeblocks/config/components
     - --port
     - "3601"
     - --
