@@ -145,6 +145,8 @@ spec:
             value: $(POSTGRES_USER)
           - name: PGPASSWORD
             value: $(POSTGRES_PASSWORD)
+          - name: KB_SERVICE_CHARACTER_TYPE
+            value: apecloud-postgresql
           - name: POSTGRESQL_PORT_NUMBER
             value: '5432'
           - name: PGDATA
