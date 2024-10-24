@@ -73,7 +73,7 @@ Define wescale component definition name prefix
 */}}
 {{- define "apecloud-mysql.cmpdNameWescalePrefix" -}}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-apecloud-mysql-
+wescale-
 {{- else -}}
 {{- .Values.resourceNamePrefix -}}-wescale-
 {{- end -}}
@@ -84,7 +84,7 @@ Define wescale controller component definition name prefix
 */}}
 {{- define "apecloud-mysql.cmpdNameWescaleCtrlPrefix" -}}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-apecloud-mysql-
+wescale-controller-
 {{- else -}}
 {{- .Values.resourceNamePrefix -}}-wescale-controller-
 {{- end -}}
