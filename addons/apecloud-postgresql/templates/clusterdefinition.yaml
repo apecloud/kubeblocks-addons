@@ -6,12 +6,8 @@ metadata:
     {{- include "apecloud-postgresql.labels" . | nindent 4 }}
 spec:
   topologies:
-    - name: standalone
+    - name: apecloud-postgresql
       components:
         - name: postgresql
           compDef: {{ include "apecloud-postgresql.compDefApecloudPostgresql14" . }}
       default: true
-    - name: raftGroup
-      components:
-        - name: postgresql
-          compDef: {{ include "apecloud-postgresql.compDefApecloudPostgresql14" . }}
