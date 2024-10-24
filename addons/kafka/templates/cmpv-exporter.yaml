@@ -7,7 +7,7 @@ metadata:
 spec:
   compatibilityRules:
     - compDefs:
-        - {{ include "kafka-exporter.componentDefName" . }}
+        - {{ include "kafka-exporter.cmpdRegexpPattern" . }}
       releases:
         - 1.6.0-debian-11-r67
   releases:

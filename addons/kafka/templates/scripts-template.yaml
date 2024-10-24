@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "kafka.name" . }}-scripts-tpl
+  name: {{ include "kafka.serverScriptsTplName" . }}
   namespace: {{ .Release.Namespace | quote }}
   labels: {{- include "common.labels.standard" . | nindent 4 }}
     {{- if .Values.commonLabels }}
@@ -11,38 +11,21 @@ metadata:
   annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
   {{- end }}
 data:
+  common.sh: |-
+    #!/bin/bash
+    {{- include "kblib.compvars.get_target_pod_fqdn_from_pod_fqdn_vars" $ | nindent 4 }}
+    {{- include "kblib.strings.is_empty" $ | nindent 4 }}
   kafka-server-setup.sh: |-
-    {{- .Files.Get "scripts/kafka-server-setup.sh.tpl" | nindent 4 }}
+    {{- .Files.Get "scripts/kafka-server-setup.sh" | nindent 4 }}
   kafka-exporter-setup.sh: |-
-    {{- .Files.Get "scripts/kafka-exporter-setup.sh.tpl" | nindent 4 }}
-  kafka-env.sh: |-
-    {{- .Files.Get "scripts/kafka-env.sh" | nindent 4 }}
----
-# scope for component definition
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: {{ include "kafka.name" . }}-server-scripts-tpl
-  namespace: {{ .Release.Namespace | quote }}
-  labels: {{- include "common.labels.standard" . | nindent 4 }}
-    {{- if .Values.commonLabels }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
-    {{- end }}
-  {{- if .Values.commonAnnotations }}
-  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-  {{- end }}
-data:
-  kafka-server-setup.sh: |-
-    {{- .Files.Get "scripts/kafka-server-setup.tpl" | nindent 4 }}
-  kafka-exporter-setup.sh: |-
-    {{- .Files.Get "scripts/kafka-exporter-setup.tpl" | nindent 4 }}
+    {{- .Files.Get "scripts/kafka-exporter-setup.sh" | nindent 4 }}
   kafka-env.sh: |-
     {{- .Files.Get "scripts/kafka-env.sh" | nindent 4 }}
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "kafka.name" . }}-scripts-tools-tpl
+  name: {{ include "kafka.toolsScriptsTplName" . }}
   namespace: {{ .Release.Namespace | quote }}
   labels: {{- include "common.labels.standard" . | nindent 4 }}
     {{- if .Values.commonLabels }}

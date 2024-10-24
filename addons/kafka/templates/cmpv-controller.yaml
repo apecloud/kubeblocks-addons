@@ -7,7 +7,7 @@ metadata:
 spec:
   compatibilityRules:
     - compDefs:
-        - {{ include "kafka-controller.componentDefName" . }}
+        - {{ include "kafka-controller.cmpdRegexpPattern" . }}
       releases:
         - 3.3.2-debian-11-r54
   releases:
