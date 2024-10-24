@@ -22,13 +22,6 @@ spec:
       valueFrom:
         clusterVarRef:
           clusterUID: Required
-    - name: SUPER_USER
-      valueFrom:
-        credentialVarRef:
-          name: admin
-          compDef: {{ include "kafka-broker.cmpdRegexpPattern" . }}
-          username: Required
-          optional: false
     - name: POD_FQDN_LIST
       valueFrom:
         componentVarRef:
@@ -113,8 +106,6 @@ spec:
             value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
           - name: SERVER_PROP_FILE
             value: /scripts/server.properties
-          - name: KAFKA_CFG_SUPER_USERS
-            value: "User:$(SUPER_USER)"
           - name: KAFKA_KRAFT_CLUSTER_ID
             value: $(CLUSTER_UID)
         ports:
@@ -145,6 +136,9 @@ spec:
           - name: scripts
             mountPath: /scripts/kafka-server-setup.sh
             subPath: kafka-server-setup.sh
+          - name: scripts
+            mountPath: /scripts/common.sh
+            subPath: common.sh
           - name: scripts
             mountPath: /opt/bitnami/scripts/kafka-env.sh
             subPath: kafka-env.sh

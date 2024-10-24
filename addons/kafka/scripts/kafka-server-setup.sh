@@ -215,56 +215,56 @@ set_cfg_metadata() {
   fi
 
   if [[ "broker" = "$KAFKA_CFG_PROCESS_ROLES" ]]; then
-      # override node.id setting
-      # increments based on a specified base to avoid conflicts with controller settings
-      INDEX=$(echo $MY_POD_NAME | grep -o "\-[0-9]\+\$")
-      INDEX=${INDEX#-}
-      BROKER_NODE_ID=$(( $INDEX + $BROKER_MIN_NODE_ID ))
-      export KAFKA_CFG_NODE_ID="$BROKER_NODE_ID"
-      export KAFKA_CFG_BROKER_ID="$BROKER_NODE_ID"
-      echo "[cfg]KAFKA_CFG_NODE_ID=$KAFKA_CFG_NODE_ID"
+    # override node.id setting
+    # increments based on a specified base to avoid conflicts with controller settings
+    INDEX=$(echo $MY_POD_NAME | grep -o "\-[0-9]\+\$")
+    INDEX=${INDEX#-}
+    BROKER_NODE_ID=$(( $INDEX + $BROKER_MIN_NODE_ID ))
+    export KAFKA_CFG_NODE_ID="$BROKER_NODE_ID"
+    export KAFKA_CFG_BROKER_ID="$BROKER_NODE_ID"
+    echo "[cfg]KAFKA_CFG_NODE_ID=$KAFKA_CFG_NODE_ID"
 
-      # generate KAFKA_CFG_CONTROLLER_QUORUM_VOTERS for broker if not a combine-cluster
-      local pod_index
-      local pod_fqdn
-      local voters=""
-      IFS=',' read -r -a controller_pod_name_list <<< "$CONTROLLER_POD_NAME_LIST"
-      for pod_name in "${controller_pod_name_list[@]}"; do
-        # pod_fqdn format: kafka-controller-0.kafka-controller-headless.svc.cluster.local, get pod_index from pod_fqdn
-        pod_index=$(extract_ordinal_from_object_name "$pod_name")
-        pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$CONTROLLER_POD_FQDN_LIST" "$pod_name")
-        local voter="${pod_index}@${pod_fqdn}:9093"
-        voters="${voters},${voter}"
-      done
-      voters=${voters#,}
-      export KAFKA_CFG_CONTROLLER_QUORUM_VOTERS="$voters"
-      echo "[cfg]export KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=$KAFKA_CFG_CONTROLLER_QUORUM_VOTERS,for kafka-broker."
+    # generate KAFKA_CFG_CONTROLLER_QUORUM_VOTERS for broker if not a combine-cluster
+    local pod_index
+    local pod_fqdn
+    local voters=""
+    IFS=',' read -r -a controller_pod_name_list <<< "$CONTROLLER_POD_NAME_LIST"
+    for pod_name in "${controller_pod_name_list[@]}"; do
+      # pod_fqdn format: kafka-controller-0.kafka-controller-headless.svc.cluster.local, get pod_index from pod_fqdn
+      pod_index=$(extract_ordinal_from_object_name "$pod_name")
+      pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$CONTROLLER_POD_FQDN_LIST" "$pod_name")
+      local voter="${pod_index}@${pod_fqdn}:9093"
+      voters="${voters},${voter}"
+    done
+    voters=${voters#,}
+    export KAFKA_CFG_CONTROLLER_QUORUM_VOTERS="$voters"
+    echo "[cfg]export KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=$KAFKA_CFG_CONTROLLER_QUORUM_VOTERS,for kafka-broker."
   else
-      if [[ "controller" = "$KAFKA_CFG_PROCESS_ROLES" ]] && [[ -n "$KB_KAFKA_CONTROLLER_HEAP" ]]; then
-        export KAFKA_HEAP_OPTS=${KB_KAFKA_CONTROLLER_HEAP}
-        echo "[jvm][KB_KAFKA_CONTROLLER_HEAP]export KAFKA_HEAP_OPTS=${KB_KAFKA_CONTROLLER_HEAP}"
-      fi
-      # generate node.id
-      ID="${MY_POD_NAME#${COMPONENT_NAME}-}"
-      export KAFKA_CFG_NODE_ID="$((ID + 0))"
-      export KAFKA_CFG_BROKER_ID="$((ID + 0))"
-      echo "[cfg]KAFKA_CFG_NODE_ID=$KAFKA_CFG_NODE_ID"
+    if [[ "controller" = "$KAFKA_CFG_PROCESS_ROLES" ]] && [[ -n "$KB_KAFKA_CONTROLLER_HEAP" ]]; then
+      export KAFKA_HEAP_OPTS=${KB_KAFKA_CONTROLLER_HEAP}
+      echo "[jvm][KB_KAFKA_CONTROLLER_HEAP]export KAFKA_HEAP_OPTS=${KB_KAFKA_CONTROLLER_HEAP}"
+    fi
+    # generate node.id
+    ID="${MY_POD_NAME#${COMPONENT_NAME}-}"
+    export KAFKA_CFG_NODE_ID="$((ID + 0))"
+    export KAFKA_CFG_BROKER_ID="$((ID + 0))"
+    echo "[cfg]KAFKA_CFG_NODE_ID=$KAFKA_CFG_NODE_ID"
 
-      # generate KAFKA_CFG_CONTROLLER_QUORUM_VOTERS if is a combine-cluster or controller
-      local pod_index
-      local pod_fqdn
-      local voters=""
-      IFS=',' read -r -a pod_name_list <<< "$POD_NAME_LIST"
-      for pod_name in "${pod_name_list[@]}"; do
-        # pod_fqdn format: kafka-controller-0.kafka-controller-headless.svc.cluster.local, get pod_index from pod_fqdn
-        pod_index=$(extract_ordinal_from_object_name "$pod_name")
-        pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$POD_FQDN_LIST" "$pod_name")
-        local voter="${pod_index}@${pod_fqdn}:9093"
-        voters="${voters},${voter}"
-      done
-      voters=${voters#,}
-      export KAFKA_CFG_CONTROLLER_QUORUM_VOTERS="$voters"
-      echo "[cfg]export KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=$KAFKA_CFG_CONTROLLER_QUORUM_VOTERS,for kafka-server."
+    # generate KAFKA_CFG_CONTROLLER_QUORUM_VOTERS if is a combine-cluster or controller
+    local pod_index
+    local pod_fqdn
+    local voters=""
+    IFS=',' read -r -a pod_name_list <<< "$POD_NAME_LIST"
+    for pod_name in "${pod_name_list[@]}"; do
+      # pod_fqdn format: kafka-controller-0.kafka-controller-headless.svc.cluster.local, get pod_index from pod_fqdn
+      pod_index=$(extract_ordinal_from_object_name "$pod_name")
+      pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$POD_FQDN_LIST" "$pod_name")
+      local voter="${pod_index}@${pod_fqdn}:9093"
+      voters="${voters},${voter}"
+    done
+    voters=${voters#,}
+    export KAFKA_CFG_CONTROLLER_QUORUM_VOTERS="$voters"
+    echo "[cfg]export KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=$KAFKA_CFG_CONTROLLER_QUORUM_VOTERS,for kafka-server."
   fi
 }
 

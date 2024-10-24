@@ -64,3 +64,6 @@ spec:
         - name: scripts
           mountPath: /scripts/setup.sh
           subPath: kafka-exporter-setup.sh
+        - name: scripts
+          mountPath: /scripts/common.sh
+          subPath: common.sh

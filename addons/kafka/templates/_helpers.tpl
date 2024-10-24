@@ -145,7 +145,7 @@ kafka-server-scripts-tpl
 Define kafka tools scripts tpl name
 */}}
 {{- define "kafka.toolsScriptsTplName" -}}
-kafka-scripts-tools-tpl
+kafka-tools-scripts-tpl
 {{- end -}}
 
 {{/*

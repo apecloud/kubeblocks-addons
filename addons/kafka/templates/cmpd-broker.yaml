@@ -38,6 +38,16 @@ spec:
           name: admin
           username: Required
           optional: false
+    - name: POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+    - name: POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podNames: Required
     - name: CONTROLLER_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
@@ -92,7 +102,7 @@ spec:
       volumeName: scripts
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755
-    - name: kafka-scripts-tools-tpl
+    - name: kafka-tools-scripts-tpl
       templateRef: {{ include "kafka.toolsScriptsTplName" . }}
       volumeName: tools
       namespace: {{ .Release.Namespace }}
@@ -194,6 +204,9 @@ spec:
           - name: scripts
             mountPath: /scripts/kafka-server-setup.sh
             subPath: kafka-server-setup.sh
+          - name: scripts
+            mountPath: /scripts/common.sh
+            subPath: common.sh
           - name: kafka-config
             mountPath: /scripts/server.properties
             subPath: server.properties
