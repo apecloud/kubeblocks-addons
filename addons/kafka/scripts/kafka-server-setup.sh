@@ -1,5 +1,9 @@
 #!/bin/bash
 
+kafka_config_certs_path="/opt/bitnami/kafka/config/certs"
+kafka_kraft_config_path="/opt/bitnami/kafka/config/kraft"
+kafka_config_path="/opt/bitnami/kafka/config"
+
 # shellcheck disable=SC2153
 # shellcheck disable=SC2034
 ut_mode="false"
@@ -41,12 +45,12 @@ set_tls_configuration_if_needed() {
   #export KAFKA_CFG_SECURITY_INTER_BROKER_PROTOCOL=SSL
   #echo "KAFKA_CFG_SECURITY_INTER_BROKER_PROTOCOL=SSL"
 
-  mkdir -p /opt/bitnami/kafka/config/certs
+  mkdir -p "$kafka_config_certs_path"
   PEM_CA="$TLS_CERT_PATH/ca.crt"
   PEM_CERT="$TLS_CERT_PATH/tls.crt"
   PEM_KEY="$TLS_CERT_PATH/tls.key"
   if [[ -f "$PEM_CERT" ]] && [[ -f "$PEM_KEY" ]]; then
-    CERT_DIR="/opt/bitnami/kafka/config/certs"
+    CERT_DIR="$kafka_config_certs_path"
     PEM_CA_LOCATION="${CERT_DIR}/kafka.truststore.pem"
     PEM_CERT_LOCATION="${CERT_DIR}/kafka.keystore.pem"
       if [[ -f "$PEM_CA" ]]; then
@@ -65,10 +69,10 @@ set_tls_configuration_if_needed() {
     echo "[tls]Couldn't find the expected PEM files! They are mandatory when encryption via TLS is enabled." >&2
     return 1
   fi
-  export KAFKA_TLS_TRUSTSTORE_FILE="/opt/bitnami/kafka/config/certs/kafka.truststore.pem"
+  export KAFKA_TLS_TRUSTSTORE_FILE="$kafka_config_certs_path/kafka.truststore.pem"
   echo "[tls]KAFKA_TLS_TRUSTSTORE_FILE=$KAFKA_TLS_TRUSTSTORE_FILE"
-  echo "[tls]ssl.endpoint.identification.algorithm=" >> /opt/bitnami/kafka/config/kraft/server.properties
-  echo "[tls]ssl.endpoint.identification.algorithm=" >> /opt/bitnami/kafka/config/server.properties
+  echo "[tls]ssl.endpoint.identification.algorithm=" >> $kafka_kraft_config_path/server.properties
+  echo "[tls]ssl.endpoint.identification.algorithm=" >> $kafka_config_path/server.properties
   return 0
 }
 
@@ -107,8 +111,8 @@ override_sasl_configuration() {
   if [[ "true" == "$KB_KAFKA_ENABLE_SASL" ]]; then
     # bitnami default jaas setting: /opt/bitnami/kafka/config/kafka_jaas.conf
     if [[ "${KB_KAFKA_SASL_CONFIG_PATH}" ]]; then
-      cp ${KB_KAFKA_SASL_CONFIG_PATH} /opt/bitnami/kafka/config/kafka_jaas.conf
-      echo "[sasl]do: cp ${KB_KAFKA_SASL_CONFIG_PATH} /opt/bitnami/kafka/config/kafka_jaas.conf "
+      cp ${KB_KAFKA_SASL_CONFIG_PATH} $kafka_config_path/kafka_jaas.conf
+      echo "[sasl]do: cp ${KB_KAFKA_SASL_CONFIG_PATH} $kafka_config_path/kafka_jaas.conf "
     fi
     export KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,INTERNAL:SASL_PLAINTEXT,CLIENT:SASL_PLAINTEXT
     echo "[sasl]KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=$KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP"
@@ -123,7 +127,7 @@ generate_kraft_cluster_id() {
   if [[ -n "$KAFKA_KRAFT_CLUSTER_ID" ]]; then
     echo KAFKA_KRAFT_CLUSTER_ID="${KAFKA_KRAFT_CLUSTER_ID}"
     kraft_id_len=${#KAFKA_KRAFT_CLUSTER_ID}
-    if [[ kraft_id_len > 22 ]]; then
+    if [[ kraft_id_len -gt 22 ]]; then
       export KAFKA_KRAFT_CLUSTER_ID=$(echo $KAFKA_KRAFT_CLUSTER_ID | cut -b 1-22)
       echo export KAFKA_KRAFT_CLUSTER_ID="${KAFKA_KRAFT_CLUSTER_ID}"
     fi
