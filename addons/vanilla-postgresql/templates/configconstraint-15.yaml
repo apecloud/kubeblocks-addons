@@ -1,8 +1,8 @@
-{{- $cc := .Files.Get "config/pg12-config-effect-scope.yaml" | fromYaml }}
+{{- $cc := .Files.Get "config/pg15-config-effect-scope.yaml" | fromYaml }}
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
-  name: {{ include "vanilla-postgresql12.configConstraint" . }}
+  name: {{ include "vanilla-postgresql15.configConstraint" . }}
   labels:
     {{- include "vanilla-postgresql.labels" . | nindent 4 }}
 spec:
@@ -18,7 +18,7 @@ spec:
         mountPoint: /kb_tools
         toolConfigs:
           - name: kb-tools
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor15 }}
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major15.minor07 }}
             asContainerImage: true
 
   mergeReloadAndRestart: false
@@ -32,7 +32,7 @@ spec:
     # schemaInJSON: auto generate from cue scripts
     # example: ../../pkg/configuration/testdata/mysql_openapi.json
     cue: |-
-      {{- .Files.Get "config/pg12-config-constraint.cue" | nindent 6 }}
+      {{- .Files.Get "config/pg15-config-constraint.cue" | nindent 6 }}
     # configuration file format
 
   ##  require db instance restart
@@ -45,7 +45,7 @@ spec:
     {{- end }}
   {{- end}}
 
-  ## define dynamic parameter list
+      ## define dynamic parameter list
   {{- if hasKey $cc "dynamicParameters" }}
   dynamicParameters:
    {{- $params := get $cc "dynamicParameters" }}
