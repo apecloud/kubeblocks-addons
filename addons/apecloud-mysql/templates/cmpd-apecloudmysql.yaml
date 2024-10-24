@@ -53,8 +53,7 @@ spec:
           - bash
           - -c
           - |
-            mv {{ .Values.mysqlConfigs.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
-            rm -rf {{ .Values.mysqlConfigs.dataMountPath }}/plugin/
+            cp {{ .Values.mysqlConfigs.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
             /scripts/setup.sh
         {{- include "apecloud-mysql.spec.runtime.mysql" . | nindent 8 }}
       - name: vtablet

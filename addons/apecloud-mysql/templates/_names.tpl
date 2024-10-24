@@ -42,16 +42,6 @@ apecloud-mysql-backup-policy-for-hscale
 {{- end -}}
 {{- end -}}
 
-{{/*
-Define class name
-*/}}
-{{- define "apecloud-mysql.className" -}}
-{{- if eq (len .Values.resourceNamePrefix) 0 -}}
-kb.classes.default.apecloud-mysql.mysql
-{{- else -}}
-{{- .Values.resourceNamePrefix -}}-class
-{{- end -}}
-{{- end -}}
 
 {{/*
 Define cluster definition name, if resourceNamePrefix is specified, use it as clusterDefName
@@ -68,21 +58,36 @@ apecloud-mysql
 Define apecloud-mysql component definition name prefix
 */}}
 {{- define "apecloud-mysql.cmpdNameApecloudMySQLPrefix" -}}
+{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+apecloud-mysql-
+{{- else -}}
 {{- .Values.resourceNamePrefix -}}-apecloud-mysql-
+{{- end -}}
+{{- end -}}
+
+{{/*
 {{- end -}}
 
 {{/*
 Define wescale component definition name prefix
 */}}
 {{- define "apecloud-mysql.cmpdNameWescalePrefix" -}}
+{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+apecloud-mysql-
+{{- else -}}
 {{- .Values.resourceNamePrefix -}}-wescale-
+{{- end -}}
 {{- end -}}
 
 {{/*
 Define wescale controller component definition name prefix
 */}}
 {{- define "apecloud-mysql.cmpdNameWescaleCtrlPrefix" -}}
+{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+apecloud-mysql-
+{{- else -}}
 {{- .Values.resourceNamePrefix -}}-wescale-controller-
+{{- end -}}
 {{- end -}}
 
 {{/*
@@ -111,7 +116,7 @@ Define config constriant name
 */}}
 {{- define "apecloud-mysql.configConstraintName" -}}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-mysql8.0-config-constraints
+apecloud-mysql8.0-config-constraints
 {{- else -}}
 {{- .Values.resourceNamePrefix -}}-config-constraints
 {{- end -}}
@@ -119,7 +124,7 @@ mysql8.0-config-constraints
 
 {{- define "apecloud-mysql.configConstraintVttabletName" }}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-mysql-scale-vttablet-config-constraints
+apecloud-mysql-scale-vttablet-config-constraints
 {{- else -}}
 {{- .Values.resourceNamePrefix -}}-vttablet-config-constraints
 {{- end -}}
@@ -127,7 +132,7 @@ mysql-scale-vttablet-config-constraints
 
 {{- define "apecloud-mysql.configConstraintVtgateName" }}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-mysql-scale-vtgate-config-constraints
+apecloud-mysql-scale-vtgate-config-constraints
 {{- else -}}
 {{- .Values.resourceNamePrefix -}}-vtgate-config-constraints
 {{- end -}}

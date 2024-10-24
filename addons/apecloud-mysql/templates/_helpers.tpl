@@ -265,6 +265,21 @@ env:
     value: $(KB_REPLICA_COUNT)
   - name: CLUSTER_DOMAIN
     value: {{ .Values.clusterDomain }}
+  - name: MY_POD_NAME
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.name
+  - name: MY_POD_UID
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.uid
+  - name: MY_POD_IP
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: status.podIP
 volumeMounts:
   - mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
     name: data
