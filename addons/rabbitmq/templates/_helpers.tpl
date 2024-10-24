@@ -62,16 +62,16 @@ helm.sh/resource-policy: keep
 Define rabbitmq component definition name prefix
 */}}
 {{- define "rabbitmq.cmpdNamePrefix" -}}
-{{- printf "rabbitmq-" -}}
+{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+rabbitmq-
+{{- else -}}
+{{ .Values.resourceNamePrefix}}-rabbitmq-
+{{- end -}}
 {{- end -}}
 
 {{/*
 Define rabbitmq component definition name
 */}}
 {{- define "rabbitmq.cmpdName" -}}
-{{- if eq (len .Values.resourceNamePrefix) 0 -}}
 {{ include "rabbitmq.cmpdNamePrefix" . }}{{ .Chart.Version }}
-{{- else -}}
-{{ .Values.resourceNamePrefix}}-{{ .Chart.Version }}
-{{- end -}}
 {{- end -}}
