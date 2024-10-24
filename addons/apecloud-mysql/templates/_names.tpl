@@ -65,17 +65,6 @@ apecloud-mysql
 {{- end -}}
 
 {{/*
-Define cluster version
-*/}}
-{{- define "apecloud-mysql.clusterVersion" -}}
-{{- if eq (len .Values.resourceNamePrefix) 0 -}}
-ac-mysql-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
-{{- else -}}
-{{- .Values.resourceNamePrefix -}}-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
-{{- end -}}
-{{- end -}}
-
-{{/*
 Define apecloud-mysql component definition name prefix
 */}}
 {{- define "apecloud-mysql.cmpdNameApecloudMySQLPrefix" -}}

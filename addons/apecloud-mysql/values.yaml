@@ -49,9 +49,6 @@ configTemplate:
 
 imagePullSecrets: [ ]
 nameOverride: ""
-fullnameOverride: ""
-clusterVersionOverride: ""
-
 auditlogSubVersion: "1"
 
 mysqlConfigs:
