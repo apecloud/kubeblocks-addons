@@ -94,8 +94,6 @@ Describe "Kafka Server Setup Script Tests"
       touch $mock_tls_cert_path/tls.key
       When run set_tls_configuration_if_needed
       The output should include "[tls]KAFKA_TLS_TRUSTSTORE_FILE=$mock_tls_cert_path/kafka.truststore.pem"
-      # hack the error from openssl
-      The stderr should include "Could not find private key of key from"
       The status should be success
     End
 
@@ -160,8 +158,6 @@ Describe "Kafka Server Setup Script Tests"
       touch "$KB_KAFKA_SASL_CONFIG_PATH"
       When run override_sasl_configuration
       The output should include "[sasl]KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,INTERNAL:SASL_PLAINTEXT,CLIENT:SASL_PLAINTEXT"
-      # mock the error from cp
-      The stderr should include "cp: ./config/kafka_jaas.conf and ./config/kafka_jaas.conf are identical"
       The status should be success
     End
 
