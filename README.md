@@ -18,7 +18,7 @@ KubeBlocks add-ons.
 ## Supported Add-ons
 | NAME | VERSIOINS | DESCRIPTION | MAINTAINERS |
 | ---- | ---- | ----------- | ----------- |
-| apecloud-mysql |  | ApeCloud MySQL is a database that is compatible with MySQL syntax and achieves high availability through the utilization of the RAFT consensus protocol. | xuriwuyun |
+| apecloud-mysql | apecloud-mysql-8.0.30<br>wescale-0.2.7 | ApeCloud MySQL is a database that is compatible with MySQL syntax and achieves high availability through the utilization of the RAFT consensus protocol. | xuriwuyun |
 | apecloud-postgresql | apecloud-postgresql-14.11.0 | ApeCloud PostgreSQL is a database that is compatible with PostgreSQL syntax and achieves high availability through the utilization of the RAFT consensus protocol. | ldming |
 | camellia-redis-proxy | camellia-redis-proxy-1.2.26 | camellia-redis-proxy is a high-performance redis proxy developed using Netty4. | Y-Rookie |
 | clickhouse | clickhouse-24.8.3 | ClickHouse is an open-source column-oriented OLAP database management system. Use it to boost your database performance while providing linear scalability and hardware efficiency. | sophon-zt |
