@@ -363,9 +363,7 @@ roleProbe:
 
         first_line=$(echo "$topology_info" | head -n 1)
         cleaned_line=$(echo "$first_line" | tr -d '[]')
-        old_ifs="$IFS"
         IFS=',' read -ra status_array <<< "$cleaned_line"
-        IFS="$old_ifs"
         status="${status_array[1]}"
         if  [ "$status" != "ok" ]; then
           exit 0
