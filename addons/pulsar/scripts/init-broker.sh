@@ -77,11 +77,11 @@ init_broker() {
   local idx=${POD_NAME##*-}
   if [ $idx -ne 0 ]; then
     wait_for_cluster_metadata "$zookeeperServers" "$clusterName"
-    echo "Cluster already initialized" && quit_script
+    echo "Waiting for cluster initialize ready."
   fi
 
   if check_cluster_initialized "$zookeeperServers" "$clusterName"; then
-    echo "Cluster already initialized" && quit_script
+    echo "Cluster already initialized"
   fi
 
   initialize_cluster_metadata "$clusterName" "$zookeeperServers" "$webServiceUrl" "$brokerServiceUrl"

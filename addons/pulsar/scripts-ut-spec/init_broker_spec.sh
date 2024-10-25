@@ -131,10 +131,6 @@ Describe "Pulsar Init Broker Bash Script Tests"
         return 0
       }
 
-      quit_script() {
-        return 0
-      }
-
       When run init_broker
       The status should be success
     End
@@ -155,10 +151,6 @@ Describe "Pulsar Init Broker Bash Script Tests"
       }
 
       wait_for_cluster_metadata() {
-        return 0
-      }
-
-      quit_script() {
         return 0
       }
 
@@ -195,10 +187,6 @@ Describe "Pulsar Init Broker Bash Script Tests"
       }
 
       bin/pulsar() {
-        return 0
-      }
-
-      quit_script() {
         return 0
       }
 
