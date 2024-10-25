@@ -39,8 +39,6 @@ spec:
   - name: data
     needSnapshot: true
   vars:
-    - name: CLUSTER_DOMAIN
-      value: "{{ .Values.clusterDomain }}"
     - name: QDRANT_POD_NAME_LIST
       valueFrom:
         componentVarRef:
@@ -58,8 +56,7 @@ spec:
         command:
           - /bin/sh
           - -c
-          - |
-          {{- .Files.Get "scripts/qdrant-member-leave.sh" | nindent 12 }}
+          - /qdrant/scripts/qdrant-member-leave.sh
         targetPodSelector: Any
         container: qdrant
   runtime:

@@ -40,7 +40,7 @@ start_server() {
     exit 1
   fi
 
-  if [ "$current_pod_fqdn" == "$min_lexicographical_pod_name" ]; then
+  if [ "$current_pod_fqdn" == "$boostrap_node_fqdn" ]; then
     ./qdrant --uri "http://${current_pod_fqdn}:6335"
   else
     until ./tools/curl http://${boostrap_node_fqdn}:6333/cluster; do
