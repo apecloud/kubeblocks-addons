@@ -4,11 +4,12 @@ do
   sleep 60
 done
 
+export LORRY_HTTP_PORT=$SYNCER_HTTP_PORT
 . /scripts/set_config_variables.sh
 set_config_variables vttablet
 
 cell=${CELL:-'zone1'}
-uid="${KB_POD_NAME##*-}"
+uid="${MY_POD_NAME##*-}"
 mysql_root=${MYSQL_ROOT_USER:-'root'}
 mysql_root_passwd=${MYSQL_ROOT_PASSWORD:-'123456'}
 mysql_port=${MYSQL_PORT:-'3306'}

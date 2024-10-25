@@ -229,6 +229,21 @@ vars:
         port: 
           name: client
           option: Optional
+  - name: MY_POD_LIST
+    valueFrom:
+      componentVarRef:
+        optional: false
+        podNames: Required
+  ## the mysql primary pod name which is dynamically selected, caution to use it
+  - name: MYSQL_LEADER_POD_NAME
+    valueFrom:
+      componentVarRef:
+        optional: true
+        podNamesForRole:
+          role: leader
+          option: Optional
+  - name: SYNCER_HTTP_PORT
+    value: "3601"
 {{- end -}}
 
 {{- define "apecloud-mysql.spec.runtime.mysql" -}}
@@ -262,7 +277,7 @@ env:
   - name: KB_MYSQL_CLUSTER_UID
     value: $(KB_CLUSTER_UID)
   - name: KB_MYSQL_N
-    value: $(KB_REPLICA_COUNT)
+    value: $(KB_COMP_REPLICAS)
   - name: CLUSTER_DOMAIN
     value: {{ .Values.clusterDomain }}
   - name: MY_POD_NAME
@@ -280,6 +295,10 @@ env:
       fieldRef:
         apiVersion: v1
         fieldPath: status.podIP
+  - name: KB_SERVICE_CHARACTER_TYPE
+    value: wesql
+  - name: PATH
+    value: /tools/xtrabackup/bin:/tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 volumeMounts:
   - mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
     name: data
