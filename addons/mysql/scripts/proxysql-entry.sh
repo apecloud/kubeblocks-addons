@@ -28,6 +28,11 @@ if [ "${1:0:1}" = '-' ]; then
     CMDARG="$@"
 fi
 
+# if test by shellspec include, just return 0
+if [ "${__SOURCED__:+x}" ]; then
+  return 0
+fi
+
 # Start ProxySQL with PID 1
 exec proxysql -c /etc/custom-config/proxysql.cnf -f $CMDARG &
 pid=$!

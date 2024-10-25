@@ -10,7 +10,9 @@
       "enum": [
         "mysql-8.4",
         "mysql-8.0",
-        "mysql-5.7"
+        "mysql-5.7",
+        "mysql-orc-8.0",
+        "mysql-orc-5.7"
       ]
     },
     "mode": {

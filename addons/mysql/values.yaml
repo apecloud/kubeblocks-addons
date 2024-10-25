@@ -16,7 +16,7 @@ image:
     repository: perconalab/percona-xtrabackup
   syncer:
     repository: apecloud/syncer
-    tag: 0.2.0
+    tag: 0.3.3
   dbctl:
     repository: apecloud/dbctl
     tag: 0.1.5
@@ -71,8 +71,6 @@ configTemplate:
 
 imagePullSecrets: []
 nameOverride: ""
-fullnameOverride: ""
-clusterVersionOverride: ""
 
 logConfigs:
   error: /var/lib/mysql/log/mysqld-error.log
@@ -94,11 +92,6 @@ metrics:
 
 dataMountPath: /var/lib/mysql
 
-## @param compDefinitionVersionSuffix for all ComponentDefinition resources name created by this chart, that can avoid name conflict
-## if you install multiple releases of this chart.
-## If specified, the component definition will use it as name.
-compDefinitionVersionSuffix: ""
-
 ## @param orche
 orchestrator:
   metaBackends:
@@ -111,3 +104,7 @@ roleProbe:
   failureThreshold: 2
   periodSeconds: 1
   timeoutSeconds: 1
+
+## @param cmpdNamePrefix for each ComponentDefinition resources name created by this chart, that can avoid name conflict
+## If specified, the component definition will use it as prefix.
+cmpdNamePrefix: "mysql"

@@ -14,9 +14,6 @@ spec:
     - name: mysql
       replicas: {{ .Values.replicas }}
       {{- $compdef := .Values.version }}
-      {{- if .Values.orchestrator.enable }}
-      {{- $compdef = printf "%s-orc" $compdef }}
-      {{- end }}
       componentDef: {{ $compdef }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "mysql-cluster.replicaCount" . | indent 6 }}
