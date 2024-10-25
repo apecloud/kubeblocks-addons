@@ -18,7 +18,25 @@ spec:
   componentSpecs:
   - name: gms
     componentDefRef: gms
-    serviceAccountName: kb-polardbx-cluster
+    # this ia an simple example of schedulingPolicy
+    # pods from the same component `gms` cannot be scheduled to the node
+    schedulingPolicy:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: polardbx-cluster
+                  apps.kubeblocks.io/component-name: gms
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/instance: polardbx-cluster
+                apps.kubeblocks.io/component-name: gms
+            topologyKey: kubernetes.io/hostname
     replicas: 1
     resources:
       limits:
@@ -37,7 +55,7 @@ spec:
             storage: 20Gi
   - name: dn
     componentDefRef: dn
-    replicas: 3
+    replicas: 1
     resources:
       limits:
         cpu: '0.5'
@@ -55,6 +73,23 @@ spec:
             storage: 20Gi
   - name: cn
     componentDefRef: cn
+    # this ia an simple example of schedulingPolicy
+    # pods cannot be scheduled to the node with any POD from the same cluster `polardbx-cluster`
+    schedulingPolicy:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: polardbx-cluster
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/instance: polardbx-cluster
+            topologyKey: kubernetes.io/hostname
     replicas: 1
     resources:
       limits:
@@ -65,6 +100,25 @@ spec:
         memory: 1Gi
   - name: cdc
     componentDefRef: cdc
+    # this ia an simple example of schedulingPolicy
+    # pods are preferred be scheduled to the node with PODs from component `dn`
+    schedulingPolicy:
+      affinity:
+        podAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: polardbx-cluster
+                  apps.kubeblocks.io/component-name: dn
+              topologyKey: kubernetes.io/hostname
+            weight: 100
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/instance: polardbx-cluster
+                apps.kubeblocks.io/component-name: dn
+            topologyKey: kubernetes.io/hostname
     replicas: 1
     resources:
       limits:
