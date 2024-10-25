@@ -54,7 +54,7 @@ spec:
       command:
         - "update-dynamic-config.sh"
       scriptConfig:
-        scriptConfigMapRef: pulsar-tools-script
+        scriptConfigMapRef: {{ include "pulsar.toolsScriptsTplName" . }}
         namespace: {{ .Release.Namespace }}
       toolsSetup:
         mountPoint: /kb/tools
@@ -64,8 +64,7 @@ spec:
               - cp
               - /bin/pulsar-admin
               - /kb/tools/pulsar-admin
-            image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.pulsarTools "root" .) }}"
-            # imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.pulsarTools "root" .) }}"
+            image: {{ include "pulsar.toolsImage" . }}
           - name: init-pulsar-client-config
             command:
               - "$(TOOLS_SCRIPTS_PATH)/install-pulsar-client-config.sh"
@@ -112,7 +111,7 @@ spec:
       command:
         - "update-dynamic-config.sh"
       scriptConfig:
-        scriptConfigMapRef: pulsar-tools-script
+        scriptConfigMapRef: {{ include "pulsar.toolsScriptsTplName" . }}
         namespace: {{ .Release.Namespace }}
       toolsSetup:
         mountPoint: /kb/tools
@@ -122,8 +121,7 @@ spec:
               - cp
               - /bin/pulsar-admin
               - /kb/tools/pulsar-admin
-            image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.pulsarTools "root" .) }}"
-            # imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.pulsarTools "root" .) }}"
+            image: {{ include "pulsar.toolsImage" . }}
           - name: init-pulsar-client-config
             command:
               - "$(TOOLS_SCRIPTS_PATH)/install-pulsar-client-config.sh"

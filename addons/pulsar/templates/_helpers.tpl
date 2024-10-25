@@ -58,20 +58,6 @@ helm.sh/resource-policy: keep
 {{- end }}
 
 {{/*
-Create full image name
-*/}}
-{{- define "pulsar.imageFullName" -}}
-{{- printf "%s/%s:%s" ( .image.registry | default .root.Values.image.registry ) (  .image.repository | default .root.Values.image.repository ) ( .image.tag | default .root.Values.image.tag | default .root.Chart.AppVersion ) -}}
-{{- end -}}
-
-{{/*
-Create image pull policy
-*/}}
-{{- define "pulsar.imagePullPolicy" -}}
-{{- printf "%s" ( .image.pullPolicy | default .root.Values.image.pullPolicy | default "IfNotPresent" ) -}}
-{{- end -}}
-
-{{/*
 Generate scripts configmap
 */}}
 {{- define "pulsar.extend.scripts" -}}
@@ -79,15 +65,6 @@ Generate scripts configmap
 {{ $path | base }}: |-
 {{- $.Files.Get $path | nindent 2 }}
 {{- end }}
-{{- end }}
-
-{{/*
-Generate major version of cluster
-*/}}
-{{- define "pulsar.major.version" -}}
-{{- $version := default .Chart.AppVersion .Values.clusterVersionOverride -}}
-{{- $majorVersion := (split "." $version)._0 -}}
-{{- printf "%s" ($majorVersion)}}
 {{- end }}
 
 {{/*
@@ -404,3 +381,10 @@ Define pulsar v2.X zookeeper image
 {{- define "pulsar2.zookeeperImage" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.images.v2_11_2.zookeeper.tag }}
 {{- end }}
+
+{{/*
+Define pulsar tools image
+*/}}
+{{- define "pulsar.toolsImage" -}}
+{{- printf "%s/%s:%s" ( .Values.image.registry | default "docker.io" ) (  .Values.image.repository ) ( .Values.images.pulsarTools.tag ) -}}
+{{- end -}}
