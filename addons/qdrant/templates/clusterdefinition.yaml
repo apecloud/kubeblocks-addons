@@ -10,4 +10,4 @@ spec:
   - name: cluster
     components:
     - name: qdrant
-      compDef: qdrant
+      compDef: {{ include "qdrant.cmpdRegexPattern" . }}
