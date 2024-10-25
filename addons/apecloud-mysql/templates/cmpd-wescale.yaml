@@ -86,14 +86,14 @@ spec:
     - name: MYSQL_USER
       valueFrom:
         credentialVarRef:
-          compDef: {{ include "apecloud-mysql.cmpdNameApecloudMySQL" . }}
+          compDef: {{ include "apecloud-mysql.cmpdNameApecloudMySQLPrefix" . }}
           name: root
           optional: false
           username: Required
     - name: MYSQL_PASSWORD
       valueFrom:
         credentialVarRef:
-          compDef: {{ include "apecloud-mysql.cmpdNameApecloudMySQL" . }}
+          compDef: {{ include "apecloud-mysql.cmpdNameApecloudMySQLPrefix" . }}
           name: root
           optional: false 
           password: Required

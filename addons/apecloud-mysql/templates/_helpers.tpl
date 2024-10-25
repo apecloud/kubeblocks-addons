@@ -180,14 +180,14 @@ vars:
     valueFrom:
       credentialVarRef:
         # it will match a comp in the cluster with cmpd name starting with "apecloud-mysql"
-        compDef: {{ include "apecloud-mysql.cmpdNameApecloudMySQL" . }}
+        compDef: {{ include "apecloud-mysql.cmpdNameApecloudMySQLPrefix" . }}
         name: root
         optional: false
         username: Required
   - name: MYSQL_ROOT_PASSWORD
     valueFrom:
       credentialVarRef:
-        compDef: {{ include "apecloud-mysql.cmpdNameApecloudMySQL" . }}
+        compDef: {{ include "apecloud-mysql.cmpdNameApecloudMySQLPrefix" . }}
         name: root
         optional: false
         password: Required
