@@ -165,6 +165,7 @@ lifecycleActions:
   accountProvision:
     exec:
       container: mysql
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.30-5.beta3.20240330.g94d1caf.15
       command:
         - bash
         - -c

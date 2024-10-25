@@ -15,7 +15,8 @@ spec:
       vtablet: {{ .Values.wesqlscale.image.registry |  default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.wesqlscale.image.repository }}:0.2.7
   compatibilityRules:
   - releases: [apecloud-mysql-8.0.30]
-    compDefs: [apecloud-mysql]
+    compDefs: 
+    - {{ include "apecloud-mysql.cmpdNameApecloudMySQLPrefix" . }}
 ---
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentVersion
@@ -35,6 +36,8 @@ spec:
       vtgate: *wescale
   compatibilityRules:
   - releases: [wescale-ctrl-0.2.7]
-    compDefs: [wescale-ctrl]
+    compDefs: 
+    - {{ include "apecloud-mysql.cmpdNameWescaleCtrlPrefix" . }}
   - releases: [wescale-0.2.7]
-    compDefs: [wescale]
+    compDefs: 
+    - {{ include "apecloud-mysql.cmpdNameWescalePrefix" . }}
