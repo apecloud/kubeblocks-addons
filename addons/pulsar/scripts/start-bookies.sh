@@ -86,6 +86,7 @@ start_bookies() {
   fi
 
   OPTS="${OPTS} -Dlog4j2.formatMsgNoLookups=true"
+  export OPTS
   exec bin/pulsar bookie
 }
 

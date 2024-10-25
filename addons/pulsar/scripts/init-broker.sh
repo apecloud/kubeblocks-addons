@@ -77,19 +77,14 @@ init_broker() {
   local idx=${POD_NAME##*-}
   if [ $idx -ne 0 ]; then
     wait_for_cluster_metadata "$zookeeperServers" "$clusterName"
-    echo "Cluster already initialized" && quit_script
+    echo "Waiting for cluster initialize ready." && exit 0
   fi
 
   if check_cluster_initialized "$zookeeperServers" "$clusterName"; then
-    echo "Cluster already initialized" && quit_script
+    echo "Cluster already initialized" && exit 0
   fi
 
   initialize_cluster_metadata "$clusterName" "$zookeeperServers" "$webServiceUrl" "$brokerServiceUrl"
-  quit_script
-}
-
-quit_script() {
-  (curl -sf -XPOST http://127.0.0.1:15020/quitquitquit || true) && exit 0
 }
 
 # This is magic for shellspec ut framework.
