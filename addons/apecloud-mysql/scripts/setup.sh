@@ -7,14 +7,14 @@ set -ex
 # return: clustername-componentname-headless
 get_service_name() {
     local cluster_component_name="${KB_CLUSTER_COMP_NAME:?missing KB_CLUSTER_COMP_NAME}"
-    echo "${KB_CLUSTER_COMP_NAME}-headless"
+    echo "${cluster_component_name}-headless"
 }
 
 get_cluster_members() {
     local cluster_members=""
     IFS=',' read -ra PODS <<< "$MY_POD_LIST"
     for pod in "${PODS[@]}"; do
-        hostname=${pod}.${get_service_name}
+        hostname=${pod}.$(get_service_name)
         cluster_members="${cluster_members};${hostname}:${MYSQL_CONSENSUS_PORT:-13306}"
     done
     echo "${cluster_members#;}"
@@ -73,6 +73,6 @@ generate_cluster_info() {
     fi
 }
 
-rmdir /docker-entrypoint-initdb.d && mkdir -p /data/mysql/auditlog && mkdir -p /data/mysql/binlog && mkdir -p /data/mysql/docker-entrypoint-initdb.d && ln -s /data/mysql/docker-entrypoint-initdb.d /docker-entrypoint-initdb.d;
+rmdir /docker-entrypoint-initdb.d && mkdir -p ${KB_MYSQL_VOLUME_DIR}/auditlog && mkdir -p ${KB_MYSQL_VOLUME_DIR}/binlog && mkdir -p ${KB_MYSQL_VOLUME_DIR}/docker-entrypoint-initdb.d && ln -s ${KB_MYSQL_VOLUME_DIR}/docker-entrypoint-initdb.d /docker-entrypoint-initdb.d;
 generate_cluster_info
 exec docker-entrypoint.sh
