@@ -1,13 +1,17 @@
 #!/bin/bash
 
+if [ -z "${__SOURCED__:+x}" ]; then
 set -ex
+fi
 
-# KB_CLUSTER_COMP_NAME=clustername-componentname
-# compose headless service name from KB_CLUSTER_COMP_NAME
+# MY_CLUSTER_NAME=clustername
+# MY_COMP_NAME=componentname
+# compose headless service name from cluster and component name
 # return: clustername-componentname-headless
 get_service_name() {
-    local cluster_component_name="${KB_CLUSTER_COMP_NAME:?missing KB_CLUSTER_COMP_NAME}"
-    echo "${cluster_component_name}-headless"
+    cluster_name=${MY_CLUSTER_NAME:?missing cluster name}
+    component_name=${MY_COMP_NAME:?missing component name}
+    echo "${cluster_name}-${component_name}-headless"
 }
 
 get_cluster_members() {
@@ -46,12 +50,12 @@ generate_cluster_info() {
     export KB_MYSQL_CONF_FILE=${KB_MYSQL_CONF_FILE:-/opt/mysql/my.cnf}
 
     if [ -z "$KB_MYSQL_N" ]; then
-        export KB_MYSQL_N=${KB_COMP_REPLICAS:?missing pod numbers}
+        export KB_MYSQL_N=${MY_COMP_REPLICAS:?missing pod numbers}
     fi
     echo "KB_MYSQL_N=${KB_MYSQL_N}"
 
     if [ -z "$KB_MYSQL_CLUSTER_UID" ]; then
-        export KB_MYSQL_CLUSTER_UID=${KB_CLUSTER_UID:?missing cluster uid}
+        export KB_MYSQL_CLUSTER_UID=${MY_CLUSTER_UID:?missing cluster uid}
     fi
     echo "KB_MYSQL_CLUSTER_UID=${KB_MYSQL_CLUSTER_UID}"
 
@@ -72,6 +76,11 @@ generate_cluster_info() {
         export KB_MSYQL_LEADER=${MYSQL_LEADER_POD_NAME}
     fi
 }
+
+# if test by shellspec include, just return 0
+if [ "${__SOURCED__:+x}" ]; then
+  return 0
+fi
 
 rmdir /docker-entrypoint-initdb.d && mkdir -p ${KB_MYSQL_VOLUME_DIR}/auditlog && mkdir -p ${KB_MYSQL_VOLUME_DIR}/binlog && mkdir -p ${KB_MYSQL_VOLUME_DIR}/docker-entrypoint-initdb.d && ln -s ${KB_MYSQL_VOLUME_DIR}/docker-entrypoint-initdb.d /docker-entrypoint-initdb.d;
 generate_cluster_info

@@ -7,7 +7,7 @@ metadata:
 spec:
   serviceKind: ApeCloudMySQL
   compDefs:
-   - {{ include "apecloud-mysql.cmpdNameApecloudMySQL" . }}
+   - {{ include "apecloud-mysql.cmpdNameApecloudMySQLPrefix" . }}
   target:
     role: follower
     fallbackRole: leader

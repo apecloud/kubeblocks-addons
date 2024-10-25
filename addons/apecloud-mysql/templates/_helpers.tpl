@@ -224,6 +224,26 @@ vars:
       componentVarRef:
         optional: false
         podNames: Required
+  - name: MY_COMP_NAME
+    valueFrom:
+      componentVarRef:
+        optional: false
+        ShortName: Required
+  - name: MY_COMP_REPLICAS
+    valueFrom:
+      componentVarRef:
+        optional: false
+        Replicas: Required
+  - name: MY_CLUSTER_NAME
+    valueFrom:
+      clusterVarRef:
+        optional: false
+        ClusterName: Required
+  - name: MY_CLUSTER_UID
+    valueFrom:
+      clusterVarRef:
+        optional: false
+        ClusterUID: Required
   ## the mysql primary pod name which is dynamically selected, caution to use it
   - name: MYSQL_LEADER_POD_NAME
     valueFrom:
