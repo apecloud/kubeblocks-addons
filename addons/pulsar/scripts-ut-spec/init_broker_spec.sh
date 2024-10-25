@@ -164,7 +164,7 @@ Describe "Pulsar Init Broker Bash Script Tests"
 
       When run init_broker
       The status should be success
-      The output should include "Cluster already initialized"
+      The output should include "Waiting for cluster initialize ready"
     End
 
     It "skips initialization if cluster is already initialized"
@@ -191,7 +191,7 @@ Describe "Pulsar Init Broker Bash Script Tests"
       }
 
       When run init_broker
-      The stdout should include "Initializing cluster metadata for cluster: my-cluster"
+      The stdout should include "Cluster already initialized"
       The status should be success
     End
   End
