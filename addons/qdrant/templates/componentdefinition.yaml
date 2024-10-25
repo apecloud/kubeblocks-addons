@@ -38,6 +38,19 @@ spec:
   volumes:
   - name: data
     needSnapshot: true
+  vars:
+    - name: CLUSTER_DOMAIN
+      value: "{{ .Values.clusterDomain }}"
+    - name: QDRANT_POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podNames: Required
+    - name: QDRANT_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
   lifecycleActions:
     memberLeave:
       exec:
@@ -132,8 +145,11 @@ spec:
         value: "true"
       - name: SERVICE_PORT
         value: "6333"
-      - name: CLUSTER_DOMAIN
-        value: "{{ .Values.clusterDomain }}"
+      - name: CURRENT_POD_NAME
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.name
     dnsPolicy: ClusterFirst
     enableServiceLinks: true
     volumes:
