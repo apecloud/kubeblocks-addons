@@ -47,3 +47,7 @@ Define image
 {{- define "exporter.image" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.prom.exporter.repository}}:{{.Values.image.prom.exporter.tag}}
 {{- end }}
+
+{{- define "mariadb.cmpdName" -}}
+mariadb-{{ .Chart.Version }}
+{{- end -}}
