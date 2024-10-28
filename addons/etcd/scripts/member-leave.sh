@@ -10,6 +10,7 @@
 # In other words. If not in test mode, __ is just a comment. If test mode, __
 # is a interception point.
 # you should set ut_mode="true" when you want to run the script in shellspec file.
+# shellcheck disable=SC2034
 ut_mode="false"
 test || __() {
   # when running in non-unit test mode, set the options "set -ex".
