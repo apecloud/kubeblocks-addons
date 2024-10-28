@@ -31,7 +31,7 @@ KubeBlocks add-ons.
 | kafka | kafka-broker-3.3.2<br>kafka-combine-3.3.2<br>kafka-controller-3.3.2<br>kafka-exporter-1.6.0 | Apache Kafka is a distributed streaming platform designed to build real-time pipelines and can be used as a message broker or as a replacement for a log aggregation solution for big data applications. | caiq1nyu |
 | llm | llama-cpp-python-0.1.0-new<br>llm-v0.2.7-amd64 | Large language models. | lynnleelhl |
 | loki | loki-1.0.0 | Loki is a horizontally-scalable, highly-available, multi-tenant log aggregation system inspired by Prometheus. It is designed to be very cost effective and easy to operate. | Chen-speculation |
-| mariadb | mariadb-1.0.0-alpha.0-10.6.15 | MariaDB is a high performance open source relational database management system that is widely used for web and application servers | yinmin |
+| mariadb | mariadb-10.6.15 | MariaDB is a high performance open source relational database management system that is widely used for web and application servers | yinmin |
 | milvus | milvus-v2.3.2 | A cloud-native vector database, storage for next generation AI applications. | leon-inf |
 | minio | minio-2024.6.29 | High Performance, Kubernetes Native Object Storage | fengluodb |
 | mogdb | mogdb-5.0.5 | A Helm chart for Kubernetes | yabinji shanshanying |
