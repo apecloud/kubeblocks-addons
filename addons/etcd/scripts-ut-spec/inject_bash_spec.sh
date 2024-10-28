@@ -7,11 +7,12 @@ Describe "Inject Bash Script Tests"
   init() {
     export ETCD_VERSION="3.4.22"
   }
-  BeforeAll "init"
 
   cleanup() {
     unset ETCD_VERSION
   }
+
+  BeforeAll "init"
   AfterAll 'cleanup'
 
   Describe "inject_bash()"

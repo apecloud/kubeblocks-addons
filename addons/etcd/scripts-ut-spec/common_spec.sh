@@ -119,13 +119,13 @@ Describe "Common Functions Tests"
     AfterEach "cleanup_temp_file"
 
     It "returns https when advertise-client-urls contains https"
-      echo "advertise-client-urls: https://example.com" > "$config_file"
+      echo "advertise-client-urls: https://etcd-0.com" > "$config_file"
       When call get_client_protocol
       The output should equal "https"
     End
 
     It "returns http when advertise-client-urls contains http"
-      echo "advertise-client-urls: http://example.com" > "$config_file"
+      echo "advertise-client-urls: http://etcd-0.com" > "$config_file"
       When call get_client_protocol
       The output should equal "http"
     End
@@ -136,13 +136,13 @@ Describe "Common Functions Tests"
     AfterEach "cleanup_temp_file"
 
     It "returns https when initial-advertise-peer-urls contains https"
-      echo "initial-advertise-peer-urls: https://example.com" > "$config_file"
+      echo "initial-advertise-peer-urls: https://etcd-0.com" > "$config_file"
       When call get_peer_protocol
       The output should equal "https"
     End
 
     It "returns http when initial-advertise-peer-urls contains http"
-      echo "initial-advertise-peer-urls: http://example.com" > "$config_file"
+      echo "initial-advertise-peer-urls: http://etcd-0.com" > "$config_file"
       When call get_peer_protocol
       The output should equal "http"
     End

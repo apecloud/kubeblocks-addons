@@ -38,14 +38,13 @@ Describe "Etcd Start Bash Script Tests"
     fi
   }
 
-  BeforeAll "init"
-
   cleanup() {
     rm -f "$real_conf";
     rm -f $common_library_file;
     rm -f $default_template_conf
   }
 
+  BeforeAll "init"
   AfterAll 'cleanup'
 
   Describe "get_my_endpoint()"
