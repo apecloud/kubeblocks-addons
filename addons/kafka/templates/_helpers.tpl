@@ -158,6 +158,6 @@ kafka-client-secret
 {{/*
 Define kafka default superuser system account secret name
 */}}
-{{- define "kafka.defaultSpuerUserSystemAccountSecretName" -}}
+{{- define "kafka.defaultSuperUserSystemAccountSecretName" -}}
 kafka-superusers-secret
 {{- end -}}
