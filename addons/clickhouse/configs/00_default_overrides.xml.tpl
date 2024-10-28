@@ -42,6 +42,7 @@
       </shard>
     </default>
   </remote_servers>
+  {{- if (index . "CH_KEEPER_POD_FQDN_LIST") -}}
   <!-- Zookeeper configuration -->
   <zookeeper>
     {{- range $_, $host := splitList "," .CH_KEEPER_POD_FQDN_LIST }}
@@ -57,6 +58,7 @@
     {{- end }}
   </zookeeper>
   <!-- Prometheus metrics -->
+  {{- end }}
   <prometheus>
     <endpoint>/metrics</endpoint>
     <port replace="replace" from_env="CLICKHOUSE_METRICS_PORT"/>
