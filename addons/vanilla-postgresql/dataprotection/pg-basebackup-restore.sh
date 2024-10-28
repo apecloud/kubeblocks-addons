@@ -17,6 +17,7 @@ mkdir -p "${DATA_DIR}";
 
 if [ "$(remote_file_exists "${DP_BACKUP_NAME}.tar.zst")" == "true" ]; then
   datasafed pull -d zstd-fastest "${DP_BACKUP_NAME}.tar.zst" - | tar -xvf - -C "${DATA_DIR}/"
+  touch "${DATA_DIR}/kb-restore.signal"
   echo "done!";
   exit 0
 fi
