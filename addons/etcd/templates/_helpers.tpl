@@ -36,6 +36,9 @@ Common labels
 {{- define "etcd.labels" -}}
 helm.sh/chart: {{ include "etcd.chart" . }}
 {{ include "etcd.selectorLabels" . }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
@@ -55,29 +58,57 @@ helm.sh/resource-policy: keep
 {{- end }}
 
 {{/*
-Define config template name
+Define etcd 3.X component definition name
 */}}
-{{- define "etcd.configTplName" -}}
-etcd-config-template
+{{- define "etcd3.cmpdName" -}}
+{{- if eq (len .Values.cmpdVersionPrefix.major3.minorAll ) 0 -}}
+etcd-3-{{ .Chart.Version }}
+{{- else -}}
+{{- printf "%s" .Values.cmpdVersionPrefix.major3.minorAll -}}-{{ .Chart.Version }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define etcd component definition regular expression name prefix
+*/}}
+{{- define "etcd.cmpdRegexpPattern" -}}
+^etcd-\d+
+{{- end -}}
+
+{{/*
+Define etcd 3.X component configuration template name
+*/}}
+{{- define "etcd3.configurationTemplate" -}}
+etcd3-config-template-{{ .Chart.Version }}
 {{- end }}
 
 {{/*
-Define config constriant name
+Define etcd 3.X component config constriant name
 */}}
-{{- define "etcd.configConstraintName" -}}
-etcd-config-constraints
+{{- define "etcd3.configConstraint" -}}
+etcd3-config-constraints
 {{- end }}
 
 {{/*
-Define configmap name
+Define etcd 3.X component script template name
 */}}
-{{- define "etcd.cmScriptsName" -}}
-etcd-scripts
+{{- define "etcd3.scriptsTemplate" -}}
+etcd3-scripts-template-{{.Chart.Version}}
+{{- end }}
+
+{{/*
+Generate scripts configmap
+*/}}
+{{- define "etcd.extend.scripts" -}}
+{{- range $path, $_ :=  $.Files.Glob "scripts/**" }}
+{{ $path | base }}: |-
+{{- $.Files.Get $path | nindent 2 }}
+{{- end }}
 {{- end }}
 
 {{/*
 Define etcdctl backup actionSet name
 */}}
-{{- define "etcd.backupActionSetName" -}}
+{{- define "etcd.backupActionSet" -}}
 etcdctl-backup
 {{- end -}}

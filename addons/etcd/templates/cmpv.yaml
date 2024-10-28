@@ -6,18 +6,19 @@ metadata:
     {{- include "etcd.labels" . | nindent 4 }}
 spec:
   compatibilityRules:
-    - compDefs: [etcd]
-      releases: [3.5.6, 3.5.15]
+    - compDefs:
+        - {{ include "etcd.cmpdRegexpPattern" .}}
+      releases:
+        - 3.5.6
+        - 3.5.15
   releases:
     - name: 3.5.6
       serviceVersion: 3.5.6
       images:
-        inject-brinaries: {{ .Values.busyboxImage.registry | default "docker.io" }}/{{ .Values.busyboxImage.repository }}:{{ default .Values.busyboxImage.tag }}
-        inject-bash: {{ .Values.bashImage.registry | default "docker.io" }}/{{ .Values.bashImage.repository }}:{{ default .Values.bashImage.tag }}
+        inject-bash: {{ .Values.debianImage.registry | default "docker.io" }}/{{ .Values.debianImage.repository }}:{{ default .Values.debianImage.tag }}
         etcd: {{ .Values.image.registry | default "gcr.io" }}/{{ .Values.image.repository | default "etcd-development/etcd"}}:v3.5.6
     - name: 3.5.15
       serviceVersion: 3.5.15
       images:
-        inject-brinaries: {{ .Values.busyboxImage.registry | default "docker.io" }}/{{ .Values.busyboxImage.repository }}:{{ default .Values.busyboxImage.tag }}
-        inject-bash: {{ .Values.bashImage.registry | default "docker.io" }}/{{ .Values.bashImage.repository }}:{{ default .Values.bashImage.tag }}
+        inject-bash: {{ .Values.debianImage.registry | default "docker.io" }}/{{ .Values.debianImage.repository }}:{{ default .Values.debianImage.tag }}
         etcd: {{ .Values.image.registry | default "gcr.io" }}/{{ .Values.image.repository | default "etcd-development/etcd"}}:v3.5.15

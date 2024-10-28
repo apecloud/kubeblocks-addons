@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: etcd
+  name: {{ include "etcd3.cmpdName" . }}
   labels:
     {{- include "etcd.labels" . | nindent 4 }}
   annotations:
@@ -13,27 +13,15 @@ spec:
   serviceVersion: {{ .Chart.AppVersion }}
   runtime:
     initContainers:
-      - name: inject-brinaries
-        imagePullPolicy: {{default .Values.busyboxImage.pullPolicy "IfNotPresent"}}
-        volumeMounts:
-          - name: scripts
-            mountPath: /scripts
-          - name: shell
-            mountPath: /shell
-        command:
-          - /bin/sh
-          - -c
-          - scripts/inject-brinaries.sh
       - name: inject-bash
-        imagePullPolicy: {{default .Values.bashImage.pullPolicy "IfNotPresent"}}
+        imagePullPolicy: {{default .Values.debianImage.pullPolicy "IfNotPresent"}}
         volumeMounts:
           - name: scripts
             mountPath: /scripts
           - name: shell
             mountPath: /shell
         command:
-          - /usr/bin/env
-          - bash
+          - /bin/bash
           - -c
           - scripts/inject-bash.sh
     containers:
@@ -52,16 +40,14 @@ spec:
           - name: scripts
             mountPath: /scripts
           - name: shell
-            mountPath: /shell
+            mountPath: /lib
         command:
-          - /shell/sh
+          - /lib/bin/bash
           - -c
           - |
-            export PATH=$PATH:/shell
-            # for convenient to use the same entrypoint
+            export PATH=$PATH:/lib/bin
             if [ ! -e /bin/bash ]; then
-              cp /shell/lib/* /lib
-              cp /shell/bash /bin
+              cp /lib/bin/* /bin
             fi
             /scripts/start.sh
         env:
@@ -143,31 +129,31 @@ spec:
   lifecycleActions:
     roleProbe:
       exec:
-        image: {{ .Values.image.registry | default "gcr.io" }}/{{ .Values.image.repository | default "etcd-development/etcd"}}:{{ .Values.image.tag.major3.minor5.patch6 }}
+        image: {{ .Values.image.registry | default "gcr.io" }}/{{ .Values.image.repository | default "etcd-development/etcd"}}:{{ .Values.image.tag.major3.minor56 }}
         container: etcd
         command:
           - /bin/bash
           - -c
-          - scripts/role-probe-script.sh
+          - scripts/roleprobe.sh
     memberJoin:
       exec:
-        image: {{ .Values.image.registry | default "gcr.io" }}/{{ .Values.image.repository | default "etcd-development/etcd"}}:{{ .Values.image.tag.major3.minor5.patch6 }}
+        image: {{ .Values.image.registry | default "gcr.io" }}/{{ .Values.image.repository | default "etcd-development/etcd"}}:{{ .Values.image.tag.major3.minor56 }}
         container: etcd
         command:
           - /bin/bash
           - -c
-          - scripts/etcd-member-leave.sh
+          - scripts/member-leave.sh
     memberLeave:
       exec:
-        image: {{ .Values.image.registry | default "gcr.io" }}/{{ .Values.image.repository | default "etcd-development/etcd"}}:{{ .Values.image.tag.major3.minor5.patch6 }}
+        image: {{ .Values.image.registry | default "gcr.io" }}/{{ .Values.image.repository | default "etcd-development/etcd"}}:{{ .Values.image.tag.major3.minor56 }}
         container: etcd
         command:
           - /bin/bash
           - -c
-          - scripts/etcd-member-leave.sh
+          - scripts/member-leave.sh
     switchover:
       exec:
-        image: {{ .Values.image.registry | default "gcr.io" }}/{{ .Values.image.repository | default "etcd-development/etcd"}}:{{ .Values.image.tag.major3.minor5.patch6 }}
+        image: {{ .Values.image.registry | default "gcr.io" }}/{{ .Values.image.repository | default "etcd-development/etcd"}}:{{ .Values.image.tag.major3.minor56 }}
         container: etcd
         command:
           - /bin/bash
@@ -175,15 +161,17 @@ spec:
           - scripts/switchover.sh
   configs:
     - name: etcd-configuration-tpl
-      templateRef: {{ include "etcd.configTplName" .}}
-      constraintRef: {{ include "etcd.configConstraintName" .}}
+      templateRef: {{ include "etcd3.configurationTemplate" .}}
+      constraintRef: {{ include "etcd3.configConstraint" .}}
       namespace: {{ .Release.Namespace }}
       volumeName: config
       defaultMode: 0666
       reRenderResourceTypes:
         - hscale
+        - vscale
+  scripts:
     - name: etcd-scripts
-      templateRef: {{ include "etcd.cmScriptsName" .}}
+      templateRef: {{ include "etcd3.scriptsTemplate" .}}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555

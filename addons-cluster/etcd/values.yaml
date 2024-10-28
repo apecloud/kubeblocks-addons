@@ -11,7 +11,7 @@ terminationPolicy: Delete
 ## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
 tolerations: []
 
-## @param affinity Affinity setting for etcd cluster pods assignment
+## @param affinity setting for etcd cluster pods assignment
 affinity: {}
 
 ## @param replicas Number of replicas for the etcd cluster
@@ -41,11 +41,11 @@ clientService:
   ## @param clientService.annotations Optional, if clientService type is LoadBalancer, you may need to specify annotations for Cloud Provider
   annotations: {}
 
-## @param cpu CPU resource request for each etcd pod
+## @param cpu resource request for each etcd pod
 cpu: 0.5
-## @param memory Memory resource request for each etcd pod, the unit is Gi
+## @param memory resource request for each etcd pod, the unit is Gi
 memory: 0.5
-## @param storage Storage size for each etcd pod, the unit is Gi
+## @param storage size for each etcd pod, the unit is Gi
 storage: 10
 
 ## @param requests.cpu If not set, use cpu
