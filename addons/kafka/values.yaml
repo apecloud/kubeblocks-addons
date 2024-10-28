@@ -1,22 +1,15 @@
-## Common override values:
-##
-## @param clusterVersionOverride
-## @param nameOverride
-## @param fullnameOverride
-clusterVersionOverride: ""
-
-componentServiceVersion:
-  combine: 3.3.2
-  controller: 3.3.2
-  broker: 3.3.2
-  exporter: 1.6.0
+# Default values for Kafka.
 
 nameOverride: ""
+
 fullnameOverride: ""
 
 ## @param commonLabels Labels to add to all deployed objects
 ##
 commonLabels: {}
+
+## @param commonLabels Annotations to add to all deployed objects
+commonAnnotations: {}
 
 ## @param application images
 ##
@@ -34,12 +27,16 @@ images:
     repository: bitnami/jmx-exporter
     tag: 0.18.0-debian-11-r20
 
+## @param define default serviceVersion of each Component
+defaultServiceVersion:
+  combine: 3.3.2
+  controller: 3.3.2
+  broker: 3.3.2
+  exporter: 1.6.0
 
 ## @param debugEnabled enables containers' debug logging
 ##
 debugEnabled: true
-
-commonAnnotations: {}
 
 kafkaBroker:
   minNodeId: 100

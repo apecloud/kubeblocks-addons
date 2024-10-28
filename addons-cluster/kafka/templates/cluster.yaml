@@ -9,19 +9,18 @@ metadata:
 spec:
   clusterDef: kafka # ref clusterdefinition.name
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
-  {{- include "kblib.affinity" . | indent 2 }}
   topology: 
     {{- if eq "combined" $.Values.mode }}
       {{- if .Values.monitorEnable }}
-    combined_monitor
+        combined_monitor
       {{- else }}
-    combined
+        combined
       {{- end }}
     {{- else }}
       {{- if .Values.monitorEnable }}
-    separated_monitor
+        separated_monitor
       {{- else }}
-    separated
+        separated
       {{- end }}
     {{- end }}
   componentSpecs:
