@@ -274,7 +274,7 @@ spec:
           - /bin/bash
           - -c
           - |
-            {{- .Files.Get "scripts/redis-switchover.sh" | nindent 14 }}
+            {{- .Files.Get "scripts/redis-switchover.sh" | nindent 12 }}
   runtime:
     initContainers:
       - name: init-dbctl

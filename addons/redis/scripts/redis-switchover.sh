@@ -121,33 +121,13 @@ switchoverWithCandidate() {
     redis_get_cmd="CONFIG GET replica-priority"
     redis_set_switchover_cmd="CONFIG SET replica-priority 1"
     unset_xtrace_when_ut_mode_false
-    if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
-        call_func_with_retry 3 5 check_connectivity "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$REDIS_DEFAULT_PASSWORD" || exit 1
-    else
-        call_func_with_retry 3 5 check_connectivity "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" || exit 1
-    fi
-
-    if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
-        current_replica_priority=$(redis_config_get "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$REDIS_DEFAULT_PASSWORD" "$redis_get_cmd" | sed -n '2p')
-    else 
-        current_replica_priority=$(redis_config_get "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$redis_get_cmd" | sed -n '2p')
-    fi
-
+    call_func_with_retry 3 5 check_connectivity "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$REDIS_DEFAULT_PASSWORD" || exit 1
+    current_replica_priority=$(redis_config_get "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$REDIS_DEFAULT_PASSWORD" "$redis_get_cmd" | sed -n '2p')
     redis_set_recover_cmd="CONFIG SET replica-priority $current_replica_priority"
-
-    if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
-        call_func_with_retry 3 5 execute_sub_command "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$REDIS_DEFAULT_PASSWORD" "$redis_set_switchover_cmd" || exit 1
-    else
-        call_func_with_retry 3 5 execute_sub_command "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$redis_set_switchover_cmd" || exit 1
-    fi
-    set_xtrace_when_ut_mode_false
+    call_func_with_retry 3 5 execute_sub_command "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$REDIS_DEFAULT_PASSWORD" "$redis_set_switchover_cmd" || exit 1
+    
     # TODO: check the role in kernel before switchover
-    old_ifs="$IFS"
-    IFS=','
-    set -f
-    read -ra sentinel_pod_fqdn_list <<< "${SENTINEL_POD_FQDN_LIST}"
-    set +f
-    IFS="$old_ifs"
+    IFS=',' read -ra sentinel_pod_fqdn_list <<< "${SENTINEL_POD_FQDN_LIST}"
     master_name="$REDIS_COMPONENT_NAME"
     local success=false
 
@@ -164,24 +144,16 @@ switchoverWithCandidate() {
         exit 1
     fi
     # TODO: check switchover result
-    if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
-        call_func_with_retry 3 5 execute_sub_command "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$REDIS_DEFAULT_PASSWORD" "$redis_set_recover_cmd" || exit 1
-    else
-        call_func_with_retry 3 5 execute_sub_command "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$redis_set_recover_cmd" || exit 1
-    fi
+    call_func_with_retry 3 5 execute_sub_command "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$REDIS_DEFAULT_PASSWORD" "$redis_set_recover_cmd" || exit 1
+    set_xtrace_when_ut_mode_false
 }
 
 switchoverWithoutCandidate() {
     # TODO: check the role in kernel before switchover
-    old_ifs="$IFS"
-    IFS=','
-    set -f
-    read -ra sentinel_pod_fqdn_list <<< "${SENTINEL_POD_FQDN_LIST}"
-    set +f
-    IFS="$old_ifs"
+    IFS=',' read -ra sentinel_pod_fqdn_list <<< "${SENTINEL_POD_FQDN_LIST}"
     master_name="$REDIS_COMPONENT_NAME"
     local success=false
-
+    unset_xtrace_when_ut_mode_false
     for sentinel_pod_fqdn in "${sentinel_pod_fqdn_list[@]}"; do
         if call_func_with_retry 3 5 execute_sub_command "$sentinel_pod_fqdn" "26379" "$SENTINEL_PASSWORD" "SENTINEL FAILOVER $master_name"; then
             echo "Sentinel failover start with $sentinel_pod_fqdn, Switchover is processing"
@@ -189,7 +161,7 @@ switchoverWithoutCandidate() {
             break
         fi
     done
-
+    set_xtrace_when_ut_mode_false
     if [ "$success" = false ]; then
         echo "All Sentinel failover attempts failed."
         exit 1
