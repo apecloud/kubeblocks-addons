@@ -31,12 +31,16 @@ switchover_with_candidate() {
   exec_etcdctl "${leader_endpoint}" move-leader "$candidate_id"
 
   candidate_status=$(exec_etcdctl "${candidate_endpoint}" endpoint status)
-  isLeader=$(echo "${candidate_status}" | awk -F ', ' '{print $5}')
+  is_leader=$(echo "${candidate_status}" | awk -F ', ' '{print $5}')
 
-  if ! [ "$isLeader" = "true" ]; then
+  if [ "$is_leader" = "true" ]; then
+    return 0
+  elif [ "$is_leader" = "false" ]; then
+    echo "candidate status is not leader after switchover, please check!" >&2
     return 1
   fi
-  return 0
+  echo "candidate status is unexpected after switchover, please check!" >&2
+  return 1
 }
 
 switchover_without_candidate() {
@@ -65,17 +69,18 @@ switchover_without_candidate() {
   fi
   
   exec_etcdctl "$leader_endpoint" move-leader "$random_candidate_id"
-  
+
   status=$(exec_etcdctl "$leader_endpoint" endpoint status)
-  isLeader=$(echo "$status" | awk -F ', ' '{print $5}')
+  is_leader=$(echo "$status" | awk -F ', ' '{print $5}')
   
-  if [ "$isLeader" = "false" ]; then
-    echo "switchover successfully"
+  if [ "$is_leader" = "false" ]; then
     return 0
-  else
-    echo "switchover failed, please check!" >&2
+  elif [ "$is_leader" = "true" ]; then
+    echo "leader status is no changed after switchover, please check!" >&2
     return 1
   fi
+  echo "leader status is unexpected after switchover, please check!" >&2
+  return 1
 }
 
 switchover() {
@@ -86,9 +91,10 @@ switchover() {
   fi
   status=$?
   if [ "$status" -ne 0 ]; then
-      log "Failed to switchover. Exiting." >&2
+      echo "ERROR: Failed to switchover. Exiting." >&2
       return 1
   fi
+  echo "Switchover successfully."
   return 0
 }
 
