@@ -1,3 +1,5 @@
+# shellcheck disable=SC2148
+
 echo "BACKUP_DIR=${DP_BACKUP_BASE_PATH} BACKUP_NAME=${DP_BACKUP_NAME} DATA_DIR=${DATA_DIR}" && \
 mkdir -p /tmp/data/ && cd /tmp/data \
 && mbstream -x < /backupdata/${DP_BACKUP_NAME}.mbstream \
