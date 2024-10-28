@@ -24,7 +24,7 @@ spec:
           - name: MARIADB_ROOT_HOST
             value: {{ .Values.auth.rootHost | default "%" | quote }}
       - name: exporter
-        image: {{ include "mariadb.image" . }}
+        image: {{ include "exporter.image" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         ports:
           - name: metrics
