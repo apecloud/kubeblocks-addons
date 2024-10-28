@@ -4,9 +4,6 @@ metadata:
   name: clickhouse-constraints
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
-    {{- if .Values.commonLabels }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
-    {{- end }}
 spec:
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:
