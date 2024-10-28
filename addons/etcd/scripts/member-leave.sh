@@ -47,11 +47,16 @@ member_leave() {
 
   if [ -z "$leaver_endpoint" ]; then
     echo "ERROR: leave member pod name not found in member addresses" >&2
-    retuen 1
+    return 1
   fi
 
   etcd_id=$(get_etcd_id "$leaver_endpoint")
   remove_member "$etcd_id"
+  status=$?
+  if [ $status -ne 0 ]; then
+    echo "ERROR: etcdctl remove_member failed" >&2
+    return 1
+  fi
   return 0
 }
 

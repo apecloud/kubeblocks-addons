@@ -5,15 +5,15 @@ metadata:
   labels:
     {{- include "etcd.labels" . | nindent 4 }}
 spec:
-  serviceKind: ETCD
+  serviceKind: etcd
   compDefs:
-  - etcd
+  - {{ include "etcd.cmpdRegexpPattern" . }}
   target:
     role: leader
   backupMethods:
-    - name: {{ include "etcd.backupActionSetName" .}}
+    - name: datafile
       snapshotVolumes: false
-      actionSetName: {{ include "etcd.backupActionSetName" .}}
+      actionSetName: {{ include "etcd.backupActionSet" .}}
       targetVolumes:
         volumes:
         - tls
@@ -24,7 +24,7 @@ spec:
         - name: data
           mountPath: {{ .Values.dataMountPath }}
   schedules:
-    - backupMethod: {{ include "etcd.backupActionSetName" .}}
+    - backupMethod: datafile
       enabled: false
       cronExpression: "0 18 * * 0"
       retentionPeriod: 7d

@@ -5,6 +5,22 @@
 # config file used to bootstrap the etcd cluster
 config_file=$TMP_CONFIG_PATH
 
+check_requirements() {
+  if [[ $(uname) == "Darwin" || $(uname) == *"BSD"* ]] && ! which gsed > /dev/null 2>&1; then
+    echo "cannot find gsed (required on BSD/Darwin systems)" >&2
+    return 1
+  fi
+  return 0
+}
+
+universal_sed() {
+  if [[ $(uname) == "Darwin" || $(uname) == *"BSD"* ]]; then
+    gsed "$@"
+  else
+    sed "$@"
+  fi
+}
+
 call_func_with_retry() {
   local max_retries="$1"
   local retry_interval="$2"
@@ -37,12 +53,10 @@ check_backup_file() {
   fi
   total_key=$(echo "$output" | awk -F', ' '{print $3}')
   # check if total key is a number
-  case $total_key in
-    *[!0-9]*)
-      echo "ERROR: snapshot totalKey is not a valid number."
-      return 1
-      ;;
-  esac
+  if [ -z "$total_key" ] || ! [[ "$total_key" =~ ^[0-9]+$ ]]; then
+    echo "ERROR: snapshot totalKey is not a valid number." >&2
+    return 1
+  fi
 
   threshold=$BACKUP_KEY_THRESHOLD
   if [ "$total_key" -lt "$threshold" ]; then
@@ -79,7 +93,7 @@ exec_etcdctl() {
   tls_dir=$TLS_MOUNT_PATH
   # check if the client_protocol is https and the tls_dir is not empty
   if [ "$client_protocol" = "https" ] && [ -d "$tls_dir" ] && [ -s "${tls_dir}/ca.crt" ] && [ -s "${tls_dir}/tls.crt" ] && [ -s "${tls_dir}/tls.key" ]; then
-    etcdctl --endpoints="${endpoints}" --cacert=${tls_dir}/ca.crt --cert="${tls_dir}"/tls.crt --key="${tls_dir}"/tls.key "$@"
+    etcdctl --endpoints="${endpoints}" --cacert="${tls_dir}/ca.crt" --cert="${tls_dir}/tls.crt" --key="${tls_dir}/tls.key" "$@"
   elif [ "$client_protocol" = "http" ]; then
     etcdctl --endpoints="${endpoints}" "$@"
   else
@@ -94,10 +108,8 @@ exec_etcdctl() {
   return 0
 }
 
-
 get_current_leader() {
-  echo "leader out of status, try to redirect to new leader" >&2
-  peer_endpoints=$(exec_etcdctl "$leader_endpoint" member list | awk -F', ' '{print $5}' | tr '\n' ',' | sed 's#,$##')
+  peer_endpoints=$(exec_etcdctl "$leader_endpoint" member list | awk -F', ' '{print $5}' | tr '\n' ',' | universal_sed 's#,$##')
   leader_endpoint=$(exec_etcdctl "$peer_endpoints" endpoint status | awk -F', ' '$5=="true" {print $1}')
   if [ -z "$leader_endpoint" ]; then
     echo "leader is not ready" >&2

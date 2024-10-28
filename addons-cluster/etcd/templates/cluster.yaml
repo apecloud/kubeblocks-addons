@@ -34,10 +34,6 @@ spec:
         name: KubeBlocks
       {{- end }}
       replicas: {{ .Values.replicas | default "3" }}
-      instances:
-        - name: etcd-0
-        - name: etcd-1
-        - name: etcd-2
       {{- include "kblib.componentStorages" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentMonitor" . | indent 6 }}

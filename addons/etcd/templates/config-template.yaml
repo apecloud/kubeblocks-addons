@@ -1,9 +1,11 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "etcd.configTplName" . }}
+  name: {{ include "etcd3.configurationTemplate" . }}
   labels:
     {{- include "etcd.labels" . | nindent 4 }}
+  annotations:
+    {{- include "etcd.annotations" . | nindent 4 }}
 
 data:
   etcd.conf: |

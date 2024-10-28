@@ -16,29 +16,27 @@ switchover_with_candidate() {
   candidate_endpoint=${KB_SWITCHOVER_CANDIDATE_FQDN}:2379
 
   current_leader_endpoint=$(get_current_leader_with_retry 3 2)
-  status=$?
-  if [ "$status" -ne 0 ]; then
+  get_leader_status=$?
+  if [ "$get_leader_status" -ne 0 ]; then
     echo "failed to get current leader endpoint" >&2
     return 1
   fi
-  
+
   if [ "$current_leader_endpoint" = "$candidate_endpoint" ]; then
     echo "current leader is the same as candidate, no need to switch"
     return 0
   fi
-  
+
   candidate_id=$(exec_etcdctl "${candidate_endpoint}" endpoint status | awk -F', ' '{print $2}')
   exec_etcdctl "${leader_endpoint}" move-leader "$candidate_id"
-  
-  status=$(exec_etcdctl "${candidate_endpoint}" endpoint status)
-  isLeader=$(echo "${status}" | awk -F ', ' '{print $5}')
-  
-  if [ "$isLeader" = "true" ]; then
-    echo "switchover successfully"
-  else
-    echo "switchover failed, please check!" >&2
+
+  candidate_status=$(exec_etcdctl "${candidate_endpoint}" endpoint status)
+  isLeader=$(echo "${candidate_status}" | awk -F ', ' '{print $5}')
+
+  if ! [ "$isLeader" = "true" ]; then
     return 1
   fi
+  return 0
 }
 
 switchover_without_candidate() {
@@ -57,22 +55,23 @@ switchover_without_candidate() {
     return 0
   fi
   
-  leaderID=$(exec_etcdctl "${leader_endpoint}" endpoint status | awk -F', ' '{print $2}')
-  peerIDs=$(exec_etcdctl "${leader_endpoint}" member list | awk -F', ' '{print $1}')
-  randomcandidate_id=$(echo "$peerIDs" | grep -v "$leaderID" | awk 'NR==1')
+  leader_id=$(exec_etcdctl "${leader_endpoint}" endpoint status | awk -F', ' '{print $2}')
+  peers_id=$(exec_etcdctl "${leader_endpoint}" member list | awk -F', ' '{print $1}')
+  random_candidate_id=$(echo "$peers_id" | grep -v "$leader_id" | awk 'NR==1')
   
-  if [ -z "$randomcandidate_id" ]; then
+  if is_empty "$random_candidate_id"; then
     echo "no candidate found" >&2
     return 1
   fi
   
-  exec_etcdctl "$leader_endpoint" move-leader "$randomcandidate_id"
+  exec_etcdctl "$leader_endpoint" move-leader "$random_candidate_id"
   
   status=$(exec_etcdctl "$leader_endpoint" endpoint status)
   isLeader=$(echo "$status" | awk -F ', ' '{print $5}')
   
   if [ "$isLeader" = "false" ]; then
     echo "switchover successfully"
+    return 0
   else
     echo "switchover failed, please check!" >&2
     return 1
@@ -80,11 +79,17 @@ switchover_without_candidate() {
 }
 
 switchover() {
-  if [ -z "$KB_SWITCHOVER_CANDIDATE_FQDN" ]; then
+  if is_empty "$KB_SWITCHOVER_CANDIDATE_FQDN"; then
       switchover_without_candidate
   else
       switchover_with_candidate
   fi
+  status=$?
+  if [ "$status" -ne 0 ]; then
+      log "Failed to switchover. Exiting." >&2
+      return 1
+  fi
+  return 0
 }
 
 # This is magic for shellspec ut framework.

@@ -12,6 +12,7 @@ load_common_library() {
   . "${kblib_common_library_file}"
   # shellcheck source=/scripts/common.sh
   . "${etcd_common_library_file}"
+  check_requirements
 }
 
 log() {
@@ -28,17 +29,17 @@ get_my_endpoint() {
   peer_endpoints="$1"
   current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$PEER_FQDNS" "$CURRENT_POD_NAME")
   if is_empty "$current_pod_fqdn"; then
-    echo "Error: Failed to get current pod: $CURRENT_POD_NAME fqdn from peer fqdn list: $PEER_FQDNS. Exiting."
+    echo "Error: Failed to get current pod: $CURRENT_POD_NAME fqdn from peer fqdn list: $PEER_FQDNS. Exiting." >&2
     return 1
   fi
 
   my_peer_endpoint="$current_pod_fqdn"
   if ! is_empty "$peer_endpoints"; then
-    log "LoadBalancer mode detected. Adapting pod FQDN to balance IP."
+    log "LoadBalancer mode detected. Adapting pod FQDN to balance IP." >&2
     endpoints=$(echo "$peer_endpoints" | tr ',' '\n')
     my_endpoint=$(echo "$endpoints" | grep "$CURRENT_POD_NAME")
 
-    if is_empoty "$my_endpoint"; then
+    if is_empty "$my_endpoint"; then
       log "Failed to get my peer endpoint from PEER_FQDNS:$PEER_FQDNS when loadBalancer mode is enabled, use default pod FQDN to advertise." >&2
     else
       # e.g.1 etcd-cluster-etcd-0
@@ -63,9 +64,9 @@ update_etcd_conf() {
 
   cp "$default_template_conf" "$tpl_conf"
 
-  sed -i "s/^name:.*/name: $current_pod_name/g" "$tpl_conf"
-  sed -i "s#\(initial-advertise-peer-urls: https\?\).*#\\1://$my_endpoint:2380#g" "$tpl_conf"
-  sed -i "s#\(advertise-client-urls: https\?\).*#\\1://$my_endpoint:2379#g" "$tpl_conf"
+  universal_sed -i "s/^name:.*/name: $current_pod_name/g" "$tpl_conf"
+  universal_sed -i "s#\(initial-advertise-peer-urls: https\?\).*#\\1://$my_endpoint:2380#g" "$tpl_conf"
+  universal_sed -i "s#\(advertise-client-urls: https\?\).*#\\1://$my_endpoint:2379#g" "$tpl_conf"
 }
 
 rebuild_etcd_conf() {
@@ -77,7 +78,7 @@ rebuild_etcd_conf() {
   status=$?
   if [ "$status" -ne 0 ]; then
       log "Failed to get my endpoint. Exiting." >&2
-      retuen 1
+      return 1
   fi
   update_etcd_conf "$default_template_conf" "$real_conf" "$CURRENT_POD_NAME" "$my_endpoint"
 

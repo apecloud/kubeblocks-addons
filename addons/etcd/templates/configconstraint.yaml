@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
-  name: {{ include "etcd.configConstraintName" . }}
+  name: {{ include "etcd3.configConstraint" . }}
   labels:
     {{- include "etcd.labels" . | nindent 4 }}
 spec:
