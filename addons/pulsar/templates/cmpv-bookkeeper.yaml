@@ -7,7 +7,8 @@ metadata:
 spec:
   compatibilityRules:
     - compDefs:
-        - pulsar-bookkeeper
+        ## regex pattern for bookkeeper component definition match pulsar 2.X and 3.X
+        - {{ include "pulsar.bookkeeperCmpdRegexPattern" . }}
       releases:
         - 2.11.2
         - 3.0.2

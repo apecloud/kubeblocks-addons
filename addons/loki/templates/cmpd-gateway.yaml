@@ -1,9 +1,11 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: loki-gateway
+  name: {{ include "loki.gatewayCmpdName" . }}
   labels:
     {{- include "loki.labels" . | nindent 4 }}
+  annotations:
+    {{- include "loki.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
   description: A Loki component definition for Kubernetes
@@ -17,6 +19,12 @@ spec:
             protocol: TCP
             name: http-metrics
             targetPort: http-metrics
+  configs:
+    - name: config-gateway
+      ## TODO: this cmpd is currently unavailable. It requires adding configuration templates.
+      templateRef: loki-gateway
+      volumeName: config
+      namespace: {{ .Release.Namespace }}
   updateStrategy: BestEffortParallel
   runtime:
     automountServiceAccountToken: true
@@ -56,8 +64,3 @@ spec:
             name: tmp
           - mountPath: /docker-entrypoint.d
             name: docker-entrypoint-d-override
-  configs:
-    - name: config-gateway
-      templateRef: loki-gateway
-      volumeName: config
-      namespace: {{ .Release.Namespace }}

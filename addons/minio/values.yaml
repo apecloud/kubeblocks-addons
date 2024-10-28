@@ -2,6 +2,10 @@
 ##
 clusterDomain: cluster.local
 
+nameOverride: ""
+
+fullnameOverride: ""
+
 ## Set default image, imageTag, and imagePullPolicy. mode is used to indicate the
 ##
 image:
@@ -10,7 +14,8 @@ image:
   tag: RELEASE.2024-06-29T01-20-47Z
   pullPolicy: IfNotPresent
 
-componentServiceVersion:
+## @param define default serviceVersion
+defaultServiceVersion:
   minio: 2024.6.29
 
 ## Set default image, imageTag, and imagePullPolicy for the `mc` (the minio
@@ -33,7 +38,7 @@ minioConsolePort: "9001"
 
 ## Directory on the MinIO pof
 certsPath: "/etc/minio/certs/"
-configPathmc: "/etc/minio/mc/"
+mcConfigPath: "/etc/minio/mc/"
 
 ## TLS Settings for MinIO
 tls:

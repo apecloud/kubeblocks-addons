@@ -1,14 +1,16 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: pulsar-bookkeeper-{{include "pulsar.major.version" .}}
+  name: {{ include "pulsar2.bookkeeperCmpdName" . }}
   labels:
-      {{- include "pulsar.labels" . | nindent 4 }}
+    {{- include "pulsar.labels" . | nindent 4 }}
+  annotations:
+    {{- include "pulsar.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
-  description: Pulsar bookkeeper.
+  description: Pulsar bookkeeper component definition
   serviceKind: pulsar
-  serviceVersion: {{ default .Chart.AppVersion .Values.clusterVersionOverride }}
+  serviceVersion: {{ .Values.defaultServiceVersion.bookkeeper.major2 }}
   serviceRefDeclarations:
     - name: pulsarZookeeper
       serviceRefDeclarationSpecs:
@@ -18,9 +20,9 @@ spec:
   updateStrategy: BestEffortParallel
   configs:
     - name: bookies-env
-      templateRef: {{ include "pulsar.name" . }}-bookies-env-tpl
+      templateRef: {{ include "pulsar.bookiesEnvTplName" . }}
       namespace: {{ .Release.Namespace }}
-      constraintRef: pulsar-env-constraints
+      constraintRef: {{ include "pulsar.envConstraintName" . }}
       volumeName: bookies-env
       keys:
         - conf
@@ -30,23 +32,51 @@ spec:
       reRenderResourceTypes:
         - vscale
     - name: bookies-config
-      templateRef: {{ include "pulsar.name" . }}{{include "pulsar.major.version" .}}-bookies-config-tpl
+      templateRef: {{ include "pulsar2.bookiesConfigTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: pulsar-bookies-config
-      constraintRef: pulsar{{include "pulsar.major.version" .}}-bookies-cc
+      constraintRef: {{ include "pulsar2.bookiesConfigConstraintName" . }}
       reRenderResourceTypes:
         - vscale
   scripts:
     - name: pulsar-scripts
-      templateRef: {{ include "pulsar.name" . }}-scripts
+      templateRef: {{ include "pulsar.scriptsTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
+  exporter:
+    scrapePath: /metrics
+    scrapePort: http
+  vars:
+    - name: BOOKKEEPER_COMP_REPLICAS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          replicas: Required
+    - name: BOOKKEEPER_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: true
+          podFQDNs: Required
+  lifecycleActions:
+    memberLeave:
+      exec:
+        container: bookies
+        command:
+          - /bin/bash
+          - -c
+          - /kb-scripts/bookies-member-leave.sh
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
   runtime:
     initContainers:
       - name: init-bookies
-        image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v3_0_2.bookie "root" .) }}"
-        imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v3_0_2.bookie "root" .) }}"
+        image: {{ include "pulsar2.bookiesImage" . }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/init-bookies.sh
         env:
@@ -61,10 +91,16 @@ spec:
         volumeMounts:
           - name: scripts
             mountPath: /kb-scripts
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
     containers:
       - name: bookies
-        image: "{{ template "pulsar.imageFullName" (dict "image" .Values.images.v3_0_2.bookie "root" .) }}"
-        imagePullPolicy: "{{ template "pulsar.imagePullPolicy" (dict "image" .Values.images.v3_0_2.bookie "root" .) }}"
+        image:  {{ include "pulsar2.bookiesImage" . }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/start-bookies.sh
         env:
@@ -76,12 +112,11 @@ spec:
         {{- end }}
           - name: SERVICE_PORT
             value: "8000"
-          - name: cluster_domain
-            value: {{ .Values.clusterDomain }}
-        lifecycle:
-          preStop:
-            exec:
-              command: [ "/kb-scripts/prestop-bookies.sh" ]
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
         livenessProbe:
           failureThreshold: 60
           httpGet:
@@ -123,19 +158,7 @@ spec:
             name: ledgers
           - name: scripts
             mountPath: /kb-scripts
-          - name: annotations
-            mountPath: /etc/annotations
           - name: bookies-env
             mountPath: /opt/pulsar/none
           - name: pulsar-bookies-config
             mountPath: /opt/pulsar/conf
-    volumes:
-      - name: annotations
-        downwardAPI:
-          items:
-            - path: "component-replicas"
-              fieldRef:
-                fieldPath: metadata.annotations['apps.kubeblocks.io/component-replicas']
-  exporter:
-    scrapePath: /metrics
-    scrapePort: http

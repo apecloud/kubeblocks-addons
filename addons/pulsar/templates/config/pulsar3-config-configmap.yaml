@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "pulsar.name" . }}3-broker-config-tpl
+  name: {{ include "pulsar3.brokerConfigTplName" . }}
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 data:
@@ -18,7 +18,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "pulsar.name" . }}3-bookies-config-tpl
+  name: {{ include "pulsar3.bookiesConfigTplName" . }}
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 data:
@@ -30,7 +30,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "pulsar.name" . }}3-proxy-config-tpl
+  name: {{ include "pulsar3.proxyConfigTplName" . }}
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
 data:

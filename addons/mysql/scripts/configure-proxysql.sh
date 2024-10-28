@@ -32,7 +32,7 @@ function mysql_exec() {
     local query="$5"
     local exec_opt="$6"
     pass_ssl=""
-    if [ $BACKEND_TLS_ENABLED == "true" ]; then
+    if [ "$BACKEND_TLS_ENABLED" == "true" ]; then
         if [ $port == 3306 ]; then
             pass_ssl="--ssl-ca=/var/lib/certs/ca.crt"
         fi
@@ -62,6 +62,12 @@ function wait_for_mysql() {
         exit 1
     fi
 }
+
+# if test by shellspec include, just return 0
+if [ "${__SOURCED__:+x}" ]; then
+  return 0
+fi
+
 
 log "$MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $BACKEND_SERVER $MYSQL_PORT"
 wait_for_mysql $MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $BACKEND_SERVER $MYSQL_PORT
