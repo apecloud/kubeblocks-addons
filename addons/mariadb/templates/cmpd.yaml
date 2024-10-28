@@ -12,7 +12,7 @@ spec:
   runtime:
     containers:
       - name: mariadb
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        image: {{ include "mariadb.image" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         volumeMounts:
           - mountPath: /var/lib/mysql
@@ -24,7 +24,7 @@ spec:
           - name: MARIADB_ROOT_HOST
             value: {{ .Values.auth.rootHost | default "%" | quote }}
       - name: exporter
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.prom.exporter.repository}}:{{.Values.image.prom.exporter.tag}}
+        image: {{ include "mariadb.image" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         ports:
           - name: metrics
