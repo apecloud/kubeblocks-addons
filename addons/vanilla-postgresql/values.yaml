@@ -33,7 +33,7 @@ image:
 
   syncer:
     repository: apecloud/syncer
-    tag: "0.3.2"
+    tag: "0.3.6"
 
 dataMountPath: /postgresql/volume_data
 confMountPath: /postgresql/mount_conf
