@@ -67,15 +67,15 @@ spec:
         volumeMounts:
           - mountPath: /tmp/plugins
             name: plugins
-      - command:
+      - name: install-plugins
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command:
           - sh
           - -c
           - |
             set -x
             sh /mnt/remote-scripts/install-plugins.sh
             sh /mnt/remote-scripts/prepare-fs.sh
-        imagePullPolicy: {{ .Values.image.pullPolicy }}
-        name: install-plugins
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
