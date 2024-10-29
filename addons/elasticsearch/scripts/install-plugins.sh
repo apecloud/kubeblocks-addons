@@ -8,11 +8,13 @@ test || __() {
 }
 
 init_vars() {
-  local -r SRC_PLUGINS_DIR="/tmp/plugins"
-  local -r DST_PLUGINS_DIR="/usr/share/elasticsearch/plugins"
-  local -r ES_PLUGIN_CMD="/usr/share/elasticsearch/bin/elasticsearch-plugin"
+  SRC_PLUGINS_DIR="/tmp/plugins"
+  DST_PLUGINS_DIR="/usr/share/elasticsearch/plugins"
+  ES_PLUGIN_CMD="/usr/share/elasticsearch/bin/elasticsearch-plugin"
 
-  export SRC_PLUGINS_DIR DST_PLUGINS_DIR ES_PLUGIN_CMD
+  export SRC_PLUGINS_DIR
+  export DST_PLUGINS_DIR
+  export ES_PLUGIN_CMD
 }
 
 check_src_dir() {
