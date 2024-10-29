@@ -136,16 +136,10 @@
   log_disconnections = 'False'
   log_duration = 'False'
   log_executor_stats = 'False'
-  {{- block "logsBlock" . }}
-  {{- if hasKey $.component "enabledLogs" }}
-  {{- if mustHas "running" $.component.enabledLogs }}
   logging_collector = 'True'
   log_destination = 'csvlog'
   log_directory = 'log'
   log_filename = 'postgresql-%Y-%m-%d.log'
-  {{ end -}}
-  {{ end -}}
-  {{ end }}
   # log_lock_waits = 'True'
   log_min_duration_statement = '1000'
   log_parser_stats = 'False'

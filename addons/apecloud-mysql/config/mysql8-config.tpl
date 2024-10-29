@@ -95,23 +95,15 @@ mysqlx=0
 
 datadir={{ $data_root }}/data
 
-{{ block "logsBlock" . }}
 log_statements_unsafe_for_binlog=OFF
 log_error_verbosity=2
 log_output=FILE
 log_error=/data/mysql/log/mysqld-error.log
-{{- if hasKey $.component "enabledLogs" }}
-{{- if mustHas "slow" $.component.enabledLogs }}
 slow_query_log=ON
 long_query_time=5
 slow_query_log_file=/data/mysql/log/mysqld-slowquery.log
-{{- end }}
-{{- if mustHas "general" $.component.enabledLogs }}
 general_log=ON
 general_log_file=/data/mysql/log/mysqld.log
-{{- end }}
-{{- end }}
-{{ end }}
 
 {{- if eq $.cluster.metadata.labels.auditLogEnabled "true" }}
 # audit log
