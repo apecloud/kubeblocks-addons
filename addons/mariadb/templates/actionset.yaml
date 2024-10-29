@@ -11,7 +11,7 @@ spec:
   backupType: Full
   backup:
     backupData:
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+      image: {{ include "mariadb.image" . }}
       runOnTargetPodNode: true
       command:
         - sh
@@ -23,7 +23,7 @@ spec:
           --user=${DP_DB_USER} --password=${DP_DB_PASSWORD} --datadir=${DATA_DIR} > ${DATASAFED_LOCAL_BACKEND_PATH}/${DP_BACKUP_NAME}.mbstream
   restore:
     prepareData:
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+      image: {{ include "mariadb.image" . }}
       command:
         - sh
         - -c

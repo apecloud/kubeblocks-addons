@@ -31,3 +31,19 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
+
+{{/*
+Define image
+*/}}
+{{- define "mariadb.repository" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}
+{{- end }}
+{{- define "mariadb.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+{{- end }}
+{{- define "exporter.repository" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.prom.exporter.repository}}
+{{- end }}
+{{- define "exporter.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.prom.exporter.repository}}:{{.Values.image.prom.exporter.tag}}
+{{- end }}
