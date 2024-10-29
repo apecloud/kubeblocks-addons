@@ -22,8 +22,6 @@ spec:
     - name: etcdService
       cluster: etcdo-cluster
       namespace: default
-    enabledLogs:
-    - running
     serviceAccountName: kb-orioledb-cluster
     replicas: 1
     resources:

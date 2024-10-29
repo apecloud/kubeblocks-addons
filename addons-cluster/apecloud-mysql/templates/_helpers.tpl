@@ -37,11 +37,6 @@ The minimum proxy cpu cores is 0.5 and the maximum cpu cores is 64.
     {{ include "apecloud-mysql-cluster.serviceRef" . | indent 4 }}
   {{- end }}
   replicas: 1
-  enabledLogs:
-    - error
-    - warning
-    - info
-    - queryLog
   resources:
     requests:
       cpu: {{ $proxyCPU | quote }}

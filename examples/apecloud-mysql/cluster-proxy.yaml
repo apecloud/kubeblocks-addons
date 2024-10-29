@@ -18,9 +18,6 @@ spec:
   componentSpecs:
   - name: mysql
     componentDef: apecloud-mysql
-    enabledLogs:
-    - error
-    - slow
     disableExporter: true
     replicas: 3
     serviceAccountName: kb-acmysql-cluster
@@ -72,11 +69,6 @@ spec:
           requests:
             storage: 20Gi
   - componentDef: wescale
-    enabledLogs:
-    - error
-    - warning
-    - info
-    - queryLog
     disableExporter: true
     name: wescale
     replicas: 1

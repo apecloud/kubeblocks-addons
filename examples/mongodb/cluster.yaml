@@ -16,8 +16,6 @@ spec:
   componentSpecs:
   - name: mongodb
     componentDef: mongodb
-    enabledLogs:
-    - running
     disableExporter: true
     serviceAccountName: kb-mongo-cluster
     replicas: 3
