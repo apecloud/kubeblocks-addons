@@ -1,14 +1,16 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: mariadb-{{ .Chart.Version }}
+  name: {{ include "mariadb.cmpdName" . }}
   labels:
     {{- include "mariadb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mariadb.annotations" . | nindent 4 }}
 spec:
   provider: Community
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
-  serviceVersion: {{ .Chart.AppVersion }}
+  serviceVersion: {{ .Values.defaultServiceVersion.mariadb }}
   runtime:
     containers:
       - name: mariadb

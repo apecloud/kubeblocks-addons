@@ -50,3 +50,24 @@ Define image
 {{- define "exporter.image" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.prom.exporter.repository}}:{{.Values.image.prom.exporter.tag}}
 {{- end }}
+
+{{/*
+Common annotations
+*/}}
+{{- define "mariadb.annotations" -}}
+helm.sh/resource-policy: keep
+{{- end }}
+
+{{/*
+Define mariadb component definition name
+*/}}
+{{- define "mariadb.cmpdName" -}}
+mariadb-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define mariadb component definition regular expression name prefix
+*/}}
+{{- define "mariadb.cmpdRegexpPattern" -}}
+^mariadb-
+{{- end -}}

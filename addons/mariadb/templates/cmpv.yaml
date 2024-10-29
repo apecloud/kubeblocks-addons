@@ -1,13 +1,13 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentVersion
 metadata:
-  name: mariadb-{{ .Chart.Version }}
+  name: mariadb
   labels:
     {{- include "mariadb.labels" . | nindent 4 }}
 spec:
   compatibilityRules:
     - compDefs:
-        - mariadb
+        - {{ include "mariadb.cmpdRegexpPattern" . }}
       releases:
         - 10.6.15
   releases:
