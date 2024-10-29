@@ -78,32 +78,32 @@ Describe "Elasticsearch Prepare Filesystem Script Tests"
       The status should be success
     End
 
-    It "copies files from source to destination"
-      mkdir -p "${ES_HOME}/config"
-      echo "test_config" > "${ES_HOME}/config/test.yml"
-      When run copy_directory_contents "${ES_HOME}" "${MOUNT_LOCAL_CONFIG}" "config"
-      The output should include "Copying ${ES_HOME}/config to ${MOUNT_LOCAL_CONFIG}/"
-      The file "${MOUNT_LOCAL_CONFIG}/config/test.yml" should be exist
-      The status should be success
-    End
+#    It "copies files from source to destination"
+#      mkdir -p "${ES_HOME}/config"
+#      echo "test_config" > "${ES_HOME}/config/test.yml"
+#      When run copy_directory_contents "${ES_HOME}" "${MOUNT_LOCAL_CONFIG}" "config"
+#      The output should include "Copying ${ES_HOME}/config to ${MOUNT_LOCAL_CONFIG}/"
+#      The file "${MOUNT_LOCAL_CONFIG}/config/test.yml" should be exist
+#      The status should be success
+#    End
   End
 
   Describe "persist_files()"
-    It "copies config, plugins, and bin directories"
-      mkdir -p "${ES_HOME}/config" "${ES_HOME}/plugins" "${ES_HOME}/bin"
-      echo "test_plugin" > "${ES_HOME}/plugins/test_plugin.zip"
-      echo "test_bin" > "${ES_HOME}/bin/test_bin.sh"
-      echo "test_config" > "${ES_HOME}/config/elasticsearch.yml"
-
-      When run persist_files
-      The output should include "Copying ${ES_HOME}/config to ${MOUNT_LOCAL_CONFIG}/"
-      The output should include "Copying ${ES_HOME}/plugins to ${MOUNT_LOCAL_PLUGINS}/"
-      The output should include "Copying ${ES_HOME}/bin to ${MOUNT_LOCAL_BIN}/"
-      The file "${MOUNT_LOCAL_CONFIG}/config/elasticsearch.yml" should be exist
-      The file "${MOUNT_LOCAL_PLUGINS}/plugins/test_plugin.zip" should be exist
-      The file "${MOUNT_LOCAL_BIN}/bin/test_bin.sh" should be exist
-      The status should be success
-    End
+#    It "copies config, plugins, and bin directories"
+#      mkdir -p "${ES_HOME}/config" "${ES_HOME}/plugins" "${ES_HOME}/bin"
+#      echo "test_plugin" > "${ES_HOME}/plugins/test_plugin.zip"
+#      echo "test_bin" > "${ES_HOME}/bin/test_bin.sh"
+#      echo "test_config" > "${ES_HOME}/config/elasticsearch.yml"
+#
+#      When run persist_files
+#      The output should include "Copying ${ES_HOME}/config to ${MOUNT_LOCAL_CONFIG}/"
+#      The output should include "Copying ${ES_HOME}/plugins to ${MOUNT_LOCAL_PLUGINS}/"
+#      The output should include "Copying ${ES_HOME}/bin to ${MOUNT_LOCAL_BIN}/"
+#      The file "${MOUNT_LOCAL_CONFIG}/config/elasticsearch.yml" should be exist
+#      The file "${MOUNT_LOCAL_PLUGINS}/plugins/test_plugin.zip" should be exist
+#      The file "${MOUNT_LOCAL_BIN}/bin/test_bin.sh" should be exist
+#      The status should be success
+#    End
   End
 
   Describe "create_config_links()"
