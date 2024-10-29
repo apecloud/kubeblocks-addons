@@ -1,4 +1,10 @@
-backup_base_path="$(dirname $DP_BACKUP_BASE_PATH)/wal-g"
+# shellcheck disable=SC2148
+
+postgres_log_dir="${VOLUME_DATA_DIR}/logs"
+postgres_scripts_log_file="${postgres_log_dir}/scripts.log"
+setup_logging WALG_BACKUP "${postgres_scripts_log_file}"
+
+backup_base_path="$(dirname "$DP_BACKUP_BASE_PATH")/wal-g"
 export WALG_DATASAFED_CONFIG=""
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export WALG_COMPRESSION_METHOD=zstd
@@ -19,9 +25,9 @@ function handle_exit() {
 }
 
 function get_backup_name() {
-  line=$(cat result.txt | tail -n 1)
+  line=$(tail -n 1 result.txt)
   if [[ $line == *"Wrote backup with name"* ]]; then
-     echo ${line##* }
+     echo "${line##* }"
   fi
 }
 
@@ -37,7 +43,9 @@ trap handle_exit EXIT
 set -e
 # 1. do full backup
 writeSentinelInBaseBackupPath "${backup_base_path}" "wal-g-backup-repo.path"
-PGHOST=${DP_DB_HOST} PGUSER=${DP_DB_USER} PGPORT=5432 wal-g backup-push ${DATA_DIR} 2>&1 | tee result.txt
+echo "Full backup using WAL-G: BEGIN"
+PGHOST=${DP_DB_HOST} PGUSER=${DP_DB_USER} PGPORT=5432 wal-g backup-push "${DATA_DIR}" 2>&1 | tee result.txt
+echo "Full backup using WAL-G: DONE"
 
 set +e
 echo "switch wal log"
@@ -52,16 +60,20 @@ if [[ -z ${backupName} ]] || [[ ${backupName} != "base_"* ]];then
 fi
 
 # 3. add sentinel file for this backup CR
+echo "add sentinel file for backup"
 echo "" | datasafed push - "/basebackups_005/${backupName}_dp_${DP_BACKUP_NAME}"
 writeSentinelInBaseBackupPath "${backupName}" "wal-g-backup-name"
 
 # 4. stat startTime,stopTime,totalSize for this backup
 sentinel_file="/basebackups_005/${backupName}_backup_stop_sentinel.json"
-datasafed pull ${sentinel_file} backup_stop_sentinel.json
+datasafed pull "${sentinel_file}" backup_stop_sentinel.json
 result_json=$(cat backup_stop_sentinel.json)
-STOP_TIME=$(echo $result_json | jq -r ".FinishTime")
-START_TIME=$(echo $result_json | jq -r ".StartTime")
-TOTAL_SIZE=$(echo $result_json | jq -r ".CompressedSize")
+STOP_TIME=$(echo "${result_json}" | jq -r ".FinishTime")
+START_TIME=$(echo "${result_json}" | jq -r ".StartTime")
+TOTAL_SIZE=$(echo "${result_json}" | jq -r ".CompressedSize")
 
 # 5. update backup status
+echo "write backup result"
 echo "{\"totalSize\":\"$TOTAL_SIZE\",\"timeRange\":{\"start\":\"${START_TIME}\",\"end\":\"${STOP_TIME}\"}}" >"${DP_BACKUP_INFO_FILE}"
+echo "full backup DONE"
+sync
