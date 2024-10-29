@@ -2,6 +2,9 @@
 function set_config_variables(){
   echo "set config variables [$1]"
   config_file="/conf/$1.cnf"
+  if [ "${CONFIG_DIR:+x}" ]; then
+    config_file="${CONFIG_DIR}/$1.cnf"
+  fi
   config_content=$(sed -n '/\['$1'\]/,/\[/ { /\['$1'\]/d; /\[/q; p; }' $config_file)
   while read line
   do

@@ -11,11 +11,16 @@ if [ -n "$LOCAL_ETCD_POD_FQDN" ]; then
 elif [ -n "$SERVICE_ETCD_ENDPOINT" ]; then
   endpoints="$SERVICE_ETCD_ENDPOINT"
 else
-  echo "Both LOCAL_POD_ETCD_LIST and SERVICE_ETCD_ENDPOINT are empty. Cannot proceed."
+  echo "Both LOCAL_ETCD_POD_FQDN and SERVICE_ETCD_ENDPOINT are empty. Cannot proceed."
   exit 1
 fi
 
 echo $endpoints
+
+# if test by shellspec include, just return 0
+if [ "${__SOURCED__:+x}" ]; then
+  return 0
+fi
 
 /scripts/etcd-post-start.sh
 
