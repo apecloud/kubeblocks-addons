@@ -228,22 +228,21 @@ vars:
     valueFrom:
       componentVarRef:
         optional: false
-        ShortName: Required
+        shortName: Required
   - name: MY_COMP_REPLICAS
     valueFrom:
       componentVarRef:
         optional: false
-        Replicas: Required
+        replicas: Required
   - name: MY_CLUSTER_NAME
     valueFrom:
       clusterVarRef:
-        optional: false
-        ClusterName: Required
+        clusterName: Required
   - name: MY_CLUSTER_UID
     valueFrom:
       clusterVarRef:
         optional: false
-        ClusterUID: Required
+        clusterUID: Required
   ## the mysql primary pod name which is dynamically selected, caution to use it
   - name: MYSQL_LEADER_POD_NAME
     valueFrom:
@@ -386,13 +385,4 @@ volumeMounts:
     path: /var/log/kubeblocks
     type: DirectoryOrCreate
 {{- end }}
-- name: annotations
-  downwardAPI:
-    items:
-      - path: "leader"
-        fieldRef:
-          fieldPath: metadata.annotations['cs.apps.kubeblocks.io/leader']
-      - path: "component-replicas"
-        fieldRef:
-          fieldPath: metadata.annotations['apps.kubeblocks.io/component-replicas']
 {{- end -}}
