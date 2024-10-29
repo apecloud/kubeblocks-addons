@@ -7,7 +7,7 @@ metadata:
 spec:
   compatibilityRules:
     - compDefs:
-        - {{ include "mariadb.image" . }}
+        - mariadb
       releases:
         - 10.6.15
   releases:
