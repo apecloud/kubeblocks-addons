@@ -95,7 +95,7 @@ Describe "Qdrant Server Setup Script Tests"
       un_setup
       QDRANT_POD_FQDN_LIST="pod-a.example.com,pod-b.example.com,pod-c.example.com"
       When run start_server
-      The stderr should include "QDRANT_POD_NAME_LIST or QDRANT_POD_FQDN_LIST is not set in gen_initialize_redis_cluster_node"
+      The stderr should include "QDRANT_POD_NAME_LIST or QDRANT_POD_FQDN_LIST is not set, please check."
       The status should be failure
     End
 
@@ -103,7 +103,7 @@ Describe "Qdrant Server Setup Script Tests"
       un_setup
       QDRANT_POD_NAME_LIST="pod-a,pod-b,pod-c"
       When run start_server
-      The stderr should include "QDRANT_POD_NAME_LIST or QDRANT_POD_FQDN_LIST is not set in gen_initialize_redis_cluster_node"
+      The stderr should include "QDRANT_POD_NAME_LIST or QDRANT_POD_FQDN_LIST is not set, please check."
       The status should be failure
     End
   End
