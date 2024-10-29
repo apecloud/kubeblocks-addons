@@ -7,7 +7,7 @@ metadata:
 spec:
   serviceKind: etcd
   compDefs:
-  - {{ include "etcd.cmpdRegexpPattern" . }}
+  - {{ include "etcd3.cmpdRegexpPattern" . }}
   target:
     role: leader
   backupMethods:

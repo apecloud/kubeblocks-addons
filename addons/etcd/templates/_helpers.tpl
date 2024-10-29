@@ -71,8 +71,8 @@ etcd-3-{{ .Chart.Version }}
 {{/*
 Define etcd component definition regular expression name prefix
 */}}
-{{- define "etcd.cmpdRegexpPattern" -}}
-^etcd-\d+
+{{- define "etcd3.cmpdRegexpPattern" -}}
+^etcd-3.*
 {{- end -}}
 
 {{/*
