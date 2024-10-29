@@ -22,7 +22,7 @@ get_boostrap_node() {
 start_server() {
   # check QDRANT_POD_NAME_LIST and QDRANT_POD_FQDN_LIST are set
   if is_empty "$QDRANT_POD_NAME_LIST" || is_empty "$QDRANT_POD_FQDN_LIST"; then
-    echo "QDRANT_POD_NAME_LIST or QDRANT_POD_FQDN_LIST is not set in gen_initialize_redis_cluster_node" >&2
+    echo "QDRANT_POD_NAME_LIST or QDRANT_POD_FQDN_LIST is not set, please check." >&2
     return 1
   fi
 
