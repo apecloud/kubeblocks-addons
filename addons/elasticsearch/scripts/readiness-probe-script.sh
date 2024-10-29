@@ -12,11 +12,10 @@ ES_PORT=9200
 log_failure() {
   local error_details=$1
   local timestamp
-  timestamp=$(date --iso-8601=seconds)
+  timestamp=$(date '+%Y-%m-%d %H:%M:%S')
 
   local error_json="{\"timestamp\": \"${timestamp}\", \"message\": \"readiness probe failed\", ${error_details}}"
   echo "${error_json}" | tee /proc/1/fd/2 2> /dev/null
-  exit 1
 }
 
 get_probe_password_path() {
@@ -75,10 +74,12 @@ check_elasticsearch() {
 
   if [[ ${curl_rc:-0} -ne 0 ]]; then
     log_failure "\"curl_rc\": \"${curl_rc}\""
+    return 1
   fi
 
   if [[ ${status} != "200" ]]; then
     log_failure "\"status\": \"${status}\""
+    return 1
   fi
 }
 
@@ -99,7 +100,10 @@ readiness_probe() {
   local endpoint="${protocol}://${loopback}:${ES_PORT}/"
 
   # Execute health check
-  check_elasticsearch "${endpoint}" "${auth}" "${timeout}"
+  if ! check_elasticsearch "${endpoint}" "${auth}" "${timeout}"; then
+    echo "readiness probe check failed" >&2
+    exit 1
+  fi
 }
 
 # This is magic for shellspec ut framework.
