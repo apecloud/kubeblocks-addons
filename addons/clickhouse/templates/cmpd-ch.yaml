@@ -14,29 +14,51 @@ spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
-  serviceVersion: "24.3.10"
-  services:
-    - name: default
-      spec:
+  serviceVersion: "24.8.3"
+  runtime:
+    securityContext:
+      fsGroup: 1001
+      seccompProfile:
+        type: RuntimeDefault
+    containers:
+      - name: clickhouse
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          runAsNonRoot: true
+          runAsUser: 1001
         ports:
-          - name: http
-            targetPort: http
-            port: 8123
-          - name: tcp
-            targetPort: tcp
-            port: 9000
-          - name: tcp-mysql
-            targetPort: tcp-mysql
-            port: 9004
-          - name: tcp-postgresql
-            targetPort: tcp-postgresql
-            port: 9005
-          - name: http-intersrv
-            targetPort: http-intersrv
-            port: 9009
           - name: http-metrics
-            targetPort: http-metrics
-            port: 8001
+            containerPort: 8001
+          - name: http
+            containerPort: 8123
+          - name: https
+            containerPort: 8443
+          - name: tcp
+            containerPort: 9000
+          - name: tcp-mysql
+            containerPort: 9004
+          - name: tcp-postgresql
+            containerPort: 9005
+          - name: http-intersrv
+            containerPort: 9009
+          - name: https-intersrv
+            containerPort: 9010
+          - name: tcp-secure
+            containerPort: 9440
+        volumeMounts:
+          - name: data
+            mountPath: /bitnami/clickhouse
+          - name: config
+            mountPath: /bitnami/clickhouse/etc/conf.d/default
+          - name: user-config
+            mountPath: /bitnami/clickhouse/etc/users.d/default
+          - name: client-config
+            mountPath: /etc/clickhouse-client/
+  updateStrategy: BestEffortParallel
   logConfigs:
     {{- range $name, $pattern := .Values.logConfigs }}
     - name: {{ $name }}
@@ -55,17 +77,48 @@ spec:
       volumeName: user-config
       namespace: {{ .Release.Namespace }}
       constraintRef: clickhouse-constraints
+    - name: clickhouse-client-tpl
+      templateRef: clickhouse-client-tpl
+      volumeName: client-config
+      namespace: {{ .Release.Namespace }}
   systemAccounts:
     - name: admin
       initAccount: true
   vars:
+    - name: BITNAMI_DEBUG
+      value: "false"
+    - name: CLICKHOUSE_HTTP_PORT
+      value: "8123"
+    - name: CLICKHOUSE_HTTPS_PORT
+      value: "8443"
+    - name: CLICKHOUSE_TCP_PORT
+      value: "9000"
+    - name: CLICKHOUSE_MYSQL_PORT
+      value: "9004"
+    - name: CLICKHOUSE_POSTGRESQL_PORT
+      value: "9005"
+    - name: CLICKHOUSE_INTERSERVER_HTTP_PORT
+      value: "9009"
+    - name: CLICKHOUSE_INTERSERVER_HTTPS_PORT
+      value: "9010"
+    - name: CLICKHOUSE_KEEPER_TCP_PORT
+      value: "9181"
+    - name: CLICKHOUSE_KEEPER_TCP_TLS_PORT
+      value: "9281"
+    - name: CLICKHOUSE_TCP_SECURE_PORT
+      value: "9440"
+    - name: CLICKHOUSE_METRICS_PORT
+      value: "8001"
+    - name: CLICKHOUSE_SHARD_ID
+      value: "$(KB_COMP_NAME)"
+    - name: CLICKHOUSE_REPLICA_ID
+      value: "$(KB_POD_NAME)"
     - name: CLICKHOUSE_ADMIN_USER
       value: admin
     - name: CLICKHOUSE_ADMIN_PASSWORD
       valueFrom:
         credentialVarRef:
           name: admin
-          compDef: ch-keeper-24
           optional: false
           password: Required
     - name: CLICKHOUSE_POD_FQDN_LIST
@@ -77,82 +130,38 @@ spec:
       valueFrom:
         componentVarRef:
           compDef: ch-keeper-24
-          optional: false
+          optional: true
           podFQDNs: Required
-  runtime:
-    securityContext:
-      fsGroup: 1001
-      seccompProfile:
-        type: RuntimeDefault
-    containers:
-      - name: clickhouse
-        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:{{ default .Chart.AppVersion .Values.image.tag }}
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
-          runAsNonRoot: true
-          runAsUser: 1001
-        env:
-          - name: BITNAMI_DEBUG
-            value: "false"
-          - name: CLICKHOUSE_HTTP_PORT
-            value: "8123"
-          - name: CLICKHOUSE_TCP_PORT
-            value: "9000"
-          - name: CLICKHOUSE_MYSQL_PORT
-            value: "9004"
-          - name: CLICKHOUSE_POSTGRESQL_PORT
-            value: "9005"
-          - name: CLICKHOUSE_INTERSERVER_HTTP_PORT
-            value: "9009"
-          - name: CLICKHOUSE_METRICS_PORT
-            value: "8001"
-          - name: CLICKHOUSE_SHARD_ID
-            value: "$(KB_COMP_NAME)"
-          - name: SERVICE_PORT
-            value: "$(CLICKHOUSE_METRICS_PORT)"
-          - name: CLICKHOUSE_REPLICA_ID
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.name
+  volumes:
+    - name: data
+  services:
+    - name: default
+      spec:
         ports:
-          - name: http
-            containerPort: 8123
-          - name: tcp
-            containerPort: 9000
-          - name: tcp-postgresql
-            containerPort: 9005
-          - name: tcp-mysql
-            containerPort: 9004
-          - name: http-intersrv
-            containerPort: 9009
           - name: http-metrics
-            containerPort: 8001
-        livenessProbe:
-          failureThreshold: 3
-          initialDelaySeconds: 10
-          periodSeconds: 10
-          successThreshold: 1
-          timeoutSeconds: 1
-          httpGet:
-            path: /ping
-            port: http
-        readinessProbe:
-          failureThreshold: 3
-          initialDelaySeconds: 10
-          periodSeconds: 10
-          successThreshold: 1
-          timeoutSeconds: 1
-          httpGet:
-            path: /ping
-            port: http
-        volumeMounts:
-          - name: data
-            mountPath: /bitnami/clickhouse
-          - name: config
-            mountPath: /bitnami/clickhouse/etc/conf.d/default
-          - name: user-config
-            mountPath: /bitnami/clickhouse/etc/users.d/default
+            targetPort: http-metrics
+            port: 8001
+          - name: http
+            targetPort: http
+            port: 8123
+          - name: https
+            targetPort: https
+            port: 8443
+          - name: tcp
+            targetPort: tcp
+            port: 9000
+          - name: tcp-mysql
+            targetPort: tcp-mysql
+            port: 9004
+          - name: tcp-postgresql
+            targetPort: tcp-postgresql
+            port: 9005
+          - name: http-intersrv
+            targetPort: http-intersrv
+            port: 9009
+          - name: https-intersrv
+            targetPort: https-intersrv
+            port: 9010
+          - name: tcp-secure
+            targetPort: tcp-secure
+            port: 9440
