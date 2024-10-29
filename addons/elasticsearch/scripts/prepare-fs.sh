@@ -17,8 +17,9 @@ MOUNT_REMOTE_CONFIG="/mnt/remote-config"
 check_distribution() {
   if [[ ! -f ${LICENSE_FILE} || $(grep -Exc "ELASTIC LICENSE AGREEMENT|Elastic License 2.0" ${LICENSE_FILE}) -ne 1 ]]; then
     >&2 echo "unsupported_distribution"
-    exit 42
+    return 1
   fi
+  return 0
 }
 
 get_duration() {
@@ -33,14 +34,14 @@ copy_directory_contents() {
   local dest_dir=$2
   local dir_name=$3
 
-  if [[ -z "$(ls -A ${src_dir})" ]]; then
-    echo "Empty dir ${src_dir}"
+  if [[ -z "$(ls -A ${src_dir}/${dir_name})" ]]; then
+    echo "Empty dir ${src_dir}/${dir_name}"
     return 0
   fi
 
-  echo "Copying ${src_dir}/* to ${dest_dir}/"
+  echo "Copying ${src_dir}/${dir_name} to ${dest_dir}/"
   # Use "yes" and "-f" as we want the init container to be idempotent and not to fail when executed more than once.
-  yes | cp -avf "${src_dir}"/* "${dest_dir}/"
+  yes | cp -avf "${src_dir}/${dir_name}" "${dest_dir}/"
 }
 
 # Persist the content of bin/, config/ and plugins/ to a volume, so installed plugins files can to be used by the ES container
@@ -48,9 +49,9 @@ persist_files() {
   local mv_start
   mv_start=$(date +%s)
 
-  copy_directory_contents "${ES_HOME}/config" "${MOUNT_LOCAL_CONFIG}" "config"
-  copy_directory_contents "${ES_HOME}/plugins" "${MOUNT_LOCAL_PLUGINS}" "plugins"
-  copy_directory_contents "${ES_HOME}/bin" "${MOUNT_LOCAL_BIN}" "bin"
+  copy_directory_contents "${ES_HOME}" "${MOUNT_LOCAL_CONFIG}" "config"
+  copy_directory_contents "${ES_HOME}" "${MOUNT_LOCAL_PLUGINS}" "plugins"
+  copy_directory_contents "${ES_HOME}" "${MOUNT_LOCAL_BIN}" "bin"
 
   echo "Files copy duration: $(get_duration ${mv_start}) sec."
 }
@@ -78,7 +79,10 @@ prepare_fs() {
 
   echo "Starting init script"
 
-  check_distribution
+  if ! check_distribution; then
+    echo "Unsupported distribution"
+    exit 42
+  fi
 
   persist_files
 
