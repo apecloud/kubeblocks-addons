@@ -26,6 +26,9 @@ Describe "ApeCloud MySQL Startup Script Tests"
 
   cleanup() {
     rm -rf $START_SUCCESS_FILE
+    rm -rf $KB_MYSQL_VOLUME_DIR/binlog
+    rm -rf $KB_MYSQL_VOLUME_DIR/auditlog
+    rm -rf $KB_MYSQL_VOLUME_DIR/docker-entrypoint-initdb.d
   }
   AfterAll 'cleanup'
 
@@ -33,15 +36,15 @@ Describe "ApeCloud MySQL Startup Script Tests"
     It "start successfully"
       exec() {
         touch $START_SUCCESS_FILE
-        echo "$@"
+        echo "$*"
       }
 
       rmdir() {
-        echo "rmdir $@">&2
+        echo "rmdir $*">&2
       }
 
       ln() {
-        echo "ln $@">&2
+        echo "ln $*">&2
       }
 
       When run source ../scripts/setup.sh
@@ -60,16 +63,16 @@ Describe "ApeCloud MySQL Startup Script Tests"
 
     It "start failed"
       exec() {
-        echo "$@">&2
+        echo "$*">&2
         return 1
       }
 
       rmdir() {
-        echo "rmdir $@">&2
+        echo "rmdir $*">&2
       }
 
       ln() {
-        echo "ln $@">&2
+        echo "ln $*">&2
       }
 
       When run source ../scripts/setup.sh
