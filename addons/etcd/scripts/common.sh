@@ -21,28 +21,6 @@ universal_sed() {
   fi
 }
 
-call_func_with_retry() {
-  local max_retries="$1"
-  local retry_interval="$2"
-  local function_name="$3"
-  shift 3
-
-  local retries=0
-  while true; do
-    if "$function_name" "$@"; then
-      return 0
-    else
-      retries=$((retries + 1))
-      if [ $retries -eq "$max_retries" ]; then
-        echo "Function '$function_name' failed after $max_retries retries." >&2
-        return 1
-      fi
-      echo "Function '$function_name' failed in $retries times. Retrying in $retry_interval seconds..." >&2
-      sleep "$retry_interval"
-    fi
-  done
-}
-
 check_backup_file() {
   local backup_file=$1
   output=$(etcdutl snapshot status "${backup_file}")
@@ -109,6 +87,7 @@ exec_etcdctl() {
 }
 
 get_current_leader() {
+  local leader_endpoint=$1
   peer_endpoints=$(exec_etcdctl "$leader_endpoint" member list | awk -F', ' '{print $5}' | tr '\n' ',' | universal_sed 's#,$##')
   leader_endpoint=$(exec_etcdctl "$peer_endpoints" endpoint status | awk -F', ' '$5=="true" {print $1}')
   if [ -z "$leader_endpoint" ]; then
@@ -120,10 +99,11 @@ get_current_leader() {
 }
 
 get_current_leader_with_retry() {
-  local max_retries=$1
-  local retry_delay=$2
+  local origin_leader=$1
+  local max_retries=$2
+  local retry_delay=$3
   local current_leader
-  current_leader=$(call_func_with_retry "$max_retries" "$retry_delay" get_current_leader)
+  current_leader=$(call_func_with_retry "$max_retries" "$retry_delay" get_current_leader "$origin_leader")
   status=$?
   if [ $status -ne 0 ]; then
     echo "Failed to get current leader" >&2

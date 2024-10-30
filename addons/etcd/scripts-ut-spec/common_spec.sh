@@ -62,27 +62,6 @@ Describe "Common Functions Tests"
     End
   End
 
-  Describe "call_func_with_retry()"
-    mock_function() {
-      if [ "$1" -lt 3 ]; then
-        return 1
-      else
-        return 0
-      fi
-    }
-
-    It "retries the function until it succeeds"
-      When call call_func_with_retry 2 1 mock_function 3
-      The status should be success
-    End
-
-    It "fails after max retries"
-      When call call_func_with_retry 2 1 mock_function 2
-      The status should be failure
-      The stderr should include "Function 'mock_function' failed after 2 retries."
-    End
-  End
-
   Describe "check_backup_file()"
     It "returns success when backup file is valid"
       etcdutl() { echo "d1ed6c2f, 0, 6, 25 kB"; return 0; }
@@ -204,7 +183,6 @@ Describe "Common Functions Tests"
 
   Describe "get_current_leader()"
     It "returns the current leader endpoint"
-      export leader_endpoint="leader_endpoint"
       exec_etcdctl() {
         if [ "$1" = "leader_endpoint" ]; then
           echo "8e9e05c52164694d, started, default, http://etcd-0:2380, http://etcd-0:2379, false"
@@ -214,7 +192,7 @@ Describe "Common Functions Tests"
           echo "etcd-0:2379, 8e9e05c52164694d, 3.5.16, 25 kB, true, false, 2, 4, 4,"
         fi
       }
-      When call get_current_leader
+      When call get_current_leader "leader_endpoint"
       The output should equal "etcd-0:2379"
     End
 

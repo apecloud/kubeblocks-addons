@@ -15,7 +15,7 @@ switchover_with_candidate() {
   leader_endpoint=${LEADER_POD_FQDN}:2379
   candidate_endpoint=${KB_SWITCHOVER_CANDIDATE_FQDN}:2379
 
-  current_leader_endpoint=$(get_current_leader_with_retry 3 2)
+  current_leader_endpoint=$(get_current_leader_with_retry "$leader_endpoint" 3 2)
   get_leader_status=$?
   if [ "$get_leader_status" -ne 0 ]; then
     echo "failed to get current leader endpoint" >&2
@@ -39,39 +39,38 @@ switchover_with_candidate() {
     echo "candidate status is not leader after switchover, please check!" >&2
     return 1
   fi
-  echo "candidate status is unexpected after switchover, please check!" >&2
+  echo "candidate status '$candidate_status' is unexpected after switchover, please check!" >&2
   return 1
 }
 
 switchover_without_candidate() {
   leader_endpoint=${LEADER_POD_FQDN}:2379
-  old_leader_endpoint=$leader_endpoint
-  
-  current_leader_endpoint=$(get_current_leader_with_retry 3 2)
-  status=$?
-  if [ "$status" -ne 0 ]; then
+
+  current_leader_endpoint=$(get_current_leader_with_retry "$leader_endpoint" 3 2)
+  get_leader_status=$?
+  if [ "$get_leader_status" -ne 0 ]; then
     echo "failed to get current leader endpoint" >&2
     return 1
   fi
-  
-  if [ "$old_leader_endpoint" != "$current_leader_endpoint" ]; then
+
+  if [ "$leader_endpoint" != "$current_leader_endpoint" ]; then
     echo "leader has been changed, do not perform switchover, please check!"
     return 0
   fi
-  
+
   leader_id=$(exec_etcdctl "${leader_endpoint}" endpoint status | awk -F', ' '{print $2}')
   peers_id=$(exec_etcdctl "${leader_endpoint}" member list | awk -F', ' '{print $1}')
   random_candidate_id=$(echo "$peers_id" | grep -v "$leader_id" | awk 'NR==1')
-  
+
   if is_empty "$random_candidate_id"; then
     echo "no candidate found" >&2
     return 1
   fi
-  
+
   exec_etcdctl "$leader_endpoint" move-leader "$random_candidate_id"
 
-  status=$(exec_etcdctl "$leader_endpoint" endpoint status)
-  is_leader=$(echo "$status" | awk -F ', ' '{print $5}')
+  leader_status=$(exec_etcdctl "$leader_endpoint" endpoint status)
+  is_leader=$(echo "$leader_status" | awk -F ', ' '{print $5}')
   
   if [ "$is_leader" = "false" ]; then
     return 0
@@ -79,7 +78,7 @@ switchover_without_candidate() {
     echo "leader status is no changed after switchover, please check!" >&2
     return 1
   fi
-  echo "leader status is unexpected after switchover, please check!" >&2
+  echo "leader status '$leader_status' is unexpected after switchover, please check!" >&2
   return 1
 }
 

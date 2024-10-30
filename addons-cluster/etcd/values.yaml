@@ -4,16 +4,6 @@ nameOverride: ""
 ## @param fullnameOverride Override the full app name
 fullnameOverride: ""
 
-## @param terminationPolicy Define Cluster termination policy. One of DoNotTerminate, Halt, Delete, WipeOut.
-terminationPolicy: Delete
-
-## @param tolerations Define global Tolerations for the cluster all pod's assignment
-## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
-tolerations: []
-
-## @param affinity setting for etcd cluster pods assignment
-affinity: {}
-
 ## @param replicas Number of replicas for the etcd cluster
 replicas: 3
 

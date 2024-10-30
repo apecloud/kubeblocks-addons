@@ -38,10 +38,11 @@ Describe "Switchover Script Tests"
 
     It "fails to switch to the candidate"
       get_current_leader_with_retry() { echo "leader_endpoint:2379"; return 0; }
-      exec_etcdctl() { return 1; }
+      exec_etcdctl() { echo "bad status"; return 1; }
       When call switchover_with_candidate
       The status should be failure
-      The stderr should include "candidate status is unexpected after switchover, please check!"
+      The stdout should include "bad status"
+      The stderr should include "candidate status 'bad status' is unexpected after switchover, please check!"
     End
   End
 
@@ -89,6 +90,17 @@ Describe "Switchover Script Tests"
       The status should be failure
       The stdout should include "127.0.0.1:2379, 8e9e05c52164694d, 3.5.16, 25 kB, true, false, 2, 4, 4,"
       The stderr should include "leader status is no changed after switchover, please check!"
+    End
+
+    It "fails to switch due to bad status"
+      export LEADER_POD_FQDN="leader_endpoint"
+      get_current_leader_with_retry() { echo "leader_endpoint:2379"; return 0; }
+      exec_etcdctl() { echo "bad status"; return 1; }
+      is_empty() { return 1; }
+      When call switchover_without_candidate
+      The status should be failure
+      The stdout should include "bad status"
+      The stderr should include "leader status 'bad status' is unexpected after switchover, please check!"
     End
   End
 

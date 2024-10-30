@@ -12,15 +12,15 @@ load_common_library() {
 }
 
 get_etcd_role() {
-  status=$(exec_etcdctl 127.0.0.1:2379 endpoint status --command-timeout=300ms --dial-timeout=100m)
-  IsLeader=$(echo "$status" | awk -F ', ' '{print $5}')
-  IsLearner=$(echo "$status" | awk -F ', ' '{print $6}')
+  status=$(exec_etcdctl 127.0.0.1:2379 endpoint status --command-timeout=300ms --dial-timeout=100ms)
+  is_leader=$(echo "$status" | awk -F ', ' '{print $5}')
+  is_learner=$(echo "$status" | awk -F ', ' '{print $6}')
 
-  if [ "true" = "$IsLeader" ]; then
+  if [ "true" = "$is_leader" ]; then
     echo "leader"
-  elif [ "true" = "$IsLearner" ]; then
+  elif [ "true" = "$is_learner" ]; then
     echo "learner"
-  elif [ "false" = "$IsLeader" ] && [ "false" = "$IsLearner" ]; then
+  elif [ "false" = "$is_leader" ] && [ "false" = "$is_learner" ]; then
     echo "follower"
   else
     echo "bad role, please check!" >&2
