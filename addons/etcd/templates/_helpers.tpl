@@ -61,10 +61,10 @@ helm.sh/resource-policy: keep
 Define etcd 3.X component definition name
 */}}
 {{- define "etcd3.cmpdName" -}}
-{{- if eq (len .Values.cmpdVersionPrefix.major3.minorAll ) 0 -}}
+{{- if eq (len .Values.cmpdVersionPrefix.major3 ) 0 -}}
 etcd-3-{{ .Chart.Version }}
 {{- else -}}
-{{- printf "%s" .Values.cmpdVersionPrefix.major3.minorAll -}}-{{ .Chart.Version }}
+{{- printf "%s" .Values.cmpdVersionPrefix.major3 -}}-{{ .Chart.Version }}
 {{- end -}}
 {{- end -}}
 
@@ -112,3 +112,38 @@ Define etcdctl backup actionSet name
 {{- define "etcd.backupActionSet" -}}
 etcdctl-backup
 {{- end -}}
+
+{{/*
+Define etcd image repository
+*/}}
+{{- define "etcd.repository" -}}
+{{ .Values.image.registry | default "gcr.io" }}/{{ .Values.image.repository | default "etcd-development/etcd"}}
+{{- end }}
+
+{{/*
+Define latest etcd image
+*/}}
+{{- define "etcd3.image" -}}
+{{ include "etcd.repository" . }}:{{ .Values.image.tag.major3.minor515 }}
+{{- end }}
+
+{{/*
+Define latest etcd image build with busybox brinaries
+*/}}
+{{- define "etcd356.image" -}}
+{{ include "etcd.repository" . }}:{{ .Values.image.tag.major3.minor56 }}
+{{- end }}
+
+{{/*
+Define debian image repository
+*/}}
+{{- define "debian.repository" -}}
+{{ .Values.debianImage.registry | default "docker.io" }}/{{ .Values.debianImage.repository }}
+{{- end }}
+
+{{/*
+Define debian image
+*/}}
+{{- define "debian.image" -}}
+{{ include "debian.repository" . }}:{{ .Values.debianImage.tag }}
+{{- end }}

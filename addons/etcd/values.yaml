@@ -13,8 +13,7 @@ tlsMountPath: /etc/pki/tls
 
 # If specified, the component definition will use it as prefix.
 cmpdVersionPrefix:
-  major3:
-    minorAll: "etcd-3"
+  major3: "etcd-3"
 
 # a copy version of /etc/etcd/etcd.conf but add some modification
 tmpConfigPath: /var/run/etcd/etcd.conf

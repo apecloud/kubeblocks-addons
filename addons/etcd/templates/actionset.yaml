@@ -17,7 +17,7 @@ spec:
   backupType: Full
   backup:
     backupData:
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
+      image: {{ include "etcd356.image" . }}
       runOnTargetPodNode: true
       syncProgress:
         enabled: false
@@ -31,7 +31,7 @@ spec:
   restore:
     postReady:
     - job:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
+        image: {{ include "etcd356.image" . }}
         runOnTargetPodNode: true
         command:
         - /bin/bash

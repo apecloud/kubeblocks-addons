@@ -129,7 +129,7 @@ spec:
   lifecycleActions:
     roleProbe:
       exec:
-        image: {{ .Values.image.registry | default "gcr.io" }}/{{ .Values.image.repository | default "etcd-development/etcd"}}:{{ .Values.image.tag.major3.minor56 }}
+        image: {{ include "etcd356.image" . }}
         container: etcd
         command:
           - /bin/bash
@@ -137,7 +137,7 @@ spec:
           - scripts/roleprobe.sh
     memberJoin:
       exec:
-        image: {{ .Values.image.registry | default "gcr.io" }}/{{ .Values.image.repository | default "etcd-development/etcd"}}:{{ .Values.image.tag.major3.minor56 }}
+        image: {{ include "etcd356.image" . }}
         container: etcd
         command:
           - /bin/bash
@@ -145,7 +145,7 @@ spec:
           - scripts/member-leave.sh
     memberLeave:
       exec:
-        image: {{ .Values.image.registry | default "gcr.io" }}/{{ .Values.image.repository | default "etcd-development/etcd"}}:{{ .Values.image.tag.major3.minor56 }}
+        image: {{ include "etcd356.image" . }}
         container: etcd
         command:
           - /bin/bash
@@ -153,7 +153,7 @@ spec:
           - scripts/member-leave.sh
     switchover:
       exec:
-        image: {{ .Values.image.registry | default "gcr.io" }}/{{ .Values.image.repository | default "etcd-development/etcd"}}:{{ .Values.image.tag.major3.minor56 }}
+        image: {{ include "etcd356.image" . }}
         container: etcd
         command:
           - /bin/bash
