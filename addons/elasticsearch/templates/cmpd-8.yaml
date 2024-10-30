@@ -34,9 +34,9 @@ spec:
         ipFamilies:
           - IPv4
         ports:
-          - name: http
+          - name: es-http
             port: 9200
-            targetPort: http
+            targetPort: es-http
   lifecycleActions:
     memberLeave:
       exec:
@@ -138,7 +138,7 @@ spec:
             value: "no"
         ports:
           - containerPort: 9200
-            name: http
+            name: es-http
             protocol: TCP
           - containerPort: 9300
             name: transport

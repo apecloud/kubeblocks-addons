@@ -80,10 +80,17 @@ install_plugin() {
 }
 
 install_all_plugins() {
-  local plugin
+  # Save find results to a temporary file
+  find "$SRC_PLUGINS_DIR" -maxdepth 1 -mindepth 1 > /tmp/plugins.txt
+
   while IFS= read -r plugin; do
-    [[ -e "$plugin" ]] && install_plugin "$plugin"
-  done < <(find "$SRC_PLUGINS_DIR" -maxdepth 1 -mindepth 1)
+    if [ -e "$plugin" ]; then
+      install_plugin "$plugin"
+    fi
+  done < /tmp/plugins.txt
+
+  # Clean up
+  rm -f /tmp/plugins.txt
 }
 
 # This is magic for shellspec ut framework.
