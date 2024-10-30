@@ -119,6 +119,7 @@ redis_config_get(){
 
 switchoverWithCandidate() {
     redis_get_cmd="CONFIG GET replica-priority"
+    #TODO: how to handle when the other secondaries also have the same replica-priority = 1
     redis_set_switchover_cmd="CONFIG SET replica-priority 1"
     unset_xtrace_when_ut_mode_false
     call_func_with_retry 3 5 check_connectivity "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$REDIS_DEFAULT_PASSWORD" || exit 1
