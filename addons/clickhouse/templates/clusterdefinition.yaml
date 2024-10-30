@@ -10,7 +10,7 @@ spec:
       components:
         - name: clickhouse
           compDef: {{ include "clickhouse24.cmpdRegexpPattern" . }}
-    - name: clickhouse-cluster
+    - name: cluster
       components:
         - name: clickhouse
           compDef: {{ include "clickhouse24.cmpdRegexpPattern" .}}

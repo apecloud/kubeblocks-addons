@@ -1,5 +1,12 @@
-nameOverride:
-fullnameOverride:
+# Override the name of the chart
+nameOverride: ""
+# Override the full name of the chart
+fullnameOverride: ""
+
+## ClickHouse cluster topology mode defined in ClusterDefinition.Spec.topologies, support standalone and cluster
+## - `standalone`: single clickhouse instance
+## - `cluster`: clickhouse with ClickHouse Keeper as coordinator
+mode: cluster
 
 ## Sharding configuration
 shardCount: 1
@@ -9,10 +16,12 @@ sharding:
 ## ClickHouse per shard component configurations
 cpu: 0.5
 memory: 1
-requests:
+
 ## CPU and memory requests for the ClickHouse shard
+requests:
 # cpu: ""
 # memory: ""
+
 storageClassName:
 storage: 10
 disableExporter: false

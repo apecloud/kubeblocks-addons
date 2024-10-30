@@ -4,6 +4,12 @@ metadata:
   name: clickhouse-cluster
   namespace: default
 spec:
+  # Specifies the name of the ClusterDef to use when creating a Cluster.
+  clusterDef: clickhouse
+  # Specifies the clickhouse cluster topology defined in ClusterDefinition.Spec.topologies, support standalone, cluster
+  # - `standalone`: single clickhouse instance
+  # - `cluster`: clickhouse with ClickHouse Keeper as coordinator
+  topology: standalone
   # Specifies the behavior when a Cluster is deleted.
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
   # - `Halt`: Deletes Cluster resources like Pods and Services but retains Persistent Volume Claims (PVCs), allowing for data preservation while stopping other operations.
