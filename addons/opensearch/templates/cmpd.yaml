@@ -1,18 +1,33 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: opensearch-{{ .Chart.Version }}
+  name: {{ include "opensearch.cmpdName" . }}
   labels:
     {{- include "opensearch.labels" . | nindent 4 }}
+  annotations:
+    {{- include "opensearch.annotations" . | nindent 4 }}
 spec:
   provider: Community
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
-  serviceVersion: {{ .Chart.AppVersion }}
+  serviceVersion: {{ .Values.defaultServiceVersion.opensearch }}
+  vars:
+    ## the name of current cluster instance
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    ## the component name of opensearch, it's the shortname of opensearch component
+    - name: OPENSEARCH_COMPONENT_SHORT_NAME
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "opensearch.cmpdRegexpPattern" . }}
+          optional: false
+          shortName: Required
   runtime:
     initContainers:
       - name: fsgroup-volume
-        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/alpine:3.16
+        image: {{ include "fsgroup-volume.image" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command: [ 'sh', '-c' ]
         args:
@@ -23,7 +38,7 @@ spec:
           - name: data
             mountPath: /usr/share/opensearch/data
       - name: sysctl
-        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/alpine:3.16
+        image: {{ include "sysctl.image" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - sh
@@ -40,7 +55,7 @@ spec:
           privileged: true
     containers:
       - name: opensearch
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
+        image: {{ include "opensearch.image" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         readinessProbe:
           tcpSocket:
@@ -68,11 +83,11 @@ spec:
               fieldRef:
                 fieldPath: metadata.name
           - name: cluster.initial_master_nodes
-            value: "$(KB_CLUSTER_NAME)-$(KB_COMP_NAME)-0"
+            value: "$(CLUSTER_NAME)-$(OPENSEARCH_COMPONENT_SHORT_NAME)-0"
           - name: discovery.seed_hosts
-            value: "$(KB_CLUSTER_NAME)-$(KB_COMP_NAME)-headless"
+            value: "$(CLUSTER_NAME)-$(OPENSEARCH_COMPONENT_SHORT_NAME)-headless"
           - name: cluster.name
-            value: "$(KB_CLUSTER_NAME)"
+            value: "$(CLUSTER_NAME)"
           - name: network.host
             value: "0.0.0.0"
           - name: OPENSEARCH_JAVA_OPTS
@@ -86,43 +101,15 @@ spec:
             subPath: opensearch.yaml
             name: opensearch-config
       - name: opensearch-master-graceful-termination-handler
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
+        image: {{ include "opensearch-master-graceful-termination-handler.image" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - "sh"
           - -c
-          - |
-            #!/usr/bin/env bash
-            set -eo pipefail
-
-            http () {
-                local path="${1}"
-                if [ -n "${USERNAME}" ] && [ -n "${PASSWORD}" ]; then
-                  BASIC_AUTH="-u ${USERNAME}:${PASSWORD}"
-                else
-                  BASIC_AUTH=''
-                fi
-                curl -XGET -s -k --fail ${BASIC_AUTH} https://$(KB_CLUSTER_NAME)-$(KB_COMP_NAME)-headless:9200:${path}
-            }
-
-            cleanup () {
-              while true ; do
-                local master="$(http "/_cat/master?h=node" || echo "")"
-                if [[ $master == "$(KB_CLUSTER_NAME)-$(KB_COMP_NAME)"* && $master != "${NODE_NAME}" ]]; then
-                  echo "This node is not master."
-                  break
-                fi
-                echo "This node is still master, waiting gracefully for it to step down"
-                sleep 1
-              done
-
-              exit 0
-            }
-
-            trap cleanup SIGTERM
-
-            sleep infinity &
-            wait $!
+          - /scripts/monitor-master-node.sh
+        volumeMounts:
+          - name: scripts
+            mountPath: /scripts
   volumes:
     - name: data
   services:
@@ -140,3 +127,9 @@ spec:
       templateRef: opensearch-config-template
       volumeName: opensearch-config
       namespace: {{.Release.Namespace}}
+  scripts:
+    - name: opensearch-scripts
+      templateRef: {{ include "opensearch.scriptsTemplate" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555

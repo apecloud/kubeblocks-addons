@@ -1,18 +1,20 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: opensearch-dashboard-{{ .Chart.Version }}
+  name: {{ include "opensearch-dashboard.cmpdName" . }}
   labels:
     {{- include "opensearch.labels" . | nindent 4 }}
+  annotations:
+    {{- include "opensearch.annotations" . | nindent 4 }}
 spec:
   provider: Community
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
-  serviceVersion: {{ .Chart.AppVersion }}
+  serviceVersion: {{ .Values.defaultServiceVersion.opensearch }}
   runtime:
     containers:
       - name: dashboard
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dashboard.repository }}:{{ default .Chart.AppVersion .Values.image.dashboard.tag }}
+        image: {{ include "dashboard.image" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - sh
@@ -58,7 +60,7 @@ spec:
     - name: OPENSEARCH_HOST
       valueFrom:
         serviceVarRef:
-          compDef: opensearch
+          compDef: {{ include "opensearch.cmpdRegexpPattern" . }}
           optional: false
           Host: Required
   services:
