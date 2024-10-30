@@ -15,5 +15,7 @@ spec:
     # Specifies the number of total replicas.
     scaleIn:
       instances:
+        # need to define instances in cluster.yaml,
+        # spec.componentSpecs.instances
         - name: etcd-0
           replicaChanges: 1

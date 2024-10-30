@@ -15,7 +15,7 @@ spec:
   # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
   - name: etcd
-    componentDef: etcd-1.0.0-alpha.0
+    componentDef: etcd
     serviceAccountName: kb-etcd-cluster
     replicas: 3
     resources:
