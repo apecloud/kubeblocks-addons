@@ -4,9 +4,9 @@
   topology: clickhouse-cluster
 {{- end }}
   componentSpecs:
-  {{- include "clickhouse-keeper-component" . | nindent 4 }}
+  {{- include "ch-keeper-component" . | nindent 4 }}
   {{- if eq (.Values.shardCount | int) 1 }}
-  {{- include "clickhouse-ch-component" . | nindent 4 }}
+  {{- include "clickhouse-component" . | nindent 4 }}
   {{- end }}
   {{- if gt (.Values.shardCount | int) 1 }}
   {{- if not .Values.sharding.enabled }}

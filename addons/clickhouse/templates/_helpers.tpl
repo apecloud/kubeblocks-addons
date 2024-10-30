@@ -49,3 +49,95 @@ Selector labels
 app.kubernetes.io/name: {{ include "clickhouse.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+
+{{/*
+Common annotations
+*/}}
+{{- define "clickhouse.annotations" -}}
+helm.sh/resource-policy: keep
+{{- end }}
+
+{{/*
+Define clickhouse 24.X component definition name
+*/}}
+{{- define "clickhouse24.cmpdName" -}}
+{{- if eq (len .Values.cmpdVersionPrefix.clickhouse24 ) 0 -}}
+clickhouse-24-{{ .Chart.Version }}
+{{- else -}}
+{{- printf "%s" .Values.cmpdVersionPrefix.clickhouse24 -}}-{{ .Chart.Version }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define clickhouse24 component definition regex pattern
+*/}}
+{{- define "clickhouse24.cmpdRegexpPattern" -}}
+^clickhouse-24.*
+{{- end -}}
+
+{{/*
+Define ch-keeper24 component definition name
+*/}}
+{{- define "ch-keeper24.cmpdName" -}}
+{{- if eq (len .Values.cmpdVersionPrefix.keeper24 ) 0 -}}
+ch-keeper-24-{{ .Chart.Version }}
+{{- else -}}
+{{- printf "%s" .Values.cmpdVersionPrefix.keeper24 -}}-{{ .Chart.Version }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define ch-keeper24 component definition regex pattern
+*/}}
+{{- define "ch-keeper24.cmpdRegexpPattern" -}}
+^ch-keeper-24.*
+{{- end -}}
+
+{{/*
+Define clickhouse24 config constraint name
+*/}}
+{{- define "clickhouse24.configConstraintName" -}}
+clickhouse-24-config-constraints
+{{- end -}}
+
+{{/*
+Define clickhouse24 default overrides configuration tpl name
+*/}}
+{{- define "clickhouse24.configurationTplName" -}}
+clickhouse-24-configuration-tpl
+{{- end -}}
+
+{{/*
+Define clickhouse24 client configuration tpl name
+*/}}
+{{- define "clickhouse24.clientTplName" -}}
+clickhouse-24-client-configuration-tpl
+{{- end -}}
+
+{{/*
+Define clickhouse24 user configuration tpl name
+*/}}
+{{- define "clickhouse24.userTplName" -}}
+clickhouse-24-user-configuration-tpl
+{{- end -}}
+
+{{/*
+Define ch-keeper24 configuration tpl name
+*/}}
+{{- define "ch-keeper24.configurationTplName" -}}
+ch-keeper-24-configuration-tpl
+{{- end -}}
+
+{{/*
+Define clickhouse image repository
+*/}}
+{{- define "clickhouse.repository" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}
+{{- end }}
+
+{{/*
+Define clickhouse24 image
+*/}}
+{{- define "clickhouse24.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+{{- end }}

@@ -82,12 +82,20 @@ issuer:
 {{/*
 Define clickhouse componentSpec with ComponentDefinition.
 */}}
-{{- define "clickhouse-ch-component" -}}
+{{- define "clickhouse-component" -}}
 - name: clickhouse
   componentDef: clickhouse-24
   replicas: {{ $.Values.replicaCount | default 2 }}
   disableExporter: {{ $.Values.disableExporter | default "false" }}
   serviceAccountName: {{ include "clickhouse-cluster.serviceAccountName" $ }}
+  systemAccounts:
+    - name: admin
+      passwordConfig:
+        length: 10
+        numDigits: 5
+        numSymbols: 0
+        letterCase: MixedCases
+        seed: {{ include "kblib.clusterName" . }}
   {{- with $.Values.tolerations }}
   tolerations: {{ .| toYaml | nindent 4 }}
   {{- end }}
@@ -99,7 +107,7 @@ Define clickhouse componentSpec with ComponentDefinition.
 {{/*
 Define clickhouse keeper componentSpec with ComponentDefinition.
 */}}
-{{- define "clickhouse-keeper-component" -}}
+{{- define "ch-keeper-component" -}}
 - name: ch-keeper
   componentDef: ch-keeper-24
   replicas: {{ .Values.keeper.replicaCount }}
@@ -113,6 +121,14 @@ Define clickhouse keeper componentSpec with ComponentDefinition.
     requests:
       cpu: {{ .Values.keeper.cpu | quote }}
       memory: {{ print .Values.keeper.memory "Gi" | quote }}
+  systemAccounts:
+    - name: admin
+      passwordConfig:
+        length: 10
+        numDigits: 5
+        numSymbols: 0
+        letterCase: MixedCases
+        seed: {{ include "kblib.clusterName" . }}
   volumeClaimTemplates:
     - name: data
       spec:
@@ -139,6 +155,14 @@ Define clickhouse shardingComponentSpec with ComponentDefinition.
     replicas: {{ $.Values.replicaCount | default 2 }}
     disableExporter: {{ $.Values.disableExporter | default "false" }}
     serviceAccountName: {{ include "clickhouse-cluster.serviceAccountName" $ }}
+    systemAccounts:
+    - name: admin
+      passwordConfig:
+        length: 10
+        numDigits: 5
+        numSymbols: 0
+        letterCase: MixedCases
+        seed: {{ include "kblib.clusterName" . }}
     {{- with $.Values.tolerations }}
     tolerations: {{ .| toYaml | nindent 6 }}
     {{- end }}

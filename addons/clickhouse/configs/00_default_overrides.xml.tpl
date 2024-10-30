@@ -16,8 +16,8 @@
   {{- end }}
   <!-- Macros, self defined -->
   <macros>
-    <shard from_env="CLICKHOUSE_SHARD_ID"/>
-    <replica from_env="CLICKHOUSE_REPLICA_ID"/>
+    <shard from_env="CURRENT_SHARD_COMPONENT_SHORT_NAME"/>
+    <replica from_env="CURRENT_POD_NAME"/>
     <layer>{{ $clusterName }}</layer>
   </macros>
   <!-- Log Level -->

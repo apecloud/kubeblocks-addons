@@ -16,7 +16,6 @@ keywords:
 - database
 - sharding
 
-
 maintainers:
   - name: sophon-zt
     url: https://github.com/apecloud/kubeblocks/

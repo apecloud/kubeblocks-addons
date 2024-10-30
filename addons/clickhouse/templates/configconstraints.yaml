@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
-  name: clickhouse-constraints
+  name: {{ include "clickhouse24.configConstraintName" . }}
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
 spec:

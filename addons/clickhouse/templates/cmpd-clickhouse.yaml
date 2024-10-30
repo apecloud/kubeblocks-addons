@@ -1,9 +1,11 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: clickhouse-24
+  name: {{ include "clickhouse24.cmpdName" . }}
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
+  annotations:
+    {{- include "clickhouse.annotations" . | nindent 4 }}
 spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
@@ -52,6 +54,12 @@ spec:
             mountPath: /bitnami/clickhouse/etc/users.d/default
           - name: client-config
             mountPath: /etc/clickhouse-client/
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
   updateStrategy: BestEffortParallel
   logConfigs:
     {{- range $name, $pattern := .Values.logConfigs }}
@@ -63,18 +71,21 @@ spec:
     scrapePort: "8001"
   configs:
     - name: clickhouse-tpl
-      templateRef: clickhouse-tpl
+      templateRef: {{ include "clickhouse24.configurationTplName" . }}
       volumeName: config
       namespace: {{ .Release.Namespace }}
     - name: clickhouse-user-tpl
-      templateRef: clickhouse-user-tpl
+      templateRef: {{ include "clickhouse24.userTplName" . }}
       volumeName: user-config
       namespace: {{ .Release.Namespace }}
-      constraintRef: clickhouse-constraints
+      constraintRef: {{ include "clickhouse24.configConstraintName" . }}
     - name: clickhouse-client-tpl
-      templateRef: clickhouse-client-tpl
+      templateRef: {{ include "clickhouse24.clientTplName" . }}
       volumeName: client-config
       namespace: {{ .Release.Namespace }}
+  systemAccounts:
+    - name: admin
+      initAccount: true
   vars:
     - name: BITNAMI_DEBUG
       value: "false"
@@ -100,17 +111,17 @@ spec:
       value: "9440"
     - name: CLICKHOUSE_METRICS_PORT
       value: "8001"
-    - name: CLICKHOUSE_SHARD_ID
-      value: "$(KB_COMP_NAME)"
-    - name: CLICKHOUSE_REPLICA_ID
-      value: "$(KB_POD_NAME)"
+    - name: CURRENT_SHARD_COMPONENT_SHORT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          shortName: Required
     - name: CLICKHOUSE_ADMIN_USER
       value: admin
     - name: CLICKHOUSE_ADMIN_PASSWORD
       valueFrom:
         credentialVarRef:
           name: admin
-          compDef: ch-keeper-24
           optional: false
           password: Required
     - name: CLICKHOUSE_POD_FQDN_LIST
@@ -122,7 +133,7 @@ spec:
       valueFrom:
         componentVarRef:
           compDef: ch-keeper-24
-          optional: false
+          optional: true
           podFQDNs: Required
   volumes:
     - name: data
