@@ -80,7 +80,7 @@ Define ch-keeper24 component definition name
 */}}
 {{- define "ch-keeper24.cmpdName" -}}
 {{- if eq (len .Values.cmpdVersionPrefix.keeper24 ) 0 -}}
-ch-keeper-24-{{ .Chart.Version }}
+clickhouse-keeper-24-{{ .Chart.Version }}
 {{- else -}}
 {{- printf "%s" .Values.cmpdVersionPrefix.keeper24 -}}-{{ .Chart.Version }}
 {{- end -}}
@@ -90,7 +90,7 @@ ch-keeper-24-{{ .Chart.Version }}
 Define ch-keeper24 component definition regex pattern
 */}}
 {{- define "ch-keeper24.cmpdRegexpPattern" -}}
-^ch-keeper-24.*
+^clickhouse-keeper-24.*
 {{- end -}}
 
 {{/*
@@ -125,7 +125,7 @@ clickhouse-24-user-configuration-tpl
 Define ch-keeper24 configuration tpl name
 */}}
 {{- define "ch-keeper24.configurationTplName" -}}
-ch-keeper-24-configuration-tpl
+clickhouse-keeper-24-configuration-tpl
 {{- end -}}
 
 {{/*
