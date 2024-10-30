@@ -43,7 +43,7 @@ KubeBlocks add-ons.
 | official-postgresql | postgres-14.7 | A Official PostgreSQL cluster definition Helm chart for Kubernetes | kizuna-lek |
 | opengauss | opengauss-5.0.0 | A Helm chart for Kubernetes | 1aal |
 | openldap | openldap-2.4.57 | The OpenLDAP Project is a collaborative effort to develop a robust, commercial-grade, fully featured, and open source LDAP suite of applications and development tools. This chart provides KubeBlocks' | kissycn |
-| opensearch | opensearch-2.7.0 | Open source distributed and RESTful search engine. | iziang |
+| opensearch |  | Open source distributed and RESTful search engine. | iziang |
 | opentenbase | opentenbase-v2.5.0 | OpenTenBase is an enterprise-level distributed HTAP open source database. | ldming |
 | oracle | oracle-19.3.0-ee | A Helm chart for Kubernetes | 1aal |
 | orchestrator | orchestrator-3.2.6 | Orchestrator is a MySQL high availability and replication management tool, runs as a service and provides command line access, HTTP API and Web interface. | kubeJocker |
