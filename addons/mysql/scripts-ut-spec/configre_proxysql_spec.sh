@@ -4,9 +4,9 @@
 # shellcheck shell=bash
 
 Describe "ProxySQL Configuration Script Tests"
+  Include ../scripts/configure-proxysql.sh
 
   Describe "Log Function Tests"
-    Include ../scripts/configure-proxysql.sh
 
     It "outputs a log message"
       When call log "INFO" "Test log message"
@@ -22,7 +22,6 @@ Describe "ProxySQL Configuration Script Tests"
   End
 
   Describe "MySQL Exec Function Tests"
-    Include ../scripts/configure-proxysql.sh
 
     It "executes MySQL command successfully"
       mysql() {
@@ -46,7 +45,6 @@ Describe "ProxySQL Configuration Script Tests"
   End
 
   Describe "Wait for MySQL Function Tests"
-    Include ../scripts/configure-proxysql.sh
     setup() {
       # Mock the mysql_exec function to simulate MySQL responses
       mysql_exec() {
