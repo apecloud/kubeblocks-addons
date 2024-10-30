@@ -42,6 +42,7 @@
       </shard>
     </default>
   </remote_servers>
+  {{- if (index . "CH_KEEPER_POD_FQDN_LIST") }}
   <!-- Zookeeper configuration -->
   <zookeeper>
     {{- range $_, $host := splitList "," .CH_KEEPER_POD_FQDN_LIST }}
@@ -56,6 +57,7 @@
     </node>
     {{- end }}
   </zookeeper>
+  {{- end }}
   <!-- Prometheus metrics -->
   <prometheus>
     <endpoint>/metrics</endpoint>
