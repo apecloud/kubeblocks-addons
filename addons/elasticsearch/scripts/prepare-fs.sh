@@ -41,7 +41,7 @@ copy_directory_contents() {
 
   echo "Copying ${src_dir}/${dir_name}/* to ${dest_dir}/"
   # Use "yes" and "-f" as we want the init container to be idempotent and not to fail when executed more than once.
-  yes | cp -avf "${src_dir}/${dir_name}/*" "${dest_dir}/"
+  yes | cp -avf ${src_dir}/${dir_name}/* ${dest_dir}/
 }
 
 # Persist the content of bin/, config/ and plugins/ to a volume, so installed plugins files can to be used by the ES container

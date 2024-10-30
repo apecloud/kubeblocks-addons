@@ -6,6 +6,8 @@ nameOverride: ""
 
 fullnameOverride: ""
 
+clusterDomain: "cluster.local"
+
 image:
   # bitnami/elasticsearch
   # docker pull bitnami/elasticsearch

@@ -37,6 +37,14 @@ spec:
           - name: es-http
             port: 9200
             targetPort: es-http
+  vars:
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.clusterDomain }}
+    - name: ES_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
   lifecycleActions:
     memberLeave:
       exec:
@@ -132,6 +140,8 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: metadata.namespace
+        - name: POD_FQDN
+          value: $(POD_NAME).$(ES_COMPONENT_NAME).$(NAMESPACE).svc.$(CLUSTER_DOMAIN)
         - name: READINESS_PROBE_PROTOCOL
           value: http
         - name: NSS_SDB_USE_CACHE
