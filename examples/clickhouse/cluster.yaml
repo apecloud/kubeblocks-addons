@@ -15,28 +15,17 @@ spec:
   # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
     - name: clickhouse
-      componentDef: clickhouse-1.0.0-alpha.0
+      componentDef: clickhouse-24
       serviceAccountName: kb-clickhouse-cluster
-      replicas: 1
-      resources:
-        limits:
-          cpu: '0.5'
-          memory: 1Gi
-        requests:
-          cpu: '0.5'
-          memory: 1Gi
-      volumeClaimTemplates:
-        - name: data
-          spec:
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: 20Gi
-    - name: clickhouse-1
-      componentDef: clickhouse-1.0.0-alpha.0
-      serviceAccountName: kb-clickhouse-cluster
-      replicas: 1
+      replicas: 2
+      systemAccounts:
+        - name: admin
+          passwordConfig:
+            length: 10
+            numDigits: 5
+            numSymbols: 0
+            letterCase: MixedCases
+            seed: clickhouse-cluster
       resources:
         limits:
           cpu: '0.5'
@@ -53,9 +42,17 @@ spec:
               requests:
                 storage: 20Gi
     - name: ch-keeper
-      componentDef: clickhouse-keeper-1.0.0-alpha.0
+      componentDef: ch-keeper-24
       serviceAccountName: kb-clickhouse-cluster
       replicas: 1
+      systemAccounts:
+        - name: admin
+          passwordConfig:
+            length: 10
+            numDigits: 5
+            numSymbols: 0
+            letterCase: MixedCases
+            seed: clickhouse-cluster
       resources:
         limits:
           cpu: '0.5'

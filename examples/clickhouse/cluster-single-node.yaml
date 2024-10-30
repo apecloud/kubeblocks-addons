@@ -15,7 +15,7 @@ spec:
   # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
     - name: clickhouse
-      componentDef: clickhouse-1.0.0-alpha.0
+      componentDef: clickhouse-24
       serviceAccountName: kb-clickhouse-cluster
       replicas: 1
       resources:
