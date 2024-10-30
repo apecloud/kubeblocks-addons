@@ -7,37 +7,51 @@ metadata:
     {{- if .Values.commonLabels }}
     {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
     {{- end }}
-  {{- if .Values.commonAnnotations }}
-  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-  {{- end }}
+  annotations:
+    {{- include "kafka.annotations" . | nindent 4 }}
+    {{- if .Values.commonAnnotations }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+    {{- end }}
 spec:
-  vars:
-    - name: SUPER_USER
-      valueFrom:
-        credentialVarRef:
-          name: admin
-          compDef: kafka-broker
-          username: Required
-          optional: false
   provider: kubeblocks
   description: Kafka controller that act as controllers (kraft) only server.
   serviceKind: kafka-controller
-  serviceVersion: {{ .Values.componentServiceVersion.controller }}
+  serviceVersion: {{ .Values.defaultServiceVersion.controller }}
+  vars:
+    - name: CLUSTER_UID
+      valueFrom:
+        clusterVarRef:
+          clusterUID: Required
+    - name: POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+    - name: POD_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podNames: Required
+    - name: COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
   ## serial is not used because rsm currently does not support kafka's role detection. The lack of role label during restart will affect the pod restart.
   updateStrategy: BestEffortParallel
   configs:
     - name: kafka-configuration-tpl
-      constraintRef: {{ include "kafka.name" . }}-cc
-      templateRef: {{ include "kafka.name" . }}-configuration-tpl
+      constraintRef: {{ include "kafka.configConstraintName" . }}
+      templateRef: {{ include "kafka.configurationTplName" . }}
       volumeName: kafka-config
       namespace: {{ .Release.Namespace }}
     - name: kafka-jmx-configuration-tpl
-      templateRef: {{ include "kafka.name" . }}-jmx-configuration-tpl
+      templateRef: {{ include "kafka.jmxConfigurationTplName" . }}
       volumeName: jmx-config
       namespace: {{ .Release.Namespace }}
   scripts:
     - name: kafka-scripts-tpl
-      templateRef: {{ include "kafka.name" . }}-server-scripts-tpl
+      templateRef: {{ include "kafka.serverScriptsTplName" . }}
       volumeName: scripts
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755
@@ -58,10 +72,20 @@ spec:
           - name: BITNAMI_DEBUG
             value: {{ .Values.debugEnabled | quote }}
           - name: MY_POD_IP
-            value: "$(KB_PODIP)"
-            # value: "$(KB_POD_IP)"
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
           - name: MY_POD_NAME
-            value: "$(KB_POD_NAME)"
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: MY_POD_HOST_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.hostIP
           - name: KAFKA_ENABLE_KRAFT
             value: "yes"
           - name: KAFKA_CFG_PROCESS_ROLES
@@ -87,10 +111,8 @@ spec:
             value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
           - name: SERVER_PROP_FILE
             value: /scripts/server.properties
-          - name: KAFKA_CFG_SUPER_USERS
-            value: "User:$(SUPER_USER)"
           - name: KAFKA_KRAFT_CLUSTER_ID
-            value: $(KB_CLUSTER_UID)
+            value: $(CLUSTER_UID)
         ports:
           - name: kafka-ctrlr
             containerPort: 9093
@@ -119,6 +141,9 @@ spec:
           - name: scripts
             mountPath: /scripts/kafka-server-setup.sh
             subPath: kafka-server-setup.sh
+          - name: scripts
+            mountPath: /scripts/common.sh
+            subPath: common.sh
           - name: scripts
             mountPath: /opt/bitnami/scripts/kafka-env.sh
             subPath: kafka-env.sh

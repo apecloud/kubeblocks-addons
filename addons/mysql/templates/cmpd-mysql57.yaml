@@ -4,6 +4,8 @@ metadata:
   name: {{ include "mysql.componentDefName57" . }}
   labels:
       {{- include "mysql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mysql.annotations" . | nindent 4 }}
 spec:
   {{- include "mysql.spec.common" . | nindent 2 }}
   serviceVersion: 5.7.44
@@ -48,22 +50,26 @@ spec:
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         command:
           - syncer
-          - --config-path
-          - /tools/config/components
           - --port
           - "3601"
           - --
           - bash
           - -c
           - |
-            mv {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
-            rm -rf {{ .Values.dataMountPath }}/plugin
+            cp {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
             chown -R mysql:root {{ .Values.dataMountPath }}
             skip_slave_start="OFF"
             if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
               skip_slave_start="ON"
             fi
-            /scripts/mysql-entrypoint.sh
+            SERVICE_ID=$((${SYNCER_POD_NAME##*-} + 1))
+            docker-entrypoint.sh mysqld --server-id $SERVICE_ID \
+              --ignore-db-dir=lost+found \
+              --plugin-load-add=rpl_semi_sync_master=semisync_master.so \
+              --plugin-load-add=rpl_semi_sync_slave=semisync_slave.so \
+              --plugin-load-add=audit_log=audit_log.so \
+              --log-bin=/var/lib/mysql/binlog/${SYNCER_POD_NAME}-bin \
+              --skip-slave-start=$skip_slave_start
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
@@ -89,4 +95,19 @@ spec:
             value: {{ .Values.auth.rootHost | default "%" | quote }}
           - name: SERVICE_PORT
             value: "3306"
+          - name: SYNCER_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: SYNCER_POD_UID
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.uid
+          - name: SYNCER_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
 

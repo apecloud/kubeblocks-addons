@@ -22,8 +22,6 @@ Define postgresql ComponentSpec with ComponentDefinition.
       labels:
         {{- include "postgresql-cluster.patroni-scope-label" . | indent 8 }}
       {{- include "postgresql-cluster.replicaCount" . | indent 6 }}
-      enabledLogs:
-        - running
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}

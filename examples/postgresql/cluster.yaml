@@ -16,8 +16,6 @@ spec:
   componentSpecs:
   - name: postgresql
     componentDef: postgresql-14
-    enabledLogs:
-    - running
     disableExporter: true
     replicas: 2
     resources:

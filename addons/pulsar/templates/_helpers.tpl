@@ -58,20 +58,6 @@ helm.sh/resource-policy: keep
 {{- end }}
 
 {{/*
-Create full image name
-*/}}
-{{- define "pulsar.imageFullName" -}}
-{{- printf "%s/%s:%s" ( .image.registry | default .root.Values.image.registry ) (  .image.repository | default .root.Values.image.repository ) ( .image.tag | default .root.Values.image.tag | default .root.Chart.AppVersion ) -}}
-{{- end -}}
-
-{{/*
-Create image pull policy
-*/}}
-{{- define "pulsar.imagePullPolicy" -}}
-{{- printf "%s" ( .image.pullPolicy | default .root.Values.image.pullPolicy | default "IfNotPresent" ) -}}
-{{- end -}}
-
-{{/*
 Generate scripts configmap
 */}}
 {{- define "pulsar.extend.scripts" -}}
@@ -82,30 +68,21 @@ Generate scripts configmap
 {{- end }}
 
 {{/*
-Generate major version of cluster
-*/}}
-{{- define "pulsar.major.version" -}}
-{{- $version := default .Chart.AppVersion .Values.clusterVersionOverride -}}
-{{- $majorVersion := (split "." $version)._0 -}}
-{{- printf "%s" ($majorVersion)}}
-{{- end }}
-
-{{/*
-Define pulsar bookies reovery component definition regex pattern
+Define pulsar bookies recovery component definition regex pattern
 */}}
 {{- define "pulsar.bkRecoveryCmpdRegexPattern" -}}
 ^pulsar-bookies-recovery-
 {{- end -}}
 
 {{/*
-Define pulsar v3.X bookies reovery component definition name
+Define pulsar v3.X bookies recovery component definition name
 */}}
 {{- define "pulsar3.bkRecoveryCmpdName" -}}
 pulsar-bookies-recovery-3-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
-Define pulsar v2.X bookies reovery component definition name
+Define pulsar v2.X bookies recovery component definition name
 */}}
 {{- define "pulsar2.bkRecoveryCmpdName" -}}
 pulsar-bookies-recovery-2-{{ .Chart.Version }}
@@ -154,7 +131,7 @@ Define pulsar v3.X broker component definition regex pattern
 {{- end -}}
 
 {{/*
-Define pulsar v2.X bookies reovery component definition name
+Define pulsar v2.X broker component definition name
 */}}
 {{- define "pulsar2.brokerCmpdName" -}}
 pulsar-broker-2-{{ .Chart.Version }}
@@ -182,7 +159,7 @@ pulsar-proxy-3-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
-Define pulsar v2.X bookies reovery component definition name
+Define pulsar v2.X proxy component definition name
 */}}
 {{- define "pulsar2.proxyCmpdName" -}}
 pulsar-proxy-2-{{ .Chart.Version }}
@@ -266,28 +243,28 @@ pulsar-env-constraints
 {{- end -}}
 
 {{/*
-Define pulsar v3.X bookies recovery config tpl name
+Define pulsar v3.X bookies config tpl name
 */}}
 {{- define "pulsar3.bookiesConfigTplName" -}}
 pulsar3-bookies-config-tpl
 {{- end -}}
 
 {{/*
-Define pulsar v2.X bookies recovery config tpl name
+Define pulsar v2.X bookies config tpl name
 */}}
 {{- define "pulsar2.bookiesConfigTplName" -}}
 pulsar2-bookies-config-tpl
 {{- end -}}
 
 {{/*
-Define pulsar v3.X bookies recovery config constraint name
+Define pulsar v3.X bookies config constraint name
 */}}
 {{- define "pulsar3.bookiesConfigConstraintName" -}}
 pulsar3-bookies-config-constraint
 {{- end -}}
 
 {{/*
-Define pulsar v2.X bookies recovery config constraint name
+Define pulsar v2.X bookies config constraint name
 */}}
 {{- define "pulsar2.bookiesConfigConstraintName" -}}
 pulsar2-bookies-config-constraint
@@ -404,3 +381,10 @@ Define pulsar v2.X zookeeper image
 {{- define "pulsar2.zookeeperImage" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.images.v2_11_2.zookeeper.tag }}
 {{- end }}
+
+{{/*
+Define pulsar tools image
+*/}}
+{{- define "pulsar.toolsImage" -}}
+{{- printf "%s/%s:%s" ( .Values.image.registry | default "docker.io" ) (  .Values.image.repository ) ( .Values.images.pulsarTools.tag ) -}}
+{{- end -}}

@@ -19,6 +19,13 @@ spec:
             port: 80
   componentSpecs:
     - name: orchestrator
+      env:
+        - name: ORC_TOPOLOGY_PASSWORD
+          value: {{ .Values.secret.TOPOLOGY_PASSWORD | default "orchestrator" }}
+        - name: ORC_META_PASSWORD
+          value: {{ .Values.secret.META_PASSWORD | default "orchestrator" }}
+        - name: ORC_META_DATABASE
+          value: {{ .Values.secret.META_DATABASE | default "orchestrator" }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.replicas }}
       {{- include "kblib.componentResources" . | indent 6 }}

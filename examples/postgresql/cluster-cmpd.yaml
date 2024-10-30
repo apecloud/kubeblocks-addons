@@ -16,9 +16,6 @@ spec:
   - name: postgresql
     # References the name of a ComponentDefinition. The ComponentDefinition specifies the behavior and characteristics of the Component. If both `componentDefRef` and `componentDef` are provided, the `componentDef` will take precedence over `componentDefRef`.
     componentDef: postgresql-12
-    # Specifies which types of logs should be collected for the Cluster. 
-    enabledLogs:
-    - running
     # Determines whether the metrics exporter needs to be published to the service endpoint.  
     disableExporter: true
     # Specifies the name of the ServiceAccount required by the running Component.   
