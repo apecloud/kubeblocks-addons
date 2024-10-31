@@ -11,13 +11,6 @@ metadata:
   {{- end }}
 spec:
   terminationPolicy: {{ $.Values.terminationPolicy }}
-  affinity:
-    {{- with $.Values.topologyKeys }}
-    topologyKeys: {{ . | toYaml | nindent 6 }}
-    {{- end }}
-  {{- with $.Values.tolerations }}
-  tolerations: {{ . | toYaml | nindent 4 }}
-  {{- end }}
   componentSpecs:
     - name: zookeeper
       componentDef: zookeeper

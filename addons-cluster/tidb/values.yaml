@@ -11,17 +11,6 @@ terminationPolicy: Halt
 # the version must be defined in the ComponentVersion cr. 
 appVersionOverride: ""
 
-## @param tolerations define global Tolerations for the cluster all pod's assignment
-## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
-##
-tolerations: []
-
-## @param topologySpreadConstraints Topology Spread Constraints for pod assignment spread across your cluster among failure-domains. Evaluated as a template
-## Ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/#spread-constraints-for-pods
-##
-topologyKeys:
-  - kubernetes.io/hostname
-
 pd:
   replicas: 3
   resources:

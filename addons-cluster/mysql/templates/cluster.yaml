@@ -9,7 +9,6 @@ metadata:
   {{- end }}
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
-  {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
     - name: mysql
       replicas: {{ .Values.replicas }}

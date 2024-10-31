@@ -20,10 +20,6 @@ spec:
   componentSpecs:
   - name: mysql
     componentDef: apecloud-mysql
-    enabledLogs:
-    - error
-    - general
-    - slow
     disableExporter: true
     serviceAccountName: kb-acmysql-cluster
     replicas: 3

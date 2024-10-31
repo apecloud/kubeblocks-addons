@@ -24,8 +24,6 @@ spec:
   - name: redis
     replicas: 2
     disableExporter: true
-    enabledLogs:
-    - running
     serviceAccountName: kb-redis-cluster
     resources:
       limits:

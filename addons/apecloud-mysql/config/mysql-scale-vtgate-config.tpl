@@ -17,14 +17,8 @@ buffer_min_time_between_failovers=60s
 mysql_auth_server_impl=mysqlbased
 mysql_auth_server_static_file=
 mysql_server_require_secure_transport=false
-{{ block "logsBlock" . }}
-{{- if hasKey $.component "enabledLogs" }}
 enable_logs=true
-{{- if mustHas "queryLog" $.component.enabledLogs }}
 enable_query_log=true
-{{- end }}
-{{- end }}
-{{ end }}
 ddl_strategy=direct
 enable_display_sql_execution_vttablets=false
 enable_read_write_split_for_read_only_txn=false

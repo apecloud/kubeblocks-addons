@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: {{ include "kafka.name" . }}-superusers-secret
+  name: {{ include "kafka.defaultSuperUserSystemAccountSecretName" . }}
 type: Opaque
 stringData:
   password: "kubeblocks"

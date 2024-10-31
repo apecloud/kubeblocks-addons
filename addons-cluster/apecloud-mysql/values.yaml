@@ -52,7 +52,6 @@ proxy:
 
 ## customized default values to override kblib chart's values
 extra:
-  podAntiAffinity: Required
   disableExporter: true
 
 ## metrics sidecars

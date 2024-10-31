@@ -7,7 +7,7 @@ metadata:
 spec:
   compatibilityRules:
     - compDefs:
-        - {{ include "kafka-broker.componentDefName" . }}
+        - {{ include "kafka-broker.cmpdRegexpPattern" . }}
       releases:
         - 3.3.2-debian-11-r54
   releases:

@@ -81,3 +81,23 @@ replicas: {{ max .Values.replicas 3 }}
 {{- $version := semver (include "elasticsearch.version" .) }}
 {{- printf "%d" $version.Major }}
 {{- end }}
+
+{{- define "elasticsearch-cluster.schedulingPolicy" }}
+schedulingPolicy:
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ include "kblib.clusterName" . }}
+              apps.kubeblocks.io/component-name: mdit
+          topologyKey: kubernetes.io/hostname
+        weight: 100
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/instance: {{ include "kblib.clusterName" . }}
+            apps.kubeblocks.io/component-name: mdit
+        topologyKey: kubernetes.io/hostname
+{{- end -}}

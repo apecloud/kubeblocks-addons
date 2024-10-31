@@ -9,31 +9,31 @@ spec:
   - name: single-node
     components:
     - name: mdit
-      compDef: elasticsearch
+      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
   - name: multi-node
     components:
     - name: master
-      compDef: elasticsearch
+      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
     - name: dit
-      compDef: elasticsearch
+      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
     default: true
   - name: m-dit
     components:
     - name: master
-      compDef: elasticsearch
+      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
     - name: dit
-      compDef: elasticsearch
+      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
   - name: mdit
     components:
     - name: mdit
-      compDef: elasticsearch
+      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
   - name: m-d-i-t
     components:
     - name: m
-      compDef: elasticsearch
+      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
     - name: d
-      compDef: elasticsearch
+      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
     - name: i
-      compDef: elasticsearch
+      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}
     - name: t
-      compDef: elasticsearch
+      compDef: {{ include "elasticsearch.cmpdRegexPattern" . }}

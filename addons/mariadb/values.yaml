@@ -12,6 +12,10 @@ image:
       repository: prom/mysqld-exporter
       tag: v0.14.0
 
+## @param componentServiceVersion define default serviceVersion of each Component
+defaultServiceVersion:
+  mariadb: 10.6.15
+  
 ## MySQL Authentication parameters
 auth:
   ## MYSQL_ROOT_HOST

@@ -9,7 +9,6 @@ spec:
   clusterDef: milvus
   topology: standalone
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
-  {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
     - name: etcd
       replicas: {{ .Values.replicas | default 1 }}

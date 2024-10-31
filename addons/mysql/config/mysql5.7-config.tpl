@@ -82,20 +82,12 @@ log_error={{ $log_root }}/mysqld-error.log
 slow_query_log_file={{ $log_root }}/mysqld-slowquery.log
 general_log_file={{ $log_root }}/mysqld.log
 
-{{ block "logsBlock" . }}
 log_statements_unsafe_for_binlog=OFF
 log_error_verbosity=2
 log_output=FILE
-{{- if hasKey $.component "enabledLogs" }}
-{{- if mustHas "slow" $.component.enabledLogs }}
 slow_query_log=ON
 long_query_time=5
-{{- end }}
-{{- if mustHas "general" $.component.enabledLogs }}
 general_log=ON
-{{- end }}
-{{- end }}
-{{ end }}
 
 #innodb
 innodb_flush_method=O_DIRECT

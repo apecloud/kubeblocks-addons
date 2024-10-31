@@ -52,4 +52,5 @@ tlsEnable: false
 
 ## Customized default values to override kblib chart's values
 extra:
+  terminationPolicy: Delete
   disableExporter: false

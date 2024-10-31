@@ -37,11 +37,6 @@ The minimum proxy cpu cores is 0.5 and the maximum cpu cores is 64.
     {{ include "apecloud-mysql-cluster.serviceRef" . | indent 4 }}
   {{- end }}
   replicas: 1
-  enabledLogs:
-    - error
-    - warning
-    - info
-    - queryLog
   resources:
     requests:
       cpu: {{ $proxyCPU | quote }}
@@ -101,4 +96,24 @@ raftGroup mode: max(replicas, 3)
     limits:
       cpu: 500m
       memory: 500Mi
+{{- end -}}
+
+{{- define "apecloud-mysql-cluster.schedulingPolicy" }}
+schedulingPolicy:
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ include "kblib.clusterName" . }}
+              apps.kubeblocks.io/component-name: mysql
+          topologyKey: kubernetes.io/hostname
+        weight: 100
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/instance: {{ include "kblib.clusterName" . }}
+            apps.kubeblocks.io/component-name: mysql
+        topologyKey: kubernetes.io/hostname
 {{- end -}}

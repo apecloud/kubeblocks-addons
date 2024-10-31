@@ -16,9 +16,9 @@ spec:
       default: true
       components:
         - name: kafka-combine
-          compDef: {{ include "kafka-combine.componentDefName" . }}
+          compDef: {{ include "kafka-combine.cmpdRegexpPattern" . }}
         - name: kafka-exporter
-          compDef: {{ include "kafka-exporter.componentDefName" . }}
+          compDef: {{ include "kafka-exporter.cmpdRegexpPattern" . }}
       orders:
         provision:
           - kafka-combine
@@ -32,19 +32,19 @@ spec:
     - name: combined
       components:
         - name: kafka-combine
-          compDef: {{ include "kafka-combine.componentDefName" . }}
+          compDef: {{ include "kafka-combine.cmpdRegexpPattern" . }}
     - name: separated_monitor
       components:
         - name: kafka-controller
-          compDef: {{ include "kafka-controller.componentDefName" . }}
+          compDef: {{ include "kafka-controller.cmpdRegexpPattern" . }}
         - name: kafka-broker
-          compDef: {{ include "kafka-broker.componentDefName" . }}
+          compDef: {{ include "kafka-broker.cmpdRegexpPattern" . }}
         - name: kafka-exporter
-          compDef: {{ include "kafka-exporter.componentDefName" . }}
+          compDef: {{ include "kafka-exporter.cmpdRegexpPattern" . }}
       orders:
         provision:
-          - kafka-broker
           - kafka-controller
+          - kafka-broker
           - kafka-exporter
         terminate:
           - kafka-broker
@@ -57,9 +57,9 @@ spec:
     - name: separated
       components:
         - name: kafka-controller
-          compDef: {{ include "kafka-controller.componentDefName" . }}
+          compDef: {{ include "kafka-controller.cmpdRegexpPattern" . }}
         - name: kafka-broker
-          compDef: {{ include "kafka-broker.componentDefName" . }}
+          compDef: {{ include "kafka-broker.cmpdRegexpPattern" . }}
       orders:
         provision:
           - kafka-broker

@@ -2,6 +2,10 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+## @param terminationPolicy define Cluster termination policy. One of DoNotTerminate, Halt, Delete, WipeOut.
+##
+terminationPolicy: Delete
+
 ## @param version, mapping cluster.spec.componentSpec[].serviceVersion which defined in ComponentVersion
 ##
 version: 16.4.0
@@ -36,9 +40,6 @@ storage: 20
 ## @param monitor sidecar
 sidecars:
  - exporter
-
-extra:
-  podAntiAffinity: Required
   
 etcd:
   proxyEnabled: false

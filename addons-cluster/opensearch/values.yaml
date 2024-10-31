@@ -7,6 +7,7 @@ replicaCount: 1
 terminationPolicy: Delete
 
 nameOverride: ""
+
 fullnameOverride: ""
 
 resources: {}
@@ -26,11 +27,6 @@ ingress:
 
 service:
   type: ClusterIP
-
-tolerations: []
-
-topologyKeys:
-- kubernetes.io/hostname
 
 persistence:
   enabled: true

@@ -26,8 +26,6 @@ spec:
   componentSpecs:
   - name: redis
     disableExporter: true
-    enabledLogs:
-    - running
     serviceAccountName: kb-redis-cluster
     replicas: 3
     resources:
