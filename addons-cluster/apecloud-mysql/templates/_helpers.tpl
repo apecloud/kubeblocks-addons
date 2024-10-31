@@ -97,3 +97,23 @@ raftGroup mode: max(replicas, 3)
       cpu: 500m
       memory: 500Mi
 {{- end -}}
+
+{{- define "apecloud-mysql-cluster.schedulingPolicy" }}
+schedulingPolicy:
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ include "kblib.clusterName" . }}
+              apps.kubeblocks.io/component-name: mysql
+          topologyKey: kubernetes.io/hostname
+        weight: 100
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/instance: {{ include "kblib.clusterName" . }}
+            apps.kubeblocks.io/component-name: mysql
+        topologyKey: kubernetes.io/hostname
+{{- end -}}
