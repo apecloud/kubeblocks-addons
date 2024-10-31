@@ -15,10 +15,10 @@ spec:
     - name: internet
       serviceType: LoadBalancer
       ports:
-      - name: http
+      - name: es-http
         port: 9200
         protocol: TCP
-        targetPort: http
+        targetPort: es-http
     # Indicates whether the services will be exposed. 'Enable' exposes the services. while 'Disable' removes the exposed Service.
     switch: Disable
   # Specifies the maximum number of seconds the OpsRequest will wait for its start conditions to be met before aborting. If set to 0 (default), the start conditions must be met immediately for the OpsRequest to proceed.
