@@ -32,8 +32,3 @@ requests:
 ## @param storage size, the unit is Gi
 ##
 storage: 20
-
-
-## customized default values to override kblib chart's values
-extra:
-  podAntiAffinity: Required

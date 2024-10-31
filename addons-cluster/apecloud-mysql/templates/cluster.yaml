@@ -12,12 +12,12 @@ metadata:
   {{- end }}
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
-  {{- include "kblib.affinity" . | indent 2 }}
   clusterDef: apecloud-mysql # ref clusterdefinition.name
   topology: {{ include "apecloud-mysql-cluster.topology" . }}
   componentSpecs:
     - name: mysql
       {{- include "kblib.componentMonitor" . | indent 6 }}
+      {{- include "apecloud-mysql-cluster.schedulingPolicy" . | indent 6 }}
       {{- if and (eq .Values.mode "raftGroup") .Values.proxyEnabled (not .Values.localEtcdEnabled) }}
       serviceRefs:
         {{ include "apecloud-mysql-cluster.serviceRef" . | indent 8 }}

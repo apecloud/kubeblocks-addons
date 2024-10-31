@@ -2,6 +2,13 @@
 ##
 version: pulsar-3.0.2
 
+nameOverride: ""
+
+fullnameOverride: ""
+
+## @param terminationPolicy define Cluster termination policy. One of DoNotTerminate, Halt, Delete, WipeOut.
+##
+terminationPolicy: Delete
 
 ## Annotation configurations
 commonAnnotations:
@@ -23,23 +30,6 @@ service:
   ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
   ## 
   type: ClusterIP
-
-## @param tolerations define global Tolerations for the cluster all pod's assignment
-## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
-##
-tolerations: []
-
-
-## @param topologySpreadConstraints Topology Spread Constraints for pod assignment spread across your cluster among failure-domains. Evaluated as a template
-## Ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/#spread-constraints-for-pods
-##
-topologyKeys:
-  - kubernetes.io/hostname
-
-
-## @param affinity is affinity setting for ClickHouse cluster pods assignment
-##
-affinity: {}
 
 ## Bookies configuration
 bookies:
@@ -135,7 +125,6 @@ broker:
       cpu: 200m
       memory: 512Mi
 
-
 proxy:
   ## @param proxy.replicaCount Number of Proxy replicas
   replicaCount: 3
@@ -152,9 +141,6 @@ proxy:
       cpu: 200m
       memory: 512Mi
 
-nameOverride: ""
-fullnameOverride: ""
-
 # The RBAC permission used by cluster component pod, now include event.create
 serviceAccount:
   name: ""
@@ -162,7 +148,6 @@ serviceAccount:
 # Cluster domain
 #
 clusterDomain: ".cluster.local"
-
 
 # test suites
 tests:

@@ -14,18 +14,11 @@ metadata:
     {{- end }}
   {{- end }}
 spec:
-  terminationPolicy: {{ $.Values.extra.terminationPolicy }}
+  terminationPolicy: {{ $.Values.terminationPolicy }}
   {{- $topologyEnable :=  eq .Values.mode "" | default false }}
   {{- if $topologyEnable}}
   clusterDef: pulsar
   topology: {{ .Values.mode }}
-  {{- end }}
-  affinity:
-    {{- with $.Values.topologyKeys }}
-    topologyKeys: {{ . | toYaml | nindent 6 }}
-    {{- end }}
-  {{- with $.Values.tolerations }}
-  tolerations: {{ . | toYaml | nindent 4 }}
   {{- end }}
   services:
     {{- if .Values.proxy.enabled }}
