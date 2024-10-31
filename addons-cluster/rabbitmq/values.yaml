@@ -28,5 +28,6 @@ requests:
 ## @param storage size, the unit is Gi
 ##
 storage: 20
+
 extra:
   rbacEnabled: true

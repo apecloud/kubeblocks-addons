@@ -6,13 +6,6 @@ metadata:
     {{- include "etcd-cluster.labels" . | nindent 4 }}
 spec:
   terminationPolicy: {{ .Values.terminationPolicy }}
-  affinity:
-    {{- with .Values.topologyKeys }}
-    topologyKeys: {{ . | toYaml | nindent 6 }}
-    {{- end }}
-  {{- with .Values.tolerations }}
-  tolerations: {{ . | toYaml | nindent 4 }}
-  {{- end }}
   componentSpecs:
     - name: etcd
       {{- if .Values.peerService.name }}

@@ -1,6 +1,7 @@
 terminationPolicy: Delete
 
 nameOverride: ""
+
 fullnameOverride: ""
 
 jobmanager:
@@ -22,11 +23,3 @@ taskmanager:
     requests:
       cpu: 500m
       memory: 1Gi
-
-topologyKeys:
-  - kubernetes.io/hostname
-
-## @param tolerations
-## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
-##
-tolerations: [ ]
