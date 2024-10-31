@@ -62,7 +62,7 @@ spec:
         serviceVarRef:
           compDef: {{ include "opensearch.cmpdRegexpPattern" . }}
           optional: false
-          Host: Required
+          host: Required
   services:
     - name: default
       spec:

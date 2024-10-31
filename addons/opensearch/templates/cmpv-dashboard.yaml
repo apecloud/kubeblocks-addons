@@ -15,4 +15,4 @@ spec:
       changes:
       serviceVersion: 2.7.0
       images:
-        dashboard: {{ include "opensearch-dashboard.repository" . }}:2.7.0
+        dashboard: {{ include "dashboard.repository" . }}:2.7.0

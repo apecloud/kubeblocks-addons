@@ -80,11 +80,11 @@ Define image
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dashboard.repository }}:{{ default .Chart.AppVersion .Values.image.dashboard.tag }}
 {{- end }}
 
-{{- define "opensearch-master-graceful-termination-handler.repository" -}}
+{{- define "os-master-graceful-handler.repository" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}
 {{- end }}
 
-{{- define "opensearch-master-graceful-termination-handler.image" -}}
+{{- define "os-master-graceful-handler.image" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
 {{- end }}
 
@@ -107,7 +107,7 @@ helm.sh/resource-policy: keep
 Define opensearch-dashboard component definition name
 */}}
 {{- define "opensearch-dashboard.cmpdName" -}}
-opensearch-dashboard-{{ .Chart.Version }}
+os-dashboard-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
@@ -121,14 +121,14 @@ opensearch-{{ .Chart.Version }}
 Define opensearch component definition regular expression name prefix
 */}}
 {{- define "opensearch.cmpdRegexpPattern" -}}
-^opensearch-(?!dashboard-)
+^opensearch-
 {{- end -}}
 
 {{/*
 Define opensearch-dashboard component definition regular expression name prefix
 */}}
 {{- define "opensearch-dashboard.cmpdRegexpPattern" -}}
-^opensearch-dashboard-
+^os-dashboard-
 {{- end -}}
 
 {{/*

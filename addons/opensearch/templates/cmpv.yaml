@@ -16,4 +16,4 @@ spec:
       serviceVersion: 2.7.0
       images:
         opensearch: {{ include "opensearch.repository" . }}:2.7.0
-        opensearch-master-graceful-termination-handler: {{ include "opensearch-master-graceful-termination-handler.repository" . }}:2.7.0
+        os-master-graceful-handler: {{ include "os-master-graceful-handler.repository" . }}:2.7.0

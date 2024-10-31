@@ -100,8 +100,8 @@ spec:
           - mountPath: /usr/share/opensearch/config/opensearch.yaml
             subPath: opensearch.yaml
             name: opensearch-config
-      - name: opensearch-master-graceful-termination-handler
-        image: {{ include "opensearch-master-graceful-termination-handler.image" . }}
+      - name: os-master-graceful-handler
+        image: {{ include "os-master-graceful-handler.image" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - "sh"
