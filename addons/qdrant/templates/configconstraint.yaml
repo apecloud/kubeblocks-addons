@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
-  name: qdrant-config-constraints
+  name: {{ include "qdrant.configConstraintName" . }}
   labels:
     {{- include "qdrant.labels" . | nindent 4 }}
 spec:

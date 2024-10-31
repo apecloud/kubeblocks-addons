@@ -7,13 +7,6 @@ spec:
   clusterDef: tidb  # ref clusterdefinition.name
   terminationPolicy: {{ $.Values.terminationPolicy }}
   topology: cluster
-  affinity:
-    {{- with $.Values.topologyKeys }}
-    topologyKeys: {{ . | toYaml | nindent 6 }}
-    {{- end }}
-  {{- with $.Values.tolerations }}
-  tolerations: {{ . | toYaml | nindent 4 }}
-  {{- end }}
   componentSpecs:
     {{- with $.Values.pd }}
     - name: tidb-pd

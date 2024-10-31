@@ -20,11 +20,6 @@ spec:
   - name: mysql
     # References the name of a ComponentDefinition. The ComponentDefinition specifies the behavior and characteristics of the Component. If both `componentDefRef` and `componentDef` are provided, the `componentDef` will take precedence over `componentDefRef`.
     componentDef: apecloud-mysql
-    # Specifies which types of logs should be collected for the Cluster. 
-    enabledLogs:
-    - error
-    - general
-    - slow
     # Determines whether the metrics exporter needs to be published to the service endpoint.  
     disableExporter: true
     # Specifies the name of the ServiceAccount required by the running Component.

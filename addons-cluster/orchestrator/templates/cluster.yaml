@@ -9,7 +9,6 @@ spec:
   clusterDef: orchestrator
   topology: {{ .Values.mode }}
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
-  {{- include "kblib.affinity" . | indent 2 }}
   services:
     - name: orchestrator
       componentSelector: orchestrator

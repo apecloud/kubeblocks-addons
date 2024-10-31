@@ -7,7 +7,7 @@ metadata:
 spec:
   serviceKind: Mariadb
   compDefs:
-    - mariadb
+    - {{ include "mariadb.cmpdRegexpPattern" . }}
   backupMethods:
     - name: mariadb-backup
       snapshotVolumes: false

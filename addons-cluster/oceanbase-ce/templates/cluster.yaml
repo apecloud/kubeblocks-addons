@@ -9,7 +9,6 @@ metadata:
     {{- include "oceanbase-cluster.featureGate" . | nindent 4 }}
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
-  {{- include "kblib.affinity" . | indent 2 }}
   {{- if gt (int .Values.obClusters) 1 }}
   services:
     - name: rw-svc

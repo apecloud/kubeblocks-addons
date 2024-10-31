@@ -1,0 +1,19 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: mariadb
+  labels:
+    {{- include "mariadb.labels" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "mariadb.cmpdRegexpPattern" . }}
+      releases:
+        - 10.6.15
+  releases:
+    - name: 10.6.15
+      changes:
+      serviceVersion: 10.6.15
+      images:
+        mariadb: {{ include "mariadb.repository" . }}:10.6.15
+        exporter: {{ include "exporter.repository" . }}:v0.14.0

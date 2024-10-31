@@ -8,7 +8,6 @@ spec:
   topology: cluster
   clusterDef: qdrant # ref clusterdefinition.name
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
-  {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
     - name: qdrant
       componentDef: qdrant

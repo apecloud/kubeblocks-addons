@@ -32,7 +32,3 @@ requests:
 ## @param storage size, the unit is Gi
 ##
 storage: 10
-
-## customized values to override kblib chart's values
-extra:
-  monitoringInterval: 60

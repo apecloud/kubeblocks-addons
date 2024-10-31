@@ -51,15 +51,67 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+Common annotations
 */}}
-{{- define "elasticsearch.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "elasticsearch.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
+{{- define "elasticsearch.annotations" -}}
+helm.sh/resource-policy: keep
 {{- end }}
-{{- end }}
+
+{{/*
+Define elasticsearch component definition regex pattern
+*/}}
+{{- define "elasticsearch.cmpdRegexPattern" -}}
+^elasticsearch-
+{{- end -}}
+
+{{/*
+Define elasticsearch v7.X component definition name
+*/}}
+{{- define "elasticsearch7.cmpdName" -}}
+elasticsearch-7-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define elasticsearch v7.X component definition regex pattern
+*/}}
+{{- define "elasticsearch7.cmpdRegexPattern" -}}
+^elasticsearch-7-
+{{- end -}}
+
+{{/*
+Define elasticsearch v8.X component definition name
+*/}}
+{{- define "elasticsearch8.cmpdName" -}}
+elasticsearch-8-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define elasticsearch v8.X component definition regex pattern
+*/}}
+{{- define "elasticsearch8.cmpdRegexPattern" -}}
+^elasticsearch-8-
+{{- end -}}
+
+{{/*
+Define elasticsearch scripts tpl name
+*/}}
+{{- define "elasticsearch.scriptsTplName" -}}
+elasticsearch-scripts-tpl
+{{- end -}}
+
+{{/*
+Define elasticsearch v7.X config tpl name
+*/}}
+{{- define "elasticsearch7.configTplName" -}}
+elasticsearch-7-config-tpl
+{{- end -}}
+
+{{/*
+Define elasticsearch v8.X config tpl name
+*/}}
+{{- define "elasticsearch8.configTplName" -}}
+elasticsearch-8-config-tpl
+{{- end -}}
 
 {{- define "elasticsearch-8.1.3.image" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.1.3
@@ -83,4 +135,8 @@ Create the name of the service account to use
 
 {{- define "elasticsearch-exporter.image" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag | default "latest" }}
+{{- end }}
+
+{{- define "elasticsearch-lfa.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag | default "latest" }}
 {{- end }}

@@ -8,7 +8,6 @@ spec:
   clusterDef: {{ include "starrocks-release.name" .}}
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   topology: shared-nothing
-  {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
     - name: fe
       componentDef: starrocks-ce-fe

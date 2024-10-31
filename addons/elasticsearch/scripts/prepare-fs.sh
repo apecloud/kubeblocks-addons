@@ -1,100 +1,103 @@
 #!/usr/bin/env bash
 
-set -eu
-
-# the operator only works with the default ES distribution
-license=/usr/share/elasticsearch/LICENSE.txt
-if [[ ! -f $license || $(grep -Exc "ELASTIC LICENSE AGREEMENT|Elastic License 2.0" $license) -ne 1 ]]; then
-    >&2 echo "unsupported_distribution"
-    exit 42
-fi
-
-# compute time in seconds since the given start time
-function duration() {
-    local start=$1
-    end=$(date +%s)
-    echo $((end-start))
+# shellcheck disable=SC2034
+ut_mode="false"
+test || __() {
+  # when running in non-unit test mode, set the options "set -exu".
+  set -exu;
 }
 
-######################
-#       START       #
-######################
+ES_HOME="/usr/share/elasticsearch"
+LICENSE_FILE="${ES_HOME}/LICENSE.txt"
+MOUNT_LOCAL_CONFIG="/mnt/local-config"
+MOUNT_LOCAL_PLUGINS="/mnt/local-plugins"
+MOUNT_LOCAL_BIN="/mnt/local-bin"
+MOUNT_REMOTE_CONFIG="/mnt/remote-config"
 
-script_start=$(date +%s)
+check_distribution() {
+  if [[ ! -f ${LICENSE_FILE} || $(grep -Exc "ELASTIC LICENSE AGREEMENT|Elastic License 2.0" ${LICENSE_FILE}) -ne 1 ]]; then
+    >&2 echo "unsupported_distribution"
+    return 1
+  fi
+  return 0
+}
 
-echo "Starting init script"
+get_duration() {
+  local start=$1
+  local end
+  end=$(date +%s)
+  echo $((end-start))
+}
 
-######################
-#  Files persistence #
-######################
+copy_directory_contents() {
+  local src_dir=$1
+  local dest_dir=$2
+  local dir_name=$3
 
-# Persist the content of bin/, config/ and plugins/ to a volume,
-# so installed plugins files can to be used by the ES container
-mv_start=$(date +%s)
+  if [[ -z "$(ls -A ${src_dir}/${dir_name})" ]]; then
+    echo "Empty dir ${src_dir}/${dir_name}"
+    return 0
+  fi
 
-    if [[ -z "$(ls -A /usr/share/elasticsearch/config)" ]]; then
-        echo "Empty dir /usr/share/elasticsearch/config"
-    else
-        echo "Copying /usr/share/elasticsearch/config/* to /mnt/local-config/"
-        # Use "yes" and "-f" as we want the init container to be idempotent and not to fail when executed more than once.
-        yes | cp -avf /usr/share/elasticsearch/config/* /mnt/local-config/
-    fi
+  echo "Copying ${src_dir}/${dir_name}/* to ${dest_dir}/"
+  # Use "yes" and "-f" as we want the init container to be idempotent and not to fail when executed more than once.
+  yes | cp -avf ${src_dir}/${dir_name}/* ${dest_dir}/
+}
 
-    if [[ -z "$(ls -A /usr/share/elasticsearch/plugins)" ]]; then
-        echo "Empty dir /usr/share/elasticsearch/plugins"
-    else
-        echo "Copying /usr/share/elasticsearch/plugins/* to /mnt/local-plugins/"
-        # Use "yes" and "-f" as we want the init container to be idempotent and not to fail when executed more than once.
-        yes | cp -avf /usr/share/elasticsearch/plugins/* /mnt/local-plugins/
-    fi
+# Persist the content of bin/, config/ and plugins/ to a volume, so installed plugins files can to be used by the ES container
+persist_files() {
+  local mv_start
+  mv_start=$(date +%s)
 
-    if [[ -z "$(ls -A /usr/share/elasticsearch/bin)" ]]; then
-        echo "Empty dir /usr/share/elasticsearch/bin"
-    else
-        echo "Copying /usr/share/elasticsearch/bin/* to /mnt/local-bin/"
-        # Use "yes" and "-f" as we want the init container to be idempotent and not to fail when executed more than once.
-        yes | cp -avf /usr/share/elasticsearch/bin/* /mnt/local-bin/
-    fi
+  copy_directory_contents "${ES_HOME}" "${MOUNT_LOCAL_CONFIG}" "config"
+  copy_directory_contents "${ES_HOME}" "${MOUNT_LOCAL_PLUGINS}" "plugins"
+  copy_directory_contents "${ES_HOME}" "${MOUNT_LOCAL_BIN}" "bin"
 
-echo "Files copy duration: $(duration $mv_start) sec."
+  echo "Files copy duration: $(get_duration ${mv_start}) sec."
+}
 
-######################
-#  Config linking    #
-######################
+create_config_links() {
+  local ln_start
+  ln_start=$(date +%s)
 
-# Link individual files from their mount location into the config dir
-# to a volume, to be used by the ES container
-ln_start=$(date +%s)
+  local config_files=(
+    "elasticsearch.yml"
+    "log4j2.properties"
+  )
 
-#    echo "Linking /mnt/elastic-internal/xpack-file-realm/users to /mnt/local-config/users"
-#    ln -sf /mnt/elastic-internal/xpack-file-realm/users /mnt/local-config/users
+  for file in "${config_files[@]}"; do
+    echo "Linking ${MOUNT_REMOTE_CONFIG}/${file} to ${MOUNT_LOCAL_CONFIG}/${file}"
+    ln -sf "${MOUNT_REMOTE_CONFIG}/${file}" "${MOUNT_LOCAL_CONFIG}/${file}"
+  done
 
-#    echo "Linking /mnt/elastic-internal/xpack-file-realm/roles.yml to /mnt/local-config/roles.yml"
-#    ln -sf /mnt/elastic-internal/xpack-file-realm/roles.yml /mnt/local-config/roles.yml
+  echo "File linking duration: $(get_duration ${ln_start}) sec."
+}
 
-#    echo "Linking /mnt/elastic-internal/xpack-file-realm/users_roles to /mnt/local-config/users_roles"
-#    ln -sf /mnt/elastic-internal/xpack-file-realm/users_roles /mnt/local-config/users_roles
+prepare_fs() {
+  local script_start
+  script_start=$(date +%s)
 
-    echo "Linking /mnt/remote-config/elasticsearch.yml to /mnt/local-config/elasticsearch.yml"
-    ln -sf /mnt/remote-config/elasticsearch.yml /mnt/local-config/elasticsearch.yml
+  echo "Starting init script"
 
-    echo "Linking /mnt/remote-config/log4j2.properties to /mnt/local-config/log4j2.properties"
-    ln -sf /mnt/remote-config/log4j2.properties /mnt/local-config/log4j2.properties
+  if ! check_distribution; then
+    echo "Unsupported distribution"
+    exit 42
+  fi
 
-#    echo "Linking /mnt/elastic-internal/unicast-hosts/unicast_hosts.txt to /mnt/local-config/unicast_hosts.txt"
-#    ln -sf /mnt/elastic-internal/unicast-hosts/unicast_hosts.txt /mnt/local-config/unicast_hosts.txt
+  persist_files
 
-#    echo "Linking /mnt/elastic-internal/xpack-file-realm/service_tokens to /mnt/local-config/service_tokens"
-#    ln -sf /mnt/elastic-internal/xpack-file-realm/service_tokens /mnt/local-config/service_tokens
+  create_config_links
 
-echo "File linking duration: $(duration $ln_start) sec."
+  echo "Init script successful"
+  echo "Script duration: $(get_duration ${script_start}) sec."
+}
 
+# This is magic for shellspec ut framework.
+# Sometime, functions are defined in a single shell script.
+# You will want to test it. but you do not want to run the script.
+# When included from shellspec, __SOURCED__ variable defined and script
+# end here. The script path is assigned to the __SOURCED__ variable.
+${__SOURCED__:+false} : || return 0
 
-
-
-######################
-#         End        #
-######################
-
-echo "Init script successful"
-echo "Script duration: $(duration $script_start) sec."
+# main
+prepare_fs

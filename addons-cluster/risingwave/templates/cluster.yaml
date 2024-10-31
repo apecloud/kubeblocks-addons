@@ -7,13 +7,6 @@ metadata:
     {{ include "risingwave-cluster.labels" . | nindent 4 }}
 spec:
   terminationPolicy: {{ .Values.terminationPolicy }}
-  affinity:
-    {{- with $.Values.topologyKeys }}
-    topologyKeys: {{ . | toYaml | nindent 6 }}
-    {{- end }}
-  {{- with $.Values.tolerations }}
-  tolerations: {{ . | toYaml | nindent 4 }}
-  {{- end }}
   componentSpecs:
   - componentDef: risingwave-frontend
     name: frontend

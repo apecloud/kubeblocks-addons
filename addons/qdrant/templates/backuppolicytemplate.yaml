@@ -5,9 +5,9 @@ metadata:
   labels:
     {{- include "qdrant.labels" . | nindent 4 }}
 spec:
-  serviceKind: Qdrant
+  serviceKind: qdrant
   compDefs:
-    - qdrant
+    - {{ include "qdrant.cmpdRegexPattern" . }}
   target:
     role: ""
     strategy: All

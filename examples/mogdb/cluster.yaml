@@ -16,8 +16,6 @@ spec:
   componentSpecs:
   - name: mogdb
     componentDef: mogdb-5
-    enabledLogs:
-    - running
     serviceAccountName: kb-mogdb-cluster
     replicas: 2
     resources:

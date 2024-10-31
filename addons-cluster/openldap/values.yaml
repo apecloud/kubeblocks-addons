@@ -35,11 +35,6 @@ resources: {}
   #   cpu: 100m
   #   memory: 128Mi
 
-topologyKeys:
-  - kubernetes.io/hostname
-
-tolerations: []
-
 ## Enable persistence using Persistent Volume Claims
 ## ref: https://kubernetes.io/docs/user-guide/persistent-volumes/
 ##

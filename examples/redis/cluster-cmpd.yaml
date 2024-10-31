@@ -18,9 +18,6 @@ spec:
     componentDef: redis-7
     # Determines whether the metrics exporter needs to be published to the service endpoint.  
     disableExporter: true
-    # Specifies which types of logs should be collected for the Cluster. 
-    enabledLogs:
-    - running
     # Specifies the name of the ServiceAccount required by the running Component.   
     serviceAccountName: kb-redis-cluster
     # Each component supports running multiple replicas to provide high availability and persistence. This field can be used to specify the desired number of replicas.

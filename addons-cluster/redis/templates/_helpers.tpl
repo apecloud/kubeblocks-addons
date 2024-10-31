@@ -53,8 +53,6 @@ Define redis ComponentSpec with ComponentDefinition.
     serviceType: NodePort
     podService: true
   {{- end }}
-  enabledLogs:
-    - running
   serviceAccountName: {{ include "kblib.serviceAccountName" . }}
   {{- include "kblib.componentResources" . | indent 2 }}
   {{- include "kblib.componentStorages" . | indent 2 }}
