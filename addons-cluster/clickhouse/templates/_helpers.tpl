@@ -140,7 +140,7 @@ Define clickhouse keeper componentSpec with ComponentDefinition.
         resources:
           requests:
             storage: {{ print .Values.keeper.storage "Gi" }}
-  {{ include "clickhouse-cluster.tls" . | indent 2 }}
+  {{- include "clickhouse-cluster.tls" . | indent 2 }}
 {{- end }}
 
 {{/*

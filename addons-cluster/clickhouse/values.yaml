@@ -14,8 +14,8 @@ sharding:
   enabled: false
 
 ## ClickHouse per shard component configurations
-cpu: 0.5
-memory: 1
+cpu: 1
+memory: 2
 
 ## CPU and memory requests for the ClickHouse shard
 requests:
@@ -38,8 +38,8 @@ keeper:
   ## Number of ClickHouse Keeper replicas
   replicaCount: 1
   storageClassName:
-  cpu: 0.5
-  memory: 1
+  cpu: 1
+  memory: 2
   storage: 10
   tolerations: []
 
