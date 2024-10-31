@@ -10,15 +10,15 @@ spec:
     default: true
     components:
     - name: mysql
-      compDef: apecloud-mysql
+      compDef: {{ include "apecloud-mysql.cmpdNameApecloudMySQLPrefix" . }}
   - name: apecloud-mysql-proxy
     components:
     - name: mysql
-      compDef: apecloud-mysql
+      compDef: {{ include "apecloud-mysql.cmpdNameApecloudMySQLPrefix" . }}
     - name: wescale-ctrl
-      compDef: wescale-ctrl
+      compDef: {{ include "apecloud-mysql.cmpdNameWescaleCtrlPrefix" . }}
     - name: wescale
-      compDef: wescale
+      compDef: {{ include "apecloud-mysql.cmpdNameWescalePrefix" . }}
     orders:
       provision:
       - mysql
@@ -27,13 +27,13 @@ spec:
   - name: apecloud-mysql-proxy-etcd
     components:
     - name: mysql
-      compDef: apecloud-mysql
+      compDef: {{ include "apecloud-mysql.cmpdNameApecloudMySQLPrefix" . }}
     - name: etcd
       compDef: {{ .Values.etcd.etcdCmpdName }}
     - name: wescale-ctrl
-      compDef: wescale-ctrl
+      compDef: {{ include "apecloud-mysql.cmpdNameWescaleCtrlPrefix" . }}
     - name: wescale
-      compDef: wescale
+      compDef: {{ include "apecloud-mysql.cmpdNameWescalePrefix" . }}
     orders:
       provision:
       - etcd

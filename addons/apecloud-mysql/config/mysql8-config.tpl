@@ -102,7 +102,7 @@ log_error=/data/mysql/log/mysqld-error.log
 slow_query_log=ON
 long_query_time=5
 slow_query_log_file=/data/mysql/log/mysqld-slowquery.log
-general_log=ON
+general_log=OFF
 general_log_file=/data/mysql/log/mysqld.log
 
 {{- if eq $.cluster.metadata.labels.auditLogEnabled "true" }}

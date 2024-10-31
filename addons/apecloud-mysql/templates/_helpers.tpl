@@ -6,24 +6,6 @@ Expand the name of the chart.
 {{- end }}
 
 {{/*
-Create a default fully qualified app name.
-We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
-If release name contains chart name it will be used as a full name.
-*/}}
-{{- define "apecloud-mysql.fullname" -}}
-{{- if .Values.fullnameOverride }}
-{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
-{{- else }}
-{{- $name := default .Chart.Name .Values.nameOverride }}
-{{- if contains $name .Release.Name }}
-{{- .Release.Name | trunc 63 | trimSuffix "-" }}
-{{- else }}
-{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
-{{- end }}
-{{- end }}
-{{- end }}
-
-{{/*
 Create chart name and version as used by the chart label.
 */}}
 {{- define "apecloud-mysql.chart" -}}
@@ -51,16 +33,11 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+Common annotations
 */}}
-{{- define "apecloud-mysql.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "apecloud-mysql.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
+{{- define "apecloud-mysql.annotations" -}}
+helm.sh/resource-policy: keep              
 {{- end }}
-{{- end }}
-
 
 {{/*
 Generate scripts configmap
@@ -174,20 +151,10 @@ lifecycleActions:
         - /tools/config/dbctl/components
         -  wesql
         - leavemember
-  switchover:
-    withCandidate:
-      exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag }}
-        command:
-          - /scripts/switchover-with-candidate.sh
-    withoutCandidate:
-      exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag }}
-        command:
-          - /scripts/switchover-without-candidate.sh
   accountProvision:
     exec:
       container: mysql
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.30-5.beta3.20240330.g94d1caf.15
       command:
         - bash
         - -c
@@ -213,14 +180,14 @@ vars:
     valueFrom:
       credentialVarRef:
         # it will match a comp in the cluster with cmpd name starting with "apecloud-mysql"
-        compDef: {{ include "apecloud-mysql.componentDefName" . }}
+        compDef: {{ include "apecloud-mysql.cmpdNameApecloudMySQLPrefix" . }}
         name: root
         optional: false
         username: Required
   - name: MYSQL_ROOT_PASSWORD
     valueFrom:
       credentialVarRef:
-        compDef: {{ include "apecloud-mysql.componentDefName" . }}
+        compDef: {{ include "apecloud-mysql.cmpdNameApecloudMySQLPrefix" . }}
         name: root
         optional: false
         password: Required
@@ -252,6 +219,40 @@ vars:
         port: 
           name: client
           option: Optional
+  - name: MY_POD_LIST
+    valueFrom:
+      componentVarRef:
+        optional: false
+        podNames: Required
+  - name: MY_COMP_NAME
+    valueFrom:
+      componentVarRef:
+        optional: false
+        shortName: Required
+  - name: MY_COMP_REPLICAS
+    valueFrom:
+      componentVarRef:
+        optional: false
+        replicas: Required
+  - name: MY_CLUSTER_NAME
+    valueFrom:
+      clusterVarRef:
+        clusterName: Required
+  - name: MY_CLUSTER_UID
+    valueFrom:
+      clusterVarRef:
+        optional: false
+        clusterUID: Required
+  ## the mysql primary pod name which is dynamically selected, caution to use it
+  - name: MYSQL_LEADER_POD_NAME
+    valueFrom:
+      componentVarRef:
+        optional: true
+        podNamesForRole:
+          role: leader
+          option: Optional
+  - name: SYNCER_HTTP_PORT
+    value: "3601"
 {{- end -}}
 
 {{- define "apecloud-mysql.spec.runtime.mysql" -}}
@@ -285,9 +286,28 @@ env:
   - name: KB_MYSQL_CLUSTER_UID
     value: $(KB_CLUSTER_UID)
   - name: KB_MYSQL_N
-    value: $(KB_REPLICA_COUNT)
+    value: $(KB_COMP_REPLICAS)
   - name: CLUSTER_DOMAIN
     value: {{ .Values.clusterDomain }}
+  - name: MY_POD_NAME
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.name
+  - name: MY_POD_UID
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.uid
+  - name: MY_POD_IP
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: status.podIP
+  - name: KB_SERVICE_CHARACTER_TYPE
+    value: wesql
+  - name: PATH
+    value: /tools/xtrabackup/bin:/tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 volumeMounts:
   - mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
     name: data
@@ -365,13 +385,4 @@ volumeMounts:
     path: /var/log/kubeblocks
     type: DirectoryOrCreate
 {{- end }}
-- name: annotations
-  downwardAPI:
-    items:
-      - path: "leader"
-        fieldRef:
-          fieldPath: metadata.annotations['cs.apps.kubeblocks.io/leader']
-      - path: "component-replicas"
-        fieldRef:
-          fieldPath: metadata.annotations['apps.kubeblocks.io/component-replicas']
 {{- end -}}

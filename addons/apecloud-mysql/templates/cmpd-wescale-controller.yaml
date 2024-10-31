@@ -1,0 +1,93 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "apecloud-mysql.cmpdNameWescaleCtrl" . }}
+  labels:
+    {{- include "apecloud-mysql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "apecloud-mysql.annotations" . | nindent 4 }}
+spec:
+  provider: kubeblocks.io
+  description: wescale controller
+  serviceKind: wescale-ctrl
+  serviceVersion: "0.2.7"
+  serviceRefDeclarations:
+    - name: etcd
+      serviceRefDeclarationSpecs:
+        - serviceKind: etcd
+          serviceVersion: "^*"
+      optional: true
+  scripts:
+    - name: apecloud-mysql-scripts
+      templateRef: {{ include "apecloud-mysql.cmScriptsName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  lifecycleActions:
+    preTerminate:
+      exec:
+        image: {{ .Values.wesqlscale.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
+        command: ["/scripts/etcd-clean.sh"]
+  runtime:
+    containers:
+      - name: vtctld
+        image: {{ .Values.wesqlscale.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.wesqlscale.image.pullPolicy }}
+        ports:
+          - containerPort: 15000
+            name: vtctld-webport
+          - containerPort: 15999
+            name: vtctld-grpcport
+        env:
+          - name: CELL
+            value: {{ .Values.wesqlscale.cell | default "zone1" | quote }}
+          - name: VTCTLD_SERVER
+            value: "$(KB_CLUSTER_NAME)-wescale-ctrl-headless"
+          - name: VTCTLD_WEB_PORT
+            value: "15000"
+          - name: VTCTLD_GRPC_PORT
+            value: "15999"
+          - name: CLUSTER_DOMAIN
+            value: {{ .Values.clusterDomain }}
+        command: ["/scripts/vtctld.sh"]
+        volumeMounts:
+          - name: scripts
+            mountPath: /scripts
+          - name: data
+            mountPath: /vtdataroot
+  vars:
+    - name: MYSQL_ROOT_USER
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "apecloud-mysql.cmpdNameApecloudMySQLPrefix" . }}
+          name: root
+          optional: false
+          username: Required
+    - name: MYSQL_ROOT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "apecloud-mysql.cmpdNameApecloudMySQLPrefix" . }}
+          name: root
+          optional: false
+          password: Required
+    - name: SERVICE_ETCD_ENDPOINT
+      valueFrom:
+        serviceRefVarRef:
+          name: etcd
+          endpoint: Required
+          optional: true
+    - name: LOCAL_ETCD_POD_FQDN
+      valueFrom:
+        componentVarRef:
+          compDef: {{ .Values.etcd.etcdCmpdName }}
+          optional: true
+          podFQDNs: Required
+    - name: LOCAL_ETCD_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ .Values.etcd.etcdCmpdName }}
+          name: headless
+          optional: true
+          port: 
+            name: client
+            option: Optional

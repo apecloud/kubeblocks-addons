@@ -155,12 +155,6 @@
       "type": "string",
       "default": ""
     },
-    "clusterVersionOverride": {
-      "title": "ClusterVersionOverride",
-      "description": "Override cluster version in the metadata name of the ClusterVersion.",
-      "type": "string",
-      "default": ""
-    },
     "mysqlConfigs": {
       "title": "MysqlConfigs",
       "description": "Data path configs for MySQL.",
