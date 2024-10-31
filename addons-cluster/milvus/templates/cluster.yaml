@@ -9,7 +9,6 @@ spec:
   clusterDef: milvus
   topology: cluster
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
-  {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
     {{- if .Values.proxy.enabled }}
     - name: proxy

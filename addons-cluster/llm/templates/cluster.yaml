@@ -8,7 +8,6 @@ metadata:
     "kubeblocks.io/extra-env": "{\"MODEL_NAME\":\"{{ .Values.model }}\", \"EXTRA_ARGS\":\"{{ .Values.extraArgs }}\", \"MODEL_URL\":\"{{ .Values.url }}\", \"QUANTIZE\":\"{{ .Values.quantize }}\"}"
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
-  {{- include "kblib.affinity" . | indent 2 }}
 {{ if .Values.cpuMode }}
   clusterDef: ggml  # ref clusterDefinition.name
   componentSpecs:

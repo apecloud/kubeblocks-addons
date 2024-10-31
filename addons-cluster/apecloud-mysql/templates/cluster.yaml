@@ -12,7 +12,6 @@ metadata:
   {{- end }}
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
-  {{- include "kblib.affinity" . | indent 2 }}
   clusterDef: apecloud-mysql # ref clusterdefinition.name
   topology: {{ include "apecloud-mysql-cluster.topology" . }}
   componentSpecs:

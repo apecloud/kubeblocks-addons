@@ -4,7 +4,7 @@ description: A Helm chart for Kubernetes
 
 dependencies:
   - name: kblib
-    version: 0.1.1
+    version: 0.1.2
     repository: file://../kblib
     alias: extra
 

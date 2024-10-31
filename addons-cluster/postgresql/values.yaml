@@ -36,9 +36,6 @@ storage: 20
 ## @param monitor sidecar
 sidecars:
  - exporter
-
-extra:
-  podAntiAffinity: Required
   
 etcd:
   proxyEnabled: false
