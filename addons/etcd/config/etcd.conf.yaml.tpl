@@ -1,16 +1,14 @@
 # https://github.com/etcd-io/etcd/blob/main/etcd.conf.yml.sample
 # using this config file will ignore ALL command-line flag and environment variables.
 
-{{- $peerProtocol := "http" -}}
-{{- $clientProtocol := "http" -}}
-{{- if $.component.tlsConfig -}}
-  {{- if eq .PEER_TLS "true" -}}
-    {{- $peerProtocol = "https" -}}
-  {{- end -}}
-  {{- if eq .CLIENT_TLS "true" -}}
-    {{- $clientProtocol = "https" -}}
-  {{- end -}}
-{{- end -}}
+{{- $peer_protocol := "http" }}
+{{- $client_protocol := "http" }}
+{{- if and $.component.tlsConfig (eq .PEER_TLS "true") }}
+  {{- $peer_protocol = "https" }}
+{{- end }}
+{{- if and $.component.tlsConfig (eq .CLIENT_TLS "true") }}
+  {{- $client_protocol = "https" }}
+{{- end }}
 
 # Human-readable name for this member.
 name: 'default'
@@ -35,10 +33,10 @@ election-timeout: 1000
 quota-backend-bytes: 0
 
 # List of comma separated URLs to listen on for peer traffic.
-listen-peer-urls: {{$peerProtocol}}://0.0.0.0:2380
+listen-peer-urls: {{ $peer_protocol }}://0.0.0.0:2380
 
 # List of comma separated URLs to listen on for client traffic.
-listen-client-urls: {{$clientProtocol}}://0.0.0.0:2379
+listen-client-urls: {{ $client_protocol }}://0.0.0.0:2379
 
 # Maximum number of snapshot files to retain (0 is unlimited).
 max-snapshots: 5
@@ -51,11 +49,11 @@ cors:
 
 # List of this member's peer URLs to advertise to the rest of the cluster.
 # The URLs needed to be a comma-separated list.
-initial-advertise-peer-urls: {{$peerProtocol}}://0.0.0.0:2380
+initial-advertise-peer-urls: {{ $peer_protocol }}://0.0.0.0:2380
 
 # List of this member's client URLs to advertise to the public.
 # The URLs needed to be a comma-separated list.
-advertise-client-urls: {{$clientProtocol}}://0.0.0.0:2379
+advertise-client-urls: {{ $client_protocol }}://0.0.0.0:2379
 
 # Discovery URL used to bootstrap the cluster.
 discovery:
@@ -69,36 +67,36 @@ discovery-proxy:
 # DNS domain used to bootstrap initial cluster.
 discovery-srv:
 
-{{ define "INIT_PEERS" -}}
-  {{- $peerProtocol := "http" -}}
-  {{- if and $.component.tlsConfig (eq .PEER_TLS "true") -}}
-    {{- $peerProtocol = "https" -}}
-  {{- end -}}
-  {{- if (index . "PEER_ENDPOINT") -}}
-    {{- $endpoints := splitList "," .PEER_ENDPOINT -}}
-    {{- range $idx, $endpoint := $endpoints -}}
-      {{- if $idx -}},{{- end -}}
-      {{- $hostname := index (splitList ":" $endpoint) 0 -}}
+{{- define "init_peers" }}
+  {{- $peer_protocol := "http" }}
+  {{- if and $.component.tlsConfig (eq .PEER_TLS "true") }}
+    {{- $peer_protocol = "https" }}
+  {{- end }}
+  {{- if (index . "PEER_ENDPOINT") }}
+    {{- $endpoints := splitList "," .PEER_ENDPOINT }}
+    {{- range $idx, $endpoint := $endpoints }}
+      {{- if $idx -}},{{- end }}
+      {{- $hostname := index (splitList ":" $endpoint) 0 }}
       {{- if contains ":" $endpoint }}
-        {{- $ip := index (splitList ":" $endpoint) 1 -}}
-        {{- printf "%s=%s://%s:2380" $hostname $peerProtocol $ip -}}
-      {{- else -}}
-        {{- printf "%s=%s://%s:2380" $hostname $peerProtocol $hostname -}}
-      {{- end -}}
-    {{- end -}}
-  {{- else if .PEER_FQDNS -}}
-    {{- $peerfqdns := splitList "," .PEER_FQDNS -}}
-    {{- range $idx, $fqdn := $peerfqdns -}}
-      {{- if $idx -}},{{- end -}}
-      {{- $hostname := index (splitList "." $fqdn) 0 -}}
-      {{- printf "%s=%s://%s:2380" $hostname $peerProtocol $fqdn -}}
-    {{- end -}}
-  {{- end -}}
-{{- end -}}
+        {{- $ip := index (splitList ":" $endpoint) 1 }}
+        {{- printf "%s=%s://%s:2380" $hostname $peer_protocol $ip }}
+      {{- else }}
+        {{- printf "%s=%s://%s:2380" $hostname $peer_protocol $hostname }}
+      {{- end }}
+    {{- end }}
+  {{- else if .PEER_FQDNS }}
+    {{- $peerfqdns := splitList "," .PEER_FQDNS }}
+    {{- range $idx, $fqdn := $peerfqdns }}
+      {{- if $idx -}},{{- end }}
+      {{- $hostname := index (splitList "." $fqdn) 0 }}
+      {{- printf "%s=%s://%s:2380" $hostname $peer_protocol $fqdn }}
+    {{- end }}
+  {{- end }}
+{{- end }}
 
 # Comma separated string of initial cluster configuration for bootstrapping.
 # Example: initial-cluster: "infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380"
-initial-cluster: {{ template "INIT_PEERS" . }}
+initial-cluster: {{ template "init_peers" . }}
 
 # Initial cluster token for the etcd cluster during bootstrap.
 initial-cluster-token: 'etcd-cluster'
@@ -131,42 +129,39 @@ proxy-write-timeout: 5000
 proxy-read-timeout: 0
 
 {{ if $.component.tlsConfig -}}
-
-{{- $CA_FILE := getCAFile -}}
-{{- $CERT_FILE := getCertFile -}}
-{{- $KEY_FILE := getKeyFile -}}
-
-{{- if eq $clientProtocol "https" -}}
+{{- $ca := getCAFile }}
+{{- $cert := getCertFile }}
+{{- $key := getKeyFile }}
+{{- if eq $client_protocol "https" }}
 client-transport-security:
   # Path to the client server TLS cert file.
-  cert-file: {{$CERT_FILE}}
+  cert-file: {{ $cert }}
 
   # Path to the client server TLS key file.
-  key-file: {{$KEY_FILE}}
+  key-file: {{ $key }}
 
   # Enable client cert authentication.
   client-cert-auth: true
 
   # Path to the client server TLS trusted CA cert file.
-  trusted-ca-file: {{$CA_FILE}}
+  trusted-ca-file: {{ $ca }}
 
   # Client TLS using generated certificates
   auto-tls: false
 {{- end }}
-
-{{ if eq $peerProtocol "https" }}
+{{ if eq $peer_protocol "https" }}
 peer-transport-security:
   # Path to the peer server TLS cert file.
-  cert-file: {{$CERT_FILE}}
+  cert-file: {{ $cert }}
 
   # Path to the peer server TLS key file.
-  key-file: {{$KEY_FILE}}
+  key-file: {{ $key }}
 
   # Enable peer client cert authentication.
   client-cert-auth: true
 
   # Path to the peer server TLS trusted CA cert file.
-  trusted-ca-file: {{$CA_FILE}}
+  trusted-ca-file: {{ $ca }}
 
   # Peer TLS using generated certificates.
   auto-tls: false
@@ -176,10 +171,8 @@ peer-transport-security:
 
   # Allowed TLS hostname for inter peer authentication.
   allowed-hostname:
-
-{{ end -}}
-
-{{- end -}}
+{{- end }}
+{{- end }}
 
 # The validity period of the self-signed certificate, the unit is year.
 self-signed-cert-validity: 1

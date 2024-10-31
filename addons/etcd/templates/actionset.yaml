@@ -1,7 +1,7 @@
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: {{ include "etcd.backupActionSetName" .}}
+  name: {{ include "etcd.backupActionSet" .}}
   labels:
     {{- include "etcd.labels" . | nindent 4 }}
 spec:
@@ -17,13 +17,13 @@ spec:
   backupType: Full
   backup:
     backupData:
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
+      image: {{ include "etcd356.image" . }}
       runOnTargetPodNode: true
       syncProgress:
         enabled: false
         intervalSeconds: 5
       command:
-      - /bin/sh
+      - /bin/bash
       - -c
       - |
         {{- .Files.Get "scripts/common.sh" | nindent 8 }}
@@ -31,10 +31,10 @@ spec:
   restore:
     postReady:
     - job:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
+        image: {{ include "etcd356.image" . }}
         runOnTargetPodNode: true
         command:
-        - /bin/sh
+        - /bin/bash
         - -c
         - |
           {{- .Files.Get "scripts/common.sh" | nindent 12 }}

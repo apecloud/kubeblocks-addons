@@ -1,9 +1,11 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: etcd
+  name: {{ include "etcd3.cmpdName" . }}
   labels:
     {{- include "etcd.labels" . | nindent 4 }}
+  annotations:
+    {{- include "etcd.annotations" . | nindent 4 }}
 spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
@@ -11,16 +13,17 @@ spec:
   serviceVersion: {{ .Chart.AppVersion }}
   runtime:
     initContainers:
-      - name: inject-shell
-        imagePullPolicy: {{default .Values.busyboxImage.pullPolicy "IfNotPresent"}}
+      - name: inject-bash
+        imagePullPolicy: {{default .Values.debianImage.pullPolicy "IfNotPresent"}}
         volumeMounts:
+          - name: scripts
+            mountPath: /scripts
           - name: shell
             mountPath: /shell
         command:
-          - bin/sh
+          - /bin/bash
           - -c
-          - |
-            {{- .Files.Get "scripts/inject-shell.sh" | nindent 14 }}
+          - scripts/inject-bash.sh
     containers:
       - name: etcd
         imagePullPolicy: {{ .Values.image.pullPolicy }}
@@ -37,29 +40,34 @@ spec:
           - name: scripts
             mountPath: /scripts
           - name: shell
-            mountPath: /shell
+            mountPath: /lib
         command:
-          - /shell/sh
+          - /lib/bin/bash
           - -c
           - |
-            export PATH=$PATH:/shell
-            # for convenient to use the same entrypoint
-            if [ ! -e /bin/sh ]; then
-              cp /shell/sh /bin
+            export PATH=$PATH:/lib/bin
+            if [ ! -e /bin/bash ]; then
+              cp /lib/bin/* /bin
             fi
             /scripts/start.sh
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
     volumes:
       - name: shell
         emptyDir: {}
   vars:
     - name: ETCD_VERSION
       value: {{ .Chart.AppVersion }}
-    - name: CLUSTER_DOMAIN
-      value: {{ .Values.clusterDomain }}
     - name: DATA_DIR
       value: {{ .Values.dataDir }}
     - name: CLUSTER_NAME
-      value: "$(KB_CLUSTER_COMP_NAME)"
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
     - name: TLS_MOUNT_PATH
       value: {{ .Values.tlsMountPath }}
     - name: CLIENT_TLS
@@ -86,6 +94,15 @@ spec:
           podFQDNsForRole:
             role: leader
             option: Required
+    - name: ETCD_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
   volumes:
     - name: data
       needSnapshot: true
@@ -112,62 +129,49 @@ spec:
   lifecycleActions:
     roleProbe:
       exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
+        image: {{ include "etcd356.image" . }}
+        container: etcd
         command:
-          - /bin/sh
+          - /bin/bash
           - -c
-          - |
-            {{- .Files.Get "scripts/common.sh" | nindent 14 }}
-            {{- .Files.Get "scripts/role-probe-script.sh" | nindent 14 }}
+          - scripts/roleprobe.sh
     memberJoin:
       exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
+        image: {{ include "etcd356.image" . }}
+        container: etcd
         command:
-          - /bin/sh
+          - /bin/bash
           - -c
-          - |
-            {{- .Files.Get "scripts/common.sh" | nindent 14 }}
-            {{- .Files.Get "scripts/etcd-member-join.sh" | nindent 14 }}
+          - scripts/member-leave.sh
     memberLeave:
       exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
+        image: {{ include "etcd356.image" . }}
+        container: etcd
         command:
-          - /bin/sh
+          - /bin/bash
           - -c
-          - |
-            {{- .Files.Get "scripts/common.sh" | nindent 14 }}
-            {{- .Files.Get "scripts/etcd-member-leave.sh" | nindent 14 }}
+          - scripts/member-leave.sh
     switchover:
       exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
-        env:
-          - name: CLUSTER_DOMAIN
-            value: {{ .Values.clusterDomain }}
+        image: {{ include "etcd356.image" . }}
+        container: etcd
         command:
-        - /bin/sh
-        - -c
-        - |
-          set -ex
-
-          {{- .Files.Get "scripts/common.sh" | nindent 12 }}
-          {{- .Files.Get "scripts/switchover.sh" | nindent 12 }}
-
-          if [ -z "$KB_SWITCHOVER_CANDIDATE_FQDN" ]; then
-              switchoverWithoutCandidate
-          else
-              switchoverWithCandidate
-          fi
+          - /bin/bash
+          - -c
+          - scripts/switchover.sh
   configs:
     - name: etcd-configuration-tpl
-      templateRef: {{ include "etcd.configTplName" .}}
-      constraintRef: {{ include "etcd.configConstraintName" .}}
+      templateRef: {{ include "etcd3.configurationTemplate" .}}
+      constraintRef: {{ include "etcd3.configConstraint" .}}
       namespace: {{ .Release.Namespace }}
       volumeName: config
       defaultMode: 0666
       reRenderResourceTypes:
         - hscale
+        - vscale
+  scripts:
     - name: etcd-scripts
-      templateRef: {{ include "etcd.cmScriptsName" .}}
+      templateRef: {{ include "etcd3.scriptsTemplate" .}}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555

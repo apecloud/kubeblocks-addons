@@ -36,6 +36,9 @@ Common labels
 {{- define "etcd.labels" -}}
 helm.sh/chart: {{ include "etcd.chart" . }}
 {{ include "etcd.selectorLabels" . }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
@@ -48,29 +51,99 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Define config template name
+Common annotations
 */}}
-{{- define "etcd.configTplName" -}}
-etcd-config-template
+{{- define "etcd.annotations" -}}
+helm.sh/resource-policy: keep
 {{- end }}
 
 {{/*
-Define config constriant name
+Define etcd 3.X component definition name
 */}}
-{{- define "etcd.configConstraintName" -}}
-etcd-config-constraints
+{{- define "etcd3.cmpdName" -}}
+{{- if eq (len .Values.cmpdVersionPrefix.major3 ) 0 -}}
+etcd-3-{{ .Chart.Version }}
+{{- else -}}
+{{- printf "%s" .Values.cmpdVersionPrefix.major3 -}}-{{ .Chart.Version }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define etcd component definition regular expression name prefix
+*/}}
+{{- define "etcd3.cmpdRegexpPattern" -}}
+^etcd-3.*
+{{- end -}}
+
+{{/*
+Define etcd 3.X component configuration template name
+*/}}
+{{- define "etcd3.configurationTemplate" -}}
+etcd3-config-template-{{ .Chart.Version }}
 {{- end }}
 
 {{/*
-Define configmap name
+Define etcd 3.X component config constriant name
 */}}
-{{- define "etcd.cmScriptsName" -}}
-etcd-scripts
+{{- define "etcd3.configConstraint" -}}
+etcd3-config-constraints
+{{- end }}
+
+{{/*
+Define etcd 3.X component script template name
+*/}}
+{{- define "etcd3.scriptsTemplate" -}}
+etcd3-scripts-template-{{.Chart.Version}}
+{{- end }}
+
+{{/*
+Generate scripts configmap
+*/}}
+{{- define "etcd.extend.scripts" -}}
+{{- range $path, $_ :=  $.Files.Glob "scripts/**" }}
+{{ $path | base }}: |-
+{{- $.Files.Get $path | nindent 2 }}
+{{- end }}
 {{- end }}
 
 {{/*
 Define etcdctl backup actionSet name
 */}}
-{{- define "etcd.backupActionSetName" -}}
+{{- define "etcd.backupActionSet" -}}
 etcdctl-backup
 {{- end -}}
+
+{{/*
+Define etcd image repository
+*/}}
+{{- define "etcd.repository" -}}
+{{ .Values.image.registry | default "gcr.io" }}/{{ .Values.image.repository | default "etcd-development/etcd"}}
+{{- end }}
+
+{{/*
+Define latest etcd image
+*/}}
+{{- define "etcd3.image" -}}
+{{ include "etcd.repository" . }}:{{ .Values.image.tag.major3.minor515 }}
+{{- end }}
+
+{{/*
+Define latest etcd image build with busybox brinaries
+*/}}
+{{- define "etcd356.image" -}}
+{{ include "etcd.repository" . }}:{{ .Values.image.tag.major3.minor56 }}
+{{- end }}
+
+{{/*
+Define debian image repository
+*/}}
+{{- define "debian.repository" -}}
+{{ .Values.debianImage.registry | default "docker.io" }}/{{ .Values.debianImage.repository }}
+{{- end }}
+
+{{/*
+Define debian image
+*/}}
+{{- define "debian.image" -}}
+{{ include "debian.repository" . }}:{{ .Values.debianImage.tag }}
+{{- end }}

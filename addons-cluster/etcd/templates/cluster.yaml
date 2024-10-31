@@ -1,22 +1,7 @@
-apiVersion: apps.kubeblocks.io/v1
-kind: Cluster
-metadata:
-  name: {{ include "clustername" . }}
-  labels:
-    {{- include "etcd-cluster.labels" . | nindent 4 }}
-spec:
-  terminationPolicy: {{ .Values.terminationPolicy }}
+{{- include "kblib.clusterCommon" . }}
   componentSpecs:
     - name: etcd
-      {{- if .Values.peerService.name }}
-      services:
-        - name: {{ .Values.peerService.name }}
-          serviceType: {{ .Values.peerService.type }}
-          podService: true
-          {{- if and (eq .Values.peerService.type "LoadBalancer") (not (empty .Values.peerService.annotations)) }}
-          annotations:  {{ .Values.peerService.annotations | toYaml | nindent 12 }}
-          {{- end }}
-      {{- end }}
+      {{- include "etcd-cluster.componentPeerService" . | indent 6 }}
       componentDef: etcd
       {{- if .Chart.AppVersion }}
       serviceVersion: {{ .Chart.AppVersion }}
@@ -26,45 +11,8 @@ spec:
       issuer:
         name: KubeBlocks
       {{- end }}
-      disableExporter: {{ .Values.disableExporter }}
       replicas: {{ .Values.replicas | default "3" }}
-      {{- with .Values.resources }}
-      resources:
-        limits:
-          cpu: {{ .limits.cpu | quote }}
-          memory: {{ .limits.memory | quote }}
-        requests:
-          cpu: {{ .requests.cpu | quote }}
-          memory: {{ .requests.memory | quote }}
-      {{- end }}
-      {{- if .Values.persistence.enabled }}
-      volumeClaimTemplates:
-        - name: data
-          spec:
-            storageClassName: {{ .Values.persistence.data.storageClassName }}
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: {{ .Values.persistence.data.size }}
-      {{- end }}
-  {{- if .Values.clientService.name }}
-  services:
-    - name: {{ .Values.clientService.name }}
-      serviceName: {{ .Values.clientService.name }}
-      {{- if and (eq .Values.clientService.type "LoadBalancer") (not (empty .Values.clientService.annotations)) }}
-      annotations: {{ .Values.clientService.annotations | toYaml | nindent 8 }}
-      {{- end }}
-      spec:
-        type: {{ .Values.clientService.type }}
-        ports:
-          - port: {{ .Values.clientService.port }}
-            targetPort: 2379
-            {{- if.Values.clientService.nodePort }}
-            nodePort: {{ .Values.clientService.nodePort }}
-            {{- end }}
-      componentSelector: etcd
-      {{- if ne .Values.clientService.type "LoadBalancer" }}
-      roleSelector: {{ .Values.clientService.role }}
-      {{- end }}
-  {{- end }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+  {{- include "etcd-cluster.clientService" . | indent 2 }}

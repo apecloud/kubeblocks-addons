@@ -39,13 +39,13 @@ spec:
         podSpec:
           containers:
             - name: etcd-defragmentation
-              image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor5.patch6 }}
+              image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major3.minor56 }}
               imagePullPolicy: IfNotPresent
               command:
                 - sh
                 - -c
                 - |
-                  getClientProtocol() {
+                  get_client_protocol() {
                     # check client tls if is enabled
                     line=$(grep 'advertise-client-urls' ${TMP_CONFIG_PATH})
                     if echo $line | grep -q 'https'; then
@@ -54,11 +54,11 @@ spec:
                       echo "http"
                     fi
                   }
-                  
-                  execEtcdctl() { 
+
+                  exec_etcdctl() {
                     local endpoints=$1
                     shift
-                    clientProtocol=$(getClientProtocol)
+                    clientProtocol=$( get_client_protocol)
                     tlsDir=$TLS_MOUNT_PATH
                     # check if the clientProtocol is https and the tlsDir is not empty
                     if [ $clientProtocol = "https" ] && [ -d "$tlsDir" ] && [ -s "${tlsDir}/ca.crt" ] && [ -s "${tlsDir}/tls.crt" ] && [ -s "${tlsDir}/tls.key" ]; then
@@ -80,4 +80,4 @@ spec:
                     ENDPOINTS="${ENDPOINTS}${PEER}:2379,"
                   done
                   ENDPOINTS=${ENDPOINTS%,}
-                  execEtcdctl "${ENDPOINTS}" defrag
+                  exec_etcdctl "${ENDPOINTS}" defrag

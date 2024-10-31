@@ -8,7 +8,12 @@ clusterDomain: ".cluster.local"
 dataMountPath: /var/run/etcd
 dataDir: /var/run/etcd/default.etcd
 
+# tls mount path
 tlsMountPath: /etc/pki/tls
+
+# If specified, the component definition will use it as prefix.
+cmpdVersionPrefix:
+  major3: "etcd-3"
 
 # a copy version of /etc/etcd/etcd.conf but add some modification
 tmpConfigPath: /var/run/etcd/etcd.conf
@@ -31,16 +36,17 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag:
     major3:
-      minor5: 
-        # latest version build with busybox brinaries
-        patch6: v3.5.6
-        # latest version build with distroless(default)
-        patch15: v3.5.15
+      # latest version build with busybox brinaries
+      minor56: v3.5.6
+      # latest version build with distroless(default)
+      minor515: v3.5.15
 
-busyboxImage:
-  # if the value of busyboxImage.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
+# remain the same lib dir with the original etcd image
+# used to inject bash to distroless etcd image
+debianImage:
+  # if the value of bashImage.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
   registry: docker.io
-  repository: busybox
+  repository: debian
   pullPolicy: IfNotPresent
   # use static compile version
-  tag: 1.35-musl
+  tag: bullseye-20241016
