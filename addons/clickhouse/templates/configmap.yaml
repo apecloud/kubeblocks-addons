@@ -1,14 +1,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: clickhouse-tpl
-  labels: {{- include "common.labels.standard" . | nindent 4 }}
-    {{- if .Values.commonLabels }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
-    {{- end }}
-  {{- if .Values.commonAnnotations }}
-  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-  {{- end }}
+  name: {{ include "clickhouse24.configurationTplName" . }}
+  labels:
+  {{- include "clickhouse.labels" . | nindent 4 }}
 data:
   00_default_overrides.xml: |
     {{- .Files.Get "configs/00_default_overrides.xml.tpl" | nindent 4 }}
@@ -16,14 +11,9 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: clickhouse-user-tpl
-  labels: {{- include "common.labels.standard" . | nindent 4 }}
-    {{- if .Values.commonLabels }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
-    {{- end }}
-  {{- if .Values.commonAnnotations }}
-  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-  {{- end }}
+  name: {{ include "clickhouse24.userTplName" . }}
+  labels:
+    {{- include "clickhouse.labels" . | nindent 4 }}
 data:
   user.xml: |
     {{- .Files.Get "configs/user.xml.tpl" | nindent 4 }}
@@ -31,29 +21,19 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: clickhouse-keeper-tpl
-  labels: {{- include "common.labels.standard" . | nindent 4 }}
-    {{- if .Values.commonLabels }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
-    {{- end }}
-  {{- if .Values.commonAnnotations }}
-  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-  {{- end }}
+  name: {{ include "clickhouse24.clientTplName" . }}
+  labels:
+    {{- include "clickhouse.labels" . | nindent 4 }}
 data:
-  ch-keeper_00_default_overrides.xml: |
-    {{- .Files.Get "configs/ch-keeper_00_default_overrides.xml.tpl" | nindent 4 }}
+  config.xml: |
+    {{- .Files.Get "configs/client.xml.tpl" | nindent 4 }}
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: clickhouse-client-tpl
-  labels: {{- include "common.labels.standard" . | nindent 4 }}
-    {{- if .Values.commonLabels }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
-    {{- end }}
-  {{- if .Values.commonAnnotations }}
-  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-  {{- end }}
+  name: {{ include "ch-keeper24.configurationTplName" . }}
+  labels:
+    {{- include "clickhouse.labels" . | nindent 4 }}
 data:
-  config.xml: |
-    {{- .Files.Get "configs/client.xml.tpl" | nindent 4 }}
+  ch_keeper_00_default_overrides.xml: |
+    {{- .Files.Get "configs/ch_keeper_00_default_overrides.xml.tpl" | nindent 4 }}

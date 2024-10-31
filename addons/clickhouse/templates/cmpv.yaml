@@ -3,25 +3,19 @@ kind: ComponentVersion
 metadata:
   name: clickhouse
   labels:
-      {{- include "clickhouse.labels" . | nindent 4 }}
-      {{- if .Values.commonLabels }}
-      {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
-      {{- end }}
-  {{- if .Values.commonAnnotations }}
-  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-  {{- end }}
+    {{- include "clickhouse.labels" . | nindent 4 }}
 spec:
   compatibilityRules:
     - releases:
         - 24.8.3
       compDefs:
-        - clickhouse-24
+        - {{ include "clickhouse24.cmpdRegexpPattern" . }}
     - releases:
         - 24.8.3
       compDefs:
-        - ch-keeper-24
+        - {{ include "ch-keeper24.cmpdRegexpPattern" . }}
   releases:
     - name: 24.8.3
       serviceVersion: 24.8.3
       images:
-        clickhouse: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:{{ default .Chart.AppVersion .Values.image.tag }}
+        clickhouse: {{ include "clickhouse.repository" . }}:24.8.3-debian-12-r1

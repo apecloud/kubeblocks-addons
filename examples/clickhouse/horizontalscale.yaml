@@ -1,4 +1,4 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: clickhouse-horizontalscaling
@@ -9,9 +9,9 @@ spec:
   type: HorizontalScaling
   # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
   horizontalScaling:
-    # Specifies the name of the Component.
-    # -  clickhouse
-    # -  clickhouse-1
   - componentName: clickhouse
     # Specifies the number of total replicas.
-    replicas: 2
+    scaleOut:
+      instances:
+        - name: clickhouse # Name of the instance
+          replicaChanges: 1

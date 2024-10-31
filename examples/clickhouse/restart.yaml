@@ -1,4 +1,4 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: clickhouse-restart
@@ -11,6 +11,5 @@ spec:
   restart:
     # Specifies the name of the Component.
     # - clickhouse
-    # - clickhouse-1
     # - ch-keeper
   - componentName: clickhouse

@@ -1,12 +1,9 @@
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
-  name: clickhouse-constraints
+  name: {{ include "clickhouse24.configConstraintName" . }}
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
-    {{- if .Values.commonLabels }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
-    {{- end }}
 spec:
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:

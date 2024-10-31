@@ -1,4 +1,4 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: clickhouse-volumeexpansion
@@ -11,7 +11,6 @@ spec:
   volumeExpansion:
     # Specifies the name of the Component.
     # - clickhouse
-    # - clickhouse-1
     # - ch-keeper
   - componentName: clickhouse
     # volumeClaimTemplates specifies the storage size and volumeClaimTemplate name.

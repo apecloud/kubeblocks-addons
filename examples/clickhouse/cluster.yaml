@@ -4,6 +4,12 @@ metadata:
   name: clickhouse-cluster
   namespace: default
 spec:
+  # Specifies the name of the ClusterDef to use when creating a Cluster.
+  clusterDef: clickhouse
+  # Specifies the clickhouse cluster topology defined in ClusterDefinition.Spec.topologies, support standalone, cluster
+  # - `standalone`: single clickhouse instance
+  # - `cluster`: clickhouse with ClickHouse Keeper as coordinator
+  topology: cluster
   # Specifies the behavior when a Cluster is deleted.
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
   # - `Halt`: Deletes Cluster resources like Pods and Services but retains Persistent Volume Claims (PVCs), allowing for data preservation while stopping other operations.
@@ -15,28 +21,17 @@ spec:
   # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
     - name: clickhouse
-      componentDef: clickhouse-1.0.0-alpha.0
+      componentDef: clickhouse-24
       serviceAccountName: kb-clickhouse-cluster
-      replicas: 1
-      resources:
-        limits:
-          cpu: '0.5'
-          memory: 1Gi
-        requests:
-          cpu: '0.5'
-          memory: 1Gi
-      volumeClaimTemplates:
-        - name: data
-          spec:
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: 20Gi
-    - name: clickhouse-1
-      componentDef: clickhouse-1.0.0-alpha.0
-      serviceAccountName: kb-clickhouse-cluster
-      replicas: 1
+      replicas: 2
+      systemAccounts:
+        - name: admin
+          passwordConfig:
+            length: 10
+            numDigits: 5
+            numSymbols: 0
+            letterCase: MixedCases
+            seed: clickhouse-cluster
       resources:
         limits:
           cpu: '0.5'
@@ -53,9 +48,17 @@ spec:
               requests:
                 storage: 20Gi
     - name: ch-keeper
-      componentDef: clickhouse-keeper-1.0.0-alpha.0
+      componentDef: ch-keeper-24
       serviceAccountName: kb-clickhouse-cluster
       replicas: 1
+      systemAccounts:
+        - name: admin
+          passwordConfig:
+            length: 10
+            numDigits: 5
+            numSymbols: 0
+            letterCase: MixedCases
+            seed: clickhouse-cluster
       resources:
         limits:
           cpu: '0.5'

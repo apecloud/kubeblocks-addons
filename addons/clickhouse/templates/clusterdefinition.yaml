@@ -4,24 +4,18 @@ metadata:
   name: clickhouse
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
-    {{- if .Values.commonLabels }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
-    {{- end }}
-  {{- if .Values.commonAnnotations }}
-  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-  {{- end }}
 spec:
   topologies:
     - name: standalone
       components:
         - name: clickhouse
-          compDef: clickhouse-24
-    - name: clickhouse-cluster
+          compDef: {{ include "clickhouse24.cmpdRegexpPattern" . }}
+    - name: cluster
       components:
         - name: clickhouse
-          compDef: clickhouse-24
+          compDef: {{ include "clickhouse24.cmpdRegexpPattern" .}}
         - name: ch-keeper
-          compDef: ch-keeper-24
+          compDef: {{ include "ch-keeper24.cmpdRegexpPattern" .}}
       orders:
         provision:
           - ch-keeper

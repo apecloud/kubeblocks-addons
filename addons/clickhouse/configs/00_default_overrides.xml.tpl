@@ -16,8 +16,8 @@
   {{- end }}
   <!-- Macros, self defined -->
   <macros>
-    <shard from_env="CLICKHOUSE_SHARD_ID"/>
-    <replica from_env="CLICKHOUSE_REPLICA_ID"/>
+    <shard from_env="CURRENT_SHARD_COMPONENT_SHORT_NAME"/>
+    <replica from_env="CURRENT_POD_NAME"/>
     <layer>{{ $clusterName }}</layer>
   </macros>
   <!-- Log Level -->
@@ -42,6 +42,7 @@
       </shard>
     </default>
   </remote_servers>
+  {{- if (index . "CH_KEEPER_POD_FQDN_LIST") }}
   <!-- Zookeeper configuration -->
   <zookeeper>
     {{- range $_, $host := splitList "," .CH_KEEPER_POD_FQDN_LIST }}
@@ -56,6 +57,7 @@
     </node>
     {{- end }}
   </zookeeper>
+  {{- end }}
   <!-- Prometheus metrics -->
   <prometheus>
     <endpoint>/metrics</endpoint>
