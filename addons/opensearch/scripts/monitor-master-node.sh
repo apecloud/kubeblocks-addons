@@ -26,7 +26,7 @@ http () {
     else
         BASIC_AUTH=''
     fi
-    curl -XGET -s -k --fail ${BASIC_AUTH} https://$(CLUSTER_NAME)-$(OPENSEARCH_COMPONENT_SHORT_NAME)-headless:9200:${path}
+    curl -XGET -s -k --fail ${BASIC_AUTH} https://${CLUSTER_NAME}-${OPENSEARCH_COMPONENT_SHORT_NAME}-headless:9200:${path}
 }
 
 cleanup () {
