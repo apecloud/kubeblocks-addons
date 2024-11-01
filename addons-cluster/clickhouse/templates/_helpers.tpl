@@ -184,8 +184,8 @@ Define clickhouse componentSpec with compatible ComponentDefinition API
   {{- with $.Values.tolerations }}
   tolerations: {{ .| toYaml | nindent 4 }}
   {{- end }}
-  {{- include "kblib.componentResources" . | indent 2 }}
-  {{- include "kblib.componentStorages" . | indent 2 }}
-  {{- include "clickhouse-cluster.tls" . | indent 2 }}
+  {{- include "kblib.componentResources" $ | indent 2 }}
+  {{- include "kblib.componentStorages" $ | indent 2 }}
+  {{- include "clickhouse-cluster.tls" $ | indent 2 }}
 {{- end }}
 {{- end }}

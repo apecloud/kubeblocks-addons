@@ -13,6 +13,9 @@ shardCount: 1
 sharding:
   enabled: false
 
+## Number of ClickHouse replicas per shard to deploy
+replicaCount: 2
+
 ## ClickHouse per shard component configurations
 cpu: 1
 memory: 2
@@ -25,9 +28,6 @@ requests:
 storageClassName:
 storage: 10
 disableExporter: false
-
-## Number of ClickHouse replicas per shard to deploy
-replicaCount: 2
 
 ## Tolerations for ClickHouse pods assignment
 ## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
