@@ -263,6 +263,7 @@ roleProbe:
       - /bin/bash
       - -c
       - |
+        source /scripts/prepare_env.sh
         topology_info=$(/kubeblocks/orchestrator-client -c topology -i $KB_CLUSTER_NAME) || true
         if [[ $topology_info == "" ]]; then
           echo -n "secondary"
@@ -292,6 +293,7 @@ memberLeave:
       - /bin/bash
       - -c
       - |
+        source /scripts/prepare_env.sh
         set +e
         master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i $KB_CLUSTER_NAME)
         last_digit=${KB_LEAVE_MEMBER_POD_NAME##*-}
