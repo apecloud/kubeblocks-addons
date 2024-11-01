@@ -91,12 +91,17 @@ spec:
           - --http-addr
           - 0.0.0.0:4000
           - --server-addr
-          - $(KB_POD_IP):3002
+          - $(POD_IP):3002
           - --store-addr
           - $(GREPTIMEDB_ETCD_SVC):2379
           - --config-file
           - /etc/greptimedb/config.toml
         env:
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
           - name: GREPTIMEDB_METASRV__DISABLE_REGION_FAILOVER
             value: {{ .Values.meta.disableRegionFailover | quote}}
     terminationGracePeriodSeconds: 10
