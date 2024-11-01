@@ -31,3 +31,24 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
+
+{{/*
+Common annotations
+*/}}
+{{- define "influxdb.annotations" -}}
+helm.sh/resource-policy: keep
+{{- end }}
+
+{{/*
+Define influxdb component definition name
+*/}}
+{{- define "influxdb.cmpdName" -}}
+influxdb-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define influxdb component definition regex pattern
+*/}}
+{{- define "influxdb.cmpdRegexpPattern" -}}
+^influxdb-
+{{- end -}}
