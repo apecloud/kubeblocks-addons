@@ -24,6 +24,6 @@ maintainers:
     url: https://github.com/sh2
 
 annotations:
-    addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
+    addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
     addon.kubeblocks.io/model: "time-series"
     addon.kubeblocks.io/provider: "community"
