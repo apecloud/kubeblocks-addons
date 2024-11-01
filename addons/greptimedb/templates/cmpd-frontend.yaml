@@ -1,14 +1,61 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: greptimedb-frontend-{{ .Chart.Version }}
+  name: {{ include "greptimedb-frontend.cmpdName" . }}
   labels:
     {{- include "greptimedb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "greptimedb.annotations" . | nindent 4 }}
 spec:
   provider: Community
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
   serviceVersion: {{ .Chart.AppVersion }}
+  services:
+    - name: client
+      spec:
+        ports:
+          - name: http
+            port: 4000
+            targetPort: http
+          - name: grpc
+            port: 4001
+            targetPort: grpc
+          - name: mysql
+            port: 4002
+            targetPort: mysql
+          - name: postgres
+            port: 4003
+            targetPort: postgres
+          - name: opentsdb
+            port: 4242
+            targetPort: opentsdb
+  configs:
+    - name: greptimedb-frontend
+      templateRef: {{ include "greptimedb-frontend.configTemplateName" . }}
+      volumeName: frontend-config
+      namespace: {{ .Release.Namespace }}
+  vars:
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: GREPTIMEDB_META_SVC
+      valueFrom:
+        serviceVarRef:
+          compDef: greptimedb-meta
+          name: headless
+          optional: false
+          host: Required
+      expression: {{ `{{ .GREPTIMEDB_META_SVC }}.{{ .CLUSTER_NAMESPACE }}.svc.cluster.local` | toYaml | nindent 8 }}
+    - name: GREPTIMEDB_DATANODE_SVC
+      valueFrom:
+        serviceVarRef:
+          compDef: greptimedb-datanode
+          name: headless
+          optional: false
+          host: Required
+      expression: {{ `{{ .GREPTIMEDB_DATANODE_SVC }}.{{ .CLUSTER_NAMESPACE }}.svc.cluster.local` | toYaml | nindent 8 }}
   runtime:
     initContainers:
       - name: wait-datanode
@@ -79,44 +126,3 @@ spec:
     terminationGracePeriodSeconds: 10
     dnsPolicy: ClusterFirst
     restartPolicy: Always
-  vars:
-    - name: GREPTIMEDB_META_SVC
-      valueFrom:
-        serviceVarRef:
-          compDef: greptimedb-meta
-          name: headless
-          optional: false
-          host: Required
-      expression: {{ `{{ .GREPTIMEDB_META_SVC }}.{{ .KB_NAMESPACE }}.svc.cluster.local` | toYaml | nindent 8 }}
-    - name: GREPTIMEDB_DATANODE_SVC
-      valueFrom:
-        serviceVarRef:
-          compDef: greptimedb-datanode
-          name: headless
-          optional: false
-          host: Required
-      expression: {{ `{{ .GREPTIMEDB_DATANODE_SVC }}.{{ .KB_NAMESPACE }}.svc.cluster.local` | toYaml | nindent 8 }}
-  services:
-    - name: client
-      spec:
-        ports:
-          - name: http
-            port: 4000
-            targetPort: http
-          - name: grpc
-            port: 4001
-            targetPort: grpc
-          - name: mysql
-            port: 4002
-            targetPort: mysql
-          - name: postgres
-            port: 4003
-            targetPort: postgres
-          - name: opentsdb
-            port: 4242
-            targetPort: opentsdb
-  configs:
-    - name: greptimedb-frontend
-      templateRef: greptimedb-frontend
-      volumeName: frontend-config
-      namespace: {{ .Release.Namespace }}

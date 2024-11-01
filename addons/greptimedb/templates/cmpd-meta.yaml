@@ -1,14 +1,45 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: greptimedb-meta-{{ .Chart.Version }}
+  name: {{ include "greptimedb-meta.cmpdName" . }}
   labels:
     {{- include "greptimedb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "greptimedb.annotations" . | nindent 4 }}
 spec:
   provider: Community
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
   serviceVersion: {{ .Chart.AppVersion }}
+  configs:
+    - name: greptimedb-meta
+      templateRef: {{ include "greptimedb-meta.configTemplateName" . }}
+      volumeName: meta-config
+      namespace: {{ .Release.Namespace }}
+  serviceRefDeclarations:
+    - name: etcd
+      serviceRefDeclarationSpecs:
+        - serviceKind: etcd
+          serviceVersion: "^v3.*"
+      optional: true
+  vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: GREPTIMEDB_ETCD_SVC_DEFAULT
+      value: $(CLUSTER_NAME)-etcd-headless.$(CLUSTER_NAMESPACE).svc{{ .Values.clusterDomain}}
+    - name: GREPTIMEDB_ETCD_SVC
+      valueFrom:
+        serviceRefVarRef:
+          name: etcd
+          optional: true
+          endpoint: Required
+      expression: {{ `{{ if index . "GREPTIMEDB_ETCD_SVC" }}{{ .GREPTIMEDB_ETCD_SVC }}{{ else }}{{ .GREPTIMEDB_ETCD_SVC_DEFAULT}}{{ end }}` | toYaml | nindent 8 }}
   runtime:
     initContainers:
       - name: wait-etcd
@@ -71,24 +102,3 @@ spec:
     terminationGracePeriodSeconds: 10
     dnsPolicy: ClusterFirst
     restartPolicy: Always
-  vars:
-    - name: GREPTIMEDB_ETCD_SVC_DEFAULT
-      value: $(KB_CLUSTER_NAME)-etcd-headless.$(KB_NAMESPACE).svc{{ .Values.clusterDomain}}
-    - name: GREPTIMEDB_ETCD_SVC
-      valueFrom:
-        serviceRefVarRef:
-          name: etcd
-          optional: true
-          endpoint: Required
-      expression: {{ `{{ if index . "GREPTIMEDB_ETCD_SVC" }}{{ .GREPTIMEDB_ETCD_SVC }}{{ else }}{{ .GREPTIMEDB_ETCD_SVC_DEFAULT}}{{ end }}` | toYaml | nindent 8 }}
-  configs:
-    - name: greptimedb-meta
-      templateRef: greptimedb-meta
-      volumeName: meta-config
-      namespace: {{ .Release.Namespace }}
-  serviceRefDeclarations:
-    - name: etcd
-      serviceRefDeclarationSpecs:
-        - serviceKind: etcd
-          serviceVersion: "^v3.*"
-      optional: true
