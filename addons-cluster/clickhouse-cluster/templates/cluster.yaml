@@ -1,7 +1,7 @@
 {{- include "kblib.clusterCommon" . }}
 {{- if eq (.Values.shardCount | int) 1 }}
   clusterDefinitionRef: clickhouse
-  topology: cluster
+  topology: {{ .Values.mode }}
 {{- end }}
   componentSpecs:
   {{- if eq .Values.mode "cluster" }}
