@@ -1,0 +1,12 @@
+# Common values for cluster charts
+
+## @param monitoring interval, 0 is no monitoring
+##
+disableExporter: true
+
+## @param terminationPolicy
+terminationPolicy: Delete
+
+## @param rbacEnabled if true, rbac resources will be created
+##
+rbacEnabled: false

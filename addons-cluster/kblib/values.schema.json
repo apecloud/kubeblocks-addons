@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "disableExporter": {
+      "title": "Monitor Enabled",
+      "description": "Enable or disable monitor.",
+      "type": "boolean",
+      "default": true
+    },
+    "terminationPolicy": {
+      "title": "Termination Policy",
+      "description": "The termination policy of cluster.",
+      "type": "string",
+      "default": "Delete",
+      "enum": [
+        "DoNotTerminate",
+        "Halt",
+        "Delete",
+        "WipeOut"
+      ]
+    },
+    "rbacEnabled": {
+      "title": "RBAC Enabled",
+      "description": "Specify whether rbac resources will be created by client, otherwise KubeBlocks server will try to create rbac resources.",
+      "type": "boolean",
+      "default": false
+    }
+  }
+}
