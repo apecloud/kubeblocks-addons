@@ -53,6 +53,8 @@ proxy:
 ## customized default values to override kblib chart's values
 extra:
   disableExporter: true
+  rbacEnabled: true
+  terminationPolicy: Delete
 
 
 etcd:
