@@ -161,8 +161,9 @@ get_master_addr_by_name(){
     echo "Command failed with status $status." >&2
     return 1
   fi
-  if echo "$output" | grep -E '^[a-zA-Z0-9-]+\.[a-zA-Z0-9-]+\.default\.svc$' > /dev/null || is_empty "$output"; then
-    echo "$output"
+  local ip_addr=$(echo "$output" | head -n1)
+  if is_empty "$ip_addr" || echo "$ip_addr" | grep -E '^([a-zA-Z0-9-]+\.[a-zA-Z0-9-]+\.default\.svc|([0-9]{1,3}\.){3}[0-9]{1,3})$' > /dev/null; then
+    echo "$output" 
     return 0
   else
     echo "Command failed with $output" >&2
@@ -193,7 +194,7 @@ register_to_sentinel() {
     echo "Sentinel is not monitoring $master_name. Registering it..."
     # Register the Redis primary with Sentinel
     sentinel_monitor_cmd="SENTINEL monitor $master_name $redis_primary_host $redis_primary_port 2"
-    call_func_with_retry 3 5 execute_sentinel_sub_command "$sentinel_host" "$sentinel_port" "$sentinel_monitor_cmd"
+    call_func_with_retry 3 5 execute_sentinel_sub_command "$sentinel_host" "$sentinel_port" "$sentinel_monitor_cmd" || exit 1
   else
     echo "Sentinel is already monitoring $master_name at $master_addr. Skipping monitor registration."
   fi
@@ -202,7 +203,7 @@ register_to_sentinel() {
   for cmd in "${sentinel_configure_commands[@]}"
   do
     sentinel_cli_cmd=$(construct_sentinel_sub_command "$cmd" "$master_name" "$redis_primary_host" "$redis_primary_port")
-    call_func_with_retry 3 5 execute_sentinel_sub_command "$sentinel_host" "$sentinel_port" "$sentinel_cli_cmd"
+    call_func_with_retry 3 5 execute_sentinel_sub_command "$sentinel_host" "$sentinel_port" "$sentinel_cli_cmd" || exit 1
   done
   set_xtrace_when_ut_mode_false
   echo "redis sentinel register to $sentinel_host succeeded!"
