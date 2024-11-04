@@ -82,6 +82,13 @@ Define greptimedb meta component definition regex pattern
 {{- end -}}
 
 {{/*
+Define greptimedb etcd component definition regex pattern
+*/}}
+{{- define "greptimedb-etcd.cmpdRegexpPattern" -}}
+^etcd-
+{{- end -}}
+
+{{/*
 Define greptimedb datanode configuration template name
 */}}
 {{- define "greptimedb-datanode.configTemplateName" -}}
