@@ -30,3 +30,8 @@ requests:
 storage: 20
 
 hostnetwork: "enabled"
+
+## @param extra.rbacEnabled if true, create rbac
+extra:
+  rbacEnabled: true
+  terminationPolicy: Delete
