@@ -54,7 +54,7 @@
 	"4lw.commands.whitelist": string | *"srvr, mntr, ruok, conf"
 
 	// The time interval in hours for which the purge task has to be triggered. Set to a positive integer (1 and above) to enable the auto purging. Defaults to 0.
-	autopurge.purgeInterval: int & >=0 | *0
+	"autopurge.purgeInterval": int & >=0 | *0
 
   // The number of requests that can be queued by ZooKeeper.
   // Default is 1000. Increase this if dealing with large bursts of requests.
