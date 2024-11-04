@@ -64,4 +64,8 @@
   // Default is 5000ms (5 seconds). This allows pending requests to complete.
   "preAllocSize": int & >=1 & <=100000 | *65536
 
+  // The number of snapshots to retain in dataDir.
+  // Default is 3. Minimum value is 3 for recovery purposes.
+  "autopurge.snapRetainCount": int & >=3 & <=30 | *3
+
 }

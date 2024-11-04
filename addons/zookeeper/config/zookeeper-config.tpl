@@ -17,6 +17,10 @@ clientPort=2181
 # the maximum number of client connections.
 # increase this if you need to handle more clients
 maxClientCnxns=500
+# the maximum session timeout that the server  allow the client to negotiate
+maxSessionTimeout=20
+# the minimum session timeout that the server  allow the client to negotiate
+minSessionTimeout=2
 #
 # Be sure to read the maintenance section of the
 # administrator guide before turning on autopurge.
@@ -24,10 +28,10 @@ maxClientCnxns=500
 # http://zookeeper.apache.org/doc/current/zookeeperAdmin.html#sc_maintenance
 #
 # The number of snapshots to retain in dataDir
-#autopurge.snapRetainCount=3
+autopurge.snapRetainCount=3
 # Purge task interval in hours
 # Set to "0" to disable auto purge feature
-#autopurge.purgeInterval=1
+autopurge.purgeInterval=0
 
 ## Metrics Providers
 #
