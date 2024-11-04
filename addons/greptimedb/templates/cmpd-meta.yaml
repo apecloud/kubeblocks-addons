@@ -39,7 +39,7 @@ spec:
           name: etcd
           optional: true
           endpoint: Required
-      expression: {{ `{{ if index . "GREPTIMEDB_ETCD_SVC" }}{{ .GREPTIMEDB_ETCD_SVC }}{{ else }}{{ .GREPTIMEDB_ETCD_SVC_DEFAULT}}{{ end }}` | toYaml | nindent 8 }}
+      expression: {{ `{{ if index . "GREPTIMEDB_ETCD_SVC" }}{{ .GREPTIMEDB_ETCD_SVC }}{{ else }}{{ .GREPTIMEDB_ETCD_SVC_DEFAULT}}{{ end }}` | toYaml }}
   runtime:
     initContainers:
       - name: wait-etcd

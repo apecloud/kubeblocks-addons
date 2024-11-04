@@ -37,7 +37,7 @@ spec:
           name: headless
           optional: false
           host: Required
-      expression: {{ `{{ .GREPTIMEDB_META_SVC }}.{{ .CLUSTER_NAMESPACE }}.svc.cluster.local` | toYaml | nindent 8 }}
+      expression: {{ `{{ .GREPTIMEDB_META_SVC }}.{{ .CLUSTER_NAMESPACE }}.svc.cluster.local` | toYaml }}
   volumes:
     - name: datanode
   runtime:
