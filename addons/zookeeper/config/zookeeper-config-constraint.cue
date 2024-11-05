@@ -35,8 +35,8 @@
 	"maxSessionTimeout"?: int & >=1 & <=600000 | *20
 
 	// The minimum session timeout in milliseconds that the server will allow the client to negotiate.
-    // Default is 2 times the tickTime. Maximum should be 20 times the tickTime.
-    "minSessionTimeout": int & >=1 & <=600000 | *2
+	// Default is 2 times the tickTime. Maximum should be 20 times the tickTime.
+	"minSessionTimeout": int & >=1 & <=600000 | *2
 
 	// the location where ZooKeeper will store the in-memory database snapshots and, unless specified otherwise, the transaction log of updates to the database.Be careful where you put the transaction log. A dedicated transaction log device is key to consistent good performance. Putting the log on a busy device will adversely effect performance.
 	"dataDir": string | *"/zookeeper/data"
@@ -56,16 +56,16 @@
 	// The time interval in hours for which the purge task has to be triggered. Set to a positive integer (1 and above) to enable the auto purging. Defaults to 0.
 	"autopurge.purgeInterval": int & >=0 | *0
 
-    // The number of requests that can be queued by ZooKeeper.
-    // Default is 1000. Increase this if dealing with large bursts of requests.
-    "globalOutstandingLimit": int & >=1 & <=20000 | *1000
+	// The number of requests that can be queued by ZooKeeper.
+	// Default is 1000. Increase this if dealing with large bursts of requests.
+	"globalOutstandingLimit": int & >=1 & <=20000 | *1000
 
 	// The time in milliseconds that ZooKeeper waits before starting shutdown when a shutdown is requested.
-    // Default is 5000ms (5 seconds). This allows pending requests to complete.
-    "preAllocSize": int & >=1 & <=100000 | *65536
+	// Default is 5000ms (5 seconds). This allows pending requests to complete.
+	"preAllocSize": int & >=1 & <=100000 | *65536
 
-    // The number of snapshots to retain in dataDir.
-    // Default is 3. Minimum value is 3 for recovery purposes.
-    "autopurge.snapRetainCount": int & >=3 & <=30 | *3
+	// The number of snapshots to retain in dataDir.
+	// Default is 3. Minimum value is 3 for recovery purposes.
+	"autopurge.snapRetainCount": int & >=3 & <=30 | *3
 
 }
