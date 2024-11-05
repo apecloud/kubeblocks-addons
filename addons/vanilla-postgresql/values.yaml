@@ -19,7 +19,7 @@ image:
     repository: supabase/postgres
     tags:
       major15:
-        minor61138: 15.6.1138
+        minor61138: 15.6.1.138
 
 
   ## Specify a imagePullPolicy
