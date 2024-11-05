@@ -45,8 +45,8 @@ image:
 # used to inject bash to distroless etcd image
 debianImage:
   # if the value of bashImage.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
-  registry: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com
-  repository: apecloud/debian
+  registry: docker.io
+  repository: debian
   pullPolicy: IfNotPresent
   # use static compile version
   tag: bullseye-20241016
