@@ -1,14 +1,39 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: influxdb-{{ .Chart.Version }}
+  name: {{ include "influxdb.cmpdName" . }}
   labels:
     {{- include "influxdb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "influxdb.annotations" . | nindent 4 }}
 spec:
   provider: Community
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
   serviceVersion: {{ .Chart.AppVersion }}
+  vars:
+    - name: INFLUXDB_ADMIN_USER
+      value: admin
+    - name: INFLUXDB_ADMIN_USER_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          optional: false
+          password: Required
+    - name: INFLUXDB_ADMIN_USER_TOKEN
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          optional: false
+          password: Required
+  systemAccounts:
+    - name: admin
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 10
+        numDigits: 3
+        numSymbols: 4
+        letterCase: MixedCases
   runtime:
     initContainers:
       - name: init-chmod-data
@@ -105,36 +130,3 @@ spec:
         volumeMounts:
           - name: data
             mountPath: /bitnami/influxdb
-  vars:
-    - name: INFLUXDB_ADMIN_USER
-      value: admin
-    - name: INFLUXDB_ADMIN_USER_PASSWORD
-      valueFrom:
-        credentialVarRef:
-          name: admin
-          optional: false
-          password: Required
-    - name: INFLUXDB_ADMIN_USER_TOKEN
-      valueFrom:
-        credentialVarRef:
-          name: admin
-          optional: false
-          password: Required
-  #services:
-  #  - name: client
-  #    type: ClusterIP
-  #    ports:
-  #      - name: http
-  #        port: 8086
-  #        targetPort: http
-  #      - name: rpc
-  #        port: 8088
-  #        targetPort: rpc
-  systemAccounts:
-    - name: admin
-      initAccount: true
-      passwordGenerationPolicy:
-        length: 10
-        numDigits: 3
-        numSymbols: 4
-        letterCase: MixedCases
