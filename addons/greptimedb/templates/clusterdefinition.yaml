@@ -10,13 +10,13 @@ spec:
       default: true
       components:
         - name: datanode
-          compDef: greptimedb-datanode
+          compDef: {{ include "greptimedb-datanode.cmpdRegexpPattern" . }}
         - name: frontend
-          compDef: greptimedb-frontend
+          compDef: {{ include "greptimedb-frontend.cmpdRegexpPattern" . }}
         - name: meta
-          compDef: greptimedb-meta
+          compDef: {{ include "greptimedb-meta.cmpdRegexpPattern" . }}
         - name: etcd
-          compDef: etcd
+          compDef: {{ include "greptimedb-etcd.cmpdRegexpPattern" . }}
       orders:
         provision:
           - etcd
@@ -26,11 +26,11 @@ spec:
     - name: external-etcd
       components:
         - name: datanode
-          compDef: greptimedb-datanode
+          compDef: {{ include "greptimedb-datanode.cmpdRegexpPattern" . }}
         - name: frontend
-          compDef: greptimedb-frontend
+          compDef: {{ include "greptimedb-frontend.cmpdRegexpPattern" . }}
         - name: meta
-          compDef: greptimedb-meta
+          compDef: {{ include "greptimedb-meta.cmpdRegexpPattern" . }}
       orders:
         provision:
           - meta

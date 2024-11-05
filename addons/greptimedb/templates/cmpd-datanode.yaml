@@ -1,14 +1,45 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: greptimedb-datanode-{{ .Chart.Version }}
+  name: {{ include "greptimedb-datanode.cmpdName" . }}
   labels:
     {{- include "greptimedb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "greptimedb.annotations" . | nindent 4 }}
 spec:
   provider: Community
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
   serviceVersion: {{ .Chart.AppVersion }}
+  configs:
+    - name: greptimedb-datanode
+      templateRef: {{ include "greptimedb-datanode.configTemplateName" . }}
+      volumeName: datanode-config
+      namespace: {{ .Release.Namespace }}
+  vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: DATANODE_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: GREPTIMEDB_META_SVC
+      valueFrom:
+        serviceVarRef:
+          compDef: greptimedb-meta
+          name: headless
+          optional: false
+          host: Required
+      expression: {{ `{{ .GREPTIMEDB_META_SVC }}.{{ .CLUSTER_NAMESPACE }}.svc.cluster.local` | toYaml }}
+  volumes:
+    - name: datanode
   runtime:
     containers:
       - name: datanode
@@ -74,18 +105,24 @@ spec:
           - --datanode-rpc-port
           - "4001"
           - --datanode-service-name
-          - $(KB_CLUSTER_COMP_NAME)-headless
+          - $(DATANODE_COMPONENT_NAME)-headless
           - --namespace
-          - $(KB_NAMESPACE)
+          - $(CLUSTER_NAMESPACE)
           - --component-kind
           - datanode
         command:
           - greptimedb-initializer
         env:
-          - name: POD_IP
-            value: $(KB_POD_IP)
           - name: POD_NAME
-            value: $(KB_POD_NAME)
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
         image: {{ .Values.images.initializer.registry | default (.Values.images.registry | default "docker.io") }}/{{ .Values.images.initializer.repository }}:{{ .Values.images.initializer.tag }}
         imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
         terminationMessagePath: /dev/termination-log
@@ -99,19 +136,3 @@ spec:
     volumes:
       - emptyDir: { }
         name: config
-  vars:
-    - name: GREPTIMEDB_META_SVC
-      valueFrom:
-        serviceVarRef:
-          compDef: greptimedb-meta
-          name: headless
-          optional: false
-          host: Required
-      expression: {{ `{{ .GREPTIMEDB_META_SVC }}.{{ .KB_NAMESPACE }}.svc.cluster.local` | toYaml | nindent 8 }}
-  volumes:
-    - name: datanode
-  configs:
-    - name: greptimedb-datanode
-      templateRef: greptimedb-datanode
-      volumeName: datanode-config
-      namespace: {{ .Release.Namespace }}
