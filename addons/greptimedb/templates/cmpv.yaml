@@ -9,15 +9,15 @@ spec:
     - releases:
         - datanode-0.3.2
       compDefs:
-        - greptimedb-datanode
+        - {{ include "greptimedb-datanode.cmpdRegexpPattern" . }}
     - releases:
         - frontend-0.3.2
       compDefs:
-        - greptimedb-frontend
+        - {{ include "greptimedb-frontend.cmpdRegexpPattern" . }}
     - releases:
         - meta-0.3.2
       compDefs:
-        - greptimedb-meta
+        - {{ include "greptimedb-meta.cmpdRegexpPattern" . }}
   releases:
     - name: datanode-0.3.2
       serviceVersion: 0.3.2
