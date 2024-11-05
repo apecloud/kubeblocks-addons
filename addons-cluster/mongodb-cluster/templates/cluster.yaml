@@ -4,8 +4,10 @@ metadata:
   name: {{ include "kblib.clusterName" . }}
   namespace: {{ .Release.Namespace }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
-  # annotations:
-  #   kubeblocks.io/enabled-pod-ordinal-svc: mongodb
+{{- if eq .Values.hostnetwork "enabled" }}
+  annotations:
+    kubeblocks.io/host-network: mongodb
+{{- end }}
 spec:
   {{- if .Values.useLegacyCompDef }}
   clusterVersionRef: {{ .Values.clusterVersion }}

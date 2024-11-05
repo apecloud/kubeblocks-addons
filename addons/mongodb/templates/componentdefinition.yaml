@@ -157,3 +157,18 @@ spec:
           name: root
           optional: false
           password: Required
+    - name: KB_SERVICE_PORT  
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: mongodb
+            port:
+              name: mongodb
+              option: Optional
+  hostNetwork: 
+    containerPorts:  
+      - container: mongodb
+        ports:
+          - mongodb
+          - ha
