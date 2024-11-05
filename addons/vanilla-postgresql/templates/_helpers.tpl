@@ -75,6 +75,17 @@ vanilla-postgresql-15
 {{- end -}}
 
 {{/*
+Define vanilla-postgresql-supabase 15 component definition name with Chart.Version suffix
+*/}}
+{{- define "vanilla-postgresql-supabase15.compDefName" -}}
+{{- if eq (len .Values.cmpdVersionPrefix.vanillaPostgresql15) 0 -}}
+vanilla-postgresql-supabase15
+{{- else -}}
+{{ .Values.cmpdVersionPrefix.vanillaPostgresqlSupabase15 }}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Expand the name of the chart.
 */}}
 {{- define "vanilla-postgresql.name" -}}
@@ -145,6 +156,13 @@ Define vanilla-postgresql 15 component configuration template name
 */}}
 {{- define "vanilla-postgresql15.configurationTemplate" -}}
 vanilla-postgresql15-configuration
+{{- end -}}
+
+{{/*
+Define vanilla-postgresql-supabase 15 component configuration template name
+*/}}
+{{- define "vanilla-postgresql-supabase15.configurationTemplate" -}}
+vanilla-postgresql-supabase15-configuration
 {{- end -}}
 
 {{/*
