@@ -18,8 +18,12 @@ spec:
         volumeMounts:
           - name: scripts
             mountPath: /scripts
-          - name: shell
-            mountPath: /shell
+          - name: bin
+            mountPath: /share/bin
+          - name: lib
+            mountPath: /share/lib
+          - name: lib64
+            mountPath: /share/lib64
         command:
           - /bin/bash
           - -c
@@ -39,16 +43,17 @@ spec:
             mountPath: /etc/etcd
           - name: scripts
             mountPath: /scripts
-          - name: shell
+          - name: bin
+            mountPath: /bin
+          - name: lib
             mountPath: /lib
+          - name: lib64
+            mountPath: /lib64
         command:
-          - /lib/bin/bash
+          - /bin/bash
           - -c
           - |
-            export PATH=$PATH:/lib/bin
-            if [ ! -e /bin/bash ]; then
-              cp /lib/bin/* /bin
-            fi
+            export PATH=$PATH:/bin
             /scripts/start.sh
         env:
           - name: CURRENT_POD_NAME
@@ -57,7 +62,11 @@ spec:
                 apiVersion: v1
                 fieldPath: metadata.name
     volumes:
-      - name: shell
+      - name: bin
+        emptyDir: {}
+      - name: lib
+        emptyDir: {}
+      - name: lib64
         emptyDir: {}
   vars:
     - name: ETCD_VERSION

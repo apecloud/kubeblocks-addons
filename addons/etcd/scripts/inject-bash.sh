@@ -17,11 +17,11 @@ inject_bash() {
     echo "No need to inject bash for etcd-$version image"
   else
     echo "etcd-$version image build with distroless, injecting brinaries to run scripts"
-    mkdir -p /shell/bin
-    cp /bin/* /shell/bin
-    cp /usr/bin/* /shell/bin
-    cp -r /lib/* /shell
-    cp -r /usr/lib/* /shell
+    cp /bin/* /share/bin
+    cp /usr/bin/* /share/bin
+    cp -r /lib/* /share/lib
+    cp -r /usr/lib/* /share/lib
+    cp -r /lib64/* /share/lib64
   fi
   return 0
 }
