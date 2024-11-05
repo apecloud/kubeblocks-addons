@@ -1,0 +1,19 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: influxdb
+  labels:
+    {{- include "influxdb.labels" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "influxdb.cmpdRegexpPattern" . }}
+      releases:
+        - 2.7.4
+  releases:
+    - name: 2.7.4
+      changes:
+      serviceVersion: 2.7.4
+      images:
+        init-chmod-data: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.init.repository }}:11-debian-11-r93
+        influxdb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.influxdb.repository }}:2.7.4-debian-11-r0
