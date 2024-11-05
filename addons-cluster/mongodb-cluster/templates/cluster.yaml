@@ -8,7 +8,7 @@ metadata:
   #   kubeblocks.io/enabled-pod-ordinal-svc: mongodb
 spec:
   {{- if .Values.useLegacyCompDef }}
-  clusterVersionRef: {{ .Values.version }}
+  clusterVersionRef: {{ .Values.clusterVersion }}
   {{- end }}
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}

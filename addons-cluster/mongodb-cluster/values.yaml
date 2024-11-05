@@ -6,6 +6,9 @@
 ##
 version: 6.0.16
 
+# @param clusterVersion cluster version for legacy API
+clusterVersion: mongodb-6.0
+
 ## @param mode cluster topology mode, standalone or replicaset
 ##
 mode: standalone
