@@ -36,7 +36,7 @@ metadata:
   labels:
     {{- include "vanilla-postgresql.labels" . | nindent 4 }}
 spec:
-  {{- include "vanilla-postgresql.spec.common" . | nindent 2 }}
+  {{- include "vanilla-postgresql.spec.common" (merge (dict "accountName" "supabase_admin") .)| nindent 2 }}
   serviceVersion: {{ .Values.componentServiceVersion.vanillaPostgresqlSupabase15 }}
   configs:
     - name: supabase-postgresql-configuration

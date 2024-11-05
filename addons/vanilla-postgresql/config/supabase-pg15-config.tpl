@@ -222,3 +222,4 @@ jit_provider = 'llvmjit'
 # Add settings for extensions here
 auto_explain.log_min_duration = 10s
 cron.database_name = 'postgres'
+pgsodium.getkey_script= '/usr/lib/postgresql/bin/pgsodium_getkey.sh'

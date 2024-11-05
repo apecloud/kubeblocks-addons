@@ -221,6 +221,7 @@ vanilla-pg-basebackup
 {{- end -}}
 
 {{- define "vanilla-postgresql.spec.common" -}}
+{{- $rootAccount := default "postgres" .accountName -}}
 provider: kubeblocks
 description: {{ .Chart.Description }}
 serviceKind: postgresql
@@ -252,13 +253,13 @@ vars:
   - name: POSTGRES_USER
     valueFrom:
       credentialVarRef:
-        name: postgres
+        name: {{ $rootAccount }}
         optional: false
         username: Required
   - name: POSTGRES_PASSWORD
     valueFrom:
       credentialVarRef:
-        name: postgres
+        name: {{ $rootAccount }}
         optional: false
         password: Required
 lifecycleActions:
@@ -267,7 +268,7 @@ lifecycleActions:
     periodSeconds: 1
     timeoutSeconds: 1
 systemAccounts:
-  - name: postgres
+  - name: {{ $rootAccount }}
     initAccount: true
     passwordGenerationPolicy:
       length: 10
