@@ -13,7 +13,7 @@ spec:
   tolerations: {{ . | toYaml | nindent 4 }}
   {{- end }}
   componentSpecs:
-    - name: opensearch
+    - name: opensearch-{{ .Chart.Version }}
       ## TODO: use regex pattern when cluster validation supported
       componentDef: opensearch
       replicas: {{ .Values.replicaCount | default 3 }}
@@ -38,7 +38,7 @@ spec:
                 storage: {{ .Values.persistence.data.size }}
       {{- end }}
     - name: dashboard
-      componentDef: opensearch-dashboard
+      componentDef: opensearch-dashboard-{{ .Chart.Version }}
       replicas: {{ .Values.dashboard.replicaCount | default 1 }}
       {{- with  .Values.dashboard.resources }}
       resources:
