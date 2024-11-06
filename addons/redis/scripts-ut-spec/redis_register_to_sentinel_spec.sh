@@ -183,6 +183,12 @@ Describe 'register_to_sentinel.sh'
         return 0
       }
 
+      get_master_addr_by_name(){
+        output=""
+        echo "$output"
+        return 0
+      }
+
       When call register_to_sentinel $sentinel_host $master_name $redis_primary_host $redis_primary_port
       The status should be success
       The output should include "host:redis-redis-sentinel-0.redis-redis-sentinel-headless.default.svc.cluster.local, port:26379 Command:SENTINEL monitor redis-redis redis-redis-0.redis-redis.default.svc.cluster.local 6379 2"
