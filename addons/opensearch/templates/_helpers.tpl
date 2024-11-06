@@ -107,7 +107,7 @@ helm.sh/resource-policy: keep
 Define opensearch-dashboard component definition name
 */}}
 {{- define "opensearch-dashboard.cmpdName" -}}
-os-dashboard-{{ .Chart.Version }}
+opensearch-dashboard-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
@@ -128,7 +128,7 @@ Define opensearch component definition regular expression name prefix
 Define opensearch-dashboard component definition regular expression name prefix
 */}}
 {{- define "opensearch-dashboard.cmpdRegexpPattern" -}}
-^os-dashboard-
+^opensearch-dashboard-
 {{- end -}}
 
 {{/*
