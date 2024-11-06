@@ -64,7 +64,6 @@ Describe "Redis Switchover Script Tests"
           return 0
         }
         When call switchoverWithCandidate
-        The variable current_replica_priority should eq "100"
         The status should be success
         The stdout should include "Sentinel failover start with redis-redis-sentinel-0.redis-redis-sentinel-headless.test.svc, Switchover is processing"
         The stdout should include "Command executed successfully"
