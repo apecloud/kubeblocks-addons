@@ -5,22 +5,6 @@
 # config file used to bootstrap the etcd cluster
 config_file=$TMP_CONFIG_PATH
 
-check_requirements() {
-  if [[ $(uname) == "Darwin" || $(uname) == *"BSD"* ]] && ! which gsed > /dev/null 2>&1; then
-    echo "cannot find gsed (required on BSD/Darwin systems)" >&2
-    return 1
-  fi
-  return 0
-}
-
-universal_sed() {
-  if [[ $(uname) == "Darwin" || $(uname) == *"BSD"* ]]; then
-    gsed "$@"
-  else
-    sed "$@"
-  fi
-}
-
 check_backup_file() {
   local backup_file=$1
   output=$(etcdutl snapshot status "${backup_file}")
@@ -88,7 +72,7 @@ exec_etcdctl() {
 
 get_current_leader() {
   local leader_endpoint=$1
-  peer_endpoints=$(exec_etcdctl "$leader_endpoint" member list | awk -F', ' '{print $5}' | tr '\n' ',' | universal_sed 's#,$##')
+  peer_endpoints=$(exec_etcdctl "$leader_endpoint" member list | awk -F', ' '{print $5}' | tr '\n' ',' | sed 's#,$##')
   leader_endpoint=$(exec_etcdctl "$peer_endpoints" endpoint status | awk -F', ' '$5=="true" {print $1}')
   if [ -z "$leader_endpoint" ]; then
     echo "leader is not ready" >&2
