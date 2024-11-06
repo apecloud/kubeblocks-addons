@@ -1,34 +1,36 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: nebula-console-{{ .Chart.Version }}
+  name: {{ include "nebula-console.cmpdName" . }}
   labels:
     {{- include "nebula.labels" . | nindent 4 }}
+  annotations:
+    {{- include "nebula.annotations" . | nindent 4 }}
 spec:
   provider: Community
   description: {{ .Chart.Description }}
   serviceKind: nebula
   serviceVersion: {{ .Chart.AppVersion }}
-  runtime:
-    containers:
-      - name: console
-        imagePullPolicy: {{default .Values.nebula.images.pullPolicy "IfNotPresent"}}
-        command: [ "/bin/sh" ]
-        args: [ "-c", "trap : TERM INT; sleep infinity & wait" ]
   vars:
     - name: GRAPHD_SVC_NAME
       valueFrom:
         serviceVarRef:
-          compDef: nebula-graphd
+          compDef: {{ include "nebula-graphd.cmpdRegexpPattern" . }}
           name: thrift
           optional: false
           host: Required
     - name: GRAPHD_SVC_PORT
       valueFrom:
         serviceVarRef:
-          compDef: nebula-graphd
+          compDef: {{ include "nebula-graphd.cmpdRegexpPattern" . }}
           name: thrift
           optional: false
           port:
             name: thrift
             option: Required
+  runtime:
+    containers:
+      - name: console
+        imagePullPolicy: {{default .Values.nebula.images.pullPolicy "IfNotPresent"}}
+        command: [ "/bin/sh" ]
+        args: [ "-c", "trap : TERM INT; sleep infinity & wait" ]

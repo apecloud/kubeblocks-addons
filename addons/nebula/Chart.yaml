@@ -1,16 +1,22 @@
 apiVersion: v2
 name: nebula
 description: NebulaGraph is a popular open-source graph database that can handle large volumes of data with milliseconds of latency, scale up quickly, and have the ability to perform fast graph analytics.
+
 version: 1.0.0-alpha.0
+
 appVersion: "v3.5.0"
+
 home: https://nebula-graph.io
+
 sources:
 - https://github.com/vesoft-inc/nebula
+
 keywords:
   - kubernetes
   - nebula-graph
   - database
   - graph database
+
 maintainers:
   - name: Shanshan Ying
     email: shanshan.ying@apecloud.com
@@ -18,6 +24,6 @@ maintainers:
     email: xuntao.cheng@vesoft.com
 
 annotations:
-    addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
+    addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
     addon.kubeblocks.io/model: "graph"
     addon.kubeblocks.io/provider: "community"
