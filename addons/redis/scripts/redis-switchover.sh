@@ -34,6 +34,11 @@ check_environment_exist(){
         exit 1
     fi
 
+    if ! env_exist REDIS_POD_FQDN_LIST; then
+        echo "Error: Required environment variable REDIS_POD_FQDN_LIST: $REDIS_POD_FQDN_LIST is not set."
+        exit 1
+    fi
+
     if ! env_exist REDIS_COMPONENT_NAME; then
         echo "Error: Required environment variable REDIS_COMPONENT_NAME: $REDIS_COMPONENT_NAME is not set."
         exit 1
@@ -119,13 +124,23 @@ redis_config_get(){
 
 switchoverWithCandidate() {
     redis_get_cmd="CONFIG GET replica-priority"
-    #TODO: how to handle when the other secondaries also have the same replica-priority = 1
     redis_set_switchover_cmd="CONFIG SET replica-priority 1"
+    redis_set_lowest_priority_cmd="CONFIG SET replica-priority 100"
+    IFS=',' read -ra redis_pod_fqdn_list <<< "${REDIS_POD_FQDN_LIST}"
     unset_xtrace_when_ut_mode_false
-    call_func_with_retry 3 5 check_connectivity "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$REDIS_DEFAULT_PASSWORD" || exit 1
-    current_replica_priority=$(redis_config_get "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$REDIS_DEFAULT_PASSWORD" "$redis_get_cmd" | sed -n '2p')
-    redis_set_recover_cmd="CONFIG SET replica-priority $current_replica_priority"
-    call_func_with_retry 3 5 execute_sub_command "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$REDIS_DEFAULT_PASSWORD" "$redis_set_switchover_cmd" || exit 1
+    
+    declare -A original_priorities
+    for redis_pod_fqdn in "${redis_pod_fqdn_list[@]}"; do
+        call_func_with_retry 3 5 check_connectivity "$redis_pod_fqdn" "6379" "$REDIS_DEFAULT_PASSWORD" || exit 1
+        original_priority=$(redis_config_get "$redis_pod_fqdn" "6379" "$REDIS_DEFAULT_PASSWORD" "$redis_get_cmd" | sed -n '2p')
+        original_priorities["$redis_pod_fqdn"]=$original_priority
+        
+        if [ "$redis_pod_fqdn" = "$KB_SWITCHOVER_CANDIDATE_FQDN" ]; then
+            call_func_with_retry 3 5 execute_sub_command "$redis_pod_fqdn" "6379" "$REDIS_DEFAULT_PASSWORD" "$redis_set_switchover_cmd" || exit 1
+        else
+            call_func_with_retry 3 5 execute_sub_command "$redis_pod_fqdn" "6379" "$REDIS_DEFAULT_PASSWORD" "$redis_set_lowest_priority_cmd" || exit 1
+        fi
+    done
     
     # TODO: check the role in kernel before switchover
     IFS=',' read -ra sentinel_pod_fqdn_list <<< "${SENTINEL_POD_FQDN_LIST}"
@@ -145,7 +160,11 @@ switchoverWithCandidate() {
         exit 1
     fi
     # TODO: check switchover result
-    call_func_with_retry 3 5 execute_sub_command "$KB_SWITCHOVER_CANDIDATE_FQDN" "6379" "$REDIS_DEFAULT_PASSWORD" "$redis_set_recover_cmd" || exit 1
+    for redis_pod_fqdn in "${redis_pod_fqdn_list[@]}"; do
+        redis_set_recover_cmd="CONFIG SET replica-priority ${original_priorities[$redis_pod_fqdn]}"
+        call_func_with_retry 3 5 execute_sub_command "$redis_pod_fqdn" "6379" "$REDIS_DEFAULT_PASSWORD" "$redis_set_recover_cmd" || exit 1
+    done
+    
     set_xtrace_when_ut_mode_false
 }
 
