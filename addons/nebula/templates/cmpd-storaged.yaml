@@ -107,7 +107,7 @@ spec:
                 apiVersion: v1
                 fieldPath: metadata.name
           - name: POD_FQDN
-            value: $(POD_NAME)-$(STORAGED_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN)
+            value: $(POD_NAME).$(STORAGED_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN)
         readinessProbe:
           failureThreshold: 3
           httpGet:
@@ -136,7 +136,7 @@ spec:
                 apiVersion: v1
                 fieldPath: metadata.name
           - name: POD_FQDN
-            value: $(POD_NAME)-$(STORAGED_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN)
+            value: $(POD_NAME).$(STORAGED_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN)
         lifecycle:
           postStart:
             exec:
