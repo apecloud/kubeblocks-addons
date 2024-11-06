@@ -1,0 +1,14 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+spec:
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  componentSpecs:
+    - name: influxdb
+      componentDef: influxdb
+      serviceVersion: {{ .Values.version }}
+      replicas: {{ include "influxdb-cluster.replicas" . }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
