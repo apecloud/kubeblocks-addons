@@ -13,9 +13,9 @@ spec:
   tolerations: {{ . | toYaml | nindent 4 }}
   {{- end }}
   componentSpecs:
-    - name: opensearch-{{ .Chart.Version }}
+    - name: opensearch
       ## TODO: use regex pattern when cluster validation supported
-      componentDef: opensearch
+      componentDef: opensearch-{{ .Chart.Version }}
       replicas: {{ .Values.replicaCount | default 3 }}
       {{- with  .Values.resources }}
       resources:
