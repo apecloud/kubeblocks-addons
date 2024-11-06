@@ -1,0 +1,19 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: opensearch
+  labels:
+    {{- include "opensearch.labels" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "opensearch.cmpdRegexpPattern" . }}
+      releases:
+        - 2.7.0
+  releases:
+    - name: 2.7.0
+      changes:
+      serviceVersion: 2.7.0
+      images:
+        opensearch: {{ include "opensearch.repository" . }}:2.7.0
+        os-master-graceful-handler: {{ include "os-master-graceful-handler.repository" . }}:2.7.0
