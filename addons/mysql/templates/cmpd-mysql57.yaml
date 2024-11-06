@@ -41,6 +41,17 @@ spec:
         volumeMounts:
           - mountPath: /tools
             name: tools
+      - command:
+          - cp
+          - -r
+          - /jemalloc/lib/
+          - /tools/lib
+        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemalloc:5.3.0
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        name: init-jemalloc
+        volumeMounts:
+          - mountPath: /tools
+            name: tools
       {{- include "mysql.spec.runtime.common" . | nindent 6 }}
     containers:
       - name: mysql
@@ -56,6 +67,7 @@ spec:
           - |
             cp {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
             chown -R mysql:root {{ .Values.dataMountPath }}
+            export LD_PRELOAD=/tools/lib/libjemalloc.so.2
             skip_slave_start="OFF"
             if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
               skip_slave_start="ON"
