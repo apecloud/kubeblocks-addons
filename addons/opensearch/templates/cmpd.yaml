@@ -21,7 +21,6 @@ spec:
     - name: OPENSEARCH_COMPONENT_SHORT_NAME
       valueFrom:
         componentVarRef:
-          compDef: {{ include "opensearch.cmpdRegexpPattern" . }}
           optional: false
           shortName: Required
   runtime:
