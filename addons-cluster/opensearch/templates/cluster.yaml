@@ -7,7 +7,8 @@ spec:
   terminationPolicy: {{ .Values.terminationPolicy }}
   componentSpecs:
     - name: opensearch
-      componentDef: opensearch
+      ## TODO: use regex pattern when cluster validation supported
+      componentDef: opensearch-{{ .Chart.Version }}
       replicas: {{ .Values.replicaCount | default 3 }}
       {{- with  .Values.resources }}
       resources:
@@ -30,7 +31,7 @@ spec:
                 storage: {{ .Values.persistence.data.size }}
       {{- end }}
     - name: dashboard
-      componentDef: opensearch-dashboard
+      componentDef: opensearch-dashboard-{{ .Chart.Version }}
       replicas: {{ .Values.dashboard.replicaCount | default 1 }}
       {{- with  .Values.dashboard.resources }}
       resources:
