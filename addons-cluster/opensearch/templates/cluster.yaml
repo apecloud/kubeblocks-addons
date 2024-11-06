@@ -38,7 +38,7 @@ spec:
                 storage: {{ .Values.persistence.data.size }}
       {{- end }}
     - name: dashboard
-      componentDef: os-dashboard
+      componentDef: opensearch-dashboard
       replicas: {{ .Values.dashboard.replicaCount | default 1 }}
       {{- with  .Values.dashboard.resources }}
       resources:
