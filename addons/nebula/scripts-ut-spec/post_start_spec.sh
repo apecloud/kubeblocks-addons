@@ -80,4 +80,5 @@ Describe "Nebula Post Start Script Tests"
       The output should include "Add storage host command: ADD HOSTS \"nebula-storaged-0.nebula-storaged.default.svc.cluster.local\":9779"
       The status should be failure
     End
+  End
 End
