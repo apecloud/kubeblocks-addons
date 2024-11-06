@@ -55,17 +55,6 @@ Describe "Elasticsearch Prepare Filesystem Script Tests"
     End
   End
 
-#  Describe "get_duration()"
-#    It "returns the duration in seconds"
-#      un_setup
-#      start_time=$(date +%s)
-#      sleep 1  # Sleep for 1 second
-#      When run get_duration "$start_time"
-#      The output should equal "1"
-#      The status should be success
-#    End
-#  End
-
   Describe "copy_directory_contents()"
     It "does nothing if source directory is empty"
       un_setup
