@@ -108,7 +108,7 @@ spec:
     scrapePath: /metrics
     scrapePort: "8001"
   configs:
-    - name: ch-keeper-tpl
+    - name: clickhouse-keeper-tpl
       templateRef: {{ include "clickhouse-keeper24.configurationTplName" . }}
       volumeName: config
       namespace: {{ .Release.Namespace }}

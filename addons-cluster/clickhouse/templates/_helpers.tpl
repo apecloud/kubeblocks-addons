@@ -107,7 +107,7 @@ Define clickhouse componentSpec with ComponentDefinition.
 {{/*
 Define clickhouse keeper componentSpec with ComponentDefinition.
 */}}
-{{- define "ch-keeper-component" -}}
+{{- define "clickhouse-keeper-component" -}}
 - name: ch-keeper
   componentDef: clickhouse-keeper-24
   replicas: {{ .Values.keeper.replicaCount }}
