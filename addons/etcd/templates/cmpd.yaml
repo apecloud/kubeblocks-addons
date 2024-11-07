@@ -14,16 +14,12 @@ spec:
   runtime:
     initContainers:
       - name: inject-bash
-        imagePullPolicy: {{default .Values.debianImage.pullPolicy "IfNotPresent"}}
+        imagePullPolicy: {{default .Values.bashBusyboxImage.pullPolicy "IfNotPresent"}}
         volumeMounts:
           - name: scripts
             mountPath: /scripts
           - name: bin
             mountPath: /share/bin
-          - name: lib
-            mountPath: /share/lib
-          - name: lib64
-            mountPath: /share/lib64
         command:
           - /bin/bash
           - -c
@@ -45,10 +41,6 @@ spec:
             mountPath: /scripts
           - name: bin
             mountPath: /bin
-          - name: lib
-            mountPath: /lib
-          - name: lib64
-            mountPath: /lib64
         command:
           - /bin/bash
           - -c
@@ -63,10 +55,6 @@ spec:
                 fieldPath: metadata.name
     volumes:
       - name: bin
-        emptyDir: {}
-      - name: lib
-        emptyDir: {}
-      - name: lib64
         emptyDir: {}
   vars:
     - name: ETCD_VERSION

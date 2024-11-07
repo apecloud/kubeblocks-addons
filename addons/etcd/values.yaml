@@ -41,12 +41,11 @@ image:
       # latest version build with distroless(default)
       minor515: v3.5.15
 
-# remain the same lib dir with the original etcd image
 # used to inject bash to distroless etcd image
-debianImage:
-  # if the value of bashImage.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
+bashBusyboxImage:
+  # if the value of bashBusyboxImage.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
   registry: docker.io
-  repository: debian
+  repository: apecloud/bash-busybox
   pullPolicy: IfNotPresent
   # use static compile version
-  tag: bullseye-20241016
+  tag: 1.37.0-musl

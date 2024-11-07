@@ -15,10 +15,10 @@ spec:
     - name: 3.5.6
       serviceVersion: 3.5.6
       images:
-        inject-bash: {{ include "debian.repository" . }}:bullseye-20241016
+        inject-bash: {{ include "bashBusyboxImage.repository" . }}:1.37.0-musl
         etcd: {{ include "etcd.repository" . }}:v3.5.6
     - name: 3.5.15
       serviceVersion: 3.5.15
       images:
-        inject-bash: {{ include "debian.repository" . }}:bullseye-20241016
+        inject-bash: {{ include "bashBusyboxImage.repository" . }}:1.37.0-musl
         etcd: {{ include "etcd.repository" . }}:v3.5.15

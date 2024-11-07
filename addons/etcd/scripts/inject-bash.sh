@@ -18,10 +18,6 @@ inject_bash() {
   else
     echo "etcd-$version image build with distroless, injecting brinaries to run scripts"
     cp /bin/* /share/bin
-    cp /usr/bin/* /share/bin
-    cp -r /lib/* /share/lib
-    cp -r /usr/lib/* /share/lib
-    cp -r /lib64/* /share/lib64
   fi
   return 0
 }
