@@ -42,6 +42,7 @@ keeper:
   memory: 2
   storage: 10
   tolerations: []
+  disableExporter: false
 
 ## Service configurations
 service:

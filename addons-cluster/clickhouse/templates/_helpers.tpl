@@ -111,6 +111,7 @@ Define clickhouse keeper componentSpec with ComponentDefinition.
 - name: ch-keeper
   componentDef: clickhouse-keeper-24
   replicas: {{ .Values.keeper.replicaCount }}
+  disableExporter: {{ $.Values.keeper.disableExporter | default "false" }}
   {{- with .Values.keeper.tolerations }}
   tolerations: {{ .| toYaml | nindent 4 }}
   {{- end }}
