@@ -11,7 +11,7 @@ spec:
   volumeExpansion:
     # Specifies the name of the Component.
     # - clickhouse
-    # - ch-keeper
+    # - clickhouse-keeper
   - componentName: clickhouse
     # volumeClaimTemplates specifies the storage size and volumeClaimTemplate name.
     volumeClaimTemplates:
