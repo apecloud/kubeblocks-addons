@@ -1,14 +1,80 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: nebula-storaged-{{ .Chart.Version }}
+  name: {{ include "nebula-storaged.cmpdName" . }}
   labels:
     {{- include "nebula.labels" . | nindent 4 }}
+  annotations:
+    {{- include "nebula.annotations" . | nindent 4 }}
 spec:
   provider: Community
   description: {{ .Chart.Description }}
   serviceKind: nebula
   serviceVersion: {{ .Chart.AppVersion }}
+  configs:
+    - name: nebula-storaged-config
+      templateRef: {{ include "nebula-storaged.configTemplateName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: nebula-storaged
+  scripts:
+    - name: nebula-storaged-scripts
+      templateRef: {{ include "nebula-storaged.scriptsTemplateName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  volumes:
+    - name: data
+      needSnapshot: true
+    - name: logs
+  vars:
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.clusterDomain }}
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: STORAGED_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: STORAGED_COMPONENT_REPLICAS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          replicas: Required
+    - name: NEBULA_METAD_SVC
+      valueFrom:
+        componentVarRef:
+          compDef: nebula-metad
+          optional: false
+          podFQDNs: Required
+      expression: {{ `{{ $hosts := splitList "," .NEBULA_METAD_SVC }}{{ range $idx, $host := $hosts }}{{ $host }}:9559{{ if lt $idx (sub (len $hosts) 1) }},{{ end }}{{ end }}` | toYaml | nindent 8 }}
+    - name: GRAPHD_SVC_NAME
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "nebula-graphd.cmpdRegexpPattern" . }}
+          name: thrift
+          optional: false
+          host: Required
+    - name: GRAPHD_SVC_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "nebula-graphd.cmpdRegexpPattern" . }}
+          name: thrift
+          optional: false
+          port:
+            name: thrift
+            option: Required
+  lifecycleActions:
+    memberLeave:
+      exec:
+        command:
+          - /bin/sh
+          - -c
+          - /scripts/member-leave.sh
+        targetPodSelector: Any
+        container: console
   runtime:
     securityContext:
       fsGroup: 1001
@@ -19,7 +85,7 @@ spec:
           - -c
           - |
             trap : TERM INT
-            exec /usr/local/nebula/bin/nebula-storaged --flagfile=/usr/local/nebula/etc/nebula-storaged.conf --meta_server_addrs=$NEBULA_METAD_SVC --local_ip=$KB_POD_FQDN"{{ .Values.clusterDomain }}" --daemonize=false
+            exec /usr/local/nebula/bin/nebula-storaged --flagfile=/usr/local/nebula/etc/nebula-storaged.conf --meta_server_addrs=$NEBULA_METAD_SVC --local_ip=$POD_FQDN --daemonize=false
         imagePullPolicy: {{default .Values.nebula.images.pullPolicy "IfNotPresent"}}
         ports:
           - containerPort: 9779
@@ -34,6 +100,14 @@ spec:
           - containerPort: 9778
             name: admin
             protocol: TCP
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: POD_FQDN
+            value: $(POD_NAME).$(STORAGED_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN)
         readinessProbe:
           failureThreshold: 3
           httpGet:
@@ -55,61 +129,18 @@ spec:
         imagePullPolicy: {{default .Values.nebula.images.pullPolicy "IfNotPresent"}}
         command: [ "/bin/sh" ]
         args: [ "-c", "trap : TERM INT; sleep infinity & wait" ]
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: POD_FQDN
+            value: $(POD_NAME).$(STORAGED_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN)
         lifecycle:
           postStart:
             exec:
               command: [ "/bin/sh", "-c", "/scripts/post-start.sh" ]
-          preStop:
-            exec:
-              command: [ "/bin/sh", "-c", "/scripts/pre-stop.sh" ]
         volumeMounts:
-          - name: annotations
-            mountPath: /etc/annotations
           - name: scripts
             mountPath: /scripts
-    volumes:
-      - name: annotations
-        downwardAPI:
-          items:
-            - path: "component-replicas"
-              fieldRef:
-                fieldPath: metadata.annotations['apps.kubeblocks.io/component-replicas']
-  vars:
-    - name: NEBULA_METAD_SVC
-      valueFrom:
-        componentVarRef:
-          compDef: nebula-metad
-          optional: false
-          podFQDNs: Required
-      expression: {{ `{{ $hosts := splitList "," .NEBULA_METAD_SVC }}{{ range $idx, $host := $hosts }}{{ $host }}.cluster.local:9559{{ if lt $idx (sub (len $hosts) 1) }},{{ end }}{{ end }}` | toYaml | nindent 8 }}
-    - name: GRAPHD_SVC_NAME
-      valueFrom:
-        serviceVarRef:
-          compDef: nebula-graphd
-          name: thrift
-          optional: false
-          host: Required
-    - name: GRAPHD_SVC_PORT
-      valueFrom:
-        serviceVarRef:
-          compDef: nebula-graphd
-          name: thrift
-          optional: false
-          port:
-            name: thrift
-            option: Required
-  volumes:
-    - name: data
-      needSnapshot: true
-    - name: logs
-  configs:
-    - name: nebula-storaged-config
-      templateRef: nebula-storaged-config-template
-      namespace: {{ .Release.Namespace }}
-      volumeName: nebula-storaged
-  scripts:
-    - name: nebula-storaged-scripts
-      templateRef: nebula-storaged-scripts
-      namespace: {{ .Release.Namespace }}
-      volumeName: scripts
-      defaultMode: 0555

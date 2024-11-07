@@ -1,3 +1,11 @@
+# Default values for greptimedb.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+nameOverride: ""
+
+fullnameOverride: ""
+
 nebula:
   ## @param nebula.version, version of nebula-graph
   ## more info: check https://docs.nebula-graph.io/ for latest and LTS versions
@@ -30,4 +38,4 @@ nebula:
       repository: vesoft/nebula-console
       tag: v3.5.0
 
-clusterDomain: ".cluster.local"
+clusterDomain: "cluster.local"

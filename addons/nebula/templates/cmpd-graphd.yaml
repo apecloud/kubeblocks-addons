@@ -1,62 +1,16 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: nebula-graphd-{{ .Chart.Version }}
+  name: {{ include "nebula-graphd.cmpdName" . }}
   labels:
     {{- include "nebula.labels" . | nindent 4 }}
+  annotations:
+    {{- include "nebula.annotations" . | nindent 4 }}
 spec:
   provider: Community
   description: {{ .Chart.Description }}
   serviceKind: nebula
   serviceVersion: {{ .Chart.AppVersion }}
-  runtime:
-    securityContext:
-      fsGroup: 1001
-    containers:
-      - name: graphd
-        command:
-          - /bin/bash
-          - -c
-          - |
-            set -ex
-            trap : TERM INT
-            exec /usr/local/nebula/bin/nebula-graphd --flagfile=/usr/local/nebula/etc/nebula-graphd.conf --meta_server_addrs=$NEBULA_METAD_SVC --local_ip=${KB_POD_FQDN}{{ .Values.clusterDomain }} --daemonize=false
-        imagePullPolicy: {{default .Values.nebula.images.pullPolicy "IfNotPresent"}}
-        ports:
-          - containerPort: 9669
-            name: thrift
-            protocol: TCP
-          - containerPort: 19669
-            name: http
-            protocol: TCP
-          - containerPort: 19670
-            name: http2
-            protocol: TCP
-        readinessProbe:
-          failureThreshold: 3
-          httpGet:
-            path: /status
-            port: http
-            scheme: HTTP
-          initialDelaySeconds: 10
-          periodSeconds: 10
-          successThreshold: 1
-          timeoutSeconds: 5
-        volumeMounts:
-          - mountPath: /usr/local/nebula/data
-            name: data
-          - mountPath: /usr/local/nebula/logs
-            name: logs
-          - mountPath: /usr/local/nebula/etc
-            name: nebula-graphd
-  vars:
-    - name: NEBULA_METAD_SVC
-      valueFrom:
-        componentVarRef:
-          compDef: nebula-metad
-          optional: false
-          podFQDNs: Required
-      expression: {{ `{{ $hosts := splitList "," .NEBULA_METAD_SVC }}{{ range $idx, $host := $hosts }}{{ $host }}.cluster.local:9559{{ if lt $idx (sub (len $hosts) 1) }},{{ end }}{{ end }}` | toYaml | nindent 8 }}
   volumes:
     - name: logs
   services:
@@ -78,6 +32,73 @@ spec:
             protocol: TCP
   configs:
     - name: nebula-graphd-config
-      templateRef: nebula-graphd-config-template
+      templateRef: {{ include "nebula-graphd.configTemplateName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: nebula-graphd
+  vars:
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.clusterDomain }}
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: GRAPHD_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: NEBULA_METAD_SVC
+      valueFrom:
+        componentVarRef:
+          compDef: nebula-metad
+          optional: false
+          podFQDNs: Required
+      expression: {{ `{{ $hosts := splitList "," .NEBULA_METAD_SVC }}{{ range $idx, $host := $hosts }}{{ $host }}:9559{{ if lt $idx (sub (len $hosts) 1) }},{{ end }}{{ end }}` | toYaml }}
+  runtime:
+    securityContext:
+      fsGroup: 1001
+    containers:
+      - name: graphd
+        command:
+          - /bin/bash
+          - -c
+          - |
+            set -ex
+            trap : TERM INT
+            exec /usr/local/nebula/bin/nebula-graphd --flagfile=/usr/local/nebula/etc/nebula-graphd.conf --meta_server_addrs=$NEBULA_METAD_SVC --local_ip=$POD_FQDN --daemonize=false
+        imagePullPolicy: {{default .Values.nebula.images.pullPolicy "IfNotPresent"}}
+        ports:
+          - containerPort: 9669
+            name: thrift
+            protocol: TCP
+          - containerPort: 19669
+            name: http
+            protocol: TCP
+          - containerPort: 19670
+            name: http2
+            protocol: TCP
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: POD_FQDN
+            value: $(POD_NAME).$(GRAPHD_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN)
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /status
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        volumeMounts:
+          - mountPath: /usr/local/nebula/data
+            name: data
+          - mountPath: /usr/local/nebula/logs
+            name: logs
+          - mountPath: /usr/local/nebula/etc
+            name: nebula-graphd
