@@ -5,7 +5,7 @@
 {{- end }}
   componentSpecs:
   {{- if eq .Values.mode "cluster" }}
-  {{- include "ch-keeper-component" . | nindent 4 }}
+  {{- include "clickhouse-keeper-component" . | nindent 4 }}
   {{- end }}
   {{- if eq (.Values.shardCount | int) 1 }}
   {{- include "clickhouse-component" . | nindent 4 }}

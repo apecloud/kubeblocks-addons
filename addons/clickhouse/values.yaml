@@ -16,7 +16,7 @@ commonAnnotations: {}
 # If specified, the component definition will use it as prefix.
 cmpdVersionPrefix:
   clickhouse24: "clickhouse-24"
-  keeper24: "ch-keeper-24"
+  keeper24: "clickhouse-keeper-24"
 
 image:
   registry: docker.io

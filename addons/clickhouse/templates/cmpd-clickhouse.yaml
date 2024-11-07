@@ -132,7 +132,7 @@ spec:
     - name: CH_KEEPER_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ include "ch-keeper24.cmpdRegexpPattern" . }}
+          compDef: {{ include "clickhouse-keeper24.cmpdRegexpPattern" . }}
           optional: true
           podFQDNs: Required
   volumes:
