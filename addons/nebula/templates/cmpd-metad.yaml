@@ -1,14 +1,43 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: nebula-metad-{{ .Chart.Version }}
+  name: {{ include "nebula-metad.cmpdName" . }}
   labels:
     {{- include "nebula.labels" . | nindent 4 }}
+  annotations:
+    {{- include "nebula.annotations" . | nindent 4 }}
 spec:
   provider: Community
   description: {{ .Chart.Description }}
   serviceKind: nebula
   serviceVersion: {{ .Chart.AppVersion }}
+  configs:
+    - name: nebula-metad-config
+      templateRef: {{ include "nebula-metad.configTemplateName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: nebula-metad
+  volumes:
+    - name: data
+      needSnapshot: true
+    - name: logs
+  vars:
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.clusterDomain }}
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: NEBULA_METAD_SVC
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+      expression: {{ `{{ $hosts := splitList "," .NEBULA_METAD_SVC }}{{ range $idx, $host := $hosts }}{{ $host }}:9559{{ if lt $idx (sub (len $hosts) 1) }},{{ end }}{{ end }}` | toYaml }}
+    - name: METAD_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
   runtime:
     containers:
       - name: metad
@@ -18,7 +47,7 @@ spec:
           - |
             set -ex
             trap : TERM INT
-            exec /usr/local/nebula/bin/nebula-metad --flagfile=/usr/local/nebula/etc/nebula-metad.conf --meta_server_addrs=$NEBULA_METAD_SVC --local_ip=${KB_POD_FQDN}{{ .Values.clusterDomain }}  --daemonize=false
+            exec /usr/local/nebula/bin/nebula-metad --flagfile=/usr/local/nebula/etc/nebula-metad.conf --meta_server_addrs=$NEBULA_METAD_SVC --local_ip=$POD_FQDN --daemonize=false
         imagePullPolicy: {{default .Values.nebula.images.pullPolicy "IfNotPresent"}}
         ports:
           - containerPort: 9559
@@ -30,6 +59,14 @@ spec:
           - containerPort: 19560
             name: http2
             protocol: TCP
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: POD_FQDN
+            value: $(POD_NAME).$(METAD_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN)
         # readinessProbe:
         #   failureThreshold: 3
         #   httpGet:
@@ -47,19 +84,3 @@ spec:
             name: logs
           - mountPath: /usr/local/nebula/etc
             name: nebula-metad
-  vars:
-    - name: NEBULA_METAD_SVC
-      valueFrom:
-        componentVarRef:
-          optional: false
-          podFQDNs: Required
-      expression: {{ `{{ $hosts := splitList "," .NEBULA_METAD_SVC }}{{ range $idx, $host := $hosts }}{{ $host }}.cluster.local:9559{{ if lt $idx (sub (len $hosts) 1) }},{{ end }}{{ end }}` | toYaml | nindent 8 }}
-  volumes:
-    - name: data
-      needSnapshot: true
-    - name: logs
-  configs:
-    - name: nebula-metad-config
-      templateRef: nebula-metad-config-template
-      namespace: {{ .Release.Namespace }}
-      volumeName: nebula-metad

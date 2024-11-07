@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "nebula-storaged.scriptsTemplateName" . }}
+  labels:
+    {{- include "nebula.labels" . | nindent 4 }}
+data:
+  member-leave.sh: |-
+    {{- .Files.Get "scripts/member-leave.sh" | nindent 4 }}
+  post-start.sh: |
+    {{- .Files.Get "scripts/post-start.sh" | nindent 4 }}

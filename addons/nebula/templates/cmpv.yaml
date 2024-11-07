@@ -9,19 +9,19 @@ spec:
     - releases:
         - console-v3.5.0
       compDefs:
-        - nebula-console
+        - {{ include "nebula-console.cmpdRegexpPattern" . }}
     - releases:
         - graphd-v3.5.0
       compDefs:
-        - nebula-graphd
+        - {{ include "nebula-graphd.cmpdRegexpPattern" . }}
     - releases:
         - metad-v3.5.0
       compDefs:
-        - nebula-metad
+        - {{ include "nebula-metad.cmpdRegexpPattern" . }}
     - releases:
         - storaged-v3.5.0
       compDefs:
-        - nebula-storaged
+        - {{ include "nebula-storaged.cmpdRegexpPattern" . }}
   releases:
     - name: console-v3.5.0
       serviceVersion: v3.5.0

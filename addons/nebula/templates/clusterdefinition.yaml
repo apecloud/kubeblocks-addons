@@ -10,13 +10,13 @@ spec:
       default: true
       components:
         - name: console
-          compDef: nebula-console
+          compDef: {{ include "nebula-console.cmpdRegexpPattern" . }}
         - name: graphd
-          compDef: nebula-graphd
+          compDef: {{ include "nebula-graphd.cmpdRegexpPattern" . }}
         - name: metad
-          compDef: nebula-metad
+          compDef: {{ include "nebula-metad.cmpdRegexpPattern" . }}
         - name: storaged
-          compDef: nebula-storaged
+          compDef: {{ include "nebula-storaged.cmpdRegexpPattern" . }}
       orders:
         provision:
           - metad
