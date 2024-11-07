@@ -1,29 +1,42 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
+  name: {{ include "neon-compute.componentDefName" . }}
   labels:
     {{- include "neon.labels" . | nindent 4 }}
-  name: {{ include "neon-compute.componentDefName" . }}
+  annotations:
+    {{- include "neon.annotations" . | nindent 4 }}
 spec:
   description: A neon compute component definition for Kubernetes
   provider: KubeBlocks
+  serviceKind: neon-compute
+  serviceVersion: {{ .Values.defaultComponentServiceVersion }}
+  services:
+    - name: neon-compute
+      serviceName: neon-compute
+      spec:
+        ports:
+          - name: postgresql
+            port: 55432
+            protocol: TCP
+        type: ClusterIP
   systemAccounts:
     - name: cloud_admin
       initAccount: true
-      passwordGenerationPolicy: &defaultPasswdGenerationPolicy
+      passwordGenerationPolicy:
         length: 10
         numDigits: 5
         numSymbols: 0
         letterCase: MixedCases
   scripts:
     - name: neon-scripts
-      templateRef: neon-scripts
+      templateRef: {{ include "neon.scriptsTemplateName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
   configs:
     - name: neon-config
-      templateRef: neon-config
+      templateRef: {{ include "neon.configTemplateName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: neon-config
       defaultMode: 0444
@@ -31,66 +44,63 @@ spec:
     - name: NEON_COMPUTE_PGPORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "neon-compute.componentDefName" . }}
           name: neon-compute
           port:
             name: postgresql
     - name: NEON_COMPUTE_PGUSER
       valueFrom:
         credentialVarRef:
-          compDef: {{ include "neon-compute.componentDefName" . }}
           name: cloud_admin
           username: Required
     - name: NEON_COMPUTE_PGPASSWORD
       valueFrom:
         credentialVarRef:
-          compDef: {{ include "neon-compute.componentDefName" . }}
           name: cloud_admin
           password: Required
     - name: NEON_SAFEKEEPERS_HEADLESS
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "neon-safekeeper.componentDefName" . }}
+          compDef: {{ include "neon-safekeeper.cmpdRegexpPattern" . }}
           name: headless
           optional: true
           host: Optional
     - name: NEON_PAGESERVER_HEADLESS
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "neon-pageserver.componentDefName" . }}
+          compDef: {{ include "neon-pageserver.cmpdRegexpPattern" . }}
           name: headless
           optional: true
           host: Optional
     - name: NEON_PAGESERVER_POD_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ include "neon-pageserver.componentDefName" . }}
+          compDef: {{ include "neon-pageserver.cmpdRegexpPattern" . }}
           optional: true
           podNames: Optional
     - name: NEON_SAFEKEEPERS_POD_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ include "neon-safekeeper.componentDefName" . }}
+          compDef: {{ include "neon-safekeeper.cmpdRegexpPattern" . }}
           optional: true
           podNames: Optional
     - name: NEON_SAFEKEEPERS_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "neon-safekeeper.componentDefName" . }}
+          compDef: {{ include "neon-safekeeper.cmpdRegexpPattern" . }}
           name: neon-safekeeper
           port:
             name: safekeeper-pg
     - name: NEON_PAGESERVER_PGPORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "neon-pageserver.componentDefName" . }}
+          compDef: {{ include "neon-pageserver.cmpdRegexpPattern" . }}
           name: neon-pageserver
           port:
             name: pageserver-pg
     - name: NEON_PAGESERVER_HTTPPORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "neon-pageserver.componentDefName" . }}
+          compDef: {{ include "neon-pageserver.cmpdRegexpPattern" . }}
           name: neon-pageserver
           port:
             name: pageserver-http
@@ -118,14 +128,3 @@ spec:
             name: data
           - name: scripts
             mountPath: /scripts
-  serviceKind: neon-compute
-  serviceVersion: {{ .Values.componentServiceVersion }}
-  services:
-    - name: neon-compute
-      serviceName: neon-compute
-      spec:
-        ports:
-        - name: postgresql
-          port: 55432
-          protocol: TCP
-        type: ClusterIP

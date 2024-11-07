@@ -1,8 +1,8 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: neon-scripts
+  name: {{ include "neon.configTemplateName" . }}
   labels:
     {{- include "neon.labels" . | nindent 4 }}
 data:
-  {{- include "neon.extend.scripts" . | nindent 2 }}
+  {{- include "neon.extend.config" . | nindent 2 }}

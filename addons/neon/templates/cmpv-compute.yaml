@@ -7,12 +7,12 @@ metadata:
 spec:
   compatibilityRules:
     - compDefs:
-        - {{ include "neon-compute.componentDefNamePrefix" . }}
+        - {{ include "neon-compute.cmpdRegexpPattern" . }}
       releases:
         - pg14-1.0.0
   releases:
     - name: pg14-1.0.0 
       changes:
-      serviceVersion: 1.0.0
+      serviceVersion: pg14-1.0.0
       images:
         neon-compute: perconalab/neon:pg14-1.0.0

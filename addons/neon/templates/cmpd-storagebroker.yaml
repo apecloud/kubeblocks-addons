@@ -1,28 +1,16 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
+  name: {{ include "neon-storagebroker.componentDefName" . }}
   labels:
     {{- include "neon.labels" . | nindent 4 }}
-  name: {{ include "neon-storagebroker.componentDefName" . }}
+  annotations:
+    {{- include "neon.annotations" . | nindent 4 }}
 spec:
   description: A neon storagebroker component definition for Kubernetes
   provider: KubeBlocks
-  runtime:
-    containers:
-      - env: 
-          - name: STORAGEBROKER_PORT
-            value: "{{ .Values.storagebroker.port }}"
-        command:
-          - /bin/bash
-          - -c
-          - "storage_broker -l 0.0.0.0:${STORAGEBROKER_PORT}"
-        image: {{ include "neon-storagebroker.image" . }}
-        name: neon-storagebroker
-        volumeMounts:
-          - mountPath: /usr/local/neon/storagebroker
-            name: neon-storagebroker
   serviceKind: neon-storagebroker
-  serviceVersion: {{ .Values.componentServiceVersion }}
+  serviceVersion: {{ .Values.defaultComponentServiceVersion }}
   services:
     - name: neon-storagebroker
       serviceName: neon-storagebroker
@@ -32,3 +20,17 @@ spec:
           - name: storagebroker
             port: {{ .Values.storagebroker.port }}
             protocol: TCP
+  runtime:
+    containers:
+      - name: neon-storagebroker
+        image: {{ include "neon-storagebroker.image" . }}
+        env:
+          - name: STORAGEBROKER_PORT
+            value: "{{ .Values.storagebroker.port }}"
+        command:
+          - /bin/bash
+          - -c
+          - "storage_broker -l 0.0.0.0:${STORAGEBROKER_PORT}"
+        volumeMounts:
+          - mountPath: /usr/local/neon/storagebroker
+            name: neon-storagebroker
