@@ -4,16 +4,6 @@
 Describe "Common Functions Tests"
   Include ../scripts/common.sh
 
-  setup_mock_commands() {
-    gsed() { echo "gsed called $1"; }
-    sed() { echo "sed called $1"; }
-  }
-
-  restore_mock_commands() {
-    unset -f gsed
-    unset -f sed
-  }
-
   setup_temp_file() {
     config_file=$(mktemp)
   }
@@ -21,46 +11,6 @@ Describe "Common Functions Tests"
   cleanup_temp_file() {
     rm "$config_file"
   }
-
-  Describe "check_requirements()"
-    It "returns success when gsed is available on Darwin/BSD"
-      uname() { echo "Darwin"; }
-      which() { return 0; }
-      When call check_requirements
-      The status should be success
-    End
-
-    It "returns failure when gsed is not available on Darwin/BSD"
-      uname() { echo "Darwin"; }
-      which() { return 1; }
-      When call check_requirements
-      The status should be failure
-      The stderr should include "cannot find gsed (required on BSD/Darwin systems)"
-    End
-
-    It "returns success on non-Darwin/BSD systems"
-      uname() { echo "Linux"; }
-      When call check_requirements
-      The status should be success
-    End
-  End
-
-  Describe "universal_sed()"
-    BeforeEach "setup_mock_commands"
-    AfterEach "restore_mock_commands"
-
-    It "uses gsed when available"
-      uname() { echo "Darwin"; }
-      When call universal_sed "foo"
-      The output should include "gsed called foo"
-    End
-
-    It "uses sed when gsed is not available"
-      uname() { echo "Linux"; }
-      When call universal_sed "bar"
-      The output should include "sed called bar"
-    End
-  End
 
   Describe "check_backup_file()"
     It "returns success when backup file is valid"

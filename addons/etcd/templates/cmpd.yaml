@@ -14,12 +14,12 @@ spec:
   runtime:
     initContainers:
       - name: inject-bash
-        imagePullPolicy: {{default .Values.debianImage.pullPolicy "IfNotPresent"}}
+        imagePullPolicy: {{default .Values.bashBusyboxImage.pullPolicy "IfNotPresent"}}
         volumeMounts:
           - name: scripts
             mountPath: /scripts
-          - name: shell
-            mountPath: /shell
+          - name: bin
+            mountPath: /share/bin
         command:
           - /bin/bash
           - -c
@@ -39,16 +39,13 @@ spec:
             mountPath: /etc/etcd
           - name: scripts
             mountPath: /scripts
-          - name: shell
-            mountPath: /lib
+          - name: bin
+            mountPath: /bin
         command:
-          - /lib/bin/bash
+          - /bin/bash
           - -c
           - |
-            export PATH=$PATH:/lib/bin
-            if [ ! -e /bin/bash ]; then
-              cp /lib/bin/* /bin
-            fi
+            export PATH=$PATH:/bin
             /scripts/start.sh
         env:
           - name: CURRENT_POD_NAME
@@ -57,7 +54,7 @@ spec:
                 apiVersion: v1
                 fieldPath: metadata.name
     volumes:
-      - name: shell
+      - name: bin
         emptyDir: {}
   vars:
     - name: ETCD_VERSION
