@@ -31,7 +31,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "ch-keeper24.configurationTplName" . }}
+  name: {{ include "clickhouse-keeper24.configurationTplName" . }}
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
 data:

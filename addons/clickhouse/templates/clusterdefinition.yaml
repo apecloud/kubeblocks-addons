@@ -15,7 +15,7 @@ spec:
         - name: clickhouse
           compDef: {{ include "clickhouse24.cmpdRegexpPattern" .}}
         - name: ch-keeper
-          compDef: {{ include "ch-keeper24.cmpdRegexpPattern" .}}
+          compDef: {{ include "clickhouse-keeper24.cmpdRegexpPattern" .}}
       orders:
         provision:
           - ch-keeper

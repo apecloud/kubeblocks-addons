@@ -48,7 +48,7 @@ spec:
               requests:
                 storage: 20Gi
     - name: ch-keeper
-      componentDef: ch-keeper-24
+      componentDef: clickhouse-keeper-24
       serviceAccountName: kb-clickhouse-cluster
       replicas: 1
       systemAccounts:

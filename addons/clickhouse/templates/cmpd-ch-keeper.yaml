@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "ch-keeper24.cmpdName" . }}
+  name: {{ include "clickhouse-keeper24.cmpdName" . }}
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
   annotations:
@@ -109,7 +109,7 @@ spec:
     scrapePort: "8001"
   configs:
     - name: ch-keeper-tpl
-      templateRef: {{ include "ch-keeper24.configurationTplName" . }}
+      templateRef: {{ include "clickhouse-keeper24.configurationTplName" . }}
       volumeName: config
       namespace: {{ .Release.Namespace }}
   systemAccounts:
