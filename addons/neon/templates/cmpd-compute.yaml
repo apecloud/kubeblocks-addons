@@ -57,32 +57,6 @@ spec:
         credentialVarRef:
           name: cloud_admin
           password: Required
-    - name: NEON_SAFEKEEPERS_HEADLESS
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "neon-safekeeper.cmpdRegexpPattern" . }}
-          name: headless
-          optional: true
-          host: Optional
-    - name: NEON_PAGESERVER_HEADLESS
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "neon-pageserver.cmpdRegexpPattern" . }}
-          name: headless
-          optional: true
-          host: Optional
-    - name: NEON_PAGESERVER_POD_LIST
-      valueFrom:
-        componentVarRef:
-          compDef: {{ include "neon-pageserver.cmpdRegexpPattern" . }}
-          optional: true
-          podNames: Optional
-    - name: NEON_SAFEKEEPERS_POD_LIST
-      valueFrom:
-        componentVarRef:
-          compDef: {{ include "neon-safekeeper.cmpdRegexpPattern" . }}
-          optional: true
-          podNames: Optional
     - name: NEON_SAFEKEEPERS_PORT
       valueFrom:
         serviceVarRef:
@@ -90,6 +64,30 @@ spec:
           name: neon-safekeeper
           port:
             name: safekeeper-pg
+    - name: NEON_SAFEKEEPERS_POD_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "neon-safekeeper.cmpdRegexpPattern" . }}
+          optional: true
+          podNames: Optional
+    - name: NEON_SAFEKEEPERS_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "neon-safekeeper.cmpdRegexpPattern" . }}
+          optional: true
+          podFQDNs: Required
+    - name: NEON_PAGESERVER_POD_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "neon-pageserver.cmpdRegexpPattern" . }}
+          optional: true
+          podNames: Optional
+    - name: NEON_PAGESERVER_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "neon-pageserver.cmpdRegexpPattern" . }}
+          optional: true
+          podFQDNs: Required
     - name: NEON_PAGESERVER_PGPORT
       valueFrom:
         serviceVarRef:
