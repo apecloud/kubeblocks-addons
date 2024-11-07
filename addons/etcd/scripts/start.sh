@@ -12,7 +12,6 @@ load_common_library() {
   . "${kblib_common_library_file}"
   # shellcheck source=/scripts/common.sh
   . "${etcd_common_library_file}"
-  check_requirements
 }
 
 log() {
@@ -64,9 +63,10 @@ update_etcd_conf() {
 
   cp "$default_template_conf" "$tpl_conf"
 
-  universal_sed -i "s/^name:.*/name: $current_pod_name/g" "$tpl_conf"
-  universal_sed -i "s#\(initial-advertise-peer-urls: https\?\).*#\\1://$my_endpoint:2380#g" "$tpl_conf"
-  universal_sed -i "s#\(advertise-client-urls: https\?\).*#\\1://$my_endpoint:2379#g" "$tpl_conf"
+  sed -i.bak "s/^name:.*/name: $current_pod_name/g" "$tpl_conf"
+  sed -i.bak "s#\(initial-advertise-peer-urls: http\(s\{0,1\}\)://\).*#\1$my_endpoint:2380#g" "$tpl_conf"
+  sed -i.bak "s#\(advertise-client-urls: http\(s\{0,1\}\)://\).*#\1$my_endpoint:2379#g" "$tpl_conf"
+  rm "$tpl_conf.bak"
 }
 
 rebuild_etcd_conf() {

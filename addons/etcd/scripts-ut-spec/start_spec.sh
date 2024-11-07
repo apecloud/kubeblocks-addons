@@ -22,22 +22,6 @@ Describe "Etcd Start Bash Script Tests"
     ut_mode="true"
   }
 
-  check_requirements() {
-    if [[ $(uname) == "Darwin" || $(uname) == *"BSD"* ]] && ! which gsed > /dev/null 2>&1; then
-      echo "cannot find gsed (required on BSD/Darwin systems)" >&2
-      return 1
-    fi
-    return 0
-  }
-
-  universal_sed() {
-    if [[ $(uname) == "Darwin" || $(uname) == *"BSD"* ]]; then
-      gsed "$@"
-    else
-      sed "$@"
-    fi
-  }
-
   cleanup() {
     rm -f "$real_conf";
     rm -f $common_library_file;
@@ -94,8 +78,6 @@ Describe "Etcd Start Bash Script Tests"
   End
 
   Describe "update_etcd_conf()"
-    BeforeAll "check_requirements"
-
     It "updates the etcd configuration file correctly without tls"
       current_pod_name="etcd-0"
       my_endpoint="etcd-0.etcd-headless.default.svc.cluster.local"
@@ -130,8 +112,6 @@ Describe "Etcd Start Bash Script Tests"
   End
 
   Describe "rebuild_etcd_conf()"
-    BeforeAll "check_requirements"
-
     It "rebuilds the etcd configuration successfully"
       export CURRENT_POD_NAME="etcd-0"
       export PEER_FQDNS="etcd-0.etcd-headless.default.svc.cluster.local,etcd-1.etcd-headless.default.svc.cluster.local"
