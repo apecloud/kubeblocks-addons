@@ -135,15 +135,15 @@ Define latest etcd image build with busybox brinaries
 {{- end }}
 
 {{/*
-Define debian image repository
+Define bash-busybox image repository
 */}}
-{{- define "debian.repository" -}}
-{{ .Values.debianImage.registry | default "docker.io" }}/{{ .Values.debianImage.repository }}
+{{- define "bashBusyboxImage.repository" -}}
+{{ .Values.bashBusyboxImage.registry | default "docker.io" }}/{{ .Values.bashBusyboxImage.repository }}
 {{- end }}
 
 {{/*
-Define debian image
+Define bash-busybox image
 */}}
-{{- define "debian.image" -}}
-{{ include "debian.repository" . }}:{{ .Values.debianImage.tag }}
+{{- define "bashBusyboxImage.image" -}}
+{{ include "bashBusyboxImage.repository" . }}:{{ .Values.bashBusyboxImage.tag }}
 {{- end }}

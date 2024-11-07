@@ -76,9 +76,9 @@ Define clickhouse24 component definition regex pattern
 {{- end -}}
 
 {{/*
-Define ch-keeper24 component definition name
+Define clickhouse-keeper24 component definition name
 */}}
-{{- define "ch-keeper24.cmpdName" -}}
+{{- define "clickhouse-keeper24.cmpdName" -}}
 {{- if eq (len .Values.cmpdVersionPrefix.keeper24 ) 0 -}}
 clickhouse-keeper-24-{{ .Chart.Version }}
 {{- else -}}
@@ -87,9 +87,9 @@ clickhouse-keeper-24-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
-Define ch-keeper24 component definition regex pattern
+Define clickhouse-keeper24 component definition regex pattern
 */}}
-{{- define "ch-keeper24.cmpdRegexpPattern" -}}
+{{- define "clickhouse-keeper24.cmpdRegexpPattern" -}}
 ^clickhouse-keeper-24.*
 {{- end -}}
 
@@ -122,9 +122,9 @@ clickhouse-24-user-configuration-tpl
 {{- end -}}
 
 {{/*
-Define ch-keeper24 configuration tpl name
+Define clickhouse-keeper24 configuration tpl name
 */}}
-{{- define "ch-keeper24.configurationTplName" -}}
+{{- define "clickhouse-keeper24.configurationTplName" -}}
 clickhouse-keeper-24-configuration-tpl
 {{- end -}}
 
