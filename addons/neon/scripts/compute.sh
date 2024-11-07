@@ -6,8 +6,12 @@ test || __() {
   set -ex
 }
 
-declare SPEC_FILE_ORG="/data/spec/spec.prep.DOCKER.json"
+declare SPEC_FILE_SOURCE="/config/spec.json"
+declare SPEC_FILE_DOCKER_SOURCE="/config/spec.prep.DOCKER.json"
+declare PGDATA_DIR="/data/pgdata"
+declare SPEC_DIR="/data/spec"
 declare SPEC_FILE="/data/spec/spec.json"
+declare SPEC_FILE_DOCKER="/data/spec/spec.prep.DOCKER.json"
 declare PG_VERSION=14
 declare PAGESERVER
 declare SAFEKEEPERS
@@ -33,16 +37,22 @@ check_required_env() {
 }
 
 setup_directories() {
-  if [ ! -d "/data/pgdata" ]; then
-    mkdir -p /data/pgdata
-    mkdir -p /data/spec
-    cp "/config/spec.prep.DOCKER.json" "$SPEC_FILE_ORG"
-    cp "/config/spec.json" "$SPEC_FILE"
-    chmod +w "$SPEC_FILE_ORG"
+  if [ ! -d "$PGDATA_DIR" ]; then
+    mkdir -p "$PGDATA_DIR" || {
+      echo "Failed to create pgdata directory: $PGDATA_DIR" >&2
+      return 1
+    }
+    mkdir -p "$SPEC_DIR" || {
+      echo "Failed to create spec directory: $SPEC_DIR" >&2
+      return 1
+    }
+    cp "$SPEC_FILE_DOCKER_SOURCE" "$SPEC_FILE_DOCKER"
+    cp "$SPEC_FILE_SOURCE" "$SPEC_FILE"
+    chmod +w "$SPEC_FILE_DOCKER"
     chmod +w "$SPEC_FILE"
     return 0
   fi
-  echo "/data/pgdata already exists"
+  echo "$PGDATA_DIR already exists"
   return 0
 }
 
@@ -168,7 +178,7 @@ update_spec_file() {
     return 1
   fi
 
-  sed "s/TENANT_ID/${tenant_id}/" "${SPEC_FILE_ORG}" > "${SPEC_FILE}"
+  sed "s/TENANT_ID/${tenant_id}/" "${SPEC_FILE_DOCKER}" > "${SPEC_FILE}"
   sed -i "s/TIMELINE_ID/${timeline_id}/" "${SPEC_FILE}"
   sed -i "s/PAGESERVER_SPEC/${pageserver}/" "${SPEC_FILE}"
   sed -i "s/SAFEKEEPERS_SPEC/${safekeepers}/" "${SPEC_FILE}"
