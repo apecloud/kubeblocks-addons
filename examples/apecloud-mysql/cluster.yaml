@@ -3,7 +3,7 @@ kind: Cluster
 metadata:
   name: acmysql-cluster
   namespace: default
-  labels: 
+  labels:
     auditLogEnabled: "false"
 spec:
   # Specifies the behavior when a Cluster is deleted.

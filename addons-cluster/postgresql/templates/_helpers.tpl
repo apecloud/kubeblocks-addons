@@ -19,14 +19,14 @@ Define postgresql ComponentSpec with ComponentDefinition.
   topology: {{ .Values.mode }}
   componentSpecs:
     - name: {{ include "postgresql-cluster.component-name" . }}
+      serviceVersion: {{ .Values.version }}
       labels:
         {{- include "postgresql-cluster.patroni-scope-label" . | indent 8 }}
-      {{- include "postgresql-cluster.replicaCount" . | indent 6 }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
+      {{- include "postgresql-cluster.replicaCount" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
-      {{- if .Values.etcd.proxyEnabled }}
+      {{- if .Values.etcd.enabled }}
       serviceRefs:
       {{ include "postgresql-cluster.serviceRef" . | indent 6 }}
       {{- end }}
