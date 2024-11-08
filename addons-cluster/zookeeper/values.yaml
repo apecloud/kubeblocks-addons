@@ -6,8 +6,6 @@
 ##
 version: 3.9.2
 
-terminationPolicy: Delete
-
 ## @param replicas specify cluster replicas
 ##
 replicas: 3
