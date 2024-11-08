@@ -6,10 +6,6 @@
 ##
 version: 3.9.2
 
-terminationPolicy: Delete
-
-# clusterVersionOverride
-
 ## @param replicas specify cluster replicas
 ##
 replicas: 3
@@ -29,7 +25,8 @@ memory: 2
 #  cpu: 1
 #  memory: 1
 
-
+## @param storage, the unit is Gi
 storage: 10
 
+## @param log storage, the unit is Gi
 logStorage: 2
