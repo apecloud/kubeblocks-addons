@@ -46,6 +46,17 @@ spec:
         volumeMounts:
         - mountPath: /kubeblocks
           name: kubeblocks
+      - command:
+          - cp
+          - -r
+          - /jemalloc/lib/
+          - /kubeblocks/lib
+        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemalloc:5.3.0
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        name: init-jemalloc
+        volumeMounts:
+          - mountPath: /kubeblocks
+            name: kubeblocks
       containers:
       - name: mysql
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
@@ -61,6 +72,7 @@ spec:
             cp {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
             chown -R mysql:root {{ .Values.dataMountPath }}
             skip_slave_start="OFF"
+            export LD_PRELOAD=/kubeblocks/lib/libjemalloc.so.2
             if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
               skip_slave_start="ON"
             fi
@@ -115,6 +127,17 @@ spec:
         volumeMounts:
         - mountPath: /kubeblocks
           name: kubeblocks
+      - command:
+          - cp
+          - -r
+          - /jemalloc/lib/
+          - /kubeblocks/lib
+        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemalloc:5.3.0
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        name: init-jemalloc
+        volumeMounts:
+          - mountPath: /kubeblocks
+            name: kubeblocks
       containers:
       - name: mysql
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
@@ -129,6 +152,7 @@ spec:
           - |
             cp {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
             chown -R mysql:root {{ .Values.dataMountPath }}
+            export LD_PRELOAD=/kubeblocks/lib/libjemalloc.so.2
             skip_replica_start="OFF"
             if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
               skip_replica_start="ON"
@@ -182,6 +206,17 @@ spec:
         volumeMounts:
         - mountPath: /kubeblocks
           name: kubeblocks
+      - command:
+          - cp
+          - -r
+          - /jemalloc/lib/
+          - /kubeblocks/lib
+        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemalloc:5.3.0
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        name: init-jemalloc
+        volumeMounts:
+          - mountPath: /kubeblocks
+            name: kubeblocks
       containers:
       - name: mysql
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.4.2
@@ -197,6 +232,7 @@ spec:
             rm -rf {{ .Values.dataMountPath }}/plugin
             chown -R mysql:root {{ .Values.dataMountPath }}
             skip_replica_start="OFF"
+            export LD_PRELOAD=/kubeblocks/lib/libjemalloc.so.2
             if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
               skip_replica_start="ON"
             fi
