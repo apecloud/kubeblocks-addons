@@ -37,20 +37,16 @@ requests:
 ##
 storage: 20
 
-## @param monitor sidecar
-sidecars:
- - exporter
-  
 etcd:
-  proxyEnabled: false
+  enabled: false
   meta:
     mode: serviceref # optional: incluster, serviceref
     serviceRef:
-      namespace: 
-      cluster: 
-        name: 
-        component: 
-        service: 
-        port: 
+      namespace:
+      cluster:
+        name:
+        component:
+        service:
+        port:
         credential:
       serviceDescriptor: postgres-etcd-descriptor # example: postgres-etcd-descriptor
