@@ -6,6 +6,7 @@
 ##
 version: mysql-8.0.33
 
+componentVersion: 8.0.33
 ## @param mode MySQL cluster topology mode, standalone, replication or raftGroup
 ##
 mode: standalone
