@@ -139,6 +139,7 @@ checkpoint_flush_after = 256kB
 max_wal_senders = 10
 max_replication_slots = 5
 max_slot_wal_keep_size = 4096
+synchronous_commit = 'off'
 
 
 #------------------------------------------------------------------------------
