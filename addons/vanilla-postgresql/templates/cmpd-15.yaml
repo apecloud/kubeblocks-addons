@@ -56,4 +56,4 @@ spec:
   runtime:
     {{- include "vanilla-postgresql.spec.runtime.common" . | nindent 4 }}
     containers:
-    {{- include "vanilla-postgresql.spec.runtime.container.common" . | nindent 6 }}
+    {{- include "vanilla-postgresql.spec.runtime.container.common" (merge (dict "pg_major" "15") .)| nindent 6 }}

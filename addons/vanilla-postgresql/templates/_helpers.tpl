@@ -303,6 +303,7 @@ volumes:
 {{- end -}}
 
 {{- define "vanilla-postgresql.spec.runtime.container.common" -}}
+{{- $pg_major := .pg_major -}}
 - name: postgresql
   imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
   securityContext:
@@ -347,4 +348,8 @@ volumes:
     # used by syncer
     - name: KB_ENGINE_TYPE
       value: vanilla-postgresql
+    {{- if $pg_major }}
+    - name: PG_MAJOR
+      value: "{{ $pg_major }}"
+    {{- end }}
 {{- end -}}
