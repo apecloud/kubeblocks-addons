@@ -2,10 +2,11 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: {{ include "kblib.clusterName" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
-  terminationPolicy: {{ .Values.terminationPolicy }}
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
   componentSpecs:
     - name: zookeeper
       ## TODO: use regex pattern when cluster validation supported
