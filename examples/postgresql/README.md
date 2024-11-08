@@ -350,7 +350,7 @@ NAME     STATUS   STORAGEPROVIDER   ACCESSMETHOD   DEFAULT   AGE
 kb-oss   Ready    oss               Tool           true      Xd
 ```
 
-### [Backup]
+### Backup
 
 KubeBlocks supports multiple backup methods for postgresql cluster, such as `pg-basebackup`, `volume-snapshot`, `wal-g`, etc.
 
@@ -358,7 +358,7 @@ You may find the supported backup methods in the `BackupPolicy` of the cluster, 
 
 We will elaborate on the `pg-basebackup` and `wal-g` backup methods in the following sections to demonstrate how to create base backup and incremental backup for the cluster.
 
-#### [pg_basebackup]
+#### pg_basebackup
 
 ##### Base Backup(backup-pg-basebasekup.yaml)
 
@@ -427,7 +427,7 @@ It will run continuously until you disable the method `archive-wal` in the `Back
 kubectl get backup -l app.kubernetes.io/instance=pg-cluster -l dataprotection.kubeblocks.io/backup-type=Continuous  -oyaml | yq '.items[].status.timeRange'
 ```
 
-#### [wal-g]
+#### wal-g
 
 WAL-G is an archival restoration tool for PostgreSQL, MySQL/MariaDB, and MS SQL Server (beta for MongoDB and Redis).[^2]
 
@@ -519,7 +519,8 @@ You are suggested to check the compatibility of versions before upgrading, using
 kubectl get cmpv postgresql -ojson | jq '.spec.compatibilityRules'
 ```
 <details>
-The expected output is like:
+Expected output:
+
 ```json
 [
   {
@@ -558,8 +559,6 @@ kubectl patch cluster pg-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' -
 
 kubectl delete cluster pg-cluster
 ```
-
-## References
 
 [^1]: pg_basebackup, https://www.postgresql.org/docs/current/app-pgbasebackup.html
 [^2]: wal-g https://github.com/wal-g/wal-g
