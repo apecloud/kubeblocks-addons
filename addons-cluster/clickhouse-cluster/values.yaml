@@ -9,12 +9,11 @@ fullnameOverride: ""
 mode: cluster
 
 ## Sharding configuration
-shardCount: 1
-sharding:
-  enabled: false
+shards: 2
+sharding: true
 
 ## Number of ClickHouse replicas per shard to deploy
-replicaCount: 2
+replicas: 1
 
 ## ClickHouse per shard component configurations
 cpu: 1
@@ -36,7 +35,7 @@ tolerations: []
 ## ClickHouse Keeper configuration
 keeper:
   ## Number of ClickHouse Keeper replicas
-  replicaCount: 1
+  replicas: 1
   storageClassName:
   cpu: 1
   memory: 2

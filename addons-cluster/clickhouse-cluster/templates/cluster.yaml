@@ -1,5 +1,5 @@
 {{- include "kblib.clusterCommon" . }}
-{{- if eq (.Values.shardCount | int) 1 }}
+{{- if eq (.Values.shards | int) 1 }}
   clusterDefinitionRef: clickhouse
   topology: {{ .Values.mode }}
 {{- end }}
@@ -7,14 +7,14 @@
   {{- if eq .Values.mode "cluster" }}
   {{- include "ch-keeper-component" . | nindent 4 }}
   {{- end }}
-  {{- if eq (.Values.shardCount | int) 1 }}
+  {{- if eq (.Values.shards | int) 1 }}
   {{- include "clickhouse-component" . | nindent 4 }}
   {{- end }}
-  {{- if gt (.Values.shardCount | int) 1 }}
-  {{- if not .Values.sharding.enabled }}
+  {{- if gt (.Values.shards | int) 1 }}
+  {{- if not .Values.sharding }}
   {{- include "clickhouse-nosharding-component" . | nindent 4 }}
   {{- else }}
   shardingSpecs:
   {{- include "clickhouse-sharding-component" . | nindent 4 }}
   {{- end }}
-{{- end }}
+  {{- end }}
