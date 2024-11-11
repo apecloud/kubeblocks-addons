@@ -96,6 +96,13 @@ spec:
         {{- end }}
           podService: true
       {{- include "kblib.componentResources" . | indent 6 }}
+      env:
+        - name: KB_BROKER_DIRECT_POD_ACCESS
+          {{- if $.Values.nodePortEnabled }}
+          value: "false"
+          {{- else }}
+          value: "true"
+          {{- end }}
       {{- if $.Values.storageEnable }}
       volumeClaimTemplates:
         - name: data
