@@ -82,3 +82,20 @@ kubeblocks.io/enabled-node-port-svc: broker
 kubeblocks.io/disabled-cluster-ip-svc: broker
 {{- end }}
 {{- end }}
+
+{{/*
+Define kafka-exporter resources
+*/}}
+{{- define "kafka-exporter.resources" }}
+{{- $requestCPU := (float64 .Values.monitor.request.cpu) }}
+{{- $requestMemory := (float64 .Values.monitor.request.memory) }}
+{{- $limitCPU := (float64 .Values.monitor.limit.cpu) }}
+{{- $limitMemory := (float64 .Values.monitor.limit.memory) }}
+resources:
+  limits:
+    cpu: {{ $limitCPU | quote }}
+    memory: {{ print $limitMemory "Gi" | quote }}
+  requests:
+    cpu: {{ $requestCPU | quote }}
+    memory: {{ print $requestMemory "Gi" | quote }}
+{{- end }}

@@ -211,6 +211,9 @@ set_cfg_metadata() {
       nodeport_domain="${advertised_svc_host_value}:${advertised_svc_port_value}"
       export KAFKA_CFG_ADVERTISED_LISTENERS="INTERNAL://${current_pod_fqdn}:9094,CLIENT://${nodeport_domain}"
       echo "[cfg]KAFKA_CFG_ADVERTISED_LISTENERS=$KAFKA_CFG_ADVERTISED_LISTENERS"
+    elif [ "${KB_BROKER_DIRECT_POD_ACCESS}" == "true" ]; then
+      export KAFKA_CFG_ADVERTISED_LISTENERS="INTERNAL://${current_pod_fqdn}:9094,CLIENT://${KB_POD_IP}:9092"
+      echo "[cfg]KAFKA_CFG_ADVERTISED_LISTENERS=$KAFKA_CFG_ADVERTISED_LISTENERS"
     else
       # default, use headless service url as client connection
       export KAFKA_CFG_ADVERTISED_LISTENERS="INTERNAL://${current_pod_fqdn}:9094,CLIENT://${current_pod_fqdn}:9092"

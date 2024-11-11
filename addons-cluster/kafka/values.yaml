@@ -32,7 +32,7 @@ requests:
 #  cpu:
 #  memory:
 
-storageEnable: false
+storageEnable: true
 
 storageClassName:
 
@@ -55,9 +55,16 @@ brokerReplicas: 1
 ## only effective when clusterMode='separated'
 controllerReplicas: 1
 
-## kafka monitor component replicas
-## only effective when monitorEnable=true
-monitorReplicas: 1
+monitor:
+  ## kafka monitor component replicas
+  ## only effective when monitorEnable=true
+  replicas: 1
+  request:
+    cpu: 0.1
+    memory: 0.2
+  limit:
+    cpu: 0.5
+    memory: 1
 
 ## kafka broker's jvm heap setting
 brokerHeap: -XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64
