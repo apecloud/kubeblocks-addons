@@ -15,6 +15,11 @@ image:
       minor07: 14.7
     major15:
       minor07: 15.7
+  supabase:
+    repository: supabase/postgres
+    tags:
+      major15:
+        minor61138: 15.6.1.138
 
 
   ## Specify a imagePullPolicy
@@ -50,12 +55,14 @@ cmpdVersionPrefix:
   vanillaPostgresql12: "vanilla-postgresql-12"
   vanillaPostgresql14: "vanilla-postgresql-14"
   vanillaPostgresql15: "vanilla-postgresql-15"
+  vanillaPostgresqlSupabase15: "vanilla-postgresql-supabase15"
 
 ## @param componentServiceVersion define default serviceVersion of each Component
 componentServiceVersion:
   vanillaPostgresql12: 12.15.0
   vanillaPostgresql14: 14.7.0
   vanillaPostgresql15: 15.7.0
+  vanillaPostgresqlSupabase15: 15.6.1138
 
 shmVolume:
   ## @param shmVolume.enabled Enable emptyDir volume for /dev/shm for PostgreSQL pod(s)

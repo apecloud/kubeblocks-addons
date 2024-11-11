@@ -75,6 +75,17 @@ vanilla-postgresql-15
 {{- end -}}
 
 {{/*
+Define vanilla-postgresql-supabase 15 component definition name with Chart.Version suffix
+*/}}
+{{- define "vanilla-postgresql-supabase15.compDefName" -}}
+{{- if eq (len .Values.cmpdVersionPrefix.vanillaPostgresql15) 0 -}}
+vanilla-postgresql-supabase15
+{{- else -}}
+{{ .Values.cmpdVersionPrefix.vanillaPostgresqlSupabase15 }}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Expand the name of the chart.
 */}}
 {{- define "vanilla-postgresql.name" -}}
@@ -148,6 +159,13 @@ vanilla-postgresql15-configuration
 {{- end -}}
 
 {{/*
+Define vanilla-postgresql-supabase 15 component configuration template name
+*/}}
+{{- define "vanilla-postgresql-supabase15.configurationTemplate" -}}
+vanilla-postgresql-supabase15-configuration
+{{- end -}}
+
+{{/*
 Define vanilla-postgresql 12 component config constraint name
 */}}
 {{- define "vanilla-postgresql12.configConstraint" -}}
@@ -203,6 +221,7 @@ vanilla-pg-basebackup
 {{- end -}}
 
 {{- define "vanilla-postgresql.spec.common" -}}
+{{- $rootAccount := default "postgres" .accountName -}}
 provider: kubeblocks
 description: {{ .Chart.Description }}
 serviceKind: postgresql
@@ -234,13 +253,13 @@ vars:
   - name: POSTGRES_USER
     valueFrom:
       credentialVarRef:
-        name: postgres
+        name: {{ $rootAccount }}
         optional: false
         username: Required
   - name: POSTGRES_PASSWORD
     valueFrom:
       credentialVarRef:
-        name: postgres
+        name: {{ $rootAccount }}
         optional: false
         password: Required
 lifecycleActions:
@@ -249,7 +268,7 @@ lifecycleActions:
     periodSeconds: 1
     timeoutSeconds: 1
 systemAccounts:
-  - name: postgres
+  - name: {{ $rootAccount }}
     initAccount: true
     passwordGenerationPolicy:
       length: 10
@@ -284,6 +303,7 @@ volumes:
 {{- end -}}
 
 {{- define "vanilla-postgresql.spec.runtime.container.common" -}}
+{{- $pg_major := .pg_major -}}
 - name: postgresql
   imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
   securityContext:
@@ -328,4 +348,8 @@ volumes:
     # used by syncer
     - name: KB_ENGINE_TYPE
       value: vanilla-postgresql
+    {{- if $pg_major }}
+    - name: PG_MAJOR
+      value: "{{ $pg_major }}"
+    {{- end }}
 {{- end -}}
