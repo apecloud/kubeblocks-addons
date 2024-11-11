@@ -76,6 +76,24 @@ spec:
           name: default
           optional: false
           password: Required
+    ## the redis sentinel advertised service port list for each pod, the value format is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."
+    - name: REDIS_SENTINEL_ADVERTISED_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redis-sentinel.componentDefName" . }}
+          name: sentinel-advertised
+          optional: true
+          port:
+            name: sentinel-advertised
+            option: Required
+    ## the redis sentinel advertised service name list for each pod, the value format is "pod1Svc,pod2Svc,..."
+    - name: REDIS_SENTINEL_ADVERTISED_SVC_NAME
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redis-sentinel.componentDefName" . }}
+          name: sentinel-advertised
+          optional: true
+          host: Required
   lifecycleActions:
     accountProvision:
       customHandler:

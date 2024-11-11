@@ -1,4 +1,5 @@
-#!/bin/sh
+#!/bin/bash
+
 set -ex
 
 # Based on the Component Definition API, Redis Sentinel deployed independently
@@ -9,18 +10,40 @@ reset_redis_sentinel_conf() {
   if [ -n "$SENTINEL_SERVICE_PORT" ]; then
     sentinel_port=$SENTINEL_SERVICE_PORT
   fi
+
   mkdir -p /data/sentinel
-  if [ -f /data/sentinel/redis-sentinel.conf ]; then
-    sed -i "/sentinel announce-ip/d" /data/sentinel/redis-sentinel.conf
-    sed -i "/sentinel resolve-hostnames/d" /data/sentinel/redis-sentinel.conf
-    sed -i "/sentinel announce-hostnames/d" /data/sentinel/redis-sentinel.conf
-    set +x
-    if [ -n "$SENTINEL_PASSWORD" ]; then
-      sed -i "/sentinel sentinel-user/d" /data/sentinel/redis-sentinel.conf
-      sed -i "/sentinel sentinel-pass/d" /data/sentinel/redis-sentinel.conf
-    fi
-    set -x
-    sed -i "/port $sentinel_port/d" /data/sentinel/redis-sentinel.conf
+  if [ ! -f /data/sentinel/redis-sentinel.conf ]; then
+    return
+  fi
+
+  sed -i "/sentinel announce-ip/d" /data/sentinel/redis-sentinel.conf
+  sed -i "/sentinel resolve-hostnames/d" /data/sentinel/redis-sentinel.conf
+  sed -i "/sentinel announce-hostnames/d" /data/sentinel/redis-sentinel.conf
+
+  set +x
+  if [ -n "$SENTINEL_PASSWORD" ]; then
+    sed -i "/sentinel sentinel-user/d" /data/sentinel/redis-sentinel.conf
+    sed -i "/sentinel sentinel-pass/d" /data/sentinel/redis-sentinel.conf
+  fi
+  set -x
+
+  sed -i "/port $sentinel_port/d" /data/sentinel/redis-sentinel.conf
+
+  # hack for redis sentinel when nodeport is enabled, remove known-replica line which has the same nodeport port with master
+  if [ -n "$REDIS_SENTINEL_ADVERTISED_PORT" ] && [ -n "$REDIS_SENTINEL_ADVERTISED_SVC_NAME" ]; then
+    temp_file=$(mktemp)
+    grep "^sentinel monitor" /data/sentinel/redis-sentinel.conf > "$temp_file"
+
+    while read -r line; do
+      if [[ $line =~ ^sentinel[[:space:]]+monitor[[:space:]]+([^[:space:]]+)[[:space:]]+[^[:space:]]+[[:space:]]+([^[:space:]]+) ]]; then
+        master_name="${BASH_REMATCH[1]}"
+        master_port="${BASH_REMATCH[2]}"
+
+        sed -i "/^sentinel known-replica ${master_name} .* ${master_port}$/d" /data/sentinel/redis-sentinel.conf
+      fi
+    done < "$temp_file"
+
+    rm -f "$temp_file"
   fi
 }
 
