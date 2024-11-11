@@ -45,6 +45,13 @@ spec:
         {{- end }}
           podService: true
       {{- include "kblib.componentResources" . | indent 6 }}
+      env:
+        - name: KB_BROKER_DIRECT_POD_ACCESS
+          {{- if $.Values.nodePortEnabled }}
+          value: "false"
+          {{- else }}
+          value: "true"
+          {{- end }}
       {{- if $.Values.storageEnable }}
       volumeClaimTemplates:
         - name: data
@@ -85,6 +92,13 @@ spec:
         {{- end }}
           podService: true
       {{- include "kblib.componentResources" . | indent 6 }}
+      env:
+        - name: KB_BROKER_DIRECT_POD_ACCESS
+          {{- if $.Values.nodePortEnabled }}
+          value: "false"
+          {{- else }}
+          value: "true"
+          {{- end }}
       {{- if $.Values.storageEnable }}
       volumeClaimTemplates:
         - name: data
@@ -133,6 +147,6 @@ spec:
       {{- if .Values.useLegacyCompDef }}
       componentDef: kafka-exporter
       {{- end  }}
-      replicas: {{ $.Values.monitorReplicas }}
-      {{- include "kblib.componentResources" . | nindent 6 }}
+      replicas: {{ $.Values.monitor.replicas }}
+      {{- include "kafka-exporter.resources" . | nindent 6 }}
     {{- end }}
