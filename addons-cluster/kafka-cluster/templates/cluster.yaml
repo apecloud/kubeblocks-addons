@@ -48,6 +48,13 @@ spec:
         {{- end }}
           podService: true
       {{- include "kblib.componentResources" . | indent 6 }}
+      env:
+        - name: KB_BROKER_DIRECT_POD_ACCESS
+          {{- if $.Values.nodePortEnabled }}
+          value: "false"
+          {{- else }}
+          value: "true"
+          {{- end }}
       {{- if $.Values.storageEnable }}
       volumeClaimTemplates:
         - name: data
@@ -138,7 +145,7 @@ spec:
       {{- if .Values.useLegacyCompDef }}
       componentDefRef: kafka-exporter
       {{- end  }}
-      replicas: {{ $.Values.monitorReplicas }}
+      replicas: {{ $.Values.monitor.replicas }}
       monitor: true
-      {{- include "kblib.componentResources" . | nindent 6 }}
+      {{- include "kafka-exporter.resources" . | nindent 6 }}
     {{- end }}
