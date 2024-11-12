@@ -178,10 +178,18 @@ update_spec_file() {
     return 1
   fi
 
-  sed "s/TENANT_ID/${tenant_id}/" "${SPEC_FILE_DOCKER}" > "${SPEC_FILE}"
-  sed -i "s/TIMELINE_ID/${timeline_id}/" "${SPEC_FILE}"
-  sed -i "s/PAGESERVER_SPEC/${pageserver}/" "${SPEC_FILE}"
-  sed -i "s/SAFEKEEPERS_SPEC/${safekeepers}/" "${SPEC_FILE}"
+  cp "${SPEC_FILE_DOCKER}" "${SPEC_FILE}" || {
+      echo "Error: Failed to copy template file" >&2
+      return 1
+  }
+
+  sed "s|TENANT_ID|${tenant_id}|g" "${SPEC_FILE}" > "${SPEC_FILE}.tmp" && mv "${SPEC_FILE}.tmp" "${SPEC_FILE}"
+  sed "s|TIMELINE_ID|${timeline_id}|g" "${SPEC_FILE}" > "${SPEC_FILE}.tmp" && mv "${SPEC_FILE}.tmp" "${SPEC_FILE}"
+  sed "s|PAGESERVER_SPEC|${pageserver}|g" "${SPEC_FILE}" > "${SPEC_FILE}.tmp" && mv "${SPEC_FILE}.tmp" "${SPEC_FILE}"
+  sed "s|SAFEKEEPERS_SPEC|${safekeepers}|g" "${SPEC_FILE}" > "${SPEC_FILE}.tmp" && mv "${SPEC_FILE}.tmp" "${SPEC_FILE}"
+
+  rm -f "${SPEC_FILE}.tmp"
+  return 0
 }
 
 start_compute_node() {
