@@ -9,7 +9,7 @@ spec:
     - releases:
         - v2.3.2-standalone
       compDefs:
-        - {{ include "milvus-indexnode.cmpdRegexpPattern" . }}
+        - {{ include "milvus-standalone.cmpdRegexpPattern" . }}
     - releases:
         - v2.3.2-mixcoord
       compDefs:
