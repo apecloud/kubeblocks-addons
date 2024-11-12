@@ -58,7 +58,7 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
 {{- define "tidb.cmScriptsName" -}}
-tidb-scripts
+tidb-scripts-{{ .Chart.Version }}
 {{- end -}}
 
 {{- define "tidb.tidb.configTplName" -}}
@@ -85,27 +85,27 @@ tikv-config-constraints
 tidb-pd-config-constraints
 {{- end -}}
 
-{{- define "tidb.pd7.componentDefNamePrefix" -}}
-tidb-pd-7-
+{{- define "tidb.pd7.cmpdRegexpPattern" -}}
+^tidb-pd-7-
 {{- end -}}
 
 {{- define "tidb.pd7.compDefName" -}}
-{{ include "tidb.pd7.componentDefNamePrefix" . }}{{ .Chart.Version }}
+tidb-pd-7-{{ .Chart.Version }}
 {{- end -}}
 
-{{- define "tidb.tikv7.componentDefNamePrefix" -}}
-tikv-7-
+{{- define "tidb.tikv7.cmpdRegexpPattern" -}}
+^tikv-7-
 {{- end -}}
 
 {{- define "tidb.tikv7.compDefName" -}}
-{{ include "tidb.tikv7.componentDefNamePrefix" . }}{{ .Chart.Version }}
+tikv-7-{{ .Chart.Version }}
 {{- end -}}
 
-{{- define "tidb.tidb7.componentDefNamePrefix" -}}
-tidb-7-
+{{- define "tidb.tidb7.cmpdRegexpPattern" -}}
+^tidb-7-
 {{- end -}}
 
 {{- define "tidb.tidb7.compDefName" -}}
-{{ include "tidb.tidb7.componentDefNamePrefix" . }}{{ .Chart.Version }}
+tidb-7-{{ .Chart.Version }}
 {{- end -}}
 

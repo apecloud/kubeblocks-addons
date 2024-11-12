@@ -26,7 +26,7 @@ spec:
         memberLeave: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v6.5.10
   compatibilityRules:
     - compDefs:
-        - {{ include "tidb.pd7.componentDefNamePrefix" . }}
+        - {{ include "tidb.pd7.cmpdRegexpPattern" . }}
       releases:
         - "7.1.5"
         - "7.5.2"
@@ -58,7 +58,7 @@ spec:
         slowlog: {{ .Values.image.helper.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.helper.repository }}:{{ .Values.image.helper.tag }}
   compatibilityRules:
     - compDefs:
-        - {{ include "tidb.tidb7.componentDefNamePrefix" . }}
+        - {{ include "tidb.tidb7.cmpdRegexpPattern" . }}
       releases:
         - "7.1.5"
         - "7.5.2"
@@ -90,7 +90,7 @@ spec:
         memberLeave: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v6.5.10
   compatibilityRules:
     - compDefs:
-        - {{ include "tidb.tikv7.componentDefNamePrefix" . }}
+        - {{ include "tidb.tikv7.cmpdRegexpPattern" . }}
       releases:
         - "7.1.5"
         - "7.5.2"

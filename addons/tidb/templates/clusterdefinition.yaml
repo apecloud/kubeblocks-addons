@@ -10,11 +10,11 @@ spec:
       default: true
       components:
         - name: tidb-pd
-          compDef: {{ include "tidb.pd7.componentDefNamePrefix" . }}
+          compDef: {{ include "tidb.pd7.cmpdRegexpPattern" . }}
         - name: tikv
-          compDef: {{ include "tidb.tikv7.componentDefNamePrefix" . }}
+          compDef: {{ include "tidb.tikv7.cmpdRegexpPattern" . }}
         - name: tidb
-          compDef: {{ include "tidb.tidb7.componentDefNamePrefix" . }}
+          compDef: {{ include "tidb.tidb7.cmpdRegexpPattern" . }}
       orders:
         provision:
           - tidb-pd
