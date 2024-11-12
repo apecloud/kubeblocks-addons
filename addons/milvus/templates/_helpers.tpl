@@ -48,6 +48,139 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
+Common annotations
+*/}}
+{{- define "milvus.annotations" -}}
+helm.sh/resource-policy: keep
+{{- end }}
+
+{{/*
+Define milvus standalone component definition name
+*/}}
+{{- define "milvus-standalone.cmpdName" -}}
+milvus-standalone-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define milvus standalone component definition regex pattern
+*/}}
+{{- define "milvus-standalone.cmpdRegexpPattern" -}}
+^milvus-standalone-
+{{- end -}}
+
+{{/*
+Define milvus minio component definition name
+*/}}
+{{- define "milvus-minio.cmpdName" -}}
+milvus-minio-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define milvus minio component definition regex pattern
+*/}}
+{{- define "milvus-minio.cmpdRegexpPattern" -}}
+^milvus-minio-
+{{- end -}}
+
+{{/*
+Define milvus datanode component definition name
+*/}}
+{{- define "milvus-datanode.cmpdName" -}}
+milvus-datanode-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define milvus datanode component definition regex pattern
+*/}}
+{{- define "milvus-datanode.cmpdRegexpPattern" -}}
+^milvus-datanode-
+{{- end -}}
+
+{{/*
+Define milvus indexnode component definition name
+*/}}
+{{- define "milvus-indexnode.cmpdName" -}}
+milvus-indexnode-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define milvus indexnode component definition regex pattern
+*/}}
+{{- define "milvus-indexnode.cmpdRegexpPattern" -}}
+^milvus-indexnode-
+{{- end -}}
+
+{{/*
+Define milvus mixcoord component definition name
+*/}}
+{{- define "milvus-mixcoord.cmpdName" -}}
+milvus-mixcoord-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define milvus mixcoord component definition regex pattern
+*/}}
+{{- define "milvus-mixcoord.cmpdRegexpPattern" -}}
+^milvus-mixcoord-
+{{- end -}}
+
+{{/*
+Define milvus proxy component definition name
+*/}}
+{{- define "milvus-proxy.cmpdName" -}}
+milvus-proxy-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define milvus proxy component definition regex pattern
+*/}}
+{{- define "milvus-proxy.cmpdRegexpPattern" -}}
+^milvus-proxy-
+{{- end -}}
+
+{{/*
+Define milvus querynode component definition name
+*/}}
+{{- define "milvus-querynode.cmpdName" -}}
+milvus-querynode-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define milvus querynode component definition regex pattern
+*/}}
+{{- define "milvus-querynode.cmpdRegexpPattern" -}}
+^milvus-querynode-
+{{- end -}}
+
+{{/*
+Define milvus etcd component definition regex pattern
+*/}}
+{{- define "milvus-etcd.cmpdRegexpPattern" -}}
+^etcd-
+{{- end -}}
+
+{{/*
+Define milvus standalone configuration template name
+*/}}
+{{- define "milvus-standalone.configTemplateName" -}}
+milvus-config-template-standalone-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define milvus cluster configuration template name
+*/}}
+{{- define "milvus-cluster.configTemplateName" -}}
+milvus-config-template-cluster-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define milvus delegate run configuration template name
+*/}}
+{{- define "milvus-delegate-run.configTemplateName" -}}
+milvus-delegate-run-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
 Startup probe
 */}}
 {{- define "milvus.probe.startup" }}
@@ -210,12 +343,12 @@ Milvus user config - standalone
 */}}
 {{- define "milvus.config.standalone" }}
 - name: config
-  templateRef: milvus-config-template-standalone-{{ .Chart.Version }}
+  templateRef: {{ include "milvus-standalone.configTemplateName" . }}
   volumeName: milvus-config
   namespace: {{.Release.Namespace}}
   defaultMode: 420
 - name: delegate-run
-  templateRef: milvus-delegate-run-{{ .Chart.Version }}
+  templateRef: {{ include "milvus-delegate-run.configTemplateName" . }}
   volumeName: milvus-delegate-run
   namespace: {{.Release.Namespace}}
   defaultMode: 493
@@ -226,12 +359,12 @@ Milvus user config - cluster
 */}}
 {{- define "milvus.config.cluster" }}
 - name: config
-  templateRef: milvus-config-template-cluster-{{ .Chart.Version }}
+  templateRef: {{ include "milvus-cluster.configTemplateName" . }}
   volumeName: milvus-config
   namespace: {{.Release.Namespace}}
   defaultMode: 420
 - name: delegate-run
-  templateRef: milvus-delegate-run-{{ .Chart.Version }}
+  templateRef: {{ include "milvus-delegate-run.configTemplateName" . }}
   volumeName: milvus-delegate-run
   namespace: {{.Release.Namespace}}
   defaultMode: 493

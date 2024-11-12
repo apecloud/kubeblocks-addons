@@ -9,27 +9,27 @@ spec:
     - releases:
         - v2.3.2-standalone
       compDefs:
-        - milvus-standalone
+        - {{ include "milvus-standalone.cmpdRegexpPattern" . }}
     - releases:
         - v2.3.2-mixcoord
       compDefs:
-        - milvus-mixcoord
+        - {{ include "milvus-mixcoord.cmpdRegexpPattern" . }}
     - releases:
         - v2.3.2-proxy
       compDefs:
-        - milvus-proxy
+        - {{ include "milvus-proxy.cmpdRegexpPattern" . }}
     - releases:
         - v2.3.2-querynode
       compDefs:
-        - milvus-querynode
+        - {{ include "milvus-querynode.cmpdRegexpPattern" . }}
     - releases:
         - v2.3.2-indexnode
       compDefs:
-        - milvus-indexnode
+        - {{ include "milvus-indexnode.cmpdRegexpPattern" . }}
     - releases:
         - v2.3.2-datanode
       compDefs:
-        - milvus-datanode
+        - {{ include "milvus-datanode.cmpdRegexpPattern" . }}
   releases:
     - name: v2.3.2-standalone
       serviceVersion: v2.3.2
