@@ -12,7 +12,7 @@ image:
   debug: false
   syncer:
     repository: apecloud/syncer
-    tag: "0.3.2"
+    tag: "0.3.6"
 
   # refer: https://github.com/apecloud/dbctl/blob/main/docker/Dockerfile
   dbctl:
