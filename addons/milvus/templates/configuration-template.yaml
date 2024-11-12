@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: milvus-config-template-standalone-{{ .Chart.Version }}
+  name: {{ include "milvus-standalone.configTemplateName" . }}
   namespace: {{ .Release.Namespace | quote }}
   labels:
   {{- include "milvus.labels" . | nindent 4 }}
@@ -12,7 +12,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: milvus-config-template-cluster-{{ .Chart.Version }}
+  name: {{ include "milvus-cluster.configTemplateName" . }}
   namespace: {{ .Release.Namespace | quote }}
   labels:
   {{- include "milvus.labels" . | nindent 4 }}
@@ -23,7 +23,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: milvus-delegate-run-{{ .Chart.Version }}
+  name: {{ include "milvus-delegate-run.configTemplateName" . }}
   namespace: {{ .Release.Namespace | quote }}
   labels:
   {{- include "milvus.labels" . | nindent 4 }}
