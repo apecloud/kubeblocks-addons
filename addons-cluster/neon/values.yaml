@@ -1,6 +1,8 @@
 ## cluster settings for neon
-version: latest
+version: 1.0.0
+
 storageClassName: ""
+
 terminationPolicy: Delete
 
 useLegacyCompDef: false

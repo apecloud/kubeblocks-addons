@@ -23,27 +23,19 @@ spec:
           - name: safekeeper-http
             port: {{ .Values.safekeeper.httpPort }}
             protocol: TCP
-
   scripts:
     - name: neon-scripts
-      templateRef: neon-scripts
+      templateRef: {{ include "neon.scriptsTemplateName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
-  vars: 
-    - name: NEON_STORAGEBROKER_HEADLESS
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "neon-storagebroker.cmpdRegexpPattern" . }}
-          name: headless
-          optional: true
-          host: Optional
-    - name: NEON_STORAGEBROKER_POD_LIST
+  vars:
+    - name: NEON_STORAGEBROKER_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
           compDef: {{ include "neon-storagebroker.cmpdRegexpPattern" . }}
           optional: true
-          podNames: Optional
+          podFQDNs: Required
     - name: NEON_STORAGEBROKER_PORT
       valueFrom:
         serviceVarRef:

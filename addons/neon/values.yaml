@@ -13,7 +13,7 @@ image:
   # -- Overrides the image tag whose default is the chart appVersion.
   tag: "pg14-1.0.0"
 
-defaultComponentServiceVersion: "pg14-1.0.0"
+defaultComponentServiceVersion: "1.0.0"
 
 safekeeper:
   pgPort: 5454

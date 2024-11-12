@@ -6,12 +6,10 @@ metadata:
     {{- include "neon-cluster.labels" . | indent 4 }}
 spec:
   clusterDef: neon
+  topology: default
   terminationPolicy: {{ .Values.terminationPolicy }}
   componentSpecs:
     - name: neon-compute
-      {{- if .Values.useLegacyCompDef }}
-      componentDef: neon-compute
-      {{- end }}
       replicas: {{ .Values.compute.replicas }}
       {{- with  .Values.compute.resources }}
       resources:
@@ -36,9 +34,6 @@ spec:
               requests:
                 storage: {{ .Values.safekeeper.dataStorage }}
     - name: neon-broker
-      {{- if .Values.useLegacyCompDef }}
-      componentDef: neon-broker
-      {{- end }}
       replicas: 1
       {{- with  .Values.storagebroker.resources }}
       resources:
@@ -63,9 +58,6 @@ spec:
               requests:
                 storage: {{ .Values.storagebroker.dataStorage }}
     - name: neon-safekeeper
-      {{- if .Values.useLegacyCompDef }}
-      componentDef: neon-safekeeper
-      {{- end }}
       replicas: {{ .Values.safekeeper.replicas }}
       {{- with  .Values.safekeeper.resources }}
       resources:
@@ -90,9 +82,6 @@ spec:
               requests:
                 storage: {{ .Values.safekeeper.dataStorage }}
     - name: neon-pageserver
-      {{- if .Values.useLegacyCompDef }}
-      componentDef: neon-pageserver
-      {{- end }}
       replicas: {{ .Values.pageserver.replicas }}
       {{- with  .Values.safekeeper.resources }}
       resources:

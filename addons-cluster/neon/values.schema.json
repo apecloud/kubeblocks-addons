@@ -6,7 +6,7 @@
       "title": "Version",
       "description": "Cluster version.",
       "type": "string",
-      "default": "neon-0.17.0"
+      "default": "1.0.0"
     },
     "mode": {
       "title": "Mode",
