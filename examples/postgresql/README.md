@@ -582,7 +582,7 @@ In this example, the cluster will be upgraded to version `14.8.0`.
 Alternatively, you may modify the `spec.componentSpecs.serviceVersion` field to the desired version to upgrade the cluster.
 
 > [!Warning]
-> Do rembmer to to check the compatibility of versions before upgrading the cluster.
+> Do remember to to check the compatibility of versions before upgrading the cluster.
 
 ```bash
 kubectl get cmpv postgresql -ojson | jq '.spec.compatibilityRules'
