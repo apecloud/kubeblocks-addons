@@ -1,14 +1,35 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: milvus-minio-{{ .Chart.Version }}
+  name: {{ include "milvus-minio.cmpdName" . }}
   labels:
     {{- include "milvus.labels" . | nindent 4 }}
+  annotations:
+    {{- include "milvus.annotations" . | nindent 4 }}
 spec:
   provider: ApeCloud
   description: "High Performance, Kubernetes Native Object Storage"
   serviceKind: milvus-minio
   serviceVersion: 8.0.17
+  systemAccounts:
+    - name: admin
+      initAccount: true
+  vars:
+    - name: MINIO_ACCESS_KEY
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          optional: false
+          username: Required
+    - name: MINIO_SECRET_KEY
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          optional: false
+          password: Required
+  volumes:
+    - name: data
+      needSnapshot: true
   runtime:
     initContainers:
       - name: volume-permissions
@@ -66,22 +87,3 @@ spec:
           tcpSocket:
             port: 9000
           timeoutSeconds: 1
-  vars:
-    - name: MINIO_ACCESS_KEY
-      valueFrom:
-        credentialVarRef:
-          name: admin
-          optional: false
-          username: Required
-    - name: MINIO_SECRET_KEY
-      valueFrom:
-        credentialVarRef:
-          name: admin
-          optional: false
-          password: Required
-  volumes:
-    - name: data
-      needSnapshot: true
-  systemAccounts:
-    - name: admin
-      initAccount: true
