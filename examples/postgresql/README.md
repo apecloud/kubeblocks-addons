@@ -1,4 +1,4 @@
-# Postgresql
+# PostgreSQL
 
 PostgreSQL (Postgres) is an open source object-relational database known for reliability and data integrity. ACID-compliant, it supports foreign keys, joins, views, triggers and stored procedures.
 
@@ -6,7 +6,7 @@ PostgreSQL (Postgres) is an open source object-relational database known for rel
 
 This example assumes that you have a Kubernetes cluster installed and running, and that you have installed the kubectl command line tool and helm somewhere in your path. Please see the [getting started](https://kubernetes.io/docs/setup/)  and [Installing Helm](https://helm.sh/docs/intro/install/) for installation instructions for your platform.
 
-Also, this example requires KubeBlocks installed and running. Here is the steps to install kubeblocks, please replace "`$kb_version`" with the version you want to use.
+Also, this example requires KubeBlocks installed and running. Here is the steps to install KubeBlocks, please replace "`$kb_version`" with the version you want to use.
 
 ```bash
 # Add Helm repo
@@ -35,13 +35,13 @@ helm install kubeblocks kubeblocks/kubeblocks --namespace kb-system --create-nam
 
 ### [Create](cluster.yaml)
 
-Create a postgresql cluster with one primary and one secondary instance:
+Create a PostgreSQL cluster with one primary and one secondary instance:
 
 ```bash
 kubectl apply -f examples/postgresql/cluster.yaml
 ```
 
-And you will see the postgresql cluster status goes `Running` after a while:
+And you will see the PostgreSQL cluster status goes `Running` after a while:
 
 ```bash
 kubectl get cluster pg-cluster
@@ -56,7 +56,7 @@ kubectl get po -l  app.kubernetes.io/instance=pg-cluster -L kubeblocks.io/role -
 kubectl exec -it pg-cluster-postgresql-0 -n default -- patronictl list
 ```
 
-If you want to create a postgresql cluster of specified version, set the `spec.componentSpecs.serviceVersion` field in the yaml file before applying it:
+If you want to create a PostgreSQL cluster of specified version, set the `spec.componentSpecs.serviceVersion` field in the yaml file before applying it:
 
 ```yaml
 apiVersion: apps.kubeblocks.io/v1
@@ -93,13 +93,13 @@ postgresql   12.14.0,12.14.1,12.15.0,14.7.2,14.8.0,15.7.0,16.4.0   Available   X
 
 #### [Scale-out](scale-out.yaml)
 
-Horizontal scaling out postgresql cluster by adding ONE more replica:
+Horizontal scaling out PostgreSQL cluster by adding ONE more replica:
 
 ```bash
 kubectl apply -f examples/postgresql/scale-out.yaml
 ```
 
-After applying the operation, you will see a new pod created and the postgresql cluster status goes from `Updating` to `Running`, and the newly created pod has a new role `secondary`.
+After applying the operation, you will see a new pod created and the PostgreSQL cluster status goes from `Updating` to `Running`, and the newly created pod has a new role `secondary`.
 
 And you can check the progress of the scaling operation with following command:
 
@@ -109,7 +109,7 @@ kubectl describe ops pg-scale-in
 
 #### [Scale-in](scale-in.yaml)
 
-Horizontal scaling in postgresql cluster by deleting ONE replica:
+Horizontal scaling in PostgreSQL cluster by deleting ONE replica:
 
 ```bash
 kubectl apply -f examples/postgresql/scale-in.yaml
@@ -137,7 +137,7 @@ spec:
 
 ### [Vertical scaling](verticalscale.yaml)
 
-Vertical scaling involves increasing or decreasing resources to an existing database clsuter.
+Vertical scaling involves increasing or decreasing resources to an existing database cluster.
 Resources that can be scaled include:, CPU cores/processing power and Memory (RAM).
 
 To vertical scaling up or down specified component, you can apply the following yaml file:
@@ -150,7 +150,7 @@ You will observe that the `secondary` pod is recreated first, followed by the `p
 
 #### Scale-up/down using Cluster API
 
-Alternatively, you may udpate `spec.componentSpecs.resources` field to the desired resources for vertical scale.
+Alternatively, you may update `spec.componentSpecs.resources` field to the desired resources for vertical scale.
 
 ```yaml
 apiVersion: apps.kubeblocks.io/v1
@@ -284,7 +284,7 @@ spec:
 
 A switchover in database clusters is a planned operation that transfers the primary (leader) role from one database instance to another. The goal of a switchover is to ensure that the database cluster remains available and operational during the transition.
 
-#### [Swithover without preferred candidates](switchover.yaml)
+#### [Switchover without preferred candidates](switchover.yaml)
 
 To perform a switchover without any preferred candidates, you can apply the following yaml file:
 
@@ -294,7 +294,7 @@ kubectl apply -f examples/postgresql/switchover.yaml
 
 <details>
 
-By applying this yaml file, KubeBlocks will perform a switchover operation defined in postgresql's component definition, and you can checkout the details in `componentdefinition.spec.lifecycleActions.switchover`.
+By applying this yaml file, KubeBlocks will perform a switchover operation defined in PostgreSQL's component definition, and you can checkout the details in `componentdefinition.spec.lifecycleActions.switchover`.
 
 You may get the switchover operation details with following command:
 
@@ -350,7 +350,7 @@ kubectl create secret generic <credential-for-backuprepo>\
   -n kb-system
 ```
 
-Update `examples/postgresql/backuprepo.yaml` and set fields quoated with `<>` to your own settings and apply it.
+Update `examples/postgresql/backuprepo.yaml` and set fields quoted with `<>` to your own settings and apply it.
 
 ```bash
 kubectl apply -f examples/postgresql/backuprepo.yaml
@@ -371,7 +371,7 @@ kb-oss   Ready    oss               Tool           true      Xd
 
 ### Backup
 
-KubeBlocks supports multiple backup methods for postgresql cluster, such as `pg-basebackup`, `volume-snapshot`, `wal-g`, etc.
+KubeBlocks supports multiple backup methods for PostgreSQL cluster, such as `pg-basebackup`, `volume-snapshot`, `wal-g`, etc.
 
 You may find the supported backup methods in the `BackupPolicy` of the cluster, e.g. `pg-cluster-postgresql-backup-policy` in this case, and find how these methods will be scheduled in the `BackupSchedule` of the cluster, e.g.. `pg-cluster-postgresql-backup-schedule` in this case.
 
@@ -397,7 +397,7 @@ kubectl get backup -l app.kubernetes.io/instance=pg-cluster
 
 and the status of the backup goes from `Running` to `Completed` after a while. And the backup data will be pushed to your specified `BackupRepo`.
 
-Infomation, such as `path`, `timeRange` about the backup will be recoreded into the `Backup` resource.
+Information, such as `path`, `timeRange` about the backup will be recorded into the `Backup` resource.
 
 Alternatively, you can update the `BackupSchedule` to enable the method `pg-basebackup` to schedule base backup periodically, will be elaborated in the following section.
 
@@ -487,7 +487,7 @@ To restore a new cluster from a Backup:
 kubectl get backup pg-cluster-pg-basebackup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
 ```
 
-1. Update `examples/postgresql/restore.yaml` and set fields quoated with `<>` to your own settings and apply it.
+1. Update `examples/postgresql/restore.yaml` and set fields quoted with `<>` to your own settings and apply it.
 
 ```bash
 kubectl apply -f examples/postgresql/restore.yaml
@@ -564,7 +564,7 @@ networking.gke.io/load-balancer-type: "Internal" # for internal access
 cloud.google.com/l4-rbs: "enabled" # for internet
 ```
 
-Please consulant your cloud provider for more accureate and update-to-date infomation.
+Please consult your cloud provider for more accurate and update-to-date information.
 
 ### [Upgrade](upgrade.yaml)
 
@@ -682,7 +682,7 @@ kubectl get svc -n monitoring
 kubectl port-forward svc/prometheus-operator-kube-p-prometheus -n monitoring 9090:9090
 ```
 
-And you can acccess the Prometheus dashboard by opening "http://localhost:9090" in your browser.
+And you can access the Prometheus dashboard by opening "http://localhost:9090" in your browser.
 
 - Similarly, use port forwarding to access the Grafana dashboard locally
 
@@ -690,7 +690,7 @@ And you can acccess the Prometheus dashboard by opening "http://localhost:9090" 
 kubectl port-forward svc/prometheus-operator-grafana -n monitoring 3000:80
 ```
 
-and you can acces the Grafana dashboard by opening "http://localhost:3000" in your browser.
+and you can access the Grafana dashboard by opening "http://localhost:3000" in your browser.
 
 To login, you may retrieve the credential from the secret:
 
