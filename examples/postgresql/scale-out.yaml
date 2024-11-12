@@ -1,7 +1,7 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
-  name: pg-horizontalscaling
+  name: pg-scale-out
   namespace: default
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
@@ -11,5 +11,8 @@ spec:
   horizontalScaling:
     # Specifies the name of the Component.
   - componentName: postgresql
-    # Specifies the number of total replicas.
-    replicas: 4
+    # Specifies the replica changes for scaling out components
+    scaleOut:
+      # Specifies the replica changes for the component.
+      # add one more replica to current component
+      replicaChanges: 1

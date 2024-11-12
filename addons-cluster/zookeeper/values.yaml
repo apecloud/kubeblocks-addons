@@ -6,7 +6,8 @@
 ##
 version: 3.9.2
 
-terminationPolicy: Delete
+extra:
+  terminationPolicy: Delete
 
 ## @param replicas specify cluster replicas
 ##
@@ -32,6 +33,3 @@ storage: 10
 
 ## @param log storage, the unit is Gi
 logStorage: 2
-
-## sc for log and data
-storageClassName:
