@@ -5,8 +5,6 @@ storageClassName: ""
 
 terminationPolicy: Delete
 
-useLegacyCompDef: false
-
 compute:
   replicas: 1
   resources:
