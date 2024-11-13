@@ -1,13 +1,35 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: milvus-standalone-{{ .Chart.Version }}
+  name: {{ include "milvus-standalone.cmpdName" . }}
   labels:
     {{- include "milvus.labels" . | nindent 4 }}
+  annotations:
+    {{- include "milvus.annotations" . | nindent 4 }}
 spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
+  configs:
+    {{- include "milvus.config.standalone" . | indent 4 }}
+  vars:
+    - name: MINIO_ACCESS_KEY
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "milvus-minio.cmpdRegexpPattern" . }}
+          name: admin
+          optional: false
+          username: Required
+    - name: MINIO_SECRET_KEY
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "milvus-minio.cmpdRegexpPattern" . }}
+          name: admin
+          optional: false
+          password: Required
+  volumes:
+    - name: data
+      needSnapshot: true
   runtime:
     initContainers:
       {{- include "milvus.initContainer.setup" . | indent 6 }}
@@ -38,23 +60,3 @@ spec:
       {{- include "milvus.volume.tools" . | indent 6 }}
     securityContext:
       fsGroup: 1001
-  vars:
-    - name: MINIO_ACCESS_KEY
-      valueFrom:
-        credentialVarRef:
-          compDef: milvus-minio
-          name: admin
-          optional: false
-          username: Required
-    - name: MINIO_SECRET_KEY
-      valueFrom:
-        credentialVarRef:
-          compDef: milvus-minio
-          name: admin
-          optional: false
-          password: Required
-  volumes:
-    - name: data
-      needSnapshot: true
-  configs:
-    {{- include "milvus.config.standalone" . | indent 4 }}

@@ -1,13 +1,13 @@
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: BackupPolicyTemplate
 metadata:
-  name: milvus-{{ .Chart.Version }}
+  name: milvus-backup-policy-template
   labels:
     {{- include "milvus.labels" . | nindent 4 }}
 spec:
   serviceKind: Milvus
   compDefs:
-    - milvus-standalone
+    - {{ include "milvus-standalone.cmpdRegexpPattern" . }}
   backupMethods:
     - name: volume-snapshot
       snapshotVolumes: true

@@ -208,28 +208,28 @@ postgresql16-configuration-{{ .Chart.Version }}
 Define postgresql12 component config constraint name
 */}}
 {{- define "postgresql12.configConstraint" -}}
-postgresql12-cc
+postgresql12-cc-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define postgresql14 component config constraint name
 */}}
 {{- define "postgresql14.configConstraint" -}}
-postgresql14-cc
+postgresql14-cc-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define postgresql15 component config constraint name
 */}}
 {{- define "postgresql15.configConstraint" -}}
-postgresql15-cc
+postgresql15-cc-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define postgresql16 component config constraint name
 */}}
 {{- define "postgresql16.configConstraint" -}}
-postgresql16-cc
+postgresql16-cc-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*

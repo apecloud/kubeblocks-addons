@@ -5,6 +5,8 @@ metadata:
   name: {{ include "postgresql12.configConstraint" . }}
   labels:
     {{- include "postgresql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "postgresql.annotations" . | nindent 4 }}
 spec:
   reloadAction:
     tplScriptTrigger:
