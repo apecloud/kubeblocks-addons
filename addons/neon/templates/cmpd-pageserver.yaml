@@ -54,7 +54,9 @@ spec:
           - name: PAGEKEEPER_HTTP_PORT
             value: "{{ .Values.pageserver.httpPort }}"
         volumeMounts:
-          - mountPath: /usr/local/neon/pageserver
-            name: neon-pageserver
+          - name: neon-pageserver
+            mountPath: /usr/local/neon/pageserver
           - name: scripts
             mountPath: /scripts
+          - name: data
+            mountPath: /data

@@ -24,7 +24,6 @@ storagebroker:
     limits:
       cpu: "1"
       memory: "2Gi"
-  dataStorage: "20Gi"
 
 safekeeper:
   replicas: 3

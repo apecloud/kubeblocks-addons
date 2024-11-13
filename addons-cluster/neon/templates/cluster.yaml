@@ -48,15 +48,6 @@ spec:
           memory: {{ .memory | quote }}
         {{- end }}
       {{- end }}
-      volumeClaimTemplates:
-        - name: data
-          spec:
-            storageClassName: {{ .Values.storageClassName }}
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: {{ .Values.storagebroker.dataStorage }}
     - name: neon-safekeeper
       replicas: {{ .Values.safekeeper.replicas }}
       {{- with  .Values.safekeeper.resources }}

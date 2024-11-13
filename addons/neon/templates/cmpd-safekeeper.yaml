@@ -60,5 +60,7 @@ spec:
         volumeMounts:
           - name: scripts
             mountPath: /scripts
-          - mountPath: /usr/local/neon/safekeeper
-            name: neon-safekeeper
+          - name: neon-safekeeper
+            mountPath: /usr/local/neon/safekeeper
+          - name: data
+            mountPath: /data
