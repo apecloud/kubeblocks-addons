@@ -1,11 +1,10 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: weaviate-config-template
+  name: {{ include "weaviate.configTplName" . }}
   namespace: {{ .Release.Namespace | quote }}
   labels:
   {{- include "weaviate.labels" . | nindent 4 }}
-
 data:
   conf.yaml: |-
     ---
@@ -23,11 +22,10 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: weaviate-env-template
+  name: {{ include "weaviate.envConfigTplName" . }}
   namespace: {{ .Release.Namespace | quote }}
   labels:
   {{- include "weaviate.labels" . | nindent 4 }}
-
 data:
   envs: |-
     ENABLE_MODULES=""

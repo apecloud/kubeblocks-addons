@@ -5,9 +5,9 @@ metadata:
   labels:
     {{- include "weaviate.labels" . | nindent 4 }}
 spec:
-  serviceKind: Weaviate
+  serviceKind: weaviate
   compDefs:
-    - {{ include "weaviate.componentDefName" . }}
+    - {{ include "weaviate.cmpdRegexpPattern" . }}
   backupMethods:
     - name: volume-snapshot
       snapshotVolumes: true

@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
-  name: weaviate-env-constraints
+  name: {{ include "weaviate.encConfigConstraintTplName" . }}
   labels:
     {{- include "weaviate.labels" . | nindent 4 }}
 spec:
