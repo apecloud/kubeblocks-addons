@@ -15,7 +15,6 @@ on:
           - clickhouse
           - elasticsearch
           - etcd
-          - flink
           - greptimedb
           - kafka
           - loki
