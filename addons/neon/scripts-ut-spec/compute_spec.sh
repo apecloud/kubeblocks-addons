@@ -46,6 +46,8 @@ Describe 'Neon Compute Script Tests'
       NEON_PAGESERVER_POD_FQDN_LIST='pageserver1'
       NEON_SAFEKEEPERS_POD_FQDN_LIST='safekeeper1'
       NEON_SAFEKEEPERS_PORT='5432'
+      NEON_PAGESERVER_PGPORT='1111'
+      NEON_PAGESERVER_HTTPPORT='2222'
       When call check_required_env
       The status should be success
     End
@@ -54,6 +56,8 @@ Describe 'Neon Compute Script Tests'
       NEON_PAGESERVER_POD_FQDN_LIST='pageserver1,pageserver2,pageserver3'
       NEON_SAFEKEEPERS_POD_FQDN_LIST='safekeeper1,safekeeper2,safekeeper3'
       NEON_SAFEKEEPERS_PORT='5432'
+      NEON_PAGESERVER_PGPORT='1111'
+      NEON_PAGESERVER_HTTPPORT='2222'
       When call check_required_env
       The status should be success
     End
