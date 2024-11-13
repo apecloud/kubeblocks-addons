@@ -1,7 +1,9 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: tidb-pd-7
+  name: {{ include "tidb.pd7.compDefName" . }}
+  annotations:
+    {{- include "tidb.multiVersionAnnotation" . | nindent 4}}
   labels:
     {{- include "tidb.labels" . | nindent 4 }}
 spec:
@@ -9,12 +11,28 @@ spec:
   description: tidb's metadata server
   updateStrategy: BestEffortParallel
   vars:
-    - name: DOMAIN
-      value: "$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}"
+    - name: PD_LEADER_POD_NAME
+      valueFrom:
+        componentVarRef:
+          optional: true
+          podNamesForRole:
+            role: leader
+            option: Optional
+    - name: PD_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
   runtime:
     containers:
       - name: pd
         imagePullPolicy: IfNotPresent
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
         ports:
           - containerPort: 2379
             name: client
@@ -54,15 +72,11 @@ spec:
   lifecycleActions:
     roleProbe:
       exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
         command:
           - bash
           - -c
           - |
-            # FIXME: this will fail, no idea why
-            # LEADER_NAME=$(/pd-ctl member | jq -r '.leader.name')
-            MEMBER=$(/pd-ctl member)
-            LEADER_NAME=$(echo $MEMBER | jq -r .leader.name)
+            LEADER_NAME=$(/pd-ctl member | jq -r '.leader.name')
             if [ "$LEADER_NAME" == "$HOSTNAME" ]; then
                 echo "leader"
             else
@@ -70,17 +84,14 @@ spec:
             fi
     memberLeave:
       exec:
-        # FIXME: seems like image is not needed
-        # this action will be executed in lorry container
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
         command:
           - bash
           - -c
           - |
-            ADDRESS=${KB_MEMBER_ADDRESSES%%,*}
+            ADDRESS=${PD_POD_FQDN_LIST%%,*}
             echo $KB_LEAVE_MEMBER_POD_NAME
             echo $ADDRESS
-            /pd-ctl -u $ADDRESS member delete name $KB_LEAVE_MEMBER_POD_NAME
+            /pd-ctl -u "$ADDRESS:2379" member delete name $KB_LEAVE_MEMBER_POD_NAME
   exporter:
     containerName: pd
     scrapePort: "2379"
