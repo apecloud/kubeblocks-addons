@@ -90,7 +90,7 @@ Define weaviate env config constraint name
 */}}
 {{- define "weaviate.envConfigConstraintTplName" -}}
 weaviate-env-constraints
-*/}}
+{{- end -}}
 
 {{/*
 Define image
