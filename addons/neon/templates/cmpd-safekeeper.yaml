@@ -1,60 +1,16 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
+  name: {{ include "neon-safekeeper.componentDefName" . }}
   labels:
     {{- include "neon.labels" . | nindent 4 }}
-  name: {{ include "neon-safekeeper.componentDefName" . }}
+  annotations:
+    {{- include "neon.annotations" . | nindent 4 }}
 spec:
   description: A neon safekeeper component definition for Kubernetes
   provider: KubeBlocks
-  scripts:
-    - name: neon-scripts
-      templateRef: neon-scripts
-      namespace: {{ .Release.Namespace }}
-      volumeName: scripts
-      defaultMode: 0555
-  vars: 
-    - name: NEON_STORAGEBROKER_HEADLESS
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "neon-storagebroker.componentDefName" . }}
-          name: headless
-          optional: true
-          host: Optional
-    - name: NEON_STORAGEBROKER_POD_LIST
-      valueFrom:
-        componentVarRef:
-          compDef: {{ include "neon-storagebroker.componentDefName" . }}
-          optional: true
-          podNames: Optional
-    - name: NEON_STORAGEBROKER_PORT
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "neon-storagebroker.componentDefName" . }}
-          name: neon-storagebroker
-          port: 
-            name: storagebroker
-  runtime:
-    containers:
-      - command: ["/scripts/sakekeeper_start.sh"]
-        env:
-          - name: POD_IP
-            valueFrom:
-              fieldRef:
-                fieldPath: status.podIP
-          - name: SAFEKEEPER_PG_PORT
-            value: "{{ .Values.safekeeper.pgPort }}"
-          - name: SAFEKEEPER_HTTP_PORT
-            value: "{{ .Values.safekeeper.httpPort }}"
-        image: {{ include "neon-safekeeper.image" . }}
-        name: neon-safekeeper
-        volumeMounts:
-          - name: scripts
-            mountPath: /scripts
-          - mountPath: /usr/local/neon/safekeeper
-            name: neon-safekeeper
   serviceKind: neon-safekeeper
-  serviceVersion: {{ .Values.componentServiceVersion }}
+  serviceVersion: {{ .Values.defaultComponentServiceVersion }}
   services:
     - name: neon-safekeeper
       serviceName: neon-safekeeper
@@ -67,4 +23,44 @@ spec:
           - name: safekeeper-http
             port: {{ .Values.safekeeper.httpPort }}
             protocol: TCP
-        
+  scripts:
+    - name: neon-scripts
+      templateRef: {{ include "neon.scriptsTemplateName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  vars:
+    - name: NEON_STORAGEBROKER_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "neon-storagebroker.cmpdRegexpPattern" . }}
+          optional: true
+          podFQDNs: Required
+    - name: NEON_STORAGEBROKER_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "neon-storagebroker.cmpdRegexpPattern" . }}
+          name: neon-storagebroker
+          port: 
+            name: storagebroker
+  runtime:
+    containers:
+      - name: neon-safekeeper
+        image: {{ include "neon-safekeeper.image" . }}
+        command: ["/scripts/sakekeeper_start.sh"]
+        env:
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          - name: SAFEKEEPER_PG_PORT
+            value: "{{ .Values.safekeeper.pgPort }}"
+          - name: SAFEKEEPER_HTTP_PORT
+            value: "{{ .Values.safekeeper.httpPort }}"
+        volumeMounts:
+          - name: scripts
+            mountPath: /scripts
+          - name: neon-safekeeper
+            mountPath: /usr/local/neon/safekeeper
+          - name: data
+            mountPath: /data
