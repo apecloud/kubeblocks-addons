@@ -40,7 +40,6 @@ on:
           - rabbitmq
           - redis
           - risingwave
-          - solr
           - starrocks-ce
           - tdengine
           - tidb
