@@ -67,9 +67,6 @@
     // Disk free space limit of the partition on which RabbitMQ is storing data. When available disk space falls below this limit, flow control is triggered. The value can be set relative to the total amount of RAM or as an absolute value in bytes or, alternatively, in information units (e.g 50MB or 5GB):
     disk_free_limit.absolute?: string | *"50MB"
     
-    // Controls the strategy used when selecting a node to host the leader replica of a newly declared queue or stream.
-    queue_leader_locator?: string
-
     // Controls the granularity of logging. The value is a list of log event category and log level pairs.
     //The level can be one of error (only errors are logged), warning (only errors and warning are logged), info (errors, warnings and informational messages are logged), or debug (errors, warnings, informational messages and debugging messages are logged).
     log_file.level?: string | "error" | "warning" | "info" | "debug" | *"info"
@@ -158,4 +155,11 @@
     
     // Operator-controlled cluster name
     cluster_name?: string
+
+	// other parameters
+	// reference rabbitmq parameters
+	...
 }
+
+// SectionName is section name
+[SectionName=_]: #RabbitMQParameter
