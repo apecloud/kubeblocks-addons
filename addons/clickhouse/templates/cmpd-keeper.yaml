@@ -160,6 +160,8 @@ spec:
       value: "9444"
     - name: CLICKHOUSE_METRICS_PORT
       value: "8001"
+    - name: SERVICE_PORT
+      value: "$(CLICKHOUSE_METRICS_PORT)"
     - name: KEEPER_REPLICA_ID
       value: "$(KB_POD_NAME)"
     - name: CLICKHOUSE_ADMIN_PASSWORD

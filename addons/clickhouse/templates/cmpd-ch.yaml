@@ -109,6 +109,8 @@ spec:
       value: "9440"
     - name: CLICKHOUSE_METRICS_PORT
       value: "8001"
+    - name: SERVICE_PORT
+      value: "$(CLICKHOUSE_METRICS_PORT)"
     - name: CLICKHOUSE_SHARD_ID
       value: "$(KB_COMP_NAME)"
     - name: CLICKHOUSE_REPLICA_ID
