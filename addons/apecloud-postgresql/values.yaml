@@ -17,7 +17,7 @@ image:
   # refer: https://github.com/apecloud/dbctl/blob/main/docker/Dockerfile
   dbctl:
     repository: apecloud/dbctl
-    tag: "0.1.5"
+    tag: "0.1.6"
 
 dataMountPath: /postgresql/volume_data
 confMountPath: /postgresql/mount_conf
