@@ -33,4 +33,4 @@ spec:
           - "storage_broker -l 0.0.0.0:${STORAGEBROKER_PORT}"
         volumeMounts:
           - mountPath: /usr/local/neon/storagebroker
-            name: neon-storagebroker
+            name: data
