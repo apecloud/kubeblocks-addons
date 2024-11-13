@@ -12,14 +12,12 @@ on:
           - ""
           - apecloud-mysql
           - apecloud-postgresql
-          - camellia-redis-proxy
           - clickhouse
           - elasticsearch
           - etcd
           - flink
           - greptimedb
           - kafka
-          - llm
           - loki
           - mariadb
           - milvus
@@ -31,10 +29,7 @@ on:
           - neon
           - oceanbase-ce
           - official-postgresql
-          - opengauss
-          - openldap
           - opensearch
-          - oracle
           - orchestrator
           - orioledb
           - polardbx
@@ -50,7 +45,6 @@ on:
           - tidb
           - victoria-metrics
           - weaviate
-          - xinference
           - yashandb
           - zookeeper
       chart_version:
