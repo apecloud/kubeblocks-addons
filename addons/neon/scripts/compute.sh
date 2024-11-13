@@ -22,11 +22,21 @@ check_required_env() {
   if [ -z "$NEON_PAGESERVER_POD_FQDN_LIST" ]; then
     missing_vars+=("NEON_PAGESERVER_POD_FQDN_LIST")
   fi
+
   if [ -z "$NEON_SAFEKEEPERS_POD_FQDN_LIST" ]; then
     missing_vars+=("NEON_SAFEKEEPERS_POD_FQDN_LIST")
   fi
+
   if [ -z "$NEON_SAFEKEEPERS_PORT" ]; then
     missing_vars+=("NEON_SAFEKEEPERS_PORT")
+  fi
+
+  if [ -z "$NEON_PAGESERVER_PGPORT" ]; then
+    missing_vars+=("NEON_PAGESERVER_PGPORT")
+  fi
+
+  if [ -z "$NEON_PAGESERVER_HTTPPORT" ]; then
+    missing_vars+=("NEON_PAGESERVER_HTTPPORT")
   fi
 
   if [ ${#missing_vars[@]} -ne 0 ]; then
