@@ -17,7 +17,6 @@ on:
           - dmdb
           - elasticsearch
           - etcd
-          - flink
           - greptimedb
           - influxdb
           - kafka
