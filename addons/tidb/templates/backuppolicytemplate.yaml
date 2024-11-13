@@ -7,7 +7,7 @@ metadata:
 spec:
   serviceKind: Tidb
   compDefs:
-    - tidb-pd-7
+    - {{ include "tidb.pd7.cmpdRegexpPattern" . }}
   backupMethods:
     - name: br
       snapshotVolumes: false
