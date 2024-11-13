@@ -1,3 +1,4 @@
+{{- $cc := .Files.Get "config/config-effect-scope.yaml" | fromYaml }}
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
@@ -20,3 +21,21 @@ spec:
   # rabbitmq configuration file format
   fileFormatConfig:
     format: ini
+
+  # ConfigurationSchema that impose restrictions on engine parameter's rule
+  parametersSchema:
+    # top level rabbitmq configuration type
+    topLevelKey: RabbitMQParameter
+
+    # schemaInJSON: auto generate from cue scripts
+    cue: |-
+      {{- .Files.Get "config/config-constraint.cue" | nindent 6 }}
+
+  ## define static parameter list
+  {{- if hasKey $cc "staticParameters" }}
+  staticParameters:
+    {{- $params := get $cc "staticParameters" }}
+    {{- range $params }}
+    - {{ . }}
+    {{- end }}
+  {{- end}}
