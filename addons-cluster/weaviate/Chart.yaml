@@ -6,4 +6,10 @@ type: application
 
 version: 1.0.0-alpha.0
 
+dependencies:
+  - name: kblib
+    version: 0.1.2
+    repository: file://../kblib
+    alias: extra
+
 appVersion: "1.19.6"
