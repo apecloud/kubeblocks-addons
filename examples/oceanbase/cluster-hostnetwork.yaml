@@ -1,0 +1,63 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: ob-cluster-host
+  namespace: default
+  annotations:
+    # `kubeblocks.io/host-network` is a reserved annotation
+    # it defines the feature gate to enable the host-network for specified components or shardings.
+    kubeblocks.io/host-network: "oceanbase"
+spec:
+  terminationPolicy: Delete
+  clusterDef: oceanbase-ce
+  topology: distribution
+  componentSpecs:
+    - name: oceanbase
+      serviceVersion: 4.3.0
+      disableExporter: false
+      env:
+      - name: ZONE_COUNT
+        value: "1"
+      - name: OB_CLUSTER_ID
+        value: "1"
+      replicas: 1
+      resources:
+        limits:
+          cpu: "3"
+          memory: "4Gi"
+        requests:
+          cpu: "3"
+          memory: "4Gi"
+      volumeClaimTemplates:
+        - name: data-file
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: "50Gi"
+        - name: data-log
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: "50Gi"
+        - name: log
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: "20Gi"
+        - name: workdir
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: "1Gi"

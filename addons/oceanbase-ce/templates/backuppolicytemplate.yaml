@@ -1,16 +1,18 @@
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: BackupPolicyTemplate
 metadata:
-  name: {{ printf "%s-backup-policy-template" (include "oceanbase-release.name" .) }}\
+  name: {{ include "oceanbase-ce.backup.bpt" .}}
+  labels:
+  {{- include "oceanbase-ce.labels" . | nindent 4 }}
 spec:
-  serviceKind: Oceanbase
+  serviceKind: oceanbase-ce
   compDefs:
-    - {{ include "oceanbase-release.name" . }}
-  backoffLimit: 0
+    - oceanbase-ce-\d+
+  backoffLimit: 1
   backupMethods:
     - name: full
       snapshotVolumes: false
-      actionSetName: {{ printf "%s-physical-backup" (include "oceanbase-release.name" .) }}
+      actionSetName: {{ include "oceanbase-ce.backup.actionset" .}}
       targetVolumes:
         volumeMounts:
           - name: workdir
@@ -20,3 +22,6 @@ spec:
       enabled: false
       cronExpression: "0 18 * * *"
       retentionPeriod: 7d
+  target:
+    role: ""
+    account: root
