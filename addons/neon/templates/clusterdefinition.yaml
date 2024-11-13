@@ -9,13 +9,13 @@ spec:
     - name: default
       components:
         - name: neon-pageserver
-          compDef: {{ include "neon-pageserver.componentDefName" . }}
+          compDef: {{ include "neon-pageserver.cmpdRegexpPattern" . }}
         - name: neon-safekeeper
-          compDef: {{ include "neon-safekeeper.componentDefName" . }}
+          compDef: {{ include "neon-safekeeper.cmpdRegexpPattern" . }}
         - name: neon-broker
-          compDef: {{ include "neon-storagebroker.componentDefName" . }}
+          compDef: {{ include "neon-storagebroker.cmpdRegexpPattern" . }}
         - name: neon-compute
-          compDef: {{ include "neon-compute.componentDefName" . }}
+          compDef: {{ include "neon-compute.cmpdRegexpPattern" . }}
       default: true
       orders:  
         provision:  
