@@ -54,6 +54,8 @@ spec:
           optional: false
           podNames: Optional
   runtime:
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
     containers:
     - name: weaviate
       image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:{{ .Values.images.tag | default "latest" }}
@@ -120,8 +122,6 @@ spec:
         name: weaviate-env
       - mountPath: /var/lib/weaviate
         name: data
-      dnsPolicy: ClusterFirst
-      enableServiceLinks: true
       ports:
       - name: tcp-weaviate
         containerPort: 8080
