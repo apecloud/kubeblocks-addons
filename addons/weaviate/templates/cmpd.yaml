@@ -33,7 +33,7 @@ spec:
     - name: weaviate-env-template
       templateRef: {{ include "weaviate.envConfigTplName" . }}
       namespace: {{ .Release.Namespace }}
-      constraintRef: {{ include "weaviate.encConfigConstraintTplName" . }}
+      constraintRef: {{ include "weaviate.envConfigConstraintTplName" . }}
       volumeName: weaviate-env
       defaultMode: 0444
   vars:

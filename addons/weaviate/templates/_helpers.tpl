@@ -88,7 +88,7 @@ weaviate-env-config-template
 {{/*
 Define weaviate env config constraint name
 */}}
-{{- define "weaviate.encConfigConstraintTplName" -}}
+{{- define "weaviate.envConfigConstraintTplName" -}}
 weaviate-env-constraints
 */}}
 
