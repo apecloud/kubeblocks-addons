@@ -35,4 +35,4 @@ cluster_formation.k8s.address_type         = hostname
 cluster_formation.k8s.service_name         = {{ .KB_CLUSTER_NAME }}-rabbitmq-headless
 cluster_name                               = {{ .KB_CLUSTER_NAME }}
 
-listeners.tcp.1 = :::{{ $rabbitmq_port }}
+listeners.tcp = :::{{ $rabbitmq_port }}
