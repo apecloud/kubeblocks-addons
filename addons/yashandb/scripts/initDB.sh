@@ -3,28 +3,28 @@
 # Initialize YASDB database
 # This script handles installation and configuration of YASDB database
 
-set -euo pipefail
+set -exuo pipefail
 
 # Default configurations 
-readonly WORK_DIR=${WORK_DIR:-/home/yashan}
-readonly YASDB_PASSWORD="yasdb_123"
+WORK_DIR=${WORK_DIR:-/home/yashan}
+YASDB_PASSWORD="yasdb_123"
 
 # Config file paths
-readonly YASDB_TEMP_FILE="${YASDB_MOUNT_HOME}/.temp.ini"
-readonly YASDB_INSTALL_FILE="${YASDB_MOUNT_HOME}/install.ini"
-readonly INSTALL_INI_FILE="${YASDB_INSTALL_FILE}"
-readonly START_LOG_FILE="${YASDB_DATA}/log/start.log"
+YASDB_TEMP_FILE="${YASDB_MOUNT_HOME}/.temp.ini"
+YASDB_INSTALL_FILE="${YASDB_MOUNT_HOME}/install.ini"
+INSTALL_INI_FILE="${YASDB_INSTALL_FILE}"
+START_LOG_FILE="${YASDB_DATA}/log/start.log"
 
 # Load environment files
 source_env_files() {
   # shellcheck disable=SC1090
   source "${YASDB_TEMP_FILE}"
   
-  readonly YASDB_ENV_FILE="${YASDB_HOME}/conf/yasdb.bashrc"
-  readonly YASDB_HOME_BIN_PATH="${YASDB_HOME}/bin"
-  readonly YASDB_BIN="${YASDB_HOME_BIN_PATH}/yasdb"
-  readonly YASQL_BIN="${YASDB_HOME_BIN_PATH}/yasql"
-  readonly YASPWD_BIN="${YASDB_HOME_BIN_PATH}/yaspwd"
+  YASDB_ENV_FILE="${YASDB_HOME}/conf/yasdb.bashrc"
+  YASDB_HOME_BIN_PATH="${YASDB_HOME}/bin"
+  YASDB_BIN="${YASDB_HOME_BIN_PATH}/yasdb"
+  YASQL_BIN="${YASDB_HOME_BIN_PATH}/yasql"
+  YASPWD_BIN="${YASDB_HOME_BIN_PATH}/yaspwd"
   
   # shellcheck disable=SC1090
   source "${YASDB_ENV_FILE}"

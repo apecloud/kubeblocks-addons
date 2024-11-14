@@ -3,22 +3,22 @@
 # startup.sh
 # Start YASDB database instance if not already running
 
-set -euo pipefail
+set -exuo pipefail
 
 # Default configurations
-readonly WORK_DIR=${WORK_DIR:-/home/yashan}
+WORK_DIR=${WORK_DIR:-/home/yashan}
 
 # Config file paths
-readonly YASDB_TEMP_FILE="${YASDB_MOUNT_HOME}/.temp.ini"
+YASDB_TEMP_FILE="${YASDB_MOUNT_HOME}/.temp.ini"
 
 # Load environment files
 load_environment() {
   # shellcheck disable=SC1090
   source "${YASDB_TEMP_FILE}"
 
-  readonly YASDB_ENV_FILE="${YASDB_HOME}/conf/yasdb.bashrc"
-  readonly YASDB_BIN="${YASDB_HOME}/bin/yasdb"
-  readonly START_LOG_FILE="$YASDB_DATA/log/start.log"
+  YASDB_ENV_FILE="${YASDB_HOME}/conf/yasdb.bashrc"
+  YASDB_BIN="${YASDB_HOME}/bin/yasdb"
+  START_LOG_FILE="$YASDB_DATA/log/start.log"
 
   # shellcheck disable=SC1090
   source "${YASDB_ENV_FILE}"

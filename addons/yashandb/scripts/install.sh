@@ -2,21 +2,21 @@
 #
 # Install and configure YASDB environment
 
-set -euo pipefail
+set -exuo pipefail
 
 # Default configurations
-readonly WORK_DIR=${WORK_DIR:-/home/yashan}
-readonly SCRIPTS_DIR="/home/yashan/kbscripts"
+WORK_DIR=${WORK_DIR:-/home/yashan}
+SCRIPTS_DIR="/home/yashan/kbscripts"
 
 # Config file paths
-readonly YASDB_TEMP_FILE="${YASDB_MOUNT_HOME}/.temp.ini"
-readonly YASDB_INSTALL_FILE="${YASDB_MOUNT_HOME}/install.ini"
-readonly YASDB_CONFIG="${YASDB_DATA}/config/yasdb.ini"
+YASDB_TEMP_FILE="${YASDB_MOUNT_HOME}/.temp.ini"
+YASDB_INSTALL_FILE="${YASDB_MOUNT_HOME}/install.ini"
+YASDB_CONFIG="${YASDB_DATA}/config/yasdb.ini"
 
 # Setup environment file paths
 setup_env_paths() {
-  readonly YASDB_ENV_FILE="${YASDB_HOME}/conf/yasdb.bashrc"
-  readonly BASHRC_FILE=~/.bashrc
+  YASDB_ENV_FILE="${YASDB_HOME}/conf/yasdb.bashrc"
+  BASHRC_FILE=~/.bashrc
 }
 
 # Copy and process install file
