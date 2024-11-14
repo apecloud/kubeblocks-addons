@@ -10,7 +10,7 @@ image:
   tag: 5.0.14 # 6.0.3-debian-11-r0
   syncer:
     repository: apecloud/syncer
-    tag: "0.2.0"
+    tag: "0.3.2"
 
 # refer: https://github.com/apecloud/wal-g/blob/kb-dev/docker/wal-g/Dockerfile-mongo
 # this image is built from Dockerfile of apecloud/wal-g forked from wal-g/wal-g.

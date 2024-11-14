@@ -62,130 +62,131 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+TLS file
 */}}
-{{- define "clickhouse-ch-component" -}}
+{{- define "clickhouse-cluster.tls" }}
+tls: {{ $.Values.tls.enabled }}
+{{- if $.Values.tls.enabled }}
+issuer:
+  name: {{ $.Values.tls.issuer }}
+  {{- if eq $.Values.tls.issuer "UserProvided" }}
+  secretRef:
+    name: {{ $.Values.tls.secretName }}
+    ca: ca.crt
+    cert: tls.crt
+    key: tls.key
+  {{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
+Define clickhouse componentSpec with ComponentDefinition.
+*/}}
+{{- define "clickhouse-component" -}}
 - name: clickhouse
   componentDef: clickhouse-24
-  replicas: {{ $.Values.clickhouse.replicaCount | default 2 }}
+  replicas: {{ $.Values.replicas | default 2 }}
+  disableExporter: {{ $.Values.disableExporter | default "false" }}
   serviceAccountName: {{ include "clickhouse-cluster.serviceAccountName" $ }}
-  {{- with $.Values.clickhouse.tolerations }}
-  tolerations: {{ .| toYaml | nindent 8 }}
+  systemAccounts:
+    - name: admin
+      passwordConfig:
+        length: 10
+        numDigits: 5
+        numSymbols: 0
+        letterCase: MixedCases
+        seed: {{ include "kblib.clusterName" . }}
+  {{- with $.Values.tolerations }}
+  tolerations: {{ .| toYaml | nindent 4 }}
   {{- end }}
-  {{- with $.Values.clickhouse.resources }}
-  resources:
-    limits:
-      cpu: {{ .limits.cpu | quote }}
-      memory: {{ .limits.memory | quote }}
-    requests:
-      cpu: {{ .requests.cpu | quote }}
-      memory: {{ .requests.memory | quote }}
-  {{- end }}
-  volumeClaimTemplates:
-    - name: data
-      spec:
-        storageClassName: {{ $.Values.clickhouse.persistence.data.storageClassName }}
-        accessModes:
-          - ReadWriteOnce
-        resources:
-          requests:
-            storage: {{ $.Values.clickhouse.persistence.data.size }}
+  {{- include "kblib.componentResources" . | indent 2 }}
+  {{- include "kblib.componentStorages" . | indent 2 }}
+  {{- include "clickhouse-cluster.tls" . | indent 2 }}
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+Define clickhouse keeper componentSpec with ComponentDefinition.
 */}}
-{{- define "clickhouse-keeper-component" -}}
+{{- define "ch-keeper-component" -}}
 - name: ch-keeper
   componentDef: ch-keeper-24
-  replicas: {{ .Values.keeper.replicaCount }}
-  {{- with .Values.clickhouse.tolerations }}
-  tolerations: {{ .| toYaml | nindent 8 }}
+  replicas: {{ .Values.keeper.replicas }}
+  disableExporter: {{ $.Values.disableExporter | default "false" }}
+  {{- with .Values.keeper.tolerations }}
+  tolerations: {{ .| toYaml | nindent 4 }}
   {{- end }}
-  {{- with $.Values.keeper.resources }}
   resources:
     limits:
-      cpu: {{ .limits.cpu | quote }}
-      memory: {{ .limits.memory | quote }}
+      cpu: {{ .Values.keeper.cpu | quote }}
+      memory: {{ print .Values.keeper.memory "Gi" | quote }}
     requests:
-      cpu: {{ .requests.cpu | quote }}
-      memory: {{ .requests.memory | quote }}
-  {{- end }}
+      cpu: {{ .Values.keeper.cpu | quote }}
+      memory: {{ print .Values.keeper.memory "Gi" | quote }}
+  systemAccounts:
+    - name: admin
+      passwordConfig:
+        length: 10
+        numDigits: 5
+        numSymbols: 0
+        letterCase: MixedCases
+        seed: {{ include "kblib.clusterName" . }}
   volumeClaimTemplates:
     - name: data
       spec:
-        storageClassName: {{ $.Values.keeper.persistence.data.storageClassName }}
+      {{- if .Values.keeper.storageClassName }}
+          storageClassName: {{ .Values.keeper.storageClassName | quote }}
+          {{- end }}
         accessModes:
           - ReadWriteOnce
         resources:
           requests:
-            storage: {{ $.Values.keeper.persistence.data.size }}
+            storage: {{ print .Values.keeper.storage "Gi" }}
+  {{- include "clickhouse-cluster.tls" . | indent 2 }}
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+Define clickhouse shardingComponentSpec with ComponentDefinition.
 */}}
 {{- define "clickhouse-sharding-component" -}}
 - name: shard
-  shards: {{ .Values.shardCount }}
+  shards: {{ .Values.shards }}
   template:
     name: clickhouse
     componentDef: clickhouse-24
-    replicas: {{ $.Values.clickhouse.replicaCount | default 2 }}
+    replicas: {{ $.Values.replicas | default 2 }}
+    disableExporter: {{ $.Values.disableExporter | default "false" }}
     serviceAccountName: {{ include "clickhouse-cluster.serviceAccountName" $ }}
-    {{- with $.Values.clickhouse.tolerations }}
-    tolerations: {{ .| toYaml | nindent 8 }}
+    systemAccounts:
+    - name: admin
+      passwordConfig:
+        length: 10
+        numDigits: 5
+        numSymbols: 0
+        letterCase: MixedCases
+        seed: {{ include "kblib.clusterName" . }}
+    {{- with $.Values.tolerations }}
+    tolerations: {{ .| toYaml | nindent 6 }}
     {{- end }}
-    {{- with $.Values.clickhouse.resources }}
-    resources:
-      limits:
-        cpu: {{ .limits.cpu | quote }}
-        memory: {{ .limits.memory | quote }}
-      requests:
-        cpu: {{ .requests.cpu | quote }}
-        memory: {{ .requests.memory | quote }}
-    {{- end }}
-    volumeClaimTemplates:
-      - name: data
-        spec:
-          storageClassName: {{ $.Values.clickhouse.persistence.data.storageClassName }}
-          accessModes:
-            - ReadWriteOnce
-          resources:
-            requests:
-              storage: {{ $.Values.clickhouse.persistence.data.size }}
+    {{- include "kblib.componentResources" . | indent 4 }}
+    {{- include "kblib.componentStorages" . | indent 4 }}
+    {{- include "clickhouse-cluster.tls" . | indent 4 }}
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+Define clickhouse componentSpec with compatible ComponentDefinition API
 */}}
 {{- define "clickhouse-nosharding-component" -}}
-{{- range $i := until (.Values.shardCount | int) }}
+{{- range $i := until (.Values.shards | int) }}
 - name: shard-{{ $i }}
   componentDef: clickhouse-24
-  replicas: {{ $.Values.clickhouse.replicaCount | default 2 }}
-  disableExporter: false
+  replicas: {{ $.Values.replicas | default 2 }}
+  disableExporter: {{ $.Values.disableExporter | default "false" }}
   serviceAccountName: {{ include "clickhouse-cluster.serviceAccountName" $ }}
-  {{- with $.Values.clickhouse.tolerations }}
-  tolerations: {{ .| toYaml | nindent 8 }}
+  {{- with $.Values.tolerations }}
+  tolerations: {{ .| toYaml | nindent 4 }}
   {{- end }}
-  {{- with $.Values.clickhouse.resources }}
-  resources:
-    limits:
-      cpu: {{ .limits.cpu | quote }}
-      memory: {{ .limits.memory | quote }}
-    requests:
-      cpu: {{ .requests.cpu | quote }}
-      memory: {{ .requests.memory | quote }}
-  {{- end }}
-  volumeClaimTemplates:
-    - name: data
-      spec:
-        storageClassName: {{ $.Values.clickhouse.persistence.data.storageClassName }}
-        accessModes:
-          - ReadWriteOnce
-        resources:
-          requests:
-            storage: {{ $.Values.clickhouse.persistence.data.size }}
+  {{- include "kblib.componentResources" $ | indent 2 }}
+  {{- include "kblib.componentStorages" $ | indent 2 }}
+  {{- include "clickhouse-cluster.tls" $ | indent 2 }}
 {{- end }}
 {{- end }}

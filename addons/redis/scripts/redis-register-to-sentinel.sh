@@ -104,6 +104,7 @@ parse_redis_advertised_svc_if_exist() {
     if [[ "$svc_name_ordinal" == "$pod_name_ordinal" ]]; then
       echo "Found matching svcName and port for podName '$pod_name', REDIS_ADVERTISED_PORT: $REDIS_ADVERTISED_PORT. svcName: $svc_name, port: $port."
       redis_advertised_svc_port_value="$port"
+      # TODO: currently, kb doesn't support reference another component pod's HOST_IP, so we need to ensure the script is executed on the same node as the redis primary pod.
       redis_advertised_svc_host_value="$KB_HOST_IP"
       found=true
       break

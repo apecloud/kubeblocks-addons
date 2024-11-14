@@ -41,7 +41,8 @@ secret:
 serviceReference:
   metadb:
     namespace: "default"
-    cluster: "mycluster"
+    cluster: ""
+    isConnectionCredential: false
     credential:
       name: root
       component: mysql

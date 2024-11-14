@@ -42,7 +42,7 @@ spec:
             port: 80
             targetPort: 8080
     {{- end }}
-    {{- if eq .Values.version "pulsar-3.0.2" }}
+    {{- if hasSuffix "3.0.2" .Values.version }}
     - name: broker-bootstrap
       serviceName: broker-bootstrap
       componentSelector: broker

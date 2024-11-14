@@ -62,7 +62,7 @@ spec:
             command:
             - sh
             - -c
-            - "cp -r /bin/syncer /config /kubeblocks/"
+            - "cp -r /bin/syncer /tools/"
             volumeMounts:
               - name: data
                 mountPath: {{ .Values.dataMountPath }}
@@ -70,17 +70,15 @@ spec:
                 mountPath: {{ .Values.confMountPath }}
               - name: scripts
                 mountPath: /kb-scripts
-              - name: kubeblocks
-                mountPath: /kubeblocks
+              - name: tools
+                mountPath: /tools
         containers:
           - name: postgresql
             imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
             securityContext:
               runAsUser: 0
             command:
-              - /kubeblocks/syncer
-              - --config-path
-              - /kubeblocks/config/components
+              - /tools/syncer
               - --port
               - "3601"
               - --
@@ -95,8 +93,8 @@ spec:
                 mountPath: {{ .Values.confMountPath }}
               - name: scripts
                 mountPath: /kb-scripts
-              - name: kubeblocks
-                mountPath: /kubeblocks
+              - name: tools
+                mountPath: /tools
             ports:
               - name: tcp-postgresql
                 containerPort: 5432
@@ -139,6 +137,8 @@ spec:
                     name: $(CONN_CREDENTIAL_SECRET_NAME)
                     key: password
                     optional: false
+              - name: KB_SERVICE_CHARACTER_TYPE
+                value: apecloud-postgresql
               - name: POSTGRESQL_PORT_NUMBER
                 value: "5432"
               - name: PGDATA
@@ -188,3 +188,13 @@ spec:
               statements:
                 creation: CREATE USER $(USERNAME) SUPERUSER PASSWORD '$(PASSWD)';
                 deletion: DROP USER IF EXISTS $(USERNAME);
+  topologies:
+    - name: standalone
+      components:
+        - name: postgresql
+          compDef: {{ include "apecloud-postgresql.compDefApecloudPostgresql14" . }}
+      default: true
+    - name: raftGroup
+      components:
+        - name: postgresql
+          compDef: {{ include "apecloud-postgresql.compDefApecloudPostgresql14" . }}

@@ -14,14 +14,28 @@ spec:
         - {{ include "vanilla-postgresql14.compDefName" . }}
       releases:
         - 14.7.0
+    - compDefs:
+        - {{ include "vanilla-postgresql15.compDefName" . }}
+      releases:
+        - 15.7.0
+    - compDefs:
+        - {{ include "vanilla-postgresql-supabase15.compDefName" . }}
+      releases:
+        - supabase-15.6.1.138
   releases:
     - name: 12.15.0
-      serviceVersion: 12.15.0 # {{ .Values.componentServiceVersion.vanillaPostgresql12  }}
+      serviceVersion: 12.15.0
       images:
         postgresql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor15 }}
-        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
     - name: 14.7.0
       serviceVersion: 14.7.0
       images:
         postgresql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major14.minor07 }}
-        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+    - name: 15.7.0
+      serviceVersion: 15.7.0
+      images:
+        postgresql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major15.minor07 }}
+    - name: supabase-15.6.1.138
+      serviceVersion: 15.6.1138
+      images:
+        postgresql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.supabase.repository }}:{{ .Values.image.supabase.tags.major15.minor61138 }}

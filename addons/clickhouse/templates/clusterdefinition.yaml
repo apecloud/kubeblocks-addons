@@ -16,7 +16,7 @@ spec:
       components:
         - name: clickhouse
           compDef: clickhouse-24
-    - name: clickhouse-cluster
+    - name: cluster
       components:
         - name: clickhouse
           compDef: clickhouse-24

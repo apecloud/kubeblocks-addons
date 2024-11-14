@@ -63,7 +63,7 @@ Create the name of the service account to use
 
 
 {{/*
-Define mysql component defintion name
+Define mysql component definition name
 */}}
 {{- define "orchestrator.componentDefName" -}}
 {{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
@@ -103,33 +103,6 @@ serviceKind: orchestrator
 serviceVersion: 3.2.6
 updateStrategy: BestEffortParallel
 
-roles:
-  - name: primary
-    serviceable: true
-    writable: true
-    votable: true
-  - name: secondary
-    serviceable: true
-    writable: false
-    votable: true
-
-lifecycleActions:
-  roleProbe:
-    builtinHandler: custom
-    customHandler:
-      exec:
-        command:
-          - /bin/bash
-          - -c
-          - |
-            role=$(curl -s http://127.0.0.1:3000/api/leader-check)
-            if [[ $role == "\"OK\"" ]]; then
-              echo -n "primary"
-            elif [[ $role == "\"Not leader\"" ]]; then
-              echo -n "secondary"
-            else
-              echo -n ""
-            fi
 configs:
   - name: orchestrator-config
     templateRef: {{ include "orchestrator.componentDefName" . }}-config
@@ -143,14 +116,6 @@ scripts:
     volumeName: scripts
     defaultMode: 0555
 
-services:
-  - name: default
-    roleSelector: primary
-    spec:
-      ports:
-        - name: http
-          port: 80
-          targetPort: http
 {{- end }}
 
 
@@ -169,7 +134,7 @@ volumeMounts:
     name: data
 ports:
   - containerPort: 3000
-    name: http
+    name: orc-http
   - containerPort: 10008
     name: raft
 readinessProbe:

@@ -39,6 +39,8 @@ spec:
       volumeName: mongodb-config
       namespace: {{ .Release.Namespace }}
       defaultMode: 0400  # for only read
+      keys:
+        - mongodb.conf
   logConfigs:
     {{- range $name,$pattern := .Values.logConfigs }}
     - name: {{ $name }}
@@ -87,7 +89,6 @@ spec:
           - cp
           - -r
           - /bin/syncer
-          - /config
           - /kubeblocks/
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
@@ -108,8 +109,6 @@ spec:
             containerPort: 3601
         command:
           - syncer
-          - --config-path
-          - /kubeblocks/config/components
           - --port
           - "3601"
           - --
@@ -160,3 +159,18 @@ spec:
           name: root
           optional: false
           password: Required
+    - name: KB_SERVICE_PORT  
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: mongodb
+            port:
+              name: mongodb
+              option: Optional
+  hostNetwork: 
+    containerPorts:  
+      - container: mongodb
+        ports:
+          - mongodb
+          - ha

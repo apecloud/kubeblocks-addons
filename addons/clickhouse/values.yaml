@@ -18,27 +18,4 @@ image:
   repository: bitnami/clickhouse
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: 24.3.10-debian-12-r1
-
-zookeeper:
-  image:
-    registry: docker.io
-    repository: apecloud/zookeeper
-    pullPolicy: IfNotPresent
-    # Overrides the image tag whose default is the chart appVersion.
-    tag: 3.8.0-debian-11-r47
-
-  logConfigs: {}
-  roleProbe:
-    failureThreshold: 2
-    periodSeconds: 1
-    successThreshold: 1
-
-  ## @param configuration Configure ZooKeeper with a custom zoo.cfg file
-  ## e.g:
-  ## configuration: |-
-  ##   deploy-working-dir=/bitnami/geode/data
-  ##   log-level=info
-  ##   ...
-  ##
-  configuration: ""
+  tag: 24.8.3-debian-12-r1

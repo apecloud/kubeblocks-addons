@@ -6,10 +6,10 @@ metadata:
 spec:
   # Specifies the name of the ClusterDefinition to use when creating a Cluster.
   clusterDefinitionRef: clickhouse
-  # Specifies the clickhouse cluster topology defined in ClusterDefinition.Spec.topologies, support standalone, clickhouse-cluster
+  # Specifies the redis cluster topology defined in ClusterDefinition.Spec.topologies, support standalone, replication, and replication-twemproxy.
   # - `standalone`: single clickhouse instance
-  # - `clickhouse-cluster`: clickhouse cluster with clickhouse-keeper
-  topology: clickhouse-cluster
+  # - `clickhouse-cluster`: clickhouse cluster with clickhouse and clickhouse-keeper
+  topology: cluster
   # Specifies the behavior when a Cluster is deleted.
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
   # - `Halt`: Deletes Cluster resources like Pods and Services but retains Persistent Volume Claims (PVCs), allowing for data preservation while stopping other operations.
@@ -20,12 +20,12 @@ spec:
   affinity:
    # Specifies the anti-affinity level of Pods within a Component. It determines how pods should be spread across nodes to improve availability and performance.
     podAntiAffinity: Preferred
-    # Represents the key of node labels used to define the topology domain for Pod anti-affinity and Pod spread constraints.
+    # Represents the key of node labels used to define the topology domain for Pod anti-affinity and Pod spread constraints. 
     topologyKeys:
       - kubernetes.io/hostname
-    # Determines the level of resource isolation between Pods. It can have the following values: `SharedNode` and `DedicatedNode`.
-    # - SharedNode: Allow that multiple Pods may share the same node, which is the default behavior of K8s.
-    # - DedicatedNode: Each Pod runs on a dedicated node, ensuring that no two Pods share the same node.
+    # Determines the level of resource isolation between Pods. It can have the following values: `SharedNode` and `DedicatedNode`. 
+    # - SharedNode: Allow that multiple Pods may share the same node, which is the default behavior of K8s. 
+    # - DedicatedNode: Each Pod runs on a dedicated node, ensuring that no two Pods share the same node. 
     tenancy: SharedNode
   # An array that specifies tolerations attached to the Cluster's Pods, allowing them to be scheduled onto nodes with matching taints.
   tolerations:
