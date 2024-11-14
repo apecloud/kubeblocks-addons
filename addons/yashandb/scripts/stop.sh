@@ -1,59 +1,78 @@
-#!/bin/bash
-#stop.sh
-WORK_DIR=${WORK_DIR:-/home/yashan}
-YASDB_TEMP_FILE="${YASDB_MOUNT_HOME}/.temp.ini"
-YASDB_INSTALL_FILE="${YASDB_MOUNT_HOME}/install.ini"
+#!/usr/bin/env bash
+#
+# Stop YASDB database instance if running
 
-# shellcheck disable=SC1090
-source "${YASDB_TEMP_FILE}"
-YASDB_ENV_FILE="${YASDB_HOME}/conf/yasdb.bashrc"
-YASDB_BIN="${YASDB_HOME}/bin/yasdb"
+set -euo pipefail
 
-# shellcheck disable=SC1090
-source "${YASDB_ENV_FILE}"
+# Default configurations
+readonly WORK_DIR=${WORK_DIR:-/home/yashan}
 
+# Config file paths
+readonly YASDB_TEMP_FILE="${YASDB_MOUNT_HOME}/.temp.ini"
+
+# Load environment files
+load_environment() {
+  # shellcheck disable=SC1090
+  source "${YASDB_TEMP_FILE}"
+
+  readonly YASDB_ENV_FILE="${YASDB_HOME}/conf/yasdb.bashrc"
+  readonly YASDB_BIN="${YASDB_HOME}/bin/yasdb"
+
+  # shellcheck disable=SC1090
+  source "${YASDB_ENV_FILE}"
+}
+
+# Check if YASDB process is running
 is_yasdb_running() {
-    # shellcheck disable=SC2009 disable=SC2126
-    alive=$(ps -aux | grep -w "$YASDB_BIN"  | grep -w "$YASDB_DATA" | grep -v -w grep | wc -l)
-    if [ "$alive" -eq 0 ]; then
-        return 1
-    fi
-    return 0
+  local process_count
+  # shellcheck disable=SC2009
+  process_count=$(ps -aux | grep -w "$YASDB_BIN" | grep -w "$YASDB_DATA" | grep -v -w grep | wc -l)
+  [ "$process_count" -gt 0 ]
 }
 
+# Get YASDB process ID
+get_yasdb_pid() {
+  # shellcheck disable=SC2009
+  ps -aux | grep -w "$YASDB_BIN" | grep -w "$YASDB_DATA" | grep -v -w grep | awk '{print $2}'
+}
+
+# Wait for YASDB to stop
 wait_yasdb_stop() {
-    i=0
-    retval=1
-    while ((i < 5))
-    do
-        sleep 1
-        is_yasdb_running
-        ret=$?
-        if [ "$ret" -eq 0 ]; then
-            retval=0
-            break
-        fi
-        i=$((i+1))
-    done
-    return $retval
+  local i=0
+  while ((i < 5)); do
+    sleep 1
+    if ! is_yasdb_running; then
+      return 0
+    fi
+    ((i++))
+  done
+  return 1
 }
 
-is_yasdb_running
-ret=$?
-if [ "$ret" -ne 0 ]; then
+# Stop YASDB process
+stop_yasdb() {
+  local pid
+
+  if ! is_yasdb_running; then
     echo "yasdb is already stopped"
-    exit 0
-fi
+    return 0
+  fi
 
-# shellcheck disable=SC2009
-pid=$(ps -aux | grep -w "$YASDB_BIN"  | grep -w "$YASDB_DATA" | grep -v -w grep | awk '{print $2}')
-kill -15 "$pid"
+  pid=$(get_yasdb_pid)
+  kill -15 "$pid"
 
-wait_yasdb_stop
-if [ "$ret" -eq 0 ]; then
-    echo "Succeed !"
-    exit 0
-else
-    echo "Failed !"
-    exit 1
-fi
+  if wait_yasdb_stop; then
+    echo "Succeed!"
+    return 0
+  else
+    echo "Failed!"
+    return 1
+  fi
+}
+
+main() {
+  load_environment
+  stop_yasdb
+}
+
+main "$@"
