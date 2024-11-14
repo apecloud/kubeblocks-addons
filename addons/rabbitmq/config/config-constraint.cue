@@ -70,7 +70,16 @@
 	// Controls the granularity of logging. The value is a list of log event category and log level pairs.
 	//The level can be one of error (only errors are logged), warning (only errors and warning are logged), info (errors, warnings and informational messages are logged), or debug (errors, warnings, informational messages and debugging messages are logged).
 	"log.file.level"?: string & "error" | "warning" | "info" | "debug" | *"info"
-	
+
+    // rotate when the file reaches size specified
+    "log.file.rotation.size"?: int
+
+    // keep up to max archived log files in addition to the current one
+    "log.file.rotation.count"?: int
+
+    // archived log files will be compressed
+    "log.file.rotation.compress"?: bool 
+
 	// Maximum number of AMQP 1.0 sessions that can be simultaneously active on an AMQP 1.0 connection.
 	session_max_per_connection?: int & >=1 & <=65535 | *64
 	
