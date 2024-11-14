@@ -240,6 +240,21 @@ runtime:
           value: apecloud-postgresql
         - name: POSTGRESQL_MOUNTED_CONF_DIR
           value: {{ .Values.confMountPath }}
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: MY_POD_UID
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.uid
+        - name: MY_POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
       imagePullPolicy: IfNotPresent
       name: postgresql
