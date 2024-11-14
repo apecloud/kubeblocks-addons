@@ -12,7 +12,7 @@ spec:
     name: frontend
     replicas: {{ .Values.risingwave.frontend.replicas }}
     env:
-      {{ include "risingwave-cluster.envs" . | nindent 6 }}
+      {{- include "risingwave-cluster.envs" . | nindent 6 }}
     serviceAccountName: {{ include "risingwave-cluster.serviceAccountName" . }}
     {{- with .Values.risingwave.frontend.resources }}
     resources:
@@ -31,7 +31,7 @@ spec:
     name: meta
     replicas: {{ .Values.risingwave.meta.replicas }}
     env:
-      {{ include "risingwave-cluster.envs" . | nindent 6 }}
+      {{- include "risingwave-cluster.envs" . | nindent 6 }}
     serviceAccountName: {{ include "risingwave-cluster.serviceAccountName" . }}
     {{- with .Values.risingwave.meta.resources }}
     resources:
@@ -50,7 +50,7 @@ spec:
     name: compute
     replicas: {{ .Values.risingwave.compute.replicas }}
     env:
-      {{ include "risingwave-cluster.envs" . | nindent 6 }}
+      {{- include "risingwave-cluster.envs" . | nindent 6 }}
     serviceAccountName: {{ include "risingwave-cluster.serviceAccountName" . }}
     {{- with .Values.risingwave.compute.resources }}
     resources:
@@ -69,7 +69,7 @@ spec:
     name: compactor
     replicas: {{ .Values.risingwave.compactor.replicas }}
     env:
-      {{ include "risingwave-cluster.envs" . | nindent 6 }}
+      {{- include "risingwave-cluster.envs" . | nindent 6 }}
     serviceAccountName: {{ include "risingwave-cluster.serviceAccountName" . }}
     {{- with .Values.risingwave.compactor.resources }}
     resources:
@@ -88,7 +88,7 @@ spec:
     name: connector
     replicas: {{ .Values.risingwave.connector.replicas }}
     env:
-      {{ include "risingwave-cluster.envs" . | nindent 6 }}
+      {{- include "risingwave-cluster.envs" . | nindent 6 }}
     serviceAccountName: {{ include "risingwave-cluster.serviceAccountName" . }}
     {{- with .Values.risingwave.connector.resources }}
     resources:

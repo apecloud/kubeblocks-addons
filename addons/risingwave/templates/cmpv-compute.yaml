@@ -1,0 +1,17 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: risingwave-compute
+  labels:
+    {{- include "risingwave.labels" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - releases:
+        - v1.0.0
+      compDefs:
+        - {{ include "risingwave-compute.cmpdRegexpPattern" . }}
+  releases:
+    - name: v1.0.0
+      serviceVersion: v1.0.0
+      images:
+        compute: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:v1.0.0

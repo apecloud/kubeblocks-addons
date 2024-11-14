@@ -1,14 +1,38 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: risingwave-compute-{{ .Chart.Version }}
+  name: {{ include "risingwave-compute.cmpdName" . }}
   labels:
     {{- include "risingwave.labels" . | nindent 4 }}
+  annotations:
+    {{- include "risingwave.annotations" . | nindent 4 }}
 spec:
   provider: Community
   description: {{ .Chart.Description }}
   serviceKind: risingwave
   serviceVersion: {{ .Chart.AppVersion }}
+  services:
+    - name: default
+      spec:
+        ports:
+          - port: 5688
+            targetPort: svc
+            name: svc
+          - port: 1222
+            targetPort: metrics
+            name: metrics
+  configs:
+    {{- include "risingwave.conftpl.default" . | indent  4 }}
+    - name: risingwave-compute-envs
+      templateRef: {{ include "risingwave-compute.envConfigTplName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: risingwave-compute-envs
+      asEnvFrom:
+        - compute
+  updateStrategy: BestEffortParallel
+  vars:
+    {{- include "risingwave.vars.connector" . | indent 4 }}
+    {{- include "risingwave.vars.meta" . | indent 4 }}
   runtime:
     containers:
       - name: compute
@@ -50,25 +74,3 @@ spec:
           {{- include "risingwave.volumeMount.conftpl.default" . | indent  10 }}
         {{- include "risingwave.probe.liveness" . | indent  8 }}
         {{- include "risingwave.probe.readiness" . | indent 8 }}
-  vars:
-    {{- include "risingwave.vars.connector" . | indent 4 }}
-    {{- include "risingwave.vars.meta" . | indent 4 }}
-  services:
-    - name: default
-      spec:
-        ports:
-          - port: 5688
-            targetPort: svc
-            name: svc
-          - port: 1222
-            targetPort: metrics
-            name: metrics
-  configs:
-    {{- include "risingwave.conftpl.default" . | indent  4 }}
-    - name: risingwave-compute-envs
-      templateRef: {{ include "risingwave.name" . }}-compute-envs-tpl
-      namespace: {{ .Release.Namespace }}
-      volumeName: risingwave-compute-envs
-      asEnvFrom:
-        - compute
-  updateStrategy: BestEffortParallel
