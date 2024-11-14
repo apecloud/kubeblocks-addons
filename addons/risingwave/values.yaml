@@ -1,6 +1,7 @@
 # Default values for RisingWave.
 
 nameOverride: ""
+
 fullnameOverride: ""
 
 ## RisingWave image
