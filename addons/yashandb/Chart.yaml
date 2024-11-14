@@ -6,7 +6,7 @@ type: application
 
 version: 1.0.0-alpha.0
 
-appVersion: "23.1.1.100"
+appVersion: "23.1.1-100"
 
 maintainers:
   - name: JesseAtSZ

@@ -9,7 +9,7 @@ description: YashanDB is an independent-developed next generation analytic datab
 version: 1.0.0-alpha.0
 
 # This is the version number of the yashandb being deployed.
-appVersion: "23.1.1.100"
+appVersion: "23.1.1-100"
 
 keywords:
   - yashan

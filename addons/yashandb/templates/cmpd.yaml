@@ -8,9 +8,8 @@ metadata:
     {{- include "yashandb.annotations" . | nindent 4 }}
 spec:
   provider: Community
-  description: {{ .Chart.Description }}
+  description: YashanDB is a new database system completely independently designed and developed by SICS.
   serviceKind: {{ .Chart.Name }}
-  serviceVersion: {{ .Chart.AppVersion }}
   volumes:
     - name: data
   services:
