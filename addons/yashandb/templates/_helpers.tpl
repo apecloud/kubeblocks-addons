@@ -51,15 +51,39 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+Common yashandb annotations
 */}}
-{{- define "yashandb.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "yashandb.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
+{{- define "yashandb.annotations" -}}
+helm.sh/resource-policy: keep
 {{- end }}
-{{- end }}
+
+{{/*
+Define yashandb component definition name
+*/}}
+{{- define "yashandb.cmpdName" -}}
+yashandb-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define yashandb component definition regular expression name prefix
+*/}}
+{{- define "yashandb.cmpdRegexpPattern" -}}
+^yashandb-
+{{- end -}}
+
+{{/*
+Define yashandb scripts template name
+*/}}
+{{- define "yashandb.scriptsTplName" -}}
+yashandb-scripts-tpl
+{{- end -}}
+
+{{/*
+Define yashandb config template name
+*/}}
+{{- define "yashandb.configTplName" -}}
+yashandb-configuration-tpl
+{{- end -}}
 
 {{/*
 Generate scripts configmap

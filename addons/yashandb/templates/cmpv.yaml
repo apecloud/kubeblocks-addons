@@ -1,0 +1,17 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: yashandb
+  labels:
+    {{- include "yashandb.labels" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - releases:
+        - 23.1.1.100
+      compDefs:
+        - {{ include "yashandb.cmpdRegexpPattern" . }}
+  releases:
+    - name: 23.1.1.100
+      serviceVersion: 23.1.1.100
+      images:
+        minio: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:23.1.1.100
