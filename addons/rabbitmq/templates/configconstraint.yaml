@@ -20,7 +20,7 @@ metadata:
 spec:
   # rabbitmq configuration file format
   fileFormatConfig:
-    format: ini
+    format: properties
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:
