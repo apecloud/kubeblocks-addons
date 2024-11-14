@@ -29,6 +29,17 @@ spec:
   updateStrategy: BestEffortParallel
   vars:
     {{- include "risingwave.vars.connector" . | indent 4 }}
+    - name: RISINGWAVE_META_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.clusterDomain | quote }}
   runtime:
     containers:
       - name: meta
@@ -49,8 +60,10 @@ spec:
             value: /risingwave/config/risingwave.toml
           - name: RW_LISTEN_ADDR
             value: 0.0.0.0:5690
+          - name: POD_FQDN
+            value: $(POD_NAME).$(RISINGWAVE_META_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc$(CLUSTER_DOMAIN)
           - name: RW_ADVERTISE_ADDR
-            value: $(POD_NAME):5690  # TODO: Pod FQDN
+            value: $(POD_FQDN):5690
           - name: RW_DASHBOARD_HOST
             value: 0.0.0.0:5691
           - name: RW_PROMETHEUS_HOST
