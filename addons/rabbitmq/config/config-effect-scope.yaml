@@ -49,6 +49,5 @@ staticParameters:
   - queue_index_embed_msgs_below
   - mnesia_table_loading_retry_timeout
   - mnesia_table_loading_retry_limit
-  - queue_leader_locator
   - proxy_protocol
   - cluster_name
