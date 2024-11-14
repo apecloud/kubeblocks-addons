@@ -64,7 +64,7 @@ spec:
       - /bin/sh
       - -c
       - |
-        replicas=$(eval echo ${WEAVIATE_COMPONENT_POD_LIST} | tr ',' '\n')
+        replicas=$(echo ${WEAVIATE_COMPONENT_POD_LIST} | tr ',' '\n')
         # Initialize count
         replica_count=0
         # Use a for loop to iterate over each space-separated word
