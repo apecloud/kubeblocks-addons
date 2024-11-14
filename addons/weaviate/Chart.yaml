@@ -8,7 +8,7 @@ type: application
 version: 1.0.0-alpha.0
 
 # This is the version number of weaviate.
-appVersion: "1.18.0"
+appVersion: "1.19.6"
 
 home: https://weaviate.tech/
 icon: https://weaviate.tech/images/logo_with_text.svg
@@ -23,6 +23,6 @@ sources:
   - https://github.com/apecloud/kubeblocks/
 
 annotations:
-    addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
+    addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
     addon.kubeblocks.io/model: "vector"
     addon.kubeblocks.io/provider: "community"

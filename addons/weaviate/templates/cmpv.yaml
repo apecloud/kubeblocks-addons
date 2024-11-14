@@ -1,0 +1,17 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: weaviate
+  labels:
+    {{- include "weaviate.labels" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - releases:
+        - 1.19.6
+      compDefs:
+        - {{ include "weaviate.cmpdRegexpPattern" . }}
+  releases:
+    - name: 1.19.6
+      serviceVersion: 1.19.6
+      images:
+        minio: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:1.19.6

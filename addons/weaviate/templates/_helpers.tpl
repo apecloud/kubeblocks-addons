@@ -51,14 +51,45 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Define component definition name
+Common weaviate annotations
+*/}}
+{{- define "weaviate.annotations" -}}
+helm.sh/resource-policy: keep
+{{- end }}
+
+{{/*
+Define weaviate component definition name
 */}}
 {{- define "weaviate.componentDefName" -}}
-{{- if eq (len .Values.compDefinitionVersionSuffix) 0 -}}
-weaviate
-{{- else -}}
-{{- printf "weaviate-%s" .Values.compDefinitionVersionSuffix -}}
+weaviate-{{ .Chart.Version }}
 {{- end -}}
+
+{{/*
+Define weaviate component definition regex pattern name
+*/}}
+{{- define "weaviate.cmpdRegexpPattern" -}}
+^weaviate-
+{{- end -}}
+
+{{/*
+Define weaviate config template name
+*/}}
+{{- define "weaviate.configTplName" -}}
+weaviate-config-template
+{{- end -}}
+
+{{/*
+Define weaviate env config template name
+*/}}
+{{- define "weaviate.envConfigTplName" -}}
+weaviate-env-config-template
+{{- end -}}
+
+{{/*
+Define weaviate env config constraint name
+*/}}
+{{- define "weaviate.envConfigConstraintTplName" -}}
+weaviate-env-constraints
 {{- end -}}
 
 {{/*
