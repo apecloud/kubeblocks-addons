@@ -33,5 +33,5 @@ hostnetwork: "enabled"
 
 ## @param extra.rbacEnabled if true, create rbac
 extra:
-  rbacEnabled: true
+  rbacEnabled: false
   terminationPolicy: Delete

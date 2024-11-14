@@ -29,5 +29,5 @@ fullnameOverride: ""
 ## customized default values to override kblib chart's values
 extra:
   terminationPolicy: Delete
-  rbacEnabled: true
+  rbacEnabled: false
   disableExporter: false

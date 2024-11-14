@@ -57,4 +57,4 @@ serviceAccount:
   name: ""
 
 extra:
-  rbacEnabled: true
+  rbacEnabled: false
