@@ -6,7 +6,23 @@ metadata:
   labels:
     {{- include "apecloud-postgresql.labels" . | nindent 4 }}
 spec:
+  reloadAction:
+    shellTrigger:
+      sync: true
+      command:
+        - "update-parameter.sh"
+      scriptConfig:
+        scriptConfigMapRef: reload-tools-script
+        namespace: {{ .Release.Namespace }}
+      toolsSetup:
+        mountPoint: /kb_tools
+        toolConfigs:
+          - name: kb-tools
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+            asContainerImage: true
 
+  mergeReloadAndRestart: false
+  reloadStaticParamsBeforeRestart: true
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:
     # top level mysql configuration type

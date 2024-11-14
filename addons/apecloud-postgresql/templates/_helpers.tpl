@@ -60,6 +60,16 @@ apecloud-postgresql14
 {{- end -}}
 {{- end -}}
 
+{{/*
+Generate scripts configmap
+*/}}
+{{- define "apecloud-postgresql.extend.reload.scripts" -}}
+{{- range $path, $_ :=  $.Files.Glob "reloader/**" }}
+{{ $path | base }}: |-
+{{- $.Files.Get $path | nindent 2 }}
+{{- end }}
+{{- end }}
+
 {{- define "apecloud-postgresql.spec.common" -}}
 provider: kubeblocks
 description: {{ .Chart.Description }}
