@@ -23,7 +23,6 @@ spec:
   componentSpecs:
   - name: frontend
     componentDef: risingwave-frontend
-    serviceAccountName: kb-risingwave-cluster
     replicas: 1
     resources:
       limits:
@@ -92,7 +91,6 @@ spec:
         requests:
           cpu: "0.5"
           memory: "0.5Gi"
-      serviceAccountName: kb-etcdr-cluster
       volumeClaimTemplates:
         - name: data
           spec:

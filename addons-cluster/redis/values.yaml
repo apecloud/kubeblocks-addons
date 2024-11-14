@@ -89,7 +89,6 @@ redisCluster:
   customSecretNamespace: ""
 
 extra:
-  rbacEnabled: true
   disableExporter: true
 
 prometheus:

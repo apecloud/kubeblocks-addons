@@ -6,12 +6,6 @@ fullnameOverride: ""
 ##
 terminationPolicy: Delete
 
-serviceAccount:
-  ## @param serviceAccount.name is the name of the service account to use.
-  ## Used by all RisingWave component pods.
-  ##
-  name: ""
-
 ## RisingWave Configuration
 ##
 risingwave:

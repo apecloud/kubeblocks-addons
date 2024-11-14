@@ -34,7 +34,6 @@ proxysql:
   cpu: 1
   memory: 1
 
-## @param extra.rbacEnabled if true, create rbac
 extra:
   terminationPolicy: Delete
   disableExporter: true

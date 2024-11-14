@@ -21,7 +21,6 @@ spec:
         name: KubeBlocks
       {{- end }}
       replicas: {{ .Values.replicas }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       services:
         - name: advertised-listener
         {{- if .Values.nodePortEnabled }}
@@ -71,7 +70,6 @@ spec:
         name: KubeBlocks
       {{- end }}
       replicas: {{ .Values.brokerReplicas }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       services:
         - name: advertised-listener
         {{- if .Values.nodePortEnabled }}
@@ -120,7 +118,6 @@ spec:
         name: KubeBlocks
       {{- end }}
       replicas: {{ .Values.controllerReplicas }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- if .Values.storageEnable }}
       volumeClaimTemplates:

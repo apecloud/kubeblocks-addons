@@ -55,13 +55,6 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end}}
 
 {{/*
-Create the name of the service account to use
-*/}}
-{{- define "risingwave-cluster.serviceAccountName" -}}
-{{- default .Values.risingwave.stateStore.s3.authentication.serviceAccountName .Values.serviceAccount.name }}
-{{- end }}
-
-{{/*
 Create the hummock option
 */}}
 {{- define "risingwave-cluster.options.hummock" }}

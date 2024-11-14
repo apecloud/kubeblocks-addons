@@ -53,6 +53,5 @@ serviceAccount:
   name: ""
 
 extra:
-  rbacEnabled: true
   # @param terminationPolicy define Cluster termination policy. One of DoNotTerminate, Halt, Delete, WipeOut.
   terminationPolicy: Delete

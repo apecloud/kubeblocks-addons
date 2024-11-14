@@ -50,17 +50,6 @@ app.kubernetes.io/name: {{ include "victoria-metrics-cluster.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
-{{/*
-Create the name of the service account to use
-*/}}
-{{- define "victoria-metrics-cluster.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "victoria-metrics-cluster.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
-{{- end }}
-
 {{- define "clustername" -}}
 {{- .Release.Name | trunc 63 | trimSuffix "-" }}
 {{- end}}

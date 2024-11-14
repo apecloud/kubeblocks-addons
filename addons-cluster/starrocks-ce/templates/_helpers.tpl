@@ -50,17 +50,6 @@ app.kubernetes.io/name: {{ include "starrocks-cluster.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
-{{/*
-Create the name of the service account to use
-*/}}
-{{- define "starrocks-cluster.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "starrocks-cluster.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
-{{- end }}
-
 {{- define "starrocks-release.name" }}
 {{- default .Values.srrelease "starrocks-ce" }}
 {{- end }}
