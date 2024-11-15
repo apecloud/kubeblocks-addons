@@ -1,7 +1,8 @@
+# backward compatibility for older versions before v0.9.0
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ClusterVersion
 metadata:
-  name: clickhouse-24.3.10
+  name: clickhouse-24.8.3
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
     {{- if .Values.commonLabels }}
@@ -13,18 +14,24 @@ metadata:
 spec:
   clusterDefinitionRef: clickhouse
   componentVersions:
-    - componentDefRef: clickhouse-24
+    - componentDefRef: clickhouse
       versionsContext:
         containers:
           - name: clickhouse
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:{{.Values.image.tag }}
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:{{ default .Chart.AppVersion .Values.image.tag }}
             imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
-    - componentDefRef: ch-keeper-24
+    - componentDefRef: ch-keeper
       versionsContext:
         containers:
           - name: clickhouse
-            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:{{.Values.image.tag }}
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:{{ default .Chart.AppVersion .Values.image.tag }}
             imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+    - componentDefRef: zookeeper
+      versionsContext:
+        containers:
+          - name: zookeeper
+            image: {{ .Values.zookeeper.image.registry | default "docker.io" }}/{{ .Values.zookeeper.image.repository | default "bitnami/zookeeper" }}:{{ .Values.zookeeper.image.tag }}
+            imagePullPolicy: {{ default "IfNotPresent" .Values.zookeeper.image.pullPolicy }}
 ---
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ClusterVersion

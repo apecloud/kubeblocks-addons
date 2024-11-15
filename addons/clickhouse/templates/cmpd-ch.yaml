@@ -123,17 +123,6 @@ spec:
           name: admin
           optional: false
           password: Required
-    - name: CLICKHOUSE_POD_FQDN_LIST
-      valueFrom:
-        componentVarRef:
-          optional: false
-          podFQDNs: Required
-    - name: CH_KEEPER_POD_FQDN_LIST
-      valueFrom:
-        componentVarRef:
-          compDef: ch-keeper-24
-          optional: true
-          podFQDNs: Required
   volumes:
     - name: data
   services:

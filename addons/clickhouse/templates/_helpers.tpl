@@ -133,6 +133,8 @@ podSpec:
           value: "9005"
         - name: CLICKHOUSE_INTERSERVER_HTTP_PORT
           value: "9009"
+        - name: CLICKHOUSE_KEEPER_TCP_PORT
+          value: "2181"
         - name: CLICKHOUSE_METRICS_PORT
           value: "8001"
         - name: CLICKHOUSE_ADMIN_USER
@@ -191,7 +193,7 @@ podSpec:
 
 {{- define "clickhouse-keeper.clusterComponent" -}}
 workloadType: Stateful # Consensus
-characterType: clickhouse-keeper
+characterType: zookeeper
 monitor:
   builtIn: false
   exporterConfig:
@@ -231,6 +233,13 @@ podSpec:
             - ALL
         runAsNonRoot: true
         runAsUser: 1001
+      command:
+        - bash
+        - -xc
+        - |
+          HOSTNAME="$(hostname -s)"
+          export CH_KEEPER_ID=${HOSTNAME##*-}
+          exec /opt/bitnami/scripts/clickhouse/entrypoint.sh /opt/bitnami/scripts/clickhouse/run.sh -- --listen_host=0.0.0.0
       env:
         - name: CLICKHOUSE_ADMIN_PASSWORD
           valueFrom:
@@ -248,6 +257,12 @@ podSpec:
           value: "8001"
         - name: SERVICE_PORT
           value: "$(CLICKHOUSE_METRICS_PORT)"
+        - name: CLICKHOUSE_HTTP_PORT
+          value: "8123"
+        - name: CLICKHOUSE_TCP_PORT
+          value: "9000"
+        - name: CLICKHOUSE_INTERSERVER_HTTP_PORT
+          value: "9009"
       ports:
         - name: tcp
           containerPort: 2181
@@ -265,6 +280,11 @@ podSpec:
 {{- define "zookeeper.clusterComponent" -}}
 workloadType: Stateful #Consensus
 characterType: zookeeper
+monitor:
+  builtIn: false
+  exporterConfig:
+    scrapePath: /metrics
+    scrapePort: 9141
 logConfigs:
   {{- range $name,$pattern := .Values.zookeeper.logConfigs }}
   - name: {{ $name }}
@@ -372,6 +392,22 @@ podSpec:
           containerPort: 3888
         - name: metrics
           containerPort: 9141
+      livenessProbe:
+        failureThreshold: 6
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        successThreshold: 1
+        timeoutSeconds: 5
+        exec:
+          command: ['/bin/bash', '-c', 'echo "ruok" | timeout 2 nc -w 2 localhost 2181 | grep imok']
+      readinessProbe:
+        failureThreshold: 6
+        initialDelaySeconds: 5
+        periodSeconds: 10
+        successThreshold: 1
+        timeoutSeconds: 5
+        exec:
+          command: ['/bin/bash', '-c', 'echo "ruok" | timeout 2 nc -w 2 localhost 2181 | grep imok']
       volumeMounts:
         - name: scripts
           mountPath: /scripts/setup.sh

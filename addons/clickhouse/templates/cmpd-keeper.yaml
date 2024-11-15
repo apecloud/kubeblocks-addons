@@ -170,11 +170,6 @@ spec:
           name: admin
           optional: false
           password: Required
-    - name: CH_KEEPER_POD_FQDN_LIST
-      valueFrom:
-        componentVarRef:
-          optional: false
-          podFQDNs: Required
   updateStrategy: Serial
   podManagementPolicy: Parallel
   volumes:

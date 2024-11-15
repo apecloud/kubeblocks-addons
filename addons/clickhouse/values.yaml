@@ -19,3 +19,18 @@ image:
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: 24.8.3-debian-12-r1
+
+# Zookeeper is Legacy component
+# The following section contains legacy values for the zookeeper dependency.
+# These values are kept for backward compatibility
+# if you are upgrading from 0.8 version of the chart.
+
+zookeeper:
+  image:
+    registry: docker.io
+    repository: bitnami/zookeeper
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: 3.8.0-debian-11-r47
+  logConfigs: {}
+  configuration: ""

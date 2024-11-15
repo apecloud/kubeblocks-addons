@@ -33,17 +33,18 @@
       {{- if $.component.tlsConfig }}
       <secure>true</secure>
       {{- end }}
-      {{- range $id, $host := splitList "," .CH_KEEPER_POD_FQDN_LIST }}
+      {{- $replicas := $.component.replicas | int }}
+      {{- range $i, $e := until $replicas }}
         <server>
-          <id>{{ $id }}</id>
-          <hostname>{{ $host }}</hostname>
+          <id>{{ $i }}</id>
+          <hostname>{{ $clusterName }}-{{ $.component.name }}-{{ $i }}.{{ $clusterName }}-{{ $.component.name }}-headless.{{ $namespace }}.svc.{{- $.clusterDomain }}</hostname>
           {{- if $.component.tlsConfig }}
           <port replace="replace" from_env="CLICKHOUSE_KEEPER_RAFT_TLS_PORT"/>
           {{- else }}
           <port replace="replace" from_env="CLICKHOUSE_KEEPER_RAFT_PORT"/>
           {{- end }}
         </server>
-        {{- end }}
+      {{- end }}
       </raft_configuration>
   </keeper_server>
   <!-- Prometheus metrics -->
@@ -54,11 +55,11 @@
     <events>true</events>
     <asynchronous_metrics>true</asynchronous_metrics>
   </prometheus>
-  <!-- tls configuration -->
   {{- if $.component.tlsConfig -}}
   {{- $CA_FILE := getCAFile -}}
   {{- $CERT_FILE := getCertFile -}}
   {{- $KEY_FILE := getKeyFile -}}
+  <!-- tls configuration -->
   <protocols>
     <prometheus_protocol>
       <type>prometheus</type>

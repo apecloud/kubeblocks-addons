@@ -35,10 +35,6 @@ spec:
     mysqlEndpoint: "$(SVC_FQDN):$(SVC_PORT_tcp-mysql)"
     pgEndpoint: "$(SVC_FQDN):$(SVC_PORT_tcp-postgresql)"
   componentDefs:
-    - name: clickhouse-24
-      {{- include "clickhouse.clusterComponent" . | nindent 6 }}
-    - name: ch-keeper-24
-      {{- include "clickhouse-keeper.clusterComponent" . | nindent 6 }}
     - name: zookeeper
       {{- include "zookeeper.clusterComponent" . | nindent 6 }}
     - name: clickhouse
