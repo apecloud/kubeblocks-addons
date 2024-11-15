@@ -1,4 +1,11 @@
 {{/*
+Common annotations
+*/}}
+{{- define "apecloud-postgresql.annotations" -}}
+helm.sh/resource-policy: keep
+{{- end }}
+
+{{/*
 Expand the name of the chart.
 */}}
 {{- define "apecloud-postgresql.name" -}}
@@ -71,7 +78,7 @@ apecloud-postgresql14-cc-{{ .Chart.Version }}
 Define apecloud-postgresql component definition name prefix
 */}}
 {{- define "apecloud-postgresql.componentDefNamePrefix" -}}
-{{- printf "apecloud-postgresql-" -}}
+{{- printf "apecloud-postgresql" -}}
 {{- end -}}
 
 {{/*

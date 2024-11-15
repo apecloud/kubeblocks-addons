@@ -5,6 +5,8 @@ metadata:
   name: {{ include "apecloud-postgresql14.configConstraint" . }}
   labels:
     {{- include "apecloud-postgresql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "apecloud-postgresql.annotations" . | nindent 4 }}
 spec:
   reloadAction:
     shellTrigger:

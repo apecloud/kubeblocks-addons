@@ -4,6 +4,8 @@ metadata:
   name: {{ include "apecloud-postgresql.compDefApecloudPostgresql14" . }}
   labels:
     {{- include "apecloud-postgresql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "apecloud-postgresql.annotations" . | nindent 4 }}
 spec:
   {{- include "apecloud-postgresql.spec.common" . | nindent 2 }}
   serviceVersion: {{ .Values.componentServiceVersion.apecloudPostgresql14 }}
