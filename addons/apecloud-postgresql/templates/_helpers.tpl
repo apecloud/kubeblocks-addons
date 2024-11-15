@@ -43,6 +43,31 @@ Generate scripts configmap
 {{- end }}
 
 {{/*
+Define apecloud postgresql 14 component definition name prefix
+*/}}
+{{- define "apecloud-postgresql14.componentDefNamePrefix" -}}
+{{- if eq (len .Values.cmpdVersionPrefix.apecloudPostgresql14) 0 -}}
+{{- printf "apecloud-postgresql14-" -}}
+{{- else -}}
+{{- printf "%s-" .Values.cmpdVersionPrefix.apecloudPostgresql14 -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define apecloud postgresql 14 component configuration template name
+*/}}
+{{- define "apecloud-postgresql14.configurationTemplate" -}}
+apecloud-postgresql14-configuration-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define apecloud postgresql 14 component config constraint name
+*/}}
+{{- define "apecloud-postgresql14.configConstraint" -}}
+apecloud-postgresql14-cc-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
 Define apecloud-postgresql component definition name prefix
 */}}
 {{- define "apecloud-postgresql.componentDefNamePrefix" -}}
@@ -54,9 +79,9 @@ Define apecloud-postgresql14 component definition name
 */}}
 {{- define "apecloud-postgresql.compDefApecloudPostgresql14" -}}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-apecloud-postgresql14
+apecloud-postgresql14-{{ .Chart.Version }}
 {{- else -}}
-{{- .Values.resourceNamePrefix -}}
+{{- .Values.resourceNamePrefix -}}-{{ .Chart.Version }}
 {{- end -}}
 {{- end -}}
 

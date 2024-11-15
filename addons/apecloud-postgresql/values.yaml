@@ -59,3 +59,6 @@ resourceNamePrefix: ""
 ## @param componentServiceVersion define default serviceVersion of each Component
 componentServiceVersion:
   apecloudPostgresql14: "14.11.0"
+
+cmpdVersionPrefix:
+  apecloudPostgresql14: "apecloud-postgresql14"

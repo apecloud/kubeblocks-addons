@@ -9,8 +9,8 @@ spec:
   serviceVersion: {{ .Values.componentServiceVersion.apecloudPostgresql14 }}
   configs:
     - name: postgresql-consensusset-configuration
-      templateRef: apecloud-postgresql14-configuration
-      constraintRef: apecloud-postgresql14-cc
+      templateRef: {{ include "apecloud-postgresql14.configurationTemplate" . }}
+      constraintRef: {{ include "apecloud-postgresql14.configConstraint" . }}
       keys:
         - postgresql.conf
       namespace: {{ .Release.Namespace }}

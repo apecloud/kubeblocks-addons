@@ -2,7 +2,7 @@
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
-  name: apecloud-postgresql14-cc
+  name: {{ include "apecloud-postgresql14.configConstraint" . }}
   labels:
     {{- include "apecloud-postgresql.labels" . | nindent 4 }}
 spec:
