@@ -1,14 +1,14 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: Cluster
 metadata:
-  name: clickhouse-cluster
+  name: ch-cluster-standalone
   namespace: default
 spec:
   # Specifies the name of the ClusterDefinition to use when creating a Cluster.
   clusterDefinitionRef: clickhouse
   # Specifies the clickhouse cluster topology defined in ClusterDefinition.Spec.topologies, support standalone, clickhouse-cluster
   # - `standalone`: single clickhouse instance
-  # - `clickhouse-cluster`: clickhouse cluster with clickhouse-keeper
+  # - `cluster`: clickhouse cluster with clickhouse-keeper
   topology: standalone
   # Specifies the behavior when a Cluster is deleted.
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
