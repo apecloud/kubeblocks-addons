@@ -3,61 +3,34 @@ kind: Cluster
 metadata:
   name: {{ include "kblib.clusterName" . }}
   labels:
-    {{- include "oceanbase.labels" . | nindent 4 }}
+    {{- include "oceanbase-ce.labels" . | nindent 4 }}
   annotations:
-    {{- include "oceanbase-cluster.annotations.extra-envs" . | nindent 4 }}
     {{- include "oceanbase-cluster.featureGate" . | nindent 4 }}
 spec:
+  clusterDef: "oceanbase-ce"
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
-  {{- if gt (int .Values.obClusters) 1 }}
-  services:
-    - name: rw-svc
-      spec:
-        ports:
-          - name: sql
-            port: 2881
-            targetPort: sql
-            protocol: TCP
-        selector:
-          kubeblocks.io/role: primary
-  {{- end }}
+  topology: distribution
   componentSpecs:
-  {{- range $i, $e := until (int .Values.obClusters) }}
-    - name: ob-bundle-{{ $i }}
-      componentDef: {{ include "oceanbase-cluster.compdef" $}}
-      replicas: {{ max $.Values.zoneCount $.Values.replicas}}
-      {{- include "kblib.componentResources" $ | indent 6 }}
-      volumeClaimTemplates:
-        - name: data-file
-          spec:
-            storageClassName: {{ $.Values.storageClassName }}
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: {{ print $.Values.datafile "Gi" }}
-        - name: data-log
-          spec:
-            storageClassName: {{ $.Values.storageClassName }}
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: {{ print $.Values.datalog "Gi" }}
-        - name: log
-          spec:
-            storageClassName: {{ $.Values.storageClassName }}
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: {{ print $.Values.log "Gi" }}
-        - name: workdir
-          spec:
-            storageClassName: {{ $.Values.storageClassName }}
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: "100Mi"
-  {{- end }}
+  - name: oceanbase
+    serviceVersion: {{ .Values.version }}
+    replicas: {{ .Values.replicas}}
+    disableExporter: {{ .Values.extra.disableExporter }}
+    env:
+    - name: ZONE_COUNT
+      value: "{{ .Values.zoneCount }}"
+    - name: OB_USE_CLUSTER_IP
+      value: "{{ .Values.clusterIP }}"
+    - name: OB_CLUSTER_ID
+      value: "{{ .Values.clusterID  | default "1" }}"
+    {{- include "kblib.componentResources" . | indent 4 }}
+    volumeClaimTemplates:
+    {{- range $key, $value := .Values.persistence.storages }}
+      - name: {{ $key }}
+        spec:
+          storageClassName: {{ $.Values.persistence.storageClassName }}
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: {{ print $value "Gi" | quote }}
+    {{- end }}

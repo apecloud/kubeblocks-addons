@@ -1,0 +1,19 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: {{ include "oceanbase-ce.componentVersion" . }}
+  labels:
+    {{- include "oceanbase-ce.labels" . | nindent 4 }}
+spec:
+  compatibilityRules:
+  - releases:
+      - 4.3.0.1
+    compDefs:
+      - {{ include "oceanbase-ce.componentDefNamePrefix" . }}
+  releases:
+  - name: 4.3.0.1
+    changes:
+    serviceVersion: "4.3.0"
+    images:
+      observer-container: {{ include "oceanbase-ce.observer.repository" . }}:4.3.0.1-100000242024032211
+      metrics: {{ include "oceanbase-ce.metrics.repository" . }}:4.2.1-100000092023101717

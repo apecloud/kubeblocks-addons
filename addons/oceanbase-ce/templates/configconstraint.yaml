@@ -2,9 +2,9 @@
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
-  name: {{ printf "%s-sysvars-cc" (include "oceanbase-release.name" .) }}
+  name: {{ include "oceanbase-ce.cc.sysvars" . }}
   labels:
-    {{- include "oceanbase.labels" . | nindent 4 }}
+    {{- include "oceanbase-ce.labels" . | nindent 4}}
 spec:
   reloadAction:
     shellTrigger:
@@ -12,7 +12,7 @@ spec:
       command:
         - "update-sysvars.sh"
       scriptConfig:
-        scriptConfigMapRef: {{ printf "%s-reload-tools-script" (include "oceanbase-release.name" .) }}
+        scriptConfigMapRef: {{ include "oceanbase-ce.scripts.reload" . }}
         namespace: {{ .Release.Namespace }}
       toolsSetup:
         mountPoint: /kb_tools
@@ -22,7 +22,7 @@ spec:
               - cp
               - /bin/ob-tools
               - /kb_tools/obtools
-            image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.obtools.repository }}:{{ .Values.images.obtools.tag }}
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.obtools.repository }}:{{ .Values.image.obtools.tag }}
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:
@@ -67,13 +67,13 @@ spec:
 
 
 ---
-  {{- $cc := .Files.Get "config/oceanbase-config-effect-scope.yaml" | fromYaml }}
+{{- $cc := .Files.Get "config/oceanbase-config-effect-scope.yaml" | fromYaml }}
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
-  name: {{ printf "%s-parameters-cc" (include "oceanbase-release.name" .) }}
+  name: {{ include "oceanbase-ce.cc.parameters" . }}
   labels:
-    {{- include "oceanbase.labels" . | nindent 4 }}
+    {{- include "oceanbase-ce.labels" . | nindent 4 }}
 spec:
   reloadAction:
     shellTrigger:
@@ -81,7 +81,7 @@ spec:
       command:
         - "update-parameters.sh"
       scriptConfig:
-        scriptConfigMapRef: {{ printf "%s-reload-tools-script" (include "oceanbase-release.name" .) }}
+        scriptConfigMapRef: {{ include "oceanbase-ce.scripts.reload" . }}
         namespace: {{ .Release.Namespace }}
       toolsSetup:
         mountPoint: /kb_tools
@@ -91,7 +91,7 @@ spec:
               - cp
               - /bin/ob-tools
               - /kb_tools/obtools
-            image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.obtools.repository }}:{{ .Values.images.obtools.tag }}
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.obtools.repository }}:{{ .Values.image.obtools.tag }}
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:

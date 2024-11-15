@@ -1,30 +1,25 @@
-# Default values for oceanbase-cluster.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
 nameOverride: ""
 fullnameOverride: ""
-version: "ob-ce-4.3.0.1-100000242024032211"
 
-# how many clusters to create with-in one ob cluster, set to 2 when creating a primary and secondary oceanbae cluster
-obClusters: 2
-# zone count
+version: "4.3.0"
+
 zoneCount: 1
-# replicas, it should be larger than zoneCount
-replicas: 1
+replicas: 3
 
-tenant:
-  name: "alice"
-  max_cpu: 2
-  memory_size: 2
-  log_disk_size: 10
-
-# resources
-cpu: 4
+cpu: 3
 memory: 4
-datafile: 30
-datalog: 30
-log: 5
-storageClassName: ""
+persistence:
+  storageClassName: ""
+  storages:
+    data-file: 30
+    data-log: 30
+    log: 10
+    workdir: 1
 
-debug: false
+hostnetwork: "disabled"
+clusterIP: "enabled"
+clusterID: "1"
 
+extra:
+  disableExporter: false
+  terminationPolicy: Delete

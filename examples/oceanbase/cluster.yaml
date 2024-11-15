@@ -1,58 +1,90 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: oceanbase-cluster
+  name: ob-cluster
   namespace: default
-  annotations:
-    #Specify how many clusters to create with-in one ob cluster
-    "kubeblocks.io/extra-env": "{\"TENANT_NAME\":\"tenant3\",\"ZONE_COUNT\":\"3\",\"OB_CLUSTERS_COUNT\":\"1\",\"TENANT_CPU\":\"2\",\"TENANT_MEMORY\":\"2G\",\"TENANT_DISK\":\"5G\"}"
 spec:
   # Specifies the behavior when a Cluster is deleted.
+  # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
-  # - `Halt`: Deletes Cluster resources like Pods and Services but retains Persistent Volume Claims (PVCs), allowing for data preservation while stopping other operations.
   # - `Delete`: Extends the `Halt` policy by also removing PVCs, leading to a thorough cleanup while removing all persistent data.
   # - `WipeOut`: An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss.
   terminationPolicy: Delete
-  # Specifies a list of ClusterComponentSpec objects used to define the individual components that make up a Cluster. This field allows for detailed configuration of each component within the Cluster.
-  # Note: `shardingSpecs` and `componentSpecs` cannot both be empty; at least one must be defined to configure a cluster.
-  # ClusterComponentSpec defines the specifications for a Component in a Cluster.
+  # Specifies the name of the ClusterDefinition to use when creating a Cluster.
+  # Note: DO NOT UPDATE THIS FIELD
+  # The value must be `oceanbase-ce` to create a OceanBase Cluster
+  clusterDef: oceanbase-ce
+  # Specifies the name of the ClusterTopology to be used when creating the
+  # Cluster.
+  # Valid options are: [distribution]
+  topology: distribution
+  # Specifies a list of ClusterComponentSpec objects used to define the
+  # individual Components that make up a Cluster.
+  # This field allows for detailed configuration of each Component within the Cluster
   componentSpecs:
-  - name: ob-ce
-    componentDef: ob-ce
-    replicas: 3
-    resources:
-      limits:
-        cpu: '3'
-        memory: 8Gi
-      requests:
-        cpu: '3'
-        memory: 8Gi
-    volumeClaimTemplates:
-    - name: data-file
-      spec:
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: 50Gi
-    - name: data-log
-      spec:
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: 50Gi
-    - name: log
-      spec:
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: 10Gi
-    - name: workdir
-      spec:
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: 20Gi
+    - name: oceanbase
+      # ServiceVersion specifies the version of the Service expected to be
+      # provisioned by this Component.
+      # Valid options are: [4.3.0]
+      serviceVersion: 4.3.0
+      # Determines whether metrics exporter information is annotated on the
+      # Component's headless Service.
+      # Valid options are [true, false]
+      disableExporter: false
+      # List of environment variables to add.
+      # These environment variables will be placed AFTER the environment variables
+      # declared in the Pod.
+      # Some engine specific ENVs can be define here.
+      env:
+      - name: ZONE_COUNT  # number of zones, default to 3, immutable
+        value: "1"
+      - name: OB_CLUSTER_ID # set cluster_id of observer, default to 1, immutable
+        value: "1"
+      # Specifies the desired number of replicas in the Component
+      replicas: 1
+      # Specifies the resources required by the Component~.
+      resources:
+        limits:
+          cpu: "3"
+          memory: "4Gi"
+        requests:
+          cpu: "3"
+          memory: "4Gi"
+      volumeClaimTemplates:
+      # Refers to the name of a volumeMount defined in
+      # `componentDefinition.spec.runtime.containers[*].volumeMounts
+        - name: data-file # data-file for sstable, slog, sort_dir, etc
+          spec:
+            # The name of the StorageClass required by the claim.
+            # If not specified, the StorageClass annotated with
+            # `storageclass.kubernetes.io/is-default-class=true` will be used.
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: "50Gi"
+        - name: data-log # data-log for clog, ilog
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: "50Gi"
+        - name: log # log for running logs, observer.log, rootservice.log
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: "20Gi"
+        - name: workdir # workdir for working directory, to save some meta and folder info
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: "1Gi"

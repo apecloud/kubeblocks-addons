@@ -129,7 +129,6 @@ spec:
   componentSpecs:
     - name: postgresql
       serviceVersion: "14.7.2"
-      disableExporter: true
       labels:
         apps.kubeblocks.postgres.patroni/scope: pg-cluster-postgresql
       replicas: 2 # Update `replicas` to 1 for scaling in, and to 3 for scaling out
@@ -332,8 +331,6 @@ kubectl apply -f examples/postgresql/configure.yaml
 This example will change the `max_connections` to `200`.
 > `max_connections` indicates maximum number of client connections allowed. It is a dynamic parameter, so the change will take effect without restarting the database.
 
-To check the full list of parameters that can be reconfigured, you can use following command:
-
 ```bash
 kbcli cluster explain-config pg-cluster # kbcli is a command line tool to interact with KubeBlocks
 ```
@@ -487,7 +484,7 @@ To restore a new cluster from a Backup:
 kubectl get backup pg-cluster-pg-basebackup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
 ```
 
-1. Update `examples/postgresql/restore.yaml` and set fields quoted with `<>` to your own settings and apply it.
+1. Update `examples/postgresql/restore.yaml` and set fields quoted with `<<ENCRYPTED-SYSTEM-ACCOUNTS>` to your own settings and apply it.
 
 ```bash
 kubectl apply -f examples/postgresql/restore.yaml
@@ -728,7 +725,7 @@ When the cluster is running, each POD should have a sidecar container, named `ex
 
 ##### Step 1. Query ScrapePath and ScrapePort
 
-You can retrieve the `scrapePath` and `scrapePort` from the headless service of the cluster.
+You can retrieve the `scrapePath` and `scrapePort` from pod's exporter container.
 
 ```bash
 kubectl get po pg-cluster-postgresql-0 -oyaml | yq '.spec.containers[] | select(.name=="exporter") | .ports '
