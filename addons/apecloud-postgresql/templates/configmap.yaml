@@ -1,9 +1,11 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: apecloud-postgresql14-configuration
+  name: {{ include "apecloud-postgresql-14.configurationTemplate" . }}
   labels:
     {{- include "apecloud-postgresql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "apecloud-postgresql.annotations" . | nindent 4 }}
 data:
   postgresql.conf: |-
     {{- .Files.Get "config/pg14-config.tpl" | nindent 4 }}

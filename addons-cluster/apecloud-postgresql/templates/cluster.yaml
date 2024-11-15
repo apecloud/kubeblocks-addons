@@ -10,7 +10,7 @@ spec:
   topology: apecloud-postgresql
   componentSpecs:
     - name: postgresql
-      componentDef: apecloud-postgresql14
+      serviceVersion: {{ .Values.version }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ include "apecloud-postgresql-cluster.replicas" . }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}

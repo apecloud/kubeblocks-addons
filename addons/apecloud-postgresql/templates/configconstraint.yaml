@@ -2,11 +2,29 @@
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
-  name: apecloud-postgresql14-cc
+  name: {{ include "apecloud-postgresql-14.configConstraint" . }}
   labels:
     {{- include "apecloud-postgresql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "apecloud-postgresql.annotations" . | nindent 4 }}
 spec:
+  reloadAction:
+    shellTrigger:
+      sync: true
+      command:
+        - "update-parameter.sh"
+      scriptConfig:
+        scriptConfigMapRef: {{ include "apecloud-postgresql.reloader.scripts" . }}
+        namespace: {{ .Release.Namespace }}
+      toolsSetup:
+        mountPoint: /kb_tools
+        toolConfigs:
+          - name: kb-tools
+            image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+            asContainerImage: true
 
+  mergeReloadAndRestart: false
+  reloadStaticParamsBeforeRestart: true
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:
     # top level mysql configuration type
