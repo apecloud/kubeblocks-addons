@@ -15,4 +15,4 @@ spec:
       changes:
       serviceVersion: 1.0.0
       images:
-        neon-storagebroker: perconalab/neon:pg14-1.0.0
+        neon-storagebroker: {{ include "neon.image" . }}
