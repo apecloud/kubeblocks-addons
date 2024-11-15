@@ -22,8 +22,21 @@ loopback_users.guest = false
 
 ## Send all logs to stdout/TTY. Necessary to see logs when running via
 ## a container
-log.console = true
+log.console = false
 log.console.level = info
+
+log.file = /var/lib/rabbitmq/log/rabbit.log
+log.file.level = info
+
+# rotate when the file reaches 10 MiB
+log.file.rotation.size = 10485760
+
+# keep up to 5 archived log files in addition to the current one
+log.file.rotation.count = 5
+
+# archived log files will be compressed
+log.file.rotation.compress = true
+
 
 queue_master_locator                       = min-masters
 disk_free_limit.absolute                   = 2GB
