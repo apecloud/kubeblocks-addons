@@ -86,5 +86,5 @@ Define image
 */}}
 
 {{- define "neon.image" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}
 {{- end }}

@@ -15,4 +15,4 @@ spec:
       changes:
       serviceVersion: 1.0.0
       images:
-        neon-safekeeper: {{ include "neon.image" . }}
+        neon-safekeeper: {{ include "neon.image" . }}:pg14-1.0.0
