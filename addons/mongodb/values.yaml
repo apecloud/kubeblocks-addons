@@ -58,8 +58,6 @@ dataMountPath: /data/mongodb
 ## If specified, the cluster definition will use it as name.
 resourceNamePrefix: ""
 
-useHostNetwork: false
-
 ## @param cmpdVersionPrefix for each ComponentDefinition resources name created by this chart, that can avoid name conflict
 ## If specified, the component definition will use it as prefix.
 cmpdVersionPrefix: ""
