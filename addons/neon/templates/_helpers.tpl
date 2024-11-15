@@ -78,3 +78,13 @@ Generate config configmap
 {{- end }}
 
 
+
+
+
+{{/*
+Define image
+*/}}
+
+{{- define "neon.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}
+{{- end }}

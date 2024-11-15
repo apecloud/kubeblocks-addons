@@ -11,8 +11,8 @@ spec:
       releases:
         - pg14-1.0.0
   releases:
-    - name: pg14-1.0.0 
+    - name: pg14-1.0.0
       changes:
       serviceVersion: 1.0.0
       images:
-        neon-compute: perconalab/neon:pg14-1.0.0
+        neon-compute: {{ include "neon.image" . }}:pg14-1.0.0
