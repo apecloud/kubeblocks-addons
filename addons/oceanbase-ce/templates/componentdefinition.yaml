@@ -5,7 +5,7 @@ metadata:
   name: {{ include "oceanbase-ce.compDefName" . }}
   labels:
     {{- include "oceanbase-ce.labels" . | nindent 4 }}
-annotations:
+  annotations:
     {{- include "oceanbase-ce.annotations" . | nindent 4 }}
 spec:
   provider: Community
