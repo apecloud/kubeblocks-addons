@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "apecloud-postgresql.compDefApecloudpostgresql-14" . }}
+  name: {{ include "apecloud-postgresql-14.cmpdName" . }}
   labels:
     {{- include "apecloud-postgresql.labels" . | nindent 4 }}
   annotations:

@@ -7,7 +7,7 @@ metadata:
 spec:
   compatibilityRules:
     - compDefs:
-        - {{ include "apecloud-postgresql-14.componentDefNamePrefix" . }}
+        - {{ include "apecloud-postgresql-14.cmpdRegexpPattern" . }}
       releases:
         - 14.11.0
   releases:

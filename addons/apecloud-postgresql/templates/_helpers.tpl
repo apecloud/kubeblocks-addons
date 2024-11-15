@@ -49,15 +49,12 @@ Generate scripts configmap
 {{- end }}
 {{- end }}
 
+
 {{/*
-Define apecloud postgresql 14 component definition name prefix
+Define apecloud postgresql 14.X component definition regular expression name prefix
 */}}
-{{- define "apecloud-postgresql-14.componentDefNamePrefix" -}}
-{{- if eq (len .Values.cmpdVersionPrefix.apecloudPostgresql14) 0 -}}
-{{- printf "apecloud-postgresql-14-" -}}
-{{- else -}}
-{{- printf "%s-" .Values.cmpdVersionPrefix.apecloudPostgresql14 -}}
-{{- end -}}
+{{- define "apecloud-postgresql-14.cmpdRegexpPattern" -}}
+^apecloud-postgresql-14.*
 {{- end -}}
 
 {{/*
@@ -82,13 +79,13 @@ Define apecloud-postgresql component definition regular expression name prefix
 {{- end -}}
 
 {{/*
-Define apecloud-postgresql-14 component definition name
+Define apecloud-postgresql 14.X component definition name
 */}}
-{{- define "apecloud-postgresql.compDefApecloudpostgresql-14" -}}
-{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+{{- define "apecloud-postgresql-14.cmpdName" -}}
+{{- if eq (len .Values.cmpdVersionPrefix.apecloudPostgresql.major14.minorAll ) 0 -}}
 apecloud-postgresql-14-{{ .Chart.Version }}
 {{- else -}}
-{{- .Values.resourceNamePrefix -}}-{{ .Chart.Version }}
+{{- printf "%s" .Values.cmpdVersionPrefix.apecloudPostgresql.major14.minorAll -}}-{{ .Chart.Version }}
 {{- end -}}
 {{- end -}}
 
@@ -168,7 +165,8 @@ vars:
         name: postgres
         optional: false
         password: Required
-  # syncer env
+  # env for syncer to initialize dcs
+  # TODO: modify these env for syncer
   - name: MY_CLUSTER_NAME
     valueFrom:
       clusterVarRef:
