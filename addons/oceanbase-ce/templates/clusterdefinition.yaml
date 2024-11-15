@@ -1,0 +1,13 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ClusterDefinition
+metadata:
+  name: {{ include "oceanbase-ce.clusterDefinition" . }}
+  labels:
+    {{- include "oceanbase-ce.labels" . | nindent 4 }}
+spec:
+  topologies:
+  - name: distribution
+    components:
+    - name: oceanbase
+      compDef: {{ include "oceanbase-ce.componentDefNamePrefix" . }}
+    default: true
