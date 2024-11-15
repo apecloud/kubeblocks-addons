@@ -1,5 +1,3 @@
-# spec/update_pg_params_spec.sh
-
 Describe 'update_pg_params.sh'
   Include ../reloader/update-parameter.sh
 
