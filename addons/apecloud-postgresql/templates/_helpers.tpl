@@ -52,9 +52,9 @@ Generate scripts configmap
 {{/*
 Define apecloud postgresql 14 component definition name prefix
 */}}
-{{- define "apecloud-postgresql14.componentDefNamePrefix" -}}
+{{- define "apecloud-postgresql-14.componentDefNamePrefix" -}}
 {{- if eq (len .Values.cmpdVersionPrefix.apecloudPostgresql14) 0 -}}
-{{- printf "apecloud-postgresql14-" -}}
+{{- printf "apecloud-postgresql-14-" -}}
 {{- else -}}
 {{- printf "%s-" .Values.cmpdVersionPrefix.apecloudPostgresql14 -}}
 {{- end -}}
@@ -63,30 +63,30 @@ Define apecloud postgresql 14 component definition name prefix
 {{/*
 Define apecloud postgresql 14 component configuration template name
 */}}
-{{- define "apecloud-postgresql14.configurationTemplate" -}}
-apecloud-postgresql14-configuration-{{ .Chart.Version }}
+{{- define "apecloud-postgresql-14.configurationTemplate" -}}
+apecloud-postgresql-14-configuration-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define apecloud postgresql 14 component config constraint name
 */}}
-{{- define "apecloud-postgresql14.configConstraint" -}}
-apecloud-postgresql14-cc-{{ .Chart.Version }}
+{{- define "apecloud-postgresql-14.configConstraint" -}}
+apecloud-postgresql-14-cc-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
-Define apecloud-postgresql component definition name prefix
+Define apecloud-postgresql component definition regular expression name prefix
 */}}
-{{- define "apecloud-postgresql.componentDefNamePrefix" -}}
-{{- printf "apecloud-postgresql" -}}
+{{- define "apecloud-postgresql.cmpdRegexpPattern" -}}
+^apecloud-postgresql-\d+
 {{- end -}}
 
 {{/*
-Define apecloud-postgresql14 component definition name
+Define apecloud-postgresql-14 component definition name
 */}}
-{{- define "apecloud-postgresql.compDefApecloudPostgresql14" -}}
+{{- define "apecloud-postgresql.compDefApecloudpostgresql-14" -}}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-apecloud-postgresql14-{{ .Chart.Version }}
+apecloud-postgresql-14-{{ .Chart.Version }}
 {{- else -}}
 {{- .Values.resourceNamePrefix -}}-{{ .Chart.Version }}
 {{- end -}}
@@ -101,6 +101,21 @@ Generate scripts configmap
 {{- $.Files.Get $path | nindent 2 }}
 {{- end }}
 {{- end }}
+
+{{/*
+Define postgresql scripts configMap template name
+*/}}
+{{- define "apecloud-postgresql.scriptsTemplate" -}}
+apecloud-postgresql-scripts
+{{- end -}}
+
+{{/*
+Define postgresql scripts configMap template name
+*/}}
+{{- define "apecloud-postgresql.reloader.scripts" -}}
+apecloud-postgresql-reload-tools-script
+{{- end -}}
+
 
 {{- define "apecloud-postgresql.spec.common" -}}
 provider: kubeblocks
@@ -154,16 +169,16 @@ vars:
         optional: false
         password: Required
   # syncer env
-  - name: KB_CLUSTER_NAME
+  - name: MY_CLUSTER_NAME
     valueFrom:
       clusterVarRef:
         clusterName: Required
-  - name: KB_COMP_NAME
+  - name: MY_COMP_NAME
     valueFrom:
       componentVarRef:
         optional: false
         shortName: Required
-  - name: KB_NAMESPACE
+  - name: MY_NAMESPACE
     valueFrom:
       clusterVarRef:
         namespace: Required

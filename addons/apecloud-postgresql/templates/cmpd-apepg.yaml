@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "apecloud-postgresql.compDefApecloudPostgresql14" . }}
+  name: {{ include "apecloud-postgresql.compDefApecloudpostgresql-14" . }}
   labels:
     {{- include "apecloud-postgresql.labels" . | nindent 4 }}
   annotations:
@@ -11,8 +11,8 @@ spec:
   serviceVersion: {{ .Values.componentServiceVersion.apecloudPostgresql14 }}
   configs:
     - name: postgresql-consensusset-configuration
-      templateRef: {{ include "apecloud-postgresql14.configurationTemplate" . }}
-      constraintRef: {{ include "apecloud-postgresql14.configConstraint" . }}
+      templateRef: {{ include "apecloud-postgresql-14.configurationTemplate" . }}
+      constraintRef: {{ include "apecloud-postgresql-14.configConstraint" . }}
       keys:
         - postgresql.conf
       namespace: {{ .Release.Namespace }}
@@ -20,7 +20,7 @@ spec:
       defaultMode: 0444
   scripts:
     - name: apecloud-postgresql-scripts
-      templateRef: apecloud-postgresql-scripts
+      templateRef: {{ include "apecloud-postgresql.scriptsTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555

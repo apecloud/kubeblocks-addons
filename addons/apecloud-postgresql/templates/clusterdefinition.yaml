@@ -9,5 +9,5 @@ spec:
     - name: apecloud-postgresql
       components:
         - name: postgresql
-          compDef: {{ include "apecloud-postgresql.componentDefNamePrefix" . }}
+          compDef: {{ include "apecloud-postgresql.cmpdRegexpPattern" . }}
       default: true

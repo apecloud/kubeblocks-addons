@@ -61,4 +61,4 @@ componentServiceVersion:
   apecloudPostgresql14: "14.11.0"
 
 cmpdVersionPrefix:
-  apecloudPostgresql14: "apecloud-postgresql14"
+  apecloudPostgresql14: "apecloud-postgresql-14"

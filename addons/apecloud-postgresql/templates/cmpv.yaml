@@ -7,11 +7,11 @@ metadata:
 spec:
   compatibilityRules:
     - compDefs:
-        - {{ include "apecloud-postgresql14.componentDefNamePrefix" . }}
+        - {{ include "apecloud-postgresql-14.componentDefNamePrefix" . }}
       releases:
         - 14.11.0
   releases:
     - name: 14.11.0
       serviceVersion: 14.11.0
       images:
-        postgresql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        postgresql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:14.11-0.7.3
