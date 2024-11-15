@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "yashandb.configTplName" . }}
+  labels:
+    {{- include "yashandb.labels" . | nindent 4 }}
+data:
+  install.ini: |-
+    {{- .Files.Get "configs/install.ini.tpl" | nindent 4 }}
