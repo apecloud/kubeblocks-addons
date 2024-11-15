@@ -4,7 +4,7 @@
 
 ## @param version PostgreSQL cluster version
 ##
-version: ac-postgresql-14.10
+version: 14.11.0
 
 ## @param mode postgresql cluster topology mode, standalone, raftGroup
 ##

@@ -12,12 +12,12 @@ image:
   debug: false
   syncer:
     repository: apecloud/syncer
-    tag: "0.3.2"
+    tag: "0.3.6"
 
   # refer: https://github.com/apecloud/dbctl/blob/main/docker/Dockerfile
   dbctl:
     repository: apecloud/dbctl
-    tag: "0.1.5"
+    tag: "0.1.6"
 
 dataMountPath: /postgresql/volume_data
 confMountPath: /postgresql/mount_conf
@@ -59,3 +59,8 @@ resourceNamePrefix: ""
 ## @param componentServiceVersion define default serviceVersion of each Component
 componentServiceVersion:
   apecloudPostgresql14: "14.11.0"
+
+cmpdVersionPrefix:
+  apecloudPostgresql:
+    major14:
+      minorAll: "apecloud-postgresql-14"
