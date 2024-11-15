@@ -1,16 +1,17 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: mogdb-5
+  name: {{ include "mogdb.cmpdName" . }}
   labels:
     {{- include "mogdb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mogdb.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
   description: MogDB
   serviceKind: mogdb
   serviceVersion: 5.0.5
   updateStrategy: Serial
-
   services:
   - name: default
     roleSelector: primary
@@ -19,35 +20,30 @@ spec:
         - name: tcp-mogdb
           port: 26000
           targetPort: tcp-mogdb
-
   configs:
     - name: mogdb-configuration
-      templateRef: mogdb-configuration
-      constraintRef: mogdb-cc
+      templateRef: {{ include "mogdb.configTplName" . }}
+      constraintRef: {{ include "mogdb.constraintTplName" . }}
       keys:
         - postgresql.conf
       namespace: {{ .Release.Namespace }}
       volumeName: mogdb-config
       defaultMode: 0777
-
   scripts:
     - name: mogdb-scripts
-      templateRef: mogdb-scripts
+      templateRef: {{ include "mogdb.scriptsTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0777
-
   exporter:
     containerName: exporter
     scrapePath: /metrics
     scrapePort: {{ .Values.metrics.service.port | quote}}
-
   logConfigs:
     {{- range $name,$pattern := .Values.logConfigs }}
     - name: {{ $name }}
       filePathPattern: {{ $pattern }}
     {{- end }}
-
   roles:
     - name: primary
       serviceable: true
@@ -55,7 +51,6 @@ spec:
     - name: secondary
       serviceable: false
       writable: false
-
   systemAccounts:
     - name: root
       initAccount: true
@@ -64,8 +59,31 @@ spec:
         numDigits: 8
         numSymbols: 2
         letterCase: MixedCases
-
   vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: MOGDB_COMPONENT_POD_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podNames: Optional
+    - name: MOGDB_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          compDef: minio
+          optional: false
+          componentName: Required
+    - name: MOGDB_COMPONENT_SHORT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          shortName: Required
     - name: MOGDB_USER
       valueFrom:
         credentialVarRef:
@@ -78,12 +96,10 @@ spec:
           name: root
           optional: false
           password: Required
-
     - name: GS_USERNAME
       value: $(MOGDB_USER)
     - name: GS_PASSWORD
       value: $(MOGDB_PASSWORD)
-
   lifecycleActions:
     roleProbe:
       exec:
@@ -122,7 +138,7 @@ spec:
             EOF
             [[ -d "$PGHOST" ]] || (mkdir -p $PGHOST && chown omm $PGHOST)
 
-            hostname=$KB_POD_NAME
+            hostname=$POD_NAME
             [[ "$hostname" =~ -([0-9]+)$ ]] || exit 1
             ordinal=${BASH_REMATCH[1]}
             if [[ $ordinal -eq 0 ]];then
@@ -139,8 +155,8 @@ spec:
 
               cat >/tmp/replconninfo.conf
 
-              replicas=$(eval echo ${KB_POD_LIST} | tr ',' '\n')
-              SUBDOMAIN=${KB_CLUSTER_COMP_NAME}-headless
+              replicas=$(eval echo ${MOGDB_COMPONENT_POD_LIST} | tr ',' '\n')
+              SUBDOMAIN=${MOGDB_COMPONENT_NAME}-headless
               for replica in ${replicas}; do
                 host=${replica}.${SUBDOMAIN}
                 host_ordinal=$(echo $replica | awk -F '-' '{print $(NF)}')
@@ -152,8 +168,8 @@ spec:
                 echo "replconninfo$((host_ordinal+1)) = 'localhost=$PodIP localport=${ha_port} localservice=${ha_service_port} remotehost=$remote_ip remoteport=${ha_port} remoteservice=${ha_service_port}'" >> /tmp/replconninfo.conf
               done
 
-              #echo "$hostname $PodIP" |ncat --send-only ${KB_CLUSTER_COMP_NAME}-0.${KB_CLUSTER_COMP_NAME}-headless 6543
-              #remote_ip=`ping ${KB_CLUSTER_COMP_NAME}-0.${KB_CLUSTER_COMP_NAME}-headless -c 1 | sed '1{s/[^(]*(//;s/).*//;q}'`
+              #echo "$hostname $PodIP" |ncat --send-only ${MOGDB_COMPONENT_NAME}-0.${MOGDB_COMPONENT_NAME}-headless 6543
+              #remote_ip=`ping ${MOGDB_COMPONENT_NAME}-0.${MOGDB_COMPONENT_NAME}-headless -c 1 | sed '1{s/[^(]*(//;s/).*//;q}'`
 
               # REPL_CONN_INFO="replconninfo${ordinal} = 'localhost=$PodIP localport=${ha_port} localservice=${ha_service_port} remotehost=$remote_ip remoteport=${ha_port} remoteservice=${ha_service_port}'"
             fi
@@ -189,6 +205,11 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: status.podIP
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
         volumeMounts:
           - name: data
             mountPath: /var/lib/mogdb

@@ -5,6 +5,11 @@ metadata:
   labels:
     {{- include "mogdb.labels" . | nindent 4 }}
 spec:
+  compatibilityRules:
+    - releases:
+        - mogdb-5.0.5
+      compDefs:
+        - {{ include "mogdb.cmpdRegexpPattern" }}
   releases:
     - name: mogdb-5.0.5
       serviceVersion: "5.0.5"
@@ -12,6 +17,3 @@ spec:
         mogdb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.0.5
         helper: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.0.5
         exporter: {{ .Values.metrics.image.registry | default ( .Values.image.registry  | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:3.1.0
-  compatibilityRules:
-    - releases: [mogdb-5.0.5]
-      compDefs: [mogdb-5]

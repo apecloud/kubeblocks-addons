@@ -61,7 +61,7 @@ spec:
                     fi
                   else
                     # check if the candidate instance has been promote to primary
-                    pods=$(kubectl get pod -l apps.kubeblocks.io/component-name=${KB_COMP_NAME},app.kubernetes.io/instance=${KB_CLUSTER_NAME} | awk 'NR > 1 {print $1}')
+                    pods=$(kubectl get pod -l apps.kubeblocks.io/component-name=${MOGDB_COMPONENT_SHORT_NAME},app.kubernetes.io/instance=${CLUSTER_NAME} | awk 'NR > 1 {print $1}')
                     for podName in ${pods}; do
                       if [ "${podName}" != "${primary}" ];then
                         role=$(kubectl get pod ${podName} -ojson | jq -r '.metadata.labels["kubeblocks.io/role"]')
