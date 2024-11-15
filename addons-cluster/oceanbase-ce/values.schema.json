@@ -2,6 +2,12 @@
     "$schema": "http://json-schema.org/schema#",
     "type": "object",
     "properties": {
+        "version": {
+            "title": "Version",
+            "description": "Version.",
+            "type": "string",
+            "default": "4.3.0"
+        },
         "zoneCount": {
             "title": "ZontCount",
             "description": "OceanBase Zones.",
