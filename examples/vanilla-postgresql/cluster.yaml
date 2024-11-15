@@ -1,0 +1,62 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: vanpg-cluster
+  namespace: default
+spec:
+  # Specifies the behavior when a Cluster is deleted.
+  # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
+  # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
+  # - `Delete`: Extends the `Halt` policy by also removing PVCs, leading to a thorough cleanup while removing all persistent data.
+  # - `WipeOut`: An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss.
+  terminationPolicy: Delete
+  # Specifies the name of the ClusterDefinition to use when creating a Cluster.
+  # Note: DO NOT UPDATE THIS FIELD
+  # The value must be `postgresql` to create a PostgreSQL Cluster
+  clusterDef: vanilla-postgresql
+  # Specifies the name of the ClusterTopology to be used when creating the
+  # Cluster.
+  # Valid options are: [replication]
+  topology: vanilla-postgresql
+  # Specifies a list of ClusterComponentSpec objects used to define the
+  # individual Components that make up a Cluster.
+  # This field allows for detailed configuration of each Component within the Cluster
+  componentSpecs:
+    - name: postgresql
+      # ServiceVersion specifies the version of the Service expected to be
+      # provisioned by this Component.
+      # Valid options are: [12.15.0,14.7.0,15.6.1138,15.7.0]
+      serviceVersion: "14.7.0"
+      # Determines whether metrics exporter information is annotated on the
+      # Component's headless Service.
+      # Valid options are [true, false]
+      disableExporter: false
+      # Specifies Labels to override or add for underlying Pods, PVCs, Account & TLS
+      # Secrets, Services Owned by Component.
+      # Update `replicas` to your need.
+      replicas: 2
+      # Specifies the resources required by the Component.
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
+      # Specifies a list of PersistentVolumeClaim templates that define the storage
+      # requirements for the Component.
+      volumeClaimTemplates:
+        # Refers to the name of a volumeMount defined in
+        # `componentDefinition.spec.runtime.containers[*].volumeMounts
+        - name: data
+          spec:
+            # The name of the StorageClass required by the claim.
+            # If not specified, the StorageClass annotated with
+            # `storageclass.kubernetes.io/is-default-class=true` will be used by default
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                # Set the storage size as needed
+                storage: 20Gi

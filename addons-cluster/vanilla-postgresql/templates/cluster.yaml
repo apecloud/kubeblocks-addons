@@ -1,4 +1,4 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: {{ include "kblib.clusterName" . }}
@@ -9,10 +9,9 @@ spec:
   topology: vanilla-postgresql
   componentSpecs:
     - name: postgresql
-      componentDef: {{ .Values.compDef }}
-            {{- include "kblib.componentMonitor" . | indent 6 }}
-            {{- include "kblib.componentResources" . | indent 6 }}
-            {{- include "kblib.componentStorages" . | indent 6 }}
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
       replicas: {{ .Values.replicas }}
       enabledLogs:
         - running
