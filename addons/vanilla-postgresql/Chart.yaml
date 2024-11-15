@@ -1,0 +1,28 @@
+apiVersion: v2
+name: vanilla-postgresql
+description: Vanilla-PostgreSQL is compatible with the native PostgreSQL kernel,
+  enabling it to quickly provide HA solutions for various variants based on the native PostgreSQL kernel.
+
+type: application
+
+version: 0.9.0
+
+# The helm chart contains multiple kernel versions of Vanilla PostgreSQL,
+# and each PostgreSQL version corresponds to a clusterVersion object.
+# appVersion should be consistent with the highest PostgreSQL kernel version in clusterVersion.
+appVersion: "14.7"
+
+home: https://kubeblocks.io/
+icon: https://kubeblocks.io/img/logo.png
+
+maintainers:
+  - name: ApeCloud
+    url: https://github.com/apecloud/kubeblocks/
+
+sources:
+  - https://github.com/apecloud/kubeblocks/
+
+annotations:
+  addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
+  addon.kubeblocks.io/model: "RDBMS"
+  addon.kubeblocks.io/provider: "apecloud"

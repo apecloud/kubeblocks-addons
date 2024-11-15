@@ -1,0 +1,76 @@
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  registry: docker.io
+  repository: postgres
+  digest: ""
+  tags:
+    major12:
+      minor15: 12.15
+    major14:
+      minor07: 14.7
+    major15:
+      minor07: 15.7
+  supabase:
+    repository: supabase/postgres
+    tags:
+      major15:
+        minor61138: 15.6.1.138
+
+
+  ## Specify a imagePullPolicy
+  ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
+  ## ref: https://kubernetes.io/docs/user-guide/images/#pre-pulling-images
+  ##
+  pullPolicy: IfNotPresent
+  ## Optionally specify an array of imagePullSecrets.
+  ## Secrets must be manually created in the namespace.
+  ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+  ## Example:
+  ## pullSecrets:
+  ##   - myRegistryKeySecretName
+  ##
+  pullSecrets: [ ]
+
+  syncer:
+    repository: apecloud/syncer
+    tag: "0.3.6"
+
+dataMountPath: /postgresql/volume_data
+confMountPath: /postgresql/mount_conf
+
+dataPath: /postgresql/volume_data/data
+confPath: /postgresql/volume_data/conf
+
+logConfigs:
+  running: /postgresql/volume_data/data/log/postgresql-*
+
+## @param cmpdVersionPrefix for each ComponentDefinition resources name created by this chart, that can avoid name conflict
+## If specified, the component definition will use it as prefix.
+cmpdVersionPrefix:
+  vanillaPostgresql12: "vanilla-postgresql-12"
+  vanillaPostgresql14: "vanilla-postgresql-14"
+  vanillaPostgresql15: "vanilla-postgresql-15"
+  vanillaPostgresqlSupabase15: "vanilla-postgresql-supabase15"
+
+## @param componentServiceVersion define default serviceVersion of each Component
+componentServiceVersion:
+  vanillaPostgresql12: 12.15.0
+  vanillaPostgresql14: 14.7.0
+  vanillaPostgresql15: 15.7.0
+  vanillaPostgresqlSupabase15: 15.6.1138
+
+shmVolume:
+  ## @param shmVolume.enabled Enable emptyDir volume for /dev/shm for PostgreSQL pod(s)
+  ##
+  enabled: true
+  ## @param shmVolume.sizeLimit Set this to enable a size limit on the shm tmpfs
+  ## Note: the size of the tmpfs counts against container's memory limit
+  ## e.g:
+  ## sizeLimit: 1Gi
+  ##
+  sizeLimit: ""

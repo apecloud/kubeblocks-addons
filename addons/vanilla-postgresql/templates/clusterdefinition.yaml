@@ -1,0 +1,13 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterDefinition
+metadata:
+  name: {{ include "vanilla-postgresql.clusterDefinition" . }}
+  labels:
+    {{- include "vanilla-postgresql.labels" . | nindent 4 }}
+spec:
+  topologies:
+    - name: vanilla-postgresql
+      components:
+        - name: postgresql
+          compDef: {{ include "vanilla-postgresql.componentDefNamePrefix" . }}
+      default: true
