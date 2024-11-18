@@ -3,16 +3,15 @@ kind: OpsDefinition
 metadata:
   name: mogdb-switchover
 spec:
-  targetPodTemplates:
-  - name: availablePod
-    podSelector:
-      availability: Available
-      selectionPolicy: Any
-    vars:
-      - name: TARGET_POD_IP
-        valueFrom:
-          envRef:
-            envName: KB_POD_IP
+  podInfoExtractors:
+    - name: availablePod
+      podSelector:
+        multiPodSelectionPolicy: Any
+      env:
+        - name: TARGET_POD_IP
+          valueFrom:
+            envRef:
+              envName: PodIP
   parametersSchema:
     openAPIV3Schema:
       properties:
@@ -29,7 +28,7 @@ spec:
   - name: switchover
     failurePolicy: Fail
     workload:
-      targetPodTemplate: availablePod
+      podInfoExtractorName: availablePod
       type: Job
       backoffLimit: 0
       podSpec:
