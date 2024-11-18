@@ -9,7 +9,7 @@ spec:
     - releases:
         - mogdb-5.0.5
       compDefs:
-        - {{ include "mogdb.cmpdRegexpPattern" }}
+        - {{ include "mogdb.cmpdRegexpPattern" . }}
   releases:
     - name: mogdb-5.0.5
       serviceVersion: "5.0.5"
