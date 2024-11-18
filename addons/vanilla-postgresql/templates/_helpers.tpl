@@ -262,6 +262,13 @@ vars:
         name: {{ $rootAccount }}
         optional: false
         password: Required
+  - name: POSTGRES_PRIMARY_POD_NAME
+    valueFrom:
+      componentVarRef:
+        optional: true
+        podNamesForRole:
+          role: primary
+          option: Optional
 lifecycleActions:
   roleProbe:
     periodSeconds: 1
@@ -274,6 +281,13 @@ lifecycleActions:
         - /tools/config/dbctl/components
         - postgresql
         - getrole
+  switchover:
+    exec:
+      container: postgresql
+      command:
+        - sh
+        - -c
+        - /kb-scripts/switchover.sh
 systemAccounts:
   - name: {{ $rootAccount }}
     initAccount: true
