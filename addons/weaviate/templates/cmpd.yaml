@@ -4,11 +4,13 @@ metadata:
   name: {{ include "weaviate.componentDefName" . }}
   labels:
     {{- include "weaviate.labels" . | nindent 4 }}
+  annotations:
+    {{- include "weaviate.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
   description: Weaviate is an open source vector database that is robust, scalable, cloud-native, and fast.
   serviceKind: weaviate
-  serviceVersion: 1.23.1
+  serviceVersion: 1.19.6
   services:
     - name: node-discovery
       serviceName: node-discovery
@@ -25,16 +27,35 @@ spec:
       needSnapshot: true
   configs:
     - name: weaviate-config-template
-      templateRef: weaviate-config-template
+      templateRef: {{ include "weaviate.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: weaviate-config
     - name: weaviate-env-template
-      templateRef: weaviate-env-template
+      templateRef: {{ include "weaviate.envConfigTplName" . }}
       namespace: {{ .Release.Namespace }}
-      constraintRef: weaviate-env-constraints
+      constraintRef: {{ include "weaviate.envConfigConstraintTplName" . }}
       volumeName: weaviate-env
       defaultMode: 0444
+  vars:
+    - name: WEAVIATE_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.clusterDomain | quote }}
+    - name: WEAVIATE_COMPONENT_POD_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podNames: Optional
   runtime:
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
     containers:
     - name: weaviate
       image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:{{ .Values.images.tag | default "latest" }}
@@ -43,17 +64,17 @@ spec:
       - /bin/sh
       - -c
       - |
-        replicas=$(eval echo ${KB_POD_LIST} | tr ',' '\n')
+        replicas=$(echo ${WEAVIATE_COMPONENT_POD_LIST} | tr ',' '\n')
         # Initialize count
-        replca_count=0
+        replica_count=0
         # Use a for loop to iterate over each space-separated word
         for item in $replicas; do
-            replca_count=$((replca_count + 1))
+            replica_count=$((replica_count + 1))
         done
 
         while true; do
           count=$(nslookup ${CLUSTER_JOIN} | awk '/^Address: / { print $2 }' | wc -l)
-          if [ "$count" -eq ${replca_count} ]; then
+          if [ "$count" -eq ${replica_count} ]; then
             break
           fi
           echo "Waiting for all nodes to be running..."
@@ -101,8 +122,6 @@ spec:
         name: weaviate-env
       - mountPath: /var/lib/weaviate
         name: data
-      dnsPolicy: ClusterFirst
-      enableServiceLinks: true
       ports:
       - name: tcp-weaviate
         containerPort: 8080
@@ -134,6 +153,9 @@ spec:
       - name: DEFAULT_VECTORIZER_MODULE
         value: none
       - name: CLUSTER_HOSTNAME
-        value: "$(KB_POD_NAME)"
+        valueFrom:
+          fieldRef:
+            apiVersion: v1
+            fieldPath: metadata.name
       - name: CLUSTER_JOIN
-        value: $(KB_CLUSTER_COMP_NAME)-node-discovery.$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}
+        value: $(WEAVIATE_COMPONENT_NAME)-node-discovery.$(CLUSTER_NAMESPACE).svc$(CLUSTER_DOMAIN)

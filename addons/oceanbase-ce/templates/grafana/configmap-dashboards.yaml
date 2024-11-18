@@ -8,11 +8,11 @@ items:
 - apiVersion: v1
   kind: ConfigMap
   metadata:
-    name: {{ printf "%s-grafana-%s" (include "oceanbase-release.name" $) $dashboardName | trunc 63 | trimSuffix "-" }}
+    name: {{ printf "oceanbase-ce-grafana-%s" $dashboardName | trunc 63 | trimSuffix "-" }}
     labels:
       grafana_dashboard: "1"
-      app: {{ template "oceanbase.name" $ }}-grafana
-{{ include "oceanbase.labels" $ | indent 6 }}
+      app: {{ template "oceanbase-ce.name" $ }}-grafana
+{{ include "oceanbase-ce.labels" $ | indent 6 }}
   data:
     {{ $dashboardName }}.json: {{ $.Files.Get $path | toJson }}
 {{- end }}

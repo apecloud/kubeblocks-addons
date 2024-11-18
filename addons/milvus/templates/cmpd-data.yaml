@@ -1,13 +1,21 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: milvus-datanode-{{ .Chart.Version }}
+  name: {{ include "milvus-datanode.cmpdName" . }}
   labels:
     {{- include "milvus.labels" . | nindent 4 }}
+  annotations:
+    {{- include "milvus.annotations" . | nindent 4 }}
 spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
+  configs:
+    {{- include "milvus.config.cluster" . | indent 4 }}
+  serviceRefDeclarations:
+    {{- include "milvus.cluster.serviceRef" . | indent 4 }}
+  vars:
+    {{- include "milvus.cluster.serviceRefVars" . | indent 4 }}
   runtime:
     initContainers:
       {{- include "milvus.initContainer.setup" . | indent 6 }}
@@ -32,9 +40,3 @@ spec:
         {{- include "milvus.probe.readiness" . | indent 8 }}
     volumes:
       {{- include "milvus.volume.tools" . | indent 6 }}
-  vars:
-    {{- include "milvus.cluster.serviceRefVars" . | indent 4 }}
-  configs:
-    {{- include "milvus.config.cluster" . | indent 4 }}
-  serviceRefDeclarations:
-    {{- include "milvus.cluster.serviceRef" . | indent 4 }}

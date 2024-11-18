@@ -1,14 +1,34 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: risingwave-connector-{{ .Chart.Version }}
+  name: {{ include "risingwave-connector.cmpdName" . }}
   labels:
     {{- include "risingwave.labels" . | nindent 4 }}
+  annotations:
+    {{- include "risingwave.annotations" . | nindent 4 }}
 spec:
   provider: Community
   description: {{ .Chart.Description }}
   serviceKind: risingwave
   serviceVersion: {{ .Chart.AppVersion }}
+  services:
+    - name: default
+      spec:
+        ports:
+          - port: 50051
+            targetPort: svc
+            name: svc
+          - port: 50052
+            targetPort: metrics
+            name: metrics
+  configs:
+    {{- include "risingwave.conftpl.default" . | indent  4 }}
+    - name: risingwave-connector-envs
+      templateRef: {{ include "risingwave-connector.envConfigTplName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: risingwave-connector-envs
+      asEnvFrom:
+        - connector
   runtime:
     containers:
       - name: connector
@@ -34,21 +54,3 @@ spec:
           {{- include "risingwave.volumeMount.conftpl.default" . | indent  10 }}
         {{- include "risingwave.probe.liveness" . | indent  8 }}
         {{- include "risingwave.probe.readiness" . | indent 8 }}
-  services:
-    - name: default
-      spec:
-        ports:
-          - port: 50051
-            targetPort: svc
-            name: svc
-          - port: 50052
-            targetPort: metrics
-            name: metrics
-  configs:
-    {{- include "risingwave.conftpl.default" . | indent  4 }}
-    - name: risingwave-connector-envs
-      templateRef: {{ include "risingwave.name" . }}-connector-envs-tpl
-      namespace: {{ .Release.Namespace }}
-      volumeName: risingwave-connector-envs
-      asEnvFrom:
-        - connector

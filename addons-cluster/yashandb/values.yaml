@@ -1,6 +1,7 @@
 ## @param version YashanDB cluster version
 ##
-version: yashandb-personal-23.1.1.100
+version: 23.1.1.100
+
 ## @param replicas specify cluster replicas
 ##
 replicas: 1
@@ -12,6 +13,7 @@ cpu: 1
 ## @param memory, the unit is Gi
 ##
 memory: 1
+
 ## @param storage size, the unit is Gi
 ##
 storage: 20

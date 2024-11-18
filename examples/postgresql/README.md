@@ -1,4 +1,4 @@
-# Postgresql
+# PostgreSQL
 
 PostgreSQL (Postgres) is an open source object-relational database known for reliability and data integrity. ACID-compliant, it supports foreign keys, joins, views, triggers and stored procedures.
 
@@ -6,7 +6,7 @@ PostgreSQL (Postgres) is an open source object-relational database known for rel
 
 This example assumes that you have a Kubernetes cluster installed and running, and that you have installed the kubectl command line tool and helm somewhere in your path. Please see the [getting started](https://kubernetes.io/docs/setup/)  and [Installing Helm](https://helm.sh/docs/intro/install/) for installation instructions for your platform.
 
-Also, this example requires KubeBlocks installed and running. Here is the steps to install kubeblocks, please replace "`$kb_version`" with the version you want to use.
+Also, this example requires KubeBlocks installed and running. Here is the steps to install KubeBlocks, please replace "`$kb_version`" with the version you want to use.
 
 ```bash
 # Add Helm repo
@@ -35,13 +35,13 @@ helm install kubeblocks kubeblocks/kubeblocks --namespace kb-system --create-nam
 
 ### [Create](cluster.yaml)
 
-Create a postgresql cluster with one primary and one secondary instance:
+Create a PostgreSQL cluster with one primary and one secondary instance:
 
 ```bash
 kubectl apply -f examples/postgresql/cluster.yaml
 ```
 
-And you will see the postgresql cluster status goes `Running` after a while:
+And you will see the PostgreSQL cluster status goes `Running` after a while:
 
 ```bash
 kubectl get cluster pg-cluster
@@ -56,9 +56,14 @@ kubectl get po -l  app.kubernetes.io/instance=pg-cluster -L kubeblocks.io/role -
 kubectl exec -it pg-cluster-postgresql-0 -n default -- patronictl list
 ```
 
-If you want to create a postgresql cluster of specified version, just modify the `spec.componentSpecs.serviceVersion` field in the yaml file before applying it:
+If you want to create a PostgreSQL cluster of specified version, set the `spec.componentSpecs.serviceVersion` field in the yaml file before applying it:
 
 ```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: pg-cluster
+  namespace: default
 spec:
   terminationPolicy: Delete
   clusterDef: postgresql
@@ -88,13 +93,13 @@ postgresql   12.14.0,12.14.1,12.15.0,14.7.2,14.8.0,15.7.0,16.4.0   Available   X
 
 #### [Scale-out](scale-out.yaml)
 
-Horizontal scaling out postgresql cluster by adding ONE more replica:
+Horizontal scaling out PostgreSQL cluster by adding ONE more replica:
 
 ```bash
 kubectl apply -f examples/postgresql/scale-out.yaml
 ```
 
-After applying the operation, you will see a new pod created and the postgresql cluster status goes from `Updating` to `Running`, and the newly created pod has a new role `secondary`.
+After applying the operation, you will see a new pod created and the PostgreSQL cluster status goes from `Updating` to `Running`, and the newly created pod has a new role `secondary`.
 
 And you can check the progress of the scaling operation with following command:
 
@@ -104,35 +109,34 @@ kubectl describe ops pg-scale-in
 
 #### [Scale-in](scale-in.yaml)
 
-Horizontal scaling in postgresql cluster by deleting ONE replica:
+Horizontal scaling in PostgreSQL cluster by deleting ONE replica:
 
 ```bash
 kubectl apply -f examples/postgresql/scale-in.yaml
 ```
 
-Besides, you can also use `kubectl edit` to scale the cluster:
+#### Scale-in/out using Cluster API
 
-```bash
-kubectl edit cluster pg-cluster
-```
-
-And modify the `replicas` field in the `spec.componentSpecs.replicas` section to the desired number.
+Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
 ```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: pg-cluster
+  namespace: default
 spec:
   componentSpecs:
     - name: postgresql
       serviceVersion: "14.7.2"
-      disableExporter: true
       labels:
         apps.kubeblocks.postgres.patroni/scope: pg-cluster-postgresql
-      # Update `replicas` to 1 for scaling in, and to 3 for scaling out
-      replicas: 2
+      replicas: 2 # Update `replicas` to 1 for scaling in, and to 3 for scaling out
 ```
 
 ### [Vertical scaling](verticalscale.yaml)
 
-Vertical scaling involves increasing or decreasing resources to an existing database clsuter.
+Vertical scaling involves increasing or decreasing resources to an existing database cluster.
 Resources that can be scaled include:, CPU cores/processing power and Memory (RAM).
 
 To vertical scaling up or down specified component, you can apply the following yaml file:
@@ -143,36 +147,43 @@ kubectl apply -f examples/postgresql/verticalscale.yaml
 
 You will observe that the `secondary` pod is recreated first, followed by the `primary` pod, to ensure the availability of the cluster.
 
-Optionally, you can use `kubectl edit` to scale the cluster, and udpate `spec.componentSpecs.resources` field to the desired resources.
+#### Scale-up/down using Cluster API
+
+Alternatively, you may update `spec.componentSpecs.resources` field to the desired resources for vertical scale.
 
 ```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: pg-cluster
+  namespace: default
 spec:
   componentSpecs:
     - name: postgresql
       replicas: 2
-      # Update the resources to your need.
       resources:
         requests:
-          cpu: "1"
-          memory: "2Gi"
+          cpu: "1"       # Update the resources to your need.
+          memory: "2Gi"  # Update the resources to your need.
         limits:
-          cpu: "2"
-          memory: "4Gi"
+          cpu: "2"       # Update the resources to your need.
+          memory: "4Gi"  # Update the resources to your need.
 ```
 
 ### [Expand volume](volumeexpand.yaml)
 
-Volume expansion is the ability to increase the size of a Persistent Volume Claim (PVC) after it's created.
+Volume expansion is the ability to increase the size of a Persistent Volume Claim (PVC) after it's created. It is introduced in Kubernetes v1.11 and goes GA in Kubernetes v1.24. It allows Kubernetes users to simply edit their PersistentVolumeClaim objects  without requiring any downtime at all if possible[^4].
 
 > [!NOTE]
 > Make sure the storage class you use supports volume expansion.
-> You can check the storage class with following command:
->
-> ```bash
-> kubectl get sc
-> ```
->
-> If the `ALLOWVOLUMEEXPANSION` column is `true`, the storage class supports volume expansion.
+
+Check the storage class with following command:
+
+```bash
+kubectl get storageclass
+```
+
+If the `ALLOWVOLUMEEXPANSION` column is `true`, the storage class supports volume expansion.
 
 To increase size of volume storage with the specified components in the cluster
 
@@ -180,35 +191,34 @@ To increase size of volume storage with the specified components in the cluster
 kubectl apply -f examples/postgresql/volumeexpand.yaml
 ```
 
-After the operation, you will see the volume size of the specified component is increased to `30Gi` in this case.
-You can check the volume size with following command:
+After the operation, you will see the volume size of the specified component is increased to `30Gi` in this case. Once you've done the change, check the `status.conditions` field of the PVC to see if the resize has completed.
 
 ```bash
 kubectl get pvc -l app.kubernetes.io/instance=pg-cluster -n default
 ```
 
-You can also use `kubectl edit` to expand the volume:
+#### Volume expansion using Cluster API
 
-```bash
-kubectl edit cluster pg-cluster
-```
-
-And modify the `spec.componentSpecs.volumeClaimTemplates.spec.resources.requests.storage` field to the desired size.
+Alternatively, you may update the `spec.componentSpecs.volumeClaimTemplates.spec.resources.requests.storage` field to the desired size.
 
 ```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: pg-cluster
+  namespace: default
 spec:
   componentSpecs:
     - name: postgresql
       volumeClaimTemplates:
-        - metadata:
-            name: data
+        - name: data
           spec:
+            storageClassName: "<you-preferred-sc>"
             accessModes:
               - ReadWriteOnce
             resources:
               requests:
-                # update the storage size to your need
-                storage: 30Gi
+                storage: 30Gi  # specify new size, and make sure it is larger than the current size
 ```
 
 ### [Restart](restart.yaml)
@@ -227,9 +237,16 @@ Stop the cluster will release all the pods of the cluster, but the storage will 
 kubectl apply -f examples/postgresql/stop.yaml
 ```
 
-You can also use `kubectl edit` to stop the cluster by setting the `spec.componentSpecs.stop` field to `true`.
+#### Stop using Cluster API
+
+Alternatively, you may stop the cluster by setting the `spec.componentSpecs.stop` field to `true`.
 
 ```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: pg-cluster
+  namespace: default
 spec:
   componentSpecs:
     - name: postgresql
@@ -245,15 +262,16 @@ Start the stopped cluster
 kubectl apply -f examples/postgresql/start.yaml
 ```
 
-Similary, you can use `kubectl edit` to start the cluster:
+#### Start using Cluster API
 
-```bash
-kubectl edit cluster pg-cluster
-```
-
-And modify the `spec.componentSpecs.stop` field to `false` or remove the `spec.componentSpecs.stop` field.
+Alternatively, you may start the cluster by setting the `spec.componentSpecs.stop` field to `false`.
 
 ```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: pg-cluster
+  namespace: default
 spec:
   componentSpecs:
     - name: postgresql
@@ -261,9 +279,13 @@ spec:
       replicas: 2
 ```
 
-### [Switchover](switchover.yaml)
+### Switchover
 
-A switchover in database clusters is a planned operation that transfers the primary (leader) role from one database instance to another. The goal of a switchover is to ensure that the database cluster remains available and operational during the transition. To perform a switchover operation, you can apply the following yaml file:
+A switchover in database clusters is a planned operation that transfers the primary (leader) role from one database instance to another. The goal of a switchover is to ensure that the database cluster remains available and operational during the transition.
+
+#### [Switchover without preferred candidates](switchover.yaml)
+
+To perform a switchover without any preferred candidates, you can apply the following yaml file:
 
 ```bash
 kubectl apply -f examples/postgresql/switchover.yaml
@@ -271,7 +293,7 @@ kubectl apply -f examples/postgresql/switchover.yaml
 
 <details>
 
-By applying this yaml file, KubeBlocks will perform a switchover operation defined in postgresql's component definition, and you can checkout the details in `componentdefinition.spec.lifecycleActions.switchover`.
+By applying this yaml file, KubeBlocks will perform a switchover operation defined in PostgreSQL's component definition, and you can checkout the details in `componentdefinition.spec.lifecycleActions.switchover`.
 
 You may get the switchover operation details with following command:
 
@@ -281,8 +303,7 @@ kubectl get cluster pg-cluster -ojson | jq '.spec.componentSpecs[0].componentDef
 
 </details>
 
-
-### [Switchover-specified-instance](switchover-specified-instance.yaml)
+#### [Switchover with candidate specified](switchover-specified-instance.yaml)
 
 Switchover a specified instance as the new primary or leader of the cluster
 
@@ -290,7 +311,7 @@ Switchover a specified instance as the new primary or leader of the cluster
 kubectl apply -f examples/postgresql/switchover-specified-instance.yaml
 ```
 
-You may need to modify the `opsrequest.spec.switchover.instanceName` field to your desired `secondary` instance name.
+You may need to update the `opsrequest.spec.switchover.instanceName` field to your desired `secondary` instance name.
 
 Once this `opsrequest` is completed, you can check the status of the switchover operation and the roles of the pods to verify the switchover operation.
 
@@ -310,14 +331,9 @@ kubectl apply -f examples/postgresql/configure.yaml
 This example will change the `max_connections` to `200`.
 > `max_connections` indicates maximum number of client connections allowed. It is a dynamic parameter, so the change will take effect without restarting the database.
 
-<details>
-
-To check the full list of parameters that can be reconfigured, you can use following command:
-
 ```bash
 kbcli cluster explain-config pg-cluster # kbcli is a command line tool to interact with KubeBlocks
 ```
-</details>
 
 ### [BackupRepo](backuprepo.yaml)
 
@@ -331,7 +347,7 @@ kubectl create secret generic <credential-for-backuprepo>\
   -n kb-system
 ```
 
-Update `examples/postgresql/backuprepo.yaml` and set fields quoated with `<>` to your own settings and apply it.
+Update `examples/postgresql/backuprepo.yaml` and set fields quoted with `<>` to your own settings and apply it.
 
 ```bash
 kubectl apply -f examples/postgresql/backuprepo.yaml
@@ -352,7 +368,7 @@ kb-oss   Ready    oss               Tool           true      Xd
 
 ### Backup
 
-KubeBlocks supports multiple backup methods for postgresql cluster, such as `pg-basebackup`, `volume-snapshot`, `wal-g`, etc.
+KubeBlocks supports multiple backup methods for PostgreSQL cluster, such as `pg-basebackup`, `volume-snapshot`, `wal-g`, etc.
 
 You may find the supported backup methods in the `BackupPolicy` of the cluster, e.g. `pg-cluster-postgresql-backup-policy` in this case, and find how these methods will be scheduled in the `BackupSchedule` of the cluster, e.g.. `pg-cluster-postgresql-backup-schedule` in this case.
 
@@ -378,7 +394,7 @@ kubectl get backup -l app.kubernetes.io/instance=pg-cluster
 
 and the status of the backup goes from `Running` to `Completed` after a while. And the backup data will be pushed to your specified `BackupRepo`.
 
-Infomation, such as `path`, `timeRange` about the backup will be recoreded into the `Backup` resource.
+Information, such as `path`, `timeRange` about the backup will be recorded into the `Backup` resource.
 
 Alternatively, you can update the `BackupSchedule` to enable the method `pg-basebackup` to schedule base backup periodically, will be elaborated in the following section.
 
@@ -431,7 +447,7 @@ kubectl get backup -l app.kubernetes.io/instance=pg-cluster -l dataprotection.ku
 
 WAL-G is an archival restoration tool for PostgreSQL, MySQL/MariaDB, and MS SQL Server (beta for MongoDB and Redis).[^2]
 
-##### Base Backup(basebackup-wal-g.yaml)
+##### [Base Backup](basebackup-wal-g.yaml)
 
 To create wal-g backup for the cluster, it is a multi-step process.
 
@@ -468,7 +484,7 @@ To restore a new cluster from a Backup:
 kubectl get backup pg-cluster-pg-basebackup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
 ```
 
-1. Update `examples/postgresql/restore.yaml` and set fields quoated with `<>` to your own settings and apply it.
+1. Update `examples/postgresql/restore.yaml` and set fields quoted with `<<ENCRYPTED-SYSTEM-ACCOUNTS>` to your own settings and apply it.
 
 ```bash
 kubectl apply -f examples/postgresql/restore.yaml
@@ -490,6 +506,63 @@ kubectl apply -f examples/postgresql/expose-enable.yaml
 kubectl apply -f examples/postgresql/expose-disable.yaml
 ```
 
+#### Expose SVC using Cluster API
+
+Alternatively, you may expose service by updating `spec.services`
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: pg-cluster
+  namespace: default
+spec:
+  # append service to the list
+  services:
+    # add annotation for cloud loadbalancer if
+    # services.spec.type is LoadBalancer
+    # here we use annotation for alibaba cloud for example
+  - annotations:
+      service.beta.kubernetes.io/alibaba-cloud-loadbalancer-address-type: internet
+    componentSelector: postgresql
+    name: postgresql-vpc
+    serviceName: postgresql-vpc
+    # optional. it specify defined role as selector for the service.
+    # onece specified, service will select and route traffic to Pods with the label
+    # "kubeblocks.io/role=<specified-role-name>".
+    # valid options are: [primary, secondary] for postgresql
+    roleSelector: primary
+    spec:  # defines the behavior of a K8s service.
+      ipFamilyPolicy: PreferDualStack
+      ports:
+      - name: tcp-postgresql
+        # port to expose
+        port: 5432
+        protocol: TCP
+        targetPort: tcp-postgresql
+      type: LoadBalancer
+```
+
+If the service is of type `LoadBalancer`, please add annotations for cloud loadbalancer depending on the cloud provider you are using. Here list annotations for some cloud providers[^3]:
+
+```yaml
+# alibaba cloud
+service.beta.kubernetes.io/alibaba-cloud-loadbalancer-address-type: "internet"  # or "intranet"
+
+# aws
+service.beta.kubernetes.io/aws-load-balancer-type: nlb  # Use Network Load Balancer
+service.beta.kubernetes.io/aws-load-balancer-internal: "true"  # or "false" for internet
+
+# azure
+service.beta.kubernetes.io/azure-load-balancer-internal: "true" # or "false" for internet
+
+# gcp
+networking.gke.io/load-balancer-type: "Internal" # for internal access
+cloud.google.com/l4-rbs: "enabled" # for internet
+```
+
+Please consult your cloud provider for more accurate and update-to-date information.
+
 ### [Upgrade](upgrade.yaml)
 
 Upgrade postgresql cluster to another version
@@ -499,26 +572,19 @@ kubectl apply -f examples/postgresql/upgrade.yaml
 ```
 
 In this example, the cluster will be upgraded to version `14.8.0`.
-You can check the available versions with following command:
 
-```bash
-kubectl get cmpv postgresql
-```
 
-And you can also use `kubectl edit` to upgrade the cluster:
+#### Upgrade using Cluster API
 
-```bash
-kubectl edit cluster pg-cluster
-```
+Alternatively, you may modify the `spec.componentSpecs.serviceVersion` field to the desired version to upgrade the cluster.
 
-And modify the `spec.componentSpecs.serviceVersion` field to the desired version.
-
-You are suggested to check the compatibility of versions before upgrading, using command:
+> [!Warning]
+> Do remember to to check the compatibility of versions before upgrading the cluster.
 
 ```bash
 kubectl get cmpv postgresql -ojson | jq '.spec.compatibilityRules'
 ```
-<details>
+
 Expected output:
 
 ```json
@@ -548,7 +614,146 @@ Expected output:
 Releases are grouped by component definitions, and each group has a list of compatible releases.
 In this example, it shows you can upgrade from version `12.14.0` to `12.14.1` or `12.15.0`, and upgrade from `14.7.2` to `14.8.0`.
 But cannot upgrade from `12.14.0` to `14.8.0`.
-</details>
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: pg-cluster
+  namespace: default
+spec:
+  componentSpecs:
+    - name: postgresql
+      serviceVersion: "14.8.0" # set to the desired version
+      replicas: 2
+      resources:
+```
+
+### Observability
+
+There are various ways to monitor the cluster. Here we use Prometheus and Grafana to demonstrate how to monitor the cluster.
+
+#### Installing the Prometheus Operator
+
+You may skip this step if you have already installed the Prometheus Operator
+
+##### Step 1: Installing the Prometheus Operator
+
+- Create a new namespace for Prometheus Operator using the following command:
+
+```bash
+kubectl create namespace monitoring
+```
+
+- Add the Prometheus Operator Helm repository:
+
+```bash
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+```
+
+- Install the Prometheus Operator using the following command:
+
+```bash
+helm install prometheus-operator prometheus-community/kube-prometheus-stack --namespace monitoring
+```
+
+##### Step 2: Verifying the Deployment
+
+- Verify the deployment of the Prometheus Operator using the following command:
+
+```bash
+kubectl get pods -n monitoring
+```
+
+##### Step 3: Accessing the Prometheus Dashboard
+
+- Check the service endpoints of Prometheus and Grafana.
+
+```bash
+kubectl get svc -n monitoring
+```
+
+- Use port forwarding to access the Prometheus dashboard locally
+
+```bash
+kubectl port-forward svc/prometheus-operator-kube-p-prometheus -n monitoring 9090:9090
+```
+
+And you can access the Prometheus dashboard by opening "http://localhost:9090" in your browser.
+
+- Similarly, use port forwarding to access the Grafana dashboard locally
+
+```bash
+kubectl port-forward svc/prometheus-operator-grafana -n monitoring 3000:80
+```
+
+and you can access the Grafana dashboard by opening "http://localhost:3000" in your browser.
+
+To login, you may retrieve the credential from the secret:
+
+```bash
+kubectl get secrets prometheus-operator-grafana -n monitoring -oyaml
+```
+
+#### Create a Cluster
+
+Create a new cluster with following command:
+
+> [!Note]
+> Make sure `spec.componentSpecs.disableExporter` is set to `false` when creating cluster.
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: pg-cluster
+  namespace: default
+spec:
+  componentSpecs:
+    - name: postgresql
+      serviceVersion: "14.7.2"
+      disableExporter: false # set to `false` to enable exporter
+```
+
+```bash
+kubectl apply -f examples/postgresql/cluster.yaml
+```
+
+When the cluster is running, each POD should have a sidecar container, named `exporter` running the postgres-exporter.
+
+#### Create PodMonitor
+
+##### Step 1. Query ScrapePath and ScrapePort
+
+You can retrieve the `scrapePath` and `scrapePort` from pod's exporter container.
+
+```bash
+kubectl get po pg-cluster-postgresql-0 -oyaml | yq '.spec.containers[] | select(.name=="exporter") | .ports '
+```
+
+And the expected output is like:
+
+```text
+- containerPort: 9187
+  name: http-metrics
+  protocol: TCP
+```
+
+##### Step 2. Accessing the Grafana Dashboard
+
+Apply the `PodMonitor` file to monitor the cluster:
+
+```bash
+kubectl apply -f examples/postgresql/pod-monitor.yaml
+```
+
+##### Step 3. Accessing the Grafana Dashboard
+
+Login to the Grafana dashboard and import the dashboard.
+
+There is a pre-configured dashboard for PostgreSQL under the `APPS / PostgreSQL` folder in the Grafana dashboard. And more dashboards can be found in the Grafana dashboard store[^5].
+
+> [!Note] Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
 
 ### Delete
 
@@ -560,5 +765,10 @@ kubectl patch cluster pg-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' -
 kubectl delete cluster pg-cluster
 ```
 
+## Reference
+
 [^1]: pg_basebackup, https://www.postgresql.org/docs/current/app-pgbasebackup.html
 [^2]: wal-g https://github.com/wal-g/wal-g
+[^3]: Internal load balancer: https://kubernetes.io/docs/concepts/services-networking/service/#internal-load-balancer
+[^4]: Volume Expansion: https://kubernetes.io/blog/2022/05/05/volume-expansion-ga/
+[^5]: Grafana Dashboard Store: https://grafana.com/grafana/dashboards/

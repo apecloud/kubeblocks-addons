@@ -30,12 +30,12 @@ spec:
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
       # Valid options are [true, false]
-      disableExporter: true
+      disableExporter: false
       # Specifies Labels to override or add for underlying Pods, PVCs, Account & TLS
       # Secrets, Services Owned by Component.
       labels:
         # PostgreSQL's CMPD specifies `KUBERNETES_SCOPE_LABEL=apps.kubeblocks.postgres.patroni/scope` through ENVs
-        # Te KUBERNETES_SCOPE_LABEL is used to define the label key that Patroni will use to tag Kubernetes resources.
+        # The KUBERNETES_SCOPE_LABEL is used to define the label key that Patroni will use to tag Kubernetes resources.
         # This helps Patroni identify which resources belong to the specified scope (or cluster) used to define the label key
         # that Patroni will use to tag Kubernetes resources.
         # This helps Patroni identify which resources belong to the specified scope (or cluster).

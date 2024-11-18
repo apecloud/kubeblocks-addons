@@ -1,8 +1,19 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: apecloud-postgresql-scripts
+  name: {{ include "apecloud-postgresql.scriptsTemplate" . }}
   labels:
     {{- include "apecloud-postgresql.labels" . | nindent 4 }}
 data:
   {{- include "apecloud-postgresql.extend.scripts" . | nindent 2 }}
+
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "apecloud-postgresql.reloader.scripts" . }}
+  labels:
+    {{- include "apecloud-postgresql.labels" . | nindent 4 }}
+data:
+  {{- include "apecloud-postgresql.extend.reload.scripts" . | nindent 2 }}

@@ -6,8 +6,8 @@ metadata:
 spec:
   # Specifies the name of the ClusterDefinition to use when creating a Cluster.
   clusterDefinitionRef: neon
-  # Refers to the ClusterVersion name. Deprecated since v0.9, use ComponentVersion instead. This field is maintained for backward compatibility and its use is discouraged. Existing usage should be updated to the current preferred approach to avoid compatibility issues in future releases.
-  clusterVersionRef: neon-pg14-1.0.0
+  # Specifies the name of the Topology defined in ClusterDefinition to use when creating a Cluster.
+  topology: default
   # Specifies the behavior when a Cluster is deleted.
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
   # - `Halt`: Deletes Cluster resources like Pods and Services but retains Persistent Volume Claims (PVCs), allowing for data preservation while stopping other operations.
@@ -18,8 +18,7 @@ spec:
   # Note: `shardingSpecs` and `componentSpecs` cannot both be empty; at least one must be defined to configure a cluster.
   # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
-    - name: neon-storbroker
-      componentDefRef: neon-storbroker
+    - name: neon-broker
       replicas: 1
       serviceAccountName: kb-neon-cluster
       resources:
@@ -38,7 +37,6 @@ spec:
               requests:
                 storage: 20Gi
     - name: neon-safekeeper
-      componentDefRef: neon-safekeeper
       replicas: 3
       resources:
         limits:
@@ -57,7 +55,6 @@ spec:
               requests:
                 storage: 20Gi
     - name: neon-pageserver
-      componentDefRef: neon-pageserver
       replicas: 1
       resources:
         limits:

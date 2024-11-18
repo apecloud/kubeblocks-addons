@@ -1,7 +1,9 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: tidb-7
+  name: {{ include "tidb.tidb7.compDefName" . }}
+  annotations:
+    {{- include "tidb.multiVersionAnnotation" . | nindent 4}}
   labels:
     {{- include "tidb.labels" . | nindent 4 }}
 spec:
@@ -10,23 +12,40 @@ spec:
   serviceKind: MySQL
   updateStrategy: BestEffortParallel
   vars:
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: DOMAIN
+      value: "$(CLUSTER_NAMESPACE).svc{{ .Values.clusterDomain }}"
+    - name: TIDB_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
     - name: PD_HOST
       valueFrom:
         serviceVarRef:
-          compDef: tidb-pd-7
+          compDef: {{ include "tidb.pd7.compDefName" . }}
           host: Required
     - name: PD_PORT
       valueFrom:
         serviceVarRef:
-          compDef: tidb-pd-7
+          compDef: {{ include "tidb.pd7.compDefName" . }}
           port:
             name: client
     - name: PD_ADDRESS
-      value: "$(PD_HOST).$(KB_NAMESPACE).svc{{ .Values.clusterDomain }}:$(PD_PORT)"
+      value: "$(PD_HOST).$(CLUSTER_NAMESPACE).svc{{ .Values.clusterDomain }}:$(PD_PORT)"
   runtime:
     containers:
       - name: tidb
         imagePullPolicy: IfNotPresent
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
         ports:
           - containerPort: 4000
             name: client
@@ -38,7 +57,7 @@ spec:
           - |
             echo "start tidb..."
             exec /tidb-server --store=tikv \
-            --advertise-address=${KB_POD_FQDN}{{ .Values.clusterDomain }} \
+            --advertise-address=${CURRENT_POD_NAME}.${TIDB_COMPONENT_NAME}-headless.${DOMAIN} \
             --host=0.0.0.0 \
             --path=${PD_ADDRESS} \
             --log-slow-query=/var/log/tidb/slowlog \

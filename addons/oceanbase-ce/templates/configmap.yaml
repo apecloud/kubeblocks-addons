@@ -1,20 +1,37 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ printf "%s-config" (include "oceanbase-release.name" .) }}
+  name: {{ include "oceanbase-ce.cm.config" . }}
   labels:
-    {{- include "oceanbase.labels" . | nindent 4 }}
+    {{- include "oceanbase-ce.labels" . | nindent 4 }}
 data:
   oceanbase.conf: |-
     {{- .Files.Get "config/oceanbase-config.tpl" | nindent 4 }}
-
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ printf "%s-sysvars" (include "oceanbase-release.name" .) }}
+  name: {{ include "oceanbase-ce.cm.sysvars" . }}
   labels:
-    {{- include "oceanbase.labels" . | nindent 4 }}
+    {{- include "oceanbase-ce.labels" . | nindent 4 }}
 data:
   oceanbase.sysvars: |-
     {{- .Files.Get "config/oceanbase-sysvars.tpl" | nindent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "oceanbase-ce.scripts.bootscripts" . }}
+  labels:
+    {{- include "oceanbase-ce.labels" . | nindent 4 }}
+data:
+  {{- include "oceanbase-ce.extend.scripts" . | nindent 2 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "oceanbase-ce.scripts.reload" . }}
+  labels:
+    {{- include "oceanbase-ce.labels" . | nindent 4 }}
+data:
+  {{- include "oceanbase-ce.extend.reload.scripts" . | nindent 2 }}

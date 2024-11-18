@@ -4,22 +4,12 @@
     "properties": {
         "version": {
             "title": "Version",
-            "description": "Cluster version.",
+            "description": "Version.",
             "type": "string",
-            "default": "ob-ce-4.3.0.1-100000242024032211"
-        },
-        "obClusters": {
-            "title": "ObClusters",
-            "description": "OceanBase Clusters, for standalone mode, set to 1, for primary-secondary mode, set to 2.",
-            "type": [
-                "integer"
-            ],
-            "default": 2,
-            "minimum": 1,
-            "maximum": 2
+            "default": "4.3.0"
         },
         "zoneCount": {
-            "title": "ZoneCount",
+            "title": "ZontCount",
             "description": "OceanBase Zones.",
             "type": [
               "integer"
@@ -34,7 +24,6 @@
             "type": [
               "integer"
           ],
-            "default": { "$data": "/zoneCount" },
             "minimum": 1,
             "maximum": 6
         },
@@ -46,7 +35,7 @@
                 "string"
             ],
             "default": 8,
-            "minimum": 2,
+            "minimum": 3,
             "maximum": 128,
             "multipleOf": 0.5
         },
@@ -58,7 +47,7 @@
                 "string"
             ],
             "default": 16,
-            "minimum": 2,
+            "minimum": 4,
             "maximum": 1024
         },
         "datafile": {
@@ -91,12 +80,31 @@
                 "string"
             ],
             "default": 20,
-            "minimum": 1,
+            "minimum": 10,
             "maximum": 100
+        },
+        "hostnetwork": {
+            "title": "Host Network",
+            "description": "Enable or Disable Pod Host Network.",
+            "type": "string",
+            "default": "enabled",
+            "enum": [
+                "enabled",
+                "disabled"
+            ]
+        },
+        "clusterIP": {
+            "title": "Cluster IP",
+            "description": "Enable or Disable ClusterIP SVC IP as POD IP.",
+            "type": "string",
+            "default": "enabled",
+            "enum": [
+                "enabled",
+                "disabled"
+            ]
         }
     },
     "required": [
-        "obClusters",
         "zoneCount",
         "replicas"
     ]

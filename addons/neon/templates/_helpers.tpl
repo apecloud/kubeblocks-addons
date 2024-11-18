@@ -51,14 +51,10 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+Common annotations
 */}}
-{{- define "neon.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "neon.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
+{{- define "neon.annotations" -}}
+helm.sh/resource-policy: keep
 {{- end }}
 
 {{/*
@@ -82,3 +78,13 @@ Generate config configmap
 {{- end }}
 
 
+
+
+
+{{/*
+Define image
+*/}}
+
+{{- define "neon.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}
+{{- end }}

@@ -39,6 +39,13 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
+These annotations ensure that resources from previous version won't be cleaned by helm during an upgrade.
+*/}}
+{{- define "tidb.multiVersionAnnotation" -}}
+helm.sh/resource-policy: keep
+{{- end }}
+
+{{/*
 Common labels
 */}}
 {{- define "tidb.labels" -}}
@@ -51,7 +58,7 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
 {{- define "tidb.cmScriptsName" -}}
-tidb-scripts
+tidb-scripts-{{ .Chart.Version }}
 {{- end -}}
 
 {{- define "tidb.tidb.configTplName" -}}
@@ -77,3 +84,28 @@ tikv-config-constraints
 {{- define "tidb.pd.configConstraintName" -}}
 tidb-pd-config-constraints
 {{- end -}}
+
+{{- define "tidb.pd7.cmpdRegexpPattern" -}}
+^tidb-pd-7-
+{{- end -}}
+
+{{- define "tidb.pd7.compDefName" -}}
+tidb-pd-7-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "tidb.tikv7.cmpdRegexpPattern" -}}
+^tikv-7-
+{{- end -}}
+
+{{- define "tidb.tikv7.compDefName" -}}
+tikv-7-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "tidb.tidb7.cmpdRegexpPattern" -}}
+^tidb-7-
+{{- end -}}
+
+{{- define "tidb.tidb7.compDefName" -}}
+tidb-7-{{ .Chart.Version }}
+{{- end -}}
+

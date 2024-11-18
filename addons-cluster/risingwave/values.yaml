@@ -6,14 +6,6 @@ fullnameOverride: ""
 ##
 terminationPolicy: Delete
 
-## Service configurations
-##
-service:
-  ## @param service.type RisingWave SQL frontend service type, valid options are ExternalName, ClusterIP, NodePort, and LoadBalancer.
-  ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
-  ##
-  type: ClusterIP
-
 serviceAccount:
   ## @param serviceAccount.name is the name of the service account to use.
   ## Used by all RisingWave component pods.

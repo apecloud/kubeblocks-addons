@@ -71,7 +71,7 @@ hummock+s3://{{ .Values.risingwave.stateStore.s3 }}
 {{/*
 Cluster envs.
 */}}
-{{- define "risingwave-cluster.envs" }}
+{{- define "risingwave-cluster.envs" -}}
 - name: RW_STATE_STORE
   value: hummock+s3://{{ .Values.risingwave.stateStore.s3.bucket }}
 - name: AWS_REGION
@@ -97,5 +97,5 @@ Cluster envs.
 - name: RW_ETCD_ENDPOINTS
   value: {{ .Values.risingwave.metaStore.etcd.endpoints }}
 - name: RW_ETCD_AUTH
-  value: {{ .Values.risingwave.metaStore.etcd.authentication.enabled}}
+  value: {{ .Values.risingwave.metaStore.etcd.authentication.enabled | quote }}
 {{- end }}

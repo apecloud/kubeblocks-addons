@@ -2,9 +2,9 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-## @param terminationPolicy define Cluster termination policy. One of DoNotTerminate, Halt, Delete, WipeOut.
+## @param terminationPolicy define Cluster termination policy. One of DoNotTerminate, Delete, WipeOut.
 ##
-terminationPolicy: Halt
+terminationPolicy: Delete
 
 # @param appVersionOverride 
 # if not empty, it will override the default tidb version
