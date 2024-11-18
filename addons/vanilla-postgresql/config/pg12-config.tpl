@@ -69,10 +69,6 @@ client_min_messages = 'notice'
 # commit_delay = '20'
 commit_siblings = '5'
 constraint_exclusion = 'partition'
-# extension: pg_cron
-cron.database_name = 'postgres'
-cron.log_statement = 'on'
-cron.max_running_jobs = '32'
 cursor_tuple_fraction = '0.1'
 datestyle = 'ISO,YMD'
 deadlock_timeout = '1000ms'
@@ -137,16 +133,10 @@ log_connections = 'False'
 log_disconnections = 'False'
 log_duration = 'False'
 log_executor_stats = 'False'
-{{- block "logsBlock" . }}
-{{- if hasKey $.component "enabledLogs" }}
-{{- if mustHas "running" $.component.enabledLogs }}
 logging_collector = 'True'
 log_destination = 'csvlog'
 log_directory = 'log'
 log_filename = 'postgresql-%Y-%m-%d.log'
-{{ end -}}
-{{ end -}}
-{{ end }}
 # log_lock_waits = 'True'
 log_min_duration_statement = '1000'
 log_parser_stats = 'False'
@@ -198,29 +188,13 @@ pg_stat_statements.save = 'False'
 pg_stat_statements.track = 'top'
 # pg_stat_statements.track_planning = 'False'
 pg_stat_statements.track_utility = 'False'
-# extension: pgaudit
-pgaudit.log_catalog = 'True'
-pgaudit.log_level = 'log'
-pgaudit.log_parameter = 'False'
-pgaudit.log_relation = 'False'
-pgaudit.log_statement_once = 'False'
-# pgaudit.role = ''
-#extension: pglogical
-pglogical.batch_inserts = 'True'
-pglogical.conflict_log_level = 'log'
-pglogical.conflict_resolution = 'apply_remote'
-# pglogical.extra_connection_options = ''
-pglogical.synchronous_commit = 'False'
-pglogical.use_spi = 'False'
 plan_cache_mode = 'auto'
 quote_all_identifiers = 'False'
 random_page_cost = '1.1'
 row_security = 'True'
 session_replication_role = 'origin'
-# extension: sql_firewall
-sql_firewall.firewall = 'disable'
 shared_buffers = '{{ printf "%d%s" $shared_buffers $buffer_unit }}'
-# shared_preload_libraries = 'pg_stat_statements,auto_explain,bg_mon,pgextwlist,pg_auth_mon,set_user,pg_cron,pg_stat_kcache'
+shared_preload_libraries = 'pg_stat_statements,auto_explain'
 {{- if $.component.tlsConfig }}
 {{- $ca_file := getCAFile }}
 {{- $cert_file := getCertFile }}
@@ -244,9 +218,6 @@ temp_buffers = '8MB'
 {{- if gt $phy_memory 0 }}
 temp_file_limit = '{{ printf "%dkB" ( div $phy_memory 1024 ) }}'
 {{- end }}
-# extension: timescaledb
-# timescaledb.max_background_workers = '6'
-# timescaledb.telemetry_level = 'off'
 # TODO timezone
 # timezone=Asia/Shanghai
 track_activity_query_size = '4096'

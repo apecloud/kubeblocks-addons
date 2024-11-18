@@ -157,16 +157,10 @@ effective_cache_size = '{{ printf "%dMB" ( div ( div $phy_memory 16384 ) 128 ) }
 #------------------------------------------------------------------------------
 
 # include = '/etc/postgresql/logging.conf'
-{{- block "logsBlock" . }}
-{{- if hasKey $.component "enabledLogs" }}
-{{- if mustHas "running" $.component.enabledLogs }}
 logging_collector = 'True'
 log_destination = 'csvlog'
 log_directory = 'log'
 log_filename = 'postgresql-%Y-%m-%d.log'
-{{ end -}}
-{{ end -}}
-{{ end }}
 
 # - What to Log -
 log_line_prefix = '%h %m [%p] %q%u@%d '
