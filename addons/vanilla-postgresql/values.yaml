@@ -40,6 +40,10 @@ image:
     repository: apecloud/syncer
     tag: "0.3.6"
 
+  dbctl:
+    repository: apecloud/dbctl
+    tag: "0.1.6"
+
 dataMountPath: /postgresql/volume_data
 confMountPath: /postgresql/mount_conf
 

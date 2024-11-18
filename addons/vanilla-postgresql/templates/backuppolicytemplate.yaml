@@ -1,4 +1,4 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: BackupPolicyTemplate
 metadata:
   name: vanilla-postgresql-backup-policy-template
@@ -8,34 +8,36 @@ metadata:
   annotations:
     dataprotection.kubeblocks.io/is-default-policy-template: "true"
 spec:
-  backupPolicies:
-  - componentDefs:
-      - vanilla-postgresql-\d+
-    backoffLimit: 0
-    backupMethods:
+  serviceKind: PostgreSQL
+  compDefs:
+    - vanilla-postgresql-\d+
+  target:
+    role: secondary
+    fallbackRole: primary
+    account: postgres
+  backupMethods:
     - name: vanilla-pg-basebackup
       snapshotVolumes: false
       actionSetName: {{ include "vanilla-postgresql.actionset.basebackup" . }}
-      envMapping:
-        - key: IMAGE_TAG
+      env:
+        - name: IMAGE_TAG
           valueFrom:
-            componentDef:
-              - names: [ {{ include "vanilla-postgresql12.compDefName" . }} ]
-                mappingValue: "{{ .Values.image.tags.major12.minor15 }}"
-              - names: [ {{ include "vanilla-postgresql14.compDefName" . }} ]
-                mappingValue: "{{ .Values.image.tags.major14.minor07 }}"
-              - names: [ {{ include "vanilla-postgresql15.compDefName" . }} ]
-                mappingValue: "{{ .Values.image.tags.major15.minor07 }}"
+            versionMapping:
+              - serviceVersions:
+                  - "12"
+                mappedValue: "{{ .Values.image.tags.major12.minor15 }}"
+              - serviceVersions:
+                  - "14"
+                mappedValue: "{{ .Values.image.tags.major14.minor07 }}"
+              - serviceVersions:
+                  - "15"
+                mappedValue: "{{ .Values.image.tags.major15.minor07 }}"
       targetVolumes:
         volumeMounts:
           - name: data
             mountPath: {{ .Values.dataMountPath }}
-    schedules:
-      - backupMethod: vanilla-pg-basebackup
-        enabled: false
-        cronExpression: "0 18 * * *"
-        retentionPeriod: 7d
-    target:
-      role: secondary
-      fallbackRole: primary
-      account: postgres
+  schedules:
+    - backupMethod: pg-basebackup
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d

@@ -264,9 +264,16 @@ vars:
         password: Required
 lifecycleActions:
   roleProbe:
-    builtinHandler: postgresql
     periodSeconds: 1
     timeoutSeconds: 1
+    exec:
+      container: postgresql
+      command:
+        - /tools/dbctl
+        - --config-path
+        - /tools/config/dbctl/components
+        - postgresql
+        - getrole
 systemAccounts:
   - name: {{ $rootAccount }}
     initAccount: true
@@ -285,10 +292,22 @@ initContainers:
     command:
       - sh
       - -c
-      - "cp -r /bin/syncer /kubeblocks/"
+      - "cp -r /bin/syncer /tools/"
     volumeMounts:
-      - name: kubeblocks
-        mountPath: /kubeblocks
+      - name: tools
+        mountPath: /tools
+  - command:
+      - cp
+      - -r
+      - /bin/dbctl
+      - /config
+      - /tools/
+    image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
+    imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+    name: init-dbctl
+    volumeMounts:
+      - mountPath: /tools
+        name: tools
 securityContext:
   runAsUser: 0
   fsGroup: 103
@@ -309,7 +328,7 @@ volumes:
   securityContext:
     runAsUser: 0
   command:
-    - /kubeblocks/syncer
+    - /tools/syncer
     - --port
     - "3601"
     - --
@@ -325,8 +344,8 @@ volumes:
       mountPath: {{ .Values.confMountPath }}
     - name: scripts
       mountPath: /kb-scripts
-    - name: kubeblocks
-      mountPath: /kubeblocks
+    - mountPath: /tools
+      name: tools
   ports:
     - name: tcp-postgresql
       containerPort: 5432
@@ -345,6 +364,21 @@ volumes:
       value: $(POSTGRES_USER)
     - name: PGPASSWORD
       value: $(POSTGRES_PASSWORD)
+    - name: MY_POD_NAME
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: metadata.name
+    - name: MY_POD_UID
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: metadata.uid
+    - name: MY_POD_IP
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: status.podIP
     # used by syncer
     - name: KB_ENGINE_TYPE
       value: vanilla-postgresql

@@ -4,7 +4,7 @@ metadata:
   name: {{ include "kblib.clusterName" . }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
-  clusterDefinitionRef: vanilla-postgresql
+  clusterDef: vanilla-postgresql
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   topology: vanilla-postgresql
   componentSpecs:
@@ -13,6 +13,4 @@ spec:
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
       replicas: {{ .Values.replicas }}
-      enabledLogs:
-        - running
       serviceVersion: {{ .Values.version }}
