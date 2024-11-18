@@ -10,7 +10,7 @@ image:
   tag: 5.0.14 
   syncer:
     repository: apecloud/syncer
-    tag: "0.3.1"
+    tag: "0.3.7"
 
   # refer: https://github.com/apecloud/dbctl/blob/main/docker/Dockerfile
   dbctl:
@@ -57,8 +57,6 @@ dataMountPath: /data/mongodb
 ## if you install multiple releases of this chart.
 ## If specified, the cluster definition will use it as name.
 resourceNamePrefix: ""
-
-useHostNetwork: false
 
 ## @param cmpdVersionPrefix for each ComponentDefinition resources name created by this chart, that can avoid name conflict
 ## If specified, the component definition will use it as prefix.
