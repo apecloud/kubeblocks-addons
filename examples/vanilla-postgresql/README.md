@@ -25,10 +25,6 @@ Vanilla-PostgreSQL is compatible with the native PostgreSQL kernel, enabling it 
 
 ## Prerequisites
 
-
-
-## Prerequisites
-
 This example assumes that you have a Kubernetes cluster installed and running, and that you have installed the kubectl command line tool and helm somewhere in your path. Please see the [getting started](https://kubernetes.io/docs/setup/)  and [Installing Helm](https://helm.sh/docs/intro/install/) for installation instructions for your platform.
 
 Also, this example requires kubeblocks installed and running. Here is the steps to install kubeblocks, please replace "`$kb_version`" with the version you want to use.
