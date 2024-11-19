@@ -3,7 +3,7 @@ kind: Cluster
 metadata:
   name: {{ include "kblib.clusterName" . }}
   namespace: {{ .Release.Namespace }}
-  labels: 
+  labels:
     {{ include "kblib.clusterLabels" . | nindent 4 }}
     auditLogEnabled: "{{ .Values.auditLogEnabled }}"
   {{- if and (eq .Values.mode "raftGroup") .Values.proxyEnabled }}
