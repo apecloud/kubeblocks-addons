@@ -1,6 +1,11 @@
 apiVersion: v2
 name: polardbx-cluster
 description: PolarDB-X Cluster Helm Chart for KubeBlocks.
+dependencies:
+  - name: kblib
+    version: 0.1.0
+    repository: file://../kblib
+    alias: extra
 
 type: application
 version: 0.1.0
