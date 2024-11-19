@@ -56,3 +56,5 @@ if [ ! -z "$SENTINEL_PASSWORD" ]; then
   echo "sentinel sentinel-user $SENTINEL_USER" >> /etc/sentinel/redis-sentinel.conf
   echo "sentinel sentinel-pass $SENTINEL_PASSWORD" >> /etc/sentinel/redis-sentinel.conf
 fi
+
+{{- /* $primary_svc := printf "%s-%s.%s.svc.cluster.local" $clusterName $redis_component.name $namespace */}}
