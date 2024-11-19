@@ -23,55 +23,75 @@ Describe "ZooKeeper Startup Bash Script Tests"
   AfterAll 'cleanup'
 
   Describe "get_zookeeper_mode()"
-    It "returns standalone mode"
-      java() {
+    It "java returns standalone mode"
+      get_zk_mode_from_script() {
         echo "Mode: standalone"
+      }
+      command() {
+        return 1
       }
 
       When call get_zookeeper_mode
       The output should eq "standalone"
     End
 
-    It "returns leader mode"
-      java() {
+    It "java returns leader mode"
+      get_zk_mode_from_script() {
         echo "Mode: leader"
+      }
+      command() {
+        return 1
       }
 
       When call get_zookeeper_mode
       The output should eq "leader"
     End
 
-    It "returns follower mode"
-      java() {
+    It "java returns follower mode"
+      get_zk_mode_from_script() {
         echo "Mode: follower"
+      }
+      command() {
+        return 1
       }
 
       When call get_zookeeper_mode
       The output should eq "follower"
     End
-  End
 
-  Describe "load_zk_env()"
-    setup() {
-      touch $zk_env_file
-      echo "#!/bin/bash" > $zk_env_file
-      echo "export ZOO_LOG_DIR=/var/log/zookeeper" >> $zk_env_file
-      echo "export ZOO_LOG4J_PROP=INFO,ROLLINGFILE" >> $zk_env_file
-      chmod +x $zk_env_file
-    }
-    Before "setup"
+    It "nc returns standalone mode"
+      nc() {
+        echo "Mode: standalone"
+      }
 
-    un_setup() {
-      rm -rf $zk_env_file
-      unset ZOO_LOG_DIR
-      unset ZOO_LOG4J_PROP
-    }
-    After "un_setup"
+      command() {
+        return 0
+      }
 
-    It "loads zkEnv.sh and sets environment variables"
-      When call load_zk_env
-      The variable ZOO_LOG_DIR should eq "/var/log/zookeeper"
-      The variable ZOO_LOG4J_PROP should eq "INFO,ROLLINGFILE"
+      When call get_zookeeper_mode
+      The output should eq "standalone"
+    End
+
+    It "nc returns leader mode"
+      nc() {
+        echo "Mode: leader"
+      }
+      command() {
+        return 0
+      }
+      When call get_zookeeper_mode
+      The output should eq "leader"
+    End
+
+    It "nc returns follower mode"
+      nc() {
+        echo "Mode: follower"
+      }
+      command() {
+        return 0
+      }
+      When call get_zookeeper_mode
+      The output should eq "follower"
     End
   End
 

@@ -1,5 +1,8 @@
 #!/bin/bash
 
+get_zk_mode_from_script() {
+  $ZOOBINDIR/zkServer.sh status
+}
 
 get_zookeeper_mode() {
   if command -v nc >/dev/null 2>&1; then
@@ -8,7 +11,7 @@ get_zookeeper_mode() {
     echo "$stat" | awk '{print $2}'
   else
     local stat
-    stat=$($ZOOBINDIR/zkServer.sh status)
+    stat=$(get_zk_mode_from_script)
     echo "$stat" | grep "Mode:" | awk '{print $2}'
   fi
 }
