@@ -2,6 +2,31 @@
 
 Vanilla-PostgreSQL is compatible with the native PostgreSQL kernel, enabling it to quickly provide HA solutions for various variants based on the native PostgreSQL kernel.
 
+## Features In KubeBlocks
+
+### Lifecycle Management
+
+| Topology | Horizontal scaling | Vertical scaling | Expand volume | Restart | Stop/Start | Configure | Expose | Switchover |
+|----------|-------------------|------------------|---------------|---------|------------|-----------|---------|------------|
+| vanilla-postgresql | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+
+### Backup and Restore
+
+| Feature | Method | Description |
+|---------|---------|-------------|
+| Base Backup | vanilla-pg-basebackup | uses `pg_basebackup`, a PostgreSQL utility to create a base backup |
+### Versions
+
+| Major Versions | Description       |
+|---------------|-------------------|
+| 12 | 12.15.0           |
+| 14 | 14.7.0            |
+| 15 | 15.7.0, 15.6.1138 |
+
+## Prerequisites
+
+
+
 ## Prerequisites
 
 This example assumes that you have a Kubernetes cluster installed and running, and that you have installed the kubectl command line tool and helm somewhere in your path. Please see the [getting started](https://kubernetes.io/docs/setup/)  and [Installing Helm](https://helm.sh/docs/intro/install/) for installation instructions for your platform.
