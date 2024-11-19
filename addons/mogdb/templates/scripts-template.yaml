@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: mogdb-scripts
+  name: {{ include "mogdb.scriptsTplName" . }}
   labels:
     {{- include "mogdb.labels" . | nindent 4 }}
 data:

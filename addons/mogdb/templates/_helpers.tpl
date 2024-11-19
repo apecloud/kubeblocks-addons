@@ -51,6 +51,48 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
+Common mogdb annotations
+*/}}
+{{- define "mogdb.annotations" -}}
+helm.sh/resource-policy: keep
+{{- end }}
+
+{{/*
+Define mogdb component definition name
+*/}}
+{{- define "mogdb.cmpdName" -}}
+mogdb-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define mogdb component definition regular expression name prefix
+*/}}
+{{- define "mogdb.cmpdRegexpPattern" -}}
+^mogdb-
+{{- end -}}
+
+{{/*
+Define mogdb scripts template name
+*/}}
+{{- define "mogdb.scriptsTplName" -}}
+mogdb-scripts-tpl
+{{- end -}}
+
+{{/*
+Define mogdb config template name
+*/}}
+{{- define "mogdb.configTplName" -}}
+mogdb-configuration-tpl
+{{- end -}}
+
+{{/*
+Define mogdb config constraint name
+*/}}
+{{- define "mogdb.constraintTplName" -}}
+mogdb-cc
+{{- end -}}
+
+{{/*
 Generate scripts configmap
 */}}
 {{- define "mogdb.extend.scripts" -}}
