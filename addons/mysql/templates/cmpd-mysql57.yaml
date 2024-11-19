@@ -122,4 +122,6 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: status.podIP
+      - name: mysql-exporter
+        {{- include "mysql.spec.runtime.exporter" . | nindent 8 }}
 
