@@ -233,7 +233,7 @@ spec:
             command:
               - sh
               - -c
-              - /scripts/redis-ping.sh 1
+              - /scripts/redis-ping.sh
         lifecycle:
           preStop:
             exec:

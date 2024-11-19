@@ -1,16 +1,17 @@
 #!/bin/sh
+
 set -e
-if [ ! -z "$REDIS_DEFAULT_PASSWORD" ]; then
+
+if [ -n "$REDIS_DEFAULT_PASSWORD" ]; then
   cmd="redis-cli -h localhost -p 6379 -a $REDIS_DEFAULT_PASSWORD ping"
 else
   cmd="redis-cli -h localhost -p 6379 ping"
 fi
-response=$(timeout -s 3 $1 $cmd)
-if [ $? -eq 124 ]; then
-  echo "Timed out"
-  exit 1
-fi
-if [ "$response" != "PONG" ]; then
+
+response=$($cmd)
+status=$?
+if [ "$response" != "PONG" ] || [ $status -ne 0 ]; then
   echo "$response"
   exit 1
 fi
+echo "redis cluster server is running."
