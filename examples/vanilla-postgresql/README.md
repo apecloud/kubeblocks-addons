@@ -263,13 +263,13 @@ Alternatively, you can update the `BackupSchedule` to enable the method `vanilla
 
 To restore a new cluster from a Backup:
 
-1. Get the list of accounts and their passwords from the backup:
+Get the list of accounts and their passwords from the backup:
 
 ```bash
 kubectl get backup vanpg-cluster-pg-basebackup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
 ```
 
-1. Update `examples/vanilla-postgresql/restore.yaml` and set fields quoted with `<<ENCRYPTED-SYSTEM-ACCOUNTS>` to your own settings and apply it.
+Update `examples/vanilla-postgresql/restore.yaml` and set fields quoted with `<<ENCRYPTED-SYSTEM-ACCOUNTS>` to your own settings and apply it.
 
 ```bash
 kubectl apply -f examples/vanilla-postgresql/restore.yaml
@@ -295,7 +295,7 @@ kubectl apply -f examples/vanilla-postgresql/expose-disable.yaml
 ### Delete
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 ```bash
-kubectl patch cluster offpg-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster vanpg-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster offpg-cluster
+kubectl delete cluster vanpg-cluster
 ```
