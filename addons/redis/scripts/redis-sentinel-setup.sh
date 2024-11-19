@@ -39,6 +39,7 @@ set -e
 {{- /* build primary pod message, because currently does not support cross-component acquisition of environment variables, the service of the redis master node is assembled here through specific rules  */}}
 {{- $primary_pod = printf "%s-%s-%d.%s-%s-headless.%s.svc.cluster.local" $clusterName $redis_component.name $candidate_instance_index $clusterName $redis_component.name $namespace }}
 {{- $sentinel_monitor := printf "%s-%s %s" $clusterName $redis_component.name $primary_pod }}
+# shellcheck disable=SC1073
 {{- /* build sentinel config */}}
 echo "port 26379" > /etc/sentinel/redis-sentinel.conf
 echo "sentinel resolve-hostnames yes" >> /etc/sentinel/redis-sentinel.conf
