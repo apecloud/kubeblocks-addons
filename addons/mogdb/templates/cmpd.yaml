@@ -76,7 +76,6 @@ spec:
     - name: MOGDB_COMPONENT_NAME
       valueFrom:
         componentVarRef:
-          compDef: minio
           optional: false
           componentName: Required
     - name: MOGDB_COMPONENT_SHORT_NAME
