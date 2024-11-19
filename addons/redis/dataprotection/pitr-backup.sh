@@ -4,6 +4,7 @@ export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 connect_url="redis-cli -h ${DP_DB_HOST} -p ${DP_DB_PORT} -a ${DP_DB_PASSWORD}"
 global_last_purge_time=$(date +%s)
 global_aof_last_modify_time=0
+global_acl_last_modify_time=0
 global_old_size=0
 
 AOF_DIR=$(${connect_url} CONFIG GET appenddirname | awk 'NR==2')
@@ -99,7 +100,7 @@ function archive_pair_files() {
 
   local target_file="${backup_files_prefix}.tar.zst"
   # backup files include manifest file, incr file, base file, users.acl
-  # and we retaines the original directory hierarchy, which makes the recovery process simpler
+  # and we retains the original directory hierarchy, which makes the recovery process simpler
   tar -cvf - "$(generate_backup_manifest)" -C "${DATA_DIR}" \
     "${AOF_DIR}/$(basename "${incr_file}")" "${AOF_DIR}/$(basename "${base_file}")" \
     "users.acl" | datasafed push -z zstd - "${target_file}"
@@ -127,7 +128,7 @@ function update_aof_file() {
     datasafed push "${base_file}" "${backup_files_prefix}.dir/${AOF_DIR}/$(basename "${base_file}")"
     datasafed push "${backup_manifest}" "${backup_files_prefix}.dir/${backup_manifest}"
     datasafed push "${DATA_DIR}/users.acl" "${backup_files_prefix}.dir/users.acl"
-    DP_log "Upload file: $base_file users.acl"
+    DP_log "Upload file: $base_file $backup_manifest users.acl"
   fi
 
   # keep updating the latest aof file
@@ -136,6 +137,15 @@ function update_aof_file() {
     datasafed push "${incr_file}" "${backup_files_prefix}.dir/${AOF_DIR}/$(basename "${incr_file}")"
     global_aof_last_modify_time=${aof_modify_time}
     DP_log "Update file: $incr_file"
+  fi
+
+  # keep updating the latest acl file
+  local acl_file="${DATA_DIR}/users.acl"
+  local acl_modify_time=$(stat -c %Y "${acl_file}")
+  if [ "${acl_modify_time}" -gt "${global_acl_last_modify_time}" ]; then
+    datasafed push "${acl_file}"  "${backup_files_prefix}.dir/users.acl"
+    global_acl_last_modify_time=${acl_modify_time}
+    DP_log "Update file: $acl_file"
   fi
 }
 
