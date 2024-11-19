@@ -36,9 +36,7 @@ spec:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.7.44
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:5.7.44
         init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:2.4
-        init-jemalloc: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemalloc:5.3.0
-        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
+        {{- include "mysql.spec.runtime.images" . | nindent 8 }}
     - name: 8.0.30
       changes:
       serviceVersion: 8.0.30
@@ -46,9 +44,7 @@ spec:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.30
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.0
-        init-jemalloc: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemalloc:5.3.0
-        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
+        {{- include "mysql.spec.runtime.images" . | nindent 8 }}
     - name: 8.0.31
       changes:
       serviceVersion: 8.0.31
@@ -56,9 +52,7 @@ spec:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.31
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.0
-        init-jemalloc: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemalloc:5.3.0
-        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
+       {{- include "mysql.spec.runtime.images" . | nindent 8 }} 
     - name: 8.0.32
       changes:
       serviceVersion: 8.0.32
@@ -66,9 +60,7 @@ spec:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.32
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.0
-        init-jemalloc: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemalloc:5.3.0
-        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
+        {{- include "mysql.spec.runtime.images" . | nindent 8 }}
     - name: 8.0.33
       changes:
       serviceVersion: 8.0.33
@@ -76,9 +68,7 @@ spec:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.0
-        init-jemalloc: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemalloc:5.3.0
-        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
+        {{- include "mysql.spec.runtime.images" . | nindent 8 }}
     - name: 8.0.34
       changes:
       serviceVersion: 8.0.34
@@ -86,9 +76,7 @@ spec:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.34
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.0
-        init-jemalloc: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemalloc:5.3.0
-        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
+        {{- include "mysql.spec.runtime.images" . | nindent 8 }}
     - name: 8.0.35
       changes:
       serviceVersion: 8.0.35
@@ -96,9 +84,7 @@ spec:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.35
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.0
-        init-jemalloc: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemalloc:5.3.0
-        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
+        {{- include "mysql.spec.runtime.images" . | nindent 8 }}
     - name: 8.0.36
       changes:
       serviceVersion: 8.0.36
@@ -106,9 +92,7 @@ spec:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.36
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.0
-        init-jemalloc: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemalloc:5.3.0
-        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
+        {{- include "mysql.spec.runtime.images" . | nindent 8 }}
     - name: 8.0.37
       changes:
       serviceVersion: 8.0.37
@@ -116,9 +100,7 @@ spec:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.37
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.0
-        init-jemalloc: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemalloc:5.3.0
-        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
+        {{- include "mysql.spec.runtime.images" . | nindent 8 }}
     - name: 8.0.38
       changes:
       serviceVersion: 8.0.38
@@ -126,9 +108,7 @@ spec:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.38
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.0
-        init-jemalloc: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemalloc:5.3.0
-        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
+        {{- include "mysql.spec.runtime.images" . | nindent 8 }}
     - name: 8.0.39
       changes:
       serviceVersion: 8.0.39
@@ -136,33 +116,25 @@ spec:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.39
         init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
         init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.0
-        init-jemalloc: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemalloc:5.3.0
-        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
+        {{- include "mysql.spec.runtime.images" . | nindent 8 }}
     - name: 8.4.0
       changes:
       serviceVersion: 8.4.0
       images:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.4.0
         init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.4
-        init-jemalloc: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemalloc:5.3.0
-        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
+        {{- include "mysql.spec.runtime.images" . | nindent 8 }}
     - name: 8.4.1
       changes:
       serviceVersion: 8.4.1
       images:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.4.1
         init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.4
-        init-jemalloc: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemalloc:5.3.0
-        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
+        {{- include "mysql.spec.runtime.images" . | nindent 8 }}
     - name: 8.4.2
       changes:
       serviceVersion: 8.4.2
       images:
         mysql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.4.2
         init-xtrabackup: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:8.4
-        init-jemalloc: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemalloc:5.3.0
-        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
+        {{- include "mysql.spec.runtime.images" . | nindent 8 }}
