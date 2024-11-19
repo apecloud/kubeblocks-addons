@@ -1,54 +1,53 @@
 {{/*
-Define vanilla-postgresql cluster definition name
+Common annotations
 */}}
-{{- define "vanilla-postgresql.clusterDefinition" -}}
-vanilla-postgresql
+{{- define "vanilla-postgresql.annotations" -}}
+helm.sh/resource-policy: keep
+{{- end }}
+
+{{/*
+Define vanilla-postgresql component definition regular expression name prefix
+*/}}
+{{- define "vanilla-postgresql.cmpdRegexpPattern" -}}
+^(vanilla-postgresql-\w+)
 {{- end -}}
 
 {{/*
-Define vanilla-postgresql component version name
+Define vanilla-postgresql 12.X component definition regular expression name prefix
 */}}
-{{- define "vanilla-postgresql.componentVersion" -}}
-vanilla-postgresql
+{{- define "vanilla-postgresql-12.cmpdRegexpPattern" -}}
+^vanilla-postgresql-12.*
 {{- end -}}
 
 {{/*
-Define vanilla-postgresql component definition name prefix
+Define vanilla-postgresql 14.X component definition regular expression name prefix
 */}}
-{{- define "vanilla-postgresql.componentDefNamePrefix" -}}
-{{- printf "vanilla-postgresql-" -}}
+{{- define "vanilla-postgresql-14.cmpdRegexpPattern" -}}
+^vanilla-postgresql-14.*
 {{- end -}}
 
 {{/*
-Define vanilla-postgresql 12 component definition name prefix
+Define vanilla-postgresql 15.X component definition regular expression name prefix
 */}}
-{{- define "vanilla-postgresql12.componentDefNamePrefix" -}}
-{{- if eq (len .Values.cmpdVersionPrefix.vanillaPostgresql12) 0 -}}
-{{- printf "vanilla-postgresql-12-" -}}
-{{- else -}}
-{{- printf "%s-" .Values.cmpdVersionPrefix.vanillaPostgresql12 -}}
-{{- end -}}
+{{- define "vanilla-postgresql-15.cmpdRegexpPattern" -}}
+^vanilla-postgresql-15.*
 {{- end -}}
 
 {{/*
-Define vanilla-postgresql 14 component definition name prefix
+Define vanilla-postgresql-supabase15.X component definition regular expression name prefix
 */}}
-{{- define "vanilla-postgresql14.componentDefNamePrefix" -}}
-{{- if eq (len .Values.cmpdVersionPrefix.vanillaPostgresql14) 0 -}}
-{{- printf "vanilla-postgresql-14-" -}}
-{{- else -}}
-{{- printf "%s-" .Values.cmpdVersionPrefix.vanillaPostgresql14 -}}
-{{- end -}}
+{{- define "vanilla-postgresql-supabase15.cmpdRegexpPattern" -}}
+^vanilla-postgresql-supabase15.*
 {{- end -}}
 
 {{/*
-Define vanilla-postgresql 12 component definition name
+Define vanilla-postgresql 12 component definition name with Chart.Version suffix
 */}}
 {{- define "vanilla-postgresql12.compDefName" -}}
-{{- if eq (len .Values.cmpdVersionPrefix.vanillaPostgresql12) 0 -}}
-vanilla-postgresql-12
+{{- if eq (len .Values.cmpdVersionPrefix.major12) 0 -}}
+vanilla-postgresql-12-{{ .Chart.Version }}
 {{- else -}}
-{{ .Values.cmpdVersionPrefix.vanillaPostgresql12 }}
+{{ .Values.cmpdVersionPrefix.major12 }}-{{ .Chart.Version }}
 {{- end -}}
 {{- end -}}
 
@@ -56,10 +55,10 @@ vanilla-postgresql-12
 Define vanilla-postgresql 14 component definition name with Chart.Version suffix
 */}}
 {{- define "vanilla-postgresql14.compDefName" -}}
-{{- if eq (len .Values.cmpdVersionPrefix.vanillaPostgresql14) 0 -}}
-vanilla-postgresql-14
+{{- if eq (len .Values.cmpdVersionPrefix.major14) 0 -}}
+vanilla-postgresql-14-{{ .Chart.Version }}
 {{- else -}}
-{{ .Values.cmpdVersionPrefix.vanillaPostgresql14 }}
+{{ .Values.cmpdVersionPrefix.major14 }}-{{ .Chart.Version }}
 {{- end -}}
 {{- end -}}
 
@@ -67,10 +66,10 @@ vanilla-postgresql-14
 Define vanilla-postgresql 15 component definition name with Chart.Version suffix
 */}}
 {{- define "vanilla-postgresql15.compDefName" -}}
-{{- if eq (len .Values.cmpdVersionPrefix.vanillaPostgresql15) 0 -}}
-vanilla-postgresql-15
+{{- if eq (len .Values.cmpdVersionPrefix.major15) 0 -}}
+vanilla-postgresql-15-{{ .Chart.Version }}
 {{- else -}}
-{{ .Values.cmpdVersionPrefix.vanillaPostgresql15 }}
+{{ .Values.cmpdVersionPrefix.major15 }}-{{ .Chart.Version }}
 {{- end -}}
 {{- end -}}
 
@@ -78,11 +77,18 @@ vanilla-postgresql-15
 Define vanilla-postgresql-supabase 15 component definition name with Chart.Version suffix
 */}}
 {{- define "vanilla-postgresql-supabase15.compDefName" -}}
-{{- if eq (len .Values.cmpdVersionPrefix.vanillaPostgresql15) 0 -}}
-vanilla-postgresql-supabase15
+{{- if eq (len .Values.cmpdVersionPrefix.supabaseMajor15) 0 -}}
+vanilla-postgresql-supabase15-{{ .Chart.Version }}
 {{- else -}}
-{{ .Values.cmpdVersionPrefix.vanillaPostgresqlSupabase15 }}
+{{ .Values.cmpdVersionPrefix.supabaseMajor15 }}-{{ .Chart.Version }}
 {{- end -}}
+{{- end -}}
+
+{{/*
+Define vanillap ostgresql scripts configMap template name
+*/}}
+{{- define "vanilla-postgresql.reloader.scripts" -}}
+vanilla-postgresql-reload-tools-script
 {{- end -}}
 
 {{/*
@@ -190,7 +196,7 @@ vanilla-postgresql15-cc
 Define vanilla-postgresql scripts configMap template name
 */}}
 {{- define "vanilla-postgresql.scriptsTemplate" -}}
-vanilla-postgresql-scripts
+vanilla-postgresql-scripts-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*

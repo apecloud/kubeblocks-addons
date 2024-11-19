@@ -28,5 +28,3 @@ requests:
 ## @param storage size, the unit is Gi
 ##
 storage: 20
-
-compDef: vanilla-postgresql-14

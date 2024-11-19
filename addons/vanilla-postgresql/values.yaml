@@ -56,17 +56,17 @@ logConfigs:
 ## @param cmpdVersionPrefix for each ComponentDefinition resources name created by this chart, that can avoid name conflict
 ## If specified, the component definition will use it as prefix.
 cmpdVersionPrefix:
-  vanillaPostgresql12: "vanilla-postgresql-12"
-  vanillaPostgresql14: "vanilla-postgresql-14"
-  vanillaPostgresql15: "vanilla-postgresql-15"
-  vanillaPostgresqlSupabase15: "vanilla-postgresql-supabase15"
+  major12: "vanilla-postgresql-12"
+  major14: "vanilla-postgresql-14"
+  major15: "vanilla-postgresql-15"
+  supabaseMajor15: "vanilla-postgresql-supabase15"
 
 ## @param componentServiceVersion define default serviceVersion of each Component
-componentServiceVersion:
-  vanillaPostgresql12: 12.15.0
-  vanillaPostgresql14: 14.7.0
-  vanillaPostgresql15: 15.7.0
-  vanillaPostgresqlSupabase15: 15.6.1138
+defaultServiceVersion:
+  major12: 12.15.0
+  major14: 14.7.0
+  major15: 15.7.0
+  supabaseMajor15: 15.6.1138
 
 shmVolume:
   ## @param shmVolume.enabled Enable emptyDir volume for /dev/shm for PostgreSQL pod(s)

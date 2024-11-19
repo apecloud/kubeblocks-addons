@@ -4,9 +4,11 @@ metadata:
   name: {{ include "vanilla-postgresql15.compDefName" . }}
   labels:
     {{- include "vanilla-postgresql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "vanilla-postgresql.annotations" . | nindent 4 }}
 spec:
   {{- include "vanilla-postgresql.spec.common" . | nindent 2 }}
-  serviceVersion: {{ .Values.componentServiceVersion.vanillaPostgresql15 }}
+  serviceVersion: {{ .Values.defaultServiceVersion.major15 }}
   configs:
     - name: vanilla-postgresql-configuration
       templateRef: {{ include "vanilla-postgresql15.configurationTemplate" . }}
@@ -35,9 +37,11 @@ metadata:
   name: {{ include "vanilla-postgresql-supabase15.compDefName" . }}
   labels:
     {{- include "vanilla-postgresql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "vanilla-postgresql.annotations" . | nindent 4 }}
 spec:
   {{- include "vanilla-postgresql.spec.common" (merge (dict "accountName" "supabase_admin") .)| nindent 2 }}
-  serviceVersion: {{ .Values.componentServiceVersion.vanillaPostgresqlSupabase15 }}
+  serviceVersion: {{ .Values.defaultServiceVersion.supabaseMajor15 }}
   configs:
     - name: supabase-postgresql-configuration
       templateRef: {{ include "vanilla-postgresql-supabase15.configurationTemplate" . }}

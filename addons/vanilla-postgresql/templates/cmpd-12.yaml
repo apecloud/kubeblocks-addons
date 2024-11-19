@@ -4,9 +4,11 @@ metadata:
   name: {{ include "vanilla-postgresql12.compDefName" . }}
   labels:
     {{- include "vanilla-postgresql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "vanilla-postgresql.annotations" . | nindent 4 }}
 spec:
   {{- include "vanilla-postgresql.spec.common" . | nindent 2 }}
-  serviceVersion: {{ .Values.componentServiceVersion.vanillaPostgresql12 }}
+  serviceVersion: {{ .Values.defaultServiceVersion.major12 }}
   configs:
     - name: vanilla-postgresql-configuration
       templateRef: {{ include "vanilla-postgresql12.configurationTemplate" . }}

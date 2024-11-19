@@ -12,7 +12,7 @@ spec:
       command:
         - "update-parameter.sh"
       scriptConfig:
-        scriptConfigMapRef: reload-tools-script
+        scriptConfigMapRef: {{ include "vanilla-postgresql.reloader.scripts" . }}
         namespace: {{ .Release.Namespace }}
       toolsSetup:
         mountPoint: /kb_tools

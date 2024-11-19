@@ -1,25 +1,25 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentVersion
 metadata:
-  name: {{ include "vanilla-postgresql.componentVersion" . }}
+  name: vanilla-postgresql
   labels:
     {{- include "vanilla-postgresql.labels" . | nindent 4 }}
 spec:
   compatibilityRules:
     - compDefs:
-        - {{ include "vanilla-postgresql12.compDefName" . }}
+        - {{ include "vanilla-postgresql-12.cmpdRegexpPattern" . }}
       releases:
         - 12.15.0
     - compDefs:
-        - {{ include "vanilla-postgresql14.compDefName" . }}
+        - {{ include "vanilla-postgresql-14.cmpdRegexpPattern" . }}
       releases:
         - 14.7.0
     - compDefs:
-        - {{ include "vanilla-postgresql15.compDefName" . }}
+        - {{ include "vanilla-postgresql-15.cmpdRegexpPattern" . }}
       releases:
         - 15.7.0
     - compDefs:
-        - {{ include "vanilla-postgresql-supabase15.compDefName" . }}
+        - {{ include "vanilla-postgresql-supabase15.cmpdRegexpPattern" . }}
       releases:
         - supabase-15.6.1.138
   releases:

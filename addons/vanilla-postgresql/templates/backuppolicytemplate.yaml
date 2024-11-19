@@ -10,7 +10,7 @@ metadata:
 spec:
   serviceKind: PostgreSQL
   compDefs:
-    - vanilla-postgresql-\d+
+    - {{ include "vanilla-postgresql.cmpdRegexpPattern" . }}
   target:
     role: secondary
     fallbackRole: primary
@@ -37,7 +37,7 @@ spec:
           - name: data
             mountPath: {{ .Values.dataMountPath }}
   schedules:
-    - backupMethod: pg-basebackup
+    - backupMethod: vanilla-pg-basebackup
       enabled: false
       cronExpression: "0 18 * * *"
       retentionPeriod: 7d
