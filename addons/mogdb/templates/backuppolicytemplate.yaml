@@ -5,8 +5,9 @@ metadata:
   labels:
     {{- include "mogdb.labels" . | nindent 4 }}
 spec:
-  serviceKind: MogDB
-  compDefs: [mogdb-5]
+  serviceKind: mogdb
+  compDefs:
+    - {{ include "mogdb.cmpdRegexpPattern" . }}
   target:
     role: secondary
     fallbackRole: primary

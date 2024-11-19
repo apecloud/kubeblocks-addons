@@ -3,16 +3,15 @@ kind: OpsDefinition
 metadata:
   name: mogdb-switchover
 spec:
-  targetPodTemplates:
-  - name: availablePod
-    podSelector:
-      availability: Available
-      selectionPolicy: Any
-    vars:
-      - name: TARGET_POD_IP
-        valueFrom:
-          envRef:
-            envName: KB_POD_IP
+  podInfoExtractors:
+    - name: availablePod
+      podSelector:
+        multiPodSelectionPolicy: Any
+      env:
+        - name: TARGET_POD_IP
+          valueFrom:
+            envRef:
+              envName: PodIP
   parametersSchema:
     openAPIV3Schema:
       properties:
@@ -29,7 +28,7 @@ spec:
   - name: switchover
     failurePolicy: Fail
     workload:
-      targetPodTemplate: availablePod
+      podInfoExtractorName: availablePod
       type: Job
       backoffLimit: 0
       podSpec:
@@ -61,7 +60,7 @@ spec:
                     fi
                   else
                     # check if the candidate instance has been promote to primary
-                    pods=$(kubectl get pod -l apps.kubeblocks.io/component-name=${KB_COMP_NAME},app.kubernetes.io/instance=${KB_CLUSTER_NAME} | awk 'NR > 1 {print $1}')
+                    pods=$(kubectl get pod -l apps.kubeblocks.io/component-name=${MOGDB_COMPONENT_SHORT_NAME},app.kubernetes.io/instance=${CLUSTER_NAME} | awk 'NR > 1 {print $1}')
                     for podName in ${pods}; do
                       if [ "${podName}" != "${primary}" ];then
                         role=$(kubectl get pod ${podName} -ojson | jq -r '.metadata.labels["kubeblocks.io/role"]')
