@@ -2,6 +2,32 @@
 
 PostgreSQL (Postgres) is an open source object-relational database known for reliability and data integrity. ACID-compliant, it supports foreign keys, joins, views, triggers and stored procedures.
 
+
+## Features In KubeBlocks
+
+### Lifecycle Management
+
+|   Topology       | Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
+|------------------|------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
+| replication     | Yes                    | Yes                   | Yes              | Yes       | Yes        | Yes       | Yes    | Yes      |
+
+### Backup and Restore
+
+| Feature     | Method | Description |
+|-------------|--------|------------|
+| Base Backup | pg-basebackup   | uses `pg_basebackup`,  a PostgreSQL utility to create a base backup   |
+| Base Backup | postgres-wal-g   | uses `wal-g` to create a full backup (and don't forget to config wal-g by setting envs ahead) |
+| Continuous Backup | postgresql-pitr | uploading PostgreSQL Write-Ahead Logging (WAL) files periodically to the backup repository. |
+
+### Versions
+
+| Major Versions | Description |
+|---------------|-------------|
+| 12            | 12.14.0,12.14.1,12.15.0|
+| 14            | 14.7.2,14.8.0|
+| 15            | 15.7.0|
+| 16            | 16.4.0|
+
 ## Prerequisites
 
 This example assumes that you have a Kubernetes cluster installed and running, and that you have installed the kubectl command line tool and helm somewhere in your path. Please see the [getting started](https://kubernetes.io/docs/setup/)  and [Installing Helm](https://helm.sh/docs/intro/install/) for installation instructions for your platform.
@@ -311,7 +337,7 @@ Switchover a specified instance as the new primary or leader of the cluster
 kubectl apply -f examples/postgresql/switchover-specified-instance.yaml
 ```
 
-You may need to update the `opsrequest.spec.switchover.instanceName` field to your desired `secondary` instance name.
+You may need to update the `opsrequest.spec.switchover.instanceName` field to your desired instance name.
 
 Once this `opsrequest` is completed, you can check the status of the switchover operation and the roles of the pods to verify the switchover operation.
 
@@ -484,7 +510,7 @@ To restore a new cluster from a Backup:
 kubectl get backup pg-cluster-pg-basebackup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
 ```
 
-1. Update `examples/postgresql/restore.yaml` and set fields quoted with `<<ENCRYPTED-SYSTEM-ACCOUNTS>` to your own settings and apply it.
+1. Update `examples/postgresql/restore.yaml` and set placeholder `<<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
 
 ```bash
 kubectl apply -f examples/postgresql/restore.yaml
@@ -573,7 +599,6 @@ kubectl apply -f examples/postgresql/upgrade.yaml
 
 In this example, the cluster will be upgraded to version `14.8.0`.
 
-
 #### Upgrade using Cluster API
 
 Alternatively, you may modify the `spec.componentSpecs.serviceVersion` field to the desired version to upgrade the cluster.
@@ -635,65 +660,8 @@ There are various ways to monitor the cluster. Here we use Prometheus and Grafan
 
 #### Installing the Prometheus Operator
 
-You may skip this step if you have already installed the Prometheus Operator
-
-##### Step 1: Installing the Prometheus Operator
-
-- Create a new namespace for Prometheus Operator using the following command:
-
-```bash
-kubectl create namespace monitoring
-```
-
-- Add the Prometheus Operator Helm repository:
-
-```bash
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-```
-
-- Install the Prometheus Operator using the following command:
-
-```bash
-helm install prometheus-operator prometheus-community/kube-prometheus-stack --namespace monitoring
-```
-
-##### Step 2: Verifying the Deployment
-
-- Verify the deployment of the Prometheus Operator using the following command:
-
-```bash
-kubectl get pods -n monitoring
-```
-
-##### Step 3: Accessing the Prometheus Dashboard
-
-- Check the service endpoints of Prometheus and Grafana.
-
-```bash
-kubectl get svc -n monitoring
-```
-
-- Use port forwarding to access the Prometheus dashboard locally
-
-```bash
-kubectl port-forward svc/prometheus-operator-kube-p-prometheus -n monitoring 9090:9090
-```
-
-And you can access the Prometheus dashboard by opening "http://localhost:9090" in your browser.
-
-- Similarly, use port forwarding to access the Grafana dashboard locally
-
-```bash
-kubectl port-forward svc/prometheus-operator-grafana -n monitoring 3000:80
-```
-
-and you can access the Grafana dashboard by opening "http://localhost:3000" in your browser.
-
-To login, you may retrieve the credential from the secret:
-
-```bash
-kubectl get secrets prometheus-operator-grafana -n monitoring -oyaml
-```
+You may skip this step if you have already installed the Prometheus Operator.
+Or you can follow the steps in [How to install the Prometheus Operator](../docs/install-prometheus.md) to install the Prometheus Operator.
 
 #### Create a Cluster
 
@@ -753,7 +721,8 @@ Login to the Grafana dashboard and import the dashboard.
 
 There is a pre-configured dashboard for PostgreSQL under the `APPS / PostgreSQL` folder in the Grafana dashboard. And more dashboards can be found in the Grafana dashboard store[^5].
 
-> [!Note] Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
+> [!Note]
+> Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
 
 ### Delete
 

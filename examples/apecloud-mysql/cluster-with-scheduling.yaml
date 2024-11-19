@@ -1,10 +1,8 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: acmysql-cluster
+  name: acmysql-cluster-scheduling
   namespace: default
-  labels:
-    auditLogEnabled: "false" # use this label as switch to set variables 'audit_log_xxx'
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
@@ -24,6 +22,24 @@ spec:
   # This field allows for detailed configuration of each Component within the Cluster
   componentSpecs:
     - name: mysql
+      # Specifies the scheduling policy for the Component
+      # This example show how to distribute MySQL pods across different nodes
+      schedulingPolicy:
+        affinity:
+          podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/instance: acmysql-cluster
+                    apps.kubeblocks.io/component-name: mysql
+                topologyKey: kubernetes.io/hostname
+            requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: acmysql-cluster
+                  apps.kubeblocks.io/component-name: mysql
+              topologyKey: kubernetes.io/hostname
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
       # Valid options are: [8.0.30]
