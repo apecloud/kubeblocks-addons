@@ -52,8 +52,14 @@ twemproxy:
   cpu: 0.2
   memory: 0.2
 
-## @param nodePortEnabled
+## @param nodePortEnabled if true, the redis will use nodePort as the announce IP
+## This option is mutually exclusive with fixedPodIPEnabled. When both nodePortEnabled and fixedPodIPEnabled are false, the default announce IP will be a headless service.
 nodePortEnabled: false
+
+## If the K8s environment supports immutable pod IPs (usually requiring additional CNI plugins or other methods),
+## you can set fixedPodIPEnabled to true. When fixedPodIPEnabled is true, the Redis will use the pod IP as the announce IP to meet network requirements in certain scenarios.
+## This option is mutually exclusive with nodePortEnabled. When both nodePortEnabled and fixedPodIPEnabled are false, the default announce IP will be a headless service.
+fixedPodIPEnabled: false
 
 ## @param sentinel.cpu
 ## @param sentinel.memory
@@ -65,6 +71,7 @@ sentinel:
   memory: 0.2
   storage: 20
   replicas: 3
+  customMasterName: ""
 
 ## if mode is cluster, specify the redis cluster parameters
 ## @param redisCluster.shardCount specify the number of shards in the cluster, the minimum value is 3

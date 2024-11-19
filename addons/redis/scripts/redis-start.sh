@@ -67,9 +67,14 @@ build_announce_ip_and_port() {
       echo "replica-announce-ip $redis_advertised_svc_host_value"
     } >> /etc/redis/redis.conf
   else
-    kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc"
-    echo "redis use kb pod fqdn $kb_pod_fqdn to announce"
-    echo "replica-announce-ip $kb_pod_fqdn" >> /etc/redis/redis.conf
+    if [ -n "$FIXED_POD_IP_ENABLED" ]; then
+      echo "redis use immutable pod ip $KB_POD_IP to announce"
+      echo "replica-announce-ip $KB_POD_IP" >> /etc/redis/redis.conf
+    else
+      kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.cluster.local"
+      echo "redis use kb pod fqdn $kb_pod_fqdn to announce"
+      echo "replica-announce-ip $kb_pod_fqdn" >> /etc/redis/redis.conf
+    fi
   fi
 }
 

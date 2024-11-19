@@ -56,6 +56,18 @@ build_redis_sentinel_conf() {
     echo "sentinel resolve-hostnames yes"
     echo "sentinel announce-hostnames yes"
   } >> /data/sentinel/redis-sentinel.conf
+  echo "port $sentinel_port" >> /data/sentinel/redis-sentinel.conf
+  if [ -n "$FIXED_POD_IP_ENABLED" ]; then
+    echo "sentinel use the fixed pod ip to announce-ip"
+    echo "sentinel announce-ip $KB_POD_IP" >> /data/sentinel/redis-sentinel.conf
+  else
+    kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.cluster.local"
+    {
+      echo "sentinel announce-ip $kb_pod_fqdn"
+      echo "sentinel resolve-hostnames yes"
+      echo "sentinel announce-hostnames yes"
+    } >> /data/sentinel/redis-sentinel.conf
+  fi
   set +x
   if [ -n "$SENTINEL_PASSWORD" ]; then
     echo "sentinel sentinel-user $SENTINEL_USER" >> /data/sentinel/redis-sentinel.conf

@@ -141,7 +141,7 @@ spec:
           command:
             - sh
             - -c
-            - /scripts/redis-sentinel-ping.sh 5
+            - /scripts/redis-sentinel-ping.sh
       readinessProbe:
         initialDelaySeconds: 10
         periodSeconds: 5
@@ -152,4 +152,4 @@ spec:
           command:
             - sh
             - -c
-            - /scripts/redis-sentinel-ping.sh 1
+            - /scripts/redis-sentinel-ping.sh

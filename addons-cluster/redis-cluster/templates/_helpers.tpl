@@ -51,6 +51,13 @@ Define redis ComponentSpec with ComponentDefinition.
     serviceType: NodePort
     podService: true
   {{- end }}
+  env:
+  - name: CUSTOM_SENTINEL_MASTER_NAME
+    value: {{ .Values.sentinel.customMasterName | default "" }}
+  {{- if .Values.fixedPodIPEnabled }}
+  - name: FIXED_POD_IP_ENABLED
+    value: "true"
+  {{- end }}
   enabledLogs:
     - running
   serviceAccountName: {{ include "kblib.serviceAccountName" . }}
@@ -71,6 +78,11 @@ Define redis sentinel ComponentSpec with ComponentDefinition.
   - name: sentinel-advertised
     serviceType: NodePort
     podService: true
+  {{- end }}
+  {{- if .Values.fixedPodIPEnabled }}
+  env:
+  - name: FIXED_POD_IP_ENABLED
+    value: "true"
   {{- end }}
   resources:
     limits:

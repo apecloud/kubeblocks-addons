@@ -32,15 +32,20 @@ build_announce_ip_and_port() {
       echo "replica-announce-ip $redis_advertised_svc_host_value"
     } >> /etc/redis/redis.conf
   else
-    kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc"
-    echo "redis use kb pod fqdn $kb_pod_fqdn to announce"
-    echo "replica-announce-ip $kb_pod_fqdn" >> /etc/redis/redis.conf
+    if [ -n "$FIXED_POD_IP_ENABLED" ]; then
+      echo "redis use immutable pod ip $KB_POD_IP to announce"
+      echo "replica-announce-ip $KB_POD_IP" >> /etc/redis/redis.conf
+    else
+      kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.cluster.local"
+      echo "redis use kb pod fqdn $kb_pod_fqdn to announce"
+      echo "replica-announce-ip $kb_pod_fqdn" >> /etc/redis/redis.conf
+    fi
   fi
 }
 
 build_cluster_announce_info() {
   # build announce ip and port according to whether the advertised svc is enabled
-  kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc"
+  kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.cluster.local"
   if [ -n "$redis_advertised_svc_host_value" ] && [ -n "$redis_advertised_svc_port_value" ] && [ -n "$redis_advertised_svc_bus_port_value" ]; then
     echo "redis cluster use advertised svc $redis_advertised_svc_host_value:$redis_advertised_svc_port_value@$redis_advertised_svc_bus_port_value to announce"
     {
@@ -51,12 +56,17 @@ build_cluster_announce_info() {
       echo "cluster-preferred-endpoint-type ip"
     } >> /etc/redis/redis.conf
   else
-    echo "redis use kb pod fqdn $kb_pod_fqdn to announce"
     {
       echo "cluster-announce-ip $KB_POD_IP"
       echo "cluster-announce-hostname $kb_pod_fqdn"
-      echo "cluster-preferred-endpoint-type hostname"
     } >> /etc/redis/redis.conf
+    if [ -n "$FIXED_POD_IP_ENABLED" ]; then
+      echo "redis cluster use immutable pod ip $KB_POD_IP as preferred endpoint type"
+      echo "cluster-preferred-endpoint-type ip" >> /etc/redis/redis.conf
+    else
+      echo "redis cluster use kb pod fqdn $kb_pod_fqdn as preferred endpoint type"
+      echo "cluster-preferred-endpoint-type hostname" >> /etc/redis/redis.conf
+    fi
   fi
 }
 
@@ -262,18 +272,18 @@ get_current_comp_nodes_for_scale_out_replica() {
 
   # the output of line is like:
   # 1. using the pod fqdn as the nodeAddr
-  # 4958e6dca033cd1b321922508553fab869a29d 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
+  # 4958e6dca033cd1b321922508553fab869a29d 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
   # 2. using the nodeport or lb ip as the nodeAddr
-  # 4958e6dca033cd1b321922508553fab869a29d 172.10.0.1:31000@31888,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc master master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
+  # 4958e6dca033cd1b321922508553fab869a29d 172.10.0.1:31000@31888,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local master master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
   while read -r line; do
-    # 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc
+    # 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local
     node_ip_port_fields=$(echo "$line" | awk '{print $2}')
     # ip:port without bus port
     node_announce_ip_port=$(echo "$node_ip_port_fields" | awk -F '@' '{print $1}')
     node_bus_port=$(echo "$node_ip_port_fields" | awk -F '@' '{print $2}' | awk -F ',' '{print $1}')
     node_announce_ip=$(echo "$node_ip_port_fields" | awk -F '@' '{print $1}' | cut -d':' -f1)
     node_port=$(echo "$node_ip_port_fields" | awk -F '@' '{print $1}' | cut -d':' -f2)
-    # redis-shard-sxj-0.redis-shard-sxj-headless.default.svc
+    # redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local
     node_fqdn=$(echo "$line" | awk '{print $2}' | awk -F ',' '{print $2}')
     node_role=$(echo "$line" | awk '{print $3}')
     if $using_advertised_ports; then
@@ -326,14 +336,14 @@ scale_redis_cluster_replica() {
   set -x
 
   current_pod_name=$KB_POD_NAME
-  current_pod_fqdn="$current_pod_name.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc"
+  current_pod_fqdn="$current_pod_name.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.cluster.local"
   # check if exists KB_LEADER env, if exists, it means that is scale out replica
   if [ -n "$KB_LEADER" ]; then
-    target_node_fqdn="$KB_LEADER.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc"
+    target_node_fqdn="$KB_LEADER.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.cluster.local"
   else
     # if not exists KB_LEADER env, try to get the redis cluster info from pod which index=0
     pod_name_prefix=$(extract_pod_name_prefix "$current_pod_name")
-    target_node_fqdn="$pod_name_prefix-0.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc"
+    target_node_fqdn="$pod_name_prefix-0.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.cluster.local"
   fi
 
   # get the current component nodes for scale out replica
