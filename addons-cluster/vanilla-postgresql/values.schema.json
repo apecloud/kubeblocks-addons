@@ -4,7 +4,7 @@
   "properties": {
     "version": {
       "title": "Version",
-      "description": "Cluster version.",
+      "description": "service version.",
       "type": "string",
       "default": "14.7.0"
     },

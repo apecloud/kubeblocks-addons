@@ -35,6 +35,4 @@ sources:
   - https://github.com/apecloud/kubeblocks/tree/main/deploy/vanilla-postgresql
 
 annotations:
-  kubeblocks.io/clusterVersions: "14.7.0,12.15.0"
-  kubeblocks.io/multiCV: "true"
   category: Database
