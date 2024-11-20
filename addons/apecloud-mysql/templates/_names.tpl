@@ -32,18 +32,6 @@ apecloud-mysql-backup-policy-template
 {{- end -}}
 
 {{/*
-Define backup policy template
-*/}}
-{{- define "apecloud-mysql.hscaleBackupPolicyTemplateName" -}}
-{{- if eq (len .Values.resourceNamePrefix) 0 -}}
-apecloud-mysql-backup-policy-for-hscale
-{{- else -}}
-{{- .Values.resourceNamePrefix -}}-bpt-for-hscale
-{{- end -}}
-{{- end -}}
-
-
-{{/*
 Define cluster definition name, if resourceNamePrefix is specified, use it as clusterDefName
 */}}
 {{- define "apecloud-mysql.clusterDefName" -}}
