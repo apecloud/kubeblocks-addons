@@ -14,7 +14,7 @@ Define volume snapshot actionSet name
 */}}
 {{- define "apecloud-mysql.vsActionSetName" -}}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-apecloud-mysql-volumesnapshot
+apecloud-mysql-volume-snapshot
 {{- else -}}
 {{- .Values.resourceNamePrefix -}}-volumesnapshot
 {{- end -}}
