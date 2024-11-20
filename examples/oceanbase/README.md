@@ -55,7 +55,6 @@ helm install kubeblocks kubeblocks/kubeblocks --namespace kb-system --create-nam
 
 ### Enable OceanBase Add-on
 
-
 #### Using Helm
 
 ```bash
