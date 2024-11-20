@@ -4,6 +4,8 @@
 
 image:
   registry: docker.io
+  br:
+    repository: pingcap/br
   pd:
     repository: pingcap/pd
   tidb:
