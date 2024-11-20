@@ -5,7 +5,6 @@ metadata:
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
   annotations:
-    apps.kubeblocks.io/horizontal-scale-backup-policy-template: {{ include "apecloud-mysql.hscaleBackupPolicyTemplateName" . }}
     {{- include "apecloud-mysql.annotations" . | nindent 4 }}
 spec:
   {{- include "apecloud-mysql.spec.common" . | nindent 2 }}
