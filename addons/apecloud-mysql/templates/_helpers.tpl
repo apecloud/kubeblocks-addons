@@ -178,7 +178,7 @@ lifecycleActions:
           DB_USER=${MYSQL_ROOT_USER}
           DB_PASSWORD=${MYSQL_ROOT_PASSWORD}
           DATA_DIR={{ .Values.mysqlConfigs.dataDir }}
-          xtrabackup --compress=zstd --backup --safe-slave-backup --slave-info --stream=xbstream --host=${DB_HOST} --port=${DB_PORT} --user=${DB_SER} --password=${DB_PASSWORD} --datadir=${DATA_DIR}
+          xtrabackup --compress=zstd --backup --safe-slave-backup --slave-info --stream=xbstream --host=${DB_HOST} --port=${DB_PORT} --user=${DB_USER} --password=${DB_PASSWORD} --datadir=${DATA_DIR}
       targetPodSelector: Role
       matchingKey: leader
       container: mysql
