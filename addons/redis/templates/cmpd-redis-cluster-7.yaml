@@ -159,12 +159,12 @@ spec:
     ## the current shard primary pod name which is dynamically selected, caution to use it
     - name: CURRENT_SHARD_PRIMARY_POD_NAME
       valueFrom:
-      componentVarRef:
-        compDef: {{ include "redisCluster7.cmpdName" . }}
-        optional: true
-        podNamesForRole:
-          role: primary
-          option: Optional
+        componentVarRef:
+          compDef: {{ include "redisCluster7.cmpdName" . }}
+          optional: true
+          podNamesForRole:
+           role: primary
+           option: Optional
     ## the component short names of all shard
     ## the value format is like "shard-98x:shard-98x,shard-cq7:shard-cq7,shard-hy7:shard-hy7"
     - name: ALL_SHARDS_COMPONENT_SHORT_NAMES

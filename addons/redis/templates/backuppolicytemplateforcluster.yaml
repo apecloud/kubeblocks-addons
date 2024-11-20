@@ -15,7 +15,7 @@ spec:
   backupMethods:
   - name: datafile
     snapshotVolumes: false
-    actionSetName: redis-cluster-backup
+    actionSetName: redis-cluster-br
     targetVolumes:
       volumeMounts:
         - name: data
