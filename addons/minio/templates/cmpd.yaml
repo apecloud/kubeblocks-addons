@@ -82,15 +82,25 @@ spec:
       value: {{ .Values.minioConsolePort | quote}}
     - name: HTTP_PROTOCOL
       value: {{ .Values.tls.enabled | ternary "https" "http" | quote }}
+
+  roles:
+    - name: readwrite
+      serviceable: true
+      votable: false
+      writable: true
+
   lifecycleActions:
     roleProbe:
       exec:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         command:
-          - /bin/bash
+          - /bin/sh
           - -c
           - |
-            mc config host add minio http://127.0.0.1:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD
+            if mc config host add minio http://127.0.0.1:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD &>/dev/null; then
+              echo -n "readwrite"
+            fi
+
   runtime:
     initContainers:
     - name: init
