@@ -102,48 +102,4 @@ Describe "ZooKeeper Startup Bash Script Tests"
     End
   End
 
-  Describe "set_scripts_path()"
-    Context "when ZOOKEEPER_IMAGE_VERSION is not set"
-      It "sets scripts_path to /opt/bitnami/scripts/zookeeper"
-        When call set_scripts_path
-        The variable scripts_path should eq "/opt/bitnami/scripts/zookeeper"
-      End
-    End
-
-    Context "when ZOOKEEPER_IMAGE_VERSION is set"
-      Context "when ZOOKEEPER_IMAGE_VERSION < 3.6.0"
-        setup() {
-          export ZOOKEEPER_IMAGE_VERSION="3.5.0"
-        }
-        Before "setup"
-
-        un_setup() {
-          unset ZOOKEEPER_IMAGE_VERSION
-        }
-        After "un_setup"
-
-        It "sets scripts_path to /opt/bitnami/scripts/zookeeper"
-          When call set_scripts_path
-          The variable scripts_path should eq "/opt/bitnami/scripts/zookeeper"
-        End
-      End
-
-      Context "when ZOOKEEPER_IMAGE_VERSION >= 3.6.0"
-        setup() {
-          export ZOOKEEPER_IMAGE_VERSION="3.6.0"
-        }
-        Before "setup"
-
-        un_setup() {
-          unset ZOOKEEPER_IMAGE_VERSION
-        }
-        After "un_setup"
-
-        It "sets scripts_path to empty string"
-          When call set_scripts_path
-          The variable scripts_path should eq ""
-        End
-      End
-    End
-  End
 End

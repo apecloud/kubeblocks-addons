@@ -25,3 +25,6 @@ metrics:
 zookeeper:
   dataDir: /bitnami/zookeeper/data
   dataLogDir: /bitnami/zookeeper/log
+
+extra:
+  terminationPolicy: Delete
