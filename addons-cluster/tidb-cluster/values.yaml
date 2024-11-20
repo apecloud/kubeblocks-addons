@@ -2,10 +2,6 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-## @param terminationPolicy define Cluster termination policy. One of DoNotTerminate, Halt, Delete, WipeOut.
-##
-terminationPolicy: Halt
-
 # @param appVersionOverride 
 # if not empty, it will override the default tidb version
 # the version must be defined in the clusterversion cr  
@@ -66,3 +62,7 @@ tidb:
 # The RBAC permission used by cluster component pod, now include event.create
 serviceAccount:
   name: ""
+
+extra:
+  ## @param terminationPolicy define Cluster termination policy. One of DoNotTerminate, Halt, Delete, WipeOut.
+  terminationPolicy: Delete

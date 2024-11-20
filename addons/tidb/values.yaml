@@ -5,13 +5,13 @@
 image:
   registry: docker.io
   br:
-    repository: pingcap/br
+    repository: apecloud/br
   pd:
-    repository: pingcap/pd
+    repository: apecloud/pd
   tidb:
-    repository: pingcap/tidb
+    repository: apecloud/tidb
   tikv:
-    repository: pingcap/tikv
+    repository: apecloud/tikv
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: "v7.1.5"

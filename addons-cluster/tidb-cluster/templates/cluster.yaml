@@ -6,7 +6,7 @@ metadata:
   labels: {{ include "tidb-cluster.labels" . | nindent 4 }}
 spec:
   clusterDefinitionRef: tidb  # ref clusterdefinition.name
-  terminationPolicy: {{ $.Values.terminationPolicy }}
+  terminationPolicy: {{ $.Values.extra.terminationPolicy }}
   topology: cluster
   affinity:
     {{- with $.Values.topologyKeys }}
