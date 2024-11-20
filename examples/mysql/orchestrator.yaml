@@ -1,0 +1,42 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: myorc
+  namespace: default
+spec:
+  clusterDef: orchestrator
+  topology: raft
+  terminationPolicy: Delete
+  services:
+    - name: orchestrator
+      componentSelector: orchestrator
+      spec:
+        ports:
+          - name: orc-http
+            port: 80
+  componentSpecs:
+    - name: orchestrator
+      env:
+        - name: ORC_TOPOLOGY_PASSWORD
+          value: orchestrator
+        - name: ORC_META_PASSWORD
+          value: orchestrator
+        - name: ORC_META_DATABASE
+          value: orchestrator
+      disableExporter: true
+      replicas: 3
+      resources:
+        limits:
+          cpu: "1"
+          memory: "1Gi"
+        requests:
+          cpu: "1"
+          memory: "1Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi

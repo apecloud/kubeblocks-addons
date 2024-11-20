@@ -107,7 +107,7 @@ Horizontal scaling out ApeCloud-MySQL cluster by adding ONE more replica:
 kubectl apply -f examples/apecloud-mysql/scale-out.yaml
 ```
 
-After applying the operation, you will see a new pod created and the ApeCloud-MySQL cluster status goes from `Updating` to `Running`, and the newly created pod has a new role `secondary`.
+After applying the operation, you will see a new pod created and the ApeCloud-MySQL cluster status goes from `Updating` to `Running`, and the newly created pod has a new role `follower`.
 
 And you can check the progress of the scaling operation with following command:
 
@@ -269,7 +269,7 @@ Alternatively, you may stop the cluster by setting the `spec.componentSpecs.stop
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: acmysdql-cluster
+  name: acmysql-cluster
   namespace: default
 spec:
   componentSpecs:
@@ -309,7 +309,7 @@ A switchover in database clusters is a planned operation that transfers the prim
 
 <details>
 
-By applying this yaml file, KubeBlocks will perform a switchover operation defined in PostgreSQL's component definition, and you can checkout the details in `componentdefinition.spec.lifecycleActions.switchover`.
+By applying this yaml file, KubeBlocks will perform a switchover operation defined in component definition, and you can checkout the details in `componentdefinition.spec.lifecycleActions.switchover`.
 
 </details>
 
@@ -366,10 +366,10 @@ kubectl create secret generic <credential-for-backuprepo>\
   -n kb-system
 ```
 
-Update `examples/postgresql/backuprepo.yaml` and set fields quoted with `<>` to your own settings and apply it.
+Update `examples/apecloud-mysql/backuprepo.yaml` and set fields quoted with `<>` to your own settings and apply it.
 
 ```bash
-kubectl apply -f examples/postgresql/backuprepo.yaml
+kubectl apply -f examples/apecloud-mysql/backuprepo.yaml
 ```
 
 After creating the BackupRepo, you should check the status of the BackupRepo, to make sure it is `Ready`.
@@ -387,7 +387,7 @@ kb-oss   Ready    oss               Tool           true      Xd
 
 ### [Backup](backup.yaml)
 
-You may find the supported backup methods in the `BackupPolicy` of the cluster, e.g. `acmysql-cluster-postgresql-backup-policy` in this case, and find how these methods will be scheduled in the `BackupSchedule` of the cluster, e.g.. `acmysql-cluster-postgresql-backup-schedule` in this case.
+You may find the supported backup methods in the `BackupPolicy` of the cluster, e.g. `acmysql-cluster-mysql-backup-policy` in this case, and find how these methods will be scheduled in the `BackupSchedule` of the cluster, e.g.. `acmysql-cluster-mysql-backup-schedule` in this case.
 
 To create a full backup, using `xtrabackup`, for the cluster:
 
@@ -539,8 +539,6 @@ kubectl apply -f examples/apecloud-mysql/pod-monitor.yaml
 ##### Step 3. Accessing the Grafana Dashboard
 
 Login to the Grafana dashboard and import the dashboard.
-
-There is a pre-configured dashboard for PostgreSQL under the `APPS / PostgreSQL` folder in the Grafana dashboard. And more dashboards can be found in the Grafana dashboard store[^5].
 
 > [!Note]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
