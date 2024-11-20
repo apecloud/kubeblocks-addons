@@ -1,16 +1,19 @@
 #!/bin/bash
 
-zk_env_file="$ZOOBINDIR"/zkEnv.sh
-
-load_zk_env() {
-  # shellcheck source=$ZOOBINDIR"/zkEnv.sh
-  source "$zk_env_file" > /dev/null
+get_zk_mode_from_script() {
+  $ZOOBINDIR/zkServer.sh status
 }
 
 get_zookeeper_mode() {
-  local stat
-  stat=$(java -cp "$CLASSPATH" $CLIENT_JVMFLAGS $JVMFLAGS org.apache.zookeeper.client.FourLetterWordMain localhost 2181 srvr 2> /dev/null | grep Mode)
-  echo "$stat" | awk -F': ' '{print $2}' | tr -d '[:space:]\n'
+  if command -v nc >/dev/null 2>&1; then
+    local stat
+    stat=$(echo srvr | nc 127.0.0.1 2181 | grep Mode)
+    echo "$stat" | awk '{print $2}'
+  else
+    local stat
+    stat=$(get_zk_mode_from_script)
+    echo "$stat" | grep "Mode:" | awk '{print $2}'
+  fi
 }
 
 get_zk_role() {
@@ -31,5 +34,4 @@ get_zk_role() {
 ${__SOURCED__:+false} : || return 0
 
 # main
-load_zk_env
 get_zk_role
