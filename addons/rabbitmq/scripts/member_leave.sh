@@ -11,7 +11,22 @@ if [[ -f /tmp/member_leave.lock ]]; then
     exit 1
 fi
 
+if [[ -f /tmp/${KB_LEAVE_MEMBER_POD_NAME}_leave.success ]]; then
+    echo "member_leave.sh is already leave success"
+    rm -f /tmp/${KB_LEAVE_MEMBER_POD_NAME}_leave.success
+    exit 0
+fi
+
 touch /tmp/member_leave.lock
+# Define the cleanup function
+cleanup() {
+    echo "Cleaning up..."
+    rm -f /tmp/member_leave.lock
+}
+
+# Set the trap to call the cleanup function on script exit
+trap cleanup EXIT
+
 CURRENT_POD_NAME=$(echo "${RABBITMQ_NODENAME}"|grep -oP '(?<=rabbit@).*?(?=\.)')
 
 # the node to leave the cluster
@@ -47,7 +62,7 @@ fi
 rabbitmqctl -n $LEAVE_NODE stop_app
 rabbitmqctl -n $TARGET_NODE forget_cluster_node $LEAVE_NODE
 
-rm -f /tmp/member_leave.lock
+touch /tmp/${KB_LEAVE_MEMBER_POD_NAME}_leave.success
 
 if [[ $? -eq 0 ]]; then
     echo "Leave member success: $LEAVE_NODE."
