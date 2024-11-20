@@ -18,7 +18,7 @@ image:
   helper:
     ## if the value of image.helper.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
     registry: ""
-    repository: "busybox"
+    repository: "apecloud/busybox"
     tag: 1.35
     pullPolicy: IfNotPresent
 

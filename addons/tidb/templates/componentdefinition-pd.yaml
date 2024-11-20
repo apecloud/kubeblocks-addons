@@ -53,8 +53,11 @@ spec:
       writable: false
   lifecycleActions:
     roleProbe:
+      # it is very weird if we don't have this line, it will go to a different code path and
+      # try to use a image called msoap/shell2http
+      builtinHandler: custom
       customHandler:
-        container: vastbase
+        container: pd
         exec:
           command:
             - bash
@@ -65,9 +68,9 @@ spec:
               MEMBER=$(/pd-ctl member)
               LEADER_NAME=$(echo $MEMBER | jq -r .leader.name)
               if [ "$LEADER_NAME" == "$HOSTNAME" ]; then
-                  echo "leader"
+                  echo -n "leader"
               else
-                  echo "follower"
+                  echo -n "follower"
               fi
     memberLeave:
       customHandler:
