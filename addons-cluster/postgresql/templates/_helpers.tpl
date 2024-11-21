@@ -16,7 +16,7 @@ Define postgresql ComponentSpec with ComponentDefinition.
 */}}
 {{- define "postgresql-cluster.componentSpec" }}
   clusterDef: postgresql
-  topology: {{ .Values.mode }}
+  topology: replication
   componentSpecs:
     - name: {{ include "postgresql-cluster.component-name" . }}
       serviceVersion: {{ .Values.version }}
