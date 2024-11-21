@@ -27,6 +27,9 @@ spec:
             mountPath: /scripts
           - name: config
             mountPath: /etc/pd
+        env:
+          - name: SERVICE_PORT
+            value: "2379"
         command: [ "/scripts/pd_start.sh" ]
   volumes:
     - name: data

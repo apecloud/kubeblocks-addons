@@ -41,6 +41,9 @@ spec:
             name: peer
           - containerPort: 20180
             name: status
+        env:
+          - name: SERVICE_PORT
+            value: "20180"
         volumeMounts:
           - name: data
             mountPath: /var/lib/tikv
