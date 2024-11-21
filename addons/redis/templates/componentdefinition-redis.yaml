@@ -77,6 +77,11 @@ spec:
         numDigits: 5
         numSymbols: 0
         letterCase: MixedCases
+  hostNetwork:
+    containerPorts:
+      - container: redis
+        ports:
+          - redis
   vars:
     ## the default username of redis connection
     - name: REDIS_DEFAULT_USER
@@ -112,6 +117,17 @@ spec:
           name: redis-advertised
           optional: true
           host: Required
+    ## the redis server host network port when using host network mode, the port will be allocated automatically by KubeBlocks
+    - name: REDIS_HOST_NETWORK_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: redis
+            port:
+              name: redis
+              option: Required
+      expression:
     ## the username of redis sentinel for redis connection, it is optional
     - name: SENTINEL_USER
       valueFrom:
@@ -160,6 +176,17 @@ spec:
           compDef: {{ include "redis-sentinel.componentDefName" . }}
           optional: true
           instanceNames: Optional
+    ## the redis sentinel host network port when using host network mode, the port will be allocated automatically by KubeBlocks
+    - name: SENTINEL_HOST_NETWORK_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          compDef: {{ include "redis-sentinel.componentDefName" . }}
+          optional: true
+          container:
+            name: redis
+            port:
+              name: redis
+              option: Required
   lifecycleActions:
     roleProbe:
       builtinHandler: redis
@@ -207,7 +234,7 @@ spec:
             mountPath: /kb-podinfo
         env:
           - name: SERVICE_PORT
-            value: "6379"
+            value: "$(REDIS_HOST_NETWORK_PORT)"
           ## the username of redis primary-secondary replication
           - name: REDIS_REPL_USER
             value: "kbreplicator"
@@ -247,7 +274,7 @@ spec:
           runAsUser: 1001
         env:
           - name: ENDPOINT
-            value: {{ printf "localhost:6379" }}
+            value: "localhost:$(REDIS_HOST_NETWORK_PORT)"
           - name: REDIS_USER
             value: $(REDIS_DEFAULT_USER)
           - name: REDIS_PASSWORD

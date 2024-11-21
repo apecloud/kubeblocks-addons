@@ -57,6 +57,11 @@ spec:
         numDigits: 5
         numSymbols: 0
         letterCase: MixedCases
+  hostNetwork:
+    containerPorts:
+      - container: redis-sentinel
+        ports:
+          - redis-sentinel
   vars:
     ## the username of redis sentinel
     - name: SENTINEL_USER
@@ -94,6 +99,17 @@ spec:
           name: sentinel-advertised
           optional: true
           host: Required
+    ## the redis sentinel server host network port when using host network mode, the port will be allocated automatically by KubeBlocks
+    - name: REDIS_SENTINEL_HOST_NETWORK_PORT
+      value: "26379"
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: redis-sentinel
+            port:
+              name: redis-sentinel
+              option: Required
   lifecycleActions:
     accountProvision:
       customHandler:
@@ -119,7 +135,7 @@ spec:
           mountPath: /scripts
       env:
         - name: SENTINEL_SERVICE_PORT
-          value: "26379"
+          value: "$(REDIS_SENTINEL_HOST_NETWORK_PORT)"
       command:
         - /bin/bash
       args:

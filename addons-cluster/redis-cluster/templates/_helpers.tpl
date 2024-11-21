@@ -205,3 +205,22 @@ Define redis cluster sharding count.
 {{- define "redis-cluster.shards" }}
 shards: {{ max .Values.redisCluster.shardCount 3 }}
 {{- end }}
+
+{{/*
+Define common fileds of cluster object
+*/}}
+{{- define "redis-cluster.clusterCommon" }}
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+  {{- if .Values.hostNetworkEnabled }}
+  annotations:
+    kubeblocks.io/host-network: "redis"
+  {{- end }}
+spec:
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  {{- include "kblib.affinity" . | indent 2 }}
+{{- end }}

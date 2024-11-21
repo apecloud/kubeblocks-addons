@@ -10,8 +10,15 @@ extract_ordinal_from_object_name() {
   echo "$ordinal"
 }
 
-parse_redis_sentinel_advertised_svc_if_exist() {
+parse_redis_sentinel_announce_addr() {
   local pod_name="$1"
+
+  # if redis sentinel is in host network mode, use the host ip and port as the announce ip and port first
+  if [[ -n "${REDIS_SENTINEL_HOST_NETWORK_PORT}" ]]; then
+    redis_sentinel_announce_port_value="$REDIS_SENTINEL_HOST_NETWORK_PORT"
+    redis_sentinel_announce_host_value="$KB_HOST_IP"
+    return 0
+  fi
 
   if [[ -z "${REDIS_SENTINEL_ADVERTISED_PORT}" ]]; then
     echo "Environment variable REDIS_SENTINEL_ADVERTISED_PORT not found. Ignoring."
@@ -30,8 +37,8 @@ parse_redis_sentinel_advertised_svc_if_exist() {
     svc_name_ordinal=$(extract_ordinal_from_object_name "$svc_name")
     if [[ "$svc_name_ordinal" == "$pod_name_ordinal" ]]; then
       echo "Found matching svcName and port for podName '$pod_name', REDIS_SENTINEL_ADVERTISED_PORT: $REDIS_SENTINEL_ADVERTISED_PORT. svcName: $svc_name, port: $port."
-      redis_sentinel_advertised_svc_port_value="$port"
-      redis_sentinel_advertised_svc_host_value="$KB_HOST_IP"
+      redis_sentinel_announce_port_value="$port"
+      redis_sentinel_announce_host_value="$KB_HOST_IP"
       found=true
       break
     fi
@@ -89,11 +96,11 @@ reset_redis_sentinel_conf() {
 build_redis_sentinel_conf() {
   echo "build redis sentinel conf"
   echo "port $sentinel_port" >> /data/sentinel/redis-sentinel.conf
-  # build announce ip and port according to whether the advertised svc is enabled
-  if [ -n "$redis_sentinel_advertised_svc_port_value" ] && [ -n "$redis_sentinel_advertised_svc_host_value" ]; then
-    echo "redis sentinel use nodeport $redis_sentinel_advertised_svc_host_value:$redis_sentinel_advertised_svc_port_value to announce"
-    echo "sentinel announce-ip $redis_sentinel_advertised_svc_host_value" >> /data/sentinel/redis-sentinel.conf
-    echo "sentinel announce-port $redis_sentinel_advertised_svc_port_value" >> /data/sentinel/redis-sentinel.conf
+  # build announce ip and port according to whether the announce addr is exist
+  if [ -n "$redis_sentinel_announce_port_value" ] && [ -n "$redis_sentinel_announce_host_value" ]; then
+    echo "redis sentinel use nodeport $redis_sentinel_announce_host_value:$redis_sentinel_announce_port_value to announce"
+    echo "sentinel announce-ip $redis_sentinel_announce_host_value" >> /data/sentinel/redis-sentinel.conf
+    echo "sentinel announce-port $redis_sentinel_announce_port_value" >> /data/sentinel/redis-sentinel.conf
   else
     if [ -n "$FIXED_POD_IP_ENABLED" ]; then
       echo "sentinel use the fixed pod ip to announce-ip"
@@ -122,7 +129,7 @@ start_redis_sentinel_server() {
   echo "Start redis sentinel server succeeded!"
 }
 
-parse_redis_sentinel_advertised_svc_if_exist "$KB_POD_NAME"
+parse_redis_sentinel_announce_addr "$KB_POD_NAME"
 reset_redis_sentinel_conf
 build_redis_sentinel_conf
 start_redis_sentinel_server

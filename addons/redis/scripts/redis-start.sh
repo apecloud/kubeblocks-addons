@@ -59,12 +59,12 @@ build_redis_default_accounts() {
 }
 
 build_announce_ip_and_port() {
-  # build announce ip and port according to whether the advertised svc is enabled
-  if [ -n "$redis_advertised_svc_host_value" ] && [ -n "$redis_advertised_svc_port_value" ]; then
-    echo "redis use nodeport $redis_advertised_svc_host_value:$redis_advertised_svc_port_value to announce"
+  # build announce ip and port according to whether the announce addr is exist
+  if [ -n "$redis_announce_host_value" ] && [ -n "$redis_announce_port_value" ]; then
+    echo "redis use nodeport $redis_announce_host_value:$redis_announce_port_value to announce"
     {
-      echo "replica-announce-port $redis_advertised_svc_port_value"
-      echo "replica-announce-ip $redis_advertised_svc_host_value"
+      echo "replica-announce-port $redis_announce_port_value"
+      echo "replica-announce-ip $redis_announce_host_value"
     } >> /etc/redis/redis.conf
   else
     if [ -n "$FIXED_POD_IP_ENABLED" ]; then
@@ -251,9 +251,9 @@ check_current_pod_is_primary() {
     return 0
   fi
 
-  if [ -n "$redis_advertised_svc_host_value" ] && [ -n "$redis_advertised_svc_port_value" ]; then
-    if [[ "$primary" == "$redis_advertised_svc_host_value" ]] && [[ "$primary_port" == "$redis_advertised_svc_port_value" ]]; then
-      echo "current pod is primary, skip check role in kernel, primary node: $primary, advertised ip:$redis_advertised_svc_host_value, advertised port:$redis_advertised_svc_port_value"
+  if [ -n "$redis_announce_host_value" ] && [ -n "$redis_announce_port_value" ]; then
+    if [[ "$primary" == "$redis_announce_host_value" ]] && [[ "$primary_port" == "$redis_announce_port_value" ]]; then
+      echo "current pod is primary, skip check role in kernel, primary node: $primary, advertised ip:$redis_announce_host_value, advertised port:$redis_announce_port_value"
       return 0
     fi
   fi
@@ -323,8 +323,16 @@ start_redis_server() {
     eval "$exec_cmd"
 }
 
-parse_redis_advertised_svc_if_exist() {
+parse_redis_announce_addr() {
   local pod_name="$1"
+
+  # if redis is in host network mode, use the host ip and port as the announce ip and port first
+  if [[ -n "${REDIS_HOST_NETWORK_PORT}" ]]; then
+    echo "redis is in host network mode, use the host ip:$KB_HOST_IP and port:$REDIS_HOST_NETWORK_PORT as the announce ip and port."
+    redis_announce_port_value="$REDIS_HOST_NETWORK_PORT"
+    redis_announce_host_value="$KB_HOST_IP"
+    return 0
+  fi
 
   if [[ -z "${REDIS_ADVERTISED_PORT}" ]]; then
     echo "Environment variable REDIS_ADVERTISED_PORT not found. Ignoring."
@@ -343,8 +351,8 @@ parse_redis_advertised_svc_if_exist() {
     svc_name_ordinal=$(extract_ordinal_from_object_name "$svc_name")
     if [[ "$svc_name_ordinal" == "$pod_name_ordinal" ]]; then
       echo "Found matching svcName and port for podName '$pod_name', REDIS_ADVERTISED_PORT: $REDIS_ADVERTISED_PORT. svcName: $svc_name, port: $port."
-      redis_advertised_svc_port_value="$port"
-      redis_advertised_svc_host_value="$KB_HOST_IP"
+      redis_announce_port_value="$port"
+      redis_announce_host_value="$KB_HOST_IP"
       found=true
       break
     fi
@@ -366,6 +374,6 @@ build_redis_conf() {
   build_redis_default_accounts
 }
 
-parse_redis_advertised_svc_if_exist "$KB_POD_NAME"
+parse_redis_announce_addr "$KB_POD_NAME"
 build_redis_conf
 start_redis_server
