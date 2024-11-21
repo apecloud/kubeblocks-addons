@@ -25,6 +25,9 @@ dataPath: /postgresql/volume_data/pgconsensus_data
 # When the POSTGRESQL_MOUNTED_CONF_DIR environment variable is set.
 confPath: /postgresql/volume_data/pgconsensus_data
 
+logConfigs:
+  running: /postgresql/volume_data/pgconsensus_data/log/postgresql-*
+
 roleProbe:
   failureThreshold: 2
   periodSeconds: 1

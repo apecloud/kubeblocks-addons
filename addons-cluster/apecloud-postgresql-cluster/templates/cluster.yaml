@@ -13,4 +13,6 @@ spec:
       componentDef: apecloud-postgresql14 # ref clusterdefinition componentDefs.name
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ include "apecloud-postgresql-cluster.replicas" . }}
+      enabledLogs:
+        - running
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
