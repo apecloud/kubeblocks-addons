@@ -124,7 +124,7 @@ services:
       ports:
           - name: postgresql
             port: 5432
-            targetPort: postgresql
+            targetPort: tcp-postgresql
     roleSelector: leader
   - name: replication
     serviceName: replication
