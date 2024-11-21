@@ -40,14 +40,29 @@ spec:
         letterCase: MixedCases
   lifecycleActions: 
     memberLeave:
-      customHandler:
+      exec:
         container: rabbitmq
-        exec:
-          command:
-          - /bin/bash
-          - -c
-          - |
-            {{- .Files.Get "scripts/member_leave.sh" | nindent 12 }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        command:
+        - /bin/bash
+        - -c
+        - |
+          {{- .Files.Get "scripts/member_leave.sh" | nindent 12 }}
+        env:
+          - name: MY_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: MY_POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: K8S_SERVICE_NAME
+            value: $(KB_CLUSTER_COMP_NAME)-headless
+          - name: RABBITMQ_NODENAME
+            value: rabbit@$(MY_POD_NAME).$(K8S_SERVICE_NAME).$(MY_POD_NAMESPACE)
   runtime:
     containers:
       - name: rabbitmq
