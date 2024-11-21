@@ -2,7 +2,8 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: {{ include "clustername" . }}
-  labels: 
+  namespace: {{ .Release.Namespace }}
+  labels:
     {{- include "greptimedb.labels" . | nindent 4 }}
 spec:
   clusterDef: greptimedb
