@@ -52,14 +52,14 @@ addons-cluster/mongodb/ @xuriwuyun @leon-inf @Y-Rookie @apecloud/kb-reviewers
 addons/mysql/ @xuriwuyun @leon-inf @Y-Rookie @apecloud/kb-reviewers
 addons-cluster/mysql/ @xuriwuyun @leon-inf @Y-Rookie @apecloud/kb-reviewers
 
-addons/nebula/ @Shanshan_Ying @Xuntao_Cheng @leon-inf @Y-Rookie @apecloud/kb-reviewers
-addons-cluster/nebula/ @Shanshan_Ying @Xuntao_Cheng @leon-inf @Y-Rookie @apecloud/kb-reviewers
+addons/nebula/ @shanshanying @Xuntao_Cheng @leon-inf @Y-Rookie @apecloud/kb-reviewers
+addons-cluster/nebula/ @shanshanying @Xuntao_Cheng @leon-inf @Y-Rookie @apecloud/kb-reviewers
 
-addons/neon/ @skyrise @leon-inf @Y-Rookie @apecloud/kb-reviewers
-addons-cluster/neon/ @skyrise @leon-inf @Y-Rookie @apecloud/kb-reviewers
+addons/neon/ @skyrise-l @leon-inf @Y-Rookie @apecloud/kb-reviewers
+addons-cluster/neon/ @skyrise-l @leon-inf @Y-Rookie @apecloud/kb-reviewers
 
-addons/oceanbase-ce/ @Powerfool @shanshanying @leon-inf @Y-Rookie @apecloud/kb-reviewers
-addons-cluster/oceanbase-ce/ @Powerfool @shanshanying @leon-inf @Y-Rookie @apecloud/kb-reviewers
+addons/oceanbase-ce/ @Powerfooi @shanshanying @leon-inf @Y-Rookie @apecloud/kb-reviewers
+addons-cluster/oceanbase-ce/ @Powerfooi @shanshanying @leon-inf @Y-Rookie @apecloud/kb-reviewers
 
 addons/official-postgresql/ @kizuna-lek @leon-inf @Y-Rookie @apecloud/kb-reviewers
 addons-cluster/official-postgresql/ @kizuna-lek @leon-inf @Y-Rookie @apecloud/kb-reviewers
