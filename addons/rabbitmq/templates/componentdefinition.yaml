@@ -59,6 +59,8 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.namespace
+          - name: RABBITMQ_USE_LONGNAME
+            value: "true"
           - name: K8S_SERVICE_NAME
             value: $(KB_CLUSTER_COMP_NAME)-headless
           - name: RABBITMQ_NODENAME
