@@ -31,3 +31,4 @@ storage: 20
 
 extra:
   rbacEnabled: true
+  terminationPolicy: Delete
