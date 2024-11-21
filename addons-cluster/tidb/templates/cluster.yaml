@@ -2,6 +2,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: {{ include "clustername" . }}
+  namespace: {{ .Release.Namespace }}
   labels: {{ include "tidb-cluster.labels" . | nindent 4 }}
 spec:
   clusterDef: tidb  # ref clusterdefinition.name
