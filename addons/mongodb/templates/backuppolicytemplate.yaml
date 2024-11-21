@@ -14,17 +14,17 @@ spec:
   backupMethods:
     - name: dump
       snapshotVolumes: false
-      actionSetName: mongodb-dump
+      actionSetName: mongodb-dump-br
     - name: datafile
       snapshotVolumes: false
-      actionSetName: mongodb-physical-backup
+      actionSetName: mongodb-physical-br
       targetVolumes:
         volumeMounts:
           - name: data
             mountPath: {{ .Values.dataMountPath }}
     - name: volume-snapshot
       snapshotVolumes: true
-      actionSetName: mongodb-volumesnapshot
+      actionSetName: mongodb-volume-snapshot
       targetVolumes:
         volumes:
           - data

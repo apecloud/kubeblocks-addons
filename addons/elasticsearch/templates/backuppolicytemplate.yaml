@@ -14,13 +14,13 @@ spec:
         role: ""
         strategy: Any
       snapshotVolumes: false
-      actionSetName: elasticsearch-physical-backup
+      actionSetName: elasticsearch-physical-br
     - name: setup-keystore
       target:
         role: ""
         strategy: All
       snapshotVolumes: false
-      actionSetName: elasticsearch-setup-keystore
+      actionSetName: elasticsearch-set-up-keystore
       targetVolumes:
         volumeMounts:
         - name: data
