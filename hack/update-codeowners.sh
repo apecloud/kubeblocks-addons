@@ -14,7 +14,7 @@ examples/ @ahjing99 @shanshanying $FALLBACKS
 # Some IDs may be invalid or lack necessary permissions. Please ignore them.
 EOF
 
-  for d in $(find ./addons -type d -depth 1 -not -name "kblib" | sort); do
+  for d in $(find ./addons -type d -maxdepth 1 -not -name "kblib" | sort); do
     if [[ ! -f "$d/Chart.yaml" ]]; then
       continue
     fi
