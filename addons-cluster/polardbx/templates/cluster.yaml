@@ -2,6 +2,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: {{ include "polardbx.name" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{ include "polardbx.labels" . | nindent 4 }}
 spec:
