@@ -61,7 +61,7 @@ jobs:
         uses: ad-m/github-push-action@master
         if: ${{ steps.update-readme.outputs.file_changes }}
         with:
-          github_token: ${{ env.GITHUB_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ github.ref }}
 
   update-codeowners:
@@ -86,5 +86,5 @@ jobs:
         uses: ad-m/github-push-action@master
         if: ${{ steps.update-codeowners.outputs.file_changes }}
         with:
-          github_token: ${{ env.GITHUB_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ github.ref }}
