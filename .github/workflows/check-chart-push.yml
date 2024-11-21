@@ -63,3 +63,28 @@ jobs:
         with:
           github_token: ${{ env.GITHUB_TOKEN }}
           branch: ${{ github.ref }}
+
+  update-codeowners:
+    if: ${{ github.ref_name != 'main' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: update codeowners
+        id: update-codeowners
+        run: |
+          bash hack/update-codeowners.sh
+          FILE_CHANGES=`git diff --name-only ${{ github.sha }}`
+          if [[ ! -z "$FILE_CHANGES" ]]; then
+              echo $FILE_CHANGES
+              git config --local user.name "$GITHUB_ACTOR"
+              git config --local user.email "$GITHUB_ACTOR@users.noreply.github.com"
+              git commit -a -m "chore: auto update CODEOWNERS"
+          fi
+          echo file_changes=$FILE_CHANGES >> $GITHUB_OUTPUT
+
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        if: ${{ steps.update-codeowners.outputs.file_changes }}
+        with:
+          github_token: ${{ env.GITHUB_TOKEN }}
+          branch: ${{ github.ref }}
