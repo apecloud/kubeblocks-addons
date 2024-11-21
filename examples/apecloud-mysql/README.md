@@ -112,7 +112,7 @@ After applying the operation, you will see a new pod created and the ApeCloud-My
 And you can check the progress of the scaling operation with following command:
 
 ```bash
-kubectl describe ops acmysql-scale-in
+kubectl describe ops acmysql-scale-out
 ```
 
 #### [Scale-in](scale-in.yaml)
@@ -313,7 +313,6 @@ By applying this yaml file, KubeBlocks will perform a switchover operation defin
 
 </details>
 
-
 #### [Switchover without preferred candidates](switchover.yaml)
 
 Switchover a specified instance as the new primary or leader of the cluster
@@ -440,7 +439,7 @@ To restore a new cluster from a Backup:
 kubectl get backup acmysql-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
 ```
 
-1. Update `examples/apecloud-mysql/restore.yaml` and set placeholder `<<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
+1. Update `examples/apecloud-mysql/restore.yaml` and set placeholder `<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
 
 ```bash
 kubectl apply -f examples/apecloud-mysql/restore.yaml
@@ -501,7 +500,23 @@ spec:
       type: LoadBalancer
 ```
 
-If the service is of type `LoadBalancer`, please add annotations for cloud loadbalancer depending on the cloud provider you are using
+If the service is of type `LoadBalancer`, please add annotations for cloud loadbalancer depending on the cloud provider you are using. Here list annotations for some cloud providers:
+
+```yaml
+# alibaba cloud
+service.beta.kubernetes.io/alibaba-cloud-loadbalancer-address-type: "internet"  # or "intranet"
+
+# aws
+service.beta.kubernetes.io/aws-load-balancer-type: nlb  # Use Network Load Balancer
+service.beta.kubernetes.io/aws-load-balancer-internal: "true"  # or "false" for internet
+
+# azure
+service.beta.kubernetes.io/azure-load-balancer-internal: "true" # or "false" for internet
+
+# gcp
+networking.gke.io/load-balancer-type: "Internal" # for internal access
+cloud.google.com/l4-rbs: "enabled" # for internet
+```
 
 ### Observability
 
@@ -528,7 +543,7 @@ And the expected output is like:
   protocol: TCP
 ```
 
-##### Step 2. Accessing the Grafana Dashboard
+##### Step 2. Create PodMonitor
 
 Apply the `PodMonitor` file to monitor the cluster:
 

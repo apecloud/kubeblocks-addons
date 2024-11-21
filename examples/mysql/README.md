@@ -136,7 +136,7 @@ After applying the operation, you will see a new pod created and the MySQL clust
 And you can check the progress of the scaling operation with following command:
 
 ```bash
-kubectl describe ops mysql-scale-in
+kubectl describe ops mysql-scale-out
 ```
 
 #### [Scale-in](scale-in.yaml)
@@ -390,7 +390,7 @@ To restore a new cluster from a Backup:
 kubectl get backup mysql-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
 ```
 
-1. Update `examples/mysql/restore.yaml` and set placeholder `<<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
+1. Update `examples/mysql/restore.yaml` and set placeholder `<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
 
 ```bash
 kubectl apply -f examples/mysql/restore.yaml
@@ -449,9 +449,29 @@ spec:
       # Determines how the Service is exposed. Defaults to 'ClusterIP'.
       # Valid options are [`ClusterIP`, `NodePort`, and `LoadBalancer`]
       type: LoadBalancer
+  componentSpecs:
+    - name: mysql
+      replicas: 2
+      ...
 ```
 
-If the service is of type `LoadBalancer`, please add annotations for cloud loadbalancer depending on the cloud provider you are using
+If the service is of type `LoadBalancer`, please add annotations for cloud loadbalancer depending on the cloud provider you are using. Here list annotations for some cloud providers:
+
+```yaml
+# alibaba cloud
+service.beta.kubernetes.io/alibaba-cloud-loadbalancer-address-type: "internet"  # or "intranet"
+
+# aws
+service.beta.kubernetes.io/aws-load-balancer-type: nlb  # Use Network Load Balancer
+service.beta.kubernetes.io/aws-load-balancer-internal: "true"  # or "false" for internet
+
+# azure
+service.beta.kubernetes.io/azure-load-balancer-internal: "true" # or "false" for internet
+
+# gcp
+networking.gke.io/load-balancer-type: "Internal" # for internal access
+cloud.google.com/l4-rbs: "enabled" # for internet
+```
 
 ### Observability
 
@@ -478,7 +498,7 @@ And the expected output is like:
   protocol: TCP
 ```
 
-##### Step 2. Accessing the Grafana Dashboard
+##### Step 2. Create PodMonitorAccessing the Grafana Dashboard
 
 Apply the `PodMonitor` file to monitor the cluster:
 
