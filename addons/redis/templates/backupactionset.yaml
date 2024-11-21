@@ -1,7 +1,7 @@
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: redis-physical-backup
+  name: redis-physical-br
   labels:
     clusterdefinition.kubeblocks.io/name: redis
     {{- include "redis.labels" . | nindent 4 }}
@@ -49,7 +49,7 @@ spec:
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: redis-cluster-backup
+  name: redis-cluster-br
   labels:
     clusterdefinition.kubeblocks.io/name: redis-cluster
     {{- include "redis.labels" . | nindent 4 }}
@@ -91,7 +91,7 @@ spec:
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: redis-pitr-backup
+  name: redis-for-pitr
   labels:
     clusterdefinition.kubeblocks.io/name: redis
     {{- include "redis.labels" . | nindent 4 }}

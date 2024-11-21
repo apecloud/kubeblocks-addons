@@ -3,7 +3,7 @@ Define xtrabackup actionSet name
 */}}
 {{- define "apecloud-mysql.xtrabackupActionSetName" -}}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-xtrabackup-for-apecloud-mysql
+apecloud-mysql-xtrabackup
 {{- else -}}
 {{- .Values.resourceNamePrefix -}}-xtrabackup
 {{- end -}}
@@ -14,7 +14,7 @@ Define volume snapshot actionSet name
 */}}
 {{- define "apecloud-mysql.vsActionSetName" -}}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-volumesnapshot-for-apecloud-mysql
+apecloud-mysql-volume-snapshot
 {{- else -}}
 {{- .Values.resourceNamePrefix -}}-volumesnapshot
 {{- end -}}

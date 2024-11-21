@@ -11,4 +11,4 @@ spec:
   backupMethods:
     - name: br
       snapshotVolumes: false
-      actionSetName: tidb-actionset
+      actionSetName: tidb-br

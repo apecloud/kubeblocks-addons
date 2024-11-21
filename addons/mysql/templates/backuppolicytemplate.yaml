@@ -14,7 +14,7 @@ spec:
   backupMethods:
   - name: xtrabackup
     snapshotVolumes: false
-    actionSetName: mysql-xtrabackup
+    actionSetName: mysql-xtrabackup-br
     env:
       - name: IMAGE_TAG
         valueFrom:
@@ -34,7 +34,7 @@ spec:
         mountPath: {{ .Values.dataMountPath }}
   - name: volume-snapshot
     snapshotVolumes: true
-    actionSetName: mysql-volumesnapshot
+    actionSetName: mysql-volume-snapshot
     target:
       role: primary
     targetVolumes:

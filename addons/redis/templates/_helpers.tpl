@@ -189,14 +189,14 @@ redis-cluster7-scripts-template-{{ .Chart.Version }}
 Define redis 7.X component config constraint name
 */}}
 {{- define "redis7.configConstraint" -}}
-redis7-config-constraints
+redis7-config-cc
 {{- end -}}
 
 {{/*
 Define redis cluster 7.X component config constraint name
 */}}
 {{- define "redisCluster7.configConstraint" -}}
-redis-cluster7-config-constraints
+redis-cluster7-cc
 {{- end -}}
 
 {{/*

@@ -1,7 +1,7 @@
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: zookeeper-backup-zoocreeper
+  name: zookeeper-zoocreeper
   labels:
     {{- include "zookeeper.labels" . | nindent 4 }}
 spec:

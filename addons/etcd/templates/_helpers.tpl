@@ -110,7 +110,7 @@ Generate scripts configmap
 Define etcdctl backup actionSet name
 */}}
 {{- define "etcd.backupActionSet" -}}
-etcdctl-backup
+etcdctl-br
 {{- end -}}
 
 {{/*

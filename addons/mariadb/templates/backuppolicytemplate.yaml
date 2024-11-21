@@ -11,7 +11,7 @@ spec:
   backupMethods:
     - name: mariadb-backup
       snapshotVolumes: false
-      actionSetName: mariadb-physical-backup
+      actionSetName: mariadb-physical-br
       targetVolumes:
         volumeMounts:
           - name: data

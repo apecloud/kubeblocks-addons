@@ -15,14 +15,14 @@ spec:
   backupMethods:
     - name: datafile
       snapshotVolumes: false
-      actionSetName: redis-physical-backup
+      actionSetName: redis-physical-br
       targetVolumes:
         volumeMounts:
           - name: data
             mountPath: {{ .Values.dataMountPath }}
     - name: aof
       snapshotVolumes: false
-      actionSetName: redis-pitr-backup
+      actionSetName: redis-for-pitr
       targetVolumes:
         volumeMounts:
           - name: data

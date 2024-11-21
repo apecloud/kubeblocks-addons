@@ -27,7 +27,7 @@ spec:
   backupMethods:
     - name: pg-basebackup
       snapshotVolumes: false
-      actionSetName: postgres-basebackup
+      actionSetName: postgresql-basebackup
       env: &compDefEnvMapping
         - name: IMAGE_TAG
           valueFrom:
@@ -57,7 +57,7 @@ spec:
       target:
         role: ""
         strategy: All
-      actionSetName: postgres-config-wal-g
+      actionSetName: postgresql-config-wal-g
       snapshotVolumes: false
       targetVolumes:
         volumeMounts:
@@ -68,7 +68,7 @@ spec:
         role: secondary
         fallbackRole: primary
         account: postgres
-      actionSetName: postgres-wal-g
+      actionSetName: postgresql-wal-g
       snapshotVolumes: false
       targetVolumes:
         volumeMounts:
@@ -78,7 +78,7 @@ spec:
       target:
         role: primary
         account: postgres
-      actionSetName: postgresql-pitr
+      actionSetName: postgresql-for-pitr
       snapshotVolumes: false
       env: *compDefEnvMapping
       targetVolumes:

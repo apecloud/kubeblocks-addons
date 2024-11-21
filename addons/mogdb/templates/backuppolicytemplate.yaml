@@ -14,7 +14,7 @@ spec:
     account: root
   backupMethods:
     - name: mogdb-basebackup
-      actionSetName: mogdb-basebackup
+      actionSetName: mogdb-basebackup-br
       snapshotVolumes: false
       env:
       - name: IMAGE_TAG

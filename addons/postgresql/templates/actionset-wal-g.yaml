@@ -1,7 +1,7 @@
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: postgres-config-wal-g
+  name: postgresql-config-wal-g
   labels:
     clusterdefinition.kubeblocks.io/name: postgresql
     {{- include "postgresql.labels" . | nindent 4 }}
@@ -31,7 +31,7 @@ spec:
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: postgres-wal-g
+  name: postgresql-wal-g
   labels:
     clusterdefinition.kubeblocks.io/name: postgresql
     {{- include "postgresql.labels" . | nindent 4 }}

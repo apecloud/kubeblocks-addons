@@ -1,7 +1,7 @@
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: mogdb-basebackup
+  name: mogdb-basebackup-br
   labels:
     clusterdefinition.kubeblocks.io/name: mogdb
     {{- include "mogdb.labels" . | nindent 4 }}

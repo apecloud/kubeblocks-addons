@@ -3,7 +3,7 @@ kind: ActionSet
 metadata:
   labels:
     clusterdefinition.kubeblocks.io/name: postgresql
-  name: postgresql-pitr
+  name: postgresql-for-pitr
 spec:
   backupType: Continuous
   env:
