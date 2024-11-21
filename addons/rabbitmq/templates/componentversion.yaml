@@ -9,6 +9,7 @@ spec:
     - compDefs:
         - {{ include "rabbitmq.componentDefName" . }}
       releases:
+        - 3.13.7
         - 3.13.2
         - 3.12.14
         - 3.11.28
@@ -16,6 +17,11 @@ spec:
         - 3.9.29
         - 3.8.14
   releases:
+    - name: 3.13.7
+      changes:
+      serviceVersion: 3.13.7
+      images:
+        rabbitmq: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:3.13.7-management
     - name: 3.13.2
       changes:
       serviceVersion: 3.13.2
