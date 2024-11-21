@@ -14,7 +14,7 @@ spec:
       spec:
         ports:
             - name: postgresql
-              port: 3306
+              port: 5432
               targetPort: postgresql
       roleSelector: leader
     - name: replication
@@ -22,7 +22,7 @@ spec:
       spec:
         ports:
           - name: raft
-            port: 13306
+            port: 15432
             targetPort: raft
       podService: true
       disableAutoProvision: true
