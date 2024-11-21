@@ -11,11 +11,27 @@ if [[ -f /tmp/member_leave.lock ]]; then
     exit 1
 fi
 
+CURRENT_POD_NAME=$(echo "${RABBITMQ_NODENAME}"|grep -oP '(?<=rabbit@).*?(?=\.)')
 if [[ -f /tmp/${KB_LEAVE_MEMBER_POD_NAME}_leave.success ]]; then
     echo "member_leave.sh is already leave success"
+    # if the current pod is the leave member pod, exit directly without delete the success file, because the leave member can't execute cluster_status anymore aflter leave the cluster.
+    if [[ "$CURRENT_POD_NAME" == "$KB_LEAVE_MEMBER_POD_NAME" ]]; then
+        exit 0
+    fi
     rm -f /tmp/${KB_LEAVE_MEMBER_POD_NAME}_leave.success
     exit 0
 fi
+
+
+is_node_deleted() {
+    local disk_nodes_str=$(echo "$1" | awk '/^Disk Nodes$/{flag=1;next} /^$/{flag++} {if(NF>0 && flag==2){print}}')
+    while read -r line; do
+        if $(echo "$line" | grep -q "$KB_LEAVE_MEMBER_POD_NAME"); then
+            return 1
+        fi
+    done <<< "$disk_nodes_str"
+    return 0
+}
 
 touch /tmp/member_leave.lock
 # Define the cleanup function
@@ -27,13 +43,17 @@ cleanup() {
 # Set the trap to call the cleanup function on script exit
 trap cleanup EXIT
 
-CURRENT_POD_NAME=$(echo "${RABBITMQ_NODENAME}"|grep -oP '(?<=rabbit@).*?(?=\.)')
-
 # the node to leave the cluster
 LEAVE_NODE="${RABBITMQ_NODENAME/$CURRENT_POD_NAME/$KB_LEAVE_MEMBER_POD_NAME}"
 
 # the output of rabbitmqctl cluster_status
 CLUSTER_STATUS=$(rabbitmqctl cluster_status --formatter table)
+
+if is_node_deleted "$CLUSTER_STATUS"; then
+    echo "Node $KB_LEAVE_MEMBER_POD_NAME has been deleted."
+    touch /tmp/${KB_LEAVE_MEMBER_POD_NAME}_leave.success
+    exit 0
+fi
 
 # get the list of running nodes
 RUNNING_NODES=$(echo "$CLUSTER_STATUS" | grep -A 3 "Running Nodes" | tail -n +3 | grep 'rabbit@')
