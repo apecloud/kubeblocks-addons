@@ -61,7 +61,11 @@ spec:
             --host=0.0.0.0 \
             --path=${PD_ADDRESS} \
             --log-slow-query=/var/log/tidb/slowlog \
+            --log-file=/var/log/tidb/running.log \
             --config=/etc/tidb/tidb.toml
+        env:
+          - name: SERVICE_PORT
+            value: "10080"
         volumeMounts:
           - name: slowlog
             mountPath: /var/log/tidb
