@@ -13,15 +13,15 @@ extract_ordinal_from_object_name() {
 parse_redis_sentinel_announce_addr() {
   local pod_name="$1"
 
-  # if redis sentinel is in host network mode, use the host ip and port as the announce ip and port first
-  if [[ -n "${REDIS_SENTINEL_HOST_NETWORK_PORT}" ]]; then
-    redis_sentinel_announce_port_value="$REDIS_SENTINEL_HOST_NETWORK_PORT"
-    redis_sentinel_announce_host_value="$KB_HOST_IP"
-    return 0
-  fi
-
+  # try to get the announce ip and port from REDIS_ADVERTISED_PORT(support NodePort currently) first
   if [[ -z "${REDIS_SENTINEL_ADVERTISED_PORT}" ]]; then
     echo "Environment variable REDIS_SENTINEL_ADVERTISED_PORT not found. Ignoring."
+    # if redis sentinel is in host network mode, use the host ip and port as the announce ip and port
+    if [[ -n "${REDIS_SENTINEL_HOST_NETWORK_PORT}" ]] && [[ -n "$HOST_NETWORK_ENABLED" ]]; then
+      echo "redis sentinel is in host network mode, use the host ip:$KB_HOST_IP and port:$REDIS_SENTINEL_HOST_NETWORK_PORT as the announce ip and port."
+      redis_sentinel_announce_port_value="$REDIS_SENTINEL_HOST_NETWORK_PORT"
+      redis_sentinel_announce_host_value="$KB_HOST_IP"
+    fi
     return 0
   fi
 

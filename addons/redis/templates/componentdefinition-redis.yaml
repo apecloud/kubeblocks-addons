@@ -181,8 +181,8 @@ spec:
           compDef: {{ include "redis-sentinel.componentDefName" . }}
           optional: true
           instanceNames: Optional
-    ## the redis sentinel host network port when using host network mode, the port will be allocated automatically by KubeBlocks
-    - name: SENTINEL_HOST_NETWORK_PORT
+    ## the redis sentinel server port, if redis sentinel is in host network mode, the port will be allocated automatically by KubeBlocks, if not, the default port is 26379
+    - name: SENTINEL_SERVICE_PORT
       valueFrom:
         hostNetworkVarRef:
           compDef: {{ include "redis-sentinel.componentDefName" . }}

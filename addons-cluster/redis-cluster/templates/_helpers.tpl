@@ -58,6 +58,10 @@ Define redis ComponentSpec with ComponentDefinition.
   - name: FIXED_POD_IP_ENABLED
     value: "true"
   {{- end }}
+  {{- if .Values.hostNetworkEnabled }}
+  - name: HOST_NETWORK_ENABLED
+    value: "true"
+  {{- end }}
   enabledLogs:
     - running
   serviceAccountName: {{ include "kblib.serviceAccountName" . }}
@@ -82,6 +86,11 @@ Define redis sentinel ComponentSpec with ComponentDefinition.
   {{- if .Values.fixedPodIPEnabled }}
   env:
   - name: FIXED_POD_IP_ENABLED
+    value: "true"
+  {{- end }}
+  {{- if .Values.hostNetworkEnabled }}
+  env:
+  - name: HOST_NETWORK_ENABLED
     value: "true"
   {{- end }}
   resources:

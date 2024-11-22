@@ -201,8 +201,8 @@ retry_get_master_addr_by_name_from_sentinel() {
 
   while [ $retry_count -lt $max_retry ]; do
     set +x
-    echo "execute command: timeout $timeout_value redis-cli -h $sentinel_pod_fqdn -p $SENTINEL_HOST_NETWORK_PORT -a ******** sentinel get-master-addr-by-name $KB_CLUSTER_COMP_NAME"
-    output=$(timeout "$timeout_value" redis-cli -h "$sentinel_pod_fqdn" -p "$SENTINEL_HOST_NETWORK_PORT" -a "$SENTINEL_PASSWORD" sentinel get-master-addr-by-name "$KB_CLUSTER_COMP_NAME")
+    echo "execute command: timeout $timeout_value redis-cli -h $sentinel_pod_fqdn -p $SENTINEL_SERVICE_PORT -a ******** sentinel get-master-addr-by-name $KB_CLUSTER_COMP_NAME"
+    output=$(timeout "$timeout_value" redis-cli -h "$sentinel_pod_fqdn" -p "$SENTINEL_SERVICE_PORT" -a "$SENTINEL_PASSWORD" sentinel get-master-addr-by-name "$KB_CLUSTER_COMP_NAME")
     set -x
     exit_code=$?
 
@@ -326,16 +326,15 @@ start_redis_server() {
 parse_redis_announce_addr() {
   local pod_name="$1"
 
-  # if redis is in host network mode, use the host ip and port as the announce ip and port first
-  if [[ -n "${REDIS_HOST_NETWORK_PORT}" ]]; then
-    echo "redis is in host network mode, use the host ip:$KB_HOST_IP and port:$REDIS_HOST_NETWORK_PORT as the announce ip and port."
-    redis_announce_port_value="$REDIS_HOST_NETWORK_PORT"
-    redis_announce_host_value="$KB_HOST_IP"
-    return 0
-  fi
-
+  # try to get the announce ip and port from REDIS_ADVERTISED_PORT(support NodePort currently) first
   if [[ -z "${REDIS_ADVERTISED_PORT}" ]]; then
     echo "Environment variable REDIS_ADVERTISED_PORT not found. Ignoring."
+    # if redis is in host network mode, use the host ip and port as the announce ip and port
+    if [[ -n "${REDIS_HOST_NETWORK_PORT}" ]] && [[ -n "$HOST_NETWORK_ENABLED" ]]; then
+      echo "redis is in host network mode, use the host ip:$KB_HOST_IP and port:$REDIS_HOST_NETWORK_PORT as the announce ip and port."
+      redis_announce_port_value="$REDIS_HOST_NETWORK_PORT"
+      redis_announce_host_value="$KB_HOST_IP"
+    fi
     return 0
   fi
 
