@@ -133,7 +133,7 @@ parse_redis_primary_announce_addr() {
 register_to_sentinel() {
   local sentinel_host=$1
   local master_name=$2
-  local sentinel_port=${SENTINEL_SERVICE_PORT:-26379}
+  local sentinel_port=${SENTINEL_HOST_NETWORK_PORT:-26379}
   local redis_primary_host=$3
   local redis_primary_port=$4
   local timeout=600
