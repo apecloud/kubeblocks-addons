@@ -1,0 +1,72 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: tidb-pd
+  labels:
+    {{- include "tidb.labels" . | nindent 4 }}
+spec:
+  releases:
+    - name: "7.5.2"
+      serviceVersion: "7.5.2"
+      images:
+        pd: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v7.5.2
+    - name: "7.1.5"
+      serviceVersion: "7.1.5"
+      images:
+        pd: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v7.1.5
+  compatibilityRules:
+    - compDefs:
+        - "tidb-pd-7"
+      releases:
+        - "7.1.5"
+        - "7.5.2"
+
+---
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: tidb
+  labels:
+    {{- include "tidb.labels" . | nindent 4 }}
+spec:
+  releases:
+    - name: "7.5.2"
+      serviceVersion: "7.5.2"
+      images:
+        tidb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tidb.repository }}:v7.5.2
+        slowlog: {{ .Values.image.helper.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.helper.repository }}:{{ .Values.image.helper.tag }}
+    - name: "7.1.5"
+      serviceVersion: "7.1.5"
+      images:
+        tidb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tidb.repository }}:v7.1.5
+        slowlog: {{ .Values.image.helper.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.helper.repository }}:{{ .Values.image.helper.tag }}
+  compatibilityRules:
+    - compDefs:
+        - "tidb-7"
+      releases:
+        - "7.1.5"
+        - "7.5.2"
+
+---
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: tikv
+  labels:
+    {{- include "tidb.labels" . | nindent 4 }}
+spec:
+  releases:
+    - name: "7.5.2"
+      serviceVersion: "7.5.2"
+      images:
+        tikv: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tikv.repository }}:v7.5.2
+    - name: "7.1.5"
+      serviceVersion: "7.1.5"
+      images:
+        tikv: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tikv.repository }}:v7.1.5
+  compatibilityRules:
+    - compDefs:
+        - "tikv-7"
+      releases:
+        - "7.1.5"
+        - "7.5.2"
