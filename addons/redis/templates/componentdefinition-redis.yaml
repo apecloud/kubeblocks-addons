@@ -192,7 +192,7 @@ spec:
             port:
               name: redis-sentinel
               option: Required
-      expression: {{ `{{if ne (index . "SENTINEL_HOST_NETWORK_PORT") ""}}{{.SENTINEL_HOST_NETWORK_PORT}}{{else}}26379{{end}}` | toYaml }}
+      expression: {{ `{{if ne (index . "SENTINEL_SERVICE_PORT") ""}}{{.SENTINEL_SERVICE_PORT}}{{else}}26379{{end}}` | toYaml }}
   lifecycleActions:
     roleProbe:
       builtinHandler: redis
