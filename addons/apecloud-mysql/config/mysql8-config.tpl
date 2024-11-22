@@ -105,7 +105,6 @@ slow_query_log_file=/data/mysql/log/mysqld-slowquery.log
 general_log=OFF
 general_log_file=/data/mysql/log/mysqld.log
 
-{{- if eq $.cluster.metadata.labels.auditLogEnabled "true" }}
 # audit log
 plugin-load-add=audit_log=audit_log.so
 loose_audit_log_handler=FILE # FILE, SYSLOG
@@ -127,7 +126,6 @@ loose_audit_log_rotations=5
 ## | localhost | root             |
 ## +-----------+------------------+
 loose_audit_log_exclude_accounts=root@%,root@localhost
-{{ end }}
 
 #innodb
 innodb_doublewrite_batch_size=16
