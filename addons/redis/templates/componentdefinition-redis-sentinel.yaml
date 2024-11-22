@@ -109,7 +109,7 @@ spec:
             port:
               name: redis-sentinel
               option: Required
-      expression: {{ `{{ .REDIS_SENTINEL_HOST_NETWORK_PORT | default 26379 }}` | toYaml }}
+      expression: {{ `{{if ne (index . "REDIS_SENTINEL_HOST_NETWORK_PORT") ""}}{{.REDIS_SENTINEL_HOST_NETWORK_PORT}}{{else}}26379{{end}}` | toYaml }}
   lifecycleActions:
     accountProvision:
       customHandler:

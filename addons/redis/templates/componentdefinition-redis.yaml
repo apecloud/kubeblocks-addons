@@ -130,7 +130,7 @@ spec:
             port:
               name: redis
               option: Required
-      expression: {{ `{{ .REDIS_HOST_NETWORK_PORT | default 6379 }}` | toYaml }}
+      expression: {{ `{{if ne (index . "REDIS_HOST_NETWORK_PORT") ""}}{{.REDIS_HOST_NETWORK_PORT}}{{else}}6379{{end}}` | toYaml }}
     ## the redis server metrics container host network port when using host network mode, the port will be allocated automatically by KubeBlocks
     - name: REDIS_METRICS_HOST_NETWORK_PORT
       valueFrom:
@@ -141,7 +141,7 @@ spec:
             port:
               name: http-metrics
               option: Required
-      expression: {{ `{{ .REDIS_METRICS_HOST_NETWORK_PORT | default 9121 }}` | toYaml }}
+      expression: {{ `{{if ne (index . "REDIS_METRICS_HOST_NETWORK_PORT") ""}}{{.REDIS_METRICS_HOST_NETWORK_PORT}}{{else}}9121{{end}}` | toYaml }}
     ## the username of redis sentinel for redis connection, it is optional
     - name: SENTINEL_USER
       valueFrom:
