@@ -1534,6 +1534,10 @@
 
 	// For SQL window functions, determines whether to enable inversion optimization for moving window frames also for floating values.
 	windowing_use_high_precision: string & "OFF" | "ON" | *"ON"
+
+	// other parameters
+	// reference mysql parameters
+	...
 }
 
 // SectionName is section name
