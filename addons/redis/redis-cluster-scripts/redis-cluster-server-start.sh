@@ -25,11 +25,11 @@ build_redis_default_accounts() {
 
 build_announce_ip_and_port() {
   # build announce ip and port according to whether the advertised svc is enabled
-  if [ -n "$redis_advertised_svc_host_value" ] && [ -n "$redis_advertised_svc_port_value" ]; then
-    echo "redis use advertised svc $redis_advertised_svc_host_value:$redis_advertised_svc_port_value to announce"
+  if [ -n "$redis_announce_host_value" ] && [ -n "$redis_announce_port_value" ]; then
+    echo "redis use advertised svc $redis_announce_host_value:$redis_announce_port_value to announce"
     {
-      echo "replica-announce-port $redis_advertised_svc_port_value"
-      echo "replica-announce-ip $redis_advertised_svc_host_value"
+      echo "replica-announce-port $redis_announce_port_value"
+      echo "replica-announce-ip $redis_announce_host_value"
     } >> /etc/redis/redis.conf
   else
     if [ -n "$FIXED_POD_IP_ENABLED" ]; then
@@ -46,12 +46,12 @@ build_announce_ip_and_port() {
 build_cluster_announce_info() {
   # build announce ip and port according to whether the advertised svc is enabled
   kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.cluster.local"
-  if [ -n "$redis_advertised_svc_host_value" ] && [ -n "$redis_advertised_svc_port_value" ] && [ -n "$redis_advertised_svc_bus_port_value" ]; then
-    echo "redis cluster use advertised svc $redis_advertised_svc_host_value:$redis_advertised_svc_port_value@$redis_advertised_svc_bus_port_value to announce"
+  if [ -n "$redis_announce_host_value" ] && [ -n "$redis_announce_port_value" ] && [ -n "$redis_announce_bus_port_value" ]; then
+    echo "redis cluster use advertised svc $redis_announce_host_value:$redis_announce_port_value@$redis_announce_bus_port_value to announce"
     {
-      echo "cluster-announce-ip $redis_advertised_svc_host_value"
-      echo "cluster-announce-port $redis_advertised_svc_port_value"
-      echo "cluster-announce-bus-port $redis_advertised_svc_bus_port_value"
+      echo "cluster-announce-ip $redis_announce_host_value"
+      echo "cluster-announce-port $redis_announce_port_value"
+      echo "cluster-announce-bus-port $redis_announce_bus_port_value"
       echo "cluster-announce-hostname $kb_pod_fqdn"
       echo "cluster-preferred-endpoint-type ip"
     } >> /etc/redis/redis.conf
@@ -487,12 +487,19 @@ parse_advertised_port() {
   fi
 }
 
-parse_redis_cluster_advertised_svc_if_exist() {
+parse_redis_cluster_announce_addr() {
   local pod_name="$1"
 
   # The value format of REDIS_CLUSTER_ADVERTISED_PORT and REDIS_CLUSTER_ADVERTISED_BUS_PORT are "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."
   if [[ -z "${REDIS_CLUSTER_ADVERTISED_PORT}" ]] || [[ -z "${REDIS_CLUSTER_ADVERTISED_BUS_PORT}" ]]; then
     echo "Environment variable REDIS_CLUSTER_ADVERTISED_PORT and REDIS_CLUSTER_ADVERTISED_BUS_PORT not found. Ignoring."
+    # if redis cluster is in host network mode, use the host ip and port as the announce ip and port
+    if [[ -n "${REDIS_CLUSTER_HOST_NETWORK_PORT}" ]] && [[ -n "${REDIS_CLUSTER_HOST_NETWORK_BUS_PORT}" ]] && [[ -n "$HOST_NETWORK_ENABLED" ]]; then
+      echo "redis cluster server is in host network mode, use the host ip:$KB_HOST_IP and port:$REDIS_CLUSTER_HOST_NETWORK_PORT, bus port:$REDIS_CLUSTER_HOST_NETWORK_BUS_PORT as the announce ip and port."
+      redis_announce_port_value="$REDIS_CLUSTER_HOST_NETWORK_PORT"
+      redis_announce_bus_port_value="$REDIS_CLUSTER_HOST_NETWORK_BUS_PORT"
+      redis_announce_host_value="$KB_HOST_IP"
+    fi
     return 0
   fi
 
@@ -502,8 +509,8 @@ parse_redis_cluster_advertised_svc_if_exist() {
     echo "Exiting due to error in REDIS_CLUSTER_ADVERTISED_PORT."
     exit 1
   fi
-  redis_advertised_svc_port_value="$port"
-  redis_advertised_svc_host_value="$KB_HOST_IP"
+  redis_announce_port_value="$port"
+  redis_announce_host_value="$KB_HOST_IP"
 
   if [[ -n "${REDIS_CLUSTER_ADVERTISED_BUS_PORT}" ]]; then
     port=$(parse_advertised_port "$pod_name" "${REDIS_CLUSTER_ADVERTISED_BUS_PORT}")
@@ -511,7 +518,7 @@ parse_redis_cluster_advertised_svc_if_exist() {
       echo "Exiting due to error in REDIS_CLUSTER_ADVERTISED_BUS_PORT."
       exit 1
     fi
-    redis_advertised_svc_bus_port_value="$port"
+    redis_announce_bus_port_value="$port"
   fi
 }
 
@@ -562,7 +569,7 @@ build_redis_conf() {
   build_redis_default_accounts
 }
 
-parse_redis_cluster_advertised_svc_if_exist "$KB_POD_NAME"
+parse_redis_cluster_announce_addr "$KB_POD_NAME"
 build_redis_conf
 scale_redis_cluster_replica &
 start_redis_server

@@ -220,7 +220,7 @@ is_redis_cluster_initialized() {
   local initialized="false"
   for pod_ip in $(echo "$KB_CLUSTER_POD_IP_LIST" | tr ',' ' '); do
     set +x
-    cluster_info=$(redis-cli -h "$pod_ip" -a "$REDIS_DEFAULT_PASSWORD" cluster info)
+    cluster_info=$(redis-cli -h "$pod_ip" -p $SERVICE_PORT -a "$REDIS_DEFAULT_PASSWORD" cluster info)
     set -x
     echo "cluster_info $cluster_info"
     cluster_state=$(echo "$cluster_info" | grep -oP '(?<=cluster_state:)[^\s]+')
@@ -455,10 +455,10 @@ initialize_redis_cluster() {
   done
   set +x
   if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-    initialize_command="redis-cli --cluster create $primary_nodes --cluster-yes"
+    initialize_command="redis-cli --cluster create $primary_nodes --cluster-yes -p $SERVICE_PORT"
     logging_mask_initialize_command="$initialize_command"
   else
-    initialize_command="redis-cli --cluster create $primary_nodes -a $REDIS_DEFAULT_PASSWORD --cluster-yes"
+    initialize_command="redis-cli --cluster create $primary_nodes -a $REDIS_DEFAULT_PASSWORD --cluster-yes -p $SERVICE_PORT"
     logging_mask_initialize_command="${initialize_command/$REDIS_DEFAULT_PASSWORD/********}"
   fi
   echo "initialize cluster command: $logging_mask_initialize_command"
@@ -502,10 +502,10 @@ initialize_redis_cluster() {
     fi
     set +x
     if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-      replicated_command="redis-cli --cluster add-node $secondary_endpoint_with_port $mapping_primary_endpoint_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id"
+      replicated_command="redis-cli --cluster add-node $secondary_endpoint_with_port $mapping_primary_endpoint_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id -p $SERVICE_PORT"
       logging_mask_replicated_command="$replicated_command"
     else
-      replicated_command="redis-cli --cluster add-node $secondary_endpoint_with_port $mapping_primary_endpoint_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id -a $REDIS_DEFAULT_PASSWORD"
+      replicated_command="redis-cli --cluster add-node $secondary_endpoint_with_port $mapping_primary_endpoint_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id -p $SERVICE_PORT -a $REDIS_DEFAULT_PASSWORD"
       logging_mask_replicated_command="${replicated_command/$REDIS_DEFAULT_PASSWORD/********}"
     fi
     echo "initialize cluster secondary add-node command: $logging_mask_replicated_command"
@@ -549,10 +549,10 @@ scale_out_redis_cluster_shard() {
     scale_out_shard_default_primary_node="${scale_out_shard_default_primary_node[$primary_pod_name]}"
     set +x
     if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-      add_node_command="redis-cli --cluster add-node $scale_out_shard_default_primary_node $available_node"
+      add_node_command="redis-cli --cluster add-node $scale_out_shard_default_primary_node $available_node -p $SERVICE_PORT"
       logging_mask_add_node_command="$add_node_command"
     else
-      add_node_command="redis-cli --cluster add-node $scale_out_shard_default_primary_node $available_node -a $REDIS_DEFAULT_PASSWORD"
+      add_node_command="redis-cli --cluster add-node $scale_out_shard_default_primary_node $available_node -p $SERVICE_PORT -a $REDIS_DEFAULT_PASSWORD"
       logging_mask_add_node_command="${add_node_command/$REDIS_DEFAULT_PASSWORD/********}"
     fi
     echo "scale out shard primary add-node command: $logging_mask_add_node_command"
@@ -572,10 +572,10 @@ scale_out_redis_cluster_shard() {
     echo "primary_node_with_port: $primary_node_with_port, primary_node_fqdn: $primary_node_fqdn, mapping_primary_cluster_id: $mapping_primary_cluster_id"
     set +x
     if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-      replicated_command="redis-cli --cluster add-node $scale_out_shard_default_other_node $primary_node_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id"
+      replicated_command="redis-cli --cluster add-node $scale_out_shard_default_other_node $primary_node_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id -p $SERVICE_PORT"
       logging_mask_replicated_command="$replicated_command"
     else
-      replicated_command="redis-cli --cluster add-node $scale_out_shard_default_other_node $primary_node_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id -a $REDIS_DEFAULT_PASSWORD"
+      replicated_command="redis-cli --cluster add-node $scale_out_shard_default_other_node $primary_node_with_port --cluster-slave --cluster-master-id $mapping_primary_cluster_id -p $SERVICE_PORT -a $REDIS_DEFAULT_PASSWORD"
       logging_mask_replicated_command="${replicated_command/$REDIS_DEFAULT_PASSWORD/********}"
     fi
     echo "scale out shard secondary replicated command: $logging_mask_replicated_command"
@@ -595,10 +595,10 @@ scale_out_redis_cluster_shard() {
   slots_per_shard=$((total_slots / shard_count))
   set +x
   if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-      reshard_command="redis-cli --cluster reshard $primary_node_with_port --cluster-from all --cluster-to $mapping_primary_cluster_id --cluster-slots $slots_per_shard --cluster-yes"
+      reshard_command="redis-cli --cluster reshard $primary_node_with_port --cluster-from all --cluster-to $mapping_primary_cluster_id --cluster-slots $slots_per_shard --cluster-yes -p $SERVICE_PORT"
       logging_mask_reshard_command="$reshard_command"
   else
-      reshard_command="redis-cli --cluster reshard $primary_node_with_port --cluster-from all --cluster-to $mapping_primary_cluster_id --cluster-slots $slots_per_shard -a $REDIS_DEFAULT_PASSWORD --cluster-yes"
+      reshard_command="redis-cli --cluster reshard $primary_node_with_port --cluster-from all --cluster-to $mapping_primary_cluster_id --cluster-slots $slots_per_shard -a $REDIS_DEFAULT_PASSWORD --cluster-yes -p $SERVICE_PORT"
       logging_mask_reshard_command="${reshard_command/$REDIS_DEFAULT_PASSWORD/********}"
   fi
   echo "scale out shard reshard command: $logging_mask_reshard_command"
@@ -656,10 +656,10 @@ scale_in_redis_cluster_shard() {
     primary_node_cluster_id=$(get_cluster_id "$primary_node_fqdn" "$primary_node_port")
     set +x
     if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-      rebalance_command="redis-cli --cluster rebalance $primary_node --cluster-weight $primary_node_cluster_id=0 --cluster-yes "
+      rebalance_command="redis-cli --cluster rebalance $primary_node --cluster-weight $primary_node_cluster_id=0 --cluster-yes -p $SERVICE_PORT"
       logging_mask_rebalance_command="$rebalance_command"
     else
-      rebalance_command="redis-cli --cluster rebalance $primary_node --cluster-weight $primary_node_cluster_id=0 --cluster-yes -a $REDIS_DEFAULT_PASSWORD"
+      rebalance_command="redis-cli --cluster rebalance $primary_node --cluster-weight $primary_node_cluster_id=0 --cluster-yes -p $SERVICE_PORT -a $REDIS_DEFAULT_PASSWORD"
       logging_mask_rebalance_command="${rebalance_command/$REDIS_DEFAULT_PASSWORD/********}"
     fi
     echo "set current component slot to 0 by rebalance command: $logging_mask_rebalance_command"

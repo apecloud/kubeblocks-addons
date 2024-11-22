@@ -14,6 +14,11 @@ Define redis cluster shardingSpec with ComponentDefinition.
       serviceType: NodePort
       podService: true
     {{- end }}
+    {{- if .Values.hostNetworkEnabled }}
+    env:
+    - name: HOST_NETWORK_ENABLED
+      value: "true"
+    {{- end }}
     systemAccounts:
     - name: default
       passwordConfig:
