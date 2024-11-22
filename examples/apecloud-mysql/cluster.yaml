@@ -3,8 +3,6 @@ kind: Cluster
 metadata:
   name: acmysql-cluster
   namespace: default
-  labels:
-    auditLogEnabled: "false" # use this label as switch to set variables 'audit_log_xxx'
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
