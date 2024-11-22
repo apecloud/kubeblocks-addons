@@ -101,7 +101,6 @@ spec:
           host: Required
     ## the redis sentinel server host network port when using host network mode, the port will be allocated automatically by KubeBlocks
     - name: REDIS_SENTINEL_HOST_NETWORK_PORT
-      value: "26379"
       valueFrom:
         hostNetworkVarRef:
           optional: true
@@ -110,6 +109,7 @@ spec:
             port:
               name: redis-sentinel
               option: Required
+      expression: {{ `{{ .REDIS_SENTINEL_HOST_NETWORK_PORT | default 26379 }}` | toYaml }}
   lifecycleActions:
     accountProvision:
       customHandler:

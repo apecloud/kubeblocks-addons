@@ -218,7 +218,7 @@ metadata:
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
   {{- if .Values.hostNetworkEnabled }}
   annotations:
-    kubeblocks.io/host-network: "redis"
+    kubeblocks.io/host-network: "redis,redis-sentinel,redis-cluster"
   {{- end }}
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}

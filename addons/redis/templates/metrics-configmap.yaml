@@ -30,7 +30,7 @@ data:
 
     exporters:
       prometheus:
-        endpoint: 0.0.0.0:{{ .Values.metrics.service.port }}
+        endpoint: 0.0.0.0:${env:REDIS_METRICS_HOST_NETWORK_PORT}
         send_timestamps: false
         metric_expiration: 20s
         enable_open_metrics: false
