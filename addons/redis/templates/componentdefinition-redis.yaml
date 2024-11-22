@@ -175,15 +175,6 @@ spec:
           name: headless
           optional: true
           host: Optional
-    - name: SENTINEL_SERVICE_PORT
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "redis-sentinel.componentDefName" . }}
-          name: redis-sentinel
-          optional: true
-          port:
-            name: redis-sentinel
-            option: Optional
     - name: SENTINEL_POD_NAME_LIST
       valueFrom:
         componentVarRef:
@@ -201,6 +192,7 @@ spec:
             port:
               name: redis-sentinel
               option: Required
+      expression: {{ `{{if ne (index . "SENTINEL_HOST_NETWORK_PORT") ""}}{{.SENTINEL_HOST_NETWORK_PORT}}{{else}}26379{{end}}` | toYaml }}
   lifecycleActions:
     roleProbe:
       builtinHandler: redis
