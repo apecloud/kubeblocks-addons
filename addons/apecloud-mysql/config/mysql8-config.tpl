@@ -90,7 +90,7 @@ connect_timeout=10
 # character-sets-dir=/usr/share/mysql-8.0/charsets
 
 port={{ $mysql_port }}
-mysqlx-port=33060
+mysqlx_port=33060
 mysqlx=0
 
 datadir={{ $data_root }}/data
@@ -106,7 +106,7 @@ general_log=OFF
 general_log_file=/data/mysql/log/mysqld.log
 
 # audit log
-plugin-load-add=audit_log=audit_log.so
+plugin_load_add=audit_log=audit_log.so
 loose_audit_log_handler=FILE # FILE, SYSLOG
 loose_audit_log_file={{ $data_root }}/auditlog/audit.log
 loose_audit_log_buffer_size=1Mb
@@ -176,7 +176,7 @@ binlog_format=ROW
 binlog_row_image=FULL
 # Aliyun AWS binlog_order_commits=ON
 binlog_order_commits=ON
-log-bin={{ $data_root }}/binlog/mysql-bin
+log_bin={{ $data_root }}/binlog/mysql-bin
 log_bin_index={{ $data_root }}/binlog/mysql-bin.index
 binlog_expire_logs_seconds=604800
 binlog_purge_size=102400M
@@ -192,7 +192,7 @@ relay_log_recovery=ON
 relay_log=relay-bin
 relay_log_index=relay-bin.index
 
-pid-file=/var/run/mysqld/mysqld.pid
+pid_file=/var/run/mysqld/mysqld.pid
 socket=/var/run/mysqld/mysqld.sock
 
 {{- if $.component.tlsConfig }}
