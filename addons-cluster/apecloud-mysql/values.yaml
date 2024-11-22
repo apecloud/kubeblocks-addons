@@ -44,9 +44,6 @@ proxyEnabled: false
 ## if mode is raftGroup, localEtcdEnabled can be true
 localEtcdEnabled: false
 
-## @param auditLogEnabled if true, enable audit log in apecloud mysql
-auditLogEnabled: false
-
 proxy:
   storageClassName: ""
 

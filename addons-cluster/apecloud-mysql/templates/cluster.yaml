@@ -5,7 +5,6 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{ include "kblib.clusterLabels" . | nindent 4 }}
-    auditLogEnabled: "{{ .Values.auditLogEnabled }}"
   {{- if and (eq .Values.mode "raftGroup") .Values.proxyEnabled }}
   annotations:
     kubeblocks.io/extra-env: '{"KB_PROXY_ENABLED":"on","ETCDCTL_API": "{{ .Values.etcd.etcdctlApi}}"}'
