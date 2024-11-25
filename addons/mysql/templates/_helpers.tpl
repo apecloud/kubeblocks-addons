@@ -126,6 +126,13 @@ lifecycleActions:
         - /tools/config/dbctl/components
         - mysql
         - getrole
+  switchover:
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - |
+          /tools/syncerctl switchover --primary "$KB_LEADER_POD_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
 roles:
   - name: primary
     serviceable: true
