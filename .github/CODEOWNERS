@@ -100,7 +100,7 @@ addons-cluster/tdengine/ @leon-inf @leon-inf @Y-Rookie @apecloud/kb-reviewers
 addons/tidb/ @csuzhangxc @cjc7373 @leon-inf @Y-Rookie @apecloud/kb-reviewers
 addons-cluster/tidb/ @csuzhangxc @cjc7373 @leon-inf @Y-Rookie @apecloud/kb-reviewers
 
-addons/vanilla-postgresql/ @kizuna-lek@leon-inf @Y-Rookie @apecloud/kb-reviewers
+addons/vanilla-postgresql/ @kizuna-lek @leon-inf @Y-Rookie @apecloud/kb-reviewers
 addons-cluster/vanilla-postgresql/ @kizuna-lek @leon-inf @Y-Rookie @apecloud/kb-reviewers
 
 addons/victoria-metrics/ @sophon-zt @ButterBright @leon-inf @Y-Rookie @apecloud/kb-reviewers
