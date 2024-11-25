@@ -68,3 +68,4 @@ metrics:
     pullPolicy: IfNotPresent
   service:
     port: 9121
+    serverPort: 8888

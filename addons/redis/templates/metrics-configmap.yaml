@@ -30,7 +30,7 @@ data:
 
     exporters:
       prometheus:
-        endpoint: 0.0.0.0:${env:REDIS_METRICS_HOST_NETWORK_PORT}
+        endpoint: 0.0.0.0:${env:METRICS_HTTP_PORT}
         send_timestamps: false
         metric_expiration: 20s
         enable_open_metrics: false
@@ -41,6 +41,8 @@ data:
       telemetry:
         logs:
           level: info
+        metrics:
+          address: :${env:METRICS_SERVER_PORT}
       pipelines:
         metrics:
           receivers: [ apecloudredis ]
