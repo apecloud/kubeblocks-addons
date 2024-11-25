@@ -308,6 +308,7 @@ roles:
     - cp
     - -r
     - /bin/syncer
+    - /bin/syncerctl
     - /tools/
   image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
   imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
