@@ -498,7 +498,7 @@ And the expected output is like:
   protocol: TCP
 ```
 
-##### Step 2. Create PodMonitorAccessing the Grafana Dashboard
+##### Step 2. Create PodMonitor
 
 Apply the `PodMonitor` file to monitor the cluster:
 
