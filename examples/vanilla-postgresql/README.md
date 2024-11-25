@@ -21,7 +21,7 @@ Vanilla-PostgreSQL is compatible with the native PostgreSQL kernel, enabling it 
 |---------------|-------------------|
 | 12 | 12.15.0           |
 | 14 | 14.7.0            |
-| 15 | 15.7.0, 15.6.1138 |
+| 15 | 15.7.0, 15.6.1-138 |
 
 ## Prerequisites
 
@@ -102,7 +102,7 @@ spec:
     - name: postgresql
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [12.15.0,14.7.0,15.7.0,15.6.1138]
+      # Valid options are: [12.15.0,14.7.0,15.7.0,15.6.1-138]
       serviceVersion: "14.7.0"
 ```
 
@@ -116,7 +116,7 @@ And the expected output is like:
 
 ```bash
 NAME                 VERSIONS                                      STATUS      AGE
-vanilla-postgresql   12.15.0,14.7.0,15.7.0,15.6.1138               Available   Xd
+vanilla-postgresql   12.15.0,14.7.0,15.7.0,15.6.1-138               Available   Xd
 ```
 
 ### [Horizontal scaling](horizontalscale.yaml)

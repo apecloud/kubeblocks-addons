@@ -25,7 +25,7 @@ spec:
     - name: postgresql
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [12.15.0,14.7.0,15.6.1138,15.7.0]
+      # Valid options are: [12.15.0,14.7.0,15.6.1-138,15.7.0]
       serviceVersion: "14.7.0"
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
