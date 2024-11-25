@@ -186,7 +186,7 @@ spec:
             port:
               name: redis-cluster
               option: Required
-      expression: {{ `{{if ne (index . "REDIS_HOST_NETWORK_PORT") ""}}{{.REDIS_HOST_NETWORK_PORT}}{{else}}6379{{end}}` | toYaml }}
+      expression: {{ `{{if ne (index . "REDIS_CLUSTER_HOST_NETWORK_PORT") ""}}{{.REDIS_CLUSTER_HOST_NETWORK_PORT}}{{else}}6379{{end}}` | toYaml }}
     ## the redis cluster server host network bus port when using host network mode, the port will be allocated automatically by KubeBlocks, if not set, the default value is 16379
     - name: REDIS_CLUSTER_HOST_NETWORK_BUS_PORT
       valueFrom:
@@ -199,7 +199,7 @@ spec:
               option: Required
       expression: {{ `{{if ne (index . "REDIS_CLUSTER_HOST_NETWORK_BUS_PORT") ""}}{{.REDIS_CLUSTER_HOST_NETWORK_BUS_PORT}}{{else}}16379{{end}}` | toYaml }}
     ## the redis server metrics container host network port when using host network mode, the port will be allocated automatically by KubeBlocks, if not set, the default value is 9121
-    - name: REDIS_CLUSTER_HOST_NETWORK_METRICS_PORT
+    - name: REDIS_METRICS_HOST_NETWORK_PORT
       valueFrom:
         hostNetworkVarRef:
           optional: true
@@ -208,7 +208,43 @@ spec:
             port:
               name: http-metrics
               option: Required
-      expression: {{ `{{if ne (index . "REDIS_CLUSTER_HOST_NETWORK_METRICS_PORT") ""}}{{.REDIS_CLUSTER_HOST_NETWORK_METRICS_PORT}}{{else}}9121{{end}}` | toYaml }}
+      expression: {{ `{{if ne (index . "REDIS_METRICS_HOST_NETWORK_PORT") ""}}{{.REDIS_METRICS_HOST_NETWORK_PORT}}{{else}}9121{{end}}` | toYaml }}
+    ## the redis cluster host network port list for all shard pods, the all pods in same shard has the same host network port allocated automatically by KubeBlocks.
+    ## the value format is like "shard-chg:1057,shard-khh:1056,shard-mpg:1053"
+    - name: REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          compDef: {{ include "redis-cluster.componentDefName" . }}
+          optional: true
+          container:
+            name: redis-cluster
+            port:
+              name: redis-cluster
+              option: Required
+          multipleClusterObjectOption:
+            strategy: combined
+            combinedOption:
+              flattenFormat:
+                delimiter: ","
+                keyValueDelimiter: ":"
+    ## the redis cluster host network bus port list for all shard pods, the all pods in same shard has the same host network bus port allocated automatically by KubeBlocks.
+    ## the value format is like "shard-chg:1060,shard-khh:1059,shard-mpg:1054"
+    - name: REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_BUS_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          compDef: {{ include "redis-cluster.componentDefName" . }}
+          optional: true
+          container:
+            name: redis-cluster
+            port:
+              name: cluster-bus
+              option: Required
+          multipleClusterObjectOption:
+            strategy: combined
+            combinedOption:
+              flattenFormat:
+                delimiter: ","
+                keyValueDelimiter: ":"
   lifecycleActions:
     roleProbe:
       builtinHandler: redis
@@ -291,7 +327,7 @@ spec:
           runAsUser: 1001
         env:
           - name: ENDPOINT
-            value: "localhost:$(REDIS_HOST_NETWORK_PORT)"
+            value: "localhost:$(REDIS_METRICS_HOST_NETWORK_PORT)"
           - name: REDIS_USER
             value: $(REDIS_DEFAULT_USER)
           - name: REDIS_PASSWORD
