@@ -340,3 +340,7 @@ volumeMounts:
     mountPath: /scripts
 {{- end -}}
 
+{{- define "mysql.spec.runtime.images" -}}
+init-jemalloc: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemalloc:5.3.0
+init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+{{- end -}}
