@@ -364,7 +364,7 @@ To restore a new cluster from a `Backup`, you can apply the following yaml file:
 kubectl get backup ob-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
 ```
 
-1. Update `examples/oceanbase/restore.yaml` and set fields quoted with `<<ENCRYPTED-SYSTEM-ACCOUNTS>` to your own settings and apply it.
+1. Update `examples/oceanbase/restore.yaml` and set fields quoted with `<ENCRYPTED-SYSTEM-ACCOUNTS>` to your own settings and apply it.
 
 ```bash
 kubectl apply -f examples/oceanbase/restore.yaml
@@ -419,7 +419,7 @@ spec:
       type: LoadBalancer
 ```
 
-If the service is of type `LoadBalancer`, please add annotations for cloud loadbalancer depending on the cloud provider you are using. Here list annotations for some cloud providers[^3]:
+If the service is of type `LoadBalancer`, please add annotations for cloud loadbalancer depending on the cloud provider you are using. Here list annotations for some cloud providers:
 
 ```yaml
 # alibaba cloud
@@ -471,7 +471,7 @@ Here is the list of endpoints that can be scraped by Prometheus provided by `oba
       scheme: http
 ```
 
-##### Step 2. Accessing the Grafana Dashboard
+##### Step 2. Create PodMonitor
 
 Apply the `PodMonitor` file to monitor the cluster:
 

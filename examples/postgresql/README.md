@@ -129,7 +129,7 @@ After applying the operation, you will see a new pod created and the PostgreSQL 
 And you can check the progress of the scaling operation with following command:
 
 ```bash
-kubectl describe ops pg-scale-in
+kubectl describe ops pg-scale-out
 ```
 
 #### [Scale-in](scale-in.yaml)
@@ -509,7 +509,7 @@ To restore a new cluster from a Backup:
 kubectl get backup pg-cluster-pg-basebackup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
 ```
 
-1. Update `examples/postgresql/restore.yaml` and set placeholder `<<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
+1. Update `examples/postgresql/restore.yaml` and set placeholder `<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
 
 ```bash
 kubectl apply -f examples/postgresql/restore.yaml
@@ -568,7 +568,7 @@ spec:
       type: LoadBalancer
 ```
 
-If the service is of type `LoadBalancer`, please add annotations for cloud loadbalancer depending on the cloud provider you are using. Here list annotations for some cloud providers[^3]:
+If the service is of type `LoadBalancer`, please add annotations for cloud loadbalancer depending on the cloud provider you are using. Here list annotations for some cloud providers:
 
 ```yaml
 # alibaba cloud
@@ -706,7 +706,7 @@ And the expected output is like:
   protocol: TCP
 ```
 
-##### Step 2. Accessing the Grafana Dashboard
+##### Step 2. Create PodMonitor
 
 Apply the `PodMonitor` file to monitor the cluster:
 

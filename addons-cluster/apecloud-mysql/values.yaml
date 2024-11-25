@@ -36,7 +36,7 @@ storage: 20
 ## @param proxyEnabled if true, enable the proxy
 ## if mode is standalone, proxyEnabled is always false
 ## if mode is raftGroup, proxyEnabled can be true or false
-## 
+##
 proxyEnabled: false
 
 ## @param localEtcdEnabled if true, use the local etcd
@@ -54,9 +54,6 @@ proxy:
 extra:
   disableExporter: true
 
-## metrics sidecars
-sidecars:
-  - mysql-exporter
 
 etcd:
   serviceReference:
