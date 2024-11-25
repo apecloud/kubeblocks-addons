@@ -61,9 +61,6 @@ addons-cluster/neon/ @skyrise-l @leon-inf @Y-Rookie @apecloud/kb-reviewers
 addons/oceanbase-ce/ @Powerfooi @shanshanying @leon-inf @Y-Rookie @apecloud/kb-reviewers
 addons-cluster/oceanbase-ce/ @Powerfooi @shanshanying @leon-inf @Y-Rookie @apecloud/kb-reviewers
 
-addons/official-postgresql/ @kizuna-lek @leon-inf @Y-Rookie @apecloud/kb-reviewers
-addons-cluster/official-postgresql/ @kizuna-lek @leon-inf @Y-Rookie @apecloud/kb-reviewers
-
 addons/opensearch/ @iziang @leon-inf @Y-Rookie @apecloud/kb-reviewers
 addons-cluster/opensearch/ @iziang @leon-inf @Y-Rookie @apecloud/kb-reviewers
 
@@ -102,6 +99,9 @@ addons-cluster/tdengine/ @leon-inf @leon-inf @Y-Rookie @apecloud/kb-reviewers
 
 addons/tidb/ @csuzhangxc @cjc7373 @leon-inf @Y-Rookie @apecloud/kb-reviewers
 addons-cluster/tidb/ @csuzhangxc @cjc7373 @leon-inf @Y-Rookie @apecloud/kb-reviewers
+
+addons/vanilla-postgresql/ @kizuna-lek @leon-inf @Y-Rookie @apecloud/kb-reviewers
+addons-cluster/vanilla-postgresql/ @kizuna-lek @leon-inf @Y-Rookie @apecloud/kb-reviewers
 
 addons/victoria-metrics/ @sophon-zt @ButterBright @leon-inf @Y-Rookie @apecloud/kb-reviewers
 addons-cluster/victoria-metrics/ @sophon-zt @ButterBright @leon-inf @Y-Rookie @apecloud/kb-reviewers

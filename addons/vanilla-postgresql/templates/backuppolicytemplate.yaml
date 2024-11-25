@@ -1,0 +1,43 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: vanilla-postgresql-backup-policy-template
+  labels:
+    clusterdefinition.kubeblocks.io/name: vanilla-postgresql
+    {{- include "vanilla-postgresql.labels" . | nindent 4 }}
+  annotations:
+    dataprotection.kubeblocks.io/is-default-policy-template: "true"
+spec:
+  serviceKind: PostgreSQL
+  compDefs:
+    - {{ include "vanilla-postgresql.cmpdRegexpPattern" . }}
+  target:
+    role: secondary
+    fallbackRole: primary
+    account: postgres
+  backupMethods:
+    - name: vanilla-pg-basebackup
+      snapshotVolumes: false
+      actionSetName: {{ include "vanilla-postgresql.actionset.basebackup" . }}
+      env:
+        - name: IMAGE_TAG
+          valueFrom:
+            versionMapping:
+              - serviceVersions:
+                  - "12"
+                mappedValue: "{{ .Values.image.tags.major12.minor15 }}"
+              - serviceVersions:
+                  - "14"
+                mappedValue: "{{ .Values.image.tags.major14.minor07 }}"
+              - serviceVersions:
+                  - "15"
+                mappedValue: "{{ .Values.image.tags.major15.minor07 }}"
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
+  schedules:
+    - backupMethod: vanilla-pg-basebackup
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d
