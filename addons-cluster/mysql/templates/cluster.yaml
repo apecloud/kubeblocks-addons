@@ -3,6 +3,7 @@ kind: Cluster
 metadata:
   name: {{ include "kblib.clusterName" . }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+  namespace: {{ .Release.Namespace }}
   annotations:
   {{- if eq .Values.topology "server-with-proxy" }}
     kubeblocks.io/extra-env: '{"PROXY_ENABLED":"on"}'
@@ -11,7 +12,6 @@ spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   componentSpecs:
     - name: mysql
-      replicas: {{ .Values.replicas }}
       {{- $compdef := .Values.version }}
       componentDef: {{ $compdef }}
       {{- include "kblib.componentMonitor" . | indent 6 }}

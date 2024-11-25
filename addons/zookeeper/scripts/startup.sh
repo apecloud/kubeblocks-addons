@@ -31,18 +31,9 @@ compare_version() {
   esac
 }
 
-set_scripts_path() {
-  if [[ -z "${ZOOKEEPER_IMAGE_VERSION}" ]] || compare_version "lt" "${ZOOKEEPER_IMAGE_VERSION%%-*}" "3.6.0"; then
-    scripts_path="/opt/bitnami/scripts/zookeeper"
-  else
-    scripts_path=""
-  fi
-}
-
 start() {
   set_zookeeper_server_id
-  set_scripts_path
-  exec "${scripts_path}/entrypoint.sh" "${scripts_path}/run.sh"
+  exec "/entrypoint.sh" "/run.sh"
 }
 
 # This is magic for shellspec ut framework.

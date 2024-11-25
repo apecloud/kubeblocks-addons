@@ -1,7 +1,7 @@
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: mongodb-physical-backup
+  name: mongodb-physical-br
   labels:
     clusterdefinition.kubeblocks.io/name: mongodb
     {{- include "mongodb.labels" . | nindent 4 }}
@@ -39,7 +39,7 @@ spec:
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: mongodb-volumesnapshot
+  name: mongodb-volume-snapshot
   labels:
     clusterdefinition.kubeblocks.io/name: apecloud-mysql
 spec:

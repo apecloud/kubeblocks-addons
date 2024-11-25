@@ -106,7 +106,7 @@ oceanbase-ce
 {{- end -}}
 
 {{- define "oceanbase-ce.backup.actionset" -}}
-oceanbase-ce-physical-backup
+oceanbase-ce-physical-br
 {{- end -}}
 
 {{- define "oceanbase-ce.backup.bpt" -}}

@@ -2,6 +2,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: {{ include "clustername" . }}
+  namespace: {{ .Release.Namespace }}
   labels: {{ include "opensearch-cluster.labels" . | nindent 4 }}
 spec:
   terminationPolicy: {{ .Values.terminationPolicy }}

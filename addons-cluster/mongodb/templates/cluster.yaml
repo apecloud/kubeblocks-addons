@@ -4,6 +4,10 @@ metadata:
   name: {{ include "kblib.clusterName" . }}
   namespace: {{ .Release.Namespace }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+{{- if eq .Values.hostnetwork "enabled" }}
+  annotations:
+    kubeblocks.io/host-network: mongodb
+{{- end }}
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   clusterDef: mongodb

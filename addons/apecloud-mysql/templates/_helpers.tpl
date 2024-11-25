@@ -165,6 +165,45 @@ lifecycleActions:
           mysql -u${MYSQL_ROOT_USER} -p${MYSQL_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement}"
       targetPodSelector: Role
       matchingKey: leader 
+  dataDump:
+    exec:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.30-5.beta3.20240330.g94d1caf.15
+      command:
+        - bash
+        - -c
+        - |
+          set -ex
+          DB_HOST=127.0.0.1
+          DB_PORT=3306
+          DB_USER=${MYSQL_ROOT_USER}
+          DB_PASSWORD=${MYSQL_ROOT_PASSWORD}
+          DATA_DIR={{ .Values.mysqlConfigs.dataDir }}
+          xtrabackup --compress=zstd --backup --safe-slave-backup --slave-info --stream=xbstream --host=${DB_HOST} --port=${DB_PORT} --user=${DB_USER} --password=${DB_PASSWORD} --datadir=${DATA_DIR}
+      targetPodSelector: Role
+      matchingKey: leader
+      container: mysql
+  dataLoad:
+    exec:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.30-5.beta3.20240330.g94d1caf.15
+      command:
+        - bash
+        - -c
+        - |
+          set -ex
+          DATA_MOUNT_DIR={{ .Values.mysqlConfigs.dataMountPath }}
+          DATA_DIR={{ .Values.mysqlConfigs.dataDir }}
+          LOG_BIN={{ .Values.mysqlConfigs.logBin }}
+          TMP_DIR=${DATA_MOUNT_DIR}/temp
+          mkdir -p ${DATA_DIR} ${TMP_DIR}
+          cd ${TMP_DIR}
+          xbstream -x
+          xtrabackup --decompress --remove-original --target-dir=${TMP_DIR}
+          xtrabackup --prepare --target-dir=${TMP_DIR}
+          xtrabackup --move-back --target-dir=${TMP_DIR} --datadir=${DATA_DIR}/ --log-bin=${LOG_BIN}
+          touch ${DATA_DIR}/.xtrabackup_restore
+          rm -rf ${TMP_DIR}
+          chmod -R 0777 ${DATA_DIR}
+      container: mysql
 exporter:
   containerName: mysql-exporter
   scrapePath: /metrics
@@ -241,7 +280,6 @@ vars:
   - name: MY_CLUSTER_UID
     valueFrom:
       clusterVarRef:
-        optional: false
         clusterUID: Required
   ## the mysql primary pod name which is dynamically selected, caution to use it
   - name: MYSQL_LEADER_POD_NAME

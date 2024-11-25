@@ -130,8 +130,6 @@ spec:
             containerPort: 3601
         command:
           - syncer
-          - --port
-          - "3601"
           - --
           - /scripts/replicaset-setup.sh
         env:
@@ -155,7 +153,7 @@ spec:
           - name: KB_SERVICE_CHARACTER_TYPE
             value: mongodb
           - name: SERVICE_PORT
-            value: "27017"
+            value: $(KB_SERVICE_PORT)
           - name: MONGODB_ROOT_USER
             value: $(MONGODB_USER)
           - name: MONGODB_ROOT_PASSWORD
@@ -195,3 +193,28 @@ spec:
           name: root
           optional: false
           password: Required
+    - name: KB_SERVICE_PORT  
+      value: "27017"
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: mongodb
+            port:
+              name: mongodb
+              option: Optional
+    - name: SYNCER_SERVICE_PORT  
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: mongodb
+            port:
+              name: ha
+              option: Optional
+  hostNetwork: 
+    containerPorts:  
+      - container: mongodb
+        ports:
+          - mongodb
+          - ha

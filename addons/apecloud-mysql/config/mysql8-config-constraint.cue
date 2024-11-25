@@ -1533,11 +1533,70 @@
 	wait_timeout?: int & >=1 & <=31536000
 
 	// For SQL window functions, determines whether to enable inversion optimization for moving window frames also for floating values.
-	windowing_use_high_precision: string & "0" | "1" | "OFF" | "ON" | *"1"
+	windowing_use_high_precision?: string & "OFF" | "ON" | *"ON"
 
-	// other parameters
-	// reference mysql parameters
-	...
+	loose_consensus_enabled?: string & "ON" | "OFF"
+	loose_consensus_io_thread_cnt?: int | *8
+	loose_consensus_worker_thread_cnt?: int | *8
+	loose_consensus_election_timeout?: int | *1000
+	loose_consensus_auto_leader_transfer?: string & "OFF" | "ON" | *"OFF"
+	loose_consensus_prefetch_window_size?: int | *100
+	loose_consensus_auto_reset_match_index?: string & "OFF" | "ON" | *"ON"
+	loose_cluster_mts_recover_use_index?: string & "ON" | "OFF"
+	loose_replicate_same_server_id?: string & "ON" | "OFF"
+	loose_consensus_large_trx?: string & "ON" | "OFF"
+	loose_consensuslog_revise?: string & "OFF" | "ON"
+
+	authentication_policy?: string
+	plugin_load_add?: string
+
+	loose_audit_log_handler?: string & "FILE" | "SYSLOG" | *"FILE"
+	loose_audit_log_file?: string | *"audit.log"
+	loose_audit_log_buffer_size?: string | *"1Mb"
+	loose_audit_log_policy?: string & "ALL" | "LOGINS" | "QUERIES" | "NONE" | *"ALL"
+	loose_audit_log_strategy?: string & "ASYNCHRONOUS" | "PERFORMANCE" | "SEMISYNCHRONOUS" | "SYNCHRONOUS" | *"ASYNCHRONOUS"
+	loose_audit_log_rotate_on_size?: int | *0
+	loose_audit_log_rotations?: int | *0
+	loose_audit_log_exclude_accounts?: string
+
+	loose_smartengine_datadir?: string
+	loose_smartengine_wal_dir?: string
+	loose_smartengine_flush_log_at_trx_commit?: int
+	loose_smartengine_enable_2pc?: int
+	loose_smartengine_batch_group_slot_array_size?: int
+	loose_smartengine_batch_group_max_group_size?: int
+	loose_smartengine_batch_group_max_leader_wait_time_us?: int
+	loose_smartengine_block_size?: int
+	loose_smartengine_disable_auto_compactions?: int
+	loose_smartengine_dump_memtable_limit_size?: int
+
+	loose_smartengine_min_write_buffer_number_to_merge?: int
+	loose_smartengine_level0_file_num_compaction_trigger?: int
+	loose_smartengine_level0_layer_num_compaction_trigger?: int
+	loose_smartengine_level1_extents_major_compaction_trigger?: int
+	loose_smartengine_level2_usage_percent?: int
+	loose_smartengine_flush_delete_percent?: int
+	loose_smartengine_compaction_delete_percent?: int
+	loose_smartengine_flush_delete_percent_trigger?: int
+	loose_smartengine_flush_delete_record_trigger?: int
+	loose_smartengine_scan_add_blocks_limit?: int
+
+	loose_smartengine_compression_per_level?: string
+	loose_smartengine_write_buffer_size?: int
+	loose_smartengine_db_write_buffer_size?: int
+	loose_smartengine_db_total_write_buffer_size?: int
+	loose_smartengine_block_cache_size?: int
+	loose_smartengine_row_cache_size?: int
+	loose_smartengine_max_total_wal_size?: int
+
+	loose_smartengine_max_background_flushes?: int
+	loose_smartengine_base_background_compactions?: int
+	loose_smartengine_max_background_compactions?: int
+
+	innodb_redo_log_capacity?: int
+	binlog_purge_size?: string
+	log_replica_updates?: int
+	mysqlx?: int
 }
 
 // SectionName is section name

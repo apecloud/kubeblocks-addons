@@ -14,7 +14,7 @@ spec:
   backupMethods:
     - name: datafile
       snapshotVolumes: false
-      actionSetName: qdrant-snapshot
+      actionSetName: qdrant-snapshot-br
       targetVolumes:
         volumeMounts:
           - name: data

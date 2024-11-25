@@ -60,30 +60,28 @@
 	queryserver_config_transaction_cap: int & >=0
 
 	// the size of database connection pool in non transaction dml
-    non_transactional_dml_database_pool_size: int & >=1
+	non_transactional_dml_database_pool_size: int & >=1
 
-    // the number of rows to be processed in one batch by default
-    non_transactional_dml_default_batch_size: int & >=1
+	// the number of rows to be processed in one batch by default
+	non_transactional_dml_default_batch_size: int & >=1
 
-    // the interval of batch processing in milliseconds by default
-    non_transactional_dml_default_batch_interval: int & >=1
+	// the interval of batch processing in milliseconds by default
+	non_transactional_dml_default_batch_interval: int & >=1
 
-    // the interval of table GC in hours
-    non_transactional_dml_table_gc_interval: int & >=1
+	// the interval of table GC in hours
+	non_transactional_dml_table_gc_interval: int & >=1
 
-    // the interval of job scheduler running in seconds
-    non_transactional_dml_job_manager_running_interval: int & >=1
+	// the interval of job scheduler running in seconds
+	non_transactional_dml_job_manager_running_interval: int & >=1
 
-    // the interval of throttle check in milliseconds
-    non_transactional_dml_throttle_check_interval: int & >=1
+	// the interval of throttle check in milliseconds
+	non_transactional_dml_throttle_check_interval: int & >=1
 
-    // the threshold of batch size
-    non_transactional_dml_batch_size_threshold: int & >=1 & <=1000000
+	// the threshold of batch size
+	non_transactional_dml_batch_size_threshold: int & >=1 & <=1000000
 
-    // final threshold = ratio * non_transactional_dml_batch_size_threshold / table index numbers
-    non_transactional_dml_batch_size_threshold_ratio: float & >=0 & <=1
-
-	...
+	// final threshold = ratio * non_transactional_dml_batch_size_threshold / table index numbers
+	non_transactional_dml_batch_size_threshold_ratio: float & >=0 & <=1
 }
 
 // SectionName is section name

@@ -2,7 +2,7 @@
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
-  name: mogdb-cc
+  name: {{ include "mogdb.constraintTplName" . }}
   labels:
     {{- include "mogdb.labels" . | nindent 4 }}
 spec:

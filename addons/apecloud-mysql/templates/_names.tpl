@@ -3,7 +3,7 @@ Define xtrabackup actionSet name
 */}}
 {{- define "apecloud-mysql.xtrabackupActionSetName" -}}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-xtrabackup-for-apecloud-mysql
+apecloud-mysql-xtrabackup
 {{- else -}}
 {{- .Values.resourceNamePrefix -}}-xtrabackup
 {{- end -}}
@@ -14,7 +14,7 @@ Define volume snapshot actionSet name
 */}}
 {{- define "apecloud-mysql.vsActionSetName" -}}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-volumesnapshot-for-apecloud-mysql
+apecloud-mysql-volume-snapshot
 {{- else -}}
 {{- .Values.resourceNamePrefix -}}-volumesnapshot
 {{- end -}}
@@ -30,18 +30,6 @@ apecloud-mysql-backup-policy-template
 {{- .Values.resourceNamePrefix -}}-bpt
 {{- end -}}
 {{- end -}}
-
-{{/*
-Define backup policy template
-*/}}
-{{- define "apecloud-mysql.hscaleBackupPolicyTemplateName" -}}
-{{- if eq (len .Values.resourceNamePrefix) 0 -}}
-apecloud-mysql-backup-policy-for-hscale
-{{- else -}}
-{{- .Values.resourceNamePrefix -}}-bpt-for-hscale
-{{- end -}}
-{{- end -}}
-
 
 {{/*
 Define cluster definition name, if resourceNamePrefix is specified, use it as clusterDefName
@@ -84,7 +72,7 @@ Define wescale controller component definition name prefix
 */}}
 {{- define "apecloud-mysql.cmpdNameWescaleCtrlPrefix" -}}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-wescale-controller-
+wescalecontroller-
 {{- else -}}
 {{- .Values.resourceNamePrefix -}}-wescale-controller-
 {{- end -}}
