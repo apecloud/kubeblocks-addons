@@ -1,0 +1,16 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+spec:
+  clusterDef: vanilla-postgresql
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  topology: vanilla-postgresql
+  componentSpecs:
+    - name: postgresql
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
+      replicas: {{ .Values.replicas }}
+      serviceVersion: {{ .Values.version }}
