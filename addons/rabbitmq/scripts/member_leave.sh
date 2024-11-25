@@ -14,7 +14,7 @@ fi
 CURRENT_POD_NAME=$(echo "${RABBITMQ_NODENAME}"|grep -oP '(?<=rabbit@).*?(?=\.)')
 if [[ -f /tmp/${KB_LEAVE_MEMBER_POD_NAME}_leave.success ]]; then
     echo "member_leave.sh is already leave success"
-    # if the current pod is the leave member pod, exit directly without delete the success file, because the leave member can't execute cluster_status anymore aflter leave the cluster.
+    # if the current pod is the leave member pod, exit directly without delete the success file, because the leave member can't execute cluster_status anymore after leave the cluster.
     if [[ "$CURRENT_POD_NAME" == "$KB_LEAVE_MEMBER_POD_NAME" ]]; then
         exit 0
     fi
