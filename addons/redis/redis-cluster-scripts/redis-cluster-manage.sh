@@ -100,10 +100,10 @@ init_other_components_and_pods_info() {
 
 find_exist_available_node() {
   for node in "${other_undeleted_component_nodes[@]}"; do
-    if redis_cluster_check "$node"; then
-      # the $node is the headless address by default, we should get the real node address from cluster nodes
-      node_ip=$(echo "$node" | cut -d':' -f1)
-      node_port=$(echo "$node" | cut -d':' -f2)
+    # the $node is the headless address by default, we should get the real node address from cluster nodes
+    node_ip=$(echo "$node" | cut -d':' -f1)
+    node_port=$(echo "$node" | cut -d':' -f2)
+    if redis_cluster_check "$node" "$node_port"; then
       set +x
       if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
         cluster_nodes_info=$(redis-cli -h "$node_ip" -p "$node_port" cluster nodes)
@@ -172,12 +172,13 @@ wait_random_second() {
 
 redis_cluster_check() {
   # check redis cluster all slots are covered
-  local cluster_node="$1"
+  local cluster_node_with_port_to_check="$1"
+  local current_server_port="$2"
   set +x
   if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-    check=$(redis-cli --cluster check "$cluster_node" -p "$SERVICE_PORT")
+    check=$(redis-cli --cluster check "$cluster_node_with_port_to_check" -p "$current_server_port")
   else
-    check=$(redis-cli --cluster check "$cluster_node" -p "$SERVICE_PORT" -a "$REDIS_DEFAULT_PASSWORD" )
+    check=$(redis-cli --cluster check "$cluster_node_with_port_to_check" -p "$current_server_port" -a "$REDIS_DEFAULT_PASSWORD" )
   fi
   set -x
   if [[ $check =~ "All 16384 slots covered" ]]; then
@@ -328,7 +329,7 @@ get_current_comp_nodes_for_scale_in() {
       advertised_ports[$port]=1
     done
   elif [ -n "$REDIS_CLUSTER_HOST_NETWORK_PORT" ] && [ -n "$HOST_NETWORK_ENABLED" ]; then
-    using_advertised_ports=true
+    using_host_network=true
   fi
 
   # the output of line is like:
@@ -343,6 +344,7 @@ get_current_comp_nodes_for_scale_in() {
     node_ip_port_fields=$(echo "$line" | awk '{print $2}')
     # ip:port without bus port
     node_ip_port=$(echo "$node_ip_port_fields" | awk -F '@' '{print $1}')
+    node_ip=$(echo "$node_ip_port_fields" | awk -F '@' '{print $1}' | cut -d':' -f1)
     node_port=$(echo "$node_ip_port_fields" | awk -F '@' '{print $1}' | cut -d':' -f2)
     # redis-shard-sxj-0.redis-shard-sxj-headless.default.svc
     node_fqdn=$(echo "$line" | awk '{print $2}' | awk -F ',' '{print $2}')
@@ -589,7 +591,8 @@ initialize_redis_cluster() {
 
   # get the first primary node to check the cluster
   first_primary_node=$(echo "$primary_nodes" | awk '{print $1}')
-  if redis_cluster_check "$first_primary_node"; then
+  first_primary_node_port=$(echo "$first_primary_node" | cut -d':' -f2)
+  if redis_cluster_check "$first_primary_node" "$SERVICE_PORT"; then
     echo "Cluster correctly created"
   else
     echo "Failed to create Redis Cluster"
@@ -651,7 +654,7 @@ scale_out_redis_cluster_shard() {
   primary_node_fqdn=$(echo "$primary_node_with_port" | awk -F ':' '{print $1}')
   primary_node_port=$(echo "$primary_node_with_port" | awk -F ':' '{print $2}')
   mapping_primary_cluster_id=$(get_cluster_id "$primary_node_fqdn" "$primary_node_port")
-  if redis_cluster_check "$primary_node_with_port"; then
+  if redis_cluster_check "$primary_node_with_port" "$SERVICE_PORT"; then
     echo "The current component shard is already scaled out, no need to scale out again."
     exit 0
   fi
