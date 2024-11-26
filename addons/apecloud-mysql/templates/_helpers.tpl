@@ -151,6 +151,13 @@ lifecycleActions:
         - /tools/config/dbctl/components
         -  wesql
         - leavemember
+  switchover:
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - |
+          /tools/syncerctl switchover --primary "$KB_LEADER_POD_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
   accountProvision:
     exec:
       container: mysql
