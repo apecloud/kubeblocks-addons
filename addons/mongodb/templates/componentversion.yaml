@@ -21,40 +21,34 @@ spec:
       serviceVersion: 7.0.12
       images:
         mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:7.0.12
-        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
     - name: 6.0.16
       changes:
       serviceVersion: 6.0.16
       images:
         mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:6.0.16
-        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
     - name: 5.0.28
       changes:
       serviceVersion: 5.0.28
       images:
         mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.0.28
-        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
     - name: 4.4.29
       changes:
       serviceVersion: 4.4.29
       images:
         mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.4.29
-        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
     - name: 4.2.24
       changes:
       serviceVersion: 4.2.24
       images:
         mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.2.24
-        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
     - name: 4.0.28
       changes:
       serviceVersion: 4.0.28
       images:
         mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.0.28
-        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
