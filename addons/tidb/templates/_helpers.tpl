@@ -35,10 +35,19 @@ Common labels
 */}}
 {{- define "tidb.labels" -}}
 helm.sh/chart: {{ include "tidb.chart" . }}
+{{ include "tidb.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}
+
+{{/*
+Selector labels
+*/}}
+{{- define "tidb.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "tidb.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{- define "tidb.cmScriptsName" -}}
