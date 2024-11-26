@@ -1,7 +1,7 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
-  name: mongo-horizontalscaling
+  name: mongo-scale-in
   namespace: default
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
@@ -11,5 +11,8 @@ spec:
   horizontalScaling:
     # Specifies the name of the Component.
   - componentName: mongodb
-    # Specifies the number of total replicas.
-    replicas: 4
+    # Specifies the replica changes for scaling in components
+    scaleIn:
+      # Specifies the replica changes for the component.
+      # add one more replica to current component
+      replicaChanges: 1
