@@ -361,10 +361,10 @@ kubectl create secret generic <credential-for-backuprepo>\
   -n kb-system
 ```
 
-Update `examples/apecloud-mysql/backuprepo.yaml` and set fields quoted with `<>` to your own settings and apply it.
+Update `examples/redis/backuprepo.yaml` and set fields quoted with `<>` to your own settings and apply it.
 
 ```bash
-kubectl apply -f examples/apecloud-mysql/backuprepo.yaml
+kubectl apply -f examples/redis/backuprepo.yaml
 ```
 
 After creating the BackupRepo, you should check the status of the BackupRepo, to make sure it is `Ready`.
@@ -427,6 +427,11 @@ To create a continuous backup for the reids component, you should follow the ste
 ```bash
 kubectl apply -f examples/redis/reconfigure-aof.yaml
 ```
+
+> [!IMPORTANT]
+> Once `aof-timestamp-enabled` is on, Redis will include timestamp in the AOF file.
+> It may have following side effects: storage overhead, performance overhead (write latency).
+> It is not recommended to enable this feature when you have high write throughput, or you have limited storage space.
 
 1. enable continuous backup
 

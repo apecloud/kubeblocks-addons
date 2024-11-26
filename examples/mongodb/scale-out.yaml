@@ -1,16 +1,16 @@
 apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
-  name: mysql-scale-out
+  name: mongo-scale-out
   namespace: default
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: mysql-cluster
+  clusterName: mongo-cluster
   type: HorizontalScaling
   # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
   horizontalScaling:
     # Specifies the name of the Component.
-  - componentName: mysql
+  - componentName: mongodb
     # Specifies the replica changes for scaling in components
     scaleOut:
       # Specifies the replica changes for the component.
