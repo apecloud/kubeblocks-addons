@@ -126,6 +126,13 @@ lifecycleActions:
         - /tools/config/dbctl/components
         - mysql
         - getrole
+  switchover:
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - |
+          /tools/syncerctl switchover --primary "$KB_LEADER_POD_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
 roles:
   - name: primary
     serviceable: true
@@ -140,6 +147,7 @@ roles:
     - cp
     - -r
     - /bin/syncer
+    - /bin/syncerctl
     - /tools/
   image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
   imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
