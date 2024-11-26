@@ -351,10 +351,10 @@ kubectl create secret generic <credential-for-backuprepo>\
   -n kb-system
 ```
 
-Update `examples/postgresql/backuprepo.yaml` and set fields quoted with `<>` to your own settings and apply it.
+Update `examples/mysql/backuprepo.yaml` and set fields quoted with `<>` to your own settings and apply it.
 
 ```bash
-kubectl apply -f examples/postgresql/backuprepo.yaml
+kubectl apply -f examples/mysql/backuprepo.yaml
 ```
 
 After creating the BackupRepo, you should check the status of the BackupRepo, to make sure it is `Ready`.
