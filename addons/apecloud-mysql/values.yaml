@@ -10,7 +10,7 @@ image:
   tag: 8.0.30-5.beta3.20240330.g94d1caf.15
   syncer:
     repository: apecloud/syncer
-    tag: 0.3.5
+    tag: 0.3.8
   dbctl:
     repository: apecloud/dbctl
     tag: "0.1.5"

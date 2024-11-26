@@ -27,7 +27,7 @@ home: https://github.com/apecloud/kubeblocks/tree/main/deploy/vanilla-postgresql
 icon: https://kubeblocks.io/img/logo.png
 
 maintainers:
-  - name: ApeCloud
+  - name: kizuna-lek
     url: https://kubeblocks.io/
 
 sources:
