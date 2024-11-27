@@ -478,7 +478,7 @@ scale_redis_cluster_replica() {
     exit 1
   fi
 
-  # Hacky: When the entire redis cluster is restarted, all primary nodes may still be in the rebooting state. Here, a hacky sleep is used to wait for all primaries to enter the restarting state
+  # Hacky: When the entire redis cluster is restarted, a hacky sleep is used to wait for all primaries to enter the restarting state
   sleep 60
 
   # cluster meet the primary node until the current node is successfully added to the cluster
