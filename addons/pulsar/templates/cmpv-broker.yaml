@@ -7,9 +7,12 @@ metadata:
 spec:
   compatibilityRules:
     - compDefs:
-        - {{ include "pulsar.brokerCmpdRegexPattern" . }}
+        - {{ include "pulsar2.brokerCmpdRegexPattern" . }}
       releases:
         - 2.11.2
+    - compDefs:
+        - {{ include "pulsar3.brokerCmpdRegexPattern" . }}
+      releases:
         - 3.0.2
   releases:
     - name: 2.11.2

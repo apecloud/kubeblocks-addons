@@ -8,9 +8,13 @@ spec:
   compatibilityRules:
     - compDefs:
         ## regex pattern for bookies recovery component definition match pulsar 2.X and 3.X
-        - {{ include "pulsar.bkRecoveryCmpdRegexPattern" . }}
+        - {{ include "pulsar2.bkRecoveryCmpdRegexPattern" . }}
       releases:
         - 2.11.2
+    - compDefs:
+        ## regex pattern for bookies recovery component definition match pulsar 2.X and 3.X
+        - {{ include "pulsar3.bkRecoveryCmpdRegexPattern" . }}
+      releases:
         - 3.0.2
   releases:
     - name: 2.11.2

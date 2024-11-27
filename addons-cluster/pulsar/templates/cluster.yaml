@@ -7,7 +7,7 @@ metadata:
   {{- if .Values.commonAnnotations }}
   annotations:
     {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-    {{- if eq .Values.version "pulsar-3.0.2" }}
+    {{- if eq .Values.version "3.0.2" }}
     ## Todo: use cluster api to control the rendering logic of service in component definition
     {{- include "pulsar-cluster.brokerAddrFeatureGate" . | nindent 4 }}
     "kubeblocks.io/extra-env": '{"KB_PULSAR_BROKER_NODEPORT": "{{ $.Values.nodePortEnabled }}"}'
@@ -35,7 +35,7 @@ spec:
             port: 80
             targetPort: 8080
     {{- end }}
-    {{- if eq .Values.version "pulsar-3.0.2" }}
+    {{- if eq .Values.version "3.0.2" }}
     - name: broker-bootstrap
       serviceName: broker-bootstrap
       componentSelector: broker
@@ -55,6 +55,7 @@ spec:
           - name: kafka-client
             port: 9092
             targetPort: 9092
+    {{- end }}
     {{- if not .Values.serviceReference.enabled }}
     - name: zookeeper
       serviceName: zookeeper
@@ -66,12 +67,12 @@ spec:
             port: 2181
             targetPort: 2181
     {{- end }}
-    {{- end }}
   componentSpecs:
   {{- if or (eq .Values.mode "pulsar-enhanced-cluster") (and (not $topologyEnable) .Values.proxy.enabled) }}
     - name: proxy
     {{- if not  $topologyEnable }}
       componentDef: pulsar-proxy
+      serviceVersion: {{ .Values.version }}
       {{- end }}
       {{ include "pulsar-zookeeper-ref" . | nindent 6 }}
       replicas: {{ .Values.proxy.replicaCount | default 3 }}
@@ -93,6 +94,7 @@ spec:
     - name: bookies-recovery
     {{- if not $topologyEnable }}
       componentDef: pulsar-bookies-recovery
+      serviceVersion: {{ .Values.version }}
       {{- end }}
       {{ include "pulsar-zookeeper-ref" . | nindent 6 }}
       replicas: {{ .Values.bookiesRecovery.replicaCount | default 3 }}
@@ -113,6 +115,7 @@ spec:
     - name: broker
       {{- if not  $topologyEnable }}
       componentDef: pulsar-broker
+      serviceVersion: {{ .Values.version }}
       {{- end }}
       {{ include "pulsar-zookeeper-ref" . | nindent 6 }}
       {{- if .Values.nodePortEnabled }}
@@ -138,6 +141,7 @@ spec:
     - name: bookies
       {{- if not  $topologyEnable }}
       componentDef: pulsar-bookkeeper
+      serviceVersion: {{ .Values.version }}
       {{- end }}
       {{ include "pulsar-zookeeper-ref" . | nindent 6 }}
       {{- $bookiesReplicas := .Values.bookies.replicaCount }}
@@ -185,6 +189,7 @@ spec:
     - name: zookeeper
       {{- if not  $topologyEnable }}
       componentDef: pulsar-zookeeper
+      serviceVersion: {{ .Values.version }}
       {{- end }}
       replicas: {{ .Values.zookeeper.replicaCount | default 3 }}
       {{- with  .Values.zookeeper.resources }}

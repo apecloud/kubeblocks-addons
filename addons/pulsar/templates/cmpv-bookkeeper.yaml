@@ -8,9 +8,13 @@ spec:
   compatibilityRules:
     - compDefs:
         ## regex pattern for bookkeeper component definition match pulsar 2.X and 3.X
-        - {{ include "pulsar.bookkeeperCmpdRegexPattern" . }}
+        - {{ include "pulsar2.bookkeeperCmpdRegexPattern" . }}
       releases:
         - 2.11.2
+    - compDefs:
+        ## regex pattern for bookkeeper component definition match pulsar 2.X and 3.X
+        - {{ include "pulsar3.bookkeeperCmpdRegexPattern" . }}
+      releases:
         - 3.0.2
   releases:
     - name: 2.11.2
@@ -23,4 +27,3 @@ spec:
       serviceVersion: 3.0.2
       images:
         bookies: {{.Values.image.registry | default "docker.io" }}/{{ .Values.images.v3_0_2.bookie.repository }}:3.0.2
-

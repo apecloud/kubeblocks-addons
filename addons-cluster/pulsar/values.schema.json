@@ -1,0 +1,77 @@
+{
+    "$schema": "http://json-schema.org/schema#",
+    "type": "object",
+    "properties": {
+        "version": {
+            "title": "Version",
+            "description": "Service version",
+            "type": "string",
+            "default": "3.0.2",
+            "enum": [
+                "2.11.2",
+                "3.0.2"
+            ]
+        },
+        "mode": {
+            "title": "Mode",
+            "description": "topology mode.",
+            "type": "string",
+            "default": "pulsar-enhanced-cluster",
+            "enum": [
+                "pulsar-basic-cluster",
+                "pulsar-enhanced-cluster"
+            ]
+        },
+        "bookies": {
+            "type": "object",
+            "properties": {
+                "replicaCount": {
+                    "title": "Replicas",
+                    "description": "The number of bookies replicas.",
+                    "type": "integer",
+                    "default": 1,
+                    "minimum": 1,
+                    "maximum": 5
+                }
+            },
+            "broker": {
+                "type": "object",
+                "properties": {
+                    "replicaCount": {
+                        "title": "Replicas",
+                        "description": "The number of broker replicas.",
+                        "type": "integer",
+                        "default": 1,
+                        "minimum": 1,
+                        "maximum": 5
+                    }
+                }
+            },
+            "proxy": {
+              "type": "object",
+              "properties": {
+                  "replicaCount": {
+                      "title": "Replicas",
+                      "description": "The number of proxy replicas.",
+                      "type": "integer",
+                      "default": 1,
+                      "minimum": 1,
+                      "maximum": 5
+                  },
+                  "enabled": {
+                    "title": "Enabled",
+                    "description": "Enable proxy",
+                    "type": "boolean",
+                    "default": false
+                  }
+              }
+          }
+        }
+    },
+    "nodePortEnabled": {
+      "title": "Node Port Enabled",
+      "description": "Enable Node Port",
+      "type": "boolean",
+      "default": false
+    }
+}
