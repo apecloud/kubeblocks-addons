@@ -1,5 +1,52 @@
 #!/bin/bash
 
+
+is_node_deleted() {
+    local disk_nodes_str=$(echo "$1" | awk '/^Disk Nodes$/{flag=1;next} /^$/{flag++} {if(NF>0 && flag==2){print}}')
+    while read -r line; do
+        if $(echo "$line" | grep -q "$KB_LEAVE_MEMBER_POD_NAME"); then
+            return 1
+        fi
+    done <<< "$disk_nodes_str"
+    return 0
+}
+
+cleanup() {
+    echo "Cleaning up..."
+    rm -f /tmp/member_leave.lock
+}
+
+get_target_node() {
+    # get the list of running nodes
+    RUNNING_NODES=$(echo "$1" | grep -A 3 "Running Nodes" | tail -n +3 | grep 'rabbit@')
+
+    while read -r line; do
+        if [ ! -z "$line" ]; then
+            NODES+=("$line")
+        fi
+    done <<< "$RUNNING_NODES"
+
+    # found the target node to execute forget_cluster_node
+    TARGET_NODE=""
+    for NODE in "${NODES[@]}"; do
+        if [[ "$NODE" != "$LEAVE_NODE" ]]; then
+            TARGET_NODE=$NODE
+            break
+        fi
+    done
+
+    if [[ -z "$TARGET_NODE" ]]; then
+        echo "no target node found to execute forget_cluster_node."
+        return 1
+    fi
+    echo "$TARGET_NODE"
+}
+
+# if test by shellspec include, just return 0
+if [ "${__SOURCED__:+x}" ]; then
+  return 0
+fi
+
 set -ex
 if [[ -z "$KB_LEAVE_MEMBER_POD_NAME" ]]; then
     echo "no leave member name provided"
@@ -23,22 +70,8 @@ if [[ -f /tmp/${KB_LEAVE_MEMBER_POD_NAME}_leave.success ]]; then
 fi
 
 
-is_node_deleted() {
-    local disk_nodes_str=$(echo "$1" | awk '/^Disk Nodes$/{flag=1;next} /^$/{flag++} {if(NF>0 && flag==2){print}}')
-    while read -r line; do
-        if $(echo "$line" | grep -q "$KB_LEAVE_MEMBER_POD_NAME"); then
-            return 1
-        fi
-    done <<< "$disk_nodes_str"
-    return 0
-}
-
 touch /tmp/member_leave.lock
 # Define the cleanup function
-cleanup() {
-    echo "Cleaning up..."
-    rm -f /tmp/member_leave.lock
-}
 
 # Set the trap to call the cleanup function on script exit
 trap cleanup EXIT
@@ -55,25 +88,9 @@ if is_node_deleted "$CLUSTER_STATUS"; then
     exit 0
 fi
 
-# get the list of running nodes
-RUNNING_NODES=$(echo "$CLUSTER_STATUS" | grep -A 3 "Running Nodes" | tail -n +3 | grep 'rabbit@')
 
-while read -r line; do
-    if [ ! -z "$line" ]; then
-        NODES+=("$line")
-    fi
-done <<< "$RUNNING_NODES"
-
-# found the target node to execute forget_cluster_node
-TARGET_NODE=""
-for NODE in "${NODES[@]}"; do
-    if [[ "$NODE" != "$LEAVE_NODE" ]]; then
-        TARGET_NODE=$NODE
-        break
-    fi
-done
-
-if [[ -z "$TARGET_NODE" ]]; then
+TARGET_NODE=$(get_target_node "$CLUSTER_STATUS")
+if [[ $? -ne 0 ]]; then
     echo "no target node found to execute forget_cluster_node."
     exit 1
 fi
