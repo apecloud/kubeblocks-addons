@@ -71,8 +71,8 @@ zkLedgersRootPath=/ledgers
 
 {{- $autoRecoveryDaemonEnabled := "true" }}
 {{- range $i, $e := $.cluster.spec.componentSpecs }}
-  {{- if index $e "componentDefRef" }}
-    {{- if eq $e.componentDefRef "bookies-recovery" }}
+  {{- if index $e "componentDef" }}
+    {{- if eq $e.componentDef "bookies-recovery" }}
       {{- $autoRecoveryDaemonEnabled = "false" }}
     {{- end }}
   {{- end }}

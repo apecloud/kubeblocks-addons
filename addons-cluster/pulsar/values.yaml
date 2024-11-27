@@ -1,6 +1,6 @@
 ## @param version Pulsar Cluster version
 ##
-version: pulsar-3.0.2
+version: 3.0.2
 
 nameOverride: ""
 
@@ -28,7 +28,7 @@ mode: pulsar-enhanced-cluster
 service:
   ## @param service.type ClickHouse service type, valid options are ExternalName, ClusterIP, NodePort, and LoadBalancer.
   ## ref: https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
-  ## 
+  ##
   type: ClusterIP
 
 ## Bookies configuration
