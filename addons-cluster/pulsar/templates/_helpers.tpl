@@ -66,7 +66,7 @@ Create the name of the service account to use
 Pulsar broker FQDN
 */}}
 {{- define "pulsar-cluster.brokerFQDN" -}}
-{{- if eq .Values.version "pulsar-3.0.2" }}
+{{- if eq .Values.version "3.0.2" }}
 {{- include "kblib.clusterName" . }}-broker-bootstrap.{{ .Release.Namespace }}.svc{{ .Values.clusterDomain }}
 {{- else }}
 {{- include "kblib.clusterName" . }}-broker.{{ .Release.Namespace }}.svc{{ .Values.clusterDomain }}

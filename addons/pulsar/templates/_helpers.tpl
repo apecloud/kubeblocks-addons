@@ -74,6 +74,14 @@ Define pulsar bookies recovery component definition regex pattern
 ^pulsar-bookies-recovery-
 {{- end -}}
 
+{{- define "pulsar2.bkRecoveryCmpdRegexPattern" -}}
+^pulsar-bookies-recovery-2-
+{{- end -}}
+
+{{- define "pulsar3.bkRecoveryCmpdRegexPattern" -}}
+^pulsar-bookies-recovery-3-
+{{- end -}}
+
 {{/*
 Define pulsar v3.X bookies recovery component definition name
 */}}
@@ -94,6 +102,15 @@ Define pulsar bookkeeper component definition regex pattern
 {{- define "pulsar.bookkeeperCmpdRegexPattern" -}}
 ^pulsar-bookkeeper-
 {{- end -}}
+
+{{- define "pulsar2.bookkeeperCmpdRegexPattern" -}}
+^pulsar-bookkeeper-2-
+{{- end -}}
+
+{{- define "pulsar3.bookkeeperCmpdRegexPattern" -}}
+^pulsar-bookkeeper-3-
+{{- end -}}
+
 
 {{/*
 Define pulsar v3.X bookkeeper component definition name
@@ -151,6 +168,14 @@ Define pulsar proxy component definition regex pattern
 ^pulsar-proxy-
 {{- end -}}
 
+{{- define "pulsar2.proxyCmpdRegexPattern" -}}
+^pulsar-proxy-2-
+{{- end -}}
+
+{{- define "pulsar3.proxyCmpdRegexPattern" -}}
+^pulsar-proxy-3-
+{{- end -}}
+
 {{/*
 Define pulsar v3.X proxy component definition name
 */}}
@@ -171,6 +196,16 @@ Define pulsar zookeeper component definition regex pattern
 {{- define "pulsar.zookeeperCmpdRegexPattern" -}}
 ^pulsar-zookeeper-
 {{- end -}}
+
+{{- define "pulsar2.zookeeperCmpdRegexPattern" -}}
+^pulsar-zookeeper-2-
+{{- end -}}
+
+
+{{- define "pulsar3.zookeeperCmpdRegexPattern" -}}
+^pulsar-zookeeper-3-
+{{- end -}}
+
 
 {{/*
 Define pulsar v3.X zookeeper component definition name
