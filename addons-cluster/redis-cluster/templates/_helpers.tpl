@@ -55,7 +55,7 @@ Define redis ComponentSpec with ComponentDefinition.
 {{- define "redis-cluster.componentSpec" }}
 - name: redis
   {{- include "redis-cluster.replicaCount" . | indent 2 }}
-  {{- if .Values.nodePortEnabled }}
+  {{- if and .Values.nodePortEnabled (not .Values.fixedPodIPEnabled) (not .Values.hostNetworkEnabled) }}
   services:
   - name: redis-advertised
     serviceType: NodePort
@@ -64,11 +64,11 @@ Define redis ComponentSpec with ComponentDefinition.
   env:
   - name: CUSTOM_SENTINEL_MASTER_NAME
     value: {{ .Values.sentinel.customMasterName | default "" }}
-  {{- if .Values.fixedPodIPEnabled }}
+  {{- if and .Values.fixedPodIPEnabled (not .Values.nodePortEnabled) (not .Values.hostNetworkEnabled) }}
   - name: FIXED_POD_IP_ENABLED
     value: "true"
   {{- end }}
-  {{- if .Values.hostNetworkEnabled }}
+  {{- if and .Values.hostNetworkEnabled (not .Values.nodePortEnabled) (not .Values.fixedPodIPEnabled) }}
   - name: HOST_NETWORK_ENABLED
     value: "true"
   {{- end }}
