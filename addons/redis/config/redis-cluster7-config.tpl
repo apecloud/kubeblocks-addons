@@ -71,6 +71,9 @@ rdb-save-incremental-fsync yes
 jemalloc-bg-thread yes
 enable-debug-command yes
 aclfile /etc/redis/users.acl
+# TODO: dynamic config for io-threads
+io-threads 4
+io-threads-do-reads yes
   
 # configuration for redis cluster
 cluster-enabled yes
