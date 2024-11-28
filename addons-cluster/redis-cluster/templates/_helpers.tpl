@@ -8,13 +8,18 @@ Define redis cluster shardingSpec with ComponentDefinition.
     name: redis
     componentDef: redis-cluster-7
     replicas: {{ .Values.replicas }}
-    {{- if .Values.nodePortEnabled }}
+    {{- if and .Values.nodePortEnabled (not .Values.fixedPodIPEnabled) (not .Values.hostNetworkEnabled) }}
     services:
     - name: redis-advertised
       serviceType: NodePort
       podService: true
     {{- end }}
-    {{- if .Values.hostNetworkEnabled }}
+    {{- if and .Values.fixedPodIPEnabled (not .Values.nodePortEnabled) (not .Values.hostNetworkEnabled) }}
+    env:
+    - name: FIXED_POD_IP_ENABLED
+      value: "true"
+    {{- end }}
+    {{- if and .Values.hostNetworkEnabled (not .Values.nodePortEnabled) (not .Values.fixedPodIPEnabled) }}
     env:
     - name: HOST_NETWORK_ENABLED
       value: "true"
@@ -82,18 +87,18 @@ Define redis sentinel ComponentSpec with ComponentDefinition.
 {{- define "redis-cluster.sentinelComponentSpec" }}
 - name: redis-sentinel
   replicas: {{ .Values.sentinel.replicas }}
-  {{- if .Values.nodePortEnabled }}
+  {{- if and .Values.nodePortEnabled (not .Values.fixedPodIPEnabled) (not .Values.hostNetworkEnabled) }}
   services:
   - name: sentinel-advertised
     serviceType: NodePort
     podService: true
   {{- end }}
-  {{- if .Values.fixedPodIPEnabled }}
+  {{- if and .Values.fixedPodIPEnabled (not .Values.nodePortEnabled) (not .Values.hostNetworkEnabled) }}
   env:
   - name: FIXED_POD_IP_ENABLED
     value: "true"
   {{- end }}
-  {{- if .Values.hostNetworkEnabled }}
+  {{- if and .Values.hostNetworkEnabled (not .Values.nodePortEnabled) (not .Values.fixedPodIPEnabled) }}
   env:
   - name: HOST_NETWORK_ENABLED
     value: "true"
