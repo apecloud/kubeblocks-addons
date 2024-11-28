@@ -27,4 +27,3 @@ spec:
     matchLabels:
       app.kubernetes.io/instance: acmysql-cluster
       apps.kubeblocks.io/component-name: mysql
-      app.kubernetes.io/managed-by: kubeblocks

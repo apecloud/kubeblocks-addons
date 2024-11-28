@@ -2,7 +2,7 @@
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
-  name: pg-cluster-pod-monitor
+  name: etcd-cluster-pod-monitor
   namespace: monitoring # Note: this is namespace for prometheus operator
   labels:               # this is labels set in `prometheus.spec.podMonitorSelector`
     release: prometheus
@@ -18,12 +18,12 @@ spec:
   - apps.kubeblocks.io/pod-name
   podMetricsEndpoints:
     - path: /metrics
-      port: http-metrics
+      port: client
       scheme: http
   namespaceSelector:
     matchNames:
       - default
   selector:
     matchLabels:
-      workloads.kubeblocks.io/instance: pg-cluster-postgresql
-      app.kubernetes.io/managed-by: kubeblocks
+      app.kubernetes.io/instance: etcd-cluster
+      apps.kubeblocks.io/component-name: etcd

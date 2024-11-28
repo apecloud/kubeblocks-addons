@@ -1,0 +1,32 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: etcd-cluster-restore
+  namespace: default
+  annotations:
+    # etcd-cluster-backup is the backup name.
+    kubeblocks.io/restore-from-backup: '{"etcd":{"name":"etcd-cluster-backup","namespace":"default","volumeRestorePolicy":"Parallel"}}'
+spec:
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: etcd
+      componentDef: etcd
+      serviceVersion: 3.5.15
+      disableExporter: false
+      replicas: 3
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi

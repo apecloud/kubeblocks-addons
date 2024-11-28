@@ -17,8 +17,16 @@ spec:
       images:
         inject-bash: {{ include "bashBusyboxImage.repository" . }}:1.37.0-musl
         etcd: {{ include "etcd.repository" . }}:v3.5.6
+        memberJoin: {{ include "etcd.repository" . }}:v3.5.6
+        memberLeave: {{ include "etcd.repository" . }}:v3.5.6
+        roleProbe: {{ include "etcd.repository" . }}:v3.5.6
+        switchOver: {{ include "etcd.repository" . }}:v3.5.6
     - name: 3.5.15
       serviceVersion: 3.5.15
       images:
         inject-bash: {{ include "bashBusyboxImage.repository" . }}:1.37.0-musl
         etcd: {{ include "etcd.repository" . }}:v3.5.15
+        memberJoin: {{ include "etcd.repository" . }}:v3.5.15
+        memberLeave: {{ include "etcd.repository" . }}:v3.5.15
+        roleProbe: {{ include "etcd.repository" . }}:v3.5.15
+        switchOver: {{ include "etcd.repository" . }}:v3.5.15

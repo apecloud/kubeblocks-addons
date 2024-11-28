@@ -12,13 +12,27 @@ helm repo add kubeblocks-addons https://apecloud.github.io/helm-charts
 helm repo add kubeblocks-addons https://jihulab.com/api/v4/projects/150246/packages/helm/stable
 # Update helm repo
 helm repo update
-# Search versions of OceanBase
+# Search versions of the Addon
 helm search repo kubeblocks/{addonName} --versions
 # Install the version you want (replace $version with the one you need)
 helm upgrade -i mysql kubeblocks-addons/{addonName} --version $version -n kb-system
 ```
 
 ## Using kbcli
+
+Before installing addons, make sure you have an addon index added.
+If not, please add one:
+
+```bash
+# add an index, kubeblocks is added by default
+kbcli addon index add kubeblocks https://github.com/apecloud/block-index.git
+# update the index
+kbcli addon index update kubeblocks
+# update all index
+kbcli addon index uppdate --all
+```
+
+To search annd install an addon:
 
 ```bash
 # Search Addon
@@ -27,4 +41,19 @@ kbcli addon search {addonName}
 kbcli addon install {addonName} --version $version
 # To upgrade the addon, you can use the following command
 kbcli addon upgrade {addonName} --version $version
+```
+
+To enable or disable an addon:
+
+```bash
+# Enable Addon
+kbcli addon enable {addonName}
+# Disable Addon
+kbcli addon disable {addonName}
+```
+
+To check addon status:
+
+```bash
+kbcli addon describe {addonName}
 ```

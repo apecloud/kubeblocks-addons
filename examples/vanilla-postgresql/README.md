@@ -14,7 +14,7 @@ Vanilla-PostgreSQL is compatible with the native PostgreSQL kernel, enabling it 
 
 | Feature | Method | Description |
 |---------|---------|-------------|
-| Base Backup | vanilla-pg-basebackup | uses `pg_basebackup`, a PostgreSQL utility to create a base backup |
+| Full Backup | vanilla-pg-basebackup | uses `pg_basebackup`, a PostgreSQL utility to create a base backup |
 ### Versions
 
 | Major Versions | Description       |
@@ -29,7 +29,7 @@ This example assumes that you have a Kubernetes cluster installed and running, a
 
 Also, this example requires kubeblocks installed and running. Here is the steps to install kubeblocks, please replace "`$kb_version`" with the version you want to use.
 ```bash
-# Add Helm repo 
+# Add Helm repo
 helm repo add kubeblocks https://apecloud.github.io/helm-charts
 # If github is not accessible or very slow for you, please use following repo instead
 helm repo add kubeblocks https://jihulab.com/api/v4/projects/85949/packages/helm/stable
@@ -52,16 +52,16 @@ helm install kubeblocks kubeblocks/kubeblocks --namespace kb-system --create-nam
 ```
 Enable Vanilla-PostgreSQL
 ```bash
-# Add Helm repo 
+# Add Helm repo
 helm repo add kubeblocks-addons https://apecloud.github.io/helm-charts
 # If github is not accessible or very slow for you, please use following repo instead
 helm repo add kubeblocks-addons https://jihulab.com/api/v4/projects/150246/packages/helm/stable
 # Update helm repo
 helm repo update
 
-# Enable vanilla-postgresql 
-helm upgrade -i kb-addon-vanilla-postgresql kubeblocks-addons/vanilla-postgresql --version $kb_version -n kb-system  
-``` 
+# Enable vanilla-postgresql
+helm upgrade -i kb-addon-vanilla-postgresql kubeblocks-addons/vanilla-postgresql --version $kb_version -n kb-system
+```
 
 ## Examples
 
@@ -252,13 +252,13 @@ kbcli cluster explain-config vanpg-cluster # kbcli is a command line tool to int
 When create a backup for cluster, you need to create a BackupRepo first. You can refer to the "BackupRepo" section in the ```example/postgresql/README.md``` file to learn how to create a BackupRepo.
 
 KubeBlocks now supports one backup method for Vanilla-PostgreSQL cluster, which is `vanilla-pg-basebackup`.
-Other backup methods such as "wal-g" will be supported in the future. 
+Other backup methods such as "wal-g" will be supported in the future.
 
 You may find the supported backup methods in the `BackupPolicy` of the cluster, e.g. `vanpg-cluster-postgresql-backup-policy` in this case, and find how these methods will be scheduled in the `BackupSchedule` of the cluster, eg `vanpg-cluster-postgresql-backup-schedule` in this case.
 
 #### pg-basebackup
 
-##### [Base Backup](backup-pg-basebasekup.yaml)
+##### [Full Backup](backup-pg-basebasekup.yaml)
 
 The method `vanilla-pg-basebackup` uses `pg_basebackup`,  a PostgreSQL utility to create a base backup
 

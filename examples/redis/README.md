@@ -16,7 +16,7 @@ Redis is an open source (BSD licensed), in-memory data structure store, used as 
 
 | Feature     | Method | Description |
 |-------------|--------|------------|
-| Base Backup | datafile  | uses `redis-cli BGSAVE` command to backup data |
+| Full Backup | datafile  | uses `redis-cli BGSAVE` command to backup data |
 | Continuous Backup | aof | continuously perform incremental backups by archiving Append-Only Files (AOF) |
 
 ### Versions
@@ -398,7 +398,7 @@ aof       # for pitr
 volume-snapshot # for snapshot backup, make sure the storage class supports volume snapshot
 ```
 
-#### [Base Backup](backup.yaml)
+#### [Full Backup](backup.yaml)
 
 To create a backup for the reids component in the cluster:
 

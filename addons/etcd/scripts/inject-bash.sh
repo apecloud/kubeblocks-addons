@@ -21,6 +21,10 @@ inject_bash() {
   fi
   return 0
 }
+# define is_empty function
+is_empty() {
+  [[ -z "$1" ]]
+}
 
 main() {
   if is_empty "$ETCD_VERSION"; then
