@@ -227,15 +227,19 @@ register_to_sentinel_wrapper() {
   redis_default_primary_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$REDIS_POD_FQDN_LIST" "$redis_default_primary_pod_name")
   init_redis_service_port
   parse_redis_advertised_svc_if_exist "$redis_default_primary_pod_name"
-
+  if is_empty "$CUSTOM_SENTINEL_MASTER_NAME"; then
+    master_name=$REDIS_COMPONENT_NAME
+  else
+    master_name="$CUSTOM_SENTINEL_MASTER_NAME"
+  fi
   sentinel_pod_fqdn_list=($(split "$SENTINEL_POD_FQDN_LIST" ","))
   for sentinel_pod_fqdn in "${sentinel_pod_fqdn_list[@]}"; do
     if ! is_empty "$redis_advertised_svc_host_value" && ! is_empty "$redis_advertised_svc_port_value"; then
       echo "register to sentinel:$sentinel_pod_fqdn with advertised service: redis_advertised_svc_host_value=$redis_advertised_svc_host_value, redis_advertised_svc_port_value=$redis_advertised_svc_port_value"
-      register_to_sentinel "$sentinel_pod_fqdn" "$REDIS_COMPONENT_NAME" "$redis_advertised_svc_host_value" "$redis_advertised_svc_port_value"
+      register_to_sentinel "$sentinel_pod_fqdn" "$master_name" "$redis_advertised_svc_host_value" "$redis_advertised_svc_port_value"
     else
       echo "register to sentinel:$sentinel_pod_fqdn with pod fqdn: redis_default_primary_pod_fqdn=$redis_default_primary_pod_fqdn, redis_default_service_port=$redis_default_service_port"
-      register_to_sentinel "$sentinel_pod_fqdn" "$REDIS_COMPONENT_NAME" "$redis_default_primary_pod_fqdn" "$redis_default_service_port"
+      register_to_sentinel "$sentinel_pod_fqdn" "$master_name" "$redis_default_primary_pod_fqdn" "$redis_default_service_port"
     fi
   done
 }

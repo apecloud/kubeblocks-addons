@@ -62,6 +62,7 @@ sentinel:
   memory: 0.2
   storage: 20
   replicas: 3
+  customMasterName: ""
 
 ## if mode is cluster, specify the redis cluster parameters
 ## @param redisCluster.shardCount specify the number of shards in the cluster, the minimum value is 3
