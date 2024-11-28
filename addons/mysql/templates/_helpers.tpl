@@ -267,6 +267,9 @@ exporter:
 {{- define "mysql-orc.spec.lifecycle.common" }}
 roleProbe:
   exec:
+    env:
+      - name: PATH
+        value: /kubeblocks/:/kubeblocks-tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     command:
       - /bin/bash
       - -c
@@ -287,7 +290,7 @@ roleProbe:
 
         address_port=$(echo "$first_line" | awk '{print $1}')
         master_from_orc="${address_port%:*}"
-        last_digit=${KB_POD_NAME##*-}
+        last_digit=${KB_AGENT_POD_NAME##*-}
         self_service_name=$(echo "${KB_CLUSTER_COMP_NAME}_mysql_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
         if [ "$master_from_orc" == "${self_service_name}" ]; then
           echo -n "primary"
@@ -322,17 +325,6 @@ memberLeave:
           done
         fi
         /kubeblocks/orchestrator-client -c reset-replica -i ${self_service_name}
-        /kubeblocks/orchestrator-client -c forget -i ${self_service_name}
-        res=$(/kubeblocks/orchestrator-client -c which-cluster-alias -i ${self_service_name})
-        local start_time=$(date +%s)
-        while [ "$res" == "" ]; do
-          current_time=$(date +%s)
-          if [ $((current_time - start_time)) -gt $timeout ]; then
-            break
-          fi
-          sleep 1
-          res=$(/kubeblocks/orchestrator-client -c instance -i ${self_service_name})
-        done
         /kubeblocks/orchestrator-client -c forget -i ${self_service_name}
 {{- end }}
 
