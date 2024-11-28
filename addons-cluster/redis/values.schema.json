@@ -113,6 +113,12 @@
       "title": "The redis sentinel",
       "type": "object",
       "properties": {
+        "customMasterName": {
+          "title": "Sentinel master name",
+          "description": "Name of the master node monitored by Sentinel. If empty, a default value will be used.",
+          "type": "string",
+          "default": ""
+        },
         "enabled": {
           "description":"Whether have sentinel component, default is true",
           "title": "sentinel.enable",
