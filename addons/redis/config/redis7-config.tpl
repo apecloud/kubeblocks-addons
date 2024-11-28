@@ -71,6 +71,10 @@ rdb-save-incremental-fsync yes
 jemalloc-bg-thread yes
 enable-debug-command yes
 aclfile /etc/redis/users.acl
+# THREADED I/O
+# TODO: dynamic config for io-threads
+io-threads 4
+io-threads-do-reads yes
 
 # maxmemory <bytes>
 {{- $request_memory := getContainerRequestMemory ( index $.podSpec.containers 0 ) }}
