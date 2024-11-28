@@ -1,10 +1,10 @@
 #!/bin/bash
 set -e
 if [ ! -z "$REDIS_DEFAULT_PASSWORD" ]; then
-  acl_save_command="redis-cli -h 127.0.0.1 -p 6379 -a $REDIS_DEFAULT_PASSWORD acl save"
+  acl_save_command="redis-cli -h 127.0.0.1 -p $SERVICE_PORT -a $REDIS_DEFAULT_PASSWORD acl save"
   logging_mask_acl_save_command="${acl_save_command/$REDIS_DEFAULT_PASSWORD/********}"
 else
-  acl_save_command="redis-cli -h 127.0.0.1 -p 6379 acl save"
+  acl_save_command="redis-cli -h 127.0.0.1 -p $SERVICE_PORT acl save"
   logging_mask_acl_save_command="$acl_save_command"
 fi
 echo "acl save command: $logging_mask_acl_save_command"

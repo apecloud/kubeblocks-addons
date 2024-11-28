@@ -25,11 +25,11 @@ build_redis_default_accounts() {
 
 build_announce_ip_and_port() {
   # build announce ip and port according to whether the advertised svc is enabled
-  if [ -n "$redis_advertised_svc_host_value" ] && [ -n "$redis_advertised_svc_port_value" ]; then
-    echo "redis use advertised svc $redis_advertised_svc_host_value:$redis_advertised_svc_port_value to announce"
+  if [ -n "$redis_announce_host_value" ] && [ -n "$redis_announce_port_value" ]; then
+    echo "redis use advertised svc $redis_announce_host_value:$redis_announce_port_value to announce"
     {
-      echo "replica-announce-port $redis_advertised_svc_port_value"
-      echo "replica-announce-ip $redis_advertised_svc_host_value"
+      echo "replica-announce-port $redis_announce_port_value"
+      echo "replica-announce-ip $redis_announce_host_value"
     } >> /etc/redis/redis.conf
   else
     if [ -n "$FIXED_POD_IP_ENABLED" ]; then
@@ -46,12 +46,12 @@ build_announce_ip_and_port() {
 build_cluster_announce_info() {
   # build announce ip and port according to whether the advertised svc is enabled
   kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.cluster.local"
-  if [ -n "$redis_advertised_svc_host_value" ] && [ -n "$redis_advertised_svc_port_value" ] && [ -n "$redis_advertised_svc_bus_port_value" ]; then
-    echo "redis cluster use advertised svc $redis_advertised_svc_host_value:$redis_advertised_svc_port_value@$redis_advertised_svc_bus_port_value to announce"
+  if [ -n "$redis_announce_host_value" ] && [ -n "$redis_announce_port_value" ] && [ -n "$redis_announce_bus_port_value" ]; then
+    echo "redis cluster use advertised svc $redis_announce_host_value:$redis_announce_port_value@$redis_announce_bus_port_value to announce"
     {
-      echo "cluster-announce-ip $redis_advertised_svc_host_value"
-      echo "cluster-announce-port $redis_advertised_svc_port_value"
-      echo "cluster-announce-bus-port $redis_advertised_svc_bus_port_value"
+      echo "cluster-announce-ip $redis_announce_host_value"
+      echo "cluster-announce-port $redis_announce_port_value"
+      echo "cluster-announce-bus-port $redis_announce_bus_port_value"
       echo "cluster-announce-hostname $kb_pod_fqdn"
       echo "cluster-preferred-endpoint-type ip"
     } >> /etc/redis/redis.conf
@@ -239,13 +239,42 @@ check_and_correct_other_primary_nodes() {
 get_current_comp_nodes_for_scale_out_replica() {
   local cluster_node="$1"
   local cluster_node_port="$2"
-  set +x
-  if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-    cluster_nodes_info=$(redis-cli -h "$cluster_node" -p "$cluster_node_port" cluster nodes)
-  else
-    cluster_nodes_info=$(redis-cli -h "$cluster_node" -p "$cluster_node_port" -a "$REDIS_DEFAULT_PASSWORD" cluster nodes)
+  local max_retries=10
+  local retry_interval=3
+
+  get_cluster_nodes_with_retry() {
+    local attempt=1
+    local result=""
+
+    while [ $attempt -le $max_retries ]; do
+      set +x
+      if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+        result=$(redis-cli -h "$cluster_node" -p "$cluster_node_port" cluster nodes)
+      else
+        result=$(redis-cli -h "$cluster_node" -p "$cluster_node_port" -a "$REDIS_DEFAULT_PASSWORD" cluster nodes)
+      fi
+      if [ $? -eq 0 ] && [ -n "$result" ]; then
+        echo "$result"
+        return 0
+      fi
+      set -x
+
+      echo "Attempt $attempt failed. Error: $result. Retrying in $retry_interval seconds..." >&2
+      sleep $retry_interval
+      attempt=$((attempt + 1))
+    done
+
+    echo "Failed to execute redis-cli command after $max_retries attempts"
+    return 1
+  }
+
+  cluster_nodes_info=$(get_cluster_nodes_with_retry)
+  status=$?
+  if [ $status -ne 0 ]; then
+    echo "Failed to get cluster nodes info"
+    return 1
   fi
-  set -x
+
   current_comp_primary_node=()
   current_comp_other_nodes=()
   other_comp_primary_nodes=()
@@ -261,12 +290,23 @@ get_current_comp_nodes_for_scale_out_replica() {
   # the value format of $REDIS_CLUSTER_ADVERTISED_PORT is "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."
   declare -A advertised_ports
   local using_advertised_ports=false
+  # Parse host network ports if redis cluster is in host network mode
+  declare -A host_network_ports
+  local using_host_network=false
   if [ -n "$REDIS_CLUSTER_ADVERTISED_PORT" ]; then
     using_advertised_ports=true
     IFS=',' read -ra ADDR <<< "$REDIS_CLUSTER_ADVERTISED_PORT"
     for i in "${ADDR[@]}"; do
       port=$(echo $i | cut -d':' -f2)
       advertised_ports[$port]=1
+    done
+  elif [ -n "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT" ] && [ -n "$HOST_NETWORK_ENABLED" ]; then
+    using_host_network=true
+    IFS=',' read -ra port_mappings <<< "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT"
+    for mapping in "${port_mappings[@]}"; do
+      shard_name=$(echo "$mapping" | cut -d':' -f1)
+      mapping_port=$(echo "$mapping" | cut -d':' -f2)
+      host_network_ports["$shard_name"]=$mapping_port
     done
   fi
 
@@ -275,17 +315,27 @@ get_current_comp_nodes_for_scale_out_replica() {
   # 4958e6dca033cd1b321922508553fab869a29d 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
   # 2. using the nodeport or lb ip as the nodeAddr
   # 4958e6dca033cd1b321922508553fab869a29d 172.10.0.1:31000@31888,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local master master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
+  # 3. using the host network ip as the nodeAddr
+  # 4958e6dca033cd1b321922508553fab869a29d 172.10.0.1:1050@1051,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
   while read -r line; do
-    # 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local
     node_ip_port_fields=$(echo "$line" | awk '{print $2}')
-    # ip:port without bus port
     node_announce_ip_port=$(echo "$node_ip_port_fields" | awk -F '@' '{print $1}')
     node_bus_port=$(echo "$node_ip_port_fields" | awk -F '@' '{print $2}' | awk -F ',' '{print $1}')
     node_announce_ip=$(echo "$node_ip_port_fields" | awk -F '@' '{print $1}' | cut -d':' -f1)
     node_port=$(echo "$node_ip_port_fields" | awk -F '@' '{print $1}' | cut -d':' -f2)
-    # redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local
     node_fqdn=$(echo "$line" | awk '{print $2}' | awk -F ',' '{print $2}')
     node_role=$(echo "$line" | awk '{print $3}')
+
+    local final_port=$SERVICE_PORT
+    if $using_host_network; then
+      for shard_name in "${!host_network_ports[@]}"; do
+        if echo "$node_fqdn" | grep -q "$shard_name"; then
+          final_port=${host_network_ports["$shard_name"]}
+          break
+        fi
+      done
+    fi
+
     if $using_advertised_ports; then
       if [[ ${advertised_ports[$node_port]+_} ]]; then
         if [[ "$node_role" =~ "master" ]]; then
@@ -303,15 +353,15 @@ get_current_comp_nodes_for_scale_out_replica() {
     else
       if [[ "$node_fqdn" =~ "$KB_CLUSTER_COMP_NAME"* ]]; then
         if [[ "$node_role" =~ "master" ]]; then
-          current_comp_primary_node+=("$node_announce_ip#$node_fqdn#$node_fqdn:$SERVICE_PORT@$node_bus_port")
+          current_comp_primary_node+=("$node_announce_ip#$node_fqdn#$node_fqdn:$final_port@$node_bus_port")
         else
-          current_comp_other_nodes+=("$node_announce_ip#$node_fqdn#$node_fqdn:$SERVICE_PORT@$node_bus_port")
+          current_comp_other_nodes+=("$node_announce_ip#$node_fqdn#$node_fqdn:$final_port@$node_bus_port")
         fi
       else
         if [[ "$node_role" =~ "master" ]]; then
-          other_comp_primary_nodes+=("$node_announce_ip#$node_fqdn#$node_fqdn:$SERVICE_PORT@$node_bus_port")
+          other_comp_primary_nodes+=("$node_announce_ip#$node_fqdn#$node_fqdn:$final_port@$node_bus_port")
         else
-          other_comp_other_nodes+=("$node_announce_ip#$node_fqdn#$node_fqdn:$SERVICE_PORT@$node_bus_port")
+          other_comp_other_nodes+=("$node_announce_ip#$node_fqdn#$node_fqdn:$final_port@$node_bus_port")
         fi
       fi
     fi
@@ -363,7 +413,6 @@ scale_redis_cluster_replica() {
   primary_node_fqdn=$(echo "$primary_node_info" | awk -F '#' '{print $2}')
   primary_node_bus_port=$(echo "$primary_node_info" | awk -F '@' '{print $2}')
   if is_node_in_cluster "$primary_node_endpoint" "$primary_node_port" "$current_pod_name"; then
-    # if current pod is primary node, check the others primary info, if the others primary node info is expired, send cluster meet command again
     current_pod_with_svc="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME"
     if [[ $primary_node_fqdn == *"$current_pod_with_svc"* ]]; then
       echo "Current pod $current_pod_name is primary node, check and correct other primary nodes..."
@@ -384,10 +433,10 @@ scale_redis_cluster_replica() {
   current_node_with_port="$current_pod_fqdn:$service_port"
   set +x
   if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-    replicated_command="redis-cli --cluster add-node $current_node_with_port $primary_node_endpoint_with_port --cluster-slave --cluster-master-id $primary_node_cluster_id"
+    replicated_command="redis-cli --cluster add-node $current_node_with_port $primary_node_endpoint_with_port --cluster-slave --cluster-master-id $primary_node_cluster_id -p $service_port"
     logging_mask_replicated_command="$replicated_command"
   else
-    replicated_command="redis-cli --cluster add-node $current_node_with_port $primary_node_endpoint_with_port --cluster-slave --cluster-master-id $primary_node_cluster_id -a $REDIS_DEFAULT_PASSWORD"
+    replicated_command="redis-cli --cluster add-node $current_node_with_port $primary_node_endpoint_with_port --cluster-slave --cluster-master-id $primary_node_cluster_id -a $REDIS_DEFAULT_PASSWORD -p $service_port"
     logging_mask_replicated_command="${replicated_command/$REDIS_DEFAULT_PASSWORD/********}"
   fi
   echo "scale out replica replicated command: $logging_mask_replicated_command"
@@ -411,12 +460,16 @@ scale_redis_cluster_replica() {
     if [[ $replicated_output == *"is not empty"* ]]; then
       echo "Replica is not empty, Either the node already knows other nodes (check with CLUSTER NODES) or contains some key in database 0"
       break
+    elif [[ $replicated_output == *"Not all 16384 slots are covered by nodes"* ]]; then
+      # shutdown the redis server if the cluster is not fully covered by nodes
+      echo "Not all 16384 slots are covered by nodes, shutdown redis server"
+      shutdown_redis_server
     else
       echo "Failed to add the node $current_pod_fqdn to the cluster in scale_redis_cluster_replica"
       echo "Error message: $replicated_output"
     fi
     attempt=$((attempt + 1))
-    sleep 1
+    sleep 5
   done
 
   if [ $attempt -gt $max_attempts ]; then
@@ -425,33 +478,86 @@ scale_redis_cluster_replica() {
     exit 1
   fi
 
+  # Hacky: When the entire redis cluster is restarted, a hacky sleep is used to wait for all primaries to enter the restarting state
+  sleep 60
+
   # cluster meet the primary node until the current node is successfully added to the cluster
+  current_primary_met=false
+  declare -A other_primary_met
+  for node_info in "${other_comp_primary_nodes[@]}"; do
+    other_primary_met["$node_info"]=false
+  done
   while true; do
-    if is_node_in_cluster "$primary_node_endpoint" "$primary_node_port" "$current_pod_name"; then
-      echo "Node $current_pod_name is successfully added to the cluster."
+    all_met=true
+
+    # meet current component primary node if not met yet
+    if ! $current_primary_met; then
+      if scale_out_replica_send_meet "$primary_node_endpoint" "$primary_node_port" "$primary_node_bus_port" "$current_pod_name"; then
+        echo "Successfully meet the primary node $primary_node_endpoint_with_port in scale_redis_cluster_replica"
+        current_primary_met=true
+      else
+        echo "Failed to meet current primary node $primary_node_endpoint_with_port"
+        all_met=false
+      fi
+    fi
+
+    # meet the other components primary nodes if not met yet
+    for node_info in "${other_comp_primary_nodes[@]}"; do
+      if [ "${other_primary_met[$node_info]}" = false ]; then
+        node_endpoint_with_port=$(echo "$node_info" | awk -F '@' '{print $1}' | awk -F '#' '{print $3}')
+        node_endpoint=$(echo "$node_endpoint_with_port" | awk -F ':' '{print $1}')
+        node_port=$(echo "$node_endpoint_with_port" | awk -F ':' '{print $2}')
+        node_bus_port=$(echo "$node_info" | awk -F '@' '{print $2}')
+
+        if scale_out_replica_send_meet "$node_endpoint" "$node_port" "$node_bus_port" "$current_pod_name"; then
+          echo "Successfully meet the primary node $node_endpoint_with_port in scale_redis_cluster_replica"
+          other_primary_met["$node_info"]=true
+        else
+          echo "Failed to meet the other component primary node $node_endpoint_with_port in scale_redis_cluster_replica"
+          all_met=false
+        fi
+      fi
+    done
+
+    # If all nodes are met successfully, break the loop
+    if $all_met && $current_primary_met; then
+      echo "All primary nodes have been successfully met"
       break
     fi
-    primary_node_cluster_announce_ip=$(get_cluster_announce_ip "$primary_node_endpoint" "$primary_node_port")
-    # send cluster meet command to the primary node
-    set +ex
-    if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-      meet_command="redis-cli cluster meet $primary_node_cluster_announce_ip $primary_node_port $primary_node_bus_port"
-      logging_mask_meet_command="$meet_command"
-    else
-      meet_command="redis-cli -a $REDIS_DEFAULT_PASSWORD cluster meet $primary_node_cluster_announce_ip $primary_node_port $primary_node_bus_port "
-      logging_mask_meet_command="${meet_command/$REDIS_DEFAULT_PASSWORD/********}"
-    fi
-    echo "scale out replica meet command: $logging_mask_meet_command"
-    if ! $meet_command
-    then
-        echo "Failed to meet the node $primary_node_endpoint_with_port in scale_redis_cluster_replica, shutdown redis server"
-        shutdown_redis_server
-        exit 1
-    fi
-    set -ex
+
     sleep 3
   done
   exit 0
+}
+
+scale_out_replica_send_meet() {
+  local node_endpoint_to_meet="$1"
+  local node_port_to_meet="$2"
+  local node_bus_port_to_meet="$3"
+  local node_to_join="$4"
+  if is_node_in_cluster "$node_endpoint_to_meet" "$node_port_to_meet" "$node_to_join"; then
+    echo "Node $current_pod_name is successfully added to the cluster."
+    return 0
+  fi
+  node_cluster_announce_ip=$(get_cluster_announce_ip "$node_endpoint_to_meet" "$node_port_to_meet")
+  # send cluster meet command to the primary node
+  set +ex
+  if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+    meet_command="redis-cli -p $service_port cluster meet $node_cluster_announce_ip $node_port_to_meet $node_bus_port_to_meet"
+    logging_mask_meet_command="$meet_command"
+  else
+    meet_command="redis-cli -a $REDIS_DEFAULT_PASSWORD -p $service_port cluster meet $node_cluster_announce_ip $node_port_to_meet $node_bus_port_to_meet"
+    logging_mask_meet_command="${meet_command/$REDIS_DEFAULT_PASSWORD/********}"
+  fi
+  echo "scale out replica meet command: $logging_mask_meet_command"
+  if ! $meet_command
+  then
+    echo "Failed to meet the node $node_endpoint_to_meet in scale_out_replica_send_meet, shutdown redis server"
+    shutdown_redis_server
+    exit 1
+  fi
+  set -ex
+  return 1
 }
 
 extract_ordinal_from_object_name() {
@@ -487,12 +593,19 @@ parse_advertised_port() {
   fi
 }
 
-parse_redis_cluster_advertised_svc_if_exist() {
+parse_redis_cluster_announce_addr() {
   local pod_name="$1"
 
   # The value format of REDIS_CLUSTER_ADVERTISED_PORT and REDIS_CLUSTER_ADVERTISED_BUS_PORT are "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."
   if [[ -z "${REDIS_CLUSTER_ADVERTISED_PORT}" ]] || [[ -z "${REDIS_CLUSTER_ADVERTISED_BUS_PORT}" ]]; then
     echo "Environment variable REDIS_CLUSTER_ADVERTISED_PORT and REDIS_CLUSTER_ADVERTISED_BUS_PORT not found. Ignoring."
+    # if redis cluster is in host network mode, use the host ip and port as the announce ip and port
+    if [[ -n "${REDIS_CLUSTER_HOST_NETWORK_PORT}" ]] && [[ -n "${REDIS_CLUSTER_HOST_NETWORK_BUS_PORT}" ]] && [[ -n "$HOST_NETWORK_ENABLED" ]]; then
+      echo "redis cluster server is in host network mode, use the host ip:$KB_HOST_IP and port:$REDIS_CLUSTER_HOST_NETWORK_PORT, bus port:$REDIS_CLUSTER_HOST_NETWORK_BUS_PORT as the announce ip and port."
+      redis_announce_port_value="$REDIS_CLUSTER_HOST_NETWORK_PORT"
+      redis_announce_bus_port_value="$REDIS_CLUSTER_HOST_NETWORK_BUS_PORT"
+      redis_announce_host_value="$KB_HOST_IP"
+    fi
     return 0
   fi
 
@@ -502,8 +615,8 @@ parse_redis_cluster_advertised_svc_if_exist() {
     echo "Exiting due to error in REDIS_CLUSTER_ADVERTISED_PORT."
     exit 1
   fi
-  redis_advertised_svc_port_value="$port"
-  redis_advertised_svc_host_value="$KB_HOST_IP"
+  redis_announce_port_value="$port"
+  redis_announce_host_value="$KB_HOST_IP"
 
   if [[ -n "${REDIS_CLUSTER_ADVERTISED_BUS_PORT}" ]]; then
     port=$(parse_advertised_port "$pod_name" "${REDIS_CLUSTER_ADVERTISED_BUS_PORT}")
@@ -511,7 +624,7 @@ parse_redis_cluster_advertised_svc_if_exist() {
       echo "Exiting due to error in REDIS_CLUSTER_ADVERTISED_BUS_PORT."
       exit 1
     fi
-    redis_advertised_svc_bus_port_value="$port"
+    redis_announce_bus_port_value="$port"
   fi
 }
 
@@ -562,7 +675,7 @@ build_redis_conf() {
   build_redis_default_accounts
 }
 
-parse_redis_cluster_advertised_svc_if_exist "$KB_POD_NAME"
+parse_redis_cluster_announce_addr "$KB_POD_NAME"
 build_redis_conf
 scale_redis_cluster_replica &
 start_redis_server

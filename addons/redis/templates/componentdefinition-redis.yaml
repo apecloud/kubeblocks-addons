@@ -77,6 +77,15 @@ spec:
         numDigits: 5
         numSymbols: 0
         letterCase: MixedCases
+  hostNetwork:
+    containerPorts:
+      - container: redis
+        ports:
+          - redis
+      - container: metrics
+        ports:
+          - http-metrics
+          - server-metrics
   vars:
     ## the default username of redis connection
     - name: REDIS_DEFAULT_USER
@@ -112,6 +121,39 @@ spec:
           name: redis-advertised
           optional: true
           host: Required
+    ## the redis server host network port when using host network mode, the port will be allocated automatically by KubeBlocks
+    - name: REDIS_HOST_NETWORK_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: redis
+            port:
+              name: redis
+              option: Required
+      expression: {{ `{{if ne (index . "REDIS_HOST_NETWORK_PORT") ""}}{{.REDIS_HOST_NETWORK_PORT}}{{else}}6379{{end}}` | toYaml }}
+    ## the redis server metrics container host network port when using host network mode, the port will be allocated automatically by KubeBlocks, if not set, the default value is 9121
+    - name: REDIS_METRICS_HOST_NETWORK_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: metrics
+            port:
+              name: http-metrics
+              option: Required
+      expression: {{ `{{if ne (index . "REDIS_METRICS_HOST_NETWORK_PORT") ""}}{{.REDIS_METRICS_HOST_NETWORK_PORT}}{{else}}9121{{end}}` | toYaml }}
+    ## the redis server metrics container host network server port when using host network mode, the port will be allocated automatically by KubeBlocks, if not set, the default value is 8888
+    - name: REDIS_METRICS_HOST_NETWORK_SERVER_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: metrics
+            port:
+              name: server-metrics
+              option: Required
+      expression: {{ `{{if ne (index . "REDIS_METRICS_HOST_NETWORK_SERVER_PORT") ""}}{{.REDIS_METRICS_HOST_NETWORK_SERVER_PORT}}{{else}}8888{{end}}` | toYaml }}
     ## the username of redis sentinel for redis connection, it is optional
     - name: SENTINEL_USER
       valueFrom:
@@ -145,21 +187,24 @@ spec:
           name: headless
           optional: true
           host: Optional
-    - name: SENTINEL_SERVICE_PORT
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "redis-sentinel.componentDefName" . }}
-          name: redis-sentinel
-          optional: true
-          port:
-            name: redis-sentinel
-            option: Optional
     - name: SENTINEL_POD_NAME_LIST
       valueFrom:
         componentVarRef:
           compDef: {{ include "redis-sentinel.componentDefName" . }}
           optional: true
           instanceNames: Optional
+    ## the redis sentinel server port, if redis sentinel is in host network mode, the port will be allocated automatically by KubeBlocks, if not, the default port is 26379
+    - name: SENTINEL_SERVICE_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          compDef: {{ include "redis-sentinel.componentDefName" . }}
+          optional: true
+          container:
+            name: redis-sentinel
+            port:
+              name: redis-sentinel
+              option: Required
+      expression: {{ `{{if ne (index . "SENTINEL_SERVICE_PORT") ""}}{{.SENTINEL_SERVICE_PORT}}{{else}}26379{{end}}` | toYaml }}
   lifecycleActions:
     roleProbe:
       builtinHandler: redis
@@ -207,7 +252,7 @@ spec:
             mountPath: /kb-podinfo
         env:
           - name: SERVICE_PORT
-            value: "6379"
+            value: "$(REDIS_HOST_NETWORK_PORT)"
           ## the username of redis primary-secondary replication
           - name: REDIS_REPL_USER
             value: "kbreplicator"
@@ -247,7 +292,11 @@ spec:
           runAsUser: 1001
         env:
           - name: ENDPOINT
-            value: {{ printf "localhost:6379" }}
+            value: "localhost:$(REDIS_HOST_NETWORK_PORT)"
+          - name: METRICS_HTTP_PORT
+            value: $(REDIS_METRICS_HOST_NETWORK_PORT)
+          - name: METRICS_SERVER_PORT
+            value: $(REDIS_METRICS_HOST_NETWORK_SERVER_PORT)
           - name: REDIS_USER
             value: $(REDIS_DEFAULT_USER)
           - name: REDIS_PASSWORD
@@ -258,6 +307,8 @@ spec:
         ports:
           - name: http-metrics
             containerPort: {{ .Values.metrics.service.port }}
+          - name: server-metrics
+            containerPort: {{ .Values.metrics.service.serverPort }}
         volumeMounts:
           - name: redis-metrics-config
             mountPath: /opt/conf

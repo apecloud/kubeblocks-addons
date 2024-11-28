@@ -5,8 +5,8 @@ set -ex
 # And the script will only be executed once during the initialization of the Redis cluster.
 
 declare -g default_initialize_pod_ordinal
-declare -g redis_advertised_svc_host_value
-declare -g redis_advertised_svc_port_value
+declare -g redis_announce_host_value
+declare -g redis_announce_port_value
 declare -g headless_postfix="headless"
 declare -g redis_default_service_port=6379
 
@@ -83,11 +83,20 @@ extract_ordinal_from_object_name() {
   echo "$ordinal"
 }
 
-parse_redis_advertised_svc_if_exist() {
+parse_redis_primary_announce_addr() {
   local pod_name="$1"
+  local pod_fqdn="$2"
 
   if [[ -z "${REDIS_ADVERTISED_PORT}" ]]; then
     echo "Environment variable REDIS_ADVERTISED_PORT not found. Ignoring."
+    # if redis primary is in host network mode, use the host ip and port as the announce ip and port first
+    if [[ -n "${REDIS_HOST_NETWORK_PORT}" ]] && [[ -n "$HOST_NETWORK_ENABLED" ]]; then
+      redis_announce_port_value="$REDIS_HOST_NETWORK_PORT"
+      # when in host network mode, the pod ip is the host ip
+      pod_host_ip=$(get_default_primary_pod_ip "$pod_fqdn")
+      redis_announce_host_value="$pod_host_ip"
+      echo "redis is in host network mode, use the host ip:$pod_host_ip and port:$REDIS_HOST_NETWORK_PORT as the announce ip and port."
+    fi
     return 0
   fi
 
@@ -103,9 +112,9 @@ parse_redis_advertised_svc_if_exist() {
     svc_name_ordinal=$(extract_ordinal_from_object_name "$svc_name")
     if [[ "$svc_name_ordinal" == "$pod_name_ordinal" ]]; then
       echo "Found matching svcName and port for podName '$pod_name', REDIS_ADVERTISED_PORT: $REDIS_ADVERTISED_PORT. svcName: $svc_name, port: $port."
-      redis_advertised_svc_port_value="$port"
+      redis_announce_port_value="$port"
       # TODO: currently, kb doesn't support reference another component pod's HOST_IP, so we need to ensure the script is executed on the same node as the redis primary pod.
-      redis_advertised_svc_host_value="$KB_HOST_IP"
+      redis_announce_host_value="$KB_HOST_IP"
       found=true
       break
     fi
@@ -236,7 +245,7 @@ register_to_sentinel_wrapper() {
   default_redis_primary_pod_name="$KB_CLUSTER_COMP_NAME-$default_initialize_pod_ordinal"
   redis_default_primary_pod_headless_fqdn="$default_redis_primary_pod_name.$KB_CLUSTER_COMP_NAME-$headless_postfix.$KB_NAMESPACE.svc.cluster.local"
   init_redis_service_port
-  parse_redis_advertised_svc_if_exist $default_redis_primary_pod_name
+  parse_redis_primary_announce_addr $default_redis_primary_pod_name $redis_default_primary_pod_headless_fqdn
 
   old_ifs="$IFS"
   IFS=','
@@ -251,9 +260,9 @@ register_to_sentinel_wrapper() {
   fi
   for sentinel_pod in "${sentinel_pod_list[@]}"; do
     sentinel_pod_fqdn="$sentinel_pod.$SENTINEL_HEADLESS_SERVICE_NAME.$KB_NAMESPACE.svc.cluster.local"
-    if [ -n "$redis_advertised_svc_host_value" ] && [ -n "$redis_advertised_svc_port_value" ]; then
-      echo "register to sentinel:$sentinel_pod_fqdn with advertised service: redis_advertised_svc_host_value=$redis_advertised_svc_host_value, redis_advertised_svc_port_value=$redis_advertised_svc_port_value"
-      register_to_sentinel "$sentinel_pod_fqdn" "$master_name" "$redis_advertised_svc_host_value" "$redis_advertised_svc_port_value"
+    if [ -n "$redis_announce_host_value" ] && [ -n "$redis_announce_port_value" ]; then
+      echo "register to sentinel:$sentinel_pod_fqdn with announce addr: redis_announce_host_value=$redis_announce_host_value, redis_announce_port_value=$redis_announce_port_value"
+      register_to_sentinel "$sentinel_pod_fqdn" "$master_name" "$redis_announce_host_value" "$redis_announce_port_value"
     else
       if [ -n "$FIXED_POD_IP_ENABLED" ]; then
         default_primary_pod_ip=$(get_default_primary_pod_ip "$redis_default_primary_pod_headless_fqdn")

@@ -3,9 +3,9 @@
 set -e
 
 if [ -n "$REDIS_DEFAULT_PASSWORD" ]; then
-  cmd="redis-cli -h localhost -p 6379 -a $REDIS_DEFAULT_PASSWORD ping"
+  cmd="redis-cli -h localhost -p $SERVICE_PORT -a $REDIS_DEFAULT_PASSWORD ping"
 else
-  cmd="redis-cli -h localhost -p 6379 ping"
+  cmd="redis-cli -h localhost -p $SERVICE_PORT ping"
 fi
 
 response=$($cmd)

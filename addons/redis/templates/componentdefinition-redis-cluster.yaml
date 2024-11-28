@@ -73,6 +73,16 @@ spec:
         numSymbols: 0
         letterCase: MixedCases
         seed: 5wM4uhmKV1Ohy087
+  hostNetwork:
+    containerPorts:
+      - container: redis-cluster
+        ports:
+          - redis-cluster
+          - cluster-bus
+      - container: metrics
+        ports:
+          - http-metrics
+          - server-metrics
   vars:
     ## the default username of redis connection
     - name: REDIS_DEFAULT_USER
@@ -167,6 +177,86 @@ spec:
                 delimiter: "."
                 keyValueDelimiter: "@"
           host: Required
+    ## the redis cluster server host network port when using host network mode, the port will be allocated automatically by KubeBlocks, if not set, the default value is 6379
+    - name: REDIS_CLUSTER_HOST_NETWORK_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: redis-cluster
+            port:
+              name: redis-cluster
+              option: Required
+      expression: {{ `{{if ne (index . "REDIS_CLUSTER_HOST_NETWORK_PORT") ""}}{{.REDIS_CLUSTER_HOST_NETWORK_PORT}}{{else}}6379{{end}}` | toYaml }}
+    ## the redis cluster server host network bus port when using host network mode, the port will be allocated automatically by KubeBlocks, if not set, the default value is 16379
+    - name: REDIS_CLUSTER_HOST_NETWORK_BUS_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: redis-cluster
+            port:
+              name: cluster-bus
+              option: Required
+      expression: {{ `{{if ne (index . "REDIS_CLUSTER_HOST_NETWORK_BUS_PORT") ""}}{{.REDIS_CLUSTER_HOST_NETWORK_BUS_PORT}}{{else}}16379{{end}}` | toYaml }}
+    ## the redis server metrics container host network port when using host network mode, the port will be allocated automatically by KubeBlocks, if not set, the default value is 9121
+    - name: REDIS_METRICS_HOST_NETWORK_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: metrics
+            port:
+              name: http-metrics
+              option: Required
+      expression: {{ `{{if ne (index . "REDIS_METRICS_HOST_NETWORK_PORT") ""}}{{.REDIS_METRICS_HOST_NETWORK_PORT}}{{else}}9121{{end}}` | toYaml }}
+    ## the redis server metrics container host network server port when using host network mode, the port will be allocated automatically by KubeBlocks, if not set, the default value is 8888
+    - name: REDIS_METRICS_HOST_NETWORK_SERVER_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: metrics
+            port:
+              name: server-metrics
+              option: Required
+      expression: {{ `{{if ne (index . "REDIS_METRICS_HOST_NETWORK_SERVER_PORT") ""}}{{.REDIS_METRICS_HOST_NETWORK_SERVER_PORT}}{{else}}8888{{end}}` | toYaml }}
+    ## the redis cluster host network port list for all shard pods, the all pods in same shard has the same host network port allocated automatically by KubeBlocks.
+    ## the value format is like "shard-chg:1057,shard-khh:1056,shard-mpg:1053"
+    - name: REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          compDef: {{ include "redis-cluster.componentDefName" . }}
+          optional: true
+          container:
+            name: redis-cluster
+            port:
+              name: redis-cluster
+              option: Required
+          multipleClusterObjectOption:
+            strategy: combined
+            combinedOption:
+              flattenFormat:
+                delimiter: ","
+                keyValueDelimiter: ":"
+    ## the redis cluster host network bus port list for all shard pods, the all pods in same shard has the same host network bus port allocated automatically by KubeBlocks.
+    ## the value format is like "shard-chg:1060,shard-khh:1059,shard-mpg:1054"
+    - name: REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_BUS_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          compDef: {{ include "redis-cluster.componentDefName" . }}
+          optional: true
+          container:
+            name: redis-cluster
+            port:
+              name: cluster-bus
+              option: Required
+          multipleClusterObjectOption:
+            strategy: combined
+            combinedOption:
+              flattenFormat:
+                delimiter: ","
+                keyValueDelimiter: ":"
   lifecycleActions:
     roleProbe:
       builtinHandler: redis
@@ -215,9 +305,9 @@ spec:
             mountPath: /etc/redis
         env:
           - name: SERVICE_PORT
-            value: "6379"
+            value: "$(REDIS_CLUSTER_HOST_NETWORK_PORT)"
           - name: CLUSTER_BUS_PORT
-            value: "16379"
+            value: "$(REDIS_CLUSTER_HOST_NETWORK_BUS_PORT)"
           - name: REDIS_REPL_USER
             value: "kbreplicator"
           - name: REDIS_REPL_PASSWORD
@@ -249,7 +339,11 @@ spec:
           runAsUser: 1001
         env:
           - name: ENDPOINT
-            value: {{ printf "localhost:6379" }}
+            value: "localhost:$(REDIS_CLUSTER_HOST_NETWORK_PORT)"
+          - name: METRICS_HTTP_PORT
+            value: $(REDIS_METRICS_HOST_NETWORK_PORT)
+          - name: METRICS_SERVER_PORT
+            value: $(REDIS_METRICS_HOST_NETWORK_SERVER_PORT)
           - name: REDIS_USER
             value: $(REDIS_DEFAULT_USER)
           - name: REDIS_PASSWORD
@@ -260,6 +354,8 @@ spec:
         ports:
           - name: http-metrics
             containerPort: {{ .Values.metrics.service.port }}
+          - name: server-metrics
+            containerPort: {{ .Values.metrics.service.serverPort }}
         volumeMounts:
           - name: redis-metrics-config
             mountPath: /opt/conf
