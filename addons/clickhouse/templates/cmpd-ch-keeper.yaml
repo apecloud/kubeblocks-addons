@@ -151,7 +151,17 @@ spec:
         componentVarRef:
           optional: false
           podFQDNs: Required
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Required
   updateStrategy: Serial
   podManagementPolicy: Parallel
   volumes:
     - name: data
+  tls:
+    volumeName: tls 
+    mountPath: /etc/pki/tls
+    caFile: ca.pem
+    certFile: cert.pem
+    keyFile: key.pem

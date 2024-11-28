@@ -118,3 +118,13 @@ spec:
           port: 
             name: client
             option: Optional
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Required
+  tls:
+    volumeName: tls
+    mountPath: /etc/pki/tls
+    caFile: ca.pem
+    certFile: cert.pem
+    keyFile: key.pem

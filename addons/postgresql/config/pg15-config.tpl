@@ -217,14 +217,11 @@ session_replication_role = 'origin'
 sql_firewall.firewall = 'disable'
 shared_buffers = '{{ printf "%d%s" $shared_buffers $buffer_unit }}'
 shared_preload_libraries = 'pg_stat_statements,auto_explain,bg_mon,pgextwlist,pg_auth_mon,set_user,pg_cron,pg_stat_kcache,timescaledb,pgaudit'
-{{- if $.component.tlsConfig }}
-{{- $ca_file := getCAFile }}
-{{- $cert_file := getCertFile }}
-{{- $key_file := getKeyFile }}
+{{- if eq $.TLS_ENABLED "true" }}
 ssl = 'True'
-ssl_ca_file = '{{ $ca_file }}'
-ssl_cert_file = '{{ $cert_file }}'
-ssl_key_file = '{{ $key_file }}'
+ssl_ca_file = '/etc/pki/tls/ca.pem'
+ssl_cert_file = '/etc/pki/tls/cert.pem'
+ssl_key_file = '/etc/pki/tls/key.pem'
 {{- end }}
 ssl_min_protocol_version = 'TLSv1'
 standard_conforming_strings = 'True'

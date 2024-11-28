@@ -100,6 +100,10 @@ spec:
       valueFrom:
         clusterVarRef:
           namespace: Required
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Required
   volumes:
     - name: data
       needSnapshot: true
@@ -112,6 +116,12 @@ spec:
             targetPort: peer
       podService: true
       disableAutoProvision: true
+  tls:
+    volumeName: tls 
+    mountPath: {{ .Values.tlsMountPath }}
+    caFile: ca.pem
+    certFile: cert.pem
+    keyFile: key.pem
   # reference: https://etcd.io/docs/v3.5/op-guide/runtime-configuration/ single member changes is better
   updateStrategy: Serial
   roles:

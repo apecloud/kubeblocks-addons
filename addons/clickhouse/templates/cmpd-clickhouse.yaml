@@ -135,6 +135,10 @@ spec:
           compDef: {{ include "clickhouse-keeper24.cmpdRegexpPattern" . }}
           optional: true
           podFQDNs: Required
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Required
   volumes:
     - name: data
   services:
@@ -168,3 +172,9 @@ spec:
           - name: tcp-secure
             targetPort: tcp-secure
             port: 9440
+  tls:
+    volumeName: tls 
+    mountPath: /etc/pki/tls
+    caFile: ca.pem
+    certFile: cert.pem
+    keyFile: key.pem

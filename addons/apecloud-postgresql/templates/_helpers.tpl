@@ -180,7 +180,10 @@ vars:
     valueFrom:
       clusterVarRef:
         namespace: Required
-
+  - name: TLS_ENABLED
+    valueFrom:
+      tlsVarRef:
+        enabled: Required
 systemAccounts:
   - name: postgres
     initAccount: true
@@ -196,6 +199,12 @@ systemAccounts:
       numDigits: 5
       numSymbols: 0
     statement: CREATE USER ${KB_ACCOUNT_NAME} SUPERUSER PASSWORD '${KB_ACCOUNT_PASSWORD}';
+tls:
+  volumeName: tls 
+  mountPath: /etc/pki/tls
+  caFile: ca.pem
+  certFile: cert.pem
+  keyFile: key.pem
 lifecycleActions:
   roleProbe:
     periodSeconds: 1

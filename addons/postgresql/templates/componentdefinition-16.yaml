@@ -147,6 +147,10 @@ spec:
           podNamesForRole:
             role: primary
             option: Optional
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Required
   systemAccounts:
     - name: postgres
       initAccount: true
@@ -174,6 +178,12 @@ spec:
     - name: kbreplicator
       statement: CREATE USER ${KB_ACCOUNT_NAME} WITH REPLICATION PASSWORD '${KB_ACCOUNT_PASSWORD}';
       passwordGenerationPolicy: *defaultPasswdGenerationPolicy
+  tls:
+    volumeName: tls 
+    mountPath: /etc/pki/tls
+    caFile: ca.pem
+    certFile: cert.pem
+    keyFile: key.pem
   lifecycleActions:
     roleProbe:
       periodSeconds: 1

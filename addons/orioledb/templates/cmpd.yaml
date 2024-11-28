@@ -199,6 +199,10 @@ spec:
           name: postgres
           optional: false
           password: Required
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Required
   volumes:
     - name: data
       needSnapshot: true
@@ -277,6 +281,12 @@ spec:
     - name: kbreplicator
       statement: CREATE USER $(USERNAME) WITH REPLICATION PASSWORD '$(PASSWD)';
       passwordGenerationPolicy: *defaultPasswordGenerationPolicy
+  tls:
+    volumeName: tls 
+    mountPath: /etc/pki/tls
+    caFile: ca.pem
+    certFile: cert.pem
+    keyFile: key.pem
   serviceRefDeclarations:
     - name: etcdService
       serviceRefDeclarationSpecs:

@@ -36,7 +36,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Common annotations
 */}}
 {{- define "apecloud-mysql.annotations" -}}
-helm.sh/resource-policy: keep              
+helm.sh/resource-policy: keep
 {{- end }}
 
 {{/*
@@ -117,6 +117,12 @@ systemAccounts:
   - name: kbreplicator
     statement: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION SLAVE ON ${ALL_DB} TO ${KB_ACCOUNT_NAME} WITH GRANT OPTION;
     passwordGenerationPolicy: *defaultPasswordGenerationPolicy
+tls:
+  volumeName: tls
+  mountPath: /etc/pki/tls
+  caFile: ca.pem
+  certFile: cert.pem
+  keyFile: key.pem
 roles:
   - name: leader
     serviceable: true
@@ -298,6 +304,10 @@ vars:
           option: Optional
   - name: SYNCER_HTTP_PORT
     value: "3601"
+  - name: TLS_ENABLED
+    valueFrom:
+      tlsVarRef:
+        enabled: Required
 {{- end -}}
 
 {{- define "apecloud-mysql.spec.runtime.mysql" -}}
