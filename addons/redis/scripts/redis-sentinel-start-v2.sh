@@ -51,6 +51,20 @@ reset_redis_sentinel_conf() {
     set_xtrace_when_ut_mode_false
     sed "/port $sentinel_port/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
   fi
+
+  # hack for redis sentinel when nodeport is enabled, remove known-replica line which has the same nodeport port with master
+  if [ -n "$REDIS_SENTINEL_ADVERTISED_PORT" ] && [ -n "$REDIS_SENTINEL_ADVERTISED_SVC_NAME" ]; then
+    temp_file=$(mktemp)
+    grep "^sentinel monitor" /data/sentinel/redis-sentinel.conf > "$temp_file"
+    while read -r line; do
+      if [[ $line =~ ^sentinel[[:space:]]+monitor[[:space:]]+([^[:space:]]+)[[:space:]]+[^[:space:]]+[[:space:]]+([^[:space:]]+) ]]; then
+        master_name="${BASH_REMATCH[1]}"
+        master_port="${BASH_REMATCH[2]}"
+        sed -i "/^sentinel known-replica ${master_name} .* ${master_port}$/d" /data/sentinel/redis-sentinel.conf
+      fi
+    done < "$temp_file"
+    rm -f "$temp_file"
+  fi
 }
 
 build_redis_sentinel_conf() {
