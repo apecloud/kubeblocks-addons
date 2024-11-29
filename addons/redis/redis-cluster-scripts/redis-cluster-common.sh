@@ -130,19 +130,13 @@ check_redis_server_ready() {
   fi
 }
 
-extract_ordinal_from_object_name() {
-  local object_name="$1"
-  local ordinal="${object_name##*-}"
-  echo "$ordinal"
-}
-
 parse_advertised_port() {
   local pod_name="$1"
   local advertised_ports="$2"
   local pod_name_ordinal
   local found=false
 
-  pod_name_ordinal=$(extract_ordinal_from_object_name "$pod_name")
+  pod_name_ordinal=$(extract_obj_ordinal "$pod_name")
   IFS=',' read -ra ports_array <<< "$advertised_ports"
   for entry in "${ports_array[@]}"; do
     IFS=':' read -ra parts <<< "$entry"
@@ -150,7 +144,7 @@ parse_advertised_port() {
     local port="${parts[1]}"
     local svc_name_ordinal
 
-    svc_name_ordinal=$(extract_ordinal_from_object_name "$svc_name")
+    svc_name_ordinal=$(extract_obj_ordinal "$svc_name")
     if [[ "$svc_name_ordinal" == "$pod_name_ordinal" ]]; then
       echo "$port"
       found=true

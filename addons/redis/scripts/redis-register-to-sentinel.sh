@@ -41,13 +41,6 @@ init_redis_service_port() {
   fi
 }
 
-# TODO: it will be removed in the future
-extract_ordinal_from_object_name() {
-  local object_name="$1"
-  local ordinal="${object_name##*-}"
-  echo "$ordinal"
-}
-
 # TODO: if instanceTemplate is specified, the pod service could not be parsed from the pod ordinal.
 parse_redis_advertised_svc_if_exist() {
   local pod_name="$1"
@@ -58,7 +51,7 @@ parse_redis_advertised_svc_if_exist() {
   fi
 
   local found=false
-  pod_name_ordinal=$(extract_ordinal_from_object_name "$pod_name")
+  pod_name_ordinal=$(extract_obj_ordinal "$pod_name")
   # the value format of REDIS_ADVERTISED_PORT is "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."
   # shellcheck disable=SC2207
   advertised_ports=($(split "$REDIS_ADVERTISED_PORT" ","))
@@ -67,7 +60,7 @@ parse_redis_advertised_svc_if_exist() {
     parts=($(split "$advertised_port" ":"))
     local svc_name="${parts[0]}"
     local port="${parts[1]}"
-    svc_name_ordinal=$(extract_ordinal_from_object_name "$svc_name")
+    svc_name_ordinal=$(extract_obj_ordinal "$svc_name")
     if [[ "$svc_name_ordinal" == "$pod_name_ordinal" ]]; then
       echo "Found matching svcName and port for podName '$pod_name', REDIS_ADVERTISED_PORT: $REDIS_ADVERTISED_PORT. svcName: $svc_name, port: $port."
       redis_advertised_svc_port_value="$port"
