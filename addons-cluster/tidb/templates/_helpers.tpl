@@ -51,10 +51,3 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- define "clustername" -}}
 {{ include "tidb-cluster.fullname" .}}
 {{- end}}
-
-{{/*
-Create the name of the service account to use
-*/}}
-{{- define "tidb-cluster.serviceAccountName" -}}
-{{- default (printf "kb-%s" (include "clustername" .)) .Values.serviceAccount.name }}
-{{- end }}
