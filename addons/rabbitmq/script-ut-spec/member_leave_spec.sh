@@ -104,34 +104,3 @@ rabbit@rabbitmq-2"
     End
   End
 End
-
-  # The tests need to be executed in linux environment
-  #  It "exit when leave success file exists and current pod is the leave member pod"
-  #    setup() {
-  #      KB_LEAVE_MEMBER_POD_NAME="rabbitmq-1"
-  #      RABBITMQ_NODENAME="rabbit@rabbitmq-1.example.com"
-  #      touch "/tmp/${KB_LEAVE_MEMBER_POD_NAME}_leave.success"
-  #    }
-  #    setup
-
-  #    When run source ../scripts/member_leave.sh
-  #    The output should include "member_leave.sh is already leave success"
-  #    The status should be success
-  #    The file "/tmp/rabbitmq-1_leave.success" should be exist
-  #    rm -f /tmp/rabbitmq-1_leave.success
-  #  End
-
-  #  It "当离开成功文件存在且当前节点不是离开节点时，删除成功文件并退出"
-  #    setup() {
-  #      KB_LEAVE_MEMBER_POD_NAME="rabbitmq-1"
-  #      RABBITMQ_NODENAME="rabbit@rabbitmq-0.example.com"
-  #      touch "/tmp/${KB_LEAVE_MEMBER_POD_NAME}_leave.success"
-  #    }
-  #    Before "setup"
-  #    After "rm -f /tmp/rabbitmq-1_leave.success"
-
-  #    When run source ../scripts/member_leave.sh
-  #    The output should include "member_leave.sh is already leave success"
-  #    The output should not include "exit 0"
-  #    The status should be success
-  #  End
