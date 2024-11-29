@@ -17,7 +17,6 @@ spec:
       volumeClaimTemplates:
         {{- include "milvus.vct.data" . | indent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
     - name: minio
       replicas: {{ .Values.replicas | default 1 }}
@@ -26,7 +25,6 @@ spec:
       volumeClaimTemplates:
         {{- include "milvus.vct.data" . | indent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
     - name: milvus
       replicas: {{ .Values.replicas | default 1 }}
@@ -35,6 +33,5 @@ spec:
       volumeClaimTemplates:
         {{- include "milvus.vct.data" . | indent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
 {{- end }}

@@ -43,9 +43,7 @@ proxysql:
   cpu: 1
   memory: 1
 
-## @param extra.rbacEnabled if true, create rbac
 extra:
-  rbacEnabled: false
   terminationPolicy: Delete
 
 orchestrator:

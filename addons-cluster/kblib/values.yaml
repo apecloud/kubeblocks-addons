@@ -6,8 +6,3 @@ disableExporter: true
 
 ## @param terminationPolicy
 terminationPolicy: Delete
-
-## @param rbacEnabled 
-## Specify whether rbac resources will be created by client, 
-## otherwise KubeBlocks server will try to create rbac resources.
-rbacEnabled: false

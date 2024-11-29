@@ -13,7 +13,6 @@ spec:
     - name: mdit
       componentDef: elasticsearch-{{ include "elasticsearch.majorVersion" . }}
       serviceVersion: {{ include "elasticsearch.version" . }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "elasticsearch-cluster.schedulingPolicy" . | indent 6 }}
       {{- include "elasticsearch-cluster.replicaCount" . | indent 6 }}
       {{- include "kblib.componentMonitor" . | indent 6 }}

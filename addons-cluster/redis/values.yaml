@@ -70,7 +70,6 @@ redisCluster:
   shardCount: 3
 
 extra:
-  rbacEnabled: false
 
 prometheus:
   enabled: false
