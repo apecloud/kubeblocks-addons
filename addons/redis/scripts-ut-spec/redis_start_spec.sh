@@ -41,16 +41,16 @@ Describe "Redis Start Bash Script Tests"
   }
   AfterAll 'cleanup'
 
-  Describe "extract_ordinal_from_object_name()"
+  Describe "extract_obj_ordinal()"
     It "extracts ordinal from object name correctly"
-      When call extract_ordinal_from_object_name "pod-name-2"
+      When call extract_obj_ordinal "pod-name-2"
       The status should be success
       The stdout should eq "2"
       The stderr should eq ""
     End
 
     It "extracts ordinal from object name with different format"
-      When call extract_ordinal_from_object_name "3"
+      When call extract_obj_ordinal "3"
       The stdout should eq "3"
       The stderr should eq ""
     End

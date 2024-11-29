@@ -32,6 +32,39 @@ redis_sentinel_conf_dir="/data/sentinel"
 redis_sentinel_real_conf="/data/sentinel/redis-sentinel.conf"
 redis_sentinel_real_conf_bak="/data/sentinel/redis-sentinel.conf.bak"
 
+# TODO: if instanceTemplate is specified, the pod service could not be parsed from the pod ordinal.
+parse_redis_sentinel_announce_addr() {
+  local pod_name="$1"
+
+  if is_empty "${REDIS_SENTINEL_ADVERTISED_PORT}"; then
+    echo "Environment variable REDIS_SENTINEL_ADVERTISED_PORT not found. Ignoring."
+    return 0
+  fi
+
+  # the value format of REDIS_SENTINEL_ADVERTISED_PORT is "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."
+  IFS=',' read -ra advertised_ports <<< "${REDIS_SENTINEL_ADVERTISED_PORT}"
+  local found=false
+  pod_name_ordinal=$(extract_obj_ordinal "$pod_name")
+  for advertised_port in "${advertised_ports[@]}"; do
+    # shellcheck disable=SC2207
+    parts=($(split "$advertised_port" ":"))
+    local svc_name="${parts[0]}"
+    local port="${parts[1]}"
+    svc_name_ordinal=$(extract_obj_ordinal "$svc_name")
+    if equals "$svc_name_ordinal" "$pod_name_ordinal"; then
+      echo "Found matching svcName and port for podName '$pod_name', REDIS_SENTINEL_ADVERTISED_PORT: $REDIS_SENTINEL_ADVERTISED_PORT. svcName: $svc_name, port: $port."
+      redis_sentinel_announce_port_value="$port"
+      redis_sentinel_announce_host_value="$CURRENT_POD_HOST_IP"
+      found=true
+      break
+    fi
+  done
+  if [[ "$found" == false ]]; then
+    echo "Error: No matching svcName and port found for podName '$pod_name', REDIS_SENTINEL_ADVERTISED_PORT: $REDIS_SENTINEL_ADVERTISED_PORT. Exiting."
+    exit 1
+  fi
+}
+
 reset_redis_sentinel_conf() {
   echo "reset redis sentinel conf"
   sentinel_port=26379
@@ -53,9 +86,9 @@ reset_redis_sentinel_conf() {
   fi
 
   # hack for redis sentinel when nodeport is enabled, remove known-replica line which has the same nodeport port with master
-  if [ -n "$REDIS_SENTINEL_ADVERTISED_PORT" ] && [ -n "$REDIS_SENTINEL_ADVERTISED_SVC_NAME" ]; then
+  if [ -f $redis_sentinel_real_conf ] && ! is_empty "$REDIS_SENTINEL_ADVERTISED_PORT" && ! is_empty "$REDIS_SENTINEL_ADVERTISED_SVC_NAME"; then
     temp_file=$(mktemp)
-    grep "^sentinel monitor" /data/sentinel/redis-sentinel.conf > "$temp_file"
+    grep "^sentinel monitor" $redis_sentinel_real_conf > "$temp_file"
     while read -r line; do
       if [[ $line =~ ^sentinel[[:space:]]+monitor[[:space:]]+([^[:space:]]+)[[:space:]]+[^[:space:]]+[[:space:]]+([^[:space:]]+) ]]; then
         master_name="${BASH_REMATCH[1]}"
@@ -73,18 +106,31 @@ build_redis_sentinel_conf() {
     echo "Error: Required environment variable SENTINEL_POD_FQDN_LIST is not set."
     exit 1
   fi
-  # shellcheck disable=SC2153
-  current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$SENTINEL_POD_FQDN_LIST" "$CURRENT_POD_NAME")
-  if is_empty "$current_pod_fqdn"; then
-    echo "Error: Failed to get current pod: $CURRENT_POD_NAME fqdn from sentinel pod fqdn list: $SENTINEL_POD_FQDN_LIST. Exiting."
-    exit 1
+
+  # build announce ip and port according to whether the announce addr is enabled
+  if ! is_empty "$redis_sentinel_announce_host_value" && ! is_empty "$redis_sentinel_announce_port_value"; then
+    echo "redis sentinel use nodeport $redis_sentinel_announce_host_value:$redis_sentinel_announce_port_value to announce"
+    {
+      echo "port $sentinel_port"
+      echo "sentinel announce-ip $redis_sentinel_announce_host_value"
+      echo "sentinel announce-port $redis_sentinel_announce_port_value"
+    } >> $redis_sentinel_real_conf
+  else
+    # if the announce addr is not enabled, use the current pod fqdn to announce
+    # shellcheck disable=SC2153
+    current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$SENTINEL_POD_FQDN_LIST" "$CURRENT_POD_NAME")
+    if is_empty "$current_pod_fqdn"; then
+      echo "Error: Failed to get current pod: $CURRENT_POD_NAME fqdn from sentinel pod fqdn list: $SENTINEL_POD_FQDN_LIST. Exiting."
+      exit 1
+    fi
+    echo "redis sentinel use current pod fqdn: $current_pod_fqdn to announce"
+    {
+      echo "port $sentinel_port"
+      echo "sentinel announce-ip $current_pod_fqdn"
+      echo "sentinel resolve-hostnames yes"
+      echo "sentinel announce-hostnames yes"
+    } >> $redis_sentinel_real_conf
   fi
-  {
-    echo "port $sentinel_port"
-    echo "sentinel announce-ip $current_pod_fqdn"
-    echo "sentinel resolve-hostnames yes"
-    echo "sentinel announce-hostnames yes"
-  } >> $redis_sentinel_real_conf
   unset_xtrace_when_ut_mode_false
   if [ -n "$SENTINEL_PASSWORD" ]; then
     {
@@ -111,6 +157,7 @@ ${__SOURCED__:+false} : || return 0
 
 # main
 load_common_library
+parse_redis_sentinel_announce_addr "$CURRENT_POD_NAME"
 reset_redis_sentinel_conf
 build_redis_sentinel_conf
 start_redis_sentinel_server

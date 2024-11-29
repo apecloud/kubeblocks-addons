@@ -102,18 +102,6 @@ Describe "Redis Cluster Common Bash Script Tests"
     End
   End
 
-  Describe "extract_ordinal_from_object_name()"
-    It "extracts ordinal from object name"
-      When call extract_ordinal_from_object_name "redis-shard-98x-0"
-      The output should eq "0"
-    End
-
-    It "extracts ordinal from object name"
-      When call extract_ordinal_from_object_name "redis-shard-98x-0-1"
-      The output should eq "1"
-    End
-  End
-
   Describe "parse_advertised_port()"
     It "parses advertised port from pod name and advertised ports"
       When call parse_advertised_port "redis-shard-98x-0" "redis-shard-98x-advertised-0:6379,redis-shard-98x-advertised-1:6380"
