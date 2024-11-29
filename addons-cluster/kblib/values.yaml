@@ -6,7 +6,3 @@ disableExporter: true
 
 ## @param terminationPolicy
 terminationPolicy: Delete
-
-## @param rbacEnabled if true, rbac resources will be created
-##
-rbacEnabled: false

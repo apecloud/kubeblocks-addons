@@ -16,7 +16,6 @@ spec:
   componentSpecs:
   - name: opensearch
     componentDef: opensearch-1.0.0-alpha.0
-    serviceAccountName: kb-opensearch-cluster
     replicas: 1
     resources:
       limits:
@@ -35,7 +34,6 @@ spec:
             storage: 20Gi
   - name: dashboard
     componentDef: opensearch-dashboard-1.0.0-alpha.0
-    serviceAccountName: kb-opensearch-cluster
     replicas: 1
     resources:
       limits:

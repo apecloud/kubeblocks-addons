@@ -24,7 +24,6 @@ spec:
 #      - name: advertised-listener
 #        podService: true
 #        serviceType: NodePort
-    serviceAccountName: kb-kafka-cluster
     resources:
       limits:
         cpu: '0.5'
@@ -53,7 +52,6 @@ spec:
     componentDef: kafka-controller
     tls: false
     replicas: 1
-    serviceAccountName: kb-kafka-cluster
     resources:
       limits:
         cpu: '0.5'

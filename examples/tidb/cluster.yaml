@@ -16,7 +16,6 @@ spec:
   componentSpecs:
   - name: pd
     componentDef: tidb-pd-7
-    serviceAccountName: kb-tidb-cluster
     replicas: 1
     resources:
       limits:

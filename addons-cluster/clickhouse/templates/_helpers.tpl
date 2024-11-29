@@ -55,13 +55,6 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end}}
 
 {{/*
-Create the name of the service account to use
-*/}}
-{{- define "clickhouse-cluster.serviceAccountName" -}}
-{{- default (printf "kb-%s" (include "clustername" .)) .Values.serviceAccount.name }}
-{{- end }}
-
-{{/*
 TLS file
 */}}
 {{- define "clickhouse-cluster.tls" }}
@@ -87,7 +80,6 @@ Define clickhouse componentSpec with ComponentDefinition.
   componentDef: clickhouse-24
   replicas: {{ $.Values.replicaCount | default 2 }}
   disableExporter: {{ $.Values.disableExporter | default "false" }}
-  serviceAccountName: {{ include "clickhouse-cluster.serviceAccountName" $ }}
   systemAccounts:
     - name: admin
       passwordConfig:
@@ -155,7 +147,6 @@ Define clickhouse shardingComponentSpec with ComponentDefinition.
     componentDef: clickhouse-24
     replicas: {{ $.Values.replicaCount | default 2 }}
     disableExporter: {{ $.Values.disableExporter | default "false" }}
-    serviceAccountName: {{ include "clickhouse-cluster.serviceAccountName" $ }}
     systemAccounts:
     - name: admin
       passwordConfig:
@@ -181,7 +172,6 @@ Define clickhouse componentSpec with compatible ComponentDefinition API
   componentDef: clickhouse-24
   replicas: {{ $.Values.replicaCount | default 2 }}
   disableExporter: {{ $.Values.disableExporter | default "false" }}
-  serviceAccountName: {{ include "clickhouse-cluster.serviceAccountName" $ }}
   {{- with $.Values.tolerations }}
   tolerations: {{ .| toYaml | nindent 4 }}
   {{- end }}

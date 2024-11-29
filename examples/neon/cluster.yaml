@@ -20,7 +20,6 @@ spec:
   componentSpecs:
     - name: neon-broker
       replicas: 1
-      serviceAccountName: kb-neon-cluster
       resources:
         limits:
           cpu: "1"

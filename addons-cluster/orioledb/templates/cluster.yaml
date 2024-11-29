@@ -8,6 +8,5 @@
         namespace: {{ .Values.etcd.namespace | default "default" }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "orioledb-cluster.replicaCount" . | indent 6 }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}

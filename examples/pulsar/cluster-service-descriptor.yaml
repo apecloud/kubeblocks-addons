@@ -58,7 +58,6 @@ spec:
       namespace: default
       serviceDescriptor: pulsar-cluster-zookeeper-service
     disableExporter: true
-    serviceAccountName: kb-pulsar-cluster
     replicas: 1
     resources:
       limits:

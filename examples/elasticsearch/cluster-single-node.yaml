@@ -17,7 +17,6 @@ spec:
   - name: elasticsearch
     componentDef: elasticsearch-8.8
     disableExporter: true
-    serviceAccountName: kb-elasticsearch-cluster
     replicas: 1
     resources:
       limits:

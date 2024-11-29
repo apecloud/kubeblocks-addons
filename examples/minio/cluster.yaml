@@ -18,7 +18,6 @@ spec:
   componentSpecs:
   - name: minio
     componentDefRef: minio
-    serviceAccountName: kb-minio-cluster
     replicas: 1
     resources:
       limits:

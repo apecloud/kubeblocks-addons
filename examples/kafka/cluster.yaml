@@ -40,7 +40,6 @@ spec:
     componentDef: kafka-combine
     tls: false
     replicas: 1
-    serviceAccountName: kb-kafka-cluster
     resources:
       limits:
         cpu: '0.5'

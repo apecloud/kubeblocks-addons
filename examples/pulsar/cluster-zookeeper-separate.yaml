@@ -58,7 +58,6 @@ spec:
       namespace: default
       cluster: zookeeperp-cluster
     disableExporter: true
-    serviceAccountName: kb-pulsar-cluster
     replicas: 3
     resources:
       limits:
@@ -148,7 +147,6 @@ spec:
   componentSpecs:
     - name: zookeeper
       componentDefRef: zookeeper
-      serviceAccountName: kb-zookeeperp-cluster
       replicas: 3
       resources:
         limits:

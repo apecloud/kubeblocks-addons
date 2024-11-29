@@ -16,7 +16,6 @@ spec:
   componentSpecs:
   - name: fe
     componentDef: starrocks-ce-fe
-    serviceAccountName: kb-starrocks-cluster
     replicas: 1
     resources:
       limits:

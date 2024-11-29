@@ -19,7 +19,6 @@ spec:
   # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
   - name: proxy
-    serviceAccountName: kb-milvus-cluster
     replicas: 1
     resources:
       limits:
@@ -45,7 +44,6 @@ spec:
           component: minio
           name: admin
   - name: mixcoord
-    serviceAccountName: kb-milvus-cluster
     replicas: 1
     resources:
       limits:
@@ -71,7 +69,6 @@ spec:
           component: minio
           name: admin
   - name: datanode
-    serviceAccountName: kb-milvus-cluster
     replicas: 1
     resources:
       limits:
@@ -97,7 +94,6 @@ spec:
           component: minio
           name: admin
   - name: indexnode
-    serviceAccountName: kb-milvus-cluster
     replicas: 1
     resources:
       limits:
@@ -123,7 +119,6 @@ spec:
           component: minio
           name: admin
   - name: querynode
-    serviceAccountName: kb-milvus-cluster
     replicas: 1
     resources:
       limits:
@@ -169,7 +164,6 @@ spec:
         requests:
           cpu: '0.5'
           memory: 0.5Gi
-      serviceAccountName: kb-etcdm-cluster
       volumeClaimTemplates:
         - name: data
           spec:
@@ -195,7 +189,6 @@ spec:
     - name: pulsar-broker
       componentDefRef: pulsar-broker
       disableExporter: true
-      serviceAccountName: kb-pulsarm-cluster
       replicas: 1
       resources:
         limits:
@@ -268,7 +261,6 @@ spec:
   componentSpecs:
     - name: minio
       componentDef: milvus-minio-0.9.0
-      serviceAccountName: kb-miniom-cluster
       replicas: 1
       resources:
         limits:

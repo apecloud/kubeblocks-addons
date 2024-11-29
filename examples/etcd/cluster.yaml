@@ -16,7 +16,6 @@ spec:
   componentSpecs:
   - name: etcd
     componentDef: etcd
-    serviceAccountName: kb-etcd-cluster
     replicas: 3
     resources:
       limits:

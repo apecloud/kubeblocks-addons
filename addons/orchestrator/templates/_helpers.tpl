@@ -51,18 +51,6 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Create the name of the service account to use
-*/}}
-{{- define "orchestrator.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "orchestrator.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
-{{- end }}
-
-
-{{/*
 Define mysql component definition name
 */}}
 {{- define "orchestrator.componentDefName" -}}
