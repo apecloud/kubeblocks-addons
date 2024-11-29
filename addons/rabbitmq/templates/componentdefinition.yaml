@@ -38,6 +38,33 @@ spec:
         numDigits: 8
         numSymbols: 0
         letterCase: MixedCases
+  lifecycleActions: 
+    memberLeave:
+      exec:
+        container: rabbitmq
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        command:
+        - /bin/bash
+        - -c
+        - |
+          {{- .Files.Get "scripts/member_leave.sh" | nindent 12 }}
+        env:
+          - name: MY_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: MY_POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: RABBITMQ_USE_LONGNAME
+            value: "true"
+          - name: K8S_SERVICE_NAME
+            value: $(MY_CLUSTER_COMP_NAME)-headless
+          - name: RABBITMQ_NODENAME
+            value: rabbit@$(MY_POD_NAME).$(K8S_SERVICE_NAME).$(MY_POD_NAMESPACE)
   runtime:
     containers:
       - name: rabbitmq
@@ -67,7 +94,7 @@ spec:
         - name: RABBITMQ_LOG_BASE
           value: {{ .Values.dataMountPath }}/logs
         - name: K8S_SERVICE_NAME
-          value: $(KB_CLUSTER_COMP_NAME)-headless
+          value: $(MY_CLUSTER_COMP_NAME)-headless
         - name: RABBITMQ_ENABLED_PLUGINS_FILE
           value: /etc/rabbitmq/enabled_plugins
         - name: RABBITMQ_USE_LONGNAME
@@ -137,3 +164,8 @@ spec:
           name: root
           optional: false
           password: Required
+    - name: MY_CLUSTER_COMP_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
