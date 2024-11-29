@@ -22,4 +22,4 @@ data:
     {{- include "kblib.strings.split" $ | nindent 4 }}
   {{- with include "redis-cluster.extend.scripts" . }}
   {{- . | nindent 2 }}
-    {{- end }}
+  {{- end }}
