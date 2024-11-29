@@ -241,7 +241,7 @@ scale_redis_cluster_replica() {
       echo "Replica is not empty, Either the node already knows other nodes (check with CLUSTER NODES) or contains some key in database 0"
     elif [[ $replicated_output == *"Not all 16384 slots are covered by nodes"* ]]; then
       # shutdown the redis server if the cluster is not fully covered by nodes
-      echo "Not all 16384 slots are covered by nodes, shutdown redis server"
+      echo "Not all 16384 slots are covered by nodes, shutdown redis server" >&2
       shutdown_redis_server
       exit 1
     else
@@ -265,7 +265,7 @@ scale_redis_cluster_replica() {
 
     # meet current component primary node if not met yet
     if ! $current_primary_met; then
-      if scale_out_replica_send_meet "$primary_node_endpoint" "$primary_node_port" "$primary_node_bus_port" "$current_pod_name"; then
+      if scale_out_replica_send_meet "$primary_node_endpoint" "$primary_node_port" "$primary_node_bus_port" "$CURRENT_POD_NAME"; then
         echo "Successfully meet the primary node $primary_node_endpoint_with_port in scale_redis_cluster_replica"
         current_primary_met=true
       else
@@ -282,11 +282,11 @@ scale_redis_cluster_replica() {
         node_port=$(echo "$node_endpoint_with_port" | awk -F ':' '{print $2}')
         node_bus_port=$(echo "$node_info" | awk -F '@' '{print $2}')
 
-        if scale_out_replica_send_meet "$node_endpoint" "$node_port" "$node_bus_port" "$current_pod_name"; then
+        if scale_out_replica_send_meet "$node_endpoint" "$node_port" "$node_bus_port" "$CURRENT_POD_NAME"; then
           echo "Successfully meet the primary node $node_endpoint_with_port in scale_redis_cluster_replica"
           other_primary_met["$node_info"]=true
         else
-          echo "Failed to meet the other component primary node $node_endpoint_with_port in scale_redis_cluster_replica"
+          echo "Failed to meet the other component primary node $node_endpoint_with_port in scale_redis_cluster_replica" >&2
           all_met=false
         fi
       fi
