@@ -259,13 +259,13 @@ init_current_comp_default_nodes_for_scale_out() {
   local min_lexicographical_pod_name
   local min_lexicographical_pod_ordinal
   min_lexicographical_pod_name=$(min_lexicographical_order_pod "$KB_CLUSTER_COMPONENT_POD_NAME_LIST")
-  min_lexicographical_pod_ordinal=$(extract_ordinal_from_object_name "$min_lexicographical_pod_name")
+  min_lexicographical_pod_ordinal=$(extract_obj_ordinal "$min_lexicographical_pod_name")
   if is_empty "$min_lexicographical_pod_ordinal"; then
     echo "Failed to get the ordinal of the min lexicographical pod $min_lexicographical_pod_name in init_current_comp_default_nodes_for_scale_out" >&2
     return 1
   fi
   for pod_name in $(echo "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" | tr ',' ' '); do
-    pod_name_ordinal=$(extract_ordinal_from_object_name "$pod_name")
+    pod_name_ordinal=$(extract_obj_ordinal "$pod_name")
     ## if the CURRENT_SHARD_ADVERTISED_PORT is set, use the advertised port
     ## the value format of CURRENT_SHARD_ADVERTISED_PORT is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."
     if ! is_empty "$CURRENT_SHARD_ADVERTISED_PORT"; then
@@ -279,7 +279,7 @@ init_current_comp_default_nodes_for_scale_out() {
       for advertised_info in "${advertised_infos[@]}"; do
         advertised_svc=$(echo "$advertised_info" | cut -d':' -f1)
         advertised_port=$(echo "$advertised_info" | cut -d':' -f2)
-        advertised_svc_ordinal=$(extract_ordinal_from_object_name "$advertised_svc")
+        advertised_svc_ordinal=$(extract_obj_ordinal "$advertised_svc")
         if [ "$pod_name_ordinal" == "$advertised_svc_ordinal" ]; then
           pod_host_ip=$(parse_host_ip_from_built_in_envs "$pod_name" "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" "$KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST")
           status=$?
@@ -330,14 +330,14 @@ gen_initialize_redis_cluster_node() {
   local min_lexicographical_pod_name
   local min_lexicographical_pod_ordinal
   min_lexicographical_pod_name=$(min_lexicographical_order_pod "$KB_CLUSTER_POD_NAME_LIST")
-  min_lexicographical_pod_ordinal=$(extract_ordinal_from_object_name "$min_lexicographical_pod_name")
+  min_lexicographical_pod_ordinal=$(extract_obj_ordinal "$min_lexicographical_pod_name")
   if is_empty "$min_lexicographical_pod_ordinal"; then
     echo "Failed to get the ordinal of the min lexicographical pod $min_lexicographical_pod_name in gen_initialize_redis_cluster_node" >&2
     return 1
   fi
 
   for pod_name in $(echo "$KB_CLUSTER_POD_NAME_LIST" | tr ',' ' '); do
-    pod_name_ordinal=$(extract_ordinal_from_object_name "$pod_name")
+    pod_name_ordinal=$(extract_obj_ordinal "$pod_name")
     if equals "$is_primary" "true" && ! equals "$pod_name_ordinal" "$min_lexicographical_pod_ordinal"; then
       continue
     elif equals "$is_primary" "false" && equals "$pod_name_ordinal" "$min_lexicographical_pod_ordinal"; then
@@ -368,7 +368,7 @@ gen_initialize_redis_cluster_node() {
         for shard_advertised_info in "${shard_advertised_infos[@]}"; do
           shard_advertised_svc=$(echo "$shard_advertised_info" | cut -d':' -f1)
           shard_advertised_port=$(echo "$shard_advertised_info" | cut -d':' -f2)
-          shard_advertised_svc_ordinal=$(extract_ordinal_from_object_name "$shard_advertised_svc")
+          shard_advertised_svc_ordinal=$(extract_obj_ordinal "$shard_advertised_svc")
           if [ "$pod_name_ordinal" == "$shard_advertised_svc_ordinal" ]; then
             pod_host_ip=$(parse_host_ip_from_built_in_envs "$pod_name" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_POD_HOST_IP_LIST")
             status=$?
