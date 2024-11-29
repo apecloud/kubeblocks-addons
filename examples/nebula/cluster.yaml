@@ -17,7 +17,6 @@ spec:
   - name: nebula-console
     componentDef: nebula-console
     disableExporter: true
-    serviceAccountName: kb-nebula-cluster
     replicas: 2
     resources:
       limits:

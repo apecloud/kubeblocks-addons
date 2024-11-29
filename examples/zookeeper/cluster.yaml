@@ -16,7 +16,6 @@ spec:
   componentSpecs:
   - name: zookeeper
     componentDef: zookeeper
-    serviceAccountName: kb-zookeeper-cluster
     replicas: 3
     resources:
       limits:

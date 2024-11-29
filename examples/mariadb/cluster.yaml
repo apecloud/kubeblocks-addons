@@ -16,7 +16,6 @@ spec:
   componentSpecs:
   - name: mariadb
     componentDef: mariadb
-    serviceAccountName: kb-mariadb-cluster
     replicas: 1
     resources:
       limits:

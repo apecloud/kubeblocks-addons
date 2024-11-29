@@ -16,7 +16,6 @@ spec:
   componentSpecs:
   - name: influxdb
     componentDef: influxdb
-    serviceAccountName: kb-influxdb-cluster
     replicas: 1
     resources:
       limits:

@@ -16,7 +16,6 @@ spec:
   componentSpecs:
   - name: tdengine
     componentDef: tdengine
-    serviceAccountName: kb-tdengine-cluster
     replicas: 3
     resources:
       limits:

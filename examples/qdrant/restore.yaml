@@ -19,7 +19,6 @@ spec:
   - name: qdrant
     componentDef: qdrant
     disableExporter: true
-    serviceAccountName: kb-qdrant-cluster
     replicas: 3
     resources:
       limits:

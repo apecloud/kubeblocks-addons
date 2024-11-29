@@ -22,7 +22,6 @@ spec:
   componentSpecs:
     - name: clickhouse
       componentDef: clickhouse-24
-      serviceAccountName: kb-clickhouse-cluster
       replicas: 1
       resources:
         limits:

@@ -56,7 +56,6 @@ spec:
   - name: pulsar-broker
     componentDefRef: pulsar-broker
     disableExporter: true
-    serviceAccountName: kb-pulsar-cluster
     replicas: 1
     resources:
       limits:

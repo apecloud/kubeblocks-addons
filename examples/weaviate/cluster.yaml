@@ -17,7 +17,6 @@ spec:
   - name: weaviate
     componentDef: weaviate
     disableExporter: true
-    serviceAccountName: kb-weaviate-cluster
     replicas: 2
     resources:
       limits:

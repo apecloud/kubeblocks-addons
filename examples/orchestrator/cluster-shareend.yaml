@@ -58,7 +58,6 @@ spec:
   - name: mysql
     componentDef: apecloud-mysql
     disableExporter: true
-    serviceAccountName: kb-mysqlo-cluster
     replicas: 3
     resources:
       limits:

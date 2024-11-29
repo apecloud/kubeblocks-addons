@@ -22,7 +22,6 @@ spec:
   componentSpecs:
     - name: clickhouse
       componentDef: clickhouse-24
-      serviceAccountName: kb-clickhouse-cluster
       replicas: 2
       systemAccounts:
         - name: admin
@@ -49,7 +48,6 @@ spec:
                 storage: 20Gi
     - name: ch-keeper
       componentDef: clickhouse-keeper-24
-      serviceAccountName: kb-clickhouse-cluster
       replicas: 1
       systemAccounts:
         - name: admin

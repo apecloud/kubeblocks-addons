@@ -16,7 +16,6 @@ spec:
   componentSpecs:
   - name: rabbitmq
     componentDef: rabbitmq
-    serviceAccountName: kb-rabbitmq-cluster
     replicas: 3
     resources:
       limits:
