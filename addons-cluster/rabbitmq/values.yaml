@@ -4,7 +4,7 @@
 
 ## @param version cluster version
 ##
-version: 3.13.2
+version: 3.13.7
 
 ## @param mode cluster topology mode, singlenode or clustermode
 ##
@@ -31,3 +31,4 @@ storage: 20
 
 extra:
   rbacEnabled: true
+  terminationPolicy: Delete
