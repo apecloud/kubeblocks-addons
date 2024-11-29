@@ -151,7 +151,6 @@ vars:
       optional: false
       password: Required
 - name: OB_SERVICE_PORT
-  value: "2881"
   valueFrom:
     hostNetworkVarRef:
       container:
@@ -160,8 +159,8 @@ vars:
           name: sql
           option: Optional
       optional: true
+  expression: {{ `{{if ne (index . "OB_SERVICE_PORT") ""}}{{.OB_SERVICE_PORT}}{{else}}2881{{end}}` | toYaml }}
 - name: OB_RPC_PORT
-  value: "2882"
   valueFrom:
     hostNetworkVarRef:
       container:
@@ -170,8 +169,8 @@ vars:
           name: rpc
           option: Optional
       optional: true
+  expression: {{ `{{if ne (index . "OB_RPC_PORT") ""}}{{.OB_RPC_PORT}}{{else}}2882{{end}}` | toYaml }}
 - name: SERVICE_PORT
-  value: "8088"
   valueFrom:
     hostNetworkVarRef:
       container:
@@ -180,6 +179,7 @@ vars:
           name: http
           option: Optional
       optional: true
+  expression: {{ `{{if ne (index . "SERVICE_PORT") ""}}{{.SERVICE_PORT}}{{else}}8088{{end}}` | toYaml }}
 - name: MANAGER_PORT
   value: "8089"
   valueFrom:
@@ -190,6 +190,7 @@ vars:
           name: http
           option: Optional
       optional: true
+  expression: {{ `{{if ne (index . "MANAGER_PORT") ""}}{{.MANAGER_PORT}}{{else}}8089{{end}}` | toYaml }}
 - name: COMP_MYSQL_PORT
   value: $(OB_SERVICE_PORT)
 - name: OB_COMPONENT_NAME
