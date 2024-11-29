@@ -186,8 +186,7 @@ spec:
           name: root
           optional: false
           password: Required
-    - name: KB_SERVICE_PORT  
-      value: "27017"
+    - name: KB_SERVICE_PORT
       valueFrom:
         hostNetworkVarRef:
           optional: true
@@ -196,6 +195,7 @@ spec:
             port:
               name: mongodb
               option: Optional
+      expression: {{ `{{if ne (index . "KB_SERVICE_PORT") ""}}{{.KB_SERVICE_PORT}}{{else}}27017{{end}}` | toYaml }}
     - name: SYNCER_SERVICE_PORT  
       valueFrom:
         hostNetworkVarRef:
