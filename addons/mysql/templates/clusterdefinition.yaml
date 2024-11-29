@@ -10,26 +10,26 @@ spec:
   topologies:
     - name: server
       components:
-        - name: server
+        - name: mysql
           compDef: {{ include "mysql.componentDefRegex" . }}
       default: true
     - name: server-with-orc
       components:
-        - name: server
+        - name: mysql
           compDef: {{ include "mysql.cmpdOrcNamePrefix" . }}
     - name: server-with-proxy
       components:
-        - name: server
+        - name: mysql
           compDef: {{ include "mysql.componentDefRegex" . }}
         - name: proxysql
           compDef: {{ include "proxysql.componentDefName" . }}
       orders:
         provision: # The server will start before the proxy is created.
-          - server
+          - mysql
           - proxysql
         terminate: # The proxy will be shut down (destroyed) before the server.
           - proxysql
-          - server
+          - mysql
         update: # When there are multiple component update operations, follow the order specified here.
-          - server
+          - mysql
           - proxysql

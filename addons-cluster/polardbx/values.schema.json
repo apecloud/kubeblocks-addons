@@ -1,0 +1,125 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "gms": {
+      "type": "object",
+      "description": "Global Management Service (GMS) configuration",
+      "properties": {
+        "replicas": {
+          "type": "integer",
+          "description": "data replicas of gms instance. Default value is 3, which means a paxos group: leader, follower, follower",
+          "default": 3
+        },
+        "resources": {
+          "type": "object",
+          "description": "resource management for gms component. more info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
+          "properties": {
+            "requests": {
+              "type": "object",
+              "properties": {
+                "cpu": { "type": "string", "description": "CPU request", "default": "1" },
+                "memory": { "type": "string", "description": "Memory request", "default": "1Gi" }
+              }
+            },
+            "limits": {
+              "type": "object",
+              "properties": {
+                "cpu": { "type": "string", "description": "CPU limit", "default": "1" },
+                "memory": { "type": "string", "description": "Memory limit", "default": "1Gi" }
+              }
+            }
+          }
+        },
+        "persistence": {
+          "type": "object",
+          "description": "Enable persistence using Persistent Volume Claims",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable persistence using Persistent Volume Claims",
+              "default": true
+            },
+            "data": {
+              "type": "object",
+              "description": "`data` volume settings",
+              "properties": {
+                "storageClassName": {
+                  "type": ["string", "null"],
+                  "description": "Storage class of backing PVC. If defined, storageClassName: <storageClass>. If set to \"-\", storageClassName: \"\", which disables dynamic provisioning. If undefined (the default) or set to null, no storageClassName spec is set, choosing the default provisioner. (gp2 on AWS, standard on GKE, AWS & OpenStack)"
+                },
+                "size": {
+                  "type": "string",
+                  "description": "Size of data volume",
+                  "default": "20Gi"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "cn": {
+      "type": "object",
+      "description": "Configuration for polardb-x cn nodes",
+      "properties": {
+        "replicas": {
+          "type": "integer",
+          "description": "number of polardb-x cn nodes",
+          "default": 2
+        },
+        "resources": {
+          "type": "object",
+          "description": "resource management for cn component. more info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
+          "properties": {
+            "requests": {
+              "type": "object",
+              "properties": {
+                "cpu": { "type": "string", "description": "CPU request", "default": "1" },
+                "memory": { "type": "string", "description": "Memory request", "default": "1Gi" }
+              }
+            },
+            "limits": {
+              "type": "object",
+              "properties": {
+                "cpu": { "type": "string", "description": "CPU limit", "default": "1" },
+                "memory": { "type": "string", "description": "Memory limit", "default": "1Gi" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "cdc": {
+      "type": "object",
+      "description": "Configuration for polardb-x cdc nodes",
+      "properties": {
+        "replicas": {
+          "type": "integer",
+          "description": "number of polardb-x cdc nodes",
+          "default": 2
+        },
+        "resources": {
+          "type": "object",
+          "description": "resource management for cdc component. more info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
+          "properties": {
+            "requests": {
+              "type": "object",
+              "properties": {
+                "cpu": { "type": "string", "description": "CPU request", "default": "1" },
+                "memory": { "type": "string", "description": "Memory request", "default": "1Gi" }
+              }
+            },
+            "limits": {
+              "type": "object",
+              "properties": {
+                "cpu": { "type": "string", "description": "CPU limit", "default": "1" },
+                "memory": { "type": "string", "description": "Memory limit", "default": "1Gi" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

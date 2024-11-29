@@ -49,6 +49,83 @@
       "description": "Enable TLS for etcd cluster",
       "type": "boolean",
       "default": false
+    },
+    "peerService": {
+      "title": "Peer Service Configuration",
+      "description": "Configuration for peer services within the cluster.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "title": "Enable Peer Service",
+          "description": "Enable peer service (no need to enable for single cluster).",
+          "type": "boolean",
+          "default": false
+        },
+        "type": {
+          "title": "Service Type for Peers",
+          "description": "Service type for etcd peers, default peer service for single cluster use headless ClusterIP. Valid option is LoadBalancer, will support NodePort in the future.",
+          "type": "string",
+          "default": "LoadBalancer",
+          "enum": [
+            "ClusterIP",
+            "LoadBalancer"
+          ]
+        },
+        "annotations": {
+          "title": "Annotations",
+          "description": "Optional, if peerService type is LoadBalancer, you may need to specify annotations for Cloud Provider.",
+          "type": "object",
+          "default": {}
+        }
+      },
+      "clientService": {
+        "title": "Client Service Configuration",
+        "description": "Configuration for client communication with the cluster.",
+        "type": "object",
+        "properties": {
+          "name": {
+            "title": "Service Name",
+            "description": "Set service name to enable clientService.",
+            "type": "string",
+            "default": ""
+          },
+          "type": {
+            "title": "Service Type",
+            "description": "etcd service type, valid options are ExternalName, ClusterIP, NodePort, and LoadBalancer.",
+            "type": "string",
+            "default": "ClusterIP",
+            "enum": [
+              "ExternalName",
+              "ClusterIP",
+              "NodePort",
+              "LoadBalancer"
+            ]
+          },
+          "port": {
+            "title": "Service Port",
+            "description": "The port on which the service will listen.",
+            "type": "integer",
+            "default": 2379
+          },
+          "role": {
+            "title": "Role",
+            "description": "Role of the service within the cluster.",
+            "type": "string",
+            "default": "leader"
+          },
+          "nodePort": {
+            "title": "Node Port",
+            "description": "Optional, if clientService type is NodePort, by default and for convenience, the Kubernetes control plane will allocate a port from a range (default: 30000-32767).",
+            "type": "integer"
+          },
+          "annotations": {
+            "title": "Annotations",
+            "description": "Optional, if clientService type is LoadBalancer, you may need to specify annotations for Cloud Provider.",
+            "type": "object",
+            "default": {}
+          }
+        }
+      }
     }
   }
 }

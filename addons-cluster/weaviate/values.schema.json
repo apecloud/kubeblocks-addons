@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "title": "Component Configuration",
+  "description": "Configuration schema for a component in the Helm chart.",
+  "properties": {
+    "resources": {
+      "type": "object",
+      "description": "Resource requests and limits. We usually recommend not to specify default resources and to leave this as a conscious choice for the user. This also increases chances charts run on environments with little resources, such as Minikube.",
+      "properties": {
+        "limits": {
+          "type": "object",
+          "properties": {
+            "cpu": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null,
+              "description": "CPU limit."
+            },
+            "memory": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null,
+              "description": "Memory limit."
+            }
+          }
+        },
+        "requests": {
+          "type": "object",
+          "properties": {
+            "cpu": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null,
+              "description": "CPU request."
+            },
+            "memory": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null,
+              "description": "Memory request."
+            }
+          }
+        }
+      }
+    },
+    "persistence": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable or disable persistence."
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "storageClassName": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "default": null,
+              "description": "Storage class name for persistent volumes. If omitted, uses the default storage class."
+            },
+            "size": {
+              "type": "string",
+              "default": "10Gi",
+              "description": "Size of persistent volume claim."
+            }
+          }
+        }
+      }
+    },
+    "replicaCount": {
+      "type": "integer",
+      "default": 1,
+      "description": "Number of replicas."
+    }
+  }
+}

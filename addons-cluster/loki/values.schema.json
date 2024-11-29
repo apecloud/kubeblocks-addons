@@ -1,0 +1,214 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "title": "Loki Cluster Configuration",
+  "description": "Configuration schema for the Loki Helm chart.",
+  "properties": {
+    "read": {
+      "type": "object",
+      "properties": {
+        "resources": {
+          "title": "Resource Requests and Limits",
+          "description": "CPU and memory resource requests and limits for each meta pod.",
+          "type": "object",
+          "properties": {
+            "limits": {
+              "title": "Limits",
+              "description": "The maximum amount of CPU and memory that can be used by the container.",
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": "string"
+                },
+                "memory": {
+                  "type": "string"
+                }
+              }
+            },
+            "requests": {
+              "title": "Requests",
+              "description": "The minimum amount of CPU and memory that should be allocated to the container.",
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": "string"
+                },
+                "memory": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "replicas": {
+          "type": "integer",
+          "default": 1
+        }
+      }
+    },
+    "write": {
+      "type": "object",
+      "properties": {
+        "resources": {
+          "title": "Resource Requests and Limits",
+          "description": "CPU and memory resource requests and limits for each meta pod.",
+          "type": "object",
+          "properties": {
+            "limits": {
+              "title": "Limits",
+              "description": "The maximum amount of CPU and memory that can be used by the container.",
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": "string"
+                },
+                "memory": {
+                  "type": "string"
+                }
+              }
+            },
+            "requests": {
+              "title": "Requests",
+              "description": "The minimum amount of CPU and memory that should be allocated to the container.",
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": "string"
+                },
+                "memory": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "replicas": {
+          "type": "integer",
+          "default": 1
+        }
+      }
+    },
+    "backend": {
+      "type": "object",
+      "properties": {
+        "resources": {
+          "title": "Resource Requests and Limits",
+          "description": "CPU and memory resource requests and limits for each meta pod.",
+          "type": "object",
+          "properties": {
+            "limits": {
+              "title": "Limits",
+              "description": "The maximum amount of CPU and memory that can be used by the container.",
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": "string"
+                },
+                "memory": {
+                  "type": "string"
+                }
+              }
+            },
+            "requests": {
+              "title": "Requests",
+              "description": "The minimum amount of CPU and memory that should be allocated to the container.",
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": "string"
+                },
+                "memory": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "replicas": {
+          "type": "integer",
+          "default": 1
+        }
+      }
+    },
+    "gateway": {
+      "type": "object",
+      "properties": {
+        "resources": {
+          "title": "Resource Requests and Limits",
+          "description": "CPU and memory resource requests and limits for each meta pod.",
+          "type": "object",
+          "properties": {
+            "limits": {
+              "title": "Limits",
+              "description": "The maximum amount of CPU and memory that can be used by the container.",
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": "string"
+                },
+                "memory": {
+                  "type": "string"
+                }
+              }
+            },
+            "requests": {
+              "title": "Requests",
+              "description": "The minimum amount of CPU and memory that should be allocated to the container.",
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": "string"
+                },
+                "memory": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "replicas": {
+          "type": "integer",
+          "default": 1
+        },
+        "basicAuth": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        }
+      },
+      "minio": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "storageClassName": {
+        "type": "string",
+        "default": ""
+      },
+      "replicas": {
+        "type": "integer",
+        "default": 1
+      },
+      "cpu": {
+        "type": "number",
+        "default": 0.5
+      },
+      "memory": {
+        "type": "number",
+        "default": 0.5
+      },
+      "storage": {
+        "type": "number",
+        "default": 20
+      }
+    }
+  }
+}

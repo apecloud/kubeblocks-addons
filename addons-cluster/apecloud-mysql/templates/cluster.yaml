@@ -5,6 +5,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{ include "kblib.clusterLabels" . | nindent 4 }}
+    auditLogEnabled: "false"
   {{- if and (eq .Values.mode "raftGroup") .Values.proxyEnabled }}
   annotations:
     kubeblocks.io/extra-env: '{"KB_PROXY_ENABLED":"on","ETCDCTL_API": "{{ .Values.etcd.etcdctlApi}}"}'
@@ -18,6 +19,7 @@ spec:
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "apecloud-mysql-cluster.schedulingPolicy" . | indent 6 }}
       {{- if and (eq .Values.mode "raftGroup") .Values.proxyEnabled (not .Values.localEtcdEnabled) }}
+      serviceVersion: {{ .Values.version }}
       serviceRefs:
         {{ include "apecloud-mysql-cluster.serviceRef" . | indent 8 }}
       {{- end }}

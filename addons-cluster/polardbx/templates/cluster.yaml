@@ -6,7 +6,7 @@ metadata:
   labels:
     {{ include "polardbx.labels" . | nindent 4 }}
 spec:
-  terminationPolicy: {{ .Values.polardbx.terminationPolicy }}
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
   componentSpecs:
     - name: gms
       componentDef: polardbx-gms
