@@ -34,15 +34,20 @@ redis_sentinel_real_conf_bak="/data/sentinel/redis-sentinel.conf.bak"
 
 # TODO: if instanceTemplate is specified, the pod service could not be parsed from the pod ordinal.
 parse_redis_sentinel_announce_addr() {
-  local pod_name="$1"
-
   if is_empty "${REDIS_SENTINEL_ADVERTISED_PORT}"; then
     echo "Environment variable REDIS_SENTINEL_ADVERTISED_PORT not found. Ignoring."
+    # if redis sentinel is in host network mode, use the host ip and port as the announce ip and port
+    if ! is_empty "${REDIS_SENTINEL_HOST_NETWORK_PORT}" && ! is_empty "$HOST_NETWORK_ENABLED"; then
+      echo "redis sentinel is in host network mode, use the host ip:$CURRENT_POD_HOST_IP and port:$REDIS_SENTINEL_HOST_NETWORK_PORT as the announce ip and port."
+      redis_sentinel_announce_port_value="$REDIS_SENTINEL_HOST_NETWORK_PORT"
+      redis_sentinel_announce_host_value="$CURRENT_POD_HOST_IP"
+    fi
     return 0
   fi
 
   # the value format of REDIS_SENTINEL_ADVERTISED_PORT is "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."
   IFS=',' read -ra advertised_ports <<< "${REDIS_SENTINEL_ADVERTISED_PORT}"
+  local pod_name="$1"
   local found=false
   pod_name_ordinal=$(extract_obj_ordinal "$pod_name")
   for advertised_port in "${advertised_ports[@]}"; do
@@ -115,8 +120,14 @@ build_redis_sentinel_conf() {
       echo "sentinel announce-ip $redis_sentinel_announce_host_value"
       echo "sentinel announce-port $redis_sentinel_announce_port_value"
     } >> $redis_sentinel_real_conf
+  elif ! is_empty "$FIXED_POD_IP_ENABLED"; then
+    echo "redis sentinel use the fixed pod ip $CURRENT_POD_IP:$sentinel_port to announce"
+    {
+      echo "port $sentinel_port"
+      echo "sentinel announce-ip $CURRENT_POD_IP"
+      echo "sentinel announce-port $sentinel_port"
+    } >> $redis_sentinel_real_conf
   else
-    # if the announce addr is not enabled, use the current pod fqdn to announce
     # shellcheck disable=SC2153
     current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$SENTINEL_POD_FQDN_LIST" "$CURRENT_POD_NAME")
     if is_empty "$current_pod_fqdn"; then
