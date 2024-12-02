@@ -4,6 +4,8 @@ metadata:
   name: orioledb-{{ .Chart.Version }}
   labels:
     {{- include "orioledb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "orioledb.annotations" . | nindent 4 }}
 spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}

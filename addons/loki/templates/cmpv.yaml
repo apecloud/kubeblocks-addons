@@ -4,6 +4,8 @@ metadata:
   name: loki
   labels:
     {{- include "loki.labels" . | nindent 4 }}
+  annotations:
+    {{- include "loki.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
     - releases:

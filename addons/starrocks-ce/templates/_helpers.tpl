@@ -51,6 +51,20 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
+Common annotations
+*/}}
+{{- define "starrocks.annotations" -}}
+{{ include "starrocks.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "starrocks.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{- end }}
+
+{{/*
 Create the name of the service account to use
 */}}
 {{- define "starrocks.serviceAccountName" -}}

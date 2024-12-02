@@ -4,6 +4,8 @@ metadata:
   name: pulsar
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
+  annotations:
+    {{- include "pulsar.apiVersion" . | nindent 4 }}
 spec:
   topologies:
     - name: pulsar-basic-cluster

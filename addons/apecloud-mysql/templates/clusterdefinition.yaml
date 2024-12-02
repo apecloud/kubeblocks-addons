@@ -4,6 +4,8 @@ metadata:
   name: {{ include "apecloud-mysql.clusterDefName" . }}
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "apecloud-mysql.apiVersion" . | nindent 4 }}
 spec:
   topologies:
   - name: apecloud-mysql

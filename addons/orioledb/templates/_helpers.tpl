@@ -49,3 +49,17 @@ Selector labels
 app.kubernetes.io/name: {{ include "orioledb.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+
+{{/*
+Common annotations
+*/}}
+{{- define "orioledb.annotations" -}}
+{{ include "orioledb.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "orioledb.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{- end }}

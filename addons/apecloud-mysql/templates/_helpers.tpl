@@ -36,7 +36,15 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Common annotations
 */}}
 {{- define "apecloud-mysql.annotations" -}}
-helm.sh/resource-policy: keep              
+helm.sh/resource-policy: keep
+{{ include "apecloud-mysql.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "apecloud-mysql.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 {{/*

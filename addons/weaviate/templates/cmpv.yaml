@@ -4,6 +4,8 @@ metadata:
   name: weaviate
   labels:
     {{- include "weaviate.labels" . | nindent 4 }}
+  annotations:
+    {{- include "weaviate.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
     - releases:

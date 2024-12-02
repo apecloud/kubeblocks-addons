@@ -4,6 +4,8 @@ metadata:
   name: {{ include "oceanbase-ce.clusterDefinition" . }}
   labels:
     {{- include "oceanbase-ce.labels" . | nindent 4 }}
+  annotations:
+    {{- include "oceanbase-ce.apiVersion" . | nindent 4 }}
 spec:
   topologies:
   - name: distribution

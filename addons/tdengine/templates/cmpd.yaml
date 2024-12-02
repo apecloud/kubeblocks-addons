@@ -4,6 +4,8 @@ metadata:
   name: tdengine-{{ .Chart.Version }}
   labels:
     {{- include "tdengine.labels" . | nindent 4 }}
+  annotations:
+    {{- include "tdengine.annotations" . | nindent 4 }}
 spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}

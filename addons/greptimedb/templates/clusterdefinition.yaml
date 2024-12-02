@@ -4,6 +4,8 @@ metadata:
   name: greptimedb
   labels:
     {{- include "greptimedb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "greptimedb.apiVersion" . | nindent 4 }}
 spec:
   topologies:
     - name: default

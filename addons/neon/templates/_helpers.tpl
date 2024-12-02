@@ -55,6 +55,14 @@ Common annotations
 */}}
 {{- define "neon.annotations" -}}
 helm.sh/resource-policy: keep
+{{ include "neon.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "neon.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 {{/*

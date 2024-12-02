@@ -55,6 +55,14 @@ Common annotations
 */}}
 {{- define "pulsar.annotations" -}}
 helm.sh/resource-policy: keep
+{{ include "pulsar.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "pulsar.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 {{/*

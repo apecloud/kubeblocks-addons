@@ -55,6 +55,14 @@ Common risingwave annotations
 */}}
 {{- define "risingwave.annotations" -}}
 helm.sh/resource-policy: keep
+{{ include "risingwave.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "risingwave.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 {{/*

@@ -56,6 +56,14 @@ Common annotations
 */}}
 {{- define "loki.annotations" -}}
 helm.sh/resource-policy: keep
+{{ include "loki.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "loki.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 {{/*

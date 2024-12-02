@@ -4,6 +4,8 @@ metadata:
   name: elasticsearch
   labels:
     {{- include "elasticsearch.labels" . | nindent 4 }}
+  annotations:
+    {{- include "elasticsearch.apiVersion" . | nindent 4 }}
 spec:
   topologies:
   - name: single-node

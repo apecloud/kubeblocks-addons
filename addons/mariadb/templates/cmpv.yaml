@@ -4,6 +4,8 @@ metadata:
   name: mariadb
   labels:
     {{- include "mariadb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mariadb.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
     - compDefs:

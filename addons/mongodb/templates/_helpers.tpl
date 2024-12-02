@@ -104,7 +104,15 @@ Get the password key.
 Common annotations
 */}}
 {{- define "mongodb.annotations" -}}
-helm.sh/resource-policy: keep              
+helm.sh/resource-policy: keep
+{{ include "mongodb.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "mongodb.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 {{/*

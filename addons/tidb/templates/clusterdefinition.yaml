@@ -4,6 +4,8 @@ metadata:
   name: tidb
   labels:
     {{- include "tidb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "tidb.apiVersion" . | nindent 4 }}
 spec:
   topologies:
     - name: cluster

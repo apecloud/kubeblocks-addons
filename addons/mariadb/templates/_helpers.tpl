@@ -56,6 +56,14 @@ Common annotations
 */}}
 {{- define "mariadb.annotations" -}}
 helm.sh/resource-policy: keep
+{{ include "mariadb.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "mariadb.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 {{/*

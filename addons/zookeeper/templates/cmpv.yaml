@@ -4,6 +4,8 @@ metadata:
   name: zookeeper
   labels:
     {{- include "zookeeper.labels" . | nindent 4 }}
+  annotations:
+    {{- include "zookeeper.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
     - releases:

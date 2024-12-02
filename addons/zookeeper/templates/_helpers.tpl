@@ -55,8 +55,15 @@ Common annotations
 */}}
 {{- define "zookeeper.annotations" -}}
 helm.sh/resource-policy: keep
+{{ include "zookeeper.apiVersion" . }}
 {{- end }}
 
+{{/*
+API version annotation
+*/}}
+{{- define "zookeeper.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{- end }}
 
 {{- define "zoocreeper.image" -}}
 {{ .Values.zoocreeperImage.registry | default (.Values.zoocreeperImage.registry | default "docker.io") }}/{{ .Values.zoocreeperImage.repository }}:{{ .Values.zoocreeperImage.tag }}

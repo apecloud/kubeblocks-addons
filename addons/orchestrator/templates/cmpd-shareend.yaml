@@ -4,6 +4,8 @@ metadata:
   name: {{ include "orchestrator.componentDefName" . }}-shareend
   labels:
       {{- include "orchestrator.labels" . | nindent 4 }}
+  annotations:
+    {{- include "orchestrator.annotations" . | nindent 4 }}
 spec:
   {{- include "orchestrator.cmpd.spec.common" . | nindent 2 }}
   services:

@@ -4,6 +4,8 @@ metadata:
   name: {{ include "postgresql.clusterDefinition" . }}
   labels:
     {{- include "postgresql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "postgresql.apiVersion" . | nindent 4 }}
 spec:
   topologies:
     - name: replication

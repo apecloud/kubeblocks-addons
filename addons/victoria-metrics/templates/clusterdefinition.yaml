@@ -4,6 +4,8 @@ metadata:
   name: victoria-metrics
   labels:
     {{- include "victoria-metrics.labels" . | nindent 4 }}
+  annotations:
+    {{- include "victoria-metrics.apiVersion" . | nindent 4 }}
 spec:
   topologies:
   - name: vm-cluster

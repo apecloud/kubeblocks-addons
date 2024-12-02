@@ -4,6 +4,8 @@ metadata:
   name: {{ include "starrocks.name" . }}
   labels:
     {{- include "starrocks.labels" . | nindent 4 }}
+  annotations:
+    {{- include "starrocks.apiVersion" . | nindent 4 }}
 spec:
   topologies:
   - name: shared-nothing

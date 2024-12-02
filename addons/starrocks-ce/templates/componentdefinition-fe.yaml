@@ -4,6 +4,8 @@ metadata:
   name: {{ include "fe.componentDefName" . }}
   labels:
     {{ include "starrocks.labels" . | nindent 4 }}
+  annotations:
+    {{- include "starrocks.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
   description: A StarRocks FE component definition for Kubernetes

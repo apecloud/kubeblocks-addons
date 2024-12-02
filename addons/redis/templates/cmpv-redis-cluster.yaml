@@ -4,6 +4,8 @@ metadata:
   name: redis-cluster
   labels:
     {{- include "redis.labels" . | nindent 4 }}
+  annotations:
+    {{- include "redis.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
     - compDefs:

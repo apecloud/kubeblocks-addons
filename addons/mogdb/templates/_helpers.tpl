@@ -55,6 +55,14 @@ Common mogdb annotations
 */}}
 {{- define "mogdb.annotations" -}}
 helm.sh/resource-policy: keep
+{{ include "mogdb.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "mogdb.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 {{/*

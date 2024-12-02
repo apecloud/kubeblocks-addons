@@ -4,6 +4,8 @@ metadata:
   name: minio
   labels:
     {{- include "minio.labels" . | nindent 4 }}
+  annotations:
+    {{- include "minio.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
     - releases:

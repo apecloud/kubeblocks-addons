@@ -4,6 +4,8 @@ metadata:
   name: apecloud-mysql
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "apecloud-mysql.apiVersion" . | nindent 4 }}
 spec:
   releases:
   - name: apecloud-mysql-8.0.30
@@ -24,6 +26,8 @@ metadata:
   name: wescale
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "apecloud-mysql.apiVersion" . | nindent 4 }}
 spec:
   releases:
   - name: wescale-ctrl-0.2.7

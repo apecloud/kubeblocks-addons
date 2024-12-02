@@ -52,6 +52,14 @@ Common annotations
 */}}
 {{- define "milvus.annotations" -}}
 helm.sh/resource-policy: keep
+{{ include "milvus.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "milvus.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 {{/*

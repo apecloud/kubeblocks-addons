@@ -4,6 +4,8 @@ metadata:
   name: yashandb
   labels:
     {{- include "yashandb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "yashandb.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
     - releases:

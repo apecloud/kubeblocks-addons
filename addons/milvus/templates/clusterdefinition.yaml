@@ -4,6 +4,8 @@ metadata:
   name: milvus
   labels:
     {{- include "milvus.labels" . | nindent 4 }}
+  annotations:
+    {{- include "milvus.apiVersion" . | nindent 4 }}
 spec:
   topologies:
     - name: standalone

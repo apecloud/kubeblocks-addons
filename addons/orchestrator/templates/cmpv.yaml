@@ -4,6 +4,8 @@ metadata:
   name: orchestrator
   labels:
     {{- include "orchestrator.labels" . | nindent 4 }}
+  annotations:
+    {{- include "orchestrator.apiVersion" . | nindent 4 }}
 spec:
   releases:
   - name: orchestrator-3.2.6
