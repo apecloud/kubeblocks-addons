@@ -65,8 +65,10 @@ Define redis ComponentSpec with ComponentDefinition.
     podService: true
   {{- end }}
   env:
+  {{- if .Values.sentinel.customMasterName }}
   - name: CUSTOM_SENTINEL_MASTER_NAME
-    value: {{ .Values.sentinel.customMasterName | default "" }}
+    value: {{ .Values.sentinel.customMasterName }}
+  {{- end }}
   {{- if and .Values.fixedPodIPEnabled (not .Values.nodePortEnabled) (not .Values.hostNetworkEnabled) }}
   - name: FIXED_POD_IP_ENABLED
     value: "true"
@@ -185,7 +187,7 @@ apps.kubeblocks.io/component-name: "redis"
 Define common fileds of cluster object
 */}}
 {{- define "redis-cluster.clusterCommon" }}
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: {{ include "kblib.clusterName" . }}

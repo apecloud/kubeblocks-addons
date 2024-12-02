@@ -46,8 +46,8 @@ storage: 20
 twemproxy:
   enabled: false
   replicas: 3
-  cpu: 0.2
-  memory: 0.2
+  cpu: 0.5
+  memory: 0.5
 
 ## @param nodePortEnabled if true, the redis will use nodePort as the announce IP
 ## This option is mutually exclusive with fixedPodIPEnabled and hostNetworkEnabled. When all hostNetworkEnabled, fixedPodIPEnabled, nodePortEnabled are false, the default announce IP will be a headless service.
@@ -68,8 +68,8 @@ hostNetworkEnabled: false
 ##
 sentinel:
   enabled: true
-  cpu: 0.2
-  memory: 0.2
+  cpu: 0.5
+  memory: 0.5
   storage: 20
   replicas: 3
   customMasterName: ""
