@@ -14,7 +14,7 @@ ApeCloud MySQL is a database that is compatible with MySQL syntax and achieves h
 
 | Feature     | Method | Description |
 |-------------|--------|------------|
-| Base Backup | xtrabackup   | uses `xtrabackup`, an open-source tool developed by Percona to perform full backups  |
+| Full Backup | xtrabackup   | uses `xtrabackup`, an open-source tool developed by Percona to perform full backups  |
 
 ### Versions
 
