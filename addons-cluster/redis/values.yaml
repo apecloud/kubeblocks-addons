@@ -4,13 +4,13 @@
 
 ## @param version redis cluster version
 ##
-version: redis-7.0.6
+version: 7.2.4
 
 ## @param mode redis cluster topology mode, standalone, replication and cluster
 ## standalone: single redis instance
 ## replication: primary-secondary replication with redis sentinel, refer: https://redis.io/docs/management/sentinel
 ## replication-twemproxy: primary-secondary replication with sentinel and twemproxy, it is just a demo for how to use twemproxy with redis, not recommended for production
-## cluster: official redis cluster, refer: https://redis.io/docs/reference/cluster-spec. if mode is cluster, please set useLegacyCompDef to false.
+## cluster: official redis cluster, refer: https://redis.io/docs/reference/cluster-spec.
 mode: replication
 
 ## @param replicas specify replicas of replication
@@ -49,8 +49,18 @@ twemproxy:
   cpu: 0.2
   memory: 0.2
 
-## @param nodePortEnabled
+## @param nodePortEnabled if true, the redis will use nodePort as the announce IP
+## This option is mutually exclusive with fixedPodIPEnabled and hostNetworkEnabled. When all hostNetworkEnabled, fixedPodIPEnabled, nodePortEnabled are false, the default announce IP will be a headless service.
 nodePortEnabled: false
+
+## If the K8s environment supports immutable pod IPs (usually requiring additional CNI plugins or other methods),
+## you can set fixedPodIPEnabled to true. When fixedPodIPEnabled is true, the Redis will use the pod IP as the announce IP to meet network requirements in certain scenarios.
+## This option is mutually exclusive with nodePortEnabled and hostNetworkEnabled. When all hostNetworkEnabled, fixedPodIPEnabled, nodePortEnabled are false, the default announce IP will be a headless service.
+fixedPodIPEnabled: false
+
+## @param hostNetworkEnabled if true, the redis will use hostNetwork
+## This option is mutually exclusive with fixedPodIPEnabled and nodePortEnabled, When all hostNetworkEnabled, fixedPodIPEnabled, nodePortEnabled are false, the default announce IP will be a headless service.
+hostNetworkEnabled: false
 
 ## @param sentinel.cpu
 ## @param sentinel.memory

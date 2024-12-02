@@ -9,12 +9,23 @@ Define redis cluster shardingSpec with ComponentDefinition.
     componentDef: redis-cluster-7
     replicas: {{ .Values.replicas }}
     {{- include "redis-cluster.exporter" . | indent 4 }}
-    {{- if .Values.nodePortEnabled }}
+    {{- if and .Values.nodePortEnabled (not .Values.fixedPodIPEnabled) (not .Values.hostNetworkEnabled) }}
     services:
     - name: redis-advertised
       serviceType: NodePort
       podService: true
     {{- end }}
+    {{- if and .Values.fixedPodIPEnabled (not .Values.nodePortEnabled) (not .Values.hostNetworkEnabled) }}
+    env:
+    - name: FIXED_POD_IP_ENABLED
+      value: "true"
+    {{- end }}
+    {{- if and .Values.hostNetworkEnabled (not .Values.nodePortEnabled) (not .Values.fixedPodIPEnabled) }}
+    env:
+    - name: HOST_NETWORK_ENABLED
+      value: "true"
+    {{- end }}
+    serviceVersion: {{ .Values.version }}
     systemAccounts:
     - name: default
       passwordConfig:
@@ -47,7 +58,7 @@ Define redis ComponentSpec with ComponentDefinition.
 - name: redis
   {{- include "redis-cluster.replicaCount" . | indent 2 }}
   {{- include "redis-cluster.exporter" . | indent 2 }}
-  {{- if .Values.nodePortEnabled }}
+  {{- if and .Values.nodePortEnabled (not .Values.fixedPodIPEnabled) (not .Values.hostNetworkEnabled) }}
   services:
   - name: redis-advertised
     serviceType: NodePort
@@ -56,6 +67,15 @@ Define redis ComponentSpec with ComponentDefinition.
   env:
   - name: CUSTOM_SENTINEL_MASTER_NAME
     value: {{ .Values.sentinel.customMasterName | default "" }}
+  {{- if and .Values.fixedPodIPEnabled (not .Values.nodePortEnabled) (not .Values.hostNetworkEnabled) }}
+  - name: FIXED_POD_IP_ENABLED
+    value: "true"
+  {{- end }}
+  {{- if and .Values.hostNetworkEnabled (not .Values.nodePortEnabled) (not .Values.fixedPodIPEnabled) }}
+  - name: HOST_NETWORK_ENABLED
+    value: "true"
+  {{- end }}
+  serviceVersion: {{ .Values.version }}
   serviceAccountName: {{ include "kblib.serviceAccountName" . }}
   {{- include "kblib.componentResources" . | indent 2 }}
   {{- include "kblib.componentStorages" . | indent 2 }}
@@ -67,12 +87,23 @@ Define redis sentinel ComponentSpec with ComponentDefinition.
 {{- define "redis-cluster.sentinelComponentSpec" }}
 - name: redis-sentinel
   replicas: {{ .Values.sentinel.replicas }}
-  {{- if .Values.nodePortEnabled }}
+  {{- if and .Values.nodePortEnabled (not .Values.fixedPodIPEnabled) (not .Values.hostNetworkEnabled) }}
   services:
   - name: sentinel-advertised
     serviceType: NodePort
     podService: true
   {{- end }}
+  {{- if and .Values.fixedPodIPEnabled (not .Values.nodePortEnabled) (not .Values.hostNetworkEnabled) }}
+  env:
+  - name: FIXED_POD_IP_ENABLED
+    value: "true"
+  {{- end }}
+  {{- if and .Values.hostNetworkEnabled (not .Values.nodePortEnabled) (not .Values.fixedPodIPEnabled) }}
+  env:
+  - name: HOST_NETWORK_ENABLED
+    value: "true"
+  {{- end }}
+  serviceVersion: {{ .Values.version }}
   serviceAccountName: {{ include "kblib.serviceAccountName" . }}
   resources:
     limits:
@@ -148,4 +179,25 @@ Selector labels
 app.kubernetes.io/instance: {{ include "kblib.clusterName" . | quote }}
 app.kubernetes.io/managed-by: "kubeblocks"
 apps.kubeblocks.io/component-name: "redis"
+{{- end }}
+
+{{/*
+Define common fileds of cluster object
+*/}}
+{{- define "redis-cluster.clusterCommon" }}
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+  {{- if and .Values.hostNetworkEnabled (eq .Values.mode "cluster") }}
+  annotations:
+    kubeblocks.io/host-network: "shard"
+  {{- else if .Values.hostNetworkEnabled }}
+  annotations:
+    kubeblocks.io/host-network: "redis,redis-sentinel"
+  {{- end }}
+spec:
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
 {{- end }}
