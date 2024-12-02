@@ -29,7 +29,7 @@ kbcli addon index add kubeblocks https://github.com/apecloud/block-index.git
 # update the index
 kbcli addon index update kubeblocks
 # update all index
-kbcli addon index uppdate --all
+kbcli addon index update --all
 ```
 
 To search annd install an addon:

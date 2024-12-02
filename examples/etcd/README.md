@@ -267,7 +267,7 @@ You may find the list of supported Backup Methods:
 kubectl get bp etcd-cluster-etcd-backup-policy -oyaml | yq '.spec.backupMethods[].name'
 ```
 
-The method `datafile` uses `etcdctl snapsho save` to do a full backup. You may create a backup using:
+The method `datafile` uses `etcdctl snapshot save` to do a full backup. You may create a backup using:
 
 ```bash
 kubectl apply -f examples/etcd/backup.yaml
@@ -316,7 +316,7 @@ It sets path to `/metrics` and port to `client` (for container port `2379`).
 
 ##### Step 2. Accessing the Grafana Dashboard
 
-Login to the Grafana dashboard and import the dashboard, e.g. using etcd dashboard from [grafana](https://grafana.com/grafana/dashboards) .
+Login to the Grafana dashboard and import the dashboard, e.g. using etcd dashboard from [Grafana](https://grafana.com/grafana/dashboards) .
 
 > [!Note]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
