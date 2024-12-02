@@ -15,7 +15,7 @@ MySQL is a widely used, open-source relational database management system (RDBMS
 
 | Feature     | Method | Description |
 |-------------|--------|------------|
-| Base Backup | xtrabackup   | uses `xtrabackup`, an open-source tool developed by Percona to perform full backups  |
+| Full Backup | xtrabackup   | uses `xtrabackup`, an open-source tool developed by Percona to perform full backups  |
 
 ### Versions
 
@@ -67,7 +67,7 @@ helm repo add kubeblocks-addons https://apecloud.github.io/helm-charts
 helm repo add kubeblocks-addons https://jihulab.com/api/v4/projects/150246/packages/helm/stable
 # Update helm repo
 helm repo update
-# Search versions of OceanBase
+# Search versions of the Addon
 helm search repo kubeblocks/mysql --versions
 # Install the version you want (replace $version with the one you need)
 helm upgrade -i mysql kubeblocks-addons/mysql --version $version -n kb-system

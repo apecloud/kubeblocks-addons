@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: etcd-cluster
+  name: etcd-cluster-tls
   namespace: default
 spec:
   # Specifies the behavior when a Cluster is deleted.
@@ -13,17 +13,13 @@ spec:
   componentSpecs:
     - name: etcd
       componentDef: etcd
-      # ServiceVersion specifies the version of the Service expected to be
-      # provisioned by this Component.
-      # Valid options are: [3.5.15,3.5.6]
+      # A boolean flag that indicates whether the Component should use Transport
+      # Layer Security (TLS)
+      # for secure communication.
+      # Valid options are: [true,false]
+      tls: true
       serviceVersion: 3.5.15
-      # Determines whether metrics exporter information is annotated on the
-      # Component's headless Service.
-      # Valid options are [true, false]
-      disableExporter: false
-      # Specifies the desired number of replicas in the Component
       replicas: 3
-      # Specifies the resources required by the Component.
       resources:
         limits:
           cpu: "0.5"
@@ -31,20 +27,12 @@ spec:
         requests:
           cpu: "0.5"
           memory: "0.5Gi"
-      # Specifies a list of PersistentVolumeClaim templates that define the storage
-      # requirements for the Component.
       volumeClaimTemplates:
-        # Refers to the name of a volumeMount defined in
-        # `componentDefinition.spec.runtime.containers[*].volumeMounts
         - name: data
           spec:
-            # The name of the StorageClass required by the claim.
-            # If not specified, the StorageClass annotated with
-            # `storageclass.kubernetes.io/is-default-class=true` will be used by default
             storageClassName: ""
             accessModes:
               - ReadWriteOnce
             resources:
               requests:
-                # Set the storage size as needed
                 storage: 20Gi
