@@ -35,4 +35,3 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/instance: ob-cluster
-      app.kubernetes.io/managed-by: kubeblocks

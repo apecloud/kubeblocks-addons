@@ -1,5 +1,16 @@
 #!/bin/bash
 
+load_common_library() {
+  # the kb-common.sh and common.sh scripts are defined in the scripts-template configmap
+  # and are mounted to the same path which defined in the cmpd.spec.scripts
+  kblib_common_library_file="/scripts/kb-common.sh"
+  etcd_common_library_file="/scripts/common.sh"
+  # shellcheck source=/scripts/kb-common.sh
+  . "${kblib_common_library_file}"
+  # shellcheck source=/scripts/common.sh
+  . "${etcd_common_library_file}"
+}
+
 inject_bash() {
   version="$1"
 
@@ -22,6 +33,7 @@ inject_bash() {
   return 0
 }
 
+
 main() {
   if is_empty "$ETCD_VERSION"; then
     echo "ETCD_VERSION env is not set"
@@ -42,4 +54,5 @@ main() {
 ${__SOURCED__:+false} : || return 0
 
 # main
+load_common_library
 main

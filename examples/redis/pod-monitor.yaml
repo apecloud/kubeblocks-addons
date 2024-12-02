@@ -25,5 +25,5 @@ spec:
       - default
   selector:
     matchLabels:
-      workloads.kubeblocks.io/instance: redis-replication-redis
-      app.kubernetes.io/managed-by: kubeblocks
+      app.kubernetes.io/instance: redis-replication
+      apps.kubeblocks.io/component-name: redis
