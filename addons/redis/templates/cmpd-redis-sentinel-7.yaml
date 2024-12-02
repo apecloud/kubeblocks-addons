@@ -53,21 +53,21 @@ spec:
         numDigits: 5
         numSymbols: 0
         letterCase: MixedCases
+  hostNetwork:
+    containerPorts:
+      - container: redis-sentinel
+        ports:
+          - redis-sentinel
   vars:
     ## the name of current cluster instance
     - name: CLUSTER_NAME
       valueFrom:
         clusterVarRef:
           clusterName: Required
-    ## the service port of redis sentinel
-    - name: SENTINEL_SERVICE_PORT
-      value: "26379"
     ## the username of redis sentinel
     - name: SENTINEL_USER
       valueFrom:
         credentialVarRef:
-          ## reference the redis-sentinel component definition name
-          compDef: {{ include "redisSentinel7.cmpdName" . }}
           name: default
           optional: false
           username: Required
@@ -75,8 +75,6 @@ spec:
     - name: SENTINEL_PASSWORD
       valueFrom:
         credentialVarRef:
-          ## reference the redis-sentinel component definition name
-          compDef: {{ include "redisSentinel7.cmpdName" . }}
           name: default
           optional: false
           password: Required
@@ -84,21 +82,18 @@ spec:
     - name: SENTINEL_POD_NAME_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ include "redisSentinel7.cmpdName" . }}
           optional: false
           podNames: Required
     ## the sentinel pod fqdn list
     - name: SENTINEL_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ include "redisSentinel7.cmpdName" . }}
           optional: false
           podFQDNs: Required
     ## the redis sentinel advertised service port list for each pod, the value format is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."
     - name: REDIS_SENTINEL_ADVERTISED_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redisSentinel7.cmpdName" . }}
           name: sentinel-advertised
           optional: true
           port:
@@ -108,10 +103,20 @@ spec:
     - name: REDIS_SENTINEL_ADVERTISED_SVC_NAME
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "redisSentinel7.cmpdName" . }}
           name: sentinel-advertised
           optional: true
           host: Required
+    ## the redis sentinel server host network port when using host network mode, the port will be allocated automatically by KubeBlocks, if not set, the default value is 26379
+    - name: REDIS_SENTINEL_HOST_NETWORK_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: redis-sentinel
+            port:
+              name: redis-sentinel
+              option: Required
+      expression: {{ `{{if ne (index . "REDIS_SENTINEL_HOST_NETWORK_PORT") ""}}{{.REDIS_SENTINEL_HOST_NETWORK_PORT}}{{else}}26379{{end}}` | toYaml }}
     ## the username of redis for redis sentinel connection which is only used to recover redis servers when scale-out redis sentinel.
     - name: REDIS_SENTINEL_USER
       value: "kbreplicator-sentinel"
@@ -146,6 +151,25 @@ spec:
           - |
           {{- .Files.Get "scripts/redis-sentinel-member-leave.sh" | nindent 14 }}
         targetPodSelector: Any
+        ## all lifecycle actions share the same env
+        env:
+          - name: SENTINEL_SERVICE_PORT
+            value: "$(REDIS_SENTINEL_HOST_NETWORK_PORT)"
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: CURRENT_POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          - name: CURRENT_POD_HOST_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.hostIP
   runtime:
     containers:
     - name: redis-sentinel
@@ -160,6 +184,8 @@ spec:
         - name: scripts
           mountPath: /scripts
       env:
+        - name: SENTINEL_SERVICE_PORT
+          value: "$(REDIS_SENTINEL_HOST_NETWORK_PORT)"
         - name: CURRENT_POD_NAME
           valueFrom:
             fieldRef:
