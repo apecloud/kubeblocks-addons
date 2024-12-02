@@ -139,7 +139,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - scripts/member-leave.sh
+          - scripts/member-join.sh
     memberLeave:
       exec:
         image: {{ include "etcd356.image" . }}
