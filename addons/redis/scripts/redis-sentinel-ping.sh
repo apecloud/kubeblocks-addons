@@ -28,10 +28,10 @@ load_common_library() {
 
 check_redis_sentinel_ok() {
   unset_xtrace_when_ut_mode_false
-  if [ -n "$SENTINEL_PASSWORD" ]; then
-    cmd="redis-cli -h localhost -p 26379 -a $SENTINEL_PASSWORD ping"
+  if ! is_empty "$SENTINEL_PASSWORD"; then
+    cmd="redis-cli -h localhost -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD ping"
   else
-    cmd="redis-cli -h localhost -p 26379 ping"
+    cmd="redis-cli -h localhost -p $SENTINEL_SERVICE_PORT ping"
   fi
   response=$($cmd)
   set_xtrace_when_ut_mode_false

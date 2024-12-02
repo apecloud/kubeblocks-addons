@@ -215,15 +215,6 @@ spec:
           name: default
           optional: true
           password: Required
-    - name: SENTINEL_SERVICE_PORT
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "redisSentinel7.cmpdName" . }}
-          name: redis-sentinel
-          optional: true
-          port:
-            name: redis-sentinel
-            option: Required
     - name: SENTINEL_POD_NAME_LIST
       valueFrom:
         componentVarRef:
@@ -236,6 +227,18 @@ spec:
           compDef: {{ include "redisSentinel7.cmpdName" . }}
           optional: true
           podFQDNs: Required
+    ## the redis sentinel server port, if redis sentinel is in host network mode, the port will be allocated automatically by KubeBlocks, if not, the default port is 26379
+    - name: SENTINEL_SERVICE_PORT
+      valueFrom:
+        hostNetworkVarRef:
+          compDef: {{ include "redisSentinel7.cmpdName" . }}
+          optional: true
+          container:
+            name: redis-sentinel
+            port:
+              name: redis-sentinel
+              option: Required
+      expression: {{ `{{if ne (index . "SENTINEL_SERVICE_PORT") ""}}{{.SENTINEL_SERVICE_PORT}}{{else}}26379{{end}}` | toYaml }}
   lifecycleActions:
     roleProbe:
       periodSeconds: 1
