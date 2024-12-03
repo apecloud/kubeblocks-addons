@@ -116,8 +116,8 @@ componentServiceVersion:
 commitInfo:
   # @param commitInfo.commitTime - (string) The timestamp of the last code commit, formatted as "YYYY-MM-DD HH:MM:SS".
   # This parameter is used to record the exact time of the most recent code commit.
-  commitTime: "2024-12-03 08:28:35"
+  commitTime: "2024-12-03 08:29:00"
 
   # @param commitInfo.commitId - (string) The Git commit hash.
   # This parameter is used to track the specific Git commit identifier associated with the deployment.
-  commitId: "2ef1f1559d1bf5eb2a6db9ff6e93b30248ec22e4"
+  commitId: "5c0ad72ab4def5129281fe851cae7836b924443c"
