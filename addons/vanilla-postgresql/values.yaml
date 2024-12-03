@@ -85,8 +85,8 @@ shmVolume:
 commitInfo:
   # @param commitInfo.commitTime - (string) The timestamp of the last code commit, formatted as "YYYY-MM-DD HH:MM:SS".
   # This parameter is used to record the exact time of the most recent code commit.
-  commitTime: "2024-12-03 08:25:47"
+  commitTime: "2024-12-03 08:26:11"
 
   # @param commitInfo.commitId - (string) The Git commit hash.
   # This parameter is used to track the specific Git commit identifier associated with the deployment.
-  commitId: "1fa817ce51b47177b1ca861765b0dfc20141da84"
+  commitId: "04b0c00f311ed4582a2d3b6b6eb83219e3e192f5"
