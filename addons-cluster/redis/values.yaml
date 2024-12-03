@@ -81,6 +81,7 @@ redisCluster:
 
 extra:
   rbacEnabled: true
+  disableExporter: true
 
 prometheus:
   enabled: false

@@ -167,7 +167,8 @@ shards: {{ max .Values.redisCluster.shardCount 3 }}
 Define redis cluster prometheus exporter.
 */}}
 {{- define "redis-cluster.exporter" }}
-{{- if or .Values.prometheus.enabled ( not .Values.extra.disableExporter ) }}
+{{/* TODO(zhangtao): Hacky if hostnetwork is enabled, the disableExporter should be false */}}
+{{- if or .Values.prometheus.enabled ( not .Values.extra.disableExporter ) ( .Values.hostNetworkEnabled ) }}
 disableExporter: false
 {{- else }}
 disableExporter: true
