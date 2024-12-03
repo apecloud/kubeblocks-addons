@@ -83,8 +83,8 @@ nebula:
 commitInfo:
   # @param commitInfo.commitTime - (string) The timestamp of the last code commit, formatted as "YYYY-MM-DD HH:MM:SS".
   # This parameter is used to record the exact time of the most recent code commit.
-  commitTime: "2024-12-03 07:20:14"
+  commitTime: "2024-12-03 07:20:38"
 
   # @param commitInfo.commitId - (string) The Git commit hash.
   # This parameter is used to track the specific Git commit identifier associated with the deployment.
-  commitId: "1ee46c6a2d4adc7e32d459c637d1568162b1345d"
+  commitId: "192148f173e2a0a7e942b7d75c2050f9ee2d98fd"
