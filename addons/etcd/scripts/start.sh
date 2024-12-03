@@ -61,7 +61,9 @@ update_etcd_conf() {
   current_pod_name="$3"
   my_endpoint="$4"
 
-  cp "$default_template_conf" "$tpl_conf"
+  if [ ! -e "$tpl_conf" ]; then
+    cp "$default_template_conf" "$tpl_conf"
+  fi
 
   sed -i.bak "s/^name:.*/name: $current_pod_name/g" "$tpl_conf"
   sed -i.bak "s#\(initial-advertise-peer-urls: http\(s\{0,1\}\)://\).*#\1$my_endpoint:2380#g" "$tpl_conf"

@@ -29,13 +29,12 @@ load_common_library() {
 }
 
 add_member() {
-  etcd_name="$1"
   # TODO: TLS and LB service
-  exec_etcdctl "http://$LEADER_POD_FQDN:2379" member add "$etcd_name"
+  exec_etcdctl "http://$LEADER_POD_FQDN:2379" member add "$KB_JOIN_MEMBER_POD_NAME" --peer-urls=http://$KB_JOIN_MEMBER_POD_FQDN:2380
 }
 
 member_join() {
-  add_member "$KB_JOIN_MEMBER_POD_NAME"
+  add_member
   status=$?
   if [ $status -ne 0 ]; then
     echo "ERROR: etcdctl add_member failed" >&2
