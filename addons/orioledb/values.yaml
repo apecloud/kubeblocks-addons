@@ -101,8 +101,8 @@ logConfigs:
 commitInfo:
   # @param commitInfo.commitTime - (string) The timestamp of the last code commit, formatted as "YYYY-MM-DD HH:MM:SS".
   # This parameter is used to record the exact time of the most recent code commit.
-  commitTime: "2024-12-03 08:25:00"
+  commitTime: "2024-12-03 08:25:23"
 
   # @param commitInfo.commitId - (string) The Git commit hash.
   # This parameter is used to track the specific Git commit identifier associated with the deployment.
-  commitId: "066fafeba0c5cf34a49e64109ad78f48b8488285"
+  commitId: "6d66062b03039bcca63444e5a96d5135694095cd"
