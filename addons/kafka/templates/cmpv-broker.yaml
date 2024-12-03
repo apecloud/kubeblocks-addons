@@ -4,6 +4,8 @@ metadata:
   name: kafka-broker
   labels:
     {{- include "kafka.labels" . | nindent 4 }}
+  annotations:
+    {{- include "kafka.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
     - compDefs:

@@ -4,6 +4,8 @@ metadata:
   name: {{ include "orchestrator.name" . }}
   labels:
     {{- include "orchestrator.labels" . | nindent 4 }}
+  annotations:
+    {{- include "orchestrator.apiVersion" . | nindent 4 }}
 spec:
   topologies:
   - name: raft

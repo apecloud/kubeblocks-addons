@@ -4,6 +4,8 @@ metadata:
   name: influxdb
   labels:
     {{- include "influxdb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "influxdb.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
     - compDefs:

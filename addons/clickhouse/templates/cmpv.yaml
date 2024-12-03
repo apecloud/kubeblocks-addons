@@ -4,6 +4,8 @@ metadata:
   name: clickhouse
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
+  annotations:
+    {{- include "clickhouse.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
     - releases:

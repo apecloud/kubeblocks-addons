@@ -55,6 +55,14 @@ Common weaviate annotations
 */}}
 {{- define "weaviate.annotations" -}}
 helm.sh/resource-policy: keep
+{{ include "weaviate.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "weaviate.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 {{/*

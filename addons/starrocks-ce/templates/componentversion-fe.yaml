@@ -4,6 +4,8 @@ metadata:
   name: {{ include "fe.componentDefName" . }}
   labels:
     {{- include "starrocks.labels" . | nindent 4 }}
+  annotations:
+    {{- include "starrocks.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
   - compDefs:

@@ -101,6 +101,14 @@ Common annotations
 */}}
 {{- define "opensearch.annotations" -}}
 helm.sh/resource-policy: keep
+{{ include "opensearch.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "opensearch.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 {{/*

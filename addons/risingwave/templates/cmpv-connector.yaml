@@ -4,6 +4,8 @@ metadata:
   name: risingwave-connector
   labels:
     {{- include "risingwave.labels" . | nindent 4 }}
+  annotations:
+    {{- include "risingwave.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
     - releases:
