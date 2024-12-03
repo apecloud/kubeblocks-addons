@@ -122,8 +122,8 @@ clusterDomain: ".cluster.local"
 commitInfo:
   # @param commitInfo.commitTime - (string) The timestamp of the last code commit, formatted as "YYYY-MM-DD HH:MM:SS".
   # This parameter is used to record the exact time of the most recent code commit.
-  commitTime: "2024-12-03 08:24:36"
+  commitTime: "2024-12-03 08:25:00"
 
   # @param commitInfo.commitId - (string) The Git commit hash.
   # This parameter is used to track the specific Git commit identifier associated with the deployment.
-  commitId: "cf3ad969d0be015edcf9743d6796e1b9c36c26bf"
+  commitId: "066fafeba0c5cf34a49e64109ad78f48b8488285"
