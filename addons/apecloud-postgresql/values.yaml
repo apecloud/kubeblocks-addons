@@ -71,8 +71,8 @@ cmpdVersionPrefix:
 commitInfo:
   # @param commitInfo.commitTime - (string) The timestamp of the last code commit, formatted as "YYYY-MM-DD HH:MM:SS".
   # This parameter is used to record the exact time of the most recent code commit.
-  commitTime: "2024-12-03 08:26:11"
+  commitTime: "2024-12-03 08:26:35"
 
   # @param commitInfo.commitId - (string) The Git commit hash.
   # This parameter is used to track the specific Git commit identifier associated with the deployment.
-  commitId: "04b0c00f311ed4582a2d3b6b6eb83219e3e192f5"
+  commitId: "34d9deae9ac74e25fa12b27924a7f8738c49415c"
