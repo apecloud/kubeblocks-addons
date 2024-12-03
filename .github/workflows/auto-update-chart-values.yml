@@ -1,13 +1,13 @@
-name: Auto Update Chart Commit
+name: Auto Update Chart Values
 
 on:
   push:
     paths:
       - "addons/**"
       - "addons-cluster/**"
-#    branches:
-#      - 'main'
-#      - 'release-*'
+    branches:
+      - 'main'
+      - 'release-*'
 
 env:
   GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
@@ -25,18 +25,22 @@ jobs:
       - name: Get Update Chart Dir
         id: get_update_chart_dir
         run: |
-          change_files=$(git diff --name-only HEAD^ HEAD)
-          addons_change_files=$(echo "$change_files" | grep -E '^addons/|^addons-cluster/')
-          update_chart_dirs=$(echo "$addons_change_files" | cut -d'/' -f1,2 | sort -u)
           UPDATE_CHART=""
-          for update_chart in $(echo "$update_chart_dirs"); do
-              if [[ -z "$UPDATE_CHART" ]]; then
-                  UPDATE_CHART="${update_chart}"
-              else
-                  UPDATE_CHART="${UPDATE_CHART}|${update_chart}"
-              fi
-          done
-          echo "UPDATE_CHART:${UPDATE_CHART}"
+          COMMIT_BODY="$(git show -s --format=%B HEAD)"
+          if [[ "${COMMIT_BODY}" != *"auto update values commit info"* ]]; then
+              change_files=$(git diff --name-only HEAD^ HEAD)
+              addons_change_files=$(echo "$change_files" | (grep -E '^addons/|^addons-cluster/' || true))
+              update_chart_dirs=$(echo "$addons_change_files" | cut -d'/' -f1,2 | sort -u)
+              UPDATE_CHART=""
+              for update_chart in $(echo "$update_chart_dirs"); do
+                  if [[ -z "$UPDATE_CHART" ]]; then
+                      UPDATE_CHART="${update_chart}"
+                  else
+                      UPDATE_CHART="${UPDATE_CHART}|${update_chart}"
+                  fi
+              done
+              echo "UPDATE_CHART:${UPDATE_CHART}"
+          fi
           echo update-chart="$UPDATE_CHART" >> $GITHUB_OUTPUT
 
   auto-update-chart-values:
