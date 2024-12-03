@@ -28,15 +28,3 @@ serviceAccount:
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
   name: ""
-
-
-# Commit related information
-# @param commitInfo - (object) Contains metadata about the last code commit.
-commitInfo:
-  # @param commitInfo.commitTime - (string) The timestamp of the last code commit, formatted as "YYYY-MM-DD HH:MM:SS".
-  # This parameter is used to record the exact time of the most recent code commit.
-  commitTime: ""
-
-  # @param commitInfo.commitId - (string) The Git commit hash.
-  # This parameter is used to track the specific Git commit identifier associated with the deployment.
-  commitId: ""
