@@ -33,15 +33,3 @@ storage: 10
 
 ## @param log storage, the unit is Gi
 logStorage: 2
-
-
-# Commit related information
-# @param commitInfo - (object) Contains metadata about the last code commit.
-commitInfo:
-  # @param commitInfo.commitTime - (string) The timestamp of the last code commit, formatted as "YYYY-MM-DD HH:MM:SS".
-  # This parameter is used to record the exact time of the most recent code commit.
-  commitTime: "2024-12-03 07:22:10"
-
-  # @param commitInfo.commitId - (string) The Git commit hash.
-  # This parameter is used to track the specific Git commit identifier associated with the deployment.
-  commitId: "6c2884d88b2e4111a6140d1c108ecfec8dbd5246"
