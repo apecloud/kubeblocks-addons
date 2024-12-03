@@ -56,8 +56,8 @@ bashBusyboxImage:
 commitInfo:
   # @param commitInfo.commitTime - (string) The timestamp of the last code commit, formatted as "YYYY-MM-DD HH:MM:SS".
   # This parameter is used to record the exact time of the most recent code commit.
-  commitTime: "2024-12-03 08:27:43"
+  commitTime: "2024-12-03 08:28:10"
 
   # @param commitInfo.commitId - (string) The Git commit hash.
   # This parameter is used to track the specific Git commit identifier associated with the deployment.
-  commitId: "230bf56f621a35e5248d45bf0fb5286f175f6b9e"
+  commitId: "1d26145d7f3bbcce67dc31596bef4a71116b1c9d"
