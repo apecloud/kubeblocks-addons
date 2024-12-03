@@ -37,7 +37,7 @@ spec:
   backupType: Full
   backup:
     backupData:
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.br.repository }}:{{ .Values.image.br.tag-8 }}
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.br.repository }}:{{ .Values.image.br.tag8 }}
       syncProgress:
         enabled: false
         intervalSeconds: 5
@@ -49,7 +49,7 @@ spec:
   restore:
     postReady:
     - job:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.br.repository }}:{{ .Values.image.br.tag-8 }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.br.repository }}:{{ .Values.image.br.tag8 }}
         command:
         - bash
         - -c

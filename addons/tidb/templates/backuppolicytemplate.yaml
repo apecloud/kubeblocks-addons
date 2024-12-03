@@ -17,6 +17,6 @@ spec:
     - componentDefs:
         - tidb-pd-8
       backupMethods:
-        - name: br-8
+        - name: br
           snapshotVolumes: false
           actionSetName: tidb-actionset-8

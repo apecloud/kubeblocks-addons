@@ -12,12 +12,12 @@ spec:
     - name: PD_HOST
       valueFrom:
         serviceVarRef:
-          compDef: tidb-pd-7
+          compDef: tidb-pd-8
           host: Required
     - name: PD_PORT
       valueFrom:
         serviceVarRef:
-          compDef: tidb-pd-7
+          compDef: tidb-pd-8
           port:
             name: client
     - name: PD_ADDRESS
