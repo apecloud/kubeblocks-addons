@@ -4,6 +4,8 @@ metadata:
   name: apecloud-postgresql
   labels:
     {{- include "apecloud-postgresql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "apecloud-postgresql.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
     - compDefs:

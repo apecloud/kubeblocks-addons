@@ -47,6 +47,14 @@ Common annotations
 */}}
 {{- define "redis.annotations" -}}
 helm.sh/resource-policy: keep
+{{ include "redis.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "redis.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 {{/*

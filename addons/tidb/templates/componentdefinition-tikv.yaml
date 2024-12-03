@@ -3,7 +3,7 @@ kind: ComponentDefinition
 metadata:
   name: {{ include "tidb.tikv7.compDefName" . }}
   annotations:
-    {{- include "tidb.multiVersionAnnotation" . | nindent 4}}
+    {{- include "tidb.annotations" . | nindent 4}}
   labels:
     {{- include "tidb.labels" . | nindent 4 }}
 spec:

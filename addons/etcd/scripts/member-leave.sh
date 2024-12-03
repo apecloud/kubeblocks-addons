@@ -29,8 +29,8 @@ load_common_library() {
 }
 
 get_leaver_endpoint() {
-  endpoints=$(echo "$KB_MEMBER_ADDRESSES" | tr ',' '\n')
-  echo "$endpoints" | grep "$KB_LEAVE_MEMBER_POD_NAME"
+  # TODO: TLS and LB service
+  echo "http://$KB_LEAVE_MEMBER_POD_FQDN:2379"
 }
 
 get_etcd_id() {
@@ -40,16 +40,17 @@ get_etcd_id() {
 
 remove_member() {
   etcd_id="$1"
-  exec_etcdctl "$KB_MEMBER_ADDRESSES" member remove "$etcd_id"
+  # TODO: TLS and LB service
+  exec_etcdctl "http://$LEADER_POD_FQDN:2379" member remove "$etcd_id"
 }
 
 member_leave() {
   leaver_endpoint=$(get_leaver_endpoint)
 
-  if [ -z "$leaver_endpoint" ]; then
-    echo "ERROR: leave member pod name not found in member addresses" >&2
-    return 1
-  fi
+  #if [ -z "$leaver_endpoint" ]; then
+  #  echo "ERROR: leave member pod FQDN is empty" >&2
+  #  return 1
+  #fi
 
   etcd_id=$(get_etcd_id "$leaver_endpoint")
   remove_member "$etcd_id"

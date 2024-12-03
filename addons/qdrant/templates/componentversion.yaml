@@ -4,6 +4,8 @@ metadata:
   name: qdrant
   labels:
     {{- include "qdrant.labels" . | nindent 4 }}
+  annotations:
+    {{- include "qdrant.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
   - compDefs:

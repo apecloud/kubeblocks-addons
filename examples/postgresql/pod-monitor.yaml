@@ -2,7 +2,7 @@
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
-  name: mysql-cluster-pod-monitor
+  name: pg-cluster-pod-monitor
   namespace: monitoring # Note: this is namespace for prometheus operator
   labels:               # this is labels set in `prometheus.spec.podMonitorSelector`
     release: prometheus
@@ -25,5 +25,5 @@ spec:
       - default
   selector:
     matchLabels:
-      app.kubernetes.io/instance: mysql-cluster
-      apps.kubeblocks.io/component-name: mysql
+      app.kubernetes.io/instance: pg-cluster
+      apps.kubeblocks.io/component-name: postgresql

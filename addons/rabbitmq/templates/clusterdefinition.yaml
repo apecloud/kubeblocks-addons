@@ -4,6 +4,8 @@ metadata:
   name: rabbitmq
   labels:
     {{- include "rabbitmq.labels" . | nindent 4 }}
+  annotations:
+    {{- include "rabbitmq.apiVersion" . | nindent 4 }}
 spec:
   topologies:
     - name: clustermode
