@@ -151,6 +151,10 @@
 
 	"enable-debug-command"?: string & "yes" | "no" | "local"
 
+	"io-threads": int & >=2 & <=8 | *4
+
+	"io-threads-do-reads"?: string & "yes" | "no"
+
 	...
 }
 

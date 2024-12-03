@@ -14,8 +14,8 @@ PostgreSQL (Postgres) is an open source object-relational database known for rel
 
 | Feature     | Method | Description |
 |-------------|--------|------------|
-| Base Backup | pg-basebackup   | uses `pg_basebackup`,  a PostgreSQL utility to create a base backup   |
-| Base Backup | postgres-wal-g   | uses `wal-g` to create a full backup (and don't forget to config wal-g by setting envs ahead) |
+| Full Backup | pg-basebackup   | uses `pg_basebackup`,  a PostgreSQL utility to create a base backup   |
+| Full Backup | postgres-wal-g   | uses `wal-g` to create a full backup (and don't forget to config wal-g by setting envs ahead) |
 | Continuous Backup | postgresql-pitr | uploading PostgreSQL Write-Ahead Logging (WAL) files periodically to the backup repository. |
 
 ### Versions
@@ -397,11 +397,11 @@ KubeBlocks supports multiple backup methods for PostgreSQL cluster, such as `pg-
 
 You may find the supported backup methods in the `BackupPolicy` of the cluster, e.g. `pg-cluster-postgresql-backup-policy` in this case, and find how these methods will be scheduled in the `BackupSchedule` of the cluster, e.g.. `pg-cluster-postgresql-backup-schedule` in this case.
 
-We will elaborate on the `pg-basebackup` and `wal-g` backup methods in the following sections to demonstrate how to create base backup and incremental backup for the cluster.
+We will elaborate on the `pg-basebackup` and `wal-g` backup methods in the following sections to demonstrate how to create full backup and continuouse backup for the cluster.
 
 #### pg_basebackup
 
-##### Base Backup(backup-pg-basebasekup.yaml)
+##### Full Backup(backup-pg-basebasekup.yaml)
 
 The method `pg-basebackup` uses `pg_basebackup`,  a PostgreSQL utility to create a base backup[^1]
 
@@ -423,9 +423,9 @@ Information, such as `path`, `timeRange` about the backup will be recorded into 
 
 Alternatively, you can update the `BackupSchedule` to enable the method `pg-basebackup` to schedule base backup periodically, will be elaborated in the following section.
 
-#### Incremental Backup
+#### Continuouse Backup
 
-To enable incremental backup, you need to update `BackupSchedule` and enable the method `archive-wal`.
+To enable continuouse backup, you need to update `BackupSchedule` and enable the method `archive-wal`.
 
 ```yaml
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
@@ -450,11 +450,11 @@ spec:
     retentionPeriod: 7d # set the retention period to your need
   - backupMethod: archive-wal
     cronExpression: '*/5 * * * *'
-    enabled: true  # set to `true` to enable incremental backup
+    enabled: true  # set to `true` to enable continuouse backup
     retentionPeriod: 8d # set the retention period to your need
 ```
 
-Once the `BackupSchedule` is updated, the incremental backup starts to work, and you can check the status of the backup with following command:
+Once the `BackupSchedule` is updated, the continuouse backup starts to work, and you can check the status of the backup with following command:
 
 ```bash
 kubectl get backup -l app.kubernetes.io/instance=pg-cluster
@@ -472,7 +472,7 @@ kubectl get backup -l app.kubernetes.io/instance=pg-cluster -l dataprotection.ku
 
 WAL-G is an archival restoration tool for PostgreSQL, MySQL/MariaDB, and MS SQL Server (beta for MongoDB and Redis).[^2]
 
-##### [Base Backup](basebackup-wal-g.yaml)
+##### [Full Backup](basebackup-wal-g.yaml)
 
 To create wal-g backup for the cluster, it is a multi-step process.
 

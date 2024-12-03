@@ -94,6 +94,24 @@ spec:
           compDef: {{ include "redisSentinel7.cmpdName" . }}
           optional: false
           podFQDNs: Required
+    ## the redis sentinel advertised service port list for each pod, the value format is "pod1Svc:nodeport1,pod2Svc:nodeport2,..."
+    - name: REDIS_SENTINEL_ADVERTISED_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redisSentinel7.cmpdName" . }}
+          name: sentinel-advertised
+          optional: true
+          port:
+            name: sentinel-advertised
+            option: Required
+    ## the redis sentinel advertised service name list for each pod, the value format is "pod1Svc,pod2Svc,..."
+    - name: REDIS_SENTINEL_ADVERTISED_SVC_NAME
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "redisSentinel7.cmpdName" . }}
+          name: sentinel-advertised
+          optional: true
+          host: Required
     ## the username of redis for redis sentinel connection which is only used to recover redis servers when scale-out redis sentinel.
     - name: REDIS_SENTINEL_USER
       value: "kbreplicator-sentinel"

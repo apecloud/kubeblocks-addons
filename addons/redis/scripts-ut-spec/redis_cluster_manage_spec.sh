@@ -285,7 +285,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
         echo "redis-shard-sxj-0"
       }
 
-      extract_ordinal_from_object_name() {
+      extract_obj_ordinal() {
         return 1
       }
 
@@ -311,7 +311,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
         echo "redis-shard-sxj-0"
       }
 
-      extract_ordinal_from_object_name() {
+      extract_obj_ordinal() {
         case "$1" in
           "redis-shard-sxj-0")
             echo "0"
@@ -350,7 +350,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
         echo "redis-shard-sxj-0"
       }
 
-      extract_ordinal_from_object_name() {
+      extract_obj_ordinal() {
         case "$1" in
           "redis-shard-sxj-0")
             echo "0"
@@ -396,7 +396,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
         echo "redis-shard-sxj-0"
       }
 
-      extract_ordinal_from_object_name() {
+      extract_obj_ordinal() {
         case "$1" in
           "redis-shard-sxj-0")
             echo "0"
@@ -571,7 +571,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
     End
 
     Context "when failed to get ordinal of min lexicographical pod"
-      extract_ordinal_from_object_name() {
+      extract_obj_ordinal() {
         return 1
       }
 

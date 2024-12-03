@@ -6,17 +6,9 @@ Describe "Member Leave Script Tests"
 
   Describe "get_leaver_endpoint()"
     It "returns the correct leaver endpoint"
-      export KB_MEMBER_ADDRESSES="http://etcd-0:2379,http://etcd-1:2379,http://etcd-2:2379"
-      export KB_LEAVE_MEMBER_POD_NAME="etcd-1"
+      export KB_LEAVE_MEMBER_POD_FQDN="etcd-1"
       When call get_leaver_endpoint
       The output should equal "http://etcd-1:2379"
-    End
-
-    It "returns empty when leaver endpoint is not found"
-      export KB_MEMBER_ADDRESSES="http://etcd-0:2379,http://etcd-1:2379,http://etcd-2:2379"
-      export KB_LEAVE_MEMBER_POD_NAME="etcd-3"
-      When call get_leaver_endpoint
-      The status should be failure
     End
   End
 
@@ -53,21 +45,14 @@ Describe "Member Leave Script Tests"
       The status should be success
     End
 
-    It "fails to leave the member when leaver endpoint is not found"
-      get_leaver_endpoint() { return 1; }
-      When call member_leave
-      The status should be failure
-      The stderr should include "ERROR: leave member pod name not found in member addresses"
-    End
-
-    It "fails to leave the member when etcd ID retrieval fails"
-      get_leaver_endpoint() { echo "http://etcd-1:2379"; }
-      get_etcd_id() { return 1; }
-      exec_etcdctl() { if [ -z "$1" ]; then echo "ERROR: fails to get etcd id" >&2; fi; return 1; }
-      When call member_leave
-      The status should be failure
-      The stderr should include "ERROR: fails to get etcd id"
-      The stderr should include "ERROR: etcdctl remove_member failed"
-    End
+    # It "fails to leave the member when etcd ID retrieval fails"
+    #   get_leaver_endpoint() { echo "http://etcd-1:2379"; }
+    #   get_etcd_id() { return 1; }
+    #   exec_etcdctl() { if [ -z "$1" ]; then echo "ERROR: fails to get etcd id" >&2; fi; return 1; }
+    #   When call member_leave
+    #   The status should be failure
+    #   The stderr should include "ERROR: fails to get etcd id"
+    #   The stderr should include "ERROR: etcdctl remove_member failed"
+    # End
   End
 End

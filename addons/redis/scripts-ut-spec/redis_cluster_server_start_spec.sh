@@ -780,7 +780,7 @@ Describe "Redis Cluster Server Start Bash Script Tests"
       End
     End
 
-    Context "when failed to meet primary node"
+    Context "when success to meet primary node"
       check_redis_server_ready_with_retry() {
         return 0
       }
@@ -818,8 +818,8 @@ Describe "Redis Cluster Server Start Bash Script Tests"
         echo "10.42.0.227"
       }
 
-      send_cluster_meet_with_retry() {
-        return 1
+      scale_out_replica_send_meet() {
+        return 0
       }
 
       shutdown_redis_server() {
@@ -842,11 +842,88 @@ Describe "Redis Cluster Server Start Bash Script Tests"
       }
       After "un_setup"
 
-      It "exits with error when failed to meet primary node"
+      It "when success to meet primary node"
         When run scale_redis_cluster_replica
-        The status should be failure
+        The status should be success
         The stdout should include "Redis server is ready, continue to scale out replica"
-        The stderr should include "Failed to meet the node redis-shard-sxj-0.redis-shard-sxj-headless.default.svc:6379 in scale_redis_cluster_replica, shutdown redis server"
+      End
+    End
+  End
+
+  Describe "scale_out_replica_send_meet()"
+    Context "when node is already in cluster"
+      check_node_in_cluster() {
+        return 0
+      }
+
+      It "returns success when node is already in cluster"
+        When call scale_out_replica_send_meet "127.0.0.1" "6379" "16379" "redis-shard-sxj-1"
+        The status should be success
+        The stdout should include "Node $CURRENT_POD_NAME is successfully added to the cluster."
+      End
+    End
+
+    Context "when meet command succeeds"
+      check_node_in_cluster() {
+        return 1
+      }
+
+      get_cluster_announce_ip_with_retry() {
+        echo "10.42.0.227"
+      }
+
+      send_cluster_meet_with_retry() {
+        return 0
+      }
+
+      setup() {
+        export service_port="6379"
+        export CURRENT_POD_NAME="redis-shard-sxj-1"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset service_port
+        unset CURRENT_POD_NAME
+      }
+      After "un_setup"
+
+      It "returns success when meet command succeeds"
+        When call scale_out_replica_send_meet "127.0.0.1" "6379" "16379" "redis-shard-sxj-1"
+        The status should be success
+        The stdout should include "scale out replica meet the node 10.42.0.227 successfully..."
+      End
+    End
+
+    Context "when meet command fails"
+      check_node_in_cluster() {
+        return 1
+      }
+
+      get_cluster_announce_ip_with_retry() {
+        echo "10.42.0.227"
+      }
+
+      send_cluster_meet_with_retry() {
+        return 1
+      }
+
+      setup() {
+        export service_port="6379"
+        export CURRENT_POD_NAME="redis-shard-sxj-1"
+      }
+      Before "setup"
+
+      un_setup() {
+        unset service_port
+        unset CURRENT_POD_NAME
+      }
+      After "un_setup"
+
+      It "returns failure when meet command fails"
+        When call scale_out_replica_send_meet "127.0.0.1" "6379" "16379" "redis-shard-sxj-1"
+        The status should be failure
+        The stderr should include "Failed to meet the node 127.0.0.1 in scale_redis_cluster_replica, shutdown redis server"
       End
     End
   End

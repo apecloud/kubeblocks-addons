@@ -4,6 +4,8 @@ metadata:
   name: mogdb
   labels:
     {{- include "mogdb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mogdb.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
     - releases:

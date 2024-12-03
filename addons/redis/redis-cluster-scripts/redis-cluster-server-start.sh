@@ -239,6 +239,11 @@ scale_redis_cluster_replica() {
   if [ $status -ne 0 ] ; then
     if contains "$replicated_output" "is not empty"; then
       echo "Replica is not empty, Either the node already knows other nodes (check with CLUSTER NODES) or contains some key in database 0"
+    elif [[ $replicated_output == *"Not all 16384 slots are covered by nodes"* ]]; then
+      # shutdown the redis server if the cluster is not fully covered by nodes
+      echo "Not all 16384 slots are covered by nodes, shutdown redis server" >&2
+      shutdown_redis_server
+      exit 1
     else
       echo "Failed to add the node $current_pod_fqdn to the cluster in scale_redis_cluster_replica, Error message: $replicated_output, shutdown redis server" >&2
       shutdown_redis_server "$service_port"
@@ -246,24 +251,78 @@ scale_redis_cluster_replica() {
     fi
   fi
 
+  # Hacky: When the entire redis cluster is restarted, a hacky sleep is used to wait for all primaries to enter the restarting state
+  sleep_when_ut_mode_false 60
+
   # cluster meet the primary node until the current node is successfully added to the cluster
+  current_primary_met=false
+  declare -A other_primary_met
+  for node_info in "${other_comp_primary_nodes[@]}"; do
+    other_primary_met["$node_info"]=false
+  done
   while true; do
-    if check_node_in_cluster "$primary_node_endpoint" "$primary_node_port" "$CURRENT_POD_NAME"; then
-      echo "Node $CURRENT_POD_NAME is successfully added to the cluster."
+    all_met=true
+
+    # meet current component primary node if not met yet
+    if ! $current_primary_met; then
+      if scale_out_replica_send_meet "$primary_node_endpoint" "$primary_node_port" "$primary_node_bus_port" "$CURRENT_POD_NAME"; then
+        echo "Successfully meet the primary node $primary_node_endpoint_with_port in scale_redis_cluster_replica"
+        current_primary_met=true
+      else
+        echo "Failed to meet current primary node $primary_node_endpoint_with_port"
+        all_met=false
+      fi
+    fi
+
+    # meet the other components primary nodes if not met yet
+    for node_info in "${other_comp_primary_nodes[@]}"; do
+      if [ "${other_primary_met[$node_info]}" = false ]; then
+        node_endpoint_with_port=$(echo "$node_info" | awk -F '@' '{print $1}' | awk -F '#' '{print $3}')
+        node_endpoint=$(echo "$node_endpoint_with_port" | awk -F ':' '{print $1}')
+        node_port=$(echo "$node_endpoint_with_port" | awk -F ':' '{print $2}')
+        node_bus_port=$(echo "$node_info" | awk -F '@' '{print $2}')
+
+        if scale_out_replica_send_meet "$node_endpoint" "$node_port" "$node_bus_port" "$CURRENT_POD_NAME"; then
+          echo "Successfully meet the primary node $node_endpoint_with_port in scale_redis_cluster_replica"
+          other_primary_met["$node_info"]=true
+        else
+          echo "Failed to meet the other component primary node $node_endpoint_with_port in scale_redis_cluster_replica" >&2
+          all_met=false
+        fi
+      fi
+    done
+
+    # If all nodes are met successfully, break the loop
+    if $all_met && $current_primary_met; then
+      echo "All primary nodes have been successfully met"
       break
     fi
-    primary_node_cluster_announce_ip=$(get_cluster_announce_ip_with_retry "$primary_node_endpoint" "$primary_node_port")
-    # send cluster meet command to the primary node
-    if send_cluster_meet_with_retry "127.0.0.1" "$service_port" "$primary_node_cluster_announce_ip" "$primary_node_port" "$primary_node_bus_port"; then
-      echo "scale out replica meet the node $primary_node_endpoint_with_port successfully..."
-      sleep_when_ut_mode_false 3
-    else
-      echo "Failed to meet the node $primary_node_endpoint_with_port in scale_redis_cluster_replica, shutdown redis server" >&2
-      shutdown_redis_server "$service_port"
-      exit 1
-    fi
+
+    sleep_when_ut_mode_false 3
   done
-  exit 0
+}
+
+scale_out_replica_send_meet() {
+  local node_endpoint_to_meet="$1"
+  local node_port_to_meet="$2"
+  local node_bus_port_to_meet="$3"
+  local node_to_join="$4"
+
+  if check_node_in_cluster "$node_endpoint_to_meet" "$node_port_to_meet" "$node_to_join"; then
+    echo "Node $CURRENT_POD_NAME is successfully added to the cluster."
+    return 0
+  fi
+
+  node_cluster_announce_ip=$(get_cluster_announce_ip_with_retry "$node_endpoint_to_meet" "$node_port_to_meet")
+  # send cluster meet command to the target node
+  if send_cluster_meet_with_retry "127.0.0.1" "$service_port" "$node_cluster_announce_ip" "$node_port_to_meet" "$node_bus_port_to_meet"; then
+    echo "scale out replica meet the node $node_cluster_announce_ip successfully..."
+  else
+    echo "Failed to meet the node $node_endpoint_to_meet in scale_redis_cluster_replica, shutdown redis server" >&2
+    return 1
+  fi
+
+  return 0
 }
 
 load_redis_template_conf() {

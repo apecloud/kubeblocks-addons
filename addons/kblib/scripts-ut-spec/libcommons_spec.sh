@@ -11,8 +11,9 @@ Describe 'kubeblocks commons library tests'
   cleanup() { rm -f $libcommons_file; }
   AfterAll 'cleanup'
 
+  Include $libcommons_file
+
   Describe 'call_func_with_retry'
-    Include $libcommons_file
 
     successful_function_with_one_param() {
       echo "Successful function called with one arguments: $1"
@@ -74,6 +75,24 @@ Describe 'kubeblocks commons library tests'
         The output should include "Function fails on first call"
         The stderr should include "Function 'fails_on_first_call_only' failed in 1 times. Retrying in 1 seconds..."
         The output should include "Function succeeds on subsequent calls"
+        The status should be success
+      End
+    End
+  End
+
+  Describe 'extract_obj_ordinal'
+    Context 'when the object ordinal is a single digit'
+      It 'should extract the object ordinal'
+        When call extract_obj_ordinal "my-object-1"
+        The output should equal "1"
+        The status should be success
+      End
+    End
+
+    Context 'when the object ordinal is a single digit'
+      It 'should extract the object ordinal'
+        When call extract_obj_ordinal "my-object-0-1"
+        The output should equal "1"
         The status should be success
       End
     End

@@ -141,7 +141,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - scripts/roleprobe.sh
+          - /scripts/roleprobe.sh
     memberJoin:
       exec:
         image: {{ include "etcd356.image" . }}
@@ -149,7 +149,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - scripts/member-leave.sh
+          - /scripts/member-join.sh
     memberLeave:
       exec:
         image: {{ include "etcd356.image" . }}
@@ -157,7 +157,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - scripts/member-leave.sh
+          - /scripts/member-leave.sh
     switchover:
       exec:
         image: {{ include "etcd356.image" . }}
@@ -165,7 +165,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - scripts/switchover.sh
+          - /scripts/switchover.sh
   configs:
     - name: etcd-configuration-tpl
       templateRef: {{ include "etcd3.configurationTemplate" .}}

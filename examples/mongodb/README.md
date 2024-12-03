@@ -14,8 +14,8 @@ MongoDB is a document database designed for ease of application development and 
 
 | Feature     | Method | Description |
 |-------------|--------|------------|
-| Base Backup | dump   | uses `mongodump`, a MongoDB utility used to create a binary export of the contents of a database  |
-| Base Backup | datafile | backup the data files of the database |
+| Full Backup | dump   | uses `mongodump`, a MongoDB utility used to create a binary export of the contents of a database  |
+| Full Backup | datafile | backup the data files of the database |
 
 ### Versions
 
