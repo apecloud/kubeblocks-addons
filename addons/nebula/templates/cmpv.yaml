@@ -4,6 +4,8 @@ metadata:
   name: nebula
   labels:
     {{- include "nebula.labels" . | nindent 4 }}
+  annotations:
+    {{- include "nebula.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
     - releases:

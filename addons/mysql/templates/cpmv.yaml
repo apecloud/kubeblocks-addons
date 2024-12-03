@@ -4,6 +4,8 @@ metadata:
   name: mysql
   labels:
     {{- include "mysql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mysql.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
     - compDefs:

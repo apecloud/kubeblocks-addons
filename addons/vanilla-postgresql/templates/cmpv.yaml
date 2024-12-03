@@ -4,6 +4,8 @@ metadata:
   name: vanilla-postgresql
   labels:
     {{- include "vanilla-postgresql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "vanilla-postgresql.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
     - compDefs:

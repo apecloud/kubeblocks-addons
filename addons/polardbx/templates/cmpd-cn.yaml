@@ -4,6 +4,8 @@ metadata:
   name: polardbx-cn-{{ .Chart.Version }}
   labels:
     {{- include "polardbx.labels" . | nindent 4 }}
+  annotations:
+    {{- include "polardbx.annotations" . | nindent 4 }}
 spec:
   provider: Community
   description: {{ .Chart.Description }}
