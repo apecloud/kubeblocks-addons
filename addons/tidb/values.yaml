@@ -6,6 +6,7 @@ image:
   registry: docker.io
   br:
     repository: apecloud/br
+    tag8: v8.4.0
   pd:
     repository: apecloud/pd
   tidb:

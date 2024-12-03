@@ -10,11 +10,11 @@ spec:
       default: true
       components:
         - name: tidb-pd
-          compDef: tidb-pd-7
+          compDef: tidb-pd-\d+
         - name: tikv
-          compDef: tikv-7
+          compDef: tikv-\d+
         - name: tidb
-          compDef: tidb-7
+          compDef: tidb-\d+
       orders:
         provision:
           - tidb-pd
