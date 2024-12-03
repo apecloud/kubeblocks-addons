@@ -36,8 +36,8 @@ fullnameOverride: ""
 commitInfo:
   # @param commitInfo.commitTime - (string) The timestamp of the last code commit, formatted as "YYYY-MM-DD HH:MM:SS".
   # This parameter is used to record the exact time of the most recent code commit.
-  commitTime: "2024-12-03 07:19:49"
+  commitTime: "2024-12-03 07:20:14"
 
   # @param commitInfo.commitId - (string) The Git commit hash.
   # This parameter is used to track the specific Git commit identifier associated with the deployment.
-  commitId: "35220521f961ff81e4e106dd4e928bdaca6f7ad1"
+  commitId: "1ee46c6a2d4adc7e32d459c637d1568162b1345d"
