@@ -315,7 +315,7 @@ vars:
   - name: TLS_ENABLED
     valueFrom:
       tlsVarRef:
-        enabled: Required
+        enabled: Optional
 {{- end -}}
 
 {{- define "apecloud-mysql.spec.runtime.mysql" -}}

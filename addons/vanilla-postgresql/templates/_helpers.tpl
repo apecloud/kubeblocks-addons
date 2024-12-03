@@ -286,7 +286,7 @@ vars:
   - name: TLS_ENABLED
     valueFrom:
       tlsVarRef:
-        enabled: Required
+        enabled: Optional
 lifecycleActions:
   roleProbe:
     periodSeconds: 1

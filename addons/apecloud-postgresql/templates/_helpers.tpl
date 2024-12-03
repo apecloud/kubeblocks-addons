@@ -191,7 +191,7 @@ vars:
   - name: TLS_ENABLED
     valueFrom:
       tlsVarRef:
-        enabled: Required
+        enabled: Optional
 systemAccounts:
   - name: postgres
     initAccount: true

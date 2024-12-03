@@ -138,7 +138,7 @@ spec:
     - name: TLS_ENABLED
       valueFrom:
         tlsVarRef:
-          enabled: Required
+          enabled: Optional
   volumes:
     - name: data
   services:

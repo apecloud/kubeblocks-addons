@@ -121,7 +121,7 @@ spec:
     - name: TLS_ENABLED
       valueFrom:
         tlsVarRef:
-          enabled: Required
+          enabled: Optional
   tls:
     volumeName: tls
     mountPath: /etc/pki/tls
