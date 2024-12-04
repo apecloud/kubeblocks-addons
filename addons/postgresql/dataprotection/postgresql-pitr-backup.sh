@@ -127,6 +127,10 @@ function check_pg_process() {
     done
     if [[ ${is_ok} == "false" ]];then
       DP_error_log "target backup pod/${DP_TARGET_POD_NAME} is not OK, target role: ${TARGET_POD_ROLE}, pg_is_in_recovery: ${is_secondary}!"
+      DP_log "Before switching to a new instance, back up any remaining WAL logs."
+      upload_wal_log
+      # save backup status which will be updated to `backup` CR by the sidecar
+      save_backup_status
       exit 1
     fi
 }
