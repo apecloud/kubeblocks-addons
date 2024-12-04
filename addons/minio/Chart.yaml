@@ -21,6 +21,6 @@ maintainers:
     url: https://github.com/apecloud/kubeblocks/
 
 annotations:
-    addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
-    addon.kubeblocks.io/model: "object-storage"
-    addon.kubeblocks.io/provider: "community"
+  addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
+  addon.kubeblocks.io/model: "object-storage"
+  addon.kubeblocks.io/provider: "community"

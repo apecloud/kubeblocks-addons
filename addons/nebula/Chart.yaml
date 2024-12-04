@@ -24,6 +24,6 @@ maintainers:
     email: xuntao.cheng@vesoft.com
 
 annotations:
-    addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
-    addon.kubeblocks.io/model: "graph"
-    addon.kubeblocks.io/provider: "community"
+  addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
+  addon.kubeblocks.io/model: "graph"
+  addon.kubeblocks.io/provider: "community"
