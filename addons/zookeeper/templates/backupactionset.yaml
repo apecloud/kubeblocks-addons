@@ -7,7 +7,7 @@ metadata:
 spec:
   backupType: Full
   env:
-    - name: DP_DB_PORT
+    - name: ZK_CLIENT_PORT
       value: "2181"
   backup:
     backupData:

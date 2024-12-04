@@ -17,7 +17,7 @@ function handle_exit() {
 trap handle_exit EXIT
 
 java -cp /zoocreeper.jar  com.boundary.zoocreeper.Backup \
--z ${DP_DB_HOST}:${DP_DB_PORT} --compress | \
+-z ${DP_DB_HOST}:${ZK_CLIENT_PORT} --compress | \
 datasafed push -z zstd-fastest - "${DP_BACKUP_NAME}.backup.json"
 
 TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
