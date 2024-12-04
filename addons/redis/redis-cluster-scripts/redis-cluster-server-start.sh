@@ -359,12 +359,15 @@ rebuild_redis_acl_file() {
 
 build_announce_ip_and_port() {
   # build announce ip and port according to whether the advertised svc is enabled
-  if ! is_empty "$redis_advertised_svc_host_value" && ! is_empty "$redis_advertised_svc_port_value"; then
-    echo "redis use advertised svc $redis_advertised_svc_host_value:$redis_advertised_svc_port_value to announce"
+  if ! is_empty "$redis_announce_host_value" && ! is_empty "$redis_announce_port_value"; then
+    echo "redis use advertised svc $redis_announce_host_value:$redis_announce_port_value to announce"
     {
-      echo "replica-announce-port $redis_advertised_svc_port_value"
-      echo "replica-announce-ip $redis_advertised_svc_host_value"
+      echo "replica-announce-port $redis_announce_port_value"
+      echo "replica-announce-ip $redis_announce_host_value"
     } >> $redis_real_conf
+  elif ! is_empty "$FIXED_POD_IP_ENABLED"; then
+    echo "redis use fixed pod ip: $CURRENT_POD_IP to announce"
+    echo "replica-announce-ip $CURRENT_POD_IP" >> $redis_real_conf
   else
     current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$CURRENT_SHARD_POD_FQDN_LIST" "$CURRENT_POD_NAME")
     if is_empty "$current_pod_fqdn"; then
@@ -383,17 +386,24 @@ build_cluster_announce_info() {
     exit 1
   fi
   # build announce ip and port according to whether the advertised svc is enabled
-  if ! is_empty "$redis_advertised_svc_host_value" && ! is_empty "$redis_advertised_svc_port_value" && ! is_empty "$redis_advertised_svc_bus_port_value"; then
-    echo "redis cluster use advertised svc $redis_advertised_svc_host_value:$redis_advertised_svc_port_value@$redis_advertised_svc_bus_port_value to announce"
+  if ! is_empty "$redis_announce_host_value" && ! is_empty "$redis_announce_port_value" && ! is_empty "$redis_announce_bus_port_value"; then
+    echo "redis cluster use advertised svc $redis_announce_host_value:$redis_announce_port_value@$redis_announce_bus_port_value to announce"
     {
-      echo "cluster-announce-ip $redis_advertised_svc_host_value"
-      echo "cluster-announce-port $redis_advertised_svc_port_value"
-      echo "cluster-announce-bus-port $redis_advertised_svc_bus_port_value"
+      echo "cluster-announce-ip $redis_announce_host_value"
+      echo "cluster-announce-port $redis_announce_port_value"
+      echo "cluster-announce-bus-port $redis_announce_bus_port_value"
+      echo "cluster-announce-hostname $current_pod_fqdn"
+      echo "cluster-preferred-endpoint-type ip"
+    } >> $redis_real_conf
+  elif ! is_empty "$FIXED_POD_IP_ENABLED"; then
+    echo "redis cluster use fixed pod ip: $CURRENT_POD_IP to announce"
+    {
+      echo "cluster-announce-ip $CURRENT_POD_IP"
       echo "cluster-announce-hostname $current_pod_fqdn"
       echo "cluster-preferred-endpoint-type ip"
     } >> $redis_real_conf
   else
-    echo "redis use kb pod fqdn $current_pod_fqdn to announce"
+    echo "redis cluster use pod fqdn $current_pod_fqdn to announce"
     {
       echo "cluster-announce-ip $CURRENT_POD_IP"
       echo "cluster-announce-hostname $current_pod_fqdn"
@@ -415,30 +425,39 @@ build_redis_cluster_service_port() {
   } >> $redis_real_conf
 }
 
-parse_current_pod_advertised_svc_if_exist() {
-  local pod_name="$CURRENT_POD_NAME"
+parse_redis_cluster_shard_announce_addr() {
   # The value format of CURRENT_SHARD_ADVERTISED_PORT and CURRENT_SHARD_ADVERTISED_BUS_PORT are "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."
   if is_empty "$CURRENT_SHARD_ADVERTISED_PORT" || is_empty "$CURRENT_SHARD_ADVERTISED_BUS_PORT"; then
     echo "Environment variable CURRENT_SHARD_ADVERTISED_PORT and CURRENT_SHARD_ADVERTISED_BUS_PORT not found. Ignoring."
+    # if redis cluster is in host network mode, use the host ip and port as the announce ip and port
+    if ! is_empty "${REDIS_CLUSTER_HOST_NETWORK_PORT}" && ! is_empty "${REDIS_CLUSTER_HOST_NETWORK_BUS_PORT}" && ! is_empty "$HOST_NETWORK_ENABLED"; then
+      echo "redis cluster server is in host network mode, use the host ip:$CURRENT_POD_HOST_IP and port:$REDIS_CLUSTER_HOST_NETWORK_PORT, bus port:$REDIS_CLUSTER_HOST_NETWORK_BUS_PORT as the announce ip and port."
+      redis_announce_port_value="$REDIS_CLUSTER_HOST_NETWORK_PORT"
+      redis_announce_bus_port_value="$REDIS_CLUSTER_HOST_NETWORK_BUS_PORT"
+      redis_announce_host_value="$CURRENT_POD_HOST_IP"
+    fi
     return 0
   fi
 
+  local pod_name="$CURRENT_POD_NAME"
   local port
   local bus_port
   port=$(parse_advertised_port "$pod_name" "$CURRENT_SHARD_ADVERTISED_PORT")
-  if [[ $? -ne 0 ]] || is_empty "$port"; then
+  status=$?
+  if [[ $status -ne 0 ]] || is_empty "$port"; then
     echo "Exiting due to error in CURRENT_SHARD_ADVERTISED_PORT."
     exit 1
   fi
 
   bus_port=$(parse_advertised_port "$pod_name" "$CURRENT_SHARD_ADVERTISED_BUS_PORT")
-  if [[ $? -ne 0 ]] || is_empty "$bus_port"; then
+  status=$?
+  if [[ $status -ne 0 ]] || is_empty "$bus_port"; then
     echo "Exiting due to error in CURRENT_SHARD_ADVERTISED_BUS_PORT."
     exit 1
   fi
-  redis_advertised_svc_port_value="$port"
-  redis_advertised_svc_bus_port_value="$bus_port"
-  redis_advertised_svc_host_value="$CURRENT_POD_HOST_IP"
+  redis_announce_port_value="$port"
+  redis_announce_bus_port_value="$bus_port"
+  redis_announce_host_value="$CURRENT_POD_HOST_IP"
 }
 
 start_redis_server() {
@@ -486,7 +505,7 @@ build_redis_conf() {
 ${__SOURCED__:+false} : || return 0
 
 load_redis_cluster_common_utils
-parse_current_pod_advertised_svc_if_exist
+parse_redis_cluster_shard_announce_addr
 build_redis_conf
 # TODO: move to memberJoin action in the future
 scale_redis_cluster_replica &
