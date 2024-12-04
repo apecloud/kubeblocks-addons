@@ -34,14 +34,25 @@ check_redis_ok() {
     cmd="redis-cli -h localhost -p $SERVICE_PORT ping"
   fi
   response=$($cmd)
+  status=$?
   set_xtrace_when_ut_mode_false
-  if [ $? -eq 124 ]; then
-    echo "Timed out"
-    exit 1
+  if [ $status -eq 124 ]; then
+    echo "Timed out" >&2
+    return 1
   fi
   if [ "$response" != "PONG" ]; then
-    echo "$response"
-    exit 1
+    echo "redis ping failed, response: $response" >&2
+    return 1
+  fi
+  echo "Redis is ok"
+}
+
+retry_check_redis_ok() {
+  if call_func_with_retry 5 3 check_redis_ok; then
+    return 0
+  else
+    echo "Redis is not running." >&2
+    return 1
   fi
 }
 
@@ -54,4 +65,4 @@ ${__SOURCED__:+false} : || return 0
 
 # main
 load_common_library
-check_redis_ok 1
+retry_check_redis_ok || exit 1

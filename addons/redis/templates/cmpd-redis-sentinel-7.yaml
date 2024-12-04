@@ -117,6 +117,9 @@ spec:
               name: redis-sentinel
               option: Required
       expression: {{ `{{if ne (index . "REDIS_SENTINEL_HOST_NETWORK_PORT") ""}}{{.REDIS_SENTINEL_HOST_NETWORK_PORT}}{{else}}26379{{end}}` | toYaml }}
+    ## the env of redis sentinel server port for dbctl to connect to redis cluster server
+    - name: DBCTL_REDIS_SENTINEL_SERVICE_PORT
+      value: $(REDIS_SENTINEL_HOST_NETWORK_PORT)
     ## the username of redis for redis sentinel connection which is only used to recover redis servers when scale-out redis sentinel.
     - name: REDIS_SENTINEL_USER
       value: "kbreplicator-sentinel"

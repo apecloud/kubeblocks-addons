@@ -190,6 +190,9 @@ spec:
               name: server-metrics
               option: Required
       expression: {{ `{{if ne (index . "REDIS_METRICS_HOST_NETWORK_SERVER_PORT") ""}}{{.REDIS_METRICS_HOST_NETWORK_SERVER_PORT}}{{else}}8888{{end}}` | toYaml }}
+    ## the env of redis server port for dbctl to connect to redis server
+    - name: DBCTL_REDIS_SERVICE_PORT
+      value: $(REDIS_HOST_NETWORK_PORT)
     ## the component name of redis sentinel when redis sentinel is enabled, it's the fullname of redis-sentinel component
     - name: SENTINEL_COMPONENT_NAME
       valueFrom:
@@ -352,7 +355,7 @@ spec:
         readinessProbe:
           initialDelaySeconds: 10
           periodSeconds: 5
-          timeoutSeconds: 1
+          timeoutSeconds: 5
           successThreshold: 1
           failureThreshold: 5
           exec:

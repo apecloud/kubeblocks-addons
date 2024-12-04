@@ -108,66 +108,111 @@ get_current_comp_nodes_for_scale_out_replica() {
     return
   fi
 
-  # if the $CURRENT_SHARD_ADVERTISED_PORT is set, parse the advertised ports, advertised_ports records the advertised ports of the current shard
-  # the value format of $CURRENT_SHARD_ADVERTISED_PORT is "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."
-  declare -A advertised_ports
-  local using_advertised_ports=false
+  # determine network mode
+  local network_mode="default"
   if ! is_empty "$CURRENT_SHARD_ADVERTISED_PORT"; then
-    using_advertised_ports=true
-    IFS=',' read -ra ADDR <<< "$CURRENT_SHARD_ADVERTISED_PORT"
-    for i in "${ADDR[@]}"; do
-      port=$(echo $i | cut -d':' -f2)
-      advertised_ports[$port]=1
-    done
+    network_mode="advertised_svc"
+  elif ! is_empty "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT" && ! is_empty "$HOST_NETWORK_ENABLED"; then
+    network_mode="host_network"
   fi
 
-  # the output of line is like:
-  # 1. using the pod fqdn as the nodeAddr
-  # 4958e6dca033cd1b321922508553fab869a29d 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
-  # 2. using the nodeport or lb ip as the nodeAddr
-  # 4958e6dca033cd1b321922508553fab869a29d 172.10.0.1:31000@31888,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc master master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
-  while read -r line; do
+  parse_node_line_info() {
+    # the output of line is like:
+    # 1. using the pod fqdn as the nodeAddr
+    # 4958e6dca033cd1b321922508553fab869a29d 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
+    # 2. using the nodeport or lb ip as the nodeAddr
+    # 4958e6dca033cd1b321922508553fab869a29d 172.10.0.1:31000@31888,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local master master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
+    # 3. using the host network ip as the nodeAddr
+    # 4958e6dca033cd1b321922508553fab869a29d 172.10.0.1:1050@1051,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
+    local line="$1"
+
+    local node_ip_port_fields
     # 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc
     node_ip_port_fields=$(echo "$line" | awk '{print $2}')
+
+    local node_announce_ip_port
     # ip:port without bus port
     node_announce_ip_port=$(echo "$node_ip_port_fields" | awk -F '@' '{print $1}')
+
+    local node_announce_ip
+    node_announce_ip=$(echo "$node_announce_ip_port" | cut -d':' -f1)
+
+    local node_port
+    node_port=$(echo "$node_announce_ip_port" | cut -d':' -f2)
+
+    local node_bus_port
     node_bus_port=$(echo "$node_ip_port_fields" | awk -F '@' '{print $2}' | awk -F ',' '{print $1}')
-    node_announce_ip=$(echo "$node_ip_port_fields" | awk -F '@' '{print $1}' | cut -d':' -f1)
-    node_port=$(echo "$node_ip_port_fields" | awk -F '@' '{print $1}' | cut -d':' -f2)
-    # redis-shard-sxj-0.redis-shard-sxj-headless.default.svc
+
+    local node_fqdn
+    # redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local
     node_fqdn=$(echo "$line" | awk '{print $2}' | awk -F ',' '{print $2}')
+
+    local node_role
     node_role=$(echo "$line" | awk '{print $3}')
-    if $using_advertised_ports; then
-      if [[ ${advertised_ports[$node_port]+_} ]]; then
-        if contains "$node_role" "master"; then
-          # example format using nodeport: 172.10.0.1#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#172.10.0.1:31000@31888
-          current_comp_primary_node+=("$node_announce_ip#$node_fqdn#$node_announce_ip_port@$node_bus_port")
-        else
-          current_comp_other_nodes+=("$node_announce_ip#$node_fqdn#$node_announce_ip_port@$node_bus_port")
-        fi
+
+    echo "$node_announce_ip $node_fqdn $node_port $node_bus_port $node_role"
+  }
+
+  build_node_entry() {
+    local mode="$1"
+    local announce_ip="$2"
+    local fqdn="$3"
+    local port="$4"
+    local bus_port="$5"
+
+    case "$mode" in
+      "advertised_svc")
+        # example format using nodeport: 172.10.0.1#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#172.10.0.1:31000@31888
+        echo "$announce_ip#$fqdn#$announce_ip:$port@$bus_port"
+        ;;
+      "host_network")
+        # example format using host network: 172.10.0.1#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#172.10.0.1:1050@1051
+        echo "$announce_ip#$fqdn#$announce_ip:$port@$bus_port"
+        ;;
+      *)
+        # example format using pod fqdn: 10.42.0.227#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc:6379@16379
+        echo "$announce_ip#$fqdn#$fqdn:$port@$bus_port"
+        ;;
+    esac
+  }
+
+  # categorize node into appropriate array
+  categorize_node() {
+    local node_entry="$1"
+    local node_fqdn="$2"
+    local node_role="$3"
+
+    if contains "$node_fqdn" "$CURRENT_SHARD_COMPONENT_NAME"; then
+      if contains "$node_role" "master"; then
+        current_comp_primary_node+=("$node_entry")
       else
-        if contains "$node_role" "master"; then
-          other_comp_primary_nodes+=("$node_announce_ip#$node_fqdn#$node_announce_ip_port@$node_bus_port")
-        else
-          other_comp_other_nodes+=("$node_announce_ip#$node_fqdn#$node_announce_ip_port@$node_bus_port")
-        fi
+        current_comp_other_nodes+=("$node_entry")
       fi
     else
-      if contains "$node_fqdn" "$CURRENT_SHARD_COMPONENT_NAME"; then
-        if contains "$node_role" "master"; then
-          # example format using pod fqdn: 10.42.0.227#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc:6379@16379
-          current_comp_primary_node+=("$node_announce_ip#$node_fqdn#$node_fqdn:$SERVICE_PORT@$node_bus_port")
-        else
-          current_comp_other_nodes+=("$node_announce_ip#$node_fqdn#$node_fqdn:$SERVICE_PORT@$node_bus_port")
-        fi
+      if contains "$node_role" "master"; then
+        other_comp_primary_nodes+=("$node_entry")
       else
-        if contains "$node_role" "master"; then
-          other_comp_primary_nodes+=("$node_announce_ip#$node_fqdn#$node_fqdn:$SERVICE_PORT@$node_bus_port")
-        else
-          other_comp_other_nodes+=("$node_announce_ip#$node_fqdn#$node_fqdn:$SERVICE_PORT@$node_bus_port")
-        fi
+        other_comp_other_nodes+=("$node_entry")
       fi
     fi
+  }
+
+  # process each node
+  while read -r line; do
+    local node_info
+    node_info=$(parse_node_info "$line")
+    local node_announce_ip="${node_info[0]}"
+    local node_fqdn="${node_info[1]}"
+    local node_port="${node_info[2]}"
+    local node_bus_port="${node_info[3]}"
+    local node_role="${node_info[4]}"
+
+    # build node entry based on network mode
+    local node_entry
+    node_entry=$(build_node_entry "$network_mode" "$node_announce_ip" "$node_fqdn" "$node_port" "$node_bus_port")
+
+    # categorize nodes
+    categorize_node "$node_entry" "$node_fqdn" "$node_role"
   done <<< "$cluster_nodes_info"
 
   echo "current_comp_primary_node: ${current_comp_primary_node[*]}"

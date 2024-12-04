@@ -34,13 +34,14 @@ check_redis_sentinel_ok() {
     cmd="redis-cli -h localhost -p $SENTINEL_SERVICE_PORT ping"
   fi
   response=$($cmd)
+  status=$?
   set_xtrace_when_ut_mode_false
-  if [ $? -eq 124 ]; then
-    echo "Timed out"
+  if [ $status -eq 124 ]; then
+    echo "redis sentinel ping timed out" >&2
     return 1
   fi
   if [ "$response" != "PONG" ]; then
-    echo "$response"
+    echo "redis sentinel ping failed, response: $response" >&2
     return 1
   fi
 }
@@ -49,7 +50,7 @@ retry_check_redis_sentinel_ok() {
   if call_func_with_retry 5 3 check_redis_sentinel_ok; then
     return 0
   else
-    echo "Redis sentinel is not running."
+    echo "Redis sentinel is not running." >&2
     return 1
   fi
 }
