@@ -90,6 +90,11 @@ spec:
       valueFrom:
         clusterVarRef:
           clusterName: Required
+    ## the namespace of current cluster instance
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
     ## the default username of redis connection
     - name: REDIS_DEFAULT_USER
       valueFrom:

@@ -108,7 +108,7 @@ init_other_components_and_pods_info() {
 
     # TODO: resolve the pod fqdn from the Vars
     pod_name_prefix=$(extract_pod_name_prefix "${pod_names[$index]}")
-    pod_fqdn="${pod_names[$index]}.$pod_name_prefix-headless.default.svc.cluster.local"
+    pod_fqdn="${pod_names[$index]}.$pod_name_prefix-headless.$CLUSTER_NAMESPACE.svc.cluster.local"
     other_undeleted_component_nodes+=("$pod_fqdn:$service_port")
   done
 
