@@ -195,15 +195,12 @@ relay_log_index=relay-bin.index
 pid_file=/var/run/mysqld/mysqld.pid
 socket=/var/run/mysqld/mysqld.sock
 
-{{- if $.component.tlsConfig }}
-{{- $ca_file := getCAFile }}
-{{- $cert_file := getCertFile }}
-{{- $key_file := getKeyFile }}
+{{- if eq $.TLS_ENABLED "true" }}
 # tls
 # require_secure_transport=ON
-ssl_ca={{ $ca_file }}
-ssl_cert={{ $cert_file }}
-ssl_key={{ $key_file }}
+ssl_ca=/etc/pki/tls/ca.pem
+ssl_cert=/etc/pki/tls/cert.pem
+ssl_key=/etc/pki/tls/key.pem
 {{- end }}
 
 ## smartengine base config

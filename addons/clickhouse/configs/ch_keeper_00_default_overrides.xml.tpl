@@ -2,7 +2,7 @@
 {{- $namespace := $.cluster.metadata.namespace }}
 <clickhouse>
   <listen_host>0.0.0.0</listen_host>
-  {{- if $.component.tlsConfig }}
+  {{- if eq $.TLS_ENABLED "true" }}
   <https_port replace="replace" from_env="CLICKHOUSE_HTTPS_PORT"/>
   <tcp_port_secure replace="replace" from_env="CLICKHOUSE_TCP_SECURE_PORT"/>
   <interserver_https_port replace="replace" from_env="CLICKHOUSE_INTERSERVER_HTTPS_PORT"/>
@@ -15,7 +15,7 @@
   <interserver_http_port replace="replace" from_env="CLICKHOUSE_INTERSERVER_HTTP_PORT"/>
   {{- end }}
   <keeper_server>
-      {{- if $.component.tlsConfig }}
+      {{- if eq $.TLS_ENABLED "true" }}
       <tcp_port_secure replace="replace" from_env="CLICKHOUSE_KEEPER_TCP_TLS_PORT"/>
       <secure>1</secure>
       {{- else }}
@@ -30,14 +30,14 @@
           <raft_logs_level>warning</raft_logs_level>
       </coordination_settings>
       <raft_configuration>
-      {{- if $.component.tlsConfig }}
+      {{- if eq $.TLS_ENABLED "true" }}
       <secure>true</secure>
       {{- end }}
       {{- range $id, $host := splitList "," .CH_KEEPER_POD_FQDN_LIST }}
         <server>
           <id>{{ $id }}</id>
           <hostname>{{ $host }}</hostname>
-          {{- if $.component.tlsConfig }}
+          {{- if eq $.TLS_ENABLED "true" }}
           <port replace="replace" from_env="CLICKHOUSE_KEEPER_RAFT_TLS_PORT"/>
           {{- else }}
           <port replace="replace" from_env="CLICKHOUSE_KEEPER_RAFT_PORT"/>
@@ -55,10 +55,10 @@
     <asynchronous_metrics>true</asynchronous_metrics>
   </prometheus>
   <!-- tls configuration -->
-  {{- if $.component.tlsConfig -}}
-  {{- $CA_FILE := getCAFile -}}
-  {{- $CERT_FILE := getCertFile -}}
-  {{- $KEY_FILE := getKeyFile -}}
+  {{- if eq $.TLS_ENABLED "true" -}}
+  {{- $CA_FILE := /etc/pki/tls/ca.pem -}}
+  {{- $CERT_FILE := /etc/pki/tls/cert.pem -}}
+  {{- $KEY_FILE := /etc/pki/tls/key.pem -}}
   <protocols>
     <prometheus_protocol>
       <type>prometheus</type>
