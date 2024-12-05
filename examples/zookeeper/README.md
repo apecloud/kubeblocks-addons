@@ -1,93 +1,336 @@
 # Zookeeper
 
-Apache ZooKeeper is a centralized service for maintaining configuration information, naming, providing distributed synchronization, and providing group services.
+Apache Zookeeper is a centralized service for maintaining configuration information, naming, providing distributed synchronization, and providing group services.
+
+## Features In KubeBlocks
+
+### Lifecycle Management
+
+| Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
+|------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
+| Yes                    | Yes                   | Yes              | Yes       | Yes        | Yes       | Yes    | No      |
+
+### Backup and Restore
+
+| Feature     | Method | Description |
+|-------------|--------|------------|
+| Full Backup | zoocreeper | uses `zoocreeper` tool to create a backup |
+
+### Versions
+
+| Versions |
+|----------|
+| 3.4.14,3.6.4,3.7.2,3.8.4,3.9.2 |
 
 ## Prerequisites
 
-This example assumes that you have a Kubernetes cluster installed and running, and that you have installed the kubectl command line tool and helm somewhere in your path. Please see the [getting started](https://kubernetes.io/docs/setup/)  and [Installing Helm](https://helm.sh/docs/intro/install/) for installation instructions for your platform.
-
-Also, this example requires kubeblocks installed and running. Here is the steps to install kubeblocks, please replace "`$kb_version`" with the version you want to use.
-```bash
-# Add Helm repo 
-helm repo add kubeblocks https://apecloud.github.io/helm-charts
-# If github is not accessible or very slow for you, please use following repo instead
-helm repo add kubeblocks https://jihulab.com/api/v4/projects/85949/packages/helm/stable
-
-# Update helm repo
-helm repo update
-
-# Get the versions of KubeBlocks and select the one you want to use
-helm search repo kubeblocks/kubeblocks --versions
-# If you want to obtain the development versions of KubeBlocks, Please add the '--devel' parameter as the following command
-helm search repo kubeblocks/kubeblocks --versions --devel
-
-# Create dependent CRDs
-kubectl create -f https://github.com/apecloud/kubeblocks/releases/download/v$kb_version/kubeblocks_crds.yaml
-# If github is not accessible or very slow for you, please use following command instead
-kubectl create -f https://jihulab.com/api/v4/projects/98723/packages/generic/kubeblocks/v$kb_version/kubeblocks_crds.yaml
-
-# Install KubeBlocks
-helm install kubeblocks kubeblocks/kubeblocks --namespace kb-system --create-namespace --version="$kb_version"
-```
-Enable zookeeper
-```bash
-# Add Helm repo 
-helm repo add kubeblocks-addons https://apecloud.github.io/helm-charts
-# If github is not accessible or very slow for you, please use following repo instead
-helm repo add kubeblocks-addons https://jihulab.com/api/v4/projects/150246/packages/helm/stable
-# Update helm repo
-helm repo update
-
-# Enable zookeeper 
-helm upgrade -i kb-addon-zookeeper kubeblocks-addons/zookeeper --version $kb_version -n kb-system 
-``` 
+- Kubernetes cluster >= v1.21
+- `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
+- Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
+- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
+- Zookeeper Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
 
 ## Examples
 
-### [Create](cluster.yaml) 
-Create a zookeeper cluster with specified cluster definition 
+### [Create](cluster.yaml)
+
+Create a zookeeper cluster with three replicas, one leader replica and two follower replicas:
+
 ```bash
 kubectl apply -f examples/zookeeper/cluster.yaml
 ```
 
+### Horizontal scaling
+
+#### [Scale-out](scale-out.yaml)
+
+Horizontal scaling out cluster by adding ONE more `OBSERVER` replica:
+
+```bash
+kubectl apply -f examples/zookeeper/scale-out.yaml
+```
+
+And you can check the progress of the scaling operation with following command:
+
+```bash
+kubectl describe ops zk-scale-out
+```
+
+> [!WARNING] As defined, Zookeeper Cluster will be restarted on horizontal scaling. To make sure all config are loaded properly.
+
+After scaling, cluster server list in Zookeeper configuration file `zoo.cfg` will be updated :
+
+```text
+# cluster server list
+server.0 = zookeeper-cluster-zookeeper-0.zookeeper-cluster-zookeeper-headless.default.svc.cluster.local:2888:3888:participant
+server.1
+    = zookeeper-cluster-zookeeper-1.zookeeper-cluster-zookeeper-headless.default.svc.cluster.local:2888:3888:participant
+server.2
+    = zookeeper-cluster-zookeeper-2.zookeeper-cluster-zookeeper-headless.default.svc.cluster.local:2888:3888:participant
+server.3
+    = zookeeper-cluster-zookeeper-3.zookeeper-cluster-zookeeper-headless.default.svc.cluster.local:2888:3888:observer
+```
+
+Information for `server.3` is added on scaling out.
+
+#### [Scale-in](scale-in.yaml)
+
+Horizontal scaling in cluster by deleting ONE replica:
+
+```bash
+kubectl apply -f examples/zookeeper/scale-in.yaml
+```
+
+#### Scale-in/out using Cluster API
+
+Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: zookeeper-cluster
+  namespace: default
+spec:
+  componentSpecs:
+    - name: zookeeper
+      componentDef: zookeeper
+      replicas: 3 # Update `replicas` to 1 for scaling in, and to 3 for scaling out
+```
+
 ### [Vertical scaling](verticalscale.yaml)
+
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
+
 ```bash
 kubectl apply -f examples/zookeeper/verticalscale.yaml
 ```
 
+#### Scale-up/down using Cluster API
+
+Alternatively, you may update `spec.componentSpecs.resources` field to the desired resources for vertical scale.
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: zookeeper-cluster
+  namespace: default
+spec:
+  componentSpecs:
+    - name: zookeeper
+      componentDef: zookeeper
+      replicas: 3
+      resources:
+        requests:
+          cpu: "1"       # Update the resources to your need.
+          memory: "2Gi"  # Update the resources to your need.
+        limits:
+          cpu: "2"       # Update the resources to your need.
+          memory: "4Gi"  # Update the resources to your need.
+```
+
 ### [Expand volume](volumeexpand.yaml)
+
+> [!NOTE]
+> Make sure the storage class you use supports volume expansion.
+
+Check the storage class with following command:
+
+```bash
+kubectl get storageclass
+```
+
+If the `ALLOWVOLUMEEXPANSION` column is `true`, the storage class supports volume expansion.
+
+To increase size of volume storage with the specified components in the cluster
+
 Increase size of volume storage with the specified components in the cluster
+
 ```bash
 kubectl apply -f examples/zookeeper/volumeexpand.yaml
 ```
 
+#### Volume expansion using Cluster API
+
+Alternatively, you may update the `spec.componentSpecs.volumeClaimTemplates.spec.resources.requests.storage` field to the desired size.
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: zookeeper-cluster
+  namespace: default
+spec:
+  componentSpecs:
+    - name: zookeeper
+      componentDef: zookeeper
+      replicas: 3
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                # specify new size, and make sure it is larger than the current size
+                storage: 30Gi
+      volumeClaimTemplates:
+        - name: log
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                # specify new size, and make sure it is larger than the current size
+                storage: 20Gi
+```
+
 ### [Restart](restart.yaml)
+
 Restart the specified components in the cluster
+
 ```bash
 kubectl apply -f examples/zookeeper/restart.yaml
 ```
 
 ### [Stop](stop.yaml)
-Stop the cluster and release all the pods of the cluster, but the storage will be reserved
+
+Stop the cluster will release all the pods of the cluster, but the storage will be retained. It is useful when you want to save the cost of the cluster.
+
 ```bash
 kubectl apply -f examples/zookeeper/stop.yaml
 ```
 
+#### Stop using Cluster API
+
+Alternatively, you may stop the cluster by setting the `spec.componentSpecs.stop` field to `true`.
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: zookeeper-cluster
+  namespace: default
+spec:
+  componentSpecs:
+    - name: zookeeper
+      componentDef: zookeeper
+      stop: true  # set stop `true` to stop the component
+      replicas: 3
+```
+
 ### [Start](start.yaml)
+
 Start the stopped cluster
+
 ```bash
 kubectl apply -f examples/zookeeper/start.yaml
 ```
 
-### [Configure](configure.yaml)
-Configure parameters with the specified components in the cluster
+#### Start using Cluster API
+
+Alternatively, you may start the cluster by setting the `spec.componentSpecs.stop` field to `false`.
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: zookeeper-cluster
+  namespace: default
+spec:
+  componentSpecs:
+    - name: zookeeper
+      componentDef: zookeeper
+      stop: false  # set to `false` (or remove this field) to start the component
+      replicas: 3
+```
+
+### [Reconfigure](configure.yaml)
+
+Configure parameters with the specified components in the cluster:
+
 ```bash
 kubectl apply -f examples/zookeeper/configure.yaml
 ```
 
+`syncLimit` is a configuration parameter that defines the maximum number of ticks a Zookeeper follower can lag behind the leader before it's considered out of sync and must resync with the leader.
+
+In this example updates `syncLimit` to `10` (default to `5` ticks). Increase it for slower networks or larger clusters, and decrease for tighter consistency requirements. Its common range: 2-10 ticks.
+
+To verify the changes, you may log into an Zookeeper instance to check the configuration changes:
+
+```bash
+# 2181 is the clientPort
+echo "conf" | nc localhost 2181
+```
+
+### [Backup](backup.yaml)
+
+> [!NOTE] Before you start, please create a `BackupRepo` to store the backup data. Refer to [BackupRepo](../docs/create-backuprepo.md) for more details.
+
+The method `zoocreeper` uses `zoocreeper` tool to create a compressed backup. You may create a backup using:
+
+```bash
+kubectl apply -f examples/zookeeper/backup.yaml
+```
+
+After the operation, you will see a `Backup` is created
+
+```bash
+kubectl get backup -l app.kubernetes.io/instance=zookeeper-cluster
+```
+
+and the status of the backup goes from `Running` to `Completed` after a while. And the backup data will be pushed to your specified `BackupRepo`.
+
+### [Restore](restore.yaml)
+
+To restore a new cluster from a Backup:
+
+```bash
+kubectl apply -f examples/zookeeper/restore.yaml
+```
+
+### Observability
+
+There are various ways to monitor the cluster. Here we use Prometheus and Grafana to demonstrate how to monitor the cluster.
+
+#### Installing the Prometheus Operator
+
+You may skip this step if you have already installed the Prometheus Operator.
+Or you can follow the steps in [How to install the Prometheus Operator](../docs/install-prometheus.md) to install the Prometheus Operator.
+
+#### Create PodMonitor
+
+##### Step 1. Create PodMonitor
+
+Apply the `PodMonitor` file to monitor the cluster:
+
+```bash
+kubectl apply -f examples/zookeeper/pod-monitor.yaml
+```
+
+It sets path to `/metrics` and port to `metrics` (for container port `7000`).
+
+```yaml
+  - path: /metrics
+    port: metrics
+    scheme: http
+```
+
+##### Step 2. Accessing the Grafana Dashboard
+
+Login to the Grafana dashboard and import the dashboard, e.g. using etcd dashboard from [Grafana](https://grafana.com/grafana/dashboards).
+
+> [!Note]
+> Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
+
 ### Delete
+
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
+
 ```bash
 kubectl patch cluster zookeeper-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 

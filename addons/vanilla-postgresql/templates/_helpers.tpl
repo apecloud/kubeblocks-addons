@@ -283,6 +283,10 @@ vars:
         podNamesForRole:
           role: primary
           option: Optional
+  - name: TLS_ENABLED
+    valueFrom:
+      tlsVarRef:
+        enabled: Optional
 lifecycleActions:
   roleProbe:
     periodSeconds: 1
@@ -310,6 +314,12 @@ systemAccounts:
       numDigits: 5
       numSymbols: 0
       letterCase: MixedCases
+tls:
+  volumeName: tls 
+  mountPath: /etc/pki/tls
+  caFile: ca.pem
+  certFile: cert.pem
+  keyFile: key.pem
 {{- end -}}
 
 {{- define "vanilla-postgresql.spec.runtime.common" -}}

@@ -316,7 +316,7 @@ It sets path to `/metrics` and port to `client` (for container port `2379`).
 
 ##### Step 2. Accessing the Grafana Dashboard
 
-Login to the Grafana dashboard and import the dashboard, e.g. using etcd dashboard from [Grafana](https://grafana.com/grafana/dashboards) .
+Login to the Grafana dashboard and import the dashboard, e.g. using etcd dashboard from [Grafana](https://grafana.com/grafana/dashboards).
 
 > [!Note]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.

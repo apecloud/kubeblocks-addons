@@ -15,6 +15,7 @@ Vanilla-PostgreSQL is compatible with the native PostgreSQL kernel, enabling it 
 | Feature | Method | Description |
 |---------|---------|-------------|
 | Full Backup | vanilla-pg-basebackup | uses `pg_basebackup`, a PostgreSQL utility to create a base backup |
+
 ### Versions
 
 | Major Versions | Description       |
