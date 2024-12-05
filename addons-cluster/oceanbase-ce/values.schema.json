@@ -109,10 +109,10 @@
                     "description": "Sizes of different storages in GiB"
                 }
             }
-        },
-        "required": [
-            "zoneCount",
-            "replicas"
-        ]
-    }
+        }
+    },
+    "required": [
+        "zoneCount",
+        "replicas"
+    ]
 }
