@@ -6,6 +6,9 @@ metadata:
     {{- include "zookeeper.labels" . | nindent 4 }}
 spec:
   backupType: Full
+  env:
+    - name: ZK_CLIENT_PORT
+      value: "2181"
   backup:
     backupData:
       image: {{ include "zoocreeper.image" . }}
