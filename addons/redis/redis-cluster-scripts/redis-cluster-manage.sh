@@ -86,7 +86,7 @@ init_other_components_and_pods_info() {
     fi
 
     pod_name_prefix=$(extract_pod_name_prefix "${pod_names[$index]}")
-    pod_fqdn="${pod_names[$index]}.$pod_name_prefix-headless.default.svc.cluster.local"
+    pod_fqdn="${pod_names[$index]}.$pod_name_prefix-headless.$KB_NAMESPACE.svc.cluster.local"
     other_undeleted_component_nodes+=("$pod_fqdn:$port")
   done
 
@@ -544,7 +544,7 @@ gen_initialize_redis_cluster_node() {
     else
       local port=$SERVICE_PORT
       pod_name_prefix=$(extract_pod_name_prefix "$pod_name")
-      local pod_fqdn="$pod_name.$pod_name_prefix-headless"
+      local pod_fqdn="$pod_name.$pod_name_prefix-headless.$KB_NAMESPACE.svc.cluster.local"
       if [ "$is_primary" = true ]; then
         initialize_redis_cluster_primary_nodes["$pod_name"]="$pod_fqdn:$port"
       else
