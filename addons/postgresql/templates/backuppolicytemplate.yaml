@@ -85,6 +85,25 @@ spec:
         volumeMounts:
           - name: data
             mountPath: {{ .Values.dataMountPath }}
+    - name: pgdump
+      snapshotVolumes: false
+      actionSetName: postgresql-pgdump
+      env: &compDefEnvMapping
+        - name: IMAGE_TAG
+          valueFrom:
+            versionMapping:
+              - serviceVersions:
+                  - "12"
+                mappedValue: "12.15.0-pgvector-v0.6.1"
+              - serviceVersions:
+                  - "14"
+                mappedValue: "14.8.0-pgvector-v0.6.1"
+              - serviceVersions:
+                  - "15"
+                mappedValue: "15.7.0"
+              - serviceVersions:
+                  - "16"
+                mappedValue: "16.4.0"
   schedules:
     - backupMethod: pg-basebackup
       enabled: false
@@ -102,3 +121,7 @@ spec:
       enabled: false
       cronExpression: "*/5 * * * *"
       retentionPeriod: 8d
+    - backupMethod: pgdump
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d

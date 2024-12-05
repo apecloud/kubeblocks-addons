@@ -1,0 +1,200 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: postgresql-pgdump
+  labels:
+    clusterdefinition.kubeblocks.io/name: postgresql
+    {{- include "postgresql.labels" . | nindent 4 }}
+spec:
+  backupType: Full
+  env:
+    - name: IMAGE_TAG
+      value: 14.8.0-pgvector-v0.6.1
+  parametersSchema:
+    openAPIV3Schema:
+      type: object
+      required:
+        - database
+      properties:
+        # Basic Settings
+        database:
+          description: "Database name to backup"
+          type: string
+        format:
+          description: "Output format (p=plain, c=custom, d=directory, t=tar)"
+          type: string
+          enum: ["p", "c", "d", "t"]
+          default: "tar"
+        jobs:
+          description: "Number of parallel jobs"
+          type: integer
+          default: 1
+        compressLevel:
+          description: "Compression level"
+          type: integer
+          minimum: 0
+          maximum: 9
+          default: 0
+        # Content Selection
+        schemas:
+          description: "List of schemas to include. You can use POSIX regular expression to match schema names"
+          type: array
+          items:
+            type: string
+        excludeSchemas:
+          description: "List of schemas to exclude. You can use POSIX regular expression to match schema names"
+          type: array
+          items:
+            type: string
+        tables:
+          description: "List of tables to include. You can use POSIX regular expression to match table names"
+          type: array
+          items:
+            type: string
+        excludeTables:
+          description: "List of tables to exclude. You can use POSIX regular expression to match table names"
+          type: array
+          items:
+            type: string
+        # Output Control
+        ignoreOwner:
+          description: "Ignore object ownership when in plain-text format"
+          type: boolean
+          default: false
+        dataOnly:
+          description: "Only transfer data, not schema"
+          type: boolean
+          default: false
+        schemaOnly:
+          description: "Only transfer schema, no data"
+          type: boolean
+          default: false
+        clean:
+          description: "Clean (drop) database objects before creating them"
+          type: boolean
+          default: false
+        create:
+          description: "Include create database statements"
+          type: boolean
+          default: false
+        noPrivileges:
+          description: "Do not dump privileges (grant/revoke)"
+          type: boolean
+          default: false
+        disableTriggers:
+          description: "Disable triggers during data-only restore"
+          type: boolean
+          default: false
+        ifExists:
+          description: "Use IF EXISTS when dropping objects"
+          type: boolean
+          default: false
+        # Insert Options
+        useInserts:
+          description: "Use INSERT commands instead of COPY"
+          type: boolean
+          default: false
+        columnInserts:
+          description: "Use INSERT with column names"
+          type: boolean
+          default: false
+        onConflictDoNothing:
+          description: "Add ON CONFLICT DO NOTHING to INSERT commands"
+          type: boolean
+          default: false
+        # Partition Options
+        loadViaPartitionRoot:
+          description: "Load partitions via the root table"
+          type: boolean
+          default: false
+        # Metadata Options
+        noComments:
+          description: "Do not dump comments"
+          type: boolean
+          default: false
+        noTablespaces:
+          description: "Do not dump tablespace assignments"
+          type: boolean
+          default: false
+        noUnloggedTableData:
+          description: "Do not dump unlogged table data"
+          type: boolean
+          default: false
+        noBlobs:
+          description: "Do not dump large objects"
+          type: boolean
+          default: false
+        singleTransaction:
+          description: "Restore as a single transaction"
+          type: boolean
+          default: false
+  backup:
+    withParameters:
+      - database
+      - format
+      - jobs
+      - compressLevel
+      - schemas
+      - excludeSchemas
+      - tables
+      - excludeTables
+      - ignoreOwner
+      - dataOnly
+      - schemaOnly
+      - clean
+      - create
+      - noPrivileges
+      - disableTriggers
+      - ifExists
+      - useInserts
+      - columnInserts
+      - onConflictDoNothing
+      - loadViaPartitionRoot
+      - noComments
+      - noTablespaces
+      - noUnloggedTableData
+      - noBlobs
+      - singleTransaction
+    preBackup: []
+    postBackup: []
+    backupData:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:$(IMAGE_TAG)
+      runOnTargetPodNode: false
+      command:
+      - bash
+      - -c
+      - |
+        {{- .Files.Get "dataprotection/backup-info-collector.sh" | nindent 8 }}
+        {{- .Files.Get "dataprotection/pgdump.sh" | nindent 8 }}
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+  restore:
+    withParameters:
+      - database
+      - format
+      - jobs
+      - compressLevel
+      - schemas
+      - excludeSchemas
+      - tables
+      - excludeTables
+      - ignoreOwner
+      - dataOnly
+      - schemaOnly
+      - clean
+      - create
+      - noPrivileges
+      - disableTriggers
+      - ifExists
+      - noComments
+      - singleTransaction
+    postReady:
+    - job:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:$(IMAGE_TAG)
+        runOnTargetPodNode: false
+        command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/pgrestore.sh" | nindent 10 }}
