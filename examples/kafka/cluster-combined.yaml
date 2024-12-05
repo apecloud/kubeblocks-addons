@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: kafka-separated-cluster
+  name: kafka-combined-cluster
   namespace: default
 spec:
   # Specifies the behavior when a Cluster is deleted.
@@ -21,30 +21,39 @@ spec:
   # - separated: separated KRaft and Broker Components.
   # - separated_monitor: separated mode with monitor component
   # Valid options are: [combined,combined_monitor,separated,separated_monitor]
-  topology: separated_monitor
+  topology: combined_monitor
   # Specifies a list of ClusterComponentSpec objects used to define the
   # individual Components that make up a Cluster.
   # This field allows for detailed configuration of each Component within the Cluster
   componentSpecs:
-    - name: kafka-broker
+    - name: kafka-combine
+      env:
+        - name: KB_KAFKA_BROKER_HEAP # use this ENV to set BROKER HEAP
+          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+        - name: KB_KAFKA_CONTROLLER_HEAP # use this ENV to set CONTOLLER_HEAP
+          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+        - name: KB_BROKER_DIRECT_POD_ACCESS # set to FALSE for node-port
+          value: "true"
+      # Update `replicas` to your need.
       replicas: 1
+      # Specifies the resources required by the Component.
       resources:
         limits:
-          cpu: "0.5"
-          memory: "0.5Gi"
+          cpu: "1"
+          memory: "1Gi"
         requests:
           cpu: "0.5"
           memory: "0.5Gi"
-      env:
-        - name: KB_KAFKA_BROKER_HEAP
-          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
-        - name: KB_KAFKA_CONTROLLER_HEAP
-          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
-        - name: KB_BROKER_DIRECT_POD_ACCESS
-          value: "true"
+      # Specifies a list of PersistentVolumeClaim templates that define the storage
+      # requirements for the Component.
       volumeClaimTemplates:
+        # Refers to the name of a volumeMount defined in
+        # `componentDefinition.spec.runtime.containers[*].volumeMounts
         - name: data
           spec:
+            # The name of the StorageClass required by the claim.
+            # If not specified, the StorageClass annotated with
+            # `storageclass.kubernetes.io/is-default-class=true` will be used by default
             storageClassName: ""
             accessModes:
               - ReadWriteOnce
@@ -59,25 +68,7 @@ spec:
             resources:
               requests:
                 storage: 1Gi
-    - name: kafka-controller
-      replicas: 1
-      resources:
-        limits:
-          cpu: "0.5"
-          memory: "0.5Gi"
-        requests:
-          cpu: "0.5"
-          memory: "0.5Gi"
-      volumeClaimTemplates:
-        - name: metadata
-          spec:
-            storageClassName: ""
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: 1Gi
-    - name: kafka-exporter
+    - name: kafka-exporter # component for exporter
       replicas: 1
       resources:
         limits:

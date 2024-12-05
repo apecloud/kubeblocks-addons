@@ -99,3 +99,20 @@ resources:
     cpu: {{ $requestCPU | quote }}
     memory: {{ print $requestMemory "Gi" | quote }}
 {{- end }}
+
+
+{{- define "kafka.topology" -}}
+{{- if eq "combined" .Values.mode -}}
+  {{- if .Values.monitorEnable -}}
+    combined_monitor
+  {{- else -}}
+    combined
+  {{- end -}}
+{{- else -}}
+  {{- if .Values.monitorEnable -}}
+    separated_monitor
+  {{- else -}}
+    separated
+  {{- end -}}
+{{- end -}}
+{{- end -}}

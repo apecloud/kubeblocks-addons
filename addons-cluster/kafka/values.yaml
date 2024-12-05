@@ -75,5 +75,3 @@ controllerHeap: -XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64
 
 ## @param nodePortEnabled
 nodePortEnabled: false
-
-useLegacyCompDef: false

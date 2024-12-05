@@ -4,42 +4,27 @@ metadata:
   name: {{ include "kblib.clusterName" . }}
   namespace: {{ .Release.Namespace }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+  {{/*
   annotations:
-    "kubeblocks.io/extra-env": '{"KB_KAFKA_ENABLE_SASL":"{{ $.Values.saslEnable }}","KB_KAFKA_BROKER_HEAP":"{{ $.Values.brokerHeap }}","KB_KAFKA_CONTROLLER_HEAP":"{{ $.Values.controllerHeap }}","KB_KAFKA_PUBLIC_ACCESS":"{{ $.Values.extra.publiclyAccessible }}"}'
+  */}}
 {{/*    {{- include "kafka-cluster.brokerAddrFeatureGate" . | nindent 4 }}*/}}
 spec:
   clusterDef: kafka # ref clusterdefinition.name
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
-  topology:
-    {{- if eq "combined" $.Values.mode }}
-      {{- if .Values.monitorEnable }}
-        combined_monitor
-      {{- else }}
-        combined
-      {{- end }}
-    {{- else }}
-      {{- if .Values.monitorEnable }}
-        separated_monitor
-      {{- else }}
-        separated
-      {{- end }}
-    {{- end }}
+  topology: {{ include "kafka.topology" . }}
   componentSpecs:
-    {{- if eq "combined" $.Values.mode }}
+    {{- if eq "combined" .Values.mode }}
     - name: kafka-combine
-      {{- if .Values.useLegacyCompDef }}
-      componentDef: kafka-server
-      {{- end  }}
-      tls: {{ $.Values.tlsEnable }}
-      {{- if $.Values.tlsEnable }}
+      tls: {{ .Values.tlsEnable }}
+      {{- if .Values.tlsEnable }}
       issuer:
         name: KubeBlocks
       {{- end }}
-      replicas: {{ $.Values.replicas }}
+      replicas: {{ .Values.replicas }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       services:
         - name: advertised-listener
-        {{- if $.Values.nodePortEnabled }}
+        {{- if .Values.nodePortEnabled }}
           serviceType: NodePort
         {{- else }}
           serviceType: ClusterIP
@@ -47,46 +32,49 @@ spec:
           podService: true
       {{- include "kblib.componentResources" . | indent 6 }}
       env:
+        - name: KB_KAFKA_ENABLE_SASL
+          value: "{{ .Values.saslEnable }}"
+        - name: KB_KAFKA_BROKER_HEAP
+          value: "{{ .Values.brokerHeap }}"
+        - name: KB_KAFKA_CONTROLLER_HEAP
+          value: "{{ .Values.controllerHeap }}"
         - name: KB_BROKER_DIRECT_POD_ACCESS
-          {{- if $.Values.nodePortEnabled }}
+          {{- if .Values.nodePortEnabled }}
           value: "false"
           {{- else }}
           value: "true"
           {{- end }}
-      {{- if $.Values.storageEnable }}
+      {{- if .Values.storageEnable }}
       volumeClaimTemplates:
         - name: data
           spec:
-            storageClassName: {{ $.Values.storageClassName }}
+            storageClassName: {{ .Values.storageClassName }}
             accessModes:
               - ReadWriteOnce
             resources:
               requests:
-                storage: {{ print $.Values.storage "Gi" }}
+                storage: {{ print .Values.storage "Gi" }}
         - name: metadata
           spec:
-            storageClassName: {{ $.Values.metaStorageClassName }}
+            storageClassName: {{ .Values.metaStorageClassName }}
             accessModes:
               - ReadWriteOnce
             resources:
               requests:
-                storage: {{ print $.Values.metaStorage "Gi" }}
+                storage: {{ print .Values.metaStorage "Gi" }}
       {{- end }}
     {{- else }}
     - name: kafka-broker
-      {{- if .Values.useLegacyCompDef }}
-      componentDef: kafka-broker
-      {{- end  }}
-      tls: {{ $.Values.tlsEnable }}
-      {{- if $.Values.tlsEnable }}
+      tls: {{ .Values.tlsEnable }}
+      {{- if .Values.tlsEnable }}
       issuer:
         name: KubeBlocks
       {{- end }}
-      replicas: {{ $.Values.brokerReplicas }}
+      replicas: {{ .Values.brokerReplicas }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       services:
         - name: advertised-listener
-        {{- if $.Values.nodePortEnabled }}
+        {{- if .Values.nodePortEnabled }}
           serviceType: NodePort
         {{- else }}
           serviceType: ClusterIP
@@ -94,60 +82,60 @@ spec:
           podService: true
       {{- include "kblib.componentResources" . | indent 6 }}
       env:
+        - name: KB_KAFKA_ENABLE_SASL
+          value: "{{ .Values.saslEnable }}"
+        - name: KB_KAFKA_BROKER_HEAP
+          value: "{{ .Values.brokerHeap }}"
+        - name: KB_KAFKA_CONTROLLER_HEAP
+          value: "{{ .Values.controllerHeap }}"
         - name: KB_BROKER_DIRECT_POD_ACCESS
-          {{- if $.Values.nodePortEnabled }}
+          {{- if .Values.nodePortEnabled }}
           value: "false"
           {{- else }}
           value: "true"
           {{- end }}
-      {{- if $.Values.storageEnable }}
+      {{- if .Values.storageEnable }}
       volumeClaimTemplates:
         - name: data
           spec:
-            storageClassName: {{ $.Values.storageClassName }}
+            storageClassName: {{ .Values.storageClassName }}
             accessModes:
               - ReadWriteOnce
             resources:
               requests:
-                storage: {{ print $.Values.storage "Gi" }}
+                storage: {{ print .Values.storage "Gi" }}
         - name: metadata
           spec:
-            storageClassName: {{ $.Values.metaStorageClassName }}
+            storageClassName: {{ .Values.metaStorageClassName }}
             accessModes:
               - ReadWriteOnce
             resources:
               requests:
-                storage: {{ print $.Values.metaStorage "Gi" }}
+                storage: {{ print .Values.metaStorage "Gi" }}
       {{- end }}
     - name: kafka-controller
-      {{- if .Values.useLegacyCompDef }}
-      componentDef: controller
-      {{- end  }}
-      tls: {{ $.Values.tlsEnable }}
-      {{- if $.Values.tlsEnable }}
+      tls: {{ .Values.tlsEnable }}
+      {{- if .Values.tlsEnable }}
       issuer:
         name: KubeBlocks
       {{- end }}
-      replicas: {{ $.Values.controllerReplicas }}
+      replicas: {{ .Values.controllerReplicas }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentResources" . | indent 6 }}
-      {{- if $.Values.storageEnable }}
+      {{- if .Values.storageEnable }}
       volumeClaimTemplates:
         - name: metadata
           spec:
-            storageClassName: {{ $.Values.metaStorageClassName }}
+            storageClassName: {{ .Values.metaStorageClassName }}
             accessModes:
               - ReadWriteOnce
             resources:
               requests:
-                storage: {{ print $.Values.metaStorage "Gi" }}
+                storage: {{ print .Values.metaStorage "Gi" }}
       {{- end }}
     {{- end }}
     {{- if .Values.monitorEnable }}
     - name: kafka-exporter
-      {{- if .Values.useLegacyCompDef }}
-      componentDef: kafka-exporter
-      {{- end  }}
-      replicas: {{ $.Values.monitor.replicas }}
+      replicas: {{ .Values.monitor.replicas }}
       {{- include "kafka-exporter.resources" . | nindent 6 }}
     {{- end }}
