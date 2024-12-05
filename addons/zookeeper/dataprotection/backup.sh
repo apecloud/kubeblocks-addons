@@ -2,6 +2,8 @@
 set -e
 set -o pipefail
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
+export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
+
 # if the script exits with a non-zero exit code, touch a file to indicate that the backup failed,
 # the sync progress container will check this file and exit if it exists
 function handle_exit() {
@@ -15,7 +17,7 @@ function handle_exit() {
 trap handle_exit EXIT
 
 java -cp /zoocreeper.jar  com.boundary.zoocreeper.Backup \
--z ${DP_DB_HOST}:${MY_ZOOKEEPER_ZOOKEEPER_SERVICE_PORT_CLIENT} --compress | \
+-z ${DP_DB_HOST}:${ZK_CLIENT_PORT} --compress | \
 datasafed push -z zstd-fastest - "${DP_BACKUP_NAME}.backup.json"
 
 TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
