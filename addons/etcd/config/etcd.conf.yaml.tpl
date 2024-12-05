@@ -3,10 +3,10 @@
 
 {{- $peer_protocol := "http" }}
 {{- $client_protocol := "http" }}
-{{- if and $.component.tlsConfig (eq .PEER_TLS "true") }}
+{{- if and (eq $.TLS_ENABLED "true") (eq .PEER_TLS "true") }}
   {{- $peer_protocol = "https" }}
 {{- end }}
-{{- if and $.component.tlsConfig (eq .CLIENT_TLS "true") }}
+{{- if and (eq $.TLS_ENABLED "true") (eq .CLIENT_TLS "true") }}
   {{- $client_protocol = "https" }}
 {{- end }}
 
@@ -69,7 +69,7 @@ discovery-srv:
 
 {{- define "init_peers" }}
   {{- $peer_protocol := "http" }}
-  {{- if and $.component.tlsConfig (eq .PEER_TLS "true") }}
+  {{- if and (eq $.TLS_ENABLED "true") (eq .PEER_TLS "true") }}
     {{- $peer_protocol = "https" }}
   {{- end }}
   {{- if (index . "PEER_ENDPOINT") }}
@@ -128,23 +128,20 @@ proxy-write-timeout: 5000
 # Time (in milliseconds) for a read to timeout.
 proxy-read-timeout: 0
 
-{{ if $.component.tlsConfig -}}
-{{- $ca := getCAFile }}
-{{- $cert := getCertFile }}
-{{- $key := getKeyFile }}
+{{ if eq $.TLS_ENABLED "true" -}}
 {{- if eq $client_protocol "https" }}
 client-transport-security:
   # Path to the client server TLS cert file.
-  cert-file: {{ $cert }}
+  cert-file: {{ .Values.tlsMountPath }}/cert.pem
 
   # Path to the client server TLS key file.
-  key-file: {{ $key }}
+  key-file: {{ .Values.tlsMountPath }}/key.pem
 
   # Enable client cert authentication.
   client-cert-auth: true
 
   # Path to the client server TLS trusted CA cert file.
-  trusted-ca-file: {{ $ca }}
+  trusted-ca-file: {{ .Values.tlsMountPath }}/ca.pem
 
   # Client TLS using generated certificates
   auto-tls: false
@@ -152,16 +149,16 @@ client-transport-security:
 {{ if eq $peer_protocol "https" }}
 peer-transport-security:
   # Path to the peer server TLS cert file.
-  cert-file: {{ $cert }}
+  cert-file: {{ .Values.tlsMountPath }}/cert.pem
 
   # Path to the peer server TLS key file.
-  key-file: {{ $key }}
+  key-file: {{ .Values.tlsMountPath }}/key.pem
 
   # Enable peer client cert authentication.
   client-cert-auth: true
 
   # Path to the peer server TLS trusted CA cert file.
-  trusted-ca-file: {{ $ca }}
+  trusted-ca-file: {{ .Values.tlsMountPath }}/ca.pem
 
   # Peer TLS using generated certificates.
   auto-tls: false

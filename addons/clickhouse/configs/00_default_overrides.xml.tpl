@@ -2,7 +2,7 @@
 {{- $namespace := $.cluster.metadata.namespace }}
 <clickhouse>
   <listen_host>0.0.0.0</listen_host>
-  {{- if $.component.tlsConfig }}
+  {{- if eq $.TLS_ENABLED "true" }}
   <https_port replace="replace" from_env="CLICKHOUSE_HTTPS_PORT"/>
   <tcp_port_secure replace="replace" from_env="CLICKHOUSE_TCP_SECURE_PORT"/>
   <interserver_https_port replace="replace" from_env="CLICKHOUSE_INTERSERVER_HTTPS_PORT"/>
@@ -31,7 +31,7 @@
         {{- range $_, $host := splitList "," .CLICKHOUSE_POD_FQDN_LIST }}
         <replica>
           <host>{{ $host }}</host>
-          {{- if $.component.tlsConfig }}
+          {{- if eq $.TLS_ENABLED "true" }}
           <port replace="replace" from_env="CLICKHOUSE_TCP_SECURE_PORT"/>
           <secure>1</secure>
           {{- else }}
@@ -48,7 +48,7 @@
     {{- range $_, $host := splitList "," .CH_KEEPER_POD_FQDN_LIST }}
     <node>
       <host>{{ $host }}</host>
-      {{- if $.component.tlsConfig }}
+      {{- if eq $.TLS_ENABLED "true" }}
       <port replace="replace" from_env="CLICKHOUSE_KEEPER_TCP_TLS_PORT"/>
       <secure>1</secure>
       {{- else }}
@@ -67,10 +67,10 @@
     <asynchronous_metrics>true</asynchronous_metrics>
   </prometheus>
   <!-- tls configuration -->
-  {{- if $.component.tlsConfig -}}
-  {{- $CA_FILE := getCAFile -}}
-  {{- $CERT_FILE := getCertFile -}}
-  {{- $KEY_FILE := getKeyFile }}
+  {{- if eq $.TLS_ENABLED "true" -}}
+  {{- $CA_FILE := /etc/pki/tls/ca.pem -}}
+  {{- $CERT_FILE := /etc/pki/tls/cert.pem -}}
+  {{- $KEY_FILE := /etc/pki/tls/key.pem }}
   <protocols>
     <prometheus_protocol>
       <type>prometheus</type>
