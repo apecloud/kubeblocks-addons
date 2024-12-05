@@ -86,7 +86,7 @@ init_other_components_and_pods_info() {
     fi
 
     pod_name_prefix=$(extract_pod_name_prefix "${pod_names[$index]}")
-    pod_fqdn="${pod_names[$index]}.$pod_name_prefix-headless.default.svc.cluster.local"
+    pod_fqdn="${pod_names[$index]}.$pod_name_prefix-headless.$KB_NAMESPACE.svc.cluster.local"
     other_undeleted_component_nodes+=("$pod_fqdn:$port")
   done
 
