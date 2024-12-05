@@ -12,7 +12,7 @@ datasafed pull -d zstd-fastest "${backupFileName}" ${TMP_DIR}/backup.json
 touch ${ZOOKEEPER_DATA_DIR}/.restore_new_cluster
 
 java -cp /zoocreeper.jar  com.boundary.zoocreeper.Restore \
--z ${KB_CLUSTER_COMP_NAME}:${DP_DB_PORT}  -f ${TMP_DIR}/backup.json \
+-z ${DP_DB_HOST}:${ZK_CLIENT_PORT}  -f ${TMP_DIR}/backup.json \
 --overwrite-existing --compress --exclude /zookeeper/config*
 
 rm -rf ${TMP_DIR}
