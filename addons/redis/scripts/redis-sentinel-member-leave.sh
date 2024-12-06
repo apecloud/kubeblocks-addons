@@ -26,7 +26,7 @@ load_common_library() {
   source "${common_library_file}"
 }
 
-declare -g redis_default_service_port=26379
+declare -g redis_default_service_port=${SENTINEL_SERVICE_PORT:-26379}
 declare -A master_slave_counts
 declare -g sentinel_leave_member_name
 declare -g sentinel_leave_member_ip
@@ -133,7 +133,7 @@ redis_sentinel_reset_all() {
     if [ -n "$port" ]; then
       redis_default_service_port="$port"
     fi
-    #TODO:check if there is an ongoing HA switchover Before executing the reset command
+    # TODO: check if there is an ongoing HA switchover Before executing the reset command
     if [ "$sentinel_name" != "$sentinel_leave_member_name" ]; then
       retry_count=0
       max_retries=3

@@ -1,10 +1,10 @@
 {{- if eq .Values.mode "cluster" }}
   {{- /* TODO: when clusterDefinition topology supports sharding, migrate the cluster mode to topology as well */ -}}
-  {{- include "kblib.clusterCommon" . }}
+  {{- include "redis-cluster.clusterCommon" . }}
   shardings:
   {{- include "redis-cluster.shardingSpec" . | indent 2 }}
 {{- else }}
-  {{- include "kblib.clusterCommon" . }}
+  {{- include "redis-cluster.clusterCommon" . }}
   clusterDef: redis
   topology: {{ .Values.mode }}
   componentSpecs:

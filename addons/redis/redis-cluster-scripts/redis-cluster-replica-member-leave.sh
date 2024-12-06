@@ -2,6 +2,7 @@
 
 # shellcheck disable=SC2034
 # shellcheck disable=SC1090
+# shellcheck disable=SC2153
 
 # This is magic for shellspec ut framework. "test" is a `test [expression]` well known as a shell command.
 # Normally test without [expression] returns false. It means that __() { :; }
@@ -19,8 +20,8 @@ test || __() {
   set -ex;
 }
 
-service_port=6379
-cluster_bus_port=16379
+service_port=${SERVICE_PORT:-6379}
+cluster_bus_port=${CLUSTER_BUS_PORT:-16379}
 
 load_redis_cluster_common_utils() {
   # the common.sh and redis-cluster-common.sh scripts are defined in the redis cluster scripts template configmap
@@ -99,7 +100,7 @@ ${__SOURCED__:+false} : || return 0
 
 # main
 load_redis_cluster_common_utils
-if execute_acl_save_with_retry; then
+if execute_acl_save_with_retry $service_port; then
   echo "acl save command executed successfully."
 else
   echo "failed to execute acl save command." >&2
