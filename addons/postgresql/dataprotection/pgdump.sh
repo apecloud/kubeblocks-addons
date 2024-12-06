@@ -57,9 +57,13 @@ construct_pg_dump_options() {
     # number of jobs to run in parallel
     PG_DUMP_OPTIONS+=" --jobs=${jobs}"
   fi
-  if [ -n "${compressLevel}" ]; then
+  if [ -n "${compressLevel}" ] && [ "${compressLevel}" -ge 0 ] && [ "${compressLevel}" -le 9 ]; then
     # compression level (0-9)
     PG_DUMP_OPTIONS+=" --compress=${compressLevel}"
+  fi
+  if [ -n "${setRole}" ]; then
+    # role to set before excuting
+    PG_DUMP_OPTIONS+=" --role=${setRole}"
   fi
   if [ -n "${ignoreOwner}" ] && [ "${ignoreOwner}" = "true" ]; then
     # boolean, whether to ignore ownership
@@ -129,9 +133,10 @@ file_name() {
   fi
 }
 
-PG_DUMP_OPTIONS=$(construct_pg_dump_options)
 
 START_TIME=`get_current_time`
-pg_dump -U ${DP_DB_USER} -h ${DP_DB_HOST} ${PG_DUMP_OPTIONS} | datasafed push - "/$(file_name)"
+PG_DUMP_OPTIONS=$(construct_pg_dump_options)
+pg_dump -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT} ${PG_DUMP_OPTIONS} | datasafed push - "/$(file_name)"
 # stat and save the backup information
 stat_and_save_backup_info "$START_TIME"
+echo "backup done!";

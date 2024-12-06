@@ -35,6 +35,9 @@ spec:
           minimum: 0
           maximum: 9
           default: 0
+        setRole:
+          description: "Set role name to run SET ROLE before dumping"
+          type: string
         # Content Selection
         schemas:
           description: "List of schemas to include. You can use POSIX regular expression to match schema names"
@@ -134,6 +137,7 @@ spec:
       - format
       - jobs
       - compressLevel
+      - setRole
       - schemas
       - excludeSchemas
       - tables
@@ -175,6 +179,7 @@ spec:
       - format
       - jobs
       - compressLevel
+      - setRole
       - schemas
       - excludeSchemas
       - tables

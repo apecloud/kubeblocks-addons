@@ -2,6 +2,7 @@ set -e
 set -o pipefail
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
+export PGPASSWORD=${DP_DB_PASSWORD}
 function remote_file_exists() {
     local out=$(datasafed list $1)
     if [ "${out}" == "$1" ]; then
@@ -46,9 +47,13 @@ construct_pg_restore_options() {
     # Run jobs in parallel
     PG_RESTORE_OPTIONS+=" --jobs=${jobs}"
   fi
-  if [ -n "${compressLevel}" ]; then
+  if [ -n "${compressLevel}" ] && [ "${compressLevel}" -ge 0 ] && [ "${compressLevel}" -le 9 ]; then
     # Set compression level (0-9)
     PG_RESTORE_OPTIONS+=" --compress=${compressLevel}"
+  fi
+  if [ -n "${setRole}" ]; then
+    # role to set before excuting
+    PG_RESTORE_OPTIONS+=" --role=${setRole}"
   fi
   if [ -n "${ignoreOwner}" ] && [ "${ignoreOwner}" = "true" ]; then
     # Ignore ownership information
@@ -125,8 +130,9 @@ if [ $(remote_file_exists $(file_name)) == "true" ]; then
 fi
 
 if [ $(is_plain) == "true" ]; then
-  psql -h ${DP_DB_HOST} -U ${DP_DB_USER} -d ${database} -f $(file_name)
+  psql -h ${DP_DB_HOST} -p ${DP_DB_PORT} -U ${DP_DB_USER} -d ${database} -f $(file_name)
 else
-  pg_restore -U ${DP_DB_USER} -h ${DP_DB_HOST} ${PG_RESTORE_OPTIONS} $(file_name);
+  PG_RESTORE_OPTIONS=$(construct_pg_restore_options)
+  pg_restore -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT} ${PG_RESTORE_OPTIONS} $(file_name);
 fi
 echo "restore complete!";
