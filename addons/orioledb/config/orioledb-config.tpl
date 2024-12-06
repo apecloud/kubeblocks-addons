@@ -206,7 +206,7 @@ session_replication_role = 'origin'
 sql_firewall.firewall = 'disable'
 shared_buffers = '{{ printf "%d%s" $shared_buffers $buffer_unit }}'
 shared_preload_libraries = 'orioledb,pg_stat_statements,auto_explain'
-{{- if eq $.TLS_ENABLED "true" }}
+{{- if and (index . "TLS_ENABLED") (eq .TLS_ENABLED "true") }}
 ssl = 'True'
 ssl_ca_file = '/etc/pki/tls/ca.pem'
 ssl_cert_file = '/etc/pki/tls/cert.pem'

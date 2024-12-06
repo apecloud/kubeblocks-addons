@@ -24,7 +24,7 @@ enable_display_sql_execution_vttablets=false
 enable_read_write_split_for_read_only_txn=false
 enable_interception_for_dml_without_where=true
 
-{{- if eq $.TLS_ENABLED "true" }}
+{{- if and (index . "TLS_ENABLED") (eq .TLS_ENABLED "true") }}
 mysql_server_ssl_ca=/etc/pki/tls/ca.pem
 mysql_server_ssl_cert=/etc/pki/tls/cert.pem
 mysql_server_ssl_key=/etc/pki/tls/key.pem
