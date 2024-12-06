@@ -1,3 +1,4 @@
+# shellcheck disable=SC2148
 set -e
 set -o pipefail
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
