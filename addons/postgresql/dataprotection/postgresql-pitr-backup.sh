@@ -136,7 +136,7 @@ function check_pg_process() {
 }
 
 # trap term signal
-trap "echo 'Terminating...' && sync && exit 0" TERM
+trap "echo 'Terminating...' && upload_wal_log && save_backup_status && sync && exit 0" TERM
 DP_log "start to archive wal logs"
 while true; do
 
