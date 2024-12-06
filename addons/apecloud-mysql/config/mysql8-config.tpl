@@ -195,7 +195,7 @@ relay_log_index=relay-bin.index
 pid_file=/var/run/mysqld/mysqld.pid
 socket=/var/run/mysqld/mysqld.sock
 
-{{- if eq $.TLS_ENABLED "true" }}
+{{- if and (index . "TLS_ENABLED") (eq .TLS_ENABLED "true") }}
 # tls
 # require_secure_transport=ON
 ssl_ca=/etc/pki/tls/ca.pem
