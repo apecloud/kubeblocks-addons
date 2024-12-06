@@ -1,70 +1,195 @@
 {
   "$schema": "http://json-schema.org/schema#",
   "type": "object",
+  "title": "Neon Cluster Configuration",
+  "description": "Configuration schema for the Neon Helm chart.",
   "properties": {
     "version": {
-      "title": "Version",
-      "description": "Cluster version.",
       "type": "string",
-      "default": "1.0.0"
+      "default": "1.0.0",
+      "description": "Version of the Neon cluster"
     },
-    "mode": {
-      "title": "Mode",
-      "description": "Cluster topology mode.",
-      "type": "string",
-      "default": "standalone",
-      "enum": [
-        "standalone",
-        "raftGroup"
-      ]
-    },
-    "replicas": {
-      "title": "Replicas",
-      "description": "The number of replicas, for standalone mode, the replicas is 1, for raftGroup mode, the default replicas is 3.",
-      "type": "integer",
-      "default": 1,
-      "minimum": 1,
-      "maximum": 5
-    },
-    "cpu": {
-      "title": "CPU",
-      "description": "CPU cores.",
+    "storageClassName": {
       "type": [
-        "number",
-        "string"
+        "string",
+        "null"
       ],
-      "default": 0.5,
-      "minimum": 0.5,
-      "maximum": 64,
-      "multipleOf": 0.5
+      "default": "",
+      "description": "Storage class name used by persistent volumes"
     },
-    "memory": {
-      "title": "Memory(Gi)",
-      "description": "Memory, the unit is Gi.",
-      "type": [
-        "number",
-        "string"
-      ],
-      "default": 0.5,
-      "minimum": 0.5,
-      "maximum": 1000
+    "compute": {
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "type": "integer",
+          "default": 1,
+          "description": "Number of compute replicas"
+        },
+        "resources": {
+          "type": "object",
+          "properties": {
+            "requests": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": "string",
+                  "default": "500m"
+                },
+                "memory": {
+                  "type": "string",
+                  "default": "500Mi"
+                }
+              }
+            },
+            "limits": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": "string",
+                  "default": "1"
+                },
+                "memory": {
+                  "type": "string",
+                  "default": "2Gi"
+                }
+              }
+            }
+          }
+        }
+      }
     },
-    "storage": {
-      "title": "Storage(Gi)",
-      "description": "Storage size, the unit is Gi.",
-      "type": [
-        "number",
-        "string"
-      ],
-      "default": 20,
-      "minimum": 1,
-      "maximum": 10000
+    "storagebroker": {
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "type": "integer",
+          "default": 1,
+          "description": "Number of storage broker replicas"
+        },
+        "resources": {
+          "type": "object",
+          "properties": {
+            "requests": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": "string",
+                  "default": "500m"
+                },
+                "memory": {
+                  "type": "string",
+                  "default": "500Mi"
+                }
+              }
+            },
+            "limits": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": "string",
+                  "default": "1"
+                },
+                "memory": {
+                  "type": "string",
+                  "default": "2Gi"
+                }
+              }
+            }
+          }
+        }
+      }
     },
-    "proxyEnabled": {
-      "title": "Proxy",
-      "description": "Enable proxy or not.",
-      "type": "boolean",
-      "default": false
+    "safekeeper": {
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "type": "integer",
+          "default": 3,
+          "description": "Number of safekeeper replicas, forming a raft group"
+        },
+        "resources": {
+          "type": "object",
+          "properties": {
+            "requests": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": "string",
+                  "default": "500m"
+                },
+                "memory": {
+                  "type": "string",
+                  "default": "500Mi"
+                }
+              }
+            },
+            "limits": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": "string",
+                  "default": "1"
+                },
+                "memory": {
+                  "type": "string",
+                  "default": "2Gi"
+                }
+              }
+            }
+          }
+        },
+        "dataStorage": {
+          "type": "string",
+          "default": "20Gi",
+          "description": "Data storage size for each safekeeper replica"
+        }
+      }
+    },
+    "pageserver": {
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "type": "integer",
+          "default": 1,
+          "description": "Number of pageserver replicas"
+        },
+        "resources": {
+          "type": "object",
+          "properties": {
+            "requests": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": "string",
+                  "default": "500m"
+                },
+                "memory": {
+                  "type": "string",
+                  "default": "500Mi"
+                }
+              }
+            },
+            "limits": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": "string",
+                  "default": "1"
+                },
+                "memory": {
+                  "type": "string",
+                  "default": "2Gi"
+                }
+              }
+            }
+          }
+        },
+        "dataStorage": {
+          "type": "string",
+          "default": "20Gi",
+          "description": "Data storage size for each pageserver replica"
+        }
+      }
     }
   }
 }

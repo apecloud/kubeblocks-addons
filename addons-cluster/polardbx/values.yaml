@@ -1,8 +1,5 @@
 ## cluster settings for polardbx cluster
 nameOverride: pxc
-polardbx:
-  ## @param polardbx.terminationPolicy, temination policy for polardbx cluster
-  terminationPolicy: WipeOut
 
 gms:
   ## @param gms.replicas data replicas of gms instance

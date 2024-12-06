@@ -1,10 +1,217 @@
 {
     "$schema": "http://json-schema.org/schema#",
     "type": "object",
+    "title": "RisingWave Configuration",
+    "description": "Configuration schema for the RisingWave Helm chart.",
     "properties": {
         "risingwave": {
             "type": "object",
             "properties": {
+                "meta": {
+                    "type": "object",
+                    "properties": {
+                        "replicas": {
+                            "type": "integer",
+                            "default": 1,
+                            "description": "Number of meta replicas."
+                        },
+                        "resources": {
+                            "type": "object",
+                            "properties": {
+                                "requests": {
+                                    "type": "object",
+                                    "properties": {
+                                        "cpu": {
+                                            "type": "string",
+                                            "default": "500m"
+                                        },
+                                        "memory": {
+                                            "type": "string",
+                                            "default": "500Mi"
+                                        }
+                                    }
+                                },
+                                "limits": {
+                                    "type": "object",
+                                    "properties": {
+                                        "cpu": {
+                                            "type": "string",
+                                            "default": "1"
+                                        },
+                                        "memory": {
+                                            "type": "string",
+                                            "default": "1Gi"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "frontend": {
+                    "type": "object",
+                    "properties": {
+                        "replicas": {
+                            "type": "integer",
+                            "default": 1,
+                            "description": "Number of frontend replicas."
+                        },
+                        "resources": {
+                            "type": "object",
+                            "properties": {
+                                "requests": {
+                                    "type": "object",
+                                    "properties": {
+                                        "cpu": {
+                                            "type": "string",
+                                            "default": "500m"
+                                        },
+                                        "memory": {
+                                            "type": "string",
+                                            "default": "500Mi"
+                                        }
+                                    }
+                                },
+                                "limits": {
+                                    "type": "object",
+                                    "properties": {
+                                        "cpu": {
+                                            "type": "string",
+                                            "default": "1"
+                                        },
+                                        "memory": {
+                                            "type": "string",
+                                            "default": "1Gi"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "compute": {
+                    "type": "object",
+                    "properties": {
+                        "replicas": {
+                            "type": "integer",
+                            "default": 1,
+                            "description": "Number of compute replicas."
+                        },
+                        "resources": {
+                            "type": "object",
+                            "properties": {
+                                "requests": {
+                                    "type": "object",
+                                    "properties": {
+                                        "cpu": {
+                                            "type": "string",
+                                            "default": "500m"
+                                        },
+                                        "memory": {
+                                            "type": "string",
+                                            "default": "500Mi"
+                                        }
+                                    }
+                                },
+                                "limits": {
+                                    "type": "object",
+                                    "properties": {
+                                        "cpu": {
+                                            "type": "string",
+                                            "default": "1"
+                                        },
+                                        "memory": {
+                                            "type": "string",
+                                            "default": "1Gi"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "compactor": {
+                    "type": "object",
+                    "properties": {
+                        "replicas": {
+                            "type": "integer",
+                            "default": 1,
+                            "description": "Number of compactor replicas."
+                        },
+                        "resources": {
+                            "type": "object",
+                            "properties": {
+                                "requests": {
+                                    "type": "object",
+                                    "properties": {
+                                        "cpu": {
+                                            "type": "string",
+                                            "default": "500m"
+                                        },
+                                        "memory": {
+                                            "type": "string",
+                                            "default": "500Mi"
+                                        }
+                                    }
+                                },
+                                "limits": {
+                                    "type": "object",
+                                    "properties": {
+                                        "cpu": {
+                                            "type": "string",
+                                            "default": "1"
+                                        },
+                                        "memory": {
+                                            "type": "string",
+                                            "default": "1Gi"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "connector": {
+                    "type": "object",
+                    "properties": {
+                        "replicas": {
+                            "type": "integer",
+                            "default": 1,
+                            "description": "Number of connector replicas."
+                        },
+                        "resources": {
+                            "type": "object",
+                            "properties": {
+                                "requests": {
+                                    "type": "object",
+                                    "properties": {
+                                        "cpu": {
+                                            "type": "string",
+                                            "default": "500m"
+                                        },
+                                        "memory": {
+                                            "type": "string",
+                                            "default": "500Mi"
+                                        }
+                                    }
+                                },
+                                "limits": {
+                                    "type": "object",
+                                    "properties": {
+                                        "cpu": {
+                                            "type": "string",
+                                            "default": "1"
+                                        },
+                                        "memory": {
+                                            "type": "string",
+                                            "default": "1Gi"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
                 "metaStore": {
                     "type": "object",
                     "properties": {
@@ -12,10 +219,29 @@
                             "type": "object",
                             "properties": {
                                 "endpoints": {
-                                    "title": "ETCD EndPoints",
-                                    "description": "Specify ETCD cluster endpoints of the form host:port",
                                     "type": "string",
-                                    "pattern": "^.+:\\d+$"
+                                    "default": "REPLACE-WITH-YOUR-ETCD-ENDPOINT:2379",
+                                    "description": "etcd endpoint."
+                                },
+                                "authentication": {
+                                    "type": "object",
+                                    "properties": {
+                                        "enabled": {
+                                            "type": "boolean",
+                                            "default": false,
+                                            "description": "Enable authentication or not."
+                                        },
+                                        "username": {
+                                            "type": "string",
+                                            "default": "",
+                                            "description": "etcd username. Leave it empty for no authentication."
+                                        },
+                                        "password": {
+                                            "type": "string",
+                                            "default": "",
+                                            "description": "etcd password. Leave it empty for no authentication."
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -24,45 +250,54 @@
                 "stateStore": {
                     "type": "object",
                     "properties": {
+                        "dataDirectory": {
+                            "type": "string",
+                            "default": "risingwave",
+                            "description": "data directory."
+                        },
                         "s3": {
                             "type": "object",
                             "properties": {
+                                "endpoint": {
+                                    "type": "string",
+                                    "default": "https://s3.REPLACE-WITH-YOUR-REGION.amazonaws.com.cn",
+                                    "description": "Endpoint for S3 compatible services. Leave it empty for standard AWS S3."
+                                },
+                                "region": {
+                                    "type": "string",
+                                    "default": "REPLACE-WITH-YOUR-REGION",
+                                    "description": "Region of S3 bucket."
+                                },
+                                "bucket": {
+                                    "type": "string",
+                                    "default": "REPLACE-WITH-YOUR-BUCKET",
+                                    "description": "S3 bucket name."
+                                },
                                 "authentication": {
                                     "type": "object",
                                     "properties": {
+                                        "serviceAccountName": {
+                                            "type": "string",
+                                            "default": "",
+                                            "description": "Use IAM role on service account for authentication. If set, accessKey and secretAccessKey will be ignored."
+                                        },
                                         "accessKey": {
-                                            "$ref": "#/definitions/nonEmptyString",
-                                            "description": "Specify the S3 access key."
+                                            "type": "string",
+                                            "default": "REPLACE-WITH-YOUR-AK",
+                                            "description": "S3 access key."
                                         },
                                         "secretAccessKey": {
-                                            "$ref": "#/definitions/nonEmptyString",
-                                            "description": "Specify the S3 secret access key."
+                                            "type": "string",
+                                            "default": "REPLACE-WITH-YOUR-SK",
+                                            "description": "S3 secret access key."
                                         }
                                     }
-                                },
-                                "bucket": {
-                                    "$ref": "#/definitions/nonEmptyString",
-                                    "description": "Specify the S3 bucket."
-                                },
-                                "endpoint": {
-                                    "$ref": "#/definitions/nonEmptyString",
-                                    "description": "Specify the S3 endpoint."
-                                },
-                                "region": {
-                                    "$ref": "#/definitions/nonEmptyString",
-                                    "description": "Specify the S3 region."
                                 }
                             }
                         }
                     }
                 }
             }
-        }
-    },
-    "definitions": {
-        "nonEmptyString": {
-            "type": "string",
-            "minLength": 1
         }
     }
 }

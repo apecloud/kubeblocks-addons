@@ -4,7 +4,7 @@
 
 ## @param version MySQL cluster version
 ##
-version: ac-mysql-8.0.30
+version: 8.0.30
 
 ## @param mode MySQL cluster topology mode, standalone, raftGroup
 ##

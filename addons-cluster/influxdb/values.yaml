@@ -6,10 +6,6 @@
 ##
 version: "2.7.4"
 
-## @param mode influxdb cluster topology mode, standalone, raftGroup
-##
-mode: standalone
-
 ## @param replicas specify cluster replicas
 ##
 replicas: 1

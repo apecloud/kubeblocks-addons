@@ -10,15 +10,16 @@ metadata:
   {{- end }}
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  clusterDef: mysql
+  topology: {{ .Values.topology }}
   componentSpecs:
     - name: mysql
-      {{- $compdef := .Values.version }}
-      componentDef: {{ $compdef }}
+      serviceVersion: {{ .Values.version }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "mysql-cluster.replicaCount" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
-      {{- if .Values.orchestrator.enable }}
+      {{- if eq .Values.topology "server-with-orc" }}
       serviceRefs:
         {{- if eq .Values.orchestrator.clusterServiceSelector.cluster ""}}
         - name: orchestrator

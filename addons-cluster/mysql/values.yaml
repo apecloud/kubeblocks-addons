@@ -4,9 +4,9 @@
 
 ## @param version MySQL cluster version
 ##
-version: mysql-8.0
+version: 8.0.39
 
-## @param mode MySQL cluster topology mode, standalone, replication or raftGroup
+## @param mode MySQL cluster topology mode, standalone, replication
 ##
 mode: standalone
 
@@ -32,13 +32,9 @@ requests:
 ## @param storage size, the unit is Gi
 ##
 storage: 20
-
+# values: [server, server-with-proxy, server-with-orc]
 topology: server
-mysql:
-  version: mysql-8.0
-
 proxysql:
-  enable: false
   replicas: 1
   cpu: 1
   memory: 1
@@ -49,7 +45,6 @@ extra:
   terminationPolicy: Delete
 
 orchestrator:
-  enable: false
   # monitor_password: proxysql
   # cluster_password: nb2wZpZ9OXXTF2Mv
 

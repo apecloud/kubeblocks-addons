@@ -6,10 +6,6 @@
 ##
 version: mariadb
 
-## @param mode MARIADB cluster topology mode, standalone, raftGroup
-##
-mode: standalone
-
 ## @param replicas specify cluster replicas
 ##
 replicas: 1

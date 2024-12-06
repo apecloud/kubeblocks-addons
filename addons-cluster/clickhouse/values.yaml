@@ -25,8 +25,8 @@ requests:
 # cpu: ""
 # memory: ""
 
-storageClassName:
-storage: 10
+storageClassName: ""
+storage: 20
 disableExporter: false
 
 ## Tolerations for ClickHouse pods assignment
@@ -37,7 +37,7 @@ tolerations: []
 keeper:
   ## Number of ClickHouse Keeper replicas
   replicaCount: 1
-  storageClassName:
+  storageClassName: ""
   cpu: 1
   memory: 2
   storage: 10
