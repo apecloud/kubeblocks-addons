@@ -297,7 +297,7 @@ parse_redis_announce_addr() {
   if is_empty "${REDIS_ADVERTISED_PORT}"; then
     echo "Environment variable REDIS_ADVERTISED_PORT not found. Ignoring."
     # if redis is in host network mode, use the host ip and port as the announce ip and port
-    if ! is_empty "${REDIS_HOST_NETWORK_PORT}" && ! is_empty "$HOST_NETWORK_ENABLED"; then
+    if ! is_empty "${REDIS_HOST_NETWORK_PORT}"; then
       echo "redis is in host network mode, use the host ip:$CURRENT_POD_HOST_IP and port:$REDIS_HOST_NETWORK_PORT as the announce ip and port."
       redis_announce_port_value="$REDIS_HOST_NETWORK_PORT"
       redis_announce_host_value="$CURRENT_POD_HOST_IP"

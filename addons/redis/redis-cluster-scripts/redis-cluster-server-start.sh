@@ -112,7 +112,7 @@ get_current_comp_nodes_for_scale_out_replica() {
   local network_mode="default"
   if ! is_empty "$CURRENT_SHARD_ADVERTISED_PORT"; then
     network_mode="advertised_svc"
-  elif ! is_empty "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT" && ! is_empty "$HOST_NETWORK_ENABLED"; then
+  elif ! is_empty "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT"; then
     network_mode="host_network"
   fi
 
@@ -475,7 +475,7 @@ parse_redis_cluster_shard_announce_addr() {
   if is_empty "$CURRENT_SHARD_ADVERTISED_PORT" || is_empty "$CURRENT_SHARD_ADVERTISED_BUS_PORT"; then
     echo "Environment variable CURRENT_SHARD_ADVERTISED_PORT and CURRENT_SHARD_ADVERTISED_BUS_PORT not found. Ignoring."
     # if redis cluster is in host network mode, use the host ip and port as the announce ip and port
-    if ! is_empty "${REDIS_CLUSTER_HOST_NETWORK_PORT}" && ! is_empty "${REDIS_CLUSTER_HOST_NETWORK_BUS_PORT}" && ! is_empty "$HOST_NETWORK_ENABLED"; then
+    if ! is_empty "${REDIS_CLUSTER_HOST_NETWORK_PORT}" && ! is_empty "${REDIS_CLUSTER_HOST_NETWORK_BUS_PORT}"; then
       echo "redis cluster server is in host network mode, use the host ip:$CURRENT_POD_HOST_IP and port:$REDIS_CLUSTER_HOST_NETWORK_PORT, bus port:$REDIS_CLUSTER_HOST_NETWORK_BUS_PORT as the announce ip and port."
       redis_announce_port_value="$REDIS_CLUSTER_HOST_NETWORK_PORT"
       redis_announce_bus_port_value="$REDIS_CLUSTER_HOST_NETWORK_BUS_PORT"

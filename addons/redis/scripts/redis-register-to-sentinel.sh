@@ -46,7 +46,7 @@ parse_redis_primary_announce_addr() {
   if is_empty "$REDIS_ADVERTISED_PORT"; then
     echo "Environment variable REDIS_ADVERTISED_PORT not found. Ignoring."
     # if redis primary is in host network mode, use the host ip and port as the announce ip and port first
-    if ! is_empty "${REDIS_HOST_NETWORK_PORT}" && ! is_empty "$HOST_NETWORK_ENABLED"; then
+    if ! is_empty "${REDIS_HOST_NETWORK_PORT}"; then
       redis_announce_port_value="$REDIS_HOST_NETWORK_PORT"
       # the post provision action is executed in the primary pod, so we can get the host ip from the env defined in the action context.
       redis_announce_host_value="$CURRENT_POD_HOST_IP"
@@ -78,7 +78,7 @@ parse_redis_primary_announce_addr() {
   done
 
   if equals "$found" false; then
-    echo "Error: No matching svcName and port found for podName '$pod_name', REDIS_ADVERTISED_PORT: $REDIS_ADVERTISED_PORT. Exiting."
+    echo "Error: No matching svcName and port found for podName '$pod_name', REDIS_ADVERTISED_PORT: $REDIS_ADVERTISED_PORT. Exiting." >&2
     exit 1
   fi
 }
@@ -109,7 +109,7 @@ construct_sentinel_sub_command() {
       echo "SENTINEL set $master_name auth-pass $REDIS_SENTINEL_PASSWORD"
       ;;
     *)
-      echo "Unknown command: $command"
+      echo "Unknown command: $command" >&2
       return 1
       ;;
   esac
@@ -124,7 +124,7 @@ check_connectivity() {
     echo "$host is reachable on port $port."
     return 0
   else
-    echo "$host is not reachable on port $port."
+    echo "$host is not reachable on port $port." >&2
     return 1
   fi
 }
@@ -141,7 +141,7 @@ execute_sentinel_sub_command() {
   echo "$output"
 
   if [ $status -ne 0 ] || ! equals "$output" "OK"; then
-    echo "Command failed with status $status or output not OK."
+    echo "Command failed with status $status or output:$output not OK." >&2
     return 1
   else
     echo "Command executed successfully."
@@ -186,7 +186,7 @@ register_to_sentinel() {
 
   # Check if Sentinel is already monitoring the Redis primary
   if ! master_addr=$(call_func_with_retry 3 5 get_master_addr_by_name "$sentinel_host" "$sentinel_port" "SENTINEL get-master-addr-by-name $master_name"); then
-    echo "Failed to get master address after maximum retries."
+    echo "Failed to get master address after maximum retries." >&2
     exit 1
   fi
   if is_empty "$master_addr"; then
@@ -211,14 +211,14 @@ register_to_sentinel() {
 register_to_sentinel_wrapper() {
   # check required environment variables, we use REDIS_COMPONENT_NAME as the master_name registered to sentinel
   if is_empty "$REDIS_COMPONENT_NAME" || is_empty "$REDIS_POD_NAME_LIST"; then
-    echo "Error: Required environment variable REDIS_COMPONENT_NAME and REDIS_POD_NAME_LIST is not set."
+    echo "Error: Required environment variable REDIS_COMPONENT_NAME and REDIS_POD_NAME_LIST is not set." >&2
     return 1
   fi
 
   # parse redis sentinel pod fqdn list from $SENTINEL_POD_FQDN_LIST env
   # shellcheck disable=SC2153
   if is_empty "$SENTINEL_POD_FQDN_LIST"; then
-    echo "Error: Required environment variable SENTINEL_POD_FQDN_LIST is not set."
+    echo "Error: Required environment variable SENTINEL_POD_FQDN_LIST is not set." >&2
     return 1
   fi
 
@@ -253,7 +253,7 @@ register_to_sentinel_if_needed() {
   if ! is_empty "$SENTINEL_COMPONENT_NAME"; then
     echo "redis sentinel component found, register to redis sentinel."
     if ! register_to_sentinel_wrapper; then
-      echo "Failed to register to sentinel."
+      echo "Failed to register to sentinel." >&2
       exit 1
     fi
   else

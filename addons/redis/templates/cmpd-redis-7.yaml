@@ -157,7 +157,7 @@ spec:
         componentVarRef:
           optional: false
           componentName: Required
-    ## the redis server host network port when using host network mode, the port will be allocated automatically by KubeBlocks, if not set, the default value is 6379
+    ## the redis server host network port when using host network mode, the port will be allocated automatically by KubeBlocks
     - name: REDIS_HOST_NETWORK_PORT
       valueFrom:
         hostNetworkVarRef:
@@ -167,7 +167,12 @@ spec:
             port:
               name: redis
               option: Required
-      expression: {{ `{{if ne (index . "REDIS_HOST_NETWORK_PORT") ""}}{{.REDIS_HOST_NETWORK_PORT}}{{else}}6379{{end}}` | toYaml }}
+    - name: SERVICE_PORT
+      value: "6379"
+      expression: {{ `{{if ne (index . "REDIS_HOST_NETWORK_PORT") ""}}{{.REDIS_HOST_NETWORK_PORT}}{{else}}{{.SERVICE_PORT}}{{end}}` | toYaml }}
+    ## the env of redis server port for dbctl to connect to redis server
+    - name: DBCTL_REDIS_SERVICE_PORT
+      value: $(SERVICE_PORT)
     ## the redis server metrics container host network port when using host network mode, the port will be allocated automatically by KubeBlocks, if not set, the default value is 9121
     - name: REDIS_METRICS_HOST_NETWORK_PORT
       valueFrom:
@@ -178,7 +183,9 @@ spec:
             port:
               name: http-metrics
               option: Required
-      expression: {{ `{{if ne (index . "REDIS_METRICS_HOST_NETWORK_PORT") ""}}{{.REDIS_METRICS_HOST_NETWORK_PORT}}{{else}}9121{{end}}` | toYaml }}
+    - name: REDIS_METRICS_HTTP_PORT
+      value: "9121"
+      expression: {{ `{{if ne (index . "REDIS_METRICS_HOST_NETWORK_PORT") ""}}{{.REDIS_METRICS_HOST_NETWORK_PORT}}{{else}}{{.REDIS_METRICS_HTTP_PORT}}{{end}}` | toYaml }}
     ## the redis server metrics container host network server port when using host network mode, the port will be allocated automatically by KubeBlocks, if not set, the default value is 8888
     - name: REDIS_METRICS_HOST_NETWORK_SERVER_PORT
       valueFrom:
@@ -189,10 +196,9 @@ spec:
             port:
               name: server-metrics
               option: Required
-      expression: {{ `{{if ne (index . "REDIS_METRICS_HOST_NETWORK_SERVER_PORT") ""}}{{.REDIS_METRICS_HOST_NETWORK_SERVER_PORT}}{{else}}8888{{end}}` | toYaml }}
-    ## the env of redis server port for dbctl to connect to redis server
-    - name: DBCTL_REDIS_SERVICE_PORT
-      value: $(REDIS_HOST_NETWORK_PORT)
+    - name: REDIS_METRICS_SERVER_PORT
+      value: "8888"
+      expression: {{ `{{if ne (index . "REDIS_METRICS_HOST_NETWORK_SERVER_PORT") ""}}{{.REDIS_METRICS_HOST_NETWORK_SERVER_PORT}}{{else}}{{.REDIS_METRICS_SERVER_PORT}}{{end}}` | toYaml }}
     ## the component name of redis sentinel when redis sentinel is enabled, it's the fullname of redis-sentinel component
     - name: SENTINEL_COMPONENT_NAME
       valueFrom:
@@ -266,8 +272,6 @@ spec:
         matchingKey: primary
         ## all lifecycle actions share the same env
         env:
-          - name: SERVICE_PORT
-            value: "$(REDIS_HOST_NETWORK_PORT)"
           - name: CURRENT_POD_NAME
             valueFrom:
               fieldRef:
@@ -335,8 +339,6 @@ spec:
           - mountPath: /tools
             name: tools
         env:
-          - name: SERVICE_PORT
-            value: "$(REDIS_HOST_NETWORK_PORT)"
           - name: CURRENT_POD_NAME
             valueFrom:
               fieldRef:
@@ -378,11 +380,11 @@ spec:
           runAsUser: 1001
         env:
           - name: ENDPOINT
-            value: "localhost:$(REDIS_HOST_NETWORK_PORT)"
+            value: "localhost:$(SERVICE_PORT)"
           - name: METRICS_HTTP_PORT
-            value: $(REDIS_METRICS_HOST_NETWORK_PORT)
+            value: $(REDIS_METRICS_HTTP_PORT)
           - name: METRICS_SERVER_PORT
-            value: $(REDIS_METRICS_HOST_NETWORK_SERVER_PORT)
+            value: $(REDIS_METRICS_SERVER_PORT)
           - name: REDIS_USER
             value: $(REDIS_DEFAULT_USER)
           - name: REDIS_PASSWORD

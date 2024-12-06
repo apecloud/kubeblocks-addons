@@ -106,7 +106,7 @@ spec:
           name: sentinel-advertised
           optional: true
           host: Required
-    ## the redis sentinel server host network port when using host network mode, the port will be allocated automatically by KubeBlocks, if not set, the default value is 26379
+    ## the redis sentinel server host network port when using host network mode, the port will be allocated automatically by KubeBlocks
     - name: REDIS_SENTINEL_HOST_NETWORK_PORT
       valueFrom:
         hostNetworkVarRef:
@@ -116,10 +116,12 @@ spec:
             port:
               name: redis-sentinel
               option: Required
-      expression: {{ `{{if ne (index . "REDIS_SENTINEL_HOST_NETWORK_PORT") ""}}{{.REDIS_SENTINEL_HOST_NETWORK_PORT}}{{else}}26379{{end}}` | toYaml }}
+    - name: SENTINEL_SERVICE_PORT
+      value: "26379"
+      expression: {{ `{{if ne (index . "REDIS_SENTINEL_HOST_NETWORK_PORT") ""}}{{.REDIS_SENTINEL_HOST_NETWORK_PORT}}{{else}}{{.SENTINEL_SERVICE_PORT}}{{end}}` | toYaml }}
     ## the env of redis sentinel server port for dbctl to connect to redis cluster server
     - name: DBCTL_REDIS_SENTINEL_SERVICE_PORT
-      value: $(REDIS_SENTINEL_HOST_NETWORK_PORT)
+      value: $(SENTINEL_SERVICE_PORT)
     ## the username of redis for redis sentinel connection which is only used to recover redis servers when scale-out redis sentinel.
     - name: REDIS_SENTINEL_USER
       value: "kbreplicator-sentinel"
@@ -156,8 +158,6 @@ spec:
         targetPodSelector: Any
         ## all lifecycle actions share the same env
         env:
-          - name: SENTINEL_SERVICE_PORT
-            value: "$(REDIS_SENTINEL_HOST_NETWORK_PORT)"
           - name: CURRENT_POD_NAME
             valueFrom:
               fieldRef:
@@ -187,8 +187,6 @@ spec:
         - name: scripts
           mountPath: /scripts
       env:
-        - name: SENTINEL_SERVICE_PORT
-          value: "$(REDIS_SENTINEL_HOST_NETWORK_PORT)"
         - name: CURRENT_POD_NAME
           valueFrom:
             fieldRef:

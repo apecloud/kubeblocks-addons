@@ -20,11 +20,6 @@ Define redis cluster shardingSpec with ComponentDefinition.
     - name: FIXED_POD_IP_ENABLED
       value: "true"
     {{- end }}
-    {{- if and .Values.hostNetworkEnabled (not .Values.nodePortEnabled) (not .Values.fixedPodIPEnabled) }}
-    env:
-    - name: HOST_NETWORK_ENABLED
-      value: "true"
-    {{- end }}
     serviceVersion: {{ .Values.version }}
     systemAccounts:
     - name: default
@@ -73,10 +68,6 @@ Define redis ComponentSpec with ComponentDefinition.
   - name: FIXED_POD_IP_ENABLED
     value: "true"
   {{- end }}
-  {{- if and .Values.hostNetworkEnabled (not .Values.nodePortEnabled) (not .Values.fixedPodIPEnabled) }}
-  - name: HOST_NETWORK_ENABLED
-    value: "true"
-  {{- end }}
   serviceVersion: {{ .Values.version }}
   serviceAccountName: {{ include "kblib.serviceAccountName" . }}
   {{- include "kblib.componentResources" . | indent 2 }}
@@ -98,11 +89,6 @@ Define redis sentinel ComponentSpec with ComponentDefinition.
   {{- if and .Values.fixedPodIPEnabled (not .Values.nodePortEnabled) (not .Values.hostNetworkEnabled) }}
   env:
   - name: FIXED_POD_IP_ENABLED
-    value: "true"
-  {{- end }}
-  {{- if and .Values.hostNetworkEnabled (not .Values.nodePortEnabled) (not .Values.fixedPodIPEnabled) }}
-  env:
-  - name: HOST_NETWORK_ENABLED
     value: "true"
   {{- end }}
   serviceVersion: {{ .Values.version }}

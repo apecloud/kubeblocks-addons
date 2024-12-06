@@ -197,7 +197,7 @@ get_pod_service_port_by_network_mode() {
   local target_pod_name="$1"
   local service_port=${SERVICE_PORT:-6379}
   # if redis cluster is using host network, the service port should be the host network port
-  if ! is_empty "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT" && ! is_empty "$HOST_NETWORK_ENABLED"; then
+  if ! is_empty "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT"; then
     IFS=',' read -ra port_mappings <<< "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT"
     for mapping in "${port_mappings[@]}"; do
       shard_name=$(echo "$mapping" | cut -d':' -f1)

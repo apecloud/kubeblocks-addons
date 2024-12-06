@@ -237,7 +237,7 @@ get_current_comp_nodes_for_scale_in() {
   local network_mode="default"
   if ! is_empty "$CURRENT_SHARD_ADVERTISED_PORT"; then
     network_mode="advertised_svc"
-  elif ! is_empty "$REDIS_CLUSTER_HOST_NETWORK_PORT" && ! is_empty "$HOST_NETWORK_ENABLED"; then
+  elif ! is_empty "$REDIS_CLUSTER_HOST_NETWORK_PORT"; then
     network_mode="host_network"
   fi
 
@@ -387,7 +387,7 @@ init_current_comp_default_nodes_for_scale_out() {
   local network_mode="default"
   if ! is_empty "$CURRENT_SHARD_ADVERTISED_PORT"; then
     network_mode="advertised_svc"
-  elif ! is_empty "$REDIS_CLUSTER_HOST_NETWORK_PORT" && ! is_empty "$HOST_NETWORK_ENABLED"; then
+  elif ! is_empty "$REDIS_CLUSTER_HOST_NETWORK_PORT"; then
     network_mode="host_network"
   fi
 
@@ -543,7 +543,7 @@ gen_initialize_redis_cluster_node() {
   local network_mode="default"
   if ! is_empty "$ALL_SHARDS_ADVERTISED_PORT"; then
     network_mode="advertised_svc"
-  elif ! is_empty "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT" && ! is_empty "$HOST_NETWORK_ENABLED"; then
+  elif ! is_empty "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT"; then
     network_mode="host_network"
   fi
 
