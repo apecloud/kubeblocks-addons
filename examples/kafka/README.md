@@ -54,6 +54,10 @@ kubectl apply -f examples/kafka/cluster-separated.yaml
 
 ### Horizontal scaling
 
+> [!IMPORTANT]
+> As per the Kafka documentation, the number of KRaft replicas should be odd to avoid split-brain scenarios.
+> Make sure the number of KRaft replicas, i.e. Controller replicas,  is always odd after Horizontal Scaling, either in Separated or Combined mode.
+
 #### [Scale-out](scale-out.yaml)
 
 Horizontal scaling out `kafka-combine` component in cluster `kafka-combined-cluster` by adding ONE more replica:
@@ -271,7 +275,7 @@ kubectl delete cluster kafka-cluster
 
 #### How to Access Kafka Cluster
 
-#### With Direct Pod Access
+##### With Direct Pod Access
 
 To connect to the Kafka cluster, you can use the following command to get the service for connection:
 
@@ -288,7 +292,7 @@ kafka-combined-cluster-kafka-combine-advertised-listener-0   ClusterIP   10.96.2
 
 You can connect to the Kafka cluster using the `CLUSTER-IP` and `PORT`.
 
-#### With NodePort Service
+##### With NodePort Service
 
 Currently only `nodeport` and `clusterIp` network modes are supported for Kafka
 To access the Kafka cluster using the `nodeport` service, you can create Kafka cluster with the following configuration,  refer to [Kafka Network Modes Example](./cluster-combined-nodeport.yaml) for more details.
