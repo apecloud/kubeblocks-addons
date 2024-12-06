@@ -153,8 +153,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - |
-          {{- .Files.Get "scripts/redis-sentinel-member-leave.sh" | nindent 14 }}
+          - /scripts/redis-sentinel-member-leave.sh
         targetPodSelector: Any
         ## all lifecycle actions share the same env
         env:
