@@ -1,0 +1,136 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "title": "TiDB Cluster Configuration",
+  "description": "Configuration schema for the TiDB cluster Helm chart.",
+  "properties": {
+    "pd": {
+      "type": "object",
+      "properties": {
+        "replicas": { "type": "integer", "default": 3, "description": "Number of PD replicas." },
+        "resources": {
+          "type": "object",
+          "properties": {
+            "limits": {
+              "type": "object",
+              "properties": {
+                "cpu": { "type": "number", "default": 2 },
+                "memory": { "type": "string", "default": "8Gi" }
+              }
+            },
+            "requests": {
+              "type": "object",
+              "properties": {
+                "cpu": { "type": "number", "default":2 },
+                "memory": { "type": "string", "default": "8Gi" }
+              }
+            }
+          }
+        },
+        "persistence": {
+          "type": "object",
+          "properties": {
+            "data": {
+              "type": "object",
+              "properties": {
+                "storageClassName": { "type": ["string", "null"], "default": null, "description": "Storage class name for persistent volumes." },
+                "size": { "type": "string", "default": "20Gi", "description": "Size of persistent volume claim." }
+              }
+            }
+          }
+        },
+        "tolerations": {
+          "type": "array",
+          "items": {},
+          "default": [],
+          "description": "Tolerations for PD pod assignment."
+        }
+      }
+    },
+    "tikv": {
+      "type": "object",
+      "properties": {
+        "replicas": { "type": "integer", "default": 3, "description": "Number of TiKV replicas." },
+        "resources": {
+          "type": "object",
+          "properties": {
+            "limits": {
+              "type": "object",
+              "properties": {
+                "cpu": { "type": "number", "default": 4 },
+                "memory": { "type": "string", "default": "16Gi" }
+              }
+            },
+            "requests": {
+              "type": "object",
+              "properties": {
+                "cpu": { "type": "number", "default": 4 },
+                "memory": { "type": "string", "default": "16Gi" }
+              }
+            }
+          }
+        },
+        "persistence": {
+          "type": "object",
+          "properties": {
+            "data": {
+              "type": "object",
+              "properties": {
+                "storageClassName": { "type": ["string", "null"], "default": null, "description": "Storage class name for persistent volumes." },
+                "size": { "type": "string", "default": "500Gi", "description": "Size of persistent volume claim." }
+              }
+            }
+          }
+        },
+        "tolerations": {
+          "type": "array",
+          "items": {},
+          "default": [],
+          "description": "Tolerations for TiKV pod assignment."
+        }
+      }
+    },
+    "tidb": {
+      "type": "object",
+      "properties": {
+        "replicas": {
+          "type": "integer",
+          "default": 2,
+          "description": "Number of TiDB replicas."
+        },
+        "resources": {
+          "type": "object",
+          "properties": {
+            "limits": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": "number",
+                  "default": 4
+                },
+                "memory": {
+                  "type": "string",
+                  "default": "16Gi"
+                }
+              }
+            },
+            "requests": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": "number",
+                  "default": 4
+                },
+                "memory": {
+                  "type": "string",
+                  "default": "16Gi"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "required": ["pd", "tikv", "tidb"]
+}

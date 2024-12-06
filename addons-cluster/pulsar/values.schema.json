@@ -32,46 +32,240 @@
                     "default": 1,
                     "minimum": 1,
                     "maximum": 5
-                }
-            },
-            "broker": {
-                "type": "object",
-                "properties": {
-                    "replicaCount": {
-                        "title": "Replicas",
-                        "description": "The number of broker replicas.",
-                        "type": "integer",
-                        "default": 1,
-                        "minimum": 1,
-                        "maximum": 5
+                },
+                "mode": {
+                    "type": "string",
+                    "enum": [
+                        "selfVerifying",
+                        "generic"
+                    ],
+                    "default": "generic",
+                    "description": "Bookie operation mode"
+                },
+                "resources": {
+                    "type": "object",
+                    "properties": {
+                        "limits": {
+                            "type": "object",
+                            "properties": {
+                                "memory": {
+                                    "type": "string",
+                                    "default": "512Mi"
+                                }
+                            }
+                        },
+                        "requests": {
+                            "type": "object",
+                            "properties": {
+                                "cpu": {
+                                    "type": "string",
+                                    "default": "200m"
+                                },
+                                "memory": {
+                                    "type": "string",
+                                    "default": "512Mi"
+                                }
+                            }
+                        }
+                    }
+                },
+                "persistence": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": { "type": "boolean", "default": true },
+                        "data": {
+                            "type": "object",
+                            "properties": {
+                                "storageClassName": { "type": ["string", "null"], "default": null },
+                                "size": { "type": "string", "default": "8Gi" }
+                            }
+                        },
+                        "log": {
+                            "type": "object",
+                            "properties": {
+                                "storageClassName": { "type": ["string", "null"], "default": null },
+                                "size": { "type": "string", "default": "8Gi" }
+                            }
+                        }
                     }
                 }
-            },
-            "proxy": {
-              "type": "object",
-              "properties": {
-                  "replicaCount": {
-                      "title": "Replicas",
-                      "description": "The number of proxy replicas.",
-                      "type": "integer",
-                      "default": 1,
-                      "minimum": 1,
-                      "maximum": 5
-                  },
-                  "enabled": {
+            }
+        },
+        "bookiesRecovery": {
+            "type": "object",
+            "properties": {
+                "enabled": { "type": "boolean", "default": false },
+                "replicaCount": { "type": "integer", "default": 1 },
+                "resources": {
+                    "type": "object",
+                    "properties": {
+                        "limits": {
+                            "type": "object",
+                            "properties": {
+                                "memory": { "type": "string", "default": "512Mi" }
+                            }
+                        },
+                        "requests": {
+                            "type": "object",
+                            "properties": {
+                                "cpu": { "type": "string", "default": "200m" },
+                                "memory": { "type": "string", "default": "512Mi" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "broker": {
+            "type": "object",
+            "properties": {
+                "replicaCount": {
+                    "title": "Replicas",
+                    "description": "The number of broker replicas.",
+                    "type": "integer",
+                    "default": 1,
+                    "minimum": 1,
+                    "maximum": 5
+                },
+                "resources": {
+                    "type": "object",
+                    "properties": {
+                        "limits": {
+                            "type": "object",
+                            "properties": {
+                                "memory": { "type": "string", "default": "512Mi" }
+                            }
+                        },
+                        "requests": {
+                            "type": "object",
+                            "properties": {
+                                "cpu": { "type": "string", "default": "200m" },
+                                "memory": { "type": "string", "default": "512Mi" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "zookeeper": {
+            "type": "object",
+            "properties": {
+                "replicaCount": {
+                    "type": "integer",
+                    "default": 1
+                },
+                "resources": {
+                    "type": "object",
+                    "properties": {
+                        "limits": {
+                            "type": "object",
+                            "properties": {
+                                "memory": {
+                                    "type": "string",
+                                    "default": "512Mi"
+                                }
+                            }
+                        },
+                        "requests": {
+                            "type": "object",
+                            "properties": {
+                                "cpu": {
+                                    "type": "string",
+                                    "default": "100m"
+                                },
+                                "memory": {
+                                    "type": "string",
+                                    "default": "512Mi"
+                                }
+                            }
+                        }
+                    }
+                },
+                "persistence": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean",
+                            "default": true
+                        },
+                        "data": {
+                            "type": "object",
+                            "properties": {
+                                "storageClassName": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "default": null
+                                },
+                                "size": {
+                                    "type": "string",
+                                    "default": "8Gi"
+                                }
+                            }
+                        },
+                        "log": {
+                            "type": "object",
+                            "properties": {
+                                "storageClassName": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "default": null
+                                },
+                                "size": {
+                                    "type": "string",
+                                    "default": "8Gi"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "proxy": {
+            "type": "object",
+            "properties": {
+                "replicaCount": {
+                    "title": "Replicas",
+                    "description": "The number of proxy replicas.",
+                    "type": "integer",
+                    "default": 1,
+                    "minimum": 1,
+                    "maximum": 5
+                },
+                "enabled": {
                     "title": "Enabled",
                     "description": "Enable proxy",
                     "type": "boolean",
                     "default": false
-                  }
-              }
-          }
+                },
+                "resources": {
+                    "type": "object",
+                    "properties": {
+                        "limits": {
+                            "type": "object",
+                            "properties": {
+                                "memory": { "type": "string", "default": "512Mi" }
+                            }
+                        },
+                        "requests": {
+                            "type": "object",
+                            "properties": {
+                                "cpu": { "type": "string", "default": "200m" },
+                                "memory": { "type": "string", "default": "512Mi" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "nodePortEnabled": {
+            "title": "Node Port Enabled",
+            "description": "Enable Node Port",
+            "type": "boolean",
+            "default": false
         }
-    },
-    "nodePortEnabled": {
-      "title": "Node Port Enabled",
-      "description": "Enable Node Port",
-      "type": "boolean",
-      "default": false
     }
 }

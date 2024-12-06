@@ -12,8 +12,8 @@
             "title": "ZontCount",
             "description": "OceanBase Zones.",
             "type": [
-              "integer"
-          ],
+                "integer"
+            ],
             "default": 1,
             "minimum": 1,
             "maximum": 3
@@ -22,8 +22,8 @@
             "title": "Replicas",
             "description": "The number of replicas, no less than zoneCount.",
             "type": [
-              "integer"
-          ],
+                "integer"
+            ],
             "minimum": 1,
             "maximum": 6
         },
@@ -50,39 +50,6 @@
             "minimum": 4,
             "maximum": 1024
         },
-        "datafile": {
-            "title": "Data file Storage(Gi)",
-            "description": "Data file Storage size, the unit is Gi.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "default": 50,
-            "minimum": 20,
-            "maximum": 10000
-        },
-        "datalog": {
-            "title": "Data log Storage(Gi)",
-            "description": "Data log Storage size, the unit is Gi.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "default": 50,
-            "minimum": 20,
-            "maximum": 10000
-        },
-        "log": {
-            "title": "Log Storage(Gi)",
-            "description": "Log Storage size, the unit is Gi.",
-            "type": [
-                "number",
-                "string"
-            ],
-            "default": 20,
-            "minimum": 10,
-            "maximum": 100
-        },
         "hostnetwork": {
             "title": "Host Network",
             "description": "Enable or Disable Pod Host Network.",
@@ -102,6 +69,46 @@
                 "enabled",
                 "disabled"
             ]
+        },
+        "persistence": {
+            "type": "object",
+            "properties": {
+                "storageClassName": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "default": "",
+                    "description": "Storage class name used by persistent volumes"
+                },
+                "storages": {
+                    "type": "object",
+                    "properties": {
+                        "data-file": {
+                            "type": "integer",
+                            "default": 30,
+                            "description": "Size of data file storage in GiB"
+                        },
+                        "data-log": {
+                            "type": "integer",
+                            "default": 30,
+                            "description": "Size of data log storage in GiB"
+                        },
+                        "log": {
+                            "type": "integer",
+                            "default": 10,
+                            "description": "Size of log storage in GiB"
+                        },
+                        "workdir": {
+                            "type": "integer",
+                            "default": 1,
+                            "description": "Size of work directory storage in GiB"
+                        }
+                    },
+                    "additionalProperties": false,
+                    "description": "Sizes of different storages in GiB"
+                }
+            }
         }
     },
     "required": [

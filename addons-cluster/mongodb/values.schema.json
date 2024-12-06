@@ -72,6 +72,14 @@
       "title": "Storage Class Name",
       "description": "Storage class name of the data volume",
       "type": "string"
+    },
+    "hostnetwork": {
+      "type": "string",
+      "default": "enabled",
+      "enum": [
+        "enabled",
+        "disabled"
+      ]
     }
   }
 }
