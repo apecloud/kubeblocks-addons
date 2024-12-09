@@ -9,7 +9,6 @@ test || __() {
 }
 
 kafka_config_certs_path="/opt/bitnami/kafka/config/certs"
-kafka_kraft_config_path="/opt/bitnami/kafka/config/kraft"
 kafka_config_path="/opt/bitnami/kafka/config"
 
 load_common_library() {
@@ -69,10 +68,6 @@ set_tls_configuration_if_needed() {
     echo "[tls]Couldn't find the expected PEM files! They are mandatory when encryption via TLS is enabled." >&2
     return 1
   fi
-  export KAFKA_TLS_TRUSTSTORE_FILE="$kafka_config_certs_path/kafka.truststore.pem"
-  echo "[tls]KAFKA_TLS_TRUSTSTORE_FILE=$KAFKA_TLS_TRUSTSTORE_FILE"
-  echo "[tls]ssl.endpoint.identification.algorithm=" >> $kafka_kraft_config_path/server.properties
-  echo "[tls]ssl.endpoint.identification.algorithm=" >> $kafka_config_path/server.properties
   return 0
 }
 
@@ -120,17 +115,6 @@ override_sasl_configuration() {
     echo "[sasl]export KAFKA_CFG_SASL_ENABLED_MECHANISMS=${KAFKA_CFG_SASL_ENABLED_MECHANISMS}"
     export KAFKA_CFG_SASL_MECHANISM_INTER_BROKER_PROTOCOL="PLAIN"
     echo "[sasl]export KAFKA_CFG_SASL_MECHANISM_INTER_BROKER_PROTOCOL=${KAFKA_CFG_SASL_MECHANISM_INTER_BROKER_PROTOCOL}"
-  fi
-}
-
-generate_kraft_cluster_id() {
-  if [[ -n "$KAFKA_KRAFT_CLUSTER_ID" ]]; then
-    echo KAFKA_KRAFT_CLUSTER_ID="${KAFKA_KRAFT_CLUSTER_ID}"
-    kraft_id_len=${#KAFKA_KRAFT_CLUSTER_ID}
-    if [[ kraft_id_len -gt 22 ]]; then
-      export KAFKA_KRAFT_CLUSTER_ID=$(echo $KAFKA_KRAFT_CLUSTER_ID | cut -b 1-22)
-      echo export KAFKA_KRAFT_CLUSTER_ID="${KAFKA_KRAFT_CLUSTER_ID}"
-    fi
   fi
 }
 
@@ -184,15 +168,8 @@ parse_advertised_svc_if_exist() {
 }
 
 set_cfg_metadata() {
-  # independent broker component in separate cluster or combine component in combine-cluster need to set advertised.listeners
-  if [[ "broker,controller" = "$KAFKA_CFG_PROCESS_ROLES" ]] || [[ "broker" = "$KAFKA_CFG_PROCESS_ROLES" ]]; then
-    # deleting this information can reacquire the controller members when the broker restarts,
-    # and avoid the mismatch between the controller in the quorum-state and the actual controller in the case of a controller scale,
-    # which will cause the broker to fail to start
-    if [ -f "$KAFKA_CFG_METADATA_LOG_DIR/__cluster_metadata-0/quorum-state" ]; then
-      echo "[action]Removing quorum-state file when restart."
-      rm -f "$KAFKA_CFG_METADATA_LOG_DIR/__cluster_metadata-0/quorum-state"
-    fi
+  # set advertised.listeners for broker
+  if [[ "broker" = "$KAFKA_CFG_PROCESS_ROLES" ]]; then
 
     current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$POD_FQDN_LIST" "$MY_POD_NAME")
     if is_empty "$current_pod_fqdn"; then
@@ -219,9 +196,7 @@ set_cfg_metadata() {
       export KAFKA_CFG_ADVERTISED_LISTENERS="INTERNAL://${current_pod_fqdn}:9094,CLIENT://${current_pod_fqdn}:9092"
       echo "[cfg]KAFKA_CFG_ADVERTISED_LISTENERS=$KAFKA_CFG_ADVERTISED_LISTENERS"
     fi
-  fi
 
-  if [[ "broker" = "$KAFKA_CFG_PROCESS_ROLES" ]]; then
     # override node.id setting
     # increments based on a specified base to avoid conflicts with controller settings
     INDEX=$(echo $MY_POD_NAME | grep -o "\-[0-9]\+\$")
@@ -231,48 +206,21 @@ set_cfg_metadata() {
     export KAFKA_CFG_BROKER_ID="$BROKER_NODE_ID"
     echo "[cfg]KAFKA_CFG_NODE_ID=$KAFKA_CFG_NODE_ID"
 
-    # generate KAFKA_CFG_CONTROLLER_QUORUM_VOTERS for broker if not a combine-cluster
-    local pod_index
-    local pod_fqdn
-    local voters=""
-    IFS=',' read -r -a controller_pod_name_list <<< "$CONTROLLER_POD_NAME_LIST"
-    for pod_name in "${controller_pod_name_list[@]}"; do
-      # pod_fqdn format: kafka-controller-0.kafka-controller-headless.svc.cluster.local, get pod_index from pod_fqdn
-      pod_index=$(extract_ordinal_from_object_name "$pod_name")
-      pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$CONTROLLER_POD_FQDN_LIST" "$pod_name")
-      local voter="${pod_index}@${pod_fqdn}:9093"
-      voters="${voters},${voter}"
-    done
-    voters=${voters#,}
-    export KAFKA_CFG_CONTROLLER_QUORUM_VOTERS="$voters"
-    echo "[cfg]export KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=$KAFKA_CFG_CONTROLLER_QUORUM_VOTERS,for kafka-broker."
-  else
-    if [[ "controller" = "$KAFKA_CFG_PROCESS_ROLES" ]] && [[ -n "$KB_KAFKA_CONTROLLER_HEAP" ]]; then
-      export KAFKA_HEAP_OPTS=${KB_KAFKA_CONTROLLER_HEAP}
-      echo "[jvm][KB_KAFKA_CONTROLLER_HEAP]export KAFKA_HEAP_OPTS=${KB_KAFKA_CONTROLLER_HEAP}"
-    fi
-    # generate node.id
-    ID="${MY_POD_NAME#${COMPONENT_NAME}-}"
-    export KAFKA_CFG_NODE_ID="$((ID + 0))"
-    export KAFKA_CFG_BROKER_ID="$((ID + 0))"
-    echo "[cfg]KAFKA_CFG_NODE_ID=$KAFKA_CFG_NODE_ID"
-
-    # generate KAFKA_CFG_CONTROLLER_QUORUM_VOTERS if is a combine-cluster or controller
-    local pod_index
-    local pod_fqdn
-    local voters=""
-    IFS=',' read -r -a pod_name_list <<< "$POD_NAME_LIST"
-    for pod_name in "${pod_name_list[@]}"; do
-      # pod_fqdn format: kafka-controller-0.kafka-controller-headless.svc.cluster.local, get pod_index from pod_fqdn
-      pod_index=$(extract_ordinal_from_object_name "$pod_name")
-      pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$POD_FQDN_LIST" "$pod_name")
-      local voter="${pod_index}@${pod_fqdn}:9093"
-      voters="${voters},${voter}"
-    done
-    voters=${voters#,}
-    export KAFKA_CFG_CONTROLLER_QUORUM_VOTERS="$voters"
-    echo "[cfg]export KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=$KAFKA_CFG_CONTROLLER_QUORUM_VOTERS,for kafka-server."
   fi
+}
+
+set_zookeeper_connect() {
+    # Check if KB_KAFKA_EXTERNAL_ZK_CONN is set
+    if [[ -z "$KB_KAFKA_EXTERNAL_ZK_CONN" ]]; then
+        echo "Error: KB_KAFKA_EXTERNAL_ZK_CONN is not set"
+        return 1
+    fi
+
+    # Set KAFKA_CFG_ZOOKEEPER_CONNECT to the value of KB_KAFKA_EXTERNAL_ZK_CONN
+    export KAFKA_CFG_ZOOKEEPER_CONNECT="$KB_KAFKA_EXTERNAL_ZK_CONN"
+
+    # Optionally, print the value to verify
+    echo "[cfg]export KAFKA_CFG_ZOOKEEPER_CONNECT=$KAFKA_CFG_ZOOKEEPER_CONNECT,for kafka-server."
 }
 
 start_server() {
@@ -280,8 +228,8 @@ start_server() {
   set_tls_configuration_if_needed
   convert_server_properties_to_env_var
   override_sasl_configuration
-  generate_kraft_cluster_id
   set_jvm_configuration
+  set_zookeeper_connect
   set_cfg_metadata
 
   exec /entrypoint.sh /run.sh
