@@ -32,8 +32,6 @@ home: https://github.com/taosdata/TDengine
 sources:
   - https://github.com/taosdata/TDengine
 
-dependencies: []
-
 maintainers:
   - name: leon-inf
     url: https://github.com/apecloud/kubeblocks/
@@ -45,6 +43,15 @@ icon: "https://www.taosdata.com/images/taosdata-logo.png"
 # follow Semantic Versioning. They should reflect the version the application is using.
 # It is recommended to use it with quotes.
 appVersion: "3.0.5"
+
+# Add a dependency to the kubeblocks definition library chart
+dependencies:
+  - name: kblib
+    version: 0.1.0
+    repository: file://../kblib
+    alias: extra
+    import-values:
+      - defaults
 
 deprecated: false
 

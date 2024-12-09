@@ -8,6 +8,15 @@ version: 1.0.0-alpha.0
 # This is the version number of greptimedb
 appVersion: "0.3.2"
 
+# Add a dependency to the kubeblocks definition library chart
+dependencies:
+  - name: kblib
+    version: 0.1.0
+    repository: file://../kblib
+    alias: extra
+    import-values:
+      - defaults
+
 home: https://greptime.com/
 sources:
 - https://github.com/GreptimeTeam/greptimedb

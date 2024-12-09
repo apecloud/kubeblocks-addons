@@ -23,6 +23,15 @@ version: 1.0.0-alpha.0
 # It is recommended to use it with quotes.
 appVersion: "8.8.2"   # helm search repo bitnami/elasticsearch
 
+# Add a dependency to the kubeblocks definition library chart
+dependencies:
+  - name: kblib
+    version: 0.1.0
+    repository: file://../kblib
+    alias: extra
+    import-values:
+      - defaults
+
 maintainers:
   - name: iziang
     url: https://github.com/apecloud/kubeblocks/

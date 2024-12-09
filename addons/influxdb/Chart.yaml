@@ -6,6 +6,15 @@ version: 1.0.0-alpha.0
 
 appVersion: 2.7.4
 
+# Add a dependency to the kubeblocks definition library chart
+dependencies:
+  - name: kblib
+    version: 0.1.0
+    repository: file://../kblib
+    alias: extra
+    import-values:
+      - defaults
+
 description: InfluxDB(TM) is an open source time-series database. It is a core component of the TICK (Telegraf, InfluxDB(TM), Chronograf, Kapacitor) stack.
 
 home: https://bitnami.com

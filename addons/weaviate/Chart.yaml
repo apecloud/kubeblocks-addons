@@ -10,6 +10,15 @@ version: 1.0.0-alpha.0
 # This is the version number of weaviate.
 appVersion: "1.19.6"
 
+# Add a dependency to the kubeblocks definition library chart
+dependencies:
+  - name: kblib
+    version: 0.1.0
+    repository: file://../kblib
+    alias: extra
+    import-values:
+      - defaults
+
 home: https://weaviate.tech/
 icon: https://weaviate.tech/images/logo_with_text.svg
 

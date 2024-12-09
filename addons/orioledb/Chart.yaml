@@ -15,6 +15,15 @@ version: 1.0.0-alpha.0
 # It is recommended to use it with quotes.
 appVersion: "14.7.2-beta1"
 
+# Add a dependency to the kubeblocks definition library chart
+dependencies:
+  - name: kblib
+    version: 0.1.0
+    repository: file://../kblib
+    alias: extra
+    import-values:
+      - defaults
+
 maintainers:
   - name: 1aal
     url: https://github.com/apecloud/kubeblocks/
