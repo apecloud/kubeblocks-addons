@@ -1,7 +1,7 @@
 <config>
   <user>admin</user>
   <password from_env="CLICKHOUSE_ADMIN_PASSWORD"/>
-  {{- if and (index . "TLS_ENABLED") (eq .TLS_ENABLED "true") -}}
+  {{- if eq (index $ "TLS_ENABLED") "true" -}}
   {{- $CA_FILE := /etc/pki/tls/ca.pem -}}
   {{- $CERT_FILE := /etc/pki/tls/cert.pem -}}
   {{- $KEY_FILE := /etc/pki/tls/key.pem }}
