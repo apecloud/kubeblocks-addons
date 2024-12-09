@@ -48,6 +48,11 @@
       "title": "Storage Class Name",
       "description": "Storage class name of the data volume",
       "type": "string"
+    },
+    "buckets": {
+      "title": "bucket Names",
+      "description": "bucket names",
+      "type": "string"
     }
   }
 }

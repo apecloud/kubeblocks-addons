@@ -12,6 +12,10 @@ mode:
 ##### parameters for standalone mode
 replicas: 1
 
+cpu: 0.5
+
+memory: 0.5
+
 persistence:
   enabled: true
   data:

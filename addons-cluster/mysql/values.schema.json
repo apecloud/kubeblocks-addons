@@ -4,15 +4,18 @@
   "properties": {
     "version": {
       "title": "Version",
-      "description": "Cluster version, run \"kbcli cv list --devel\" to see all versions.",
+      "description": "MySQL version",
       "type": "string",
-      "default": "mysql-8.0",
+      "default": "8.0.39",
       "enum": [
-        "mysql-8.4",
-        "mysql-8.0",
-        "mysql-5.7",
-        "mysql-orc-8.0",
-        "mysql-orc-5.7"
+        "8.0.39",
+        "8.0.38",
+        "8.0.37",
+        "8.0.36",
+        "8.4.2",
+        "8.4.1",
+        "8.4.0",
+        "5.7.44"
       ]
     },
     "mode": {
@@ -22,8 +25,7 @@
       "default": "standalone",
       "enum": [
         "standalone",
-        "replication",
-        "raftGroup"
+        "replication"
       ]
     },
     "replicas": {
@@ -67,6 +69,25 @@
       "default": 20,
       "minimum": 1,
       "maximum": 10000
+    },
+    "topology": {
+      "type": "string",
+      "default": "server",
+      "description": "Topology type of the server",
+      "enum": [
+        "server",
+        "server-with-proxy",
+        "server-with-orc"
+      ]
+    },
+    "proxysql": {
+      "type": "object",
+      "properties": {
+        "replicas": { "type": "integer", "default": 1 },
+        "cpu": { "type": "number", "default": 1 },
+        "memory": { "type": "number", "default": 1, "description": "Memory, the unit is Gi." }
+      },
+      "description": "Proxysql configuration"
     }
   }
 }
