@@ -150,7 +150,7 @@ get_current_comp_nodes_for_scale_out_replica() {
     local node_role
     node_role=$(echo "$line" | awk '{print $3}')
 
-    echo "$node_announce_ip $node_fqdn $node_port $node_bus_port $node_role"
+    printf "%s %s %s %s %s" "$node_announce_ip" "$node_fqdn" "$node_port" "$node_bus_port" "$node_role"
   }
 
   build_node_entry() {
@@ -200,12 +200,9 @@ get_current_comp_nodes_for_scale_out_replica() {
   # process each node
   while read -r line; do
     local node_info
-    node_info=$(parse_node_info "$line")
-    local node_announce_ip="${node_info[0]}"
-    local node_fqdn="${node_info[1]}"
-    local node_port="${node_info[2]}"
-    local node_bus_port="${node_info[3]}"
-    local node_role="${node_info[4]}"
+    node_info=$(parse_node_line_info "$line")
+    local node_announce_ip node_fqdn node_port node_bus_port node_role
+    read -r node_announce_ip node_fqdn node_port node_bus_port node_role <<< "$node_info"
 
     # build node entry based on network mode
     local node_entry
