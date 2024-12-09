@@ -255,7 +255,6 @@ get_current_comp_nodes_for_scale_in() {
 
     local node_address
     node_address=$(get_node_address_by_network_mode "$network_mode" "$node_ip" "$node_port" "$node_fqdn")
-
     categorize_node "$node_address" "$node_fqdn" "$node_role"
   done <<< "$cluster_nodes_info"
 

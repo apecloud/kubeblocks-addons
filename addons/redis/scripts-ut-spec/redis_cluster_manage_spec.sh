@@ -135,6 +135,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
 
       setup() {
         export CURRENT_SHARD_ADVERTISED_PORT="redis-shard-sxj-0:31000,redis-shard-sxj-1:31001"
+        export CURRENT_SHARD_COMPONENT_NAME="redis-shard-sxj"
         export current_comp_primary_node=()
         export current_comp_other_nodes=()
       }
@@ -142,6 +143,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
 
       un_setup() {
         unset CURRENT_SHARD_ADVERTISED_PORT
+        unset CURRENT_SHARD_COMPONENT_NAME
         unset cluster_nodes_info
       }
       After "un_setup"
@@ -342,7 +344,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
       It "exits with error when failed to get host ip of pod"
         When run init_current_comp_default_nodes_for_scale_out
         The status should be failure
-        The stderr should include "Failed to get the host ip of the pod redis-shard-sxj-0"
+        The stderr should include "Failed to get host ip of pod redis-shard-sxj-0"
       End
     End
 
@@ -429,7 +431,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
       It "exits with error when failed to get pod fqdn"
         When run init_current_comp_default_nodes_for_scale_out
         The status should be failure
-        The stderr should include "Error: Failed to get current pod: redis-shard-sxj-0 fqdn from current shard pod fqdn list: redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc.cluster.local. Exiting."
+        The stderr should include "Error: Failed to get pod redis-shard-sxj-0 fqdn from list: redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local,redis-shard-sxj-1.redis-shard-sxj-headless.default.svc.cluster.local"
       End
     End
   End
@@ -617,7 +619,7 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
       It "exits with error when failed to get host ip of pod"
         When run gen_initialize_redis_cluster_node "true"
         The status should be failure
-        The stderr should include "Failed to get the host ip of the pod redis-shard-98x-0"
+        The stderr should include "Failed to get host IP for pod: redis-shard-98x-0"
       End
     End
 
