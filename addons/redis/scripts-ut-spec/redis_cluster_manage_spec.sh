@@ -1681,20 +1681,20 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
     Context "when required environment variables are not set"
       setup() {
         export KB_CLUSTER_POD_IP_LIST=""
-        export SERVICE_PORT=""
+        export KB_CLUSTER_POD_NAME_LIST=""
       }
       Before "setup"
 
       un_setup() {
         unset KB_CLUSTER_POD_IP_LIST
-        unset SERVICE_PORT
+        unset KB_CLUSTER_POD_NAME_LIST
       }
       After "un_setup"
 
       It "exits with status 1 when required environment variables are not set"
         When run initialize_or_scale_out_redis_cluster
         The status should be failure
-        The stderr should include "Error: Required environment variable KB_CLUSTER_POD_IP_LIST and SERVICE_PORT is not set."
+        The stderr should include "Error: Required environment variable KB_CLUSTER_POD_IP_LIST and KB_CLUSTER_POD_NAME_LIST and SERVICE_PORT is not set."
       End
     End
 
@@ -1709,13 +1709,13 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
 
       setup() {
         export KB_CLUSTER_POD_IP_LIST="172.42.0.1,172.42.0.2,172.42.0.3,172.42.0.4,172.42.0.5,172.42.0.6"
-        export SERVICE_PORT="6379"
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
       }
       Before "setup"
 
       un_setup() {
         unset KB_CLUSTER_POD_IP_LIST
-        unset SERVICE_PORT
+        unset KB_CLUSTER_POD_NAME_LIST
       }
       After "un_setup"
 
@@ -1738,13 +1738,13 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
 
       setup() {
         export KB_CLUSTER_POD_IP_LIST="172.42.0.1,172.42.0.2,172.42.0.3,172.42.0.4,172.42.0.5,172.42.0.6"
-        export SERVICE_PORT="6379"
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
       }
       Before "setup"
 
       un_setup() {
         unset KB_CLUSTER_POD_IP_LIST
-        unset SERVICE_PORT
+        unset KB_CLUSTER_POD_NAME_LIST
       }
       After "un_setup"
 
@@ -1767,13 +1767,13 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
 
       setup() {
         export KB_CLUSTER_POD_IP_LIST="172.42.0.1,172.42.0.2,172.42.0.3,172.42.0.4,172.42.0.5,172.42.0.6"
-        export SERVICE_PORT="6379"
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
       }
       Before "setup"
 
       un_setup() {
         unset KB_CLUSTER_POD_IP_LIST
-        unset SERVICE_PORT
+        unset KB_CLUSTER_POD_NAME_LIST
       }
       After "un_setup"
 
@@ -1796,13 +1796,13 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
 
       setup() {
         export KB_CLUSTER_POD_IP_LIST="172.42.0.1,172.42.0.2,172.42.0.3,172.42.0.4,172.42.0.5,172.42.0.6"
-        export SERVICE_PORT="6379"
+        export KB_CLUSTER_POD_NAME_LIST="redis-shard-98x-0,redis-shard-98x-1,redis-shard-7hy-0,redis-shard-7hy-1,redis-shard-jwl-0,redis-shard-jwl-1"
       }
       Before "setup"
 
       un_setup() {
         unset KB_CLUSTER_POD_IP_LIST
-        unset SERVICE_PORT
+        unset KB_CLUSTER_POD_NAME_LIST
       }
       After "un_setup"
 
