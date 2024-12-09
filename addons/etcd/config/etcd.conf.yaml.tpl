@@ -3,10 +3,10 @@
 
 {{- $peer_protocol := "http" }}
 {{- $client_protocol := "http" }}
-{{- if and (index . "TLS_ENABLED") (eq .TLS_ENABLED "true") (eq .PEER_TLS "true") }}
+{{- if and (eq (index $ "TLS_ENABLED") "true") (eq .PEER_TLS "true") }}
   {{- $peer_protocol = "https" }}
 {{- end }}
-{{- if and (index . "TLS_ENABLED") (eq .TLS_ENABLED "true") (eq .CLIENT_TLS "true") }}
+{{- if and (eq (index $ "TLS_ENABLED") "true") (eq .CLIENT_TLS "true") }}
   {{- $client_protocol = "https" }}
 {{- end }}
 
@@ -69,7 +69,7 @@ discovery-srv:
 
 {{- define "init_peers" }}
   {{- $peer_protocol := "http" }}
-  {{- if and (index . "TLS_ENABLED") (eq .TLS_ENABLED "true") (eq .PEER_TLS "true") }}
+  {{- if and (eq (index $ "TLS_ENABLED") "true") (eq .PEER_TLS "true") }}
     {{- $peer_protocol = "https" }}
   {{- end }}
   {{- if (index . "PEER_ENDPOINT") }}
@@ -128,7 +128,7 @@ proxy-write-timeout: 5000
 # Time (in milliseconds) for a read to timeout.
 proxy-read-timeout: 0
 
-{{- if and (index . "TLS_ENABLED") (eq .TLS_ENABLED "true") }}
+{{- if eq (index $ "TLS_ENABLED") "true" }}
 {{- if eq $client_protocol "https" }}
 client-transport-security:
   # Path to the client server TLS cert file.
