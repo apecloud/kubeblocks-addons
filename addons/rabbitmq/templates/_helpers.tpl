@@ -38,12 +38,5 @@ Common annotations
 */}}
 {{- define "rabbitmq.annotations" -}}
 helm.sh/resource-policy: keep
-{{ include "rabbitmq.apiVersion" . }}
-{{- end }}
-
-{{/*
-API version annotation
-*/}}
-{{- define "rabbitmq.apiVersion" -}}
-kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{ include "kblib.versions.apiVersion" . }}
 {{- end }}

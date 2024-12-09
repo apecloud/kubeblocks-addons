@@ -16,8 +16,6 @@ dependencies:
     version: 0.1.0
     repository: file://../kblib
     alias: extra
-    import-values:
-      - defaults
 
 home: https://weaviate.tech/
 icon: https://weaviate.tech/images/logo_with_text.svg

@@ -12,8 +12,6 @@ dependencies:
     version: 0.1.0
     repository: file://../kblib
     alias: extra
-    import-values:
-      - defaults
 
 description: InfluxDB(TM) is an open source time-series database. It is a core component of the TICK (Telegraf, InfluxDB(TM), Chronograf, Kapacitor) stack.
 

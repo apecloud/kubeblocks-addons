@@ -55,14 +55,7 @@ Common annotations
 */}}
 {{- define "clickhouse.annotations" -}}
 helm.sh/resource-policy: keep
-{{ include "clickhouse.apiVersion" . }}
-{{- end }}
-
-{{/*
-API version annotation
-*/}}
-{{- define "clickhouse.apiVersion" -}}
-kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{ include "kblib.versions.apiVersion" . }}
 {{- end }}
 
 {{/*

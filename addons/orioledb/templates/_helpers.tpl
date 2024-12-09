@@ -54,12 +54,5 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Common annotations
 */}}
 {{- define "orioledb.annotations" -}}
-{{ include "orioledb.apiVersion" . }}
-{{- end }}
-
-{{/*
-API version annotation
-*/}}
-{{- define "orioledb.apiVersion" -}}
-kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{ include "kblib.versions.apiVersion" . }}
 {{- end }}

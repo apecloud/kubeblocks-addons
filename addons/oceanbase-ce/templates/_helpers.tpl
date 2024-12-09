@@ -54,14 +54,7 @@ Common annotations
 */}}
 {{- define "oceanbase-ce.annotations" -}}
 helm.sh/resource-policy: keep
-{{ include "oceanbase-ce.apiVersion" . }}
-{{- end }}
-
-{{/*
-API version annotation
-*/}}
-{{- define "oceanbase-ce.apiVersion" -}}
-kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{ include "kblib.versions.apiVersion" . }}
 {{- end }}
 
 {{/*

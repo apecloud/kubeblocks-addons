@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "greptimedb.labels" . | nindent 4 }}
   annotations:
-    {{- include "greptimedb.apiVersion" . | nindent 4 }}
+    {{- include "kblib.versions.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
     - releases:

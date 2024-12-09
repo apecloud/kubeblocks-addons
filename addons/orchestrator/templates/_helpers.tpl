@@ -54,14 +54,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Common annotations
 */}}
 {{- define "orchestrator.annotations" -}}
-{{ include "orchestrator.apiVersion" . }}
-{{- end }}
-
-{{/*
-API version annotation
-*/}}
-{{- define "orchestrator.apiVersion" -}}
-kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{ include "kblib.versions.apiVersion" . }}
 {{- end }}
 
 {{/*

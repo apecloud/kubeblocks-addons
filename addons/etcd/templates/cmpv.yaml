@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "etcd.labels" . | nindent 4 }}
   annotations:
-    {{- include "etcd.apiVersion" . | nindent 4 }}
+    {{- include "kblib.versions.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
     - compDefs:

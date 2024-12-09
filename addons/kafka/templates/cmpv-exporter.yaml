@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "kafka.labels" . | nindent 4 }}
   annotations:
-    {{- include "kafka.apiVersion" . | nindent 4 }}
+    {{- include "kblib.versions.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
     - compDefs:

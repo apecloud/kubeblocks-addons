@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "apecloud-postgresql.labels" . | nindent 4 }}
   annotations:
-    {{- include "apecloud-postgresql.apiVersion" . | nindent 4 }}
+    {{- include "kblib.versions.apiVersion" . | nindent 4 }}
 spec:
   topologies:
     - name: apecloud-postgresql

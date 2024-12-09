@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "mongodb.labels" . | nindent 4 }}
   annotations:
-    {{- include "mongodb.apiVersion" . | nindent 4 }}
+    {{- include "kblib.versions.apiVersion" . | nindent 4 }}
 spec:
   topologies:
     - name: replicaset

@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "vanilla-postgresql.labels" . | nindent 4 }}
   annotations:
-    {{- include "vanilla-postgresql.apiVersion" . | nindent 4 }}
+    {{- include "kblib.versions.apiVersion" . | nindent 4 }}
 spec:
   topologies:
     - name: vanilla-postgresql

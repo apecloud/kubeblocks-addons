@@ -1,8 +1,1 @@
 # Common values for charts
-# manage annotation of addon cd, cmpd, cmpv kbVersion
-# chart version and chart annotation need to be managed in a hack way, see hack/bump-chart-version.sh
-exports:
-  defaults:
-    cmpdKBVersion: ">=0.9.0"
-    cdKBVersion: ">=0.9.0"
-    cmpvKBVersion: ">=0.9.0"

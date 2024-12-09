@@ -55,14 +55,7 @@ Common annotations
 */}}
 {{- define "qdrant.annotations" -}}
 helm.sh/resource-policy: keep
-{{ include "qdrant.apiVersion" . }}
-{{- end }}
-
-{{/*
-API version annotation
-*/}}
-{{- define "qdrant.apiVersion" -}}
-kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{ include "kblib.versions.apiVersion" . }}
 {{- end }}
 
 {{/*

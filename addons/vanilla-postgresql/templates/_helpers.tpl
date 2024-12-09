@@ -3,14 +3,7 @@ Common annotations
 */}}
 {{- define "vanilla-postgresql.annotations" -}}
 helm.sh/resource-policy: keep
-{{ include "vanilla-postgresql.apiVersion" . }}
-{{- end }}
-
-{{/*
-API version annotation
-*/}}
-{{- define "vanilla-postgresql.apiVersion" -}}
-kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{ include "kblib.versions.apiVersion" . }}
 {{- end }}
 
 {{/*

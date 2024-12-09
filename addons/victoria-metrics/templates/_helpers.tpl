@@ -55,14 +55,7 @@ Common annotations
 */}}
 {{- define "victoria-metrics.annotations" -}}
 helm.sh/resource-policy: keep
-{{ include "victoria-metrics.apiVersion" . }}
-{{- end }}
-
-{{/*
-API version annotation
-*/}}
-{{- define "victoria-metrics.apiVersion" -}}
-kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{ include "kblib.versions.apiVersion" . }}
 {{- end }}
 
 {{/*

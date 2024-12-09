@@ -55,14 +55,7 @@ Common yashandb annotations
 */}}
 {{- define "yashandb.annotations" -}}
 helm.sh/resource-policy: keep
-{{ include "yashandb.apiVersion" . }}
-{{- end }}
-
-{{/*
-API version annotation
-*/}}
-{{- define "yashandb.apiVersion" -}}
-kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{ include "kblib.versions.apiVersion" . }}
 {{- end }}
 
 {{/*

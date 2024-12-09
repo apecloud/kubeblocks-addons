@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "risingwave.labels" . | nindent 4 }}
   annotations:
-    {{- include "risingwave.apiVersion" . | nindent 4 }}
+    {{- include "kblib.versions.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
     - releases:

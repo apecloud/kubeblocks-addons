@@ -56,14 +56,7 @@ Common minio annotations
 */}}
 {{- define "minio.annotations" -}}
 helm.sh/resource-policy: keep
-{{ include "minio.apiVersion" . }}
-{{- end }}
-
-{{/*
-API version annotation
-*/}}
-{{- define "minio.apiVersion" -}}
-kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{ include "kblib.versions.apiVersion" . }}
 {{- end }}
 
 {{/*

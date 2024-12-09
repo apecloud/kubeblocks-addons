@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "tidb.labels" . | nindent 4 }}
   annotations:
-    {{- include "tidb.apiVersion" . | nindent 4 }}
+    {{- include "kblib.versions.apiVersion" . | nindent 4 }}
 spec:
   releases:
     - name: "7.5.2"
@@ -42,7 +42,7 @@ metadata:
   labels:
     {{- include "tidb.labels" . | nindent 4 }}
   annotations:
-    {{- include "tidb.apiVersion" . | nindent 4 }}
+    {{- include "kblib.versions.apiVersion" . | nindent 4 }}
 spec:
   releases:
     - name: "7.5.2"
@@ -76,7 +76,7 @@ metadata:
   labels:
     {{- include "tidb.labels" . | nindent 4 }}
   annotations:
-    {{- include "tidb.apiVersion" . | nindent 4 }}
+    {{- include "kblib.versions.apiVersion" . | nindent 4 }}
 spec:
   releases:
     - name: "7.5.2"
