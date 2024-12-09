@@ -442,7 +442,7 @@ check_cluster_initialized() {
   local cluster_pod_ip_list="$1"
   local cluster_pod_name_list="$2"
   if is_empty "$cluster_pod_ip_list" || is_empty "$cluster_pod_name_list"; then
-    echo "Error: Required environment variable cluster_pod_ip_list or cluster_pod_name_list  is not set." >&2
+    echo "Error: Required environment variable cluster_pod_ip_list or cluster_pod_name_list is not set." >&2
     return 1
   fi
 

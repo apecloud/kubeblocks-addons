@@ -62,21 +62,21 @@ init_other_components_and_pods_info() {
   IFS=',' read -ra deleting_components <<< "$all_deleting_component_list"
   IFS=',' read -ra undeleted_components <<< "$all_undeleted_component_list"
   for comp in "${components[@]}"; do
-    if equals "$comp" "$current_component"; then
+    if contains "$comp" "$current_component"; then
       echo "skip the component $comp as it is the current component"
       continue
     fi
     other_components+=("$comp")
   done
   for comp in "${deleting_components[@]}"; do
-    if equals "$comp" "$current_component"; then
+    if contains "$comp" "$current_component"; then
       echo "skip the component $comp as it is the current component"
       continue
     fi
     other_deleting_components+=("$comp")
   done
   for comp in "${undeleted_components[@]}"; do
-    if equals "$comp" "$current_component"; then
+    if contains "$comp" "$current_component"; then
       echo "skip the component $comp as it is the current component"
       continue
     fi
@@ -87,8 +87,8 @@ init_other_components_and_pods_info() {
   IFS=',' read -ra pod_ips <<< "$all_pod_ip_list"
   IFS=',' read -ra pod_names <<< "$all_pod_name_list"
   for index in "${!pod_ips[@]}"; do
-    if echo "${pod_names[$index]}" | grep "$component-"; then
-      echo "skip the pod ${pod_names[$index]} as it belongs the component $component"
+    if echo "${pod_names[$index]}" | grep "$current_component-"; then
+      echo "skip the pod ${pod_names[$index]} as it belongs the component $current_component"
       continue
     fi
 
@@ -529,11 +529,21 @@ gen_initialize_redis_cluster_node() {
       return 1
     }
 
+    if is_empty "$all_shard_pod_fqdns"; then
+      echo "Failed to get all shard pod FQDNs" >&2
+      return 1
+    fi
+
     local pod_fqdn
     pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$all_shard_pod_fqdns" "$pod_name") || {
       echo "Failed to get FQDN for pod: $pod_name" >&2
       return 1
     }
+
+    if is_empty "$pod_fqdn"; then
+      echo "Failed to get pod $pod_name fqdn from list: $all_shard_pod_fqdns" >&2
+      return 1
+    fi
 
     categorize_node_maps "$pod_name" "$pod_fqdn" "$service_port" "$is_primary"
     return 0
@@ -566,7 +576,6 @@ gen_initialize_redis_cluster_node() {
     if ! should_process_pod "$is_primary" "$pod_name_ordinal" "$min_lexicographical_pod_ordinal"; then
       continue
     fi
-
     # initialize pod based on network mode
     case "$network_mode" in
       "advertised_svc")
