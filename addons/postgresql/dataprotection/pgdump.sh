@@ -10,11 +10,8 @@ trap handle_exit EXIT
 # Construct pg_dump options string based on input parameters.
 construct_pg_dump_options() {
   PG_DUMP_OPTIONS=""
-  if [ -n "${database}" ]; then
-    # database name to dump
-    PG_DUMP_OPTIONS+=" -d=${database}"
-  fi
   
+
   # Add options for schemas and tables; these are mutually exclusive
   if [ -n "${schemas}" ]; then
     # comma-separated list of schemas to include
@@ -37,7 +34,16 @@ construct_pg_dump_options() {
       PG_DUMP_OPTIONS+=" --exclude-table=${table}"
     done
   fi
-
+    # format
+  if [ "${format}" = "c" ] || [ "${format}" = "custom" ]; then
+    PG_DUMP_OPTIONS+=" --format=c"
+  elif [ "${format}" = "d" ] || [ "${format}" = "directory" ]; then
+    PG_DUMP_OPTIONS+=" --format=d"
+  elif [ "${format}" = "t" ] || [ "${format}" = "tar" ]; then
+    PG_DUMP_OPTIONS+=" --format=t"
+  else
+    PG_DUMP_OPTIONS+=" --format=p"
+  fi
   if [ -n "${dataOnly}" ] && [ "${dataOnly}" = "true" ]; then
     # boolean, whether to dump only data
     PG_DUMP_OPTIONS+=" --data-only"
@@ -118,17 +124,15 @@ construct_pg_dump_options() {
   echo "${PG_DUMP_OPTIONS}"
 }
 
-# Construct a file name based on a given prefix and $format environment variable
+# Construct a file name based on $format environment variable
 file_name() {
   local prefix=${DP_BACKUP_NAME}
-  if [ "${format}" = "c" ]; then
+  if [ "${format}" = "c" ] || [ "${format}" = "custom" ]; then
     echo "${prefix}.dump"
-  elif [ "${format}" = "d" ]; then
-    echo "${prefix}/"
-  elif [ "${format}" = "t" ]; then
+  elif [ "${format}" = "d" ] || [ "${format}" = "directory" ]; then
+    echo "${prefix}"
+  elif [ "${format}" = "t" ] || [ "${format}" = "tar" ]; then
     echo "${prefix}.tar"
-  elif [ "${format}" = "p" ]; then
-    echo "${prefix}.sql"
   else
     echo "${prefix}.sql"
   fi
@@ -136,8 +140,15 @@ file_name() {
 
 
 START_TIME=`get_current_time`
-PG_DUMP_OPTIONS=$(construct_pg_dump_options)
-pg_dump -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT} ${PG_DUMP_OPTIONS} | datasafed push - "/$(file_name)"
+
+# Set default database to 'postgres' if not provided; this is the default database name in PostgreSQL
+# See https://www.postgresql.org/docs/current/static/runtime-config-connection.html#GUC-DATABASE
+: "${database:=postgres}"
+
+PG_DUMP_OPTIONS="-d ${database}$(construct_pg_dump_options)"
+# print options
+echo "pg_dump options: ${PG_DUMP_OPTIONS}"
+pg_dump -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT} -d ${database} ${PG_DUMP_OPTIONS} | datasafed push -z zstd-fastest - "/$(file_name).zst"
 # stat and save the backup information
 stat_and_save_backup_info "$START_TIME"
 echo "backup done!";

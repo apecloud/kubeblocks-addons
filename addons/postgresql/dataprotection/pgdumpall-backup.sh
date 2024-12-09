@@ -137,7 +137,9 @@ construct_pg_dumpall_options() {
 
 START_TIME=`get_current_time`
 PG_DUMPALL_OPTIONS=$(construct_pg_dumpall_options)
-pg_dumpall -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT} ${PG_DUMPALL_OPTIONS} | datasafed push -z zstd-fastest - "/${DP_BACKUP_NAME}.zst"
+# print options
+echo "pg_dumpall options: ${PG_DUMPALL_OPTIONS}"
+pg_dumpall -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT} ${PG_DUMPALL_OPTIONS} | datasafed push -z zstd-fastest - "/${DP_BACKUP_NAME}.sql.zst"
 # stat and save the backup information
 stat_and_save_backup_info "$START_TIME"
 echo "backup done!";

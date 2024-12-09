@@ -16,10 +16,7 @@ function remote_file_exists() {
 # Construct pg_restore options string based on input parameters.
 construct_pg_restore_options() {
   PG_RESTORE_OPTIONS=""
-  if [ -n "${database}" ]; then
-    # Specify the database name to restore
-    PG_RESTORE_OPTIONS+=" -d=${database}"
-  fi
+
 
   # Options for schemas and tables; these are mutually exclusive
   if [ -n "${schemas}" ]; then
@@ -44,6 +41,16 @@ construct_pg_restore_options() {
     done
   fi
 
+    # format
+  if [ "${format}" = "c" ] || [ "${format}" = "custom" ]; then
+    PG_RESTORE_OPTIONS+=" --format=c"
+  elif [ "${format}" = "d" ] || [ "${format}" = "directory" ]; then
+    PG_RESTORE_OPTIONS+=" --format=d"
+  elif [ "${format}" = "t" ] || [ "${format}" = "tar" ]; then
+    PG_RESTORE_OPTIONS+=" --format=t"
+  else
+    PG_RESTORE_OPTIONS+=" --format=p"
+  fi
   if [ -n "${jobs}" ]; then
     # Run jobs in parallel
     PG_RESTORE_OPTIONS+=" --jobs=${jobs}"
@@ -100,17 +107,15 @@ construct_pg_restore_options() {
   echo "${PG_RESTORE_OPTIONS}"
 }
 
-# Construct a file name based on a given prefix and $format environment variable
+# Construct a file name based on $format environment variable
 file_name() {
   local prefix=${DP_BACKUP_NAME}
-  if [ "${format}" = "c" ]; then
+  if [ "${format}" = "c" ] || [ "${format}" = "custom" ]; then
     echo "${prefix}.dump"
-  elif [ "${format}" = "d" ]; then
-    echo "${prefix}/"
-  elif [ "${format}" = "t" ]; then
+  elif [ "${format}" = "d" ] || [ "${format}" = "directory" ]; then
+    echo "${prefix}"
+  elif [ "${format}" = "t" ] || [ "${format}" = "tar" ]; then
     echo "${prefix}.tar"
-  elif [ "${format}" = "p" ]; then
-    echo "${prefix}.sql"
   else
     echo "${prefix}.sql"
   fi
@@ -118,22 +123,29 @@ file_name() {
 
 # Check if the given format is plain.
 is_plain() {
-  if [ "${format}" = "c" ] || [ "${format}" = "d" ] || [ "${format}" = "t" ]; then
+  if [ "${format}" = "t" ] || [ "${format}" = "c" ] || [ "${format}" = "d" ] \
+  || [ "${format}" = "tar" ] || [ "${format}" = "custom" ] || [ "${format}" = "directory" ]; then
       echo "false"
   fi
   echo "true"
 }
 
-if [ $(remote_file_exists $(file_name)) == "true" ]; then
-  datasafed pull $(file_name)
-  echo "done!";
-  exit 0
+if [ $(remote_file_exists $(file_name).zst) == "false" ]; then
+  echo "backup ${DP_BACKUP_NAME} doesn't exist";
+  exit 1
 fi
 
+# Set default database to 'postgres' if not provided; this is the default database name in PostgreSQL
+# See https://www.postgresql.org/docs/current/static/runtime-config-connection.html#GUC-DATABASE
+: "${database:=postgres}"
+
 if [ $(is_plain) == "true" ]; then
-  psql -h ${DP_DB_HOST} -p ${DP_DB_PORT} -U ${DP_DB_USER} -d ${database} -f $(file_name)
+  echo "excuting psql -h ${DP_DB_HOST} -p ${DP_DB_PORT} -U ${DP_DB_USER} -d ${database}"
+  datasafed pull -d zstd-fastest $(file_name).zst - | psql -h ${DP_DB_HOST} -p ${DP_DB_PORT} -U ${DP_DB_USER} -d ${database}
 else
-  PG_RESTORE_OPTIONS=$(construct_pg_restore_options)
-  pg_restore -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT} ${PG_RESTORE_OPTIONS} $(file_name);
+  PG_RESTORE_OPTIONS="-d ${database}$(construct_pg_restore_options)"
+  # print options
+  echo "pg_restore options: ${PG_RESTORE_OPTIONS}";
+  datasafed pull -d zstd-fastest $(file_name).zst - | pg_restore -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT} -d ${database} ${PG_RESTORE_OPTIONS}
 fi
 echo "restore complete!";

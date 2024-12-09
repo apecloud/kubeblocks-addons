@@ -6,7 +6,7 @@ metadata:
     clusterdefinition.kubeblocks.io/name: postgresql
     {{- include "postgresql.labels" . | nindent 4 }}
 spec:
-  backupType: Full
+  backupType: Selective
   env:
     - name: IMAGE_TAG
       value: 14.8.0-pgvector-v0.6.1
@@ -14,122 +14,122 @@ spec:
     openAPIV3Schema:
       type: object
       properties:
-      # General options
-      lockWaitTimeout:
-        description: "Fail after waiting TIMEOUT for a table lock"
-      # Options controlling the output content
-      dataOnly:
-        description: "Dump only the data, not the schema"
-        type: boolean
-      clean:
-        description: "Clean (drop) databases before recreating"
-        type: boolean
-      encoding:
-        description: "Dump the data in encoding ENCODING"
-        type: string
-      globalsOnly:
-        description: "Dump only global objects, no databases"
-        type: boolean
-      noOwner:
-        description: "Skip restoration of object ownership"
-        type: boolean
-      rolesOnly:
-        description: "Dump only roles, no databases or tablespaces"
-        type: boolean
-      schemaOnly:
-        description: "Dump only the schema, no data"
-        type: boolean
-      superuser:
-        description: "Superuser user name to use in the dump"
-        type: string
-      tablespacesOnly:
-        description: "Dump only tablespaces, no databases or roles"
-        type: boolean
-      noPrivileges:
-        description: "Do not dump privileges (grant/revoke)"
-        type: boolean
-      # Additional options
-      binaryUpgrade:
-        description: "For use by upgrade utilities only"
-        type: boolean
-      columnInserts:
-        description: "Dump data as INSERT commands with column names"
-        type: boolean
-      disableDollarQuoting:
-        description: "Disable dollar quoting, use SQL standard quoting"
-        type: boolean
-      disableTriggers:
-        description: "Disable triggers during data-only restore"
-        type: boolean
-      excludeDatabase:
-        description: "Exclude databases whose name matches any of the PATTERNs"
-        type: array
-        items:
+        # General options
+        lockWaitTimeout:
+          description: "Fail after waiting TIMEOUT for a table lock"
+        # Options controlling the output content
+        dataOnly:
+          description: "Dump only the data, not the schema"
+          type: boolean
+        clean:
+          description: "Clean (drop) databases before recreating"
+          type: boolean
+        encoding:
+          description: "Dump the data in encoding ENCODING"
           type: string
-      extraFloatDigits:
-        description: "Override default setting for extra_float_digits"
-        type: integer
-      ifExists:
-        description: "Use IF EXISTS when dropping objects"
-        type: boolean
-      inserts:
-        description: "Dump data as INSERT commands, rather than COPY"
-        type: boolean
-      loadViaPartitionRoot:
-        description: "Load partitions via the root table"
-        type: boolean
-      noComments:
-        description: "Do not dump comments"
-        type: boolean
-      noPublications:
-        description: "Do not dump publications"
-        type: boolean
-      noRolePasswords:
-        description: "Do not dump passwords for roles"
-        type: boolean
-      noSecurityLabels:
-        description: "Do not dump security label assignments"
-        type: boolean
-      noSubscriptions:
-        description: "Do not dump subscriptions"
-        type: boolean
-      noSync:
-        description: "Do not wait for changes to be written safely to disk"
-        type: boolean
-      noTableAccessMethod:
-        description: "Do not dump table access methods"
-        type: boolean
-      noTablespaces:
-        description: "Do not dump tablespace assignments"
-        type: boolean
-      noToastCompression:
-        description: "Do not dump TOAST compression methods"
-        type: boolean
-      noUnloggedTableData:
-        description: "Do not dump unlogged table data"
-        type: boolean
-      onConflictDoNothing:
-        description: "Add ON CONFLICT DO NOTHING to INSERT commands"
-        type: boolean
-      quoteAllIdentifiers:
-        description: "Quote all identifiers, even if not key words"
-        type: boolean
-      rowsPerInsert:
-        description: "Number of rows per INSERT; implies --inserts"
-        type: integer
-      useSetSessionAuthorization:
-        description: "Use SET SESSION AUTHORIZATION commands instead of ALTER OWNER commands to set ownership"
-        type: boolean
-      # Connection options
-      dbname:
-        description: "Connect using connection string"
-        type: string
-      database:
-        description: "Alternative default database"
-        type: string
-      role:
-        description: "Do SET ROLE before dump"
-        type: string
+        globalsOnly:
+          description: "Dump only global objects, no databases"
+          type: boolean
+        noOwner:
+          description: "Skip restoration of object ownership"
+          type: boolean
+        rolesOnly:
+          description: "Dump only roles, no databases or tablespaces"
+          type: boolean
+        schemaOnly:
+          description: "Dump only the schema, no data"
+          type: boolean
+        superuser:
+          description: "Superuser user name to use in the dump"
+          type: string
+        tablespacesOnly:
+          description: "Dump only tablespaces, no databases or roles"
+          type: boolean
+        noPrivileges:
+          description: "Do not dump privileges (grant/revoke)"
+          type: boolean
+        # Additional options
+        binaryUpgrade:
+          description: "For use by upgrade utilities only"
+          type: boolean
+        columnInserts:
+          description: "Dump data as INSERT commands with column names"
+          type: boolean
+        disableDollarQuoting:
+          description: "Disable dollar quoting, use SQL standard quoting"
+          type: boolean
+        disableTriggers:
+          description: "Disable triggers during data-only restore"
+          type: boolean
+        excludeDatabase:
+          description: "Exclude databases whose name matches any of the PATTERNs"
+          type: array
+          items:
+            type: string
+        extraFloatDigits:
+          description: "Override default setting for extra_float_digits"
+          type: integer
+        ifExists:
+          description: "Use IF EXISTS when dropping objects"
+          type: boolean
+        inserts:
+          description: "Dump data as INSERT commands, rather than COPY"
+          type: boolean
+        loadViaPartitionRoot:
+          description: "Load partitions via the root table"
+          type: boolean
+        noComments:
+          description: "Do not dump comments"
+          type: boolean
+        noPublications:
+          description: "Do not dump publications"
+          type: boolean
+        noRolePasswords:
+          description: "Do not dump passwords for roles"
+          type: boolean
+        noSecurityLabels:
+          description: "Do not dump security label assignments"
+          type: boolean
+        noSubscriptions:
+          description: "Do not dump subscriptions"
+          type: boolean
+        noSync:
+          description: "Do not wait for changes to be written safely to disk"
+          type: boolean
+        noTableAccessMethod:
+          description: "Do not dump table access methods"
+          type: boolean
+        noTablespaces:
+          description: "Do not dump tablespace assignments"
+          type: boolean
+        noToastCompression:
+          description: "Do not dump TOAST compression methods"
+          type: boolean
+        noUnloggedTableData:
+          description: "Do not dump unlogged table data"
+          type: boolean
+        onConflictDoNothing:
+          description: "Add ON CONFLICT DO NOTHING to INSERT commands"
+          type: boolean
+        quoteAllIdentifiers:
+          description: "Quote all identifiers, even if not key words"
+          type: boolean
+        rowsPerInsert:
+          description: "Number of rows per INSERT; implies --inserts"
+          type: integer
+        useSetSessionAuthorization:
+          description: "Use SET SESSION AUTHORIZATION commands instead of ALTER OWNER commands to set ownership"
+          type: boolean
+        # Connection options
+        dbname:
+          description: "Connect using connection string"
+          type: string
+        database:
+          description: "Alternative default database"
+          type: string
+        role:
+          description: "Do SET ROLE before dump"
+          type: string
   backup:
     withParameters:
       - lockWaitTimeout

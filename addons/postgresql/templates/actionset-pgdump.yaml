@@ -6,24 +6,23 @@ metadata:
     clusterdefinition.kubeblocks.io/name: postgresql
     {{- include "postgresql.labels" . | nindent 4 }}
 spec:
-  backupType: Full
+  backupType: Selective
   env:
     - name: IMAGE_TAG
       value: 14.8.0-pgvector-v0.6.1
   parametersSchema:
     openAPIV3Schema:
       type: object
-      required:
-        - database
       properties:
         # Basic Settings
         database:
           description: "Database name to backup"
           type: string
+          default: "postgres"
         format:
           description: "Output format (p=plain, c=custom, d=directory, t=tar)"
           type: string
-          enum: ["p", "c", "d", "t"]
+          enum: ["p", "c", "d", "t", "plain", "custom", "directory", "tar"]
           default: "tar"
         jobs:
           description: "Number of parallel jobs"

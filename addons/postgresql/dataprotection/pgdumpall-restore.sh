@@ -13,8 +13,8 @@ function remote_file_exists() {
     echo "false"
 }
 
-if [ $(remote_file_exists "${DP_BACKUP_NAME}.zst") == "true" ]; then
-  datasafed pull -d zstd-fastest "${DP_BACKUP_NAME}.zst" - | psql -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT} -f ${DP_BACKUP_NAME}
+if [ $(remote_file_exists "${DP_BACKUP_NAME}.sql.zst") == "true" ]; then
+  datasafed pull -d zstd-fastest "${DP_BACKUP_NAME}.sql.zst" - | psql -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT}
   echo "restore complete!";
   exit 0
 fi
