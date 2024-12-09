@@ -117,7 +117,7 @@ spec:
       podService: true
       disableAutoProvision: true
   tls:
-    volumeName: tls 
+    volumeName: tls
     mountPath: {{ .Values.tlsMountPath }}
     caFile: ca.pem
     certFile: cert.pem
@@ -182,8 +182,3 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
-  exporter:
-    containerName: etcd
-    scrapePort: "2379"
-    scrapePath: /metrics
-    scrapeScheme: http
