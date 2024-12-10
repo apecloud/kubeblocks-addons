@@ -10,15 +10,6 @@ version: 1.0.0-alpha.0
 # This is the version number of the ApeCloud PostgreSQL being deployed
 appVersion: "14.11"
 
-# Add a dependency to the kubeblocks definition library chart
-dependencies:
-  - name: kblib
-    version: 0.1.0
-    repository: file://../kblib
-    alias: extra
-    import-values:
-      - defaults
-
 home: https://kubeblocks.io/
 icon: https://github.com/apecloud/kubeblocks/raw/main/img/logo.png
 

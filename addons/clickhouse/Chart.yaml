@@ -10,15 +10,6 @@ version: 1.0.0-alpha.0
 
 appVersion: 24.8.3
 
-# Add a dependency to the kubeblocks definition library chart
-dependencies:
-  - name: kblib
-    version: 0.1.0
-    repository: file://../kblib
-    alias: extra
-    import-values:
-      - defaults
-
 home: https://clickhouse.com/
 icon: https://bitnami.com/assets/stacks/clickhouse/img/clickhouse-stack-220x234.png
 keywords:

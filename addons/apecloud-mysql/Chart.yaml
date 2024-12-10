@@ -13,15 +13,6 @@ version: 1.0.0-alpha.0
 # proxy of the MySQL being used is not relevant.
 appVersion: "8.0.30"
 
-# Add a dependency to the kubeblocks definition library chart
-dependencies:
-  - name: kblib
-    version: 0.1.0
-    repository: file://../kblib
-    alias: extra
-    import-values:
-      - defaults
-
 home: https://kubeblocks.io/
 icon: https://kubeblocks.io/img/logo.png
 
