@@ -72,3 +72,7 @@ spec:
         update:
           - kafka-broker
           - kafka-controller
+    - name: kafka2-external-zk
+      components:
+        - name: kafka-broker
+          compDef: {{ include "kafka2-broker.cmpdRegexpPattern" . }}

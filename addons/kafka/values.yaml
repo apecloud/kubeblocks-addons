@@ -20,6 +20,8 @@ images:
     repository: bitnami/kafka
 #    tag: 3.4.0-debian-11-r22
     tag: 3.3.2-debian-11-r54
+  kafka2:
+    tag: 2.7.0-debian-10-r124
   kafkaExporter:
     repository: bitnami/kafka-exporter
     tag: 1.6.0-debian-11-r67
@@ -33,6 +35,10 @@ defaultServiceVersion:
   controller: 3.3.2
   broker: 3.3.2
   exporter: 1.6.0
+
+## @param define default kafka2 serviceVersion of each Component
+defaultKafka2ServiceVersion:
+  broker: 2.7.0
 
 ## @param debugEnabled enables containers' debug logging
 ##
