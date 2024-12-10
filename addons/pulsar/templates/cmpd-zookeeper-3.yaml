@@ -12,6 +12,15 @@ spec:
   serviceKind: pulsar
   serviceVersion: {{ .Values.defaultServiceVersion.zookeeper.major3 }}
   updateStrategy: BestEffortParallel
+  services:
+    - name: zookeeper
+      serviceName: zookeeper
+      spec:
+        type: ClusterIP
+        ports:
+          - name: client
+            port: 2181
+            targetPort: 2181
   configs:
     - name: zookeeper-env
       templateRef: {{ include "pulsar.zookeeperEnvTplName" . }}

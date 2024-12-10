@@ -1,9 +1,18 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: pulsar-stop
   namespace: default
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: pulsar-cluster
+  clusterName: pulsar-basic-cluster
   type: Stop
+  # Lists Components to be stopped. ComponentOps specifies the Component to be operated on.
+  # stop:
+    # Specifies the name of the Component.
+    # - proxy
+    # - bookies-recovery
+    # - broker
+    # - bookies
+    # - zookeeper
+  # - componentName: broker
