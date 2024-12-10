@@ -4,6 +4,8 @@ metadata:
   name: {{ include "orioledb-pgbouncer.configurationTemplate" . }}
   labels:
     {{- include "orioledb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "orioledb.annotations" . | nindent 4 }}
 data:
   pgbouncer.ini: |-
     {{- .Files.Get "config/pgbouncer-ini.tpl" | nindent 4 }}

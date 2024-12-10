@@ -5,6 +5,8 @@ metadata:
   name: {{ include "orioledb.configConstraint" . }}
   labels:
     {{- include "orioledb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "orioledb.annotations" . | nindent 4 }}
 spec:
   reloadAction:
     tplScriptTrigger:

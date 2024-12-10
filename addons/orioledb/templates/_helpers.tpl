@@ -66,6 +66,13 @@ kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 {{/*
+Define orioledb cluster definition name
+*/}}
+{{- define "orioledb.cdName" -}}
+orioledb
+{{- end -}}
+
+{{/*
 Define orioledb component definition name
 */}}
 {{- define "orioledb.cmpdName" -}}

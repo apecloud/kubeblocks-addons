@@ -4,11 +4,15 @@ metadata:
   name: {{ include "orioledb.patroniReloadScriptsTemplate" . }}
   labels:
     {{- include "orioledb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "orioledb.annotations" . | nindent 4 }}
 data:
   patroni_reload.tpl: |-
-    {{- .Files.Get "scripts/patroni-reload.tpl" | nindent 4 }}
+    {{- .Files.Get "config/patroni-reload.tpl" | nindent 4 }}
   bootstrap.yaml: |-
-    {{- .Files.Get "scripts/restart-parameter.yaml" | nindent 4 }}
+    {{- .Files.Get "config/restart-parameter.yaml" | nindent 4 }}
+  patroni_parameter.yaml: |-
+    {{- .Files.Get "config/patroni-parameter.yaml" | nindent 4 }}
   reload.yaml: |-
     scripts: patroni_reload.tpl
     dataType: patroni

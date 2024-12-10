@@ -1,14 +1,18 @@
-# Default values for OrioleDB (with Patroni HA).
+# Default values for Orioledb (with Patroni HA).
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-## @param version OrioleDB cluster version
+## @param terminationPolicy define Cluster termination policy. One of DoNotTerminate, Halt, Delete, WipeOut.
 ##
-version: orioledb-beta1
+terminationPolicy: Delete
 
-## @param mode OrioleDB cluster topology mode, standalone, replication
+## @param version, mapping cluster.spec.componentSpec[].serviceVersion which defined in ComponentVersion
 ##
-mode: standalone
+version: 14.7.2
+
+## @param mode postgresql cluster topology mode, standalone, replication
+##
+mode: replication
 
 ## @param replicas specify cluster replicas
 ##
@@ -33,8 +37,16 @@ requests:
 ##
 storage: 20
 
-## @param patroni etcd cluster name, if not set will use the cluster name "etcd"
-## and the cluster must exist,
 etcd:
-  cluster: "etcd"
-  namespace: "default"
+  enabled: false
+  meta:
+    mode: serviceref # optional: incluster, serviceref
+    serviceRef:
+      namespace:
+      cluster:
+        name:
+        component:
+        service:
+        port:
+        credential:
+      serviceDescriptor: orioledb-etcd-descriptor # example: orioledb-etcd-descriptor

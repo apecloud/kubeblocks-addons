@@ -4,7 +4,16 @@ metadata:
   name: {{ include "orioledb.scriptsTemplate" . }}
   labels:
     {{- include "orioledb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "orioledb.annotations" . | nindent 4 }}
 data:
+  common.sh: |-
+    #!/bin/bash
+    {{- include "kblib.compvars.get_target_pod_fqdn_from_pod_fqdn_vars" $ | nindent 4 }}
+    {{- include "kblib.strings.is_empty" $ | nindent 4 }}
+    {{- include "kblib.strings.split" $ | nindent 4 }}
+    {{- include "kblib.logs.format_log_content" $ | nindent 4 }}
+    {{- include "kblib.logs.setup_logging" $ | nindent 4 }}
   init.sql: |
     CREATE EXTENSION pg_stat_statements;
   backup-log-collector.sh: |

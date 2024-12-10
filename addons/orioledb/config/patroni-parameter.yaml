@@ -1,0 +1,4 @@
+- ttl
+- loop_wait
+- retry_timeouts
+- maximum_lag_on_failover

@@ -4,7 +4,7 @@
   "properties": {
     "version": {
       "type": "string",
-      "default": "orioledb-beta1"
+      "default": "14.7.2"
     },
     "mode": {
       "type": "string",
@@ -58,22 +58,6 @@
       "title": "Storage Class Name",
       "description": "Storage class name of the data volume",
       "type": "string"
-    },
-    "etcd": {
-      "type": "object",
-      "title": "The patroni dependency etcd Schema",
-      "properties": {
-        "cluster": {
-          "type": "string",
-          "default": "etcd",
-          "description": "The patroni dependency etcd cluster name"
-        },
-        "namespace": {
-          "type": "string",
-          "default": "default",
-          "description": "The patroni dependency etcd cluster namespace"
-        }
-      }
     }
   }
 }
