@@ -108,66 +108,108 @@ get_current_comp_nodes_for_scale_out_replica() {
     return
   fi
 
-  # if the $CURRENT_SHARD_ADVERTISED_PORT is set, parse the advertised ports, advertised_ports records the advertised ports of the current shard
-  # the value format of $CURRENT_SHARD_ADVERTISED_PORT is "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."
-  declare -A advertised_ports
-  local using_advertised_ports=false
+  # determine network mode
+  local network_mode="default"
   if ! is_empty "$CURRENT_SHARD_ADVERTISED_PORT"; then
-    using_advertised_ports=true
-    IFS=',' read -ra ADDR <<< "$CURRENT_SHARD_ADVERTISED_PORT"
-    for i in "${ADDR[@]}"; do
-      port=$(echo $i | cut -d':' -f2)
-      advertised_ports[$port]=1
-    done
+    network_mode="advertised_svc"
+  elif ! is_empty "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT"; then
+    network_mode="host_network"
   fi
 
-  # the output of line is like:
-  # 1. using the pod fqdn as the nodeAddr
-  # 4958e6dca033cd1b321922508553fab869a29d 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
-  # 2. using the nodeport or lb ip as the nodeAddr
-  # 4958e6dca033cd1b321922508553fab869a29d 172.10.0.1:31000@31888,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc master master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
-  while read -r line; do
+  parse_node_line_info() {
+    # the output of line is like:
+    # 1. using the pod fqdn as the nodeAddr
+    # 4958e6dca033cd1b321922508553fab869a29d 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
+    # 2. using the nodeport or lb ip as the nodeAddr
+    # 4958e6dca033cd1b321922508553fab869a29d 172.10.0.1:31000@31888,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local master master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
+    # 3. using the host network ip as the nodeAddr
+    # 4958e6dca033cd1b321922508553fab869a29d 172.10.0.1:1050@1051,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local master - 0 1711958289570 4 connected 0-1364 5461-6826 10923-12287
+    local line="$1"
+
+    local node_ip_port_fields
     # 10.42.0.227:6379@16379,redis-shard-sxj-0.redis-shard-sxj-headless.default.svc
     node_ip_port_fields=$(echo "$line" | awk '{print $2}')
+
+    local node_announce_ip_port
     # ip:port without bus port
     node_announce_ip_port=$(echo "$node_ip_port_fields" | awk -F '@' '{print $1}')
+
+    local node_announce_ip
+    node_announce_ip=$(echo "$node_announce_ip_port" | cut -d':' -f1)
+
+    local node_port
+    node_port=$(echo "$node_announce_ip_port" | cut -d':' -f2)
+
+    local node_bus_port
     node_bus_port=$(echo "$node_ip_port_fields" | awk -F '@' '{print $2}' | awk -F ',' '{print $1}')
-    node_announce_ip=$(echo "$node_ip_port_fields" | awk -F '@' '{print $1}' | cut -d':' -f1)
-    node_port=$(echo "$node_ip_port_fields" | awk -F '@' '{print $1}' | cut -d':' -f2)
-    # redis-shard-sxj-0.redis-shard-sxj-headless.default.svc
+
+    local node_fqdn
+    # redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local
     node_fqdn=$(echo "$line" | awk '{print $2}' | awk -F ',' '{print $2}')
+
+    local node_role
     node_role=$(echo "$line" | awk '{print $3}')
-    if $using_advertised_ports; then
-      if [[ ${advertised_ports[$node_port]+_} ]]; then
-        if contains "$node_role" "master"; then
-          # example format using nodeport: 172.10.0.1#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#172.10.0.1:31000@31888
-          current_comp_primary_node+=("$node_announce_ip#$node_fqdn#$node_announce_ip_port@$node_bus_port")
-        else
-          current_comp_other_nodes+=("$node_announce_ip#$node_fqdn#$node_announce_ip_port@$node_bus_port")
-        fi
+
+    printf "%s %s %s %s %s" "$node_announce_ip" "$node_fqdn" "$node_port" "$node_bus_port" "$node_role"
+  }
+
+  build_node_entry() {
+    local mode="$1"
+    local announce_ip="$2"
+    local fqdn="$3"
+    local port="$4"
+    local bus_port="$5"
+
+    case "$mode" in
+      "advertised_svc")
+        # example format using nodeport: 172.10.0.1#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#172.10.0.1:31000@31888
+        echo "$announce_ip#$fqdn#$announce_ip:$port@$bus_port"
+        ;;
+      "host_network")
+        # example format using host network: 172.10.0.1#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#172.10.0.1:1050@1051
+        echo "$announce_ip#$fqdn#$announce_ip:$port@$bus_port"
+        ;;
+      *)
+        # example format using pod fqdn: 10.42.0.227#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc:6379@16379
+        echo "$announce_ip#$fqdn#$fqdn:$port@$bus_port"
+        ;;
+    esac
+  }
+
+  # categorize node into appropriate array
+  categorize_node() {
+    local node_entry="$1"
+    local node_fqdn="$2"
+    local node_role="$3"
+
+    if contains "$node_fqdn" "$CURRENT_SHARD_COMPONENT_NAME"; then
+      if contains "$node_role" "master"; then
+        current_comp_primary_node+=("$node_entry")
       else
-        if contains "$node_role" "master"; then
-          other_comp_primary_nodes+=("$node_announce_ip#$node_fqdn#$node_announce_ip_port@$node_bus_port")
-        else
-          other_comp_other_nodes+=("$node_announce_ip#$node_fqdn#$node_announce_ip_port@$node_bus_port")
-        fi
+        current_comp_other_nodes+=("$node_entry")
       fi
     else
-      if contains "$node_fqdn" "$CURRENT_SHARD_COMPONENT_NAME"; then
-        if contains "$node_role" "master"; then
-          # example format using pod fqdn: 10.42.0.227#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc#redis-shard-sxj-0.redis-shard-sxj-headless.default.svc:6379@16379
-          current_comp_primary_node+=("$node_announce_ip#$node_fqdn#$node_fqdn:$SERVICE_PORT@$node_bus_port")
-        else
-          current_comp_other_nodes+=("$node_announce_ip#$node_fqdn#$node_fqdn:$SERVICE_PORT@$node_bus_port")
-        fi
+      if contains "$node_role" "master"; then
+        other_comp_primary_nodes+=("$node_entry")
       else
-        if contains "$node_role" "master"; then
-          other_comp_primary_nodes+=("$node_announce_ip#$node_fqdn#$node_fqdn:$SERVICE_PORT@$node_bus_port")
-        else
-          other_comp_other_nodes+=("$node_announce_ip#$node_fqdn#$node_fqdn:$SERVICE_PORT@$node_bus_port")
-        fi
+        other_comp_other_nodes+=("$node_entry")
       fi
     fi
+  }
+
+  # process each node
+  while read -r line; do
+    local node_info
+    node_info=$(parse_node_line_info "$line")
+    local node_announce_ip node_fqdn node_port node_bus_port node_role
+    read -r node_announce_ip node_fqdn node_port node_bus_port node_role <<< "$node_info"
+
+    # build node entry based on network mode
+    local node_entry
+    node_entry=$(build_node_entry "$network_mode" "$node_announce_ip" "$node_fqdn" "$node_port" "$node_bus_port")
+
+    # categorize nodes
+    categorize_node "$node_entry" "$node_fqdn" "$node_role"
   done <<< "$cluster_nodes_info"
 
   echo "current_comp_primary_node: ${current_comp_primary_node[*]}"
@@ -359,12 +401,15 @@ rebuild_redis_acl_file() {
 
 build_announce_ip_and_port() {
   # build announce ip and port according to whether the advertised svc is enabled
-  if ! is_empty "$redis_advertised_svc_host_value" && ! is_empty "$redis_advertised_svc_port_value"; then
-    echo "redis use advertised svc $redis_advertised_svc_host_value:$redis_advertised_svc_port_value to announce"
+  if ! is_empty "$redis_announce_host_value" && ! is_empty "$redis_announce_port_value"; then
+    echo "redis use advertised svc $redis_announce_host_value:$redis_announce_port_value to announce"
     {
-      echo "replica-announce-port $redis_advertised_svc_port_value"
-      echo "replica-announce-ip $redis_advertised_svc_host_value"
+      echo "replica-announce-port $redis_announce_port_value"
+      echo "replica-announce-ip $redis_announce_host_value"
     } >> $redis_real_conf
+  elif ! is_empty "$FIXED_POD_IP_ENABLED"; then
+    echo "redis use fixed pod ip: $CURRENT_POD_IP to announce"
+    echo "replica-announce-ip $CURRENT_POD_IP" >> $redis_real_conf
   else
     current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$CURRENT_SHARD_POD_FQDN_LIST" "$CURRENT_POD_NAME")
     if is_empty "$current_pod_fqdn"; then
@@ -383,17 +428,24 @@ build_cluster_announce_info() {
     exit 1
   fi
   # build announce ip and port according to whether the advertised svc is enabled
-  if ! is_empty "$redis_advertised_svc_host_value" && ! is_empty "$redis_advertised_svc_port_value" && ! is_empty "$redis_advertised_svc_bus_port_value"; then
-    echo "redis cluster use advertised svc $redis_advertised_svc_host_value:$redis_advertised_svc_port_value@$redis_advertised_svc_bus_port_value to announce"
+  if ! is_empty "$redis_announce_host_value" && ! is_empty "$redis_announce_port_value" && ! is_empty "$redis_announce_bus_port_value"; then
+    echo "redis cluster use advertised svc $redis_announce_host_value:$redis_announce_port_value@$redis_announce_bus_port_value to announce"
     {
-      echo "cluster-announce-ip $redis_advertised_svc_host_value"
-      echo "cluster-announce-port $redis_advertised_svc_port_value"
-      echo "cluster-announce-bus-port $redis_advertised_svc_bus_port_value"
+      echo "cluster-announce-ip $redis_announce_host_value"
+      echo "cluster-announce-port $redis_announce_port_value"
+      echo "cluster-announce-bus-port $redis_announce_bus_port_value"
+      echo "cluster-announce-hostname $current_pod_fqdn"
+      echo "cluster-preferred-endpoint-type ip"
+    } >> $redis_real_conf
+  elif ! is_empty "$FIXED_POD_IP_ENABLED"; then
+    echo "redis cluster use fixed pod ip: $CURRENT_POD_IP to announce"
+    {
+      echo "cluster-announce-ip $CURRENT_POD_IP"
       echo "cluster-announce-hostname $current_pod_fqdn"
       echo "cluster-preferred-endpoint-type ip"
     } >> $redis_real_conf
   else
-    echo "redis use kb pod fqdn $current_pod_fqdn to announce"
+    echo "redis cluster use pod fqdn $current_pod_fqdn to announce"
     {
       echo "cluster-announce-ip $CURRENT_POD_IP"
       echo "cluster-announce-hostname $current_pod_fqdn"
@@ -415,30 +467,39 @@ build_redis_cluster_service_port() {
   } >> $redis_real_conf
 }
 
-parse_current_pod_advertised_svc_if_exist() {
-  local pod_name="$CURRENT_POD_NAME"
+parse_redis_cluster_shard_announce_addr() {
   # The value format of CURRENT_SHARD_ADVERTISED_PORT and CURRENT_SHARD_ADVERTISED_BUS_PORT are "pod1Svc:advertisedPort1,pod2Svc:advertisedPort2,..."
   if is_empty "$CURRENT_SHARD_ADVERTISED_PORT" || is_empty "$CURRENT_SHARD_ADVERTISED_BUS_PORT"; then
     echo "Environment variable CURRENT_SHARD_ADVERTISED_PORT and CURRENT_SHARD_ADVERTISED_BUS_PORT not found. Ignoring."
+    # if redis cluster is in host network mode, use the host ip and port as the announce ip and port
+    if ! is_empty "${REDIS_CLUSTER_HOST_NETWORK_PORT}" && ! is_empty "${REDIS_CLUSTER_HOST_NETWORK_BUS_PORT}"; then
+      echo "redis cluster server is in host network mode, use the host ip:$CURRENT_POD_HOST_IP and port:$REDIS_CLUSTER_HOST_NETWORK_PORT, bus port:$REDIS_CLUSTER_HOST_NETWORK_BUS_PORT as the announce ip and port."
+      redis_announce_port_value="$REDIS_CLUSTER_HOST_NETWORK_PORT"
+      redis_announce_bus_port_value="$REDIS_CLUSTER_HOST_NETWORK_BUS_PORT"
+      redis_announce_host_value="$CURRENT_POD_HOST_IP"
+    fi
     return 0
   fi
 
+  local pod_name="$CURRENT_POD_NAME"
   local port
   local bus_port
   port=$(parse_advertised_port "$pod_name" "$CURRENT_SHARD_ADVERTISED_PORT")
-  if [[ $? -ne 0 ]] || is_empty "$port"; then
+  status=$?
+  if [[ $status -ne 0 ]] || is_empty "$port"; then
     echo "Exiting due to error in CURRENT_SHARD_ADVERTISED_PORT."
     exit 1
   fi
 
   bus_port=$(parse_advertised_port "$pod_name" "$CURRENT_SHARD_ADVERTISED_BUS_PORT")
-  if [[ $? -ne 0 ]] || is_empty "$bus_port"; then
+  status=$?
+  if [[ $status -ne 0 ]] || is_empty "$bus_port"; then
     echo "Exiting due to error in CURRENT_SHARD_ADVERTISED_BUS_PORT."
     exit 1
   fi
-  redis_advertised_svc_port_value="$port"
-  redis_advertised_svc_bus_port_value="$bus_port"
-  redis_advertised_svc_host_value="$CURRENT_POD_HOST_IP"
+  redis_announce_port_value="$port"
+  redis_announce_bus_port_value="$bus_port"
+  redis_announce_host_value="$CURRENT_POD_HOST_IP"
 }
 
 start_redis_server() {
@@ -486,7 +547,7 @@ build_redis_conf() {
 ${__SOURCED__:+false} : || return 0
 
 load_redis_cluster_common_utils
-parse_current_pod_advertised_svc_if_exist
+parse_redis_cluster_shard_announce_addr
 build_redis_conf
 # TODO: move to memberJoin action in the future
 scale_redis_cluster_replica &
