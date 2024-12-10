@@ -1,7 +1,8 @@
+# Source: pulsar-cluster/templates/cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: pulsar-service-descriptor
+  name: pulsar-service-ref
   namespace: default
 spec:
   terminationPolicy: Delete
@@ -31,7 +32,12 @@ spec:
       serviceRefs:
         - name: pulsarZookeeper
           namespace: default
-          serviceDescriptor: zookeeper-sd
+          clusterServiceSelector:
+            cluster: zk-cluster
+            service:
+              component: zookeeper
+              service: zookeeper
+              port: "2881"
       replicas: 1
       resources:
         limits:
@@ -46,7 +52,12 @@ spec:
       serviceRefs:
         - name: pulsarZookeeper
           namespace: default
-          serviceDescriptor: zookeeper-sd
+          clusterServiceSelector:
+            cluster: zk-cluster
+            service:
+              component: zookeeper
+              service: zookeeper
+              port: "2881"
       replicas: 4
       resources:
         limits:

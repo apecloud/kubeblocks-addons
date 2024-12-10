@@ -1,16 +1,18 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: pulsar-service-descriptor
+  name: pulsar-node-port
   namespace: default
 spec:
   terminationPolicy: Delete
+  clusterDef: pulsar
+  topology: pulsar-basic-cluster
   services:
     - name: broker-bootstrap
       serviceName: broker-bootstrap
       componentSelector: broker
       spec:
-        type: ClusterIP
+        type: NodePort      # set svc type to NodePort
         ports:
           - name: pulsar
             port: 6650
@@ -21,36 +23,41 @@ spec:
           - name: kafka-client
             port: 9092
             targetPort: 9092
+    - name: zookeeper
+      serviceName: zookeeper
+      componentSelector: zookeeper
+      spec:
+        type: ClusterIP
+        ports:
+          - name: client
+            port: 2181
+            targetPort: 2181
   componentSpecs:
     - name: broker
-      componentDef: pulsar-broker
       serviceVersion: 3.0.2
-      env:
-        - name: KB_PULSAR_BROKER_NODEPORT
-          value: "false"
-      serviceRefs:
-        - name: pulsarZookeeper
-          namespace: default
-          serviceDescriptor: zookeeper-sd
       replicas: 1
+      env:
+        # set to TRUE to set-up advertised listeners for both
+        # Pulsar and Kafka protocols in a Kubernetes NodePort environment.
+        - name: KB_PULSAR_BROKER_NODEPORT
+          value: "true"
+      services:
+        - name: advertised-listener
+          serviceType: NodePort           # set svc type to NodePort
+          podService: true
       resources:
         limits:
-          cpu:
+          cpu: "1"
           memory: "512Mi"
         requests:
           cpu: "200m"
           memory: "512Mi"
     - name: bookies
-      componentDef: pulsar-bookkeeper
       serviceVersion: 3.0.2
-      serviceRefs:
-        - name: pulsarZookeeper
-          namespace: default
-          serviceDescriptor: zookeeper-sd
       replicas: 4
       resources:
         limits:
-          cpu:
+          cpu: "1"
           memory: "512Mi"
         requests:
           cpu: "200m"
@@ -64,6 +71,24 @@ spec:
               requests:
                 storage: 8Gi
         - name: journal
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 8Gi
+    - name: zookeeper
+      serviceVersion: 3.0.2
+      replicas: 1
+      resources:
+        limits:
+          cpu: "1"
+          memory: "512Mi"
+        requests:
+          cpu: "100m"
+          memory: "512Mi"
+      volumeClaimTemplates:
+        - name: data
           spec:
             accessModes:
               - ReadWriteOnce

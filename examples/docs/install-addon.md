@@ -13,9 +13,12 @@ helm repo add kubeblocks-addons https://jihulab.com/api/v4/projects/150246/packa
 # Update helm repo
 helm repo update
 # Search versions of the Addon
-helm search repo kubeblocks/{addonName} --versions
+helm search repo kubeblocks-addons/{addonName} --versions
 # Install the version you want (replace $version with the one you need)
-helm upgrade -i mysql kubeblocks-addons/{addonName} --version $version -n kb-system
+helm upgrade -i {release-name} kubeblocks-addons/{addonName} --version $version -n kb-system
+## e.g.
+## helm upgrade -i kb-addon-pulsar kubeblocks-addons/pulsar --version 0.9.1 -n kb-system
+## helm upgrade -i kb-addon-zookeeper kubeblocks-addons/zookeeper --version 0.9.1 -n kb-system
 ```
 
 ## Using kbcli
