@@ -7,11 +7,6 @@ metadata:
   {{- if .Values.commonAnnotations }}
   annotations:
     {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
-    {{- if eq .Values.version "3.0.2" }}
-    ## Todo: use cluster api to control the rendering logic of service in component definition
-    {{- include "pulsar-cluster.brokerAddrFeatureGate" . | nindent 4 }}
-    "kubeblocks.io/extra-env": '{"KB_PULSAR_BROKER_NODEPORT": "{{ $.Values.nodePortEnabled }}"}'
-    {{- end }}
   {{- end }}
 spec:
   terminationPolicy: {{ $.Values.terminationPolicy }}
@@ -116,6 +111,11 @@ spec:
       {{- if not  $topologyEnable }}
       componentDef: pulsar-broker
       serviceVersion: {{ .Values.version }}
+      {{- end }}
+      {{- if eq .Values.version "3.0.2" }}
+      env:
+        - name: KB_PULSAR_BROKER_NODEPORT
+          value: "{{ $.Values.nodePortEnabled }}"
       {{- end }}
       {{ include "pulsar-zookeeper-ref" . | nindent 6 }}
       {{- if .Values.nodePortEnabled }}

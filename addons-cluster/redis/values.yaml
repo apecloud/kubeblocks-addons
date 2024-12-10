@@ -4,13 +4,13 @@
 
 ## @param version redis cluster version
 ##
-version: redis-7.0.6
+version: 7.2.4
 
 ## @param mode redis cluster topology mode, standalone, replication and cluster
 ## standalone: single redis instance
 ## replication: primary-secondary replication with redis sentinel, refer: https://redis.io/docs/management/sentinel
 ## replication-twemproxy: primary-secondary replication with sentinel and twemproxy, it is just a demo for how to use twemproxy with redis, not recommended for production
-## cluster: official redis cluster, refer: https://redis.io/docs/reference/cluster-spec. if mode is cluster, please set useLegacyCompDef to false.
+## cluster: official redis cluster, refer: https://redis.io/docs/reference/cluster-spec.
 mode: replication
 
 ## @param replicas specify replicas of replication
@@ -46,11 +46,16 @@ storage: 20
 twemproxy:
   enabled: false
   replicas: 3
-  cpu: 0.2
-  memory: 0.2
+  cpu: 0.5
+  memory: 0.5
 
-## @param nodePortEnabled
+## @param nodePortEnabled if true, the redis will use nodePort as the announce IP
+## This option is mutually exclusive with hostNetworkEnabled. When both hostNetworkEnabled, nodePortEnabled are false, the default announce IP will be a headless service.
 nodePortEnabled: false
+
+## @param hostNetworkEnabled if true, the redis will use hostNetwork
+## This option is mutually exclusive with nodePortEnabled, When both hostNetworkEnabled, nodePortEnabled are false, the default announce IP will be a headless service.
+hostNetworkEnabled: false
 
 ## @param sentinel.cpu
 ## @param sentinel.memory
@@ -58,8 +63,8 @@ nodePortEnabled: false
 ##
 sentinel:
   enabled: true
-  cpu: 0.2
-  memory: 0.2
+  cpu: 0.5
+  memory: 0.5
   storage: 20
   replicas: 3
   customMasterName: ""
@@ -71,6 +76,7 @@ redisCluster:
 
 extra:
   rbacEnabled: true
+  disableExporter: true
 
 prometheus:
   enabled: false
