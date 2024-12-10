@@ -37,7 +37,14 @@ Common annotations
 */}}
 {{- define "greptimedb.annotations" -}}
 helm.sh/resource-policy: keep
-{{ include "kblib.versions.apiVersion" . }}
+{{ include "greptimedb.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "greptimedb.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 {{/*

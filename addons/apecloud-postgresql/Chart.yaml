@@ -16,6 +16,8 @@ dependencies:
     version: 0.1.0
     repository: file://../kblib
     alias: extra
+    import-values:
+      - defaults
 
 home: https://kubeblocks.io/
 icon: https://github.com/apecloud/kubeblocks/raw/main/img/logo.png

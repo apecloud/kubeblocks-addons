@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "milvus.labels" . | nindent 4 }}
   annotations:
-    {{- include "kblib.versions.apiVersion" . | nindent 4 }}
+    {{- include "milvus.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
     - releases:

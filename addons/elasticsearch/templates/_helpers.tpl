@@ -55,7 +55,14 @@ Common annotations
 */}}
 {{- define "elasticsearch.annotations" -}}
 helm.sh/resource-policy: keep
-{{ include "kblib.versions.apiVersion" . }}
+{{ include "elasticsearch.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "elasticsearch.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 {{/*

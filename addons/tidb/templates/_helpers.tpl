@@ -43,7 +43,14 @@ These annotations ensure that resources from previous version won't be cleaned b
 */}}
 {{- define "tidb.annotations" -}}
 helm.sh/resource-policy: keep
-{{ include "kblib.versions.apiVersion" . }}
+{{ include "tidb.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "tidb.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 {{/*

@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "nebula.labels" . | nindent 4 }}
   annotations:
-    {{- include "kblib.versions.apiVersion" . | nindent 4 }}
+    {{- include "nebula.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
     - releases:

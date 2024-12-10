@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "opensearch.labels" . | nindent 4 }}
   annotations:
-    {{- include "kblib.versions.apiVersion" . | nindent 4 }}
+    {{- include "opensearch.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
     - compDefs:

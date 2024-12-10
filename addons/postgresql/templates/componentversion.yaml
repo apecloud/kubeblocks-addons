@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "postgresql.labels" . | nindent 4 }}
   annotations:
-    {{- include "kblib.versions.apiVersion" . | nindent 4 }}
+    {{- include "postgresql.apiVersion" . | nindent 4 }}
 spec:
   compatibilityRules:
     - compDefs:

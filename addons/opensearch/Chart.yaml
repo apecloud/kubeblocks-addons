@@ -29,6 +29,8 @@ dependencies:
     version: 0.1.0
     repository: file://../kblib
     alias: extra
+    import-values:
+      - defaults
 
 maintainers:
   - name: iziang

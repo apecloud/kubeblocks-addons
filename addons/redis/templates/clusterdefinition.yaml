@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "redis.labels" . | nindent 4 }}
   annotations:
-    {{- include "kblib.versions.apiVersion" . | nindent 4 }}
+    {{- include "redis.apiVersion" . | nindent 4 }}
 spec:
   topologies:
     - name: standalone

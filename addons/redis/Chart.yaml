@@ -14,6 +14,8 @@ dependencies:
     version: 0.1.0
     repository: file://../kblib
     alias: extra
+    import-values:
+      - defaults
 
 home: https://redis.io/
 icon: https://bitnami.com/assets/stacks/redis/img/redis-stack-220x234.png

@@ -14,6 +14,8 @@ dependencies:
     version: 0.1.0
     repository: file://../kblib
     alias: extra
+    import-values:
+      - defaults
 
 home: https://www.rabbitmq.com/
 icon: https://www.rabbitmq.com/img/rabbitmq-logo-with-name.svg

@@ -55,7 +55,14 @@ Common annotations
 */}}
 {{- define "etcd.annotations" -}}
 helm.sh/resource-policy: keep
-{{ include "kblib.versions.apiVersion" . }}
+{{ include "etcd.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "etcd.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 {{/*
