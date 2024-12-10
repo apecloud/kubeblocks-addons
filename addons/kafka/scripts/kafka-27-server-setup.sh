@@ -169,44 +169,40 @@ parse_advertised_svc_if_exist() {
 
 set_cfg_metadata() {
   # set advertised.listeners for broker
-  if [[ "broker" = "$KAFKA_CFG_PROCESS_ROLES" ]]; then
-
-    current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$POD_FQDN_LIST" "$MY_POD_NAME")
-    if is_empty "$current_pod_fqdn"; then
-      echo "Error: Failed to get current pod: $MY_POD_NAME fqdn from pod fqdn list: $POD_FQDN_LIST. Exiting." >&2
-      return 1
-    fi
-
-    if ! parse_advertised_svc_if_exist ; then
-      echo "Error: Failed to parse advertised svc from BROKER_ADVERTISED_PORT: $BROKER_ADVERTISED_PORT. Exiting." >&2
-      return 1
-    fi
-
-    # Todo: currently only nodeport and clusterIp network modes are supported. LoadBalance is not supported yet and needs future support.
-    if [ -n "$advertised_svc_host_value" ] && [ -n "$advertised_svc_port_value" ] && [ "$advertised_svc_port_value" != "9092" ]; then
-      # enable NodePort, use node ip + mapped port as client connection
-      nodeport_domain="${advertised_svc_host_value}:${advertised_svc_port_value}"
-      export KAFKA_CFG_ADVERTISED_LISTENERS="INTERNAL://${current_pod_fqdn}:9094,CLIENT://${nodeport_domain}"
-      echo "[cfg]KAFKA_CFG_ADVERTISED_LISTENERS=$KAFKA_CFG_ADVERTISED_LISTENERS"
-    elif [ "${KB_BROKER_DIRECT_POD_ACCESS}" == "true" ]; then
-      export KAFKA_CFG_ADVERTISED_LISTENERS="INTERNAL://${current_pod_fqdn}:9094,CLIENT://${MY_POD_IP}:9092"
-      echo "[cfg]KAFKA_CFG_ADVERTISED_LISTENERS=$KAFKA_CFG_ADVERTISED_LISTENERS"
-    else
-      # default, use headless service url as client connection
-      export KAFKA_CFG_ADVERTISED_LISTENERS="INTERNAL://${current_pod_fqdn}:9094,CLIENT://${current_pod_fqdn}:9092"
-      echo "[cfg]KAFKA_CFG_ADVERTISED_LISTENERS=$KAFKA_CFG_ADVERTISED_LISTENERS"
-    fi
-
-    # override node.id setting
-    # increments based on a specified base to avoid conflicts with controller settings
-    INDEX=$(echo $MY_POD_NAME | grep -o "\-[0-9]\+\$")
-    INDEX=${INDEX#-}
-    BROKER_NODE_ID=$(( $INDEX + $BROKER_MIN_NODE_ID ))
-    export KAFKA_CFG_NODE_ID="$BROKER_NODE_ID"
-    export KAFKA_CFG_BROKER_ID="$BROKER_NODE_ID"
-    echo "[cfg]KAFKA_CFG_NODE_ID=$KAFKA_CFG_NODE_ID"
-
+  current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$POD_FQDN_LIST" "$MY_POD_NAME")
+  if is_empty "$current_pod_fqdn"; then
+    echo "Error: Failed to get current pod: $MY_POD_NAME fqdn from pod fqdn list: $POD_FQDN_LIST. Exiting." >&2
+    return 1
   fi
+
+  if ! parse_advertised_svc_if_exist ; then
+    echo "Error: Failed to parse advertised svc from BROKER_ADVERTISED_PORT: $BROKER_ADVERTISED_PORT. Exiting." >&2
+    return 1
+  fi
+
+  # Todo: currently only nodeport and clusterIp network modes are supported. LoadBalance is not supported yet and needs future support.
+  if [ -n "$advertised_svc_host_value" ] && [ -n "$advertised_svc_port_value" ] && [ "$advertised_svc_port_value" != "9092" ]; then
+    # enable NodePort, use node ip + mapped port as client connection
+    nodeport_domain="${advertised_svc_host_value}:${advertised_svc_port_value}"
+    export KAFKA_CFG_ADVERTISED_LISTENERS="INTERNAL://${current_pod_fqdn}:9094,CLIENT://${nodeport_domain}"
+    echo "[cfg]KAFKA_CFG_ADVERTISED_LISTENERS=$KAFKA_CFG_ADVERTISED_LISTENERS"
+  elif [ "${KB_BROKER_DIRECT_POD_ACCESS}" == "true" ]; then
+    export KAFKA_CFG_ADVERTISED_LISTENERS="INTERNAL://${current_pod_fqdn}:9094,CLIENT://${MY_POD_IP}:9092"
+    echo "[cfg]KAFKA_CFG_ADVERTISED_LISTENERS=$KAFKA_CFG_ADVERTISED_LISTENERS"
+  else
+    # default, use headless service url as client connection
+    export KAFKA_CFG_ADVERTISED_LISTENERS="INTERNAL://${current_pod_fqdn}:9094,CLIENT://${current_pod_fqdn}:9092"
+    echo "[cfg]KAFKA_CFG_ADVERTISED_LISTENERS=$KAFKA_CFG_ADVERTISED_LISTENERS"
+  fi
+
+  # override node.id setting
+  # increments based on a specified base to avoid conflicts with controller settings
+  INDEX=$(echo $MY_POD_NAME | grep -o "\-[0-9]\+\$")
+  INDEX=${INDEX#-}
+  BROKER_NODE_ID=$(( $INDEX + $BROKER_MIN_NODE_ID ))
+  export KAFKA_CFG_NODE_ID="$BROKER_NODE_ID"
+  export KAFKA_CFG_BROKER_ID="$BROKER_NODE_ID"
+  echo "[cfg]KAFKA_CFG_NODE_ID=$KAFKA_CFG_NODE_ID"
 }
 
 set_zookeeper_connect() {
@@ -216,8 +212,13 @@ set_zookeeper_connect() {
         return 1
     fi
 
-    # Set KAFKA_CFG_ZOOKEEPER_CONNECT to the value of KB_KAFKA_ZOOKEEPER_CONN
-    export KAFKA_CFG_ZOOKEEPER_CONNECT="$KB_KAFKA_ZOOKEEPER_CONN"
+    if [ -n "$KB_KAFKA_ZK_SUB_PATH" ]; then
+      # Set KAFKA_CFG_ZOOKEEPER_CONNECT to the concat of KB_KAFKA_ZOOKEEPER_CONN and KB_KAFKA_ZK_SUB_PATH
+      export KAFKA_CFG_ZOOKEEPER_CONNECT="$KB_KAFKA_ZOOKEEPER_CONN/$KB_KAFKA_ZK_SUB_PATH"
+    else
+      # Set KAFKA_CFG_ZOOKEEPER_CONNECT to the value of KB_KAFKA_ZOOKEEPER_CONN
+      export KAFKA_CFG_ZOOKEEPER_CONNECT="$KB_KAFKA_ZOOKEEPER_CONN"
+    fi
 
     # Optionally, print the value to verify
     echo "[cfg]export KAFKA_CFG_ZOOKEEPER_CONNECT=$KAFKA_CFG_ZOOKEEPER_CONNECT,for kafka-server."

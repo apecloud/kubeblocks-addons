@@ -122,8 +122,6 @@ spec:
           runAsNonRoot: true
           runAsUser: 1001
         command:
-{{/*          - sleep*/}}
-{{/*          - infinity*/}}
           - /scripts/kafka-server-setup.sh
         env:
           - name: BITNAMI_DEBUG
@@ -143,10 +141,10 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: status.hostIP
-          - name: KAFKA_CFG_PROCESS_ROLES
-            value: "broker"
           - name: KAFKA_CFG_INTER_BROKER_LISTENER_NAME
             value: "INTERNAL"
+          - name: KB_KAFKA_ZK_SUB_PATH
+            value: $(KB_CLUSTER_NAME)
           - name: KAFKA_CFG_LISTENERS # required for KRaft
             value: "INTERNAL://:9094,CLIENT://:9092"
           - name: KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP

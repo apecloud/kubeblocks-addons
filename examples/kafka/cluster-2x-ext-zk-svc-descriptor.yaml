@@ -42,6 +42,8 @@ spec:
           value: 'true'
         - name: KAFKA_HEAP_OPTS
           value: "-Xmx500m -Xms500m"
+        - name: KB_KAFKA_ZK_SUB_PATH
+          value: "test"   # set sub path to use for sharing zk, default value is $(KB_CLUSTER_NAME), set empty string for root
       resources:
         limits:
           cpu: '0.5'
@@ -80,7 +82,7 @@ spec:
   # Represents the endpoint of the service connection credential.
   endpoint:
     # your external zk endpoints here
-    value: "zookeeper-cluster-zookeeper-0.zookeeper-cluster-zookeeper-headless.default:2181,zookeeper-cluster-zookeeper-1.zookeeper-cluster-zookeeper-headless.default:2181,zookeeper-cluster-zookeeper-2.zookeeper-cluster-zookeeper-headless.default:2181/test"
+    value: "zookeeper-cluster-zookeeper-0.zookeeper-cluster-zookeeper-headless.default:2181,zookeeper-cluster-zookeeper-1.zookeeper-cluster-zookeeper-headless.default:2181,zookeeper-cluster-zookeeper-2.zookeeper-cluster-zookeeper-headless.default:2181"
   # Represents the port of the service connection credential.
   port:
     value: "2181"
