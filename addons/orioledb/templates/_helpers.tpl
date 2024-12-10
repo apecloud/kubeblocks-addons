@@ -54,6 +54,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Common annotations
 */}}
 {{- define "orioledb.annotations" -}}
+helm.sh/resource-policy: keep
 {{ include "orioledb.apiVersion" . }}
 {{- end }}
 
@@ -62,4 +63,84 @@ API version annotation
 */}}
 {{- define "orioledb.apiVersion" -}}
 kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{- end }}
+
+{{/*
+Define orioledb component definition name
+*/}}
+{{- define "orioledb.cmpdName" -}}
+orioledb-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define orioledb component version name
+*/}}
+{{- define "orioledb.cmpvName" -}}
+orioledb
+{{- end -}}
+
+{{/*
+Define orioledb component definition regex pattern
+*/}}
+{{- define "orioledb.cmpdRegexPattern" -}}
+^orioledb-
+{{- end -}}
+
+{{/*
+Define orioledb component configuration template name
+*/}}
+{{- define "orioledb.configurationTemplate" -}}
+orioledb-configuration-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define orioledb component config constraint name
+*/}}
+{{- define "orioledb.configConstraint" -}}
+orioledb-cc-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define orioledb pgbouncer configuration template name
+*/}}
+{{- define "orioledb-pgbouncer.configurationTemplate" -}}
+orioledb-pgbouncer-configuration-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define orioledb scripts configMap template name
+*/}}
+{{- define "orioledb.scriptsTemplate" -}}
+orioledb-scripts-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define orioledb patroni reload scripts template name
+*/}}
+{{- define "orioledb.patroniReloadScriptsTemplate" -}}
+orioledb-patroni-reload-scripts-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define orioledb component metrice configuration name
+*/}}
+{{- define "orioledb.metricsConfiguration" -}}
+orioledb-custom-metrics
+{{- end -}}
+
+{{/*
+Define orioledb component agamotto configuration name
+*/}}
+{{- define "orioledb.agamottoConfiguration" -}}
+orioledb-agamotto-configuration
+{{- end -}}
+
+{{/*
+Generate scripts configmap
+*/}}
+{{- define "orioledb.extend.scripts" -}}
+{{- range $path, $_ :=  $.Files.Glob "scripts/**" }}
+{{ $path | base }}: |-
+{{- $.Files.Get $path | nindent 2 }}
+{{- end }}
 {{- end }}

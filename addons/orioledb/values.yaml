@@ -6,41 +6,12 @@ image:
   repository: apecloud/orioledb
   tag: beta1
   pullPolicy: IfNotPresent
-  # Overrides the image tag whose default is the chart appVersion.
 
-##
-auth:
-  ## @param auth.postgresPassword Password for the "postgres" admin user, leave empty
-  ## for random generated password.
-  ##
-  postgresPassword:
-  ## @param auth.database Name for a custom database to create
-  ##
-  database: "custom_db"
-## Audit settings
-## @param audit.logHostname Log client hostnames
-## @param audit.logConnections Add client log-in operations to the log file
-## @param audit.logDisconnections Add client log-outs operations to the log file
-## @param audit.pgAuditLog Add operations to log using the pgAudit extension
-## @param audit.pgAuditLogCatalog Log catalog using pgAudit
-## @param audit.clientMinMessages Message log level to share with the user
-## @param audit.logLinePrefix Template for log line prefix (default if not set)
-## @param audit.logTimezone Timezone for the log timestamps
-##
-audit:
-  logHostname: false
-  logConnections: false
-  logDisconnections: false
-  pgAuditLog: ""
-  pgAuditLogCatalog: "off"
-  clientMinMessages: error
-  logLinePrefix: ""
-  logTimezone: ""
+  # refer: https://github.com/apecloud/dbctl/blob/main/docker/Dockerfile
+  dbctl:
+    repository: apecloud/dbctl
+    tag: "0.1.5"
 
-## Set PostgreSQL preload extension shared libraries.
-## @param postgresqlSharedPreloadLibraries Shared preload libraries (comma-separated list)
-##
-postgresqlSharedPreloadLibraries: "pg_stat_statements, auto_explain"
 ## Start PostgreSQL pod(s) without limitations on shm memory.
 ## By default, docker and containerd (and possibly other container runtimes) limit `/dev/shm` to `64M`
 ##
@@ -54,14 +25,6 @@ shmVolume:
   ## sizeLimit: 1Gi
   ##
   sizeLimit: ""
-
-## @section PostgreSQL Primary parameters
-##
-primary:
-  ## @param primary.name Name of the primary database (eg primary, master, leader, ...)
-  ##
-  name: primary
-  ## configEnabled: true
 
 ## @section Metrics Parameters
 metrics:
@@ -93,5 +56,3 @@ pgbouncer:
 
 logConfigs:
   running: /home/postgres/pgdata/pgroot/data/log/postgresql-*
-#  /var/lib/postgresql/data/postgresql.auto.conf
-#  /var/lib/postgresql/data/postgresql.conf
