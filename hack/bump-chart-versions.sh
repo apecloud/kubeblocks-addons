@@ -6,7 +6,7 @@ set -euo pipefail
 bump_chart_version() {
   local chart="$1"
   local chart_version="$2"
-  echo "Updating version for chart to $chart_version"
+  echo "Updating version for $chart to $chart_version"
   sed -i.bak "s/^version:.*/version: ${chart_version}/g" "$chart" && rm "$chart.bak"
 }
 
@@ -25,9 +25,7 @@ main() {
     echo "Invalid or missing option. Exiting."
     exit 1
   fi
-
-  find "$parent_dir" -type d -not -name "kblib" | while read -r chart_dir; do
-    echo "$chart_dir"
+  find "$parent_dir" -maxdepth 1 -type d -not -name "kblib" | while read -r chart_dir; do
     local chart="$chart_dir/Chart.yaml"
     if [ -f "$chart" ]; then
       if [ "$option" == "chart-ver" ]; then
