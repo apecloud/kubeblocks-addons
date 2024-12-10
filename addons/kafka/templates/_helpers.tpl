@@ -150,6 +150,13 @@ kafka2-config-constraints
 {{- end -}}
 
 {{/*
+Define kafka2 env constraint name
+*/}}
+{{- define "kafka2.envConstraintName" -}}
+kafka2-env-constraints
+{{- end -}}
+
+{{/*
 Define kafka configuration tpl name
 */}}
 {{- define "kafka.configurationTplName" -}}
@@ -182,6 +189,13 @@ Define kafka 2.x server scripts tpl name
 */}}
 {{- define "kafka2.serverScriptsTplName" -}}
 kafka2-server-scripts-tpl
+{{- end -}}
+
+{{/*
+Define kafka 2.x broker env configmap tpl name
+*/}}
+{{- define "kafka2.brokerEnvTplName" -}}
+kafka2-broker-env-tpl
 {{- end -}}
 
 {{/*

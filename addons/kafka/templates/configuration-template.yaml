@@ -29,7 +29,7 @@ metadata:
   {{- end }}
 data:
   server.properties: |-
-    {{- .Files.Get "configs/kafka-27-server.prop.tpl" | nindent 4 }}
+    {{- .Files.Get "configs/2.7/kafka-27-server.prop.tpl" | nindent 4 }}
 
 ---
 apiVersion: v1

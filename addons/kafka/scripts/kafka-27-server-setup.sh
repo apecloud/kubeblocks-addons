@@ -210,14 +210,14 @@ set_cfg_metadata() {
 }
 
 set_zookeeper_connect() {
-    # Check if KB_KAFKA_EXTERNAL_ZK_CONN is set
-    if [[ -z "$KB_KAFKA_EXTERNAL_ZK_CONN" ]]; then
-        echo "Error: KB_KAFKA_EXTERNAL_ZK_CONN is not set"
+    # Check if KB_KAFKA_ZOOKEEPER_CONN is set
+    if [[ -z "$KB_KAFKA_ZOOKEEPER_CONN" ]]; then
+        echo "Error: KB_KAFKA_ZOOKEEPER_CONN is not set"
         return 1
     fi
 
-    # Set KAFKA_CFG_ZOOKEEPER_CONNECT to the value of KB_KAFKA_EXTERNAL_ZK_CONN
-    export KAFKA_CFG_ZOOKEEPER_CONNECT="$KB_KAFKA_EXTERNAL_ZK_CONN"
+    # Set KAFKA_CFG_ZOOKEEPER_CONNECT to the value of KB_KAFKA_ZOOKEEPER_CONN
+    export KAFKA_CFG_ZOOKEEPER_CONNECT="$KB_KAFKA_ZOOKEEPER_CONN"
 
     # Optionally, print the value to verify
     echo "[cfg]export KAFKA_CFG_ZOOKEEPER_CONNECT=$KAFKA_CFG_ZOOKEEPER_CONNECT,for kafka-server."
