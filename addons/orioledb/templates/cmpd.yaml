@@ -276,6 +276,14 @@ spec:
             value: /home/postgres/conf/postgresql.conf
           - name: ALLOW_NOSSL
             value: "true"
+          - name: SPILO_CONFIGURATION
+            value: | ## https://github.com/zalando/patroni#yaml-configuration
+              bootstrap:
+                initdb:
+                  - auth-host: md5
+                  - auth-local: trust
+          - name: ALLOW_NOSSL
+            value: "true"
           - name: PGROOT
             value: /home/postgres/pgdata/pgroot
           - name: PGDATA
