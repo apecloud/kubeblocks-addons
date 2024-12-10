@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
-# only manage version in chart.yaml
-# CR api version annotation please check kblib
+# only manage versions in chart.yaml
+# CR versions annotations please check kblib
 
 bump_chart_version() {
   local chart="$1"
@@ -21,7 +21,7 @@ main() {
   local parent_dir="$1"
   local option="$2"
   local version="$3"
-  if [ -z "$option" ] || [[ "$option" != "chart-ver" && "$option" != "chart-anno-kb-ver" ]]; then
+  if [ -z "$option" ] || [[ "$option" != "chartVer" && "$option" != "chartAnnoKBVer" ]]; then
     echo "Invalid or missing option. Exiting."
     exit 1
   fi
@@ -30,9 +30,9 @@ main() {
     echo "$chart_dir"
     local chart="$chart_dir/Chart.yaml"
     if [ -f "$chart" ]; then
-      if [ "$option" == "chart-ver" ]; then
+      if [ "$option" == "chartVer" ]; then
         bump_chart_version "$chart" "$version"
-      elif [ "$option" == "chart-anno-kb-ver" ]; then
+      elif [ "$option" == "chartAnnoKBVer" ]; then
         bump_chart_annotation_kb_version "$chart" "$version"
       else
         echo "Invalid option. Exiting."
@@ -42,7 +42,7 @@ main() {
   done
 }
 
-main "$@"
-# hack/bump-chart-versions.sh addons chart-ver 1.0.0-alpha.0
-# hack/bump-chart-versions.sh addons-cluster chart-ver 1.0.0-alpha.0
-# hack/bump-chart-versions.sh addons chart-anno-kb-ver ">=1.0.0"
+#main "$@"
+#main ./addons chartVer 1.0.0-alpha.0
+#main ./addons-cluster chartVer 1.0.0-alpha.0
+main ./addons chartAnnoKBVer ">=0.9.0"
