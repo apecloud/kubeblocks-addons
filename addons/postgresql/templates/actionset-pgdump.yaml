@@ -20,26 +20,20 @@ spec:
           type: string
           default: "postgres"
         format:
-          description: "Output format (p=plain, c=custom, d=directory, t=tar)"
+          description: "Output format (p=plain, t=tar)"
           type: string
-          enum: ["p", "c", "d", "t", "plain", "custom", "directory", "tar"]
-          default: "tar"
+          enum: ["p", "plain", "t", "tar"]
+          default: "t"
         jobs:
           description: "Number of parallel jobs"
           type: integer
           default: 1
-        compressLevel:
-          description: "Compression level"
-          type: integer
-          minimum: 0
-          maximum: 9
-          default: 0
         setRole:
           description: "Set role name to run SET ROLE before dumping"
           type: string
         # Content Selection
         schemas:
-          description: "List of schemas to include. You can use POSIX regular expression to match schema names"
+          description: "List of schemas to include. You can use POSIX regular expression to match schema names."
           type: array
           items:
             type: string
@@ -49,7 +43,8 @@ spec:
           items:
             type: string
         tables:
-          description: "List of tables to include. You can use POSIX regular expression to match table names"
+          description: "List of tables to include. You can use POSIX regular expression to match table names.
+                         If specified, schemas and excludeSchemas will be ignored."
           type: array
           items:
             type: string
@@ -74,11 +69,9 @@ spec:
         clean:
           description: "Clean (drop) database objects before creating them"
           type: boolean
-          default: false
         create:
           description: "Include create database statements"
           type: boolean
-          default: false
         noPrivileges:
           description: "Do not dump privileges (grant/revoke)"
           type: boolean
@@ -126,6 +119,9 @@ spec:
           description: "Do not dump large objects"
           type: boolean
           default: false
+        encoding:
+          description: "Dump the data in encoding ENCODING"
+          type: string
         singleTransaction:
           description: "Restore as a single transaction"
           type: boolean
@@ -135,7 +131,6 @@ spec:
       - database
       - format
       - jobs
-      - compressLevel
       - setRole
       - schemas
       - excludeSchemas
@@ -157,7 +152,7 @@ spec:
       - noTablespaces
       - noUnloggedTableData
       - noBlobs
-      - singleTransaction
+      - encoding
     preBackup: []
     postBackup: []
     backupData:
@@ -177,7 +172,6 @@ spec:
       - database
       - format
       - jobs
-      - compressLevel
       - setRole
       - schemas
       - excludeSchemas

@@ -11,38 +11,36 @@ trap handle_exit EXIT
 construct_pg_dump_options() {
   PG_DUMP_OPTIONS=""
   
-
-  # Add options for schemas and tables; these are mutually exclusive
+  # schemas, comma-separated
   if [ -n "${schemas}" ]; then
-    # comma-separated list of schemas to include
     for schema in ${schemas//,/ }; do
       PG_DUMP_OPTIONS+=" --schema=${schema}"
     done
-  elif [ -n "${excludeSchemas}" ]; then
-    # comma-separated list of schemas to exclude
+  fi
+  # exclude schemas, comma-separated
+  if [ -n "${excludeSchemas}" ]; then
     for schema in ${excludeSchemas//,/ }; do
       PG_DUMP_OPTIONS+=" --exclude-schema=${schema}"
     done
-  elif [ -n "${tables}" ]; then
-    # comma-separated list of tables to include
+  fi
+  # tables, comma-separated
+  if [ -n "${tables}" ]; then
     for table in ${tables//,/ }; do
       PG_DUMP_OPTIONS+=" --table=${table}"
     done
-  elif [ -n "${excludeTables}" ]; then
-    # comma-separated list of tables to exclude
+  fi
+  # exclude tables, comma-separated
+  if [ -n "${excludeTables}" ]; then
     for table in ${excludeTables//,/ }; do
       PG_DUMP_OPTIONS+=" --exclude-table=${table}"
     done
   fi
-    # format
-  if [ "${format}" = "c" ] || [ "${format}" = "custom" ]; then
-    PG_DUMP_OPTIONS+=" --format=c"
-  elif [ "${format}" = "d" ] || [ "${format}" = "directory" ]; then
-    PG_DUMP_OPTIONS+=" --format=d"
-  elif [ "${format}" = "t" ] || [ "${format}" = "tar" ]; then
-    PG_DUMP_OPTIONS+=" --format=t"
+
+    # Format, the dafault is tar format
+  if [ "${format}" = "p" ] || [ "${format}" = "plain" ]; then
+    PG_DUMP_OPTIONS+=" -Fp"
   else
-    PG_DUMP_OPTIONS+=" --format=p"
+    PG_DUMP_OPTIONS+=" -Ft"
   fi
   if [ -n "${dataOnly}" ] && [ "${dataOnly}" = "true" ]; then
     # boolean, whether to dump only data
@@ -52,21 +50,17 @@ construct_pg_dump_options() {
     # boolean, whether to dump only schema
     PG_DUMP_OPTIONS+=" --schema-only"
   fi
-  if [ -n "${clean}" ] && [ "${clean}" = "true" ]; then
-    # boolean, whether to clean database objects
+  if [ -z "${clean}" ] || [ "${clean}" = "true" ]; then
+    # boolean, whether to clean database objects, the default is to clean
     PG_DUMP_OPTIONS+=" --clean"
   fi
-  if [ -n "${create}" ] && [ "${create}" = "true" ]; then
-    # boolean, whether to include CREATE DATABASE statement
+  if [ -z "${create}" ] || [ "${create}" = "true" ]; then
+    # boolean, whether to include CREATE DATABASE statement, the default is to create
     PG_DUMP_OPTIONS+=" --create"
   fi
   if [ -n "${jobs}" ]; then
     # number of jobs to run in parallel
     PG_DUMP_OPTIONS+=" --jobs=${jobs}"
-  fi
-  if [ -n "${compressLevel}" ] && [ "${compressLevel}" -ge 0 ] && [ "${compressLevel}" -le 9 ]; then
-    # compression level (0-9)
-    PG_DUMP_OPTIONS+=" --compress=${compressLevel}"
   fi
   if [ -n "${setRole}" ]; then
     # role to set before excuting
@@ -84,7 +78,7 @@ construct_pg_dump_options() {
     # boolean, whether to disable triggers
     PG_DUMP_OPTIONS+=" --disable-triggers"
   fi
-  if [ -n "${ifExists}" ] && [ "${ifExists}" = "true" ]; then
+  if [ -z "${ifExists}" ] || [ "${ifExists}" = "true" ]; then
     # boolean, whether to include 'IF EXISTS'
     PG_DUMP_OPTIONS+=" --if-exists"
   fi
@@ -120,6 +114,10 @@ construct_pg_dump_options() {
     # boolean, whether to exclude blobs
     PG_DUMP_OPTIONS+=" --no-blobs"
   fi
+  if [ -n "${encoding}" ] && [ "${encoding}" != "UTF-8" ]; then
+    # encoding to use
+    PG_DUMP_OPTIONS+=" --encoding=${encoding}"
+  fi
   PG_DUMP_OPTIONS+=" --verbose"
   echo "${PG_DUMP_OPTIONS}"
 }
@@ -127,14 +125,10 @@ construct_pg_dump_options() {
 # Construct a file name based on $format environment variable
 file_name() {
   local prefix=${DP_BACKUP_NAME}
-  if [ "${format}" = "c" ] || [ "${format}" = "custom" ]; then
-    echo "${prefix}.dump"
-  elif [ "${format}" = "d" ] || [ "${format}" = "directory" ]; then
-    echo "${prefix}"
-  elif [ "${format}" = "t" ] || [ "${format}" = "tar" ]; then
-    echo "${prefix}.tar"
-  else
+  if [ "${format}" = "p" ] || [ "${format}" = "plain" ]; then
     echo "${prefix}.sql"
+  else
+    echo "${prefix}.tar"
   fi
 }
 
@@ -148,7 +142,7 @@ START_TIME=`get_current_time`
 PG_DUMP_OPTIONS="-d ${database}$(construct_pg_dump_options)"
 # print options
 echo "pg_dump options: ${PG_DUMP_OPTIONS}"
-pg_dump -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT} -d ${database} ${PG_DUMP_OPTIONS} | datasafed push -z zstd-fastest - "/$(file_name).zst"
+pg_dump -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT} ${PG_DUMP_OPTIONS} | datasafed push -z zstd-fastest - "/$(file_name).zst"
 # stat and save the backup information
 stat_and_save_backup_info "$START_TIME"
 echo "backup done!";

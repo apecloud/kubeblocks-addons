@@ -17,47 +17,40 @@ function remote_file_exists() {
 construct_pg_restore_options() {
   PG_RESTORE_OPTIONS=""
 
-
-  # Options for schemas and tables; these are mutually exclusive
+  # Include specific schemas (comma-separated list)
   if [ -n "${schemas}" ]; then
-    # Include specific schemas (comma-separated list)
     for schema in ${schemas//,/ }; do
       PG_RESTORE_OPTIONS+=" --schema=${schema}"
     done
-  elif [ -n "${excludeSchemas}" ]; then
-    # Exclude specific schemas (comma-separated list)
+  fi
+  # Exclude specific schemas (comma-separated list)
+  if [ -n "${excludeSchemas}" ]; then
     for schema in ${excludeSchemas//,/ }; do
       PG_RESTORE_OPTIONS+=" --exclude-schema=${schema}"
     done
-  elif [ -n "${tables}" ]; then
-    # Include specific tables (comma-separated list)
+  fi
+  # Include specific tables (comma-separated list)
+  if [ -n "${tables}" ]; then
     for table in ${tables//,/ }; do
       PG_RESTORE_OPTIONS+=" --table=${table}"
     done
-  elif [ -n "${excludeTables}" ]; then
-    # Exclude specific tables (comma-separated list)
+  fi
+  # Exclude specific tables (comma-separated list)
+  if [ -n "${excludeTables}" ]; then
     for table in ${excludeTables//,/ }; do
       PG_RESTORE_OPTIONS+=" --exclude-table=${table}"
     done
   fi
 
-    # format
-  if [ "${format}" = "c" ] || [ "${format}" = "custom" ]; then
-    PG_RESTORE_OPTIONS+=" --format=c"
-  elif [ "${format}" = "d" ] || [ "${format}" = "directory" ]; then
-    PG_RESTORE_OPTIONS+=" --format=d"
-  elif [ "${format}" = "t" ] || [ "${format}" = "tar" ]; then
-    PG_RESTORE_OPTIONS+=" --format=t"
+  # Format, the dafault is tar format
+  if [ "${format}" = "p" ] || [ "${format}" = "plain" ]; then
+    PG_RESTORE_OPTIONS+=" -Fp"
   else
-    PG_RESTORE_OPTIONS+=" --format=p"
+    PG_RESTORE_OPTIONS+=" -Ft"
   fi
   if [ -n "${jobs}" ]; then
     # Run jobs in parallel
     PG_RESTORE_OPTIONS+=" --jobs=${jobs}"
-  fi
-  if [ -n "${compressLevel}" ] && [ "${compressLevel}" -ge 0 ] && [ "${compressLevel}" -le 9 ]; then
-    # Set compression level (0-9)
-    PG_RESTORE_OPTIONS+=" --compress=${compressLevel}"
   fi
   if [ -n "${setRole}" ]; then
     # role to set before excuting
@@ -75,7 +68,7 @@ construct_pg_restore_options() {
     # Restore only the schema, no data
     PG_RESTORE_OPTIONS+=" --schema-only"
   fi
-  if [ -n "${clean}" ] && [ "${clean}" = "true" ]; then
+  if [ -z "${clean}" ] || [ "${clean}" = "true" ]; then
     # Clean database objects before restore
     PG_RESTORE_OPTIONS+=" --clean"
   fi
@@ -91,8 +84,8 @@ construct_pg_restore_options() {
     # Disable triggers during restore
     PG_RESTORE_OPTIONS+=" --disable-triggers"
   fi
-  if [ -n "${ifExists}" ] && [ "${ifExists}" = "true" ]; then
-    # Use 'IF EXISTS' when dropping objects
+  if [ -z "${ifExists}" ] || [ "${ifExists}" = "true" ]; then
+    # Use 'IF EXISTS' when dropping objects, the default is true
     PG_RESTORE_OPTIONS+=" --if-exists"
   fi
   if [ -n "${noComments}" ] && [ "${noComments}" = "true" ]; then
@@ -110,42 +103,42 @@ construct_pg_restore_options() {
 # Construct a file name based on $format environment variable
 file_name() {
   local prefix=${DP_BACKUP_NAME}
-  if [ "${format}" = "c" ] || [ "${format}" = "custom" ]; then
-    echo "${prefix}.dump"
-  elif [ "${format}" = "d" ] || [ "${format}" = "directory" ]; then
-    echo "${prefix}"
-  elif [ "${format}" = "t" ] || [ "${format}" = "tar" ]; then
-    echo "${prefix}.tar"
-  else
+  if [ "${format}" = "p" ] || [ "${format}" = "plain" ]; then
     echo "${prefix}.sql"
+  else
+    echo "${prefix}.tar"
   fi
 }
 
 # Check if the given format is plain.
 is_plain() {
-  if [ "${format}" = "t" ] || [ "${format}" = "c" ] || [ "${format}" = "d" ] \
-  || [ "${format}" = "tar" ] || [ "${format}" = "custom" ] || [ "${format}" = "directory" ]; then
-      echo "false"
+  if [ "${format}" = "p" ] || [ "${format}" = "plain" ] ; then
+      echo "true"
+      return
   fi
-  echo "true"
+  echo "false"
 }
 
-if [ $(remote_file_exists $(file_name).zst) == "false" ]; then
-  echo "backup ${DP_BACKUP_NAME} doesn't exist";
+# Check if the backup exists
+FILE_NAME=$(file_name)
+if [ $(remote_file_exists ${FILE_NAME}.zst) == "false" ]; then
   exit 1
 fi
 
-# Set default database to 'postgres' if not provided; this is the default database name in PostgreSQL
-# See https://www.postgresql.org/docs/current/static/runtime-config-connection.html#GUC-DATABASE
-: "${database:=postgres}"
 
 if [ $(is_plain) == "true" ]; then
-  echo "excuting psql -h ${DP_DB_HOST} -p ${DP_DB_PORT} -U ${DP_DB_USER} -d ${database}"
-  datasafed pull -d zstd-fastest $(file_name).zst - | psql -h ${DP_DB_HOST} -p ${DP_DB_PORT} -U ${DP_DB_USER} -d ${database}
+  DB_OPTION = ""
+  if [ -n "${database}" ]; then
+    DB_OPTION = " -d ${database}"
+  fi
+  datasafed pull -d zstd-fastest ${FILE_NAME}.zst - | psql -h ${DP_DB_HOST} -p ${DP_DB_PORT} -U ${DP_DB_USER}${DB_OPTION}
 else
+  # Set default database to 'postgres' if not provided; this is the default database name in PostgreSQL
+  # See https://www.postgresql.org/docs/current/static/runtime-config-connection.html#GUC-DATABASE
+  : "${database:=postgres}"
   PG_RESTORE_OPTIONS="-d ${database}$(construct_pg_restore_options)"
   # print options
-  echo "pg_restore options: ${PG_RESTORE_OPTIONS}";
-  datasafed pull -d zstd-fastest $(file_name).zst - | pg_restore -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT} -d ${database} ${PG_RESTORE_OPTIONS}
+  echo "pg_restore options: ${PG_RESTORE_OPTIONS}"
+  datasafed pull -d zstd-fastest ${FILE_NAME}.zst - | pg_restore -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT} ${PG_RESTORE_OPTIONS}
 fi
-echo "restore complete!";
+echo "restore complete!"
