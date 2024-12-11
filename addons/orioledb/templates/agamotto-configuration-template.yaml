@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: orioledb-agamotto-configuration
+  name: {{ include "orioledb.agamottoConfiguration" . }}
   labels:
       {{- include "orioledb.labels" . | nindent 4 }}
 data:

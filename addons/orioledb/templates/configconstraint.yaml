@@ -2,14 +2,16 @@
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
-  name: orioledb-cc
+  name: {{ include "orioledb.configConstraint" . }}
   labels:
     {{- include "orioledb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "orioledb.annotations" . | nindent 4 }}
 spec:
   reloadAction:
     tplScriptTrigger:
       sync: false
-      scriptConfigMapRef: orioledb-patroni-reload-script
+      scriptConfigMapRef: {{ include "orioledb.patroniReloadScriptsTemplate" . }}
       namespace: {{ .Release.Namespace }}
     # update patroni master
     targetPodSelector:
