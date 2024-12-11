@@ -32,8 +32,6 @@ home: https://github.com/taosdata/TDengine
 sources:
   - https://github.com/taosdata/TDengine
 
-dependencies: []
-
 maintainers:
   - name: leon-inf
     url: https://github.com/apecloud/kubeblocks/
@@ -46,9 +44,7 @@ icon: "https://www.taosdata.com/images/taosdata-logo.png"
 # It is recommended to use it with quotes.
 appVersion: "3.0.5"
 
-deprecated: false
-
 annotations:
-  addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
+  addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
   addon.kubeblocks.io/model: "time-series"
   addon.kubeblocks.io/provider: "community"

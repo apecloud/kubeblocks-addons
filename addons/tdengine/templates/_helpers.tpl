@@ -54,6 +54,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Common annotations
 */}}
 {{- define "tdengine.annotations" -}}
+helm.sh/resource-policy: keep
 {{ include "tdengine.apiVersion" . }}
 {{- end }}
 
@@ -65,12 +66,43 @@ kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+Define tdengine component definition name
 */}}
-{{- define "tdengine.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "tdengine.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
-{{- end }}
+{{- define "tdengine.cmpdName" -}}
+tdengine-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define tdengine component version name
+*/}}
+{{- define "tdengine.cmpvName" -}}
+tdengine
+{{- end -}}
+
+{{/*
+Define tdengine component definition regex pattern
+*/}}
+{{- define "tdengine.cmpdRegexPattern" -}}
+^tdengine-
+{{- end -}}
+
+{{/*
+Define tdengine component configuration template name
+*/}}
+{{- define "tdengine.configurationTemplate" -}}
+tdengine-configuration-template
+{{- end -}}
+
+{{/*
+Define tdengine scripts configMap template name
+*/}}
+{{- define "tdengine.scriptsTemplate" -}}
+tdengine-scripts-template
+{{- end -}}
+
+{{/*
+Define tdengine component metrice configuration name
+*/}}
+{{- define "tdengine.metricsConfiguration" -}}
+tdengine-metrics-configuration-template
+{{- end -}}
