@@ -9,7 +9,7 @@ metadata:
 spec:
   compatibilityRules:
   - compDefs:
-    - {{ include "fe.componentDefName" . }}
+    - {{ include "fe.cmpdRegexPattern" . }}
     releases:
     - 3.2.2
     - 3.3.0

@@ -28,7 +28,7 @@ spec:
         targetPort: query-port
   scripts:
   - name: scripts
-    templateRef: {{ include "starrocks.name" . }}-scripts
+    templateRef: {{ include "starrocks.scriptsTemplate" . }}
     namespace: {{ .Release.Namespace }}
     volumeName: scripts
     defaultMode: 0555
@@ -45,7 +45,7 @@ spec:
       letterCase: MixedCases
   configs:
     - name: fe-cm
-      templateRef: {{ include "starrocks.name" . }}-fe-cm
+      templateRef: {{ include "fe.configurationTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: fe-cm
   vars:

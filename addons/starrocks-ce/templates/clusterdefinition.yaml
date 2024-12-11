@@ -11,9 +11,9 @@ spec:
   - name: shared-nothing
     components:
     - name: fe
-      compDef: {{ include "fe.componentDefName" . }}
+      compDef: {{ include "fe.cmpdRegexPattern" . }}
     - name: be
-      compDef: {{ include "be.componentDefName" . }}
+      compDef: {{ include "be.cmpdRegexPattern" . }}
     orders:
       provision:
       - fe

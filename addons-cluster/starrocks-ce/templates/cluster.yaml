@@ -10,7 +10,6 @@ spec:
   topology: shared-nothing
   componentSpecs:
     - name: fe
-      componentDef: starrocks-ce-fe
       {{- include "kblib.componentMonitor" . | indent 6 }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       serviceVersion: {{ include "starrocks.version" . }}
@@ -18,7 +17,6 @@ spec:
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
     - name: be
-      componentDef: starrocks-ce-be
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       serviceVersion: {{ include "starrocks.version" . }}
       replicas: {{ index .Values.beReplicas | default 1 }}
