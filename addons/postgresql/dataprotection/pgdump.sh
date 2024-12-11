@@ -132,12 +132,12 @@ file_name() {
   fi
 }
 
-
 START_TIME=`get_current_time`
 
-# Set default database to 'postgres' if not provided; this is the default database name in PostgreSQL
-# See https://www.postgresql.org/docs/current/static/runtime-config-connection.html#GUC-DATABASE
-: "${database:=postgres}"
+if [ -z "${database}" ]; then
+  echo "no database specified"
+  exit 1
+fi
 
 PG_DUMP_OPTIONS="-d ${database}$(construct_pg_dump_options)"
 # print options
