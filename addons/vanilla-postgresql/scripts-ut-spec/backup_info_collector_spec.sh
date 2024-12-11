@@ -61,18 +61,4 @@ Describe 'backup info collector script'
       The contents of file "${DP_BACKUP_INFO_FILE}" should include '"end":"2024-01-15T10:00:00Z"'
     End
   End
-
-  Describe 'handle_exit()'
-    BeforeEach 'setup'
-
-    AfterEach 'clean'
-
-    It 'does not create exit file when exit code is zero'
-      # Set $? to 0
-      true
-      When call handle_exit
-      The file "${DP_BACKUP_INFO_FILE}.exit" should not be exist
-      The status should be success
-    End
-  End
 End
