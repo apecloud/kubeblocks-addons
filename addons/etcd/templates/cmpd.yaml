@@ -166,6 +166,22 @@ spec:
           - /bin/bash
           - -c
           - /scripts/switchover.sh
+    dataDump:
+      exec:
+        image: {{ include "etcd356.image" . }}
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/data-load.sh
+        targetPodSelector: Role
+        matchingKey: leader
+    dataLoad:
+      exec:
+        image: {{ include "etcd356.image" . }}
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/data-load.sh
   configs:
     - name: etcd-configuration-tpl
       templateRef: {{ include "etcd3.configurationTemplate" .}}

@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: orioledb-custom-metrics
+  name: {{ include "orioledb.metricsConfiguration" . }}
   labels:
       {{- include "orioledb.labels" . | nindent 4 }}
 data:
