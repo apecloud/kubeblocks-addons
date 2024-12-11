@@ -11,9 +11,9 @@ spec:
     - compDefs:
         - {{ include "orioledb.cmpdRegexPattern" . }}
       releases:
-        - 14.7.2-beta1
+        - 14.7.2
   releases:
-    - name: 14.7.2-beta1
+    - name: 14.7.2
       changes:
       serviceVersion: 14.7.2
       images:

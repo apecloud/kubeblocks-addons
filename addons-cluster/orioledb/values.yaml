@@ -10,7 +10,7 @@ terminationPolicy: Delete
 ##
 version: 14.7.2
 
-## @param mode postgresql cluster topology mode, standalone, replication
+## @param mode orioledb cluster topology mode, standalone, replication
 ##
 mode: replication
 

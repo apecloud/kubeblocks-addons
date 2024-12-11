@@ -12,7 +12,7 @@ replicas: {{ max .Values.replicas 2 }}
 {{- end }}
 
 {{/*
-Define postgresql ComponentSpec with ComponentDefinition.
+Define orioledb ComponentSpec with ComponentDefinition.
 */}}
 {{- define "orioledb-cluster.componentSpec" }}
   clusterDef: orioledb
