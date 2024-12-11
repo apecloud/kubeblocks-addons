@@ -76,10 +76,6 @@ construct_pg_restore_options() {
     # Use 'IF EXISTS' when dropping objects
     PG_RESTORE_OPTIONS+=" --if-exists"
   fi
-  if [ -z "${create}" ] || [ "${create}" = "true" ];then
-    # Include CREATE DATABASE statement
-    PG_RESTORE_OPTIONS+=" --create"
-  fi
   if [ -n "${noPrivileges}" ] && [ "${noPrivileges}" = "true" ]; then
     # Exclude privilege information
     PG_RESTORE_OPTIONS+=" --no-privileges"
@@ -125,16 +121,33 @@ if [ $(remote_file_exists ${FILE_NAME}.zst) == "false" ]; then
   exit 1
 fi
 
+if [ -z "${database}" ]; then
+  echo "no database specified"
+  exit 1
+fi
+
 if [ $(is_plain) == "true" ]; then
   datasafed pull -d zstd-fastest ${FILE_NAME}.zst - | psql -h ${DP_DB_HOST} -p ${DP_DB_PORT} -U ${DP_DB_USER}
 else
-  # Set default database to 'postgres' if not provided; this is the default database name in PostgreSQL
-  # See https://www.postgresql.org/docs/current/static/runtime-config-connection.html#GUC-DATABASE
-  : "${database:=postgres}"
   PG_RESTORE_OPTIONS="-d ${database}$(construct_pg_restore_options)"
   # print options
   echo "pg_restore options: ${PG_RESTORE_OPTIONS}"
-  # FIXME: The database name specified in -d is not for restore, but there's a bug when restoring to the 'postgres' database.
-  datasafed pull -d zstd-fastest ${FILE_NAME}.zst - | pg_restore -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT} ${PG_RESTORE_OPTIONS}
+  TMP_DIR=./tmp
+  mkdir -p ${TMP_DIR}
+  datasafed pull -d zstd-fastest ${FILE_NAME}.zst - > ${TMP_DIR}/${FILE_NAME}
+  # pg_restore will fail if the database does not exist, so we create it by connecting to the default database "postgres"
+  pg_restore -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT} ${PG_RESTORE_OPTIONS} ${TMP_DIR}/${FILE_NAME} 2> >(tee restore.log >&2) || {
+    if grep -q "database \"${database}\" does not exist" restore.log; then
+      echo "database \"${database}\" does not exist, create it"
+      PG_RESTORE_OPTIONS="-d postgres$(construct_pg_restore_options) --create"
+      echo "pg_restore options: ${PG_RESTORE_OPTIONS}"
+      pg_restore -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT} ${PG_RESTORE_OPTIONS} ${TMP_DIR}/${FILE_NAME}
+    else
+      rm -rf ${TMP_DIR}
+      echo "restore failed!"
+      exit 1
+    fi
+  }
+  rm -rf ${TMP_DIR}
 fi
 echo "restore complete!"

@@ -183,7 +183,6 @@ spec:
       - dataOnly
       - schemaOnly
       - clean
-      - create
       - noPrivileges
       - disableTriggers
       - ifExists
