@@ -10,13 +10,13 @@ terminationPolicy: Delete
 ##
 version: 16.4.0
 
-## @param mode postgresql cluster topology mode, standalone, replication
+## @param mode postgresql cluster topology mode replication
 ##
-mode: standalone
+mode: replication
 
 ## @param replicas specify cluster replicas
 ##
-replicas: 1
+replicas: 2
 
 ## @param cpu
 ##
