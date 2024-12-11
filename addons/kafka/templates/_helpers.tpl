@@ -122,6 +122,20 @@ Define kafka-broker component definition regex pattern
 {{- end -}}
 
 {{/*
+Define kafka-broker component definition name
+*/}}
+{{- define "kafka2-broker.componentDefName" -}}
+kafka27-broker-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define kafka-broker component definition regex pattern
+*/}}
+{{- define "kafka2-broker.cmpdRegexpPattern" -}}
+^kafka27-broker-
+{{- end -}}
+
+{{/*
 Define kafka config constraint name
 */}}
 {{- define "kafka.configConstraintName" -}}
@@ -129,10 +143,24 @@ kafka-config-constraints
 {{- end -}}
 
 {{/*
+Define kafka config constraint name
+*/}}
+{{- define "kafka2.configConstraintName" -}}
+kafka2-config-constraints
+{{- end -}}
+
+{{/*
 Define kafka configuration tpl name
 */}}
 {{- define "kafka.configurationTplName" -}}
 kafka-configuration-tpl
+{{- end -}}
+
+{{/*
+Define kafka2 configuration tpl name
+*/}}
+{{- define "kafka2.configurationTplName" -}}
+kafka27-configuration-tpl-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
@@ -147,6 +175,20 @@ Define kafka server scripts tpl name
 */}}
 {{- define "kafka.serverScriptsTplName" -}}
 kafka-server-scripts-tpl
+{{- end -}}
+
+{{/*
+Define kafka 2.x server scripts tpl name
+*/}}
+{{- define "kafka2.serverScriptsTplName" -}}
+kafka2-server-scripts-tpl
+{{- end -}}
+
+{{/*
+Define kafka 2.x broker env configmap tpl name
+*/}}
+{{- define "kafka2.brokerEnvTplName" -}}
+kafka2-broker-env-tpl
 {{- end -}}
 
 {{/*
