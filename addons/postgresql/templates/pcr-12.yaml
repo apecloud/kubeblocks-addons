@@ -1,0 +1,18 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "postgresql12.pcr" . }}
+  labels:
+    {{- include "postgresql.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "postgresql12.compDefName" . }}
+  serviceVersion: {{ .Values.componentServiceVersion.postgresql12 }}
+  parametersDefs:
+    - {{ include "postgresql12.parametersDefinition" . }}
+
+  configs:
+    - name: postgresql.conf
+      fileFormatConfig:
+        format: properties
+      reRenderResourceTypes:
+        - vscale
