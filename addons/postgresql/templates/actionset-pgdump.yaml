@@ -69,9 +69,11 @@ spec:
         clean:
           description: "Clean (drop) database objects before creating them"
           type: boolean
+          default: true
         create:
           description: "Include create database statements"
           type: boolean
+          default: true
         noPrivileges:
           description: "Do not dump privileges (grant/revoke)"
           type: boolean
@@ -81,9 +83,9 @@ spec:
           type: boolean
           default: false
         ifExists:
-          description: "Use IF EXISTS when dropping objects"
+          description: "Use IF EXISTS when dropping objects, used with clean"
           type: boolean
-          default: false
+          default: true
         # Insert Options
         useInserts:
           description: "Use INSERT commands instead of COPY"

@@ -54,6 +54,10 @@ construct_pg_dump_options() {
     # boolean, whether to clean database objects, the default is to clean
     PG_DUMP_OPTIONS+=" --clean"
   fi
+  if [ -z "${ifExists}" ] || [ "${ifExists}" = "true" ]; then
+    # boolean, whether to include 'IF EXISTS'
+    PG_DUMP_OPTIONS+=" --if-exists"
+  fi
   if [ -z "${create}" ] || [ "${create}" = "true" ]; then
     # boolean, whether to include CREATE DATABASE statement, the default is to create
     PG_DUMP_OPTIONS+=" --create"
@@ -77,10 +81,6 @@ construct_pg_dump_options() {
   if [ -n "${disableTriggers}" ] && [ "${disableTriggers}" = "true" ]; then
     # boolean, whether to disable triggers
     PG_DUMP_OPTIONS+=" --disable-triggers"
-  fi
-  if [ -z "${ifExists}" ] || [ "${ifExists}" = "true" ]; then
-    # boolean, whether to include 'IF EXISTS'
-    PG_DUMP_OPTIONS+=" --if-exists"
   fi
   if [ -n "${useInserts}" ] && [ "${useInserts}" = "true" ]; then
     # boolean, whether to use INSERT statements

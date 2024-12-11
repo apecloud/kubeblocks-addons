@@ -72,7 +72,11 @@ construct_pg_restore_options() {
     # Clean database objects before restore
     PG_RESTORE_OPTIONS+=" --clean"
   fi
-  if [ -n "${create}" ] && [ "${create}" = "true" ]; then
+  if [ -z "${ifExists}" ] || [ "${ifExists}" = "true" ]; then
+    # Use 'IF EXISTS' when dropping objects
+    PG_RESTORE_OPTIONS+=" --if-exists"
+  fi
+  if [ -z "${create}" ] || [ "${create}" = "true" ];then
     # Include CREATE DATABASE statement
     PG_RESTORE_OPTIONS+=" --create"
   fi
@@ -83,10 +87,6 @@ construct_pg_restore_options() {
   if [ -n "${disableTriggers}" ] && [ "${disableTriggers}" = "true" ]; then
     # Disable triggers during restore
     PG_RESTORE_OPTIONS+=" --disable-triggers"
-  fi
-  if [ -z "${ifExists}" ] || [ "${ifExists}" = "true" ]; then
-    # Use 'IF EXISTS' when dropping objects, the default is true
-    PG_RESTORE_OPTIONS+=" --if-exists"
   fi
   if [ -n "${noComments}" ] && [ "${noComments}" = "true" ]; then
     # Exclude comments
@@ -125,13 +125,8 @@ if [ $(remote_file_exists ${FILE_NAME}.zst) == "false" ]; then
   exit 1
 fi
 
-
 if [ $(is_plain) == "true" ]; then
-  DB_OPTION = ""
-  if [ -n "${database}" ]; then
-    DB_OPTION = " -d ${database}"
-  fi
-  datasafed pull -d zstd-fastest ${FILE_NAME}.zst - | psql -h ${DP_DB_HOST} -p ${DP_DB_PORT} -U ${DP_DB_USER}${DB_OPTION}
+  datasafed pull -d zstd-fastest ${FILE_NAME}.zst - | psql -h ${DP_DB_HOST} -p ${DP_DB_PORT} -U ${DP_DB_USER}
 else
   # Set default database to 'postgres' if not provided; this is the default database name in PostgreSQL
   # See https://www.postgresql.org/docs/current/static/runtime-config-connection.html#GUC-DATABASE
