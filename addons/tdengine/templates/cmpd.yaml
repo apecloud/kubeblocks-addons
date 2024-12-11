@@ -42,7 +42,7 @@ spec:
           optional: false
           componentName: Required
     - name: TAOS_FIRST_EP
-      value: "$(TAOS_COMPONENT_NAME)-0-$(TAOS_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.cluster.local:6030"
+      value: "$(TAOS_COMPONENT_NAME)-0.$(TAOS_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.cluster.local:6030"
     - name: TAOS_ADAPTER_USERNAME
       value: {{ .Values.defaultAuth.username }}
     - name: TAOS_ADAPTER_PASSWORD
@@ -87,7 +87,7 @@ spec:
                 apiVersion: v1
                 fieldPath: metadata.name
           - name: TAOS_FQDN
-            value: "$(CURRENT_POD_NAME)-$(TAOS_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.cluster.local"
+            value: "$(CURRENT_POD_NAME).$(TAOS_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.cluster.local"
         lifecycle:
           postStart:
             exec:
