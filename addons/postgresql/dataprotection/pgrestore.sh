@@ -134,7 +134,7 @@ else
   PG_RESTORE_OPTIONS="-d ${database}$(construct_pg_restore_options)"
   # print options
   echo "pg_restore options: ${PG_RESTORE_OPTIONS}"
-  # The database name specified in -d is not for restore, but there's a bug when restoring to the 'postgres' database.
+  # FIXME: The database name specified in -d is not for restore, but there's a bug when restoring to the 'postgres' database.
   datasafed pull -d zstd-fastest ${FILE_NAME}.zst - | pg_restore -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT} ${PG_RESTORE_OPTIONS}
 fi
 echo "restore complete!"
