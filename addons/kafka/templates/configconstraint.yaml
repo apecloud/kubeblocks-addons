@@ -51,17 +51,3 @@ spec:
   fileFormatConfig:
     format: properties
 
----
-apiVersion: apps.kubeblocks.io/v1beta1
-kind: ConfigConstraint
-metadata:
-  name: {{ include "kafka2.envConstraintName" . }}
-  labels:
-    {{- include "kafka.labels" . | nindent 4 }}
-spec:
-  parametersSchema:
-    cue: ""
-
-  # kafka2 env format
-  fileFormatConfig:
-    format: yaml

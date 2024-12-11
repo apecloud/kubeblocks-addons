@@ -32,7 +32,7 @@ spec:
       serviceRefDeclarationSpecs:
         - serviceKind: zookeeper
           serviceVersion: ^3\.[5-9]\.\d{1,2}$
-      optional: true
+      optional: false
   vars:
     - name: CLUSTER_UID
       valueFrom:
@@ -59,6 +59,16 @@ spec:
         componentVarRef:
           optional: false
           componentName: Required
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: KB_KAFKA_ZOOKEEPER_CONN
+      valueFrom:
+        serviceRefVarRef:
+          name: kafkaZookeeper
+          endpoint: Required
+          optional: false
     ## Todo: currently only nodeport and clusterIp network modes are supported. LoadBalance is not supported yet and needs future support.
     - name: BROKER_ADVERTISED_PORT
       valueFrom:
@@ -81,15 +91,6 @@ spec:
   ## serial is not used because rsm currently does not support kafka's role detection. The lack of role label during restart will affect the pod restart.
   updateStrategy: BestEffortParallel
   configs:
-    - name: broker-env
-      templateRef: {{ include "kafka2.brokerEnvTplName" . }}
-      constraintRef: {{ include "kafka2.envConstraintName" . }}
-      namespace: {{ .Release.Namespace }}
-      keys:
-        - conf
-      injectEnvTo:
-        - kafka
-      volumeName: kafka-broker-env
     - name: kafka-configuration-tpl
       constraintRef: {{ include "kafka2.configConstraintName" . }}
       templateRef: {{ include "kafka2.configurationTplName" . }}
@@ -144,7 +145,7 @@ spec:
           - name: KAFKA_CFG_INTER_BROKER_LISTENER_NAME
             value: "INTERNAL"
           - name: KB_KAFKA_ZK_SUB_PATH
-            value: $(KB_CLUSTER_NAME)
+            value: $(CLUSTER_NAME)
           - name: KAFKA_CFG_LISTENERS # required for KRaft
             value: "INTERNAL://:9094,CLIENT://:9092"
           - name: KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP

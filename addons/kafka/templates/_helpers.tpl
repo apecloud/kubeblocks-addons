@@ -150,13 +150,6 @@ kafka2-config-constraints
 {{- end -}}
 
 {{/*
-Define kafka2 env constraint name
-*/}}
-{{- define "kafka2.envConstraintName" -}}
-kafka2-env-constraints
-{{- end -}}
-
-{{/*
 Define kafka configuration tpl name
 */}}
 {{- define "kafka.configurationTplName" -}}
