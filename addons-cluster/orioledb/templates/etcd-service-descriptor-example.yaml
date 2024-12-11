@@ -1,0 +1,12 @@
+{{- if and .Values.etcd.enabled (eq .Values.etcd.meta.mode "serviceref") }}
+apiVersion: apps.kubeblocks.io/v1
+kind: ServiceDescriptor
+metadata:
+  name: orioledb-etcd-descriptor
+  namespace: {{ .Release.Namespace }}
+spec:
+  serviceKind: etcd
+  serviceVersion: 3.5.6
+  endpoint:
+    value: "etcd-cluster-etcd.default.svc.cluster.local:2379"  # etcd service endpoint
+{{- end }}
