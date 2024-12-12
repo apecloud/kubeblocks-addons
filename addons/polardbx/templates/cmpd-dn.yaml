@@ -11,7 +11,7 @@ spec:
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
   serviceVersion: {{ .Chart.AppVersion }}
-  service:
+  services:
     - name: default
       spec:
         ports:
@@ -73,7 +73,7 @@ spec:
         componentVarRef:
           optional: false
           podFQDNs: Required
-  lifecycleAction:
+  lifecycleActions:
     roleProbe:
       exec:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.roleProbe.image.repository }}:{{ .Values.roleProbe.image.tag }}
