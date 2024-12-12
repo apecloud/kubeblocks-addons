@@ -82,7 +82,7 @@ construct_pg_restore_options() {
   PG_RESTORE_OPTIONS+=" --if-exists"
   PG_RESTORE_OPTIONS+=" --no-owner"
   PG_RESTORE_OPTIONS+=" --no-privileges"
-  # PG_RESTORE_OPTIONS+=" --verbose"
+  PG_RESTORE_OPTIONS+=" --verbose"
   echo "${PG_RESTORE_OPTIONS}"
 }
 
@@ -105,12 +105,6 @@ is_plain() {
   echo "false"
 }
 
-# Check if the backup exists
-FILE_NAME=$(file_name)
-if [ $(remote_file_exists ${FILE_NAME}.zst) == "false" ]; then
-  exit 1
-fi
-
 # Create database if not exist
 create_database_if_not_exist() {
   psql -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT} -c "SELECT 1 FROM pg_database WHERE datname = '${database}';" | grep -q "1" || {
@@ -118,6 +112,13 @@ create_database_if_not_exist() {
     psql -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT} -c "CREATE DATABASE ${database} TEMPLATE template0;"
   }
 }
+
+
+# Check if the backup exists
+FILE_NAME=$(file_name)
+if [ $(remote_file_exists ${FILE_NAME}.zst) == "false" ]; then
+  exit 1
+fi
 
 if [ $(is_plain) == "true" ]; then
   # if backup file is plain, use psql to restore
@@ -129,6 +130,8 @@ if [ $(is_plain) == "true" ]; then
   datasafed pull -d zstd-fastest ${FILE_NAME}.zst - | psql -h ${DP_DB_HOST} -p ${DP_DB_PORT} -U ${DP_DB_USER} ${PSQL_OPTIONS}
 else
   # if backup file is tar, use pg_restore to restore
+  # using pipe to restore "postgres" database leads to exit code 141 meaning pipefail
+  # use temp dir to avoid this
   TMP_DIR=./tmp
   mkdir -p ${TMP_DIR}
   datasafed pull -d zstd-fastest ${FILE_NAME}.zst - > ${TMP_DIR}/${FILE_NAME}
@@ -140,11 +143,9 @@ else
   fi
   create_database_if_not_exist
 
-  # print options
+  # print options and restore
   PG_RESTORE_OPTIONS="-d ${database}$(construct_pg_restore_options)"
   echo "pg_restore options: ${PG_RESTORE_OPTIONS}"
-
-  # FIXME: using pipe to restore "postgres" database leads to error
   pg_restore -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT} ${PG_RESTORE_OPTIONS} ${TMP_DIR}/${FILE_NAME}
   rm -rf ${TMP_DIR}
 fi

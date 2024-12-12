@@ -16,9 +16,8 @@ spec:
       properties:
         # Basic Settings
         database:
-          description: "Database name to backup"
+          description: "Name of the database to back up and target database to restore into"
           type: string
-          default: "postgres"
         format:
           description: "Output format (p=plain, t=tar)"
           type: string

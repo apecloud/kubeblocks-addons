@@ -118,6 +118,7 @@ file_name() {
   fi
 }
 
+
 START_TIME=`get_current_time`
 
 if [ -z "${database}" ]; then
