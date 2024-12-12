@@ -42,7 +42,7 @@ spec:
         value: "1"
       # Specifies the desired number of replicas in the Component
       replicas: 1
-      # Specifies the resources required by the Component~.
+      # Specifies the resources required by the Component
       resources:
         limits:
           cpu: "3"

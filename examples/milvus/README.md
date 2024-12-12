@@ -1,102 +1,218 @@
 # Milvus
 
-Milvus is an open source (Apache-2.0 licensed) vector database built to power embedding similarity search and AI applications.
+Milvus is an open source (Apache-2.0 licensed) vector database built to power embedding similarity search and AI applications. Milvus's architecture is designed to handle large-scale vector datasets and includes various deployment modes:  Milvus Standalone, and Milvus Distributed, to accommodate different data scale needs.
+
+- Standalone Mode, including three components:
+  - Milvus: Provides the core functionality of the system.
+  - Metadata Storage (ETCD): A metadata engine for accessing and storing metadata of Milvus internal components (including proxies, index nodes, etc.), typically using etcd.
+  - Object Storage (minio): A storage engine responsible for the persistence of Milvus data, typically using MinIO or S3-compatible storage services.
+
+- Cluster Mode, including multiple layers:
+  - Access Layer: composed of a group of stateless proxies
+  - Worker Nodes:
+    - Query Nodes
+    - Data Nodes
+    - Index Nodes
+  - Coordinator Service: Manages the metadata of the cluster, including Root, Query , Data, and Index Coordinators.
+  - Storage Layer, including
+    - Metadata Storage (ETCD): A metadata engine for accessing and storing metadata of Milvus internal components, typically using etcd.
+    - Object Storage (minio): A storage engine responsible for the persistence of Milvus data, typically using MinIO or S3-compatible storage services.
+    - Log Storage (Pulsar): A log storage engine responsible for the persistence of Milvus logs, typically using Apache Pulsar.
+
+## Features In KubeBlocks
+
+### Lifecycle Management
+
+| Topology | Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
+|----------|------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
+| Standalone/Cluster | Yes          | Yes                   | N/A           | Yes       | Yes        | N/A       | Yes    | N/A   |
+
+### Backup and Restore
+
+| Feature     | Method | Description |
+|-------------|--------|------------|
+| N/A | N/A | N/A |
+
+### Versions
+
+| Versions |
+|----------|
+| 2.3.2 |
 
 ## Prerequisites
 
-This example assumes that you have a Kubernetes cluster installed and running, and that you have installed the kubectl command line tool and helm somewhere in your path. Please see the [getting started](https://kubernetes.io/docs/setup/)  and [Installing Helm](https://helm.sh/docs/intro/install/) for installation instructions for your platform.
-
-Also, this example requires kubeblocks installed and running. Here is the steps to install kubeblocks, please replace "`$kb_version`" with the version you want to use.
-```bash
-# Add Helm repo 
-helm repo add kubeblocks https://apecloud.github.io/helm-charts
-# If github is not accessible or very slow for you, please use following repo instead
-helm repo add kubeblocks https://jihulab.com/api/v4/projects/85949/packages/helm/stable
-
-# Update helm repo
-helm repo update
-
-# Get the versions of KubeBlocks and select the one you want to use
-helm search repo kubeblocks/kubeblocks --versions
-# If you want to obtain the development versions of KubeBlocks, Please add the '--devel' parameter as the following command
-helm search repo kubeblocks/kubeblocks --versions --devel
-
-# Create dependent CRDs
-kubectl create -f https://github.com/apecloud/kubeblocks/releases/download/v$kb_version/kubeblocks_crds.yaml
-# If github is not accessible or very slow for you, please use following command instead
-kubectl create -f https://jihulab.com/api/v4/projects/98723/packages/generic/kubeblocks/v$kb_version/kubeblocks_crds.yaml
-
-# Install KubeBlocks
-helm install kubeblocks kubeblocks/kubeblocks --namespace kb-system --create-namespace --version="$kb_version"
-```
-
-# Enable milvus
-```bash
-# Add Helm repo 
-helm repo add kubeblocks-addons https://apecloud.github.io/helm-charts
-# If github is not accessible or very slow for you, please use following repo instead
-helm repo add kubeblocks-addons https://jihulab.com/api/v4/projects/150246/packages/helm/stable
-# Update helm repo
-helm repo update
-
-#Install etcd addon 
-helm upgrade -i kb-addon-etcd kubeblocks-addons/etcd --version="0.9.0" -n kb-system  
-#Install milvus addon 
-helm upgrade -i kb-addon-milvus kubeblocks-addons/milvus --version="0.9.0" -n kb-system
-``` 
+- Kubernetes cluster >= v1.21
+- `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
+- Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
+- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
+- **ETCD** , **Milvus** , **Pulsar** Addons Enabled, refer to [Install Addons](../docs/install-addon.md)
 
 ## Examples
 
-### [Create](cluster.yaml) 
-Create a standalone milvus cluster with specified cluster definition 
+### Create
+
+#### [Standalone Mode](cluster-standalone.yaml)
+
+Create a Milvus cluster of `Standalone` mode:
+
 ```bash
 kubectl apply -f examples/milvus/cluster-standalone.yaml
 ```
+
+This will create a standalone Milvus cluster with the following components: Milvus, Metadata Storage (ETCD), Object Storage (minio), and Milvus will not be created until the ETCD and Minio are ready.
+
+#### Cluster Mode
+
+TO create a Milvus cluster of `Cluster` mode, it is recommended to create one etcd cluster and one minio cluster before hand for Storage.
+
 ```bash
-#Upgrade milvus addon
-helm upgrade -i kb-addon-milvus kubeblocks-addons/milvus --set minio.accessKey=minioadmin,minio.secretKey=minioadmin --version="0.9.0" -n kb-system 
+kubectl apply -f examples/milvus/etcd-cluster.yaml  # for metadata storage
+kubectl apply -f examples/milvus/minio-cluster.yaml # for object storage
+kubectl apply -f examples/milvus/pulsar-cluster.yaml # for log storage
 ```
-Create a distributed milvus cluster with specified cluster definition
+
+Create a Milvus cluster with `Cluster` mode:
+
 ```bash
 kubectl apply -f examples/milvus/cluster.yaml
 ```
-Starting from kubeblocks 0.9.0, we introduced a more flexible cluster creation method based on components, allowing customization of cluster topology, functionalities and scale according to specific requirements.
-```bash
-kubectl apply -f examples/milvus/cluster-cmpd.yaml
+
+The cluster will be created with the following components:
+
+- Proxy
+- Data Node
+- Index Node
+- Query Node
+- Mixed Coordinator
+
+And each component will be created with `serviceRef` to the corresponding service: etcd, minio, and pulsar.
+
+```yaml
+      # Defines a list of ServiceRef for a Component
+      serviceRefs:
+        - name: milvus-meta-storage # Specifies the identifier of the service reference declaration, defined in `componentDefinition.spec.serviceRefDeclarations[*].name`
+          namespace: default        # namepspace of referee cluster, update on demand
+          # References a service provided by another KubeBlocks Cluster
+          clusterServiceSelector:
+            cluster: etcdm-cluster  # ETCD Cluster Name, update the cluster name on demand
+            service:
+              component: etcd       # component name, should be etcd
+              service: headless     # Refer to default headless Service
+              port: client          # Refer to port name 'client'
+        - name: milvus-log-storage
+          namespace: default
+          clusterServiceSelector:
+            cluster: pulsarm-cluster # Pulsar Cluster Name
+            service:
+              component: broker
+              service: headless
+              port: pulsar
+        - name: milvus-object-storage
+          namespace: default
+          clusterServiceSelector:
+            cluster: miniom-cluster # Minio Cluster Name
+            service:
+              component: minio
+              service: headless
+              port: http
+            credential:            # Specifies the SystemAccount to authenticate and establish a connection with the referenced Cluster.
+              component: minio     # for component 'minio'
+              name: admin          # the name of the credential (SystemAccount) to reference, using account 'admin' in this case
 ```
 
-### [Vertical scaling](verticalscale.yaml)
-Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
+### Horizontal scaling
+
+#### [Scale-out](scale-out.yaml)
+
+Horizontal scaling out `queryNode` in the cluster by adding ONE more replica:
+
 ```bash
-kubectl apply -f examples/milvus/verticalscale.yaml
+kubectl apply -f examples/milvus/scale-out.yaml
 ```
 
-### [Expand volume](volumeexpand.yaml)
-Increase size of volume storage with the specified components in the cluster
+#### [Scale-in](scale-in.yaml)
+
+Horizontal scaling in `queryNode` in the cluster by deleting ONE replica:
+
 ```bash
-kubectl apply -f examples/milvus/volumeexpand.yaml
+kubectl apply -f examples/milvus/scale-in.yaml
+```
+
+#### Scale-in/out using Cluster API
+
+Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: milvus-cluster
+  namespace: default
+spec:
+  componentSpecs:
+    - name: querynode
+      replicas: 2 # Update `replicas` to 1 for scaling in, and to 3 for scaling out
 ```
 
 ### [Restart](restart.yaml)
+
 Restart the specified components in the cluster
+
 ```bash
 kubectl apply -f examples/milvus/restart.yaml
 ```
 
 ### [Stop](stop.yaml)
+
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
+
 ```bash
 kubectl apply -f examples/milvus/stop.yaml
 ```
 
 ### [Start](start.yaml)
+
 Start the stopped cluster
+
 ```bash
 kubectl apply -f examples/milvus/start.yaml
 ```
 
+### Observability
+
+There are various ways to monitor the cluster. Here we use Prometheus and Grafana to demonstrate how to monitor the cluster.
+
+#### Installing the Prometheus Operator
+
+You may skip this step if you have already installed the Prometheus Operator.
+Or you can follow the steps in [How to install the Prometheus Operator](../docs/install-prometheus.md) to install the Prometheus Operator.
+
+#### Create PodMonitor
+
+Apply the `PodMonitor` file to monitor the cluster:
+
+```bash
+kubectl apply -f examples/milvus/pod-monitor.yaml
+```
+
+It sets up the `PodMonitor` to monitor the Milvus cluster and scrapes the metrics from the Milvus components.
+
+```yaml
+  podMetricsEndpoints:
+    - path: /metrics
+      port: metrics
+      scheme: http
+      relabelings:
+        - targetLabel: app_kubernetes_io_name
+          replacement: milvus # add a label to the target: app_kubernetes_io_name=milvus
+```
+
+For more information about the metrics, refer to the [Visualize Milvus Metrics](https://milvus.io/docs/visualize.md).
+
 ### Delete
+
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
+
 ```bash
 kubectl patch cluster milvus-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
