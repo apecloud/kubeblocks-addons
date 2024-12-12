@@ -74,7 +74,7 @@ construct_pg_restore_options() {
     # Exclude comments
     PG_RESTORE_OPTIONS+=" --no-comments"
   fi
-  if [ -z "${singleTransaction}" ] || [ "${singleTransaction}" = "true" ]; then
+  if [ -n "${singleTransaction}" ] && [ "${singleTransaction}" = "true" ]; then
     # Restore as a single transaction
     PG_RESTORE_OPTIONS+=" --single-transaction"
   fi
