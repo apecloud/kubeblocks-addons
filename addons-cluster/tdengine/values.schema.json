@@ -4,7 +4,7 @@
   "properties": {
     "version": {
       "title": "Version",
-      "description": "Cluster version, run \"kbcli cv list --devel\" to see all versions.",
+      "description": "Cluster version",
       "type": "string",
       "default": "tdengine-3.0.5.0"
     },

@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: taos-adapter-scripts-template
+  name: {{ include "tdengine.scriptsTemplate" . }}
   labels:
     {{- include "tdengine.labels" . | nindent 4 }}
 data:
