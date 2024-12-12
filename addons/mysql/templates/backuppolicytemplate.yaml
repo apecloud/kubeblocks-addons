@@ -10,6 +10,40 @@ metadata:
 spec:
   clusterDefinitionRef: mysql
   backupPolicies:
+  - componentDefs: [mysql-5.7, mysql-8.0, mysql-8.4]
+    target:
+      role: secondary
+      fallbackRole: primary
+      account: root
+    backupMethods:
+      - name: xtrabackup
+        snapshotVolumes: false
+        actionSetName: mysql-xtrabackup
+        envMapping:
+          - key: IMAGE_TAG
+            valueFrom:
+              componentDef:
+                - names: [mysql-8.4]
+                  mappingValue: "8.4"
+                - names: [mysql-8.0]
+                  mappingValue: "8.0"
+                - names: [ mysql-5.7]
+                  mappingValue: "2.4"
+        targetVolumes:
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
+      - name: volume-snapshot
+        snapshotVolumes: true
+        actionSetName: mysql-volumesnapshot
+        target:
+          role: primary
+        targetVolumes:
+          volumes:
+            - data
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
   - componentDefRef: mysql
     target:
       role: secondary
