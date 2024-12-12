@@ -1,4 +1,6 @@
 # shellcheck disable=SC2148
+# pg_dumpall extracts the entire PostgreSQL database instance or multiple databases into a script file
+# more info: https://www.postgresql.org/docs/current/app-pgdumpall.html
 set -e
 set -o pipefail
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"

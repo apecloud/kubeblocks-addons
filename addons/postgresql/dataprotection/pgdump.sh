@@ -1,4 +1,6 @@
 # shellcheck disable=SC2148
+# pg_dump extracts a PostgreSQL database into a script file or other archive file
+# more info: https://www.postgresql.org/docs/current/app-pgdump.html
 set -e
 set -o pipefail
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
@@ -50,18 +52,6 @@ construct_pg_dump_options() {
     # boolean, whether to dump only schema
     PG_DUMP_OPTIONS+=" --schema-only"
   fi
-  if [ -z "${clean}" ] || [ "${clean}" = "true" ]; then
-    # boolean, whether to clean database objects, the default is to clean
-    PG_DUMP_OPTIONS+=" --clean"
-  fi
-  if [ -z "${ifExists}" ] || [ "${ifExists}" = "true" ]; then
-    # boolean, whether to include 'IF EXISTS'
-    PG_DUMP_OPTIONS+=" --if-exists"
-  fi
-  if [ -z "${create}" ] || [ "${create}" = "true" ]; then
-    # boolean, whether to include CREATE DATABASE statement, the default is to create
-    PG_DUMP_OPTIONS+=" --create"
-  fi
   if [ -n "${jobs}" ]; then
     # number of jobs to run in parallel
     PG_DUMP_OPTIONS+=" --jobs=${jobs}"
@@ -69,14 +59,6 @@ construct_pg_dump_options() {
   if [ -n "${setRole}" ]; then
     # role to set before excuting
     PG_DUMP_OPTIONS+=" --role=${setRole}"
-  fi
-  if [ -n "${ignoreOwner}" ] && [ "${ignoreOwner}" = "true" ]; then
-    # boolean, whether to ignore ownership
-    PG_DUMP_OPTIONS+=" --no-owner"
-  fi
-  if [ -n "${noPrivileges}" ] && [ "${noPrivileges}" = "true" ]; then
-    # boolean, whether to exclude privileges
-    PG_DUMP_OPTIONS+=" --no-privileges"
   fi
   if [ -n "${disableTriggers}" ] && [ "${disableTriggers}" = "true" ]; then
     # boolean, whether to disable triggers
@@ -118,6 +100,10 @@ construct_pg_dump_options() {
     # encoding to use
     PG_DUMP_OPTIONS+=" --encoding=${encoding}"
   fi
+  PG_DUMP_OPTIONS+=" --clean"
+  PG_DUMP_OPTIONS+=" --if-exists"
+  PG_DUMP_OPTIONS+=" --no-owner"
+  PG_DUMP_OPTIONS+=" --no-privileges"
   PG_DUMP_OPTIONS+=" --verbose"
   echo "${PG_DUMP_OPTIONS}"
 }

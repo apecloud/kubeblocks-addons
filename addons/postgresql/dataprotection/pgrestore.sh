@@ -1,4 +1,6 @@
 # shellcheck disable=SC2148
+# pg_restore restores a PostgreSQL database from an archive file created by pg_dump
+# more info: https://www.postgresql.org/docs/current/app-pgrestore.html
 set -e
 set -o pipefail
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
@@ -56,10 +58,6 @@ construct_pg_restore_options() {
     # role to set before excuting
     PG_RESTORE_OPTIONS+=" --role=${setRole}"
   fi
-  if [ -n "${ignoreOwner}" ] && [ "${ignoreOwner}" = "true" ]; then
-    # Ignore ownership information
-    PG_RESTORE_OPTIONS+=" --no-owner"
-  fi
   if [ -n "${dataOnly}" ] && [ "${dataOnly}" = "true" ]; then
     # Restore only the data
     PG_RESTORE_OPTIONS+=" --data-only"
@@ -67,18 +65,6 @@ construct_pg_restore_options() {
   if [ -n "${schemaOnly}" ] && [ "${schemaOnly}" = "true" ]; then
     # Restore only the schema, no data
     PG_RESTORE_OPTIONS+=" --schema-only"
-  fi
-  if [ -z "${clean}" ] || [ "${clean}" = "true" ]; then
-    # Clean database objects before restore
-    PG_RESTORE_OPTIONS+=" --clean"
-  fi
-  if [ -z "${ifExists}" ] || [ "${ifExists}" = "true" ]; then
-    # Use 'IF EXISTS' when dropping objects
-    PG_RESTORE_OPTIONS+=" --if-exists"
-  fi
-  if [ -n "${noPrivileges}" ] && [ "${noPrivileges}" = "true" ]; then
-    # Exclude privilege information
-    PG_RESTORE_OPTIONS+=" --no-privileges"
   fi
   if [ -n "${disableTriggers}" ] && [ "${disableTriggers}" = "true" ]; then
     # Disable triggers during restore
@@ -88,11 +74,15 @@ construct_pg_restore_options() {
     # Exclude comments
     PG_RESTORE_OPTIONS+=" --no-comments"
   fi
-  if [ -n "${singleTransaction}" ] && [ "${singleTransaction}" = "true" ]; then
+  if [ -z "${singleTransaction}" ] || [ "${singleTransaction}" = "true" ]; then
     # Restore as a single transaction
     PG_RESTORE_OPTIONS+=" --single-transaction"
   fi
-  PG_RESTORE_OPTIONS+=" --verbose"
+  PG_RESTORE_OPTIONS+=" --clean"
+  PG_RESTORE_OPTIONS+=" --if-exists"
+  PG_RESTORE_OPTIONS+=" --no-owner"
+  PG_RESTORE_OPTIONS+=" --no-privileges"
+  # PG_RESTORE_OPTIONS+=" --verbose"
   echo "${PG_RESTORE_OPTIONS}"
 }
 
@@ -121,33 +111,41 @@ if [ $(remote_file_exists ${FILE_NAME}.zst) == "false" ]; then
   exit 1
 fi
 
-if [ -z "${database}" ]; then
-  echo "no database specified"
-  exit 1
-fi
+# Create database if not exist
+create_database_if_not_exist() {
+  psql -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT} -c "SELECT 1 FROM pg_database WHERE datname = '${database}';" | grep -q "1" || {
+    echo "database ${database} does not exist, creating it..."
+    psql -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT} -c "CREATE DATABASE ${database} TEMPLATE template0;"
+  }
+}
 
 if [ $(is_plain) == "true" ]; then
-  datasafed pull -d zstd-fastest ${FILE_NAME}.zst - | psql -h ${DP_DB_HOST} -p ${DP_DB_PORT} -U ${DP_DB_USER}
+  # if backup file is plain, use psql to restore
+  PSQL_OPTIONS=""
+  if [ -n "${database}" ]; then
+    PSQL_OPTIONS="-d ${database}"
+    create_database_if_not_exist
+  fi
+  datasafed pull -d zstd-fastest ${FILE_NAME}.zst - | psql -h ${DP_DB_HOST} -p ${DP_DB_PORT} -U ${DP_DB_USER} ${PSQL_OPTIONS}
 else
-  PG_RESTORE_OPTIONS="-d ${database}$(construct_pg_restore_options)"
-  # print options
-  echo "pg_restore options: ${PG_RESTORE_OPTIONS}"
+  # if backup file is tar, use pg_restore to restore
   TMP_DIR=./tmp
   mkdir -p ${TMP_DIR}
   datasafed pull -d zstd-fastest ${FILE_NAME}.zst - > ${TMP_DIR}/${FILE_NAME}
-  # pg_restore will fail if the database does not exist, so we create it by connecting to the default database "postgres"
-  pg_restore -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT} ${PG_RESTORE_OPTIONS} ${TMP_DIR}/${FILE_NAME} 2> >(tee restore.log >&2) || {
-    if grep -q "database \"${database}\" does not exist" restore.log; then
-      echo "database \"${database}\" does not exist, create it"
-      PG_RESTORE_OPTIONS="-d postgres$(construct_pg_restore_options) --create"
-      echo "pg_restore options: ${PG_RESTORE_OPTIONS}"
-      pg_restore -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT} ${PG_RESTORE_OPTIONS} ${TMP_DIR}/${FILE_NAME}
-    else
-      rm -rf ${TMP_DIR}
-      echo "restore failed!"
-      exit 1
-    fi
-  }
+
+  # if database is not specified, use database from TOC of backup archive
+  if [ -z "${database}" ]; then
+    echo "no database specified, use database from TOC of backup archive"
+    database=$(pg_restore -l ${TMP_DIR}/${FILE_NAME} | awk 'NR<=5 && /dbname:/ {print $3}')
+  fi
+  create_database_if_not_exist
+
+  # print options
+  PG_RESTORE_OPTIONS="-d ${database}$(construct_pg_restore_options)"
+  echo "pg_restore options: ${PG_RESTORE_OPTIONS}"
+
+  # FIXME: using pipe to restore "postgres" database leads to error
+  pg_restore -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT} ${PG_RESTORE_OPTIONS} ${TMP_DIR}/${FILE_NAME}
   rm -rf ${TMP_DIR}
 fi
 echo "restore complete!"

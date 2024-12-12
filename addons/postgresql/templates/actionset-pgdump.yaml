@@ -54,28 +54,12 @@ spec:
           items:
             type: string
         # Output Control
-        ignoreOwner:
-          description: "Ignore object ownership when in plain-text format"
-          type: boolean
-          default: false
         dataOnly:
           description: "Only transfer data, not schema"
           type: boolean
           default: false
         schemaOnly:
           description: "Only transfer schema, no data"
-          type: boolean
-          default: false
-        clean:
-          description: "Clean (drop) database objects before creating them"
-          type: boolean
-          default: true
-        create:
-          description: "Include create database statements"
-          type: boolean
-          default: true
-        noPrivileges:
-          description: "Do not dump privileges (grant/revoke)"
           type: boolean
           default: false
         disableTriggers:
@@ -138,14 +122,9 @@ spec:
       - excludeSchemas
       - tables
       - excludeTables
-      - ignoreOwner
       - dataOnly
       - schemaOnly
-      - clean
-      - create
-      - noPrivileges
       - disableTriggers
-      - ifExists
       - useInserts
       - columnInserts
       - onConflictDoNothing
@@ -179,13 +158,9 @@ spec:
       - excludeSchemas
       - tables
       - excludeTables
-      - ignoreOwner
       - dataOnly
       - schemaOnly
-      - clean
-      - noPrivileges
       - disableTriggers
-      - ifExists
       - noComments
       - singleTransaction
     postReady:

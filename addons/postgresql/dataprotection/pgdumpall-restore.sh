@@ -1,4 +1,5 @@
 # shellcheck disable=SC2148
+# use psql to restore databses from a script files created by pg_dumpall
 set -e
 set -o pipefail
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
