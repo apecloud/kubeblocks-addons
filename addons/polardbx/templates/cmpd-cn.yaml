@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: polardbx-cn-{{ .Chart.Version }}
+  name: {{ include "polardbx-cn.cmpdName" . }}
   labels:
     {{- include "polardbx.labels" . | nindent 4 }}
   annotations:
@@ -11,6 +11,69 @@ spec:
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
   serviceVersion: {{ .Chart.AppVersion }}
+  services:
+    - name: default
+      spec:
+        ports:
+          - name: mysql
+            port: 3306
+            targetPort: 3306
+          - name: metrics
+            port: 9104
+            targetPort: 9104
+  scripts:
+    - name: polardbx-scripts
+      templateRef: {{ include "polardbx.scriptsTemplate" . }}
+      volumeName: scripts
+      namespace: {{ .Release.Namespace }}
+      defaultMode: 0555
+  vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: SERVICE_USER
+      value: polardbx_root
+    - name: SERVICE_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: polardbx-gms
+          name: polardbx_root
+          optional: false
+          password: Required
+    - name: GMS_SVC_NAME
+      valueFrom:
+        serviceVarRef:
+          compDef: polardbx-gms
+          optional: false
+          host: Required
+    - name: GMS_SVC_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: polardbx-gms
+          optional: false
+          port:
+            name: mysql
+            option: Required
+    - name: DN_HEADLESS_SVC_NAME
+      valueFrom:
+        serviceVarRef:
+          compDef: polardbx-dn
+          optional: false
+          name: headless
+          host: Required
+    - name: DN_SVC_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: polardbx-dn
+          optional: false
+          port:
+            name: mysql
+            option: Required
   runtime:
     shareProcessNamespace: true  # For jmx collector
     volumes:
@@ -93,7 +156,7 @@ spec:
           - name: storageDbXprotoPort
             value: "0"
           - name: instanceId
-            value: "$(KB_CLUSTER_NAME)"
+            value: "$(CLUSTER_NAME)"
           - name: instanceType
             value: "0"
           - name: serverPort
@@ -225,58 +288,3 @@ spec:
         volumeMounts:
           - name: tmp
             mountPath: /tmp
-  vars:
-    - name: SERVICE_USER
-      value: polardbx_root
-    - name: SERVICE_PASSWORD
-      valueFrom:
-        credentialVarRef:
-          compDef: polardbx-gms
-          name: polardbx_root
-          optional: false
-          password: Required
-    - name: GMS_SVC_NAME
-      valueFrom:
-        serviceVarRef:
-          compDef: polardbx-gms
-          optional: false
-          host: Required
-    - name: GMS_SVC_PORT
-      valueFrom:
-        serviceVarRef:
-          compDef: polardbx-gms
-          optional: false
-          port:
-            name: mysql
-            option: Required
-    - name: DN_HEADLESS_SVC_NAME
-      valueFrom:
-        serviceVarRef:
-          compDef: polardbx-dn
-          optional: false
-          name: headless
-          host: Required
-    - name: DN_SVC_PORT
-      valueFrom:
-        serviceVarRef:
-          compDef: polardbx-dn
-          optional: false
-          port:
-            name: mysql
-            option: Required
-  service:
-    - name: default
-      spec:
-        ports:
-          - name: mysql
-            port: 3306
-            targetPort: 3306
-          - name: metrics
-            port: 9104
-            targetPort: 9104
-  scripts:
-    - name: polardbx-scripts
-      templateRef: polardbx-scripts
-      volumeName: scripts
-      namespace: {{ .Release.Namespace }}
-      defaultMode: 0555

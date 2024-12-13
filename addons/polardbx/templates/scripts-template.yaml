@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: polardbx-scripts
+  name: {{ include "polardbx.scriptsTemplate" . }}
   labels:
     {{- include "polardbx.labels" . | nindent 4 }}
 data:
