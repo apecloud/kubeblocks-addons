@@ -1,0 +1,13 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParameterDrivenConfigRender
+metadata:
+  name: {{ include "mongodb.pcrName" . }}
+  labels:
+    {{- include "mongodb.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "mongodb.compDefName" . }}
+  configs:
+    - name: mongodb.conf
+      templateName: mongodb-config
+      fileFormatConfig:
+        format: yaml
