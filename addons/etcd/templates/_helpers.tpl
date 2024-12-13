@@ -91,6 +91,21 @@ etcd3-config-template-{{ .Chart.Version }}
 {{- end }}
 
 {{/*
+Define etcd 3.X component parameters definition name
+*/}}
+{{- define "etcd3.paramsDefinition" -}}
+etcd3-pd
+{{- end }}
+
+{{/*
+Define etcd 3.X component parameter config renderer name
+*/}}
+{{- define "etcd3.pcrName" -}}
+etcd3-pcr
+{{- end }}
+
+
+{{/*
 Define etcd 3.X component script template name
 */}}
 {{- define "etcd3.scriptTemplate" -}}
