@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: tdengine-config-template
+  name: {{ include "tdengine.configurationTemplate" . }}
   labels:
     {{- include "tdengine.labels" . | nindent 4 }}
 data:

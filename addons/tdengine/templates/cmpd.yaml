@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: tdengine-{{ .Chart.Version }}
+  name: {{ include "tdengine.cmpdName" . }}
   labels:
     {{- include "tdengine.labels" . | nindent 4 }}
   annotations:
@@ -11,6 +11,59 @@ spec:
   description: {{ .Chart.Description }}
   serviceKind: tdengine
   serviceVersion: {{ .Chart.AppVersion }}
+  configs:
+    - name: tdengine-taos-config
+      templateRef: {{ include "tdengine.configurationTemplate" . }}
+      volumeName: taos-config
+      namespace: {{ .Release.Namespace }}
+    - name: metrics-configuration
+      templateRef: {{ include "tdengine.metricsConfiguration" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: metrics-configuration
+      defaultMode: 0444
+  scripts:
+    - name: taos-adapter-scripts
+      templateRef: {{ include "tdengine.scriptsTemplate" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: TAOS_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: TAOS_FIRST_EP
+      value: "$(TAOS_COMPONENT_NAME)-0.$(TAOS_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.cluster.local:6030"
+    - name: TAOS_ADAPTER_USERNAME
+      value: {{ .Values.defaultAuth.username }}
+    - name: TAOS_ADAPTER_PASSWORD
+      value: {{ .Values.defaultAuth.password }}
+      # valueFrom:
+      #   credentialVarRef:
+      #     name: {{ .Values.defaultAuth.username }}
+      #     optional: false
+      #     password: Required
+    - name: TAOS_KEEPER_TDENGINE_USERNAME
+      value: {{ .Values.defaultAuth.username }}
+    - name: TAOS_KEEPER_TDENGINE_PASSWORD
+      value: {{ .Values.defaultAuth.password }}
+      # valueFrom:
+      #   credentialVarRef:
+      #     name: {{ .Values.defaultAuth.username }}
+      #     optional: false
+      #     password: Required
+  # systemAccounts:
+  #   - name: {{ .Values.defaultAuth.username }}
+  #     initAccount: true
   runtime:
     containers:
       - name: tdengine
@@ -28,8 +81,13 @@ spec:
             value: "6041"
           - name: TZ
             value: {{ .Values.timeZone }}
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
           - name: TAOS_FQDN
-            value: "$(KB_POD_FQDN).cluster.local"
+            value: "$(CURRENT_POD_NAME).$(TAOS_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.cluster.local"
         lifecycle:
           postStart:
             exec:
@@ -65,43 +123,3 @@ spec:
         volumeMounts:
           - name: metrics-configuration
             mountPath: /etc/taos/
-  vars:
-    - name: TAOS_FIRST_EP
-      value: "$$(KB_0_HOSTNAME).$(KB_NAMESPACE).svc.cluster.local:6030"
-    - name: TAOS_ADAPTER_USERNAME
-      value: {{ .Values.defaultAuth.username }}
-    - name: TAOS_ADAPTER_PASSWORD
-      value: {{ .Values.defaultAuth.password }}
-      # valueFrom:
-      #   credentialVarRef:
-      #     name: {{ .Values.defaultAuth.username }}
-      #     optional: false
-      #     password: Required
-    - name: TAOS_KEEPER_TDENGINE_USERNAME
-      value: {{ .Values.defaultAuth.username }}
-    - name: TAOS_KEEPER_TDENGINE_PASSWORD
-      value: {{ .Values.defaultAuth.password }}
-      # valueFrom:
-      #   credentialVarRef:
-      #     name: {{ .Values.defaultAuth.username }}
-      #     optional: false
-      #     password: Required
-  # systemAccounts:
-  #   - name: {{ .Values.defaultAuth.username }}
-  #     initAccount: true
-  configs:
-    - name: tdengine-taos-config
-      templateRef: tdengine-config-template
-      volumeName: taos-config
-      namespace: {{ .Release.Namespace }}
-    - name: metrics-configuration
-      templateRef: metrics-configuration
-      namespace: {{ .Release.Namespace }}
-      volumeName: metrics-configuration
-      defaultMode: 0444
-  scripts:
-    - name: taos-adapter-scripts
-      templateRef: taos-adapter-scripts-template
-      namespace: {{ .Release.Namespace }}
-      volumeName: scripts
-      defaultMode: 0555
