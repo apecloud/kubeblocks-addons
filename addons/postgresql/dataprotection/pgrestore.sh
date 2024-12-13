@@ -113,40 +113,49 @@ create_database_if_not_exist() {
   }
 }
 
-
 # Check if the backup exists
 FILE_NAME=$(file_name)
 if [ $(remote_file_exists ${FILE_NAME}.zst) == "false" ]; then
   exit 1
 fi
 
+# Check if the dump.info exists
+if [ $(remote_file_exists dump.info) == "false" ]; then
+  echo "dump.info not found"
+  exit 1
+fi
+
+# Get backup database name from dump.info
+backup_database=$(datasafed pull dump.info - | awk '{print $2}')
+echo "backup database: ${backup_database}"
+
+# Get target database and create it if not exist
+if [ -z "${database}" ]; then
+  echo "no target database specified, use backup database name: ${backup_database}"
+  database=${backup_database}
+fi
+echo "restore data into database: ${database}"
+create_database_if_not_exist
+
 if [ $(is_plain) == "true" ]; then
   # if backup file is plain, use psql to restore
-  PSQL_OPTIONS=""
-  if [ -n "${database}" ]; then
-    PSQL_OPTIONS="-d ${database}"
-    create_database_if_not_exist
-  fi
-  datasafed pull -d zstd-fastest ${FILE_NAME}.zst - | psql -h ${DP_DB_HOST} -p ${DP_DB_PORT} -U ${DP_DB_USER} ${PSQL_OPTIONS}
+  datasafed pull -d zstd-fastest ${FILE_NAME}.zst - | psql -h ${DP_DB_HOST} -p ${DP_DB_PORT} -U ${DP_DB_USER} -d ${database}
 else
   # if backup file is tar, use pg_restore to restore
-  # using pipe to restore "postgres" database leads to exit code 141 meaning pipefail
-  # use temp dir to avoid this
-  TMP_DIR=./tmp
-  mkdir -p ${TMP_DIR}
-  datasafed pull -d zstd-fastest ${FILE_NAME}.zst - > ${TMP_DIR}/${FILE_NAME}
 
-  # if database is not specified, use database from TOC of backup archive
-  if [ -z "${database}" ]; then
-    echo "no database specified, use database from TOC of backup archive"
-    database=$(pg_restore -l ${TMP_DIR}/${FILE_NAME} | awk 'NR<=5 && /dbname:/ {print $3}')
-  fi
-  create_database_if_not_exist
-
-  # print options and restore
+  # print options
   PG_RESTORE_OPTIONS="-d ${database}$(construct_pg_restore_options)"
   echo "pg_restore options: ${PG_RESTORE_OPTIONS}"
-  pg_restore -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT} ${PG_RESTORE_OPTIONS} ${TMP_DIR}/${FILE_NAME}
-  rm -rf ${TMP_DIR}
+  if [ "${backup_database}" != "postgres" ]; then
+    datasafed pull -d zstd-fastest ${FILE_NAME}.zst - | pg_restore -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT} ${PG_RESTORE_OPTIONS}
+  else
+    # FIXME:using pipe to restore "postgres" database leads to exit code 141 meaning pipefail
+    # use temp dir to avoid this
+    TMP_DIR=./tmp
+    mkdir -p ${TMP_DIR}
+    datasafed pull -d zstd-fastest ${FILE_NAME}.zst - > ${TMP_DIR}/${FILE_NAME}
+    pg_restore -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT} ${PG_RESTORE_OPTIONS} ${TMP_DIR}/${FILE_NAME}
+    rm -rf ${TMP_DIR}
+  fi
 fi
 echo "restore complete!"

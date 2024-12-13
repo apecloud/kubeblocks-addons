@@ -123,13 +123,16 @@ START_TIME=`get_current_time`
 
 if [ -z "${database}" ]; then
   echo "no database specified"
-  exit 1
+  echo "use the default database: postgres"
+  database="postgres"
 fi
 
 PG_DUMP_OPTIONS="-d ${database}$(construct_pg_dump_options)"
 # print options
 echo "pg_dump options: ${PG_DUMP_OPTIONS}"
 pg_dump -U ${DP_DB_USER} -h ${DP_DB_HOST} -p ${DP_DB_PORT} ${PG_DUMP_OPTIONS} | datasafed push -z zstd-fastest - "/$(file_name).zst"
+# log database info
+echo "dbname: ${database}" | datasafed push - "/dump.info"
 # stat and save the backup information
 stat_and_save_backup_info "$START_TIME"
 echo "backup done!";
