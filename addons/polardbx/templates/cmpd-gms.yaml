@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: polardbx-gms-{{ .Chart.Version }}
+  name: {{ include "polardbx-gms.cmpdName" . }}
   labels:
     {{- include "polardbx.labels" . | nindent 4 }}
   annotations:
@@ -11,6 +11,76 @@ spec:
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
   serviceVersion: {{ .Chart.AppVersion }}
+  services:
+    - name: default
+      spec:
+        ports:
+          - name: mysql
+            port: 3306
+            targetPort: 3306
+          - name: metrics
+            port: 9104
+            targetPort: 9104
+  scripts:
+    - name: polardbx-scripts
+      templateRef: {{ include "polardbx.scriptsTemplate" . }}
+      volumeName: scripts
+      namespace: {{ .Release.Namespace }}
+      defaultMode: 0555
+  systemAccounts:
+    - name: polardbx_root
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 10
+        numDigits: 5
+        numSymbols: 0
+        letterCase: MixedCases
+  updateStrategy: Serial
+  roles:
+    - name: leader
+      serviceable: true
+      writable: true
+      votable: true
+    - name: follower
+      serviceable: true
+      writable: false
+      votable: true
+  volumes:
+    - name: data
+  vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: SERVICE_USER
+      value: polardbx_root
+    - name: SERVICE_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: polardbx_root
+          optional: false
+          password: Required
+    - name: POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+  lifecycleActions:
+    roleProbe:
+      exec:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.roleProbe.image.repository }}:{{ .Values.roleProbe.image.tag }}
+        command:
+          - sh
+          - -c
+          - |
+            mysql -h127.0.0.1 -P3306 -uroot -N -B -e "select role from information_schema.alisql_cluster_local" | xargs echo -n
+      timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+      periodSeconds: {{ .Values.roleProbe.periodSeconds }}
+      failureThreshold: {{ .Values.roleProbe.failureThreshold }}
   runtime:
     volumes:
       - emptyDir: { }
@@ -163,61 +233,3 @@ spec:
             value: $(SERVICE_PASSWORD)
           - name: "DATA_SOURCE_NAME"
             value: "$(MYSQL_MONITOR_USER):$(MYSQL_MONITOR_PASSWORD)@(localhost:3306)/"
-  vars:
-    - name: SERVICE_USER
-      value: polardbx_root
-    - name: SERVICE_PASSWORD
-      valueFrom:
-        credentialVarRef:
-          name: polardbx_root
-          optional: false
-          password: Required
-  volumes:
-    - name: data
-    # - name: data-log
-  service:
-    - name: default
-      spec:
-        ports:
-          - name: mysql
-            port: 3306
-            targetPort: 3306
-          - name: metrics
-            port: 9104
-            targetPort: 9104
-  scripts:
-    - name: polardbx-scripts
-      templateRef: polardbx-scripts
-      volumeName: scripts
-      namespace: {{ .Release.Namespace }}
-      defaultMode: 0555
-  systemAccounts:
-    - name: polardbx_root
-      initAccount: true
-      passwordGenerationPolicy:
-        length: 10
-        numDigits: 5
-        numSymbols: 0
-        letterCase: MixedCases
-  updateStrategy: Serial
-  roles:
-    - name: leader
-      serviceable: true
-      writable: true
-      votable: true
-    - name: follower
-      serviceable: true
-      writable: false
-      votable: true
-  lifecycleAction:
-    roleProbe:
-      exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.roleProbe.image.repository }}:{{ .Values.roleProbe.image.tag }}
-        command:
-          - sh
-          - -c
-          - |
-            mysql -h127.0.0.1 -P3306 -uroot -N -B -e "select role from information_schema.alisql_cluster_local" | xargs echo -n
-      timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
-      periodSeconds: {{ .Values.roleProbe.periodSeconds }}
-      failureThreshold: {{ .Values.roleProbe.failureThreshold }}
