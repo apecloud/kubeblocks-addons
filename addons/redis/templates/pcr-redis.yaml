@@ -1,0 +1,18 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParameterDrivenConfigRender
+metadata:
+  name: {{ include "redis7.pcrName" . }}
+  labels:
+    {{- include "redis.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "redis7.cmpdName" . }}
+  parametersDefs:
+    - {{ include "redis7.paramsDefName" . }}
+
+  configs:
+    - name: redis.conf
+      templateName: redis-replication-config
+      fileFormatConfig:
+        format: redis
+      reRenderResourceTypes:
+        - vscale
