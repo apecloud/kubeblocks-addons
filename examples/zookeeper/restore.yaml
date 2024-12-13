@@ -5,7 +5,7 @@ metadata:
   namespace: default
   annotations:
     # zk-cluster-backup is the backup name.
-    kubeblocks.io/restore-from-backup: '{"etcd":{"name":"zk-cluster-backup","namespace":"default","volumeRestorePolicy":"Parallel"}}'
+    kubeblocks.io/restore-from-backup: '{"zookeeper":{"name":"zk-cluster-backup","namespace":"default","volumeRestorePolicy":"Parallel"}}'
 spec:
   terminationPolicy: Delete
   componentSpecs:
