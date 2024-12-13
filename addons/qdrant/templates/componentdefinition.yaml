@@ -56,7 +56,7 @@ spec:
         command:
           - /bin/sh
           - -c
-          - /qdrant/scripts/qdrant-member-leave.sh
+          - /qdrant/scripts/member-leave.sh
         targetPodSelector: Any
         container: qdrant
   runtime:
