@@ -32,7 +32,7 @@ Describe "Qdrant Member Leave Script Tests"
 
   un_setup() {
     # Reset environment variables before each test
-    unset KB_LEAVE_MEMBER_POD_IP
+    unset KB_LEAVE_MEMBER_POD_FQDN
     leave_peer_uri="http://test-ip:6333"
   }
 
@@ -69,7 +69,7 @@ Describe "Qdrant Member Leave Script Tests"
   Describe "move_shards()"
     It "moves shards from leave peer to leader"
       un_setup
-      KB_LEAVE_MEMBER_POD_IP="test-ip"
+      KB_LEAVE_MEMBER_POD_FQDN="test-ip"
       cluster_info='{"result":{"peer_id":"leave-peer-id","raft_info":{"leader":"leader-peer-id"}}}'
       leave_peer_id="leave-peer-id"
       leader_peer_id="leader-peer-id"
@@ -99,7 +99,7 @@ Describe "Qdrant Member Leave Script Tests"
 
     It "handles no collections found"
       un_setup
-      KB_LEAVE_MEMBER_POD_IP="test-ip"
+      KB_LEAVE_MEMBER_POD_FQDN="test-ip"
       curl() {
         echo '{"result":{"collections":[]}}'
         return 0
@@ -123,7 +123,7 @@ Describe "Qdrant Member Leave Script Tests"
 
     It "handles no shards found in a collection"
       un_setup
-      KB_LEAVE_MEMBER_POD_IP="test-ip"
+      KB_LEAVE_MEMBER_POD_FQDN="test-ip"
       curl() {
         if [[ $1 == *"/collections"* ]]; then
           echo '{"result":{"collections":[{"name":"collection1"}]}}'
@@ -166,7 +166,7 @@ Describe "Qdrant Member Leave Script Tests"
   Describe "remove_peer()"
     It "removes the peer from the cluster"
       un_setup
-      KB_LEAVE_MEMBER_POD_IP="test-ip"
+      KB_LEAVE_MEMBER_POD_FQDN="test-ip"
       leave_peer_id="leave-peer-id"
 
       curl() {
@@ -182,7 +182,7 @@ Describe "Qdrant Member Leave Script Tests"
   Describe "leave_member()"
     It "executes the leave member process"
       un_setup
-      KB_LEAVE_MEMBER_POD_IP="test-ip"
+      KB_LEAVE_MEMBER_POD_FQDN="test-ip"
       cluster_info='{"result":{"peer_id":"leave-peer-id","raft_info":{"leader":"leader-peer-id"}}}'
       leave_peer_id="leave-peer-id"
       leader_peer_id="leader-peer-id"
