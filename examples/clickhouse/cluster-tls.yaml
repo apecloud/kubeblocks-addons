@@ -1,0 +1,67 @@
+---
+# Source: clickhouse-cluster/templates/cluster.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: cluster-tls
+  namespace: default
+spec:
+  terminationPolicy: Delete
+  clusterDef: clickhouse
+  topology: cluster
+  componentSpecs:
+    - name: ch-keeper
+      replicas: 1
+      resources:
+        limits:
+          cpu: "1"
+          memory: "2Gi"
+        requests:
+          cpu: "1"
+          memory: "2Gi"
+      systemAccounts:
+        - name: admin
+          passwordConfig:
+            length: 10
+            numDigits: 5
+            numSymbols: 0
+            letterCase: MixedCases
+            seed: cluster-tls
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 10Gi
+    - name: clickhouse
+      replicas: 2
+      systemAccounts:
+        - name: admin
+          passwordConfig:
+            length: 10
+            numDigits: 5
+            numSymbols: 0
+            letterCase: MixedCases
+            seed: cluster-tls
+      resources:
+        limits:
+          cpu: "1"
+          memory: "2Gi"
+        requests:
+          cpu: "1"
+          memory: "2Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+      tls: true   # set TLS to true
+      issuer:     # if TLS is True, this filed is required.
+        name: KubeBlocks  # set Issuer to [KubeBlocks, UserProvided].
+        # name: UserProvided  # set Issuer to [KubeBlocks, UserProvided].
+        # secretRef: secret-name # if name=UserProvided, must set the reference to the secret that contains user-provided certificates
