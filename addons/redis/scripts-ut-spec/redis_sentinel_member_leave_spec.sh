@@ -20,7 +20,7 @@ Describe "Redis Sentinel Member Leave Script Tests"
   Include $common_library_file
 
   setup() {
-    export KB_LEAVE_MEMBER_POD_IP="127.0.0.3"
+    export KB_LEAVE_MEMBER_POD_FQDN="127.0.0.3"
     export KB_LEAVE_MEMBER_POD_NAME="sentinel-2"
     export KB_MEMBER_ADDRESSES="sentinel-0.redis-sentinel-headless:26379,sentinel-1.redis-sentinel-headless:26379,sentinel-2.redis-sentinel-headless:26379"
     export SENTINEL_PASSWORD="sentinel_password"
@@ -33,7 +33,7 @@ Describe "Redis Sentinel Member Leave Script Tests"
   BeforeAll "setup"
 
   cleanup() {
-    unset KB_LEAVE_MEMBER_POD_IP
+    unset KB_LEAVE_MEMBER_POD_FQDN
     unset KB_LEAVE_MEMBER_POD_NAME
     unset KB_MEMBER_ADDRESSES
     unset SENTINEL_PASSWORD

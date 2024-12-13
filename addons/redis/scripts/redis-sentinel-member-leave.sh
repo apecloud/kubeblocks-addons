@@ -33,8 +33,8 @@ declare -g sentinel_leave_member_ip
 declare -a sentinel_pod_list
 
 redis_sentinel_member_get() {
-  if [ -z "$KB_LEAVE_MEMBER_POD_IP" ]; then
-    echo "Error: Required environment variable KB_LEAVE_MEMBER_POD_IP is not set."
+  if [ -z "$KB_LEAVE_MEMBER_POD_FQDN" ]; then
+    echo "Error: Required environment variable KB_LEAVE_MEMBER_POD_FQDN is not set."
     exit 1
   fi
 
@@ -49,7 +49,7 @@ redis_sentinel_member_get() {
   fi
 
   sentinel_leave_member_name=$KB_LEAVE_MEMBER_POD_NAME
-  sentinel_leave_member_ip=$KB_LEAVE_MEMBER_POD_IP
+  sentinel_leave_member_ip=$KB_LEAVE_MEMBER_POD_FQDN
   sentinel_pod_list=($(split "$KB_MEMBER_ADDRESSES" ","))
 }
 
