@@ -173,7 +173,7 @@ spec:
             targetPort: tcp-secure
             port: 9440
   tls:
-    volumeName: tls 
+    volumeName: tls
     mountPath: /etc/pki/tls
     caFile: ca.pem
     certFile: cert.pem
