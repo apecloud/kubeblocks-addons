@@ -1,0 +1,19 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "mysql.prcName80" . }}
+  labels:
+    {{- include "mysql.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "mysql.componentDefName80" . }}
+  parametersDefs:
+    - {{ include "mysql.paramsDefName80" . }}
+
+  configs:
+    - name: my.cnf
+      fileFormatConfig:
+        format: ini
+        iniConfig:
+          sectionName: mysqld
+      reRenderResourceTypes:
+        - vscale

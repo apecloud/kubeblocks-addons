@@ -17,8 +17,6 @@ spec:
       templateRef: proxysql-config
       namespace: {{ .Release.Namespace }}
       volumeName: proxy-config
-      reRenderResourceTypes:
-        - hscale
   scripts:
     - name: proxysql-scripts
       templateRef: proxysql-scripts
