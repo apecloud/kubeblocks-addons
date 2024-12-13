@@ -1,0 +1,20 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParameterDrivenConfigRender
+metadata:
+  name: {{ include "mysql.prcNameOrc57" . }}
+  labels:
+    {{- include "mysql.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "mysql.componentDefNameOrc57" . }}
+  parametersDefs:
+    - {{ include "mysql.paramsDefName57" . }}
+
+  configs:
+    - name: my.cnf
+      templateName: mysql-replication-config
+      fileFormatConfig:
+        format: ini
+        iniConfig:
+          sectionName: mysqld
+      reRenderResourceTypes:
+        - vscale
