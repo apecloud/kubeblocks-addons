@@ -12,7 +12,7 @@ spec:
   - name: MYSQL_DIR
     value: {{ .Values.dataMountPath }}
   - name: IMAGE_TAG
-    value: 8.0.32
+    value: "8.0"
   - name: BACKUP_FOR_STANDBY
     value: "false"
   backup:
