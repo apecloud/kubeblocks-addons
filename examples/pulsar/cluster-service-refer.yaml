@@ -1,0 +1,83 @@
+# Source: pulsar-cluster/templates/cluster.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: pulsar-service-ref
+  namespace: default
+spec:
+  terminationPolicy: Delete
+  services:
+    - name: broker-bootstrap
+      serviceName: broker-bootstrap
+      componentSelector: broker
+      spec:
+        type: ClusterIP
+        ports:
+          - name: pulsar
+            port: 6650
+            targetPort: 6650
+          - name: http
+            port: 80
+            targetPort: 8080
+          - name: kafka-client
+            port: 9092
+            targetPort: 9092
+  componentSpecs:
+    - name: broker
+      componentDef: pulsar-broker
+      serviceVersion: 3.0.2
+      env:
+        - name: KB_PULSAR_BROKER_NODEPORT
+          value: "false"
+      serviceRefs:
+        - name: pulsarZookeeper
+          namespace: default
+          clusterServiceSelector:
+            cluster: zk-cluster
+            service:
+              component: zookeeper
+              service: zookeeper
+              port: "2881"
+      replicas: 1
+      resources:
+        limits:
+          cpu:
+          memory: "512Mi"
+        requests:
+          cpu: "200m"
+          memory: "512Mi"
+    - name: bookies
+      componentDef: pulsar-bookkeeper
+      serviceVersion: 3.0.2
+      serviceRefs:
+        - name: pulsarZookeeper
+          namespace: default
+          clusterServiceSelector:
+            cluster: zk-cluster
+            service:
+              component: zookeeper
+              service: zookeeper
+              port: "2881"
+      replicas: 4
+      resources:
+        limits:
+          cpu:
+          memory: "512Mi"
+        requests:
+          cpu: "200m"
+          memory: "512Mi"
+      volumeClaimTemplates:
+        - name: ledgers
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 8Gi
+        - name: journal
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 8Gi

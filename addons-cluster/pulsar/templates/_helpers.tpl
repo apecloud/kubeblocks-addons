@@ -101,7 +101,7 @@ serviceRefs:
     {{- end}}
   {{- end}}
   {{- if .Values.serviceReference.zookeeper.serviceDescriptor }}
-    serviceDescriptor: {{.Values.serviceReference.zookeeper.serviceDescriptor}}
+  serviceDescriptor: {{.Values.serviceReference.zookeeper.serviceDescriptor}}
   {{- end }}
   {{- end }}
 {{- end}}

@@ -49,7 +49,7 @@ Describe "Redis Switchover Script Tests"
     }
     After 'un_setup'
 
-    Context "switchoverWithCandidate()"
+    Context "switchover_with_candidate()"
       It "redis set recover replica priority should equal pre state and sentinel failover should start"
         check_connectivity() {
           echo "$KB_SWITCHOVER_CANDIDATE_FQDN is reachable on port 6379."
@@ -63,19 +63,19 @@ Describe "Redis Switchover Script Tests"
           echo "Command executed successfully."
           return 0
         }
-        When call switchoverWithCandidate
+        When call switchover_with_candidate
         The status should be success
-        The stdout should include "Sentinel failover start with redis-redis-sentinel-0.redis-redis-sentinel-headless.test.svc, Switchover is processing"
+        The stdout should include "Sentinel failover execute in redis-redis-sentinel-0.redis-redis-sentinel-headless.test.svc, Switchover is processing"
         The stdout should include "Command executed successfully"
       End
     End
-    Context "switchoverWithoutCandidate()"
+    Context "switchover_without_candidate()"
       It "sentinel failover should start"
         execute_sub_command() {
           echo "Command executed successfully."
           return 0
         }
-        When call switchoverWithoutCandidate
+        When call switchover_without_candidate
         The status should be success
         The stdout should include "Sentinel failover start with redis-redis-sentinel-0.redis-redis-sentinel-headless.test.svc, Switchover is processing"
         The stdout should include "Command executed successfully"

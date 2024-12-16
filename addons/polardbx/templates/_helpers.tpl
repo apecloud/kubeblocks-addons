@@ -54,6 +54,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Common annotations
 */}}
 {{- define "polardbx.annotations" -}}
+helm.sh/resource-policy: keep
 {{ include "polardbx.apiVersion" . }}
 {{- end }}
 
@@ -65,12 +66,92 @@ kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 {{/*
-Create the name of the service account to use
+Define polardbx scripts configMap template name
 */}}
-{{- define "polardbx.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "polardbx.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
-{{- end }}
+{{- define "polardbx.scriptsTemplate" -}}
+polardbx-scripts-template
+{{- end -}}
+
+{{/*
+Define polardbx cdc component definition name
+*/}}
+{{- define "polardbx-cdc.cmpdName" -}}
+polardbx-cdc-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define polardbx cdc component version name
+*/}}
+{{- define "polardbx-cdc.cmpvName" -}}
+polardbx-cdc
+{{- end -}}
+
+{{/*
+Define polardbx cdc component definition regex pattern
+*/}}
+{{- define "polardbx-cdc.cmpdRegexPattern" -}}
+^polardbx-cdc-
+{{- end -}}
+
+{{/*
+Define polardbx cn component definition name
+*/}}
+{{- define "polardbx-cn.cmpdName" -}}
+polardbx-cn-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define polardbx cn component version name
+*/}}
+{{- define "polardbx-cn.cmpvName" -}}
+polardbx-cn
+{{- end -}}
+
+{{/*
+Define polardbx cn component definition regex pattern
+*/}}
+{{- define "polardbx-cn.cmpdRegexPattern" -}}
+^polardbx-cn-
+{{- end -}}
+
+{{/*
+Define polardbx dn component definition name
+*/}}
+{{- define "polardbx-dn.cmpdName" -}}
+polardbx-dn-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define polardbx dn component version name
+*/}}
+{{- define "polardbx-dn.cmpvName" -}}
+polardbx-dn
+{{- end -}}
+
+{{/*
+Define polardbx dn component definition regex pattern
+*/}}
+{{- define "polardbx-dn.cmpdRegexPattern" -}}
+^polardbx-dn-
+{{- end -}}
+
+{{/*
+Define polardbx gms component definition name
+*/}}
+{{- define "polardbx-gms.cmpdName" -}}
+polardbx-gms-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define polardbx gms component version name
+*/}}
+{{- define "polardbx-gms.cmpvName" -}}
+polardbx-gms
+{{- end -}}
+
+{{/*
+Define polardbx gms component definition regex pattern
+*/}}
+{{- define "polardbx-gms.cmpdRegexPattern" -}}
+^polardbx-gms-
+{{- end -}}

@@ -114,17 +114,17 @@ Describe "Redis Cluster Server Start Bash Script Tests"
 
   Describe "build_announce_ip_and_port()"
     It "builds announce ip and port correctly when advertised svc is enabled"
-      redis_advertised_svc_host_value="172.0.0.1"
-      redis_advertised_svc_port_value="31000"
+      redis_announce_host_value="172.0.0.1"
+      redis_announce_port_value="31000"
       When call build_announce_ip_and_port
-      The contents of file "$redis_real_conf" should include "replica-announce-port $redis_advertised_svc_port_value"
-      The contents of file "$redis_real_conf" should include "replica-announce-ip $redis_advertised_svc_host_value"
-      The stdout should include "redis use advertised svc $redis_advertised_svc_host_value:$redis_advertised_svc_port_value to announce"
+      The contents of file "$redis_real_conf" should include "replica-announce-port $redis_announce_port_value"
+      The contents of file "$redis_real_conf" should include "replica-announce-ip $redis_announce_host_value"
+      The stdout should include "redis use advertised svc $redis_announce_host_value:$redis_announce_port_value to announce"
     End
 
     It "builds announce ip and port correctly when advertised svc is not enabled"
-      unset redis_advertised_svc_host_value
-      unset redis_advertised_svc_port_value
+      unset redis_announce_host_value
+      unset redis_announce_port_value
       export CURRENT_POD_NAME="redis-redis-0"
       export CURRENT_SHARD_POD_FQDN_LIST="redis-redis-0.redis-redis.default.svc.cluster.local,redis-redis-1.redis-redis.default.svc.cluster.local"
       When call build_announce_ip_and_port
@@ -133,8 +133,8 @@ Describe "Redis Cluster Server Start Bash Script Tests"
     End
 
     It "exits with error when failed to get current pod fqdn"
-      unset redis_advertised_svc_host_value
-      unset redis_advertised_svc_port_value
+      unset redis_announce_host_value
+      unset redis_announce_port_value
       export CURRENT_POD_NAME="redis-redis-2"
       export CURRENT_SHARD_POD_FQDN_LIST="redis-redis-0.redis-redis.default,redis-redis-1.redis-redis.default"
       When run build_announce_ip_and_port
@@ -145,25 +145,25 @@ Describe "Redis Cluster Server Start Bash Script Tests"
 
   Describe "build_cluster_announce_info()"
     It "builds cluster announce info correctly when advertised svc is enabled"
-      redis_advertised_svc_host_value="172.0.0.1"
-      redis_advertised_svc_port_value="31000"
-      redis_advertised_svc_bus_port_value="31000"
+      redis_announce_host_value="172.0.0.1"
+      redis_announce_port_value="31000"
+      redis_announce_bus_port_value="31000"
       export CURRENT_POD_NAME="redis-redis-0"
       export CURRENT_SHARD_POD_FQDN_LIST="redis-redis-0.redis-redis.default.svc.cluster.local,redis-redis-1.redis-redis.default.svc.cluster.local"
       When call build_cluster_announce_info
-      The contents of file "$redis_real_conf" should include "cluster-announce-port $redis_advertised_svc_port_value"
-      The contents of file "$redis_real_conf" should include "cluster-announce-ip $redis_advertised_svc_host_value"
-      The contents of file "$redis_real_conf" should include "cluster-announce-bus-port $redis_advertised_svc_bus_port_value"
+      The contents of file "$redis_real_conf" should include "cluster-announce-port $redis_announce_port_value"
+      The contents of file "$redis_real_conf" should include "cluster-announce-ip $redis_announce_host_value"
+      The contents of file "$redis_real_conf" should include "cluster-announce-bus-port $redis_announce_bus_port_value"
       The contents of file "$redis_real_conf" should include "cluster-announce-hostname redis-redis-0.redis-redis.default.svc.cluster.local"
       The contents of file "$redis_real_conf" should include "cluster-preferred-endpoint-type ip"
-      The stdout should include "redis cluster use advertised svc $redis_advertised_svc_host_value:$redis_advertised_svc_port_value@$redis_advertised_svc_bus_port_value to announce"
+      The stdout should include "redis cluster use advertised svc $redis_announce_host_value:$redis_announce_port_value@$redis_announce_bus_port_value to announce"
 
     End
 
     It "builds cluster announce info correctly when advertised svc is not enabled"
-      unset redis_advertised_svc_host_value
-      unset redis_advertised_svc_port_value
-      unset redis_advertised_svc_bus_port_value
+      unset redis_announce_host_value
+      unset redis_announce_port_value
+      unset redis_announce_bus_port_value
       export CURRENT_POD_IP="172.0.0.5"
       export CURRENT_POD_NAME="redis-redis-0"
       export CURRENT_SHARD_POD_FQDN_LIST="redis-redis-0.redis-redis.default.svc.cluster.local,redis-redis-1.redis-redis.default.svc.cluster.local"
@@ -171,7 +171,7 @@ Describe "Redis Cluster Server Start Bash Script Tests"
       The contents of file "$redis_real_conf" should include "cluster-announce-ip $CURRENT_POD_IP"
       The contents of file "$redis_real_conf" should include "cluster-announce-hostname redis-redis-0.redis-redis.default.svc.cluster.local"
       The contents of file "$redis_real_conf" should include "cluster-preferred-endpoint-type hostname"
-      The stdout should include "redis use kb pod fqdn redis-redis-0.redis-redis.default.svc.cluster.local to announce"
+      The stdout should include "redis cluster use pod fqdn redis-redis-0.redis-redis.default.svc.cluster.local to announce"
     End
   End
 
@@ -215,7 +215,7 @@ Describe "Redis Cluster Server Start Bash Script Tests"
     End
   End
 
-  Describe "parse_current_pod_advertised_svc_if_exist()"
+  Describe "parse_redis_cluster_shard_announce_addr()"
     Context "when both CURRENT_SHARD_ADVERTISED_PORT and CURRENT_SHARD_ADVERTISED_BUS_PORT are set"
       setup() {
         export CURRENT_POD_HOST_IP="172.0.0.1"
@@ -234,10 +234,10 @@ Describe "Redis Cluster Server Start Bash Script Tests"
       After "un_setup"
 
       It "parses advertised service correctly"
-        When call parse_current_pod_advertised_svc_if_exist
-        The variable redis_advertised_svc_port_value should equal "31000"
-        The variable redis_advertised_svc_bus_port_value should equal "31888"
-        The variable redis_advertised_svc_host_value should equal "172.0.0.1"
+        When call parse_redis_cluster_shard_announce_addr
+        The variable redis_announce_port_value should equal "31000"
+        The variable redis_announce_bus_port_value should equal "31888"
+        The variable redis_announce_host_value should equal "172.0.0.1"
       End
     End
 
@@ -251,7 +251,7 @@ Describe "Redis Cluster Server Start Bash Script Tests"
       Before "setup"
 
       It "ignores parsing when CURRENT_SHARD_ADVERTISED_PORT and CURRENT_SHARD_ADVERTISED_BUS_PORT are not set"
-        When call parse_current_pod_advertised_svc_if_exist
+        When call parse_redis_cluster_shard_announce_addr
         The stdout should include "Environment variable CURRENT_SHARD_ADVERTISED_PORT and CURRENT_SHARD_ADVERTISED_BUS_PORT not found. Ignoring."
       End
     End
@@ -274,7 +274,7 @@ Describe "Redis Cluster Server Start Bash Script Tests"
       After "un_setup"
 
       It "exits with error when CURRENT_SHARD_ADVERTISED_PORT is invalid"
-        When run parse_current_pod_advertised_svc_if_exist
+        When run parse_redis_cluster_shard_announce_addr
         The status should be failure
         The stdout should include "Exiting due to error in CURRENT_SHARD_ADVERTISED_PORT."
       End
@@ -298,7 +298,7 @@ Describe "Redis Cluster Server Start Bash Script Tests"
       After "un_setup"
 
       It "exits with error when CURRENT_SHARD_ADVERTISED_BUS_PORT is invalid"
-        When run parse_current_pod_advertised_svc_if_exist
+        When run parse_redis_cluster_shard_announce_addr
         The status should be failure
         The stdout should include "Exiting due to error in CURRENT_SHARD_ADVERTISED_BUS_PORT."
       End
@@ -326,6 +326,7 @@ Describe "Redis Cluster Server Start Bash Script Tests"
       setup() {
         export CURRENT_SHARD_ADVERTISED_PORT="redis-shard-sxj-0:31000,redis-shard-sxj-1:31001"
         export CURRENT_SHARD_ADVERTISED_BUS_PORT="redis-shard-sxj-0:32000,redis-shard-sxj-1:32001"
+        export CURRENT_SHARD_COMPONENT_NAME="redis-shard-sxj"
         export current_comp_primary_node=()
         export current_comp_other_nodes=()
         export other_comp_primary_nodes=()

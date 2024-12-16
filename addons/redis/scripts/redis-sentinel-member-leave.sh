@@ -26,15 +26,15 @@ load_common_library() {
   source "${common_library_file}"
 }
 
-declare -g redis_default_service_port=26379
+declare -g redis_default_service_port=${SENTINEL_SERVICE_PORT:-26379}
 declare -A master_slave_counts
 declare -g sentinel_leave_member_name
-declare -g sentinel_leave_member_ip
+declare -g sentinel_leave_member_fqdn
 declare -a sentinel_pod_list
 
 redis_sentinel_member_get() {
-  if [ -z "$KB_LEAVE_MEMBER_POD_IP" ]; then
-    echo "Error: Required environment variable KB_LEAVE_MEMBER_POD_IP is not set."
+  if [ -z "$KB_LEAVE_MEMBER_POD_FQDN" ]; then
+    echo "Error: Required environment variable KB_LEAVE_MEMBER_POD_FQDN is not set."
     exit 1
   fi
 
@@ -49,7 +49,7 @@ redis_sentinel_member_get() {
   fi
 
   sentinel_leave_member_name=$KB_LEAVE_MEMBER_POD_NAME
-  sentinel_leave_member_ip=$KB_LEAVE_MEMBER_POD_IP
+  sentinel_leave_member_fqdn=$KB_LEAVE_MEMBER_POD_FQDN
   sentinel_pod_list=($(split "$KB_MEMBER_ADDRESSES" ","))
 }
 
@@ -70,7 +70,7 @@ redis_sentinel_remove_monitor() {
   local success=false
   local output=""
   while [ $retry_count -lt $max_retries ]; do
-    redis_sentinel_get_masters "$sentinel_leave_member_ip" "$redis_default_service_port" 
+    redis_sentinel_get_masters "$sentinel_leave_member_fqdn" "$redis_default_service_port"
     if [ -n "$temp_output" ]; then
       disconnected=false
       while read -r line; do
@@ -114,7 +114,7 @@ redis_sentinel_remove_monitor() {
       esac
       if [[ -n "$master_name" ]]; then
         echo "master name: $master_name"
-        redis-cli -h "$sentinel_leave_member_ip" -p "$redis_default_service_port" -a "$SENTINEL_PASSWORD" SENTINEL REMOVE "$master_name"
+        redis-cli -h "$sentinel_leave_member_fqdn" -p "$redis_default_service_port" -a "$SENTINEL_PASSWORD" SENTINEL REMOVE "$master_name"
         echo "sentinel no longer monitors $master_name"
         master_name=""
       fi
@@ -133,7 +133,7 @@ redis_sentinel_reset_all() {
     if [ -n "$port" ]; then
       redis_default_service_port="$port"
     fi
-    #TODO:check if there is an ongoing HA switchover Before executing the reset command
+    # TODO: check if there is an ongoing HA switchover Before executing the reset command
     if [ "$sentinel_name" != "$sentinel_leave_member_name" ]; then
       retry_count=0
       max_retries=3

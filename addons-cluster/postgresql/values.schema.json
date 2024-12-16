@@ -8,16 +8,6 @@
       "type": "string",
       "default": "15.7.0"
     },
-    "mode": {
-      "title": "Mode",
-      "description": "Cluster topology mode.",
-      "type": "string",
-      "default": "standalone",
-      "enum": [
-        "standalone",
-        "replication"
-      ]
-    },
     "replicas": {
       "title": "Replicas",
       "description": "The number of replicas, for standalone mode, the replicas is 1, for replication mode, the default replicas is 2.",

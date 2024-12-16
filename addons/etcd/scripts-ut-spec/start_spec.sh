@@ -101,6 +101,7 @@ Describe "Etcd Start Bash Script Tests"
       echo "name: etcd-0" > "$default_template_conf"
       echo "initial-advertise-peer-urls: https://default:2380" >> "$default_template_conf"
       echo "advertise-client-urls: https://default:2379" >> "$default_template_conf"
+      rm -f $real_conf
 
       When call update_etcd_conf "$default_template_conf" "$real_conf" "$current_pod_name" "$my_endpoint"
       The status should be success
@@ -122,6 +123,7 @@ Describe "Etcd Start Bash Script Tests"
       echo "name: default" > "$default_template_conf"
       echo "initial-advertise-peer-urls: http://default:2380" >> "$default_template_conf"
       echo "advertise-client-urls: http://default:2379" >> "$default_template_conf"
+      rm -f $real_conf
 
       When call rebuild_etcd_conf
       The status should be success

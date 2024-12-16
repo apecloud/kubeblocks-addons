@@ -2,6 +2,12 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+## @param nameOverride
+nameOverride: ""
+
+## @param fullnameOverride
+fullnameOverride: ""
+
 image:
   registry: docker.io
   repository: tdengine/tdengine
@@ -11,31 +17,11 @@ image:
 
 imagePullSecrets: []
 
-## Common override values:
-##
-## @param nameOverride
-## @param fullnameOverride
-nameOverride: ""
-fullnameOverride: ""
-
 defaultAuth:
   username: root
   password: taosdata
 
 timeZone: Asia/Shanghai
-
-podAnnotations: {}
-
-podSecurityContext: {}
-  # fsGroup: 2000
-
-securityContext: {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
 
 metrics:
   image:
@@ -46,5 +32,3 @@ metrics:
     pullPolicy: IfNotPresent
   service:
     port: 6043
-
-

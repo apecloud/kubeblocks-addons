@@ -12,9 +12,18 @@ spec:
         - {{ include "kafka-broker.cmpdRegexpPattern" . }}
       releases:
         - 3.3.2-debian-11-r54
+    - compDefs:
+        - {{ include "kafka2-broker.cmpdRegexpPattern" . }}
+      releases:
+        - 2.7.0-debian-10-r124
   releases:
     - name: 3.3.2-debian-11-r54
       changes:
       serviceVersion: 3.3.2
       images:
         kafka: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
+    - name: 2.7.0-debian-10-r124
+      changes:
+      serviceVersion: 2.7.0
+      images:
+        kafka: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Values.images.kafka2.tag }}
