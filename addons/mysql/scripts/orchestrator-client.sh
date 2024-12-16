@@ -1,3 +1,4 @@
+
 #!/bin/bash
 #
 # orchestrator-client: a wrapper script for calling upon orchestrator's API
@@ -44,17 +45,6 @@
 # In particular, you will want to set ORCHESTRATOR_API
 myname=$(basename $0)
 [ -f /etc/profile.d/orchestrator-client.sh ] && . /etc/profile.d/orchestrator-client.sh
-
-prepare_orchestrator_env() {
-   if [[ -z "$ORCHESTRATOR_API" ]]; then
-     ORCHESTRATOR_API=$(echo "http://${ORC_ENDPOINTS%%:*}:${ORC_PORTS}" | tr '_' '-'  | tr '[:upper:]' '[:lower:]')
-   fi
-   export ORCHESTRATOR_API=$ORCHESTRATOR_API
-}
-
-if [[ -z "$ORCHESTRATOR_API" ]]; then
-  prepare_orchestrator_env
-fi
 
 orchestrator_api="${ORCHESTRATOR_API:-http://localhost:3000}"
 leader_api=
@@ -254,7 +244,7 @@ function detect_leader_api {
       return
     fi
   done
-  leader_api=${apis[0]}
+  fail "Cannot determine leader from $orchestrator_api"
 }
 
 function urlencode {
@@ -1039,7 +1029,7 @@ function run_command {
 }
 
 function main {
-
+  check_requirements
   detect_leader_api
 
   instance_hostport=$(to_hostport $instance)
