@@ -161,6 +161,15 @@ roles:
     writable: false
     votable: false
 vars:
+  ## the postgres leader pod name which is dynamically selected, caution to use it
+  - name: POSTGRES_LEADER_POD_NAME
+    valueFrom:
+      componentVarRef:
+        compDef: {{ include "apecloud-postgresql-14.cmpdName" . }}
+        optional: true
+        podNamesForRole:
+          role: leader
+          option: Optional
   - name: POSTGRES_USER
     valueFrom:
       credentialVarRef:
@@ -225,6 +234,13 @@ lifecycleActions:
         - /tools/config/dbctl/components
         - apecloud-postgresql
         - getrole
+  switchover:
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - |
+          /tools/syncerctl switchover --primary "$POSTGRES_LEADER_POD_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
   memberLeave:
     exec:
       container: postgresql
@@ -258,7 +274,7 @@ runtime:
     - command:
         - sh
         - -c
-        - cp -r /bin/syncer /tools/
+        - cp -r /bin/syncer /bin/syncerctl /tools/
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
       imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
       name: init-syncer
