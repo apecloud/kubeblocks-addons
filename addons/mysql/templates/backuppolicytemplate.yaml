@@ -57,9 +57,9 @@ spec:
           valueFrom:
             clusterVersionRef:
             - names: [mysql-8.4.2]
-              mappingValue: "8.4.0-1"
+              mappingValue: "8.4"
             - names: [mysql-8.0.33]
-              mappingValue: "8.0.33-28"
+              mappingValue: "8.0"
             - names: [mysql-5.7.42, mysql-5.7.44]
               mappingValue: "2.4"
       targetVolumes:
