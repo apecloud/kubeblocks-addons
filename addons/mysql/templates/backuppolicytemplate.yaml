@@ -21,10 +21,10 @@ spec:
           versionMapping:
           - serviceVersions:
             - "8.4"
-            mappedValue: "8.4.0-1"
+            mappedValue: "8.4"
           - serviceVersions:
             - "8.0"
-            mappedValue: "8.0.33-28"
+            mappedValue: "8.0"
           - serviceVersions:
             - "5.7"
             mappedValue: "2.4"
