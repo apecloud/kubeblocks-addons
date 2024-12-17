@@ -43,7 +43,7 @@ Create a Qdrant cluster with specified cluster definition
 kubectl apply -f examples/qdrant/cluster.yaml
 ```
 
-### [Horizontal scaling](horizontalscale.yaml)
+### Horizontal scaling
 
 > [!Important]
 > Qdrant uses the **Raft consensus protocol** to maintain consistency regarding the cluster topology and the collections structure.
