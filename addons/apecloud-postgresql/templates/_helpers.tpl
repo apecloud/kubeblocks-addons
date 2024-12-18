@@ -184,7 +184,7 @@ vars:
         password: Required
   # env for syncer to initialize dcs
   # TODO: modify these env for syncer
-  - name: MY_CLUSTER_NAME
+  - name: CLUSTER_NAME
     valueFrom:
       clusterVarRef:
         clusterName: Required

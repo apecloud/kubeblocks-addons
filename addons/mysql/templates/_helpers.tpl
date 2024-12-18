@@ -83,7 +83,6 @@ provider: kubeblocks
 serviceKind: mysql
 description: mysql component definition for Kubernetes
 updateStrategy: BestEffortParallel
-
 services:
   - name: default
     roleSelector: primary
@@ -92,7 +91,6 @@ services:
         - name: mysql
           port: 3306
           targetPort: mysql
-
 scripts:
   - name: mysql-scripts
     templateRef: mysql-scripts
@@ -111,12 +109,19 @@ systemAccounts:
       numSymbols: 0
       letterCase: MixedCases
 vars:
+  - name: CLUSTER_NAME
+    valueFrom:
+      clusterVarRef:
+        clusterName: Required
+  - name: CLUSTER_NAMESPACE
+    valueFrom:
+      clusterVarRef:
+        namespace: Required
   - name: MYSQL_ROOT_USER
     valueFrom:
       credentialVarRef:
         name: root
         username: Required
-
   - name: MYSQL_ROOT_PASSWORD
     valueFrom:
       credentialVarRef:
@@ -182,13 +187,11 @@ provider: kubeblocks
 description: mysql component definition for Kubernetes
 serviceKind: mysql
 updateStrategy: BestEffortParallel
-
 serviceRefDeclarations:
   - name: orchestrator
     serviceRefDeclarationSpecs:
       - serviceKind: orchestrator
         serviceVersion: "^*"
-
 services:
   - name: mysql-server
     serviceName: mysql-server
@@ -205,7 +208,6 @@ services:
         - name: mysql
           port: 3306
           targetPort: mysql
-
 scripts:
   - name: mysql-scripts
     templateRef: mysql-scripts
@@ -215,7 +217,6 @@ scripts:
 volumes:
   - name: data
     needSnapshot: true
-
 systemAccounts:
   - name: root
     initAccount: true
@@ -224,7 +225,6 @@ systemAccounts:
       numDigits: 5
       numSymbols: 0
       letterCase: MixedCases
-
 roles:
   - name: primary
     serviceable: true
@@ -232,26 +232,35 @@ roles:
   - name: secondary
     serviceable: true
     writable: false
-
 vars:
+  - name: CLUSTER_NAME
+    valueFrom:
+      clusterVarRef:
+        clusterName: Required
+  - name: CLUSTER_NAMESPACE
+    valueFrom:
+      clusterVarRef:
+        namespace: Required
+  - name: MYSQL_COMPONENT_NAME
+    valueFrom:
+      componentVarRef:
+        optional: false
+        componentName: Required
   - name: MYSQL_ROOT_USER
     valueFrom:
       credentialVarRef:
         name: root
         username: Required
-
   - name: MYSQL_ROOT_PASSWORD
     valueFrom:
       credentialVarRef:
         name: root
         password: Required
-
   - name: ORC_ENDPOINTS
     valueFrom:
       serviceRefVarRef:
         name: orchestrator
         endpoint: Required
-
   - name: ORC_PORTS
     valueFrom:
       serviceRefVarRef:
@@ -264,7 +273,6 @@ vars:
       componentVarRef:
         optional: false
         podNames: Required
-
 exporter:
   containerName: mysql-exporter
   scrapePath: /metrics
@@ -282,7 +290,7 @@ roleProbe:
       - /bin/bash
       - -c
       - |
-        topology_info=$(/kubeblocks/orchestrator-client -c topology -i $KB_CLUSTER_NAME) || true
+        topology_info=$(/kubeblocks/orchestrator-client -c topology -i $CLUSTER_NAME) || true
         if [[ $topology_info == "" ]]; then
           echo -n "secondary"
           exit 0
@@ -312,11 +320,11 @@ memberLeave:
       - -c
       - |
         set +e
-        master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i $KB_CLUSTER_NAME)
+        master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i $CLUSTER_NAME)
         last_digit=${KB_LEAVE_MEMBER_POD_NAME##*-}
         self_service_name=$(echo "${KB_CLUSTER_COMP_NAME}_mysql_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
         if [ "${self_service_name%%:*}" == "${master_from_orc%%:*}" ]; then
-          /kubeblocks/orchestrator-client -c force-master-failover -i $KB_CLUSTER_NAME
+          /kubeblocks/orchestrator-client -c force-master-failover -i $CLUSTER_NAME
           local timeout=30
           local start_time=$(date +%s)
           local current_time
@@ -325,7 +333,7 @@ memberLeave:
             if [ $((current_time - start_time)) -gt $timeout ]; then
               break
             fi
-            master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i $KB_CLUSTER_NAME)
+            master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i $CLUSTER_NAME)
             if [ "${self_service_name%%:*}" != "${master_from_orc%%:*}" ]; then
               break
             fi

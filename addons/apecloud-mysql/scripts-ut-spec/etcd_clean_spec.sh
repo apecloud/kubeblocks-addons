@@ -14,8 +14,8 @@ Describe "Etcd Clean Script Tests"
   Describe "when SERVICE_ETCD_ENDPOINT is set,"
     setup() {
       SERVICE_ETCD_ENDPOINT="http://localhost:2379"
-      KB_NAMESPACE="test-namespace"
-      KB_CLUSTER_NAME="test-cluster"
+      CLUSTER_NAMESPACE="test-namespace"
+      CLUSTER_NAME="test-cluster"
       ETCDCTL_API="3"
     }
     Before "setup"
@@ -67,8 +67,8 @@ Describe "Etcd Clean Script Tests"
   Describe "when ETCDCTL_API is set to 2"
     setup() {
       SERVICE_ETCD_ENDPOINT="http://localhost:2379"
-      KB_NAMESPACE="test-namespace"
-      KB_CLUSTER_NAME="test-cluster"
+      CLUSTER_NAMESPACE="test-namespace"
+      CLUSTER_NAME="test-cluster"
       ETCDCTL_API="2"
     }
     Before "setup"

@@ -12,7 +12,7 @@ ORC_META_DATABASE=${ORC_META_DATABASE:-orchestrator}
 mkdir -p $WORKDIR
 mkdir -p $WORKDIR/raft $WORKDIR/sqlite
 
-SUBDOMAIN=${KB_CLUSTER_COMP_NAME}-headless.${KB_NAMESPACE}.svc.cluster.local
+SUBDOMAIN=${KB_CLUSTER_COMP_NAME}-headless.${CLUSTER_NAMESPACE}.svc.cluster.local
 replicas=$(eval echo ${ORC_POD_FQDN_LIST} | tr ',' '\n')
 PEERS=""
 for replica in ${replicas}; do

@@ -294,11 +294,15 @@ vars:
       componentVarRef:
         optional: false
         replicas: Required
-  - name: MY_CLUSTER_NAME
+  - name: CLUSTER_NAME
     valueFrom:
       clusterVarRef:
         clusterName: Required
-  - name: MY_CLUSTER_UID
+  - name: CLUSTER_NAMESPACE
+    valueFrom:
+      clusterVarRef:
+        namespace: Required
+  - name: CLUSTER_UID
     valueFrom:
       clusterVarRef:
         clusterUID: Required
@@ -406,7 +410,7 @@ env:
     value: "15100"
   - name: VTTABLET_GRPC_PORT
   - name: VTCTLD_HOST
-    value: "$(KB_CLUSTER_NAME)-wescale-ctrl-headless"
+    value: "$(CLUSTER_NAME)-wescale-ctrl-headless"
   - name: VTCTLD_WEB_PORT
     value: "15000"
   - name: SERVICE_PORT

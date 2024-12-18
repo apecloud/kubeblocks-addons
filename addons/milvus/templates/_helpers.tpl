@@ -400,6 +400,14 @@ Milvus cluster external storage services reference
 Milvus cluster vars for external storage services reference
 */}}
 {{- define "milvus.cluster.serviceRefVars" }}
+- name: CLUSTER_NAME
+  valueFrom:
+    clusterVarRef:
+      clusterName: Required
+- name: CLUSTER_NAMESPACE
+  valueFrom:
+    clusterVarRef:
+      namespace: Required
 - name: ETCD_ENDPOINT
   valueFrom:
     serviceRefVarRef:

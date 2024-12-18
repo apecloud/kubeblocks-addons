@@ -45,7 +45,7 @@ cluster_formation.peer_discovery_backend   = rabbit_peer_discovery_k8s
 cluster_formation.k8s.host                 = kubernetes.default
 cluster_formation.k8s.address_type         = hostname
 # cluster_formation.target_cluster_size_hint = 1
-cluster_formation.k8s.service_name         = {{ .KB_CLUSTER_NAME }}-rabbitmq-headless
-cluster_name                               = {{ .KB_CLUSTER_NAME }}
+cluster_formation.k8s.service_name         = {{ .CLUSTER_NAME }}-rabbitmq-headless
+cluster_name                               = {{ .CLUSTER_NAME }}
 
 listeners.tcp.1 = :::{{ $rabbitmq_port }}

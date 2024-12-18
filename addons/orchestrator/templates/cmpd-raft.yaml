@@ -17,15 +17,25 @@ spec:
       serviceable: true
       writable: false
       votable: true
-
   vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: CLUSTER_UID
+      valueFrom:
+        clusterVarRef:
+          clusterUID: Required
     - name: ORC_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
           compDef: {{ include "orchestrator.componentDefName" . }}
           optional: false
           podFQDNs: Required
-
   lifecycleActions:
     roleProbe:
       exec:
@@ -42,7 +52,6 @@ spec:
             else
               echo -n ""
             fi
-
   services:
     - name: orchestrator
       roleSelector: primary
@@ -51,7 +60,6 @@ spec:
           - name: orc-http
             port: 80
             targetPort: orc-http
-
   runtime:
     containers:
       - name: orchestrator
