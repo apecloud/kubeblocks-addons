@@ -12,7 +12,6 @@ spec:
   serviceKind: proxysql
   serviceVersion: 2.4.4
   updateStrategy: BestEffortParallel
-
   configs:
     - name: proxy-config
       templateRef: proxysql-config
@@ -20,18 +19,12 @@ spec:
       volumeName: proxy-config
       reRenderResourceTypes:
         - hscale
-      {{/*
-      injectEnvTo:
-        - proxysql
-        - proxy
-        */}}
   scripts:
     - name: proxysql-scripts
       templateRef: proxysql-scripts
       namespace: {{ .Release.Namespace }}
       volumeName: proxysql-scripts
       defaultMode: 0555
-
   services:
     - name: proxy-server
       serviceName: proxy-server
@@ -52,6 +45,19 @@ spec:
             port: 6033
             targetPort: db
   vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
     - name: BACKEND_SERVER
       valueFrom:
         serviceVarRef:
@@ -59,7 +65,6 @@ spec:
           name: mysql-server
           host: Required
           optional: false
-
     - name: MYSQL_ROOT_USER
       valueFrom:
         credentialVarRef:
@@ -67,7 +72,6 @@ spec:
           compDef: {{ include "mysql.componentDefRegex" . }}
           name: root
           username: Required
-
     - name: MYSQL_ROOT_PASSWORD
       valueFrom:
         credentialVarRef:
@@ -75,7 +79,6 @@ spec:
           compDef: {{ include "mysql.componentDefRegex" . }}
           name: root
           password: Required
-
     - name: MYSQL_PORT
       valueFrom:
         serviceVarRef:
@@ -85,7 +88,6 @@ spec:
           port:
             name: mysql
             option: Required
-
   runtime:
     volumes:
     containers:
