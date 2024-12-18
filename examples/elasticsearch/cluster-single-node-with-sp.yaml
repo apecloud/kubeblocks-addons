@@ -1,0 +1,47 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: elasticsearch-cluster
+  namespace: default
+  annotations:
+    kubeblocks.io/extra-env: '{"mode":"single-node"}'
+spec:
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: mdit
+      componentDef: elasticsearch-8
+      serviceVersion: 8.8.2
+      schedulingPolicy:
+        affinity:
+          podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/instance: es-cluster
+                    apps.kubeblocks.io/component-name: mdit
+                topologyKey: kubernetes.io/hostname
+              weight: 100
+            requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: es-cluster
+                  apps.kubeblocks.io/component-name: mdit
+              topologyKey: kubernetes.io/hostname
+      replicas: 1
+      disableExporter: false
+      resources:
+        limits:
+          cpu: "1"
+          memory: "2Gi"
+        requests:
+          cpu: "1"
+          memory: "2Gi"
+      volumeClaimTemplates:
+        - name: data # ref clusterDefinition components.containers.volumeMounts.name
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
