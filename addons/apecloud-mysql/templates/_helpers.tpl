@@ -351,7 +351,7 @@ env:
   - name: KB_MYSQL_CONF_FILE
     value: "/opt/mysql/my.cnf"
   - name: KB_MYSQL_CLUSTER_UID
-    value: $(KB_CLUSTER_UID)
+    value: $(CLUSTER_UID)
   - name: KB_MYSQL_N
     value: $(KB_COMP_REPLICAS)
   - name: CLUSTER_DOMAIN
