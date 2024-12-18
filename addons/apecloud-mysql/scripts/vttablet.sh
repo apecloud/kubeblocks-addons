@@ -44,7 +44,7 @@ fi
 
 echo $endpoints
 
-topology_fags="--topo_implementation etcd2 --topo_global_server_address ${endpoints} --topo_global_root /vitess/${NAMESPACE}/${CLUSTER_NAME}/global"
+topology_fags="--topo_implementation etcd2 --topo_global_server_address ${endpoints} --topo_global_root /vitess/${CLUSTER_NAMESPACE}/${CLUSTER_NAME}/global"
 
 VTDATAROOT=$VTDATAROOT/vttablet
 su vitess <<EOF
