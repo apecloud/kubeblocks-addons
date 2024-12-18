@@ -31,7 +31,6 @@ spec:
   configs:
     - name: vtgate-config
       templateRef: {{ include "apecloud-mysql.configTplVtgateName" . }}
-      constraintRef: {{ include "apecloud-mysql.configConstraintVtgateName" . }}
       volumeName: vtgate-config
       namespace: {{ .Release.Namespace }}
   services:
