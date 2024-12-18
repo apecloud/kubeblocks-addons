@@ -1,0 +1,18 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParameterDrivenConfigRender
+metadata:
+  name: {{ include "zookeeper.pcrName" . }}
+  labels:
+    {{- include "zookeeper.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "zookeeper.cmpdName" . }}
+  parametersDefs:
+    - {{ include "zookeeper.paramsDefName" . }}
+
+  configs:
+    - name: zoo.cfg
+      templateName: zookeeper-config
+      fileFormatConfig:
+        format: props-plus
+      reRenderResourceTypes:
+        - hscale
