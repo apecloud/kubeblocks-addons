@@ -1,6 +1,11 @@
 #!/bin/sh
 
 switchover() {
+  if [ "$POSTGRES_PRIMARY_POD_NAME" != "$KB_SWITCHOVER_CURRENT_NAME" ]; then
+    echo "switchover action not triggered for primary pod. Exiting."
+    exit 0
+  fi
+
   cmd="/tools/dbctl"
   base_args="'--config-path' '/tools/config/dbctl/components' 'postgresql' 'switchover' '--primary' '${POSTGRES_PRIMARY_POD_NAME}'"
 
