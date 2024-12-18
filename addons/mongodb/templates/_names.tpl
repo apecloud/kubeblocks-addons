@@ -101,3 +101,14 @@ mongodb-scripts
 {{- .Values.resourceNamePrefix -}}-scripts
 {{- end -}}
 {{- end -}}
+
+{{/*
+Define parameter config renderername
+*/}}
+{{- define "mongodb.pcrName" -}}
+{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+mongodb-pcr
+{{- else -}}
+{{- .Values.resourceNamePrefix -}}-pcr
+{{- end -}}
+{{- end -}}
