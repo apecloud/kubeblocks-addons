@@ -353,7 +353,7 @@ env:
   - name: KB_MYSQL_CLUSTER_UID
     value: $(CLUSTER_UID)
   - name: KB_MYSQL_N
-    value: $(KB_COMP_REPLICAS)
+    value: $(MY_COMP_REPLICAS)
   - name: CLUSTER_DOMAIN
     value: {{ .Values.clusterDomain }}
   - name: MY_POD_NAME
