@@ -78,11 +78,7 @@ spec:
     - name: zookeeper-config
       namespace: {{ .Release.Namespace }}
       templateRef: {{ include "zookeeper.configTplName" . }}
-      constraintRef: {{ include "zookeeper.configConstraintName" . }}
       volumeName: config
-      defaultMode: 0755
-      reRenderResourceTypes:
-        - hscale
     - name: zookeeper-log
       namespace: {{ .Release.Namespace }}
       templateRef: {{ include "zookeeper.logConfigTplName" . }}

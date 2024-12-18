@@ -54,4 +54,9 @@
 
 	// A list of comma separated Four Letter Words commands that user wants to use
 	"4lw.commands.whitelist": string | *"srvr, mntr, ruok, conf"
+
+	...
+}
+
+configuration: #ZookeeperParameter & {
 }
