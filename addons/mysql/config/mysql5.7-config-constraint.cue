@@ -724,6 +724,9 @@
 	// This variable describes the case sensitivity of file names on the file system where the data directory is located.
 	lower_case_file_system?: string & "OFF" | "ON"
 
+	// Affects how the server handles identifier case sensitivity
+	lower_case_table_names?: int & >=0 & <=1
+
 	// Enabling this variable causes the source to verify events read from the binary log by examining checksums, and to stop with an error in the event of a mismatch.
 	master_verify_checksum?: string & "OFF" | "ON" | *"OFF"
 
