@@ -28,7 +28,7 @@ topology_password="$ORC_TOPOLOGY_PASSWORD"
 
 # create orchestrator user in mysql
 create_mysql_user() {
-  local service_name=$(echo "${MYSQL_COMPONENT_NAME}_MYSQL_${i}" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+  local service_name=$(echo "${COMPONENT_NAME}_MYSQL_${i}" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
 
   mysql_note "Create MySQL User and Grant Permissions..."
 
@@ -104,12 +104,12 @@ setup_master_slave() {
 
   master_fqdn=${replicas[0]}
   master_last_digit=${master_fqdn##*-}
-  master_host=$(echo "${MYSQL_COMPONENT_NAME}_MYSQL_${master_last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+  master_host=$(echo "${COMPONENT_NAME}_MYSQL_${master_last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
   master_from_orc=""
   get_master_from_orc
 
   self_last_digit=${SYNCER_POD_NAME##*-}
-  self_service_name=$(echo "${MYSQL_COMPONENT_NAME}_MYSQL_${self_last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+  self_service_name=$(echo "${COMPONENT_NAME}_MYSQL_${self_last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
 
   # If the cluster is already registered to the Orchestrator and the Master of the cluster is itself, then no action is required.
   if [ "$master_from_orc" == "${self_service_name}" ]; then
