@@ -4,12 +4,12 @@ if [ -z "${__SOURCED__:+x}" ]; then
 set -ex
 fi
 
-# MY_CLUSTER_NAME=clustername
+# CLUSTER_NAME=clustername
 # MY_COMP_NAME=componentname
 # compose headless service name from cluster and component name
 # return: clustername-componentname-headless
 get_service_name() {
-    cluster_name=${MY_CLUSTER_NAME:?missing cluster name}
+    cluster_name=${CLUSTER_NAME:?missing cluster name}
     component_name=${MY_COMP_NAME:?missing component name}
     echo "${cluster_name}-${component_name}-headless"
 }
@@ -55,7 +55,7 @@ generate_cluster_info() {
     echo "KB_MYSQL_N=${KB_MYSQL_N}"
 
     if [ -z "$KB_MYSQL_CLUSTER_UID" ]; then
-        export KB_MYSQL_CLUSTER_UID=${MY_CLUSTER_UID:?missing cluster uid}
+        export KB_MYSQL_CLUSTER_UID=${CLUSTER_UID:?missing cluster uid}
     fi
     echo "KB_MYSQL_CLUSTER_UID=${KB_MYSQL_CLUSTER_UID}"
 

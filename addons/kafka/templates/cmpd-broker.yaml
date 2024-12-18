@@ -65,6 +65,11 @@ spec:
         componentVarRef:
           optional: false
           componentName: Required
+    - name: COMPONENT_REPLICAS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          replicas: Required
     ## Todo: currently only nodeport and clusterIp network modes are supported. LoadBalance is not supported yet and needs future support.
     - name: BROKER_ADVERTISED_PORT
       valueFrom:

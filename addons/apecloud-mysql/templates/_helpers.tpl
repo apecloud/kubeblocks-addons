@@ -294,11 +294,15 @@ vars:
       componentVarRef:
         optional: false
         replicas: Required
-  - name: MY_CLUSTER_NAME
+  - name: CLUSTER_NAME
     valueFrom:
       clusterVarRef:
         clusterName: Required
-  - name: MY_CLUSTER_UID
+  - name: CLUSTER_NAMESPACE
+    valueFrom:
+      clusterVarRef:
+        namespace: Required
+  - name: CLUSTER_UID
     valueFrom:
       clusterVarRef:
         clusterUID: Required
@@ -347,9 +351,9 @@ env:
   - name: KB_MYSQL_CONF_FILE
     value: "/opt/mysql/my.cnf"
   - name: KB_MYSQL_CLUSTER_UID
-    value: $(KB_CLUSTER_UID)
+    value: $(CLUSTER_UID)
   - name: KB_MYSQL_N
-    value: $(KB_COMP_REPLICAS)
+    value: $(MY_COMP_REPLICAS)
   - name: CLUSTER_DOMAIN
     value: {{ .Values.clusterDomain }}
   - name: MY_POD_NAME
@@ -406,7 +410,7 @@ env:
     value: "15100"
   - name: VTTABLET_GRPC_PORT
   - name: VTCTLD_HOST
-    value: "$(KB_CLUSTER_NAME)-wescale-ctrl-headless"
+    value: "$(CLUSTER_NAME)-wescale-ctrl-headless"
   - name: VTCTLD_WEB_PORT
     value: "15000"
   - name: SERVICE_PORT

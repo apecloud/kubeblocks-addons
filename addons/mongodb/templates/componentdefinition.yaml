@@ -172,6 +172,14 @@ spec:
           type: DirectoryOrCreate
       {{- end }}
   vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
     - name: MONGODB_USER
       valueFrom:
         credentialVarRef:

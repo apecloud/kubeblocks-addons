@@ -150,6 +150,14 @@ spec:
             name: rabbitmq-config
             subPath: enabled_plugins
   vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
     - name: RABBITMQ_DEFAULT_USER
       valueFrom:
         credentialVarRef:

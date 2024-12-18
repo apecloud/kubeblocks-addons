@@ -30,7 +30,7 @@ cell=${CELL:-'zone1'}
 grpc_port=${VTCTLD_GRPC_PORT:-'15999'}
 vtctld_web_port=${VTCTLD_WEB_PORT:-'15000'}
 
-topology_fags="--topo_implementation etcd2 --topo_global_server_address ${endpoints} --topo_global_root /vitess/${KB_NAMESPACE}/${KB_CLUSTER_NAME}/global"
+topology_fags="--topo_implementation etcd2 --topo_global_server_address ${endpoints} --topo_global_root /vitess/${CLUSTER_NAMESPACE}/${CLUSTER_NAME}/global"
 
 VTDATAROOT=$VTDATAROOT/vtctld
 su vitess <<EOF
