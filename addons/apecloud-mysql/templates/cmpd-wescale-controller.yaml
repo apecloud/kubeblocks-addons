@@ -42,7 +42,7 @@ spec:
           - name: CELL
             value: {{ .Values.wesqlscale.cell | default "zone1" | quote }}
           - name: VTCTLD_SERVER
-            value: "$(KB_CLUSTER_NAME)-wescale-ctrl-headless"
+            value: "$(CLUSTER_NAME)-wescale-ctrl-headless"
           - name: VTCTLD_WEB_PORT
             value: "15000"
           - name: VTCTLD_GRPC_PORT
@@ -56,6 +56,18 @@ spec:
           - name: data
             mountPath: /vtdataroot
   vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: CLUSTER_UID
+      valueFrom:
+        clusterVarRef:
+          clusterUID: Required
     - name: MYSQL_ROOT_USER
       valueFrom:
         credentialVarRef:

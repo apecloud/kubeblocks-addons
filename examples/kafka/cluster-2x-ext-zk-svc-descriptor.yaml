@@ -43,7 +43,7 @@ spec:
         - name: KAFKA_HEAP_OPTS
           value: "-Xmx500m -Xms500m"
         - name: KB_KAFKA_ZK_SUB_PATH
-          value: "test"   # set sub path to use for sharing zk, default value is $(KB_CLUSTER_NAME), set empty string for root
+          value: "test"   # set sub path to use for sharing zk, default value is $(CLUSTER_NAME), set empty string for root
       resources:
         limits:
           cpu: '0.5'

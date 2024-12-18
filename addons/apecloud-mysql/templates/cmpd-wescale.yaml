@@ -83,6 +83,18 @@ spec:
     scrapePath: /metrics
     scrapePort: webport
   vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: CLUSTER_UID
+      valueFrom:
+        clusterVarRef:
+          clusterUID: Required
     - name: MYSQL_USER
       valueFrom:
         credentialVarRef:
