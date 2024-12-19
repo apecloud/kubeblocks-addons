@@ -64,6 +64,11 @@ switchover() {
     exit 1
   fi
 
+  if [[ $POSTGRES_PRIMARY_POD_NAME != "$KB_SWITCHOVER_CURRENT_NAME" ]]; then
+    echo "switchover action not triggered for primary pod. Exiting."
+    exit 0
+  fi
+
   current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$POSTGRES_POD_FQDN_LIST" "$CURRENT_POD_NAME")
   if is_empty "$current_pod_fqdn"; then
     echo "Error: Failed to get current pod: $CURRENT_POD_NAME fqdn from postgres pod fqdn list: $POSTGRES_POD_FQDN_LIST. Exiting."

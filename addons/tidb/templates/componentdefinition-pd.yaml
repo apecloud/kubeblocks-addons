@@ -92,6 +92,15 @@ spec:
             echo $KB_LEAVE_MEMBER_POD_NAME
             echo $ADDRESS
             /pd-ctl -u "$ADDRESS:2379" member delete name $KB_LEAVE_MEMBER_POD_NAME
+    switchover:
+      exec:
+        targetPodSelector: Role
+        matchingKey: leader
+        command:
+          - bash
+          - -c
+          - |
+            {{- .Files.Get "scripts/pd_switchover.sh" | nindent 14 }}
   exporter:
     containerName: pd
     scrapePort: "2379"
