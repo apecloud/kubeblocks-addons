@@ -108,7 +108,7 @@ setup_master_slave() {
   master_from_orc=""
   get_master_from_orc
 
-  self_last_digit=${SYNCER_POD_NAME##*-}
+  self_last_digit=${POD_NAME##*-}
   self_service_name=$(echo "${COMPONENT_NAME}_MYSQL_${self_last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
 
   # If the cluster is already registered to the Orchestrator and the Master of the cluster is itself, then no action is required.
