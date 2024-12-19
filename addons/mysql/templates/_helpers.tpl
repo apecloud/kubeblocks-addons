@@ -117,6 +117,16 @@ vars:
     valueFrom:
       clusterVarRef:
         namespace: Required
+  - name: COMPONENT_NAME
+    valueFrom:
+      componentVarRef:
+        optional: false
+        shortName: Required
+  - name: CLUSTER_COMPONENT_NAME
+    valueFrom:
+      componentVarRef:
+        optional: false
+        componentName: Required
   - name: MYSQL_ROOT_USER
     valueFrom:
       credentialVarRef:
@@ -134,10 +144,7 @@ lifecycleActions:
     exec:
       container: mysql
       command:
-        - /tools/dbctl
-        - --config-path
-        - /tools/config/dbctl/components
-        - mysql
+        - /tools/syncerctl
         - getrole
   switchover:
     exec:
@@ -165,18 +172,6 @@ roles:
   image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
   imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
   name: init-syncer
-  volumeMounts:
-    - mountPath: /tools
-      name: tools
-- command:
-    - cp
-    - -r
-    - /bin/dbctl
-    - /config
-    - /tools/
-  image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
-  imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
-  name: init-dbctl
   volumeMounts:
     - mountPath: /tools
       name: tools
@@ -245,7 +240,7 @@ vars:
     valueFrom:
       componentVarRef:
         optional: false
-        componentName: Required
+        shortName: Required
   - name: MYSQL_ROOT_USER
     valueFrom:
       credentialVarRef:
@@ -404,17 +399,17 @@ env:
     value: orchestrator
   - name: SERVICE_PORT
     value: "3306"
-  - name: SYNCER_POD_NAME
+  - name: POD_NAME
     valueFrom:
       fieldRef:
         apiVersion: v1
         fieldPath: metadata.name
-  - name: SYNCER_POD_UID
+  - name: POD_UID
     valueFrom:
       fieldRef:
         apiVersion: v1
         fieldPath: metadata.uid
-  - name: SYNCER_POD_IP
+  - name: POD_IP
     valueFrom:
       fieldRef:
         apiVersion: v1

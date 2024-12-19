@@ -17,9 +17,6 @@ image:
   syncer:
     repository: apecloud/syncer
     tag: 0.3.8
-  dbctl:
-    repository: apecloud/dbctl
-    tag: 0.1.5
   # refer: addons/mysql/orc-tools/Dockerfile
   orcTools:
     repository: apecloud/orc-tools
