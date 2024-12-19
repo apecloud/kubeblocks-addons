@@ -1,7 +1,7 @@
 #!/bin/sh
 PORT=${SERVICE_PORT:-27017}
 MONGODB_ROOT=${DATA_VOLUME:-/data/mongodb}
-RPL_SET_NAME=$(echo $SYNCER_POD_NAME | grep -o ".*-");
+RPL_SET_NAME=$(echo $POD_NAME | grep -o ".*-");
 RPL_SET_NAME=${RPL_SET_NAME%-};
 mkdir -p $MONGODB_ROOT/db
 mkdir -p $MONGODB_ROOT/logs
