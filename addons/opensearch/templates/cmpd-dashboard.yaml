@@ -25,7 +25,7 @@ spec:
             bash opensearch-dashboards-docker-entrypoint.sh opensearch-dashboards
         env:
           - name: OPENSEARCH_HOSTS
-            value: $(OPENSEARCH_HOST)
+            value: "https://$(OPENSEARCH_HOST):$(OPENSEARCH_SVC_PORT)"
           - name: SERVER_HOST
             value: "0.0.0.0"
         startupProbe:
@@ -63,6 +63,14 @@ spec:
           compDef: {{ include "opensearch.cmpdRegexpPattern" . }}
           optional: false
           host: Required
+    - name: OPENSEARCH_SVC_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "opensearch.cmpdRegexpPattern" . }}
+          optional: false
+          port:
+            name: http
+            option: Required
   services:
     - name: default
       spec:
