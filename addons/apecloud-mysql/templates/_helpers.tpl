@@ -157,8 +157,10 @@ lifecycleActions:
     exec:
       container: mysql
       command:
-        - /tools/syncerctl
-        - leavemember
+        - /bin/sh
+        - -c
+        - |
+          /tools/syncerctl leave --instance "$KB_LEAVE_MEMBER_POD_NAME"
   switchover:
     exec:
       command:
