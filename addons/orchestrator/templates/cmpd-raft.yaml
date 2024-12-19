@@ -18,6 +18,11 @@ spec:
       writable: false
       votable: true
   vars:
+    - name: COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
     - name: CLUSTER_NAME
       valueFrom:
         clusterVarRef:
