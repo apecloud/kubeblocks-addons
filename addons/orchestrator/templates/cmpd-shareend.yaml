@@ -21,6 +21,11 @@ spec:
         - serviceKind: mysql
           serviceVersion: "^*"
   vars:
+    - name: COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
     - name: CLUSTER_NAME
       valueFrom:
         clusterVarRef:
