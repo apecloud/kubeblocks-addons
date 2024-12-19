@@ -2,7 +2,7 @@
 REPORT_HOST=${COMPONENT_NAME}-mysql-${POD_NAME##*-}
 SERVICE_ID=$((${POD_NAME##*-} + 1))
 if [ "${MYSQL_MAJOR}" = '5.7' ]; then
-  docker-entrypoint.sh mysqld --server-id $SERVICE_ID --report-host ${REPORT_HOST} \
+  /scripts/docker-entrypoint.sh mysqld --server-id $SERVICE_ID --report-host ${REPORT_HOST} \
     --ignore-db-dir=lost+found \
     --plugin-load-add=rpl_semi_sync_master=semisync_master.so \
     --plugin-load-add=rpl_semi_sync_slave=semisync_slave.so \

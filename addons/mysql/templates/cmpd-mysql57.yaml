@@ -74,7 +74,7 @@ spec:
               skip_slave_start="ON"
             fi
             SERVICE_ID=$((${POD_NAME##*-} + 1))
-            docker-entrypoint.sh mysqld --server-id $SERVICE_ID \
+            /scripts/docker-entrypoint.sh mysqld --server-id $SERVICE_ID \
               --ignore-db-dir=lost+found \
               --plugin-load-add=rpl_semi_sync_master=semisync_master.so \
               --plugin-load-add=rpl_semi_sync_slave=semisync_slave.so \
