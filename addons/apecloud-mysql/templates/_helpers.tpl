@@ -151,19 +151,13 @@ lifecycleActions:
     exec:
       container: mysql
       command:
-        - /tools/dbctl
-        - --config-path
-        - /tools/config/dbctl/components
-        - wesql
+        - /tools/syncerctl
         - getrole
   memberLeave:
     exec:
       container: mysql
       command:
-        - /tools/dbctl
-        - --config-path
-        - /tools/config/dbctl/components
-        -  wesql
+        - /tools/syncerctl
         - leavemember
   switchover:
     exec:
@@ -279,21 +273,26 @@ vars:
         port: 
           name: client
           option: Optional
-  - name: MY_POD_LIST
+  - name: COMPONENT_POD_LIST
     valueFrom:
       componentVarRef:
         optional: false
         podNames: Required
-  - name: MY_COMP_NAME
+  - name: COMPONENT_NAME
     valueFrom:
       componentVarRef:
         optional: false
         shortName: Required
-  - name: MY_COMP_REPLICAS
+  - name: COMPONENT_REPLICAS
     valueFrom:
       componentVarRef:
         optional: false
         replicas: Required
+  - name: CLUSTER_COMPONENT_NAME
+    valueFrom:
+      componentVarRef:
+        optional: false
+        componentName: Required
   - name: CLUSTER_NAME
     valueFrom:
       clusterVarRef:
@@ -353,20 +352,25 @@ env:
   - name: KB_MYSQL_CLUSTER_UID
     value: $(CLUSTER_UID)
   - name: KB_MYSQL_N
-    value: $(MY_COMP_REPLICAS)
+    value: $(COMPONENT_REPLICAS)
   - name: CLUSTER_DOMAIN
     value: {{ .Values.clusterDomain }}
-  - name: MY_POD_NAME
+  - name: POD_NAMESPACE
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.namespace
+  - name: POD_NAME
     valueFrom:
       fieldRef:
         apiVersion: v1
         fieldPath: metadata.name
-  - name: MY_POD_UID
+  - name: POD_UID
     valueFrom:
       fieldRef:
         apiVersion: v1
         fieldPath: metadata.uid
-  - name: MY_POD_IP
+  - name: POD_IP
     valueFrom:
       fieldRef:
         apiVersion: v1
@@ -415,6 +419,26 @@ env:
     value: "15000"
   - name: SERVICE_PORT
     value: "$(VTTABLET_PORT)"
+  - name: POD_NAMESPACE
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.namespace
+  - name: POD_NAME
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.name
+  - name: POD_UID
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.uid
+  - name: POD_IP
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: status.podIP
 command: ["/scripts/vttablet.sh"]
 volumeMounts:
   - name: scripts
