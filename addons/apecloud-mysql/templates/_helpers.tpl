@@ -181,7 +181,7 @@ lifecycleActions:
           eval statement=\"${KB_ACCOUNT_STATEMENT}\"
           mysql -u${MYSQL_ROOT_USER} -p${MYSQL_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement}"
       targetPodSelector: Role
-      matchingKey: leader 
+      matchingKey: leader
   dataDump:
     exec:
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.30-5.beta3.20240330.g94d1caf.15
@@ -272,7 +272,7 @@ vars:
         compDef: {{ .Values.etcd.etcdCmpdName }}
         name: headless
         optional: true
-        port: 
+        port:
           name: client
           option: Optional
   - name: COMPONENT_POD_LIST
