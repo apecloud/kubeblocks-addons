@@ -1,9 +1,11 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ClusterDefinition
 metadata:
-  name: neon 
+  name: neon
   labels:
     {{- include "neon.labels" . | nindent 4 }}
+  annotations:
+    {{- include "neon.apiVersion" . | nindent 4 }}
 spec:
   topologies:
     - name: default
@@ -17,16 +19,16 @@ spec:
         - name: neon-compute
           compDef: {{ include "neon-compute.cmpdRegexpPattern" . }}
       default: true
-      orders:  
-        provision:  
+      orders:
+        provision:
           - neon-broker
           - neon-safekeeper,neon-pageserver
           - neon-compute
-        terminate:  
+        terminate:
           - neon-compute
           - neon-safekeeper,neon-pageserver
           - neon-broker
-        update: 
+        update:
           - neon-broker
           - neon-safekeeper,neon-pageserver
           - neon-compute
