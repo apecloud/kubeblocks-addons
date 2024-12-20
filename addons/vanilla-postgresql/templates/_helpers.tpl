@@ -264,6 +264,24 @@ volumes:
     needSnapshot: true
 updateStrategy: BestEffortParallel
 vars:
+  - name: CLUSTER_NAME
+    valueFrom:
+      clusterVarRef:
+        clusterName: Required
+  - name: CLUSTER_NAMESPACE
+    valueFrom:
+      clusterVarRef:
+        namespace: Required
+  - name: COMPONENT_NAME
+    valueFrom:
+      componentVarRef:
+        optional: false
+        shortName: Required
+  - name: CLUSTER_COMPONENT_NAME
+    valueFrom:
+      componentVarRef:
+        optional: false
+        componentName: Required
   - name: POSTGRES_USER
     valueFrom:
       credentialVarRef:
@@ -294,10 +312,7 @@ lifecycleActions:
     exec:
       container: postgresql
       command:
-        - /tools/dbctl
-        - --config-path
-        - /tools/config/dbctl/components
-        - postgresql
+        - /tools/syncerctl
         - getrole
   switchover:
     exec:
@@ -328,24 +343,14 @@ initContainers:
     image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
     imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
     command:
-      - sh
-      - -c
-      - "cp -r /bin/syncer /tools/"
+      - cp
+      - -r
+      - /bin/syncer
+      - /bin/syncerctl
+      - /tools/
     volumeMounts:
       - name: tools
         mountPath: /tools
-  - command:
-      - cp
-      - -r
-      - /bin/dbctl
-      - /config
-      - /tools/
-    image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
-    imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
-    name: init-dbctl
-    volumeMounts:
-      - mountPath: /tools
-        name: tools
 securityContext:
   runAsUser: 0
   fsGroup: 103
@@ -402,17 +407,22 @@ volumes:
       value: $(POSTGRES_USER)
     - name: PGPASSWORD
       value: $(POSTGRES_PASSWORD)
-    - name: MY_POD_NAME
+    - name: POD_NAME
       valueFrom:
         fieldRef:
           apiVersion: v1
           fieldPath: metadata.name
-    - name: MY_POD_UID
+    - name: POD_NAMESPACE
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: metadata.namespace
+    - name: POD_UID
       valueFrom:
         fieldRef:
           apiVersion: v1
           fieldPath: metadata.uid
-    - name: MY_POD_IP
+    - name: POD_IP
       valueFrom:
         fieldRef:
           apiVersion: v1
