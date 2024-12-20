@@ -14,10 +14,6 @@ image:
   obtools:
     repository: apecloud/obtools
     tag: 4.2.1
-  dbctl:
-    repository: apecloud/dbctl
-    tag: 0.1.5
-
 
 roleProbe:
   failureThreshold: 3
