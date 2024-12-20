@@ -236,11 +236,11 @@ vars:
     valueFrom:
       clusterVarRef:
         namespace: Required
-  - name: COMPONENT_NAME
+  - name: CLUSTER_COMPONENT_NAME
     valueFrom:
       componentVarRef:
         optional: false
-        shortName: Required
+        componentName: Required
   - name: MYSQL_ROOT_USER
     valueFrom:
       credentialVarRef:
@@ -302,7 +302,7 @@ roleProbe:
         address_port=$(echo "$first_line" | awk '{print $1}')
         master_from_orc="${address_port%:*}"
         last_digit=${KB_AGENT_POD_NAME##*-}
-        self_service_name=$(echo "${COMPONENT_NAME}_mysql_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+        self_service_name=$(echo "${CLUSTER_COMPONENT_NAME}_mysql_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
         if [ "$master_from_orc" == "${self_service_name}" ]; then
           echo -n "primary"
         else
@@ -317,7 +317,7 @@ memberLeave:
         set +e
         master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i $CLUSTER_NAME)
         last_digit=${KB_LEAVE_MEMBER_POD_NAME##*-}
-        self_service_name=$(echo "${COMPONENT_NAME}_mysql_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+        self_service_name=$(echo "${CLUSTER_COMPONENT_NAME}_mysql_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
         if [ "${self_service_name%%:*}" == "${master_from_orc%%:*}" ]; then
           /kubeblocks/orchestrator-client -c force-master-failover -i $CLUSTER_NAME
           local timeout=30
