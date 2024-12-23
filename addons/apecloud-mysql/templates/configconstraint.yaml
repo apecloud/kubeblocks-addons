@@ -145,7 +145,7 @@ spec:
     topLevelKey: VtGateParameter
 
     cue: |-
-      {{- .Files.Get "config/wescale-vtgate-config-constraint.cue" | nindent 6 }}
+      {{- .Files.Get "config/mysql-scale-vtgate-config-constraint.cue" | nindent 6 }}
 
   ## define static parameter list
   {{- if hasKey $vtgatecc "staticParameters" }}
