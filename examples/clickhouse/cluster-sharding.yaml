@@ -1,0 +1,48 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: cluster-sharding
+  namespace: default
+spec:
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: ch-keeper # create clickhouse keeper
+      componentDef: clickhouse-keeper-24
+      replicas: 1
+      resources:
+        limits:
+          cpu: "1"
+          memory: "2Gi"
+        requests:
+          cpu: "1"
+          memory: "2Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 10Gi
+  shardings:
+    - name: shard
+      shards: 3  # need 3 shard
+      template:
+        name: clickhouse  # each shard is a clickhouse component, with 2 replicas
+        componentDef: clickhouse-24
+        replicas: 2
+        resources:
+          limits:
+            cpu: "1"
+            memory: "2Gi"
+          requests:
+            cpu: "1"
+            memory: "2Gi"
+        volumeClaimTemplates:
+          - name: data
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 20Gi

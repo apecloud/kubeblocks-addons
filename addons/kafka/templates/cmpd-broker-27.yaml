@@ -59,6 +59,11 @@ spec:
         componentVarRef:
           optional: false
           componentName: Required
+    - name: COMPONENT_REPLICAS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          replicas: Required
     - name: CLUSTER_NAME
       valueFrom:
         clusterVarRef:

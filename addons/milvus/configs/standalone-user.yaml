@@ -1,15 +1,15 @@
 etcd:
   endpoints:
-  - {{ .KB_CLUSTER_NAME }}-etcd-headless.{{ .KB_NAMESPACE }}.svc.cluster.local:2379
-  rootPath: {{ .KB_CLUSTER_NAME }}
+  - {{ .CLUSTER_NAME }}-etcd-headless.{{ .CLUSTER_NAMESPACE }}.svc.cluster.local:2379
+  rootPath: {{ .CLUSTER_NAME }}
 messageQueue: rocksmq
 minio:
-  address: {{ .KB_CLUSTER_NAME }}-minio-headless.{{ .KB_NAMESPACE }}.svc.cluster.local
-  bucketName: {{ .KB_CLUSTER_NAME }}
+  address: {{ .CLUSTER_NAME }}-minio-headless.{{ .CLUSTER_NAMESPACE }}.svc.cluster.local
+  bucketName: {{ .CLUSTER_NAME }}
   port: 9000
   accessKeyID: MINIO_ACCESS_KEY
   secretAccessKey: MINIO_SECRET_KEY
 msgChannel:
   chanNamePrefix:
-    cluster: {{ .KB_CLUSTER_NAME }}
+    cluster: {{ .CLUSTER_NAME }}
   rocksmq: {}

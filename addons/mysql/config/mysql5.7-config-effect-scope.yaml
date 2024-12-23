@@ -336,6 +336,7 @@ staticParameters:
   - log_bin_basename
   - log_error
   - lower_case_file_system
+  - lower_case_table_names
   - max_digest_length
   - myisam_mmap_size
   - myisam_recover_options

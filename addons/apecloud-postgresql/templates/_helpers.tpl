@@ -161,6 +161,15 @@ roles:
     writable: false
     votable: false
 vars:
+  ## the postgres leader pod name which is dynamically selected, caution to use it
+  - name: POSTGRES_LEADER_POD_NAME
+    valueFrom:
+      componentVarRef:
+        compDef: {{ include "apecloud-postgresql-14.cmpdName" . }}
+        optional: true
+        podNamesForRole:
+          role: leader
+          option: Optional
   - name: POSTGRES_USER
     valueFrom:
       credentialVarRef:
@@ -175,7 +184,7 @@ vars:
         password: Required
   # env for syncer to initialize dcs
   # TODO: modify these env for syncer
-  - name: MY_CLUSTER_NAME
+  - name: CLUSTER_NAME
     valueFrom:
       clusterVarRef:
         clusterName: Required
@@ -220,20 +229,23 @@ lifecycleActions:
     exec:
       container: postgresql
       command:
-        - /tools/dbctl
-        - --config-path
-        - /tools/config/dbctl/components
-        - apecloud-postgresql
+        - /tools/syncerctl
         - getrole
+  switchover:
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - |
+          /tools/syncerctl switchover --primary "$POSTGRES_LEADER_POD_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
   memberLeave:
     exec:
       container: postgresql
       command:
-        - /tools/dbctl
-        - --config-path
-        - /tools/config/dbctl/components
-        - apecloud-postgresql
-        - leavemember
+        - /bin/sh
+        - -c
+        - |
+          /tools/syncerctl leave --instance "$KB_LEAVE_MEMBER_POD_NAME"
   accountProvision:
     exec:
       container: postgresql
@@ -258,22 +270,10 @@ runtime:
     - command:
         - sh
         - -c
-        - cp -r /bin/syncer /tools/
+        - cp -r /bin/syncer /bin/syncerctl /tools/
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
       imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
       name: init-syncer
-      volumeMounts:
-        - mountPath: /tools
-          name: tools
-    - command:
-        - cp
-        - -r
-        - /bin/dbctl
-        - /config
-        - /tools/
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
-      imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
-      name: init-dbctl
       volumeMounts:
         - mountPath: /tools
           name: tools

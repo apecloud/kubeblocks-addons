@@ -49,12 +49,12 @@ spec:
         - |
           {{- .Files.Get "scripts/member_leave.sh" | nindent 12 }}
         env:
-          - name: MY_POD_NAME
+          - name: POD_NAME
             valueFrom:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.name
-          - name: MY_POD_NAMESPACE
+          - name: POD_NAMESPACE
             valueFrom:
               fieldRef:
                 apiVersion: v1
@@ -62,9 +62,9 @@ spec:
           - name: RABBITMQ_USE_LONGNAME
             value: "true"
           - name: K8S_SERVICE_NAME
-            value: $(MY_CLUSTER_COMP_NAME)-headless
+            value: $(CLUSTER_COMPONENT_NAME)-headless
           - name: RABBITMQ_NODENAME
-            value: rabbit@$(MY_POD_NAME).$(K8S_SERVICE_NAME).$(MY_POD_NAMESPACE)
+            value: rabbit@$(POD_NAME).$(K8S_SERVICE_NAME).$(POD_NAMESPACE)
   runtime:
     containers:
       - name: rabbitmq
@@ -77,12 +77,12 @@ spec:
             chmod 400 /var/lib/rabbitmq/.erlang.cookie
             exec /opt/rabbitmq/sbin/rabbitmq-server
         env:
-        - name: MY_POD_NAME
+        - name: POD_NAME
           valueFrom:
             fieldRef:
               apiVersion: v1
               fieldPath: metadata.name
-        - name: MY_POD_NAMESPACE
+        - name: POD_NAMESPACE
           valueFrom:
             fieldRef:
               apiVersion: v1
@@ -94,15 +94,15 @@ spec:
         - name: RABBITMQ_LOG_BASE
           value: {{ .Values.dataMountPath }}/logs
         - name: K8S_SERVICE_NAME
-          value: $(MY_CLUSTER_COMP_NAME)-headless
+          value: $(CLUSTER_COMPONENT_NAME)-headless
         - name: RABBITMQ_ENABLED_PLUGINS_FILE
           value: /etc/rabbitmq/enabled_plugins
         - name: RABBITMQ_USE_LONGNAME
           value: "true"
         - name: RABBITMQ_NODENAME
-          value: rabbit@$(MY_POD_NAME).$(K8S_SERVICE_NAME).$(MY_POD_NAMESPACE)
+          value: rabbit@$(POD_NAME).$(K8S_SERVICE_NAME).$(POD_NAMESPACE)
         - name: K8S_HOSTNAME_SUFFIX
-          value: .$(K8S_SERVICE_NAME).$(MY_POD_NAMESPACE)
+          value: .$(K8S_SERVICE_NAME).$(POD_NAMESPACE)
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         lifecycle:
@@ -150,6 +150,14 @@ spec:
             name: rabbitmq-config
             subPath: enabled_plugins
   vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
     - name: RABBITMQ_DEFAULT_USER
       valueFrom:
         credentialVarRef:
@@ -164,7 +172,7 @@ spec:
           name: root
           optional: false
           password: Required
-    - name: MY_CLUSTER_COMP_NAME
+    - name: CLUSTER_COMPONENT_NAME
       valueFrom:
         componentVarRef:
           optional: false

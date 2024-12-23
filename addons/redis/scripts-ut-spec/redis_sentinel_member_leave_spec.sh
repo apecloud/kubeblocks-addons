@@ -20,12 +20,12 @@ Describe "Redis Sentinel Member Leave Script Tests"
   Include $common_library_file
 
   setup() {
-    export KB_LEAVE_MEMBER_POD_IP="127.0.0.3"
+    export KB_LEAVE_MEMBER_POD_FQDN="127.0.0.3"
     export KB_LEAVE_MEMBER_POD_NAME="sentinel-2"
     export KB_MEMBER_ADDRESSES="sentinel-0.redis-sentinel-headless:26379,sentinel-1.redis-sentinel-headless:26379,sentinel-2.redis-sentinel-headless:26379"
     export SENTINEL_PASSWORD="sentinel_password"
     sentinel_leave_member_name=""
-    sentinel_leave_member_ip=""
+    sentinel_leave_member_fqdn=""
     sentinel_pod_list=()
     # set ut_mode to true to hack control flow in the script
     ut_mode="true"
@@ -33,12 +33,12 @@ Describe "Redis Sentinel Member Leave Script Tests"
   BeforeAll "setup"
 
   cleanup() {
-    unset KB_LEAVE_MEMBER_POD_IP
+    unset KB_LEAVE_MEMBER_POD_FQDN
     unset KB_LEAVE_MEMBER_POD_NAME
     unset KB_MEMBER_ADDRESSES
     unset SENTINEL_PASSWORD
     unset sentinel_leave_member_name
-    unset sentinel_leave_member_ip
+    unset sentinel_leave_member_fqdn
     unset sentinel_pod_list
     rm -f $common_library_file;
   }
@@ -48,7 +48,7 @@ Describe "Redis Sentinel Member Leave Script Tests"
     It "correctly sets the sentinel leave member details and populates the sentinel pod list"
       When call redis_sentinel_member_get
       The variable sentinel_leave_member_name should eq "sentinel-2"
-      The variable sentinel_leave_member_ip should eq "127.0.0.3"
+      The variable sentinel_leave_member_fqdn should eq "127.0.0.3"
 
       The variable sentinel_pod_list[0] should eq "sentinel-0.redis-sentinel-headless:26379"
       The variable sentinel_pod_list[1] should eq "sentinel-1.redis-sentinel-headless:26379"

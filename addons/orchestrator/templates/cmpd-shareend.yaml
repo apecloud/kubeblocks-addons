@@ -20,8 +20,24 @@ spec:
       serviceRefDeclarationSpecs:
         - serviceKind: mysql
           serviceVersion: "^*"
-
   vars:
+    - name: COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: CLUSTER_UID
+      valueFrom:
+        clusterVarRef:
+          clusterUID: Required
     - name: META_MYSQL_PORT
       valueFrom:
         serviceRefVarRef:
@@ -42,7 +58,6 @@ spec:
         serviceRefVarRef:
           name: metadb
           password: Required
-
   runtime:
     initContainers:
       - name: init-meta-database

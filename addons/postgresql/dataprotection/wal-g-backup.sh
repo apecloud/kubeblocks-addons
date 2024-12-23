@@ -49,7 +49,7 @@ echo "Full backup using WAL-G: DONE"
 
 set +e
 echo "switch wal log"
-PSQL="psql -h ${KB_CLUSTER_NAME}-${KB_COMP_NAME} -U ${DP_DB_USER} -d postgres"
+PSQL="psql -h ${CLUSTER_NAME}-${POSTGRES_COMPONENT_NAME} -U ${DP_DB_USER} -d postgres"
 ${PSQL} -c "select pg_switch_wal();"
 
 # 2. get backup name of the wal-g

@@ -126,17 +126,22 @@ spec:
           - --
           - /scripts/replicaset-setup.sh
         env:
-          - name: SYNCER_POD_NAME
+          - name: POD_NAME
             valueFrom:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.name
-          - name: SYNCER_POD_UID
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: POD_UID
             valueFrom:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.uid
-          - name: SYNCER_POD_IP
+          - name: POD_IP
             valueFrom:
               fieldRef:
                 apiVersion: v1
@@ -172,6 +177,24 @@ spec:
           type: DirectoryOrCreate
       {{- end }}
   vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          shortName: Required
+    - name: CLUSTER_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
     - name: MONGODB_USER
       valueFrom:
         credentialVarRef:

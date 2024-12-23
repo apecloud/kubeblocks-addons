@@ -1,0 +1,20 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: {{ include "tdengine.cmpvName" . }}
+  labels:
+    {{- include "tdengine.labels" . | nindent 4 }}
+  annotations:
+    {{- include "tdengine.apiVersion" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - compDefs:
+        - {{ include "tdengine.cmpdRegexPattern" . }}
+      releases:
+        - 3.0.5
+  releases:
+    - name: 3.0.5
+      changes:
+      serviceVersion: 3.0.5
+      images:
+        tdengine: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:3.0.5.0

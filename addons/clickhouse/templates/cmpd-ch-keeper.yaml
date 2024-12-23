@@ -160,7 +160,7 @@ spec:
   volumes:
     - name: data
   tls:
-    volumeName: tls 
+    volumeName: tls
     mountPath: /etc/pki/tls
     caFile: ca.pem
     certFile: cert.pem

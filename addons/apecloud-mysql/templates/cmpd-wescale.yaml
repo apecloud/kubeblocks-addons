@@ -71,6 +71,11 @@ spec:
             value: "/tmp/mysql.sock"
           - name: CLUSTER_DOMAIN
             value: {{ .Values.clusterDomain }}
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
         command: ["/scripts/vtgate.sh"]
         volumeMounts:
           - name: scripts
@@ -83,6 +88,18 @@ spec:
     scrapePath: /metrics
     scrapePort: webport
   vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: CLUSTER_UID
+      valueFrom:
+        clusterVarRef:
+          clusterUID: Required
     - name: MYSQL_USER
       valueFrom:
         credentialVarRef:
@@ -95,7 +112,7 @@ spec:
         credentialVarRef:
           compDef: {{ include "apecloud-mysql.cmpdNameApecloudMySQLPrefix" . }}
           name: root
-          optional: false 
+          optional: false
           password: Required
     - name: SERVICE_ETCD_ENDPOINT
       valueFrom:
@@ -115,13 +132,23 @@ spec:
           compDef: {{ .Values.etcd.etcdCmpdName }}
           name: headless
           optional: true
-          port: 
+          port:
             name: client
             option: Optional
     - name: TLS_ENABLED
       valueFrom:
         tlsVarRef:
           enabled: Optional
+    - name: COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          shortName: Required
+    - name: CLUSTER_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
   tls:
     volumeName: tls
     mountPath: /etc/pki/tls

@@ -12,12 +12,7 @@ image:
   debug: false
   syncer:
     repository: apecloud/syncer
-    tag: "0.3.6"
-
-  # refer: https://github.com/apecloud/dbctl/blob/main/docker/Dockerfile
-  dbctl:
-    repository: apecloud/dbctl
-    tag: "0.1.6"
+    tag: "0.4.0"
 
 dataMountPath: /postgresql/volume_data
 confMountPath: /postgresql/mount_conf

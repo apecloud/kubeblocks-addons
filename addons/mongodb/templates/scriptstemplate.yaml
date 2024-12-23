@@ -9,8 +9,8 @@ data:
     #!/bin/sh
     
     PORT=27018 
-    CONFIG_SVR_NAME=$KB_CLUSTER_NAME"-configsvr"
-    DOMAIN=$CONFIG_SVR_NAME"-headless."$KB_NAMESPACE".svc.cluster.local"
+    CONFIG_SVR_NAME=$CLUSTER_NAME"-configsvr"
+    DOMAIN=$CONFIG_SVR_NAME"-headless."$CLUSTER_NAMESPACE".svc.cluster.local"
     mongos --bind_ip_all --configdb $CONFIG_SVR_NAME/$CONFIG_SVR_NAME"-0."$DOMAIN:$PORT,$CONFIG_SVR_NAME"-1."$DOMAIN:$PORT,$CONFIG_SVR_NAME"-2."$DOMAIN:$PORT
   replicaset-setup.sh: |-
     #!/bin/sh

@@ -43,7 +43,7 @@ register_first_mysql_instance() {
   IFS=',' read -r -a replicas <<< "${MYSQL_POD_FQDN_LIST}"
   fqdn_name=${replicas[0]}
   last_digit=${fqdn_name##*-}
-  first_mysql_instance=${KB_CLUSTER_COMP_NAME}-mysql-${last_digit}.${KB_NAMESPACE}
+  first_mysql_instance=${CLUSTER_COMPONENT_NAME}-mysql-${last_digit}.${CLUSTER_NAMESPACE}
   register_to_orchestrator "$first_mysql_instance"
 
   echo "Initialization script completed！"
