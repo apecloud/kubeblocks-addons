@@ -1,0 +1,79 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "wesql.cmpdNameWeSQLServer" . }}
+  labels:
+    {{- include "wesql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "wesql.annotations" . | nindent 4 }}
+spec:
+  {{- include "wesql.spec.common" . | nindent 2 }}
+  configs:
+    - name: wesql-server-config
+      templateRef: {{ include "wesql.configTplName" . }}
+      constraintRef: {{ include "wesql.configConstraintName" . }}
+      volumeName: wesql-server-config
+      namespace: {{ .Release.Namespace }}
+      reRenderResourceTypes:
+        - vscale
+    - name: vttablet-config
+      templateRef: {{ include "wesql.configTplVttabletName" . }}
+      constraintRef: {{ include "wesql.configConstraintVttabletName" . }}
+      volumeName: wescale-config
+      namespace: {{ .Release.Namespace }}
+  runtime:
+    initContainers:
+    - command:
+      - bash
+      - -c
+      - |
+        cp /usr/lib/mysql/plugin/ {{ .Values.mysqlConfigs.dataMountPath }}/plugin -r
+      imagePullPolicy: IfNotPresent
+      name: init-data
+      volumeMounts:
+        - mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
+          name: data
+    - command:
+      - cp
+      - -r
+      - /bin/syncer
+      - /bin/syncerctl
+      - /tools/
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+      imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+      name: init-syncer
+      volumeMounts:
+        - mountPath: /tools
+          name: tools
+    - command:
+      - cp
+      - -r
+      - /bin/dbctl
+      - /config
+      - /tools/
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
+      imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+      name: init-dbctl
+      volumeMounts:
+        - mountPath: /tools
+          name: tools
+    containers:
+      - name: wesql-server
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command: 
+          - syncer
+          - --port
+          - "3601"
+          - --
+          - bash
+          - -c
+          - |
+            cp {{ .Values.mysqlConfigs.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
+            /scripts/setup.sh
+        {{- include "wesql.spec.runtime.wesql-server" . | nindent 8 }}
+      - name: vtablet
+        {{- include "wesql.spec.runtime.vtablet" . |  nindent 8 }}
+      - name: mysql-exporter
+        {{- include "wesql.spec.runtime.exporter" . | nindent 8 }}
+    volumes:
+      {{- include "wesql.spec.runtime.volumes" . | nindent 4 }}

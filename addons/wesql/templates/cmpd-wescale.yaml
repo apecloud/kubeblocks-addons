@@ -1,0 +1,130 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "wesql.cmpdNameWeScale" . }}
+  labels:
+    {{- include "wesql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "wesql.annotations" . | nindent 4 }}
+spec:
+  provider: wesql.io
+  description: WeScale is a Modern MySQL proxy that supports read-write-split, read-after-write-consistency, load balancing and OnlineDDL.
+  serviceKind: wescale
+  serviceVersion: "0.3.8"
+  serviceRefDeclarations:
+    - name: etcd
+      serviceRefDeclarationSpecs:
+        - serviceKind: etcd
+          serviceVersion: "^*"
+      optional: true
+  scripts:
+    - name: wesql-scripts
+      templateRef: {{ include "wesql.cmScriptsName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  logConfigs:
+    {{- range $name,$pattern := .Values.vtgateLogConfigs }}
+    - name: {{ $name }}
+      filePathPattern: {{ $pattern }}
+    {{- end }}
+  configs:
+    - name: vtgate-config
+      templateRef: {{ include "wesql.configTplVtgateName" . }}
+      constraintRef: {{ include "wesql.configConstraintVtgateName" . }}
+      volumeName: vtgate-config
+      namespace: {{ .Release.Namespace }}
+  services:
+  - name: vtgate
+    spec:
+      ports:
+        - name: serverport
+          port: 15306
+          targetPort: serverport
+  runtime:
+    volumes:
+      - name: vtgate-log
+        emptyDir: { }
+    containers:
+      - name: vtgate
+        image: {{ .Values.wesqlscale.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
+        imagePullPolicy: IfNotPresent
+        ports:
+          - containerPort: 15001
+            name: webport
+          - containerPort: 15991
+            name: grpcport
+          - containerPort: 15306
+            name: serverport
+        env:
+          - name: CELL
+            value: {{ .Values.wesqlscale.cell | default "zone1" | quote }}
+          - name: SERVICE_PORT
+            value: "15001"
+          - name: VTGATE_MYSQL_PORT
+            value: "15306"
+          - name: VTGATE_WEB_PORT
+            value: "15001"
+          - name: VTGATE_GRPC_PORT
+            value: "15991"
+          - name: MYSQL_UNIX_PORT
+            value: "/tmp/mysql.sock"
+          - name: CLUSTER_DOMAIN
+            value: {{ .Values.clusterDomain }}
+        command: ["/scripts/vtgate.sh"]
+        volumeMounts:
+          - name: scripts
+            mountPath: /scripts
+          - name: vtgate-config
+            mountPath: /conf
+          - name: vtgate-log
+            mountPath: /vtdataroot
+  exporter:
+    scrapePath: /metrics
+    scrapePort: webport
+  vars:
+    - name: MYSQL_USER
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "wesql.cmpdNameWeSQLServerPrefix" . }}
+          name: root
+          optional: false
+          username: Required
+    - name: MYSQL_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "wesql.cmpdNameWeSQLServerPrefix" . }}
+          name: root
+          optional: false 
+          password: Required
+    - name: SERVICE_ETCD_ENDPOINT
+      valueFrom:
+        serviceRefVarRef:
+          name: etcd
+          endpoint: Required
+          optional: true
+    - name: LOCAL_ETCD_POD_FQDN
+      valueFrom:
+        componentVarRef:
+          compDef: {{ .Values.etcd.etcdCmpdName }}
+          optional: true
+          podFQDNs: Required
+    - name: LOCAL_ETCD_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ .Values.etcd.etcdCmpdName }}
+          name: headless
+          optional: true
+          port: 
+            name: client
+            option: Optional
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Optional
+  tls:
+    volumeName: tls
+    mountPath: /etc/pki/tls
+    caFile: ca.pem
+    certFile: cert.pem
+    keyFile: key.pem
