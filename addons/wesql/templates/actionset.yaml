@@ -1,0 +1,72 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: {{ include "wesql.xtrabackupActionSetName" . }}
+  labels:
+    clusterdefinition.kubeblocks.io/name: wesql
+spec:
+  backupType: Full
+  env:
+    - name: DATA_DIR
+      value: {{ .Values.mysqlConfigs.dataDir }}
+    - name: LOG_BIN
+      value: {{ .Values.mysqlConfigs.logBin }}
+    - name: DP_DB_PORT
+      value: "3306"
+    - name: DATA_MOUNT_DIR
+      value: {{ .Values.mysqlConfigs.dataMountPath }}
+    - name: SIGNAL_FILE
+      value: .xtrabackup_restore_new_cluster
+  backup:
+    preBackup: []
+    postBackup: []
+    backupData:
+      image: {{ include "wesql.bakcupToolImage" . }}
+      runOnTargetPodNode: true
+      command:
+      - sh
+      - -c
+      - |
+        {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+  restore:
+    prepareData:
+      image: {{ include "wesql.bakcupToolImage" . }}
+      command:
+      - sh
+      - -c
+      - |
+        {{- .Files.Get "dataprotection/restore.sh" | nindent 8 }}
+    postReady: []
+---
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: {{ include "wesql.vsActionSetName" . }}
+  labels:
+    clusterdefinition.kubeblocks.io/name: wesql
+spec:
+  backupType: Full
+  env:
+  - name: DATA_DIR
+    value: {{ .Values.mysqlConfigs.dataDir }}
+  - name: DATA_MOUNT_DIR
+    value: {{ .Values.mysqlConfigs.dataMountPath }}
+  - name: SIGNAL_FILE
+    value: .restore_new_cluster
+  restore:
+    prepareData:
+      image: {{ include "wesql.bakcupToolImage" . }}
+      command:
+      - sh
+      - -c
+      - |
+        touch ${DATA_DIR}/${SIGNAL_FILE};
+        # compatible with binlog of 0.6/0.5
+        binlog_dir=${DATA_MOUNT_DIR}/binlog
+        mkdir $binlog_dir
+        cp ${DATA_DIR}/mysql-bin.* ${binlog_dir}
+        sync
+    postReady: []

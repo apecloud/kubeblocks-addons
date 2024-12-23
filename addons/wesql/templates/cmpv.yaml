@@ -1,0 +1,47 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: wesql
+  labels:
+    {{- include "wesql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "wesql.apiVersion" . | nindent 4 }}
+spec:
+  releases:
+  - name: wesql-8.0.35
+    serviceVersion: "8.0.35"
+    images:
+      init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
+      wesql-server: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.35-0.1.0_beta3.38
+      mysql-exporter: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
+      vtablet: {{ .Values.wesqlscale.image.registry |  default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.wesqlscale.image.repository }}:0.3.8
+  compatibilityRules:
+  - releases: [wesql-8.0.35]
+    compDefs:
+    - {{ include "wesql.cmpdNameWeSQLServerPrefix" . }}
+---
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: wescale
+  labels:
+    {{- include "wesql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "wesql.apiVersion" . | nindent 4 }}
+spec:
+  releases:
+  - name: wescale-ctrl-0.3.8
+    serviceVersion: "0.3.8"
+    images:
+      vtctld: &wescale  {{ .Values.wesqlscale.image.registry |  default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.wesqlscale.image.repository }}:0.3.8
+  - name: wescale-0.3.8
+    serviceVersion: "0.3.8"
+    images:
+      vtgate: *wescale
+  compatibilityRules:
+  - releases: [wescale-ctrl-0.3.8]
+    compDefs:
+    - {{ include "wesql.cmpdNameWeScaleCtrlPrefix" . }}
+  - releases: [wescale-0.3.8]
+    compDefs:
+    - {{ include "wesql.cmpdNameWeScalePrefix" . }}

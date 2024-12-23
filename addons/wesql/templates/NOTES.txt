@@ -1,0 +1,2 @@
+Connect to WeSQL by using the following command:
+mysql -h <wesql host> -u <wesql user> -p<wesql password>

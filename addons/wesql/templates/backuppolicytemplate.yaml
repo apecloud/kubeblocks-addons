@@ -1,0 +1,40 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: {{ include "wesql.backupPolicyTemplateName" . }}
+  labels:
+    {{- include "wesql.labels" . | nindent 4 }}
+spec:
+  serviceKind: WeSQLServer
+  compDefs:
+   - {{ include "wesql.cmpdNameWeSQLServerPrefix" . }}
+  target:
+    role: follower
+    fallbackRole: leader
+    account: root
+  backupMethods:
+    - name: xtrabackup
+      snapshotVolumes: false
+      actionSetName: {{ include "wesql.xtrabackupActionSetName" . }}
+      targetVolumes:
+        volumeMounts:
+        - name: data
+          mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
+    - name: volume-snapshot
+      snapshotVolumes: true
+      actionSetName: {{ include "wesql.vsActionSetName" . }}
+      targetVolumes:
+        volumes:
+        - data
+        volumeMounts:
+        - name: data
+          mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
+  schedules:
+    - backupMethod: xtrabackup
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d
+    - backupMethod: volume-snapshot
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d
