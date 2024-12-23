@@ -1,5 +1,5 @@
 #!/bin/bash
-REPORT_HOST=${COMPONENT_NAME}-mysql-${POD_NAME##*-}
+REPORT_HOST=${CLUSTER_COMPONENT_NAME}-mysql-${POD_NAME##*-}
 SERVICE_ID=$((${POD_NAME##*-} + 1))
 if [ "${MYSQL_MAJOR}" = '5.7' ]; then
   docker-entrypoint.sh mysqld --server-id $SERVICE_ID --report-host ${REPORT_HOST} \
