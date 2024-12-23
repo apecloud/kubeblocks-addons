@@ -367,9 +367,9 @@ command:
   - |
     cp {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
     chown -R mysql:root {{ .Values.dataMountPath }}
-    skip_slave_start="OFF"
+    export skip_slave_start="OFF"
     if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
-      skip_slave_start="ON"
+      export skip_slave_start="ON"
     fi
     /scripts/mysql-entrypoint.sh
 volumeMounts:
