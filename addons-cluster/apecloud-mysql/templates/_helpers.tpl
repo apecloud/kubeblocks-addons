@@ -116,4 +116,13 @@ schedulingPolicy:
             app.kubernetes.io/instance: {{ include "kblib.clusterName" . }}
             apps.kubeblocks.io/component-name: mysql
         topologyKey: kubernetes.io/hostname
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kubernetes.io/hostname
+            operator: In
+            values:
+            - k3d-multi-agent-2
+
 {{- end -}}

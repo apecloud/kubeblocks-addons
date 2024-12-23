@@ -20,6 +20,14 @@ spec:
         volumeMounts:
         - name: data
           mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
+    - name: xtrabackup-inc
+      compatibleMethod: xtrabackup
+      snapshotVolumes: false
+      actionSetName: {{ include "apecloud-mysql.xtrabackupIncActionSetName" . }}
+      targetVolumes:
+        volumeMounts:
+        - name: data
+          mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
     - name: volume-snapshot
       snapshotVolumes: true
       actionSetName: {{ include "apecloud-mysql.vsActionSetName" . }}
@@ -33,6 +41,10 @@ spec:
     - backupMethod: xtrabackup
       enabled: false
       cronExpression: "0 18 * * *"
+      retentionPeriod: 7d
+    - backupMethod: xtrabackup-inc
+      enabled: false
+      cronExpression: "0 19 * * *"
       retentionPeriod: 7d
     - backupMethod: volume-snapshot
       enabled: false
