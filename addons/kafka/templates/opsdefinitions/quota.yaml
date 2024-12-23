@@ -62,7 +62,7 @@ spec:
                 - |
                   set -e
                   SERVERS=()
-                  for i in $(seq 0 $((${KB_COMP_REPLICAS}-1))); do
+                  for i in $(seq 0 $((${COMPONENT_REPLICAS}-1))); do
                     SERVERS+=("${KB_COMP_SVC_NAME}-${i}:${KB_COMP_SVC_PORT_BROKER}")
                   done
                   KB_CONNECT_ENDPOINT=$(printf "%s," "${SERVERS[@]}")

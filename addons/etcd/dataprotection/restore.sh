@@ -12,7 +12,7 @@ if [ "$(datasafed list "${remote_backup_file}")" = "${remote_backup_file}" ]; th
 fi
 
 backup_file=${restore_dir}/${DP_BACKUP_NAME}
-endpoint=${DP_DB_HOST}.${KB_NAMESPACE}.svc${CLUSTER_DOMAIN}:2379
+endpoint=${DP_DB_HOST}.${CLUSTER_NAMESPACE}.svc${CLUSTER_DOMAIN}:2379
 
 if check_backup_file "${backup_file}"; then
   echo "Backup file is valid"

@@ -26,6 +26,10 @@ spec:
       - mysql
       - wescale-ctrl
       - wescale
+      terminate:
+      - wescale
+      - wescale-ctrl
+      - mysql
   - name: apecloud-mysql-proxy-etcd
     components:
     - name: mysql
@@ -42,3 +46,8 @@ spec:
       - mysql
       - wescale-ctrl
       - wescale
+      terminate:
+      - wescale
+      - wescale-ctrl
+      - mysql
+      - etcd

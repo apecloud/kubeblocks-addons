@@ -322,7 +322,6 @@ kubectl port-forward svc/rabbitmq-cluster-rabbitmq 15672:15672
 
 Then log in to the RabbitMQ Management console at `http://<localhost>:<port>/` with the user and password.
 
-
 The user and password can be found in the cluster secrets named after `<clusterName>-<cmpName>-account-<accountName>`. In this case, the secret name is `rabbitmq-cluster-rabbitmq-account-root`.
 
 ```bash

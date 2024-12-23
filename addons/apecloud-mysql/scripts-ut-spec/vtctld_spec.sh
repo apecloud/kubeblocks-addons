@@ -9,8 +9,8 @@ Describe "vtctld.sh script tests"
     export CELL="zone1"
     export VTCTLD_GRPC_PORT="15999"
     export VTCTLD_WEB_PORT="15000"
-    export KB_NAMESPACE="namespace"
-    export KB_CLUSTER_NAME="cluster"
+    export CLUSTER_NAMESPACE="namespace"
+    export CLUSTER_NAME="cluster"
     export VTDATAROOT="/var/lib/vitess"
   }
   Before "setup"
@@ -22,8 +22,8 @@ Describe "vtctld.sh script tests"
     unset CELL
     unset VTCTLD_GRPC_PORT
     unset VTCTLD_WEB_PORT
-    unset KB_NAMESPACE
-    unset KB_CLUSTER_NAME
+    unset CLUSTER_NAMESPACE
+    unset CLUSTER_NAME
     unset VTDATAROOT
   }
   After "cleanup"

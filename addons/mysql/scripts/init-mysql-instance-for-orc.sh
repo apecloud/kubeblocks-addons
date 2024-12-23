@@ -28,7 +28,7 @@ topology_password="$ORC_TOPOLOGY_PASSWORD"
 
 # create orchestrator user in mysql
 create_mysql_user() {
-  local service_name=$(echo "${KB_CLUSTER_COMP_NAME}_MYSQL_${i}" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+  local service_name=$(echo "${CLUSTER_COMPONENT_NAME}_MYSQL_${i}" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
 
   mysql_note "Create MySQL User and Grant Permissions..."
 
@@ -63,7 +63,7 @@ EOF
   mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD << EOF
 USE kb_orc_meta_cluster;
 INSERT INTO kb_orc_meta_cluster (anchor,host_name,cluster_name, cluster_domain, data_center)
-VALUES (1, '$service_name', '$KB_CLUSTER_NAME', '', '')
+VALUES (1, '$service_name', '$CLUSTER_NAME', '', '')
 ON DUPLICATE KEY UPDATE
     cluster_name = VALUES(cluster_name),
     cluster_domain = VALUES(cluster_domain),
@@ -104,12 +104,12 @@ setup_master_slave() {
 
   master_fqdn=${replicas[0]}
   master_last_digit=${master_fqdn##*-}
-  master_host=$(echo "${KB_CLUSTER_COMP_NAME}_MYSQL_${master_last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+  master_host=$(echo "${CLUSTER_COMPONENT_NAME}_MYSQL_${master_last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
   master_from_orc=""
   get_master_from_orc
 
-  self_last_digit=${SYNCER_POD_NAME##*-}
-  self_service_name=$(echo "${KB_CLUSTER_COMP_NAME}_MYSQL_${self_last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+  self_last_digit=${POD_NAME##*-}
+  self_service_name=$(echo "${CLUSTER_COMPONENT_NAME}_MYSQL_${self_last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
 
   # If the cluster is already registered to the Orchestrator and the Master of the cluster is itself, then no action is required.
   if [ "$master_from_orc" == "${self_service_name}" ]; then
@@ -151,7 +151,7 @@ get_master_from_orc() {
       return 0
     fi
 
-    topology_info=$(/scripts/orchestrator-client -c topology -i $KB_CLUSTER_NAME) || true
+    topology_info=$(/scripts/orchestrator-client -c topology -i $CLUSTER_NAME) || true
     if [[ $topology_info == "" ]]; then
       return 0
     fi
@@ -202,7 +202,22 @@ change_master() {
   username=$mysql_username
   password=$mysql_password
 
-  mysql -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" << EOF
+  if [[ "${MYSQL_MAJOR}" == "5.7" ]]; then
+    mysql -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" << EOF
+SET GLOBAL READ_ONLY=1;
+STOP SLAVE;
+CHANGE MASTER TO
+MASTER_AUTO_POSITION=1,
+MASTER_CONNECT_RETRY=1,
+MASTER_RETRY_COUNT=86400,
+MASTER_HOST='$master_host',
+MASTER_PORT=$master_port,
+MASTER_USER='$MYSQL_ROOT_USER',
+MASTER_PASSWORD='$MYSQL_ROOT_PASSWORD';
+START SLAVE;
+EOF
+  else
+    mysql -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" << EOF
 SET GLOBAL READ_ONLY=1;
 STOP SLAVE;
 CHANGE MASTER TO
@@ -216,6 +231,7 @@ MASTER_USER='$MYSQL_ROOT_USER',
 MASTER_PASSWORD='$MYSQL_ROOT_PASSWORD';
 START SLAVE;
 EOF
+  fi
   mysql_note "CHANGE MASTER successful for $master_host."
 
 }

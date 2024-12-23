@@ -13,7 +13,7 @@ Describe "Mongodb Startup Script Tests"
 
   init() {
     DATA_VOLUME="./mongodb_data"
-    SYNCER_POD_NAME="cluster-mongodb-0"
+    POD_NAME="cluster-mongodb-0"
     START_SUCCESS_FILE=$DATA_VOLUME/success
   }
   BeforeAll "init"

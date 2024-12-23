@@ -151,20 +151,16 @@ lifecycleActions:
     exec:
       container: mysql
       command:
-        - /tools/dbctl
-        - --config-path
-        - /tools/config/dbctl/components
-        - wesql
+        - /tools/syncerctl
         - getrole
   memberLeave:
     exec:
       container: mysql
       command:
-        - /tools/dbctl
-        - --config-path
-        - /tools/config/dbctl/components
-        -  wesql
-        - leavemember
+        - /bin/sh
+        - -c
+        - |
+          /tools/syncerctl leave --instance "$KB_LEAVE_MEMBER_POD_NAME"
   switchover:
     exec:
       command:
@@ -194,7 +190,7 @@ lifecycleActions:
           eval statement=\"${KB_ACCOUNT_STATEMENT}\"
           mysql -u${MYSQL_ROOT_USER} -p${MYSQL_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement}"
       targetPodSelector: Role
-      matchingKey: leader 
+      matchingKey: leader
   dataDump:
     exec:
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.30-5.beta3.20240330.g94d1caf.15
@@ -285,29 +281,38 @@ vars:
         compDef: {{ .Values.etcd.etcdCmpdName }}
         name: headless
         optional: true
-        port: 
+        port:
           name: client
           option: Optional
-  - name: MY_POD_LIST
+  - name: COMPONENT_POD_LIST
     valueFrom:
       componentVarRef:
         optional: false
         podNames: Required
-  - name: MY_COMP_NAME
+  - name: COMPONENT_NAME
     valueFrom:
       componentVarRef:
         optional: false
         shortName: Required
-  - name: MY_COMP_REPLICAS
+  - name: COMPONENT_REPLICAS
     valueFrom:
       componentVarRef:
         optional: false
         replicas: Required
-  - name: MY_CLUSTER_NAME
+  - name: CLUSTER_COMPONENT_NAME
+    valueFrom:
+      componentVarRef:
+        optional: false
+        componentName: Required
+  - name: CLUSTER_NAME
     valueFrom:
       clusterVarRef:
         clusterName: Required
-  - name: MY_CLUSTER_UID
+  - name: CLUSTER_NAMESPACE
+    valueFrom:
+      clusterVarRef:
+        namespace: Required
+  - name: CLUSTER_UID
     valueFrom:
       clusterVarRef:
         clusterUID: Required
@@ -356,22 +361,27 @@ env:
   - name: KB_MYSQL_CONF_FILE
     value: "/opt/mysql/my.cnf"
   - name: KB_MYSQL_CLUSTER_UID
-    value: $(KB_CLUSTER_UID)
+    value: $(CLUSTER_UID)
   - name: KB_MYSQL_N
-    value: $(KB_COMP_REPLICAS)
+    value: $(COMPONENT_REPLICAS)
   - name: CLUSTER_DOMAIN
     value: {{ .Values.clusterDomain }}
-  - name: MY_POD_NAME
+  - name: POD_NAMESPACE
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.namespace
+  - name: POD_NAME
     valueFrom:
       fieldRef:
         apiVersion: v1
         fieldPath: metadata.name
-  - name: MY_POD_UID
+  - name: POD_UID
     valueFrom:
       fieldRef:
         apiVersion: v1
         fieldPath: metadata.uid
-  - name: MY_POD_IP
+  - name: POD_IP
     valueFrom:
       fieldRef:
         apiVersion: v1
@@ -415,11 +425,31 @@ env:
     value: "15100"
   - name: VTTABLET_GRPC_PORT
   - name: VTCTLD_HOST
-    value: "$(KB_CLUSTER_NAME)-wescale-ctrl-headless"
+    value: "$(CLUSTER_NAME)-wescale-ctrl-headless"
   - name: VTCTLD_WEB_PORT
     value: "15000"
   - name: SERVICE_PORT
     value: "$(VTTABLET_PORT)"
+  - name: POD_NAMESPACE
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.namespace
+  - name: POD_NAME
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.name
+  - name: POD_UID
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.uid
+  - name: POD_IP
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: status.podIP
 command: ["/scripts/vttablet.sh"]
 volumeMounts:
   - name: scripts
