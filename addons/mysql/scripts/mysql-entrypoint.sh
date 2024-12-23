@@ -8,14 +8,14 @@ if [ "${MYSQL_MAJOR}" = '5.7' ]; then
     --plugin-load-add=rpl_semi_sync_slave=semisync_slave.so \
     --plugin-load-add=audit_log=audit_log.so \
     --log-bin=/var/lib/mysql/binlog/${POD_NAME}-bin \
-    --skip-slave-start=$skip_slave_start
+    --skip-slave-start=ON
 elif [ "${MYSQL_MAJOR}" = '8.0' ]; then
   docker-entrypoint.sh mysqld --server-id $SERVICE_ID --report-host ${REPORT_HOST} \
     --plugin-load-add=rpl_semi_sync_source=semisync_source.so \
     --plugin-load-add=rpl_semi_sync_replica=semisync_replica.so \
     --plugin-load-add=audit_log=audit_log.so \
     --log-bin=/var/lib/mysql/binlog/${POD_NAME}-bin \
-    --skip-slave-start=$skip_slave_start
+    --skip-slave-start=ON
 else
   echo "Unsupported MySQL version"
   exit 1

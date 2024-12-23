@@ -56,17 +56,13 @@ spec:
           - |
             mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog}
             chown -R mysql:root {{ .Values.dataMountPath }}
-            skip_slave_start="OFF"
-            export LD_PRELOAD=/tools/lib/libjemalloc.so.2 
-            if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
-              skip_slave_start="ON"
-            fi
+            export LD_PRELOAD=/tools/lib/libjemalloc.so.2
             SERVICE_ID=$((${POD_NAME##*-} + 1))
             docker-entrypoint.sh mysqld --server-id $SERVICE_ID \
                --plugin-load-add=rpl_semi_sync_source=semisync_source.so \
                --plugin-load-add=rpl_semi_sync_replica=semisync_replica.so \
                --log-bin=/var/lib/mysql/binlog/${POD_NAME}-bin \
-               --skip-slave-start=$skip_slave_start
+               --skip-slave-start=ON
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
