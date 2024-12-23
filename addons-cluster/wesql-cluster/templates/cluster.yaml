@@ -1,0 +1,29 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{ include "kblib.clusterLabels" . | nindent 4 }}
+spec:
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  clusterDef: wesql # ref clusterdefinition.name
+  topology: {{ .Values.topology }}
+  componentSpecs:
+    - name: wesql-server
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+      {{- include "wesql-cluster.schedulingPolicy" . | indent 6 }}
+      {{- if eq .Values.topology "wesql-proxy" }}
+      serviceVersion: {{ .Values.version }}
+      serviceRefs:
+        {{ include "wesql-cluster.serviceRef" . | indent 8 }}
+      {{- end }}
+      replicas: {{ .Values.replicas }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
+    {{- if ne .Values.topology "wesql" }}
+    {{- include "wesql-cluster.proxyComponents" . | indent 4 }}
+    {{- end }}
+    {{- if eq .Values.topology "wesql-proxy-etcd" }}
+    {{- include "wesql-cluster.etcdComponents" . | indent 4 }}
+    {{- end }}
