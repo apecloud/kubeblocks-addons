@@ -9,7 +9,7 @@ test || __() {
 }
 
 check_env_variables() {
-  local required_vars=("zookeeperServers" "POD_NAME" "clusterName" "webServiceUrl" "brokerServiceUrl")
+  local required_vars=("ZOOKEEPER_SERVERS" "POD_NAME" "clusterName" "webServiceUrl" "brokerServiceUrl")
   for var in "${required_vars[@]}"; do
     if [[ -z "${!var}" ]]; then
       echo "Error: $var environment variable is not set, Please set the $var environment variable and try again."
@@ -69,22 +69,32 @@ initialize_cluster_metadata() {
     --broker-service-url ${broker_service_url}
 }
 
+load_env_file() {
+  local pulsar_env_config="/opt/pulsar/conf/pulsar.env"
+
+  if [ -f "${pulsar_env_config}" ];then
+     source ${pulsar_env_config}
+  fi
+}
+
 init_broker() {
   check_env_variables
-  wait_for_zookeeper "$zookeeperServers"
+  wait_for_zookeeper "${ZOOKEEPER_SERVERS}"
+
+  load_env_file
 
   # only initialize the cluster if this is the first broker pod
   local idx=${POD_NAME##*-}
   if [ $idx -ne 0 ]; then
-    wait_for_cluster_metadata "$zookeeperServers" "$clusterName"
+    wait_for_cluster_metadata "${ZOOKEEPER_SERVERS}" "$clusterName"
     echo "Waiting for cluster initialize ready." && exit 0
   fi
 
-  if check_cluster_initialized "$zookeeperServers" "$clusterName"; then
+  if check_cluster_initialized "${ZOOKEEPER_SERVERS}" "$clusterName"; then
     echo "Cluster already initialized" && exit 0
   fi
 
-  initialize_cluster_metadata "$clusterName" "$zookeeperServers" "$webServiceUrl" "$brokerServiceUrl"
+  initialize_cluster_metadata "$clusterName" "${ZOOKEEPER_SERVERS}" "$webServiceUrl" "$brokerServiceUrl"
 }
 
 # This is magic for shellspec ut framework.

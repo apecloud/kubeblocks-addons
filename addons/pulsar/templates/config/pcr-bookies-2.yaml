@@ -1,0 +1,22 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParameterDrivenConfigRender
+metadata:
+  name: {{ include "pulsar2.bookiesPCRName" . }}
+  labels:
+    {{- include "pulsar.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "pulsar2.bookkeeperCmpdName" . }}
+  parametersDefs:
+    - {{ include "pulsar2.bookiesConfigConstraintName" . }}
+
+  configs:
+    - name: bookkeeper.conf
+      templateName: bookies-config
+      fileFormatConfig:
+        format: props-plus
+    - name: pulsar.env
+      templateName: bookies-config
+      fileFormatConfig:
+        format: dotenv
+      reRenderResourceTypes:
+        - vscale
