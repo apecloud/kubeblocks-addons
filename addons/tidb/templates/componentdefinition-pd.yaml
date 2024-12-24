@@ -78,9 +78,9 @@ spec:
           - |
             LEADER_NAME=$(/pd-ctl member | jq -r '.leader.name')
             if [ "$LEADER_NAME" == "$HOSTNAME" ]; then
-                echo "leader"
+                echo -n "leader"
             else
-                echo "follower"
+                echo -n "follower"
             fi
     memberLeave:
       exec:
