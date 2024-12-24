@@ -320,7 +320,7 @@ memberLeave:
         self_service_name=$(echo "${CLUSTER_COMPONENT_NAME}_mysql_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
         if [ "${self_service_name%%:*}" == "${master_from_orc%%:*}" ]; then
           /kubeblocks/orchestrator-client -c force-master-failover -i ${CLUSTER_NAME}.${CLUSTER_NAMESPACE}
-          local timeout=30
+          local timeout=15
           local start_time=$(date +%s)
           local current_time
           while true; do
@@ -336,6 +336,17 @@ memberLeave:
           done
         fi
         /kubeblocks/orchestrator-client -c reset-replica -i ${self_service_name}
+        /kubeblocks/orchestrator-client -c forget -i ${self_service_name}
+        res=$(/kubeblocks/orchestrator-client -c which-cluster-alias -i ${self_service_name})
+        local start_time=$(date +%s)
+        while [ "$res" == "" ]; do
+          current_time=$(date +%s)
+          if [ $((current_time - start_time)) -gt $timeout ]; then
+            break
+          fi
+          sleep 1
+          res=$(/kubeblocks/orchestrator-client -c instance -i ${self_service_name})
+        done
         /kubeblocks/orchestrator-client -c forget -i ${self_service_name}
 {{- end }}
 
