@@ -1,0 +1,11 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: {{ include "pulsar3.proxyConfigConstraintName" . }}
+  labels:
+    {{- include "pulsar.labels" . | nindent 4 }}
+spec:
+  fileName: proxy.conf
+  parametersSchema:
+    cue: |-
+      {{- .Files.Get "config/3.0.2/proxy-config-constraint.cue" | nindent 6 }}
