@@ -1,5 +1,5 @@
 apiVersion: parameters.kubeblocks.io/v1alpha1
-kind: ParameterDrivenConfigRender
+kind: ParamConfigRenderer
 metadata:
   name: {{ include "pulsar2.zookeeperPCRName" . }}
   labels:
@@ -9,11 +9,9 @@ spec:
 
   configs:
     - name: zookeeper.conf
-      templateName: zookeeper-config
       fileFormatConfig:
         format: props-plus
     - name: pulsar.env
-      templateName: zookeeper-config
       fileFormatConfig:
         format: dotenv
       reRenderResourceTypes:

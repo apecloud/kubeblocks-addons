@@ -1,5 +1,5 @@
 apiVersion: parameters.kubeblocks.io/v1alpha1
-kind: ParameterDrivenConfigRender
+kind: ParamConfigRenderer
 metadata:
   name: {{ include "pulsar3.bookiesPCRName" . }}
   labels:
@@ -11,11 +11,9 @@ spec:
 
   configs:
     - name: bookkeeper.conf
-      templateName: bookies-config
       fileFormatConfig:
         format: props-plus
     - name: pulsar.env
-      templateName: bookies-config
       fileFormatConfig:
         format: dotenv
       reRenderResourceTypes:
