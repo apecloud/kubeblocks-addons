@@ -1,12 +1,10 @@
-apiVersion: apps.kubeblocks.io/v1beta1
-kind: ConfigConstraint
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
 metadata:
-  name: {{ include "etcd3.configConstraint" . }}
+  name: {{ include "etcd3.paramsDefinition" . }}
   labels:
     {{- include "etcd.labels" . | nindent 4 }}
 spec:
-  fileFormatConfig:
-    format: yaml
   staticParameters:
     - name
     - data-dir
