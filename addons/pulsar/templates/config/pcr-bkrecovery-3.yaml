@@ -1,5 +1,5 @@
 apiVersion: parameters.kubeblocks.io/v1alpha1
-kind: ParameterDrivenConfigRender
+kind: ParamConfigRenderer
 metadata:
   name: {{ include "pulsar3.bkrecoveryPCRName" . }}
   labels:
@@ -9,7 +9,6 @@ spec:
 
   configs:
     - name: pulsar.env
-      templateName: bkrecovery-config
       fileFormatConfig:
         format: dotenv
       reRenderResourceTypes:

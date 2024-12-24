@@ -1,5 +1,5 @@
 apiVersion: parameters.kubeblocks.io/v1alpha1
-kind: ParameterDrivenConfigRender
+kind: ParamConfigRenderer
 metadata:
   name: {{ include "pulsar3.brokerPCRName" . }}
   labels:
@@ -11,11 +11,9 @@ spec:
 
   configs:
     - name: broker.conf
-      templateName: broker-config
       fileFormatConfig:
         format: props-plus
     - name: pulsar.env
-      templateName: broker-config
       fileFormatConfig:
         format: dotenv
       reRenderResourceTypes:
