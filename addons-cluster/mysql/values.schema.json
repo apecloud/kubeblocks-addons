@@ -77,7 +77,8 @@
       "enum": [
         "server",
         "server-with-proxy",
-        "server-with-orc"
+        "orc",
+        "orc-with-proxy"
       ]
     },
     "proxysql": {

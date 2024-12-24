@@ -63,7 +63,7 @@ EOF
   mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD << EOF
 USE kb_orc_meta_cluster;
 INSERT INTO kb_orc_meta_cluster (anchor,host_name,cluster_name, cluster_domain, data_center)
-VALUES (1, '$service_name', '$CLUSTER_NAME', '', '')
+VALUES (1, '$service_name', '${CLUSTER_NAME}.${CLUSTER_NAMESPACE}', '', '')
 ON DUPLICATE KEY UPDATE
     cluster_name = VALUES(cluster_name),
     cluster_domain = VALUES(cluster_domain),
@@ -104,12 +104,12 @@ setup_master_slave() {
 
   master_fqdn=${replicas[0]}
   master_last_digit=${master_fqdn##*-}
-  master_host=$(echo "${CLUSTER_COMPONENT_NAME}_MYSQL_${master_last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+  master_host=$(echo "${CLUSTER_COMPONENT_NAME}_MYSQL_${master_last_digit}.${CLUSTER_NAMESPACE}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
   master_from_orc=""
   get_master_from_orc
 
   self_last_digit=${POD_NAME##*-}
-  self_service_name=$(echo "${CLUSTER_COMPONENT_NAME}_MYSQL_${self_last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+  self_service_name=$(echo "${CLUSTER_COMPONENT_NAME}_MYSQL_${self_last_digit}.${CLUSTER_NAMESPACE}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
 
   # If the cluster is already registered to the Orchestrator and the Master of the cluster is itself, then no action is required.
   if [ "$master_from_orc" == "${self_service_name}" ]; then
@@ -151,7 +151,7 @@ get_master_from_orc() {
       return 0
     fi
 
-    topology_info=$(/scripts/orchestrator-client -c topology -i $CLUSTER_NAME) || true
+    topology_info=$(/scripts/orchestrator-client -c topology -i ${CLUSTER_NAME}.${CLUSTER_NAMESPACE}) || true
     if [[ $topology_info == "" ]]; then
       return 0
     fi

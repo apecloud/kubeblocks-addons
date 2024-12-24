@@ -285,7 +285,7 @@ roleProbe:
       - /bin/bash
       - -c
       - |
-        topology_info=$(/kubeblocks/orchestrator-client -c topology -i $CLUSTER_NAME) || true
+        topology_info=$(/kubeblocks/orchestrator-client -c topology -i ${CLUSTER_NAME}.${CLUSTER_NAMESPACE}) || true
         if [[ $topology_info == "" ]]; then
           echo -n "secondary"
           exit 0
@@ -302,7 +302,7 @@ roleProbe:
         address_port=$(echo "$first_line" | awk '{print $1}')
         master_from_orc="${address_port%:*}"
         last_digit=${KB_AGENT_POD_NAME##*-}
-        self_service_name=$(echo "${CLUSTER_COMPONENT_NAME}_mysql_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+        self_service_name=$(echo "${CLUSTER_COMPONENT_NAME}_mysql_${last_digit}.${CLUSTER_NAMESPACE}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
         if [ "$master_from_orc" == "${self_service_name}" ]; then
           echo -n "primary"
         else
@@ -315,12 +315,12 @@ memberLeave:
       - -c
       - |
         set +e
-        master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i $CLUSTER_NAME)
+        master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i ${CLUSTER_NAME}.${CLUSTER_NAMESPACE})
         last_digit=${KB_LEAVE_MEMBER_POD_NAME##*-}
         self_service_name=$(echo "${CLUSTER_COMPONENT_NAME}_mysql_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
         if [ "${self_service_name%%:*}" == "${master_from_orc%%:*}" ]; then
-          /kubeblocks/orchestrator-client -c force-master-failover -i $CLUSTER_NAME
-          local timeout=30
+          /kubeblocks/orchestrator-client -c force-master-failover -i ${CLUSTER_NAME}.${CLUSTER_NAMESPACE}
+          local timeout=15
           local start_time=$(date +%s)
           local current_time
           while true; do
@@ -328,7 +328,7 @@ memberLeave:
             if [ $((current_time - start_time)) -gt $timeout ]; then
               break
             fi
-            master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i $CLUSTER_NAME)
+            master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i ${CLUSTER_NAME}.${CLUSTER_NAMESPACE})
             if [ "${self_service_name%%:*}" != "${master_from_orc%%:*}" ]; then
               break
             fi
@@ -336,6 +336,17 @@ memberLeave:
           done
         fi
         /kubeblocks/orchestrator-client -c reset-replica -i ${self_service_name}
+        /kubeblocks/orchestrator-client -c forget -i ${self_service_name}
+        res=$(/kubeblocks/orchestrator-client -c which-cluster-alias -i ${self_service_name})
+        local start_time=$(date +%s)
+        while [ "$res" == "" ]; do
+          current_time=$(date +%s)
+          if [ $((current_time - start_time)) -gt $timeout ]; then
+            break
+          fi
+          sleep 1
+          res=$(/kubeblocks/orchestrator-client -c instance -i ${self_service_name})
+        done
         /kubeblocks/orchestrator-client -c forget -i ${self_service_name}
 {{- end }}
 
