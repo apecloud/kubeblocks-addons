@@ -22,15 +22,15 @@ spec:
             port: 2181
             targetPort: 2181
   configs:
-    - name: zookeeper-env
-      templateRef: {{ include "pulsar.zookeeperEnvTplName" . }}
+    - name: zookeeper-config
+      templateRef: {{ include "pulsar2.zookeeperTplName" . }}
       namespace: {{ .Release.Namespace }}
-      volumeName: zookeeper-config-env
-      constraintRef: {{ include "pulsar.envConstraintName" . }}
-      keys:
-        - conf
-      injectEnvTo:
-        - zookeeper
+      volumeName: zookeeper-config
+{{/*      constraintRef: {{ include "pulsar.envConstraintName" . }}*/}}
+{{/*      keys:*/}}
+{{/*        - conf*/}}
+{{/*      injectEnvTo:*/}}
+{{/*        - zookeeper*/}}
   scripts:
     - name: pulsar-scripts
       templateRef: {{ include "pulsar.scriptsTplName" . }}
@@ -113,5 +113,5 @@ spec:
             name: data-log
           - name: scripts
             mountPath: /kb-scripts
-          - name: zookeeper-config-env
-            mountPath: /opt/pulsar/none
+          - name: zookeeper-config
+            mountPath: /opt/pulsar/conf

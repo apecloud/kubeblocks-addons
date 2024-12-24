@@ -1,0 +1,20 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParameterDrivenConfigRender
+metadata:
+  name: {{ include "pulsar3.zookeeperPCRName" . }}
+  labels:
+    {{- include "pulsar.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "pulsar3.zookeeperCmpdName" . }}
+
+  configs:
+    - name: zookeeper.conf
+      templateName: zookeeper-config
+      fileFormatConfig:
+        format: props-plus
+    - name: pulsar.env
+      templateName: zookeeper-config
+      fileFormatConfig:
+        format: dotenv
+      reRenderResourceTypes:
+        - vscale

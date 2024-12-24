@@ -1,0 +1,22 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParameterDrivenConfigRender
+metadata:
+  name: {{ include "pulsar3.brokerPCRName" . }}
+  labels:
+    {{- include "pulsar.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "pulsar3.brokerCmpdName" . }}
+  parametersDefs:
+    - {{ include "pulsar3.brokerConfigConstraintName" . }}
+
+  configs:
+    - name: broker.conf
+      templateName: broker-config
+      fileFormatConfig:
+        format: props-plus
+    - name: pulsar.env
+      templateName: broker-config
+      fileFormatConfig:
+        format: dotenv
+      reRenderResourceTypes:
+        - vscale

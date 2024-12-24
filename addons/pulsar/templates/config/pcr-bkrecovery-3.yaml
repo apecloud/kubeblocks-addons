@@ -1,0 +1,16 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParameterDrivenConfigRender
+metadata:
+  name: {{ include "pulsar3.bkrecoveryPCRName" . }}
+  labels:
+    {{- include "pulsar.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "pulsar3.bkRecoveryCmpdName" . }}
+
+  configs:
+    - name: pulsar.env
+      templateName: bkrecovery-config
+      fileFormatConfig:
+        format: dotenv
+      reRenderResourceTypes:
+        - vscale
