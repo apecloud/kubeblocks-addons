@@ -84,7 +84,6 @@ spec:
   updateStrategy: BestEffortParallel
   configs:
     - name: kafka-configuration-tpl
-      constraintRef: {{ include "kafka2.configConstraintName" . }}
       templateRef: {{ include "kafka2.configurationTplName" . }}
       volumeName: kafka-config
       namespace: {{ .Release.Namespace }}
