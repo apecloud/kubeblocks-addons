@@ -78,7 +78,6 @@ spec:
       templateRef: {{ include "clickhouse24.userTplName" . }}
       volumeName: user-config
       namespace: {{ .Release.Namespace }}
-      constraintRef: {{ include "clickhouse24.configConstraintName" . }}
     - name: clickhouse-client-tpl
       templateRef: {{ include "clickhouse24.clientTplName" . }}
       volumeName: client-config
