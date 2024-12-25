@@ -21,4 +21,5 @@ spec:
     orders:
       provision:
         - backend
-        - write,read,gateway
+        - write,read
+        - gateway
