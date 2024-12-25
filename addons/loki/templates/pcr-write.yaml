@@ -1,0 +1,13 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "loki.writePCRName" . }}
+  labels:
+    {{- include "loki.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "loki.writeCmpdName" . }}
+  serviceVersion: 1.0.0
+  configs:
+    - name: config.yaml
+      fileFormatConfig:
+        format: yaml
