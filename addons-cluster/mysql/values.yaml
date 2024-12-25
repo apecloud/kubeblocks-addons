@@ -32,7 +32,6 @@ requests:
 ## @param storage size, the unit is Gi
 ##
 storage: 20
-# values: [semisync, semisync-with-proxysql, semisync-with-orc]
 topology: semisync
 proxysql:
   replicas: 1
