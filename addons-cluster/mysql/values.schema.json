@@ -77,7 +77,8 @@
       "enum": [
         "semisync",
         "semisync-with-proxysql",
-        "semisync-with-orc"
+        "orc",
+        "orc-with-proxysql"
       ]
     },
     "proxysql": {
