@@ -1,0 +1,96 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: k8shadoop
+  namespace: default
+  labels:
+    helm.sh/chart: hadoop-cluster-0.9.0
+    app.kubernetes.io/version: "3.3.4"
+    app.kubernetes.io/instance: k8shadoop
+spec:
+  terminationPolicy: Delete
+  clusterDefinitionRef: hadoop-hdfs
+  topology: hadoop-ha-cluster
+  componentSpecs:
+  - name: hadoop-core
+    componentDef: hadoop-core
+    serviceRefs:
+      - name: hadoopZookeeper
+        namespace: default
+        clusterServiceSelector:
+          cluster: zkcluster
+          service:
+            component: zookeeper
+            service: "headless"
+            port: "client"
+    replicas: 1
+    resources:
+      requests:
+        cpu: '0.5'
+        memory: 0.5Gi
+      limits:
+        cpu: '0.5'
+        memory: 0.5Gi
+  - name: journalnode
+    componentDef: hdfs-journalnode
+    replicas: 3
+    resources:
+      requests:
+        cpu: '0.5'
+        memory: 0.5Gi
+      limits:
+        cpu: '0.5'
+        memory: 0.5Gi
+    volumes:
+      - name: hadoop-core-config
+        configMap:
+          name: k8shadoop-hadoop-core-config
+    volumeClaimTemplates:
+    - name: edits-dir
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+  - name: namenode
+    componentDef: hdfs-namenode
+    serviceAccountName: kb-hadoop-cluster
+    replicas: 2
+    resources:
+      requests:
+        cpu: '0.5'
+        memory: 0.5Gi
+      limits:
+        cpu: '0.5'
+        memory: 0.5Gi
+    volumes:
+      - name: hadoop-core-config
+        configMap:
+          name: k8shadoop-hadoop-core-config
+    volumeClaimTemplates:
+      - name: metadata-dir
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 10Gi
+  - name: datanode
+    componentDef: hdfs-datanode
+    serviceAccountName: kb-hadoop-cluster
+    replicas: 1
+    resources:
+      requests:
+        cpu: '0.5'
+        memory: 0.5Gi
+      limits:
+        cpu: '0.5'
+        memory: 0.5Gi
+    volumes:
+      - name: hadoop-core-config
+        configMap:
+          name: k8shadoop-hadoop-core-config
+      - name: hdfs-data-0
+        hostPath:
+          path: /opt/sda0/
