@@ -87,7 +87,7 @@ Define clickhouse componentSpec with ComponentDefinition.
   componentDef: clickhouse-24
   replicas: {{ $.Values.replicas | default 2 }}
   disableExporter: {{ $.Values.disableExporter | default "false" }}
-  serviceVersion: {{ .Values.version }}
+  serviceVersion: {{ $.Values.version }}
   serviceAccountName: {{ include "clickhouse-cluster.serviceAccountName" $ }}
   systemAccounts:
     - name: admin
@@ -113,7 +113,7 @@ Define clickhouse keeper componentSpec with ComponentDefinition.
   componentDef: clickhouse-keeper-24
   replicas: {{ .Values.keeper.replicas }}
   disableExporter: {{ $.Values.disableExporter | default "false" }}
-  serviceVersion: {{ .Values.version }}
+  serviceVersion: {{ $.Values.version }}
   {{- with .Values.keeper.tolerations }}
   tolerations: {{ .| toYaml | nindent 4 }}
   {{- end }}
@@ -184,7 +184,7 @@ Define clickhouse componentSpec with compatible ComponentDefinition API
   componentDef: clickhouse-24
   replicas: {{ $.Values.replicas | default 2 }}
   disableExporter: {{ $.Values.disableExporter | default "false" }}
-  serviceVersion: {{ .Values.version }}
+  serviceVersion: {{ $.Values.version }}
   serviceAccountName: {{ include "clickhouse-cluster.serviceAccountName" $ }}
   {{- with $.Values.tolerations }}
   tolerations: {{ .| toYaml | nindent 4 }}
