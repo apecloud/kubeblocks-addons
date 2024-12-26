@@ -1,3 +1,0 @@
-- rule:
-    expression: '{{ eq .component.status.phase "Running" }}'
-    message: "Component is not in Running status."
