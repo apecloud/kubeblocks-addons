@@ -17,7 +17,7 @@ spec:
       components:
         - name: mysql
           compDef: {{ include "mysql.cmpdOrcNamePrefix" . }}
-    - name: orc-with-proxysql
+    - name: orc-proxysql
       components:
         - name: mysql
           compDef: {{ include "mysql.cmpdOrcNamePrefix" . }}
@@ -33,7 +33,7 @@ spec:
         update: # When there are multiple component update operations, follow the order specified here.
           - mysql
           - proxysql
-    - name: semisync-with-proxysql
+    - name: semisync-proxysql
       components:
         - name: mysql
           compDef: {{ include "mysql.componentDefRegex" . }}

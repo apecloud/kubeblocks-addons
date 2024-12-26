@@ -76,9 +76,9 @@
       "description": "Topology type of the server",
       "enum": [
         "semisync",
-        "semisync-with-proxysql",
+        "semisync-proxysql",
         "orc",
-        "orc-with-proxysql"
+        "orc-proxysql"
       ]
     },
     "proxysql": {
