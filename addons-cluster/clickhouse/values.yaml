@@ -4,7 +4,7 @@ nameOverride: ""
 fullnameOverride: ""
 
 ## Clickhouse cluster version
-version: 22.9.4
+version: 24.8.3
 
 ## ClickHouse cluster topology mode defined in ClusterDefinition.Spec.topologies, support standalone and cluster
 ## - `standalone`: single clickhouse instance
