@@ -11,13 +11,13 @@ spec:
     - name: standalone
       components:
         - name: clickhouse
-          compDef: {{ include "clickhouse.cmpdRegexpPattern" . }}
+          compDef: {{ include "clickhouse24.cmpdRegexpPattern" . }}
     - name: cluster
       components:
         - name: clickhouse
-          compDef: {{ include "clickhouse.cmpdRegexpPattern" .}}
+          compDef: {{ include "clickhouse24.cmpdRegexpPattern" .}}
         - name: ch-keeper
-          compDef: {{ include "clickhouse-keeper.cmpdRegexpPattern" .}}
+          compDef: {{ include "clickhouse-keeper24.cmpdRegexpPattern" .}}
       orders:
         provision:
           - ch-keeper

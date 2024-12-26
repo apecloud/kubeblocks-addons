@@ -14,7 +14,7 @@
         "cluster"
       ]
     },
-    "shardCount": {
+    "shards": {
       "title": "Shard Count",
       "description": "Number of shards in the ClickHouse cluster.",
       "type": "integer",
@@ -23,18 +23,11 @@
     },
     "sharding": {
       "title": "Sharding Configuration",
-      "description": "Settings related to sharding within the ClickHouse cluster.",
-      "type": "object",
-      "properties": {
-        "enabled": {
-          "title": "Sharding Enabled",
-          "description": "Enable or disable sharding.",
-          "type": "boolean",
-          "default": false
-        }
-      }
+      "description": "Enable or disable sharding within the ClickHouse cluster.",
+      "type": "boolean",
+      "default": false
     },
-    "replicaCount": {
+    "replicas": {
       "title": "Replica Count",
       "description": "Number of replicas per shard.",
       "type": "integer",
@@ -85,7 +78,7 @@
       "description": "Settings for the ClickHouse Keeper (coordinator).",
       "type": "object",
       "properties": {
-        "replicaCount": {
+        "replicas": {
           "title": "Keeper Replica Count",
           "description": "Number of ClickHouse Keeper replicas.",
           "type": "integer",

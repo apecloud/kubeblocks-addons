@@ -12,12 +12,12 @@ spec:
         - 24.8.3
         - 22.9.4
       compDefs:
-        - {{ include "clickhouse.cmpdRegexpPattern" . }}
+        - {{ include "clickhouse24.cmpdRegexpPattern" . }}
     - releases:
         - 24.8.3
         - 22.9.4
       compDefs:
-        - {{ include "clickhouse-keeper.cmpdRegexpPattern" . }}
+        - {{ include "clickhouse-keeper24.cmpdRegexpPattern" . }}
   releases:
     - name: 24.8.3
       serviceVersion: 24.8.3
