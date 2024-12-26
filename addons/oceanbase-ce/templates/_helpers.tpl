@@ -187,7 +187,6 @@ vars:
       optional: true
   expression: {{ `{{if ne (index . "SERVICE_PORT") ""}}{{.SERVICE_PORT}}{{else}}8088{{end}}` | toYaml }}
 - name: MANAGER_PORT
-  value: "8089"
   valueFrom:
     hostNetworkVarRef:
       container:
