@@ -160,6 +160,10 @@ roles:
   - name: secondary
     serviceable: true
     writable: false
+exporter:
+  containerName: mysql-exporter
+  scrapePath: /metrics
+  scrapePort: http-metrics
 {{- end }}
 
 {{- define "mysql.spec.runtime.common" -}}
