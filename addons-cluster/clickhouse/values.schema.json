@@ -25,7 +25,7 @@
       "title": "Sharding Configuration",
       "description": "Enable or disable sharding within the ClickHouse cluster.",
       "type": "boolean",
-      "default": false
+      "default": true
     },
     "replicas": {
       "title": "Replica Count",

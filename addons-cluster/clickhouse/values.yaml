@@ -13,7 +13,7 @@ mode: cluster
 
 ## Sharding configuration
 shards: 1
-sharding: false
+sharding: true
 
 ## Number of ClickHouse replicas per shard to deploy
 replicas: 2
