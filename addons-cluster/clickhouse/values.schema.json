@@ -4,6 +4,12 @@
   "title": "ClickHouse Cluster Configuration",
   "description": "Configuration schema for the ClickHouse Helm chart.",
   "properties": {
+    "version": {
+      "title": "ClickHouse Cluster Version",
+      "description": "Engine Version of the ClickHouse cluster.",
+      "type": "string",
+      "default": "24.8.3"
+    },
     "mode": {
       "title": "Cluster Topology Mode",
       "description": "Define the ClickHouse cluster topology mode.",
