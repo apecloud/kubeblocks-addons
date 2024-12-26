@@ -1,0 +1,55 @@
+{{- $pd := .Files.Get "config/3.0.2/broker-config-effect-scope.yaml" | fromYaml }}
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: {{ include "pulsar3.brokerConfigConstraintName" . }}
+  labels:
+    {{- include "pulsar.labels" . | nindent 4 }}
+spec:
+  fileName: broker.conf
+  parametersSchema:
+    cue: |-
+      {{- .Files.Get "config/3.0.2/broker-config-constraint.cue" | nindent 6 }}
+
+  # pulsar configuration file format
+  fileFormatConfig:
+    format: props-plus
+
+  ## define static parameter list
+  {{- if hasKey $pd "staticParameters" }}
+  staticParameters:
+    {{- $params := get $pd "staticParameters" }}
+    {{- range $params }}
+    - {{ . }}
+    {{- end }}
+  {{- end}}
+
+      ## define dynamic parameter list
+  {{- if hasKey $pd "dynamicParameters" }}
+  dynamicParameters:
+   {{- $params := get $pd "dynamicParameters" }}
+   {{- range $params }}
+    - {{ . }}
+   {{- end }}
+ {{- end}}
+
+  reloadAction:
+    shellTrigger:
+      sync: true
+      command:
+        - "update-dynamic-config.sh"
+      scriptConfig:
+        scriptConfigMapRef: {{ include "pulsar.toolsScriptsTplName" . }}
+        namespace: {{ .Release.Namespace }}
+      toolsSetup:
+        mountPoint: /kb/tools
+        toolConfigs:
+          - name: init-pulsar-tools
+            command:
+              - cp
+              - /pulsar/bin/pulsar-admin
+              - /kb/tools/pulsar-admin
+            image: {{ include "pulsar.toolsImage" . }}
+          - name: init-pulsar-client-config
+            command:
+              - "$(TOOLS_SCRIPTS_PATH)/install-pulsar-client-config.sh"
