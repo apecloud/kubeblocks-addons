@@ -125,12 +125,6 @@ systemAccounts:
   - name: kbreplicator
     statement: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION SLAVE ON ${ALL_DB} TO ${KB_ACCOUNT_NAME} WITH GRANT OPTION;
     passwordGenerationPolicy: *defaultPasswordGenerationPolicy
-tls:
-  volumeName: tls
-  mountPath: /etc/pki/tls
-  caFile: ca.pem
-  certFile: cert.pem
-  keyFile: key.pem
 roles:
   - name: leader
     serviceable: true
@@ -146,85 +140,37 @@ roles:
     votable: false
 lifecycleActions:
   roleProbe:
+    builtinHandler: wesql
     periodSeconds: {{ .Values.roleProbe.periodSeconds }}
     timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
-    exec:
-      container: wesql-server
-      command:
-        - /tools/dbctl
-        - --config-path
-        - /tools/config/dbctl/components
-        - wesql
-        - getrole
-  memberLeave:
-    exec:
-      container: wesql-server
-      command:
-        - /tools/dbctl
-        - --config-path
-        - /tools/config/dbctl/components
-        -  wesql
-        - leavemember
   switchover:
-    exec:
-      command:
-        - /bin/sh
-        - -c
-        - |
-          /tools/syncerctl switchover --primary "$KB_LEADER_POD_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
+    withCandidate:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag }}
+      exec:
+        command:
+        - /scripts/switchover-with-candidate.sh
+    withoutCandidate:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Values.image.tag }}
+      exec:
+        command:
+        - /scripts/switchover-without-candidate.sh
+    scriptSpecSelectors:
+    - name: apecloud-mysql-scripts
   accountProvision:
-    exec:
-      container: wesql-server
+    customHandler:
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
-      command:
-        - bash
-        - -c
-        - |
-          set -ex
-          ALL_DB='*.*'
-          eval statement=\"${KB_ACCOUNT_STATEMENT}\"
-          mysql -u${MYSQL_ROOT_USER} -p${MYSQL_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement}"
-      targetPodSelector: Role
-      matchingKey: leader 
-  dataDump:
-    exec:
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
-      command:
-        - bash
-        - -c
-        - |
-          set -ex
-          DB_HOST=127.0.0.1
-          DB_PORT=3306
-          DB_USER=${MYSQL_ROOT_USER}
-          DB_PASSWORD=${MYSQL_ROOT_PASSWORD}
-          DATA_DIR={{ .Values.mysqlConfigs.dataDir }}
-          xtrabackup --compress=zstd --backup --safe-slave-backup --slave-info --stream=xbstream --host=${DB_HOST} --port=${DB_PORT} --user=${DB_USER} --password=${DB_PASSWORD} --datadir=${DATA_DIR}
+      exec:
+        command:
+        - mysql
+        args:
+        - -u$(MYSQL_ROOT_USER)
+        - -p$(MYSQL_ROOT_PASSWORD)
+        - -P$(MYSQL_PORT)
+        - -h$(KB_ACCOUNT_ENDPOINT)
+        - -e
+        - $(KB_ACCOUNT_STATEMENT)
       targetPodSelector: Role
       matchingKey: leader
-      container: wesql-server
-  dataLoad:
-    exec:
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
-      command:
-        - bash
-        - -c
-        - |
-          set -ex
-          DATA_MOUNT_DIR={{ .Values.mysqlConfigs.dataMountPath }}
-          DATA_DIR={{ .Values.mysqlConfigs.dataDir }}
-          LOG_BIN={{ .Values.mysqlConfigs.logBin }}
-          TMP_DIR=${DATA_MOUNT_DIR}/temp
-          mkdir -p ${DATA_DIR} ${TMP_DIR}
-          cd ${TMP_DIR}
-          xbstream -x
-          xtrabackup --decompress --remove-original --target-dir=${TMP_DIR}
-          xtrabackup --prepare --target-dir=${TMP_DIR}
-          xtrabackup --move-back --target-dir=${TMP_DIR} --datadir=${DATA_DIR}/ --log-bin=${LOG_BIN}
-          touch ${DATA_DIR}/.xtrabackup_restore
-          rm -rf ${TMP_DIR}
-          chmod -R 0777 ${DATA_DIR}
-      container: wesql-server
 exporter:
   containerName: mysql-exporter
   scrapePath: /metrics
@@ -279,43 +225,14 @@ vars:
         port: 
           name: client
           option: Optional
-  - name: MY_POD_LIST
-    valueFrom:
-      componentVarRef:
-        optional: false
-        podNames: Required
-  - name: MY_COMP_NAME
-    valueFrom:
-      componentVarRef:
-        optional: false
-        shortName: Required
   - name: MY_COMP_REPLICAS
     valueFrom:
       componentVarRef:
         optional: false
         replicas: Required
-  - name: MY_CLUSTER_NAME
-    valueFrom:
-      clusterVarRef:
-        clusterName: Required
-  - name: MY_CLUSTER_UID
-    valueFrom:
-      clusterVarRef:
-        clusterUID: Required
   ## the mysql primary pod name which is dynamically selected, caution to use it
-  - name: MYSQL_LEADER_POD_NAME
-    valueFrom:
-      componentVarRef:
-        optional: true
-        podNamesForRole:
-          role: leader
-          option: Optional
   - name: SYNCER_HTTP_PORT
     value: "3601"
-  - name: TLS_ENABLED
-    valueFrom:
-      tlsVarRef:
-        enabled: Optional
 {{- end -}}
 
 {{- define "wesql.spec.runtime.wesql-server" -}}
