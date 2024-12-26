@@ -1,5 +1,5 @@
-{{- if .Values.keeper.replicaCount }}
-  {{- if ne (mod (int .Values.keeper.replicaCount) 2) 1 }}
-    {{ fail "Zookeeper cluster does not support running with even number replicas." }}
+{{- if .Values.keeper.replicas }}
+  {{- if ne (mod (int .Values.keeper.replicas) 2) 1 }}
+    {{ fail "Clickhouse keeper does not support running with even number replicas." }}
   {{- end }}
 {{- end }}

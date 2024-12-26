@@ -1,5 +1,5 @@
 {{- include "kblib.clusterCommon" . }}
-{{- if eq (.Values.shardCount | int) 1 }}
+{{- if eq (.Values.shards | int) 1 }}
   clusterDef: clickhouse
   topology: {{ .Values.mode }}
 {{- end }}
