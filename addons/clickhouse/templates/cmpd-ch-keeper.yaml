@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "clickhouse-keeper24.cmpdName" . }}
+  name: {{ include "clickhouse-keeper.cmpdName" . }}
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
   annotations:
@@ -10,7 +10,6 @@ spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: clickhouse-keeper
-  serviceVersion: "24.8.3"
   runtime:
     securityContext:
       fsGroup: 1001
@@ -109,7 +108,7 @@ spec:
     scrapePort: "8001"
   configs:
     - name: clickhouse-keeper-tpl
-      templateRef: {{ include "clickhouse-keeper24.configurationTplName" . }}
+      templateRef: {{ include "clickhouse-keeper.configurationTplName" . }}
       volumeName: config
       namespace: {{ .Release.Namespace }}
   systemAccounts:

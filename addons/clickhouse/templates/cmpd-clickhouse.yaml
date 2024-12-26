@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "clickhouse24.cmpdName" . }}
+  name: {{ include "clickhouse.cmpdName" . }}
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
   annotations:
@@ -10,7 +10,6 @@ spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
-  serviceVersion: "24.8.3"
   runtime:
     securityContext:
       fsGroup: 1001
@@ -71,16 +70,16 @@ spec:
     scrapePort: "8001"
   configs:
     - name: clickhouse-tpl
-      templateRef: {{ include "clickhouse24.configurationTplName" . }}
+      templateRef: {{ include "clickhouse.configurationTplName" . }}
       volumeName: config
       namespace: {{ .Release.Namespace }}
     - name: clickhouse-user-tpl
-      templateRef: {{ include "clickhouse24.userTplName" . }}
+      templateRef: {{ include "clickhouse.userTplName" . }}
       volumeName: user-config
       namespace: {{ .Release.Namespace }}
-      constraintRef: {{ include "clickhouse24.configConstraintName" . }}
+      constraintRef: {{ include "clickhouse.configConstraintName" . }}
     - name: clickhouse-client-tpl
-      templateRef: {{ include "clickhouse24.clientTplName" . }}
+      templateRef: {{ include "clickhouse.clientTplName" . }}
       volumeName: client-config
       namespace: {{ .Release.Namespace }}
   systemAccounts:
@@ -132,7 +131,7 @@ spec:
     - name: CH_KEEPER_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ include "clickhouse-keeper24.cmpdRegexpPattern" . }}
+          compDef: {{ include "clickhouse-keeper.cmpdRegexpPattern" . }}
           optional: true
           podFQDNs: Required
     - name: TLS_ENABLED

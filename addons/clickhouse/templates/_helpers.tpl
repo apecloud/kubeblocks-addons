@@ -66,74 +66,74 @@ kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 {{/*
-Define clickhouse 24.X component definition name
+Define clickhouse component definition name
 */}}
-{{- define "clickhouse24.cmpdName" -}}
-{{- if eq (len .Values.cmpdVersionPrefix.clickhouse24 ) 0 -}}
-clickhouse-24-{{ .Chart.Version }}
+{{- define "clickhouse.cmpdName" -}}
+{{- if eq (len .Values.cmpdVersionPrefix.clickhouse ) 0 -}}
+clickhouse-{{ .Chart.Version }}
 {{- else -}}
-{{- printf "%s" .Values.cmpdVersionPrefix.clickhouse24 -}}-{{ .Chart.Version }}
+{{- printf "%s" .Values.cmpdVersionPrefix.clickhouse -}}-{{ .Chart.Version }}
 {{- end -}}
 {{- end -}}
 
 {{/*
-Define clickhouse24 component definition regex pattern
+Define clickhouse component definition regex pattern
 */}}
-{{- define "clickhouse24.cmpdRegexpPattern" -}}
-^clickhouse-24.*
+{{- define "clickhouse.cmpdRegexpPattern" -}}
+^clickhouse-.*
 {{- end -}}
 
 {{/*
-Define clickhouse-keeper24 component definition name
+Define clickhouse-keeper component definition name
 */}}
-{{- define "clickhouse-keeper24.cmpdName" -}}
-{{- if eq (len .Values.cmpdVersionPrefix.keeper24 ) 0 -}}
-clickhouse-keeper-24-{{ .Chart.Version }}
+{{- define "clickhouse-keeper.cmpdName" -}}
+{{- if eq (len .Values.cmpdVersionPrefix.keeper ) 0 -}}
+clickhouse-keeper-{{ .Chart.Version }}
 {{- else -}}
-{{- printf "%s" .Values.cmpdVersionPrefix.keeper24 -}}-{{ .Chart.Version }}
+{{- printf "%s" .Values.cmpdVersionPrefix.keeper -}}-{{ .Chart.Version }}
 {{- end -}}
 {{- end -}}
 
 {{/*
-Define clickhouse-keeper24 component definition regex pattern
+Define clickhouse-keeper component definition regex pattern
 */}}
-{{- define "clickhouse-keeper24.cmpdRegexpPattern" -}}
-^clickhouse-keeper-24.*
+{{- define "clickhouse-keeper.cmpdRegexpPattern" -}}
+^clickhouse-keeper-.*
 {{- end -}}
 
 {{/*
-Define clickhouse24 config constraint name
+Define clickhouse config constraint name
 */}}
-{{- define "clickhouse24.configConstraintName" -}}
-clickhouse-24-config-constraints
+{{- define "clickhouse.configConstraintName" -}}
+clickhouse-config-constraints
 {{- end -}}
 
 {{/*
-Define clickhouse24 default overrides configuration tpl name
+Define clickhouse default overrides configuration tpl name
 */}}
-{{- define "clickhouse24.configurationTplName" -}}
-clickhouse-24-configuration-tpl
+{{- define "clickhouse.configurationTplName" -}}
+clickhouse-configuration-tpl
 {{- end -}}
 
 {{/*
-Define clickhouse24 client configuration tpl name
+Define clickhouse client configuration tpl name
 */}}
-{{- define "clickhouse24.clientTplName" -}}
-clickhouse-24-client-configuration-tpl
+{{- define "clickhouse.clientTplName" -}}
+clickhouse-client-configuration-tpl
 {{- end -}}
 
 {{/*
-Define clickhouse24 user configuration tpl name
+Define clickhouse user configuration tpl name
 */}}
-{{- define "clickhouse24.userTplName" -}}
-clickhouse-24-user-configuration-tpl
+{{- define "clickhouse.userTplName" -}}
+clickhouse-user-configuration-tpl
 {{- end -}}
 
 {{/*
-Define clickhouse-keeper24 configuration tpl name
+Define clickhouse-keeper configuration tpl name
 */}}
-{{- define "clickhouse-keeper24.configurationTplName" -}}
-clickhouse-keeper-24-configuration-tpl
+{{- define "clickhouse-keeper.configurationTplName" -}}
+clickhouse-keeper-configuration-tpl
 {{- end -}}
 
 {{/*
@@ -141,11 +141,4 @@ Define clickhouse image repository
 */}}
 {{- define "clickhouse.repository" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}
-{{- end }}
-
-{{/*
-Define clickhouse24 image
-*/}}
-{{- define "clickhouse24.image" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
 {{- end }}

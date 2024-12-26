@@ -7,7 +7,7 @@ spec:
   terminationPolicy: Delete
   componentSpecs:
     - name: ch-keeper # create clickhouse keeper
-      componentDef: clickhouse-keeper-24
+      componentDef: clickhouse-keeper
       replicas: 1
       resources:
         limits:
@@ -29,7 +29,7 @@ spec:
       shards: 3  # need 3 shard
       template:
         name: clickhouse  # each shard is a clickhouse component, with 2 replicas
-        componentDef: clickhouse-24
+        componentDef: clickhouse
         replicas: 2
         resources:
           limits:

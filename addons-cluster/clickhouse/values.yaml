@@ -3,6 +3,9 @@ nameOverride: ""
 # Override the full name of the chart
 fullnameOverride: ""
 
+## Clickhouse cluster version
+version: 24.8.3
+
 ## ClickHouse cluster topology mode defined in ClusterDefinition.Spec.topologies, support standalone and cluster
 ## - `standalone`: single clickhouse instance
 ## - `cluster`: clickhouse with ClickHouse Keeper as coordinator

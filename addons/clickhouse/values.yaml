@@ -15,12 +15,14 @@ commonAnnotations: {}
 
 # If specified, the component definition will use it as prefix.
 cmpdVersionPrefix:
-  clickhouse24: "clickhouse-24"
-  keeper24: "clickhouse-keeper-24"
+  clickhouse: "clickhouse"
+  keeper: "clickhouse-keeper"
 
 image:
   registry: docker.io
   repository: bitnami/clickhouse
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: 24.8.3-debian-12-r1
+  tag:
+    major24: 24.8.3-debian-12-r1
+    major22: 22.9.4-debian-11-r1

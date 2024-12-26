@@ -84,9 +84,10 @@ Define clickhouse componentSpec with ComponentDefinition.
 */}}
 {{- define "clickhouse-component" -}}
 - name: clickhouse
-  componentDef: clickhouse-24
+  componentDef: clickhouse
   replicas: {{ $.Values.replicaCount | default 2 }}
   disableExporter: {{ $.Values.disableExporter | default "false" }}
+  serviceVersion: {{ .Values.version }}
   serviceAccountName: {{ include "clickhouse-cluster.serviceAccountName" $ }}
   systemAccounts:
     - name: admin
@@ -109,9 +110,10 @@ Define clickhouse keeper componentSpec with ComponentDefinition.
 */}}
 {{- define "clickhouse-keeper-component" -}}
 - name: ch-keeper
-  componentDef: clickhouse-keeper-24
+  componentDef: clickhouse-keeper
   replicas: {{ .Values.keeper.replicaCount }}
   disableExporter: {{ $.Values.disableExporter | default "false" }}
+  serviceVersion: {{ .Values.version }}
   {{- with .Values.keeper.tolerations }}
   tolerations: {{ .| toYaml | nindent 4 }}
   {{- end }}
@@ -152,9 +154,10 @@ Define clickhouse shardingComponentSpec with ComponentDefinition.
   shards: {{ .Values.shardCount }}
   template:
     name: clickhouse
-    componentDef: clickhouse-24
+    componentDef: clickhouse
     replicas: {{ $.Values.replicaCount | default 2 }}
     disableExporter: {{ $.Values.disableExporter | default "false" }}
+    serviceVersion: {{ .Values.version }}
     serviceAccountName: {{ include "clickhouse-cluster.serviceAccountName" $ }}
     systemAccounts:
     - name: admin
@@ -178,9 +181,10 @@ Define clickhouse componentSpec with compatible ComponentDefinition API
 {{- define "clickhouse-nosharding-component" -}}
 {{- range $i := until (.Values.shardCount | int) }}
 - name: shard-{{ $i }}
-  componentDef: clickhouse-24
+  componentDef: clickhouse
   replicas: {{ $.Values.replicaCount | default 2 }}
   disableExporter: {{ $.Values.disableExporter | default "false" }}
+  serviceVersion: {{ .Values.version }}
   serviceAccountName: {{ include "clickhouse-cluster.serviceAccountName" $ }}
   {{- with $.Values.tolerations }}
   tolerations: {{ .| toYaml | nindent 4 }}
