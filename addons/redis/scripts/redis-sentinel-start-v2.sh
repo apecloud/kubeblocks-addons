@@ -50,6 +50,14 @@ parse_redis_sentinel_announce_addr() {
   fi
 }
 
+rebuild_redis_sentinel_acl_file() {
+  if [ -f /data/users.acl ]; then
+    sed -i "/user default on/d" /data/users.acl
+  else
+    touch /data/users.acl
+  fi
+}
+
 reset_redis_sentinel_conf() {
   echo "reset redis sentinel conf"
   sentinel_port=26379
@@ -63,6 +71,9 @@ reset_redis_sentinel_conf() {
   fi
 
   sed -i "/sentinel announce-ip/d" /data/sentinel/redis-sentinel.conf
+  sed -i "/sentinel announce-port/d" /data/sentinel/redis-sentinel.conf
+  # backward compatible for previous versions without ACL
+  sed -i "/user default on/d" /data/sentinel/redis-sentinel.conf
   sed -i "/sentinel resolve-hostnames/d" /data/sentinel/redis-sentinel.conf
   sed -i "/sentinel announce-hostnames/d" /data/sentinel/redis-sentinel.conf
 
@@ -74,6 +85,7 @@ reset_redis_sentinel_conf() {
   set -x
 
   sed -i "/port $sentinel_port/d" /data/sentinel/redis-sentinel.conf
+  sed -i "/aclfile \/data\/users.acl/d" /data/sentinel/redis-sentinel.conf
 
   # hack for redis sentinel when nodeport is enabled, remove known-replica line which has the same nodeport port with master
   if [ -n "$REDIS_SENTINEL_ADVERTISED_PORT" ] && [ -n "$REDIS_SENTINEL_ADVERTISED_SVC_NAME" ]; then
@@ -86,6 +98,7 @@ reset_redis_sentinel_conf() {
         master_port="${BASH_REMATCH[2]}"
 
         sed -i "/^sentinel known-replica ${master_name} .* ${master_port}$/d" /data/sentinel/redis-sentinel.conf
+        sed -i "/^sentinel known-sentinel ${master_name}/d" /data/sentinel/redis-sentinel.conf
       fi
     done < "$temp_file"
 
@@ -98,7 +111,7 @@ build_redis_sentinel_conf() {
   echo "port $sentinel_port" >> /data/sentinel/redis-sentinel.conf
   # build announce ip and port according to whether the announce addr is exist
   if [ -n "$redis_sentinel_announce_port_value" ] && [ -n "$redis_sentinel_announce_host_value" ]; then
-    echo "redis sentinel use nodeport $redis_sentinel_announce_host_value:$redis_sentinel_announce_port_value to announce"
+    echo "redis sentinel use announce addr $redis_sentinel_announce_host_value:$redis_sentinel_announce_port_value to announce"
     echo "sentinel announce-ip $redis_sentinel_announce_host_value" >> /data/sentinel/redis-sentinel.conf
     echo "sentinel announce-port $redis_sentinel_announce_port_value" >> /data/sentinel/redis-sentinel.conf
   else
@@ -120,6 +133,7 @@ build_redis_sentinel_conf() {
     echo "sentinel sentinel-pass $SENTINEL_PASSWORD" >> /data/sentinel/redis-sentinel.conf
   fi
   set -x
+  echo "aclfile /data/users.acl" >> /data/sentinel/redis-sentinel.conf
   echo "build redis sentinel conf succeeded!"
 }
 
@@ -130,6 +144,7 @@ start_redis_sentinel_server() {
 }
 
 parse_redis_sentinel_announce_addr "$KB_POD_NAME"
+rebuild_redis_sentinel_acl_file
 reset_redis_sentinel_conf
 build_redis_sentinel_conf
 start_redis_sentinel_server

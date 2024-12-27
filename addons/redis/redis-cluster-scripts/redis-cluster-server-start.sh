@@ -198,11 +198,16 @@ check_and_correct_other_primary_nodes() {
       wait_random_second 10 1
       current_announce_ip=$(get_cluster_announce_ip "$node_endpoint" "$node_port")
       echo "original_announce_ip: $original_announce_ip, node_endpoint_with_port: $node_endpoint_with_port, current_announce_ip: $current_announce_ip"
-      # if current_announce_ip is empty, we need to retry
+      # if current_announce_ip is empty, retry it
       if [ -z "$current_announce_ip" ]; then
-        wait_random_second 3 1
-        echo "current_announce_ip is empty, retry..."
-        continue
+          echo "Error: current_announce_ip is empty"
+          wait_random_second 3 1
+          continue
+      fi
+      if [ "$node_port" -eq 0 ] || [ "$node_bus_port" -eq 0 ]; then
+          echo "Error: node_port or node_bus_port is 0"
+          wait_random_second 3 1
+          continue
       fi
 
       # if original_announce_ip not equal to current_announce_ip, we need to correct it with the current_announce_ip
@@ -384,6 +389,13 @@ scale_redis_cluster_replica() {
     retry redis-cli -h 127.0.0.1 -p "$service_port" ping
   fi
   set -x
+
+  if [ -f /data/nodes.conf ]; then
+    echo "the nodes.conf file after redis server start:"
+    cat /data/nodes.conf
+  else
+    echo "the nodes.conf file after redis server start is not exist"
+  fi
 
   current_pod_name=$KB_POD_NAME
   current_pod_fqdn="$current_pod_name.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.cluster.local"

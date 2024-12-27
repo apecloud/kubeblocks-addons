@@ -188,6 +188,65 @@ redis_cluster_check() {
   fi
 }
 
+check_redis_server_ready() {
+  local host="$1"
+  local port="$2"
+  local max_retry=20
+  local retry_interval=3
+  local retry_count=0
+  local check_cmd
+  set +x
+  if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+    check_cmd="redis-cli -h $host -p $port ping"
+  else
+    check_cmd="redis-cli -h $host -p $port -a $REDIS_DEFAULT_PASSWORD ping"
+  fi
+  set -x
+  while [ $retry_count -lt $max_retry ]; do
+    output=$($check_cmd)
+    status=$?
+    if [ $status -eq 0 ] && [ "$output" = "PONG" ]; then
+      return 0
+    fi
+    ((retry_count++))
+    sleep "$retry_interval"
+  done
+  echo "Node $host:$port health check failed after $max_retry attempts" >&2
+  return 1
+}
+
+check_initialize_nodes_ready() {
+  local nodes=("$@")
+  for node in "${nodes[@]}"; do
+    local host port
+    host=$(echo "$node" | cut -d':' -f1)
+    port=$(echo "$node" | cut -d':' -f2)
+    if ! check_redis_server_ready "$host" "$port"; then
+      return 1
+    fi
+  done
+  return 0
+}
+
+is_node_in_cluster() {
+  local random_node_endpoint="$1"
+  local random_node_port="$2"
+  local node_name="$3"
+  set +x
+  if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+    cluster_nodes_info=$(redis-cli -h "$random_node_endpoint" -p "$random_node_port" cluster nodes)
+  else
+    cluster_nodes_info=$(redis-cli -h "$random_node_endpoint" -p "$random_node_port" -a "$REDIS_DEFAULT_PASSWORD" cluster nodes)
+  fi
+  set -x
+  # if the cluster_nodes_info contains multiple lines and the node_name is in the cluster_nodes_info, return true
+  if [ "$(echo "$cluster_nodes_info" | wc -l)" -gt 1 ] && echo "$cluster_nodes_info" | grep -q "$node_name"; then
+    true
+  else
+    false
+  fi
+}
+
 extract_ordinal_from_object_name() {
   local object_name="$1"
   local ordinal="${object_name##*-}"
@@ -564,16 +623,39 @@ gen_initialize_redis_cluster_secondary_nodes() {
 }
 
 initialize_redis_cluster() {
-  # initialize all the primary nodes
+  # generate primary and secondary nodes
   gen_initialize_redis_cluster_primary_node
+  gen_initialize_redis_cluster_secondary_nodes
+
   if [ ${#initialize_redis_cluster_primary_nodes[@]} -eq 0 ]; then
     echo "Failed to get primary nodes"
     exit 1
   fi
+
+  # check all the primary nodes are ready
   primary_nodes=""
-  for primary_pod_name in "${!initialize_redis_cluster_primary_nodes[@]}"; do
-    primary_nodes+="${initialize_redis_cluster_primary_nodes[$primary_pod_name]} "
+  primary_node_list=()
+  for pod_name in "${!initialize_redis_cluster_primary_nodes[@]}"; do
+    primary_nodes+="${initialize_redis_cluster_primary_nodes[$pod_name]} "
+    primary_node_list+=("${initialize_redis_cluster_primary_nodes[$pod_name]}")
   done
+  if ! check_initialize_nodes_ready "${primary_node_list[@]}"; then
+    echo "Primary nodes health check failed"
+    exit 1
+  fi
+  # check all the secondary nodes are ready
+  if [ ${#initialize_redis_cluster_secondary_nodes[@]} -gt 0 ]; then
+    secondary_node_list=()
+    for pod_name in "${!initialize_redis_cluster_secondary_nodes[@]}"; do
+      secondary_node_list+=("${initialize_redis_cluster_secondary_nodes[$pod_name]}")
+    done
+    if ! check_initialize_nodes_ready "${secondary_node_list[@]}"; then
+      echo "Secondary nodes health check failed"
+      exit 1
+    fi
+  fi
+
+  # initialize all the primary nodes
   set +x
   if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
     initialize_command="redis-cli --cluster create $primary_nodes --cluster-yes -p $SERVICE_PORT"
@@ -638,7 +720,37 @@ initialize_redis_cluster() {
     set -x
     # waiting for all nodes sync the information
     wait_random_second 5 1
+
+    # verify secondary node is already in all primary nodes
+    if ! verify_secondary_in_all_primaries "$secondary_pod_name" "${primary_node_list[@]}"; then
+      echo "Failed to verify secondary node $secondary_pod_name in all primary nodes"
+      exit 1
+    fi
+    echo "Secondary node $secondary_pod_name successfully joined the cluster and verified in all primaries"
   done
+}
+
+verify_secondary_in_all_primaries() {
+  local secondary_node_name="$1"
+  local primary_nodes=("$@")
+  # Skip the first argument (secondary_node_name)
+  shift
+  for primary_node in "$@"; do
+    local primary_host primary_port
+    primary_host=$(echo "$primary_node" | cut -d':' -f1)
+    primary_port=$(echo "$primary_node" | cut -d':' -f2)
+    retry_count=0
+    while ! is_node_in_cluster "$primary_host" "$primary_port" "$secondary_node_name" && [ $retry_count -lt 30 ]; do
+      sleep 3
+      ((retry_count++))
+    done
+    # shellcheck disable=SC2086
+    if [ $retry_count -eq 30 ]; then
+      echo "Secondary node $secondary_node_name not found in primary $primary_node after 30 seconds"
+      return 1
+    fi
+  done
+  return 0
 }
 
 scale_out_redis_cluster_shard() {
