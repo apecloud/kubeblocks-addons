@@ -183,18 +183,14 @@ spec:
           - -c
           - /scripts/data-load.sh
   configs:
-    - name: etcd-configuration-tpl
-      templateRef: {{ include "etcd3.configurationTemplate" .}}
-      constraintRef: {{ include "etcd3.configConstraint" .}}
+    - name: etcd-config
+      templateRef: {{ include "etcd3.configTemplate" .}}
       namespace: {{ .Release.Namespace }}
       volumeName: config
       defaultMode: 0666
-      reRenderResourceTypes:
-        - hscale
-        - vscale
   scripts:
-    - name: etcd-scripts
-      templateRef: {{ include "etcd3.scriptsTemplate" .}}
+    - name: etcd-script
+      templateRef: {{ include "etcd3.scriptTemplate" .}}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
