@@ -36,7 +36,7 @@ spec:
               port:  {{ .Values.orchestrator.clusterServiceSelector.portName }}
         {{- end }}
       {{- end }}
-    {{- if hasSuffix "proxy" .Values.topology }}
+    {{- if hasSuffix "proxysql" .Values.topology }}
     - name: proxysql
       componentDef: proxysql
       replicas: {{.Values.proxysql.replicas}}
