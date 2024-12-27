@@ -1096,6 +1096,9 @@
 	// The type of operating system on which MySQL was built.wait_timeout
 	version_compile_os?: string
 
+	// Server current time zone
+	default_time_zone?: string
+
 	// other parameters
 	// reference mysql parameters
 	...

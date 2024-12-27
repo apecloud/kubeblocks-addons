@@ -279,10 +279,14 @@ immutableParameters:
   - sha256_password_private_key_path
   - skip_external_locking
   - ssl_key
+  - server_id
   - thread_handling
   - tmpdir
   - version_compile_machine
+  - lower_case_file_system
+  - lower_case_table_names
 staticParameters:
+  - default_time_zone
   - back_log
   - bind_address
   - character_set_system
@@ -341,8 +345,6 @@ staticParameters:
   - locked_in_memory
   - log_bin_basename
   - log_error
-  - lower_case_file_system
-  - lower_case_table_names
   - max_digest_length
   - myisam_mmap_size
   - myisam_recover_options
