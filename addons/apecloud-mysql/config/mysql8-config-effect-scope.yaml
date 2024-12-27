@@ -557,7 +557,6 @@ immutableParameters:
   - core-file
   - datadir
   - default_authentication_plugin
-  - default_time_zone
   - disabled_storage_engines
   - gtid_mode
   - gtid_owned

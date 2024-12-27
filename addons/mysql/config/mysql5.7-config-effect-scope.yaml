@@ -282,6 +282,7 @@ immutableParameters:
   - thread_handling
   - tmpdir
   - version_compile_machine
+  - default_time_zone
 staticParameters:
   - back_log
   - bind_address
