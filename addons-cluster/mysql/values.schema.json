@@ -75,10 +75,10 @@
       "default": "server",
       "description": "Topology type of the server",
       "enum": [
-        "server",
-        "server-with-proxy",
+        "semisync",
+        "semisync-proxysql",
         "orc",
-        "orc-with-proxy"
+        "orc-proxysql"
       ]
     },
     "proxysql": {
