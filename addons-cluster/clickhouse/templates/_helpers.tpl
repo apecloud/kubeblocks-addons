@@ -85,8 +85,9 @@ Define clickhouse componentSpec with ComponentDefinition.
 {{- define "clickhouse-component" -}}
 - name: clickhouse
   componentDef: clickhouse-24
-  replicas: {{ $.Values.replicaCount | default 2 }}
+  replicas: {{ $.Values.replicas | default 2 }}
   disableExporter: {{ $.Values.disableExporter | default "false" }}
+  serviceVersion: {{ $.Values.version }}
   serviceAccountName: {{ include "clickhouse-cluster.serviceAccountName" $ }}
   systemAccounts:
     - name: admin
@@ -110,8 +111,9 @@ Define clickhouse keeper componentSpec with ComponentDefinition.
 {{- define "clickhouse-keeper-component" -}}
 - name: ch-keeper
   componentDef: clickhouse-keeper-24
-  replicas: {{ .Values.keeper.replicaCount }}
+  replicas: {{ .Values.keeper.replicas }}
   disableExporter: {{ $.Values.disableExporter | default "false" }}
+  serviceVersion: {{ $.Values.version }}
   {{- with .Values.keeper.tolerations }}
   tolerations: {{ .| toYaml | nindent 4 }}
   {{- end }}
@@ -149,12 +151,13 @@ Define clickhouse shardingComponentSpec with ComponentDefinition.
 */}}
 {{- define "clickhouse-sharding-component" -}}
 - name: shard
-  shards: {{ .Values.shardCount }}
+  shards: {{ .Values.shards }}
   template:
     name: clickhouse
     componentDef: clickhouse-24
-    replicas: {{ $.Values.replicaCount | default 2 }}
+    replicas: {{ $.Values.replicas | default 2 }}
     disableExporter: {{ $.Values.disableExporter | default "false" }}
+    serviceVersion: {{ $.Values.version }}
     serviceAccountName: {{ include "clickhouse-cluster.serviceAccountName" $ }}
     systemAccounts:
     - name: admin
@@ -176,11 +179,12 @@ Define clickhouse shardingComponentSpec with ComponentDefinition.
 Define clickhouse componentSpec with compatible ComponentDefinition API
 */}}
 {{- define "clickhouse-nosharding-component" -}}
-{{- range $i := until (.Values.shardCount | int) }}
+{{- range $i := until (.Values.shards | int) }}
 - name: shard-{{ $i }}
   componentDef: clickhouse-24
-  replicas: {{ $.Values.replicaCount | default 2 }}
+  replicas: {{ $.Values.replicas | default 2 }}
   disableExporter: {{ $.Values.disableExporter | default "false" }}
+  serviceVersion: {{ $.Values.version }}
   serviceAccountName: {{ include "clickhouse-cluster.serviceAccountName" $ }}
   {{- with $.Values.tolerations }}
   tolerations: {{ .| toYaml | nindent 4 }}
