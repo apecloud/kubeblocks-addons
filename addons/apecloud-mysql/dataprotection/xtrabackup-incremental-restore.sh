@@ -3,10 +3,20 @@ set -e
 set -o pipefail
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 
-# function change_path takes one argument, the backup name, and changes the DATASAFED_BACKEND_BASE_PATH
+# function change_path changes the DATASAFED_BACKEND_BASE_PATH by backup name
 function change_path() {
   backup_name=$1
   export DATASAFED_BACKEND_BASE_PATH="${DP_BACKUP_ROOT_PATH}/${backup_name}/${DP_TARGET_RELATIVE_PATH}"
+}
+
+# function download_file downloads a backup file to a local target directory
+function download_file() {
+  backup_name=$1
+  local_target_dir=$2
+  mkdir -p ${local_target_dir} && cd ${local_target_dir}
+  change_path "${backup_name}"
+  datasafed pull "${backup_name}.xbstream" - | xbstream -x
+  xtrabackup --decompress --remove-original --target-dir=${local_target_dir}
 }
 
 # 1. check base backup name
@@ -19,10 +29,7 @@ fi
 # download base backup file
 mkdir -p ${DATA_DIR}
 BASE_DIR=${DATA_MOUNT_DIR}/base
-mkdir -p ${BASE_DIR} && cd ${BASE_DIR}
-change_path "${DP_BASE_BACKUP_NAME}"
-datasafed pull "${DP_BASE_BACKUP_NAME}.xbstream" - | xbstream -x
-xtrabackup --decompress --remove-original --target-dir=${BASE_DIR}
+download_file "${DP_BASE_BACKUP_NAME}" "${BASE_DIR}"
 # download parent backup files
 if [ -n "${DP_ANCESTOR_INCREMENTAL_BACKUP_NAMES}" ]; then
   read -r -a ANCESTOR_INCREMENTAL_BACKUP_NAMES <<< "${DP_ANCESTOR_INCREMENTAL_BACKUP_NAMES//,/ }"
@@ -30,16 +37,10 @@ fi
 INCS_DIR=${DATA_MOUNT_DIR}/incs
 mkdir -p ${INCS_DIR}
 for parent_name in "${ANCESTOR_INCREMENTAL_BACKUP_NAMES[@]}"; do
-  change_path "${parent_name}"
-  mkdir -p ${INCS_DIR}/${parent_name} && cd ${INCS_DIR}/${parent_name}
-  datasafed pull "${parent_name}.xbstream" - | xbstream -x
-  xtrabackup --decompress --remove-original --target-dir=${INCS_DIR}/${parent_name}
+  download_file "${parent_name}" "${INCS_DIR}/${parent_name}"
 done
 # download target backup file
-change_path "${DP_BACKUP_NAME}"
-mkdir -p ${INCS_DIR}/${DP_BACKUP_NAME} && cd ${INCS_DIR}/${DP_BACKUP_NAME}
-datasafed pull "${DP_BACKUP_NAME}.xbstream" - | xbstream -x
-xtrabackup --decompress --remove-original --target-dir=${INCS_DIR}/${DP_BACKUP_NAME}
+download_file "${DP_BACKUP_NAME}" "${INCS_DIR}/${DP_BACKUP_NAME}"
 
 old_signal="apecloud-mysql.old"
 log_bin=${LOG_BIN}
