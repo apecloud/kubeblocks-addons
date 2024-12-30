@@ -7,7 +7,7 @@ metadata:
     {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
-  clusterDef: wesql # ref clusterdefinition.name
+  clusterDefinitionRef: wesql # ref clusterdefinition.name
   topology: {{ .Values.topology }}
   componentSpecs:
     - name: wesql-server

@@ -1,4 +1,4 @@
-{{- $cc := .Files.Get "config/mysql8-config-effect-scope.yaml" | fromYaml }}
+{{- $cc := .Files.Get "config/wesql-server-config-effect-scope.yaml" | fromYaml }}
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
