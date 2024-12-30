@@ -26,7 +26,7 @@ fi
 mkdir -p ${DATA_DIR}
 PARENT_DIR=${DATA_MOUNT_DIR}/parent
 mkdir -p ${PARENT_DIR} && cd ${PARENT_DIR}
-export DATASAFED_BACKEND_BASE_PATH="${DP_BACKUP_ROOT_PATH}/${DP_PARENT_BACKUP_NAME}${DP_TARGET_RELATIVE_PATH}"
+export DATASAFED_BACKEND_BASE_PATH="${DP_BACKUP_ROOT_PATH}/${DP_PARENT_BACKUP_NAME}/${DP_TARGET_RELATIVE_PATH}"
 datasafed pull "${DP_PARENT_BACKUP_NAME}.xbstream" - | xbstream -x
 xtrabackup --decompress --remove-original --target-dir=${PARENT_DIR}
 

@@ -3,6 +3,11 @@ set -e
 set -o pipefail
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 
+function change_path() {
+  backup_name=$1
+  export DATASAFED_BACKEND_BASE_PATH="${DP_BACKUP_ROOT_PATH}/${backup_name}/${DP_TARGET_RELATIVE_PATH}"
+}
+
 # 1. check base backup name
 if [[ -z ${DP_BASE_BACKUP_NAME} ]]; then
   echo "DP_BASE_BACKUP_NAME is empty"
@@ -14,7 +19,7 @@ fi
 mkdir -p ${DATA_DIR}
 BASE_DIR=${DATA_MOUNT_DIR}/base
 mkdir -p ${BASE_DIR} && cd ${BASE_DIR}
-export DATASAFED_BACKEND_BASE_PATH="${DP_BACKUP_ROOT_PATH}/${DP_BASE_BACKUP_NAME}${DP_TARGET_RELATIVE_PATH}"
+change_path "${DP_BASE_BACKUP_NAME}"
 datasafed pull "${DP_BASE_BACKUP_NAME}.xbstream" - | xbstream -x
 xtrabackup --decompress --remove-original --target-dir=${BASE_DIR}
 # download parent backup files
@@ -24,13 +29,13 @@ fi
 INCS_DIR=${DATA_MOUNT_DIR}/incs
 mkdir -p ${INCS_DIR}
 for parent_name in "${ANCESTOR_INCREMENTAL_BACKUP_NAMES[@]}"; do
-  export DATASAFED_BACKEND_BASE_PATH="${DP_BACKUP_ROOT_PATH}/${parent_name}${DP_TARGET_RELATIVE_PATH}"
+  change_path "${parent_name}"
   mkdir -p ${INCS_DIR}/${parent_name} && cd ${INCS_DIR}/${parent_name}
   datasafed pull "${parent_name}.xbstream" - | xbstream -x
   xtrabackup --decompress --remove-original --target-dir=${INCS_DIR}/${parent_name}
 done
 # download target backup file
-export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
+change_path "${DP_BACKUP_NAME}"
 mkdir -p ${INCS_DIR}/${DP_BACKUP_NAME} && cd ${INCS_DIR}/${DP_BACKUP_NAME}
 datasafed pull "${DP_BACKUP_NAME}.xbstream" - | xbstream -x
 xtrabackup --decompress --remove-original --target-dir=${INCS_DIR}/${DP_BACKUP_NAME}
