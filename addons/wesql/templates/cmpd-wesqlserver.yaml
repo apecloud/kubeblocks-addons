@@ -22,55 +22,46 @@ spec:
       volumeName: wescale-config
       namespace: {{ .Release.Namespace }}
   runtime:
-    initContainers:
-    - command:
-      - bash
-      - -c
-      - |
-        cp /usr/lib/mysql/plugin/ {{ .Values.mysqlConfigs.dataMountPath }}/plugin -r
-      imagePullPolicy: IfNotPresent
-      name: init-data
-      volumeMounts:
-        - mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
-          name: data
-    - command:
-      - cp
-      - -r
-      - /bin/syncer
-      - /bin/syncerctl
-      - /tools/
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-      imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
-      name: init-syncer
-      volumeMounts:
-        - mountPath: /tools
-          name: tools
-    - command:
-      - cp
-      - -r
-      - /bin/dbctl
-      - /config
-      - /tools/
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
-      imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
-      name: init-dbctl
-      volumeMounts:
-        - mountPath: /tools
-          name: tools
     containers:
       - name: wesql-server
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
-        command: 
-          - syncer
-          - --port
-          - "3601"
-          - --
-          - bash
+        command:
+          - /bin/sh
           - -c
           - |
-            cp {{ .Values.mysqlConfigs.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
-            /scripts/setup.sh
-        {{- include "wesql.spec.runtime.wesql-server" . | nindent 8 }}
+            if [[ "$MY_INSTANCE_NAME" == *"-0"* ]]; then
+              WESQL_LOGGER_MODE="0"
+            else
+              WESQL_LOGGER_MODE="1"
+            fi
+            exec docker-entrypoint.sh
+        env:
+          - name: MYSQL_ROOT_PASSWORD
+            value: {{ .Values.auth.password }}
+          - name: WESQL_CLUSTER_MEMBER
+            value: "$(KB_POD_FQDN)"
+          - name: MYSQL_CUSTOM_CONFIG
+            value: |
+{{ .Values.cluster.customConfig | indent 14 }}
+          - name: WESQL_OBJECTSTORE_ACCESS_KEY
+            value: {{ .Values.objectStore.accessKey }}
+          - name: WESQL_OBJECTSTORE_SECRET_KEY
+            value: {{ .Values.objectStore.secretKey }}
+        ports:
+          - containerPort: 3306
+            name: wesql
+            protocol: TCP
+          - containerPort: 13306
+            name: raft
+            protocol: TCP
+        readinessProbe:
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          tcpSocket:
+            port: wesql
+        volumeMounts:
+          - mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
+            name: data
       - name: vtablet
         {{- include "wesql.spec.runtime.vtablet" . |  nindent 8 }}
       - name: mysql-exporter

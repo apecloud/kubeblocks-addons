@@ -11,7 +11,6 @@ spec:
   - name: wesql-8.0.35
     serviceVersion: "8.0.35"
     images:
-      init-data: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
       wesql-server: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.35-0.1.0_beta3.38
       mysql-exporter: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
       vtablet: {{ .Values.wesqlscale.image.registry |  default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.wesqlscale.image.repository }}:0.3.8
