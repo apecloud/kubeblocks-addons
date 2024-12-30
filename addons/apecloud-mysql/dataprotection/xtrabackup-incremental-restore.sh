@@ -3,6 +3,7 @@ set -e
 set -o pipefail
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 
+# function change_path takes one argument, the backup name, and changes the DATASAFED_BACKEND_BASE_PATH
 function change_path() {
   backup_name=$1
   export DATASAFED_BACKEND_BASE_PATH="${DP_BACKUP_ROOT_PATH}/${backup_name}/${DP_TARGET_RELATIVE_PATH}"
@@ -59,3 +60,4 @@ touch ${DATA_DIR}/${SIGNAL_FILE}
 rm -rf ${BASE_DIR}
 rm -rf ${INCS_DIR}
 chmod -R 0777 ${DATA_DIR}
+echo "Restore completed!"
