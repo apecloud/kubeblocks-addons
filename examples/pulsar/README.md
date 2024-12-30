@@ -26,16 +26,13 @@ Optional components include:
 - Basic Mode: Includes the basic features of Pulsar, such as brokers, bookies, and Zookeeper.
 - Enhanced Mode: Includes additional components like Pulsar Proxy and Bookies Recovery.
 
-### Backup and Restore
-
-| Feature     | Method | Description |
-|-------------|--------|------------|
 
 ### Versions
 
-| Versions |
-|----------|
-| 2.11.2,3.0.2 |
+| Major Versions | Versions |
+|----------|-------|
+| 2.11.x   | 2.11.2 |
+| 3.0.x    | 3.0.2 |
 
 ## Prerequisites
 
@@ -58,7 +55,7 @@ kubectl apply -f examples/pulsar/cluster-basic.yaml
 ```
 
 A cluster with one brokers, four bookies, and one zookeepers will be created.
-The Zookeeper component will be created apriori, and the Broker and Bookies components will be created after the Zookeeper component is 'RUNNING'.
+The Zookeeper component will be created apriori, and the Broker and Bookies components will be created after the Zookeeper component is `RUNNING`.
 
 #### Enhanced Mode
 
