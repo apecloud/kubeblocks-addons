@@ -29,7 +29,7 @@ spec:
           - /bin/sh
           - -c
           - |
-            if [[ "$MY_INSTANCE_NAME" == *"-0"* ]]; then
+            if [[ "$KB_POD_NAME" == *"-0"* ]]; then
               WESQL_LOGGER_MODE="0"
             else
               WESQL_LOGGER_MODE="1"
