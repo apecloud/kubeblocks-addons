@@ -72,6 +72,7 @@ Describe "PostgreSQL Switchover Script Tests"
     Context "when the current pod FQDN is not found"
       setup() {
         CURRENT_POD_NAME="pod1"
+        KB_SWITCHOVER_CURRENT_NAME="pod1"
         POSTGRES_PRIMARY_POD_NAME="pod1"
         POSTGRES_POD_NAME_LIST="pod2,pod3"
         POSTGRES_POD_FQDN_LIST="pod2.example.com,pod3.example.com"
@@ -85,10 +86,27 @@ Describe "PostgreSQL Switchover Script Tests"
       End
     End
 
+    Context "when switchover action is called for a non-primary pod"
+      setup() {
+        CURRENT_POD_NAME="pod1"
+        POSTGRES_PRIMARY_POD_NAME="pod2"
+        KB_SWITCHOVER_CURRENT_NAME="pod1"
+        POSTGRES_POD_NAME_LIST="pod1,pod2"
+        POSTGRES_POD_FQDN_LIST="pod1.example.com,pod2.example.com"
+      }
+      Before 'setup'
+
+      It "exits without error"
+        When run switchover
+        The output should include "switchover action not triggered for primary pod. Exiting"
+      End
+    End
+
     Context "when KB_SWITCHOVER_CANDIDATE_NAME is set"
       setup() {
         CURRENT_POD_NAME="pod1"
         POSTGRES_PRIMARY_POD_NAME="pod1"
+        KB_SWITCHOVER_CURRENT_NAME="pod1"
         POSTGRES_POD_NAME_LIST="pod1,pod2"
         POSTGRES_POD_FQDN_LIST="pod1.example.com,pod2.example.com"
         KB_SWITCHOVER_CANDIDATE_NAME="pod2"
@@ -108,6 +126,7 @@ Describe "PostgreSQL Switchover Script Tests"
       setup() {
         CURRENT_POD_NAME="pod1"
         POSTGRES_PRIMARY_POD_NAME="pod1"
+        KB_SWITCHOVER_CURRENT_NAME="pod1"
         POSTGRES_POD_NAME_LIST="pod1,pod2"
         POSTGRES_POD_FQDN_LIST="pod1.example.com,pod2.example.com"
         unset KB_SWITCHOVER_CANDIDATE_NAME
