@@ -30,9 +30,9 @@ spec:
           - -c
           - |
             if [[ "$KB_POD_NAME" == *"-0"* ]]; then
-              WESQL_LOGGER_MODE="0"
+              export WESQL_LOGGER_MODE="0"
             else
-              WESQL_LOGGER_MODE="1"
+              export WESQL_LOGGER_MODE="1"
             fi
             exec docker-entrypoint.sh
         ports:
