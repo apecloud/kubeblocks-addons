@@ -26,19 +26,7 @@ cluster:
   ## MYSQL_TEMPLATE_CONFIG
   templateConfig:
   ## MYSQL_CUSTOM_CONFIG
-  customConfig: |
-    [mysqld]
-    objectstore_provider=aws
-    objectstore_region=us-west-1
-    objectstore_bucket=wesql-storage
-    repo_objectstore_id=sysbench
-    branch_objectstore_id=main
-    log-bin=binlog
-    gtid_mode=ON
-    enforce_gtid_consistency=ON
-    log_slave_updates=ON
-    binlog_format=ROW
-    skip_name_resolve=ON
+  customConfig:
   ## MYSQL_DYNAMIC_CONFIG
   dynamicConfig:
   ## KB_EMBEDDED_WESQL
@@ -54,8 +42,6 @@ auth:
   ## @param auth.database Name for a custom database to create
   ## MYSQL_DATABASE
   database: "mydb"
-  user: "u1"
-  password: "update-me"
 
 configTemplate:
 ## @param config template name
@@ -129,10 +115,3 @@ etcd:
   etcdCmpdName: etcd
 
 clusterDomain: ".cluster.local"
-
-objectStore:
-  provider: aws
-  region: us-west-1
-  bucket: wesql-storage
-  accessKey:
-  secretKey:

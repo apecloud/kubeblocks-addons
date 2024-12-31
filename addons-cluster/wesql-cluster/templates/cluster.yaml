@@ -11,6 +11,29 @@ spec:
   topology: {{ .Values.topology }}
   componentSpecs:
     - name: wesql-server
+      env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: {{ .Values.rootPassword }}
+        - name: WESQL_CLUSTER_MEMBER
+          value: "$(KB_POD_FQDN)"
+        - name: MYSQL_CUSTOM_CONFIG
+          value: |
+            [mysqld]
+            objectstore_provider={{ .Values.objectStore.provider }}
+            objectstore_region={{ .Values.objectStore.region }}
+            objectstore_bucket={{ .Values.objectStore.bucket }}
+            repo_objectstore_id={{ .Values.objectStore.repoId }}
+            branch_objectstore_id={{ .Values.objectStore.branchId }}
+            log-bin=binlog
+            gtid_mode=ON
+            enforce_gtid_consistency=ON
+            log_slave_updates=ON
+            binlog_format=ROW
+            skip_name_resolve=ON
+        - name: WESQL_OBJECTSTORE_ACCESS_KEY
+          value: {{ .Values.objectStore.accessKey }}
+        - name: WESQL_OBJECTSTORE_SECRET_KEY
+          value: {{ .Values.objectStore.secretKey }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "wesql-cluster.schedulingPolicy" . | indent 6 }}
       {{- if eq .Values.topology "wesql-proxy" }}

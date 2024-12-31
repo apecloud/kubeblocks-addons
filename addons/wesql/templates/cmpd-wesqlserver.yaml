@@ -35,18 +35,6 @@ spec:
               WESQL_LOGGER_MODE="1"
             fi
             exec docker-entrypoint.sh
-        env:
-          - name: MYSQL_ROOT_PASSWORD
-            value: {{ .Values.auth.password }}
-          - name: WESQL_CLUSTER_MEMBER
-            value: "$(KB_POD_FQDN)"
-          - name: MYSQL_CUSTOM_CONFIG
-            value: |
-{{ .Values.cluster.customConfig | indent 14 }}
-          - name: WESQL_OBJECTSTORE_ACCESS_KEY
-            value: {{ .Values.objectStore.accessKey }}
-          - name: WESQL_OBJECTSTORE_SECRET_KEY
-            value: {{ .Values.objectStore.secretKey }}
         ports:
           - containerPort: 3306
             name: wesql

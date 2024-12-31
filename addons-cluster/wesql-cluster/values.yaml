@@ -51,3 +51,14 @@ etcd:
   replicas: 3 # no support other num
   resources:
     storage: 20Gi
+
+rootPassword:
+
+objectStore:
+  provider: aws
+  region: us-west-1
+  bucket: wesql-storage
+  repoId: db
+  branchId: main
+  accessKey:
+  secretKey:
