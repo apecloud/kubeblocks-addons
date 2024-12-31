@@ -74,9 +74,9 @@ services:
   - name: default
     spec:
       ports:
-        - name: wesql-server
+        - name: wesql
           port: 3306
-          targetPort: wesql-server
+          targetPort: wesql
     roleSelector: leader
   - name: replication
     serviceName: replication

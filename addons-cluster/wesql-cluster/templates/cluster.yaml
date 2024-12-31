@@ -12,10 +12,8 @@ spec:
   componentSpecs:
     - name: wesql-server
       env:
-        - name: MYSQL_ROOT_PASSWORD
-          value: {{ .Values.rootPassword }}
         - name: WESQL_CLUSTER_MEMBER
-          value: "$(KB_POD_FQDN)"
+          value: "$(KB_POD_NAME).$(KB_CLUSTER_NAME)-$(KB_COMP_NAME)-headless:13306"
         - name: MYSQL_CUSTOM_CONFIG
           value: |
             [mysqld]

@@ -52,8 +52,6 @@ etcd:
   resources:
     storage: 20Gi
 
-rootPassword:
-
 objectStore:
   provider: aws
   region: us-west-1

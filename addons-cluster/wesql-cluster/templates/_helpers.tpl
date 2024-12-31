@@ -85,10 +85,4 @@ schedulingPolicy:
               apps.kubeblocks.io/component-name: wesql-server
           topologyKey: kubernetes.io/hostname
         weight: 100
-      requiredDuringSchedulingIgnoredDuringExecution:
-      - labelSelector:
-          matchLabels:
-            app.kubernetes.io/instance: {{ include "kblib.clusterName" . }}
-            apps.kubeblocks.io/component-name: wesql-server
-        topologyKey: kubernetes.io/hostname
 {{- end -}}
