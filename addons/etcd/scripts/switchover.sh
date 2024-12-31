@@ -83,6 +83,11 @@ switchover_without_candidate() {
 }
 
 switchover() {
+  if [[ $LEADER_POD_FQDN != "$KB_SWITCHOVER_CURRENT_FQDN" ]]; then
+    echo "switchover action not triggered for leader pod. Exiting."
+    exit 0
+  fi
+
   if is_empty "$KB_SWITCHOVER_CANDIDATE_FQDN"; then
       switchover_without_candidate
   else

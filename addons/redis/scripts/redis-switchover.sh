@@ -43,6 +43,16 @@ check_environment_exist() {
     echo "Error: Required environment variable REDIS_COMPONENT_NAME: $REDIS_COMPONENT_NAME is not set."
     exit 1
   fi
+
+  if is_empty "$KB_SWITCHOVER_ROLE"; then
+    echo "role can't be empty"
+    exit 1
+  fi
+
+  if [ "$KB_SWITCHOVER_ROLE" != "primary" ]; then
+    echo "swtichover not triggered for primary, nothing to do"
+    exit 0
+  fi
 }
 
 check_connectivity() {
