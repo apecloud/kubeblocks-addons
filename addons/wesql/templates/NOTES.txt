@@ -1,0 +1,1 @@
+WeSQL addon is installed successfully.
