@@ -98,7 +98,7 @@ Define fe component definition regex pattern
 Define be component definition regex pattern
 */}}
 {{- define "be.cmpdRegexPattern" -}}
-^starrocks-ce-fe-
+^starrocks-ce-be-
 {{- end -}}
 
 {{/*
