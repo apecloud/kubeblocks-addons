@@ -46,6 +46,8 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.name
+          - name: SERVICE_PORT
+            value: "10080"
         ports:
           - containerPort: 4000
             name: client
@@ -61,6 +63,7 @@ spec:
             --host=0.0.0.0 \
             --path=${PD_ADDRESS} \
             --log-slow-query=/var/log/tidb/slowlog \
+            --log-file=/var/log/tidb/running.log \
             --config=/etc/tidb/tidb.toml
         volumeMounts:
           - name: slowlog

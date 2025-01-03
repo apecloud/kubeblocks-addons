@@ -12,3 +12,14 @@ spec:
     - name: br
       snapshotVolumes: false
       actionSetName: tidb-br
+      env:
+        - name: IMAGE_TAG
+          valueFrom:
+            versionMapping:
+              - serviceVersions:
+                  - "6"
+                  - "7"
+                mappedValue: "v7.5.2"
+              - serviceVersions:
+                  - "8"
+                mappedValue: "v8.4.0"
