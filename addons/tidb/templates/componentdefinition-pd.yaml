@@ -33,6 +33,8 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.name
+          - name: SERVICE_PORT
+            value: "2379"
         ports:
           - containerPort: 2379
             name: client
@@ -45,9 +47,6 @@ spec:
             mountPath: /scripts
           - name: config
             mountPath: /etc/pd
-        env:
-          - name: SERVICE_PORT
-            value: "2379"
         command: [ "/scripts/pd_start.sh" ]
   volumes:
     - name: data
