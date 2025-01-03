@@ -89,9 +89,6 @@
 	// Maximum permissible number of channels to negotiate with clients, not including a special channel number 0 used in the protocol. Setting to 0 means "unlimited", a dangerous value since applications sometimes have channel leaks. Using more channels increases memory footprint of the broker.
 	channel_max?: int | *2047
 	
-	// Channel operation timeout in milliseconds
-	channel_operation_timeout?: int | *15000
-	
 	// The largest allowed message payload size in bytes
 	max_message_size?: int & <=536870912 | *16777216
 	
