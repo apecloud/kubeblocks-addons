@@ -28,13 +28,13 @@ fi
 # 2. download backup files
 # download base backup file
 mkdir -p ${DATA_DIR}
-BASE_DIR=${DATA_MOUNT_DIR}/base
+BASE_DIR=${DATA_MOUNT_DIR}/xtrabackup-base
 download_backup_file "${DP_BASE_BACKUP_NAME}" "${BASE_DIR}"
 # download parent backup files
 if [ -n "${DP_ANCESTOR_INCREMENTAL_BACKUP_NAMES}" ]; then
   read -r -a ANCESTOR_INCREMENTAL_BACKUP_NAMES <<< "${DP_ANCESTOR_INCREMENTAL_BACKUP_NAMES//,/ }"
 fi
-INCS_DIR=${DATA_MOUNT_DIR}/incs
+INCS_DIR=${DATA_MOUNT_DIR}/xtrabackup-incs
 mkdir -p ${INCS_DIR}
 for parent_name in "${ANCESTOR_INCREMENTAL_BACKUP_NAMES[@]}"; do
   download_backup_file "${parent_name}" "${INCS_DIR}/${parent_name}"

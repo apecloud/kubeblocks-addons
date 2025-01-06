@@ -24,7 +24,8 @@ fi
 
 # 2. get parent backup
 mkdir -p ${DATA_DIR}
-PARENT_DIR=${DATA_MOUNT_DIR}/parent
+PARENT_DIR=${DATA_MOUNT_DIR}/xtrabackup-parent
+rm -rf ${PARENT_DIR}
 mkdir -p ${PARENT_DIR} && cd ${PARENT_DIR}
 # set the datasafed backend base path for the parent backup
 export DATASAFED_BACKEND_BASE_PATH="${DP_BACKUP_ROOT_PATH}/${DP_PARENT_BACKUP_NAME}/${DP_TARGET_RELATIVE_PATH}"
