@@ -28,24 +28,29 @@ PARENT_DIR=${DATA_MOUNT_DIR}/parent
 mkdir -p ${PARENT_DIR} && cd ${PARENT_DIR}
 # set the datasafed backend base path for the parent backup
 export DATASAFED_BACKEND_BASE_PATH="${DP_BACKUP_ROOT_PATH}/${DP_PARENT_BACKUP_NAME}/${DP_TARGET_RELATIVE_PATH}"
-datasafed pull "${DP_PARENT_BACKUP_NAME}.xbstream" - | xbstream -x
+xbstreamFile="${DP_PARENT_BACKUP_NAME}.xbstream.zst"
+if [ "$(datasafed list ${xbstreamFile})" == "${xbstreamFile}" ]; then
+  datasafed pull -d zstd-fastest "${xbstreamFile}" - | xbstream -x
+else
+  datasafed pull "${DP_PARENT_BACKUP_NAME}.xbstream" - | xbstream -x
+fi
 xtrabackup --decompress --remove-original --target-dir=${PARENT_DIR}
 
 # set the datasafed backend base path for the current backup
 # it is equal to ${DP_BACKUP_ROOT_PATH}/${DP_BACKUP_NAME}/${DP_TARGET_RELATIVE_PATH}
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
-# compatible with version 0.6
-if [ -f ${DATA_DIR}/mysql-bin.index ]; then
-  echo "" | datasafed push - "apecloud-mysql.old"
+
+# compatible with version 2.4
+lock_per_table_ddl=""
+if [ "${IMAGE_TAG}" == "2.4" ]; then
+  lock_per_table_ddl="--lock-ddl-per-table"
 fi
 
 # 3. do incremental xtrabackup
-START_TIME=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
-xtrabackup --compress=zstd --backup --safe-slave-backup --slave-info --stream=xbstream \
+xtrabackup --backup --safe-slave-backup --slave-info ${lock_per_table_ddl} --stream=xbstream \
   --host=${DP_DB_HOST} --port=${DP_DB_PORT} \
   --user=${DP_DB_USER} --password=${DP_DB_PASSWORD} \
-  --datadir=${DATA_DIR} --incremental-basedir=${PARENT_DIR} | datasafed push - "/${DP_BACKUP_NAME}.xbstream"
-STOP_TIME=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+  --datadir=${DATA_DIR} --incremental-basedir=${PARENT_DIR} | datasafed push -z zstd-fastest - "/${DP_BACKUP_NAME}.xbstream.zst"
 TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
-echo "{\"totalSize\":\"$TOTAL_SIZE\",\"timeRange\":{\"start\":\"${START_TIME}\",\"end\":\"${STOP_TIME}\"}}" >"${DP_BACKUP_INFO_FILE}"
+echo "{\"totalSize\":\"$TOTAL_SIZE\"}" >"${DP_BACKUP_INFO_FILE}"
 rm -rf ${PARENT_DIR}

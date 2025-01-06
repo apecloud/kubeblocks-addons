@@ -15,7 +15,12 @@ function download_backup_file() {
   local_target_dir=$2
   mkdir -p ${local_target_dir} && cd ${local_target_dir}
   change_backend_path "${backup_name}"
-  datasafed pull "${backup_name}.xbstream" - | xbstream -x
+  xbstreamFile="${backup_name}.xbstream.zst"
+  if [ "$(datasafed list ${xbstreamFile})" == "${xbstreamFile}" ]; then
+    datasafed pull -d zstd-fastest "${xbstreamFile}" - | xbstream -x
+  else
+    datasafed pull "${backup_name}.xbstream" - | xbstream -x
+  fi
   xtrabackup --decompress --remove-original --target-dir=${local_target_dir}
 }
 
@@ -42,12 +47,6 @@ done
 # download target backup file
 download_backup_file "${DP_BACKUP_NAME}" "${INCS_DIR}/${DP_BACKUP_NAME}"
 
-old_signal="apecloud-mysql.old"
-log_bin=${LOG_BIN}
-if [ "$(datasafed list ${old_signal})" == "${old_signal}" ]; then
-   log_bin="${DATA_DIR}/mysql-bin"
-fi
-
 # 3. prepare data
 xtrabackup --prepare --apply-log-only --target-dir=${BASE_DIR}
 for parent_name in "${ANCESTOR_INCREMENTAL_BACKUP_NAMES[@]}"; do
@@ -57,7 +56,10 @@ xtrabackup --prepare --target-dir=${BASE_DIR} --incremental-dir=${INCS_DIR}/${DP
 
 # 4. restore
 xtrabackup --move-back --target-dir=${BASE_DIR} --datadir=${DATA_DIR}/ --log-bin=${log_bin}
-touch ${DATA_DIR}/${SIGNAL_FILE}
+touch ${DATA_DIR}/.xtrabackup_restore
+if [ "${BACKUP_FOR_STANDBY}" != "true" ]; then
+   touch ${DATA_DIR}/.restore_new_cluster
+fi
 rm -rf ${BASE_DIR}
 rm -rf ${INCS_DIR}
 chmod -R 0777 ${DATA_DIR}

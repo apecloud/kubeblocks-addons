@@ -32,6 +32,27 @@ spec:
       volumeMounts:
       - name: data
         mountPath: {{ .Values.dataMountPath }}
+  - name: xtrabackup-inc
+    compatibleMethod: xtrabackup
+    snapshotVolumes: false
+    actionSetName: mysql-xtrabackup-inc-br
+    env:
+      - name: IMAGE_TAG
+        valueFrom:
+          versionMapping:
+          - serviceVersions:
+            - "8.4"
+            mappedValue: "8.4"
+          - serviceVersions:
+            - "8.0"
+            mappedValue: "8.0"
+          - serviceVersions:
+            - "5.7"
+            mappedValue: "2.4"
+    targetVolumes:
+      volumeMounts:
+      - name: data
+        mountPath: {{ .Values.dataMountPath }}
   - name: volume-snapshot
     snapshotVolumes: true
     actionSetName: mysql-volume-snapshot
@@ -47,6 +68,10 @@ spec:
   - backupMethod: xtrabackup
     enabled: false
     cronExpression: "0 18 * * 0"
+    retentionPeriod: 7d
+  - backupMethod: xtrabackup-inc
+    enabled: false
+    cronExpression: "0 19 * * 0"
     retentionPeriod: 7d
   - backupMethod: volume-snapshot
     enabled: false
