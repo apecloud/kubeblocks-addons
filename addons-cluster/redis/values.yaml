@@ -38,6 +38,11 @@ requests:
 ##
 storage: 20
 
+# custom password of default user for redis by passing a secret
+# the secret must contain keys named 'username' and 'password'
+customSecretName: ""
+customSecretNamespace: ""
+
 ## @param twemproxy.enable
 ## @param sentinel.cpu
 ## @param sentinel.memory
@@ -68,11 +73,19 @@ sentinel:
   storage: 20
   replicas: 3
   customMasterName: ""
+  # custom password of default user for redis sentinel by passing a secret
+  # the secret must contain keys named 'username' and 'password'
+  customSecretName: ""
+  customSecretNamespace: ""
 
 ## if mode is cluster, specify the redis cluster parameters
 ## @param redisCluster.shardCount specify the number of shards in the cluster, the minimum value is 3
 redisCluster:
   shardCount: 3
+  # custom password of default user for redis cluster by passing a secret
+  # the secret must contain keys named 'username' and 'password'
+  customSecretName: ""
+  customSecretNamespace: ""
 
 extra:
   rbacEnabled: true

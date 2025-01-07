@@ -70,6 +70,14 @@ parse_redis_sentinel_announce_addr() {
   fi
 }
 
+rebuild_redis_sentinel_acl_file() {
+  if [ -f /data/users.acl ]; then
+    sed -i "/user default on/d" /data/users.acl
+  else
+    touch /data/users.acl
+  fi
+}
+
 reset_redis_sentinel_conf() {
   echo "reset redis sentinel conf"
   sentinel_port=26379
@@ -79,6 +87,7 @@ reset_redis_sentinel_conf() {
   mkdir -p $redis_sentinel_conf_dir
   if [ -f $redis_sentinel_real_conf ]; then
     sed "/sentinel announce-ip/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
+    sed "/sentinel announce-port/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
     sed "/sentinel resolve-hostnames/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
     sed "/sentinel announce-hostnames/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
     unset_xtrace_when_ut_mode_false
@@ -88,6 +97,9 @@ reset_redis_sentinel_conf() {
     fi
     set_xtrace_when_ut_mode_false
     sed "/port $sentinel_port/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
+    sed "/aclfile \/data\/users.acl/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
+    # backward compatible for previous versions without ACL
+    sed "/user default on/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
   fi
 
   # hack for redis sentinel when nodeport is enabled, remove known-replica line which has the same nodeport port with master
@@ -98,7 +110,8 @@ reset_redis_sentinel_conf() {
       if [[ $line =~ ^sentinel[[:space:]]+monitor[[:space:]]+([^[:space:]]+)[[:space:]]+[^[:space:]]+[[:space:]]+([^[:space:]]+) ]]; then
         master_name="${BASH_REMATCH[1]}"
         master_port="${BASH_REMATCH[2]}"
-        sed -i "/^sentinel known-replica ${master_name} .* ${master_port}$/d" /data/sentinel/redis-sentinel.conf
+        sed "/^sentinel known-replica ${master_name} .* ${master_port}$/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
+        sed "/^sentinel known-sentinel ${master_name}/d" $redis_sentinel_real_conf > $redis_sentinel_real_conf_bak && mv $redis_sentinel_real_conf_bak $redis_sentinel_real_conf
       fi
     done < "$temp_file"
     rm -f "$temp_file"
@@ -150,6 +163,7 @@ build_redis_sentinel_conf() {
     } >> $redis_sentinel_real_conf
   fi
   set_xtrace_when_ut_mode_false
+  echo "aclfile /data/users.acl">> $redis_sentinel_real_conf
   echo "build redis sentinel conf succeeded!"
 }
 
@@ -169,6 +183,7 @@ ${__SOURCED__:+false} : || return 0
 # main
 load_common_library
 parse_redis_sentinel_announce_addr "$CURRENT_POD_NAME"
+rebuild_redis_sentinel_acl_file
 reset_redis_sentinel_conf
 build_redis_sentinel_conf
 start_redis_sentinel_server

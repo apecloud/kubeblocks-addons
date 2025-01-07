@@ -151,11 +151,13 @@ shutdown_redis_server() {
 
 check_redis_server_ready() {
   unset_xtrace_when_ut_mode_false
+  local host="$1"
+  local port="$2"
   local max_retry=10
   local retry_interval=5
-  check_ready_cmd="redis-cli -h 127.0.0.1 -p $service_port ping"
+  check_ready_cmd="redis-cli -h $host -p $port ping"
   if ! is_empty "$REDIS_DEFAULT_PASSWORD"; then
-    check_ready_cmd="redis-cli -h 127.0.0.1 -p $service_port -a $REDIS_DEFAULT_PASSWORD ping"
+    check_ready_cmd="redis-cli -h $host -p $port -a $REDIS_DEFAULT_PASSWORD ping"
   fi
   set_xtrace_when_ut_mode_false
   output=$($check_ready_cmd)
@@ -408,8 +410,10 @@ check_node_in_cluster_with_retry() {
 }
 
 check_redis_server_ready_with_retry() {
+  local host="$1"
+  local port="$2"
   # call the execute_check_redis_server_ready_command function with call_func_with_retry function and get the output
-  check_result=$(call_func_with_retry $check_ready_times $retry_delay_second check_redis_server_ready)
+  check_result=$(call_func_with_retry $check_ready_times $retry_delay_second check_redis_server_ready "$host" "$port")
   status=$?
   if [ $status -ne 0 ]; then
     echo "Failed to check the redis server ready after retry" >&2
