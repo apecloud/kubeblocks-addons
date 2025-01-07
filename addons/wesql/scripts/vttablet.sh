@@ -1,8 +1,8 @@
 #!/bin/bash
-while [ "$KB_PROXY_ENABLED" != "on" ]
-do
-  sleep 60
-done
+#while [ "$KB_PROXY_ENABLED" != "on" ]
+#do
+#  sleep 60
+#done
 
 export LORRY_HTTP_PORT=$SYNCER_HTTP_PORT
 . /scripts/set_config_variables.sh
@@ -79,5 +79,5 @@ $(if [ "$enable_query_log" == "true" ]; then echo "--log_queries_to_file $VTDATA
 --pid_file $VTDATAROOT/vttablet.pid \
 --vtctld_addr http://$vtctld_host:$vtctld_web_port/ \
 --disable_active_reparents \
---config_path /vt/config/wescale/default \
+--config_path /vt/config/wescale/default
 EOF
