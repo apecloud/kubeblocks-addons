@@ -235,6 +235,13 @@ scale_redis_cluster_replica() {
     exit 1
   fi
 
+  if [ -f /data/nodes.conf ]; then
+    echo "the nodes.conf file after redis server start:"
+    cat /data/nodes.conf
+  else
+    echo "the nodes.conf file after redis server start is not exist"
+  fi
+
   # get the current component nodes for scale out replica
   target_node_name=$(min_lexicographical_order_pod "$CURRENT_SHARD_POD_NAME_LIST")
   if ! is_empty "$CURRENT_SHARD_PRIMARY_POD_NAME"; then
