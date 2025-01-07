@@ -730,7 +730,7 @@ verify_secondary_in_all_primaries() {
     primary_port=$(echo "$primary_node" | cut -d':' -f2)
     retry_count=0
     while ! check_node_in_cluster "$primary_host" "$primary_port" "$secondary_pod_name" && [ $retry_count -lt 30 ]; do
-      sleep 3
+      sleep_when_ut_mode_false 3
       ((retry_count++))
     done
     # shellcheck disable=SC2086
