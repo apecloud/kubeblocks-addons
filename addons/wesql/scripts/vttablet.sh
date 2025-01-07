@@ -78,5 +78,6 @@ $(if [ "$enable_query_log" == "true" ]; then echo "--log_queries_to_file $VTDATA
 --service_map 'grpc-queryservice,grpc-tabletmanager,grpc-updatestream' \
 --pid_file $VTDATAROOT/vttablet.pid \
 --vtctld_addr http://$vtctld_host:$vtctld_web_port/ \
---disable_active_reparents
+--disable_active_reparents \
+--config_path /vt/config/wescale/default \
 EOF

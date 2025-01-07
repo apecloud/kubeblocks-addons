@@ -44,5 +44,6 @@ exec vtgate \
   --cells_to_watch $cell \
   --tablet_types_to_wait PRIMARY,REPLICA \
   --service_map 'grpc-vtgateservice' \
+  --config_path /vt/config/wescale/default \
   --pid_file $VTDATAROOT/vtgate.pid
 EOF
