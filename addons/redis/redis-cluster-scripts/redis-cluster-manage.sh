@@ -673,6 +673,8 @@ initialize_redis_cluster() {
     echo "No secondary nodes to initialize"
     return 0
   fi
+
+  all_secondaries_ready=true
   for secondary_pod_name in "${!initialize_redis_cluster_secondary_nodes[@]}"; do
     secondary_endpoint_with_port=${initialize_redis_cluster_secondary_nodes["$secondary_pod_name"]}
     # shellcheck disable=SC2001
@@ -703,10 +705,17 @@ initialize_redis_cluster() {
     # verify secondary node is already in all primary nodes
     if ! verify_secondary_in_all_primaries "$secondary_endpoint_with_port" "${primary_node_list[@]}"; then
       echo "Failed to verify secondary node $secondary_endpoint_with_port in all primary nodes" >&2
-      return 1
+      all_secondaries_ready=false
+      continue
     fi
     echo "Secondary node $secondary_endpoint_with_port successfully joined the cluster and verified in all primaries"
   done
+
+  if ! all_secondaries_ready; then
+    echo "Failed to initialize all secondary nodes" >&2
+    return 1
+  fi
+  echo "Redis cluster initialized all secondary nodes successfully"
   return 0
 }
 
@@ -715,20 +724,15 @@ verify_secondary_in_all_primaries() {
   local primary_nodes=("$@")
   # Skip the first argument
   shift
-  all_check_ok=true
   for primary_node in "$@"; do
     local primary_host primary_port
     primary_host=$(echo "$primary_node" | cut -d':' -f1)
     primary_port=$(echo "$primary_node" | cut -d':' -f2)
     if ! check_node_in_cluster_with_retry "$primary_host" "$primary_port" "$secondary_pod_name"; then
       echo "Secondary node $secondary_pod_name not found in primary $primary_node after retry" >&2
-      all_check_ok=false
-      contnue
+      return 1
     fi
   done
-  if ! all_check_ok; then
-    return 1
-  fi
   return 0
 }
 
