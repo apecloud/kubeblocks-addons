@@ -703,12 +703,12 @@ initialize_redis_cluster() {
     sleep_when_ut_mode_false 5
 
     # verify secondary node is already in all primary nodes
-    if ! verify_secondary_in_all_primaries "$secondary_endpoint_with_port" "${primary_node_list[@]}"; then
-      echo "Failed to verify secondary node $secondary_endpoint_with_port in all primary nodes" >&2
+    if ! verify_secondary_in_all_primaries "$secondary_pod_name" "${primary_node_list[@]}"; then
+      echo "Failed to verify secondary node $secondary_pod_name in all primary nodes" >&2
       all_secondaries_ready=false
       continue
     fi
-    echo "Secondary node $secondary_endpoint_with_port successfully joined the cluster and verified in all primaries"
+    echo "Secondary node $secondary_pod_name successfully joined the cluster and verified in all primaries"
   done
 
   if [ "$all_secondaries_ready" = false ]; then
