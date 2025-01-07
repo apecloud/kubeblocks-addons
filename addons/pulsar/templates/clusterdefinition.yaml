@@ -46,14 +46,14 @@ spec:
           compDef: {{ include "pulsar.bkRecoveryCmpdRegexPattern" . }}
       orders:
         provision:
-          - zookeeper,bookies-recovery
+          - zookeeper
           - broker,bookies
-          - proxy
+          - proxy,bookies-recovery
         terminate:
-          - proxy
+          - proxy,bookies-recovery
           - broker,bookies
-          - zookeeper,bookies-recovery
+          - zookeeper
         update:
-          - zookeeper,bookies-recovery
+          - zookeeper
           - broker,bookies
-          - proxy
+          - proxy,bookies-recovery
