@@ -711,7 +711,7 @@ initialize_redis_cluster() {
     echo "Secondary node $secondary_endpoint_with_port successfully joined the cluster and verified in all primaries"
   done
 
-  if ! all_secondaries_ready; then
+  if [ "$all_secondaries_ready" = false ]; then
     echo "Failed to initialize all secondary nodes" >&2
     return 1
   fi
@@ -728,7 +728,13 @@ verify_secondary_in_all_primaries() {
     local primary_host primary_port
     primary_host=$(echo "$primary_node" | cut -d':' -f1)
     primary_port=$(echo "$primary_node" | cut -d':' -f2)
-    if ! check_node_in_cluster_with_retry "$primary_host" "$primary_port" "$secondary_pod_name"; then
+    retry_count=0
+    while ! check_node_in_cluster "$primary_host" "$primary_port" "$secondary_pod_name" && [ $retry_count -lt 30 ]; do
+      sleep 3
+      ((retry_count++))
+    done
+    # shellcheck disable=SC2086
+    if [ $retry_count -eq 30 ]; then
       echo "Secondary node $secondary_pod_name not found in primary $primary_node after retry" >&2
       return 1
     fi
