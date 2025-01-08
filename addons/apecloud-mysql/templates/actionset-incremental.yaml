@@ -24,7 +24,7 @@ spec:
       image: {{ include "apecloud-mysql.bakcupToolImage" . }}
       runOnTargetPodNode: true
       command:
-      - sh
+      - bash
       - -c
       - |
         {{- .Files.Get "dataprotection/xtrabackup-incremental-backup.sh" | nindent 8 }}
