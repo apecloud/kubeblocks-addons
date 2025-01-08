@@ -749,6 +749,10 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
         initialize_redis_cluster_primary_nodes["redis-shard-jwl-0"]="10.42.0.5:6379"
       }
 
+      check_initialize_nodes_ready() {
+        return 0
+      }
+
       create_redis_cluster() {
         return 1
       }
@@ -778,6 +782,10 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
         initialize_redis_cluster_primary_nodes["redis-shard-98x-0"]="10.42.0.1:6379"
         initialize_redis_cluster_primary_nodes["redis-shard-7hy-0"]="10.42.0.3:6379"
         initialize_redis_cluster_primary_nodes["redis-shard-jwl-0"]="10.42.0.5:6379"
+      }
+
+      check_initialize_nodes_ready() {
+        return 0
       }
 
       create_redis_cluster() {
@@ -816,6 +824,10 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
         initialize_redis_cluster_primary_nodes["redis-shard-98x-0"]="10.42.0.1:6379"
         initialize_redis_cluster_primary_nodes["redis-shard-7hy-0"]="10.42.0.3:6379"
         initialize_redis_cluster_primary_nodes["redis-shard-jwl-0"]="10.42.0.5:6379"
+      }
+
+      check_initialize_nodes_ready() {
+        return 0
       }
 
       create_redis_cluster() {
@@ -857,6 +869,10 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
         initialize_redis_cluster_primary_nodes["redis-shard-98x-0"]="10.42.0.1:6379"
         initialize_redis_cluster_primary_nodes["redis-shard-7hy-0"]="10.42.0.3:6379"
         initialize_redis_cluster_primary_nodes["redis-shard-jwl-0"]="10.42.0.5:6379"
+      }
+
+      check_initialize_nodes_ready() {
+        return 0
       }
 
       create_redis_cluster() {
@@ -904,6 +920,10 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
         initialize_redis_cluster_primary_nodes["redis-shard-98x-0"]="10.42.0.1:6379"
         initialize_redis_cluster_primary_nodes["redis-shard-7hy-0"]="10.42.0.3:6379"
         initialize_redis_cluster_primary_nodes["redis-shard-jwl-0"]="10.42.0.5:6379"
+      }
+
+      check_initialize_nodes_ready() {
+        return 0
       }
 
       create_redis_cluster() {
@@ -954,6 +974,10 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
         initialize_redis_cluster_primary_nodes["redis-shard-98x-0"]="10.42.0.1:6379"
         initialize_redis_cluster_primary_nodes["redis-shard-7hy-0"]="10.42.0.3:6379"
         initialize_redis_cluster_primary_nodes["redis-shard-jwl-0"]="10.42.0.5:6379"
+      }
+      
+      check_initialize_nodes_ready() {
+        return 0
       }
 
       create_redis_cluster() {
