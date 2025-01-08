@@ -104,7 +104,7 @@ innodb_read_io_threads=4
 key_buffer_size=16777216
 
 # binlog
-# master_info_repository=TABLE
+master_info_repository=TABLE
 # From mysql8.0.23 is deprecated.
 binlog_cache_size={{ $binlog_cache_size }}
 # AWS binlog_format=MIXED, Aliyun is ROW
@@ -142,7 +142,7 @@ loose_audit_log_rotations=5
 loose_audit_log_exclude_accounts=root@%,root@localhost
 
 # replay log
-# relay_log_info_repository=TABLE
+relay_log_info_repository=TABLE
 # From mysql8.0.23 is deprecated.
 relay_log_recovery=ON
 relay_log=relay-bin
