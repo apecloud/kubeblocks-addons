@@ -41,6 +41,19 @@ load_redis_cluster_common_utils() {
   source "${redis_cluster_common_library_file}"
 }
 
+check_initialize_nodes_ready() {
+  local nodes=("$@")
+  for node in "${nodes[@]}"; do
+    local host port
+    host=$(echo "$node" | cut -d':' -f1)
+    port=$(echo "$node" | cut -d':' -f2)
+    if ! check_redis_server_ready_with_retry "$host" "$port"; then
+      return 1
+    fi
+  done
+  return 0
+}
+
 # initialize the other component and pods info
 init_other_components_and_pods_info() {
   local current_component="$1"
@@ -605,17 +618,40 @@ initialize_redis_cluster() {
     return 1
   fi
 
-  # initialize all the primary nodes
+  # generate primary and secondary nodes
   gen_initialize_redis_cluster_primary_node
+  gen_initialize_redis_cluster_secondary_nodes
+
   if [ ${#initialize_redis_cluster_primary_nodes[@]} -eq 0 ] || [ ${#initialize_redis_cluster_primary_nodes[@]} -lt 3 ]; then
     echo "Failed to get primary nodes or the primary nodes count is less than 3" >&2
     return 1
   fi
-  local primary_nodes=""
-  for primary_pod_name in "${!initialize_redis_cluster_primary_nodes[@]}"; do
-    primary_nodes+="${initialize_redis_cluster_primary_nodes[$primary_pod_name]} "
-  done
 
+  # check all the primary nodes are ready
+  local primary_nodes=""
+  local primary_node_list=()
+  for pod_name in "${!initialize_redis_cluster_primary_nodes[@]}"; do
+    primary_nodes+="${initialize_redis_cluster_primary_nodes[$pod_name]} "
+    primary_node_list+=("${initialize_redis_cluster_primary_nodes[$pod_name]}")
+  done
+  if ! check_initialize_nodes_ready "${primary_node_list[@]}"; then
+    echo "Primary nodes health check failed" >&2
+    return 1
+  fi
+
+  # check all the secondary nodes are ready
+  if [ ${#initialize_redis_cluster_secondary_nodes[@]} -gt 0 ]; then
+    secondary_node_list=()
+    for pod_name in "${!initialize_redis_cluster_secondary_nodes[@]}"; do
+      secondary_node_list+=("${initialize_redis_cluster_secondary_nodes[$pod_name]}")
+    done
+    if ! check_initialize_nodes_ready "${secondary_node_list[@]}"; then
+      echo "Secondary nodes health check failed" >&2
+      return 1
+    fi
+  fi
+
+  # initialize all the primary nodes
   if create_redis_cluster "$primary_nodes"; then
     echo "Redis cluster initialized primary nodes successfully, cluster nodes: $primary_nodes"
   else
@@ -633,11 +669,12 @@ initialize_redis_cluster() {
   fi
 
   # initialize all the secondary nodes
-  gen_initialize_redis_cluster_secondary_nodes
   if [ ${#initialize_redis_cluster_secondary_nodes[@]} -eq 0 ]; then
     echo "No secondary nodes to initialize"
     return 0
   fi
+
+  all_secondaries_ready=true
   for secondary_pod_name in "${!initialize_redis_cluster_secondary_nodes[@]}"; do
     secondary_endpoint_with_port=${initialize_redis_cluster_secondary_nodes["$secondary_pod_name"]}
     # shellcheck disable=SC2001
@@ -664,6 +701,43 @@ initialize_redis_cluster() {
     echo "Redis cluster initialized secondary node $secondary_pod_name successfully"
     # waiting for all nodes sync the information
     sleep_when_ut_mode_false 5
+
+    # verify secondary node is already in all primary nodes
+    if ! verify_secondary_in_all_primaries "$secondary_pod_name" "${primary_node_list[@]}"; then
+      echo "Failed to verify secondary node $secondary_pod_name in all primary nodes" >&2
+      all_secondaries_ready=false
+      continue
+    fi
+    echo "Secondary node $secondary_pod_name successfully joined the cluster and verified in all primaries"
+  done
+
+  if [ "$all_secondaries_ready" = false ]; then
+    echo "Failed to initialize all secondary nodes" >&2
+    return 1
+  fi
+  echo "Redis cluster initialized all secondary nodes successfully"
+  return 0
+}
+
+verify_secondary_in_all_primaries() {
+  local secondary_pod_name="$1"
+  local primary_nodes=("$@")
+  # Skip the first argument
+  shift
+  for primary_node in "$@"; do
+    local primary_host primary_port
+    primary_host=$(echo "$primary_node" | cut -d':' -f1)
+    primary_port=$(echo "$primary_node" | cut -d':' -f2)
+    retry_count=0
+    while ! check_node_in_cluster "$primary_host" "$primary_port" "$secondary_pod_name" && [ $retry_count -lt 30 ]; do
+      sleep_when_ut_mode_false 3
+      ((retry_count++))
+    done
+    # shellcheck disable=SC2086
+    if [ $retry_count -eq 30 ]; then
+      echo "Secondary node $secondary_pod_name not found in primary $primary_node after retry" >&2
+      return 1
+    fi
   done
   return 0
 }

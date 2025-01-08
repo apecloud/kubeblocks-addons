@@ -65,10 +65,17 @@ check_and_correct_other_primary_nodes() {
     while true; do
       current_announce_ip=$(get_cluster_announce_ip "$node_endpoint" "$node_port")
       echo "original_announce_ip: $original_announce_ip, node_endpoint_with_port: $node_endpoint_with_port, current_announce_ip: $current_announce_ip"
-      # if current_announce_ip is empty, we need to retry
+      # if current_announce_ip is empty, retry it
       if is_empty "$current_announce_ip"; then
+        echo "Error: current_announce_ip is empty"
         sleep_when_ut_mode_false 3
-        echo "current_announce_ip is empty, retry..."
+        continue
+      fi
+
+      if [ "$node_port" -eq 0 ] || [ "$node_bus_port" -eq 0 ]; then
+        echo "Error: node_port or node_bus_port is 0"
+        sleep_when_ut_mode_false 3
+        # TODO: get other_comp_primary_nodes again
         continue
       fi
 
@@ -221,11 +228,18 @@ get_current_comp_nodes_for_scale_out_replica() {
 # scale out replica of redis cluster shard if needed
 scale_redis_cluster_replica() {
   # Waiting for redis-server to start
-  if check_redis_server_ready_with_retry ; then
+  if check_redis_server_ready_with_retry "127.0.0.1" "$service_port"; then
     echo "Redis server is ready, continue to scale out replica..."
   else
     echo "Redis server is not ready, exit scale out replica..." >&2
     exit 1
+  fi
+
+  if [ -f /data/nodes.conf ]; then
+    echo "the nodes.conf file after redis server start:"
+    cat /data/nodes.conf
+  else
+    echo "the nodes.conf file after redis server start is not exist"
   fi
 
   # get the current component nodes for scale out replica
