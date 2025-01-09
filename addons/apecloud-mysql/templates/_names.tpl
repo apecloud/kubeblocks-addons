@@ -10,6 +10,17 @@ apecloud-mysql-xtrabackup
 {{- end -}}
 
 {{/*
+Define xtrabackup actionSet name for incremental backups
+*/}}
+{{- define "apecloud-mysql.xtrabackupIncActionSetName" -}}
+{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+apecloud-mysql-xtrabackup-incremental
+{{- else -}}
+{{- .Values.resourceNamePrefix -}}-xtrabackup-incremental
+{{- end -}}
+{{- end -}}
+
+{{/*
 Define volume snapshot actionSet name
 */}}
 {{- define "apecloud-mysql.vsActionSetName" -}}
