@@ -9,11 +9,11 @@ fullnameOverride: ""
 mode: cluster
 
 ## Sharding configuration
-shards: 2
+shards: 1
 sharding: true
 
 ## Number of ClickHouse replicas per shard to deploy
-replicas: 1
+replicas: 2
 
 ## ClickHouse per shard component configurations
 cpu: 1

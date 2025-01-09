@@ -27,20 +27,14 @@
   <!-- Cluster configuration - Any update of the shards and replicas requires helm upgrade -->
   <remote_servers>
     <default>
-    {{- range $.cluster.spec.componentSpecs }}
-    {{- $compIter := . }}
-    {{- $compName := "" }}
-    {{- if hasKey $compIter "componentDef" }}
-    {{- $compName = $compIter.componentDef }}
-    {{- else }}
-    {{- $compName = $compIter.componentDefRef }}
-    {{- end }}
-    {{- if or (eq $compName "clickhouse") (eq $compName "clickhouse-24") }}
+      {{- $newAPI := false }}
+      {{- range $key, $value := . }}
+      {{- if and (hasPrefix "ALL_SHARDS_POD_FQDN_LIST" $key) (ne $value "") }}
+      {{- $newAPI = true }}
       <shard>
-      {{- $replicas := $compIter.replicas | int }}
-      {{- range $i, $_e := until $replicas }}
+        {{- range $_, $host := splitList "," $value }}
         <replica>
-          <host>{{ $clusterName }}-{{ $compIter.name }}-{{ $i }}.{{ $clusterName }}-{{ $compIter.name }}-headless.{{ $namespace }}.svc.{{- $.clusterDomain }}</host>
+          <host>{{ $host }}</host>
           {{- if $.component.tlsConfig }}
           <port replace="replace" from_env="CLICKHOUSE_TCP_SECURE_PORT"/>
           <secure>1</secure>
@@ -48,10 +42,37 @@
           <port replace="replace" from_env="CLICKHOUSE_TCP_PORT"/>
           {{- end }}
         </replica>
-      {{- end }}
+        {{- end }}
       </shard>
-    {{- end }}
-    {{- end }}
+      {{- end }}
+      {{- end }}
+      {{- if not $newAPI }}
+      {{- range $.cluster.spec.componentSpecs }}
+      {{- $compIter := . }}
+      {{- $compName := "" }}
+      {{- if hasKey $compIter "componentDef" }}
+      {{- $compName = $compIter.componentDef }}
+      {{- else }}
+      {{- $compName = $compIter.componentDefRef }}
+      {{- end }}
+      {{- if or (eq $compName "clickhouse") (eq $compName "clickhouse-24") }}
+        <shard>
+        {{- $replicas := $compIter.replicas | int }}
+        {{- range $i, $_e := until $replicas }}
+          <replica>
+            <host>{{ $clusterName }}-{{ $compIter.name }}-{{ $i }}.{{ $clusterName }}-{{ $compIter.name }}-headless.{{ $namespace }}.svc.{{- $.clusterDomain }}</host>
+            {{- if $.component.tlsConfig }}
+            <port replace="replace" from_env="CLICKHOUSE_TCP_SECURE_PORT"/>
+            <secure>1</secure>
+            {{- else }}
+            <port replace="replace" from_env="CLICKHOUSE_TCP_PORT"/>
+            {{- end }}
+          </replica>
+        {{- end }}
+        </shard>
+      {{- end }}
+      {{- end }}
+      {{- end }}
     </default>
   </remote_servers>
   {{- range $.cluster.spec.componentSpecs }}
@@ -88,11 +109,11 @@
     <events>true</events>
     <asynchronous_metrics>true</asynchronous_metrics>
   </prometheus>
-  {{- if $.component.tlsConfig -}}
-  {{- $CA_FILE := getCAFile -}}
-  {{- $CERT_FILE := getCertFile -}}
-  {{- $KEY_FILE := getKeyFile }}
   <!-- tls configuration -->
+  {{- if $.component.tlsConfig -}}
+  {{- $CA_FILE := "/etc/pki/tls/ca.pem" -}}
+  {{- $CERT_FILE := "/etc/pki/tls/cert.pem" -}}
+  {{- $KEY_FILE := "/etc/pki/tls/key.pem" }}
   <protocols>
     <prometheus_protocol>
       <type>prometheus</type>
