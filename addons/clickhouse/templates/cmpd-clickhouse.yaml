@@ -139,6 +139,14 @@ spec:
       valueFrom:
         tlsVarRef:
           enabled: Optional
+    - name: ALL_SHARDS_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "clickhouse24.cmpdRegexpPattern" . }}
+          optional: false
+          podFQDNs: Required
+          multipleClusterObjectOption:
+            strategy: individual
   volumes:
     - name: data
   services:
