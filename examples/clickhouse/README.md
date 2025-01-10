@@ -7,7 +7,6 @@ There are two key components in the ClickHouse cluster:
 - ClickHouse Server: The ClickHouse server is responsible for processing queries and managing data storage.
 - ClickHouse Keeper: The ClickHouse Keeper is responsible for monitoring the health of the ClickHouse server and performing failover operations when necessary, alternative to the Zookeeper.
 
-
 ## Features In KubeBlocks
 
 ### Lifecycle Management
@@ -16,15 +15,11 @@ There are two key components in the ClickHouse cluster:
 |------------------|------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
 | standalone/cluster     | Yes              | Yes             | Yes              | Yes       | Yes        | Yes       | No    | N/A      |
 
-### Backup and Restore
-
-| Feature     | Method | Description |
-|-------------|--------|------------|
-
 ### Versions
 
 | Major Versions | Description |
 |---------------|-------------|
+| 22            | 22.9.4      |
 | 24           | 24.8.3|
 
 ## Prerequisites
@@ -212,6 +207,61 @@ Increase size of volume storage with the specified components in the cluster
 kubectl apply -f examples/clickhouse/volumeexpand.yaml
 ```
 
+### [Reconfigure](configure.yaml)
+
+Reconfigure parameters with the specified components in the cluster
+
+```bash
+kubectl apply -f examples/clickhouse/reconfigure.yaml
+```
+
+This example will change the `max_bytes_to_read` to `200000000000`.
+To verify the configuration, you can connect to the ClickHouse server and run the following command:
+
+```bash
+# connect to the clickhouse pod
+kubectl exec -it clickhouse-cluster-clickhouse-0 -- /bin/bash
+```
+
+and check the configuration:
+
+```bash
+# connect to the clickhouse server
+clickhouse-client --user $CLICKHOUSE_ADMIN_USER --password $CLICKHOUSE_ADMIN_PASSWORD
+> set profile='web';
+> select name,value from system.settings where name like 'max_bytes%';
+```
+
+<details>
+
+The `user.xml` file is an xml file that contains the configuration of the ClickHouse server.
+```xml
+<clickhouse>
+  <profiles>
+    <default>
+      <!-- The maximum number of threads when running a single query. -->
+      <max_threads>8</max_threads>
+    </default>
+    <web>
+      <max_rows_to_read>1000000000</max_rows_to_read>
+      <max_bytes_to_read>100000000000</max_bytes_to_read>
+    </web>
+  </profiles>
+</clickhouse>
+```
+
+When updating the configuration, the key we set in the `reconfigure.yaml` file should be the same as the key in the `user.xml` file, for example:
+
+```yaml
+- key: user.xml
+  parameters:
+  - key: clickhouse.profiles.web.max_bytes_to_read
+    value: '200000000000'
+```
+
+To update parameter `max_bytes_to_read`, we use the full path `clickhouse.profiles.web.max_bytes_to_read` w.r.t the `user.xml` file.
+</details>
+
 ### [Restart](restart.yaml)
 
 Restart the specified components in the cluster
@@ -277,4 +327,3 @@ kubectl delete cluster clickhouse-cluster
 # delete secret udf-account-info if exists
 # kubectl delete secret udf-account-info
 ```
-
