@@ -33,6 +33,8 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.name
+          - name: SERVICE_PORT
+            value: "2379"
         ports:
           - containerPort: 2379
             name: client
@@ -78,9 +80,9 @@ spec:
           - |
             LEADER_NAME=$(/pd-ctl member | jq -r '.leader.name')
             if [ "$LEADER_NAME" == "$HOSTNAME" ]; then
-                echo "leader"
+                echo -n "leader"
             else
-                echo "follower"
+                echo -n "follower"
             fi
     memberLeave:
       exec:
