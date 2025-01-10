@@ -13,7 +13,7 @@ kubectl create -f https://github.com/apecloud/kubeblocks/releases/download/v0.9.
 # If github is not accessible or very slow for you, please use following command instead
 kubectl create -f https://jihulab.com/api/v4/projects/98723/packages/generic/kubeblocks/v0.9.0/kubeblocks_crds.yaml
 
-# Add Helm repo 
+# Add Helm repo
 helm repo add kubeblocks https://apecloud.github.io/helm-charts
 # If github is not accessible or very slow for you, please use following repo instead
 helm repo add kubeblocks https://jihulab.com/api/v4/projects/85949/packages/helm/stable
@@ -27,8 +27,8 @@ helm install kubeblocks kubeblocks/kubeblocks --namespace kb-system --create-nam
 
 ## Examples
 
-### [Create](cluster.yaml) 
-Create a clickhouse cluster with specified cluster definition 
+### [Create](cluster.yaml)
+Create a clickhouse cluster with specified cluster definition
 ```bash
 kubectl apply -f examples/clickhouse/cluster.yaml
 ```
@@ -72,6 +72,12 @@ kubectl apply -f examples/clickhouse/stop.yaml
 Start the stopped cluster
 ```bash
 kubectl apply -f examples/clickhouse/start.yaml
+```
+
+### [Configure](reconfig.yaml)
+Configure parameters with the specified components in the cluster
+```bash
+kubectl apply -f examples/clickhouse/reconfig.yaml
 ```
 
 ### Delete
