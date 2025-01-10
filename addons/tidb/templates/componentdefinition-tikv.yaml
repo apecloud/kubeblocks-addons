@@ -45,6 +45,8 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.name
+          - name: SERVICE_PORT
+            value: "20180"
         ports:
           - containerPort: 20160
             name: peer

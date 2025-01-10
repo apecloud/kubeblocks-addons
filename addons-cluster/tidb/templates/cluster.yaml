@@ -1,12 +1,12 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: {{ include "clustername" . }}
+  name: {{ include "kblib.clusterName" . }}
   namespace: {{ .Release.Namespace }}
   labels: {{ include "tidb-cluster.labels" . | nindent 4 }}
 spec:
   clusterDef: tidb  # ref clusterdefinition.name
-  terminationPolicy: {{ $.Values.terminationPolicy }}
+  terminationPolicy: {{ $.Values.extra.terminationPolicy }}
   topology: cluster
   componentSpecs:
     {{- with $.Values.pd }}
