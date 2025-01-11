@@ -123,6 +123,14 @@ spec:
           name: admin
           optional: false
           password: Required
+    - name: ALL_SHARDS_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: clickhouse-24
+          optional: false
+          podFQDNs: Required
+          multipleClusterObjectOption:
+            strategy: individual
   volumes:
     - name: data
   services:
