@@ -12,6 +12,10 @@ Define mysql orc component definition name prefix
 {{ include "mysql.cmpdNamePrefix" . }}-orc
 {{- end -}}
 
+{{- define "mysql.cmpdMGRNamePrefix" -}}
+{{ include "mysql.cmpdNamePrefix" . }}-mgr
+{{- end -}}
+
 {{/*
 Define mysql component definition regex regular
 */}}
@@ -45,6 +49,10 @@ Define mysql component definition name
 */}}
 {{- define "mysql.componentDefNameOrc80" -}}
 {{- printf "%s-8.0-%s" (include "mysql.cmpdOrcNamePrefix" .) .Chart.Version -}}
+{{- end -}}
+
+{{- define "mysql.componentDefNameMGR80" -}}
+{{- printf "%s-8.0-%s" (include "mysql.cmpdMGRNamePrefix" .) .Chart.Version -}}
 {{- end -}}
 
 {{/*

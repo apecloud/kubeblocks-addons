@@ -12,7 +12,7 @@ mode: standalone
 
 ## @param replicas specify cluster replicas
 ##
-replicas: 1
+replicas: 2
 
 ## @param cpu
 ##
@@ -32,7 +32,7 @@ requests:
 ## @param storage size, the unit is Gi
 ##
 storage: 20
-topology: semisync
+topology: mgr
 proxysql:
   replicas: 1
   cpu: 1
@@ -41,6 +41,7 @@ proxysql:
 ## @param extra.rbacEnabled if true, create rbac
 extra:
   terminationPolicy: Delete
+  disableExporter: true
 
 orchestrator:
   # monitor_password: proxysql
