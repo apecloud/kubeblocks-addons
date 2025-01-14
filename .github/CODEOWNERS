@@ -25,6 +25,12 @@ addons-cluster/etcd/ @free6om @leon-inf @Y-Rookie @apecloud/kb-reviewers
 addons/greptimedb/ @GreptimeTeam @sh2 @leon-inf @Y-Rookie @apecloud/kb-reviewers
 addons-cluster/greptimedb/ @GreptimeTeam @sh2 @leon-inf @Y-Rookie @apecloud/kb-reviewers
 
+addons/hadoop-hdfs/  @leon-inf @Y-Rookie @apecloud/kb-reviewers
+addons-cluster/hadoop-hdfs/  @leon-inf @Y-Rookie @apecloud/kb-reviewers
+
+addons/hive/  @leon-inf @Y-Rookie @apecloud/kb-reviewers
+addons-cluster/hive/  @leon-inf @Y-Rookie @apecloud/kb-reviewers
+
 addons/influxdb/  @leon-inf @Y-Rookie @apecloud/kb-reviewers
 addons-cluster/influxdb/  @leon-inf @Y-Rookie @apecloud/kb-reviewers
 
@@ -90,6 +96,9 @@ addons-cluster/redis/ @Y-Rookie @leon-inf @Y-Rookie @apecloud/kb-reviewers
 
 addons/risingwave/ @RisingWave_Labs @leon-inf @Y-Rookie @apecloud/kb-reviewers
 addons-cluster/risingwave/ @RisingWave_Labs @leon-inf @Y-Rookie @apecloud/kb-reviewers
+
+addons/spark/  @leon-inf @Y-Rookie @apecloud/kb-reviewers
+addons-cluster/spark/  @leon-inf @Y-Rookie @apecloud/kb-reviewers
 
 addons/starrocks-ce/ @yandongxiao @iziang @leon-inf @Y-Rookie @apecloud/kb-reviewers
 addons-cluster/starrocks-ce/ @yandongxiao @iziang @leon-inf @Y-Rookie @apecloud/kb-reviewers

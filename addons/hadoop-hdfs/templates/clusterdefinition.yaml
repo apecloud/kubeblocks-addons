@@ -1,0 +1,30 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterDefinition
+metadata:
+  name: hadoop-hdfs
+  labels:
+    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+spec:
+  topologies:
+    - name: hadoop-ha-cluster
+      default: true
+      components:
+        - name: hadoop-core
+          compDef: hadoop-core
+        - name: journalnode
+          compDef: hdfs-journalnode
+        - name: namenode
+          compDef: hdfs-namenode
+        - name: datanode
+          compDef: hdfs-datanode
+      orders:
+        provision:
+          - hadoop-core
+          - journalnode
+          - namenode
+          - datanode
+        terminate:
+          - datanode
+          - namenode
+          - journalnode
+          - hadoop-core
