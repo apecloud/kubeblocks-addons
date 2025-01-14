@@ -61,7 +61,7 @@ spec:
     - name: BACKEND_SERVER
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "mysql.cmpdNamePrefix" . }}
+          compDef: {{ include "mysql.componentDefCommonRegex" . }}
           name: default
           host: Required
           optional: false
@@ -69,20 +69,20 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "mysql.cmpdNamePrefix" . }}
+          compDef: {{ include "mysql.componentDefCommonRegex" . }}
           name: root
           username: Required
     - name: MYSQL_ROOT_PASSWORD
       valueFrom:
         credentialVarRef:
           ## reference the current component definition name
-          compDef: {{ include "mysql.cmpdNamePrefix" . }}
+          compDef: {{ include "mysql.componentDefCommonRegex" . }}
           name: root
           password: Required
     - name: MYSQL_PORT
       valueFrom:
         serviceVarRef:
-          compDef: {{ include "mysql.cmpdNamePrefix" . }}
+          compDef: {{ include "mysql.componentDefCommonRegex" . }}
           name: default
           optional: false
           port:
