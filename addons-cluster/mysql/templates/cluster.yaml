@@ -14,7 +14,6 @@ spec:
   topology: {{ .Values.topology }}
   componentSpecs:
     - name: mysql
-      componentDef: mysql
       serviceVersion: {{ .Values.version }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "mysql-cluster.replicaCount" . | indent 6 }}
@@ -39,7 +38,6 @@ spec:
       {{- end }}
     {{- if hasSuffix "proxysql" .Values.topology }}
     - name: proxysql
-      componentDef: proxysql
       replicas: {{.Values.proxysql.replicas}}
       resources:
         limits:
