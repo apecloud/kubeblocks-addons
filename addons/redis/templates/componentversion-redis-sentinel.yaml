@@ -9,9 +9,15 @@ spec:
     - compDefs:
         - {{ include "redis-sentinel.componentDefNamePrefix" . }}
       releases:
+        - 7.2.7
         - 7.2.4
         - 7.0.6
   releases:
+    - name: 7.2.7
+      changes:
+      serviceVersion: 7.2.7
+      images:
+        redis-sentinel: {{ include "redis.repository" . }}:7.2.0-v14
     - name: 7.2.4
       changes:
       serviceVersion: 7.2.4
