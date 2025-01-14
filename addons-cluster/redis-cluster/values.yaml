@@ -7,7 +7,7 @@ useLegacyCompDef: false
 
 ## @param version redis cluster version
 ##
-version: redis-7.0.6
+version: 7.2.7
 
 ## @param mode redis cluster topology mode, standalone, replication and cluster
 ## standalone: single redis instance
