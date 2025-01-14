@@ -113,6 +113,10 @@ vars:
     valueFrom:
       clusterVarRef:
         clusterName: Required
+  - name: CLUSTER_UUID
+    valueFrom:
+      clusterVarRef:
+        clusterUID: Required
   - name: CLUSTER_NAMESPACE
     valueFrom:
       clusterVarRef:
