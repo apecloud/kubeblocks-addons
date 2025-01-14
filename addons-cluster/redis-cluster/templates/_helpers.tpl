@@ -24,14 +24,22 @@ Define redis cluster shardingSpec with ComponentDefinition.
     - name: HOST_NETWORK_ENABLED
       value: "true"
     {{- end }}
+    serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+    serviceVersion: {{ .Values.version }}
     systemAccounts:
     - name: default
+      {{- if and .Values.redisCluster.customSecretName .Values.redisCluster.customSecretNamespace }}
+      secretRef:
+        name: {{ .Values.redisCluster.customSecretName }}
+        namespace: {{ .Values.redisCluster.customSecretNamespace }}
+      {{- else }}
       passwordConfig:
         length: 10
         numDigits: 5
         numSymbols: 0
         letterCase: MixedCases
         seed: {{ include "kblib.clusterName" . }}
+      {{- end }}
     resources:
       limits:
         cpu: {{ .Values.cpu | quote }}
@@ -75,6 +83,14 @@ Define redis ComponentSpec with ComponentDefinition.
   enabledLogs:
     - running
   serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+  serviceVersion: {{ .Values.version }}
+  {{- if and .Values.customSecretName .Values.customSecretNamespace }}
+  systemAccounts:
+    - name: default
+      secretRef:
+        name: {{ .Values.customSecretName }}
+        namespace: {{ .Values.customSecretNamespace }}
+  {{- end }}
   switchPolicy:
     type: Noop
   {{- include "kblib.componentResources" . | indent 2 }}
@@ -102,6 +118,15 @@ Define redis sentinel ComponentSpec with ComponentDefinition.
   env:
   - name: HOST_NETWORK_ENABLED
     value: "true"
+  {{- end }}
+  serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+  serviceVersion: {{ .Values.version }}
+  {{- if and .Values.sentinel.customSecretName .Values.sentinel.customSecretNamespace }}
+  systemAccounts:
+    - name: default
+      secretRef:
+        name: {{ .Values.sentinel.customSecretName }}
+        namespace: {{ .Values.sentinel.customSecretNamespace }}
   {{- end }}
   resources:
     limits:
