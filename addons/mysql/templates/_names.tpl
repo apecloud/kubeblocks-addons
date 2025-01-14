@@ -58,5 +58,5 @@ Define mysql component definition name
 Define mysql component definition name
 */}}
 {{- define "proxysql.componentDefName" -}}
-{{- printf "%s-proxysql-%s" (include "mysql.cmpdNamePrefix" .) .Chart.Version -}}
+{{- printf "proxysql-%s-%s" (include "mysql.cmpdNamePrefix" .) .Chart.Version -}}
 {{- end -}}

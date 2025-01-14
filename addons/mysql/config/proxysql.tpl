@@ -14,7 +14,7 @@
 {{- $proxysql_component := fromJson "{}" }}
 {{- range $i, $e := $.cluster.spec.componentSpecs }}
   {{- if index $e "componentDef" }}
-    {{- if hasPrefix "proxy" $e.componentDef  }}
+    {{- if hasPrefix "proxysql" $e.componentDef  }}
       {{- $proxysql_component = $e }}
     {{- end }}
   {{- end }}
@@ -123,8 +123,7 @@ proxysql_servers=
 mysql_servers=
 (
 {{- range $i, $e := until $mysql_replicas }}
-  {{- $mysql_service_host := printf "%s-%s-mysql-%d.%s" $clusterName $mysql_component.name $i $namespace }}
-
+  {{- $mysql_service_host := printf "%s-%s-%d.%s-%s-headless.%s.svc.cluster.local" $clusterName $mysql_component.name $i $clusterName $mysql_component.name $namespace }}
   {{- $hostgroup_id := 3 }}
   {{- if eq $i 0 }}
     {{- $hostgroup_id = 2 }}

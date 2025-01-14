@@ -14,6 +14,7 @@ spec:
   topology: {{ .Values.topology }}
   componentSpecs:
     - name: mysql
+      componentDef: mysql
       serviceVersion: {{ .Values.version }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "mysql-cluster.replicaCount" . | indent 6 }}
