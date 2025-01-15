@@ -376,6 +376,14 @@ spec:
           - /scripts/redis-cluster-replica-member-leave.sh
       retryPolicy:
         maxRetries: 10
+    switchover:
+      exec:
+        image: {{ include "redis7.image" . }}
+        container: redis-cluster
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/redis-cluster-switchover.sh
   runtime:
     initContainers:
       - name: init-dbctl
