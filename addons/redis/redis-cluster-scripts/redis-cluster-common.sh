@@ -701,3 +701,23 @@ execute_acl_save_with_retry() {
   fi
   return 0
 }
+
+check_redis_role() {
+  local host=$1
+  local port=$2
+  unset_xtrace_when_ut_mode_false
+  if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+    role_info=$(redis-cli -h $host -p $port info replication)
+  else
+    role_info=$(redis-cli -h $host -p $port -a "$REDIS_DEFAULT_PASSWORD" info replication)
+  fi
+  set_xtrace_when_ut_mode_false
+
+  if echo "$role_info" | grep -q "^role:master"; then
+    echo "primary"
+  elif echo "$role_info" | grep -q "^role:slave"; then
+    echo "secondary"
+  else
+    echo "unknown"
+  fi
+}
