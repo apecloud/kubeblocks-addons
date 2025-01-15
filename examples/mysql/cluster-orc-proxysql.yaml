@@ -1,0 +1,54 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: mysql-cluster
+  namespace: default
+spec:
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: mysql
+      disableExporter: true
+      serviceVersion: "8.0.35"
+      replicas: 2
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+      serviceRefs:
+        - name: orchestrator
+          namespace: default # set to your orchestrator cluster namespace
+          clusterServiceSelector:
+            cluster:  myorc  # set to your orchestrator cluster name
+            service:
+              component: orchestrator
+              service: orchestrator
+              port:  orc-http
+    - name: proxysql
+      # Specifies the ComponentDefinition custom resource (CR) that defines the
+      # Component's characteristics and behavior.
+      # Supports three different ways to specify the ComponentDefinition:
+      # - the regular expression - recommended
+      # - the full name - recommended
+      # - the name prefix
+      serviceVersion: 2.4.4
+      # Specifies the desired number of replicas in the Component
+      replicas: 1
+      # Specifies the resources required by the Component.
+      resources:
+        limits:
+          cpu: '0.5'
+          memory: 0.5Gi
+        requests:
+          cpu: '0.5'
+          memory: 0.5Gi
