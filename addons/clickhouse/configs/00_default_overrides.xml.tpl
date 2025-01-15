@@ -41,6 +41,8 @@
           {{- else }}
           <port replace="replace" from_env="CLICKHOUSE_TCP_PORT"/>
           {{- end }}
+          <user from_env="CLICKHOUSE_ADMIN_USER"></user>
+          <password from_env="CLICKHOUSE_ADMIN_PASSWORD"></password>
         </replica>
         {{- end }}
       </shard>
