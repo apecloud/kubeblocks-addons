@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: mysql-cluster
+  name: mysql-proxysql-cluster
   namespace: default
 spec:
   # Specifies the behavior when a Cluster is deleted.
@@ -16,6 +16,7 @@ spec:
   # - `orc`: A topology that uses MySQL Orchestrator for MySQL high availability and management.
   # - `orc-proxysql`: A topology that uses MySQL Orchestrator and Proxysql for high availability, management, and load balancing.
   topology: semisync-proxysql
+  clusterDef: mysql
   # Specifies a list of ClusterComponentSpec objects used to define the
   # individual Components that make up a Cluster.
   # This field allows for detailed configuration of each Component within the Cluster

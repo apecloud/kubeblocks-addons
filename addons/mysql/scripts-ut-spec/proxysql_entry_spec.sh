@@ -22,25 +22,15 @@ Describe "ProxySQL Entry Script Tests"
     AfterAll 'cleanup'
 
     Describe "Run proxysql-entry.sh with FRONTEND_TLS_ENABLED=false"
-
         It "runs successfully"
+            replace_config_variables() {
+                return 0
+            }
             When run source ../scripts/proxysql-entry.sh
             The status should be failure
             The stdout should include "Configuring proxysql ..."
-            The stderr should include "/scripts/proxysql/configure-proxysql.sh: No such file or directory"
+            The stderr should include "Read-only file system"
         End
     End
-
-
-  Describe "Log Function Tests"
-    Include ../scripts/proxysql-entry.sh
-
-    It "outputs a log message"
-      When call log "INFO" "Test log message"
-      The status should be success
-      The stdout should include "INFO"
-      The stdout should include "Test log message"
-    End
-  End
 
 End

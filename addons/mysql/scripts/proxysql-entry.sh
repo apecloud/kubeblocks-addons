@@ -1,6 +1,13 @@
 #!/bin/bash
 set -e
 
+# This is magic for shellspec ut framework.
+# Sometime, functions are defined in a single shell script.
+# You will want to test it. but you do not want to run the script.
+# When included from shellspec, __SOURCED__ variable defined and script
+# end here. The script path is assigned to the __SOURCED__ variable.
+${__SOURCED__:+false} : || return 0
+
 # use the current scrip name while putting log
 script_name=${0##*/}
 
@@ -12,16 +19,6 @@ if [ $FRONTEND_TLS_ENABLED == "true" ]; then
     cp /var/lib/frontend/server/tls.crt /var/lib/proxysql/proxysql-cert.pem
     cp /var/lib/frontend/server/tls.key /var/lib/proxysql/proxysql-key.pem
 fi
-
-function timestamp() {
-    date +"%Y/%m/%d %T"
-}
-
-function log() {
-    local log_type="$1"
-    local msg="$2"
-    echo "$(timestamp) [$script_name] [$log_type] $msg"
-}
 
 function gen_mysql_servers {
   IFS=',' read -r -a MYSQL_FQDNS_ARRAY <<< "$MYSQL_FQDNS"
@@ -54,22 +51,23 @@ if [ "${__SOURCED__:+x}" ]; then
   return 0
 fi
 
-awk -v mysql_servers="$mysql_servers" '{gsub(/\${MYSQL_SERVERS}/, mysql_servers); print}' /config/custom-config/proxysql.tpl > /proxysql.cnf
+function replace_config_variables() {
+  mysql_servers=$(gen_mysql_servers)
+  awk -v mysql_servers="$mysql_servers" '{gsub(/\${MYSQL_SERVERS}/, mysql_servers); print}' /config/custom-config/proxysql.tpl > /proxysql.cnf
 
-mysql_servers=$(gen_mysql_servers)
-sed -i "s|\${PROXYSQL_MONITOR_PASSWORD}|${PROXYSQL_MONITOR_PASSWORD}|g" /proxysql.cnf
-sed -i "s|\${PROXYSQL_CLUSTER_PASSWORD}|${PROXYSQL_CLUSTER_PASSWORD}|g" /proxysql.cnf
-sed -i "s|\${PROXYSQL_ADMIN_PASSWORD}|${PROXYSQL_ADMIN_PASSWORD}|g" /proxysql.cnf
+  sed -i "s|\${PROXYSQL_MONITOR_PASSWORD}|${PROXYSQL_MONITOR_PASSWORD}|g" /proxysql.cnf
+  sed -i "s|\${PROXYSQL_CLUSTER_PASSWORD}|${PROXYSQL_CLUSTER_PASSWORD}|g" /proxysql.cnf
+  sed -i "s|\${PROXYSQL_ADMIN_PASSWORD}|${PROXYSQL_ADMIN_PASSWORD}|g" /proxysql.cnf
+}
 
-sed -i "s|\${MYSQL_SERVERS}|${mysql_servers}|g" /proxysql.cnf
-
+echo "Configuring proxysql ..."
+replace_config_variables
 # Start ProxySQL with PID 1
 exec proxysql -c /proxysql.cnf -f $CMDARG &
 pid=$!
 
-log "INFO" "Configuring proxysql ..."
 /scripts/proxysql/configure-proxysql.sh
 
-log "INFO" "Waiting for proxysql ..."
+echo "Waiting for proxysql ..."
 wait $pid
 
