@@ -38,7 +38,6 @@ spec:
       {{- end }}
     {{- if eq .Values.topology "server-with-proxy" }}
     - name: proxysql
-      componentDef: proxysql
       replicas: {{.Values.proxysql.replicas}}
       resources:
         limits:
