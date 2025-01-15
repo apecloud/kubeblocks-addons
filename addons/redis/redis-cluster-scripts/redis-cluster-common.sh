@@ -44,7 +44,7 @@ parse_host_ip_from_built_in_envs() {
   local all_pod_host_ip_list="$3"
 
   if is_empty "$all_pod_name_list" || is_empty "$all_pod_host_ip_list"; then
-    echo "Error: Required environment variables all_pod_name_lis or all_pod_host_ip_list are not set." >&2
+    echo "Error: Required environment variables all_pod_name_list or all_pod_host_ip_list are not set." >&2
     return 1
   fi
 
