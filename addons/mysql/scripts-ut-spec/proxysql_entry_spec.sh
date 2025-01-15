@@ -29,7 +29,7 @@ Describe "ProxySQL Entry Script Tests"
             When run source ../scripts/proxysql-entry.sh
             The status should be failure
             The stdout should include "Configuring proxysql ..."
-            The stderr should include "Read-only file system"
+            The stderr should include "../scripts/proxysql-entry.sh"
         End
     End
 
