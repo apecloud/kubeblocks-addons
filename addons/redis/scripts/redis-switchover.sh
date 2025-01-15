@@ -20,6 +20,8 @@ test || __() {
   set -ex;
 }
 
+declare -A ORIGINAL_PRIORITIES
+
 load_common_library() {
   # the common.sh scripts is mounted to the same path which is defined in the cmpd.spec.scripts
   common_library_file="/scripts/common.sh"
@@ -44,7 +46,7 @@ check_environment_exist() {
 
   if [ "$KB_SWITCHOVER_ROLE" != "primary" ]; then
     echo "switchover not triggered for primary, nothing to do"
-    exit 0
+    return 0
   fi
 }
 
@@ -103,6 +105,7 @@ check_redis_kernel_status() {
 
 check_switchover_result() {
   local expected_master="$1"
+  local initial_master="$2"
   local max_wait=300
   local wait_interval=5
   local elapsed=0
@@ -110,16 +113,32 @@ check_switchover_result() {
   while [[ $elapsed -lt $max_wait ]]; do
     local current_master
     if current_master=$(check_redis_kernel_status); then
-      if [[ "$current_master" = "$expected_master"* ]]; then
-        echo "Switchover successful: $expected_master is now master"
-        return 0
+      # if expected_master is specified, check if it is achieved
+      if ! is_empty "$expected_master"; then
+        if [[ "$current_master" = "$expected_master"* ]]; then
+          echo "Switchover successful: $expected_master is now master"
+          return 0
+        fi
+      # if initial_master is specified, check if it is switched to a different node
+      elif ! is_empty "$initial_master"; then
+        if [[ "$current_master" != "$initial_master" ]]; then
+          echo "Switchover successful: new master is $current_master"
+          return 0
+        fi
+      else
+        echo "Error: Neither expected_master nor initial_master specified" >&2
+        return 1
       fi
     fi
-    sleep $wait_interval
+    sleep_when_ut_mode_false $wait_interval
     elapsed=$((elapsed + wait_interval))
   done
 
-  echo "Switchover verification failed: expected master $expected_master not achieved" >&2
+  if ! is_empty "$expected_master"; then
+    echo "Switchover verification failed: expected master $expected_master not achieved" >&2
+  else
+    echo "Switchover verification failed: could not confirm new master" >&2
+  fi
   return 1
 }
 
@@ -227,18 +246,66 @@ execute_sentinel_failover() {
   return 0
 }
 
+# set target candidate highest priority to make sure it will be promoted to master
+set_redis_priorities() {
+  local candidate_fqdn="$1"
+
+  local -a redis_pod_fqdn_list
+  IFS=',' read -ra redis_pod_fqdn_list <<< "${REDIS_POD_FQDN_LIST}"
+  for redis_pod_fqdn in "${redis_pod_fqdn_list[@]}"; do
+    call_func_with_retry 3 5 check_connectivity "$redis_pod_fqdn" "$SERVICE_PORT" "$REDIS_DEFAULT_PASSWORD" || return 1
+
+    # Get original priority
+    local redis_get_cmd="CONFIG GET replica-priority"
+    local original_priority
+    original_priority=$(redis_config_get "$redis_pod_fqdn" "$SERVICE_PORT" "$REDIS_DEFAULT_PASSWORD" "$redis_get_cmd" | sed -n '2p')
+    status=$?
+    if [ $status -ne 0 ]; then
+      echo "Error: Failed to get replica-priority for $redis_pod_fqdn" >&2
+      return 1
+    fi
+
+    # Save original priority to global variable
+    ORIGINAL_PRIORITIES[$redis_pod_fqdn]=$original_priority
+
+    local redis_set_cmd
+    if [[ "$redis_pod_fqdn" = "$candidate_fqdn"* ]]; then
+      redis_set_cmd="CONFIG SET replica-priority 1"
+    else
+      redis_set_cmd="CONFIG SET replica-priority 100"
+    fi
+
+    call_func_with_retry 3 5 execute_sub_command "$redis_pod_fqdn" "$SERVICE_PORT" "$REDIS_DEFAULT_PASSWORD" "$redis_set_cmd" || return 1
+  done
+  return 0
+}
+
+# recover all redis replica-priority
+recover_redis_priorities() {
+  local -a redis_pod_fqdn_list
+  IFS=',' read -ra redis_pod_fqdn_list <<< "${REDIS_POD_FQDN_LIST}"
+
+  echo "Recovering all Redis replica-priority..."
+  for redis_pod_fqdn in "${redis_pod_fqdn_list[@]}"; do
+    local redis_set_recover_cmd="CONFIG SET replica-priority ${ORIGINAL_PRIORITIES[$redis_pod_fqdn]}"
+    call_func_with_retry 3 5 execute_sub_command "$redis_pod_fqdn" "$SERVICE_PORT" "$REDIS_DEFAULT_PASSWORD" "$redis_set_recover_cmd" || return 1
+  done
+  echo "All Redis config set replica-priority recovered."
+  return 0
+}
+
 switchover_with_candidate() {
   # check the role of candidate before switchover
   local candidate_role
   candidate_role=$(check_redis_role "$KB_SWITCHOVER_CANDIDATE_FQDN" "$SERVICE_PORT")
   if [[ "$candidate_role" != "secondary" ]]; then
     echo "Error: Candidate node $KB_SWITCHOVER_CANDIDATE_FQDN is not in secondary role" >&2
-    exit 1
+    return 1
   fi
 
   # check redis kernel role before switchover
   local initial_master
-  initial_master=$(check_redis_kernel_status) || exit 1
+  initial_master=$(check_redis_kernel_status) || return 1
 
   local redis_get_cmd="CONFIG GET replica-priority"
   local redis_set_switchover_cmd="CONFIG SET replica-priority 1"
@@ -246,34 +313,18 @@ switchover_with_candidate() {
 
   # set target candidate highest priority to make sure it will be promoted to master
   unset_xtrace_when_ut_mode_false
-  declare -A original_priorities
-  local -a redis_pod_fqdn_list
-  IFS=',' read -ra redis_pod_fqdn_list <<< "${REDIS_POD_FQDN_LIST}"
-  for redis_pod_fqdn in "${redis_pod_fqdn_list[@]}"; do
-    call_func_with_retry 3 5 check_connectivity "$redis_pod_fqdn" "$SERVICE_PORT" "$REDIS_DEFAULT_PASSWORD" || exit 1
-    local original_priority
-    original_priority=$(redis_config_get "$redis_pod_fqdn" "$SERVICE_PORT" "$REDIS_DEFAULT_PASSWORD" "$redis_get_cmd" | sed -n '2p')
-    original_priorities["$redis_pod_fqdn"]=$original_priority
-
-    if [[ "$redis_pod_fqdn" = "$KB_SWITCHOVER_CANDIDATE_FQDN"* ]]; then
-      call_func_with_retry 3 5 execute_sub_command "$redis_pod_fqdn" "$SERVICE_PORT" "$REDIS_DEFAULT_PASSWORD" "$redis_set_switchover_cmd" || exit 1
-    else
-      call_func_with_retry 3 5 execute_sub_command "$redis_pod_fqdn" "$SERVICE_PORT" "$REDIS_DEFAULT_PASSWORD" "$redis_set_lowest_priority_cmd" || exit 1
-    fi
-  done
+  set_redis_priorities "$KB_SWITCHOVER_CANDIDATE_FQDN" || return 1
 
   # do switchover
-  execute_sentinel_failover "$CUSTOM_SENTINEL_MASTER_NAME" || exit 1
+  execute_sentinel_failover "$CUSTOM_SENTINEL_MASTER_NAME" || return 1
 
   # check switchover result
-  check_switchover_result "$KB_SWITCHOVER_CANDIDATE_FQDN" || exit 1
+  check_switchover_result "$KB_SWITCHOVER_CANDIDATE_FQDN" "" || return 1
 
   # recover all redis replica-priority
   echo "Recovering all Redis replica-priority..."
-  for redis_pod_fqdn in "${redis_pod_fqdn_list[@]}"; do
-    local redis_set_recover_cmd="CONFIG SET replica-priority ${original_priorities[$redis_pod_fqdn]}"
-    call_func_with_retry 3 5 execute_sub_command "$redis_pod_fqdn" "$SERVICE_PORT" "$REDIS_DEFAULT_PASSWORD" "$redis_set_recover_cmd" || exit 1
-  done
+  recover_redis_priorities || return 1
+
   set_xtrace_when_ut_mode_false
   echo "All Redis config set replica-priority recovered."
 }
@@ -281,30 +332,13 @@ switchover_with_candidate() {
 switchover_without_candidate() {
   # check redis kernel role before switchover
   local initial_master
-  initial_master=$(check_redis_kernel_status) || exit 1
+  initial_master=$(check_redis_kernel_status) || return 1
 
   # do switchover
-  execute_sentinel_failover "$CUSTOM_SENTINEL_MASTER_NAME" || exit 1
+  execute_sentinel_failover "$CUSTOM_SENTINEL_MASTER_NAME" || return 1
 
-  # check switchover result
-  local max_wait=300
-  local wait_interval=5
-  local elapsed=0
-
-  while [[ $elapsed -lt $max_wait ]]; do
-    local current_master
-    if current_master=$(check_redis_kernel_status); then
-      if [[ "$current_master" != "$initial_master" ]]; then
-        echo "Switchover successful: new master is $current_master"
-        exit 0
-      fi
-    fi
-    sleep $wait_interval
-    elapsed=$((elapsed + wait_interval))
-  done
-
-  echo "Switchover verification failed: could not confirm new master" >&2
-  exit 1
+  # check switchover result using initial_master
+  check_switchover_result "" "$initial_master" || return 1
 }
 
 # This is magic for shellspec ut framework.
@@ -316,9 +350,9 @@ ${__SOURCED__:+false} : || return 0
 
 # main
 load_common_library
-check_environment_exist
+check_environment_exist || exit 1
 if is_empty "$KB_SWITCHOVER_CANDIDATE_FQDN"; then
-  switchover_without_candidate
+  switchover_without_candidate || exit 1
 else
-  switchover_with_candidate
+  switchover_with_candidate || exit 1
 fi

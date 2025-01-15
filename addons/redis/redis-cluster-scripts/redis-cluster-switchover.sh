@@ -46,7 +46,7 @@ check_environment_exist() {
 
   if [ "$KB_SWITCHOVER_ROLE" != "primary" ]; then
     echo "switchover not triggered for primary, nothing to do"
-    exit 0
+    return 0
   fi
 }
 
@@ -107,37 +107,37 @@ do_switchover() {
   # check candidate pod is ready and has the role of secondary
   role=$(check_redis_role "$candidate_pod_fqdn" $service_port)
   if ! equals "$role" "secondary"; then
-    echo "Error: Candidate pod $candidate_pod is not a secondary"
-    exit 1
+    echo "Error: Candidate pod $candidate_pod is not a secondary" >&2
+    return 1
   fi
 
   # get current shard primary
   current_shard_primary=$(get_current_shard_primary "$candidate_pod_fqdn" $service_port)
   if is_empty "$current_shard_primary"; then
-    echo "Error: Could not determine current shard primary for $candidate_pod"
-    exit 1
+    echo "Error: Could not determine current shard primary for $candidate_pod" >&2
+    return 1
   fi
 
   # check cluster health from current shard primary
   if ! check_slots_covered "$current_shard_primary" $service_port; then
-    echo "Error: Cluster health check failed"
-    exit 1
+    echo "Error: Cluster health check failed" >&2
+    return 1
   fi
 
   # check if candidate is known by all the shards primary
   current_shard_primary_host=$(echo "$current_shard_primary" | cut -d':' -f1)
   current_shard_primary_port=$(echo "$current_shard_primary" | cut -d':' -f2)
   if is_empty "$current_shard_primary_host" || is_empty "$current_shard_primary_port"; then
-    echo "Error: Could not determine current shard primary host and port"
-    exit 1
+    echo "Error: Could not determine current shard primary host and port" >&2
+    return 1
   fi
   primaries=$(get_all_shards_master "$current_shard_primary_host" $current_shard_primary_port)
   for primary in $primaries; do
     primary_host=$(echo "$primary" | cut -d':' -f1)
     primary_port=$(echo "$primary" | cut -d':' -f2)
     if ! check_node_in_cluster_with_retry "$primary_host" $primary_port "$candidate_pod"; then
-      echo "Error: Candidate $candidate_pod is not known by shard $primary"
-      exit 1
+      echo "Error: Candidate $candidate_pod is not known by shard $primary" >&2
+      return 1
     fi
   done
 
@@ -151,8 +151,8 @@ do_switchover() {
   fi
   set_xtrace_when_ut_mode_false
   if [ "$result" != "OK" ]; then
-    echo "Error: Cluster Failover command failed with result: $result"
-    exit 1
+    echo "Error: Cluster Failover command failed with result: $result" >&2
+    return 1
   fi
 
   # check switchover result
@@ -168,8 +168,8 @@ do_switchover() {
     ((attempt++))
   done
 
-  echo "Error: Switchover verification timeout"
-  exit 1
+  echo "Error: Switchover verification timeout" >&2
+  return 1
 }
 
 switchover_without_candidate() {
@@ -182,7 +182,7 @@ switchover_without_candidate() {
     local pod_fqdn
     pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$CURRENT_SHARD_POD_FQDN_LIST" "$pod_name") || {
       echo "Failed to get FQDN for pod: $pod_name" >&2
-      exit 1
+      return 1
     }
     role=$(check_redis_role "$pod_fqdn" $service_port)
     if [ "$role" = "secondary" ]; then
@@ -193,31 +193,38 @@ switchover_without_candidate() {
   done
 
   if is_empty "$candidate_pod"; then
-    echo "Error: No eligible secondary found in pod list: $CURRENT_SHARD_POD_NAME_LIST"
-    exit 1
+    echo "Error: No eligible secondary found in pod list: $CURRENT_SHARD_POD_NAME_LIST" >&2
+    return 1
   fi
 
   # do switchover
-  do_switchover "$candidate_pod" "$candidate_pod_fqdn"
+  do_switchover "$candidate_pod" "$candidate_pod_fqdn" || return 1
 }
 
 switchover_with_candidate() {
   # check KB_SWITCHOVER_CANDIDATE_FQDN and KB_SWITCHOVER_CANDIDATE_NAME are not empty
   if is_empty "$KB_SWITCHOVER_CANDIDATE_FQDN" || is_empty "$KB_SWITCHOVER_CANDIDATE_NAME"; then
     echo "KB_SWITCHOVER_CANDIDATE_NAME or KB_SWITCHOVER_CANDIDATE_FQDN is empty" >&2
-    exit 1
+    return 1
   fi
 
   # do switchover
-  do_switchover "$KB_SWITCHOVER_CANDIDATE_NAME" "$KB_SWITCHOVER_CANDIDATE_FQDN"
+  do_switchover "$KB_SWITCHOVER_CANDIDATE_NAME" "$KB_SWITCHOVER_CANDIDATE_FQDN" || return 1
 }
+
+# This is magic for shellspec ut framework.
+# Sometime, functions are defined in a single shell script.
+# You will want to test it. but you do not want to run the script.
+# When included from shellspec, __SOURCED__ variable defined and script
+# end here. The script path is assigned to the __SOURCED__ variable.
+${__SOURCED__:+false} : || return 0
 
 # main
 load_redis_cluster_common_utils
-check_environment_exist
+check_environment_exist || exit 1
 init_redis_cluster_service_port
 if is_empty "$KB_SWITCHOVER_CANDIDATE_FQDN"; then
-  switchover_without_candidate
+  switchover_without_candidate || exit 1
 else
-  switchover_with_candidate
+  switchover_with_candidate || exit 1
 fi
