@@ -108,6 +108,8 @@ systemAccounts:
       numDigits: 5
       numSymbols: 0
       letterCase: MixedCases
+  - name: proxysql
+    statement: CREATE USER IF NOT EXISTS '${KB_ACCOUNT_NAME}' IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT SELECT ON performance_schema.* TO '${KB_ACCOUNT_NAME}'; GRANT SELECT ON sys.* TO '${KB_ACCOUNT_NAME}';
 vars:
   - name: CLUSTER_NAME
     valueFrom:
@@ -138,6 +140,20 @@ vars:
         name: root
         password: Required
 lifecycleActions:
+  accountProvision:
+    exec:
+      container: mysql
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -ex
+          eval statement=\"${KB_ACCOUNT_STATEMENT}\"
+          mysql -u${MYSQL_ROOT_USER} -p${MYSQL_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement}"
+      targetPodSelector: Role
+      matchingKey: primary
+
   roleProbe:
     periodSeconds: {{ .Values.roleProbe.periodSeconds }}
     timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
@@ -197,8 +213,7 @@ serviceRefDeclarations:
       - serviceKind: orchestrator
         serviceVersion: "^*"
 services:
-  - name: mysql-server
-    serviceName: mysql-server
+  - name: default
     spec:
       ports:
         - name: mysql
@@ -229,6 +244,8 @@ systemAccounts:
       numDigits: 5
       numSymbols: 0
       letterCase: MixedCases
+  - name: proxysql
+    statement: CREATE USER IF NOT EXISTS '${KB_ACCOUNT_NAME}' IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT SELECT ON performance_schema.* TO '${KB_ACCOUNT_NAME}'; GRANT SELECT ON sys.* TO '${KB_ACCOUNT_NAME}';
 roles:
   - name: primary
     serviceable: true
@@ -285,6 +302,19 @@ exporter:
 
 
 {{- define "mysql-orc.spec.lifecycle.common" }}
+accountProvision:
+  exec:
+    container: mysql
+    image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+    command:
+      - /bin/sh
+      - -c
+      - |
+        set -ex
+        eval statement=\"${KB_ACCOUNT_STATEMENT}\"
+        mysql -u${MYSQL_ROOT_USER} -p${MYSQL_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement}"
+    targetPodSelector: Role
+    matchingKey: primary
 roleProbe:
   exec:
     env:

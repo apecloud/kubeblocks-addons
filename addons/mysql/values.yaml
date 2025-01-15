@@ -61,6 +61,13 @@ auth:
   ##
   replicationPassword: ""
 
+  ## MySQL ProxySQL parameters
+  proxysql:
+    ## @param auth.proxysql.username ProxySQL username
+    username: "proxysql"
+    ## @param auth.proxysql.password ProxySQL password
+    password: "proxysql"
+
 
 configTemplate:
   ## @param config template name
