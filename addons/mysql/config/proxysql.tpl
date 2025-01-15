@@ -28,24 +28,22 @@ admin_variables=
 	refresh_interval="2000"
 	cluster_proxysql_servers_save_to_disk="true"
 	cluster_mysql_servers_diffs_before_sync="3"
-	cluster_password="nb2wZpZ9OXXTF2Mv"
 	mysql_ifaces="0.0.0.0:6032"
 	cluster_check_status_frequency="100"
 	cluster_mysql_users_diffs_before_sync="3"
 	cluster_proxysql_servers_diffs_before_sync="3"
-	admin_credentials="admin:admin;cluster:nb2wZpZ9OXXTF2Mv"
+	admin_credentials="admin:${PROXYSQL_ADMIN_PASSWORD};cluster:${PROXYSQL_CLUSTER_PASSWORD}"
 	admin-hash_passwords="true"
 	cluster_check_interval_ms="200"
 	cluster_mysql_servers_save_to_disk="true"
 	cluster_mysql_users_save_to_disk="true"
 	cluster_mysql_query_rules_diffs_before_sync="3"
 	cluster_mysql_query_rules_save_to_disk="true"
-	cluster_username="cluster"
 }
 mysql_variables=
 {
 	threads="4"
-	monitor_password="proxysql"
+	monitor_password="${PROXYSQL_MONITOR_PASSWORD}"
 	poll_timeout="2000"
 	ssl_p2s_cert="/var/lib/certs/tls.crt"
 	server_version="8.0.27"
@@ -122,16 +120,5 @@ proxysql_servers=
 
 mysql_servers=
 (
-{{- range $i, $e := until $mysql_replicas }}
-  {{- $mysql_service_host := printf "%s-%s-%d.%s-%s-headless.%s.svc.cluster.local" $clusterName $mysql_component.name $i $clusterName $mysql_component.name $namespace }}
-  {{- $hostgroup_id := 3 }}
-  {{- if eq $i 0 }}
-    {{- $hostgroup_id = 2 }}
-  {{- end }}
-  {{- if eq $i (sub $mysql_replicas 1) }}
-    { hostgroup_id = {{$hostgroup_id}} , hostname = "{{$mysql_service_host}}", port = 3306, weight = 1, use_ssl = 0 }
-  {{- else }}
-    { hostgroup_id = {{$hostgroup_id}} , hostname = "{{$mysql_service_host}}", port = 3306, weight = 1, use_ssl = 0 },
-  {{- end }}
-{{- end }}
+${MYSQL_SERVERS}
 )

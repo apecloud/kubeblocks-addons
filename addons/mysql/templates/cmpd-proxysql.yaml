@@ -44,7 +44,40 @@ spec:
           - name: db
             port: 6033
             targetPort: db
+  systemAccounts:
+    - name: admin
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 8
+        numSymbols: 0
+        letterCase: MixedCases
+    - name: cluster
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 8
+        numSymbols: 0
+        letterCase: MixedCases
   vars:
+    - name: PROXYSQL_ADMIN_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          password: Required
+    - name: PROXYSQL_CLUSTER_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: admin
+          password: Required
+    - name: PROXYSQL_MONITOR_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "mysql.componentDefCommonRegex" . }}
+          name: proxysql
+          optional: false
+          password: Required
+
     - name: CLUSTER_NAME
       valueFrom:
         clusterVarRef:
@@ -88,6 +121,14 @@ spec:
           port:
             name: mysql
             option: Required
+    - name: MYSQL_FQDNS
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "mysql.componentDefCommonRegex" . }}
+          name: default
+          optional: false
+          podFQDNs: Required
+
   runtime:
     volumes:
     containers:
@@ -98,7 +139,7 @@ spec:
           - /scripts/proxysql/proxysql-entry.sh
           - --reload
         volumeMounts:
-          - mountPath: /etc/custom-config
+          - mountPath: /config/custom-config
             name: proxy-config
           - mountPath: /scripts/proxysql
             name: proxysql-scripts
