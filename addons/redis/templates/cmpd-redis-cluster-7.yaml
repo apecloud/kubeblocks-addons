@@ -27,6 +27,7 @@ spec:
       podService: true
       disableAutoProvision: true
   updateStrategy: BestEffortParallel
+  podManagementPolicy: OrderedReady
   volumes:
     - name: data
       needSnapshot: true
@@ -365,6 +366,24 @@ spec:
           - /scripts/redis-cluster-manage.sh --pre-terminate
       retryPolicy:
         maxRetries: 10
+    memberLeave:
+      exec:
+        image: {{ include "redis7.image" . }}
+        container: redis-cluster
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/redis-cluster-replica-member-leave.sh
+      retryPolicy:
+        maxRetries: 10
+    switchover:
+      exec:
+        image: {{ include "redis7.image" . }}
+        container: redis-cluster
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/redis-cluster-switchover.sh
   runtime:
     initContainers:
       - name: init-dbctl
@@ -433,7 +452,7 @@ spec:
               command:
                 - /bin/bash
                 - -c
-                - /scripts/redis-cluster-replica-member-leave.sh
+                - /scripts/redis-cluster-replica-pre-stop.sh
       - name: metrics
         image: {{ include "metrics.image" . }}
         imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}

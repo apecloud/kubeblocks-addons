@@ -147,5 +147,12 @@ Define clickhouse image repository
 Define clickhouse24 image
 */}}
 {{- define "clickhouse24.image" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major24 }}
+{{- end }}
+
+{{/*
+Define clickhouse22 image
+*/}}
+{{- define "clickhouse22.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major22 }}
 {{- end }}

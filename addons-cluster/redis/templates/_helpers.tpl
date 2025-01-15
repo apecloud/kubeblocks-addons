@@ -18,12 +18,18 @@ Define redis cluster shardingSpec with ComponentDefinition.
     serviceVersion: {{ .Values.version }}
     systemAccounts:
     - name: default
+      {{- if and .Values.redisCluster.customSecretName .Values.redisCluster.customSecretNamespace }}
+      secretRef:
+        name: {{ .Values.redisCluster.customSecretName }}
+        namespace: {{ .Values.redisCluster.customSecretNamespace }}
+      {{- else }}
       passwordConfig:
         length: 10
         numDigits: 5
         numSymbols: 0
         letterCase: MixedCases
         seed: {{ include "kblib.clusterName" . }}
+      {{- end }}
     resources:
       limits:
         cpu: {{ .Values.cpu | quote }}
@@ -61,6 +67,13 @@ Define redis ComponentSpec with ComponentDefinition.
   {{- end }}
   serviceVersion: {{ .Values.version }}
   serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+  {{- if and .Values.customSecretName .Values.customSecretNamespace }}
+  systemAccounts:
+    - name: default
+      secretRef:
+        name: {{ .Values.customSecretName }}
+        namespace: {{ .Values.customSecretNamespace }}
+  {{- end }}
   {{- include "kblib.componentResources" . | indent 2 }}
   {{- include "kblib.componentStorages" . | indent 2 }}
 {{- end }}
@@ -79,6 +92,13 @@ Define redis sentinel ComponentSpec with ComponentDefinition.
   {{- end }}
   serviceVersion: {{ .Values.version }}
   serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+  {{- if and .Values.sentinel.customSecretName .Values.sentinel.customSecretNamespace }}
+  systemAccounts:
+    - name: default
+      secretRef:
+        name: {{ .Values.sentinel.customSecretName }}
+        namespace: {{ .Values.sentinel.customSecretNamespace }}
+  {{- end }}
   resources:
     limits:
       cpu: {{ .Values.sentinel.cpu | quote }}

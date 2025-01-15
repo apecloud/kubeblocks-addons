@@ -84,24 +84,17 @@ Define etcd component definition regular expression name prefix
 {{- end -}}
 
 {{/*
-Define etcd 3.X component configuration template name
+Define etcd 3.X component config template name
 */}}
-{{- define "etcd3.configurationTemplate" -}}
+{{- define "etcd3.configTemplate" -}}
 etcd3-config-template-{{ .Chart.Version }}
-{{- end }}
-
-{{/*
-Define etcd 3.X component config constriant name
-*/}}
-{{- define "etcd3.configConstraint" -}}
-etcd3-config-constraints
 {{- end }}
 
 {{/*
 Define etcd 3.X component script template name
 */}}
-{{- define "etcd3.scriptsTemplate" -}}
-etcd3-scripts-template-{{.Chart.Version}}
+{{- define "etcd3.scriptTemplate" -}}
+etcd3-script-template-{{.Chart.Version}}
 {{- end }}
 
 {{/*

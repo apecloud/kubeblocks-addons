@@ -16,10 +16,7 @@ image:
     repository: apecloud/percona-xtrabackup
   syncer:
     repository: apecloud/syncer
-    tag: 0.3.8
-  dbctl:
-    repository: apecloud/dbctl
-    tag: 0.1.5
+    tag: 0.4.1
   # refer: addons/mysql/orc-tools/Dockerfile
   orcTools:
     repository: apecloud/orc-tools
@@ -63,6 +60,13 @@ auth:
   ## @param auth.replicationPassword MySQL replication user password. Ignored if existing secret is provided
   ##
   replicationPassword: ""
+
+  ## MySQL ProxySQL parameters
+  proxysql:
+    ## @param auth.proxysql.username ProxySQL username
+    username: "proxysql"
+    ## @param auth.proxysql.password ProxySQL password
+    password: "proxysql"
 
 
 configTemplate:

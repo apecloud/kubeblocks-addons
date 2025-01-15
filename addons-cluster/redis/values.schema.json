@@ -6,7 +6,7 @@
       "title": "Version",
       "description": "Cluster version.",
       "type": "string",
-      "default": "7.2.4"
+      "default": "7.2.7"
     },
     "mode": {
       "title": "Mode",
@@ -73,6 +73,18 @@
       "title": "nodePortEnabled",
       "description":"Whether NodePort service is enabled, default is true"
     },
+    "customSecretName": {
+      "title": "the secret name for Redis default user's password",
+      "description": "the secret must contain keys named 'username' and 'password'",
+      "type": "string",
+      "default": ""
+    },
+    "customSecretNamespace": {
+      "title": "the secret namespace for Redis default user's password",
+      "description": "the secret must contain keys named 'username' and 'password'",
+      "type": "string",
+      "default": ""
+    },
     "twemproxy": {
       "title": "The redis twemproxy component",
       "type": "object",
@@ -116,6 +128,18 @@
         "customMasterName": {
           "title": "Sentinel master name",
           "description": "Name of the master node monitored by Sentinel. If empty, a default value will be used.",
+          "type": "string",
+          "default": ""
+        },
+        "customSecretName": {
+          "title": "the secret name for Redis Sentinel default user's password",
+          "description": "the secret must contain keys named 'username' and 'password'",
+          "type": "string",
+          "default": ""
+        },
+        "customSecretNamespace": {
+          "title": "the secret namespace for Redis Sentinel default user's password",
+          "description": "the secret must contain keys named 'username' and 'password'",
           "type": "string",
           "default": ""
         },
@@ -170,6 +194,18 @@
           "default": 3,
           "minimum": 3,
           "maximum": 2048
+        },
+        "customSecretName": {
+          "title": "the secret name for Redis Cluster default user's password",
+          "description": "the secret must contain keys named 'username' and 'password'",
+          "type": "string",
+          "default": ""
+        },
+        "customSecretNamespace": {
+          "title": "the secret namespace for Redis Cluster default user's password",
+          "description": "the secret must contain keys named 'username' and 'password'",
+          "type": "string",
+          "default": ""
         }
       }
     }

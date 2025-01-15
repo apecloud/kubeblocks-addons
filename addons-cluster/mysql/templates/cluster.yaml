@@ -19,7 +19,7 @@ spec:
       {{- include "mysql-cluster.replicaCount" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
-      {{- if eq .Values.topology "server-with-orc" }}
+      {{- if hasPrefix "orc" .Values.topology }}
       serviceRefs:
         {{- if eq .Values.orchestrator.clusterServiceSelector.cluster ""}}
         - name: orchestrator
@@ -36,9 +36,8 @@ spec:
               port:  {{ .Values.orchestrator.clusterServiceSelector.portName }}
         {{- end }}
       {{- end }}
-    {{- if eq .Values.topology "server-with-proxy" }}
+    {{- if hasSuffix "proxysql" .Values.topology }}
     - name: proxysql
-      componentDef: proxysql
       replicas: {{.Values.proxysql.replicas}}
       resources:
         limits:

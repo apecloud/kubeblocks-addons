@@ -1,6 +1,8 @@
-# ApeCloud-mysql
+# ApeCloud MySQL
 
-ApeCloud MySQL is a database that is compatible with MySQL syntax and achieves high availability through the utilization of the RAFT consensus protocol. This example shows how it can be managed in Kubernetes with KubeBlocks.
+ApeCloud MySQL is a database that is compatible with MySQL syntax and achieves high availability through the utilization of the **RAFT consensus protocol**. This example shows how it can be managed in Kubernetes with KubeBlocks.
+
+Please refer to the ApeCloud MySQL Documentation[^1] for more information.
 
 ## Features In KubeBlocks
 
@@ -24,32 +26,11 @@ ApeCloud MySQL is a database that is compatible with MySQL syntax and achieves h
 
 ## Prerequisites
 
-This example assumes that you have a Kubernetes cluster installed and running, and that you have installed the kubectl command line tool and helm somewhere in your path. Please see the [getting started](https://kubernetes.io/docs/setup/)  and [Installing Helm](https://helm.sh/docs/intro/install/) for installation instructions for your platform.
-
-Also, this example requires KubeBlocks installed and running. Here is the steps to install KubeBlocks, please replace "`$kb_version`" with the version you want to use.
-
-```bash
-# Add Helm repo
-helm repo add kubeblocks https://apecloud.github.io/helm-charts
-# If github is not accessible or very slow for you, please use following repo instead
-helm repo add kubeblocks https://jihulab.com/api/v4/projects/85949/packages/helm/stable
-
-# Update helm repo
-helm repo update
-
-# Get the versions of KubeBlocks and select the one you want to use
-helm search repo kubeblocks/kubeblocks --versions
-# If you want to obtain the development versions of KubeBlocks, Please add the '--devel' parameter as the following command
-helm search repo kubeblocks/kubeblocks --versions --devel
-
-# Create dependent CRDs
-kubectl create -f https://github.com/apecloud/kubeblocks/releases/download/v$kb_version/kubeblocks_crds.yaml
-# If github is not accessible or very slow for you, please use following command instead
-kubectl create -f https://jihulab.com/api/v4/projects/98723/packages/generic/kubeblocks/v$kb_version/kubeblocks_crds.yaml
-
-# Install KubeBlocks
-helm install kubeblocks kubeblocks/kubeblocks --namespace kb-system --create-namespace --version="$kb_version"
-```
+- Kubernetes cluster >= v1.21
+- `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
+- Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
+- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
+- ApeCloud MySQL Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
 
 ## Examples
 
@@ -80,8 +61,6 @@ If you want to create a cluster of specified version, set the `spec.componentSpe
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: acmysql-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: mysql
@@ -99,6 +78,10 @@ kubectl get cmpv apecloud-mysql
 
 ### Horizontal scaling
 
+> [!IMPORTANT]
+> As per the ApeCloud MySQL documentation, the number of Raft replicas should be odd to avoid split-brain scenarios.
+> Make sure the number of ApeCloud MySQL replicas, is always odd after Horizontal Scaling.
+
 #### [Scale-out](scale-out.yaml)
 
 Horizontal scaling out ApeCloud-MySQL cluster by adding ONE more replica:
@@ -115,6 +98,9 @@ And you can check the progress of the scaling operation with following command:
 kubectl describe ops acmysql-scale-out
 ```
 
+> [!IMPORTANT]
+> On scaling out, the new replica will be added as a follower, and KubeBlocks will clone data from the leader to the new follower before the replica starts as defined.
+
 #### [Scale-in](scale-in.yaml)
 
 Horizontal scaling in ApeCloud-MySQL cluster by deleting ONE replica:
@@ -122,6 +108,9 @@ Horizontal scaling in ApeCloud-MySQL cluster by deleting ONE replica:
 ```bash
 kubectl apply -f examples/apecloud-mysql/scale-in.yaml
 ```
+
+> [!IMPORTANT]
+> On scaling in, the replica will be forgetton from the cluster's Raft group before it is deleted.
 
 #### [Set Specified Replicas Offline](scale-in-specified-instance.yaml)
 
@@ -131,8 +120,6 @@ There are cases where you want to set a specified replica offline, when it is pr
 apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
-  name: acmysql-scale-in
-  namespace: default
 spec:
   horizontalScaling:
   - componentName: mysql
@@ -150,8 +137,6 @@ Alternatively, you can update the `replicas` field in the `spec.componentSpecs.r
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: acmysql-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: apecloud-mysql
@@ -179,8 +164,6 @@ Alternatively, you may update `spec.componentSpecs.resources` field to the desir
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: acmysql-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: mysql
@@ -196,7 +179,7 @@ spec:
 
 ### [Expand volume](volumeexpand.yaml)
 
-Volume expansion is the ability to increase the size of a Persistent Volume Claim (PVC) after it's created. It is introduced in Kubernetes v1.11 and goes GA in Kubernetes v1.24. It allows Kubernetes users to simply edit their PersistentVolumeClaim objects without requiring any downtime at all if possible[^4].
+Volume expansion is the ability to increase the size of a Persistent Volume Claim (PVC) after it's created. It is introduced in Kubernetes v1.11 and goes GA in Kubernetes v1.24. It allows Kubernetes users to simply edit their PersistentVolumeClaim objects without requiring any downtime at all if possible.
 
 > [!NOTE]
 > Make sure the storage class you use supports volume expansion.
@@ -229,8 +212,6 @@ Alternatively, you may update the `spec.componentSpecs.volumeClaimTemplates.spec
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: acmysql-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: mysql
@@ -253,6 +234,9 @@ Restart the specified components in the cluster
 kubectl apply -f examples/apecloud-mysql/restart.yaml
 ```
 
+> [!NOTE]
+> All follower pods will be restarted first, followed by the leader pod, to ensure the availability of the cluster.
+
 ### [Stop](stop.yaml)
 
 Stop the cluster will release all the pods of the cluster, but the storage will be retained. It is useful when you want to save the cost of the cluster.
@@ -269,8 +253,6 @@ Alternatively, you may stop the cluster by setting the `spec.componentSpecs.stop
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: acmysql-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: mysql
@@ -294,8 +276,6 @@ Alternatively, you may start the cluster by setting the `spec.componentSpecs.sto
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: acmysdql-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: mysql
@@ -353,38 +333,9 @@ SHOW VARIABLES LIKE 'max_connections';
 SHOW VARIABLES LIKE 'innodb_buffer_pool_size';
 ```
 
-### [BackupRepo](backuprepo.yaml)
-
-BackupRepo is the storage repository for backup data. Before creating a BackupRepo, you need to create a secret to save the access key of the backup repository
-
-```bash
-# Create a secret to save the access key
-kubectl create secret generic <credential-for-backuprepo>\
-  --from-literal=accessKeyId=<ACCESS KEY> \
-  --from-literal=secretAccessKey=<SECRET KEY> \
-  -n kb-system
-```
-
-Update `examples/apecloud-mysql/backuprepo.yaml` and set fields quoted with `<>` to your own settings and apply it.
-
-```bash
-kubectl apply -f examples/apecloud-mysql/backuprepo.yaml
-```
-
-After creating the BackupRepo, you should check the status of the BackupRepo, to make sure it is `Ready`.
-
-```bash
-kubectl get backuprepo
-```
-
-And the expected output is like:
-
-```bash
-NAME     STATUS   STORAGEPROVIDER   ACCESSMETHOD   DEFAULT   AGE
-kb-oss   Ready    oss               Tool           true      Xd
-```
-
 ### [Backup](backup.yaml)
+
+> [!IMPORTANT] Before you start, please create a `BackupRepo` to store the backup data. Refer to [BackupRepo](../docs/create-backuprepo.md) for more details.
 
 You may find the supported backup methods in the `BackupPolicy` of the cluster, e.g. `acmysql-cluster-mysql-backup-policy` in this case, and find how these methods will be scheduled in the `BackupSchedule` of the cluster, e.g.. `acmysql-cluster-mysql-backup-schedule` in this case.
 
@@ -469,8 +420,6 @@ Alternatively, you may expose service by updating `spec.services`
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: acmysql-cluster
-  namespace: default
 spec:
   # append service to the list
   services:
@@ -555,6 +504,8 @@ kubectl apply -f examples/apecloud-mysql/pod-monitor.yaml
 
 Login to the Grafana dashboard and import the dashboard.
 
+KubeBlocks provides a Grafana dashboard for monitoring the ApeCloud MySQL cluster. You can find it at [ApeCloud MySQL Dashboard](https://github.com/apecloud/kubeblocks-addons/tree/main/addons/apecloud-mysql).
+
 > [!Note]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
 
@@ -583,10 +534,11 @@ kubectl apply -f examples/apecloud-mysql/smartengine-enable.yaml
 ```bash
 kubectl apply -f examples/apecloud-mysql/smartengine-disable.yaml
 ```
+``` -->
 
 ## ApeCloud MySQL Proxy
 
-ApeCloud MySQL Proxy is a database proxy designed to be highly compatible with MySQL.
+ApeCloud MySQL Proxy[^2] is a database proxy designed to be highly compatible with MySQL.
 It supports the MySQL wire protocol, read-write splitting without stale reads, connection pooling, and transparent failover.
 
 ### [Create Cluster with Proxy](cluster-proxy.yaml)
@@ -595,17 +547,62 @@ It supports the MySQL wire protocol, read-write splitting without stale reads, c
 kubectl apply -f examples/apecloud-mysql/cluster-proxy.yaml
 ```
 
-### [Configure Vtgate](configure-vtgate.yaml)
+It creates a ApeCloud-MySQL component of 3 replicas, a wescale controller of 1 replica, a wescale of 1 replica, and an ETCD comonent with 3 replicas.
+
+To connect to the ApeCloud MySQL Proxy, you can:
+
+- port forward the service to your local machine:
+
 ```bash
-kubectl apply -f examples/apecloud-mysql/configure-vtgate.yaml
+# kubectl port-forward svc/<clusterName>-wescale 3306:3306
+kubectl port-forward svc/acmysql-proxy-cluster-wescale 15306:15306
 ```
 
-### [Configure Vttablet](configure-vttablet.yaml)
+- login to with the following command:
+
 ```bash
-kubectl apply -f examples/apecloud-mysql/configure-vttablet.yaml
-``` -->
+mysql -h<endpoint> -P 15306 -u<userName> -p<password>
+```
+
+You may scale wescale and ETCD components as needed.
+
+## Appendix
+
+### How to Connect to ApesCloud MySQL
+
+To connect to the ApeCloud MySQL cluster, you can:
+
+- port forward the MySQL service to your local machine:
+
+```bash
+kubectl port-forward svc/<clusterName>-mysql 3306:3306
+```
+
+- or expose the MySQL service to the internet, as mentioned in the [Expose](#expose) section.
+
+Then you can connect to the MySQL cluster with the following command:
+
+```bash
+mysql -h <endpoint> -P 3306 -u <userName> -p <password>
+```
+
+and credentials can be found in the `secret` resource:
+
+```bash
+kubectl get secret <clusterName>-mysql-account-root -ojsonpath='{.data.username}' | base64 -d
+kubectl get secret <clusterName>-mysql-account-root -ojsonpath='{.data.password}' | base64 -d
+```
+
+### How to Check the Status of ApeCloud MySQL
+
+You can check the status of the ApeCloud MySQL cluster with the following command:
+
+```bash
+mysql > select * from information_schema.WESQL_CLUSTER_GLOBAL;
+mysql > select * from information_schema.WESQL_CLUSTER_HEALTH;
+```
 
 ## References
 
-[^4]: Volume Expansion: https://kubernetes.io/blog/2022/05/05/volume-expansion-ga/
-[^5]: Grafana Dashboard Store: https://grafana.com/grafana/dashboards/
+[^1]: ApeCloud MySQL,https://kubeblocks.io/docs/preview/user_docs/kubeblocks-for-apecloud-mysql/apecloud-mysql-intro
+[^2]: wescale, https://github.com/wesql/wescale

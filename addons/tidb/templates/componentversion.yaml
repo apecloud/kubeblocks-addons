@@ -8,30 +8,40 @@ metadata:
     {{- include "tidb.apiVersion" . | nindent 4 }}
 spec:
   releases:
+    - name: "8.4.0"
+      serviceVersion: "8.4.0"
+      images:
+        pd: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v8.4.0
+        roleProbe: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v8.4.0
+        memberLeave: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v8.4.0
     - name: "7.5.2"
       serviceVersion: "7.5.2"
       images:
         pd: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v7.5.2
         roleProbe: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v7.5.2
         memberLeave: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v7.5.2
+        switchover: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v7.5.2
     - name: "7.1.5"
       serviceVersion: "7.1.5"
       images:
         pd: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v7.1.5
         roleProbe: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v7.1.5
         memberLeave: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v7.1.5
+        switchover: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v7.1.5
     - name: "6.5.10"
       serviceVersion: "6.5.10"
       images:
         pd: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v6.5.10
         roleProbe: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v6.5.10
         memberLeave: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v6.5.10
+        switchover: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v6.5.10
   compatibilityRules:
     - compDefs:
         - {{ include "tidb.pd7.cmpdRegexpPattern" . }}
       releases:
-        - "7.1.5"
+        - "8.4.0"
         - "7.5.2"
+        - "7.1.5"
         - "6.5.10"
 
 ---
@@ -45,6 +55,11 @@ metadata:
     {{- include "tidb.apiVersion" . | nindent 4 }}
 spec:
   releases:
+    - name: "8.4.0"
+      serviceVersion: "8.4.0"
+      images:
+        tidb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tidb.repository }}:v8.4.0
+        slowlog: {{ .Values.image.helper.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.helper.repository }}:{{ .Values.image.helper.tag }}
     - name: "7.5.2"
       serviceVersion: "7.5.2"
       images:
@@ -64,8 +79,9 @@ spec:
     - compDefs:
         - {{ include "tidb.tidb7.cmpdRegexpPattern" . }}
       releases:
-        - "7.1.5"
+        - "8.4.0"
         - "7.5.2"
+        - "7.1.5"
         - "6.5.10"
 
 ---
@@ -79,6 +95,11 @@ metadata:
     {{- include "tidb.apiVersion" . | nindent 4 }}
 spec:
   releases:
+    - name: "8.4.0"
+      serviceVersion: "8.4.0"
+      images:
+        tikv: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tikv.repository }}:v8.4.0
+        memberLeave: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v8.4.0
     - name: "7.5.2"
       serviceVersion: "7.5.2"
       images:
@@ -98,6 +119,7 @@ spec:
     - compDefs:
         - {{ include "tidb.tikv7.cmpdRegexpPattern" . }}
       releases:
-        - "7.1.5"
+        - "8.4.0"
         - "7.5.2"
+        - "7.1.5"
         - "6.5.10"

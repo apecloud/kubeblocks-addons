@@ -4,6 +4,12 @@
   "title": "ClickHouse Cluster Configuration",
   "description": "Configuration schema for the ClickHouse Helm chart.",
   "properties": {
+    "version": {
+      "title": "ClickHouse Cluster Version",
+      "description": "Engine Version of the ClickHouse cluster.",
+      "type": "string",
+      "default": "24.8.3"
+    },
     "mode": {
       "title": "Cluster Topology Mode",
       "description": "Define the ClickHouse cluster topology mode.",
@@ -14,7 +20,7 @@
         "cluster"
       ]
     },
-    "shardCount": {
+    "shards": {
       "title": "Shard Count",
       "description": "Number of shards in the ClickHouse cluster.",
       "type": "integer",
@@ -23,18 +29,11 @@
     },
     "sharding": {
       "title": "Sharding Configuration",
-      "description": "Settings related to sharding within the ClickHouse cluster.",
-      "type": "object",
-      "properties": {
-        "enabled": {
-          "title": "Sharding Enabled",
-          "description": "Enable or disable sharding.",
-          "type": "boolean",
-          "default": false
-        }
-      }
+      "description": "Enable or disable sharding within the ClickHouse cluster.",
+      "type": "boolean",
+      "default": true
     },
-    "replicaCount": {
+    "replicas": {
       "title": "Replica Count",
       "description": "Number of replicas per shard.",
       "type": "integer",
@@ -85,7 +84,7 @@
       "description": "Settings for the ClickHouse Keeper (coordinator).",
       "type": "object",
       "properties": {
-        "replicaCount": {
+        "replicas": {
           "title": "Keeper Replica Count",
           "description": "Number of ClickHouse Keeper replicas.",
           "type": "integer",

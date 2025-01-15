@@ -3,18 +3,20 @@ nameOverride: ""
 # Override the full name of the chart
 fullnameOverride: ""
 
+## Clickhouse cluster version
+version: 24.8.3
+
 ## ClickHouse cluster topology mode defined in ClusterDefinition.Spec.topologies, support standalone and cluster
 ## - `standalone`: single clickhouse instance
 ## - `cluster`: clickhouse with ClickHouse Keeper as coordinator
 mode: cluster
 
 ## Sharding configuration
-shardCount: 1
-sharding:
-  enabled: false
+shards: 1
+sharding: true
 
 ## Number of ClickHouse replicas per shard to deploy
-replicaCount: 2
+replicas: 2
 
 ## ClickHouse per shard component configurations
 cpu: 1
@@ -36,7 +38,7 @@ tolerations: []
 ## ClickHouse Keeper configuration
 keeper:
   ## Number of ClickHouse Keeper replicas
-  replicaCount: 1
+  replicas: 1
   storageClassName: ""
   cpu: 1
   memory: 2

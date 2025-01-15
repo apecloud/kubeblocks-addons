@@ -32,8 +32,7 @@ requests:
 ## @param storage size, the unit is Gi
 ##
 storage: 20
-# values: [server, server-with-proxy, server-with-orc]
-topology: server
+topology: semisync
 proxysql:
   replicas: 1
   cpu: 1
@@ -41,7 +40,6 @@ proxysql:
 
 ## @param extra.rbacEnabled if true, create rbac
 extra:
-  rbacEnabled: true
   terminationPolicy: Delete
 
 orchestrator:

@@ -20,6 +20,13 @@ Define mysql component definition regex regular
 {{- end -}}
 
 {{/*
+Define mysql component definition common regex regular (semisync and orc)
+*/}}
+{{- define "mysql.componentDefCommonRegex" -}}
+{{- printf "^%s" (include "mysql.cmpdNamePrefix" .) -}}(?:-[\w\d]+)?-\d+\.\d+.*$
+{{- end -}}
+
+{{/*
 Define mysql component definition name
 */}}
 {{- define "mysql.componentDefName57" -}}
@@ -58,5 +65,5 @@ Define mysql component definition name
 Define mysql component definition name
 */}}
 {{- define "proxysql.componentDefName" -}}
-{{- printf "%s-proxysql-%s" (include "mysql.cmpdNamePrefix" .) .Chart.Version -}}
+{{- printf "proxysql-%s-%s" (include "mysql.cmpdNamePrefix" .) .Chart.Version -}}
 {{- end -}}

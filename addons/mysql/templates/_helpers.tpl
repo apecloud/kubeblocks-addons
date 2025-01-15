@@ -108,6 +108,8 @@ systemAccounts:
       numDigits: 5
       numSymbols: 0
       letterCase: MixedCases
+  - name: proxysql
+    statement: CREATE USER IF NOT EXISTS '${KB_ACCOUNT_NAME}' IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT SELECT ON performance_schema.* TO '${KB_ACCOUNT_NAME}'; GRANT SELECT ON sys.* TO '${KB_ACCOUNT_NAME}';
 vars:
   - name: CLUSTER_NAME
     valueFrom:
@@ -117,6 +119,16 @@ vars:
     valueFrom:
       clusterVarRef:
         namespace: Required
+  - name: COMPONENT_NAME
+    valueFrom:
+      componentVarRef:
+        optional: false
+        shortName: Required
+  - name: CLUSTER_COMPONENT_NAME
+    valueFrom:
+      componentVarRef:
+        optional: false
+        componentName: Required
   - name: MYSQL_ROOT_USER
     valueFrom:
       credentialVarRef:
@@ -128,16 +140,27 @@ vars:
         name: root
         password: Required
 lifecycleActions:
+  accountProvision:
+    exec:
+      container: mysql
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -ex
+          eval statement=\"${KB_ACCOUNT_STATEMENT}\"
+          mysql -u${MYSQL_ROOT_USER} -p${MYSQL_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement}"
+      targetPodSelector: Role
+      matchingKey: primary
+
   roleProbe:
     periodSeconds: {{ .Values.roleProbe.periodSeconds }}
     timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
     exec:
       container: mysql
       command:
-        - /tools/dbctl
-        - --config-path
-        - /tools/config/dbctl/components
-        - mysql
+        - /tools/syncerctl
         - getrole
   switchover:
     exec:
@@ -145,7 +168,16 @@ lifecycleActions:
         - /bin/sh
         - -c
         - |
-          /tools/syncerctl switchover --primary "$KB_LEADER_POD_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
+          if [ -z "$KB_SWITCHOVER_ROLE" ]; then
+              echo "role can't be empty"
+              exit 1
+          fi
+
+          if [ "$KB_SWITCHOVER_ROLE" != "primary" ]; then
+              exit 0
+          fi
+
+          /tools/syncerctl switchover --primary "$KB_SWITCHOVER_CURRENT_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
 roles:
   - name: primary
     serviceable: true
@@ -168,18 +200,6 @@ roles:
   volumeMounts:
     - mountPath: /tools
       name: tools
-- command:
-    - cp
-    - -r
-    - /bin/dbctl
-    - /config
-    - /tools/
-  image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
-  imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
-  name: init-dbctl
-  volumeMounts:
-    - mountPath: /tools
-      name: tools
 {{- end }}
 
 {{- define "mysql-orc.spec.common"}}
@@ -193,8 +213,7 @@ serviceRefDeclarations:
       - serviceKind: orchestrator
         serviceVersion: "^*"
 services:
-  - name: mysql-server
-    serviceName: mysql-server
+  - name: default
     spec:
       ports:
         - name: mysql
@@ -225,6 +244,8 @@ systemAccounts:
       numDigits: 5
       numSymbols: 0
       letterCase: MixedCases
+  - name: proxysql
+    statement: CREATE USER IF NOT EXISTS '${KB_ACCOUNT_NAME}' IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT SELECT ON performance_schema.* TO '${KB_ACCOUNT_NAME}'; GRANT SELECT ON sys.* TO '${KB_ACCOUNT_NAME}';
 roles:
   - name: primary
     serviceable: true
@@ -241,7 +262,7 @@ vars:
     valueFrom:
       clusterVarRef:
         namespace: Required
-  - name: COMPONENT_NAME
+  - name: CLUSTER_COMPONENT_NAME
     valueFrom:
       componentVarRef:
         optional: false
@@ -281,6 +302,19 @@ exporter:
 
 
 {{- define "mysql-orc.spec.lifecycle.common" }}
+accountProvision:
+  exec:
+    container: mysql
+    image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+    command:
+      - /bin/sh
+      - -c
+      - |
+        set -ex
+        eval statement=\"${KB_ACCOUNT_STATEMENT}\"
+        mysql -u${MYSQL_ROOT_USER} -p${MYSQL_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement}"
+    targetPodSelector: Role
+    matchingKey: primary
 roleProbe:
   exec:
     env:
@@ -290,7 +324,7 @@ roleProbe:
       - /bin/bash
       - -c
       - |
-        topology_info=$(/kubeblocks/orchestrator-client -c topology -i $CLUSTER_NAME) || true
+        topology_info=$(/kubeblocks/orchestrator-client -c topology -i ${CLUSTER_NAME}.${CLUSTER_NAMESPACE}) || true
         if [[ $topology_info == "" ]]; then
           echo -n "secondary"
           exit 0
@@ -307,7 +341,7 @@ roleProbe:
         address_port=$(echo "$first_line" | awk '{print $1}')
         master_from_orc="${address_port%:*}"
         last_digit=${KB_AGENT_POD_NAME##*-}
-        self_service_name=$(echo "${COMPONENT_NAME}_mysql_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+        self_service_name=$(echo "${CLUSTER_COMPONENT_NAME}_mysql_${last_digit}.${CLUSTER_NAMESPACE}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
         if [ "$master_from_orc" == "${self_service_name}" ]; then
           echo -n "primary"
         else
@@ -320,12 +354,12 @@ memberLeave:
       - -c
       - |
         set +e
-        master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i $CLUSTER_NAME)
+        master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i ${CLUSTER_NAME}.${CLUSTER_NAMESPACE})
         last_digit=${KB_LEAVE_MEMBER_POD_NAME##*-}
-        self_service_name=$(echo "${COMPONENT_NAME}_mysql_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+        self_service_name=$(echo "${CLUSTER_COMPONENT_NAME}_mysql_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
         if [ "${self_service_name%%:*}" == "${master_from_orc%%:*}" ]; then
-          /kubeblocks/orchestrator-client -c force-master-failover -i $CLUSTER_NAME
-          local timeout=30
+          /kubeblocks/orchestrator-client -c force-master-failover -i ${CLUSTER_NAME}.${CLUSTER_NAMESPACE}
+          local timeout=15
           local start_time=$(date +%s)
           local current_time
           while true; do
@@ -333,7 +367,7 @@ memberLeave:
             if [ $((current_time - start_time)) -gt $timeout ]; then
               break
             fi
-            master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i $CLUSTER_NAME)
+            master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i ${CLUSTER_NAME}.${CLUSTER_NAMESPACE})
             if [ "${self_service_name%%:*}" != "${master_from_orc%%:*}" ]; then
               break
             fi
@@ -341,6 +375,17 @@ memberLeave:
           done
         fi
         /kubeblocks/orchestrator-client -c reset-replica -i ${self_service_name}
+        /kubeblocks/orchestrator-client -c forget -i ${self_service_name}
+        res=$(/kubeblocks/orchestrator-client -c which-cluster-alias -i ${self_service_name})
+        local start_time=$(date +%s)
+        while [ "$res" == "" ]; do
+          current_time=$(date +%s)
+          if [ $((current_time - start_time)) -gt $timeout ]; then
+            break
+          fi
+          sleep 1
+          res=$(/kubeblocks/orchestrator-client -c instance -i ${self_service_name})
+        done
         /kubeblocks/orchestrator-client -c forget -i ${self_service_name}
 {{- end }}
 
@@ -372,9 +417,9 @@ command:
   - |
     cp {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
     chown -R mysql:root {{ .Values.dataMountPath }}
-    skip_slave_start="OFF"
+    export skip_slave_start="OFF"
     if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
-      skip_slave_start="ON"
+      export skip_slave_start="ON"
     fi
     /scripts/mysql-entrypoint.sh
 volumeMounts:
@@ -404,17 +449,17 @@ env:
     value: orchestrator
   - name: SERVICE_PORT
     value: "3306"
-  - name: SYNCER_POD_NAME
+  - name: POD_NAME
     valueFrom:
       fieldRef:
         apiVersion: v1
         fieldPath: metadata.name
-  - name: SYNCER_POD_UID
+  - name: POD_UID
     valueFrom:
       fieldRef:
         apiVersion: v1
         fieldPath: metadata.uid
-  - name: SYNCER_POD_IP
+  - name: POD_IP
     valueFrom:
       fieldRef:
         apiVersion: v1
@@ -448,6 +493,5 @@ volumeMounts:
 {{- define "mysql.spec.runtime.images" -}}
 init-jemalloc: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemalloc:5.3.0
 init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
 mysql-exporter: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
 {{- end -}}

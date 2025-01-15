@@ -23,7 +23,6 @@ staticParameters:
   - session_max_per_connection
   - link_max_per_session
   - channel_max
-  - channel_operation_timeout
   - max_message_size
   - heartbeat
   - default_vhost
@@ -50,4 +49,5 @@ staticParameters:
   - mnesia_table_loading_retry_timeout
   - mnesia_table_loading_retry_limit
   - proxy_protocol
+immutableParameters:
   - cluster_name

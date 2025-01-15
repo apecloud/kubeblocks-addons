@@ -1,17 +1,18 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: acmysql-cluster
+  name: acmysql-proxy-cluster
   namespace: default
-  annotations:
-    kubeblocks.io/extra-env: '{"KB_PROXY_ENABLED":"on","ETCDCTL_API": "3"}'
 spec:
   terminationPolicy: Delete
   clusterDef: apecloud-mysql
   topology: apecloud-mysql-proxy-etcd
   componentSpecs:
     - name: mysql
-      disableExporter: false
+      serviceVersion: 8.0.30
+      env:
+        - name: KB_PROXY_ENABLED
+          value: "on"
       replicas: 3
       resources:
         limits:
@@ -53,6 +54,15 @@ spec:
           cpu: "0.5"
           memory: 500Mi
     - name: etcd
+      serviceVersion: "3.5.6"
+      replicas: 3
+      resources:
+        requests:
+          cpu: 500m
+          memory: 500Mi
+        limits:
+          cpu: 500m
+          memory: 500Mi
       volumeClaimTemplates:
         - name: data
           spec:
@@ -62,11 +72,3 @@ spec:
             resources:
               requests:
                 storage: 20Gi
-      replicas: 3
-      resources:
-        requests:
-          cpu: 500m
-          memory: 500Mi
-        limits:
-          cpu: 500m
-          memory: 500Mi

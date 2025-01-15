@@ -27,8 +27,10 @@
   <!-- Cluster configuration - Any update of the shards and replicas requires helm upgrade -->
   <remote_servers>
     <default>
+      {{- range $key, $value := . }}
+      {{- if and (hasPrefix "ALL_SHARDS_POD_FQDN_LIST" $key) (ne $value "") }}
       <shard>
-        {{- range $_, $host := splitList "," .CLICKHOUSE_POD_FQDN_LIST }}
+        {{- range $_, $host := splitList "," $value }}
         <replica>
           <host>{{ $host }}</host>
           {{- if eq (index $ "TLS_ENABLED") "true" }}
@@ -37,9 +39,13 @@
           {{- else }}
           <port replace="replace" from_env="CLICKHOUSE_TCP_PORT"/>
           {{- end }}
+          <user from_env="CLICKHOUSE_ADMIN_USER"></user>
+          <password from_env="CLICKHOUSE_ADMIN_PASSWORD"></password>
         </replica>
         {{- end }}
       </shard>
+      {{- end }}
+      {{- end }}
     </default>
   </remote_servers>
   {{- if (index . "CH_KEEPER_POD_FQDN_LIST") }}

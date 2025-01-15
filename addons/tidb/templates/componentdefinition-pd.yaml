@@ -33,6 +33,8 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.name
+          - name: SERVICE_PORT
+            value: "2379"
         ports:
           - containerPort: 2379
             name: client
@@ -78,9 +80,9 @@ spec:
           - |
             LEADER_NAME=$(/pd-ctl member | jq -r '.leader.name')
             if [ "$LEADER_NAME" == "$HOSTNAME" ]; then
-                echo "leader"
+                echo -n "leader"
             else
-                echo "follower"
+                echo -n "follower"
             fi
     memberLeave:
       exec:
@@ -92,6 +94,15 @@ spec:
             echo $KB_LEAVE_MEMBER_POD_NAME
             echo $ADDRESS
             /pd-ctl -u "$ADDRESS:2379" member delete name $KB_LEAVE_MEMBER_POD_NAME
+    switchover:
+      exec:
+        targetPodSelector: Role
+        matchingKey: leader
+        command:
+          - bash
+          - -c
+          - |
+            {{- .Files.Get "scripts/pd_switchover.sh" | nindent 14 }}
   exporter:
     containerName: pd
     scrapePort: "2379"

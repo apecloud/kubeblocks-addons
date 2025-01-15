@@ -229,10 +229,7 @@ lifecycleActions:
     exec:
       container: postgresql
       command:
-        - /tools/dbctl
-        - --config-path
-        - /tools/config/dbctl/components
-        - apecloud-postgresql
+        - /tools/syncerctl
         - getrole
   switchover:
     exec:
@@ -240,16 +237,24 @@ lifecycleActions:
         - /bin/sh
         - -c
         - |
+          if [ -z "$KB_SWITCHOVER_ROLE" ]; then
+              echo "role can't be empty"
+              exit 1
+          fi
+
+          if [ "$KB_SWITCHOVER_ROLE" != "leader" ]; then
+              exit 0
+          fi
+          
           /tools/syncerctl switchover --primary "$POSTGRES_LEADER_POD_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
   memberLeave:
     exec:
       container: postgresql
       command:
-        - /tools/dbctl
-        - --config-path
-        - /tools/config/dbctl/components
-        - apecloud-postgresql
-        - leavemember
+        - /bin/sh
+        - -c
+        - |
+          /tools/syncerctl leave --instance "$KB_LEAVE_MEMBER_POD_NAME"
   accountProvision:
     exec:
       container: postgresql
@@ -278,18 +283,6 @@ runtime:
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
       imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
       name: init-syncer
-      volumeMounts:
-        - mountPath: /tools
-          name: tools
-    - command:
-        - cp
-        - -r
-        - /bin/dbctl
-        - /config
-        - /tools/
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
-      imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
-      name: init-dbctl
       volumeMounts:
         - mountPath: /tools
           name: tools
