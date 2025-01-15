@@ -51,10 +51,10 @@ spec:
     - name: kafka-exporter
       image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafkaExporter.repository }}:{{ .Values.images.kafkaExporter.tag }}
       imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
-        {{- if .Values.container.securityContext }}
-        securityContext:
-          {{- toYaml .Values.container.securityContext | nindent 10 }}
-        {{- end }}
+      {{- if .Values.exporter.securityContext }}
+      securityContext:
+        {{- toYaml .Values.exporter.securityContext | nindent 8 }}
+      {{- end }}
       env:
         - name: SERVICE_PORT
           value: "9308"

@@ -75,3 +75,9 @@ container:
     allowPrivilegeEscalation: false
     runAsNonRoot: true
     runAsUser: 1001
+
+## exporter security context settings
+exporter:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1001

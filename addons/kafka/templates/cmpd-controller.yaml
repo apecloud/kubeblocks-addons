@@ -157,9 +157,9 @@ spec:
       - name: jmx-exporter
         image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
-        {{- if .Values.container.securityContext }}
+        {{- if .Values.exporter.securityContext }}
         securityContext:
-          {{- toYaml .Values.container.securityContext | nindent 10 }}
+          {{- toYaml .Values.exporter.securityContext | nindent 10 }}
         {{- end }}
         command:
           - java
