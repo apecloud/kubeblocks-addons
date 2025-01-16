@@ -16,45 +16,55 @@ spec:
   terminationPolicy: Delete
   # Defines a set of node affinity scheduling rules for the Cluster's Pods. This field helps control the placement of Pods on nodes within the cluster.
   affinity:
-   # Specifies the anti-affinity level of Pods within a Component. It determines how pods should be spread across nodes to improve availability and performance.
+    # Specifies the anti-affinity level of Pods within a Component. It determines how pods should be spread across nodes to improve availability and performance.
     podAntiAffinity: Preferred
-    # Represents the key of node labels used to define the topology domain for Pod anti-affinity and Pod spread constraints. 
+    # Represents the key of node labels used to define the topology domain for Pod anti-affinity and Pod spread constraints.
     topologyKeys:
-    - kubernetes.io/hostname
-    # Determines the level of resource isolation between Pods. It can have the following values: `SharedNode` and `DedicatedNode`. 
-    # - SharedNode: Allow that multiple Pods may share the same node, which is the default behavior of K8s. 
-    # - DedicatedNode: Each Pod runs on a dedicated node, ensuring that no two Pods share the same node. 
+      - kubernetes.io/hostname
+    # Determines the level of resource isolation between Pods. It can have the following values: `SharedNode` and `DedicatedNode`.
+    # - SharedNode: Allow that multiple Pods may share the same node, which is the default behavior of K8s.
+    # - DedicatedNode: Each Pod runs on a dedicated node, ensuring that no two Pods share the same node.
     tenancy: SharedNode
   # An array that specifies tolerations attached to the Cluster's Pods, allowing them to be scheduled onto nodes with matching taints.
   tolerations:
     - key: kb-data
       operator: Equal
-      value: 'true'
+      value: "true"
       effect: NoSchedule
   # Specifies a list of ClusterComponentSpec objects used to define the individual components that make up a Cluster. This field allows for detailed configuration of each component within the Cluster.
   # Note: `shardingSpecs` and `componentSpecs` cannot both be empty; at least one must be defined to configure a cluster.
   # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
-  - name: mysql
-    componentDefRef: mysql
-    enabledLogs:
-    - error
-    - slow
-    disableExporter: true
-    replicas: 1
-    serviceAccountName: kb-mysql-cluster
-    resources:
-      limits:
-        cpu: '0.5'
-        memory: 0.5Gi
-      requests:
-        cpu: '0.5'
-        memory: 0.5Gi
-    volumeClaimTemplates:
-    - name: data
-      spec:
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: 20Gi
+    - name: mysql
+      componentDefRef: mysql
+      # Determines whether metrics exporter information is annotated on the
+      # Component's headless Service.
+      # Valid options are [true, false]
+      disableExporter: true
+      # Specifies the desired number of replicas in the Component
+      replicas: 2
+      # Specifies the resources required by the Component.
+      resources:
+        limits:
+          cpu: '0.5'
+          memory: 0.5Gi
+        requests:
+          cpu: '0.5'
+          memory: 0.5Gi
+      # Specifies a list of PersistentVolumeClaim templates that define the storage
+      # requirements for the Component.
+      volumeClaimTemplates:
+        # Refers to the name of a volumeMount defined in
+        # `componentDefinition.spec.runtime.containers[*].volumeMounts
+        - name: data
+          spec:
+            # The name of the StorageClass required by the claim.
+            # If not specified, the StorageClass annotated with
+            # `storageclass.kubernetes.io/is-default-class=true` will be used by default
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                # Set the storage size as needed
+                storage: 20Gi
