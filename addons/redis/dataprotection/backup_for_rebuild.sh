@@ -1,3 +1,5 @@
+#!/bin/bash
+set -e
 set -o pipefail
 
 # if the script exits with a non-zero exit code, touch a file to indicate that the backup failed,

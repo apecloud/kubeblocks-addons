@@ -83,8 +83,6 @@ spec:
       - bash
       - -c
       - |
-        #!/bin/bash
-        set -e
         {{- .Files.Get "dataprotection/restore-cluster-users.sh" | nindent 8 }}
     postReady:
     - job:
@@ -177,7 +175,6 @@ spec:
       - sh
       - -c
       - |
-        set -e
         {{- .Files.Get "dataprotection/backup_for_rebuild.sh" | nindent 8 }}
   restore:
     prepareData:
@@ -186,5 +183,4 @@ spec:
       - sh
       - -c
       - |
-        set -e
         {{- .Files.Get "dataprotection/restore-cluster-users.sh" | nindent 8 }}
