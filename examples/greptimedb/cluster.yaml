@@ -5,10 +5,10 @@ metadata:
   namespace: default
 spec:
   # Specifies the name of the ClusterDefinition to use when creating a Cluster.
-  clusterDefinitionRef: greptimedb
+  clusterDef: greptimedb
   # Specifies the behavior when a Cluster is deleted.
+  # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
-  # - `Halt`: Deletes Cluster resources like Pods and Services but retains Persistent Volume Claims (PVCs), allowing for data preservation while stopping other operations.
   # - `Delete`: Extends the `Halt` policy by also removing PVCs, leading to a thorough cleanup while removing all persistent data.
   # - `WipeOut`: An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss.
   terminationPolicy: Delete
@@ -16,60 +16,63 @@ spec:
   # Note: `shardingSpecs` and `componentSpecs` cannot both be empty; at least one must be defined to configure a cluster.
   # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
-  - name: frontend
-    componentDef: greptimedb-frontend
-    serviceAccountName: kb-greptimedb-cluster
-    replicas: 1
-    resources:
-      limits:
-        cpu: '0.5'
-        memory: 0.5Gi
-      requests:
-        cpu: '0.5'
-        memory: 0.5Gi
-  - name: datanode
-    componentDef: greptimedb-datanode
-    replicas: 1
-    resources:
-      limits:
-        cpu: '0.5'
-        memory: 0.5Gi
-      requests:
-        cpu: '0.5'
-        memory: 0.5Gi
-    volumeClaimTemplates:
+    - name: frontend
+      replicas: 1
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: 0.5Gi
+        requests:
+          cpu: "0.5"
+          memory: 0.5Gi
     - name: datanode
-      spec:
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: 20Gi
-  - name: meta
-    componentDef: greptimedb-meta
-    replicas: 1
-    resources:
-      limits:
-        cpu: '0.5'
-        memory: 0.5Gi
-      requests:
-        cpu: '0.5'
-        memory: 0.5Gi
-  - name: etcd
-    componentDef: etcd
-    replicas: 3
-    resources:
-      limits:
-        cpu: '0.5'
-        memory: 0.5Gi
-      requests:
-        cpu: '0.5'
-        memory: 0.5Gi
-    volumeClaimTemplates:
-    - name: data
-      spec:
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: 20Gi
+      replicas: 3
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: 0.5Gi
+        requests:
+          cpu: "0.5"
+          memory: 0.5Gi
+      volumeClaimTemplates:
+        - name: datanode
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            # The name of the StorageClass required by the claim.
+            # If not specified, the StorageClass annotated with
+            # `storageclass.kubernetes.io/is-default-class=true` will be used by default
+            storageClassName: ""
+            resources:
+              requests:
+                storage: 20Gi
+    - name: meta
+      replicas: 1
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: 0.5Gi
+        requests:
+          cpu: "0.5"
+          memory: 0.5Gi
+    - name: etcd
+      replicas: 3
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: 0.5Gi
+        requests:
+          cpu: "0.5"
+          memory: 0.5Gi
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            # The name of the StorageClass required by the claim.
+            # If not specified, the StorageClass annotated with
+            # `storageclass.kubernetes.io/is-default-class=true` will be used by default
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
