@@ -185,6 +185,12 @@
           "minimum": 1,
           "maximum": 1024
         },
+        "storageClassName": {
+          "description": "Sentinel component storage class name",
+          "title": "sentinel storage class name",
+          "type": "string",
+          "default": ""
+        },
         "replicas": {
           "description": "Sentinel component replicas",
           "title": "sentinel replicas",
