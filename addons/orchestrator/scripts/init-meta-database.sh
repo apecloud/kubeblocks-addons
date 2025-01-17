@@ -1,15 +1,12 @@
 #!/bin/sh
-META_MYSQL_USER=${META_MYSQL_USER:-"orchestrator"}
-ORC_META_USER=${ORC_META_USER:-"orchestrator"}
-
 meta_mysql_user="${META_MYSQL_USER}"
 meta_mysql_password="${META_MYSQL_PASSWORD}"
 meta_mysql_host=${META_MYSQL_ENDPOINT%%:*}
 meta_mysql_port=${META_MYSQL_PORT}
 
-meta_user="$ORC_META_USER"
-meta_password="$ORC_META_PASSWORD"
-meta_database="$ORC_META_DATABASE"
+meta_user="${ORC_META_USER:-"orchestrator"}"
+meta_password="${ORC_META_PASSWORD}"
+meta_database="${ORC_META_DATABASE:-"orchestrator"}"
 
 # create orchestrator user in mysql
 init_meta_databases() {
@@ -17,12 +14,12 @@ init_meta_databases() {
 
   echo "Create MySQL User and Grant Permissions..."
   mysql -h $meta_mysql_host -P $meta_mysql_port -u $meta_mysql_user -p$meta_mysql_password << EOF
-CREATE USER IF NOT EXISTS '$ORC_META_USER'@'%' IDENTIFIED BY '$ORC_META_PASSWORD';
+CREATE USER IF NOT EXISTS '$meta_user'@'%' IDENTIFIED BY '$meta_password';
 EOF
 
   mysql -h $meta_mysql_host -P $meta_mysql_port -u $meta_mysql_user -p$meta_mysql_password << EOF
 CREATE DATABASE IF NOT EXISTS $meta_database;
-GRANT ALL PRIVILEGES ON $meta_database.* TO '$ORC_META_USER'@'%';
+GRANT ALL PRIVILEGES ON $meta_database.* TO '$meta_user'@'%';
 EOF
   echo "init meta databases done"
 }
