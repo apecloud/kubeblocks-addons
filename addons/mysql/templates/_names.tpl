@@ -62,6 +62,10 @@ Define mysql component definition name
 {{- printf "%s-8.4-%s" (include "mysql.cmpdNamePrefix" .) .Chart.Version -}}
 {{- end -}}
 
+{{- define "mysql.componentDefNameMGR84" -}}
+{{- printf "%s-8.4-%s" (include "mysql.cmpdMGRNamePrefix" .) .Chart.Version -}}
+{{- end -}}
+
 {{/*
 Define mysql component definition name
 */}}

@@ -108,6 +108,25 @@ systemAccounts:
       numDigits: 5
       numSymbols: 0
       letterCase: MixedCases
+  - name: kbadmin
+    statement: select 1;
+    passwordGenerationPolicy: &defaultPasswordGenerationPolicy
+      length: 16
+      numDigits: 8
+      numSymbols: 0
+      letterCase: MixedCases
+  - name: kbdataprotection
+    statement: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}';GRANT RELOAD, LOCK TABLES, PROCESS, REPLICATION CLIENT ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT LOCK TABLES,RELOAD,PROCESS,REPLICATION CLIENT, SUPER,SELECT,EVENT,TRIGGER,SHOW VIEW ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
+    passwordGenerationPolicy: *defaultPasswordGenerationPolicy
+  - name: kbprobe
+    statement: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, PROCESS ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT SELECT ON performance_schema.* TO ${KB_ACCOUNT_NAME};
+    passwordGenerationPolicy: *defaultPasswordGenerationPolicy
+  - name: kbmonitoring
+    statement: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, PROCESS ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT SELECT ON performance_schema.* TO ${KB_ACCOUNT_NAME};
+    passwordGenerationPolicy: *defaultPasswordGenerationPolicy
+  - name: kbreplicator
+    statement: select 1;
+    passwordGenerationPolicy: *defaultPasswordGenerationPolicy
 vars:
   - name: CLUSTER_NAME
     valueFrom:
@@ -141,7 +160,40 @@ vars:
       credentialVarRef:
         name: root
         password: Required
+  - name: MYSQL_ADMIN_USER
+    valueFrom:
+      credentialVarRef:
+        name: kbadmin
+        username: Required
+  - name: MYSQL_ADMIN_PASSWORD
+    valueFrom:
+      credentialVarRef:
+        name: kbadmin
+        password: Required
+  - name: MYSQL_REPLICATION_USER
+    valueFrom:
+      credentialVarRef:
+        name: kbreplicator
+        username: Required
+  - name: MYSQL_REPLICATION_PASSWORD
+    valueFrom:
+      credentialVarRef:
+        name: kbreplicator
+        password: Required
 lifecycleActions:
+  accountProvision:
+    exec:
+      container: mysql
+      command:
+        - bash
+        - -c
+        - |
+          set -ex
+          ALL_DB='*.*'
+          eval statement=\"${KB_ACCOUNT_STATEMENT}\"
+          mysql -u${MYSQL_ROOT_USER} -p${MYSQL_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement}"
+      targetPodSelector: Role
+      matchingKey: primary
   roleProbe:
     periodSeconds: {{ .Values.roleProbe.periodSeconds }}
     timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
