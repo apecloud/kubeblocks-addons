@@ -39,7 +39,7 @@ spec:
           clusterServiceSelector:
             cluster: mysqlo-cluster
             credential:
-              name: kbadmin
+              name: root
               component: mysql
             service:
               service: ""

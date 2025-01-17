@@ -33,12 +33,12 @@ spec:
     - name: ORC_TOPOLOGY_USER
       valueFrom:
         credentialVarRef:
-          name: topology
+          name: orchestrator
           username: Required
     - name: ORC_TOPOLOGY_PASSWORD
       valueFrom:
         credentialVarRef:
-          name: topology
+          name: orchestrator
           password: Required
     - name: COMPONENT_NAME
       valueFrom:
