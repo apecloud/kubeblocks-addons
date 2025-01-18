@@ -24,8 +24,11 @@
       "type": "string",
       "default": "standalone",
       "enum": [
-        "standalone",
-        "replication"
+        "semisync",
+        "semisync-proxysql",
+        "semisync-orc",
+        "semisync-orc-proxysql",
+        "mgr"
       ]
     },
     "replicas": {
