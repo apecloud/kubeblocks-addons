@@ -8,7 +8,7 @@ Minio is a high performance open source relational database management system th
 
 | Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
 |------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
-| Yes                    | Yes                   | No                | Yes       | Yes        | No        | Yes    | N/A       |
+| Scale Out              | Yes                   | No                | Yes       | Yes        | No        | Yes    | N/A       |
 
 ### Versions
 
@@ -28,7 +28,8 @@ Minio is a high performance open source relational database management system th
 
 ### [Create](cluster.yaml)
 
-Create a minio cluster with specified cluster definition
+Create a minio cluster with two replicas:
+
 ```bash
 kubectl apply -f examples/minio/cluster.yaml
 ```
@@ -42,6 +43,7 @@ kubectl port-forward svc/minio-cluster-frontend 9001:9001
 ```
 
 2. Visit the dashboard of minio
+
 ```bash
 open http://localhost:9001
 ```
@@ -55,17 +57,91 @@ kubectl get secret minio-cluster-minio-account-root -o jsonpath="{.data.password
 kubectl get secret minio-cluster-minio-account-root -o jsonpath="{.data.username}" | base64 --decode
 ```
 
+### Horizontal scaling
+
+#### [Scale-out](scale-out.yaml)
+
+Horizontal scaling out MinIO cluster by adding TWO more replica:
+
+> [!Note]
+> MinIO clusters must be configured with at least 2 replicas
+> And the number of replicas must also be a multiple of 2 (e.g., 4, 6, 8, 12, etc.) to maintain balanced erasure coding.
+
+```bash
+kubectl apply -f examples/minio/scale-out.yaml
+```
+
+After scaling out, two newly created replicas are running with empty roles (expected role is `readwrite`).
+When checking the logs of the new replicas, for example, minio-cluster-minio-2:
+
+```bash
+kubectl logs minio-cluster-minio-2 -c minio
+```
+
+You will see the following log:
+
+```bash
+Error: grid: http://minio-cluster-minio-2.minio-cluster-minio-headless.default.svc.cluster.local:9000 re-connecting to ws://minio-cluster-minio-0.minio-cluster-minio-headless.default.svc.cluster.local:9000/minio/grid/v1: connection rejected: unknown incoming host: http://minio-cluster-minio-2.minio-cluster-minio-headless.default.svc.cluster.local:9000 (*errors.errorString) Sleeping 1.119s (3) (*fmt.wrapError)
+```
+
+#### Option1: Force a STOP-START to make sure the new replicas are running correctly
+
+Then you must force a RESTART to make sure the new replicas are running correctly.
+
+1. Force a STOP request to stop the cluster
+
+```bash
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: minio-force-stop
+  namespace: default
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: minio-cluster
+  force: true # to force restart the minio-cluster even the cluster is Updating
+  type: Stop
+```
+
+When the cluster is stopped, the new replicas will be stopped correctly and the scale-out OpsRequest `minio-scale-out`  goes `aborted`.
+
+2. Force a START request to start the cluster
+
+```bash
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: minio-force-start
+  namespace: default
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: minio-cluster
+  force: true # to force restart the minio-cluster even the cluster is Updating
+  type: Start
+```
+
+After STOP-START, the new replicas will be running correctly.
+
+#### Option 2: Restart Existing replicas only
+
+If you don't want to force a STOP-START, you can restart the existing replicas only.
+
+```bash
+kubectl delete pod minio-cluster-minio-{0..1}
+```
+
 ### [Vertical scaling](verticalscale.yaml)
 
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
+
 ```bash
 kubectl apply -f examples/minio/verticalscale.yaml
 ```
 
-
 ### [Restart](restart.yaml)
 
 Restart the specified components in the cluster
+
 ```bash
 kubectl apply -f examples/minio/restart.yaml
 ```
@@ -73,6 +149,7 @@ kubectl apply -f examples/minio/restart.yaml
 ### [Stop](stop.yaml)
 
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
+
 ```bash
 kubectl apply -f examples/minio/stop.yaml
 ```
@@ -80,6 +157,7 @@ kubectl apply -f examples/minio/stop.yaml
 ### [Start](start.yaml)
 
 Start the stopped cluster
+
 ```bash
 kubectl apply -f examples/minio/start.yaml
 ```
@@ -87,6 +165,7 @@ kubectl apply -f examples/minio/start.yaml
 ### Delete
 
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
+
 ```bash
 kubectl patch cluster minio-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 

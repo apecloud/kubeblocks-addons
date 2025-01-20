@@ -21,7 +21,7 @@ spec:
           - name: weaviate
             port: 8080
             targetPort: tcp-weaviate
-  updateStrategy: Serial
+  updateStrategy: Parallel
   volumes:
     - name: data
       needSnapshot: true

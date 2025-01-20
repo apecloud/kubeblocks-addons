@@ -21,7 +21,7 @@ spec:
       replicas: 2
       # following is an simple example of schedulingPolicy
       # which requires pods from the same component `minio` cannot be scheduled to the same node
-      #
+      # --- start of example
       # schedulingPolicy:
       #   affinity:
       #     podAntiAffinity:
@@ -39,6 +39,7 @@ spec:
       #               app.kubernetes.io/instance: minio-cluster
       #               apps.kubeblocks.io/component-name: minio
       #           topologyKey: kubernetes.io/hostname
+      # --- end of example
       env:
         # MINIO_BUCKETS is a comma-separated list of bucket names that will be automatically
         # created during MinIO initialization. Example: "data,backup,logs"
