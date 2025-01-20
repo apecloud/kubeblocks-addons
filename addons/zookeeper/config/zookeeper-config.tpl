@@ -39,7 +39,7 @@ maxClientCnxns=500
 {{- end }}
 
 # whitelist
-4lw.commands.whitelist=srvr, mntr, ruok, conf, stat
+4lw.commands.whitelist=srvr, mntr, ruok, conf, stat, sync
 
 # cluster server list
 {{- printf "\n" }}
