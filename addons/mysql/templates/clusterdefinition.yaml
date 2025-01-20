@@ -17,11 +17,11 @@ spec:
       components:
         - name: mysql
           compDef: {{ include "mysql.cmpdMGRNamePrefix" . }}
-    - name: semisync-orc
+    - name: orc
       components:
         - name: mysql
           compDef: {{ include "mysql.cmpdOrcNamePrefix" . }}
-    - name: semisync-orc-proxysql
+    - name: orc-proxysql
       components:
         - name: mysql
           compDef: {{ include "mysql.cmpdOrcNamePrefix" . }}

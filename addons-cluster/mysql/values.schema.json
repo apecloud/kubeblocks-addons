@@ -26,8 +26,8 @@
       "enum": [
         "semisync",
         "semisync-proxysql",
-        "semisync-orc",
-        "semisync-orc-proxysql",
+        "orc",
+        "orc-proxysql",
         "mgr"
       ]
     },
