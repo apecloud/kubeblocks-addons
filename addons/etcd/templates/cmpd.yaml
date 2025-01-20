@@ -126,13 +126,11 @@ spec:
   updateStrategy: Serial
   roles:
     - name: leader
-      serviceable: true
-      writable: true
-      votable: true
+      updatePriority: 5
+      participatesInQuorum: true
     - name: follower
-      serviceable: true
-      writable: false
-      votable: true
+      updatePriority: 4
+      participatesInQuorum: true
   lifecycleActions:
     roleProbe:
       exec:

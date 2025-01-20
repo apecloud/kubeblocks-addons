@@ -149,17 +149,14 @@ volumes:
     needSnapshot: false
 roles:
   - name: leader
-    serviceable: true
-    writable: true
-    votable: true
+    updatePriority: 5
+    participatesInQuorum: true
   - name: follower
-    serviceable: true
-    writable: false
-    votable: true
+    updatePriority: 4
+    participatesInQuorum: true
   - name: learner
-    serviceable: false
-    writable: false
-    votable: false
+    updatePriority: 3
+    participatesInQuorum: false
 vars:
   ## the postgres leader pod name which is dynamically selected, caution to use it
   - name: POSTGRES_LEADER_POD_NAME
