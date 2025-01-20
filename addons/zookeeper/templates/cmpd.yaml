@@ -101,7 +101,7 @@ spec:
             /kubeblocks/scripts/roleprobe.sh
   runtime:
     volumes:
-      - name: snapshot-log
+      - name: log
         emptyDir: {}
     securityContext:
       fsGroup: 0

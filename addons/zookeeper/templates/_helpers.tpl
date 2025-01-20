@@ -55,6 +55,7 @@ Common annotations
 */}}
 {{- define "zookeeper.annotations" -}}
 helm.sh/resource-policy: keep
+apps.kubeblocks.io/skip-immutable-check: "true"
 {{ include "zookeeper.apiVersion" . }}
 {{- end }}
 
