@@ -3,7 +3,6 @@ binlog_format=ROW
 binlog_checksum=NONE
 plugin_load_add='group_replication.so'
 plugin_load_add='mysql_clone.so'
-group_replication_ip_allowlist="0.0.0.0/0"
 loose_group_replication_recovery_get_public_key=ON
 loose_group_replication_start_on_boot=off
 loose_group_replication_bootstrap_group=off

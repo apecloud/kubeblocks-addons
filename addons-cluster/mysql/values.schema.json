@@ -18,19 +18,6 @@
         "5.7.44"
       ]
     },
-    "mode": {
-      "title": "Mode",
-      "description": "Cluster topology mode.",
-      "type": "string",
-      "default": "standalone",
-      "enum": [
-        "semisync",
-        "semisync-proxysql",
-        "orc",
-        "orc-proxysql",
-        "mgr"
-      ]
-    },
     "replicas": {
       "title": "Replicas",
       "description": "The number of replicas.",
