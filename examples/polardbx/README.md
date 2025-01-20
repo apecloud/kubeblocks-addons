@@ -29,6 +29,7 @@ PolarDB-X is a cloud native distributed SQL Database designed for high concurren
 ### [Create](cluster.yaml)
 
 Create a polardbx cluster
+
 ```bash
 kubectl apply -f examples/polardbx/cluster.yaml
 ```
@@ -79,25 +80,33 @@ kubectl apply -f examples/polardbx/volumeexpand.yaml
 ```
 
 ### [Restart](restart.yaml)
+
 Restart the specified components in the cluster
+
 ```bash
 kubectl apply -f examples/polardbx/restart.yaml
 ```
 
 ### [Stop](stop.yaml)
+
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
+
 ```bash
 kubectl apply -f examples/polardbx/stop.yaml
 ```
 
 ### [Start](start.yaml)
+
 Start the stopped cluster
+
 ```bash
 kubectl apply -f examples/polardbx/start.yaml
 ```
 
 ### Delete
+
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
+
 ```bash
 kubectl patch cluster polardbx-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
