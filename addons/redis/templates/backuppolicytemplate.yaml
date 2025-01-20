@@ -32,6 +32,12 @@ spec:
       targetVolumes:
         volumes:
           - data
+    - name: backup-for-rebuild-instance
+      actionSetName: redis-for-rebuild-instance
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
   schedules:
     - backupMethod: datafile
       enabled: false

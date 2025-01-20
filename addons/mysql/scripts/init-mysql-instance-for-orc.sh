@@ -38,9 +38,6 @@ GRANT SUPER, PROCESS, REPLICATION SLAVE, RELOAD ON *.* TO '$topology_user'@'%';
 GRANT SELECT ON mysql.slave_master_info TO '$topology_user'@'%';
 GRANT DROP ON _pseudo_gtid_.* to '$topology_user'@'%';
 GRANT ALL ON kb_orc_meta_cluster.* TO '$topology_user'@'%';
-CREATE USER IF NOT EXISTS 'proxysql'@'%' IDENTIFIED BY 'proxysql';
-GRANT SELECT ON performance_schema.* TO 'proxysql'@'%';
-GRANT SELECT ON sys.* TO 'proxysql'@'%';
 set global slave_net_timeout = 4;
 EOF
 

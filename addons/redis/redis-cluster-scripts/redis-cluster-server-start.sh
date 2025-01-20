@@ -225,6 +225,34 @@ get_current_comp_nodes_for_scale_out_replica() {
   echo "other_comp_other_nodes: ${other_comp_other_nodes[*]}"
 }
 
+# Note: During rebuild-instance, a new PVC is created without existing data and having the rebuild.flag file.
+# Therefore, we must rejoin this instance to the cluster as a secondary node.
+is_rebuild_instance() {
+  # Early return if rebuild flag doesn't exist
+  [[ ! -f /data/rebuild.flag ]] && return 1
+
+  # Check if nodes.conf exists
+  if [[ ! -f /data/nodes.conf ]]; then
+    echo "Rebuild instance detected: nodes.conf missing"
+    return 0
+  fi
+
+  # Check if nodes.conf contains only one node
+  if [[ $(grep -c ":" /data/nodes.conf) -eq 1 ]]; then
+    echo "Rebuild instance detected: single node configuration"
+    return 0
+  fi
+
+  return 1
+}
+
+remove_rebuild_instance_flag() {
+  if [ -f /data/rebuild.flag ]; then
+    rm -f /data/rebuild.flag
+    echo "remove rebuild.flag file succeeded!"
+  fi
+}
+
 # scale out replica of redis cluster shard if needed
 scale_redis_cluster_replica() {
   # Waiting for redis-server to start
@@ -257,6 +285,11 @@ scale_redis_cluster_replica() {
 
   # check current_comp_primary_node is empty or not
   if [ ${#current_comp_primary_node[@]} -eq 0 ]; then
+    if is_rebuild_instance; then
+      echo "current instance is a rebuild-instance, the current shard primary cannot be empty, please check the cluster status" >&2
+      shutdown_redis_server
+      exit 1
+    fi
     echo "current_comp_primary_node is empty, skip scale out replica"
     exit 0
   fi
@@ -268,7 +301,8 @@ scale_redis_cluster_replica() {
   primary_node_port=$(echo "$primary_node_endpoint_with_port" | awk -F ':' '{print $2}')
   primary_node_fqdn=$(echo "$primary_node_info" | awk -F '#' '{print $2}')
   primary_node_bus_port=$(echo "$primary_node_info" | awk -F '@' '{print $2}')
-  if check_node_in_cluster_with_retry "$primary_node_endpoint" "$primary_node_port" "$CURRENT_POD_NAME"; then
+  # if the current pod is not a rebuild-instance and is already in the cluster, skip scale out replica
+  if ! is_rebuild_instance && check_node_in_cluster_with_retry "$primary_node_endpoint" "$primary_node_port" "$CURRENT_POD_NAME"; then
     # if current pod is primary node, check the others primary info, if the others primary node info is expired, send cluster meet command again
     current_pod_fqdn_prefix="$CURRENT_POD_NAME.$CURRENT_SHARD_COMPONENT_NAME"
     if contains "$primary_node_fqdn" "$current_pod_fqdn_prefix"; then
@@ -293,7 +327,11 @@ scale_redis_cluster_replica() {
   replicated_output=$(secondary_replicated_to_primary "$current_node_with_port" "$primary_node_endpoint_with_port" "$primary_node_cluster_id")
   status=$?
   if [ $status -ne 0 ] ; then
-    if contains "$replicated_output" "is not empty"; then
+    if is_rebuild_instance && contains "$replicated_output" "is not empty"; then
+      echo "Current instance is a rebuild-instance, but the node already knows other nodes (check with CLUSTER NODES) or contains some key in database 0, shutdown redis server..." >&2
+      shutdown_redis_server
+      exit 1
+    elif contains "$replicated_output" "is not empty"; then
       echo "Replica is not empty, Either the node already knows other nodes (check with CLUSTER NODES) or contains some key in database 0"
     elif [[ $replicated_output == *"Not all 16384 slots are covered by nodes"* ]]; then
       # shutdown the redis server if the cluster is not fully covered by nodes
@@ -305,6 +343,11 @@ scale_redis_cluster_replica() {
       shutdown_redis_server "$service_port"
       exit 1
     fi
+  fi
+
+  if is_rebuild_instance; then
+    echo "replicate the node $current_pod_fqdn to the primary node $primary_node_endpoint_with_port successfully in rebuild-instance, remove rebuild.flag file..."
+    remove_rebuild_instance_flag
   fi
 
   # Hacky: When the entire redis cluster is restarted, a hacky sleep is used to wait for all primaries to enter the restarting state

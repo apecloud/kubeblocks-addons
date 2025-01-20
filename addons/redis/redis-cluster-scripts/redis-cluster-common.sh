@@ -44,7 +44,7 @@ parse_host_ip_from_built_in_envs() {
   local all_pod_host_ip_list="$3"
 
   if is_empty "$all_pod_name_list" || is_empty "$all_pod_host_ip_list"; then
-    echo "Error: Required environment variables all_pod_name_lis or all_pod_host_ip_list are not set." >&2
+    echo "Error: Required environment variables all_pod_name_list or all_pod_host_ip_list are not set." >&2
     return 1
   fi
 
@@ -700,4 +700,24 @@ execute_acl_save_with_retry() {
     return 1
   fi
   return 0
+}
+
+check_redis_role() {
+  local host=$1
+  local port=$2
+  unset_xtrace_when_ut_mode_false
+  if is_empty "$REDIS_DEFAULT_PASSWORD"; then
+    role_info=$(redis-cli -h $host -p $port info replication)
+  else
+    role_info=$(redis-cli -h $host -p $port -a "$REDIS_DEFAULT_PASSWORD" info replication)
+  fi
+  set_xtrace_when_ut_mode_false
+
+  if echo "$role_info" | grep -q "^role:master"; then
+    echo "primary"
+  elif echo "$role_info" | grep -q "^role:slave"; then
+    echo "secondary"
+  else
+    echo "unknown"
+  fi
 }
