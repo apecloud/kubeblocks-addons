@@ -1,7 +1,7 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
-  name: nebula-horizontalscaling
+  name: nebula-scale-in
   namespace: default
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
@@ -9,11 +9,9 @@ spec:
   type: HorizontalScaling
   # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
   horizontalScaling:
-    # Specifies the name of the Component.
-    # - nebula-console
-    # - nebula-graphd
-    # - nebula-metad
-    # - nebula-storaged
-  - componentName: nebula-console
-    # Specifies the number of total replicas.
-    replicas: 3
+  - componentName: graphd
+    # Specifies the replica changes for scaling in components
+    scaleOut:
+      # Specifies the replica changes for the component.
+      # add one more replica to current component
+      replicaChanges: 1
