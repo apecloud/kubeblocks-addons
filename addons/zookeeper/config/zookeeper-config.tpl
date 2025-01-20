@@ -24,10 +24,10 @@ maxClientCnxns=500
 # http://zookeeper.apache.org/doc/current/zookeeperAdmin.html#sc_maintenance
 #
 # The number of snapshots to retain in dataDir
-#autopurge.snapRetainCount=3
+autopurge.snapRetainCount=5
 # Purge task interval in hours
 # Set to "0" to disable auto purge feature
-#autopurge.purgeInterval=1
+autopurge.purgeInterval=12
 
 ## Metrics Providers
 #
