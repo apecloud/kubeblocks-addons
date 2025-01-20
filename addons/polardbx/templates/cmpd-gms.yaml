@@ -31,8 +31,8 @@ spec:
     - name: polardbx_root
       initAccount: true
       passwordGenerationPolicy:
-        length: 10
-        numDigits: 5
+        length: 8
+        numDigits: 4
         numSymbols: 0
         letterCase: MixedCases
   updateStrategy: Serial

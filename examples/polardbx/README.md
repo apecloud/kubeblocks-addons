@@ -2,68 +2,78 @@
 
 PolarDB-X is a cloud native distributed SQL Database designed for high concurrency, massive storage, complex querying scenarios.
 
+## Features In KubeBlocks
+
+### Lifecycle Management
+
+| Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
+|------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
+| Yes (cn)               | Yes                   | Yes              | Yes       | Yes        | No       | Yes    | No      |
+
+### Versions
+
+| Versions |
+|----------|
+| 2.3.0 |
+
 ## Prerequisites
 
-This example assumes that you have a Kubernetes cluster installed and running, and that you have installed the kubectl command line tool and helm somewhere in your path. Please see the [getting started](https://kubernetes.io/docs/setup/)  and [Installing Helm](https://helm.sh/docs/intro/install/) for installation instructions for your platform.
-
-Also, this example requires kubeblocks installed and running. Here is the steps to install kubeblocks, please replace "`$kb_version`" with the version you want to use.
-```bash
-# Add Helm repo 
-helm repo add kubeblocks https://apecloud.github.io/helm-charts
-# If github is not accessible or very slow for you, please use following repo instead
-helm repo add kubeblocks https://jihulab.com/api/v4/projects/85949/packages/helm/stable
-
-# Update helm repo
-helm repo update
-
-# Get the versions of KubeBlocks and select the one you want to use
-helm search repo kubeblocks/kubeblocks --versions
-# If you want to obtain the development versions of KubeBlocks, Please add the '--devel' parameter as the following command
-helm search repo kubeblocks/kubeblocks --versions --devel
-
-# Create dependent CRDs
-kubectl create -f https://github.com/apecloud/kubeblocks/releases/download/v$kb_version/kubeblocks_crds.yaml
-# If github is not accessible or very slow for you, please use following command instead
-kubectl create -f https://jihulab.com/api/v4/projects/98723/packages/generic/kubeblocks/v$kb_version/kubeblocks_crds.yaml
-
-# Install KubeBlocks
-helm install kubeblocks kubeblocks/kubeblocks --namespace kb-system --create-namespace --version="$kb_version"
-```
-Enable polardbx
-```bash
-# Add Helm repo 
-helm repo add kubeblocks-addons https://apecloud.github.io/helm-charts
-# If github is not accessible or very slow for you, please use following repo instead
-helm repo add kubeblocks-addons https://jihulab.com/api/v4/projects/150246/packages/helm/stable
-# Update helm repo
-helm repo update
-
-# Enable polardbx 
-helm upgrade -i kb-addon-polardbx kubeblocks-addons/polardbx --version $kb_version -n kb-system  
-``` 
+- Kubernetes cluster >= v1.21
+- `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
+- Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
+- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
+- PolarDB-X Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
 
 ## Examples
 
-### [Create](cluster.yaml) 
-Create a polardbx cluster with specified cluster definition 
+### [Create](cluster.yaml)
+
+Create a polardbx cluster
 ```bash
 kubectl apply -f examples/polardbx/cluster.yaml
 ```
 
-### [Horizontal scaling](horizontalscale.yaml)
-Horizontal scaling out or in specified components replicas in the cluster
-```bash
-kubectl apply -f examples/polardbx/horizontalscale.yaml
+As PolarDB-X is a distributed database with multiple components. You may prefer to distribute replicas to different nodes to avoid single point of failure. Here is an example of how to distribute replicas to different nodes using `schedulingPolicy` API:
+
+```yaml
+kubectl apply -f examples/polardbx/cluster-with-schedule-policy.yaml
 ```
 
-### [Vertical scaling](verticalscale.yaml)
-Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
+### Horizontal scaling
+
+#### [Scale-out](scale-out.yaml)
+
+Horizontal scaling out polardbx cluster by adding ONE more cn replica:
+
 ```bash
-kubectl apply -f examples/polardbx/verticalscale.yaml
+kubectl apply -f examples/polardbx/scale-out.yaml
+```
+
+#### [Scale-in](scale-in.yaml)
+
+Horizontal scaling in polardbx cluster by deleting ONE cn replica:
+
+```bash
+kubectl apply -f examples/polardbx/scale-in.yaml
 ```
 
 ### [Expand volume](volumeexpand.yaml)
-Increase size of volume storage with the specified components in the cluster
+
+Volume expansion is the ability to increase the size of a Persistent Volume Claim (PVC) after it's created. It is introduced in Kubernetes v1.11 and goes GA in Kubernetes v1.24. It allows Kubernetes users to simply edit their PersistentVolumeClaim objects  without requiring any downtime at all if possible.
+
+> [!NOTE]
+> Make sure the storage class you use supports volume expansion.
+
+Check the storage class with following command:
+
+```bash
+kubectl get storageclass
+```
+
+If the `ALLOWVOLUMEEXPANSION` column is `true`, the storage class supports volume expansion.
+
+To increase size of volume storage with the specified components in the cluster
+
 ```bash
 kubectl apply -f examples/polardbx/volumeexpand.yaml
 ```

@@ -10,7 +10,6 @@ An open-source, cloud-native, distributed time-series database with PromQL/SQL/P
 |------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
 | Yes (datanode)                  | Yes                   | Yes              | Yes       | Yes        | No       | Yes    | N/A     |
 
-
 ### Versions
 
 | Versions |
@@ -38,6 +37,8 @@ kubectl apply -f examples/greptimedb/cluster.yaml
 It will create a greptimedb cluster with four components in orders: `etcd`, `metadata`, `datanode` and  `frontent`.
 Datanode is mainly responsible for storing the actual data for GreptimeDB. Metadata is responsible for storing metadata information for GreptimeDB. Frontend is responsible for receiving and processing user requests. Etcd is used as the consensus algorithm component for metadata.
 
+#### How to access the GreptimeDB
+
 To connect to the greptimedb cluster, you can use the following command.
 
 1. poforward the frontend service to access the greptimedb cluster
@@ -57,6 +58,14 @@ mysql -h 127.0.0.1 -P 4002
 # for postgresql client
 psql -h 127.0.0.1 -p 4003
 ```
+
+To visit the dashboard of greptimedb, you can use the following command.
+
+```bash
+kubectl port-forward svc/greptimedb-cluster-frontend 4000:4000
+```
+
+Then visit the dashboard at `http://localhost:4000/dashboard`.
 
 ### Horizontal scaling
 
@@ -164,3 +173,4 @@ kubectl patch cluster greptimedb-cluster -p '{"spec":{"terminationPolicy":"WipeO
 
 kubectl delete cluster greptimedb-cluster
 ```
+
