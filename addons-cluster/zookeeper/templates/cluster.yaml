@@ -30,7 +30,7 @@ spec:
             {{- if .Values.storageClassName }}
             storageClassName: {{ .Values.storageClassName | quote }}
             {{- end }}
-        - name: log
+        - name: snapshot-log
           spec:
             {{- if .Values.storageClassName }}
             storageClassName: {{ .Values.storageClassName | quote  }}
