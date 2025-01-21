@@ -262,13 +262,13 @@ serviceRefDeclarations:
         serviceVersion: "^*"
 services:
   - name: default
+    serviceName: server
     spec:
       ports:
         - name: mysql
           port: 3306
           targetPort: mysql
   - name: mysql
-    serviceName: mysql
     podService: true
     spec:
       ports:
@@ -399,8 +399,7 @@ roleProbe:
 
         address_port=$(echo "$first_line" | awk '{print $1}')
         master_from_orc="${address_port%:*}"
-        last_digit=${KB_AGENT_POD_NAME##*-}
-        self_service_name=$(echo "${CLUSTER_COMPONENT_NAME}_mysql_${last_digit}.${CLUSTER_NAMESPACE}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+        self_service_name=$(echo "${KB_AGENT_POD_NAME}.${CLUSTER_NAMESPACE}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
         if [ "$master_from_orc" == "${self_service_name}" ]; then
           echo -n "primary"
         else
@@ -414,8 +413,7 @@ memberLeave:
       - |
         set +e
         master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i ${CLUSTER_NAME}.${CLUSTER_NAMESPACE})
-        last_digit=${KB_LEAVE_MEMBER_POD_NAME##*-}
-        self_service_name=$(echo "${CLUSTER_COMPONENT_NAME}_mysql_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+        self_service_name=$(echo "${KB_LEAVE_MEMBER_POD_NAME}.${CLUSTER_NAMESPACE}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
         if [ "${self_service_name%%:*}" == "${master_from_orc%%:*}" ]; then
           /kubeblocks/orchestrator-client -c force-master-failover -i ${CLUSTER_NAME}.${CLUSTER_NAMESPACE}
           local timeout=15

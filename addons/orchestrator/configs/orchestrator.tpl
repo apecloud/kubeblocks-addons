@@ -10,7 +10,7 @@
   "MySQLTopologySSLCertFile": "",
   "MySQLTopologySSLCAFile": "",
   "MySQLTopologySSLSkipVerify": true,
-  "MySQLTopologyUseMutualTLS": false,
+  "MySQLTopologyUseMutualTLS": true,
 
   "MySQLOrchestratorHost": "${META_MYSQL_ENDPOINT}",
   "MySQLOrchestratorPort": ${META_MYSQL_PORT},
@@ -53,5 +53,8 @@
 
   "OnFailureDetectionProcesses": [
     "echo 'Detected {failureType} on {failureCluster}. Affected replicas: {countReplicas}' >> /tmp/recovery.log"
-  ]
+  ],
+
+  "RecoverLockedSemiSyncMaster": true,
+  "UseSuperReadOnly": true
 }
