@@ -116,7 +116,21 @@ description: orchestrator is a MySQL high availability and replication managemen
 serviceKind: orchestrator
 serviceVersion: 3.2.6
 updateStrategy: BestEffortParallel
-
+systemAccounts:
+  - name: meta
+    initAccount: true
+    passwordGenerationPolicy:
+      length: 16
+      numDigits: 8
+      numSymbols: 0
+      letterCase: MixedCases
+  - name: orchestrator
+    initAccount: true
+    passwordGenerationPolicy:
+      length: 16
+      numDigits: 8
+      numSymbols: 0
+      letterCase: MixedCases
 configs:
   - name: orchestrator-config
     templateRef: {{ include "orchestrator.componentDefName" . }}-config

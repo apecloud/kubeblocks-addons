@@ -35,3 +35,6 @@ spec:
               component: orchestrator
               service: orchestrator
               port:  orc-http
+            credential:
+              component: orchestrator
+              name: orchestrator

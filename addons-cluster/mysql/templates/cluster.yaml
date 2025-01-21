@@ -34,6 +34,9 @@ spec:
               component: orchestrator
               service: orchestrator
               port:  {{ .Values.orchestrator.clusterServiceSelector.portName }}
+            credential:
+              component: orchestrator
+              name: orchestrator
         {{- end }}
       {{- end }}
     {{- if eq .Values.topology "server-with-proxy" }}
