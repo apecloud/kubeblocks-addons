@@ -28,7 +28,7 @@ topology_password="$ORC_TOPOLOGY_PASSWORD"
 
 # create orchestrator user in mysql
 create_mysql_user() {
-  local service_name=$(echo "${CLUSTER_COMPONENT_NAME}_MYSQL_${i}" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+  local service_name=$(echo "${POD_NAME}.${CLUSTER_NAMESPACE}" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
 
   mysql_note "Create MySQL User and Grant Permissions..."
 
@@ -91,6 +91,21 @@ wait_for_connectivity() {
   done
 }
 
+setup_semi_sync() {
+  mysql_note "setup semi_sync"
+  if [[ "${MYSQL_MAJOR}" == "5.7" ]]; then
+    mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD << EOF
+SET GLOBAL rpl_semi_sync_replica_enabled = 1;
+SET GLOBAL rpl_semi_sync_source_enabled = 1;
+EOF
+  else
+    mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD << EOF
+SET GLOBAL rpl_semi_sync_replica_enabled = 1;
+SET GLOBAL rpl_semi_sync_source_enabled = 1;
+EOF
+  fi
+}
+
 setup_master_slave() {
 
   mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e "STOP SLAVE;RESET MASTER;RESET SLAVE ALL;";
@@ -101,12 +116,12 @@ setup_master_slave() {
 
   master_fqdn=${replicas[0]}
   master_last_digit=${master_fqdn##*-}
-  master_host=$(echo "${CLUSTER_COMPONENT_NAME}_MYSQL_${master_last_digit}.${CLUSTER_NAMESPACE}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+  master_host=$(echo "${CLUSTER_COMPONENT_NAME}_${master_last_digit}.${CLUSTER_NAMESPACE}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
   master_from_orc=""
   get_master_from_orc
 
   self_last_digit=${POD_NAME##*-}
-  self_service_name=$(echo "${CLUSTER_COMPONENT_NAME}_MYSQL_${self_last_digit}.${CLUSTER_NAMESPACE}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+  self_service_name=$(echo "${CLUSTER_COMPONENT_NAME}_${self_last_digit}.${CLUSTER_NAMESPACE}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
 
   # If the cluster is already registered to the Orchestrator and the Master of the cluster is itself, then no action is required.
   if [ "$master_from_orc" == "${self_service_name}" ]; then
@@ -118,7 +133,8 @@ setup_master_slave() {
     master_host=$master_from_orc
   fi
 
-
+  # setup semi sync for master-slave replication
+  setup_semi_sync
   # If the master_host is empty, then this pod is the first one in the cluster, init cluster info database and create user.
   if [[ $master_from_orc == "" && $self_last_digit -eq 0 ]]; then
     echo "Create MySQL User and Grant Permissions"
@@ -127,7 +143,7 @@ setup_master_slave() {
         return 0
     fi
     create_mysql_user
-    init_cluster_info_database self_service_name
+    init_cluster_info_database $self_service_name
   # If the master_host is not empty, change master to the master_host.
   else
     mysql_note "Wait for master to be ready"
@@ -202,6 +218,7 @@ change_master() {
   if [[ "${MYSQL_MAJOR}" == "5.7" ]]; then
     mysql -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" << EOF
 SET GLOBAL READ_ONLY=1;
+SET GLOBAL SUPER_READ_ONLY=1;
 STOP SLAVE;
 CHANGE MASTER TO
 MASTER_AUTO_POSITION=1,
@@ -216,6 +233,7 @@ EOF
   else
     mysql -u "$MYSQL_ROOT_USER" -p"$MYSQL_ROOT_PASSWORD" << EOF
 SET GLOBAL READ_ONLY=1;
+SET GLOBAL SUPER_READ_ONLY=1;
 STOP SLAVE;
 CHANGE MASTER TO
 GET_MASTER_PUBLIC_KEY=1,
