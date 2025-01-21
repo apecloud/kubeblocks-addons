@@ -129,7 +129,7 @@ opensearch-{{ .Chart.Version }}
 Define opensearch component definition regular expression name prefix
 */}}
 {{- define "opensearch.cmpdRegexpPattern" -}}
-^opensearch-
+^opensearch-\d+\.\d+\.\d+([-a-zA-Z0-9\.]*)?$
 {{- end -}}
 
 {{/*
