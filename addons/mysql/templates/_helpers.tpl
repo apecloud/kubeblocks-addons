@@ -254,6 +254,16 @@ roles:
     serviceable: true
     writable: false
 vars:
+  - name: ORC_TOPOLOGY_USER
+    valueFrom:
+      serviceRefVarRef:
+        name: orchestrator
+        username: Required
+  - name: ORC_TOPOLOGY_PASSWORD
+    valueFrom:
+      serviceRefVarRef:
+        name: orchestrator
+        password: Required
   - name: CLUSTER_NAME
     valueFrom:
       clusterVarRef:
@@ -441,10 +451,6 @@ env:
     value: "1"
   - name: MYSQL_ROOT_HOST
     value: {{ .Values.auth.rootHost | default "%" | quote }}
-  - name: ORC_TOPOLOGY_USER
-    value: {{ .Values.orchestrator.topology.username }}
-  - name: ORC_TOPOLOGY_PASSWORD
-    value: {{ .Values.orchestrator.topology.password }}
   - name: HA_COMPNENT
     value: orchestrator
   - name: SERVICE_PORT

@@ -18,6 +18,25 @@ spec:
       writable: false
       votable: true
   vars:
+    - name: ORC_META_DATABASE
+      value: orchestrator
+    - name: ORC_META_USER
+      value: orchestrator
+    - name: ORC_META_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: meta
+          password: Required
+    - name: ORC_TOPOLOGY_USER
+      valueFrom:
+        credentialVarRef:
+          name: orchestrator
+          username: Required
+    - name: ORC_TOPOLOGY_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: orchestrator
+          password: Required
     - name: COMPONENT_NAME
       valueFrom:
         componentVarRef:

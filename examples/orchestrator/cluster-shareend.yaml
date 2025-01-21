@@ -3,8 +3,6 @@ kind: Cluster
 metadata:
   name: orchestrator-cluster
   namespace: default
-  annotations:
-    "kubeblocks.io/extra-env": '{"ORC_TOPOLOGY_PASSWORD":"orchestrator","ORC_META_PASSWORD":"orchestrator","ORC_META_DATABASE":"orchestrator"}'
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
@@ -41,7 +39,7 @@ spec:
           clusterServiceSelector:
             cluster: mysqlo-cluster
             credential:
-              name: kbadmin
+              name: root
               component: mysql
             service:
               service: ""

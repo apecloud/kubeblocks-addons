@@ -65,6 +65,9 @@ spec:
               component: orchestrator
               service: orchestrator
               port:  orc-http
+            credential:
+              component: orchestrator
+              name: orchestrator
     - name: proxysql
       # Specifies the ComponentDefinition custom resource (CR) that defines the
       # Component's characteristics and behavior.
