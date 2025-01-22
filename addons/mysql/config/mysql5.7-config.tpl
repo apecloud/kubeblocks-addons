@@ -166,10 +166,6 @@ character_set_server = utf8mb4
 # rpl_semi_sync_master_timeout = 1000
 # rpl-semi-sync-slave-enabled = 1
 
-[mysql]
-default-character-set=utf8mb4
-
 [client]
 port={{ $mysql_port }}
 socket=/var/run/mysqld/mysqld.sock
-default-character-set=utf8mb4

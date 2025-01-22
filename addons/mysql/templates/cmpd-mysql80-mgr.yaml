@@ -1,0 +1,120 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "mysql.componentDefNameMGR80" . }}
+  labels:
+      {{- include "mysql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mysql.annotations" . | nindent 4 }}
+spec:
+  {{- include "mysql.spec.common" . | nindent 2 }}
+  serviceVersion: 8.0.33
+  configs:
+    - name: mysql-replication-config
+      templateRef: mysql-8.0-mgr-config-template
+      constraintRef: mysql-8.0-config-constraints
+      volumeName: mysql-config
+      namespace: {{ .Release.Namespace }}
+      reRenderResourceTypes:
+        - vscale
+  runtime:
+    initContainers:
+      - image: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
+        name: init-data
+        command:
+          - bash
+          - -c
+          - |
+            mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog}
+            cp /usr/lib/mysql/plugin/ {{ .Values.dataMountPath }}/plugin -r
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+      - command:
+          - cp
+          - -r
+          - /jemalloc/lib/
+          - /tools/lib
+        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemalloc:5.3.0
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        name: init-jemalloc
+        volumeMounts:
+          - mountPath: /tools
+            name: tools
+      {{- include "mysql.spec.runtime.common" . | nindent 6 }}
+    containers:
+      - name: mysql
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
+        imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
+        command:
+          - syncer
+          - --port
+          - "3601"
+          - --
+          - bash
+          - -c
+          - |
+            cp {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
+            chown -R mysql:root {{ .Values.dataMountPath }}
+            SERVICE_ID=$((${POD_NAME##*-} + 1))
+            docker-entrypoint.sh mysqld --server-id $SERVICE_ID \
+               --report-host ${POD_NAME}.${CLUSTER_COMPONENT_NAME}-headless \
+               --plugin-load-add=rpl_semi_sync_source=semisync_source.so \
+               --plugin-load-add=rpl_semi_sync_replica=semisync_replica.so \
+               --plugin-load-add=audit_log=audit_log.so \
+               --log-bin=/var/lib/mysql/binlog/${POD_NAME}-bin \
+               --skip-slave-start=ON
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+          - mountPath: /etc/mysql/conf.d
+            name: mysql-config
+          - name: scripts
+            mountPath: /scripts
+          - mountPath: /tools
+            name: tools
+        ports:
+          - containerPort: 3306
+            name: mysql
+          - containerPort: 3601
+            name: ha
+          - containerPort: 33061
+            name: mgr
+        env:
+          - name: PATH
+            value: /tools/xtrabackup/bin:/tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          - name: LD_PRELOAD
+            value: /tools/lib/libjemalloc.so.2
+          - name: KB_ENGINE_TYPE
+            value: mysql
+          - name: KB_WORKLOAD_TYPE
+            value: mgr
+          - name: MYSQL_INITDB_SKIP_TZINFO
+            value: "1"
+          - name: MYSQL_ROOT_HOST
+            value: {{ .Values.auth.rootHost | default "%" | quote }}
+          - name: SERVICE_PORT
+            value: "3306"
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: POD_UID
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.uid
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+      - name: mysql-exporter
+        {{- include "mysql.spec.runtime.exporter" . | nindent 8 }}
