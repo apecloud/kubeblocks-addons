@@ -1,0 +1,49 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "wesql.configTplName" . }}
+  labels:
+    {{- include "wesql.labels" . | nindent 4 }}
+data:
+  my.cnf: |-
+    {{- .Files.Get "config/mysql8-config.tpl" | nindent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "wesql.configTplVtgateName" . }}
+  labels:
+    {{- include "wesql.labels" . | nindent 4 }}
+data:
+  vtgate.cnf: |-
+    {{- .Files.Get "config/mysql-scale-vtgate-config.tpl" | nindent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "wesql.configTplVttabletName" . }}
+  labels:
+    {{- include "wesql.labels" . | nindent 4 }}
+data:
+  vttablet.cnf: |-
+    {{- .Files.Get "config/mysql-scale-vttablet-config.tpl" | nindent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "wesql.cmReloadScriptName" . }}
+  labels:
+    {{- include "wesql.labels" . | nindent 4 }}
+data:
+  reload.tpl: |-
+    {{- .Files.Get "config/mysql-reload.tpl" | nindent 4 }}
+  reload.yaml: |-
+    scripts: reload.tpl
+    fileRegex: my.cnf
+    dataType: mysql
+    dsn: '{%- expandenv "${MYSQL_ROOT_USER}:${MYSQL_ROOT_PASSWORD}@(localhost:3306)/" | trim %}'
+    formatterConfig:
+      format: ini
+      iniConfig:
+        sectionName: mysqld
