@@ -64,13 +64,11 @@ spec:
       volumeName: config
   roles:
     - name: leader
-      serviceable: true
-      votable: true
-      writable: true
+      updatePriority: 2
+      participatesInQuorum: true
     - name: follower
-      serviceable: true
-      votable: true
-      writable: false
+      updatePriority: 1
+      participatesInQuorum: true
   lifecycleActions:
     roleProbe:
       exec:

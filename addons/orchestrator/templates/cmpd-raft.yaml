@@ -10,13 +10,11 @@ spec:
   {{- include "orchestrator.cmpd.spec.common" . | nindent 2 }}
   roles:
     - name: primary
-      serviceable: true
-      writable: true
-      votable: true
+      updatePriority: 2
+      participatesInQuorum: true
     - name: secondary
-      serviceable: true
-      writable: false
-      votable: true
+      updatePriority: 1
+      participatesInQuorum: true
   vars:
     - name: ORC_META_DATABASE
       value: orchestrator

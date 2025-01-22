@@ -222,11 +222,11 @@ lifecycleActions:
           /tools/syncerctl switchover --primary "$KB_SWITCHOVER_CURRENT_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
 roles:
   - name: primary
-    serviceable: true
-    writable: true
+    updatePriority: 2
+    participatesInQuorum: false
   - name: secondary
-    serviceable: true
-    writable: false
+    updatePriority: 1
+    participatesInQuorum: false
 {{- end }}
 
 {{- define "mysql.spec.runtime.common" -}}
@@ -290,11 +290,11 @@ systemAccounts:
     statement: CREATE USER IF NOT EXISTS '${KB_ACCOUNT_NAME}' IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT SELECT ON performance_schema.* TO '${KB_ACCOUNT_NAME}'; GRANT SELECT ON sys.* TO '${KB_ACCOUNT_NAME}';
 roles:
   - name: primary
-    serviceable: true
-    writable: true
+    updatePriority: 2
+    participatesInQuorum: false
   - name: secondary
-    serviceable: true
-    writable: false
+    updatePriority: 1
+    participatesInQuorum: false
 vars:
   - name: ORC_TOPOLOGY_USER
     valueFrom:
