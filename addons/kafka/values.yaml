@@ -64,3 +64,20 @@ storageClassParameters:
   metadata:
     awsEBSVolumeType: io2
     awsEBSEnableBlockExpress: false
+
+## pod security context settings
+securityContext:
+  fsGroup: 1001
+
+## container security context settings
+container:
+  securityContext:
+    allowPrivilegeEscalation: false
+    runAsNonRoot: true
+    runAsUser: 1001
+
+## exporter security context settings
+exporter:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1001
