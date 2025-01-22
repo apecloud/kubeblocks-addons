@@ -133,17 +133,14 @@ tls:
   keyFile: key.pem
 roles:
   - name: leader
-    serviceable: true
-    writable: true
-    votable: true
+    updatePriority: 3
+    participatesInQuorum: true
   - name: follower
-    serviceable: true
-    writable: false
-    votable: true
+    updatePriority: 2
+    participatesInQuorum: true
   - name: learner
-    serviceable: false
-    writable: false
-    votable: false
+    updatePriority: 1
+    participatesInQuorum: false
 lifecycleActions:
   roleProbe:
     periodSeconds: {{ .Values.roleProbe.periodSeconds }}

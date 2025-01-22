@@ -85,9 +85,8 @@ spec:
 
   roles:
     - name: readwrite
-      serviceable: true
-      votable: false
-      writable: true
+      updatePriority: 1
+      participatesInQuorum: false
 
   lifecycleActions:
     roleProbe:

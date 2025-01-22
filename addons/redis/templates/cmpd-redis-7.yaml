@@ -37,11 +37,11 @@ spec:
       needSnapshot: true
   roles:
     - name: primary
-      serviceable: true
-      writable: true
+      updatePriority: 2
+      participatesInQuorum: false
     - name: secondary
-      serviceable: false
-      writable: false
+      updatePriority: 1
+      participatesInQuorum: false
   logConfigs:
     {{- range $name,$pattern := .Values.logConfigs }}
     - name: {{ $name }}

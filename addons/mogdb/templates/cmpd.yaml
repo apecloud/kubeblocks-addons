@@ -46,11 +46,11 @@ spec:
     {{- end }}
   roles:
     - name: primary
-      serviceable: true
-      writable: true
+      updatePriority: 2
+      participatesInQuorum: false
     - name: secondary
-      serviceable: false
-      writable: false
+      updatePriority: 1
+      participatesInQuorum: false
   systemAccounts:
     - name: root
       initAccount: true

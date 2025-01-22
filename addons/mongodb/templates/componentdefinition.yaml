@@ -64,13 +64,11 @@ spec:
         letterCase: MixedCases
   roles:
     - name: primary
-      serviceable: true
-      writable: true
-      votable: true
+      updatePriority: 2
+      participatesInQuorum: true
     - name: secondary
-      serviceable: true
-      writable: false
-      votable: true
+      updatePriority: 1
+      participatesInQuorum: true
   lifecycleActions:
     roleProbe:
       periodSeconds: {{ .Values.roleProbe.periodSeconds }}

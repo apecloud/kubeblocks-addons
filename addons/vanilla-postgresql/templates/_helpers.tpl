@@ -254,11 +254,11 @@ services:
     roleSelector: primary
 roles:
   - name: primary
-    serviceable: true
-    writable: true
+    updatePriority: 2
+    participatesInQuorum: false
   - name: secondary
-    serviceable: true
-    writable: false
+    updatePriority: 1
+    participatesInQuorum: false
 volumes:
   - name: data
     needSnapshot: true

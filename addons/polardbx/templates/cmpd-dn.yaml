@@ -27,13 +27,11 @@ spec:
   updateStrategy: Serial
   roles:
     - name: leader
-      serviceable: true
-      writable: true
-      votable: true
+      updatePriority: 2
+      participatesInQuorum: true
     - name: follower
-      serviceable: true
-      writable: false
-      votable: true
+      updatePriority: 1
+      participatesInQuorum: true
   volumes:
     - name: data
   vars:

@@ -33,17 +33,14 @@ spec:
             port: 8080
   roles:
     - name: leader
-      serviceable: true
-      writable: true
-      votable: true
+      updatePriority: 3
+      participatesInQuorum: true
     - name: follower
-      serviceable: true
-      writable: false
-      votable: true
+      updatePriority: 2
+      participatesInQuorum: true
     - name: observer
-      serviceable: false
-      writable: false
-      votable: false
+      updatePriority: 1
+      participatesInQuorum: false
   updateStrategy: BestEffortParallel
   vars:
     - name: ZOOKEEPER_POD_FQDN_LIST
