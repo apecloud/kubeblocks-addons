@@ -2,6 +2,15 @@
   "$schema": "http://json-schema.org/schema#",
   "type": "object",
   "properties": {
+    "mode": {
+      "title": "Mode",
+      "description": "Cluster topology mode.",
+      "type": "string",
+      "default": "standalone",
+      "enum": [
+        "standalone"
+      ]
+    },
     "version": {
       "title": "Version",
       "description": "Cluster version.",

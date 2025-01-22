@@ -4,68 +4,57 @@ metadata:
   name: tidb-cluster
   namespace: default
 spec:
-  # Specifies the behavior when a Cluster is deleted.
-  # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
-  # - `Halt`: Deletes Cluster resources like Pods and Services but retains Persistent Volume Claims (PVCs), allowing for data preservation while stopping other operations.
-  # - `Delete`: Extends the `Halt` policy by also removing PVCs, leading to a thorough cleanup while removing all persistent data.
-  # - `WipeOut`: An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss.
+  clusterDef: tidb
   terminationPolicy: Delete
-  # Specifies a list of ClusterComponentSpec objects used to define the individual components that make up a Cluster. This field allows for detailed configuration of each component within the Cluster.
-  # Note: `shardingSpecs` and `componentSpecs` cannot both be empty; at least one must be defined to configure a cluster.
-  # ClusterComponentSpec defines the specifications for a Component in a Cluster.
+  topology: cluster
   componentSpecs:
-  - name: pd
-    componentDef: tidb-pd-7
-    serviceAccountName: kb-tidb-cluster
-    replicas: 1
-    resources:
-      limits:
-        cpu: '1'
-        memory: 2Gi
-      requests:
-        cpu: '1'
-        memory: 2Gi
-    volumeClaimTemplates:
-    - name: data
-      spec:
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: 20Gi
-  - name: tikv
-    componentDef: tikv-7
-    replicas: 1
-    resources:
-      limits:
-        cpu: '1'
-        memory: 2Gi
-      requests:
-        cpu: '1'
-        memory: 2Gi
-    volumeClaimTemplates:
-    - name: data
-      spec:
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: 20Gi
-  - name: tidb
-    componentDef: tidb-7
-    replicas: 1
-    resources:
-      limits:
-        cpu: '1'
-        memory: 2Gi
-      requests:
-        cpu: '1'
-        memory: 2Gi
-    volumeClaimTemplates:
-    - name: data
-      spec:
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: 20Gi
+    - name: tidb-pd
+      serviceVersion: 7.5.2
+      replicas: 3
+      resources:
+        limits:
+          cpu: "2"
+          memory: "8Gi"
+        requests:
+          cpu: "2"
+          memory: "8Gi"
+      volumeClaimTemplates:
+      - name: data
+        spec:
+          storageClassName: ""
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 20Gi
+    - name: tikv
+      serviceVersion: 7.5.2
+      disableExporter: false
+      replicas: 3
+      resources:
+        limits:
+          cpu: "4"
+          memory: "16Gi"
+        requests:
+          cpu: "4"
+          memory: "16Gi"
+      volumeClaimTemplates:
+      - name: data
+        spec:
+          storageClassName: ""
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 500Gi
+    - name: tidb
+      serviceVersion: 7.5.2
+      disableExporter: false
+      replicas: 2
+      resources:
+        limits:
+          cpu: "4"
+          memory: "16Gi"
+        requests:
+          cpu: "4"
+          memory: "16Gi"

@@ -1,0 +1,126 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: polardbx-cluster-with-sp
+  namespace: default
+spec:
+  # Specifies the behavior when a Cluster is deleted.
+  # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
+  # - `Delete`: Extends the `Halt` policy by also removing PVCs, leading to a thorough cleanup while removing all persistent data.
+  # - `WipeOut`: An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss.
+  terminationPolicy: Delete
+  # Specifies a list of ClusterComponentSpec objects used to define the individual components that make up a Cluster. This field allows for detailed configuration of each component within the Cluster.
+  # Note: `shardingSpecs` and `componentSpecs` cannot both be empty; at least one must be defined to configure a cluster.
+  # ClusterComponentSpec defines the specifications for a Component in a Cluster.
+  componentSpecs:
+    - name: gms
+      componentDef: polardbx-gms
+      # this ia an simple example of schedulingPolicy
+      # pods from the same component `gms` cannot be scheduled to the node
+      schedulingPolicy:
+        affinity:
+          podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - podAffinityTerm:
+                  labelSelector:
+                    matchLabels:
+                      app.kubernetes.io/instance: polardbx-cluster
+                      apps.kubeblocks.io/component-name: gms
+                  topologyKey: kubernetes.io/hostname
+                weight: 100
+            requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/instance: polardbx-cluster
+                    apps.kubeblocks.io/component-name: gms
+                topologyKey: kubernetes.io/hostname
+      replicas: 1
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: 1Gi
+        requests:
+          cpu: "0.5"
+          memory: 1Gi
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+    - name: dn
+      componentDef: polardbx-dn
+      replicas: 1
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: 1Gi
+        requests:
+          cpu: "0.5"
+          memory: 1Gi
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+    - name: cn
+      componentDef: polardbx-cn
+      # this ia an simple example of schedulingPolicy
+      # pods cannot be scheduled to the node with any POD from the same cluster `polardbx-cluster`
+      schedulingPolicy:
+        affinity:
+          podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - podAffinityTerm:
+                  labelSelector:
+                    matchLabels:
+                      app.kubernetes.io/instance: polardbx-cluster
+                  topologyKey: kubernetes.io/hostname
+                weight: 100
+            requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/instance: polardbx-cluster
+                topologyKey: kubernetes.io/hostname
+      replicas: 1
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: 1Gi
+        requests:
+          cpu: "0.5"
+          memory: 1Gi
+    - name: cdc
+      componentDef: polardbx-cdc
+      # this ia an simple example of schedulingPolicy
+      # pods are preferred be scheduled to the node with PODs from component `dn`
+      schedulingPolicy:
+        affinity:
+          podAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - podAffinityTerm:
+                  labelSelector:
+                    matchLabels:
+                      app.kubernetes.io/instance: polardbx-cluster
+                      apps.kubeblocks.io/component-name: dn
+                  topologyKey: kubernetes.io/hostname
+                weight: 100
+            requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/instance: polardbx-cluster
+                    apps.kubeblocks.io/component-name: dn
+                topologyKey: kubernetes.io/hostname
+      replicas: 1
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: 1Gi
+        requests:
+          cpu: "0.5"
+          memory: 1Gi

@@ -1,4 +1,4 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: tdengine-horizontalscaling
@@ -11,5 +11,8 @@ spec:
   horizontalScaling:
     # Specifies the name of the Component.
   - componentName: tdengine
-    # Specifies the number of total replicas.
-    replicas: 4
+    # Specifies the replica changes for scaling in components
+    scaleIn:
+      # Specifies the replica changes for the component.
+      # add one more replica to current component
+      replicaChanges: 1
