@@ -15,7 +15,6 @@ spec:
     - name: mogdb
       componentDef: mogdb
       serviceVersion: "5.0.5"
-      serviceAccountName: kb-mogdb-cluster
       replicas: 2
       # Specifies the resources required by the Component.
       resources:
@@ -42,37 +41,3 @@ spec:
               requests:
                 # Set the storage size as needed
                 storage: 20Gi
----
-# Source: mogdb-cluster/templates/rbac.yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: mogdb-cluster-switchover-role
-  namespace: default
-  labels:
-    helm.sh/chart: mogdb-cluster-1.0.0-alpha.0
-    app.kubernetes.io/version: "5.0.5"
-    app.kubernetes.io/instance: mogdb-cluster
-    app.kubernetes.io/required-by: pod
-rules:
-  - apiGroups: [""]
-    resources: ["pods/exec"]
-    verbs: ["create"]
----
-# Source: mogdb-cluster/templates/rbac.yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: mogdb-cluster-switchover
-  namespace: default
-  labels:
-    helm.sh/chart: mogdb-cluster-1.0.0-alpha.0
-    app.kubernetes.io/version: "5.0.5"
-    app.kubernetes.io/instance: mogdb-cluster
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: mogdb-cluster-switchover-role
-subjects:
-  - kind: ServiceAccount
-    name: kb-mogdb-cluster

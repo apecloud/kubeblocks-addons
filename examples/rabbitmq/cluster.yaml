@@ -20,10 +20,6 @@ spec:
       # provisioned by this Component.
       # Valid options are: [3.10.25,3.11.28,3.12.14,3.13.2,3.13.7,3.8.14,3.9.29]
       serviceVersion: 3.13.7
-      # Specifies the name of the ServiceAccount required by the running Component.
-      # RabbitMQ needs `peer-discovery` role to create events and get endpoiints
-      # This is essential for discovering other RabbitMQ nodes and forming a cluster.
-      serviceAccountName: kb-rabbitmq-cluster
       # Recommended to set `replicas` to [3,5,7]
       # All data/state is replicated across all replicas.
       replicas: 3
@@ -52,41 +48,3 @@ spec:
               requests:
                 # Set the storage size as needed
                 storage: 20Gi
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: rabbitmq-cluster-peer-discovery
-  namespace: default
-rules:
-- apiGroups:
-  - ""
-  resources:
-  - endpoints
-  verbs:
-  - get
-- apiGroups:
-  - ""
-  resources:
-  - events
-  verbs:
-  - create
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: kb-rabbitmq-cluster
-  namespace: default
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: kb-rabbitmq-cluster
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: rabbitmq-cluster-peer-discovery
-subjects:
-  - kind: ServiceAccount
-    name: kb-rabbitmq-cluster
-    namespace: default
