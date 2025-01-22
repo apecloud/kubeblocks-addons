@@ -10,10 +10,10 @@ spec:
   {{- include "orchestrator.cmpd.spec.common" . | nindent 2 }}
   roles:
     - name: primary
-      updatePriority: 5
+      updatePriority: 2
       participatesInQuorum: true
     - name: secondary
-      updatePriority: 4
+      updatePriority: 1
       participatesInQuorum: true
   vars:
     - name: COMPONENT_NAME

@@ -64,10 +64,10 @@ spec:
       volumeName: config
   roles:
     - name: leader
-      updatePriority: 5
+      updatePriority: 2
       participatesInQuorum: true
     - name: follower
-      updatePriority: 4
+      updatePriority: 1
       participatesInQuorum: true
   lifecycleActions:
     roleProbe:

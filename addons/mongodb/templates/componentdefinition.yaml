@@ -64,10 +64,10 @@ spec:
         letterCase: MixedCases
   roles:
     - name: primary
-      updatePriority: 5
+      updatePriority: 2
       participatesInQuorum: true
     - name: secondary
-      updatePriority: 4
+      updatePriority: 1
       participatesInQuorum: true
   lifecycleActions:
     roleProbe:

@@ -133,13 +133,13 @@ tls:
   keyFile: key.pem
 roles:
   - name: leader
-    updatePriority: 5
+    updatePriority: 3
     participatesInQuorum: true
   - name: follower
-    updatePriority: 4
+    updatePriority: 2
     participatesInQuorum: true
   - name: learner
-    updatePriority: 3
+    updatePriority: 1
     participatesInQuorum: false
 lifecycleActions:
   roleProbe:

@@ -85,7 +85,7 @@ spec:
 
   roles:
     - name: readwrite
-      updatePriority: 5
+      updatePriority: 1
       participatesInQuorum: false
 
   lifecycleActions:

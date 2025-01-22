@@ -33,13 +33,13 @@ spec:
             port: 8080
   roles:
     - name: leader
-      updatePriority: 5
+      updatePriority: 3
       participatesInQuorum: true
     - name: follower
-      updatePriority: 4
+      updatePriority: 2
       participatesInQuorum: true
     - name: observer
-      updatePriority: 3
+      updatePriority: 1
       participatesInQuorum: false
   updateStrategy: BestEffortParallel
   vars:

@@ -33,10 +33,10 @@ spec:
       needSnapshot: true
   roles:
     - name: primary
-      updatePriority: 5
+      updatePriority: 2
       participatesInQuorum: false
     - name: secondary
-      updatePriority: 4
+      updatePriority: 1
       participatesInQuorum: false
   logConfigs:
     {{- range $name,$pattern := .Values.logConfigs }}

@@ -254,10 +254,10 @@ services:
     roleSelector: primary
 roles:
   - name: primary
-    updatePriority: 5
+    updatePriority: 2
     participatesInQuorum: false
   - name: secondary
-    updatePriority: 4
+    updatePriority: 1
     participatesInQuorum: false
 volumes:
   - name: data

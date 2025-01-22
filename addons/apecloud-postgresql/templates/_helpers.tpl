@@ -149,13 +149,13 @@ volumes:
     needSnapshot: false
 roles:
   - name: leader
-    updatePriority: 5
+    updatePriority: 3
     participatesInQuorum: true
   - name: follower
-    updatePriority: 4
+    updatePriority: 2
     participatesInQuorum: true
   - name: learner
-    updatePriority: 3
+    updatePriority: 1
     participatesInQuorum: false
 vars:
   ## the postgres leader pod name which is dynamically selected, caution to use it
