@@ -13,6 +13,10 @@ spec:
         - name: mysql
           compDef: {{ include "mysql.componentDefRegex" . }}
       default: true
+    - name: mgr
+      components:
+        - name: mysql
+          compDef: {{ include "mysql.cmpdMGRNamePrefix" . }}
     - name: orc
       components:
         - name: mysql
