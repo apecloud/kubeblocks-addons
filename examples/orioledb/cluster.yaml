@@ -22,7 +22,6 @@ spec:
     - name: etcdService
       cluster: etcdo-cluster
       namespace: default
-    serviceAccountName: kb-orioledb-cluster
     replicas: 1
     resources:
       limits:
@@ -60,7 +59,6 @@ spec:
       requests:
         cpu: '0.5'
         memory: 0.5Gi
-    serviceAccountName: kb-etcdo-cluster
     volumeClaimTemplates:
     - name: data
       spec:

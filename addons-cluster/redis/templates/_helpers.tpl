@@ -66,7 +66,6 @@ Define redis ComponentSpec with ComponentDefinition.
     value: {{ .Values.sentinel.customMasterName }}
   {{- end }}
   serviceVersion: {{ .Values.version }}
-  serviceAccountName: {{ include "kblib.serviceAccountName" . }}
   {{- if and .Values.customSecretName .Values.customSecretNamespace }}
   systemAccounts:
     - name: default
@@ -91,7 +90,6 @@ Define redis sentinel ComponentSpec with ComponentDefinition.
     podService: true
   {{- end }}
   serviceVersion: {{ .Values.version }}
-  serviceAccountName: {{ include "kblib.serviceAccountName" . }}
   {{- if and .Values.sentinel.customSecretName .Values.sentinel.customSecretNamespace }}
   systemAccounts:
     - name: default
@@ -122,7 +120,6 @@ Define redis twemproxy ComponentSpec with ComponentDefinition.
 */}}
 {{- define "redis-cluster.twemproxyComponentSpec" }}
 - name: redis-twemproxy
-  serviceAccountName: {{ include "kblib.serviceAccountName" . }}
   replicas: {{ .Values.twemproxy.replicas }}
   resources:
     limits:

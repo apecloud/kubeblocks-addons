@@ -18,7 +18,6 @@ spec:
   componentSpecs:
   - name: postgresql
     componentDef: apecloud-postgresql14
-    serviceAccountName: kb-ac-postgresql-cluster
     replicas: 3
     resources:
       limits:

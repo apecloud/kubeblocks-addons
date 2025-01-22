@@ -11,6 +11,5 @@ spec:
       componentDef: tdengine
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "tdengine-cluster.replicaCount" . | indent 6 }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}

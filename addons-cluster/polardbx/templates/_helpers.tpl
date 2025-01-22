@@ -19,14 +19,3 @@ We truncate at 15 chars because KubeBlocks will concatenate the names of other r
 {{- end }}
 {{- $name }}
 {{- end }}
-
-{{/*
-Create the name of the service account to use
-*/}}
-{{- define "polardbx.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "polardbx.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
-{{- end }}

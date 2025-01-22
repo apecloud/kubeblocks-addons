@@ -68,6 +68,3 @@ extra:
   ## Define Cluster termination policy.
   ## Options: DoNotTerminate, Halt, Delete, WipeOut.
   terminationPolicy: DoNotTerminate
-
-  ## If true, RBAC resources will be created
-  rbacEnabled: false

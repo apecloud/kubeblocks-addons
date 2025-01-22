@@ -15,4 +15,3 @@ spec:
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
       replicas: {{ include "apecloud-postgresql-cluster.replicas" . }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}

@@ -13,7 +13,6 @@ spec:
       env:
       - name: MINIO_BUCKETS
         value: {{ .Values.buckets }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
