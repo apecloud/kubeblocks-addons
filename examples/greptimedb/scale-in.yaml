@@ -1,17 +1,20 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
-  name: polardbx-horizontalscaling
+  name: greptimedb-scale-in
   namespace: default
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: polardbx-cluster
+  clusterName: greptimedb-cluster
   type: HorizontalScaling
   # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
   horizontalScaling:
     # Specifies the name of the Component.
-    # - cn
-    # - cdc
-  - componentName: cn
-    # Specifies the number of total replicas.
-    replicas: 2
+    # - frontend
+    # - datanode
+  - componentName: datanode
+    # Specifies the replica changes for scaling in components
+    scaleIn:
+      # Specifies the replica changes for the component.
+      # add one more replica to current component
+      replicaChanges: 1

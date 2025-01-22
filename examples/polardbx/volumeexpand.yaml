@@ -1,4 +1,4 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: polardbx-volumeexpansion
@@ -7,12 +7,12 @@ spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: polardbx-cluster
   type: VolumeExpansion
-  # Lists VolumeExpansion objects, each specifying a component and its corresponding volumeClaimTemplates that requires storage expansion. 
+  # Lists VolumeExpansion objects, each specifying a component and its corresponding volumeClaimTemplates that requires storage expansion.
   volumeExpansion:
     # Specifies the name of the Component.
     # - gms
     # - dn
-  - componentName: gms
+  - componentName: dn
     # volumeClaimTemplates specifies the storage size and volumeClaimTemplate name.
     volumeClaimTemplates:
       # A reference to the volumeClaimTemplate name from the cluster components.

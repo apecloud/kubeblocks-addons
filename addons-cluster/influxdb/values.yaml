@@ -2,6 +2,9 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+
+## @param influxdb mode
+mode: standalone
 ## @param version influxdb cluster version
 ##
 version: "2.7.4"

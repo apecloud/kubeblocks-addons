@@ -57,18 +57,6 @@ spec:
           host: Required
       expression: {{ `{{ .GREPTIMEDB_DATANODE_SVC }}.{{ .CLUSTER_NAMESPACE }}.svc.cluster.local` | toYaml }}
   runtime:
-    initContainers:
-      - name: wait-datanode
-        image: {{ .Values.images.busybox.registry | default (.Values.images.registry | default "docker.io") }}/{{ .Values.images.busybox.repository }}:{{ .Values.images.busybox.tag }}
-        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
-        command:
-          - bin/sh
-          - -c
-          - |
-            until nslookup ${GREPTIMEDB_DATANODE_SVC}; do
-              # frontend requires at least one datanode is ready
-              echo "waiting for datanode"; sleep 2;
-            done;
     containers:
       - name: frontend
         imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
