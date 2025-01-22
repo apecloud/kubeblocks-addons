@@ -10,7 +10,7 @@
   "MySQLTopologySSLCertFile": "",
   "MySQLTopologySSLCAFile": "",
   "MySQLTopologySSLSkipVerify": true,
-  "MySQLTopologyUseMutualTLS": true,
+  "MySQLTopologyUseMutualTLS": false,
 
   "MySQLOrchestratorHost": "${META_MYSQL_ENDPOINT}",
   "MySQLOrchestratorPort": ${META_MYSQL_PORT},
