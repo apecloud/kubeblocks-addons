@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: polardbx-cluster-with-sp
+  name: pxc
   namespace: default
 spec:
   # Specifies the behavior when a Cluster is deleted.
@@ -24,14 +24,14 @@ spec:
               - podAffinityTerm:
                   labelSelector:
                     matchLabels:
-                      app.kubernetes.io/instance: polardbx-cluster
+                      app.kubernetes.io/instance: pxc
                       apps.kubeblocks.io/component-name: gms
                   topologyKey: kubernetes.io/hostname
                 weight: 100
             requiredDuringSchedulingIgnoredDuringExecution:
               - labelSelector:
                   matchLabels:
-                    app.kubernetes.io/instance: polardbx-cluster
+                    app.kubernetes.io/instance: pxc
                     apps.kubeblocks.io/component-name: gms
                 topologyKey: kubernetes.io/hostname
       replicas: 1
@@ -71,7 +71,7 @@ spec:
     - name: cn
       componentDef: polardbx-cn
       # this ia an simple example of schedulingPolicy
-      # pods cannot be scheduled to the node with any POD from the same cluster `polardbx-cluster`
+      # pods cannot be scheduled to the node with any POD from the same cluster `pxc`
       schedulingPolicy:
         affinity:
           podAntiAffinity:
@@ -79,13 +79,13 @@ spec:
               - podAffinityTerm:
                   labelSelector:
                     matchLabels:
-                      app.kubernetes.io/instance: polardbx-cluster
+                      app.kubernetes.io/instance: pxc
                   topologyKey: kubernetes.io/hostname
                 weight: 100
             requiredDuringSchedulingIgnoredDuringExecution:
               - labelSelector:
                   matchLabels:
-                    app.kubernetes.io/instance: polardbx-cluster
+                    app.kubernetes.io/instance: pxc
                 topologyKey: kubernetes.io/hostname
       replicas: 1
       resources:
@@ -106,14 +106,14 @@ spec:
               - podAffinityTerm:
                   labelSelector:
                     matchLabels:
-                      app.kubernetes.io/instance: polardbx-cluster
+                      app.kubernetes.io/instance: pxc
                       apps.kubeblocks.io/component-name: dn
                   topologyKey: kubernetes.io/hostname
                 weight: 100
             requiredDuringSchedulingIgnoredDuringExecution:
               - labelSelector:
                   matchLabels:
-                    app.kubernetes.io/instance: polardbx-cluster
+                    app.kubernetes.io/instance: pxc
                     apps.kubeblocks.io/component-name: dn
                 topologyKey: kubernetes.io/hostname
       replicas: 1

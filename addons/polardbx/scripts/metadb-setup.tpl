@@ -6,7 +6,8 @@ until mysql -h$GMS_SVC_NAME -P$GMS_SVC_PORT -u$metaDbUser -p$metaDbNonEncPasswd 
 done
 
 function generate_dn_init_sql() {
-    echo "$DN_HEADLESS_SVC_NAME" | tr ',' '\n' | while IFS= read -r item
+    echo $DN_POD_FQDN_LIST
+    echo "$DN_POD_FQDN_LIST" | tr ',' '\n' | while IFS= read -r item
     do
       DN_HOSTNAME=$item
       DN_NAME=$(echo "$DN_HOSTNAME" | cut -d'.' -f2 | sed s/-headless//)

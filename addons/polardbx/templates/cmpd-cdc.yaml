@@ -124,7 +124,7 @@ spec:
           - name: metaDbNonEncPasswd
             value: $(SERVICE_PASSWORD)
           - name: dnPasswordKey
-            value: "$(metaDbNonEncPasswd)$(metaDbNonEncPasswd)"
+            value: "$(metaDbNonEncPasswd)"
           - name: cpu_cores
             valueFrom:
               resourceFieldRef:

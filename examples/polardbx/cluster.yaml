@@ -1,79 +1,63 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: polardbx-cluster
+  name: pxc
   namespace: default
 spec:
-  # Specifies the behavior when a Cluster is deleted.
-  # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
-  # - `Delete`: Extends the `Halt` policy by also removing PVCs, leading to a thorough cleanup while removing all persistent data.
-  # - `WipeOut`: An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss.
   terminationPolicy: Delete
-  # Specifies a list of ClusterComponentSpec objects used to define the individual components that make up a Cluster. This field allows for detailed configuration of each component within the Cluster.
-  # Note: `shardingSpecs` and `componentSpecs` cannot both be empty; at least one must be defined to configure a cluster.
-  # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
     - name: gms
       componentDef: polardbx-gms
       replicas: 1
       resources:
         limits:
-          cpu: "0.5"
-          memory: 1Gi
+          cpu: "1"
+          memory: "1Gi"
         requests:
-          cpu: "0.5"
-          memory: 1Gi
+          cpu: "1"
+          memory: "1Gi"
       volumeClaimTemplates:
         - name: data
           spec:
+            storageClassName: ""
             accessModes:
               - ReadWriteOnce
-            # The name of the StorageClass required by the claim.
-            # If not specified, the StorageClass annotated with
-            # `storageclass.kubernetes.io/is-default-class=true` will be used by default
-            storageClassName: ""
             resources:
               requests:
                 storage: 20Gi
-    - name: dn
+    - name: dn-0
       componentDef: polardbx-dn
       replicas: 1
       resources:
         limits:
-          cpu: "0.5"
-          memory: 1Gi
+          cpu: "1"
+          memory: "1Gi"
         requests:
-          cpu: "0.5"
-          memory: 1Gi
+          cpu: "1"
+          memory: "1Gi"
       volumeClaimTemplates:
         - name: data
           spec:
+            storageClassName: ""
             accessModes:
               - ReadWriteOnce
-            # The name of the StorageClass required by the claim.
-            # If not specified, the StorageClass annotated with
-            # `storageclass.kubernetes.io/is-default-class=true` will be used by default
-            storageClassName: ""
             resources:
               requests:
                 storage: 20Gi
     - name: cn
       componentDef: polardbx-cn
-      replicas: 1
+      replicas: 2
       resources:
         limits:
-          cpu: "0.5"
-          memory: 1Gi
+          cpu: "1"
+          memory: "1Gi"
         requests:
-          cpu: "0.5"
-          memory: 1Gi
+          cpu: "1"
+          memory: "1Gi"
     - name: cdc
       componentDef: polardbx-cdc
       replicas: 1
       resources:
         limits:
-          cpu: "0.5"
-          memory: 1Gi
-        requests:
-          cpu: "0.5"
-          memory: 1Gi
+          cpu: "1"
+          memory: "1Gi"
