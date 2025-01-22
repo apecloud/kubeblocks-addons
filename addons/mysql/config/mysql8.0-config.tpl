@@ -198,10 +198,6 @@ default_tmp_storage_engine=innodb
 collation_server = utf8mb4_unicode_520_ci
 character_set_server = utf8mb4
 
-[mysql]
-default-character-set=utf8mb4
-
 [client]
 port={{ $mysql_port }}
 socket=/var/run/mysqld/mysqld.sock
-default-character-set=utf8mb4

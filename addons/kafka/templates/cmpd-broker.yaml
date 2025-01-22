@@ -113,16 +113,18 @@ spec:
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755
   runtime:
+    {{- if .Values.securityContext }}
     securityContext:
-      fsGroup: 1001
+      {{- toYaml .Values.securityContext | nindent 6 }}
+    {{- end }}
     containers:
       - name: kafka
         image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
+        {{- if .Values.container.securityContext }}
         securityContext:
-          allowPrivilegeEscalation: false
-          runAsNonRoot: true
-          runAsUser: 1001
+          {{- toYaml .Values.container.securityContext | nindent 10 }}
+        {{- end }}
         command:
           - /scripts/kafka-server-setup.sh
         env:
@@ -228,9 +230,10 @@ spec:
       - name: jmx-exporter
         image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
+        {{- if .Values.exporter.securityContext }}
         securityContext:
-          runAsNonRoot: true
-          runAsUser: 1001
+          {{- toYaml .Values.exporter.securityContext | nindent 10 }}
+        {{- end }}
         command:
           - java
         args:
