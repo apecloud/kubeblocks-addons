@@ -302,19 +302,6 @@ exporter:
 
 
 {{- define "mysql-orc.spec.lifecycle.common" }}
-accountProvision:
-  exec:
-    container: mysql
-    image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
-    command:
-      - /bin/sh
-      - -c
-      - |
-        set -ex
-        eval statement=\"${KB_ACCOUNT_STATEMENT}\"
-        mysql -u${MYSQL_ROOT_USER} -p${MYSQL_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement}"
-    targetPodSelector: Role
-    matchingKey: primary
 roleProbe:
   periodSeconds: {{ .Values.roleProbe.periodSeconds }}
   timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
