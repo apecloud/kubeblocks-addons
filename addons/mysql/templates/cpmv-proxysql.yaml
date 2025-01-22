@@ -9,7 +9,7 @@ metadata:
 spec:
   compatibilityRules:
     - compDefs:
-        - proxy-mysql
+        - proxysql-mysql
       releases:
         - 2.4.4
   releases:
