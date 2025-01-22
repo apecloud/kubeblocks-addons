@@ -78,14 +78,11 @@ Alternatively, you can update the `replicas` field in the `spec.componentSpecs.r
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: pg-cluster
+  name: mogdb-cluster
   namespace: default
 spec:
   componentSpecs:
-    - name: postgresql
-      serviceVersion: "14.7.2"
-      labels:
-        apps.kubeblocks.postgres.patroni/scope: pg-cluster-postgresql
+    - name: mogdb
       replicas: 2 # Update `replicas` to 1 for scaling in, and to 3 for scaling out
 ```
 
