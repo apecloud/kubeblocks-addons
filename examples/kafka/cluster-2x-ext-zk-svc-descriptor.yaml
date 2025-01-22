@@ -36,7 +36,6 @@ spec:
           serviceDescriptor: kafka-cluster-zookeeper-service
       tls: false
       replicas: 3
-      serviceAccountName: kb-kafka-cluster
       env:
         - name: KB_BROKER_DIRECT_POD_ACCESS
           value: 'true'

@@ -55,13 +55,6 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end}}
 
 {{/*
-Create the name of the service account to use
-*/}}
-{{- define "kafka-cluster.serviceAccountName" -}}
-{{- default (printf "kb-%s" (include "clustername" .)) .Values.serviceAccount.name }}
-{{- end }}
-
-{{/*
 Define kafka broker component name
 */}}
 {{- define "kafka-cluster.brokerComponent" -}}

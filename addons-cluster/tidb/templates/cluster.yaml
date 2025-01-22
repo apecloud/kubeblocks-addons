@@ -11,7 +11,6 @@ spec:
   componentSpecs:
     {{- with $.Values.pd }}
     - name: tidb-pd
-      serviceAccountName: {{ include "tidb-cluster.serviceAccountName" $ }}
       serviceVersion: {{ default $.Chart.AppVersion $.Values.appVersionOverride }}
       disableExporter: false
       replicas: {{ .replicas | default 3 }}
@@ -39,7 +38,6 @@ spec:
     {{- end }}
     {{- with $.Values.tikv }}
     - name: tikv
-      serviceAccountName: {{ include "tidb-cluster.serviceAccountName" $ }}
       serviceVersion: {{ default $.Chart.AppVersion $.Values.appVersionOverride }}
       disableExporter: false
       replicas: {{ .replicas | default 3 }}
@@ -67,7 +65,6 @@ spec:
     {{- end }}
     {{- with $.Values.tidb }}
     - name: tidb
-      serviceAccountName: {{ include "tidb-cluster.serviceAccountName" $ }}
       serviceVersion: {{ default $.Chart.AppVersion $.Values.appVersionOverride }}
       disableExporter: false
       replicas: {{ .replicas | default 2 }}
