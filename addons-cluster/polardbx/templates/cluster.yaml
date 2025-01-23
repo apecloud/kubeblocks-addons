@@ -1,10 +1,10 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: {{ include "polardbx.name" . }}
+  name: {{ include "polardbx-cluster.name" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{ include "polardbx.labels" . | nindent 4 }}
+    {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   componentSpecs:
@@ -28,6 +28,7 @@ spec:
       volumeClaimTemplates:
         - name: data
           spec:
+            storageClassName: {{ .Values.gms.persistence.data.storageClass | quote }}
             accessModes:
               - ReadWriteOnce
             resources:
@@ -56,6 +57,7 @@ spec:
       volumeClaimTemplates:
         - name: data
           spec:
+            storageClassName: {{ .persistence.data.storageClass | quote }}
             accessModes:
               - ReadWriteOnce
             resources:

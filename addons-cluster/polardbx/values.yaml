@@ -1,5 +1,5 @@
 ## cluster settings for polardbx cluster
-nameOverride: pxc
+clusterName: pxc
 
 gms:
   ## @param gms.replicas data replicas of gms instance
