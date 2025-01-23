@@ -4,10 +4,6 @@ metadata:
   name: {{ include "kblib.clusterName" . }}
   namespace: {{ .Release.Namespace }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
-  {{/*
-  annotations:
-  */}}
-{{/*    {{- include "kafka-cluster.brokerAddrFeatureGate" . | nindent 4 }}*/}}
 spec:
   clusterDef: kafka # ref clusterdefinition.name
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
@@ -38,10 +34,10 @@ spec:
         - name: KB_KAFKA_CONTROLLER_HEAP
           value: "{{ .Values.controllerHeap }}"
         - name: KB_BROKER_DIRECT_POD_ACCESS
-          {{- if .Values.nodePortEnabled }}
-          value: "false"
-          {{- else }}
+          {{- if .Values.fixedPodIPEnabled }}
           value: "true"
+          {{- else }}
+          value: "false"
           {{- end }}
       {{- if .Values.storageEnable }}
       volumeClaimTemplates:
@@ -87,10 +83,10 @@ spec:
         - name: KB_KAFKA_CONTROLLER_HEAP
           value: "{{ .Values.controllerHeap }}"
         - name: KB_BROKER_DIRECT_POD_ACCESS
-          {{- if .Values.nodePortEnabled }}
-          value: "false"
-          {{- else }}
+          {{- if .Values.fixedPodIPEnabled }}
           value: "true"
+          {{- else }}
+          value: "false"
           {{- end }}
       {{- if .Values.storageEnable }}
       volumeClaimTemplates:

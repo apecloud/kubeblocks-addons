@@ -74,4 +74,11 @@ brokerHeap: -XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64
 controllerHeap: -XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64
 
 ## @param nodePortEnabled
+## Whether to enable NodePort mode.
+## If set to true, Kafka's `advertised.listeners` will use the NodePort address, suitable for scenarios where clients are outside the Kubernetes cluster but can access the NodePort.
 nodePortEnabled: false
+
+## @param fixedPodIPEnabled
+## Whether to enable fixed Pod IP mode.
+## If set to true, Kafka's `advertised.listeners` will use the Pod IP address, suitable for scenarios where clients can directly communicate with the Kafka Pod's network.
+fixedPodIPEnabled: false

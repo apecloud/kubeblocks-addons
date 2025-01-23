@@ -183,7 +183,13 @@
       "type": "boolean",
       "default": false,
       "title": "nodePortEnabled",
-      "description":"Whether NodePort service is enabled, default is false"
+      "description":"Whether to enable NodePort mode in Kafka's `advertised.listeners`"
+    },
+    "fixedPodIPEnabled": {
+      "type": "boolean",
+      "default": false,
+      "title": "fixedPodIPEnabled",
+      "description":"Whether to enable fixed Pod IP mode in Kafka's `advertised.listeners`"
     }
   }
 }
