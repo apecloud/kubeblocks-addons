@@ -1,51 +1,21 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "polardbx.name" -}}
-{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
-{{- end }}
 
 {{/*
-Create a default fully qualified app name.
-We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
-If release name contains chart name it will be used as a full name.
+Define the cluster name.
+We truncate at 15 chars because KubeBlocks will concatenate the names of other resources with cluster name
 */}}
-{{- define "polardbx.fullname" -}}
-{{- if .Values.fullnameOverride }}
-{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
-{{- else }}
-{{- $name := default .Chart.Name .Values.nameOverride }}
-{{- if contains $name .Release.Name }}
-{{- .Release.Name | trunc 63 | trimSuffix "-" }}
-{{- else }}
-{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
+{{- define "polardbx-cluster.name" -}}
+{{- $name := default  .Release.Name .Values.clusterName }}
+{{- if not (regexMatch "^[a-z]([-a-z0-9]*[a-z0-9])?$" $name) }}
+{{ fail (printf "Release name %q is invalid. It must match the regex %q." $name "^[a-z]([-a-z0-9]*[a-z0-9])?$") }}
 {{- end }}
+{{- if gt (len $name) 16 }}
+{{ fail (printf "Release name %q is invalid, must be no more than 6 characters" $name) }}
 {{- end }}
+{{- if gt (add (len $name) (len .Release.Namespace)) 18 }}
+{{ fail (printf "Combined length of release name %q and namespace %q must be no more than 18 characters" $name .Release.Namespace) }}
 {{- end }}
-
-{{/*
-Create chart name and version as used by the chart label.
-*/}}
-{{- define "polardbx.chart" -}}
-{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
-{{- end }}
-
-{{/*
-Common labels
-*/}}
-{{- define "polardbx.labels" -}}
-helm.sh/chart: {{ include "polardbx.chart" . }}
-{{ include "polardbx.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-{{- end }}
-app.kubernetes.io/managed-by: {{ .Release.Service }}
-{{- end }}
-
-{{/*
-Selector labels
-*/}}
-{{- define "polardbx.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "polardbx.name" . }}
-app.kubernetes.io/instance: {{ .Release.Name }}
+{{- $name }}
 {{- end }}

@@ -79,7 +79,8 @@ spec:
           - sh
           - -c
           - |
-            mysql -h127.0.0.1 -P3306 -uroot -N -B -e "select role from information_schema.alisql_cluster_local" | xargs echo -n
+            role=$(mysql -h127.0.0.1 -P3306 -uroot -N -B -e "select role from information_schema.alisql_cluster_local" | tr '[:upper:]' '[:lower:]' | xargs echo -n)
+            echo -n "$role"
       timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
       periodSeconds: {{ .Values.roleProbe.periodSeconds }}
       failureThreshold: {{ .Values.roleProbe.failureThreshold }}

@@ -59,13 +59,12 @@ spec:
           port:
             name: mysql
             option: Required
-    - name: DN_HEADLESS_SVC_NAME
+    - name: DN_POD_FQDN_LIST
       valueFrom:
-        serviceVarRef:
+        componentVarRef:
           compDef: polardbx-dn
           optional: false
-          name: headless
-          host: Required
+          podFQDNs: Required
     - name: DN_SVC_PORT
       valueFrom:
         serviceVarRef:
@@ -94,7 +93,7 @@ spec:
           - name: metaDbNonEncPasswd
             value: $(SERVICE_PASSWORD)
           - name: dnPasswordKey
-            value: "$(metaDbNonEncPasswd)$(metaDbNonEncPasswd)"
+            value: "$(metaDbNonEncPasswd)"
           - name: switchCloud
             value: aliyun
           - name: metaDbConn
@@ -150,7 +149,7 @@ spec:
           - name: metaDbConn
             value: "mysql -h$(GMS_SVC_NAME) -P3306 -u$(metaDbUser) -p$(metaDbPasswd) -D$(metaDbName)"
           - name: dnPasswordKey
-            value: "$(metaDbNonEncPasswd)$(metaDbNonEncPasswd)"
+            value: "$(metaDbNonEncPasswd)"
           - name: metaDbXprotoPort
             value: "0"
           - name: storageDbXprotoPort
