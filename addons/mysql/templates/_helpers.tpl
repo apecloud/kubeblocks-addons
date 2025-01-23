@@ -109,26 +109,32 @@ systemAccounts:
       numSymbols: 0
       letterCase: MixedCases
   - name: kbadmin
-    statement: select 1;
+    statement:
+      create: select 1;
     passwordGenerationPolicy: &defaultPasswordGenerationPolicy
       length: 16
       numDigits: 8
       numSymbols: 0
       letterCase: MixedCases
   - name: kbdataprotection
-    statement: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}';GRANT RELOAD, LOCK TABLES, PROCESS, REPLICATION CLIENT ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT LOCK TABLES,RELOAD,PROCESS,REPLICATION CLIENT, SUPER,SELECT,EVENT,TRIGGER,SHOW VIEW ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
+    statement:
+      create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}';GRANT RELOAD, LOCK TABLES, PROCESS, REPLICATION CLIENT ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT LOCK TABLES,RELOAD,PROCESS,REPLICATION CLIENT, SUPER,SELECT,EVENT,TRIGGER,SHOW VIEW ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
     passwordGenerationPolicy: *defaultPasswordGenerationPolicy
   - name: kbprobe
-    statement: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, PROCESS ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT SELECT ON performance_schema.* TO ${KB_ACCOUNT_NAME};
+    statement:
+      create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, PROCESS ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT SELECT ON performance_schema.* TO ${KB_ACCOUNT_NAME};
     passwordGenerationPolicy: *defaultPasswordGenerationPolicy
   - name: kbmonitoring
-    statement: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, PROCESS ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT SELECT ON performance_schema.* TO ${KB_ACCOUNT_NAME};
+    statement:
+      create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, PROCESS ON ${ALL_DB} TO ${KB_ACCOUNT_NAME}; GRANT SELECT ON performance_schema.* TO ${KB_ACCOUNT_NAME};
     passwordGenerationPolicy: *defaultPasswordGenerationPolicy
   - name: kbreplicator
-    statement: select 1;
+    statement:
+      create: select 1;
     passwordGenerationPolicy: *defaultPasswordGenerationPolicy
   - name: proxysql
-    statement: CREATE USER IF NOT EXISTS '${KB_ACCOUNT_NAME}' IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT SELECT ON performance_schema.* TO '${KB_ACCOUNT_NAME}'; GRANT SELECT ON sys.* TO '${KB_ACCOUNT_NAME}';
+    statement:
+      create: CREATE USER IF NOT EXISTS '${KB_ACCOUNT_NAME}' IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT SELECT ON performance_schema.* TO '${KB_ACCOUNT_NAME}'; GRANT SELECT ON sys.* TO '${KB_ACCOUNT_NAME}';
 vars:
   - name: CLUSTER_NAME
     valueFrom:
@@ -287,7 +293,8 @@ systemAccounts:
       numSymbols: 0
       letterCase: MixedCases
   - name: proxysql
-    statement: CREATE USER IF NOT EXISTS '${KB_ACCOUNT_NAME}' IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT SELECT ON performance_schema.* TO '${KB_ACCOUNT_NAME}'; GRANT SELECT ON sys.* TO '${KB_ACCOUNT_NAME}';
+    statement:
+      create: CREATE USER IF NOT EXISTS '${KB_ACCOUNT_NAME}' IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT SELECT ON performance_schema.* TO '${KB_ACCOUNT_NAME}'; GRANT SELECT ON sys.* TO '${KB_ACCOUNT_NAME}';
 roles:
   - name: primary
     updatePriority: 2

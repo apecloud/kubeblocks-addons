@@ -212,7 +212,8 @@ systemAccounts:
       letterCase: MixedCases
       numDigits: 5
       numSymbols: 0
-    statement: CREATE USER ${KB_ACCOUNT_NAME} SUPERUSER PASSWORD '${KB_ACCOUNT_PASSWORD}';
+    statement:
+      create: CREATE USER ${KB_ACCOUNT_NAME} SUPERUSER PASSWORD '${KB_ACCOUNT_PASSWORD}';
 tls:
   volumeName: tls 
   mountPath: /etc/pki/tls
