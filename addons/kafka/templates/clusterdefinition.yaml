@@ -64,8 +64,8 @@ spec:
           compDef: {{ include "kafka-broker.cmpdRegexpPattern" . }}
       orders:
         provision:
-          - kafka-broker
           - kafka-controller
+          - kafka-broker
         terminate:
           - kafka-controller
           - kafka-broker
