@@ -51,7 +51,7 @@ spec:
     - backupMethod: xtrabackup
       enabled: false
       cronExpression: "0 18 * * *"
-      retentionPeriod: 7d
+      retentionPeriod: 8d
     - backupMethod: xtrabackup-inc
       enabled: false
       cronExpression: "0 19 * * *"
