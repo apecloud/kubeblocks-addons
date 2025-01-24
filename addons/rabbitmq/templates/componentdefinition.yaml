@@ -65,6 +65,19 @@ spec:
             value: $(CLUSTER_COMPONENT_NAME)-headless
           - name: RABBITMQ_NODENAME
             value: rabbit@$(POD_NAME).$(K8S_SERVICE_NAME).$(POD_NAMESPACE)
+  policyRules:
+    - apiGroups:
+      - ""
+      resources:
+      - endpoints
+      verbs:
+      - get
+    - apiGroups:
+      - ""
+      resources:
+      - events
+      verbs:
+      - create
   runtime:
     containers:
       - name: rabbitmq

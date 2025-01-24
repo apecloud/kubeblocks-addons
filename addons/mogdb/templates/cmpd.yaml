@@ -114,6 +114,13 @@ spec:
             else
               echo -n "secondary"
             fi
+  policyRules:
+    - apiGroups:
+      - ""
+      resources:
+      - "pods/exec"
+      verbs:
+      - "create"
   runtime:
     shareProcessNamespace: true
     securityContext:
