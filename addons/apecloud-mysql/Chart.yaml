@@ -23,6 +23,13 @@ maintainers:
 sources:
 - https://github.com/apecloud/kubeblocks/
 
+
+dependencies:
+  - name: kblib
+    version: 0.1.0
+    repository: file://../kblib
+    alias: extra
+
 annotations:
   addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"
   addon.kubeblocks.io/model: "RDBMS"
