@@ -17,7 +17,7 @@ spec:
       namespace: {{ .Release.Namespace }}
       reRenderResourceTypes:
         - vscale
-  {{- include "syncer.policyRules" . | nindent 2 }}
+  {{- include "kblib.syncer.policyRules" . | nindent 2 }}
   runtime:
     initContainers:
       - command:

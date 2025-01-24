@@ -69,7 +69,7 @@ spec:
     - name: secondary
       updatePriority: 1
       participatesInQuorum: true
-  {{- include "syncer.policyRules" . | nindent 2 }}
+  {{- include "kblib.syncer.policyRules" . | nindent 2 }}
   lifecycleActions:
     roleProbe:
       periodSeconds: {{ .Values.roleProbe.periodSeconds }}

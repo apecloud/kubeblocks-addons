@@ -21,7 +21,7 @@ spec:
       constraintRef: {{ include "apecloud-mysql.configConstraintVttabletName" . }}
       volumeName: mysql-scale-config
       namespace: {{ .Release.Namespace }}
-  {{- include "syncer.policyRules" . | nindent 2 }}
+  {{- include "kblib.syncer.policyRules" . | nindent 2 }}
   runtime:
     initContainers:
     - command:

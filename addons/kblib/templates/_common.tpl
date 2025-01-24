@@ -1,4 +1,4 @@
-{{- define "syncer.policyRules" -}}
+{{- define "kblib.syncer.policyRules" -}}
 policyRules:
 - apiGroups:
   - ""
