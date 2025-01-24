@@ -86,12 +86,21 @@ merge_configuration_files() {
   bin/apply-config-from-env.py conf/client.conf
 }
 
+load_env_file() {
+  local pulsar_env_config="/opt/pulsar/conf/pulsar.env"
+
+  if [ -f "${pulsar_env_config}" ];then
+     source ${pulsar_env_config}
+  fi
+}
+
 start_broker() {
   ## TODO: $KB_PULSAR_BROKER_NODEPORT define in cluster annotation extra-envs, which need to be refactored
   if [[ "$KB_PULSAR_BROKER_NODEPORT" == "true" ]]; then
     initialize_nodeport_config
   fi
 
+  load_env_file
   merge_configuration_files
 
   echo 'OK' > status
