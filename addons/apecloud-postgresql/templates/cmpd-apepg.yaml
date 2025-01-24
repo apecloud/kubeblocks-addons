@@ -24,4 +24,5 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
+  {{- include "kblib.syncer.policyRules" . | nindent 2 }}
   {{- include "apecloud-postgresql.spec.runtime.common" . | nindent 2 }}
