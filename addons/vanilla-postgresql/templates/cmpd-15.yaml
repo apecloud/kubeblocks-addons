@@ -24,6 +24,7 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
+  {{- include "syncer.policyRules" . | nindent 2 }}
   runtime:
     {{- include "vanilla-postgresql.spec.runtime.common" . | nindent 4 }}
     containers:
@@ -57,6 +58,7 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
+  {{- include "syncer.policyRules" . | nindent 2 }}
   runtime:
     {{- include "vanilla-postgresql.spec.runtime.common" . | nindent 4 }}
     containers:

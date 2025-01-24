@@ -35,6 +35,7 @@ spec:
       namespace: {{ .Release.Namespace }}
       reRenderResourceTypes:
         - vscale
+  {{- include "syncer.policyRules" . | nindent 2 }}
   runtime:
     initContainers:
       - image: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:5.7.44
