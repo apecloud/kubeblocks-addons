@@ -18,6 +18,12 @@ policyRules:
   - get
   - list
 - apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+- apiGroups:
   - "apps.kubeblocks.io"
   resources:
   - clusters
