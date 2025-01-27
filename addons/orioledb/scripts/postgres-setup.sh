@@ -23,14 +23,18 @@ init_etcd_dcs_config_if_needed() {
 }
 
 regenerate_spilo_configuration_and_start_postgres() {
-  if [ -d "/home/postgres/pgdata/conf" ]; then
-    chmod 750 /home/postgres/pgdata/pgroot/data
-  else
-    mkdir -p /home/postgres/pgdata/conf
-    chmod 777 -R /home/postgres/pgdata
-    cp /home/postgres/conf/postgresql.conf /home/postgres/pgdata/conf
-    chmod 777 -R /home/postgres/pgdata/conf
-  fi
+  # 创建必要的目录
+  mkdir -p /home/postgres/pgdata/pgroot/data
+  mkdir -p /home/postgres/pgdata/conf
+  
+  # 修正 pgroot 目录的所有权
+  chown -R postgres:postgres /home/postgres/pgdata/pgroot
+  chmod 700 /home/postgres/pgdata/pgroot
+  
+  # 修正数据目录的所有权和权限
+  chown -R postgres:postgres /home/postgres/pgdata/pgroot/data
+  chmod 700 /home/postgres/pgdata/pgroot/data
+  
 
   IFS='-' read -ra parts <<< "$CURRENT_POD_NAME"
   if [ ${parts[-1]} != '0' ]; then
@@ -38,7 +42,8 @@ regenerate_spilo_configuration_and_start_postgres() {
     WAIT_INTERVAL=5
     retries=0
     while [ $retries -lt $MAX_RETRIES ]; do
-      POD_0_FQDN="$POSTGRES_COMPONENT_NAME-0-$POSTGRES_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.cluster.local"
+      POD_0_NAME=$(echo $POSTGRES_POD_NAME_LIST | cut -d',' -f1)  
+      POD_0_FQDN="$POD_0_NAME.$POSTGRES_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.cluster.local"
       pg_isready -h $POD_0_FQDN
       status=$?
       if [ $status -eq 0 ]; then
@@ -57,7 +62,10 @@ regenerate_spilo_configuration_and_start_postgres() {
 
   python3 /kb-scripts/generate_patroni_yaml.py /var/lib/postgresql/tmp_patroni.yaml
   chmod 777 /var/lib/postgresql/tmp_patroni.yaml
-  su - postgres -c "patroni /var/lib/postgresql/tmp_patroni.yaml"
+  export PATRONI_LOG_LEVEL=DEBUG
+  export PATRONI_LOG_TRACEBACK_LEVEL=DEBUG  
+  sleep 10000
+  su postgres -c "patroni /var/lib/postgresql/tmp_patroni.yaml"
 }
 
 # This is magic for shellspec ut framework.

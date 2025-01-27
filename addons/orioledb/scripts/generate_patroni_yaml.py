@@ -38,42 +38,82 @@ def postgresql_conf_to_dict(file_path):
 
 
 def main(filename):
-    restore_dir = os.environ.get('RESTORE_DATA_DIR', '')
+    # restore_dir = os.environ.get('RESTORE_DATA_DIR', '')
     local_config = yaml.safe_load(
         os.environ.get('SPILO_CONFIGURATION',
                        os.environ.get('PATRONI_CONFIGURATION', ''))) or {}
 
-    # set postgresql parameters
+
+    podip = os.environ.get('POD_IP')
+    # scope
+    local_config['scope'] = os.environ.get('POSTGRES_COMPONENT_NAME')
+    # name
+    local_config['name'] = os.environ.get('CURRENT_POD_NAME')
+
+    # restapi
+    local_config['restapi'] = {
+        'listen': f'{podip}:8008',
+        'connect_address': f'{podip}:8008',
+    }
+    # patroni kubernetes config
+    kubernetes = {
+        'bypass_api_service': True,
+        'namespace': os.environ.get('CLUSTER_NAMESPACE'),
+        'labels': yaml.safe_load(os.environ.get('KUBERNETES_LABELS')),
+        'role_label':"kubeblocks.io/role",
+        'leader_label_value':'primary',
+        'follower_label_value':'secondary',
+        'pod_ip': podip,
+        'ports': [{"name": "tcp-orioledb", "port": 5432}],
+        'service_host': os.environ.get('KUBERNETES_SERVICE_HOST'),
+        'service_port': os.environ.get('KUBERNETES_SERVICE_PORT'),
+        'service_port_https': os.environ.get('KUBERNETES_SERVICE_PORT_HTTPS'),
+    }
+    local_config['kubernetes'] = kubernetes
+    
     if 'postgresql' not in local_config:
         local_config['postgresql'] = {}
-    postgresql = local_config['postgresql']
+    postgresql = {}
+    postgresql['data_dir'] = os.environ.get('PGDATA')
     postgresql['config_dir'] = '/home/postgres/pgdata/conf'
     postgresql['custom_conf'] = '/home/postgres/conf/postgresql.conf'
+    postgresql['listen'] = '0.0.0.0:5432'
+    postgresql['connect_address'] = f'{podip}:5432'
+    local_config['postgresql'] = postgresql
+    authentication = {}
+    authentication['superuser'] = {
+        "username": os.environ.get('PGUSER_SUPERUSER'),
+        'password': os.environ.get('PGPASSWORD_SUPERUSER')
+    }
+    authentication['replication'] = {
+        'username': os.environ.get('PGUSER_SUPERUSER'),
+        'password': os.environ.get('POSTGRES_PASSWORD')
+    }
+    authentication['rewind'] = {
+        'username': os.environ.get('PGUSER_SUPERUSER'),
+        'password': os.environ.get('POSTGRES_PASSWORD')
+    }
+    postgresql['authentication'] = authentication
+    postgresql['use_slots'] = True
+
 
     # add pg_hba.conf
     with open('/home/postgres/conf/pg_hba.conf', 'r') as f:
         lines = read_file_lines(f)
         if lines:
             postgresql['pg_hba'] = lines
-    if restore_dir and os.path.isfile(
-            os.path.join(restore_dir, 'kb_restore.signal')):
-        if 'bootstrap' not in local_config:
-            local_config['bootstrap'] = {}
-        with open('/home/postgres/conf/kb_restore.conf', 'r') as f:
-            local_config['bootstrap'].update(yaml.safe_load(f))
 
-    # point in time recovery(PITR)
-    if os.path.isfile("/home/postgres/pgdata/conf/recovery.conf"):
-        with open('/home/postgres/conf/kb_pitr.conf', 'r') as f:
-            pitr_config = yaml.safe_load(f)
-            re_config = postgresql_conf_to_dict("/home/postgres/pgdata/conf/recovery.conf")
-            pitr_config[pitr_config['method']]['recovery_conf'].update(re_config)
-            local_config['bootstrap'].update(pitr_config)
     # patroni parameters
     if 'bootstrap' not in local_config:
         local_config['bootstrap'] = {}
     if 'dcs' not in local_config['bootstrap']:
-        local_config['bootstrap']['dcs'] = {}
+        dcs = {}
+        dcs['postgresql'] = postgresql
+        local_config['bootstrap']['dcs'] = dcs
+
+        
+
+
     if os.path.exists('/home/postgres/conf/patroni.yaml'):
         with open('/home/postgres/conf/patroni.yaml', 'r') as f:
             local_config['bootstrap']['dcs'].update(yaml.safe_load(f))

@@ -194,11 +194,52 @@ spec:
             value: $(POSTGRES_PASSWORD)
         targetPodSelector: Role
         matchingKey: primary
+  policyRules:
+    - apiGroups:
+      - ""
+      resources:
+      - configmaps
+      verbs:
+      - create
+      - get
+      - list
+      - patch
+      - update
+      - watch
+      # delete is required only for 'patronictl remove'
+      - delete
+    #  PR: https://github.com/apecloud/kubeblocks/pull/8854 
+    # - apiGroups:
+    #   - ""
+    #   resources:
+    #   - endpoints
+    #   verbs:
+    #   - get
+    #   - patch
+    #   - update
+    #   - create
+    #   - list
+    #   - watch
+    #   # delete is required only for 'patronictl remove'
+    #   - delete
+    - apiGroups:
+      - ""
+      resources:
+      - pods
+      verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch  
   runtime:
     securityContext:
       runAsUser: 0
-      fsGroup: 103
-      runAsGroup: 103
+      fsGroup: 70
+      runAsGroup: 70
+      fsGroupChangePolicy: OnRootMismatch
     initContainers:
       - name: pg-init-container
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
@@ -265,8 +306,6 @@ spec:
         env: ## refer https://github.com/zalando/spilo/blob/master/ENVIRONMENT.rst
           - name: DCS_ENABLE_KUBERNETES_API
             value: "true"
-          - name: KUBERNETES_USE_CONFIGMAPS
-            value: "true"
           - name: SCOPE
             value: $(POSTGRES_COMPONENT_NAME)
           - name: KUBERNETES_SCOPE_LABEL
@@ -322,6 +361,14 @@ spec:
             value: $(POSTGRES_PASSWORD)
           - name: PGUSER
             value: $(POSTGRES_USER)
+          - name: KUBERNETES_USE_CONFIGMAPS
+            value: "true"
+          # - name: PATRONI_KUBERNETES_PORTS
+          #   value: '[{"name": "tcp-orioledb", "port": 5432}]'
+          # - name: PATRONI_KUBERNETES_NAMESPACE
+          #   valueFrom:
+          #     fieldRef:
+          #       fieldPath: metadata.namespace
       - name: pgbouncer
         image: {{ .Values.pgbouncer.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.pgbouncer.image.repository }}:{{ .Values.pgbouncer.image.tag }}
         imagePullPolicy: {{ .Values.pgbouncer.image.pullPolicy | quote }}

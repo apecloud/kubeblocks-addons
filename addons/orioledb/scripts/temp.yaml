@@ -1,0 +1,125 @@
+bootstrap:
+  dcs:
+    check_timeline: true
+    loop_wait: 10
+    max_timelines_history: 0
+    maximum_lag_on_failover: 1048576
+    postgresql:
+      parameters:
+        archive_command: ''
+        archive_mode: 'on'
+        archive_timeout: 1800s
+        autovacuum_analyze_scale_factor: '0.1'
+        autovacuum_max_workers: '3'
+        autovacuum_vacuum_scale_factor: '0.05'
+        checkpoint_completion_target: '0.9'
+        hot_standby: 'on'
+        log_autovacuum_min_duration: '10000'
+        log_checkpoints: 'True'
+        log_connections: 'False'
+        log_disconnections: 'False'
+        log_line_prefix: '%t [%p]: [%l-1] %c %x %d %u %a %h '
+        log_lock_waits: 'on'
+        log_min_duration_statement: '1000'
+        log_statement: ddl
+        log_temp_files: 128kB
+        max_connections: '112'
+        max_locks_per_transaction: '64'
+        max_prepared_transactions: '100'
+        max_replication_slots: '16'
+        max_wal_senders: '64'
+        max_worker_processes: '8'
+        tcp_keepalives_idle: 45s
+        tcp_keepalives_interval: 10s
+        track_commit_timestamp: 'False'
+        track_functions: pl
+        wal_compression: 'True'
+        wal_keep_size: '0'
+        wal_level: replica
+        wal_log_hints: 'False'
+      use_pg_rewind: true
+      use_slots: true
+    retry_timeout: 10
+    ttl: 30
+  initdb:
+  - auth-host: md5
+  - auth-local: trust
+
+  users:
+    superadmin:
+      options:
+      - createrole
+      - createdb
+      password: 473Hd5qLY7
+kubernetes:
+  bypass_api_service: true
+  labels:
+    app.kubernetes.io/instance: fig89-59f984d6f6
+    apps.kubeblocks.io/component-name: postgresql
+  port: tcp://172.16.0.1:443
+  port_443_tcp: tcp://172.16.0.1:443
+  port_443_tcp_addr: 172.16.0.1
+  port_443_tcp_port: '443'
+  port_443_tcp_proto: tcp
+  role_label: apps.kubeblocks.postgres.patroni/role
+  scope_label: apps.kubeblocks.postgres.patroni/scope
+  service_host: 172.16.0.1
+  service_port: '443'
+  service_port_https: '443'
+namespace: kubeblocks-cloud-ns
+postgresql:
+  authentication:
+    replication:
+      password: 473Hd5qLY7
+      username: standby
+    superuser:
+      password: 473Hd5qLY7
+      username: postgres
+  basebackup_fast_xlog:
+    command: /scripts/basebackup.sh
+    retries: 2
+  bin_dir: /usr/lib/postgresql/16/bin
+  callbacks:
+    on_role_change: /scripts/on_role_change.sh zalandos true
+  config_dir: /home/postgres/pgdata/conf
+  connect_address: 192.168.0.7:5432
+  create_replica_method:
+  - basebackup_fast_xlog
+  custom_conf: /home/postgres/conf/postgresql.conf
+  data_dir: /home/postgres/pgdata/pgroot/data
+  listen: '*:5432'
+  name: fig89-59f984d6f6-postgresql-0
+  parameters:
+    bg_mon.history_buckets: 120
+    bg_mon.listen_address: '::'
+    extwlist.custom_path: /scripts
+    extwlist.extensions: btree_gin,btree_gist,citext,extra_window_functions,first_last_agg,hll,hstore,hypopg,intarray,ltree,pgcrypto,pgq,pgq_node,pg_trgm,postgres_fdw,tablefunc,uuid-ossp,timescaledb,pg_partman
+    log_destination: csvlog
+    log_directory: log
+    log_file_mode: '0644'
+    log_filename: postgresql-%Y-%m-%d.log
+    log_rotation_age: 1d
+    log_truncate_on_rotation: 'on'
+    logging_collector: 'True'
+    pg_stat_statements.track_utility: 'False'
+    shared_buffers: 256MB
+    shared_preload_libraries: pg_stat_statements,auto_explain,bg_mon,pgextwlist,pg_auth_mon,set_user,pg_cron,pg_stat_kcache,timescaledb,pgaudit
+    ssl: 'on'
+    ssl_cert_file: /run/certs/server.crt
+    ssl_key_file: /run/certs/server.key
+  pg_hba:
+  - host     all             all             0.0.0.0/0                md5
+  - host     all             all             ::/0                     md5
+  - local    all             all                                     trust
+  - host     all             all             127.0.0.1/32            trust
+  - host     all             all             ::1/128                 trust
+  - local     replication     all                                    trust
+  - host      replication     all             0.0.0.0/0               md5
+  - host      replication     all             ::/0                    md5
+  pgpass: /run/postgresql/pgpass
+  use_unix_socket: true
+  use_unix_socket_repl: true
+restapi:
+  connect_address: 192.168.0.7:8008
+  listen: :8008
+scope: fig89-59f984d6f6-postgresql-patroni6d2e01c1
