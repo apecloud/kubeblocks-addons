@@ -1,0 +1,28 @@
+apiVersion: v2
+name: orioledb
+description: OrioleDB is a new storage engine for PostgreSQL, bringing a modern approach to database capacity, capabilities and performance to the world's most-loved database platform.
+
+type: application
+
+# This is the chart version. This version number should be incremented each time you make changes
+# to the chart and its templates, including the app version.
+# Versions are expected to follow Semantic Versioning (https://semver.org/)
+version: 1.0.0-alpha.0
+
+appVersion: "14.7.2"
+
+maintainers:
+  - name: 1aal
+    url: https://github.com/apecloud/kubeblocks/
+
+# Add a dependency to the kubeblocks definition library chart
+dependencies:
+  - name: kblib
+    version: 0.1.0
+    repository: file://../kblib
+    alias: extra
+
+annotations:
+  addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
+  addon.kubeblocks.io/model: "RDBMS"
+  addon.kubeblocks.io/provider: "community"
