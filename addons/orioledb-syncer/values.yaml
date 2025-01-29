@@ -1,17 +1,37 @@
-## @section OrioleDB common parameters
+# Default values for apecloud-postgresql.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
 
 image:
-  # refer: https://github.com/orioledb/orioledb/blob/main/Dockerfile
   registry: docker.io
-  repository: apecloud/orioledb
-  tag: beta1
+  repository: orioledb/orioledb
+  tag: "latest-pg16"
+  digest: ""
   pullPolicy: IfNotPresent
+  pullSecrets: [ ]
+  debug: false
+  syncer:
+    repository: apecloud/syncer
+    tag: "0.4.0"
 
-  # refer: https://github.com/apecloud/dbctl/blob/main/docker/Dockerfile
-  dbctl:
-    repository: apecloud/dbctl
-    tag: "0.1.5"
+dataMountPath: /postgresql/volume_data
+confMountPath: /postgresql/mount_conf
 
+dataPath: /postgresql/volume_data/pgconsensus_data
+# confPath is the same as the dataPath because the postgresql.conf and
+# pg_hba.conf files will be copied to the PGDATA directory,
+# When the POSTGRESQL_MOUNTED_CONF_DIR environment variable is set.
+confPath: /postgresql/volume_data/pgconsensus_data
+
+roleProbe:
+  failureThreshold: 2
+  periodSeconds: 1
+  timeoutSeconds: 1
+
+## Set PostgreSQL preload extension shared libraries.
+## @param postgresqlSharedPreloadLibraries Shared preload libraries (comma-separated list)
+##
+postgresqlSharedPreloadLibraries: "pg_stat_statements, auto_explain, orioledb"
 ## Start PostgreSQL pod(s) without limitations on shm memory.
 ## By default, docker and containerd (and possibly other container runtimes) limit `/dev/shm` to `64M`
 ##
@@ -26,33 +46,19 @@ shmVolume:
   ##
   sizeLimit: ""
 
-## @section Metrics Parameters
-metrics:
-  ## @param metrics.image.registry PostgreSQL Prometheus Exporter image registry
-  ## @param metrics.image.repository PostgreSQL Prometheus Exporter image repository
-  ## @param metrics.image.tag PostgreSQL Prometheus Exporter image tag (immutable tags are recommended)
-  ## @param metrics.image.digest PostgreSQL image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
-  ## @param metrics.image.pullPolicy PostgreSQL Prometheus Exporter image pull policy
-  ## @param metrics.image.pullSecrets Specify image pull secrets
-  ##
-  image:
-    # if the value of metrics.image.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
-    registry: ""
-    repository: apecloud/agamotto
-    tag: 0.1.0-beta.5
-    pullPolicy: IfNotPresent
-  service:
-    port: 9187
+## @param resourceNamePrefix Prefix for all resources name created by this chart, that can avoid name conflict
+## if you install multiple releases of this chart.
+## If specified, the cluster definition will use it as name.
+resourceNamePrefix: ""
 
-## @section pgbouncer Parameters
-pgbouncer:
-  image:
-    # refer: https://hub.docker.com/r/bitnami/pgbouncer
-    # if the value of pgbouncer.image.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
-    registry: ""
-    repository: bitnami/pgbouncer
-    tag: 1.19.0
-    pullPolicy: IfNotPresent
+## @param componentServiceVersion define default serviceVersion of each Component
+componentServiceVersion:
+  orioledb: "16.33.0"
 
-logConfigs:
-  running: /home/postgres/pgdata/pgroot/data/log/postgresql-*
+cmpdVersionPrefix:
+  orioledb:
+    major16:
+      minorAll: "orioledb"
+#    major17:
+#      minorAll: "orioledb"
+nameOverride:

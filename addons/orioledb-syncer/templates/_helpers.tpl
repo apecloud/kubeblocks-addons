@@ -1,4 +1,19 @@
 {{/*
+Common annotations
+*/}}
+{{- define "orioledb.annotations" -}}
+helm.sh/resource-policy: keep
+{{ include "orioledb.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "orioledb.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{- end }}
+
+{{/*
 Expand the name of the chart.
 */}}
 {{- define "orioledb.name" -}}
@@ -6,21 +21,11 @@ Expand the name of the chart.
 {{- end }}
 
 {{/*
-Create a default fully qualified app name.
-We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
-If release name contains chart name it will be used as a full name.
+Selector labels
 */}}
-{{- define "orioledb.fullname" -}}
-{{- if .Values.fullnameOverride }}
-{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
-{{- else }}
-{{- $name := default .Chart.Name .Values.nameOverride }}
-{{- if contains $name .Release.Name }}
-{{- .Release.Name | trunc 63 | trimSuffix "-" }}
-{{- else }}
-{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
-{{- end }}
-{{- end }}
+{{- define "orioledb.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "orioledb.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
@@ -43,54 +48,21 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
 {{/*
-Selector labels
+Generate scripts configmap
 */}}
-{{- define "orioledb.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "orioledb.name" . }}
-app.kubernetes.io/instance: {{ .Release.Name }}
+{{- define "orioledb.extend.scripts" -}}
+{{- range $path, $_ :=  $.Files.Glob "scripts/**" }}
+{{ $path | base }}: |-
+{{- $.Files.Get $path | nindent 2 }}
+{{- end }}
 {{- end }}
 
-{{/*
-Common annotations
-*/}}
-{{- define "orioledb.annotations" -}}
-helm.sh/resource-policy: keep
-{{ include "orioledb.apiVersion" . }}
-{{- end }}
 
 {{/*
-API version annotation
+Define orioledb component definition regular expression name prefix
 */}}
-{{- define "orioledb.apiVersion" -}}
-kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
-{{- end }}
-
-{{/*
-Define orioledb cluster definition name
-*/}}
-{{- define "orioledb.cdName" -}}
-orioledb
-{{- end -}}
-
-{{/*
-Define orioledb component definition name
-*/}}
-{{- define "orioledb.cmpdName" -}}
-orioledb-{{ .Chart.Version }}
-{{- end -}}
-
-{{/*
-Define orioledb component version name
-*/}}
-{{- define "orioledb.cmpvName" -}}
-orioledb
-{{- end -}}
-
-{{/*
-Define orioledb component definition regex pattern
-*/}}
-{{- define "orioledb.cmpdRegexPattern" -}}
-^orioledb-
+{{- define "orioledb.cmpdRegexpPattern" -}}
+^orioledb.*
 {{- end -}}
 
 {{/*
@@ -107,47 +79,268 @@ Define orioledb component config constraint name
 orioledb-cc-{{ .Chart.Version }}
 {{- end -}}
 
-{{/*
-Define orioledb pgbouncer configuration template name
-*/}}
-{{- define "orioledb-pgbouncer.configurationTemplate" -}}
-orioledb-pgbouncer-configuration-{{ .Chart.Version }}
-{{- end -}}
 
 {{/*
-Define orioledb scripts configMap template name
+Define orioledb component definition name
 */}}
-{{- define "orioledb.scriptsTemplate" -}}
-orioledb-scripts-{{ .Chart.Version }}
+{{- define "orioledb.cmpdName" -}}
+{{- if .Values.cmpdVersionPrefix.orioledb.major16.minorAll -}}
+orioledb-{{ .Chart.Version }}
+{{- else -}}
+{{- printf "%s" .Values.cmpdVersionPrefix.orioledb.major16.minorAll -}}-{{ .Chart.Version }}
 {{- end -}}
-
-{{/*
-Define orioledb patroni reload scripts template name
-*/}}
-{{- define "orioledb.patroniReloadScriptsTemplate" -}}
-orioledb-patroni-reload-scripts-{{ .Chart.Version }}
-{{- end -}}
-
-{{/*
-Define orioledb component metrice configuration name
-*/}}
-{{- define "orioledb.metricsConfiguration" -}}
-orioledb-custom-metrics
-{{- end -}}
-
-{{/*
-Define orioledb component agamotto configuration name
-*/}}
-{{- define "orioledb.agamottoConfiguration" -}}
-orioledb-agamotto-configuration
 {{- end -}}
 
 {{/*
 Generate scripts configmap
 */}}
-{{- define "orioledb.extend.scripts" -}}
-{{- range $path, $_ :=  $.Files.Glob "scripts/**" }}
+{{- define "orioledb.extend.reload.scripts" -}}
+{{- range $path, $_ :=  $.Files.Glob "reloader/**" }}
 {{ $path | base }}: |-
 {{- $.Files.Get $path | nindent 2 }}
 {{- end }}
 {{- end }}
+
+{{/*
+Define postgresql scripts configMap template name
+*/}}
+{{- define "orioledb.scriptsTemplate" -}}
+orioledb-scripts
+{{- end -}}
+
+{{/*
+Define postgresql scripts configMap template name
+*/}}
+{{- define "orioledb.reloader.scripts" -}}
+orioledb-reload-tools-script
+{{- end -}}
+
+
+{{- define "orioledb.spec.common" -}}
+provider: kubeblocks
+description: {{ .Chart.Description }}
+serviceKind: orioledb
+services:
+  - name: default
+    spec:
+      ports:
+          - name: orioledb
+            port: 5432
+            targetPort: tcp-orioledb
+    roleSelector: leader
+volumes:
+  - highWatermark: 0
+    name: data
+    needSnapshot: false
+roles:
+  - name: leader
+    updatePriority: 3
+    participatesInQuorum: true
+  - name: follower
+    updatePriority: 2
+    participatesInQuorum: true
+vars:
+  ## the postgres leader pod name which is dynamically selected, caution to use it
+  - name: POSTGRES_LEADER_POD_NAME
+    valueFrom:
+      componentVarRef:
+        compDef: {{ include "orioledb.cmpdName" . }}
+        optional: true
+        podNamesForRole:
+          role: leader
+          option: Optional
+  - name: POSTGRES_USER
+    valueFrom:
+      credentialVarRef:
+        name: postgres
+        optional: false
+        username: Required
+  - name: POSTGRES_PASSWORD
+    valueFrom:
+      credentialVarRef:
+        name: postgres
+        optional: false
+        password: Required
+  # env for syncer to initialize dcs
+  # TODO: modify these env for syncer
+  - name: CLUSTER_NAME
+    valueFrom:
+      clusterVarRef:
+        clusterName: Required
+  - name: MY_COMP_NAME
+    valueFrom:
+      componentVarRef:
+        optional: false
+        shortName: Required
+  - name: MY_NAMESPACE
+    valueFrom:
+      clusterVarRef:
+        namespace: Required
+  - name: TLS_ENABLED
+    valueFrom:
+      tlsVarRef:
+        enabled: Optional
+systemAccounts:
+  - name: postgres
+    initAccount: true
+    passwordGenerationPolicy:
+      length: 10
+      numDigits: 5
+      numSymbols: 0
+      letterCase: MixedCases
+  - name: kbadmin
+    passwordGenerationPolicy:
+      length: 10
+      letterCase: MixedCases
+      numDigits: 5
+      numSymbols: 0
+    statement:
+      create: CREATE USER ${KB_ACCOUNT_NAME} SUPERUSER PASSWORD '${KB_ACCOUNT_PASSWORD}';
+tls:
+  volumeName: tls 
+  mountPath: /etc/pki/tls
+  caFile: ca.pem
+  certFile: cert.pem
+  keyFile: key.pem
+lifecycleActions:
+  roleProbe:
+    periodSeconds: 1
+    timeoutSeconds: 1
+    exec:
+      container: orioledb
+      command:
+        - /tools/syncerctl
+        - getrole
+  switchover:
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - |
+          if [ -z "$KB_SWITCHOVER_ROLE" ]; then
+              echo "role can't be empty"
+              exit 1
+          fi
+
+          if [ "$KB_SWITCHOVER_ROLE" != "leader" ]; then
+              exit 0
+          fi
+          
+          /tools/syncerctl switchover --primary "$POSTGRES_LEADER_POD_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
+  memberLeave:
+    exec:
+      container: orioledb
+      command:
+        - /bin/sh
+        - -c
+        - |
+          /tools/syncerctl leave --instance "$KB_LEAVE_MEMBER_POD_NAME"
+  accountProvision:
+    exec:
+      container: orioledb
+      command:
+        - bash
+        - -c
+        - |
+          eval statement=\"${KB_ACCOUNT_STATEMENT}\"
+          psql -h 127.0.0.1 -c "${statement}"
+      env:
+        - name: PGUSER
+          value: $(POSTGRES_USER)
+        - name: PGPASSWORD
+          value: $(POSTGRES_PASSWORD)
+      targetPodSelector: Role
+      matchingKey: primary
+{{- end -}}
+
+{{- define "orioledb.spec.runtime.common" -}}
+runtime:
+  initContainers:
+    - command:
+        - sh
+        - -c
+        - cp -r /bin/syncer /bin/syncerctl /tools/
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+      imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+      name: init-syncer
+      volumeMounts:
+        - mountPath: /tools
+          name: tools
+  containers:
+    - command:
+        - /tools/syncer
+        - --port
+        - '3601'
+        - --
+        - docker-entrypoint.sh
+        - postgres
+      env:
+        - name: ALLOW_NOSSL
+          value: 'true'
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: PGUSER
+          value: $(POSTGRES_USER)
+        - name: PGPASSWORD
+          value: $(POSTGRES_PASSWORD)
+        - name: POSTGRESQL_PORT_NUMBER
+          value: '5432'
+        - name: PGDATA
+          value: {{ .Values.dataPath }}
+        - name: PGCONF
+          value: {{ .Values.confPath }}
+        - name: KB_ENGINE_TYPE
+          value: apecloud-postgresql
+        - name: KB_CLUSTER_NAME
+          value: $(CLUSTER_NAME)
+        - name: KB_SERVICE_CHARACTER_TYPE
+          value: orioledb
+        - name: POSTGRESQL_MOUNTED_CONF_DIR
+          value: {{ .Values.confMountPath }}
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: MY_POD_UID
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.uid
+        - name: MY_POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+      imagePullPolicy: IfNotPresent
+      name: orioledb
+      ports:
+        - containerPort: 5432
+          name: tcp-orioledb
+      securityContext:
+        runAsUser: 0
+      volumeMounts:
+        - mountPath: /dev/shm
+          name: dshm
+        - mountPath: {{ .Values.dataMountPath }}
+          name: data
+        - mountPath: {{ .Values.confMountPath }}
+          name: postgresql-config
+        - mountPath: /kb-scripts
+          name: scripts
+        - mountPath: /tools
+          name: tools
+  volumes:
+    - emptyDir:
+        medium: Memory
+      name: dshm
+{{- end -}}
