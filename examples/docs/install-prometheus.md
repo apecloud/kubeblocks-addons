@@ -84,3 +84,7 @@ spec:
     matchLabels:
       release: prometheus # make sure your ServiceMonitor CR labels matches the selector
 ```
+
+When creating a new `PodMonitor` or `ServiceMonitor`, make sure labels and namespace are set correctly matching the settings (`podMonitorNamespaceSelector` and `podMonitorSelector`,`serviceMonitorNamespaceSelector` and `serviceMonitorSelector`) in the `Prometheus` CR.
+
+When creating a new `PrometheusRule`, make sure labels and namespace are set correctly matching the settings (`ruleNamespaceSelector` and `ruleSelector`) in the `Prometheus` CR.
