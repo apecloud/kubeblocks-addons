@@ -9,7 +9,7 @@
           </disk2>
       </disks>
       <policies>
-          <multi_disk_policy>
+          <default>
               <volumes>
                   <volume1>
                       <disk>disk1</disk>
@@ -18,7 +18,7 @@
                       <disk>disk2</disk>
                   </volume2>
               </volumes>
-          </multi_disk_policy>
+          </default>
       </policies>
   </storage_configuration>
 </clickhouse>
