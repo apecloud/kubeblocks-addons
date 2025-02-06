@@ -10,6 +10,7 @@ policyRules:
   - list
   - patch
   - update
+  - delete
 - apiGroups:
   - ""
   resources:
