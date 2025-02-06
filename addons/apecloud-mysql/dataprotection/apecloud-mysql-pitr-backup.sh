@@ -1,3 +1,4 @@
+#!/bin/bash
 # export wal-g environments
 export WALG_MYSQL_DATASOURCE_NAME="${DP_DB_USER}:${DP_DB_PASSWORD}@tcp(${DP_DB_HOST}:${DP_DB_PORT})/mysql"
 export WALG_COMPRESSION_METHOD=zstd

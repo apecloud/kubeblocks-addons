@@ -1,3 +1,4 @@
+#!/bin/bash
 #
 # Refer: https://github.com/wal-g/wal-g/blob/master/docs/MySQL.md#mysql---using-with-xtrabackup
 #

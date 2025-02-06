@@ -1,3 +1,4 @@
+#!/bin/bash
 # export wal-g environments
 if [ ! -z "${MYSQL_ADMIN_PASSWORD}" ]; then
   DP_DB_PASSWORD=${MYSQL_ADMIN_PASSWORD}
