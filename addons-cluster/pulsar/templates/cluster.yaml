@@ -10,7 +10,7 @@ metadata:
   {{- end }}
 spec:
   terminationPolicy: {{ $.Values.terminationPolicy }}
-  {{- $topologyEnable :=  eq .Values.mode "" | default false }}
+  {{- $topologyEnable :=  ne .Values.mode "" | default false }}
   {{- if $topologyEnable}}
   clusterDef: pulsar
   topology: {{ .Values.mode }}

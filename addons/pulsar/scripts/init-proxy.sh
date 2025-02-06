@@ -13,8 +13,8 @@ wait_for_zookeeper() {
 }
 
 main() {
-  if [ -n "${metadataStoreUrl}" ]; then
-    wait_for_zookeeper "${metadataStoreUrl}"
+  if [ -n "${ZOOKEEPER_SERVERS}" ]; then
+    wait_for_zookeeper "${ZOOKEEPER_SERVERS}"
   else
     echo "Zookeeper URL not provided, skipping Zookeeper readiness check"
   fi
