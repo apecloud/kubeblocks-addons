@@ -196,15 +196,29 @@ redis-cluster7-scripts-template-{{ .Chart.Version }}
 {{/*
 Define redis 7.X component config constraint name
 */}}
-{{- define "redis7.configConstraint" -}}
-redis7-config-cc
+{{- define "redis7.paramsDefName" -}}
+redis7-config-pd
 {{- end -}}
 
 {{/*
 Define redis cluster 7.X component config constraint name
 */}}
-{{- define "redisCluster7.configConstraint" -}}
-redis-cluster7-cc
+{{- define "redisCluster7.paramsDefName" -}}
+redis-cluster7-pd
+{{- end -}}
+
+{{/*
+Define redis 7.X component config constraint name
+*/}}
+{{- define "redis7.pcrName" -}}
+redis7-pcr
+{{- end -}}
+
+{{/*
+Define redis cluster 7.X component config constraint name
+*/}}
+{{- define "redisCluster7.pcrName" -}}
+redis-cluster7-pcr
 {{- end -}}
 
 {{/*
