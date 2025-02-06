@@ -37,12 +37,9 @@ spec:
   configs:
     - name: mongodb-config
       templateRef: {{ include "mongodb.configTplName" . }}
-      constraintRef: {{ include "mongodb.configConstraintName" . }}
       volumeName: mongodb-config
       namespace: {{ .Release.Namespace }}
       defaultMode: 0400  # for only read
-      keys:
-        - mongodb.conf
   logConfigs:
     {{- range $name,$pattern := .Values.logConfigs }}
     - name: {{ $name }}
