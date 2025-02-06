@@ -12,6 +12,8 @@ metadata:
 data:
   00_default_overrides.xml: |
     {{- .Files.Get "configs/00_default_overrides.xml.tpl" | nindent 4 }}
+  storage.xml: |
+    {{- .Files.Get "configs/storage.xml.tpl" | nindent 4 }}
 ---
 apiVersion: v1
 kind: ConfigMap
