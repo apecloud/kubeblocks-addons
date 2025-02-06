@@ -98,7 +98,7 @@ SET GLOBAL rpl_semi_sync_slave_enabled = 1;
 SET GLOBAL rpl_semi_sync_master_enabled = 1;
 EOF
   else
-    mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD << EOF
+    mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD --get-server-public-key << EOF
 SET GLOBAL slave_net_timeout = 4;
 SET GLOBAL rpl_semi_sync_replica_enabled = 1;
 SET GLOBAL rpl_semi_sync_source_enabled = 1;
@@ -237,6 +237,7 @@ SET GLOBAL SUPER_READ_ONLY=1;
 STOP SLAVE;
 CHANGE MASTER TO
 MASTER_AUTO_POSITION=1,
+GET_MASTER_PUBLIC_KEY=1,
 MASTER_CONNECT_RETRY=1,
 MASTER_RETRY_COUNT=86400,
 MASTER_HOST='$master_host',
