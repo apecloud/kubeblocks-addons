@@ -23,5 +23,9 @@ roleProbe:
   periodSeconds: 5
   timeoutSeconds: 5
 
+roleProbe:
+  periodSeconds: 5
+  timeoutSeconds: 5
+
 config:
   dataDir: /data
