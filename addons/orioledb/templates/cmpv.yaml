@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentVersion
 metadata:
-  name: {{ include "orioledb.cmpvName" . }}
+  name: apecloud-postgresql
   labels:
     {{- include "orioledb.labels" . | nindent 4 }}
   annotations:
@@ -9,15 +9,11 @@ metadata:
 spec:
   compatibilityRules:
     - compDefs:
-        - {{ include "orioledb.cmpdRegexPattern" . }}
+        - {{ include "orioledb.cmpdRegexpPattern" . }}
       releases:
-        - 14.7.2
+        - 14.11.0
   releases:
-    - name: 14.7.2
-      changes:
-      serviceVersion: 14.7.2
+    - name: 14.11.0
+      serviceVersion: 14.11.0
       images:
-        pg-init-container: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:beta1
-        init-dbctl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:0.1.5
-        postgresql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:beta1
-        pgbouncer: {{ .Values.pgbouncer.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.pgbouncer.image.repository }}:1.19.0
+        orioledb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:14.11-0.7.3
