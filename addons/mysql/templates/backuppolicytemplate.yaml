@@ -70,12 +70,13 @@ spec:
       account: kbadmin
     snapshotVolumes: false
     actionSetName: mysql-pitr
-    envMapping:
-      - key: USE_REPLICA_STATUS
-        valueFrom:
-          componentDef:
-            - names: [ mysql-8.4 ]
-              mappingValue: "true"
+    env:
+    - name: USE_REPLICA_STATUS
+      valueFrom:
+        versionMapping:
+          - serviceVersions:
+            - "8.4"
+            mappedValue: "true"
     targetVolumes:
       volumeMounts:
         - name: data

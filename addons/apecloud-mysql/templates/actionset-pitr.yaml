@@ -33,7 +33,7 @@ spec:
       value: "524288000"
   restore:
     prepareData:
-      image: {{ .Values.dataProtection.registry | default .Values.image.registry }}/{{ .Values.image.walgImage.repository }}:{{ .Values.image.walgImage.tag }}
+      image: {{ default .Values.image.registry }}/{{ .Values.image.walgImage.repository }}:{{ .Values.image.walgImage.tag }}
       command:
       - bash
       - -c
@@ -61,7 +61,7 @@ spec:
           echo "INFO: remove {{ .Values.mysqlConfigs.dataDir }}/pitr-logs."
   backup:
     backupData:
-      image: {{ .Values.dataProtection.registry | default .Values.image.registry }}/{{ .Values.image.walgImage.repository }}:{{ .Values.image.walgImage.tag }}
+      image: {{ .Values.image.registry }}/{{ .Values.image.walgImage.repository }}:{{ .Values.image.walgImage.tag }}
       runOnTargetPodNode: true
       syncProgress:
         enabled: true
