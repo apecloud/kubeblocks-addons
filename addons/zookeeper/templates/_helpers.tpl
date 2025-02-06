@@ -99,10 +99,17 @@ zookeeper-config-template
 {{- end -}}
 
 {{/*
-Define zookeeper config constraint name
+Define zookeeper parameters definition name
 */}}
-{{- define "zookeeper.configConstraintName" -}}
-zookeeper-config-constraints
+{{- define "zookeeper.paramsDefName" -}}
+zookeeper-pd
+{{- end -}}
+
+{{/*
+Define zookeeper parameters config renderer name
+*/}}
+{{- define "zookeeper.pcrName" -}}
+zookeeper-pcr
 {{- end -}}
 
 {{/*
