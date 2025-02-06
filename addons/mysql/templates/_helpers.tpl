@@ -361,6 +361,32 @@ exporter:
 
 
 {{- define "mysql-orc.spec.lifecycle.common" }}
+postProvision:
+  exec:
+    container: mysql
+    command:
+      - bash
+      - -c
+      - "/scripts/mysql-orchestrator-register.sh"
+  preCondition: RuntimeReady
+preTerminate:
+  exec:
+    command:
+      - bash
+      - -c
+      - curl http://${ORC_ENDPOINTS%%:*}:${ORC_PORTS}/api/forget-cluster/${CLUSTER_NAME}.${CLUSTER_NAMESPACE} || true
+accountProvision:
+  exec:
+    container: mysql
+    command:
+      - /bin/sh
+      - -c
+      - |
+        set -ex
+        eval statement=\"${KB_ACCOUNT_STATEMENT}\"
+        mysql -u${MYSQL_ROOT_USER} -p${MYSQL_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement}"
+    targetPodSelector: Role
+    matchingKey: primary
 roleProbe:
   periodSeconds: {{ .Values.roleProbe.periodSeconds }}
   timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
