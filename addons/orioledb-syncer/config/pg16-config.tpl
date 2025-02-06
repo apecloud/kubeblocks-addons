@@ -215,7 +215,7 @@
   # extension: sql_firewall
   sql_firewall.firewall = 'disable'
   shared_buffers = '{{ printf "%d%s" $shared_buffers $buffer_unit }}'
-  shared_preload_libraries = 'pg_stat_statements,auto_explain,bg_mon,pgextwlist,pg_auth_mon,set_user,pg_cron,pg_stat_kcache,timescaledb,pgaudit'
+  shared_preload_libraries = 'orioledb,pg_stat_statements,auto_explain,bg_mon,pgextwlist,pg_auth_mon,set_user,pg_cron,pg_stat_kcache,timescaledb,pgaudit'
   {{- if eq (index $ "TLS_ENABLED") "true" }}
   ssl = 'True'
   ssl_ca_file = '/etc/pki/tls/ca.pem'
@@ -294,3 +294,6 @@
   vacuum_multixact_failsafe_age = '1600000000'
   wal_keep_size = '0'
   wal_skip_threshold = '2048'
+
+  orioledb.main_buffers = 512MB
+  orioledb.undo_buffers = 256MB

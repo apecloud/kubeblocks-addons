@@ -128,6 +128,7 @@ services:
             port: 5432
             targetPort: tcp-orioledb
     roleSelector: leader
+    podService: true
 volumes:
   - highWatermark: 0
     name: data
@@ -268,12 +269,14 @@ runtime:
           name: tools
   containers:
     - command:
-        - /tools/syncer
-        - --port
-        - '3601'
-        - --
-        - docker-entrypoint.sh
-        - postgres
+        - sleep
+        - '10000'
+{{/*        - /tools/syncer*/}}
+{{/*        - --port*/}}
+{{/*        - '3601'*/}}
+{{/*        - --*/}}
+{{/*        - docker-entrypoint.sh*/}}
+{{/*        - postgres*/}}
       env:
         - name: ALLOW_NOSSL
           value: 'true'
@@ -298,13 +301,13 @@ runtime:
         - name: PGCONF
           value: {{ .Values.confPath }}
         - name: KB_ENGINE_TYPE
-          value: apecloud-postgresql
+          value: vanilla-postgresql
         - name: KB_CLUSTER_NAME
           value: $(CLUSTER_NAME)
-        - name: KB_SERVICE_CHARACTER_TYPE
-          value: orioledb
         - name: POSTGRESQL_MOUNTED_CONF_DIR
           value: {{ .Values.confMountPath }}
+        - name: POSTGRES_INITDB_ARGS
+          value: "--locale=C"
         - name: MY_POD_NAME
           valueFrom:
             fieldRef:
@@ -320,6 +323,14 @@ runtime:
             fieldRef:
               apiVersion: v1
               fieldPath: status.podIP
+        - name: KB_POD_NAME
+          value: $(MY_POD_NAME)
+        - name: KB_POD_UID
+          value: $(MY_POD_UID)
+        - name: KB_POD_IP
+          value: $(MY_POD_IP)
+        - name: KB_POD_NAMESPACE
+          value: $(MY_NAMESPACE)
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
       imagePullPolicy: IfNotPresent
       name: orioledb
