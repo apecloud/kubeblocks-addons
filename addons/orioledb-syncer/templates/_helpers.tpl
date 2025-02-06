@@ -269,14 +269,12 @@ runtime:
           name: tools
   containers:
     - command:
-        - sleep
-        - '10000'
-{{/*        - /tools/syncer*/}}
-{{/*        - --port*/}}
-{{/*        - '3601'*/}}
-{{/*        - --*/}}
-{{/*        - docker-entrypoint.sh*/}}
-{{/*        - postgres*/}}
+        - /tools/syncer
+        - --port
+        - '3601'
+        - --
+        - docker-entrypoint.sh
+        - postgres
       env:
         - name: ALLOW_NOSSL
           value: 'true'
