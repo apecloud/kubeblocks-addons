@@ -11,6 +11,9 @@ image:
   syncer:
     repository: apecloud/syncer
     tag: 0.4.1
+  walgImage:
+    repository: apecloud/wal-g
+    tag: mysql-8.0
 
 ## MySQL Cluster parameters
 cluster:
