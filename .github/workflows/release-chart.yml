@@ -18,6 +18,7 @@ on:
           - greptimedb
           - influxdb
           - kafka
+          - llm
           - loki
           - mariadb
           - milvus
@@ -44,6 +45,7 @@ on:
           - tidb
           - victoria-metrics
           - weaviate
+          - xinference
           - yashandb
           - zookeeper
       chart_version:
