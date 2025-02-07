@@ -31,6 +31,9 @@ addons-cluster/influxdb/  @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/k
 addons/kafka/ @caiq1nyu @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/kafka/ @caiq1nyu @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
+addons/llm/ @lynnleelhl @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/llm/ @lynnleelhl @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+
 addons/loki/ @Chen-speculation @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/loki/ @Chen-speculation @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
@@ -108,6 +111,9 @@ addons-cluster/victoria-metrics/ @sophon-zt @ButterBright @leon-inf @Y-Rookie @a
 
 addons/weaviate/ @iziang @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/weaviate/ @iziang @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+
+addons/xinference/ @lynnleelhl @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/xinference/ @lynnleelhl @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
 addons/yashandb/ @JesseAtSZ @shanshanying @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/yashandb/ @JesseAtSZ @shanshanying @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
