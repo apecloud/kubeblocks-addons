@@ -87,6 +87,16 @@ spec:
     - name: readwrite
       updatePriority: 1
       participatesInQuorum: false
+  policyRules:
+    - apiGroups:
+        - ""
+      resources:
+        - configmaps
+      verbs:
+        - get
+        - list
+        - patch
+        - update
 
   lifecycleActions:
     roleProbe:

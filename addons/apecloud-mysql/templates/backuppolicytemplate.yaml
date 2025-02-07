@@ -37,6 +37,16 @@ spec:
         volumeMounts:
         - name: data
           mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
+    - name: archive-binlog
+      target:
+        role: leader
+        account: root
+      snapshotVolumes: false
+      actionSetName: apecloud-mysql-pitr
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
   schedules:
     - backupMethod: xtrabackup
       enabled: false
@@ -50,3 +60,7 @@ spec:
       enabled: false
       cronExpression: "0 18 * * *"
       retentionPeriod: 7d
+    - backupMethod: archive-binlog
+      enabled: false
+      cronExpression: "*/30 * * * *"
+      retentionPeriod: 8d
