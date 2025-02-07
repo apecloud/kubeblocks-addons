@@ -269,12 +269,7 @@ runtime:
           name: tools
   containers:
     - command:
-        - /tools/syncer
-        - --port
-        - '3601'
-        - --
-        - docker-entrypoint.sh
-        - postgres
+        - /kb-scripts/setup.sh
       env:
         - name: ALLOW_NOSSL
           value: 'true'
@@ -321,6 +316,8 @@ runtime:
             fieldRef:
               apiVersion: v1
               fieldPath: status.podIP
+        - name: KB_COMP_NAME
+          value: $(MY_COMP_NAME)
         - name: KB_POD_NAME
           value: $(MY_POD_NAME)
         - name: KB_POD_UID

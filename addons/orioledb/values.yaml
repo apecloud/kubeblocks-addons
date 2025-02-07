@@ -12,16 +12,16 @@ image:
   debug: false
   syncer:
     repository: apecloud/syncer
-    tag: "0.4.0"
+    tag: "0.4.1"
 
-dataMountPath: /postgresql/volume_data
+dataMountPath: /postgresql/data
 confMountPath: /postgresql/mount_conf
 
-dataPath: /postgresql/volume_data/pgconsensus_data
+dataPath: /postgresql/data
 # confPath is the same as the dataPath because the postgresql.conf and
 # pg_hba.conf files will be copied to the PGDATA directory,
 # When the POSTGRESQL_MOUNTED_CONF_DIR environment variable is set.
-confPath: /postgresql/volume_data
+confPath: /postgresql/conf
 
 roleProbe:
   failureThreshold: 2

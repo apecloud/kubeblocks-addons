@@ -10,7 +10,7 @@ spec:
   {{- include "orioledb.spec.common" . | nindent 2 }}
   serviceVersion: {{ .Values.componentServiceVersion.orioledb }}
   configs:
-    - name: orioledb-consensusset-configuration
+    - name: orioledb-configuration
       templateRef: {{ include "orioledb.configurationTemplate" . }}
       constraintRef: {{ include "orioledb.configConstraint" . }}
       keys:
