@@ -27,6 +27,11 @@ spec:
       - name: http
         port: 9997
         targetPort: http
+  vars:
+    - name: POD_NAMES
+      valueFrom:
+        componentVarRef:
+          podNames: Required
   runtime:
     containers:
     - name: xinference
@@ -45,6 +50,11 @@ spec:
       {{- end }}
       command:
       - /scripts/start.sh
+      env:
+        - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
       ports:
       - name: http
         containerPort: 9997

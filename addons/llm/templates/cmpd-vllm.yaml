@@ -24,6 +24,15 @@ spec:
           - name: model
             port: 8000
             targetPort: model
+  vars:
+    - name: REPLICAS
+      valueFrom:
+        componentVarRef:
+          replicas: Required
+    - name: POD_NAMES
+      valueFrom:
+        componentVarRef:
+          podNames: Required
   runtime:
     volumes:
       - name: dshm
@@ -50,6 +59,11 @@ spec:
             name: model-store
         command:
           - /scripts/start.sh
+        env:
+          - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
         ports:
           - name: model
             containerPort: 8000
