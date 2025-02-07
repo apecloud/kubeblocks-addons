@@ -4,6 +4,8 @@ metadata:
   name: xinference
   labels:
     {{- include "xinference.labels" . | nindent 4}}
+  annotations:
+    {{- include "xinference.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
   description: Xinference is a powerful and versatile library designed to serve language, speech recognition, and multimodal models.

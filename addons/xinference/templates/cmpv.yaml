@@ -4,6 +4,8 @@ metadata:
   name: xinference
   labels:
     {{- include "xinference.labels" . | nindent 4}}
+  annotations:
+    {{- include "xinference.annotations" . | nindent 4 }}
 spec:
   compatibilityRules:
   - compDefs:
