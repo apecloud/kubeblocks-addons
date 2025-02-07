@@ -5271,8 +5271,8 @@
       {
         "current": {
           "selected": true,
-          "text": "oteld-app-metrics",
-          "value": "oteld-app-metrics"
+          "text": "kubeblocks",
+          "value": "kubeblocks"
         },
         "hide": 0,
         "includeAll": false,
@@ -5282,11 +5282,11 @@
         "options": [
           {
             "selected": true,
-            "text": "oteld-app-metrics",
-            "value": "oteld-app-metrics"
+            "text": "kubeblocks",
+            "value": "kubeblocks"
           }
         ],
-        "query": "oteld-app-metrics",
+        "query": "kubeblocks",
         "queryValue": "",
         "skipUrlSync": false,
         "type": "custom"

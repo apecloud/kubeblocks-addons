@@ -3,7 +3,6 @@ apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
   name: milvus-cluster-pod-monitor
-  namespace: monitoring # Note: this is namespace for prometheus operator
   labels:               # this is labels set in `prometheus.spec.podMonitorSelector`
     release: prometheus
 spec:
