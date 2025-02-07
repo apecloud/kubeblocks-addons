@@ -10,7 +10,7 @@ spec:
   target:
     role: secondary
     fallbackRole: primary
-    account: root
+    account: kbadmin
   backupMethods:
   - name: xtrabackup
     snapshotVolumes: false
@@ -43,6 +43,23 @@ spec:
       volumeMounts:
       - name: data
         mountPath: {{ .Values.dataMountPath }}
+  - name: archive-binlog
+    target:
+      role: primary
+      account: kbadmin
+    snapshotVolumes: false
+    actionSetName: mysql-pitr
+    env:
+    - name: USE_REPLICA_STATUS
+      valueFrom:
+        versionMapping:
+          - serviceVersions:
+            - "8.4"
+            mappedValue: "true"
+    targetVolumes:
+      volumeMounts:
+        - name: data
+          mountPath: {{ .Values.dataMountPath }}
   schedules:
   - backupMethod: xtrabackup
     enabled: false
@@ -52,3 +69,7 @@ spec:
     enabled: false
     cronExpression: "0 18 * * 0"
     retentionPeriod: 7d
+  - backupMethod: archive-binlog
+    enabled: false
+    cronExpression: "*/30 * * * *"
+    retentionPeriod: 8d
