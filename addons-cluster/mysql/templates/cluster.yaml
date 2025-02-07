@@ -4,10 +4,6 @@ metadata:
   name: {{ include "kblib.clusterName" . }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
   namespace: {{ .Release.Namespace }}
-  annotations:
-  {{- if eq .Values.topology "server-with-proxy" }}
-    kubeblocks.io/extra-env: '{"PROXY_ENABLED":"on"}'
-  {{- end }}
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   clusterDef: mysql
