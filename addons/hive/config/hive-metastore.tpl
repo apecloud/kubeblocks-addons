@@ -3,7 +3,7 @@
 <configuration>
     <property>
         <name>javax.jdo.option.ConnectionURL</name>
-        <value>jdbc:mysql://192.168.0.30:3306/hive_metadata?createDatabaseIfNotExist=true&amp;useSSL=false</value>
+        <value>jdbc:mysql://{{- .METADB_MYSQL_ENDPOINTS }}:3306/hive_metadata?createDatabaseIfNotExist=true&amp;useSSL=false</value>
     </property>
     <property>
         <name>javax.jdo.option.ConnectionDriverName</name>
@@ -15,7 +15,7 @@
     </property>
     <property>
         <name>javax.jdo.option.ConnectionPassword</name>
-        <value>000000</value>
+        <value>EchHRa4508z7138H</value>
     </property>
     <property>
         <name>hive.metastore.warehouse.dir</name>

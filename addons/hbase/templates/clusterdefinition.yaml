@@ -1,0 +1,19 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterDefinition
+metadata:
+  name: hbase
+  labels:
+    {{- include "hbase.labels" . | nindent 4 }}
+spec:
+  topologies:
+    - name: hbase-cluster
+      default: true
+      components:
+        - name: hmaster
+          compDef: hbase-hmaster-2.5
+        - name: hregionserver
+          compDef: hbase-hregionserver-2.5
+      orders:
+        provision:
+          - hmaster
+          - hregionserver

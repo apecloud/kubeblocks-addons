@@ -16,6 +16,11 @@ spec:
             port: 8020
           - name: http
             port: 9870
+  serviceRefDeclarations:
+    - name: hadoopZookeeper
+      serviceRefDeclarationSpecs:
+        - serviceKind: zookeeper
+          serviceVersion: "^*"
   runtime:
     initContainers:
       - name: hadoop-common
@@ -29,14 +34,14 @@ spec:
           - |
             cp -r /opt/software/hadoop-3.3.4/* /opt/kubeemr/hadoop/hadoop-3.3.4
             mkdir -p /hadoop/dfs/metadata
-            chown -R 10000:1000 /hadoop/dfs/metadata
+            mkdir -p /hadoop/dfs/journal
+            chown -R 10000:1000 /hadoop
             chown -R 10000:1000 /opt/kubeemr/hadoop/hadoop-3.3.4
         volumeMounts:
           - name: hadoop-common
             mountPath: /opt/kubeemr/hadoop/hadoop-3.3.4
           - name: metadata-dir
-            mountPath: /hadoop/dfs/metadata
-            subPath: metadata
+            mountPath: /hadoop
     containers:
       - name: hdfs-namenode
         imagePullPolicy: {{ default "IfNotPresent" .Values.nameNode.image.pullPolicy }}
@@ -76,14 +81,16 @@ spec:
           - name: hadoop-common
             mountPath: /opt/kubeemr/hadoop/hadoop-3.3.4
           - name: metadata-dir
-            mountPath: /hadoop/dfs/metadata
-            subPath: metadata
+            mountPath: /hadoop
           - name: hadoop-core-config
-            mountPath: /opt/kubeemr/hadoop/conf/core-site.xml
+            mountPath: /hadoop/conf/core-site.xml
             subPath: core-site.xml
           - name: namenode-config
-            mountPath: /opt/kubeemr/hadoop/conf/hdfs-site.xml
+            mountPath: /hadoop/conf/hdfs-site.xml
             subPath: hdfs-site.xml
+          - name: namenode-config
+            mountPath: /hadoop/conf/log4j.properties
+            subPath: log4j.properties
           - name: scripts
             mountPath: /kubeblocks/scripts
         securityContext:
@@ -110,6 +117,11 @@ spec:
           compDef: hdfs-journalnode
           optional: false
           podFQDNs: Required
+    - name: ZOOKEEPER_ENDPOINTS
+      valueFrom:
+        serviceRefVarRef:
+          name: hadoopZookeeper
+          endpoint: Required
   configs:
     - name: config
       namespace: {{ .Release.Namespace }}

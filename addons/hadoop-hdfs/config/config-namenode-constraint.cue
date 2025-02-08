@@ -17,7 +17,7 @@
 
 #NameNodeParameter: {
 	// Cluster
-	"dfs.nameservices"?: string | "k8scluster"
+	"dfs.nameservices"?: string | "{{- .KB_CLUSTER_NAME }}"
 
 	// DFS NameNode在本地文件系统存储事务(edits)文件的位置。默认值同dfs.namenode.name.dir的默认值
 	"dfs.namenode.edits.dir": string | *"/hadoop/dfs/metadata"

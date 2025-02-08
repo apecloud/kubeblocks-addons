@@ -1,0 +1,70 @@
+# Hadoop HDFS Cluster Configuration
+
+nameOverride: ""
+
+fullnameOverride: ""
+
+# Replicas for each component
+replicas:
+  core: 1
+  journalnode: 3
+  namenode: 2
+  datanode: 1
+
+# Resource requirements for each component
+resources:
+  core:
+    requests:
+      cpu: "0.5"
+      memory: 0.5Gi
+    limits:
+      cpu: "0.5"
+      memory: 2Gi
+  journalnode:
+    requests:
+      cpu: "0.5"
+      memory: 0.5Gi
+    limits:
+      cpu: "0.5"
+      memory: 2Gi
+  namenode:
+    requests:
+      cpu: "0.5"
+      memory: 0.5Gi
+    limits:
+      cpu: "0.5"
+      memory: 2Gi
+  datanode:
+    requests:
+      cpu: "0.5"
+      memory: 0.5Gi
+    limits:
+      cpu: "0.5"
+      memory: 2Gi
+
+# Storage requirements for each component
+storage:
+  journalnode: 10Gi
+  namenode: 10Gi
+  datanode: 30Gi
+
+# Service references for external dependencies
+serviceRefs:
+  hadoopZookeeper:
+    namespace: default
+    clusterServiceSelector:
+      cluster: zkcluster
+      service:
+        component: zookeeper
+        service: headless
+        port: client
+
+# Service account configuration
+serviceAccount:
+  name: kb-hadoop-cluster
+  create: true
+
+# Advanced configurations
+terminationPolicy: Delete
+clusterDef: hadoop-hdfs
+topology: hadoop-ha-cluster

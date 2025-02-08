@@ -77,11 +77,14 @@ spec:
             mountPath: /hadoop/dfs/journal
             subPath: journal
           - name: hadoop-core-config
-            mountPath: /opt/kubeemr/hadoop/conf/core-site.xml
+            mountPath: /hadoop/conf/core-site.xml
             subPath: core-site.xml
           - name: journalnode-config
-            mountPath: /opt/kubeemr/hadoop/conf/hdfs-site.xml
+            mountPath: /hadoop/conf/hdfs-site.xml
             subPath: hdfs-site.xml
+          - mountPath: /hadoop/conf/log4j.properties
+            name: journalnode-config
+            subPath: log4j.properties
           - name: scripts
             mountPath: /kubeblocks/scripts
         securityContext:

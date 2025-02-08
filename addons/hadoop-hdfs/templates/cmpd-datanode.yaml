@@ -58,29 +58,18 @@ spec:
             command:
               - /bin/bash
               - /kubeblocks/scripts/check-data-status.sh
-        affinity:
-          podAntiAffinity:
-            requiredDuringSchedulingIgnoredDuringExecution:
-              - labelSelector:
-                  matchExpressions:
-                    - key: "app.kubernetes.io/component"
-                      operator: In
-                      values:
-                        - "hdfs-datanode"
-                    - key: "app.kubernetes.io/instance"
-                      operator: In
-                      values:
-                        - {{ .Release.Name }}
-                topologyKey: "kubernetes.io/hostname"
         volumeMounts:
           - name: hadoop-common
             mountPath: /opt/kubeemr/hadoop/hadoop-3.3.4
           - name: hadoop-core-config
-            mountPath: /opt/kubeemr/hadoop/conf/core-site.xml
+            mountPath: /hadoop/conf/core-site.xml
             subPath: core-site.xml
           - name: datanode-config
-            mountPath: /opt/kubeemr/hadoop/conf/hdfs-site.xml
+            mountPath: /hadoop/conf/hdfs-site.xml
             subPath: hdfs-site.xml
+          - mountPath: /hadoop/conf/log4j.properties
+            name: datanode-config
+            subPath: log4j.properties
           - name: hdfs-data-0
             mountPath: /hadoop/dfs/data0
             subPath: data0
@@ -110,6 +99,8 @@ spec:
       constraintRef: datanode-config-constraints
       volumeName: datanode-config
       defaultMode: 0755
+      keys:
+        - hdfs-site.xml
   scripts:
     - name: {{ include "hadoop-hdfs.name" . }}-scripts
       templateRef: {{ include "hadoop-hdfs.name" . }}-scripts

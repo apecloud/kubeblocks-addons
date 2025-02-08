@@ -14,5 +14,5 @@ spec:
     - name: v3.1.3
       serviceVersion: v3.1.3
       images:
-        hadoop-common: "dtweave/hadoop-common:v3.3.4"
+        hadoop-common: "apecloud/hadoop-common:v3.3.4"
         hive-metastore: "{{ .Values.metastore.image.repository }}:{{ .Values.metastore.image.tag }}"

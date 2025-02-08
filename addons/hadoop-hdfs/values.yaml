@@ -5,28 +5,28 @@
 core:
   image:
     registry: docker.io
-    repository: dtweave/hdfs-journalnode
+    repository: apecloud/hdfs-journalnode
     tag: "v3.3.4-1.0.0"
     pullPolicy: IfNotPresent
 
 journalNode:
   image:
     registry: docker.io
-    repository: dtweave/hdfs-journalnode
+    repository: apecloud/hdfs-journalnode
     tag: "v3.3.4-1.0.0"
     pullPolicy: IfNotPresent
 
 nameNode:
   image:
     registry: docker.io
-    repository: dtweave/hdfs-namenode
+    repository: apecloud/hdfs-namenode
     tag: "v3.3.4-1.0.0"
     pullPolicy: IfNotPresent
 
 dataNode:
   image:
     registry: docker.io
-    repository: dtweave/hdfs-datanode
+    repository: apecloud/hdfs-datanode
     tag: "v3.3.4-1.0.0"
     pullPolicy: IfNotPresent
 
