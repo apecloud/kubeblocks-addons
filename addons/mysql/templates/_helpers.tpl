@@ -498,6 +498,11 @@ command:
   - -c
   - |
     cp {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
+    if [ -d /etc/pki/tls ]; then
+      mkdir -p {{ .Values.dataMountPath }}/tls/
+      cp -L /etc/pki/tls/*.pem {{ .Values.dataMountPath }}/tls/
+      chmod 600 {{ .Values.dataMountPath }}/tls/*
+    fi
     chown -R mysql:root {{ .Values.dataMountPath }}
     export skip_slave_start="OFF"
     if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
