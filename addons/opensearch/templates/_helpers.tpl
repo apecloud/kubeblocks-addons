@@ -89,7 +89,7 @@ Define image
 Common annotations
 */}}
 {{- define "opensearch.annotations" -}}
-helm.sh/resource-policy: keep
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "opensearch.apiVersion" . }}
 {{- end }}
 

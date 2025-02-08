@@ -51,7 +51,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Common annotations
 */}}
 {{- define "milvus.annotations" -}}
-helm.sh/resource-policy: keep
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "milvus.apiVersion" . }}
 {{- end }}
 

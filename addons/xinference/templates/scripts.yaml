@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: xinference-scripts
+  labels:
+    {{- include "xinference.labels" . | nindent 4 }}
+data:
+{{- if .Values.distributed }}
+  start.sh: |
+    #!/bin/bash
+    # ref xinference doc: https://inference.readthedocs.io/zh-cn/latest/getting_started/using_xinference.html
+    set -x 
+    ordinal=${POD_NAME##*-}
+    echo "current pod ordinal: $ordinal"
+    first_pod_name=$(echo "${POD_NAMES}" | cut -d ',' -f 1)
+    if [ $ordinal -eq 0 ]; then
+      xinference-supervisor -H "${first_pod_name}"
+    else 
+      xinference-worker -e "http://${first_pod_name}:9997" -H "${POD_NAME}"
+    fi
+{{ else }}
+  start.sh: |
+    #!/bin/bash
+    xinference --host 0.0.0.0
+{{ end }}

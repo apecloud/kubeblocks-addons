@@ -54,7 +54,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Common weaviate annotations
 */}}
 {{- define "weaviate.annotations" -}}
-helm.sh/resource-policy: keep
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "weaviate.apiVersion" . }}
 {{- end }}
 

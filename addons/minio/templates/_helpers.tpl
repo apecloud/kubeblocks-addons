@@ -55,7 +55,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Common minio annotations
 */}}
 {{- define "minio.annotations" -}}
-helm.sh/resource-policy: keep
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "minio.apiVersion" . }}
 {{- end }}
 

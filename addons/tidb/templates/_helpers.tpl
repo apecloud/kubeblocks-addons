@@ -42,7 +42,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 These annotations ensure that resources from previous version won't be cleaned by helm during an upgrade.
 */}}
 {{- define "tidb.annotations" -}}
-helm.sh/resource-policy: keep
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "tidb.apiVersion" . }}
 {{- end }}
 

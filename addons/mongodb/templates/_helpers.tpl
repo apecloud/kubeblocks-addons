@@ -104,7 +104,7 @@ Get the password key.
 Common annotations
 */}}
 {{- define "mongodb.annotations" -}}
-helm.sh/resource-policy: keep
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "mongodb.apiVersion" . }}
 {{- end }}
 

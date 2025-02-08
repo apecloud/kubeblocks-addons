@@ -55,7 +55,7 @@ Define image
 Common annotations
 */}}
 {{- define "mariadb.annotations" -}}
-helm.sh/resource-policy: keep
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "mariadb.apiVersion" . }}
 {{- end }}
 

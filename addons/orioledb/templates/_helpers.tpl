@@ -55,6 +55,20 @@ Generate scripts configmap
 {{ $path | base }}: |-
 {{- $.Files.Get $path | nindent 2 }}
 {{- end }}
+
+{{/*
+Common annotations
+*/}}
+{{- define "orioledb.annotations" -}}
+{{ include "kblib.helm.resourcePolicy" . }}
+{{ include "orioledb.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "orioledb.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 
@@ -197,7 +211,7 @@ systemAccounts:
     statement:
       create: CREATE USER ${KB_ACCOUNT_NAME} SUPERUSER PASSWORD '${KB_ACCOUNT_PASSWORD}';
 tls:
-  volumeName: tls 
+  volumeName: tls
   mountPath: /etc/pki/tls
   caFile: ca.pem
   certFile: cert.pem
@@ -217,7 +231,7 @@ lifecycleActions:
       command:
         - /bin/sh
         - -c
-        - |          
+        - |
           /tools/syncerctl switchover --primary "$POSTGRES_LEADER_POD_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
   accountProvision:
     exec:

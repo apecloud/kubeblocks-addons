@@ -54,7 +54,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Common annotations
 */}}
 {{- define "kafka.annotations" -}}
-helm.sh/resource-policy: keep
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "kafka.apiVersion" . }}
 {{- end }}
 
@@ -196,18 +196,4 @@ Define kafka tools scripts tpl name
 */}}
 {{- define "kafka.toolsScriptsTplName" -}}
 kafka-tools-scripts-tpl
-{{- end -}}
-
-{{/*
-Define kafka default client system account secret name
-*/}}
-{{- define "kafka.defaultClientSystemAccountSecretName" -}}
-kafka-client-secret
-{{- end -}}
-
-{{/*
-Define kafka default superuser system account secret name
-*/}}
-{{- define "kafka.defaultSuperUserSystemAccountSecretName" -}}
-kafka-superusers-secret
 {{- end -}}

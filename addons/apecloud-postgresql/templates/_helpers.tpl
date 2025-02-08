@@ -2,7 +2,7 @@
 Common annotations
 */}}
 {{- define "apecloud-postgresql.annotations" -}}
-helm.sh/resource-policy: keep
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "apecloud-postgresql.apiVersion" . }}
 {{- end }}
 
