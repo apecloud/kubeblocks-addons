@@ -18,6 +18,12 @@ sources:
   - https://github.com/apecloud/kubeblocks/
 
 annotations:
-    addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
-    addon.kubeblocks.io/model: "vector"
-    addon.kubeblocks.io/provider: "community"
+  addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
+  addon.kubeblocks.io/model: "vector"
+  addon.kubeblocks.io/provider: "community"
+
+dependencies:
+  - name: kblib
+    version: 0.1.0
+    repository: file://../kblib
+    alias: extra

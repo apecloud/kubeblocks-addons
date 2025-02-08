@@ -53,7 +53,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Common annotations
 */}}
 {{- define "oceanbase-ce.annotations" -}}
-helm.sh/resource-policy: keep
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "oceanbase-ce.apiVersion" . }}
 {{- end }}
 
