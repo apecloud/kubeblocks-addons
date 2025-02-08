@@ -1,9 +1,9 @@
 image:
-  repository: apecloud/vllm
+  repository: vllm/vllm-openai
   pullPolicy: IfNotPresent
   registry: docker.io
   # Overrides the image tag whose default is the chart appVersion.
-  tag: v0.2.7-amd64
+  tag: v0.7.2
 imageDev:
   # refer: ghcr.io/abetlen/llama-cpp-python:latest
   repository: apecloud/llama-cpp-python
@@ -11,4 +11,4 @@ imageDev:
   # if the value of imageDev.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
   registry: ""
   # Overrides the image tag whose default is the chart appVersion.
-  tagNew: 0.1.0-new
+  tag: 20241115-latest
