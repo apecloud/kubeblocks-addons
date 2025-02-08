@@ -1,4 +1,4 @@
-
+#!/bin/bash
 function get_wal_name() {
     local fileName=$1
     local file_without_ext=${fileName%.*}
