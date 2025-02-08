@@ -10,10 +10,12 @@ metadata:
         "name": "postgresql-configuration",
         "key": "postgresql.conf",
         "enable": {
-          "archive-wal": [{"key": "archive_command","value": "''"}]
+          "archive-wal": [{"key": "archive_command","value": "''"}],
+          "wal-g-archive": [{"key": "archive_command","value": "'envdir {{ .Values.dataMountPath }}/wal-g/env {{ .Values.dataMountPath }}/wal-g/wal-g wal-push %p'"}]
         },
         "disable": {
-          "archive-wal": [{ "key": "archive_command","value": "'/bin/true'"}]
+          "archive-wal": [{ "key": "archive_command","value": "'/bin/true'"}],
+          "wal-g-archive": [{ "key": "archive_command","value": "'/bin/true'"}]
         }
       }
 spec:
@@ -74,11 +76,27 @@ spec:
         volumeMounts:
           - name: data
             mountPath: {{ .Values.dataMountPath }}
+    - name: wal-g-incremental
+      actionSetName: postgres-wal-g-incremental
+      snapshotVolumes: false
+      compatibleMethod: wal-g
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: {{.Values.dataMountPath }}
     - name: archive-wal
       target:
         role: primary
         account: postgres
       actionSetName: postgresql-for-pitr
+      snapshotVolumes: false
+      env: *compDefEnvMapping
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
+    - name: wal-g-archive
+      actionSetName: postgres-wal-g-pitr
       snapshotVolumes: false
       env: *compDefEnvMapping
       targetVolumes:
@@ -99,6 +117,10 @@ spec:
       cronExpression: "0 18 * * *"
       retentionPeriod: 7d
     - backupMethod: archive-wal
+      enabled: false
+      cronExpression: "*/5 * * * *"
+      retentionPeriod: 8d
+    - backupMethod: wal-g-archive
       enabled: false
       cronExpression: "*/5 * * * *"
       retentionPeriod: 8d

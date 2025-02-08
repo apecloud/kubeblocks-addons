@@ -1,13 +1,15 @@
+#!/bin/bash
+set -e
+set -o pipefail
+
 backup_base_path="$(dirname $DP_BACKUP_BASE_PATH)/wal-g"
 export WALG_DATASAFED_CONFIG=""
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export WALG_COMPRESSION_METHOD=zstd
 export PGPASSWORD=${DP_DB_PASSWORD}
 export DATASAFED_BACKEND_BASE_PATH=${backup_base_path}
-# full backup without incremental backup
-export WALG_DELTA_MAX_STEPS=0
-# 20Gi for bundle file
-export WALG_TAR_SIZE_THRESHOLD=21474836480
+# incremental backup count limits
+export WALG_DELTA_MAX_STEPS=100
 
 # if the script exits with a non-zero exit code, touch a file to indicate that the backup failed,
 # the sync progress container will check this file and exit if it exists
@@ -20,10 +22,13 @@ function handle_exit() {
   fi
 }
 
-function get_backup_name() {
-  line=$(cat result.txt | tail -n 1)
-  if [[ $line == *"Wrote backup with name"* ]]; then
-     echo ${line##* }
+function getWalGSentinelInfo() {
+  local sentinelFile=${1}
+  local out=$(datasafed list ${sentinelFile})
+  if [ "${out}" == "${sentinelFile}" ]; then
+     datasafed pull "${sentinelFile}" ${sentinelFile}
+     echo "$(cat ${sentinelFile})"
+     return
   fi
 }
 
@@ -35,27 +40,52 @@ function writeSentinelInBaseBackupPath() {
   export DATASAFED_BACKEND_BASE_PATH=${backup_base_path}
 }
 
+function get_backup_name() {
+  local parent_wal_g_backup_name=${1}
+  line=$(cat result.txt | tail -n 1)
+  if [[ $line == *"Wrote backup with name"* ]]; then
+     echo ${line##* }
+     return
+  fi
+  if [[ $line == *"Finish LSN of backup ${parent_wal_g_backup_name} greater than current LSN"* ]]; then
+     echo ${parent_wal_g_backup_name}
+     return
+  fi
+}
+
+
 trap handle_exit EXIT
-set -e
-# 1. do full backup
+
+# 1. check parent backup name
+if [[ -z ${DP_PARENT_BACKUP_NAME} ]]; then
+  echo "DP_PARENT_BACKUP_NAME is empty"
+  exit 1
+fi
+
+# 2. parent backup name of the wal-g
+export DATASAFED_BACKEND_BASE_PATH=$(dirname ${DP_BACKUP_BASE_PATH})/${DP_PARENT_BACKUP_NAME}
+parentWalGBackupName=$(getWalGSentinelInfo "wal-g-backup-name")
+
+# 1. incremental backup
 writeSentinelInBaseBackupPath "${backup_base_path}" "wal-g-backup-repo.path"
-PGHOST=${DP_DB_HOST} PGUSER=${DP_DB_USER} PGPORT=5432 wal-g backup-push ${DATA_DIR} 2>&1 | tee result.txt
+PGHOST=${DP_DB_HOST} PGUSER=${DP_DB_USER} PGPORT=5432 wal-g backup-push ${DATA_DIR} --delta-from-name ${parentWalGBackupName} 2>&1 | tee result.txt
+
+# 2. get backup name of the wal-g
+backupName=$(get_backup_name "${parentWalGBackupName}")
+if [[ -z ${backupName} ]] || [[ ${backupName} != "base_"* ]];then
+   echo "ERROR: backup failed, can not get the backup name"
+   exit 1
+fi
 
 set +e
 echo "switch wal log"
 PSQL="psql -h ${KB_CLUSTER_COMP_NAME}-${KB_COMP_NAME} -U ${DP_DB_USER} -d postgres"
 ${PSQL} -c "select pg_switch_wal();"
 
-# 2. get backup name of the wal-g
-backupName=$(get_backup_name)
-if [[ -z ${backupName} ]] || [[ ${backupName} != "base_"* ]];then
-   echo "ERROR: backup failed, can not get the backup name"
-   exit 1
-fi
-
 # 3. add sentinel file for this backup CR
 echo "" | datasafed push - "/basebackups_005/${backupName}_dp_${DP_BACKUP_NAME}"
 writeSentinelInBaseBackupPath "${backupName}" "wal-g-backup-name"
+
 
 # 4. stat startTime,stopTime,totalSize for this backup
 sentinel_file="/basebackups_005/${backupName}_backup_stop_sentinel.json"
