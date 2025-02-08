@@ -87,17 +87,9 @@
         "serviceReference": {
           "type": "object",
           "properties": {
-            "namespace": {
-              "type": "string",
-              "description": "Namespace of the service reference"
-            },
-            "port": {
-              "type": "integer",
-              "description": "Port number of the service reference"
-            },
             "endpoint": {
               "type": "string",
-              "description": "Endpoint name of the service reference"
+              "description": "Endpoint name of the service reference, format: <host>:<port>"
             }
           },
           "additionalProperties": false
@@ -105,13 +97,13 @@
         "clusterServiceSelector": {
           "type": "object",
           "properties": {
-            "cluster": {
+            "clusterName": {
               "type": "string",
               "description": "orchestrator cluster name for service selector"
             },
-            "portName": {
+            "namespace": {
               "type": "string",
-              "description": "Port name for service selector"
+              "description": "orchestrator cluster namespace for service selector"
             }
           },
           "additionalProperties": false

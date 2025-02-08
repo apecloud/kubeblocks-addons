@@ -43,9 +43,8 @@ orchestrator:
   # cluster_password: nb2wZpZ9OXXTF2Mv
 
   serviceReference:
-    namespace: ""
-    port: 80
+    # format <host>:<port>
     endpoint: "myorc-orchestrator"
   clusterServiceSelector:
-    cluster: ""
-    portName: "orc-http"
+    clusterName: ""
+    namespace: ""
