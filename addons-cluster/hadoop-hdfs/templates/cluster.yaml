@@ -52,6 +52,15 @@ spec:
                 storage: {{ .Values.storage.journalnode }}
     - name: namenode
       componentDef: hdfs-namenode
+      serviceRefs:
+        - name: hadoopZookeeper
+          namespace: {{ .Values.serviceRefs.hadoopZookeeper.namespace }}
+          clusterServiceSelector:
+            cluster: {{ .Values.serviceRefs.hadoopZookeeper.clusterServiceSelector.cluster }}
+            service:
+              component: {{ .Values.serviceRefs.hadoopZookeeper.clusterServiceSelector.service.component }}
+              service: {{ .Values.serviceRefs.hadoopZookeeper.clusterServiceSelector.service.service }}
+              port: {{ .Values.serviceRefs.hadoopZookeeper.clusterServiceSelector.service.port }}
       replicas: {{ .Values.replicas.namenode }}
       resources:
         requests:
