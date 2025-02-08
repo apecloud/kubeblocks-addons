@@ -54,7 +54,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Common annotations
 */}}
 {{- define "zookeeper.annotations" -}}
-helm.sh/resource-policy: keep
+{{ include "kblib.helm.resourcePolicy" . }}
 apps.kubeblocks.io/skip-immutable-check: "true"
 {{ include "zookeeper.apiVersion" . }}
 {{- end }}

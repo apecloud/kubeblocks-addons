@@ -18,3 +18,9 @@ annotations:
   addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
   addon.kubeblocks.io/model: "tsdb"
   addon.kubeblocks.io/provider: "community"
+
+dependencies:
+  - name: kblib
+    version: 0.1.0
+    repository: file://../kblib
+    alias: extra

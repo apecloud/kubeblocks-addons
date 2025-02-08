@@ -36,7 +36,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Common annotations
 */}}
 {{- define "apecloud-mysql.annotations" -}}
-helm.sh/resource-policy: keep
+{{ include "kblib.helm.resourcePolicy". }}
 {{ include "apecloud-mysql.apiVersion" . }}
 {{- end }}
 

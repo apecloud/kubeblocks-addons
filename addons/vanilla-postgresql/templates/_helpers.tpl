@@ -2,7 +2,7 @@
 Common annotations
 */}}
 {{- define "vanilla-postgresql.annotations" -}}
-helm.sh/resource-policy: keep
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "vanilla-postgresql.apiVersion" . }}
 {{- end }}
 
