@@ -1,3 +1,4 @@
+#!/bin/bash
 backup_base_path="$(dirname $DP_BACKUP_BASE_PATH)/wal-g/wal_005"
 export WALG_DATASAFED_CONFIG=""
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"

@@ -1,3 +1,4 @@
+#!/bin/bash
 set -e
 export WALG_DATASAFED_CONFIG=""
 export WALG_COMPRESSION_METHOD=zstd

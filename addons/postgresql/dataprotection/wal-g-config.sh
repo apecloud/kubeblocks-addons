@@ -1,3 +1,4 @@
+#!/bin/bash
 set -e
 
 if [[ ! -f /etc/datasafed/datasafed.conf ]]; then
