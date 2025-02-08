@@ -11,9 +11,9 @@ spec:
     - compDefs:
         - {{ include "orioledb.cmpdRegexpPattern" . }}
       releases:
-        - 16.4.0
+        - pg-16.4.0
   releases:
-    - name: latest-pg16
+    - name: pg-16.4.0
       serviceVersion: 16.4.0
       images:
         orioledb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}

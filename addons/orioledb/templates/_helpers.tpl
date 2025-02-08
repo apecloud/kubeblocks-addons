@@ -128,7 +128,6 @@ services:
             port: 5432
             targetPort: tcp-orioledb
     roleSelector: leader
-    podService: true
 volumes:
   - highWatermark: 0
     name: data
@@ -204,6 +203,14 @@ tls:
   certFile: cert.pem
   keyFile: key.pem
 lifecycleActions:
+  availableProbe:
+    periodSeconds: 1
+    timeoutSeconds: 1
+    exec:
+      container: orioledb
+      command:
+        - /tools/syncerctl
+        - getrole
   roleProbe:
     periodSeconds: 1
     timeoutSeconds: 1
@@ -212,30 +219,22 @@ lifecycleActions:
       command:
         - /tools/syncerctl
         - getrole
-  switchover:
-    exec:
-      command:
-        - /bin/sh
-        - -c
-        - |
-          if [ -z "$KB_SWITCHOVER_ROLE" ]; then
-              echo "role can't be empty"
-              exit 1
-          fi
+  # switchover:
+  #   exec:
+  #     command:
+  #       - /bin/sh
+  #       - -c
+  #       - |
+  #         if [ -z "$KB_SWITCHOVER_ROLE" ]; then
+  #             echo "role can't be empty"
+  #             exit 1
+  #         fi
 
-          if [ "$KB_SWITCHOVER_ROLE" != "leader" ]; then
-              exit 0
-          fi
+  #         if [ "$KB_SWITCHOVER_ROLE" != "leader" ]; then
+  #             exit 0
+  #         fi
           
-          /tools/syncerctl switchover --primary "$POSTGRES_LEADER_POD_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
-  memberLeave:
-    exec:
-      container: orioledb
-      command:
-        - /bin/sh
-        - -c
-        - |
-          /tools/syncerctl leave --instance "$KB_LEAVE_MEMBER_POD_NAME"
+  #         /tools/syncerctl switchover --primary "$POSTGRES_LEADER_POD_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
   accountProvision:
     exec:
       container: orioledb
