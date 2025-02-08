@@ -60,3 +60,18 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+
+{{/*
+Common annotations
+*/}}
+{{- define "hadoop-hdfs.annotations" -}}
+{{ include "hadoop-hdfs.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "hadoop-hdfs.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{- end }}

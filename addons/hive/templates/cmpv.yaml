@@ -4,6 +4,8 @@ metadata:
   name: hive
   labels:
     {{- include "hive.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hive.annotations" . | nindent 4 }}
 spec:
   compatibilityRules:
     - releases:

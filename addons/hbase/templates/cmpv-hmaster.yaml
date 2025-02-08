@@ -4,6 +4,8 @@ metadata:
   name: hbase-hmaster
   labels:
     {{- include "hbase.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hbase.annotations" . | nindent 4 }}
 spec:
   compatibilityRules:
     - compDefs:

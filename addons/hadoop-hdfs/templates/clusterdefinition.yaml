@@ -4,6 +4,8 @@ metadata:
   name: hadoop-hdfs
   labels:
     {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop-hdfs.apiVersion" . | nindent 4 }}
 spec:
   topologies:
     - name: hadoop-ha-cluster

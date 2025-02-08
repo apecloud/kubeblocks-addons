@@ -4,6 +4,8 @@ metadata:
   name: hive-metastore
   labels:
     {{- include "hive.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hive.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
   description: {{ .Chart.Description }}
@@ -69,7 +71,7 @@ spec:
             subPath: core-site.xml
           - name: hadoop-hdfs-config
             mountPath: /hadoop/conf/hdfs-site.xml
-            subPath: hdfs-site.xml 
+            subPath: hdfs-site.xml
         securityContext:
           runAsUser: 10000
           runAsGroup: 1000

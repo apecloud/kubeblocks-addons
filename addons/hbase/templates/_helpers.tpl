@@ -60,3 +60,17 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Common annotations
+*/}}
+{{- define "hbase.annotations" -}}
+{{ include "hbase.apiVersion" . }}
+{{- end }}
+
+{{/*
+API version annotation
+*/}}
+{{- define "hbase.apiVersion" -}}
+kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
+{{- end }}

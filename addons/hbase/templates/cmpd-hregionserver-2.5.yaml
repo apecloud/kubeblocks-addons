@@ -4,6 +4,8 @@ metadata:
   name: hbase-hregionserver-2.5
   labels:
     {{- include "hbase.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hbase.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
   description: HBase RegionServer component

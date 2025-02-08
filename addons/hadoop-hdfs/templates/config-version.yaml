@@ -4,6 +4,8 @@ metadata:
   name: hadoop-core
   labels:
     {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop-hdfs.annotations" . | nindent 4 }}
 spec:
   compatibilityRules:
     - releases:
@@ -22,6 +24,8 @@ metadata:
   name: hdfs-journalnode
   labels:
     {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop-hdfs.annotations" . | nindent 4 }}
 spec:
   compatibilityRules:
     - releases:
@@ -41,6 +45,8 @@ metadata:
   name: hdfs-namenode
   labels:
     {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop-hdfs.annotations" . | nindent 4 }}
 spec:
   compatibilityRules:
     - releases:
@@ -60,6 +66,8 @@ metadata:
   name: hdfs-datanode
   labels:
     {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop-hdfs.annotations" . | nindent 4 }}
 spec:
   compatibilityRules:
     - releases:

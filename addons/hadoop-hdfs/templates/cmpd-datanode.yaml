@@ -4,6 +4,8 @@ metadata:
   name: hdfs-datanode
   labels:
     {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop-hdfs.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks
   description: {{ .Chart.Description }}
