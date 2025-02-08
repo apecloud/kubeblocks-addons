@@ -217,16 +217,7 @@ lifecycleActions:
       command:
         - /bin/sh
         - -c
-        - |
-          if [ -z "$KB_SWITCHOVER_ROLE" ]; then
-              echo "role can't be empty"
-              exit 1
-          fi
-
-          if [ "$KB_SWITCHOVER_ROLE" != "primary" ]; then
-              exit 0
-          fi
-          
+        - |          
           /tools/syncerctl switchover --primary "$POSTGRES_LEADER_POD_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
   accountProvision:
     exec:
