@@ -63,7 +63,7 @@
             "clusterServiceSelector": {
               "type": "object",
               "properties": {
-                "cluster": { "type": "string", "default": "hadoop2" },
+                "cluster": { "type": "string", "default": "hadoopcluster" },
                 "service": {
                   "type": "object",
                   "properties": {
@@ -110,7 +110,7 @@
     },
     "hadoopClusterName": {
       "type": "string",
-      "default": "hadoop2",
+      "default": "hadoopcluster",
       "description": "Name of the linked Hadoop cluster."
     }
   },

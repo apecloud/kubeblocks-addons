@@ -44,7 +44,7 @@ serviceRefs:
   hadoopNamenode:
     namespace: default
     clusterServiceSelector:
-      cluster: hadoop2
+      cluster: hadoopcluster
       service:
         component: namenode
         service: headless
@@ -59,4 +59,4 @@ serviceAccount:
 terminationPolicy: Delete
 clusterDef: hbase
 topology: hbase-cluster
-hadoopClusterName: hadoop2
+hadoopClusterName: hadoopcluster

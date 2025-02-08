@@ -4,7 +4,7 @@
 <configuration>
     <property>
         <name>dfs.nameservices</name>
-        <value>{{- .KB_CLUSTER_NAME }}</value>
+        <value>{{ .CLUSTER_NAME }}</value>
     </property>
     <property>
         <name>dfs.journalnode.edits.dir</name>
@@ -15,7 +15,7 @@
         <name>dfs.journalnode.rpc-address</name>
         <value>0.0.0.0:8485</value>
     </property>
-    
+
     <property>
         <name>dfs.journalnode.http-address</name>
         <value>0.0.0.0:8480</value>

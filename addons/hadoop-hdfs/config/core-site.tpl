@@ -4,7 +4,7 @@
 <configuration>
       <property>
           <name>fs.defaultFS</name>
-          <value>hdfs://{{- .KB_CLUSTER_NAME }}</value>
+          <value>hdfs://{{ .CLUSTER_NAME }}</value>
       </property>
       <property>
           <name>ha.zookeeper.quorum</name>

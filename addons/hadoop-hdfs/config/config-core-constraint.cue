@@ -20,7 +20,7 @@
 	"hadoop.tmp.dir": string | *"/tmp/hadoop"
 
 	//  说明:默认的文件系统名。
-	"fs.defaultFS": string | *"hdfs://{{- .KB_CLUSTER_NAME }}"
+	"fs.defaultFS": string | *"hdfs://{{ .CLUSTER_NAME }}"
 
 	// A comma separated list of class names. Each class in the list must extend org.apache.hadoop.http.FilterInitializer. The corresponding Filter will be initialized. Then, the Filter will be applied to all user facing jsp and servlet web pages. The ordering of the list defines the ordering of the filters
 	"hadoop.http.filter.initializers": string | "org.apache.hadoop.http.lib.StaticUserWebFilter"

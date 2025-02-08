@@ -13,14 +13,14 @@ extract_ordinal_from_object_name() {
 }
 
 get_minimum_initialize_pod_ordinal() {
-  if [ -z "$KB_POD_LIST" ]; then
-    echo "KB_POD_LIST is empty, use default initialize pod_ordinal:0 as primary node."
+  if [ -z "$HBASE_MASTER_POD_LIST" ]; then
+    echo "HBASE_MASTER_POD_LIST is empty, use default initialize pod_ordinal:0 as primary node."
     default_initialize_pod_ordinal=0
     return
   fi
 
-  # parse minimum ordinal from env $KB_POD_LIST, the value format is "pod1,pod2,..."
-  IFS=',' read -ra pod_list <<< "$KB_POD_LIST"
+  # parse minimum ordinal from env $HBASE_MASTER_POD_LIST, the value format is "pod1,pod2,..."
+  IFS=',' read -ra pod_list <<< "$HBASE_MASTER_POD_LIST"
   for pod in "${pod_list[@]}"; do
     if [ -z "$default_initialize_pod_ordinal" ]; then
       default_initialize_pod_ordinal=$(extract_ordinal_from_object_name "$pod")
@@ -33,7 +33,7 @@ get_minimum_initialize_pod_ordinal() {
   done
 }
 
-kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.cluster.local"
+kb_pod_fqdn="$POD_NAME.$CLUSTER_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.cluster.local"
 hadoop_cluster_name="$HADOOP_CLUSTER_NAME"
 sed -e "/<name>hbase.regionserver.hostname<\/name>/,/<\/property>/ {
     /<value>/ {
