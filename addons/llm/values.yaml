@@ -1,5 +1,5 @@
 image:
-  repository: apecloud/vllm
+  repository: vllm/vllm-openai
   pullPolicy: IfNotPresent
   registry: docker.io
   # Overrides the image tag whose default is the chart appVersion.
