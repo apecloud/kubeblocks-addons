@@ -61,7 +61,7 @@ helm.sh/chart: {{ include "nebula.chart" . }}
 Common annotations
 */}}
 {{- define "nebula.annotations" -}}
-helm.sh/resource-policy: keep
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "nebula.apiVersion" . }}
 {{- end }}
 

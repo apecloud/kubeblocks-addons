@@ -32,3 +32,10 @@ policyRules:
   - get
   - list
 {{- end -}}
+
+
+{{- define "kblib.helm.resourcePolicy" -}}
+{{- if eq .Values.extra.keepResource true }}
+helm.sh/resource-policy: keep
+{{- end -}}
+{{- end -}}

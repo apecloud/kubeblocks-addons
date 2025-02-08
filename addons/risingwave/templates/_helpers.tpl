@@ -54,7 +54,7 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 Common risingwave annotations
 */}}
 {{- define "risingwave.annotations" -}}
-helm.sh/resource-policy: keep
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "risingwave.apiVersion" . }}
 {{- end }}
 
