@@ -318,6 +318,12 @@ systemAccounts:
   - name: proxysql
     statement:
       create: CREATE USER IF NOT EXISTS '${KB_ACCOUNT_NAME}' IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT SELECT ON performance_schema.* TO '${KB_ACCOUNT_NAME}'; GRANT SELECT ON sys.* TO '${KB_ACCOUNT_NAME}';
+tls:
+  volumeName: tls
+  mountPath: /etc/pki/tls
+  caFile: ca.pem
+  certFile: cert.pem
+  keyFile: key.pem
 roles:
   - name: primary
     updatePriority: 2
@@ -376,6 +382,10 @@ vars:
       componentVarRef:
         optional: false
         podNames: Required
+  - name: TLS_ENABLED
+    valueFrom:
+      tlsVarRef:
+        enabled: Optional
 exporter:
   containerName: mysql-exporter
   scrapePath: /metrics
