@@ -127,16 +127,16 @@ services:
           - name: orioledb
             port: 5432
             targetPort: tcp-orioledb
-    roleSelector: leader
+    roleSelector: primary
 volumes:
   - highWatermark: 0
     name: data
     needSnapshot: false
 roles:
-  - name: leader
+  - name: primary
     updatePriority: 3
     participatesInQuorum: true
-  - name: follower
+  - name: secondary
     updatePriority: 2
     participatesInQuorum: true
 vars:
@@ -147,7 +147,7 @@ vars:
         compDef: {{ include "orioledb.cmpdName" . }}
         optional: true
         podNamesForRole:
-          role: leader
+          role: primary
           option: Optional
   - name: POSTGRES_USER
     valueFrom:
@@ -203,38 +203,31 @@ tls:
   certFile: cert.pem
   keyFile: key.pem
 lifecycleActions:
-  availableProbe:
-    periodSeconds: 1
-    timeoutSeconds: 1
-    exec:
-      container: orioledb
-      command:
-        - /tools/syncerctl
-        - getrole
   roleProbe:
-    periodSeconds: 1
+    periodSeconds: 5
     timeoutSeconds: 1
     exec:
       container: orioledb
       command:
         - /tools/syncerctl
         - getrole
-  # switchover:
-  #   exec:
-  #     command:
-  #       - /bin/sh
-  #       - -c
-  #       - |
-  #         if [ -z "$KB_SWITCHOVER_ROLE" ]; then
-  #             echo "role can't be empty"
-  #             exit 1
-  #         fi
+  switchover:
+    exec:
+      container: orioledb
+      command:
+        - /bin/sh
+        - -c
+        - |
+          if [ -z "$KB_SWITCHOVER_ROLE" ]; then
+              echo "role can't be empty"
+              exit 1
+          fi
 
-  #         if [ "$KB_SWITCHOVER_ROLE" != "leader" ]; then
-  #             exit 0
-  #         fi
+          if [ "$KB_SWITCHOVER_ROLE" != "primary" ]; then
+              exit 0
+          fi
           
-  #         /tools/syncerctl switchover --primary "$POSTGRES_LEADER_POD_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
+          /tools/syncerctl switchover --primary "$POSTGRES_LEADER_POD_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
   accountProvision:
     exec:
       container: orioledb
@@ -331,6 +324,9 @@ runtime:
       ports:
         - containerPort: 5432
           name: tcp-orioledb
+        - name: ha
+          protocol: TCP
+          containerPort: 3601
       securityContext:
         runAsUser: 0
       volumeMounts:
