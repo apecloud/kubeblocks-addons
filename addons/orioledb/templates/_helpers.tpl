@@ -2,7 +2,7 @@
 Common annotations
 */}}
 {{- define "orioledb.annotations" -}}
-helm.sh/resource-policy: keep
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "orioledb.apiVersion" . }}
 {{- end }}
 
@@ -55,22 +55,7 @@ Generate scripts configmap
 {{ $path | base }}: |-
 {{- $.Files.Get $path | nindent 2 }}
 {{- end }}
-
-{{/*
-Common annotations
-*/}}
-{{- define "orioledb.annotations" -}}
-{{ include "kblib.helm.resourcePolicy" . }}
-{{ include "orioledb.apiVersion" . }}
 {{- end }}
-
-{{/*
-API version annotation
-*/}}
-{{- define "orioledb.apiVersion" -}}
-kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
-{{- end }}
-
 
 {{/*
 Define orioledb component definition regular expression name prefix
