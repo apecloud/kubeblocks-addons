@@ -67,8 +67,8 @@ addons-cluster/opensearch/ @iziang @leon-inf @Y-Rookie @apecloud/kb-reviewers @a
 addons/orchestrator/ @kubeJocker @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/orchestrator/ @kubeJocker @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/orioledb/ @ldming @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/orioledb/ @ldming @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons/orioledb/ @1aal @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/orioledb/ @1aal @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
 addons/polardbx/ @Vettal_Wu @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/polardbx/ @Vettal_Wu @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
