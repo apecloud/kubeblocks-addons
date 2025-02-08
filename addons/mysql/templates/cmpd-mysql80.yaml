@@ -68,8 +68,12 @@ spec:
           - -c
           - |
             cp {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
+            if [ -d /etc/pki/tls ]; then
+              mkdir -p {{ .Values.dataMountPath }}/tls/
+              cp -L /etc/pki/tls/*.pem {{ .Values.dataMountPath }}/tls/
+              chmod 600 {{ .Values.dataMountPath }}/tls/*
+            fi
             chown -R mysql:root {{ .Values.dataMountPath }}
-            export LD_PRELOAD=/tools/lib/libjemalloc.so.2 
             SERVICE_ID=$((${POD_NAME##*-} + 1))
             docker-entrypoint.sh mysqld --server-id $SERVICE_ID \
                --plugin-load-add=rpl_semi_sync_source=semisync_source.so \
@@ -94,6 +98,8 @@ spec:
         env:
           - name: PATH
             value: /tools/xtrabackup/bin:/tools/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          - name: LD_PRELOAD
+            value: /tools/lib/libjemalloc.so.2
           - name: KB_SERVICE_CHARACTER_TYPE
             value: mysql
           - name: MYSQL_INITDB_SKIP_TZINFO

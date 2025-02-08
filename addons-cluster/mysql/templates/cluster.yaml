@@ -11,6 +11,9 @@ spec:
   componentSpecs:
     - name: mysql
       serviceVersion: {{ .Values.version }}
+      tls: true   # set TLS to true
+      issuer:     # if TLS is True, this filed is required.
+        name: KubeBlocks  # set Issuer to [KubeBlocks, UserProvided].
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "mysql-cluster.replicaCount" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
