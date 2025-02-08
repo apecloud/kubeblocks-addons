@@ -6,8 +6,8 @@ type: application
 
 version: 1.0.0-alpha.0
 
-# This is the version number of the ApeCloud PostgreSQL being deployed
-appVersion: "16.33"
+# This is the version number of the Orioledb being deployed
+appVersion: "16.4.0"
 
 home: https://kubeblocks.io/
 icon: https://github.com/apecloud/kubeblocks/raw/main/img/logo.png
