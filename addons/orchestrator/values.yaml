@@ -19,6 +19,13 @@ auth:
 ## If specified, the component definition will use it as name.
 compDefinitionVersionSuffix: ""
 
+roleProbe:
+  periodSeconds: 5
+  timeoutSeconds: 5
+
+roleProbe:
+  periodSeconds: 5
+  timeoutSeconds: 5
 
 config:
   dataDir: /data

@@ -30,13 +30,13 @@
   "MySQLOrchestratorRejectReadOnly": true,
 
   "HostnameResolveMethod": "none",
-  "MySQLHostnameResolveMethod": "@@report_host",
-  "InstancePollSeconds": 5,
+  "MySQLHostnameResolveMethod": "@@hostname",
+  "InstancePollSeconds": 3,
 
   "MasterFailoverLostInstancesDowntimeMinutes": 10,
 
-  "DiscoverByShowSlaveHosts": false,
-  "FailureDetectionPeriodBlockMinutes": 60,
+  "DiscoverByShowSlaveHosts": true,
+  "FailureDetectionPeriodBlockMinutes": 10,
 
   "ProcessesShellCommand": "sh",
 
@@ -47,11 +47,15 @@
     ".*"
   ],
   "RecoveryIgnoreHostnameFilters": [],
-  "RecoveryPeriodBlockSeconds": 300,
+  "RecoveryPeriodBlockSeconds": 30,
+  "RecoverNonWriteableMaster": true,
   "RemoveTextFromHostnameDisplay": ":3306",
   "UnseenInstanceForgetHours": 1,
 
   "OnFailureDetectionProcesses": [
     "echo 'Detected {failureType} on {failureCluster}. Affected replicas: {countReplicas}' >> /tmp/recovery.log"
-  ]
+  ],
+
+  "RecoverLockedSemiSyncMaster": true,
+  "UseSuperReadOnly": true
 }
