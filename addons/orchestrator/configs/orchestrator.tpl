@@ -28,6 +28,8 @@
   "DetachLostReplicasAfterMasterFailover": true,
   "FailMasterPromotionIfSQLThreadNotUpToDate": true,
   "MySQLOrchestratorRejectReadOnly": true,
+  "MySQLTopologyReadTimeoutSeconds": 3,
+  "MySQLDiscoveryReadTimeoutSeconds": 3,
 
   "HostnameResolveMethod": "none",
   "MySQLHostnameResolveMethod": "@@hostname",
