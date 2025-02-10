@@ -13,6 +13,9 @@
   "MySQLTopologyUseMutualTLS": false,
   "MySQLTopologyReadTimeoutSeconds": 3,
   "MySQLDiscoveryReadTimeoutSeconds": 3,
+  "MySQLConnectTimeoutSeconds": 1,
+
+
 
   "MySQLOrchestratorHost": "${META_MYSQL_ENDPOINT}",
   "MySQLOrchestratorPort": ${META_MYSQL_PORT},
