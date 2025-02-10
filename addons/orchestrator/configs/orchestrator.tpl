@@ -31,12 +31,12 @@
 
   "HostnameResolveMethod": "none",
   "MySQLHostnameResolveMethod": "@@hostname",
-  "InstancePollSeconds": 5,
+  "InstancePollSeconds": 3,
 
   "MasterFailoverLostInstancesDowntimeMinutes": 10,
 
-  "DiscoverByShowSlaveHosts": false,
-  "FailureDetectionPeriodBlockMinutes": 60,
+  "DiscoverByShowSlaveHosts": true,
+  "FailureDetectionPeriodBlockMinutes": 10,
 
   "ProcessesShellCommand": "sh",
 
@@ -47,7 +47,8 @@
     ".*"
   ],
   "RecoveryIgnoreHostnameFilters": [],
-  "RecoveryPeriodBlockSeconds": 300,
+  "RecoveryPeriodBlockSeconds": 30,
+  "RecoverNonWriteableMaster": true,
   "RemoveTextFromHostnameDisplay": ":3306",
   "UnseenInstanceForgetHours": 1,
 
