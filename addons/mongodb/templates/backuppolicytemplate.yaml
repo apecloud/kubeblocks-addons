@@ -31,6 +31,12 @@ spec:
         volumeMounts:
           - name: data
             mountPath: {{ .Values.dataMountPath }}
+    - name: archive-oplog
+      target:
+        role: primary
+        account: root
+      snapshotVolumes: false
+      actionSetName: mongodb-pitr
   schedules:
     - backupMethod: dump
       enabled: false
@@ -43,4 +49,8 @@ spec:
     - backupMethod: volume-snapshot
       enabled: false
       cronExpression: "0 18 * * *"
+      retentionPeriod: 7d
+    - backupMethod: archive-oplog
+      enabled: false
+      cronExpression: "*/5 * * * *"
       retentionPeriod: 7d
