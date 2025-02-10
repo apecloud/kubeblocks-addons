@@ -66,6 +66,7 @@ Create the name of the service account to use
 Common annotations
 */}}
 {{- define "hive.annotations" -}}
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "hive.apiVersion" . }}
 {{- end }}
 

@@ -65,6 +65,7 @@ Create the name of the service account to use
 Common annotations
 */}}
 {{- define "hbase.annotations" -}}
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "hbase.apiVersion" . }}
 {{- end }}
 

@@ -66,6 +66,7 @@ Create the name of the service account to use
 Common annotations
 */}}
 {{- define "hadoop-hdfs.annotations" -}}
+{{ include "kblib.helm.resourcePolicy" . }}
 {{ include "hadoop-hdfs.apiVersion" . }}
 {{- end }}
 
