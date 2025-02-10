@@ -28,7 +28,7 @@ topology_password="$ORC_TOPOLOGY_PASSWORD"
 
 # create orchestrator user in mysql
 create_mysql_user() {
-  local service_name=$(echo "${POD_NAME}.${CLUSTER_NAMESPACE}" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
+  local service_name=$(echo "${POD_NAME}" | tr '-' '_' | tr '[:lower:]' '[:upper:]')
 
   mysql_note "Create MySQL User and Grant Permissions..."
 
@@ -59,7 +59,7 @@ EOF
   mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD << EOF
 USE kb_orc_meta_cluster;
 INSERT INTO kb_orc_meta_cluster (anchor,host_name,cluster_name, cluster_domain, data_center)
-VALUES (1, '$service_name', '${CLUSTER_NAME}.${CLUSTER_NAMESPACE}', '', '')
+VALUES (1, '$service_name', '${CLUSTER_NAME}', '', '')
 ON DUPLICATE KEY UPDATE
     cluster_name = VALUES(cluster_name),
     cluster_domain = VALUES(cluster_domain),
@@ -116,26 +116,26 @@ setup_master_slave() {
 
   master_fqdn=${replicas[0]}
   master_last_digit=${master_fqdn##*-}
-  master_host=$(echo "${CLUSTER_COMPONENT_NAME}_${master_last_digit}.${CLUSTER_NAMESPACE}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+  master_pod_name=$(echo "${CLUSTER_COMPONENT_NAME}_${master_last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
   master_from_orc=""
   get_master_from_orc
 
   self_last_digit=${POD_NAME##*-}
-  self_service_name=$(echo "${CLUSTER_COMPONENT_NAME}_${self_last_digit}.${CLUSTER_NAMESPACE}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+  self_service_name=$(echo "${CLUSTER_COMPONENT_NAME}_${self_last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
 
   # If the cluster is already registered to the Orchestrator and the Master of the cluster is itself, then no action is required.
   if [ "$master_from_orc" == "${self_service_name}" ]; then
     return 0
   fi
 
-  # If master_from_orc is not empty, then replace master_host with master_from_orc.
+  # If master_from_orc is not empty, then replace master_pod_name with master_from_orc.
   if [[ $master_from_orc != "" ]]; then
-    master_host=$master_from_orc
+    master_pod_name=$master_from_orc
   fi
 
   # setup semi sync for master-slave replication
   init_semi_sync_config
-  # If the master_host is empty, then this pod is the first one in the cluster, init cluster info database and create user.
+  # If the master_pod_name is empty, then this pod is the first one in the cluster, init cluster info database and create user.
   if [[ $master_from_orc == "" && $self_last_digit -eq 0 ]]; then
     echo "Create MySQL User and Grant Permissions"
 
@@ -144,10 +144,10 @@ setup_master_slave() {
     fi
     create_mysql_user
     init_cluster_info_database $self_service_name
-  # If the master_host is not empty, change master to the master_host.
+  # If the master_pod_name is not empty, change master to the master_pod_name.
   else
     mysql_note "Wait for master to be ready"
-    change_master "$master_host"
+    change_master "$master_pod_name.${CLUSTER_COMPONENT_NAME}-headless.${CLUSTER_NAMESPACE}.svc.cluster.local"
   fi
   return 0
 }
@@ -164,7 +164,7 @@ get_master_from_orc() {
       return 0
     fi
 
-    topology_info=$(/scripts/orchestrator-client -c topology -i ${CLUSTER_NAME}.${CLUSTER_NAMESPACE}) || true
+    topology_info=$(/scripts/orchestrator-client -c topology -i ${CLUSTER_NAME}) || true
     if [[ $topology_info == "" ]]; then
       return 0
     fi
