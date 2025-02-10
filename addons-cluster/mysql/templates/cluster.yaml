@@ -19,17 +19,17 @@ spec:
       serviceRefs:
         {{- if eq .Values.orchestrator.clusterServiceSelector.cluster ""}}
         - name: orchestrator
-          namespace: {{ .Values.orchestrator.serviceReference.namespace | default .Release.Namespace }}
+          namespace: {{ .Release.Namespace }}
           serviceDescriptor: {{ include "kblib.clusterName" . }}-orc-descriptor
         {{- else }}
         - name: orchestrator
-          namespace: {{ .Values.orchestrator.serviceReference.namespace | default .Release.Namespace }}
+          namespace: {{ .Values.orchestrator.clusterServiceSelector.namespace | default .Release.Namespace }}
           clusterServiceSelector:
-            cluster:  {{ .Values.orchestrator.clusterServiceSelector.cluster }}
+            cluster:  {{ .Values.orchestrator.clusterServiceSelector.clusterName }}
             service:
               component: orchestrator
               service: orchestrator
-              port:  {{ .Values.orchestrator.clusterServiceSelector.portName }}
+              port:  orc-http
             credential:
               component: orchestrator
               name: orchestrator
