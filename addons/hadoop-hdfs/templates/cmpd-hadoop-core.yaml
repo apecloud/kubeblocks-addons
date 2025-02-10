@@ -36,6 +36,7 @@ spec:
       valueFrom:
         serviceRefVarRef:
           name: hadoopZookeeper
+          optional: false
           endpoint: Required
     - name: CLUSTER_NAME
       valueFrom:

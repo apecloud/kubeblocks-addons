@@ -22,16 +22,18 @@ spec:
       serviceRefDeclarationSpecs:
         - serviceKind: zookeeper
           serviceVersion: "^*"
-    - name: hadoop-namenode
-      serviceRefDeclarationSpecs:
-        - serviceKind: namenode
-          serviceVersion: "^*"
   runtime:
     initContainers:
       - name: init-regionserver
         image: {{ .Values.init.image.registry | default "docker.io" }}/{{ .Values.init.image.repository }}:{{ .Values.init.image.tag | default "latest" }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.init.image.pullPolicy }}
         command: [ "/hbase/scripts/hbase-config-setup.sh" ]
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
         securityContext:
           runAsUser: 10000
           runAsGroup: 1000
@@ -71,11 +73,6 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.name
-          - name: POD_IP
-            valueFrom:
-              fieldRef:
-                apiVersion: v1
-                fieldPath: status.podIP
         volumeMounts:
           - name: hbase-orig-conf
             mountPath: /hbase/origconf/hbase-site.xml
@@ -117,18 +114,25 @@ spec:
         serviceRefVarRef:
           name: hbase-zookeeper
           host: Required
-          optional: true
-    - name: HADOOP_NAMENODE_ENDPOINTS
-      valueFrom:
-        serviceRefVarRef:
-          name: hadoop-namenode
-          endpoint: Required
-          optional: true
+          optional: false
     - name: HBASE_MASTER_POD_LIST
       valueFrom:
         componentVarRef:
           optional: true
           podNames: Optional
+    - name: CLUSTER_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
   configs:
     - name: config
       namespace: {{ .Release.Namespace }}

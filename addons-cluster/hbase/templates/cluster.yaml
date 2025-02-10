@@ -22,14 +22,6 @@ spec:
               component: {{ .Values.serviceRefs.hbaseZookeeper.clusterServiceSelector.service.component }}
               service: {{ .Values.serviceRefs.hbaseZookeeper.clusterServiceSelector.service.service }}
               port: {{ .Values.serviceRefs.hbaseZookeeper.clusterServiceSelector.service.port }}
-        - name: hadoop-namenode
-          namespace: {{ .Values.serviceRefs.hadoopNamenode.namespace }}
-          clusterServiceSelector:
-            cluster: {{ .Values.serviceRefs.hadoopNamenode.clusterServiceSelector.cluster }}
-            service:
-              component: {{ .Values.serviceRefs.hadoopNamenode.clusterServiceSelector.service.component }}
-              service: {{ .Values.serviceRefs.hadoopNamenode.clusterServiceSelector.service.service }}
-              port: {{ .Values.serviceRefs.hadoopNamenode.clusterServiceSelector.service.port }}
       env:
         - name: "HADOOP_CLUSTER_NAME"
           value: {{ .Values.hadoopClusterName | quote }}
@@ -69,14 +61,6 @@ spec:
               component: {{ .Values.serviceRefs.hbaseZookeeper.clusterServiceSelector.service.component }}
               service: {{ .Values.serviceRefs.hbaseZookeeper.clusterServiceSelector.service.service }}
               port: {{ .Values.serviceRefs.hbaseZookeeper.clusterServiceSelector.service.port }}
-        - name: hadoop-namenode
-          namespace: {{ .Values.serviceRefs.hadoopNamenode.namespace }}
-          clusterServiceSelector:
-            cluster: {{ .Values.serviceRefs.hadoopNamenode.clusterServiceSelector.cluster }}
-            service:
-              component: {{ .Values.serviceRefs.hadoopNamenode.clusterServiceSelector.service.component }}
-              service: {{ .Values.serviceRefs.hadoopNamenode.clusterServiceSelector.service.service }}
-              port: {{ .Values.serviceRefs.hadoopNamenode.clusterServiceSelector.service.port }}
       env:
         - name: "HADOOP_CLUSTER_NAME"
           value: {{ .Values.hadoopClusterName | quote }}

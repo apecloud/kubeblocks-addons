@@ -22,16 +22,18 @@ spec:
       serviceRefDeclarationSpecs:
         - serviceKind: zookeeper
           serviceVersion: "^*"
-    - name: hadoop-namenode
-      serviceRefDeclarationSpecs:
-        - serviceKind: namenode
-          serviceVersion: "^*"
   runtime:
     initContainers:
       - name: init-regionserver
         image: {{ .Values.init.image.registry | default "docker.io" }}/{{ .Values.init.image.repository }}:{{ .Values.init.image.tag | default "latest" }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.init.image.pullPolicy }}
         command: [ "/hbase/scripts/hbase-config-setup.sh" ]
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
         securityContext:
           runAsUser: 10000
           runAsGroup: 1000
@@ -107,13 +109,20 @@ spec:
         serviceRefVarRef:
           name: hbase-zookeeper
           host: Required
-          optional: true
-    - name: HADOOP_NAMENODE_ENDPOINTS
+          optional: false
+    - name: CLUSTER_COMPONENT_NAME
       valueFrom:
-        serviceRefVarRef:
-          name: hadoop-namenode
-          endpoint: Required
-          optional: true
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
   configs:
     - name: config
       namespace: {{ .Release.Namespace }}

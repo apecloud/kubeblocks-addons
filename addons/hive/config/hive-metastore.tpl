@@ -3,7 +3,7 @@
 <configuration>
     <property>
         <name>javax.jdo.option.ConnectionURL</name>
-        <value>jdbc:mysql://{{- .METADB_MYSQL_ENDPOINTS }}:3306/hive_metadata?createDatabaseIfNotExist=true&amp;useSSL=false</value>
+        <value>jdbc:mysql://{{- .METADB_MYSQL_ENDPOINTS }}:3306/hive_metadata?allowPublicKeyRetrieval=true&amp;createDatabaseIfNotExist=true&amp;useSSL=false</value>
     </property>
     <property>
         <name>javax.jdo.option.ConnectionDriverName</name>
@@ -11,11 +11,11 @@
     </property>
     <property>
         <name>javax.jdo.option.ConnectionUserName</name>
-        <value>root</value>
+        <value>{{ getEnvByName ( getContainerByName $.podSpec.containers "hive-metastore" ) "METADB_MYSQL_USERNAME" }}</value>
     </property>
     <property>
         <name>javax.jdo.option.ConnectionPassword</name>
-        <value>EchHRa4508z7138H</value>
+        <value>{{ getEnvByName ( getContainerByName $.podSpec.containers "hive-metastore" ) "METADB_MYSQL_PASSWORD" }}</value>
     </property>
     <property>
         <name>hive.metastore.warehouse.dir</name>

@@ -1,0 +1,310 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: zkcluster
+  namespace: default
+spec:
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: zookeeper
+      componentDef: zookeeper
+      replicas: 1
+      resources:
+        limits:
+          cpu: 500m
+          memory: 512Mi
+        requests:
+          cpu: 500m
+          memory: 512Mi
+      serviceVersion: 3.9.2
+      volumeClaimTemplates:
+      - name: data
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 20Gi
+          storageClassName: ""
+      - name: snapshot-log
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 2Gi
+          storageClassName: ""
+---
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: mysql-meta
+  namespace: default
+spec:
+  componentSpecs:
+  - componentDef: mysql-8.0-1.0.0
+    disableExporter: false
+    name: mysql
+    replicas: 1
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 500m
+        memory: 512Mi
+    serviceVersion: 8.0.35
+    volumeClaimTemplates:
+    - name: data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 20Gi
+        storageClassName: ""
+  terminationPolicy: Delete
+---
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  namespace: default
+  name: hadoopcluster
+  labels:
+    helm.sh/chart: hadoop-cluster-0.9.1
+    app.kubernetes.io/version: "3.3.4"
+    app.kubernetes.io/instance: hadoopcluster
+spec:
+  terminationPolicy: Delete
+  clusterDef: hadoop-hdfs
+  topology: hadoop-ha-cluster
+  componentSpecs:
+    - name: hadoop-core
+      componentDef: hadoop-core
+      serviceRefs:
+        - name: hadoopZookeeper
+          namespace: default
+          clusterServiceSelector:
+            cluster: zkcluster
+            service:
+              component: zookeeper
+              service: headless
+              port: client
+      replicas: 1
+      resources:
+        requests:
+          cpu: "0.5"
+          memory: 0.5Gi
+        limits:
+          cpu: "0.5"
+          memory: 2Gi
+    - name: journalnode
+      componentDef: hdfs-journalnode
+      replicas: 3
+      resources:
+        requests:
+          cpu: "0.5"
+          memory: 0.5Gi
+        limits:
+          cpu: "0.5"
+          memory: 2Gi
+      volumes:
+        - name: hadoop-core-config
+          configMap:
+            name: hadoopcluster-hadoop-core-config
+      volumeClaimTemplates:
+        - name: edits-dir
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 10Gi
+    - name: namenode
+      componentDef: hdfs-namenode
+      serviceRefs:
+        - name: hadoopZookeeper
+          namespace: default
+          clusterServiceSelector:
+            cluster: zkcluster
+            service:
+              component: zookeeper
+              service: headless
+              port: client
+      replicas: 2
+      resources:
+        requests:
+          cpu: "0.5"
+          memory: 0.5Gi
+        limits:
+          cpu: "0.5"
+          memory: 2Gi
+      volumes:
+        - name: hadoop-core-config
+          configMap:
+            name: hadoopcluster-hadoop-core-config
+      volumeClaimTemplates:
+        - name: metadata-dir
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 10Gi
+    - name: datanode
+      componentDef: hdfs-datanode
+      replicas: 1
+      resources:
+        requests:
+          cpu: "0.5"
+          memory: 0.5Gi
+        limits:
+          cpu: "0.5"
+          memory: 2Gi
+      volumes:
+        - name: hadoop-core-config
+          configMap:
+            name: hadoopcluster-hadoop-core-config
+      volumeClaimTemplates:
+      - name: hdfs-data-0
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 30Gi
+---
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  namespace: default
+  name: hivecluster
+spec:
+  terminationPolicy: Delete
+  clusterDef: hive
+  topology: hive-cluster
+  componentSpecs:
+    - name: metastore
+      componentDef: hive-metastore
+      serviceRefs:
+        - name: hive-mysql-metadb
+          namespace: default
+          clusterServiceSelector:
+            cluster: mysql-meta
+            service:
+              component: mysql
+              service: headless
+              port: client
+            credential:
+              component: mysql
+              name: root
+      replicas: 1
+      resources:
+        requests:
+          cpu: "0.1"
+          memory: 0.5Gi
+        limits:
+          cpu: "1"
+          memory: 2Gi
+      volumes:
+        - name: hadoop-core-config
+          configMap:
+            name: hadoopcluster-hadoop-core-config
+        - name: hadoop-hdfs-config
+          configMap:
+            name: hadoopcluster-namenode-config
+      volumeClaimTemplates:
+        - name: metadata
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 5Gi
+---
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  namespace: default
+  name: hbasecluster
+spec:
+  terminationPolicy: "Delete"
+  clusterDef: "hbase"
+  topology: "hbase-cluster"
+  componentSpecs:
+    - name: hmaster
+      componentDef: hbase-hmaster-2.5
+      serviceVersion: 2.5.6
+      replicas: 1
+      serviceRefs:
+        - name: hbase-zookeeper
+          namespace: default
+          clusterServiceSelector:
+            cluster: zkcluster
+            service:
+              component: zookeeper
+              service: headless
+              port: client
+      env:
+        - name: "HADOOP_CLUSTER_NAME"
+          value: "hadoopcluster"
+      resources:
+        requests:
+          cpu: "0.1"
+          memory: 0.5Gi
+        limits:
+          cpu: "1"
+          memory: 2Gi
+      volumes:
+        - name: hadoop-core-config
+          configMap:
+            name: hadoopcluster-hadoop-core-config
+        - name: hadoop-hdfs-config
+          configMap:
+            name: hadoopcluster-namenode-config
+      volumeClaimTemplates:
+        - name: hbase-log
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 2Gi
+    - name: hregionserver
+      componentDef: hbase-hregionserver-2.5
+      serviceVersion: 2.5.6
+      replicas: 1
+      serviceRefs:
+        - name: hbase-zookeeper
+          namespace: default
+          clusterServiceSelector:
+            cluster: zkcluster
+            service:
+              component: zookeeper
+              service: headless
+              port: client
+      env:
+        - name: "HADOOP_CLUSTER_NAME"
+          value: "hadoopcluster"
+      resources:
+        requests:
+          cpu: "0.1"
+          memory: 0.5Gi
+        limits:
+          cpu: "1"
+          memory: 2Gi
+      volumes:
+        - name: hadoop-core-config
+          configMap:
+            name: hadoopcluster-hadoop-core-config
+        - name: hadoop-hdfs-config
+          configMap:
+            name: hadoopcluster-namenode-config
+      volumeClaimTemplates:
+        - name: hbase-temp-data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 10Gi
