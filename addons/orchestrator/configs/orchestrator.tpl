@@ -11,6 +11,8 @@
   "MySQLTopologySSLCAFile": "",
   "MySQLTopologySSLSkipVerify": true,
   "MySQLTopologyUseMutualTLS": false,
+  "MySQLTopologyReadTimeoutSeconds": 3,
+  "MySQLDiscoveryReadTimeoutSeconds": 3,
 
   "MySQLOrchestratorHost": "${META_MYSQL_ENDPOINT}",
   "MySQLOrchestratorPort": ${META_MYSQL_PORT},
