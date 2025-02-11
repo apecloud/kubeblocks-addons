@@ -53,5 +53,8 @@
 
   "OnFailureDetectionProcesses": [
     "echo 'Detected {failureType} on {failureCluster}. Affected replicas: {countReplicas}' >> /tmp/recovery.log"
-  ]
+  ],
+
+  "RecoverLockedSemiSyncMaster": true,
+  "UseSuperReadOnly": true
 }
