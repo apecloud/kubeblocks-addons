@@ -361,6 +361,32 @@ exporter:
 
 
 {{- define "mysql-orc.spec.lifecycle.common" }}
+postProvision:
+  exec:
+    container: mysql
+    command:
+      - bash
+      - -c
+      - "/scripts/mysql-orchestrator-register.sh"
+  preCondition: RuntimeReady
+preTerminate:
+  exec:
+    command:
+      - bash
+      - -c
+      - curl http://${ORC_ENDPOINTS%%:*}:${ORC_PORTS}/api/forget-cluster/${CLUSTER_NAME}|| true
+accountProvision:
+  exec:
+    container: mysql
+    command:
+      - /bin/sh
+      - -c
+      - |
+        set -ex
+        eval statement=\"${KB_ACCOUNT_STATEMENT}\"
+        mysql -u${MYSQL_ROOT_USER} -p${MYSQL_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement}"
+    targetPodSelector: Role
+    matchingKey: primary
 roleProbe:
   periodSeconds: {{ .Values.roleProbe.periodSeconds }}
   timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
@@ -372,7 +398,7 @@ roleProbe:
       - /bin/bash
       - -c
       - |
-        topology_info=$(/kubeblocks/orchestrator-client -c topology -i ${CLUSTER_NAME}.${CLUSTER_NAMESPACE}) || true
+        topology_info=$(/kubeblocks/orchestrator-client -c topology -i ${CLUSTER_NAME}) || true
         if [[ $topology_info == "" ]]; then
           echo -n "secondary"
           exit 0
@@ -388,7 +414,7 @@ roleProbe:
 
         address_port=$(echo "$first_line" | awk '{print $1}')
         master_from_orc="${address_port%:*}"
-        self_service_name=$(echo "${KB_AGENT_POD_NAME}.${CLUSTER_NAMESPACE}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+        self_service_name=$(echo "${KB_AGENT_POD_NAME}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
         if [ "$master_from_orc" == "${self_service_name}" ]; then
           echo -n "primary"
         else
@@ -401,10 +427,10 @@ memberLeave:
       - -c
       - |
         set +e
-        master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i ${CLUSTER_NAME}.${CLUSTER_NAMESPACE})
-        self_service_name=$(echo "${KB_LEAVE_MEMBER_POD_NAME}.${CLUSTER_NAMESPACE}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+        master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i ${CLUSTER_NAME})
+        self_service_name=$(echo "${KB_LEAVE_MEMBER_POD_NAME}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
         if [ "${self_service_name%%:*}" == "${master_from_orc%%:*}" ]; then
-          /kubeblocks/orchestrator-client -c force-master-failover -i ${CLUSTER_NAME}.${CLUSTER_NAMESPACE}
+          /kubeblocks/orchestrator-client -c force-master-failover -i ${CLUSTER_NAME}
           local timeout=15
           local start_time=$(date +%s)
           local current_time
@@ -413,7 +439,7 @@ memberLeave:
             if [ $((current_time - start_time)) -gt $timeout ]; then
               break
             fi
-            master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i ${CLUSTER_NAME}.${CLUSTER_NAMESPACE})
+            master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i ${CLUSTER_NAME}
             if [ "${self_service_name%%:*}" != "${master_from_orc%%:*}" ]; then
               break
             fi

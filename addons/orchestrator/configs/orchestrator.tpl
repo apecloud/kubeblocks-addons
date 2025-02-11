@@ -11,6 +11,11 @@
   "MySQLTopologySSLCAFile": "",
   "MySQLTopologySSLSkipVerify": true,
   "MySQLTopologyUseMutualTLS": false,
+  "MySQLTopologyReadTimeoutSeconds": 3,
+  "MySQLDiscoveryReadTimeoutSeconds": 3,
+  "MySQLConnectTimeoutSeconds": 1,
+
+
 
   "MySQLOrchestratorHost": "${META_MYSQL_ENDPOINT}",
   "MySQLOrchestratorPort": ${META_MYSQL_PORT},
@@ -30,7 +35,7 @@
   "MySQLOrchestratorRejectReadOnly": true,
 
   "HostnameResolveMethod": "none",
-  "MySQLHostnameResolveMethod": "@@report_host",
+  "MySQLHostnameResolveMethod": "@@hostname",
   "InstancePollSeconds": 5,
 
   "MasterFailoverLostInstancesDowntimeMinutes": 10,
