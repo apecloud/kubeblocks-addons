@@ -18,7 +18,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 62,
+  "id": 63,
   "links": [],
   "panels": [
     {
@@ -37,7 +37,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -126,7 +126,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "go_memstats_heap_alloc_bytes{namespace=\"kb-system\", job=\"kubeblocks\"}/1024/1024",
@@ -143,7 +143,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -236,7 +236,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -329,7 +329,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -435,7 +435,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -517,7 +517,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${datasource}"
           },
           "editorMode": "code",
           "expr": "sum(rate(controller_runtime_reconcile_errors_total{job='kubeblocks',namespace=\"kb-system\", job=\"kubeblocks\"}[5m])) by (controller)",
@@ -532,7 +532,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -625,7 +625,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -688,7 +688,8 @@
     },
     {
       "datasource": {
-        "uid": "prometheus"
+        "type": "prometheus",
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -763,7 +764,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -827,7 +828,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -920,7 +921,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1013,7 +1014,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "prometheus"
+        "uid": "${datasource}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1109,7 +1110,20 @@
   "schemaVersion": 40,
   "tags": [],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "current": {
+          "text": "Prometheus",
+          "value": "prometheus"
+        },
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "",
+        "type": "datasource"
+      }
+    ]
   },
   "time": {
     "from": "now-1h",
