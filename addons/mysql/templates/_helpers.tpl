@@ -374,7 +374,7 @@ preTerminate:
     command:
       - bash
       - -c
-      - curl http://${ORC_ENDPOINTS%%:*}:${ORC_PORTS}/api/forget-cluster/${CLUSTER_NAME}|| true
+      - curl http://${ORC_ENDPOINTS%%:*}:${ORC_PORTS}/api/forget-cluster/${CLUSTER_NAME}.${CLUSTER_NAMESPACE} || true
 accountProvision:
   exec:
     container: mysql
