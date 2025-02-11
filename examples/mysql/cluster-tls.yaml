@@ -58,3 +58,6 @@ spec:
               requests:
                 # Set the storage size as needed
                 storage: 20Gi
+      tls: true   # set TLS to true
+      issuer:     # if TLS is True, this filed is required.
+        name: KubeBlocks  # set Issuer to [KubeBlocks, UserProvided].
