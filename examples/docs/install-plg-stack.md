@@ -74,18 +74,7 @@ If you encounter the `Failed to load log volume for this query` error, please up
 
 You can import a Loki dashboard to visualize logs in Grafana or create your own dashboard.
 
+- [Container Log Dashboard](https://grafana.com/grafana/dashboards/16966-container-log-dashboard/) from Grafana Dashboards
+- [Container Log Trends](./misc/loki-container-logs.json) from the `docs/misc` folder.
+
 More dashboards can be found at [Grafana Dashboards](https://grafana.com/grafana/dashboards).
-
-### Example: Collect Logs for MySQL Cluster
-
-1. Create MySQL Cluster
-
-```bash
-kubectl create -f examples/mysql/cluster.yaml
-```
-
-2. Open Grafa and import dashboard to visualize logs, for example, you can import the following dashboard:
-
-- <https://grafana.com/grafana/dashboards/16966-container-log-dashboard/>
-
-3. You may choose the namespace and stream to filter logs and see the logs in the log panel
