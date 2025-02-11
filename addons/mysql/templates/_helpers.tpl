@@ -188,6 +188,10 @@ vars:
       credentialVarRef:
         name: kbreplicator
         password: Required
+  - name: TLS_ENABLED
+    valueFrom:
+      tlsVarRef:
+        enabled: Optional
 lifecycleActions:
   accountProvision:
     exec:
@@ -216,7 +220,22 @@ lifecycleActions:
         - /bin/sh
         - -c
         - |
-          /tools/syncerctl switchover --primary "$KB_LEADER_POD_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
+          if [ -z "$KB_SWITCHOVER_ROLE" ]; then
+              echo "role can't be empty"
+              exit 1
+          fi
+
+          if [ "$KB_SWITCHOVER_ROLE" != "primary" ]; then
+              exit 0
+          fi
+
+          /tools/syncerctl switchover --primary "$KB_SWITCHOVER_CURRENT_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
+tls:
+  volumeName: tls
+  mountPath: /etc/pki/tls
+  caFile: ca.pem
+  certFile: cert.pem
+  keyFile: key.pem
 roles:
   - name: primary
     updatePriority: 2
@@ -225,6 +244,19 @@ roles:
     updatePriority: 1
     participatesInQuorum: false
 {{- end }}
+
+{{- define "mysql.spec.runtime.entrypoint" -}}
+if [ -f {{ .Values.dataMountPath }}/plugin/audit_log.so ]; then
+  cp {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
+fi 
+if [ -d /etc/pki/tls ]; then
+  mkdir -p {{ .Values.dataMountPath }}/tls/
+  cp -L /etc/pki/tls/*.pem {{ .Values.dataMountPath }}/tls/
+  chmod 600 {{ .Values.dataMountPath }}/tls/*
+fi
+chown -R mysql:root {{ .Values.dataMountPath }}
+SERVICE_ID=$((${POD_NAME##*-} + 1))
+{{ end }}
 
 {{- define "mysql.spec.runtime.common" -}}
 - command:
@@ -286,6 +318,12 @@ systemAccounts:
   - name: proxysql
     statement:
       create: CREATE USER IF NOT EXISTS '${KB_ACCOUNT_NAME}' IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT SELECT ON performance_schema.* TO '${KB_ACCOUNT_NAME}'; GRANT SELECT ON sys.* TO '${KB_ACCOUNT_NAME}';
+tls:
+  volumeName: tls
+  mountPath: /etc/pki/tls
+  caFile: ca.pem
+  certFile: cert.pem
+  keyFile: key.pem
 roles:
   - name: primary
     updatePriority: 2
@@ -344,6 +382,10 @@ vars:
       componentVarRef:
         optional: false
         podNames: Required
+  - name: TLS_ENABLED
+    valueFrom:
+      tlsVarRef:
+        enabled: Optional
 exporter:
   containerName: mysql-exporter
   scrapePath: /metrics
@@ -455,6 +497,11 @@ command:
   - -c
   - |
     cp {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
+    if [ -d /etc/pki/tls ]; then
+      mkdir -p {{ .Values.dataMountPath }}/tls/
+      cp -L /etc/pki/tls/*.pem {{ .Values.dataMountPath }}/tls/
+      chmod 600 {{ .Values.dataMountPath }}/tls/*
+    fi
     chown -R mysql:root {{ .Values.dataMountPath }}
     export skip_slave_start="OFF"
     if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
