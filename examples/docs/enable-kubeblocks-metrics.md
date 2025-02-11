@@ -62,6 +62,6 @@ spec:
       app.kubernetes.io/name: kubeblocks
 ```
 
-### Step 3. Import a Grfana Dashboard
+### Step 3. Import a Grafana Dashboard
 
 You can import a Grafana dashboard to visualize the metrics from KubeBlocks. In this example, we will use a sample from [KubeBlocks Grafana Dashboard](./kubeblocks-dashboard.json).
