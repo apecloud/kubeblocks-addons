@@ -66,5 +66,5 @@ tls:
 
 extra:
   ## Define Cluster termination policy.
-  ## Options: DoNotTerminate, Halt, Delete, WipeOut.
+  ## Options: DoNotTerminate, Delete, WipeOut.
   terminationPolicy: DoNotTerminate
