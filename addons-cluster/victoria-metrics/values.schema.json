@@ -22,7 +22,6 @@
       "enum": [
         "Delete",
         "DoNotTerminate",
-        "Halt",
         "WipeOut"
       ]
     },
