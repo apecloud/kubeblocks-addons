@@ -1,0 +1,18 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ClusterDefinition
+metadata:
+  name: hive
+  labels:
+    {{- include "hive.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hive.apiVersion" . | nindent 4 }}
+spec:
+  topologies:
+    - name: hive-cluster
+      default: true
+      components:
+        - name: metastore
+          compDef: hive-metastore
+      orders:
+        provision:
+          - metastore

@@ -1,0 +1,93 @@
+---
+{{/*{{- $cc := .Files.Get "config/config-effect-scope.yaml" | fromYaml }}*/}}
+apiVersion: apps.kubeblocks.io/v1beta1
+kind: ConfigConstraint
+metadata:
+  name: hadoop-core-config-constraints
+  labels:
+    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+    name: hadoop-core-config-constraints
+spec:
+  # zookeeper configuration file format
+  fileFormatConfig:
+    format: xml
+
+  ## define immutable parameter list
+{{/*  {{- if hasKey $cc "immutableParameters" }}*/}}
+{{/*  immutableParameters:*/}}
+{{/*    {{- $params := get $cc "immutableParameters" }}*/}}
+{{/*    {{- range $params }}*/}}
+{{/*    - {{ . }}*/}}
+{{/*    {{- end }}*/}}
+{{/*  {{- end}}*/}}
+
+  # ConfigurationSchema that impose restrictions on engine parameter's rule
+  parametersSchema:
+    # define parameter validation rules
+    topLevelKey: HadoopCoreParameter
+
+    cue: |-
+      {{- .Files.Get "config/config-core-constraint.cue" | nindent 6 }}
+
+---
+apiVersion: apps.kubeblocks.io/v1beta1
+kind: ConfigConstraint
+metadata:
+  name: journalnode-config-constraints
+  labels:
+    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+    name: journalnode-config-constraints
+spec:
+  # zookeeper configuration file format
+  fileFormatConfig:
+    format: xml
+
+  # ConfigurationSchema that impose restrictions on engine parameter's rule
+  parametersSchema:
+    # define parameter validation rules
+    topLevelKey: JournalNodeParameter
+
+    cue: |-
+      {{- .Files.Get "config/config-journalnode-constraint.cue" | nindent 6 }}
+
+---
+apiVersion: apps.kubeblocks.io/v1beta1
+kind: ConfigConstraint
+metadata:
+  name: namenode-config-constraints
+  labels:
+    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+    name: namenode-config-constraints
+spec:
+  # zookeeper configuration file format
+  fileFormatConfig:
+    format: xml
+
+  # ConfigurationSchema that impose restrictions on engine parameter's rule
+  parametersSchema:
+    # define parameter validation rules
+    topLevelKey: NameNodeParameter
+
+    cue: |-
+      {{- .Files.Get "config/config-namenode-constraint.cue" | nindent 6 }}
+
+---
+apiVersion: apps.kubeblocks.io/v1beta1
+kind: ConfigConstraint
+metadata:
+  name: datanode-config-constraints
+  labels:
+    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+    name: datanode-config-constraints
+spec:
+  # zookeeper configuration file format
+  fileFormatConfig:
+    format: xml
+
+  # ConfigurationSchema that impose restrictions on engine parameter's rule
+  parametersSchema:
+    # define parameter validation rules
+    topLevelKey: DataNodeParameter
+
+    cue: |-
+      {{- .Files.Get "config/config-datanode-constraint.cue" | nindent 6 }}
