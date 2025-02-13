@@ -45,8 +45,8 @@ check_empty_directories() {
 handle_empty_directories() {
   echo "journalRes and ledgerRes directory is empty, check whether the remote cookies is empty either"
   # check env BOOKKEEPER_POD_FQDN_LIST and CURRENT_POD_NAME
-  if is_empty "$BOOKKEEPER_POD_FQDN_LIST" || is_empty "$CURRENT_POD_NAME" || is_empty "${zkServers}"; then
-    echo "Error: BOOKKEEPER_POD_FQDN_LIST or CURRENT_POD_NAME or zkServers is empty. Exiting." >&2
+  if is_empty "$BOOKKEEPER_POD_FQDN_LIST" || is_empty "$CURRENT_POD_NAME" || is_empty "${ZOOKEEPER_SERVERS}"; then
+    echo "Error: BOOKKEEPER_POD_FQDN_LIST or CURRENT_POD_NAME or ZOOKEEPER_SERVERS is empty. Exiting." >&2
     return 1
   fi
 
@@ -61,11 +61,19 @@ handle_empty_directories() {
   zkLedgersRootPath=$(get_directory 'zkLedgersRootPath')
   local zNode="${zkLedgersRootPath}/cookies/${host_ip_port}"
 
-  if zkURL="${zkServers}" python3 /kb-scripts/zookeeper.py get "${zNode}"; then
+  if zkURL="${ZOOKEEPER_SERVERS}" python3 /kb-scripts/zookeeper.py get "${zNode}"; then
     echo "Warning: exist redundant bookieID ${zNode}"
-    zkURL="${zkServers}" python3 /kb-scripts/zookeeper.py delete "${zNode}"
+    zkURL="${ZOOKEEPER_SERVERS}" python3 /kb-scripts/zookeeper.py delete "${zNode}"
   fi
   return 0
+}
+
+load_env_file() {
+  local pulsar_env_config="/opt/pulsar/conf/pulsar.env"
+
+  if [ -f "${pulsar_env_config}" ];then
+     source ${pulsar_env_config}
+  fi
 }
 
 start_bookies() {
@@ -85,6 +93,7 @@ start_bookies() {
       fi
   fi
 
+  load_env_file
   OPTS="${OPTS} -Dlog4j2.formatMsgNoLookups=true"
   export OPTS
   exec bin/pulsar bookie

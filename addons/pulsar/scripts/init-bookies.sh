@@ -46,15 +46,24 @@ init_bookkeeper_cluster() {
   fi
 }
 
+load_env_file() {
+  local pulsar_env_config="/opt/pulsar/conf/pulsar.env"
+
+  if [ -f "${pulsar_env_config}" ];then
+     source ${pulsar_env_config}
+  fi
+}
+
 init_bookies() {
-  if [[ -z "$zkServers" ]]; then
+  if [[ -z "$ZOOKEEPER_SERVERS" ]]; then
     echo "Error: zkServers environment variable is not set, Please set the zkServers environment variable and try again."
     exit 1
   fi
 
-  wait_for_zookeeper "$zkServers"
+  wait_for_zookeeper "$ZOOKEEPER_SERVERS"
   merge_bookkeeper_config
   apply_config_from_env
+  load_env_file
   init_bookkeeper_cluster
 }
 
