@@ -27,7 +27,7 @@ spec:
   reloadStaticParamsBeforeRestart: true
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:
-    # top level mysql configuration type
+    # top level orioledb configuration type
     topLevelKey: PGParameter
 
     # schemaInJSON: auto generate from cue scripts

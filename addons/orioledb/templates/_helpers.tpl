@@ -275,6 +275,7 @@ runtime:
           value: {{ .Values.dataPath }}
         - name: PGCONF
           value: {{ .Values.confPath }}
+        # orioledb is a postgresql compatible database, in syncer, it is treated as vanilla-postgresql
         - name: KB_ENGINE_TYPE
           value: vanilla-postgresql
         - name: KB_CLUSTER_NAME
