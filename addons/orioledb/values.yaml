@@ -4,7 +4,7 @@
 
 image:
   registry: docker.io
-  repository: orioledb/orioledb
+  repository: apecloud/orioledb
   tag: "pg-16.4.0"
   digest: ""
   pullPolicy: IfNotPresent
