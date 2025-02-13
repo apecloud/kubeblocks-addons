@@ -113,27 +113,27 @@ Define wescale-controller component definition name
 {{/*
 Define config constriant name
 */}}
-{{- define "apecloud-mysql.configConstraintName" -}}
+{{- define "apecloud-mysql.wesqlParamsDefName" -}}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-apecloud-mysql8.0-config-constraints
+apecloud-mysql8.0-pd
 {{- else -}}
-{{- .Values.resourceNamePrefix -}}-config-constraints
+{{- .Values.resourceNamePrefix -}}-pd
 {{- end -}}
 {{- end -}}
 
-{{- define "apecloud-mysql.configConstraintVttabletName" }}
+{{- define "apecloud-mysql.wesqlVttabletParamsDefName" }}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-apecloud-mysql-scale-vttablet-config-constraints
+apecloud-mysql-scale-vttablet-pd
 {{- else -}}
-{{- .Values.resourceNamePrefix -}}-vttablet-config-constraints
+{{- .Values.resourceNamePrefix -}}-vttablet-pd
 {{- end -}}
 {{- end -}}
 
-{{- define "apecloud-mysql.configConstraintVtgateName" }}
+{{- define "apecloud-mysql.wescaleParamsDefName" }}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-apecloud-mysql-scale-vtgate-config-constraints
+apecloud-mysql-scale-vtgate-pd
 {{- else -}}
-{{- .Values.resourceNamePrefix -}}-vtgate-config-constraints
+{{- .Values.resourceNamePrefix -}}-vtgate-pd
 {{- end -}}
 {{- end -}}
 
@@ -174,5 +174,27 @@ mysql-reload-script
 apecloud-mysql-scripts
 {{- else -}}
 {{- .Values.resourceNamePrefix -}}-scripts
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define config constriant name
+*/}}
+{{- define "apecloud-mysql.wesqlPCRName" -}}
+{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+apecloud-mysql8.0-wesql-pcr
+{{- else -}}
+{{- .Values.resourceNamePrefix -}}-wesql-pcr
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define config constriant name
+*/}}
+{{- define "apecloud-mysql.wescalePCRName" -}}
+{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+apecloud-mysql8.0-wescale-pcr
+{{- else -}}
+{{- .Values.resourceNamePrefix -}}-wescale-pcr
 {{- end -}}
 {{- end -}}
