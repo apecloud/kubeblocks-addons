@@ -1,0 +1,18 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "postgresql16.pcr" . }}
+  labels:
+    {{- include "postgresql.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "postgresql16.compDefName" . }}
+  serviceVersion: {{ .Values.componentServiceVersion.postgresql16 }}
+  parametersDefs:
+    - {{ include "postgresql16.parametersDefinition" . }}
+
+  configs:
+    - name: postgresql.conf
+      fileFormatConfig:
+        format: properties
+      reRenderResourceTypes:
+        - vscale

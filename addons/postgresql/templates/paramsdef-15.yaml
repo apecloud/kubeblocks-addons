@@ -1,13 +1,15 @@
-{{- $cc := .Files.Get "config/pg14-config-effect-scope.yaml" | fromYaml }}
-apiVersion: apps.kubeblocks.io/v1beta1
-kind: ConfigConstraint
+{{- $cc := .Files.Get "config/pg15-config-effect-scope.yaml" | fromYaml }}
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
 metadata:
-  name: {{ include "postgresql14.configConstraint" . }}
+  name: {{ include "postgresql15.parametersDefinition" . }}
   labels:
     {{- include "postgresql.labels" . | nindent 4 }}
   annotations:
     {{- include "postgresql.annotations" . | nindent 4 }}
 spec:
+  fileName: postgresql.conf
+
   reloadAction:
     tplScriptTrigger:
       sync: true
@@ -28,7 +30,7 @@ spec:
     # schemaInJSON: auto generate from cue scripts
     # example: ../../pkg/configuration/testdata/mysql_openapi.json
     cue: |-
-      {{- .Files.Get "config/pg14-config-constraint.cue" | nindent 6 }}
+      {{- .Files.Get "config/pg15-config-constraint.cue" | nindent 6 }}
 
   ##  require db instance restart
   ## staticParameters
@@ -48,9 +50,3 @@ spec:
     - {{ . }}
    {{- end }}
   {{- end}}
-
-
-
-    # configuration file format
-  fileFormatConfig:
-    format: properties
