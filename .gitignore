@@ -11,6 +11,8 @@
 *.swo
 *~
 
+.mirrord/
+
 # helm dependency charts
 addons/**/Chart.lock
 addons/**/charts
