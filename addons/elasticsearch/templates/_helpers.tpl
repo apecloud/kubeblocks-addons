@@ -148,3 +148,18 @@ elasticsearch-8-config-tpl
 {{- define "elasticsearch-lfa.image" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag | default "latest" }}
 {{- end }}
+
+{{/*
+Define elasticsearch v7.X parameter config renderer name
+*/}}
+{{- define "elasticsearch7.pcrName" -}}
+elasticsearch7-pcr
+{{- end }}
+
+{{/*
+Define elasticsearch v8.X parameter config renderer name
+*/}}
+{{- define "elasticsearch8.pcrName" -}}
+elasticsearch8-pcr
+{{- end }}
+
