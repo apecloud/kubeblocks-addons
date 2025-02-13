@@ -134,7 +134,7 @@ systemAccounts:
     passwordGenerationPolicy: *defaultPasswordGenerationPolicy
   - name: proxysql
     statement:
-      create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT USAGE, REPLICATION CLIENT ON *.* TO '${KB_ACCOUNT_NAME}';
+      create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, USAGE ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
     passwordGenerationPolicy: *defaultPasswordGenerationPolicy
 vars:
   - name: CLUSTER_NAME
@@ -318,7 +318,7 @@ systemAccounts:
       letterCase: MixedCases
   - name: proxysql
     statement:
-      create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT USAGE, REPLICATION CLIENT ON *.* TO '${KB_ACCOUNT_NAME}';
+      create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT USAGE, REPLICATION CLIENT ON *.* TO ${KB_ACCOUNT_NAME};
     passwordGenerationPolicy: 
       length: 16
       numDigits: 8
