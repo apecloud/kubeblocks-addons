@@ -62,7 +62,7 @@
     },
     "topology": {
       "type": "string",
-      "default": "server",
+      "default": "semisync",
       "description": "Topology type of the serve. Note that under the orc/orc-proxysql topology, it is necessary to specify the Orchestrator cluster information. You should choose either orchestrator.cluster-service-selector or orchestrator.service-reference. This means that depending on your setup, you will configure one of these options to properly integrate with the Orchestrator service for managing your MySQL cluster.",
       "enum": [
         "semisync",
