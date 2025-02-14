@@ -132,6 +132,8 @@ spec:
       templateRef: clickhouse-keeper-tpl
       volumeName: config
       namespace: {{ .Release.Namespace }}
+      reRenderResourceTypes:
+        - hscale
   systemAccounts:
     - name: admin
       initAccount: true

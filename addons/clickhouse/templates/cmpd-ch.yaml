@@ -72,6 +72,8 @@ spec:
       templateRef: clickhouse-tpl
       volumeName: config
       namespace: {{ .Release.Namespace }}
+      reRenderResourceTypes:
+        - hscale
     - name: clickhouse-user-tpl
       templateRef: clickhouse-user-tpl
       volumeName: user-config

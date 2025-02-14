@@ -9,8 +9,9 @@ fullnameOverride: ""
 mode: cluster
 
 ## Sharding configuration
+# sharding topology is not stable in kb 0.9, it's recommended to set sharding to false
 shards: 1
-sharding: true
+sharding: false
 
 ## Number of ClickHouse replicas per shard to deploy
 replicas: 2

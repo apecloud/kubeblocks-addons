@@ -9,7 +9,8 @@
           </disk2>
       </disks>
       <policies>
-          <default>
+          <!-- change multi_disk_policy to default to override the default storage when creating a table -->
+          <multi_disk_policy>
               <volumes>
                   <volume1>
                       <disk>disk1</disk>
@@ -18,7 +19,7 @@
                       <disk>disk2</disk>
                   </volume2>
               </volumes>
-          </default>
+          </multi_disk_policy>
       </policies>
   </storage_configuration>
 </clickhouse>
