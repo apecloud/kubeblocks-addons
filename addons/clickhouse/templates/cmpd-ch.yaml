@@ -70,15 +70,19 @@ spec:
   configs:
     - name: clickhouse-tpl
       templateRef: clickhouse-tpl
+      constraintRef: clickhouse-constraints
       volumeName: config
       namespace: {{ .Release.Namespace }}
+      reRenderResourceTypes:
+        - hscale
     - name: clickhouse-user-tpl
       templateRef: clickhouse-user-tpl
+      constraintRef: clickhouse-constraints
       volumeName: user-config
       namespace: {{ .Release.Namespace }}
-      constraintRef: clickhouse-constraints
     - name: clickhouse-client-tpl
       templateRef: clickhouse-client-tpl
+      constraintRef: clickhouse-constraints
       volumeName: client-config
       namespace: {{ .Release.Namespace }}
   systemAccounts:

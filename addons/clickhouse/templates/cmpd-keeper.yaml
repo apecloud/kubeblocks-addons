@@ -130,8 +130,11 @@ spec:
   configs:
     - name: clickhouse-keeper-tpl
       templateRef: clickhouse-keeper-tpl
+      constraintRef: clickhouse-constraints
       volumeName: config
       namespace: {{ .Release.Namespace }}
+      reRenderResourceTypes:
+        - hscale
   systemAccounts:
     - name: admin
       initAccount: true
