@@ -37,6 +37,22 @@ spec:
         update: # When there are multiple component update operations, follow the order specified here.
           - mysql
           - proxysql
+    - name: mgr-proxysql
+      components:
+        - name: mysql
+          compDef: {{ include "mysql.cmpdMGRNamePrefix" . }}
+        - name: proxysql
+          compDef: {{ include "proxysql.componentDefName" . }}
+      orders:
+        provision: # The server will start before the proxy is created.
+          - mysql
+          - proxysql
+        terminate: # The proxy will be shut down (destroyed) before the server.
+          - proxysql
+          - mysql
+        update: # When there are multiple component update operations, follow the order specified here.
+          - mysql
+          - proxysql
     - name: semisync-proxysql
       components:
         - name: mysql
