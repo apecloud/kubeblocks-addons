@@ -75,10 +75,13 @@ kubectl apply -f examples/clickhouse/start.yaml
 ```
 
 ### [Configure](reconfig.yaml)
+https://clickhouse.com/docs/en/operations/configuration-files
+
 Configure parameters with the specified components in the cluster
 ```bash
 kubectl apply -f examples/clickhouse/reconfig.yaml
 ```
+To add your own configuration file, place it in the `addons/clickhouse/configs` directory and include it in the `addons/clickhouse/templates/configmap.json` file. Then, rerender the ClickHouse addon.
 
 ### Delete
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
@@ -87,10 +90,3 @@ kubectl patch cluster clickhouse-cluster -p '{"spec":{"terminationPolicy":"WipeO
 
 kubectl delete cluster clickhouse-cluster
 ```
-
-### Add self configuration
-https://clickhouse.com/docs/en/operations/configuration-files
-
-If you want to add self configuration:
-- Cluster not exist, you can add the configuration file to the `addons/clickhouse/configs` and then add it into the `addons/clickhouse/templates/configmap.json`
-- Cluster exist, you can follow the [Configure](reconfig.yaml)
