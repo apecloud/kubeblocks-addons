@@ -112,6 +112,8 @@ spec:
       templateRef: {{ include "clickhouse-keeper24.configurationTplName" . }}
       volumeName: config
       namespace: {{ .Release.Namespace }}
+      reRenderResourceTypes:
+        - hscale
   systemAccounts:
     - name: admin
       initAccount: true

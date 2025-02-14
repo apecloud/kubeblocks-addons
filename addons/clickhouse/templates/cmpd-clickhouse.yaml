@@ -74,6 +74,8 @@ spec:
       templateRef: {{ include "clickhouse24.configurationTplName" . }}
       volumeName: config
       namespace: {{ .Release.Namespace }}
+      reRenderResourceTypes:
+        - hscale
     - name: clickhouse-user-tpl
       templateRef: {{ include "clickhouse24.userTplName" . }}
       volumeName: user-config

@@ -208,6 +208,7 @@ kubectl apply -f examples/clickhouse/volumeexpand.yaml
 ```
 
 ### [Reconfigure](configure.yaml)
+https://clickhouse.com/docs/en/operations/configuration-files
 
 Reconfigure parameters with the specified components in the cluster
 
@@ -261,6 +262,8 @@ When updating the configuration, the key we set in the `reconfigure.yaml` file s
 
 To update parameter `max_bytes_to_read`, we use the full path `clickhouse.profiles.web.max_bytes_to_read` w.r.t the `user.xml` file.
 </details>
+
+P.S. To add your own configuration file, place it in the `addons/clickhouse/configs` directory and include it in the `addons/clickhouse/templates/configmap.json` file. Then, rerender the ClickHouse addon
 
 ### [Restart](restart.yaml)
 

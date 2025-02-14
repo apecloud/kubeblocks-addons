@@ -1,5 +1,3 @@
-{{- $clusterName := $.cluster.metadata.name }}
-{{- $namespace := $.cluster.metadata.namespace }}
 <clickhouse>
   <listen_host>0.0.0.0</listen_host>
   {{- if eq (index $ "TLS_ENABLED") "true" }}
@@ -18,7 +16,7 @@
   <macros>
     <shard from_env="CURRENT_SHARD_COMPONENT_SHORT_NAME"/>
     <replica from_env="CURRENT_POD_NAME"/>
-    <layer>{{ $clusterName }}</layer>
+    <layer>{{ $.cluster.metadata.name }}</layer>
   </macros>
   <!-- Log Level -->
   <logger>
