@@ -90,6 +90,7 @@ kubectl delete cluster clickhouse-cluster
 
 ### Add self configuration
 https://clickhouse.com/docs/en/operations/configuration-files
-If you want to add self configuration
-- If the cluster not exist, you can add the configuration file to the `addons/clickhouse/configs` and then add it into the `addons/clickhouse/templates/configmap.json`
-- If the cluster exist, you can follow the [Configure](reconfig.yaml)
+
+If you want to add self configuration:
+- Cluster not exist, you can add the configuration file to the `addons/clickhouse/configs` and then add it into the `addons/clickhouse/templates/configmap.json`
+- Cluster exist, you can follow the [Configure](reconfig.yaml)
