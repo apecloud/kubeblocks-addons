@@ -68,6 +68,7 @@
         "semisync",
         "semisync-proxysql",
         "mgr",
+        "mgr-proxysql",
         "orc",
         "orc-proxysql"
       ]

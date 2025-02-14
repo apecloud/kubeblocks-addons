@@ -86,10 +86,6 @@ mysql_version=$(mysql_exec $MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $BACKEND_SERVER
 log "connecting to mysql $MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $BACKEND_SERVER $MYSQL_PORT"
 mysql_exec $MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $BACKEND_SERVER $MYSQL_PORT "$additional_sys_query" $opt
 
-mysql_exec $MYSQL_ROOT_USER $MYSQL_ROOT_PASSWORD $BACKEND_SERVER $MYSQL_PORT << EOF
-CREATE USER 'monitor'@'%' IDENTIFIED BY 'monitor';
-GRANT USAGE, REPLICATION CLIENT ON *.* TO 'monitor'@'%';
-EOF
 # wait for proxysql process to run
 wait_for_mysql admin ${PROXYSQL_ADMIN_PASSWORD} 127.0.0.1 6032
 

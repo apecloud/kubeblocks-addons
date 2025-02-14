@@ -134,7 +134,8 @@ systemAccounts:
     passwordGenerationPolicy: *defaultPasswordGenerationPolicy
   - name: proxysql
     statement:
-      create: CREATE USER IF NOT EXISTS '${KB_ACCOUNT_NAME}' IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT SELECT ON performance_schema.* TO '${KB_ACCOUNT_NAME}'; GRANT SELECT ON sys.* TO '${KB_ACCOUNT_NAME}';
+      create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, USAGE ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
+    passwordGenerationPolicy: *defaultPasswordGenerationPolicy
 vars:
   - name: CLUSTER_NAME
     valueFrom:
@@ -317,7 +318,12 @@ systemAccounts:
       letterCase: MixedCases
   - name: proxysql
     statement:
-      create: CREATE USER IF NOT EXISTS '${KB_ACCOUNT_NAME}' IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT SELECT ON performance_schema.* TO '${KB_ACCOUNT_NAME}'; GRANT SELECT ON sys.* TO '${KB_ACCOUNT_NAME}';
+      create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT USAGE, REPLICATION CLIENT ON *.* TO ${KB_ACCOUNT_NAME};
+    passwordGenerationPolicy: 
+      length: 16
+      numDigits: 8
+      numSymbols: 0
+      letterCase: MixedCases
 tls:
   volumeName: tls
   mountPath: /etc/pki/tls
