@@ -70,7 +70,7 @@ Then click on `Home` > `Explore` then choose `Loki` as the data source to filter
 
 If you encounter the `Failed to load log volume for this query` error, please upgrade the loki version to 2.8.10 or higher.
 
-### Step 2. Import a Loki Dashboard for Logs
+#### Step 2. Import a Loki Dashboard for Logs
 
 You can import a Loki dashboard to visualize logs in Grafana or create your own dashboard.
 
@@ -78,3 +78,92 @@ You can import a Loki dashboard to visualize logs in Grafana or create your own 
 - [Container Log Trends](./misc/loki-container-logs.json) from the `docs/misc` folder.
 
 More dashboards can be found at [Grafana Dashboards](https://grafana.com/grafana/dashboards).
+
+#### Step 3. [Optional] Configure Promtail to Collect MySQL Error Logs
+
+In this section, we will show how to configure Promtail to collect MySQL error logs.
+
+MySQL will write its error logs to a file, say `/var/log/mysql/error.log`. We will configure Promtail to collect these logs and push them to Loki.
+
+> [!IMPORTANT]
+> Please check the path of the MySQL error log file on the host node w.r.t your Storage Provider.
+
+In this example, we use `rancher.io/local-path` as the storage provider, and the MySQL error log file is located at `/var/local-path-provisioner/*/log/mysqld-error.log*` on host node.
+
+```yaml
+# cat values.yaml
+loki:
+  enabled: true
+  url: http://loki-stack.logging:3100
+  image:
+    tag: 2.9.3
+  persistence:
+    enabled: true
+
+promtail:
+  enabled: true
+  podSecurityContext:
+    runAsUser: 0
+    runAsGroup: 0
+    fsGroup: 999  # add fsGroup to allow promtail to read logs from the host. Set to the group id of the user that has access to the log files
+
+  extraVolumes:  # mount the local-path-provisioner volume to promtail. Set the path to the directory where the MySQL error logs are stored.
+    - name: localpv
+      hostPath:
+        path: "/var/local-path-provisioner"
+  extraVolumeMounts:
+    - name: localpv
+      mountPath: "/var/local-path-provisioner"
+      readOnly: true
+  config:
+    clients:
+      - url: http://loki-stack.logging:3100/loki/api/v1/push
+    snippets:
+      scrapeConfigs: |
+        # This is an example of how to scrape MySQL error logs
+        - job_name: mysql-logs
+          static_configs:
+            - targets:
+                - localhost
+              labels:
+                job: mysql-logs
+                __path__: /var/local-path-provisioner/*/log/mysqld-error.log*  # Specify the path pattern for MySQL error logs w.r.t your Storage Provider
+
+          # Define processing stages for the collected logs
+          pipeline_stages:
+            - match:
+                selector: '{job="mysql-logs"}'
+                stages:
+                  - regex:  # Extract metadata from the log file path using regex, must set source to filename
+                      expression: '/var/local-path-provisioner/(?P<pvcName>pvc-[^_]+)_(?P<namespace>[^_]+)_data-(?P<podName>[^/]+)/log/mysqld-error.log.*'
+                      source: filename
+                  - labels:
+                      namespace:
+                      podName:
+            - regex:  # Parse the log line content using regex
+                expression: '^(?P<timestamp>[^ ]+) (?P<thread_id>\d+) \[(?P<level>[^\]]+)\] \[(?P<error_code>[^\]]+)\] \[(?P<source>[^\]]+)\] (?P<message>.*)$'
+            - timestamp:  # Extract and format the timestamp from the log
+                source: timestamp
+                format: RFC3339Nano
+            - labels:  # Add additional labels from the parsed log content
+                level:
+                error_code:
+            - output:  # Define the final output of the log processing
+                source: message
+```
+
+Please update the `__path__` field in the `scrapeConfigs` section to match the path pattern of the MySQL error logs on your host node and tune the `pipeline_stages` section as needed.
+
+Then deploy the updated Promtail configuration:
+
+```bash
+helm upgrade --install loki-stack grafana/loki-stack -n logging --create-namespace -f values.yaml
+```
+
+Now you can see the MySQL error logs in Grafana, and explore them using the Loki query language.
+
+1. Open Grafana in your browser (Loki has been added as a data source in previous steps)
+1. Go to `Home` -> `Explore` -> `Loki` and run the query `{job="mysql-logs"}` to see the logs.
+1. Filter the logs by namespace, pod name, or other labels as needed.
+1. You can also create a dashboard to visualize the logs
+1. Customize the `pipeline_stages` section in the `values.yaml` file to collect and parse the logs as needed.
