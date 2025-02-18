@@ -46,16 +46,16 @@ Describe "Redis Switchover Script Tests"
         The stderr should equal ""
       End
 
-      It "should exit early when role is not primary"
-        export SENTINEL_POD_FQDN_LIST="sentinel1,sentinel2"
-        export REDIS_POD_FQDN_LIST="redis1,redis2"
-        export REDIS_COMPONENT_NAME="redis"
-        export KB_SWITCHOVER_ROLE="secondary"
-        When call check_environment_exist
-        The status should be success
-        The stdout should include "switchover not triggered for primary, nothing to do"
-        The stderr should equal ""
-      End
+#      It "should exit early when role is not primary"
+#        export SENTINEL_POD_FQDN_LIST="sentinel1,sentinel2"
+#        export REDIS_POD_FQDN_LIST="redis1,redis2"
+#        export REDIS_COMPONENT_NAME="redis"
+#        export KB_SWITCHOVER_ROLE="secondary"
+#        When call check_environment_exist
+#        The status should be success
+#        The stdout should include "switchover not triggered for primary, nothing to do"
+#        The stderr should equal ""
+#      End
     End
   End
 

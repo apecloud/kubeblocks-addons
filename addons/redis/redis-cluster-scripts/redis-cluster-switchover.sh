@@ -45,8 +45,8 @@ check_environment_exist() {
   done
 
   if [ "$KB_SWITCHOVER_ROLE" != "primary" ]; then
-    echo "switchover not triggered for primary, nothing to do"
-    return 0
+    echo "switchover not triggered for primary, nothing to do, exit 0"
+    exit 0
   fi
 }
 
