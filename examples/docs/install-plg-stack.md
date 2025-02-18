@@ -50,14 +50,22 @@ For more details please refer to [loki stack](https://github.com/grafana/helm-ch
 **Step 3.** Check Status:
 
 ```bash
-kubectl get pods -n logging
+kubectl get pods -n logging #Check pod status:
 ```
 
-All the pods should be in the `Running` state.
+Wait for a while till all the pods are `runniing` and check pod logs for any errors:
+
+```bash
+kubectl -n logging logs statefulsets/loki-stack # check loki logs
+kubectl -n logging logs daemonsets/loki-stack-promtail # check promtail logs
+```
 
 ### Configure Loki in Grafana
 
 #### Step 1. Add Loki Data Source to Grafana
+
+> [!NOTE]
+> Install Prometheus and Grafana if you haven't already. You can refer to the [Prometheus and Grafana](./install-prometheus.md) guide.
 
 Visit Grafana Dashboard in your browser and Go to `Home` -> `Connections` -> `Data Sources` -> `Add new data source` -> `Loki` and fill in the following details:
 
@@ -79,16 +87,41 @@ You can import a Loki dashboard to visualize logs in Grafana or create your own 
 
 More dashboards can be found at [Grafana Dashboards](https://grafana.com/grafana/dashboards).
 
-#### Step 3. [Optional] Configure Promtail to Collect MySQL Error Logs
+## [Optional] Configure Promtail to Collect MySQL Error Logs
 
 In this section, we will show how to configure Promtail to collect MySQL error logs.
+Create a MySQL Cluster if you haven't already, refer to the [KubeBlocks MySQL Cluster](../mysql/README.md) guide.
 
-MySQL will write its error logs to a file, say `/var/log/mysql/error.log`. We will configure Promtail to collect these logs and push them to Loki.
+MySQL will write its error logs to a file, say `/var/log/mysql/error.log`. To Check the log file location of MySQL, you can run the following command:
+
+```sql
+show variables like '%log_file';
+```
+
+<details>
+Expected Output:
+
+```bash
++---------------------+-----------------------------------------+
+| Variable_name       | Value                                   |
++---------------------+-----------------------------------------+
+| audit_log_file      | /var/lib/mysql/auditlog/audit.log       |
+| general_log_file    | /var/lib/mysql/log/mysqld.log           |
+| slow_query_log_file | /var/lib/mysql/log/mysqld-slowquery.log |
++---------------------+-----------------------------------------+
+```
+
+</details>
+
+We will configure Promtail to collect these logs and push them to Loki, before you start, you should understand where the MySQL logs are stored and the log format.
 
 > [!IMPORTANT]
-> Please check the path of the MySQL error log file on the host node w.r.t your Storage Provider.
+> Before you start:
+>
+> - Check the path of the MySQL log file on the **host node**.
+> - Ensure Promtail mounts the directory (`extraVolumes` and `extraVolumeMounts`) and has the necessary permissions to read the log files (`podSecurityContext`).
 
-In this example, we use `rancher.io/local-path` as the storage provider, and the MySQL error log file is located at `/var/local-path-provisioner/*/log/mysqld-error.log*` on host node.
+Here is an example of how to configure Promtail to collect MySQL  logs, we will explain the configuration in detail. You may get a full list of Promtail configuration options [here](./misc/plg-stack-values-sample.yaml)).
 
 ```yaml
 # cat values.yaml
@@ -105,7 +138,7 @@ promtail:
   podSecurityContext:
     runAsUser: 0
     runAsGroup: 0
-    fsGroup: 999  # add fsGroup to allow promtail to read logs from the host. Set to the group id of the user that has access to the log files
+    fsGroup: 0  # add fsGroup to allow promtail to read logs from the host. Set to the group id of the user that has access to the log files
 
   extraVolumes:  # mount the local-path-provisioner volume to promtail. Set the path to the directory where the MySQL error logs are stored.
     - name: localpv
@@ -120,7 +153,6 @@ promtail:
       - url: http://loki-stack.logging:3100/loki/api/v1/push
     snippets:
       scrapeConfigs: |
-        # This is an example of how to scrape MySQL error logs
         - job_name: mysql-logs
           static_configs:
             - targets:
@@ -135,11 +167,11 @@ promtail:
                 selector: '{job="mysql-logs"}'
                 stages:
                   - regex:  # Extract metadata from the log file path using regex, must set source to filename
-                      expression: '/var/local-path-provisioner/(?P<pvcName>pvc-[^_]+)_(?P<namespace>[^_]+)_data-(?P<podName>[^/]+)/log/mysqld-error.log.*'
+                      expression: '/var/local-path-provisioner/(?P<pvc_name>pvc-[^_]+)_(?P<namespace>[^_]+)_data-(?P<pod_name>[^/]+)/log/mysqld-error.log.*'
                       source: filename
                   - labels:
                       namespace:
-                      podName:
+                      pod_name:
             - regex:  # Parse the log line content using regex
                 expression: '^(?P<timestamp>[^ ]+) (?P<thread_id>\d+) \[(?P<level>[^\]]+)\] \[(?P<error_code>[^\]]+)\] \[(?P<source>[^\]]+)\] (?P<message>.*)$'
             - timestamp:  # Extract and format the timestamp from the log
@@ -148,13 +180,70 @@ promtail:
             - labels:  # Add additional labels from the parsed log content
                 level:
                 error_code:
+            - labeldrop:
+              - filename
+            - output:  # Define the final output of the log processing
+                source: message
+
+        - job_name: mysql-csi-logs
+          static_configs:
+            - targets:
+                - localhost
+              labels:
+                job: mysql-csi-logs
+                __path__: /var/lib/kubelet/pods/*/volumes/kubernetes.io~csi/*/mount/log/mysqld-error.log*  # Specify the path pattern for MySQL error logs w.r.t your Storage Provider
+
+          # Define processing stages for the collected logs
+          pipeline_stages:
+            - match:
+                selector: '{job="mysql-csi-logs"}'
+                stages:
+                  - regex:
+                      expression: '/var/lib/kubelet/pods/(?P<pod_uid>[^/]+)/volumes/kubernetes.io~csi/(?P<pvc_name>[^/]+)/mount/log/mysqld-error.log.*'
+                      source: filename
+                  - labels:
+                      pod_uid:
+                      pvc_name:
+            - regex:  # Parse the log line content using regex
+                expression: '^(?P<timestamp>[^ ]+) (?P<thread_id>\d+) \[(?P<level>[^\]]+)\] \[(?P<error_code>[^\]]+)\] \[(?P<source>[^\]]+)\] (?P<message>.*)$'
+            - timestamp:  # Extract and format the timestamp from the log
+                source: timestamp
+                format: RFC3339Nano
+            - labels:  # Add additional labels from the parsed log content
+                level:
+                error_code:
+            - labeldrop:
+              - filename
             - output:  # Define the final output of the log processing
                 source: message
 ```
 
-Please update the `__path__` field in the `scrapeConfigs` section to match the path pattern of the MySQL error logs on your host node and tune the `pipeline_stages` section as needed.
+This Promtail configuration defines two jobs:
 
-Then deploy the updated Promtail configuration:
+- **mysql-logs**: Collects MySQL error logs from local-path-provisioner
+  - Captures MySQL error logs stored in a local path provisioner in Kubernetes.
+  - Extracts metadata, such as, namespace and pod name from filename, error level and error codes from logs content.
+- **mysql-csi-logs**: Collects MySQL logs stored in CSI-based persistent volumes, akin to `mysql-logs` job, but differs in the `path` pattern.
+
+In each job, we defined as sequence of processing stages to parse the logs. Multiple stages can be chained together to process logs in a sequence.
+The stages are executed in the order they are defined in the configuration file. The output of one stage is passed as input to the next stage. Please refer to the [Promtail pipeline stages](https://grafana.com/docs/loki/latest/send-data/promtail/stages/) for more details.
+Frequently used stages are as follows:
+
+- Parsing Stage:
+  - regex: Extracts metadata from the log line using regex
+  - json: Parses the log line content as JSON
+  - multiline: Merges multiple lines into a single multiline block, then passes it to the next stage in the pipeline. It identifies new blocks by matching the first line with the firstline regex. Any line that does not match this expression is considered part of the previous matching block.
+- Transform Stage:
+  - template:  Use Go templates to modify extracted data.
+- Action Stages:
+  - labels: Adds additional labels from the parsed log content
+  - timestamp: Extracts and formats the timestamp from the log
+  - output: Defines the final output of the log processing
+  - labeldrop: Drops the specified labels from the log entry
+- Filtering Stages:
+  - drop: Drops the log entry if the expression matches
+
+To deploy the updated configuration, run the following command:
 
 ```bash
 helm upgrade --install loki-stack grafana/loki-stack -n logging --create-namespace -f values.yaml
@@ -163,7 +252,89 @@ helm upgrade --install loki-stack grafana/loki-stack -n logging --create-namespa
 Now you can see the MySQL error logs in Grafana, and explore them using the Loki query language.
 
 1. Open Grafana in your browser (Loki has been added as a data source in previous steps)
-1. Go to `Home` -> `Explore` -> `Loki` and run the query `{job="mysql-logs"}` to see the logs.
-1. Filter the logs by namespace, pod name, or other labels as needed.
-1. You can also create a dashboard to visualize the logs
-1. Customize the `pipeline_stages` section in the `values.yaml` file to collect and parse the logs as needed.
+1. Go to `Home` -> `Explore` -> `Loki` and run the query `{job="<JOBNAME>"}` to see the logs, where `<JOBNAME>` is one of those defined in the Promtail configuration.
+1. Customize the `pipeline_stages` section to collect and parse the logs as needed.
+
+If everything is set up correctly, you should see the logs in the Explore view as shown below:
+
+- slow query logs:
+  ![mysql-slowlogs](./images/mysql-slow-logs.png)
+- running logs:
+  ![mysql-logs](./images/mysql-running-logs.png)
+- audit logs: (if enabled, see the appendix for parsing audit logs)
+  ![mysql-auditlogs](./images/mysql-audit-logs.png)
+
+## Appendix
+
+### Parse MySQL Audit Logs
+
+Here is an example of how to parse MySQL audit logs using Promtail.
+Before you start, make sure you
+
+- have enabled the MySQL audit plugin and,
+- set the audit log file path in the MySQL configuration file, and
+- you understand the log format.
+
+For instance, the MySQL audit log file path is `/var/lib/mysql/auditlog/audit.log`, and the log format is as follows:
+
+```xml
+<AUDIT_RECORD
+NAME="Query"
+RECORD="2035_2025-02-18T03:08:36"
+TIMESTAMP="2025-02-18T05:09:01Z"
+COMMAND_CLASS="select"
+CONNECTION_ID="14"
+STATUS="0"
+SQLTEXT="select @@global.hostname, @@global.version, @@global.read_only, @@global.binlog_format, @@global.log_bin, @@global.log_slave_updates"
+USER="someuser @ [123.456.789]"
+HOST="123.456.789"
+OS_USER="some"
+IP="123.456.789"
+DB="somedb"
+/>
+```
+
+It is a multiline log format, where each log entry starts with `<AUDIT_RECORD` and ends with `/>`, and contains multiple fields like `NAME`, `RECORD`, `TIMESTAMP`, `COMMAND_CLASS`, `CONNECTION_ID`, `STATUS`, `SQLTEXT`, `USER`, `HOST`, `OS_USER`, `IP`, and `DB`.
+We use the regex stage to extract metadata from the log file path and the regex stage to parse the log content. You MUST customize the regex expressions to match your log format. And for troubleshooting, you can verify the regex expressions using [regex101](https://regex101.com/).
+
+```yaml
+        - job_name: mysql-audit-logs
+          static_configs:
+            - labels:
+                job: mysql-audit-logs
+                __path__: /var/local-path-provisioner/*/auditlog/audit.log*
+          pipeline_stages:
+            - match:
+                selector: '{job="mysql-audit-logs"}'
+                stages:
+                  - regex:  # Extract metadata from the log file path using regex, must set source to filename
+                      expression: '/var/local-path-provisioner/(?P<pvc_name>pvc-[^_]+)_(?P<namespace>[^_]+)_data-(?P<pod_name>[^/]+)/auditlog/audit.log.*'
+                      source: filename
+                  - labels:
+                      namespace:
+                      pod_name:
+            - multiline:
+                firstline: '^\s*<AUDIT_RECORD'  # Start of a new log entry
+                max_wait_time: 3s               # Maximum time to wait for the next line
+            - regex:
+                expression: '<AUDIT_RECORD\s+NAME="(?P<name>[^"]+)"\s+RECORD="(?P<record>[^"]+)"\s+TIMESTAMP="(?P<timestamp>[^"]+)"\s+COMMAND_CLASS="(?P<command_class>[^"]+)"\s+CONNECTION_ID="(?P<connection_id>[^"]+)"\s+STATUS="(?P<status>[^"]+)"\s+SQLTEXT="(?P<sqltext>[^"]+)"\s+USER="(?P<user>[^"]+)"\s+HOST="(?P<host>[^"]*)"\s+OS_USER="(?P<os_user>[^"]*)"\s+IP="(?P<ip>[^"]*)"\s+DB="(?P<db>[^"]*)"\s*\/>'
+            - labels:
+                name: name
+                record: record
+                timestamp: timestamp
+                command_class: command_class
+                connection_id: connection_id
+                status: status
+                sqltext: sqltext
+                user: user
+                host: host
+                os_user: os_user
+                ip: ip
+                db: db
+
+            - labeldrop:
+              - filename
+
+            - output:  # Define the final output of the log processing
+                source: sqltext
+```
