@@ -298,43 +298,76 @@ It is a multiline log format, where each log entry starts with `<AUDIT_RECORD` a
 We use the regex stage to extract metadata from the log file path and the regex stage to parse the log content. You MUST customize the regex expressions to match your log format. And for troubleshooting, you can verify the regex expressions using [regex101](https://regex101.com/).
 
 ```yaml
-        - job_name: mysql-audit-logs
-          static_configs:
-            - labels:
-                job: mysql-audit-logs
-                __path__: /var/local-path-provisioner/*/auditlog/audit.log*
-          pipeline_stages:
-            - match:
-                selector: '{job="mysql-audit-logs"}'
-                stages:
-                  - regex:  # Extract metadata from the log file path using regex, must set source to filename
-                      expression: '/var/local-path-provisioner/(?P<pvc_name>pvc-[^_]+)_(?P<namespace>[^_]+)_data-(?P<pod_name>[^/]+)/auditlog/audit.log.*'
-                      source: filename
-                  - labels:
-                      namespace:
-                      pod_name:
-            - multiline:
-                firstline: '^\s*<AUDIT_RECORD'  # Start of a new log entry
-                max_wait_time: 3s               # Maximum time to wait for the next line
-            - regex:
-                expression: '<AUDIT_RECORD\s+NAME="(?P<name>[^"]+)"\s+RECORD="(?P<record>[^"]+)"\s+TIMESTAMP="(?P<timestamp>[^"]+)"\s+COMMAND_CLASS="(?P<command_class>[^"]+)"\s+CONNECTION_ID="(?P<connection_id>[^"]+)"\s+STATUS="(?P<status>[^"]+)"\s+SQLTEXT="(?P<sqltext>[^"]+)"\s+USER="(?P<user>[^"]+)"\s+HOST="(?P<host>[^"]*)"\s+OS_USER="(?P<os_user>[^"]*)"\s+IP="(?P<ip>[^"]*)"\s+DB="(?P<db>[^"]*)"\s*\/>'
-            - labels:
-                name: name
-                record: record
-                timestamp: timestamp
-                command_class: command_class
-                connection_id: connection_id
-                status: status
-                sqltext: sqltext
-                user: user
-                host: host
-                os_user: os_user
-                ip: ip
-                db: db
+- job_name: mysql-audit-logs
+  static_configs:
+    - labels:
+        job: mysql-audit-logs
+        __path__: /var/local-path-provisioner/*/auditlog/audit.log*
+  pipeline_stages:
+    - match:
+        selector: '{job="mysql-audit-logs"}'
+        stages:
+          - regex:  # Extract metadata from the log file path using regex, must set source to filename
+              expression: '/var/local-path-provisioner/(?P<pvc_name>pvc-[^_]+)_(?P<namespace>[^_]+)_data-(?P<pod_name>[^/]+)/auditlog/audit.log.*'
+              source: filename
+          - labels:
+              namespace:
+              pod_name:
+    - multiline:
+        firstline: '^\s*<AUDIT_RECORD'  # Start of a new log entry
+        max_wait_time: 3s               # Maximum time to wait for the next line
+    - regex:
+        expression: '<AUDIT_RECORD\s+NAME="(?P<name>[^"]+)"\s+RECORD="(?P<record>[^"]+)"\s+TIMESTAMP="(?P<timestamp>[^"]+)"\s+COMMAND_CLASS="(?P<command_class>[^"]+)"\s+CONNECTION_ID="(?P<connection_id>[^"]+)"\s+STATUS="(?P<status>[^"]+)"\s+SQLTEXT="(?P<sqltext>[^"]+)"\s+USER="(?P<user>[^"]+)"\s+HOST="(?P<host>[^"]*)"\s+OS_USER="(?P<os_user>[^"]*)"\s+IP="(?P<ip>[^"]*)"\s+DB="(?P<db>[^"]*)"\s*\/>'
+    - labels:
+        name: name
+        record: record
+        timestamp: timestamp
+        command_class: command_class
+        connection_id: connection_id
+        status: status
+        sqltext: sqltext
+        user: user
+        host: host
+        os_user: os_user
+        ip: ip
+        db: db
 
-            - labeldrop:
-              - filename
+    - labeldrop:
+      - filename
 
-            - output:  # Define the final output of the log processing
-                source: sqltext
+    - output:  # Define the final output of the log processing
+        source: sqltext
+```
+
+### Parse MySQL Slow Logs
+
+Here is an example of how to parse MySQL slow logs using Promtail. It uses `multline` to merge multiple lines into a single multiline block, starting with `#\sTime:.*`, and `regex` to parse the log content. You MUST customize the regex expressions to match your log format.
+
+```yaml
+- job_name: mysql-slowlogs
+  static_configs:
+    - labels:
+        job: mysql-slowlogs
+        __path__: /var/local-path-provisioner/*/log/mysqld-slowquery.log*
+  pipeline_stages:
+    - multiline:
+        firstline: '#\sTime:.*'
+    - regex:
+        expression: '#\s*Time:\s*(?P<timestamp>.*)\n#\s*User@Host:\s*(?P<user>[^\[]+).*@\s*(?P<host>.*]).*Id:\s*(?P<id>\d+)\n#\s*Query_time:\s*(?P<query_time>\d+\.\d+)\s*Lock_time:\s*(?P<lock_time>\d+\.\d+)\s*Rows_sent:\s*(?P<rows_sent>\d+)\s*Rows_examined:\s*(?P<rows_examined>\d+)\n(?P<query>(?s:.*))$'
+    - labels:
+        timestamp:
+        user:
+        host:
+        id:
+        query_time:
+        lock_time:
+        rows_sent:
+        rows_examined:
+    - drop:
+        expression: "^ *$"
+        drop_counter_reason: "drop empty lines"
+    - labeldrop:
+      - filename
+    - output:  # Define the final output of the log processing
+        source: query
 ```
