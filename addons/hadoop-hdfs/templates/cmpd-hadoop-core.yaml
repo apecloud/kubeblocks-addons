@@ -1,0 +1,67 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: hadoop-core
+  labels:
+    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop-hdfs.annotations" . | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: {{ .Chart.Description }}
+  serviceKind: hadoop-core
+  serviceRefDeclarations:
+    - name: hadoopZookeeper
+      serviceRefDeclarationSpecs:
+        - serviceKind: zookeeper
+          serviceVersion: "^*"
+  runtime:
+    containers:
+      - name: hadoop-core
+        imagePullPolicy: {{ default "IfNotPresent" .Values.core.image.pullPolicy }}
+        env:
+          - name: DEBUG_MODEL
+            value: "false"
+        volumeMounts:
+          - name: hadoop-core-config
+            mountPath: /hadoop/conf/core-site.xml
+            subPath: core-site.xml
+    securityContext:
+      runAsGroup: 0
+      runAsNonRoot: true
+      runAsUser: 10000
+    updateStrategy: BestEffortParallel
+  vars:
+    - name: ZOOKEEPER_ENDPOINTS
+      valueFrom:
+        serviceRefVarRef:
+          name: hadoopZookeeper
+          optional: false
+          endpoint: Required
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          shortName: Required
+    - name: CLUSTER_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+  configs:
+    - name: config
+      namespace: {{ .Release.Namespace }}
+      templateRef: hadoop-core-config-template
+      constraintRef: hadoop-core-config-constraints
+      volumeName: hadoop-core-config
+      defaultMode: 0755
+      keys:
+        - core-site.xml
