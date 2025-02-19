@@ -35,7 +35,7 @@ log.file.rotation.size = 10485760
 log.file.rotation.count = 5
 
 # archived log files will be compressed
-log.file.rotation.compress = true
+# log.file.rotation.compress = true
 
 
 queue_master_locator                       = min-masters
