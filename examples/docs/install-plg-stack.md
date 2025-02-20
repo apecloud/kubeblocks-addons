@@ -17,7 +17,7 @@ helm repo update
 
 **Step 2.** Install Loki Stack:
 
-If you have prometheus and Grafana already installed, you may deploy the loki stack with values as follows:
+If you have Prometheus and Grafana already installed, you may deploy the loki stack with values as follows:
 
 ```yaml
 # cat values.yaml

@@ -35,7 +35,7 @@ kbcli addon index update kubeblocks
 kbcli addon index update --all
 ```
 
-To search annd install an addon:
+To search and install an addon:
 
 ```bash
 # Search Addon
