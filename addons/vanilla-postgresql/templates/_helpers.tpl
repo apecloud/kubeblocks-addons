@@ -204,6 +204,13 @@ Generate scripts configmap
 {{- end }}
 
 {{/*
+Define vanilla postgresql scripts configMap template name
+*/}}
+{{- define "vanilla-postgresql.reloader.scripts" -}}
+vanilla-postgresql-reload-tools-script
+{{- end -}}
+
+{{/*
 Generate scripts configmap
 */}}
 {{- define "vanilla-postgresql.extend.reload.scripts" -}}
