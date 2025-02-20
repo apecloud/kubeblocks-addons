@@ -2,7 +2,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: pulsar-service-descriptor
-  namespace: default
+  namespace: demo
 spec:
   terminationPolicy: Delete
   services:
@@ -30,7 +30,7 @@ spec:
           value: "false"
       serviceRefs:
         - name: pulsarZookeeper
-          namespace: default
+          namespace: demo
           serviceDescriptor: zookeeper-sd
       replicas: 1
       resources:
@@ -45,7 +45,7 @@ spec:
       serviceVersion: 3.0.2
       serviceRefs:
         - name: pulsarZookeeper
-          namespace: default
+          namespace: demo
           serviceDescriptor: zookeeper-sd
       replicas: 4
       resources:

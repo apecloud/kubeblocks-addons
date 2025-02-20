@@ -30,6 +30,89 @@ An open-source, cloud-native, distributed time-series database with PromQL/SQL/P
 
 Create a greptimedb cluster
 
+```yaml
+# cat examples/greptimedb/cluster.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: greptimedb-cluster
+  namespace: demo
+spec:
+  # Specifies the name of the ClusterDefinition to use when creating a Cluster.
+  clusterDef: greptimedb
+  # Specifies the behavior when a Cluster is deleted.
+  # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
+  # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
+  # - `Delete`: Extends the `Halt` policy by also removing PVCs, leading to a thorough cleanup while removing all persistent data.
+  # - `WipeOut`: An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss.
+  terminationPolicy: Delete
+  # Specifies a list of ClusterComponentSpec objects used to define the individual components that make up a Cluster. This field allows for detailed configuration of each component within the Cluster.
+  # Note: `shardingSpecs` and `componentSpecs` cannot both be empty; at least one must be defined to configure a cluster.
+  # ClusterComponentSpec defines the specifications for a Component in a Cluster.
+  componentSpecs:
+    - name: frontend
+      replicas: 1
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: 0.5Gi
+        requests:
+          cpu: "0.5"
+          memory: 0.5Gi
+    - name: datanode
+      replicas: 3
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: 0.5Gi
+        requests:
+          cpu: "0.5"
+          memory: 0.5Gi
+      volumeClaimTemplates:
+        - name: datanode
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            # The name of the StorageClass required by the claim.
+            # If not specified, the StorageClass annotated with
+            # `storageclass.kubernetes.io/is-default-class=true` will be used by default
+            storageClassName: ""
+            resources:
+              requests:
+                storage: 20Gi
+    - name: meta
+      replicas: 1
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: 0.5Gi
+        requests:
+          cpu: "0.5"
+          memory: 0.5Gi
+    - name: etcd
+      replicas: 3
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: 0.5Gi
+        requests:
+          cpu: "0.5"
+          memory: 0.5Gi
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            # The name of the StorageClass required by the claim.
+            # If not specified, the StorageClass annotated with
+            # `storageclass.kubernetes.io/is-default-class=true` will be used by default
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+
+```
+
 ```bash
 kubectl apply -f examples/greptimedb/cluster.yaml
 ```
@@ -73,6 +156,31 @@ Then visit the dashboard at `http://localhost:4000/dashboard`.
 
 Horizontal scaling out greptimedb cluster by adding ONE more datanode replica:
 
+```yaml
+# cat examples/greptimedb/scale-out.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: greptimedb-scale-out
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: greptimedb-cluster
+  type: HorizontalScaling
+  # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
+  horizontalScaling:
+    # Specifies the name of the Component.
+    # - frontend
+    # - datanode
+  - componentName: datanode
+    # Specifies the replica changes for scaling in components
+    scaleOut:
+      # Specifies the replica changes for the component.
+      # add one more replica to current component
+      replicaChanges: 1
+
+```
+
 ```bash
 kubectl apply -f examples/greptimedb/scale-out.yaml
 ```
@@ -80,6 +188,31 @@ kubectl apply -f examples/greptimedb/scale-out.yaml
 #### [Scale-in](scale-in.yaml)
 
 Horizontal scaling in greptimedb cluster by deleting ONE datanode replica:
+
+```yaml
+# cat examples/greptimedb/scale-in.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: greptimedb-scale-in
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: greptimedb-cluster
+  type: HorizontalScaling
+  # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
+  horizontalScaling:
+    # Specifies the name of the Component.
+    # - frontend
+    # - datanode
+  - componentName: datanode
+    # Specifies the replica changes for scaling in components
+    scaleIn:
+      # Specifies the replica changes for the component.
+      # add one more replica to current component
+      replicaChanges: 1
+
+```
 
 ```bash
 kubectl apply -f examples/greptimedb/scale-in.yaml
@@ -94,7 +227,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: pg-cluster
-  namespace: default
+  namespace: demo
 spec:
   clusterDef: greptimedb
   componentSpecs:
@@ -114,6 +247,30 @@ spec:
 ### [Vertical scaling](verticalscale.yaml)
 
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
+
+```yaml
+# cat examples/greptimedb/verticalscale.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: greptimedb-verticalscaling
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: greptimedb-cluster
+  type: VerticalScaling
+  # Lists VerticalScaling objects, each specifying a component and its desired compute resources for vertical scaling.
+  verticalScaling:
+  - componentName: datanode
+    # VerticalScaling refers to the process of adjusting the compute resources (e.g., CPU, memory) allocated to a Component. It defines the parameters required for the operation.
+    requests:
+      cpu: '1'
+      memory: 1Gi
+    limits:
+      cpu: '1'
+      memory: 1Gi
+
+```
 
 ```bash
 kubectl apply -f examples/greptimedb/verticalscale.yaml
@@ -136,6 +293,30 @@ If the `ALLOWVOLUMEEXPANSION` column is `true`, the storage class supports volum
 
 To increase size of volume storage with the specified components in the cluster
 
+```yaml
+# cat examples/greptimedb/volumeexpand.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: greptimedb-volumeexpansion
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: greptimedb-cluster
+  type: VolumeExpansion
+  # Lists VolumeExpansion objects, each specifying a component and its corresponding volumeClaimTemplates that requires storage expansion.
+  volumeExpansion:
+  - componentName: datanode
+    # volumeClaimTemplates specifies the storage size and volumeClaimTemplate name.
+    volumeClaimTemplates:
+      # A reference to the volumeClaimTemplate name from the cluster components.
+      # - datanode, datanode
+      # - etcd, etcd-storage
+    - name: datanode
+      storage: 30Gi
+
+```
+
 ```bash
 kubectl apply -f examples/greptimedb/volumeexpand.yaml
 ```
@@ -143,6 +324,28 @@ kubectl apply -f examples/greptimedb/volumeexpand.yaml
 ### [Restart](restart.yaml)
 
 Restart the specified components in the cluster
+
+```yaml
+# cat examples/greptimedb/restart.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: greptimedb-restart
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: greptimedb-cluster
+  type: Restart
+  # Lists Components to be restarted. ComponentOps specifies the Component to be operated on.
+  restart:
+    # Specifies the name of the Component.
+    # - frontend
+    # - datanode
+    # - meta
+    # - etcd
+  - componentName: frontend
+
+```
 
 ```bash
 kubectl apply -f examples/greptimedb/restart.yaml
@@ -152,6 +355,20 @@ kubectl apply -f examples/greptimedb/restart.yaml
 
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 
+```yaml
+# cat examples/greptimedb/stop.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: greptimedb-stop
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: greptimedb-cluster
+  type: Stop
+
+```
+
 ```bash
 kubectl apply -f examples/greptimedb/stop.yaml
 ```
@@ -159,6 +376,20 @@ kubectl apply -f examples/greptimedb/stop.yaml
 ### [Start](start.yaml)
 
 Start the stopped cluster
+
+```yaml
+# cat examples/greptimedb/start.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: greptimedb-start
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: greptimedb-cluster
+  type: Start
+
+```
 
 ```bash
 kubectl apply -f examples/greptimedb/start.yaml

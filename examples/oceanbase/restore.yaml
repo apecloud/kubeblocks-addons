@@ -2,7 +2,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: oceanbase-cluster-restore
-  namespace: default
+  namespace: demo
   annotations:
     # NOTE: replace <ENCRYPTED-SYSTEM-ACCOUNTS> with the accounts info from you backup
     kubeblocks.io/restore-from-backup: '{"postgresql":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"ob-cluster-backup","namespace":"default","volumeRestorePolicy":"Parallel"}}'

@@ -20,6 +20,38 @@ Create a yashandb cluster of version 'yashandb-personal:23.1.1.100' with ONE rep
 > This is a personal version of YashanDB, for the enterprise version, please contact the vendor.
 > The personal version is only for testing and development purposes, and it runs in Standalone mode with only one replica.
 
+```yaml
+# cat examples/yashandb/cluster.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: yashandb-cluster
+  namespace: demo
+spec:
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: yashan
+      componentDef: yashandb
+      # Only supports Standalone YashanDB at the moment
+      # Must set replcias to 1.
+      replicas: 1
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+      resources:
+        limits:
+          cpu: "1"
+          memory: "1Gi"
+        requests:
+          cpu: "1"
+          memory: "1Gi"
+```
+
 ```bash
 kubectl apply -f examples/yashandb/cluster.yaml
 ```
@@ -64,6 +96,30 @@ NORMAL
 
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
 
+```yaml
+# cat examples/yashandb/verticalscale.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: yashandb-verticalscaling
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: yashandb-cluster
+  type: VerticalScaling
+  # Lists VerticalScaling objects, each specifying a component and its desired compute resources for vertical scaling.
+  verticalScaling:
+  - componentName: yashan-comp
+    # VerticalScaling refers to the process of adjusting the compute resources (e.g., CPU, memory) allocated to a Component. It defines the parameters required for the operation.
+    requests:
+      cpu: '1.5'
+      memory: 1.5Gi
+    limits:
+      cpu: '1.5'
+      memory: 1.5Gi
+
+```
+
 ```bash
 kubectl apply -f examples/yashandb/verticalscale.yaml
 ```
@@ -71,6 +127,24 @@ kubectl apply -f examples/yashandb/verticalscale.yaml
 ### [Restart](restart.yaml)
 
 Restart the specified components in the cluster
+
+```yaml
+# cat examples/yashandb/restart.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: yashandb-restart
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: yashandb-cluster
+  type: Restart
+  # Lists Components to be restarted. ComponentOps specifies the Component to be operated on.
+  restart:
+    # Specifies the name of the Component.
+  - componentName: yashan-comp
+
+```
 
 ```bash
 kubectl apply -f examples/yashandb/restart.yaml
@@ -80,6 +154,20 @@ kubectl apply -f examples/yashandb/restart.yaml
 
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 
+```yaml
+# cat examples/yashandb/stop.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: yashandb-stop
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: yashandb-cluster
+  type: Stop
+
+```
+
 ```bash
 kubectl apply -f examples/yashandb/stop.yaml
 ```
@@ -87,6 +175,20 @@ kubectl apply -f examples/yashandb/stop.yaml
 ### [Start](start.yaml)
 
 Start the stopped cluster
+
+```yaml
+# cat examples/yashandb/start.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: yashandb-start
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: yashandb-cluster
+  type: Start
+
+```
 
 ```bash
 kubectl apply -f examples/yashandb/start.yaml

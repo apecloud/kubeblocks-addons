@@ -2,7 +2,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: mysql-orc-proxysql-cluster
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
@@ -58,7 +58,7 @@ spec:
                 storage: 20Gi
       serviceRefs:
         - name: orchestrator
-          namespace: default # Set to your orchestrator cluster namespace
+          namespace: demo # Set to your orchestrator cluster namespace
           clusterServiceSelector:
             cluster:  myorc  # Set to your orchestrator cluster name
             service:

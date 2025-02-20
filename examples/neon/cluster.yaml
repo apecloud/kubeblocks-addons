@@ -2,7 +2,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: neon-cluster
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the ClusterDefinition to use when creating a Cluster.
   clusterDefinitionRef: neon
@@ -76,7 +76,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: compute-node-config
-  namespace: default
+  namespace: demo
 data:
   compute.sh: |-
     #!/bin/bash
@@ -468,7 +468,7 @@ apiVersion: vm.neon.tech/v1
 kind: VirtualMachine
 metadata:
   name: vm-compute-node
-  namespace: default
+  namespace: demo
   annotations:
     # In this example, these bounds aren't necessary. So... here's what they look like :)
     autoscaling.neon.tech/bounds: '{ "min": { "cpu": 0.25, "mem": "1Gi" }, "max": { "cpu": 1.25, "mem": "5Gi" } }'

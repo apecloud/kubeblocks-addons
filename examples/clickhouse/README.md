@@ -38,6 +38,49 @@ There are two key components in the ClickHouse cluster:
 
 Create a ClickHouse cluster with only ClickHouse server:
 
+```yaml
+# cat examples/clickhouse/cluster-standalone.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: clickhouse-standalone
+  namespace: demo
+spec:
+  # Specifies the name of the ClusterDef to use when creating a Cluster.
+  clusterDef: clickhouse
+  # Specifies the clickhouse cluster topology defined in ClusterDefinition.Spec.topologies, support standalone, cluster
+  # - `standalone`: single clickhouse instance
+  # - `cluster`: clickhouse with ClickHouse Keeper as coordinator
+  topology: standalone
+  # Specifies the behavior when a Cluster is deleted.
+  # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
+  # - `Delete`: Extends the `Halt` policy by also removing PVCs, leading to a thorough cleanup while removing all persistent data.
+  # - `WipeOut`: An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss.
+  terminationPolicy: Delete
+  # Specifies a list of ClusterComponentSpec objects used to define the individual components that make up a Cluster. This field allows for detailed configuration of each component within the Cluster.
+  # Note: `shardingSpecs` and `componentSpecs` cannot both be empty; at least one must be defined to configure a cluster.
+  # ClusterComponentSpec defines the specifications for a Component in a Cluster.
+  componentSpecs:
+    - name: clickhouse
+      replicas: 1
+      resources:
+        limits:
+          cpu: '0.5'
+          memory: 1Gi
+        requests:
+          cpu: '0.5'
+          memory: 1Gi
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+
+```
+
 ```bash
 kubectl apply -f examples/clickhouse/cluster-standalone.yaml
 ```
@@ -56,7 +99,7 @@ clickhouse-client --host <clickhouse-endpoint> --port 9000 --user admin --passwo
 e.g. you can get the password by the following command:
 
 ```bash
-kubectl get secrets clickhouse-cluster-clickhouse-account-admin -n default -oyaml  | yq .data.password -r | base64 -d
+kubectl get secrets clickhouse-cluster-clickhouse-account-admin -n demo -oyaml  | yq .data.password -r | base64 -d
 ```
 
 where `clickhouse-cluster-clickhouse-account-admin` is the secret name, it is named after pattern `<clusterName>-<componentName>-account-<accountName>`, and `password` is the key of the secret.
@@ -64,6 +107,89 @@ where `clickhouse-cluster-clickhouse-account-admin` is the secret name, it is na
 #### Cluster Mode
 
 Create a ClickHouse cluster with ClickHouse servers and ch-keeper:
+
+```yaml
+# cat examples/clickhouse/cluster.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: clickhouse-cluster
+  namespace: demo
+spec:
+  # Specifies the name of the ClusterDef to use when creating a Cluster.
+  clusterDef: clickhouse
+  # Specifies the clickhouse cluster topology defined in ClusterDefinition.Spec.topologies.
+  # - `standalone`: single clickhouse instance
+  # - `cluster`: clickhouse with ClickHouse Keeper as coordinator
+  topology: cluster
+  # Specifies the behavior when a Cluster is deleted.
+  # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
+  # - `Delete`: Extends the `Halt` policy by also removing PVCs, leading to a thorough cleanup while removing all persistent data.
+  # - `WipeOut`: An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss.
+  terminationPolicy: Delete
+  # Specifies a list of ClusterComponentSpec objects used to define the individual components that make up a Cluster. This field allows for detailed configuration of each component within the Cluster.
+  # Note: `shardingSpecs` and `componentSpecs` cannot both be empty; at least one must be defined to configure a cluster.
+  # ClusterComponentSpec defines the specifications for a Component in a Cluster.
+  componentSpecs:
+    - name: clickhouse
+      replicas: 2
+      # Overrides system accounts defined in referenced ComponentDefinition.
+      systemAccounts:
+        - name: admin # name of the system account
+          secretRef:
+            name: udf-account-info
+            namespace: demo
+      resources:
+        limits:
+          cpu: '0.5'
+          memory: 1Gi
+        requests:
+          cpu: '0.5'
+          memory: 1Gi
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+    - name: ch-keeper
+      replicas: 1
+      # Overrides system accounts defined in referenced ComponentDefinition.
+      systemAccounts:
+        - name: admin # name of the system account
+          passwordConfig: # config rule to generate  password
+            length: 10
+            numDigits: 5
+            numSymbols: 0
+            letterCase: MixedCases
+            seed: clickhouse-cluster
+      resources:
+        limits:
+          cpu: '0.5'
+          memory: 1Gi
+        requests:
+          cpu: '0.5'
+          memory: 1Gi
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: udf-account-info
+  namespace: demo  # optional
+type: Opaque
+data:
+  password: cGFzc3dvcmQxMjM=  # 'password123' in base64
+```
 
 ```bash
 kubectl apply -f examples/clickhouse/cluster.yaml
@@ -84,7 +210,7 @@ Option 1. override the rule `passwordCofnig` to generate password
             numDigits: 5
             numSymbols: 0
             letterCase: MixedCases
-            seed: clickhouse-cluster
+            seed: clickhouse-clusterp1
 ```
 
 Option 2. specify the secret for the account
@@ -97,7 +223,7 @@ Option 2. specify the secret for the account
         - name: admin # name of the system account
           secretRef:
             name: udf-account-info
-            namespace: default
+            namespace: demo
 ```
 
 Make sure the secret `udf-account-info` exists in the same namespace as the cluster, and has the following data:
@@ -114,6 +240,78 @@ type: Opaque
 #### Cluster Mode with TLS Enabled
 
 To create one ClickHouse server pod with the default configuration and TLS enabled.
+
+```yaml
+# cat examples/clickhouse/cluster-tls.yaml
+---
+# Source: clickhouse-cluster/templates/cluster.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: cluster-tls
+  namespace: demo
+spec:
+  terminationPolicy: Delete
+  clusterDef: clickhouse
+  topology: cluster
+  componentSpecs:
+    - name: ch-keeper
+      replicas: 1
+      resources:
+        limits:
+          cpu: "1"
+          memory: "2Gi"
+        requests:
+          cpu: "1"
+          memory: "2Gi"
+      systemAccounts:
+        - name: admin
+          passwordConfig:
+            length: 10
+            numDigits: 5
+            numSymbols: 0
+            letterCase: MixedCases
+            seed: cluster-tls
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 10Gi
+    - name: clickhouse
+      replicas: 2
+      systemAccounts:
+        - name: admin
+          passwordConfig:
+            length: 10
+            numDigits: 5
+            numSymbols: 0
+            letterCase: MixedCases
+            seed: cluster-tls
+      resources:
+        limits:
+          cpu: "1"
+          memory: "2Gi"
+        requests:
+          cpu: "1"
+          memory: "2Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+      tls: true   # set TLS to true
+      issuer:     # if TLS is True, this filed is required.
+        name: KubeBlocks  # set Issuer to [KubeBlocks, UserProvided].
+        # name: UserProvided  # set Issuer to [KubeBlocks, UserProvided].
+        # secretRef: secret-name # if name=UserProvided, must set the reference to the secret that contains user-provided certificates
+
+```
 
 ```bash
 kubectl apply -f examples/clickhouse/cluster-tls.yaml
@@ -140,6 +338,58 @@ clickhouse-client --host <clickhouse-endpoint>  --port 9440 --secure  --user adm
 
 Create a ClickHouse cluster with ch-keeper and clickhouse servers with multiple shards:
 
+```yaml
+# cat examples/clickhouse/cluster-sharding.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: cluster-sharding
+  namespace: demo
+spec:
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: ch-keeper # create clickhouse keeper
+      componentDef: clickhouse-keeper-24
+      replicas: 1
+      resources:
+        limits:
+          cpu: "1"
+          memory: "2Gi"
+        requests:
+          cpu: "1"
+          memory: "2Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 10Gi
+  shardings:
+    - name: shard
+      shards: 3  # need 3 shard
+      template:
+        name: clickhouse  # each shard is a clickhouse component, with 2 replicas
+        componentDef: clickhouse-24
+        replicas: 2
+        resources:
+          limits:
+            cpu: "1"
+            memory: "2Gi"
+          requests:
+            cpu: "1"
+            memory: "2Gi"
+        volumeClaimTemplates:
+          - name: data
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 20Gi
+```
+
 ```bash
 kubectl apply -f examples/clickhouse/cluster-sharding.yaml
 ```
@@ -152,6 +402,31 @@ This example creates a clickhouse cluster with 3 shards, each shard has 2 replic
 
 Horizontal scaling out Clickhouse cluster by adding ONE more replica:
 
+```yaml
+# cat examples/clickhouse/scale-out.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: ch-scale-out
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: clickhouse-cluster
+  type: HorizontalScaling
+  # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
+  horizontalScaling:
+    # Specifies the name of the Component.
+    # Specifies the name of the Component.
+    # - clickhouse
+    # - ch-keeper
+  - componentName: clickhouse
+    # Specifies the replica changes for scaling out components
+    scaleOut:
+      # Specifies the replica changes for the component.
+      # add one more replica to current component
+      replicaChanges: 1
+```
+
 ```bash
 kubectl apply -f examples/clickhouse/scale-out.yaml
 ```
@@ -159,6 +434,30 @@ kubectl apply -f examples/clickhouse/scale-out.yaml
 #### [Scale-in](scale-in.yaml)
 
 Horizontal scaling in clickhouse cluster by deleting ONE replica:
+
+```yaml
+# cat examples/clickhouse/scale-in.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: ch-scale-in
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: clickhouse-cluster
+  type: HorizontalScaling
+  # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
+  horizontalScaling:
+    # Specifies the name of the Component.
+    # - clickhouse
+    # - ch-keeper
+  - componentName: clickhouse
+    # Specifies the replica changes for scaling out components
+    scaleIn:
+      # Specifies the replica changes for the component.
+      # add one more replica to current component
+      replicaChanges: 1
+```
 
 ```bash
 kubectl apply -f examples/clickhouse/scale-in.yaml
@@ -173,7 +472,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: clickhouse-cluster
-  namespace: default
+  namespace: demo
 spec:
   componentSpecs:
     - name: clickhouse
@@ -183,6 +482,33 @@ spec:
 ### [Vertical scaling](verticalscale.yaml)
 
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
+
+```yaml
+# cat examples/clickhouse/verticalscale.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: clickhouse-verticalscaling
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: clickhouse-cluster
+  type: VerticalScaling
+  # Lists VerticalScaling objects, each specifying a component and its desired compute resources for vertical scaling.
+  verticalScaling:
+    # Specifies the name of the Component.
+    # - clickhouse
+    # - ch-keeper
+  - componentName: clickhouse
+    # VerticalScaling refers to the process of adjusting the compute resources (e.g., CPU, memory) allocated to a Component. It defines the parameters required for the operation.
+    requests:
+      cpu: '1'
+      memory: '2Gi'
+    limits:
+      cpu: '1'
+      memory: '2Gi'
+
+```
 
 ```bash
 kubectl apply -f examples/clickhouse/verticalscale.yaml
@@ -203,6 +529,31 @@ If the `ALLOWVOLUMEEXPANSION` column is `true`, the storage class supports volum
 
 Increase size of volume storage with the specified components in the cluster
 
+```yaml
+# cat examples/clickhouse/volumeexpand.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: clickhouse-volumeexpansion
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: clickhouse-cluster
+  type: VolumeExpansion
+  # Lists VolumeExpansion objects, each specifying a component and its corresponding volumeClaimTemplates that requires storage expansion.
+  volumeExpansion:
+    # Specifies the name of the Component.
+    # - clickhouse
+    # - ch-keeper
+  - componentName: clickhouse
+    # volumeClaimTemplates specifies the storage size and volumeClaimTemplate name.
+    volumeClaimTemplates:
+      # A reference to the volumeClaimTemplate name from the cluster components.
+    - name: data
+      storage: 30Gi
+
+```
+
 ```bash
 kubectl apply -f examples/clickhouse/volumeexpand.yaml
 ```
@@ -210,6 +561,44 @@ kubectl apply -f examples/clickhouse/volumeexpand.yaml
 ### [Reconfigure](configure.yaml)
 
 Reconfigure parameters with the specified components in the cluster
+
+```yaml
+# cat examples/clickhouse/configure.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: ch-reconfiguring
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: clickhouse-cluster
+  # Instructs the system to bypass pre-checks (including cluster state checks and customized pre-conditions hooks) and immediately execute the opsRequest, except for the opsRequest of 'Start' type, which will still undergo pre-checks even if `force` is true.  Note: Once set, the `force` field is immutable and cannot be updated.
+  force: false
+  # Specifies a component and its configuration updates. This field is deprecated and replaced by `reconfigures`.
+  reconfigures:
+    # Specifies the name of the Component.
+  - componentName: clickhouse
+   # Contains a list of ConfigurationItem objects, specifying the Component's configuration template name, upgrade policy, and parameter key-value pairs to be updated.
+    configurations:
+      # Sets the parameters to be updated. It should contain at least one item.
+      # The keys are merged and retained during patch operations.
+    - keys:
+        # Represents the unique identifier for the ConfigMap.
+      - key: user.xml
+        # Defines a list of key-value pairs for a single configuration file.
+        # These parameters are used to update the specified configuration settings.
+        parameters:
+          # Represents the name of the parameter that is to be updated.
+        - key: clickhouse.profiles.web.max_bytes_to_read
+          # Represents the parameter values that are to be updated.
+          # If set to nil, the parameter defined by the Key field will be removed from the configuration file.
+          value: '200000000000'
+      # Specifies the name of the configuration template.
+      name: clickhouse-user-tpl
+  # Specifies the maximum number of seconds the OpsRequest will wait for its start conditions to be met before aborting. If set to 0 (default), the start conditions must be met immediately for the OpsRequest to proceed.
+  preConditionDeadlineSeconds: 0
+  type: Reconfiguring
+```
 
 ```bash
 kubectl apply -f examples/clickhouse/configure.yaml
@@ -266,6 +655,26 @@ To update parameter `max_bytes_to_read`, we use the full path `clickhouse.profil
 
 Restart the specified components in the cluster
 
+```yaml
+# cat examples/clickhouse/restart.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: clickhouse-restart
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: clickhouse-cluster
+  type: Restart
+  # Lists Components to be restarted. ComponentOps specifies the Component to be operated on.
+  restart:
+    # Specifies the name of the Component.
+    # - clickhouse
+    # - ch-keeper
+  - componentName: clickhouse
+
+```
+
 ```bash
 kubectl apply -f examples/clickhouse/restart.yaml
 ```
@@ -274,6 +683,20 @@ kubectl apply -f examples/clickhouse/restart.yaml
 
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 
+```yaml
+# cat examples/clickhouse/stop.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: clickhouse-stop
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: clickhouse-cluster
+  type: Stop
+
+```
+
 ```bash
 kubectl apply -f examples/clickhouse/stop.yaml
 ```
@@ -281,6 +704,20 @@ kubectl apply -f examples/clickhouse/stop.yaml
 ### [Start](start.yaml)
 
 Start the stopped cluster
+
+```yaml
+# cat examples/clickhouse/start.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: clickhouse-start
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: clickhouse-cluster
+  type: Start
+
+```
 
 ```bash
 kubectl apply -f examples/clickhouse/start.yaml
@@ -298,6 +735,38 @@ Or you can follow the steps in [How to install the Prometheus Operator](../docs/
 #### Create PodMonitor
 
 Apply the `PodMonitor` file to monitor the cluster:
+
+```yaml
+# cat examples/clickhouse/pod-monitor.yaml
+
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: clickhouse-pod-monitor
+  labels:               # this is labels set in `prometheus.spec.podMonitorSelector`
+    release: prometheus
+spec:
+  jobLabel: app.kubernetes.io/managed-by
+  # defines the labels which are transferred from the
+  # associated Kubernetes `Pod` object onto the ingested metrics
+  # set the lables w.r.t you own needs
+  podTargetLabels:
+  - app.kubernetes.io/instance
+  - app.kubernetes.io/managed-by
+  - apps.kubeblocks.io/component-name
+  - apps.kubeblocks.io/pod-name
+  podMetricsEndpoints:
+    - path: /metrics
+      port: http-metrics
+      scheme: http
+  namespaceSelector:
+    matchNames:
+      - demo
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: clickhouse-cluster # set cluster name
+      apps.kubeblocks.io/component-name: clickhouse
+```
 
 ```bash
 kubectl apply -f examples/clickhouse/pod-monitor.yaml
@@ -319,11 +788,3 @@ It sets endpoints as follows:
 
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
-```bash
-kubectl patch cluster clickhouse-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
-
-kubectl delete cluster clickhouse-cluster
-
-# delete secret udf-account-info if exists
-# kubectl delete secret udf-account-info
-```

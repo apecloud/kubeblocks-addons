@@ -2,7 +2,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: kafka2-ext-zk-descriptor
-  namespace: default
+  namespace: demo
 spec:
   terminationPolicy: Delete
   # Specifies the name of the ClusterDefinition to use when creating a Cluster.
@@ -32,7 +32,7 @@ spec:
       componentDef: kafka27-broker
       serviceRefs:
         - name: kafkaZookeeper
-          namespace: default
+          namespace: demo
           serviceDescriptor: kafka-cluster-zookeeper-service
       tls: false
       replicas: 3
@@ -71,7 +71,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: ServiceDescriptor
 metadata:
   name: kafka-cluster-zookeeper-service
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the type or nature of the service.
   # Should represent a well-known application cluster type, such as {mysql, redis, zookeeper}.

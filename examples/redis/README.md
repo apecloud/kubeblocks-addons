@@ -63,6 +63,96 @@ Create a Redis replication cluster with two components, one for Redis, and one f
 
 For optimal reliability, you should run at least three Redis Sentinel replicas. Having three or more Sentinels ensures a quorum can be reached during failover decisions, maintaining the high availability of your Redis deployment.
 
+```yaml
+# cat examples/redis/cluster.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: redis-replication
+  namespace: demo
+spec:
+  # Specifies the behavior when a Cluster is deleted.
+  # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
+  # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
+  # - `Delete`: Extends the `Halt` policy by also removing PVCs, leading to a thorough cleanup while removing all persistent data.
+  # - `WipeOut`: An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss.
+  terminationPolicy: Delete
+  # Specifies the name of the ClusterDefinition to use when creating a Cluster.
+  # Note: DO NOT UPDATE THIS FIELD
+  # The value must be `postgresql` to create a PostgreSQL Cluster
+  clusterDef: redis
+  # Specifies the name of the ClusterTopology to be used when creating the
+  # Cluster.
+  topology: replication
+  # Specifies a list of ClusterComponentSpec objects used to define the
+  # individual Components that make up a Cluster.
+  # This field allows for detailed configuration of each Component within the Cluster
+  componentSpecs:
+    - name: redis
+      # ServiceVersion specifies the version of the Service expected to be
+      # provisioned by this Component.
+      # Valid options are: [7.0.6,7.2.4]
+      serviceVersion: "7.2.4"
+      # Determines whether metrics exporter information is annotated on the
+      # Component's headless Service.
+      # Valid options are [true, false]
+      disableExporter: false
+      # Specifies the desired number of replicas in the Component
+      replicas: 2
+      # Specifies the resources required by the Component.
+      resources:
+        limits:
+          cpu: '0.5'
+          memory: 0.5Gi
+        requests:
+          cpu: '0.5'
+          memory: 0.5Gi
+      # Specifies a list of PersistentVolumeClaim templates that define the storage
+      # requirements for the Component.
+      volumeClaimTemplates:
+        # Refers to the name of a volumeMount defined in
+        # `componentDefinition.spec.runtime.containers[*].volumeMounts
+        - name: data
+          spec:
+            # The name of the StorageClass required by the claim.
+            # If not specified, the StorageClass annotated with
+            # `storageclass.kubernetes.io/is-default-class=true` will be used by default
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                # Set the storage size as needed
+                storage: 20Gi
+    - name: redis-sentinel
+      replicas: 3
+      resources:
+        limits:
+          cpu: '0.5'
+          memory: 0.5Gi
+        requests:
+          cpu: '0.5'
+          memory: 0.5Gi
+      # Specifies a list of PersistentVolumeClaim templates that define the storage
+      # requirements for the Component.
+      volumeClaimTemplates:
+        # Refers to the name of a volumeMount defined in
+        # `componentDefinition.spec.runtime.containers[*].volumeMounts
+        - name: data
+          spec:
+            # The name of the StorageClass required by the claim.
+            # If not specified, the StorageClass annotated with
+            # `storageclass.kubernetes.io/is-default-class=true` will be used by default
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                # Set the storage size as needed
+                storage: 20Gi
+
+```
+
 ```bash
 kubectl apply -f examples/redis/cluster.yaml
 ```
@@ -120,6 +210,29 @@ kubectl get cd redis -oyaml | yq '.spec.topologies[] | select(.name=="replicatio
 
 Horizontal scaling out Redis component by adding ONE more replica:
 
+```yaml
+# cat examples/redis/scale-out.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: redis-scale-out
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: redis-replication
+  type: HorizontalScaling
+  # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
+  horizontalScaling:
+    # Specifies the name of the Component.
+  - componentName: redis
+    # Specifies the replica changes for scaling in components
+    scaleOut:
+      # Specifies the replica changes for the component.
+      # add one more replica to current component
+      replicaChanges: 1
+
+```
+
 ```bash
 kubectl apply -f examples/redis/scale-out.yaml
 ```
@@ -136,6 +249,28 @@ kubectl describe ops redis-scale-out
 
 Horizontal scaling in Redis component by removing ONE replica:
 
+```yaml
+# cat examples/redis/scale-in.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: redis-scale-in
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: redis-replication
+  type: HorizontalScaling
+  # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
+  horizontalScaling:
+    # Specifies the name of the Component.
+  - componentName: redis
+    # Specifies the replica changes for scaling in components
+    scaleIn:
+      # Specifies the replica changes for the component.
+      # add one more replica to current component
+      replicaChanges: 1
+```
+
 ```bash
 kubectl apply -f examples/redis/scale-in.yaml
 ```
@@ -149,7 +284,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: redis-replication
-  namespace: default
+  namespace: demo
 spec:
   componentSpecs:
     - name: redis
@@ -164,6 +299,30 @@ Vertical scaling involves increasing or decreasing resources to an existing data
 Resources that can be scaled include:, CPU cores/processing power and Memory (RAM).
 
 Vertical scaling up or down requests and limits cpu or memory resource for Redis component:
+
+```yaml
+# cat examples/redis/verticalscale.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: redis-verticalscaling
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: redis-replication
+  type: VerticalScaling
+  # Lists VerticalScaling objects, each specifying a component and its desired compute resources for vertical scaling.
+  verticalScaling:
+  - componentName: redis
+    # VerticalScaling refers to the process of adjusting the compute resources (e.g., CPU, memory) allocated to a Component. It defines the parameters required for the operation.
+    requests:
+      cpu: '1'
+      memory: 1Gi
+    limits:
+      cpu: '1'
+      memory: 1Gi
+
+```
 
 ```bash
 kubectl apply -f examples/redis/verticalscale.yaml
@@ -180,7 +339,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: redis-replication
-  namespace: default
+  namespace: demo
 spec:
   componentSpecs:
     - name: redis
@@ -214,6 +373,28 @@ If you don't have a storage class that supports volume expansion, you can create
 
 To increase size of volume storage with the Redis component in the cluster:
 
+```yaml
+# cat examples/redis/volumeexpand.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: redis-volumeexpansion
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: redis-replication
+  type: VolumeExpansion
+  # Lists VolumeExpansion objects, each specifying a component and its corresponding volumeClaimTemplates that requires storage expansion.
+  volumeExpansion:
+    # Specifies the name of the Component.
+  - componentName: redis
+    # volumeClaimTemplates specifies the storage size and volumeClaimTemplate name.
+    volumeClaimTemplates:
+    - name: data
+      storage: 30Gi
+
+```
+
 ```bash
 kubectl apply -f examples/redis/volumeexpand.yaml
 ```
@@ -229,7 +410,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: redis-replication
-  namespace: default
+  namespace: demo
 spec:
   componentSpecs:
     - name: redis
@@ -250,6 +431,24 @@ spec:
 
 Restart the specified components in the cluster
 
+```yaml
+# cat examples/redis/restart.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: redis-restart
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: redis-replication
+  type: Restart
+  # Lists Components to be restarted. ComponentOps specifies the Component to be operated on.
+  restart:
+    # Specifies the name of the Component.
+  - componentName: redis
+
+```
+
 ```bash
 kubectl apply -f examples/redis/restart.yaml
 ```
@@ -259,6 +458,20 @@ kubectl apply -f examples/redis/restart.yaml
 Stop the cluster will release all the pods of the cluster, but the storage will be retained. It is useful when you want to save the cost of the cluster.
 
 To stop the all component (without specifying the component name) in the cluster:
+
+```yaml
+# cat examples/redis/stop.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: redis-stop
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: redis-replication
+  type: Stop
+
+```
 
 ```bash
 kubectl apply -f examples/redis/stop.yaml
@@ -273,7 +486,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: redis-replication
-  namespace: default
+  namespace: demo
 spec:
   componentSpecs:
     - name: redis
@@ -291,6 +504,20 @@ spec:
 
 Start the stopped cluster
 
+```yaml
+# cat examples/redis/start.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: redis-start
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: redis-replication
+  type: Start
+
+```
+
 ```bash
 kubectl apply -f examples/redis/start.yaml
 ```
@@ -304,7 +531,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: redis-replication
-  namespace: default
+  namespace: demo
 spec:
   componentSpecs:
     - name: redis
@@ -325,6 +552,44 @@ A database reconfiguration is the process of modifying database parameters, sett
 - Static: Requires database restart
 
 Reconfigure parameters with the specified components in the cluster:
+
+```yaml
+# cat examples/redis/configure.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: redis-reconfiguring
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: redis-replication
+  # Instructs the system to bypass pre-checks (including cluster state checks and customized pre-conditions hooks) and immediately execute the opsRequest, except for the opsRequest of 'Start' type, which will still undergo pre-checks even if `force` is true.  Note: Once set, the `force` field is immutable and cannot be updated.
+  force: false
+  # Specifies a component and its configuration updates. This field is deprecated and replaced by `reconfigures`.
+  reconfigures:
+    # Specifies the name of the Component.
+  - componentName: redis
+   # Contains a list of ConfigurationItem objects, specifying the Component's configuration template name, upgrade policy, and parameter key-value pairs to be updated.
+    configurations:
+      # Sets the parameters to be updated. It should contain at least one item.
+      # The keys are merged and retained during patch operations.
+    - keys:
+        # Represents the unique identifier for the ConfigMap.
+      - key: redis.conf
+        # Defines a list of key-value pairs for a single configuration file.
+        # These parameters are used to update the specified configuration settings.
+        parameters:
+          # Represents the name of the parameter that is to be updated.
+        - key: maxclients
+          # Represents the parameter values that are to be updated.
+          # If set to nil, the parameter defined by the Key field will be removed from the configuration file.
+          value: '10001'
+      # Specifies the name of the configuration template.
+      name: redis-replication-config
+  # Specifies the maximum number of seconds the OpsRequest will wait for its start conditions to be met before aborting. If set to 0 (default), the start conditions must be met immediately for the OpsRequest to proceed.
+  preConditionDeadlineSeconds: 0
+  type: Reconfiguring
+```
 
 ```bash
 kubectl apply -f examples/redis/configure.yaml
@@ -362,6 +627,54 @@ kubectl create secret generic <credential-for-backuprepo>\
 ```
 
 Update `examples/redis/backuprepo.yaml` and set fields quoted with `<>` to your own settings and apply it.
+
+```yaml
+# cat examples/redis/backuprepo.yaml
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: BackupRepo
+metadata:
+  name: <test-backuprepo>
+  annotations:
+    # optional, mark this backuprepo as default
+    dataprotection.kubeblocks.io/is-default-repo: 'true'
+spec:
+  # Specifies the name of the `StorageProvider` used by this backup repository.
+  # Currently, KubeBlocks supports configuring various object storage services as backup repositories
+  # - s3 (Amazon Simple Storage Service)
+  # - oss (Alibaba Cloud Object Storage Service)
+  # - cos (Tencent Cloud Object Storage)
+  # - gcs (Google Cloud Storage)
+  # - obs (Huawei Cloud Object Storage)
+  # - minio, and other S3-compatible services.
+  # Note: set the provider name to you own needs
+  storageProviderRef: oss
+  # Specifies the access method of the backup repository.
+  # - Tool
+  # - Mount
+  # If the access mode is Mount, it will mount the PVC through the CSI driver (make sure it is installed and configured properly)
+  # In Tool mode, it will directly stream to the object storage without mounting the PVC.
+  accessMethod: Tool
+  # Stores the non-secret configuration parameters for the `StorageProvider`.
+  config:
+    # Note: set the bucket name to you own needs
+    bucket: <kubeblocks-test>
+    # Note: set the region name to you own needs
+    region: <cn-zhangjiakou>
+  # References to the secret that holds the credentials for the `StorageProvider`.
+  # kubectl create secret generic demo-credential-for-backuprepo --from-literal=accessKeyId=* --from-literal=secretAccessKey=* --namespace=kb-system
+  credential:
+    # name is unique within a namespace to reference a secret resource.
+    # Note: set the secret name to you own needs
+    name: <credential-for-backuprepo>
+    # namespace defines the space within which the secret name must be unique.
+    namespace: kb-system
+  # Specifies reclaim policy of the PV created by this backup repository
+  # Valid Options are [Retain, Delete]
+  # Delete means the volume will be deleted from Kubernetes on release from its claim.
+  # Retain means the volume will be left in its current phase (Released) for manual reclamation by the administrator.
+  pvReclaimPolicy: Retain
+
+```
 
 ```bash
 kubectl apply -f examples/redis/backuprepo.yaml
@@ -402,6 +715,28 @@ volume-snapshot # for snapshot backup, make sure the storage class supports volu
 
 To create a backup for the reids component in the cluster:
 
+```yaml
+# cat examples/redis/backup.yaml
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: Backup
+metadata:
+  name: redis-backup-datafile
+  namespace: demo
+spec:
+  # Specifies the backup method name that is defined in the backup policy.
+  # - datafile
+  # - volume-snapshot
+  # - aof
+  backupMethod: datafile
+  # Specifies the backup policy to be applied for this backup.
+  backupPolicyName: redis-replication-redis-backup-policy
+  # Determines whether the backup contents stored in the backup repository should be deleted when the backup custom resource(CR) is deleted. Supported values are `Retain` and `Delete`.
+  # - `Retain` means that the backup content and its physical snapshot on backup repository are kept.
+  # - `Delete` means that the backup content and its physical snapshot on backup repository are deleted.
+  deletionPolicy: Delete
+
+```
+
 ```bash
 kubectl apply -f examples/redis/backup.yaml
 ```
@@ -424,6 +759,42 @@ To create a continuous backup for the reids component, you should follow the ste
 
 1. set variable `aof-timestamp-enabled` to `yes`
 
+```yaml
+# cat examples/redis/reconfigure-aof.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: redis-reconfigur-aof
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: redis-replication
+  # Instructs the system to bypass pre-checks (including cluster state checks and customized pre-conditions hooks) and immediately execute the opsRequest, except for the opsRequest of 'Start' type, which will still undergo pre-checks even if `force` is true.  Note: Once set, the `force` field is immutable and cannot be updated.
+  force: false
+  # Specifies a component and its configuration updates. This field is deprecated and replaced by `reconfigures`.
+  reconfigures:
+    # Specifies the name of the Component.
+  - componentName: redis
+   # Contains a list of ConfigurationItem objects, specifying the Component's configuration template name, upgrade policy, and parameter key-value pairs to be updated.
+    configurations:
+      # Sets the parameters to be updated. It should contain at least one item.
+      # The keys are merged and retained during patch operations.
+    - keys:
+        # Represents the unique identifier for the ConfigMap.
+      - key: redis.conf
+        # Defines a list of key-value pairs for a single configuration file.
+        # These parameters are used to update the specified configuration settings.
+        parameters:
+          # Represents the name of the parameter that is to be updated.
+        - key: aof-timestamp-enabled
+          value: 'yes'
+      # Specifies the name of the configuration template.
+      name: redis-replication-config
+  # Specifies the maximum number of seconds the OpsRequest will wait for its start conditions to be met before aborting. If set to 0 (default), the start conditions must be met immediately for the OpsRequest to proceed.
+  preConditionDeadlineSeconds: 0
+  type: Reconfiguring
+```
+
 ```bash
 kubectl apply -f examples/redis/reconfigure-aof.yaml
 ```
@@ -442,7 +813,7 @@ apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: BackupSchedule
 metadata:
   name: redis-replication-redis-backup-policy
-  namespace: default
+  namespace: demo
 spec:
   backupPolicyName: redis-replication-redis-backup-policy
   schedules:
@@ -477,7 +848,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: redis-replication
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the backup configuration of the Cluster.
   backup:
@@ -508,6 +879,60 @@ kubectl get backup acmysql-cluster-backup -ojsonpath='{.metadata.annotations.kub
 
 1. Update `examples/redis/restore.yaml` and set placeholder `<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
 
+```yaml
+# cat examples/redis/restore.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: redis-replication-restore
+  namespace: demo
+  annotations:
+    kubeblocks.io/restore-from-backup: '{"redis":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"redis-replication-backup","namespace":"default","volumeRestorePolicy":"Parallel"}}'
+spec:
+  terminationPolicy: Delete
+  clusterDef: redis
+  topology: replication
+  componentSpecs:
+    - name: redis
+      serviceVersion: "7.2.4"
+      disableExporter: false
+      replicas: 2
+      resources:
+        limits:
+          cpu: '0.5'
+          memory: 0.5Gi
+        requests:
+          cpu: '0.5'
+          memory: 0.5Gi
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+    - name: redis-sentinel
+      replicas: 3
+      resources:
+        limits:
+          cpu: '0.5'
+          memory: 0.5Gi
+        requests:
+          cpu: '0.5'
+          memory: 0.5Gi
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+```
+
 ```bash
 kubectl apply -f examples/redis/restore.yaml
 ```
@@ -518,11 +943,76 @@ Expose a cluster with a new endpoint
 
 #### [Enable](expose-enable.yaml)
 
+```yaml
+# cat examples/redis/expose-enable.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: redis-expose-enable
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: redis-replication
+  # Lists Expose objects, each specifying a Component and its services to be exposed.
+  expose:
+    # Specifies the name of the Component.
+  - componentName: redis
+    # Specifies a list of OpsService. When an OpsService is exposed, a corresponding ClusterService will be added to `cluster.spec.services`.
+    services:
+    - name: internet
+      # Determines how the Service is exposed. Defaults to 'ClusterIP'.
+      # Valid options are `ClusterIP`, `NodePort`, and `LoadBalancer`.
+      serviceType: LoadBalancer
+      # Contains cloud provider related parameters if ServiceType is LoadBalancer.
+      # Following is an example for Aliyun ACK, please adjust the following annotations as needed.
+      annotations:
+        service.beta.kubernetes.io/alibaba-cloud-loadbalancer-address-type: internet
+        service.beta.kubernetes.io/alibaba-cloud-loadbalancer-charge-type: ""
+        service.beta.kubernetes.io/alibaba-cloud-loadbalancer-spec: slb.s1.small
+      # Specifies a role to target with the service.
+      # If specified, the service will only be exposed to pods with the matching
+      # role.
+      roleSelector: primary
+    # Indicates whether the services will be exposed. 'Enable' exposes the services. while 'Disable' removes the exposed Service.
+    switch: Enable
+  # Specifies the maximum number of seconds the OpsRequest will wait for its start conditions to be met before aborting. If set to 0 (default), the start conditions must be met immediately for the OpsRequest to proceed.
+  preConditionDeadlineSeconds: 0
+  type: Expose
+
+```
+
 ```bash
 kubectl apply -f examples/redis/expose-enable.yaml
 ```
 
 #### [Disable](expose-disable.yaml)
+
+```yaml
+# cat examples/redis/expose-disable.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: redis-expose-disable
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: redis-replication
+  # Lists Expose objects, each specifying a Component and its services to be exposed.
+  expose:
+    # Specifies the name of the Component.
+  - componentName: redis
+    # Specifies a list of OpsService. When an OpsService is exposed, a corresponding ClusterService will be added to `cluster.spec.services`.
+    services:
+    - name: internet
+      roleSelector: primary
+      serviceType: LoadBalancer
+    # Indicates whether the services will be exposed. 'Enable' exposes the services. while 'Disable' removes the exposed Service.
+    switch: Disable
+  # Specifies the maximum number of seconds the OpsRequest will wait for its start conditions to be met before aborting. If set to 0 (default), the start conditions must be met immediately for the OpsRequest to proceed.
+  preConditionDeadlineSeconds: 0
+  type: Expose
+
+```
 
 ```bash
 kubectl apply -f examples/redis/expose-disable.yaml
@@ -537,7 +1027,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: redis-replication
-  namespace: default
+  namespace: demo
 spec:
   # append service to the list
   services:
@@ -610,12 +1100,102 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: redis-replication
-  namespace: default
+  namespace: demo
 spec:
   componentSpecs:
     - name: redis
       serviceVersion: "7.2.4"
       disableExporter: false # set to `false` to enable exporter
+```
+
+```yaml
+# cat examples/redis/cluster.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: redis-replication
+  namespace: demo
+spec:
+  # Specifies the behavior when a Cluster is deleted.
+  # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
+  # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
+  # - `Delete`: Extends the `Halt` policy by also removing PVCs, leading to a thorough cleanup while removing all persistent data.
+  # - `WipeOut`: An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss.
+  terminationPolicy: Delete
+  # Specifies the name of the ClusterDefinition to use when creating a Cluster.
+  # Note: DO NOT UPDATE THIS FIELD
+  # The value must be `postgresql` to create a PostgreSQL Cluster
+  clusterDef: redis
+  # Specifies the name of the ClusterTopology to be used when creating the
+  # Cluster.
+  topology: replication
+  # Specifies a list of ClusterComponentSpec objects used to define the
+  # individual Components that make up a Cluster.
+  # This field allows for detailed configuration of each Component within the Cluster
+  componentSpecs:
+    - name: redis
+      # ServiceVersion specifies the version of the Service expected to be
+      # provisioned by this Component.
+      # Valid options are: [7.0.6,7.2.4]
+      serviceVersion: "7.2.4"
+      # Determines whether metrics exporter information is annotated on the
+      # Component's headless Service.
+      # Valid options are [true, false]
+      disableExporter: false
+      # Specifies the desired number of replicas in the Component
+      replicas: 2
+      # Specifies the resources required by the Component.
+      resources:
+        limits:
+          cpu: '0.5'
+          memory: 0.5Gi
+        requests:
+          cpu: '0.5'
+          memory: 0.5Gi
+      # Specifies a list of PersistentVolumeClaim templates that define the storage
+      # requirements for the Component.
+      volumeClaimTemplates:
+        # Refers to the name of a volumeMount defined in
+        # `componentDefinition.spec.runtime.containers[*].volumeMounts
+        - name: data
+          spec:
+            # The name of the StorageClass required by the claim.
+            # If not specified, the StorageClass annotated with
+            # `storageclass.kubernetes.io/is-default-class=true` will be used by default
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                # Set the storage size as needed
+                storage: 20Gi
+    - name: redis-sentinel
+      replicas: 3
+      resources:
+        limits:
+          cpu: '0.5'
+          memory: 0.5Gi
+        requests:
+          cpu: '0.5'
+          memory: 0.5Gi
+      # Specifies a list of PersistentVolumeClaim templates that define the storage
+      # requirements for the Component.
+      volumeClaimTemplates:
+        # Refers to the name of a volumeMount defined in
+        # `componentDefinition.spec.runtime.containers[*].volumeMounts
+        - name: data
+          spec:
+            # The name of the StorageClass required by the claim.
+            # If not specified, the StorageClass annotated with
+            # `storageclass.kubernetes.io/is-default-class=true` will be used by default
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                # Set the storage size as needed
+                storage: 20Gi
+
 ```
 
 ```bash
@@ -672,6 +1252,38 @@ scrapePort: http-metrics # scrapte port
 
 Apply the `PodMonitor` file to monitor the cluster:
 
+```yaml
+# cat examples/redis/pod-monitor.yaml
+
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: redis-replication-pod-monitor
+  labels:               # this is labels set in `prometheus.spec.podMonitorSelector`
+    release: prometheus
+spec:
+  jobLabel: app.kubernetes.io/managed-by
+  # defines the labels which are transferred from the
+  # associated Kubernetes `Pod` object onto the ingested metrics
+  # set the lables w.r.t you own needs
+  podTargetLabels:
+  - app.kubernetes.io/instance
+  - app.kubernetes.io/managed-by
+  - apps.kubeblocks.io/component-name
+  - apps.kubeblocks.io/pod-name
+  podMetricsEndpoints:
+    - path: /metrics
+      port: http-metrics
+      scheme: http
+  namespaceSelector:
+    matchNames:
+      - demo
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: redis-replication
+      apps.kubeblocks.io/component-name: redis
+```
+
 ```bash
 kubectl apply -f examples/redis/pod-monitor.yaml
 ```
@@ -705,6 +1317,64 @@ Redis has various deployment topology, such as standalone, replication, sharding
 
 To create a redis with a proxy (Twemproxy) in front of it:
 
+```yaml
+# cat examples/redis/cluster-twemproxy.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: redis-replication-with-proxy
+  namespace: demo
+spec:
+  terminationPolicy: Delete
+  clusterDef: redis
+  topology: replication-twemproxy  # set topology to standalone
+  componentSpecs:
+  - name: redis
+    replicas: 2
+    disableExporter: true
+    resources:
+      limits:
+        cpu: "0.5"
+        memory: "0.5Gi"
+      requests:
+        cpu: "0.5"
+        memory: "0.5Gi"
+    volumeClaimTemplates:
+      - name: data
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 20Gi
+  - name: redis-sentinel
+    replicas: 3
+    resources:
+      limits:
+        cpu: "0.2"
+        memory:  "0.2Gi"
+      requests:
+        cpu: "0.2"
+        memory:  "0.2Gi"
+    volumeClaimTemplates:
+      - name: data
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 20Gi
+  - name: redis-twemproxy       # add one componet on provisioniing: twemproxy
+    replicas: 3
+    resources:
+      limits:
+        cpu: "0.2"
+        memory: "0.2Gi"
+      requests:
+        cpu: "0.2"
+        memory: "0.2Gi"
+```
+
 ```bash
 kubectl apply -f examples/redis/cluster-twemproxy.yaml
 ```
@@ -716,7 +1386,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: redis-sharding
-  namespace: default
+  namespace: demo
 spec:
   terminationPolicy: Delete
   clusterDef: redis
@@ -733,6 +1403,59 @@ spec:
 
 To create a redis sharding cluster (An official distributed Redis)  with 3 shards and 2 replica for each shard:
 
+```yaml
+# cat examples/redis/cluster-sharding.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: redis-sharding
+  namespace: demo
+spec:
+  terminationPolicy: Delete
+  # Specifies a list of ShardingSpec objects that configure the sharding topology for components of a Cluster. Each ShardingSpec corresponds to a group of components organized into shards, with each shard containing multiple replicas. Components within a shard are based on a common ClusterComponentSpec template, ensuring that all components in a shard have identical configurations as per the template. This field supports dynamic scaling by facilitating the addition or removal of shards based on the specified number in each ShardingSpec. Note: `shardingSpecs` and `componentSpecs` cannot both be empty; at least one must be defined to configure a cluster. ShardingSpec defines how KubeBlocks manage dynamic provisioned shards. A typical design pattern for distributed databases is to distribute data across multiple shards, with each shard consisting of multiple replicas. Therefore, KubeBlocks supports representing a shard with a Component and dynamically instantiating Components using a template when shards are added. When shards are removed, the corresponding Components are also deleted.
+  shardings:
+    # Represents the common parent part of all shard names. This identifier is included as part of the Service DNS name and must comply with IANA service naming rules. It is used to generate the names of underlying Components following the pattern `$(shardingSpec.name)-$(ShardID)`. ShardID is a random string that is appended to the Name to generate unique identifiers for each shard. For example, if the sharding specification name is "my-shard" and the ShardID is "abc", the resulting component name would be "my-shard-abc". Note that the name defined in component template(`shardingSpec.template.name`) will be disregarded when generating the component names of the shards. The `shardingSpec.name` field takes precedence.
+  - name: shard
+    # Specifies the desired number of shards. Users can declare the desired number of shards through this field. KubeBlocks dynamically creates and deletes Components based on the difference between the desired and actual number of shards. KubeBlocks provides lifecycle management for sharding, including: - Executing the postProvision Action defined in the ComponentDefinition when the number of shards increases. This allows for custom actions to be performed after a new shard is provisioned. - Executing the preTerminate Action defined in the ComponentDefinition when the number of shards decreases. This enables custom cleanup or data migration tasks to be executed before a shard is terminated. Resources and data associated with the corresponding Component will also be deleted.
+    # The number of shards should be no less than 3
+    shards: 3
+    # The template for generating Components for shards, where each shard consists of one Component. This field is of type ClusterComponentSpec, which encapsulates all the required details and definitions for creating and managing the Components. KubeBlocks uses this template to generate a set of identical Components or shards. All the generated Components will have the same specifications and definitions as specified in the `template` field. This allows for the creation of multiple Components with consistent configurations, enabling sharding and distribution of workloads across Components.
+    template:
+      name: redis
+      componentDef: redis-cluster-7
+      disableExporter: true
+      replicas: 2
+      resources:
+        limits:
+          cpu: '1'
+          memory: 1.1Gi
+        requests:
+          cpu: '1'
+          memory: 1.1Gi
+      # Specifies the version of the Component service. This field is used to determine the version of the service that is created for the Component. \
+      # The serviceVersion is used to determine the version of the Redis Sharding Cluster kernel. If the serviceVersion is not specified, the default value is the ServiceVersion defined in ComponentDefinition.
+      serviceVersion: 7.2.4
+      # Component-level services override services defined in referenced ComponentDefinition and expose
+      # endpoints that can be accessed by clients
+      # This example explicitly override the svc `redis-advertised` to use the NodePort
+      # This is a per-pod svc.
+      services:
+      - name: redis-advertised
+        podService: true
+        #  - NodePort
+        #  - LoadBalancer
+        serviceType: NodePort
+      volumeClaimTemplates:
+      - name: data
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 20Gi
+
+```
+
 ```bash
 kubectl apply -f examples/redis/cluster-sharding.yaml
 ```
@@ -744,7 +1467,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: redis-sharding
-  namespace: default
+  namespace: demo
 spec:
   shardings:
   - name: shard
@@ -780,7 +1503,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: redis-sharding
-  namespace: default
+  namespace: demo
 spec:
   shardings:
   - name: shard
@@ -796,4 +1519,3 @@ spec:
 ## Reference
 
 [^1]: Redis Sentinel: https://redis.io/docs/latest/operate/oss_and_stack/management/sentinel/
-[^5]: Grafana Dashboard Store: https://grafana.com/grafana/dashboards/

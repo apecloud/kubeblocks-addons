@@ -2,7 +2,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: zk-cluster-restore
-  namespace: default
+  namespace: demo
   annotations:
     # zk-cluster-backup is the backup name.
     kubeblocks.io/restore-from-backup: '{"zookeeper":{"name":"zk-cluster-backup","namespace":"default","volumeRestorePolicy":"Parallel"}}'

@@ -2,7 +2,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: risingwave-cluster
-  namespace: default
+  namespace: demo
   annotations:
     # Create the hummock option
     # RW_STATE_STORE: State store url
@@ -76,7 +76,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: etcdr-cluster
-  namespace: default
+  namespace: demo
 spec:
   terminationPolicy: WipeOut
   componentSpecs:

@@ -2,7 +2,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: elasticsearch-cluster
-  namespace: default
+  namespace: demo
   annotations:
     kubeblocks.io/extra-env: '{"mode":"single-node"}'
 spec:

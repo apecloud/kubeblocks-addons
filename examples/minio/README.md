@@ -30,6 +30,81 @@ Minio is a high performance open source relational database management system th
 
 Create a minio cluster with two replicas:
 
+```yaml
+# cat examples/minio/cluster.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: minio-cluster
+  namespace: demo
+spec:
+  # Specifies the behavior when a Cluster is deleted.
+  # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
+  # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
+  # - `Delete`: Extends the `Halt` policy by also removing PVCs, leading to a thorough cleanup while removing all persistent data.
+  # - `WipeOut`: An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss.
+  terminationPolicy: Delete
+  componentSpecs:
+    - componentDef: minio
+      name: minio
+      # for dev/test, set replicas to 2
+      # for prod , MinIO clusters must be configured with at least 4 replicas
+      # and the number of nodes must also be a multiple of 2 (e.g., 4, 6, 8, 12, etc.)
+      # to maintain balanced erasure coding.
+      replicas: 2
+      # following is an simple example of schedulingPolicy
+      # which requires pods from the same component `minio` cannot be scheduled to the same node
+      # --- start of example
+      # schedulingPolicy:
+      #   affinity:
+      #     podAntiAffinity:
+      #       preferredDuringSchedulingIgnoredDuringExecution:
+      #         - podAffinityTerm:
+      #             labelSelector:
+      #               matchLabels:
+      #                 app.kubernetes.io/instance: minio-cluster
+      #                 apps.kubeblocks.io/component-name: minio
+      #             topologyKey: kubernetes.io/hostname
+      #           weight: 100
+      #       requiredDuringSchedulingIgnoredDuringExecution:
+      #         - labelSelector:
+      #             matchLabels:
+      #               app.kubernetes.io/instance: minio-cluster
+      #               apps.kubeblocks.io/component-name: minio
+      #           topologyKey: kubernetes.io/hostname
+      # --- end of example
+      env:
+        # MINIO_BUCKETS is a comma-separated list of bucket names that will be automatically
+        # created during MinIO initialization. Example: "data,backup,logs"
+        - name: MINIO_BUCKETS
+          value:
+      resources:
+        limits:
+          cpu: "1"
+          memory: "1Gi"
+        requests:
+          cpu: "1"
+          memory: "1Gi"
+      # Specifies a list of PersistentVolumeClaim templates that define the storage
+      # requirements for the Component.
+      volumeClaimTemplates:
+        # Refers to the name of a volumeMount defined in
+        # `componentDefinition.spec.runtime.containers[*].volumeMounts
+        - name: data
+          spec:
+            # The name of the StorageClass required by the claim.
+            # If not specified, the StorageClass annotated with
+            # `storageclass.kubernetes.io/is-default-class=true` will be used by default
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                # Set the storage size as needed
+                storage: 20Gi
+
+```
+
 ```bash
 kubectl apply -f examples/minio/cluster.yaml
 ```
@@ -67,6 +142,28 @@ Horizontal scaling out MinIO cluster by adding TWO more replica:
 > MinIO clusters must be configured with at least 2 replicas
 > And the number of replicas must also be a multiple of 2 (e.g., 4, 6, 8, 12, etc.) to maintain balanced erasure coding.
 
+```yaml
+# cat examples/minio/scale-out.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: minio-scale-out
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: minio-cluster
+  type: HorizontalScaling
+  # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
+  horizontalScaling:
+    # Specifies the name of the Component.
+  - componentName: minio
+    # Specifies the replica changes for scaling in components
+    scaleOut:
+      # Specifies the replica changes for the component.
+      # add one more replica to current component
+      replicaChanges: 2
+```
+
 ```bash
 kubectl apply -f examples/minio/scale-out.yaml
 ```
@@ -95,7 +192,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: minio-force-stop
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: minio-cluster
@@ -112,7 +209,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: minio-force-start
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: minio-cluster
@@ -134,6 +231,30 @@ kubectl delete pod minio-cluster-minio-{0..1}
 
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
 
+```yaml
+# cat examples/minio/verticalscale.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: minio-verticalscaling
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: minio-cluster
+  type: VerticalScaling
+  # Lists VerticalScaling objects, each specifying a component and its desired compute resources for vertical scaling.
+  verticalScaling:
+  - componentName: minio
+    # VerticalScaling refers to the process of adjusting the compute resources (e.g., CPU, memory) allocated to a Component. It defines the parameters required for the operation.
+    requests:
+      cpu: '1'
+      memory: 1Gi
+    limits:
+      cpu: '1'
+      memory: 1Gi
+
+```
+
 ```bash
 kubectl apply -f examples/minio/verticalscale.yaml
 ```
@@ -141,6 +262,23 @@ kubectl apply -f examples/minio/verticalscale.yaml
 ### [Restart](restart.yaml)
 
 Restart the specified components in the cluster
+
+```yaml
+# cat examples/minio/restart.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: minio-restart
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: minio-cluster
+  type: Restart
+  # Lists Components to be restarted. ComponentOps specifies the Component to be operated on.
+  restart:
+    # Specifies the name of the Component.
+  - componentName: minio
+```
 
 ```bash
 kubectl apply -f examples/minio/restart.yaml
@@ -150,6 +288,21 @@ kubectl apply -f examples/minio/restart.yaml
 
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 
+```yaml
+# cat examples/minio/stop.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: minio-stop
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: minio-cluster
+  force: true
+  type: Stop
+
+```
+
 ```bash
 kubectl apply -f examples/minio/stop.yaml
 ```
@@ -157,6 +310,20 @@ kubectl apply -f examples/minio/stop.yaml
 ### [Start](start.yaml)
 
 Start the stopped cluster
+
+```yaml
+# cat examples/minio/start.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: minio-start
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: minio-cluster
+  type: Start
+
+```
 
 ```bash
 kubectl apply -f examples/minio/start.yaml
