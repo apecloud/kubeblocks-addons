@@ -70,6 +70,7 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
+  {{- include "kblib.syncer.policyRules" . | nindent 2 }}
   systemAccounts:
     - name: default
       initAccount: true
