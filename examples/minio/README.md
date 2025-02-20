@@ -111,7 +111,7 @@ kubectl apply -f examples/minio/cluster.yaml
 
 To visit the dashboard of minio, you can use the following command.
 
-1. poforward the frontend service to access the minio cluster
+1. port-forward the frontend service to access the minio cluster
 
 ```bash
 kubectl port-forward svc/minio-cluster-frontend 9001:9001

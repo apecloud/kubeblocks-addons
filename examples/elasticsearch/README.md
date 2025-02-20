@@ -1,7 +1,7 @@
 # Elasticsearch
 
 Elasticsearch is a distributed, RESTful search engine optimized for speed and relevance on production-scale workloads.
-Each Elasticsearch cluster consists of one or more nodes, and each node in a cluster has a role and communicates with other nodes to share data and responsibilities. A node can assume multiple roles up to your requirements. Types of roles inlcude [^1]:
+Each Elasticsearch cluster consists of one or more nodes, and each node in a cluster has a role and communicates with other nodes to share data and responsibilities. A node can assume multiple roles up to your requirements. Types of roles include [^1]:
 
 - master
 - data
@@ -101,11 +101,11 @@ name                  ip           role
 es-single-node-mdit-0 12.345.678 cdfhilmrstw
 ```
 
-The role is `cdfhilmrstw`. Please frefer to [Elasticsearch Nodes](https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-node.html) for more information about the roles.
+The role is `cdfhilmrstw`. Please refer to [Elasticsearch Nodes](https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-node.html) for more information about the roles.
 
 #### Create a Multi-Node Cluster
 
-Create a elasticsearch cluster with multiple nodes and each node assume specified roles.
+Create a Elasticsearch cluster with multiple nodes and each node assume specified roles.
 
 ```yaml
 # cat examples/elasticsearch/cluster-multi-node.yaml
@@ -198,7 +198,7 @@ spec:
 kubectl apply -f examples/elasticsearch/cluster-multi-node.yaml
 ```
 
-There are four components specified in this cluster, i.e 'master', 'data', 'ingest', and 'tranfrom',  and each component has differnt roles. Roles are specified in the annotation:
+There are four components specified in this cluster, i.e 'master', 'data', 'ingest', and 'transform',  and each component has different roles. Roles are specified in the annotation:
 
 ```yaml
   annotations:
@@ -241,7 +241,7 @@ spec:
 
 #### [Scale-out](scale-out.yaml)
 
-Horizontal scaling out elasticsearch cluster by adding ONE `MASTER` replica:
+Horizontal scaling out Elasticsearch cluster by adding ONE `MASTER` replica:
 
 ```yaml
 # cat examples/elasticsearch/scale-out.yaml
@@ -276,7 +276,7 @@ kubectl apply -f examples/elasticsearch/scale-out.yaml
 
 #### [Scale-in](scale-in.yaml)
 
-Horizontal scaling in elasticsearch cluster by deleting ONE `MASTER` replica:
+Horizontal scaling in Elasticsearch cluster by deleting ONE `MASTER` replica:
 
 ```yaml
 # cat examples/elasticsearch/scale-in.yaml
@@ -573,7 +573,7 @@ spec:
 
 ### Expose
 
-It is recommended to access the Elasticsearch cluster from within the Kubernetes cluster using Kibaba or other tools. However, if you need to access the Elasticsearch cluster from outside the Kubernetes cluster, you can expose the Elasticsearch service using a `LoadBalancer` service type.
+It is recommended to access the Elasticsearch cluster from within the Kubernetes cluster using Kibana or other tools. However, if you need to access the Elasticsearch cluster from outside the Kubernetes cluster, you can expose the Elasticsearch service using a `LoadBalancer` service type.
 
 #### [Enable](expose-enable.yaml)
 

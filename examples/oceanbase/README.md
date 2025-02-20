@@ -85,7 +85,7 @@ kbcli addon upgrade oceanbase-ce --version $version
 
 ### [Create](cluster.yaml)
 
-Create a distributed oceanbase cluster
+Create a distributed OceanBase cluster
 
 ```yaml
 # cat examples/oceanbase/cluster.yaml

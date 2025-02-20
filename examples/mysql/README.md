@@ -1,4 +1,4 @@
-# Mysql
+# MySQL
 
 MySQL is a widely used, open-source relational database management system (RDBMS)
 

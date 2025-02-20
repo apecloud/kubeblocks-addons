@@ -5,7 +5,7 @@ ClickHouse is an open-source column-oriented OLAP database management system. Us
 There are two key components in the ClickHouse cluster:
 
 - ClickHouse Server: The ClickHouse server is responsible for processing queries and managing data storage.
-- ClickHouse Keeper: The ClickHouse Keeper is responsible for monitoring the health of the ClickHouse server and performing failover operations when necessary, alternative to the Zookeeper.
+- ClickHouse Keeper: The ClickHouse Keeper is responsible for monitoring the health of the ClickHouse server and performing fail-over operations when necessary, alternative to the Zookeeper.
 
 ## Features In KubeBlocks
 
@@ -27,7 +27,7 @@ There are two key components in the ClickHouse cluster:
 - Kubernetes cluster >= v1.21
 - `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
-- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
+- KubeBlocks installed and running, refer to [Install KubeBlocks](../docs/prerequisites.md)
 - ClickHouse Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
 
 ## Examples
@@ -336,7 +336,7 @@ clickhouse-client --host <clickhouse-endpoint>  --port 9440 --secure  --user adm
 > [!WARNING]
 > The sharding mode is an experimental feature at the moment.
 
-Create a ClickHouse cluster with ch-keeper and clickhouse servers with multiple shards:
+Create a ClickHouse cluster with ch-keeper and ClickHouse servers with multiple shards:
 
 ```yaml
 # cat examples/clickhouse/cluster-sharding.yaml
@@ -394,13 +394,13 @@ spec:
 kubectl apply -f examples/clickhouse/cluster-sharding.yaml
 ```
 
-This example creates a clickhouse cluster with 3 shards, each shard has 2 replicas.
+This example creates a ClickHouse cluster with 3 shards, each shard has 2 replicas.
 
 ### Horizontal scaling
 
 #### [Scale-out](scale-out.yaml)
 
-Horizontal scaling out Clickhouse cluster by adding ONE more replica:
+Horizontal scaling out ClickHouse cluster by adding ONE more replica:
 
 ```yaml
 # cat examples/clickhouse/scale-out.yaml
@@ -433,7 +433,7 @@ kubectl apply -f examples/clickhouse/scale-out.yaml
 
 #### [Scale-in](scale-in.yaml)
 
-Horizontal scaling in clickhouse cluster by deleting ONE replica:
+Horizontal scaling in ClickHouse cluster by deleting ONE replica:
 
 ```yaml
 # cat examples/clickhouse/scale-in.yaml

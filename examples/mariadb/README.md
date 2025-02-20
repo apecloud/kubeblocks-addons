@@ -1,4 +1,4 @@
-# Mariadb
+# MariaDB
 
 MariaDB is a high performance open source relational database management system that is widely used for web and application servers
 

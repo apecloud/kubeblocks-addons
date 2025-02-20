@@ -28,7 +28,7 @@ OpenSearch is a scalable, flexible, and extensible open-source software suite fo
 
 ### [Create](cluster.yaml)
 
-Create a opensearch cluster with three replicas:
+Create a OpenSearch cluster with three replicas:
 
 ```yaml
 # cat examples/opensearch/cluster.yaml

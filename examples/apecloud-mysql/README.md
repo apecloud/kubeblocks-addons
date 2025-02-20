@@ -29,7 +29,7 @@ Please refer to the ApeCloud MySQL Documentation[^1] for more information.
 - Kubernetes cluster >= v1.21
 - `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
-- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
+- KubeBlocks installed and running, refer to [Install KubeBlocks](../docs/prerequisites.md)
 - ApeCloud MySQL Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
 
 ## Examples
@@ -221,7 +221,7 @@ kubectl apply -f examples/apecloud-mysql/scale-in.yaml
 ```
 
 > [!IMPORTANT]
-> On scaling in, the replica will be forgetton from the cluster's Raft group before it is deleted.
+> On scaling in, the replica will be forgotten from the cluster's Raft group before it is deleted.
 
 #### [Set Specified Replicas Offline](scale-in-specified-instance.yaml)
 

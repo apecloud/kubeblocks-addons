@@ -742,7 +742,7 @@ KubeBlocks supports multiple backup methods for PostgreSQL cluster, such as `pg-
 
 You may find the supported backup methods in the `BackupPolicy` of the cluster, e.g. `pg-cluster-postgresql-backup-policy` in this case, and find how these methods will be scheduled in the `BackupSchedule` of the cluster, e.g.. `pg-cluster-postgresql-backup-schedule` in this case.
 
-We will elaborate on the `pg-basebackup` and `wal-g` backup methods in the following sections to demonstrate how to create full backup and continuouse backup for the cluster.
+We will elaborate on the `pg-basebackup` and `wal-g` backup methods in the following sections to demonstrate how to create full backup and continuous backup for the cluster.
 
 #### pg_basebackup
 
@@ -791,9 +791,9 @@ Information, such as `path`, `timeRange` about the backup will be recorded into 
 
 Alternatively, you can update the `BackupSchedule` to enable the method `pg-basebackup` to schedule base backup periodically, will be elaborated in the following section.
 
-#### Continuouse Backup
+#### Continuous Backup
 
-To enable continuouse backup, you need to update `BackupSchedule` and enable the method `archive-wal`.
+To enable continuous backup, you need to update `BackupSchedule` and enable the method `archive-wal`.
 
 ```yaml
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
@@ -822,7 +822,7 @@ spec:
     retentionPeriod: 8d # set the retention period to your need
 ```
 
-Once the `BackupSchedule` is updated, the continuouse backup starts to work, and you can check the status of the backup with following command:
+Once the `BackupSchedule` is updated, the continuous backup starts to work, and you can check the status of the backup with following command:
 
 ```bash
 kubectl get backup -l app.kubernetes.io/instance=pg-cluster

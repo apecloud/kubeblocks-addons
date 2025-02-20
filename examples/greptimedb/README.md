@@ -28,7 +28,7 @@ An open-source, cloud-native, distributed time-series database with PromQL/SQL/P
 
 ### [Create](cluster.yaml)
 
-Create a greptimedb cluster
+Create a GreptimeDB cluster
 
 ```yaml
 # cat examples/greptimedb/cluster.yaml
@@ -117,14 +117,14 @@ spec:
 kubectl apply -f examples/greptimedb/cluster.yaml
 ```
 
-It will create a greptimedb cluster with four components in orders: `etcd`, `metadata`, `datanode` and  `frontent`.
+It will create a GreptimeDB cluster with four components in orders: `etcd`, `metadata`, `datanode` and  `frontent`.
 Datanode is mainly responsible for storing the actual data for GreptimeDB. Metadata is responsible for storing metadata information for GreptimeDB. Frontend is responsible for receiving and processing user requests. Etcd is used as the consensus algorithm component for metadata.
 
 #### How to access the GreptimeDB
 
-To connect to the greptimedb cluster, you can use the following command.
+To connect to the GreptimeDB cluster, you can use the following command.
 
-1. poforward the frontend service to access the greptimedb cluster
+1. port-forward the frontend service to access the GreptimeDB cluster
 
 ```bash
 # for mysql client
@@ -133,7 +133,7 @@ kubectl port-forward svc/greptimedb-cluster-frontend 4002:4002
 kubectl port-forward svc/greptimedb-cluster-frontend 4003:4003
 ```
 
-2. Connect to the greptimedb cluster using the client
+2. Connect to the GreptimeDB cluster using the client
 
 ```bash
 # for mysql client
@@ -142,7 +142,7 @@ mysql -h 127.0.0.1 -P 4002
 psql -h 127.0.0.1 -p 4003
 ```
 
-To visit the dashboard of greptimedb, you can use the following command.
+To visit the dashboard of GreptimeDB, you can use the following command.
 
 ```bash
 kubectl port-forward svc/greptimedb-cluster-frontend 4000:4000
@@ -154,7 +154,7 @@ Then visit the dashboard at `http://localhost:4000/dashboard`.
 
 #### [Scale-out](scale-out.yaml)
 
-Horizontal scaling out greptimedb cluster by adding ONE more datanode replica:
+Horizontal scaling out GreptimeDB cluster by adding ONE more datanode replica:
 
 ```yaml
 # cat examples/greptimedb/scale-out.yaml
@@ -187,7 +187,7 @@ kubectl apply -f examples/greptimedb/scale-out.yaml
 
 #### [Scale-in](scale-in.yaml)
 
-Horizontal scaling in greptimedb cluster by deleting ONE datanode replica:
+Horizontal scaling in GreptimeDB cluster by deleting ONE datanode replica:
 
 ```yaml
 # cat examples/greptimedb/scale-in.yaml

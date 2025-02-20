@@ -300,7 +300,7 @@ kubectl apply -f examples/pulsar/cluster-enhanced.yaml
 
 A cluster with one brokers, four bookies, one bookies recovery, three proxy, and one zookeepers will be created.
 
-And these components will be created in the following order: Zookeeper and Bookies Recovery, Bookies and Brokder, finally Proxy.
+And these components will be created in the following order: Zookeeper and Bookies Recovery, Bookies and Broker, finally Proxy.
 
 ### Horizontal scaling
 

@@ -28,7 +28,7 @@ InfluxDB enables real-time analytics by serving as a purpose-built database that
 
 ### [Create](cluster.yaml)
 
-Create a influxdb cluster with specified cluster definition
+Create a InfluxDB cluster with specified cluster definition
 
 ```yaml
 # cat examples/influxdb/cluster.yaml

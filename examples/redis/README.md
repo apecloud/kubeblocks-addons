@@ -713,7 +713,7 @@ volume-snapshot # for snapshot backup, make sure the storage class supports volu
 
 #### [Full Backup](backup.yaml)
 
-To create a backup for the reids component in the cluster:
+To create a backup for the Redis component in the cluster:
 
 ```yaml
 # cat examples/redis/backup.yaml
@@ -755,7 +755,7 @@ Information, such as `path`, `timeRange` about the backup will be recorded into 
 Redis Append Only Files(AOFs) record every write operation received by the server, in the order they were processed, which allows Redis to reconstruct the dataset by replaying these commands.
 KubeBlocks supports continuous backup for the Redis component by archiving Append-Only Files (AOF). It will process incremental AOF files, update base AOF file, purge expired files and save backup status (records metadata about the backup process, such as total size and timestamps, to the `Backup` resource).
 
-To create a continuous backup for the reids component, you should follow the steps below:
+To create a continuous backup for the Redis component, you should follow the steps below:
 
 1. set variable `aof-timestamp-enabled` to `yes`
 
@@ -1315,7 +1315,7 @@ Redis has various deployment topology, such as standalone, replication, sharding
 
 #### Create Redis with Proxy
 
-To create a redis with a proxy (Twemproxy) in front of it:
+To create a Redis with a proxy (Twemproxy) in front of it:
 
 ```yaml
 # cat examples/redis/cluster-twemproxy.yaml
@@ -1401,7 +1401,7 @@ spec:
 
 #### Create Redis with Multiple Shards
 
-To create a redis sharding cluster (An official distributed Redis)  with 3 shards and 2 replica for each shard:
+To create a Redis sharding cluster (An official distributed Redis)  with 3 shards and 2 replica for each shard:
 
 ```yaml
 # cat examples/redis/cluster-sharding.yaml
