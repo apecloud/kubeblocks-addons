@@ -147,7 +147,7 @@ setup_master_slave() {
   # If the master_pod_name is not empty, change master to the master_pod_name.
   else
     mysql_note "Wait for master to be ready"
-    change_master "$master_pod_name.${CLUSTER_COMPONENT_NAME}-headless.${CLUSTER_NAMESPACE}.svc.cluster.local"
+    change_master "$master_pod_name.${CLUSTER_COMPONENT_NAME}-headless"
   fi
   return 0
 }
