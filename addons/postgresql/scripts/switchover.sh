@@ -30,7 +30,9 @@ switchover_with_candidate() {
   # shellcheck disable=SC2034
   local candidate_pod_name=$3
   # TODO: check the role in kernel before switchover
-  curl -s "http://${current_pod_fqdn}:8008/switchover" -XPOST -d "{\"leader\":\"${current_primary_pod_name}\",\"candidate\":\"${candidate_pod_name}\"}"
+  echo "Current pod: ${current_pod_fqdn} perform switchover with candidate. Leader: ${current_primary_pod_name}, Candidate: ${candidate_pod_name}"
+  switchover_output=$(curl -s "http://${current_pod_fqdn}:8008/switchover" -XPOST -d "{\"leader\":\"${current_primary_pod_name}\",\"candidate\":\"${candidate_pod_name}\"}")
+  echo "Switchover with candidate output: ${switchover_output}"
   # TODO: check switchover result
 }
 
@@ -39,7 +41,9 @@ switchover_without_candidate() {
   # shellcheck disable=SC2034
   local current_primary_pod_name=$2
   # TODO: check the role in kernel before switchover
-  curl -s "http://${current_pod_fqdn}:8008/switchover" -XPOST -d "{\"leader\":\"${current_primary_pod_name}\"}"
+  echo "Current pod: ${current_pod_fqdn} perform switchover without candidate. Leader: ${current_primary_pod_name}"
+  switchover_output=$(curl -s "http://${current_pod_fqdn}:8008/switchover" -XPOST -d "{\"leader\":\"${current_primary_pod_name}\"}")
+  echo "Switchover without candidate output: ${switchover_output}"
   # TODO: check switchover result
 }
 
