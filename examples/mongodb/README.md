@@ -429,10 +429,10 @@ Restore a new cluster from a backup
 kubectl get backup mongo-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
 ```
 
-1. Update `examples/mongo/restore.yaml` and set placeholder `<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
+1. Update `examples/mongodb/restore.yaml` and set placeholder `<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
 
 ```bash
-kubectl apply -f examples/mongo/restore.yaml
+kubectl apply -f examples/mongodb/restore.yaml
 ```
 
 ### Expose
@@ -450,7 +450,6 @@ kubectl apply -f examples/mongodb/expose-enable.yaml
 ```bash
 kubectl apply -f examples/mongodb/expose-disable.yaml
 ```
-
 
 #### Expose SVC using Cluster API
 

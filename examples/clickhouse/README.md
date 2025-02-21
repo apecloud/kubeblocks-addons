@@ -212,7 +212,7 @@ kubectl apply -f examples/clickhouse/volumeexpand.yaml
 Reconfigure parameters with the specified components in the cluster
 
 ```bash
-kubectl apply -f examples/clickhouse/reconfigure.yaml
+kubectl apply -f examples/clickhouse/configure.yaml
 ```
 
 This example will change the `max_bytes_to_read` to `200000000000`.
