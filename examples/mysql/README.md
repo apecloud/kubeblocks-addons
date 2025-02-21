@@ -473,6 +473,16 @@ networking.gke.io/load-balancer-type: "Internal" # for internal access
 cloud.google.com/l4-rbs: "enabled" # for internet
 ```
 
+#### Rebuild Instance
+
+There are cases where you may need to rebuild an instance in the cluster, for examples, a pod is unhealthy and cannot be recovered, or replcation lag is too high for primay-standby cluster.
+
+You can use the following yaml file to rebuild the instance:
+
+```bash
+kubectl apply -f examples/mysql/rebuild-instance.yaml
+```
+
 ### Observability
 
 #### Installing the Prometheus Operator
