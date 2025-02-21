@@ -451,7 +451,6 @@ kubectl apply -f examples/mongodb/expose-enable.yaml
 kubectl apply -f examples/mongodb/expose-disable.yaml
 ```
 
-
 #### Expose SVC using Cluster API
 
 Alternatively, you may expose service by updating `spec.services`

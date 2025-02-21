@@ -475,9 +475,9 @@ cloud.google.com/l4-rbs: "enabled" # for internet
 
 #### Rebuild Instance
 
-There are cases where you may need to rebuild an instance in the cluster, for examples, a pod is unhealthy and cannot be recovered, or replcation lag is too high for primay-standby cluster.
+There are cases where you may need to rebuild an instance in the cluster, for examples, a pod is unhealthy and cannot be recovered, or replication lag is too high for primary-standby cluster.
 
-You can use the following yaml file to rebuild the instance:
+You can use the following yaml file to rebuild the instance. Please set `backupName` and `targetNodeName` before applying the example.
 
 ```bash
 kubectl apply -f examples/mysql/rebuild-instance.yaml
