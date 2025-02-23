@@ -39,4 +39,4 @@ echo "  redis: true" >> /etc/proxy/nutcracker.conf
 echo "  server_retry_timeout: 2000" >> /etc/proxy/nutcracker.conf
 echo "  server_failure_limit: 1" >> /etc/proxy/nutcracker.conf
 echo "  servers:" >> /etc/proxy/nutcracker.conf
-echo "    - {{ $clusterName }}-{{ $redis_component.name }}.{{ $namespace }}.svc:6379:1 {{ $clusterName }}" >> /etc/proxy/nutcracker.conf
+echo "    - {{ $clusterName }}-{{ $redis_component.name }}.{{ $namespace }}.svc.cluster.local:6379:1 {{ $clusterName }}" >> /etc/proxy/nutcracker.conf

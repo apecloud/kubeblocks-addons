@@ -361,7 +361,7 @@ podSpec:
         # HACK: hack for single ZK node only
         - name: ZOO_SERVERS
           value: "$(KB_POD_NAME).$(KB_CLUSTER_COMP_NAME).$(KB_NAMESPACE).svc.cluster.local:2888:3888::1"
-          # value: myck-zookeeper-0.myck-zookeeper-headless.$(POD_NAMESPACE).svc:2888:3888::1 myck-zookeeper-1.myck-zookeeper-headless.$(POD_NAMESPACE).svc:2888:3888::2 myck-zookeeper-2.myck-zookeeper-headless.$(POD_NAMESPACE).svc:2888:3888::3
+          # value: myck-zookeeper-0.myck-zookeeper-headless.$(POD_NAMESPACE).svc.cluster.local:2888:3888::1 myck-zookeeper-1.myck-zookeeper-headless.$(POD_NAMESPACE).svc.cluster.local:2888:3888::2 myck-zookeeper-2.myck-zookeeper-headless.$(POD_NAMESPACE).svc.cluster.local:2888:3888::3
         - name: ZOO_ENABLE_AUTH
           value: "no"
         - name: ZOO_ENABLE_QUORUM_AUTH

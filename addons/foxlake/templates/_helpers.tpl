@@ -65,7 +65,7 @@ Create the name of the service account to use
 FoxLake MetaDB Service FQDN
 */}}
 {{- define "foxlake.metadb.fqdn" -}}
-{{- printf "$(KB_CLUSTER_NAME)-foxlake-metadb.$(KB_NAMESPACE).svc" }}
+{{- printf "$(KB_CLUSTER_NAME)-foxlake-metadb.$(KB_NAMESPACE).svc.cluster.local" }}
 {{- end }}
 
 {{/*
