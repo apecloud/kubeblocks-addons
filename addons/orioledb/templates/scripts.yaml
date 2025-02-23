@@ -204,7 +204,7 @@ data:
 {{/*      fi*/}}
 {{/*    }*/}}
 {{/*    if [ "$primary" != "$KB_POD_NAME" ]; then*/}}
-{{/*        primary_fqdn="$primary.$KB_CLUSTER_NAME-$KB_COMP_NAME-headless.$KB_NAMESPACE.svc"*/}}
+{{/*        primary_fqdn="$primary.$KB_CLUSTER_NAME-$KB_COMP_NAME-headless.$KB_NAMESPACE.svc.cluster.local"*/}}
 {{/*        echo "primary_fqdn=$primary_fqdn" >> /home/postgres/pgdata/.kb_set_up.log*/}}
 {{/*        # waiting for the primary to be ready, if the wait time exceeds the maximum number of retries, then the script will fail and exit.*/}}
 {{/*        retry pg_isready -U {{ default "postgres" | quote }} -h $primary_fqdn -p 5432*/}}

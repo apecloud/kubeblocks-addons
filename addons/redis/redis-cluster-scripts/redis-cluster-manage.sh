@@ -405,7 +405,7 @@ get_current_comp_nodes_for_scale_in() {
     node_ip_port=$(echo "$node_ip_port_fields" | awk -F '@' '{print $1}')
     node_ip=$(echo "$node_ip_port_fields" | awk -F '@' '{print $1}' | cut -d':' -f1)
     node_port=$(echo "$node_ip_port_fields" | awk -F '@' '{print $1}' | cut -d':' -f2)
-    # redis-shard-sxj-0.redis-shard-sxj-headless.default.svc
+    # redis-shard-sxj-0.redis-shard-sxj-headless.default.svc.cluster.local
     node_fqdn=$(echo "$line" | awk '{print $2}' | awk -F ',' '{print $2}')
     node_role=$(echo "$line" | awk '{print $3}')
     if $using_advertised_ports; then

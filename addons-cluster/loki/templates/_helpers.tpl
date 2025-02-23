@@ -210,7 +210,7 @@ Create the service endpoint including port for MinIO.
 */}}
 {{- define "loki-cluster.minio" -}}
 {{- if .Values.minio.enabled -}}
-{{- printf "%s-%s.%s.svc:%s" .Release.Name "minio" .Release.Namespace (.Values.minio.service.port | toString) -}}
+{{- printf "%s-%s.%s.svc.cluster.local:%s" .Release.Name "minio" .Release.Namespace (.Values.minio.service.port | toString) -}}
 {{- end -}}
 {{- end -}}
 
