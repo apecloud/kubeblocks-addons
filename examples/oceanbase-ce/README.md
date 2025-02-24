@@ -88,7 +88,7 @@ kbcli addon upgrade oceanbase-ce --version $version
 Create a distributed oceanbase cluster
 
 ```bash
-kubectl apply -f examples/oceanbase/cluster.yaml
+kubectl apply -f examples/oceanbase-ce/cluster.yaml
 ```
 
 Optionally, you can create a cluster using HostNetwork mode, by turning on the feature-gate.
@@ -114,7 +114,7 @@ spec:
 Horizontal scaling out the cluster by adding ONE more replica:
 
 ```bash
-kubectl apply -f examples/oceanbase/scale-out.yaml
+kubectl apply -f examples/oceanbase-ce/scale-out.yaml
 ```
 
 After applying the operation, you will see a new pod created and the cluster status goes from `Updating` to `Running`.
@@ -144,7 +144,7 @@ And you will see the logs once the new replica is added to the cluster.
 Horizontal scaling in the cluster by removing ONE replica:
 
 ```bash
-kubectl apply -f examples/oceanbase/scale-in.yaml
+kubectl apply -f examples/oceanbase-ce/scale-in.yaml
 ```
 
 #### Scale-in/out using Cluster API
@@ -174,7 +174,7 @@ Resources that can be scaled include:, CPU cores/processing power and Memory (RA
 To vertical scaling up or down specified component, you can apply the following yaml file:
 
 ```bash
-kubectl apply -f examples/oceanbase/verticalscale.yaml
+kubectl apply -f examples/oceanbase-ce/verticalscale.yaml
 ```
 
 #### Scale-up/down using Cluster API
@@ -205,7 +205,7 @@ spec:
 Restart the specified components in the cluster, and instances will be recreated on after another to ensure the availability of the cluster
 
 ```bash
-kubectl apply -f examples/oceanbase/restart.yaml
+kubectl apply -f examples/oceanbase-ce/restart.yaml
 ```
 
 ### [Stop](stop.yaml)
@@ -213,7 +213,7 @@ kubectl apply -f examples/oceanbase/restart.yaml
 Stop the cluster will release all the pods of the cluster, but the storage will be retained. It is useful when you want to save the cost of the cluster.
 
 ```bash
-kubectl apply -f examples/oceanbase/stop.yaml
+kubectl apply -f examples/oceanbase-ce/stop.yaml
 ```
 
 #### Stop using Cluster API
@@ -238,7 +238,7 @@ spec:
 Start the stopped cluster
 
 ```bash
-kubectl apply -f examples/oceanbase/start.yaml
+kubectl apply -f examples/oceanbase-ce/start.yaml
 ```
 
 #### Start using Cluster API
@@ -268,7 +268,7 @@ A database reconfiguration is the process of modifying database parameters, sett
 Reconfigure parameters with the specified components in the cluster
 
 ```bash
-kubectl apply -f examples/oceanbase/configure.yaml
+kubectl apply -f examples/oceanbase-ce/configure.yaml
 ```
 
 This example will change the `system_memory` to `2Gi`.
@@ -290,10 +290,10 @@ kubectl create secret generic <credential-for-backuprepo>\
   -n kb-system
 ```
 
-Update `examples/oceanbase/backuprepo.yaml` and set fields quoted with `<>` to your own settings and apply it.
+Update `examples/oceanbase-ce/backuprepo.yaml` and set fields quoted with `<>` to your own settings and apply it.
 
 ```bash
-kubectl apply -f examples/oceanbase/backuprepo.yaml
+kubectl apply -f examples/oceanbase-ce/backuprepo.yaml
 ```
 
 After creating the BackupRepo, you should check the status of the BackupRepo, to make sure it is `Ready`.
@@ -316,7 +316,7 @@ kb-oss   Ready    oss               Tool           true      Xd
 To create a base backup for the cluster, you can apply the following yaml file:
 
 ```bash
-kubectl apply -f examples/oceanbase/backup.yaml
+kubectl apply -f examples/oceanbase-ce/backup.yaml
 ```
 
 After the operation, you will see a `Backup` is created
@@ -364,10 +364,10 @@ To restore a new cluster from a `Backup`, you can apply the following yaml file:
 kubectl get backup ob-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
 ```
 
-1. Update `examples/oceanbase/restore.yaml` and set fields quoted with `<ENCRYPTED-SYSTEM-ACCOUNTS>` to your own settings and apply it.
+1. Update `examples/oceanbase-ce/restore.yaml` and set fields quoted with `<ENCRYPTED-SYSTEM-ACCOUNTS>` to your own settings and apply it.
 
 ```bash
-kubectl apply -f examples/oceanbase/restore.yaml
+kubectl apply -f examples/oceanbase-ce/restore.yaml
 ```
 
 ### Expose
@@ -377,13 +377,13 @@ Expose a cluster with a new endpoint
 #### [Enable](expose-enable.yaml)
 
 ```bash
-kubectl apply -f examples/oceanbase/expose-enable.yaml
+kubectl apply -f examples/oceanbase-ce/expose-enable.yaml
 ```
 
 #### [Disable](expose-disable.yaml)
 
 ```bash
-kubectl apply -f examples/oceanbase/expose-disable.yaml
+kubectl apply -f examples/oceanbase-ce/expose-disable.yaml
 ```
 
 #### Expose SVC using Cluster API
@@ -476,7 +476,7 @@ Here is the list of endpoints that can be scraped by Prometheus provided by `oba
 Apply the `PodMonitor` file to monitor the cluster:
 
 ```bash
-kubectl apply -f examples/oceanbase/pod-monitor.yaml
+kubectl apply -f examples/oceanbase-ce/pod-monitor.yaml
 ```
 
 ##### Step 3. Accessing the Grafana Dashboard

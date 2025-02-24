@@ -255,7 +255,7 @@ When create a backup for cluster, you need to create a BackupRepo first. You can
 KubeBlocks now supports one backup method for Vanilla-PostgreSQL cluster, which is `vanilla-pg-basebackup`.
 Other backup methods such as "wal-g" will be supported in the future.
 
-You may find the supported backup methods in the `BackupPolicy` of the cluster, e.g. `vanpg-cluster-postgresql-backup-policy` in this case, and find how these methods will be scheduled in the `BackupSchedule` of the cluster, eg `vanpg-cluster-postgresql-backup-schedule` in this case.
+You may find the supported backup methods in the `BackupPolicy` of the cluster, e.g. `vanpg-cluster-postgresql-backup-policy` in this case, and find how these methods will be scheduled in the `BackupSchedule` of the cluster e.g.`vanpg-cluster-postgresql-backup-schedule` in this case.
 
 #### pg-basebackup
 

@@ -39,7 +39,7 @@ Create a StarRocks cluster with 3 FE and 2 BE instances. Backend instances won't
 For high availability, it is recommended to have at least 3 FE instances.
 
 ```bash
-kubectl apply -f examples/starrocks/cluster.yaml
+kubectl apply -f examples/starrocks-ce/cluster.yaml
 ```
 
 ### Horizontal scaling
@@ -49,7 +49,7 @@ kubectl apply -f examples/starrocks/cluster.yaml
 Horizontal scaling out component BE by adding ONE more replica:
 
 ```bash
-kubectl apply -f examples/starrocks/scale-out.yaml
+kubectl apply -f examples/starrocks-ce/scale-out.yaml
 ```
 
 #### [Scale-in](scale-in.yaml)
@@ -57,7 +57,7 @@ kubectl apply -f examples/starrocks/scale-out.yaml
 Horizontal scaling out component BE by delete ONE more replica:
 
 ```bash
-kubectl apply -f examples/starrocks/scale-in.yaml
+kubectl apply -f examples/starrocks-ce/scale-in.yaml
 ```
 
 ### [Vertical scaling](verticalscale.yaml)
@@ -65,7 +65,7 @@ kubectl apply -f examples/starrocks/scale-in.yaml
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
 
 ```bash
-kubectl apply -f examples/starrocks/verticalscale.yaml
+kubectl apply -f examples/starrocks-ce/verticalscale.yaml
 ```
 
 ### [Expand volume](volumeexpand.yaml)
@@ -73,7 +73,7 @@ kubectl apply -f examples/starrocks/verticalscale.yaml
 Increase size of volume storage with the specified components in the cluster
 
 ```bash
-kubectl apply -f examples/starrocks/volumeexpand.yaml
+kubectl apply -f examples/starrocks-ce/volumeexpand.yaml
 ```
 
 ### [Restart](restart.yaml)
@@ -81,7 +81,7 @@ kubectl apply -f examples/starrocks/volumeexpand.yaml
 Restart the specified components in the cluster
 
 ```bash
-kubectl apply -f examples/starrocks/restart.yaml
+kubectl apply -f examples/starrocks-ce/restart.yaml
 ```
 
 ### [Stop](stop.yaml)
@@ -89,7 +89,7 @@ kubectl apply -f examples/starrocks/restart.yaml
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 
 ```bash
-kubectl apply -f examples/starrocks/stop.yaml
+kubectl apply -f examples/starrocks-ce/stop.yaml
 ```
 
 ### [Start](start.yaml)
@@ -97,7 +97,7 @@ kubectl apply -f examples/starrocks/stop.yaml
 Start the stopped cluster
 
 ```bash
-kubectl apply -f examples/starrocks/start.yaml
+kubectl apply -f examples/starrocks-ce/start.yaml
 ```
 
 ### Observability
@@ -114,7 +114,7 @@ Or you can follow the steps in [How to install the Prometheus Operator](../docs/
 Apply the `PodMonitor` file to monitor the cluster:
 
 ```bash
-kubectl apply -f examples/starrocks/pod-monitor.yaml
+kubectl apply -f examples/starrocks-ce/pod-monitor.yaml
 ```
 
 It sets up the `PodMonitor` to monitor this StarRocks cluster and scrapes the metrics for both FE and BE components.
@@ -136,7 +136,7 @@ It sets up the `PodMonitor` to monitor this StarRocks cluster and scrapes the me
 
 ##### Access the Grafana Dashboard
 
-Login to the Grafana dashboard and import the dashboard provided in this example `./examples/starrocks/dashboard/starrocks.json`.
+Login to the Grafana dashboard and import the dashboard provided in this example `./examples/starrocks-ce/dashboard/starrocks.json`.
 
 You may refer to following links for more information:
 - StarRocks Overview provided by StarRocks team: [StarRocks Overview](https://github.com/StarRocks/starrocks/blob/main/extra/grafana/kubernetes/StarRocks-Overview-kubernetes-3.0.json)

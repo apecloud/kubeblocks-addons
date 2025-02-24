@@ -47,6 +47,41 @@ Each Elasticsearch cluster consists of one or more nodes, and each node in a clu
 
 A Single-Node Cluster is a cluster with only one node and this node assume all roles. It is suitable for development and testing purposes.
 
+```yaml
+# cat examples/elasticsearch/cluster-single-node.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: es-singlenode
+  namespace: default
+  annotations:
+    # kubeblokcs.io/extra-env is an reserved annotation
+    # use 'mode=single-node' to indicate this cluster starts in single-node type.
+    kubeblocks.io/extra-env: '{"mode":"single-node"}'
+spec:
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: mdit
+      componentDef: elasticsearch-8
+      serviceVersion: 8.8.2
+      replicas: 1
+      resources:
+        limits:
+          cpu: "1"
+          memory: "2Gi"
+        requests:
+          cpu: "1"
+          memory: "2Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+```
+
 ```bash
 kubectl apply -f examples/elasticsearch/cluster-single-node.yaml
 ```
@@ -71,6 +106,93 @@ The role is `cdfhilmrstw`. Please refer to [Elasticsearch Nodes](https://www.ela
 #### Create a Multi-Node Cluster
 
 Create a elasticsearch cluster with multiple nodes and each node assume specified roles.
+
+```yaml
+# cat examples/elasticsearch/cluster-multi-node.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: es-multinode
+  namespace: default
+  annotations:
+    kubeblocks.io/extra-env: '{"master-roles":"master", "data-roles": "data", "ingest-roles": "ingest", "transform-roles": "transform"}'
+spec:
+  terminationPolicy: Delete
+  componentSpecs:
+  - name: master
+    componentDef: elasticsearch-8-1.0.0
+    replicas: 3
+    resources:
+      limits:
+        cpu: '0.5'
+        memory: 2Gi
+      requests:
+        cpu: '0.5'
+        memory: 2Gi
+    volumeClaimTemplates:
+    - name: data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 20Gi
+  - name: data
+    componentDef: elasticsearch-8-1.0.0
+    replicas: 3
+    resources:
+      limits:
+        cpu: '0.5'
+        memory: 2Gi
+      requests:
+        cpu: '0.5'
+        memory: 2Gi
+    volumeClaimTemplates:
+    - name: data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 20Gi
+  - name: ingest
+    componentDef: elasticsearch-8-1.0.0
+    replicas: 1
+    resources:
+      limits:
+        cpu: '0.5'
+        memory: 2Gi
+      requests:
+        cpu: '0.5'
+        memory: 2Gi
+    volumeClaimTemplates:
+    - name: data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 20Gi
+  - name: transform
+    componentDef: elasticsearch-8-1.0.0
+    replicas: 1
+    resources:
+      limits:
+        cpu: '0.5'
+        memory: 2Gi
+      requests:
+        cpu: '0.5'
+        memory: 2Gi
+    volumeClaimTemplates:
+    - name: data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 20Gi
+
+```
 
 ```bash
 kubectl apply -f examples/elasticsearch/cluster-multi-node.yaml
@@ -121,6 +243,33 @@ spec:
 
 Horizontal scaling out elasticsearch cluster by adding ONE `MASTER` replica:
 
+```yaml
+# cat examples/elasticsearch/scale-out.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: es-scale-out
+  namespace: default
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: es-multinode
+  type: HorizontalScaling
+  # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
+  horizontalScaling:
+    # Specifies the name of the Component.
+    # - master
+    # - data
+    # - ingest
+    # - transform
+  - componentName: master
+    # Specifies the replica changes for scaling in components
+    scaleOut:
+      # Specifies the replica changes for the component.
+      # add one more replica to current component
+      replicaChanges: 1
+
+```
+
 ```bash
 kubectl apply -f examples/elasticsearch/scale-out.yaml
 ```
@@ -128,6 +277,33 @@ kubectl apply -f examples/elasticsearch/scale-out.yaml
 #### [Scale-in](scale-in.yaml)
 
 Horizontal scaling in elasticsearch cluster by deleting ONE `MASTER` replica:
+
+```yaml
+# cat examples/elasticsearch/scale-in.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: es-scale-in
+  namespace: default
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: es-multinode
+  type: HorizontalScaling
+  # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
+  horizontalScaling:
+    # Specifies the name of the Component.
+    # - master
+    # - data
+    # - ingest
+    # - transform
+  - componentName: master
+    # Specifies the replica changes for scaling in components
+    scaleIn:
+      # Specifies the replica changes for the component.
+      # add one more replica to current component
+      replicaChanges: 1
+
+```
 
 ```bash
 kubectl apply -f examples/elasticsearch/scale-in.yaml
@@ -165,6 +341,35 @@ Vertical scaling involves increasing or decreasing resources to an existing data
 Resources that can be scaled include:, CPU cores/processing power and Memory (RAM).
 
 To vertical scaling up or down specified component, you can apply the following yaml file:
+
+```yaml
+# cat examples/elasticsearch/verticalscale.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: elasticsearch-verticalscaling
+  namespace: default
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: es-multinode
+  type: VerticalScaling
+  # Lists VerticalScaling objects, each specifying a component and its desired compute resources for vertical scaling.
+  verticalScaling:
+    # Specifies the name of the Component.
+    # - master
+    # - data
+    # - ingest
+    # - transform
+  - componentName: master
+    # VerticalScaling refers to the process of adjusting the compute resources (e.g., CPU, memory) allocated to a Component. It defines the parameters required for the operation.
+    requests:
+      cpu: '1'
+      memory: '3Gi'
+    limits:
+      cpu: '1'
+      memory: '3Gi'
+
+```
 
 ```bash
 kubectl apply -f examples/elasticsearch/verticalscale.yaml
@@ -207,6 +412,33 @@ If the `ALLOWVOLUMEEXPANSION` column is `true`, the storage class supports volum
 
 To increase size of volume storage with the specified components in the cluster
 
+```yaml
+# cat examples/elasticsearch/volumeexpand.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: elasticsearch-volumeexpansion
+  namespace: default
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: es-multinode
+  type: VolumeExpansion
+  # Lists VolumeExpansion objects, each specifying a component and its corresponding volumeClaimTemplates that requires storage expansion.
+  volumeExpansion:
+    # Specifies the name of the Component.
+    # - master
+    # - data
+    # - ingest
+    # - transform
+  - componentName: data
+    # volumeClaimTemplates specifies the storage size and volumeClaimTemplate name.
+    volumeClaimTemplates:
+      # A reference to the volumeClaimTemplate name from the cluster components.
+    - name: data
+      storage: 30Gi
+
+```
+
 ```bash
 kubectl apply -f examples/elasticsearch/volumeexpand.yaml
 ```
@@ -239,6 +471,28 @@ spec:
 
 Restart the specified component `data` in the cluster. If not specified, all components will be restarted.
 
+```yaml
+# cat examples/elasticsearch/restart.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: elasticsearch-restart
+  namespace: default
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: es-multinode
+  type: Restart
+  # Lists Components to be restarted. ComponentOps specifies the Component to be operated on.
+  restart:
+    # Specifies the name of the Component.If not specified, ALL Components will be restarted.
+    # - master
+    # - data
+    # - ingest
+    # - transform
+  - componentName: data
+
+```
+
 ```bash
 kubectl apply -f examples/elasticsearch/restart.yaml
 ```
@@ -246,6 +500,20 @@ kubectl apply -f examples/elasticsearch/restart.yaml
 ### [Stop](stop.yaml)
 
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
+
+```yaml
+# cat examples/elasticsearch/stop.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: elasticsearch-stop
+  namespace: default
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: es-multinode
+  type: Stop
+
+```
 
 ```bash
 kubectl apply -f examples/elasticsearch/stop.yaml
@@ -269,6 +537,20 @@ spec:
 ### [Start](start.yaml)
 
 Start the stopped cluster
+
+```yaml
+# cat examples/elasticsearch/start.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: elasticsearch-start
+  namespace: default
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: es-multinode
+  type: Start
+
+```
 
 ```bash
 kubectl apply -f examples/elasticsearch/start.yaml
@@ -295,6 +577,49 @@ It is recommended to access the Elasticsearch cluster from within the Kubernetes
 
 #### [Enable](expose-enable.yaml)
 
+```yaml
+# cat examples/elasticsearch/expose-enable.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: es-expose-enable
+  namespace: default
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: es-multinode
+  # Lists Expose objects, each specifying a Component and its services to be exposed.
+  expose:
+    # Specifies the name of the Component.
+    # - master
+    # - data
+    # - ingest
+    # - transform
+  - componentName: master
+    # Specifies a list of OpsService. When an OpsService is exposed, a corresponding ClusterService will be added to `cluster.spec.services`.
+    services:
+    - name: internet
+      # Determines how the Service is exposed. Defaults to 'ClusterIP'.
+      # Valid options are `ClusterIP`, `NodePort`, and `LoadBalancer`.
+      serviceType: LoadBalancer
+      # Contains cloud provider related parameters if ServiceType is LoadBalancer.
+      # Following is an example for Aliyun ACK, please adjust the following annotations as needed.
+      annotations:
+        service.beta.kubernetes.io/alibaba-cloud-loadbalancer-address-type: internet
+        service.beta.kubernetes.io/alibaba-cloud-loadbalancer-charge-type: ""
+        service.beta.kubernetes.io/alibaba-cloud-loadbalancer-spec: slb.s1.small
+      ports:
+      - name: es-http
+        port: 9200
+        protocol: TCP
+        targetPort: es-http
+    # Indicates whether the services will be exposed. 'Enable' exposes the services. while 'Disable' removes the exposed Service.
+    switch: Enable
+  # Specifies the maximum number of seconds the OpsRequest will wait for its start conditions to be met before aborting. If set to 0 (default), the start conditions must be met immediately for the OpsRequest to proceed.
+  preConditionDeadlineSeconds: 0
+  type: Expose
+
+```
+
 ```bash
 kubectl apply -f examples/elasticsearch/expose-enable.yaml
 ```
@@ -302,6 +627,41 @@ kubectl apply -f examples/elasticsearch/expose-enable.yaml
 In this example, a service with type `LoadBalancer` will be created to expose the Elasticsearch cluster. You can access the cluster using the `external IP` of the service.
 
 #### [Disable](expose-disable.yaml)
+
+```yaml
+# cat examples/elasticsearch/expose-disable.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: es-expose-disable
+  namespace: default
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: es-multinode
+  # Lists Expose objects, each specifying a Component and its services to be exposed.
+  expose:
+    # Specifies the name of the Component.
+    # - master
+    # - data
+    # - ingest
+    # - transform
+  - componentName: master
+    # Specifies a list of OpsService. When an OpsService is exposed, a corresponding ClusterService will be added to `cluster.spec.services`.
+    services:
+    - name: internet
+      serviceType: LoadBalancer
+      ports:
+      - name: es-http
+        port: 9200
+        protocol: TCP
+        targetPort: es-http
+    # Indicates whether the services will be exposed. 'Enable' exposes the services. while 'Disable' removes the exposed Service.
+    switch: Disable
+  # Specifies the maximum number of seconds the OpsRequest will wait for its start conditions to be met before aborting. If set to 0 (default), the start conditions must be met immediately for the OpsRequest to proceed.
+  preConditionDeadlineSeconds: 0
+  type: Expose
+
+```
 
 ```bash
 kubectl apply -f examples/elasticsearch/expose-disable.yaml
@@ -367,6 +727,28 @@ Or you can follow the steps in [How to install the Prometheus Operator](../docs/
 ##### Step 1. Create PodMonitor
 
 Apply the `PodMonitor` file to monitor the cluster:
+
+```yaml
+# cat examples/elasticsearch/pod-monitor.yaml
+
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: es-cluster-pod-monitor
+  labels:               # this is labels set in `prometheus.spec.podMonitorSelector`
+    release: prometheus
+spec:
+  podMetricsEndpoints:
+    - path: /metrics
+      port: metrics
+      scheme: http
+  namespaceSelector:
+    matchNames:
+      - default
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: es-multinode
+```
 
 ```bash
 kubectl apply -f examples/elasticsearch/pod-monitor.yaml
