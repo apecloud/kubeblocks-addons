@@ -16,10 +16,15 @@ spec:
       value: "$(VOLUME_DATA_DIR)/pgroot/data"
     - name: CONF_DIR
       value: "$(VOLUME_DATA_DIR)/conf"
+    - name: LOG_DIR
+      value: $(VOLUME_DATA_DIR)/pgroot/data/pg_wal
     - name: LOG_ARCHIVE_SECONDS
-      value: "3"
+      value: "5"
     - name: IMAGE_TAG
       value: 14.8.0-pgvector-v0.6.1
+    - name: TARGET_POD_ROLE
+      # TODO input by backup policy
+      value: primary
   backup:
     backupData:
       image: {{ include "postgresql.repository" . }}:$(IMAGE_TAG)
@@ -37,7 +42,7 @@ spec:
         {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 8 }}
         {{- .Files.Get "dataprotection/wal-g-archive.sh" | nindent 8 }}
     preDelete:
-      image: {{ .Values.image.registry | default "docker.io" }}/apecloud/wal-g:postgres-1.0
+      image: {{ .Values.image.registry | default "docker.io" }}/apecloud/wal-g:{{ .Values.image.walg.tag }}
       command:
         - bash
         - -c
@@ -45,7 +50,7 @@ spec:
         {{- .Files.Get "dataprotection/wal-g-archive-delete.sh" | nindent 10 }}
   restore:
     prepareData:
-      image: {{ .Values.image.registry | default "docker.io" }}/apecloud/wal-g:postgres-1.0
+      image: {{ .Values.image.registry | default "docker.io" }}/apecloud/wal-g:{{ .Values.image.walg.tag }}
       command:
       - bash
       - -c
