@@ -4,7 +4,7 @@ Neon is a serverless open-source alternative to AWS Aurora Postgres. It separate
 
 ## Prerequisites
 
-Neon Autoscaling requires virtualization technology, requiring the host to have virtualization turned on.
+Neon Auto-scaling requires virtualization technology, requiring the host to have virtualization turned on.
 
 NeonVM and Autoscaling are not expected to work outside Linux x86.
 
