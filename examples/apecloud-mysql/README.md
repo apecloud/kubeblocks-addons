@@ -110,7 +110,7 @@ kubectl apply -f examples/apecloud-mysql/scale-in.yaml
 ```
 
 > [!IMPORTANT]
-> On scaling in, the replica will be forgetton from the cluster's Raft group before it is deleted.
+> On scaling in, the replica will be forgotten from the cluster's Raft group before it is deleted.
 
 #### [Set Specified Replicas Offline](scale-in-specified-instance.yaml)
 
