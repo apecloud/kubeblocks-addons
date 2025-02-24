@@ -243,7 +243,7 @@ lifecycleActions:
     exec:
       container: postgresql
       command:
-        - bash
+        - /bin/sh
         - -c
         - |
           eval statement=\"${KB_ACCOUNT_STATEMENT}\"
@@ -254,7 +254,7 @@ lifecycleActions:
         - name: PGPASSWORD
           value: $(POSTGRES_PASSWORD)
       targetPodSelector: Role
-      matchingKey: primary
+      matchingKey: leader
 {{- end -}}
 
 {{- define "apecloud-postgresql.spec.runtime.common" -}}
