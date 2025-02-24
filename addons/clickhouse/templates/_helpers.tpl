@@ -143,14 +143,8 @@ podSpec:
               name: $(CONN_CREDENTIAL_SECRET_NAME)
               key: username
               optional: false
-        - name: CLICKHOUSE_SHARD_ID
-          value: "$(KB_COMP_NAME)"
         - name: SERVICE_PORT
           value: "$(CLICKHOUSE_METRICS_PORT)"
-        - name: CLICKHOUSE_REPLICA_ID
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
       ports:
         - name: http
           containerPort: 8123

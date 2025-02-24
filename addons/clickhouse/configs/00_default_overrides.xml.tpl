@@ -16,8 +16,8 @@
   {{- end }}
   <!-- Macros, self defined -->
   <macros>
-    <shard from_env="CLICKHOUSE_SHARD_ID"/>
-    <replica from_env="CLICKHOUSE_REPLICA_ID"/>
+    <shard from_env="KB_COMP_NAME"/>
+    <replica from_env="KB_POD_NAME"/>
     <layer>{{ $clusterName }}</layer>
   </macros>
   <!-- Log Level -->
@@ -41,8 +41,8 @@
           {{- else }}
           <port replace="replace" from_env="CLICKHOUSE_TCP_PORT"/>
           {{- end }}
-          <user from_env="CLICKHOUSE_ADMIN_USER"></user>
-          <password from_env="CLICKHOUSE_ADMIN_PASSWORD"></password>
+          <user from_env="CLICKHOUSE_ADMIN_USER"/>
+          <password from_env="CLICKHOUSE_ADMIN_PASSWORD"/>
         </replica>
         {{- end }}
       </shard>
