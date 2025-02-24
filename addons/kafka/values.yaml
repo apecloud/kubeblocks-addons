@@ -81,3 +81,9 @@ exporter:
   securityContext:
     runAsNonRoot: true
     runAsUser: 1001
+
+extraVolumeMounts:
+  kafka: []
+
+extraEnvs:
+  kafka: []
