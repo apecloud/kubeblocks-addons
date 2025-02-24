@@ -41,7 +41,7 @@ PSQL="psql -h ${KB_CLUSTER_COMP_NAME}-${KB_COMP_NAME} -U ${DP_DB_USER} -d postgr
 ${PSQL} -c "select pg_switch_wal();"
 
 # 2. get backup name of the wal-g
-backupName=$(cat result.txt | tail -n 1 | grep -o 'base_[0-9A-Za-z]*')
+backupName=$(cat result.txt | tail -n 1 | grep -o 'base_[0-9A-Fa-f]*')
 if [[ -z ${backupName} ]] || [[ ${backupName} != "base_"* ]];then
    echo "ERROR: backup failed, can not get the backup name"
    exit 1
