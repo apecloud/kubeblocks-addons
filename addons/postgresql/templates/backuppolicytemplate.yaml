@@ -96,6 +96,9 @@ spec:
           - name: data
             mountPath: {{ .Values.dataMountPath }}
     - name: wal-g-archive
+      target:
+        role: primary
+        account: postgres
       actionSetName: postgres-wal-g-pitr
       snapshotVolumes: false
       env: *compDefEnvMapping
