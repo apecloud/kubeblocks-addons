@@ -1,3 +1,0 @@
-
-chunkingEnabled=false
-compressionType=NONE
