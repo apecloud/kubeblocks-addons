@@ -79,9 +79,6 @@ addons-cluster/polardbx/ @Vettal_Wu @leon-inf @Y-Rookie @apecloud/kb-reviewers @
 addons/postgresql/ @ldming @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/postgresql/ @ldming @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/pulsar/ @caiq1nyu @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/pulsar/ @caiq1nyu @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-
 addons/qdrant/ @iziang @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/qdrant/ @iziang @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
