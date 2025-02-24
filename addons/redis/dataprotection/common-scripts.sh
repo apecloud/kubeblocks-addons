@@ -1,3 +1,4 @@
+#!/bin/bash
 # log info file
 function DP_log() {
   msg=$1
