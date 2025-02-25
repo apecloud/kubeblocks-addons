@@ -3,100 +3,195 @@ kind: Cluster
 metadata:
   name: risingwave-cluster
   namespace: default
-  annotations:
-    # Create the hummock option
-    # RW_STATE_STORE: State store url
-    # RW_DATA_DIRECTORY: Remote directory for storing data and metadata objects.
-    # RW_ETCD_ENDPOINTS: Etcd endpoint
-    # RW_ETCD_AUTH: Enable authentication with etcd.
-    kubeblocks.io/extra-env: '{"RW_STATE_STORE":"hummock+minio://kubeblocks:kubeblocks@kb-addon-minio.kb-system.svc:9000/kbcli-test","RW_DATA_DIRECTORY":"risingwave-cluster","RW_ETCD_ENDPOINTS":"etcdr-cluster-etcd.default.svc.cluster.local:2379","RW_ETCD_AUTH":"false"}'
 spec:
-  # Specifies the behavior when a Cluster is deleted.
-  # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
-  # - `Halt`: Deletes Cluster resources like Pods and Services but retains Persistent Volume Claims (PVCs), allowing for data preservation while stopping other operations.
-  # - `Delete`: Extends the `Halt` policy by also removing PVCs, leading to a thorough cleanup while removing all persistent data.
-  # - `WipeOut`: An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss.
   terminationPolicy: Delete
-  # Specifies a list of ClusterComponentSpec objects used to define the individual components that make up a Cluster. This field allows for detailed configuration of each component within the Cluster.
-  # Note: `shardingSpecs` and `componentSpecs` cannot both be empty; at least one must be defined to configure a cluster.
-  # ClusterComponentSpec defines the specifications for a Component in a Cluster.
+  clusterDef: risingwave
+  topology: cluster
   componentSpecs:
-  - name: frontend
-    componentDef: risingwave-frontend
-    replicas: 1
-    resources:
-      limits:
-        cpu: '0.5'
-        memory: 1Gi
-      requests:
-        cpu: '0.5'
-        memory: 1Gi
-  - componentDef: risingwave-meta
-    name: meta
-    replicas: 1
-    resources:
-      limits:
-        cpu: '0.5'
-        memory: 1Gi
-      requests:
-        cpu: '0.5'
-        memory: 1Gi
-  - componentDef: risingwave-compute
-    name: compute
-    replicas: 1
-    resources:
-      limits:
-        cpu: '0.5'
-        memory: 1Gi
-      requests:
-        cpu: '0.5'
-        memory: 1Gi
-  - componentDef: risingwave-compactor
-    name: compactor
-    replicas: 1
-    resources:
-      limits:
-        cpu: '0.5'
-        memory: 1Gi
-      requests:
-        cpu: '0.5'
-        memory: 1Gi
-  - componentDef: risingwave-connector
-    name: connector
-    replicas: 1
-    resources:
-      limits:
-        cpu: '0.5'
-        memory: 1Gi
-      requests:
-        cpu: '0.5'
-        memory: 1Gi
----
-apiVersion: apps.kubeblocks.io/v1
-kind: Cluster
-metadata:
-  name: etcdr-cluster
-  namespace: default
-spec:
-  terminationPolicy: WipeOut
-  componentSpecs:
-    - name: etcd
-      componentDef: etcd
-      disableExporter: true
-      replicas: 3
+    - name: meta
+      replicas: 1
+      env:
+        # Directory for storing data
+        - name: RW_DATA_DIRECTORY
+          value: prefix
+        # MinIO username
+        - name: MINIO_USER
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: minio-cluster-minio-account-root
+        # MinIO password
+        - name: MINIO_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: minio-cluster-minio-account-root
+        # MinIO bucket name
+        - name: MINIO_BUCKET
+          value: test-bucket
+        # MinIO endpoint
+        - name: MINIO_ENDPOINT
+          value: minio-cluster-minio.default.svc.cluster.local:9000
+        # State store configuration
+        - name: RW_STATE_STORE
+          value: hummock+minio://$(MINIO_USER):$(MINIO_PASSWORD)@$(MINIO_ENDPOINT)/$(MINIO_BUCKET)
+        # ETCD endpoints
+        - name: RW_ETCD_ENDPOINTS
+          value: etcd-cluster-etcd-headless.default.svc.cluster.local:2379
+        # ETCD authentication
+        - name: RW_ETCD_AUTH
+          value: "false"
+        # Telemetry enable flag
+        - name: ENABLE_TELEMETRY
+          value: "false"
       resources:
         limits:
-          cpu: "0.5"
-          memory: "0.5Gi"
+          cpu: "1"
+          memory: 1Gi
         requests:
-          cpu: "0.5"
-          memory: "0.5Gi"
-      volumeClaimTemplates:
-        - name: data
-          spec:
-            storageClassName:
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: 20Gi
+          cpu: 500m
+          memory: 500Mi
+      serviceVersion: v1.0.0
+    - name: compactor
+      env:
+        # Directory for storing data
+        - name: RW_DATA_DIRECTORY
+          value: prefix
+        # MinIO username
+        - name: MINIO_USER
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: minio-cluster-minio-account-root
+        # MinIO password
+        - name: MINIO_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: minio-cluster-minio-account-root
+        # MinIO bucket name
+        - name: MINIO_BUCKET
+          value: test-bucket
+        # MinIO endpoint
+        - name: MINIO_ENDPOINT
+          value: minio-cluster-minio.default.svc.cluster.local:9000
+        # State store configuration
+        - name: RW_STATE_STORE
+          value: hummock+minio://$(MINIO_USER):$(MINIO_PASSWORD)@$(MINIO_ENDPOINT)/$(MINIO_BUCKET)
+        # Telemetry enable flag
+        - name: ENABLE_TELEMETRY
+          value: "false"
+      replicas: 1
+      resources:
+        limits:
+          cpu: "1"
+          memory: 1Gi
+        requests:
+          cpu: 500m
+          memory: 500Mi
+      serviceVersion: v1.0.0
+    - name: compute
+      env:
+        # Directory for storing data
+        - name: RW_DATA_DIRECTORY
+          value: prefix
+        # MinIO username
+        - name: MINIO_USER
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: minio-cluster-minio-account-root
+        # MinIO password
+        - name: MINIO_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: minio-cluster-minio-account-root
+        # MinIO bucket name
+        - name: MINIO_BUCKET
+          value: test-bucket
+        # MinIO endpoint
+        - name: MINIO_ENDPOINT
+          value: minio-cluster-minio.default.svc.cluster.local:9000
+        # State store configuration
+        - name: RW_STATE_STORE
+          value: hummock+minio://$(MINIO_USER):$(MINIO_PASSWORD)@$(MINIO_ENDPOINT)/$(MINIO_BUCKET)
+      replicas: 1
+      resources:
+        limits:
+          cpu: "1"
+          memory: 1Gi
+        requests:
+          cpu: 500m
+          memory: 500Mi
+      serviceVersion: v1.0.0
+    - name: connector
+      replicas: 1
+      env:
+        # Directory for storing data
+        - name: RW_DATA_DIRECTORY
+          value: prefix
+        # MinIO username
+        - name: MINIO_USER
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: minio-cluster-minio-account-root
+        # MinIO password
+        - name: MINIO_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: minio-cluster-minio-account-root
+        # MinIO bucket name
+        - name: MINIO_BUCKET
+          value: test-bucket
+        # MinIO endpoint
+        - name: MINIO_ENDPOINT
+          value: minio-cluster-minio.default.svc.cluster.local:9000
+        # State store configuration
+        - name: RW_STATE_STORE
+          value: hummock+minio://$(MINIO_USER):$(MINIO_PASSWORD)@$(MINIO_ENDPOINT)/$(MINIO_BUCKET)
+      resources:
+        limits:
+          cpu: "1"
+          memory: 1Gi
+        requests:
+          cpu: 500m
+          memory: 500Mi
+      serviceVersion: v1.0.0
+    - name: frontend
+      env:
+        # State store configuration
+        - name: RW_STATE_STORE
+          value: hummock+minio://$(MINIO_USER):$(MINIO_PASSWORD)@$(MINIO_ENDPOINT)/$(MINIO_BUCKET)
+        # Directory for storing data
+        - name: RW_DATA_DIRECTORY
+          value: prefix
+        # MinIO username
+        - name: MINIO_USER
+          valueFrom:
+            secretKeyRef:
+              key: username
+              name: minio-cluster-minio-account-root
+        # MinIO password
+        - name: MINIO_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: password
+              name: minio-cluster-minio-account-root
+        # MinIO bucket name
+        - name: MINIO_BUCKET
+          value: test-bucket
+        # MinIO endpoint
+        - name: MINIO_ENDPOINT
+          value: minio-cluster-minio.default.svc.cluster.local:9000
+      replicas: 1
+      resources:
+        limits:
+          cpu: "1"
+          memory: 1Gi
+        requests:
+          cpu: 500m
+          memory: 500Mi
+      serviceVersion: v1.0.0

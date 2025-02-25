@@ -77,10 +77,6 @@ Cluster envs.
 {{- end }}
 - name: RW_DATA_DIRECTORY
   value: {{ .Values.risingwave.stateStore.dataDirectory }}
-{{- if .Values.risingwave.stateStore.s3.endpoint }}
-- name: RW_S3_ENDPOINT
-  value: {{ .Values.risingwave.stateStore.s3.endpoint }}
-{{- end }}
 {{- if .Values.risingwave.metaStore.etcd.authentication.enabled }}
 - name: RW_ETCD_USERNAME
   value: {{ .Values.risingwave.metaStore.etcd.authentication.username }}
