@@ -14,6 +14,8 @@ spec:
     # Specifies the name of the Component.
     - componentName: mysql
       parameters:
+      - name: primary
+        value: mysql-cluster-mysql-0
       # Specifies the instance to become the primary or leader during a switchover operation.
       - name: candidate
         value: mysql-cluster-mysql-1

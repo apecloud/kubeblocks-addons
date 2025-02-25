@@ -79,7 +79,7 @@ spec:
         - ReadWriteOnce
         resources:
           requests:
-            storage: 5Gi
+            storage: 20Gi
   - name: controller
     componentDefRef: controller
     componentDef: kafka-controller

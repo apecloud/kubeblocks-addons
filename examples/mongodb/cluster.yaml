@@ -28,6 +28,7 @@ spec:
   componentSpecs:
   - name: mongodb
     componentDef: mongodb
+    serviceVersion: 6.0.16
     replicas: 3
     resources:
       limits:
