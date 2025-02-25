@@ -85,11 +85,9 @@ kubectl apply -f examples/kafka/scale-in.yaml
 Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: kafka-combined-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: kafka-combine
@@ -109,11 +107,9 @@ kubectl apply -f examples/kafka/verticalscale.yaml
 Alternatively, you may update `spec.componentSpecs.resources` field to the desired resources for vertical scale.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: kafka-combined-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: kafka-combine
@@ -159,11 +155,9 @@ kubectl get pvc -l app.kubernetes.io/instance=kafka-combined-cluster -n default
 Alternatively, you may update the `spec.componentSpecs.volumeClaimTemplates.spec.resources.requests.storage` field to the desired size.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: kafka-combined-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: kafka-combine
@@ -207,11 +201,9 @@ kubectl apply -f examples/kafka/stop.yaml
 Alternatively, you may stop the cluster by setting the `spec.componentSpecs.stop` field to `true`.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: kafka-combined-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: kafka-combine
@@ -232,11 +224,9 @@ kubectl apply -f examples/kafka/start.yaml
 Alternatively, you may start the cluster by setting the `spec.componentSpecs.stop` field to `false`.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: kafka-combined-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: kafka-combine
@@ -298,11 +288,9 @@ Currently only `nodeport` and `clusterIp` network modes are supported for Kafka
 To access the Kafka cluster using the `nodeport` service, you can create Kafka cluster with the following configuration,  refer to [Kafka Network Modes Example](./cluster-combined-nodeport.yaml) for more details.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: kafka-combined-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: kafka-combine
