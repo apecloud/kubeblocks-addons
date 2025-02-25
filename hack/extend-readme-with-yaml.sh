@@ -42,7 +42,8 @@ for README in $README_FILES; do
                     # insert empty line
                     echo >> "$OUTPUT_FILE"
                 else
-                    echo "⚠️ 文件未找到: $YAML_FILE" >> "$OUTPUT_FILE"
+                    echo "⚠️ File Not Found: $YAML_FILE in $README"
+                    exit 1
                 fi
             fi
 
