@@ -39,7 +39,9 @@ metadata:
   namespace: default
 spec:
   # Specifies the name of the ClusterDefinition to use when creating a Cluster.
-  clusterDefinitionRef: orioledb
+  clusterDef: orioledb
+  # Specifies the name of the ClusterTopology to use when creating a Cluster.
+  topology: orioledb
   # Specifies the behavior when a Cluster is deleted.
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
   # - `Halt`: Deletes Cluster resources like Pods and Services but retains Persistent Volume Claims (PVCs), allowing for data preservation while stopping other operations.
@@ -52,10 +54,6 @@ spec:
   componentSpecs:
   - name: orioledb
     componentDefRef: orioledb
-    serviceRefs:
-    - name: etcdService
-      cluster: etcdo-cluster
-      namespace: default
     replicas: 1
     resources:
       limits:
@@ -72,38 +70,6 @@ spec:
         resources:
           requests:
             storage: 20Gi
----
-apiVersion: apps.kubeblocks.io/v1
-kind: Cluster
-metadata:
-  name: etcdo-cluster
-  namespace: default
-spec:
-  clusterDefinitionRef: etcd
-  clusterVersionRef: etcd-v3.5.6
-  terminationPolicy: WipeOut
-  componentSpecs:
-  - name: etcd
-    componentDefRef: etcd
-    replicas: 1
-    resources:
-      limits:
-        cpu: '0.5'
-        memory: 0.5Gi
-      requests:
-        cpu: '0.5'
-        memory: 0.5Gi
-    volumeClaimTemplates:
-    - name: data
-      spec:
-        storageClassName: null
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: 20Gi
-
-```
 
 ```bash
 kubectl apply -f examples/orioledb/cluster.yaml
