@@ -75,11 +75,9 @@ kubectl apply -f examples/mogdb/scale-in.yaml
 Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: mogdb-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: mogdb

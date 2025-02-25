@@ -83,11 +83,9 @@ kubectl apply -f examples/orchestrator/scale-in.yaml
 Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: orchestrator-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: orchestrator
