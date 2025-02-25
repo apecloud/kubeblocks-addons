@@ -200,6 +200,11 @@ This example shows the way to override the default accounts' password.
 Option 1. override the rule `passwordCofnig` to generate password
 
 ```yaml
+# snippet of cluster.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+spec:
+  componentSpecs:
     - name: ch-keeper
       replicas: 1
       # Overrides system accounts defined in referenced ComponentDefinition.
@@ -216,6 +221,11 @@ Option 1. override the rule `passwordCofnig` to generate password
 Option 2. specify the secret for the account
 
 ```yaml
+# snippet of cluster.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+spec:
+  componentSpecs:
     - name: clickhouse
       replicas: 2
       # Overrides system accounts defined in referenced ComponentDefinition.
@@ -398,7 +408,7 @@ This example creates a clickhouse cluster with 3 shards, each shard has 2 replic
 
 ### Horizontal scaling
 
-#### [Scale-out](scale-out.yaml)
+#### Scale-out
 
 Horizontal scaling out Clickhouse cluster by adding ONE more replica:
 
@@ -431,7 +441,7 @@ spec:
 kubectl apply -f examples/clickhouse/scale-out.yaml
 ```
 
-#### [Scale-in](scale-in.yaml)
+#### Scale-in
 
 Horizontal scaling in clickhouse cluster by deleting ONE replica:
 
@@ -468,18 +478,16 @@ kubectl apply -f examples/clickhouse/scale-in.yaml
 Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: clickhouse-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: clickhouse
       replicas: 2 # Update `replicas` to 1 for scaling in, and to 3 for scaling out
 ```
 
-### [Vertical scaling](verticalscale.yaml)
+### Vertical scaling
 
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
 
@@ -514,7 +522,7 @@ spec:
 kubectl apply -f examples/clickhouse/verticalscale.yaml
 ```
 
-### [Expand volume](volumeexpand.yaml)
+### Expand volume
 
 > [!NOTE]
 > Make sure the storage class you use supports volume expansion.
@@ -558,7 +566,7 @@ spec:
 kubectl apply -f examples/clickhouse/volumeexpand.yaml
 ```
 
-### [Reconfigure](configure.yaml)
+### Reconfigure
 
 Reconfigure parameters with the specified components in the cluster
 
@@ -622,7 +630,7 @@ clickhouse-client --user $CLICKHOUSE_ADMIN_USER --password $CLICKHOUSE_ADMIN_PAS
 ```
 
 <details>
-
+<summary>Explanation of the configuration</summary>
 The `user.xml` file is an xml file that contains the configuration of the ClickHouse server.
 ```xml
 <clickhouse>
@@ -639,19 +647,27 @@ The `user.xml` file is an xml file that contains the configuration of the ClickH
 </clickhouse>
 ```
 
-When updating the configuration, the key we set in the `reconfigure.yaml` file should be the same as the key in the `user.xml` file, for example:
+When updating the configuration, the key we set in the `configure.yaml` file should be the same as the key in the `user.xml` file, for example:
 
 ```yaml
-- key: user.xml
-  parameters:
-  - key: clickhouse.profiles.web.max_bytes_to_read
-    value: '200000000000'
+# snippet of configure.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+spec:
+  reconfigures:
+  - componentName: clickhouse
+    configurations:
+    - keys:
+      - key: user.xml
+        parameters:
+        - key: clickhouse.profiles.web.max_bytes_to_read
+          value: '200000000000'
 ```
 
 To update parameter `max_bytes_to_read`, we use the full path `clickhouse.profiles.web.max_bytes_to_read` w.r.t the `user.xml` file.
 </details>
 
-### [Restart](restart.yaml)
+### Restart
 
 Restart the specified components in the cluster
 
@@ -679,7 +695,7 @@ spec:
 kubectl apply -f examples/clickhouse/restart.yaml
 ```
 
-### [Stop](stop.yaml)
+### Stop
 
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 
@@ -701,7 +717,7 @@ spec:
 kubectl apply -f examples/clickhouse/stop.yaml
 ```
 
-### [Start](start.yaml)
+### Start
 
 Start the stopped cluster
 
@@ -788,3 +804,11 @@ It sets endpoints as follows:
 
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
+```bash
+kubectl patch cluster clickhouse-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+
+kubectl delete cluster clickhouse-cluster
+
+# delete secret udf-account-info if exists
+# kubectl delete secret udf-account-info
+```

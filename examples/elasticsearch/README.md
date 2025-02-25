@@ -15,7 +15,6 @@ Each Elasticsearch cluster consists of one or more nodes, and each node in a clu
 - remote_cluster_client
 - transform
 
-
 ## Prerequisites
 
 - Kubernetes cluster >= v1.21
@@ -384,16 +383,16 @@ It set up the PodMonitor to scrape the metrics (port `9114`) from the Elasticsea
 
 Login to the Grafana dashboard and import the dashboard.
 You can import the dashboard provided by Grafana or create your own dashboard, e.g.
-- https://grafana.com/grafana/dashboards/2322-elasticsearch/
 
+- <https://grafana.com/grafana/dashboards/2322-elasticsearch/>
 
 > [!Note]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
 
-
 ### Delete
 
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
+
 ```bash
 kubectl patch cluster es-multinode -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
@@ -402,4 +401,4 @@ kubectl delete cluster es-multinode
 
 ## References
 
-[^1]: Elasticsearch Nodes, https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-node.html
+[^1]: Elasticsearch Nodes, <https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-node.html>

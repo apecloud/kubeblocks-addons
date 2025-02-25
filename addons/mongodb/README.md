@@ -28,36 +28,15 @@ MongoDB is a document database designed for ease of application development and 
 
 ## Prerequisites
 
-This example assumes that you have a Kubernetes cluster installed and running, and that you have installed the kubectl command line tool and helm somewhere in your path. Please see the [getting started](https://kubernetes.io/docs/setup/)  and [Installing Helm](https://helm.sh/docs/intro/install/) for installation instructions for your platform.
-
-Also, this example requires KubeBlocks installed and running. Here is the steps to install KubeBlocks, please replace "`$kb_version`" with the version you want to use.
-
-```bash
-# Add Helm repo
-helm repo add kubeblocks https://apecloud.github.io/helm-charts
-# If github is not accessible or very slow for you, please use following repo instead
-helm repo add kubeblocks https://jihulab.com/api/v4/projects/85949/packages/helm/stable
-
-# Update helm repo
-helm repo update
-
-# Get the versions of KubeBlocks and select the one you want to use
-helm search repo kubeblocks/kubeblocks --versions
-# If you want to obtain the development versions of KubeBlocks, Please add the '--devel' parameter as the following command
-helm search repo kubeblocks/kubeblocks --versions --devel
-
-# Create dependent CRDs
-kubectl create -f https://github.com/apecloud/kubeblocks/releases/download/v$kb_version/kubeblocks_crds.yaml
-# If github is not accessible or very slow for you, please use following command instead
-kubectl create -f https://jihulab.com/api/v4/projects/98723/packages/generic/kubeblocks/v$kb_version/kubeblocks_crds.yaml
-
-# Install KubeBlocks
-helm install kubeblocks kubeblocks/kubeblocks --namespace kb-system --create-namespace --version="$kb_version"
-```
+- Kubernetes cluster >= v1.21
+- `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
+- Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
+- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
+- MongoDB Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
 
 ## Examples
 
-### [Create](cluster.yaml)
+### Create
 
 Create a MongoDB replicaset cluster with 1 primary replica and 2 secondary replicas:
 
@@ -137,11 +116,9 @@ kubectl get po -l  app.kubernetes.io/instance=mongo-cluster -L kubeblocks.io/rol
 If you want to create a cluster of specified version, set the `spec.componentSpecs.serviceVersion` field in the yaml file before applying it:
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: mongo-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: mongodb
@@ -171,7 +148,7 @@ And it is recommended to create a cluster with at least three nodes to ensure hi
 
 ### Horizontal scaling
 
-#### [Scale-out](scale-out.yaml)
+#### Scale-out
 
 Horizontal scaling out cluster by adding ONE more replica:
 
@@ -209,7 +186,7 @@ And you can check the progress of the scaling operation with following command:
 kubectl describe ops mongo-scale-out
 ```
 
-#### [Scale-in](scale-in.yaml)
+#### Scale-in
 
 Horizontal scaling in cluster by deleting ONE replica:
 
@@ -248,14 +225,14 @@ You may verify the full list of members in the replica set by connecting to any 
 mongo-cluster-mongodb > rs.status();
 ```
 
-#### [Set Specified Replicas Offline](scale-in-specified-instance.yaml)
+#### Set Specified Replicas Offline
 
 There are cases where you want to set a specified replica offline, when it is problematic or you want to do some maintenance work on it. You can use the `onlineInstancesToOffline` field in the `spec.horizontalScaling.scaleIn` section to specify the instance names that need to be taken offline.
 
 ```yaml
+# snippet of opsrequest
 apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
-metadata:
 spec:
   clusterName: mongo-cluster
   horizontalScaling:
@@ -271,11 +248,9 @@ spec:
 Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: mongo-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: mongodb
@@ -286,7 +261,7 @@ spec:
       - mongo-cluster-mongodb-1
 ```
 
-### [Vertical scaling](verticalscale.yaml)
+### Vertical scaling
 
 Vertical scaling involves increasing or decreasing resources to an existing database cluster.
 Resources that can be scaled include:, CPU cores/processing power and Memory (RAM).
@@ -328,11 +303,9 @@ You will observe that the `secondary` pods are recreated first, followed by the 
 Alternatively, you may update `spec.componentSpecs.resources` field to the desired resources for vertical scale.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: mongo-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: mongodb
@@ -346,7 +319,7 @@ spec:
           memory: "4Gi"  # Update the resources to your need.
 ```
 
-### [Expand volume](volumeexpand.yaml)
+### Expand volume
 
 Volume expansion is the ability to increase the size of a Persistent Volume Claim (PVC) after it's created. It is introduced in Kubernetes v1.11 and goes GA in Kubernetes v1.24. It allows Kubernetes users to simply edit their PersistentVolumeClaim objects without requiring any downtime at all if possible.
 
@@ -401,10 +374,9 @@ Alternatively, you may update the `spec.componentSpecs.volumeClaimTemplates.spec
 
 ```yaml
 apiVersion: apps.kubeblocks.io/v1
+# snippet of cluster.yaml
+apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: mongo-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: mongodb
@@ -419,7 +391,7 @@ spec:
                 storage: 30Gi  # specify new size, and make sure it is larger than the current size
 ```
 
-### [Restart](restart.yaml)
+### Restart
 
 Restart the specified components in the cluster
 
@@ -445,7 +417,7 @@ spec:
 kubectl apply -f examples/mongodb/restart.yaml
 ```
 
-### [Stop](stop.yaml)
+### Stop
 
 Stop the cluster will release all the pods of the cluster, but the storage will be retained. It is useful when you want to save the cost of the cluster.
 
@@ -472,11 +444,9 @@ kubectl apply -f examples/mongodb/stop.yaml
 Alternatively, you may stop the cluster by setting the `spec.componentSpecs.stop` field to `true`.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: mongo-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: mongodb
@@ -484,7 +454,7 @@ spec:
       replicas: 3
 ```
 
-### [Start](start.yaml)
+### Start
 
 Start the stopped cluster
 
@@ -511,11 +481,9 @@ kubectl apply -f examples/mongodb/start.yaml
 Alternatively, you may start the cluster by setting the `spec.componentSpecs.stop` field to `false`.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: mongo-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: mongodb
@@ -523,7 +491,7 @@ spec:
       replicas: 3
 ```
 
-### [Switchover](switchover.yaml)
+### Switchover
 
 A switchover in database clusters is a planned operation that transfers the primary (leader) role from one database instance to another. The goal of a switchover is to ensure that the database cluster remains available and operational during the transition.
 
@@ -554,7 +522,7 @@ spec:
 kubectl apply -f examples/mongodb/switchover.yaml
 ```
 
-### [Switchover-specified-instance](switchover-specified-instance.yaml)
+### Switchover-specified-instance
 
 Switchover a specified instance as the new primary or leader of the cluster
 
@@ -583,7 +551,7 @@ spec:
 kubectl apply -f examples/mongodb/switchover-specified-instance.yaml
 ```
 
-### [Reconfigure](configure.yaml)
+### Reconfigure
 
 A database reconfiguration is the process of modifying database parameters, settings, or configurations to improve performance, security, or availability. The reconfiguration can be either:
 
@@ -649,86 +617,9 @@ print("systemLog.quiet:", config.parsed.systemLog.quiet);
 print("systemLog.verbosity:", config.parsed.systemLog.verbosity);
 ```
 
-### [BackupRepo](backuprepo.yaml)
+### Backup
 
-BackupRepo is the storage repository for backup data. Before creating a BackupRepo, you need to create a secret to save the access key of the backup repository
-
-```bash
-# Create a secret to save the access key
-kubectl create secret generic <credential-for-backuprepo>\
-  --from-literal=accessKeyId=<ACCESS KEY> \
-  --from-literal=secretAccessKey=<SECRET KEY> \
-  -n kb-system
-```
-
-Update `examples/mongodb/backuprepo.yaml` and set fields quoted with `<>` to your own settings and apply it.
-
-```yaml
-# cat examples/mongodb/backuprepo.yaml
-apiVersion: dataprotection.kubeblocks.io/v1alpha1
-kind: BackupRepo
-metadata:
-  name: <test-backuprepo>
-  annotations:
-    # optional, mark this backuprepo as default
-    dataprotection.kubeblocks.io/is-default-repo: 'true'
-spec:
-  # Specifies the name of the `StorageProvider` used by this backup repository.
-  # Currently, KubeBlocks supports configuring various object storage services as backup repositories
-  # - s3 (Amazon Simple Storage Service)
-  # - oss (Alibaba Cloud Object Storage Service)
-  # - cos (Tencent Cloud Object Storage)
-  # - gcs (Google Cloud Storage)
-  # - obs (Huawei Cloud Object Storage)
-  # - minio, and other S3-compatible services.
-  # Note: set the provider name to you own needs
-  storageProviderRef: oss
-  # Specifies the access method of the backup repository.
-  # - Tool
-  # - Mount
-  # If the access mode is Mount, it will mount the PVC through the CSI driver (make sure it is installed and configured properly)
-  # In Tool mode, it will directly stream to the object storage without mounting the PVC.
-  accessMethod: Tool
-  # Stores the non-secret configuration parameters for the `StorageProvider`.
-  config:
-    # Note: set the bucket name to you own needs
-    bucket: <kubeblocks-test>
-    # Note: set the region name to you own needs
-    region: <cn-zhangjiakou>
-  # References to the secret that holds the credentials for the `StorageProvider`.
-  # kubectl create secret generic demo-credential-for-backuprepo --from-literal=accessKeyId=* --from-literal=secretAccessKey=* --namespace=kb-system
-  credential:
-    # name is unique within a namespace to reference a secret resource.
-    # Note: set the secret name to you own needs
-    name: <credential-for-backuprepo>
-    # namespace defines the space within which the secret name must be unique.
-    namespace: kb-system
-  # Specifies reclaim policy of the PV created by this backup repository
-  # Valid Options are [Retain, Delete]
-  # Delete means the volume will be deleted from Kubernetes on release from its claim.
-  # Retain means the volume will be left in its current phase (Released) for manual reclamation by the administrator.
-  pvReclaimPolicy: Retain
-
-```
-
-```bash
-kubectl apply -f examples/mongodb/backuprepo.yaml
-```
-
-After creating the BackupRepo, you should check the status of the BackupRepo, to make sure it is `Ready`.
-
-```bash
-kubectl get backuprepo
-```
-
-And the expected output is like:
-
-```bash
-NAME     STATUS   STORAGEPROVIDER   ACCESSMETHOD   DEFAULT   AGE
-kb-oss   Ready    oss               Tool           true      Xd
-```
-
-### [Backup](backup.yaml)
+> [!IMPORTANT] Before you start, please create a `BackupRepo` to store the backup data. Refer to [BackupRepo](../docs/create-backuprepo.md) for more details.
 
 You may find the supported backup methods in the `BackupPolicy` of the cluster, and find how these methods will be scheduled in the `BackupSchedule` of the cluster.
 
@@ -771,7 +662,7 @@ Information, such as `path`, `timeRange` about the backup will be recorded into 
 
 Alternatively, you can update the `BackupSchedule` to enable the method `xtrabackup` to schedule base backup periodically.
 
-### [Restore](restore.yaml)
+### Restore
 
 Restore a new cluster from a backup
 
@@ -827,7 +718,7 @@ kubectl apply -f examples/mongodb/restore.yaml
 
 Expose a cluster with a new endpoint
 
-#### [Enable](expose-enable.yaml)
+#### Enable
 
 ```yaml
 # cat examples/mongodb/expose-enable.yaml
@@ -860,7 +751,7 @@ spec:
 kubectl apply -f examples/mongodb/expose-enable.yaml
 ```
 
-#### [Disable](expose-disable.yaml)
+#### Disable
 
 ```yaml
 # cat examples/mongodb/expose-disable.yaml
@@ -898,11 +789,9 @@ kubectl apply -f examples/mongodb/expose-disable.yaml
 Alternatively, you may expose service by updating `spec.services`
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: mongo-cluster
-  namespace: default
 spec:
   # append service to the list
   services:

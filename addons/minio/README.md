@@ -26,7 +26,7 @@ Minio is a high performance open source relational database management system th
 
 ## Examples
 
-### [Create](cluster.yaml)
+### Create
 
 Create a minio cluster with two replicas:
 
@@ -134,7 +134,7 @@ kubectl get secret minio-cluster-minio-account-root -o jsonpath="{.data.username
 
 ### Horizontal scaling
 
-#### [Scale-out](scale-out.yaml)
+#### Scale-out
 
 Horizontal scaling out MinIO cluster by adding TWO more replica:
 
@@ -227,7 +227,7 @@ If you don't want to force a STOP-START, you can restart the existing replicas o
 kubectl delete pod minio-cluster-minio-{0..1}
 ```
 
-### [Vertical scaling](verticalscale.yaml)
+### Vertical scaling
 
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
 
@@ -259,7 +259,7 @@ spec:
 kubectl apply -f examples/minio/verticalscale.yaml
 ```
 
-### [Restart](restart.yaml)
+### Restart
 
 Restart the specified components in the cluster
 
@@ -284,7 +284,7 @@ spec:
 kubectl apply -f examples/minio/restart.yaml
 ```
 
-### [Stop](stop.yaml)
+### Stop
 
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 
@@ -307,7 +307,7 @@ spec:
 kubectl apply -f examples/minio/stop.yaml
 ```
 
-### [Start](start.yaml)
+### Start
 
 Start the stopped cluster
 

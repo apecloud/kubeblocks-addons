@@ -55,11 +55,9 @@ kubectl apply -f examples/tdengine/scale-out.yaml
 Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: kafka-combined-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: kafka-combine

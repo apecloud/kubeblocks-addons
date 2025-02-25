@@ -109,7 +109,7 @@ spec:
 kubectl apply -f examples/orioledb/cluster.yaml
 ```
 
-### [Horizontal scaling](horizontalscale.yaml)
+### Horizontal scaling
 Horizontal scaling out or in specified components replicas in the cluster
 ```yaml
 # cat examples/orioledb/horizontalscale.yaml
@@ -137,7 +137,7 @@ spec:
 kubectl apply -f examples/orioledb/horizontalscale.yaml
 ```
 
-### [Vertical scaling](verticalscale.yaml)
+### Vertical scaling
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
 ```yaml
 # cat examples/orioledb/verticalscale.yaml
@@ -167,7 +167,7 @@ spec:
 kubectl apply -f examples/orioledb/verticalscale.yaml
 ```
 
-### [Expand volume](volumeexpand.yaml)
+### Expand volume
 Increase size of volume storage with the specified components in the cluster
 ```yaml
 # cat examples/orioledb/volumeexpand.yaml
@@ -195,7 +195,7 @@ spec:
 kubectl apply -f examples/orioledb/volumeexpand.yaml
 ```
 
-### [Restart](restart.yaml)
+### Restart
 Restart the specified components in the cluster
 ```yaml
 # cat examples/orioledb/restart.yaml
@@ -219,7 +219,7 @@ spec:
 kubectl apply -f examples/orioledb/restart.yaml
 ```
 
-### [Stop](stop.yaml)
+### Stop
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 ```yaml
 # cat examples/orioledb/stop.yaml
@@ -239,7 +239,7 @@ spec:
 kubectl apply -f examples/orioledb/stop.yaml
 ```
 
-### [Start](start.yaml)
+### Start
 Start the stopped cluster
 ```yaml
 # cat examples/orioledb/start.yaml
@@ -261,7 +261,7 @@ kubectl apply -f examples/orioledb/start.yaml
 
 ### Expose
 Expose a cluster with a new endpoint
-#### [Enable](expose-enable.yaml)
+#### Enable
 ```yaml
 # cat examples/orioledb/expose-enable.yaml
 apiVersion: apps.kubeblocks.io/v1alpha1
@@ -292,7 +292,7 @@ spec:
 ```bash
 kubectl apply -f examples/orioledb/expose-enable.yaml
 ```
-#### [Disable](expose-disable.yaml)
+#### Disable
 ```yaml
 # cat examples/orioledb/expose-disable.yaml
 apiVersion: apps.kubeblocks.io/v1alpha1

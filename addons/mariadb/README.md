@@ -26,7 +26,7 @@ MariaDB is a high performance open source relational database management system 
 
 ## Examples
 
-### [Create](cluster.yaml)
+### Create
 
 Create a mariadb cluster with ONE replica:
 
@@ -75,7 +75,7 @@ spec:
 kubectl apply -f examples/mariadb/cluster.yaml
 ```
 
-### [Vertical scaling](verticalscale.yaml)
+### Vertical scaling
 
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
 
@@ -107,7 +107,7 @@ spec:
 kubectl apply -f examples/mariadb/verticalscale.yaml
 ```
 
-### [Expand volume](volumeexpand.yaml)
+### Expand volume
 
 Increase size of volume storage with the specified components in the cluster
 
@@ -137,7 +137,7 @@ spec:
 kubectl apply -f examples/mariadb/volumeexpand.yaml
 ```
 
-### [Restart](restart.yaml)
+### Restart
 
 Restart the specified components in the cluster
 
@@ -163,7 +163,7 @@ spec:
 kubectl apply -f examples/mariadb/restart.yaml
 ```
 
-### [Stop](stop.yaml)
+### Stop
 
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 
@@ -185,7 +185,7 @@ spec:
 kubectl apply -f examples/mariadb/stop.yaml
 ```
 
-### [Start](start.yaml)
+### Start
 
 Start the stopped cluster
 

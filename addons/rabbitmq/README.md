@@ -31,7 +31,7 @@ RabbitMQ is an open-source and lightweight message broker which supports multipl
 
 ## Examples
 
-### [Create](cluster.yaml)
+### Create
 
 Create a rabbitmq cluster with 3 replicas:
 
@@ -105,7 +105,7 @@ kubectl apply -f examples/rabbitmq/cluster.yaml
 > RabbitMQ quorum queue are designed based on the **Raft consensus algorithm**.
 > Make sure to have an odd number of replicas, such as 3, 5, 7, to avoid split-brain scenarios, after scaling out/in the cluster.
 
-#### [Scale-out](scale-out.yaml)
+#### Scale-out
 
 Horizontal scaling out cluster by adding ONE more  replica:
 
@@ -135,7 +135,7 @@ spec:
 kubectl apply -f examples/rabbitmq/scale-out.yaml
 ```
 
-#### [Scale-in](scale-in.yaml)
+#### Scale-in
 
 Horizontal scaling in cluster by deleting ONE replica:
 
@@ -179,7 +179,7 @@ spec:
       replicas: 3 # Update `replicas` to your desired number
 ```
 
-### [Vertical scaling](verticalscale.yaml)
+### Vertical scaling
 
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
 
@@ -230,7 +230,7 @@ spec:
           memory: "4Gi"  # Update the resources to your need.
 ```
 
-### [Expand volume](volumeexpand.yaml)
+### Expand volume
 
 > [!NOTE]
 > Make sure the storage class you use supports volume expansion.
@@ -295,7 +295,7 @@ spec:
                 storage: 30Gi
 ```
 
-### [Restart](restart.yaml)
+### Restart
 
 Restart the specified components in the cluster:
 
@@ -321,7 +321,7 @@ spec:
 kubectl apply -f examples/rabbitmq/restart.yaml
 ```
 
-### [Stop](stop.yaml)
+### Stop
 
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 
@@ -343,7 +343,7 @@ spec:
 kubectl apply -f examples/rabbitmq/stop.yaml
 ```
 
-### [Start](start.yaml)
+### Start
 
 Start the stopped cluster
 
@@ -367,7 +367,7 @@ kubectl apply -f examples/rabbitmq/start.yaml
 
 ### Expose
 
-#### [Enable](expose-enable.yaml)
+#### Enable
 
 ```yaml
 # cat examples/rabbitmq/expose-enable.yaml
@@ -409,7 +409,7 @@ spec:
 kubectl apply -f examples/rabbitmq/expose-enable.yaml
 ```
 
-#### [Disable](expose-disable.yaml)
+#### Disable
 
 ```yaml
 # cat examples/rabbitmq/expose-disable.yaml
@@ -489,7 +489,7 @@ cloud.google.com/l4-rbs: "enabled" # for internet
 
 Please consult your cloud provider for more accurate and update-to-date information.
 
-### [Reconfigure](reconfigure.yaml)
+### Reconfigure
 
 A database reconfiguration is the process of modifying database parameters, settings, or configurations to improve performance, security, or availability. The reconfiguration can be either:
 

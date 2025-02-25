@@ -15,7 +15,6 @@ Each Elasticsearch cluster consists of one or more nodes, and each node in a clu
 - remote_cluster_client
 - transform
 
-
 ## Prerequisites
 
 - Kubernetes cluster >= v1.21
@@ -239,7 +238,7 @@ spec:
 
 ### Horizontal scaling
 
-#### [Scale-out](scale-out.yaml)
+#### Scale-out
 
 Horizontal scaling out elasticsearch cluster by adding ONE `MASTER` replica:
 
@@ -274,7 +273,7 @@ spec:
 kubectl apply -f examples/elasticsearch/scale-out.yaml
 ```
 
-#### [Scale-in](scale-in.yaml)
+#### Scale-in
 
 Horizontal scaling in elasticsearch cluster by deleting ONE `MASTER` replica:
 
@@ -335,7 +334,7 @@ spec:
       replicas: 3 # Update `replicas` to your need.
 ```
 
-### [Vertical scaling](verticalscale.yaml)
+### Vertical scaling
 
 Vertical scaling involves increasing or decreasing resources to an existing database cluster.
 Resources that can be scaled include:, CPU cores/processing power and Memory (RAM).
@@ -395,7 +394,7 @@ spec:
           memory: "4Gi"  # Update the resources to your need.
 ```
 
-### [Expand volume](volumeexpand.yaml)
+### Expand volume
 
 Volume expansion is the ability to increase the size of a Persistent Volume Claim (PVC) after it's created. It is introduced in Kubernetes v1.11 and goes GA in Kubernetes v1.24. It allows Kubernetes users to simply edit their PersistentVolumeClaim objects  without requiring any downtime at all if possible.
 
@@ -467,7 +466,7 @@ spec:
                 storage: 30Gi  # specify new size, and make sure it is larger than the current size
 ```
 
-### [Restart](restart.yaml)
+### Restart
 
 Restart the specified component `data` in the cluster. If not specified, all components will be restarted.
 
@@ -497,7 +496,7 @@ spec:
 kubectl apply -f examples/elasticsearch/restart.yaml
 ```
 
-### [Stop](stop.yaml)
+### Stop
 
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 
@@ -534,7 +533,7 @@ spec:
       replicas: 3
 ```
 
-### [Start](start.yaml)
+### Start
 
 Start the stopped cluster
 
@@ -575,7 +574,7 @@ spec:
 
 It is recommended to access the Elasticsearch cluster from within the Kubernetes cluster using Kibana or other tools. However, if you need to access the Elasticsearch cluster from outside the Kubernetes cluster, you can expose the Elasticsearch service using a `LoadBalancer` service type.
 
-#### [Enable](expose-enable.yaml)
+#### Enable
 
 ```yaml
 # cat examples/elasticsearch/expose-enable.yaml
@@ -626,7 +625,7 @@ kubectl apply -f examples/elasticsearch/expose-enable.yaml
 
 In this example, a service with type `LoadBalancer` will be created to expose the Elasticsearch cluster. You can access the cluster using the `external IP` of the service.
 
-#### [Disable](expose-disable.yaml)
+#### Disable
 
 ```yaml
 # cat examples/elasticsearch/expose-disable.yaml
@@ -766,16 +765,16 @@ It set up the PodMonitor to scrape the metrics (port `9114`) from the Elasticsea
 
 Login to the Grafana dashboard and import the dashboard.
 You can import the dashboard provided by Grafana or create your own dashboard, e.g.
-- https://grafana.com/grafana/dashboards/2322-elasticsearch/
 
+- <https://grafana.com/grafana/dashboards/2322-elasticsearch/>
 
 > [!Note]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
 
-
 ### Delete
 
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
+
 ```bash
 kubectl patch cluster es-multinode -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
@@ -784,4 +783,4 @@ kubectl delete cluster es-multinode
 
 ## References
 
-[^1]: Elasticsearch Nodes, https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-node.html
+[^1]: Elasticsearch Nodes, <https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-node.html>

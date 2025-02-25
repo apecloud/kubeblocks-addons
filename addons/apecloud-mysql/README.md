@@ -34,7 +34,7 @@ Please refer to the ApeCloud MySQL Documentation[^1] for more information.
 
 ## Examples
 
-### [Create](cluster.yaml)
+### Create
 
 Create a ApeCloud-MySQL cluster with three replicas:
 
@@ -123,9 +123,9 @@ kubectl get po -l  app.kubernetes.io/instance=acmysql-cluster -L kubeblocks.io/r
 If you want to create a cluster of specified version, set the `spec.componentSpecs.serviceVersion` field in the yaml file before applying it:
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
 spec:
   componentSpecs:
     - name: mysql
@@ -147,7 +147,7 @@ kubectl get cmpv apecloud-mysql
 > As per the ApeCloud MySQL documentation, the number of Raft replicas should be odd to avoid split-brain scenarios.
 > Make sure the number of ApeCloud MySQL replicas, is always odd after Horizontal Scaling.
 
-#### [Scale-out](scale-out.yaml)
+#### Scale-out
 
 Horizontal scaling out ApeCloud-MySQL cluster by adding ONE more replica:
 
@@ -189,7 +189,7 @@ kubectl describe ops acmysql-scale-out
 > [!IMPORTANT]
 > On scaling out, the new replica will be added as a follower, and KubeBlocks will clone data from the leader to the new follower before the replica starts as defined.
 
-#### [Scale-in](scale-in.yaml)
+#### Scale-in
 
 Horizontal scaling in ApeCloud-MySQL cluster by deleting ONE replica:
 
@@ -223,14 +223,13 @@ kubectl apply -f examples/apecloud-mysql/scale-in.yaml
 > [!IMPORTANT]
 > On scaling in, the replica will be forgotten from the cluster's Raft group before it is deleted.
 
-#### [Set Specified Replicas Offline](scale-in-specified-instance.yaml)
+#### Set Specified Replicas Offline
 
 There are cases where you want to set a specified replica offline, when it is problematic or you want to do some maintenance work on it. You can use the `onlineInstancesToOffline` field in the `spec.horizontalScaling.scaleIn` section to specify the instance names that need to be taken offline.
 
 ```yaml
 apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
-metadata:
 spec:
   horizontalScaling:
   - componentName: mysql
@@ -245,16 +244,16 @@ spec:
 Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
 spec:
   componentSpecs:
     - name: apecloud-mysql
       replicas: 3 # decrease `replicas` for scaling in, and increase for scaling out
 ```
 
-### [Vertical scaling](verticalscale.yaml)
+### Vertical scaling
 
 Vertical scaling involves increasing or decreasing resources to an existing database cluster.
 Resources that can be scaled include:, CPU cores/processing power and Memory (RAM).
@@ -296,9 +295,9 @@ You will observe that the `follower` pods are recreated first, followed by the `
 Alternatively, you may update `spec.componentSpecs.resources` field to the desired resources for vertical scale.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
 spec:
   componentSpecs:
     - name: mysql
@@ -312,7 +311,7 @@ spec:
           memory: "4Gi"  # Update the resources to your need.
 ```
 
-### [Expand volume](volumeexpand.yaml)
+### Expand volume
 
 Volume expansion is the ability to increase the size of a Persistent Volume Claim (PVC) after it's created. It is introduced in Kubernetes v1.11 and goes GA in Kubernetes v1.24. It allows Kubernetes users to simply edit their PersistentVolumeClaim objects without requiring any downtime at all if possible.
 
@@ -366,16 +365,16 @@ kubectl get pvc -l app.kubernetes.io/instance=acmysql-cluster -n default
 Alternatively, you may update the `spec.componentSpecs.volumeClaimTemplates.spec.resources.requests.storage` field to the desired size.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
 spec:
   componentSpecs:
     - name: mysql
       volumeClaimTemplates:
         - name: data
           spec:
-            storageClassName: "<you-preferred-sc>"
+            storageClassName: "<STORAGE_CLASS_NAME>"
             accessModes:
               - ReadWriteOnce
             resources:
@@ -383,7 +382,7 @@ spec:
                 storage: 30Gi  # specify new size, and make sure it is larger than the current size
 ```
 
-### [Restart](restart.yaml)
+### Restart
 
 Restart the specified components in the cluster
 
@@ -412,7 +411,7 @@ kubectl apply -f examples/apecloud-mysql/restart.yaml
 > [!NOTE]
 > All follower pods will be restarted first, followed by the leader pod, to ensure the availability of the cluster.
 
-### [Stop](stop.yaml)
+### Stop
 
 Stop the cluster will release all the pods of the cluster, but the storage will be retained. It is useful when you want to save the cost of the cluster.
 
@@ -439,9 +438,9 @@ kubectl apply -f examples/apecloud-mysql/stop.yaml
 Alternatively, you may stop the cluster by setting the `spec.componentSpecs.stop` field to `true`.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
 spec:
   componentSpecs:
     - name: mysql
@@ -449,7 +448,7 @@ spec:
       replicas: 3
 ```
 
-### [Start](start.yaml)
+### Start
 
 Start the stopped cluster
 
@@ -476,9 +475,9 @@ kubectl apply -f examples/apecloud-mysql/start.yaml
 Alternatively, you may start the cluster by setting the `spec.componentSpecs.stop` field to `false`.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
 spec:
   componentSpecs:
     - name: mysql
@@ -496,7 +495,7 @@ By applying this yaml file, KubeBlocks will perform a switchover operation defin
 
 </details>
 
-#### [Switchover without preferred candidates](switchover.yaml)
+#### Switchover without preferred candidates
 
 Switchover a specified instance as the new primary or leader of the cluster
 
@@ -525,7 +524,7 @@ spec:
 kubectl apply -f examples/apecloud-mysql/switchover.yaml
 ```
 
-#### [Switchover-specified-instance](switchover-specified-instance.yaml)
+#### Switchover-specified-instance
 
 Switchover a specified instance as the new primary or leader of the cluster
 
@@ -556,7 +555,7 @@ kubectl apply -f examples/apecloud-mysql/switchover-specified-instance.yaml
 
 You may need to update the `opsrequest.spec.switchover.instanceName` field to your desired instance name.
 
-### [Reconfigure](configure.yaml)
+### Reconfigure
 
 A database reconfiguration is the process of modifying database parameters, settings, or configurations to improve performance, security, or availability. The reconfiguration can be either:
 
@@ -620,7 +619,7 @@ SHOW VARIABLES LIKE 'max_connections';
 SHOW VARIABLES LIKE 'innodb_buffer_pool_size';
 ```
 
-### [Backup](backup.yaml)
+### Backup
 
 > [!IMPORTANT] Before you start, please create a `BackupRepo` to store the backup data. Refer to [BackupRepo](../docs/create-backuprepo.md) for more details.
 
@@ -688,7 +687,7 @@ spec:
     retentionPeriod: 7d # set the retention period to your need
 ```
 
-### [Restore](restore.yaml)
+### Restore
 
 To restore a new cluster from a Backup:
 
@@ -744,7 +743,7 @@ kubectl apply -f examples/apecloud-mysql/restore.yaml
 
 Expose a cluster with a new endpoint
 
-#### [Enable](expose-enable.yaml)
+#### Enable
 
 ```yaml
 # cat examples/apecloud-mysql/expose-enable.yaml
@@ -786,7 +785,7 @@ spec:
 kubectl apply -f examples/apecloud-mysql/expose-enable.yaml
 ```
 
-#### [Disable](expose-disable.yaml)
+#### Disable
 
 ```yaml
 # cat examples/apecloud-mysql/expose-disable.yaml
@@ -824,9 +823,9 @@ kubectl apply -f examples/apecloud-mysql/expose-disable.yaml
 Alternatively, you may expose service by updating `spec.services`
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
 spec:
   # append service to the list
   services:
@@ -962,7 +961,7 @@ kubectl delete cluster acmysql-cluster
 
 SmartEngine is an OLTP storage engine based on LSM-Tree architecture and supports complete ACID transaction constraints.
 
-### [Enable](smartengine-enable.yaml)
+### Enable
 
 ```yaml
 # cat examples/apecloud-mysql/smartengine-enable.yaml
@@ -1011,7 +1010,7 @@ spec:
 kubectl apply -f examples/apecloud-mysql/smartengine-enable.yaml
 ```
 
-### [Disable](smartengine-disable.yaml)
+### Disable
 
 ```yaml
 # cat examples/apecloud-mysql/smartengine-disable.yaml
@@ -1066,7 +1065,7 @@ kubectl apply -f examples/apecloud-mysql/smartengine-disable.yaml
 ApeCloud MySQL Proxy[^2] is a database proxy designed to be highly compatible with MySQL.
 It supports the MySQL wire protocol, read-write splitting without stale reads, connection pooling, and transparent failover.
 
-### [Create Cluster with Proxy](cluster-proxy.yaml)
+### Create Cluster with Proxy
 
 ```yaml
 # cat examples/apecloud-mysql/cluster-proxy.yaml

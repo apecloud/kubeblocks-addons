@@ -86,11 +86,9 @@ kubectl apply -f examples/zookeeper/scale-in.yaml
 Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: zookeeper-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: zookeeper
@@ -111,11 +109,9 @@ kubectl apply -f examples/zookeeper/verticalscale.yaml
 Alternatively, you may update `spec.componentSpecs.resources` field to the desired resources for vertical scale.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: zookeeper-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: zookeeper
@@ -156,11 +152,9 @@ kubectl apply -f examples/zookeeper/volumeexpand.yaml
 Alternatively, you may update the `spec.componentSpecs.volumeClaimTemplates.spec.resources.requests.storage` field to the desired size.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: zookeeper-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: zookeeper
@@ -209,11 +203,9 @@ kubectl apply -f examples/zookeeper/stop.yaml
 Alternatively, you may stop the cluster by setting the `spec.componentSpecs.stop` field to `true`.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: zookeeper-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: zookeeper
@@ -235,11 +227,9 @@ kubectl apply -f examples/zookeeper/start.yaml
 Alternatively, you may start the cluster by setting the `spec.componentSpecs.stop` field to `false`.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: zookeeper-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: zookeeper

@@ -141,7 +141,7 @@ spec:
 kubectl apply -f examples/risingwave/cluster.yaml
 ```
 
-### [Horizontal scaling](horizontalscale.yaml)
+### Horizontal scaling
 Horizontal scaling out or in specified components replicas in the cluster
 ```yaml
 # cat examples/risingwave/horizontalscale.yaml
@@ -169,7 +169,7 @@ spec:
 kubectl apply -f examples/risingwave/horizontalscale.yaml
 ```
 
-### [Vertical scaling](verticalscale.yaml)
+### Vertical scaling
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
 ```yaml
 # cat examples/risingwave/verticalscale.yaml
@@ -204,7 +204,7 @@ spec:
 kubectl apply -f examples/risingwave/verticalscale.yaml
 ```
 
-### [Restart](restart.yaml)
+### Restart
 Restart the specified components in the cluster
 ```yaml
 # cat examples/risingwave/restart.yaml
@@ -233,7 +233,7 @@ spec:
 kubectl apply -f examples/risingwave/restart.yaml
 ```
 
-### [Stop](stop.yaml)
+### Stop
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 ```yaml
 # cat examples/risingwave/stop.yaml
@@ -253,7 +253,7 @@ spec:
 kubectl apply -f examples/risingwave/stop.yaml
 ```
 
-### [Start](start.yaml)
+### Start
 Start the stopped cluster
 ```yaml
 # cat examples/risingwave/start.yaml

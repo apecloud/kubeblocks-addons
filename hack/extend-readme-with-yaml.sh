@@ -3,6 +3,11 @@
 # Directory pattern to find README.md files
 README_FILES=$(find examples -mindepth 2 -maxdepth 2 -name "README.md")
 
+# Group 1: one or more '#' characters.
+# Group 2: characters inside the square brackets.
+# Group 3: characters inside the parentheses.
+regex='^(#+) \[([^]]+)\]\(([^)]+)\)$'
+
 for README in $README_FILES; do
     echo "Processing: $README"
 
@@ -56,6 +61,10 @@ for README in $README_FILES; do
         if [[ "$inside_code_block" == true ]]; then
             code_block_content+=$'\n'"$line"
         else
+            if [[ "$line" =~ $regex ]]; then
+                # Rewriting the line: combine Group 1 (hashes) and Group 2 (text inside [])
+                line="${BASH_REMATCH[1]} ${BASH_REMATCH[2]}"
+            fi
             echo "$line" >> "$OUTPUT_FILE"
         fi
 

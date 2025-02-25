@@ -26,7 +26,7 @@ An open-source, cloud-native, distributed time-series database with PromQL/SQL/P
 
 ## Examples
 
-### [Create](cluster.yaml)
+### Create
 
 Create a greptimedb cluster
 
@@ -152,7 +152,7 @@ Then visit the dashboard at `http://localhost:4000/dashboard`.
 
 ### Horizontal scaling
 
-#### [Scale-out](scale-out.yaml)
+#### Scale-out
 
 Horizontal scaling out greptimedb cluster by adding ONE more datanode replica:
 
@@ -185,7 +185,7 @@ spec:
 kubectl apply -f examples/greptimedb/scale-out.yaml
 ```
 
-#### [Scale-in](scale-in.yaml)
+#### Scale-in
 
 Horizontal scaling in greptimedb cluster by deleting ONE datanode replica:
 
@@ -223,11 +223,9 @@ kubectl apply -f examples/greptimedb/scale-in.yaml
 Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: pg-cluster
-  namespace: default
 spec:
   clusterDef: greptimedb
   componentSpecs:
@@ -244,7 +242,7 @@ spec:
     serviceVersion: 0.3.2
 ```
 
-### [Vertical scaling](verticalscale.yaml)
+### Vertical scaling
 
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
 
@@ -276,7 +274,7 @@ spec:
 kubectl apply -f examples/greptimedb/verticalscale.yaml
 ```
 
-### [Expand volume](volumeexpand.yaml)
+### Expand volume
 
 Volume expansion is the ability to increase the size of a Persistent Volume Claim (PVC) after it's created. It is introduced in Kubernetes v1.11 and goes GA in Kubernetes v1.24. It allows Kubernetes users to simply edit their PersistentVolumeClaim objects  without requiring any downtime at all if possible.
 
@@ -321,7 +319,7 @@ spec:
 kubectl apply -f examples/greptimedb/volumeexpand.yaml
 ```
 
-### [Restart](restart.yaml)
+### Restart
 
 Restart the specified components in the cluster
 
@@ -351,7 +349,7 @@ spec:
 kubectl apply -f examples/greptimedb/restart.yaml
 ```
 
-### [Stop](stop.yaml)
+### Stop
 
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 
@@ -373,7 +371,7 @@ spec:
 kubectl apply -f examples/greptimedb/stop.yaml
 ```
 
-### [Start](start.yaml)
+### Start
 
 Start the stopped cluster
 
@@ -404,4 +402,3 @@ kubectl patch cluster greptimedb-cluster -p '{"spec":{"terminationPolicy":"WipeO
 
 kubectl delete cluster greptimedb-cluster
 ```
-

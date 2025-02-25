@@ -33,7 +33,7 @@ KubeBlocks supports creating a **shared-nothing** StarRocks cluster.
 
 ## Examples
 
-### [Create](cluster.yaml)
+### Create
 
 Create a StarRocks cluster with 3 FE and 2 BE instances. Backend instances won't be created until the FrontEnds instances are ready.
 For high availability, it is recommended to have at least 3 FE instances.
@@ -130,7 +130,7 @@ kubectl apply -f examples/starrocks-ce/cluster.yaml
 
 ### Horizontal scaling
 
-#### [Scale-out](scale-out.yaml)
+#### Scale-out
 
 Horizontal scaling out component BE by adding ONE more replica:
 
@@ -161,7 +161,7 @@ spec:
 kubectl apply -f examples/starrocks-ce/scale-out.yaml
 ```
 
-#### [Scale-in](scale-in.yaml)
+#### Scale-in
 
 Horizontal scaling out component BE by delete ONE more replica:
 
@@ -192,7 +192,7 @@ spec:
 kubectl apply -f examples/starrocks-ce/scale-in.yaml
 ```
 
-### [Vertical scaling](verticalscale.yaml)
+### Vertical scaling
 
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
 
@@ -224,7 +224,7 @@ spec:
 kubectl apply -f examples/starrocks-ce/verticalscale.yaml
 ```
 
-### [Expand volume](volumeexpand.yaml)
+### Expand volume
 
 Increase size of volume storage with the specified components in the cluster
 
@@ -254,7 +254,7 @@ spec:
 kubectl apply -f examples/starrocks-ce/volumeexpand.yaml
 ```
 
-### [Restart](restart.yaml)
+### Restart
 
 Restart the specified components in the cluster
 
@@ -282,7 +282,7 @@ spec:
 kubectl apply -f examples/starrocks-ce/restart.yaml
 ```
 
-### [Stop](stop.yaml)
+### Stop
 
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 
@@ -304,7 +304,7 @@ spec:
 kubectl apply -f examples/starrocks-ce/stop.yaml
 ```
 
-### [Start](start.yaml)
+### Start
 
 Start the stopped cluster
 

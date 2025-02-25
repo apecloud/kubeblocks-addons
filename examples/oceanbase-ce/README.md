@@ -23,63 +23,13 @@ OceanBase Database is an enterprise-level native distributed database independen
 |-----------------|-------------|
 | 4.3.0           | OceanBase 4.3.0.1-100000242024032211 |
 
-
 ## Prerequisites
 
-This example assumes that you have a Kubernetes cluster installed and running, and that you have installed the kubectl command line tool and helm somewhere in your path. Please see the [getting started](https://kubernetes.io/docs/setup/)  and [Installing Helm](https://helm.sh/docs/intro/install/) for installation instructions for your platform.
-
-Also, this example requires KubeBlocks installed and running. Here is the steps to install KubeBlocks, please replace "`$kb_version`" with the version you want to use.
-
-```bash
-# Add Helm repo
-helm repo add kubeblocks https://apecloud.github.io/helm-charts
-# If github is not accessible or very slow for you, please use following repo instead
-helm repo add kubeblocks https://jihulab.com/api/v4/projects/85949/packages/helm/stable
-
-# Update helm repo
-helm repo update
-
-# Get the versions of KubeBlocks and select the one you want to use
-helm search repo kubeblocks/kubeblocks --versions
-# If you want to obtain the development versions of KubeBlocks, Please add the '--devel' parameter as the following command
-helm search repo kubeblocks/kubeblocks --versions --devel
-
-# Create dependent CRDs
-kubectl create -f https://github.com/apecloud/kubeblocks/releases/download/v$kb_version/kubeblocks_crds.yaml
-# If github is not accessible or very slow for you, please use following command instead
-kubectl create -f https://jihulab.com/api/v4/projects/98723/packages/generic/kubeblocks/v$kb_version/kubeblocks_crds.yaml
-
-# Install KubeBlocks
-helm install kubeblocks kubeblocks/kubeblocks --namespace kb-system --create-namespace --version="$kb_version"
-```
-
-### Enable OceanBase Add-on
-
-#### Using Helm
-
-```bash
-# Add Helm repo
-helm repo add kubeblocks-addons https://apecloud.github.io/helm-charts
-# If github is not accessible or very slow for you, please use following repo instead
-helm repo add kubeblocks-addons https://jihulab.com/api/v4/projects/150246/packages/helm/stable
-# Update helm repo
-helm repo update
-# Search versions of the Addon
-helm search repo kubeblocks/oceanbase-ce --versions
-# Install the version you want (replace $version with the one you need)
-helm upgrade -i oceanbase-ce kubeblocks-addons/oceanbase-ce --version $version -n kb-system
-```
-
-#### Using kbcli
-
-```bash
-# Search Addon
-kbcli addon search oceanbase-ce
-# Install Addon with the version you want, replace $version with the one you need
-kbcli addon install oceanbase-ce --version $version
-# To upgrade the addon, you can use the following command
-kbcli addon upgrade oceanbase-ce --version $version
-```
+- Kubernetes cluster >= v1.21
+- `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
+- Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
+- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
+- OceanBase CE Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
 
 ## Examples
 
@@ -95,11 +45,10 @@ Optionally, you can create a cluster using HostNetwork mode, by turning on the f
 And KubeBlocks will allocate AVAILABLE ports for the components. Details can be found in file [Create HostNetwork](cluster-hostnetwork.yaml).
 
 ```yaml
+# snippets of cluster-hostnetwork.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: ob-cluster-host
-  namespace: default
   annotations:
     # `kubeblocks.io/host-network` is a reserved annotation
     # it defines the feature gate to enable the host-network for specified components or shardings.
@@ -152,11 +101,9 @@ kubectl apply -f examples/oceanbase-ce/scale-in.yaml
 Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: ob-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: oceanbase
@@ -164,7 +111,6 @@ spec:
       disableExporter: false
       replicas: 3 # increase `replicas` for scaling in, and decrease for scaling out
 ```
-
 
 ### [Vertical scaling](verticalscale.yaml)
 
@@ -182,11 +128,9 @@ kubectl apply -f examples/oceanbase-ce/verticalscale.yaml
 Alternatively, you may update `spec.componentSpecs.resources` field to the desired resources for vertical scale.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: ob-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: oceanbase
@@ -221,11 +165,9 @@ kubectl apply -f examples/oceanbase-ce/stop.yaml
 Alternatively, you may stop the cluster by setting the `spec.componentSpecs.stop` field to `true`.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: ob-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: oceanbase
@@ -246,11 +188,9 @@ kubectl apply -f examples/oceanbase-ce/start.yaml
 Alternatively, you may start the cluster by setting the `spec.componentSpecs.stop` field to `false`.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: ob-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: oceanbase
@@ -278,40 +218,9 @@ This example will change the `system_memory` to `2Gi`.
 kbcli cluster explain-config pg-cluster # kbcli is a command line tool to interact with KubeBlocks
 ```
 
-### [BackupRepo](backuprepo.yaml)
-
-BackupRepo is the storage repository for backup data. Before creating a BackupRepo, you need to create a secret to save the access key of the backup repository
-
-```bash
-# Create a secret to save the access key
-kubectl create secret generic <credential-for-backuprepo>\
-  --from-literal=accessKeyId=<ACCESS KEY> \
-  --from-literal=secretAccessKey=<SECRET KEY> \
-  -n kb-system
-```
-
-Update `examples/oceanbase-ce/backuprepo.yaml` and set fields quoted with `<>` to your own settings and apply it.
-
-```bash
-kubectl apply -f examples/oceanbase-ce/backuprepo.yaml
-```
-
-After creating the BackupRepo, you should check the status of the BackupRepo, to make sure it is `Ready`.
-
-```bash
-kubectl get backuprepo
-```
-
-And the expected output is like:
-
-```bash
-NAME     STATUS   STORAGEPROVIDER   ACCESSMETHOD   DEFAULT   AGE
-kb-oss   Ready    oss               Tool           true      Xd
-```
-
-### Backup
-
 ### [Backup](backup.yaml)
+
+> [!IMPORTANT] Before you start, please create a `BackupRepo` to store the backup data. Refer to [BackupRepo](../docs/create-backuprepo.md) for more details.
 
 To create a base backup for the cluster, you can apply the following yaml file:
 
@@ -391,11 +300,9 @@ kubectl apply -f examples/oceanbase-ce/expose-disable.yaml
 Alternatively, you may expose service by updating `spec.services`
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: ob-cluster
-  namespace: default
 spec:
   # append service to the list
   services:
@@ -438,7 +345,6 @@ cloud.google.com/l4-rbs: "enabled" # for internet
 ```
 
 Please consult your cloud provider for more accurate and update-to-date information.
-
 
 ### Observability
 
@@ -488,7 +394,6 @@ There is a pre-configured dashboard for PostgreSQL under the `APPS / OceanBase M
 > [!Note]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
 
-
 ### Delete
 
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
@@ -498,7 +403,6 @@ kubectl patch cluster ob-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' -
 
 kubectl delete cluster ob-cluster
 ```
-
 
 ## References
 

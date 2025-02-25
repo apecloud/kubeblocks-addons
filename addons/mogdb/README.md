@@ -26,7 +26,7 @@ MogDB is an enhanced enterprise-ready database developed by Yunhe Enmo based on 
 
 ## Examples
 
-### [Create](cluster.yaml)
+### Create
 
 Create a MogDB cluster with specified cluster definition
 
@@ -98,7 +98,7 @@ gsql -U$MOGDB_USER -p26000 postgres -W "$MOGDB_PASSWORD"
 
 ### Horizontal scaling
 
-#### [Scale-out](scale-out.yaml)
+#### Scale-out
 
 Horizontal scaling out PostgreSQL cluster by adding ONE more replica:
 
@@ -133,7 +133,7 @@ After applying the operation, you will see a new pod created and the PostgreSQL 
 
 And you can check the progress of the scaling operation with following command:
 
-#### [Scale-in](scale-in.yaml)
+#### Scale-in
 
 Horizontal scaling in PostgreSQL cluster by deleting ONE replica:
 
@@ -169,18 +169,16 @@ kubectl apply -f examples/mogdb/scale-in.yaml
 Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: mogdb-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: mogdb
       replicas: 2 # Update `replicas` to 1 for scaling in, and to 3 for scaling out
 ```
 
-### [Vertical scaling](verticalscale.yaml)
+### Vertical scaling
 
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
 
@@ -212,7 +210,7 @@ spec:
 kubectl apply -f examples/mogdb/verticalscale.yaml
 ```
 
-### [Expand volume](volumeexpand.yaml)
+### Expand volume
 
 Increase size of volume storage with the specified components in the cluster
 
@@ -242,7 +240,7 @@ spec:
 kubectl apply -f examples/mogdb/volumeexpand.yaml
 ```
 
-### [Restart](restart.yaml)
+### Restart
 
 Restart the specified components in the cluster
 
@@ -268,7 +266,7 @@ spec:
 kubectl apply -f examples/mogdb/restart.yaml
 ```
 
-### [Stop](stop.yaml)
+### Stop
 
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 
@@ -290,7 +288,7 @@ spec:
 kubectl apply -f examples/mogdb/stop.yaml
 ```
 
-### [Start](start.yaml)
+### Start
 
 Start the stopped cluster
 
@@ -312,7 +310,7 @@ spec:
 kubectl apply -f examples/mogdb/start.yaml
 ```
 
-### [Switchover](switchover.yaml)
+### Switchover
 
 Switchover a non-primary or non-leader instance as the new primary or leader of the cluster
 
@@ -357,7 +355,7 @@ MogDB defines the switchover operation in the `mogdb-switchover` OpsDefinition. 
    - New pod has role: Primary/primary/leader/master
    - Exits with 0 on success, 1 on failure
 
-### [Reconfigure](configure.yaml)
+### Reconfigure
 
 Configure parameters with the specified components in the cluster
 

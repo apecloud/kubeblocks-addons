@@ -90,11 +90,9 @@ kubectl apply -f examples/greptimedb/scale-in.yaml
 Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: pg-cluster
-  namespace: default
 spec:
   clusterDef: greptimedb
   componentSpecs:
@@ -173,4 +171,3 @@ kubectl patch cluster greptimedb-cluster -p '{"spec":{"terminationPolicy":"WipeO
 
 kubectl delete cluster greptimedb-cluster
 ```
-

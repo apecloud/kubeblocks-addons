@@ -26,7 +26,7 @@ OpenSearch is a scalable, flexible, and extensible open-source software suite fo
 
 ## Examples
 
-### [Create](cluster.yaml)
+### Create
 
 Create a opensearch cluster with three replicas:
 
@@ -133,7 +133,7 @@ password: admin
 
 ### Horizontal scaling
 
-#### [Scale-out](scale-out.yaml)
+#### Scale-out
 
 Horizontal scaling out cluster by adding ONE more `OpenSearch` replica:
 
@@ -166,7 +166,7 @@ kubectl apply -f examples/opensearch/scale-out.yaml
 
 And you can check the progress of the scaling operation with following command:
 
-#### [Scale-in](scale-in.yaml)
+#### Scale-in
 
 Horizontal scaling in cluster by deleting ONE replica:
 
@@ -202,11 +202,9 @@ kubectl apply -f examples/opensearch/scale-in.yaml
 Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: opensearch-cluster
-  namespace: default
 spec:
   terminationPolicy: Delete
   componentSpecs:
@@ -216,7 +214,7 @@ spec:
       replicas: 3 # update replicas to your need (but not zero)
 ```
 
-### [Vertical scaling](verticalscale.yaml)
+### Vertical scaling
 
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
 
@@ -250,7 +248,7 @@ spec:
 kubectl apply -f examples/opensearch/verticalscale.yaml
 ```
 
-### [Expand volume](volumeexpand.yaml)
+### Expand volume
 
 Increase size of volume storage with the specified components in the cluster
 
@@ -280,7 +278,7 @@ spec:
 kubectl apply -f examples/opensearch/volumeexpand.yaml
 ```
 
-### [Restart](restart.yaml)
+### Restart
 
 Restart the specified components in the cluster
 
@@ -308,7 +306,7 @@ spec:
 kubectl apply -f examples/opensearch/restart.yaml
 ```
 
-### [Stop](stop.yaml)
+### Stop
 
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 
@@ -330,7 +328,7 @@ spec:
 kubectl apply -f examples/opensearch/stop.yaml
 ```
 
-### [Start](start.yaml)
+### Start
 
 Start the stopped cluster
 

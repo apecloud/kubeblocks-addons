@@ -236,7 +236,7 @@ kubectl apply -f examples/kafka/cluster-separated.yaml
 > As per the Kafka documentation, the number of KRaft replicas should be odd to avoid split-brain scenarios.
 > Make sure the number of KRaft replicas, i.e. Controller replicas,  is always odd after Horizontal Scaling, either in Separated or Combined mode.
 
-#### [Scale-out](scale-out.yaml)
+#### Scale-out
 
 Horizontal scaling out `kafka-combine` component in cluster `kafka-combined-cluster` by adding ONE more replica:
 
@@ -273,7 +273,7 @@ After applying the operation, you will see a new pod created. You can check the 
 kubectl describe ops kafka-combined-scale-out
 ```
 
-#### [Scale-in](scale-in.yaml)
+#### Scale-in
 
 Horizontal scaling in  `kafka-combine` component in cluster `kafka-combined-cluster` by deleting ONE replica:
 
@@ -309,18 +309,16 @@ kubectl apply -f examples/kafka/scale-in.yaml
 Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: kafka-combined-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: kafka-combine
       replicas: 1 # Set the number of replicas to your desired number
 ```
 
-### [Vertical scaling](verticalscale.yaml)
+### Vertical scaling
 
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster:
 
@@ -356,11 +354,9 @@ kubectl apply -f examples/kafka/verticalscale.yaml
 Alternatively, you may update `spec.componentSpecs.resources` field to the desired resources for vertical scale.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: kafka-combined-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: kafka-combine
@@ -374,7 +370,7 @@ spec:
           memory: "4Gi"  # Update the resources to your need.
 ```
 
-### [Expand volume](volumeexpand.yaml)
+### Expand volume
 
 Volume expansion is the ability to increase the size of a Persistent Volume Claim (PVC) after it's created. It is introduced in Kubernetes v1.11 and goes GA in Kubernetes v1.24. It allows Kubernetes users to simply edit their PersistentVolumeClaim objects  without requiring any downtime at all if possible.
 
@@ -428,11 +424,9 @@ kubectl get pvc -l app.kubernetes.io/instance=kafka-combined-cluster -n default
 Alternatively, you may update the `spec.componentSpecs.volumeClaimTemplates.spec.resources.requests.storage` field to the desired size.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: kafka-combined-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: kafka-combine
@@ -455,7 +449,7 @@ spec:
                 storage: 10Gi  # specify new size, and make sure it is larger than the current size
 ```
 
-### [Restart](restart.yaml)
+### Restart
 
 Restart the specified components in the cluster
 
@@ -481,7 +475,7 @@ spec:
 kubectl apply -f examples/kafka/restart.yaml
 ```
 
-### [Stop](stop.yaml)
+### Stop
 
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 
@@ -508,11 +502,9 @@ kubectl apply -f examples/kafka/stop.yaml
 Alternatively, you may stop the cluster by setting the `spec.componentSpecs.stop` field to `true`.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: kafka-combined-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: kafka-combine
@@ -520,7 +512,7 @@ spec:
       replicas: 1
 ```
 
-### [Start](start.yaml)
+### Start
 
 Start the stopped cluster
 
@@ -547,11 +539,9 @@ kubectl apply -f examples/kafka/start.yaml
 Alternatively, you may start the cluster by setting the `spec.componentSpecs.stop` field to `false`.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: kafka-combined-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: kafka-combine
@@ -559,7 +549,7 @@ spec:
       replicas: 1
 ```
 
-### [Reconfigure](configure.yaml)
+### Reconfigure
 
 Configure parameters with the specified components in the cluster
 
@@ -652,11 +642,9 @@ Currently only `nodeport` and `clusterIp` network modes are supported for Kafka
 To access the Kafka cluster using the `nodeport` service, you can create Kafka cluster with the following configuration,  refer to [Kafka Network Modes Example](./cluster-combined-nodeport.yaml) for more details.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: kafka-combined-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: kafka-combine

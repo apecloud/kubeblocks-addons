@@ -76,7 +76,7 @@ spec:
 kubectl apply -f examples/apecloud-postgresql/cluster.yaml
 ```
 
-### [Horizontal scaling](horizontalscale.yaml)
+### Horizontal scaling
 Horizontal scaling out or in specified components replicas in the cluster
 ```yaml
 # cat examples/apecloud-postgresql/horizontalscale.yaml
@@ -102,7 +102,7 @@ spec:
 kubectl apply -f examples/apecloud-postgresql/horizontalscale.yaml
 ```
 
-### [Vertical scaling](verticalscale.yaml)
+### Vertical scaling
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
 ```yaml
 # cat examples/apecloud-postgresql/verticalscale.yaml
@@ -132,7 +132,7 @@ spec:
 kubectl apply -f examples/apecloud-postgresql/verticalscale.yaml
 ```
 
-### [Expand volume](volumeexpand.yaml)
+### Expand volume
 Increase size of volume storage with the specified components in the cluster
 ```yaml
 # cat examples/apecloud-postgresql/volumeexpand.yaml
@@ -160,7 +160,7 @@ spec:
 kubectl apply -f examples/apecloud-postgresql/volumeexpand.yaml
 ```
 
-### [Restart](restart.yaml)
+### Restart
 Restart the specified components in the cluster
 ```yaml
 # cat examples/apecloud-postgresql/restart.yaml
@@ -184,7 +184,7 @@ spec:
 kubectl apply -f examples/apecloud-postgresql/restart.yaml
 ```
 
-### [Stop](stop.yaml)
+### Stop
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 ```yaml
 # cat examples/apecloud-postgresql/stop.yaml
@@ -204,7 +204,7 @@ spec:
 kubectl apply -f examples/apecloud-postgresql/stop.yaml
 ```
 
-### [Start](start.yaml)
+### Start
 Start the stopped cluster
 ```yaml
 # cat examples/apecloud-postgresql/start.yaml
@@ -224,7 +224,7 @@ spec:
 kubectl apply -f examples/apecloud-postgresql/start.yaml
 ```
 
-### [Switchover](switchover.yaml)
+### Switchover
 Switchover a specified instance as the new primary or leader of the cluster
 ```yaml
 # cat examples/apecloud-postgresql/switchover.yaml
@@ -256,7 +256,7 @@ kubectl apply -f examples/apecloud-postgresql/switchover.yaml
 
 ### Expose
 Expose a cluster with a new endpoint
-#### [Enable](expose-enable.yaml)
+#### Enable
 ```yaml
 # cat examples/apecloud-postgresql/expose-enable.yaml
 apiVersion: apps.kubeblocks.io/v1alpha1
@@ -287,7 +287,7 @@ spec:
 ```bash
 kubectl apply -f examples/apecloud-postgresql/expose-enable.yaml
 ```
-#### [Disable](expose-disable.yaml)
+#### Disable
 ```yaml
 # cat examples/apecloud-postgresql/expose-disable.yaml
 apiVersion: apps.kubeblocks.io/v1alpha1

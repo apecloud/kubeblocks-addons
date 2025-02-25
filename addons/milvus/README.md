@@ -51,7 +51,7 @@ Milvus is an open source (Apache-2.0 licensed) vector database built to power em
 
 ### Create
 
-#### [Standalone Mode](cluster-standalone.yaml)
+#### Standalone Mode
 
 Create a Milvus cluster of `Standalone` mode:
 
@@ -473,7 +473,7 @@ And each component will be created with `serviceRef` to the corresponding servic
 
 ### Horizontal scaling
 
-#### [Scale-out](scale-out.yaml)
+#### Scale-out
 
 Horizontal scaling out `queryNode` in the cluster by adding ONE more replica:
 
@@ -504,7 +504,7 @@ spec:
 kubectl apply -f examples/milvus/scale-out.yaml
 ```
 
-#### [Scale-in](scale-in.yaml)
+#### Scale-in
 
 Horizontal scaling in `queryNode` in the cluster by deleting ONE replica:
 
@@ -540,18 +540,16 @@ kubectl apply -f examples/milvus/scale-in.yaml
 Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: milvus-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: querynode
       replicas: 2 # Update `replicas` to 1 for scaling in, and to 3 for scaling out
 ```
 
-### [Restart](restart.yaml)
+### Restart
 
 Restart the specified components in the cluster
 
@@ -585,7 +583,7 @@ spec:
 kubectl apply -f examples/milvus/restart.yaml
 ```
 
-### [Stop](stop.yaml)
+### Stop
 
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 
@@ -620,7 +618,7 @@ spec:
 kubectl apply -f examples/milvus/stop.yaml
 ```
 
-### [Start](start.yaml)
+### Start
 
 Start the stopped cluster
 

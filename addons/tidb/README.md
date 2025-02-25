@@ -29,7 +29,7 @@ TiDB is an open-source, cloud-native, distributed, MySQL-Compatible database for
 
 ## Examples
 
-### [Create](cluster.yaml)
+### Create
 
 Create a tidb cluster with specified cluster definition
 
@@ -104,7 +104,7 @@ kubectl apply -f examples/tidb/cluster.yaml
 
 ### Horizontal scaling
 
-#### [Scale-out](scale-out.yaml)
+#### Scale-out
 
 ```yaml
 # cat examples/tidb/scale-out.yaml
@@ -134,7 +134,7 @@ spec:
 kubectl apply -f examples/tidb/scale-out.yaml
 ```
 
-#### [Scale-in](scale-in.yaml)
+#### Scale-in
 
 ```yaml
 # cat examples/tidb/scale-in.yaml
@@ -164,7 +164,7 @@ spec:
 kubectl apply -f examples/tidb/scale-in.yaml
 ```
 
-### [Vertical scaling](verticalscale.yaml)
+### Vertical scaling
 
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
 
@@ -199,7 +199,7 @@ spec:
 kubectl apply -f examples/tidb/verticalscale.yaml
 ```
 
-### [Expand volume](volumeexpand.yaml)
+### Expand volume
 
 Increase size of volume storage with the specified components in the cluster
 
@@ -231,7 +231,7 @@ spec:
 kubectl apply -f examples/tidb/volumeexpand.yaml
 ```
 
-### [Restart](restart.yaml)
+### Restart
 
 Restart the specified components in the cluster
 
@@ -260,7 +260,7 @@ spec:
 kubectl apply -f examples/tidb/restart.yaml
 ```
 
-### [Stop](stop.yaml)
+### Stop
 
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 
@@ -282,7 +282,7 @@ spec:
 kubectl apply -f examples/tidb/stop.yaml
 ```
 
-### [Start](start.yaml)
+### Start
 
 Start the stopped cluster
 

@@ -69,7 +69,6 @@ To update the configuration on `PodMonitor` and `ServiceMonitor`, you may update
 ```yaml
 apiVersion: monitoring.coreos.com/v1
 kind: Prometheus
-metadata:
 spec:
   podMonitorNamespaceSelector: {} # Namespaces to match for PodMonitors discovery
   #  PodMonitors to be selected for target discovery. An empty label selector

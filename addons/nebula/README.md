@@ -26,7 +26,7 @@ NebulaGraph is a popular open-source graph database that can handle large volume
 
 ## Examples
 
-### [Create](cluster.yaml)
+### Create
 
 Create a nebula cluster with four components in orders: `metad`, `graphd`, `storaged` and `console`.
 
@@ -158,7 +158,7 @@ nebula-console --addr $GRAPHD_SVC_NAME --port $GRAPHD_SVC_PORT -u root -p nebula
 
 ### Horizontal scaling
 
-#### [Scale-out](scale-out.yaml)
+#### Scale-out
 
 Horizontal scaling out nebula cluster by adding ONE more `graphd` replica:
 
@@ -187,7 +187,7 @@ spec:
 kubectl apply -f examples/nebula/scale-out.yaml
 ```
 
-#### [Scale-in](scale-in.yaml)
+#### Scale-in
 
 Horizontal scaling in nebula cluster by deleting ONE `graphd` replica:
 
@@ -216,7 +216,7 @@ spec:
 kubectl apply -f examples/nebula/scale-in.yaml
 ```
 
-### [Vertical scaling](verticalscale.yaml)
+### Vertical scaling
 
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
 
@@ -248,7 +248,7 @@ spec:
 kubectl apply -f examples/nebula/verticalscale.yaml
 ```
 
-### [Expand volume](volumeexpand.yaml)
+### Expand volume
 
 Volume expansion is the ability to increase the size of a Persistent Volume Claim (PVC) after it's created. It is introduced in Kubernetes v1.11 and goes GA in Kubernetes v1.24. It allows Kubernetes users to simply edit their PersistentVolumeClaim objects  without requiring any downtime at all if possible.
 
@@ -294,7 +294,7 @@ spec:
 kubectl apply -f examples/nebula/volumeexpand.yaml
 ```
 
-### [Restart](restart.yaml)
+### Restart
 
 Restart the specified components in the cluster
 
@@ -324,7 +324,7 @@ spec:
 kubectl apply -f examples/nebula/restart.yaml
 ```
 
-### [Stop](stop.yaml)
+### Stop
 
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 
@@ -346,7 +346,7 @@ spec:
 kubectl apply -f examples/nebula/stop.yaml
 ```
 
-### [Start](start.yaml)
+### Start
 
 Start the stopped cluster
 

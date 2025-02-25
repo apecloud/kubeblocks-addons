@@ -28,7 +28,7 @@ In Weaviate, metadata replication and data replication are separate. For the met
 
 ## Examples
 
-### [Create](cluster.yaml)
+### Create
 
 Create a weaviate cluster with three replicas:
 
@@ -82,7 +82,7 @@ spec:
 kubectl apply -f examples/weaviate/cluster.yaml
 ```
 
-### [Vertical scaling](verticalscale.yaml)
+### Vertical scaling
 
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
 
@@ -114,7 +114,7 @@ spec:
 kubectl apply -f examples/weaviate/verticalscale.yaml
 ```
 
-### [Expand volume](volumeexpand.yaml)
+### Expand volume
 
 Volume expansion is the ability to increase the size of a Persistent Volume Claim (PVC) after it's created. It is introduced in Kubernetes v1.11 and goes GA in Kubernetes v1.24. It allows Kubernetes users to simply edit their PersistentVolumeClaim objects  without requiring any downtime at all if possible.
 
@@ -157,7 +157,7 @@ spec:
 kubectl apply -f examples/postgresql/volumeexpand.yaml
 ```
 
-### [Restart](restart.yaml)
+### Restart
 
 Restart the specified components in the cluster
 
@@ -183,7 +183,7 @@ spec:
 kubectl apply -f examples/weaviate/restart.yaml
 ```
 
-### [Stop](stop.yaml)
+### Stop
 
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 
@@ -205,7 +205,7 @@ spec:
 kubectl apply -f examples/weaviate/stop.yaml
 ```
 
-### [Start](start.yaml)
+### Start
 
 Start the stopped cluster
 
@@ -227,7 +227,7 @@ spec:
 kubectl apply -f examples/weaviate/start.yaml
 ```
 
-### [Configure](configure.yaml)
+### Configure
 
 Configure parameters with the specified components in the cluster:
 

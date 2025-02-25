@@ -18,7 +18,7 @@ TDengine™ is a next generation data historian purpose-built for Industry 4.0 a
 
 ## Examples
 
-### [Create](cluster.yaml)
+### Create
 
 Create a tdengine cluster:
 
@@ -76,7 +76,7 @@ You will see there are 3 dnodes in the cluster as we defined in the cluster.yaml
 
 ### Horizontal scaling
 
-#### [Scale-out](scale-out.yaml)
+#### Scale-out
 
 Horizontal scaling out by adding ONE more replica:
 
@@ -107,7 +107,7 @@ spec:
 kubectl apply -f examples/tdengine/scale-out.yaml
 ```
 
-#### [Scale-in](scale-in.yaml)
+#### Scale-in
 
 > [!WARNING]
 > This operation is not fully supported by TDEngine.
@@ -118,18 +118,16 @@ kubectl apply -f examples/tdengine/scale-out.yaml
 Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: kafka-combined-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: kafka-combine
       replicas: 1 # Set the number of replicas to your desired number
 ```
 
-### [Vertical scaling](verticalscale.yaml)
+### Vertical scaling
 
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
 
@@ -161,7 +159,7 @@ spec:
 kubectl apply -f examples/tdengine/verticalscale.yaml
 ```
 
-### [Expand volume](volumeexpand.yaml)
+### Expand volume
 
 Increase size of volume storage with the specified components in the cluster
 
@@ -191,7 +189,7 @@ spec:
 kubectl apply -f examples/tdengine/volumeexpand.yaml
 ```
 
-### [Restart](restart.yaml)
+### Restart
 
 Restart the specified components in the cluster
 
@@ -217,7 +215,7 @@ spec:
 kubectl apply -f examples/tdengine/restart.yaml
 ```
 
-### [Stop](stop.yaml)
+### Stop
 
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 
@@ -239,7 +237,7 @@ spec:
 kubectl apply -f examples/tdengine/stop.yaml
 ```
 
-### [Start](start.yaml)
+### Start
 
 Start the stopped cluster
 

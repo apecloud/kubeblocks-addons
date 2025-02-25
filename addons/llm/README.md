@@ -75,7 +75,7 @@ spec:
 kubectl apply -f examples/llm/cluster.yaml
 ```
 
-### [Restart](restart.yaml)
+### Restart
 Restart the specified components in the cluster
 ```yaml
 # cat examples/llm/restart.yaml
@@ -99,7 +99,7 @@ spec:
 kubectl apply -f examples/llm/restart.yaml
 ```
 
-### [Stop](stop.yaml)
+### Stop
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 ```yaml
 # cat examples/llm/stop.yaml
@@ -119,7 +119,7 @@ spec:
 kubectl apply -f examples/llm/stop.yaml
 ```
 
-### [Start](start.yaml)
+### Start
 Start the stopped cluster
 ```yaml
 # cat examples/llm/start.yaml

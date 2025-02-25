@@ -12,7 +12,7 @@ YashanDB is a new database system completely independently designed and develope
 
 ## Examples
 
-### [Create](cluster.yaml)
+### Create
 
 Create a yashandb cluster of version 'yashandb-personal:23.1.1.100' with ONE replica.
 
@@ -92,7 +92,7 @@ STATUS
 NORMAL
 ```
 
-### [Vertical scaling](verticalscale.yaml)
+### Vertical scaling
 
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
 
@@ -124,7 +124,7 @@ spec:
 kubectl apply -f examples/yashandb/verticalscale.yaml
 ```
 
-### [Restart](restart.yaml)
+### Restart
 
 Restart the specified components in the cluster
 
@@ -150,7 +150,7 @@ spec:
 kubectl apply -f examples/yashandb/restart.yaml
 ```
 
-### [Stop](stop.yaml)
+### Stop
 
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 
@@ -172,7 +172,7 @@ spec:
 kubectl apply -f examples/yashandb/stop.yaml
 ```
 
-### [Start](start.yaml)
+### Start
 
 Start the stopped cluster
 

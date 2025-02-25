@@ -65,7 +65,7 @@ spec:
 kubectl apply -f examples/xinference/cluster.yaml
 ```
 
-### [Vertical scaling](verticalscale.yaml)
+### Vertical scaling
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
 ```yaml
 # cat examples/xinference/verticalscale.yaml
@@ -95,7 +95,7 @@ spec:
 kubectl apply -f examples/xinference/verticalscale.yaml
 ```
 
-### [Restart](restart.yaml)
+### Restart
 Restart the specified components in the cluster
 ```yaml
 # cat examples/xinference/restart.yaml
@@ -119,7 +119,7 @@ spec:
 kubectl apply -f examples/xinference/restart.yaml
 ```
 
-### [Stop](stop.yaml)
+### Stop
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 ```yaml
 # cat examples/xinference/stop.yaml
@@ -139,7 +139,7 @@ spec:
 kubectl apply -f examples/xinference/stop.yaml
 ```
 
-### [Start](start.yaml)
+### Start
 Start the stopped cluster
 ```yaml
 # cat examples/xinference/start.yaml

@@ -316,7 +316,7 @@ Suggested practices are:
 
 Here is an example of scale-out and scale-in operations for the Broker component.
 
-#### [Scale-out](scale-out.yaml)
+#### Scale-out
 
 Horizontal scaling out by adding ONE more replica for Broker component:
 
@@ -352,7 +352,7 @@ spec:
 kubectl apply -f examples/pulsar/scale-out.yaml
 ```
 
-#### [Scale-in](scale-in.yaml)
+#### Scale-in
 
 Horizontal scaling in PostgreSQL cluster by deleting ONE replica:
 
@@ -393,11 +393,9 @@ kubectl apply -f examples/pulsar/scale-in.yaml
 Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: pulsar-basic-cluster
-  namespace: default
 spec:
   terminationPolicy: Delete
   componentSpecs:
@@ -408,7 +406,7 @@ spec:
       ...
 ```
 
-### [Vertical scaling](verticalscale.yaml)
+### Vertical scaling
 
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
 
@@ -450,11 +448,9 @@ kubectl apply -f examples/pulsar/verticalscale.yaml
 Alternatively, you may update `spec.componentSpecs.resources` field to the desired resources for vertical scale.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: pulsar-basic-cluster
-  namespace: default
 spec:
   terminationPolicy: Delete
   componentSpecs:
@@ -470,7 +466,7 @@ spec:
           memory: "4Gi"  # Update the resources to your need.
 ```
 
-### [Restart](restart.yaml)
+### Restart
 
 Restart the specified components in the cluster
 
@@ -501,7 +497,7 @@ spec:
 kubectl apply -f examples/pulsar/restart.yaml
 ```
 
-### [Stop](stop.yaml)
+### Stop
 
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved.
 
@@ -534,7 +530,7 @@ spec:
 kubectl apply -f examples/pulsar/stop.yaml
 ```
 
-### [Start](start.yaml)
+### Start
 
 Start the stopped cluster
 
@@ -555,7 +551,7 @@ spec:
 kubectl apply -f examples/pulsar/start.yaml
 ```
 
-### [Reconfigure](configure.yaml)
+### Reconfigure
 
 Configure parameters with the specified components in the cluster
 
@@ -646,11 +642,9 @@ kubectl create -f examples/pulsar/cluster-service-refer.yaml
 The key changes are, we add a API `serviceRefs` to express such inter-cluster service reference for each component, and we don't need to specify the Zookeeper component in the Pulsar Cluster.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: pulsar-service-ref
-  namespace: default
 spec:
   terminationPolicy: Delete
   componentSpecs:
@@ -766,11 +760,9 @@ kubectl apply -f examples/pulsar/cluster-service-descriptor.yaml
 The key change is , we add a API `serviceRefs.serviceDescriptor` to express such inter-cluster service reference
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: pulsar-service-descriptor
-  namespace: default
 spec:
   terminationPolicy: Delete
   componentSpecs:
@@ -801,11 +793,9 @@ The key difference are:
 1. set env `KB_PULSAR_BROKER_NODEPORT` to `TRUE`, it will set up the advertised listener to the NodePort service.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: pulsar-node-port
-  namespace: default
 spec:
   terminationPolicy: Delete
   services:

@@ -26,7 +26,7 @@ InfluxDB enables real-time analytics by serving as a purpose-built database that
 
 ## Examples
 
-### [Create](cluster.yaml)
+### Create
 
 Create a influxdb cluster with specified cluster definition
 
@@ -74,7 +74,7 @@ spec:
 kubectl apply -f examples/influxdb/cluster.yaml
 ```
 
-### [Vertical scaling](verticalscale.yaml)
+### Vertical scaling
 
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
 
@@ -106,7 +106,7 @@ spec:
 kubectl apply -f examples/influxdb/verticalscale.yaml
 ```
 
-### [Expand volume](volumeexpand.yaml)
+### Expand volume
 
 Increase size of volume storage with the specified components in the cluster
 
@@ -136,7 +136,7 @@ spec:
 kubectl apply -f examples/influxdb/volumeexpand.yaml
 ```
 
-### [Restart](restart.yaml)
+### Restart
 
 Restart the specified components in the cluster
 
@@ -162,7 +162,7 @@ spec:
 kubectl apply -f examples/influxdb/restart.yaml
 ```
 
-### [Stop](stop.yaml)
+### Stop
 
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 
@@ -184,7 +184,7 @@ spec:
 kubectl apply -f examples/influxdb/stop.yaml
 ```
 
-### [Start](start.yaml)
+### Start
 
 Start the stopped cluster
 

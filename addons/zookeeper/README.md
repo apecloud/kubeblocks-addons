@@ -32,7 +32,7 @@ Apache Zookeeper is a centralized service for maintaining configuration informat
 
 ## Examples
 
-### [Create](cluster.yaml)
+### Create
 
 Create a zookeeper cluster with three replicas, one leader replica and two follower replicas:
 
@@ -109,7 +109,7 @@ kubectl apply -f examples/zookeeper/cluster.yaml
 
 ### Horizontal scaling
 
-#### [Scale-out](scale-out.yaml)
+#### Scale-out
 
 Horizontal scaling out cluster by adding ONE more `OBSERVER` replica:
 
@@ -163,7 +163,7 @@ server.3
 
 Information for `server.3` is added on scaling out.
 
-#### [Scale-in](scale-in.yaml)
+#### Scale-in
 
 Horizontal scaling in cluster by deleting ONE replica:
 
@@ -199,11 +199,9 @@ kubectl apply -f examples/zookeeper/scale-in.yaml
 Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: zookeeper-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: zookeeper
@@ -211,7 +209,7 @@ spec:
       replicas: 3 # Update `replicas` to 1 for scaling in, and to 3 for scaling out
 ```
 
-### [Vertical scaling](verticalscale.yaml)
+### Vertical scaling
 
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
 
@@ -248,11 +246,9 @@ kubectl apply -f examples/zookeeper/verticalscale.yaml
 Alternatively, you may update `spec.componentSpecs.resources` field to the desired resources for vertical scale.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: zookeeper-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: zookeeper
@@ -267,7 +263,7 @@ spec:
           memory: "4Gi"  # Update the resources to your need.
 ```
 
-### [Expand volume](volumeexpand.yaml)
+### Expand volume
 
 > [!NOTE]
 > Make sure the storage class you use supports volume expansion.
@@ -315,11 +311,9 @@ kubectl apply -f examples/zookeeper/volumeexpand.yaml
 Alternatively, you may update the `spec.componentSpecs.volumeClaimTemplates.spec.resources.requests.storage` field to the desired size.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: zookeeper-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: zookeeper
@@ -347,7 +341,7 @@ spec:
                 storage: 20Gi
 ```
 
-### [Restart](restart.yaml)
+### Restart
 
 Restart the specified components in the cluster
 
@@ -373,7 +367,7 @@ spec:
 kubectl apply -f examples/zookeeper/restart.yaml
 ```
 
-### [Stop](stop.yaml)
+### Stop
 
 Stop the cluster will release all the pods of the cluster, but the storage will be retained. It is useful when you want to save the cost of the cluster.
 
@@ -400,11 +394,9 @@ kubectl apply -f examples/zookeeper/stop.yaml
 Alternatively, you may stop the cluster by setting the `spec.componentSpecs.stop` field to `true`.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: zookeeper-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: zookeeper
@@ -413,7 +405,7 @@ spec:
       replicas: 3
 ```
 
-### [Start](start.yaml)
+### Start
 
 Start the stopped cluster
 
@@ -440,11 +432,9 @@ kubectl apply -f examples/zookeeper/start.yaml
 Alternatively, you may start the cluster by setting the `spec.componentSpecs.stop` field to `false`.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: zookeeper-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: zookeeper
@@ -453,7 +443,7 @@ spec:
       replicas: 3
 ```
 
-### [Reconfigure](configure.yaml)
+### Reconfigure
 
 Configure parameters with the specified components in the cluster:
 
@@ -511,7 +501,7 @@ To verify the changes, you may log into an Zookeeper instance to check the confi
 echo "conf" | nc localhost 2181
 ```
 
-### [Backup](backup.yaml)
+### Backup
 
 > [!NOTE] Before you start, please create a `BackupRepo` to store the backup data. Refer to [BackupRepo](../docs/create-backuprepo.md) for more details.
 
@@ -548,7 +538,7 @@ kubectl get backup -l app.kubernetes.io/instance=zookeeper-cluster
 
 and the status of the backup goes from `Running` to `Completed` after a while. And the backup data will be pushed to your specified `BackupRepo`.
 
-### [Restore](restore.yaml)
+### Restore
 
 To restore a new cluster from a Backup:
 

@@ -26,7 +26,7 @@ PolarDB-X is a cloud native distributed SQL Database designed for high concurren
 
 ## Examples
 
-### [Create](cluster.yaml)
+### Create
 
 > [!IMPORTANT]
 > Make sure the `clusterName` and `namespace` are short such that the length of following string is less than 64 characters
@@ -135,7 +135,7 @@ kubectl get secret pxc-gms-account-polardbx-root -o jsonpath="{.data.username}" 
 
 ### Horizontal scaling
 
-#### [Scale-out](scale-out.yaml)
+#### Scale-out
 
 Horizontal scaling out polardbx cluster by adding ONE more `cn` replica:
 
@@ -167,7 +167,7 @@ spec:
 kubectl apply -f examples/polardbx/scale-out.yaml
 ```
 
-#### [Scale-in](scale-in.yaml)
+#### Scale-in
 
 Horizontal scaling in polardbx cluster by deleting ONE `cn` replica:
 
@@ -199,7 +199,7 @@ spec:
 kubectl apply -f examples/polardbx/scale-in.yaml
 ```
 
-### [Vertical scaling](verticalscale.yaml)
+### Vertical scaling
 
 Vertical scaling involves increasing or decreasing resources to an existing database cluster.
 Resources that can be scaled include:, CPU cores/processing power and Memory (RAM).
@@ -236,7 +236,7 @@ spec:
 kubectl apply -f examples/polardbx/verticalscale.yaml
 ```
 
-### [Expand volume](volumeexpand.yaml)
+### Expand volume
 
 Volume expansion is the ability to increase the size of a Persistent Volume Claim (PVC) after it's created. It is introduced in Kubernetes v1.11 and goes GA in Kubernetes v1.24. It allows Kubernetes users to simply edit their PersistentVolumeClaim objects  without requiring any downtime at all if possible.
 
@@ -284,7 +284,7 @@ spec:
 kubectl apply -f examples/polardbx/volumeexpand.yaml
 ```
 
-### [Restart](restart.yaml)
+### Restart
 
 Restart the specified components in the cluster
 
@@ -312,7 +312,7 @@ spec:
 kubectl apply -f examples/polardbx/restart.yaml
 ```
 
-### [Stop](stop.yaml)
+### Stop
 
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 
@@ -334,7 +334,7 @@ spec:
 kubectl apply -f examples/polardbx/stop.yaml
 ```
 
-### [Start](start.yaml)
+### Start
 
 Start the stopped cluster
 

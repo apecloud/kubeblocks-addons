@@ -26,7 +26,7 @@ Orchestrator is a MySQL high availability and replication management tool, runs 
 
 ## Examples
 
-### [Create](cluster.yaml)
+### Create
 
 Orchestrator cluster has two modes: *raft* and *share-backend*.
 
@@ -170,7 +170,7 @@ http://localhost:3000
 
 ### Horizontal scaling
 
-#### [Scale-out](scale-out.yaml)
+#### Scale-out
 
 > [!IMPORTANT]
 > As per the Orchestrator documentation, the number of Orchestrator instances should be odd to avoid split-brain scenarios.
@@ -204,7 +204,7 @@ spec:
 kubectl apply -f examples/orchestrator/scale-out.yaml
 ```
 
-#### [Scale-in](scale-in.yaml)
+#### Scale-in
 
 To scale in the Orchestrator cluster of Share-Backend Mode
 
@@ -240,11 +240,9 @@ kubectl apply -f examples/orchestrator/scale-in.yaml
 Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: orchestrator-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: orchestrator
@@ -252,7 +250,7 @@ spec:
       replicas: 3 # Update `replicas` to your desired number
 ```
 
-### [Vertical scaling](verticalscale.yaml)
+### Vertical scaling
 
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
 
@@ -285,7 +283,7 @@ spec:
 kubectl apply -f examples/orchestrator/verticalscale.yaml
 ```
 
-### [Expand volume](volumeexpand.yaml)
+### Expand volume
 
 Increase size of volume storage with the specified components in the cluster
 
@@ -315,7 +313,7 @@ spec:
 kubectl apply -f examples/orchestrator/volumeexpand.yaml
 ```
 
-### [Restart](restart.yaml)
+### Restart
 
 Restart the specified components in the cluster
 
@@ -342,7 +340,7 @@ spec:
 kubectl apply -f examples/orchestrator/restart.yaml
 ```
 
-### [Stop](stop.yaml)
+### Stop
 
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 
@@ -364,7 +362,7 @@ spec:
 kubectl apply -f examples/orchestrator/stop.yaml
 ```
 
-### [Start](start.yaml)
+### Start
 
 Start the stopped cluster
 

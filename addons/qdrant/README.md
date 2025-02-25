@@ -35,7 +35,7 @@ Qdrant is an open source (Apache-2.0 licensed), vector similarity search engine 
 
 ## Examples
 
-### [Create](cluster.yaml)
+### Create
 
 Create a Qdrant cluster with specified cluster definition
 
@@ -109,7 +109,7 @@ kubectl apply -f examples/qdrant/cluster.yaml
 > Qdrant uses the **Raft consensus protocol** to maintain consistency regarding the cluster topology and the collections structure.
 > Make sure to have an odd number of replicas, such as 3, 5, 7, to avoid split-brain scenarios, after scaling out/in the cluster.
 
-#### [Scale-out](scale-out.yaml)
+#### Scale-out
 
 Horizontal scaling out cluster by adding ONE more  replica:
 
@@ -139,7 +139,7 @@ spec:
 kubectl apply -f examples/qdrant/scale-out.yaml
 ```
 
-#### [Scale-in](scale-in.yaml)
+#### Scale-in
 
 Horizontal scaling in cluster by deleting ONE replica:
 
@@ -179,18 +179,16 @@ kubectl apply -f examples/qdrant/scale-in.yaml
 Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: qdrant-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: qdrant
       replicas: 3 # Update `replicas` to your desired number
 ```
 
-### [Vertical scaling](verticalscale.yaml)
+### Vertical scaling
 
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
 
@@ -227,11 +225,9 @@ kubectl apply -f examples/qdrant/verticalscale.yaml
 Alternatively, you may update `spec.componentSpecs.resources` field to the desired resources for vertical scale.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: qdrant-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: qdrant
@@ -246,7 +242,7 @@ spec:
           memory: "4Gi"  # Update the resources to your need.
 ```
 
-### [Expand volume](volumeexpand.yaml)
+### Expand volume
 
 > [!NOTE]
 > Make sure the storage class you use supports volume expansion.
@@ -294,11 +290,9 @@ kubectl apply -f examples/qdrant/volumeexpand.yaml
 Alternatively, you may update the `spec.componentSpecs.volumeClaimTemplates.spec.resources.requests.storage` field to the desired size.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: qdrant-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: qdrant
@@ -316,7 +310,7 @@ spec:
                 storage: 30Gi
 ```
 
-### [Restart](restart.yaml)
+### Restart
 
 Restart the specified components in the cluster
 
@@ -342,7 +336,7 @@ spec:
 kubectl apply -f examples/qdrant/restart.yaml
 ```
 
-### [Stop](stop.yaml)
+### Stop
 
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 
@@ -364,7 +358,7 @@ spec:
 kubectl apply -f examples/qdrant/stop.yaml
 ```
 
-### [Start](start.yaml)
+### Start
 
 Start the stopped cluster
 
@@ -386,7 +380,7 @@ spec:
 kubectl apply -f examples/qdrant/start.yaml
 ```
 
-### [Backup](backup.yaml)
+### Backup
 
 > [!NOTE] Before you start, please create a `BackupRepo` to store the backup data. Refer to [BackupRepo](../docs/create-backuprepo.md) for more details.
 
@@ -429,7 +423,7 @@ kubectl get backup -l app.kubernetes.io/instance=qdrant-cluster
 
 and the status of the backup goes from `Running` to `Completed` after a while. And the backup data will be pushed to your specified `BackupRepo`.
 
-### [Restore](restore.yaml)
+### Restore
 
 To restore a new cluster from backup:
 
