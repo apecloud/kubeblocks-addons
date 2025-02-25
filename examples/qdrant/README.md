@@ -75,11 +75,9 @@ kubectl apply -f examples/qdrant/scale-in.yaml
 Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: qdrant-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: qdrant
@@ -99,11 +97,9 @@ kubectl apply -f examples/qdrant/verticalscale.yaml
 Alternatively, you may update `spec.componentSpecs.resources` field to the desired resources for vertical scale.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: qdrant-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: qdrant
@@ -144,11 +140,9 @@ kubectl apply -f examples/qdrant/volumeexpand.yaml
 Alternatively, you may update the `spec.componentSpecs.volumeClaimTemplates.spec.resources.requests.storage` field to the desired size.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: qdrant-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: qdrant

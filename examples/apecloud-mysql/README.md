@@ -58,9 +58,9 @@ kubectl get po -l  app.kubernetes.io/instance=acmysql-cluster -L kubeblocks.io/r
 If you want to create a cluster of specified version, set the `spec.componentSpecs.serviceVersion` field in the yaml file before applying it:
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
 spec:
   componentSpecs:
     - name: mysql
@@ -119,7 +119,6 @@ There are cases where you want to set a specified replica offline, when it is pr
 ```yaml
 apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
-metadata:
 spec:
   horizontalScaling:
   - componentName: mysql
@@ -134,9 +133,9 @@ spec:
 Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
 spec:
   componentSpecs:
     - name: apecloud-mysql
@@ -161,9 +160,9 @@ You will observe that the `follower` pods are recreated first, followed by the `
 Alternatively, you may update `spec.componentSpecs.resources` field to the desired resources for vertical scale.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
 spec:
   componentSpecs:
     - name: mysql
@@ -209,16 +208,16 @@ kubectl get pvc -l app.kubernetes.io/instance=acmysql-cluster -n default
 Alternatively, you may update the `spec.componentSpecs.volumeClaimTemplates.spec.resources.requests.storage` field to the desired size.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
 spec:
   componentSpecs:
     - name: mysql
       volumeClaimTemplates:
         - name: data
           spec:
-            storageClassName: "<you-preferred-sc>"
+            storageClassName: "<STORAGE_CLASS_NAME>"
             accessModes:
               - ReadWriteOnce
             resources:
@@ -250,9 +249,9 @@ kubectl apply -f examples/apecloud-mysql/stop.yaml
 Alternatively, you may stop the cluster by setting the `spec.componentSpecs.stop` field to `true`.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
 spec:
   componentSpecs:
     - name: mysql
@@ -273,9 +272,9 @@ kubectl apply -f examples/apecloud-mysql/start.yaml
 Alternatively, you may start the cluster by setting the `spec.componentSpecs.stop` field to `false`.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
 spec:
   componentSpecs:
     - name: mysql
@@ -417,9 +416,9 @@ kubectl apply -f examples/apecloud-mysql/expose-disable.yaml
 Alternatively, you may expose service by updating `spec.services`
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
 spec:
   # append service to the list
   services:
