@@ -8,6 +8,14 @@ export DATASAFED_BACKEND_BASE_PATH=${backup_base_path}
 export KB_BACKUP_WORKDIR=${VOLUME_DATA_DIR}/kb-backup
 GLOBAL_OLD_SIZE=0
 
+PSQL="psql -h ${DP_DB_HOST} -U ${DP_DB_USER} -d postgres"
+global_backup_in_secondary=
+if [ "${TARGET_POD_ROLE}" == "primary" ]; then
+   global_backup_in_secondary=f
+elif [ "${TARGET_POD_ROLE}" == "secondary" ]; then
+   global_backup_in_secondary=t
+fi
+
 # get start time of the wal log
 function get_wal_log_start_time() {
     local file="${1:?missing wal log name to analyze}"
@@ -63,10 +71,46 @@ function save_backup_status() {
     DP_save_backup_status_info "${TOTAL_SIZE}" "${START_TIME}" "${END_TIME}"
 }
 
+function uploadMissingLogs() {
+  walg_archive_dir=${LOG_DIR}/walg_data/walg_archive_status
+  for i in $(ls -tr ${LOG_DIR}/archive_status/ | grep .ready); do
+     wal_name=${i%.*}
+     DP_log "upload ${wal_name}..."
+     envdir ${VOLUME_DATA_DIR}/wal-g/env ${VOLUME_DATA_DIR}/wal-g/wal-g wal-push ${LOG_DIR}/${wal_name}
+  done
+}
+
+function check_pg_process() {
+    local is_ok=false
+    for ((i=1;i<4;i++));do
+      is_secondary=$(${PSQL} -Atc "select pg_is_in_recovery()")
+      if [[ $? -eq 0  && (-z ${global_backup_in_secondary} || "${global_backup_in_secondary}" == "${is_secondary}") ]]; then
+        is_ok=true
+        break
+      fi
+      DP_error_log "target backup pod/${DP_TARGET_POD_NAME} is not OK, target role: ${TARGET_POD_ROLE}, pg_is_in_recovery: ${is_secondary}, retry detection!"
+      sleep 1
+    done
+    if [[ ${is_ok} == "false" ]];then
+      DP_error_log "target backup pod/${DP_TARGET_POD_NAME} is not OK, target role: ${TARGET_POD_ROLE}, pg_is_in_recovery: ${is_secondary}!"
+      DP_log "Before switching to a new instance, back up any remaining WAL logs."
+      uploadMissingLogs
+      # save backup status which will be updated to `backup` CR by the sidecar
+      save_backup_status
+      exit 1
+    fi
+}
+
+
 # trap term signal
 trap "echo 'Terminating...' && exit 0" TERM
 DP_log "start to collect wal infos"
 while true; do
+  # check if pg process is ok
+  check_pg_process
+  # upload wal logs
+  uploadMissingLogs
+  # save backup status which will be updated to `backup` CR by the sidecar
   save_backup_status
   sleep ${LOG_ARCHIVE_SECONDS}
 done

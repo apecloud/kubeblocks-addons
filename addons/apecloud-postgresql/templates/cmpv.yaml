@@ -17,3 +17,4 @@ spec:
       serviceVersion: 14.11.0
       images:
         postgresql: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:14.11-0.7.3
+        accountProvision: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:14.11-0.7.3

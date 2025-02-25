@@ -166,6 +166,14 @@ character_set_server = utf8mb4
 # rpl_semi_sync_master_timeout = 1000
 # rpl-semi-sync-slave-enabled = 1
 
+{{- if eq (index $ "TLS_ENABLED") "true" }}
+# tls
+# require_secure_transport=ON
+ssl_ca={{ $data_root }}/tls/ca.pem
+ssl_cert={{ $data_root }}/tls/cert.pem
+ssl_key={{ $data_root }}/tls/key.pem
+{{- end }}
+
 [client]
 port={{ $mysql_port }}
 socket=/var/run/mysqld/mysqld.sock

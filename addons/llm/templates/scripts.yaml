@@ -19,6 +19,8 @@ data:
     if [[ "${domain,,}" == "baichuan-inc" ]]; then
       pip install transformers==4.33.1 tokenizers==0.13.3
     fi
+    apt install git-lfs
+    CLONE_MODEL_SCRIPT="git lfs install; git clone https://huggingface.co/${MODEL_NAME}"
     country=`curl https://ifconfig.io/country_code`
     if [ "$country" == "CN" ]; then
       CLONE_MODEL_SCRIPT="git lfs install; git clone https://www.modelscope.cn/${MODEL_NAME}.git"

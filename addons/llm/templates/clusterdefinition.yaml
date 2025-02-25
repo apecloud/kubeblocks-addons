@@ -1,0 +1,31 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ClusterDefinition
+metadata:
+  name: vllm
+  labels:
+    {{- include "llm.labels" . | nindent 4}}
+  annotations:
+    {{- include "llm.annotations" . | nindent 4 }}
+spec:
+  topologies:
+    - name: vllm
+      default: true
+      components:
+      - name: vllm
+        compDef: vllm
+---
+apiVersion: apps.kubeblocks.io/v1
+kind: ClusterDefinition
+metadata:
+  name: ggml
+  labels:
+    {{- include "llm.labels" . | nindent 4}}
+  annotations:
+    {{- include "llm.annotations" . | nindent 4 }}
+spec:
+  topologies:
+    - name: ggml
+      default: true
+      components:
+      - name: ggml
+        compDef: ggml

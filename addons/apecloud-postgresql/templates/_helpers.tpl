@@ -180,20 +180,15 @@ vars:
         optional: false
         password: Required
   # env for syncer to initialize dcs
-  # TODO: modify these env for syncer
   - name: CLUSTER_NAME
     valueFrom:
       clusterVarRef:
         clusterName: Required
-  - name: MY_COMP_NAME
+  - name: COMPONENT_NAME
     valueFrom:
       componentVarRef:
         optional: false
         shortName: Required
-  - name: MY_NAMESPACE
-    valueFrom:
-      clusterVarRef:
-        namespace: Required
   - name: TLS_ENABLED
     valueFrom:
       tlsVarRef:
@@ -257,7 +252,7 @@ lifecycleActions:
     exec:
       container: postgresql
       command:
-        - bash
+        - /bin/sh
         - -c
         - |
           eval statement=\"${KB_ACCOUNT_STATEMENT}\"
@@ -268,7 +263,7 @@ lifecycleActions:
         - name: PGPASSWORD
           value: $(POSTGRES_PASSWORD)
       targetPodSelector: Role
-      matchingKey: primary
+      matchingKey: leader
 {{- end -}}
 
 {{- define "apecloud-postgresql.spec.runtime.common" -}}
@@ -319,17 +314,17 @@ runtime:
           value: apecloud-postgresql
         - name: POSTGRESQL_MOUNTED_CONF_DIR
           value: {{ .Values.confMountPath }}
-        - name: MY_POD_NAME
+        - name: POD_NAME
           valueFrom:
             fieldRef:
               apiVersion: v1
               fieldPath: metadata.name
-        - name: MY_POD_UID
+        - name: POD_UID
           valueFrom:
             fieldRef:
               apiVersion: v1
               fieldPath: metadata.uid
-        - name: MY_POD_IP
+        - name: POD_IP
           valueFrom:
             fieldRef:
               apiVersion: v1

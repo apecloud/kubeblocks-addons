@@ -134,7 +134,8 @@ systemAccounts:
     passwordGenerationPolicy: *defaultPasswordGenerationPolicy
   - name: proxysql
     statement:
-      create: CREATE USER IF NOT EXISTS '${KB_ACCOUNT_NAME}' IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT SELECT ON performance_schema.* TO '${KB_ACCOUNT_NAME}'; GRANT SELECT ON sys.* TO '${KB_ACCOUNT_NAME}';
+      create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, USAGE ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
+    passwordGenerationPolicy: *defaultPasswordGenerationPolicy
 vars:
   - name: CLUSTER_NAME
     valueFrom:
@@ -188,6 +189,10 @@ vars:
       credentialVarRef:
         name: kbreplicator
         password: Required
+  - name: TLS_ENABLED
+    valueFrom:
+      tlsVarRef:
+        enabled: Optional
 lifecycleActions:
   accountProvision:
     exec:
@@ -226,6 +231,12 @@ lifecycleActions:
           fi
 
           /tools/syncerctl switchover --primary "$KB_SWITCHOVER_CURRENT_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
+tls:
+  volumeName: tls
+  mountPath: /etc/pki/tls
+  caFile: ca.pem
+  certFile: cert.pem
+  keyFile: key.pem
 roles:
   - name: primary
     updatePriority: 2
@@ -234,6 +245,20 @@ roles:
     updatePriority: 1
     participatesInQuorum: false
 {{- end }}
+
+{{- define "mysql.spec.runtime.entrypoint" -}}
+mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog}
+if [ -f {{ .Values.dataMountPath }}/plugin/audit_log.so ]; then
+  cp {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
+fi 
+if [ -d /etc/pki/tls ]; then
+  mkdir -p {{ .Values.dataMountPath }}/tls/
+  cp -L /etc/pki/tls/*.pem {{ .Values.dataMountPath }}/tls/
+  chmod 600 {{ .Values.dataMountPath }}/tls/*
+fi
+chown -R mysql:root {{ .Values.dataMountPath }}
+SERVICE_ID=$((${POD_NAME##*-} + 1))
+{{ end }}
 
 {{- define "mysql.spec.runtime.common" -}}
 - command:
@@ -262,13 +287,13 @@ serviceRefDeclarations:
         serviceVersion: "^*"
 services:
   - name: default
+    serviceName: server
     spec:
       ports:
         - name: mysql
           port: 3306
           targetPort: mysql
   - name: mysql
-    serviceName: mysql
     podService: true
     spec:
       ports:
@@ -294,7 +319,18 @@ systemAccounts:
       letterCase: MixedCases
   - name: proxysql
     statement:
-      create: CREATE USER IF NOT EXISTS '${KB_ACCOUNT_NAME}' IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT SELECT ON performance_schema.* TO '${KB_ACCOUNT_NAME}'; GRANT SELECT ON sys.* TO '${KB_ACCOUNT_NAME}';
+      create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT USAGE, REPLICATION CLIENT ON *.* TO ${KB_ACCOUNT_NAME};
+    passwordGenerationPolicy: 
+      length: 16
+      numDigits: 8
+      numSymbols: 0
+      letterCase: MixedCases
+tls:
+  volumeName: tls
+  mountPath: /etc/pki/tls
+  caFile: ca.pem
+  certFile: cert.pem
+  keyFile: key.pem
 roles:
   - name: primary
     updatePriority: 2
@@ -353,6 +389,10 @@ vars:
       componentVarRef:
         optional: false
         podNames: Required
+  - name: TLS_ENABLED
+    valueFrom:
+      tlsVarRef:
+        enabled: Optional
 exporter:
   containerName: mysql-exporter
   scrapePath: /metrics
@@ -361,10 +401,23 @@ exporter:
 
 
 {{- define "mysql-orc.spec.lifecycle.common" }}
+postProvision:
+  exec:
+    container: mysql
+    command:
+      - bash
+      - -c
+      - "/scripts/mysql-orchestrator-register.sh"
+  preCondition: RuntimeReady
+preTerminate:
+  exec:
+    command:
+      - bash
+      - -c
+      - curl http://${ORC_ENDPOINTS%%:*}:${ORC_PORTS}/api/forget-cluster/${CLUSTER_NAME}.${CLUSTER_NAMESPACE} || true
 accountProvision:
   exec:
     container: mysql
-    image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
     command:
       - /bin/sh
       - -c
@@ -375,6 +428,8 @@ accountProvision:
     targetPodSelector: Role
     matchingKey: primary
 roleProbe:
+  periodSeconds: {{ .Values.roleProbe.periodSeconds }}
+  timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
   exec:
     env:
       - name: PATH
@@ -383,7 +438,7 @@ roleProbe:
       - /bin/bash
       - -c
       - |
-        topology_info=$(/kubeblocks/orchestrator-client -c topology -i ${CLUSTER_NAME}.${CLUSTER_NAMESPACE}) || true
+        topology_info=$(/kubeblocks/orchestrator-client -c topology -i ${CLUSTER_NAME}) || true
         if [[ $topology_info == "" ]]; then
           echo -n "secondary"
           exit 0
@@ -399,8 +454,7 @@ roleProbe:
 
         address_port=$(echo "$first_line" | awk '{print $1}')
         master_from_orc="${address_port%:*}"
-        last_digit=${KB_AGENT_POD_NAME##*-}
-        self_service_name=$(echo "${CLUSTER_COMPONENT_NAME}_mysql_${last_digit}.${CLUSTER_NAMESPACE}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+        self_service_name=$(echo "${KB_AGENT_POD_NAME}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
         if [ "$master_from_orc" == "${self_service_name}" ]; then
           echo -n "primary"
         else
@@ -413,11 +467,10 @@ memberLeave:
       - -c
       - |
         set +e
-        master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i ${CLUSTER_NAME}.${CLUSTER_NAMESPACE})
-        last_digit=${KB_LEAVE_MEMBER_POD_NAME##*-}
-        self_service_name=$(echo "${CLUSTER_COMPONENT_NAME}_mysql_${last_digit}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
+        master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i ${CLUSTER_NAME})
+        self_service_name=$(echo "${KB_LEAVE_MEMBER_POD_NAME}" | tr '_' '-' | tr '[:upper:]' '[:lower:]' )
         if [ "${self_service_name%%:*}" == "${master_from_orc%%:*}" ]; then
-          /kubeblocks/orchestrator-client -c force-master-failover -i ${CLUSTER_NAME}.${CLUSTER_NAMESPACE}
+          /kubeblocks/orchestrator-client -c force-master-failover -i ${CLUSTER_NAME}
           local timeout=15
           local start_time=$(date +%s)
           local current_time
@@ -426,7 +479,7 @@ memberLeave:
             if [ $((current_time - start_time)) -gt $timeout ]; then
               break
             fi
-            master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i ${CLUSTER_NAME}.${CLUSTER_NAMESPACE})
+            master_from_orc=$(/kubeblocks/orchestrator-client -c which-cluster-master -i ${CLUSTER_NAME}
             if [ "${self_service_name%%:*}" != "${master_from_orc%%:*}" ]; then
               break
             fi
@@ -475,6 +528,11 @@ command:
   - -c
   - |
     cp {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
+    if [ -d /etc/pki/tls ]; then
+      mkdir -p {{ .Values.dataMountPath }}/tls/
+      cp -L /etc/pki/tls/*.pem {{ .Values.dataMountPath }}/tls/
+      chmod 600 {{ .Values.dataMountPath }}/tls/*
+    fi
     chown -R mysql:root {{ .Values.dataMountPath }}
     export skip_slave_start="OFF"
     if [ -f {{ .Values.dataMountPath }}/data/.restore_new_cluster ]; then
