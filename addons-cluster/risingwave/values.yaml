@@ -135,9 +135,6 @@ risingwave:
     dataDirectory: "risingwave"
 
     s3:
-      ## @param stateStore.s3.enabled Use S3 state store. Only one state store backend can be enabled.
-      ##
-      enabled: true
       ## @param risingwave.stateStore.s3.endpoint
       ## Endpoint for S3 compatible services. Leave it empty for standard AWS S3.
       ##
