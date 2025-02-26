@@ -13,6 +13,14 @@ spec:
   configs:
     {{- include "milvus.config.standalone" . | indent 4 }}
   vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
     - name: MINIO_ACCESS_KEY
       valueFrom:
         credentialVarRef:
