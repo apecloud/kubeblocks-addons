@@ -15,6 +15,25 @@ spec:
     - name: dump
       snapshotVolumes: false
       actionSetName: mongodb-dump-br
+      env:
+      - name: IMAGE_TAG
+        valueFrom:
+          versionMapping:
+            - serviceVersions:
+              - "8.0"
+              mappedValue: "8.0.4"
+            - serviceVersions:
+              - "7.0"
+              mappedValue: "7.0.16"
+            - serviceVersions:
+              - "6.0"
+              mappedValue: "6.0.20"
+            - serviceVersions:
+              - "5.0"
+              mappedValue: "5.0.30"
+            - serviceVersions:
+              - "4.0"
+              mappedValue: "4.4.29"
     - name: datafile
       snapshotVolumes: false
       actionSetName: mongodb-physical-br
@@ -31,6 +50,12 @@ spec:
         volumeMounts:
           - name: data
             mountPath: {{ .Values.dataMountPath }}
+    - name: archive-oplog
+      target:
+        role: primary
+        account: root
+      snapshotVolumes: false
+      actionSetName: mongodb-pitr
   schedules:
     - backupMethod: dump
       enabled: false
@@ -43,4 +68,8 @@ spec:
     - backupMethod: volume-snapshot
       enabled: false
       cronExpression: "0 18 * * *"
+      retentionPeriod: 7d
+    - backupMethod: archive-oplog
+      enabled: false
+      cronExpression: "*/5 * * * *"
       retentionPeriod: 7d
