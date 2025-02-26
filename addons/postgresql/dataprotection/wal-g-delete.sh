@@ -22,24 +22,27 @@ fi
 
 # 2. get backup name of this backup
 backupName=$(getWalGSentinelInfo "wal-g-backup-name")
+export DATASAFED_BACKEND_BASE_PATH=${backupRepoPath}
 if [[ -z ${backupName} ]]; then
-   echo "INFO: delete unsuccessfully backup files and outdated WAL archive."
-   export DATASAFED_BACKEND_BASE_PATH=${backupRepoPath}
-   wal-g delete garbage --confirm
+   echo "INFO: delete unsuccessfully backup files."
+   wal-g delete garbage BACKUPS --confirm
    exit 0
 fi
 
-# 3. cleanup outdated wal logs, only effective when existing at least one full backup
-export DATASAFED_BACKEND_BASE_PATH=${backupRepoPath}
-wal-g delete garbage ARCHIVES
-
-# 4. delete wal-g
+# 3. delete wal-g
 dpBackupFilesCount=$(datasafed list --name "${backupName}_dp_*" /basebackups_005 | wc -l)
 if [[ ${dpBackupFilesCount} -le 1 ]]; then
   # if this base backup only belongs to a backup CR, delete it.
-  echo "INFO: delete ${backupName}, backupRepo: ${backupRepo}"
-  wal-g delete target ${backupName} --confirm  && wal-g delete garbage ARCHIVES --confirm
+  echo "INFO: delete ${backupName}, backupRepo: ${backupRepoPath}"
+  wal-g delete target ${backupName} --confirm
 fi
 datasafed rm "/basebackups_005/${backupName}_dp_${DP_BACKUP_NAME}"
+
+# 4. delete outdated WAL archive when existing other full backups.
+base_backup_list=$(datasafed list /basebackups_005 -d)
+if [[ ! -z ${base_backup_list} ]]; then
+  echo "INFO: delete outdated WAL archive."
+  wal-g delete garbage ARCHIVES --confirm
+fi
 
 
