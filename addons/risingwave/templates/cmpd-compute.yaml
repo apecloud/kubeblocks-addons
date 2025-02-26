@@ -33,6 +33,17 @@ spec:
   vars:
     {{- include "risingwave.vars.connector" . | indent 4 }}
     {{- include "risingwave.vars.meta" . | indent 4 }}
+    - name: RISINGWAVE_COMPUTE_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.clusterDomain | quote }}
   runtime:
     containers:
       - name: compute
@@ -53,8 +64,10 @@ spec:
             value: /risingwave/config/risingwave.toml
           - name: RW_LISTEN_ADDR
             value: 0.0.0.0:5688
+          - name: POD_FQDN
+            value: $(POD_NAME).$(RISINGWAVE_COMPUTE_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc$(CLUSTER_DOMAIN)
           - name: RW_ADVERTISE_ADDR
-            value: $(POD_NAME):5688  # TODO: Pod FQDN
+            value: $(POD_FQDN):5688
           - name: RW_META_ADDR
             value: load-balance+http://$(META_SVC)-headless:5690
           - name: RW_METRICS_LEVEL
