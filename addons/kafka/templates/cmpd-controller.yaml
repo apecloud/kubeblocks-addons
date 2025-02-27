@@ -120,6 +120,9 @@ spec:
             value: /scripts/server.properties
           - name: KAFKA_KRAFT_CLUSTER_ID
             value: $(CLUSTER_UID)
+          {{- with .Values.extraEnvs.kafka }}
+          {{- toYaml . | nindent 10}}
+          {{- end }}
         ports:
           - name: kafka-ctrlr
             containerPort: 9093
@@ -154,6 +157,9 @@ spec:
           - name: scripts
             mountPath: /opt/bitnami/scripts/kafka-env.sh
             subPath: kafka-env.sh
+          {{- with .Values.extraVolumeMounts.kafka }}
+          {{- toYaml . | nindent 10}}
+          {{- end }}
       - name: jmx-exporter
         image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
