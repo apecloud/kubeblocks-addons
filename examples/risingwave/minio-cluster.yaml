@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: minior-cluster
+  name: minio-cluster
   namespace: default
 spec:
   terminationPolicy: Delete
