@@ -61,7 +61,18 @@ MINIO_USER=$(kubectl get secret minio-cluster-minio-account-root -n default -o j
 MINIO_PASSWORD=$(kubectl get secret minio-cluster-minio-account-root -n default -o jsonpath="{.data.password}" | base64 --decode)
 # Create a Bucket `risingwave` in MinIO if not exists:
 MINIO_BUCKER="<BUCKET_NAME>"
-mc alias set minio http://$MINIO_ENDPOINT $MINIO_USER $MINIO_PASSWORD  # set minio alias
+```
+
+Port-forward the MinIO service first:
+
+```bash
+kubectl port-forward svc/minio-cluster-minio -n default 9000:9000
+```
+
+Then, use the following command to create a bucket:
+
+```bash
+mc alias set minio http://localhost:9000 $MINIO_USER $MINIO_PASSWORD  # set minio alias
 mc mb minio/${MINIO_BUCKER}  # create bucket
 mc ls minio # list bucket
 ```
