@@ -8,7 +8,7 @@ terminationPolicy: Delete
 
 ## @param version, mapping cluster.spec.componentSpec[].serviceVersion which defined in ComponentVersion
 ##
-version: 14.7.2
+version: 16.33.0
 
 ## @param mode orioledb cluster topology mode, standalone, replication
 ##
@@ -36,17 +36,3 @@ requests:
 ## @param storage size, the unit is Gi
 ##
 storage: 20
-
-etcd:
-  enabled: false
-  meta:
-    mode: serviceref # optional: incluster, serviceref
-    serviceRef:
-      namespace:
-      cluster:
-        name:
-        component:
-        service:
-        port:
-        credential:
-      serviceDescriptor: orioledb-etcd-descriptor # example: orioledb-etcd-descriptor

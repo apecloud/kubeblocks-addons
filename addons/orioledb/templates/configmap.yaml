@@ -8,8 +8,8 @@ metadata:
     {{- include "orioledb.annotations" . | nindent 4 }}
 data:
   postgresql.conf: |-
-    {{- .Files.Get "config/orioledb-config.tpl" | nindent 4 }}
-  # TODO: check if it should trust all
+    {{- .Files.Get "config/pg16-config.tpl" | nindent 4 }}
+
   pg_hba.conf: |
     host     all             all             0.0.0.0/0                md5
     host     all             all             ::/0                     md5
@@ -19,11 +19,3 @@ data:
     local     replication     all                                    trust
     host      replication     all             0.0.0.0/0               md5
     host      replication     all             ::/0                    md5
-  kb_pitr.conf: |
-    method: kb_restore_from_time
-    kb_restore_from_time:
-      command: bash /home/postgres/pgdata/kb_restore/kb_restore.sh
-      keep_existing_recovery_conf: false
-      recovery_conf: {}
-  patroni.yaml: |-
-    {{- .Files.Get "config/patroni-yaml.tpl" | nindent 4 }}
