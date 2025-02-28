@@ -292,9 +292,6 @@
 	// Sets the number of digits displayed for floating-point values.
 	extra_float_digits?: int & >=-15 & <=3
 
-	// Forces use of parallel query facilities.
-	force_parallel_mode?: bool & false | true
-
 	// Sets the FROM-list size beyond which subqueries are not collapsed.
 	from_collapse_limit?: int & >=1 & <=2147483647
 
@@ -608,7 +605,7 @@
 	password_encryption?: string & "md5" | "scram-sha-256"
 
 	// Specifies which classes of statements will be logged by session audit logging.
-	"pgaudit.log"?: string & "ddl" | "function" | "misc" | "read" | "role" | "write" | "none" | "all" | "-ddl" | "-function" | "-misc" | "-read" | "-role" | "-write"
+	//	"pgaudit.log"?: string & "ddl" | "function" | "misc" | "read" | "role" | "write" | "none" | "all" | "-ddl" | "-function" | "-misc" | "-read" | "-role" | "-write"
 
 	// Specifies that session logging should be enabled in the case where all relations in a statement are in pg_catalog.
 	"pgaudit.log_catalog"?: bool & false | true
@@ -616,8 +613,14 @@
 	// Specifies the log level that will be used for log entries.
 	"pgaudit.log_level"?: string & "debug5" | "debug4" | "debug3" | "debug2" | "debug1" | "info" | "notice" | "warning" | "log"
 
+	// Specifies whether log messages will be visible to a client process such as psql. This setting should generally be left disabled but may be useful for debugging or other purposes.
+	"pgaudit.log_client"?: bool & false | true
+
 	// Specifies that audit logging should include the parameters that were passed with the statement.
 	"pgaudit.log_parameter"?: bool & false | true
+
+	// Specifies that parameter values longer than this setting (in bytes) should not be logged.
+	"pgaudit.log_parameter_max_size"?: int & >=0
 
 	// Specifies whether session audit logging should create a separate log entry for each relation (TABLE, VIEW, etc.) referenced in a SELECT or DML statement.
 	"pgaudit.log_relation"?: bool & false | true
@@ -936,7 +939,7 @@
 	synchronize_seqscans?: bool & false | true
 
 	// Sets the current transactions synchronization level.
-	synchronous_commit?: string & "local" | "on" | "off"
+	synchronous_commit?: string & "local" | "on" | "off" | "remote_write" | "remote_apply"
 
 	// Maximum number of TCP keepalive retransmits.
 	tcp_keepalives_count?: int & >=0 & <=2147483647
@@ -1013,9 +1016,6 @@
 	// Vacuum cost for a page not found in the buffer cache.
 	vacuum_cost_page_miss: int & >=0 & <=10000 | *5
 
-	// Number of transactions by which VACUUM and HOT cleanup should be deferred, if any.
-	vacuum_defer_cleanup_age?: int & >=0 & <=1000000
-
 	// Specifies the maximum age (in transactions) that a table's pg_class.relfrozenxid field can attain before VACUUM takes extraordinary measures to avoid system-wide transaction ID wraparound failure
 	vacuum_failsafe_age: int & >=0 & <=2100000000 | *2100000000
 
@@ -1090,6 +1090,9 @@
 
 	// Sets whether XML data in implicit parsing and serialization operations is to be considered as documents or content fragments.
 	xmloption?: string & "content" | "document"
+
+	// Sets the level of information written to the WAL. replica writes enough data to support WAL archiving and replication, including running read-only queries on a standby server. minimal removes all logging except the information required to recover from a crash or immediate shutdown. Finally, logical adds information necessary to support logical decoding
+	wal_level?: string & "minimal" | "replica" | "logical"
 
 	...
 }
