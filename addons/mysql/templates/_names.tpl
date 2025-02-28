@@ -126,6 +126,21 @@ mysql-8.0-orc-pcr
 {{/*
 Define parameterconfigrenderer name
 */}}
+{{- define "mysql.prcNameMgr80" -}}
+mysql-8.0-mgr-pcr
+{{- end -}}
+
+{{/*
+Define parameterconfigrenderer name
+*/}}
+{{- define "mysql.prcNameMgr84" -}}
+mysql-8.4-mgr-pcr
+{{- end -}}
+
+
+{{/*
+Define parameterconfigrenderer name
+*/}}
 {{- define "mysql.prcName84" -}}
 mysql-8.4-pcr
 {{- end -}}
