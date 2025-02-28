@@ -261,6 +261,59 @@ kubectl patch cluster kafka-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}
 kubectl delete cluster kafka-cluster
 ```
 
+### Observability
+
+#### Installing the Prometheus Operator
+
+You may skip this step if you have already installed the Prometheus Operator.
+Or you can follow the steps in [How to install the Prometheus Operator](../docs/install-prometheus.md) to install the Prometheus Operator.
+
+#### Create Cluster
+
+Create a Kafka cluster with separated controller and broker components for instance:
+
+```bash
+kubectl apply -f examples/kafka/cluster-separated.yaml
+```
+
+#### Create PodMonitor
+
+##### Step 1. Create PodMonitor
+
+Apply the `PodMonitor` file to monitor the cluster.
+Please set the labels correctly in the `PodMonitor` file to match the target pods.
+
+```yaml
+# cat pod monitor file
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: kafka-separated-cluster  # cluster name, set it to your cluster name
+      apps.kubeblocks.io/component-name: kafka-controller  # component name
+```
+
+- Pod Monitor Kafka JVM:
+
+```bash
+kubectl apply -f examples/kafka/jvm-pod-monitor.yaml
+```
+
+- Pod Monitor for Kafka Exporter:
+
+```bash
+kubectl apply -f examples/kafka/exporter-pod-monitor.yaml
+```
+
+##### Step 2. Accessing the Grafana Dashboard
+
+Login to the Grafana dashboard and import the dashboard.
+
+KubeBlocks provides a Grafana dashboard for monitoring the Kafka cluster. You can find it at [Kafka Dashboard](https://github.com/apecloud/kubeblocks-addons/tree/main/addons/kafka).
+
+> [!Note]
+>
+> - Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
+> - set `job` to `kubeblocks` on Grafana dashboard to view the metrics.
+
 ### FAQ
 
 #### How to Access Kafka Cluster
