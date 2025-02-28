@@ -11,10 +11,6 @@ spec:
     cue: |-
       {{- .Files.Get "config/3.0.2/broker-config-constraint.cue" | nindent 6 }}
 
-  # pulsar configuration file format
-  fileFormatConfig:
-    format: props-plus
-
   ## define static parameter list
   {{- if hasKey $pd "staticParameters" }}
   staticParameters:
