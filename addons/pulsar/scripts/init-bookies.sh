@@ -56,7 +56,7 @@ load_env_file() {
 
 init_bookies() {
   if [[ -z "$ZOOKEEPER_SERVERS" ]]; then
-    echo "Error: zkServers environment variable is not set, Please set the zkServers environment variable and try again."
+    echo "Error: ZOOKEEPER_SERVERS environment variable is not set, Please set the ZOOKEEPER_SERVERS environment variable and try again."
     exit 1
   fi
 
