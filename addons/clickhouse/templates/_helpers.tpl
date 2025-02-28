@@ -105,7 +105,7 @@ Define clickhouse-keeper24 component definition regex pattern
 Define clickhouse24 config constraint name
 */}}
 {{- define "clickhouse24.paramsDefName" -}}
-clickhouse-24-config-constraints
+clickhouse-24-pd
 {{- end -}}
 
 {{/*
