@@ -50,11 +50,8 @@ spec:
   configs:
     - name: redis-cluster-config
       templateRef: {{ include "redisCluster7.configurationTemplate" . }}
-      constraintRef: {{ include "redisCluster7.configConstraint" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: redis-cluster-config
-      reRenderResourceTypes:
-        - vscale
     - name: redis-metrics-config
       templateRef: {{ include "redis.metricsConfiguration" . }}
       namespace: {{ .Release.Namespace }}

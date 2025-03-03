@@ -1,12 +1,13 @@
-{{- $cc := .Files.Get "config/redis7-config-effect-scope.yaml" | fromYaml }}
-apiVersion: apps.kubeblocks.io/v1beta1
-kind: ConfigConstraint
+{{- $pd := .Files.Get "config/redis7-config-effect-scope.yaml" | fromYaml }}
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
 metadata:
-  name: {{ include "redis7.configConstraint" . }}
+  name: {{ include "redis7.paramsDefName" . }}
   labels:
     {{- include "redis.labels" . | nindent 4 }}
 spec:
 
+  fileName: redis.conf
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:
     topLevelKey: RedisParameter
@@ -14,9 +15,9 @@ spec:
       {{- .Files.Get "config/redis7-config-constraint.cue" | nindent 6 }}
 
   ## require db instance restart
-  {{- if hasKey $cc "staticParameters" }}
+  {{- if hasKey $pd "staticParameters" }}
   staticParameters:
-    {{- $params := get $cc "staticParameters" }}
+    {{- $params := get $pd "staticParameters" }}
     {{- range $params }}
     - {{ . }}
     {{- end }}
@@ -24,15 +25,10 @@ spec:
 
   ## reload parameters
   ## dynamicParameters
-  {{- if hasKey $cc "dynamicParameters" }}
+  {{- if hasKey $pd "dynamicParameters" }}
   dynamicParameters:
-   {{- $params := get $cc "dynamicParameters" }}
+   {{- $params := get $pd "dynamicParameters" }}
    {{- range $params }}
     - {{ . }}
    {{- end }}
  {{- end}}
-
-
-  # redis configuration file format
-  fileFormatConfig:
-    format: redis
