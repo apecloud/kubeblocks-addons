@@ -17,24 +17,14 @@ spec:
     - name: loki-write
       spec:
         ports:
-          - port: {{ .Values.write.httpMetricsPort }}
+          - port: {{ .Values.server.httpMetricsPort }}
             protocol: TCP
             name: http-metrics
             targetPort: http-metrics
-          - port: {{ .Values.write.grpcPort }}
+          - port: {{ .Values.server.grpcPort }}
             protocol: TCP
             name: grpc
             targetPort: grpc
-  configs:
-    - name: loki-config
-      ## TODO: this cmpd is currently unavailable. It requires adding configuration templates.
-      templateRef: loki
-      volumeName: config
-      namespace: {{ .Release.Namespace }}
-    - name: loki-runtime-config
-      templateRef: loki-runtime
-      volumeName: runtime-config
-      namespace: {{ .Release.Namespace }}
   updateStrategy: BestEffortParallel
   runtime:
     automountServiceAccountToken: true
@@ -47,7 +37,7 @@ spec:
             topologyKey: kubernetes.io/hostname
     containers:
       - name: write
-        imagePullPolicy: {{ .Values.images.write.pullPolicy }}
+        imagePullPolicy: {{ .Values.images.pullPolicy }}
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -55,15 +45,17 @@ spec:
               - ALL
         args:
           - -config.file=/etc/loki/config/config.yaml
+          - -runtime-config.file=/etc/loki/runtime-config/runtime-config.yaml
           - -target=write
+          - -config.expand-env=true
         ports:
-          - containerPort: {{ .Values.write.httpMetricsPort }}
+          - containerPort: {{ .Values.server.httpMetricsPort }}
             name: http-metrics
             protocol: TCP
-          - containerPort: {{ .Values.write.grpcPort }}
+          - containerPort: {{ .Values.server.grpcPort }}
             name: grpc
             protocol: TCP
-          - containerPort: {{ .Values.write.httpMemberlistPort }}
+          - containerPort: {{ .Values.server.httpMemberlistPort }}
             name: http-memberlist
             protocol: TCP
         readinessProbe:
@@ -85,3 +77,21 @@ spec:
             name: tmp
           - mountPath: /var/loki
             name: data
+  configs:
+    - name: loki-config
+      templateRef: loki-tpl
+      volumeName: config
+      namespace: {{ .Release.Namespace }}
+    - name: loki-runtime-config
+      templateRef: loki-runtime-tpl
+      volumeName: runtime-config
+      namespace: {{ .Release.Namespace }}
+  vars:
+    - name: SERVER_HTTP_PORT
+      value: {{ .Values.server.httpMetricsPort | quote }}
+    - name: SERVER_GRPC_PORT
+      value: {{ .Values.server.grpcPort | quote }}
+    - name: LOCAL_RULES_DIR
+      value: /var/loki/rules
+    - name: LOCAL_CHUNKS_DIR
+      value: /var/loki/chunks
