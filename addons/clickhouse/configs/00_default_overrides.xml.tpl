@@ -16,7 +16,7 @@
   <macros>
     <shard from_env="CURRENT_SHARD_COMPONENT_SHORT_NAME"/>
     <replica from_env="CURRENT_POD_NAME"/>
-    <layer>{{ $.cluster.metadata.name }}</layer>
+    <layer from_env="CLUSTER_NAME"/>
   </macros>
   <!-- Log Level -->
   <logger>

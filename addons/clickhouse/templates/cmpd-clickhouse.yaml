@@ -122,6 +122,10 @@ spec:
           shortName: Required
     - name: CLICKHOUSE_ADMIN_USER
       value: admin
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
     - name: CLICKHOUSE_ADMIN_PASSWORD
       valueFrom:
         credentialVarRef:
