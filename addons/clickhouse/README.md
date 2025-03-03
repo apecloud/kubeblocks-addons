@@ -586,23 +586,12 @@ spec:
   reconfigures:
     # Specifies the name of the Component.
   - componentName: clickhouse
-   # Contains a list of ConfigurationItem objects, specifying the Component's configuration template name, upgrade policy, and parameter key-value pairs to be updated.
-    configurations:
-      # Sets the parameters to be updated. It should contain at least one item.
-      # The keys are merged and retained during patch operations.
-    - keys:
-        # Represents the unique identifier for the ConfigMap.
-      - key: user.xml
-        # Defines a list of key-value pairs for a single configuration file.
-        # These parameters are used to update the specified configuration settings.
-        parameters:
-          # Represents the name of the parameter that is to be updated.
-        - key: clickhouse.profiles.web.max_bytes_to_read
-          # Represents the parameter values that are to be updated.
-          # If set to nil, the parameter defined by the Key field will be removed from the configuration file.
-          value: '200000000000'
-      # Specifies the name of the configuration template.
-      name: clickhouse-user-tpl
+    parameters:
+      # Represents the name of the parameter that is to be updated.
+    - key: clickhouse.profiles.web.max_bytes_to_read
+      # Represents the parameter values that are to be updated.
+      # If set to nil, the parameter defined by the Key field will be removed from the configuration file.
+      value: '200000000000'
   # Specifies the maximum number of seconds the OpsRequest will wait for its start conditions to be met before aborting. If set to 0 (default), the start conditions must be met immediately for the OpsRequest to proceed.
   preConditionDeadlineSeconds: 0
   type: Reconfiguring
@@ -656,12 +645,9 @@ kind: OpsRequest
 spec:
   reconfigures:
   - componentName: clickhouse
-    configurations:
-    - keys:
-      - key: user.xml
-        parameters:
-        - key: clickhouse.profiles.web.max_bytes_to_read
-          value: '200000000000'
+    parameters:
+    - key: clickhouse.profiles.web.max_bytes_to_read
+      value: '200000000000'
 ```
 
 To update parameter `max_bytes_to_read`, we use the full path `clickhouse.profiles.web.max_bytes_to_read` w.r.t the `user.xml` file.
