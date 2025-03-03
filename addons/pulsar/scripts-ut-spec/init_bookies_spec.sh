@@ -89,7 +89,7 @@ Describe "Pulsar Init Bookies Bash Script Tests"
 
   Describe "init_bookies()"
     It "initializes bookies"
-      export zkServers="zookeeper.example.com:2181"
+      export ZOOKEEPER_SERVERS="zookeeper.example.com:2181"
 
       wait_for_zookeeper() {
         echo "wait_for_zookeeper called"
@@ -114,11 +114,11 @@ Describe "Pulsar Init Bookies Bash Script Tests"
       The output should include "init_bookkeeper_cluster called"
     End
 
-    It "exits with status 1 when zkServers environment variable is not set"
-      unset zkServers
+    It "exits with status 1 when ZOOKEEPER_SERVERS environment variable is not set"
+      unset ZOOKEEPER_SERVERS
 
       When run init_bookies
-      The output should include "Error: zkServers environment variable is not set, Please set the zkServers environment variable and try again."
+      The output should include "Error: ZOOKEEPER_SERVERS environment variable is not set, Please set the ZOOKEEPER_SERVERS environment variable and try again."
       The status should be failure
     End
   End

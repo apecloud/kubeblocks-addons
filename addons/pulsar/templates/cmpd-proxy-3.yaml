@@ -19,23 +19,23 @@ spec:
       optional: true
   updateStrategy: BestEffortParallel
   configs:
-    - name: proxy-env
-      templateRef: {{ include "pulsar.proxyEnvTplName" . }}
-      namespace: {{ .Release.Namespace }}
-      volumeName: proxy-env
-      constraintRef: {{ include "pulsar.envConstraintName" . }}
-      keys:
-        - conf
-      injectEnvTo:
-        - proxy
-        - check-broker
-      reRenderResourceTypes:
-        - vscale
+{{/*    - name: proxy-env*/}}
+{{/*      templateRef: {{ include "pulsar.proxyEnvTplName" . }}*/}}
+{{/*      namespace: {{ .Release.Namespace }}*/}}
+{{/*      volumeName: proxy-env*/}}
+{{/*      constraintRef: {{ include "pulsar.envConstraintName" . }}*/}}
+{{/*      keys:*/}}
+{{/*        - conf*/}}
+{{/*      injectEnvTo:*/}}
+{{/*        - proxy*/}}
+{{/*        - check-broker*/}}
+{{/*      reRenderResourceTypes:*/}}
+{{/*        - vscale*/}}
     - name: proxy-config
       templateRef: {{ include "pulsar3.proxyConfigTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: pulsar-proxy-config
-      constraintRef: {{ include "pulsar3.proxyConfigConstraintName" . }}
+{{/*      constraintRef: {{ include "pulsar3.proxyConfigConstraintName" . }}*/}}
   scripts:
     - name: pulsar-scripts
       templateRef: {{ include "pulsar.scriptsTplName" . }}
@@ -55,6 +55,23 @@ spec:
         componentVarRef:
           optional: false
           componentName: Required
+    - name: ZOOKEEPER_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "pulsar3.zookeeperCmpdName" . }}
+          name: zookeeper
+          optional: true
+          port:
+            name: client
+            option: Required
+    - name: ZOOKEEPER_SERVERS
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "pulsar3.zookeeperCmpdName" . }}
+          name: zookeeper
+          host: Required
+          optional: true
+      expression: {{ `{{ .ZOOKEEPER_SERVERS }}.{{ .CLUSTER_NAMESPACE }}.svc:{{ .ZOOKEEPER_PORT }}` | toYaml }}
   runtime:
     securityContext:
       runAsNonRoot: true
@@ -70,8 +87,8 @@ spec:
         volumeMounts:
           - name: scripts
             mountPath: /kb-scripts
-          - name: proxy-env
-            mountPath: /opt/pulsar/none
+          - name: pulsar-proxy-config
+            mountPath: /opt/pulsar/conf
         env:
         {{- if .Values.debugEnabled }}
           - name: PULSAR_LOG_ROOT_LEVEL
@@ -153,7 +170,7 @@ spec:
         volumeMounts:
           - name: scripts
             mountPath: /kb-scripts
-          - name: proxy-env
-            mountPath: /opt/pulsar/none
+{{/*          - name: proxy-env*/}}
+{{/*            mountPath: /opt/pulsar/none*/}}
           - name: pulsar-proxy-config
             mountPath: /opt/pulsar/conf
