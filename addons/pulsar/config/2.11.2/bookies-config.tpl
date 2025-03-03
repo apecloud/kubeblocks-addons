@@ -76,3 +76,5 @@ zkLedgersRootPath=/ledgers
   {{- end }}
 {{- end }}
 autoRecoveryDaemonEnabled={{ $autoRecoveryDaemonEnabled }}
+
+zkServers={{ .ZOOKEEPER_SERVERS }}

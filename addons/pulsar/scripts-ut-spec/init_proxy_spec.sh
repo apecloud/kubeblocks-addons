@@ -32,7 +32,7 @@ Describe "Pulsar Init Proxy Bash Script Tests"
 
   Describe "main()"
     It "waits for Zookeeper when metadataStoreUrl is provided"
-      export metadataStoreUrl="zookeeper.example.com:2181"
+      export ZOOKEEPER_SERVERS="zookeeper.example.com:2181"
 
       wait_for_zookeeper() {
         echo "wait_for_zookeeper called with $1"
@@ -43,7 +43,7 @@ Describe "Pulsar Init Proxy Bash Script Tests"
     End
 
     It "skips Zookeeper readiness check when metadataStoreUrl is not provided"
-      unset metadataStoreUrl
+      unset ZOOKEEPER_SERVERS
 
       wait_for_zookeeper() {
         echo "wait_for_zookeeper called"

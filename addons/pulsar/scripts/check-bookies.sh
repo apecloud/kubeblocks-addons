@@ -23,6 +23,24 @@ wait_for_bookkeeper() {
   echo "Bookkeeper started successfully"
 }
 
+merge_bookkeeper_config() {
+  local src_config="conf/bookkeeper.conf"
+  local dest_config="/opt/pulsar/conf/bookkeeper.conf"
+
+  echo "Merging Pulsar configuration files:"
+  echo "  - Source: $src_config"
+  echo "  - Destination: $dest_config"
+  python3 /kb-scripts/merge_pulsar_config.py "$src_config" "$dest_config"
+}
+
+load_env_file() {
+  local pulsar_env_config="/opt/pulsar/conf/pulsar.env"
+
+  if [ -f "${pulsar_env_config}" ];then
+     source ${pulsar_env_config}
+  fi
+}
+
 set_tcp_keepalive() {
   local keepalive_time=1
   local keepalive_intvl=11
@@ -46,6 +64,8 @@ set_tcp_keepalive() {
 ${__SOURCED__:+false} : || return 0
 
 # main
+load_env_file
+merge_bookkeeper_config
 apply_config_from_env
 wait_for_bookkeeper
 set_tcp_keepalive
