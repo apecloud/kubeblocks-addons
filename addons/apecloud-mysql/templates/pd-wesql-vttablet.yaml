@@ -1,0 +1,45 @@
+{{- $vttabletcc := .Files.Get "config/mysql-scale-vttablet-config-effect-scope.yaml" | fromYaml }}
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: {{ include "apecloud-mysql.wesqlVttabletParamsDefName" . }}
+
+  labels:
+    {{- include "apecloud-mysql.labels" . | nindent 4 }}
+spec:
+  reloadAction:
+    autoTrigger:
+      processName: vttablet
+
+  fileName: vttablet.cnf
+  parametersSchema:
+    topLevelKey: VtTabletParameter
+    cue: |-
+      {{- .Files.Get "config/mysql-scale-vttablet-config-constraint.cue" | nindent 6 }}
+
+  ## define static parameter list
+  {{- if hasKey $vttabletcc "staticParameters" }}
+  staticParameters:
+    {{- $params := get $vttabletcc "staticParameters" }}
+    {{- range $params }}
+    - {{ . }}
+    {{- end }}
+  {{- end}}
+
+      ## define dynamic parameter list
+  {{- if hasKey $vttabletcc "dynamicParameters" }}
+  dynamicParameters:
+   {{- $params := get $vttabletcc "dynamicParameters" }}
+   {{- range $params }}
+    - {{ . }}
+   {{- end }}
+ {{- end}}
+
+      ## define immutable parameter list, this feature is not currently supported.
+ {{- if hasKey $vttabletcc "immutableParameters" }}
+  immutableParameters:
+   {{- $params := get $vttabletcc "immutableParameters" }}
+   {{- range $params }}
+    - {{ . }}
+   {{- end }}
+ {{- end}}
