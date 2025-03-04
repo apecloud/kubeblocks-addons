@@ -267,12 +267,9 @@ kind: OpsRequest
 spec:
   reconfigures:
   - componentName: clickhouse
-    configurations:
-    - keys:
-      - key: user.xml
-        parameters:
-        - key: clickhouse.profiles.web.max_bytes_to_read
-          value: '200000000000'
+    parameters:
+    - key: clickhouse.profiles.web.max_bytes_to_read
+      value: '200000000000'
 ```
 
 To update parameter `max_bytes_to_read`, we use the full path `clickhouse.profiles.web.max_bytes_to_read` w.r.t the `user.xml` file.
