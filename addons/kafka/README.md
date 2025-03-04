@@ -569,6 +569,7 @@ spec:
   reconfigures:
     # Specifies the name of the Component.
   - componentName: kafka-combine
+   # Contains a list of ConfigurationItem objects, specifying the Component's configuration template name, upgrade policy, and parameter key-value pairs to be updated.
     parameters:
       # Represents the name of the parameter that is to be updated.
     - key: log.flush.interval.ms
@@ -603,6 +604,215 @@ kubectl patch cluster kafka-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}
 
 kubectl delete cluster kafka-cluster
 ```
+
+### Observability
+
+#### Installing the Prometheus Operator
+
+You may skip this step if you have already installed the Prometheus Operator.
+Or you can follow the steps in [How to install the Prometheus Operator](../docs/install-prometheus.md) to install the Prometheus Operator.
+
+#### Create Cluster
+
+Create a Kafka cluster with separated controller and broker components for instance:
+
+```yaml
+# cat examples/kafka/cluster-separated.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: kafka-separated-cluster
+  namespace: default
+spec:
+  # Specifies the behavior when a Cluster is deleted.
+  # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
+  # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
+  # - `Delete`: Extends the `Halt` policy by also removing PVCs, leading to a thorough cleanup while removing all persistent data.
+  # - `WipeOut`: An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss.
+  terminationPolicy: Delete
+  # Specifies the name of the ClusterDefinition to use when creating a Cluster.
+  # Note: DO NOT UPDATE THIS FIELD
+  # The value must be `kafaka` to create a Kafka Cluster
+  clusterDef: kafka
+  # Specifies the name of the ClusterTopology to be used when creating the
+  # Cluster.
+  # - combined: combined Kafka controller (KRaft) and broker in one Component
+  # - combined_monitor: combined mode with monitor component
+  # - separated: separated KRaft and Broker Components.
+  # - separated_monitor: separated mode with monitor component
+  # Valid options are: [combined,combined_monitor,separated,separated_monitor]
+  topology: separated_monitor
+  # Specifies a list of ClusterComponentSpec objects used to define the
+  # individual Components that make up a Cluster.
+  # This field allows for detailed configuration of each Component within the Cluster
+  componentSpecs:
+    - name: kafka-broker
+      replicas: 1
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
+      env:
+        - name: KB_KAFKA_BROKER_HEAP
+          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+        - name: KB_KAFKA_CONTROLLER_HEAP
+          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+        - name: KB_BROKER_DIRECT_POD_ACCESS
+          value: "true"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+        - name: metadata
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 1Gi
+    - name: kafka-controller
+      replicas: 1
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
+      volumeClaimTemplates:
+        - name: metadata
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 1Gi
+    - name: kafka-exporter
+      replicas: 1
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "1Gi"
+        requests:
+          cpu: "0.1"
+          memory: "0.2Gi"
+```
+
+```bash
+kubectl apply -f examples/kafka/cluster-separated.yaml
+```
+
+#### Create PodMonitor
+
+##### Step 1. Create PodMonitor
+
+Apply the `PodMonitor` file to monitor the cluster.
+Please set the labels correctly in the `PodMonitor` file to match the target pods.
+
+```yaml
+# cat pod monitor file
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: kafka-separated-cluster  # cluster name, set it to your cluster name
+      apps.kubeblocks.io/component-name: kafka-controller  # component name
+```
+
+- Pod Monitor Kafka JVM:
+
+```yaml
+# cat examples/kafka/jvm-pod-monitor.yaml
+
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: kafka-jmx-pod-monitor
+  labels:               # this is labels set in `prometheus.spec.podMonitorSelector`
+    release: prometheus
+spec:
+  jobLabel: app.kubernetes.io/managed-by
+  # defines the labels which are transferred from the
+  # associated Kubernetes `Pod` object onto the ingested metrics
+  # set the lables w.r.t you own needs
+  podTargetLabels:
+  - app.kubernetes.io/instance
+  - app.kubernetes.io/managed-by
+  - apps.kubeblocks.io/component-name
+  - apps.kubeblocks.io/pod-name
+  podMetricsEndpoints:
+    - path: /metrics
+      port: metrics
+      scheme: http
+  namespaceSelector:
+    matchNames:
+      - default
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: kafka-separated-cluster
+      apps.kubeblocks.io/component-name: kafka-controller
+```
+
+```bash
+kubectl apply -f examples/kafka/jvm-pod-monitor.yaml
+```
+
+- Pod Monitor for Kafka Exporter:
+
+```yaml
+# cat examples/kafka/exporter-pod-monitor.yaml
+
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: kafka-exporter-pod-monitor
+  labels:               # this is labels set in `prometheus.spec.podMonitorSelector`
+    release: prometheus
+spec:
+  jobLabel: app.kubernetes.io/managed-by
+  # defines the labels which are transferred from the
+  # associated Kubernetes `Pod` object onto the ingested metrics
+  # set the lables w.r.t you own needs
+  podTargetLabels:
+  - app.kubernetes.io/instance
+  - app.kubernetes.io/managed-by
+  - apps.kubeblocks.io/component-name
+  - apps.kubeblocks.io/pod-name
+  podMetricsEndpoints:
+    - path: /metrics
+      port: metrics
+      scheme: http
+  namespaceSelector:
+    matchNames:
+      - default
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: kafka-separated-cluster
+      apps.kubeblocks.io/component-name: kafka-exporter
+```
+
+```bash
+kubectl apply -f examples/kafka/exporter-pod-monitor.yaml
+```
+
+##### Step 2. Accessing the Grafana Dashboard
+
+Login to the Grafana dashboard and import the dashboard.
+
+KubeBlocks provides a Grafana dashboard for monitoring the Kafka cluster. You can find it at [Kafka Dashboard](https://github.com/apecloud/kubeblocks-addons/tree/main/addons/kafka).
+
+> [!Note]
+>
+> - Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
+> - set `job` to `kubeblocks` on Grafana dashboard to view the metrics.
 
 ### FAQ
 

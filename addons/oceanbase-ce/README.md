@@ -437,8 +437,6 @@ spec:
     # Specifies the name of the Component.
   - componentName: oceanbase
     parameters:
-    # Represents the name of the parameter that is to be updated.
-    #
     - key: system_memory
       # Represents the parameter values that are to be updated.
       # If set to nil, the parameter defined by the Key field will be removed from the configuration file.

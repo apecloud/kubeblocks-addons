@@ -375,6 +375,8 @@ spec:
   reconfigures:
     # Specifies the name of the Component.
   - componentName: mogdb
+    # Defines a list of key-value pairs for a single configuration file.
+    # These parameters are used to update the specified configuration settings.
     parameters:
       # Represents the name of the parameter that is to be updated.
     - key: shared_buffers

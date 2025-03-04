@@ -582,14 +582,11 @@ spec:
   reconfigures:
     # Specifies the name of the Component.
   - componentName: mysql
-    
-   # Defines a list of key-value pairs for a single configuration file.
-   # These parameters are used to update the specified configuration settings.
     parameters:
-     # Represents the name of the parameter that is to be updated.
+      # Represents the name of the parameter that is to be updated.
     - key: innodb_buffer_pool_size
-     # Represents the parameter values that are to be updated.
-     # If set to nil, the parameter defined by the Key field will be removed from the configuration file.
+      # Represents the parameter values that are to be updated.
+      # If set to nil, the parameter defined by the Key field will be removed from the configuration file.
       value: 512M
     - key: max_connections
       value: '600'

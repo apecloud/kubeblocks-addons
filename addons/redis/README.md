@@ -538,6 +538,7 @@ spec:
   reconfigures:
     # Specifies the name of the Component.
   - componentName: redis
+   # Contains a list of ConfigurationItem objects, specifying the Component's configuration template name, upgrade policy, and parameter key-value pairs to be updated.
     parameters:
       # Represents the name of the parameter that is to be updated.
     - key: maxclients
