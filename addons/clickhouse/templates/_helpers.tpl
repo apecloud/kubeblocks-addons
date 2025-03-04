@@ -102,19 +102,25 @@ Define clickhouse-keeper24 component definition regex pattern
 {{- end -}}
 
 {{/*
-Define clickhouse24 config constraint name
+Define clickhouse24 parametersdefinition name
 */}}
 {{- define "clickhouse24.paramsDefName" -}}
 clickhouse-24-pd
 {{- end -}}
 
 {{/*
-Define clickhouse24 config constraint name
+Define clickhouse24 parameter config renderer name
 */}}
 {{- define "clickhouse24.pcrName" -}}
 clickhouse-24-pcr
 {{- end -}}
 
+{{/*
+Define clickhouse-keeper24 parameter config renderer name
+*/}}
+{{- define "clickhouse-keeper24.pcrName" -}}
+clickhouse-keeper-24-pcr
+{{- end -}}
 
 {{/*
 Define clickhouse24 default overrides configuration tpl name

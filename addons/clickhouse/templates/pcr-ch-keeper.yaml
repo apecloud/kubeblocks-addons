@@ -1,0 +1,15 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "clickhouse-keeper24.pcrName" . }}
+  labels:
+    {{- include "clickhouse.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "clickhouse-keeper24.cmpdName" . }}
+
+  configs:
+    - name: ch_keeper_00_default_overrides.xml
+      fileFormatConfig:
+        format: xml
+      reRenderResourceTypes:
+        - hscale

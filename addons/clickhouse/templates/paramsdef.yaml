@@ -1,4 +1,3 @@
-{{- $pd := .Files.Get "config/3.0.2/broker-config-effect-scope.yaml" | fromYaml }}
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParametersDefinition
 metadata:
