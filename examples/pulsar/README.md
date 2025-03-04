@@ -67,7 +67,7 @@ kubectl apply -f examples/pulsar/cluster-enhanced.yaml
 
 A cluster with one brokers, four bookies, one bookies recovery, three proxy, and one zookeepers will be created.
 
-And these components will be created in the following order: Zookeeper and Bookies Recovery, Bookies and Brokder, finally Proxy.
+And these components will be created in the following order: Zookeeper and Bookies Recovery, Bookies and Broker, finally Proxy.
 
 ### Horizontal scaling
 
@@ -104,11 +104,9 @@ kubectl apply -f examples/pulsar/scale-in.yaml
 Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: pulsar-basic-cluster
-  namespace: default
 spec:
   terminationPolicy: Delete
   componentSpecs:
@@ -132,11 +130,9 @@ kubectl apply -f examples/pulsar/verticalscale.yaml
 Alternatively, you may update `spec.componentSpecs.resources` field to the desired resources for vertical scale.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: pulsar-basic-cluster
-  namespace: default
 spec:
   terminationPolicy: Delete
   componentSpecs:
@@ -225,11 +221,9 @@ kubectl create -f examples/pulsar/cluster-service-refer.yaml
 The key changes are, we add a API `serviceRefs` to express such inter-cluster service reference for each component, and we don't need to specify the Zookeeper component in the Pulsar Cluster.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: pulsar-service-ref
-  namespace: default
 spec:
   terminationPolicy: Delete
   componentSpecs:
@@ -269,11 +263,9 @@ kubectl apply -f examples/pulsar/cluster-service-descriptor.yaml
 The key change is , we add a API `serviceRefs.serviceDescriptor` to express such inter-cluster service reference
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: pulsar-service-descriptor
-  namespace: default
 spec:
   terminationPolicy: Delete
   componentSpecs:
@@ -304,11 +296,9 @@ The key difference are:
 1. set env `KB_PULSAR_BROKER_NODEPORT` to `TRUE`, it will set up the advertised listener to the NodePort service.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: pulsar-node-port
-  namespace: default
 spec:
   terminationPolicy: Delete
   services:

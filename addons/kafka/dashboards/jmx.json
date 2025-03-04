@@ -24,18 +24,12 @@
   "description": "jmx exporter monitor",
   "editable": true,
   "fiscalYearStartMonth": 0,
-  "gnetId": 14845,
   "graphTooltip": 0,
-  "id": 7,
+  "id": 58,
   "links": [],
-  "liveNow": false,
   "panels": [
     {
       "collapsed": false,
-      "datasource": {
-        "type": "datasource",
-        "uid": "grafana"
-      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -82,21 +76,25 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [],
           "fields": "/^jdk$/",
           "values": false
         },
+        "showPercentChange": false,
         "text": {
           "valueSize": 20
         },
-        "textMode": "value"
+        "textMode": "value",
+        "wideLayout": true
       },
-      "pluginVersion": "9.2.4",
+      "pluginVersion": "11.5.2",
       "targets": [
         {
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "label_join(jvm_info{job=\"$job\", instance=\"$app$node\"}, \"jdk\", \", \", \"vendor\", \"runtime\", \"version\")",
+          "expr": "label_join(jvm_info{job=\"$job\", instance=\"$app\"}, \"jdk\", \", \", \"vendor\", \"runtime\", \"version\")",
           "format": "table",
           "instant": false,
           "interval": "",
@@ -165,13 +163,13 @@
         "y": 3
       },
       "id": 2,
-      "links": [],
       "maxDataPoints": 100,
       "options": {
         "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -179,14 +177,16 @@
           "fields": "",
           "values": false
         },
+        "showPercentChange": false,
         "text": {},
-        "textMode": "auto"
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "9.2.4",
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "exemplar": true,
-          "expr": "up{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "up{job=\"$job\", instance=\"$app\"}",
           "format": "time_series",
           "instant": true,
           "interval": "",
@@ -209,11 +209,13 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "hidden",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "bars",
             "fillOpacity": 0,
             "gradientMode": "none",
@@ -222,6 +224,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -281,14 +284,16 @@
           "showLegend": false
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "none"
         }
       },
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "exemplar": true,
-          "expr": "up{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "up{job=\"$job\", instance=\"$app\"}",
           "interval": "",
           "legendFormat": "State",
           "refId": "A"
@@ -340,13 +345,13 @@
         "y": 6
       },
       "id": 4,
-      "links": [],
       "maxDataPoints": 100,
       "options": {
         "colorMode": "none",
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -354,14 +359,17 @@
           "fields": "",
           "values": false
         },
+        "showPercentChange": false,
         "text": {},
-        "textMode": "auto"
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "9.2.4",
+      "pluginVersion": "11.5.2",
       "targets": [
         {
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "java_lang_Runtime_Uptime{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "java_lang_runtime_uptime{job=\"$job\", instance=\"$app\"}",
           "format": "time_series",
           "instant": true,
           "interval": "",
@@ -415,13 +423,13 @@
         "y": 6
       },
       "id": 6,
-      "links": [],
       "maxDataPoints": 100,
       "options": {
         "colorMode": "none",
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -429,16 +437,19 @@
           "fields": "",
           "values": false
         },
+        "showPercentChange": false,
         "text": {
           "valueSize": 30
         },
-        "textMode": "value"
+        "textMode": "value",
+        "wideLayout": true
       },
-      "pluginVersion": "9.2.4",
+      "pluginVersion": "11.5.2",
       "targets": [
         {
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "java_lang_Runtime_StartTime{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "java_lang_runtime_starttime{job=\"$job\", instance=\"$app\"}",
           "format": "time_series",
           "instant": true,
           "interval": "",
@@ -496,13 +507,13 @@
         "y": 6
       },
       "id": 12,
-      "links": [],
       "maxDataPoints": 100,
       "options": {
         "colorMode": "none",
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -510,14 +521,17 @@
           "fields": "",
           "values": false
         },
+        "showPercentChange": false,
         "text": {},
-        "textMode": "auto"
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "9.2.4",
+      "pluginVersion": "11.5.2",
       "targets": [
         {
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "java_lang_OperatingSystem_AvailableProcessors{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "java_lang_operatingsystem_availableprocessors{job=\"$job\", instance=\"$app\"}",
           "format": "time_series",
           "instant": true,
           "interval": "",
@@ -571,13 +585,13 @@
         "y": 6
       },
       "id": 46,
-      "links": [],
       "maxDataPoints": 100,
       "options": {
         "colorMode": "value",
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "mean"
@@ -585,15 +599,17 @@
           "fields": "",
           "values": false
         },
+        "showPercentChange": false,
         "text": {},
-        "textMode": "auto"
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "9.2.4",
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "dsType": "influxdb",
           "exemplar": true,
-          "expr": "java_lang_OperatingSystem_TotalPhysicalMemorySize{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "java_lang_operatingsystem_totalphysicalmemorysize{job=\"$job\", instance=\"$app\"}",
           "format": "time_series",
           "groupBy": [
             {
@@ -682,13 +698,13 @@
         "y": 6
       },
       "id": 54,
-      "links": [],
       "maxDataPoints": 100,
       "options": {
         "colorMode": "none",
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "mean"
@@ -696,15 +712,18 @@
           "fields": "",
           "values": false
         },
+        "showPercentChange": false,
         "text": {},
-        "textMode": "auto"
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "9.2.4",
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "dsType": "influxdb",
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "java_lang_OperatingSystem_TotalSwapSpaceSize{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "java_lang_operatingsystem_totalswapspacesize{job=\"$job\", instance=\"$app\"}",
           "format": "time_series",
           "groupBy": [
             {
@@ -725,6 +744,7 @@
           "legendFormat": "Total SWAP",
           "orderByTime": "ASC",
           "policy": "default",
+          "range": true,
           "refId": "A",
           "resultFormat": "time_series",
           "select": [
@@ -795,13 +815,13 @@
         "y": 6
       },
       "id": 16,
-      "links": [],
       "maxDataPoints": 100,
       "options": {
         "colorMode": "none",
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -809,14 +829,17 @@
           "fields": "",
           "values": false
         },
+        "showPercentChange": false,
         "text": {},
-        "textMode": "auto"
+        "textMode": "auto",
+        "wideLayout": true
       },
-      "pluginVersion": "9.2.4",
+      "pluginVersion": "11.5.2",
       "targets": [
         {
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "java_lang_OperatingSystem_OpenFileDescriptorCount{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "java_lang_operatingsystem_openfiledescriptorcount{job=\"$job\", instance=\"$app\"}",
           "format": "time_series",
           "instant": false,
           "interval": "",
@@ -878,6 +901,7 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "horizontal",
+        "percentChangeColorMode": "standard",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -885,24 +909,26 @@
           "fields": "",
           "values": false
         },
+        "showPercentChange": false,
         "text": {
           "titleSize": 20,
           "valueSize": 20
         },
-        "textMode": "value_and_name"
+        "textMode": "value_and_name",
+        "wideLayout": true
       },
-      "pluginVersion": "9.2.4",
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "exemplar": true,
-          "expr": "java_lang_OperatingSystem_ProcessCpuTime{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "java_lang_operatingsystem_processcputime{job=\"$job\", instance=\"$app\"}",
           "interval": "",
           "legendFormat": "Process",
           "refId": "A"
         },
         {
           "exemplar": true,
-          "expr": "java_lang_Threading_CurrentThreadCpuTime{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "java_lang_threading_currentthreadcputime{job=\"$job\", instance=\"$app\"}",
           "hide": false,
           "interval": "",
           "legendFormat": "Current Thread",
@@ -910,7 +936,7 @@
         },
         {
           "exemplar": true,
-          "expr": "process_cpu_seconds_total{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "process_cpu_seconds_total{job=\"$job\", instance=\"$app\"}",
           "hide": false,
           "interval": "",
           "legendFormat": "Total Spent",
@@ -972,9 +998,10 @@
         "y": 9
       },
       "id": 14,
-      "links": [],
       "maxDataPoints": 100,
       "options": {
+        "minVizHeight": 75,
+        "minVizWidth": 75,
         "orientation": "horizontal",
         "reduceOptions": {
           "calcs": [
@@ -985,13 +1012,14 @@
         },
         "showThresholdLabels": false,
         "showThresholdMarkers": true,
+        "sizing": "auto",
         "text": {}
       },
-      "pluginVersion": "9.2.4",
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "exemplar": true,
-          "expr": "java_lang_OperatingSystem_SystemCpuLoad{job=\"$job\", instance=\"$app$node\"} * 100",
+          "expr": "java_lang_operatingsystem_systemcpuload{job=\"$job\", instance=\"$app\"} * 100",
           "format": "time_series",
           "instant": false,
           "interval": "",
@@ -1055,9 +1083,10 @@
         "y": 9
       },
       "id": 10,
-      "links": [],
       "maxDataPoints": 100,
       "options": {
+        "minVizHeight": 75,
+        "minVizWidth": 75,
         "orientation": "horizontal",
         "reduceOptions": {
           "calcs": [
@@ -1068,13 +1097,14 @@
         },
         "showThresholdLabels": false,
         "showThresholdMarkers": true,
+        "sizing": "auto",
         "text": {}
       },
-      "pluginVersion": "9.2.4",
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "exemplar": true,
-          "expr": "avg_over_time(java_lang_OperatingSystem_ProcessCpuLoad{job=\"$job\", instance=\"$app$node\"}[1m]) * 100",
+          "expr": "avg_over_time(java_lang_operatingsystem_processcpuload{job=\"$job\", instance=\"$app\"}[1m]) * 100",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -1137,9 +1167,10 @@
         "y": 9
       },
       "id": 58,
-      "links": [],
       "maxDataPoints": 100,
       "options": {
+        "minVizHeight": 75,
+        "minVizWidth": 75,
         "orientation": "horizontal",
         "reduceOptions": {
           "calcs": [
@@ -1150,14 +1181,15 @@
         },
         "showThresholdLabels": false,
         "showThresholdMarkers": true,
+        "sizing": "auto",
         "text": {}
       },
-      "pluginVersion": "9.2.4",
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "dsType": "influxdb",
           "exemplar": true,
-          "expr": "avg_over_time(java_lang_OperatingSystem_SystemCpuLoad{job=\"$job\", instance=\"$app$node\"}[1m]) * 100",
+          "expr": "avg_over_time(java_lang_operatingsystem_systemcpuload{job=\"$job\", instance=\"$app\"}[1m]) * 100",
           "format": "time_series",
           "groupBy": [
             {
@@ -1254,9 +1286,10 @@
         "y": 9
       },
       "id": 48,
-      "links": [],
       "maxDataPoints": 100,
       "options": {
+        "minVizHeight": 75,
+        "minVizWidth": 75,
         "orientation": "horizontal",
         "reduceOptions": {
           "calcs": [
@@ -1267,14 +1300,15 @@
         },
         "showThresholdLabels": false,
         "showThresholdMarkers": true,
+        "sizing": "auto",
         "text": {}
       },
-      "pluginVersion": "9.2.4",
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "dsType": "influxdb",
           "exemplar": true,
-          "expr": "100 - (100 * java_lang_OperatingSystem_FreePhysicalMemorySize{job=\"$job\", instance=\"$app$node\"} / on(instance) java_lang_OperatingSystem_TotalPhysicalMemorySize{job=\"$job\", instance=\"$app$node\"})",
+          "expr": "100 - (100 * java_lang_operatingsystem_freephysicalmemorysize{job=\"$job\", instance=\"$app\"} / on(instance) java_lang_operatingsystem_totalphysicalmemorysize{job=\"$job\", instance=\"$app\"})",
           "format": "time_series",
           "groupBy": [
             {
@@ -1370,9 +1404,10 @@
         "y": 9
       },
       "id": 52,
-      "links": [],
       "maxDataPoints": 100,
       "options": {
+        "minVizHeight": 75,
+        "minVizWidth": 75,
         "orientation": "horizontal",
         "reduceOptions": {
           "calcs": [
@@ -1383,14 +1418,15 @@
         },
         "showThresholdLabels": false,
         "showThresholdMarkers": true,
+        "sizing": "auto",
         "text": {}
       },
-      "pluginVersion": "9.2.4",
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "dsType": "influxdb",
           "exemplar": true,
-          "expr": "100 - (java_lang_OperatingSystem_FreeSwapSpaceSize{job=\"$job\", instance=\"$app$node\"} / on(instance) java_lang_OperatingSystem_TotalSwapSpaceSize{job=\"$job\", instance=\"$app$node\"} * 100)",
+          "expr": "100 - (java_lang_operatingsystem_freeswapspacesize{job=\"$job\", instance=\"$app\"} / on(instance) java_lang_operatingsystem_totalswapspacesize{job=\"$job\", instance=\"$app\"} * 100)",
           "format": "time_series",
           "groupBy": [
             {
@@ -1445,11 +1481,13 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
@@ -1458,6 +1496,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -1500,7 +1539,6 @@
         "y": 13
       },
       "id": 60,
-      "links": [],
       "options": {
         "legend": {
           "calcs": [
@@ -1513,15 +1551,16 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "none"
         }
       },
-      "pluginVersion": "8.1.0",
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "exemplar": true,
-          "expr": "java_lang_OperatingSystem_SystemCpuLoad{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "java_lang_operatingsystem_systemcpuload{job=\"$job\", instance=\"$app\"}",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
@@ -1532,7 +1571,7 @@
         {
           "dsType": "influxdb",
           "exemplar": true,
-          "expr": "java_lang_OperatingSystem_ProcessCpuLoad{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "java_lang_operatingsystem_processcpuload{job=\"$job\", instance=\"$app\"}",
           "format": "time_series",
           "groupBy": [
             {
@@ -1587,11 +1626,13 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
@@ -1600,6 +1641,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineStyle": {
               "fill": "solid"
@@ -1654,14 +1696,16 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "none"
         }
       },
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "exemplar": true,
-          "expr": "process_open_fds{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "process_open_fds{job=\"$job\", instance=\"$app\"}",
           "interval": "",
           "legendFormat": "Descriptors",
           "refId": "A"
@@ -1672,10 +1716,6 @@
     },
     {
       "collapsed": false,
-      "datasource": {
-        "type": "datasource",
-        "uid": "grafana"
-      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -1684,34 +1724,6 @@
       },
       "id": 110,
       "panels": [],
-      "targets": [
-        {
-          "format": "time_series",
-          "group": [],
-          "metricColumn": "none",
-          "rawQuery": false,
-          "rawSql": "SELECT\n  $__time(time_column),\n  value1\nFROM\n  metric_table\nWHERE\n  $__timeFilter(time_column)\n",
-          "refId": "A",
-          "select": [
-            [
-              {
-                "params": [
-                  "value"
-                ],
-                "type": "column"
-              }
-            ]
-          ],
-          "timeColumn": "time",
-          "where": [
-            {
-              "name": "$__timeFilter",
-              "params": [],
-              "type": "macro"
-            }
-          ]
-        }
-      ],
       "title": "Memory",
       "type": "row"
     },
@@ -1726,11 +1738,13 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
@@ -1739,6 +1753,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -1780,7 +1795,6 @@
         "y": 23
       },
       "id": 74,
-      "links": [],
       "options": {
         "legend": {
           "calcs": [
@@ -1794,15 +1808,16 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "none"
         }
       },
-      "pluginVersion": "8.1.0",
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "exemplar": true,
-          "expr": "java_lang_OperatingSystem_FreePhysicalMemorySize{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "java_lang_operatingsystem_freephysicalmemorysize{job=\"$job\", instance=\"$app\"}",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -1811,7 +1826,7 @@
         },
         {
           "exemplar": true,
-          "expr": "java_lang_OperatingSystem_TotalPhysicalMemorySize{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "java_lang_operatingsystem_totalphysicalmemorysize{job=\"$job\", instance=\"$app\"}",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -1820,7 +1835,7 @@
         },
         {
           "exemplar": true,
-          "expr": "java_lang_OperatingSystem_CommittedVirtualMemorySize{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "java_lang_operatingsystem_committedvirtualmemorysize{job=\"$job\", instance=\"$app\"}",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -1843,11 +1858,13 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
@@ -1856,6 +1873,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -1910,21 +1928,25 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "single",
           "sort": "none"
         }
       },
+      "pluginVersion": "11.5.2",
       "targets": [
         {
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "process_resident_memory_bytes{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "process_resident_memory_bytes{job=\"$job\", instance=\"$app\"}",
           "interval": "",
           "legendFormat": "Resident",
+          "range": true,
           "refId": "A"
         },
         {
           "exemplar": true,
-          "expr": "process_virtual_memory_bytes{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "process_virtual_memory_bytes{job=\"$job\", instance=\"$app\"}",
           "hide": false,
           "interval": "",
           "legendFormat": "Virtual",
@@ -1936,10 +1958,6 @@
     },
     {
       "collapsed": false,
-      "datasource": {
-        "type": "datasource",
-        "uid": "grafana"
-      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -1963,9 +1981,13 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
@@ -1974,6 +1996,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -1995,7 +2018,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -2009,7 +2033,7 @@
       },
       "gridPos": {
         "h": 9,
-        "w": 12,
+        "w": 24,
         "x": 0,
         "y": 34
       },
@@ -2027,23 +2051,27 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "none"
         }
       },
+      "pluginVersion": "11.5.2",
       "repeat": "memarea",
       "repeatDirection": "h",
       "targets": [
         {
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "jvm_memory_bytes_used{area=~\"$memarea\",job=\"$job\", instance=\"$app$node\"}",
+          "expr": "jvm_memory_bytes_used{area=~\"$memarea\",job=\"$job\", instance=\"$app\"}",
           "interval": "",
           "legendFormat": "Used",
+          "range": true,
           "refId": "A"
         },
         {
           "exemplar": true,
-          "expr": "jvm_memory_bytes_max{area=~\"$memarea\",job=\"$job\",instance=\"$app$node\"}",
+          "expr": "jvm_memory_bytes_max{area=~\"$memarea\",job=\"$job\",instance=\"$app\"}",
           "hide": false,
           "interval": "",
           "legendFormat": "Max",
@@ -2096,7 +2124,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -2110,12 +2139,11 @@
       },
       "gridPos": {
         "h": 9,
-        "w": 12,
+        "w": 24,
         "x": 0,
         "y": 43
       },
       "id": 82,
-      "links": [],
       "options": {
         "legend": {
           "calcs": [
@@ -2139,7 +2167,7 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "jvm_memory_bytes_used{area=\"$memarea\",job=\"$job\", instance=\"$app$node\"} / ignoring(area) group_left java_lang_OperatingSystem_TotalPhysicalMemorySize{job=\"$job\", instance=\"$app$node\"} *100",
+          "expr": "jvm_memory_bytes_used{area=\"$memarea\",job=\"$job\", instance=\"$app\"} / ignoring(area) group_left java_lang_operatingsystem_totalphysicalmemorysize{job=\"$job\", instance=\"$app\"} *100",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 5,
@@ -2150,7 +2178,7 @@
         },
         {
           "exemplar": true,
-          "expr": "jvm_memory_bytes_used{area=\"$memarea\",job=\"$job\", instance=\"$app$node\"} / (jvm_memory_bytes_max{area=\"$memarea\", job=\"$job\",instance=\"$app$node\"} >=0) *100",
+          "expr": "jvm_memory_bytes_used{area=\"$memarea\",job=\"$job\", instance=\"$app\"} / (jvm_memory_bytes_max{area=\"$memarea\", job=\"$job\",instance=\"$app\"} >=0) *100",
           "format": "time_series",
           "hide": false,
           "interval": "",
@@ -2175,9 +2203,13 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
@@ -2186,6 +2218,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 1,
@@ -2207,7 +2240,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -2235,14 +2269,16 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "none"
         }
       },
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "exemplar": true,
-          "expr": "jvm_memory_bytes_committed{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "jvm_memory_bytes_committed{job=\"$job\", instance=\"$app\"}",
           "interval": "",
           "legendFormat": "{{area}}",
           "refId": "A"
@@ -2253,10 +2289,6 @@
     },
     {
       "collapsed": false,
-      "datasource": {
-        "type": "datasource",
-        "uid": "grafana"
-      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -2311,7 +2343,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -2325,7 +2358,7 @@
       },
       "gridPos": {
         "h": 9,
-        "w": 12,
+        "w": 24,
         "x": 0,
         "y": 62
       },
@@ -2357,7 +2390,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "jvm_memory_pool_bytes_max{pool=~\"$mempool\",job=\"$job\",instance=\"$app$node\"}",
+          "expr": "jvm_memory_pool_bytes_max{pool=~\"$mempool\",job=\"$job\",instance=\"$app\"}",
           "interval": "",
           "legendFormat": "Max",
           "refId": "A"
@@ -2368,7 +2401,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "jvm_memory_pool_bytes_used{pool=~\"$mempool\",job=\"$job\",instance=\"$app$node\"}",
+          "expr": "jvm_memory_pool_bytes_used{pool=~\"$mempool\",job=\"$job\",instance=\"$app\"}",
           "hide": false,
           "interval": "",
           "legendFormat": "Used",
@@ -2380,7 +2413,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "jvm_memory_pool_bytes_committed{pool=~\"$mempool\",job=\"$job\",instance=\"$app$node\"}",
+          "expr": "jvm_memory_pool_bytes_committed{pool=~\"$mempool\",job=\"$job\",instance=\"$app\"}",
           "hide": false,
           "interval": "",
           "legendFormat": "Committed",
@@ -2393,7 +2426,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(jvm_memory_pool_bytes_committed{pool=~\"$mempool\",job=\"$job\",instance=\"$app$node\"}[$__rate_interval])",
+          "expr": "rate(jvm_memory_pool_bytes_committed{pool=~\"$mempool\",job=\"$job\",instance=\"$app\"}[$__rate_interval])",
           "format": "time_series",
           "hide": false,
           "instant": false,
@@ -2408,10 +2441,6 @@
     },
     {
       "collapsed": false,
-      "datasource": {
-        "type": "datasource",
-        "uid": "grafana"
-      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -2435,9 +2464,13 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
@@ -2446,6 +2479,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -2468,7 +2502,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -2487,7 +2522,6 @@
         "y": 72
       },
       "id": 22,
-      "links": [],
       "options": {
         "legend": {
           "calcs": [
@@ -2500,15 +2534,16 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "none"
         }
       },
-      "pluginVersion": "8.1.0",
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "exemplar": true,
-          "expr": "increase(jvm_gc_collection_seconds_count{job=\"$job\", instance=\"$app$node\"}[$__interval])",
+          "expr": "increase(jvm_gc_collection_seconds_count{job=\"$job\", instance=\"$app\"}[$__interval])",
           "format": "time_series",
           "interval": "60s",
           "intervalFactor": 1,
@@ -2531,9 +2566,13 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
@@ -2542,6 +2581,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -2563,7 +2603,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -2582,7 +2623,6 @@
         "y": 72
       },
       "id": 161,
-      "links": [],
       "options": {
         "legend": {
           "calcs": [
@@ -2595,11 +2635,12 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "none"
         }
       },
-      "pluginVersion": "8.1.0",
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "datasource": {
@@ -2608,7 +2649,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "rate(jvm_gc_collection_seconds_count{job=\"$job\", instance=\"$app$node\"}[$__rate_interval])",
+          "expr": "rate(jvm_gc_collection_seconds_count{job=\"$job\", instance=\"$app\"}[$__rate_interval])",
           "format": "time_series",
           "interval": "60s",
           "intervalFactor": 1,
@@ -2632,9 +2673,13 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
@@ -2643,6 +2688,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -2665,7 +2711,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -2684,7 +2731,6 @@
         "y": 80
       },
       "id": 66,
-      "links": [],
       "options": {
         "legend": {
           "calcs": [
@@ -2697,15 +2743,16 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "none"
         }
       },
-      "pluginVersion": "8.1.0",
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "exemplar": true,
-          "expr": "increase(jvm_gc_collection_seconds_sum{job=\"$job\", instance=\"$app$node\"}[$__interval])",
+          "expr": "increase(jvm_gc_collection_seconds_sum{job=\"$job\", instance=\"$app\"}[$__interval])",
           "format": "time_series",
           "interval": "60s",
           "intervalFactor": 5,
@@ -2730,9 +2777,13 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
@@ -2741,6 +2792,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -2762,7 +2814,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -2781,7 +2834,6 @@
         "y": 80
       },
       "id": 24,
-      "links": [],
       "options": {
         "legend": {
           "calcs": [
@@ -2794,15 +2846,16 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "none"
         }
       },
-      "pluginVersion": "8.1.0",
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "exemplar": true,
-          "expr": "rate(jvm_gc_collection_seconds_sum{job=\"$job\", instance=\"$app$node\"}[$__rate_interval])",
+          "expr": "rate(jvm_gc_collection_seconds_sum{job=\"$job\", instance=\"$app\"}[$__rate_interval])",
           "format": "time_series",
           "interval": "60s",
           "intervalFactor": 1,
@@ -2815,10 +2868,6 @@
     },
     {
       "collapsed": false,
-      "datasource": {
-        "type": "datasource",
-        "uid": "grafana"
-      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -2842,9 +2891,13 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
@@ -2853,6 +2906,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -2874,7 +2928,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -2889,7 +2944,6 @@
         "y": 89
       },
       "id": 40,
-      "links": [],
       "options": {
         "legend": {
           "calcs": [
@@ -2903,15 +2957,16 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "none"
         }
       },
-      "pluginVersion": "8.1.0",
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "exemplar": true,
-          "expr": "java_lang_Threading_ThreadCount{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "java_lang_threading_threadcount{job=\"$job\", instance=\"$app\"}",
           "format": "time_series",
           "instant": false,
           "interval": "",
@@ -2921,7 +2976,7 @@
         },
         {
           "exemplar": true,
-          "expr": "java_lang_Threading_DaemonThreadCount{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "java_lang_threading_daemonthreadcount{job=\"$job\", instance=\"$app\"}",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -2930,7 +2985,7 @@
         },
         {
           "exemplar": true,
-          "expr": "java_lang_Threading_PeakThreadCount{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "java_lang_threading_peakthreadcount{job=\"$job\", instance=\"$app\"}",
           "format": "time_series",
           "hide": false,
           "interval": "",
@@ -2940,7 +2995,7 @@
         },
         {
           "exemplar": true,
-          "expr": "java_lang_Threading_TotalStartedThreadCount{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "java_lang_threading_totalstartedthreadcount{job=\"$job\", instance=\"$app\"}",
           "format": "time_series",
           "hide": false,
           "interval": "",
@@ -2964,9 +3019,13 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
@@ -2975,6 +3034,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -2996,7 +3056,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -3027,10 +3088,12 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "none"
         }
       },
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "datasource": {
@@ -3038,7 +3101,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "jvm_threads_current{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "jvm_threads_current{job=\"$job\", instance=\"$app\"}",
           "interval": "",
           "legendFormat": "Current",
           "refId": "A"
@@ -3049,7 +3112,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "jvm_threads_daemon{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "jvm_threads_daemon{job=\"$job\", instance=\"$app\"}",
           "hide": false,
           "interval": "",
           "legendFormat": "Daemon",
@@ -3061,7 +3124,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "jvm_threads_deadlocked{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "jvm_threads_deadlocked{job=\"$job\", instance=\"$app\"}",
           "hide": false,
           "interval": "",
           "legendFormat": "Deadlocked",
@@ -3073,7 +3136,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "jvm_threads_deadlocked_monitor{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "jvm_threads_deadlocked_monitor{job=\"$job\", instance=\"$app\"}",
           "hide": false,
           "interval": "",
           "legendFormat": "Deadlocked monitor",
@@ -3085,7 +3148,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "jvm_threads_peak{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "jvm_threads_peak{job=\"$job\", instance=\"$app\"}",
           "hide": false,
           "interval": "",
           "legendFormat": "Peak",
@@ -3097,7 +3160,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "jvm_threads_started_total{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "jvm_threads_started_total{job=\"$job\", instance=\"$app\"}",
           "hide": false,
           "interval": "",
           "legendFormat": "Started Total",
@@ -3119,9 +3182,13 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
@@ -3130,6 +3197,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -3151,7 +3219,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -3166,7 +3235,6 @@
         "y": 100
       },
       "id": 115,
-      "links": [],
       "options": {
         "legend": {
           "calcs": [
@@ -3179,11 +3247,12 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "none"
         }
       },
-      "pluginVersion": "8.1.0",
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "datasource": {
@@ -3191,7 +3260,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "increase(java_lang_Threading_ThreadCount{job=\"$job\", instance=\"$app$node\"}[$__interval])",
+          "expr": "increase(java_lang_threading_threadcount{job=\"$job\", instance=\"$app\"}[$__interval])",
           "format": "time_series",
           "instant": false,
           "interval": "60s",
@@ -3205,7 +3274,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "increase(java_lang_Threading_DaemonThreadCount{job=\"$job\", instance=\"$app$node\"}[$__interval])",
+          "expr": "increase(java_lang_threading_daemonthreadcount{job=\"$job\", instance=\"$app\"}[$__interval])",
           "format": "time_series",
           "interval": "60s",
           "intervalFactor": 1,
@@ -3218,7 +3287,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "increase(java_lang_Threading_PeakThreadCount{job=\"$job\", instance=\"$app$node\"}[$__interval])",
+          "expr": "increase(java_lang_threading_peakthreadcount{job=\"$job\", instance=\"$app\"}[$__interval])",
           "format": "time_series",
           "hide": false,
           "interval": "60s",
@@ -3232,7 +3301,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "increase(java_lang_Threading_TotalStartedThreadCount{job=\"$job\", instance=\"$app$node\"}[$__interval])",
+          "expr": "increase(java_lang_threading_totalstartedthreadcount{job=\"$job\", instance=\"$app\"}[$__interval])",
           "format": "time_series",
           "hide": false,
           "interval": "60s",
@@ -3256,9 +3325,13 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
@@ -3267,6 +3340,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -3288,7 +3362,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -3318,21 +3393,23 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "none"
         }
       },
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "exemplar": true,
-          "expr": "increase(jvm_threads_current{job=\"$job\", instance=\"$app$node\"}[$__interval])",
+          "expr": "increase(jvm_threads_current{job=\"$job\", instance=\"$app\"}[$__interval])",
           "interval": "60s",
           "legendFormat": "Current",
           "refId": "A"
         },
         {
           "exemplar": true,
-          "expr": "increase(jvm_threads_daemon{job=\"$job\", instance=\"$app$node\"}[$__interval])",
+          "expr": "increase(jvm_threads_daemon{job=\"$job\", instance=\"$app\"}[$__interval])",
           "hide": false,
           "interval": "60s",
           "legendFormat": "Daemon",
@@ -3340,7 +3417,7 @@
         },
         {
           "exemplar": true,
-          "expr": "increase(jvm_threads_deadlocked{job=\"$job\", instance=\"$app$node\"}[$__interval])",
+          "expr": "increase(jvm_threads_deadlocked{job=\"$job\", instance=\"$app\"}[$__interval])",
           "hide": false,
           "interval": "60s",
           "legendFormat": "Deadlocked",
@@ -3348,7 +3425,7 @@
         },
         {
           "exemplar": true,
-          "expr": "increase(jvm_threads_deadlocked_monitor{job=\"$job\", instance=\"$app$node\"}[$__interval])",
+          "expr": "increase(jvm_threads_deadlocked_monitor{job=\"$job\", instance=\"$app\"}[$__interval])",
           "hide": false,
           "interval": "60s",
           "legendFormat": "Deadlocked monitor",
@@ -3356,7 +3433,7 @@
         },
         {
           "exemplar": true,
-          "expr": "increase(jvm_threads_peak{job=\"$job\", instance=\"$app$node\"}[$__interval])",
+          "expr": "increase(jvm_threads_peak{job=\"$job\", instance=\"$app\"}[$__interval])",
           "hide": false,
           "interval": "60s",
           "legendFormat": "Peak",
@@ -3364,7 +3441,7 @@
         },
         {
           "exemplar": true,
-          "expr": "increase(jvm_threads_started_total{job=\"$job\", instance=\"$app$node\"}[$__interval])",
+          "expr": "increase(jvm_threads_started_total{job=\"$job\", instance=\"$app\"}[$__interval])",
           "hide": false,
           "interval": "60s",
           "legendFormat": "Started Total",
@@ -3386,9 +3463,13 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
@@ -3397,6 +3478,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -3418,7 +3500,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -3433,7 +3516,6 @@
         "y": 111
       },
       "id": 171,
-      "links": [],
       "options": {
         "legend": {
           "calcs": [
@@ -3446,11 +3528,12 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "none"
         }
       },
-      "pluginVersion": "8.1.0",
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "datasource": {
@@ -3458,7 +3541,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(java_lang_Threading_ThreadCount{job=\"$job\", instance=\"$app$node\"}[$__rate_interval])",
+          "expr": "rate(java_lang_threading_threadcount{job=\"$job\", instance=\"$app\"}[$__rate_interval])",
           "format": "time_series",
           "instant": false,
           "interval": "60s",
@@ -3472,7 +3555,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(java_lang_Threading_DaemonThreadCount{job=\"$job\", instance=\"$app$node\"}[$__rate_interval])",
+          "expr": "rate(java_lang_threading_daemonthreadcount{job=\"$job\", instance=\"$app\"}[$__rate_interval])",
           "format": "time_series",
           "interval": "60s",
           "intervalFactor": 1,
@@ -3485,7 +3568,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(java_lang_Threading_PeakThreadCount{job=\"$job\", instance=\"$app$node\"}[$__rate_interval])",
+          "expr": "rate(java_lang_threading_peakthreadcount{job=\"$job\", instance=\"$app\"}[$__rate_interval])",
           "format": "time_series",
           "hide": false,
           "interval": "60s",
@@ -3499,7 +3582,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(java_lang_Threading_TotalStartedThreadCount{job=\"$job\", instance=\"$app$node\"}[$__rate_interval])",
+          "expr": "rate(java_lang_threading_totalstartedthreadcount{job=\"$job\", instance=\"$app\"}[$__rate_interval])",
           "format": "time_series",
           "hide": false,
           "interval": "60s",
@@ -3523,9 +3606,13 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
@@ -3534,6 +3621,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -3555,7 +3643,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -3585,10 +3674,12 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "none"
         }
       },
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "datasource": {
@@ -3596,7 +3687,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "increase(jvm_threads_current{job=\"$job\", instance=\"$app$node\"}[$__rate_interval])",
+          "expr": "increase(jvm_threads_current{job=\"$job\", instance=\"$app\"}[$__rate_interval])",
           "interval": "60s",
           "legendFormat": "Current",
           "refId": "A"
@@ -3607,7 +3698,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(jvm_threads_daemon{job=\"$job\", instance=\"$app$node\"}[$__rate_interval])",
+          "expr": "rate(jvm_threads_daemon{job=\"$job\", instance=\"$app\"}[$__rate_interval])",
           "hide": false,
           "interval": "60s",
           "legendFormat": "Daemon",
@@ -3619,7 +3710,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(jvm_threads_deadlocked{job=\"$job\", instance=\"$app$node\"}[$__rate_interval])",
+          "expr": "rate(jvm_threads_deadlocked{job=\"$job\", instance=\"$app\"}[$__rate_interval])",
           "hide": false,
           "interval": "60s",
           "legendFormat": "Deadlocked",
@@ -3631,7 +3722,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(jvm_threads_deadlocked_monitor{job=\"$job\", instance=\"$app$node\"}[$__rate_interval])",
+          "expr": "rate(jvm_threads_deadlocked_monitor{job=\"$job\", instance=\"$app\"}[$__rate_interval])",
           "hide": false,
           "interval": "60s",
           "legendFormat": "Deadlocked monitor",
@@ -3643,7 +3734,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(jvm_threads_peak{job=\"$job\", instance=\"$app$node\"}[$__rate_interval])",
+          "expr": "rate(jvm_threads_peak{job=\"$job\", instance=\"$app\"}[$__rate_interval])",
           "hide": false,
           "interval": "60s",
           "legendFormat": "Peak",
@@ -3655,7 +3746,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(jvm_threads_started_total{job=\"$job\", instance=\"$app$node\"}[$__rate_interval])",
+          "expr": "rate(jvm_threads_started_total{job=\"$job\", instance=\"$app\"}[$__rate_interval])",
           "hide": false,
           "interval": "60s",
           "legendFormat": "Started Total",
@@ -3667,10 +3758,6 @@
     },
     {
       "collapsed": false,
-      "datasource": {
-        "type": "datasource",
-        "uid": "grafana"
-      },
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -3694,9 +3781,13 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
@@ -3705,6 +3796,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -3726,7 +3818,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -3745,7 +3838,6 @@
         "y": 123
       },
       "id": 44,
-      "links": [],
       "options": {
         "legend": {
           "calcs": [
@@ -3759,15 +3851,16 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "none"
         }
       },
-      "pluginVersion": "8.1.0",
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "exemplar": true,
-          "expr": "java_lang_ClassLoading_LoadedClassCount{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "java_lang_classloading_loadedclasscount{job=\"$job\", instance=\"$app\"}",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -3776,7 +3869,7 @@
         },
         {
           "exemplar": true,
-          "expr": "java_lang_ClassLoading_UnloadedClassCount{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "java_lang_classloading_unloadedclasscount{job=\"$job\", instance=\"$app\"}",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -3799,9 +3892,13 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
@@ -3810,6 +3907,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -3832,7 +3930,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -3851,7 +3950,6 @@
         "y": 123
       },
       "id": 70,
-      "links": [],
       "options": {
         "legend": {
           "calcs": [
@@ -3865,11 +3963,12 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "none"
         }
       },
-      "pluginVersion": "8.1.0",
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "datasource": {
@@ -3877,7 +3976,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "jvm_classes_currently_loaded {job=\"$job\", instance=\"$app$node\"}",
+          "expr": "jvm_classes_currently_loaded {job=\"$job\", instance=\"$app\"}",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 5,
@@ -3892,7 +3991,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "jvm_classes_loaded_total{job=\"$job\", instance=\"$app$node\"}",
+          "expr": "jvm_classes_loaded_total{job=\"$job\", instance=\"$app\"}",
           "format": "time_series",
           "hide": false,
           "interval": "",
@@ -3918,9 +4017,13 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
@@ -3929,6 +4032,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -3950,7 +4054,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -3969,7 +4074,6 @@
         "y": 131
       },
       "id": 117,
-      "links": [],
       "options": {
         "legend": {
           "calcs": [
@@ -3983,24 +4087,27 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "none"
         }
       },
-      "pluginVersion": "8.1.0",
+      "pluginVersion": "11.5.2",
       "targets": [
         {
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(java_lang_ClassLoading_LoadedClassCount{job=\"$job\", instance=\"$app$node\"}[$__interval])",
+          "expr": "increase(java_lang_classloading_loadedclasscount{job=\"$job\", instance=\"$app\"}[$__interval])",
           "format": "time_series",
           "interval": "60s",
           "intervalFactor": 1,
           "legendFormat": "loaded",
+          "range": true,
           "refId": "A"
         },
         {
           "exemplar": true,
-          "expr": "increase(java_lang_ClassLoading_UnloadedClassCount{job=\"$job\", instance=\"$app$node\"}[$__interval])",
+          "expr": "increase(java_lang_classloading_unloadedclasscount{job=\"$job\", instance=\"$app\"}[$__interval])",
           "format": "time_series",
           "interval": "60s",
           "intervalFactor": 1,
@@ -4023,9 +4130,13 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
@@ -4034,6 +4145,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -4056,7 +4168,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -4075,7 +4188,6 @@
         "y": 131
       },
       "id": 118,
-      "links": [],
       "options": {
         "legend": {
           "calcs": [
@@ -4089,24 +4201,27 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "none"
         }
       },
-      "pluginVersion": "8.1.0",
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
+          "editorMode": "code",
           "exemplar": true,
-          "expr": "increase(jvm_classes_currently_loaded {job=\"$job\", instance=\"$app$node\"}[$__interval])",
+          "expr": "increase(jvm_classes_currently_loaded {job=\"$job\", instance=\"$app\"}[$__interval])",
           "format": "time_series",
           "interval": "60s",
           "intervalFactor": 5,
           "legendFormat": "currently",
           "metric": "jvm_classes_loaded",
+          "range": true,
           "refId": "A",
           "step": 50
         },
@@ -4116,7 +4231,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "increase(jvm_classes_loaded_total{job=\"$job\", instance=\"$app$node\"}[$__interval])",
+          "expr": "increase(jvm_classes_loaded_total{job=\"$job\", instance=\"$app\"}[$__interval])",
           "format": "time_series",
           "hide": false,
           "interval": "60s",
@@ -4142,9 +4257,13 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
@@ -4153,6 +4272,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -4174,7 +4294,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -4193,7 +4314,6 @@
         "y": 139
       },
       "id": 169,
-      "links": [],
       "options": {
         "legend": {
           "calcs": [
@@ -4207,11 +4327,12 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "none"
         }
       },
-      "pluginVersion": "8.1.0",
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "datasource": {
@@ -4219,7 +4340,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(java_lang_ClassLoading_LoadedClassCount{job=\"$job\", instance=\"$app$node\"}[$__rate_interval])",
+          "expr": "rate(java_lang_classloading_loadedclasscount{job=\"$job\", instance=\"$app\"}[$__rate_interval])",
           "format": "time_series",
           "interval": "60s",
           "intervalFactor": 1,
@@ -4232,7 +4353,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(java_lang_ClassLoading_UnloadedClassCount{job=\"$job\", instance=\"$app$node\"}[$__rate_interval])",
+          "expr": "rate(java_lang_classloading_unloadedclasscount{job=\"$job\", instance=\"$app\"}[$__rate_interval])",
           "format": "time_series",
           "interval": "60s",
           "intervalFactor": 1,
@@ -4255,9 +4376,13 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
+            "barWidthFactor": 0.6,
             "drawStyle": "line",
             "fillOpacity": 10,
             "gradientMode": "none",
@@ -4266,6 +4391,7 @@
               "tooltip": false,
               "viz": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -4288,7 +4414,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               },
               {
                 "color": "red",
@@ -4307,7 +4434,6 @@
         "y": 139
       },
       "id": 170,
-      "links": [],
       "options": {
         "legend": {
           "calcs": [
@@ -4321,11 +4447,12 @@
           "showLegend": true
         },
         "tooltip": {
+          "hideZeros": false,
           "mode": "multi",
           "sort": "none"
         }
       },
-      "pluginVersion": "8.1.0",
+      "pluginVersion": "11.5.2",
       "targets": [
         {
           "datasource": {
@@ -4333,7 +4460,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(jvm_classes_currently_loaded {job=\"$job\", instance=\"$app$node\"}[$__rate_interval])",
+          "expr": "rate(jvm_classes_currently_loaded {job=\"$job\", instance=\"$app\"}[$__rate_interval])",
           "format": "time_series",
           "interval": "60s",
           "intervalFactor": 5,
@@ -4348,7 +4475,7 @@
             "uid": "prometheus"
           },
           "exemplar": true,
-          "expr": "rate(jvm_classes_loaded_total{job=\"$job\", instance=\"$app$node\"}[$__rate_interval])",
+          "expr": "rate(jvm_classes_loaded_total{job=\"$job\", instance=\"$app\"}[$__rate_interval])",
           "format": "time_series",
           "hide": false,
           "interval": "60s",
@@ -4363,9 +4490,9 @@
       "type": "timeseries"
     }
   ],
-  "refresh": false,
-  "schemaVersion": 37,
-  "style": "dark",
+  "preload": false,
+  "refresh": "",
+  "schemaVersion": 40,
   "tags": [
     "jmx",
     "JVM",
@@ -4375,20 +4502,16 @@
     "list": [
       {
         "current": {
-          "isNone": true,
-          "selected": false,
-          "text": "None",
-          "value": ""
+          "text": "kubeblocks",
+          "value": "kubeblocks"
         },
         "datasource": {
           "type": "prometheus",
           "uid": "prometheus"
         },
         "definition": "label_values(jvm_info, job)",
-        "hide": 0,
         "includeAll": false,
         "label": "job",
-        "multi": false,
         "name": "job",
         "options": [],
         "query": {
@@ -4397,75 +4520,33 @@
         },
         "refresh": 1,
         "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
         "type": "query"
       },
       {
         "current": {
-          "isNone": true,
-          "selected": false,
-          "text": "None",
-          "value": ""
+          "text": "10.244.0.57:5556",
+          "value": "10.244.0.57:5556"
         },
         "datasource": {
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "definition": "label_values(up{job=\"$job\"}, instance)",
-        "hide": 0,
+        "definition": "label_values(up{job=\"$job\", apps_kubeblocks_io_component_name=~\"kafka-controller|kafka-exporter\"},instance)",
         "includeAll": false,
         "label": "app",
-        "multi": false,
         "name": "app",
         "options": [],
         "query": {
-          "query": "label_values(up{job=\"$job\"}, instance)",
-          "refId": "StandardVariableQuery"
+          "qryType": 1,
+          "query": "label_values(up{job=\"$job\", apps_kubeblocks_io_component_name=~\"kafka-controller|kafka-exporter\"},instance)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,
         "regex": "/^([^\\[]+)/",
-        "skipUrlSync": false,
-        "sort": 0,
-        "tagValuesQuery": "",
-        "tagsQuery": "",
-        "type": "query",
-        "useTags": false
+        "type": "query"
       },
       {
         "current": {
-          "isNone": true,
-          "selected": false,
-          "text": "None",
-          "value": ""
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "prometheus"
-        },
-        "definition": "label_values(up{job=\"$job\"}, instance)",
-        "hide": 0,
-        "includeAll": false,
-        "label": "node",
-        "multi": false,
-        "name": "node",
-        "options": [],
-        "query": {
-          "query": "label_values(up{job=\"$job\"}, instance)",
-          "refId": "StandardVariableQuery"
-        },
-        "refresh": 1,
-        "regex": "/$app(\\[[^\\]]+\\])$/",
-        "skipUrlSync": false,
-        "sort": 0,
-        "tagValuesQuery": "",
-        "tagsQuery": "",
-        "type": "query",
-        "useTags": false
-      },
-      {
-        "current": {
-          "selected": false,
           "text": "All",
           "value": "$__all"
         },
@@ -4473,25 +4554,22 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "definition": "label_values(jvm_memory_bytes_used{job=\"$job\", instance=\"$app$node\"}, area)",
+        "definition": "label_values(jvm_memory_bytes_used{job=\"$job\", instance=\"$app\"}, area)",
         "hide": 2,
         "includeAll": true,
         "multi": true,
         "name": "memarea",
         "options": [],
         "query": {
-          "query": "label_values(jvm_memory_bytes_used{job=\"$job\", instance=\"$app$node\"}, area)",
+          "query": "label_values(jvm_memory_bytes_used{job=\"$job\", instance=\"$app\"}, area)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 2,
         "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
         "type": "query"
       },
       {
         "current": {
-          "selected": false,
           "text": "All",
           "value": "$__all"
         },
@@ -4499,20 +4577,18 @@
           "type": "prometheus",
           "uid": "prometheus"
         },
-        "definition": "label_values(jvm_memory_pool_bytes_max{job=\"$job\", instance=\"$app$node\"}, pool)",
+        "definition": "label_values(jvm_memory_pool_bytes_max{job=\"$job\", instance=\"$app\"}, pool)",
         "hide": 2,
         "includeAll": true,
         "multi": true,
         "name": "mempool",
         "options": [],
         "query": {
-          "query": "label_values(jvm_memory_pool_bytes_max{job=\"$job\", instance=\"$app$node\"}, pool)",
+          "query": "label_values(jvm_memory_pool_bytes_max{job=\"$job\", instance=\"$app\"}, pool)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 1,
         "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
         "type": "query"
       }
     ]
@@ -4522,7 +4598,6 @@
     "to": "now"
   },
   "timepicker": {
-    "hidden": false,
     "nowDelay": "",
     "refresh_intervals": [
       "1m",
@@ -4532,22 +4607,11 @@
       "1h",
       "2h",
       "1d"
-    ],
-    "time_options": [
-      "5m",
-      "15m",
-      "1h",
-      "6h",
-      "12h",
-      "24h",
-      "2d",
-      "7d",
-      "30d"
     ]
   },
   "timezone": "",
   "title": "JMX Dashboard(Basic)",
   "uid": "jmx",
-  "version": 13,
+  "version": 1,
   "weekStart": ""
 }

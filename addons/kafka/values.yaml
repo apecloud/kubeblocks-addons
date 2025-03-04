@@ -81,3 +81,32 @@ exporter:
   securityContext:
     runAsNonRoot: true
     runAsUser: 1001
+
+## extra volumeMounts for containers
+## you can use this values for additional volumeMount like log-path,config-path etc
+## example:
+##
+## extraVolumeMounts:
+##   kafka:
+##     - name: log-mount-path
+##       mountPath: /docker/logs/kfk27-external/
+##       subPathExpr: $(POD_UUID)
+##     - name: cmdb-conf
+##       mountPath: /conf/cmdb.ini
+extraVolumeMounts:
+  ## apply to all kafka container, include broker/controller/combine.
+  kafka: []
+
+## extra Envs for containers
+## you can use this values for additional envs which extraVolumeMounts needed, like `subPathExpr`
+## example:
+##
+## extraEnvs:
+##   kafka:
+##     - name: POD_UUID
+##       valueFrom:
+##         fieldRef:
+##           fieldPath: metadata.uid
+extraEnvs:
+  ## apply to all kafka container, include broker/controller/combine.
+  kafka: []

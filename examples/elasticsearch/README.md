@@ -1,7 +1,7 @@
 # Elasticsearch
 
 Elasticsearch is a distributed, RESTful search engine optimized for speed and relevance on production-scale workloads.
-Each Elasticsearch cluster consists of one or more nodes, and each node in a cluster has a role and communicates with other nodes to share data and responsibilities. A node can assume multiple roles up to your requirements. Types of roles inlcude [^1]:
+Each Elasticsearch cluster consists of one or more nodes, and each node in a cluster has a role and communicates with other nodes to share data and responsibilities. A node can assume multiple roles up to your requirements. Types of roles include [^1]:
 
 - master
 - data
@@ -14,7 +14,6 @@ Each Elasticsearch cluster consists of one or more nodes, and each node in a clu
 - ml
 - remote_cluster_client
 - transform
-
 
 ## Prerequisites
 
@@ -66,7 +65,7 @@ name                  ip           role
 es-single-node-mdit-0 12.345.678 cdfhilmrstw
 ```
 
-The role is `cdfhilmrstw`. Please frefer to [Elasticsearch Nodes](https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-node.html) for more information about the roles.
+The role is `cdfhilmrstw`. Please refer to [Elasticsearch Nodes](https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-node.html) for more information about the roles.
 
 #### Create a Multi-Node Cluster
 
@@ -76,7 +75,7 @@ Create a elasticsearch cluster with multiple nodes and each node assume specifie
 kubectl apply -f examples/elasticsearch/cluster-multi-node.yaml
 ```
 
-There are four components specified in this cluster, i.e 'master', 'data', 'ingest', and 'tranfrom',  and each component has differnt roles. Roles are specified in the annotation:
+There are four components specified in this cluster, i.e 'master', 'data', 'ingest', and 'transform',  and each component has different roles. Roles are specified in the annotation:
 
 ```yaml
   annotations:
@@ -291,7 +290,7 @@ spec:
 
 ### Expose
 
-It is recommended to access the Elasticsearch cluster from within the Kubernetes cluster using Kibaba or other tools. However, if you need to access the Elasticsearch cluster from outside the Kubernetes cluster, you can expose the Elasticsearch service using a `LoadBalancer` service type.
+It is recommended to access the Elasticsearch cluster from within the Kubernetes cluster using Kibana or other tools. However, if you need to access the Elasticsearch cluster from outside the Kubernetes cluster, you can expose the Elasticsearch service using a `LoadBalancer` service type.
 
 #### [Enable](expose-enable.yaml)
 
@@ -384,16 +383,16 @@ It set up the PodMonitor to scrape the metrics (port `9114`) from the Elasticsea
 
 Login to the Grafana dashboard and import the dashboard.
 You can import the dashboard provided by Grafana or create your own dashboard, e.g.
-- https://grafana.com/grafana/dashboards/2322-elasticsearch/
 
+- <https://grafana.com/grafana/dashboards/2322-elasticsearch/>
 
 > [!Note]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
 
-
 ### Delete
 
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
+
 ```bash
 kubectl patch cluster es-multinode -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
@@ -402,4 +401,4 @@ kubectl delete cluster es-multinode
 
 ## References
 
-[^1]: Elasticsearch Nodes, https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-node.html
+[^1]: Elasticsearch Nodes, <https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-node.html>

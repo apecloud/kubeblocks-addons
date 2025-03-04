@@ -71,7 +71,6 @@ spec:
   updateStrategy: BestEffortParallel
   configs:
     - name: kafka-configuration-tpl
-      constraintRef: {{ include "kafka.configConstraintName" . }}
       templateRef: {{ include "kafka.configurationTplName" . }}
       volumeName: kafka-config
       namespace: {{ .Release.Namespace }}
@@ -162,6 +161,9 @@ spec:
           # value: "false"
           - name: KB_KAFKA_SASL_CONFIG_PATH  # specify the SASL jaas users
             value: /tools/server-jaas.properties
+          {{- with .Values.extraEnvs.kafka }}
+          {{- toYaml . | nindent 10}}
+          {{- end }}
         ports:
           - name: kafka-client
             containerPort: 9092
@@ -205,6 +207,9 @@ spec:
           - name: tools
             mountPath: /tools/server-jaas.properties
             subPath: server-jaas.properties
+          {{- with .Values.extraVolumeMounts.kafka }}
+          {{- toYaml . | nindent 10}}
+          {{- end }}
       - name: jmx-exporter
         image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}

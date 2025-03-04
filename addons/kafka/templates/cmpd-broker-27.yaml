@@ -84,7 +84,6 @@ spec:
   updateStrategy: BestEffortParallel
   configs:
     - name: kafka-configuration-tpl
-      constraintRef: {{ include "kafka2.configConstraintName" . }}
       templateRef: {{ include "kafka2.configurationTplName" . }}
       volumeName: kafka-config
       namespace: {{ .Release.Namespace }}
@@ -173,6 +172,9 @@ spec:
             value: /tools/server-jaas.properties
           - name: BROKER_MIN_NODE_ID
             value: {{ .Values.kafkaBroker.minNodeId | quote }}
+          {{- with .Values.extraEnvs.kafka }}
+          {{- toYaml . | nindent 10}}
+          {{- end }}
         ports:
           - name: kafka-client
             containerPort: 9092
@@ -214,6 +216,9 @@ spec:
           - name: tools
             mountPath: /tools/server-jaas.properties
             subPath: server-jaas.properties
+          {{- with .Values.extraVolumeMounts.kafka }}
+          {{- toYaml . | nindent 10}}
+          {{- end }}
       - name: jmx-exporter
         image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}

@@ -1,6 +1,10 @@
 #!/bin/bash
 self_last_digit=${POD_NAME##*-}
-fqdn_name=${CLUSTER_COMPONENT_NAME}-${self_last_digit}.${CLUSTER_COMPONENT_NAME}-headless.${CLUSTER_NAMESPACE}.svc.cluster.local
+fqdn_name=${CLUSTER_COMPONENT_NAME}-${self_last_digit}.${CLUSTER_COMPONENT_NAME}-headless
+if [ ${#fqdn_name} -gt 60 ] && [ "${MYSQL_MAJOR}" = "5.7" ]; then
+    echo "Error: The length of the variable exceeds 60 characters"
+    exit 1
+fi
 SERVICE_ID=$((${POD_NAME##*-} + 1))
 
 if [ "${MYSQL_MAJOR}" = '5.7' ]; then

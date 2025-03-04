@@ -54,11 +54,8 @@ spec:
   configs:
     - name: redis-replication-config
       templateRef: {{ include "redis7.configurationTemplate" . }}
-      constraintRef: {{ include "redis7.configConstraint" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: redis-config
-      reRenderResourceTypes:
-        - vscale
     - name: redis-metrics-config
       templateRef: {{ include "redis.metricsConfiguration" . }}
       namespace: {{ .Release.Namespace }}
@@ -70,6 +67,7 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
+  {{- include "kblib.syncer.policyRules" . | nindent 2 }}
   systemAccounts:
     - name: default
       initAccount: true

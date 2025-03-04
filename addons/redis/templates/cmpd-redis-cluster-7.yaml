@@ -50,11 +50,8 @@ spec:
   configs:
     - name: redis-cluster-config
       templateRef: {{ include "redisCluster7.configurationTemplate" . }}
-      constraintRef: {{ include "redisCluster7.configConstraint" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: redis-cluster-config
-      reRenderResourceTypes:
-        - vscale
     - name: redis-metrics-config
       templateRef: {{ include "redis.metricsConfiguration" . }}
       namespace: {{ .Release.Namespace }}
@@ -66,6 +63,7 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
+  {{- include "kblib.syncer.policyRules" . | nindent 2 }}
   systemAccounts:
     - name: default
       initAccount: true

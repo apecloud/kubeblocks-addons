@@ -79,3 +79,68 @@ Define mysql component definition name
 {{- define "proxysql.componentDefName" -}}
 {{- printf "proxysql-%s-%s" (include "mysql.cmpdNamePrefix" .) .Chart.Version -}}
 {{- end -}}
+
+{{/*
+Define parametersdefinition name
+*/}}
+{{- define "mysql.paramsDefName57" -}}
+mysql-5.7-pd
+{{- end -}}
+
+{{/*
+Define parametersdefinition name
+*/}}
+{{- define "mysql.paramsDefName80" -}}
+mysql-8.0-pd
+{{- end -}}
+
+
+{{/*
+Define parameterconfigrenderer name
+*/}}
+{{- define "mysql.prcName57" -}}
+mysql-5.7-pcr
+{{- end -}}
+
+{{/*
+Define parameterconfigrenderer name
+*/}}
+{{- define "mysql.prcNameOrc57" -}}
+mysql-5.7-orc-pcr
+{{- end -}}
+
+{{/*
+Define parameterconfigrenderer name
+*/}}
+{{- define "mysql.prcName80" -}}
+mysql-8.0-pcr
+{{- end -}}
+
+{{/*
+Define parameterconfigrenderer name
+*/}}
+{{- define "mysql.prcNameOrc80" -}}
+mysql-8.0-orc-pcr
+{{- end -}}
+
+{{/*
+Define parameterconfigrenderer name
+*/}}
+{{- define "mysql.prcNameMgr80" -}}
+mysql-8.0-mgr-pcr
+{{- end -}}
+
+{{/*
+Define parameterconfigrenderer name
+*/}}
+{{- define "mysql.prcNameMgr84" -}}
+mysql-8.4-mgr-pcr
+{{- end -}}
+
+
+{{/*
+Define parameterconfigrenderer name
+*/}}
+{{- define "mysql.prcName84" -}}
+mysql-8.4-pcr
+{{- end -}}

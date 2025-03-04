@@ -57,3 +57,6 @@ brokerDeleteInactiveTopicsEnabled=false
 # configurations in KoP because of KIP-679.
 kafkaTransactionCoordinatorEnabled=true
 brokerDeduplicationEnabled=true
+
+zookeeperServers={{ .ZOOKEEPER_SERVERS }}
+configurationStoreServers={{ .ZOOKEEPER_SERVERS }}

@@ -74,6 +74,11 @@ This example shows the way to override the default accounts' password.
 Option 1. override the rule `passwordCofnig` to generate password
 
 ```yaml
+# snippet of cluster.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+spec:
+  componentSpecs:
     - name: ch-keeper
       replicas: 1
       # Overrides system accounts defined in referenced ComponentDefinition.
@@ -90,6 +95,11 @@ Option 1. override the rule `passwordCofnig` to generate password
 Option 2. specify the secret for the account
 
 ```yaml
+# snippet of cluster.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+spec:
+  componentSpecs:
     - name: clickhouse
       replicas: 2
       # Overrides system accounts defined in referenced ComponentDefinition.
@@ -169,11 +179,9 @@ kubectl apply -f examples/clickhouse/scale-in.yaml
 Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: clickhouse-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: clickhouse
@@ -213,7 +221,7 @@ https://clickhouse.com/docs/en/operations/configuration-files
 Reconfigure parameters with the specified components in the cluster
 
 ```bash
-kubectl apply -f examples/clickhouse/reconfigure.yaml
+kubectl apply -f examples/clickhouse/configure.yaml
 ```
 
 This example will change the `max_bytes_to_read` to `200000000000`.
@@ -234,7 +242,7 @@ clickhouse-client --user $CLICKHOUSE_ADMIN_USER --password $CLICKHOUSE_ADMIN_PAS
 ```
 
 <details>
-
+<summary>Explanation of the configuration</summary>
 The `user.xml` file is an xml file that contains the configuration of the ClickHouse server.
 ```xml
 <clickhouse>
@@ -251,13 +259,21 @@ The `user.xml` file is an xml file that contains the configuration of the ClickH
 </clickhouse>
 ```
 
-When updating the configuration, the key we set in the `reconfigure.yaml` file should be the same as the key in the `user.xml` file, for example:
+When updating the configuration, the key we set in the `configure.yaml` file should be the same as the key in the `user.xml` file, for example:
 
 ```yaml
-- key: user.xml
-  parameters:
-  - key: clickhouse.profiles.web.max_bytes_to_read
-    value: '200000000000'
+# snippet of configure.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+spec:
+  reconfigures:
+  - componentName: clickhouse
+    configurations:
+    - keys:
+      - key: user.xml
+        parameters:
+        - key: clickhouse.profiles.web.max_bytes_to_read
+          value: '200000000000'
 ```
 
 To update parameter `max_bytes_to_read`, we use the full path `clickhouse.profiles.web.max_bytes_to_read` w.r.t the `user.xml` file.

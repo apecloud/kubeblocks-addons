@@ -26,7 +26,6 @@ spec:
   configs:
   - name: qdrant-config-template
     templateRef: {{ include "qdrant.configTplName" . }}
-    constraintRef: {{ include "qdrant.configConstraintName" . }}
     volumeName: qdrant-config
     namespace: {{ .Release.Namespace }}
   scripts:

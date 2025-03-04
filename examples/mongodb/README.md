@@ -28,32 +28,11 @@ MongoDB is a document database designed for ease of application development and 
 
 ## Prerequisites
 
-This example assumes that you have a Kubernetes cluster installed and running, and that you have installed the kubectl command line tool and helm somewhere in your path. Please see the [getting started](https://kubernetes.io/docs/setup/)  and [Installing Helm](https://helm.sh/docs/intro/install/) for installation instructions for your platform.
-
-Also, this example requires KubeBlocks installed and running. Here is the steps to install KubeBlocks, please replace "`$kb_version`" with the version you want to use.
-
-```bash
-# Add Helm repo
-helm repo add kubeblocks https://apecloud.github.io/helm-charts
-# If github is not accessible or very slow for you, please use following repo instead
-helm repo add kubeblocks https://jihulab.com/api/v4/projects/85949/packages/helm/stable
-
-# Update helm repo
-helm repo update
-
-# Get the versions of KubeBlocks and select the one you want to use
-helm search repo kubeblocks/kubeblocks --versions
-# If you want to obtain the development versions of KubeBlocks, Please add the '--devel' parameter as the following command
-helm search repo kubeblocks/kubeblocks --versions --devel
-
-# Create dependent CRDs
-kubectl create -f https://github.com/apecloud/kubeblocks/releases/download/v$kb_version/kubeblocks_crds.yaml
-# If github is not accessible or very slow for you, please use following command instead
-kubectl create -f https://jihulab.com/api/v4/projects/98723/packages/generic/kubeblocks/v$kb_version/kubeblocks_crds.yaml
-
-# Install KubeBlocks
-helm install kubeblocks kubeblocks/kubeblocks --namespace kb-system --create-namespace --version="$kb_version"
-```
+- Kubernetes cluster >= v1.21
+- `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
+- Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
+- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
+- MongoDB Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
 
 ## Examples
 
@@ -75,11 +54,9 @@ kubectl get po -l  app.kubernetes.io/instance=mongo-cluster -L kubeblocks.io/rol
 If you want to create a cluster of specified version, set the `spec.componentSpecs.serviceVersion` field in the yaml file before applying it:
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: mongo-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: mongodb
@@ -146,9 +123,9 @@ mongo-cluster-mongodb > rs.status();
 There are cases where you want to set a specified replica offline, when it is problematic or you want to do some maintenance work on it. You can use the `onlineInstancesToOffline` field in the `spec.horizontalScaling.scaleIn` section to specify the instance names that need to be taken offline.
 
 ```yaml
+# snippet of opsrequest
 apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
-metadata:
 spec:
   clusterName: mongo-cluster
   horizontalScaling:
@@ -164,11 +141,9 @@ spec:
 Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: mongo-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: mongodb
@@ -197,11 +172,9 @@ You will observe that the `secondary` pods are recreated first, followed by the 
 Alternatively, you may update `spec.componentSpecs.resources` field to the desired resources for vertical scale.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: mongo-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: mongodb
@@ -248,10 +221,9 @@ Alternatively, you may update the `spec.componentSpecs.volumeClaimTemplates.spec
 
 ```yaml
 apiVersion: apps.kubeblocks.io/v1
+# snippet of cluster.yaml
+apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: mongo-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: mongodb
@@ -287,11 +259,9 @@ kubectl apply -f examples/mongodb/stop.yaml
 Alternatively, you may stop the cluster by setting the `spec.componentSpecs.stop` field to `true`.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: mongo-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: mongodb
@@ -312,11 +282,9 @@ kubectl apply -f examples/mongodb/start.yaml
 Alternatively, you may start the cluster by setting the `spec.componentSpecs.stop` field to `false`.
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: mongo-cluster
-  namespace: default
 spec:
   componentSpecs:
     - name: mongodb
@@ -367,38 +335,9 @@ print("systemLog.quiet:", config.parsed.systemLog.quiet);
 print("systemLog.verbosity:", config.parsed.systemLog.verbosity);
 ```
 
-### [BackupRepo](backuprepo.yaml)
-
-BackupRepo is the storage repository for backup data. Before creating a BackupRepo, you need to create a secret to save the access key of the backup repository
-
-```bash
-# Create a secret to save the access key
-kubectl create secret generic <credential-for-backuprepo>\
-  --from-literal=accessKeyId=<ACCESS KEY> \
-  --from-literal=secretAccessKey=<SECRET KEY> \
-  -n kb-system
-```
-
-Update `examples/mongodb/backuprepo.yaml` and set fields quoted with `<>` to your own settings and apply it.
-
-```bash
-kubectl apply -f examples/mongodb/backuprepo.yaml
-```
-
-After creating the BackupRepo, you should check the status of the BackupRepo, to make sure it is `Ready`.
-
-```bash
-kubectl get backuprepo
-```
-
-And the expected output is like:
-
-```bash
-NAME     STATUS   STORAGEPROVIDER   ACCESSMETHOD   DEFAULT   AGE
-kb-oss   Ready    oss               Tool           true      Xd
-```
-
 ### [Backup](backup.yaml)
+
+> [!IMPORTANT] Before you start, please create a `BackupRepo` to store the backup data. Refer to [BackupRepo](../docs/create-backuprepo.md) for more details.
 
 You may find the supported backup methods in the `BackupPolicy` of the cluster, and find how these methods will be scheduled in the `BackupSchedule` of the cluster.
 
@@ -429,10 +368,10 @@ Restore a new cluster from a backup
 kubectl get backup mongo-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
 ```
 
-1. Update `examples/mongo/restore.yaml` and set placeholder `<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
+1. Update `examples/mongodb/restore.yaml` and set placeholder `<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
 
 ```bash
-kubectl apply -f examples/mongo/restore.yaml
+kubectl apply -f examples/mongodb/restore.yaml
 ```
 
 ### Expose
@@ -451,17 +390,14 @@ kubectl apply -f examples/mongodb/expose-enable.yaml
 kubectl apply -f examples/mongodb/expose-disable.yaml
 ```
 
-
 #### Expose SVC using Cluster API
 
 Alternatively, you may expose service by updating `spec.services`
 
 ```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: mongo-cluster
-  namespace: default
 spec:
   # append service to the list
   services:

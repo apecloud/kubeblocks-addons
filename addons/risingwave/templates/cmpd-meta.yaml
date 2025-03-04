@@ -72,6 +72,8 @@ spec:
             value: $(CONNECTOR_SVC):50051
           - name: RW_BACKEND
             value: etcd
+          - name: ENABLE_TELEMETRY
+            value: "false"
         ports:
           - containerPort: 5690
             name: svc

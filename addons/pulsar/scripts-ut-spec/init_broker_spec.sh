@@ -18,7 +18,7 @@ Describe "Pulsar Init Broker Bash Script Tests"
 
   Describe "check_env_variables()"
     It "checks if required environment variables are set"
-      export zookeeperServers="localhost:2181"
+      export ZOOKEEPER_SERVERS="localhost:2181"
       export POD_NAME="broker-0"
       export clusterName="my-cluster"
       export webServiceUrl="http://localhost:8080"
@@ -32,7 +32,7 @@ Describe "Pulsar Init Broker Bash Script Tests"
       unset zookeeperServers
 
       When run check_env_variables
-      The output should include "Error: zookeeperServers environment variable is not set, Please set the zookeeperServers environment variable and try again."
+      The output should include "Error: ZOOKEEPER_SERVERS environment variable is not set, Please set the ZOOKEEPER_SERVERS environment variable and try again."
       The status should be failure
     End
   End
