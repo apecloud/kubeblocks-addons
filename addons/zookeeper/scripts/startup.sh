@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# fixme: copy snapshot-log from data pv for temprorary bugfix
+if [[ -d "/bitnami/zookeeper/data/snapshot-log" && -z "$(ls -A /bitnami/zookeeper/log)" ]]; then
+  cp -r /bitnami/zookeeper/data/snapshot-log/* /bitnami/zookeeper/log/
+  rm -r /bitnami/zookeeper/data/snapshot-log
+fi
+
 # Execute entrypoint as usual after obtaining ZOO_SERVER_ID
 # check ZOO_SERVER_ID in persistent volume via myid
 # if not present, set based on POD hostname
