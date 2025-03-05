@@ -1,0 +1,15 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "rabbitmq.pcrName" . }}
+  labels:
+    {{- include "rabbitmq.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "rabbitmq.cmpdName" . }}
+  parametersDefs:
+    - {{ include "rabbitmq.paramsDefName" . }}
+
+  configs:
+    - name: rabbitmq.conf
+      fileFormatConfig:
+        format: properties
