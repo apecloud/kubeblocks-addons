@@ -24,12 +24,9 @@ spec:
   configs:
     - name: config
       templateRef: {{ include "rabbitmq.configTplName" . }}
-      constraintRef: {{ include "rabbitmq.configConstraintName" . }}
       volumeName: rabbitmq-config
       namespace: {{ .Release.Namespace }}
       defaultMode: 0644  # for only read
-      keys:
-        - rabbitmq.conf
   systemAccounts:
     - name: root
       initAccount: true
