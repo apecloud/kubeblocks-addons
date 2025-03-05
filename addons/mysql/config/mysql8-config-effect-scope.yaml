@@ -543,6 +543,7 @@ dynamicParameters:
   - validate_password_special_char_count
   - wait_timeout
   - windowing_use_high_precision
+  - innodb_redo_log_capacity
 
 immutableParameters:
   - allow-suspicious-udfs
