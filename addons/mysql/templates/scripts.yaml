@@ -50,7 +50,10 @@ data:
     scripts: reload.tpl
     fileRegex: my.cnf
     dataType: mysql
-    dsn: '{%- expandenv "${MYSQL_ROOT_USER}:${MYSQL_ROOT_PASSWORD}@(localhost:3306)/" | trim %}'
+    dsn: |-
+      {%- $user := env "MYSQL_ADMIN_USER" | default ( env "MYSQL_ROOT_USER" ) | default ( env "MYSQL_USER" ) %}
+      {%- $pass := env "MYSQL_ADMIN_PASSWORD" | default ( env "MYSQL_ROOT_PASSWORD" ) | default ( env "MYSQL_PASSWORD" ) %}
+      {%- printf "%s:%s@(localhost:3306)/" $user $pass | trim %}
     formatterConfig:
       format: ini
       iniConfig:
