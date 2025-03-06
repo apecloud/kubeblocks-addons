@@ -49,7 +49,8 @@ fi
 touch ${DATA_DIR}/recovery.signal;
 mkdir -p ${RESTORE_SCRIPT_DIR} && chmod 777 -R ${RESTORE_SCRIPT_DIR};
 echo "#!/bin/bash" > ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
-echo "[[ -d '${DATA_DIR}.old' ]] && mv -f ${DATA_DIR}.old/* ${DATA_DIR}/;" >> ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
+echo "[[ -d '${DATA_DIR}.old' ]] && [[ ! -d '${DATA_DIR}.failed' ]] && mv -f ${DATA_DIR}.old/* ${DATA_DIR}/;" >> ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
+echo "[[ -d '${DATA_DIR}.failed' ]] && mkdir -p ${DATA_DIR}/ && mv -f ${DATA_DIR}.failed/* ${DATA_DIR}/ && rm -rf ${DATA_DIR}/recovery.signal;" >> ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
 echo "sync;" >> ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
 chmod +x ${RESTORE_SCRIPT_DIR}/kb_restore.sh;
 
