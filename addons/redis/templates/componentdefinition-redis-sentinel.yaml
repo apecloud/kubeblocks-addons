@@ -63,6 +63,9 @@ spec:
         ports:
           - redis-sentinel
   vars:
+    ## the cluster domain without . prefix
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.clusterDomain }}
     ## the username of redis sentinel
     - name: SENTINEL_USER
       valueFrom:

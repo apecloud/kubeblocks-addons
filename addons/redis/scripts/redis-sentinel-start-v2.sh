@@ -119,7 +119,7 @@ build_redis_sentinel_conf() {
       echo "sentinel use the fixed pod ip to announce-ip"
       echo "sentinel announce-ip $KB_POD_IP" >> /data/sentinel/redis-sentinel.conf
     else
-      kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.cluster.local"
+      kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.$CLUSTER_DOMAIN"
       {
         echo "sentinel announce-ip $kb_pod_fqdn"
         echo "sentinel resolve-hostnames yes"
