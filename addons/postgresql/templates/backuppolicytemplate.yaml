@@ -23,13 +23,17 @@ spec:
   compDefs:
     - postgresql-\d+
   target:
-    role: secondary
-    fallbackRole: primary
+    role: primary
+    fallbackRole: secondary
     account: postgres
   backupMethods:
     - name: pg-basebackup
       snapshotVolumes: false
       actionSetName: postgresql-basebackup
+      target:
+        role: secondary
+        fallbackRole: primary
+        account: postgres
       env: &compDefEnvMapping
         - name: IMAGE_TAG
           valueFrom:
@@ -66,10 +70,6 @@ spec:
           - name: data
             mountPath: {{ .Values.dataMountPath }}
     - name: wal-g
-      target:
-        role: secondary
-        fallbackRole: primary
-        account: postgres
       actionSetName: postgresql-wal-g
       snapshotVolumes: false
       targetVolumes:
@@ -116,6 +116,10 @@ spec:
       cronExpression: "0 18 * * *"
       retentionPeriod: 7d
     - backupMethod: wal-g
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 8d
+    - backupMethod: wal-g-incremental
       enabled: false
       cronExpression: "0 18 * * *"
       retentionPeriod: 7d
