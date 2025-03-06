@@ -10,7 +10,8 @@ metadata:
 spec:
   clusterDefinitionRef: zookeeper
   backupPolicies:
-    - componentDefs: [zookeeper]
+    # todo: delete zookeeper
+    - componentDefs: [zookeeper, zookeeper-3]
       target:
         role: follower
         fallbackRole: leader
