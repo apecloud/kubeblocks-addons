@@ -36,7 +36,7 @@ build_announce_ip_and_port() {
       echo "redis use immutable pod ip $KB_POD_IP to announce"
       echo "replica-announce-ip $KB_POD_IP" >> /etc/redis/redis.conf
     else
-      kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.cluster.local"
+      kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.$CLUSTER_DOMAIN"
       echo "redis use kb pod fqdn $kb_pod_fqdn to announce"
       echo "replica-announce-ip $kb_pod_fqdn" >> /etc/redis/redis.conf
     fi
@@ -45,7 +45,7 @@ build_announce_ip_and_port() {
 
 build_cluster_announce_info() {
   # build announce ip and port according to whether the advertised svc is enabled
-  kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.cluster.local"
+  kb_pod_fqdn="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.$CLUSTER_DOMAIN"
   if [ -n "$redis_announce_host_value" ] && [ -n "$redis_announce_port_value" ] && [ -n "$redis_announce_bus_port_value" ]; then
     echo "redis cluster use advertised svc $redis_announce_host_value:$redis_announce_port_value@$redis_announce_bus_port_value to announce"
     {
@@ -398,14 +398,14 @@ scale_redis_cluster_replica() {
   fi
 
   current_pod_name=$KB_POD_NAME
-  current_pod_fqdn="$current_pod_name.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.cluster.local"
+  current_pod_fqdn="$current_pod_name.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.$CLUSTER_DOMAIN"
   # check if exists KB_LEADER env, if exists, it means that is scale out replica
   if [ -n "$KB_LEADER" ]; then
-    target_node_fqdn="$KB_LEADER.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.cluster.local"
+    target_node_fqdn="$KB_LEADER.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.$CLUSTER_DOMAIN"
   else
     # if not exists KB_LEADER env, try to get the redis cluster info from pod which index=0
     pod_name_prefix=$(extract_pod_name_prefix "$current_pod_name")
-    target_node_fqdn="$pod_name_prefix-0.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.cluster.local"
+    target_node_fqdn="$pod_name_prefix-0.$KB_CLUSTER_COMP_NAME-headless.$KB_NAMESPACE.svc.$CLUSTER_DOMAIN"
   fi
 
   # get the current component nodes for scale out replica

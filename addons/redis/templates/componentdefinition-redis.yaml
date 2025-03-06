@@ -87,6 +87,9 @@ spec:
           - http-metrics
           - server-metrics
   vars:
+    ## the cluster domain without . prefix
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.clusterDomain }}
     ## the default username of redis connection
     - name: REDIS_DEFAULT_USER
       valueFrom:

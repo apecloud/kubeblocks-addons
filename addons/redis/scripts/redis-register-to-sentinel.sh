@@ -243,7 +243,7 @@ register_to_sentinel_wrapper() {
   # get minimum ordinal pod name as default primary node (the same logic as redis initialize primary node selection)
   get_minimum_initialize_pod_ordinal
   default_redis_primary_pod_name="$KB_CLUSTER_COMP_NAME-$default_initialize_pod_ordinal"
-  redis_default_primary_pod_headless_fqdn="$default_redis_primary_pod_name.$KB_CLUSTER_COMP_NAME-$headless_postfix.$KB_NAMESPACE.svc.cluster.local"
+  redis_default_primary_pod_headless_fqdn="$default_redis_primary_pod_name.$KB_CLUSTER_COMP_NAME-$headless_postfix.$KB_NAMESPACE.svc.$CLUSTER_DOMAIN"
   init_redis_service_port
   parse_redis_primary_announce_addr $default_redis_primary_pod_name $redis_default_primary_pod_headless_fqdn
 
@@ -259,7 +259,7 @@ register_to_sentinel_wrapper() {
     master_name="$CUSTOM_SENTINEL_MASTER_NAME"
   fi
   for sentinel_pod in "${sentinel_pod_list[@]}"; do
-    sentinel_pod_fqdn="$sentinel_pod.$SENTINEL_HEADLESS_SERVICE_NAME.$KB_NAMESPACE.svc.cluster.local"
+    sentinel_pod_fqdn="$sentinel_pod.$SENTINEL_HEADLESS_SERVICE_NAME.$KB_NAMESPACE.svc.$CLUSTER_DOMAIN"
     if [ -n "$redis_announce_host_value" ] && [ -n "$redis_announce_port_value" ]; then
       echo "register to sentinel:$sentinel_pod_fqdn with announce addr: redis_announce_host_value=$redis_announce_host_value, redis_announce_port_value=$redis_announce_port_value"
       register_to_sentinel "$sentinel_pod_fqdn" "$master_name" "$redis_announce_host_value" "$redis_announce_port_value"
