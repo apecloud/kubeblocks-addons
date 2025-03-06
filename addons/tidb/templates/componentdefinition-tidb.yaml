@@ -11,6 +11,7 @@ spec:
   description: tidb's SQL layer
   serviceKind: MySQL
   updateStrategy: BestEffortParallel
+  serviceVersion: 7.5.2
   vars:
     - name: CLUSTER_NAMESPACE
       valueFrom:
