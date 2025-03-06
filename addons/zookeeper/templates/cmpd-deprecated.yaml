@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: zookeeper-3
+  name: zookeeper
   labels:
     {{- include "zookeeper.labels" . | nindent 4 }}
 spec:
@@ -63,7 +63,7 @@ spec:
               fi
   runtime:
     volumes:
-      - name: log
+      - name: snapshot-log
         emptyDir: {}
 
     securityContext:
