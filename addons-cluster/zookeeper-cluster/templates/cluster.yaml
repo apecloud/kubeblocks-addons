@@ -10,7 +10,7 @@ spec:
   {{- include "kblib.affinity" . | indent 2 }}
   componentSpecs:
     - name: zookeeper
-      componentDef: zookeeper
+      componentDef: zookeeper-3
       replicas: {{ .Values.replicas }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       serviceVersion: {{ .Values.version }}
