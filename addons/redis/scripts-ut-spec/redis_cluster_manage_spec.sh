@@ -39,6 +39,7 @@ Describe "Redis Cluster Manage Bash Script Tests"
       export KB_CLUSTER_POD_IP_LIST="10.0.0.1,10.0.0.2,10.0.0.3,10.0.0.4"
       export KB_CLUSTER_POD_NAME_LIST="component1-0,component2-0,component3-0,component3-1"
       export CLUSTER_NAMESPACE="kb-system"
+      export CLUSTER_DOMAIN="cluster.local"
       export SERVICE_PORT="6379"
 
       When call init_other_components_and_pods_info "component1" "$KB_CLUSTER_POD_IP_LIST" "$KB_CLUSTER_POD_NAME_LIST" "$KB_CLUSTER_COMPONENT_LIST" "$KB_CLUSTER_COMPONENT_DELETING_LIST" "$KB_CLUSTER_COMPONENT_UNDELETED_LIST"
@@ -1501,6 +1502,7 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
         export KB_CLUSTER_COMPONENT_DELETING_LIST=""
         export KB_CLUSTER_COMPONENT_UNDELETED_LIST="redis-shard-98x,redis-shard-7hy,redis-shard-jwl"
         export CLUSTER_NAMESPACE="kb-system"
+        export CLUSTER_DOMAIN="cluster.local"
         export SERVICE_PORT="6379"
       }
       Before "setup"
@@ -1619,6 +1621,7 @@ d-98x-redis-advertised-1:31318.shard-7hy@redis-shard-7hy-redis-advertised-0:3202
         export KB_CLUSTER_COMPONENT_DELETING_LIST=""
         export KB_CLUSTER_COMPONENT_UNDELETED_LIST="redis-shard-98x,redis-shard-7hy,redis-shard-jwl,redis-shard-kpl"
         export CLUSTER_NAMESPACE="kb-system"
+        export CLUSTER_DOMAIN="cluster.local"
         export SERVICE_PORT="6379"
       }
       Before "setup"
