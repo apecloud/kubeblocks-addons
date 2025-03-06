@@ -2,8 +2,6 @@ apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
   name: zookeeper
-  annotations:
-    apps.kubeblocks.io/skip-immutable-check: "true"
   labels:
     {{- include "zookeeper.labels" . | nindent 4 }}
 spec:
@@ -65,7 +63,7 @@ spec:
               fi
   runtime:
     volumes:
-      - name: log
+      - name: snapshot-log
         emptyDir: {}
 
     securityContext:
