@@ -91,4 +91,5 @@ dataMountPath: /data
 logConfigs:
   running: /data/running.log
 
+# cluster domain without . prefix
 clusterDomain: "cluster.local"
