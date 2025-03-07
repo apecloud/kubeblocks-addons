@@ -1,0 +1,15 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "apecloud-postgresql-14.pcrName" . }}
+  labels:
+    {{- include "apecloud-postgresql.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "apecloud-postgresql-14.cmpdName" . }}
+  parametersDefs:
+    - {{ include "apecloud-postgresql-14.pdName" . }}
+
+  configs:
+    - name: postgresql.conf
+      fileFormatConfig:
+        format: properties
