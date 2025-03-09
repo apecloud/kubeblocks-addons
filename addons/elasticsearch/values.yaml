@@ -20,7 +20,10 @@ image:
     tag: "8.8.2"
   tools:
     repository: apecloud/curl-jq
-    tag: latest
+    tag: "0.1.0"
+  kibana:
+    repository: kibana
+    tag: "8.8.2"
 
 exporter:
   service:
