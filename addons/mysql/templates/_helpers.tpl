@@ -319,7 +319,7 @@ systemAccounts:
       letterCase: MixedCases
   - name: proxysql
     statement:
-      create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT USAGE, REPLICATION CLIENT ON *.* TO ${KB_ACCOUNT_NAME};
+      create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, USAGE ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
     passwordGenerationPolicy: 
       length: 16
       numDigits: 8
@@ -419,10 +419,11 @@ accountProvision:
   exec:
     container: mysql
     command:
-      - /bin/sh
+      - bash
       - -c
       - |
         set -ex
+        ALL_DB='*.*'
         eval statement=\"${KB_ACCOUNT_STATEMENT}\"
         mysql -u${MYSQL_ROOT_USER} -p${MYSQL_ROOT_PASSWORD} -P3306 -h127.0.0.1 -e "${statement}"
     targetPodSelector: Role
