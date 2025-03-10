@@ -146,7 +146,8 @@ And you can check the progress of the scaling operation with following command:
 kubectl describe ops zk-scale-out
 ```
 
-> [!WARNING] As defined, Zookeeper Cluster will be restarted on horizontal scaling. To make sure all config are loaded properly.
+> [!WARNING]
+> As defined, Zookeeper Cluster will be restarted on horizontal scaling. To make sure all config are loaded properly.
 
 After scaling, cluster server list in Zookeeper configuration file `zoo.cfg` will be updated :
 
@@ -492,7 +493,8 @@ echo "conf" | nc localhost 2181
 
 ### Backup
 
-> [!NOTE] Before you start, please create a `BackupRepo` to store the backup data. Refer to [BackupRepo](../docs/create-backuprepo.md) for more details.
+> [!NOTE]
+> Before you start, please create a `BackupRepo` to store the backup data. Refer to [BackupRepo](../docs/create-backuprepo.md) for more details.
 
 The method `zoocreeper` uses `zoocreeper` tool to create a compressed backup. You may create a backup using:
 
