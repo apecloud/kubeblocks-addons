@@ -26,6 +26,15 @@ nameOverride: ""
 
 fullnameOverride: ""
 
+enableKibana: true
+
+## @param tlsEnable Enable TLS for clickhouse cluster
+tls:
+  enabled: false
+  # KubeBlocks or UserProvided
+  issuer: KubeBlocks
+  secretName: elasticsearch-cluster-tls
+
 ## customized default values to override kblib chart's values
 extra:
   podAntiAffinity: Required
