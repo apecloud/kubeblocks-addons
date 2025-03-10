@@ -70,14 +70,25 @@ replicas: {{ max .Values.replicas 3 }}
 {{- end }}
 
 {{- define "elasticsearch.version" }}
-{{- if .Values.version }}
 {{- trimPrefix "elasticsearch-" .Values.version }}
-{{- else }}
-{{- .Chart.AppVersion }}
-{{- end }}
 {{- end }}
 
 {{- define "elasticsearch.majorVersion" }}
 {{- $version := semver (include "elasticsearch.version" .) }}
 {{- printf "%d" $version.Major }}
+{{- end }}
+
+{{- define "elasticsearch-cluster.tls" }}
+tls: {{ $.Values.tls.enabled }}
+{{- if $.Values.tls.enabled }}
+issuer:
+  name: {{ $.Values.tls.issuer }}
+  {{- if eq $.Values.tls.issuer "UserProvided" }}
+  secretRef:
+    name: {{ $.Values.tls.secretName }}
+    ca: ca.crt
+    cert: tls.crt
+    key: tls.key
+  {{- end }}
+{{- end }}
 {{- end }}
