@@ -1,0 +1,12 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "tidb.tidb.pcrName" . }}
+  labels:
+    {{- include "tidb.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "tidb.tidb7.compDefName" . }}
+  configs:
+    - name: tidb.toml
+      fileFormatConfig:
+        format: toml

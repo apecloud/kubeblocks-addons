@@ -1,11 +1,12 @@
-{{- $cc := .Files.Get "config/mogdb-config-effect-scope.yaml" | fromYaml }}
-apiVersion: apps.kubeblocks.io/v1beta1
-kind: ConfigConstraint
+{{- $pd := .Files.Get "config/mogdb-config-effect-scope.yaml" | fromYaml }}
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
 metadata:
-  name: {{ include "mogdb.constraintTplName" . }}
+  name: {{ include "mogdb.pdName" . }}
   labels:
     {{- include "mogdb.labels" . | nindent 4 }}
 spec:
+  fileName: postgresql.conf
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:
@@ -19,25 +20,19 @@ spec:
 
   ##  require db instance restart
   ## staticParameters
-  {{- if hasKey $cc "staticParameters" }}
+  {{- if hasKey $pd "staticParameters" }}
   staticParameters:
-    {{- $params := get $cc "staticParameters" }}
+    {{- $params := get $pd "staticParameters" }}
     {{- range $params }}
     - {{ . }}
     {{- end }}
   {{- end}}
 
   ## define immutable parameter list, this feature is not currently supported.
-  {{- if hasKey $cc "immutableParameters" }}
+  {{- if hasKey $pd "immutableParameters" }}
   immutableParameters:
-   {{- $params := get $cc "immutableParameters" }}
+   {{- $params := get $pd "immutableParameters" }}
    {{- range $params }}
     - {{ . }}
    {{- end }}
   {{- end}}
-
-
-
-    # configuration file format
-  fileFormatConfig:
-    format: properties

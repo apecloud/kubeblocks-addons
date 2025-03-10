@@ -75,8 +75,15 @@ apecloud-postgresql-14-configuration-{{ .Chart.Version }}
 {{/*
 Define apecloud postgresql 14 component config constraint name
 */}}
-{{- define "apecloud-postgresql-14.configConstraint" -}}
-apecloud-postgresql-14-cc-{{ .Chart.Version }}
+{{- define "apecloud-postgresql-14.pdName" -}}
+apecloud-postgresql-14-pd
+{{- end -}}
+
+{{/*
+Define apecloud postgresql 14 component config constraint name
+*/}}
+{{- define "apecloud-postgresql-14.pcrName" -}}
+apecloud-postgresql-14-pcr
 {{- end -}}
 
 {{/*

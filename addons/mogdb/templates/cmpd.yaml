@@ -23,9 +23,6 @@ spec:
   configs:
     - name: mogdb-configuration
       templateRef: {{ include "mogdb.configTplName" . }}
-      constraintRef: {{ include "mogdb.constraintTplName" . }}
-      keys:
-        - postgresql.conf
       namespace: {{ .Release.Namespace }}
       volumeName: mogdb-config
       defaultMode: 0777

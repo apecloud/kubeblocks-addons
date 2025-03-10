@@ -1,0 +1,15 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "weaviate.pcrName" . }}
+  labels:
+    {{- include "weaviate.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "weaviate.componentDefName" . }}
+  parametersDefs:
+    - {{ include "weaviate.pdName" . }}
+
+  configs:
+    - name: envs
+      fileFormatConfig:
+        format: dotenv
