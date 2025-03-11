@@ -36,6 +36,6 @@ jobs:
     secrets: inherit
 
   label-pick:
-    if: ${{ github.event.issue.pull_request != '' && (contains(github.event.comment.body, '/pick') || contains(github.event.comment.body, '/nopick')) }}
+    if: ${{ github.event.issue.pull_request != '' && (contains(github.event.comment.body, '/pick') || contains(github.event.comment.body, '/nopick')) && ! contains(github.event.comment.body, 'Auto Cherry-pick Instructions') }}
     uses: apecloud/apecloud-cd/.github/workflows/pull-request-label-pick.yml@v0.1.88
     secrets: inherit
