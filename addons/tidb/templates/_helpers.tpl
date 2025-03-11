@@ -89,8 +89,20 @@ tidb-config-constraints
 tikv-config-constraints
 {{- end -}}
 
-{{- define "tidb.pd.configConstraintName" -}}
-tidb-pd-config-constraints
+{{- define "tidb.pd.paramName" -}}
+tidb-pd-params
+{{- end -}}
+
+{{- define "tidb.pd.pcrName" -}}
+tidb-pd-pcr
+{{- end -}}
+
+{{- define "tidb.tikv.pcrName" -}}
+tidb-tikv-pcr
+{{- end -}}
+
+{{- define "tidb.tidb.pcrName" -}}
+tidb-tidb-pcr
 {{- end -}}
 
 {{- define "tidb.pd7.cmpdRegexpPattern" -}}

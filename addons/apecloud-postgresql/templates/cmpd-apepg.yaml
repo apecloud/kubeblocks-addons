@@ -12,9 +12,6 @@ spec:
   configs:
     - name: postgresql-consensusset-configuration
       templateRef: {{ include "apecloud-postgresql-14.configurationTemplate" . }}
-      constraintRef: {{ include "apecloud-postgresql-14.configConstraint" . }}
-      keys:
-        - postgresql.conf
       namespace: {{ .Release.Namespace }}
       volumeName: postgresql-config
       defaultMode: 0444
