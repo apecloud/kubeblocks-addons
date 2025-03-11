@@ -17,8 +17,8 @@ spec:
         ports:
           - port: {{ .Values.gateway.httpMetricsSvcPort }}
             protocol: TCP
-            name: http-metrics
-            targetPort: http-metrics
+            name: http
+            targetPort: http
   updateStrategy: BestEffortParallel
   runtime:
     automountServiceAccountToken: true
@@ -39,13 +39,13 @@ spec:
               - ALL
         ports:
           - containerPort: {{ .Values.gateway.httpMetricsContainerPort }}
-            name: http-metrics
+            name: http
             protocol: TCP
         readinessProbe:
           failureThreshold: 3
           httpGet:
             path: /
-            port: http-metrics
+            port: http
             scheme: HTTP
           initialDelaySeconds: 15
           periodSeconds: 10
