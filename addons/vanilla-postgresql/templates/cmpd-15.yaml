@@ -12,9 +12,6 @@ spec:
   configs:
     - name: vanilla-postgresql-configuration
       templateRef: {{ include "vanilla-postgresql15.configurationTemplate" . }}
-      constraintRef: {{ include "vanilla-postgresql15.configConstraint" . }}
-      keys:
-        - postgresql.conf
       namespace: {{ .Release.Namespace }}
       volumeName: postgresql-config
       defaultMode: 0444
@@ -46,9 +43,6 @@ spec:
   configs:
     - name: supabase-postgresql-configuration
       templateRef: {{ include "vanilla-postgresql-supabase15.configurationTemplate" . }}
-      constraintRef: {{ include "vanilla-postgresql15.configConstraint" . }}
-      keys:
-        - postgresql.conf
       namespace: {{ .Release.Namespace }}
       volumeName: postgresql-config
       defaultMode: 0444

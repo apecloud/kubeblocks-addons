@@ -1,10 +1,12 @@
-apiVersion: apps.kubeblocks.io/v1beta1
-kind: ConfigConstraint
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
 metadata:
-  name: {{ include "weaviate.envConfigConstraintTplName" . }}
+  name: {{ include "weaviate.pdName" . }}
   labels:
     {{- include "weaviate.labels" . | nindent 4 }}
 spec:
+  fileName: envs
+
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:
     # top level weaviate configuration type

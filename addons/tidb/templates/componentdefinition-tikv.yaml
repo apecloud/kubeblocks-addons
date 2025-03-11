@@ -74,7 +74,6 @@ spec:
   configs:
     - name: tikv-configuration
       templateRef: {{ include "tidb.tikv.configTplName" . }}
-      constraintRef: {{ include "tidb.tikv.configConstraintName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: config
   lifecycleActions:
