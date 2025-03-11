@@ -48,3 +48,10 @@ orchestrator:
   clusterServiceSelector:
     clusterName: ""
     namespace: ""
+
+initParameters: {}
+  ## max_connections: 1000
+parameterTemplate:
+  templateRef: ""
+  namespace: ""
+  policy: "replace"
