@@ -376,7 +376,6 @@ spec:
               component: minio
               name: admin
 
-      disableExporter: true
     - name: indexnode
       replicas: 1
       disableExporter: true
@@ -417,8 +416,6 @@ spec:
             credential:
               component: minio
               name: admin
-
-      disableExporter: true
     - name: querynode
       replicas: 1
       disableExporter: true
@@ -459,8 +456,6 @@ spec:
             credential:
               component: minio
               name: admin
-
-      disableExporter: true
 
 ```
 
