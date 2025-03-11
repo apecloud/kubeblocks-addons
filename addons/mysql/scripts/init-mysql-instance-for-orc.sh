@@ -108,7 +108,7 @@ EOF
 
 setup_master_slave() {
 
-  mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e "STOP SLAVE;RESET MASTER;RESET SLAVE ALL;";
+  mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e "STOP SLAVE;RESET SLAVE ALL;";
 
   mysql_note "setup_master_slave"
 
