@@ -135,6 +135,12 @@ setup_master_slave() {
 
   # setup semi sync for master-slave replication
   init_semi_sync_config
+
+  # if the instance is already registered in orchestrator, then return
+  if orchestrator-client -c instance -i ${POD_NAME} ; then
+    return 0
+  fi  
+
   # If the master_pod_name is empty, then this pod is the first one in the cluster, init cluster info database and create user.
   if [[ $master_from_orc == "" && $self_last_digit -eq 0 ]]; then
     echo "Create MySQL User and Grant Permissions"
