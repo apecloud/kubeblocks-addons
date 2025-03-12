@@ -182,23 +182,52 @@ vanilla-postgresql-supabase15-configuration
 {{/*
 Define vanilla-postgresql 12 component config constraint name
 */}}
-{{- define "vanilla-postgresql12.configConstraint" -}}
-vanilla-postgresql12-cc
+{{- define "vanilla.pd12Name" -}}
+vanilla-pg12-pd
 {{- end -}}
 
 {{/*
 Define vanilla-postgresql 14 component config constraint name
 */}}
-{{- define "vanilla-postgresql14.configConstraint" -}}
-vanilla-postgresql14-cc
+{{- define "vanilla.pd14Name" -}}
+vanilla-pg14-pd
 {{- end -}}
 
 {{/*
 Define vanilla-postgresql 15 component config constraint name
 */}}
-{{- define "vanilla-postgresql15.configConstraint" -}}
-vanilla-postgresql15-cc
+{{- define "vanilla.pd15Name" -}}
+vanilla-pg15-pd
 {{- end -}}
+
+{{/*
+Define vanilla-postgresql 12 component config constraint name
+*/}}
+{{- define "vanilla.prc12Name" -}}
+vanilla-pg12-prc
+{{- end -}}
+
+{{/*
+Define vanilla-postgresql 14 component config constraint name
+*/}}
+{{- define "vanilla.prc14Name" -}}
+vanilla-pg14-prc
+{{- end -}}
+
+{{/*
+Define vanilla-postgresql 15 component config constraint name
+*/}}
+{{- define "vanilla.prc15Name" -}}
+vanilla-pg15-prc
+{{- end -}}
+
+{{/*
+Define vanilla-postgresql 15 component config constraint name
+*/}}
+{{- define "vanilla.prcsupabase15Name" -}}
+vanilla-supabase15-prc
+{{- end -}}
+
 
 {{/*
 Define vanilla-postgresql scripts configMap template name

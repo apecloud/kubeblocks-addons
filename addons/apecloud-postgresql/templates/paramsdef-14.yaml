@@ -1,13 +1,14 @@
-{{- $cc := .Files.Get "config/pg14-config-effect-scope.yaml" | fromYaml }}
-apiVersion: apps.kubeblocks.io/v1beta1
-kind: ConfigConstraint
+{{- $pd := .Files.Get "config/pg14-config-effect-scope.yaml" | fromYaml }}
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
 metadata:
-  name: {{ include "apecloud-postgresql-14.configConstraint" . }}
+  name: {{ include "apecloud-postgresql-14.pdName" . }}
   labels:
     {{- include "apecloud-postgresql.labels" . | nindent 4 }}
   annotations:
     {{- include "apecloud-postgresql.annotations" . | nindent 4 }}
 spec:
+  fileName: postgresql.conf
   reloadAction:
     shellTrigger:
       sync: true
@@ -34,24 +35,21 @@ spec:
     # example: ../../pkg/configuration/testdata/mysql_openapi.json
     cue: |-
       {{- .Files.Get "config/pg14-config-constraint.cue" | nindent 6 }}
-    # configuration file format
-  fileFormatConfig:
-    format: properties
 
   ##  require db instance restart
   ## staticParameters
-  {{- if hasKey $cc "staticParameters" }}
+  {{- if hasKey $pd "staticParameters" }}
   staticParameters:
-    {{- $params := get $cc "staticParameters" }}
+    {{- $params := get $pd "staticParameters" }}
     {{- range $params }}
     - {{ . }}
     {{- end }}
   {{- end}}
 
       ## define immutable parameter list, this feature is not currently supported.
-  {{- if hasKey $cc "immutableParameters" }}
+  {{- if hasKey $pd "immutableParameters" }}
   immutableParameters:
-   {{- $params := get $cc "immutableParameters" }}
+   {{- $params := get $pd "immutableParameters" }}
    {{- range $params }}
     - {{ . }}
    {{- end }}

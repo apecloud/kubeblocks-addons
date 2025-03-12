@@ -458,7 +458,8 @@ kbcli cluster explain-config pg-cluster # kbcli is a command line tool to intera
 
 ### Backup
 
-> [!IMPORTANT] Before you start, please create a `BackupRepo` to store the backup data. Refer to [BackupRepo](../docs/create-backuprepo.md) for more details.
+> [!IMPORTANT]
+> Before you start, please create a `BackupRepo` to store the backup data. Refer to [BackupRepo](../docs/create-backuprepo.md) for more details.
 
 To create a base backup for the cluster, you can apply the following yaml file:
 
