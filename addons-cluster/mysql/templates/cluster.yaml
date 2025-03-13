@@ -10,6 +10,7 @@ spec:
   topology: {{ .Values.topology }}
   componentSpecs:
     - name: mysql
+      {{- include "parameters.customTemplate" . | indent 6 }}
       serviceVersion: {{ .Values.version }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "mysql-cluster.replicaCount" . | indent 6 }}
