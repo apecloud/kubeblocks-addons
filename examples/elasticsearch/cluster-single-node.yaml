@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: Cluster
 metadata:
-  name: elasticsearch-cluster
+  name: elsearch-cluster
   namespace: default
   annotations:
     kubeblocks.io/extra-env: '{"elasticsearch-roles":"master,data,ingest,transform"}'
@@ -34,7 +34,7 @@ spec:
   - name: elasticsearch
     componentDef: elasticsearch
     disableExporter: true
-    serviceAccountName: kb-elasticsearch-cluster
+    serviceAccountName: kb-elsearch-cluster
     replicas: 1
     resources:
       limits:

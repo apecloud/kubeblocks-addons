@@ -89,7 +89,7 @@ kubectl apply -f examples/elasticsearch/start.yaml
 ### Delete
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 ```bash
-kubectl patch cluster elasticsearch-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster elsearch-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster elasticsearch-cluster
+kubectl delete cluster elsearch-cluster
 ```
