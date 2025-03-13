@@ -74,9 +74,6 @@ minio:
 ## @param storageClassName, storage class name
 ##
 storageClassName: ""
-## @param terminationPolicy, temination policy for loki-cluster
-##
-terminationPolicy: "Delete"
 
 ## @param replicas specify cluster replicas
 ##

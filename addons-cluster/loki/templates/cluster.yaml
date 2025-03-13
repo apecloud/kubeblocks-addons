@@ -1,7 +1,6 @@
 {{- include "kblib.clusterCommon" . }}
   clusterDef: loki
   topology: loki-cluster
-  terminationPolicy: {{ .Values.terminationPolicy }}
   {{- include "loki-cluster.memberlist" . | indent 2 }}
   componentSpecs:
     - name: backend

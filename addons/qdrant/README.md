@@ -382,7 +382,8 @@ kubectl apply -f examples/qdrant/start.yaml
 
 ### Backup
 
-> [!NOTE] Before you start, please create a `BackupRepo` to store the backup data. Refer to [BackupRepo](../docs/create-backuprepo.md) for more details.
+> [!NOTE]
+> Before you start, please create a `BackupRepo` to store the backup data. Refer to [BackupRepo](../docs/create-backuprepo.md) for more details.
 
 The backup method uses the `snapshot` API to create a snapshot for all collections. It works as follows:
 

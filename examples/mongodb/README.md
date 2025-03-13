@@ -337,7 +337,8 @@ print("systemLog.verbosity:", config.parsed.systemLog.verbosity);
 
 ### [Backup](backup.yaml)
 
-> [!IMPORTANT] Before you start, please create a `BackupRepo` to store the backup data. Refer to [BackupRepo](../docs/create-backuprepo.md) for more details.
+> [!IMPORTANT]
+> Before you start, please create a `BackupRepo` to store the backup data. Refer to [BackupRepo](../docs/create-backuprepo.md) for more details.
 
 You may find the supported backup methods in the `BackupPolicy` of the cluster, and find how these methods will be scheduled in the `BackupSchedule` of the cluster.
 

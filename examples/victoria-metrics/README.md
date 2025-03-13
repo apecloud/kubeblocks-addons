@@ -34,7 +34,7 @@ VictoriaMetrics can run in two modes:
 
 ### [Create](cluster.yaml)
 
-Create a tdengine cluster:
+Create a VM cluster:
 
 ```bash
 kubectl apply -f examples/victoria-metrics/cluster.yaml
@@ -106,7 +106,8 @@ spec:
 **Scaling In** vmstorage
 The scaling-down process is the reverse of scaling up. First, restart `vminsert`, then restart `vmselect`. If the new `vmstorage` instance is only in `vminsert` and not in `vmselect`, data written to the new `vmstorage` instance will be unqueryable until the new instance is added to `vmselect`.
 
-> [!IMPORTANT] Why Gradual Restart is Necessary for `vminsert` Upgrades
+> [!IMPORTANT]
+> Why Gradual Restart is Necessary for `vminsert` Upgrades
 
 When the `storageNode` list changes, some timeseries may be relocated. For example, a timeseries previously stored on `Node A` might be stored on `Node B` after the restart. If a large number of new timeseries suddenly appear on `Node B`, it can severely impact performance. Additionally, if the `-storage.maxHourlySeries` or `-storage.maxDailySeries` limits are reached, `BNode` may reject the newly migrated timeseries.
 
