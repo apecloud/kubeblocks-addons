@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hadoop-core-config-template
+  labels:
+    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+data:
+  core-site.xml: |-
+    {{- .Files.Get "config/core-site.tpl" | nindent 4 }}
+  log4j.properties: |-
+    {{- .Files.Get "config/log4j.properties" | nindent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: journalnode-config-template
+  labels:
+    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+data:
+  hdfs-site.xml: |-
+    {{- .Files.Get "config/hdfs-journalnode.tpl" | nindent 4 }}
+  log4j.properties: |-
+    {{- .Files.Get "config/log4j.properties" | nindent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: namenode-config-template
+  labels:
+    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+data:
+  hdfs-site.xml: |-
+    {{- .Files.Get "config/hdfs-namenode.tpl" | nindent 4 }}
+  log4j.properties: |-
+    {{- .Files.Get "config/log4j.properties" | nindent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: datanode-config-template
+  labels:
+    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+data:
+  hdfs-site.xml: |-
+    {{- .Files.Get "config/hdfs-datanode.tpl" | nindent 4 }}
+  log4j.properties: |-
+    {{- .Files.Get "config/log4j.properties" | nindent 4 }}

@@ -1,0 +1,82 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: hadoop-core
+  labels:
+    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop-hdfs.annotations" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - releases:
+        - v3.3.4
+      compDefs:
+        - hadoop-core
+  releases:
+    - name: v3.3.4
+      serviceVersion: v3.3.4
+      images:
+        hadoop-core: "apecloud/hadoop-common:v3.3.4"
+---
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: hdfs-journalnode
+  labels:
+    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop-hdfs.annotations" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - releases:
+        - v3.3.4
+      compDefs:
+        - hdfs-journalnode
+  releases:
+    - name: v3.3.4
+      serviceVersion: v3.3.4
+      images:
+        hadoop-common: "apecloud/hadoop-common:v3.3.4"
+        hdfs-journalnode: "{{ .Values.journalNode.image.repository }}:{{ .Values.journalNode.image.tag }}"
+---
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: hdfs-namenode
+  labels:
+    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop-hdfs.annotations" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - releases:
+        - v3.3.4
+      compDefs:
+        - hdfs-namenode
+  releases:
+    - name: v3.3.4
+      serviceVersion: v3.3.4
+      images:
+        hadoop-common: "apecloud/hadoop-common:v3.3.4"
+        hdfs-namenode: "{{ .Values.nameNode.image.repository }}:{{ .Values.nameNode.image.tag }}"
+---
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: hdfs-datanode
+  labels:
+    {{- include "hadoop-hdfs.labels" . | nindent 4 }}
+  annotations:
+    {{- include "hadoop-hdfs.annotations" . | nindent 4 }}
+spec:
+  compatibilityRules:
+    - releases:
+        - v3.3.4
+      compDefs:
+        - hdfs-datanode
+  releases:
+    - name: v3.3.4
+      serviceVersion: v3.3.4
+      images:
+        hadoop-common: "apecloud/hadoop-common:v3.3.4"
+        hdfs-datanode: "{{ .Values.dataNode.image.repository }}:{{ .Values.dataNode.image.tag }}"
