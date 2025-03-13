@@ -1,0 +1,44 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ClusterDefinition
+metadata:
+  name: {{ include "wesql.clusterDefName" . }}
+  labels:
+    {{- include "wesql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "wesql.apiVersion" . | nindent 4 }}
+spec:
+  topologies:
+  - name: wesql
+    default: true
+    components:
+    - name: wesql-server
+      compDef: {{ include "wesql.cmpdNameWeSQLServerPrefix" . }}
+  - name: wesql-proxy
+    components:
+    - name: wesql-server
+      compDef: {{ include "wesql.cmpdNameWeSQLServerPrefix" . }}
+    - name: wescale-ctrl
+      compDef: {{ include "wesql.cmpdNameWeScaleCtrlPrefix" . }}
+    - name: wescale
+      compDef: {{ include "wesql.cmpdNameWeScalePrefix" . }}
+    orders:
+      provision:
+      - wesql-server
+      - wescale-ctrl
+      - wescale
+  - name: wesql-proxy-etcd
+    components:
+    - name: wesql-server
+      compDef: {{ include "wesql.cmpdNameWeSQLServerPrefix" . }}
+    - name: etcd
+      compDef: {{ .Values.etcd.etcdCmpdName }}
+    - name: wescale-ctrl
+      compDef: {{ include "wesql.cmpdNameWeScaleCtrlPrefix" . }}
+    - name: wescale
+      compDef: {{ include "wesql.cmpdNameWeScalePrefix" . }}
+    orders:
+      provision:
+      - etcd
+      - wesql-server
+      - wescale-ctrl
+      - wescale

@@ -1,0 +1,46 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: {{ include "wesql.backupPolicyTemplateName" . }}
+  labels:
+    clusterdefinition.kubeblocks.io/name: wesql
+    service-kind/mysql: "true"
+    {{- include "wesql.labels" . | nindent 4 }}
+  annotations:
+    dataprotection.kubeblocks.io/is-default-policy-template: "true"
+spec:
+  clusterDefinitionRef: {{ include "wesql.clusterDefName" . }}
+  backupPolicies:
+  - componentDefRef: wesql-server
+    componentDefs:
+      - wesql-server
+    target:
+      role: follower
+      fallbackRole: leader
+      account: root
+    backupMethods: &backupMethods
+    - name: xtrabackup
+      snapshotVolumes: false
+      actionSetName: {{ include "wesql.xtrabackupActionSetName" . }}
+      targetVolumes:
+        volumeMounts:
+        - name: data
+          mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
+    - name: volume-snapshot
+      snapshotVolumes: true
+      actionSetName: {{ include "wesql.vsActionSetName" . }}
+      targetVolumes:
+        volumes:
+        - data
+        volumeMounts:
+        - name: data
+          mountPath: {{ .Values.mysqlConfigs.dataMountPath }}
+    schedules: &backupschedules
+    - backupMethod: xtrabackup
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d
+    - backupMethod: volume-snapshot
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d
