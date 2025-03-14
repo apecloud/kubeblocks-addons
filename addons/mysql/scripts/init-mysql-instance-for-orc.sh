@@ -108,7 +108,7 @@ EOF
 
 setup_master_slave() {
 
-  mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e "STOP SLAVE;RESET MASTER;RESET SLAVE ALL;";
+  mysql -P 3306 -u $MYSQL_ROOT_USER -p$MYSQL_ROOT_PASSWORD -e "STOP SLAVE;RESET SLAVE ALL;";
 
   mysql_note "setup_master_slave"
 
@@ -128,13 +128,21 @@ setup_master_slave() {
     return 0
   fi
 
-  # If master_from_orc is not empty, then replace master_pod_name with master_from_orc.
-  if [[ $master_from_orc != "" ]]; then
-    master_pod_name=$master_from_orc
-  fi
-
   # setup semi sync for master-slave replication
   init_semi_sync_config
+
+  # If master_from_orc is not empty, then replace master_pod_name with master_from_orc.
+  if [[ "$master_from_orc" != "" ]] ; then
+    change_master "$master_from_orc.${CLUSTER_COMPONENT_NAME}-headless"
+    return 0
+  fi
+
+  # if the instance is already registered in orchestrator, then return
+  # there may be a case where the old instance is still registered in orchestrator
+  # if orchestrator-client -c instance -i ${POD_NAME} ; then
+  #   return 0
+  # fi  
+
   # If the master_pod_name is empty, then this pod is the first one in the cluster, init cluster info database and create user.
   if [[ $master_from_orc == "" && $self_last_digit -eq 0 ]]; then
     echo "Create MySQL User and Grant Permissions"
