@@ -85,27 +85,13 @@ spec:
       optional: true
   updateStrategy: BestEffortParallel
   configs:
-{{/*    - name: broker-env*/}}
-{{/*      templateRef: {{ include "pulsar.brokerEnvTplName" . }}*/}}
-{{/*      namespace: {{ .Release.Namespace }}*/}}
-{{/*      constraintRef: {{ include "pulsar.envConstraintName" . }}*/}}
-{{/*      keys:*/}}
-{{/*        - conf*/}}
-{{/*      injectEnvTo:*/}}
-{{/*        - init-broker-cluster*/}}
-{{/*        - broker*/}}
-{{/*        - init-pulsar-client-config*/}}
-{{/*      volumeName: broker-env*/}}
-{{/*      reRenderResourceTypes:*/}}
-{{/*        - vscale*/}}
     - name: broker-config
       templateRef: {{ include "pulsar3.brokerConfigTplName" . }}
       namespace: {{ .Release.Namespace }}
-{{/*      constraintRef: {{ include "pulsar3.brokerConfigConstraintName" . }}*/}}
       volumeName: pulsar-config
   scripts:
     - name: pulsar-scripts
-      templateRef: {{ include "pulsar.scriptsTplName" . }}
+      template: {{ include "pulsar.scriptsTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555

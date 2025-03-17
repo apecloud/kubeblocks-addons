@@ -17,7 +17,7 @@ spec:
       defaultMode: 0444
   scripts:
     - name: vanilla-postgresql-scripts
-      templateRef: {{ include "vanilla-postgresql.scriptsTemplate" . }}
+      template: {{ include "vanilla-postgresql.scriptsTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
@@ -48,7 +48,7 @@ spec:
       defaultMode: 0444
   scripts:
     - name: vanilla-postgresql-scripts
-      templateRef: {{ include "vanilla-postgresql.scriptsTemplate" . }}
+      template: {{ include "vanilla-postgresql.scriptsTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555

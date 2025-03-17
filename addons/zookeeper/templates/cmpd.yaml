@@ -70,7 +70,7 @@ spec:
       value: "INFO,ROLLINGFILE,TRACEFILE,CONSOLE"
   scripts:
     - name: zookeeper-scripts
-      templateRef: {{ include "zookeeper.scriptsTplName" . }}
+      template: {{ include "zookeeper.scriptsTplName" . }}
       volumeName: scripts
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755
