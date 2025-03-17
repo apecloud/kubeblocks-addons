@@ -11,6 +11,9 @@ spec:
   description: Minio is a High Performance Object Storage.
   serviceKind: minio
   serviceVersion: {{ .Values.defaultServiceVersion.minio }}
+  replicasLimit:
+    minReplicas: 2
+    maxReplicas: 32 
   systemAccounts:
     - name: root
       initAccount: true
