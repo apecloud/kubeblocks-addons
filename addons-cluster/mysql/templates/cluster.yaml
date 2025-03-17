@@ -17,7 +17,7 @@ spec:
       {{- include "kblib.componentStorages" . | indent 6 }}
       {{- if eq .Values.topology "server-with-orc" }}
       serviceRefs:
-        {{- if eq .Values.orchestrator.clusterServiceSelector.cluster ""}}
+        {{- if eq .Values.orchestrator.clusterServiceSelector.clusterName ""}}
         - name: orchestrator
           namespace: {{ .Release.Namespace }}
           serviceDescriptor: {{ include "kblib.clusterName" . }}-orc-descriptor
