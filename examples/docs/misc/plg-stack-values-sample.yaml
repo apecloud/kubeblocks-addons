@@ -12,6 +12,9 @@ promtail:
     runAsUser: 0
     runAsGroup: 0
     fsGroup: 0  # add fsGroup to allow promtail to read logs from the host. Set to the group id of the user that has access to the log files
+  containerSecurityContext:
+    allowPrivilegeEscalation: true
+    privileged: true
 
   extraVolumes:  # mount the local-path-provisioner volume to promtail. Set the path to the directory where the MySQL error logs are stored.
     - name: localpv
@@ -27,9 +30,10 @@ promtail:
     - name: kubelet
       mountPath: "/var/lib/kubelet/pods"
       readOnly: true
+      mountPropagation: Bidirectional # indicates that any mounts created on the host will be visible inside the container, and any mounts created inside the container will also be visible on the host.
 
   config:
-    logLevel: debug
+    logLevel: debug  # set to debug mode in your development environment
     clients:
       - url: http://loki-stack.logging:3100/loki/api/v1/push
     snippets:

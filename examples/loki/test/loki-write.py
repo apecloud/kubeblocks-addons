@@ -4,6 +4,10 @@ import random
 import string
 from concurrent.futures import ThreadPoolExecutor
 
+## NOTE:
+## before you start, pls forward svc
+## k port-forward svc/lokicluster-gateway 8080:80
+
 # Configuration
 LOKI_URL = "http://localhost:8080"  # Update with your Loki URL
 WRITE_ENDPOINT = "/loki/api/v1/push"
