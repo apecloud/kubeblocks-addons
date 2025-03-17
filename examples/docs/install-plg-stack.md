@@ -99,7 +99,7 @@ show variables like '%log_file';
 ```
 
 <details>
-Expected Output:
+<summary>Expected Output:</summary>
 
 ```bash
 +---------------------+-----------------------------------------+
@@ -371,3 +371,61 @@ Here is an example of how to parse MySQL slow logs using Promtail. It uses `mult
     - output:  # Define the final output of the log processing
         source: query
 ```
+
+### Install and Config Alloy
+
+Alloy is a flexible, vendor-neutral telemetry collector. As Promtail is expected to reach EOL on March 2, 2026[^1], one may want to migrate from Promtail to Alloy.
+
+Before installing Alloy, please convert Promtail configuration to Alloy, and create a ConfigMap from the file:
+
+```bash
+# you may get promtail config with :  kubectl -n logging get secrets loki-stack-promtail -oyaml | yq '.data."promtail.yaml"' |base64 -d > promtail.config
+alloy convert --source-format=promtail --output=alloy.config promtail.config
+kubectl -n logging create configmap alloy-config --from-file config.alloy=./alloy.config
+```
+
+Then install Alloy with values:
+
+```yaml
+# cat alloy.values.yaml
+alloy:
+  configMap:
+    create: false
+    name: alloy-config
+    key: config.alloy
+  securityContext:
+    allowPrivilegeEscalation: true
+    privileged: true
+  mounts:
+    # -- Mount /var/log from the host into the container for log collection.
+    varlog: false
+    # -- Mount /var/lib/docker/containers from the host into the container for log
+    # collection.
+    dockercontainers: false
+
+    # -- Extra volume mounts to add into the Grafana Alloy container. Does not
+    # affect the watch container.
+    extra:
+      - name: kubelet
+        mountPath: "/var/lib/kubelet/pods"
+        readOnly: true
+        mountPropagation: Bidirectional
+controller:
+  volumes:
+    # -- Extra volumes to add to the Grafana Alloy pod.
+    extra:
+      - name: kubelet
+        hostPath:
+          path: "/var/lib/kubelet/pods"
+```
+
+```bash
+helm repo add grafana https://grafana.github.io/helm-charts
+helm repo update
+helm install --namespace logging alloy grafana/alloy -f alloy.value.yaml --create-namespace
+```
+
+## Reference
+
+[^1] Promtail: <https://grafana.com/docs/loki/latest/send-data/promtail/>
+[^2] Alloy: <https://grafana.com/docs/alloy/latest/introduction/>
