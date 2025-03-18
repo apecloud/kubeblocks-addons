@@ -1,6 +1,10 @@
 import requests
 import time
 
+## NOTE:
+## before you start, pls forward svc
+## k port-forward svc/lokicluster-gateway 8080:80
+
 # Configuration
 LOKI_URL = "http://localhost:8080"  # Update with your Loki URL
 QUERY = '{job="performance_test"}'  # Your Loki query
@@ -15,7 +19,7 @@ def query_loki():
 
     try:
         response = requests.get(
-            f"{LOKI_URL}/loki/api/v1/query",
+            f"{LOKI_URL}/loki/api/v1/query_range", # use query_range to
             params=query_params
         )
         response.raise_for_status()  # Raise an exception for HTTP errors
