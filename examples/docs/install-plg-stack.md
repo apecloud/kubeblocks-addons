@@ -374,7 +374,7 @@ Here is an example of how to parse MySQL slow logs using Promtail. It uses `mult
 
 ### Install and Config Alloy
 
-Alloy is a flexible, vendor-neutral telemetry collector. As Promtail is expected to reach EOL on March 2, 2026[^1], one may want to migrate from Promtail to Alloy.
+Alloy is a flexible, vendor-neutral telemetry collector[^2]. As Promtail is expected to reach EOL on March 2, 2026[^1], one may want to migrate from Promtail to Alloy.
 
 Before installing Alloy, please convert Promtail configuration to Alloy, and create a ConfigMap from the file:
 
@@ -426,6 +426,5 @@ helm install --namespace logging alloy grafana/alloy -f alloy.value.yaml --creat
 ```
 
 ## Reference
-
-[^1] Promtail: <https://grafana.com/docs/loki/latest/send-data/promtail/>
-[^2] Alloy: <https://grafana.com/docs/alloy/latest/introduction/>
+[^1]: Promtail, <https://grafana.com/docs/loki/latest/send-data/promtail/>
+[^2]: Alloy, <https://grafana.com/docs/alloy/latest/introduction/>
