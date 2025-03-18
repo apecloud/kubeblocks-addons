@@ -158,7 +158,7 @@ storage:
         # -- Service type for MinIO
         # @default headless
         service: headless
-        # -- Port name for MinIO protocol
+        # -- Port name for MinIO API protocol
         # @default http
         port: http
         # -- Credentials for MinIO
