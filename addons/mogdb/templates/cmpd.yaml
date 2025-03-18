@@ -28,7 +28,7 @@ spec:
       defaultMode: 0777
   scripts:
     - name: mogdb-scripts
-      templateRef: {{ include "mogdb.scriptsTplName" . }}
+      template: {{ include "mogdb.scriptsTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0777

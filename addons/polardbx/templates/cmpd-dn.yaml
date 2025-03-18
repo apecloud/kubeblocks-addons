@@ -20,7 +20,7 @@ spec:
             targetPort: 3306
   scripts:
     - name: polardbx-scripts
-      templateRef: {{ include "polardbx.scriptsTemplate" . }}
+      template: {{ include "polardbx.scriptsTemplate" . }}
       volumeName: scripts
       namespace: {{ .Release.Namespace }}
       defaultMode: 0555

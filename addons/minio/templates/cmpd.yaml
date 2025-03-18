@@ -39,7 +39,7 @@ spec:
       defaultMode: 0777
   scripts:
     - name: minio-scripts
-      templateRef: {{ include "minio.scriptsTplName" . }}
+      template: {{ include "minio.scriptsTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555

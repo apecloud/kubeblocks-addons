@@ -228,7 +228,7 @@ configs:
     defaultMode: 0555
 scripts:
   - name: oceanbase-scripts
-    templateRef: {{ include "oceanbase-ce.scripts.bootscripts" .}}
+    template: {{ include "oceanbase-ce.scripts.bootscripts" .}}
     namespace: {{ .Release.Namespace }}
     volumeName: scripts
     defaultMode: 0555

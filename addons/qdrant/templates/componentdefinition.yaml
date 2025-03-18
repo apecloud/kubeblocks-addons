@@ -30,7 +30,7 @@ spec:
     namespace: {{ .Release.Namespace }}
   scripts:
   - name: qdrant-scripts
-    templateRef: {{ include "qdrant.scriptsTplName" . }}
+    template: {{ include "qdrant.scriptsTplName" . }}
     namespace: {{ .Release.Namespace }}
     volumeName: scripts
     defaultMode: 0555
