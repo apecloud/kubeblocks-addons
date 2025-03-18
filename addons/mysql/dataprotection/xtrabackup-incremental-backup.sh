@@ -28,9 +28,9 @@ PARENT_DIR=${MYSQL_DIR}/xtrabackup-parent
 
 # function get_last_info gets parent backup info from datasafed
 function get_last_info() {
-  sufix=$1
+  suffix=$1
   export DATASAFED_BACKEND_BASE_PATH="${DP_BACKUP_ROOT_PATH}/${DP_PARENT_BACKUP_NAME}/${DP_TARGET_RELATIVE_PATH}"
-  infoFile="${DP_PARENT_BACKUP_NAME}.${sufix}"
+  infoFile="${DP_PARENT_BACKUP_NAME}.${suffix}"
   if [ "$(datasafed list ${infoFile})" == "${infoFile}" ]; then
     echo "$(datasafed pull "/${infoFile}" - | awk '{print $1}')"
   fi

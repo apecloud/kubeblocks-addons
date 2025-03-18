@@ -43,7 +43,7 @@ if [ -n "${DP_ANCESTOR_INCREMENTAL_BACKUP_NAMES}" ]; then
 fi
 INCS_DIR=${MYSQL_DIR}/xtrabackup-incs
 mkdir -p ${INCS_DIR}
-# preapre incremental data
+# prepare incremental data
 for parent_name in "${ANCESTOR_INCREMENTAL_BACKUP_NAMES[@]}"; do
   download_backup_file "${parent_name}" "${INCS_DIR}/${parent_name}"
   xtrabackup --prepare --apply-log-only --target-dir=${BASE_DIR} --incremental-dir=${INCS_DIR}/${parent_name}
