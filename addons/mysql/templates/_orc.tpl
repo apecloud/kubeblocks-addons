@@ -25,7 +25,7 @@ services:
           targetPort: mysql
 scripts:
   - name: mysql-scripts
-    templateRef: mysql-scripts
+    template: mysql-scripts
     namespace: {{ .Release.Namespace }}
     volumeName: scripts
     defaultMode: 0555

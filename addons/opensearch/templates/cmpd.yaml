@@ -128,7 +128,7 @@ spec:
       namespace: {{.Release.Namespace}}
   scripts:
     - name: opensearch-scripts
-      templateRef: {{ include "opensearch.scriptsTemplate" . }}
+      template: {{ include "opensearch.scriptsTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555

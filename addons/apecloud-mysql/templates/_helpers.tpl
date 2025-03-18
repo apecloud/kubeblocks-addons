@@ -94,7 +94,7 @@ logConfigs:
   {{- end }}
 scripts:
   - name: apecloud-mysql-scripts
-    templateRef: {{ include "apecloud-mysql.cmScriptsName" . }}
+    template: {{ include "apecloud-mysql.cmScriptsName" . }}
     namespace: {{ .Release.Namespace }}
     volumeName: scripts
     defaultMode: 0555  # for read and execute, mysql container switched user account.
