@@ -40,6 +40,85 @@ Create an etcd cluster with three replicas, one leader and two followers.
 kubectl apply -f examples/etcd/cluster.yaml
 ```
 
+#### Create with TLS Enabled
+
+To create etcd cluster with TLS enabled,
+
+```bash
+kubectl apply -f examples/etcd/cluster-tls.yaml
+```
+
+Compared to the default configuration, the only difference here is the `tls` and `issuer` fields in the `cluster-tls.yaml` file.
+
+```yaml
+tls: true  # enable tls
+issuer:    # set issuer, could be 'KubeBlocks' or 'UserProvided'
+  name: KubeBlocks
+```
+
+By default, the `issuer` is set to `KubeBlocks`, which means KubeBlocks will generate the certificates for you and store it in a secret, `<clusterName>-<componentName>-tls-certs`.
+If you want to use your own certificates, you can set the `issuer` to `UserProvided` and provide the certificates in the `secretRef` field.
+
+Certifications are mounted to path '/etc/pki/tls' by default. To check how secrets will be mounted, you may check the TLS field in `ComponentDefinition`:
+
+```bash
+kubectl get cmpd <cmpdName> -oyaml | yq '.spec.tls'
+```
+
+<details>
+<summary>Expected Output</summary>
+
+```bash
+caFile: ca.pem
+certFile: cert.pem
+keyFile: key.pem
+mountPath: /etc/pki/tls
+volumeName: tls
+```
+
+</details>
+
+Here is a simple test to verify if TLS works.
+
+- login a read/write ETCD pod (with role=leader)
+
+```bash
+kubectl get po -l kubeblocks.io/role=leader,apps.kubeblocks.io/component-name=etcd
+kubectl exec -it <podName> -- /bin/bash
+```
+
+- put values
+
+```bash
+etcdctl \
+  --endpoints=https://127.0.0.1:2379 \
+  --cacert=/etc/pki/tls/ca.pem \
+  --cert=/etc/pki/tls/cert.pem \
+  --key=/etc/pki/tls/key.pem \
+  put foo bar
+```
+
+- get values
+
+```bash
+etcdctl \
+  --endpoints=https://127.0.0.1:2379 \
+  --cacert=/etc/pki/tls/ca.pem \
+  --cert=/etc/pki/tls/cert.pem \
+  --key=/etc/pki/tls/key.pem \
+  get foo
+```
+
+<details>
+<summary>Expected Output</summary>
+
+```bash
+foo
+bar
+```
+
+</details>
+
 ### Horizontal scaling
 
 #### [Scale-out](scale-out.yaml)

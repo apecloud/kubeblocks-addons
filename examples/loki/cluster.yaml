@@ -36,6 +36,7 @@ spec:
       volumeClaimTemplates:
         - name: data
           spec:
+            storageClassName: standard
             accessModes:
               - ReadWriteOnce
             resources:
