@@ -10,6 +10,7 @@ spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
+  podManagementPolicy: Parallel
   services:
     - name: default
       spec:
