@@ -31,8 +31,11 @@
 	// Limits the number of concurrent connections (at the socket level) that a single client, identified by IP address, may make to a single member of the ZooKeeper ensemble. This is used to prevent certain classes of DoS attacks, including file descriptor exhaustion. The default is 60. Setting this to 0 entirely removes the limit on concurrent connections.
 	"maxClientCnxns"?: int
 
-	// New in 3.3.0: the maximum session timeout in milliseconds that the server will allow the client to negotiate.
+	// New in 3.3.0: the maximum session timeout in milliseconds that the server will allow the client to negotiate. Defaults to 20 * tickTime.
 	"maxSessionTimeout"?: int
+
+	// New in 3.3.0: the minimum session timeout in milliseconds that the server will allow the client to negotiate. Defaults to 2 * tickTime.
+	"minSessionTimeout"?: int
 
 	// New in 3.4.0: When enabled, ZooKeeper auto purge feature retains the autopurge.snapRetainCount most recent snapshots and the corresponding transaction logs in the dataDir and dataLogDir respectively and deletes the rest. Defaults to 3. Minimum value is 3.
 	"autopurge.snapRetainCount"?: int
