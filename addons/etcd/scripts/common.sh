@@ -54,8 +54,8 @@ exec_etcdctl() {
   client_protocol=$(get_client_protocol)
   tls_dir=$TLS_MOUNT_PATH
   # check if the client_protocol is https and the tls_dir is not empty
-  if [ "$client_protocol" = "https" ] && [ -d "$tls_dir" ] && [ -s "${tls_dir}/ca.crt" ] && [ -s "${tls_dir}/tls.crt" ] && [ -s "${tls_dir}/tls.key" ]; then
-    etcdctl --endpoints="${endpoints}" --cacert="${tls_dir}/ca.crt" --cert="${tls_dir}/tls.crt" --key="${tls_dir}/tls.key" "$@"
+  if [ "$client_protocol" = "https" ] && [ -d "$tls_dir" ] && [ -s "${tls_dir}/ca.pem" ] && [ -s "${tls_dir}/cert.pem" ] && [ -s "${tls_dir}/key.pem" ]; then
+    etcdctl --endpoints="${endpoints}" --cacert="${tls_dir}/ca.pem" --cert="${tls_dir}/cert.pem" --key="${tls_dir}/key.pem" "$@"
   elif [ "$client_protocol" = "http" ]; then
     etcdctl --endpoints="${endpoints}" "$@"
   else
