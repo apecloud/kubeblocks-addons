@@ -53,6 +53,7 @@ done
 # prepare the last data
 download_backup_file "${DP_BACKUP_NAME}" "${INCS_DIR}/${DP_BACKUP_NAME}"
 xtrabackup --prepare --target-dir=${BASE_DIR} --incremental-dir=${INCS_DIR}/${DP_BACKUP_NAME}
+rm -rf ${INCS_DIR}/${DP_BACKUP_NAME}
 
 # 4. restore
 xtrabackup --move-back --target-dir=${BASE_DIR} --datadir=${DATA_DIR}
