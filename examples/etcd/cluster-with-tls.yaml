@@ -17,7 +17,9 @@ spec:
       # Layer Security (TLS)
       # for secure communication.
       # Valid options are: [true,false]
-      tls: true
+      tls: true   # set TLS to true
+      issuer:     # if TLS is True, this filed is required.
+        name: KubeBlocks  # set Issuer to [KubeBlocks, UserProvided].
       serviceVersion: 3.5.15
       replicas: 3
       resources:

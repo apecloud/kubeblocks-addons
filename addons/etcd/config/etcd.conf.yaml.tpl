@@ -132,16 +132,16 @@ proxy-read-timeout: 0
 {{- if eq $client_protocol "https" }}
 client-transport-security:
   # Path to the client server TLS cert file.
-  cert-file: {{ .Values.tlsMountPath }}/cert.pem
+  cert-file: {{ .TLS_MOUNT_PATH }}/cert.pem
 
   # Path to the client server TLS key file.
-  key-file: {{ .Values.tlsMountPath }}/key.pem
+  key-file: {{ .TLS_MOUNT_PATH }}/key.pem
 
   # Enable client cert authentication.
   client-cert-auth: true
 
   # Path to the client server TLS trusted CA cert file.
-  trusted-ca-file: {{ .Values.tlsMountPath }}/ca.pem
+  trusted-ca-file: {{ .TLS_MOUNT_PATH }}/ca.pem
 
   # Client TLS using generated certificates
   auto-tls: false
@@ -149,16 +149,16 @@ client-transport-security:
 {{ if eq $peer_protocol "https" }}
 peer-transport-security:
   # Path to the peer server TLS cert file.
-  cert-file: {{ .Values.tlsMountPath }}/cert.pem
+  cert-file: {{ .TLS_MOUNT_PATH }}/cert.pem
 
   # Path to the peer server TLS key file.
-  key-file: {{ .Values.tlsMountPath }}/key.pem
+  key-file: {{ .TLS_MOUNT_PATH }}/key.pem
 
   # Enable peer client cert authentication.
   client-cert-auth: true
 
   # Path to the peer server TLS trusted CA cert file.
-  trusted-ca-file: {{ .Values.tlsMountPath }}/ca.pem
+  trusted-ca-file: {{ .TLS_MOUNT_PATH }}/ca.pem
 
   # Peer TLS using generated certificates.
   auto-tls: false
@@ -194,7 +194,7 @@ cipher-suites: [
   TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
 ]
 
-# Limit etcd to specific TLS protocol versions 
+# Limit etcd to specific TLS protocol versions
 tls-min-version: 'TLS1.2'
 tls-max-version: 'TLS1.3'
 
