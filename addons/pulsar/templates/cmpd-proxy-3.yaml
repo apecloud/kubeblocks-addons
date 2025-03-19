@@ -19,26 +19,13 @@ spec:
       optional: true
   updateStrategy: BestEffortParallel
   configs:
-{{/*    - name: proxy-env*/}}
-{{/*      templateRef: {{ include "pulsar.proxyEnvTplName" . }}*/}}
-{{/*      namespace: {{ .Release.Namespace }}*/}}
-{{/*      volumeName: proxy-env*/}}
-{{/*      constraintRef: {{ include "pulsar.envConstraintName" . }}*/}}
-{{/*      keys:*/}}
-{{/*        - conf*/}}
-{{/*      injectEnvTo:*/}}
-{{/*        - proxy*/}}
-{{/*        - check-broker*/}}
-{{/*      reRenderResourceTypes:*/}}
-{{/*        - vscale*/}}
     - name: proxy-config
       templateRef: {{ include "pulsar3.proxyConfigTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: pulsar-proxy-config
-{{/*      constraintRef: {{ include "pulsar3.proxyConfigConstraintName" . }}*/}}
   scripts:
     - name: pulsar-scripts
-      templateRef: {{ include "pulsar.scriptsTplName" . }}
+      template: {{ include "pulsar.scriptsTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555

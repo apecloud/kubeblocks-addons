@@ -188,7 +188,7 @@ spec:
       defaultMode: 0666
   scripts:
     - name: etcd-script
-      templateRef: {{ include "etcd3.scriptTemplate" .}}
+      template: {{ include "etcd3.scriptTemplate" .}}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555

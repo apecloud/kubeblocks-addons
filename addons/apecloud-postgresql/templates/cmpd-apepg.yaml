@@ -17,7 +17,7 @@ spec:
       defaultMode: 0444
   scripts:
     - name: apecloud-postgresql-scripts
-      templateRef: {{ include "apecloud-postgresql.scriptsTemplate" . }}
+      template: {{ include "apecloud-postgresql.scriptsTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555

@@ -26,7 +26,7 @@ spec:
       namespace: {{ .Release.Namespace }}
   scripts:
     - name: yashandb-scripts
-      templateRef: {{ include "yashandb.scriptsTplName" . }}
+      template: {{ include "yashandb.scriptsTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: yashandb-scripts
   logConfigs:

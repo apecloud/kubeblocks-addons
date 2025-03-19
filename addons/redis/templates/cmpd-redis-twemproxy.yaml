@@ -22,7 +22,7 @@ spec:
             targetPort: redis-twemproxy
   scripts:
     - name: redis-scripts
-      templateRef: {{ include "redis7.scriptsTemplate" . }}
+      template: {{ include "redis7.scriptsTemplate" . }}
       volumeName: scripts
       namespace: {{ .Release.Namespace }}
       defaultMode: 365

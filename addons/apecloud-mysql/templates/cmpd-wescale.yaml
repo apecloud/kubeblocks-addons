@@ -19,7 +19,7 @@ spec:
       optional: true
   scripts:
     - name: apecloud-mysql-scripts
-      templateRef: {{ include "apecloud-mysql.cmScriptsName" . }}
+      template: {{ include "apecloud-mysql.cmScriptsName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555

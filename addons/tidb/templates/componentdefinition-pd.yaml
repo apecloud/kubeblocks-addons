@@ -53,7 +53,7 @@ spec:
       needSnapshot: true
   scripts:
     - name: tidb-scripts
-      templateRef: {{ include "tidb.cmScriptsName" . }}
+      template: {{ include "tidb.cmScriptsName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
   configs:
