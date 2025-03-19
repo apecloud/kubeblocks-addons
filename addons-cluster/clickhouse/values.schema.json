@@ -43,10 +43,7 @@
     "cpu": {
       "title": "CPU Request",
       "description": "The amount of CPU requested for each ClickHouse instance, can be a number or string with units.",
-      "type": [
-        "number",
-        "string"
-      ],
+      "type": "number",
       "default": 1,
       "minimum": 0.5,
       "maximum": 64
@@ -54,10 +51,7 @@
     "memory": {
       "title": "Memory(Gi)",
       "description": "The amount of memory requested for each ClickHouse instance, unit is Gi.",
-      "anyOf": [
-        { "type": "number" },
-        { "type": "string" }
-      ],
+      "type": "number",
       "default": 2,
       "minimum": 0.5,
       "maximum": 1000
@@ -71,10 +65,7 @@
     "storage": {
       "title": "Storage(Gi)",
       "description": "Size of the persistent storage volume in Gi.",
-      "anyOf": [
-        { "type": "number" },
-        { "type": "string" }
-      ],
+      "type": "number",
       "default": 20,
       "minimum": 1,
       "maximum": 10000
@@ -100,10 +91,7 @@
         "cpu": {
           "title": "Keeper CPU Request",
           "description": "The amount of CPU requested for each ClickHouse Keeper instance, can be a number or string with units.",
-          "anyOf": [
-            { "type": "number" },
-            { "type": "string" }
-          ],
+          "type": "number",
           "default": 1,
           "minimum": 0.1,
           "maximum": 64
@@ -111,10 +99,7 @@
         "memory": {
           "title": "Keeper Memory(Gi)",
           "description": "The amount of memory requested for each ClickHouse Keeper instance, unit is Gi.",
-          "anyOf": [
-            { "type": "number" },
-            { "type": "string" }
-          ],
+          "type": "number",
           "default": 2,
           "minimum": 0.5,
           "maximum": 1000
@@ -122,10 +107,7 @@
         "storage": {
           "title": "Keeper Storage(Gi)",
           "description": "Size of the keeper's persistent storage volume in Gi.",
-          "anyOf": [
-            { "type": "number" },
-            { "type": "string" }
-          ],
+          "type": "number",
           "default": 10,
           "minimum": 1,
           "maximum": 10000
