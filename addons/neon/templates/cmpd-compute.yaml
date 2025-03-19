@@ -30,7 +30,7 @@ spec:
         letterCase: MixedCases
   scripts:
     - name: neon-scripts
-      templateRef: {{ include "neon.scriptsTemplateName" . }}
+      template: {{ include "neon.scriptsTemplateName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555

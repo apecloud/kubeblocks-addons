@@ -19,7 +19,7 @@ spec:
       volumeName: proxy-config
   scripts:
     - name: proxysql-scripts
-      templateRef: proxysql-scripts
+      template: proxysql-scripts
       namespace: {{ .Release.Namespace }}
       volumeName: proxysql-scripts
       defaultMode: 0555

@@ -23,7 +23,7 @@ spec:
       defaultMode: 0444
   scripts:
     - name: taos-adapter-scripts
-      templateRef: {{ include "tdengine.scriptsTemplate" . }}
+      template: {{ include "tdengine.scriptsTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
