@@ -172,7 +172,7 @@ spec:
                 # specify new size, and make sure it is larger than the current size
                 storage: 30Gi
       volumeClaimTemplates:
-        - name: log
+        - name: snapshot-log
           spec:
             storageClassName: ""
             accessModes:
