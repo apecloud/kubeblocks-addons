@@ -32,6 +32,8 @@ cat "${TMP_DIR}/xtrabackup.log" \
   | grep "The latest check point (for incremental)" \
   | awk -F"'" '{print $2}' \
   | datasafed push - "/${DP_BACKUP_NAME}.lsn"
+# record server uuid
+cat ${MYSQL_DIR}/data/auto.cnf | grep server-uuid | awk -F '=' '{print $2}' | datasafed push - "${DP_BACKUP_NAME}.server-uuid"
 TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
 echo "{\"totalSize\":\"$TOTAL_SIZE\"}" >"${DP_BACKUP_INFO_FILE}"
 rm -rf ${TMP_DIR}

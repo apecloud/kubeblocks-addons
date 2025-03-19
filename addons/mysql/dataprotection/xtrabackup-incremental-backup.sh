@@ -22,16 +22,17 @@ if [[ -z ${DP_PARENT_BACKUP_NAME} ]]; then
   exit 1
 fi
 
-# 2. get parent backup lsn or download backup file
+# 2. get parent backup info and download backup file
 mkdir -p ${DATA_DIR}
 PARENT_DIR=${MYSQL_DIR}/xtrabackup-parent
 
-# function get_last_lsn gets parent backup lsn from datasafed
-function get_last_lsn() {
+# function get_last_info gets parent backup info from datasafed
+function get_last_info() {
+  suffix=$1
   export DATASAFED_BACKEND_BASE_PATH="${DP_BACKUP_ROOT_PATH}/${DP_PARENT_BACKUP_NAME}/${DP_TARGET_RELATIVE_PATH}"
-  lsnFile="${DP_PARENT_BACKUP_NAME}.lsn"
-  if [ "$(datasafed list ${lsnFile})" == "${lsnFile}" ]; then
-    echo "$(datasafed pull "/${lsnFile}" - | awk '{print $1}')"
+  infoFile="${DP_PARENT_BACKUP_NAME}.${suffix}"
+  if [ "$(datasafed list ${infoFile})" == "${infoFile}" ]; then
+    echo "$(datasafed pull "/${infoFile}" - | awk '{print $1}')"
   fi
 }
 
@@ -49,9 +50,16 @@ function download_parent_backup_file() {
   xtrabackup --decompress --remove-original --target-dir=${PARENT_DIR}
 }
 
+# validate server uuid
+server_uuid=$(cat ${MYSQL_DIR}/data/auto.cnf | grep server-uuid | awk -F '=' '{print $2}')
+last_server_uuid=$(get_last_info "server-uuid")
+if [ -n "${last_server_uuid}" ] && [ "${server_uuid}" != "${last_server_uuid}" ]; then
+  echo "server uuid is not equal to server uuid of parent backup, backup target instance has changed"
+  exit 1
+fi
 # build incremental cmd
 incremental_cmd=""
-last_lsn=$(get_last_lsn)
+last_lsn=$(get_last_info "lsn")
 if [ -n "${last_lsn}" ]; then
   incremental_cmd="--incremental-lsn=${last_lsn}"
   echo "create incremental backup based on parent backup lsn"
@@ -85,6 +93,8 @@ cat "${TMP_DIR}/xtrabackup.log" \
   | grep "The latest check point (for incremental)" \
   | awk -F"'" '{print $2}' \
   | datasafed push - "/${DP_BACKUP_NAME}.lsn"
+# record server uuid
+echo "${server_uuid}" | datasafed push - "${DP_BACKUP_NAME}.server-uuid"
 TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
 echo "{\"totalSize\":\"$TOTAL_SIZE\"}" >"${DP_BACKUP_INFO_FILE}"
 rm -rf ${PARENT_DIR}
