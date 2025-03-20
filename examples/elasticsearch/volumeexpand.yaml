@@ -11,14 +11,10 @@ spec:
   volumeExpansion:
     # Specifies the name of the Component.
     # - master
-    # - data
-    # - ingest
-    # - transform
-  - componentName: transform
+    # - dit
+  - componentName: dit
     # volumeClaimTemplates specifies the storage size and volumeClaimTemplate name.
     volumeClaimTemplates:
       # A reference to the volumeClaimTemplate name from the cluster components.
-      # - datanode, datanode
-      # - etcd, etcd-storage
     - name: data
       storage: 30Gi

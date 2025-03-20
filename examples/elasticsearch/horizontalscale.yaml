@@ -11,9 +11,7 @@ spec:
   horizontalScaling:
     # Specifies the name of the Component.
     # - master
-    # - data
-    # - ingest
-    # - transform
+    # - dit
   - componentName: master
     # Specifies the number of total replicas.
     replicas: 2

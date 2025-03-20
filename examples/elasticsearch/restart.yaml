@@ -11,7 +11,5 @@ spec:
   restart:
     # Specifies the name of the Component.
     # - master
-    # - data
-    # - ingest
-    # - transform
-  - componentName: data
+    # - dit
+  - componentName: master
