@@ -1,0 +1,50 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{ include "kblib.clusterLabels" . | nindent 4 }}
+spec:
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  clusterDefinitionRef: wesql # ref clusterdefinition.name
+  topology: {{ .Values.topology }}
+  componentSpecs:
+    - name: wesql-server
+      env:
+        - name: WESQL_CLUSTER_MEMBER
+          value: "$(KB_POD_NAME).$(KB_CLUSTER_NAME)-$(KB_COMP_NAME)-headless:13306"
+        - name: MYSQL_CUSTOM_CONFIG
+          value: |
+            [mysqld]
+            objectstore_provider={{ .Values.objectStore.provider }}
+            objectstore_region={{ .Values.objectStore.region }}
+            objectstore_bucket={{ .Values.objectStore.bucket }}
+            repo_objectstore_id={{ .Values.objectStore.repoId }}
+            branch_objectstore_id={{ .Values.objectStore.branchId }}
+            log-bin=binlog
+            gtid_mode=ON
+            enforce_gtid_consistency=ON
+            log_slave_updates=ON
+            binlog_format=ROW
+            skip_name_resolve=ON
+        - name: WESQL_OBJECTSTORE_ACCESS_KEY
+          value: {{ .Values.objectStore.accessKey }}
+        - name: WESQL_OBJECTSTORE_SECRET_KEY
+          value: {{ .Values.objectStore.secretKey }}
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+      {{- include "wesql-cluster.schedulingPolicy" . | indent 6 }}
+      {{- if eq .Values.topology "wesql-proxy" }}
+      serviceVersion: {{ .Values.version }}
+      serviceRefs:
+        {{ include "wesql-cluster.serviceRef" . | indent 8 }}
+      {{- end }}
+      replicas: {{ .Values.replicas }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
+    {{- if ne .Values.topology "wesql" }}
+    {{- include "wesql-cluster.proxyComponents" . | indent 4 }}
+    {{- end }}
+    {{- if eq .Values.topology "wesql-proxy-etcd" }}
+    {{- include "wesql-cluster.etcdComponents" . | indent 4 }}
+    {{- end }}
