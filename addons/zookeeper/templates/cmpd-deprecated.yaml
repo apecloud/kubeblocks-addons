@@ -117,13 +117,9 @@ spec:
               - /bin/bash
               - -c
               - |
-                if command -v nc &> /dev/null; then
-                  echo "ruok" | timeout 2 nc localhost 2181 | grep imok;
-                else
-                  . "$ZOOBINDIR"/zkEnv.sh > /dev/null
-                  java -cp "$CLASSPATH" $CLIENT_JVMFLAGS $JVMFLAGS org.apache.zookeeper.client.FourLetterWordMain \
-                  localhost 2181 ruok | grep imok
-                fi
+                . "$ZOOBINDIR"/zkEnv.sh > /dev/null
+                java -cp "$CLASSPATH" $CLIENT_JVMFLAGS $JVMFLAGS org.apache.zookeeper.client.FourLetterWordMain \
+                localhost 2181 ruok | grep imok
         readinessProbe:
           failureThreshold: 6
           initialDelaySeconds: 5
@@ -135,13 +131,9 @@ spec:
               - bash
               - -c
               - |
-                if command -v nc &> /dev/null; then
-                  echo "ruok" | timeout 2 nc localhost 2181 | grep imok;
-                else
-                  . "$ZOOBINDIR"/zkEnv.sh > /dev/null
-                  java -cp "$CLASSPATH" $CLIENT_JVMFLAGS $JVMFLAGS org.apache.zookeeper.client.FourLetterWordMain \
-                  localhost 2181 ruok | grep imok
-                fi
+                . "$ZOOBINDIR"/zkEnv.sh > /dev/null
+                java -cp "$CLASSPATH" $CLIENT_JVMFLAGS $JVMFLAGS org.apache.zookeeper.client.FourLetterWordMain \
+                localhost 2181 ruok | grep imok
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
