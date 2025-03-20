@@ -62,7 +62,7 @@ spec:
                   localhost 2181 srvr 2> /dev/null | grep Mode)
                 mode=$(awk -F': ' '{print $2}' <<< "$STAT" | tr -d '[:space:]')
                 fi
-              [[ "$mode" == "standalone" ]] && echo -n "leader" || echo -n "${mode:-unknown}"
+              [[ "$mode" == "standalone" ]] && echo -n "leader" || echo -n "${mode}"
   runtime:
     volumes:
       - name: log
