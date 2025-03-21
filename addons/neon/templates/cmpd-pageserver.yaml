@@ -24,8 +24,8 @@ spec:
             port: {{ .Values.pageserver.httpPort }}
             protocol: TCP
   scripts:
-    - name: neon-scripts
-      template: {{ include "neon.scriptsTemplateName" . }}
+    - name: script
+      template: {{ include "neon.scriptTemplateName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555

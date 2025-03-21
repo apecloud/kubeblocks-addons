@@ -66,9 +66,9 @@ kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1
 {{- end }}
 
 {{/*
-Generate scripts configmap
+Generate script configmap
 */}}
-{{- define "neon.extend.scripts" -}}
+{{- define "neon.extend.script" -}}
 {{- range $path, $_ :=  $.Files.Glob "scripts/**" }}
 {{ $path | base }}: |-
 {{- $.Files.Get $path | nindent 2 }}
