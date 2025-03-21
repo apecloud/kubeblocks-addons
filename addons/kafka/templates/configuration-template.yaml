@@ -38,4 +38,8 @@ metadata:
   name: {{ include "kafka.jmxConfigurationTplName" . }}
 data:
   jmx-kafka-prometheus.yml: |-
-    {{- .Values.jmxExporter.jmxKafkaPrometheusYml | nindent 4}}
+    {{- if .Values.jmxExporter.jmxKafkaPrometheusYml -}}
+    {{- .Values.jmxExporter.jmxKafkaPrometheusYml | nindent 4 -}}
+    {{- else -}}
+    {{- .Files.Get "configs/jmx-kafka-prometheus.yml" | nindent 4 -}}
+    {{- end -}}
