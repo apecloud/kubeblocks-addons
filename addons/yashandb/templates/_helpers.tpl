@@ -82,15 +82,15 @@ Define yashandb component definition regular expression name prefix
 {{/*
 Define yashandb scripts template name
 */}}
-{{- define "yashandb.scriptsTplName" -}}
-yashandb-scripts-tpl
+{{- define "yashandb.scriptTplName" -}}
+yashandb-script-tpl
 {{- end -}}
 
 {{/*
 Define yashandb config template name
 */}}
 {{- define "yashandb.configTplName" -}}
-yashandb-configuration-tpl
+yashandb-config-tpl
 {{- end -}}
 
 {{/*
