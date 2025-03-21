@@ -47,7 +47,7 @@ spec:
             mountPath: /scripts
           - name: config
             mountPath: /etc/pd
-        command: [ "/scripts/pd_start.sh" ]
+        command: [ "bash", "/scripts/pd_start.sh" ]
   volumes:
     - name: data
       needSnapshot: true
