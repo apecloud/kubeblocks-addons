@@ -116,3 +116,4 @@ extraEnvs:
 ## customize jmx-exporter's port exposed
 jmxExporter:
   port: 5556
+  jmxKafkaPrometheusYml: ""
