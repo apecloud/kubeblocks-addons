@@ -7,7 +7,6 @@ metadata:
 data:
   zoo.cfg: |-
     {{- .Files.Get "config/zookeeper-config.tpl" | nindent 4 }}
-
 ---
 apiVersion: v1
 kind: ConfigMap
