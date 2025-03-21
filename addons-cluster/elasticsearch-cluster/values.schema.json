@@ -59,6 +59,12 @@
       "default": 20,
       "minimum": 1,
       "maximum": 10000
+    },
+    "enableKibana": {
+      "title": "Enable Kibana",
+      "description": "Whether to enable the Kibana",
+      "type": "boolean",
+      "default": false
     }
   }
 }

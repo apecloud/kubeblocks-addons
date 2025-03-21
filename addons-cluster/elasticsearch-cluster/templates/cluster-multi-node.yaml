@@ -15,9 +15,24 @@ spec:
       componentDef: elasticsearch-{{ include "elasticsearch.majorVersion" . }}
       serviceVersion: {{ include "elasticsearch.version" . }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      monitor: true
+      disableExporter: false
+      podUpdatePolicy: Recreate
       {{- include "elasticsearch-cluster.replicaCount" . | indent 6 }}
-      {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
       {{- include "kblib.componentServices" . | indent 6 }}
+      {{- include "elasticsearch-cluster.tls" . | indent 6 }}
+  {{- if .Values.enableKibana }}
+    - name: kibana
+      componentDef: kibana-{{ include "elasticsearch.majorVersion" . }}
+      serviceVersion: {{ include "elasticsearch.version" . }}
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      replicas: 1
+      podUpdatePolicy: Recreate
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentServices" . | indent 6 }}
+      {{- include "elasticsearch-cluster.tls" . | indent 6 }}
+  {{- end }}
 {{- end }}
