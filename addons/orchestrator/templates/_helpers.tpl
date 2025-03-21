@@ -121,13 +121,13 @@ systemAccounts:
       numSymbols: 0
       letterCase: MixedCases
 configs:
-  - name: orchestrator-config
-    templateRef: {{ include "orchestrator.componentDefName" . }}-config
+  - name: config
+    template: {{ include "orchestrator.componentDefName" . }}-config
     namespace: {{ .Release.Namespace }}
     volumeName: configs
 
 scripts:
-  - name: orc-scripts
+  - name: script
     template: {{ include "orchestrator.componentDefName" . }}-scripts
     namespace: {{ .Release.Namespace }}
     volumeName: scripts
