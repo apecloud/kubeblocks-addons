@@ -14,6 +14,7 @@ spec:
         pd: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v8.4.0
         roleProbe: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v8.4.0
         memberLeave: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v8.4.0
+        switchover: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v8.4.0
     - name: "7.5.2"
       serviceVersion: "7.5.2"
       images:
