@@ -32,7 +32,7 @@ spec:
             targetPort: opentsdb
   configs:
     - name: greptimedb-frontend
-      templateRef: {{ include "greptimedb-frontend.configTemplateName" . }}
+      template: {{ include "greptimedb-frontend.configTemplateName" . }}
       volumeName: frontend-config
       namespace: {{ .Release.Namespace }}
   vars:
