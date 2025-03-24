@@ -55,7 +55,7 @@ Define neon-storagebroker component definition regex pattern
 {{- end -}}
 
 {{/*
-Define neon config template name
+Define neon configuration template name
 */}}
 {{- define "neon.configTemplateName" -}}
 neon-config-template
@@ -63,10 +63,10 @@ neon-config-template
 
 
 {{/*
-Define neon script template name
+Define neon scripts template name
 */}}
-{{- define "neon.scriptTemplateName" -}}
-neon-script-template
+{{- define "neon.scriptsTemplateName" -}}
+neon-scripts-template
 {{- end -}}
 
 {{/*
