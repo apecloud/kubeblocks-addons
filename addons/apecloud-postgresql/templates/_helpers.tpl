@@ -66,10 +66,10 @@ Define apecloud postgresql 14.X component definition regular expression name pre
 {{- end -}}
 
 {{/*
-Define apecloud postgresql 14 component config template name
+Define apecloud postgresql 14 component configuration template name
 */}}
-{{- define "apecloud-postgresql-14.configTemplate" -}}
-apecloud-postgresql-14-config-{{ .Chart.Version }}
+{{- define "apecloud-postgresql-14.configurationTemplate" -}}
+apecloud-postgresql-14-configuration-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
@@ -118,7 +118,7 @@ Generate scripts configmap
 Define postgresql scripts configMap template name
 */}}
 {{- define "apecloud-postgresql.scriptsTemplate" -}}
-apecloud-postgresql-script
+apecloud-postgresql-scripts
 {{- end -}}
 
 {{/*

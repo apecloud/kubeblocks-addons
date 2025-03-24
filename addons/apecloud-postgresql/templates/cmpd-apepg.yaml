@@ -10,13 +10,13 @@ spec:
   {{- include "apecloud-postgresql.spec.common" . | nindent 2 }}
   serviceVersion: {{ .Values.componentServiceVersion.apecloudPostgresql14 }}
   configs:
-    - name: config
-      template: {{ include "apecloud-postgresql-14.configTemplate" . }}
+    - name: postgresql-consensusset-configuration
+      templateRef: {{ include "apecloud-postgresql-14.configurationTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: postgresql-config
       defaultMode: 0444
   scripts:
-    - name: script
+    - name: apecloud-postgresql-scripts
       template: {{ include "apecloud-postgresql.scriptsTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
