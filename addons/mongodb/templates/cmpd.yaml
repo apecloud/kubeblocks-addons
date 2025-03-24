@@ -35,8 +35,8 @@ spec:
             port: 27017
             targetPort: mongodb
   configs:
-    - name: mongodb-config
-      templateRef: {{ include "mongodb.configTplName" . }}
+    - name: config
+      template: {{ include "mongodb.configTplName" . }}
       volumeName: mongodb-config
       namespace: {{ .Release.Namespace }}
       defaultMode: 0400  # for only read
@@ -46,8 +46,8 @@ spec:
       filePathPattern: {{ $pattern }}
     {{- end }}
   scripts:
-    - name: mongodb-scripts
-      template: {{ include "mongodb.cmScriptsName" . }}
+    - name: script
+      template: {{ include "mongodb.scriptTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555  # for read and execute, mysql container switched user account.
