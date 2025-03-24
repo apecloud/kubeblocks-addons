@@ -80,17 +80,17 @@ Define mogdb component definition regular expression name prefix
 {{- end -}}
 
 {{/*
-Define mogdb script template name
+Define mogdb scripts template name
 */}}
-{{- define "mogdb.scriptTplName" -}}
-mogdb-script-tpl
+{{- define "mogdb.scriptsTplName" -}}
+mogdb-scripts-tpl
 {{- end -}}
 
 {{/*
 Define mogdb config template name
 */}}
 {{- define "mogdb.configTplName" -}}
-mogdb-config-tpl
+mogdb-configuration-tpl
 {{- end -}}
 
 {{/*

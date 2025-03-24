@@ -21,14 +21,14 @@ spec:
           port: 26000
           targetPort: tcp-mogdb
   configs:
-    - name: config
-      template: {{ include "mogdb.configTplName" . }}
+    - name: mogdb-configuration
+      templateRef: {{ include "mogdb.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: mogdb-config
       defaultMode: 0777
   scripts:
-    - name: script
-      template: {{ include "mogdb.scriptTplName" . }}
+    - name: mogdb-scripts
+      template: {{ include "mogdb.scriptsTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0777
