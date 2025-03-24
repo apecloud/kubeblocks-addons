@@ -216,18 +216,18 @@ vars:
 
 {{- define "oceanbase-ce.spec.configs" -}}
 configs:
-  - name: oceanbase-sysvars
-    templateRef: {{ include "oceanbase-ce.cm.sysvars" .}}
+  - name: sysvars
+    template: {{ include "oceanbase-ce.cm.sysvars" .}}
     volumeName: oceanbase-sysvars
     namespace: {{ .Release.Namespace }}
     defaultMode: 0555
-  - name: oceanbase-config
-    templateRef: {{ include "oceanbase-ce.cm.config" .}}
+  - name: config
+    template: {{ include "oceanbase-ce.cm.config" .}}
     volumeName: oceanbase-config
     namespace: {{ .Release.Namespace }}
     defaultMode: 0555
 scripts:
-  - name: oceanbase-scripts
+  - name: script
     template: {{ include "oceanbase-ce.scripts.bootscripts" .}}
     namespace: {{ .Release.Namespace }}
     volumeName: scripts
