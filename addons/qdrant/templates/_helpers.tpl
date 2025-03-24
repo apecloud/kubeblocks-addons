@@ -80,15 +80,29 @@ Define qdrant component definition regex pattern
 {{- end -}}
 
 {{/*
-Define qdrant script tpl name
+Define qdrant scripts tpl name
 */}}
-{{- define "qdrant.scriptTplName" -}}
-qdrant-script-template
+{{- define "qdrant.scriptsTplName" -}}
+qdrant-scripts-template
 {{- end -}}
 
 {{/*
-Define qdrant config tpl name
+Define qdrant configuration tpl name
 */}}
 {{- define "qdrant.configTplName" -}}
 qdrant-config-template
+{{- end -}}
+
+{{/*
+Define qdrant config constraint name
+*/}}
+{{- define "qdrant.configConstraintName" -}}
+qdrant-config-constraints
+{{- end -}}
+
+{{/*
+Define qdrant parameter config renderer name
+*/}}
+{{- define "qdrant.pcrName" -}}
+qdrant-pcr
 {{- end -}}

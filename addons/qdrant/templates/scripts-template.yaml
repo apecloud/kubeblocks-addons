@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "qdrant.scriptTplName" . }}
+  name: {{ include "qdrant.scriptsTplName" . }}
   labels:
     {{- include "qdrant.labels" . | nindent 4 }}
 data:
