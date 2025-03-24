@@ -26,12 +26,12 @@ spec:
     - name: data
       needSnapshot: true
   configs:
-    - name: config
-      template: {{ include "weaviate.configTplName" . }}
+    - name: weaviate-config-template
+      templateRef: {{ include "weaviate.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: weaviate-config
-    - name: env-template
-      template: {{ include "weaviate.envConfigTplName" . }}
+    - name: weaviate-env-template
+      templateRef: {{ include "weaviate.envConfigTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: weaviate-env
       defaultMode: 0444
