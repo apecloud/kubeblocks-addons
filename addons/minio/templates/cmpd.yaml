@@ -33,7 +33,7 @@ spec:
           targetPort: console
   configs:
     - name: minio-configuration
-      templateRef: {{ include "minio.configTplName" . }}
+      template: {{ include "minio.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: minio-config
       defaultMode: 0777
