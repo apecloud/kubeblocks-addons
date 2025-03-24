@@ -32,14 +32,14 @@ spec:
           port: 9001
           targetPort: console
   configs:
-    - name: config
-      template: {{ include "minio.configTplName" . }}
+    - name: minio-configuration
+      templateRef: {{ include "minio.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: minio-config
       defaultMode: 0777
   scripts:
-    - name: script
-      template: {{ include "minio.scriptTplName" . }}
+    - name: minio-scripts
+      template: {{ include "minio.scriptsTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555

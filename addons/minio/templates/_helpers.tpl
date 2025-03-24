@@ -81,15 +81,15 @@ Define minio component definition regular expression name prefix
 {{- end -}}
 
 {{/*
-Define minio script template name
+Define minio scripts template name
 */}}
-{{- define "minio.scriptTplName" -}}
-minio-script-template
+{{- define "minio.scriptsTplName" -}}
+minio-scripts
 {{- end -}}
 
 {{/*
 Define minio config template name
 */}}
 {{- define "minio.configTplName" -}}
-minio-config-template
+minio-configuration
 {{- end -}}
