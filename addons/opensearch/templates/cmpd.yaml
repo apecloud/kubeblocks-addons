@@ -122,12 +122,12 @@ spec:
             port: 9300
             targetPort: transport
   configs:
-    - name: opensearch-config-template
-      templateRef: opensearch-config-template
+    - name: config
+      template: opensearch-config-template
       volumeName: opensearch-config
       namespace: {{.Release.Namespace}}
   scripts:
-    - name: opensearch-scripts
+    - name: script
       template: {{ include "opensearch.scriptsTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
