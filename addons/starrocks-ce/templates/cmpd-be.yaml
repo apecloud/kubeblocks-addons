@@ -26,8 +26,8 @@ spec:
         port: 8080
         targetPort: proxy-port
   configs:
-  - name: be-cm
-    templateRef: {{ include "be.configurationTemplate" . }}
+  - name: config
+    templateRef: {{ include "be.configTemplate" . }}
     namespace: {{ .Release.Namespace }}
     volumeName: be-cm
   volumes:
