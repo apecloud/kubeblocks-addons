@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "starrocks.scriptTemplate" . }}
+  name: {{ include "starrocks.scriptsTemplate" . }}
   labels:
     {{- include "starrocks.labels" . | nindent 4 }}
 data:

@@ -102,22 +102,22 @@ Define be component definition regex pattern
 {{- end -}}
 
 {{/*
-Define fe component config template name
+Define fe component configuration template name
 */}}
-{{- define "fe.configTemplate" -}}
-starrocks-ce-fe-config-template
+{{- define "fe.configurationTemplate" -}}
+starrocks-ce-fe-configuration-template
 {{- end -}}
 
 {{/*
-Define be component config template name
+Define be component configuration template name
 */}}
-{{- define "be.configTemplate" -}}
-starrocks-ce-be-config-template
+{{- define "be.configurationTemplate" -}}
+starrocks-ce-be-configuration-template
 {{- end -}}
 
 {{/*
-Define starrocks script template name
+Define starrocks scripts configMap template name
 */}}
-{{- define "starrocks.scriptTemplate" -}}
-starrocks-ce-script-template
+{{- define "starrocks.scriptsTemplate" -}}
+starrocks-ce-scripts-template
 {{- end -}}
