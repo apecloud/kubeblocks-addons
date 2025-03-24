@@ -11,10 +11,7 @@ spec:
   serviceVersion: {{ .Values.componentServiceVersion.orioledb }}
   configs:
     - name: orioledb-configuration
-      templateRef: {{ include "orioledb.configurationTemplate" . }}
-      constraintRef: {{ include "orioledb.configConstraint" . }}
-      keys:
-        - postgresql.conf
+      template: {{ include "orioledb.configurationTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: postgresql-config
       defaultMode: 0444
