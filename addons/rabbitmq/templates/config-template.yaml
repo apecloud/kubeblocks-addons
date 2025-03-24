@@ -12,7 +12,6 @@ data:
   enabled_plugins: |-
     {{- .Files.Get "config/enabled_plugins.tpl" | nindent 4 }}
 ---
-
 apiVersion: v1
 kind: ConfigMap
 metadata:
