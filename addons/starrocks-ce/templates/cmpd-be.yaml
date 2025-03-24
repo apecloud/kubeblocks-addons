@@ -27,7 +27,7 @@ spec:
         targetPort: proxy-port
   configs:
   - name: be-cm
-    templateRef: {{ include "be.configurationTemplate" . }}
+    template: {{ include "be.configurationTemplate" . }}
     namespace: {{ .Release.Namespace }}
     volumeName: be-cm
   volumes:
