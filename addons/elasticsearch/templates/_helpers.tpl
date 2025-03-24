@@ -101,10 +101,10 @@ Define elasticsearch v8.X component definition regex pattern
 {{- end -}}
 
 {{/*
-Define elasticsearch scripts tpl name
+Define elasticsearch script tpl name
 */}}
-{{- define "elasticsearch.scriptsTplName" -}}
-elasticsearch-scripts-tpl
+{{- define "elasticsearch.scriptTplName" -}}
+elasticsearch-script-tpl
 {{- end -}}
 
 {{/*
