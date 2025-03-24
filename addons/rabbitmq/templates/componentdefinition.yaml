@@ -23,7 +23,7 @@ spec:
             targetPort: management
   configs:
     - name: config
-      template: {{ include "rabbitmq.configTplName" . }}
+      templateRef: {{ include "rabbitmq.configTplName" . }}
       volumeName: rabbitmq-config
       namespace: {{ .Release.Namespace }}
       defaultMode: 0644  # for only read
