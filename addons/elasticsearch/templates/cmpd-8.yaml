@@ -16,13 +16,13 @@ spec:
     scrapePath: /metrics
     scrapePort: {{ .Values.exporter.service.port | quote}}
   configs:
-    - name: config
+    - name: es-cm
       templateRef: {{ include "elasticsearch8.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: es-cm
   scripts:
     - name: scripts
-      template: {{ include "elasticsearch.scriptTplName" . }}
+      template: {{ include "elasticsearch.scriptsTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
