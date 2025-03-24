@@ -84,11 +84,11 @@ spec:
   updateStrategy: BestEffortParallel
   configs:
     - name: kafka-configuration-tpl
-      templateRef: {{ include "kafka2.configurationTplName" . }}
+      template: {{ include "kafka2.configurationTplName" . }}
       volumeName: kafka-config
       namespace: {{ .Release.Namespace }}
     - name: kafka-jmx-configuration-tpl
-      templateRef: {{ include "kafka.jmxConfigurationTplName" . }}
+      template: {{ include "kafka.jmxConfigurationTplName" . }}
       volumeName: jmx-config
       namespace: {{ .Release.Namespace }}
   scripts:
