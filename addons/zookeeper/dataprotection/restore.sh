@@ -7,7 +7,7 @@ export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 TMP_DIR=/tmp/zookeeper/restore
 mkdir -p ${TMP_DIR}
 
-backupFileName="${DP_BACKUP_NAME}.backup.json"
+backupFileName="${DP_BACKUP_NAME}.json"
 datasafed pull -d zstd-fastest "${backupFileName}" ${TMP_DIR}/backup.json
 
 touch ${ZOOKEEPER_DATA_DIR}/.restore_new_cluster
