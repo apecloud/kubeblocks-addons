@@ -87,22 +87,22 @@ Define tdengine component definition regex pattern
 {{- end -}}
 
 {{/*
-Define tdengine component configuration template name
+Define tdengine config template name
 */}}
-{{- define "tdengine.configurationTemplate" -}}
-tdengine-configuration-template
+{{- define "tdengine.configTemplate" -}}
+tdengine-config-template
 {{- end -}}
 
 {{/*
-Define tdengine scripts configMap template name
+Define tdengine script template name
 */}}
-{{- define "tdengine.scriptsTemplate" -}}
-tdengine-scripts-template
+{{- define "tdengine.scriptTemplate" -}}
+tdengine-script-template
 {{- end -}}
 
 {{/*
-Define tdengine component metrice configuration name
+Define tdengine metrice config template name
 */}}
-{{- define "tdengine.metricsConfiguration" -}}
-tdengine-metrics-configuration-template
+{{- define "tdengine.metricsConfigTemplate" -}}
+tdengine-metrics-config-template
 {{- end -}}
