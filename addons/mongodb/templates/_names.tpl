@@ -94,11 +94,11 @@ mongodb5.0-config-template
 {{- end -}}
 {{- end -}}
 
-{{- define "mongodb.scriptTplName" }}
+{{- define "mongodb.cmScriptsName" }}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-mongodb-script-template
+mongodb-scripts
 {{- else -}}
-{{- .Values.resourceNamePrefix -}}-script-template
+{{- .Values.resourceNamePrefix -}}-scripts
 {{- end -}}
 {{- end -}}
 
