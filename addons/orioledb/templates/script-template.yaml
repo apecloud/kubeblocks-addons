@@ -1,13 +1,11 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "orioledb.scriptsTemplate" . }}
+  name: {{ include "orioledb.scriptTemplate" . }}
   labels:
     {{- include "orioledb.labels" . | nindent 4 }}
 data:
   {{- include "orioledb.extend.scripts" . | nindent 2 }}
-
-
 ---
 apiVersion: v1
 kind: ConfigMap

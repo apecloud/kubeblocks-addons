@@ -10,17 +10,14 @@ spec:
   {{- include "orioledb.spec.common" . | nindent 2 }}
   serviceVersion: {{ .Values.componentServiceVersion.orioledb }}
   configs:
-    - name: orioledb-configuration
-      templateRef: {{ include "orioledb.configurationTemplate" . }}
-      constraintRef: {{ include "orioledb.configConstraint" . }}
-      keys:
-        - postgresql.conf
+    - name: config
+      template: {{ include "orioledb.configTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: postgresql-config
       defaultMode: 0444
   scripts:
-    - name: orioledb-scripts
-      template: {{ include "orioledb.scriptsTemplate" . }}
+    - name: script
+      template: {{ include "orioledb.scriptTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555

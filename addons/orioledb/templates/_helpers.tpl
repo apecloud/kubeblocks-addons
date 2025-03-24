@@ -65,10 +65,10 @@ Define orioledb component definition regular expression name prefix
 {{- end -}}
 
 {{/*
-Define orioledb component configuration template name
+Define orioledb component config template name
 */}}
-{{- define "orioledb.configurationTemplate" -}}
-orioledb-configuration-{{ .Chart.Version }}
+{{- define "orioledb.configTemplate" -}}
+orioledb-config-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
@@ -101,14 +101,14 @@ Generate scripts configmap
 {{- end }}
 
 {{/*
-Define postgresql scripts configMap template name
+Define postgresql script template name
 */}}
-{{- define "orioledb.scriptsTemplate" -}}
-orioledb-scripts
+{{- define "orioledb.scriptTemplate" -}}
+orioledb-script
 {{- end -}}
 
 {{/*
-Define postgresql scripts configMap template name
+Define postgresql reload script template name
 */}}
 {{- define "orioledb.reloader.scripts" -}}
 orioledb-reload-tools-script
