@@ -13,7 +13,7 @@ spec:
   serviceVersion: {{ .Chart.AppVersion }}
   configs:
     - name: nebula-metad-config
-      templateRef: {{ include "nebula-metad.configTemplateName" . }}
+      template: {{ include "nebula-metad.configTemplateName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: nebula-metad
   volumes:

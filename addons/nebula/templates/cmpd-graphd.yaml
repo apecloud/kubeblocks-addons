@@ -32,7 +32,7 @@ spec:
             protocol: TCP
   configs:
     - name: nebula-graphd-config
-      templateRef: {{ include "nebula-graphd.configTemplateName" . }}
+      template: {{ include "nebula-graphd.configTemplateName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: nebula-graphd
   vars:
