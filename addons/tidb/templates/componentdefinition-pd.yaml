@@ -53,13 +53,12 @@ spec:
       needSnapshot: true
   scripts:
     - name: tidb-scripts
-      templateRef: {{ include "tidb.cmScriptsName" . }}
+      template: {{ include "tidb.cmScriptsName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
   configs:
     - name: pd-configuration
       templateRef: {{ include "tidb.pd.configTplName" . }}
-      constraintRef: {{ include "tidb.pd.configConstraintName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: config
   roles:

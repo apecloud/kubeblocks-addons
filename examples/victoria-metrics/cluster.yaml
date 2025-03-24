@@ -1,0 +1,56 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: vmcluster
+  namespace: default
+spec:
+  clusterDef: victoria-metrics
+  terminationPolicy: Delete
+  topology: vm-cluster
+  componentSpecs:
+    - name: vmstorage
+      replicas: 3
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+      env:
+        - name: RETENTION_PERIOD
+          value: "30d"
+    - name: vmselect
+      replicas: 3
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
+    - name: vminsert
+      # This configuration ensures that when updates are applied to the cluster,
+      # only 2 replicas will be updated at a time.
+      # This minimizes downtime and ensures that the application remains available during the update process.
+      instanceUpdateStrategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxUnavailable: 1
+          replicas: 2
+      replicas: 3
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"

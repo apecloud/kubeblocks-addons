@@ -154,7 +154,7 @@ Create a ClickHouse cluster with ch-keeper and clickhouse servers with multiple 
 kubectl apply -f examples/clickhouse/cluster-sharding.yaml
 ```
 
-This example creates a clickhouse cluster with 3 shards, each shard has 2 replicas.
+This example creates a clickhouse cluster with 2 shards, each shard has 2 replicas.
 
 ### Horizontal scaling
 

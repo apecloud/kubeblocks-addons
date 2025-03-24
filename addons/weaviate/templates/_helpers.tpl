@@ -96,8 +96,15 @@ weaviate-env-config-template
 {{/*
 Define weaviate env config constraint name
 */}}
-{{- define "weaviate.envConfigConstraintTplName" -}}
-weaviate-env-constraints
+{{- define "weaviate.pdName" -}}
+weaviate-env-pd
+{{- end -}}
+
+{{/*
+Define weaviate env config constraint name
+*/}}
+{{- define "weaviate.pcrName" -}}
+weaviate-pcr
 {{- end -}}
 
 {{/*

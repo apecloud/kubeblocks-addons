@@ -12,15 +12,12 @@ spec:
   configs:
     - name: postgresql-consensusset-configuration
       templateRef: {{ include "apecloud-postgresql-14.configurationTemplate" . }}
-      constraintRef: {{ include "apecloud-postgresql-14.configConstraint" . }}
-      keys:
-        - postgresql.conf
       namespace: {{ .Release.Namespace }}
       volumeName: postgresql-config
       defaultMode: 0444
   scripts:
     - name: apecloud-postgresql-scripts
-      templateRef: {{ include "apecloud-postgresql.scriptsTemplate" . }}
+      template: {{ include "apecloud-postgresql.scriptsTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555

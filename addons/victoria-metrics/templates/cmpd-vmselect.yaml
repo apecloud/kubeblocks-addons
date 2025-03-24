@@ -27,13 +27,13 @@ spec:
     - name: VMSTORAGE_ENDPOINT
       valueFrom:
         serviceVarRef:
-          compDef: vm-storage
+          compDef: vmstorage
           optional: true
           host: Required
     - name: VMSTORAGE_ADDR
       valueFrom:
         serviceVarRef:
-          compDef: vm-storage
+          compDef: vmstorage
           port:
             name: vmselect
             option: Required

@@ -26,14 +26,9 @@ spec:
       templateRef: {{ include "pulsar2.zookeeperTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: zookeeper-config
-{{/*      constraintRef: {{ include "pulsar.envConstraintName" . }}*/}}
-{{/*      keys:*/}}
-{{/*        - conf*/}}
-{{/*      injectEnvTo:*/}}
-{{/*        - zookeeper*/}}
   scripts:
     - name: pulsar-scripts
-      templateRef: {{ include "pulsar.scriptsTplName" . }}
+      template: {{ include "pulsar.scriptsTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555

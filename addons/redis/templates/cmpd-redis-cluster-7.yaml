@@ -59,7 +59,7 @@ spec:
       defaultMode: 0444
   scripts:
     - name: redis-cluster-scripts
-      templateRef: {{ include "redisCluster7.scriptsTemplate" . }}
+      template: {{ include "redisCluster7.scriptsTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
@@ -94,6 +94,9 @@ spec:
       valueFrom:
         clusterVarRef:
           namespace: Required
+    ## the cluster domain without . prefix
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.clusterDomain }}
     ## the default username of redis connection
     - name: REDIS_DEFAULT_USER
       valueFrom:

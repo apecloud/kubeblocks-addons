@@ -14,7 +14,7 @@ spec:
   updateStrategy: BestEffortParallel
   scripts:
   - name: scripts
-    templateRef: xinference-scripts
+    template: xinference-scripts
     namespace: {{ .Release.Namespace }}
     volumeName: scripts
     defaultMode: 0555

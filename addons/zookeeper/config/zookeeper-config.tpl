@@ -1,5 +1,9 @@
 # The number of milliseconds of each tick
 tickTime=2000
+# Minimum and maximum session timeouts in milliseconds that the server will allow the client to negotiate.
+# Defaults to 2 * tickTime and 20 * tickTime respectively.
+minSessionTimeout=4000
+maxSessionTimeout=40000
 # The number of ticks that the initial
 # synchronization phase can take
 initLimit=10

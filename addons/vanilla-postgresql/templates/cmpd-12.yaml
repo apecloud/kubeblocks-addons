@@ -12,15 +12,12 @@ spec:
   configs:
     - name: vanilla-postgresql-configuration
       templateRef: {{ include "vanilla-postgresql12.configurationTemplate" . }}
-      constraintRef: {{ include "vanilla-postgresql12.configConstraint" . }}
-      keys:
-        - postgresql.conf
       namespace: {{ .Release.Namespace }}
       volumeName: postgresql-config
       defaultMode: 0444
   scripts:
     - name: vanilla-postgresql-scripts
-      templateRef: {{ include "vanilla-postgresql.scriptsTemplate" . }}
+      template: {{ include "vanilla-postgresql.scriptsTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555

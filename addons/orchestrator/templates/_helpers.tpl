@@ -128,7 +128,7 @@ configs:
 
 scripts:
   - name: orc-scripts
-    templateRef: {{ include "orchestrator.componentDefName" . }}-scripts
+    template: {{ include "orchestrator.componentDefName" . }}-scripts
     namespace: {{ .Release.Namespace }}
     volumeName: scripts
     defaultMode: 0555

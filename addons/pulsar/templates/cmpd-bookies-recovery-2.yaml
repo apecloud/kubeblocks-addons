@@ -25,7 +25,7 @@ spec:
       volumeName: bkrecovery-config
   scripts:
     - name: pulsar-scripts
-      templateRef: {{ include "pulsar.scriptsTplName" . }}
+      template: {{ include "pulsar.scriptsTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555

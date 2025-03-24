@@ -35,6 +35,8 @@ cat "${TMP_DIR}/xtrabackup.log" \
   | grep "The latest check point (for incremental)" \
   | awk -F"'" '{print $2}' \
   | datasafed push - "/${DP_BACKUP_NAME}.lsn"
+# record server uuid
+cat ${DATA_MOUNT_DIR}/data/auto.cnf | grep server-uuid | awk -F '=' '{print $2}' | datasafed push - "${DP_BACKUP_NAME}.server-uuid"
 STOP_TIME=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
 echo "{\"totalSize\":\"$TOTAL_SIZE\",\"timeRange\":{\"start\":\"${START_TIME}\",\"end\":\"${STOP_TIME}\"}}" >"${DP_BACKUP_INFO_FILE}"

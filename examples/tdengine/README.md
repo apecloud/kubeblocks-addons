@@ -60,7 +60,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 spec:
   componentSpecs:
-    - name: kafka-combine
+    - name: tdengine
       replicas: 1 # Set the number of replicas to your desired number
 ```
 
