@@ -9,7 +9,7 @@ spec:
   type: VerticalScaling
   # Lists VerticalScaling objects, each specifying a component and its desired compute resources for vertical scaling. 
   verticalScaling:
-    # - pd
+    # - tidb-pd
     # - tikv
     # - tidb
   - componentName: tidb

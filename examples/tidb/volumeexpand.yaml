@@ -10,9 +10,9 @@ spec:
   # Lists VolumeExpansion objects, each specifying a component and its corresponding volumeClaimTemplates that requires storage expansion. 
   volumeExpansion:
     # Specifies the name of the Component.
-    # - pd
+    # - tidb-pd
     # - tikv
-  - componentName: pd
+  - componentName: tidb-pd
     # volumeClaimTemplates specifies the storage size and volumeClaimTemplate name.
     volumeClaimTemplates:
     - name: data
