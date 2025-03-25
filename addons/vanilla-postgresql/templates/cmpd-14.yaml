@@ -11,7 +11,7 @@ spec:
   serviceVersion: {{ .Values.defaultServiceVersion.major14 }}
   configs:
     - name: vanilla-postgresql-configuration
-      templateRef: {{ include "vanilla-postgresql14.configurationTemplate" . }}
+      template: {{ include "vanilla-postgresql14.configurationTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: postgresql-config
       defaultMode: 0444

@@ -60,7 +60,7 @@ spec:
             name: docker-entrypoint-d-override
   configs:
     - name: config-gateway
-      templateRef: loki-gateway-tpl
+      template: loki-gateway-tpl
       volumeName: config
       namespace: {{ .Release.Namespace }}
   vars:

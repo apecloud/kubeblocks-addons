@@ -86,7 +86,7 @@ spec:
   updateStrategy: BestEffortParallel
   configs:
     - name: broker-config
-      templateRef: {{ include "pulsar3.brokerConfigTplName" . }}
+      template: {{ include "pulsar3.brokerConfigTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: pulsar-config
   scripts:

@@ -53,11 +53,11 @@ spec:
     scrapePort: http-metrics
   configs:
     - name: redis-replication-config
-      templateRef: {{ include "redis7.configurationTemplate" . }}
+      template: {{ include "redis7.configurationTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: redis-config
     - name: redis-metrics-config
-      templateRef: {{ include "redis.metricsConfiguration" . }}
+      template: {{ include "redis.metricsConfiguration" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: redis-metrics-config
       defaultMode: 0444

@@ -11,7 +11,7 @@ spec:
   serviceVersion: {{ .Values.defaultServiceVersion.major15 }}
   configs:
     - name: vanilla-postgresql-configuration
-      templateRef: {{ include "vanilla-postgresql15.configurationTemplate" . }}
+      template: {{ include "vanilla-postgresql15.configurationTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: postgresql-config
       defaultMode: 0444
@@ -42,7 +42,7 @@ spec:
   serviceVersion: {{ .Values.defaultServiceVersion.supabaseMajor15 }}
   configs:
     - name: supabase-postgresql-configuration
-      templateRef: {{ include "vanilla-postgresql-supabase15.configurationTemplate" . }}
+      template: {{ include "vanilla-postgresql-supabase15.configurationTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: postgresql-config
       defaultMode: 0444

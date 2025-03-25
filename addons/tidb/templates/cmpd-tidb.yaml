@@ -87,7 +87,7 @@ spec:
         emptyDir: {}
   configs:
     - name: tidb-configuration
-      templateRef: {{ include "tidb.tidb.configTplName" . }}
+      template: {{ include "tidb.tidb.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: config
   # TODO: account provision is unsupported for now because lorry doesn't support accountProvision lifecycle action

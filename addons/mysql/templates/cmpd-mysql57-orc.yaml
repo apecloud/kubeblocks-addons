@@ -14,7 +14,7 @@ spec:
 
   configs:
     - name: mysql-replication-config
-      templateRef: mysql-5.7-config-template
+      template: mysql-5.7-config-template
       volumeName: mysql-config
       namespace: {{ .Release.Namespace }}
   {{- include "kblib.syncer.policyRules" . | nindent 2 }}

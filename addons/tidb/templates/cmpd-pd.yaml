@@ -58,7 +58,7 @@ spec:
       volumeName: scripts
   configs:
     - name: pd-configuration
-      templateRef: {{ include "tidb.pd.configTplName" . }}
+      template: {{ include "tidb.pd.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: config
   roles:

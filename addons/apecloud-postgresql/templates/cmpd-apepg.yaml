@@ -11,7 +11,7 @@ spec:
   serviceVersion: {{ .Values.componentServiceVersion.apecloudPostgresql14 }}
   configs:
     - name: postgresql-consensusset-configuration
-      templateRef: {{ include "apecloud-postgresql-14.configurationTemplate" . }}
+      template: {{ include "apecloud-postgresql-14.configurationTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: postgresql-config
       defaultMode: 0444
