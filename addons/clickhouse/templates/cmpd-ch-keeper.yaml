@@ -109,7 +109,7 @@ spec:
     scrapePort: "8001"
   configs:
     - name: clickhouse-keeper-tpl
-      templateRef: {{ include "clickhouse-keeper24.configurationTplName" . }}
+      template: {{ include "clickhouse-keeper24.configurationTplName" . }}
       volumeName: config
       namespace: {{ .Release.Namespace }}
   systemAccounts:

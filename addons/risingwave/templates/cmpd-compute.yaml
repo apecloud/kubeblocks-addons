@@ -24,11 +24,12 @@ spec:
   configs:
     {{- include "risingwave.conftpl.default" . | indent  4 }}
     - name: risingwave-compute-envs
-      templateRef: {{ include "risingwave-compute.envConfigTplName" . }}
+      template: {{ include "risingwave-compute.envConfigTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: risingwave-compute-envs
-      asEnvFrom:
-        - compute
+      # TODO: config
+      # asEnvFrom:
+      #   - compute
   updateStrategy: BestEffortParallel
   vars:
     {{- include "risingwave.vars.connector" . | indent 4 }}

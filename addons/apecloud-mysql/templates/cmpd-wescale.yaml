@@ -30,7 +30,7 @@ spec:
     {{- end }}
   configs:
     - name: vtgate-config
-      templateRef: {{ include "apecloud-mysql.configTplVtgateName" . }}
+      template: {{ include "apecloud-mysql.configTplVtgateName" . }}
       volumeName: vtgate-config
       namespace: {{ .Release.Namespace }}
   services:

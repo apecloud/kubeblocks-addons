@@ -45,7 +45,7 @@ spec:
       letterCase: MixedCases
   configs:
     - name: fe-cm
-      templateRef: {{ include "fe.configurationTemplate" . }}
+      template: {{ include "fe.configurationTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: fe-cm
   vars:

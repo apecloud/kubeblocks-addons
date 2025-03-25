@@ -217,12 +217,12 @@ vars:
 {{- define "oceanbase-ce.spec.configs" -}}
 configs:
   - name: oceanbase-sysvars
-    templateRef: {{ include "oceanbase-ce.cm.sysvars" .}}
+    template: {{ include "oceanbase-ce.cm.sysvars" .}}
     volumeName: oceanbase-sysvars
     namespace: {{ .Release.Namespace }}
     defaultMode: 0555
   - name: oceanbase-config
-    templateRef: {{ include "oceanbase-ce.cm.config" .}}
+    template: {{ include "oceanbase-ce.cm.config" .}}
     volumeName: oceanbase-config
     namespace: {{ .Release.Namespace }}
     defaultMode: 0555

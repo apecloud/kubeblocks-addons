@@ -20,7 +20,7 @@ spec:
   updateStrategy: BestEffortParallel
   configs:
     - name: bkrecovery-config
-      templateRef:  {{ include "pulsar3.bkRecoveryTplName" . }}
+      template:  {{ include "pulsar3.bkRecoveryTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: bkrecovery-config
   scripts:

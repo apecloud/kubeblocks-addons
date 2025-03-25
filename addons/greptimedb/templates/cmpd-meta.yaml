@@ -13,7 +13,7 @@ spec:
   serviceVersion: {{ .Chart.AppVersion }}
   configs:
     - name: greptimedb-meta
-      templateRef: {{ include "greptimedb-meta.configTemplateName" . }}
+      template: {{ include "greptimedb-meta.configTemplateName" . }}
       volumeName: meta-config
       namespace: {{ .Release.Namespace }}
   serviceRefDeclarations:

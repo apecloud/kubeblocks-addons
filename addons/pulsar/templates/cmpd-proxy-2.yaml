@@ -20,7 +20,7 @@ spec:
   updateStrategy: BestEffortParallel
   configs:
     - name: proxy-config
-      templateRef: {{ include "pulsar2.proxyConfigTplName" . }}
+      template: {{ include "pulsar2.proxyConfigTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: pulsar-proxy-config
   scripts:
