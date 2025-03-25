@@ -10,11 +10,11 @@ spec:
   {{- include "apecloud-mysql.spec.common" . | nindent 2 }}
   configs:
     - name: mysql-consensusset-config
-      templateRef: {{ include "apecloud-mysql.configTplName" . }}
+      template: {{ include "apecloud-mysql.configTplName" . }}
       volumeName: mysql-config
       namespace: {{ .Release.Namespace }}
     - name: vttablet-config
-      templateRef: {{ include "apecloud-mysql.configTplVttabletName" . }}
+      template: {{ include "apecloud-mysql.configTplVttabletName" . }}
       volumeName: mysql-scale-config
       namespace: {{ .Release.Namespace }}
   {{- include "kblib.syncer.policyRules" . | nindent 2 }}

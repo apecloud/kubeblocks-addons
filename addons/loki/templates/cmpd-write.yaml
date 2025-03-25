@@ -79,11 +79,11 @@ spec:
             name: data
   configs:
     - name: loki-config
-      templateRef: loki-tpl
+      template: loki-tpl
       volumeName: config
       namespace: {{ .Release.Namespace }}
     - name: loki-runtime-config
-      templateRef: loki-runtime-tpl
+      template: loki-runtime-tpl
       volumeName: runtime-config
       namespace: {{ .Release.Namespace }}
   vars:

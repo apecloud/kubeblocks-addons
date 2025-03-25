@@ -73,7 +73,7 @@ spec:
       needSnapshot: true
   configs:
     - name: tikv-configuration
-      templateRef: {{ include "tidb.tikv.configTplName" . }}
+      template: {{ include "tidb.tikv.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: config
   lifecycleActions:

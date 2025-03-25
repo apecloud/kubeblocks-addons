@@ -23,7 +23,7 @@ spec:
             targetPort: 2181
   configs:
     - name: zookeeper-config
-      templateRef: {{ include "pulsar2.zookeeperTplName" . }}
+      template: {{ include "pulsar2.zookeeperTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: zookeeper-config
   scripts:

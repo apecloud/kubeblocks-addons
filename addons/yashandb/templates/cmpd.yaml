@@ -21,7 +21,7 @@ spec:
             targetPort: yashandb
   configs:
     - name: yashandb-configs
-      templateRef: {{ include "yashandb.configTplName" . }}
+      template: {{ include "yashandb.configTplName" . }}
       volumeName: yashandb-configs
       namespace: {{ .Release.Namespace }}
   scripts:
