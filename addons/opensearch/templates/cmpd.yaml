@@ -123,7 +123,7 @@ spec:
             targetPort: transport
   configs:
     - name: opensearch-config-template
-      templateRef: opensearch-config-template
+      template: opensearch-config-template
       volumeName: opensearch-config
       namespace: {{.Release.Namespace}}
   scripts:

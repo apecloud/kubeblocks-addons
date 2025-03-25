@@ -20,7 +20,7 @@ spec:
   updateStrategy: BestEffortParallel
   configs:
     - name: bookies-config
-      templateRef: {{ include "pulsar3.bookiesConfigTplName" . }}
+      template: {{ include "pulsar3.bookiesConfigTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: pulsar-bookies-config
   scripts:

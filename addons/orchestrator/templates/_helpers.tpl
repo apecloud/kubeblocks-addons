@@ -122,7 +122,7 @@ systemAccounts:
       letterCase: MixedCases
 configs:
   - name: orchestrator-config
-    templateRef: {{ include "orchestrator.componentDefName" . }}-config
+    template: {{ include "orchestrator.componentDefName" . }}-config
     namespace: {{ .Release.Namespace }}
     volumeName: configs
 

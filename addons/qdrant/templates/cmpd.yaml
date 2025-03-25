@@ -25,7 +25,7 @@ spec:
         targetPort: grpc-qdrant
   configs:
   - name: qdrant-config-template
-    templateRef: {{ include "qdrant.configTplName" . }}
+    template: {{ include "qdrant.configTplName" . }}
     volumeName: qdrant-config
     namespace: {{ .Release.Namespace }}
   scripts:

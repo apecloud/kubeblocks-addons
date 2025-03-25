@@ -49,11 +49,11 @@ spec:
     scrapePort: http-metrics
   configs:
     - name: redis-cluster-config
-      templateRef: {{ include "redisCluster7.configurationTemplate" . }}
+      template: {{ include "redisCluster7.configurationTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: redis-cluster-config
     - name: redis-metrics-config
-      templateRef: {{ include "redis.metricsConfiguration" . }}
+      template: {{ include "redis.metricsConfiguration" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: redis-metrics-config
       defaultMode: 0444

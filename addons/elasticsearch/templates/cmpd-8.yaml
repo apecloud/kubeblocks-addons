@@ -17,7 +17,7 @@ spec:
     scrapePort: {{ .Values.exporter.service.port | quote}}
   configs:
     - name: es-cm
-      templateRef: {{ include "elasticsearch8.configTplName" . }}
+      template: {{ include "elasticsearch8.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: es-cm
   scripts:

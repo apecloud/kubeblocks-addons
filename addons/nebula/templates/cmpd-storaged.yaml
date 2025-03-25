@@ -13,7 +13,7 @@ spec:
   serviceVersion: {{ .Chart.AppVersion }}
   configs:
     - name: nebula-storaged-config
-      templateRef: {{ include "nebula-storaged.configTemplateName" . }}
+      template: {{ include "nebula-storaged.configTemplateName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: nebula-storaged
   scripts:

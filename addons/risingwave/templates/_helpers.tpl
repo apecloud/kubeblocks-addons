@@ -161,7 +161,7 @@ Default config template.
 */}}
 {{- define "risingwave.conftpl.default" }}
 - name: risingwave-configuration
-  templateRef: {{ include "risingwave.configTplName" . }}
+  template: {{ include "risingwave.configTplName" . }}
   namespace: {{ .Release.Namespace }}
   volumeName: risingwave-configuration
 {{- end }}

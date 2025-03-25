@@ -14,7 +14,7 @@ spec:
   updateStrategy: BestEffortParallel
   configs:
     - name: proxy-config
-      templateRef: proxysql-config
+      template: proxysql-config
       namespace: {{ .Release.Namespace }}
       volumeName: proxy-config
   scripts:
