@@ -116,7 +116,7 @@ spec:
     postProvision:
       preCondition: RuntimeReady
       exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/arey/mysql-client:latest
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.mysqlClient.repository }}:{{ .Values.image.mysqlClient.tag }}
         command:
           - sh
           - -c
@@ -124,7 +124,7 @@ spec:
             {{- .Files.Get "scripts/tidb_postprovision.sh" | nindent 12 }}
     accountProvision:
       exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/arey/mysql-client:latest
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.mysqlClient.repository }}:{{ .Values.image.mysqlClient.tag }}
         command:
           - sh
           - -c

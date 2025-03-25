@@ -12,6 +12,9 @@ image:
     repository: pingcap/tidb
   tikv:
     repository: pingcap/tikv
+  mysqlClient:
+    repository: arey/mysql-client
+    tag: latest
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: "v7.1.5"
