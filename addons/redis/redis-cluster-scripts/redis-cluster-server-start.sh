@@ -177,67 +177,84 @@ is_node_in_cluster() {
   fi
 }
 
-check_and_correct_other_primary_nodes() {
+check_and_meet_node() {
+  local source_endpoint="$1"
+  local source_port="$2"
+  local target_endpoint="$3"
+  local target_port="$4"
+  local target_bus_port="$5"
+
+  # Check for invalid port numbers and exit immediately if found
+  if [ "$target_port" -eq 0 ] || [ "$target_bus_port" -eq 0 ]; then
+    echo "Error: target_port ($target_port) or target_bus_port ($target_bus_port) is 0. Exiting..."
+    wait_random_second 10 1
+    shutdown_redis_server
+    exit 1
+  fi
+
+  while true; do
+    # Get current announce IP from the target node
+    current_announce_ip=$(get_cluster_announce_ip "$target_endpoint" "$target_port")
+    echo "target: $target_endpoint:$target_port, current_announce_ip: $current_announce_ip"
+
+    # If current_announce_ip is empty, retry
+    if [ -z "$current_announce_ip" ]; then
+      echo "Error: current_announce_ip is empty"
+      wait_random_second 3 1
+      continue
+    fi
+
+    set +x
+    if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
+      meet_command="redis-cli -h $source_endpoint -p $source_port cluster meet $current_announce_ip $target_port $target_bus_port"
+      logging_mask_meet_command="$meet_command"
+    else
+      meet_command="redis-cli -h $source_endpoint -p $source_port -a $REDIS_DEFAULT_PASSWORD cluster meet $current_announce_ip $target_port $target_bus_port"
+      logging_mask_meet_command="${meet_command/$REDIS_DEFAULT_PASSWORD/********}"
+    fi
+
+    echo "Meet command: $logging_mask_meet_command"
+    if ! $meet_command
+    then
+      echo "Failed to meet the node $target_endpoint:$target_port"
+      shutdown_redis_server
+      exit 1
+    else
+      echo "Meet the node $target_endpoint:$target_port successfully with new announce ip $current_announce_ip..."
+      set -x
+      break
+    fi
+    set -x
+  done
+}
+
+check_and_meet_other_primary_nodes() {
   local current_primary_endpoint="$1"
   local current_primary_port="$2"
 
   if [ ${#other_comp_primary_nodes[@]} -eq 0 ]; then
-    echo "other_comp_primary_nodes is empty, skip check_and_correct_other_primary_nodes"
+    echo "other_comp_primary_nodes is empty, skip check_and_meet_other_primary_nodes"
     return
   fi
 
   # node_info value format: cluster_announce_ip#pod_fqdn#endpoint:port@bus_port
   for node_info in "${other_comp_primary_nodes[@]}"; do
-    original_announce_ip=$(echo "$node_info" | awk -F '#' '{print $1}')
     node_endpoint_with_port=$(echo "$node_info" | awk -F '@' '{print $1}' | awk -F '#' '{print $3}')
     node_endpoint=$(echo "$node_endpoint_with_port" | awk -F ':' '{print $1}')
     node_port=$(echo "$node_endpoint_with_port" | awk -F ':' '{print $2}')
     node_bus_port=$(echo "$node_info" | awk -F '@' '{print $2}')
-    while true; do
-      # random sleep 1-10 seconds
-      wait_random_second 10 1
-      current_announce_ip=$(get_cluster_announce_ip "$node_endpoint" "$node_port")
-      echo "original_announce_ip: $original_announce_ip, node_endpoint_with_port: $node_endpoint_with_port, current_announce_ip: $current_announce_ip"
-      # if current_announce_ip is empty, retry it
-      if [ -z "$current_announce_ip" ]; then
-          echo "Error: current_announce_ip is empty"
-          wait_random_second 3 1
-          continue
-      fi
-      if [ "$node_port" -eq 0 ] || [ "$node_bus_port" -eq 0 ]; then
-          echo "Error: node_port or node_bus_port is 0"
-          wait_random_second 3 1
-          continue
-      fi
 
-      # if original_announce_ip not equal to current_announce_ip, we need to correct it with the current_announce_ip
-      if [ "$original_announce_ip" != "$current_announce_ip" ]; then
-        # send cluster meet command to the primary node
-        set +x
-        if [ -z "$REDIS_DEFAULT_PASSWORD" ]; then
-          meet_command="redis-cli -h $current_primary_endpoint -p $current_primary_port cluster meet $current_announce_ip $node_port $node_bus_port"
-          logging_mask_meet_command="$meet_command"
-        else
-          meet_command="redis-cli -h $current_primary_endpoint -p $current_primary_port -a $REDIS_DEFAULT_PASSWORD cluster meet $current_announce_ip $node_port $node_bus_port"
-          logging_mask_meet_command="${meet_command/$REDIS_DEFAULT_PASSWORD/********}"
-        fi
-        echo "check and correct other primary nodes meet command: $logging_mask_meet_command"
-        if ! $meet_command
-        then
-            echo "Failed to meet the node $node_endpoint_with_port in check_and_correct_other_primary_nodes"
-            shutdown_redis_server
-            exit 1
-        else
-          echo "Meet the node $node_endpoint_with_port successfully with new announce ip $current_announce_ip..."
-          break
-        fi
-        set -x
-      else
-        echo "node_info $node_info is correct, skipping..."
-        break
-      fi
-    done
+    check_and_meet_node "$current_primary_endpoint" "$current_primary_port" "$node_endpoint" "$node_port" "$node_bus_port"
+    wait_random_second 10 1
   done
+}
+
+check_and_meet_current_primary_node() {
+  local primary_node_endpoint="$1"
+  local primary_node_port="$2"
+  local primary_bus_port="$3"
+
+  check_and_meet_node "127.0.0.1" "$service_port" "$primary_node_endpoint" "$primary_node_port" "$primary_bus_port"
 }
 
 # get the current component nodes for scale out replica
@@ -428,7 +445,10 @@ scale_redis_cluster_replica() {
     current_pod_with_svc="$KB_POD_NAME.$KB_CLUSTER_COMP_NAME"
     if [[ $primary_node_fqdn == *"$current_pod_with_svc"* ]]; then
       echo "Current pod $current_pod_name is primary node, check and correct other primary nodes..."
-      check_and_correct_other_primary_nodes "$primary_node_endpoint" "$primary_node_port"
+      check_and_meet_other_primary_nodes "$primary_node_endpoint" "$primary_node_port"
+    else
+      echo "Current pod $current_pod_name is a secondary node, check and meet current primary node..."
+      check_and_meet_current_primary_node "$primary_node_endpoint" "$primary_node_port" "$primary_node_bus_port"
     fi
     echo "Node $current_pod_name is already in the cluster, skipping scale out replica..."
     exit 0
