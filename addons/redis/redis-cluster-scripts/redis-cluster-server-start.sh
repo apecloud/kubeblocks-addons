@@ -77,7 +77,7 @@ check_and_meet_node() {
       echo "Meet the node $target_endpoint successfully with new announce ip $current_announce_ip..."
       break
     else
-      echo "Failed to meet the node $target_endpoint in check_and_meet_other_primary_nodes" >&2
+      echo "Failed to meet the node $target_endpoint" >&2
       shutdown_redis_server "$service_port"
       exit 1
     fi
