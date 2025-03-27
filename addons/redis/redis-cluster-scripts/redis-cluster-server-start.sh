@@ -46,56 +46,71 @@ load_redis_cluster_common_utils() {
   source "${redis_cluster_common_library_file}"
 }
 
-check_and_correct_other_primary_nodes() {
+check_and_meet_node() {
+  local source_endpoint="$1"
+  local source_port="$2"
+  local target_endpoint="$3"
+  local target_port="$4"
+  local target_bus_port="$5"
+
+  # Check for invalid port numbers and exit immediately if found
+  if [ "$target_port" -eq 0 ] || [ "$target_bus_port" -eq 0 ]; then
+    echo "Error: target_port ($target_port) or target_bus_port ($target_bus_port) is 0. Exiting..."
+    shutdown_redis_server "$service_port"
+    exit 1
+  fi
+
+  while true; do
+    # Get current announce IP from the target node
+    current_announce_ip=$(get_cluster_announce_ip "$target_endpoint" "$target_port")
+    echo "target: $target_endpoint:$target_port, current_announce_ip: $current_announce_ip"
+
+    # If current_announce_ip is empty, retry
+    if is_empty "$current_announce_ip"; then
+      echo "Error: current_announce_ip is empty"
+      sleep_when_ut_mode_false 3
+      continue
+    fi
+
+    # send cluster meet command to the primary node
+    if send_cluster_meet_with_retry "$current_primary_endpoint" "$current_primary_port" "$current_announce_ip" "$target_port" "$target_bus_port"; then
+      echo "Meet the node $target_endpoint successfully with new announce ip $current_announce_ip..."
+      break
+    else
+      echo "Failed to meet the node $target_endpoint" >&2
+      shutdown_redis_server "$service_port"
+      exit 1
+    fi
+  done
+}
+
+check_and_meet_other_primary_nodes() {
   local current_primary_endpoint="$1"
   local current_primary_port="$2"
 
   if [ ${#other_comp_primary_nodes[@]} -eq 0 ]; then
-    echo "other_comp_primary_nodes is empty, skip check_and_correct_other_primary_nodes"
+    echo "other_comp_primary_nodes is empty, skip check_and_meet_other_primary_nodes"
     return
   fi
 
   # node_info value format: cluster_announce_ip#pod_fqdn#endpoint:port@bus_port
   for node_info in "${other_comp_primary_nodes[@]}"; do
-    original_announce_ip=$(echo "$node_info" | awk -F '#' '{print $1}')
     node_endpoint_with_port=$(echo "$node_info" | awk -F '@' '{print $1}' | awk -F '#' '{print $3}')
     node_endpoint=$(echo "$node_endpoint_with_port" | awk -F ':' '{print $1}')
     node_port=$(echo "$node_endpoint_with_port" | awk -F ':' '{print $2}')
     node_bus_port=$(echo "$node_info" | awk -F '@' '{print $2}')
-    while true; do
-      current_announce_ip=$(get_cluster_announce_ip "$node_endpoint" "$node_port")
-      echo "original_announce_ip: $original_announce_ip, node_endpoint_with_port: $node_endpoint_with_port, current_announce_ip: $current_announce_ip"
-      # if current_announce_ip is empty, retry it
-      if is_empty "$current_announce_ip"; then
-        echo "Error: current_announce_ip is empty"
-        sleep_when_ut_mode_false 3
-        continue
-      fi
 
-      if [ "$node_port" -eq 0 ] || [ "$node_bus_port" -eq 0 ]; then
-        echo "Error: node_port or node_bus_port is 0"
-        sleep_when_ut_mode_false 3
-        # TODO: get other_comp_primary_nodes again
-        continue
-      fi
-
-      # if original_announce_ip not equal to current_announce_ip, we need to correct it with the current_announce_ip
-      if ! equals "$original_announce_ip" "$current_announce_ip"; then
-        # send cluster meet command to the primary node
-        if send_cluster_meet_with_retry "$current_primary_endpoint" "$current_primary_port" "$current_announce_ip" "$node_port" "$node_bus_port"; then
-          echo "Meet the node $node_endpoint_with_port successfully with new announce ip $current_announce_ip..."
-          break
-        else
-          echo "Failed to meet the node $node_endpoint_with_port in check_and_correct_other_primary_nodes" >&2
-          shutdown_redis_server "$service_port"
-          exit 1
-        fi
-      else
-        echo "node_info $node_info is correct, skipping..."
-        break
-      fi
-    done
+    check_and_meet_node "$current_primary_endpoint" "$current_primary_port" "$node_endpoint" "$node_port" "$node_bus_port"
+    sleep_when_ut_mode_false 3
   done
+}
+
+check_and_meet_current_primary_node() {
+  local primary_node_endpoint="$1"
+  local primary_node_port="$2"
+  local primary_bus_port="$3"
+
+  check_and_meet_node "127.0.0.1" "$service_port" "$primary_node_endpoint" "$primary_node_port" "$primary_bus_port"
 }
 
 # get the current component nodes for scale out replica
@@ -287,7 +302,7 @@ scale_redis_cluster_replica() {
   if [ ${#current_comp_primary_node[@]} -eq 0 ]; then
     if is_rebuild_instance; then
       echo "current instance is a rebuild-instance, the current shard primary cannot be empty, please check the cluster status" >&2
-      shutdown_redis_server
+      shutdown_redis_server "$service_port"
       exit 1
     fi
     echo "current_comp_primary_node is empty, skip scale out replica"
@@ -307,7 +322,10 @@ scale_redis_cluster_replica() {
     current_pod_fqdn_prefix="$CURRENT_POD_NAME.$CURRENT_SHARD_COMPONENT_NAME"
     if contains "$primary_node_fqdn" "$current_pod_fqdn_prefix"; then
       echo "Current pod $CURRENT_POD_NAME is primary node, check and correct other primary nodes..."
-      check_and_correct_other_primary_nodes "$primary_node_endpoint" "$primary_node_port"
+      check_and_meet_other_primary_nodes "$primary_node_endpoint" "$primary_node_port"
+    else
+      echo "Current pod $CURRENT_POD_NAME is a secondary node, check and meet current primary node..."
+      check_and_meet_current_primary_node "$primary_node_endpoint" "$primary_node_port" "$primary_node_bus_port"
     fi
     echo "Node $CURRENT_POD_NAME is already in the cluster, skipping scale out replica..."
     exit 0

@@ -231,7 +231,7 @@ send_cluster_meet() {
   echo "check and correct other primary nodes meet command: $logging_mask_meet_command"
   if ! $meet_command
   then
-      echo "Failed to meet the node $announce_ip:$announce_port in check_and_correct_other_primary_nodes" >&2
+      echo "Failed to meet the node $announce_ip:$announce_port in check_and_meet_other_primary_nodes" >&2
       return 1
   else
     echo "Meet the node $announce_ip:$announce_port successfully with new announce ip $announce_ip..." >&2
@@ -333,7 +333,7 @@ send_cluster_meet_with_retry() {
   send_cluster_meet_result=$(call_func_with_retry $retry_times $retry_delay_second send_cluster_meet "$primary_endpoint" "$primary_port" "$announce_ip" "$announce_port" "$announce_bus_port")
   status=$?
   if [ $status -ne 0 ]; then
-    echo "Failed to meet the node $announce_ip:$announce_port in check_and_correct_other_primary_nodes after retry" >&2
+    echo "Failed to meet the node $announce_ip:$announce_port in check_and_meet_other_primary_nodes after retry" >&2
     return 1
   fi
   return 0
