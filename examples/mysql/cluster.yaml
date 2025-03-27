@@ -1,12 +1,8 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: mysql1-cluster
+  name: mysql-cluster
   namespace: default
-  annotations:
-    # Specifies the name of the ClusterVersion to use when creating a Cluster.
-    # Deprecated since v0.9, use ComponentVersion instead. This field is maintained for backward compatibility and its use is discouraged. Existing usage should be updated to the current preferred approach to avoid compatibility issues in future releases.
-    kubeblocks.io/crd-api-version: apps.kubeblocks.io/v1alpha1
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
