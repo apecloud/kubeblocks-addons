@@ -56,7 +56,7 @@ check_and_meet_node() {
   # Check for invalid port numbers and exit immediately if found
   if [ "$target_port" -eq 0 ] || [ "$target_bus_port" -eq 0 ]; then
     echo "Error: target_port ($target_port) or target_bus_port ($target_bus_port) is 0. Exiting..."
-    shutdown_redis_server
+    shutdown_redis_server "$service_port"
     exit 1
   fi
 
@@ -302,7 +302,7 @@ scale_redis_cluster_replica() {
   if [ ${#current_comp_primary_node[@]} -eq 0 ]; then
     if is_rebuild_instance; then
       echo "current instance is a rebuild-instance, the current shard primary cannot be empty, please check the cluster status" >&2
-      shutdown_redis_server
+      shutdown_redis_server "$service_port"
       exit 1
     fi
     echo "current_comp_primary_node is empty, skip scale out replica"
