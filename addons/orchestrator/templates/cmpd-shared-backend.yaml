@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "orchestrator.componentDefName" . }}-shareend
+  name: {{ include "orchestrator.cmpdNameSharedBackend" . }}
   labels:
       {{- include "orchestrator.labels" . | nindent 4 }}
   annotations:

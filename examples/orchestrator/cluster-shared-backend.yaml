@@ -7,7 +7,7 @@ spec:
   terminationPolicy: Delete
   componentSpecs:
     - name: orchestrator
-      componentDef: orchestrator-shareend
+      componentDef: orchestrator-shared-backend
       replicas: 3
       resources:
         requests:
