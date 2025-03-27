@@ -33,7 +33,7 @@ Orchestrator cluster has two modes: *raft* and *share-backend*.
 - *share-backend*: Orchestrator cluster with shared backend[^1], here we create an ApeCloud MySQL cluster as the backend. Recommended for large scale.
 
 ```yaml
-# cat examples/orchestrator/cluster-shareend.yaml
+# cat examples/orchestrator/cluster-shared-backend.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
@@ -43,7 +43,7 @@ spec:
   terminationPolicy: Delete
   componentSpecs:
     - name: orchestrator
-      componentDef: orchestrator-shareend
+      componentDef: orchestrator-shared-backend
       replicas: 3
       resources:
         requests:
@@ -106,7 +106,7 @@ spec:
 ```
 
 ```bash
-kubectl apply -f examples/orchestrator/cluster-shareend.yaml
+kubectl apply -f examples/orchestrator/cluster-shared-backend.yaml
 ```
 
 - *raft*: Orchestrator cluster with Raft consensus[^2]. Recommended for small to medium scale.
@@ -246,7 +246,7 @@ kind: Cluster
 spec:
   componentSpecs:
     - name: orchestrator
-      componentDef: componentDef: orchestrator-shareend
+      componentDef: orchestrator-shared-backend
       replicas: 3 # Update `replicas` to your desired number
 ```
 
@@ -395,7 +395,7 @@ kubectl delete cluster orchestrator-cluster
 
 # or delete all clusters created in this example
 # you may use the following command:
-# kubectl delete -f examples/orchestrator/cluster-shareend.yaml
+# kubectl delete -f examples/orchestrator/cluster-shared-backend.yaml
 # kubectl delete -f examples/orchestrator/cluster-raft.yaml
 ```
 

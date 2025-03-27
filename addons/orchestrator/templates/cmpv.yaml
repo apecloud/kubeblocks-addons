@@ -19,7 +19,7 @@ spec:
       orchestrator: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
   compatibilityRules:
   - compDefs:
-    - orchestrator-shareend
+    - orchestrator-shared-backend
     releases:
     - orchestrator-3.2.6
   - compDefs:

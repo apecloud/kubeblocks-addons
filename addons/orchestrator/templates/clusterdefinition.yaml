@@ -13,7 +13,7 @@ spec:
     components:
     - name: orchestrator
       compDef: orchestrator-raft
-  - name: shareend
+  - name: shared-backend
     components:
     - name: orchestrator
-      compDef: orchestrator-shareend
+      compDef: orchestrator-shared-backend

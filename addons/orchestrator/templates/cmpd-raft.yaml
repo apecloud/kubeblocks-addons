@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "orchestrator.componentDefName" . }}-raft
+  name: {{ include "orchestrator.cmpdNameRaft" . }}
   labels:
       {{- include "orchestrator.labels" . | nindent 4 }}
   annotations:
