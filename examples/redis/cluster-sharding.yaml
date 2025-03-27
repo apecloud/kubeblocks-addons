@@ -23,8 +23,8 @@ spec:
           cpu: '1'
           memory: 1.1Gi
         requests:
-          cpu: '1'
-          memory: 1.1Gi
+          cpu: '100m'
+          memory: 500Mi
       # Specifies the version of the Component service. This field is used to determine the version of the service that is created for the Component. \
       # The serviceVersion is used to determine the version of the Redis Sharding Cluster kernel. If the serviceVersion is not specified, the default value is the ServiceVersion defined in ComponentDefinition.
       serviceVersion: 7.2.4

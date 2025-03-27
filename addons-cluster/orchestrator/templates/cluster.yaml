@@ -20,7 +20,7 @@ spec:
       replicas: {{ .Values.replicas }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
-      {{- if eq .Values.mode "shareend" }}
+      {{- if eq .Values.mode "shared-backend" }}
       {{- with .Values.serviceReference.metadb }}
       serviceRefs:
         - name: metadb

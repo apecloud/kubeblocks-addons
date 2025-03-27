@@ -26,7 +26,7 @@ requests:
 ##
 storage: 20
 
-## @param mode to deploy orchestrator, choose from {shareend, raft}.
+## @param mode to deploy orchestrator, choose from {shared-backend, raft}.
 mode: raft
 
 ## @param serviceReference the reference of orchestrator meta service

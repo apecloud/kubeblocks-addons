@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: ggml
+  name:  {{ include "llm.cmpdNameGGML" . }}
   labels:
     {{- include "llm.labels" . | nindent 4}}
   annotations:

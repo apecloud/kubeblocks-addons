@@ -15,7 +15,7 @@
       "default": "raft",
       "enum": [
         "raft",
-        "shareend"
+        "shared-backend"
       ]
     },
     "cpu": {
