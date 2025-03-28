@@ -5,8 +5,10 @@ metadata:
   labels:
     {{- include "elasticsearch.labels" . | nindent 4 }}
 data:
-  pre-stop-hook-script.sh: |-
-    {{- .Files.Get "scripts/pre-stop-hook-script.sh" | nindent 4 }}
+  post-start-hook.sh: |-
+    {{- .Files.Get "scripts/post-start-hook.sh" | nindent 4 }}
+  pre-stop-hook.sh: |-
+    {{- .Files.Get "scripts/pre-stop-hook.sh" | nindent 4 }}
   prepare-fs.sh: |-
     {{- .Files.Get "scripts/prepare-fs.sh" | nindent 4 }}
   readiness-probe-script.sh: |-
