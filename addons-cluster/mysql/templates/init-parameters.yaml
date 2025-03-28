@@ -1,0 +1,19 @@
+{{- if .Values.initParameters }}
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: Parameter
+metadata:
+  name: {{ include "kblib.clusterName" . }}-init-parameters
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{ include "kblib.clusterLabels" . | nindent 4 }}
+    config.kubeblocks.io/init-parameters: "true"
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: {{ include "kblib.clusterName" . }}
+  componentParameters:
+    - componentName: mysql
+      parameters:
+        {{- range $key, $value := $.Values.initParameters }}
+        {{ $key }}: {{ $value | quote }}
+        {{- end }}
+{{- end }}
