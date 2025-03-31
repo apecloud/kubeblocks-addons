@@ -28,7 +28,7 @@ requests:
 ## @param storage size, the unit is Gi
 ##
 storage: 20
-topology: mgr
+topology: semisync
 proxysql:
   replicas: 1
   cpu: 1

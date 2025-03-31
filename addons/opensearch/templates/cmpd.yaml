@@ -123,12 +123,12 @@ spec:
             targetPort: transport
   configs:
     - name: opensearch-config-template
-      templateRef: opensearch-config-template
+      template: opensearch-config-template
       volumeName: opensearch-config
       namespace: {{.Release.Namespace}}
   scripts:
     - name: opensearch-scripts
-      templateRef: {{ include "opensearch.scriptsTemplate" . }}
+      template: {{ include "opensearch.scriptsTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555

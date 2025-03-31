@@ -122,13 +122,13 @@ systemAccounts:
       letterCase: MixedCases
 configs:
   - name: orchestrator-config
-    templateRef: {{ include "orchestrator.componentDefName" . }}-config
+    template: {{ include "orchestrator.componentDefName" . }}-config
     namespace: {{ .Release.Namespace }}
     volumeName: configs
 
 scripts:
   - name: orc-scripts
-    templateRef: {{ include "orchestrator.componentDefName" . }}-scripts
+    template: {{ include "orchestrator.componentDefName" . }}-scripts
     namespace: {{ .Release.Namespace }}
     volumeName: scripts
     defaultMode: 0555
@@ -164,3 +164,17 @@ readinessProbe:
   successThreshold: 1
   timeoutSeconds: 3
 {{- end }}
+
+{{/*
+Define orchestrator raft component definition name
+*/}}
+{{- define "orchestrator.cmpdNameRaft" -}}
+orchestrator-raft-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define orchestrator shared-backend component definition name
+*/}}
+{{- define "orchestrator.cmpdNameSharedBackend" -}}
+orchestrator-shared-backend-{{ .Chart.Version }}
+{{- end -}}

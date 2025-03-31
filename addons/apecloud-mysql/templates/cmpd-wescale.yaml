@@ -19,7 +19,7 @@ spec:
       optional: true
   scripts:
     - name: apecloud-mysql-scripts
-      templateRef: {{ include "apecloud-mysql.cmScriptsName" . }}
+      template: {{ include "apecloud-mysql.cmScriptsName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
@@ -30,8 +30,7 @@ spec:
     {{- end }}
   configs:
     - name: vtgate-config
-      templateRef: {{ include "apecloud-mysql.configTplVtgateName" . }}
-      constraintRef: {{ include "apecloud-mysql.configConstraintVtgateName" . }}
+      template: {{ include "apecloud-mysql.configTplVtgateName" . }}
       volumeName: vtgate-config
       namespace: {{ .Release.Namespace }}
   services:

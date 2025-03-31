@@ -351,12 +351,12 @@ Milvus user config - standalone
 */}}
 {{- define "milvus.config.standalone" }}
 - name: config
-  templateRef: {{ include "milvus-standalone.configTemplateName" . }}
+  template: {{ include "milvus-standalone.configTemplateName" . }}
   volumeName: milvus-config
   namespace: {{.Release.Namespace}}
   defaultMode: 420
 - name: delegate-run
-  templateRef: {{ include "milvus-delegate-run.configTemplateName" . }}
+  template: {{ include "milvus-delegate-run.configTemplateName" . }}
   volumeName: milvus-delegate-run
   namespace: {{.Release.Namespace}}
   defaultMode: 493
@@ -367,12 +367,12 @@ Milvus user config - cluster
 */}}
 {{- define "milvus.config.cluster" }}
 - name: config
-  templateRef: {{ include "milvus-cluster.configTemplateName" . }}
+  template: {{ include "milvus-cluster.configTemplateName" . }}
   volumeName: milvus-config
   namespace: {{.Release.Namespace}}
   defaultMode: 420
 - name: delegate-run
-  templateRef: {{ include "milvus-delegate-run.configTemplateName" . }}
+  template: {{ include "milvus-delegate-run.configTemplateName" . }}
   volumeName: milvus-delegate-run
   namespace: {{.Release.Namespace}}
   defaultMode: 493

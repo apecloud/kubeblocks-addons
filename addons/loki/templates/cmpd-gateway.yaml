@@ -17,14 +17,8 @@ spec:
         ports:
           - port: {{ .Values.gateway.httpMetricsSvcPort }}
             protocol: TCP
-            name: http-metrics
-            targetPort: http-metrics
-  configs:
-    - name: config-gateway
-      ## TODO: this cmpd is currently unavailable. It requires adding configuration templates.
-      templateRef: loki-gateway
-      volumeName: config
-      namespace: {{ .Release.Namespace }}
+            name: http
+            targetPort: http
   updateStrategy: BestEffortParallel
   runtime:
     automountServiceAccountToken: true
@@ -45,13 +39,13 @@ spec:
               - ALL
         ports:
           - containerPort: {{ .Values.gateway.httpMetricsContainerPort }}
-            name: http-metrics
+            name: http
             protocol: TCP
         readinessProbe:
           failureThreshold: 3
           httpGet:
             path: /
-            port: http-metrics
+            port: http
             scheme: HTTP
           initialDelaySeconds: 15
           periodSeconds: 10
@@ -64,3 +58,17 @@ spec:
             name: tmp
           - mountPath: /docker-entrypoint.d
             name: docker-entrypoint-d-override
+  configs:
+    - name: config-gateway
+      template: loki-gateway-tpl
+      volumeName: config
+      namespace: {{ .Release.Namespace }}
+  vars:
+    - name: DNS_SERVICE
+      value: {{ .Values.global.dnsService }}
+    - name: DNS_NAMESPACE
+      value: {{ .Values.global.dnsNamespace}}
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.global.clusterDomain}}
+    - name: ENABLE_IPV6
+      value: {{ .Values.gateway.nginxConfig.enableIPv6 | quote }}

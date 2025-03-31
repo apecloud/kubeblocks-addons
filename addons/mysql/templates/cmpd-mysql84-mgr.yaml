@@ -11,12 +11,9 @@ spec:
   serviceVersion: 8.4.2
   configs:
     - name: mysql-replication-config
-      templateRef: mysql-8.0-mgr-config-template
-      constraintRef: mysql-8.0-config-constraints
+      template: mysql-8.0-mgr-config-template
       volumeName: mysql-config
       namespace: {{ .Release.Namespace }}
-      reRenderResourceTypes:
-        - vscale
   {{- include "kblib.syncer.policyRules" . | nindent 2 }}
   runtime:
     initContainers:

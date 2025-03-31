@@ -594,24 +594,13 @@ spec:
   reconfigures:
     # Specifies the name of the Component.
   - componentName: postgresql
-   # Contains a list of ConfigurationItem objects, specifying the Component's configuration template name, upgrade policy, and parameter key-value pairs to be updated.
-    configurations:
-      # Sets the parameters to be updated. It should contain at least one item.
-      # The keys are merged and retained during patch operations.
-    - keys:
-        # Represents the unique identifier for the ConfigMap.
-      - key: postgresql.conf
-        # Defines a list of key-value pairs for a single configuration file.
-        # These parameters are used to update the specified configuration settings.
-        parameters:
-          # Represents the name of the parameter that is to be updated.
-          # `max_connections` is a dyamic parameter in PostgreSQL that can be changed or updated at runtime without requiring a restart of the database
-        - key: max_connections
-          # Represents the parameter values that are to be updated.
-          # If set to nil, the parameter defined by the Key field will be removed from the configuration file.
-          value: '200'
-      # Specifies the name of the configuration template.
-      name: postgresql-configuration
+    parameters:
+      # Represents the name of the parameter that is to be updated.
+      # `max_connections` is a dyamic parameter in PostgreSQL that can be changed or updated at runtime without requiring a restart of the database
+    - key: max_connections
+      # Represents the parameter values that are to be updated.
+      # If set to nil, the parameter defined by the Key field will be removed from the configuration file.
+      value: '200'
 ```
 
 ```bash
@@ -627,7 +616,8 @@ kbcli cluster explain-config pg-cluster # kbcli is a command line tool to intera
 
 ### Backup
 
-> [!IMPORTANT] Before you start, please create a `BackupRepo` to store the backup data. Refer to [BackupRepo](../docs/create-backuprepo.md) for more details.
+> [!IMPORTANT]
+> Before you start, please create a `BackupRepo` to store the backup data. Refer to [BackupRepo](../docs/create-backuprepo.md) for more details.
 
 KubeBlocks supports multiple backup methods for PostgreSQL cluster, such as `pg-basebackup`, `volume-snapshot`, `wal-g`, etc.
 

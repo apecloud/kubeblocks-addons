@@ -57,7 +57,7 @@ and you can access the Grafana dashboard by opening "http://localhost:3000" in y
 To login, you may retrieve the credential from the secret:
 
 ```bash
-kubectl get secrets prometheus-grafana -n monitoring -oyaml
+kubectl get secrets prometheus-grafana -n monitoring -ojsonpath='{.data}'
 ```
 
 ## Step 4: (Optional) Config PodMonitor and ServiceMonitor Selector

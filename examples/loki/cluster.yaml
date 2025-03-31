@@ -1,0 +1,80 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: lokicluster
+  namespace: default
+spec:
+  terminationPolicy: Delete
+  clusterDef: loki
+  topology: loki-cluster
+  services:
+    - name: default
+      serviceName: memberlist
+      spec:
+        ports:
+          - name: tcp
+            port: 7946
+            targetPort: http-memberlist
+            protocol: TCP
+        selector:
+          app.kubernetes.io/instance: lokicluster
+          app.kubernetes.io/part-of: memberlist
+  componentSpecs:
+    - name: backend
+      disableExporter: true
+      env:
+        - name: STORAGE_TYPE
+          value: "local"
+      replicas: 1
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: standard
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+    - name: write
+      disableExporter: true
+      replicas: 1
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
+      env:
+        - name: STORAGE_TYPE
+          value: "local"
+    - name: read
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
+      disableExporter: true
+      replicas: 1
+      env:
+        - name: STORAGE_TYPE
+          value: "local"
+    - name: gateway
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
+      disableExporter: true
+      replicas: 1

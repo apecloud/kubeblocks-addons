@@ -11,16 +11,13 @@ spec:
   serviceVersion: {{ .Values.defaultServiceVersion.major15 }}
   configs:
     - name: vanilla-postgresql-configuration
-      templateRef: {{ include "vanilla-postgresql15.configurationTemplate" . }}
-      constraintRef: {{ include "vanilla-postgresql15.configConstraint" . }}
-      keys:
-        - postgresql.conf
+      template: {{ include "vanilla-postgresql15.configurationTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: postgresql-config
       defaultMode: 0444
   scripts:
     - name: vanilla-postgresql-scripts
-      templateRef: {{ include "vanilla-postgresql.scriptsTemplate" . }}
+      template: {{ include "vanilla-postgresql.scriptsTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
@@ -45,16 +42,13 @@ spec:
   serviceVersion: {{ .Values.defaultServiceVersion.supabaseMajor15 }}
   configs:
     - name: supabase-postgresql-configuration
-      templateRef: {{ include "vanilla-postgresql-supabase15.configurationTemplate" . }}
-      constraintRef: {{ include "vanilla-postgresql15.configConstraint" . }}
-      keys:
-        - postgresql.conf
+      template: {{ include "vanilla-postgresql-supabase15.configurationTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: postgresql-config
       defaultMode: 0444
   scripts:
     - name: vanilla-postgresql-scripts
-      templateRef: {{ include "vanilla-postgresql.scriptsTemplate" . }}
+      template: {{ include "vanilla-postgresql.scriptsTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555

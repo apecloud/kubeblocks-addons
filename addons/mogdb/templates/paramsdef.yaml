@@ -1,0 +1,38 @@
+{{- $pd := .Files.Get "config/mogdb-config-effect-scope.yaml" | fromYaml }}
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: {{ include "mogdb.pdName" . }}
+  labels:
+    {{- include "mogdb.labels" . | nindent 4 }}
+spec:
+  fileName: postgresql.conf
+
+  # ConfigurationSchema that impose restrictions on engine parameter's rule
+  parametersSchema:
+    # top level pg configuration type
+    topLevelKey: PGParameter
+
+    # schemaInJSON: auto generate from cue scripts
+    # example: ../../pkg/configuration/testdata/mysql_openapi.json
+    cue: |-
+      {{- .Files.Get "config/mogdb-config-constraint.cue" | nindent 6 }}
+
+  ##  require db instance restart
+  ## staticParameters
+  {{- if hasKey $pd "staticParameters" }}
+  staticParameters:
+    {{- $params := get $pd "staticParameters" }}
+    {{- range $params }}
+    - {{ . }}
+    {{- end }}
+  {{- end}}
+
+  ## define immutable parameter list, this feature is not currently supported.
+  {{- if hasKey $pd "immutableParameters" }}
+  immutableParameters:
+   {{- $params := get $pd "immutableParameters" }}
+   {{- range $params }}
+    - {{ . }}
+   {{- end }}
+  {{- end}}

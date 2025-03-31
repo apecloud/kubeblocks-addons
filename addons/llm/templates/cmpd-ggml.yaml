@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: ggml
+  name:  {{ include "llm.cmpdNameGGML" . }}
   labels:
     {{- include "llm.labels" . | nindent 4}}
   annotations:
@@ -13,7 +13,7 @@ spec:
   updateStrategy: BestEffortParallel
   scripts:
     - name: scripts
-      templateRef: ggml-scripts
+      template: ggml-scripts
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 493

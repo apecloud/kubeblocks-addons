@@ -19,28 +19,13 @@ spec:
       optional: true
   updateStrategy: BestEffortParallel
   configs:
-    - name: bookies-env
-      templateRef: {{ include "pulsar.bookiesEnvTplName" . }}
-      namespace: {{ .Release.Namespace }}
-      constraintRef: {{ include "pulsar.envConstraintName" . }}
-      volumeName: bookies-env
-      keys:
-        - conf
-      injectEnvTo:
-        - init-bookies
-        - bookies
-      reRenderResourceTypes:
-        - vscale
     - name: bookies-config
-      templateRef: {{ include "pulsar3.bookiesConfigTplName" . }}
+      template: {{ include "pulsar3.bookiesConfigTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: pulsar-bookies-config
-      constraintRef: {{ include "pulsar3.bookiesConfigConstraintName" . }}
-      reRenderResourceTypes:
-        - vscale
   scripts:
     - name: pulsar-scripts
-      templateRef: {{ include "pulsar.scriptsTplName" . }}
+      template: {{ include "pulsar.scriptsTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
@@ -58,6 +43,27 @@ spec:
         componentVarRef:
           optional: true
           podFQDNs: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: ZOOKEEPER_PORT
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "pulsar3.zookeeperCmpdName" . }}
+          name: zookeeper
+          optional: true
+          port:
+            name: client
+            option: Required
+    - name: ZOOKEEPER_SERVERS
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "pulsar3.zookeeperCmpdName" . }}
+          name: zookeeper
+          host: Required
+          optional: true
+      expression: {{ `{{ .ZOOKEEPER_SERVERS }}.{{ .CLUSTER_NAMESPACE }}.svc:{{ .ZOOKEEPER_PORT }}` | toYaml }}
   lifecycleActions:
     memberLeave:
       exec:
@@ -91,6 +97,8 @@ spec:
         volumeMounts:
           - name: scripts
             mountPath: /kb-scripts
+          - name: pulsar-bookies-config
+            mountPath: /opt/pulsar/conf
         env:
           - name: CURRENT_POD_NAME
             valueFrom:
@@ -158,7 +166,5 @@ spec:
             name: ledgers
           - name: scripts
             mountPath: /kb-scripts
-          - name: bookies-env
-            mountPath: /opt/pulsar/none
           - name: pulsar-bookies-config
             mountPath: /opt/pulsar/conf

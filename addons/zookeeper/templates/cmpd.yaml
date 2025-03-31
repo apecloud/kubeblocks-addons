@@ -69,23 +69,19 @@ spec:
     - name: ZOO_LOG4J_PROP
       value: "INFO,ROLLINGFILE,TRACEFILE,CONSOLE"
   scripts:
-    - name: zookeeper-scripts
-      templateRef: {{ include "zookeeper.scriptsTplName" . }}
+    - name: script
+      template: {{ include "zookeeper.scriptTplName" . }}
       volumeName: scripts
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755
   configs:
-    - name: zookeeper-config
+    - name: config
       namespace: {{ .Release.Namespace }}
-      templateRef: {{ include "zookeeper.configTplName" . }}
-      constraintRef: {{ include "zookeeper.configConstraintName" . }}
+      template: {{ include "zookeeper.configTplName" . }}
       volumeName: config
-      defaultMode: 0755
-      reRenderResourceTypes:
-        - hscale
-    - name: zookeeper-log
+    - name: config-log
       namespace: {{ .Release.Namespace }}
-      templateRef: {{ include "zookeeper.logConfigTplName" . }}
+      template: {{ include "zookeeper.logConfigTplName" . }}
       volumeName: config-log
   lifecycleActions:
     roleProbe:

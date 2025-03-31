@@ -13,12 +13,12 @@ spec:
   serviceVersion: {{ .Chart.AppVersion }}
   configs:
     - name: nebula-storaged-config
-      templateRef: {{ include "nebula-storaged.configTemplateName" . }}
+      template: {{ include "nebula-storaged.configTemplateName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: nebula-storaged
   scripts:
     - name: nebula-storaged-scripts
-      templateRef: {{ include "nebula-storaged.scriptsTemplateName" . }}
+      template: {{ include "nebula-storaged.scriptsTemplateName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555

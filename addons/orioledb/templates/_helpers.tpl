@@ -72,14 +72,6 @@ orioledb-configuration-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
-Define orioledb component config constraint name
-*/}}
-{{- define "orioledb.configConstraint" -}}
-orioledb-cc-{{ .Chart.Version }}
-{{- end -}}
-
-
-{{/*
 Define orioledb component definition name
 */}}
 {{- define "orioledb.cmpdName" -}}

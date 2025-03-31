@@ -110,3 +110,10 @@ extraVolumeMounts:
 extraEnvs:
   ## apply to all kafka container, include broker/controller/combine.
   kafka: []
+  ## apply to all jmx-exporter container
+  jmxExporter: []
+
+## customize jmx-exporter's port exposed
+jmxExporter:
+  port: 5556
+  jmxKafkaPrometheusYml: ""

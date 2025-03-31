@@ -2,6 +2,10 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+nameOverride: ""
+
+fullnameOverride: ""
+
 ## @param compDefinitionVersion for each ComponentDefinition resources name created by this chart, that can avoid name conflict
 ## If specified, the component definition will use it as prefix.
 cmpdVersionPrefix:
@@ -70,16 +74,6 @@ busyboxImage:
   # Overrides the image tag whose default is the chart appVersion.
   tag: 1.36
 
-nameOverride: ""
-
-fullnameOverride: ""
-
-# defined the data volume mount path of redis server
-dataMountPath: /data
-
-logConfigs:
-  running: /data/running.log
-
 metrics:
   image:
     # if the value of metrics.image.registry is not specified using `--set`, it will be set to the value of 'image.registry' by default
@@ -90,3 +84,12 @@ metrics:
   service:
     port: 9121
     serverPort: 8888
+
+# defined the data volume mount path of redis server
+dataMountPath: /data
+
+logConfigs:
+  running: /data/running.log
+
+# cluster domain without . prefix
+clusterDomain: "cluster.local"

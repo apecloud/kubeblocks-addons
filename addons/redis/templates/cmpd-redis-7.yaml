@@ -53,20 +53,17 @@ spec:
     scrapePort: http-metrics
   configs:
     - name: redis-replication-config
-      templateRef: {{ include "redis7.configurationTemplate" . }}
-      constraintRef: {{ include "redis7.configConstraint" . }}
+      template: {{ include "redis7.configurationTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: redis-config
-      reRenderResourceTypes:
-        - vscale
     - name: redis-metrics-config
-      templateRef: {{ include "redis.metricsConfiguration" . }}
+      template: {{ include "redis.metricsConfiguration" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: redis-metrics-config
       defaultMode: 0444
   scripts:
     - name: redis-scripts
-      templateRef: {{ include "redis7.scriptsTemplate" . }}
+      template: {{ include "redis7.scriptsTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555

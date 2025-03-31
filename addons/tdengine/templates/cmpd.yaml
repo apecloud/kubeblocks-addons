@@ -13,17 +13,17 @@ spec:
   serviceVersion: {{ .Chart.AppVersion }}
   configs:
     - name: tdengine-taos-config
-      templateRef: {{ include "tdengine.configurationTemplate" . }}
+      template: {{ include "tdengine.configurationTemplate" . }}
       volumeName: taos-config
       namespace: {{ .Release.Namespace }}
     - name: metrics-configuration
-      templateRef: {{ include "tdengine.metricsConfiguration" . }}
+      template: {{ include "tdengine.metricsConfiguration" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: metrics-configuration
       defaultMode: 0444
   scripts:
     - name: taos-adapter-scripts
-      templateRef: {{ include "tdengine.scriptsTemplate" . }}
+      template: {{ include "tdengine.scriptsTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555

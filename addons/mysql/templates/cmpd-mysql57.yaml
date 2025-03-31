@@ -11,12 +11,9 @@ spec:
   serviceVersion: 5.7.44
   configs:
     - name: mysql-replication-config
-      templateRef: mysql-5.7-config-template
-      constraintRef: mysql-5.7-config-constraints
+      template: mysql-5.7-config-template
       volumeName: mysql-config
       namespace: {{ .Release.Namespace }}
-      reRenderResourceTypes:
-        - vscale
   {{- include "kblib.syncer.policyRules" . | nindent 2 }}
   runtime:
     initContainers:

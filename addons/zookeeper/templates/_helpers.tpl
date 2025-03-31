@@ -85,10 +85,10 @@ Define zookeeper component definition regular expression name prefix
 {{- end -}}
 
 {{/*
-Define zookeeper scripts template name
+Define zookeeper script template name
 */}}
-{{- define "zookeeper.scriptsTplName" -}}
-zookeeper-scripts
+{{- define "zookeeper.scriptTplName" -}}
+zookeeper-script-template
 {{- end -}}
 
 {{/*
@@ -96,13 +96,6 @@ Define zookeeper config template name
 */}}
 {{- define "zookeeper.configTplName" -}}
 zookeeper-config-template
-{{- end -}}
-
-{{/*
-Define zookeeper config constraint name
-*/}}
-{{- define "zookeeper.configConstraintName" -}}
-zookeeper-config-constraints
 {{- end -}}
 
 {{/*

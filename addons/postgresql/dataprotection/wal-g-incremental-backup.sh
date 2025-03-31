@@ -44,7 +44,7 @@ function get_backup_name() {
   local parent_wal_g_backup_name=${1}
   line=$(cat result.txt | tail -n 1)
   if [[ $line == *"Wrote backup with name"* ]]; then
-     echo ${line##* }
+     cat result.txt | tail -n 1 | grep -o 'base_[0-9A-Za-z_]*'
      return
   fi
   if [[ $line == *"Finish LSN of backup ${parent_wal_g_backup_name} greater than current LSN"* ]]; then
@@ -67,6 +67,7 @@ export DATASAFED_BACKEND_BASE_PATH=$(dirname ${DP_BACKUP_BASE_PATH})/${DP_PARENT
 parentWalGBackupName=$(getWalGSentinelInfo "wal-g-backup-name")
 
 # 1. incremental backup
+set +e
 writeSentinelInBaseBackupPath "${backup_base_path}" "wal-g-backup-repo.path"
 PGHOST=${DP_DB_HOST} PGUSER=${DP_DB_USER} PGPORT=5432 wal-g backup-push ${DATA_DIR} --delta-from-name ${parentWalGBackupName} 2>&1 | tee result.txt
 
@@ -94,6 +95,11 @@ result_json=$(cat backup_stop_sentinel.json)
 STOP_TIME=$(echo $result_json | jq -r ".FinishTime")
 START_TIME=$(echo $result_json | jq -r ".StartTime")
 TOTAL_SIZE=$(echo $result_json | jq -r ".CompressedSize")
+if [[ "${backupName}" == "${parentWalGBackupName}" ]]; then
+   TOTAL_SIZE=0
+   START_TIME=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+   STOP_TIME=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+fi
 
 # 5. update backup status
-echo "{\"totalSize\":\"$TOTAL_SIZE\",\"timeRange\":{\"start\":\"${START_TIME}\",\"end\":\"${STOP_TIME}\"}}" >"${DP_BACKUP_INFO_FILE}"
+echo "{\"totalSize\":\"$TOTAL_SIZE\",\"extras\":[{\"wal-g-backup-name\":\"${backupName}\"}],\"timeRange\":{\"start\":\"${START_TIME}\",\"end\":\"${STOP_TIME}\"}}" >"${DP_BACKUP_INFO_FILE}"

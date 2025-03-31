@@ -80,16 +80,16 @@ Describe "Common Functions Tests"
   Describe "exec_etcdctl()"
     setup_empty_tls_files() {
       TLS_MOUNT_PATH=$(mktemp -d)
-      touch "${TLS_MOUNT_PATH}/ca.crt"
-      touch "${TLS_MOUNT_PATH}/tls.crt"
-      touch "${TLS_MOUNT_PATH}/tls.key"
+      touch "${TLS_MOUNT_PATH}/ca.pem"
+      touch "${TLS_MOUNT_PATH}/cert.pem"
+      touch "${TLS_MOUNT_PATH}/key.pem"
     }
 
     setup_tls_files() {
       TLS_MOUNT_PATH=$(mktemp -d)
-      echo "dummy content" > "${TLS_MOUNT_PATH}/ca.crt"
-      echo "dummy content" > "${TLS_MOUNT_PATH}/tls.crt"
-      echo "dummy content" > "${TLS_MOUNT_PATH}/tls.key"
+      echo "dummy content" > "${TLS_MOUNT_PATH}/ca.pem"
+      echo "dummy content" > "${TLS_MOUNT_PATH}/cert.pem"
+      echo "dummy content" > "${TLS_MOUNT_PATH}/key.pem"
     }
 
     cleanup_tls_files() {

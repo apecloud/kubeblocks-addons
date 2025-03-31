@@ -93,15 +93,18 @@ oceanbase-ce-{{ .Chart.Version }}
 ^oceanbase-ce-
 {{- end -}}
 
-{{- define "oceanbase-ce.cc.sysvars" -}}
+{{- define "oceanbase-ce.pdVarName" -}}
 oceanbase-ce-sysvars-cc
 {{- end -}}
 
 
-{{- define "oceanbase-ce.cc.parameters" -}}
+{{- define "oceanbase-ce.pdParamName" -}}
 oceanbase-ce-parameters-cc
 {{- end -}}
 
+{{- define "oceanbase-ce.pcrName" -}}
+oceanbase-ce-pcr
+{{- end -}}
 
 {{- define "oceanbase-ce.clusterDefinition" -}}
 oceanbase-ce
@@ -214,22 +217,18 @@ vars:
 {{- define "oceanbase-ce.spec.configs" -}}
 configs:
   - name: oceanbase-sysvars
-    templateRef: {{ include "oceanbase-ce.cm.sysvars" .}}
+    template: {{ include "oceanbase-ce.cm.sysvars" .}}
     volumeName: oceanbase-sysvars
-    constraintRef: {{ include "oceanbase-ce.cc.sysvars" .}}
     namespace: {{ .Release.Namespace }}
     defaultMode: 0555
   - name: oceanbase-config
-    templateRef: {{ include "oceanbase-ce.cm.config" .}}
+    template: {{ include "oceanbase-ce.cm.config" .}}
     volumeName: oceanbase-config
-    constraintRef: {{ include "oceanbase-ce.cc.parameters" .}}
     namespace: {{ .Release.Namespace }}
     defaultMode: 0555
-    reRenderResourceTypes:
-      - vscale
 scripts:
   - name: oceanbase-scripts
-    templateRef: {{ include "oceanbase-ce.scripts.bootscripts" .}}
+    template: {{ include "oceanbase-ce.scripts.bootscripts" .}}
     namespace: {{ .Release.Namespace }}
     volumeName: scripts
     defaultMode: 0555

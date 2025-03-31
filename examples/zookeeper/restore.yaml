@@ -29,11 +29,11 @@ spec:
             resources:
               requests:
                 storage: 20Gi
-        - name: log
+        - name: snapshot-log
           spec:
             storageClassName: ""
             accessModes:
               - ReadWriteOnce
             resources:
               requests:
-                storage: 2Gi
+                storage: 20Gi

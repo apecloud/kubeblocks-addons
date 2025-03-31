@@ -99,3 +99,10 @@ Define qdrant config constraint name
 {{- define "qdrant.configConstraintName" -}}
 qdrant-config-constraints
 {{- end -}}
+
+{{/*
+Define qdrant parameter config renderer name
+*/}}
+{{- define "qdrant.pcrName" -}}
+qdrant-pcr
+{{- end -}}

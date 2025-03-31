@@ -1,0 +1,11 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: {{ include "pulsar2.bookiesConfigConstraintName" . }}
+  labels:
+    {{- include "pulsar.labels" . | nindent 4 }}
+spec:
+  fileName: bookkeeper.conf
+  parametersSchema:
+    cue: |-
+      {{- .Files.Get "config/2.11.2/bookkeeper-config-constraint.cue" | nindent 6 }}

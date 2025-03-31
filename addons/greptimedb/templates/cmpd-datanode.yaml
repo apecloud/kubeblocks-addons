@@ -13,7 +13,7 @@ spec:
   serviceVersion: {{ .Chart.AppVersion }}
   configs:
     - name: greptimedb-datanode
-      templateRef: {{ include "greptimedb-datanode.configTemplateName" . }}
+      template: {{ include "greptimedb-datanode.configTemplateName" . }}
       volumeName: datanode-config
       namespace: {{ .Release.Namespace }}
   vars:

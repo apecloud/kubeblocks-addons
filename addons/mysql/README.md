@@ -534,23 +534,12 @@ spec:
   reconfigures:
     # Specifies the name of the Component.
   - componentName: mysql
-   # Contains a list of ConfigurationItem objects, specifying the Component's configuration template name, upgrade policy, and parameter key-value pairs to be updated.
-    configurations:
-      # Sets the parameters to be updated. It should contain at least one item.
-      # The keys are merged and retained during patch operations.
-    - keys:
-        # Represents the unique identifier for the ConfigMap.
-      - key: my.cnf
-        # Defines a list of key-value pairs for a single configuration file.
-        # These parameters are used to update the specified configuration settings.
-        parameters:
-          # Represents the name of the parameter that is to be updated.
-        - key: binlog_expire_logs_seconds
-          # Represents the parameter values that are to be updated.
-          # If set to nil, the parameter defined by the Key field will be removed from the configuration file.
-          value: '691200'
-      # Specifies the name of the configuration template.
-      name: mysql-replication-config
+    parameters:
+      # Represents the name of the parameter that is to be updated.
+    - key: binlog_expire_logs_seconds
+      # Represents the parameter values that are to be updated.
+      # If set to nil, the parameter defined by the Key field will be removed from the configuration file.
+      value: '691200'
   # Specifies the maximum number of seconds the OpsRequest will wait for its start conditions to be met before aborting. If set to 0 (default), the start conditions must be met immediately for the OpsRequest to proceed.
   preConditionDeadlineSeconds: 0
   type: Reconfiguring
@@ -569,7 +558,8 @@ SHOW VARIABLES LIKE 'binlog_expire_logs_seconds';
 
 ### Backup
 
-> [!IMPORTANT] Before you start, please create a `BackupRepo` to store the backup data. Refer to [BackupRepo](../docs/create-backuprepo.md) for more details.
+> [!IMPORTANT]
+> Before you start, please create a `BackupRepo` to store the backup data. Refer to [BackupRepo](../docs/create-backuprepo.md) for more details.
 
 You may find the supported backup methods in the `BackupPolicy` of the cluster, e.g. `mysql-cluster-mysql-backup-policy` in this case, and find how these methods will be scheduled in the `BackupSchedule` of the cluster, e.g.. `mysql-cluster-mysql-backup-schedule` in this case.
 

@@ -187,57 +187,85 @@ postgresql-15-{{ .Chart.Version }}
 {{/*
 Define postgresql12 component configuration template name
 */}}
-{{- define "postgresql12.configurationTemplate" -}}
+{{- define "postgresql12.parameterTemplate" -}}
 postgresql12-configuration-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define postgresql14 component configuration template name
 */}}
-{{- define "postgresql14.configurationTemplate" -}}
+{{- define "postgresql14.parameterTemplate" -}}
 postgresql14-configuration-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define postgresql15 component configuration template name
 */}}
-{{- define "postgresql15.configurationTemplate" -}}
+{{- define "postgresql15.parameterTemplate" -}}
 postgresql15-configuration-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define postgresql16 component configuration template name
 */}}
-{{- define "postgresql16.configurationTemplate" -}}
+{{- define "postgresql16.parameterTemplate" -}}
 postgresql16-configuration-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define postgresql12 component config constraint name
 */}}
-{{- define "postgresql12.configConstraint" -}}
-postgresql12-cc-{{ .Chart.Version }}
+{{- define "postgresql12.parametersDefinition" -}}
+postgresql12-pd-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define postgresql14 component config constraint name
 */}}
-{{- define "postgresql14.configConstraint" -}}
-postgresql14-cc-{{ .Chart.Version }}
+{{- define "postgresql14.parametersDefinition" -}}
+postgresql14-pd-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define postgresql15 component config constraint name
 */}}
-{{- define "postgresql15.configConstraint" -}}
-postgresql15-cc-{{ .Chart.Version }}
+{{- define "postgresql15.parametersDefinition" -}}
+postgresql15-pd-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define postgresql16 component config constraint name
 */}}
-{{- define "postgresql16.configConstraint" -}}
-postgresql16-cc-{{ .Chart.Version }}
+{{- define "postgresql16.parametersDefinition" -}}
+postgresql16-pd-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define postgresql12 ParameterDrivenConfigRender name
+*/}}
+{{- define "postgresql12.pcr" -}}
+postgresql12-pcr
+{{- end -}}
+
+{{/*
+Define postgresql14 ParameterDrivenConfigRender name
+*/}}
+{{- define "postgresql14.pcr" -}}
+postgresql14-pcr
+{{- end -}}
+
+{{/*
+Define postgresql15 ParameterDrivenConfigRender name
+*/}}
+{{- define "postgresql15.pcr" -}}
+postgresql15-pcr
+{{- end -}}
+
+{{/*
+Define postgresql16 ParameterDrivenConfigRender name
+*/}}
+{{- define "postgresql16.pcr" -}}
+postgresql16-pcr
 {{- end -}}
 
 {{/*
