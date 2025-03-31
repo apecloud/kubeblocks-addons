@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: vllm
+  name:  {{ include "llm.cmpdNameVLLM" . }}
   labels:
     {{- include "llm.labels" . | nindent 4}}
   annotations:

@@ -384,7 +384,7 @@ Describe "Redis Cluster Server Start Bash Script Tests"
     End
   End
 
-  Describe "check_and_correct_other_primary_nodes()"
+  Describe "check_and_meet_other_primary_nodes()"
     Context "when other_comp_primary_nodes is empty"
       setup() {
         other_comp_primary_nodes=()
@@ -401,66 +401,9 @@ Describe "Redis Cluster Server Start Bash Script Tests"
       After "un_setup"
 
       It "skips checking and correcting other primary nodes"
-        When call check_and_correct_other_primary_nodes "primary-node" "6379"
+        When call check_and_meet_other_primary_nodes "primary-node" "6379"
         The status should be success
-        The stdout should include "other_comp_primary_nodes is empty, skip check_and_correct_other_primary_nodes"
-      End
-    End
-
-    Context "when current announce ip matches original announce ip"
-      get_cluster_announce_ip() {
-        echo "172.0.0.1"
-      }
-
-      setup() {
-        other_comp_primary_nodes=("172.0.0.1#redis-shard-sxj-1.redis-shard-sxj-headless.default.svc#redis-shard-sxj-1.redis-shard-sxj-headless.default.svc:6379@16379")
-        retry_times=1
-        retry_delay_second=1
-      }
-      Before "setup"
-
-      un_setup() {
-        unset other_comp_primary_nodes
-        unset retry_times
-        unset retry_delay_second
-      }
-      After "un_setup"
-
-      It "skips correcting other primary node when current announce ip matches original announce ip"
-        When call check_and_correct_other_primary_nodes "primary-node" "6379"
-        The status should be success
-        The stdout should include "node_info 172.0.0.1#redis-shard-sxj-1.redis-shard-sxj-headless.default.svc#redis-shard-sxj-1.redis-shard-sxj-headless.default.svc:6379@16379 is correct, skipping..."
-      End
-    End
-
-    Context "when current announce ip does not match original announce ip"
-      get_cluster_announce_ip() {
-        echo "172.0.0.2"
-      }
-
-      setup() {
-        other_comp_primary_nodes=("172.0.0.1#redis-shard-sxj-1.redis-shard-sxj-headless.default.svc#redis-shard-sxj-1.redis-shard-sxj-headless.default.svc:6379@16379")
-        retry_times=1
-        retry_delay_second=1
-      }
-      Before "setup"
-
-      un_setup() {
-        unset other_comp_primary_nodes
-        unset retry_times
-        unset retry_delay_second
-      }
-      After "un_setup"
-
-      send_cluster_meet() {
-        echo "OK"
-        return 0
-      }
-
-      It "corrects other primary node when current announce ip does not match original announce ip"
-        When call check_and_correct_other_primary_nodes "primary-node" "6379"
-        The status should be success
-        The stdout should include "Meet the node redis-shard-sxj-1.redis-shard-sxj-headless.default.svc:6379 successfully with new announce ip 172.0.0.2..."
+        The stdout should include "other_comp_primary_nodes is empty, skip check_and_meet_other_primary_nodes"
       End
     End
 
@@ -496,10 +439,10 @@ Describe "Redis Cluster Server Start Bash Script Tests"
       }
 
       It "exits with error when send cluster meet command fails"
-        When run check_and_correct_other_primary_nodes "primary-node" "6379"
+        When run check_and_meet_other_primary_nodes "primary-node" "6379"
         The status should be failure
         The stdout should include "shutdown redis cluster server"
-        The stderr should include "Failed to meet the node 172.0.0.2:6379 in check_and_correct_other_primary_nodes after retry"
+        The stderr should include "Failed to meet the node 172.0.0.2:6379 in check_and_meet_other_primary_nodes after retry"
       End
     End
   End
@@ -578,7 +521,7 @@ Describe "Redis Cluster Server Start Bash Script Tests"
         return 0
       }
 
-      check_and_correct_other_primary_nodes() {
+      check_and_meet_other_primary_nodes() {
         true
       }
 
