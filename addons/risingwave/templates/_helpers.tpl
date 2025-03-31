@@ -73,6 +73,13 @@ risingwave-compactor-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
+Define risingwave compactor component definition name
+*/}}
+{{- define "risingwave-compactor2.cmpdName" -}}
+risingwave-compactor2-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
 Define risingwave compactor component definition regular expression name pattern
 */}}
 {{- define "risingwave-compactor.cmpdRegexpPattern" -}}
@@ -84,6 +91,13 @@ Define risingwave compute component definition name
 */}}
 {{- define "risingwave-compute.cmpdName" -}}
 risingwave-compute-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define risingwave compute component definition name
+*/}}
+{{- define "risingwave-compute2.cmpdName" -}}
+risingwave-compute2-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
@@ -115,6 +129,13 @@ risingwave-frontend-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
+Define risingwave frontend component definition name
+*/}}
+{{- define "risingwave-frontend2.cmpdName" -}}
+risingwave-frontend2-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
 Define risingwave frontend component definition regular expression name pattern
 */}}
 {{- define "risingwave-frontend.cmpdRegexpPattern" -}}
@@ -126,6 +147,13 @@ Define risingwave meta component definition name
 */}}
 {{- define "risingwave-meta.cmpdName" -}}
 risingwave-meta-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define risingwave meta component definition name
+*/}}
+{{- define "risingwave-meta2.cmpdName" -}}
+risingwave-meta2-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*

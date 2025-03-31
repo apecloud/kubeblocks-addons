@@ -1,0 +1,15 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentVersion
+metadata:
+  name: risingwave-compute2
+spec:
+  compatibilityRules:
+    - releases:
+        - compute-2.2.1
+      compDefs:
+        - rw-compute2-{{ .Chart.Version}}
+  releases:
+    - name: compute-2.2.1
+      serviceVersion: 2.2.1
+      images:
+        compute: docker.risingwave.com/risingwavelabs/risingwave:v2.2.1

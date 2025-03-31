@@ -11,15 +11,15 @@ spec:
     - name: cluster
       components:
         - name: meta
-          compDef: {{ include "risingwave-meta.cmpdRegexpPattern" . }}
+          compDef: {{ include "risingwave-meta.cmpdName" . }}
         - name: compactor
-          compDef: {{ include "risingwave-compactor.cmpdRegexpPattern" . }}
+          compDef: {{ include "risingwave-compactor.cmpdName" . }}
         - name: compute
-          compDef: {{ include "risingwave-compute.cmpdRegexpPattern" . }}
+          compDef: {{ include "risingwave-compute.cmpdName" . }}
         - name: connector
-          compDef: {{ include "risingwave-connector.cmpdRegexpPattern" . }}
+          compDef: {{ include "risingwave-connector.cmpdName" . }}
         - name: frontend
-          compDef: {{ include "risingwave-frontend.cmpdRegexpPattern" . }}
+          compDef: {{ include "risingwave-frontend.cmpdName" . }}
       orders:
         provision:
           - connector
@@ -32,3 +32,23 @@ spec:
           - meta
           - connector
       default: true
+    - name: cluster-2
+      components:
+        - name: meta
+          compDef: {{ include "risingwave-meta2.cmpdName" . }}
+        - name: compactor
+          compDef: {{ include "risingwave-compactor2.cmpdName" . }}
+        - name: compute
+          compDef: {{ include "risingwave-compute2.cmpdName" . }}
+        - name: frontend
+          compDef: {{ include "risingwave-frontend2.cmpdName" . }}
+      orders:
+        provision:
+          - meta
+          - compactor,compute
+          - frontend
+        terminate:
+          - frontend
+          - compactor,compute
+          - meta
+      default: false
