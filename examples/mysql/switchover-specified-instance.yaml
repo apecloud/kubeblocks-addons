@@ -12,8 +12,8 @@ spec:
   - componentName: mysql
     # Specifies the instance whose role will be transferred.
     # A typical usage is to transfer the leader role in a consensus system.
-    instanceName: mysql-cluster-mysql-1
+    instanceName: mysql-cluster-mysql-0
     # If CandidateName is specified, the role will be transferred to this instance.
     # The name must match one of the pods in the component.
     # Refer to ComponentDefinition's Swtichover lifecycle action for more details.
-    candidateName: redis-replication-redis-2
+    candidateName: mysql-cluster-mysql-1
