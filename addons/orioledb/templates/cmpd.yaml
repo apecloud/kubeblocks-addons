@@ -20,7 +20,7 @@ spec:
       defaultMode: 0444
   scripts:
     - name: orioledb-scripts
-      templateRef: {{ include "orioledb.scriptsTemplate" . }}
+      template: {{ include "orioledb.scriptsTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555

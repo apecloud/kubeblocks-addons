@@ -187,14 +187,6 @@ systemAccounts:
       numDigits: 5
       numSymbols: 0
       letterCase: MixedCases
-  - name: kbadmin
-    passwordGenerationPolicy:
-      length: 10
-      letterCase: MixedCases
-      numDigits: 5
-      numSymbols: 0
-    statement:
-      create: CREATE USER ${KB_ACCOUNT_NAME} SUPERUSER PASSWORD '${KB_ACCOUNT_PASSWORD}';
 tls:
   volumeName: tls
   mountPath: /etc/pki/tls
@@ -218,22 +210,6 @@ lifecycleActions:
         - -c
         - |
           /tools/syncerctl switchover --primary "$POSTGRES_LEADER_POD_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
-  accountProvision:
-    exec:
-      container: orioledb
-      command:
-        - bash
-        - -c
-        - |
-          eval statement=\"${KB_ACCOUNT_STATEMENT}\"
-          psql -h 127.0.0.1 -c "${statement}"
-      env:
-        - name: PGUSER
-          value: $(POSTGRES_USER)
-        - name: PGPASSWORD
-          value: $(POSTGRES_PASSWORD)
-      targetPodSelector: Role
-      matchingKey: primary
 {{- end -}}
 
 {{- define "orioledb.spec.runtime.common" -}}
