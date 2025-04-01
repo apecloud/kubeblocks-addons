@@ -95,6 +95,129 @@ spec:
 kubectl apply -f examples/etcd/cluster.yaml
 ```
 
+#### Create with TLS Enabled
+
+To create etcd cluster with TLS enabled,
+
+```yaml
+# cat examples/etcd/cluster-with-tls.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: etcd-cluster-tls
+  namespace: default
+spec:
+  # Specifies the behavior when a Cluster is deleted.
+  # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
+  # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
+  # - `Delete`: Extends the `Halt` policy by also removing PVCs, leading to a thorough cleanup while removing all persistent data.
+  # - `WipeOut`: An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss.
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: etcd
+      componentDef: etcd
+      # A boolean flag that indicates whether the Component should use Transport
+      # Layer Security (TLS)
+      # for secure communication.
+      # Valid options are: [true,false]
+      tls: true   # set TLS to true
+      issuer:     # if TLS is True, this filed is required.
+        name: KubeBlocks  # set Issuer to [KubeBlocks, UserProvided].
+      serviceVersion: 3.5.15
+      replicas: 3
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+```
+
+```bash
+kubectl apply -f examples/etcd/cluster-with-tls.yaml
+```
+
+Compared to the default configuration, the only difference here is the `tls` and `issuer` fields in the `cluster-with-tls.yaml` file.
+
+```yaml
+tls: true  # enable tls
+issuer:    # set issuer, could be 'KubeBlocks' or 'UserProvided'
+  name: KubeBlocks
+```
+
+By default, the `issuer` is set to `KubeBlocks`, which means KubeBlocks will generate the certificates for you and store it in a secret, `<clusterName>-<componentName>-tls-certs`.
+If you want to use your own certificates, you can set the `issuer` to `UserProvided` and provide the certificates in the `secretRef` field.
+
+Certifications are mounted to path '/etc/pki/tls' by default. To check how secrets will be mounted, you may check the TLS field in `ComponentDefinition`:
+
+```bash
+kubectl get cmpd <cmpdName> -oyaml | yq '.spec.tls'
+```
+
+<details>
+<summary>Expected Output</summary>
+
+```bash
+caFile: ca.pem
+certFile: cert.pem
+keyFile: key.pem
+mountPath: /etc/pki/tls
+volumeName: tls
+```
+
+</details>
+
+Here is a simple test to verify if TLS works.
+
+- login a read/write ETCD pod (with role=leader)
+
+```bash
+kubectl get po -l kubeblocks.io/role=leader,apps.kubeblocks.io/component-name=etcd
+kubectl exec -it <podName> -- /bin/bash
+```
+
+- put values
+
+```bash
+etcdctl \
+  --endpoints=https://127.0.0.1:2379 \
+  --cacert=/etc/pki/tls/ca.pem \
+  --cert=/etc/pki/tls/cert.pem \
+  --key=/etc/pki/tls/key.pem \
+  put foo bar
+```
+
+- get values
+
+```bash
+etcdctl \
+  --endpoints=https://127.0.0.1:2379 \
+  --cacert=/etc/pki/tls/ca.pem \
+  --cert=/etc/pki/tls/cert.pem \
+  --key=/etc/pki/tls/key.pem \
+  get foo
+```
+
+<details>
+<summary>Expected Output</summary>
+
+```bash
+foo
+bar
+```
+
+</details>
+
 ### Horizontal scaling
 
 #### Scale-out
@@ -430,10 +553,9 @@ spec:
   switchover:
     # Specifies the name of the Component.
   - componentName: etcd
-    # Specifies the instance to become the primary or leader during a switchover operation. The value of `instanceName` can be either:
-    # - "*" (wildcard value): - Indicates no specific instance is designated as the primary or leader.
-    # - A valid instance name (pod name)
-    instanceName: 'etcd-cluster-etcd-1'
+    # Specifies the instance whose role will be transferred.
+    # A typical usage is to transfer the leader role in a consensus system.
+    instanceName: etcd-cluster-etcd-0
 
 ```
 

@@ -152,37 +152,6 @@ kubectl port-forward pod/milvus-standalone-milvus-0 -n default 19530:19530
 
 And then you can access the Milvus service via `localhost:19530`. For instance you can run the python code below to test the service:
 
-```python
-from pymilvus import connections, FieldSchema, CollectionSchema, Collection,utility
-from pymilvus.orm.types import DataType
-
-## Step 1: Connect to Milvus
-connections.connect(
-alias="default",
-host="localhost", # Replace with your Milvus host
-port="19530" # Replace with your Milvus port
-)
-
-## Step 2: Define the Collection Schema
-fields = [
-FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=True), # Primary key field
-FieldSchema(name="vector", dtype=DataType.FLOAT_VECTOR, dim=128) # Vector field
-]
-schema = CollectionSchema(fields=fields, description="Example collection")
-
-## Step 3: Create the Collection
-collection_name = "example_collection"
-collection = Collection(name=collection_name, schema=schema)
-print(f"Collection '{collection_name}' created successfully!")
-
-
-## Step 4: List all collections
-collections = utility.list_collections()
-print("Existing collections:", collections)
-
-## Step 5: Disconnect when done
-connections.disconnect(alias="default")
-```
 
 #### Cluster Mode
 
@@ -484,7 +453,7 @@ And each component will be created with `serviceRef` to the corresponding servic
             service:
               component: etcd       # component name, should be etcd
               service: headless     # Refer to default headless Service
-              port: client          # Refer to port name 'client'
+              port: client          # NOTE: Refer to port name 'client', for port number '3501'
         - name: milvus-log-storage
           namespace: default
           clusterServiceSelector:
@@ -492,7 +461,7 @@ And each component will be created with `serviceRef` to the corresponding servic
             service:
               component: broker
               service: headless
-              port: pulsar
+              port: pulsar          # NOTE: Refer to port name 'pulsar', for port number '6650'
         - name: milvus-object-storage
           namespace: default
           clusterServiceSelector:
@@ -500,10 +469,34 @@ And each component will be created with `serviceRef` to the corresponding servic
             service:
               component: minio
               service: headless
-              port: http
+              port: http           # NOTE: Refer to port name 'http', for port number '9000'
             credential:            # Specifies the SystemAccount to authenticate and establish a connection with the referenced Cluster.
               component: minio     # for component 'minio'
-              name: admin          # the name of the credential (SystemAccount) to reference, using account 'admin' in this case
+              name: admin          # NOTE: the name of the credential (SystemAccount) to reference, using account 'admin' in this case
+```
+
+> [!NOTE]
+> Clusters, such as Pulsar, Minio and ETCD, have multiple ports for different services.
+> When creating Cluster with `serviceRef`, you should know which `port` providing corresponding services.
+
+For instance, in MinIO, there are mainly four ports: 9000, 9001, 3501, and 3502, and they are used for different services or functions.
+
+- 9000: This is the default API port for MinIO. Clients communicate with the MinIO server through this port to perform operations such as uploading, downloading, and deleting objects.
+- 9001: This is the default console port for MinIO. MinIO provides a web - based management console that users can access and manage the MinIO server through this port.
+- 3501: This port is typically used for inter - node communication in MinIO's distributed mode. In a distributed MinIO cluster, nodes need to communicate through this port for data synchronization and coordination.
+- 3502: This port is also typically used for inter - node communication in MinIO's distributed mode. Similar to 3501, it is used for data synchronization and coordination between nodes, but it might be for different communication protocols or services.
+
+And you should pick the port, either using port name or port number, provides API service:
+
+```yaml
+- name: milvus-object-storage
+  namespace: default
+  clusterServiceSelector:
+    cluster: miniom-cluster
+    service:
+      component: minio
+      service: headless
+      port: http  # set port to the one provides API service in your Minio.
 ```
 
 ### Horizontal scaling
