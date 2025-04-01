@@ -513,10 +513,9 @@ spec:
   switchover:
     # Specifies the name of the Component.
   - componentName: mysql
-    # Specifies the instance to become the primary or leader during a switchover operation. The value of `instanceName` can be either:
-    # - "*" (wildcard value): - Indicates no specific instance is designated as the primary or leader.
-    # - A valid instance name (pod name)
-    instanceName: '*'
+    # Specifies the instance whose role will be transferred.
+    # A typical usage is to transfer the leader role in a consensus system.
+    instanceName: acmysql-cluster-mysql-0
 
 ```
 
@@ -542,10 +541,13 @@ spec:
   switchover:
     # Specifies the name of the Component.
   - componentName: mysql
-    # Specifies the instance to become the primary or leader during a switchover operation. The value of `instanceName` can be either:
-    # - "*" (wildcard value): - Indicates no specific instance is designated as the primary or leader.
-    # - A valid instance name (pod name)
-    instanceName: acmysql-cluster-mysql-2
+    # Specifies the instance whose role will be transferred.
+    # A typical usage is to transfer the leader role in a consensus system.
+    instanceName: acmysql-cluster-mysql-0
+    # If CandidateName is specified, the role will be transferred to this instance.
+    # The name must match one of the pods in the component.
+    # Refer to ComponentDefinition's Swtichover lifecycle action for more details.
+    candidateName: acmysql-cluster-mysql-1
 
 ```
 
