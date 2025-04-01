@@ -45,10 +45,10 @@ kubectl apply -f examples/etcd/cluster.yaml
 To create etcd cluster with TLS enabled,
 
 ```bash
-kubectl apply -f examples/etcd/cluster-tls.yaml
+kubectl apply -f examples/etcd/cluster-with-tls.yaml
 ```
 
-Compared to the default configuration, the only difference here is the `tls` and `issuer` fields in the `cluster-tls.yaml` file.
+Compared to the default configuration, the only difference here is the `tls` and `issuer` fields in the `cluster-with-tls.yaml` file.
 
 ```yaml
 tls: true  # enable tls
