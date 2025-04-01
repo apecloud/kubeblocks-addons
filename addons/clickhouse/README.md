@@ -353,7 +353,7 @@ Create a ClickHouse cluster with ch-keeper and clickhouse servers with multiple 
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: cluster-sharding
+  name: clickhouse-sharding
   namespace: default
 spec:
   terminationPolicy: Delete
@@ -378,11 +378,16 @@ spec:
                 storage: 10Gi
   shardings:
     - name: shard
-      shards: 3  # need 3 shard
+      shards: 2 # with 2 shard
       template:
         name: clickhouse  # each shard is a clickhouse component, with 2 replicas
         componentDef: clickhouse-24
         replicas: 2
+        systemAccounts:
+          - name: admin # name of the system account
+            secretRef:
+              name: udf-shard-account-info
+              namespace: default
         resources:
           limits:
             cpu: "1"
@@ -398,13 +403,22 @@ spec:
               resources:
                 requests:
                   storage: 20Gi
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: udf-shard-account-info
+  namespace: default
+type: Opaque
+data:
+  password: cGFzc3dvcmQxMjM=  # 'password123' in base64
 ```
 
 ```bash
 kubectl apply -f examples/clickhouse/cluster-sharding.yaml
 ```
 
-This example creates a clickhouse cluster with 3 shards, each shard has 2 replicas.
+This example creates a clickhouse cluster with 2 shards, each shard has 2 replicas.
 
 ### Horizontal scaling
 
