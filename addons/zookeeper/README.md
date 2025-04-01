@@ -89,7 +89,7 @@ spec:
                 storage: 20Gi
         # Refers to the name of a volumeMount defined in
         # `componentDefinition.spec.runtime.containers[*].volumeMounts
-        - name: log
+        - name: snapshot-log
           spec:
             # The name of the StorageClass required by the claim.
             # If not specified, the StorageClass annotated with
@@ -99,7 +99,7 @@ spec:
             - ReadWriteOnce
             resources:
               requests:
-                storage: 2Gi
+                storage: 20Gi
 
 ```
 
@@ -331,7 +331,7 @@ spec:
                 # specify new size, and make sure it is larger than the current size
                 storage: 30Gi
       volumeClaimTemplates:
-        - name: log
+        - name: snapshot-log
           spec:
             storageClassName: ""
             accessModes:
@@ -566,14 +566,14 @@ spec:
             resources:
               requests:
                 storage: 20Gi
-        - name: log
+        - name: snapshot-log
           spec:
             storageClassName: ""
             accessModes:
               - ReadWriteOnce
             resources:
               requests:
-                storage: 2Gi
+                storage: 20Gi
 ```
 
 ```bash
