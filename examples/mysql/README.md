@@ -497,12 +497,12 @@ kubectl apply -f examples/mysql/orchestrator.yaml
 kubectl apply -f examples/mysql/cluster-orc.yaml
 ```
 
-#### Switchover(switchover-orc.yaml)
+#### Switchover(switchover.yaml)
 
 You can switchover a specified instance as the new primary or leader of the cluster
 
 ```bash
-kubectl apply -f examples/mysql/switchover-orc.yaml
+kubectl apply -f examples/mysql/switchover.yaml
 ```
 
 ## References

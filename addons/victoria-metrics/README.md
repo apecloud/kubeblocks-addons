@@ -34,7 +34,7 @@ VictoriaMetrics can run in two modes:
 
 ### Create
 
-Create a tdengine cluster:
+Create a VM cluster:
 
 ```yaml
 # cat examples/victoria-metrics/cluster.yaml
@@ -167,7 +167,7 @@ metadata:
   namespace: default
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: vm-cluster-cluster
+  clusterName: vmcluster
   type: HorizontalScaling
   # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
   horizontalScaling:

@@ -235,18 +235,18 @@ metadata:
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: ac-postgresql-cluster
-  type: Custom
-  customSpec:
-    components:
-    - componentName: postgresql
-      parameters:
-      - name: primary
-        value: ac-postgresql-cluster-postgresql-0
-      - name: candidate
-        value: ""
-    opsDefinitionRef: switchover
-    parallelism: 0
-  preConditionDeadlineSeconds: 0
+  type: Switchover
+  # Lists Switchover objects, each specifying a Component to perform the switchover operation.
+  switchover:
+    # Specifies the name of the Component.
+  - componentName: postgresql
+    # Specifies the instance whose role will be transferred.
+    # A typical usage is to transfer the leader role in a consensus system.
+    instanceName: ac-postgresql-cluster-postgresql-0
+    # If CandidateName is specified, the role will be transferred to this instance.
+    # The name must match one of the pods in the component.
+    # Refer to ComponentDefinition's Swtichover lifecycle action for more details.
+    candidateName: ac-postgresql-cluster-postgresql-1
 
 ```
 
