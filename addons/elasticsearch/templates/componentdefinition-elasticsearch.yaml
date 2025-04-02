@@ -41,6 +41,42 @@ items:
         - name: http
           port: 9200
           targetPort: http
+    systemAccounts: &systemAccounts
+    - name: elastic
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 10
+        numDigits: 5
+        numSymbols: 0
+        letterCase: MixedCases
+    - name: kibana_system
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 10
+        numDigits: 5
+        numSymbols: 0
+        letterCase: MixedCases
+    vars:
+    - name: ELASTIC_USER_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: elasticsearch-8
+          name: elastic
+          optional: false
+          password: Required
+    - name: KIBANA_SYSTEM_USER_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: elasticsearch-8
+          name: kibana_system
+          optional: false
+          password: Required
+    - name: ELASTICSEARCH_HOST
+      valueFrom:
+        serviceVarRef:
+          compDef: elasticsearch-8
+          name: http
+          host: Required
     lifecycleActions: &lifecycleActions
       memberLeave:
         customHandler:
@@ -52,8 +88,25 @@ items:
             - |
               # https://www.elastic.co/guide/en/elasticsearch/reference/7.7/add-elasticsearch-nodes.html
               set -x
-              endpoint=http://127.0.0.1:9200
-              common_options="--fail --max-time 3 --retry 3"
+              # setup basic auth if credentials are available
+              if [ -n "${ELASTIC_USER_PASSWORD}" ]; then
+                BASIC_AUTH="-u elastic:${ELASTIC_USER_PASSWORD}"
+              else
+                BASIC_AUTH=''
+              fi
+              # Check if we are using IPv6
+              if [[ $POD_IP =~ .*:.* ]]; then
+                LOOPBACK="[::1]"
+              else
+                LOOPBACK=127.0.0.1
+              fi
+              if [ -n "${KB_TLS_CERT_FILE}" ]; then
+                READINESS_PROBE_PROTOCOL=https
+              else
+                READINESS_PROBE_PROTOCOL=http
+              fi
+              endpoint="${READINESS_PROBE_PROTOCOL}://${LOOPBACK}:9200"
+              common_options="-k --fail --max-time 3 --retry 3 ${BASIC_AUTH}"
               echo "removing node $KB_LEAVE_MEMBER_POD_NAME"
               version=`curl ${common_options} -s ${endpoint} | jq -r .version.number`
               if [ $? != 0 ]; then
@@ -100,28 +153,40 @@ items:
             fieldRef:
               apiVersion: v1
               fieldPath: metadata.namespace
-        - name: READINESS_PROBE_PROTOCOL
-          value: http
         - name: NSS_SDB_USE_CACHE
           value: "no"
+        - name: CLUSTER_FORMED_FILE
+          value: /usr/share/elasticsearch/data/cluster-formed
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         command:
           - sh
           - -c
           - |
+            cp ${KB_TLS_CERT_PATH}/* /usr/share/elasticsearch/config/
+            # remove initial master nodes block if cluster has been formed
+            if [ -f "${CLUSTER_FORMED_FILE}" ]; then
+              sed -i '/# INITIAL_MASTER_NODES_BLOCK_START/,/# INITIAL_MASTER_NODES_BLOCK_END/d' config/elasticsearch.yml
+            fi
             if [ -f /bin/tini ]; then
               /bin/tini -- /usr/local/bin/docker-entrypoint.sh
             else
               /tini -- /usr/local/bin/docker-entrypoint.sh
             fi
         lifecycle:
+          postStart:
+            exec:
+              command:
+              - bash
+              - -c
+              - |
+                /mnt/remote-scripts/post-start-hook.sh > /tmp/post-start-hook.log 2>&1
           preStop:
             exec:
               command:
               - bash
               - -c
               - |
-                /mnt/remote-scripts/pre-stop-hook-script.sh
+                /mnt/remote-scripts/pre-stop-hook.sh > /tmp/pre-stop-hook.log 2>&1
         name: elasticsearch
         ports:
         - containerPort: 9200
@@ -137,7 +202,7 @@ items:
             - -c
             - /mnt/remote-scripts/readiness-probe-script.sh
           failureThreshold: 3
-          initialDelaySeconds: 10
+          initialDelaySeconds: 30
           periodSeconds: 5
           successThreshold: 1
           timeoutSeconds: 5
@@ -281,5 +346,27 @@ items:
       volumeName: es-cm
     scripts: *scripts
     services: *services
+    systemAccounts: *systemAccounts
+    vars:
+    - name: ELASTIC_USER_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: elasticsearch-7
+          name: elastic
+          optional: false
+          password: Required
+    - name: KIBANA_SYSTEM_USER_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: elasticsearch-7
+          name: kibana_system
+          optional: false
+          password: Required
+    - name: ELASTICSEARCH_HOST
+      valueFrom:
+        serviceVarRef:
+          compDef: elasticsearch-7
+          name: http
+          host: Required
     lifecycleActions: *lifecycleActions
     runtime: *runtime
