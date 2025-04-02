@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 
-# Check if we are using IPv6
+# Configure loopback address based on IPv4/IPv6
 if [[ $POD_IP =~ .*:.* ]]; then
   LOOPBACK="[::1]"
 else
   LOOPBACK=127.0.0.1
 fi
+
+# Configure protocol based on TLS settings
 if [ -n "${KB_TLS_CERT_FILE}" ]; then
     READINESS_PROBE_PROTOCOL=https
 else
@@ -14,43 +16,8 @@ fi
 ENDPOINT="${READINESS_PROBE_PROTOCOL}://${LOOPBACK}:9200"
 COMMON_OPTIONS="--connect-timeout 3 -k -u root:${ELASTIC_USER_PASSWORD}"
 
-function wait_for_cluster_health() {
-    while true; do
-        result=$(curl ${COMMON_OPTIONS} -X GET "${ENDPOINT}/_cluster/health?pretty" | grep 'green')
-        if [ $? == 0 ]; then
-            echo "cluster is formed"
-            break
-        fi
-        echo "waiting for cluster to be formed"
-        sleep 1
-    done
-}
-
-# TODO: it's better to do this in component postProvision lifecycle action
-if grep '\- master\|master: true' config/elasticsearch.yml > /dev/null 2>&1; then
-    if [ ! -f ${CLUSTER_FORMED_FILE} ]; then
-        wait_for_cluster_health
-        touch ${CLUSTER_FORMED_FILE}
-    fi
-fi
-
-idx=${KB_POD_NAME##*-}
-if [ $idx -ne 0 ]; then
-    exit 0
-fi
-
-if [ -z "${KB_TLS_CERT_FILE}" ]; then
-    echo "tls and authentication is disabled, skip account initialization"
-    exit 0
-fi
-
-#version=$(curl --fail ${COMMON_OPTIONS} ${ENDPOINT}?pretty | grep '"number" :' | tr -d '":,' | awk '{print $2}')
-#if [ $? != 0 ]; then
-#    echo "Failed to get elasticsearch version number"
-#    exit 1
-#fi
-#major_minor_version=${version%.*}
-
+# Function to create a local superuser using elasticsearch-users command
+# This is needed to authenticate API calls when security is enabled
 function add_local_user()
 {
     username=$1
@@ -65,6 +32,7 @@ function add_local_user()
     fi
 }
 
+# Function to reset password for built-in users using ES API
 function reset_password()
 {
     username=$1
@@ -72,38 +40,81 @@ function reset_password()
     curl --fail ${COMMON_OPTIONS} -X POST "${ENDPOINT}/_security/user/${username}/_password?pretty" -H 'Content-Type: application/json' -d "{\"password\":\"${password}\"}"
 }
 
-function wait_for_cluster_health()
-{
+# Function to wait until cluster health becomes green
+# This indicates that all shards are allocated and cluster is fully operational
+function wait_for_cluster_health() {
     while true; do
         result=$(curl ${COMMON_OPTIONS} -X GET "${ENDPOINT}/_cluster/health?pretty" | grep 'green')
-        if [ $? != 0 ]; then
-            sleep 1
-            continue
+        if [ $? == 0 ]; then
+            echo "cluster is formed"
+            break
         fi
-        break
+        echo "waiting for cluster to be formed"
+        sleep 1
     done
 }
 
-# add a temporary superuser user to reset built-in elastic and kibana_system password
-add_local_user root ${ELASTIC_USER_PASSWORD}
+# For master nodes: Initialize cluster and create CLUSTER_FORMED_FILE
+# CLUSTER_FORMED_FILE is used to indicate that cluster is already initialized
+# When cluster restarts, elasticsearch.yml needs to be modified to remove INITIAL_MASTER_NODES_BLOCK
+# This file must exist on all master nodes
+if grep '\- master\|master: true' config/elasticsearch.yml > /dev/null 2>&1; then
+    if [ ! -f ${CLUSTER_FORMED_FILE} ]; then
+        # Wait for ES to start and listen on port
+        while ! nc -z ${LOOPBACK} 9200; do
+            echo "waiting for elasticsearch to start..."
+            sleep 1
+        done
+        
+        # If security is enabled, create a temporary root user for API authentication
+        if [ -n "${KB_TLS_CERT_FILE}" ]; then
+            echo "add root user"
+            add_local_user root ${ELASTIC_USER_PASSWORD}
+        fi
+        
+        wait_for_cluster_health
+        touch ${CLUSTER_FORMED_FILE}
+    fi
+fi
+
+# The following operations only need to be performed on master-0
+idx=${KB_POD_NAME##*-}
+if [ $idx -ne 0 ]; then
+    exit 0
+fi
+
+# Skip user initialization if security is disabled
+if [ -z "${KB_TLS_CERT_FILE}" ]; then
+    echo "tls and authentication is disabled, skip account initialization"
+    exit 0
+fi
+
+#version=$(curl --fail ${COMMON_OPTIONS} ${ENDPOINT}?pretty | grep '"number" :' | tr -d '":,' | awk '{print $2}')
+#if [ $? != 0 ]; then
+#    echo "Failed to get elasticsearch version number"
+#    exit 1
+#fi
+#major_minor_version=${version%.*}
 
 echo "wait for cluster ready"
 wait_for_cluster_health
 
+# Reset built-in elastic user's password
 echo "reset elastic password"
 reset_password elastic ${ELASTIC_USER_PASSWORD}
 if [ $? != 0 ]; then
     exit 1
 fi
 
+# Configure kibana_system user
+# For ES versions < 7.8, kibana_system user needs to be created manually
+# For newer versions, we just need to reset its password
 users=$(curl --fail ${COMMON_OPTIONS} "${ENDPOINT}/_security/user?pretty=false")
 if [ $? != 0 ]; then
     echo "Failed to get user list"
     exit 1
 fi
 kibana_user=kibana_system
-# version little than 7.8 doesn't have a built-in user kibana_system, so we create it manually
-# https://www.elastic.co/guide/en/elasticsearch/reference/7.7/built-in-users.html
 echo "${users}" | grep "\"username\":\"${kibana_user}\""
 if [ $? != 0 ]; then
     echo "create user ${kibana_user}"
@@ -120,9 +131,10 @@ else
     fi
 fi
 
-
-# FIXME: share the ca.crt with kibana by using index, this is a workaround as KB doesn't support cluster level certificates now
-# FIXME: should be removed after KB support cluster level certificates: https://github.com/apecloud/kubeblocks/issues/8278
+# Share TLS certificate with Kibana
+# This is a temporary solution until KB supports cluster level certificates
+# Store the certificate in an ES index for Kibana to access
+# https://github.com/apecloud/kubeblocks/issues/8278
 index_name=kubeblocks_ca_crt
 ca_crt=$(cat /usr/share/elasticsearch/config/ca.crt | base64 -w 0)
 echo "fill elastic ca into index ${index_name}"
