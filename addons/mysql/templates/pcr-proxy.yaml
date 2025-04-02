@@ -1,0 +1,12 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "mysqlProxy.prcName" . }}
+  labels:
+    {{- include "mysql.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "proxysql.componentDefName" . }}
+  configs:
+    - name: proxysql.tpl
+      fileFormatConfig:
+        format: toml
