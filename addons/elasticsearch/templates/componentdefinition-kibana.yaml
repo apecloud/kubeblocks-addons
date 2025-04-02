@@ -57,6 +57,12 @@ items:
       - env:
         - name: NSS_SDB_USE_CACHE
           value: "no"
+        - name: CLUSTER_DOMAIN
+          value: {{ .Values.clusterDomain | quote }}
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         command:
         - bash
@@ -70,7 +76,7 @@ items:
           else
             READINESS_PROBE_PROTOCOL=http
           fi
-          endpoint="${READINESS_PROBE_PROTOCOL}://${ELASTICSEARCH_HOST}:9200"
+          endpoint="${READINESS_PROBE_PROTOCOL}://${ELASTICSEARCH_HOST}.${KB_NAMESPACE}.svc.${CLUSTER_DOMAIN}:9200"
           common_options="-s -u elastic:${ELASTIC_USER_PASSWORD} --fail --connect-timeout 3 -k"
           while true; do
             if [ -n "${KB_TLS_CERT_FILE}" ]; then
@@ -96,11 +102,6 @@ items:
             /usr/local/bin/kibana-docker -e ${endpoint} -H ${POD_IP}
           fi
         name: kibana
-        env:
-        - name: POD_IP
-          valueFrom:
-            fieldRef:
-              fieldPath: status.podIP
         ports:
         - containerPort: 5601
           name: http

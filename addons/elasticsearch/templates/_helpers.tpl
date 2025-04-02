@@ -69,6 +69,10 @@ Create the name of the service account to use
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.8.2
 {{- end }}
 
+{{- define "elasticsearch-8.9.1.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.9.1
+{{- end }}
+
 {{- define "elasticsearch-7.10.1.image" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:7.10.1
 {{- end }}
@@ -91,6 +95,10 @@ Create the name of the service account to use
 
 {{- define "kibana-8.8.2.image" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kibana.repository }}:8.8.2
+{{- end }}
+
+{{- define "kibana-8.9.1.image" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kibana.repository }}:8.9.1
 {{- end }}
 
 {{- define "kibana-7.7.1.image" -}}

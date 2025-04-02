@@ -79,3 +79,5 @@ ingress:
 
 service:
   type: ClusterIP
+
+clusterDomain: cluster.local

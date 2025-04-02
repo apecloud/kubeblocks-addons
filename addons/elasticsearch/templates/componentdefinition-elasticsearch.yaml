@@ -179,14 +179,14 @@ items:
               - bash
               - -c
               - |
-                /mnt/remote-scripts/post-start-hook.sh
+                /mnt/remote-scripts/post-start-hook.sh > /tmp/post-start-hook.log 2>&1
           preStop:
             exec:
               command:
               - bash
               - -c
               - |
-                /mnt/remote-scripts/pre-stop-hook.sh
+                /mnt/remote-scripts/pre-stop-hook.sh > /tmp/pre-stop-hook.log 2>&1
         name: elasticsearch
         ports:
         - containerPort: 9200
