@@ -8,5 +8,5 @@ spec:
   componentDef: {{ include "proxysql.componentDefName" . }}
   configs:
     - name: proxysql.tpl
-      fileFormatConfig:
-        format: toml
+{{/*      fileFormatConfig:*/}}
+{{/*        format: ""*/}}
