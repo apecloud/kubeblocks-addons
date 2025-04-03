@@ -10,7 +10,7 @@ spec:
     - {{ include "clickhouse24.paramsDefName" . }}
 
   configs:
-    - name: config.xml
+    - name: client.xml
       fileFormatConfig:
         format: xml
       reRenderResourceTypes:
@@ -24,3 +24,7 @@ spec:
       reRenderResourceTypes:
         - hscale
         - shardingHVScale
+        - tls
+    - name: customized_config.xml
+      fileFormatConfig:
+        format: xml

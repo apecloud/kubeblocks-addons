@@ -1,5 +1,4 @@
 {{- $clusterName := $.cluster.metadata.name }}
-{{- $namespace := $.cluster.metadata.namespace }}
 <clickhouse>
   <listen_host>0.0.0.0</listen_host>
   {{- if eq (index $ "TLS_ENABLED") "true" }}

@@ -11,6 +11,16 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  name: {{ include "clickhouse24.customizedConfigurationTplName" . }}
+  labels:
+  {{- include "clickhouse.labels" . | nindent 4 }}
+data:
+  customized_config.xml: |
+    <!-- customized configuration for config template -->
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: {{ include "clickhouse24.userTplName" . }}
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}

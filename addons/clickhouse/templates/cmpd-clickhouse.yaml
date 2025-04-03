@@ -74,6 +74,10 @@ spec:
       template: {{ include "clickhouse24.configurationTplName" . }}
       volumeName: config
       namespace: {{ .Release.Namespace }}
+    - name: clickhouse-customized-tpl
+      template: {{ include "clickhouse24.customizedConfigurationTplName" . }}
+      volumeName: config
+      namespace: {{ .Release.Namespace }}
     - name: clickhouse-user-tpl
       template: {{ include "clickhouse24.userTplName" . }}
       volumeName: user-config

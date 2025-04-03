@@ -56,6 +56,7 @@ Common annotations
 {{- define "clickhouse.annotations" -}}
 {{ include "kblib.helm.resourcePolicy" . }}
 {{ include "clickhouse.apiVersion" . }}
+apps.kubeblocks.io/skip-immutable-check: "true"
 {{- end }}
 
 {{/*
@@ -104,8 +105,15 @@ Define clickhouse-keeper24 component definition regex pattern
 {{/*
 Define clickhouse24 config constraint name
 */}}
-{{- define "clickhouse24.paramsDefName" -}}
-clickhouse-24-pd
+{{- define "clickhouse24.configParamsDefName" -}}
+clickhouse-24-pd-config
+{{- end -}}
+
+{{/*
+Define clickhouse24 config constraint name
+*/}}
+{{- define "clickhouse24.userParamsDefName" -}}
+clickhouse-24-pd-user
 {{- end -}}
 
 {{/*
@@ -121,6 +129,13 @@ Define clickhouse24 default overrides configuration tpl name
 */}}
 {{- define "clickhouse24.configurationTplName" -}}
 clickhouse-24-configuration-tpl
+{{- end -}}
+
+{{/*
+Define clickhouse24 default overrides configuration tpl name
+*/}}
+{{- define "clickhouse24.customizedConfigurationTplName" -}}
+clickhouse-24-customized-configuration-tpl
 {{- end -}}
 
 {{/*
