@@ -40,6 +40,11 @@ spec:
         requests:
           cpu: '0.5'
           memory: 0.5Gi
+      # Specifies the configs of the Component.
+      configs:
+      # the name of configs defined in the `ComponentDefinition.spec.configs[*].name`
+      - name: redis-replication-config
+        externalManaged: true
       # Specifies a list of PersistentVolumeClaim templates that define the storage
       # requirements for the Component.
       volumeClaimTemplates:

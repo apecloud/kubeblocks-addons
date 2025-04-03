@@ -1004,4 +1004,4 @@ kubectl apply -f examples/mysql/switchover.yaml
 
 ## References
 
-[^1] Orchestrator, https://github.com/openark/orchestrator
+[^1] Orchestrator, <https://github.com/openark/orchestrator>
