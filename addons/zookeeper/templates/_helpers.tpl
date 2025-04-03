@@ -104,3 +104,11 @@ Define zookeeper log config template name
 {{- define "zookeeper.logConfigTplName" -}}
 zookeeper-log-config-template
 {{- end -}}
+
+
+{{/*
+Define zookeeper parameter config renderer name
+*/}}
+{{- define "zookeeper.pcrName" -}}
+zookeeper-pcr
+{{- end -}}

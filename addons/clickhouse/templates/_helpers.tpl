@@ -112,9 +112,15 @@ clickhouse-24-pd
 Define clickhouse24 config constraint name
 */}}
 {{- define "clickhouse24.pcrName" -}}
-clickhouse-24-pcr
+clickhouse24-pcr
 {{- end -}}
 
+{{/*
+Define clickhouse24 config constraint name
+*/}}
+{{- define "keeper24.pcrName" -}}
+clickhouse-keeper24-pcr
+{{- end -}}
 
 {{/*
 Define clickhouse24 default overrides configuration tpl name

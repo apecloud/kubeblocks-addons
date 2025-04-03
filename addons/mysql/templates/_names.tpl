@@ -144,3 +144,11 @@ Define parameterconfigrenderer name
 {{- define "mysql.prcName84" -}}
 mysql-8.4-pcr
 {{- end -}}
+
+{{/*
+Define parameterconfigrenderer name
+*/}}
+{{- define "mysqlProxy.prcName" -}}
+mysql-proxy-pcr
+{{- end -}}
+
