@@ -177,7 +177,7 @@ loose_audit_log_rotations=5
 ## | localhost | mysql.sys        |
 ## | localhost | root             |
 ## +-----------+------------------+
-loose_audit_log_exclude_accounts=root@%,root@localhost
+loose_audit_log_exclude_accounts=kbadmin@%
 
 # semi sync, it works
 # loose_rpl-semi-sync-source-enabled = 1
