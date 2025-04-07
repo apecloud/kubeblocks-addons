@@ -139,7 +139,7 @@ loose_audit_log_rotations=5
 ## | localhost | mysql.sys        |
 ## | localhost | root             |
 ## +-----------+------------------+
-loose_audit_log_exclude_accounts=root@%,root@localhost
+loose_audit_log_exclude_accounts=kbadmin@%
 
 # replay log
 relay_log_info_repository=TABLE
