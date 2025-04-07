@@ -50,6 +50,8 @@ spec:
             mountPath: /bitnami/clickhouse
           - name: config
             mountPath: /bitnami/clickhouse/etc/conf.d/default
+          - name: config-customized
+            mountPath: /bitnami/clickhouse/etc/conf.d/customized
           - name: user-config
             mountPath: /bitnami/clickhouse/etc/users.d/default
           - name: client-config
@@ -76,7 +78,7 @@ spec:
       namespace: {{ .Release.Namespace }}
     - name: clickhouse-customized-tpl
       template: {{ include "clickhouse24.customizedConfigurationTplName" . }}
-      volumeName: config
+      volumeName: config-customized
       namespace: {{ .Release.Namespace }}
     - name: clickhouse-user-tpl
       template: {{ include "clickhouse24.userTplName" . }}

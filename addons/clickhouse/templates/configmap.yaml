@@ -16,7 +16,7 @@ metadata:
   {{- include "clickhouse.labels" . | nindent 4 }}
 data:
   customized_config.xml: |
-    <!-- customized configuration for config template -->
+    {{- .Files.Get "configs/customized_config.xml.tpl" | nindent 4 }}
 ---
 apiVersion: v1
 kind: ConfigMap

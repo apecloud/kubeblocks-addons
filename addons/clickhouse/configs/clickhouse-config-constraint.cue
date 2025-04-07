@@ -14,7 +14,7 @@
         settings_constraints_replace_previous: bool & true | false | *true
         // Sets whether creating a table with a specific table engine requires a grant.
         table_engines_require_grant: bool & true | false | *false
-        role_cache_expiration_time_seconds: uint64 & *600
+        role_cache_expiration_time_seconds: uint64 | *600
     }
 
     // Path to a folder where a ClickHouse server stores user and role configurations created by SQL commands
@@ -24,7 +24,7 @@
     aggregate_function_group_array_action_when_limit_is_reached: string & "throw" | "discard" | *"throw"
 
     // Max array element size in bytes for groupArray function
-    aggregate_function_group_array_max_element_size: uint64 & *16777215
+    aggregate_function_group_array_max_element_size: uint64 | *16777215
 
     // Controls if the user can change settings related to the different feature tiers
     allow_feature_tier: uint32 & 0 | 1 | 2 | *0
@@ -45,7 +45,7 @@
     async_insert_queue_flush_on_shutdown: bool & true | false | *true
 
     // Maximum number of threads to actually parse and insert data in background
-    async_insert_threads: uint64 & *16
+    async_insert_threads: uint64 | *16
 
     // Asynchronous loading of databases and tables
     async_load_databases: bool & true | false | *true
@@ -54,131 +54,97 @@
     async_load_system_database: bool & true | false | *false
 
     // Period in seconds for updating heavy asynchronous metrics
-    asynchronous_heavy_metrics_update_period_s: uint32 & *120
+    asynchronous_heavy_metrics_update_period_s: uint32 | *120
 
-    // Settings for the asynchronous_insert_log system table for logging async inserts
-    // TODO:
-    asynchronous_insert_log: {
-        // Sub-tags can be configured here
-    }
-
-    // Settings for the asynchronous_metric_log system table
-    // TODO:
-    asynchronous_metric_log: {
-
-
-    }
     // Enable the calculation of heavy asynchronous metrics.
     asynchronous_metrics_enable_heavy_metrics: bool & true | false | *false
 
     // Period in seconds for updating asynchronous metrics.
-    asynchronous_metrics_update_period_s: uint32 & *1
+    asynchronous_metrics_update_period_s: uint32 | *1
 
     // Use originating address for authentication for clients connected through proxy
     auth_use_forwarded_address: bool & true | false | *false
 
     // The maximum number of threads that will be used for performing flush operations for Buffer-engine tables in the background
-    background_buffer_flush_schedule_pool_size: uint64 & *16
+    background_buffer_flush_schedule_pool_size: uint64 | *16
 
     // The maximum number of threads that will be used for performing a variety of operations (mostly garbage collection) for MergeTree-engine tables in the background
-    background_common_pool_size: uint64 & *8
+    background_common_pool_size: uint64 | *8
 
     // The maximum number of threads that will be used for executing distributed sends
-    background_distributed_schedule_pool_size: uint64 & *16
+    background_distributed_schedule_pool_size: uint64 | *16
 
     // The maximum number of threads that will be used for fetching data parts from another replica for MergeTree-engine tables in the background
-    background_fetches_pool_size: uint64 & *16
+    background_fetches_pool_size: uint64 | *16
 
     // Sets a ratio between the number of threads and the number of background merges and mutations that can be executed concurrently
-    background_merges_mutations_concurrency_ratio: float & *2
+    background_merges_mutations_concurrency_ratio: float | *2
 
     // The policy on how to perform a scheduling for background merges and mutations
     background_merges_mutations_scheduling_policy: string & "round_robin" | "shortest_task_first" | *"round_robin"
 
     // The maximum number of threads that will be used for executing background operations for message streaming
-    background_message_broker_schedule_pool_size: uint64 & *16
+    background_message_broker_schedule_pool_size: uint64 | *16
 
     // The maximum number of threads that will be used for moving data parts to another disk or volume for MergeTree-engine tables in a background
-    background_move_pool_size: uint64 & *8
+    background_move_pool_size: uint64 | *8
 
     // Sets the number of threads performing background merges and mutations for tables with MergeTree engines
-    background_pool_size: uint64 & *16
+    background_pool_size: uint64 | *16
 
     // The maximum number of threads that will be used for constantly executing some lightweight periodic operations for replicated tables, Kafka streaming, and DNS cache updates
-    background_schedule_pool_size: uint64 & *512
+    background_schedule_pool_size: uint64 | *512
 
     // Settings for the backup_log system table for logging BACKUP and RESTORE operations
-    // TODO:
-    backup_log: {
-        // Sub-tags can be configured here
-    }
 
     // The maximum number of threads to execute BACKUP requests
-    backup_threads: uint64 & *16
-
-    // Settings for backups, used when writing BACKUP TO File()
-    // TODO:
-    backups: {
-
-    }
+    backup_threads: uint64 | *16
 
     // The maximum number of jobs that can be scheduled on the Backups IO Thread pool. It is recommended to keep this queue unlimited due to the current S3 backup logic.
-    backups_io_thread_pool_queue_size: uint64 & *0
+    backups_io_thread_pool_queue_size: uint64 | *0
 
     // Work factor for the bcrypt_password authentication type which uses the Bcrypt algorithm
     bcrypt_workfactor: uint64 | *12
-
-    // Settings for the blob_storage_log system table
-    // TODO:
-    blob_storage_log: {
-        // Sub-tags can be configured here
-    }
 
     // The interval in seconds before reloading built-in dictionaries
     builtin_dictionaries_reload_interval: uint64 | *3600
 
     // Set cache size to RAM max ratio. Allows lowering the cache size on low-memory systems
-    cache_size_to_ram_max_ratio: double & *0.5
+    cache_size_to_ram_max_ratio: float | *0.5
 
     // For testing purposes
-    cannot_allocate_thread_fault_injection_probability: double & *0
+    cannot_allocate_thread_fault_injection_probability: float | *0
 
     // Specifies the "hard" threshold of the memory consumption of the server process according to cgroups after which the server's maximum memory consumption is adjusted to the threshold value
-    cgroup_memory_watcher_hard_limit_ratio: double & *0.95
+    cgroup_memory_watcher_hard_limit_ratio: float | *0.95
 
     // Specifies the "soft" threshold of the memory consumption of the server process according to cgroups after which arenas in jemalloc are purged
-    cgroup_memory_watcher_soft_limit_ratio: double & *0.9
+    cgroup_memory_watcher_soft_limit_ratio: float | *0.9
 
     // Interval in seconds during which the server's maximum allowed memory consumption is adjusted by the corresponding threshold in cgroups
-    cgroups_memory_usage_observer_wait_time: uint64 & *15
+    cgroups_memory_usage_observer_wait_time: uint64 | *15
 
     // Sets the cache size (in elements) for compiled expressions
-    compiled_expression_cache_elements_size: uint64 & *10000
+    compiled_expression_cache_elements_size: uint64 | *10000
 
     // Sets the cache size (in bytes) for compiled expressions
-    compiled_expression_cache_size: uint64 & *134217728
+    compiled_expression_cache_size: uint64 | *134217728
 
     // The policy on how to perform a scheduling of CPU slots specified by concurrent_threads_soft_limit_num and concurrent_threads_soft_limit_ratio_to_cores
     concurrent_threads_scheduler: string & "round_robin" | "fair_round_robin" | *"round_robin"
 
     // The maximum number of query processing threads, excluding threads for retrieving data from remote servers, allowed to run all queries
-    concurrent_threads_soft_limit_num: uint64 & *0
+    concurrent_threads_soft_limit_num: uint64 | *0
 
     // Same as concurrent_threads_soft_limit_num, but with ratio to cores
-    concurrent_threads_soft_limit_ratio_to_cores: uint64 & *0
+    concurrent_threads_soft_limit_ratio_to_cores: uint64 | *0
 
     // How often clickhouse will reload config and check for new changes
-    config_reload_interval_ms: uint64 & *2000
+    config_reload_interval_ms: uint64 | *2000
 
     // Configures soft limit for core dump file size
     core_dump: {
-        size_limit: uint64 & *1073741824
-    }
-
-    // Settings for the crash_log system table operation
-    // TODO
-    crash_log: {
-        // Sub-tags can be configured here
+        size_limit: uint64 | *1073741824
     }
 
     // This setting specifies the cache path for custom (created from SQL) cached disks
@@ -188,37 +154,37 @@
     custom_settings_prefixes: string
 
     // The delay during which a dropped table can be restored using the UNDROP statement
-    database_atomic_delay_before_drop_table_sec: uint64 & *480
+    database_atomic_delay_before_drop_table_sec: uint64 | *480
 
     // In case of a failed table drop, ClickHouse will wait for this time-out before retrying the operation
-    database_catalog_drop_error_cooldown_sec: uint64 & *5
+    database_catalog_drop_error_cooldown_sec: uint64 | *5
 
     // The size of the threadpool used for dropping tables
-    database_catalog_drop_table_concurrency: uint64 & *16
+    database_catalog_drop_table_concurrency: uint64 | *16
 
     // Sets scheduling period of the task that cleans up garbage from store/directory
-    database_catalog_unused_dir_cleanup_period_sec: uint64 & *86400
+    database_catalog_unused_dir_cleanup_period_sec: uint64 | *86400
 
     // If some subdirectory is not used by clickhouse-server and this directory was not modified for last database_catalog_unused_dir_hide_timeout_sec seconds, the task will "hide" this directory by removing all access rights
-    database_catalog_unused_dir_hide_timeout_sec: uint64 & *3600
+    database_catalog_unused_dir_hide_timeout_sec: uint64 | *3600
 
     // If some subdirectory is not used by clickhouse-server and it was previously "hidden" and this directory was not modified for last database_catalog_unused_dir_rm_timeout_sec seconds, the task will remove this directory
-    database_catalog_unused_dir_rm_timeout_sec: uint64 & *2592000
+    database_catalog_unused_dir_rm_timeout_sec: uint64 | *2592000
 
     // Allow detaching tables permanently in Replicated databases
     database_replicated_allow_detach_permanently: bool & true | false | *true
 
     // The default database name
-    default_database: string & *"default"
+    default_database: string | *"default"
 
     // Sets the password type to be automatically set for in queries like CREATE USER u IDENTIFIED BY 'p'
-    default_password_type: string & "plaintext_password" | "sha256_password" | "double_sha1_password" | "bcrypt_password"
+    default_password_type: string & "plaintext_password" | "sha256_password" | "float_sha1_password" | "bcrypt_password"
 
     // Default settings profile
     default_profile: string
 
     // The replica name in ZooKeeper
-    default_replica_name: string & *"{replica}"
+    default_replica_name: string | *"{replica}"
 
     // The path to the table in ZooKeeper, example "/clickhouse/tables/{uuid}/{shard}"
     default_replica_path: string
@@ -233,7 +199,7 @@
     dictionaries_lazy_load: bool & true | false | *true
 
     // Interval in milliseconds for reconnection attempts of failed MySQL and Postgres dictionaries having background_reconnect enabled
-    dictionary_background_reconnect_interval: uint64 & *1000
+    dictionary_background_reconnect_interval: uint64 | *1000
 
     // Disable all insert/alter/delete queries
     disable_insertion_and_mutation: bool & true | false | *false
@@ -245,22 +211,16 @@
     disable_tunneling_for_https_requests_over_http_proxy: bool & true | false | *false
 
     // Connections above this limit have significantly shorter time to live. The limit applies to the disks connections
-    disk_connections_soft_limit: uint64 & *5000
+    disk_connections_soft_limit: uint64 | *5000
 
     // Connections above this limit reset after use. Set to 0 to turn connection cache off. The limit applies to the disks connections
-    disk_connections_store_limit: uint64 & *30000
+    disk_connections_store_limit: uint64 | *30000
 
     // Warning massages are written to the logs if number of in-use connections are higher than this limit. The limit applies to the disks connections
-    disk_connections_warn_limit: uint64 & *10000
+    disk_connections_warn_limit: uint64 | *10000
 
     // Enables or disables showing secrets in SHOW and SELECT queries for tables, databases, table functions, and dictionaries
     display_secrets_in_show_and_select: bool & true | false | *false
-
-    // Manage executing distributed ddl queries (CREATE, DROP, ALTER, RENAME) on cluster. Works only if ZooKeeper is enabled
-    // TODO:
-    distributed_ddl: {
-        // Configurable settings within <distributed_ddl>
-    }
 
     // Allows resolve names to ipv4 addresses
     dns_allow_resolve_names_to_ipv4: bool & true | false | *true
@@ -269,22 +229,16 @@
     dns_allow_resolve_names_to_ipv6: bool & true | false | *true
 
     // Internal DNS cache max entries
-    dns_cache_max_entries: uint64 & *10000
+    dns_cache_max_entries: uint64 | *10000
 
     // Internal DNS cache update period in seconds
-    dns_cache_update_period: int32 & *15
+    dns_cache_update_period: int32 | *15
 
     // Max DNS resolve failures of a hostname before dropping the hostname from ClickHouse DNS cache
-    dns_max_consecutive_failures: uint32 & *10
+    dns_max_consecutive_failures: uint32 | *10
 
     // Enables logging from Azure sdk
     enable_azure_sdk_logging: bool & true | false | *false
-
-    // It is disabled by default.
-    // TODO
-    error_log: {
-        // Configuration options
-    }
 
     // If set to true, then alter operations will be surrounded by parentheses in formatted queries. This makes the parsing of formatted alter queries less ambiguous.
     format_alter_operations_with_parentheses: bool & true | false | *true
@@ -293,62 +247,34 @@
     format_schema_path: string
 
     // Period for CPU clock timer of global profiler (in nanoseconds)
-    global_profiler_cpu_time_period_ns: uint64 & *0
+    global_profiler_cpu_time_period_ns: uint64 | *0
 
     // Period for real clock timer of global profiler (in nanoseconds)
-    global_profiler_real_time_period_ns: uint64 & *0
+    global_profiler_real_time_period_ns: uint64 | *0
 
     // Defines a directory containing proto files for Protobuf types, example "/usr/share/clickhouse/protos/"
     google_protos_path: string
-
-    // Settings for sending data to Graphite
-    // TODO:
-    graphite: {
-        host: string
-        port: uint16
-        interval: uint32
-        timeout: uint32
-        root_path: string
-    }
-
-    // Settings for thinning data for Graphite
-    // TODO:
-    graphite_rollup: {
-        // Configuration options
-    }
 
     // Expired time for HSTS in seconds. A value of 0 means ClickHouse disables HSTS. If you set a positive number, the HSTS will be enabled and the max-age is the number you set.
     hsts_max_age: uint32
 
     // Connections above this limit have significantly shorter time to live. The limit applies to the http connections which do not belong to any disk or storage
-    http_connections_soft_limit: uint64 & *100
+    http_connections_soft_limit: uint64 | *100
 
     // Connections above this limit reset after use. Set to 0 to turn connection cache off. The limit applies to the http connections which do not belong to any disk or storage
-    http_connections_store_limit: uint64 & *5000
+    http_connections_store_limit: uint64 | *5000
 
     // Warning massages are written to the logs if number of in-use connections are higher than this limit. The limit applies to the http connections which do not belong to any disk or storage
-    http_connections_warn_limit: uint64 & *1000
-
-    // Allows using custom HTTP handlers
-    // TODO
-    http_handlers: {
-        // Rules and handlers configuration
-    }
-
-    // Used to add headers to the response in an OPTIONS HTTP request
-    // TODO
-    http_options_response: {
-        // Headers configuration
-    }
+    http_connections_warn_limit: uint64 | *1000
 
     // The page that is shown by default when you access the ClickHouse HTTP(s) server
     http_server_default_response: string
 
     // Size of background pool for iceberg catalog
-    iceberg_catalog_threadpool_pool_size: uint64 & *50
+    iceberg_catalog_threadpool_pool_size: uint64 | *50
 
     // Number of tasks which is possible to push into iceberg catalog pool
-    iceberg_catalog_threadpool_queue_size: uint64 & *1000000
+    iceberg_catalog_threadpool_queue_size: uint64 | *1000000
 
     // If true, ClickHouse doesn't write defaults for empty SQL security statement in CREATE VIEW queries
     ignore_empty_sql_security_in_create_view_query: bool & true | false | *true
@@ -357,517 +283,367 @@
     include_from: string
 
     // Secondary index mark cache policy name
-    index_mark_cache_policy: string & *"SLRU"
+    index_mark_cache_policy: string | *"SLRU"
 
     // Maximum size of cache for index marks
-    index_mark_cache_size: uint64 & *5368709120
+    index_mark_cache_size: uint64 | *5368709120
 
     // The size of the protected queue (in case of SLRU policy) in the secondary index mark cache relative to the cache's total size
-    index_mark_cache_size_ratio: double & *0.3
+    index_mark_cache_size_ratio: float | *0.3
 
     // Secondary index uncompressed cache policy name
-    index_uncompressed_cache_policy: string & *"SLRU"
+    index_uncompressed_cache_policy: string | *"SLRU"
 
     // Maximum size of cache for uncompressed blocks of MergeTree indices
-    index_uncompressed_cache_size: uint64 & *0
+    index_uncompressed_cache_size: uint64 | *0
 
     // The size of the protected queue (in case of SLRU policy) in the secondary index uncompressed cache relative to the cache's total size
-    index_uncompressed_cache_size_ratio: double & *0.5
-
-    // A username and a password used to connect to other servers during replication
-    // TODO
-    interserver_http_credentials: {
-        user: string
-        password: string
-        allow_empty: bool & true | false | *false
-        old: [{
-            user: string
-            password: string
-        }]
-    }
+    index_uncompressed_cache_size_ratio: float | *0.5
 
     // The maximum number of jobs that can be scheduled on the IO Thread pool
-    io_thread_pool_queue_size: uint64 & *10000
+    io_thread_pool_queue_size: uint64 | *10000
 
     // The number of seconds that ClickHouse waits for incoming requests for HTTP protocol before closing the connection
-    keep_alive_timeout: uint32 & *30
+    keep_alive_timeout: uint32 | *30
 
     // Maximum size of batch for MultiRead request to [Zoo]Keeper that support batching
-    keeper_multiread_batch_size: uint64 & *10000
-
-    // It is disabled by default
-    // TODO:
-    latency_log: {
-
-    }
-
-    // List LDAP servers with their connection parameters here
-    // TODO:
-    ldap_servers: [{
-        // LDAP server configuration
-    }]
+    keeper_multiread_batch_size: uint64 | *10000
 
     // License key for ClickHouse Enterprise Edition
     license_key: string
 
     // Backlog (queue size of pending connections) of the listen socket
-    listen_backlog: uint32 & *4096
+    listen_backlog: uint32 | *4096
 
     // The server will not exit if IPv6 or IPv4 networks are unavailable while trying to listen
     listen_try: bool & true | false | *false
 
     // Size of background pool for marks loading
-    load_marks_threadpool_pool_size: uint64 & *50
+    load_marks_threadpool_pool_size: uint64 | *50
 
     // Number of tasks which is possible to push into prefetches pool
-    load_marks_threadpool_queue_size: uint64 & *1000000
-
-    // The location and format of log messages
-    // TODO:
-    logger: {
-        // Log format specifiers and per-level overrides
-    }
-
-    // Parameter substitutions for replicated tables
-    // TODO:
-    macros: [{
-        // Macro configurations
-    }]
+    load_marks_threadpool_queue_size: uint64 | *1000000
 
     // Mark cache policy name
-    mark_cache_policy: string & *"SLRU"
+    mark_cache_policy: string | *"SLRU"
 
     // The ratio of total size of mark cache to fill during prewarm
-    mark_cache_prewarm_ratio: double & *0.95
+    mark_cache_prewarm_ratio: float | *0.95
 
     // Maximum size of cache for marks (index of MergeTree family of tables)
-    mark_cache_size: uint64 & *5368709120
+    mark_cache_size: uint64 | *5368709120
 
     // The size of the protected queue (in case of SLRU policy) in the mark cache relative to the cache's total size
-    mark_cache_size_ratio: double & *0.5
+    mark_cache_size_ratio: float | *0.5
 
     // The number of threads to load active set of data parts (Active ones) at startup
-    max_active_parts_loading_thread_pool_size: uint64 & *64
+    max_active_parts_loading_thread_pool_size: uint64 | *64
 
     // The maximum number of authentication methods a user can be created with or altered to
-    max_authentication_methods_per_user: uint64 & *100
+    max_authentication_methods_per_user: uint64 | *100
 
     // The maximum read speed in bytes per second for all backups on server
-    max_backup_bandwidth_for_server: uint64 & *0
+    max_backup_bandwidth_for_server: uint64 | *0
 
     // If the number of idle threads in the Backups IO Thread pool exceeds max_backup_io_thread_pool_free_size, ClickHouse will release resources occupied by idling threads and decrease the pool size
-    max_backups_io_thread_pool_free_size: uint64 & *0
+    max_backups_io_thread_pool_free_size: uint64 | *0
 
     // ClickHouse uses threads from the Backups IO Thread pool to do S3 backup IO operations. max_backups_io_thread_pool_size limits the maximum number of threads in the pool
-    max_backups_io_thread_pool_size: uint64 & *1000
+    max_backups_io_thread_pool_size: uint64 | *1000
 
     // The maximum number of threads to use for building vector indexes
-    max_build_vector_similarity_index_thread_pool_size: uint64 & *16
+    max_build_vector_similarity_index_thread_pool_size: uint64 | *16
 
     // Limit on total number of concurrent insert queries
-    max_concurrent_insert_queries: uint64 & *0
+    max_concurrent_insert_queries: uint64 | *0
 
     // Limit on total number of concurrently executed queries
-    max_concurrent_queries: uint64 & *0
+    max_concurrent_queries: uint64 | *0
 
     // Limit on total number of concurrently select queries
-    max_concurrent_select_queries: uint64 & *0
+    max_concurrent_select_queries: uint64 | *0
 
     // Max server connections
-    max_connections: int32 & *4096
+    max_connections: int32 | *4096
 
     // If number of databases is greater than this value, server will throw an exception. 0 means no limitation
-    max_database_num_to_throw: uint64 & *0
+    max_database_num_to_throw: uint64 | *0
 
     // If the number of attached databases exceeds the specified value, clickhouse server will add warning messages to system.warnings table
-    max_database_num_to_warn: uint64 & *1000
+    max_database_num_to_warn: uint64 | *1000
 
     // The number of threads to create tables during replica recovery in DatabaseReplicated. Zero means number of threads equal number of cores
-    max_database_replicated_create_table_thread_pool_size: uint32 & *1
+    max_database_replicated_create_table_thread_pool_size: uint32 | *1
 
     // If the number of dictionaries is greater than this value, the server will throw an exception. Only counts tables for database engines: Atomic, Ordinary, Replicated, Lazy
-    max_dictionary_num_to_throw: uint64 & *0
+    max_dictionary_num_to_throw: uint64 | *0
 
     // If the number of attached dictionaries exceeds the specified value, clickhouse server will add warning messages to system.warnings table
-    max_dictionary_num_to_warn: uint64 & *1000
+    max_dictionary_num_to_warn: uint64 | *1000
 
     // How many entries hash table statistics collected during aggregation is allowed to have
-    max_entries_for_hash_table_stats: uint64 & *10000
+    max_entries_for_hash_table_stats: uint64 | *10000
 
     // The number of threads for ALTER TABLE FETCH PARTITION
-    max_fetch_partition_thread_pool_size: uint64 & *64
+    max_fetch_partition_thread_pool_size: uint64 | *64
 
     // If the number of idle threads in the IO Thread pool exceeds max_io_thread_pool_free_size, ClickHouse will release resources occupied by idling threads and decrease the pool size
-    max_io_thread_pool_free_size: uint64 & *0
+    max_io_thread_pool_free_size: uint64 | *0
 
     // ClickHouse uses threads from the IO Thread pool to do some IO operations (e.g. to interact with S3). max_io_thread_pool_size limits the maximum number of threads in the pool
-    max_io_thread_pool_size: uint64 & *100
+    max_io_thread_pool_size: uint64 | *100
 
     // Maximal number of requests through a single keep-alive connection until it will be closed by ClickHouse server
-    max_keep_alive_requests: uint64 & *10000
+    max_keep_alive_requests: uint64 | *10000
 
     // The maximum speed of local reads in bytes per second
-    max_local_read_bandwidth_for_server: uint64 & *0
+    max_local_read_bandwidth_for_server: uint64 | *0
 
     // The maximum speed of local writes in bytes per seconds
-    max_local_write_bandwidth_for_server: uint64 & *0
+    max_local_write_bandwidth_for_server: uint64 | *0
 
     // A limit on the number of materialized views attached to a table
-    max_materialized_views_count_for_table: uint64 & *0
+    max_materialized_views_count_for_table: uint64 | *0
 
     // The maximum read speed of all merges on server in bytes per second
-    max_merges_bandwidth_for_server: uint64 & *0
+    max_merges_bandwidth_for_server: uint64 | *0
 
     // The maximum read speed of all mutations on server in bytes per second
-    max_mutations_bandwidth_for_server: uint64 & *0
+    max_mutations_bandwidth_for_server: uint64 | *0
 
     // The maximum number of open files
     max_open_files: uint64
 
     // The number of threads to load inactive set of data parts (Outdated ones) at startup
-    max_outdated_parts_loading_thread_pool_size: uint64 & *32
+    max_outdated_parts_loading_thread_pool_size: uint64 | *32
 
     // If the number of active parts exceeds the specified value, clickhouse server will add warning messages to system.warnings table
-    max_part_num_to_warn: uint64 & *100000
+    max_part_num_to_warn: uint64 | *100000
 
     // Restriction on dropping partitions. If the size of a MergeTree table exceeds max_partition_size_to_drop (in bytes), you can't drop a partition using a DROP PARTITION query
-    max_partition_size_to_drop: uint64 & *50000000000
+    max_partition_size_to_drop: uint64 | *50000000000
 
     // The number of threads for concurrent removal of inactive data parts
-    max_parts_cleaning_thread_pool_size: uint64 & *128
+    max_parts_cleaning_thread_pool_size: uint64 | *128
 
     // If the number of pending mutations exceeds the specified value, clickhouse server will add warning messages to system.warnings table
-    max_pending_mutations_to_warn: uint64 & *500
+    max_pending_mutations_to_warn: uint64 | *500
 
     // If the number of idle threads in the prefixes deserialization Thread pool exceeds max_prefixes_deserialization_thread_pool_free_size, ClickHouse will release resources occupied by idling threads and decrease the pool size
-    max_prefixes_deserialization_thread_pool_free_size: uint64 & *0
+    max_prefixes_deserialization_thread_pool_free_size: uint64 | *0
 
     // ClickHouse uses threads from the prefixes deserialization Thread pool for parallel reading of metadata of columns and subcolumns from file prefixes in Wide parts in MergeTree. max_prefixes_deserialization_thread_pool_size limits the maximum number of threads in the pool
-    max_prefixes_deserialization_thread_pool_size: uint64 & *100
+    max_prefixes_deserialization_thread_pool_size: uint64 | *100
 
     // The maximum speed of data exchange over the network in bytes per second for read
-    max_remote_read_network_bandwidth_for_server: uint64 & *0
+    max_remote_read_network_bandwidth_for_server: uint64 | *0
 
     // The maximum speed of data exchange over the network in bytes per second for write
-    max_remote_write_network_bandwidth_for_server: uint64 & *0
+    max_remote_write_network_bandwidth_for_server: uint64 | *0
 
     // The maximum speed of data exchange over the network in bytes per second for replicated fetches
-    max_replicated_fetches_network_bandwidth_for_server: uint64 & *0
+    max_replicated_fetches_network_bandwidth_for_server: uint64 | *0
 
     // The maximum speed of data exchange over the network in bytes per second for replicated sends
-    max_replicated_sends_network_bandwidth_for_server: uint64 & *0
+    max_replicated_sends_network_bandwidth_for_server: uint64 | *0
 
     // If the number of replicated tables is greater than this value, the server will throw an exception. Only counts tables for database engines: Atomic, Ordinary, Replicated, Lazy
-    max_replicated_table_num_to_throw: uint64 & *0
+    max_replicated_table_num_to_throw: uint64 | *0
 
     // The maximum amount of memory the server is allowed to use, expressed in bytes
-    max_server_memory_usage: uint64 & *0
+    max_server_memory_usage: uint64 | *0
 
     // The maximum amount of memory the server is allowed to use, expressed as a ratio to all available memory
-    max_server_memory_usage_to_ram_ratio: double & *0.9
+    max_server_memory_usage_to_ram_ratio: float | *0.9
 
     // Maximum session timeout, in seconds
-    max_session_timeout: uint64
+    max_session_timeout: int | *3600
 
     // If number of tables is greater than this value, server will throw an exception. Only counts tables for database engines: Atomic, Ordinary, Replicated, Lazy
-    max_table_num_to_throw: uint64 & *0
+    max_table_num_to_throw: uint64 | *0
 
     // If the number of attached tables exceeds the specified value, clickhouse server will add warning messages to system.warnings table
-    max_table_num_to_warn: uint64 & *5000
+    max_table_num_to_warn: uint64 | *5000
 
     // Restriction on deleting tables. If the size of a MergeTree table exceeds max_table_size_to_drop (in bytes), you can't delete it using a DROP query or TRUNCATE query
-    max_table_size_to_drop: uint64 & *50000000000
+    max_table_size_to_drop: uint64 | *50000000000
 
     // The maximum amount of storage that could be used for external aggregation, joins or sorting. Queries that exceed this limit will fail with an exception
-    max_temporary_data_on_disk_size: uint64 & *0
+    max_temporary_data_on_disk_size: uint64 | *0
 
     // If the number of idle threads in the Global Thread pool is greater than max_thread_pool_free_size, then ClickHouse releases resources occupied by some threads and the pool size is decreased
-    max_thread_pool_free_size: uint64 & *1000
+    max_thread_pool_free_size: uint64 | *1000
 
     // ClickHouse uses threads from the Global Thread pool to process queries. If there is no idle thread to process a query, then a new thread is created in the pool. max_thread_pool_size limits the maximum number of threads in the pool
-    max_thread_pool_size: uint64 & *10000
+    max_thread_pool_size: uint64 | *10000
 
     // The number of threads to load inactive set of data parts (Unexpected ones) at startup
-    max_unexpected_parts_loading_thread_pool_size: uint64 & *8
+    max_unexpected_parts_loading_thread_pool_size: uint64 | *8
 
     // If the number of views is greater than this value, the server will throw an exception. Only counts tables for database engines: Atomic, Ordinary, Replicated, Lazy
-    max_view_num_to_throw: uint64 & *0
+    max_view_num_to_throw: uint64 | *0
 
     // If the number of attached views exceeds the specified value, clickhouse server will add warning messages to system.warnings table
-    max_view_num_to_warn: uint64 & *10000
+    max_view_num_to_warn: uint64 | *10000
 
     // Limit on total number of concurrently waiting queries
-    max_waiting_queries: uint64 & *0
+    max_waiting_queries: uint64 | *0
 
     // Whether background memory worker should correct internal memory tracker based on the information from external sources like jemalloc and cgroups
     memory_worker_correct_memory_tracker: bool & true | false | *false
 
     // Tick period of background memory worker which corrects memory tracker memory usages and cleans up unused pages during higher memory usage
-    memory_worker_period_ms: uint64 & *0
+    memory_worker_period_ms: uint64 | *0
 
     // Use current cgroup memory usage information to correct memory tracking
     memory_worker_use_cgroup: bool & true | false | *true
 
-    // Fine-tuning for tables in the MergeTree
-     // TODO:
-    merge_tree: {
-        // Configuration options
-    }
-
     // Used to regulate how resources are utilized and shared between merges and other workloads
-    merge_workload: string & *"default"
+    merge_workload: string | *"default"
 
     // Sets the limit on how much RAM is allowed to use for performing merge and mutation operations
-    merges_mutations_memory_usage_soft_limit: uint64 & *0
+    merges_mutations_memory_usage_soft_limit: uint64 | *0
 
     // The default merges_mutations_memory_usage_soft_limit value is calculated as memory_amount * merges_mutations_memory_usage_to_ram_ratio
-    merges_mutations_memory_usage_to_ram_ratio: double & *0.5
-
-    // It is disabled by default
-    // TODO:
-    metric_log: {
-
-    }
+    merges_mutations_memory_usage_to_ram_ratio: float | *0.5
 
     // Perform mlockall after startup to lower first queries latency and to prevent clickhouse executable from being paged out under high IO load
     mlock_executable: bool & true | false | *false
 
     // Sets the cache size (in bytes) for mapped files
-    mmap_cache_size: uint64 & *1024
+    mmap_cache_size: uint64 | *1024
 
     // Used to regulate how resources are utilized and shared between mutations and other workloads
-    mutation_workload: string & *"default"
+    mutation_workload: string | *"default"
 
     // Size of file chunks to store in the userspace page cache, in bytes
-    page_cache_block_size: uint64 & *1048576
+    page_cache_block_size: uint64 | *1048576
 
     // Fraction of the memory limit to keep free from the userspace page cache
-    page_cache_free_memory_ratio: double & *0.15
+    page_cache_free_memory_ratio: float | *0.15
 
     // Delay before freed memory can be used by userspace page cache
-    page_cache_history_window_ms: uint64 & *1000
+    page_cache_history_window_ms: uint64 | *1000
 
     // On userspace page cache miss, read up to this many consecutive blocks at once from the underlying storage, if they're also not in the cache
-    page_cache_lookahead_blocks: uint64 & *16
+    page_cache_lookahead_blocks: uint64 | *16
 
     // Maximum size of the userspace page cache. Set to 0 to disable the cache
-    page_cache_max_size: uint64 & *0
+    page_cache_max_size: uint64 | *0
 
     // Minimum size of the userspace page cache
-    page_cache_min_size: uint64 & *104857600
+    page_cache_min_size: uint64 | *104857600
 
     // Userspace page cache policy name
-    page_cache_policy: string & *"SLRU"
+    page_cache_policy: string | *"SLRU"
 
     // Stripe userspace page cache over this many shards to reduce mutex contention. Experimental, not likely to improve performance
-    page_cache_shards: uint64 & *4
+    page_cache_shards: uint64 | *4
 
     // The size of the protected queue in the userspace page cache relative to the cache's total size
-    page_cache_size_ratio: double & *0.5
-
-    // Logging events that are associated with MergeTree
-    // TODO:
-    part_log: {
-        // Sub-tags can be configured here
-    }
+    page_cache_size_ratio: float | *0.5
 
     // Period to completely remove parts for SharedMergeTree. Only available in ClickHouse Cloud
-    parts_kill_delay_period: uint64 & 30 // Default is 30
+    parts_kill_delay_period: uint64 | *30
 
     // Add uniformly distributed value from 0 to x seconds to kill_delay_period to avoid thundering herd effect and subsequent DoS of ZooKeeper in case of very large number of tables. Only available in ClickHouse Cloud
-    parts_kill_delay_period_random_add: uint64 & 10 // Default is 10
+    parts_kill_delay_period_random_add: uint64 | *10
 
     // Threads for cleanup of shared merge tree outdated threads. Only available in ClickHouse Cloud
-    parts_killer_pool_size: uint64 & 128 // Default is 128
+    parts_killer_pool_size: uint64 | *128
 
     // Path to the directory containing data. The trailing slash is mandatory.
     path: string
 
-    // Settings for theopentelemetry_span_logsystem table.
-    // TODO:
-    opentelemetry_span_log: {
-        // The following settings can be configured by sub-tags
-    }
-
-    // Define proxy servers for HTTP and HTTPS requests, currently supported by S3 storage, S3 table functions, and URL functions.
-    // TODO:
-    proxy: {
-        // Environment variables for proxy settings
-        environment_variables: {
-            http_proxy:  string
-            https_proxy: string
-        }
-        // Proxy lists for specifying one or more proxy servers for a protocol
-        proxy_lists: {
-            http:  []string
-            https: []string
-        }
-        // Remote proxy resolvers for dynamic proxy server changes
-        remote_proxy_resolvers: {
-            http:  string
-            https: string
-        }
-    }
-
     // Query cache configuration.
-    // TODO:
     query_cache: {
-        // Maximum size of the query cache in bytes
-        max_size_in_bytes: uint64
-        // Cache size to RAM max ratio
-        size_to_ram_max_ratio: double
+        // The maximum cache size in bytes. 0 means the query cache is disabled.
+        max_size_in_bytes: uint64 | *1073741824
+        // The maximum number of SELECT query results stored in the cache.
+        max_entries: uint64 | *1024
+        // The maximum size in bytes SELECT query results may have to be saved in the cache.
+        max_entry_size_in_bytes: uint64 | *1048576
+        // The maximum number of rows SELECT query results may have to be saved in the cache.
+        max_entry_size_in_rows: uint64 | *30000000
     }
 
     // Query condition cache policy name.
-    query_condition_cache_policy: string & "SLRU" // Default is "SLRU"
+    query_condition_cache_policy: string | *"SLRU"
 
     // Maximum size of the query condition cache.
-    query_condition_cache_size: uint64 & 104857600 // Default is 104857600 bytes
+    query_condition_cache_size: uint64 | *104857600
 
     // The size of the protected queue (in case of SLRU policy) in the query condition cache relative to the cache's total size.
-    query_condition_cache_size_ratio: double & 0.5 // Default is 0.5
-
-    // Setting for logging queries received with the log_queries=1 setting.
-    // TODO:
-    query_log: {
-        // The following settings can be configured by sub-tags
-    }
-
-    // Regexp-based rules for masking sensitive data in queries and log messages.
-    // TODO:
-    query_masking_rules: [...]string
-
-    // It is disabled by default.
-    // TODO:
-    query_metric_log: {
-
-    }
-
-    // Setting for logging threads of queries received with the log_query_threads=1 setting.
-    // TODO:
-    query_thread_log: {
-        // The following settings can be configured by sub-tags
-    }
-
-    // Setting for logging views (live, materialized etc) dependant of queries received with the log_query_views=1 setting.
-    // TODO:
-    query_views_log: {
-        // The following settings can be configured by sub-tags
-    }
+    query_condition_cache_size_ratio: float | *0.5
 
     // Replica group name for database Replicated.
     replica_group_name: string
 
     // HTTP connection timeout for part fetch requests. Inherited from default profile http_connection_timeout if not set explicitly.
-    replicated_fetches_http_connection_timeout: int & 0 // Default is 0
+    replicated_fetches_http_connection_timeout: int | *0
 
     // HTTP receive timeout for fetch part requests. Inherited from default profile http_receive_timeout if not set explicitly.
-    replicated_fetches_http_receive_timeout: int & 0 // Default is 0
+    replicated_fetches_http_receive_timeout: int | *0
 
     // HTTP send timeout for part fetch requests. Inherited from default profile http_send_timeout if not set explicitly.
-    replicated_fetches_http_send_timeout: int & 0 // Default is 0
-
-    // Fine-tuning for tables in the ReplicatedMergeTree. This setting has a higher priority.
-    // TODO:
-    replicated_merge_tree: {
-        // For more information, see the MergeTreeSettings.h header file
-    }
+    replicated_fetches_http_send_timeout: int | *0
 
     // The maximum number of threads to execute RESTORE requests.
-    restore_threads: uint64 & 16 // Default is 16
-
-    // Settings for the s3queue_log system table.
-    // TODO:
-    s3queue_log: {
-        // The following settings can be configured by sub-tags
-    }
-
-    // Settings for opt-in sending of crash reports to the ClickHouse core developers team via Sentry.
-    // TODO:
-    send_crash_reports: {
-
-    }
+    restore_threads: uint64 | *16
 
     // Path in Keeper with auto-incremental numbers, generated by the generateSerialID function. Each series will be a node under this path.
-    series_keeper_path: string & "/clickhouse/series" // Default is "/clickhouse/series"
+    series_keeper_path: string & "/clickhouse/series"
 
     // If it is set true will show addresses in stack traces
-    show_addresses_in_stack_traces: bool & true // Default is true
+    show_addresses_in_stack_traces: bool | *true
 
     // If set to true ClickHouse will wait for running backups and restores to finish before shutdown.
-    shutdown_wait_backups_and_restores: bool & true // Default is true
+    shutdown_wait_backups_and_restores: bool | *true
 
     // Delay in seconds to wait for unfinished queries
-    shutdown_wait_unfinished: uint64 & 5 // Default is 5
+    shutdown_wait_unfinished: uint64 | *5
 
     // If set true ClickHouse will wait for running queries finish before shutdown.
-    shutdown_wait_unfinished_queries: bool & false // Default is false
-
-    // The public part of the host key will be written to the known_hosts file on the SSH client side on the first connect.
-    // TODO:
-    ssh_server: {
-        // Host Key Configurations are inactive by default. Uncomment the host key configurations, and provide the path to the respective ssh key to active them
-    }
-
-    // Allows for multi-disk configuration of storage.
-    // TODO:
-    storage_configuration: {
-        // Configuration of disks
-        disks: {
-            // The sub-tags above define the following settings for disks
-        }
-        // Configuration of policies
-        policies: {
-            // The sub-tags above define the following settings for policies
-        }
-    }
+    shutdown_wait_unfinished_queries: bool | *false
 
     // Connections above this limit have significantly shorter time to live. The limit applies to the storages connections.
-    storage_connections_soft_limit: uint64 & 100 // Default is 100
+    storage_connections_soft_limit: uint64 | *100
 
     // Connections above this limit reset after use. Set to 0 to turn connection cache off. The limit applies to the storages connections.
-    storage_connections_store_limit: uint64 & 5000 // Default is 5000
+    storage_connections_store_limit: uint64 | *5000
 
     // Warning massages are written to the logs if number of in-use connections are higher than this limit. The limit applies to the storages connections.
-    storage_connections_warn_limit: uint64 & 1000 // Default is 1000
+    storage_connections_warn_limit: uint64 | *1000
 
     // Write disk metadata files with VERSION_FULL_OBJECT_KEY format
-    storage_metadata_write_full_object_key: bool & false // Default is false
+    storage_metadata_write_full_object_key: bool | *false
 
     // If enabled, an inner UUID is generated during the creation of SharedSet and SharedJoin. ClickHouse Cloud only
-    storage_shared_set_join_use_inner_uuid: bool & true // Default is true
+    storage_shared_set_join_use_inner_uuid: bool | *true
 
     // If set to true, users require a grant to create a table with a specific engine e.g. GRANT TABLE ENGINE ON TinyLog to user.
-    table_engines_require_grant: bool & false // Default is false
+    table_engines_require_grant: bool | *false
 
     // Sets the number of threads performing asynchronous load jobs in background pool. The background pool is used for loading tables asynchronously after server start in case there are no queries waiting for the table.
-    tables_loader_background_pool_size: uint64 & 0 // Default is 0
+    tables_loader_background_pool_size: uint64 | *0
 
     // Sets the number of threads performing load jobs in foreground pool. The foreground pool is used for loading table synchronously before server start listening on a port and for loading tables that are waited for.
-    tables_loader_foreground_pool_size: uint64 & 0 // Default is 0
+    tables_loader_foreground_pool_size: uint64 | *0
 
     // With this option, temporary data will be stored in the cache for the particular disk. In this section, you should specify the disk name with the type cache.
     temporary_data_in_cache: string
 
-    // Settings for the text_log system table for logging text messages.
-    // TODO
-    text_log: {
-        // The following settings can be configured by sub-tags
-        // Maximum Message Level (by default Trace) which will be stored in a table.
-        level: string & "Trace" // Default is "Trace"
-    }
-
     // The maximum number of jobs that can be scheduled on the Global Thread pool. Increasing queue size leads to larger memory usage.
-    thread_pool_queue_size: uint64 & 10000 // Default is 10000
+    thread_pool_queue_size: uint64 | *10000
 
     // Size of background pool for write requests to object storages
-    threadpool_writer_pool_size: uint64 & 100 // Default is 100
+    threadpool_writer_pool_size: uint64 | *100
 
     // Number of tasks which is possible to push into background pool for write requests to object storages
-    threadpool_writer_queue_size: uint64 & 1000000 // Default is 1000000
+    threadpool_writer_queue_size: uint64 | *1000000
 
     // Defines behaviour on access to unknown WORKLOAD with query setting 'workload'.
-    throw_on_unknown_workload: bool & false // Default is false
+    throw_on_unknown_workload: bool | *false
 
     // The server's time zone. Specified as an IANA identifier for the UTC timezone or geographic location (for example, Africa/Abidjan).
     timezone: string
@@ -878,57 +654,35 @@
     // Policy for storage with temporary data.
     tmp_policy: string
 
-    // Defines a list of custom top level domains to add where each entry is, of the format <name>/path/to/file</name>.
-    // TODO:
-    top_level_domains_list: [...]string
-
     // Collect random allocations of size less or equal than specified value with probability equal to total_memory_profiler_sample_probability. 0 means disabled.
-    total_memory_profiler_sample_max_allocation_size: uint64 & 0 // Default is 0
+    total_memory_profiler_sample_max_allocation_size: uint64 | *0
 
     // Collect random allocations of size greater or equal than specified value with probability equal to total_memory_profiler_sample_probability. 0 means disabled.
-    total_memory_profiler_sample_min_allocation_size: uint64 & 0 // Default is 0
+    total_memory_profiler_sample_min_allocation_size: uint64 | *0
 
     // Whenever server memory usage becomes larger than every next step in number of bytes the memory profiler will collect the allocating stack trace. Zero means disabled memory profiler.
-    total_memory_profiler_step: uint64 & 0 // Default is 0
+    total_memory_profiler_step: uint64 | *0
 
     // Allows to collect random allocations and de-allocations and writes them in the system.trace_log system table with trace_type equal to aMemorySample with the specified probability.
-    total_memory_tracker_sample_probability: double & 0 // Default is 0
-
-    // Settings for the trace_log system table operation.
-    // TODO:
-    trace_log: {
-        // The following settings can be configured by sub-tags
-    }
+    total_memory_tracker_sample_probability: float | *0
 
     // Uncompressed cache policy name.
-    uncompressed_cache_policy: string & "SLRU" // Default is "SLRU"
+    uncompressed_cache_policy: string | *"SLRU"
 
     // Maximum size (in bytes) for uncompressed data used by table engines from the MergeTree family.
-    uncompressed_cache_size: uint64 & 0 // Default is 0
+    uncompressed_cache_size: uint64 | *0
 
     // The size of the protected queue (in case of SLRU policy) in the uncompressed cache relative to the cache's total size.
-    uncompressed_cache_size_ratio: double & 0.5 // Default is 0.5
-
-    // Configuration for translating shortened or symbolic URL prefixes into full URLs.
-    // TODO:
-    url_scheme_mappers: [...]string
+    uncompressed_cache_size_ratio: float | *0.5
 
     // Storage method for data part headers in ZooKeeper. This setting only applies to the MergeTree family.
-    use_minimalistic_part_header_in_zookeeper: int & 0 | 1 // Default is 0
+    use_minimalistic_part_header_in_zookeeper: int & 0 | 1 | *0
 
     // The path to the config file for executable user defined functions.
     user_defined_executable_functions_config: string
 
     // The directory with user defined files. Used for SQL user defined functions.
     user_defined_path: string
-
-    // Section of the configuration file that contains settings.
-    // TODO:
-    user_directories: {
-        // Path to configuration file with predefined users.
-        // Path to folder where users created by SQL commands are stored.
-        // ZooKeeper node path where users created by SQL commands are stored and replicated (experimental).
-    }
 
     // The directory with user files. Used in the table function file(), fileCluster().
     user_files_path: string
@@ -940,33 +694,33 @@
     users_config: string
 
     // Determines whether validation of client information is enabled when a query packet is received.
-    validate_tcp_client_information: bool & false // Default is false
+    validate_tcp_client_information: bool | *false
 
     // Size of cache for vector similarity index in entries. Zero means disabled.
-    vector_similarity_index_cache_max_entries: uint64 & 10000000 // Default is 10000000
+    vector_similarity_index_cache_max_entries: uint64 | *10000000
 
     // Vector similarity index cache policy name.
-    vector_similarity_index_cache_policy: string & "SLRU" // Default is "SLRU"
+    vector_similarity_index_cache_policy: string | *"SLRU"
 
     // Size of cache for vector similarity indexes. Zero means disabled.
-    vector_similarity_index_cache_size: uint64 & 5368709120 // Default is 5368709120 bytes
+    vector_similarity_index_cache_size: uint64 | *5368709120
 
     // The size of the protected queue (in case of SLRU policy) in the vector similarity index cache relative to the cache's total size.
-    vector_similarity_index_cache_size_ratio: double & 0.5 // Default is 0.5
+    vector_similarity_index_cache_size_ratio: float | *0.5
 
     // This setting allows to specify behavior if dictionaries_lazy_load is false.
-    wait_dictionaries_load_at_startup: bool & true // Default is true
+    wait_dictionaries_load_at_startup: bool & true | *true
 
     // The directory used as a storage for all CREATE WORKLOAD and CREATE RESOURCE queries.
-    workload_path: string & "/workload/" // Default is "/workload/"
+    workload_path: string
 
     // The path to a ZooKeeper node, which is used as a storage for all CREATE WORKLOAD and CREATE RESOURCE queries.
     workload_zookeeper_path: string
 
-	// other parameter
-	// Clickhouse all parameter define: clickhouse settings define
+   // TODO: storage_configuration
+   // TODO: database/tables configuration
 }
 
 clickhouse: #ClickhouseParameter & {
-	...
+
 }

@@ -7,10 +7,11 @@ metadata:
 spec:
   componentDef: {{ include "clickhouse24.cmpdName" . }}
   parametersDefs:
-    - {{ include "clickhouse24.paramsDefName" . }}
+    - {{ include "clickhouse24.userParamsDefName" . }}
+    - {{ include "clickhouse24.configParamsDefName" . }}
 
   configs:
-    - name: client.xml
+    - name: config.xml
       fileFormatConfig:
         format: xml
       reRenderResourceTypes:
