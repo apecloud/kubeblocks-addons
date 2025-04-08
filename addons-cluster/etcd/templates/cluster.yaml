@@ -4,7 +4,6 @@
       {{- include "etcd-cluster.componentPeerService" . | indent 6 }}
       componentDef: etcd
       serviceVersion: {{ .Values.version }}
-
       tls: {{ .Values.tlsEnable }}
       {{- if .Values.tlsEnable }}
       issuer:

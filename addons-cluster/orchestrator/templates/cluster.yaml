@@ -16,7 +16,6 @@ spec:
             port: 80
   componentSpecs:
     - name: orchestrator
-
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.replicas }}
       {{- include "kblib.componentResources" . | indent 6 }}

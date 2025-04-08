@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "vanilla-postgresql.labels" . | nindent 4 }}
 spec:
-  componentDef: {{ include "vanilla-postgresql15.compDefName" . }}
+  componentDef: {{ include "vanilla-postgresql14.compDefName" . }}
   parametersDefs:
     - {{ include "vanilla.pd14Name" . }}
 

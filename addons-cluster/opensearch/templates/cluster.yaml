@@ -10,7 +10,6 @@ spec:
     - name: opensearch
       ## TODO: use regex pattern when cluster validation supported
       componentDef: opensearch-{{ .Chart.Version }}
-
       replicas: {{ .Values.replicaCount | default 3 }}
       {{- with  .Values.resources }}
       resources:

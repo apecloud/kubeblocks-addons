@@ -13,7 +13,6 @@ spec:
       componentDef: zookeeper
       serviceVersion: "3.9.2"
       replicas: 3
-
       resources:
         limits:
           cpu: '0.5'
