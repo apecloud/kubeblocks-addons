@@ -4,6 +4,10 @@ nameOverride: ""
 ## @param fullnameOverride Override the full app name
 fullnameOverride: ""
 
+## @param version ETCD cluster version
+##
+version: 3.5.15
+
 ## @param replicas Number of replicas for the etcd cluster
 replicas: 3
 

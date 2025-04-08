@@ -4,9 +4,12 @@
   "properties": {
     "version": {
       "title": "Version",
-      "description": "service version.",
+      "description": "service version, where `15.6.1-138` is short for supabase-15.6.1.138",
       "type": "string",
-      "default": "14.7.0"
+      "default": "14.7.0",
+      "enum": [
+        "15.7.0","15.6.1-138","14.7.0","12.15.0"
+      ]
     },
     "replicas": {
       "title": "Replicas",

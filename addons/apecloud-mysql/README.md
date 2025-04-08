@@ -68,6 +68,9 @@ spec:
       # provisioned by this Component.
       # Valid options are: [8.0.30]
       serviceVersion: "8.0.30"
+      configs:
+        - name: mysql-consensusset-config
+          externalManaged: true
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
       # Valid options are [true, false]
@@ -707,6 +710,9 @@ spec:
   componentSpecs:
     - name: mysql
       serviceVersion: "8.0.30"
+      configs:
+        - name: mysql-consensusset-config
+          externalManaged: true
       disableExporter: false
       replicas: 3
       resources:
@@ -1051,6 +1057,9 @@ spec:
   componentSpecs:
     - name: mysql
       serviceVersion: 8.0.30
+      configs:
+        - name: mysql-consensusset-config
+          externalManaged: true
       env:
         - name: KB_PROXY_ENABLED
           value: "on"

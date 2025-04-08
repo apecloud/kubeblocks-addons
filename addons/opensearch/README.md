@@ -54,6 +54,9 @@ spec:
       # provisioned by this Component.
       # Valid options are: [2.7.0]
       serviceVersion: "2.7.0"
+      configs:
+        - name: opensearch-config-template
+          externalManaged: true
       replicas: 3
       resources:
         limits:

@@ -5,7 +5,7 @@ metadata:
   namespace: default
 spec:
   # Specifies the name of the ClusterDefinition to use when creating a Cluster.
-  clusterDefinitionRef: vllm
+  clusterDef: vllm
   # Specifies the behavior when a Cluster is deleted.
   # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
@@ -17,7 +17,6 @@ spec:
   # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
   - name: vllm
-    componentDef: vllm
     replicas: 1
     resources:
       limits:

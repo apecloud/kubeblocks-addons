@@ -73,6 +73,9 @@ spec:
   # This field allows for detailed configuration of each Component within the Cluster
   componentSpecs:
     - name: kafka-combine
+      configs:
+        - name: kafka-configuration-tpl
+          externalManaged: true
       env:
         - name: KB_KAFKA_BROKER_HEAP # use this ENV to set BROKER HEAP
           value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
@@ -165,6 +168,9 @@ spec:
   # This field allows for detailed configuration of each Component within the Cluster
   componentSpecs:
     - name: kafka-broker
+      configs:
+        - name: kafka-configuration-tpl
+          externalManaged: true
       replicas: 1
       resources:
         limits:
@@ -198,6 +204,9 @@ spec:
               requests:
                 storage: 1Gi
     - name: kafka-controller
+      configs:
+        - name: kafka-configuration-tpl
+          externalManaged: true
       replicas: 1
       resources:
         limits:
@@ -647,6 +656,9 @@ spec:
   # This field allows for detailed configuration of each Component within the Cluster
   componentSpecs:
     - name: kafka-broker
+      configs:
+        - name: kafka-configuration-tpl
+          externalManaged: true
       replicas: 1
       resources:
         limits:
@@ -680,6 +692,9 @@ spec:
               requests:
                 storage: 1Gi
     - name: kafka-controller
+      configs:
+        - name: kafka-configuration-tpl
+          externalManaged: true
       replicas: 1
       resources:
         limits:

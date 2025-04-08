@@ -13,6 +13,11 @@ spec:
   componentSpecs:
     - name: oceanbase
       serviceVersion: 4.3.0
+      configs:
+        - name: oceanbase-sysvars
+          externalManaged: true
+        - name: oceanbase-config
+          externalManaged: true
       disableExporter: false
       env:
       - name: ZONE_COUNT  # number of zones, default to 3, immutable

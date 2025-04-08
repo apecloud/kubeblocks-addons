@@ -27,10 +27,11 @@ promtail:
     - name: localpv
       mountPath: "/var/local-path-provisioner"
       readOnly: true
+      mountPropagation: HostToContainer
     - name: kubelet
       mountPath: "/var/lib/kubelet/pods"
       readOnly: true
-      mountPropagation: Bidirectional # indicates that any mounts created on the host will be visible inside the container, and any mounts created inside the container will also be visible on the host.
+      mountPropagation: HostToContainer # indicates that any mounts created on the host will be visible inside the container, and any mounts created inside the container will also be visible on the host.
 
   config:
     logLevel: debug  # set to debug mode in your development environment

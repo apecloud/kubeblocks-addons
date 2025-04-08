@@ -12,6 +12,11 @@ spec:
   componentSpecs:
     - name: mysql
       serviceVersion: {{ .Values.version }}
+      configs:
+        - name: mysql-consensusset-config
+          externalManaged: true
+        - name: vttablet-config
+          externalManaged: true
       {{- if and (eq .Values.mode "raftGroup") .Values.proxyEnabled }}
       env:
         - name: KB_PROXY_ENABLED

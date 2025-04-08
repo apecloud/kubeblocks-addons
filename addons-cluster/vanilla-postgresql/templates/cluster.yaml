@@ -14,3 +14,6 @@ spec:
       {{- include "kblib.componentStorages" . | indent 6 }}
       replicas: {{ .Values.replicas }}
       serviceVersion: {{ .Values.version }}
+      configs:
+        - name: {{if eq .Values.version "15.6.1-138" }}"supabase-postgresql-configuration"{{ else }}"vanilla-postgresql-configuration"{{end}}
+          externalManaged: true

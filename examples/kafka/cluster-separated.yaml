@@ -27,6 +27,9 @@ spec:
   # This field allows for detailed configuration of each Component within the Cluster
   componentSpecs:
     - name: kafka-broker
+      configs:
+        - name: kafka-configuration-tpl
+          externalManaged: true
       replicas: 1
       resources:
         limits:
@@ -60,6 +63,9 @@ spec:
               requests:
                 storage: 1Gi
     - name: kafka-controller
+      configs:
+        - name: kafka-configuration-tpl
+          externalManaged: true
       replicas: 1
       resources:
         limits:

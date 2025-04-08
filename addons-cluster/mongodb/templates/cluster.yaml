@@ -15,6 +15,9 @@ spec:
   componentSpecs:
     - name: mongodb
       serviceVersion: {{ .Values.version }}
+      configs:
+        - name: mongodb-config
+          externalManaged: true
       {{- include "mongodb-cluster.replicaCount" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}

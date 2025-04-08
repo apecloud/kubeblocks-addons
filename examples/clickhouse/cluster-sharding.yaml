@@ -9,6 +9,9 @@ spec:
     - name: ch-keeper # create clickhouse keeper
       componentDef: clickhouse-keeper-24
       replicas: 1
+      configs:
+        - name: clickhouse-keeper-tpl
+          externalManaged: true
       resources:
         limits:
           cpu: "1"
@@ -31,6 +34,13 @@ spec:
         name: clickhouse  # each shard is a clickhouse component, with 2 replicas
         componentDef: clickhouse-24
         replicas: 2
+        configs:
+          - name: clickhouse-tpl
+            externalManaged: true
+          - name: clickhouse-user-tpl
+            externalManaged: true
+          - name: clickhouse-client-tpl
+            externalManaged: true
         systemAccounts:
           - name: admin # name of the system account
             secretRef:

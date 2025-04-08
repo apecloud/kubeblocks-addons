@@ -11,23 +11,26 @@ spec:
     - name: mdit
       componentDef: elasticsearch-8
       serviceVersion: 8.8.2
+      configs:
+        - name: es-cm
+          externalManaged: true
       schedulingPolicy:
         affinity:
           podAntiAffinity:
             preferredDuringSchedulingIgnoredDuringExecution:
-            - podAffinityTerm:
-                labelSelector:
+              - podAffinityTerm:
+                  labelSelector:
+                    matchLabels:
+                      app.kubernetes.io/instance: es-cluster
+                      apps.kubeblocks.io/component-name: mdit
+                  topologyKey: kubernetes.io/hostname
+                weight: 100
+            requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
                   matchLabels:
                     app.kubernetes.io/instance: es-cluster
                     apps.kubeblocks.io/component-name: mdit
                 topologyKey: kubernetes.io/hostname
-              weight: 100
-            requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchLabels:
-                  app.kubernetes.io/instance: es-cluster
-                  apps.kubeblocks.io/component-name: mdit
-              topologyKey: kubernetes.io/hostname
       replicas: 1
       disableExporter: false
       resources:

@@ -63,6 +63,9 @@ spec:
     - name: mdit
       componentDef: elasticsearch-8
       serviceVersion: 8.8.2
+      configs:
+        - name: es-cm
+          externalManaged: true
       replicas: 1
       resources:
         limits:
@@ -79,6 +82,7 @@ spec:
             resources:
               requests:
                 storage: 20Gi
+
 ```
 
 ```bash
@@ -120,6 +124,9 @@ spec:
   componentSpecs:
   - name: master
     componentDef: elasticsearch-8-1.0.0
+    configs:
+      - name: es-cm
+        externalManaged: true
     replicas: 3
     resources:
       limits:
@@ -138,6 +145,9 @@ spec:
             storage: 20Gi
   - name: data
     componentDef: elasticsearch-8-1.0.0
+    configs:
+      - name: es-cm
+        externalManaged: true
     replicas: 3
     resources:
       limits:
@@ -156,6 +166,9 @@ spec:
             storage: 20Gi
   - name: ingest
     componentDef: elasticsearch-8-1.0.0
+    configs:
+      - name: es-cm
+        externalManaged: true
     replicas: 1
     resources:
       limits:
@@ -174,6 +187,9 @@ spec:
             storage: 20Gi
   - name: transform
     componentDef: elasticsearch-8-1.0.0
+    configs:
+      - name: es-cm
+        externalManaged: true
     replicas: 1
     resources:
       limits:

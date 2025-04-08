@@ -12,6 +12,11 @@ spec:
   componentSpecs:
     - name: mysql
       serviceVersion: "8.0.30"
+      configs:
+        - name: mysql-consensusset-config
+          externalManaged: true
+        - name: vttablet-config
+          externalManaged: true
       disableExporter: false
       replicas: 3
       resources:

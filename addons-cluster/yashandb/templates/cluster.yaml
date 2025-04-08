@@ -9,6 +9,9 @@ spec:
   componentSpecs:
     - name: yashan-comp
       componentDef: yashandb
+      configs:
+        - name: yashandb-configs
+          externalManaged: true
       replicas: {{ .Values.replicas }}
       {{- include "kblib.componentStorages" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}

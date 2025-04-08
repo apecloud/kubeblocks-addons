@@ -102,3 +102,11 @@ Generate scripts configmap
 {{- $.Files.Get $path | nindent 2 }}
 {{- end }}
 {{- end }}
+
+
+{{/*
+Define parameter config renderername
+*/}}
+{{- define "yashandb.pcrName" -}}
+yashandb-pcr
+{{- end -}}

@@ -29,6 +29,9 @@ spec:
       # - full name - recommended
       # - name prefix
       serviceVersion: "8.0.35"
+      configs:
+        - name: mysql-replication-config
+          externalManaged: true
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
       # Valid options are [true, false]

@@ -6,11 +6,10 @@ metadata:
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
-{{ if .Values.cpuMode }}
+  {{- if .Values.cpuMode }}
   clusterDef: ggml  # ref clusterDefinition.name
   componentSpecs:
     - name: ggml
-      componentDef: ggml
       env:
         - name: MODEL_NAME
           value: {{ .Values.model }}
@@ -19,7 +18,7 @@ spec:
         - name: MODEL_URL
           value: {{ .Values.url }}
         - name: QUANTIZE
-          value: {{ .Values.quantize }} 
+          value: {{ .Values.quantize }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.replicas }}
       {{- include "kblib.componentResources" . | indent 6 }}
@@ -27,7 +26,6 @@ spec:
   clusterDef: vllm  # ref clusterDefinition.name
   componentSpecs:
     - name: vllm
-      componentDef: vllm
       env:
         - name: MODEL_NAME
           value: {{ .Values.model }}

@@ -21,6 +21,13 @@ spec:
   componentSpecs:
     - name: clickhouse
       replicas: 1
+      configs:
+        - name: clickhouse-tpl
+          externalManaged: true
+        - name: clickhouse-user-tpl
+          externalManaged: true
+        - name: clickhouse-client-tpl
+          externalManaged: true
       resources:
         limits:
           cpu: '0.5'

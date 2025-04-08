@@ -76,6 +76,11 @@ spec:
           app.kubernetes.io/part-of: memberlist
   componentSpecs:
     - name: backend
+      configs:
+        - name: loki-config
+          externalManaged: true
+        - name: loki-runtime-config
+          externalManaged: true
       disableExporter: true
       env:
         - name: STORAGE_TYPE
@@ -98,6 +103,11 @@ spec:
               requests:
                 storage: 20Gi
     - name: write
+      configs:
+        - name: loki-config
+          externalManaged: true
+        - name: loki-runtime-config
+          externalManaged: true
       disableExporter: true
       replicas: 1
       resources:
@@ -111,6 +121,11 @@ spec:
         - name: STORAGE_TYPE
           value: "local"
     - name: read
+      configs:
+        - name: loki-config
+          externalManaged: true
+        - name: loki-runtime-config
+          externalManaged: true
       resources:
         limits:
           cpu: "0.5"
@@ -124,6 +139,9 @@ spec:
         - name: STORAGE_TYPE
           value: "local"
     - name: gateway
+      configs:
+        - name: config-gateway
+          externalManaged: true
       resources:
         limits:
           cpu: "0.5"

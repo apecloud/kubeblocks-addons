@@ -10,6 +10,9 @@ spec:
     - name: rabbitmq
       componentDef: rabbitmq
       serviceVersion: {{ .Values.version }}
+      configs:
+        - name: rabbitmq-config
+          externalManaged: true
       {{- include "rabbitmq-cluster.replicaCount" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}

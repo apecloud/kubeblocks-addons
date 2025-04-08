@@ -12,11 +12,17 @@ spec:
     - name: fe
       {{- include "kblib.componentMonitor" . | indent 6 }}
       serviceVersion: {{ include "starrocks.version" . }}
+      configs:
+        - name: fe-cm
+          externalManaged: true
       replicas: {{ .Values.replicas | default 1 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
     - name: be
       serviceVersion: {{ include "starrocks.version" . }}
+      configs:
+        - name: be-cm
+          externalManaged: true
       replicas: {{ index .Values.beReplicas | default 1 }}
       resources:
         limits:

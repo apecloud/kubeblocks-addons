@@ -52,6 +52,9 @@ spec:
   componentSpecs:
   - name: orioledb
     componentDefRef: orioledb
+    configs:
+      - name: orioledb-configuration
+        externalManaged: true
     serviceRefs:
     - name: etcdService
       cluster: etcdo-cluster

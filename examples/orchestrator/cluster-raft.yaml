@@ -15,6 +15,7 @@ spec:
   componentSpecs:
     - name: orchestrator
       componentDef: orchestrator-raft
+
       disableExporter: true
       replicas: 3
       resources:

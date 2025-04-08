@@ -4,12 +4,19 @@
   {{- include "loki-cluster.memberlist" . | indent 2 }}
   componentSpecs:
     - name: backend
+      configs:
+        - name: loki-config
+          externalManaged: true
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "loki-cluster.s3storage" . | indent 6 }}
       replicas: {{ .Values.replicas }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
     - name: write
+      configs:
+        - name: loki-config
+          externalManaged: true
+
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.write.replicas }}
       {{- include "loki-cluster.s3storage" . | indent 6 }}
@@ -27,6 +34,9 @@
         {{- end }}
       {{- end }}
     - name: read
+      configs:
+        - name: loki-config
+          externalManaged: true
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.read.replicas | default 1 }}
       {{- include "loki-cluster.s3storage" . | indent 6 }}
@@ -44,6 +54,7 @@
         {{- end }}
       {{- end }}
     - name: gateway
+
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.gateway.replicas | default 1 }}
       {{- with  .Values.gateway.resources }}

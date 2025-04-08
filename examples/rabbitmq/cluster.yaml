@@ -20,6 +20,9 @@ spec:
       # provisioned by this Component.
       # Valid options are: [3.10.25,3.11.28,3.12.14,3.13.2,3.13.7,3.8.14,3.9.29]
       serviceVersion: 3.13.7
+      configs:
+        - name: rabbitmq-config
+          externalManaged: true
       # Recommended to set `replicas` to [3,5,7]
       # All data/state is replicated across all replicas.
       replicas: 3

@@ -10,6 +10,9 @@ spec:
     - name: mogdb
       componentDef: mogdb
       serviceVersion: {{ .Values.version | quote}}
+      configs:
+        - name: mogdb-configuration
+          externalManaged: true
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "mogdb-cluster.replicaCount" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}

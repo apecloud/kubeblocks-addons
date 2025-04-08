@@ -13,6 +13,9 @@ spec:
   componentSpecs:
     - name: mongodb
       serviceVersion: "6.0.16"
+      configs:
+        - name: mongodb-config
+          externalManaged: true
       replicas: 3
       resources:
         limits:

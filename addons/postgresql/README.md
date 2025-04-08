@@ -72,6 +72,12 @@ spec:
       # provisioned by this Component.
       # Valid options are: [12.14.0,12.14.1,12.15.0,14.7.2,14.8.0,15.7.0,16.4.0]
       serviceVersion: "14.7.2"
+      configs:
+        - name: postgresql-configuration
+          externalManaged: true
+        - name: pgbouncer-configuration
+          externalManaged: true
+    externalManaged: true
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
       # Valid options are [true, false]
@@ -847,6 +853,11 @@ spec:
   componentSpecs:
     - name: postgresql
       serviceVersion: "14.7.2"
+      configs:
+        - name: postgresql-configuration
+          externalManaged: true
+        - name: pgbouncer-configuration
+          externalManaged: true
       disableExporter: true
       labels:
         # NOTE: update the label accordingly
@@ -1148,6 +1159,12 @@ spec:
       # provisioned by this Component.
       # Valid options are: [12.14.0,12.14.1,12.15.0,14.7.2,14.8.0,15.7.0,16.4.0]
       serviceVersion: "14.7.2"
+      configs:
+        - name: postgresql-configuration
+          externalManaged: true
+        - name: pgbouncer-configuration
+          externalManaged: true
+    externalManaged: true
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
       # Valid options are [true, false]

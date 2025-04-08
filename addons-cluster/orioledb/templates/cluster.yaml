@@ -6,4 +6,7 @@ metadata:
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
 spec:
   terminationPolicy: {{ .Values.terminationPolicy }}
+  configs:
+    - name: orioledb-configuration
+      externalManaged: true
   {{- include "orioledb-cluster.componentSpec" . }}

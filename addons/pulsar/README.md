@@ -103,6 +103,9 @@ spec:
       # provisioned by this Component.
       # Valid options are: [2.11.2,3.0.2]
       serviceVersion: 3.0.2
+      configs:
+        - name: kafka-configuration-tpl
+          externalManaged: true
       replicas: 1
       env:
         - name: KB_PULSAR_BROKER_NODEPORT
@@ -116,6 +119,9 @@ spec:
           memory: "512Mi"
     - name: bookies
       serviceVersion: 3.0.2
+      configs:
+        - name: bookies-config
+          externalManaged: true
       replicas: 4
       resources:
         limits:
@@ -141,6 +147,9 @@ spec:
                 storage: 8Gi
     - name: zookeeper
       serviceVersion: 3.0.2
+      configs:
+        - name: zookeeper-config
+          externalManaged: true
       replicas: 1
       resources:
         limits:
@@ -220,6 +229,9 @@ spec:
   componentSpecs:
     - name: proxy
       serviceVersion: 3.0.2
+      configs:
+        - name: proxy-config
+          externalManaged: true
       replicas: 3
       resources:
         limits:
@@ -230,6 +242,9 @@ spec:
           memory: "512Mi"
     - name: bookies-recovery
       serviceVersion: 3.0.2
+      configs:
+        - name: bkrecovery-config
+          externalManaged: true
       replicas: 1
       resources:
         limits:
@@ -240,6 +255,9 @@ spec:
           memory: "512Mi"
     - name: broker
       serviceVersion: 3.0.2
+      configs:
+        - name: broker-config
+          externalManaged: true
       replicas: 1
       resources:
         limits:
@@ -250,6 +268,9 @@ spec:
           memory: "512Mi"
     - name: bookies
       serviceVersion: 3.0.2
+      configs:
+        - name: bookies-config
+          externalManaged: true
       replicas: 4
       resources:
         limits:
@@ -275,6 +296,9 @@ spec:
                 storage: 8Gi
     - name: zookeeper
       serviceVersion: 3.0.2
+      configs:
+        - name: zookeeper-config
+          externalManaged: true
       replicas: 1
       resources:
         limits:
@@ -695,6 +719,9 @@ spec:
     - name: broker
       componentDef: pulsar-broker
       serviceVersion: 3.0.2
+      configs:
+        - name: broker-config
+          externalManaged: true
       env:
         - name: KB_PULSAR_BROKER_NODEPORT
           value: "false"
@@ -713,6 +740,9 @@ spec:
     - name: bookies
       componentDef: pulsar-bookkeeper
       serviceVersion: 3.0.2
+      configs:
+        - name: bookies-config
+          externalManaged: true
       serviceRefs:
         - name: pulsarZookeeper
           namespace: default

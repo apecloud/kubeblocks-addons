@@ -13,6 +13,9 @@ spec:
     - name: mdit
       componentDef: elasticsearch-8
       serviceVersion: 8.8.2
+      configs:
+        - name: es-cm
+          externalManaged: true
       replicas: 1
       resources:
         limits:

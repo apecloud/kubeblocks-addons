@@ -12,6 +12,9 @@ spec:
   componentSpecs:
     - name: ch-keeper
       replicas: 1
+      configs:
+        - name: clickhouse-keeper-tpl
+          externalManaged: true
       resources:
         limits:
           cpu: "1"
@@ -37,6 +40,13 @@ spec:
                 storage: 10Gi
     - name: clickhouse
       replicas: 2
+      configs:
+        - name: clickhouse-tpl
+          externalManaged: true
+        - name: clickhouse-user-tpl
+          externalManaged: true
+        - name: clickhouse-client-tpl
+          externalManaged: true
       systemAccounts:
         - name: admin
           passwordConfig:

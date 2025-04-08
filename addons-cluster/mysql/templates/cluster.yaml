@@ -11,6 +11,9 @@ spec:
   componentSpecs:
     - name: mysql
       serviceVersion: {{ .Values.version }}
+      configs:
+        - name: mysql-replication-config
+          externalManaged: true
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "mysql-cluster.replicaCount" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}

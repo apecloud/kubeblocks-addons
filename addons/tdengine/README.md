@@ -34,6 +34,11 @@ spec:
   componentSpecs:
     - name: tdengine
       componentDef: tdengine
+      configs:
+        - name: tdengine-taos-config
+          externalManaged: true
+        - name: metrics-configuration
+          externalManaged: true
       replicas: 3
       resources:
         limits:

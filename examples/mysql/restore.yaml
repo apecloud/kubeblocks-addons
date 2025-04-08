@@ -11,6 +11,9 @@ spec:
     - name: mysql
       componentDef: "mysql-8.0"  # match all CMPD named with 'mysql-8.0-'
       serviceVersion: 8.0.35
+      configs:
+        - name: mysql-replication-config
+          externalManaged: true
       disableExporter: false
       replicas: 2
       resources:

@@ -69,6 +69,9 @@ spec:
       componentDef: pulsar-proxy
       serviceVersion: {{ .Values.version }}
       {{- end }}
+      configs:
+        - name: proxy-config
+          externalManaged: true
       {{ include "pulsar-zookeeper-ref" . | nindent 6 }}
       replicas: {{ .Values.proxy.replicaCount | default 3 }}
       {{- with  .Values.proxy.resources }}
@@ -91,6 +94,9 @@ spec:
       componentDef: pulsar-bookies-recovery
       serviceVersion: {{ .Values.version }}
       {{- end }}
+      configs:
+        - name: bkrecovery-config
+          externalManaged: true
       {{ include "pulsar-zookeeper-ref" . | nindent 6 }}
       replicas: {{ .Values.bookiesRecovery.replicaCount | default 3 }}
     {{- with  .Values.bookiesRecovery.resources }}
@@ -112,6 +118,9 @@ spec:
       componentDef: pulsar-broker
       serviceVersion: {{ .Values.version }}
       {{- end }}
+      configs:
+        - name: broker-config
+          externalManaged: true
       {{- if eq .Values.version "3.0.2" }}
       env:
         - name: KB_PULSAR_BROKER_NODEPORT
@@ -143,6 +152,9 @@ spec:
       componentDef: pulsar-bookkeeper
       serviceVersion: {{ .Values.version }}
       {{- end }}
+      configs:
+        - name: bookies-config
+          externalManaged: true
       {{ include "pulsar-zookeeper-ref" . | nindent 6 }}
       {{- $bookiesReplicas := .Values.bookies.replicaCount }}
       {{- if and ( eq (int $bookiesReplicas) 3 ) ( eq .Values.bookies.mode "generic" ) }}
@@ -191,6 +203,9 @@ spec:
       componentDef: pulsar-zookeeper
       serviceVersion: {{ .Values.version }}
       {{- end }}
+      configs:
+        - name: zookeeper-config
+          externalManaged: true
       replicas: {{ .Values.zookeeper.replicaCount | default 3 }}
       {{- with  .Values.zookeeper.resources }}
       resources:

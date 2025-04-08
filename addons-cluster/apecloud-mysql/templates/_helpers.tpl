@@ -35,6 +35,9 @@ The minimum proxy cpu cores is 0.5 and the maximum cpu cores is 64.
       cpu: 500m
       memory: 128Mi
 - name: wescale
+  configs:
+    - name: vtgate-config
+      externalManaged: true
   env:
     - name: ETCDCTL_API
       value: "{{ .Values.etcd.local.etcdctlApi }}"

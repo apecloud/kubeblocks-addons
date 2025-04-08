@@ -13,6 +13,9 @@ spec:
     - name: mdit
       componentDef: elasticsearch-{{ include "elasticsearch.majorVersion" . }}
       serviceVersion: {{ include "elasticsearch.version" . }}
+      configs:
+        - name: es-cm
+          externalManaged: true
       {{- include "elasticsearch-cluster.schedulingPolicy" . | indent 6 }}
       {{- include "elasticsearch-cluster.replicaCount" . | indent 6 }}
       {{- include "kblib.componentMonitor" . | indent 6 }}

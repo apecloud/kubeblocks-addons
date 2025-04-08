@@ -68,6 +68,11 @@ spec:
       # provisioned by this Component.
       # Valid options are: [4.3.0]
       serviceVersion: 4.3.0
+      configs:
+        - name: oceanbase-sysvars
+          externalManaged: true
+        - name: oceanbase-config
+          externalManaged: true
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
       # Valid options are [true, false]
@@ -551,6 +556,11 @@ spec:
   componentSpecs:
     - name: oceanbase
       serviceVersion: 4.3.0
+      configs:
+        - name: oceanbase-sysvars
+          externalManaged: true
+        - name: oceanbase-config
+          externalManaged: true
       disableExporter: false
       env:
       - name: ZONE_COUNT  # number of zones, default to 3, immutable

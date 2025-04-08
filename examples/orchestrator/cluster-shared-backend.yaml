@@ -8,6 +8,7 @@ spec:
   componentSpecs:
     - name: orchestrator
       componentDef: orchestrator-shared-backend
+
       replicas: 3
       resources:
         requests:

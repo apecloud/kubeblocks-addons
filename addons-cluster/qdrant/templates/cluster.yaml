@@ -12,6 +12,9 @@ spec:
     - name: qdrant
       componentDef: qdrant
       serviceVersion: {{ include "qdrant.version" . }}
+      configs:
+        - name: qdrant-config-template
+          externalManaged: true
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.replicas | default 1 }}
       {{- include "kblib.componentResources" . | indent 6 }}

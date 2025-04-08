@@ -13,6 +13,9 @@ spec:
   componentSpecs:
     - name: postgresql
       serviceVersion: "14.7.0"
+      configs:
+        - name: vanilla-postgresql-configuration
+          externalManaged: true
       disableExporter: true
       replicas: 2
       resources:

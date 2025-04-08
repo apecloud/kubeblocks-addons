@@ -71,6 +71,9 @@ spec:
       # provisioned by this Component.
       # Valid options are: [4.0.28,4.2.24,4.4.29,5.0.28,6.0.16,7.0.1]
       serviceVersion: "6.0.16"
+      configs:
+        - name: mongodb-config
+          externalManaged: true
       # Specifies the desired number of replicas in the Component
       replicas: 3
       # Specifies the resources required by the Component.
@@ -683,6 +686,9 @@ spec:
   componentSpecs:
     - name: mongodb
       serviceVersion: "6.0.16"
+      configs:
+        - name: mongodb-config
+          externalManaged: true
       replicas: 3
       resources:
         limits:

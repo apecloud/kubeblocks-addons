@@ -47,6 +47,9 @@ spec:
   componentSpecs:
     - componentDef: minio
       name: minio
+      configs:
+        - name: minio-configuration
+          externalManaged: true
       # for dev/test, set replicas to 2
       # for prod , MinIO clusters must be configured with at least 4 replicas
       # and the number of nodes must also be a multiple of 2 (e.g., 4, 6, 8, 12, etc.)

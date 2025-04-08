@@ -51,6 +51,9 @@ spec:
           cpu: "100m"
           memory: "100Mi"
     - name: graphd
+      configs:
+        - name: nebula-graphd-config
+          externalManaged: true
       replicas: 1
       resources:
         limits:
@@ -72,6 +75,9 @@ spec:
               requests:
                 storage: 500Mi
     - name: metad
+      configs:
+        - name: nebula-metad-config
+          externalManaged: true
       replicas: 3
       resources:
         limits:
@@ -104,6 +110,9 @@ spec:
               requests:
                 storage: 500Mi
     - name: storaged
+      configs:
+        - name: nebula-storaged-config
+          externalManaged: true
       replicas: 3
       resources:
         limits:

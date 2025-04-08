@@ -8,6 +8,9 @@ spec:
   componentSpecs:
     - name: yashan
       componentDef: yashandb
+      configs:
+        - name: yashandb-configs
+          externalManaged: true
       # Only supports Standalone YashanDB at the moment
       # Must set replcias to 1.
       replicas: 1

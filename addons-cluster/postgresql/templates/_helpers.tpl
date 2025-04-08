@@ -20,6 +20,11 @@ Define postgresql ComponentSpec with ComponentDefinition.
   componentSpecs:
     - name: {{ include "postgresql-cluster.component-name" . }}
       serviceVersion: {{ .Values.version }}
+      configs:
+        - name: postgresql-configuration
+          externalManaged: true
+        - name: pgbouncer-configuration
+          externalManaged: true
       labels:
         {{- include "postgresql-cluster.patroni-scope-label" . | indent 8 }}
       {{- include "kblib.componentMonitor" . | indent 6 }}

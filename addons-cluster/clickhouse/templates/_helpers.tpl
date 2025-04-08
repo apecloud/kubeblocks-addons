@@ -81,6 +81,13 @@ Define clickhouse componentSpec with ComponentDefinition.
   replicas: {{ $.Values.replicas | default 2 }}
   disableExporter: {{ $.Values.disableExporter | default "false" }}
   serviceVersion: {{ $.Values.version }}
+  configs:
+    - name: clickhouse-tpl
+      externalManaged: true
+    - name: clickhouse-user-tpl
+      externalManaged: true
+    - name: clickhouse-client-tpl
+      externalManaged: true
   systemAccounts:
     - name: admin
       passwordConfig:
@@ -106,6 +113,9 @@ Define clickhouse keeper componentSpec with ComponentDefinition.
   replicas: {{ .Values.keeper.replicas }}
   disableExporter: {{ $.Values.disableExporter | default "false" }}
   serviceVersion: {{ $.Values.version }}
+  configs:
+    - name: clickhouse-keeper-tpl
+      externalManaged: true
   {{- with .Values.keeper.tolerations }}
   tolerations: {{ .| toYaml | nindent 4 }}
   {{- end }}
@@ -150,6 +160,13 @@ Define clickhouse shardingComponentSpec with ComponentDefinition.
     replicas: {{ $.Values.replicas | default 2 }}
     disableExporter: {{ $.Values.disableExporter | default "false" }}
     serviceVersion: {{ $.Values.version }}
+    configs:
+      - name: clickhouse-tpl
+        externalManaged: true
+      - name: clickhouse-user-tpl
+        externalManaged: true
+      - name: clickhouse-client-tpl
+        externalManaged: true
     systemAccounts:
     - name: admin
       passwordConfig:
@@ -176,6 +193,13 @@ Define clickhouse componentSpec with compatible ComponentDefinition API
   replicas: {{ $.Values.replicas | default 2 }}
   disableExporter: {{ $.Values.disableExporter | default "false" }}
   serviceVersion: {{ $.Values.version }}
+  configs:
+    - name: clickhouse-tpl
+      externalManaged: true
+    - name: clickhouse-user-tpl
+      externalManaged: true
+    - name: clickhouse-client-tpl
+      externalManaged: true
   {{- with $.Values.tolerations }}
   tolerations: {{ .| toYaml | nindent 4 }}
   {{- end }}

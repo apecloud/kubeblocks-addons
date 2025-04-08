@@ -25,6 +25,9 @@ spec:
     - name: broker
       componentDef: pulsar-broker
       serviceVersion: 3.0.2
+      configs:
+        - name: broker-config
+          externalManaged: true
       env:
         - name: KB_PULSAR_BROKER_NODEPORT
           value: "false"
@@ -43,6 +46,9 @@ spec:
     - name: bookies
       componentDef: pulsar-bookkeeper
       serviceVersion: 3.0.2
+      configs:
+        - name: bookies-config
+          externalManaged: true
       serviceRefs:
         - name: pulsarZookeeper
           namespace: default

@@ -69,6 +69,9 @@ spec:
       # provisioned by this Component.
       # Valid options are: [12.15.0,14.7.0,15.6.1-138,15.7.0]
       serviceVersion: "14.7.0"
+      configs:
+        - name: vanilla-postgresql-configuration
+          externalManaged: true
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
       # Valid options are [true, false]
@@ -584,6 +587,9 @@ spec:
   componentSpecs:
     - name: postgresql
       serviceVersion: "14.7.0"
+      configs:
+        - name: vanilla-postgresql-configuration
+          externalManaged: true
       disableExporter: true
       replicas: 2
       resources:

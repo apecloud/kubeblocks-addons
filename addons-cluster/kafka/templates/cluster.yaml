@@ -11,6 +11,9 @@ spec:
   componentSpecs:
     {{- if eq "combined" .Values.mode }}
     - name: kafka-combine
+      configs:
+        - name: kafka-configuration-tpl
+          externalManaged: true
       tls: {{ .Values.tlsEnable }}
       {{- if .Values.tlsEnable }}
       issuer:
@@ -60,6 +63,9 @@ spec:
       {{- end }}
     {{- else }}
     - name: kafka-broker
+      configs:
+        - name: kafka-configuration-tpl
+          externalManaged: true
       tls: {{ .Values.tlsEnable }}
       {{- if .Values.tlsEnable }}
       issuer:
@@ -108,6 +114,9 @@ spec:
                 storage: {{ print .Values.metaStorage "Gi" }}
       {{- end }}
     - name: kafka-controller
+      configs:
+        - name: kafka-configuration-tpl
+          externalManaged: true
       tls: {{ .Values.tlsEnable }}
       {{- if .Values.tlsEnable }}
       issuer:

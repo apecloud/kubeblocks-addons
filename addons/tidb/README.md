@@ -47,6 +47,9 @@ spec:
   componentSpecs:
     - name: tidb-pd
       serviceVersion: 7.5.2
+      configs:
+        - name: pd-configuration
+          externalManaged: true
       replicas: 3
       resources:
         limits:
@@ -66,6 +69,9 @@ spec:
               storage: 20Gi
     - name: tikv
       serviceVersion: 7.5.2
+      configs:
+        - name: tikv-configuration
+          externalManaged: true
       disableExporter: false
       replicas: 3
       resources:
@@ -86,6 +92,9 @@ spec:
               storage: 500Gi
     - name: tidb
       serviceVersion: 7.5.2
+      configs:
+        - name: tidb-configuration
+          externalManaged: true
       disableExporter: false
       replicas: 2
       resources:

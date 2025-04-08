@@ -14,6 +14,11 @@ spec:
   componentSpecs:
   - name: oceanbase
     serviceVersion: {{ .Values.version }}
+    configs:
+      - name: oceanbase-sysvars
+        externalManaged: true
+      - name: oceanbase-config
+        externalManaged: true
     replicas: {{ .Values.replicas}}
     disableExporter: {{ .Values.extra.disableExporter }}
     env:

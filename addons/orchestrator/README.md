@@ -44,6 +44,9 @@ spec:
   componentSpecs:
     - name: orchestrator
       componentDef: orchestrator-shared-backend
+      configs:
+        - name: orchestrator-config
+          externalManaged: true
       replicas: 3
       resources:
         requests:
@@ -130,6 +133,9 @@ spec:
   componentSpecs:
     - name: orchestrator
       componentDef: orchestrator-raft
+      configs:
+        - name: orchestrator-config
+          externalManaged: true
       disableExporter: true
       replicas: 3
       resources:

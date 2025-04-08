@@ -51,6 +51,9 @@ spec:
   # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
     - name: frontend
+      configs:
+        - name: greptimedb-frontend
+          externamManaged: true
       replicas: 1
       resources:
         limits:
@@ -60,6 +63,9 @@ spec:
           cpu: "0.5"
           memory: 0.5Gi
     - name: datanode
+      configs:
+        - name: greptimedb-datanode
+          externamManaged: true
       replicas: 3
       resources:
         limits:
@@ -81,6 +87,9 @@ spec:
               requests:
                 storage: 20Gi
     - name: meta
+      configs:
+        - name: greptimedb-meta
+          externamManaged: true
       replicas: 1
       resources:
         limits:

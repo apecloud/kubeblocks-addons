@@ -1,0 +1,13 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "yashandb.pcrName" . }}
+  labels:
+    {{- include "yashandb.labels" . | nindent 4 }}
+spec:
+  componentDef: {{ include "yashandb.cmpdName" . }}
+  configs:
+    - name: install.ini
+      fileFormatConfig:
+        format: properties
+      templateName: yashandb-configs

@@ -71,6 +71,9 @@ spec:
       # When componentDef is "mysql-8.0",
       # Valid options are: [8.0.30,8.0.31,8.0.32,8.0.33,8.0.34,8.0.35,8.0.36,8.0.37,8.0.38,8.0.39]
       serviceVersion: 8.0.35
+      configs:
+        - name: mysql-replication-config
+          externalManaged: true
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
       # Valid options are [true, false]
@@ -589,6 +592,9 @@ spec:
     - name: mysql
       componentDef: "mysql-8.0"  # match all CMPD named with 'mysql-8.0-'
       serviceVersion: 8.0.35
+      configs:
+        - name: mysql-replication-config
+          externalManaged: true
       disableExporter: false
       replicas: 2
       resources:
@@ -940,6 +946,9 @@ spec:
       componentDef: mysql-orc-8.0 # use componentDef: mysql-orc-8.0
       disableExporter: true
       serviceVersion: "8.0.35"
+      configs:
+        - name: mysql-replication-config
+          externalManaged: true
       replicas: 2
       resources:
         limits:
@@ -1004,4 +1013,4 @@ kubectl apply -f examples/mysql/switchover.yaml
 
 ## References
 
-[^1] Orchestrator, https://github.com/openark/orchestrator
+[^1] Orchestrator, <https://github.com/openark/orchestrator>

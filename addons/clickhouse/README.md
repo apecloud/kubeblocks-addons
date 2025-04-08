@@ -63,6 +63,13 @@ spec:
   componentSpecs:
     - name: clickhouse
       replicas: 1
+      configs:
+        - name: clickhouse-tpl
+          externalManaged: true
+        - name: clickhouse-user-tpl
+          externalManaged: true
+        - name: clickhouse-client-tpl
+          externalManaged: true
       resources:
         limits:
           cpu: '0.5'
@@ -133,6 +140,13 @@ spec:
   componentSpecs:
     - name: clickhouse
       replicas: 2
+      configs:
+        - name: clickhouse-tpl
+          externalManaged: true
+        - name: clickhouse-user-tpl
+          externalManaged: true
+        - name: clickhouse-client-tpl
+          externalManaged: true
       # Overrides system accounts defined in referenced ComponentDefinition.
       systemAccounts:
         - name: admin # name of the system account
@@ -156,6 +170,9 @@ spec:
                 storage: 20Gi
     - name: ch-keeper
       replicas: 1
+      configs:
+        - name: clickhouse-keeper-tpl
+          externalManaged: true
       # Overrides system accounts defined in referenced ComponentDefinition.
       systemAccounts:
         - name: admin # name of the system account
@@ -267,6 +284,9 @@ spec:
   componentSpecs:
     - name: ch-keeper
       replicas: 1
+      configs:
+        - name: clickhouse-keeper-tpl
+          externalManaged: true
       resources:
         limits:
           cpu: "1"
@@ -292,6 +312,13 @@ spec:
                 storage: 10Gi
     - name: clickhouse
       replicas: 2
+      configs:
+        - name: clickhouse-tpl
+          externalManaged: true
+        - name: clickhouse-user-tpl
+          externalManaged: true
+        - name: clickhouse-client-tpl
+          externalManaged: true
       systemAccounts:
         - name: admin
           passwordConfig:
@@ -361,6 +388,9 @@ spec:
     - name: ch-keeper # create clickhouse keeper
       componentDef: clickhouse-keeper-24
       replicas: 1
+      configs:
+        - name: clickhouse-keeper-tpl
+          externalManaged: true
       resources:
         limits:
           cpu: "1"
@@ -383,6 +413,13 @@ spec:
         name: clickhouse  # each shard is a clickhouse component, with 2 replicas
         componentDef: clickhouse-24
         replicas: 2
+        configs:
+          - name: clickhouse-tpl
+            externalManaged: true
+          - name: clickhouse-user-tpl
+            externalManaged: true
+          - name: clickhouse-client-tpl
+            externalManaged: true
         systemAccounts:
           - name: admin # name of the system account
             secretRef:
