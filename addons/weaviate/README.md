@@ -50,11 +50,6 @@ spec:
     - name: weaviate
       componentDef: weaviate
       replicas: 3
-      configs:
-        - name: weaviate-config-template
-          externalManaged: true
-        - name: weaviate-env-template
-          externalManaged: true
       # Specifies the resources required by the Component.
       resources:
         limits:

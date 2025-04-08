@@ -50,7 +50,7 @@ spec:
       componentDef: mogdb
       serviceVersion: "5.0.5"
       configs:
-        - name: mongodb-config
+        - name: mogdb-configuration
           externalManaged: true
       replicas: 2
       # Specifies the resources required by the Component.

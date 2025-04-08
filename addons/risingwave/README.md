@@ -226,6 +226,9 @@ spec:
           memory: 500Mi
       serviceVersion: v1.0.0
     - name: compute
+      configs:
+        - name: risingwave-compute-envs
+          externalManaged: true
       env:
         # Directory for storing data
         - name: RW_DATA_DIRECTORY
@@ -261,6 +264,9 @@ spec:
           memory: 500Mi
       serviceVersion: v1.0.0
     - name: connector
+      configs:
+        - name: risingwave-connector-envs
+          externalManaged: true
       replicas: 1
       env:
         # Directory for storing data

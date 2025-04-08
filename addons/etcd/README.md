@@ -57,9 +57,6 @@ spec:
       # provisioned by this Component.
       # Valid options are: [3.5.15,3.5.6]
       serviceVersion: 3.5.15
-      configs:
-        - name: config
-          externalManaged: true
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
       # Valid options are [true, false]
@@ -127,9 +124,6 @@ spec:
       issuer:     # if TLS is True, this filed is required.
         name: KubeBlocks  # set Issuer to [KubeBlocks, UserProvided].
       serviceVersion: 3.5.15
-      configs:
-        - name: config
-          externalManaged: true
       replicas: 3
       resources:
         limits:
@@ -631,9 +625,6 @@ spec:
     - name: etcd
       componentDef: etcd
       serviceVersion: 3.5.15
-      configs:
-        - name: config
-          externalManaged: true
       disableExporter: false
       replicas: 3
       resources:

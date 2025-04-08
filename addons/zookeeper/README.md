@@ -60,11 +60,6 @@ spec:
       # provisioned by this Component.
       # Valid options are: [3.4.14,3.6.4,3.7.2,3.8.4,3.9.2]
       serviceVersion: "3.9.2"
-      configs:
-        - name: config
-          externalManaged: true
-        - name: config-log
-          externalManaged: true
       # Update `replicas` to your need.
       replicas: 3
       # Specifies the resources required by the Component.
@@ -555,11 +550,6 @@ spec:
       componentDef: zookeeper
       serviceVersion: "3.9.2"
       replicas: 3
-      configs:
-        - name: config
-          externalManaged: true
-        - name: config-log
-          externalManaged: true
       resources:
         limits:
           cpu: '0.5'

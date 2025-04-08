@@ -79,8 +79,7 @@ spec:
       configs:
         - name: loki-config
           externalManaged: true
-        - name: loki-runtime-config
-          externalManaged: true
+
       disableExporter: true
       env:
         - name: STORAGE_TYPE
@@ -106,8 +105,7 @@ spec:
       configs:
         - name: loki-config
           externalManaged: true
-        - name: loki-runtime-config
-          externalManaged: true
+
       disableExporter: true
       replicas: 1
       resources:
@@ -124,8 +122,6 @@ spec:
       configs:
         - name: loki-config
           externalManaged: true
-        - name: loki-runtime-config
-          externalManaged: true
       resources:
         limits:
           cpu: "0.5"
@@ -139,9 +135,6 @@ spec:
         - name: STORAGE_TYPE
           value: "local"
     - name: gateway
-      configs:
-        - name: config-gateway
-          externalManaged: true
       resources:
         limits:
           cpu: "0.5"

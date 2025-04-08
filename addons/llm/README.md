@@ -39,7 +39,7 @@ metadata:
   namespace: default
 spec:
   # Specifies the name of the ClusterDefinition to use when creating a Cluster.
-  clusterDefinitionRef: vllm
+  clusterDef: vllm
   # Specifies the behavior when a Cluster is deleted.
   # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
@@ -51,7 +51,6 @@ spec:
   # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
   - name: vllm
-    componentDef: vllm
     replicas: 1
     resources:
       limits:
@@ -79,7 +78,7 @@ kubectl apply -f examples/llm/cluster.yaml
 Restart the specified components in the cluster
 ```yaml
 # cat examples/llm/restart.yaml
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: llm-restart
@@ -103,7 +102,7 @@ kubectl apply -f examples/llm/restart.yaml
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 ```yaml
 # cat examples/llm/stop.yaml
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: llm-stop
@@ -123,7 +122,7 @@ kubectl apply -f examples/llm/stop.yaml
 Start the stopped cluster
 ```yaml
 # cat examples/llm/start.yaml
-apiVersion: apps.kubeblocks.io/v1alpha1
+apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: llm-start

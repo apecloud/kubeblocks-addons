@@ -77,7 +77,6 @@ spec:
           externalManaged: true
         - name: pgbouncer-configuration
           externalManaged: true
-    externalManaged: true
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
       # Valid options are [true, false]
@@ -1164,7 +1163,6 @@ spec:
           externalManaged: true
         - name: pgbouncer-configuration
           externalManaged: true
-    externalManaged: true
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
       # Valid options are [true, false]

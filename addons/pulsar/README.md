@@ -104,7 +104,7 @@ spec:
       # Valid options are: [2.11.2,3.0.2]
       serviceVersion: 3.0.2
       configs:
-        - name: kafka-configuration-tpl
+        - name: broker-config
           externalManaged: true
       replicas: 1
       env:
@@ -147,9 +147,6 @@ spec:
                 storage: 8Gi
     - name: zookeeper
       serviceVersion: 3.0.2
-      configs:
-        - name: zookeeper-config
-          externalManaged: true
       replicas: 1
       resources:
         limits:
@@ -296,9 +293,6 @@ spec:
                 storage: 8Gi
     - name: zookeeper
       serviceVersion: 3.0.2
-      configs:
-        - name: zookeeper-config
-          externalManaged: true
       replicas: 1
       resources:
         limits:

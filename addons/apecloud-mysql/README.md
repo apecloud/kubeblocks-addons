@@ -71,6 +71,8 @@ spec:
       configs:
         - name: mysql-consensusset-config
           externalManaged: true
+        - name: vttablet-config
+          externalManaged: true
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
       # Valid options are [true, false]
@@ -713,6 +715,8 @@ spec:
       configs:
         - name: mysql-consensusset-config
           externalManaged: true
+        - name: vttablet-config
+          externalManaged: true
       disableExporter: false
       replicas: 3
       resources:
@@ -1060,6 +1064,8 @@ spec:
       configs:
         - name: mysql-consensusset-config
           externalManaged: true
+        - name: vttablet-config
+          externalManaged: true
       env:
         - name: KB_PROXY_ENABLED
           value: "on"
@@ -1095,6 +1101,9 @@ spec:
           cpu: 500m
           memory: 128Mi
     - name: wescale
+      configs:
+        - name: vtgate-config
+          externalManaged: true
       replicas: 1
       resources:
         requests:
