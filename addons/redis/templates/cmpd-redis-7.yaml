@@ -246,6 +246,10 @@ spec:
               name: redis-sentinel
               option: Required
       expression: {{ `{{if ne (index . "SENTINEL_SERVICE_PORT") ""}}{{.SENTINEL_SERVICE_PORT}}{{else}}26379{{end}}` | toYaml }}
+    - name: PHY_MEMORY
+      valueFrom:
+        resourceVarRef:
+          memoryRequest: Required
   lifecycleActions:
     roleProbe:
       periodSeconds: 1

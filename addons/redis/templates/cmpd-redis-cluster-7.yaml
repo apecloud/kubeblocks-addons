@@ -317,6 +317,10 @@ spec:
               flattenFormat:
                 delimiter: ","
                 keyValueDelimiter: ":"
+    - name: PHY_MEMORY
+      valueFrom:
+        resourceVarRef:
+          memoryRequest: Required
   lifecycleActions:
     roleProbe:
       periodSeconds: 1
