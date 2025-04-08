@@ -27,9 +27,6 @@ spec:
       # provisioned by this Component.
       # Valid options are: [3.3.0,3.2.2]
       serviceVersion: 3.3.0
-      configs:
-        - name: fe-cm
-          externalManaged: true
       # NOTE: Set `replicas` to 3 in production env.
       replicas: 3
       resources:
@@ -61,9 +58,6 @@ spec:
       # provisioned by this Component.
       # Valid options are: [3.3.0,3.2.2]
       serviceVersion: 3.3.0
-      configs:
-        - name: be-cm
-          externalManaged: true
       replicas: 2
       resources:
         limits:

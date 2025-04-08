@@ -85,9 +85,6 @@ spec:
                 storage: 8Gi
     - name: zookeeper
       serviceVersion: 3.0.2
-      configs:
-        - name: zookeeper-config
-          externalManaged: true
       replicas: 1
       resources:
         limits:

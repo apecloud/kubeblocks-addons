@@ -203,9 +203,6 @@ spec:
       componentDef: pulsar-zookeeper
       serviceVersion: {{ .Values.version }}
       {{- end }}
-      configs:
-        - name: zookeeper-config
-          externalManaged: true
       replicas: {{ .Values.zookeeper.replicaCount | default 3 }}
       {{- with  .Values.zookeeper.resources }}
       resources:
