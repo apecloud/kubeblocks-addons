@@ -275,7 +275,6 @@ immutableParameters:
   - open_files_limit
   - plugin_dir
   - protocol_version
-  - secure_file_priv
   - sha256_password_private_key_path
   - skip_external_locking
   - ssl_key
@@ -365,6 +364,7 @@ staticParameters:
   - ssl_crl
   - ssl_crlpath
   - system_time_zone
+  - secure_file_priv
   - table_open_cache_instances
   - thread_stack
   - version_comment
