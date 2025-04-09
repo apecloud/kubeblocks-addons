@@ -78,3 +78,8 @@ spec:
           - name: YASDB_MOUNT_HOME
             value: /home/yashan/mydb
         workingDir: /home/yashan/
+  vars:
+    - name: PHY_MEMORY
+      valueFrom:
+        resourceVarRef:
+          memoryLimit: Required
