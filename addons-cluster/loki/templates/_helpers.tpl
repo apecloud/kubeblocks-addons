@@ -174,9 +174,10 @@ app.kubernetes.io/component: gateway
 {{- end }}
 
 {{- define "loki-cluster.s3storage" }}
-env:
-  - name: STORAGE_TYPE
-    value: "local"
+configs:
+  - name: loki-config
+    variables:
+      storage_type: "local"
 {{- end -}}
 
 {{- define "loki-cluster.memberlist" }}
