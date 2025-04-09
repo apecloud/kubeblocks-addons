@@ -150,6 +150,7 @@ Default config template.
   template: {{ include "risingwave.configTplName" . }}
   namespace: {{ .Release.Namespace }}
   volumeName: risingwave-configuration
+  restartOnFileChange: true
 {{- end }}
 
 {{/*
