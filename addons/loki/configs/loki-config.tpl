@@ -1,6 +1,8 @@
 auth_enabled: false
 
-{{ $storageType := getEnvByName ( index $.podSpec.containers 0 ) "STORAGE_TYPE" }}
+{{ if index . "storage_type" }}
+{{ $storageType :=  $.storage_type }}
+{{ end }}
 
 server:
   grpc_listen_port: ${SERVER_GRPC_PORT}
@@ -66,9 +68,6 @@ limits_config:
   reject_old_samples_max_age: 168h
   retention_period: 48h
   split_queries_by_interval: 2h
-
-{{/* runtime_config: */}}
-{{/* file: {{ getVolumePathByName ( index $.podSpec.containers 0 ) "runtime-config" }}/runtime-config.yaml */}}
 
 schema_config:
   configs:
