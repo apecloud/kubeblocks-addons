@@ -249,7 +249,7 @@ spec:
     - name: PHY_MEMORY
       valueFrom:
         resourceVarRef:
-          memoryRequest: Required
+          memory: Required
   lifecycleActions:
     roleProbe:
       periodSeconds: 1
