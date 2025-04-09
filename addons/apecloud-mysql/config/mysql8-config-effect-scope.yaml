@@ -585,7 +585,6 @@ immutableParameters:
   - persisted_globals_load
   - protocol_version
   - plugin_dir
-  - secure_file_priv
   - server_id
   - sha256_password_auto_generate_rsa_keys
   - sha256_password_private_key_path
