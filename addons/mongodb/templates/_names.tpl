@@ -21,17 +21,6 @@ volumesnapshot-for-mongodb
 {{- end -}}
 
 {{/*
-Define monitor config
-*/}}
-{{- define "mongodb.agamottoCfgName" -}}
-{{- if eq (len .Values.resourceNamePrefix) 0 -}}
-mongodb-metrics-config-new
-{{- else -}}
-{{- .Values.resourceNamePrefix -}}-agamotto-configuration
-{{- end -}}
-{{- end -}}
-
-{{/*
 Define backup policy template
 */}}
 {{- define "mongodb.backupPolicyTemplateName" -}}
