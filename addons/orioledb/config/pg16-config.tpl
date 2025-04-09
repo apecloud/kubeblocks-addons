@@ -4,8 +4,8 @@
   {{- $shared_buffers := 1073741824 }}
   {{- $max_connections := 10000 }}
   {{- $autovacuum_max_workers := 3 }}
-  {{- $phy_memory := getContainerMemory ( index $.podSpec.containers 0 ) }}
-  {{- $phy_cpu := getContainerCPU ( index $.podSpec.containers 0 ) }}
+  {{- $phy_memory := $.PHY_MEMORY }}
+  {{- $phy_cpu := $.PHY_CPU }}
   {{- if gt $phy_memory 0 }}
   {{- $shared_buffers = div $phy_memory 4 }}
   {{- $max_connections = min ( div $phy_memory 9531392 ) 5000 }}
@@ -173,7 +173,7 @@
   
   {{- $max_wal_size := min ( max ( div $phy_memory 2097152 ) 4096 ) 32768 }}
   {{- $min_wal_size := min ( max ( div $phy_memory 8388608 ) 2048 ) 8192 }}
-  {{- $data_disk_size := getComponentPVCSizeByName $.component "data" }}
+  {{- $data_disk_size := $.DATA_DISK_SIZE }}
   {{/* if data disk lt 5G , set max_wal_size to 256MB */}}
   {{- $disk_min_limit := mul 5 1024 1024 1024 }}
   {{- if and ( gt $data_disk_size 0 ) ( lt $data_disk_size $disk_min_limit ) }}
