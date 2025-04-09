@@ -85,7 +85,7 @@ cluster-require-full-coverage yes
 cluster-allow-reads-when-down no
 
 # maxmemory <bytes>
-{{- $request_memory := getContainerRequestMemory ( index $.podSpec.containers 0 ) }}
+{{- $request_memory := $.PHY_MEMORY }}
 {{- if gt $request_memory 0 }}
 maxmemory {{ $request_memory }}
 {{- end }}
