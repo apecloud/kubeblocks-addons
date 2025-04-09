@@ -172,17 +172,17 @@ vars:
       tlsVarRef:
         enabled: Optional
   - name: PHY_CPU
-      valueFrom:
-        resourceVarRef:
-          cpuLimit: Required
+    valueFrom:
+      resourceVarRef:
+        cpuLimit: Required
   - name: PHY_MEMORY
-      valueFrom:
-        resourceVarRef:
-          memoryLimit: Required
+    valueFrom:
+      resourceVarRef:
+        memoryLimit: Required
   - name: DATA_DISK_SIZE
-      valueFrom:
-        resourceVarRef:
-          storage: Required
+    valueFrom:
+      resourceVarRef:
+        storage: Required
 systemAccounts:
   - name: postgres
     initAccount: true
