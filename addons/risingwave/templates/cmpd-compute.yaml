@@ -23,13 +23,6 @@ spec:
             name: metrics
   configs:
     {{- include "risingwave.conftpl.default" . | indent  4 }}
-    - name: risingwave-compute-envs
-      template: {{ include "risingwave-compute.envConfigTplName" . }}
-      namespace: {{ .Release.Namespace }}
-      volumeName: risingwave-compute-envs
-      # TODO: config
-      # asEnvFrom:
-      #   - compute
   updateStrategy: BestEffortParallel
   vars:
     {{- include "risingwave.vars.connector" . | indent 4 }}
@@ -77,6 +70,16 @@ spec:
             value: $(CONNECTOR_SVC):50051
           - name: RW_PROMETHEUS_LISTENER_ADDR
             value: 0.0.0.0:1222
+          - name: RW_PARALLELISM
+            valueFrom:
+              resourceFieldRef:
+                containerName: compute
+                resource: limits.cpu
+          - name: RW_TOTAL_MEMORY_BYTES
+            valueFrom:
+              resourceFieldRef:
+                containerName: compute
+                resource: limits.memory
         ports:
           - containerPort: 5688
             name: svc
