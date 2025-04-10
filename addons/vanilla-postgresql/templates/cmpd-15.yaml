@@ -15,6 +15,7 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: postgresql-config
       defaultMode: 0444
+      externalManaged: true
   scripts:
     - name: vanilla-postgresql-scripts
       template: {{ include "vanilla-postgresql.scriptsTemplate" . }}
@@ -46,6 +47,7 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: postgresql-config
       defaultMode: 0444
+      externalManaged: true
   scripts:
     - name: vanilla-postgresql-scripts
       template: {{ include "vanilla-postgresql.scriptsTemplate" . }}
