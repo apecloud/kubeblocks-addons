@@ -17,6 +17,7 @@ spec:
       template: mysql-8.0-config-template
       volumeName: mysql-config
       namespace: {{ .Release.Namespace }}
+      externalManaged: true
   {{- include "kblib.syncer.policyRules" . | nindent 2 }}
   runtime:
     initContainers:

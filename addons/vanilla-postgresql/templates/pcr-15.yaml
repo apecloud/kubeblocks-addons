@@ -13,3 +13,4 @@ spec:
     - name: postgresql.conf
       fileFormatConfig:
         format: properties
+      templateName: vanilla-postgresql-configuration

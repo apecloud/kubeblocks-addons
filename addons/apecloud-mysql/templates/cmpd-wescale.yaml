@@ -33,6 +33,7 @@ spec:
       template: {{ include "apecloud-mysql.configTplVtgateName" . }}
       volumeName: vtgate-config
       namespace: {{ .Release.Namespace }}
+      externalManaged: true
   services:
   - name: vtgate
     spec:

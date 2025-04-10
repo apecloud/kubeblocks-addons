@@ -221,11 +221,13 @@ configs:
     volumeName: oceanbase-sysvars
     namespace: {{ .Release.Namespace }}
     defaultMode: 0555
+    externalManaged: true
   - name: oceanbase-config
     template: {{ include "oceanbase-ce.cm.config" .}}
     volumeName: oceanbase-config
     namespace: {{ .Release.Namespace }}
     defaultMode: 0555
+    externalManaged: true
 scripts:
   - name: oceanbase-scripts
     template: {{ include "oceanbase-ce.scripts.bootscripts" .}}

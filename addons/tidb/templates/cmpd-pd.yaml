@@ -62,6 +62,7 @@ spec:
       template: {{ include "tidb.pd.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: config
+      externalManaged: true
   roles:
     - name: leader
       updatePriority: 2

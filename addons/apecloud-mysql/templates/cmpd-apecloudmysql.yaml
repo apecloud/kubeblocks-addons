@@ -13,10 +13,12 @@ spec:
       template: {{ include "apecloud-mysql.configTplName" . }}
       volumeName: mysql-config
       namespace: {{ .Release.Namespace }}
+      externalManaged: true
     - name: vttablet-config
       template: {{ include "apecloud-mysql.configTplVttabletName" . }}
       volumeName: mysql-scale-config
       namespace: {{ .Release.Namespace }}
+      externalManaged: true
   {{- include "kblib.syncer.policyRules" . | nindent 2 }}
   runtime:
     initContainers:
@@ -45,7 +47,7 @@ spec:
     containers:
       - name: mysql
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
-        command: 
+        command:
           - syncer
           - --port
           - "3601"
