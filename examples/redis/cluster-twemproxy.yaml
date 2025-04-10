@@ -18,9 +18,6 @@ spec:
       requests:
         cpu: "0.5"
         memory: "0.5Gi"
-    configs:
-    - name: redis-replication-config
-      externalManaged: true
     volumeClaimTemplates:
       - name: data
         spec:

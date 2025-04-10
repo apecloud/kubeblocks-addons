@@ -16,9 +16,6 @@ Define redis cluster shardingSpec with ComponentDefinition.
       podService: true
     {{- end }}
     serviceVersion: {{ .Values.version }}
-    configs:
-    - name: redis-cluster-config
-      externalManaged: true
     systemAccounts:
     - name: default
       {{- if and .Values.redisCluster.customSecretName .Values.redisCluster.customSecretNamespace }}
@@ -69,9 +66,6 @@ Define redis ComponentSpec with ComponentDefinition.
     value: {{ .Values.sentinel.customMasterName }}
   {{- end }}
   serviceVersion: {{ .Values.version }}
-  configs:
-  - name: redis-replication-config
-    externalManaged: true
   {{- if and .Values.customSecretName .Values.customSecretNamespace }}
   systemAccounts:
     - name: default
