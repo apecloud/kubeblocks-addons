@@ -30,11 +30,13 @@ spec:
       template: {{ include "weaviate.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: weaviate-config
+      restartOnFileChange: true
     - name: weaviate-env-template
       template: {{ include "weaviate.envConfigTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: weaviate-env
       defaultMode: 0444
+      restartOnFileChange: true
   vars:
     - name: WEAVIATE_COMPONENT_NAME
       valueFrom:

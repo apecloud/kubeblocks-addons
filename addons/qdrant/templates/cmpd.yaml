@@ -28,6 +28,7 @@ spec:
     template: {{ include "qdrant.configTplName" . }}
     volumeName: qdrant-config
     namespace: {{ .Release.Namespace }}
+    restartOnFileChange: true
   scripts:
   - name: qdrant-scripts
     template: {{ include "qdrant.scriptsTplName" . }}
