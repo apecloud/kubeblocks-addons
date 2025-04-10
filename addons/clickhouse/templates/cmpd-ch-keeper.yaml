@@ -112,6 +112,7 @@ spec:
       template: {{ include "clickhouse-keeper24.configurationTplName" . }}
       volumeName: config
       namespace: {{ .Release.Namespace }}
+      restartOnFileChange: true
   systemAccounts:
     - name: admin
       initAccount: true

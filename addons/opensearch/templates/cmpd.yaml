@@ -126,6 +126,7 @@ spec:
       template: opensearch-config-template
       volumeName: opensearch-config
       namespace: {{.Release.Namespace}}
+      restartOnFileChange: true
   scripts:
     - name: opensearch-scripts
       template: {{ include "opensearch.scriptsTemplate" . }}

@@ -355,6 +355,7 @@ Milvus user config - standalone
   volumeName: milvus-config
   namespace: {{.Release.Namespace}}
   defaultMode: 420
+  restartOnFileChange: true
 - name: delegate-run
   template: {{ include "milvus-delegate-run.configTemplateName" . }}
   volumeName: milvus-delegate-run
@@ -371,6 +372,7 @@ Milvus user config - cluster
   volumeName: milvus-config
   namespace: {{.Release.Namespace}}
   defaultMode: 420
+  restartOnFileChange: true
 - name: delegate-run
   template: {{ include "milvus-delegate-run.configTemplateName" . }}
   volumeName: milvus-delegate-run
