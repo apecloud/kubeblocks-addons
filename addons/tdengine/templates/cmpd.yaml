@@ -16,11 +16,13 @@ spec:
       template: {{ include "tdengine.configurationTemplate" . }}
       volumeName: taos-config
       namespace: {{ .Release.Namespace }}
+      restartOnFileChange: true
     - name: metrics-configuration
       template: {{ include "tdengine.metricsConfiguration" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: metrics-configuration
       defaultMode: 0444
+      restartOnFileChange: true
   scripts:
     - name: taos-adapter-scripts
       template: {{ include "tdengine.scriptsTemplate" . }}

@@ -85,10 +85,12 @@ spec:
       template: loki-tpl
       volumeName: config
       namespace: {{ .Release.Namespace }}
+      restartOnFileChange: true
     - name: loki-runtime-config
       template: loki-runtime-tpl
       volumeName: runtime-config
       namespace: {{ .Release.Namespace }}
+      restartOnFileChange: true
   vars:
     - name: SERVER_HTTP_PORT
       value: {{ .Values.server.httpMetricsPort | quote }}

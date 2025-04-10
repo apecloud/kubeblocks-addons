@@ -16,6 +16,7 @@ spec:
       template: {{ include "nebula-storaged.configTemplateName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: nebula-storaged
+      restartOnFileChange: true
   scripts:
     - name: nebula-storaged-scripts
       template: {{ include "nebula-storaged.scriptsTemplateName" . }}

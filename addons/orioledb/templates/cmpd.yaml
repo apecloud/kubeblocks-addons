@@ -15,6 +15,7 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: postgresql-config
       defaultMode: 0444
+      restartOnFileChange: true
   scripts:
     - name: orioledb-scripts
       template: {{ include "orioledb.scriptsTemplate" . }}

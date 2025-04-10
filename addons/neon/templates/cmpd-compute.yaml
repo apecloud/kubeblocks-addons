@@ -40,6 +40,7 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: neon-config
       defaultMode: 0444
+      restartOnFileChange: true
   vars: 
     - name: NEON_COMPUTE_PGPORT
       valueFrom:
