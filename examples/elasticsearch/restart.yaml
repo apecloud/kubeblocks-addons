@@ -10,6 +10,6 @@ spec:
   # Lists Components to be restarted. ComponentOps specifies the Component to be operated on.
   restart:
     # Specifies the name of the Component.
-    # - master
-    # - dit
-  - componentName: master
+    # - mdit
+    # - kibana
+  - componentName: kibana

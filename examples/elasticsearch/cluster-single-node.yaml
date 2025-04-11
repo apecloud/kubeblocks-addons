@@ -6,12 +6,6 @@ metadata:
   annotations:
     kubeblocks.io/extra-env: '{"mode":"single-node"}'
 spec:
-  # Specifies the name of the ClusterDefinition to use when creating a Cluster.
-  clusterDefinitionRef: elasticsearch
-  # Specifies the elasticSearch cluster topology defined in ClusterDefinition.Spec.topologies, support single-node or multi-node.
-  # - `single-node`: single elasticSearch instance
-  # - `multi-node`: elasticSearch cluster with master,data,ingest and transform instance
-  topology: single-node
   # Specifies the behavior when a Cluster is deleted.
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
   # - `Halt`: Deletes Cluster resources like Pods and Services but retains Persistent Volume Claims (PVCs), allowing for data preservation while stopping other operations.
@@ -21,9 +15,10 @@ spec:
   # Specifies a list of ClusterComponentSpec objects used to define the individual components that make up a Cluster.
   componentSpecs:
     - name: mdit
+      componentDef: elasticsearch-8
       serviceVersion: 8.8.2
       disableExporter: false
-      serviceAccountName: kb-esearch-cluster
+      serviceAccountName: kb-elsearch-cluster
       replicas: 1
       resources:
         limits:
@@ -40,3 +35,15 @@ spec:
             resources:
               requests:
                 storage: 20Gi
+    - name: kibana
+      componentDef: kibana-8
+      serviceVersion: 8.8.2
+      serviceAccountName: kb-elsearch-cluster
+      replicas: 1
+      resources:
+        limits:
+          cpu: '0.5'
+          memory: 2Gi
+        requests:
+          cpu: '0.5'
+          memory: 2Gi

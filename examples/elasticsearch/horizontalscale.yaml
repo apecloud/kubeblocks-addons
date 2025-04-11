@@ -10,8 +10,7 @@ spec:
   # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
   horizontalScaling:
     # Specifies the name of the Component.
-    # - master
-    # - dit
-  - componentName: master
+    # - mdit
+  - componentName: mdit
     # Specifies the number of total replicas.
-    replicas: 2
+    replicas: 4
