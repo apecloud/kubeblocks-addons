@@ -3,6 +3,8 @@ kind: Cluster
 metadata:
   name: qdrant-cluster-restore
   namespace: default
+  annotations:
+    kubeblocks.io/restore-from-backup: '{"qdrant":{"doReadyRestoreAfterClusterRunning":"false","encryptedSystemAccounts":"<encrypted-system-accounts>","name":"qdrant-cluster-backup","namespace":"default","volumeRestorePolicy":"Parallel"}}'
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
