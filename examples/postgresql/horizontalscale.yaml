@@ -12,4 +12,4 @@ spec:
     # Specifies the name of the Component.
   - componentName: postgresql
     # Specifies the number of total replicas.
-    replicas: 4
+    replicas: 3

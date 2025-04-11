@@ -3,8 +3,6 @@ kind: Cluster
 metadata:
   name: pg-cluster-restore
   namespace: default
-  annotations:
-    kubeblocks.io/restore-from-backup: '{"postgresql":{"connectionPassword":"<backup-connection-password>","name":"pg-cluster-backup","namespace":"default","volumeRestorePolicy":"Parallel"}}'
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
@@ -36,7 +34,7 @@ spec:
     # Determines whether the metrics exporter needs to be published to the service endpoint.  
     disableExporter: true
     # Each component supports running multiple replicas to provide high availability and persistence. This field can be used to specify the desired number of replicas.
-    replicas: 2
+    replicas: 3
     # Specifies the resources required by the Component. It allows defining the CPU, memory requirements and limits for the Component's containers.
     resources:
       limits:
