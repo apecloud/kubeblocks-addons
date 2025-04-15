@@ -20,6 +20,7 @@ spec:
       template: {{ include "elasticsearch8.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: es-cm
+      restartOnFileChange: true
   scripts:
     - name: scripts
       template: {{ include "elasticsearch.scriptsTplName" . }}

@@ -48,6 +48,7 @@ spec:
       template: {{ include "fe.configurationTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: fe-cm
+      restartOnFileChange: true
   vars:
   - name: FE_DISCOVERY_SERVICE_NAME
     valueFrom:

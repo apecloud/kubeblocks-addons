@@ -30,6 +30,7 @@ spec:
     template: {{ include "be.configurationTemplate" . }}
     namespace: {{ .Release.Namespace }}
     volumeName: be-cm
+    restartOnFileChange: true
   volumes:
   - name: data
     needSnapshot: true

@@ -143,20 +143,6 @@ risingwave-configuration-tpl
 {{- end -}}
 
 {{/*
-Define risingwave compute env config template name
-*/}}
-{{- define "risingwave-compute.envConfigTplName" -}}
-risingwave-compute-envs-tpl
-{{- end -}}
-
-{{/*
-Define risingwave connector env config template name
-*/}}
-{{- define "risingwave-connector.envConfigTplName" -}}
-risingwave-connector-envs-tpl
-{{- end -}}
-
-{{/*
 Default config template.
 */}}
 {{- define "risingwave.conftpl.default" }}
@@ -164,6 +150,7 @@ Default config template.
   template: {{ include "risingwave.configTplName" . }}
   namespace: {{ .Release.Namespace }}
   volumeName: risingwave-configuration
+  restartOnFileChange: true
 {{- end }}
 
 {{/*

@@ -26,7 +26,8 @@ spec:
       template: {{ include "rabbitmq.configTplName" . }}
       volumeName: rabbitmq-config
       namespace: {{ .Release.Namespace }}
-      defaultMode: 0644  # for only read
+      defaultMode: 0644
+      restartOnFileChange: true
   systemAccounts:
     - name: root
       initAccount: true
