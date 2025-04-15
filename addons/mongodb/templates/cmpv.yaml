@@ -11,6 +11,8 @@ spec:
     - compDefs:
         - {{ include "mongodb.componentDefNamePrefix" . }}
       releases:
+        - 8.0.8
+        - 8.0.6
         - 8.0.4
         - 7.0.16
         - 7.0.12
@@ -22,6 +24,18 @@ spec:
         - 4.2.24
         - 4.0.28
   releases:
+    - name: 8.0.8
+      changes:
+      serviceVersion: 8.0.8
+      images:
+        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.8
+        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+    - name: 8.0.6
+      changes:
+      serviceVersion: 8.0.6
+      images:
+        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.6
+        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
     - name: 8.0.4
       changes:
       serviceVersion: 8.0.4
