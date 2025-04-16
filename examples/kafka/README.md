@@ -35,6 +35,11 @@ Apache Kafka is a distributed streaming platform designed to build real-time pip
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
 - KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
 - Kafka Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
@@ -69,7 +74,7 @@ kubectl apply -f examples/kafka/scale-out.yaml
 After applying the operation, you will see a new pod created. You can check the progress of the scaling operation with following command:
 
 ```bash
-kubectl describe ops kafka-combined-scale-out
+kubectl describe -n demo ops kafka-combined-scale-out
 ```
 
 #### [Scale-in](scale-in.yaml)
@@ -147,7 +152,7 @@ kubectl apply -f examples/kafka/volumeexpand.yaml
 After the operation, you will see the volume size of the specified component is increased to `30Gi` in this case. Once you've done the change, check the `status.conditions` field of the PVC to see if the resize has completed.
 
 ```bash
-kubectl get pvc -l app.kubernetes.io/instance=kafka-combined-cluster -n default
+kubectl get pvc -l app.kubernetes.io/instance=kafka-combined-cluster -n demo
 ```
 
 #### Volume expansion using Cluster API
@@ -256,9 +261,9 @@ cat  /opt/bitnami/kafka/config/kraft/server.properties | grep 'log.flush.interva
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster kafka-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo kafka-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster kafka-cluster
+ kubectl delete cluster -n demokafka-cluster
 ```
 
 ### Observability
@@ -323,7 +328,7 @@ KubeBlocks provides a Grafana dashboard for monitoring the Kafka cluster. You ca
 To connect to the Kafka cluster, you can use the following command to get the service for connection:
 
 ```bash
-kubectl get svc -l app.kubernetes.io/instance=kafka-combined-cluster -n default
+kubectl get svc -l app.kubernetes.io/instance=kafka-combined-cluster -n demo
 ```
 
 And the excepted output is like below:

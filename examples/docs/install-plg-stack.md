@@ -426,5 +426,6 @@ helm install --namespace logging alloy grafana/alloy -f alloy.value.yaml --creat
 ```
 
 ## Reference
+
 [^1]: Promtail, <https://grafana.com/docs/loki/latest/send-data/promtail/>
 [^2]: Alloy, <https://grafana.com/docs/alloy/latest/introduction/>

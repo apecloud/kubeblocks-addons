@@ -2,7 +2,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   generateName: mysql-rebuildinstance
-  namespace: default
+  namespace: demo
 spec:
   # Operation type is RebuildInstance
   type: RebuildInstance

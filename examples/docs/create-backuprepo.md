@@ -236,5 +236,4 @@ Make sure required CSI Drivers are installed and configured properly.
 
 ## References
 
-[^1]: CSI S3 Driver: https://github.com/yandex-cloud/k8s-csi-s3?tab=readme-ov-file
-[^2]: CSI NFS Driver: https://github.com/kubernetes-csi/csi-driver-nfs/tree/master/charts
+[^1]: CSI S3 Driver: <https://github.com/yandex-cloud/k8s-csi-s3?tab=readme-ov-file>

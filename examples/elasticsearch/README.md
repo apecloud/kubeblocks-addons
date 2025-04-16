@@ -38,6 +38,12 @@ Each Elasticsearch cluster consists of one or more nodes, and each node in a clu
 | 7.x | 7.7.1,7.8.1,7.10.1 |
 | 8.x | 8.1.3, 8.8.2 |
 
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
+
 ## Examples
 
 ### Create
@@ -394,9 +400,9 @@ You can import the dashboard provided by Grafana or create your own dashboard, e
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster es-multinode -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo es-multinode -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster es-multinode
+ kubectl delete cluster -n demoes-multinode
 ```
 
 ## References
