@@ -2,7 +2,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: es-singlenode
-  namespace: default
+  namespace: demo
   annotations:
     # kubeblokcs.io/extra-env is an reserved annotation
     # use 'mode=single-node' to indicate this cluster starts in single-node type.

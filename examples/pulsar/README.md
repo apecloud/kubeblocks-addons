@@ -40,6 +40,11 @@ Optional components include:
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
 - KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
 - Pulsar Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
@@ -200,9 +205,9 @@ It updates `allowAutoTopicCreation` to `false`. Since it is a "dynamic paramter"
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster pulsar-basic-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo pulsar-basic-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster -n demo pulsar-basic-cluster
+ kubectl delete cluster -n demopulsar-basic-cluster
 ```
 
 ## Appendix
@@ -244,7 +249,7 @@ spec:
       # Services provided by other Clusters.
       serviceRefs:
         - name: pulsarZookeeper    # identifier of the service reference declaration, defined in `componentDefinition.spec.serviceRefDeclarations[*].name`
-          namespace: default       # Specifies the namespace of the referenced Cluster
+          namespace: demo       # Specifies the namespace of the referenced Cluster
           clusterServiceSelector:  # References a service provided by another KubeBlocks Cluster
             cluster: zk-cluster    # Cluster Name
             service:
@@ -286,7 +291,7 @@ spec:
       # Services provided by other Clusters.
       serviceRefs:
         - name: pulsarZookeeper    # identifier of the service reference declaration, defined in `componentDefinition.spec.serviceRefDeclarations[*].name`
-          namespace: default       # Specifies the namespace of the referenced ServiceDescriptor
+          namespace: demo       # Specifies the namespace of the referenced ServiceDescriptor
           serviceDescriptor: zookeeper-sd # ServiceDescriptor Name
       ...
 ```

@@ -2,7 +2,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: clickhouse-standalone
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the ClusterDef to use when creating a Cluster.
   clusterDef: clickhouse

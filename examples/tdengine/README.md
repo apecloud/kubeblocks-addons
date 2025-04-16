@@ -15,6 +15,11 @@ TDengine™ is a next generation data historian purpose-built for Industry 4.0 a
 | Versions |
 |----------|
 | 3.0.5.0    |
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
@@ -109,9 +114,9 @@ kubectl apply -f examples/tdengine/start.yaml
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster tdengine-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo tdengine-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster tdengine-cluster
+ kubectl delete cluster -n demotdengine-cluster
 ```
 
 ## References

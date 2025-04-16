@@ -2,7 +2,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: orioledb-cluster
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the ClusterDefinition to use when creating a Cluster.
   clusterDefinitionRef: orioledb
@@ -21,7 +21,7 @@ spec:
     serviceRefs:
     - name: etcdService
       cluster: etcdo-cluster
-      namespace: default
+      namespace: demo
     replicas: 1
     resources:
       limits:
@@ -43,7 +43,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: etcdo-cluster
-  namespace: default
+  namespace: demo
 spec:
   clusterDefinitionRef: etcd
   clusterVersionRef: etcd-v3.5.6

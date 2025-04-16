@@ -2,7 +2,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: ob-reconfiguring
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the type of this operation.
   type: Reconfiguring
