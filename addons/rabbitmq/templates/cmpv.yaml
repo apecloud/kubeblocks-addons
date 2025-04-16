@@ -20,12 +20,12 @@ spec:
         - 3.9.29
         - 3.8.14
   releases:
-    - name: 4.0.7
+    - name: 4.0.9
       changes:
-      serviceVersion: 4.0.7
+      serviceVersion: 4.0.9
       images:
-        rabbitmq: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.0.7-management
-        memberLeave: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.0.7-management
+        rabbitmq: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.0.9-management
+        memberLeave: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.0.9-management
     - name: 3.13.7
       changes:
       serviceVersion: 3.13.7
