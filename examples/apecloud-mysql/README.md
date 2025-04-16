@@ -31,6 +31,11 @@ Please refer to the ApeCloud MySQL Documentation[^1] for more information.
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
 - KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
 - ApeCloud MySQL Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
@@ -45,14 +50,14 @@ kubectl apply -f examples/apecloud-mysql/cluster.yaml
 And you will see the ApeCloud-MySQL cluster status goes `Running` after a while:
 
 ```bash
-kubectl get cluster acmysql-cluster
+kubectl get cluster acmysql-cluster -n demo
 ```
 
 and three pods are `Running` with roles `leader`,  `follower` and `follower` separately. To check the roles of the pods, you can use following command:
 
 ```bash
 # replace `acmysql-cluster` with your cluster name
-kubectl get po -l  app.kubernetes.io/instance=acmysql-cluster -L kubeblocks.io/role -n default
+kubectl get po -l  app.kubernetes.io/instance=acmysql-cluster -L kubeblocks.io/role -n demo
 ```
 
 If you want to create a cluster of specified version, set the `spec.componentSpecs.serviceVersion` field in the yaml file before applying it:
@@ -95,7 +100,7 @@ After applying the operation, you will see a new pod created and the ApeCloud-My
 And you can check the progress of the scaling operation with following command:
 
 ```bash
-kubectl describe ops acmysql-scale-out
+kubectl describe -n demo ops acmysql-scale-out
 ```
 
 > [!IMPORTANT]
@@ -200,7 +205,7 @@ kubectl apply -f examples/apecloud-mysql/volumeexpand.yaml
 After the operation, you will see the volume size of the specified component is increased to `30Gi` in this case. Once you've done the change, check the `status.conditions` field of the PVC to see if the resize has completed.
 
 ```bash
-kubectl get pvc -l app.kubernetes.io/instance=acmysql-cluster -n default
+kubectl get pvc -l app.kubernetes.io/instance=acmysql-cluster -n demo
 ```
 
 #### Volume expansion using Cluster API
@@ -348,7 +353,7 @@ kubectl apply -f examples/apecloud-mysql/backup.yaml
 After the operation, you will see a `Backup` is created
 
 ```bash
-kubectl get backup -l app.kubernetes.io/instance=acmysql-cluster
+kubectl get backup -l app.kubernetes.io/instance=acmysql-cluster -n demo
 ```
 
 and the status of the backup goes from `Running` to `Completed` after a while. And the backup data will be pushed to your specified `BackupRepo`.
@@ -362,7 +367,7 @@ apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: BackupSchedule
 metadata:
   name: acmysql-cluster-mysql-backup-schedule
-  namespace: default
+  namespace: demo
 spec:
   backupPolicyName: acmysql-cluster-mysql-backup-policy
   schedules:
@@ -387,7 +392,7 @@ To restore a new cluster from a Backup:
 1. Get the list of accounts and their passwords from the backup:
 
 ```bash
-kubectl get backup acmysql-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
+kubectl get backup acmysql-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}' -n demo
 ```
 
 1. Update `examples/apecloud-mysql/restore.yaml` and set placeholder `<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
@@ -481,7 +486,7 @@ Or you can follow the steps in [How to install the Prometheus Operator](../docs/
 You can retrieve the `scrapePath` and `scrapePort` from pod's exporter container.
 
 ```bash
-kubectl get po acmysql-cluster-mysql-0 -oyaml | yq '.spec.containers[] | select(.name=="mysql-exporter") | .ports '
+kubectl get po -n demo acmysql-cluster-mysql-0 -oyaml | yq '.spec.containers[] | select(.name=="mysql-exporter") | .ports '
 ```
 
 And the expected output is like:
@@ -514,9 +519,9 @@ KubeBlocks provides a Grafana dashboard for monitoring the ApeCloud MySQL cluste
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster acmysql-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo acmysql-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster acmysql-cluster
+kubectl delete cluster -n demo acmysql-cluster
 ```
 <!--
 ## SmartEngine
@@ -555,7 +560,7 @@ To connect to the ApeCloud MySQL Proxy, you can:
 
 ```bash
 # kubectl port-forward svc/<clusterName>-wescale 3306:3306
-kubectl port-forward svc/acmysql-proxy-cluster-wescale 15306:15306
+kubectl port-forward svc/acmysql-proxy-cluster-wescale 15306:15306 -n demo
 ```
 
 - login to with the following command:
@@ -575,7 +580,7 @@ To connect to the ApeCloud MySQL cluster, you can:
 - port forward the MySQL service to your local machine:
 
 ```bash
-kubectl port-forward svc/<clusterName>-mysql 3306:3306
+kubectl port-forward svc/<clusterName>-mysql 3306:3306 -n demo
 ```
 
 - or expose the MySQL service to the internet, as mentioned in the [Expose](#expose) section.
@@ -589,8 +594,8 @@ mysql -h <endpoint> -P 3306 -u <userName> -p <password>
 and credentials can be found in the `secret` resource:
 
 ```bash
-kubectl get secret <clusterName>-mysql-account-root -ojsonpath='{.data.username}' | base64 -d
-kubectl get secret <clusterName>-mysql-account-root -ojsonpath='{.data.password}' | base64 -d
+kubectl get secret -n demo <clusterName>-mysql-account-root -ojsonpath='{.data.username}' | base64 -d
+kubectl get secret -n demo <clusterName>-mysql-account-root -ojsonpath='{.data.password}' | base64 -d
 ```
 
 ### How to Check the Status of ApeCloud MySQL
@@ -604,5 +609,5 @@ mysql > select * from information_schema.WESQL_CLUSTER_HEALTH;
 
 ## References
 
-[^1]: ApeCloud MySQL,https://kubeblocks.io/docs/preview/user_docs/kubeblocks-for-apecloud-mysql/apecloud-mysql-intro
-[^2]: wescale, https://github.com/wesql/wescale
+[^1]: ApeCloud MySQL,<https://kubeblocks.io/docs/preview/user_docs/kubeblocks-for-apecloud-mysql/apecloud-mysql-intro>
+[^2]: wescale, <https://github.com/wesql/wescale>

@@ -2,7 +2,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: ob-cluster-host
-  namespace: default
+  namespace: demo
   annotations:
     # `kubeblocks.io/host-network` is a reserved annotation
     # it defines the feature gate to enable the host-network for specified components or shardings.

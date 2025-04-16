@@ -46,6 +46,11 @@ Milvus is an open source (Apache-2.0 licensed) vector database built to power em
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
 - KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
 - **ETCD** , **Milvus** , **Pulsar** Addons Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
@@ -61,7 +66,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: milvus-standalone
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
@@ -147,7 +152,7 @@ This will create a standalone Milvus cluster with the following components: Milv
 To access the Milvus service, you can expose the service by creating a service:
 
 ```bash
-kubectl port-forward pod/milvus-standalone-milvus-0 -n default 19530:19530
+kubectl port-forward pod/milvus-standalone-milvus-0 -n demo 19530:19530
 ```
 
 And then you can access the Milvus service via `localhost:19530`. For instance you can run the python code below to test the service:
@@ -163,7 +168,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: etcdm-cluster
-  namespace: default
+  namespace: demo
 spec:
   terminationPolicy: WipeOut
   componentSpecs:
@@ -202,7 +207,7 @@ Create a Milvus cluster with `Cluster` mode:
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  namespace: default
+  namespace: demo
   name: milvus-cluster
 spec:
   # Specifies the behavior when a Cluster is deleted.
@@ -235,7 +240,7 @@ spec:
       # Defines a list of ServiceRef for a Component
       serviceRefs:
         - name: milvus-meta-storage # Specifies the identifier of the service reference declaration, defined in `componentDefinition.spec.serviceRefDeclarations[*].name`
-          namespace: default        # namepspace of referee cluster, update on demand
+          namespace: demo        # namepspace of referee cluster, update on demand
           # References a service provided by another KubeBlocks Cluster
           clusterServiceSelector:
             cluster: etcdm-cluster  # ETCD Cluster Name, update the cluster name on demand
@@ -244,7 +249,7 @@ spec:
               service: headless     # Refer to default headless Service
               port: client          # Refer to port name 'client'
         - name: milvus-log-storage
-          namespace: default
+          namespace: demo
           clusterServiceSelector:
             cluster: pulsarm-cluster # Pulsar Cluster Name
             service:
@@ -252,7 +257,7 @@ spec:
               service: headless
               port: pulsar
         - name: milvus-object-storage
-          namespace: default
+          namespace: demo
           clusterServiceSelector:
             cluster: miniom-cluster # Minio Cluster Name
             service:
@@ -274,7 +279,7 @@ spec:
           memory: "0.5Gi"
       serviceRefs:
         - name: milvus-meta-storage
-          namespace: default
+          namespace: demo
           clusterServiceSelector:
             cluster: etcdm-cluster
             service:
@@ -283,7 +288,7 @@ spec:
               port: client
 
         - name: milvus-log-storage
-          namespace: default
+          namespace: demo
           clusterServiceSelector:
             cluster: pulsarm-cluster
             service:
@@ -292,7 +297,7 @@ spec:
               port: pulsar
 
         - name: milvus-object-storage
-          namespace: default
+          namespace: demo
           clusterServiceSelector:
             cluster: miniom-cluster
             service:
@@ -316,7 +321,7 @@ spec:
           memory: "0.5Gi"
       serviceRefs:
         - name: milvus-meta-storage
-          namespace: default
+          namespace: demo
           clusterServiceSelector:
             cluster: etcdm-cluster
             service:
@@ -325,7 +330,7 @@ spec:
               port: client
 
         - name: milvus-log-storage
-          namespace: default
+          namespace: demo
           clusterServiceSelector:
             cluster: pulsarm-cluster
             service:
@@ -334,7 +339,7 @@ spec:
               port: pulsar
 
         - name: milvus-object-storage
-          namespace: default
+          namespace: demo
           clusterServiceSelector:
             cluster: miniom-cluster
             service:
@@ -357,7 +362,7 @@ spec:
           memory: "0.5Gi"
       serviceRefs:
         - name: milvus-meta-storage
-          namespace: default
+          namespace: demo
           clusterServiceSelector:
             cluster: etcdm-cluster
             service:
@@ -366,7 +371,7 @@ spec:
               port: client
 
         - name: milvus-log-storage
-          namespace: default
+          namespace: demo
           clusterServiceSelector:
             cluster: pulsarm-cluster
             service:
@@ -375,7 +380,7 @@ spec:
               port: pulsar
 
         - name: milvus-object-storage
-          namespace: default
+          namespace: demo
           clusterServiceSelector:
             cluster: miniom-cluster
             service:
@@ -397,7 +402,7 @@ spec:
           memory: "0.5Gi"
       serviceRefs:
         - name: milvus-meta-storage
-          namespace: default
+          namespace: demo
           clusterServiceSelector:
             cluster: etcdm-cluster
             service:
@@ -406,7 +411,7 @@ spec:
               port: client
 
         - name: milvus-log-storage
-          namespace: default
+          namespace: demo
           clusterServiceSelector:
             cluster: pulsarm-cluster
             service:
@@ -415,7 +420,7 @@ spec:
               port: pulsar
 
         - name: milvus-object-storage
-          namespace: default
+          namespace: demo
           clusterServiceSelector:
             cluster: miniom-cluster
             service:
@@ -446,7 +451,7 @@ And each component will be created with `serviceRef` to the corresponding servic
       # Defines a list of ServiceRef for a Component
       serviceRefs:
         - name: milvus-meta-storage # Specifies the identifier of the service reference declaration, defined in `componentDefinition.spec.serviceRefDeclarations[*].name`
-          namespace: default        # namepspace of referee cluster, update on demand
+          namespace: demo        # namepspace of referee cluster, update on demand
           # References a service provided by another KubeBlocks Cluster
           clusterServiceSelector:
             cluster: etcdm-cluster  # ETCD Cluster Name, update the cluster name on demand
@@ -455,7 +460,7 @@ And each component will be created with `serviceRef` to the corresponding servic
               service: headless     # Refer to default headless Service
               port: client          # NOTE: Refer to port name 'client', for port number '3501'
         - name: milvus-log-storage
-          namespace: default
+          namespace: demo
           clusterServiceSelector:
             cluster: pulsarm-cluster # Pulsar Cluster Name
             service:
@@ -463,7 +468,7 @@ And each component will be created with `serviceRef` to the corresponding servic
               service: headless
               port: pulsar          # NOTE: Refer to port name 'pulsar', for port number '6650'
         - name: milvus-object-storage
-          namespace: default
+          namespace: demo
           clusterServiceSelector:
             cluster: miniom-cluster # Minio Cluster Name
             service:
@@ -490,7 +495,7 @@ And you should pick the port, either using port name or port number, provides AP
 
 ```yaml
 - name: milvus-object-storage
-  namespace: default
+  namespace: demo
   clusterServiceSelector:
     cluster: miniom-cluster
     service:
@@ -511,7 +516,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: milvus-scale-out
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: milvus-cluster
@@ -542,7 +547,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: milvus-scale-in
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: milvus-cluster
@@ -587,7 +592,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: milvus-restart
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: milvus-cluster
@@ -621,7 +626,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: milvus-stop
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: milvus-cluster
@@ -656,7 +661,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: milvus-start
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: milvus-cluster
@@ -729,7 +734,7 @@ For more information about the metrics, refer to the [Visualize Milvus Metrics](
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster milvus-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo milvus-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster milvus-cluster
+ kubectl delete cluster -n demomilvus-cluster
 ```
