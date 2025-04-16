@@ -63,6 +63,10 @@ spec:
           host: Required
           optional: true
       expression: {{ `{{ .ZOOKEEPER_SERVERS }}.{{ .CLUSTER_NAMESPACE }}.svc:{{ .ZOOKEEPER_PORT }}` | toYaml }}
+    - name: PHY_MEMORY
+      valueFrom:
+        resourceVarRef:
+          memoryLimit: Required
   services:
     - name: advertised-listener
       serviceName: advertised-listener
@@ -89,6 +93,7 @@ spec:
       template: {{ include "pulsar3.brokerConfigTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: pulsar-config
+      externalManaged: true
   scripts:
     - name: pulsar-scripts
       template: {{ include "pulsar.scriptsTplName" . }}
