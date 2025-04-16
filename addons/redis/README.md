@@ -91,11 +91,6 @@ spec:
         requests:
           cpu: '0.5'
           memory: 0.5Gi
-      # Specifies the configs of the Component.
-      configs:
-      # the name of configs defined in the `ComponentDefinition.spec.configs[*].name`
-      - name: redis-replication-config
-        externalManaged: true
       # Specifies a list of PersistentVolumeClaim templates that define the storage
       # requirements for the Component.
       volumeClaimTemplates:
@@ -1028,11 +1023,6 @@ spec:
         requests:
           cpu: '0.5'
           memory: 0.5Gi
-      # Specifies the configs of the Component.
-      configs:
-      # the name of configs defined in the `ComponentDefinition.spec.configs[*].name`
-      - name: redis-replication-config
-        externalManaged: true
       # Specifies a list of PersistentVolumeClaim templates that define the storage
       # requirements for the Component.
       volumeClaimTemplates:
@@ -1220,9 +1210,6 @@ spec:
       requests:
         cpu: "0.5"
         memory: "0.5Gi"
-    configs:
-    - name: redis-replication-config
-      externalManaged: true
     volumeClaimTemplates:
       - name: data
         spec:
@@ -1317,11 +1304,6 @@ spec:
       # Specifies the version of the Component service. This field is used to determine the version of the service that is created for the Component. \
       # The serviceVersion is used to determine the version of the Redis Sharding Cluster kernel. If the serviceVersion is not specified, the default value is the ServiceVersion defined in ComponentDefinition.
       serviceVersion: 7.2.4
-      # Specifies the configs of the Component.
-      configs:
-      # the name of configs defined in the `ComponentDefinition.spec.configs[*].name`
-      - name: redis-cluster-config
-        externalManaged: true
       # Component-level services override services defined in referenced ComponentDefinition and expose
       # endpoints that can be accessed by clients
       # This example explicitly override the svc `redis-advertised` to use the NodePort
