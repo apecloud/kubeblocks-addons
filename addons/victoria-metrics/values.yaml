@@ -31,6 +31,15 @@ images:
 vmselect:
   # -- Service port
   servicePort: 8481
+  # High availability settings
+  minScrapeInterval: "30s"
+  # Performance settings
+  memoryAllowedPercent: 60
+  maxQueryDuration: "30s"
+  maxQueryLen: 16384
+  maxConcurrentRequests: 8
+  # Caching settings
+  cacheExpiry: "30s"
   # Extra command line arguments for vmselect component
   extraArgs:
     envflag.enable: "true"
@@ -40,15 +49,20 @@ vmselect:
 vminsert:
   # -- Service port
   servicePort: 8480
-  # Extra command line arguments for vmselect component
+  # High availability settings
+  replicationFactor: 1
+  # Performance settings
+  memoryAllowedPercent: 60
+  maxLabelsPerTimeseries: 60
+  maxLabelValueLen: 16384
+  # Routing settings
+  disableRerouting: true
+  disableReroutingOnUnavailable: false
+  # Extra command line arguments for vminsert component
   extraArgs:
     envflag.enable: "true"
     envflag.prefix: VM_
     loggerFormat: json
-    maxLabelsPerTimeseries: 60
-    maxLabelValueLen: 16384
-    disableReroutingOnUnavailable: false
-    disableRerouting: true
 
 vmstorage:
   # -- Service port
@@ -57,7 +71,18 @@ vmstorage:
   vminsertPort: 8400
   # -- Port for accepting connections from vmselect
   vmselectPort: 8401
-  # Extra command line arguments for vmselect component
+  # High availability settings
+  minScrapeInterval: "30s"
+  # Storage retention settings
+  retentionPeriod: "360"
+  # Performance settings
+  memoryAllowedPercent: 60
+  smallMergeThreshold: 1000
+  # Limits
+  maxHourlySeries: 0
+  maxDailySeries: 0
+  maxMonthlySeries: 0
+  # Extra command line arguments for vmstorage component
   extraArgs:
     envflag.enable: "true"
     envflag.prefix: VM_
