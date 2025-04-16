@@ -2,7 +2,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: es-multinode
-  namespace: default
+  namespace: demo
   annotations:
     kubeblocks.io/extra-env: '{"master-roles":"master", "data-roles": "data", "ingest-roles": "ingest", "transform-roles": "transform"}'
 spec:

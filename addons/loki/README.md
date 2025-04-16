@@ -39,6 +39,12 @@ KubeBlocks provids the **Simple Scalable Mode** Loki Cluster, and there are tree
 |----------|
 | v2.9.4   |
 
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
+
 ## Examples
 
 ### Create
@@ -57,7 +63,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: lokicluster
-  namespace: default
+  namespace: demo
 spec:
   terminationPolicy: Delete
   clusterDef: loki
@@ -164,7 +170,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: loki-scale-out
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: loki-cluster
@@ -197,7 +203,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: loki-scale-in
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: lokicluster
@@ -230,7 +236,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: loki-vscale
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: lokicluster
@@ -266,7 +272,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: loki-volumeexpansion
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: lokicluster
@@ -296,7 +302,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: loki-restart-vminsert
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: lokicluster
@@ -325,7 +331,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: loki-stop
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: lokicluster
@@ -347,7 +353,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: loki-start
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: lokicluster
@@ -413,9 +419,9 @@ Login to the Grafana dashboard and import the dashboard , e.g.
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster vmcluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo vmcluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster vmcluster
+ kubectl delete cluster -n demovmcluster
 ```
 
 ## References

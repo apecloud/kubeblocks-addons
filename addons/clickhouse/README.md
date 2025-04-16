@@ -29,6 +29,11 @@ There are two key components in the ClickHouse cluster:
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
 - KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
 - ClickHouse Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
@@ -44,7 +49,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: clickhouse-standalone
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the ClusterDef to use when creating a Cluster.
   clusterDef: clickhouse
@@ -99,7 +104,7 @@ clickhouse-client --host <clickhouse-endpoint> --port 9000 --user admin --passwo
 e.g. you can get the password by the following command:
 
 ```bash
-kubectl get secrets clickhouse-cluster-clickhouse-account-admin -n default -oyaml  | yq .data.password -r | base64 -d
+kubectl get secrets clickhouse-cluster-clickhouse-account-admin -n demo -oyaml  | yq .data.password -r | base64 -d
 ```
 
 where `clickhouse-cluster-clickhouse-account-admin` is the secret name, it is named after pattern `<clusterName>-<componentName>-account-<accountName>`, and `password` is the key of the secret.
@@ -114,7 +119,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: clickhouse-cluster
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the ClusterDef to use when creating a Cluster.
   clusterDef: clickhouse
@@ -138,7 +143,7 @@ spec:
         - name: admin # name of the system account
           secretRef:
             name: udf-account-info
-            namespace: default
+            namespace: demo
       resources:
         limits:
           cpu: '0.5'
@@ -185,7 +190,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: udf-account-info
-  namespace: default  # optional
+  namespace: demo  # optional
 type: Opaque
 data:
   password: cGFzc3dvcmQxMjM=  # 'password123' in base64
@@ -233,7 +238,7 @@ spec:
         - name: admin # name of the system account
           secretRef:
             name: udf-account-info
-            namespace: default
+            namespace: demo
 ```
 
 Make sure the secret `udf-account-info` exists in the same namespace as the cluster, and has the following data:
@@ -259,7 +264,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: cluster-tls
-  namespace: default
+  namespace: demo
 spec:
   terminationPolicy: Delete
   clusterDef: clickhouse
@@ -354,7 +359,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: clickhouse-sharding
-  namespace: default
+  namespace: demo
 spec:
   terminationPolicy: Delete
   componentSpecs:
@@ -387,7 +392,7 @@ spec:
           - name: admin # name of the system account
             secretRef:
               name: udf-shard-account-info
-              namespace: default
+              namespace: demo
         resources:
           limits:
             cpu: "1"
@@ -408,7 +413,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: udf-shard-account-info
-  namespace: default
+  namespace: demo
 type: Opaque
 data:
   password: cGFzc3dvcmQxMjM=  # 'password123' in base64
@@ -432,7 +437,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: ch-scale-out
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: clickhouse-cluster
@@ -465,7 +470,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: ch-scale-in
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: clickhouse-cluster
@@ -511,7 +516,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: clickhouse-verticalscaling
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: clickhouse-cluster
@@ -557,7 +562,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: clickhouse-volumeexpansion
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: clickhouse-cluster
@@ -590,7 +595,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: ch-reconfiguring
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: clickhouse-cluster
@@ -677,7 +682,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: clickhouse-restart
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: clickhouse-cluster
@@ -705,7 +710,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: clickhouse-stop
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: clickhouse-cluster
@@ -727,7 +732,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: clickhouse-start
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: clickhouse-cluster
@@ -805,9 +810,9 @@ It sets endpoints as follows:
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster clickhouse-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo clickhouse-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster clickhouse-cluster
+kubectl delete cluster -n demo  clickhouse-cluster
 
 # delete secret udf-account-info if exists
 # kubectl delete secret udf-account-info

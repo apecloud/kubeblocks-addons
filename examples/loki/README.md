@@ -39,6 +39,12 @@ KubeBlocks provids the **Simple Scalable Mode** Loki Cluster, and there are tree
 |----------|
 | v2.9.4   |
 
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
+
 ## Examples
 
 ### [Create](cluster.yaml)
@@ -149,9 +155,9 @@ Login to the Grafana dashboard and import the dashboard , e.g.
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster vmcluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo vmcluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster vmcluster
+ kubectl delete cluster -n demovmcluster
 ```
 
 ## References

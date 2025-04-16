@@ -14,7 +14,7 @@ This example assumes that you have a Kubernetes cluster installed and running, a
 
 Also, this example requires kubeblocks installed and running. Here is the steps to install kubeblocks, please replace "`$kb_version`" with the version you want to use.
 ```bash
-# Add Helm repo 
+# Add Helm repo
 helm repo add kubeblocks https://apecloud.github.io/helm-charts
 # If github is not accessible or very slow for you, please use following repo instead
 helm repo add kubeblocks https://jihulab.com/api/v4/projects/85949/packages/helm/stable
@@ -39,17 +39,17 @@ helm install kubeblocks kubeblocks/kubeblocks --namespace kb-system --create-nam
 Enable neon
 
 ```bash
-# Add Helm repo 
+# Add Helm repo
 helm repo add kubeblocks-addons https://apecloud.github.io/helm-charts
 # If github is not accessible or very slow for you, please use following repo instead
 helm repo add kubeblocks-addons https://jihulab.com/api/v4/projects/150246/packages/helm/stable
 # Update helm repo
 helm repo update
 
-# Enable neon 
-helm upgrade -i kb-addon-neon kubeblocks-addons/neon --version $kb_version -n kb-system  
+# Enable neon
+helm upgrade -i kb-addon-neon kubeblocks-addons/neon --version $kb_version -n kb-system
 
-# Add Helm repo 
+# Add Helm repo
 helm repo add kubeblocks-applications https://apecloud.github.io/helm-charts
 # If github is not accessible or very slow for you, please use following repo instead
 helm repo add kubeblocks-applications https://jihulab.com/api/v4/projects/152630/packages/helm/stable
@@ -58,11 +58,16 @@ helm repo update
 
 # Install cert-manager
 helm upgrade -i cert-manager kubeblocks-applications/cert-manager --version v1.14.2 -n cert-manager
-``` 
+```
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
-### [Create](cluster.yaml) 
+### [Create](cluster.yaml)
 Create a neon cluster with specified cluster definition.
 ```bash
 kubectl apply -f examples/neon/cluster.yaml
@@ -74,7 +79,7 @@ Vertical scaling up or down NeonVM specified cpu or memory.
 
 View NeonVM CPU/MEMORY information.
 ```bash
-kubectl get neonvm -n default
+kubectl get neonvm -n demo
 NAME              CPUS   MEMORY   POD                     EXTRAIP   STATUS    AGE
 vm-compute-node   1      1Gi      vm-compute-node-g8wsb             Running   5m22s
 ```
@@ -82,23 +87,23 @@ vm-compute-node   1      1Gi      vm-compute-node-g8wsb             Running   5m
 Vertical scaling NeonVM CPU
 ```bash
 
-kubectl patch neonvm -n default vm-compute-node --type='json' -p='[{"op": "replace", "path": "/spec/guest/cpus/use", "value":2}]'
+kubectl patch neonvm -n demo vm-compute-node --type='json' -p='[{"op": "replace", "path": "/spec/guest/cpus/use", "value":2}]'
 ```
 View NeonVM CPU information after Vertical scaling.
 ```bash
-kubectl get neonvm -n default
+kubectl get neonvm -n demo
 NAME              CPUS   MEMORY   POD                     EXTRAIP   STATUS    AGE
 vm-compute-node   2      1Gi      vm-compute-node-g8wsb             Running   5m45s
 ```
 
-Vertical scaling NeonVM MEMORY 
+Vertical scaling NeonVM MEMORY
 ```bash
 kubectl patch neonvm vm-compute-node --type='json' -p='[{"op": "replace", "path": "/spec/guest/memorySlots/use", "value":4}]'
 ```
 
 View NeonVM MEMORY information after Vertical scaling.
 ```bash
-kubectl get neonvm -n default
+kubectl get neonvm -n demo
 NAME              CPUS   MEMORY   POD                     EXTRAIP   STATUS    AGE
 vm-compute-node   2      4Gi      vm-compute-node-g8wsb             Running   10m
 ```
@@ -107,7 +112,7 @@ vm-compute-node   2      4Gi      vm-compute-node-g8wsb             Running   10
 ### Delete
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 ```bash
-kubectl patch cluster neon-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo neon-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster neon-cluster
+ kubectl delete cluster -n demoneon-cluster
 ```

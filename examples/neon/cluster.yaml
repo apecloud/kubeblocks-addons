@@ -2,7 +2,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: neon-cluster
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the ClusterDefinition to use when creating a Cluster.
   clusterDefinitionRef: neon
@@ -76,7 +76,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: compute-node-config
-  namespace: default
+  namespace: demo
 data:
   compute.sh: |-
     #!/bin/bash
@@ -91,7 +91,7 @@ data:
     sleep 1;
     done
     echo "Page server is ready."
-    
+
     echo "Create a tenant and timeline"
     if [ -z "$TENANT" ]; then
     PARAMS=(
@@ -105,7 +105,7 @@ data:
     else
     tenant_id=$TENANT
     fi
-    
+
     if [ -z "$TIMELINE" ]; then
     PARAMS=(
     -sb
@@ -116,18 +116,18 @@ data:
     )
     result=$(curl "${PARAMS[@]}")
     echo $result | jq .
-    
+
     echo "Overwrite tenant id and timeline id in spec file"
     tenant_id=$(echo ${result} | jq -r .tenant_id)
     timeline_id=$(echo ${result} | jq -r .timeline_id)
-    
+
     else
-    
+
     #If not empty CREATE_BRANCH
     #we create branch with given ancestor_timeline_id as TIMELINE
-    
+
     if [ ! -z "$CREATE_BRANCH" ]; then
-    
+
     PARAMS=(
     -sb
     -X POST
@@ -135,27 +135,27 @@ data:
     -d "{\"tenant_id\":\"${tenant_id}\", \"pg_version\": ${PG_VERSION}, \"ancestor_timeline_id\":\"${TIMELINE}\"}"
     "http://${PAGESERVER}:9898/v1/tenant/${tenant_id}/timeline/"
     )
-    
+
     result=$(curl "${PARAMS[@]}")
     echo $result | jq .
-    
+
     echo "Overwrite tenant id and timeline id in spec file"
     tenant_id=$(echo ${result} | jq -r .tenant_id)
     timeline_id=$(echo ${result} | jq -r .timeline_id)
-    
+
     else
     timeline_id=$TIMELINE
     fi #end if CREATE_BRANCH
-    
+
     fi
-    
+
     sed "s/TENANT_ID/${tenant_id}/" ${SPEC_FILE_ORG} > ${SPEC_FILE}
     sed -i "s/TIMELINE_ID/${timeline_id}/" ${SPEC_FILE}
     sed -i "s/PAGESERVER_SPEC/${PAGESERVER}/" ${SPEC_FILE}
     sed -i "s/SAFEKEEPERS_SPEC/${SAFEKEEPERS}/" ${SPEC_FILE}
-    
+
     cat ${SPEC_FILE}
-    
+
     echo "Start compute node"
     whoami
     echo $PWD
@@ -163,13 +163,13 @@ data:
     mkdir data
     fi
     ls -lah /data
-    
+
     if [ ! -d "/data/pgdata" ]; then
     mkdir -p /data/pgdata
     fi
     chown -R postgres:postgres /data
     nohup su - postgres -c "/usr/local/bin/compute_ctl --pgdata /data/pgdata -C 'postgresql://cloud_admin@localhost:55432/postgres' -b /usr/local/bin/postgres -S ${SPEC_FILE}" &
-  
+
   entrypoint.sh: |-
     #!/bin/sh
     cd /opt/neondatabase-neon
@@ -178,14 +178,14 @@ data:
     while true; do
     sleep 1000
     done
-  
+
   spec.json: |-
     {
         "format_version": 1.0,
-    
+
         "timestamp": "2022-10-12T18:00:00.000Z",
         "operation_uuid": "0f657b36-4b0f-4a2d-9c2e-1dcd615e7d8c",
-    
+
         "cluster": {
           "cluster_id": "cluster1",
           "name": "Trolladyngja",
@@ -317,17 +317,17 @@ data:
             }
           ]
         },
-    
+
         "delta_operations": [
         ]
     }
   spec_prep_docker.json: |-
     {
         "format_version": 1.0,
-    
+
         "timestamp": "2022-10-12T18:00:00.000Z",
         "operation_uuid": "0f657b36-4b0f-4a2d-9c2e-1dcd615e7d8c",
-    
+
         "cluster": {
           "cluster_id": "cluster1",
           "name": "Trolladyngja",
@@ -459,7 +459,7 @@ data:
             }
           ]
         },
-    
+
         "delta_operations": [
         ]
     }
@@ -468,7 +468,7 @@ apiVersion: vm.neon.tech/v1
 kind: VirtualMachine
 metadata:
   name: vm-compute-node
-  namespace: default
+  namespace: demo
   annotations:
     # In this example, these bounds aren't necessary. So... here's what they look like :)
     autoscaling.neon.tech/bounds: '{ "min": { "cpu": 0.25, "mem": "1Gi" }, "max": { "cpu": 1.25, "mem": "5Gi" } }'

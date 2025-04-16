@@ -25,6 +25,11 @@ In Weaviate, metadata replication and data replication are separate. For the met
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
 - KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
 - Weaviate Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
@@ -104,11 +109,11 @@ It sets `QUERY_DEFAULTS_LIMIT` to 150, and all pods will be restarted to apply t
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster weaviate-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo weaviate-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster weaviate-cluster
+ kubectl delete cluster -n demoweaviate-cluster
 ```
 
 ## References
 
-[^1]: Weaviate Cluster Architecture, https://weaviate.io/developers/weaviate/concepts/replication-architecture/cluster-architecture#metadata-replication-raft
+[^1]: Weaviate Cluster Architecture, <https://weaviate.io/developers/weaviate/concepts/replication-architecture/cluster-architecture#metadata-replication-raft>

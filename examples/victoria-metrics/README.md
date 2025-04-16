@@ -29,6 +29,11 @@ VictoriaMetrics can run in two modes:
 | Versions |
 |----------|
 | v1.101.0 |
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
@@ -173,9 +178,9 @@ kubectl apply -f examples/victoria-metrics/start.yaml
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster vmcluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo vmcluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster vmcluster
+ kubectl delete cluster -n demovmcluster
 ```
 
 ## References

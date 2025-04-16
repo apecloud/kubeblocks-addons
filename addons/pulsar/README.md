@@ -41,6 +41,11 @@ Optional components include:
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
 - KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
 - Pulsar Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
@@ -56,7 +61,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: pulsar-basic-cluster
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
@@ -176,7 +181,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: pulsar-enhanced-cluster
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
@@ -326,7 +331,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: pulsar-broker-scale-out
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: pulsar-basic-cluster
@@ -362,7 +367,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: pulsar-broker-scale-in
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: pulsar-basic-cluster
@@ -416,7 +421,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: pulsar-verticalscaling
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: pulsar-basic-cluster
@@ -476,7 +481,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: pulsar-restart
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: pulsar-basic-cluster
@@ -509,7 +514,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: pulsar-stop
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: pulsar-basic-cluster
@@ -540,7 +545,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: pulsar-start
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: pulsar-basic-cluster
@@ -561,7 +566,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: pulsar-reconfiguring
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: pulsar-basic-cluster
@@ -601,9 +606,9 @@ It sets `lostBookieRecoveryDelay` in bookies to `1000`.
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster pulsar-basic-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo pulsar-basic-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster pulsar-basic-cluster
+ kubectl delete cluster -n demopulsar-basic-cluster
 ```
 
 ## Appendix
@@ -645,7 +650,7 @@ spec:
       # Services provided by other Clusters.
       serviceRefs:
         - name: pulsarZookeeper    # identifier of the service reference declaration, defined in `componentDefinition.spec.serviceRefDeclarations[*].name`
-          namespace: default       # Specifies the namespace of the referenced Cluster
+          namespace: demo       # Specifies the namespace of the referenced Cluster
           clusterServiceSelector:  # References a service provided by another KubeBlocks Cluster
             cluster: zk-cluster    # Cluster Name
             service:
@@ -672,7 +677,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: pulsar-service-descriptor
-  namespace: default
+  namespace: demo
 spec:
   terminationPolicy: Delete
   services:
@@ -700,7 +705,7 @@ spec:
           value: "false"
       serviceRefs:
         - name: pulsarZookeeper
-          namespace: default
+          namespace: demo
           serviceDescriptor: zookeeper-sd
       replicas: 1
       resources:
@@ -715,7 +720,7 @@ spec:
       serviceVersion: 3.0.2
       serviceRefs:
         - name: pulsarZookeeper
-          namespace: default
+          namespace: demo
           serviceDescriptor: zookeeper-sd
       replicas: 4
       resources:
@@ -763,7 +768,7 @@ spec:
       # Services provided by other Clusters.
       serviceRefs:
         - name: pulsarZookeeper    # identifier of the service reference declaration, defined in `componentDefinition.spec.serviceRefDeclarations[*].name`
-          namespace: default       # Specifies the namespace of the referenced ServiceDescriptor
+          namespace: demo       # Specifies the namespace of the referenced ServiceDescriptor
           serviceDescriptor: zookeeper-sd # ServiceDescriptor Name
       ...
 ```
