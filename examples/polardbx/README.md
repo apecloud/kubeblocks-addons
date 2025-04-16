@@ -23,6 +23,11 @@ PolarDB-X is a cloud native distributed SQL Database designed for high concurren
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
 - KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
 - PolarDB-X Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
@@ -62,8 +67,8 @@ mysql -h127.0.0.1 -u$USER_NAME -p$PASSWORD
 Credentials can be found in the secret `pxc-gms-account-polardbx-root` in the namespace where the cluster is deployed.
 
 ```bash
-kubectl get secret pxc-gms-account-polardbx-root -o jsonpath="{.data.password}" | base64 --decode
-kubectl get secret pxc-gms-account-polardbx-root -o jsonpath="{.data.username}" | base64 --decode
+kubectl get secret -n demo pxc-gms-account-polardbx-root -o jsonpath="{.data.password}" | base64 --decode
+kubectl get secret -n demo pxc-gms-account-polardbx-root -o jsonpath="{.data.username}" | base64 --decode
 ```
 
 ### Horizontal scaling
@@ -166,7 +171,7 @@ Login to the Grafana dashboard and import the dashboard [PolarDB-X Dashboard Ove
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster pxc -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo pxc -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster pxc
+ kubectl delete cluster -n demopxc
 ```

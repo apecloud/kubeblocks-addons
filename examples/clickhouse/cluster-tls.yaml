@@ -4,7 +4,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: cluster-tls
-  namespace: default
+  namespace: demo
 spec:
   terminationPolicy: Delete
   clusterDef: clickhouse

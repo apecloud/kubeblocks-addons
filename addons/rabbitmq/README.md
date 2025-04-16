@@ -28,6 +28,11 @@ RabbitMQ is an open-source and lightweight message broker which supports multipl
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
 - KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
 - RabbitMQ Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
@@ -41,7 +46,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: rabbitmq-cluster
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
@@ -115,7 +120,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: rabbitmq-scale-out
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: rabbitmq-cluster
@@ -145,7 +150,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: rabbitmq-scale-in
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: rabbitmq-cluster
@@ -189,7 +194,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: rabbitmq-verticalscaling
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: rabbitmq-cluster
@@ -253,7 +258,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: rabbitmq-volumeexpansion
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: rabbitmq-cluster
@@ -305,7 +310,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: rabbitmq-restart
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: rabbitmq-cluster
@@ -331,7 +336,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: rabbitmq-stop
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: rabbitmq-cluster
@@ -353,7 +358,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: rabbitmq-start
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: rabbitmq-cluster
@@ -375,7 +380,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: rabbitmq-expose-enable
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the type of this operation.
   type: Expose
@@ -417,7 +422,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: rabbitmq-expose-disable
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: rabbitmq-cluster
@@ -504,7 +509,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: rabbitmq-reconfiguring
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the type of this operation.
   type: Reconfiguring
@@ -609,7 +614,7 @@ You can import the dashboard from [Grafana RabbitMQ-Overview](https://grafana.co
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster rabbitmq-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo rabbitmq-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
 kubectl delete -f examples/rabbitmq/cluster.yaml
 ```
@@ -628,7 +633,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: rabbitmq-expose-enable
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the type of this operation.
   type: Expose
@@ -672,3 +677,9 @@ Then log in to the RabbitMQ Management console at `http://<localhost>:<port>/` w
 
 The user and password can be found in the cluster secrets named after `<clusterName>-<cmpName>-account-<accountName>`. In this case, the secret name is `rabbitmq-cluster-rabbitmq-account-root`.
 
+```bash
+# get user name
+kubectl get secrets -n demo rabbitmq-cluster-rabbitmq-account-root -o jsonpath='{.data.username}' | base64 -d
+# get password
+kubectl get secrets -n demo rabbitmq-cluster-rabbitmq-account-root -o jsonpath='{.data.password}' | base64 -d
+```

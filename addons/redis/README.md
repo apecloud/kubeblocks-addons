@@ -33,6 +33,11 @@ Redis is an open source (BSD licensed), in-memory data structure store, used as 
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
 - KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
 - Redis Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
@@ -48,7 +53,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: redis-replication
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
@@ -139,8 +144,8 @@ kubectl apply -f examples/redis/cluster.yaml
 A cluster named `redis-replication` will be created with 1 primary pod, 1 secondary pod, and 3 sentinel pods.
 
 ```bash
-kubectl get cluster redis-replication # get cluster info
-kubectl get pod -l app.kubernetes.io/instance=redis-replication # get all pods of the cluster
+kubectl get -n demo cluster redis-replication # get cluster info
+kubectl get pod -n demo -l app.kubernetes.io/instance=redis-replication # get all pods of the cluster
 ```
 
 > [!NOTE]
@@ -150,7 +155,7 @@ To check the role of each Redis pod, you can use the following command:
 
 ```bash
 # replace `redis-replication` with your cluster name
-kubectl get po -l app.kubernetes.io/instance=redis-replication,apps.kubeblocks.io/component-name=redis -L kubeblocks.io/role
+kubectl get po -n demo -l app.kubernetes.io/instance=redis-replication,apps.kubeblocks.io/component-name=redis -L kubeblocks.io/role
 ```
 
 #### Why Redis Sentinel starts first?
@@ -195,7 +200,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: redis-scale-out
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: redis-replication
@@ -221,7 +226,7 @@ After applying the operation, you will see a new pod created and the cluster sta
 And you can check the progress of the scaling operation with following command:
 
 ```bash
-kubectl describe ops redis-scale-out
+kubectl describe -n demo ops redis-scale-out
 ```
 
 #### Scale-in
@@ -234,7 +239,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: redis-scale-in
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: redis-replication
@@ -283,7 +288,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: redis-verticalscaling
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: redis-replication
@@ -354,7 +359,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: redis-volumeexpansion
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: redis-replication
@@ -410,7 +415,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: redis-restart
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: redis-replication
@@ -438,7 +443,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: redis-stop
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: redis-replication
@@ -481,7 +486,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: redis-start
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: redis-replication
@@ -528,7 +533,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: redis-reconfiguring
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: redis-replication
@@ -583,7 +588,7 @@ You may find the supported backup methods in the `BackupPolicy` of the cluster, 
 To the the list of backup policies and schedules, you can use the following command:
 
 ```bash
-kubectl get backuppolicy redis-replication-redis-backup-policy -oyaml | yq '.spec.backupMethods[].name'
+kubectl get backuppolicy -n demo redis-replication-redis-backup-policy -oyaml | yq '.spec.backupMethods[].name'
 ```
 
 And the output should be like:
@@ -604,7 +609,7 @@ apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: Backup
 metadata:
   name: redis-backup-datafile
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the backup method name that is defined in the backup policy.
   # - datafile
@@ -628,7 +633,7 @@ It will trigger a backup operation for the Redis component using `redis-cli BGSA
 After the operation, you will see a `Backup` is created
 
 ```bash
-kubectl get backup -l app.kubernetes.io/instance=redis-replication
+kubectl get backup -n demo -l app.kubernetes.io/instance=redis-replication
 ```
 
 Information, such as `path`, `timeRange` about the backup will be recorded into the `Backup` resource.
@@ -648,7 +653,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: redis-reconfigure-aof
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: redis-replication
@@ -685,7 +690,7 @@ apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: BackupSchedule
 metadata:
   name: redis-replication-redis-backup-policy
-  namespace: default
+  namespace: demo
 spec:
   backupPolicyName: redis-replication-redis-backup-policy
   schedules:
@@ -744,7 +749,7 @@ To restore a new cluster from a Backup:
 1. Get the list of accounts and their passwords from the backup:
 
 ```bash
-kubectl get backup acmysql-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
+kubectl get backup -n demo acmysql-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
 ```
 
 1. Update `examples/redis/restore.yaml` and set placeholder `<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
@@ -755,9 +760,9 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: redis-replication-restore
-  namespace: default
+  namespace: demo
   annotations:
-    kubeblocks.io/restore-from-backup: '{"redis":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"redis-replication-backup","namespace":"default","volumeRestorePolicy":"Parallel"}}'
+    kubeblocks.io/restore-from-backup: '{"redis":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"redis-replication-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
   terminationPolicy: Delete
   clusterDef: redis
@@ -819,7 +824,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: redis-expose-enable
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: redis-replication
@@ -863,7 +868,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: redis-expose-disable
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: redis-replication
@@ -980,7 +985,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: redis-replication
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
@@ -1170,9 +1175,9 @@ Sometimes the default dashboard may not work as expected, you may need to adjust
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster:
 
 ```bash
-kubectl patch cluster redis-replication -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo redis-replication -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster redis-replication
+ kubectl delete cluster -n demoredis-replication
 ```
 
 ### More Examples to Create a Redis
@@ -1189,7 +1194,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: redis-replication-with-proxy
-  namespace: default
+  namespace: demo
 spec:
   terminationPolicy: Delete
   clusterDef: redis
@@ -1273,7 +1278,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: redis-sharding
-  namespace: default
+  namespace: demo
 spec:
   terminationPolicy: Delete
   # Specifies a list of ShardingSpec objects that configure the sharding topology for components of a Cluster. Each ShardingSpec corresponds to a group of components organized into shards, with each shard containing multiple replicas. Components within a shard are based on a common ClusterComponentSpec template, ensuring that all components in a shard have identical configurations as per the template. This field supports dynamic scaling by facilitating the addition or removal of shards based on the specified number in each ShardingSpec. Note: `shardingSpecs` and `componentSpecs` cannot both be empty; at least one must be defined to configure a cluster. ShardingSpec defines how KubeBlocks manage dynamic provisioned shards. A typical design pattern for distributed databases is to distribute data across multiple shards, with each shard consisting of multiple replicas. Therefore, KubeBlocks supports representing a shard with a Component and dynamically instantiating Components using a template when shards are added. When shards are removed, the corresponding Components are also deleted.
@@ -1378,4 +1383,5 @@ spec:
 
 ## Reference
 
-[^1]: Redis Sentinel: https://redis.io/docs/latest/operate/oss_and_stack/management/sentinel/
+[^1]: Redis Sentinel: <https://redis.io/docs/latest/operate/oss_and_stack/management/sentinel/>
+[^5]: Grafana Dashboard Store: <https://grafana.com/grafana/dashboards/>
