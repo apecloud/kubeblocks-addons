@@ -182,7 +182,9 @@ vars:
   - name: DATA_DISK_SIZE
     valueFrom:
       resourceVarRef:
-        storage: Required
+        storage:
+          name: data
+          option: Required
 systemAccounts:
   - name: postgres
     initAccount: true
