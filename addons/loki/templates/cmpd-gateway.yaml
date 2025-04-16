@@ -73,3 +73,11 @@ spec:
       value: {{ .Values.global.clusterDomain}}
     - name: ENABLE_IPV6
       value: {{ .Values.gateway.nginxConfig.enableIPv6 | quote }}
+    - name: KB_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: KB_CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required

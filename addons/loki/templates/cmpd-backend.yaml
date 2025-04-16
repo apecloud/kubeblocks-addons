@@ -100,3 +100,13 @@ spec:
       value: /rules/rules_data
     - name: LOCAL_CHUNKS_DIR
       value: /var/loki/chunks_data
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.global.clusterDomain}}
+    - name: KB_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: KB_CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required

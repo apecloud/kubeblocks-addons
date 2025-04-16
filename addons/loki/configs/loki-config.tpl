@@ -1,5 +1,6 @@
 auth_enabled: false
 
+{{ $storageType := "" }}
 {{ if index . "storage_type" }}
 {{ $storageType :=  $.storage_type }}
 {{ end }}
@@ -11,11 +12,11 @@ server:
 
 memberlist:
    join_members:
-   - {{ $.cluster.metadata.name }}-memberlist
+   - {{ .KB_CLUSTER_NAME }}-memberlist
 
 common:
-  compactor_address: '{{ $.cluster.metadata.name }}-backend'
-  {{/* compactor_grpc_address: '{{ printf "%s-backend.%s.svc.%s:9095" $.cluster.metadata.name $.cluster.metadata.namespace .clusterDomain  }}' */}}
+  compactor_address: '{{ .KB_CLUSTER_NAME }}-backend'
+  {{/* compactor_grpc_address: '{{ printf "%s-backend.%s.svc.%s:9095" .KB_CLUSTER_NAME .KB_NAMESPACE .CLUSTER_DOMAIN }}' */}}
   path_prefix: /var/loki
   replication_factor: 1
   storage:
