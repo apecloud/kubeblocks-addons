@@ -3,7 +3,7 @@
 #   http://docs.mongodb.org/manual/reference/configuration-options/
 
 # TODO: .Values.dataMountPath
-{{- $mongodb_root := /data/mongodb }}
+{{- $mongodb_root := "/data/mongodb" }}
 {{- $mongodb_port := $.KB_SERVICE_PORT }}
 
 # where and how to store data.
