@@ -74,7 +74,7 @@ aclfile /etc/redis/users.acl
 # TODO: dynamic config for io-threads
 io-threads 4
 io-threads-do-reads yes
-  
+
 # configuration for redis cluster
 cluster-enabled yes
 cluster-config-file /data/nodes.conf
@@ -85,7 +85,7 @@ cluster-require-full-coverage yes
 cluster-allow-reads-when-down no
 
 # maxmemory <bytes>
-{{- $request_memory := $.PHY_MEMORY }}
+{{- $request_memory := default 0 $.PHY_MEMORY | int }}
 {{- if gt $request_memory 0 }}
 maxmemory {{ $request_memory }}
 {{- end }}
