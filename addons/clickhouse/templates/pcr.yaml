@@ -23,4 +23,4 @@ spec:
         format: xml
       reRenderResourceTypes:
         - hscale
-        - shardingHVScale
+        - shardingHScale
