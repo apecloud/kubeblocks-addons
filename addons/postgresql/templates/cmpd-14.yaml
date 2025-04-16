@@ -60,6 +60,7 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: pgbouncer-config
       defaultMode: 0777
+      externalManaged: true
     - name: postgresql-custom-metrics
       template: {{ include "postgresql14.metricsConfiguration" . }}
       namespace: {{ .Release.Namespace }}
