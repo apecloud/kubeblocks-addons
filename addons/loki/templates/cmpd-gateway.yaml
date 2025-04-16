@@ -63,6 +63,7 @@ spec:
       template: loki-gateway-tpl
       volumeName: config
       namespace: {{ .Release.Namespace }}
+      restartOnFileChange: true
   vars:
     - name: DNS_SERVICE
       value: {{ .Values.global.dnsService }}

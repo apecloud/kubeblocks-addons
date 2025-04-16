@@ -125,14 +125,13 @@ configs:
     template: {{ include "orchestrator.componentDefName" . }}-config
     namespace: {{ .Release.Namespace }}
     volumeName: configs
-
+    restartOnFileChange: true
 scripts:
   - name: orc-scripts
     template: {{ include "orchestrator.componentDefName" . }}-scripts
     namespace: {{ .Release.Namespace }}
     volumeName: scripts
     defaultMode: 0555
-
 {{- end }}
 
 

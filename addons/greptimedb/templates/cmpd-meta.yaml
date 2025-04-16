@@ -16,6 +16,7 @@ spec:
       template: {{ include "greptimedb-meta.configTemplateName" . }}
       volumeName: meta-config
       namespace: {{ .Release.Namespace }}
+      restartOnFileChange: true
   serviceRefDeclarations:
     - name: etcd
       serviceRefDeclarationSpecs:

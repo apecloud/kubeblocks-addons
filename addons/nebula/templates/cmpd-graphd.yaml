@@ -35,6 +35,7 @@ spec:
       template: {{ include "nebula-graphd.configTemplateName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: nebula-graphd
+      restartOnFileChange: true
   vars:
     - name: CLUSTER_DOMAIN
       value: {{ .Values.clusterDomain }}
