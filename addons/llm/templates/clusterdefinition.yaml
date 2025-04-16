@@ -12,7 +12,7 @@ spec:
       default: true
       components:
       - name: vllm
-        compDef: vllm
+        compDef: llm-vllm
 ---
 apiVersion: apps.kubeblocks.io/v1
 kind: ClusterDefinition
@@ -28,4 +28,4 @@ spec:
       default: true
       components:
       - name: ggml
-        compDef: ggml
+        compDef: llm-ggml
