@@ -32,6 +32,11 @@ Qdrant is an open source (Apache-2.0 licensed), vector similarity search engine 
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
 - KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
 - Qdrant Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
@@ -45,7 +50,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: qdrant-cluster
-  namespace: default
+  namespace: demo
   annotations: {}
 spec:
   # Specifies the behavior when a Cluster is deleted.
@@ -119,7 +124,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: qdrant-scale-out
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: qdrant-cluster
@@ -149,7 +154,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: qdrant-scale-in
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: qdrant-cluster
@@ -198,7 +203,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: qdrant-verticalscaling
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: qdrant-cluster
@@ -265,7 +270,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: qdrant-volumeexpansion
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: qdrant-cluster
@@ -320,7 +325,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: qdrant-restart
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: qdrant-cluster
@@ -346,7 +351,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: qdrant-stop
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: qdrant-cluster
@@ -368,7 +373,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: qdrant-start
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: qdrant-cluster
@@ -398,7 +403,7 @@ apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: Backup
 metadata:
   name: qdrant-cluster-backup
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the backup method name that is defined in the backup policy.
   # - datafile
@@ -419,7 +424,7 @@ kubectl apply -f examples/qdrant/backup.yaml
 After the operation, you will see a `Backup` is created
 
 ```bash
-kubectl get backup -l app.kubernetes.io/instance=qdrant-cluster
+kubectl get backup -n demo -l app.kubernetes.io/instance=qdrant-cluster
 ```
 
 and the status of the backup goes from `Running` to `Completed` after a while. And the backup data will be pushed to your specified `BackupRepo`.
@@ -434,10 +439,10 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: qdrant-cluster-restore
-  namespace: default
+  namespace: demo
   annotations:
     # qdrant-cluster-backup is the backup name
-    kubeblocks.io/restore-from-backup: '{"qdrant":{"name":"qdrant-cluster-backup","namespace":"default","volumeRestorePolicy":"Parallel"}}'
+    kubeblocks.io/restore-from-backup: '{"qdrant":{"name":"qdrant-cluster-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
   terminationPolicy: Delete
   clusterDef: qdrant
@@ -541,7 +546,7 @@ Login to the Grafana dashboard and import the dashboard, e.g. using dashboard fr
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster qdrant-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo qdrant-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster qdrant-cluster
+ kubectl delete cluster -n demoqdrant-cluster
 ```

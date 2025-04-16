@@ -8,7 +8,7 @@ This example assumes that you have a Kubernetes cluster installed and running, a
 
 Also, this example requires kubeblocks installed and running. Here is the steps to install kubeblocks, please replace "`$kb_version`" with the version you want to use.
 ```bash
-# Add Helm repo 
+# Add Helm repo
 helm repo add kubeblocks https://apecloud.github.io/helm-charts
 # If github is not accessible or very slow for you, please use following repo instead
 helm repo add kubeblocks https://jihulab.com/api/v4/projects/85949/packages/helm/stable
@@ -30,13 +30,34 @@ kubectl create -f https://jihulab.com/api/v4/projects/98723/packages/generic/kub
 helm install kubeblocks kubeblocks/kubeblocks --namespace kb-system --create-namespace --version="$kb_version"
 ```
 Enable xinference
+```bash
+# Add Helm repo
+helm repo add kubeblocks-addons https://apecloud.github.io/helm-charts
+# If github is not accessible or very slow for you, please use following repo instead
+helm repo add kubeblocks-addons https://jihulab.com/api/v4/projects/150246/packages/helm/stable
+# Update helm repo
+helm repo update
+
+# Enable xinference
+helm upgrade -i kb-addon-xinference kubeblocks-addons/xinference --version $kb_version -n kb-system
+```
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
+
+## Examples
+
+### Create
+Create a xinference cluster with specified cluster definition
 ```yaml
 # cat examples/xinference/cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: xinference-cluster
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
@@ -73,12 +94,12 @@ apiVersion: apps.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: xinference-verticalscaling
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: xinference-cluster
   type: VerticalScaling
-  # Lists VerticalScaling objects, each specifying a component and its desired compute resources for vertical scaling. 
+  # Lists VerticalScaling objects, each specifying a component and its desired compute resources for vertical scaling.
   verticalScaling:
   - componentName: xinference
     # VerticalScaling refers to the process of adjusting the compute resources (e.g., CPU, memory) allocated to a Component. It defines the parameters required for the operation.
@@ -103,7 +124,7 @@ apiVersion: apps.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: xinference-restart
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: xinference-cluster
@@ -127,7 +148,7 @@ apiVersion: apps.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: xinference-stop
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: xinference-cluster
@@ -147,7 +168,7 @@ apiVersion: apps.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: xinference-start
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: xinference-cluster
@@ -162,7 +183,7 @@ kubectl apply -f examples/xinference/start.yaml
 ### Delete
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 ```bash
-kubectl patch cluster xinference-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo xinference-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster xinference-cluster
+ kubectl delete cluster -n demoxinference-cluster
 ```

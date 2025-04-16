@@ -29,6 +29,11 @@ VictoriaMetrics can run in two modes:
 | Versions |
 |----------|
 | v1.101.0 |
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
@@ -42,7 +47,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: vmcluster
-  namespace: default
+  namespace: demo
 spec:
   clusterDef: victoria-metrics
   terminationPolicy: Delete
@@ -132,7 +137,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: vm-scale-out
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: vm-cluster
@@ -164,7 +169,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: vm-scale-in
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: vmcluster
@@ -246,7 +251,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: vm-vscale
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: vmcluster
@@ -278,7 +283,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: vm-volumeexpansion
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: vmcluster
@@ -308,7 +313,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: vm-restart-vminsert
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: vmcluster
@@ -337,7 +342,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: vm-stop
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: vmcluster
@@ -359,7 +364,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: vm-start
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: vmcluster
@@ -376,9 +381,9 @@ kubectl apply -f examples/victoria-metrics/start.yaml
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster vmcluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo vmcluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster vmcluster
+ kubectl delete cluster -n demovmcluster
 ```
 
 ## References
