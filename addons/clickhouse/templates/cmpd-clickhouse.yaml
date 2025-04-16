@@ -149,6 +149,14 @@ spec:
           podFQDNs: Required
           multipleClusterObjectOption:
             strategy: individual
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
   volumes:
     - name: data
   services:
