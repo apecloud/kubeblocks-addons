@@ -54,11 +54,13 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: postgresql-config
       defaultMode: 0777
+      externalManaged: true
     - name: pgbouncer-configuration
       template: {{ include "pgbouncer.configurationTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: pgbouncer-config
       defaultMode: 0777
+      externalManaged: true
     - name: postgresql-custom-metrics
       template: {{ include "postgresql15.metricsConfiguration" . }}
       namespace: {{ .Release.Namespace }}
@@ -177,7 +179,7 @@ spec:
         create: CREATE USER ${KB_ACCOUNT_NAME} WITH REPLICATION PASSWORD '${KB_ACCOUNT_PASSWORD}';
       passwordGenerationPolicy: *defaultPasswdGenerationPolicy
   tls:
-    volumeName: tls 
+    volumeName: tls
     mountPath: /etc/pki/tls
     caFile: ca.pem
     certFile: cert.pem
