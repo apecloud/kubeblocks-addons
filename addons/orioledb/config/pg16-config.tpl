@@ -4,7 +4,7 @@
   {{- $shared_buffers := 1073741824 }}
   {{- $max_connections := 10000 }}
   {{- $autovacuum_max_workers := 3 }}
-  {{- $phy_memory := $.PHY_MEMORY }}
+  {{- $phy_memory := default 0 $.PHY_MEMORY | int }}
   {{- $phy_cpu := $.PHY_CPU }}
   {{- if gt $phy_memory 0 }}
   {{- $shared_buffers = div $phy_memory 4 }}
@@ -170,7 +170,7 @@
   max_worker_processes = '{{ max $phy_cpu 8 }}'
   min_parallel_index_scan_size = '512kB'
   min_parallel_table_scan_size = '8MB'
-  
+
   {{- $max_wal_size := min ( max ( div $phy_memory 2097152 ) 4096 ) 32768 }}
   {{- $min_wal_size := min ( max ( div $phy_memory 8388608 ) 2048 ) 8192 }}
   {{- $data_disk_size := $.DATA_DISK_SIZE }}
@@ -182,7 +182,7 @@
   {{- end }}
   max_wal_size = '{{- printf "%dMB" $max_wal_size }}'
   min_wal_size = '{{- printf "%dMB" $min_wal_size }}'
-  
+
   old_snapshot_threshold = '-1'
   parallel_leader_participation = 'True'
   password_encryption = 'md5'
@@ -268,7 +268,7 @@
   work_mem = '{{ printf "%dkB" ( max ( div $phy_memory 4194304 ) 4096 ) }}'
   xmlbinary = 'base64'
   xmloption = 'content'
-  
+
   autovacuum_vacuum_insert_scale_factor = '0.2'
   autovacuum_vacuum_insert_threshold = '1000'
   client_connection_check_interval = '0'
