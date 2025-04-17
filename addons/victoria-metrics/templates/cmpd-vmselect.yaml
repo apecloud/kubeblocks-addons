@@ -19,19 +19,31 @@ spec:
             targetPort: http
             protocol: TCP
             name: http
+  updateStrategy: BestEffortParallel
   exporter:
     scrapePath: /metrics
     scrapePort: http
-  updateStrategy: BestEffortParallel
+  vars:
+    - name: VMSTORAGE_ADDR
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "vmstorage.componentDefName" . }}
+          port:
+            name: vmselect
+            option: Required
   runtime:
     automountServiceAccountToken: true
     terminationGracePeriodSeconds: 60
+    volumes:
+      - name: cache-volume
+        emptyDir: {}
     containers:
       - name: vmselect
         imagePullPolicy: {{ .Values.images.vmselect.pullPolicy }}
         securityContext: {}
         args:
-          - --storageNode=vmstorage-$(CLUSTER_NAME)-$(POD_NAMESPACE)-0:{{ .Values.vmstorage.vmselectPort }}
+          - --storageNode=$(VMSTORAGE_ADDR)
+          - --cacheDataPath=/cache
           {{- range $key, $value := .Values.vmselect.extraArgs }}
           - --{{ $key }}={{ $value }}
           {{- end }}
@@ -42,16 +54,6 @@ spec:
         env:
           - name: SERVICE_PORT
             value: "{{ .Values.vmselect.servicePort }}"
-          - name: CLUSTER_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.labels['apps.kubeblocks.io/cluster-name']
-          - name: POD_NAMESPACE
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.namespace
-          - name: STORAGE_NODE_ADDRESSES
-            value: "vmstorage-$(CLUSTER_NAME)-$(POD_NAMESPACE)-0:{{ .Values.vmstorage.vmselectPort }}"
           - name: MIN_SCRAPE_INTERVAL
             value: "{{ .Values.vmselect.minScrapeInterval | default "30s" }}"
           - name: MEMORY_ALLOWED_PERCENT
@@ -67,24 +69,27 @@ spec:
         ports:
           - name: http
             containerPort: {{ .Values.vmselect.servicePort }}
-        livenessProbe:
-          failureThreshold: 10
-          initialDelaySeconds: 30
-          periodSeconds: 30
-          tcpSocket:
-            port: http
-          timeoutSeconds: 5
         readinessProbe:
-          failureThreshold: 3
           httpGet:
             path: /health
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 3
+        livenessProbe:
+          tcpSocket:
             port: http
           initialDelaySeconds: 5
           periodSeconds: 15
           timeoutSeconds: 5
+          failureThreshold: 3
         volumeMounts:
           - name: config
             mountPath: /etc/victoria-metrics/config
+          - name: cache-volume
+            mountPath: /cache
   configs:
     - name: vmselect-config
       template: vmselect-tpl
