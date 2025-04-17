@@ -294,7 +294,7 @@ It sets path to `/metrics` and port to `prometheus` (for container port `15692`)
 Login to the Grafana dashboard and import the dashboard.
 You can import the dashboard from [Grafana RabbitMQ-Overview](https://grafana.com/grafana/dashboards/10991-rabbitmq-overview/).
 
-> [!Note]
+> [!NOTE]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
 
 ### Delete

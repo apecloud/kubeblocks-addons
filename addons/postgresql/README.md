@@ -820,7 +820,7 @@ spec:
 kubectl apply -f examples/postgresql/backup-wal-g.yaml
 ```
 
-> [!Note]
+> [!NOTE]
 > if there is horizontal scaling out new pods after step 2, you need to do config-wal-g again
 
 ### Restore
@@ -1046,7 +1046,7 @@ In this example, the cluster will be upgraded to version `14.8.0`.
 
 Alternatively, you may modify the `spec.componentSpecs.serviceVersion` field to the desired version to upgrade the cluster.
 
-> [!Warning]
+> [!WARNING]
 > Do remember to to check the compatibility of versions before upgrading the cluster.
 
 ```bash
@@ -1108,7 +1108,7 @@ Or you can follow the steps in [How to install the Prometheus Operator](../docs/
 
 Create a new cluster with following command:
 
-> [!Note]
+> [!NOTE]
 > Make sure `spec.componentSpecs.disableExporter` is set to `false` when creating cluster.
 
 ```yaml
@@ -1271,7 +1271,7 @@ Login to the Grafana dashboard and import the dashboard.
 
 There is a pre-configured dashboard for PostgreSQL under the `APPS / PostgreSQL` folder in the Grafana dashboard. And more dashboards can be found in the Grafana dashboard store[^5].
 
-> [!Note]
+> [!NOTE]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
 
 ### Delete
@@ -1281,7 +1281,7 @@ If you want to delete the cluster and all its resource, you can modify the termi
 ```bash
 kubectl patch cluster -n demo pg-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
- kubectl delete cluster -n demopg-cluster
+kubectl delete cluster -n demo pg-cluster
 ```
 
 ## Reference

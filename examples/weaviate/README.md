@@ -111,7 +111,7 @@ If you want to delete the cluster and all its resource, you can modify the termi
 ```bash
 kubectl patch cluster -n demo weaviate-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
- kubectl delete cluster -n demoweaviate-cluster
+kubectl delete cluster -n demo weaviate-cluster
 ```
 
 ## References

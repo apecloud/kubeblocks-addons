@@ -263,7 +263,7 @@ If you want to delete the cluster and all its resource, you can modify the termi
 ```bash
 kubectl patch cluster -n demo kafka-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
- kubectl delete cluster -n demokafka-cluster
+kubectl delete cluster -n demo kafka-cluster
 ```
 
 ### Observability
@@ -314,7 +314,7 @@ Login to the Grafana dashboard and import the dashboard.
 
 KubeBlocks provides a Grafana dashboard for monitoring the Kafka cluster. You can find it at [Kafka Dashboard](https://github.com/apecloud/kubeblocks-addons/tree/main/addons/kafka).
 
-> [!Note]
+> [!NOTE]
 >
 > - Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
 > - set `job` to `kubeblocks` on Grafana dashboard to view the metrics.

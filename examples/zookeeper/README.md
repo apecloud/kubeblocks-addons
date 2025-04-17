@@ -321,7 +321,7 @@ It sets path to `/metrics` and port to `metrics` (for container port `7000`).
 
 Login to the Grafana dashboard and import the dashboard, e.g. using etcd dashboard from [Grafana](https://grafana.com/grafana/dashboards).
 
-> [!Note]
+> [!NOTE]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
 
 ### Delete
@@ -331,5 +331,5 @@ If you want to delete the cluster and all its resource, you can modify the termi
 ```bash
 kubectl patch cluster -n demo zookeeper-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
- kubectl delete cluster -n demozookeeper-cluster
+kubectl delete cluster -n demo zookeeper-cluster
 ```

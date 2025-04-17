@@ -431,7 +431,7 @@ kubectl apply -f examples/mysql/pod-monitor.yaml
 
 Login to the Grafana dashboard and import the dashboard.
 
-> [!Note]
+> [!NOTE]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
 
 ### Delete
@@ -441,7 +441,7 @@ If you want to delete the cluster and all its resource, you can modify the termi
 ```bash
 kubectl patch cluster -n demo mysql-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
- kubectl delete cluster -n demomysql-cluster
+kubectl delete cluster -n demo mysql-cluster
 ```
 
 ### Manage MySQL Cluster using Orchestrator
