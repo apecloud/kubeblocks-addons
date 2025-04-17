@@ -32,6 +32,27 @@ spec:
   exporter:
     scrapePath: /metrics
     scrapePort: http
+  vars:
+    - name: SERVICE_PORT
+      value: "{{ .Values.vmstorage.servicePort }}"
+    - name: VMINSERT_PORT
+      value: "{{ .Values.vmstorage.vminsertPort }}"
+    - name: VMSELECT_PORT
+      value: "{{ .Values.vmstorage.vmselectPort }}"
+    - name: RETENTION_PERIOD
+      value: "{{ .Values.vmstorage.retentionPeriod | default "1" }}"
+    - name: MIN_SCRAPE_INTERVAL
+      value: "{{ .Values.vmstorage.minScrapeInterval | default "30s" }}"
+    - name: MEMORY_ALLOWED_PERCENT
+      value: "{{ .Values.vmstorage.memoryAllowedPercent | default "60" }}"
+    - name: SMALL_MERGE_THRESHOLD
+      value: "{{ .Values.vmstorage.smallMergeThreshold | default "1000" }}"
+    - name: MAX_HOURLY_SERIES
+      value: "{{ .Values.vmstorage.maxHourlySeries | default "0" }}"
+    - name: MAX_DAILY_SERIES
+      value: "{{ .Values.vmstorage.maxDailySeries | default "0" }}"
+    - name: MAX_MONTHLY_SERIES
+      value: "{{ .Values.vmstorage.maxMonthlySeries | default "0" }}"
   runtime:
     automountServiceAccountToken: true
     terminationGracePeriodSeconds: 60
@@ -51,27 +72,6 @@ spec:
           {{- if .Values.enableTCP6 }}
           - --enableTCP6=true
           {{- end }}
-        env:
-          - name: SERVICE_PORT
-            value: "{{ .Values.vmstorage.servicePort }}"
-          - name: VMINSERT_PORT
-            value: "{{ .Values.vmstorage.vminsertPort }}"
-          - name: VMSELECT_PORT
-            value: "{{ .Values.vmstorage.vmselectPort }}"
-          - name: RETENTION_PERIOD
-            value: "{{ .Values.vmstorage.retentionPeriod | default "1" }}"
-          - name: MIN_SCRAPE_INTERVAL
-            value: "{{ .Values.vmstorage.minScrapeInterval | default "30s" }}"
-          - name: MEMORY_ALLOWED_PERCENT
-            value: "{{ .Values.vmstorage.memoryAllowedPercent | default "60" }}"
-          - name: SMALL_MERGE_THRESHOLD
-            value: "{{ .Values.vmstorage.smallMergeThreshold | default "1000" }}"
-          - name: MAX_HOURLY_SERIES
-            value: "{{ .Values.vmstorage.maxHourlySeries | default "0" }}"
-          - name: MAX_DAILY_SERIES
-            value: "{{ .Values.vmstorage.maxDailySeries | default "0" }}"
-          - name: MAX_MONTHLY_SERIES
-            value: "{{ .Values.vmstorage.maxMonthlySeries | default "0" }}"
         ports:
           - name: http
             containerPort: {{ .Values.vmstorage.servicePort }}
