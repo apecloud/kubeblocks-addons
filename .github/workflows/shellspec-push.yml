@@ -19,7 +19,24 @@ jobs:
       - name: Install kcov
         run: |
           sudo apt-get update
-          sudo apt-get install -y bash kcov
+          sudo apt-get install -y \
+          libcurl4-openssl-dev \
+          libelf-dev \
+          libdw-dev \
+          cmake \
+          git \
+          gcc \
+          g++ \
+          binutils-dev
+          
+          git clone https://github.com/SimonKagstrom/kcov.git
+          cd kcov
+          
+          mkdir build
+          cd build
+          cmake ..
+          make -j$(nproc)
+          sudo make install
 
       - name: shellspec test
         run: |
