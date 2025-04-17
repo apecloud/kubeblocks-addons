@@ -72,7 +72,7 @@ Choose an Appropriate Value:
 
 #### Add Loki as a new DataSource in Grafana
 
-Go to `Grafana-> Connections -> Add New Data Source -> Loki` and set connection URL to `http://lokicluster-gateway.default.svc.cluster.local:80`.
+Go to `Grafana-> Connections -> Add New Data Source -> Loki` and set connection URL to `http://lokicluster-gateway.demo.svc.cluster.local:80`.
 
 ### Horizontal scaling
 

@@ -86,7 +86,7 @@ kubectl logs minio-cluster-minio-2 -c minio
 You will see the following log:
 
 ```bash
-Error: grid: http://minio-cluster-minio-2.minio-cluster-minio-headless.default.svc.cluster.local:9000 re-connecting to ws://minio-cluster-minio-0.minio-cluster-minio-headless.default.svc.cluster.local:9000/minio/grid/v1: connection rejected: unknown incoming host: http://minio-cluster-minio-2.minio-cluster-minio-headless.default.svc.cluster.local:9000 (*errors.errorString) Sleeping 1.119s (3) (*fmt.wrapError)
+Error: grid: http://minio-cluster-minio-2.minio-cluster-minio-headless.demo.svc.cluster.local:9000 re-connecting to ws://minio-cluster-minio-0.minio-cluster-minio-headless.demo.svc.cluster.local:9000/minio/grid/v1: connection rejected: unknown incoming host: http://minio-cluster-minio-2.minio-cluster-minio-headless.demo.svc.cluster.local:9000 (*errors.errorString) Sleeping 1.119s (3) (*fmt.wrapError)
 ```
 
 #### Option1: Force a STOP-START to make sure the new replicas are running correctly
