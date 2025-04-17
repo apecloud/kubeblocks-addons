@@ -18,11 +18,17 @@ jobs:
 
       - name: Install kcov
         run: |
-          wget https://github.com/SimonKagstrom/kcov/releases/download/v42/kcov-amd64.tar.gz
-          tar xzf kcov-amd64.tar.gz
-          sudo mv ./usr/local/bin/kcov /usr/local/bin/kcov
-          sudo chmod +x /usr/local/bin/kcov
-          kcov version
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev libelf-dev libdw-dev cmake gcc g++ binutils-dev
+          
+          git clone https://github.com/SimonKagstrom/kcov.git
+          cd kcov
+          
+          mkdir build
+          cd build
+          cmake ..
+          make -j$(nproc)
+          sudo make install
 
       - name: shellspec test
         run: |
