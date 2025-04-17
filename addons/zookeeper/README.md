@@ -158,13 +158,13 @@ After scaling, cluster server list in Zookeeper configuration file `zoo.cfg` wil
 
 ```text
 # cluster server list
-server.0 = zookeeper-cluster-zookeeper-0.zookeeper-cluster-zookeeper-headless.default.svc.cluster.local:2888:3888:participant
+server.0 = zookeeper-cluster-zookeeper-0.zookeeper-cluster-zookeeper-headless.demo.svc.cluster.local:2888:3888:participant
 server.1
-    = zookeeper-cluster-zookeeper-1.zookeeper-cluster-zookeeper-headless.default.svc.cluster.local:2888:3888:participant
+    = zookeeper-cluster-zookeeper-1.zookeeper-cluster-zookeeper-headless.demo.svc.cluster.local:2888:3888:participant
 server.2
-    = zookeeper-cluster-zookeeper-2.zookeeper-cluster-zookeeper-headless.default.svc.cluster.local:2888:3888:participant
+    = zookeeper-cluster-zookeeper-2.zookeeper-cluster-zookeeper-headless.demo.svc.cluster.local:2888:3888:participant
 server.3
-    = zookeeper-cluster-zookeeper-3.zookeeper-cluster-zookeeper-headless.default.svc.cluster.local:2888:3888:observer
+    = zookeeper-cluster-zookeeper-3.zookeeper-cluster-zookeeper-headless.demo.svc.cluster.local:2888:3888:observer
 ```
 
 Information for `server.3` is added on scaling out.
