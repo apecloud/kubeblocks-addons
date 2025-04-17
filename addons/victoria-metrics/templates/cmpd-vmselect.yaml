@@ -24,6 +24,12 @@ spec:
     scrapePath: /metrics
     scrapePort: http
   vars:
+    - name: VMSTORAGE_ENDPOINT
+      valueFrom:
+        serviceVarRef:
+          compDef: vmstorage
+          optional: true
+          host: Required
     - name: VMSTORAGE_ADDR
       valueFrom:
         serviceVarRef:
