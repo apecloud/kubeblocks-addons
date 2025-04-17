@@ -322,7 +322,7 @@ get_current_comp_nodes_for_scale_out_replica() {
       port=$(echo $i | cut -d':' -f2)
       advertised_ports[$port]=1
     done
-  elif [ -n "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT" ] && [ -n "$HOST_NETWORK_ENABLED" ]; then
+  elif [ -n "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT" ]; then
     using_host_network=true
     IFS=',' read -ra port_mappings <<< "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT"
     for mapping in "${port_mappings[@]}"; do
@@ -632,7 +632,7 @@ parse_redis_cluster_announce_addr() {
   if [[ -z "${REDIS_CLUSTER_ADVERTISED_PORT}" ]] || [[ -z "${REDIS_CLUSTER_ADVERTISED_BUS_PORT}" ]]; then
     echo "Environment variable REDIS_CLUSTER_ADVERTISED_PORT and REDIS_CLUSTER_ADVERTISED_BUS_PORT not found. Ignoring."
     # if redis cluster is in host network mode, use the host ip and port as the announce ip and port
-    if [[ -n "${REDIS_CLUSTER_HOST_NETWORK_PORT}" ]] && [[ -n "${REDIS_CLUSTER_HOST_NETWORK_BUS_PORT}" ]] && [[ -n "$HOST_NETWORK_ENABLED" ]]; then
+    if [[ -n "${REDIS_CLUSTER_HOST_NETWORK_PORT}" ]] && [[ -n "${REDIS_CLUSTER_HOST_NETWORK_BUS_PORT}" ]]; then
       echo "redis cluster server is in host network mode, use the host ip:$KB_HOST_IP and port:$REDIS_CLUSTER_HOST_NETWORK_PORT, bus port:$REDIS_CLUSTER_HOST_NETWORK_BUS_PORT as the announce ip and port."
       redis_announce_port_value="$REDIS_CLUSTER_HOST_NETWORK_PORT"
       redis_announce_bus_port_value="$REDIS_CLUSTER_HOST_NETWORK_BUS_PORT"

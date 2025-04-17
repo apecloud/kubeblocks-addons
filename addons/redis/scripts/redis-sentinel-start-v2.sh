@@ -17,7 +17,7 @@ parse_redis_sentinel_announce_addr() {
   if [[ -z "${REDIS_SENTINEL_ADVERTISED_PORT}" ]]; then
     echo "Environment variable REDIS_SENTINEL_ADVERTISED_PORT not found. Ignoring."
     # if redis sentinel is in host network mode, use the host ip and port as the announce ip and port
-    if [[ -n "${REDIS_SENTINEL_HOST_NETWORK_PORT}" ]] && [[ -n "$HOST_NETWORK_ENABLED" ]]; then
+    if [[ -n "${REDIS_SENTINEL_HOST_NETWORK_PORT}" ]]; then
       echo "redis sentinel is in host network mode, use the host ip:$KB_HOST_IP and port:$REDIS_SENTINEL_HOST_NETWORK_PORT as the announce ip and port."
       redis_sentinel_announce_port_value="$REDIS_SENTINEL_HOST_NETWORK_PORT"
       redis_sentinel_announce_host_value="$KB_HOST_IP"

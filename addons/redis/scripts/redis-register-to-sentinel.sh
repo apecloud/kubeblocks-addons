@@ -90,7 +90,7 @@ parse_redis_primary_announce_addr() {
   if [[ -z "${REDIS_ADVERTISED_PORT}" ]]; then
     echo "Environment variable REDIS_ADVERTISED_PORT not found. Ignoring."
     # if redis primary is in host network mode, use the host ip and port as the announce ip and port first
-    if [[ -n "${REDIS_HOST_NETWORK_PORT}" ]] && [[ -n "$HOST_NETWORK_ENABLED" ]]; then
+    if [[ -n "${REDIS_HOST_NETWORK_PORT}" ]]; then
       redis_announce_port_value="$REDIS_HOST_NETWORK_PORT"
       # when in host network mode, the pod ip is the host ip
       pod_host_ip=$(get_default_primary_pod_ip "$pod_fqdn")

@@ -73,7 +73,7 @@ init_other_components_and_pods_info() {
 
     local port=$SERVICE_PORT
     # if redis cluster is using host network, the port should be the host network port
-    if [ -n "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT" ] && [ -n "$HOST_NETWORK_ENABLED" ]; then
+    if [ -n "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT" ]; then
       IFS=',' read -ra port_mappings <<< "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT"
       for mapping in "${port_mappings[@]}"; do
         shard_name=$(echo "$mapping" | cut -d':' -f1)
@@ -305,7 +305,7 @@ is_redis_cluster_initialized() {
 
     local port=$SERVICE_PORT
     ## if redis cluster is using host network, the port should be the host network port
-    if [ -n "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT" ] && [ -n "$HOST_NETWORK_ENABLED" ]; then
+    if [ -n "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT" ]; then
       IFS=',' read -ra port_mappings <<< "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT"
       for mapping in "${port_mappings[@]}"; do
         shard_name=$(echo "$mapping" | cut -d':' -f1)
@@ -387,7 +387,7 @@ get_current_comp_nodes_for_scale_in() {
       port=$(echo $i | cut -d':' -f2)
       advertised_ports[$port]=1
     done
-  elif [ -n "$REDIS_CLUSTER_HOST_NETWORK_PORT" ] && [ -n "$HOST_NETWORK_ENABLED" ]; then
+  elif [ -n "$REDIS_CLUSTER_HOST_NETWORK_PORT" ]; then
     using_host_network=true
   fi
 
@@ -482,7 +482,7 @@ init_current_comp_default_nodes_for_scale_out() {
         exit 1
       fi
     ## deal with host network mode
-    elif [ -n "$REDIS_CLUSTER_HOST_NETWORK_PORT" ] && [ -n "$HOST_NETWORK_ENABLED" ]; then
+    elif [ -n "$REDIS_CLUSTER_HOST_NETWORK_PORT" ]; then
       pod_host_ip=$(parse_host_ip_from_built_in_envs "$pod_name" "$KB_CLUSTER_COMPONENT_POD_NAME_LIST" "$KB_CLUSTER_COMPONENT_POD_HOST_IP_LIST")
       if [ -z "$pod_host_ip" ]; then
         echo "Failed to get the host ip of the pod $pod_name in host network mode"
@@ -570,7 +570,7 @@ gen_initialize_redis_cluster_node() {
       done
     ## deal with host network mode
     ## the value format of REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT is "shard-chg:1060,shard-khh:1059,shard-mpg:1054"
-    elif [ -n "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT" ] && [ -n "$HOST_NETWORK_ENABLED" ]; then
+    elif [ -n "$REDIS_CLUSTER_ALL_SHARDS_HOST_NETWORK_PORT" ]; then
       old_ifs="$IFS"
       IFS=','
       set -f
