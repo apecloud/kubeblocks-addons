@@ -2,7 +2,7 @@ auth_enabled: false
 
 {{ $storageType := "" }}
 {{ if index . "storage_type" }}
-{{ $storageType :=  $.storage_type }}
+{{ $storageType =  $.storage_type }}
 {{ end }}
 
 server:
