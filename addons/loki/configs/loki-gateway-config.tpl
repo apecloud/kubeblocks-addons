@@ -30,7 +30,7 @@ http {
 
   sendfile     on;
   tcp_nopush   on;
-  resolver {{ .DNS_SERVICE }}.{{ .DNS_NAMESPACE }}.svc.{{ .clusterDomain }}.;
+  resolver {{ .DNS_SERVICE }}.{{ .DNS_NAMESPACE }}.svc.{{ .CLUSTER_DOMAIN }}.;
 
   server {
     listen             8080;
@@ -43,13 +43,13 @@ http {
       auth_basic off;
     }
 
-    {{- $backendHost := printf "%s-backend" $.cluster.metadata.name }}
-    {{- $readHost := printf "%s-read" $.cluster.metadata.name }}
-    {{- $writeHost := printf "%s-write" $.cluster.metadata.name }}
+    {{- $backendHost := printf "%s-backend" .KB_CLUSTER_NAME }}
+    {{- $readHost := printf "%s-read" .KB_CLUSTER_NAME }}
+    {{- $writeHost := printf "%s-write" .KB_CLUSTER_NAME }}
 
-    {{- $writeUrl    := printf "http://%s.%s.svc.%s:3100" $writeHost   $.cluster.metadata.namespace .clusterDomain }}
-    {{- $readUrl     := printf "http://%s.%s.svc.%s:3100" $readHost    $.cluster.metadata.namespace .clusterDomain }}
-    {{- $backendUrl  := printf "http://%s.%s.svc.%s:3100" $backendHost $.cluster.metadata.namespace .clusterDomain }}
+    {{- $writeUrl    := printf "http://%s.%s.svc.%s:3100" $writeHost   .KB_NAMESPACE .CLUSTER_DOMAIN }}
+    {{- $readUrl     := printf "http://%s.%s.svc.%s:3100" $readHost    .KB_NAMESPACE .CLUSTER_DOMAIN }}
+    {{- $backendUrl  := printf "http://%s.%s.svc.%s:3100" $backendHost .KB_NAMESPACE .CLUSTER_DOMAIN }}
 
     # Distributor
     location = /api/prom/push {
