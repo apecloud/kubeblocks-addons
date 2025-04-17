@@ -330,7 +330,7 @@ It sets endpoints as follows:
       scheme: http
 ```
 
-> [!Note]
+> [!NOTE]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
 
 ### Delete

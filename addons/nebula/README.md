@@ -380,5 +380,5 @@ If you want to delete the cluster and all its resource, you can modify the termi
 ```bash
 kubectl patch cluster -n demo nebula-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
- kubectl delete cluster -n demonebula-cluster
+kubectl delete cluster -n demo nebula-cluster
 ```

@@ -352,7 +352,7 @@ If you want to delete the cluster and all its resource, you can modify the termi
 ```bash
 kubectl patch cluster -n demo orioledb-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
- kubectl delete cluster -n demoorioledb-cluster
+kubectl delete cluster -n demo orioledb-cluster
 
- kubectl delete cluster -n demoetcdo-cluster
+kubectl delete cluster -n demo etcdo-cluster
 ```

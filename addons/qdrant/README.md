@@ -538,7 +538,7 @@ It sets path to `/metrics` and port to `tcp-qdrant` (for container port `6333`).
 
 Login to the Grafana dashboard and import the dashboard, e.g. using dashboard from [Grafana](https://grafana.com/grafana/dashboards).
 
-> [!Note]
+> [!NOTE]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
 
 ### Delete
@@ -548,5 +548,5 @@ If you want to delete the cluster and all its resource, you can modify the termi
 ```bash
 kubectl patch cluster -n demo qdrant-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
- kubectl delete cluster -n demoqdrant-cluster
+kubectl delete cluster -n demo qdrant-cluster
 ```

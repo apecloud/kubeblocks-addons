@@ -86,5 +86,5 @@ If you want to delete the cluster and all its resource, you can modify the termi
 ```bash
 kubectl patch cluster -n demo mariadb-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
- kubectl delete cluster -n demomariadb-cluster
+kubectl delete cluster -n demo mariadb-cluster
 ```

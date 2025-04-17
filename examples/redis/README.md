@@ -544,7 +544,7 @@ Or you can follow the steps in [How to install the Prometheus Operator](../docs/
 
 Create a new cluster with following command:
 
-> [!Note]
+> [!NOTE]
 > Make sure `spec.componentSpecs.disableExporter` is set to `false` when creating cluster.
 
 ```yaml
@@ -622,7 +622,7 @@ Login to the Grafana dashboard and import the dashboard.
 
 There is a pre-configured dashboard for PostgreSQL under the `Redis` folder in the Grafana dashboard. And more dashboards can be found in the Grafana dashboard store[^5].
 
-> [!Note]
+> [!NOTE]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
 
 Sometimes the default dashboard may not work as expected, you may need to adjust the dashboard to match the labels the metrics are scraped with, in particular, the `job` label. In our case, the `job` variable should be set to `monitoring/redis-replication-pod-monitor` in the dashboard.
@@ -634,7 +634,7 @@ If you want to delete the cluster and all its resource, you can modify the termi
 ```bash
 kubectl patch cluster -n demo redis-replication -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
- kubectl delete cluster -n demoredis-replication
+kubectl delete cluster -n demo redis-replication
 ```
 
 ### More Examples to Create a Redis

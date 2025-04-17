@@ -941,7 +941,7 @@ Login to the Grafana dashboard and import the dashboard.
 
 KubeBlocks provides a Grafana dashboard for monitoring the ApeCloud MySQL cluster. You can find it at [ApeCloud MySQL Dashboard](https://github.com/apecloud/kubeblocks-addons/tree/main/addons/apecloud-mysql).
 
-> [!Note]
+> [!NOTE]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
 
 ### Delete
