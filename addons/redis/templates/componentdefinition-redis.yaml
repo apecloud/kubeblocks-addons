@@ -261,7 +261,7 @@ spec:
             mountPath: /kb-podinfo
         env:
           - name: SERVICE_PORT
-            value: "$(REDIS_HOST_NETWORK_PORT)"
+            value: "$(SERVICE_PORT)"
           ## the username of redis primary-secondary replication
           - name: REDIS_REPL_USER
             value: "kbreplicator"
