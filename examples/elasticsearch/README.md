@@ -392,7 +392,7 @@ You can import the dashboard provided by Grafana or create your own dashboard, e
 
 - <https://grafana.com/grafana/dashboards/2322-elasticsearch/>
 
-> [!Note]
+> [!NOTE]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
 
 ### Delete
@@ -402,7 +402,7 @@ If you want to delete the cluster and all its resource, you can modify the termi
 ```bash
 kubectl patch cluster -n demo es-multinode -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
- kubectl delete cluster -n demoes-multinode
+kubectl delete cluster -n demo es-multinode
 ```
 
 ## References

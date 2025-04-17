@@ -363,7 +363,7 @@ psql -h localhost -p 4566 -d dev -U root
 - `-d`: Specifies the database name. The default is `dev`.
 - `-U`: Specifies the username. The default is `root`.
 
-> [!Note]
+> [!NOTE]
 > By default, the `root` user does not require a password to connect to the database.
 
 #### Create a Table
@@ -604,11 +604,11 @@ If you want to delete the cluster and all its resource, you can modify the termi
 ```bash
 kubectl patch cluster -n demo risingwave-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
- kubectl delete cluster -n demorisingwave-cluster
+kubectl delete cluster -n demo risingwave-cluster
 
- kubectl delete cluster -n demoetcd-cluster #if you have created etcd cluster
+kubectl delete cluster -n demo etcd-cluster #if you have created etcd cluster
 
- kubectl delete cluster -n demominio-cluster #if you have created minio cluster
+kubectl delete cluster -n demo minio-cluster #if you have created minio cluster
 ```
 
 ## Appendix
