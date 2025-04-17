@@ -23,6 +23,7 @@ spec:
       template: {{ include "pulsar3.proxyConfigTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: pulsar-proxy-config
+      externalManaged: true
   scripts:
     - name: pulsar-scripts
       template: {{ include "pulsar.scriptsTplName" . }}
@@ -59,6 +60,10 @@ spec:
           host: Required
           optional: true
       expression: {{ `{{ .ZOOKEEPER_SERVERS }}.{{ .CLUSTER_NAMESPACE }}.svc:{{ .ZOOKEEPER_PORT }}` | toYaml }}
+    - name: PHY_MEMORY
+      valueFrom:
+        resourceVarRef:
+          memoryLimit: Required
   runtime:
     securityContext:
       runAsNonRoot: true
