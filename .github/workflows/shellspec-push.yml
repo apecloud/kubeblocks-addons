@@ -20,7 +20,7 @@ jobs:
         run: |
           wget https://github.com/SimonKagstrom/kcov/releases/download/v42/kcov-amd64.tar.gz
           tar xzf kcov-amd64.tar.gz
-          sudo mv kcov-amd64 /usr/local/bin/kcov
+          sudo mv ./usr/local/bin/kcov /usr/local/bin/kcov
           sudo chmod +x /usr/local/bin/kcov
 
       - name: shellspec test
