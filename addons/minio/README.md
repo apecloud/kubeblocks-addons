@@ -143,7 +143,7 @@ kubectl get secret -n demo minio-cluster-minio-account-root -o jsonpath="{.data.
 
 Horizontal scaling out MinIO cluster by adding TWO more replica:
 
-> [!Note]
+> [!NOTE]
 > MinIO clusters must be configured with at least 2 replicas
 > And the number of replicas must also be a multiple of 2 (e.g., 4, 6, 8, 12, etc.) to maintain balanced erasure coding.
 
@@ -341,5 +341,5 @@ If you want to delete the cluster and all its resource, you can modify the termi
 ```bash
 kubectl patch cluster -n demo minio-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
- kubectl delete cluster -n demominio-cluster
+kubectl delete cluster -n demo minio-cluster
 ```

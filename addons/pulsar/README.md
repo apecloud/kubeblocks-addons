@@ -651,7 +651,7 @@ If you want to delete the cluster and all its resource, you can modify the termi
 ```bash
 kubectl patch cluster -n demo pulsar-basic-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
- kubectl delete cluster -n demopulsar-basic-cluster
+kubectl delete cluster -n demo pulsar-basic-cluster
 ```
 
 ## Appendix
