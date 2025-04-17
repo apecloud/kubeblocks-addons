@@ -164,5 +164,5 @@ If you want to delete the cluster and all its resource, you can modify the termi
 ```bash
 kubectl patch cluster -n demo opensearch-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
- kubectl delete cluster -n demoopensearch-cluster
+kubectl delete cluster -n demo opensearch-cluster
 ```

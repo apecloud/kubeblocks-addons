@@ -396,7 +396,7 @@ If you want to delete the cluster and all its resource, you can modify the termi
 ```bash
 kubectl patch cluster -n demo orchestrator-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
- kubectl delete cluster -n demoorchestrator-cluster
+kubectl delete cluster -n demo orchestrator-cluster
 
 # or delete all clusters created in this example
 # you may use the following command:
