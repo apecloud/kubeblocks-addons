@@ -26,7 +26,6 @@ Optional components include:
 - Basic Mode: Includes the basic features of Pulsar, such as brokers, bookies, and Zookeeper.
 - Enhanced Mode: Includes additional components like Pulsar Proxy and Bookies Recovery.
 
-
 ### Versions
 
 | Major Versions | Versions |
@@ -560,6 +559,8 @@ kubectl apply -f examples/pulsar/start.yaml
 
 Configure parameters with the specified components in the cluster
 
+#### Update bookies parameters
+
 ```yaml
 # cat examples/pulsar/configure.yaml
 apiVersion: operations.kubeblocks.io/v1alpha1
@@ -601,6 +602,48 @@ It sets `lostBookieRecoveryDelay` in bookies to `1000`.
 > [!WARNING]
 > As `lostBookieRecoveryDelay` is defined as a static parameter, all bookies replicas will be restarted to make sure the reconfiguration takes effect.
 
+#### Update broker parameters
+
+```yaml
+# cat examples/pulsar/reconfigure-broker.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: pulsar-reconfiguring-broker
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: pulsar-basic-cluster
+  # Instructs the system to bypass pre-checks (including cluster state checks and customized pre-conditions hooks) and immediately execute the opsRequest, except for the opsRequest of 'Start' type, which will still undergo pre-checks even if `force` is true.  Note: Once set, the `force` field is immutable and cannot be updated.
+  force: false
+  # Specifies a component and its configuration updates. This field is deprecated and replaced by `reconfigures`.
+  reconfigures:
+    # Specifies the name of the Component.
+    # - proxy
+    # - bookies-recovery
+    # - broker
+    # - bookies
+    # - zookeeper
+  - componentName: broker
+    parameters:
+      # Represents the name of the parameter that is to be updated.
+      # allowAutoTopicCreation: Enable topic auto creation if a new producer or consumer connected
+    - key: allowAutoTopicCreation
+      # Represents the parameter values that are to be updated.
+      # If set to nil, the parameter defined by the Key field will be removed from the configuration file.
+      value: "false"
+  # Specifies the maximum number of seconds the OpsRequest will wait for its start conditions to be met before aborting. If set to 0 (default), the start conditions must be met immediately for the OpsRequest to proceed.
+  preConditionDeadlineSeconds: 0
+  type: Reconfiguring
+
+```
+
+```bash
+kubectl apply -f examples/pulsar/reconfigure-broker.yaml
+```
+
+It updates `allowAutoTopicCreation` to `false`. Since it is a "dynamic paramter", KubeBlocks will trigger a reload action to update parameters and all broker replicas won't be restarted.
+
 ### Delete
 
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
@@ -608,7 +651,7 @@ If you want to delete the cluster and all its resource, you can modify the termi
 ```bash
 kubectl patch cluster -n demo pulsar-basic-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
- kubectl delete cluster -n demopulsar-basic-cluster
+kubectl delete cluster -n demo pulsar-basic-cluster
 ```
 
 ## Appendix
@@ -817,3 +860,4 @@ spec:
     - name: bookies
     - name: zookeeper
     ...
+```
