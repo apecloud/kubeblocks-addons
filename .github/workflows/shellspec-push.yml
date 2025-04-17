@@ -18,7 +18,6 @@ jobs:
 
       - name: Install kcov
         run: |
-          command -v kcov
           wget https://github.com/SimonKagstrom/kcov/releases/download/v42/kcov-amd64.tar.gz
           tar xzf kcov-amd64.tar.gz
           sudo mv ./usr/local/bin/kcov /usr/local/bin/kcov
