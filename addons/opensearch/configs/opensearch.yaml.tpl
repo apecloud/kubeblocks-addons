@@ -1,6 +1,4 @@
-{{- $clusterName := $.cluster.metadata.name }}
-
-cluster.name: {{$clusterName}}
+cluster.name: {{ .CLUSTER_NAME }}
 
 # Bind to all interfaces because we don't know what IP address Docker will assign to us.
 network.host: 0.0.0.0
