@@ -37,6 +37,20 @@ spec:
           port:
             name: vmselect
             option: Required
+    - name: SERVICE_PORT
+      value: "{{ .Values.vmselect.servicePort }}"
+    - name: MIN_SCRAPE_INTERVAL
+      value: "{{ .Values.vmselect.minScrapeInterval | default "30s" }}"
+    - name: MEMORY_ALLOWED_PERCENT
+      value: "{{ .Values.vmselect.memoryAllowedPercent | default "60" }}"
+    - name: MAX_QUERY_DURATION
+      value: "{{ .Values.vmselect.maxQueryDuration | default "30s" }}"
+    - name: MAX_QUERY_LEN
+      value: "{{ .Values.vmselect.maxQueryLen | default "16384" }}"
+    - name: MAX_CONCURRENT_REQUESTS
+      value: "{{ .Values.vmselect.maxConcurrentRequests | default "8" }}"
+    - name: CACHE_EXPIRY
+      value: "{{ .Values.vmselect.cacheExpiry | default "30s" }}"
   runtime:
     automountServiceAccountToken: true
     terminationGracePeriodSeconds: 60
@@ -57,21 +71,6 @@ spec:
           {{- if .Values.enableTCP6 }}
           - --enableTCP6=true
           {{- end }}
-        env:
-          - name: SERVICE_PORT
-            value: "{{ .Values.vmselect.servicePort }}"
-          - name: MIN_SCRAPE_INTERVAL
-            value: "{{ .Values.vmselect.minScrapeInterval | default "30s" }}"
-          - name: MEMORY_ALLOWED_PERCENT
-            value: "{{ .Values.vmselect.memoryAllowedPercent | default "60" }}"
-          - name: MAX_QUERY_DURATION
-            value: "{{ .Values.vmselect.maxQueryDuration | default "30s" }}"
-          - name: MAX_QUERY_LEN
-            value: "{{ .Values.vmselect.maxQueryLen | default "16384" }}"
-          - name: MAX_CONCURRENT_REQUESTS
-            value: "{{ .Values.vmselect.maxConcurrentRequests | default "8" }}"
-          - name: CACHE_EXPIRY
-            value: "{{ .Values.vmselect.cacheExpiry | default "30s" }}"
         ports:
           - name: http
             containerPort: {{ .Values.vmselect.servicePort }}
