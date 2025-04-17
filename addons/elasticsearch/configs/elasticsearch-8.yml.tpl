@@ -1,6 +1,6 @@
-{{- $clusterName := $.cluster.metadata.name }}
+{{- $clusterName := .CLUSTER_NAME }}
 {{- $defaultRoles := "master,data" }}
-{{- $namespace := $.cluster.metadata.namespace }}
+{{- $namespace := .CLUSTER_NAMESPACE }}
 {{- $extraEnv := index $.cluster.metadata.annotations "kubeblocks.io/extra-env" | default "{}" | fromJson }}
 {{- $mode := index $extraEnv "mode" | default "multi-node" }}
 
@@ -50,7 +50,7 @@ discovery:
 {{- if eq $spec.name $name }}
 {{- $replicas := $spec.replicas | int }}
 {{- range $idx, $e := until $replicas }}
-  - {{ printf "%s-%s-%d.%s-%s-headless.%s.svc.%s" $clusterName $name $idx $clusterName $name $namespace $.clusterDomain }}
+  - {{ printf "%s-%s-%d.%s-%s-headless.%s.svc.%s" $clusterName $name $idx $clusterName $name $namespace .CLUSTER_DOMAIN }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -77,7 +77,7 @@ node:
 {{- if eq $mode "multi-node" }}
 # https://www.elastic.co/guide/en/elasticsearch/reference/7.7/modules-node.html
   roles:
-  {{- $myRoles := index $extraEnv (printf "%s-roles" $.component.name) | default $defaultRoles | splitList "," }}
+  {{- $myRoles := index $extraEnv (printf "%s-roles" .ES_COMPONENT_SHORT_NAME) | default $defaultRoles | splitList "," }}
   {{- range $i, $e := $myRoles }}
   - {{ $e }}
   {{- end }}
