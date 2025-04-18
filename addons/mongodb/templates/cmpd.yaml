@@ -182,6 +182,10 @@ spec:
       valueFrom:
         clusterVarRef:
           namespace: Required
+    - name: CLUSTER_UID
+      valueFrom:
+        clusterVarRef:
+          clusterUID: Required
     - name: COMPONENT_NAME
       valueFrom:
         componentVarRef:
