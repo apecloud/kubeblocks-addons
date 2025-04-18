@@ -81,7 +81,7 @@ spec:
   # Represents the endpoint of the service connection credential.
   endpoint:
     # your external zk endpoints here
-    value: "zookeeper-cluster-zookeeper-0.zookeeper-cluster-zookeeper-headless.default:2181,zookeeper-cluster-zookeeper-1.zookeeper-cluster-zookeeper-headless.default:2181,zookeeper-cluster-zookeeper-2.zookeeper-cluster-zookeeper-headless.default:2181"
+    value: "zookeeper-cluster-zookeeper-0.zookeeper-cluster-zookeeper-headless.demo:2181,zookeeper-cluster-zookeeper-1.zookeeper-cluster-zookeeper-headless.demo:2181,zookeeper-cluster-zookeeper-2.zookeeper-cluster-zookeeper-headless.demo:2181"
   # Represents the port of the service connection credential.
   port:
     value: "2181"
