@@ -169,6 +169,10 @@ spec:
       valueFrom:
         clusterVarRef:
           namespace: Required
+    - name: CLUSTER_UID
+      valueFrom:
+        clusterVarRef:
+          clusterUID: Required
     - name: RABBITMQ_DEFAULT_USER
       valueFrom:
         credentialVarRef:

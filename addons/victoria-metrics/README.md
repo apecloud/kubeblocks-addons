@@ -116,13 +116,13 @@ spec:
 ...
  remoteWrite:
   # http://<vminsert-addr>:8480/insert/{tenantID}/prometheus
-  - url: http://vmcluster-vminsert.default.svc.cluster.local:8480/insert/0/prometheus
+  - url: http://vmcluster-vminsert.demo.svc.cluster.local:8480/insert/0/prometheus
 ...
 ```
 
 #### Add VM as a new DataSource in Grafana
 
-Go to `Grafana-> Connections -> Add New Data Source -> Prometheus` and set connection URL to `http://vmcluster-vmselect.default.svc.cluster.local:8481/select/0/prometheus`,
+Go to `Grafana-> Connections -> Add New Data Source -> Prometheus` and set connection URL to `http://vmcluster-vmselect.demo.svc.cluster.local:8481/select/0/prometheus`,
 where `0` is tenant ID.
 
 ### Horizontal scaling
