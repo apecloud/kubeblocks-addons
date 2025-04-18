@@ -106,3 +106,24 @@ Define victoria-metrics select component definition regular expression name pref
 {{- define "vmselect.cmpdRegexpPattern" -}}
 ^vmselect-
 {{- end -}}
+
+{{/*
+Define vmstorage parameter config renderer name
+*/}}
+{{- define "vmstorage.pcrName" -}}
+vmstorage-pcr-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define vminsert parameter config renderer name
+*/}}
+{{- define "vminsert.pcrName" -}}
+vminsert-pcr-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define vmselect parameter config renderer name
+*/}}
+{{- define "vmselect.pcrName" -}}
+vmselect-pcr-{{ .Chart.Version }}
+{{- end -}}
