@@ -173,7 +173,7 @@ gateway common labels
 app.kubernetes.io/component: gateway
 {{- end }}
 
-{{- define "loki-cluster.s3storage" }}
+{{- define "loki-cluster.localstorage" }}
 configs:
   - name: loki-config
     variables:

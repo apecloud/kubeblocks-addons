@@ -1,9 +1,9 @@
 auth_enabled: false
 
-{{ $storageType := "" }}
-{{ if index . "storage_type" }}
-{{ $storageType =  $.storage_type }}
-{{ end }}
+{{- $storageType := "" }}
+{{- if index . "storage_type" }}
+{{- $storageType =  $.storage_type }}
+{{- end }}
 
 server:
   grpc_listen_port: ${SERVER_GRPC_PORT}
