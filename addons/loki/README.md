@@ -83,9 +83,10 @@ spec:
   componentSpecs:
     - name: backend
       disableExporter: true
-      env:
-        - name: STORAGE_TYPE
-          value: "local"
+      configs:
+        - name: loki-config
+          variables:
+            storage_type: "local"
       replicas: 1
       resources:
         limits:
@@ -106,6 +107,10 @@ spec:
     - name: write
       disableExporter: true
       replicas: 1
+      configs:
+        - name: loki-config
+          variables:
+            storage_type: "local"
       resources:
         limits:
           cpu: "0.5"
@@ -113,22 +118,20 @@ spec:
         requests:
           cpu: "0.5"
           memory: "0.5Gi"
-      env:
-        - name: STORAGE_TYPE
-          value: "local"
     - name: read
-      resources:
-        limits:
-          cpu: "0.5"
-          memory: "0.5Gi"
-        requests:
-          cpu: "0.5"
-          memory: "0.5Gi"
       disableExporter: true
       replicas: 1
-      env:
-        - name: STORAGE_TYPE
-          value: "local"
+      configs:
+        - name: loki-config
+          variables:
+            storage_type: "local"
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
     - name: gateway
       resources:
         limits:
