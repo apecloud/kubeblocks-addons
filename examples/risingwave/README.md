@@ -58,9 +58,9 @@ What for all Cluster running and get ETCD and Minio Endpoint:
 
 ```bash
 # Get ETCD endpoint
-ETCD_ENDPOINT="etcd-cluster-etcd-headless.default.svc.cluster.local:2379"
+ETCD_ENDPOINT="etcd-cluster-etcd-headless.demo.svc.cluster.local:2379"
 # Get Minio endpoint
-MINIO_ENDPOINT="minio-cluster-minio.default.svc.cluster.local:9000"
+MINIO_ENDPOINT="minio-cluster-minio.demo.svc.cluster.local:9000"
 # Get Minio user and password
 MINIO_USER=$(kubectl get secret minio-cluster-minio-account-root -n demo -o jsonpath="{.data.username}" | base64 --decode)
 MINIO_PASSWORD=$(kubectl get secret minio-cluster-minio-account-root -n demo -o jsonpath="{.data.password}" | base64 --decode)

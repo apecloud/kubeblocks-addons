@@ -81,8 +81,8 @@ data:
   compute.sh: |-
     #!/bin/bash
     set -ex
-    export PAGESERVER=neon-cluster-neon-pageserver-headless.default.svc.cluster.local
-    export SAFEKEEPERS=neon-cluster-neon-safekeeper-headless.default.svc.cluster.local:5454
+    export PAGESERVER=neon-cluster-neon-pageserver-headless.demo.svc.cluster.local
+    export SAFEKEEPERS=neon-cluster-neon-safekeeper-headless.demo.svc.cluster.local:5454
     SPEC_FILE_ORG=/spec_prep_docker.json
     SPEC_FILE=/spec.json
     PG_VERSION=14
@@ -287,7 +287,7 @@ data:
             },
             {
               "name": "neon.safekeepers",
-              "value": "neon-cluster-neon-safekeeper-0.neon-cluster-neon-safekeeper-headless.default.svc.cluster.local,neon-cluster-neon-safekeeper-1.neon-cluster-neon-safekeeper-headless.default.svc.cluster.local,neon-cluster-neon-safekeeper-2.neon-cluster-neon-safekeeper-headless.default.svc.cluster.local:5454",
+              "value": "neon-cluster-neon-safekeeper-0.neon-cluster-neon-safekeeper-headless.demo.svc.cluster.local,neon-cluster-neon-safekeeper-1.neon-cluster-neon-safekeeper-headless.demo.svc.cluster.local,neon-cluster-neon-safekeeper-2.neon-cluster-neon-safekeeper-headless.demo.svc.cluster.local:5454",
               "vartype": "string"
             },
             {
@@ -302,7 +302,7 @@ data:
             },
             {
               "name": "neon.pageserver_connstring",
-              "value": "host=neon-cluster-neon-pageserver-0.neon-cluster-neon-pageserver-headless.default.svc.cluster.local port=6400",
+              "value": "host=neon-cluster-neon-pageserver-0.neon-cluster-neon-pageserver-headless.demo.svc.cluster.local port=6400",
               "vartype": "string"
             },
             {
@@ -494,8 +494,8 @@ spec:
             set -ex
             trap : TERM INT
             whoami
-            export PAGESERVER=neon-cluster-neon-pageserver-headless.default.svc.cluster.local
-            export SAFEKEEPERS=neon-cluster-neon-safekeeper-headless.default.svc.cluster.local:5454
+            export PAGESERVER=neon-cluster-neon-pageserver-headless.demo.svc.cluster.local
+            export SAFEKEEPERS=neon-cluster-neon-safekeeper-headless.demo.svc.cluster.local:5454
             cp scripts/* ./
             chmod +x compute.sh entrypoint.sh spec.json spec_prep_docker.json
             ./compute.sh
