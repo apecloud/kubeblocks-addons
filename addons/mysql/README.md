@@ -31,6 +31,11 @@ MySQL is a widely used, open-source relational database management system (RDBMS
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
 - KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
 - MySQL Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
@@ -46,7 +51,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: mysql-cluster
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
@@ -143,7 +148,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: mysql-scale-out
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: mysql-cluster
@@ -169,7 +174,7 @@ After applying the operation, you will see a new pod created and the MySQL clust
 And you can check the progress of the scaling operation with following command:
 
 ```bash
-kubectl describe ops mysql-scale-out
+kubectl describe -n demo ops mysql-scale-out
 ```
 
 #### Scale-in
@@ -182,7 +187,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: mysql-scale-in
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: mysql-cluster
@@ -229,7 +234,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: mysql-verticalscaling
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: mysql-cluster
@@ -297,7 +302,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: mysql-volumeexpansion
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: mysql-cluster
@@ -320,7 +325,7 @@ kubectl apply -f examples/mysql/volumeexpand.yaml
 After the operation, you will see the volume size of the specified component is increased to `30Gi` in this case. Once you've done the change, check the `status.conditions` field of the PVC to see if the resize has completed.
 
 ```bash
-kubectl get pvc -l app.kubernetes.io/instance=mysql-cluster -n default
+kubectl get pvc -l app.kubernetes.io/instance=mysql-cluster -n demo
 ```
 
 #### Volume expansion using Cluster API
@@ -355,7 +360,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: mysql-restart
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: mysql-cluster
@@ -381,7 +386,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: mysql-stop
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: mysql-cluster
@@ -418,7 +423,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: mysql-start
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: mysql-cluster
@@ -496,7 +501,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: mysql-reconfiguring
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: mysql-cluster
@@ -543,7 +548,7 @@ apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: Backup
 metadata:
   name: mysql-cluster-backup
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the backup method name that is defined in the backup policy.
   # - xtrabackup
@@ -569,7 +574,7 @@ To restore a new cluster from a Backup:
 1. Get the list of accounts and their passwords from the backup:
 
 ```bash
-kubectl get backup mysql-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
+kubectl get backup -n demo mysql-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
 ```
 
 1. Update `examples/mysql/restore.yaml` and set placeholder `<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
@@ -580,9 +585,9 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: mysql-cluster-restore
-  namespace: default
+  namespace: demo
   annotations:
-    kubeblocks.io/restore-from-backup: '{"mysql":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"mysql-cluster-backup","namespace":"default","volumeRestorePolicy":"Parallel"}}'
+    kubeblocks.io/restore-from-backup: '{"mysql":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"mysql-cluster-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
   terminationPolicy: Delete
   componentSpecs:
@@ -626,7 +631,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: mysql-expose-enable
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the type of this operation.
   type: Expose
@@ -668,7 +673,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: mysql-expose-disable
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: mysql-cluster
@@ -764,7 +769,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   generateName: mysql-rebuildinstance
-  namespace: default
+  namespace: demo
 spec:
   # Operation type is RebuildInstance
   type: RebuildInstance
@@ -800,7 +805,7 @@ Or you can follow the steps in [How to install the Prometheus Operator](../docs/
 You can retrieve the `scrapePath` and `scrapePort` from pod's exporter container.
 
 ```bash
-kubectl get po mysql-cluster-mysql-0 -oyaml | yq '.spec.containers[] | select(.name=="mysql-exporter") | .ports '
+kubectl get po -n demo mysql-cluster-mysql-0 -oyaml | yq '.spec.containers[] | select(.name=="mysql-exporter") | .ports '
 ```
 
 And the expected output is like:
@@ -855,7 +860,7 @@ kubectl apply -f examples/mysql/pod-monitor.yaml
 
 Login to the Grafana dashboard and import the dashboard.
 
-> [!Note]
+> [!NOTE]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
 
 ### Delete
@@ -863,9 +868,9 @@ Login to the Grafana dashboard and import the dashboard.
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster mysql-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo mysql-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster mysql-cluster
+kubectl delete cluster -n demo mysql-cluster
 ```
 
 ### Manage MySQL Cluster using Orchestrator
@@ -886,7 +891,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: myorc
-  namespace: default
+  namespace: demo
 spec:
   clusterDef: orchestrator
   topology: raft
@@ -932,7 +937,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: mysql-cluster
-  namespace: default
+  namespace: demo
 spec:
   terminationPolicy: Delete
   componentSpecs:
@@ -958,7 +963,7 @@ spec:
                 storage: 20Gi
       serviceRefs:
         - name: orchestrator
-          namespace: default # set to your orchestrator cluster namespace
+          namespace: demo # set to your orchestrator cluster namespace
           clusterServiceSelector:
             cluster:  myorc  # set to your orchestrator cluster name
             service:

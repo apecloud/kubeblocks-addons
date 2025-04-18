@@ -8,7 +8,7 @@ This example assumes that you have a Kubernetes cluster installed and running, a
 
 Also, this example requires kubeblocks installed and running. Here is the steps to install kubeblocks, please replace "`$kb_version`" with the version you want to use.
 ```bash
-# Add Helm repo 
+# Add Helm repo
 helm repo add kubeblocks https://apecloud.github.io/helm-charts
 # If github is not accessible or very slow for you, please use following repo instead
 helm repo add kubeblocks https://jihulab.com/api/v4/projects/85949/packages/helm/stable
@@ -30,13 +30,34 @@ kubectl create -f https://jihulab.com/api/v4/projects/98723/packages/generic/kub
 helm install kubeblocks kubeblocks/kubeblocks --namespace kb-system --create-namespace --version="$kb_version"
 ```
 Enable llm
+```bash
+# Add Helm repo
+helm repo add kubeblocks-addons https://apecloud.github.io/helm-charts
+# If github is not accessible or very slow for you, please use following repo instead
+helm repo add kubeblocks-addons https://jihulab.com/api/v4/projects/150246/packages/helm/stable
+# Update helm repo
+helm repo update
+
+# Enable llm
+helm upgrade -i kb-addon-llm kubeblocks-addons/llm --version $kb_version -n kb-system
+```
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
+
+## Examples
+
+### Create
+Create a llm cluster with specified cluster definition
 ```yaml
 # cat examples/llm/cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: llm-cluster
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the ClusterDefinition to use when creating a Cluster.
   clusterDefinitionRef: vllm
@@ -83,7 +104,7 @@ apiVersion: apps.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: llm-restart
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: llm-cluster
@@ -107,7 +128,7 @@ apiVersion: apps.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: llm-stop
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: llm-cluster
@@ -127,7 +148,7 @@ apiVersion: apps.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: llm-start
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: llm-cluster
@@ -142,7 +163,7 @@ kubectl apply -f examples/llm/start.yaml
 ### Delete
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 ```bash
-kubectl patch cluster llm-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo llm-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster llm-cluster
+kubectl delete cluster -n demo llm-cluster
 ```

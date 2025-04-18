@@ -2,9 +2,9 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: redis-replication-restore
-  namespace: default
+  namespace: demo
   annotations:
-    kubeblocks.io/restore-from-backup: '{"redis":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"redis-replication-backup","namespace":"default","volumeRestorePolicy":"Parallel"}}'
+    kubeblocks.io/restore-from-backup: '{"redis":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"redis-replication-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
   terminationPolicy: Delete
   clusterDef: redis

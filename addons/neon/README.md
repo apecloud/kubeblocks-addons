@@ -14,7 +14,7 @@ This example assumes that you have a Kubernetes cluster installed and running, a
 
 Also, this example requires kubeblocks installed and running. Here is the steps to install kubeblocks, please replace "`$kb_version`" with the version you want to use.
 ```bash
-# Add Helm repo 
+# Add Helm repo
 helm repo add kubeblocks https://apecloud.github.io/helm-charts
 # If github is not accessible or very slow for you, please use following repo instead
 helm repo add kubeblocks https://jihulab.com/api/v4/projects/85949/packages/helm/stable
@@ -38,13 +38,44 @@ helm install kubeblocks kubeblocks/kubeblocks --namespace kb-system --create-nam
 
 Enable neon
 
+```bash
+# Add Helm repo
+helm repo add kubeblocks-addons https://apecloud.github.io/helm-charts
+# If github is not accessible or very slow for you, please use following repo instead
+helm repo add kubeblocks-addons https://jihulab.com/api/v4/projects/150246/packages/helm/stable
+# Update helm repo
+helm repo update
+
+# Enable neon
+helm upgrade -i kb-addon-neon kubeblocks-addons/neon --version $kb_version -n kb-system
+
+# Add Helm repo
+helm repo add kubeblocks-applications https://apecloud.github.io/helm-charts
+# If github is not accessible or very slow for you, please use following repo instead
+helm repo add kubeblocks-applications https://jihulab.com/api/v4/projects/152630/packages/helm/stable
+# Update helm repo
+helm repo update
+
+# Install cert-manager
+helm upgrade -i cert-manager kubeblocks-applications/cert-manager --version v1.14.2 -n cert-manager
+```
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
+
+## Examples
+
+### Create
+Create a neon cluster with specified cluster definition.
 ```yaml
 # cat examples/neon/cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: neon-cluster
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the ClusterDefinition to use when creating a Cluster.
   clusterDefinitionRef: neon
@@ -118,7 +149,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: compute-node-config
-  namespace: default
+  namespace: demo
 data:
   compute.sh: |-
     #!/bin/bash
@@ -133,7 +164,7 @@ data:
     sleep 1;
     done
     echo "Page server is ready."
-    
+
     echo "Create a tenant and timeline"
     if [ -z "$TENANT" ]; then
     PARAMS=(
@@ -147,7 +178,7 @@ data:
     else
     tenant_id=$TENANT
     fi
-    
+
     if [ -z "$TIMELINE" ]; then
     PARAMS=(
     -sb
@@ -158,18 +189,18 @@ data:
     )
     result=$(curl "${PARAMS[@]}")
     echo $result | jq .
-    
+
     echo "Overwrite tenant id and timeline id in spec file"
     tenant_id=$(echo ${result} | jq -r .tenant_id)
     timeline_id=$(echo ${result} | jq -r .timeline_id)
-    
+
     else
-    
+
     #If not empty CREATE_BRANCH
     #we create branch with given ancestor_timeline_id as TIMELINE
-    
+
     if [ ! -z "$CREATE_BRANCH" ]; then
-    
+
     PARAMS=(
     -sb
     -X POST
@@ -177,27 +208,27 @@ data:
     -d "{\"tenant_id\":\"${tenant_id}\", \"pg_version\": ${PG_VERSION}, \"ancestor_timeline_id\":\"${TIMELINE}\"}"
     "http://${PAGESERVER}:9898/v1/tenant/${tenant_id}/timeline/"
     )
-    
+
     result=$(curl "${PARAMS[@]}")
     echo $result | jq .
-    
+
     echo "Overwrite tenant id and timeline id in spec file"
     tenant_id=$(echo ${result} | jq -r .tenant_id)
     timeline_id=$(echo ${result} | jq -r .timeline_id)
-    
+
     else
     timeline_id=$TIMELINE
     fi #end if CREATE_BRANCH
-    
+
     fi
-    
+
     sed "s/TENANT_ID/${tenant_id}/" ${SPEC_FILE_ORG} > ${SPEC_FILE}
     sed -i "s/TIMELINE_ID/${timeline_id}/" ${SPEC_FILE}
     sed -i "s/PAGESERVER_SPEC/${PAGESERVER}/" ${SPEC_FILE}
     sed -i "s/SAFEKEEPERS_SPEC/${SAFEKEEPERS}/" ${SPEC_FILE}
-    
+
     cat ${SPEC_FILE}
-    
+
     echo "Start compute node"
     whoami
     echo $PWD
@@ -205,13 +236,13 @@ data:
     mkdir data
     fi
     ls -lah /data
-    
+
     if [ ! -d "/data/pgdata" ]; then
     mkdir -p /data/pgdata
     fi
     chown -R postgres:postgres /data
     nohup su - postgres -c "/usr/local/bin/compute_ctl --pgdata /data/pgdata -C 'postgresql://cloud_admin@localhost:55432/postgres' -b /usr/local/bin/postgres -S ${SPEC_FILE}" &
-  
+
   entrypoint.sh: |-
     #!/bin/sh
     cd /opt/neondatabase-neon
@@ -220,14 +251,14 @@ data:
     while true; do
     sleep 1000
     done
-  
+
   spec.json: |-
     {
         "format_version": 1.0,
-    
+
         "timestamp": "2022-10-12T18:00:00.000Z",
         "operation_uuid": "0f657b36-4b0f-4a2d-9c2e-1dcd615e7d8c",
-    
+
         "cluster": {
           "cluster_id": "cluster1",
           "name": "Trolladyngja",
@@ -359,17 +390,17 @@ data:
             }
           ]
         },
-    
+
         "delta_operations": [
         ]
     }
   spec_prep_docker.json: |-
     {
         "format_version": 1.0,
-    
+
         "timestamp": "2022-10-12T18:00:00.000Z",
         "operation_uuid": "0f657b36-4b0f-4a2d-9c2e-1dcd615e7d8c",
-    
+
         "cluster": {
           "cluster_id": "cluster1",
           "name": "Trolladyngja",
@@ -501,7 +532,7 @@ data:
             }
           ]
         },
-    
+
         "delta_operations": [
         ]
     }
@@ -510,7 +541,7 @@ apiVersion: vm.neon.tech/v1
 kind: VirtualMachine
 metadata:
   name: vm-compute-node
-  namespace: default
+  namespace: demo
   annotations:
     # In this example, these bounds aren't necessary. So... here's what they look like :)
     autoscaling.neon.tech/bounds: '{ "min": { "cpu": 0.25, "mem": "1Gi" }, "max": { "cpu": 1.25, "mem": "5Gi" } }'
@@ -570,7 +601,7 @@ Vertical scaling up or down NeonVM specified cpu or memory.
 
 View NeonVM CPU/MEMORY information.
 ```bash
-kubectl get neonvm -n default
+kubectl get neonvm -n demo
 NAME              CPUS   MEMORY   POD                     EXTRAIP   STATUS    AGE
 vm-compute-node   1      1Gi      vm-compute-node-g8wsb             Running   5m22s
 ```
@@ -578,23 +609,23 @@ vm-compute-node   1      1Gi      vm-compute-node-g8wsb             Running   5m
 Vertical scaling NeonVM CPU
 ```bash
 
-kubectl patch neonvm -n default vm-compute-node --type='json' -p='[{"op": "replace", "path": "/spec/guest/cpus/use", "value":2}]'
+kubectl patch neonvm -n demo vm-compute-node --type='json' -p='[{"op": "replace", "path": "/spec/guest/cpus/use", "value":2}]'
 ```
 View NeonVM CPU information after Vertical scaling.
 ```bash
-kubectl get neonvm -n default
+kubectl get neonvm -n demo
 NAME              CPUS   MEMORY   POD                     EXTRAIP   STATUS    AGE
 vm-compute-node   2      1Gi      vm-compute-node-g8wsb             Running   5m45s
 ```
 
-Vertical scaling NeonVM MEMORY 
+Vertical scaling NeonVM MEMORY
 ```bash
 kubectl patch neonvm vm-compute-node --type='json' -p='[{"op": "replace", "path": "/spec/guest/memorySlots/use", "value":4}]'
 ```
 
 View NeonVM MEMORY information after Vertical scaling.
 ```bash
-kubectl get neonvm -n default
+kubectl get neonvm -n demo
 NAME              CPUS   MEMORY   POD                     EXTRAIP   STATUS    AGE
 vm-compute-node   2      4Gi      vm-compute-node-g8wsb             Running   10m
 ```
@@ -603,7 +634,7 @@ vm-compute-node   2      4Gi      vm-compute-node-g8wsb             Running   10
 ### Delete
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 ```bash
-kubectl patch cluster neon-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo neon-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster neon-cluster
+kubectl delete cluster -n demo neon-cluster
 ```

@@ -2,7 +2,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: ServiceDescriptor
 metadata:
   name: zookeeper-sd
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the type or nature of the service.
   # Should represent a well-known application cluster type, such as {mysql, redis, zookeeper}.
