@@ -1,18 +1,18 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: es-multinode
+  name: es-multinode-708
   namespace: demo
 spec:
   terminationPolicy: Delete
   componentSpecs:
     - name: data
-      componentDef: elasticsearch-8
-      serviceVersion: 8.8.2
+      componentDef: elasticsearch-7
+      serviceVersion: 7.8.1
       configs:
         - name: es-cm
           variables:
-            # use key `roles` to specify roles this component assume
+            version: 7.8.1
             roles: data,ingest,transform
       replicas: 3
       disableExporter: false
@@ -32,12 +32,12 @@ spec:
               requests:
                 storage: 20Gi
     - name: master
-      componentDef: elasticsearch-8
-      serviceVersion: 8.8.2
+      componentDef: elasticsearch-7
+      serviceVersion: 7.8.1
       configs:
         - name: es-cm
           variables:
-            # use key `roles` to specify roles this component assume
+            version: 7.8.1
             roles: master
       replicas: 3
       disableExporter: false

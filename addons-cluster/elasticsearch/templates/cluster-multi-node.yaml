@@ -5,17 +5,22 @@ metadata:
   name: {{ include "kblib.clusterName" . }}
   namespace: {{ .Release.Namespace }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
-  annotations:
-    kubeblocks.io/extra-env: '{"mdit-roles":"master,data,ingest,transform","mode":"{{ .Values.mode }}"}'
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   componentSpecs:
-    - name: mdit
-      componentDef: elasticsearch-{{ include "elasticsearch.majorVersion" . }}
-      serviceVersion: {{ include "elasticsearch.version" . }}
-      {{- include "elasticsearch-cluster.schedulingPolicy" . | indent 6 }}
-      {{- include "elasticsearch-cluster.replicaCount" . | indent 6 }}
-      {{- include "kblib.componentMonitor" . | indent 6 }}
-      {{- include "kblib.componentResources" . | indent 6 }}
-      {{- include "kblib.componentStorages" . | indent 6 }}
+  {{- range $cmpName, $roles := .Values.roles }}
+    - name: {{ $cmpName }}
+      componentDef: elasticsearch-{{ include "elasticsearch.majorVersion" $ }}
+      serviceVersion: {{ include "elasticsearch.version" $ }}
+      configs:
+        - name: es-cm
+          variables:
+            version: {{ include "elasticsearch.version" $ }}
+            roles: {{ $roles }}
+      {{- include "elasticsearch-cluster.schedulingPolicy" $ | indent 6 }}
+      {{- include "elasticsearch-cluster.replicaCount" $ | indent 6 }}
+      {{- include "kblib.componentMonitor" $ | indent 6 }}
+      {{- include "kblib.componentResources" $ | indent 6 }}
+      {{- include "kblib.componentStorages" $ | indent 6 }}
+  {{- end }}
 {{- end }}
