@@ -112,7 +112,9 @@ spec:
             port:
               name: redis-sentinel
               option: Required
-      expression: {{ `{{if ne (index . "REDIS_SENTINEL_HOST_NETWORK_PORT") ""}}{{.REDIS_SENTINEL_HOST_NETWORK_PORT}}{{else}}26379{{end}}` | toYaml }}
+    - name: SENTINEL_SERVICE_PORT
+      value: "26379"
+      expression: {{ `{{if ne (index . "REDIS_SENTINEL_HOST_NETWORK_PORT") ""}}{{.REDIS_SENTINEL_HOST_NETWORK_PORT}}{{else}}{{.SENTINEL_SERVICE_PORT}}{{end}}` | toYaml }}
   lifecycleActions:
     accountProvision:
       customHandler:
@@ -138,7 +140,7 @@ spec:
           mountPath: /scripts
       env:
         - name: SENTINEL_SERVICE_PORT
-          value: "$(REDIS_SENTINEL_HOST_NETWORK_PORT)"
+          value: "$(SENTINEL_SERVICE_PORT)"
       command:
         - /bin/bash
       args:
