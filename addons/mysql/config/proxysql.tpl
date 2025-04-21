@@ -99,11 +99,11 @@ mysql_servers=
 (
   {{- range $index, $host := $hosts }}
   {
-		hostgroup_id: 1,
+    hostgroup_id: 1,
     hostname: "{{ $host }}",
     port: {{ $.MYSQL_PORT }},
     weight: 1,
-		use_ssl: 0
+    use_ssl: 0
   }{{ if not (eq $index (sub (len $hosts) 1)) }},{{ end }}
   {{- end }}
 )
