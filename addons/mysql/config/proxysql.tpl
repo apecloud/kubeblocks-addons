@@ -1,27 +1,3 @@
-{{- $clusterName := $.cluster.metadata.name }}
-{{- $namespace := $.cluster.metadata.namespace }}
-
-{{- $mysql_component := fromJson "{}" }}
-{{- range $i, $e := $.cluster.spec.componentSpecs }}
-  {{- if index $e "componentDef" }}
-    {{- if hasPrefix "mysql" $e.componentDef  }}
-      {{- $mysql_component = $e }}
-    {{- end }}
-  {{- end }}
-{{- end }}
-{{- $mysql_replicas := $mysql_component.replicas | int }}
-
-{{- $proxysql_component := fromJson "{}" }}
-{{- range $i, $e := $.cluster.spec.componentSpecs }}
-  {{- if index $e "componentDef" }}
-    {{- if hasPrefix "proxysql" $e.componentDef  }}
-      {{- $proxysql_component = $e }}
-    {{- end }}
-  {{- end }}
-{{- end }}
-{{- $proxy_replicas := $proxysql_component.replicas | int }}
-
-
 datadir="/var/lib/proxysql"
 admin_variables=
 {
@@ -107,18 +83,27 @@ mysql_query_rules=
 )
 
 proxysql_servers=
+{{- $hosts := splitList "," .PROXYSQL_FQDNS -}}
 (
-{{- range $i, $e := until $proxy_replicas }}
-  {{- $service_host := printf "%s-%s-proxy-ordinal-%d.%s" $clusterName $proxysql_component.name $i $namespace }}
-  {{- if eq $i (sub $proxy_replicas 1) }}
-    { hostname = "{{$service_host}}", port = 6032, weight = 1 }
-  {{- else }}
-    { hostname = "{{$service_host}}", port = 6032, weight = 1 },
+  {{- range $index, $host := $hosts }}
+  {
+    hostname: "{{ $host }}",
+    port: 6032,
+    weight: 1
+  }{{ if not (eq $index (sub (len $hosts) 1)) }},{{ end }}
   {{- end }}
-{{- end }}
 )
 
 mysql_servers=
+{{- $hosts := splitList "," .MYSQL_FQDNS -}}
 (
-${MYSQL_SERVERS}
+  {{- range $index, $host := $hosts }}
+  {
+    hostgroup_id: 1,
+    hostname: "{{ $host }}",
+    port: {{ $.MYSQL_PORT }},
+    weight: 1,
+    use_ssl: 0
+  }{{ if not (eq $index (sub (len $hosts) 1)) }},{{ end }}
+  {{- end }}
 )

@@ -17,6 +17,7 @@ spec:
       template: proxysql-config
       namespace: {{ .Release.Namespace }}
       volumeName: proxy-config
+      restartOnFileChange: true
   scripts:
     - name: proxysql-scripts
       template: proxysql-scripts
@@ -42,6 +43,7 @@ spec:
           - name: db
             port: 6033
             targetPort: db
+
   systemAccounts:
     - name: admin
       initAccount: true
@@ -66,7 +68,7 @@ spec:
     - name: PROXYSQL_CLUSTER_PASSWORD
       valueFrom:
         credentialVarRef:
-          name: admin
+          name: cluster
           password: Required
     - name: PROXYSQL_MONITOR_PASSWORD
       valueFrom:
@@ -76,19 +78,22 @@ spec:
           optional: false
           password: Required
 
-    - name: CLUSTER_NAME
-      valueFrom:
-        clusterVarRef:
-          clusterName: Required
     - name: CLUSTER_NAMESPACE
       valueFrom:
         clusterVarRef:
           namespace: Required
-    - name: COMPONENT_NAME
+    - name: CLUSTER_COMPONENT_NAME
       valueFrom:
         componentVarRef:
           optional: false
           componentName: Required
+    - name: PROXYSQL_FQDNS
+      valueFrom:
+        componentVarRef:
+          name: default
+          optional: false
+          podFQDNs: Required
+
     - name: BACKEND_SERVER
       valueFrom:
         serviceVarRef:
