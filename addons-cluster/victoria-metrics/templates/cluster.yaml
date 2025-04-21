@@ -20,8 +20,8 @@ spec:
         {{- with .Values.vmstorage.env }}
         {{- range $key, $value := . }}
         {{- if $value }}
-          - name: "VM_{{ $key }}"
-            value: {{ $value | quote }}
+        - name: "VM_{{ $key }}"
+          value: {{ $value | quote }}
         {{- end }}
         {{- end }}
         {{- end }}
@@ -42,18 +42,18 @@ spec:
         {{- end }}
       {{- end }}
       env:
-      {{- with .Values.vmselect.env }}
-      {{- range $key, $value := . }}
-      {{- if $value }}
+        {{- with .Values.vmselect.env }}
+        {{- range $key, $value := . }}
+        {{- if $value }}
         - name: "VM_{{ $key }}"
           value: {{ $value | quote }}
-      {{- end }}
-      {{- end }}
-      {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
     - name: vminsert
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.vminsert.replicas | default 1 }}
-      {{- with  .Values.vminsert.resources }}
+      {{- with .Values.vminsert.resources }}
       resources:
         {{- with .limits }}
         limits:
@@ -67,11 +67,11 @@ spec:
         {{- end }}
       {{- end }}
       env:
-      {{- with .Values.vminsert.env }}
-      {{- range $key, $value := . }}
-      {{- if $value }}
+        {{- with .Values.vminsert.env }}
+        {{- range $key, $value := . }}
+        {{- if $value }}
         - name: "VM_{{ $key }}"
           value: {{ $value | quote }}
-      {{- end }}
-      {{- end }}
-      {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
