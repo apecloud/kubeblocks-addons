@@ -37,20 +37,6 @@ spec:
           port:
             name: vminsert
             option: Required
-    - name: SERVICE_PORT
-      value: "{{ .Values.vminsert.servicePort }}"
-    - name: REPLICATION_FACTOR
-      value: "{{ .Values.vminsert.replicationFactor | default "1" }}"
-    - name: MEMORY_ALLOWED_PERCENT
-      value: "{{ .Values.vminsert.memoryAllowedPercent | default "60" }}"
-    - name: MAX_LABELS_PER_TIMESERIES
-      value: "{{ .Values.vminsert.maxLabelsPerTimeseries | default "30" }}"
-    - name: MAX_LABEL_VALUE_LEN
-      value: "{{ .Values.vminsert.maxLabelValueLen | default "16384" }}"
-    - name: DISABLE_REROUTING
-      value: "{{ .Values.vminsert.disableRerouting | default "false" }}"
-    - name: DISABLE_REROUTING_ON_UNAVAILABLE
-      value: "{{ .Values.vminsert.disableReroutingOnUnavailable | default "false" }}"
   runtime:
     automountServiceAccountToken: true
     terminationGracePeriodSeconds: 60
