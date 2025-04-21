@@ -30,11 +30,24 @@ VictoriaMetrics can run in two modes:
 |----------|
 | v1.101.0 |
 
+## Prerequisites
+
+- Kubernetes cluster >= v1.21
+- `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
+- Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
+- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
+- VictoriaMetrics Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
+
 ## Examples
 
 ### Create
 
-Create a tdengine cluster:
+Create a VM cluster:
 
 ```yaml
 # cat examples/victoria-metrics/cluster.yaml
@@ -42,7 +55,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: vmcluster
-  namespace: default
+  namespace: demo
 spec:
   clusterDef: victoria-metrics
   terminationPolicy: Delete
@@ -111,13 +124,13 @@ spec:
 ...
  remoteWrite:
   # http://<vminsert-addr>:8480/insert/{tenantID}/prometheus
-  - url: http://vmcluster-vminsert.default.svc.cluster.local:8480/insert/0/prometheus
+  - url: http://vmcluster-vminsert.demo.svc.cluster.local:8480/insert/0/prometheus
 ...
 ```
 
 #### Add VM as a new DataSource in Grafana
 
-Go to `Grafana-> Connections -> Add New Data Source -> Prometheus` and set connection URL to `http://vmcluster-vmselect.default.svc.cluster.local:8481/select/0/prometheus`,
+Go to `Grafana-> Connections -> Add New Data Source -> Prometheus` and set connection URL to `http://vmcluster-vmselect.demo.svc.cluster.local:8481/select/0/prometheus`,
 where `0` is tenant ID.
 
 ### Horizontal scaling
@@ -132,7 +145,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: vm-scale-out
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: vm-cluster
@@ -164,10 +177,10 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: vm-scale-in
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: vm-cluster-cluster
+  clusterName: vmcluster
   type: HorizontalScaling
   # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
   horizontalScaling:
@@ -246,7 +259,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: vm-vscale
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: vmcluster
@@ -278,7 +291,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: vm-volumeexpansion
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: vmcluster
@@ -308,7 +321,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: vm-restart-vminsert
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: vmcluster
@@ -337,7 +350,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: vm-stop
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: vmcluster
@@ -359,7 +372,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: vm-start
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: vmcluster
@@ -376,9 +389,9 @@ kubectl apply -f examples/victoria-metrics/start.yaml
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster vmcluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo vmcluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster vmcluster
+kubectl delete cluster -n demo vmcluster
 ```
 
 ## References

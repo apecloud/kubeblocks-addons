@@ -38,6 +38,12 @@ Each Elasticsearch cluster consists of one or more nodes, and each node in a clu
 | 7.x | 7.7.1,7.8.1,7.10.1 |
 | 8.x | 8.1.3, 8.8.2 |
 
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
+
 ## Examples
 
 ### Create
@@ -52,7 +58,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: es-singlenode
-  namespace: default
+  namespace: demo
   annotations:
     # kubeblokcs.io/extra-env is an reserved annotation
     # use 'mode=single-node' to indicate this cluster starts in single-node type.
@@ -112,7 +118,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: es-multinode
-  namespace: default
+  namespace: demo
   annotations:
     kubeblocks.io/extra-env: '{"master-roles":"master", "data-roles": "data", "ingest-roles": "ingest", "transform-roles": "transform"}'
 spec:
@@ -248,7 +254,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: es-scale-out
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: es-multinode
@@ -283,7 +289,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: es-scale-in
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: es-multinode
@@ -347,7 +353,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: elasticsearch-verticalscaling
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: es-multinode
@@ -417,7 +423,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: elasticsearch-volumeexpansion
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: es-multinode
@@ -476,7 +482,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: elasticsearch-restart
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: es-multinode
@@ -506,7 +512,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: elasticsearch-stop
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: es-multinode
@@ -543,7 +549,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: elasticsearch-start
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: es-multinode
@@ -582,7 +588,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: es-expose-enable
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: es-multinode
@@ -633,7 +639,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: es-expose-disable
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: es-multinode
@@ -768,7 +774,7 @@ You can import the dashboard provided by Grafana or create your own dashboard, e
 
 - <https://grafana.com/grafana/dashboards/2322-elasticsearch/>
 
-> [!Note]
+> [!NOTE]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
 
 ### Delete
@@ -776,9 +782,9 @@ You can import the dashboard provided by Grafana or create your own dashboard, e
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster es-multinode -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo es-multinode -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster es-multinode
+kubectl delete cluster -n demo es-multinode
 ```
 
 ## References

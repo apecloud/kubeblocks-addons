@@ -29,6 +29,11 @@ Apache Zookeeper is a centralized service for maintaining configuration informat
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
 - KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
 - Zookeeper Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
@@ -42,7 +47,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: zookeeper-cluster
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
@@ -89,7 +94,7 @@ spec:
                 storage: 20Gi
         # Refers to the name of a volumeMount defined in
         # `componentDefinition.spec.runtime.containers[*].volumeMounts
-        - name: log
+        - name: snapshot-log
           spec:
             # The name of the StorageClass required by the claim.
             # If not specified, the StorageClass annotated with
@@ -99,7 +104,7 @@ spec:
             - ReadWriteOnce
             resources:
               requests:
-                storage: 2Gi
+                storage: 20Gi
 
 ```
 
@@ -119,7 +124,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: zk-scale-out
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: zookeeper-cluster
@@ -143,7 +148,7 @@ kubectl apply -f examples/zookeeper/scale-out.yaml
 And you can check the progress of the scaling operation with following command:
 
 ```bash
-kubectl describe ops zk-scale-out
+kubectl describe -n demo ops zk-scale-out
 ```
 
 > [!WARNING]
@@ -153,13 +158,13 @@ After scaling, cluster server list in Zookeeper configuration file `zoo.cfg` wil
 
 ```text
 # cluster server list
-server.0 = zookeeper-cluster-zookeeper-0.zookeeper-cluster-zookeeper-headless.default.svc.cluster.local:2888:3888:participant
+server.0 = zookeeper-cluster-zookeeper-0.zookeeper-cluster-zookeeper-headless.demo.svc.cluster.local:2888:3888:participant
 server.1
-    = zookeeper-cluster-zookeeper-1.zookeeper-cluster-zookeeper-headless.default.svc.cluster.local:2888:3888:participant
+    = zookeeper-cluster-zookeeper-1.zookeeper-cluster-zookeeper-headless.demo.svc.cluster.local:2888:3888:participant
 server.2
-    = zookeeper-cluster-zookeeper-2.zookeeper-cluster-zookeeper-headless.default.svc.cluster.local:2888:3888:participant
+    = zookeeper-cluster-zookeeper-2.zookeeper-cluster-zookeeper-headless.demo.svc.cluster.local:2888:3888:participant
 server.3
-    = zookeeper-cluster-zookeeper-3.zookeeper-cluster-zookeeper-headless.default.svc.cluster.local:2888:3888:observer
+    = zookeeper-cluster-zookeeper-3.zookeeper-cluster-zookeeper-headless.demo.svc.cluster.local:2888:3888:observer
 ```
 
 Information for `server.3` is added on scaling out.
@@ -174,7 +179,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: zk-scale-in
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: zookeeper-cluster
@@ -220,7 +225,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: zookeeper-verticalscaling
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: zookeeper-cluster
@@ -287,7 +292,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: zookeeper-volumeexpansion
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: zookeeper-cluster
@@ -331,7 +336,7 @@ spec:
                 # specify new size, and make sure it is larger than the current size
                 storage: 30Gi
       volumeClaimTemplates:
-        - name: log
+        - name: snapshot-log
           spec:
             storageClassName: ""
             accessModes:
@@ -352,7 +357,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: zookeeper-restart
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: zookeeper-cluster
@@ -378,7 +383,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: zookeeper-stop
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: zookeeper-cluster
@@ -416,7 +421,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: zookeeper-start
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: zookeeper-cluster
@@ -454,7 +459,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: zookeeper-reconfiguring
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: zookeeper-cluster
@@ -504,7 +509,7 @@ apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: Backup
 metadata:
   name: zk-cluster-backup
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the backup method name that is defined in the backup policy.
   # - zoocreeper
@@ -524,7 +529,7 @@ kubectl apply -f examples/zookeeper/backup.yaml
 After the operation, you will see a `Backup` is created
 
 ```bash
-kubectl get backup -l app.kubernetes.io/instance=zookeeper-cluster
+kubectl get backup -n demo -l app.kubernetes.io/instance=zookeeper-cluster
 ```
 
 and the status of the backup goes from `Running` to `Completed` after a while. And the backup data will be pushed to your specified `BackupRepo`.
@@ -539,10 +544,10 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: zk-cluster-restore
-  namespace: default
+  namespace: demo
   annotations:
     # zk-cluster-backup is the backup name.
-    kubeblocks.io/restore-from-backup: '{"zookeeper":{"name":"zk-cluster-backup","namespace":"default","volumeRestorePolicy":"Parallel"}}'
+    kubeblocks.io/restore-from-backup: '{"zookeeper":{"name":"zk-cluster-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
   terminationPolicy: Delete
   componentSpecs:
@@ -566,14 +571,14 @@ spec:
             resources:
               requests:
                 storage: 20Gi
-        - name: log
+        - name: snapshot-log
           spec:
             storageClassName: ""
             accessModes:
               - ReadWriteOnce
             resources:
               requests:
-                storage: 2Gi
+                storage: 20Gi
 ```
 
 ```bash
@@ -643,7 +648,7 @@ It sets path to `/metrics` and port to `metrics` (for container port `7000`).
 
 Login to the Grafana dashboard and import the dashboard, e.g. using etcd dashboard from [Grafana](https://grafana.com/grafana/dashboards).
 
-> [!Note]
+> [!NOTE]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
 
 ### Delete
@@ -651,7 +656,7 @@ Login to the Grafana dashboard and import the dashboard, e.g. using etcd dashboa
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster zookeeper-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo zookeeper-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster zookeeper-cluster
+kubectl delete cluster -n demo zookeeper-cluster
 ```

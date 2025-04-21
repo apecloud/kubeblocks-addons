@@ -4,39 +4,22 @@ Neon is a serverless open-source alternative to AWS Aurora Postgres. It separate
 
 ## Prerequisites
 
-Neon Auto-scaling requires virtualization technology, requiring the host to have virtualization turned on.
+- Kubernetes cluster >= v1.21
+- `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
+- Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
+- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
+- Neon Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
 
-NeonVM and Autoscaling are not expected to work outside Linux x86.
+  ```bash
+  kubectl create ns demo
+  ```
 
-NeonVM deployment relies on cert-manager.
+## Examples
 
-This example assumes that you have a Kubernetes cluster installed and running, and that you have installed the kubectl command line tool and helm somewhere in your path. Please see the [getting started](https://kubernetes.io/docs/setup/)  and [Installing Helm](https://helm.sh/docs/intro/install/) for installation instructions for your platform.
+### Create
 
-Also, this example requires kubeblocks installed and running. Here is the steps to install kubeblocks, please replace "`$kb_version`" with the version you want to use.
-```bash
-# Add Helm repo 
-helm repo add kubeblocks https://apecloud.github.io/helm-charts
-# If github is not accessible or very slow for you, please use following repo instead
-helm repo add kubeblocks https://jihulab.com/api/v4/projects/85949/packages/helm/stable
-
-# Update helm repo
-helm repo update
-
-# Get the versions of KubeBlocks and select the one you want to use
-helm search repo kubeblocks/kubeblocks --versions
-# If you want to obtain the development versions of KubeBlocks, Please add the '--devel' parameter as the following command
-helm search repo kubeblocks/kubeblocks --versions --devel
-
-# Create dependent CRDs
-kubectl create -f https://github.com/apecloud/kubeblocks/releases/download/v$kb_version/kubeblocks_crds.yaml
-# If github is not accessible or very slow for you, please use following command instead
-kubectl create -f https://jihulab.com/api/v4/projects/98723/packages/generic/kubeblocks/v$kb_version/kubeblocks_crds.yaml
-
-# Install KubeBlocks
-helm install kubeblocks kubeblocks/kubeblocks --namespace kb-system --create-namespace --version="$kb_version"
-```
-
-Enable neon
+Create a neon cluster with specified cluster definition.
 
 ```yaml
 # cat examples/neon/cluster.yaml
@@ -44,7 +27,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: neon-cluster
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the ClusterDefinition to use when creating a Cluster.
   clusterDefinitionRef: neon
@@ -118,13 +101,13 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: compute-node-config
-  namespace: default
+  namespace: demo
 data:
   compute.sh: |-
     #!/bin/bash
     set -ex
-    export PAGESERVER=neon-cluster-neon-pageserver-headless.default.svc.cluster.local
-    export SAFEKEEPERS=neon-cluster-neon-safekeeper-headless.default.svc.cluster.local:5454
+    export PAGESERVER=neon-cluster-neon-pageserver-headless.demo.svc.cluster.local
+    export SAFEKEEPERS=neon-cluster-neon-safekeeper-headless.demo.svc.cluster.local:5454
     SPEC_FILE_ORG=/spec_prep_docker.json
     SPEC_FILE=/spec.json
     PG_VERSION=14
@@ -133,7 +116,7 @@ data:
     sleep 1;
     done
     echo "Page server is ready."
-    
+
     echo "Create a tenant and timeline"
     if [ -z "$TENANT" ]; then
     PARAMS=(
@@ -147,7 +130,7 @@ data:
     else
     tenant_id=$TENANT
     fi
-    
+
     if [ -z "$TIMELINE" ]; then
     PARAMS=(
     -sb
@@ -158,18 +141,18 @@ data:
     )
     result=$(curl "${PARAMS[@]}")
     echo $result | jq .
-    
+
     echo "Overwrite tenant id and timeline id in spec file"
     tenant_id=$(echo ${result} | jq -r .tenant_id)
     timeline_id=$(echo ${result} | jq -r .timeline_id)
-    
+
     else
-    
+
     #If not empty CREATE_BRANCH
     #we create branch with given ancestor_timeline_id as TIMELINE
-    
+
     if [ ! -z "$CREATE_BRANCH" ]; then
-    
+
     PARAMS=(
     -sb
     -X POST
@@ -177,27 +160,27 @@ data:
     -d "{\"tenant_id\":\"${tenant_id}\", \"pg_version\": ${PG_VERSION}, \"ancestor_timeline_id\":\"${TIMELINE}\"}"
     "http://${PAGESERVER}:9898/v1/tenant/${tenant_id}/timeline/"
     )
-    
+
     result=$(curl "${PARAMS[@]}")
     echo $result | jq .
-    
+
     echo "Overwrite tenant id and timeline id in spec file"
     tenant_id=$(echo ${result} | jq -r .tenant_id)
     timeline_id=$(echo ${result} | jq -r .timeline_id)
-    
+
     else
     timeline_id=$TIMELINE
     fi #end if CREATE_BRANCH
-    
+
     fi
-    
+
     sed "s/TENANT_ID/${tenant_id}/" ${SPEC_FILE_ORG} > ${SPEC_FILE}
     sed -i "s/TIMELINE_ID/${timeline_id}/" ${SPEC_FILE}
     sed -i "s/PAGESERVER_SPEC/${PAGESERVER}/" ${SPEC_FILE}
     sed -i "s/SAFEKEEPERS_SPEC/${SAFEKEEPERS}/" ${SPEC_FILE}
-    
+
     cat ${SPEC_FILE}
-    
+
     echo "Start compute node"
     whoami
     echo $PWD
@@ -205,13 +188,13 @@ data:
     mkdir data
     fi
     ls -lah /data
-    
+
     if [ ! -d "/data/pgdata" ]; then
     mkdir -p /data/pgdata
     fi
     chown -R postgres:postgres /data
     nohup su - postgres -c "/usr/local/bin/compute_ctl --pgdata /data/pgdata -C 'postgresql://cloud_admin@localhost:55432/postgres' -b /usr/local/bin/postgres -S ${SPEC_FILE}" &
-  
+
   entrypoint.sh: |-
     #!/bin/sh
     cd /opt/neondatabase-neon
@@ -220,14 +203,14 @@ data:
     while true; do
     sleep 1000
     done
-  
+
   spec.json: |-
     {
         "format_version": 1.0,
-    
+
         "timestamp": "2022-10-12T18:00:00.000Z",
         "operation_uuid": "0f657b36-4b0f-4a2d-9c2e-1dcd615e7d8c",
-    
+
         "cluster": {
           "cluster_id": "cluster1",
           "name": "Trolladyngja",
@@ -329,7 +312,7 @@ data:
             },
             {
               "name": "neon.safekeepers",
-              "value": "neon-cluster-neon-safekeeper-0.neon-cluster-neon-safekeeper-headless.default.svc.cluster.local,neon-cluster-neon-safekeeper-1.neon-cluster-neon-safekeeper-headless.default.svc.cluster.local,neon-cluster-neon-safekeeper-2.neon-cluster-neon-safekeeper-headless.default.svc.cluster.local:5454",
+              "value": "neon-cluster-neon-safekeeper-0.neon-cluster-neon-safekeeper-headless.demo.svc.cluster.local,neon-cluster-neon-safekeeper-1.neon-cluster-neon-safekeeper-headless.demo.svc.cluster.local,neon-cluster-neon-safekeeper-2.neon-cluster-neon-safekeeper-headless.demo.svc.cluster.local:5454",
               "vartype": "string"
             },
             {
@@ -344,7 +327,7 @@ data:
             },
             {
               "name": "neon.pageserver_connstring",
-              "value": "host=neon-cluster-neon-pageserver-0.neon-cluster-neon-pageserver-headless.default.svc.cluster.local port=6400",
+              "value": "host=neon-cluster-neon-pageserver-0.neon-cluster-neon-pageserver-headless.demo.svc.cluster.local port=6400",
               "vartype": "string"
             },
             {
@@ -359,17 +342,17 @@ data:
             }
           ]
         },
-    
+
         "delta_operations": [
         ]
     }
   spec_prep_docker.json: |-
     {
         "format_version": 1.0,
-    
+
         "timestamp": "2022-10-12T18:00:00.000Z",
         "operation_uuid": "0f657b36-4b0f-4a2d-9c2e-1dcd615e7d8c",
-    
+
         "cluster": {
           "cluster_id": "cluster1",
           "name": "Trolladyngja",
@@ -501,7 +484,7 @@ data:
             }
           ]
         },
-    
+
         "delta_operations": [
         ]
     }
@@ -510,7 +493,7 @@ apiVersion: vm.neon.tech/v1
 kind: VirtualMachine
 metadata:
   name: vm-compute-node
-  namespace: default
+  namespace: demo
   annotations:
     # In this example, these bounds aren't necessary. So... here's what they look like :)
     autoscaling.neon.tech/bounds: '{ "min": { "cpu": 0.25, "mem": "1Gi" }, "max": { "cpu": 1.25, "mem": "5Gi" } }'
@@ -536,8 +519,8 @@ spec:
             set -ex
             trap : TERM INT
             whoami
-            export PAGESERVER=neon-cluster-neon-pageserver-headless.default.svc.cluster.local
-            export SAFEKEEPERS=neon-cluster-neon-safekeeper-headless.default.svc.cluster.local:5454
+            export PAGESERVER=neon-cluster-neon-pageserver-headless.demo.svc.cluster.local
+            export SAFEKEEPERS=neon-cluster-neon-safekeeper-headless.demo.svc.cluster.local:5454
             cp scripts/* ./
             chmod +x compute.sh entrypoint.sh spec.json spec_prep_docker.json
             ./compute.sh
@@ -564,46 +547,53 @@ spec:
 kubectl apply -f examples/neon/cluster.yaml
 ```
 
-
 ### Vertical scaling NeonVM
+
 Vertical scaling up or down NeonVM specified cpu or memory.
 
 View NeonVM CPU/MEMORY information.
+
 ```bash
-kubectl get neonvm -n default
+kubectl get neonvm -n demo
 NAME              CPUS   MEMORY   POD                     EXTRAIP   STATUS    AGE
 vm-compute-node   1      1Gi      vm-compute-node-g8wsb             Running   5m22s
 ```
 
 Vertical scaling NeonVM CPU
+
 ```bash
 
-kubectl patch neonvm -n default vm-compute-node --type='json' -p='[{"op": "replace", "path": "/spec/guest/cpus/use", "value":2}]'
+kubectl patch neonvm -n demo vm-compute-node --type='json' -p='[{"op": "replace", "path": "/spec/guest/cpus/use", "value":2}]'
 ```
+
 View NeonVM CPU information after Vertical scaling.
+
 ```bash
-kubectl get neonvm -n default
+kubectl get neonvm -n demo
 NAME              CPUS   MEMORY   POD                     EXTRAIP   STATUS    AGE
 vm-compute-node   2      1Gi      vm-compute-node-g8wsb             Running   5m45s
 ```
 
-Vertical scaling NeonVM MEMORY 
+Vertical scaling NeonVM MEMORY
+
 ```bash
 kubectl patch neonvm vm-compute-node --type='json' -p='[{"op": "replace", "path": "/spec/guest/memorySlots/use", "value":4}]'
 ```
 
 View NeonVM MEMORY information after Vertical scaling.
+
 ```bash
-kubectl get neonvm -n default
+kubectl get neonvm -n demo
 NAME              CPUS   MEMORY   POD                     EXTRAIP   STATUS    AGE
 vm-compute-node   2      4Gi      vm-compute-node-g8wsb             Running   10m
 ```
 
-
 ### Delete
-If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
-```bash
-kubectl patch cluster neon-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster neon-cluster
+If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
+
+```bash
+kubectl patch cluster -n demo neon-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+
+kubectl delete cluster -n demo neon-cluster
 ```

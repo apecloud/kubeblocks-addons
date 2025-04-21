@@ -2,7 +2,6 @@
 
 MySQL is a widely used, open-source relational database management system (RDBMS)
 
-
 ## Features In KubeBlocks
 
 ### Lifecycle Management
@@ -21,9 +20,9 @@ MySQL is a widely used, open-source relational database management system (RDBMS
 
 | Major Versions | Description |
 |---------------|--------------|
-| 5.7 | 5.7.44     |
-| 8.0 | 8.0.30,8.0.31,8.0.32,8.0.33,8.0.34,8.0.35,8.0.36,8.0.37,8.0.38,8.0.39 |
-| 8.4 | 8.4.0,8.4.1,8.4.2|
+| 5.7 | 5.7.44  |
+| 8.0 | \[8.0.30 ~ 8.0.39\] |
+| 8.4 | 8.4.0 ~ 8.4.2|
 
 ## Prerequisites
 
@@ -32,36 +31,11 @@ MySQL is a widely used, open-source relational database management system (RDBMS
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
 - KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
 - MySQL Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
 
-### Enable MySQL Add-on
-
-If MySQL Addon is not enabled, you can enable it by following the steps below.
-
-#### Using Helm
-
-```bash
-# Add Helm repo
-helm repo add kubeblocks-addons https://apecloud.github.io/helm-charts
-# If github is not accessible or very slow for you, please use following repo instead
-helm repo add kubeblocks-addons https://jihulab.com/api/v4/projects/150246/packages/helm/stable
-# Update helm repo
-helm repo update
-# Search versions of the Addon
-helm search repo kubeblocks/mysql --versions
-# Install the version you want (replace $version with the one you need)
-helm upgrade -i mysql kubeblocks-addons/mysql --version $version -n kb-system
-```
-
-#### Using kbcli
-
-```bash
-# Search Addon
-kbcli addon search mysql
-# Install Addon with the version you want, replace $version with the one you need
-kbcli addon install mysql --version $version
-# To upgrade the addon, you can use the following command
-kbcli addon upgrade mysql --version $version
-```
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
@@ -88,7 +62,7 @@ spec:
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
       # When componentDef is "mysql-8.0",
-      # Valid options are: [8.0.30,8.0.31,8.0.32,8.0.33,8.0.34,8.0.35,8.0.36,8.0.37,8.0.38,8.0.39]
+      # Valid options are: [8.0.30 to 8.0.39]
       serviceVersion: 8.0.35
 ```
 
@@ -113,7 +87,7 @@ After applying the operation, you will see a new pod created and the MySQL clust
 And you can check the progress of the scaling operation with following command:
 
 ```bash
-kubectl describe ops mysql-scale-out
+kubectl describe -n demo ops mysql-scale-out
 ```
 
 #### [Scale-in](scale-in.yaml)
@@ -196,7 +170,7 @@ kubectl apply -f examples/mysql/volumeexpand.yaml
 After the operation, you will see the volume size of the specified component is increased to `30Gi` in this case. Once you've done the change, check the `status.conditions` field of the PVC to see if the resize has completed.
 
 ```bash
-kubectl get pvc -l app.kubernetes.io/instance=mysql-cluster -n default
+kubectl get pvc -l app.kubernetes.io/instance=mysql-cluster -n demo
 ```
 
 #### Volume expansion using Cluster API
@@ -326,7 +300,7 @@ To restore a new cluster from a Backup:
 1. Get the list of accounts and their passwords from the backup:
 
 ```bash
-kubectl get backup mysql-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
+kubectl get backup -n demo mysql-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
 ```
 
 1. Update `examples/mysql/restore.yaml` and set placeholder `<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
@@ -434,7 +408,7 @@ Or you can follow the steps in [How to install the Prometheus Operator](../docs/
 You can retrieve the `scrapePath` and `scrapePort` from pod's exporter container.
 
 ```bash
-kubectl get po mysql-cluster-mysql-0 -oyaml | yq '.spec.containers[] | select(.name=="mysql-exporter") | .ports '
+kubectl get po -n demo mysql-cluster-mysql-0 -oyaml | yq '.spec.containers[] | select(.name=="mysql-exporter") | .ports '
 ```
 
 And the expected output is like:
@@ -457,7 +431,7 @@ kubectl apply -f examples/mysql/pod-monitor.yaml
 
 Login to the Grafana dashboard and import the dashboard.
 
-> [!Note]
+> [!NOTE]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
 
 ### Delete
@@ -465,9 +439,9 @@ Login to the Grafana dashboard and import the dashboard.
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster mysql-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo mysql-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster mysql-cluster
+kubectl delete cluster -n demo mysql-cluster
 ```
 
 ### Manage MySQL Cluster using Orchestrator
@@ -477,11 +451,6 @@ KubeBlocks provides you an alternative to  create a MySQL cluster that uses the 
 - Step 1. Install Orchestrator Addon
 
 Before creating the cluster with Orchestrator, make sure you have installed the Orchestrator addon.
-
-```bash
-
-```
-
 
 - Step 2. Create Orchestrator Cluster
 
@@ -497,14 +466,14 @@ kubectl apply -f examples/mysql/orchestrator.yaml
 kubectl apply -f examples/mysql/cluster-orc.yaml
 ```
 
-#### Switchover(switchover-orc.yaml)
+#### Switchover(switchover.yaml)
 
 You can switchover a specified instance as the new primary or leader of the cluster
 
 ```bash
-kubectl apply -f examples/mysql/switchover-orc.yaml
+kubectl apply -f examples/mysql/switchover.yaml
 ```
 
 ## References
 
-[^1] Orchestrator, https://github.com/openark/orchestrator
+[^1] Orchestrator, <https://github.com/openark/orchestrator>

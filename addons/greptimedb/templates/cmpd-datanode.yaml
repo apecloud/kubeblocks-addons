@@ -16,6 +16,7 @@ spec:
       template: {{ include "greptimedb-datanode.configTemplateName" . }}
       volumeName: datanode-config
       namespace: {{ .Release.Namespace }}
+      restartOnFileChange: true
   vars:
     - name: CLUSTER_NAME
       valueFrom:

@@ -2,7 +2,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: acmysql-cluster-scheduling
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
@@ -34,6 +34,7 @@ spec:
                     app.kubernetes.io/instance: acmysql-cluster
                     apps.kubeblocks.io/component-name: mysql
                 topologyKey: kubernetes.io/hostname
+              weight: 100
             requiredDuringSchedulingIgnoredDuringExecution:
             - labelSelector:
                 matchLabels:

@@ -2,7 +2,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: mariadb-cluster
-  namespace: default
+  namespace: demo
 spec:
   terminationPolicy: Delete
   componentSpecs:

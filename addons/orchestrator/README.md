@@ -23,6 +23,11 @@ Orchestrator is a MySQL high availability and replication management tool, runs 
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
 - KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
 - Orchestrator Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
@@ -38,7 +43,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: orchestrator-cluster
-  namespace: default
+  namespace: demo
 spec:
   terminationPolicy: Delete
   componentSpecs:
@@ -62,7 +67,7 @@ spec:
                 storage: 20Gi
       serviceRefs:
         - name: metadb
-          namespace: default
+          namespace: demo
           clusterServiceSelector:
             cluster: mysqlo-cluster
             credential:
@@ -76,7 +81,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: mysqlo-cluster
-  namespace: default
+  namespace: demo
 spec:
   terminationPolicy: Delete
   clusterDef: apecloud-mysql
@@ -117,7 +122,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: orchestrator-cluster-raft
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
@@ -184,7 +189,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: orc-scale-out
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: orchestrator-cluster
@@ -214,7 +219,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: orc-scale-in
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: orchestrator-cluster
@@ -260,7 +265,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: orchestrator-verticalscaling
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: orchestrator-cluster
@@ -293,7 +298,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: orchestrator-volumeexpansion
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: orchestrator-cluster
@@ -323,7 +328,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: orchestrator-restart
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: orchestrator-cluster
@@ -350,7 +355,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: orchestrator-stop
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: orchestrator-cluster
@@ -372,7 +377,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: orchestrator-start
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: orchestrator-cluster
@@ -389,9 +394,9 @@ kubectl apply -f examples/orchestrator/start.yaml
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster orchestrator-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo orchestrator-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster orchestrator-cluster
+kubectl delete cluster -n demo orchestrator-cluster
 
 # or delete all clusters created in this example
 # you may use the following command:
@@ -401,5 +406,5 @@ kubectl delete cluster orchestrator-cluster
 
 ### Reference
 
-[^1]: Shared Backend, https://github.com/openark/orchestrator/blob/master/docs/deployment-shared-backend.md
-[^2]: Raft, https://github.com/openark/orchestrator/blob/master/docs/deployment-raft.md
+[^1]: Shared Backend, <https://github.com/openark/orchestrator/blob/master/docs/deployment-shared-backend.md>
+[^2]: Raft, <https://github.com/openark/orchestrator/blob/master/docs/deployment-raft.md>

@@ -82,10 +82,12 @@ spec:
       template: loki-tpl
       volumeName: config
       namespace: {{ .Release.Namespace }}
+      restartOnFileChange: true
     - name: loki-runtime-config
       template: loki-runtime-tpl
       volumeName: runtime-config
       namespace: {{ .Release.Namespace }}
+      restartOnFileChange: true
   vars:
     - name: SERVER_HTTP_PORT
       value: {{ .Values.server.httpMetricsPort | quote }}
@@ -95,3 +97,13 @@ spec:
       value: /var/loki/rules
     - name: LOCAL_CHUNKS_DIR
       value: /var/loki/chunks
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.global.clusterDomain}}
+    - name: KB_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: KB_CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required

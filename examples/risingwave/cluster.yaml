@@ -2,7 +2,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: risingwave-cluster
-  namespace: default
+  namespace: demo
 spec:
   terminationPolicy: Delete
   clusterDef: risingwave
@@ -31,13 +31,13 @@ spec:
           value: test-bucket
         # MinIO endpoint
         - name: MINIO_ENDPOINT
-          value: minio-cluster-minio.default.svc.cluster.local:9000
+          value: minio-cluster-minio.demo.svc.cluster.local:9000
         # State store configuration
         - name: RW_STATE_STORE
           value: hummock+minio://$(MINIO_USER):$(MINIO_PASSWORD)@$(MINIO_ENDPOINT)/$(MINIO_BUCKET)
         # ETCD endpoints
         - name: RW_ETCD_ENDPOINTS
-          value: etcd-cluster-etcd-headless.default.svc.cluster.local:2379
+          value: etcd-cluster-etcd-headless.demo.svc.cluster.local:2379
         # ETCD authentication
         - name: RW_ETCD_AUTH
           value: "false"
@@ -74,7 +74,7 @@ spec:
           value: test-bucket
         # MinIO endpoint
         - name: MINIO_ENDPOINT
-          value: minio-cluster-minio.default.svc.cluster.local:9000
+          value: minio-cluster-minio.demo.svc.cluster.local:9000
         # State store configuration
         - name: RW_STATE_STORE
           value: hummock+minio://$(MINIO_USER):$(MINIO_PASSWORD)@$(MINIO_ENDPOINT)/$(MINIO_BUCKET)
@@ -112,7 +112,7 @@ spec:
           value: test-bucket
         # MinIO endpoint
         - name: MINIO_ENDPOINT
-          value: minio-cluster-minio.default.svc.cluster.local:9000
+          value: minio-cluster-minio.demo.svc.cluster.local:9000
         # State store configuration
         - name: RW_STATE_STORE
           value: hummock+minio://$(MINIO_USER):$(MINIO_PASSWORD)@$(MINIO_ENDPOINT)/$(MINIO_BUCKET)
@@ -148,7 +148,7 @@ spec:
           value: test-bucket
         # MinIO endpoint
         - name: MINIO_ENDPOINT
-          value: minio-cluster-minio.default.svc.cluster.local:9000
+          value: minio-cluster-minio.demo.svc.cluster.local:9000
         # State store configuration
         - name: RW_STATE_STORE
           value: hummock+minio://$(MINIO_USER):$(MINIO_PASSWORD)@$(MINIO_ENDPOINT)/$(MINIO_BUCKET)
@@ -185,7 +185,7 @@ spec:
           value: test-bucket
         # MinIO endpoint
         - name: MINIO_ENDPOINT
-          value: minio-cluster-minio.default.svc.cluster.local:9000
+          value: minio-cluster-minio.demo.svc.cluster.local:9000
       replicas: 1
       resources:
         limits:

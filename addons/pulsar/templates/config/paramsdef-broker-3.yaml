@@ -43,7 +43,7 @@ spec:
           - name: init-pulsar-tools
             command:
               - cp
-              - /pulsar/bin/pulsar-admin
+              - /bin/pulsar-admin
               - /kb/tools/pulsar-admin
             image: {{ include "pulsar.toolsImage" . }}
           - name: init-pulsar-client-config

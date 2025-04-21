@@ -1,5 +1,3 @@
-{{- $clusterName := $.cluster.metadata.name }}
-{{- $namespace := $.cluster.metadata.namespace }}
 <clickhouse>
   <listen_host>0.0.0.0</listen_host>
   {{- if eq (index $ "TLS_ENABLED") "true" }}
@@ -22,8 +20,8 @@
       <tcp_port replace="replace" from_env="CLICKHOUSE_KEEPER_TCP_PORT"/>
       {{- end }}
       <server_id from_env="CH_KEEPER_ID"/>
-      <log_storage_path>/var/lib/clickhouse/coordination/log</log_storage_path>
-      <snapshot_storage_path>/var/lib/clickhouse/coordination/snapshots</snapshot_storage_path>
+      <log_storage_path>/bitnami/clickhouse/coordination/log</log_storage_path>
+      <snapshot_storage_path>/bitnami/clickhouse/coordination/snapshots</snapshot_storage_path>
       <coordination_settings>
           <operation_timeout_ms>10000</operation_timeout_ms>
           <session_timeout_ms>30000</session_timeout_ms>

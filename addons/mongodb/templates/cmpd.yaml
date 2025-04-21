@@ -40,6 +40,7 @@ spec:
       volumeName: mongodb-config
       namespace: {{ .Release.Namespace }}
       defaultMode: 0400  # for only read
+      restartOnFileChange: true
   logConfigs:
     {{- range $name,$pattern := .Values.logConfigs }}
     - name: {{ $name }}
@@ -190,6 +191,10 @@ spec:
       valueFrom:
         clusterVarRef:
           namespace: Required
+    - name: CLUSTER_UID
+      valueFrom:
+        clusterVarRef:
+          clusterUID: Required
     - name: COMPONENT_NAME
       valueFrom:
         componentVarRef:

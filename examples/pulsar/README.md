@@ -26,7 +26,6 @@ Optional components include:
 - Basic Mode: Includes the basic features of Pulsar, such as brokers, bookies, and Zookeeper.
 - Enhanced Mode: Includes additional components like Pulsar Proxy and Bookies Recovery.
 
-
 ### Versions
 
 | Major Versions | Versions |
@@ -41,6 +40,11 @@ Optional components include:
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
 - KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
 - Pulsar Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
@@ -174,9 +178,11 @@ Start the stopped cluster
 kubectl apply -f examples/pulsar/start.yaml
 ```
 
-### [Reconfigure](configure.yaml)
+### Reconfigure
 
 Configure parameters with the specified components in the cluster
+
+#### Update bookies parameters
 
 ```bash
 kubectl apply -f examples/pulsar/configure.yaml
@@ -186,14 +192,22 @@ It sets `lostBookieRecoveryDelay` in bookies to `1000`.
 > [!WARNING]
 > As `lostBookieRecoveryDelay` is defined as a static parameter, all bookies replicas will be restarted to make sure the reconfiguration takes effect.
 
+#### Update broker parameters
+
+```bash
+kubectl apply -f examples/pulsar/reconfigure-broker.yaml
+```
+
+It updates `allowAutoTopicCreation` to `false`. Since it is a "dynamic paramter", KubeBlocks will trigger a reload action to update parameters and all broker replicas won't be restarted.
+
 ### Delete
 
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster pulsar-basic-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo pulsar-basic-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster pulsar-basic-cluster
+kubectl delete cluster -n demo pulsar-basic-cluster
 ```
 
 ## Appendix
@@ -235,7 +249,7 @@ spec:
       # Services provided by other Clusters.
       serviceRefs:
         - name: pulsarZookeeper    # identifier of the service reference declaration, defined in `componentDefinition.spec.serviceRefDeclarations[*].name`
-          namespace: default       # Specifies the namespace of the referenced Cluster
+          namespace: demo       # Specifies the namespace of the referenced Cluster
           clusterServiceSelector:  # References a service provided by another KubeBlocks Cluster
             cluster: zk-cluster    # Cluster Name
             service:
@@ -277,7 +291,7 @@ spec:
       # Services provided by other Clusters.
       serviceRefs:
         - name: pulsarZookeeper    # identifier of the service reference declaration, defined in `componentDefinition.spec.serviceRefDeclarations[*].name`
-          namespace: default       # Specifies the namespace of the referenced ServiceDescriptor
+          namespace: demo       # Specifies the namespace of the referenced ServiceDescriptor
           serviceDescriptor: zookeeper-sd # ServiceDescriptor Name
       ...
 ```

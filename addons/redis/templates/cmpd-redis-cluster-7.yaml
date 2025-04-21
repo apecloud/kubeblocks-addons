@@ -52,6 +52,7 @@ spec:
       template: {{ include "redisCluster7.configurationTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: redis-cluster-config
+      externalManaged: true
     - name: redis-metrics-config
       template: {{ include "redis.metricsConfiguration" . }}
       namespace: {{ .Release.Namespace }}
@@ -317,6 +318,10 @@ spec:
               flattenFormat:
                 delimiter: ","
                 keyValueDelimiter: ":"
+    - name: PHY_MEMORY
+      valueFrom:
+        resourceVarRef:
+          memory: Required
   lifecycleActions:
     roleProbe:
       periodSeconds: 1

@@ -35,6 +35,7 @@ spec:
       template: {{ include "greptimedb-frontend.configTemplateName" . }}
       volumeName: frontend-config
       namespace: {{ .Release.Namespace }}
+      restartOnFileChange: true
   vars:
     - name: CLUSTER_NAMESPACE
       valueFrom:

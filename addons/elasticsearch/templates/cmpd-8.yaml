@@ -20,6 +20,7 @@ spec:
       template: {{ include "elasticsearch8.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: es-cm
+      restartOnFileChange: true
   scripts:
     - name: scripts
       template: {{ include "elasticsearch.scriptsTplName" . }}
@@ -45,6 +46,19 @@ spec:
         componentVarRef:
           optional: false
           componentName: Required
+    - name: ES_COMPONENT_SHORT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          shortName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
   lifecycleActions:
     memberLeave:
       exec:

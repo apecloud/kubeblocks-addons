@@ -1,5 +1,3 @@
-{{- $clusterName := $.cluster.metadata.name }}
-{{- $namespace := $.cluster.metadata.namespace }}
 <clickhouse>
   <listen_host>0.0.0.0</listen_host>
   {{- if eq (index $ "TLS_ENABLED") "true" }}
@@ -18,11 +16,15 @@
   <macros>
     <shard from_env="CURRENT_SHARD_COMPONENT_SHORT_NAME"/>
     <replica from_env="CURRENT_POD_NAME"/>
-    <layer>{{ $clusterName }}</layer>
+    <layer>{{ .CLUSTER_NAME }}</layer>
   </macros>
   <!-- Log Level -->
   <logger>
     <level>information</level>
+    <log>/bitnami/clickhouse/log/clickhouse-server.log</log>
+    <errorlog>/bitnami/clickhouse/log/clickhouse-server.err.log</errorlog>
+    <size>1000M</size>
+    <count>3</count>
   </logger>
   <!-- Cluster configuration - Any update of the shards and replicas requires helm upgrade -->
   <remote_servers>
@@ -30,6 +32,7 @@
       {{- range $key, $value := . }}
       {{- if and (hasPrefix "ALL_SHARDS_POD_FQDN_LIST" $key) (ne $value "") }}
       <shard>
+        <internal_replication>true</internal_replication>
         {{- range $_, $host := splitList "," $value }}
         <replica>
           <host>{{ $host }}</host>
