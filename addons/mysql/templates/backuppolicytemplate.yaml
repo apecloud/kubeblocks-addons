@@ -6,7 +6,9 @@ metadata:
     {{- include "mysql.labels" . | nindent 4 }}
 spec:
   serviceKind: MySQL
-  compDefs: [^mysql-\d+.*$]
+  compDefs:
+    - ^mysql-\d+.*$
+    - ^mysql-orc-\d+.*$
   target:
     role: secondary
     fallbackRole: primary
