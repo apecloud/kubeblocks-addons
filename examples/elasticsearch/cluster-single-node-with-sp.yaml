@@ -1,10 +1,8 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name:  elasticsearch-cluster
+  name: es-singlenode-with-sp
   namespace: demo
-  annotations:
-    kubeblocks.io/extra-env: '{"mode":"single-node"}'
 spec:
   terminationPolicy: Delete
   componentSpecs:
@@ -29,7 +27,10 @@ spec:
                   apps.kubeblocks.io/component-name: mdit
               topologyKey: kubernetes.io/hostname
       replicas: 1
-      disableExporter: false
+      configs:
+        - name: es-cm
+          variables:
+            mode: "single-node"
       resources:
         limits:
           cpu: "1"
@@ -38,7 +39,7 @@ spec:
           cpu: "1"
           memory: "2Gi"
       volumeClaimTemplates:
-        - name: data # ref clusterDefinition components.containers.volumeMounts.name
+        - name: data
           spec:
             accessModes:
               - ReadWriteOnce

@@ -1,41 +1,30 @@
 {{- $clusterName := .CLUSTER_NAME }}
 {{- $defaultRoles := "master,data" }}
 {{- $namespace := .CLUSTER_NAMESPACE }}
-{{- $extraEnv := index $.cluster.metadata.annotations "kubeblocks.io/extra-env" | default "{}" | fromJson }}
-{{- $mode := index $extraEnv "mode" | default "multi-node" }}
 
-{{- $allRoles := fromJson "{}" }}
-{{- range $i, $spec := $.cluster.spec.componentSpecs }}
-    {{- $envName := printf "%s-roles" $spec.name }}
-    {{- $roles := index $extraEnv $envName | default $defaultRoles | splitList "," }}
-    {{- range $j, $role := $roles }}
-        {{- $comps := index $allRoles $role }}
-        {{- if not $comps }}
-            {{- $comps = list }}
-        {{- end }}
-        {{- $allRoles = set $allRoles $role (append $comps $spec.name) }}
-    {{- end }}
+{{- $mode := "multi-node" }}
+{{- if index . "mode" }}
+{{- $mode = $.mode }}
 {{- end }}
-{{- $masterComponents := $allRoles.master }}
 
 cluster:
-  name: {{ $clusterName }}
+  name: {{ .CLUSTER_NAMESPACE }}
   routing:
     allocation:
       awareness:
         attributes: k8s_node_name
 {{- if eq $mode "multi-node" }}
   initial_master_nodes:
-{{- range $i, $name := $masterComponents }}
-{{- range $j, $spec := $.cluster.spec.componentSpecs }}
-{{- if eq $spec.name $name }}
-{{- $replicas := $spec.replicas | int }}
-{{- range $idx, $e := until $replicas }}
-  - {{ printf "%s-%s-%d" $clusterName $name $idx }}
-{{- end }}
-{{- end }}
-{{- end }}
-{{- end }}
+  {{- $parts := splitList ";" .ALL_CMP_REPLICA_LIST }}
+  {{- range $part := $parts }}
+    {{- if hasPrefix "master:" $part }}
+      {{- $masterPart := trimPrefix "master:" $part }}
+      {{- $masters := splitList "," $masterPart }}
+     {{- range $master := $masters }}
+  - {{ $master }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
 {{- end }}
 
 discovery:
@@ -45,16 +34,16 @@ discovery:
 {{- end }}
 {{- if eq $mode "multi-node" }}
   seed_hosts:
-{{- range $i, $name := $masterComponents }}
-{{- range $j, $spec := $.cluster.spec.componentSpecs }}
-{{- if eq $spec.name $name }}
-{{- $replicas := $spec.replicas | int }}
-{{- range $idx, $e := until $replicas }}
-  - {{ printf "%s-%s-%d.%s-%s-headless.%s.svc.%s" $clusterName $name $idx $clusterName $name $namespace .CLUSTER_DOMAIN }}
-{{- end }}
-{{- end }}
-{{- end }}
-{{- end }}
+  {{- $parts := splitList ";" .ALL_CMP_REPLICA_FQDN }}
+  {{- range $part := $parts }}
+    {{- if hasPrefix "master:" $part }}
+      {{- $masterPart := trimPrefix "master:" $part }}
+      {{- $masters := splitList "," $masterPart }}
+     {{- range $master := $masters }}
+  - {{ $master }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
 {{- end }}
 
 http:
@@ -77,7 +66,11 @@ node:
 {{- if eq $mode "multi-node" }}
 # https://www.elastic.co/guide/en/elasticsearch/reference/7.7/modules-node.html
   roles:
-  {{- $myRoles := index $extraEnv (printf "%s-roles" .ES_COMPONENT_SHORT_NAME) | default $defaultRoles | splitList "," }}
+  {{- $roles := $defaultRoles }}
+  {{- if index . "roles" }}
+  {{- $roles = $.roles }}
+  {{- end }}
+  {{- $myRoles := $roles | splitList "," }}
   {{- range $i, $e := $myRoles }}
   - {{ $e }}
   {{- end }}
