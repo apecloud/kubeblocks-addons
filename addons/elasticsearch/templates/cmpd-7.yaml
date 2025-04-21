@@ -11,6 +11,7 @@ spec:
   description: Elasticsearch is a distributed, restful search engine optimized for speed and relevance on production-scale workloads.
   serviceKind: elasticsearch
   updateStrategy: Parallel
+  podManagementPolicy: Parallel
   exporter:
     containerName: exporter
     scrapePath: /metrics
@@ -59,6 +60,32 @@ spec:
       valueFrom:
         clusterVarRef:
           clusterName: Required
+    {{/* ALL_CMP_REPLICA_LIST ='master:podName0,podName1,podName2;data:podName0,podName1'*/}}
+    - name: ALL_CMP_REPLICA_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "elasticsearch7.cmpdName" . }}
+          optional: false
+          podNames: Required
+          multipleClusterObjectOption:
+            strategy: combined
+            combinedOption:
+              flattenFormat:
+                delimiter: ";"
+                keyValueDelimiter: ":"
+    {{/* ALL_CMP_REPLICA_FQDN ='master:podFQDN0,podFQDN1,podFQDN2;data:podFQDN0,podFQDN1'*/}}
+    - name: ALL_CMP_REPLICA_FQDN
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "elasticsearch7.cmpdName" . }}
+          optional: false
+          podFQDNs: Required
+          multipleClusterObjectOption:
+            strategy: combined
+            combinedOption:
+              flattenFormat:
+                delimiter: ";"
+                keyValueDelimiter: ":"
   lifecycleActions:
     memberLeave:
       exec:

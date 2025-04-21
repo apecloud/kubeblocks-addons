@@ -15,14 +15,6 @@ Each Elasticsearch cluster consists of one or more nodes, and each node in a clu
 - remote_cluster_client
 - transform
 
-## Prerequisites
-
-- Kubernetes cluster >= v1.21
-- `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
-- Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
-- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
-- Elasticsearch Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
-
 ## Features In KubeBlocks
 
 ### Lifecycle Management
@@ -38,6 +30,13 @@ Each Elasticsearch cluster consists of one or more nodes, and each node in a clu
 | 7.x | 7.7.1,7.8.1,7.10.1 |
 | 8.x | 8.1.3, 8.8.2 |
 
+## Prerequisites
+
+- Kubernetes cluster >= v1.21
+- `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
+- Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
+- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
+- Elasticsearch Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
 - Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
 
   ```bash
@@ -56,7 +55,19 @@ A Single-Node Cluster is a cluster with only one node and this node assume all r
 kubectl apply -f examples/elasticsearch/cluster-single-node.yaml
 ```
 
-The annotation `kubeblocks.io/extra-env: '{"mode":"single-node"}'` is used to specify the mode of the Elasticsearch cluster.
+The configs in Cluster API:
+
+```yaml
+  configs:
+    - name: es-cm
+      variables:
+        mode: "single-node"
+```
+
+Where,
+
+- `es-cm` refers to the config template defined in ComponentDefinition `elasticsearch-`
+- "mode=single-node" (default to multi-node), is used to specify the mode of the Elasticsearch cluster.
 
 To check the role of the node, you may log in to the pod and run the following command:
 
@@ -81,43 +92,74 @@ Create a elasticsearch cluster with multiple nodes and each node assume specifie
 kubectl apply -f examples/elasticsearch/cluster-multi-node.yaml
 ```
 
-There are four components specified in this cluster, i.e 'master', 'data', 'ingest', and 'transform',  and each component has different roles. Roles are specified in the annotation:
+There are four components specified in this cluster, i.e 'master', 'data', 'ingest', and 'transform',  and each component has different roles. Roles are specified in `configs` for each component:
 
 ```yaml
-  annotations:
-    kubeblocks.io/extra-env: '{"master-roles":"master", "data-roles": "data", "ingest-roles": "ingest", "transform-roles": "transform"}'
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+spec:
+  componentSpecs:
+    - name: data
+      configs:
+        - name: es-cm
+          variables:
+            # use key `roles` to specify roles this component assume
+            roles: data,ingest,transform
+            mode: multi-node
+      ...
+    - name: master
+      configs:
+        - name: es-cm
+          variables:
+            # use key `roles` to specify roles this component assume
+            roles: master
+            mode: multi-node
 ```
 
-where `<componentName>-roles` is a comma-separated list of roles that each node will assume. The roles are `master`, `data`, `ingest`, and `transform` in this example.
+Where,
 
-> [!NOTE]
-> Roles will take effect only when `mode` is set to `multi-node`, or the `mode` is not set.
+- `es-cm` refers to the config template defined in ComponentDefinition `elasticsearch-`
+- "mode=multi-node" (default to multi-node), is used to specify the mode of the Elasticsearch cluster.
+- "roles: data,ingest,transform" specifies the list of roles this component should assume.
 
-If you want to create a cluster with more roles, you can add more components and specify the roles in the annotation.
+> [!IMPORTANT]
+>
+> - Roles will take effect only when `mode` is set to `multi-node`, or the `mode` is not set.
+> - there must be one and only one component containing role 'master'
+> - the component for role `mater` must be named to `master`
 
-- set annotation with new roles.
-
-```yaml
-  annotations:
-    kubeblocks.io/extra-env: '{"master-roles":"master", "data-roles": "data", "ingest-roles": "ingest", "transform-roles": "transform", "<cmpName>-roles": "role1,role2"}'
-```
-
-where `newCmp` is the name of the new component, and `role1` and `role2` are the roles that each node in the new component will assume (chosen from the list of roles mentioned above).
-
-- add the new component to the `spec.componentSpecs` field:
+If you want to create a cluster with more roles, you can add more components and specify the roles in the configs.
 
 ```yaml
 spec:
   terminationPolicy: Delete
   componentSpecs:
     - name: master
+      configs:
+        - name: es-cm
+          variables:
+            # use key `roles` to specify roles this component assume
+            roles: master
     - name: data
+      configs:
+        - name: es-cm
+          variables:
+            # use key `roles` to specify roles this component assume
+            roles: data
     - name: ingest
+      configs:
+        - name: es-cm
+          variables:
+            # use key `roles` to specify roles this component assume
+            roles: ingest
     - name: transform
-    - name: <cmpName>  # set the name to your preferred one
-      componentDef: elasticsearch-8
-      serviceVersion: 8.8.2
-      replicas: 3
+      configs:
+        - name: es-cm
+          variables:
+            # use key `roles` to specify roles this component assume
+            roles: transform
+...
 ```
 
 ### Horizontal scaling
