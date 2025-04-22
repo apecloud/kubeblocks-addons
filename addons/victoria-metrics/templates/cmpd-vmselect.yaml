@@ -59,6 +59,9 @@ spec:
           {{- if .Values.enableTCP6 }}
           - --enableTCP6=true
           {{- end }}
+        env:
+          - name: SERVICE_PORT
+            value: "{{ .Values.vmselect.servicePort }}"
         ports:
           - name: http
             containerPort: {{ .Values.vmselect.servicePort }}
