@@ -37,7 +37,7 @@ retentionPeriod: 30d
 ## @param vminsert configs
 ##
 vminsert:
-  replicas: 1
+  replicas: 3
   resources: {}
   ## @param env, additional environment variables for vminsert
   ## Prefix VM_ will be added automatically. Example: replicationFactor -> VM_replicationFactor
@@ -49,10 +49,14 @@ vminsert:
     maxInsertRequestSize: "32MiB" # 33554432
     sortLabels: false
 
+  ## @param maxUnavailable for rolling updates
+  ##
+  maxUnavailable: 1
+
 ## @param vmselect configs
 ##
 vmselect:
-  replicas: 1
+  replicas: 3
   resources: {}
   ## @param env, additional environment variables for vmselect
   ## Prefix VM_ will be added automatically. Example: dedup.minScrapeInterval -> VM_dedup_minScrapeInterval
@@ -63,6 +67,10 @@ vmselect:
     search.maxQueryDuration: "30s"
     search.maxMemoryPerQuery: "0" # Defaults to 0 (unlimited)
     search.logSlowQueryDuration: "5s"
+
+  ## @param maxUnavailable for rolling updates
+  ##
+  maxUnavailable: 1
 
 ## @param vmstorage configs
 ##

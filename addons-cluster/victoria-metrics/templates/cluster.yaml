@@ -28,6 +28,10 @@ spec:
     - name: vmselect
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.vmselect.replicas }}
+      instanceUpdateStrategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxUnavailable: {{ .Values.vmselect.maxUnavailable | default 1 }}
       {{- with .Values.vmselect.resources }}
       resources:
         {{- with .limits }}
@@ -53,6 +57,10 @@ spec:
     - name: vminsert
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.vminsert.replicas | default 1 }}
+      instanceUpdateStrategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxUnavailable: {{ .Values.vminsert.maxUnavailable | default 1 }}
       {{- with .Values.vminsert.resources }}
       resources:
         {{- with .limits }}
