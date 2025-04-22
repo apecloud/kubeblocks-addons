@@ -170,3 +170,23 @@ Define clickhouse22 image
 {{- define "clickhouse22.image" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major22 }}
 {{- end }}
+
+{{- define "clickhouse24.keeperPcr" -}}
+clickhouse-24-keeper-pcr-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "clickhouse24.userPcr" -}}
+clickhouse-24-ck-pcr-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "clickhouse24.userParamsDefinition" -}}
+clickhouse-24-user-pd
+{{- end -}}
+
+{{- define "clickhouse24.configParamsDefinition" -}}
+clickhouse-24-config-pd
+{{- end -}}
+
+{{- define "clickhouse24.keeperParamsDefinition" -}}
+clickhouse-24-keeper-pd
+{{- end -}}

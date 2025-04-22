@@ -45,6 +45,9 @@ keeper:
   storage: 10
   tolerations: []
 
+clickhouse:
+  initClusterName: "default"
+
 ## Service configurations
 service:
   ## ClickHouse service type
@@ -67,4 +70,4 @@ tls:
 extra:
   ## Define Cluster termination policy.
   ## Options: DoNotTerminate, Delete, WipeOut.
-  terminationPolicy: DoNotTerminate
+  terminationPolicy: Delete

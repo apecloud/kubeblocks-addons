@@ -6,26 +6,36 @@ metadata:
     {{- include "clickhouse.labels" . | nindent 4 }}
   annotations:
     {{- include "clickhouse.annotations" . | nindent 4 }}
+    apps.kubeblocks.io/skip-immutable-check: "true"
 spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
   serviceVersion: "24.8.3"
+  minReadySeconds: 10
   runtime:
     securityContext:
-      fsGroup: 1001
+      fsGroup: 0
       seccompProfile:
         type: RuntimeDefault
     containers:
       - name: clickhouse
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+          - bash
+          - -c
+          - |
+            /scripts/bootstrap-server.sh
         securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
-          runAsNonRoot: true
-          runAsUser: 1001
+          privileged: true
+          runAsUser: 0
+        readinessProbe:
+          httpGet:
+            path: /ping
+            port: 8123
+          initialDelaySeconds: 5
+          periodSeconds: 2
+          timeoutSeconds: 3
         ports:
           - name: http-metrics
             containerPort: 8001
@@ -49,11 +59,13 @@ spec:
           - name: data
             mountPath: /bitnami/clickhouse
           - name: config
-            mountPath: /bitnami/clickhouse/etc/conf.d/default
+            mountPath: /opt/bitnami/clickhouse/etc/conf.d
           - name: user-config
             mountPath: /bitnami/clickhouse/etc/users.d/default
           - name: client-config
-            mountPath: /etc/clickhouse-client/
+            mountPath: /etc/clickhouse-client
+          - name: scripts
+            mountPath: /scripts
         env:
           - name: CURRENT_POD_NAME
             valueFrom:
@@ -74,21 +86,29 @@ spec:
       template: {{ include "clickhouse24.configurationTplName" . }}
       volumeName: config
       namespace: {{ .Release.Namespace }}
-      restartOnFileChange: true
+      externalManaged: true
     - name: clickhouse-user-tpl
       template: {{ include "clickhouse24.userTplName" . }}
       volumeName: user-config
       namespace: {{ .Release.Namespace }}
-      restartOnFileChange: true
+      externalManaged: true
     - name: clickhouse-client-tpl
       template: {{ include "clickhouse24.clientTplName" . }}
       volumeName: client-config
       namespace: {{ .Release.Namespace }}
-      restartOnFileChange: true
+      restartOnFileChange: false
+  scripts:
+    - name: clickhouse-scripts
+      template: clickhouse-scripts
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
   systemAccounts:
     - name: admin
       initAccount: true
   vars:
+    - name: INIT_CLUSTER_NAME
+      value: "default"
     - name: BITNAMI_DEBUG
       value: "false"
     - name: CLICKHOUSE_HTTP_PORT
@@ -157,6 +177,11 @@ spec:
       valueFrom:
         clusterVarRef:
           namespace: Required
+    - name: CLICKHOUSE_COMP_REPLICAS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          replicas: Required
   volumes:
     - name: data
   services:
@@ -196,3 +221,14 @@ spec:
     caFile: ca.pem
     certFile: cert.pem
     keyFile: key.pem
+  lifecycleActions:
+    memberJoin:
+      preCondition: RuntimeReady
+      exec:
+        container: clickhouse
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major24 }}
+        command:
+          - bash
+          - -c
+          - |
+            /scripts/member-join.sh > /tmp/member-join.log 2>&1

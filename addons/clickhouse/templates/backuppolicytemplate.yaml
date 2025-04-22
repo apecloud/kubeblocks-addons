@@ -1,0 +1,34 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: clickhouse-backup-policy-template
+  labels:
+    clusterdefinition.kubeblocks.io/name: clickhouse
+spec:
+  serviceKind: Clickhouse
+  compDefs:
+  - clickhouse-24
+  target:
+    account: admin
+    role: ""
+    strategy: Any
+  backupMethods:
+    - name: full
+      snapshotVolumes: false
+      actionSetName: clickhouse-full-backup
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: /bitnami/clickhouse
+    - name: incremental
+      compatibleMethod: full
+      actionSetName: clickhouse-incremental-backup
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: /bitnami/clickhouse
+  schedules:
+    - backupMethod: full
+      enabled: false
+      cronExpression: "0 18 * * *"
+      retentionPeriod: 7d
