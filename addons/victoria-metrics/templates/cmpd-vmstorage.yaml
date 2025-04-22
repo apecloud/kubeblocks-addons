@@ -32,6 +32,13 @@ spec:
   exporter:
     scrapePath: /metrics
     scrapePort: http
+  vars:
+    - name: SERVICE_PORT
+      value: "{{ .Values.vmstorage.servicePort }}"
+    - name: VMINSERT_PORT
+      value: "{{ .Values.vmstorage.vminsertPort }}"
+    - name: VMSELECT_PORT
+      value: "{{ .Values.vmstorage.vmselectPort }}"
   runtime:
     automountServiceAccountToken: true
     terminationGracePeriodSeconds: 60
@@ -53,7 +60,7 @@ spec:
           {{- end }}
         env:
           - name: SERVICE_PORT
-            value: "{{ .Values.vmstorage.servicePort }}"
+            value: "{{ .Values.vmstorage.servicePort }}"          
         ports:
           - name: http
             containerPort: {{ .Values.vmstorage.servicePort }}
