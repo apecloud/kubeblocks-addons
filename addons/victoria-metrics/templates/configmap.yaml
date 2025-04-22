@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vmselect-tpl
+  labels:
+    {{- include "victoria-metrics.labels" . | nindent 4 }}
+data:
+  config.yaml: |-
+    {{- .Files.Get "configs/vmselect-config.tpl" | nindent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vminsert-tpl
+  labels:
+    {{- include "victoria-metrics.labels" . | nindent 4 }}
+data:
+  config.yaml: |-
+    {{- .Files.Get "configs/vminsert-config.tpl" | nindent 4 }} 

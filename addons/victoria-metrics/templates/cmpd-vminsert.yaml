@@ -33,7 +33,7 @@ spec:
     - name: VMSTORAGE_ADDR
       valueFrom:
         serviceVarRef:
-          compDef: vmstorage
+          compDef: {{ include "vmstorage.componentDefName" . }}
           port:
             name: vminsert
             option: Required
@@ -55,7 +55,7 @@ spec:
           {{- end }}
         env:
           - name: SERVICE_PORT
-            value: "{{ .Values.vminsert.servicePort }}"
+            value: "{{ .Values.vminsert.servicePort }}"        
         ports:
           - name: http
             containerPort: {{ .Values.vminsert.servicePort }}
@@ -75,3 +75,12 @@ spec:
           periodSeconds: 15
           timeoutSeconds: 5
           failureThreshold: 3
+        volumeMounts:
+          - name: config
+            mountPath: /etc/victoria-metrics/config
+  configs:
+    - name: vminsert-config
+      template: vminsert-tpl
+      volumeName: config
+      namespace: {{ .Release.Namespace }}
+      restartOnFileChange: true
