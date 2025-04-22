@@ -37,7 +37,7 @@ retentionPeriod: 30d
 ## @param vminsert configs
 ##
 vminsert:
-  replicas: 3
+  replicas: 1
   resources: {}
   ## @param env, additional environment variables for vminsert
   ## Prefix VM_ will be added automatically. Example: replicationFactor -> VM_replicationFactor
@@ -56,7 +56,7 @@ vminsert:
 ## @param vmselect configs
 ##
 vmselect:
-  replicas: 3
+  replicas: 1
   resources: {}
   ## @param env, additional environment variables for vmselect
   ## Prefix VM_ will be added automatically. Example: dedup.minScrapeInterval -> VM_dedup_minScrapeInterval
