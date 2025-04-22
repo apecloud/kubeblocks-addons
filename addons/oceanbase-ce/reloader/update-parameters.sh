@@ -1,9 +1,7 @@
 #!/bin/sh
 set -ex
 
-CURRENT_PATH=$(cd $(dirname $0);pwd)
-source ${CURRENT_PATH}/utils.sh
-
+OB_CLI="/kb_tools/obtools"
 paramName="${1:?missing config}"
 paramValue="${2:?missing value}"
 
