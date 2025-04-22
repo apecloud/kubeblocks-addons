@@ -49,6 +49,10 @@ vminsert:
     maxInsertRequestSize: "32MiB" # 33554432
     sortLabels: false
 
+  ## @param maxUnavailable for rolling updates
+  ##
+  maxUnavailable: 1
+
 ## @param vmselect configs
 ##
 vmselect:
@@ -63,6 +67,10 @@ vmselect:
     search.maxQueryDuration: "30s"
     search.maxMemoryPerQuery: "0" # Defaults to 0 (unlimited)
     search.logSlowQueryDuration: "5s"
+
+  ## @param maxUnavailable for rolling updates
+  ##
+  maxUnavailable: 1
 
 ## @param vmstorage configs
 ##
