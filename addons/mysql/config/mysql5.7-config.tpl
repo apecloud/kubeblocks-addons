@@ -135,6 +135,7 @@ loose_audit_log_policy=ALL # ALL, LOGINS, QUERIES, NONE
 loose_audit_log_strategy=ASYNCHRONOUS
 loose_audit_log_rotate_on_size=10485760
 loose_audit_log_rotations=5
+loose_audit_log_exclude_accounts=kbadmin@%
 
 # replay log
 relay_log_info_repository=TABLE
