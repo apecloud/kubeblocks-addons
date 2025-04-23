@@ -10,6 +10,7 @@ spec:
   rebuildFrom:
   - backupName: pg-cluster-pg-basebackup
     componentName: postgresql
+    inPlace: true
     instances:
     - name: pg-cluster-postgresql-1
   type: RebuildInstance
