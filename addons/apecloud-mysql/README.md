@@ -510,6 +510,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: acmysql-switchover
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: acmysql-cluster
@@ -538,6 +539,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: acmysql-switchover-specify
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: acmysql-cluster
