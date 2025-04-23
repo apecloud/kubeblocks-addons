@@ -2,7 +2,7 @@ apiVersion: apps.kubeblocks.io/v1alpha1
 kind: Cluster
 metadata:
   name: {{ include "clustername" . }}
-  labels: 
+  labels:
     {{- include "victoria-metrics-cluster.labels" . | nindent 4 }}
 spec:
   clusterDefinitionRef: victoria-metrics
@@ -14,6 +14,17 @@ spec:
       replicas: {{ .Values.replicas }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
+      env:
+        - name: RETENTION_PERIOD
+          value: "{{ .Values.retentionPeriod }}"
+        {{- with .Values.vmstorage.env }}
+        {{- range $key, $value := . }}
+        {{- if $value }}
+        - name: "VM_{{ $key }}"
+          value: {{ $value | quote }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
     - name: vmselect
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.vmselect.replicas }}
@@ -30,10 +41,19 @@ spec:
           memory: {{ .memory | quote }}
         {{- end }}
       {{- end }}
+      env:
+        {{- with .Values.vmselect.env }}
+        {{- range $key, $value := . }}
+        {{- if $value }}
+        - name: "VM_{{ $key }}"
+          value: {{ $value | quote }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
     - name: vminsert
       {{- include "kblib.componentMonitor" . | indent 6 }}
       replicas: {{ .Values.vminsert.replicas | default 1 }}
-      {{- with  .Values.vminsert.resources }}
+      {{- with .Values.vminsert.resources }}
       resources:
         {{- with .limits }}
         limits:
@@ -46,3 +66,12 @@ spec:
           memory: {{ .memory | quote }}
         {{- end }}
       {{- end }}
+      env:
+        {{- with .Values.vminsert.env }}
+        {{- range $key, $value := . }}
+        {{- if $value }}
+        - name: "VM_{{ $key }}"
+          value: {{ $value | quote }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
