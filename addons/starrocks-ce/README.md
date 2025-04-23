@@ -373,7 +373,7 @@ spec:
           targetLabel: service
   namespaceSelector:
     matchNames:
-      - default
+      - demo
   selector:
     matchLabels:
       app.kubernetes.io/instance: starrocks-cluster
