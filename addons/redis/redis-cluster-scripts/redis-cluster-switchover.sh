@@ -34,7 +34,6 @@ check_environment_exist() {
   local required_vars=(
     "CURRENT_SHARD_POD_NAME_LIST"
     "CURRENT_SHARD_POD_FQDN_LIST"
-    "KB_SWITCHOVER_ROLE"
   )
 
   for var in "${required_vars[@]}"; do

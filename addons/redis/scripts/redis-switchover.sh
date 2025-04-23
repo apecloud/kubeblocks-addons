@@ -34,7 +34,6 @@ check_environment_exist() {
     "SENTINEL_POD_FQDN_LIST"
     "REDIS_POD_FQDN_LIST"
     "REDIS_COMPONENT_NAME"
-    "KB_SWITCHOVER_ROLE"
   )
 
   for var in "${required_vars[@]}"; do
