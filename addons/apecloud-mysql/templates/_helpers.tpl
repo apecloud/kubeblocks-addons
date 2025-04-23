@@ -169,12 +169,8 @@ lifecycleActions:
         - /bin/sh
         - -c
         - |
-          if [ -z "$KB_SWITCHOVER_ROLE" ]; then
-              echo "role can't be empty"
-              exit 1
-          fi
-
           if [ "$KB_SWITCHOVER_ROLE" != "leader" ]; then
+              echo "switchover not triggered for primary, nothing to do, exit 0."
               exit 0
           fi
           
