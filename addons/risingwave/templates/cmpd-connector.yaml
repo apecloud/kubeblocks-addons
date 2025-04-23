@@ -40,7 +40,7 @@ spec:
           - name: RW_TOTAL_MEMORY_BYTES
             valueFrom:
               resourceFieldRef:
-                containerName: compute
+                containerName: connector
                 resource: limits.memory
         ports:
           - containerPort: 50051
