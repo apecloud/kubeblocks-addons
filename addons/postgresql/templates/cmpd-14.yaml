@@ -30,6 +30,7 @@ spec:
             targetPort: tcp-pgbouncer
       roleSelector: primary
   updateStrategy: BestEffortParallel
+  podManagementPolicy: Parallel
   volumes:
     - name: data
       needSnapshot: true
@@ -133,15 +134,6 @@ spec:
           compDef: {{ include "postgresql14.compDefName" . }}
           optional: false
           podFQDNs: Required
-    ## the postgres primary pod name which is dynamically selected, caution to use it
-    - name: POSTGRES_PRIMARY_POD_NAME
-      valueFrom:
-        componentVarRef:
-          compDef: {{ include "postgresql14.compDefName" . }}
-          optional: true
-          podNamesForRole:
-            role: primary
-            option: Optional
     - name: TLS_ENABLED
       valueFrom:
         tlsVarRef:
