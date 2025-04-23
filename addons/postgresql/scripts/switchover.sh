@@ -77,6 +77,10 @@ switchover() {
 # end here. The script path is assigned to the __SOURCED__ variable.
 ${__SOURCED__:+false} : || return 0
 
+if [ "$KB_SWITCHOVER_ROLE" != "primary" ]; then
+  echo "switchover not triggered for primary, nothing to do, exit 0."
+  exit 0
+fi
 # main
 load_common_library
 switchover
