@@ -1,6 +1,28 @@
 #!/bin/sh
 
-get_current_cm_key_value() {
+replicas_history_file="/minio-config/MINIO_REPLICAS_HISTORY"
+
+create_cm_if_not_exist() {
+  name="$1"
+  namespace="$2"
+
+  kubectl get configmaps "$name" -n "$namespace"
+  if [ $? -ne 0 ]; then
+    cat <<EOF | kubectl create -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ .CLUSTER_NAMESPACE }}
+  name: {{ .MINIO_COMPONENT_NAME }}-replicas-history
+  labels:
+    app.kubernetes.io/managed-by: kubeblocks
+    app.kubernetes.io/instance: {{ .CLUSTER_NAME }}
+    apps.kubeblocks.io/component-name: {{ .CLUSTER_COMPONENT_NAME }}
+EOF
+  fi
+}
+
+get_cm_key_value() {
   name="$1"
   namespace="$2"
   key="$3"
@@ -33,17 +55,22 @@ get_cm_key_new_value() {
   fi
 }
 
-update_configmap() {
-  name="$MINIO_COMPONENT_NAME-minio-configuration"
-  namespace="$CLUSTER_NAMESPACE"
+update_configmap_and_sync_to_local_file() {
+  namespace={{ .CLUSTER_NAMESPACE }}
+  name={{ .MINIO_COMPONENT_NAME }}-replicas-history
   key="MINIO_REPLICAS_HISTORY"
   replicas="$MINIO_COMP_REPLICAS"
 
-  cur=$(get_current_cm_key_value "$name" "$namespace" "$key")
+  create_cm_if_not_exist "$name" "$namespace"
+
+  cur=$(get_cm_key_value "$name" "$namespace" "$key")
   new=$(get_cm_key_new_value "$cur" "$replicas")
 
   update_cm_key_value "$name" "$namespace" "$key" "$new"
-  echo "ConfigMap $name updated successfully with $key=$new"
+  echo "configmap/$name updated successfully with $key=$new"
+
+  echo $new >> $replicas_history_file
+  echo "the new value $new has been written to the local file $replicas_history_file"
 }
 
 # This is magic for shellspec ut framework.
@@ -54,4 +81,4 @@ update_configmap() {
 ${__SOURCED__:+false} : || return 0
 
 # main
-update_configmap
+update_configmap_and_sync_to_local_file
