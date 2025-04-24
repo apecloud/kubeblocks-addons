@@ -37,7 +37,7 @@ spec:
                 - /bin/sh
                 - -c
                 - |
-                  response=$(curl -s -o /dev/null -w "%{http_code}" http://${ORC_ENDPOINTS}/api/graceful-master-takeover-auto/${candidate}
+                  response=$(curl -s -o /dev/null -w "%{http_code}" http://${ORC_ENDPOINTS}/api/graceful-master-takeover-auto/${candidate})
                   if [ ! $response -eq 200 ]; then
                     echo "switchover failed, please check the candidate"
                     exit 1
