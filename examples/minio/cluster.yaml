@@ -13,10 +13,6 @@ spec:
   componentSpecs:
     - componentDef: minio
       name: minio
-      configs:
-        - name: minio-configuration
-          configMap:
-            name: minio-cluster-minio-minio-configuration
       # for dev/test, set replicas to 2
       # for prod , MinIO clusters must be configured with at least 4 replicas
       # and the number of nodes must also be a multiple of 2 (e.g., 4, 6, 8, 12, etc.)
@@ -72,14 +68,3 @@ spec:
               requests:
                 # Set the storage size as needed
                 storage: 20Gi
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: minio-cluster-minio-minio-configuration
-  namespace: demo
-  labels:
-    app.kubernetes.io/instance: minio-cluster
-    apps.kubeblocks.io/component-name: minio
-data:
-  MINIO_REPLICAS_HISTORY: "[]"
