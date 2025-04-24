@@ -705,7 +705,7 @@ spec:
           replacement: milvus
   namespaceSelector:
     matchNames:
-      - default
+      - demo
   selector:
     matchLabels:
       app.kubernetes.io/instance: milvus-cluster # cluster name: milvus-cluster
