@@ -175,7 +175,7 @@ Define clickhouse22 image
 clickhouse-24-keeper-pcr-{{ .Chart.Version }}
 {{- end -}}
 
-{{- define "clickhouse24.userPcr" -}}
+{{- define "clickhouse24.ckPcr" -}}
 clickhouse-24-ck-pcr-{{ .Chart.Version }}
 {{- end -}}
 

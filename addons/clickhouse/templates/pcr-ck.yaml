@@ -1,7 +1,7 @@
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParamConfigRenderer
 metadata:
-  name: {{ include "clickhouse24.userPcr" . }}
+  name: {{ include "clickhouse24.ckPcr" . }}
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
   annotations:

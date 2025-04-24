@@ -1,4 +1,3 @@
-{{- $cluster_name := getEnvByName ( getContainerByName $.podSpec.containers "clickhouse" ) "INIT_CLUSTER_NAME" | default "default" }}
 <clickhouse>
   <listen_host>0.0.0.0</listen_host>
   {{- if eq (index $ "TLS_ENABLED") "true" }}
@@ -31,7 +30,7 @@
   </logger>
   <!-- Cluster configuration - Any update of the shards and replicas requires helm upgrade -->
   <remote_servers>
-    <{{ $cluster_name }}>
+    <{{ .INIT_CLUSTER_NAME }}>
       {{- range $key, $value := . }}
       {{- if and (hasPrefix "ALL_SHARDS_POD_FQDN_LIST" $key) (ne $value "") }}
       <shard>
@@ -52,7 +51,7 @@
       </shard>
       {{- end }}
       {{- end }}
-    </{{ $cluster_name }}>
+    </{{ .INIT_CLUSTER_NAME }}>
   </remote_servers>
   {{- if (index . "CH_KEEPER_POD_FQDN_LIST") }}
   <!-- Zookeeper configuration -->
