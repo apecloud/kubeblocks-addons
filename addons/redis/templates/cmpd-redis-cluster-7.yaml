@@ -379,7 +379,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - /scripts/redis-cluster-replica-member-leave.sh
+          - /scripts/redis-cluster-replica-member-leave.sh > /tmp/member-leave.log 2>&1
       retryPolicy:
         maxRetries: 10
     switchover:
@@ -389,7 +389,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - /scripts/redis-cluster-switchover.sh
+          - /scripts/redis-cluster-switchover.sh  > /tmp/switchover.log 2>&1
   runtime:
     initContainers:
       - name: init-dbctl
