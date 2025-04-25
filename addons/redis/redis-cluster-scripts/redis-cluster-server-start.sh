@@ -73,7 +73,7 @@ check_and_meet_node() {
     fi
 
     # send cluster meet command to the primary node
-    if send_cluster_meet_with_retry "$current_primary_endpoint" "$current_primary_port" "$current_announce_ip" "$target_port" "$target_bus_port"; then
+    if send_cluster_meet_with_retry "$source_endpoint" "$source_port" "$current_announce_ip" "$target_port" "$target_bus_port"; then
       echo "Meet the node $target_endpoint successfully with new announce ip $current_announce_ip..."
       break
     else
