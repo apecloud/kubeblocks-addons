@@ -13,7 +13,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   namespace: {{ .CLUSTER_NAMESPACE }}
-  name: {{ .MINIO_COMPONENT_NAME }}-replicas-history
+  name: {{ .MINIO_COMPONENT_NAME }}-minio-configuration
   labels:
     app.kubernetes.io/managed-by: kubeblocks
     app.kubernetes.io/instance: {{ .CLUSTER_NAME }}
@@ -57,7 +57,7 @@ get_cm_key_new_value() {
 
 update_configmap_and_sync_to_local_file() {
   namespace={{ .CLUSTER_NAMESPACE }}
-  name={{ .MINIO_COMPONENT_NAME }}-replicas-history
+  name={{ .MINIO_COMPONENT_NAME }}-minio-configuration
   key="MINIO_REPLICAS_HISTORY"
   replicas="$MINIO_COMP_REPLICAS"
 
