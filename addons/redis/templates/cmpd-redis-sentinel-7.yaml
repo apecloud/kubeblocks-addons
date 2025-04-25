@@ -153,7 +153,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - /scripts/redis-sentinel-member-leave.sh
+          - /scripts/redis-sentinel-member-leave.sh > /tmp/member-leave.log 2>&1
         targetPodSelector: Any
         ## all lifecycle actions share the same env
         env:

@@ -270,7 +270,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - /scripts/redis-register-to-sentinel.sh
+          - /scripts/redis-register-to-sentinel.sh > /tmp/post-provision.log 2>&1
         targetPodSelector: Role
         matchingKey: primary
         ## all lifecycle actions share the same env
