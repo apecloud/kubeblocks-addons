@@ -316,17 +316,17 @@ scale_redis_cluster_replica() {
   primary_node_port=$(echo "$primary_node_endpoint_with_port" | awk -F ':' '{print $2}')
   primary_node_fqdn=$(echo "$primary_node_info" | awk -F '#' '{print $2}')
   primary_node_bus_port=$(echo "$primary_node_info" | awk -F '@' '{print $2}')
+  if contains "$primary_node_fqdn" "$CURRENT_POD_NAME"; then
+     echo "Current pod $CURRENT_POD_NAME is primary node, check and correct other primary nodes..."
+     check_and_meet_other_primary_nodes "$primary_node_endpoint" "$primary_node_port"
+     echo "Node $CURRENT_POD_NAME is already in the cluster, skipping scale out replica..."
+     exit 0
+  fi
   # if the current pod is not a rebuild-instance and is already in the cluster, skip scale out replica
   if ! is_rebuild_instance && check_node_in_cluster_with_retry "$primary_node_endpoint" "$primary_node_port" "$CURRENT_POD_NAME"; then
     # if current pod is primary node, check the others primary info, if the others primary node info is expired, send cluster meet command again
-    current_pod_fqdn_prefix="$CURRENT_POD_NAME.$CURRENT_SHARD_COMPONENT_NAME"
-    if contains "$primary_node_fqdn" "$current_pod_fqdn_prefix"; then
-      echo "Current pod $CURRENT_POD_NAME is primary node, check and correct other primary nodes..."
-      check_and_meet_other_primary_nodes "$primary_node_endpoint" "$primary_node_port"
-    else
-      echo "Current pod $CURRENT_POD_NAME is a secondary node, check and meet current primary node..."
-      check_and_meet_current_primary_node "$primary_node_endpoint" "$primary_node_port" "$primary_node_bus_port"
-    fi
+    echo "Current pod $CURRENT_POD_NAME is a secondary node, check and meet current primary node..."
+    check_and_meet_current_primary_node "$primary_node_endpoint" "$primary_node_port" "$primary_node_bus_port"
     echo "Node $CURRENT_POD_NAME is already in the cluster, skipping scale out replica..."
     exit 0
   fi
