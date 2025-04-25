@@ -100,7 +100,7 @@ spec:
     - name: readwrite
       updatePriority: 1
       participatesInQuorum: false
-    - name: waiting  # a special role to hack the update strategy of its
+    - name: notready  # a special role to hack the update strategy of its
       updatePriority: 1
       participatesInQuorum: false
   policyRules:
@@ -123,7 +123,7 @@ spec:
             if mc config host add minio http://127.0.0.1:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD &>/dev/null; then
               echo -n "readwrite"
             else
-              echo -n "waiting"
+              echo -n "notready"
             fi
   runtime:
     initContainers:
