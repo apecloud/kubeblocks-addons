@@ -2592,8 +2592,12 @@
 	// Clickhouse all parameter define: clickhouse settings define
 }
 
-clickhouse: {
-	profiles: #ProfilesParameter & {
+#CKUserParameter: {
+	clickhouse: {
+		profiles: #ProfilesParameter
+		...
 	}
-	...
+}
+
+configuration: #CKUserParameter & {
 }
