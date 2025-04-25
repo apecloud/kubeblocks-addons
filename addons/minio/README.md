@@ -107,7 +107,6 @@ spec:
               requests:
                 # Set the storage size as needed
                 storage: 20Gi
-
 ```
 
 ```bash

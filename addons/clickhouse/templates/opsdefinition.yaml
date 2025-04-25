@@ -1,0 +1,52 @@
+---
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
+  name: post-rebuild-for-clickhouse
+spec:
+  podInfoExtractors:
+    - name: availablePod
+      podSelector:
+        multiPodSelectionPolicy: Any
+      env:
+        - name: CLICKHOUSE_TCP_PORT
+          valueFrom:
+            envRef:
+              envName: CLICKHOUSE_TCP_PORT
+        - name: CLICKHOUSE_ADMIN_USER
+          valueFrom:
+            envRef:
+              envName: CLICKHOUSE_ADMIN_USER
+        - name: CLICKHOUSE_ADMIN_PASSWORD
+          valueFrom:
+            envRef:
+              envName: CLICKHOUSE_ADMIN_PASSWORD
+        - name: CLICKHOUSE_COMP_REPLICAS
+          valueFrom:
+            envRef:
+              envName: CLICKHOUSE_COMP_REPLICAS
+  parametersSchema:
+    openAPIV3Schema:
+      properties:
+        instanceName:
+          description: |
+            specify the instance name which has been rebuild.
+          type: string
+      type: object
+  actions:
+    - name: post-rebuild
+      failurePolicy: Fail
+      workload:
+        podInfoExtractorName: availablePod
+        type: Pod
+        backoffLimit: 0
+        podSpec:
+          containers:
+            - name: post-rebuild
+              image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:24.8.3-debian-12-r1
+              imagePullPolicy: IfNotPresent
+              command:
+                - bash
+                - -c
+                - |
+                  {{- .Files.Get "scripts/post-for-rebuild.sh" | nindent 18 }}
