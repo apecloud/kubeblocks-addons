@@ -36,7 +36,7 @@ load_redis_cluster_common_utils() {
 # TODO: remove it from preStop hook and it should be implemented in memberLeave lifecycleAction in KubeBlocks
 remove_replica_from_shard_if_need() {
   # initialize the current pod info
-  current_pod_fqdn="$CURRENT_POD_NAME.$CURRENT_SHARD_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.cluster.local"
+  current_pod_fqdn="$CURRENT_POD_NAME.$CURRENT_SHARD_COMPONENT_NAME-headless.$CLUSTER_NAMESPACE.svc.$CLUSTER_DOMAIN"
 
   # get the cluster nodes info
   cluster_nodes_info=$(get_cluster_nodes_info_with_retry "$current_pod_fqdn" "$service_port")
