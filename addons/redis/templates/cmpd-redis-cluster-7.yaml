@@ -341,7 +341,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - /scripts/redis-cluster-manage.sh --post-provision
+          - /scripts/redis-cluster-manage.sh --post-provision  > /tmp/post-provision.log 2>&1
         ## all lifecycle actions share the same env
         env:
           - name: CURRENT_POD_NAME
@@ -369,7 +369,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - /scripts/redis-cluster-manage.sh --pre-terminate
+          - /scripts/redis-cluster-manage.sh --pre-terminate > /tmp/pre-terminate.log 2>&1
       retryPolicy:
         maxRetries: 10
     memberLeave:
