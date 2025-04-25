@@ -14,7 +14,7 @@ spec:
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:
     # top level clickhouse configuration type
-    topLevelKey: ClickhouseParameter
+    topLevelKey: CKParameter
 
     # schemaInJSON: auto generate from cue scripts
     # example: ../../pkg/configuration/testdata/mysql_openapi.json

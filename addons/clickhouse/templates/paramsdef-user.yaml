@@ -14,7 +14,7 @@ spec:
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:
     # top level clickhouse user configuration type
-    topLevelKey: ClickhouseUserParameter
+    topLevelKey: CKUserParameter
 
     # schemaInJSON: auto generate from cue scripts
     # example: ../../pkg/configuration/testdata/mysql_openapi.json
