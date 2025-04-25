@@ -6,6 +6,7 @@ metadata:
     {{- include "clickhouse.labels" . | nindent 4 }}
   annotations:
     {{- include "clickhouse.annotations" . | nindent 4 }}
+    apps.kubeblocks.io/skip-immutable-check: "true"
 spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
@@ -13,26 +14,20 @@ spec:
   serviceVersion: "24.8.3"
   runtime:
     securityContext:
-      fsGroup: 1001
+      fsGroup: 0
       seccompProfile:
         type: RuntimeDefault
     containers:
       - name: clickhouse
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
-          runAsNonRoot: true
-          runAsUser: 1001
+          runAsUser: 0
+          privileged: true
         command:
           - bash
           - -xc
           - |
-            HOSTNAME="$(hostname -s)"
-            export CH_KEEPER_ID=${HOSTNAME##*-}
-            exec /opt/bitnami/scripts/clickhouse/entrypoint.sh /opt/bitnami/scripts/clickhouse/run.sh -- --listen_host=0.0.0.0
+            /scripts/bootstrap-keeper.sh
         ports:
           # clickhouse ports
           - name: http
@@ -62,7 +57,11 @@ spec:
           - name: data
             mountPath: /bitnami/clickhouse
           - name: config
-            mountPath: /bitnami/clickhouse/etc/conf.d/default
+            mountPath: /opt/bitnami/clickhouse/etc/conf.d
+          - name: scripts
+            mountPath: /scripts
+          - name: client-config
+            mountPath: /etc/clickhouse-client
   services:
     - name: default
       spec:
@@ -112,7 +111,18 @@ spec:
       template: {{ include "clickhouse-keeper24.configurationTplName" . }}
       volumeName: config
       namespace: {{ .Release.Namespace }}
-      restartOnFileChange: true
+      externalManaged: true
+    - name: clickhouse-client-tpl
+      template: {{ include "clickhouse24.clientTplName" . }}
+      volumeName: client-config
+      namespace: {{ .Release.Namespace }}
+      restartOnFileChange: false
+  scripts:
+    - name: clickhouse-scripts
+      template: clickhouse-scripts
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
   systemAccounts:
     - name: admin
       initAccount: true
@@ -166,3 +176,25 @@ spec:
     caFile: ca.pem
     certFile: cert.pem
     keyFile: key.pem
+  roles:
+    - name: leader
+      updatePriority: 3
+      participatesInQuorum: false
+    - name: follower
+      updatePriority: 2
+      participatesInQuorum: false
+    - name: observer
+      updatePriority: 1
+      participatesInQuorum: false
+  lifecycleActions:
+    roleProbe:
+      periodSeconds: {{ .Values.roleProbe.periodSeconds }}
+      timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+      exec:
+        container: clickhouse
+        image: {{ .Values.busyboxImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.busyboxImage.repository}}:{{ .Values.busyboxImage.tag }}
+        command:
+        - sh
+        - -c
+        - |
+          sh /scripts/keeper-role-probe.sh
