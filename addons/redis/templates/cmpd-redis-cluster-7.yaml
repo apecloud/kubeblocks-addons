@@ -11,6 +11,7 @@ spec:
   description: An official v7.0 Redis Cluster(distributed implementation of Redis) component definition for Kubernetes
   serviceKind: redis-cluster
   serviceVersion: {{ .Values.defaultServiceVersion.redisCluster.major7 }}
+  podManagementPolicy: Parallel
   services:
     - name: redis-advertised
       serviceName: redis-advertised
