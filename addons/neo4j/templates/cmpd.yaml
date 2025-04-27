@@ -29,7 +29,7 @@ spec:
       defaultMode: 0644
       restartOnFileChange: true
   systemAccounts:
-    - name: root
+    - name: neo4j
       initAccount: true
       passwordGenerationPolicy:
         length: 16
@@ -66,7 +66,7 @@ spec:
         - name: SERVICE_PORT
           value: "7687"
         - name: NEO4J_AUTH
-          value: neo4j/your_password
+          value: neo4j/$(DEFAULT_PASS)
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         ports:
@@ -102,22 +102,17 @@ spec:
       valueFrom:
         clusterVarRef:
           clusterUID: Required
-    - name: TEST_USER
+    - name: DEFAULT_USER
       valueFrom:
         credentialVarRef:
           compDef: {{ include "neo4j.cmpdName" . }}
-          name: root
+          name: neo4j
           optional: false
           username: Required
     - name: DEFAULT_PASS
       valueFrom:
         credentialVarRef:
           compDef: {{ include "neo4j.cmpdName" . }}
-          name: root
+          name: neo4j
           optional: false
           password: Required
-    - name: CLUSTER_COMPONENT_NAME
-      valueFrom:
-        componentVarRef:
-          optional: false
-          componentName: Required
