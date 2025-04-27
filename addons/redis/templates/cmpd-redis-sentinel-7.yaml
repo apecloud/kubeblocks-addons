@@ -11,6 +11,7 @@ spec:
   description: A Redis Sentinel v7.0 component definition for Kubernetes
   serviceKind: redis-sentinel
   serviceVersion: {{ .Values.defaultServiceVersion.redisSentinel.major7 }}
+  podManagementPolicy: Parallel
   services:
     - name: redis-sentinel
       serviceName: redis-sentinel
