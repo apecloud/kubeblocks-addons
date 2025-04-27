@@ -1,0 +1,48 @@
+# Default values for rabbitmq.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+image:
+  registry: docker.io
+  repository: neo4j
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: 5.26.5
+
+componentServiceVersion:
+  neo4j: 5.26.5
+
+nameOverride: ""
+
+## Authentication parameters
+##
+auth:
+  ## @param auth.password Password for the "neo4j" admin user, leave empty 
+  ## for random generated password.
+  ##
+  password:
+  ## @param auth.database Name for a custom database to create
+  ##
+
+logConfigs:
+  running: /data/neo4j/logs/neo4j.log*
+
+logCollector:
+  enabled: false
+
+dataMountPath: /data
+
+
+## @param enabledClusterVersions specifies the enabled cluster versions, if not set, all cluster versions are enabled
+## and will be rendered, installed. Otherwise, only the specified cluster versions will be rendered and installed.
+## Example:
+##   --set "enabledClusterVersions={rabbitmq}"
+##   --set enabledClusterVersions=''   # this will enable all cluster versions
+##   --set enabledClusterVersions={}   # this will disable all cluster versions, the enabledClusterVersions has an empty
+##                                     # value and the length is 1
+enabledClusterVersions: [ ]
+
+## @param resourceNamePrefix Prefix for all resources name created by this chart, that can avoid name conflict
+## if you install multiple releases of this chart.
+## If specified, the cluster definition will use it as name.
+resourceNamePrefix: "neo4j"
