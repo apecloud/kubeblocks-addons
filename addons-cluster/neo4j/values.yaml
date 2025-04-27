@@ -12,11 +12,11 @@ mode: singlealone
 
 ## @param cpu
 ##
-cpu: 0.5
+cpu: 2
 
 ## @param memory, the unit is Gi
 ##
-memory: 0.5
+memory: 2
 
 ## @param requests.cpu if not set, use cpu
 ## @param requests.memory, if not set, use memory

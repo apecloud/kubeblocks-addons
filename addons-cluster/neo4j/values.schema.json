@@ -35,8 +35,8 @@
         "number",
         "string"
       ],
-      "default": 0.5,
-      "minimum": 0.1,
+      "default": 2,
+      "minimum": 2,
       "maximum": 64,
       "multipleOf": 0.1
     },
@@ -47,8 +47,8 @@
         "number",
         "string"
       ],
-      "default": 0.5,
-      "minimum": 0.1,
+      "default": 2,
+      "minimum": 2,
       "maximum": 1000
     },
     "storage": {

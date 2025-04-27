@@ -15,12 +15,12 @@ spec:
     - name: default
       spec:
         ports:
-          - name: amqp
+          - name: bolt
             port: 7687
-            targetPort: amqp
-          - name: management
+            targetPort: bolt
+          - name: http
             port: 7474
-            targetPort: management
+            targetPort: http
   configs:
     - name: config
       template: {{ include "neo4j.configTplName" . }}
@@ -71,11 +71,18 @@ spec:
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         ports:
         - containerPort: 7474
-          name: management
+          name: http
           protocol: TCP
         - containerPort: 7687
-          name: amqp
+          name: bolt
           protocol: TCP
+        readinessProbe:
+          failureThreshold: 20
+          periodSeconds: 5
+          successThreshold: 1
+          tcpSocket:
+            port: 7687
+          timeoutSeconds: 10
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
@@ -95,14 +102,14 @@ spec:
       valueFrom:
         clusterVarRef:
           clusterUID: Required
-    - name: NEO4J_DEFAULT_USER
+    - name: TEST_USER
       valueFrom:
         credentialVarRef:
           compDef: {{ include "neo4j.cmpdName" . }}
           name: root
           optional: false
           username: Required
-    - name: NEO4J_DEFAULT_PASS
+    - name: DEFAULT_PASS
       valueFrom:
         credentialVarRef:
           compDef: {{ include "neo4j.cmpdName" . }}
