@@ -26,7 +26,7 @@ spec:
       template: {{ include "neo4j.configTplName" . }}
       volumeName: neo4j-config
       namespace: {{ .Release.Namespace }}
-      defaultMode: 0644
+      defaultMode: 0640
       restartOnFileChange: true
   systemAccounts:
     - name: neo4j
@@ -67,7 +67,18 @@ spec:
           value: "7687"
         - name: NEO4J_AUTH
           value: neo4j/$(DEFAULT_PASS)
+        - name: EXTENDED_CONF
+          value: "yes"
+        - name: NEO4J_CONF
+          value: /data/config/
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        command:
+        - bash  
+        - -c 
+        - |
+          cp -r /config /data/config
+          chown -R neo4j:neo4j /data/config
+          tini -g -- /startup/docker-entrypoint.sh neo4j
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         ports:
         - containerPort: 7474
@@ -86,9 +97,9 @@ spec:
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
-          - mountPath: /etc/rabbitmq/conf.d/12-kubeblocks.conf
-            name: rabbitmq-config
-            subPath: rabbitmq.conf
+          - mountPath: /config/neo4j.conf
+            name: neo4j-config
+            subPath: neo4j.conf
   vars:
     - name: CLUSTER_NAME
       valueFrom:
