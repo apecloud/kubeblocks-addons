@@ -11,7 +11,12 @@ function chown_data_dir() {
 }
 chown_data_dir
 HOSTNAME="$(hostname -s)"
-export CH_KEEPER_ID=$((${HOSTNAME##*-} + 1))
+if grep -q "<id>0</id>" /opt/bitnami/clickhouse/etc/conf.d/ch-keeper_00_default_overrides.xml; then
+  # compatible old version
+  export CH_KEEPER_ID=${HOSTNAME##*-}
+else
+  export CH_KEEPER_ID=$((${HOSTNAME##*-} + 1))
+fi
 scripts_dir=/opt/bitnami/scripts
 sed -i 's/^export CLICKHOUSE_DAEMON_USER="clickhouse"/CLICKHOUSE_DAEMON_USER="root"/' ${scripts_dir}/clickhouse-env.sh
 sed -i 's/^export CLICKHOUSE_DAEMON_GROUP="clickhouse"/CLICKHOUSE_DAEMON_GROUP="root"/' ${scripts_dir}/clickhouse-env.sh
