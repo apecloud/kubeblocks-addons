@@ -50,6 +50,12 @@ spec:
       verbs:
       - create
   runtime:
+    securityContext:
+      fsGroup: 7474
+      fsGroupChangePolicy: Always
+      runAsGroup: 7474
+      runAsNonRoot: true
+      runAsUser: 7474
     containers:
       - name: neo4j
         env:
@@ -70,14 +76,12 @@ spec:
         - name: EXTENDED_CONF
           value: "yes"
         - name: NEO4J_CONF
-          value: /data/config/
+          value: /config/
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         command:
         - bash  
         - -c 
         - |
-          cp -r /config /data/config
-          chown -R neo4j:neo4j /data/config
           tini -g -- /startup/docker-entrypoint.sh neo4j
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         ports:
