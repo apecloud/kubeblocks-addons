@@ -12,9 +12,21 @@ spec:
         - {{ include "neo4j.cmpdNamePrefix" . }}
       releases:
         - 5.26.5
+        - 4.4.42
+        - 2025.03.0
   releases:
     - name: 5.26.5
       changes:
       serviceVersion: 5.26.5
       images:
         neo4j: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.26.5
+    - name: 4.4.42
+      changes:
+      serviceVersion: 4.4.42
+      images:
+        neo4j: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.4.42
+    - name: 2025.03.0
+      changes:
+      serviceVersion: 2025.03.0
+      images:
+        neo4j: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:2025.03.0
