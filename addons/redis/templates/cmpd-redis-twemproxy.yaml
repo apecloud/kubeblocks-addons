@@ -11,6 +11,7 @@ spec:
   description: A Twemproxy component definition for Kubernetes
   serviceKind: redis-twemproxy
   serviceVersion: {{ .Values.defaultServiceVersion.redisTwemproxy.major }}
+  podManagementPolicy: Parallel
   services:
     - name: twemproxy
       serviceName: twemproxy
