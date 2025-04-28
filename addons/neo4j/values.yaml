@@ -1,4 +1,4 @@
-# Default values for rabbitmq.
+# Default values for neo4j.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
@@ -36,7 +36,7 @@ dataMountPath: /data
 ## @param enabledClusterVersions specifies the enabled cluster versions, if not set, all cluster versions are enabled
 ## and will be rendered, installed. Otherwise, only the specified cluster versions will be rendered and installed.
 ## Example:
-##   --set "enabledClusterVersions={rabbitmq}"
+##   --set "enabledClusterVersions={neo4j}"
 ##   --set enabledClusterVersions=''   # this will enable all cluster versions
 ##   --set enabledClusterVersions={}   # this will disable all cluster versions, the enabledClusterVersions has an empty
 ##                                     # value and the length is 1

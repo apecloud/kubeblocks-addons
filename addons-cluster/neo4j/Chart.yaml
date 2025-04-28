@@ -27,4 +27,4 @@ maintainers:
 
 sources:
   - https://github.com/apecloud/kubeblocks/
-  - https://github.com/apecloud/kubeblocks/tree/main/deploy/rabbitmq
+  - https://github.com/apecloud/kubeblocks/tree/main/deploy/neo4j
