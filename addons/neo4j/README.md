@@ -1,6 +1,6 @@
-# RabbitMQ
+# Neo4j
 
-RabbitMQ is an open-source and lightweight message broker which supports multiple messaging protocols.
+Neo4j is a highly scalable, robust native graph database.
 
 ## Features In KubeBlocks
 
@@ -8,18 +8,14 @@ RabbitMQ is an open-source and lightweight message broker which supports multipl
 
 |   Topology       | Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
 |------------------|------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
-| cluster     | Yes                    | Yes                   | Yes              | Yes       | Yes        | No       | Yes    | N/A     |
+| cluster     | Yes                    | No                   | Yes              | Yes       | Yes        | No       | Yes    | N/A     |
 
 ### Versions
 
 | Major Versions | Description |
 |---------------|-------------|
-| 3.8 | 3.8.14|
-| 3.9 | 3.9.29|
-| 3.10 | 3.10.25|
-| 3.11 | 3.11.28|
-| 3.12 | 3.12.14|
-| 3.13 | 3.13.2, 3.13.7|
+| 4.4 | 4.4.42|
+| 5.26 | 5.26.5|
 
 ## Prerequisites
 
@@ -27,7 +23,7 @@ RabbitMQ is an open-source and lightweight message broker which supports multipl
 - `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
 - KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
-- RabbitMQ Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Neo4j Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
 - Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
 
   ```bash
@@ -38,14 +34,14 @@ RabbitMQ is an open-source and lightweight message broker which supports multipl
 
 ### Create
 
-Create a rabbitmq cluster with 3 replicas:
+Create a neo4j cluster with 1 replicas:
 
 ```yaml
-# cat examples/rabbitmq/cluster.yaml
+# cat examples/neo4j/cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: rabbitmq-cluster
+  name: neo4j-cluster
   namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
@@ -57,24 +53,23 @@ spec:
   # Note: `shardingSpecs` and `componentSpecs` cannot both be empty; at least one must be defined to configure a cluster.
   # ClusterComponentSpec defines the specifications for a Component in a Cluster.
   componentSpecs:
-    - name: rabbitmq
-      componentDef: rabbitmq
+    - name: neo4j
+      componentDef: neo4j
       # The serviceVersion is used to determine the version of the Cluster. If the serviceVersion is not specified, the default value is the ServiceVersion defined in ComponentDefinition.
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [3.10.25,3.11.28,3.12.14,3.13.2,3.13.7,3.8.14,3.9.29]
-      serviceVersion: 3.13.7
-      # Recommended to set `replicas` to [3,5,7]
-      # All data/state is replicated across all replicas.
-      replicas: 3
+      # Valid options are: [4.4.42, 5.26.5, 2025.03.0]
+      serviceVersion: 5.26.5
+      # community version only support 1 replicas
+      replicas: 1
       # Specifies the resources required by the Component.
       resources:
         limits:
-          cpu: "0.5"
-          memory: "0.5Gi"
+          cpu: "2"
+          memory: "2Gi"
         requests:
-          cpu: "0.5"
-          memory: "0.5Gi"
+          cpu: "2"
+          memory: "2Gi"
       # Specifies a list of PersistentVolumeClaim templates that define the storage
       # requirements for the Component.
       volumeClaimTemplates:
@@ -96,92 +91,7 @@ spec:
 ```
 
 ```bash
-kubectl apply -f examples/rabbitmq/cluster.yaml
-```
-
-> [!Important]
-> Unlike others, on creating the cluster, this example creates a ServiceAccount, Role, and RoleBinding for the RabbitMQ cluster.
-> RabbitMQ needs `peer discovery` role to create events and get endpoints. This is essential for discovering other RabbitMQ nodes and forming a cluster.
-> When `PulicyRule` API is ready, rules defined in the `Role` can be defined in the `ComponentDefintion.Spec.PolicyRule`. Such that KubeBlocks will automatically create and manage the `Role` and `RoleBinding` for the component.
-
-### Horizontal scaling
-
-> [!Important]
-> RabbitMQ quorum queue are designed based on the **Raft consensus algorithm**.
-> Make sure to have an odd number of replicas, such as 3, 5, 7, to avoid split-brain scenarios, after scaling out/in the cluster.
-
-#### Scale-out
-
-Horizontal scaling out cluster by adding ONE more  replica:
-
-```yaml
-# cat examples/rabbitmq/scale-out.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-metadata:
-  name: rabbitmq-scale-out
-  namespace: demo
-spec:
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: rabbitmq-cluster
-  type: HorizontalScaling
-  # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
-  horizontalScaling:
-    # Specifies the name of the Component.
-  - componentName: rabbitmq
-    # Specifies the replica changes for scaling out components
-    scaleOut:
-      # Specifies the replica changes for the component.
-      # add one more replica to current component
-      replicaChanges: 1
-```
-
-```bash
-kubectl apply -f examples/rabbitmq/scale-out.yaml
-```
-
-#### Scale-in
-
-Horizontal scaling in cluster by deleting ONE replica:
-
-```yaml
-# cat examples/rabbitmq/scale-in.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-metadata:
-  name: rabbitmq-scale-in
-  namespace: demo
-spec:
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: rabbitmq-cluster
-  type: HorizontalScaling
-  # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
-  horizontalScaling:
-    # Specifies the name of the Component.
-  - componentName: rabbitmq
-    # Specifies the replica changes for scaling out components
-    scaleIn:
-      # Specifies the replica changes for the component.
-      # add one more replica to current component
-      replicaChanges: 1
-```
-
-```bash
-kubectl apply -f examples/rabbitmq/scale-in.yaml
-```
-
-On scale-in, the replica with the highest number (if not specified in particular) will be stopped, removed and be `forget_cluster_node` from the cluster.
-
-#### Scale-in/out using Cluster API
-
-Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
-
-```yaml
-spec:
-  componentSpecs:
-    - name: rabbitmq
-      componentDef: rabbitmq
-      replicas: 3 # Update `replicas` to your desired number
+kubectl apply -f examples/neo4j/cluster.yaml
 ```
 
 ### Vertical scaling
@@ -189,31 +99,32 @@ spec:
 Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster
 
 ```yaml
-# cat examples/rabbitmq/verticalscale.yaml
+# cat examples/neo4j/verticalscale.yaml
 apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
-  name: rabbitmq-verticalscaling
+  name: neo4j-verticalscaling
   namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: rabbitmq-cluster
+  clusterName: neo4j-cluster
   type: VerticalScaling
   # Lists VerticalScaling objects, each specifying a component and its desired compute resources for vertical scaling.
   verticalScaling:
-  - componentName: rabbitmq
+  - componentName: neo4j
     # VerticalScaling refers to the process of adjusting the compute resources (e.g., CPU, memory) allocated to a Component. It defines the parameters required for the operation.
+    # Neo4j has a minimal resource request of 1 CPU and 2GB of memory.
     requests:
-      cpu: '1'
-      memory: 1Gi
+      cpu: '3'
+      memory: 3Gi
     limits:
-      cpu: '1'
-      memory: 1Gi
+      cpu: '3'
+      memory: 3Gi
 
 ```
 
 ```bash
-kubectl apply -f examples/rabbitmq/verticalscale.yaml
+kubectl apply -f examples/neo4j/verticalscale.yaml
 ```
 
 #### Scale-up/down using Cluster API
@@ -223,8 +134,8 @@ Alternatively, you may update `spec.componentSpecs.resources` field to the desir
 ```yaml
 spec:
   componentSpecs:
-    - name: rabbitmq
-      componentDef: rabbitmq
+    - name: neo4j
+      componentDef: neo4j
       replicas: 3
       resources:
         requests:
@@ -253,20 +164,20 @@ To increase size of volume storage with the specified components in the cluster
 Increase size of volume storage with the specified components in the cluster
 
 ```yaml
-# cat examples/rabbitmq/volumeexpand.yaml
+# cat examples/neo4j/volumeexpand.yaml
 apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
-  name: rabbitmq-volumeexpansion
+  name: neo4j-volumeexpansion
   namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: rabbitmq-cluster
+  clusterName: neo4j-cluster
   type: VolumeExpansion
   # Lists VolumeExpansion objects, each specifying a component and its corresponding volumeClaimTemplates that requires storage expansion.
   volumeExpansion:
     # Specifies the name of the Component.
-  - componentName: rabbitmq
+  - componentName: neo4j
     # volumeClaimTemplates specifies the storage size and volumeClaimTemplate name.
     volumeClaimTemplates:
     - name: data
@@ -275,7 +186,7 @@ spec:
 ```
 
 ```bash
-kubectl apply -f examples/rabbitmq/volumeexpand.yaml
+kubectl apply -f examples/neo4j/volumeexpand.yaml
 ```
 
 #### Volume expansion using Cluster API
@@ -285,9 +196,9 @@ Alternatively, you may update the `spec.componentSpecs.volumeClaimTemplates.spec
 ```yaml
 spec:
   componentSpecs:
-    - name: rabbitmq
-      componentDef: rabbitmq
-      replicas: 3
+    - name: neo4j
+      componentDef: neo4j
+      replicas: 1
       volumeClaimTemplates:
         - name: data
           spec:
@@ -305,25 +216,25 @@ spec:
 Restart the specified components in the cluster:
 
 ```yaml
-# cat examples/rabbitmq/restart.yaml
+# cat examples/neo4j/restart.yaml
 apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
-  name: rabbitmq-restart
+  name: neo4j-restart
   namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: rabbitmq-cluster
+  clusterName: neo4j-cluster
   type: Restart
   # Lists Components to be restarted. ComponentOps specifies the Component to be operated on.
   restart:
     # Specifies the name of the Component.
-  - componentName: rabbitmq
+  - componentName: neo4j
 
 ```
 
 ```bash
-kubectl apply -f examples/rabbitmq/restart.yaml
+kubectl apply -f examples/neo4j/restart.yaml
 ```
 
 ### Stop
@@ -331,21 +242,21 @@ kubectl apply -f examples/rabbitmq/restart.yaml
 Stop the cluster and release all the pods of the cluster, but the storage will be reserved
 
 ```yaml
-# cat examples/rabbitmq/stop.yaml
+# cat examples/neo4j/stop.yaml
 apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
-  name: rabbitmq-stop
+  name: neo4j-stop
   namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: rabbitmq-cluster
+  clusterName: neo4j-cluster
   type: Stop
 
 ```
 
 ```bash
-kubectl apply -f examples/rabbitmq/stop.yaml
+kubectl apply -f examples/neo4j/stop.yaml
 ```
 
 ### Start
@@ -353,21 +264,21 @@ kubectl apply -f examples/rabbitmq/stop.yaml
 Start the stopped cluster
 
 ```yaml
-# cat examples/rabbitmq/start.yaml
+# cat examples/neo4j/start.yaml
 apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
-  name: rabbitmq-start
+  name: neo4j-start
   namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: rabbitmq-cluster
+  clusterName: neo4j-cluster
   type: Start
 
 ```
 
 ```bash
-kubectl apply -f examples/rabbitmq/start.yaml
+kubectl apply -f examples/neo4j/start.yaml
 ```
 
 ### Expose
@@ -375,21 +286,21 @@ kubectl apply -f examples/rabbitmq/start.yaml
 #### Enable
 
 ```yaml
-# cat examples/rabbitmq/expose-enable.yaml
+# cat examples/neo4j/expose-enable.yaml
 apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
-  name: rabbitmq-expose-enable
+  name: neo4j-expose-enable
   namespace: demo
 spec:
   # Specifies the type of this operation.
   type: Expose
   # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: rabbitmq-cluster
+  clusterName: neo4j-cluster
   # Lists Expose objects, each specifying a Component and its services to be exposed.
   expose:
     # Specifies the name of the Component.
-  - componentName: rabbitmq
+  - componentName: neo4j
     # Specifies a list of OpsService. When an OpsService is exposed, a corresponding ClusterService will be added to `cluster.spec.services`.
     services:
     - name: internet
@@ -397,9 +308,9 @@ spec:
       # Valid options are `ClusterIP`, `NodePort`, and `LoadBalancer`.
       serviceType: LoadBalancer
       ports:
-        - name: managment
-          port: 15672
-          targetPort: management
+        - name: http
+          port: 7474
+          targetPort: http
       # Contains cloud provider related parameters if ServiceType is LoadBalancer.
       # [NOTE] Following is an example for Aliyun ACK, please adjust the following annotations as needed.
       annotations:
@@ -411,25 +322,25 @@ spec:
 ```
 
 ```bash
-kubectl apply -f examples/rabbitmq/expose-enable.yaml
+kubectl apply -f examples/neo4j/expose-enable.yaml
 ```
 
 #### Disable
 
 ```yaml
-# cat examples/rabbitmq/expose-disable.yaml
+# cat examples/neo4j/expose-disable.yaml
 apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
-  name: rabbitmq-expose-disable
+  name: neo4j-expose-disable
   namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: rabbitmq-cluster
+  clusterName: neo4j-cluster
   # Lists Expose objects, each specifying a Component and its services to be exposed.
   expose:
     # Specifies the name of the Component.
-  - componentName: rabbitmq
+  - componentName: neo4j
     # Specifies a list of OpsService. When an OpsService is exposed, a corresponding ClusterService will be added to `cluster.spec.services`.
     services:
     - name: internet
@@ -443,7 +354,7 @@ spec:
 ```
 
 ```bash
-kubectl apply -f examples/rabbitmq/expose-disable.yaml
+kubectl apply -f examples/neo4j/expose-disable.yaml
 ```
 
 #### Expose SVC using Cluster API
@@ -460,17 +371,17 @@ spec:
       # aws annotations
       service.beta.kubernetes.io/aws-load-balancer-type: nlb  # Use Network Load Balancer
       service.beta.kubernetes.io/aws-load-balancer-internal: "true"  # or "false" for internet
-    componentSelector: rabbitmq
-    name: rabbitmq-vpc
-    serviceName: rabbitmq-vpc
+    componentSelector: neo4j
+    name: neo4j-vpc
+    serviceName: neo4j-vpc
     spec:  # defines the behavior of a K8s service.
       ipFamilyPolicy: PreferDualStack
       ports:
-      - name: tcp-rabbitmq
+      - name: tcp-neo4j
         # port to expose
-        port: 15672 # port 15672 for rabbitmq management console
+        port: 7474  # port 7474 for neo4j http console
         protocol: TCP
-        targetPort: management
+        targetPort: http
       type: LoadBalancer
 ```
 
@@ -494,155 +405,30 @@ cloud.google.com/l4-rbs: "enabled" # for internet
 
 Please consult your cloud provider for more accurate and update-to-date information.
 
-### Reconfigure
-
-A database reconfiguration is the process of modifying database parameters, settings, or configurations to improve performance, security, or availability. The reconfiguration can be either:
-
-- Dynamic: Applied without restart
-- Static: Requires database restart
-
-Reconfigure parameters with the specified components in the cluster
-
-```yaml
-# cat examples/rabbitmq/reconfigure.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-metadata:
-  name: rabbitmq-reconfiguring
-  namespace: demo
-spec:
-  # Specifies the type of this operation.
-  type: Reconfiguring
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: mycluster
-  # Instructs the system to bypass pre-checks (including cluster state checks and customized pre-conditions hooks) and immediately execute the opsRequest, except for the opsRequest of 'Start' type, which will still undergo pre-checks even if `force` is true.  Note: Once set, the `force` field is immutable and cannot be updated.
-  force: false
-  # Specifies a component and its configuration updates. This field is deprecated and replaced by `reconfigures`.
-  reconfigures:
-    # Specifies the name of the Component.
-  - componentName: rabbitmq
-    parameters:
-      # Represents the name of the parameter that is to be updated.
-      # `channel_max` is a static parameter in rabbitmq
-    - key: ssl_handshake_timeout
-      # Represents the parameter values that are to be updated.
-      # If set to nil, the parameter defined by the Key field will be removed from the configuration file.
-      value: "2000"
-```
-
-```bash
-kubectl apply -f examples/rabbitmq/reconfigure.yaml
-```
-
-This example will change the `channel_max` to `2000`.
-
-> In RabbitMQ, the `channel_max` parameter is used to set the maximum number of channels that a client can open on a single connection. It is a static parameter, so the change will take effect after restarting the database.
-
-To verify the change, you may login to any replica and run the following command:
-
-```bash
-rabbitmq-diagnostics environment
-```
-
-### Observability
-
-There are various ways to monitor the cluster. Here we use Prometheus and Grafana to demonstrate how to monitor the cluster.
-
-#### Installing the Prometheus Operator
-
-You may skip this step if you have already installed the Prometheus Operator.
-Or you can follow the steps in [How to install the Prometheus Operator](../docs/install-prometheus.md) to install the Prometheus Operator.
-
-##### Step 1. Create PodMonitor
-
-Apply the `PodMonitor` file to monitor the cluster:
-
-```yaml
-# cat examples/rabbitmq/pod-monitor.yaml
-
-apiVersion: monitoring.coreos.com/v1
-kind: PodMonitor
-metadata:
-  name: rabbitmq-cluster-pod-monitor
-  labels:               # this is labels set in `prometheus.spec.podMonitorSelector`
-    release: prometheus
-spec:
-  jobLabel: app.kubernetes.io/managed-by
-  # defines the labels which are transferred from the
-  # associated Kubernetes `Pod` object onto the ingested metrics
-  # set the lables w.r.t you own needs
-  podTargetLabels:
-  - app.kubernetes.io/instance
-  - app.kubernetes.io/managed-by
-  - apps.kubeblocks.io/component-name
-  - apps.kubeblocks.io/pod-name
-  podMetricsEndpoints:
-    - path: /metrics
-      port: prometheus
-      scheme: http
-  namespaceSelector:
-    matchNames:
-      - demo
-  selector:
-    matchLabels:
-      app.kubernetes.io/instance: rabbitmq-cluster
-      apps.kubeblocks.io/component-name: rabbitmq
-```
-
-```bash
-kubectl apply -f examples/rabbitmq/pod-monitor.yaml
-```
-
-It sets path to `/metrics` and port to `prometheus` (for container port `15692`).
-
-```yaml
-    - path: /metrics
-      port: prometheus
-      scheme: http
-```
-
-##### Step 2. Access the Grafana Dashboard
-
-Login to the Grafana dashboard and import the dashboard.
-You can import the dashboard from [Grafana RabbitMQ-Overview](https://grafana.com/grafana/dashboards/10991-rabbitmq-overview/).
-
-> [!NOTE]
-> Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
-
-### Delete
-
-If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
-
-```bash
-kubectl patch cluster -n demo rabbitmq-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
-
-kubectl delete -f examples/rabbitmq/cluster.yaml
-```
-
 ## Appendix
 
-### How to access RabbitMQ Management Console
+### How to access Neo4j HTTP Console
 
-To access the RabbitMQ Management console (at port `15672`), you can:
+To access the Neo4j HTTP console (at port `7474`), you can:
 
-- Option 1. Expose the RabbitMQ cluster service:
+- Option 1. Expose the Neo4j cluster service:
 
 ```yaml
-# cat examples/rabbitmq/expose-enable.yaml
+# cat examples/neo4j/expose-enable.yaml
 apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
-  name: rabbitmq-expose-enable
+  name: neo4j-expose-enable
   namespace: demo
 spec:
   # Specifies the type of this operation.
   type: Expose
   # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: rabbitmq-cluster
+  clusterName: neo4j-cluster
   # Lists Expose objects, each specifying a Component and its services to be exposed.
   expose:
     # Specifies the name of the Component.
-  - componentName: rabbitmq
+  - componentName: neo4j
     # Specifies a list of OpsService. When an OpsService is exposed, a corresponding ClusterService will be added to `cluster.spec.services`.
     services:
     - name: internet
@@ -650,9 +436,9 @@ spec:
       # Valid options are `ClusterIP`, `NodePort`, and `LoadBalancer`.
       serviceType: LoadBalancer
       ports:
-        - name: managment
-          port: 15672
-          targetPort: management
+        - name: http
+          port: 7474
+          targetPort: http
       # Contains cloud provider related parameters if ServiceType is LoadBalancer.
       # [NOTE] Following is an example for Aliyun ACK, please adjust the following annotations as needed.
       annotations:
@@ -664,22 +450,22 @@ spec:
 ```
 
 ```bash
-kubectl apply -f examples/rabbitmq/expose-enable.yaml
+kubectl apply -f examples/neo4j/expose-enable.yaml
 ```
 
 - Option 2. Use port-forwarding:
 
 ```bash
-kubectl port-forward svc/rabbitmq-cluster-rabbitmq 15672:15672
+kubectl port-forward svc/neo4j-cluster-neo4j 7474:7474
 ```
 
-Then log in to the RabbitMQ Management console at `http://<localhost>:<port>/` with the user and password.
+Then log in to the Neo4j http console at `http://<localhost>:<port>/` with the user and password.
 
-The user and password can be found in the cluster secrets named after `<clusterName>-<cmpName>-account-<accountName>`. In this case, the secret name is `rabbitmq-cluster-rabbitmq-account-root`.
+The user and password can be found in the cluster secrets named after `<clusterName>-<cmpName>-account-<accountName>`. In this case, the secret name is `neo4j-cluster-neo4j-account-neo4j`.
 
 ```bash
 # get user name
-kubectl get secrets -n demo rabbitmq-cluster-rabbitmq-account-root -o jsonpath='{.data.username}' | base64 -d
+kubectl get secrets -n demo neo4j-cluster-neo4j-account-neo4j -o jsonpath='{.data.username}' | base64 -d
 # get password
-kubectl get secrets -n demo rabbitmq-cluster-rabbitmq-account-root -o jsonpath='{.data.password}' | base64 -d
+kubectl get secrets -n demo neo4j-cluster-neo4j-account-neo4j -o jsonpath='{.data.password}' | base64 -d
 ```
