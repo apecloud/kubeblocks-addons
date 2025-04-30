@@ -21,8 +21,8 @@ Define "etcd-cluster.clientService" to configure client service for etcd.
 {{- define "etcd-cluster.clientService" -}}
 {{- if .Values.clientService.type }}
 services:
-  - name: etcd-client
-    serviceName: etcd-client
+  - name: client
+    serviceName: client
     {{- if and (eq .Values.clientService.type "LoadBalancer") (not (empty .Values.clientService.annotations)) }}
     annotations: {{ .Values.clientService.annotations | toYaml | nindent 8 }}
     {{- end }}
