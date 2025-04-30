@@ -1,5 +1,5 @@
 #!/bin/bash
-export MONGODB_URI="mongodb://${MONGODB_ROOT_USER}:${MONGODB_ROOT_PASSWORD}@${DP_DB_HOST}:${DP_DB_PORT}/?authSource=admin&replicaSet=${KB_CLUSTER_COMP_NAME}"
+export MONGODB_URI="mongodb://${MONGODB_ROOT_USER}:${MONGODB_ROOT_PASSWORD}@${DP_DB_HOST}:${DP_DB_PORT}/?authSource=admin&replicaSet=${CLUSTER_COMPONENT_NAME}"
 # use datasafed and default config
 export WALG_DATASAFED_CONFIG=""
 export WALG_COMPRESSION_METHOD=zstd
