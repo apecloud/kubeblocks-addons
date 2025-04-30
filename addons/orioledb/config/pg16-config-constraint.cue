@@ -606,6 +606,7 @@
 
 	// Specifies which classes of statements will be logged by session audit logging.
 	//	"pgaudit.log"?: string & "ddl" | "function" | "misc" | "read" | "role" | "write" | "none" | "all" | "-ddl" | "-function" | "-misc" | "-read" | "-role" | "-write"
+	"pgaudit.log"?: string
 
 	// Specifies that session logging should be enabled in the case where all relations in a statement are in pg_catalog.
 	"pgaudit.log_catalog"?: bool & false | true
