@@ -19,7 +19,7 @@ EOF
       continue
     fi
     local addon=$(basename "$d")
-    local maintainers=$(yq e '["@" + (.maintainers[].name | sub(" "; "_"))] | join(" ")' "$d/Chart.yaml")
+    local maintainers=$(yq e '["@" + (.maintainers[].name | select(.name != "ApeCloud") | sub(" "; "_"))] | join(" ")' "$d/Chart.yaml")
     echo ""
     echo "addons/$addon/ $maintainers $FALLBACKS"
     echo "addons-cluster/$addon/ $maintainers $FALLBACKS"
