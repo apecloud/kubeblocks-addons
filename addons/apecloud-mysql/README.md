@@ -1,47 +1,77 @@
-# ApeCloud MySQL
+# ApeCloud MySQL on KubeBlocks
 
-ApeCloud MySQL is a database that is compatible with MySQL syntax and achieves high availability through the utilization of the **RAFT consensus protocol**. This example shows how it can be managed in Kubernetes with KubeBlocks.
+## Overview
 
-Please refer to the ApeCloud MySQL Documentation[^1] for more information.
+ApeCloud MySQL is a MySQL-compatible database that implements high availability through a RAFT consensus protocol cluster.
 
-## Features In KubeBlocks
+### Key Characteristics
 
-### Lifecycle Management
+- **MySQL 8.0 Compatibility**: Full support for MySQL 8.0 syntax and features
+- **High Availability**: Automatic leader election and failover via RAFT
+- **Consistency Guarantees**: Strong consistency across replicas
 
-| Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
-|------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
-| Yes                    | Yes                   | Yes              | Yes       | Yes        | Yes       | Yes    | Yes      |
+### RAFT Implementation Features
 
-### Backup and Restore
+- Leader-based replication with log synchronization
+- Automatic failover with minimal downtime
+- Split-brain prevention through quorum requirements
 
-| Feature     | Method | Description |
-|-------------|--------|------------|
-| Full Backup | xtrabackup   | uses `xtrabackup`, an open-source tool developed by Percona to perform full backups  |
+## Features in KubeBlocks
 
-### Versions
+### Cluster Management Operations
 
-| Major Versions | Description |
-|---------------|--------------|
-| 8.0           | 8.0.30       |
+| Operation |Supported | Description |
+|-----------|-------------|----------------------|
+| **Restart** | YES | • Ordered sequence (followers first)<br/>• Health checks between restarts |
+| **Stop/Start** | YES |  • Graceful shutdown<br/>• Fast startup from persisted state |
+| **Horizontal Scaling** |YES |  • Adjust replica count dynamically<br/>• Automatic data replication<br/> |
+| **Vertical Scaling** | YES |  • Adjust CPU/Memory resources<br/>• Rolling updates for minimal downtime<br/>• Adaptive Parameters Reconfiguration, such as buffer pool size/max connections |
+| **Volume Expansion** | YES |  • Online storage expansion<br/>• No downtime required |
+| **Reconfiguration** | YES | • Dynamic/Static parameter updates<br/>• Validation rules<br/>• Versioned history |
+| **Service Exposure** | YES |  • Multiple exposure types (ClusterIP/NodePort/LB)<br/>• Role-based routing |
+| **Switchover** | YES |  • Planned leader transfer<br/>• Zero data loss guarantee |
+
+### Data Protection
+
+| Type       | Method     | Details |
+|---------------|------------|---------|
+| Full Backup   | xtrabackup | • using Percona XtraBackup to perform a full backup <br/>• Upload backup file using `datasafed push`
+| Continuous Backup | archive-binlog | • Flushes binlogs when needed (size or time thresholds) <br/> • Upload binlogs using `wal-g binlog-push` <br/> • Purges expired binlogs |
+
+### Supported Versions
+
+| MySQL Version | ApeCloud MySQL Version | Notes |
+|--------------|-----------------------|-------|
+| 8.0.30       | 8.0.30 | GA release |
 
 ## Prerequisites
 
-- Kubernetes cluster >= v1.21
-- `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
-- Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
-- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
-- ApeCloud MySQL Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
-- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+Before starting, ensure you have:
+
+1. **Kubernetes Environment**:
+   - Cluster v1.21+
+   - `kubectl` installed ([Installation Guide](https://kubernetes.io/docs/tasks/tools/))
+   - Helm v3+ ([Installation Guide](https://helm.sh/docs/intro/install/))
+
+2. **KubeBlocks Setup**:
+   - KubeBlocks installed and running ([Installation](../docs/prerequisites.md))
+   - ApeCloud MySQL Addon enabled ([Addon Setup](../docs/install-addon.md))
+   - ETCD Addon enabled ([Addon Setup](../docs/install-addon.md))
+
+3. **Namespace Setup**:
+   Create an isolated namespace for this tutorial:
 
   ```bash
   kubectl create ns demo
   ```
 
-## Examples
+## Lifecycle Management Operations
 
-### Create
+### Cluster Provisioning
 
-Create a ApeCloud-MySQL cluster with three replicas:
+#### Quick Start
+
+To deploy a basic ApeCloud MySQL cluster with RAFT consensus:
 
 ```yaml
 # cat examples/apecloud-mysql/cluster.yaml
@@ -115,15 +145,38 @@ kubectl apply -f examples/apecloud-mysql/cluster.yaml
 And you will see the ApeCloud-MySQL cluster status goes `Running` after a while:
 
 ```bash
-kubectl get cluster acmysql-cluster -n demo
+kubectl get cluster acmysql-cluster -w -n demo
 ```
 
-and three pods are `Running` with roles `leader`,  `follower` and `follower` separately. To check the roles of the pods, you can use following command:
+<details open>
+<summary>Expected Output</summary>
 
 ```bash
-# replace `acmysql-cluster` with your cluster name
+NAME              CLUSTER-DEFINITION   TERMINATION-POLICY   STATUS    AGE
+acmysql-cluster   apecloud-mysql       Delete               Running   11m
+```
+
+</details>
+
+and three replicas are `Running` with roles `leader`,  `follower` and `follower` separately. To check the roles of the replicas, you can use following command:
+
+```bash
 kubectl get po -l  app.kubernetes.io/instance=acmysql-cluster -L kubeblocks.io/role -n demo
 ```
+
+<details open>
+<summary>Expected Output</summary>
+
+```bash
+NAME                      READY   STATUS    RESTARTS   AGE   ROLE
+acmysql-cluster-mysql-0   5/5     Running   0          12m   leader
+acmysql-cluster-mysql-1   5/5     Running   0          12m   follower
+acmysql-cluster-mysql-2   5/5     Running   0          12m   follower
+```
+
+</details>
+
+#### Version-Specific Cluster
 
 If you want to create a cluster of specified version, set the `spec.componentSpecs.serviceVersion` field in the yaml file before applying it:
 
@@ -146,15 +199,148 @@ The list of supported versions can be found by following command:
 kubectl get cmpv apecloud-mysql
 ```
 
-### Horizontal scaling
+<details open>
+<summary>Expected Output</summary>
 
-> [!IMPORTANT]
+```bash
+NAME             VERSIONS   STATUS      AGE
+apecloud-mysql   8.0.30     Available   5d
+```
+
+</details>
+
+### Cluster Restart
+
+Restart the cluster components with zero downtime:
+
+```yaml
+# cat examples/apecloud-mysql/restart.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: acmysql-restart
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: acmysql-cluster
+  type: Restart
+  # Lists Components to be restarted. ComponentOps specifies the Component to be operated on.
+  restart:
+    # Specifies the name of the Component.
+  - componentName: mysql
+
+```
+
+```bash
+kubectl apply -f examples/apecloud-mysql/restart.yaml
+```
+
+This operation can only be performed via `OpsRequest`, and there is no corresponding CLUSTER API operation - because restart is not a declaration but an action.
+
+> [!NOTE]
+> The restart follows a safe sequence:
+>
+> 1. All follower replicas are restarted first
+> 2. Leader replica is restarted last
+> 3. Transfer leadership to a healthy follower before restarting Leader replica
+> This ensures continuous availability during the restart process.
+
+### Cluster Stop and Start
+
+#### Stopping the Cluster
+
+Gracefully stop the cluster to conserve resources while retaining all data (PVC). It is ideal for cost savings during inactive periods.
+
+**Stop via OpsRequest**
+
+```yaml
+# cat examples/apecloud-mysql/stop.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: acmysql-stop
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: acmysql-cluster
+  type: Stop
+
+```
+
+```bash
+kubectl apply -f examples/apecloud-mysql/stop.yaml
+```
+
+> [!NOTE]
+> When stopped:
+>
+> - All compute resources are released
+> - Persistent volumes remain intact
+> - No data is lost
+
+**Stop via Cluster API**
+
+Update the cluster spec directly:
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+spec:
+  componentSpecs:
+    - name: mysql
+      stop: true  # Set to true to stop the component
+      replicas: 3
+```
+
+#### Starting the Cluster
+
+Start the cluster from its stopped state:
+
+**Start via OpsRequest**
+
+```yaml
+# cat examples/apecloud-mysql/start.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: acmysql-start
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: acmysql-cluster
+  type: Start
+
+```
+
+```bash
+kubectl apply -f examples/apecloud-mysql/start.yaml
+```
+
+**Start via Cluster API**
+
+Update the cluster spec directly:
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+spec:
+  componentSpecs:
+    - name: mysql
+      stop: false  # Set to false to start the component or remove the field (default to false)
+      replicas: 3
+```
+
+## Scaling Operations
+
+### Horizontal Scaling
+
+> [!NOTE]
 > As per the ApeCloud MySQL documentation, the number of Raft replicas should be odd to avoid split-brain scenarios.
 > Make sure the number of ApeCloud MySQL replicas, is always odd after Horizontal Scaling.
 
-#### Scale-out
+#### Scale Out Operation
 
-Horizontal scaling out ApeCloud-MySQL cluster by adding ONE more replica:
+Add a new replica to the cluster:
 
 ```yaml
 # cat examples/apecloud-mysql/scale-out.yaml
@@ -183,20 +369,39 @@ spec:
 kubectl apply -f examples/apecloud-mysql/scale-out.yaml
 ```
 
-After applying the operation, you will see a new pod created and the ApeCloud-MySQL cluster status goes from `Updating` to `Running`, and the newly created pod has a new role `follower`.
-
-And you can check the progress of the scaling operation with following command:
+To Check detailed operation status
 
 ```bash
-kubectl describe -n demo ops acmysql-scale-out
+kubectl describe ops -n demo acmysql-scale-out
 ```
 
+**Expected Workflow**:
+
+1. New pod is provisioned with `Pending` status
+2. Data is cloned from leader to new replica
+3. New pod transitions to `Running` with `follower` role
+4. Cluster status changes from `Updating` to `Running`
+
 > [!IMPORTANT]
-> On scaling out, the new replica will be added as a follower, and KubeBlocks will clone data from the leader to the new follower before the replica starts as defined.
+> Scaling considerations:
+>
+> - Always maintain an **odd number** of replicas for RAFT quorum
+> - Scaling operations are sequential - one replica at a time
+> - Data cloning may take time depending on dataset size
 
-#### Scale-in
+To verify the new replica's status:
 
-Horizontal scaling in ApeCloud-MySQL cluster by deleting ONE replica:
+```bash
+kubectl get pods -n demo -l app.kubernetes.io/instance=acmysql-cluster -L kubeblocks.io/role
+```
+
+### Scale In Operation
+
+ApeCloud MySQL supports three approaches for horizontal scaling:
+
+#### Standard Scale In Operation
+
+Remove a replica from the cluster while maintaining RAFT quorum:
 
 ```yaml
 # cat examples/apecloud-mysql/scale-in.yaml
@@ -225,45 +430,102 @@ spec:
 kubectl apply -f examples/apecloud-mysql/scale-in.yaml
 ```
 
+Check detailed operation status:
+
+```bash
+kubectl describe ops -n demo acmysql-scale-in
+```
+
+**Expected Workflow**:
+
+1. Selected replica (the one with the largest ordinal) is removed from Raft group
+2. Pod is terminated gracefully
+3. Cluster status changes from `Updating` to `Running`
+
+**Verification**:
+
+```bash
+kubectl get pods -n demo -l app.kubernetes.io/instance=acmysql-cluster
+```
+
 > [!IMPORTANT]
-> On scaling in, the replica will be forgotten from the cluster's Raft group before it is deleted.
+> **Scaling Considerations**:
+>
+> - Minimum 3 replicas required for HA
+> - Always maintain odd number of replicas
+> - Scale operations are sequential (one at a time)
+> - Monitor cluster health after scaling
 
-#### Set Specified Replicas Offline
+#### Targeted Instance Scale In
 
-There are cases where you want to set a specified replica offline, when it is problematic or you want to do some maintenance work on it. You can use the `onlineInstancesToOffline` field in the `spec.horizontalScaling.scaleIn` section to specify the instance names that need to be taken offline.
+For cases where you need to take a specific problematic replica offline for maintenance:
 
 ```yaml
+# cat examples/apecloud-mysql/scale-in-specified-pod.yaml
 apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
+metadata:
+  name: acmysql-scale-in-specified-pod
+  namespace: demo
 spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: acmysql-cluster
+  type: HorizontalScaling
+  # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
   horizontalScaling:
+    # Specifies the name of the Component.
   - componentName: mysql
     # Specifies the replica changes for scaling out components
     scaleIn:
+      # Specifies the instance names that need to be taken offline
       onlineInstancesToOffline:
-        - 'acmysql-cluster-mysql-1'  # Specifies the instance names that need to be taken offline
+        - 'acmysql-cluster-mysql-1'
+
+
 ```
 
-#### Scale-in/out using Cluster API
+```bash
+kubectl apply -f examples/apecloud-mysql/scale-in-specified-pod.yaml
+```
 
-Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
+Check detailed operation status:
+
+```bash
+kubectl describe ops -n demo acmysql-scale-in-specified-pod
+```
+
+**Expected Workflow**:
+
+1. Selected replica (specified in `onlineInstancesToOffline`) is removed from Raft group
+2. Pod is terminated gracefully
+3. Cluster status changes from `Updating` to `Running`
+
+#### Horizontal Scaling via Cluster API
+
+Directly update replica count via Cluster API:
 
 ```yaml
-# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 spec:
   componentSpecs:
     - name: apecloud-mysql
-      replicas: 3 # decrease `replicas` for scaling in, and increase for scaling out
+      replicas: 3  # Adjust replicas for scaling in and out.
+      offlineInstances:
+        - acmysql-cluster-mysql-1 # for targetd-instance scale-in scenario, default to empty list.
 ```
 
-### Vertical scaling
+### Vertical Scaling
 
 Vertical scaling involves increasing or decreasing resources to an existing database cluster.
-Resources that can be scaled include:, CPU cores/processing power and Memory (RAM).
+Resources that can be scaled include:
 
-To vertical scaling up or down specified component, you can apply the following yaml file:
+- CPU cores/processing power
+- Memory (RAM)
+
+#### Vertical Scaling via OpsRequest API
+
+Perform vertical scaling using a operation request:
 
 ```yaml
 # cat examples/apecloud-mysql/verticalscale.yaml
@@ -293,11 +555,15 @@ spec:
 kubectl apply -f examples/apecloud-mysql/verticalscale.yaml
 ```
 
-You will observe that the `follower` pods are recreated first, followed by the `leader` pod, to ensure the availability of the cluster.
+**Expected Workflow**:
 
-#### Scale-up/down using Cluster API
+1. Followers are updated first (one at a time)
+1. Leader is updated last after followers are healthy
+1. Cluster status transitions from `Updating` to `Running`
 
-Alternatively, you may update `spec.componentSpecs.resources` field to the desired resources for vertical scale.
+#### Vertical Scaling via Cluster API
+
+Directly modify cluster specifications for vertical scaling:
 
 ```yaml
 # snippet of cluster.yaml
@@ -306,272 +572,52 @@ kind: Cluster
 spec:
   componentSpecs:
     - name: mysql
-      replicas: 3
       resources:
         requests:
-          cpu: "1"       # Update the resources to your need.
-          memory: "2Gi"  # Update the resources to your need.
+          cpu: "1"       # CPU cores (e.g. "1", "500m")
+          memory: "2Gi"  # Memory (e.g. "2Gi", "512Mi")
         limits:
-          cpu: "2"       # Update the resources to your need.
-          memory: "4Gi"  # Update the resources to your need.
+          cpu: "2"       # Maximum CPU allocation
+          memory: "4Gi"  # Maximum memory allocation
 ```
 
-### Expand volume
+**Key Considerations**:
 
-Volume expansion is the ability to increase the size of a Persistent Volume Claim (PVC) after it's created. It is introduced in Kubernetes v1.11 and goes GA in Kubernetes v1.24. It allows Kubernetes users to simply edit their PersistentVolumeClaim objects without requiring any downtime at all if possible.
+- Ensure sufficient cluster capacity exists
+- Resource changes may trigger pod restarts and parameters reconfiguration
+- Monitor resource utilization after changes
 
-> [!NOTE]
-> Make sure the storage class you use supports volume expansion.
+## Reconfiguration Management
 
-Check the storage class with following command:
+### Parameter Types
 
-```bash
-kubectl get storageclass
-```
+A database reconfiguration is the process of modifying database parameters, settings, or configurations to improve performance, security, or availability.
 
-If the `ALLOWVOLUMEEXPANSION` column is `true`, the storage class supports volume expansion.
+| Type | Restart Required | Scope | Example Parameters |
+|------|------------------|-------|--------------------|
+| **Dynamic** | No | Immediate effect | `max_connections`, `innodb_buffer_pool_size` |
+| **Static** | Yes | After restart | `performance_schema`, `log_bin` |
 
-To increase size of volume storage with the specified components in the cluster
+### Reconfiguration
+
+1. **Prepare Configuration**:
 
 ```yaml
-# cat examples/apecloud-mysql/volumeexpand.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
+apiVersion: apps.kubeblocks.io/v1alpha1
 kind: OpsRequest
-metadata:
-  name: acmysql-volumeexpansion
-  namespace: demo
 spec:
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: acmysql-cluster
-  type: VolumeExpansion
-  # Lists VolumeExpansion objects, each specifying a component and its corresponding volumeClaimTemplates that requires storage expansion.
-  volumeExpansion:
-    # Specifies the name of the Component.
-  - componentName: mysql
-    # volumeClaimTemplates specifies the storage size and volumeClaimTemplate name.
-    volumeClaimTemplates:
-    - name: data
-      storage: 30Gi
-
+  clusterRef: acmysql-cluster
+  type: Reconfig
+  reconfig:
+    componentName: mysql
+    configurations:
+    - name: mysql-config
+      parameters:
+        max_connections: "600"
+        innodb_buffer_pool_size: "512M"
 ```
 
-```bash
-kubectl apply -f examples/apecloud-mysql/volumeexpand.yaml
-```
-
-After the operation, you will see the volume size of the specified component is increased to `30Gi` in this case. Once you've done the change, check the `status.conditions` field of the PVC to see if the resize has completed.
-
-```bash
-kubectl get pvc -l app.kubernetes.io/instance=acmysql-cluster -n demo
-```
-
-#### Volume expansion using Cluster API
-
-Alternatively, you may update the `spec.componentSpecs.volumeClaimTemplates.spec.resources.requests.storage` field to the desired size.
-
-```yaml
-# snippet of cluster.yaml
-apiVersion: apps.kubeblocks.io/v1
-kind: Cluster
-spec:
-  componentSpecs:
-    - name: mysql
-      volumeClaimTemplates:
-        - name: data
-          spec:
-            storageClassName: "<STORAGE_CLASS_NAME>"
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: 30Gi  # specify new size, and make sure it is larger than the current size
-```
-
-### Restart
-
-Restart the specified components in the cluster
-
-```yaml
-# cat examples/apecloud-mysql/restart.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-metadata:
-  name: acmysql-restart
-  namespace: demo
-spec:
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: acmysql-cluster
-  type: Restart
-  # Lists Components to be restarted. ComponentOps specifies the Component to be operated on.
-  restart:
-    # Specifies the name of the Component.
-  - componentName: mysql
-
-```
-
-```bash
-kubectl apply -f examples/apecloud-mysql/restart.yaml
-```
-
-> [!NOTE]
-> All follower pods will be restarted first, followed by the leader pod, to ensure the availability of the cluster.
-
-### Stop
-
-Stop the cluster will release all the pods of the cluster, but the storage will be retained. It is useful when you want to save the cost of the cluster.
-
-```yaml
-# cat examples/apecloud-mysql/stop.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-metadata:
-  name: acmysql-stop
-  namespace: demo
-spec:
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: acmysql-cluster
-  type: Stop
-
-```
-
-```bash
-kubectl apply -f examples/apecloud-mysql/stop.yaml
-```
-
-#### Stop using Cluster API
-
-Alternatively, you may stop the cluster by setting the `spec.componentSpecs.stop` field to `true`.
-
-```yaml
-# snippet of cluster.yaml
-apiVersion: apps.kubeblocks.io/v1
-kind: Cluster
-spec:
-  componentSpecs:
-    - name: mysql
-      stop: true  # set stop `true` to stop the component
-      replicas: 3
-```
-
-### Start
-
-Start the stopped cluster
-
-```yaml
-# cat examples/apecloud-mysql/start.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-metadata:
-  name: acmysql-start
-  namespace: demo
-spec:
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: acmysql-cluster
-  type: Start
-
-```
-
-```bash
-kubectl apply -f examples/apecloud-mysql/start.yaml
-```
-
-#### Start using Cluster API
-
-Alternatively, you may start the cluster by setting the `spec.componentSpecs.stop` field to `false`.
-
-```yaml
-# snippet of cluster.yaml
-apiVersion: apps.kubeblocks.io/v1
-kind: Cluster
-spec:
-  componentSpecs:
-    - name: mysql
-      stop: false  # set to `false` (or remove this field) to start the component
-      replicas: 3
-```
-
-### Switchover
-
-A switchover in database clusters is a planned operation that transfers the primary (leader) role from one database instance to another. The goal of a switchover is to ensure that the database cluster remains available and operational during the transition.
-
-<details>
-
-By applying this yaml file, KubeBlocks will perform a switchover operation defined in component definition, and you can checkout the details in `componentdefinition.spec.lifecycleActions.switchover`.
-
-</details>
-
-#### Switchover without preferred candidates
-
-Switchover a specified instance as the new primary or leader of the cluster
-
-```yaml
-# cat examples/apecloud-mysql/switchover.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-metadata:
-  name: acmysql-switchover
-  namespace: demo
-spec:
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: acmysql-cluster
-  type: Switchover
-  # Lists Switchover objects, each specifying a Component to perform the switchover operation.
-  switchover:
-    # Specifies the name of the Component.
-  - componentName: mysql
-    # Specifies the instance whose role will be transferred.
-    # A typical usage is to transfer the leader role in a consensus system.
-    instanceName: acmysql-cluster-mysql-0
-
-```
-
-```bash
-kubectl apply -f examples/apecloud-mysql/switchover.yaml
-```
-
-#### Switchover-specified-instance
-
-Switchover a specified instance as the new primary or leader of the cluster
-
-```yaml
-# cat examples/apecloud-mysql/switchover-specified-instance.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-metadata:
-  name: acmysql-switchover-specify
-  namespace: demo
-spec:
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: acmysql-cluster
-  type: Switchover
-  # Lists Switchover objects, each specifying a Component to perform the switchover operation.
-  switchover:
-    # Specifies the name of the Component.
-  - componentName: mysql
-    # Specifies the instance whose role will be transferred.
-    # A typical usage is to transfer the leader role in a consensus system.
-    instanceName: acmysql-cluster-mysql-0
-    # If CandidateName is specified, the role will be transferred to this instance.
-    # The name must match one of the pods in the component.
-    # Refer to ComponentDefinition's Swtichover lifecycle action for more details.
-    candidateName: acmysql-cluster-mysql-1
-
-```
-
-```bash
-kubectl apply -f examples/apecloud-mysql/switchover-specified-instance.yaml
-```
-
-You may need to update the `opsrequest.spec.switchover.instanceName` field to your desired instance name.
-
-### Reconfigure
-
-A database reconfiguration is the process of modifying database parameters, settings, or configurations to improve performance, security, or availability. The reconfiguration can be either:
-
-- Dynamic: Applied without restart
-- Static: Requires database restart
-
-Reconfigure parameters with the specified components in the cluster
+2. **Apply Changes**:
 
 ```yaml
 # cat examples/apecloud-mysql/configure.yaml
@@ -608,141 +654,276 @@ spec:
 kubectl apply -f examples/apecloud-mysql/configure.yaml
 ```
 
-This example will change the `max_connections` to `600` and `innodb_buffer_pool_size` to `512M` for the specified component.
+3. **Monitor Progress**:
 
-You may log into the MySQL instance to check the configuration changes:
+```bash
+kubectl describe ops acmysql-reconfiguring -n demo
+```
+
+4. **Verify Changes**:
 
 ```sql
+-- On leader replica
 SHOW VARIABLES LIKE 'max_connections';
 SHOW VARIABLES LIKE 'innodb_buffer_pool_size';
 ```
 
-### Backup
-
 > [!IMPORTANT]
-> Before you start, please create a `BackupRepo` to store the backup data. Refer to [BackupRepo](../docs/create-backuprepo.md) for more details.
+>
+> - Static changes trigger rolling restarts
+> - Monitor cluster health during reconfiguration
 
-You may find the supported backup methods in the `BackupPolicy` of the cluster, e.g. `acmysql-cluster-mysql-backup-policy` in this case, and find how these methods will be scheduled in the `BackupSchedule` of the cluster, e.g.. `acmysql-cluster-mysql-backup-schedule` in this case.
+<details open>
 
-To create a full backup, using `xtrabackup`, for the cluster:
+<summary>How to find the list of dynamic/static parameters</summary>
+
+Behavior of Parameters, including parameters scope such as dynamic/static/immutable, or parameters validation rules such as value types, ranges of values, are defined in KubeBlocks `ParameterDefinition`.
+
+You may fetch the list of dynamic parameters for ApeCloud MySQL using:
+
+```bash
+kubectl get pd apecloud-mysql8.0-pd -oyaml | yq '.spec.staticParameters'
+kubectl get pd apecloud-mysql8.0-pd -oyaml | yq '.spec.dynamicParameters'
+```
+
+</details>
+
+### Configuration Validation
+
+KubeBlocks will validate the parameter values and types before applying changes.
+
+For example, `max_connections` in mysql should obey this rule:
+
+```
+// The number of simultaneous client connections allowed. should be a integer, btw [1, 100000]
+max_connections?: int & >=1 & <=100000
+```
+
+And if you somehow give a string to this value like:
 
 ```yaml
-# cat examples/apecloud-mysql/backup.yaml
-apiVersion: dataprotection.kubeblocks.io/v1alpha1
-kind: Backup
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+spec:
+  type: Reconfiguring
+  clusterName: acmysql-cluster
+  reconfigures:
+  - componentName: mysql
+    parameters:
+    - key: max_connections
+      value: 'abc'
+```
+
+This OpsRequest fails fast with message `failed to validate updated config: [failed to parse field max_connections: [strconv.Atoi: parsing "STRING": invalid syntax]]`
+
+## High Availability
+
+### Switchover (Planned Leader Transfer)
+
+SwitchOver is a controlled operation that safely transfers leadership while maintaining:
+
+- Continuous availability
+- Zero data loss
+- Minimal performance impact
+
+<details>
+<summary>Developer: Switchover Actions</summary>
+KubeBlocks executes SwitchOver actions defined in `componentdefinition.spec.lifecycleActions.switchover`.
+
+To get the SwitchOver actions for ApeCloud MySQL:
+
+```bash
+kubectl get cmpd apecloud-mysql-1.0.0-alpha.0 -oyaml | yq '.spec.lifecycleActions.switchover'
+```
+
+</details>
+
+#### Prerequisites
+
+- Cluster must be in `Running` state
+- No ongoing maintenance operations
+
+#### Switchover Types
+
+1. **Automatic Switchover** (No preferred candidate):
+
+```yaml
+# cat examples/apecloud-mysql/switchover.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
 metadata:
-  name: acmysql-cluster-backup
+  name: acmysql-switchover
   namespace: demo
 spec:
-  # Specifies the backup method name that is defined in the backup policy.
-  # - xtrabackup
-  # - volume-snapshot
-  backupMethod: xtrabackup
-  # Specifies the backup policy to be applied for this backup.
-  backupPolicyName: acmysql-cluster-mysql-backup-policy
-  # Determines whether the backup contents stored in the backup repository should be deleted when the backup custom resource(CR) is deleted. Supported values are `Retain` and `Delete`.
-  # - `Retain` means that the backup content and its physical snapshot on backup repository are kept.
-  # - `Delete` means that the backup content and its physical snapshot on backup repository are deleted.
-  deletionPolicy: Delete
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: acmysql-cluster
+  type: Switchover
+  # Lists Switchover objects, each specifying a Component to perform the switchover operation.
+  switchover:
+    # Specifies the name of the Component.
+  - componentName: mysql
+    # Specifies the instance whose role will be transferred.
+    # A typical usage is to transfer the leader role in a consensus system.
+    instanceName: acmysql-cluster-mysql-0
 
 ```
 
-```bash
-kubectl apply -f examples/apecloud-mysql/backup.yaml
-```
+   ```bash
+   kubectl apply -f examples/apecloud-mysql/switchover.yaml
+   ```
 
-After the operation, you will see a `Backup` is created
-
-```bash
-kubectl get backup -l app.kubernetes.io/instance=acmysql-cluster -n demo
-```
-
-and the status of the backup goes from `Running` to `Completed` after a while. And the backup data will be pushed to your specified `BackupRepo`.
-
-Information, such as `path`, `timeRange` about the backup will be recorded into the `Backup` resource.
-
-Alternatively, you can update the `BackupSchedule` to enable the method `xtrabackup` to schedule base backup periodically.
+2. **Targeted Switchover** (Specific instance):
 
 ```yaml
-apiVersion: dataprotection.kubeblocks.io/v1alpha1
-kind: BackupSchedule
+# cat examples/apecloud-mysql/switchover-specified-instance.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
 metadata:
-  name: acmysql-cluster-mysql-backup-schedule
+  name: acmysql-switchover-specify
   namespace: demo
 spec:
-  backupPolicyName: acmysql-cluster-mysql-backup-policy
-  schedules:
-  - backupMethod: xtrabackup
-    # ┌───────────── minute (0-59)
-    # │ ┌───────────── hour (0-23)
-    # │ │ ┌───────────── day of month (1-31)
-    # │ │ │ ┌───────────── month (1-12)
-    # │ │ │ │ ┌───────────── day of week (0-6) (Sunday=0)
-    # │ │ │ │ │
-    # 0 18 * * *
-    # schedule this job every day at 6:00 PM (18:00).
-    cronExpression: 0 18 * * * # update the cronExpression to your need
-    enabled: false # set to `true` to schedule base backup periodically
-    retentionPeriod: 7d # set the retention period to your need
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: acmysql-cluster
+  type: Switchover
+  # Lists Switchover objects, each specifying a Component to perform the switchover operation.
+  switchover:
+    # Specifies the name of the Component.
+  - componentName: mysql
+    # Specifies the instance whose role will be transferred.
+    # A typical usage is to transfer the leader role in a consensus system.
+    instanceName: acmysql-cluster-mysql-0
+    # If CandidateName is specified, the role will be transferred to this instance.
+    # The name must match one of the pods in the component.
+    # Refer to ComponentDefinition's Swtichover lifecycle action for more details.
+    candidateName: acmysql-cluster-mysql-1
+
 ```
 
-### Restore
+   ```bash
+   kubectl apply -f examples/apecloud-mysql/switchover-specified-instance.yaml
+   ```
 
-To restore a new cluster from a Backup:
+   Update `opsrequest.spec.switchover.candidateName` as needed
 
-1. Get the list of accounts and their passwords from the backup:
+#### Monitoring Switchover
+
+1. **Track Progress**:
+
+   ```bash
+   kubectl get ops -n demo -w
+   kubectl describe ops <switchover-name> -n demo
+   ```
+
+2. **Verify Completion**:
+
+   ```bash
+   kubectl get pods -n demo -L kubeblocks.io/role
+   ```
+
+#### Troubleshooting
+
+- **Switchover Stuck**:
+
+  ```bash
+  kubectl logs -n demo <pod-name> -c kbagent # check on leader replica
+  kubectl get events -n demo --field-selector involvedObject.name=<cluster-name>
+  ```
+
+## Storage Operations
+
+### Prerequisites
+
+Volume expansion is the ability to increase the size of a Persistent Volume Claim (PVC) after it's created. It is introduced in Kubernetes v1.11 and goes GA in Kubernetes v1.24. It allows Kubernetes users to simply edit their PersistentVolumeClaim objects without requiring any downtime at all if possible.
+
+> [!NOTE]
+> Make sure the storage class you used when creating clusters supports volume expansion.
+
+Check the storage class with following command:
 
 ```bash
-kubectl get backup acmysql-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}' -n demo
+kubectl get storageclass
 ```
 
-1. Update `examples/apecloud-mysql/restore.yaml` and set placeholder `<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
+If the `ALLOWVOLUMEEXPANSION` column is `true`, the storage class supports volume expansion.
+
+### Volume Expansion
+
+#### Volume Expansion via OpsRequest API
+
+To increase size of volume storage with the specified components in the cluster
 
 ```yaml
-# cat examples/apecloud-mysql/restore.yaml
+# cat examples/apecloud-mysql/volumeexpand.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: acmysql-volumeexpansion
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: acmysql-cluster
+  type: VolumeExpansion
+  # Lists VolumeExpansion objects, each specifying a component and its corresponding volumeClaimTemplates that requires storage expansion.
+  volumeExpansion:
+    # Specifies the name of the Component.
+  - componentName: mysql
+    # volumeClaimTemplates specifies the storage size and volumeClaimTemplate name.
+    volumeClaimTemplates:
+    - name: data
+      storage: 30Gi
+
+```
+
+```bash
+kubectl apply -f examples/apecloud-mysql/volumeexpand.yaml
+```
+
+After the operation, you will see the volume size of the specified component is increased to `30Gi` in this case. Once you've done the change, check the `status.conditions` field of the PVC to see if the resize has completed.
+
+```bash
+kubectl get pvc -l app.kubernetes.io/instance=acmysql-cluster -n demo
+```
+
+#### Volume Expansion via Cluster API
+
+Alternatively, you may update the `spec.componentSpecs.volumeClaimTemplates.spec.resources.requests.storage` field to the desired size.
+
+```yaml
+# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
-metadata:
-  name: acmysql-cluster-restore
-  namespace: demo
-  annotations:
-    kubeblocks.io/restore-from-backup: '{"mysql":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"acmysql-cluster-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
-  terminationPolicy: Delete
-  clusterDef: apecloud-mysql
-  topology: apecloud-mysql
   componentSpecs:
     - name: mysql
-      serviceVersion: "8.0.30"
-      disableExporter: false
-      replicas: 3
-      resources:
-        limits:
-          cpu: '0.5'
-          memory: 0.5Gi
-        requests:
-          cpu: '0.5'
-          memory: 0.5Gi
       volumeClaimTemplates:
         - name: data
           spec:
-            storageClassName: ""
+            storageClassName: "<STORAGE_CLASS_NAME>"
             accessModes:
               - ReadWriteOnce
             resources:
               requests:
-                storage: 20Gi
+                storage: 30Gi  # specify new size, and make sure it is larger than the current size
 ```
 
-```bash
-kubectl apply -f examples/apecloud-mysql/restore.yaml
-```
+> [!NOTE]
+> If the storage class you use does not support volume expansion, this OpsRequest fails fast with information like:
+> `storageClass: [STORAGE_CLASS_NAME] of volumeClaimTemplate: [VOLUME_NAME]] not support volume expansion in component [COMPONENT_NAME]`
 
-### Expose
+## Networking
 
-Expose a cluster with a new endpoint
+### Service Exposure
 
-#### Enable
+1. **Choose Exposure Method**:
+   - OpsRequest API
+   - Cluster API
+
+2. **Configure Service Annotation** (if using LoadBalancer):
+   - Add appropriate annotations
+
+#### Expose SVC via OpsRequest API
+
+- Enable Service
 
 ```yaml
 # cat examples/apecloud-mysql/expose-enable.yaml
@@ -784,7 +965,7 @@ spec:
 kubectl apply -f examples/apecloud-mysql/expose-enable.yaml
 ```
 
-#### Disable
+- Disable Service
 
 ```yaml
 # cat examples/apecloud-mysql/expose-disable.yaml
@@ -817,44 +998,34 @@ spec:
 kubectl apply -f examples/apecloud-mysql/expose-disable.yaml
 ```
 
-#### Expose SVC using Cluster API
+#### Expose SVC via Cluster API
 
-Alternatively, you may expose service by updating `spec.services`
+Alternatively, you may expose service by adding a new service to cluster's `spec.services`:
 
 ```yaml
 # snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 spec:
-  # append service to the list
   services:
-    # add annotation for cloud loadbalancer if
-    # services.spec.type is LoadBalancer
-    # here we use annotation for alibaba cloud for example
-  - annotations:
-      service.beta.kubernetes.io/alibaba-cloud-loadbalancer-address-type: internet
-    componentSelector: mysql
-    name: acmysql-vpc
-    serviceName: acmysql-vpc
-    # optional. it specify defined role as selector for the service.
-    # onece specified, service will select and route traffic to Pods with the label
-    # "kubeblocks.io/role=<specified-role-name>".
-    # valid options are: [leader, follower] for ApeCloud-MySQL
-    roleSelector: leader
-    spec:  # defines the behavior of a K8s service.
-      ipFamilyPolicy: PreferDualStack
-      ports:
-      - name: tcp-mysql
-        # port to expose
-        port: 3306
-        protocol: TCP
-        targetPort: mysql
-      # Determines how the Service is exposed. Defaults to 'ClusterIP'.
-      # Valid options are [`ClusterIP`, `NodePort`, and `LoadBalancer`]
-      type: LoadBalancer
+    - annotations:
+        service.beta.kubernetes.io/aws-load-balancer-type: nlb  # Use Network Load Balancer
+        service.beta.kubernetes.io/aws-load-balancer-internal: "true"  # or "false" for internet
+      componentSelector: mysql
+      name: acmysql-vpc
+      serviceName: acmysql-vpc
+      roleSelector: leader  # [leader, follower] for ApeCloud-MySQL
+      spec:
+        ipFamilyPolicy: PreferDualStack
+        ports:
+        - name: tcp-mysql
+          port: 3306
+          protocol: TCP
+          targetPort: mysql
+        type: LoadBalancer  # [ClusterIP, NodePort, LoadBalancer]
 ```
 
-If the service is of type `LoadBalancer`, please add annotations for cloud loadbalancer depending on the cloud provider you are using. Here list annotations for some cloud providers:
+#### Cloud Provider Load Balancer Annotations
 
 ```yaml
 # alibaba cloud
@@ -872,34 +1043,242 @@ networking.gke.io/load-balancer-type: "Internal" # for internal access
 cloud.google.com/l4-rbs: "enabled" # for internet
 ```
 
-### Observability
+## Data Protection Operations
 
-#### Installing the Prometheus Operator
+### Prerequisites
 
-You may skip this step if you have already installed the Prometheus Operator.
-Or you can follow the steps in [How to install the Prometheus Operator](../docs/install-prometheus.md) to install the Prometheus Operator.
+1. **Backup Repository**:
+   - Configured `BackupRepo` ([Setup Guide](../docs/create-backuprepo.md))
+   - Network connectivity between cluster and repo, `BackupRepo` status is `Ready`
 
-#### Create PodMonitor
+2. **Cluster State**:
+   - Cluster must be in `Running` state
+   - No ongoing operations (scaling, upgrades etc.)
 
-##### Step 1. Query ScrapePath and ScrapePort
+### Backup Operations
 
-You can retrieve the `scrapePath` and `scrapePort` from pod's exporter container.
+#### Backup Configuration
 
-```bash
-kubectl get po -n demo acmysql-cluster-mysql-0 -oyaml | yq '.spec.containers[] | select(.name=="mysql-exporter") | .ports '
+1. **View default Backup Policies**:
+
+   ```bash
+   kubectl get backuppolicy -n demo -l app.kubernetes.io/instance=acmysql-cluster
+   ```
+
+2. **View default BackupSchedule**:
+
+   ```bash
+   kubectl get backupschedule -n demo -l app.kubernetes.io/instance=acmysql-cluster
+   ```
+
+#### Backup Execution
+
+1. **On-Demand Backup**:
+
+```yaml
+# cat examples/apecloud-mysql/backup.yaml
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: Backup
+metadata:
+  name: acmysql-cluster-backup
+  namespace: demo
+spec:
+  # Specifies the backup method name that is defined in the backup policy.
+  # - xtrabackup
+  # - volume-snapshot
+  backupMethod: xtrabackup
+  # Specifies the backup policy to be applied for this backup.
+  backupPolicyName: acmysql-cluster-mysql-backup-policy
+  # Determines whether the backup contents stored in the backup repository should be deleted when the backup custom resource(CR) is deleted. Supported values are `Retain` and `Delete`.
+  # - `Retain` means that the backup content and its physical snapshot on backup repository are kept.
+  # - `Delete` means that the backup content and its physical snapshot on backup repository are deleted.
+  deletionPolicy: Delete
+
 ```
 
-And the expected output is like:
+   ```bash
+   kubectl apply -f examples/apecloud-mysql/backup.yaml
+   ```
 
-```text
-- containerPort: 9104
-  name: http-metrics
-  protocol: TCP
+2. **Monitor Progress**:
+
+   ```bash
+   kubectl get backup -n demo -w
+   kubectl describe backup <backup-name> -n demo
+   ```
+
+3. **Verify Completion**:
+   - Check status is `Completed`
+   - Verify backup size matches expectations
+   - Validate backup metadata
+
+#### Scheduled Backups
+
+Update `BackupSchedule` to schedule enable(`enabled`) backup methods and set the time (`cronExpression`) to your need:
+
+```yaml
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: BackupSchedule
+spec:
+  backupPolicyName: acmysql-cluster-mysql-backup-policy
+  schedules:
+  - backupMethod: xtrabackup
+    # ┌───────────── minute (0-59)
+    # │ ┌───────────── hour (0-23)
+    # │ │ ┌───────────── day of month (1-31)
+    # │ │ │ ┌───────────── month (1-12)
+    # │ │ │ │ ┌───────────── day of week (0-6) (Sunday=0)
+    # │ │ │ │ │
+    # 0 18 * * *
+    # schedule this job every day at 6:00 PM (18:00).
+    cronExpression: 0 18 * * * # update the cronExpression to your need
+    enabled: true # set to `true` to schedule base backup periodically
+    retentionPeriod: 7d # set the retention period to your need
 ```
 
-##### Step 2. Create PodMonitor
+#### Troubleshooting
 
-Apply the `PodMonitor` file to monitor the cluster:
+- **Backup Stuck**:
+
+  ```bash
+  kubectl describe backup <name> -n demo
+  kubectl logs -n demo <backup-pod>
+  ```
+
+### Restore Operations
+
+#### Prerequisites
+
+1. **Backup Verification**:
+   - Backup must be in `Completed` state
+
+2. **Cluster Resources**:
+   - Sufficient CPU/memory for new cluster
+   - Available storage capacity
+   - Network connectivity between backup repo and new cluster
+
+3. **Credentials**:
+   - System account encryption keys
+
+#### Restore Workflow
+
+1. **Identify Backup**:
+
+   ```bash
+   kubectl get backup -n demo --sort-by=.metadata.creationTimestamp
+   kubectl describe backup <backup-name> -n demo
+   ```
+
+2. **Prepare Credentials**:
+
+   ```bash
+   # Get encrypted system accounts
+    kubectl get backup acmysql-cluster-backup -n demo -ojson | jq -r '.metadata.annotations | ."kubeblocks.io/encrypted-system-accounts" | fromjson .mysql | tojson |gsub("\""; "\\"")'
+   ```
+
+3. **Configure Restore**:
+   Update `examples/apecloud-mysql/restore.yaml` with:
+   - Backup name and namespace: from step 1
+   - Encrypted system accounts: from step 2
+   - Target cluster configuration
+
+4. **Execute Restore**:
+
+```yaml
+# cat examples/apecloud-mysql/restore.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: acmysql-cluster-restore
+  namespace: demo
+  annotations:
+    kubeblocks.io/restore-from-backup: '{"mysql":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"acmysql-cluster-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
+spec:
+  terminationPolicy: Delete
+  clusterDef: apecloud-mysql
+  topology: apecloud-mysql
+  componentSpecs:
+    - name: mysql
+      serviceVersion: "8.0.30"
+      disableExporter: false
+      replicas: 3
+      resources:
+        limits:
+          cpu: '0.5'
+          memory: 0.5Gi
+        requests:
+          cpu: '0.5'
+          memory: 0.5Gi
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+```
+
+   ```bash
+   kubectl apply -f examples/apecloud-mysql/restore.yaml
+   ```
+
+5. **Monitor Progress**:
+
+   ```bash
+   # Watch restore status
+   kubectl get restore -n demo -w
+
+   # View detailed logs
+   kubectl get cluster -n demo -w
+   ```
+
+## Monitoring & Observability
+
+### Prerequisites
+
+1. **Prometheus Operator**: Required for metrics collection
+   - Skip if already installed
+   - Install via: [Prometheus Operator Guide](../docs/install-prometheus.md)
+
+2. **Access Credentials**: Ensure you have:
+   - `kubectl` access to the cluster
+   - Grafana admin privileges (for dashboard import)
+
+3. **Cluster created with Exporter enabled**
+    - create a ApeCloud-MySQL Cluster with exporter running as sidecar (`disableExporter: false`)
+    - Skip if already created
+
+### Metrics Collection Setup
+
+#### 1. Configure PodMonitor
+
+1. **Get Exporter Details**:
+
+   ```bash
+   kubectl get po -n demo acmysql-cluster-mysql-0 -oyaml | yq '.spec.containers[] | select(.name=="mysql-exporter") | .ports'
+   ```
+
+  <details open>
+  <summary>Expected Output:</summary>
+
+   ```text
+   - containerPort: 9104
+     name: http-metrics
+     protocol: TCP
+   ```
+
+  </details>
+
+2. **Verify Metrics Endpoint**:
+
+   ```bash
+   kubectl -n demo exec -it pods/acmysql-cluster-mysql-0 -- \
+     curl -s http://127.0.0.1:9104/metrics | head -n 50
+   ```
+
+3. **Apply PodMonitor**:
 
 ```yaml
 # cat examples/apecloud-mysql/pod-monitor.yaml
@@ -933,28 +1312,81 @@ spec:
       apps.kubeblocks.io/component-name: mysql
 ```
 
+   ```bash
+   kubectl apply -f examples/apecloud-mysql/pod-monitor.yaml
+   ```
+
+#### 2. Grafana Dashboard Setup
+
+1. **Import Dashboard**:
+   - URL: [ApeCloud MySQL Dashboard](https://raw.githubusercontent.com/apecloud/kubeblocks-addons/refs/heads/main/addons/apecloud-mysql/dashboards/mysql.json)
+
+2. **Verification**:
+   - Confirm metrics appear in Grafana within 2-5 minutes
+   - Check for "UP" status in Prometheus targets
+
+### Troubleshooting
+
+- **No Metrics**: check Prometheus
+
+  ```bash
+  kubectl get pods -n monitoring -l app.kubernetes.io/name=prometheus
+  kubectl logs -n monitoring <prometheus-pod-name> -c prometheus
+  ```
+
+- **Dashboard Issues**: check indicator labels and dashboards
+  - Verify Grafana DataSource points to correct Prometheus instance
+  - Check for template variable mismatches
+
+## Cleanup
+
+To permanently delete the cluster and all associated resources:
+
+1. First modify the termination policy to ensure all resources are cleaned up:
+
 ```bash
-kubectl apply -f examples/apecloud-mysql/pod-monitor.yaml
+# Set termination policy to WipeOut (deletes all resources including PVCs)
+kubectl patch cluster -n demo acmysql-cluster \
+  -p '{"spec":{"terminationPolicy":"WipeOut"}}' \
+  --type="merge"
 ```
 
-##### Step 3. Accessing the Grafana Dashboard
-
-Login to the Grafana dashboard and import the dashboard.
-
-KubeBlocks provides a Grafana dashboard for monitoring the ApeCloud MySQL cluster. You can find it at [ApeCloud MySQL Dashboard](https://github.com/apecloud/kubeblocks-addons/tree/main/addons/apecloud-mysql).
-
-> [!NOTE]
-> Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
-
-### Delete
-
-If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
+2. Verify the termination policy was updated:
 
 ```bash
-kubectl patch cluster -n demo acmysql-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl get cluster -n demo acmysql-cluster -o jsonpath='{.spec.terminationPolicy}'
+```
 
+3. Delete the cluster:
+
+```bash
 kubectl delete cluster -n demo acmysql-cluster
 ```
+
+> [!WARNING]
+> This operation is irreversible and will permanently delete:
+>
+> - All database pods
+> - Persistent volumes and claims
+> - Services and other cluster resources
+
+<details open>
+<summary>How to set a proper `TerminationPolicy`</summary>
+
+For more details you may use following command
+
+```bash
+kubectl explain cluster.spec.terminationPolicy
+```
+
+| Policy            | Description                                                                                                                                               |
+|-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `DoNotTerminate`  | Prevents deletion of the Cluster. This policy ensures that all resources remain intact.                                                                   |
+| `Delete`          | Deletes all runtime resources belonging to the Cluster.                                                                                                   |
+| `WipeOut`         | An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss. |
+
+</details>
+
 <!--
 ## SmartEngine
 
@@ -1140,21 +1572,28 @@ kubectl port-forward svc/acmysql-proxy-cluster-wescale 15306:15306 -n demo
 - login to with the following command:
 
 ```bash
-mysql -h<endpoint> -P 15306 -u<userName> -p<password>
+mysql -h127.0.0.1 -P 15306 -u<userName> -p <userPasswd>
+```
+
+and credentials can be found in the `secret` resource:
+
+```bash
+userName=$(kubectl get secret -n demo acmysql-proxy-cluster-mysql-account-root -ojsonpath='{.data.username}' | base64 -d)
+userPasswd=$(kubectl get secret -n demo acmysql-proxy-cluster-mysql-account-root -ojsonpath='{.data.password}' | base64 -d)
 ```
 
 You may scale wescale and ETCD components as needed.
 
 ## Appendix
 
-### How to Connect to ApesCloud MySQL
+### Connecting to ApeCloud MySQL
 
 To connect to the ApeCloud MySQL cluster, you can:
 
 - port forward the MySQL service to your local machine:
 
 ```bash
-kubectl port-forward svc/<clusterName>-mysql 3306:3306 -n demo
+kubectl port-forward svc/acmysql-cluster-mysql 3306:3306 -n demo
 ```
 
 - or expose the MySQL service to the internet, as mentioned in the [Expose](#expose) section.
@@ -1162,26 +1601,51 @@ kubectl port-forward svc/<clusterName>-mysql 3306:3306 -n demo
 Then you can connect to the MySQL cluster with the following command:
 
 ```bash
-mysql -h <endpoint> -P 3306 -u <userName> -p <password>
+mysql -h <endpoint> -P 3306 -u <userName> -p <userPasswd>
 ```
 
 and credentials can be found in the `secret` resource:
 
 ```bash
-kubectl get secret -n demo <clusterName>-mysql-account-root -ojsonpath='{.data.username}' | base64 -d
-kubectl get secret -n demo <clusterName>-mysql-account-root -ojsonpath='{.data.password}' | base64 -d
+userName=$(kubectl get secret -n demo acmysql-cluster-mysql-account-root -ojsonpath='{.data.username}' | base64 -d)
+userPasswd=$(kubectl get secret -n demo acmysql-cluster-mysql-account-root -ojsonpath='{.data.password}' | base64 -d)
 ```
 
 ### How to Check the Status of ApeCloud MySQL
 
-You can check the status of the ApeCloud MySQL cluster with the following command:
+You can check the status of the ApeCloud MySQL cluster with the following command on `leader` replica:
 
 ```bash
 mysql > select * from information_schema.WESQL_CLUSTER_GLOBAL;
++-----------+--------------------------------------------------------------+-------------+------------+----------+-----------+------------+-----------------+----------------+---------------+------------+--------------+
+| SERVER_ID | IP_PORT                                                      | MATCH_INDEX | NEXT_INDEX | ROLE     | HAS_VOTED | FORCE_SYNC | ELECTION_WEIGHT | LEARNER_SOURCE | APPLIED_INDEX | PIPELINING | SEND_APPLIED |
++-----------+--------------------------------------------------------------+-------------+------------+----------+-----------+------------+-----------------+----------------+---------------+------------+--------------+
+|         1 | acmysql-cluster-mysql-0.acmysql-cluster-mysql-headless:13306 |        1757 |          0 | Leader   | Yes       | No         |               5 |              0 |          1757 | No         | No           |
+|         2 | acmysql-cluster-mysql-1.acmysql-cluster-mysql-headless:13306 |        1757 |       1758 | Follower | Yes       | No         |               5 |              0 |          1756 | Yes        | No           |
+|         3 | acmysql-cluster-mysql-2.acmysql-cluster-mysql-headless:13306 |        1757 |       1758 | Follower | No        | No         |               5 |              0 |          1756 | Yes        | No           |
++-----------+--------------------------------------------------------------+
+3 rows in set (0.00 sec)
 mysql > select * from information_schema.WESQL_CLUSTER_HEALTH;
++-----------+--------------------------------------------------------------+----------+-----------+---------------+-----------------+
+| SERVER_ID | IP_PORT                                                      | ROLE     | CONNECTED | LOG_DELAY_NUM | APPLY_DELAY_NUM |
++-----------+--------------------------------------------------------------+----------+-----------+---------------+-----------------+
+|         1 | acmysql-cluster-mysql-0.acmysql-cluster-mysql-headless:13306 | Leader   | YES       |             0 |               0 |
+|         2 | acmysql-cluster-mysql-1.acmysql-cluster-mysql-headless:13306 | Follower | YES       |             0 |               0 |
+|         3 | acmysql-cluster-mysql-2.acmysql-cluster-mysql-headless:13306 | Follower | YES       |             0 |               1 |
++-----------+--------------------------------------------------------------+----------+-----------+---------------+-----------------+
+3 rows in set (0.00 sec)
+```
+
+### List of K8s Resources created when creating an ApeCloud MySQL Cluster
+
+To get the full list of associated resources created by KubeBlocks for given cluster:
+
+```bash
+kubectl get cmp,its,po -l app.kubernetes.io/instance=<CLUSTER_NAME> -n demo # cluster resource
+kubectl get backuppolicy,backupschedule,backup -l app.kubernetes.io/instance=<CLUSTER_NAME> -n demo # data protection resources
+kubectl get componentparameter,parameter -l app.kubernetes.io/instance=<CLUSTER_NAME> -n demo # configuration resources
+kubectl get opsrequest -l app.kubernetes.io/instance=<CLUSTER_NAME> -n demo # opsrequest
+kubectl get svc,secret,cm,pvc -l app.kubernetes.io/instance=<CLUSTER_NAME> -n demo # k8s native resources
 ```
 
 ## References
-
-[^1]: ApeCloud MySQL,<https://kubeblocks.io/docs/preview/user_docs/kubeblocks-for-apecloud-mysql/apecloud-mysql-intro>
-[^2]: wescale, <https://github.com/wesql/wescale>

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Directory pattern to find README.md files
-README_FILES=$(find examples -mindepth 2 -maxdepth 2 -name "README.md")
+README_FILES=$(find examples -mindepth 2 -maxdepth 2 -name "README.md" | sort)
 
 # Group 1: one or more '#' characters.
 # Group 2: characters inside the square brackets.
@@ -21,17 +21,16 @@ for README in $README_FILES; do
 
     while IFS= read -r line; do
         # identify code block start
-        if [[ "$line" == '```bash' ]]; then
+        if [[ "$line" =~ ^[[:space:]]*\`\`\`bash ]]; then
             inside_code_block=true
             code_block_content="$line"
             continue
         fi
 
         # identify code block end
-        if [[ "$line" == '```' && "$inside_code_block" == true ]]; then
+        if [[ "$line" =~  ^[[:space:]]*\`\`\` && "$inside_code_block" == true ]]; then
             inside_code_block=false
             code_block_content+=$'\n'"$line"
-
             # match `kubectl apply -f` command
             if [[ "$code_block_content" =~ kubectl\ apply\ -f\ ([^[:space:]]+\.yaml) ]]; then
                 YAML_FILE="${BASH_REMATCH[1]}"  # extract yaml file name
