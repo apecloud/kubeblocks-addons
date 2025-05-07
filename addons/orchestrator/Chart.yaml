@@ -15,7 +15,7 @@ icon: https://kubeblocks.io/img/logo.png
 
 
 maintainers:
-  - name: kubeJocker
+  - name: ApeCloud
     url: https://github.com/apecloud/kubeblocks/
 
 sources:
