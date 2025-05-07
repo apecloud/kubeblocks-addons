@@ -81,7 +81,17 @@ spec:
     - name: CLUSTER_NAME
       valueFrom:
         clusterVarRef:
-          clusterName: Required
+            clusterName: Required
+    - name: COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          shortName: Required
+    - name: CLUSTER_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
     ## the component name of postgres, it's the fullname of postgres component
     - name: POSTGRES_COMPONENT_NAME
       valueFrom:
