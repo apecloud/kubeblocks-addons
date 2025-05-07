@@ -263,8 +263,6 @@ kubectl get pods -n demo -l app.kubernetes.io/instance=acmysql-cluster -L kubebl
 
 ### Scale In Operation
 
-ApeCloud MySQL supports three approaches for horizontal scaling:
-
 #### Standard Scale In Operation
 
 Remove a replica from the cluster while maintaining RAFT quorum:
@@ -753,8 +751,9 @@ spec:
 - **Backup Stuck**:
 
   ```bash
-  kubectl describe backup <name> -n demo
-  kubectl logs -n demo <backup-pod>
+  kubectl describe backup <name> -n demo  # describe backup
+  kubectl get po -n demo -l app.kubernetes.io/instance=acmysql-cluster,dataprotection.kubeblocks.io/backup-policy=acmysql-cluster-mysql-backup-policy # get list of pods working for Backups
+  kubectl logs -n demo <backup-pod> # check backup pod logs
   ```
 
 ### Restore Operations
@@ -777,8 +776,7 @@ spec:
 1. **Identify Backup**:
 
    ```bash
-   kubectl get backup -n demo --sort-by=.metadata.creationTimestamp
-   kubectl describe backup <backup-name> -n demo
+   kubectl get backup -n demo -l dataprotection.kubeblocks.io/backup-type=Full,app.kubernetes.io/instance=acmysql-cluster # get the list of full backups
    ```
 
 2. **Prepare Credentials**:

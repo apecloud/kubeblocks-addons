@@ -435,6 +435,9 @@ kubectl get pods -n demo -l app.kubernetes.io/instance=pg-cluster -L kubeblocks.
 
 #### Scale In Operation
 
+> [!NOTE]
+> If the replica being scaled-in happens to be the primary replicas, KubBlocks will trigger a SwithchOver action (if defined).
+
 #### Standard Scale In Operation
 
 Horizontal scaling in PostgreSQL cluster by deleting ONE replica:
@@ -1482,25 +1485,41 @@ spec:
 
 #### Point-in-time Restore
 
-1. **Identify Continuous Backup** and get **timeRange**
+1. **Identify Continuous Backup**
+
+  Check Continuous Backup info:
 
   ```bash
+  # expect EXACTLY ONE continuous backup
   kubectl get backup -n demo -l dataprotection.kubeblocks.io/backup-type=Continuous,app.kubernetes.io/instance=pg-cluster  # get the list of Continuous backups
   ```
 
+  Check `timeRange`:
+
   ```bash
-  kubectl -n demo get backup <backup-name> -oyaml | yq '.status.timeRange' # get valid time range.
+  kubectl -n demo get backup <backup-name> -oyaml | yq '.status.timeRange' # get a valid time range.
   ```
 
   expected output likes:
 
   ```text
-  end: "2025-05-01T14:28:43Z"
-  start: "2025-04-30T07:44:49Z"
+  end: "2025-05-07T09:22:50Z"
+  start: "2025-05-07T09:12:47Z"
   ```
 
-  Pick one of the Backups whose status is `Running`, and `timeRange` is not nil.
-  If `timeRamge` is nil, please wait for a few more minutes.
+  Check the list of Full Backups info:
+
+  ```bash
+  # expect one or more Full backups
+  kubectl get backup -n demo -l dataprotection.kubeblocks.io/backup-type=Full,app.kubernetes.io/instance=pg-cluster  # get the list of Full backups
+  ```
+
+> [!IMPORTANT]
+> Make sure this is a full backup meets the condition:
+>
+> its stopTime/completionTimestamp must **AFTER** Continuous backup's startTime.
+>
+> KubeBlocks will automatically pick the latest completed Full backup as the base backup.
 
 2. **Prepare Credentials**:
 
@@ -1697,15 +1716,80 @@ spec:
 
 ## Cleanup
 
-If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
+To permanently delete the cluster and all associated resources:
+
+1. First modify the termination policy to ensure all resources are cleaned up:
 
 ```bash
-kubectl patch cluster -n demo pg-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+# Set termination policy to WipeOut (deletes all resources including PVCs)
+kubectl patch cluster -n demo pg-cluster \
+  -p '{"spec":{"terminationPolicy":"WipeOut"}}' \
+  --type="merge"
+```
 
+2. Verify the termination policy was updated:
+
+```bash
+kubectl get cluster -n demo pg-cluster -o jsonpath='{.spec.terminationPolicy}'
+```
+
+3. Delete the cluster:
+
+```bash
 kubectl delete cluster -n demo pg-cluster
 ```
 
+> [!WARNING]
+> This operation is irreversible and will permanently delete:
+>
+> - All database pods
+> - Persistent volumes and claims
+> - Services and other cluster resources
+
+<details open>
+<summary>How to set a proper `TerminationPolicy`</summary>
+
+For more details you may use following command
+
+```bash
+kubectl explain cluster.spec.terminationPolicy
+```
+
+| Policy            | Description                                                                                                                                               |
+|-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `DoNotTerminate`  | Prevents deletion of the Cluster. This policy ensures that all resources remain intact.                                                                   |
+| `Delete`          | Deletes all runtime resources belonging to the Cluster.                                                                                                   |
+| `WipeOut`         | An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss. |
+
+</details>
+
 ## Appendix
+
+### Connecting to PostgreSQL Cluster
+
+To connect to the ApeCloud MySQL cluster, you can:
+
+- port forward the MySQL service to your local machine:
+
+```bash
+kubectl port-forward svc/pg-cluster-postgresql-postgresql 5432:5432 -n demo # for postgresql
+kubectl port-forward svc/pg-cluster-postgresql-postgresql 6432:6432 -n demo # for pgbouncer
+```
+
+- or expose the MySQL service to the internet, as mentioned in the [Networking](#networking) section.
+
+Then you can connect to the MySQL cluster with the following command:
+
+```bash
+psql -h <endpoint> -P 5432 -u <userName> -p <userPasswd>
+```
+
+and credentials can be found in the `secret` resource:
+
+```bash
+userName=$(kubectl get secret -n demo pg-cluster-postgresql-account-postgres -ojsonpath='{.data.username}' | base64 -d)
+userPasswd=$(kubectl get secret -n demo apg-cluster-postgresql-account-postgres -ojsonpath='{.data.password}' | base64 -d)
+```
 
 ### How to Check Compatible versions
 

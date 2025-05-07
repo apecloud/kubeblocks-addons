@@ -269,6 +269,9 @@ kubectl get pods -n demo -l app.kubernetes.io/instance=pg-cluster -L kubeblocks.
 
 #### Scale In Operation
 
+> [!NOTE]
+> If the replica being scaled-in happens to be the primary replicas, KubBlocks will trigger a SwithchOver action (if defined).
+
 #### Standard Scale In Operation
 
 Horizontal scaling in PostgreSQL cluster by deleting ONE replica:
@@ -956,25 +959,41 @@ kubectl get backup -n demo -l app.kubernetes.io/instance=pg-cluster -l dataprote
 
 #### Point-in-time Restore
 
-1. **Identify Continuous Backup** and get **timeRange**
+1. **Identify Continuous Backup**
+
+  Check Continuous Backup info:
 
   ```bash
+  # expect EXACTLY ONE continuous backup
   kubectl get backup -n demo -l dataprotection.kubeblocks.io/backup-type=Continuous,app.kubernetes.io/instance=pg-cluster  # get the list of Continuous backups
   ```
 
+  Check `timeRange`:
+
   ```bash
-  kubectl -n demo get backup <backup-name> -oyaml | yq '.status.timeRange' # get valid time range.
+  kubectl -n demo get backup <backup-name> -oyaml | yq '.status.timeRange' # get a valid time range.
   ```
 
   expected output likes:
 
   ```text
-  end: "2025-05-01T14:28:43Z"
-  start: "2025-04-30T07:44:49Z"
+  end: "2025-05-07T09:22:50Z"
+  start: "2025-05-07T09:12:47Z"
   ```
 
-  Pick one of the Backups whose status is `Running`, and `timeRange` is not nil.
-  If `timeRamge` is nil, please wait for a few more minutes.
+  Check the list of Full Backups info:
+
+  ```bash
+  # expect one or more Full backups
+  kubectl get backup -n demo -l dataprotection.kubeblocks.io/backup-type=Full,app.kubernetes.io/instance=pg-cluster  # get the list of Full backups
+  ```
+
+> [!IMPORTANT]
+> Make sure this is a full backup meets the condition:
+>
+> its stopTime/completionTimestamp must **AFTER** Continuous backup's startTime.
+>
+> KubeBlocks will automatically pick the latest completed Full backup as the base backup.
 
 2. **Prepare Credentials**:
 
