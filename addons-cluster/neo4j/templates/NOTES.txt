@@ -1,0 +1,11 @@
+** Please be patient while the chart is being deployed **
+
+
+To get the root password run:
+
+    export NEO4J_PASSWORD=$(kubectl get secrets -n demo neo4j-cluster-neo4j-account-neo4j -o jsonpath='{.data.password}' | base64 -d)
+
+
+Then, run the following command:
+
+    cypher-shell -a "neo4j://localhost:7687" -u neo4j -p $NEO4J_PASSWORD
