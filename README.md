@@ -19,14 +19,14 @@ KubeBlocks add-ons.
 | NAME | VERSIOINS | DESCRIPTION | MAINTAINERS |
 | ---- | ---- | ----------- | ----------- |
 | apecloud-mysql | apecloud-mysql-8.0.30<br>wescale-0.2.7 | ApeCloud MySQL is a database that is compatible with MySQL syntax and achieves high availability through the utilization of the RAFT consensus protocol. | xuriwuyun |
-| apecloud-postgresql |  | ApeCloud PostgreSQL is a database that is compatible with PostgreSQL syntax and achieves high availability through the utilization of the RAFT consensus protocol. | ldming |
+| apecloud-postgresql | - | ApeCloud PostgreSQL is a database that is compatible with PostgreSQL syntax and achieves high availability through the utilization of the RAFT consensus protocol. | ldming |
 | clickhouse | clickhouse-22.9.4<br>clickhouse-24.8.3 | ClickHouse is an open-source column-oriented OLAP database management system. Use it to boost your database performance while providing linear scalability and hardware efficiency. | sophon-zt |
 | elasticsearch | elasticsearch-7.10.1<br>elasticsearch-7.7.1<br>elasticsearch-7.8.1<br>elasticsearch-8.1.3<br>elasticsearch-8.8.2 | Elasticsearch is a distributed, RESTful search engine optimized for speed and relevance on production-scale workloads. | iziang |
 | etcd | etcd-3.5.15<br>etcd-3.5.6 | Etcd is a strongly consistent, distributed key-value store that provides a reliable way to store data that needs to be accessed by a distributed system or cluster of machines. | free6om |
 | greptimedb | greptimedb-0.3.2 | An open-source, cloud-native, distributed time-series database with PromQL/SQL/Python supported. | GreptimeTeam sh2 |
 | influxdb | influxdb-2.7.4 | InfluxDB(TM) is an open source time-series database. It is a core component of the TICK (Telegraf, InfluxDB(TM), Chronograf, Kapacitor) stack. |  |
 | kafka | kafka-broker-2.7.0<br>kafka-broker-3.3.2<br>kafka-combine-3.3.2<br>kafka-controller-3.3.2<br>kafka-exporter-1.6.0 | Apache Kafka is a distributed streaming platform designed to build real-time pipelines and can be used as a message broker or as a replacement for a log aggregation solution for big data applications. | caiq1nyu |
-| llm | ggml-0.1.0<br>llm-0.2.7 | Large language models. | lynnleelhl |
+| llm | - | Large language models. | lynnleelhl |
 | loki | loki-1.0.0 | Loki is a horizontally-scalable, highly-available, multi-tenant log aggregation system inspired by Prometheus. It is designed to be very cost effective and easy to operate. | Chen-speculation |
 | mariadb | mariadb-10.6.15 | MariaDB is a high performance open source relational database management system that is widely used for web and application servers | yinmin |
 | milvus | milvus-v2.3.2 | A cloud-native vector database, storage for next generation AI applications. | leon-inf |
