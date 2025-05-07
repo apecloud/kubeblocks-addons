@@ -1,0 +1,31 @@
+apiVersion: v2
+name: neo4j
+description: Neo4j is a highly scalable, robust native graph database.
+
+type: application
+
+version: 1.0.0-alpha.0
+
+appVersion: "5.26.5"
+
+home: https://www.neo4j.com/
+icon: https://dist.neo4j.com/wp-content/uploads/20230926084108/Logo_FullColor_RGB_TransBG.svg
+keywords:
+  - neo4j
+  - database
+  - graph
+
+maintainers:
+  - name: xuriwuyun
+    url: https://github.com/apecloud/kubeblocks/deploy
+
+annotations:
+  addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
+  addon.kubeblocks.io/model: "message"
+  addon.kubeblocks.io/provider: "community"
+
+dependencies:
+  - name: kblib
+    version: 0.1.0
+    repository: file://../kblib
+    alias: extra
