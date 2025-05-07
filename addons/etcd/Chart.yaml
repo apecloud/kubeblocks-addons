@@ -40,7 +40,7 @@ keywords:
   - key-value
 
 maintainers:
-  - name: free6om
+  - name: ApeCloud
     url: https://github.com/apecloud/kubeblocks/
 
 annotations:

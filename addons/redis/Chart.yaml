@@ -25,7 +25,7 @@ keywords:
   - redis cluster
 
 maintainers:
-  - name: Y-Rookie
+  - name: ApeCloud
     url: https://github.com/apecloud/kubeblocks/
 
 annotations:
