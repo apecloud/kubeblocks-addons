@@ -17,7 +17,7 @@ spec:
     parameters:
       # Represents the name of the parameter that is to be updated.
       # `max_connections` is a dyamic parameter in PostgreSQL that can be changed or updated at runtime without requiring a restart of the database
-    - key: max_connections
+    - key: pgaudit.log
       # Represents the parameter values that are to be updated.
       # If set to nil, the parameter defined by the Key field will be removed from the configuration file.
-      value: '200'
+      value: read
