@@ -1,49 +1,64 @@
-# Mysql
+# MySQL on KubeBlocks
 
-MySQL is a widely used, open-source relational database management system (RDBMS)
+## Overview
 
-## Features In KubeBlocks
+MySQL is one of the most popular open-source relational database management systems (RDBMS). It is widely used for web applications and acts as the database component of the LAMP (Linux, Apache, MySQL, PHP/Python/Perl) stack. Developed by Oracle Corporation, MySQL is known for its speed, reliability, and ease of use. It supports a wide range of platforms, including Linux, Windows, macOS, and various Unix variants.
 
-### Lifecycle Management
+## Features in KubeBlocks
 
-|   Topology       | Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
-|------------------|------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
-| replication     | Yes                    | Yes                   | Yes              | Yes       | Yes        | Yes       | Yes    | Yes      |
+### Cluster Management Operations
 
-### Backup and Restore
+| Operation |Supported | Description |
+|-----------|-------------|----------------------|
+| **Restart** | YES | • Ordered sequence (followers first)<br/>• Health checks between restarts |
+| **Stop/Start** | YES |  • Graceful shutdown<br/>• Fast startup from persisted state |
+| **Horizontal Scaling** |YES |  • Adjust replica count dynamically<br/>• Automatic data replication<br/> |
+| **Vertical Scaling** | YES |  • Adjust CPU/Memory resources<br/>• Rolling updates for minimal downtime<br/>• Adaptive Parameters Reconfiguration, such as buffer pool size/max connections |
+| **Volume Expansion** | YES |  • Online storage expansion<br/>• No downtime required |
+| **Reconfiguration** | YES | • Dynamic/Static parameter updates<br/>• Validation rules<br/>• Versioned history |
+| **Service Exposure** | YES |  • Multiple exposure types (ClusterIP/NodePort/LB)<br/>• Role-based routing |
+| **Switchover** | YES |  • Planned primary transfer<br/>• Zero data loss guarantee |
 
-| Feature     | Method | Description |
-|-------------|--------|------------|
-| Full Backup | xtrabackup   | uses `xtrabackup`, an open-source tool developed by Percona to perform full backups  |
+### Data Protection
 
-### Versions
+| Type       | Method     | Details |
+|---------------|------------|---------|
+| Full Backup   | xtrabackup | • using Percona XtraBackup to perform a full backup <br/>• Upload backup file using `datasafed push`
+| Continuous Backup | archive-binlog | • Flushes binlogs when needed (size or time thresholds) <br/> • Upload binlogs using `wal-g binlog-push` <br/> • Purges expired binlogs |
 
-| Major Versions | Description |
-|---------------|--------------|
-| 5.7 | 5.7.44  |
-| 8.0 | \[8.0.30 ~ 8.0.39\] |
-| 8.4 | 8.4.0 ~ 8.4.2|
+### Supported Versions
+
+| MySQL Version | MySQL Version | Notes |
+|--------------|-----------------------|-------|
+| 8.0.30       | 8.0.30 | GA release |
 
 ## Prerequisites
 
-- Kubernetes cluster >= v1.21
-- `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
-- Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
-- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
-- MySQL Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
-- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+Before starting, ensure you have:
+
+1. **Kubernetes Environment**:
+   - Cluster v1.21+
+   - `kubectl` installed ([Installation Guide](https://kubernetes.io/docs/tasks/tools/))
+   - Helm v3+ ([Installation Guide](https://helm.sh/docs/intro/install/))
+
+2. **KubeBlocks Setup**:
+   - KubeBlocks installed and running ([Installation](../docs/prerequisites.md))
+   - MySQL Addon enabled ([Addon Setup](../docs/install-addon.md))
+
+3. **Namespace Setup**:
+   Create an isolated namespace for this tutorial:
 
   ```bash
   kubectl create ns demo
   ```
 
-## Examples
+## Lifecycle Management Operations
 
-### Create
+### Cluster Provisioning
 
-#### Cluster with built-in HA Manager
+#### Quick Start
 
-Create a MySQL cluster with two replicas that uses the built-in HA manager
+To deploy a basic MySQL cluster with RAFT consensus:
 
 ```yaml
 # cat examples/mysql/cluster.yaml
@@ -113,6 +128,41 @@ spec:
 kubectl apply -f examples/mysql/cluster.yaml
 ```
 
+And you will see the MySQL cluster status goes `Running` after a while:
+
+```bash
+kubectl get cluster mysql-cluster -w -n demo
+```
+
+<details open>
+<summary>Expected Output</summary>
+
+```bash
+NAME              CLUSTER-DEFINITION   TERMINATION-POLICY   STATUS    AGE
+mysql-cluster                          Delete               Running   1m
+```
+
+</details>
+
+and these two replicas are `Running` with roles `primary`,  `secondary` separately. To check the roles of the replicas, you can use following command:
+
+```bash
+kubectl get po -l  app.kubernetes.io/instance=mysql-cluster -L kubeblocks.io/role -n demo
+```
+
+<details open>
+<summary>Expected Output</summary>
+
+```bash
+NAME                      READY   STATUS    RESTARTS   AGE   ROLE
+mysql-cluster-mysql-0     4/4     Running   0          99s   primary
+mysql-cluster-mysql-1     4/4     Running   0          85s   secondary
+```
+
+</details>
+
+#### Version-Specific Cluster
+
 If you want to create a cluster of specified version, set the `spec.componentSpecs.serviceVersion` field in the yaml file before applying it:
 
 ```yaml
@@ -122,12 +172,9 @@ kind: Cluster
 spec:
   componentSpecs:
     - name: mysql
-      componentDef: "mysql-8.0"  # match all CMPD named with 'mysql-8.0-'
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # When componentDef is "mysql-8.0",
-      # Valid options are: [8.0.30 to 8.0.39]
-      serviceVersion: 8.0.35
+      serviceVersion: "8.0.35" # more MySQL versions will be supported in the future
 ```
 
 The list of supported versions can be found by following command:
@@ -136,11 +183,148 @@ The list of supported versions can be found by following command:
 kubectl get cmpv mysql
 ```
 
-### Horizontal scaling
+<details open>
+<summary>Expected Output</summary>
 
-#### Scale-out
+```bash
+NAME    VERSIONS                                                                                         STATUS      AGE
+mysql   8.4.2,8.4.1,8.4.0,8.0.39,8.0.38,8.0.37,8.0.36,8.0.35,8.0.34,8.0.33,8.0.32,8.0.31,8.0.30,5.7.44   Available   5d
+```
 
-Horizontal scaling out MySQL cluster by adding ONE more replica:
+</details>
+
+### Cluster Restart
+
+Restart the cluster components with zero downtime:
+
+```yaml
+# cat examples/mysql/restart.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: mysql-restart
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: mysql-cluster
+  type: Restart
+  # Lists Components to be restarted. ComponentOps specifies the Component to be operated on.
+  restart:
+    # Specifies the name of the Component.
+  - componentName: mysql
+
+```
+
+```bash
+kubectl apply -f examples/mysql/restart.yaml
+```
+
+This operation can only be performed via `OpsRequest`, and there is no corresponding CLUSTER API operation - because restart is not a declaration but an action.
+
+> [!NOTE]
+> The restart follows a safe sequence:
+>
+> 1. All secondary replicas are restarted first
+> 2. Primary replica is restarted last
+> 3. Transfer leadership to a healthy secondary before restarting Primary replica
+> This ensures continuous availability during the restart process.
+
+### Cluster Stop and Start
+
+#### Stopping the Cluster
+
+Gracefully stop the cluster to conserve resources while retaining all data (PVC). It is ideal for cost savings during inactive periods.
+
+**Stop via OpsRequest**
+
+```yaml
+# cat examples/mysql/stop.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: mysql-stop
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: mysql-cluster
+  type: Stop
+
+```
+
+```bash
+kubectl apply -f examples/mysql/stop.yaml
+```
+
+> [!NOTE]
+> When stopped:
+>
+> - All compute resources are released
+> - Persistent volumes remain intact
+> - No data is lost
+
+**Stop via Cluster API**
+
+Update the cluster spec directly:
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+spec:
+  componentSpecs:
+    - name: mysql
+      stop: true  # Set to true to stop the component
+      replicas: 2
+```
+
+#### Starting the Cluster
+
+Start the cluster from its stopped state:
+
+**Start via OpsRequest**
+
+```yaml
+# cat examples/mysql/start.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: mysql-start
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: mysql-cluster
+  type: Start
+
+```
+
+```bash
+kubectl apply -f examples/mysql/start.yaml
+```
+
+**Start via Cluster API**
+
+Update the cluster spec directly:
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+spec:
+  componentSpecs:
+    - name: mysql
+      stop: false  # Set to false to start the component or remove the field (default to false)
+      replicas: 2
+```
+
+## Scaling Operations
+
+### Horizontal Scaling
+
+> [!NOTE]
+> As per the MySQL documentation, the number of Raft replicas should be odd to avoid split-brain scenarios.
+> Make sure the number of MySQL replicas, is always odd after Horizontal Scaling.
+
+#### Scale Out Operation
+
+Add a new replica to the cluster:
 
 ```yaml
 # cat examples/mysql/scale-out.yaml
@@ -169,17 +353,39 @@ spec:
 kubectl apply -f examples/mysql/scale-out.yaml
 ```
 
-After applying the operation, you will see a new pod created and the MySQL cluster status goes from `Updating` to `Running`, and the newly created pod has a new role `secondary`.
-
-And you can check the progress of the scaling operation with following command:
+To Check detailed operation status
 
 ```bash
-kubectl describe -n demo ops mysql-scale-out
+kubectl describe ops -n demo mysql-scale-out
 ```
 
-#### Scale-in
+**Expected Workflow**:
 
-Horizontal scaling in MySQL cluster by deleting ONE replica:
+1. New pod is provisioned with `Pending` status
+2. Data is cloned from primary to new replica
+3. New pod transitions to `Running` with `secondary` role
+4. Cluster status changes from `Updating` to `Running`
+
+> [!IMPORTANT]
+> Scaling considerations:
+>
+> - Scaling operations are sequential - one replica at a time
+> - Data cloning may take time depending on dataset size
+
+To verify the new replica's status:
+
+```bash
+kubectl get pods -n demo -l app.kubernetes.io/instance=mysql-cluster -L kubeblocks.io/role
+```
+
+### Scale In Operation
+
+> [!NOTE]
+> If the replica being scaled-in happens to be the primary replicas, KubeBlocks will trigger a SwitchOver action (if defined).
+
+#### Standard Scale In Operation
+
+Remove a replica from the cluster:
 
 ```yaml
 # cat examples/mysql/scale-in.yaml
@@ -207,26 +413,106 @@ spec:
 kubectl apply -f examples/mysql/scale-in.yaml
 ```
 
-#### Scale-in/out using Cluster API
+Check detailed operation status:
 
-Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
+```bash
+kubectl describe ops -n demo mysql-scale-in
+```
+
+**Expected Workflow**:
+
+1. Selected replica (the one with the largest ordinal) is removed
+2. Pod is terminated gracefully
+3. Cluster status changes from `Updating` to `Running`
+
+**Verification**:
+
+```bash
+kubectl get pods -n demo -l app.kubernetes.io/instance=mysql-cluster
+```
+
+#### Targeted Instance Scale In
+
+For cases where you need to take a specific problematic replica offline for maintenance:
 
 ```yaml
-# snippet of cluster.yaml
+# cat examples/mysql/scale-in-specified-pod.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: mysql-scale-in-specified-pod
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: mysql-cluster
+  type: HorizontalScaling
+  # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
+  horizontalScaling:
+    # Specifies the name of the Component.
+  - componentName: mysql
+    # Specifies the replica changes for scaling out components
+    scaleIn:
+      # Specifies the instance names that need to be taken offline
+      onlineInstancesToOffline:
+        - 'mysql-cluster-mysql-1'
+
+
+```
+
+```bash
+kubectl apply -f examples/mysql/scale-in-specified-pod.yaml
+```
+
+Check detailed operation status:
+
+```bash
+kubectl describe ops -n demo mysql-scale-in-specified-pod
+```
+
+**Expected Workflow**:
+
+1. Selected replica (specified in `onlineInstancesToOffline`) is removed
+2. Pod is terminated gracefully
+3. Cluster status changes from `Updating` to `Running`
+4. cluster spec has been updated to:
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+spec:
+  componentSpecs:
+    name: mysql
+    offlineInstances:
+      - mysql-cluster-mysql-1  # the instance name specified in opsrequest
+    replicas: 1  # replicas reduced by one at the same time.
+```
+
+#### Horizontal Scaling via Cluster API
+
+Directly update replica count via Cluster API:
+
+```yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 spec:
   componentSpecs:
     - name: mysql
-      replicas: 2 # decrease `replicas` for scaling in, and increase for scaling out
+      replicas: 2  # Adjust replicas for scaling in and out.
+      offlineInstances:
+        - mysql-cluster-mysql-1 # for targetd-instance scale-in scenario, default to empty list.
 ```
 
-### Vertical scaling
+### Vertical Scaling
 
 Vertical scaling involves increasing or decreasing resources to an existing database cluster.
-Resources that can be scaled include:, CPU cores/processing power and Memory (RAM).
+Resources that can be scaled include:
 
-To vertical scaling up or down specified component, you can apply the following yaml file:
+- CPU cores/processing power
+- Memory (RAM)
+
+#### Vertical Scaling via OpsRequest API
+
+Perform vertical scaling using a operation request:
 
 ```yaml
 # cat examples/mysql/verticalscale.yaml
@@ -256,11 +542,15 @@ spec:
 kubectl apply -f examples/mysql/verticalscale.yaml
 ```
 
-You will observe that the `secondary` pods are recreated first, followed by the `primary` pod, to ensure the availability of the cluster.
+**Expected Workflow**:
 
-#### Scale-up/down using Cluster API
+1. Secondaries are updated first (one at a time)
+1. Primary is updated last after followers are healthy
+1. Cluster status transitions from `Updating` to `Running`
 
-Alternatively, you may update `spec.componentSpecs.resources` field to the desired resources for vertical scale.
+#### Vertical Scaling via Cluster API
+
+Directly modify cluster specifications for vertical scaling:
 
 ```yaml
 # snippet of cluster.yaml
@@ -269,22 +559,277 @@ kind: Cluster
 spec:
   componentSpecs:
     - name: mysql
-      replicas: 2
       resources:
         requests:
-          cpu: "1"       # Update the resources to your need.
-          memory: "2Gi"  # Update the resources to your need.
+          cpu: "1"       # CPU cores (e.g. "1", "500m")
+          memory: "2Gi"  # Memory (e.g. "2Gi", "512Mi")
         limits:
-          cpu: "2"       # Update the resources to your need.
-          memory: "4Gi"  # Update the resources to your need.
+          cpu: "2"       # Maximum CPU allocation
+          memory: "4Gi"  # Maximum memory allocation
 ```
 
-### Expand volume
+**Key Considerations**:
 
-Volume expansion is the ability to increase the size of a Persistent Volume Claim (PVC) after it's created. It is introduced in Kubernetes v1.11 and goes GA in Kubernetes v1.24. It allows Kubernetes users to simply edit their PersistentVolumeClaim objects without requiring any downtime at all if possible[^4].
+- Ensure sufficient cluster capacity exists
+- Resource changes may trigger pod restarts and parameters reconfiguration
+- Monitor resource utilization after changes
+
+## Reconfiguration Management
+
+### Parameter Types
+
+A database reconfiguration is the process of modifying database parameters, settings, or configurations to improve performance, security, or availability.
+
+| Type | Restart Required | Scope | Example Parameters |
+|------|------------------|-------|--------------------|
+| **Dynamic** | No | Immediate effect | `max_connections`, `innodb_buffer_pool_size` |
+| **Static** | Yes | After restart | `performance_schema`, `log_bin` |
+
+### Reconfiguration
+
+1. **Prepare Configuration**:
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: OpsRequest
+spec:
+  clusterRef: mysql-cluster
+  type: Reconfig
+  reconfig:
+    componentName: mysql
+    configurations:
+    - name: mysql-config
+      parameters:
+        max_connections: "600"
+        innodb_buffer_pool_size: "512M"
+```
+
+2. **Apply Changes**:
+
+```yaml
+# cat examples/mysql/configure.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: mysql-reconfiguring
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: mysql-cluster
+  # Instructs the system to bypass pre-checks (including cluster state checks and customized pre-conditions hooks) and immediately execute the opsRequest, except for the opsRequest of 'Start' type, which will still undergo pre-checks even if `force` is true.  Note: Once set, the `force` field is immutable and cannot be updated.
+  force: false
+  # Specifies a component and its configuration updates. This field is deprecated and replaced by `reconfigures`.
+  reconfigures:
+    # Specifies the name of the Component.
+  - componentName: mysql
+    parameters:
+      # Represents the name of the parameter that is to be updated.
+    - key: binlog_expire_logs_seconds
+      # Represents the parameter values that are to be updated.
+      # If set to nil, the parameter defined by the Key field will be removed from the configuration file.
+      value: '691200'
+  # Specifies the maximum number of seconds the OpsRequest will wait for its start conditions to be met before aborting. If set to 0 (default), the start conditions must be met immediately for the OpsRequest to proceed.
+  preConditionDeadlineSeconds: 0
+  type: Reconfiguring
+
+```
+
+```bash
+kubectl apply -f examples/mysql/configure.yaml
+```
+
+3. **Monitor Progress**:
+
+```bash
+kubectl describe ops mysql-reconfiguring -n demo  # check opsrequest progress
+kubectl describe parameter mysql-reconfiguring -n demo  # check parameters reconfigurion details
+```
+
+4. **Verify Changes**:
+
+```sql
+-- On primary replica
+SHOW VARIABLES LIKE 'max_connections';
+SHOW VARIABLES LIKE 'innodb_buffer_pool_size';
+```
+
+> [!IMPORTANT]
+>
+> - Static changes trigger rolling restarts
+> - Monitor cluster health during reconfiguration
+
+<details open>
+
+<summary>How to find the list of dynamic/static parameters</summary>
+
+Behavior of Parameters, including parameters scope such as dynamic/static/immutable, or parameters validation rules such as value types, ranges of values, are defined in KubeBlocks `ParameterDefinition`.
+
+You may fetch the list of dynamic parameters for MySQL using:
+
+```bash
+kubectl get pd mysql-8.0-pd -oyaml | yq '.spec.staticParameters'
+kubectl get pd mysql-8.0-pd -oyaml | yq '.spec.dynamicParameters'
+```
+
+</details>
+
+5. **Trouble Shooting**
+
+```bash
+kubectl describe ops mysql-reconfiguring -n demo  # check opsrequest progress
+kubectl describe parameter mysql-reconfiguring -n demo  # check parameters reconfigurion details
+kubectl -n demo logs mysql-cluster-mysql-0 -c config-manager # check reconfig process errors if any
+```
+
+### Configuration Validation
+
+KubeBlocks will validate the parameter values and types before applying changes.
+
+For example, `max_connections` in mysql should obey this rule:
+
+```
+// The number of simultaneous client connections allowed. should be a integer, btw [1, 100000]
+max_connections?: int & >=1 & <=100000
+```
+
+And if you somehow give a string to this value like:
+
+```yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+spec:
+  type: Reconfiguring
+  clusterName: mysql-cluster
+  reconfigures:
+  - componentName: mysql
+    parameters:
+    - key: max_connections
+      value: 'abc'
+```
+
+This OpsRequest fails fast with message `failed to validate updated config: [failed to parse field max_connections: [strconv.Atoi: parsing "STRING": invalid syntax]]`
+
+## High Availability
+
+### Switchover (Planned Primary Transfer)
+
+SwitchOver is a controlled operation that safely transfers leadership while maintaining:
+
+- Continuous availability
+- Zero data loss
+- Minimal performance impact
+
+<details>
+<summary>Developer: Switchover Actions</summary>
+KubeBlocks executes SwitchOver actions defined in `componentdefinition.spec.lifecycleActions.switchover`.
+
+To get the SwitchOver actions for MySQL:
+
+```bash
+kubectl get cmpd mysql-8.0-1.0.0-alpha.0 -oyaml | yq '.spec.lifecycleActions.switchover'
+```
+
+</details>
+
+#### Prerequisites
+
+- Cluster must be in `Running` state
+- No ongoing maintenance operations
+
+#### Switchover Types
+
+1. **Automatic Switchover** (No preferred candidate):
+
+```yaml
+# cat examples/mysql/switchover.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: mysql-switchover
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: mysql-cluster
+  type: Switchover
+  # Lists Switchover objects, each specifying a Component to perform the switchover operation.
+  switchover:
+    # Specifies the name of the Component.
+  - componentName: mysql
+    # Specifies the instance whose role will be transferred.
+    # A typical usage is to transfer the leader role in a consensus system.
+    instanceName: mysql-cluster-mysql-0
+
+```
+
+   ```bash
+   kubectl apply -f examples/mysql/switchover.yaml
+   ```
+
+2. **Targeted Switchover** (Specific instance):
+
+```yaml
+# cat examples/mysql/switchover-specified-instance.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: mysql-switchover-specify
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: mysql-cluster
+  type: Switchover
+  # Lists Switchover objects, each specifying a Component to perform the switchover operation.
+  switchover:
+    # Specifies the name of the Component.
+  - componentName: mysql
+    # Specifies the instance whose role will be transferred.
+    # A typical usage is to transfer the leader role in a consensus system.
+    instanceName: mysql-cluster-mysql-0
+    # If CandidateName is specified, the role will be transferred to this instance.
+    # The name must match one of the pods in the component.
+    # Refer to ComponentDefinition's Swtichover lifecycle action for more details.
+    candidateName: mysql-cluster-mysql-1
+
+```
+
+   ```bash
+   kubectl apply -f examples/mysql/switchover-specified-instance.yaml
+   ```
+
+   Update `opsrequest.spec.switchover.candidateName` as needed
+
+#### Monitoring Switchover
+
+1. **Track Progress**:
+
+   ```bash
+   kubectl get ops -n demo -w
+   kubectl describe ops <switchover-name> -n demo
+   ```
+
+2. **Verify Completion**:
+
+   ```bash
+   kubectl get pods -n demo -L kubeblocks.io/role
+   ```
+
+#### Troubleshooting
+
+- **Switchover Stuck**:
+
+  ```bash
+  kubectl logs -n demo <pod-name> -c kbagent # check on primary replica
+  kubectl get events -n demo --field-selector involvedObject.name=mysql-cluster
+  ```
+
+## Storage Operations
+
+### Prerequisites
+
+Volume expansion is the ability to increase the size of a Persistent Volume Claim (PVC) after it's created. It is introduced in Kubernetes v1.11 and goes GA in Kubernetes v1.24. It allows Kubernetes users to simply edit their PersistentVolumeClaim objects without requiring any downtime at all if possible.
 
 > [!NOTE]
-> Make sure the storage class you use supports volume expansion.
+> Make sure the storage class you used when creating clusters supports volume expansion.
 
 Check the storage class with following command:
 
@@ -293,6 +838,10 @@ kubectl get storageclass
 ```
 
 If the `ALLOWVOLUMEEXPANSION` column is `true`, the storage class supports volume expansion.
+
+### Volume Expansion
+
+#### Volume Expansion via OpsRequest API
 
 To increase size of volume storage with the specified components in the cluster
 
@@ -328,7 +877,7 @@ After the operation, you will see the volume size of the specified component is 
 kubectl get pvc -l app.kubernetes.io/instance=mysql-cluster -n demo
 ```
 
-#### Volume expansion using Cluster API
+#### Volume Expansion via Cluster API
 
 Alternatively, you may update the `spec.componentSpecs.volumeClaimTemplates.spec.resources.requests.storage` field to the desired size.
 
@@ -342,7 +891,7 @@ spec:
       volumeClaimTemplates:
         - name: data
           spec:
-            storageClassName: "<you-preferred-sc>"
+            storageClassName: "<STORAGE_CLASS_NAME>"
             accessModes:
               - ReadWriteOnce
             resources:
@@ -350,281 +899,24 @@ spec:
                 storage: 30Gi  # specify new size, and make sure it is larger than the current size
 ```
 
-### Restart
+> [!NOTE]
+> If the storage class you use does not support volume expansion, this OpsRequest fails fast with information like:
+> `storageClass: [STORAGE_CLASS_NAME] of volumeClaimTemplate: [VOLUME_NAME]] not support volume expansion in component [COMPONENT_NAME]`
 
-Restart the specified components in the cluster
+## Networking
 
-```yaml
-# cat examples/mysql/restart.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-metadata:
-  name: mysql-restart
-  namespace: demo
-spec:
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: mysql-cluster
-  type: Restart
-  # Lists Components to be restarted. ComponentOps specifies the Component to be operated on.
-  restart:
-    # Specifies the name of the Component.
-  - componentName: mysql
+### Service Exposure
 
-```
+1. **Choose Exposure Method**:
+   - OpsRequest API
+   - Cluster API
 
-```bash
-kubectl apply -f examples/mysql/restart.yaml
-```
+2. **Configure Service Annotation** (if using LoadBalancer):
+   - Add appropriate annotations
 
-### Stop
+#### Expose SVC via OpsRequest API
 
-Stop the cluster will release all the pods of the cluster, but the storage will be retained. It is useful when you want to save the cost of the cluster.
-
-```yaml
-# cat examples/mysql/stop.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-metadata:
-  name: mysql-stop
-  namespace: demo
-spec:
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: mysql-cluster
-  type: Stop
-
-```
-
-```bash
-kubectl apply -f examples/mysql/stop.yaml
-```
-
-#### Stop using Cluster API
-
-Alternatively, you may stop the cluster by setting the `spec.componentSpecs.stop` field to `true`.
-
-```yaml
-# snippet of cluster.yaml
-apiVersion: apps.kubeblocks.io/v1
-kind: Cluster
-spec:
-  componentSpecs:
-    - name: mysql
-      stop: true  # set stop `true` to stop the component
-      replicas: 2
-```
-
-### Start
-
-Start the stopped cluster
-
-```yaml
-# cat examples/mysql/start.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-metadata:
-  name: mysql-start
-  namespace: demo
-spec:
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: mysql-cluster
-  type: Start
-
-```
-
-```bash
-kubectl apply -f examples/mysql/start.yaml
-```
-
-#### Start using Cluster API
-
-Alternatively, you may start the cluster by setting the `spec.componentSpecs.stop` field to `false`.
-
-```yaml
-# snippet of cluster.yaml
-apiVersion: apps.kubeblocks.io/v1
-kind: Cluster
-spec:
-  componentSpecs:
-    - name: mysql
-      stop: false  # set to `false` (or remove this field) to start the component
-      replicas: 2
-```
-
-### Switchover
-
-A switchover in database clusters is a planned operation that transfers the primary (leader) role from one database instance to another. The goal of a switchover is to ensure that the database cluster remains available and operational during the transition.
-
-### Switchover-specified-instance
-
-Switchover a specified instance as the new primary or leader of the cluster
-
-```yaml
-# cat examples/mysql/switchover-specified-instance.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-metadata:
-  name: mysql-switchover-specify
-  namespace: demo
-spec:
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: mysql-cluster
-  type: Switchover
-  # Lists Switchover objects, each specifying a Component to perform the switchover operation.
-  switchover:
-    # Specifies the name of the Component.
-  - componentName: mysql
-    # Specifies the instance whose role will be transferred.
-    # A typical usage is to transfer the leader role in a consensus system.
-    instanceName: mysql-cluster-mysql-0
-    # If CandidateName is specified, the role will be transferred to this instance.
-    # The name must match one of the pods in the component.
-    # Refer to ComponentDefinition's Swtichover lifecycle action for more details.
-    candidateName: mysql-cluster-mysql-1
-
-```
-
-```bash
-kubectl apply -f examples/mysql/switchover-specified-instance.yaml
-```
-
-### Configure
-
-A database reconfiguration is the process of modifying database parameters, settings, or configurations to improve performance, security, or availability. The reconfiguration can be either:
-
-- Dynamic: Applied without restart
-- Static: Requires database restart
-
-Reconfigure parameters with the specified components in the cluster
-
-```yaml
-# cat examples/mysql/configure.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-metadata:
-  name: mysql-reconfiguring
-  namespace: demo
-spec:
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: mysql-cluster
-  # Instructs the system to bypass pre-checks (including cluster state checks and customized pre-conditions hooks) and immediately execute the opsRequest, except for the opsRequest of 'Start' type, which will still undergo pre-checks even if `force` is true.  Note: Once set, the `force` field is immutable and cannot be updated.
-  force: false
-  # Specifies a component and its configuration updates. This field is deprecated and replaced by `reconfigures`.
-  reconfigures:
-    # Specifies the name of the Component.
-  - componentName: mysql
-    parameters:
-      # Represents the name of the parameter that is to be updated.
-    - key: binlog_expire_logs_seconds
-      # Represents the parameter values that are to be updated.
-      # If set to nil, the parameter defined by the Key field will be removed from the configuration file.
-      value: '691200'
-  # Specifies the maximum number of seconds the OpsRequest will wait for its start conditions to be met before aborting. If set to 0 (default), the start conditions must be met immediately for the OpsRequest to proceed.
-  preConditionDeadlineSeconds: 0
-  type: Reconfiguring
-
-```
-
-```bash
-kubectl apply -f examples/mysql/configure.yaml
-```
-
-This example will change the `binlog_expire_logs_seconds` to `691200`. To verify the changes, You may log into the MySQL instance to check the configuration changes:
-
-```sql
-SHOW VARIABLES LIKE 'binlog_expire_logs_seconds';
-```
-
-### Backup
-
-> [!IMPORTANT]
-> Before you start, please create a `BackupRepo` to store the backup data. Refer to [BackupRepo](../docs/create-backuprepo.md) for more details.
-
-You may find the supported backup methods in the `BackupPolicy` of the cluster, e.g. `mysql-cluster-mysql-backup-policy` in this case, and find how these methods will be scheduled in the `BackupSchedule` of the cluster, e.g.. `mysql-cluster-mysql-backup-schedule` in this case.
-
-To create a full backup, using `xtrabackup`, for the cluster:
-
-```yaml
-# cat examples/mysql/backup.yaml
-apiVersion: dataprotection.kubeblocks.io/v1alpha1
-kind: Backup
-metadata:
-  name: mysql-cluster-backup
-  namespace: demo
-spec:
-  # Specifies the backup method name that is defined in the backup policy.
-  # - xtrabackup
-  # - volume-snapshot
-  backupMethod: xtrabackup
-  # Specifies the backup policy to be applied for this backup.
-  backupPolicyName: mysql-cluster-mysql-backup-policy
-  # Determines whether the backup contents stored in the backup repository should be deleted when the backup custom resource(CR) is deleted. Supported values are `Retain` and `Delete`.
-  # - `Retain` means that the backup content and its physical snapshot on backup repository are kept.
-  # - `Delete` means that the backup content and its physical snapshot on backup repository are deleted.
-  deletionPolicy: Delete
-
-```
-
-```bash
-kubectl apply -f examples/mysql/backup.yaml
-```
-
-### Restore
-
-To restore a new cluster from a Backup:
-
-1. Get the list of accounts and their passwords from the backup:
-
-```bash
-kubectl get backup -n demo mysql-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
-```
-
-1. Update `examples/mysql/restore.yaml` and set placeholder `<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
-
-```yaml
-# cat examples/mysql/restore.yaml
-apiVersion: apps.kubeblocks.io/v1
-kind: Cluster
-metadata:
-  name: mysql-cluster-restore
-  namespace: demo
-  annotations:
-    kubeblocks.io/restore-from-backup: '{"mysql":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"mysql-cluster-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
-spec:
-  terminationPolicy: Delete
-  componentSpecs:
-    - name: mysql
-      componentDef: "mysql-8.0"  # match all CMPD named with 'mysql-8.0-'
-      serviceVersion: 8.0.35
-      disableExporter: false
-      replicas: 2
-      resources:
-        limits:
-          cpu: '0.5'
-          memory: 0.5Gi
-        requests:
-          cpu: '0.5'
-          memory: 0.5Gi
-      volumeClaimTemplates:
-        - name: data
-          spec:
-            storageClassName: ""
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: 20Gi
-
-```
-
-```bash
-kubectl apply -f examples/mysql/restore.yaml
-```
-
-### Expose
-
-Expose a cluster with a new endpoint
-
-#### Enable
+- Enable Service
 
 ```yaml
 # cat examples/mysql/expose-enable.yaml
@@ -666,7 +958,7 @@ spec:
 kubectl apply -f examples/mysql/expose-enable.yaml
 ```
 
-#### Disable
+- Disable Service
 
 ```yaml
 # cat examples/mysql/expose-disable.yaml
@@ -699,48 +991,34 @@ spec:
 kubectl apply -f examples/mysql/expose-disable.yaml
 ```
 
-#### Expose SVC using Cluster API
+#### Expose SVC via Cluster API
 
-Alternatively, you may expose service by updating `spec.services`
+Alternatively, you may expose service by adding a new service to cluster's `spec.services`:
 
 ```yaml
 # snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 spec:
-  # append service to the list
   services:
-    # add annotation for cloud loadbalancer if
-    # services.spec.type is LoadBalancer
-    # here we use annotation for alibaba cloud for example
-  - annotations:
-      service.beta.kubernetes.io/alibaba-cloud-loadbalancer-address-type: internet
-    componentSelector: mysql
-    name: mysql-vpc
-    serviceName: mysql-vpc
-    # optional. it specify defined role as selector for the service.
-    # onece specified, service will select and route traffic to Pods with the label
-    # "kubeblocks.io/role=<specified-role-name>".
-    # valid options are: [primary, secondary] for MySQL
-    roleSelector: primary
-    spec:  # defines the behavior of a K8s service.
-      ipFamilyPolicy: PreferDualStack
-      ports:
-      - name: tcp-mysql
-        # port to expose
-        port: 3306
-        protocol: TCP
-        targetPort: mysql
-      # Determines how the Service is exposed. Defaults to 'ClusterIP'.
-      # Valid options are [`ClusterIP`, `NodePort`, and `LoadBalancer`]
-      type: LoadBalancer
-  componentSpecs:
-    - name: mysql
-      replicas: 2
-      ...
+    - annotations:
+        service.beta.kubernetes.io/aws-load-balancer-type: nlb  # Use Network Load Balancer
+        service.beta.kubernetes.io/aws-load-balancer-internal: "true"  # or "false" for internet
+      componentSelector: mysql
+      name: mysql-vpc
+      serviceName: mysql-vpc
+      roleSelector: primary  # [primary, secondary] for MySQL
+      spec:
+        ipFamilyPolicy: PreferDualStack
+        ports:
+        - name: mysql
+          port: 3306
+          protocol: TCP
+          targetPort: mysql
+        type: LoadBalancer  # [ClusterIP, NodePort, LoadBalancer]
 ```
 
-If the service is of type `LoadBalancer`, please add annotations for cloud loadbalancer depending on the cloud provider you are using. Here list annotations for some cloud providers:
+#### Cloud Provider Load Balancer Annotations
 
 ```yaml
 # alibaba cloud
@@ -758,68 +1036,368 @@ networking.gke.io/load-balancer-type: "Internal" # for internal access
 cloud.google.com/l4-rbs: "enabled" # for internet
 ```
 
-#### Rebuild Instance
+## Data Protection Operations
 
-There are cases where you may need to rebuild an instance in the cluster, for examples, a pod is unhealthy and cannot be recovered, or replication lag is too high for primary-standby cluster.
+### Prerequisites
 
-You can use the following yaml file to rebuild the instance. Please set `backupName` and `targetNodeName` before applying the example.
+1. **Backup Repository**:
+   - Configured `BackupRepo` ([Setup Guide](../docs/create-backuprepo.md))
+   - Network connectivity between cluster and repo, `BackupRepo` status is `Ready`
+
+2. **Cluster State**:
+   - Cluster must be in `Running` state
+   - No ongoing operations (scaling, upgrades etc.)
+
+### Backup Operations
+
+#### Backup Configuration
+
+1. **View default Backup Policies**:
+
+   ```bash
+   kubectl get backuppolicy -n demo -l app.kubernetes.io/instance=mysql-cluster
+   ```
+
+2. **View default BackupSchedule**:
+
+   ```bash
+   kubectl get backupschedule -n demo -l app.kubernetes.io/instance=mysql-cluster
+   ```
+
+#### Full Backup: XtraBackup
+
+using Percona XtraBackup to perform a full backup and  Upload backup file using `datasafed push`
+
+1. **On-Demand Backup**:
 
 ```yaml
-# cat examples/mysql/rebuild-instance.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
+# cat examples/mysql/backup.yaml
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: Backup
 metadata:
-  generateName: mysql-rebuildinstance
+  name: mysql-cluster-backup
   namespace: demo
 spec:
-  # Operation type is RebuildInstance
-  type: RebuildInstance
-  # Specify the name of the cluster to be rebuilt
-  clusterName: mysql-cluster
-  # If set to true, the operation will be forced even if the node is running
-  force: true
-  rebuildFrom:
-    - componentName: mysql # Name of the component to be rebuilt
-      backupName: <MYSQL_FULL_BACKUP_NAME> # the name of the Backup to restore the instance.
-      inPlace: true # Whether to rebuild in place on the existing Pod
-      instances:
-        - name: mysql-cluster-mysql-0 # Name of the Pod to be rebuilt
-          targetNodeName: <NODE_NAME> # rebuild on the specified nod
+  # Specifies the backup method name that is defined in the backup policy.
+  # - xtrabackup
+  # - volume-snapshot
+  backupMethod: xtrabackup
+  # Specifies the backup policy to be applied for this backup.
+  backupPolicyName: mysql-cluster-mysql-backup-policy
+  # Determines whether the backup contents stored in the backup repository should be deleted when the backup custom resource(CR) is deleted. Supported values are `Retain` and `Delete`.
+  # - `Retain` means that the backup content and its physical snapshot on backup repository are kept.
+  # - `Delete` means that the backup content and its physical snapshot on backup repository are deleted.
+  deletionPolicy: Delete
 
 ```
 
-```bash
-kubectl apply -f examples/mysql/rebuild-instance.yaml
+   ```bash
+   kubectl apply -f examples/mysql/backup.yaml
+   ```
+
+2. **Monitor Progress**:
+
+   ```bash
+   kubectl get backup -n demo -w
+   kubectl describe backup <backup-name> -n demo
+   ```
+
+3. **Verify Completion**:
+   - Check status is `Completed`
+   - Verify backup size matches expectations
+   - Validate backup metadata
+
+#### Continuous Backup: archive-binlog
+
+The method `archive-binlog` performs continuous backup of binlogs for mysql, usually paired with method `xtrabackup`.It key steps are:
+
+- Flushes binlogs when needed (size or time thresholds)
+- Upload binlogs using `wal-g binlog-push`
+- Purges expired binlogs
+
+#### Scheduled Backups
+
+Update `BackupSchedule` to schedule enable(`enabled`) backup methods and set the time (`cronExpression`) to your need:
+
+```yaml
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: BackupSchedule
+spec:
+  backupPolicyName: mysql-cluster-mysql-backup-policy
+  schedules:
+  - backupMethod: xtrabackup
+    # ┌───────────── minute (0-59)
+    # │ ┌───────────── hour (0-23)
+    # │ │ ┌───────────── day of month (1-31)
+    # │ │ │ ┌───────────── month (1-12)
+    # │ │ │ │ ┌───────────── day of week (0-6) (Sunday=0)
+    # │ │ │ │ │
+    # 0 18 * * *
+    # schedule this job every day at 6:00 PM (18:00).
+    cronExpression: 0 18 * * * # update the cronExpression to your need
+    enabled: true # set to `true` to schedule base backup periodically
+    retentionPeriod: 7d # set the retention period to your need
+  - backupMethod: archive-binlog
+    cronExpression: '*/30 * * * *'
+    enabled: true   # set to `true` to enable continuous backup
+    name: archive-binlog
+    retentionPeriod: 8d # by default, retentionPeriod of continuous backup is 1d more than that of a full backup.
 ```
 
-### Observability
+#### Troubleshooting
 
-#### Installing the Prometheus Operator
+- **Backup Stuck**:
 
-You may skip this step if you have already installed the Prometheus Operator.
-Or you can follow the steps in [How to install the Prometheus Operator](../docs/install-prometheus.md) to install the Prometheus Operator.
+  ```bash
+  kubectl describe backup <name> -n demo  # describe backup
+  kubectl get po -n demo -l app.kubernetes.io/instance=mysql-cluster,dataprotection.kubeblocks.io/backup-policy=mysql-cluster-mysql-backup-policy # get list of pods working for Backups
+  kubectl logs -n demo <backup-pod> # check backup pod logs
+  ```
 
-#### Create PodMonitor
+### Restore Operations
 
-##### Step 1. Query ScrapePath and ScrapePort
+#### Prerequisites
 
-You can retrieve the `scrapePath` and `scrapePort` from pod's exporter container.
+1. **Backup Verification**:
+   - Full Backup must be in `Completed` state
+   - Continuous Backup must be in `Completed` or `Running` phase, with a valid `timeRange` in status.
 
-```bash
-kubectl get po -n demo mysql-cluster-mysql-0 -oyaml | yq '.spec.containers[] | select(.name=="mysql-exporter") | .ports '
+2. **Cluster Resources**:
+   - Sufficient CPU/memory for new cluster
+   - Available storage capacity
+   - Network connectivity between backup repo and new cluster
+
+3. **Credentials**:
+   - System account encryption keys
+
+#### Restore from a Full Backup
+
+1. **Identify Backup**:
+
+   ```bash
+   kubectl get backup -n demo -l dataprotection.kubeblocks.io/backup-type=Full,app.kubernetes.io/instance=mysql-cluster # get the list of full backups
+   ```
+
+2. **Prepare Credentials**:
+
+   ```bash
+   # Get encrypted system accounts
+    kubectl get backup <backupName> -n demo -ojson | jq -r '.metadata.annotations | ."kubeblocks.io/encrypted-system-accounts" | fromjson .mysql | tojson |gsub("\""; "\\"")'
+   ```
+
+3. **Configure Restore**:
+   Update `examples/mysql/restore.yaml` with:
+   - Backup name and namespace: from step 1
+   - Encrypted system accounts: from step 2
+   - Target cluster configuration
+
+4. **Execute Restore**:
+
+```yaml
+# cat examples/mysql/restore.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: mysql-cluster-restore
+  namespace: demo
+  annotations:
+    kubeblocks.io/restore-from-backup: '{"mysql":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"mysql-cluster-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
+spec:
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: mysql
+      componentDef: "mysql-8.0"  # match all CMPD named with 'mysql-8.0-'
+      serviceVersion: 8.0.35
+      disableExporter: false
+      replicas: 2
+      resources:
+        limits:
+          cpu: '0.5'
+          memory: 0.5Gi
+        requests:
+          cpu: '0.5'
+          memory: 0.5Gi
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+
 ```
 
-And the expected output is like:
+   ```bash
+   kubectl apply -f examples/mysql/restore.yaml
+   ```
 
-```text
-- containerPort: 9104
-  name: http-metrics
-  protocol: TCP
+5. **Monitor Progress**:
+
+   ```bash
+   # Watch restore status
+   kubectl get restore -n demo -w
+
+   # View detailed logs
+   kubectl get cluster -n demo -w
+   ```
+
+#### Point-in-time Restore
+
+1. **Identify Continuous Backup**
+
+  Check Continuous Backup info:
+
+  ```bash
+  # expect EXACTLY ONE continuous backup
+  kubectl get backup -n demo -l dataprotection.kubeblocks.io/backup-type=Continuous,app.kubernetes.io/instance=mysql-cluster  # get the list of Continuous backups
+  ```
+
+  Check `timeRange`:
+
+  ```bash
+  kubectl -n demo get backup <backup-name> -oyaml | yq '.status.timeRange' # get a valid time range.
+  ```
+
+  expected output likes:
+
+  ```text
+  end: "2025-05-07T09:22:50Z"
+  start: "2025-05-07T09:12:47Z"
+  ```
+
+  Check the list of Full Backups info:
+
+  ```bash
+  # expect one or more Full backups
+  kubectl get backup -n demo -l dataprotection.kubeblocks.io/backup-type=Full,app.kubernetes.io/instance=mysql-cluster  # get the list of Full backups
+  ```
+
+> [!IMPORTANT]
+> Make sure this is a full backup meets the condition:
+>
+> its stopTime/completionTimestamp must **AFTER** Continuous backup's startTime.
+>
+> KubeBlocks will automatically pick the latest completed Full backup as the base backup.
+
+2. **Prepare Credentials**:
+
+  ```bash
+  # Get encrypted system accounts
+  kubectl get backup <backup-name> -n demo -ojson | jq -r '.metadata.annotations | ."kubeblocks.io/encrypted-system-accounts" | fromjson .mysql | tojson |gsub("\""; "\\"")'
+  ```
+
+3. **Configure Restore**:
+   Update `examples/pg-cluster/restore-pitr.yaml` with:
+   - Backup name and namespace: from step 1
+   - Point time: falls in `timeRange` from Step 1
+   - Encrypted system accounts: from step 2
+   - Target cluster configuration
+
+4. **Execute Restore**:
+
+```yaml
+# cat examples/mysql/restore-pitr.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: mysqlrestore-pitr
+  namespace: demo
+  annotations:
+    # NOTE: replace <ENCRYPTED-SYSTEM-ACCOUNTS> with the accounts info from you backup
+    # NOTE: replace <CONTINUOUS_BACKUP_NAME> with the continuouse backup name
+    # NOTE: replace <RESTORE_POINT_TIME>  with a valid time within the backup timeRange.
+    kubeblocks.io/restore-from-backup: '{"mysql":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"<CONTINUOUS_BACKUP_NAME>","namespace":"demo","restoreTime":"<RESTORE_POINT_TIME>","volumeRestorePolicy":"Parallel"}}'
+spec:
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: mysql
+      componentDef: "mysql-8.0"
+      serviceVersion: 8.0.35
+      disableExporter: true
+      replicas: 1
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+
 ```
 
-##### Step 2. Create PodMonitor
+   ```bash
+   kubectl apply -f examples/mysql/restore-pitr.yaml
+   ```
 
-Apply the `PodMonitor` file to monitor the cluster:
+5. **Monitor Progress**:
+
+   ```bash
+   # Watch restore status
+   kubectl get restore -n demo -w
+
+   # View detailed logs
+   kubectl get cluster -n demo -w
+   ```
+
+> [!NOTE]
+> Restored Cluster is not necessary of the same resources/replicas/storage class/storage size as the one restored from.
+
+## Monitoring & Observability
+
+### Prerequisites
+
+1. **Prometheus Operator**: Required for metrics collection
+   - Skip if already installed
+   - Install via: [Prometheus Operator Guide](../docs/install-prometheus.md)
+
+2. **Access Credentials**: Ensure you have:
+   - `kubectl` access to the cluster
+   - Grafana admin privileges (for dashboard import)
+
+3. **Cluster created with Exporter enabled**
+    - create a MySQL Cluster with exporter running as sidecar (`disableExporter: false`)
+    - Skip if already created
+
+### Metrics Collection Setup
+
+#### 1. Configure PodMonitor
+
+1. **Get Exporter Details**:
+
+   ```bash
+   kubectl get po -n demo mysql-cluster-mysql-0 -oyaml | yq '.spec.containers[] | select(.name=="mysql-exporter") | .ports'
+   ```
+
+  <details open>
+  <summary>Expected Output:</summary>
+
+   ```text
+   - containerPort: 9104
+     name: http-metrics
+     protocol: TCP
+   ```
+
+  </details>
+
+2. **Verify Metrics Endpoint**:
+
+   ```bash
+   kubectl -n demo exec -it pods/mysql-cluster-mysql-0 -- \
+     curl -s http://127.0.0.1:9104/metrics | head -n 50
+   ```
+
+3. **Apply PodMonitor**:
 
 ```yaml
 # cat examples/mysql/pod-monitor.yaml
@@ -853,162 +1431,118 @@ spec:
       apps.kubeblocks.io/component-name: mysql
 ```
 
+   ```bash
+   kubectl apply -f examples/mysql/pod-monitor.yaml
+   ```
+
+#### 2. Grafana Dashboard Setup
+
+1. **Import Dashboard**:
+   - URL: [MySQL Dashboard](https://raw.githubusercontent.com/apecloud/kubeblocks-addons/refs/heads/main/addons/mysql/dashboards/mysql.json)
+
+2. **Verification**:
+   - Confirm metrics appear in Grafana within 2-5 minutes
+   - Check for "UP" status in Prometheus targets
+
+### Troubleshooting
+
+- **No Metrics**: check Prometheus
+
+  ```bash
+  kubectl get pods -n monitoring -l app.kubernetes.io/name=prometheus
+  kubectl logs -n monitoring <prometheus-pod-name> -c prometheus
+  ```
+
+- **Dashboard Issues**: check indicator labels and dashboards
+  - Verify Grafana DataSource points to correct Prometheus instance
+  - Check for template variable mismatches
+
+## Cleanup
+
+To permanently delete the cluster and all associated resources:
+
+1. First modify the termination policy to ensure all resources are cleaned up:
+
 ```bash
-kubectl apply -f examples/mysql/pod-monitor.yaml
+# Set termination policy to WipeOut (deletes all resources including PVCs)
+kubectl patch cluster -n demo mysql-cluster \
+  -p '{"spec":{"terminationPolicy":"WipeOut"}}' \
+  --type="merge"
 ```
 
-##### Step 3. Accessing the Grafana Dashboard
-
-Login to the Grafana dashboard and import the dashboard.
-
-> [!NOTE]
-> Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
-
-### Delete
-
-If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
+2. Verify the termination policy was updated:
 
 ```bash
-kubectl patch cluster -n demo mysql-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl get cluster -n demo mysql-cluster -o jsonpath='{.spec.terminationPolicy}'
+```
 
+3. Delete the cluster:
+
+```bash
 kubectl delete cluster -n demo mysql-cluster
 ```
 
-### Manage MySQL Cluster using Orchestrator
+> [!WARNING]
+> This operation is irreversible and will permanently delete:
+>
+> - All database pods
+> - Persistent volumes and claims
+> - Services and other cluster resources
 
-KubeBlocks provides you an alternative to  create a MySQL cluster that uses the Orchestrator[^1] HA manager
+<details open>
+<summary>How to set a proper `TerminationPolicy`</summary>
 
-- Step 1. Install Orchestrator Addon
-
-Before creating the cluster with Orchestrator, make sure you have installed the Orchestrator addon.
-
-- Step 2. Create Orchestrator Cluster
-
-Create an Orchestrator cluster with three replicas;
-
-```yaml
-# cat examples/mysql/orchestrator.yaml
-apiVersion: apps.kubeblocks.io/v1
-kind: Cluster
-metadata:
-  name: myorc
-  namespace: demo
-spec:
-  clusterDef: orchestrator
-  topology: raft
-  terminationPolicy: Delete
-  services:
-    - name: orchestrator
-      componentSelector: orchestrator
-      spec:
-        ports:
-          - name: orc-http
-            port: 80
-  componentSpecs:
-    - name: orchestrator
-      disableExporter: true
-      replicas: 3
-      resources:
-        limits:
-          cpu: "1"
-          memory: "1Gi"
-        requests:
-          cpu: "1"
-          memory: "1Gi"
-      volumeClaimTemplates:
-        - name: data
-          spec:
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: 20Gi
-
-```
+For more details you may use following command
 
 ```bash
-kubectl apply -f examples/mysql/orchestrator.yaml
+kubectl explain cluster.spec.terminationPolicy
 ```
 
-- Step 3. Create a MySQL Cluster
+| Policy            | Description                                                                                                                                               |
+|-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `DoNotTerminate`  | Prevents deletion of the Cluster. This policy ensures that all resources remain intact.                                                                   |
+| `Delete`          | Deletes all runtime resources belonging to the Cluster.                                                                                                   |
+| `WipeOut`         | An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss. |
 
-```yaml
-# cat examples/mysql/cluster-orc.yaml
-apiVersion: apps.kubeblocks.io/v1
-kind: Cluster
-metadata:
-  name: mysql-cluster
-  namespace: demo
-spec:
-  terminationPolicy: Delete
-  componentSpecs:
-    - name: mysql
-      componentDef: mysql-orc-8.0 # use componentDef: mysql-orc-8.0
-      disableExporter: true
-      serviceVersion: "8.0.35"
-      replicas: 2
-      resources:
-        limits:
-          cpu: "0.5"
-          memory: "0.5Gi"
-        requests:
-          cpu: "0.5"
-          memory: "0.5Gi"
-      volumeClaimTemplates:
-        - name: data
-          spec:
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: 20Gi
-      serviceRefs:
-        - name: orchestrator
-          namespace: demo # set to your orchestrator cluster namespace
-          clusterServiceSelector:
-            cluster:  myorc  # set to your orchestrator cluster name
-            service:
-              component: orchestrator
-              service: orchestrator
-              port:  orc-http
-            credential:
-              component: orchestrator
-              name: orchestrator
-```
+</details>
+
+## Appendix
+
+### Connecting to MySQL
+
+To connect to the MySQL cluster, you can:
+
+- port forward the MySQL service to your local machine:
 
 ```bash
-kubectl apply -f examples/mysql/cluster-orc.yaml
+kubectl port-forward svc/mysql-cluster-mysql 3306:3306 -n demo
 ```
 
-#### Switchover(switchover.yaml)
+- or expose the MySQL service to the internet, as mentioned in the [Networking](#networking) section.
 
-You can switchover a specified instance as the new primary or leader of the cluster
-
-```yaml
-# cat examples/mysql/switchover.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-metadata:
-  name: mysql-switchover
-  namespace: demo
-spec:
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: mysql-cluster
-  type: Switchover
-  # Lists Switchover objects, each specifying a Component to perform the switchover operation.
-  switchover:
-    # Specifies the name of the Component.
-  - componentName: mysql
-    # Specifies the instance whose role will be transferred.
-    # A typical usage is to transfer the leader role in a consensus system.
-    instanceName: mysql-cluster-mysql-0
-
-```
+Then you can connect to the MySQL cluster with the following command:
 
 ```bash
-kubectl apply -f examples/mysql/switchover.yaml
+mysql -h <endpoint> -P 3306 -u <userName> -p <userPasswd>
+```
+
+and credentials can be found in the `secret` resource:
+
+```bash
+userName=$(kubectl get secret -n demo mysql-cluster-mysql-account-root -ojsonpath='{.data.username}' | base64 -d)
+userPasswd=$(kubectl get secret -n demo mysql-cluster-mysql-account-root -ojsonpath='{.data.password}' | base64 -d)
+```
+
+### List of K8s Resources created when creating an MySQL Cluster
+
+To get the full list of associated resources created by KubeBlocks for given cluster:
+
+```bash
+kubectl get cmp,its,po -l app.kubernetes.io/instance=<CLUSTER_NAME> -n demo # cluster and worload
+kubectl get backuppolicy,backupschedule,backup -l app.kubernetes.io/instance=<CLUSTER_NAME> -n demo # data protection resources
+kubectl get componentparameter,parameter -l app.kubernetes.io/instance=<CLUSTER_NAME> -n demo # configuration resources
+kubectl get opsrequest -l app.kubernetes.io/instance=<CLUSTER_NAME> -n demo # opsrequest resources
+kubectl get svc,secret,cm,pvc -l app.kubernetes.io/instance=<CLUSTER_NAME> -n demo # k8s native resources
 ```
 
 ## References
-
-[^1] Orchestrator, <https://github.com/openark/orchestrator>
