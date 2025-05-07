@@ -9,7 +9,7 @@ export DATASAFED_BACKEND_BASE_PATH=${backup_base_path}
 export WALG_DELTA_MAX_STEPS=0
 # 20Gi for bundle file
 export WALG_TAR_SIZE_THRESHOLD=21474836480
-PSQL="psql -h ${KB_CLUSTER_COMP_NAME}-${KB_COMP_NAME} -U ${DP_DB_USER} -d postgres"
+PSQL="psql -h ${CLUSTER_COMPONENT_NAME}-${COMPONENT_NAME} -U ${DP_DB_USER} -d postgres"
 
 # if the script exits with a non-zero exit code, touch a file to indicate that the backup failed,
 # the sync progress container will check this file and exit if it exists
@@ -61,7 +61,7 @@ PGHOST=${DP_DB_HOST} PGUSER=${DP_DB_USER} PGPORT=5432 wal-g backup-push ${DATA_D
 
 set +e
 echo "switch wal log"
-PSQL="psql -h ${KB_CLUSTER_COMP_NAME}-${KB_COMP_NAME} -U ${DP_DB_USER} -d postgres"
+PSQL="psql -h ${CLUSTER_COMPONENT_NAME}-${COMPONENT_NAME} -U ${DP_DB_USER} -d postgres"
 ${PSQL} -c "select pg_switch_wal();"
 
 # 2. get backup name of the wal-g

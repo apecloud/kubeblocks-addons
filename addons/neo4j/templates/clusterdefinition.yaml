@@ -1,0 +1,15 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ClusterDefinition
+metadata:
+  name: neo4j
+  labels:
+    {{- include "neo4j.labels" . | nindent 4 }}
+  annotations:
+    {{- include "neo4j.apiVersion" . | nindent 4 }}
+spec:
+  topologies:
+    - name: standalone
+      components:
+        - name: neo4j
+          compDef: {{ include "neo4j.cmpdNamePrefix" . }}
+      default: true

@@ -55,6 +55,9 @@ addons-cluster/mysql/ @xuriwuyun @leon-inf @Y-Rookie @apecloud/kb-reviewers @ape
 addons/nebula/ @shanshanying @Xuntao_Cheng @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/nebula/ @shanshanying @Xuntao_Cheng @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
+addons/neo4j/ @xuriwuyun @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/neo4j/ @xuriwuyun @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+
 addons/neon/ @skyrise-l @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/neon/ @skyrise-l @leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
