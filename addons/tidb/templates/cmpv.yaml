@@ -29,13 +29,13 @@ spec:
         roleProbe: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v7.1.5
         memberLeave: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v7.1.5
         switchover: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v7.1.5
-    - name: "6.5.10"
-      serviceVersion: "6.5.10"
+    - name: "6.5.12"
+      serviceVersion: "6.5.12"
       images:
-        pd: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v6.5.10
-        roleProbe: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v6.5.10
-        memberLeave: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v6.5.10
-        switchover: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v6.5.10
+        pd: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v6.5.12
+        roleProbe: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v6.5.12
+        memberLeave: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v6.5.12
+        switchover: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v6.5.12
   compatibilityRules:
     - compDefs:
         - {{ include "tidb.pd7.cmpdRegexpPattern" . }}
@@ -43,7 +43,7 @@ spec:
         - "8.4.0"
         - "7.5.2"
         - "7.1.5"
-        - "6.5.10"
+        - "6.5.12"
 
 ---
 apiVersion: apps.kubeblocks.io/v1
@@ -71,10 +71,10 @@ spec:
       images:
         tidb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tidb.repository }}:v7.1.5
         slowlog: {{ .Values.image.helper.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.helper.repository }}:{{ .Values.image.helper.tag }}
-    - name: "6.5.10"
-      serviceVersion: "6.5.10"
+    - name: "6.5.12"
+      serviceVersion: "6.5.12"
       images:
-        tidb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tidb.repository }}:v6.5.10
+        tidb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tidb.repository }}:v6.5.12
         slowlog: {{ .Values.image.helper.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.image.helper.repository }}:{{ .Values.image.helper.tag }}
   compatibilityRules:
     - compDefs:
@@ -83,7 +83,7 @@ spec:
         - "8.4.0"
         - "7.5.2"
         - "7.1.5"
-        - "6.5.10"
+        - "6.5.12"
 
 ---
 apiVersion: apps.kubeblocks.io/v1
@@ -111,11 +111,11 @@ spec:
       images:
         tikv: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tikv.repository }}:v7.1.5
         memberLeave: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v7.1.5
-    - name: "6.5.10"
-      serviceVersion: "6.5.10"
+    - name: "6.5.12"
+      serviceVersion: "6.5.12"
       images:
-        tikv: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tikv.repository }}:v6.5.10
-        memberLeave: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v6.5.10
+        tikv: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tikv.repository }}:v6.5.12
+        memberLeave: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.pd.repository }}:v6.5.12
   compatibilityRules:
     - compDefs:
         - {{ include "tidb.tikv7.cmpdRegexpPattern" . }}
@@ -123,4 +123,4 @@ spec:
         - "8.4.0"
         - "7.5.2"
         - "7.1.5"
-        - "6.5.10"
+        - "6.5.12"
