@@ -47,3 +47,4 @@ annotations:
   addon.kubeblocks.io/kubeblocks-version: ">=1.0.0"
   addon.kubeblocks.io/model: "key-value"
   addon.kubeblocks.io/provider: "community"
+
