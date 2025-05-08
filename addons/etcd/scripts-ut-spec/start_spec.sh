@@ -28,7 +28,7 @@ Describe "Etcd Start Bash Script Tests"
     rm -f "$real_conf"
     rm -f "$common_library_file"
     rm -f "$default_template_conf"
-    rm -f "$test_conf_file" # Cleanup for parse_config_value tests
+    rm -f "$test_conf_file"
   }
 
   BeforeAll "init"
@@ -120,8 +120,6 @@ Describe "Etcd Start Bash Script Tests"
       export CURRENT_POD_NAME="etcd-0"
       export PEER_FQDNS="etcd-0.etcd-headless.default.svc.cluster.local,etcd-1.etcd-headless.default.svc.cluster.local"
       export PEER_ENDPOINT="etcd-0:172.0.0.1,etcd-1:172.0.0.2"
-      default_template_conf="./default_etcd.conf"
-      real_conf="./etcd.conf"
 
       echo "name: default" > "$default_template_conf"
       echo "initial-advertise-peer-urls: http://default:2380" >> "$default_template_conf"

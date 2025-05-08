@@ -93,14 +93,13 @@ rebuild_etcd_conf() {
 parse_config_value() {
   local key="$1"
   local config_file="$2"
-  # Handles potential spaces, quotes, and comments
   grep -E "^$key:" "$config_file" | \
   sed -E \
       -e "s/^$key:[[:space:]]*//" \
       -e 's/^[[:space:]]*//; s/[[:space:]]*$//'
 }
 
-restore_if_needed() {
+restore() {
   files=("$RESTORE_DIR"/*)
   if [ "${#files[@]}" -ne 1 ]; then
     log "Expected exactly 1 backup file in $RESTORE_DIR, found ${#files[@]}."
@@ -141,7 +140,7 @@ main() {
   fi
 
   if [ -e "$RESTORE_DIR" ]; then
-    if restore_if_needed; then
+    if restore; then
       log "Restored etcd data from backup successfully."
     else
       log "Failed to restore etcd data from backup. Exiting to prevent starting with inconsistent state." >&2
