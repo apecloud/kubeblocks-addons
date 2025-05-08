@@ -1,0 +1,133 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "neo4j.cmpdName" . }}
+  labels:
+    {{- include "neo4j.labels" . | nindent 4 }}
+  annotations:
+    {{- include "neo4j.annotations" . | nindent 4 }}
+spec:
+  provider: kubeblocks.io
+  description: Neo4j is a highly scalable, robust native graph database.
+  serviceKind: neo4j
+  serviceVersion: {{ .Values.componentServiceVersion.neo4j }}
+  services:
+    - name: default
+      spec:
+        ports:
+          - name: bolt
+            port: 7687
+            targetPort: bolt
+          - name: http
+            port: 7474
+            targetPort: http
+  configs:
+    - name: config
+      template: {{ include "neo4j.configTplName" . }}
+      volumeName: neo4j-config
+      namespace: {{ .Release.Namespace }}
+      defaultMode: 0640
+      restartOnFileChange: true
+  systemAccounts:
+    - name: neo4j
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 8
+        numSymbols: 0
+        letterCase: MixedCases
+  policyRules:
+    - apiGroups:
+      - ""
+      resources:
+      - endpoints
+      verbs:
+      - get
+    - apiGroups:
+      - ""
+      resources:
+      - events
+      verbs:
+      - create
+  runtime:
+    securityContext:
+      fsGroup: 7474
+      fsGroupChangePolicy: Always
+      runAsGroup: 7474
+      runAsNonRoot: true
+      runAsUser: 7474
+    containers:
+      - name: neo4j
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: SERVICE_PORT
+          value: "7687"
+        - name: NEO4J_AUTH
+          value: neo4j/$(DEFAULT_PASS)
+        - name: EXTENDED_CONF
+          value: "yes"
+        - name: NEO4J_CONF
+          value: /config/
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        command:
+        - bash  
+        - -c 
+        - |
+          tini -g -- /startup/docker-entrypoint.sh neo4j
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        ports:
+        - containerPort: 7474
+          name: http
+          protocol: TCP
+        - containerPort: 7687
+          name: bolt
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 20
+          periodSeconds: 5
+          successThreshold: 1
+          tcpSocket:
+            port: 7687
+          timeoutSeconds: 10
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+          - mountPath: /config/neo4j.conf
+            name: neo4j-config
+            subPath: neo4j.conf
+  vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: CLUSTER_UID
+      valueFrom:
+        clusterVarRef:
+          clusterUID: Required
+    - name: DEFAULT_USER
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "neo4j.cmpdName" . }}
+          name: neo4j
+          optional: false
+          username: Required
+    - name: DEFAULT_PASS
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "neo4j.cmpdName" . }}
+          name: neo4j
+          optional: false
+          password: Required

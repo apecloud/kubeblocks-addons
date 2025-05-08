@@ -4,39 +4,28 @@ OrioleDB is a new storage engine for PostgreSQL, bringing a modern approach to d
 
 ## Prerequisites
 
-This example assumes that you have a Kubernetes cluster installed and running, and that you have installed the kubectl command line tool and helm somewhere in your path. Please see the [getting started](https://kubernetes.io/docs/setup/)  and [Installing Helm](https://helm.sh/docs/intro/install/) for installation instructions for your platform.
+- Kubernetes cluster >= v1.21
+- `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
+- Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
+- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
+- OrioleDB Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
 
-Also, this example requires kubeblocks installed and running. Here is the steps to install kubeblocks, please replace "`$kb_version`" with the version you want to use.
-```bash
-# Add Helm repo 
-helm repo add kubeblocks https://apecloud.github.io/helm-charts
-# If github is not accessible or very slow for you, please use following repo instead
-helm repo add kubeblocks https://jihulab.com/api/v4/projects/85949/packages/helm/stable
+  ```bash
+  kubectl create ns demo
+  ```
 
-# Update helm repo
-helm repo update
+## Examples
 
-# Get the versions of KubeBlocks and select the one you want to use
-helm search repo kubeblocks/kubeblocks --versions
-# If you want to obtain the development versions of KubeBlocks, Please add the '--devel' parameter as the following command
-helm search repo kubeblocks/kubeblocks --versions --devel
-
-# Create dependent CRDs
-kubectl create -f https://github.com/apecloud/kubeblocks/releases/download/v$kb_version/kubeblocks_crds.yaml
-# If github is not accessible or very slow for you, please use following command instead
-kubectl create -f https://jihulab.com/api/v4/projects/98723/packages/generic/kubeblocks/v$kb_version/kubeblocks_crds.yaml
-
-# Install KubeBlocks
-helm install kubeblocks kubeblocks/kubeblocks --namespace kb-system --create-namespace --version="$kb_version"
-```
-Enable orioledb
+### Create
+Create a orioledb cluster with specified cluster definition
 ```yaml
 # cat examples/orioledb/cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: orioledb-cluster
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the ClusterDefinition to use when creating a Cluster.
   clusterDefinitionRef: orioledb
@@ -55,7 +44,7 @@ spec:
     serviceRefs:
     - name: etcdService
       cluster: etcdo-cluster
-      namespace: default
+      namespace: demo
     replicas: 1
     resources:
       limits:
@@ -77,7 +66,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: etcdo-cluster
-  namespace: default
+  namespace: demo
 spec:
   clusterDefinitionRef: etcd
   clusterVersionRef: etcd-v3.5.6
@@ -117,7 +106,7 @@ apiVersion: apps.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: orioledb-horizontalscaling
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: orioledb-cluster
@@ -145,12 +134,12 @@ apiVersion: apps.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: orioledb-verticalscaling
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: orioledb-cluster
   type: VerticalScaling
-  # Lists VerticalScaling objects, each specifying a component and its desired compute resources for vertical scaling. 
+  # Lists VerticalScaling objects, each specifying a component and its desired compute resources for vertical scaling.
   verticalScaling:
   - componentName: orioledb
     # VerticalScaling refers to the process of adjusting the compute resources (e.g., CPU, memory) allocated to a Component. It defines the parameters required for the operation.
@@ -175,12 +164,12 @@ apiVersion: apps.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: orioledb-volumeexpansion
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: orioledb-cluster
   type: VolumeExpansion
-  # Lists VolumeExpansion objects, each specifying a component and its corresponding volumeClaimTemplates that requires storage expansion. 
+  # Lists VolumeExpansion objects, each specifying a component and its corresponding volumeClaimTemplates that requires storage expansion.
   volumeExpansion:
     # Specifies the name of the Component.
   - componentName: orioledb
@@ -203,7 +192,7 @@ apiVersion: apps.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: orioledb-restart
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: orioledb-cluster
@@ -227,7 +216,7 @@ apiVersion: apps.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: orioledb-stop
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: orioledb-cluster
@@ -247,7 +236,7 @@ apiVersion: apps.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: orioledb-start
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: orioledb-cluster
@@ -268,7 +257,7 @@ apiVersion: apps.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: orioledb-expose-enable
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: orioledb-cluster
@@ -276,7 +265,7 @@ spec:
   expose:
     # Specifies the name of the Component.
   - componentName: orioledb
-    # Specifies a list of OpsService. When an OpsService is exposed, a corresponding ClusterService will be added to `cluster.spec.services`. 
+    # Specifies a list of OpsService. When an OpsService is exposed, a corresponding ClusterService will be added to `cluster.spec.services`.
     services:
     - name: internet
       roleSelector: primary
@@ -299,7 +288,7 @@ apiVersion: apps.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: orioledb-expose-disable
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: orioledb-cluster
@@ -307,7 +296,7 @@ spec:
   expose:
     # Specifies the name of the Component.
   - componentName: orioledb
-    # Specifies a list of OpsService. When an OpsService is exposed, a corresponding ClusterService will be added to `cluster.spec.services`. 
+    # Specifies a list of OpsService. When an OpsService is exposed, a corresponding ClusterService will be added to `cluster.spec.services`.
     services:
     - name: internet
       roleSelector: primary
@@ -327,9 +316,9 @@ kubectl apply -f examples/orioledb/expose-disable.yaml
 ### Delete
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 ```bash
-kubectl patch cluster orioledb-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo orioledb-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster orioledb-cluster
+kubectl delete cluster -n demo orioledb-cluster
 
-kubectl delete cluster etcdo-cluster
+kubectl delete cluster -n demo etcdo-cluster
 ```

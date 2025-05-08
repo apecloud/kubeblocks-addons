@@ -31,7 +31,7 @@ switchover_with_candidate() {
   local candidate_pod_name=$3
   # TODO: check the role in kernel before switchover
   echo "Current pod: ${current_pod_fqdn} perform switchover with candidate. Leader: ${current_primary_pod_name}, Candidate: ${candidate_pod_name}"
-  switchover_output=$(curl -s "http://${current_pod_fqdn}:8008/switchover" -XPOST -d "{\"leader\":\"${current_primary_pod_name}\",\"candidate\":\"${candidate_pod_name}\"}")
+  switchover_output=$(curl -s "http://127.0.0.1:8008/switchover" -XPOST -d "{\"leader\":\"${current_primary_pod_name}\",\"candidate\":\"${candidate_pod_name}\"}")
   echo "Switchover with candidate output: ${switchover_output}"
   # TODO: check switchover result
 }
@@ -42,48 +42,31 @@ switchover_without_candidate() {
   local current_primary_pod_name=$2
   # TODO: check the role in kernel before switchover
   echo "Current pod: ${current_pod_fqdn} perform switchover without candidate. Leader: ${current_primary_pod_name}"
-  switchover_output=$(curl -s "http://${current_pod_fqdn}:8008/switchover" -XPOST -d "{\"leader\":\"${current_primary_pod_name}\"}")
+  switchover_output=$(curl -s "http://127.0.0.1:8008/switchover" -XPOST -d "{\"leader\":\"${current_primary_pod_name}\"}")
   echo "Switchover without candidate output: ${switchover_output}"
   # TODO: check switchover result
 }
 
 switchover() {
+
+  POSTGRES_PRIMARY_POD_NAME=$(curl -s http://localhost:8008/cluster | jq -r '.members[] | select (.role == "leader") | .name')
+
   # CURRENT_POD_NAME defined in the switchover action env and POSTGRES_PRIMARY_POD_NAME defined in the cmpd.spec.vars
   if is_empty "$CURRENT_POD_NAME" || is_empty "$POSTGRES_PRIMARY_POD_NAME"; then
     echo "CURRENT_POD_NAME or POSTGRES_PRIMARY_POD_NAME is not set. Exiting..."
     exit 1
   fi
 
-  # shellcheck disable=SC2207
-  primary_pod_name_list=($(split "$POSTGRES_PRIMARY_POD_NAME" ","))
-  # if primary_pod_name_list length is not 1, it means the primary pod is not unique.
-  if [ "${#primary_pod_name_list[@]}" -ne 1 ]; then
-    echo "Error: POSTGRES_PRIMARY_POD_NAME should be a unique pod name. Exiting."
-    exit 1
-  fi
-
-  # POSTGRES_POD_NAME_LIST and POSTGRES_POD_FQDN_LIST defined in the cmpd.spec.vars
-  if is_empty "$POSTGRES_POD_NAME_LIST" || is_empty "$POSTGRES_POD_FQDN_LIST" ; then
-    echo "POSTGRES_POD_NAME_LIST or POSTGRES_POD_FQDN_LIST is not set. Exiting..."
-    exit 1
-  fi
-
-  if [[ $POSTGRES_PRIMARY_POD_NAME != "$KB_SWITCHOVER_CURRENT_NAME" ]]; then
-    echo "switchover action not triggered for primary pod. Exiting."
+  if [[ $POSTGRES_PRIMARY_POD_NAME != "$CURRENT_POD_NAME" ]]; then
+    echo "switchover action not triggered for non-primary pod. Exiting."
     exit 0
-  fi
-
-  current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$POSTGRES_POD_FQDN_LIST" "$CURRENT_POD_NAME")
-  if is_empty "$current_pod_fqdn"; then
-    echo "Error: Failed to get current pod: $CURRENT_POD_NAME fqdn from postgres pod fqdn list: $POSTGRES_POD_FQDN_LIST. Exiting."
-    exit 1
   fi
 
   # KB_SWITCHOVER_CANDIDATE_NAME is built-in env in the switchover action injected by the KubeBlocks controller
   if ! is_empty "$KB_SWITCHOVER_CANDIDATE_NAME"; then
-    switchover_with_candidate "$current_pod_fqdn" "$POSTGRES_PRIMARY_POD_NAME" "$KB_SWITCHOVER_CANDIDATE_NAME"
+    switchover_with_candidate "$CURRENT_POD_NAME" "$POSTGRES_PRIMARY_POD_NAME" "$KB_SWITCHOVER_CANDIDATE_NAME"
   else
-    switchover_without_candidate "$current_pod_fqdn" "$POSTGRES_PRIMARY_POD_NAME"
+    switchover_without_candidate "$CURRENT_POD_NAME" "$POSTGRES_PRIMARY_POD_NAME"
   fi
 }
 
@@ -94,6 +77,10 @@ switchover() {
 # end here. The script path is assigned to the __SOURCED__ variable.
 ${__SOURCED__:+false} : || return 0
 
+if [ "$KB_SWITCHOVER_ROLE" != "primary" ]; then
+  echo "switchover not triggered for primary, nothing to do, exit 0."
+  exit 0
+fi
 # main
 load_common_library
 switchover

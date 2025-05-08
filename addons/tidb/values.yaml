@@ -12,6 +12,9 @@ image:
     repository: pingcap/tidb
   tikv:
     repository: pingcap/tikv
+  mysqlClient:
+    repository: apecloud/alpine-mysql-client
+    tag: "15.1"
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: "v7.1.5"

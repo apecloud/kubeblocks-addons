@@ -1,5 +1,3 @@
-{{- $clusterName := $.cluster.metadata.name }}
-{{- $namespace := $.cluster.metadata.namespace }}
 <clickhouse>
   <listen_host>0.0.0.0</listen_host>
   {{- if eq (index $ "TLS_ENABLED") "true" }}
@@ -18,8 +16,10 @@
   <macros>
     <shard from_env="CURRENT_SHARD_COMPONENT_SHORT_NAME"/>
     <replica from_env="CURRENT_POD_NAME"/>
-    <layer>{{ $clusterName }}</layer>
+    <layer>{{ .CLUSTER_NAME }}</layer>
   </macros>
+  <default_replica_path>/clickhouse/tables/{layer}/{shard}/{database}/{table}</default_replica_path>
+  <default_replica_name>{replica}</default_replica_name>
   <!-- Log Level -->
   <logger>
     <level>information</level>
@@ -30,7 +30,7 @@
   </logger>
   <!-- Cluster configuration - Any update of the shards and replicas requires helm upgrade -->
   <remote_servers>
-    <default>
+    <{{ .INIT_CLUSTER_NAME }}>
       {{- range $key, $value := . }}
       {{- if and (hasPrefix "ALL_SHARDS_POD_FQDN_LIST" $key) (ne $value "") }}
       <shard>
@@ -51,7 +51,7 @@
       </shard>
       {{- end }}
       {{- end }}
-    </default>
+    </{{ .INIT_CLUSTER_NAME }}>
   </remote_servers>
   {{- if (index . "CH_KEEPER_POD_FQDN_LIST") }}
   <!-- Zookeeper configuration -->
@@ -132,4 +132,16 @@
     <verbose_logs>false</verbose_logs>
   </grpc>
   {{- end }}
+  <query_log>
+    <database>system</database>
+    <table>query_log</table>
+    <partition_by>event_date</partition_by>
+    <order_by>event_time</order_by>
+    <ttl>event_date + INTERVAL 7 day</ttl>
+    <flush_interval_milliseconds>7500</flush_interval_milliseconds>
+    <max_size_rows>1048576</max_size_rows>
+    <reserved_size_rows>8192</reserved_size_rows>
+    <buffer_size_rows_flush_threshold>524288</buffer_size_rows_flush_threshold>
+    <flush_on_crash>false</flush_on_crash>
+  </query_log>
 </clickhouse>

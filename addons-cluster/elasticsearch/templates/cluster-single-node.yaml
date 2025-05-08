@@ -13,6 +13,11 @@ spec:
     - name: mdit
       componentDef: elasticsearch-{{ include "elasticsearch.majorVersion" . }}
       serviceVersion: {{ include "elasticsearch.version" . }}
+      configs:
+        - name: es-cm
+          variables:
+            version: {{ include "elasticsearch.version" . }}
+            mode: "single-node"
       {{- include "elasticsearch-cluster.schedulingPolicy" . | indent 6 }}
       {{- include "elasticsearch-cluster.replicaCount" . | indent 6 }}
       {{- include "kblib.componentMonitor" . | indent 6 }}

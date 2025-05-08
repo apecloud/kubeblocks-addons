@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clickhouse-scripts
+  labels:
+    {{- include "clickhouse.labels" . | nindent 4 }}
+data:
+  keeper-role-probe.sh: |
+    {{- .Files.Get "scripts/keeper-role-probe.sh" | nindent 4 }}
+  bootstrap-server.sh: |
+    {{- .Files.Get "scripts/bootstrap-server.sh" | nindent 4 }}
+  bootstrap-keeper.sh: |
+    {{- .Files.Get "scripts/bootstrap-keeper.sh" | nindent 4 }}
+  member-join.sh: |
+    {{- .Files.Get "scripts/member-join.sh" | nindent 4 }}
+  keeper-switchover.sh: |
+    {{- .Files.Get "scripts/keeper-switchover.sh" | nindent 4 }}

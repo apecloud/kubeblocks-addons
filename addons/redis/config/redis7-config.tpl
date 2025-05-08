@@ -76,7 +76,7 @@ io-threads 4
 io-threads-do-reads yes
 
 # maxmemory <bytes>
-{{- $request_memory := getContainerRequestMemory ( index $.podSpec.containers 0 ) }}
+{{- $request_memory := default 0 $.PHY_MEMORY | int }}
 {{- if gt $request_memory 0 }}
 maxmemory {{ $request_memory }}
 {{- end -}}

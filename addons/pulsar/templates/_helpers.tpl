@@ -450,7 +450,7 @@ Define pulsar v2.X zookeeper image
 Define pulsar tools image
 */}}
 {{- define "pulsar.toolsImage" -}}
-{{- printf "%s/%s:%s" ( .Values.image.registry | default "docker.io" ) (  .Values.image.repository ) ( .Values.images.pulsarTools.tag ) -}}
+{{- printf "%s/%s:%s" ( .Values.image.registry | default "docker.io" ) (  .Values.images.pulsarTools.repository ) ( .Values.images.pulsarTools.tag ) -}}
 {{- end -}}
 
 {{/*

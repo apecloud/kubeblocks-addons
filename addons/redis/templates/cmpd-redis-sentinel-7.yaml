@@ -11,6 +11,7 @@ spec:
   description: A Redis Sentinel v7.0 component definition for Kubernetes
   serviceKind: redis-sentinel
   serviceVersion: {{ .Values.defaultServiceVersion.redisSentinel.major7 }}
+  podManagementPolicy: Parallel
   services:
     - name: redis-sentinel
       serviceName: redis-sentinel
@@ -153,7 +154,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - /scripts/redis-sentinel-member-leave.sh
+          - /scripts/redis-sentinel-member-leave.sh > /tmp/member-leave.log 2>&1
         targetPodSelector: Any
         ## all lifecycle actions share the same env
         env:

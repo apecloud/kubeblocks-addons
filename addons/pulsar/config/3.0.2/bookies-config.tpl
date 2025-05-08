@@ -1,4 +1,4 @@
-{{- $phy_memory := getContainerMemory ( index $.podSpec.containers 0 ) }}
+{{- $phy_memory := default 0 $.PHY_MEMORY | int }}
 
 journalDirectories=/pulsar/data/bookkeeper/journal
 compactionRateByBytes=52428800

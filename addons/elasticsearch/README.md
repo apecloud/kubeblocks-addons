@@ -15,14 +15,6 @@ Each Elasticsearch cluster consists of one or more nodes, and each node in a clu
 - remote_cluster_client
 - transform
 
-## Prerequisites
-
-- Kubernetes cluster >= v1.21
-- `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
-- Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
-- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
-- Elasticsearch Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
-
 ## Features In KubeBlocks
 
 ### Lifecycle Management
@@ -38,6 +30,19 @@ Each Elasticsearch cluster consists of one or more nodes, and each node in a clu
 | 7.x | 7.7.1,7.8.1,7.10.1 |
 | 8.x | 8.1.3, 8.8.2 |
 
+## Prerequisites
+
+- Kubernetes cluster >= v1.21
+- `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
+- Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
+- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
+- Elasticsearch Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
+
 ## Examples
 
 ### Create
@@ -52,11 +57,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: es-singlenode
-  namespace: default
-  annotations:
-    # kubeblokcs.io/extra-env is an reserved annotation
-    # use 'mode=single-node' to indicate this cluster starts in single-node type.
-    kubeblocks.io/extra-env: '{"mode":"single-node"}'
+  namespace: demo
 spec:
   terminationPolicy: Delete
   componentSpecs:
@@ -64,6 +65,10 @@ spec:
       componentDef: elasticsearch-8
       serviceVersion: 8.8.2
       replicas: 1
+      configs:
+        - name: es-cm
+          variables:
+            mode: "single-node"
       resources:
         limits:
           cpu: "1"
@@ -85,7 +90,19 @@ spec:
 kubectl apply -f examples/elasticsearch/cluster-single-node.yaml
 ```
 
-The annotation `kubeblocks.io/extra-env: '{"mode":"single-node"}'` is used to specify the mode of the Elasticsearch cluster.
+The configs in Cluster API:
+
+```yaml
+  configs:
+    - name: es-cm
+      variables:
+        mode: "single-node"
+```
+
+Where,
+
+- `es-cm` refers to the config template defined in ComponentDefinition `elasticsearch-`
+- "mode=single-node" (default to multi-node), is used to specify the mode of the Elasticsearch cluster.
 
 To check the role of the node, you may log in to the pod and run the following command:
 
@@ -112,128 +129,134 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: es-multinode
-  namespace: default
-  annotations:
-    kubeblocks.io/extra-env: '{"master-roles":"master", "data-roles": "data", "ingest-roles": "ingest", "transform-roles": "transform"}'
+  namespace: demo
 spec:
   terminationPolicy: Delete
   componentSpecs:
-  - name: master
-    componentDef: elasticsearch-8-1.0.0
-    replicas: 3
-    resources:
-      limits:
-        cpu: '0.5'
-        memory: 2Gi
-      requests:
-        cpu: '0.5'
-        memory: 2Gi
-    volumeClaimTemplates:
     - name: data
-      spec:
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: 20Gi
-  - name: data
-    componentDef: elasticsearch-8-1.0.0
-    replicas: 3
-    resources:
-      limits:
-        cpu: '0.5'
-        memory: 2Gi
-      requests:
-        cpu: '0.5'
-        memory: 2Gi
-    volumeClaimTemplates:
-    - name: data
-      spec:
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: 20Gi
-  - name: ingest
-    componentDef: elasticsearch-8-1.0.0
-    replicas: 1
-    resources:
-      limits:
-        cpu: '0.5'
-        memory: 2Gi
-      requests:
-        cpu: '0.5'
-        memory: 2Gi
-    volumeClaimTemplates:
-    - name: data
-      spec:
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: 20Gi
-  - name: transform
-    componentDef: elasticsearch-8-1.0.0
-    replicas: 1
-    resources:
-      limits:
-        cpu: '0.5'
-        memory: 2Gi
-      requests:
-        cpu: '0.5'
-        memory: 2Gi
-    volumeClaimTemplates:
-    - name: data
-      spec:
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: 20Gi
-
+      componentDef: elasticsearch-8
+      serviceVersion: 8.8.2
+      configs:
+        - name: es-cm
+          variables:
+            # use key `roles` to specify roles this component assume
+            roles: data,ingest,transform
+      replicas: 3
+      disableExporter: false
+      resources:
+        limits:
+          cpu: "1"
+          memory: "2Gi"
+        requests:
+          cpu: "1"
+          memory: "2Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+    - name: master
+      componentDef: elasticsearch-8
+      serviceVersion: 8.8.2
+      configs:
+        - name: es-cm
+          variables:
+            # use key `roles` to specify roles this component assume
+            roles: master
+      replicas: 3
+      disableExporter: false
+      resources:
+        limits:
+          cpu: "1"
+          memory: "2Gi"
+        requests:
+          cpu: "1"
+          memory: "2Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
 ```
 
 ```bash
 kubectl apply -f examples/elasticsearch/cluster-multi-node.yaml
 ```
 
-There are four components specified in this cluster, i.e 'master', 'data', 'ingest', and 'transform',  and each component has different roles. Roles are specified in the annotation:
+There are four components specified in this cluster, i.e 'master', 'data', 'ingest', and 'transform',  and each component has different roles. Roles are specified in `configs` for each component:
 
 ```yaml
-  annotations:
-    kubeblocks.io/extra-env: '{"master-roles":"master", "data-roles": "data", "ingest-roles": "ingest", "transform-roles": "transform"}'
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+spec:
+  componentSpecs:
+    - name: data
+      configs:
+        - name: es-cm
+          variables:
+            # use key `roles` to specify roles this component assume
+            roles: data,ingest,transform
+            mode: multi-node
+      ...
+    - name: master
+      configs:
+        - name: es-cm
+          variables:
+            # use key `roles` to specify roles this component assume
+            roles: master
+            mode: multi-node
 ```
 
-where `<componentName>-roles` is a comma-separated list of roles that each node will assume. The roles are `master`, `data`, `ingest`, and `transform` in this example.
+Where,
 
-> [!NOTE]
-> Roles will take effect only when `mode` is set to `multi-node`, or the `mode` is not set.
+- `es-cm` refers to the config template defined in ComponentDefinition `elasticsearch-`
+- "mode=multi-node" (default to multi-node), is used to specify the mode of the Elasticsearch cluster.
+- "roles: data,ingest,transform" specifies the list of roles this component should assume.
 
-If you want to create a cluster with more roles, you can add more components and specify the roles in the annotation.
+> [!IMPORTANT]
+>
+> - Roles will take effect only when `mode` is set to `multi-node`, or the `mode` is not set.
+> - there must be one and only one component containing role 'master'
+> - the component for role `mater` must be named to `master`
 
-- set annotation with new roles.
-
-```yaml
-  annotations:
-    kubeblocks.io/extra-env: '{"master-roles":"master", "data-roles": "data", "ingest-roles": "ingest", "transform-roles": "transform", "<cmpName>-roles": "role1,role2"}'
-```
-
-where `newCmp` is the name of the new component, and `role1` and `role2` are the roles that each node in the new component will assume (chosen from the list of roles mentioned above).
-
-- add the new component to the `spec.componentSpecs` field:
+If you want to create a cluster with more roles, you can add more components and specify the roles in the configs.
 
 ```yaml
 spec:
   terminationPolicy: Delete
   componentSpecs:
     - name: master
+      configs:
+        - name: es-cm
+          variables:
+            # use key `roles` to specify roles this component assume
+            roles: master
     - name: data
+      configs:
+        - name: es-cm
+          variables:
+            # use key `roles` to specify roles this component assume
+            roles: data
     - name: ingest
+      configs:
+        - name: es-cm
+          variables:
+            # use key `roles` to specify roles this component assume
+            roles: ingest
     - name: transform
-    - name: <cmpName>  # set the name to your preferred one
-      componentDef: elasticsearch-8
-      serviceVersion: 8.8.2
-      replicas: 3
+      configs:
+        - name: es-cm
+          variables:
+            # use key `roles` to specify roles this component assume
+            roles: transform
+...
 ```
 
 ### Horizontal scaling
@@ -248,7 +271,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: es-scale-out
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: es-multinode
@@ -283,7 +306,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: es-scale-in
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: es-multinode
@@ -347,7 +370,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: elasticsearch-verticalscaling
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: es-multinode
@@ -417,7 +440,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: elasticsearch-volumeexpansion
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: es-multinode
@@ -476,7 +499,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: elasticsearch-restart
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: es-multinode
@@ -506,7 +529,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: elasticsearch-stop
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: es-multinode
@@ -543,7 +566,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: elasticsearch-start
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: es-multinode
@@ -582,7 +605,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: es-expose-enable
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: es-multinode
@@ -633,7 +656,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: es-expose-disable
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: es-multinode
@@ -743,7 +766,7 @@ spec:
       scheme: http
   namespaceSelector:
     matchNames:
-      - default
+      - demo
   selector:
     matchLabels:
       app.kubernetes.io/instance: es-multinode
@@ -768,7 +791,7 @@ You can import the dashboard provided by Grafana or create your own dashboard, e
 
 - <https://grafana.com/grafana/dashboards/2322-elasticsearch/>
 
-> [!Note]
+> [!NOTE]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
 
 ### Delete
@@ -776,9 +799,9 @@ You can import the dashboard provided by Grafana or create your own dashboard, e
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster es-multinode -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo es-multinode -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster es-multinode
+kubectl delete cluster -n demo es-multinode
 ```
 
 ## References

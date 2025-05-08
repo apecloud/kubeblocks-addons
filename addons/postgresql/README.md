@@ -34,6 +34,11 @@ PostgreSQL (Postgres) is an open source object-relational database known for rel
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
 - KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
 - PostgreSQL Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
@@ -47,7 +52,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: pg-cluster
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
@@ -127,16 +132,16 @@ kubectl apply -f examples/postgresql/cluster.yaml
 And you will see the PostgreSQL cluster status goes `Running` after a while:
 
 ```bash
-kubectl get cluster pg-cluster
+kubectl get cluster -n demo pg-cluster
 ```
 
 and two pods are `Running` with roles `primary` and `secondary` separately. To check the roles of the pods, you can use following command:
 
 ```bash
 # replace `pg-cluster` with your cluster name
-kubectl get po -l  app.kubernetes.io/instance=pg-cluster -L kubeblocks.io/role -n default
+kubectl get po -l  app.kubernetes.io/instance=pg-cluster -L kubeblocks.io/role -n demo
 # or login to the pod and use `patronictl` to check the roles:
-kubectl exec -it pg-cluster-postgresql-0 -n default -- patronictl list
+kubectl exec -it pg-cluster-postgresql-0 -n demo -- patronictl list
 ```
 
 If you want to create a PostgreSQL cluster of specified version, set the `spec.componentSpecs.serviceVersion` field in the yaml file before applying it:
@@ -182,7 +187,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: pg-scale-out
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: pg-cluster
@@ -208,7 +213,7 @@ After applying the operation, you will see a new pod created and the PostgreSQL 
 And you can check the progress of the scaling operation with following command:
 
 ```bash
-kubectl describe ops pg-scale-out
+kubectl describe -n demo ops pg-scale-out
 ```
 
 #### Scale-in
@@ -221,7 +226,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: pg-scale-in
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: pg-cluster
@@ -272,7 +277,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: pg-verticalscaling
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: pg-cluster
@@ -340,7 +345,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: pg-volumeexpansion
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: pg-cluster
@@ -363,7 +368,7 @@ kubectl apply -f examples/postgresql/volumeexpand.yaml
 After the operation, you will see the volume size of the specified component is increased to `30Gi` in this case. Once you've done the change, check the `status.conditions` field of the PVC to see if the resize has completed.
 
 ```bash
-kubectl get pvc -l app.kubernetes.io/instance=pg-cluster -n default
+kubectl get pvc -l app.kubernetes.io/instance=pg-cluster -n demo
 ```
 
 #### Volume expansion using Cluster API
@@ -398,7 +403,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: pg-restart
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: pg-cluster
@@ -424,7 +429,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: pg-stop
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: pg-cluster
@@ -461,7 +466,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: pg-start
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: pg-cluster
@@ -502,6 +507,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: pg-switchover
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: pg-cluster
@@ -528,7 +534,7 @@ By applying this yaml file, KubeBlocks will perform a switchover operation defin
 You may get the switchover operation details with following command:
 
 ```bash
-kubectl get cluster pg-cluster -ojson | jq '.spec.componentSpecs[0].componentDef' | xargs kubectl get cmpd -ojson | jq '.spec.lifecycleActions.switchover'
+kubectl get cluster -n demo pg-cluster -ojson | jq '.spec.componentSpecs[0].componentDef' | xargs kubectl get cmpd -ojson | jq '.spec.lifecycleActions.switchover'
 ```
 
 </details>
@@ -543,6 +549,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: pg-switchover-specify
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: pg-cluster
@@ -584,7 +591,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: pg-reconfiguring
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the type of this operation.
   type: Reconfiguring
@@ -641,7 +648,7 @@ apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: Backup
 metadata:
   name: pg-cluster-pg-basebackup
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the backup method name that is defined in the backup policy.
   # - pg-basebackup
@@ -665,7 +672,7 @@ kubectl apply -f examples/postgresql/backup-pg-basebasekup.yaml
 After the operation, you will see a `Backup` is created
 
 ```bash
-kubectl get backup -l app.kubernetes.io/instance=pg-cluster
+kubectl get backup -n demo -l app.kubernetes.io/instance=pg-cluster
 ```
 
 and the status of the backup goes from `Running` to `Completed` after a while. And the backup data will be pushed to your specified `BackupRepo`.
@@ -683,7 +690,7 @@ apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: BackupSchedule
 metadata:
   name: pg-cluster-postgresql-backup-schedule
-  namespace: default
+  namespace: demo
 spec:
   backupPolicyName: pg-cluster-postgresql-backup-policy
   schedules:
@@ -708,7 +715,7 @@ spec:
 Once the `BackupSchedule` is updated, the continuous backup starts to work, and you can check the status of the backup with following command:
 
 ```bash
-kubectl get backup -l app.kubernetes.io/instance=pg-cluster
+kubectl get backup -n demo -l app.kubernetes.io/instance=pg-cluster
 ```
 
 And you will find one `Backup` named with suffix 'pg-cluster-postgresql-archive-wal' is created with the method `archive-wal`.
@@ -716,7 +723,7 @@ And you will find one `Backup` named with suffix 'pg-cluster-postgresql-archive-
 It will run continuously until you disable the method `archive-wal` in the `BackupSchedule`. And the valid time range of the backup will be recorded in the `Backup` resource:
 
 ```bash
-kubectl get backup -l app.kubernetes.io/instance=pg-cluster -l dataprotection.kubeblocks.io/backup-type=Continuous  -oyaml | yq '.items[].status.timeRange'
+kubectl get backup -n demo -l app.kubernetes.io/instance=pg-cluster -l dataprotection.kubeblocks.io/backup-type=Continuous  -oyaml | yq '.items[].status.timeRange'
 ```
 
 #### wal-g
@@ -735,7 +742,7 @@ apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: Backup
 metadata:
   name: pg-cluster-config-wal-g
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the backup method name that is defined in the backup policy.
   # - pg-basebackup
@@ -763,7 +770,7 @@ apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: Backup
 metadata:
   name: pg-cluster-wal-g
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the backup method name that is defined in the backup policy.
   # - pg-basebackup
@@ -794,7 +801,7 @@ apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: Backup
 metadata:
   name: pg-cluster-wal-g
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the backup method name that is defined in the backup policy.
   # - pg-basebackup
@@ -815,7 +822,7 @@ spec:
 kubectl apply -f examples/postgresql/backup-wal-g.yaml
 ```
 
-> [!Note]
+> [!NOTE]
 > if there is horizontal scaling out new pods after step 2, you need to do config-wal-g again
 
 ### Restore
@@ -825,7 +832,7 @@ To restore a new cluster from a Backup:
 1. Get the list of accounts and their passwords from the backup:
 
 ```bash
-kubectl get backup pg-cluster-pg-basebackup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
+kubectl get backup -n demo pg-cluster-pg-basebackup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
 ```
 
 1. Update `examples/postgresql/restore.yaml` and set placeholder `<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
@@ -836,10 +843,10 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: pg-restore
-  namespace: default
+  namespace: demo
   annotations:
     # NOTE: replace <ENCRYPTED-SYSTEM-ACCOUNTS> with the accounts info from you backup
-    kubeblocks.io/restore-from-backup: '{"postgresql":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"pg-cluster-pg-basebackup","namespace":"default","volumeRestorePolicy":"Parallel"}}'
+    kubeblocks.io/restore-from-backup: '{"postgresql":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"pg-cluster-pg-basebackup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
   terminationPolicy: Delete
   clusterDef: postgresql
@@ -886,7 +893,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: pg-expose-enable
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the type of this operation.
   type: Expose
@@ -928,7 +935,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: pg-expose-disable
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the type of this operation.
   type: Expose
@@ -1019,7 +1026,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: pg-upgrade
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: pg-cluster
@@ -1041,7 +1048,7 @@ In this example, the cluster will be upgraded to version `14.8.0`.
 
 Alternatively, you may modify the `spec.componentSpecs.serviceVersion` field to the desired version to upgrade the cluster.
 
-> [!Warning]
+> [!WARNING]
 > Do remember to to check the compatibility of versions before upgrading the cluster.
 
 ```bash
@@ -1103,7 +1110,7 @@ Or you can follow the steps in [How to install the Prometheus Operator](../docs/
 
 Create a new cluster with following command:
 
-> [!Note]
+> [!NOTE]
 > Make sure `spec.componentSpecs.disableExporter` is set to `false` when creating cluster.
 
 ```yaml
@@ -1123,7 +1130,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: pg-cluster
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
@@ -1209,7 +1216,7 @@ When the cluster is running, each POD should have a sidecar container, named `ex
 You can retrieve the `scrapePath` and `scrapePort` from pod's exporter container.
 
 ```bash
-kubectl get po pg-cluster-postgresql-0 -oyaml | yq '.spec.containers[] | select(.name=="exporter") | .ports '
+kubectl get po -n demo pg-cluster-postgresql-0 -oyaml | yq '.spec.containers[] | select(.name=="exporter") | .ports '
 ```
 
 And the expected output is like:
@@ -1249,7 +1256,7 @@ spec:
       scheme: http
   namespaceSelector:
     matchNames:
-      - default
+      - demo
   selector:
     matchLabels:
       app.kubernetes.io/instance: pg-cluster
@@ -1266,7 +1273,7 @@ Login to the Grafana dashboard and import the dashboard.
 
 There is a pre-configured dashboard for PostgreSQL under the `APPS / PostgreSQL` folder in the Grafana dashboard. And more dashboards can be found in the Grafana dashboard store[^5].
 
-> [!Note]
+> [!NOTE]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
 
 ### Delete
@@ -1274,15 +1281,15 @@ There is a pre-configured dashboard for PostgreSQL under the `APPS / PostgreSQL`
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster pg-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo pg-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster pg-cluster
+kubectl delete cluster -n demo pg-cluster
 ```
 
 ## Reference
 
-[^1]: pg_basebackup, https://www.postgresql.org/docs/current/app-pgbasebackup.html
-[^2]: wal-g https://github.com/wal-g/wal-g
-[^3]: Internal load balancer: https://kubernetes.io/docs/concepts/services-networking/service/#internal-load-balancer
-[^4]: Volume Expansion: https://kubernetes.io/blog/2022/05/05/volume-expansion-ga/
-[^5]: Grafana Dashboard Store: https://grafana.com/grafana/dashboards/
+[^1]: pg_basebackup, <https://www.postgresql.org/docs/current/app-pgbasebackup.html>
+[^2]: wal-g <https://github.com/wal-g/wal-g>
+[^3]: Internal load balancer: <https://kubernetes.io/docs/concepts/services-networking/service/#internal-load-balancer>
+[^4]: Volume Expansion: <https://kubernetes.io/blog/2022/05/05/volume-expansion-ga/>
+[^5]: Grafana Dashboard Store: <https://grafana.com/grafana/dashboards/>

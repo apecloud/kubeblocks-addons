@@ -30,6 +30,11 @@ OceanBase Database is an enterprise-level native distributed database independen
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
 - KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
 - OceanBase CE Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
@@ -43,7 +48,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: ob-cluster
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
@@ -163,7 +168,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: ob-scale-out
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: ob-cluster
@@ -189,13 +194,13 @@ After applying the operation, you will see a new pod created and the cluster sta
 And you can check the progress of the scaling operation with following command:
 
 ```bash
-kubectl describe ops ob-scale-out -n default
+kubectl describe -n demo ops ob-scale-out
 ```
 
 The newly added replica will be in `Pending` status, and it will be in `Running` status after the operation is completed. By checking the logs of the POD, you can see the progress of the scaling operation.
 
 ```bash
-kubectl logs -f <pod-name> -n default
+kubectl logs -f <pod-name> -n demo
 ```
 
 And you will see the logs once the new replica is added to the cluster.
@@ -216,7 +221,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: ob-scale-in
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: ob-cluster
@@ -266,7 +271,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: ob-verticalscaling
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: ob-cluster
@@ -319,7 +324,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: ob-restart
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: ob-cluster
@@ -345,7 +350,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: ob-stop
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: ob-cluster
@@ -382,7 +387,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: ob-start
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: ob-cluster
@@ -424,7 +429,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: ob-reconfiguring
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the type of this operation.
   type: Reconfiguring
@@ -469,7 +474,7 @@ apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: Backup
 metadata:
   name: ob-cluster-backup
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the backup method name that is defined in the backup policy.
   # - full
@@ -490,7 +495,7 @@ kubectl apply -f examples/oceanbase-ce/backup.yaml
 After the operation, you will see a `Backup` is created
 
 ```bash
-kubectl get backup -l app.kubernetes.io/instance=pg-cluster
+kubectl get backup -n demo -l app.kubernetes.io/instance=pg-cluster
 ```
 
 and the status of the backup goes from `Running` to `Completed` after a while. And the backup data will be pushed to your specified `BackupRepo`.
@@ -504,7 +509,7 @@ apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: BackupSchedule
 metadata:
   name: ob-cluster-oceanbase-backup-schedule
-  namespace: default
+  namespace: demo
 spec:
   backupPolicyName: ob-cluster-oceanbase-backup-policy
   schedules:
@@ -529,7 +534,7 @@ To restore a new cluster from a `Backup`, you can apply the following yaml file:
 1. Get the list of accounts and their passwords from the backup:
 
 ```bash
-kubectl get backup ob-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
+kubectl get backup -n demo ob-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
 ```
 
 1. Update `examples/oceanbase-ce/restore.yaml` and set fields quoted with `<ENCRYPTED-SYSTEM-ACCOUNTS>` to your own settings and apply it.
@@ -540,10 +545,10 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: oceanbase-cluster-restore
-  namespace: default
+  namespace: demo
   annotations:
     # NOTE: replace <ENCRYPTED-SYSTEM-ACCOUNTS> with the accounts info from you backup
-    kubeblocks.io/restore-from-backup: '{"postgresql":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"ob-cluster-backup","namespace":"default","volumeRestorePolicy":"Parallel"}}'
+    kubeblocks.io/restore-from-backup: '{"postgresql":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"ob-cluster-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
   terminationPolicy: Delete
   clusterDef: oceanbase-ce
@@ -624,7 +629,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: oceanbase-expose-enable
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the type of this operation.
   type: Expose
@@ -662,7 +667,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: oceanbase-expose-disable
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the type of this operation.
   type: Expose
@@ -807,7 +812,7 @@ spec:
       scheme: http
   namespaceSelector:
     matchNames:
-      - default
+      - demo
   selector:
     matchLabels:
       app.kubernetes.io/instance: ob-cluster
@@ -823,7 +828,7 @@ Login to the Grafana dashboard and import the dashboard.
 
 There is a pre-configured dashboard for PostgreSQL under the `APPS / OceanBase Mertrics` folder in the Grafana dashboard.
 
-> [!Note]
+> [!NOTE]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
 
 ### Delete
@@ -831,11 +836,12 @@ There is a pre-configured dashboard for PostgreSQL under the `APPS / OceanBase M
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster ob-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo ob-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster ob-cluster
+kubectl delete cluster -n demo ob-cluster
 ```
 
 ## References
 
-[^1]: OceanBase Backup, https://en.oceanbase.com/docs/common-oceanbase-database-10000000001231357
+[^1]: OceanBase Backup, <https://en.oceanbase.com/docs/common-oceanbase-database-10000000001231357>
+[^2]: OceanBase, <https://en.oceanbase.com/docs/common-oceanbase-database-10000000001228198>

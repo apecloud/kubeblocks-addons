@@ -2,11 +2,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: es-singlenode
-  namespace: default
-  annotations:
-    # kubeblokcs.io/extra-env is an reserved annotation
-    # use 'mode=single-node' to indicate this cluster starts in single-node type.
-    kubeblocks.io/extra-env: '{"mode":"single-node"}'
+  namespace: demo
 spec:
   terminationPolicy: Delete
   componentSpecs:
@@ -14,6 +10,10 @@ spec:
       componentDef: elasticsearch-8
       serviceVersion: 8.8.2
       replicas: 1
+      configs:
+        - name: es-cm
+          variables:
+            mode: "single-node"
       resources:
         limits:
           cpu: "1"

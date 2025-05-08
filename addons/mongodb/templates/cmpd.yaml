@@ -40,6 +40,7 @@ spec:
       volumeName: mongodb-config
       namespace: {{ .Release.Namespace }}
       defaultMode: 0400  # for only read
+      restartOnFileChange: true
   logConfigs:
     {{- range $name,$pattern := .Values.logConfigs }}
     - name: {{ $name }}
@@ -91,12 +92,9 @@ spec:
           - /bin/sh
           - -c
           - |
-            if [ -z "$KB_SWITCHOVER_ROLE" ]; then
-                echo "role can't be empty"
-                exit 1
-            fi
 
             if [ "$KB_SWITCHOVER_ROLE" != "primary" ]; then
+                echo "switchover not triggered for primary, nothing to do, exit 0."
                 exit 0
             fi
 
@@ -190,6 +188,10 @@ spec:
       valueFrom:
         clusterVarRef:
           namespace: Required
+    - name: CLUSTER_UID
+      valueFrom:
+        clusterVarRef:
+          clusterUID: Required
     - name: COMPONENT_NAME
       valueFrom:
         componentVarRef:

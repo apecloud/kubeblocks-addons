@@ -2,81 +2,57 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: es-multinode
-  namespace: default
-  annotations:
-    kubeblocks.io/extra-env: '{"master-roles":"master", "data-roles": "data", "ingest-roles": "ingest", "transform-roles": "transform"}'
+  namespace: demo
 spec:
   terminationPolicy: Delete
   componentSpecs:
-  - name: master
-    componentDef: elasticsearch-8-1.0.0
-    replicas: 3
-    resources:
-      limits:
-        cpu: '0.5'
-        memory: 2Gi
-      requests:
-        cpu: '0.5'
-        memory: 2Gi
-    volumeClaimTemplates:
     - name: data
-      spec:
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: 20Gi
-  - name: data
-    componentDef: elasticsearch-8-1.0.0
-    replicas: 3
-    resources:
-      limits:
-        cpu: '0.5'
-        memory: 2Gi
-      requests:
-        cpu: '0.5'
-        memory: 2Gi
-    volumeClaimTemplates:
-    - name: data
-      spec:
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: 20Gi
-  - name: ingest
-    componentDef: elasticsearch-8-1.0.0
-    replicas: 1
-    resources:
-      limits:
-        cpu: '0.5'
-        memory: 2Gi
-      requests:
-        cpu: '0.5'
-        memory: 2Gi
-    volumeClaimTemplates:
-    - name: data
-      spec:
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: 20Gi
-  - name: transform
-    componentDef: elasticsearch-8-1.0.0
-    replicas: 1
-    resources:
-      limits:
-        cpu: '0.5'
-        memory: 2Gi
-      requests:
-        cpu: '0.5'
-        memory: 2Gi
-    volumeClaimTemplates:
-    - name: data
-      spec:
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: 20Gi
+      componentDef: elasticsearch-8
+      serviceVersion: 8.8.2
+      configs:
+        - name: es-cm
+          variables:
+            # use key `roles` to specify roles this component assume
+            roles: data,ingest,transform
+      replicas: 3
+      disableExporter: false
+      resources:
+        limits:
+          cpu: "1"
+          memory: "2Gi"
+        requests:
+          cpu: "1"
+          memory: "2Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+    - name: master
+      componentDef: elasticsearch-8
+      serviceVersion: 8.8.2
+      configs:
+        - name: es-cm
+          variables:
+            # use key `roles` to specify roles this component assume
+            roles: master
+      replicas: 3
+      disableExporter: false
+      resources:
+        limits:
+          cpu: "1"
+          memory: "2Gi"
+        requests:
+          cpu: "1"
+          memory: "2Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi

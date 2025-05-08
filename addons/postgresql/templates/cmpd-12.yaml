@@ -30,6 +30,7 @@ spec:
             targetPort: tcp-pgbouncer
       roleSelector: primary
   updateStrategy: BestEffortParallel
+  podManagementPolicy: Parallel
   volumes:
     - name: data
       needSnapshot: true
@@ -54,11 +55,13 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: postgresql-config
       defaultMode: 0777
+      externalManaged: true
     - name: pgbouncer-configuration
       template: {{ include "pgbouncer.configurationTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: pgbouncer-config
       defaultMode: 0777
+      externalManaged: true
     - name: postgresql-custom-metrics
       template: {{ include "postgresql12.metricsConfiguration" . }}
       namespace: {{ .Release.Namespace }}
@@ -78,7 +81,17 @@ spec:
     - name: CLUSTER_NAME
       valueFrom:
         clusterVarRef:
-          clusterName: Required
+            clusterName: Required
+    - name: COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          shortName: Required
+    - name: CLUSTER_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
     ## the component name of postgres, it's the fullname of postgres component
     - name: POSTGRES_COMPONENT_NAME
       valueFrom:
@@ -131,15 +144,6 @@ spec:
           compDef: {{ include "postgresql12.compDefName" . }}
           optional: false
           podFQDNs: Required
-    ## the postgres primary pod name which is dynamically selected, caution to use it
-    - name: POSTGRES_PRIMARY_POD_NAME
-      valueFrom:
-        componentVarRef:
-          compDef: {{ include "postgresql12.compDefName" . }}
-          optional: true
-          podNamesForRole:
-            role: primary
-            option: Optional
     - name: TLS_ENABLED
       valueFrom:
         tlsVarRef:
@@ -177,7 +181,7 @@ spec:
         create: CREATE USER ${KB_ACCOUNT_NAME} WITH REPLICATION PASSWORD '${KB_ACCOUNT_PASSWORD}';
       passwordGenerationPolicy: *defaultPasswdGenerationPolicy
   tls:
-    volumeName: tls 
+    volumeName: tls
     mountPath: /etc/pki/tls
     caFile: ca.pem
     certFile: cert.pem

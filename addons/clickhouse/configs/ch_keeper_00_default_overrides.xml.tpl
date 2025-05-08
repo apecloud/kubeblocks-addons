@@ -1,5 +1,3 @@
-{{- $clusterName := $.cluster.metadata.name }}
-{{- $namespace := $.cluster.metadata.namespace }}
 <clickhouse>
   <listen_host>0.0.0.0</listen_host>
   {{- if eq (index $ "TLS_ENABLED") "true" }}
@@ -14,6 +12,13 @@
   <tcp_port replace="replace" from_env="CLICKHOUSE_TCP_PORT"/>
   <interserver_http_port replace="replace" from_env="CLICKHOUSE_INTERSERVER_HTTP_PORT"/>
   {{- end }}
+  <logger>
+      <level>information</level>
+      <log>/bitnami/clickhouse/log/keeper-server.log</log>
+      <errorlog>/bitnami/clickhouse/log/keeper-server.err.log</errorlog>
+      <size>100M</size>
+      <count>3</count>
+  </logger>
   <keeper_server>
       {{- if eq (index $ "TLS_ENABLED") "true" }}
       <tcp_port_secure replace="replace" from_env="CLICKHOUSE_KEEPER_TCP_TLS_PORT"/>
@@ -35,7 +40,7 @@
       {{- end }}
       {{- range $id, $host := splitList "," .CH_KEEPER_POD_FQDN_LIST }}
         <server>
-          <id>{{ $id }}</id>
+          <id>{{ add $id 1 }}</id>
           <hostname>{{ $host }}</hostname>
           {{- if eq (index $ "TLS_ENABLED") "true" }}
           <port replace="replace" from_env="CLICKHOUSE_KEEPER_RAFT_TLS_PORT"/>

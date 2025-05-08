@@ -112,9 +112,15 @@ clickhouse-24-pd
 Define clickhouse24 config constraint name
 */}}
 {{- define "clickhouse24.pcrName" -}}
-clickhouse-24-pcr
+clickhouse24-pcr
 {{- end -}}
 
+{{/*
+Define clickhouse24 config constraint name
+*/}}
+{{- define "keeper24.pcrName" -}}
+clickhouse-keeper24-pcr
+{{- end -}}
 
 {{/*
 Define clickhouse24 default overrides configuration tpl name
@@ -164,3 +170,23 @@ Define clickhouse22 image
 {{- define "clickhouse22.image" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major22 }}
 {{- end }}
+
+{{- define "clickhouse24.keeperPcr" -}}
+clickhouse-24-keeper-pcr-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "clickhouse24.ckPcr" -}}
+clickhouse-24-ck-pcr-{{ .Chart.Version }}
+{{- end -}}
+
+{{- define "clickhouse24.userParamsDefinition" -}}
+clickhouse-24-user-pd
+{{- end -}}
+
+{{- define "clickhouse24.configParamsDefinition" -}}
+clickhouse-24-config-pd
+{{- end -}}
+
+{{- define "clickhouse24.keeperParamsDefinition" -}}
+clickhouse-24-keeper-pd
+{{- end -}}

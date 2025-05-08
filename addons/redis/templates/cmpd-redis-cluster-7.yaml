@@ -11,6 +11,7 @@ spec:
   description: An official v7.0 Redis Cluster(distributed implementation of Redis) component definition for Kubernetes
   serviceKind: redis-cluster
   serviceVersion: {{ .Values.defaultServiceVersion.redisCluster.major7 }}
+  podManagementPolicy: Parallel
   services:
     - name: redis-advertised
       serviceName: redis-advertised
@@ -52,6 +53,7 @@ spec:
       template: {{ include "redisCluster7.configurationTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: redis-cluster-config
+      externalManaged: true
     - name: redis-metrics-config
       template: {{ include "redis.metricsConfiguration" . }}
       namespace: {{ .Release.Namespace }}
@@ -317,6 +319,10 @@ spec:
               flattenFormat:
                 delimiter: ","
                 keyValueDelimiter: ":"
+    - name: PHY_MEMORY
+      valueFrom:
+        resourceVarRef:
+          memory: Required
   lifecycleActions:
     roleProbe:
       periodSeconds: 1
@@ -336,7 +342,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - /scripts/redis-cluster-manage.sh --post-provision
+          - /scripts/redis-cluster-manage.sh --post-provision  > /tmp/post-provision.log 2>&1
         ## all lifecycle actions share the same env
         env:
           - name: CURRENT_POD_NAME
@@ -364,7 +370,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - /scripts/redis-cluster-manage.sh --pre-terminate
+          - /scripts/redis-cluster-manage.sh --pre-terminate > /tmp/pre-terminate.log 2>&1
       retryPolicy:
         maxRetries: 10
     memberLeave:
@@ -374,7 +380,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - /scripts/redis-cluster-replica-member-leave.sh
+          - /scripts/redis-cluster-replica-member-leave.sh > /tmp/member-leave.log 2>&1
       retryPolicy:
         maxRetries: 10
     switchover:
@@ -384,7 +390,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - /scripts/redis-cluster-switchover.sh
+          - /scripts/redis-cluster-switchover.sh  > /tmp/switchover.log 2>&1
   runtime:
     initContainers:
       - name: init-dbctl

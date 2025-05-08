@@ -16,3 +16,8 @@ spec:
         format: properties
       reRenderResourceTypes:
         - vscale
+    - name: pgbouncer.ini
+      fileFormatConfig:
+        format: ini
+        iniConfig:
+          sectionName: pgbouncer

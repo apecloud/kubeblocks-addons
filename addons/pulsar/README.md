@@ -26,7 +26,6 @@ Optional components include:
 - Basic Mode: Includes the basic features of Pulsar, such as brokers, bookies, and Zookeeper.
 - Enhanced Mode: Includes additional components like Pulsar Proxy and Bookies Recovery.
 
-
 ### Versions
 
 | Major Versions | Versions |
@@ -41,6 +40,11 @@ Optional components include:
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
 - KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
 - Pulsar Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
@@ -56,7 +60,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: pulsar-basic-cluster
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
@@ -176,7 +180,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: pulsar-enhanced-cluster
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
@@ -326,7 +330,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: pulsar-broker-scale-out
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: pulsar-basic-cluster
@@ -362,7 +366,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: pulsar-broker-scale-in
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: pulsar-basic-cluster
@@ -416,7 +420,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: pulsar-verticalscaling
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: pulsar-basic-cluster
@@ -476,7 +480,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: pulsar-restart
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: pulsar-basic-cluster
@@ -509,7 +513,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: pulsar-stop
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: pulsar-basic-cluster
@@ -540,7 +544,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: pulsar-start
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: pulsar-basic-cluster
@@ -555,13 +559,15 @@ kubectl apply -f examples/pulsar/start.yaml
 
 Configure parameters with the specified components in the cluster
 
+#### Update bookies parameters
+
 ```yaml
 # cat examples/pulsar/configure.yaml
 apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: pulsar-reconfiguring
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: pulsar-basic-cluster
@@ -596,14 +602,56 @@ It sets `lostBookieRecoveryDelay` in bookies to `1000`.
 > [!WARNING]
 > As `lostBookieRecoveryDelay` is defined as a static parameter, all bookies replicas will be restarted to make sure the reconfiguration takes effect.
 
+#### Update broker parameters
+
+```yaml
+# cat examples/pulsar/reconfigure-broker.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: pulsar-reconfiguring-broker
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: pulsar-basic-cluster
+  # Instructs the system to bypass pre-checks (including cluster state checks and customized pre-conditions hooks) and immediately execute the opsRequest, except for the opsRequest of 'Start' type, which will still undergo pre-checks even if `force` is true.  Note: Once set, the `force` field is immutable and cannot be updated.
+  force: false
+  # Specifies a component and its configuration updates. This field is deprecated and replaced by `reconfigures`.
+  reconfigures:
+    # Specifies the name of the Component.
+    # - proxy
+    # - bookies-recovery
+    # - broker
+    # - bookies
+    # - zookeeper
+  - componentName: broker
+    parameters:
+      # Represents the name of the parameter that is to be updated.
+      # allowAutoTopicCreation: Enable topic auto creation if a new producer or consumer connected
+    - key: allowAutoTopicCreation
+      # Represents the parameter values that are to be updated.
+      # If set to nil, the parameter defined by the Key field will be removed from the configuration file.
+      value: "false"
+  # Specifies the maximum number of seconds the OpsRequest will wait for its start conditions to be met before aborting. If set to 0 (default), the start conditions must be met immediately for the OpsRequest to proceed.
+  preConditionDeadlineSeconds: 0
+  type: Reconfiguring
+
+```
+
+```bash
+kubectl apply -f examples/pulsar/reconfigure-broker.yaml
+```
+
+It updates `allowAutoTopicCreation` to `false`. Since it is a "dynamic paramter", KubeBlocks will trigger a reload action to update parameters and all broker replicas won't be restarted.
+
 ### Delete
 
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster pulsar-basic-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo pulsar-basic-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster pulsar-basic-cluster
+kubectl delete cluster -n demo pulsar-basic-cluster
 ```
 
 ## Appendix
@@ -645,7 +693,7 @@ spec:
       # Services provided by other Clusters.
       serviceRefs:
         - name: pulsarZookeeper    # identifier of the service reference declaration, defined in `componentDefinition.spec.serviceRefDeclarations[*].name`
-          namespace: default       # Specifies the namespace of the referenced Cluster
+          namespace: demo       # Specifies the namespace of the referenced Cluster
           clusterServiceSelector:  # References a service provided by another KubeBlocks Cluster
             cluster: zk-cluster    # Cluster Name
             service:
@@ -672,7 +720,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: pulsar-service-descriptor
-  namespace: default
+  namespace: demo
 spec:
   terminationPolicy: Delete
   services:
@@ -700,7 +748,7 @@ spec:
           value: "false"
       serviceRefs:
         - name: pulsarZookeeper
-          namespace: default
+          namespace: demo
           serviceDescriptor: zookeeper-sd
       replicas: 1
       resources:
@@ -715,7 +763,7 @@ spec:
       serviceVersion: 3.0.2
       serviceRefs:
         - name: pulsarZookeeper
-          namespace: default
+          namespace: demo
           serviceDescriptor: zookeeper-sd
       replicas: 4
       resources:
@@ -763,7 +811,7 @@ spec:
       # Services provided by other Clusters.
       serviceRefs:
         - name: pulsarZookeeper    # identifier of the service reference declaration, defined in `componentDefinition.spec.serviceRefDeclarations[*].name`
-          namespace: default       # Specifies the namespace of the referenced ServiceDescriptor
+          namespace: demo       # Specifies the namespace of the referenced ServiceDescriptor
           serviceDescriptor: zookeeper-sd # ServiceDescriptor Name
       ...
 ```
@@ -812,3 +860,4 @@ spec:
     - name: bookies
     - name: zookeeper
     ...
+```

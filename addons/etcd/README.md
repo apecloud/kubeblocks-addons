@@ -29,6 +29,11 @@ etcd is a distributed, highly available key-value store designed to securely sto
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
 - KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
 - ETCD Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
@@ -42,7 +47,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: etcd-cluster
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
@@ -105,7 +110,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: etcd-cluster-tls
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
@@ -182,8 +187,8 @@ Here is a simple test to verify if TLS works.
 - login a read/write ETCD pod (with role=leader)
 
 ```bash
-kubectl get po -l kubeblocks.io/role=leader,apps.kubeblocks.io/component-name=etcd
-kubectl exec -it <podName> -- /bin/bash
+kubectl get po  -n demo -l kubeblocks.io/role=leader,apps.kubeblocks.io/component-name=etcd
+kubectl exec -n demo -it <podName> -- /bin/bash
 ```
 
 - put values
@@ -230,7 +235,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: etcd-scale-out
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: etcd-cluster
@@ -256,7 +261,7 @@ After applying the operation, you will see a new pod created and the cluster sta
 And you can check the progress of the scaling operation with following command:
 
 ```bash
-kubectl describe ops etcd-scale-out
+kubectl describe ops -n demo etcd-scale-out
 ```
 
 #### Scale-in
@@ -269,7 +274,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: etcd-scale-in
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: etcd-cluster
@@ -317,12 +322,12 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: etcd-verticalscaling
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: etcd-cluster
   type: VerticalScaling
-  # Lists VerticalScaling objects, each specifying a component and its desired compute resources for vertical scaling. 
+  # Lists VerticalScaling objects, each specifying a component and its desired compute resources for vertical scaling.
   verticalScaling:
   - componentName: etcd
     # VerticalScaling refers to the process of adjusting the compute resources (e.g., CPU, memory) allocated to a Component. It defines the parameters required for the operation.
@@ -385,12 +390,12 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: etcd-volumeexpansion
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: etcd-cluster
   type: VolumeExpansion
-  # Lists VolumeExpansion objects, each specifying a component and its corresponding volumeClaimTemplates that requires storage expansion. 
+  # Lists VolumeExpansion objects, each specifying a component and its corresponding volumeClaimTemplates that requires storage expansion.
   volumeExpansion:
     # Specifies the name of the Component.
   - componentName: etcd
@@ -408,7 +413,7 @@ kubectl apply -f examples/etcd/volumeexpand.yaml
 After the operation, you will see the volume size of the specified component is increased to `30Gi` in this case. Once you've done the change, check the `status.conditions` field of the PVC to see if the resize has completed.
 
 ```bash
-kubectl get pvc -l app.kubernetes.io/instance=etcd-cluster -n default
+kubectl get pvc -l app.kubernetes.io/instance=etcd-cluster -n demo
 ```
 
 #### Volume expansion using Cluster API
@@ -443,7 +448,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: etcd-restart
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: etcd-cluster
@@ -469,7 +474,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: etcd-stop
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: etcd-cluster
@@ -506,7 +511,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: etcd-start
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: etcd-cluster
@@ -545,6 +550,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: etcd-switchover
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: etcd-cluster
@@ -569,7 +575,7 @@ You may find the list of supported Backup Methods:
 
 ```bash
 # etcd-cluster-etcd-backup-policy is the backup policy name
-kubectl get bp etcd-cluster-etcd-backup-policy -oyaml | yq '.spec.backupMethods[].name'
+kubectl get bp -n demo etcd-cluster-etcd-backup-policy -oyaml | yq '.spec.backupMethods[].name'
 ```
 
 The method `datafile` uses `etcdctl snapshot save` to do a full backup. You may create a backup using:
@@ -580,7 +586,7 @@ apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: Backup
 metadata:
   name: etcd-cluster-backup
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the backup method name that is defined in the backup policy.
   # - datafile
@@ -600,7 +606,7 @@ kubectl apply -f examples/etcd/backup.yaml
 After the operation, you will see a `Backup` is created
 
 ```bash
-kubectl get backup -l app.kubernetes.io/instance=etcd-cluster
+kubectl get backup -n demo -l app.kubernetes.io/instance=etcd-cluster
 ```
 
 and the status of the backup goes from `Running` to `Completed` after a while. And the backup data will be pushed to your specified `BackupRepo`.
@@ -615,10 +621,10 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: etcd-cluster-restore
-  namespace: default
+  namespace: demo
   annotations:
     # etcd-cluster-backup is the backup name.
-    kubeblocks.io/restore-from-backup: '{"etcd":{"name":"etcd-cluster-backup","namespace":"default","volumeRestorePolicy":"Parallel"}}'
+    kubeblocks.io/restore-from-backup: '{"etcd":{"name":"etcd-cluster-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
   terminationPolicy: Delete
   componentSpecs:
@@ -687,7 +693,7 @@ spec:
       scheme: http
   namespaceSelector:
     matchNames:
-      - default
+      - demo
   selector:
     matchLabels:
       app.kubernetes.io/instance: etcd-cluster
@@ -710,7 +716,7 @@ It sets path to `/metrics` and port to `client` (for container port `2379`).
 
 Login to the Grafana dashboard and import the dashboard, e.g. using etcd dashboard from [Grafana](https://grafana.com/grafana/dashboards).
 
-> [!Note]
+> [!NOTE]
 > Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
 
 ### Delete
@@ -718,7 +724,7 @@ Login to the Grafana dashboard and import the dashboard, e.g. using etcd dashboa
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster etcd-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo etcd-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster etcd-cluster
+kubectl delete cluster -n demo etcd-cluster
 ```

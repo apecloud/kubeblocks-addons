@@ -79,10 +79,12 @@ spec:
       namespace: {{ .Release.Namespace }}
       template: {{ include "zookeeper.configTplName" . }}
       volumeName: config
+      restartOnFileChange: true
     - name: config-log
       namespace: {{ .Release.Namespace }}
       template: {{ include "zookeeper.logConfigTplName" . }}
       volumeName: config-log
+      restartOnFileChange: true
   lifecycleActions:
     roleProbe:
       exec:

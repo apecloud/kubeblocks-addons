@@ -8,7 +8,7 @@ This example assumes that you have a Kubernetes cluster installed and running, a
 
 Also, this example requires kubeblocks installed and running. Here is the steps to install kubeblocks, please replace "`$kb_version`" with the version you want to use.
 ```bash
-# Add Helm repo 
+# Add Helm repo
 helm repo add kubeblocks https://apecloud.github.io/helm-charts
 # If github is not accessible or very slow for you, please use following repo instead
 helm repo add kubeblocks https://jihulab.com/api/v4/projects/85949/packages/helm/stable
@@ -31,21 +31,26 @@ helm install kubeblocks kubeblocks/kubeblocks --namespace kb-system --create-nam
 ```
 Enable xinference
 ```bash
-# Add Helm repo 
+# Add Helm repo
 helm repo add kubeblocks-addons https://apecloud.github.io/helm-charts
 # If github is not accessible or very slow for you, please use following repo instead
 helm repo add kubeblocks-addons https://jihulab.com/api/v4/projects/150246/packages/helm/stable
 # Update helm repo
 helm repo update
 
-# Enable xinference 
-helm upgrade -i kb-addon-xinference kubeblocks-addons/xinference --version $kb_version -n kb-system  
-``` 
+# Enable xinference
+helm upgrade -i kb-addon-xinference kubeblocks-addons/xinference --version $kb_version -n kb-system
+```
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
-### [Create](cluster.yaml) 
-Create a xinference cluster with specified cluster definition 
+### [Create](cluster.yaml)
+Create a xinference cluster with specified cluster definition
 ```bash
 kubectl apply -f examples/xinference/cluster.yaml
 ```
@@ -77,7 +82,7 @@ kubectl apply -f examples/xinference/start.yaml
 ### Delete
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 ```bash
-kubectl patch cluster xinference-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo xinference-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster xinference-cluster
+kubectl delete cluster -n demo xinference-cluster
 ```

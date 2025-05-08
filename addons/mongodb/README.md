@@ -33,6 +33,11 @@ MongoDB is a document database designed for ease of application development and 
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
 - KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
 - MongoDB Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
@@ -46,7 +51,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: mongo-cluster
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
@@ -110,7 +115,7 @@ To check the roles of the pods, you can use following command:
 
 ```bash
 # replace `mongo-cluster` with your cluster name
-kubectl get po -l  app.kubernetes.io/instance=mongo-cluster -L kubeblocks.io/role -n default
+kubectl get po -n demo -l  app.kubernetes.io/instance=mongo-cluster -L kubeblocks.io/role
 ```
 
 If you want to create a cluster of specified version, set the `spec.componentSpecs.serviceVersion` field in the yaml file before applying it:
@@ -158,7 +163,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: mongo-scale-out
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: mongo-cluster
@@ -183,7 +188,7 @@ After applying the operation, you will see a new pod created and the cluster sta
 And you can check the progress of the scaling operation with following command:
 
 ```bash
-kubectl describe ops mongo-scale-out
+kubectl describe -n demo ops mongo-scale-out
 ```
 
 #### Scale-in
@@ -196,7 +201,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: mongo-scale-in
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: mongo-cluster
@@ -274,7 +279,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: mongo-verticalscaling
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: mongo-cluster
@@ -342,7 +347,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: mongo-volumeexpansion
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: mongo-cluster
@@ -365,7 +370,7 @@ kubectl apply -f examples/mongodb/volumeexpand.yaml
 After the operation, you will see the volume size of the specified component is increased to `30Gi` in this case. Once you've done the change, check the `status.conditions` field of the PVC to see if the resize has completed.
 
 ```bash
-kubectl get pvc -l app.kubernetes.io/instance=mongo-cluster -n default
+kubectl get pvc -l app.kubernetes.io/instance=mongo-cluster -n demo
 ```
 
 #### Volume expansion using Cluster API
@@ -401,7 +406,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: mongo-restart
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: mongo-cluster
@@ -427,7 +432,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: mongo-stop
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: mongo-cluster
@@ -464,7 +469,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: mongo-start
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: mongo-cluster
@@ -503,6 +508,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: mongo-switchover
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: mongo-cluster
@@ -531,6 +537,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: mongo-switchover-specify
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: mongo-cluster
@@ -568,7 +575,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: mongo-reconfiguring
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: mongo-cluster
@@ -619,7 +626,7 @@ The list of supported backup methods can be found by following command:
 
 ```bash
 # mongo-cluster-mongodb-backup-policy is the backup policy name
-kubectl get backuppolicy mongo-cluster-mongodb-backup-policy -oyaml | yq '.spec.backupMethods[].name'
+kubectl get backuppolicy -n demo mongo-cluster-mongodb-backup-policy -oyaml | yq '.spec.backupMethods[].name'
 ```
 
 TO create a backup for the the cluster using `datafile` method:
@@ -630,7 +637,7 @@ apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: Backup
 metadata:
   name: mongo-cluster-backup
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the backup method name that is defined in the backup policy.
   # - dump
@@ -661,7 +668,7 @@ Restore a new cluster from a backup
 1. Get the list of accounts and their passwords from the backup:
 
 ```bash
-kubectl get backup mongo-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
+kubectl get backup -n demo mongo-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
 ```
 
 1. Update `examples/mongodb/restore.yaml` and set placeholder `<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
@@ -672,10 +679,10 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: mongo-cluster-restore
-  namespace: default
+  namespace: demo
   annotations:
     # e.g. set  "encryptedSystemAccounts": {\"root\":\"ENCRYPTEDPASSWORD\"}
-    kubeblocks.io/restore-from-backup: '{"mongodb":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"mongo-cluster-backup","namespace":"default","volumeRestorePolicy":"Parallel"}}'
+    kubeblocks.io/restore-from-backup: '{"mongodb":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"mongo-cluster-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
   terminationPolicy: Delete
   clusterDef: mongodb
@@ -718,7 +725,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: mongo-expose-enable
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: mongo-cluster
@@ -751,7 +758,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: mongo-expose-disable
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: mongo-cluster
@@ -840,10 +847,11 @@ cloud.google.com/l4-rbs: "enabled" # for internet
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster mongo-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo mongo-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster mongo-cluster
+kubectl delete cluster -n demo mongo-cluster
 ```
 
 ## References
 
+[^1]: MongoDB Replica Set, <https://www.mongodb.com/docs/manual/replication/>

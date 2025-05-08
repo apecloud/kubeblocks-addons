@@ -81,6 +81,9 @@ Define clickhouse componentSpec with ComponentDefinition.
   replicas: {{ $.Values.replicas | default 2 }}
   disableExporter: {{ $.Values.disableExporter | default "false" }}
   serviceVersion: {{ $.Values.version }}
+  services:
+  - name: default
+    serviceType: {{ .Values.service.type | default "NodePort" }}
   systemAccounts:
     - name: admin
       passwordConfig:
@@ -109,6 +112,9 @@ Define clickhouse keeper componentSpec with ComponentDefinition.
   {{- with .Values.keeper.tolerations }}
   tolerations: {{ .| toYaml | nindent 4 }}
   {{- end }}
+  services:
+  - name: default
+    serviceType: {{ .Values.service.type | default "NodePort" }}
   resources:
     limits:
       cpu: {{ .Values.keeper.cpu | quote }}
@@ -142,14 +148,20 @@ Define clickhouse keeper componentSpec with ComponentDefinition.
 Define clickhouse shardingComponentSpec with ComponentDefinition.
 */}}
 {{- define "clickhouse-sharding-component" -}}
-- name: shard
+- name: clickhouse
   shards: {{ .Values.shards }}
   template:
     name: clickhouse
     componentDef: clickhouse-24
+    env:
+    - name: "INIT_CLUSTER_NAME"
+      value: "{{ .Values.clickhouse.initClusterName }}"
     replicas: {{ $.Values.replicas | default 2 }}
     disableExporter: {{ $.Values.disableExporter | default "false" }}
     serviceVersion: {{ $.Values.version }}
+    services:
+    - name: default
+      serviceType: {{ .Values.service.type | default "NodePort" }}
     systemAccounts:
     - name: admin
       passwordConfig:
@@ -171,13 +183,23 @@ Define clickhouse componentSpec with compatible ComponentDefinition API
 */}}
 {{- define "clickhouse-nosharding-component" -}}
 {{- range $i := until (.Values.shards | int) }}
-- name: shard-{{ $i }}
+{{- $name := printf "clickhouse-%d" $i }}
+{{- if eq $i 0 }}
+{{- $name = "clickhouse" }}
+{{- end}}
+- name: {{ $name }}
+  env:
+  - name: "INIT_CLUSTER_NAME"
+    value: "{{ .Values.clickhouse.initClusterName }}"
   componentDef: clickhouse-24
   replicas: {{ $.Values.replicas | default 2 }}
   disableExporter: {{ $.Values.disableExporter | default "false" }}
   serviceVersion: {{ $.Values.version }}
   {{- with $.Values.tolerations }}
   tolerations: {{ .| toYaml | nindent 4 }}
+  services:
+  - name: default
+    serviceType: {{ .Values.service.type | default "NodePort" }}
   {{- end }}
   {{- include "kblib.componentResources" $ | indent 2 }}
   {{- include "kblib.componentStorages" $ | indent 2 }}

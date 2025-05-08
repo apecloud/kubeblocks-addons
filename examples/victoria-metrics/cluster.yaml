@@ -2,7 +2,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: vmcluster
-  namespace: default
+  namespace: demo
 spec:
   clusterDef: victoria-metrics
   terminationPolicy: Delete

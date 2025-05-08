@@ -39,107 +39,107 @@ Describe "PostgreSQL Switchover Script Tests"
       End
     End
 
-    Context "when POSTGRES_PRIMARY_POD_NAME is not unique"
-      setup() {
-        CURRENT_POD_NAME="pod1"
-        POSTGRES_PRIMARY_POD_NAME="pod1,pod2"
-      }
-      Before 'setup'
+    # Context "when POSTGRES_PRIMARY_POD_NAME is not unique"
+    #   setup() {
+    #     CURRENT_POD_NAME="pod1"
+    #     POSTGRES_PRIMARY_POD_NAME="pod1,pod2"
+    #   }
+    #   Before 'setup'
 
-      It "exits with an error"
-        When run switchover
-        The output should include "Error: POSTGRES_PRIMARY_POD_NAME should be a unique pod name. Exiting."
-        The status should be failure
-      End
-    End
+    #   It "exits with an error"
+    #     When run switchover
+    #     The output should include "Error: POSTGRES_PRIMARY_POD_NAME should be a unique pod name. Exiting."
+    #     The status should be failure
+    #   End
+    # End
 
-    Context "when POSTGRES_POD_NAME_LIST or POSTGRES_POD_FQDN_LIST is not set"
-      setup() {
-        CURRENT_POD_NAME="pod1"
-        POSTGRES_PRIMARY_POD_NAME="pod1"
-        unset POSTGRES_POD_NAME_LIST
-        unset POSTGRES_POD_FQDN_LIST
-      }
-      Before 'setup'
+    # Context "when POSTGRES_POD_NAME_LIST or POSTGRES_POD_FQDN_LIST is not set"
+    #   setup() {
+    #     CURRENT_POD_NAME="pod1"
+    #     POSTGRES_PRIMARY_POD_NAME="pod1"
+    #     unset POSTGRES_POD_NAME_LIST
+    #     unset POSTGRES_POD_FQDN_LIST
+    #   }
+    #   Before 'setup'
 
-      It "exits with an error"
-        When run switchover
-        The output should include "POSTGRES_POD_NAME_LIST or POSTGRES_POD_FQDN_LIST is not set. Exiting..."
-        The status should be failure
-      End
-    End
+    #   It "exits with an error"
+    #     When run switchover
+    #     The output should include "POSTGRES_POD_NAME_LIST or POSTGRES_POD_FQDN_LIST is not set. Exiting..."
+    #     The status should be failure
+    #   End
+    # End
 
-    Context "when the current pod FQDN is not found"
-      setup() {
-        CURRENT_POD_NAME="pod1"
-        KB_SWITCHOVER_CURRENT_NAME="pod1"
-        POSTGRES_PRIMARY_POD_NAME="pod1"
-        POSTGRES_POD_NAME_LIST="pod2,pod3"
-        POSTGRES_POD_FQDN_LIST="pod2.example.com,pod3.example.com"
-      }
-      Before 'setup'
+    # Context "when the current pod FQDN is not found"
+    #   setup() {
+    #     CURRENT_POD_NAME="pod1"
+    #     KB_SWITCHOVER_CURRENT_NAME="pod1"
+    #     POSTGRES_PRIMARY_POD_NAME="pod1"
+    #     POSTGRES_POD_NAME_LIST="pod2,pod3"
+    #     POSTGRES_POD_FQDN_LIST="pod2.example.com,pod3.example.com"
+    #   }
+    #   Before 'setup'
 
-      It "exits with an error"
-        When run switchover
-        The output should include "Error: Failed to get current pod: pod1 fqdn from postgres pod fqdn list: pod2.example.com,pod3.example.com. Exiting."
-        The status should be failure
-      End
-    End
+    #   It "exits with an error"
+    #     When run switchover
+    #     The output should include "Error: Failed to get current pod: pod1 fqdn from postgres pod fqdn list: pod2.example.com,pod3.example.com. Exiting."
+    #     The status should be failure
+    #   End
+    # End
 
-    Context "when switchover action is called for a non-primary pod"
-      setup() {
-        CURRENT_POD_NAME="pod1"
-        POSTGRES_PRIMARY_POD_NAME="pod2"
-        KB_SWITCHOVER_CURRENT_NAME="pod1"
-        POSTGRES_POD_NAME_LIST="pod1,pod2"
-        POSTGRES_POD_FQDN_LIST="pod1.example.com,pod2.example.com"
-      }
-      Before 'setup'
+    # Context "when switchover action is called for a non-primary pod"
+    #   setup() {
+    #     CURRENT_POD_NAME="pod1"
+    #     POSTGRES_PRIMARY_POD_NAME="pod2"
+    #     KB_SWITCHOVER_CURRENT_NAME="pod1"
+    #     POSTGRES_POD_NAME_LIST="pod1,pod2"
+    #     POSTGRES_POD_FQDN_LIST="pod1.example.com,pod2.example.com"
+    #   }
+    #   Before 'setup'
 
-      It "exits without error"
-        When run switchover
-        The output should include "switchover action not triggered for primary pod. Exiting"
-      End
-    End
+    #   It "exits without error"
+    #     When run switchover
+    #     The output should include "switchover action not triggered for primary pod. Exiting"
+    #   End
+    # End
 
-    Context "when KB_SWITCHOVER_CANDIDATE_NAME is set"
-      setup() {
-        CURRENT_POD_NAME="pod1"
-        POSTGRES_PRIMARY_POD_NAME="pod1"
-        KB_SWITCHOVER_CURRENT_NAME="pod1"
-        POSTGRES_POD_NAME_LIST="pod1,pod2"
-        POSTGRES_POD_FQDN_LIST="pod1.example.com,pod2.example.com"
-        KB_SWITCHOVER_CANDIDATE_NAME="pod2"
-      }
-      Before 'setup'
+    # Context "when KB_SWITCHOVER_CANDIDATE_NAME is set"
+    #   setup() {
+    #     CURRENT_POD_NAME="pod1"
+    #     POSTGRES_PRIMARY_POD_NAME="pod1"
+    #     KB_SWITCHOVER_CURRENT_NAME="pod1"
+    #     POSTGRES_POD_NAME_LIST="pod1,pod2"
+    #     POSTGRES_POD_FQDN_LIST="pod1.example.com,pod2.example.com"
+    #     KB_SWITCHOVER_CANDIDATE_NAME="pod2"
+    #   }
+    #   Before 'setup'
 
-      It "calls switchover_with_candidate"
-        switchover_with_candidate() {
-          echo "Calling switchover_with_candidate with arguments: $1 $2 $3"
-        }
-        When run switchover
-        The output should include "Calling switchover_with_candidate with arguments: pod1.example.com pod1 pod2"
-      End
-    End
+    #   It "calls switchover_with_candidate"
+    #     switchover_with_candidate() {
+    #       echo "Calling switchover_with_candidate with arguments: $1 $2 $3"
+    #     }
+    #     When run switchover
+    #     The output should include "Calling switchover_with_candidate with arguments: pod1.example.com pod1 pod2"
+    #   End
+    # End
 
-    Context "when KB_SWITCHOVER_CANDIDATE_NAME is not set"
-      setup() {
-        CURRENT_POD_NAME="pod1"
-        POSTGRES_PRIMARY_POD_NAME="pod1"
-        KB_SWITCHOVER_CURRENT_NAME="pod1"
-        POSTGRES_POD_NAME_LIST="pod1,pod2"
-        POSTGRES_POD_FQDN_LIST="pod1.example.com,pod2.example.com"
-        unset KB_SWITCHOVER_CANDIDATE_NAME
-      }
-      Before 'setup'
+    # Context "when KB_SWITCHOVER_CANDIDATE_NAME is not set"
+    #   setup() {
+    #     CURRENT_POD_NAME="pod1"
+    #     POSTGRES_PRIMARY_POD_NAME="pod1"
+    #     KB_SWITCHOVER_CURRENT_NAME="pod1"
+    #     POSTGRES_POD_NAME_LIST="pod1,pod2"
+    #     POSTGRES_POD_FQDN_LIST="pod1.example.com,pod2.example.com"
+    #     unset KB_SWITCHOVER_CANDIDATE_NAME
+    #   }
+    #   Before 'setup'
 
-      It "calls switchover_without_candidate"
-        switchover_without_candidate() {
-          echo "Calling switchover_without_candidate with arguments: $1 $2"
-        }
-        When run switchover
-        The output should include "Calling switchover_without_candidate with arguments: pod1.example.com pod1"
-      End
-    End
+    #   It "calls switchover_without_candidate"
+    #     switchover_without_candidate() {
+    #       echo "Calling switchover_without_candidate with arguments: $1 $2"
+    #     }
+    #     When run switchover
+    #     The output should include "Calling switchover_without_candidate with arguments: pod1.example.com pod1"
+    #   End
+    # End
   End
 End

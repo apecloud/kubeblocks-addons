@@ -35,6 +35,11 @@ Apache Kafka is a distributed streaming platform designed to build real-time pip
 - Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
 - KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
 - Kafka Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
@@ -48,7 +53,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: kafka-combined-cluster
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
@@ -140,7 +145,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: kafka-separated-cluster
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
@@ -246,7 +251,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: kafka-combined-scale-out
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: kafka-combined-cluster
@@ -270,7 +275,7 @@ kubectl apply -f examples/kafka/scale-out.yaml
 After applying the operation, you will see a new pod created. You can check the progress of the scaling operation with following command:
 
 ```bash
-kubectl describe ops kafka-combined-scale-out
+kubectl describe -n demo ops kafka-combined-scale-out
 ```
 
 #### Scale-in
@@ -283,7 +288,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: kafka-combined-scale-in
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: kafka-combined-cluster
@@ -328,7 +333,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: kafka-combined-vscale
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: kafka-combined-cluster
@@ -393,7 +398,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: kafka-combined-volumeexpansion
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: kafka-combined-cluster
@@ -416,7 +421,7 @@ kubectl apply -f examples/kafka/volumeexpand.yaml
 After the operation, you will see the volume size of the specified component is increased to `30Gi` in this case. Once you've done the change, check the `status.conditions` field of the PVC to see if the resize has completed.
 
 ```bash
-kubectl get pvc -l app.kubernetes.io/instance=kafka-combined-cluster -n default
+kubectl get pvc -l app.kubernetes.io/instance=kafka-combined-cluster -n demo
 ```
 
 #### Volume expansion using Cluster API
@@ -459,7 +464,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: kafka-combine-restart
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: kafka-combined-cluster
@@ -485,7 +490,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name:  kafka-combine-stop
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName:  kafka-combined-cluster
@@ -522,7 +527,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: kafka-combined-start
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: kafka-combined-cluster
@@ -559,7 +564,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name:  kafka-combined-reconfiguring
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: kafka-combined-cluster
@@ -600,9 +605,9 @@ cat  /opt/bitnami/kafka/config/kraft/server.properties | grep 'log.flush.interva
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster kafka-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo kafka-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster kafka-cluster
+kubectl delete cluster -n demo kafka-cluster
 ```
 
 ### Observability
@@ -622,7 +627,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: kafka-separated-cluster
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
   # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
@@ -754,7 +759,7 @@ spec:
       scheme: http
   namespaceSelector:
     matchNames:
-      - default
+      - demo
   selector:
     matchLabels:
       app.kubernetes.io/instance: kafka-separated-cluster
@@ -792,7 +797,7 @@ spec:
       scheme: http
   namespaceSelector:
     matchNames:
-      - default
+      - demo
   selector:
     matchLabels:
       app.kubernetes.io/instance: kafka-separated-cluster
@@ -809,7 +814,7 @@ Login to the Grafana dashboard and import the dashboard.
 
 KubeBlocks provides a Grafana dashboard for monitoring the Kafka cluster. You can find it at [Kafka Dashboard](https://github.com/apecloud/kubeblocks-addons/tree/main/addons/kafka).
 
-> [!Note]
+> [!NOTE]
 >
 > - Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
 > - set `job` to `kubeblocks` on Grafana dashboard to view the metrics.
@@ -823,7 +828,7 @@ KubeBlocks provides a Grafana dashboard for monitoring the Kafka cluster. You ca
 To connect to the Kafka cluster, you can use the following command to get the service for connection:
 
 ```bash
-kubectl get svc -l app.kubernetes.io/instance=kafka-combined-cluster -n default
+kubectl get svc -l app.kubernetes.io/instance=kafka-combined-cluster -n demo
 ```
 
 And the excepted output is like below:

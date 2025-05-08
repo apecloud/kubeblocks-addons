@@ -33,6 +33,11 @@ Such architecture allows RisingWave to provide real-time analytics and high-conc
 - KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
 - RisingWave Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
 - [Optional] ETCD Addon and MinIO Addon Enabled
+- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+
+  ```bash
+  kubectl create ns demo
+  ```
 
 ## Examples
 
@@ -48,7 +53,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: etcd-cluster
-  namespace: default
+  namespace: demo
 spec:
   terminationPolicy: Delete
   componentSpecs:
@@ -86,12 +91,12 @@ What for all Cluster running and get ETCD and Minio Endpoint:
 
 ```bash
 # Get ETCD endpoint
-ETCD_ENDPOINT="etcd-cluster-etcd-headless.default.svc.cluster.local:2379"
+ETCD_ENDPOINT="etcd-cluster-etcd-headless.demo.svc.cluster.local:2379"
 # Get Minio endpoint
-MINIO_ENDPOINT="minio-cluster-minio.default.svc.cluster.local:9000"
+MINIO_ENDPOINT="minio-cluster-minio.demo.svc.cluster.local:9000"
 # Get Minio user and password
-MINIO_USER=$(kubectl get secret minio-cluster-minio-account-root -n default -o jsonpath="{.data.username}" | base64 --decode)
-MINIO_PASSWORD=$(kubectl get secret minio-cluster-minio-account-root -n default -o jsonpath="{.data.password}" | base64 --decode)
+MINIO_USER=$(kubectl get secret minio-cluster-minio-account-root -n demo -o jsonpath="{.data.username}" | base64 --decode)
+MINIO_PASSWORD=$(kubectl get secret minio-cluster-minio-account-root -n demo -o jsonpath="{.data.password}" | base64 --decode)
 # Create a Bucket `risingwave` in MinIO if not exists:
 MINIO_BUCKET="<BUCKET_NAME>"
 ```
@@ -99,7 +104,7 @@ MINIO_BUCKET="<BUCKET_NAME>"
 Port-forward the MinIO service first:
 
 ```bash
-kubectl port-forward svc/minio-cluster-minio -n default 9000:9000
+kubectl port-forward svc/minio-cluster-minio -n demo 9000:9000
 ```
 
 Then, use the following command to create a bucket:
@@ -137,7 +142,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: risingwave-cluster
-  namespace: default
+  namespace: demo
 spec:
   terminationPolicy: Delete
   clusterDef: risingwave
@@ -166,13 +171,13 @@ spec:
           value: test-bucket
         # MinIO endpoint
         - name: MINIO_ENDPOINT
-          value: minio-cluster-minio.default.svc.cluster.local:9000
+          value: minio-cluster-minio.demo.svc.cluster.local:9000
         # State store configuration
         - name: RW_STATE_STORE
           value: hummock+minio://$(MINIO_USER):$(MINIO_PASSWORD)@$(MINIO_ENDPOINT)/$(MINIO_BUCKET)
         # ETCD endpoints
         - name: RW_ETCD_ENDPOINTS
-          value: etcd-cluster-etcd-headless.default.svc.cluster.local:2379
+          value: etcd-cluster-etcd-headless.demo.svc.cluster.local:2379
         # ETCD authentication
         - name: RW_ETCD_AUTH
           value: "false"
@@ -209,7 +214,7 @@ spec:
           value: test-bucket
         # MinIO endpoint
         - name: MINIO_ENDPOINT
-          value: minio-cluster-minio.default.svc.cluster.local:9000
+          value: minio-cluster-minio.demo.svc.cluster.local:9000
         # State store configuration
         - name: RW_STATE_STORE
           value: hummock+minio://$(MINIO_USER):$(MINIO_PASSWORD)@$(MINIO_ENDPOINT)/$(MINIO_BUCKET)
@@ -247,7 +252,7 @@ spec:
           value: test-bucket
         # MinIO endpoint
         - name: MINIO_ENDPOINT
-          value: minio-cluster-minio.default.svc.cluster.local:9000
+          value: minio-cluster-minio.demo.svc.cluster.local:9000
         # State store configuration
         - name: RW_STATE_STORE
           value: hummock+minio://$(MINIO_USER):$(MINIO_PASSWORD)@$(MINIO_ENDPOINT)/$(MINIO_BUCKET)
@@ -283,7 +288,7 @@ spec:
           value: test-bucket
         # MinIO endpoint
         - name: MINIO_ENDPOINT
-          value: minio-cluster-minio.default.svc.cluster.local:9000
+          value: minio-cluster-minio.demo.svc.cluster.local:9000
         # State store configuration
         - name: RW_STATE_STORE
           value: hummock+minio://$(MINIO_USER):$(MINIO_PASSWORD)@$(MINIO_ENDPOINT)/$(MINIO_BUCKET)
@@ -320,7 +325,7 @@ spec:
           value: test-bucket
         # MinIO endpoint
         - name: MINIO_ENDPOINT
-          value: minio-cluster-minio.default.svc.cluster.local:9000
+          value: minio-cluster-minio.demo.svc.cluster.local:9000
       replicas: 1
       resources:
         limits:
@@ -342,7 +347,7 @@ kubectl apply -f examples/risingwave/cluster.yaml
 Make sure RisingWave is up and running. To access RisingWave, you can expose the frontend service:
 
 ```bash
-kubectl port-forward svc/risingwave-cluster-frontend -n default 4567:4567
+kubectl port-forward svc/risingwave-cluster-frontend -n demo 4567:4567
 ```
 
 Then, use the following command in the terminal to connect to RisingWave using `psql`:
@@ -358,7 +363,7 @@ psql -h localhost -p 4566 -d dev -U root
 - `-d`: Specifies the database name. The default is `dev`.
 - `-U`: Specifies the username. The default is `root`.
 
-> [!Note]
+> [!NOTE]
 > By default, the `root` user does not require a password to connect to the database.
 
 #### Create a Table
@@ -426,7 +431,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: risingwave-scale-out
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: risingwave-cluster
@@ -458,7 +463,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: risingwave-scale-in
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: risingwave-cluster
@@ -490,7 +495,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: risingwave-verticalscaling
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: risingwave-cluster
@@ -527,7 +532,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: risingwave-restart
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: risingwave-cluster
@@ -558,7 +563,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: risingwave-stop
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: risingwave-cluster
@@ -580,7 +585,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: risingwave-start
-  namespace: default
+  namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: risingwave-cluster
@@ -597,13 +602,13 @@ kubectl apply -f examples/risingwave/start.yaml
 If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
 
 ```bash
-kubectl patch cluster risingwave-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl patch cluster -n demo risingwave-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
 
-kubectl delete cluster risingwave-cluster
+kubectl delete cluster -n demo risingwave-cluster
 
-kubectl delete cluster etcd-cluster #if you have created etcd cluster
+kubectl delete cluster -n demo etcd-cluster #if you have created etcd cluster
 
-kubectl delete cluster minio-cluster #if you have created minio cluster
+kubectl delete cluster -n demo minio-cluster #if you have created minio cluster
 ```
 
 ## Appendix

@@ -2,7 +2,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: orchestrator-cluster
-  namespace: default
+  namespace: demo
 spec:
   terminationPolicy: Delete
   componentSpecs:
@@ -26,7 +26,7 @@ spec:
                 storage: 20Gi
       serviceRefs:
         - name: metadb
-          namespace: default
+          namespace: demo
           clusterServiceSelector:
             cluster: mysqlo-cluster
             credential:
@@ -40,7 +40,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: mysqlo-cluster
-  namespace: default
+  namespace: demo
 spec:
   terminationPolicy: Delete
   clusterDef: apecloud-mysql

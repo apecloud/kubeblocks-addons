@@ -11,6 +11,7 @@ spec:
   description: A Redis v7.0 component definition for Kubernetes
   serviceKind: redis
   serviceVersion: {{ .Values.defaultServiceVersion.redis.major7 }}
+  podManagementPolicy: Parallel
   services:
     - name: redis
       serviceName: redis
@@ -56,6 +57,7 @@ spec:
       template: {{ include "redis7.configurationTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: redis-config
+      externalManaged: true
     - name: redis-metrics-config
       template: {{ include "redis.metricsConfiguration" . }}
       namespace: {{ .Release.Namespace }}
@@ -246,6 +248,10 @@ spec:
               name: redis-sentinel
               option: Required
       expression: {{ `{{if ne (index . "SENTINEL_SERVICE_PORT") ""}}{{.SENTINEL_SERVICE_PORT}}{{else}}26379{{end}}` | toYaml }}
+    - name: PHY_MEMORY
+      valueFrom:
+        resourceVarRef:
+          memory: Required
   lifecycleActions:
     roleProbe:
       periodSeconds: 1
@@ -265,7 +271,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - /scripts/redis-register-to-sentinel.sh
+          - /scripts/redis-register-to-sentinel.sh > /tmp/post-provision.log 2>&1
         targetPodSelector: Role
         matchingKey: primary
         ## all lifecycle actions share the same env

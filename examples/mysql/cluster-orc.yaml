@@ -2,7 +2,7 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
   name: mysql-cluster
-  namespace: default
+  namespace: demo
 spec:
   terminationPolicy: Delete
   componentSpecs:
@@ -28,7 +28,7 @@ spec:
                 storage: 20Gi
       serviceRefs:
         - name: orchestrator
-          namespace: default # set to your orchestrator cluster namespace
+          namespace: demo # set to your orchestrator cluster namespace
           clusterServiceSelector:
             cluster:  myorc  # set to your orchestrator cluster name
             service:

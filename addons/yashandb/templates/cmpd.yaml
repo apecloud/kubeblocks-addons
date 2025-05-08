@@ -24,6 +24,7 @@ spec:
       template: {{ include "yashandb.configTplName" . }}
       volumeName: yashandb-configs
       namespace: {{ .Release.Namespace }}
+      restartOnFileChange: true
   scripts:
     - name: yashandb-scripts
       template: {{ include "yashandb.scriptsTplName" . }}
@@ -78,3 +79,8 @@ spec:
           - name: YASDB_MOUNT_HOME
             value: /home/yashan/mydb
         workingDir: /home/yashan/
+  vars:
+    - name: PHY_MEMORY
+      valueFrom:
+        resourceVarRef:
+          memoryLimit: Required
