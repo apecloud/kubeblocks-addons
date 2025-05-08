@@ -165,3 +165,32 @@ storage:
         # @optional
         credential: admin
       serviceDescriptor:
+
+#################################################
+# Storage Configurations
+#################################################
+config:
+  # Metadata Storage (etcd)
+  meta:
+    rootPath: ""
+
+  # Log Storage (Pulsar or Kafka)
+  log:
+    service: pulsar
+    pulsar:
+      maxMessageSize:
+      tenant:
+      namespace:
+      authPlugin:
+      authParams:
+    kafka:
+      securityProtocol:
+      saslMechanisms:
+      saslUsername:
+      saslPassword:
+
+  # Object Storage (MinIO or S3)
+  object:
+    useSSL:
+    bucketName:
+    rootPath:

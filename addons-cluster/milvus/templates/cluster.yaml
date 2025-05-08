@@ -14,6 +14,7 @@ spec:
     - name: proxy
       replicas: {{ .Values.proxy.replicas }}
       {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "milvus.configs" . | indent 6 }}
       serviceRefs:
         {{- include "milvus.serviceRef.meta" . | indent 8 }}
         {{- include "milvus.serviceRef.log" . | indent 8 }}
@@ -23,6 +24,7 @@ spec:
     - name: mixcoord
       replicas: {{ .Values.mixcoord.replicas}}
       {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "milvus.configs" . | indent 6 }}
       serviceRefs:
         {{- include "milvus.serviceRef.meta" . | indent 8 }}
         {{- include "milvus.serviceRef.log" . | indent 8 }}
@@ -30,8 +32,8 @@ spec:
       {{- include "kblib.componentMonitor" . | indent 6 }}
     - name: datanode
       replicas: {{ .Values.datanode.replicas}}
-      {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "milvus.configs" . | indent 6 }}
       serviceRefs:
         {{- include "milvus.serviceRef.meta" . | indent 8 }}
         {{- include "milvus.serviceRef.log" . | indent 8 }}
@@ -39,8 +41,8 @@ spec:
       {{- include "kblib.componentMonitor" . | indent 6 }}
     - name: indexnode
       replicas: {{ .Values.indexnode.replicas}}
-      {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "milvus.configs" . | indent 6 }}
       serviceRefs:
         {{- include "milvus.serviceRef.meta" . | indent 8 }}
         {{- include "milvus.serviceRef.log" . | indent 8 }}
@@ -48,8 +50,8 @@ spec:
       {{- include "kblib.componentMonitor" . | indent 6 }}
     - name: querynode
       replicas: {{ .Values.querynode.replicas}}
-      {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "milvus.configs" . | indent 6 }}
       serviceRefs:
         {{- include "milvus.serviceRef.meta" . | indent 8 }}
         {{- include "milvus.serviceRef.log" . | indent 8 }}
