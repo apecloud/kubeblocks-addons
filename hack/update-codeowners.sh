@@ -19,7 +19,9 @@ EOF
       continue
     fi
     local addon=$(basename "$d")
-    local maintainers=$(yq e '["@" + (.maintainers[] | select(.name != "ApeCloud") | .name | sub(" "; "_"))] | join(" ")' "$d/Chart.yaml")
+    local maintainers=$(yq e '[.maintainers[].name | sub(" "; "_") | "@"+. ] | join(" ")' "$d/Chart.yaml")
+    maintainers="${maintainers/@ApeCloud/}"
+    maintainers=$(echo "${maintainers}" | xargs)
     echo ""
     if [[ -n "$maintainers" ]]; then
         echo "addons/$addon/ $maintainers $FALLBACKS"
