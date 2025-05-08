@@ -15,7 +15,6 @@ Describe "Common Functions Tests"
   Describe "check_backup_file()"
     It "returns success when backup file is valid"
       etcdutl() { echo "d1ed6c2f, 0, 6, 25 kB"; return 0; }
-      export BACKUP_KEY_THRESHOLD=6
       When call check_backup_file "backup_file"
       The status should be success
     End
@@ -34,13 +33,6 @@ Describe "Common Functions Tests"
       The stderr should include "ERROR: snapshot totalKey is not a valid number."
     End
 
-    It "returns failure when totalKey is less than threshold"
-      etcdutl() { echo "d1ed6c2f, 0, 30, 80 kB"; return 0; }
-      BACKUP_KEY_THRESHOLD=50
-      When call check_backup_file "backup_file"
-      The status should be failure
-      The stderr should include "WARNING: snapshot totalKey is less than the threshold"
-    End
   End
 
   Describe "get_client_protocol()"

@@ -99,7 +99,7 @@ discovery-srv:
 initial-cluster: {{ template "init_peers" . }}
 
 # Initial cluster token for the etcd cluster during bootstrap.
-initial-cluster-token: 'etcd-cluster'
+initial-cluster-token: {{ .CLUSTER_NAME }}
 
 # Initial cluster state ('new' or 'existing').
 initial-cluster-state: 'new'

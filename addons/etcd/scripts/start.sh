@@ -90,6 +90,46 @@ rebuild_etcd_conf() {
   return 0
 }
 
+parse_config_value() {
+  local key="$1"
+  local config_file="$2"
+  grep -E "^$key:" "$config_file" | \
+  sed -E \
+      -e "s/^$key:[[:space:]]*//" \
+      -e 's/^[[:space:]]*//; s/[[:space:]]*$//'
+}
+
+restore() {
+  files=("$RESTORE_DIR"/*)
+  if [ "${#files[@]}" -ne 1 ]; then
+    log "Expected exactly 1 backup file in $RESTORE_DIR, found ${#files[@]}."
+    return 1
+  fi
+  backup_file="${files[0]}"
+
+  log "Found backup file: $backup_file. Restoring etcd data..."
+  if check_backup_file "$backup_file"; then
+    log "Backup file is valid."
+  else
+    log "Backup file is invalid." >&2
+    exit 1
+  fi
+
+  etcd_data_dir=$(parse_config_value "data-dir" "$real_conf")
+  etcd_name=$(parse_config_value "name" "$real_conf")
+  etcd_initial_advertise_peer_urls=$(parse_config_value "initial-advertise-peer-urls" "$real_conf")
+  etcd_initial_cluster=$(parse_config_value "initial-cluster" "$real_conf")
+  etcd_initial_cluster_token=$(parse_config_value "initial-cluster-token" "$real_conf")
+  etcdutl snapshot restore "$backup_file" \
+    --data-dir="$etcd_data_dir" \
+    --name="$etcd_name" \
+    --initial-advertise-peer-urls="$etcd_initial_advertise_peer_urls" \
+    --initial-cluster="$etcd_initial_cluster" \
+    --initial-cluster-token="$etcd_initial_cluster_token"
+  rm -rf "$RESTORE_DIR"
+  return 0
+}
+
 main() {
   # rebuild etcd configuration
   if rebuild_etcd_conf; then
@@ -99,7 +139,15 @@ main() {
     exit 1
   fi
 
-  # start etcd
+  if [ -e "$RESTORE_DIR" ]; then
+    if restore; then
+      log "Restored etcd data from backup successfully."
+    else
+      log "Failed to restore etcd data from backup. Exiting to prevent starting with inconsistent state." >&2
+      exit 1
+    fi
+  fi
+
   log "Starting etcd with updated configuration..."
   exec etcd --config-file "$real_conf"
 }

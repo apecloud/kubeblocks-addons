@@ -18,14 +18,17 @@ Describe "Etcd Start Bash Script Tests"
     default_template_conf="./default_etcd.conf"
     # mock real etcd configuration file
     real_conf="./etcd.conf"
+    # for parse_config_value tests
+    test_conf_file="./test_config.conf"
     # set ut_mode to true to hack control flow in the script
     ut_mode="true"
   }
 
   cleanup() {
-    rm -f "$real_conf";
-    rm -f $common_library_file;
-    rm -f $default_template_conf
+    rm -f "$real_conf"
+    rm -f "$common_library_file"
+    rm -f "$default_template_conf"
+    rm -f "$test_conf_file"
   }
 
   BeforeAll "init"
@@ -101,7 +104,7 @@ Describe "Etcd Start Bash Script Tests"
       echo "name: etcd-0" > "$default_template_conf"
       echo "initial-advertise-peer-urls: https://default:2380" >> "$default_template_conf"
       echo "advertise-client-urls: https://default:2379" >> "$default_template_conf"
-      rm -f $real_conf
+      rm -f "$real_conf"
 
       When call update_etcd_conf "$default_template_conf" "$real_conf" "$current_pod_name" "$my_endpoint"
       The status should be success
@@ -117,13 +120,11 @@ Describe "Etcd Start Bash Script Tests"
       export CURRENT_POD_NAME="etcd-0"
       export PEER_FQDNS="etcd-0.etcd-headless.default.svc.cluster.local,etcd-1.etcd-headless.default.svc.cluster.local"
       export PEER_ENDPOINT="etcd-0:172.0.0.1,etcd-1:172.0.0.2"
-      default_template_conf="./default_etcd.conf"
-      real_conf="./etcd.conf"
 
       echo "name: default" > "$default_template_conf"
       echo "initial-advertise-peer-urls: http://default:2380" >> "$default_template_conf"
       echo "advertise-client-urls: http://default:2379" >> "$default_template_conf"
-      rm -f $real_conf
+      rm -f "$real_conf"
 
       When call rebuild_etcd_conf
       The status should be success
@@ -143,6 +144,38 @@ Describe "Etcd Start Bash Script Tests"
       The status should be failure
       The stdout should include "start to rebuild etcd configuration..."
       The stderr should include "Failed to get my endpoint. Exiting."
+    End
+  End
+
+  Describe "parse_config_value()"
+    It "parses simple key-value pairs"
+      echo "name:my-etcd" > "$test_conf_file"
+      When call parse_config_value "name" "$test_conf_file"
+      The stdout should eq "my-etcd"
+    End
+
+    It "trims spaces around values"
+      echo "name:   my-etcd-spaces   " > "$test_conf_file"
+      When call parse_config_value "name" "$test_conf_file"
+      The stdout should eq "my-etcd-spaces"
+    End
+
+    It "preserves quotes when part of value"
+      echo 'name:"quoted-value"' > "$test_conf_file"
+      When call parse_config_value "name" "$test_conf_file"
+      The stdout should eq '"quoted-value"'
+    End
+
+    It "handles empty values"
+      echo "empty:" > "$test_conf_file"
+      When call parse_config_value "empty" "$test_conf_file"
+      The stdout should eq ""
+    End
+
+    It "handles hyphenated keys"
+      echo "cluster-token: etcd-123" > "$test_conf_file"
+      When call parse_config_value "cluster-token" "$test_conf_file"
+      The stdout should eq "etcd-123"
     End
   End
 End

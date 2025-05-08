@@ -10,10 +10,10 @@ spec:
       value: {{ .Values.tlsMountPath }}
     - name: TMP_CONFIG_PATH
       value: {{ .Values.tmpConfigPath}}
+    - name: RESTORE_DIR
+      value: {{ .Values.restoreDir }}
     - name: CLUSTER_DOMAIN
       value: {{ .Values.clusterDomain }}
-    - name: BACKUP_KEY_THRESHOLD
-      value: "{{ .Values.backupKeyThreshold }}"
   backupType: Full
   backup:
     backupData:
@@ -29,13 +29,12 @@ spec:
         {{- .Files.Get "scripts/common.sh" | nindent 8 }}
         {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
   restore:
-    postReady:
-    - job:
-        image: {{ include "etcd356.image" . }}
-        runOnTargetPodNode: true
-        command:
-        - /bin/bash
-        - -c
-        - |
-          {{- .Files.Get "scripts/common.sh" | nindent 12 }}
-          {{- .Files.Get "dataprotection/restore.sh" | nindent 12 }}
+    prepareData:
+      image: {{ include "etcd356.image" . }}
+      runOnTargetPodNode: true
+      command:
+      - /bin/bash
+      - -c
+      - |
+        {{- .Files.Get "scripts/common.sh" | nindent 12 }}
+        {{- .Files.Get "dataprotection/prepare-for-restore.sh" | nindent 12 }}
