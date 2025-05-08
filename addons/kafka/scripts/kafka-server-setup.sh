@@ -151,6 +151,11 @@ extract_ordinal_from_object_name() {
 parse_advertised_svc_if_exist() {
   local pod_name="${MY_POD_NAME}"
 
+  if [ "${KB_BROKER_DIRECT_POD_ACCESS}" == "true" ]; then
+    echo "KB_BROKER_DIRECT_POD_ACCESS is true, skip parse advertised svc from BROKER_ADVERTISED_PORT: $BROKER_ADVERTISED_PORT."
+    return 0
+  fi
+
   if [[ -z "${BROKER_ADVERTISED_PORT}" ]]; then
     echo "Environment variable BROKER_ADVERTISED_PORT not found. Ignoring."
     return 0
