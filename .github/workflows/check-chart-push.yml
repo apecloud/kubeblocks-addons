@@ -43,6 +43,12 @@ jobs:
         uses: azure/setup-helm@v3
         with:
           version: ${{ env.HELM_VERSION }}
+
+      - name: Install yq
+        uses: Makepad-fr/setup-yq-action@main
+        with:
+          version: '4.44.3'
+
       - uses: actions/checkout@v4
       - name: update readme
         id: update-readme
