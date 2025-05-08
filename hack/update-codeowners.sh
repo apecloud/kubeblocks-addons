@@ -21,6 +21,7 @@ EOF
     local addon=$(basename "$d")
     local maintainers=$(yq e '[.maintainers[].name | sub(" "; "_") | "@"+. ] | join(" ")' "$d/Chart.yaml")
     maintainers="${maintainers/@ApeCloud/}"
+    # trim space
     maintainers=$(echo "${maintainers}" | xargs)
     echo ""
     if [[ -n "$maintainers" ]]; then
