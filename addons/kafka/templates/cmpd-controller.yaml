@@ -54,7 +54,6 @@ spec:
       template: {{ include "kafka.jmxConfigurationTplName" . }}
       volumeName: jmx-config
       namespace: {{ .Release.Namespace }}
-      restartOnFileChange: true
   scripts:
     - name: kafka-scripts-tpl
       template: {{ include "kafka.serverScriptsTplName" . }}
