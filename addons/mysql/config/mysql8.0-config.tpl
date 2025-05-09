@@ -79,6 +79,7 @@ port={{ $mysql_port }}
 mysqlx-port=33060
 mysqlx=0
 
+tmpdir={{ $data_root }}/tmp
 datadir={{ $data_root }}/data
 plugin_dir=/usr/lib64/mysql/plugin/
 
