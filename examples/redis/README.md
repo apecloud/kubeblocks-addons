@@ -17,8 +17,8 @@ Redis is an open source (BSD licensed), in-memory data structure store, used as 
 | Operation | Description | Standalone | Replication | Cluster |
 |-----------|----------------------|--------------|--------------|--------------|
 | **Restart** |• Ordered sequence (followers first)<br/>• Health checks between restarts | Yes | Yes | Yes |
-| **Stop/Start** | • Graceful shutdown<br/>• Fast startup from persisted state  | No | Yes | Yes |
-| **Horizontal Scaling** | • Adjust replica count dynamically<br/>• Automatic data replication<br/> |Yes | Yes | Yes |
+| **Stop/Start** | • Graceful shutdown<br/>• Fast startup from persisted state  | Yes | Yes | Yes |
+| **Horizontal Scaling** | • Adjust replica count dynamically<br/>• Automatic data replication<br/> |No | Yes | Yes |
 | **Vertical Scaling** |   • Adjust CPU/Memory resources<br/>• Rolling updates for minimal downtime |Yes | Yes | Yes |
 | **Volume Expansion** |   • Online storage expansion<br/>• No downtime required |Yes | Yes | Yes |
 | **Reconfiguration** |  •Static parameter updates<br/>• Validation rules<br/>• Versioned history |Yes | Yes | Yes |
@@ -140,7 +140,7 @@ redis   7.2.7,7.2.4,7.0.6   Available   5d
 
 </details>
 
-### Create Standalone Redis
+#### Create Standalone Redis
 
 To create a standalone redis:
 
@@ -150,7 +150,7 @@ kubectl apply -f examples/redis/cluster-standalone.yaml
 
 It creates one redis component with only one replicas.
 
-### Create Redis with Proxy
+#### Create Redis with Proxy
 
 To create a redis with a proxy (Twemproxy) in front of it:
 
@@ -176,7 +176,7 @@ spec:
     resources:
 ```
 
-### Create Redis with Multiple Shards
+#### Create Redis with Multiple Shards
 
 To create a redis sharding cluster (An official distributed Redis)  with 3 shards and 2 replica for each shard:
 

@@ -1,0 +1,32 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: mongo-hostnetwork
+  namespace: demo
+  annotations:
+    # `kubeblocks.io/host-network` is a reserved annotation
+    # it defines the feature gate to enable the host-network for specified components or shardings.
+    kubeblocks.io/host-network: mongodb
+spec:
+  terminationPolicy: Delete
+  clusterDef: mongodb
+  topology: replicaset
+  componentSpecs:
+    - name: mongodb
+      serviceVersion: 6.0.16
+      replicas: 1
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi

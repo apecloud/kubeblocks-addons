@@ -17,8 +17,8 @@ Redis is an open source (BSD licensed), in-memory data structure store, used as 
 | Operation | Description | Standalone | Replication | Cluster |
 |-----------|----------------------|--------------|--------------|--------------|
 | **Restart** |• Ordered sequence (followers first)<br/>• Health checks between restarts | Yes | Yes | Yes |
-| **Stop/Start** | • Graceful shutdown<br/>• Fast startup from persisted state  | No | Yes | Yes |
-| **Horizontal Scaling** | • Adjust replica count dynamically<br/>• Automatic data replication<br/> |Yes | Yes | Yes |
+| **Stop/Start** | • Graceful shutdown<br/>• Fast startup from persisted state  | Yes | Yes | Yes |
+| **Horizontal Scaling** | • Adjust replica count dynamically<br/>• Automatic data replication<br/> |No | Yes | Yes |
 | **Vertical Scaling** |   • Adjust CPU/Memory resources<br/>• Rolling updates for minimal downtime |Yes | Yes | Yes |
 | **Volume Expansion** |   • Online storage expansion<br/>• No downtime required |Yes | Yes | Yes |
 | **Reconfiguration** |  •Static parameter updates<br/>• Validation rules<br/>• Versioned history |Yes | Yes | Yes |
@@ -230,7 +230,7 @@ redis   7.2.7,7.2.4,7.0.6   Available   5d
 
 </details>
 
-### Create Standalone Redis
+#### Create Standalone Redis
 
 To create a standalone redis:
 
@@ -271,7 +271,7 @@ kubectl apply -f examples/redis/cluster-standalone.yaml
 
 It creates one redis component with only one replicas.
 
-### Create Redis with Proxy
+#### Create Redis with Proxy
 
 To create a redis with a proxy (Twemproxy) in front of it:
 
@@ -355,7 +355,7 @@ spec:
     resources:
 ```
 
-### Create Redis with Multiple Shards
+#### Create Redis with Multiple Shards
 
 To create a redis sharding cluster (An official distributed Redis)  with 3 shards and 2 replica for each shard:
 
@@ -1587,7 +1587,7 @@ metadata:
     # NOTE: replace <ENCRYPTED-SYSTEM-ACCOUNTS> with the accounts info from you backup
     # NOTE: replace <CONTINUOUS_BACKUP_NAME> with the continuouse backup name
     # NOTE: replace <RESTORE_POINT_TIME>  with a valid time within the backup timeRange.
-    kubeblocks.io/restore-from-backup: '{"redis":{"encryptedSystemAccounts":"{\"default\":\"R+YMeDpvPfHxiZVxy2RV1LK0CSTslsUeOOic9BIqOs0jJvA6ndg=\"}","name":"209bb55a-redis-replication-red-aof","namespace":"demo","restoreTime":"2025-05-10T04:57:29Z","volumeRestorePolicy":"Parallel"}}'
+    kubeblocks.io/restore-from-backup: '{"redis":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"<CONTINUOUS_BACKUP_NAME>","namespace":"demo","restoreTime":"<RESTORE_POINT_TIME>","volumeRestorePolicy":"Parallel"}}'
 spec:
   terminationPolicy: Delete
   clusterDef: redis
