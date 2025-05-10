@@ -936,7 +936,7 @@ kubectl get backup -n demo -l app.kubernetes.io/instance=pg-cluster -l dataprote
   ```
 
 3. **Configure Restore**:
-   Update `examples/pg-cluster/restore.yaml` with:
+   Update `examples/postgresql/restore.yaml` with:
    - Backup name and namespace: from step 1
    - Encrypted system accounts: from step 2
    - Target cluster configuration
@@ -1003,7 +1003,7 @@ kubectl get backup -n demo -l app.kubernetes.io/instance=pg-cluster -l dataprote
   ```
 
 3. **Configure Restore**:
-   Update `examples/pg-cluster/restore-pitr.yaml` with:
+   Update `examples/postgresql/restore-pitr.yaml` with:
    - Backup name and namespace: from step 1
    - Point time: falls in `timeRange` from Step 1
    - Encrypted system accounts: from step 2
@@ -1107,7 +1107,7 @@ kubectl get po -n demo pg-cluster-postgresql-0 -oyaml | yq '.spec.containers[] |
   kubectl logs -n monitoring <prometheus-pod-name> -c prometheus
   ```
 
-- **Dashboard Issues**: check indicator labels and dashboards
+- **Dashboard Issues**: check metrics labels and dashboards
   - Verify Grafana DataSource points to correct Prometheus instance
   - Check for template variable mismatches
 

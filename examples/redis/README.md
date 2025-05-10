@@ -1,20 +1,33 @@
-# Redis
+# Redis on KubeBlocks
 
-Redis is an open source (BSD licensed), in-memory data structure store, used as a database, cache and message broker. This example shows how it can be managed in Kubernetes with KubeBlocks.
+Redis is an open source (BSD licensed), in-memory data structure store, used as a database, cache and message broker.
 
-## Features In KubeBlocks
+## Features in KubeBlocks
 
-### Lifecycle Management
+### Supported Topologies
 
-|   Topology       | Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
-|------------------|------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
-| replication     | Yes                    | Yes                   | Yes              | Yes       | Yes        | Yes       | Yes    | No      |
-| standalone      | Yes                    | Yes                   | Yes              | Yes       | Yes        | Yes       | Yes    | N/A      |
-| sharding      | Yes                    | Yes                   | Yes              | Yes       | Yes        | Yes       | Yes    | No      |
+| Topology      | Data Distribution | Scalability | High Availability | Use Cases                     |
+|---------------|-------------------|-------------|--------------------|-------------------------------|
+| **Standalone**| Single node       | No          | No                 | Development/testing, small datasets |
+| **Replication** with sentinel     | Primary-Secondary replication | Read scaling | Yes | Read-heavy workloads, data redundancy needed |
+| **Cluster**   | Sharded storage   | Read/write scaling | Yes | Large datasets, high-concurrency production environments |
+
+### Cluster Management Operations
+
+| Operation | Description | Standalone | Replication | Cluster |
+|-----------|----------------------|--------------|--------------|--------------|
+| **Restart** |• Ordered sequence (followers first)<br/>• Health checks between restarts | Yes | Yes | Yes |
+| **Stop/Start** | • Graceful shutdown<br/>• Fast startup from persisted state  | No | Yes | Yes |
+| **Horizontal Scaling** | • Adjust replica count dynamically<br/>• Automatic data replication<br/> |Yes | Yes | Yes |
+| **Vertical Scaling** |   • Adjust CPU/Memory resources<br/>• Rolling updates for minimal downtime |Yes | Yes | Yes |
+| **Volume Expansion** |   • Online storage expansion<br/>• No downtime required |Yes | Yes | Yes |
+| **Reconfiguration** |  •Static parameter updates<br/>• Validation rules<br/>• Versioned history |Yes | Yes | Yes |
+| **Service Exposure** |  • Multiple exposure types (ClusterIP/NodePort/LB)<br/>• Role-based routing |Yes | Yes | Yes |
+| **Switchover** | • Planned primary transfer<br/>• Zero data loss guarantee |N/A | Yes | Yes |
 
 ### Backup and Restore
 
-| Feature     | Method | Description |
+| Feature           | Method          | Description |
 |-------------|--------|------------|
 | Full Backup | datafile  | uses `redis-cli BGSAVE` command to backup data |
 | Continuous Backup | aof | continuously perform incremental backups by archiving Append-Only Files (AOF) |
@@ -24,109 +37,80 @@ Redis is an open source (BSD licensed), in-memory data structure store, used as 
 | Major Versions | Description |
 |---------------|-------------|
 | 7.0           | 7.0.6 |
-| 7.2           | 7.2.4 |
+| 7.2           | 7.2.4, 7.2.7 |
 
 ## Prerequisites
 
-- Kubernetes cluster >= v1.21
-- `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
-- Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
-- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
-- Redis Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
-- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+Before starting, ensure you have:
+
+1. **Kubernetes Environment**:
+   - Cluster v1.21+
+   - `kubectl` installed ([Installation Guide](https://kubernetes.io/docs/tasks/tools/))
+   - Helm v3+ ([Installation Guide](https://helm.sh/docs/intro/install/))
+
+2. **KubeBlocks Setup**:
+   - KubeBlocks installed and running ([Installation](../docs/prerequisites.md))
+   - Redis Addon enabled ([Addon Setup](../docs/install-addon.md))
+
+3. **Namespace Setup**:
+   Create an isolated namespace for this tutorial:
 
   ```bash
   kubectl create ns demo
   ```
 
-## Examples
+## Lifecycle Management Operations
 
-### [Create](cluster.yaml)
+### Cluster Provisioning
 
-Create a Redis replication cluster with two components, one for Redis, and one for Redis Sentinel[^1].
+#### Quick Start
 
-For optimal reliability, you should run at least three Redis Sentinel replicas. Having three or more Sentinels ensures a quorum can be reached during failover decisions, maintaining the high availability of your Redis deployment.
+A Redis **replication** cluster has two components, one for Redis, and one for Redis Sentinel[^1].
+
+> [!NOTE]
+> For optimal reliability, you should run at least **three** Redis Sentinel replicas.
+> Having three or more Sentinels ensures a quorum can be reached during failover decisions, maintaining the high availability of your Redis deployment.
 
 ```bash
 kubectl apply -f examples/redis/cluster.yaml
 ```
 
-A cluster named `redis-replication` will be created with 1 primary pod, 1 secondary pod, and 3 sentinel pods.
+And you will see the Redis cluster status goes `Running` after a while:
 
 ```bash
-kubectl get -n demo cluster redis-replication # get cluster info
-kubectl get pod -n demo -l app.kubernetes.io/instance=redis-replication # get all pods of the cluster
+kubectl get cluster redis-replication -w -n demo
 ```
 
-> [!NOTE]
-> If all Pods are running, but the cluster status is still `Creating`, you may need to wait for a while until all Redis Pods are ready with corresponding Roles.
-
-To check the role of each Redis pod, you can use the following command:
+<details open>
+<summary>Expected Output</summary>
 
 ```bash
-# replace `redis-replication` with your cluster name
-kubectl get po -n demo -l app.kubernetes.io/instance=redis-replication,apps.kubeblocks.io/component-name=redis -L kubeblocks.io/role
+NAME                CLUSTER-DEFINITION   TERMINATION-POLICY   STATUS    AGE
+redis-replication   redis                Delete               Running   2m36s
 ```
 
-#### Why Redis Sentinel starts first?
+</details>
 
-Redis Sentinel is a high availability solution for Redis. It provides monitoring, notifications, and automatic failover for Redis instances.
-
-Each Redis replica, from the Redis component, upon startup, will connect to the Redis Sentinel instances to get the current leader and follower information. It needs to determine:
-
-- Whether it should act as the primary (master) node.
-- If not, which node is the current primary to replicate from.
-
-In more detail, each Redis replica will:
-
-1. Check for Existing Primary Node
-    - Queries Redis Sentinel to find out if a primary node is already elected.
-    - Retrieve the primary's address and port.
-1. Initialize as Primary if Necessary
-    - If no primary is found (e.g., during initial cluster setup), it configures the current Redis instance to become the primary.
-    - Updates Redis configuration to disable replication.
-1. Configure as Replica if Primary Exists
-    - If a primary is found, it sets up the current Redis instance as a replica.
-    - Updates the Redis configuration with the `replicaof` directive pointing to the primary's address and port.
-    - Initiates replication to synchronize data from the primary.
-
-KubeBlocks ensures that Redis Sentinel starts first to provide the necessary information for the Redis replicas to initialize correctly. Such dependency is well-expressed in the KubeBlocks CRD `ClusterDefinition` ensuring the correct startup order.
-
-More details on how components for the `replication` topology are started, upgraded can be found in:
+and two Redis replicas are `Running` with roles `primary`,  `secondary` separately. To check the roles of the replicas, you can use following command:
 
 ```bash
-kubectl get cd redis -oyaml | yq '.spec.topologies[] | select(.name=="replication") | .orders'
+kubectl get po -l  app.kubernetes.io/instance=redis-replication,apps.kubeblocks.io/component-name=redis -L kubeblocks.io/role -n demo
 ```
 
-### Horizontal scaling
-
-#### [Scale-out](scale-out.yaml)
-
-Horizontal scaling out Redis component by adding ONE more replica:
+<details open>
+<summary>Expected Output</summary>
 
 ```bash
-kubectl apply -f examples/redis/scale-out.yaml
+NAME                        READY   STATUS    RESTARTS   AGE     ROLE
+redis-replication-redis-0   3/3     Running   0          4m36s   primary
+redis-replication-redis-1   3/3     Running   0          4m13s   secondary
 ```
 
-After applying the operation, you will see a new pod created and the cluster status goes from `Updating` to `Running`, and the newly created pod has a new role `secondary`.
+</details>
 
-And you can check the progress of the scaling operation with following command:
+#### Version-Specific Cluster
 
-```bash
-kubectl describe -n demo ops redis-scale-out
-```
-
-#### [Scale-in](scale-in.yaml)
-
-Horizontal scaling in Redis component by removing ONE replica:
-
-```bash
-kubectl apply -f examples/redis/scale-in.yaml
-```
-
-#### Scale-in/out using Cluster API
-
-Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
+If you want to create a cluster of specified version, set the `spec.componentSpecs.serviceVersion` field in the yaml file before applying it:
 
 ```yaml
 # snippet of cluster.yaml
@@ -135,513 +119,38 @@ kind: Cluster
 spec:
   componentSpecs:
     - name: redis
-      serviceVersion: "7.2.4"
-      replicas: 2 # decrease `replicas` for scaling in, and increase for scaling out
-      disableExporter: false
+      # ServiceVersion specifies the version of the Service expected to be
+      # provisioned by this Component.
+      serviceVersion: "7.2.7" # more Redis versions will be supported in the future
 ```
 
-### [Vertical scaling](verticalscale.yaml)
-
-Vertical scaling involves increasing or decreasing resources to an existing database cluster.
-Resources that can be scaled include:, CPU cores/processing power and Memory (RAM).
-
-Vertical scaling up or down requests and limits cpu or memory resource for Redis component:
+The list of supported versions can be found by following command:
 
 ```bash
-kubectl apply -f examples/redis/verticalscale.yaml
+kubectl get cmpv redis
 ```
 
-You will observe that the `follower` pods are recreated first, followed by the `leader` pod, to ensure the availability of the cluster.
-
-#### Scale-up/down using Cluster API
-
-Alternatively, you may update `spec.componentSpecs.resources` field to the desired resources for vertical scale.
-
-```yaml
-# snippet of cluster.yaml
-apiVersion: apps.kubeblocks.io/v1
-kind: Cluster
-spec:
-  componentSpecs:
-    - name: redis
-      serviceVersion: "7.2.4"
-      replicas: 2 # decrease `replicas` for scaling in, and increase for scaling out
-      resources:
-        requests:
-          cpu: "1"       # Update the resources to your need.
-          memory: "2Gi"  # Update the resources to your need.
-        limits:
-          cpu: "2"       # Update the resources to your need.
-          memory: "4Gi"  # Update the resources to your need.
-```
-
-### [Expand volume](volumeexpand.yaml)
-
-Volume expansion is the ability to increase the size of a Persistent Volume Claim (PVC) after it's created. It is introduced in Kubernetes v1.11 and goes GA in Kubernetes v1.24. It allows Kubernetes users to simply edit their PersistentVolumeClaim objects without requiring any downtime at all if possible.
-
-> [!NOTE]
-> Make sure the storage class you use supports volume expansion.
-
-Check the storage class with following command:
+<details open>
+<summary>Expected Output</summary>
 
 ```bash
-kubectl get storageclass
+NAME    VERSIONS            STATUS      AGE
+redis   7.2.7,7.2.4,7.0.6   Available   5d
 ```
 
-If the `ALLOWVOLUMEEXPANSION` column is `true`, the storage class supports volume expansion.
+</details>
 
-If you don't have a storage class that supports volume expansion, you can create a new one. Please refer to [CSI drivers](https://kubernetes-csi.github.io/docs/drivers.html) for more information.
+### Create Standalone Redis
 
-To increase size of volume storage with the Redis component in the cluster:
+To create a standalone redis:
 
 ```bash
-kubectl apply -f examples/redis/volumeexpand.yaml
+kubectl apply -f examples/redis/cluster-standalone.yaml
 ```
 
-Once you've done the change, check the `status.conditions` field of the PVC to see if the resize has completed.
+It creates one redis component with only one replicas.
 
-#### Volume expansion using Cluster API
-
-Alternatively, you may update the `spec.componentSpecs.volumeClaimTemplates.spec.resources.requests.storage` field to the desired size.
-
-```yaml
-# snippet of cluster.yaml
-apiVersion: apps.kubeblocks.io/v1
-kind: Cluster
-spec:
-  componentSpecs:
-    - name: redis
-      serviceVersion: "7.2.4"
-      replicas: 2
-      volumeClaimTemplates:
-        - name: data
-          spec:
-            storageClassName: "<you-preferred-sc>"
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: 30Gi  # specify new size, and make sure it is larger than the current size
-```
-
-### [Restart](restart.yaml)
-
-Restart the specified components in the cluster
-
-```bash
-kubectl apply -f examples/redis/restart.yaml
-```
-
-### [Stop](stop.yaml)
-
-Stop the cluster will release all the pods of the cluster, but the storage will be retained. It is useful when you want to save the cost of the cluster.
-
-To stop the all component (without specifying the component name) in the cluster:
-
-```bash
-kubectl apply -f examples/redis/stop.yaml
-```
-
-#### Stop using Cluster API
-
-Alternatively, you may stop the cluster by setting all `spec.componentSpecs.stop` field to `true`.
-
-```yaml
-# snippet of cluster.yaml
-apiVersion: apps.kubeblocks.io/v1
-kind: Cluster
-spec:
-  componentSpecs:
-    - name: redis
-      serviceVersion: "7.2.4"
-      stop: true  # set stop `true` to stop the component
-      replicas: 2
-      ...
-    - name: redis-sentinel
-      stop: true  # set stop `true` to stop the component
-      replicas: 3
-      ....
-```
-
-### [Start](start.yaml)
-
-Start the stopped cluster
-
-```bash
-kubectl apply -f examples/redis/start.yaml
-```
-
-#### Start using Cluster API
-
-Alternatively, you may start the cluster by setting all `spec.componentSpecs.stop` field to `false`.
-
-```yaml
-# snippet of cluster.yaml
-apiVersion: apps.kubeblocks.io/v1
-kind: Cluster
-spec:
-  componentSpecs:
-    - name: redis
-      serviceVersion: "7.2.4"
-      stop: false  # set to `false` (or remove this field) to start the component
-      replicas: 2
-    - name: redis-sentinel
-      stop: false  # set stop `true` to stop the component
-      replicas: 3
-      ....
-```
-
-### [Reconfigure](configure.yaml)
-
-A database reconfiguration is the process of modifying database parameters, settings, or configurations to improve performance, security, or availability. The reconfiguration can be either:
-
-- Dynamic: Applied without restart
-- Static: Requires database restart
-
-Reconfigure parameters with the specified components in the cluster:
-
-```bash
-kubectl apply -f examples/redis/configure.yaml
-```
-
-This example will change the `maxclients` to `10001` for the Redis component.
-`maxclients` in Redis specifies the maximum number of simultaneous client connections the server will accept. Once this limit is reached, Redis will start rejecting new connections until existing clients disconnect.
-
-> [!CAUTION]
-> It is defined as a static parameter, which means the Redis component will be restarted after the reconfiguration.
-
-To verify the reconfiguration, you can connect to the Redis pod and check the configuration with the following command:
-
-```bash
-reids> config get maxclients
-```
-
-And the output should be:
-
-```bash
-1) "maxclients"
-2) "10001"     # where 10001 is the new value set in the reconfiguration
-```
-
-### [Backup](backup.yaml)
-
-> [!IMPORTANT]
-> Before you start, please create a `BackupRepo` to store the backup data. Refer to [BackupRepo](../docs/create-backuprepo.md) for more details.
-
-You may find the supported backup methods in the `BackupPolicy` of the cluster, e.g. `redis-replication-redis-backup-policy` in this case, and find how these methods will be scheduled in the `BackupSchedule` of the cluster, e.g.. `redis-replication-redis-backup-schedule` in this case.
-
-To the the list of backup policies and schedules, you can use the following command:
-
-```bash
-kubectl get backuppolicy -n demo redis-replication-redis-backup-policy -oyaml | yq '.spec.backupMethods[].name'
-```
-
-And the output should be like:
-
-```yaml
-datafile  # for base backup
-aof       # for pitr
-volume-snapshot # for snapshot backup, make sure the storage class supports volume snapshot
-```
-
-#### [Full Backup](backup.yaml)
-
-To create a backup for the reids component in the cluster:
-
-```bash
-kubectl apply -f examples/redis/backup.yaml
-```
-
-It will trigger a backup operation for the Redis component using `redis-cli BGSAVE` command against one secondary pod.
-After the operation, you will see a `Backup` is created
-
-```bash
-kubectl get backup -n demo -l app.kubernetes.io/instance=redis-replication
-```
-
-Information, such as `path`, `timeRange` about the backup will be recorded into the `Backup` resource.
-
-#### Continuous Backup
-
-Redis Append Only Files(AOFs) record every write operation received by the server, in the order they were processed, which allows Redis to reconstruct the dataset by replaying these commands.
-KubeBlocks supports continuous backup for the Redis component by archiving Append-Only Files (AOF). It will process incremental AOF files, update base AOF file, purge expired files and save backup status (records metadata about the backup process, such as total size and timestamps, to the `Backup` resource).
-
-To create a continuous backup for the reids component, you should follow the steps below:
-
-1. set variable `aof-timestamp-enabled` to `yes`
-
-```bash
-kubectl apply -f examples/redis/reconfigure-aof.yaml
-```
-
-> [!IMPORTANT]
-> Once `aof-timestamp-enabled` is on, Redis will include timestamp in the AOF file.
-> It may have following side effects: storage overhead, performance overhead (write latency).
-> It is not recommended to enable this feature when you have high write throughput, or you have limited storage space.
-
-1. enable continuous backup
-
-update the `BackupSchedule` to enable the `aof` method.
-
-```yaml
-apiVersion: dataprotection.kubeblocks.io/v1alpha1
-kind: BackupSchedule
-metadata:
-  name: redis-replication-redis-backup-policy
-  namespace: demo
-spec:
-  backupPolicyName: redis-replication-redis-backup-policy
-  schedules:
-  - backupMethod: datafile
-    # ┌───────────── minute (0-59)
-    # │ ┌───────────── hour (0-23)
-    # │ │ ┌───────────── day of month (1-31)
-    # │ │ │ ┌───────────── month (1-12)
-    # │ │ │ │ ┌───────────── day of week (0-6) (Sunday=0)
-    # │ │ │ │ │
-    # 0 18 * * *
-    # schedule this job every day at 6:00 PM (18:00).
-    cronExpression: 0 18 * * * # update the cronExpression to your need
-    enabled: false # set to `true` to schedule base backup periodically
-    retentionPeriod: 7d # set the retention period to your need
-  - backupMethod: aof
-    cronExpression: 0 18 * * 0
-    enabled: true     # set this to `true` to enable continous backup
-    retentionPeriod: 7d
-  - backupMethod: volume-snapshot
-    cronExpression: 0 18 * * 0
-    enabled: false   # set to `true` to schedule base backup using volume snapshot periodically
-    retentionPeriod: 7d
-```
-
-#### Backup using Cluster API
-
-Alternatively, you may update `spec.backup` field to the desired backup method.
-
-```yaml
-# snippet of cluster.yaml
-apiVersion: apps.kubeblocks.io/v1
-kind: Cluster
-spec:
-  # Specifies the backup configuration of the Cluster.
-  backup:
-    cronExpression: 0 18 * * *
-    enabled: true     #  Specifies whether automated backup is enabled for the Cluster.
-    method: datafile  #  Specifies the backup method to use, as defined in backupPolicy
-    pitrEnabled: true #  Specifies whether to enable point-in-time recovery
-    retentionPeriod: 7d # set the retention period to your need
-    # Specifies the name of the BackupRepo to use for storing backups
-    # If not specified, the default BackupRepo will be used.
-    # `default` BackupRepo is the one annotated with `dataprotection.kubeblocks.io/is-default-repo=true`
-    repoName: kb-oss
-  componentSpecs:
-    - name: redis
-      serviceVersion: "7.2.4"
-      ...
-```
-
-### [Restore](restore.yaml)
-
-To restore a new cluster from a Backup:
-
-1. Get the list of accounts and their passwords from the backup:
-
-```bash
-kubectl get backup -n demo acmysql-cluster-backup -ojsonpath='{.metadata.annotations.kubeblocks\.io/encrypted-system-accounts}'
-```
-
-1. Update `examples/redis/restore.yaml` and set placeholder `<ENCRYPTED-SYSTEM-ACCOUNTS>` with your own settings and apply it.
-
-```bash
-kubectl apply -f examples/redis/restore.yaml
-```
-
-### Expose
-
-Expose a cluster with a new endpoint
-
-#### [Enable](expose-enable.yaml)
-
-```bash
-kubectl apply -f examples/redis/expose-enable.yaml
-```
-
-#### [Disable](expose-disable.yaml)
-
-```bash
-kubectl apply -f examples/redis/expose-disable.yaml
-```
-
-#### Expose SVC using Cluster API
-
-Alternatively, you may expose service by updating `spec.services`
-
-```yaml
-# snippet of cluster.yaml
-apiVersion: apps.kubeblocks.io/v1
-kind: Cluster
-spec:
-  # append service to the list
-  services:
-    # add annotation for cloud loadbalancer if
-    # services.spec.type is LoadBalancer
-    # here we use annotation for alibaba cloud for example
-  - annotations:
-      service.beta.kubernetes.io/alibaba-cloud-loadbalancer-address-type: internet
-    componentSelector: redis
-    name: redis-vpc
-    serviceName: redis-vpc
-    # optional. it specify defined role as selector for the service.
-    # onece specified, service will select and route traffic to Pods with the label
-    # "kubeblocks.io/role=<specified-role-name>".
-    # valid options are: [primary, secondary] for MySQL
-    roleSelector: primary
-    spec:  # defines the behavior of a K8s service.
-      ipFamilyPolicy: PreferDualStack
-      ports:
-      - name: tcp-redis
-        # port to expose
-        port: 6379
-        protocol: TCP
-        targetPort: redis
-      # Determines how the Service is exposed. Defaults to 'ClusterIP'.
-      # Valid options are [`ClusterIP`, `NodePort`, and `LoadBalancer`]
-      type: LoadBalancer
-  componentSpecs:
-    - name: redis
-      serviceVersion: "7.2.4"
-      ...
-```
-
-If the service is of type `LoadBalancer`, please add annotations for cloud loadbalancer depending on the cloud provider you are using. Here list annotations for some cloud providers:
-
-```yaml
-# alibaba cloud
-service.beta.kubernetes.io/alibaba-cloud-loadbalancer-address-type: "internet"  # or "intranet"
-
-# aws
-service.beta.kubernetes.io/aws-load-balancer-type: nlb  # Use Network Load Balancer
-service.beta.kubernetes.io/aws-load-balancer-internal: "true"  # or "false" for internet
-
-# azure
-service.beta.kubernetes.io/azure-load-balancer-internal: "true" # or "false" for internet
-
-# gcp
-networking.gke.io/load-balancer-type: "Internal" # for internal access
-cloud.google.com/l4-rbs: "enabled" # for internet
-```
-
-### Observability
-
-There are various ways to monitor the cluster. Here we use Prometheus and Grafana to demonstrate how to monitor the cluster.
-
-#### Installing the Prometheus Operator
-
-You may skip this step if you have already installed the Prometheus Operator.
-Or you can follow the steps in [How to install the Prometheus Operator](../docs/install-prometheus.md) to install the Prometheus Operator.
-
-#### [Create a Cluster](cluster.yaml)
-
-Create a new cluster with following command:
-
-> [!NOTE]
-> Make sure `spec.componentSpecs.disableExporter` is set to `false` when creating cluster.
-
-```yaml
-# snippet of cluster.yaml
-apiVersion: apps.kubeblocks.io/v1
-kind: Cluster
-spec:
-  componentSpecs:
-    - name: redis
-      serviceVersion: "7.2.4"
-      disableExporter: false # set to `false` to enable exporter
-```
-
-```bash
-kubectl apply -f examples/redis/cluster.yaml
-```
-
-When the cluster is running, each POD should have a sidecar container, named `metrics` running the postgres-exporter.
-
-#### Create PodMonitor
-
-##### Step 1. Query ScrapePath and ScrapePort
-
-You can retrieve the `scrapePath` and `scrapePort` from pod's exporter container.
-
-```bash
-get po redis-replication-redis-0 -oyaml | yq '.spec.containers[] | select(.name=="metrics") | .ports'
-```
-
-And the expected output is like:
-
-```text
-- containerPort: 9121
-  name: http-metrics
-  protocol: TCP
-```
-
-Or you may check the `scrapePath` and `scrapePort` from the headless service of the Redis component.
-
-And the expected output is like:
-
-```text
-monitor.kubeblocks.io/path: /metrics
-monitor.kubeblocks.io/port: "9121"
-monitor.kubeblocks.io/scheme: http
-```
-
-Or you may check the `scrapePath` and `scrapePort` from the `ComponentDefinition` of the Redis component.
-
-1. check which container is used for the exporter
-
-```bash
-kubectl get cmpd <redis-cmpd-name> -oyaml | yq '.spec.exporter'
-```
-
-And the expected output is like:
-
-```text
-containerName: metrics  # which contaiiner for the exporter
-scrapePath: /metrics    # scrape path
-scrapePort: http-metrics # scrapte port
-```
-
-##### Step 2. Create PodMonitor
-
-Apply the `PodMonitor` file to monitor the cluster:
-
-```bash
-kubectl apply -f examples/redis/pod-monitor.yaml
-```
-
-##### Step 3. Accessing the Grafana Dashboard
-
-Login to the Grafana dashboard and import the dashboard.
-
-There is a pre-configured dashboard for PostgreSQL under the `Redis` folder in the Grafana dashboard. And more dashboards can be found in the Grafana dashboard store[^5].
-
-> [!NOTE]
-> Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
-
-Sometimes the default dashboard may not work as expected, you may need to adjust the dashboard to match the labels the metrics are scraped with, in particular, the `job` label. In our case, the `job` variable should be set to `monitoring/redis-replication-pod-monitor` in the dashboard.
-
-### Delete
-
-If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster:
-
-```bash
-kubectl patch cluster -n demo redis-replication -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
-
-kubectl delete cluster -n demo redis-replication
-```
-
-### More Examples to Create a Redis
-
-Redis has various deployment topology, such as standalone, replication, sharding, etc. Here are some examples to create different Redis clusters.
-
-#### Create Redis with Proxy
+### Create Redis with Proxy
 
 To create a redis with a proxy (Twemproxy) in front of it:
 
@@ -658,7 +167,7 @@ kind: Cluster
 spec:
   terminationPolicy: Delete
   clusterDef: redis
-  topology: replication-twemproxy  # set topology to standalone
+  topology: replication-twemproxy
   componentSpecs:
   - name: redis
   - name: redis-sentinel
@@ -667,7 +176,7 @@ spec:
     resources:
 ```
 
-#### Create Redis with Multiple Shards
+### Create Redis with Multiple Shards
 
 To create a redis sharding cluster (An official distributed Redis)  with 3 shards and 2 replica for each shard:
 
@@ -703,13 +212,1005 @@ spec:
   ...
 ```
 
-In this example we demonstrate how to create a Redis cluster with multiple shards, and how to override the service type of the `redis-advertised` service to `NodePort`.
+In this example we demonstrate how to create a Redis Cluster with multiple shards, and how to override the service type of the `redis-advertised` service to `NodePort`.
 
 The service `redis-advertised` is defined in `ComponentDefinition` and will used to parse the advertised endpoints of the Redis pods.
 
-By default, the service type is `NodePort`. If you want to expose the service to the outside of the cluster, you can override the service type to `NodePort` or `LoadBalancer` depending on your need.
+By default, the service type is `NodePort`. If you want to expose the service, you can override the service type to `NodePort` or `LoadBalancer` depending on your need.
 
 Similarly to add or remove shards, you can update the `shardings` field in the `Cluster` resource.
+
+```yaml
+# snippet of cluster.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+spec:
+  shardings:
+  - name: shard
+    shards: 3 # increase or decrease the number of shards.
+    template:
+      name: redis
+      componentDef: redis-cluster-7
+      replicas: 2
+      serviceVersion: 7.2.4
+```
+
+### Cluster Restart
+
+Restart Redis component only,
+
+```bash
+kubectl apply -f examples/redis/restart.yaml
+```
+
+This operation restart only one component (Redis), as specified in
+
+```yaml
+  restart:
+  - componentName: redis
+```
+
+You may list more components as needed.
+
+This operation can only be performed via `OpsRequest`, and there is no corresponding CLUSTER API operation - because restart is not a declaration but an action.
+
+> [!NOTE]
+> The restart follows a safe sequence:
+>
+> 1. All secondary replicas are restarted first
+> 2. Primary replica is restarted last
+> 3. Transfer leadership to a healthy secondary before restarting Primary replica
+> This ensures continuous availability during the restart process.
+
+### Cluster Stop and Start
+
+#### Stopping the Cluster
+
+Gracefully stop the cluster to conserve resources while retaining all data (PVC). It is ideal for cost savings during inactive periods.
+
+**Stop via OpsRequest**
+
+```bash
+kubectl apply -f examples/redis/stop.yaml
+```
+
+> [!NOTE]
+> When stopped:
+>
+> - All compute resources are released
+> - Persistent volumes remain intact
+> - No data is lost
+
+**Stop via Cluster API**
+
+Update the cluster spec directly:
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+spec:
+  componentSpecs:
+    - name: redis
+      stop: true  # Set to true to stop the component
+      replicas: 2
+    - name: redis-sentinel
+      stop: true  # Set to true to stop the component
+      replicas: 3
+```
+
+#### Starting the Cluster
+
+Start the cluster from its stopped state:
+
+**Start via OpsRequest**
+
+```bash
+kubectl apply -f examples/redis/start.yaml
+```
+
+**Start via Cluster API**
+
+Update the cluster spec directly:
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+spec:
+  componentSpecs:
+    - name: redis
+      stop: false  # Set to false to start the component or remove the field (default to false)
+      replicas: 2
+    - name: redis-sentinel
+      stop: false  # Set to false to start the component or remove the field (default to false)
+      replicas: 3
+```
+
+## Scaling Operations
+
+### Horizontal Scaling
+
+#### Scale Out Operation
+
+Add a new replica to the cluster:
+
+```bash
+kubectl apply -f examples/redis/scale-out.yaml
+```
+
+To Check detailed operation status
+
+```bash
+kubectl describe ops -n demo redis-scale-out
+```
+
+**Expected Workflow**:
+
+1. New pod is provisioned with `Pending` status
+2. Data is cloned from primary to new replica once replication-ship is set
+3. New pod transitions to `Running` with `secondary` role
+4. Cluster status changes from `Updating` to `Running`
+
+> [!IMPORTANT]
+> Scaling considerations:
+>
+> - Scaling operations are sequential - one replica at a time
+> - Data cloning may take time depending on dataset size
+
+To verify the new replica's status:
+
+```bash
+kubectl get pods -n demo -l app.kubernetes.io/instance=redis-replication -L kubeblocks.io/role
+```
+
+### Scale In Operation
+
+> [!NOTE]
+> If the replica being scaled-in happens to be the primary replicas, KubeBlocks will trigger a SwitchOver action (if defined).
+
+#### Standard Scale In Operation
+
+Remove a replica from the cluster:
+
+```bash
+kubectl apply -f examples/redis/scale-in.yaml
+```
+
+Check detailed operation status:
+
+```bash
+kubectl describe ops -n demo redis-scale-in
+```
+
+**Expected Workflow**:
+
+1. Selected replica (the one with the largest ordinal) is removed
+2. Pod is terminated gracefully
+3. Cluster status changes from `Updating` to `Running`
+
+**Verification**:
+
+```bash
+kubectl get pods -n demo -l app.kubernetes.io/instance=redis-replication
+```
+
+#### Targeted Instance Scale In
+
+For cases where you need to take a specific problematic replica offline for maintenance:
+
+```bash
+kubectl apply -f examples/redis/scale-in-specified-pod.yaml
+```
+
+Check detailed operation status:
+
+```bash
+kubectl describe ops -n demo redis-scale-in-specified-pod
+```
+
+**Expected Workflow**:
+
+1. Selected replica (specified in `onlineInstancesToOffline`) is removed
+2. Pod is terminated gracefully
+3. Cluster status changes from `Updating` to `Running`
+4. cluster spec has been updated to:
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+spec:
+  componentSpecs:
+    name: redis
+    offlineInstances:
+      - redis-replication-redis-1  # the instance name specified in opsrequest
+    replicas: 1  # replicas reduced by one at the same time.
+```
+
+#### Horizontal Scaling via Cluster API
+
+Directly update replica count via Cluster API:
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+spec:
+  componentSpecs:
+    - name: redis
+      replicas: 2  # Adjust replicas for scaling in and out.
+      offlineInstances:
+        - redis-replication-redis-1 # for targetd-instance scale-in scenario, default to empty list.
+```
+
+### Vertical Scaling
+
+Vertical scaling involves increasing or decreasing resources to an existing database cluster.
+Resources that can be scaled include:
+
+- CPU cores/processing power
+- Memory (RAM)
+
+#### Vertical Scaling via OpsRequest API
+
+Perform vertical scaling on Redis Component using a operation request:
+
+```bash
+kubectl apply -f examples/redis/verticalscale.yaml
+```
+
+**Expected Workflow**:
+
+1. Secondaries are updated first (one at a time)
+1. Primary is updated last after followers are healthy
+1. Cluster status transitions from `Updating` to `Running`
+
+#### Vertical Scaling via Cluster API
+
+Directly modify cluster specifications for vertical scaling:
+
+```yaml
+# snippet of cluster.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+spec:
+  componentSpecs:
+    - name: redis
+      resources:
+        requests:
+          cpu: "1"       # CPU cores (e.g. "1", "500m")
+          memory: "2Gi"  # Memory (e.g. "2Gi", "512Mi")
+        limits:
+          cpu: "2"       # Maximum CPU allocation
+          memory: "4Gi"  # Maximum memory allocation
+```
+
+**Key Considerations**:
+
+- Ensure sufficient cluster capacity exists
+- Resource changes may trigger pod restarts and parameters reconfiguration
+- Monitor resource utilization after changes
+
+## Reconfiguration Management
+
+### Parameter Types
+
+A database reconfiguration is the process of modifying database parameters, settings, or configurations to improve performance, security, or availability.
+
+| Type | Restart Required | Scope |
+|------|------------------|-------|
+| **Dynamic** | No | Immediate effect |
+| **Static** | Yes | After restart |
+
+> [!IMPORTANT]
+> So far, Redis Addons does not implement any dynamic reload action for `Dynamic Parameters`, thus changes on any parameters will cause a restart.
+
+### Reconfiguration
+
+1. **Apply Changes**:
+
+```bash
+kubectl apply -f examples/redis/reconfigure-aof.yaml
+```
+
+2. **Monitor Progress**:
+
+```bash
+kubectl describe ops redis-reconfiguring -n demo  # check opsrequest progress
+kubectl describe parameter redis-reconfiguring -n demo  # check parameters reconfigurion details
+```
+
+3. **Verify Changes**:
+
+```sql
+-- login to redis and check configs
+127.0.0.1:6379> CONFIG GET aof-timestamp-enabled
+1) "aof-timestamp-enabled"
+2) "yes"
+```
+
+> [!IMPORTANT]
+>
+> - Static changes trigger rolling restarts
+> - Monitor cluster health during reconfiguration
+
+4. **Trouble Shooting**
+
+```bash
+kubectl describe ops redis-reconfiguring -n demo  # check opsrequest progress
+kubectl describe parameter redis-reconfiguring -n demo  # check parameters reconfigurion details
+```
+
+## High Availability
+
+### Switchover (Planned Primary Transfer)
+
+SwitchOver is a controlled operation that safely transfers leadership while maintaining:
+
+- Continuous availability
+- Zero data loss
+- Minimal performance impact
+
+<details>
+<summary>Developer: Switchover Actions</summary>
+KubeBlocks executes SwitchOver actions defined in `componentdefinition.spec.lifecycleActions.switchover`.
+
+To get the SwitchOver actions for Redis:
+
+```bash
+kubectl get cmpd redis-7-1.0.0-alpha.0 -oyaml | yq '.spec.lifecycleActions.switchover'
+```
+
+</details>
+
+#### Prerequisites
+
+- Cluster must be in `Running` state
+- No ongoing maintenance operations
+
+#### Switchover Types
+
+1. **Automatic Switchover** (No preferred candidate):
+
+   ```bash
+   kubectl apply -f examples/redis/switchover.yaml
+   ```
+
+2. **Targeted Switchover** (Specific instance):
+
+   ```bash
+   kubectl apply -f examples/redis/switchover-specified-instance.yaml
+   ```
+
+   Update `opsrequest.spec.switchover.candidateName` as needed
+
+#### Monitoring Switchover
+
+1. **Track Progress**:
+
+   ```bash
+   kubectl get ops -n demo -w
+   kubectl describe ops <switchover-name> -n demo
+   ```
+
+2. **Verify Completion**:
+
+   ```bash
+   kubectl get pods -n demo -L kubeblocks.io/role
+   ```
+
+#### Troubleshooting
+
+- **Switchover Stuck**:
+
+  ```bash
+  kubectl logs -n demo <pod-name> -c kbagent # check on primary replica
+  kubectl get events -n demo --field-selector involvedObject.name=redis-replication
+  ```
+
+## Storage Operations
+
+### Prerequisites
+
+Volume expansion is the ability to increase the size of a Persistent Volume Claim (PVC) after it's created. It is introduced in Kubernetes v1.11 and goes GA in Kubernetes v1.24. It allows Kubernetes users to simply edit their PersistentVolumeClaim objects without requiring any downtime at all if possible.
+
+> [!NOTE]
+> Make sure the storage class you used when creating clusters supports volume expansion.
+
+Check the storage class with following command:
+
+```bash
+kubectl get storageclass
+```
+
+If the `ALLOWVOLUMEEXPANSION` column is `true`, the storage class supports volume expansion.
+
+### Volume Expansion
+
+#### Volume Expansion via OpsRequest API
+
+To increase size of volume storage with the specified components in the cluster
+
+```bash
+kubectl apply -f examples/redis/volumeexpand.yaml
+```
+
+After the operation, you will see the volume size of the specified component is increased to `30Gi` in this case. Once you've done the change, check the `status.conditions` field of the PVC to see if the resize has completed.
+
+```bash
+kubectl get pvc -l app.kubernetes.io/instance=redis-replication -n demo
+```
+
+#### Volume Expansion via Cluster API
+
+Alternatively, you may update the `spec.componentSpecs.volumeClaimTemplates.spec.resources.requests.storage` field to the desired size.
+
+```yaml
+# snippet of cluster.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+spec:
+  componentSpecs:
+    - name: redis
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: "<STORAGE_CLASS_NAME>"
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 30Gi  # specify new size, and make sure it is larger than the current size
+```
+
+> [!NOTE]
+> If the storage class you use does not support volume expansion, this OpsRequest fails fast with information like:
+> `storageClass: [STORAGE_CLASS_NAME] of volumeClaimTemplate: [VOLUME_NAME]] not support volume expansion in component [COMPONENT_NAME]`
+
+## Networking
+
+### Service Exposure
+
+1. **Choose Exposure Method**:
+   - OpsRequest API
+   - Cluster API
+
+2. **Configure Service Annotation** (if using LoadBalancer):
+   - Add appropriate annotations
+
+#### Expose SVC via OpsRequest API
+
+- Enable Service
+
+```bash
+kubectl apply -f examples/redis/expose-enable.yaml
+```
+
+- Disable Service
+
+```bash
+kubectl apply -f examples/redis/expose-disable.yaml
+```
+
+#### Expose SVC via Cluster API
+
+Alternatively, you may expose service by adding a new service to cluster's `spec.services`:
+
+```yaml
+# snippet of cluster.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+spec:
+  services:
+    - annotations:
+        service.beta.kubernetes.io/aws-load-balancer-type: nlb  # Use Network Load Balancer
+        service.beta.kubernetes.io/aws-load-balancer-internal: "true"  # or "false" for internet
+      componentSelector: redis
+      name: redis-vpc
+      serviceName: redis-vpc
+      roleSelector: primary  # [primary, secondary] for Redis
+      spec:
+        ipFamilyPolicy: PreferDualStack
+        ports:
+        - name: redis
+          port: 3306
+          protocol: TCP
+          targetPort: redis
+        type: LoadBalancer  # [ClusterIP, NodePort, LoadBalancer]
+```
+
+#### Cloud Provider Load Balancer Annotations
+
+```yaml
+# alibaba cloud
+service.beta.kubernetes.io/alibaba-cloud-loadbalancer-address-type: "internet"  # or "intranet"
+
+# aws
+service.beta.kubernetes.io/aws-load-balancer-type: nlb  # Use Network Load Balancer
+service.beta.kubernetes.io/aws-load-balancer-internal: "true"  # or "false" for internet
+
+# azure
+service.beta.kubernetes.io/azure-load-balancer-internal: "true" # or "false" for internet
+
+# gcp
+networking.gke.io/load-balancer-type: "Internal" # for internal access
+cloud.google.com/l4-rbs: "enabled" # for internet
+```
+
+## Data Protection Operations
+
+### Prerequisites
+
+1. **Backup Repository**:
+   - Configured `BackupRepo` ([Setup Guide](../docs/create-backuprepo.md))
+   - Network connectivity between cluster and repo, `BackupRepo` status is `Ready`
+
+2. **Cluster State**:
+   - Cluster must be in `Running` state
+   - No ongoing operations (scaling, upgrades etc.)
+
+### Backup Operations
+
+#### Backup Configuration
+
+1. **View default Backup Policies**:
+
+   ```bash
+   kubectl get backuppolicy -n demo -l app.kubernetes.io/instance=redis-replication
+   ```
+
+2. **View default BackupSchedule**:
+
+   ```bash
+   kubectl get backupschedule -n demo -l app.kubernetes.io/instance=redis-replication
+   ```
+
+#### Full Backup: datafile
+
+The `datafile` method uses redis `BGSAVE` command to perform a full backup and  upload backup file using `datasafed push`
+
+1. **On-Demand Backup**:
+
+   ```bash
+   kubectl apply -f examples/redis/backup.yaml
+   ```
+
+2. **Monitor Progress**:
+
+   ```bash
+   kubectl get backup -n demo -w
+   kubectl describe backup <backup-name> -n demo
+   ```
+
+3. **Verify Completion**:
+   - Check status is `Completed`
+   - Verify backup size matches expectations
+   - Validate backup metadata
+
+#### Continuous Backup: aof
+
+Redis Append Only Files(AOFs) record every write operation received by the server, in the order they were processed, which allows Redis to reconstruct the dataset by replaying these commands.
+KubeBlocks supports continuous backup for the Redis component by archiving Append-Only Files (AOF). It will process incremental AOF files, update base AOF file, purge expired files and save backup status (records metadata about the backup process, such as total size and timestamps, to the `Backup` resource).
+
+Before enabling a continuous backup, you must set variable `aof-timestamp-enabled` to `yes`, as introduced in [Reconfiguration](#reconfiguration) section.
+
+```bash
+kubectl apply -f examples/redis/reconfigure-aof.yaml
+```
+
+> [!IMPORTANT]
+> Once `aof-timestamp-enabled` is on, Redis will include timestamp in the AOF file.
+> It may have following side effects: storage overhead, performance overhead (write latency).
+> It is not recommended to enable this feature when you have high write throughput, or you have limited storage space.
+
+#### Scheduled Backups
+
+Update `BackupSchedule` to schedule enable(`enabled`) backup methods and set the time (`cronExpression`) to your need:
+
+```yaml
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: BackupSchedule
+spec:
+  backupPolicyName: redis-replication-redis-backup-policy
+  schedules:
+  - backupMethod: datafile
+    # ┌───────────── minute (0-59)
+    # │ ┌───────────── hour (0-23)
+    # │ │ ┌───────────── day of month (1-31)
+    # │ │ │ ┌───────────── month (1-12)
+    # │ │ │ │ ┌───────────── day of week (0-6) (Sunday=0)
+    # │ │ │ │ │
+    # 0 18 * * *
+    # schedule this job every day at 6:00 PM (18:00).
+    cronExpression: 0 18 * * * # update the cronExpression to your need
+    enabled: true # set to `true` to schedule base backup periodically
+    retentionPeriod: 7d # set the retention period to your need
+  - backupMethod: aof
+    cronExpression: '*/30 * * * *'
+    enabled: true   # set to `true` to enable continuous backup
+    name: aof
+    retentionPeriod: 8d # by default, retentionPeriod of continuous backup is 1d more than that of a full backup.
+```
+
+#### Troubleshooting
+
+- **Backup Stuck**:
+
+  ```bash
+  kubectl describe backup <name> -n demo  # describe backup
+  kubectl get po -n demo -l app.kubernetes.io/instance=redis-replication,dataprotection.kubeblocks.io/backup-policy=redis-replication-redis-backup-policy # get list of pods working for Backups
+  kubectl logs -n demo <backup-pod> # check backup pod logs
+  ```
+
+### Restore Operations
+
+#### Prerequisites
+
+1. **Backup Verification**:
+   - Full Backup must be in `Completed` state
+   - Continuous Backup must be in `Completed` or `Running` phase, with a valid `timeRange` in status.
+
+2. **Cluster Resources**:
+   - Sufficient CPU/memory for new cluster
+   - Available storage capacity
+   - Network connectivity between backup repo and new cluster
+
+3. **Credentials**:
+   - System account encryption keys
+
+#### Restore from a Full Backup
+
+1. **Identify Backup**:
+
+   ```bash
+   kubectl get backup -n demo -l dataprotection.kubeblocks.io/backup-type=Full,app.kubernetes.io/instance=redis-replication # get the list of full backups
+   ```
+
+2. **Prepare Credentials**:
+
+   ```bash
+   # Get encrypted system accounts
+    kubectl get backup <backupName> -n demo -ojson | jq -r '.metadata.annotations | ."kubeblocks.io/encrypted-system-accounts" | fromjson .redis | tojson |gsub("\""; "\\\"")'
+   ```
+
+3. **Configure Restore**:
+   Update `examples/redis/restore.yaml` with:
+   - Backup name and namespace: from step 1
+   - Encrypted system accounts: from step 2
+   - Target cluster configuration
+
+4. **Execute Restore**:
+
+   ```bash
+   kubectl apply -f examples/redis/restore.yaml
+   ```
+
+5. **Monitor Progress**:
+
+   ```bash
+   # Watch restore status
+   kubectl get restore -n demo -w
+
+   # View detailed logs
+   kubectl get cluster -n demo -w
+   ```
+
+#### Point-in-time Restore
+
+1. **Identify Continuous Backup**
+
+  Check Continuous Backup info:
+
+  ```bash
+  # expect EXACTLY ONE continuous backup
+  kubectl get backup -n demo -l dataprotection.kubeblocks.io/backup-type=Continuous,app.kubernetes.io/instance=redis-replication  # get the list of Continuous backups
+  ```
+
+  Check `timeRange`:
+
+  ```bash
+  kubectl -n demo get backup <backup-name> -oyaml | yq '.status.timeRange' # get a valid time range.
+  ```
+
+  expected output likes:
+
+  ```text
+  end: "2025-05-10T04:47:16Z"
+  start: "2025-05-10T04:44:13Z"
+  ```
+
+  Check the list of Full Backups info:
+
+  ```bash
+  # expect one or more Full backups
+  kubectl get backup -n demo -l dataprotection.kubeblocks.io/backup-type=Full,app.kubernetes.io/instance=redis-replication  # get the list of Full backups
+  ```
+
+> [!IMPORTANT]
+> Make sure this is a full backup meets the condition:
+>
+> its stopTime/completionTimestamp must **AFTER** Continuous backup's startTime.
+>
+> KubeBlocks will automatically pick the latest completed Full backup as the base backup.
+
+2. **Prepare Credentials**:
+
+  ```bash
+  # Get encrypted system accounts
+  kubectl get backup <backup-name> -n demo -ojson | jq -r '.metadata.annotations | ."kubeblocks.io/encrypted-system-accounts" | fromjson .redis | tojson |gsub("\""; "\\\"")'
+  ```
+
+3. **Configure Restore**:
+   Update `examples/redis/restore-pitr.yaml` with:
+   - Backup name and namespace: from step 1
+   - Point time: falls in `timeRange` from Step 1
+   - Encrypted system accounts: from step 2
+   - Target cluster configuration
+
+4. **Execute Restore**:
+
+   ```bash
+   kubectl apply -f examples/redis/restore-pitr.yaml
+   ```
+
+5. **Monitor Progress**:
+
+   ```bash
+   # Watch restore status
+   kubectl get restore -n demo -w
+
+   # View detailed logs
+   kubectl get cluster -n demo -w
+   ```
+
+> [!NOTE]
+> Restored Cluster is not necessary of the same resources/replicas/storage class/storage size as the one restored from.
+
+## Monitoring & Observability
+
+### Prerequisites
+
+1. **Prometheus Operator**: Required for metrics collection
+   - Skip if already installed
+   - Install via: [Prometheus Operator Guide](../docs/install-prometheus.md)
+
+2. **Access Credentials**: Ensure you have:
+   - `kubectl` access to the cluster
+   - Grafana admin privileges (for dashboard import)
+
+3. **Cluster created with Exporter enabled**
+    - create a Redis Cluster with exporter running as sidecar (`disableExporter: false`)
+    - Skip if already created
+
+### Metrics Collection Setup
+
+#### 1. Configure PodMonitor
+
+1. **Get Exporter Details**:
+
+   ```bash
+   kubectl get po -n demo redis-replication-redis-0 -oyaml |  yq '.spec.containers[] | select(.name=="metrics") | .ports'
+   ```
+
+  <details open>
+  <summary>Expected Output:</summary>
+
+   ```text
+  - containerPort: 9121
+    name: http-metrics
+    protocol: TCP
+   ```
+
+  </details>
+
+2. **Verify Metrics Endpoint**:
+
+   ```bash
+   kubectl -n demo exec -it pods/redis-replication-redis-0 -c metrics -- \
+     curl -s http://127.0.0.1:9121/metrics | head -n 50
+   ```
+
+3. **Apply PodMonitor**:
+
+   ```bash
+   kubectl apply -f examples/redis/pod-monitor.yaml
+   ```
+
+#### 2. Grafana Dashboard Setup
+
+1. **Import Dashboard**:
+   - URL: [Redis Dashboard](https://raw.githubusercontent.com/apecloud/kubeblocks-addons/refs/heads/main/addons/redis/dashboards/redis.json)
+
+2. **Verification**:
+   - Confirm metrics appear in Grafana within 2-5 minutes
+   - Check for "UP" status in Prometheus targets
+
+### Troubleshooting
+
+- **No Metrics**: check Prometheus
+
+  ```bash
+  kubectl get pods -n monitoring -l app.kubernetes.io/name=prometheus
+  kubectl logs -n monitoring <prometheus-pod-name> -c prometheus
+  ```
+
+- **Dashboard Issues**: check indicator labels and dashboards
+  - Verify Grafana DataSource points to correct Prometheus instance
+  - Check for template variable mismatches
+
+## Cleanup
+
+To permanently delete the cluster and all associated resources:
+
+1. First modify the termination policy to ensure all resources are cleaned up:
+
+```bash
+# Set termination policy to WipeOut (deletes all resources including PVCs)
+kubectl patch cluster -n demo redis-replication \
+  -p '{"spec":{"terminationPolicy":"WipeOut"}}' \
+  --type="merge"
+```
+
+2. Verify the termination policy was updated:
+
+```bash
+kubectl get cluster -n demo redis-replication -o jsonpath='{.spec.terminationPolicy}'
+```
+
+3. Delete the cluster:
+
+```bash
+kubectl delete cluster -n demo redis-replication
+```
+
+> [!WARNING]
+> This operation is irreversible and will permanently delete:
+>
+> - All database pods
+> - Persistent volumes and claims
+> - Services and other cluster resources
+
+<details open>
+<summary>How to set a proper `TerminationPolicy`</summary>
+
+For more details you may use following command
+
+```bash
+kubectl explain cluster.spec.terminationPolicy
+```
+
+| Policy            | Description                                                                                                                                               |
+|-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `DoNotTerminate`  | Prevents deletion of the Cluster. This policy ensures that all resources remain intact.                                                                   |
+| `Delete`          | Deletes all runtime resources belonging to the Cluster.                                                                                                   |
+| `WipeOut`         | An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss. |
+
+</details>
+
+## Appendix
+
+### Connecting to Redis
+
+To connect to the Redis cluster, you can:
+
+- port forward the Redis service to your local machine:
+
+```bash
+kubectl port-forward svc/redis-replication-redis 6379:6379 -n demo
+```
+
+- or expose the Redis service to the internet, as mentioned in the [Networking](#networking) section.
+
+Then you can connect to the Redis cluster with the following command:
+
+```bash
+redis-cli -h <endpoint> -p 6379 -a <defaultUserPasswd>
+```
+
+and credentials can be found in the `secret` resource:
+
+```bash
+userName=$(kubectl get secret -n demo redis-replication-redis-account-default -ojsonpath='{.data.username}' | base64 -d)
+defaultUserPasswd=$(kubectl get secret -n demo redis-replication-redis-account-default -ojsonpath='{.data.password}' | base64 -d)
+```
+
+#### Why Redis Sentinel starts before Redis
+
+Redis Sentinel is a high availability solution for Redis. It provides monitoring, notifications, and automatic failover for Redis instances.
+
+Each Redis replica, from the Redis component, upon startup, will connect to the Redis Sentinel instances to get the current leader and follower information. It needs to determine:
+
+- Whether it should act as the primary (master) node.
+- If not, which node is the current primary to replicate from.
+
+In more detail, each Redis replica will:
+
+1. Check for Existing Primary Node
+    - Queries Redis Sentinel to find out if a primary node is already elected.
+    - Retrieve the primary's address and port.
+1. Initialize as Primary if Necessary
+    - If no primary is found (e.g., during initial cluster setup), it configures the current Redis instance to become the primary.
+    - Updates Redis configuration to disable replication.
+1. Configure as Replica if Primary Exists
+    - If a primary is found, it sets up the current Redis instance as a replica.
+    - Updates the Redis configuration with the `replicaof` directive pointing to the primary's address and port.
+    - Initiates replication to synchronize data from the primary.
+
+KubeBlocks ensures that Redis Sentinel starts first to provide the necessary information for the Redis replicas to initialize correctly. Such dependency is well-expressed in the KubeBlocks CRD `ClusterDefinition` ensuring the correct startup order.
+
+More details on how components for the `replication` topology are started, upgraded can be found in:
+
+```bash
+kubectl get cd redis -oyaml | yq '.spec.topologies[] | select(.name=="replication") | .orders'
+```
+
+### How to override default Service Type
+
+There are cases when default service type does not meet you need. To override these default service's types, you may :
+
+1. check the list of services defined for each component
+
+```bash
+kubectl get cmpd redis-cluster-7-1.0.0-alpha.0 -oyaml | yq '.spec.services'
+```
+
+<details open>
+<summary>Expected Output</summary>
+
+In redis cluster, this is a per-pod service and will be used to parse advertised endpoints
+
+```yaml
+- disableAutoProvision: true  # disabled by default
+  name: redis-advertised
+  podService: true            # podService: true  means this is a per-pod svc
+  serviceName: redis-advertised
+  spec:
+    ports:
+      - name: redis-advertised
+        port: 6379
+        protocol: TCP
+        targetPort: redis-cluster
+      - name: advertised-bus
+        port: 16379
+        protocol: TCP
+        targetPort: cluster-bus
+    type: NodePort           # default service type is NodePort
+```
+
+</details>
+
+To override this service type when creating cluster, you may override service by `name`:
+
+```yaml
+# snippet of cluster.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+spec:
+  shardings:
+  - name: shard
+    shards: 3  # set the desired number of shards.
+    template:
+      name: redis
+      componentDef: redis-cluster-7
+      replicas: 2 # set the desired number of replicas for each shard.
+      serviceVersion: 7.2.4
+      # Component-level services override services defined in
+      # referenced ComponentDefinition and expose
+      # endpoints that can be accessed by clients
+      # This example explicitly override the svc `redis-advertised` to use the LoadBalancer
+      services:
+      - name: redis-advertised # This is a per-pod svc, and will be used to parse advertised endpoints
+        podService: true
+        #  - NodePort
+        #  - LoadBalancer
+        serviceType: LoadBalancer
+  ...
+```
+
+In this example we demonstrate how to create a Redis Cluster with multiple shards, and how to override the service type of the `redis-advertised` service to `NodePort`.
+
+The service `redis-advertised` is defined in `ComponentDefinition` and will used to parse the advertised endpoints of the Redis pods.
+
+By default, the service type is `NodePort`. If you want to expose the service, you can override the service type to `NodePort` or `LoadBalancer` depending on your need.
+
+### How to Scale Shards
 
 ```yaml
 # snippet of cluster.yaml
@@ -727,7 +1228,18 @@ spec:
       stop: false # set to `true` to stop all components
 ```
 
-## Reference
+### List of K8s Resources created when creating an Redis Cluster
+
+To get the full list of associated resources created by KubeBlocks for given cluster:
+
+```bash
+kubectl get cmp,its,po -l app.kubernetes.io/instance=<CLUSTER_NAME> -n demo # cluster and worload
+kubectl get backuppolicy,backupschedule,backup -l app.kubernetes.io/instance=<CLUSTER_NAME> -n demo # data protection resources
+kubectl get componentparameter,parameter -l app.kubernetes.io/instance=<CLUSTER_NAME> -n demo # configuration resources
+kubectl get opsrequest -l app.kubernetes.io/instance=<CLUSTER_NAME> -n demo # opsrequest resources
+kubectl get svc,secret,cm,pvc -l app.kubernetes.io/instance=<CLUSTER_NAME> -n demo # k8s native resources
+```
+
+## References
 
 [^1]: Redis Sentinel: <https://redis.io/docs/latest/operate/oss_and_stack/management/sentinel/>
-[^5]: Grafana Dashboard Store: <https://grafana.com/grafana/dashboards/>

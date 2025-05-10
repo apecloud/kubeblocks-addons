@@ -6,7 +6,7 @@ metadata:
 spec:
   terminationPolicy: Delete
   clusterDef: redis
-  topology: replication-twemproxy  # set topology to standalone
+  topology: replication-twemproxy  # set topology to replication-twemproxy
   componentSpecs:
   - name: redis
     replicas: 2
