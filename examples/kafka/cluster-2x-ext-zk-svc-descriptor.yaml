@@ -60,7 +60,7 @@ spec:
                 storage: 20Gi
         - name: metadata
           spec:
-            storageClassName: null
+            storageClassName:
             accessModes:
               - ReadWriteOnce
             resources:

@@ -1,16 +1,16 @@
 apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
-  name: kafka-combined-scale-in
+  name: kafka-separated-scale-in
   namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: kafka-combined-cluster
+  clusterName: kafka-separated-cluster
   type: HorizontalScaling
   # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
   horizontalScaling:
     # Specifies the name of the Component.
-  - componentName: kafka-combine
+  - componentName: kafka-broker
     # Specifies the replica changes for scaling in components
     scaleIn:
       # Specifies the replica changes for the component.
