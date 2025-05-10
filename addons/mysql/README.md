@@ -1180,7 +1180,7 @@ spec:
 
    ```bash
    # Get encrypted system accounts
-    kubectl get backup <backupName> -n demo -ojson | jq -r '.metadata.annotations | ."kubeblocks.io/encrypted-system-accounts" | fromjson .mysql | tojson |gsub("\""; "\\"")'
+    kubectl get backup <backupName> -n demo -ojson | jq -r '.metadata.annotations | ."kubeblocks.io/encrypted-system-accounts" | fromjson .mysql | tojson |gsub("\""; "\\\"")'
    ```
 
 3. **Configure Restore**:
@@ -1284,7 +1284,7 @@ spec:
 
   ```bash
   # Get encrypted system accounts
-  kubectl get backup <backup-name> -n demo -ojson | jq -r '.metadata.annotations | ."kubeblocks.io/encrypted-system-accounts" | fromjson .mysql | tojson |gsub("\""; "\\"")'
+  kubectl get backup <backup-name> -n demo -ojson | jq -r '.metadata.annotations | ."kubeblocks.io/encrypted-system-accounts" | fromjson .mysql | tojson |gsub("\""; "\\\"")'
   ```
 
 3. **Configure Restore**:

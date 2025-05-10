@@ -1418,7 +1418,7 @@ kubectl get backup -n demo -l app.kubernetes.io/instance=pg-cluster -l dataprote
 
   ```bash
   # Get encrypted system accounts
-  kubectl get backup <backup-name> -n demo -ojson | jq -r '.metadata.annotations | ."kubeblocks.io/encrypted-system-accounts" | fromjson .postgresql | tojson |gsub("\""; "\\"")'
+  kubectl get backup <backup-name> -n demo -ojson | jq -r '.metadata.annotations | ."kubeblocks.io/encrypted-system-accounts" | fromjson .postgresql | tojson |gsub("\""; "\\\"")'
   ```
 
 3. **Configure Restore**:
@@ -1525,7 +1525,7 @@ spec:
 
   ```bash
   # Get encrypted system accounts
-  kubectl get backup <backup-name> -n demo -ojson | jq -r '.metadata.annotations | ."kubeblocks.io/encrypted-system-accounts" | fromjson .postgresql | tojson |gsub("\""; "\\"")'
+  kubectl get backup <backup-name> -n demo -ojson | jq -r '.metadata.annotations | ."kubeblocks.io/encrypted-system-accounts" | fromjson .postgresql | tojson |gsub("\""; "\\\"")'
   ```
 
 3. **Configure Restore**:
