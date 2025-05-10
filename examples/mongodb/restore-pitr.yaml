@@ -1,11 +1,13 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: mongo-cluster-restore
+  name: mongo-cluster-restore-pitr
   namespace: demo
   annotations:
     # NOTE: replace <ENCRYPTED-SYSTEM-ACCOUNTS> with the accounts info from you backup
-    kubeblocks.io/restore-from-backup: '{"mongodb":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"mongo-cluster-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
+    # NOTE: replace <CONTINUOUS_BACKUP_NAME> with the continuouse backup name
+    # NOTE: replace <RESTORE_POINT_TIME>  with a valid time within the backup timeRange.
+    kubeblocks.io/restore-from-backup: '{"redis":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"<CONTINUOUS_BACKUP_NAME>","namespace":"demo","restoreTime":"<RESTORE_POINT_TIME>","volumeRestorePolicy":"Parallel"}}'
 spec:
   terminationPolicy: Delete
   clusterDef: mongodb

@@ -1,49 +1,167 @@
-# Kafka
+# Kafka on KubeBlocks
+
+## Overview
 
 Apache Kafka is a distributed streaming platform designed to build real-time pipelines and can be used as a message broker or as a replacement for a log aggregation solution for big data applications.
 
 - A broker is a Kafka server that stores data and handles requests from producers and consumers. Kafka clusters consist of multiple brokers, each identified by a unique ID. Brokers work together to distribute and replicate data across the cluster.
 - KRaft was introduced in Kafka 3.3.1 in October 2022 as an alternative to Zookeeper. A subset of brokers are designated as controllers, and these controllers provide the consensus services that used to be provided by Zookeeper.
 
-## Features In KubeBlocks
+## Features in KubeBlocks
 
-### Lifecycle Management
+### Cluster Management Operations
 
-| Topology | Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
-|----------|------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
-| Combined/Separated | Yes          | Yes                   | Yes               | Yes       | Yes        | Yes       | Yes    | N/A   |
+| Operation |Supported | Description |
+|-----------|-------------|----------------------|
+| **Restart** | YES | • Ordered sequence (followers first)<br/>• Health checks between restarts |
+| **Stop/Start** | YES |  • Graceful shutdown<br/>• Fast startup from persisted state |
+| **Horizontal Scaling** |YES |  • Adjust replica count dynamically<br/>• Automatic data replication<br/> |
+| **Vertical Scaling** | YES |  • Adjust CPU/Memory resources<br/>• Rolling updates for minimal downtime<br/>• Adaptive Parameters Reconfiguration, such as buffer pool size/max connections |
+| **Volume Expansion** | YES |  • Online storage expansion<br/>• No downtime required |
+| **Reconfiguration** | NO | • Dynamic/Static parameter updates<br/>• Validation rules<br/>• Versioned history |
+| **Service Exposure** | YES |  • Multiple exposure types (ClusterIP/NodePort/LB)<br/>• Role-based routing |
+| **Switchover** | N/A |  • Planned primary transfer<br/>• Zero data loss guarantee |
 
-- Combine Mode: KRaft (Controller) and Broker components are combined in the same pod.
-- Separated Mode: KRaft (Controller) and Broker components are deployed in different pods.
+### Data Protection
 
-### Backup and Restore
-
-| Feature     | Method | Description |
-|-------------|--------|------------|
+| Type       | Method     | Details |
+|---------------|------------|---------|
 | N/A | N/A | N/A |
 
-### Versions
+### Supported Versions
 
 | Versions |
 |----------|
 | 3.3.2 |
+| 2.7.0 |
 
 ## Prerequisites
 
-- Kubernetes cluster >= v1.21
-- `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
-- Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
-- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
-- Kafka Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
-- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+Before starting, ensure you have:
+
+1. **Kubernetes Environment**:
+   - Cluster v1.21+
+   - `kubectl` installed ([Installation Guide](https://kubernetes.io/docs/tasks/tools/))
+   - Helm v3+ ([Installation Guide](https://helm.sh/docs/intro/install/))
+
+2. **KubeBlocks Setup**:
+   - KubeBlocks installed and running ([Installation](../docs/prerequisites.md))
+   - Kafka Addon enabled ([Addon Setup](../docs/install-addon.md))
+
+3. **Namespace Setup**:
+   Create an isolated namespace for this tutorial:
 
   ```bash
   kubectl create ns demo
   ```
 
-## Examples
+## Lifecycle Management Operations
 
-### Create
+### Cluster Provisioning
+
+#### Quick Start
+
+Create a Kafka cluster with controller , broker and a exporter components:
+
+```yaml
+# cat examples/kafka/cluster-separated.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: kafka-separated-cluster
+  namespace: demo
+spec:
+  # Specifies the behavior when a Cluster is deleted.
+  # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
+  # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
+  # - `Delete`: Extends the `Halt` policy by also removing PVCs, leading to a thorough cleanup while removing all persistent data.
+  # - `WipeOut`: An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss.
+  terminationPolicy: Delete
+  # Specifies the name of the ClusterDefinition to use when creating a Cluster.
+  # Note: DO NOT UPDATE THIS FIELD
+  # The value must be `kafaka` to create a Kafka Cluster
+  clusterDef: kafka
+  # Specifies the name of the ClusterTopology to be used when creating the
+  # Cluster.
+  # - combined: combined Kafka controller (KRaft) and broker in one Component
+  # - combined_monitor: combined mode with monitor component
+  # - separated: separated KRaft and Broker Components.
+  # - separated_monitor: separated mode with monitor component
+  # Valid options are: [combined,combined_monitor,separated,separated_monitor]
+  topology: separated_monitor
+  # Specifies a list of ClusterComponentSpec objects used to define the
+  # individual Components that make up a Cluster.
+  # This field allows for detailed configuration of each Component within the Cluster
+  componentSpecs:
+    - name: kafka-broker
+      replicas: 3
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
+      env:
+        - name: KB_KAFKA_BROKER_HEAP
+          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+        - name: KB_KAFKA_CONTROLLER_HEAP
+          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
+        - name: KB_BROKER_DIRECT_POD_ACCESS
+          value: "true"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+        - name: metadata
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 1Gi
+    - name: kafka-controller
+      replicas: 1
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
+      volumeClaimTemplates:
+        - name: metadata
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 1Gi
+    - name: kafka-exporter
+      replicas: 1
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "1Gi"
+        requests:
+          cpu: "0.1"
+          memory: "0.2Gi"
+```
+
+```bash
+kubectl apply -f examples/kafka/cluster-separated.yaml
+```
+
+These three components will be created strictly in `controller->broker->exporter` order as defined in `ClusterDefinition`.
+
+#### Create a `Combined` cluster
 
 Create a Kafka cluster with combined controller and broker components
 
@@ -137,129 +255,146 @@ spec:
 kubectl apply -f examples/kafka/cluster-combined.yaml
 ```
 
-Create a Kafka cluster with separated controller and broker components:
+### Cluster Restart
+
+Restart the cluster components with zero downtime:
 
 ```yaml
-# cat examples/kafka/cluster-separated.yaml
-apiVersion: apps.kubeblocks.io/v1
-kind: Cluster
+# cat examples/kafka/restart.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
 metadata:
-  name: kafka-separated-cluster
+  name: kafka-separated-restart
   namespace: demo
 spec:
-  # Specifies the behavior when a Cluster is deleted.
-  # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
-  # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
-  # - `Delete`: Extends the `Halt` policy by also removing PVCs, leading to a thorough cleanup while removing all persistent data.
-  # - `WipeOut`: An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss.
-  terminationPolicy: Delete
-  # Specifies the name of the ClusterDefinition to use when creating a Cluster.
-  # Note: DO NOT UPDATE THIS FIELD
-  # The value must be `kafaka` to create a Kafka Cluster
-  clusterDef: kafka
-  # Specifies the name of the ClusterTopology to be used when creating the
-  # Cluster.
-  # - combined: combined Kafka controller (KRaft) and broker in one Component
-  # - combined_monitor: combined mode with monitor component
-  # - separated: separated KRaft and Broker Components.
-  # - separated_monitor: separated mode with monitor component
-  # Valid options are: [combined,combined_monitor,separated,separated_monitor]
-  topology: separated_monitor
-  # Specifies a list of ClusterComponentSpec objects used to define the
-  # individual Components that make up a Cluster.
-  # This field allows for detailed configuration of each Component within the Cluster
-  componentSpecs:
-    - name: kafka-broker
-      replicas: 1
-      resources:
-        limits:
-          cpu: "0.5"
-          memory: "0.5Gi"
-        requests:
-          cpu: "0.5"
-          memory: "0.5Gi"
-      env:
-        - name: KB_KAFKA_BROKER_HEAP
-          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
-        - name: KB_KAFKA_CONTROLLER_HEAP
-          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
-        - name: KB_BROKER_DIRECT_POD_ACCESS
-          value: "true"
-      volumeClaimTemplates:
-        - name: data
-          spec:
-            storageClassName: ""
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: 20Gi
-        - name: metadata
-          spec:
-            storageClassName: ""
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: 1Gi
-    - name: kafka-controller
-      replicas: 1
-      resources:
-        limits:
-          cpu: "0.5"
-          memory: "0.5Gi"
-        requests:
-          cpu: "0.5"
-          memory: "0.5Gi"
-      volumeClaimTemplates:
-        - name: metadata
-          spec:
-            storageClassName: ""
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: 1Gi
-    - name: kafka-exporter
-      replicas: 1
-      resources:
-        limits:
-          cpu: "0.5"
-          memory: "1Gi"
-        requests:
-          cpu: "0.1"
-          memory: "0.2Gi"
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: kafka-separated-cluster
+  type: Restart
+  # Lists Components to be restarted. ComponentOps specifies the Component to be operated on.
+  restart:
+    # Specifies the name of the Component.
+  - componentName: kafka-broker
+
 ```
 
 ```bash
-kubectl apply -f examples/kafka/cluster-separated.yaml
+kubectl apply -f examples/kafka/restart.yaml
 ```
 
-### Horizontal scaling
+This operation can only be performed via `OpsRequest`, and there is no corresponding CLUSTER API operation - because restart is not a declaration but an action. Replicas will be restarted one by one.
+
+### Cluster Stop and Start
+
+#### Stopping the Cluster
+
+Gracefully stop the cluster to conserve resources while retaining all data (PVC). It is ideal for cost savings during inactive periods.
+
+**Stop via OpsRequest**
+
+```yaml
+# cat examples/kafka/stop.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name:  kafka-separated-stop
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName:  kafka-separated-cluster
+  type: Stop
+
+```
+
+```bash
+kubectl apply -f examples/kafka/stop.yaml
+```
+
+> [!NOTE]
+> When stopped:
+>
+> - All compute resources are released
+> - Persistent volumes remain intact
+> - No data is lost
+
+**Stop via Cluster API**
+
+Update the cluster spec directly:
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+spec:
+  componentSpecs:
+    - name: kafka-broker
+      stop: true  # Set to true to stop the component for all components
+      replicas: 3
+```
+
+#### Starting the Cluster
+
+Start the cluster from its stopped state:
+
+**Start via OpsRequest**
+
+```yaml
+# cat examples/kafka/start.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: kafka-separated-start
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: kafka-separated-cluster
+  type: Start
+
+```
+
+```bash
+kubectl apply -f examples/kafka/start.yaml
+```
+
+**Start via Cluster API**
+
+Update the cluster spec directly:
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+spec:
+  componentSpecs:
+    - name: kafka-brokder
+      stop: false  # Set to false to start the component or remove the field (default to false) for all components
+      replicas: 3
+```
+
+## Scaling Operations
+
+### Horizontal Scaling
 
 > [!IMPORTANT]
 > As per the Kafka documentation, the number of KRaft replicas should be odd to avoid split-brain scenarios.
 > Make sure the number of KRaft replicas, i.e. Controller replicas,  is always odd after Horizontal Scaling, either in Separated or Combined mode.
 
-#### Scale-out
+#### Scale Out Operation
 
-Horizontal scaling out `kafka-combine` component in cluster `kafka-combined-cluster` by adding ONE more replica:
+Add a new replica to the cluster:
 
 ```yaml
 # cat examples/kafka/scale-out.yaml
 apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
-  name: kafka-combined-scale-out
+  name: kafka-separated-scale-out
   namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: kafka-combined-cluster
+  clusterName: kafka-separated-cluster
   type: HorizontalScaling
   # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
   horizontalScaling:
     # Specifies the name of the Component.
-  - componentName: kafka-combine
+  - componentName: kafka-broker
     # Specifies the replica changes for scaling in components
     scaleOut:
       # Specifies the replica changes for the component.
@@ -272,31 +407,33 @@ spec:
 kubectl apply -f examples/kafka/scale-out.yaml
 ```
 
-After applying the operation, you will see a new pod created. You can check the progress of the scaling operation with following command:
+To Check detailed operation status
 
 ```bash
-kubectl describe -n demo ops kafka-combined-scale-out
+kubectl describe ops -n demo kafka-scale-out
 ```
 
-#### Scale-in
+### Scale In Operation
 
-Horizontal scaling in  `kafka-combine` component in cluster `kafka-combined-cluster` by deleting ONE replica:
+#### Standard Scale In Operation
+
+Remove a replica from the cluster:
 
 ```yaml
 # cat examples/kafka/scale-in.yaml
 apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
-  name: kafka-combined-scale-in
+  name: kafka-separated-scale-in
   namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: kafka-combined-cluster
+  clusterName: kafka-separated-cluster
   type: HorizontalScaling
   # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
   horizontalScaling:
     # Specifies the name of the Component.
-  - componentName: kafka-combine
+  - componentName: kafka-broker
     # Specifies the replica changes for scaling in components
     scaleIn:
       # Specifies the replica changes for the component.
@@ -309,38 +446,53 @@ spec:
 kubectl apply -f examples/kafka/scale-in.yaml
 ```
 
-#### Scale-in/out using Cluster API
+Check detailed operation status:
 
-Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
+```bash
+kubectl describe ops -n demo kafka-scale-in
+```
+
+#### Horizontal Scaling via Cluster API
+
+Directly update replica count via Cluster API:
 
 ```yaml
-# snippet of cluster.yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 spec:
   componentSpecs:
-    - name: kafka-combine
-      replicas: 1 # Set the number of replicas to your desired number
+    - name: kafka-broker
+      replicas: 2  # Adjust replicas for scaling in and out.
+      offlineInstances:
+        - kafka-separated-cluster-kafka-broker-1 # for targetd-instance scale-in scenario, default to empty list.
 ```
 
-### Vertical scaling
+### Vertical Scaling
 
-Vertical scaling up or down specified components requests and limits cpu or memory resource in the cluster:
+Vertical scaling involves increasing or decreasing resources to an existing database cluster.
+Resources that can be scaled include:
+
+- CPU cores/processing power
+- Memory (RAM)
+
+#### Vertical Scaling via OpsRequest API
+
+Perform vertical scaling using a operation request:
 
 ```yaml
 # cat examples/kafka/verticalscale.yaml
 apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
-  name: kafka-combined-vscale
+  name: kafka-separated-vscale
   namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: kafka-combined-cluster
+  clusterName: kafka-separated-cluster
   type: VerticalScaling
   # Lists VerticalScaling objects, each specifying a component and its desired compute resources for vertical scaling.
   verticalScaling:
-  - componentName: kafka-combine
+  - componentName: kafka-broker
     # VerticalScaling refers to the process of adjusting the compute resources (e.g., CPU, memory) allocated to a Component. It defines the parameters required for the operation.
     requests:
       cpu: '1'
@@ -354,9 +506,9 @@ spec:
 kubectl apply -f examples/kafka/verticalscale.yaml
 ```
 
-#### Scale-up/down using Cluster API
+#### Vertical Scaling via Cluster API
 
-Alternatively, you may update `spec.componentSpecs.resources` field to the desired resources for vertical scale.
+Directly modify cluster specifications for vertical scaling:
 
 ```yaml
 # snippet of cluster.yaml
@@ -364,23 +516,30 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 spec:
   componentSpecs:
-    - name: kafka-combine
-      replicas: 1
+    - name: kafka-broker
       resources:
         requests:
-          cpu: "1"       # Update the resources to your need.
-          memory: "2Gi"  # Update the resources to your need.
+          cpu: "1"       # CPU cores (e.g. "1", "500m")
+          memory: "2Gi"  # Memory (e.g. "2Gi", "512Mi")
         limits:
-          cpu: "2"       # Update the resources to your need.
-          memory: "4Gi"  # Update the resources to your need.
+          cpu: "2"       # Maximum CPU allocation
+          memory: "4Gi"  # Maximum memory allocation
 ```
 
-### Expand volume
+**Key Considerations**:
 
-Volume expansion is the ability to increase the size of a Persistent Volume Claim (PVC) after it's created. It is introduced in Kubernetes v1.11 and goes GA in Kubernetes v1.24. It allows Kubernetes users to simply edit their PersistentVolumeClaim objects  without requiring any downtime at all if possible.
+- Ensure sufficient cluster capacity exists
+- Resource changes may trigger pod restarts and parameters reconfiguration
+- Monitor resource utilization after changes
+
+## Storage Operations
+
+### Prerequisites
+
+Volume expansion is the ability to increase the size of a Persistent Volume Claim (PVC) after it's created. It is introduced in Kubernetes v1.11 and goes GA in Kubernetes v1.24. It allows Kubernetes users to simply edit their PersistentVolumeClaim objects without requiring any downtime at all if possible.
 
 > [!NOTE]
-> Make sure the storage class you use supports volume expansion.
+> Make sure the storage class you used when creating clusters supports volume expansion.
 
 Check the storage class with following command:
 
@@ -390,23 +549,27 @@ kubectl get storageclass
 
 If the `ALLOWVOLUMEEXPANSION` column is `true`, the storage class supports volume expansion.
 
-To increase size of volume storage with the specified components in the cluster:
+### Volume Expansion
+
+#### Volume Expansion via OpsRequest API
+
+To increase size of volume storage with the specified components in the cluster
 
 ```yaml
 # cat examples/kafka/volumeexpand.yaml
 apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
-  name: kafka-combined-volumeexpansion
+  name: kafka-separated-volumeexpansion
   namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: kafka-combined-cluster
+  clusterName: kafka-separated-cluster
   type: VolumeExpansion
   # Lists VolumeExpansion objects, each specifying a component and its corresponding volumeClaimTemplates that requires storage expansion.
   volumeExpansion:
     # Specifies the name of the Component.
-  - componentName: kafka-combine
+  - componentName: kafka-broker
     # volumeClaimTemplates specifies the storage size and volumeClaimTemplate name.
     volumeClaimTemplates:
     - name: data
@@ -421,10 +584,10 @@ kubectl apply -f examples/kafka/volumeexpand.yaml
 After the operation, you will see the volume size of the specified component is increased to `30Gi` in this case. Once you've done the change, check the `status.conditions` field of the PVC to see if the resize has completed.
 
 ```bash
-kubectl get pvc -l app.kubernetes.io/instance=kafka-combined-cluster -n demo
+kubectl get pvc -l app.kubernetes.io/instance=kafka-separated-cluster -n demo
 ```
 
-#### Volume expansion using Cluster API
+#### Volume Expansion via Cluster API
 
 Alternatively, you may update the `spec.componentSpecs.volumeClaimTemplates.spec.resources.requests.storage` field to the desired size.
 
@@ -434,303 +597,78 @@ apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 spec:
   componentSpecs:
-    - name: kafka-combine
+    - name: kafka-broker
       volumeClaimTemplates:
         - name: data
           spec:
-            storageClassName: "<you-preferred-sc>"
+            storageClassName: "<STORAGE_CLASS_NAME>"
             accessModes:
               - ReadWriteOnce
             resources:
               requests:
                 storage: 30Gi  # specify new size, and make sure it is larger than the current size
-        - name: metadata
-          spec:
-            storageClassName: "<you-preferred-sc>"
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: 10Gi  # specify new size, and make sure it is larger than the current size
 ```
 
-### Restart
+> [!NOTE]
+> If the storage class you use does not support volume expansion, this OpsRequest fails fast with information like:
+> `storageClass: [STORAGE_CLASS_NAME] of volumeClaimTemplate: [VOLUME_NAME]] not support volume expansion in component [COMPONENT_NAME]`
 
-Restart the specified components in the cluster
+## Monitoring & Observability
 
-```yaml
-# cat examples/kafka/restart.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-metadata:
-  name: kafka-combine-restart
-  namespace: demo
-spec:
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: kafka-combined-cluster
-  type: Restart
-  # Lists Components to be restarted. ComponentOps specifies the Component to be operated on.
-  restart:
-    # Specifies the name of the Component.
-  - componentName: kafka-combine
+### Prerequisites
 
-```
+1. **Prometheus Operator**: Required for metrics collection
+   - Skip if already installed
+   - Install via: [Prometheus Operator Guide](../docs/install-prometheus.md)
 
-```bash
-kubectl apply -f examples/kafka/restart.yaml
-```
+2. **Access Credentials**: Ensure you have:
+   - `kubectl` access to the cluster
+   - Grafana admin privileges (for dashboard import)
 
-### Stop
+### Metrics Collection Setup
 
-Stop the cluster and release all the pods of the cluster, but the storage will be reserved
+#### 1. Configure PodMonitor
 
-```yaml
-# cat examples/kafka/stop.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-metadata:
-  name:  kafka-combine-stop
-  namespace: demo
-spec:
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName:  kafka-combined-cluster
-  type: Stop
+1. **Get Exporter Details**:
 
-```
+  ```bash
+  kubectl get po -n demo kafka-separated-cluster-kafka-broker-0 -oyaml | yq '.spec.containers[] | select(.name=="jmx-exporter") | .ports'
+  ```
 
-```bash
-kubectl apply -f examples/kafka/stop.yaml
-```
+  <details open>
+  <summary>Expected Output:</summary>
 
-#### Stop using Cluster API
+  ```text
+  - containerPort: 5556
+    name: metrics
+    protocol: TCP
+  ```
 
-Alternatively, you may stop the cluster by setting the `spec.componentSpecs.stop` field to `true`.
+  </details>
 
-```yaml
-# snippet of cluster.yaml
-apiVersion: apps.kubeblocks.io/v1
-kind: Cluster
-spec:
-  componentSpecs:
-    - name: kafka-combine
-      stop: true  # set stop `true` to stop the component
-      replicas: 1
-```
+  ```bash
+   kubectl get po -n demo  kafka-separated-cluster-kafka-exporter-0 -oyaml | yq '.spec.containers[] | select(.name=="kafka-exporter") | .ports'
+  ```
 
-### Start
+  <details open>
+  <summary>Expected Output:</summary>
 
-Start the stopped cluster
+  ```text
+  - containerPort: 9308
+    name: metrics
+    protocol: TCP
+  ```
 
-```yaml
-# cat examples/kafka/start.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-metadata:
-  name: kafka-combined-start
-  namespace: demo
-spec:
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: kafka-combined-cluster
-  type: Start
+  </details>
 
-```
+2. **Verify Metrics Endpoint**:
 
-```bash
-kubectl apply -f examples/kafka/start.yaml
-```
+   ```bash
+   kubectl -n demo exec -it pods/kafka-separated-cluster-kafka-broker-0  -- \
+     curl -s http://127.0.0.1:5556/metrics | head -n 50
+   ```
 
-#### Start using Cluster API
-
-Alternatively, you may start the cluster by setting the `spec.componentSpecs.stop` field to `false`.
-
-```yaml
-# snippet of cluster.yaml
-apiVersion: apps.kubeblocks.io/v1
-kind: Cluster
-spec:
-  componentSpecs:
-    - name: kafka-combine
-      stop: false  # set to `false` (or remove this field) to start the component
-      replicas: 1
-```
-
-### Reconfigure
-
-Configure parameters with the specified components in the cluster
-
-```yaml
-# cat examples/kafka/configure.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-metadata:
-  name:  kafka-combined-reconfiguring
-  namespace: demo
-spec:
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: kafka-combined-cluster
-  # Instructs the system to bypass pre-checks (including cluster state checks and customized pre-conditions hooks) and immediately execute the opsRequest, except for the opsRequest of 'Start' type, which will still undergo pre-checks even if `force` is true.  Note: Once set, the `force` field is immutable and cannot be updated.
-  force: false
-  # Specifies a component and its configuration updates. This field is deprecated and replaced by `reconfigures`.
-  reconfigures:
-    # Specifies the name of the Component.
-  - componentName: kafka-combine
-   # Contains a list of ConfigurationItem objects, specifying the Component's configuration template name, upgrade policy, and parameter key-value pairs to be updated.
-    parameters:
-      # Represents the name of the parameter that is to be updated.
-    - key: log.flush.interval.ms
-      # Represents the parameter values that are to be updated.
-      # If set to nil, the parameter defined by the Key field will be removed from the configuration file.
-      value: "2000"
-  # Specifies the maximum number of seconds the OpsRequest will wait for its start conditions to be met before aborting. If set to 0 (default), the start conditions must be met immediately for the OpsRequest to proceed.
-  preConditionDeadlineSeconds: 0
-  type: Reconfiguring
-
-```
-
-```bash
-kubectl apply -f examples/kafka/configure.yaml
-```
-
-This example update `log.flush.interval.ms` parameter of the `kafka-combine` component in the cluster `kafka-combined-cluster` to `1000`.
-This parameter is the maximum time in ms that a message in any topic is kept in memory before flushed to disk. If not set, the value in log.flush.scheduler.interval.ms is used.
-
-To verify the configuration change, you may log into the pod and check the configuration file.
-
-```bash
-cat  /opt/bitnami/kafka/config/kraft/server.properties | grep 'log.flush.interval.ms'
-```
-
-### Delete
-
-If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
-
-```bash
-kubectl patch cluster -n demo kafka-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
-
-kubectl delete cluster -n demo kafka-cluster
-```
-
-### Observability
-
-#### Installing the Prometheus Operator
-
-You may skip this step if you have already installed the Prometheus Operator.
-Or you can follow the steps in [How to install the Prometheus Operator](../docs/install-prometheus.md) to install the Prometheus Operator.
-
-#### Create Cluster
-
-Create a Kafka cluster with separated controller and broker components for instance:
-
-```yaml
-# cat examples/kafka/cluster-separated.yaml
-apiVersion: apps.kubeblocks.io/v1
-kind: Cluster
-metadata:
-  name: kafka-separated-cluster
-  namespace: demo
-spec:
-  # Specifies the behavior when a Cluster is deleted.
-  # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
-  # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
-  # - `Delete`: Extends the `Halt` policy by also removing PVCs, leading to a thorough cleanup while removing all persistent data.
-  # - `WipeOut`: An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss.
-  terminationPolicy: Delete
-  # Specifies the name of the ClusterDefinition to use when creating a Cluster.
-  # Note: DO NOT UPDATE THIS FIELD
-  # The value must be `kafaka` to create a Kafka Cluster
-  clusterDef: kafka
-  # Specifies the name of the ClusterTopology to be used when creating the
-  # Cluster.
-  # - combined: combined Kafka controller (KRaft) and broker in one Component
-  # - combined_monitor: combined mode with monitor component
-  # - separated: separated KRaft and Broker Components.
-  # - separated_monitor: separated mode with monitor component
-  # Valid options are: [combined,combined_monitor,separated,separated_monitor]
-  topology: separated_monitor
-  # Specifies a list of ClusterComponentSpec objects used to define the
-  # individual Components that make up a Cluster.
-  # This field allows for detailed configuration of each Component within the Cluster
-  componentSpecs:
-    - name: kafka-broker
-      replicas: 1
-      resources:
-        limits:
-          cpu: "0.5"
-          memory: "0.5Gi"
-        requests:
-          cpu: "0.5"
-          memory: "0.5Gi"
-      env:
-        - name: KB_KAFKA_BROKER_HEAP
-          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
-        - name: KB_KAFKA_CONTROLLER_HEAP
-          value: "-XshowSettings:vm -XX:MaxRAMPercentage=100 -Ddepth=64"
-        - name: KB_BROKER_DIRECT_POD_ACCESS
-          value: "true"
-      volumeClaimTemplates:
-        - name: data
-          spec:
-            storageClassName: ""
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: 20Gi
-        - name: metadata
-          spec:
-            storageClassName: ""
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: 1Gi
-    - name: kafka-controller
-      replicas: 1
-      resources:
-        limits:
-          cpu: "0.5"
-          memory: "0.5Gi"
-        requests:
-          cpu: "0.5"
-          memory: "0.5Gi"
-      volumeClaimTemplates:
-        - name: metadata
-          spec:
-            storageClassName: ""
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: 1Gi
-    - name: kafka-exporter
-      replicas: 1
-      resources:
-        limits:
-          cpu: "0.5"
-          memory: "1Gi"
-        requests:
-          cpu: "0.1"
-          memory: "0.2Gi"
-```
-
-```bash
-kubectl apply -f examples/kafka/cluster-separated.yaml
-```
-
-#### Create PodMonitor
-
-##### Step 1. Create PodMonitor
-
-Apply the `PodMonitor` file to monitor the cluster.
-Please set the labels correctly in the `PodMonitor` file to match the target pods.
-
-```yaml
-# cat pod monitor file
-  selector:
-    matchLabels:
-      app.kubernetes.io/instance: kafka-separated-cluster  # cluster name, set it to your cluster name
-      apps.kubeblocks.io/component-name: kafka-controller  # component name
-```
+3. **Apply PodMonitor**:
 
 - Pod Monitor Kafka JVM:
 
@@ -741,6 +679,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
   name: kafka-jmx-pod-monitor
+  namespace: demo
   labels:               # this is labels set in `prometheus.spec.podMonitorSelector`
     release: prometheus
 spec:
@@ -779,6 +718,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
   name: kafka-exporter-pod-monitor
+  namespace: demo
   labels:               # this is labels set in `prometheus.spec.podMonitorSelector`
     release: prometheus
 spec:
@@ -808,27 +748,86 @@ spec:
 kubectl apply -f examples/kafka/exporter-pod-monitor.yaml
 ```
 
-##### Step 2. Accessing the Grafana Dashboard
+#### 2. Grafana Dashboard Setup
 
-Login to the Grafana dashboard and import the dashboard.
+1. **Import Dashboard**:
+   KubeBlocks provides a Grafana dashboard for monitoring the Kafka cluster. You can find it at [Kafka Dashboard](https://github.com/apecloud/kubeblocks-addons/tree/main/addons/kafka/dashboards).
+2. **Verification**:
+   - Confirm metrics appear in Grafana within 2-5 minutes
+   - Check for "UP" status in Prometheus targets
 
-KubeBlocks provides a Grafana dashboard for monitoring the Kafka cluster. You can find it at [Kafka Dashboard](https://github.com/apecloud/kubeblocks-addons/tree/main/addons/kafka).
+### Troubleshooting
 
-> [!NOTE]
+- **No Metrics**: check Prometheus
+
+  ```bash
+  kubectl get pods -n monitoring -l app.kubernetes.io/name=prometheus
+  kubectl logs -n monitoring <prometheus-pod-name> -c prometheus
+  ```
+
+- **Dashboard Issues**: check metrics labels and dashboards
+  - Verify Grafana DataSource points to correct Prometheus instance
+  - Check for template variable mismatches
+
+## Cleanup
+
+To permanently delete the cluster and all associated resources:
+
+1. First modify the termination policy to ensure all resources are cleaned up:
+
+```bash
+# Set termination policy to WipeOut (deletes all resources including PVCs)
+kubectl patch cluster -n demo kafka-separated-cluster \
+  -p '{"spec":{"terminationPolicy":"WipeOut"}}' \
+  --type="merge"
+```
+
+2. Verify the termination policy was updated:
+
+```bash
+kubectl get cluster -n demo kafka-separated-cluster -o jsonpath='{.spec.terminationPolicy}'
+```
+
+3. Delete the cluster:
+
+```bash
+kubectl delete cluster -n demo kafka-separated-cluster
+```
+
+> [!WARNING]
+> This operation is irreversible and will permanently delete:
 >
-> - Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
-> - set `job` to `kubeblocks` on Grafana dashboard to view the metrics.
+> - All database pods
+> - Persistent volumes and claims
+> - Services and other cluster resources
 
-### FAQ
+<details open>
+<summary>How to set a proper `TerminationPolicy`</summary>
 
-#### How to Access Kafka Cluster
+For more details you may use following command
 
-##### With Direct Pod Access
+```bash
+kubectl explain cluster.spec.terminationPolicy
+```
+
+| Policy            | Description                                                                                                                                               |
+|-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `DoNotTerminate`  | Prevents deletion of the Cluster. This policy ensures that all resources remain intact.                                                                   |
+| `Delete`          | Deletes all runtime resources belonging to the Cluster.                                                                                                   |
+| `WipeOut`         | An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss. |
+
+</details>
+
+## Appendix
+
+### How to Access Kafka Cluster
+
+#### With Direct Pod Access
 
 To connect to the Kafka cluster, you can use the following command to get the service for connection:
 
 ```bash
-kubectl get svc -l app.kubernetes.io/instance=kafka-combined-cluster -n demo
+kubectl get svc -l app.kubernetes.io/instance=<cluster-name> -n demo
 ```
 
 And the excepted output is like below:
@@ -842,8 +841,8 @@ You can connect to the Kafka cluster using the `CLUSTER-IP` and `PORT`.
 
 ##### With NodePort Service
 
-Currently only `nodeport` and `clusterIp` network modes are supported for Kafka
-To access the Kafka cluster using the `nodeport` service, you can create Kafka cluster with the following configuration,  refer to [Kafka Network Modes Example](./cluster-combined-nodeport.yaml) for more details.
+Currently only `NodePort` and `ClusterIP` network modes are supported for Kafka.
+To create Kafka cluster with `NodePort` services, you can create Kafka cluster with the following configuration. Please refer to [Kafka Network Modes Example](./cluster-combined-nodeport.yaml) for more details.
 
 ```yaml
 # snippet of cluster.yaml
@@ -852,8 +851,7 @@ kind: Cluster
 spec:
   componentSpecs:
     - name: kafka-combine
-      stop: false  # set to `false` (or remove this field) to start the component
-      services:
+      services: # override default `advertised-listener` services, uset NodePort instead of ClusterIP
         - name: advertised-listener
           serviceType: NodePort
           podService: true
@@ -866,3 +864,44 @@ spec:
         - name: KB_BROKER_DIRECT_POD_ACCESS # set KB_BROKER_DIRECT_POD_ACCESS to FALSE to disable direct pod access
           value: "false"
 ```
+
+### Create Kafka Cluster with ServiceRef to Zookeeper
+
+1. create a zookeeper cluster, either in KubeBlocks or not.
+2. record zookeeper endpoints, e.g. `zookeeper-cluster-zookeeper-0.zookeeper-cluster-zookeeper-headless.demo:2181,zookeeper-cluster-zookeeper-1.zookeeper-cluster-zookeeper-headless.demo:2181,zookeeper-cluster-zookeeper-2.zookeeper-cluster-zookeeper-headless.demo:2181"`
+3. edit 'examples/kafka/cluster-2x-ext-zk-svc-descriptor.yaml', replace zookeeper endpoints
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: ServiceDescriptor
+metadata:
+spec:
+  serviceKind: zookeeper
+  serviceVersion: 3.8.5
+  endpoint:
+    # your external zk endpoints here
+    value: "<ZOOKEEPER_ENDPOINTS>"
+  # Represents the port of the service connection credential.
+  port:
+    value: "2181"
+```
+
+3. create kafka with external service reference to zookeeper.
+
+```bash
+kubectl create -f xamples/kafka/cluster-2x-ext-zk-svc-descriptor.yaml
+```
+
+### List of K8s Resources created when creating an Kafka Cluster
+
+To get the full list of associated resources created by KubeBlocks for given cluster:
+
+```bash
+kubectl get cmp,its,po -l app.kubernetes.io/instance=<CLUSTER_NAME> -n demo # cluster and worload
+kubectl get backuppolicy,backupschedule,backup -l app.kubernetes.io/instance=<CLUSTER_NAME> -n demo # data protection resources
+kubectl get componentparameter,parameter -l app.kubernetes.io/instance=<CLUSTER_NAME> -n demo # configuration resources
+kubectl get opsrequest -l app.kubernetes.io/instance=<CLUSTER_NAME> -n demo # opsrequest resources
+kubectl get svc,secret,cm,pvc -l app.kubernetes.io/instance=<CLUSTER_NAME> -n demo # k8s native resources
+```
+
+## References

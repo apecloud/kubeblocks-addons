@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: mongo-cluster
+  name: pg-with-backup
   namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
@@ -12,31 +12,61 @@ spec:
   terminationPolicy: Delete
   # Specifies the name of the ClusterDefinition to use when creating a Cluster.
   # Note: DO NOT UPDATE THIS FIELD
-  # The value must be `mongodb` to create a MongoDB Cluster
-  clusterDef: mongodb
+  # The value must be `postgresql` to create a PostgreSQL Cluster
+  clusterDef: postgresql
   # Specifies the name of the ClusterTopology to be used when creating the
   # Cluster.
-  # Valid options are [replicaset]
-  topology: replicaset
+  # Valid options are: [replication]
+  topology: replication
   # Specifies a list of ClusterComponentSpec objects used to define the
   # individual Components that make up a Cluster.
   # This field allows for detailed configuration of each Component within the Cluster
+  backup:
+    retentionPeriod: 7d
+    # for full backup
+    method: wal-g # full backup methnod name
+    enabled: true
+    cronExpression: 0 18 * * * # full backup scheuler
+    # for continuous backup
+    continuousMethod: wal-g-archive # continuous backup method, paired with method wal-g
+    pitrEnabled: true # enable continous method or not
+    # for incremental backup
+    incrementalBackupEnabled: false
   componentSpecs:
-    - name: mongodb
+    - name: postgresql
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [8.0.8,8.0.6,8.0.4,7.0.19,7.0.16,7.0.12,6.0.22,6.0.20,6.0.16,5.0.30,5.0.28,4.4.29,4.2.24,4.0.28]
-      serviceVersion: "6.0.16"
-      # Specifies the desired number of replicas in the Component
-      replicas: 3
+      # Valid options are: [12.14.0,12.14.1,12.15.0,14.7.2,14.8.0,15.7.0,16.4.0]
+      serviceVersion: "14.7.2"
+      # Determines whether metrics exporter information is annotated on the
+      # Component's headless Service.
+      # Valid options are [true, false]
+      disableExporter: false
+      # Specifies Labels to override or add for underlying Pods, PVCs, Account & TLS
+      # Secrets, Services Owned by Component.
+      labels:
+        # PostgreSQL's CMPD specifies `KUBERNETES_SCOPE_LABEL=apps.kubeblocks.postgres.patroni/scope` through ENVs
+        # The KUBERNETES_SCOPE_LABEL is used to define the label key that Patroni will use to tag Kubernetes resources.
+        # This helps Patroni identify which resources belong to the specified scope (or cluster) used to define the label key
+        # that Patroni will use to tag Kubernetes resources.
+        # This helps Patroni identify which resources belong to the specified scope (or cluster).
+        #
+        # Note: DO NOT REMOVE THIS LABEL
+        # update the value w.r.t your cluster name
+        # the value must follow the format <cluster.metadata.name>-postgresql
+        # which is pg-cluster-postgresql in this examples
+        # replace `pg-cluster` with your cluster name
+        apps.kubeblocks.postgres.patroni/scope: pg-with-backup-postgresql
+      # Update `replicas` to your need.
+      replicas: 2
       # Specifies the resources required by the Component.
       resources:
         limits:
-          cpu: '0.5'
-          memory: 0.5Gi
+          cpu: "0.5"
+          memory: "0.5Gi"
         requests:
-          cpu: '0.5'
-          memory: 0.5Gi
+          cpu: "0.5"
+          memory: "0.5Gi"
       # Specifies a list of PersistentVolumeClaim templates that define the storage
       # requirements for the Component.
       volumeClaimTemplates:
@@ -54,4 +84,3 @@ spec:
               requests:
                 # Set the storage size as needed
                 storage: 20Gi
-

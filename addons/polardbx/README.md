@@ -381,6 +381,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
   name: pxc-pod-monitor
+  namespace: demo
   labels:               # this is labels set in `prometheus.spec.podMonitorSelector`
     release: prometheus
 spec:
