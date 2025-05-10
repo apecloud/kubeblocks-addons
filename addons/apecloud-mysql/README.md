@@ -1285,6 +1285,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
   name: acmysql-cluster-pod-monitor
+  namespace: demo
   labels:               # this is labels set in `prometheus.spec.podMonitorSelector`
     release: prometheus
 spec:
@@ -1332,7 +1333,7 @@ spec:
   kubectl logs -n monitoring <prometheus-pod-name> -c prometheus
   ```
 
-- **Dashboard Issues**: check indicator labels and dashboards
+- **Dashboard Issues**: check metrics labels and dashboards
   - Verify Grafana DataSource points to correct Prometheus instance
   - Check for template variable mismatches
 

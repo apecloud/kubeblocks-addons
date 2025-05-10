@@ -1,12 +1,13 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: redis-replication-restore
+  name: redis-restore-pitr
   namespace: demo
   annotations:
-    # NOTE: replace <ENCRYPTED-SYSTEM-ACCOUNTS> with the accounts info from your backup
-    # NOTE: replace <BACKUP_NAME> with your backup
-    kubeblocks.io/restore-from-backup: '{"redis":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"<BACKUP_NAME>","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
+    # NOTE: replace <ENCRYPTED-SYSTEM-ACCOUNTS> with the accounts info from you backup
+    # NOTE: replace <CONTINUOUS_BACKUP_NAME> with the continuouse backup name
+    # NOTE: replace <RESTORE_POINT_TIME>  with a valid time within the backup timeRange.
+    kubeblocks.io/restore-from-backup: '{"redis":{"encryptedSystemAccounts":"{\"default\":\"R+YMeDpvPfHxiZVxy2RV1LK0CSTslsUeOOic9BIqOs0jJvA6ndg=\"}","name":"209bb55a-redis-replication-red-aof","namespace":"demo","restoreTime":"2025-05-10T04:57:29Z","volumeRestorePolicy":"Parallel"}}'
 spec:
   terminationPolicy: Delete
   clusterDef: redis

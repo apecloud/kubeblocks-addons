@@ -876,7 +876,7 @@ spec:
   kubectl logs -n monitoring <prometheus-pod-name> -c prometheus
   ```
 
-- **Dashboard Issues**: check indicator labels and dashboards
+- **Dashboard Issues**: check metrics labels and dashboards
   - Verify Grafana DataSource points to correct Prometheus instance
   - Check for template variable mismatches
 

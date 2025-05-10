@@ -28,9 +28,11 @@ MySQL is one of the most popular open-source relational database management syst
 
 ### Supported Versions
 
-| MySQL Version | MySQL Version | Notes |
-|--------------|-----------------------|-------|
-| 8.0.30       | 8.0.30 | GA release |
+| Major Versions | Minor Versions| Description |
+|---------------|--------------|-------------|
+| 5.7 | 5.7.44  | EOL since Oct 2023 |
+| 8.0 | \[8.0.30 ~ 8.0.39\] |LTS|
+| 8.4 | 8.4.0 ~ 8.4.2| LTS |
 
 ## Prerequisites
 
@@ -58,7 +60,7 @@ Before starting, ensure you have:
 
 #### Quick Start
 
-To deploy a basic MySQL cluster with RAFT consensus:
+To deploy a basic MySQL replication cluster:
 
 ```yaml
 # cat examples/mysql/cluster.yaml
@@ -317,10 +319,6 @@ spec:
 ## Scaling Operations
 
 ### Horizontal Scaling
-
-> [!NOTE]
-> As per the MySQL documentation, the number of Raft replicas should be odd to avoid split-brain scenarios.
-> Make sure the number of MySQL replicas, is always odd after Horizontal Scaling.
 
 #### Scale Out Operation
 
@@ -1201,6 +1199,7 @@ metadata:
   name: mysql-cluster-restore
   namespace: demo
   annotations:
+    # NOTE: replace <ENCRYPTED-SYSTEM-ACCOUNTS> with the accounts info from you backup
     kubeblocks.io/restore-from-backup: '{"mysql":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"mysql-cluster-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
   terminationPolicy: Delete
@@ -1289,7 +1288,7 @@ spec:
   ```
 
 3. **Configure Restore**:
-   Update `examples/pg-cluster/restore-pitr.yaml` with:
+   Update `examples/mysql/restore-pitr.yaml` with:
    - Backup name and namespace: from step 1
    - Point time: falls in `timeRange` from Step 1
    - Encrypted system accounts: from step 2
@@ -1406,6 +1405,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
   name: mysql-cluster-pod-monitor
+  namespace: demo
   labels:               # this is labels set in `prometheus.spec.podMonitorSelector`
     release: prometheus
 spec:
@@ -1453,7 +1453,7 @@ spec:
   kubectl logs -n monitoring <prometheus-pod-name> -c prometheus
   ```
 
-- **Dashboard Issues**: check indicator labels and dashboards
+- **Dashboard Issues**: check metrics labels and dashboards
   - Verify Grafana DataSource points to correct Prometheus instance
   - Check for template variable mismatches
 
@@ -1533,6 +1533,128 @@ userName=$(kubectl get secret -n demo mysql-cluster-mysql-account-root -ojsonpat
 userPasswd=$(kubectl get secret -n demo mysql-cluster-mysql-account-root -ojsonpath='{.data.password}' | base64 -d)
 ```
 
+### Create MySQL Cluster with Orchestrator as HA manager
+
+KubeBlocks provides you an alternative to  create a MySQL cluster that uses the Orchestrator[^1] HA manager.
+
+#### Prerequisites
+
+- Orchestrator Addon Enabled
+- An Orchestrator cluster Created using KubeBlocks, skip if exists. If not you may use following command to create one.
+
+```yaml
+# cat examples/mysql/orchestrator.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: myorc
+  namespace: demo
+spec:
+  clusterDef: orchestrator
+  topology: raft
+  terminationPolicy: Delete
+  services:
+    - name: orchestrator
+      componentSelector: orchestrator
+      spec:
+        ports:
+          - name: orc-http
+            port: 80
+  componentSpecs:
+    - name: orchestrator
+      disableExporter: true
+      replicas: 3
+      resources:
+        limits:
+          cpu: "1"
+          memory: "1Gi"
+        requests:
+          cpu: "1"
+          memory: "1Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+
+```
+
+```bash
+kubectl apply -f examples/mysql/orchestrator.yaml
+```
+
+#### Create MySQL Cluster with ServiceRef to Orchestrator
+
+1. edit `example/mysql/cluster-orc.yaml` and update `serviceRefs`.
+
+```yaml
+serviceRefs:
+  - name: orchestrator
+    namespace: <ORC_CLUSTER_NAMESPACE> # set to your orchestrator cluster namespace
+    clusterServiceSelector:
+      cluster:  <ORC_CLUSTER_NAME>  # set to your orchestrator cluster name
+      service:
+        component: orchestrator
+        service: orchestrator
+        port:  orc-http
+      credential:
+        component: orchestrator
+        name: orchestrator
+```
+
+2. create an mysql cluster with two replicas, with serviceRef to Orchestrator.
+
+```yaml
+# cat examples/mysql/cluster-orc.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: mysql-cluster
+  namespace: demo
+spec:
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: mysql
+      componentDef: mysql-orc-8.0 # use componentDef: mysql-orc-8.0
+      disableExporter: true
+      serviceVersion: "8.0.35"
+      replicas: 2
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+      serviceRefs:
+        - name: orchestrator
+          namespace: demo # set to your orchestrator cluster namespace
+          clusterServiceSelector:
+            cluster:  myorc  # set to your orchestrator cluster name
+            service:
+              component: orchestrator
+              service: orchestrator
+              port:  orc-http
+            credential:
+              component: orchestrator
+              name: orchestrator
+```
+
+```bash
+kubectl apply -f examples/mysql/cluster-orc.yaml
+```
+
 ### List of K8s Resources created when creating an MySQL Cluster
 
 To get the full list of associated resources created by KubeBlocks for given cluster:
@@ -1546,3 +1668,5 @@ kubectl get svc,secret,cm,pvc -l app.kubernetes.io/instance=<CLUSTER_NAME> -n de
 ```
 
 ## References
+
+[^1] Orchestrator, <https://github.com/openark/orchestrator>
