@@ -27,6 +27,7 @@ on:
           - mongodb
           - mysql
           - nebula
+          - neo4j
           - neon
           - oceanbase-ce
           - vanilla-postgresql
