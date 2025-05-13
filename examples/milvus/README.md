@@ -1,39 +1,70 @@
-# Milvus
+# Milvus on KubeBlocks
+
+## Overview
 
 Milvus is an open source (Apache-2.0 licensed) vector database built to power embedding similarity search and AI applications. Milvus's architecture is designed to handle large-scale vector datasets and includes various deployment modes:  Milvus Standalone, and Milvus Distributed, to accommodate different data scale needs.
 
-- Standalone Mode, including three components:
-  - Milvus: Provides the core functionality of the system.
-  - Metadata Storage (ETCD): A metadata engine for accessing and storing metadata of Milvus internal components (including proxies, index nodes, etc.), typically using etcd.
-  - Object Storage (minio): A storage engine responsible for the persistence of Milvus data, typically using MinIO or S3-compatible storage services.
+## Features in KubeBlocks
 
-- Cluster Mode, including multiple layers:
-  - Access Layer: composed of a group of stateless proxies
-  - Worker Nodes:
-    - Query Nodes
-    - Data Nodes
-    - Index Nodes
-  - Coordinator Service: Manages the metadata of the cluster, including Root, Query , Data, and Index Coordinators.
-  - Storage Layer, including
-    - Metadata Storage (ETCD): A metadata engine for accessing and storing metadata of Milvus internal components, typically using etcd.
-    - Object Storage (minio): A storage engine responsible for the persistence of Milvus data, typically using MinIO or S3-compatible storage services.
-    - Log Storage (Pulsar): A log storage engine responsible for the persistence of Milvus logs, typically using Apache Pulsar.
+### Supported Topologies
 
-## Features In KubeBlocks
+Milvus supports two deployment modes to accommodate different scale requirements:
 
-### Lifecycle Management
+#### Standalone Mode
 
-| Topology | Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
-|----------|------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
-| Standalone/Cluster | Yes          | Yes                   | N/A           | Yes       | Yes        | N/A       | Yes    | N/A   |
+A lightweight deployment suitable for development and testing:
 
-### Backup and Restore
+- **Milvus Core**: Provides vector search and database functionality
+- **Metadata Storage (ETCD)**: Stores cluster metadata and configuration
+- **Object Storage (MinIO/S3)**: Persists vector data and indexes
 
-| Feature     | Method | Description |
-|-------------|--------|------------|
+#### Cluster Mode
+
+A distributed deployment for production workloads with multiple specialized components:
+
+**Access Layer**
+
+- Stateless proxies that handle client connections and request routing
+
+**Compute Layer**
+
+- Query Nodes: Execute search operations
+- Data Nodes: Handle data ingestion and compaction
+- Index Nodes: Build and maintain vector indexes
+
+**Coordination Layer**
+
+- Root Coordinator: Manages global metadata
+- Query Coordinator: Orchestrates query execution
+- Data Coordinator: Manages data distribution
+- Index Coordinator: Oversees index building
+
+**Storage Layer**
+
+- Metadata Storage (ETCD): Cluster metadata and configuration
+- Object Storage (MinIO/S3): Persistent vector data storage
+- Log Storage (Pulsar): Message queue for change data capture
+
+### Cluster Management Operations
+
+| Operation | Description | Standalone | Cluster |
+|-----------|----------------------|------------|---------|
+| **Restart** | • Ordered sequence (followers first)<br/>• Health checks between restarts | YES | YES |
+| **Stop/Start** | • Graceful shutdown<br/>• Fast startup from persisted state | YES | YES |
+| **Horizontal Scaling** | • Adjust replica count dynamically<br/>• Automatic data replication<br/> | YES | YES |
+| **Vertical Scaling** | • Adjust CPU/Memory resources<br/>• Rolling updates for minimal downtime<br/> | YES | YES |
+| **Volume Expansion** | • Online storage expansion<br/>• No downtime required | N/A | N/A |
+| **Reconfiguration** | • Dynamic/Static parameter updates<br/>• Validation rules<br/>• Versioned history | NO | NO |
+| **Service Exposure** | • Multiple exposure types (ClusterIP/NodePort/LB)<br/>• Role-based routing | YES | YES |
+| **Switchover** | • Planned primary transfer<br/>• Zero data loss guarantee | N/A | N/A |
+
+### Data Protection
+
+| Type       | Method     | Details |
+|------------|------------|---------|
 | N/A | N/A | N/A |
 
-### Versions
+### Supported Versions
 
 | Versions |
 |----------|
@@ -41,22 +72,29 @@ Milvus is an open source (Apache-2.0 licensed) vector database built to power em
 
 ## Prerequisites
 
-- Kubernetes cluster >= v1.21
-- `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
-- Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
-- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
-- **ETCD** , **Milvus** , **Pulsar** Addons Enabled, refer to [Install Addons](../docs/install-addon.md)
-- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+Before starting, ensure you have:
+
+1. **Kubernetes Environment**:
+   - Cluster v1.21+
+   - `kubectl` installed ([Installation Guide](https://kubernetes.io/docs/tasks/tools/))
+   - Helm v3+ ([Installation Guide](https://helm.sh/docs/intro/install/))
+
+2. **KubeBlocks Setup**:
+   - KubeBlocks installed and running ([Installation](../docs/prerequisites.md))
+   - **ETCD** , **Milvus** , **Pulsar** Addons Enabled, refer to [Install Addons](../docs/install-addon.md)
+
+3. **Namespace Setup**:
+   Create an isolated namespace for this tutorial:
 
   ```bash
   kubectl create ns demo
   ```
 
-## Examples
+## Lifecycle Management Operations
 
-### Create
+### Cluster Provisioning
 
-#### [Standalone Mode](cluster-standalone.yaml)
+#### Quick Start (Standalone Mode)
 
 Create a Milvus cluster of `Standalone` mode:
 
@@ -72,8 +110,7 @@ To access the Milvus service, you can expose the service by creating a service:
 kubectl port-forward pod/milvus-standalone-milvus-0 -n demo 19530:19530
 ```
 
-And then you can access the Milvus service via `localhost:19530`. For instance you can run the python code below to test the service:
-
+And then you can access the Milvus service via `localhost:19530`.
 
 #### Cluster Mode
 
@@ -158,27 +195,191 @@ And you should pick the port, either using port name or port number, provides AP
       port: http  # set port to the one provides API service in your Minio.
 ```
 
-### Horizontal scaling
+To access the Milvus service, you can expose the service by creating a service:
 
-#### [Scale-out](scale-out.yaml)
+```bash
+kubectl port-forward svc/milvus-cluster-proxy -n demo 19530:19530
+```
 
-Horizontal scaling out `queryNode` in the cluster by adding ONE more replica:
+### Cluster Restart
+
+Restart the cluster components with zero downtime:
+
+```bash
+kubectl apply -f examples/milvus/restart.yaml
+```
+
+This operation can only be performed via `OpsRequest`, and there is no corresponding CLUSTER API operation - because restart is not a declaration but an action.
+
+### Cluster Stop and Start
+
+#### Stopping the Cluster
+
+Gracefully stop the cluster to conserve resources while retaining all data (PVC). It is ideal for cost savings during inactive periods.
+
+**Stop via OpsRequest**
+
+```bash
+kubectl apply -f examples/milvus/stop.yaml
+```
+
+> [!NOTE]
+> When stopped:
+>
+> - All compute resources are released
+> - Persistent volumes remain intact
+> - No data is lost
+
+**Stop via Cluster API**
+
+Update the cluster spec directly:
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+spec:
+  componentSpecs:
+    - name: querynode
+      stop: true  # Set to true to stop the component, set it to true for all components to stop them all
+      replicas: 2
+```
+
+#### Starting the Cluster
+
+Start the cluster from its stopped state:
+
+**Start via OpsRequest**
+
+```bash
+kubectl apply -f examples/milvus/start.yaml
+```
+
+**Start via Cluster API**
+
+Update the cluster spec directly:
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+spec:
+  componentSpecs:
+    - name: querynode
+      stop: false  # Set to false to start the component or remove the field (default to false), set for all components to start them all
+      replicas: 2
+```
+
+## Scaling Operations
+
+### Horizontal Scaling
+
+#### Scale Out Operation
+
+Add a new replica to the cluster:
 
 ```bash
 kubectl apply -f examples/milvus/scale-out.yaml
 ```
 
-#### [Scale-in](scale-in.yaml)
+To Check detailed operation status
 
-Horizontal scaling in `queryNode` in the cluster by deleting ONE replica:
+```bash
+kubectl describe ops -n demo milvus-scale-out
+```
+
+**Expected Workflow**:
+
+1. New pod is provisioned with `Pending` status
+2. Component status changes from `Updating` to `Running`
+3. Cluster status changes from `Updating` to `Running`
+
+### Scale In Operation
+
+#### Standard Scale In Operation
+
+Remove a replica from the cluster:
 
 ```bash
 kubectl apply -f examples/milvus/scale-in.yaml
 ```
 
-#### Scale-in/out using Cluster API
+Check detailed operation status:
 
-Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
+```bash
+kubectl describe ops -n demo milvus-scale-in
+```
+
+**Expected Workflow**:
+
+1. Selected replica (the one with the largest ordinal) is removed
+2. Pod is terminated gracefully
+3. Cluster status changes from `Updating` to `Running`
+
+#### Targeted Instance Scale In
+
+For cases where you need to take a specific problematic replica offline for maintenance:
+
+```bash
+kubectl apply -f examples/milvus/scale-in-specified-pod.yaml
+```
+
+Check detailed operation status:
+
+```bash
+kubectl describe ops -n demo milvus-scale-in-specified-pod
+```
+
+**Expected Workflow**:
+
+1. Selected replica (specified in `onlineInstancesToOffline`) is removed
+2. Pod is terminated gracefully
+3. Cluster status changes from `Updating` to `Running`
+4. cluster spec has been updated to:
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+spec:
+  componentSpecs:
+    name: querynode
+    offlineInstances:
+      - milvus-cluster-querynode-1  # the instance name specified in opsrequest
+    replicas: 1  # note: replicas also reduced by one at the same time.
+```
+
+#### Horizontal Scaling via Cluster API
+
+Directly update replica count via Cluster API:
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+spec:
+  componentSpecs:
+    - name: querynode
+      replicas: 2  # Adjust replicas for scaling in and out.
+      offlineInstances:
+        - milvus-cluster-querynode-1 # for targetd-instance scale-in scenario, default to empty list.
+```
+
+### Vertical Scaling
+
+Vertical scaling involves increasing or decreasing resources to an existing database cluster.
+Resources that can be scaled include:
+
+- CPU cores/processing power
+- Memory (RAM)
+
+#### Vertical Scaling via OpsRequest API
+
+Perform vertical scaling using a operation request:
+
+```bash
+kubectl apply -f examples/milvus/verticalscale.yaml
+```
+
+#### Vertical Scaling via Cluster API
+
+Directly modify cluster specifications for vertical scaling:
 
 ```yaml
 # snippet of cluster.yaml
@@ -187,70 +388,250 @@ kind: Cluster
 spec:
   componentSpecs:
     - name: querynode
-      replicas: 2 # Update `replicas` to 1 for scaling in, and to 3 for scaling out
+      resources:
+        requests:
+          cpu: "1"       # CPU cores (e.g. "1", "500m")
+          memory: "2Gi"  # Memory (e.g. "2Gi", "512Mi")
+        limits:
+          cpu: "2"       # Maximum CPU allocation
+          memory: "4Gi"  # Maximum memory allocation
 ```
 
-### [Restart](restart.yaml)
+**Key Considerations**:
 
-Restart the specified components in the cluster
+- Ensure sufficient cluster capacity exists
+- Resource changes may trigger pod restarts and parameters reconfiguration
+- Monitor resource utilization after changes
 
-```bash
-kubectl apply -f examples/milvus/restart.yaml
-```
+## Networking
 
-### [Stop](stop.yaml)
+### Expose SVC via Cluster API
 
-Stop the cluster and release all the pods of the cluster, but the storage will be reserved
-
-```bash
-kubectl apply -f examples/milvus/stop.yaml
-```
-
-### [Start](start.yaml)
-
-Start the stopped cluster
-
-```bash
-kubectl apply -f examples/milvus/start.yaml
-```
-
-### Observability
-
-There are various ways to monitor the cluster. Here we use Prometheus and Grafana to demonstrate how to monitor the cluster.
-
-#### Installing the Prometheus Operator
-
-You may skip this step if you have already installed the Prometheus Operator.
-Or you can follow the steps in [How to install the Prometheus Operator](../docs/install-prometheus.md) to install the Prometheus Operator.
-
-#### Create PodMonitor
-
-Apply the `PodMonitor` file to monitor the cluster:
-
-```bash
-kubectl apply -f examples/milvus/pod-monitor.yaml
-```
-
-It sets up the `PodMonitor` to monitor the Milvus cluster and scrapes the metrics from the Milvus components.
+Alternatively, you may expose service by adding a new service to cluster's `spec.services`:
 
 ```yaml
-  podMetricsEndpoints:
-    - path: /metrics
-      port: metrics
-      scheme: http
-      relabelings:
-        - targetLabel: app_kubernetes_io_name
-          replacement: milvus # add a label to the target: app_kubernetes_io_name=milvus
+# snippet of cluster.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+spec:
+  services:
+    - annotations:
+        service.beta.kubernetes.io/aws-load-balancer-type: nlb  # Use Network Load Balancer
+        service.beta.kubernetes.io/aws-load-balancer-internal: "true"  # or "false" for internet
+      componentSelector: proxy
+      name: milvus-vpc
+      serviceName: milvus-vpc
+      spec:
+        ipFamilyPolicy: PreferDualStack
+        ports:
+        - name: milvus
+          port: 19530
+          protocol: TCP
+          targetPort: milvus
+        type: LoadBalancer  # [ClusterIP, NodePort, LoadBalancer]
 ```
 
-For more information about the metrics, refer to the [Visualize Milvus Metrics](https://milvus.io/docs/visualize.md).
+### Cloud Provider Load Balancer Annotations
 
-### Delete
+```yaml
+# alibaba cloud
+service.beta.kubernetes.io/alibaba-cloud-loadbalancer-address-type: "internet"  # or "intranet"
 
-If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
+# aws
+service.beta.kubernetes.io/aws-load-balancer-type: nlb  # Use Network Load Balancer
+service.beta.kubernetes.io/aws-load-balancer-internal: "true"  # or "false" for internet
+
+# azure
+service.beta.kubernetes.io/azure-load-balancer-internal: "true" # or "false" for internet
+
+# gcp
+networking.gke.io/load-balancer-type: "Internal" # for internal access
+cloud.google.com/l4-rbs: "enabled" # for internet
+```
+
+## Monitoring & Observability
+
+### Prerequisites
+
+1. **Prometheus Operator**: Required for metrics collection
+   - Skip if already installed
+   - Install via: [Prometheus Operator Guide](../docs/install-prometheus.md)
+
+2. **Access Credentials**: Ensure you have:
+   - `kubectl` access to the cluster
+   - Grafana admin privileges (for dashboard import)
+
+### Metrics Collection Setup
+
+#### 1. Configure PodMonitor
+
+1. **Verify Metrics Endpoint**:
+
+   ```bash
+   kubectl -n demo exec -it pods/milvus-cluster-proxy-0 -- \
+     curl -s http://127.0.0.1:9091/metrics | head -n 50
+   ```
+
+   Perform the verification against all Milvus replicas, including:
+    - milvus-cluster-datanode-{id}
+    - milvus-cluster-indexnode-{id}
+    - milvus-cluster-mixcoord-{id}
+    - milvus-cluster-proxy-{id}
+    - milvus-cluster-querynode-{id}
+
+3. **Apply PodMonitor**:
+
+   ```bash
+   kubectl apply -f examples/milvus/pod-monitor.yaml
+   ```
+
+  It sets up the `PodMonitor` to monitor the Milvus cluster and scrapes the metrics from the Milvus components.
+
+  ```yaml
+    podMetricsEndpoints:
+      - path: /metrics
+        port: metrics
+        scheme: http
+        relabelings:
+          - targetLabel: app_kubernetes_io_name
+            replacement: milvus # add a label to the target: app_kubernetes_io_name=milvus
+  ```
+
+  For more information about the metrics, refer to the [Visualize Milvus Metrics](https://milvus.io/docs/visualize.md).
+
+#### 2. Grafana Dashboard Setup
+
+1. **Import Dashboard**:
+   - URL: [Milvus Dashboard](https://raw.githubusercontent.com/milvus-io/milvus/refs/heads/master/deployments/monitor/grafana/milvus-dashboard.json)
+   - for more details please refer to [Visualize metrics using Grafana](https://milvus.io/docs/visualize.md)
+
+2. **Verification**:
+   - Confirm metrics appear in Grafana within 2-5 minutes
+   - Check for "UP" status in Prometheus targets
+
+### Troubleshooting
+
+- **No Metrics**: check Prometheus
+
+  ```bash
+  kubectl get pods -n monitoring -l app.kubernetes.io/name=prometheus
+  kubectl logs -n monitoring <prometheus-pod-name> -c prometheus
+  ```
+
+- **Dashboard Issues**: check metrics labels and dashboards
+  - Verify Grafana DataSource points to correct Prometheus instance
+  - Check for template variable mismatches
+
+## Cleanup
+
+To permanently delete the cluster and all associated resources:
+
+1. First modify the termination policy to ensure all resources are cleaned up:
 
 ```bash
-kubectl patch cluster -n demo milvus-cluster -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+# Set termination policy to WipeOut (deletes all resources including PVCs)
+kubectl patch cluster -n demo milvus-cluster \
+  -p '{"spec":{"terminationPolicy":"WipeOut"}}' \
+  --type="merge"
+```
 
+2. Verify the termination policy was updated:
+
+```bash
+kubectl get cluster -n demo milvus-cluster -o jsonpath='{.spec.terminationPolicy}'
+```
+
+3. Delete the cluster:
+
+```bash
 kubectl delete cluster -n demo milvus-cluster
 ```
+
+> [!WARNING]
+> This operation is irreversible and will permanently delete:
+>
+> - All database pods
+> - Persistent volumes and claims
+> - Services and other cluster resources
+
+<details open>
+<summary>How to set a proper `TerminationPolicy`</summary>
+
+For more details you may use following command
+
+```bash
+kubectl explain cluster.spec.terminationPolicy
+```
+
+| Policy            | Description                                                                                                                                               |
+|-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `DoNotTerminate`  | Prevents deletion of the Cluster. This policy ensures that all resources remain intact.                                                                   |
+| `Delete`          | Deletes all runtime resources belonging to the Cluster.                                                                                                   |
+| `WipeOut`         | An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss. |
+
+</details>
+
+## Appendix
+
+### Connecting to Milvus
+
+To connect to the Milvus cluster, you can:
+
+- port forward the Milvus service to your local machine:
+
+```bash
+kubectl port-forward svc/milvus-cluster-proxy -n demo 19530:19530
+```
+
+- or expose the Milvus service to the internet, as mentioned in the [Networking](#networking) section.
+
+### Create Milvus Cluster with external Pulsar Cluster
+
+There are cases a Pulsar/Minio/ETCD cluster has been provisioned in your environment, but not managed by KubeBlocks. To create a milvus cluster to use such "external-to-kubeblocks" cluster, you should use `serviceDescriptor` API instead `clusterServiceSelector`.
+
+1. create `ServiceDescriptor`s.
+
+ServiceDescriptor describes a service provided by external sources. It contains the necessary details such as the service's address and connection credentials.
+
+For examples, create a ServiceDescriptor for etcd.
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: ServiceDescriptor
+metadata:
+spec:
+  serviceKind: etcd
+  serviceVersion: <etcd-version>
+  endpoint:
+    # external service endpoints here
+    value: "<ETCD_ENDPOINT>"
+  # Represents the port of the service connection credential.
+  port:
+    value: "2379"
+```
+
+2. create Milvus cluster, using `serviceRefs.serviceDescriptor` to point to an external service.
+
+```yaml
+  - name: querynode
+    serviceRefs:
+      - name: milvus-meta-storage
+        namespace: demo
+        # Specifies the name of the ServiceDescriptor object that describes a service provided by external sources
+        serviceDescriptor: <ETCD_SD_NAME> # etcd servicd descriptor name created in step 1.
+  ...
+```
+
+### List of K8s Resources created when creating an Milvus Cluster
+
+To get the full list of associated resources created by KubeBlocks for given cluster:
+
+```bash
+kubectl get cmp,its,po -l app.kubernetes.io/instance=<CLUSTER_NAME> -n demo # cluster and worload
+kubectl get backuppolicy,backupschedule,backup -l app.kubernetes.io/instance=<CLUSTER_NAME> -n demo # data protection resources
+kubectl get componentparameter,parameter -l app.kubernetes.io/instance=<CLUSTER_NAME> -n demo # configuration resources
+kubectl get opsrequest -l app.kubernetes.io/instance=<CLUSTER_NAME> -n demo # opsrequest resources
+kubectl get svc,secret,cm,pvc -l app.kubernetes.io/instance=<CLUSTER_NAME> -n demo # k8s native resources
+```
+
+## References
