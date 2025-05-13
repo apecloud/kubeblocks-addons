@@ -13,8 +13,8 @@ addons-cluster/apecloud-mysql/ @xuriwuyun @leon-inf @apecloud/kb-reviewers @apec
 addons/clickhouse/ @sophon-zt @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/clickhouse/ @sophon-zt @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/elasticsearch/ @iziang @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/elasticsearch/ @iziang @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons/elasticsearch/ @iziang @vipshop @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/elasticsearch/ @iziang @vipshop @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
 addons/etcd/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/etcd/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
@@ -25,8 +25,8 @@ addons-cluster/greptimedb/ @GreptimeTeam @sh2 @leon-inf @apecloud/kb-reviewers @
 addons/influxdb/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/influxdb/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/kafka/ @caiq1nyu @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/kafka/ @caiq1nyu @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons/kafka/ @caiq1nyu @vipshop @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/kafka/ @caiq1nyu @vipshop @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
 addons/llm/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/llm/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
