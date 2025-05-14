@@ -1,73 +1,104 @@
-# Elasticsearch
+# Elasticsearch on KubeBlocks
 
-Elasticsearch is a distributed, RESTful search engine optimized for speed and relevance on production-scale workloads.
-Each Elasticsearch cluster consists of one or more nodes, and each node in a cluster has a role and communicates with other nodes to share data and responsibilities. A node can assume multiple roles up to your requirements. Types of roles include [^1]:
+## Overview
 
-- master
-- data
-- data_content
-- data_hot
-- data_warm
-- data_cold
-- data_frozen
-- ingest
-- ml
-- remote_cluster_client
-- transform
+Elasticsearch is a distributed, RESTful search engine optimized for speed and relevance on production-scale workloads. Each Elasticsearch cluster consists of one or more nodes, with each node assuming specific roles.
 
-## Features In KubeBlocks
+### Node Roles
 
-### Lifecycle Management
+| Role | Description |
+|------|-------------|
+| **master** | Manages cluster state and coordinates operations |
+| **data** | Stores data and handles data-related operations |
+| **data_content** | Stores document data |
+| **data_hot** | Handles recent, frequently accessed data |
+| **data_warm** | Stores less frequently accessed data |
+| **data_cold** | Handles rarely accessed data |
+| **data_frozen** | Manages archived data |
+| **ingest** | Processes documents before indexing |
+| **ml** | Runs machine learning jobs |
+| **remote_cluster_client** | Connects to remote clusters |
+| **transform** | Handles data transformations |
 
-| Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
-|------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
-| Yes                    | Yes                   | Yes               | Yes       | Yes        | No       | Yes    | N/A     |
+[See Elasticsearch Node Roles documentation](https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-node.html)
 
-### Versions
+## Features in KubeBlocks
 
-| Major Versions | Description |
-|---------------|-------------|
+KubeBlocks provides comprehensive management capabilities for Elasticsearch clusters:
+
+### Cluster Management Operations
+
+| Operation |Supported | Description |
+|-----------|-------------|----------------------|
+| **Restart** | YES | • Ordered sequence (followers first)<br/>• Health checks between restarts |
+| **Stop/Start** | YES |  • Graceful shutdown<br/>• Fast startup from persisted state |
+| **Horizontal Scaling** |YES |  • Adjust replica count dynamically<br/>• Automatic data replication<br/> |
+| **Vertical Scaling** | YES |  • Adjust CPU/Memory resources<br/>• Rolling updates for minimal downtime<br/>• Adaptive Parameters Reconfiguration, such as buffer pool size/max connections |
+| **Volume Expansion** | YES |  • Online storage expansion<br/>• No downtime required |
+| **Reconfiguration** | NO | • Dynamic/Static parameter updates<br/>• Validation rules<br/>• Versioned history |
+| **Service Exposure** | YES |  • Multiple exposure types (ClusterIP/NodePort/LB)<br/>• Role-based routing |
+| **Switchover** | N/A |  • Planned primary transfer<br/>• Zero data loss guarantee |
+
+### Data Protection
+
+| Type       | Method     | Details |
+|---------------|------------|---------|
+| N/A | N/A | N/A|
+
+### Supported Versions
+
+| Major Versions | Minor Versions|
+|---------------|--------------|
 | 7.x | 7.7.1,7.8.1,7.10.1 |
 | 8.x | 8.1.3, 8.8.2 |
 
 ## Prerequisites
 
-- Kubernetes cluster >= v1.21
-- `kubectl` installed, refer to [K8s Install Tools](https://kubernetes.io/docs/tasks/tools/)
-- Helm, refer to [Installing Helm](https://helm.sh/docs/intro/install/)
-- KubeBlocks installed and running, refer to [Install Kubeblocks](../docs/prerequisites.md)
-- Elasticsearch Addon Enabled, refer to [Install Addons](../docs/install-addon.md)
-- Create K8s Namespace `demo`, to keep resources created in this tutorial isolated:
+Before starting, ensure you have:
+
+1. **Kubernetes Environment**:
+   - Cluster v1.21+
+   - `kubectl` installed ([Installation Guide](https://kubernetes.io/docs/tasks/tools/))
+   - Helm v3+ ([Installation Guide](https://helm.sh/docs/intro/install/))
+
+2. **KubeBlocks Setup**:
+   - KubeBlocks installed and running ([Installation](../docs/prerequisites.md))
+   - Elasticsearch Addon enabled ([Addon Setup](../docs/install-addon.md))
+
+3. **Namespace Setup**:
+   Create an isolated namespace for this tutorial:
 
   ```bash
   kubectl create ns demo
   ```
 
-## Examples
+## Lifecycle Management Operations
 
-### Create
+### Cluster Provisioning
 
-#### Create a Single-Node Cluster
+#### Single-Node Cluster (Development/Testing)
 
-A Single-Node Cluster is a cluster with only one node and this node assume all roles. It is suitable for development and testing purposes.
+For development and testing purposes, you can deploy a single-node cluster where one node handles all roles.
+
+**Deployment Command:**
 
 ```bash
 kubectl apply -f examples/elasticsearch/cluster-single-node.yaml
 ```
 
-The configs in Cluster API:
+**Configuration Details:**
 
 ```yaml
-  configs:
-    - name: es-cm
-      variables:
-        mode: "single-node"
+configs:
+  - name: es-cm
+    variables:
+      mode: "single-node"  # Explicitly sets single-node mode
 ```
 
-Where,
+Key Configuration Notes:
 
-- `es-cm` refers to the config template defined in ComponentDefinition `elasticsearch-`
-- "mode=single-node" (default to multi-node), is used to specify the mode of the Elasticsearch cluster.
+- `es-cm`: References the config template in ComponentDefinition `elasticsearch-`
+- `mode="single-node"`: Overrides default multi-node behavior
 
 To check the role of the node, you may log in to the pod and run the following command:
 
@@ -84,44 +115,46 @@ es-single-node-mdit-0 12.345.678 cdfhilmrstw
 
 The role is `cdfhilmrstw`. Please refer to [Elasticsearch Nodes](https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-node.html) for more information about the roles.
 
-#### Create a Multi-Node Cluster
+#### Multi-Node Cluster (Production)
 
-Create a elasticsearch cluster with multiple nodes and each node assume specified roles.
+For production deployments, create a cluster with dedicated nodes for different roles.
+
+**Deployment Command:**
 
 ```bash
 kubectl apply -f examples/elasticsearch/cluster-multi-node.yaml
 ```
 
-There are four components specified in this cluster, i.e 'master', 'data', 'ingest', and 'transform',  and each component has different roles. Roles are specified in `configs` for each component:
+**Configuration Example:**
 
 ```yaml
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
+  name: elasticsearch-cluster
 spec:
   componentSpecs:
     - name: data
       configs:
         - name: es-cm
           variables:
-            # use key `roles` to specify roles this component assume
-            roles: data,ingest,transform
+            roles: data,ingest,transform  # Node handles data, ingest and transform roles
             mode: multi-node
-      ...
+      replicas: 3
     - name: master
       configs:
         - name: es-cm
           variables:
-            # use key `roles` to specify roles this component assume
-            roles: master
+            roles: master  # Dedicated master node
             mode: multi-node
+      replicas: 3
 ```
 
-Where,
+Key Configuration Notes:
 
-- `es-cm` refers to the config template defined in ComponentDefinition `elasticsearch-`
-- "mode=multi-node" (default to multi-node), is used to specify the mode of the Elasticsearch cluster.
-- "roles: data,ingest,transform" specifies the list of roles this component should assume.
+- `es-cm`: References the config template in ComponentDefinition
+- `mode="multi-node"`: Explicit cluster mode (default)
+- `roles`: Comma-separated list of node responsibilities
 
 > [!IMPORTANT]
 >
@@ -162,87 +195,211 @@ spec:
 ...
 ```
 
-### Horizontal scaling
+#### Version-Specific Cluster
 
-#### [Scale-out](scale-out.yaml)
+To deploy a specific Elasticsearch version, configure the `serviceVersion` field in your cluster specification.
 
-Horizontal scaling out elasticsearch cluster by adding ONE `MASTER` replica:
+**Configuration Example:**
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+spec:
+  componentSpecs:
+    - name: master
+      serviceVersion: "8.8.2"  # Explicit version specification
+      # Additional configuration...
+```
+
+**Checking Available Versions:**
+
+```bash
+kubectl get cmpv elasticsearch
+```
+
+<details open>
+<summary>Sample Version Output</summary>
+
+```bash
+NAME            VERSIONS                         STATUS      AGE
+elasticsearch   8.8.2,8.1.3,7.10.1,7.8.1,7.7.1   Available   21d
+```
+
+</details>
+
+**Version Selection Guidelines:**
+
+1. Always specify exact versions (avoid ranges)
+2. Check version compatibility with your applications
+3. Production environments should use stable releases (avoid pre-release versions)
+
+### Cluster Restart
+
+Restart the cluster components with zero downtime:
+
+```bash
+kubectl apply -f examples/elasticsearch/restart.yaml
+```
+
+This operation can only be performed via `OpsRequest`, and there is no corresponding CLUSTER API operation - because restart is not a declaration but an action.
+
+> [!NOTE]
+> The restart follows a safe sequence:
+>
+> 1. All secondary replicas are restarted first
+> 2. Primary replica is restarted last
+> 3. Transfer leadership to a healthy secondary before restarting Primary replica
+> This ensures continuous availability during the restart process.
+
+### Cluster Stop and Start
+
+#### Stopping the Cluster
+
+Gracefully stop the cluster to conserve resources while retaining all data (PVC). It is ideal for cost savings during inactive periods.
+
+**Stop via OpsRequest**
+
+```bash
+kubectl apply -f examples/elasticsearch/stop.yaml
+```
+
+> [!NOTE]
+> When stopped:
+>
+> - All compute resources are released
+> - Persistent volumes remain intact
+> - No data is lost
+
+**Stop via Cluster API**
+
+Update the cluster spec directly:
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+spec:
+  componentSpecs:
+    - name: data
+      stop: true  # Set to true to stop the component
+      replicas: 3
+```
+
+#### Starting the Cluster
+
+Start the cluster from its stopped state:
+
+**Start via OpsRequest**
+
+```bash
+kubectl apply -f examples/elasticsearch/start.yaml
+```
+
+**Start via Cluster API**
+
+Update the cluster spec directly:
+
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+spec:
+  componentSpecs:
+    - name: data
+      stop: false  # Set to false to start the component or remove the field (default to false)
+      replicas: 3
+```
+
+## Scaling Operations
+
+### Horizontal Scaling
+
+#### Scale Out Operation
+
+Add a new replica to the cluster:
 
 ```bash
 kubectl apply -f examples/elasticsearch/scale-out.yaml
 ```
 
-#### [Scale-in](scale-in.yaml)
+To Check detailed operation status
 
-Horizontal scaling in elasticsearch cluster by deleting ONE `MASTER` replica:
+```bash
+kubectl describe ops -n demo elasticsearch-scale-out
+```
+
+### Scale In Operation
+
+#### Standard Scale In Operation
+
+Remove a replica from the cluster:
 
 ```bash
 kubectl apply -f examples/elasticsearch/scale-in.yaml
 ```
 
-On scaling in, the pod with the highest ordinal number (if not otherwise specified) will be deleted. And it will be cleared from voting configuration exclusions of this cluster before deletion, to make sure the cluster is healthy.
-
-After scaling in, you can check the cluster health by running the following command:
+Check detailed operation status:
 
 ```bash
-curl -X GET "http://<ES_ENDPOINT>:9200/_cluster/health?pretty"  # replace <ES_ENDPOINT> with the actual endpoint
+kubectl describe ops -n demo elasticsearch-scale-in
 ```
 
-> [!IMPORTANT]
-> Make sure there are at least ONE replica for each component
-> If you want to scale in the last replica, may be you should consider to `STOP` the cluster.
+#### Horizontal Scaling via Cluster API
 
-#### Scale-in/out using Cluster API
-
-Alternatively, you can update the `replicas` field in the `spec.componentSpecs.replicas` section to your desired non-zero number.
+Directly update replica count via Cluster API:
 
 ```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
 spec:
-  terminationPolicy: Delete
   componentSpecs:
-    - name: master
-      componentDef: elasticsearch-8
-      serviceVersion: 8.8.2
-      replicas: 3 # Update `replicas` to your need.
+    - name: data
+      replicas: 2  # Adjust replicas for scaling in and out.
+      offlineInstances:
 ```
 
-### [Vertical scaling](verticalscale.yaml)
+### Vertical Scaling
 
 Vertical scaling involves increasing or decreasing resources to an existing database cluster.
-Resources that can be scaled include:, CPU cores/processing power and Memory (RAM).
+Resources that can be scaled include:
 
-To vertical scaling up or down specified component, you can apply the following yaml file:
+- CPU cores/processing power
+- Memory (RAM)
+
+#### Vertical Scaling via OpsRequest API
+
+Perform vertical scaling using a operation request:
 
 ```bash
 kubectl apply -f examples/elasticsearch/verticalscale.yaml
 ```
 
-#### Scale-up/down using Cluster API
+#### Vertical Scaling via Cluster API
 
-Alternatively, you may update `spec.componentSpecs.resources` field to the desired resources for vertical scale.
+Directly modify cluster specifications for vertical scaling:
 
 ```yaml
+# snippet of cluster.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
 spec:
-  terminationPolicy: Delete
   componentSpecs:
-    - name: master
-      componentDef: elasticsearch-8
-      serviceVersion: 8.8.2
+    - name: data
       resources:
         requests:
-          cpu: "1"       # Update the resources to your need.
-          memory: "2Gi"  # Update the resources to your need.
+          cpu: "1"       # CPU cores (e.g. "1", "500m")
+          memory: "2Gi"  # Memory (e.g. "2Gi", "512Mi")
         limits:
-          cpu: "2"       # Update the resources to your need.
-          memory: "4Gi"  # Update the resources to your need.
+          cpu: "2"       # Maximum CPU allocation
+          memory: "4Gi"  # Maximum memory allocation
 ```
 
-### [Expand volume](volumeexpand.yaml)
+## Storage Operations
 
-Volume expansion is the ability to increase the size of a Persistent Volume Claim (PVC) after it's created. It is introduced in Kubernetes v1.11 and goes GA in Kubernetes v1.24. It allows Kubernetes users to simply edit their PersistentVolumeClaim objects  without requiring any downtime at all if possible.
+### Prerequisites
+
+Volume expansion is the ability to increase the size of a Persistent Volume Claim (PVC) after it's created. It is introduced in Kubernetes v1.11 and goes GA in Kubernetes v1.24. It allows Kubernetes users to simply edit their PersistentVolumeClaim objects without requiring any downtime at all if possible.
 
 > [!NOTE]
-> Make sure the storage class you use supports volume expansion.
+> Make sure the storage class you used when creating clusters supports volume expansion.
 
 Check the storage class with following command:
 
@@ -252,6 +409,10 @@ kubectl get storageclass
 
 If the `ALLOWVOLUMEEXPANSION` column is `true`, the storage class supports volume expansion.
 
+### Volume Expansion
+
+#### Volume Expansion via OpsRequest API
+
 To increase size of volume storage with the specified components in the cluster
 
 ```bash
@@ -260,21 +421,25 @@ kubectl apply -f examples/elasticsearch/volumeexpand.yaml
 
 After the operation, you will see the volume size of the specified component is increased to `30Gi` in this case. Once you've done the change, check the `status.conditions` field of the PVC to see if the resize has completed.
 
-#### Volume expansion using Cluster API
+```bash
+kubectl get pvc -l app.kubernetes.io/instance=elasticsearch-cluster -n demo
+```
+
+#### Volume Expansion via Cluster API
 
 Alternatively, you may update the `spec.componentSpecs.volumeClaimTemplates.spec.resources.requests.storage` field to the desired size.
 
 ```yaml
+# snippet of cluster.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
 spec:
-  terminationPolicy: Delete
   componentSpecs:
-    - name: master
-      componentDef: elasticsearch-8
-      serviceVersion: 8.8.2
+    - name: data
       volumeClaimTemplates:
         - name: data
           spec:
-            storageClassName: "<you-preferred-sc>"
+            storageClassName: "<STORAGE_CLASS_NAME>"
             accessModes:
               - ReadWriteOnce
             resources:
@@ -282,107 +447,62 @@ spec:
                 storage: 30Gi  # specify new size, and make sure it is larger than the current size
 ```
 
-### [Restart](restart.yaml)
+> [!NOTE]
+> If the storage class you use does not support volume expansion, this OpsRequest fails fast with information like:
+> `storageClass: [STORAGE_CLASS_NAME] of volumeClaimTemplate: [VOLUME_NAME]] not support volume expansion in component [COMPONENT_NAME]`
 
-Restart the specified component `data` in the cluster. If not specified, all components will be restarted.
+## Networking
 
-```bash
-kubectl apply -f examples/elasticsearch/restart.yaml
-```
+### Service Exposure
 
-### [Stop](stop.yaml)
+1. **Choose Exposure Method**:
+   - OpsRequest API
+   - Cluster API
 
-Stop the cluster and release all the pods of the cluster, but the storage will be reserved
+2. **Configure Service Annotation** (if using LoadBalancer):
+   - Add appropriate annotations
 
-```bash
-kubectl apply -f examples/elasticsearch/stop.yaml
-```
+#### Expose SVC via OpsRequest API
 
-#### Stop using Cluster API
-
-Alternatively, you may stop ONE component by setting the `spec.componentSpecs.stop` field to `true`.
-
-```yaml
-spec:
-  terminationPolicy: Delete
-  componentSpecs:
-    - name: master
-      componentDef: elasticsearch-8
-      serviceVersion: 8.8.2
-      stop: true  # set stop `true` to stop the component
-      replicas: 3
-```
-
-### [Start](start.yaml)
-
-Start the stopped cluster
-
-```bash
-kubectl apply -f examples/elasticsearch/start.yaml
-```
-
-#### Start using Cluster API
-
-Alternatively, you may start the cluster by setting the `spec.componentSpecs.stop` field to `true`.
-
-```yaml
-spec:
-  terminationPolicy: Delete
-  componentSpecs:
-    - name: master
-      componentDef: elasticsearch-8
-      serviceVersion: 8.8.2
-      stop: false  # set to `false` (or remove this field) to start the component
-      replicas: 3
-```
-
-### Expose
-
-It is recommended to access the Elasticsearch cluster from within the Kubernetes cluster using Kibana or other tools. However, if you need to access the Elasticsearch cluster from outside the Kubernetes cluster, you can expose the Elasticsearch service using a `LoadBalancer` service type.
-
-#### [Enable](expose-enable.yaml)
+- Enable Service
 
 ```bash
 kubectl apply -f examples/elasticsearch/expose-enable.yaml
 ```
 
-In this example, a service with type `LoadBalancer` will be created to expose the Elasticsearch cluster. You can access the cluster using the `external IP` of the service.
-
-#### [Disable](expose-disable.yaml)
+- Disable Service
 
 ```bash
 kubectl apply -f examples/elasticsearch/expose-disable.yaml
 ```
 
-#### Expose SVC using Cluster API
+#### Expose SVC via Cluster API
 
-Alternatively, you may expose service by updating `spec.services`
+Alternatively, you may expose service by adding a new service to cluster's `spec.services`:
 
 ```yaml
+# snippet of cluster.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
 spec:
-  # append service to the list
   services:
-    # add annotation for cloud loadbalancer if
-    # services.spec.type is LoadBalancer
-    # here we use annotation for alibaba cloud for example
-  - annotations:
-      service.beta.kubernetes.io/alibaba-cloud-loadbalancer-address-type: internet
-      service.beta.kubernetes.io/alibaba-cloud-loadbalancer-charge-type: ""
-      service.beta.kubernetes.io/alibaba-cloud-loadbalancer-spec: slb.s1.small
-    componentSelector: master
-    name: master-internet
-    serviceName: master-internet
-    spec:
-      ports:
-      - name: es-http
-        nodePort: 32751
-        port: 9200
-        protocol: TCP
-        targetPort: es-http
-      type: LoadBalancer
+    - annotations:
+        service.beta.kubernetes.io/aws-load-balancer-type: nlb  # Use Network Load Balancer
+        service.beta.kubernetes.io/aws-load-balancer-internal: "true"  # or "false" for internet
+      componentSelector: master
+      name: master-internet
+      serviceName: master-internet
+      spec:
+        ports:
+        - name: es-http
+          nodePort: 32751
+          port: 9200
+          protocol: TCP
+          targetPort: es-http
+        type: LoadBalancer
 ```
 
-If the service is of type `LoadBalancer`, please add annotations for cloud loadbalancer depending on the cloud provider you are using. Here list annotations for some cloud providers:
+#### Cloud Provider Load Balancer Annotations
 
 ```yaml
 # alibaba cloud
@@ -400,53 +520,142 @@ networking.gke.io/load-balancer-type: "Internal" # for internal access
 cloud.google.com/l4-rbs: "enabled" # for internet
 ```
 
-Please consult your cloud provider for more accurate and update-to-date information.
+## Monitoring & Observability
 
-### Observability
+### Prerequisites
 
-There are various ways to monitor the cluster. Here we use Prometheus and Grafana to demonstrate how to monitor the cluster.
+1. **Prometheus Operator**: Required for metrics collection
+   - Skip if already installed
+   - Install via: [Prometheus Operator Guide](../docs/install-prometheus.md)
 
-#### Installing the Prometheus Operator
+2. **Access Credentials**: Ensure you have:
+   - `kubectl` access to the cluster
+   - Grafana admin privileges (for dashboard import)
 
-You may skip this step if you have already installed the Prometheus Operator.
-Or you can follow the steps in [How to install the Prometheus Operator](../docs/install-prometheus.md) to install the Prometheus Operator.
+### Metrics Collection Setup
 
-##### Step 1. Create PodMonitor
+#### 1. Configure PodMonitor
 
-Apply the `PodMonitor` file to monitor the cluster:
-
-```bash
-kubectl apply -f examples/elasticsearch/pod-monitor.yaml
-```
-
-It set up the PodMonitor to scrape the metrics (port `9114`) from the Elasticsearch cluster.
-
-```yaml
-    - path: /metrics
-      port: metrics
-      scheme: http
-```
-
-##### Step 2. Access the Grafana Dashboard
-
-Login to the Grafana dashboard and import the dashboard.
-You can import the dashboard provided by Grafana or create your own dashboard, e.g.
-
-- <https://grafana.com/grafana/dashboards/2322-elasticsearch/>
-
-> [!NOTE]
-> Make sure the labels are set correctly in the `PodMonitor` file to match the dashboard.
-
-### Delete
-
-If you want to delete the cluster and all its resource, you can modify the termination policy and then delete the cluster
+1. **Verify Metrics Endpoint**:
 
 ```bash
-kubectl patch cluster -n demo es-multinode -p '{"spec":{"terminationPolicy":"WipeOut"}}' --type="merge"
+kubectl -n demo exec -it pods/es-multinode-data-0 -- \
+  curl -s http://127.0.0.1:9114/metrics | head -n 50
+```
 
-kubectl delete cluster -n demo es-multinode
+Perform the verification against all ES replicas to.
+
+2. **Apply PodMonitor**:
+
+  ```bash
+  kubectl apply -f examples/elasticsearch/pod-monitor.yaml
+  ```
+
+  It set up the PodMonitor to scrape the metrics (port `9114`) from the Elasticsearch cluster.
+
+  ```yaml
+  - path: /metrics
+    port: metrics
+    scheme: http
+  ```
+
+#### 2. Grafana Dashboard Setup
+
+1. **Import Dashboard**:
+   - URL: [Elasticsearch Dashboard](https://raw.githubusercontent.com/apecloud/kubeblocks-addons/refs/heads/main/addons/elasticsearch/dashboards/elasticsearch.json)
+
+2. **Verification**:
+   - Confirm metrics appear in Grafana within 2-5 minutes
+   - Check for "UP" status in Prometheus targets
+
+### Troubleshooting
+
+- **No Metrics**: check Prometheus
+
+  ```bash
+  kubectl get pods -n monitoring -l app.kubernetes.io/name=prometheus
+  kubectl logs -n monitoring <prometheus-pod-name> -c prometheus
+  ```
+
+- **Dashboard Issues**: check metrics labels and dashboards
+  - Verify Grafana DataSource points to correct Prometheus instance
+  - Check for template variable mismatches
+
+## Cleanup
+
+To permanently delete the cluster and all associated resources:
+
+1. First modify the termination policy to ensure all resources are cleaned up:
+
+```bash
+# Set termination policy to WipeOut (deletes all resources including PVCs)
+kubectl patch cluster -n demo elasticsearch-cluster \
+  -p '{"spec":{"terminationPolicy":"WipeOut"}}' \
+  --type="merge"
+```
+
+2. Verify the termination policy was updated:
+
+```bash
+kubectl get cluster -n demo elasticsearch-cluster -o jsonpath='{.spec.terminationPolicy}'
+```
+
+3. Delete the cluster:
+
+```bash
+kubectl delete cluster -n demo elasticsearch-cluster
+```
+
+> [!WARNING]
+> This operation is irreversible and will permanently delete:
+>
+> - All database pods
+> - Persistent volumes and claims
+> - Services and other cluster resources
+
+<details open>
+<summary>How to set a proper `TerminationPolicy`</summary>
+
+For more details you may use following command
+
+```bash
+kubectl explain cluster.spec.terminationPolicy
+```
+
+| Policy            | Description                                                                                                                                               |
+|-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `DoNotTerminate`  | Prevents deletion of the Cluster. This policy ensures that all resources remain intact.                                                                   |
+| `Delete`          | Deletes all runtime resources belonging to the Cluster.                                                                                                   |
+| `WipeOut`         | An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss. |
+
+</details>
+
+## Appendix
+
+### Connecting to Elasticsearch
+
+To connect to the Elasticsearch cluster, you can:
+
+- port forward the Elasticsearch service to your local machine:
+
+```bash
+kubectl port-forward svc/es-multinode-master-http 9200:9200 -n demo
+```
+
+- or expose the Elasticsearch service to the internet, as mentioned in the [Networking](#networking) section.
+
+Then you may use tools, such as kibana, elasticvue, as Web UI to interact with ES.
+
+### List of K8s Resources created when creating an Elasticsearch Cluster
+
+To get the full list of associated resources created by KubeBlocks for given cluster:
+
+```bash
+kubectl get cmp,its,po -l app.kubernetes.io/instance=<CLUSTER_NAME> -n demo # cluster and worload
+kubectl get backuppolicy,backupschedule,backup -l app.kubernetes.io/instance=<CLUSTER_NAME> -n demo # data protection resources
+kubectl get componentparameter,parameter -l app.kubernetes.io/instance=<CLUSTER_NAME> -n demo # configuration resources
+kubectl get opsrequest -l app.kubernetes.io/instance=<CLUSTER_NAME> -n demo # opsrequest resources
+kubectl get svc,secret,cm,pvc -l app.kubernetes.io/instance=<CLUSTER_NAME> -n demo # k8s native resources
 ```
 
 ## References
-
-[^1]: Elasticsearch Nodes, <https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-node.html>
