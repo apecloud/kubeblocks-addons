@@ -64,6 +64,17 @@ items:
           name: elastic
           optional: false
           password: Required
+    - name: ELASTIC_PASSWORD
+      value: $(ELASTIC_USER_PASSWORD)
+    - name: ES_PASSWORD
+      value: $(ELASTIC_USER_PASSWORD)
+    - name: ES_USERNAME
+      valueFrom:
+        credentialVarRef:
+          compDef: elasticsearch-8
+          name: elastic
+          optional: false
+          username: Required
     - name: KIBANA_SYSTEM_USER_PASSWORD
       valueFrom:
         credentialVarRef:
@@ -172,6 +183,7 @@ items:
             else
               /tini -- /usr/local/bin/docker-entrypoint.sh
             fi
+
         lifecycle:
           postStart:
             exec:
@@ -238,6 +250,7 @@ items:
         command:
           - /bin/elasticsearch_exporter
           - "--es.uri=http://localhost:9200"
+          - "--es.ssl-skip-verify"
         ports:
         - name: metrics
           containerPort: {{.Values.exporter.service.port}}
