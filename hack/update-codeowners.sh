@@ -1,6 +1,6 @@
 #!/bin/bash
 
-FALLBACKS="@leon-inf @Y-Rookie @apecloud/kb-reviewers @apecloud/kb-addon-reviewers"
+FALLBACKS="@leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers"
 
 function codeowners_content() {
   cat <<-EOF
@@ -19,10 +19,18 @@ EOF
       continue
     fi
     local addon=$(basename "$d")
-    local maintainers=$(yq e '["@" + (.maintainers[].name | sub(" "; "_"))] | join(" ")' "$d/Chart.yaml")
+    local maintainers=$(yq e '[.maintainers[].name | sub(" "; "_") | "@"+. ] | join(" ")' "$d/Chart.yaml")
+    maintainers="${maintainers/@ApeCloud/}"
+    # trim space
+    maintainers=$(echo "${maintainers}" | xargs)
     echo ""
-    echo "addons/$addon/ $maintainers $FALLBACKS"
-    echo "addons-cluster/$addon/ $maintainers $FALLBACKS"
+    if [[ -n "$maintainers" ]]; then
+        echo "addons/$addon/ $maintainers $FALLBACKS"
+        echo "addons-cluster/$addon/ $maintainers $FALLBACKS"
+    else
+        echo "addons/$addon/ $FALLBACKS"
+        echo "addons-cluster/$addon/ $FALLBACKS"
+    fi
   done
 }
 

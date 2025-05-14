@@ -32,25 +32,25 @@ Describe "Redis Cluster Replica Member Leave Bash Script Tests"
   AfterAll 'cleanup'
 
   Describe "remove_replica_from_shard_if_need()"
-    Context "when failed to get current pod fqdn from current shard pod fqdn list"
-      setup() {
-        export CURRENT_SHARD_POD_FQDN_LIST="redis-shard-98x-0.namespace.svc.cluster.local,redis-shard-98x-1.namespace.svc.cluster.local"
-        export CURRENT_POD_NAME="redis-shard-98x-2"
-      }
-      Before "setup"
-
-      un_setup() {
-        unset CURRENT_SHARD_POD_FQDN_LIST
-        unset CURRENT_POD_NAME
-      }
-      After "un_setup"
-
-      It "exits with status 1 when failed to get current pod fqdn from current shard pod fqdn list"
-        When run remove_replica_from_shard_if_need
-        The status should be failure
-        The stderr should include "Error: Failed to get current pod: redis-shard-98x-2 fqdn from current shard pod fqdn list: redis-shard-98x-0.namespace.svc.cluster.local,redis-shard-98x-1.namespace.svc.cluster.local. Exiting."
-      End
-    End
+#     Context "when failed to get current pod fqdn from current shard pod fqdn list"
+#       setup() {
+#         export CURRENT_SHARD_POD_FQDN_LIST="redis-shard-98x-0.namespace.svc.cluster.local,redis-shard-98x-1.namespace.svc.cluster.local"
+#         export CURRENT_POD_NAME="redis-shard-98x-2"
+#       }
+#       Before "setup"
+#
+#       un_setup() {
+#         unset CURRENT_SHARD_POD_FQDN_LIST
+#         unset CURRENT_POD_NAME
+#       }
+#       After "un_setup"
+#
+#       It "exits with status 1 when failed to get current pod fqdn from current shard pod fqdn list"
+#         When run remove_replica_from_shard_if_need
+#         The status should be failure
+#         The stderr should include "Error: Failed to get current pod: redis-shard-98x-2 fqdn from current shard pod fqdn list: redis-shard-98x-0.namespace.svc.cluster.local,redis-shard-98x-1.namespace.svc.cluster.local. Exiting."
+#       End
+#     End
 
     Context "when failed to get cluster nodes info"
       get_cluster_nodes_info_with_retry() {

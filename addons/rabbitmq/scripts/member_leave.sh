@@ -2,7 +2,7 @@
 
 
 is_node_deleted() {
-    local disk_nodes_str=$(echo "$1" | awk '/^Disk Nodes$/{flag=1;next} /^$/{flag++} {if(NF>0 && flag==2){print}}')
+    local disk_nodes_str=$(echo "$1" | awk '/Disk Nodes/{flag=1;next} /^$/{flag++} {if(NF>0 && flag==2){print}}')
     while read -r line; do
         if $(echo "$line" | grep -q "$KB_LEAVE_MEMBER_POD_NAME"); then
             return 1
