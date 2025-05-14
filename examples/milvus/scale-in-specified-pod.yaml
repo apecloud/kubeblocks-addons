@@ -1,17 +1,18 @@
 apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
-  name: mongo-scale-in-specified-instance
+  name: milvus-scale-in
   namespace: demo
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: mongo-cluster
+  clusterName: milvus-cluster
   type: HorizontalScaling
   # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
   horizontalScaling:
     # Specifies the name of the Component.
-  - componentName: mongodb
-    # Specifies the replica changes for scaling in components
+  - componentName: querynode
+    # Specifies the replica changes for scaling out components
     scaleIn:
+      # Specifies the instance names that need to be taken offline
       onlineInstancesToOffline:
-        - 'mongo-cluster-mongodb-1'
+        - 'milvus-cluster-querynode-1'

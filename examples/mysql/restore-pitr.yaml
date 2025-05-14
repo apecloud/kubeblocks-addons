@@ -1,0 +1,34 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: mysqlrestore-pitr
+  namespace: demo
+  annotations:
+    # NOTE: replace <ENCRYPTED-SYSTEM-ACCOUNTS> with the accounts info from you backup
+    # NOTE: replace <CONTINUOUS_BACKUP_NAME> with the continuouse backup name
+    # NOTE: replace <RESTORE_POINT_TIME>  with a valid time within the backup timeRange.
+    kubeblocks.io/restore-from-backup: '{"mysql":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"<CONTINUOUS_BACKUP_NAME>","namespace":"demo","restoreTime":"<RESTORE_POINT_TIME>","volumeRestorePolicy":"Parallel"}}'
+spec:
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: mysql
+      componentDef: "mysql-8.0"
+      serviceVersion: 8.0.35
+      disableExporter: true
+      replicas: 1
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
