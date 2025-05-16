@@ -21,7 +21,7 @@ exec_etcdctl "${ENDPOINTS}" snapshot save "${DP_BACKUP_NAME}"
 if check_backup_file "${DP_BACKUP_NAME}"; then
   echo "Backup file is valid"
 else
-  echo "Backup file is invalid"
+  echo "Backup file is invalid" >&2
   exit 1
 fi
 
@@ -32,5 +32,5 @@ export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 
 tar -cvf - "${DP_BACKUP_NAME}" | datasafed push -z zstd-fastest - "${DP_BACKUP_NAME}.tar.zst"
 
-TOTAL_SIZE=$(datasafed stat "${DP_BACKUP_NAME}" | grep TotalSize | awk '{print $2}')
+TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
 echo "{\"totalSize\":\"$TOTAL_SIZE\"}" >"${DP_BACKUP_INFO_FILE}" && sync
