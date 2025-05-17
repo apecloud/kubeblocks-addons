@@ -17,7 +17,7 @@ spec:
     - name: internet
       # Determines how the Service is exposed. Defaults to 'ClusterIP'.
       # Valid options are `ClusterIP`, `NodePort`, and `LoadBalancer`.
-      serviceType: LoadBalancer
+      serviceType: NodePort
       # Contains cloud provider related parameters if ServiceType is LoadBalancer.
       # Following is an example for Aliyun ACK, please adjust the following annotations as needed.
       annotations:

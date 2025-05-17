@@ -87,7 +87,7 @@ spec:
   terminationPolicy: Delete
   # Specifies the name of the ClusterDefinition to use when creating a Cluster.
   # Note: DO NOT UPDATE THIS FIELD
-  # The value must be `postgresql` to create a PostgreSQL Cluster
+  # The value must be `redis` to create a Redis Cluster
   clusterDef: redis
   # Specifies the name of the ClusterTopology to be used when creating the
   # Cluster.

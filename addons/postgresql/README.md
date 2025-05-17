@@ -731,6 +731,8 @@ kubectl get pd postgresql14-pd-1.0.0-alpha.0 -oyaml | yq '.spec.dynamicParameter
 - If `staticParameters` is defined but `dynamicParameters` is not, this implies that `dynamicParameters = All Parameters - staticParameters - immutableParameters.`
 - If neither `staticParameters` nor `dynamicParameters` is defined, this means that`dynamicParameters = {}` (an empty set) and `staticParameters = All Parameters - immutableParameters`
 
+</details>
+
 ### Configuration Validation
 
 KubeBlocks will validate the parameter values and types before applying changes.
@@ -1104,7 +1106,7 @@ Please consult your cloud provider for more accurate and update-to-date informat
    - Configured `BackupRepo` ([Setup Guide](../docs/create-backuprepo.md))
    - Network connectivity between cluster and repo, `BackupRepo` status is `Ready`
 
-2. **Cluster State**:
+2. **Cluster State**:r
    - Cluster must be in `Running` state
    - No ongoing operations (scaling, upgrades etc.)
 
@@ -1127,11 +1129,6 @@ Please consult your cloud provider for more accurate and update-to-date informat
 KubeBlocks supports multiple backup methods for PostgreSQL cluster,  as described in `BackupPolicy` name `pg-cluster-postgresql-backup-policy`, such as `pg-basebackup`, `volume-snapshot`, `wal-g`, etc. We will elaborate on the `pg-basebackup` and `wal-g` backup methods in the following sections to demonstrate how to create full backup and continuous backup for the cluster.
 
 #### Backup Method Option 1: pg_basebackup
-
-|name | backup type |  description |
-|--------|-----------|-------------|
-| pg-basebackup | full backup |use tool `pg_basebackup`|
-| archive-wal | Continuous backup |
 
 **On-Demand Full Backup**
 
@@ -1418,7 +1415,7 @@ kubectl get backup -n demo -l app.kubernetes.io/instance=pg-cluster -l dataprote
 
   ```bash
   # Get encrypted system accounts
-  kubectl get backup <backup-name> -n demo -ojson | jq -r '.metadata.annotations | ."kubeblocks.io/encrypted-system-accounts" | fromjson .postgresql | tojson |gsub("\""; "\\"")'
+  kubectl get backup <backup-name> -n demo -ojson | jq -r '.metadata.annotations | ."kubeblocks.io/encrypted-system-accounts" | fromjson .postgresql | tojson |gsub("\""; "\\\"")'
   ```
 
 3. **Configure Restore**:
@@ -1525,7 +1522,7 @@ spec:
 
   ```bash
   # Get encrypted system accounts
-  kubectl get backup <backup-name> -n demo -ojson | jq -r '.metadata.annotations | ."kubeblocks.io/encrypted-system-accounts" | fromjson .postgresql | tojson |gsub("\""; "\\"")'
+  kubectl get backup <backup-name> -n demo -ojson | jq -r '.metadata.annotations | ."kubeblocks.io/encrypted-system-accounts" | fromjson .postgresql | tojson |gsub("\""; "\\\"")'
   ```
 
 3. **Configure Restore**:

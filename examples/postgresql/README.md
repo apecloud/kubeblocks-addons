@@ -466,6 +466,8 @@ kubectl get pd postgresql14-pd-1.0.0-alpha.0 -oyaml | yq '.spec.dynamicParameter
 - If `staticParameters` is defined but `dynamicParameters` is not, this implies that `dynamicParameters = All Parameters - staticParameters - immutableParameters.`
 - If neither `staticParameters` nor `dynamicParameters` is defined, this means that`dynamicParameters = {}` (an empty set) and `staticParameters = All Parameters - immutableParameters`
 
+</details>
+
 ### Configuration Validation
 
 KubeBlocks will validate the parameter values and types before applying changes.
