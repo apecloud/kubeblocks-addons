@@ -11,7 +11,7 @@ spec:
   description: A Redis v7.0 component definition for Kubernetes
   serviceKind: redis
   serviceVersion: {{ .Values.defaultServiceVersion.redis.major7 }}
-  podManagementPolicy: Parallel
+  podManagementPolicy: OrderedReady
   services:
     - name: redis
       serviceName: redis
