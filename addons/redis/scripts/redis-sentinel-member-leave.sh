@@ -43,14 +43,14 @@ redis_sentinel_member_get() {
     exit 1
   fi
 
-  if [ -z "$KB_MEMBER_ADDRESSES" ]; then
-    echo "Error: Required environment variable KB_MEMBER_ADDRESSES is not set."
+  if [ -z "$SENTINEL_POD_FQDN_LIST" ]; then
+    echo "Error: Required environment variable SENTINEL_POD_FQDN_LIST is not set."
     exit 1
   fi
 
   sentinel_leave_member_name=$KB_LEAVE_MEMBER_POD_NAME
   sentinel_leave_member_fqdn=$KB_LEAVE_MEMBER_POD_FQDN
-  sentinel_pod_list=($(split "$KB_MEMBER_ADDRESSES" ","))
+  sentinel_pod_list=($(split "$SENTINEL_POD_FQDN_LIST" ","))
 }
 
 temp_output=""
@@ -71,7 +71,12 @@ redis_sentinel_remove_monitor() {
   local output=""
   while [ $retry_count -lt $max_retries ]; do
     redis_sentinel_get_masters "$sentinel_leave_member_fqdn" "$redis_default_service_port"
-    if [ -n "$temp_output" ]; then
+    if [ $? -eq 0 ]; then
+      if [[ -z "$temp_output" ]]; then
+        echo "no master nodes found."
+        success=true
+        break
+      fi
       disconnected=false
       while read -r line; do
         case "$line" in
@@ -127,12 +132,7 @@ redis_sentinel_remove_monitor() {
 redis_sentinel_reset_all() {
   for sentinel_pod in "${sentinel_pod_list[@]}"; do
     host=$(echo "$sentinel_pod" | cut -d ':' -f 1)
-    port=$(echo "$sentinel_pod" | cut -d ':' -f 2)
     sentinel_name="${host%%.*}"
-
-    if [ -n "$port" ]; then
-      redis_default_service_port="$port"
-    fi
     # TODO: check if there is an ongoing HA switchover Before executing the reset command
     if [ "$sentinel_name" != "$sentinel_leave_member_name" ]; then
       retry_count=0
@@ -140,13 +140,13 @@ redis_sentinel_reset_all() {
       success=false
       while [ $retry_count -lt $max_retries ]; do
         if [ -n "$SENTINEL_PASSWORD" ]; then
-          if redis-cli -h "$host" -p "$redis_default_service_port" -a "$SENTINEL_PASSWORD" SENTINEL RESET "*" 2>/dev/null; then
+          if redis-cli -h "$host" -p "$redis_default_service_port" -a "$SENTINEL_PASSWORD" SENTINEL RESET "*"; then
             echo "sentinel is resetting at $host on port $redis_default_service_port."
             success=true
             break
           fi
         else
-          if redis-cli -h "$host" -p "$redis_default_service_port" SENTINEL RESET "*" 2>/dev/null; then
+          if redis-cli -h "$host" -p "$redis_default_service_port" SENTINEL RESET "*" ; then
             echo "sentinel is resetting at $host on port $redis_default_service_port."
             success=true
             break

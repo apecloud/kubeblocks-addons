@@ -308,7 +308,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - /scripts/redis-switchover.sh
+          - /scripts/redis-switchover.sh > /tmp/switchover.log 2>&1
   runtime:
     initContainers:
       - name: init-dbctl
