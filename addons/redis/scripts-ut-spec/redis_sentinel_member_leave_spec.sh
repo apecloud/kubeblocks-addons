@@ -22,7 +22,7 @@ Describe "Redis Sentinel Member Leave Script Tests"
   setup() {
     export KB_LEAVE_MEMBER_POD_FQDN="127.0.0.3"
     export KB_LEAVE_MEMBER_POD_NAME="sentinel-2"
-    export KB_MEMBER_ADDRESSES="sentinel-0.redis-sentinel-headless:26379,sentinel-1.redis-sentinel-headless:26379,sentinel-2.redis-sentinel-headless:26379"
+    export SENTINEL_POD_FQDN_LIST="sentinel-0.redis-sentinel-headless,sentinel-1.redis-sentinel-headless,sentinel-2.redis-sentinel-headless"
     export SENTINEL_PASSWORD="sentinel_password"
     sentinel_leave_member_name=""
     sentinel_leave_member_fqdn=""
@@ -35,7 +35,7 @@ Describe "Redis Sentinel Member Leave Script Tests"
   cleanup() {
     unset KB_LEAVE_MEMBER_POD_FQDN
     unset KB_LEAVE_MEMBER_POD_NAME
-    unset KB_MEMBER_ADDRESSES
+    unset SENTINEL_POD_FQDN_LIS
     unset SENTINEL_PASSWORD
     unset sentinel_leave_member_name
     unset sentinel_leave_member_fqdn
