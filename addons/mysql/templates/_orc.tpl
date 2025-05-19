@@ -235,7 +235,7 @@ switchover:
             exit 0
         fi
 
-        response=$(curl -s -o /dev/null -w "%{http_code}" http://${ORC_ENDPOINTS}/api/graceful-master-takeover-auto/${KB_SWITCHOVER_CURRENT_NAME}
+        response=$(curl -s -o /dev/null -w "%{http_code}" http://${ORC_ENDPOINTS}/api/graceful-master-takeover-auto/${KB_SWITCHOVER_CURRENT_NAME})
         if [ ! $response -eq 200 ]; then
           echo "switchover failed, please check the candidate"
           exit 1
