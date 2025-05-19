@@ -7,11 +7,11 @@ metadata:
 spec:
   serviceKind: MySQL
   compDefs:
-    - ^mysql-\d+.*$
+    - ^mysql-orc-\d+.*$
   target:
     role: secondary
     fallbackRole: primary
-    account: kbadmin
+    account: root
   backupMethods:
   - name: xtrabackup
     snapshotVolumes: false
