@@ -1,7 +1,7 @@
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: BackupPolicyTemplate
 metadata:
-  name: mysql-backup-policy-template
+  name: mysql-orc-backup-policy-template
   labels:
     {{- include "mysql.labels" . | nindent 4 }}
 spec:
@@ -68,7 +68,7 @@ spec:
   - name: archive-binlog
     target:
       role: primary
-      account: kbadmin
+      account: root
     snapshotVolumes: false
     actionSetName: mysql-pitr
     env:
