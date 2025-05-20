@@ -223,6 +223,23 @@ memberLeave:
           res=$(/kubeblocks/orchestrator-client -c instance -i ${self_service_name})
         done
         /kubeblocks/orchestrator-client -c forget -i ${self_service_name}| true
+switchover:
+  exec:
+    command:
+      - /bin/sh
+      - -c
+      - |
+
+        if [ "$KB_SWITCHOVER_ROLE" != "primary" ]; then
+            echo "switchover not triggered for primary, nothing to do, exit 0."
+            exit 0
+        fi
+
+        response=$(curl -s -o /dev/null -w "%{http_code}" http://${ORC_ENDPOINTS}/api/graceful-master-takeover-auto/${KB_SWITCHOVER_CURRENT_NAME})
+        if [ ! $response -eq 200 ]; then
+          echo "switchover failed, please check the candidate"
+          exit 1
+        fi
 {{- end }}
 
 

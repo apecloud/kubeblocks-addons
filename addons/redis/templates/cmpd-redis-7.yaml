@@ -11,7 +11,7 @@ spec:
   description: A Redis v7.0 component definition for Kubernetes
   serviceKind: redis
   serviceVersion: {{ .Values.defaultServiceVersion.redis.major7 }}
-  podManagementPolicy: Parallel
+  podManagementPolicy: OrderedReady
   services:
     - name: redis
       serviceName: redis
@@ -308,7 +308,7 @@ spec:
         command:
           - /bin/bash
           - -c
-          - /scripts/redis-switchover.sh
+          - /scripts/redis-switchover.sh > /tmp/switchover.log 2>&1
   runtime:
     initContainers:
       - name: init-dbctl

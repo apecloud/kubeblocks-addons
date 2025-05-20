@@ -20,11 +20,6 @@ check_backup_file() {
     return 1
   fi
 
-  threshold=$BACKUP_KEY_THRESHOLD
-  if [ "$total_key" -lt "$threshold" ]; then
-    echo "WARNING: snapshot totalKey is less than the threshold" >&2
-    return 1
-  fi
   return 0
 }
 
