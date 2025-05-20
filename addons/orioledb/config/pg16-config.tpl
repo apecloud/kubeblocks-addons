@@ -173,7 +173,7 @@
 
   {{- $max_wal_size := min ( max ( div $phy_memory 2097152 ) 4096 ) 32768 }}
   {{- $min_wal_size := min ( max ( div $phy_memory 8388608 ) 2048 ) 8192 }}
-  {{- $data_disk_size := $.DATA_DISK_SIZE }}
+  {{- $data_disk_size := getComponentPVCSizeByName $.component "data" }}
   {{/* if data disk lt 5G , set max_wal_size to 256MB */}}
   {{- $disk_min_limit := mul 5 1024 1024 1024 }}
   {{- if and ( gt $data_disk_size 0 ) ( lt $data_disk_size $disk_min_limit ) }}
