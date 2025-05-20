@@ -4,6 +4,8 @@ metadata:
   name: zookeeper
   labels:
     {{- include "zookeeper.labels" . | nindent 4 }}
+  annotations:
+    apps.kubeblocks.io/skip-immutable-check: "true"
 spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
