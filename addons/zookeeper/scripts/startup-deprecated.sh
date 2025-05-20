@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [[ -d "/bitnami/zookeeper/data/snapshot-log" && -z "$(ls -A /bitnami/zookeeper/log)" ]]; then
+if [[ -d "/bitnami/zookeeper/data/snapshot-log" && -z "$(ls -A /bitnami/zookeeper/log/version-2)" ]]; then
   cp -r /bitnami/zookeeper/data/snapshot-log/* /bitnami/zookeeper/log/
   rm -r /bitnami/zookeeper/data/snapshot-log
 fi
