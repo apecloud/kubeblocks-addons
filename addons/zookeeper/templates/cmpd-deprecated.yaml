@@ -52,18 +52,20 @@ spec:
             - /bin/bash
             - -c
             - |
-              . "$ZOOBINDIR"/zkEnv.sh > /dev/null
-              STAT=$(java -cp "$CLASSPATH" $CLIENT_JVMFLAGS $JVMFLAGS org.apache.zookeeper.client.FourLetterWordMain \
-              localhost 2181 srvr 2> /dev/null  | grep Mode)
-              mode=$(echo "$STAT" | awk -F': ' '{print $2}' | awk '{RS=""; ORS=""; print}' )
-              if [[ "$mode" == "standalone" ]]; then
-                echo -n "leader"
+              if command -v nc &> /dev/null; then
+                RESPONSE=$(echo srvr | timeout 2 nc localhost 2181 2>/dev/null)
+                STAT=$(grep Mode <<< "$RESPONSE")
+                mode=$(awk -F': ' '{print $2}' <<< "$STAT" | awk '{print $1}' | tr -d '[:space:]')
               else
-                echo -n ${mode}
-              fi
+                . "$ZOOBINDIR"/zkEnv.sh > /dev/null
+                STAT=$(java -cp "$CLASSPATH" $CLIENT_JVMFLAGS $JVMFLAGS org.apache.zookeeper.client.FourLetterWordMain \
+                  localhost 2181 srvr 2> /dev/null | grep Mode)
+                mode=$(awk -F': ' '{print $2}' <<< "$STAT" | tr -d '[:space:]')
+                fi
+              [[ "$mode" == "standalone" ]] && echo -n "leader" || echo -n "${mode}"
   runtime:
     volumes:
-      - name: snapshot-log
+      - name: log
         emptyDir: {}
 
     securityContext:
@@ -117,9 +119,13 @@ spec:
               - /bin/bash
               - -c
               - |
-                . "$ZOOBINDIR"/zkEnv.sh > /dev/null
-                java -cp "$CLASSPATH" $CLIENT_JVMFLAGS $JVMFLAGS org.apache.zookeeper.client.FourLetterWordMain \
-                localhost 2181 ruok | grep imok
+                if command -v nc &> /dev/null; then
+                  echo "ruok" | timeout 2 nc localhost 2181 | grep imok;
+                else
+                  . "$ZOOBINDIR"/zkEnv.sh > /dev/null
+                  java -cp "$CLASSPATH" $CLIENT_JVMFLAGS $JVMFLAGS org.apache.zookeeper.client.FourLetterWordMain \
+                  localhost 2181 ruok | grep imok
+                fi
         readinessProbe:
           failureThreshold: 6
           initialDelaySeconds: 5
@@ -131,9 +137,13 @@ spec:
               - bash
               - -c
               - |
-                . "$ZOOBINDIR"/zkEnv.sh > /dev/null
-                java -cp "$CLASSPATH" $CLIENT_JVMFLAGS $JVMFLAGS org.apache.zookeeper.client.FourLetterWordMain \
-                localhost 2181 ruok | grep imok
+                if command -v nc &> /dev/null; then
+                  echo "ruok" | timeout 2 nc localhost 2181 | grep imok;
+                else
+                  . "$ZOOBINDIR"/zkEnv.sh > /dev/null
+                  java -cp "$CLASSPATH" $CLIENT_JVMFLAGS $JVMFLAGS org.apache.zookeeper.client.FourLetterWordMain \
+                  localhost 2181 ruok | grep imok
+                fi
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
