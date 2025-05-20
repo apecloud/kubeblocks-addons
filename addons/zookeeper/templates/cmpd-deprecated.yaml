@@ -178,7 +178,7 @@ spec:
 
   scripts:
     - name: zookeeper-scripts
-      templateRef: {{ include "zookeeper.name" . }}-scripts
+      templateRef: {{ include "zookeeper.name" . }}-scripts-deprecated
       volumeName: scripts
       namespace: {{ .Release.Namespace }}
       defaultMode: 0755
