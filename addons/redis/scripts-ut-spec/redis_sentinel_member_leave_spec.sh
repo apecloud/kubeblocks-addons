@@ -50,9 +50,9 @@ Describe "Redis Sentinel Member Leave Script Tests"
       The variable sentinel_leave_member_name should eq "sentinel-2"
       The variable sentinel_leave_member_fqdn should eq "127.0.0.3"
 
-      The variable sentinel_pod_list[0] should eq "sentinel-0.redis-sentinel-headless:26379"
-      The variable sentinel_pod_list[1] should eq "sentinel-1.redis-sentinel-headless:26379"
-      The variable sentinel_pod_list[2] should eq "sentinel-2.redis-sentinel-headless:26379"
+      The variable sentinel_pod_list[0] should eq "sentinel-0.redis-sentinel-headless"
+      The variable sentinel_pod_list[1] should eq "sentinel-1.redis-sentinel-headless"
+      The variable sentinel_pod_list[2] should eq "sentinel-2.redis-sentinel-headless"
     End
   End
 
