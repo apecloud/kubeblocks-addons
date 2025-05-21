@@ -50,3 +50,47 @@ spec:
                 - -c
                 - |
                   {{- .Files.Get "scripts/post-for-rebuild.sh" | nindent 18 }}
+---
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
+  name: post-scale-out-shard-for-clickhouse
+spec:
+  podInfoExtractors:
+    - name: availablePod
+      podSelector:
+        multiPodSelectionPolicy: Any
+      env:
+        - name: CLICKHOUSE_TCP_PORT
+          valueFrom:
+            envRef:
+              envName: CLICKHOUSE_TCP_PORT
+        - name: CLICKHOUSE_ADMIN_USER
+          valueFrom:
+            envRef:
+              envName: CLICKHOUSE_ADMIN_USER
+        - name: CLICKHOUSE_ADMIN_PASSWORD
+          valueFrom:
+            envRef:
+              envName: CLICKHOUSE_ADMIN_PASSWORD
+        - name: ALL_COMBINED_SHARDS_POD_FQDN_LIST
+          valueFrom:
+            envRef:
+              envName: ALL_COMBINED_SHARDS_POD_FQDN_LIST
+  actions:
+    - name: post-rebuild
+      failurePolicy: Fail
+      workload:
+        podInfoExtractorName: availablePod
+        type: Pod
+        backoffLimit: 0
+        podSpec:
+          containers:
+            - name: post-rebuild
+              image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:24.8.3-debian-12-r1
+              imagePullPolicy: IfNotPresent
+              command:
+                - bash
+                - -c
+                - |
+                  {{- .Files.Get "scripts/post-for-scale-out-shard.sh" | nindent 18 }}
