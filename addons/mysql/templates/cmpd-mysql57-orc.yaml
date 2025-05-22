@@ -27,7 +27,7 @@ spec:
           - bash
           - -c
           - |
-            mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog,tmp}
+            mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog,temp}
             cp /usr/lib/mysql/plugin/ {{ .Values.dataMountPath }}/plugin -r
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         volumeMounts:
