@@ -23,6 +23,8 @@ icon: https://kubeblocks.io/img/logo.png
 maintainers:
   - name: ldming
     url: https://github.com/apecloud/kubeblocks/
+  - name: dingshun-cmss
+    url: https://github.com/dingshun-cmss
 
 sources:
 - https://github.com/apecloud/kubeblocks/
