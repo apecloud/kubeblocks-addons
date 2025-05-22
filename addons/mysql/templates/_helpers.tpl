@@ -244,7 +244,7 @@ roles:
 {{- end }}
 
 {{- define "mysql.spec.runtime.entrypoint" -}}
-mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog,tmp}
+mkdir -p {{ .Values.dataMountPath }}/{log,binlog,auditlog,temp}
 if [ -f {{ .Values.dataMountPath }}/plugin/audit_log.so ]; then
   cp {{ .Values.dataMountPath }}/plugin/audit_log.so /usr/lib64/mysql/plugin/
 fi 

@@ -74,7 +74,7 @@ connect_timeout=10
 
 port={{ $mysql_port }}
 
-tmpdir={{ $data_root }}/tmp
+tmpdir={{ $data_root }}/temp
 datadir={{ $data_root }}/data
 plugin_dir=/usr/lib64/mysql/plugin/
 
