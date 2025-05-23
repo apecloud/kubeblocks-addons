@@ -9,8 +9,8 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: 5.0.14 # 6.0.3-debian-11-r0
   syncer:
-    repository: apecloud/syncer
-    tag: "0.5.0"
+    repository: wlonggg/syncer
+    tag: 1.1
 
 # refer: https://github.com/apecloud/wal-g/blob/kb-dev/docker/wal-g/Dockerfile-mongo
 # this image is built from Dockerfile of apecloud/wal-g forked from wal-g/wal-g.
@@ -123,3 +123,5 @@ enabledClusterVersions: [ ]
 resourceNamePrefix: ""
 
 useHostNetwork: false
+
+clusterDomain: "cluster.local"

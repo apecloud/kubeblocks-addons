@@ -9,10 +9,18 @@ version: 6.0.16
 # @param clusterVersion cluster version for legacy API
 clusterVersion: mongodb-6.0
 
-## @param mode cluster topology mode, standalone or replicaset
+## @param mode cluster topology mode, standalone、replicaset or sharding
 ##
-mode: standalone
+mode: sharding
 
+## @param shards, shard count, only for sharding mode
+##
+shards: 1
+## @param replicas, replica count
+##
+replicas: 3
+cfgServerReplicas: 3
+mongosReplicas: 3
 ## @param cpu
 ##
 cpu: 0.5
@@ -30,7 +38,7 @@ requests:
 
 ## @param storage size, the unit is Gi
 ##
-storage: 20
+storage: 5
 
 hostnetwork: "disabled"
 useLegacyCompDef: false

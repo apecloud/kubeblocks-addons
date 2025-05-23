@@ -286,3 +286,31 @@ spec:
             volumeMounts:
               - name: mongodb-metrics-config
                 mountPath: /opt/conf
+  topologies:
+    - name: replicaset
+      components:
+        - name: mongodb
+          compDef: {{ include "mongodb.componentDefName" . }}
+      default: true
+    - name: sharding
+      components:
+        - name: mongodb-shard
+          compDef: {{ include "mongodbShard.componentDefName" . }}
+        - name: cfg-server
+          compDef: {{ include "cfgServer.componentDefName" . }}
+        - name: mongos
+          compDef: {{ include "mongos.componentDefName" . }}
+      default: false
+      orders:
+        provision: # The server will start before the proxy is created.
+          - cfg-server
+          - mongos
+          - mongodb-shard
+        terminate: # The proxy will be shut down (destroyed) before the server.
+          - mongodb-shard
+          - mongos
+          - cfg-server
+        update: # When there are multiple component update operations, follow the order specified here.
+          - mongos
+          - cfg-server
+          - mongodb-shard

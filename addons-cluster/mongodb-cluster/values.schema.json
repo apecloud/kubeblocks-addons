@@ -27,7 +27,8 @@
       "default": "standalone",
       "enum": [
         "standalone",
-        "replicaset"
+        "replicaset",
+        "sharding"
       ]
     },
     "replicas": {

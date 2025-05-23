@@ -76,13 +76,6 @@ mongodb-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
 {{- end -}}
 
 {{/*
-Define cluster version with auditlog
-*/}}
-{{- define "mongodb.clusterVersionAuditLog" -}}
-{{- include "mongodb.clusterVersion" . }}-{{ default "1" .Values.auditlogSubVersion }}
-{{- end -}}
-
-{{/*
 Define component defintion name
 */}}
 {{- define "mongodb.componentDefName" -}}
@@ -90,6 +83,39 @@ Define component defintion name
 mongodb
 {{- else -}}
 {{- .Values.resourceNamePrefix -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define mongodb-shard component defintion name
+*/}}
+{{- define "mongodbShard.componentDefName" -}}
+{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+mongodb-shard
+{{- else -}}
+{{- printf "%s-mongodb-shard" .Values.resourceNamePrefix -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define mongos component defintion name
+*/}}
+{{- define "mongos.componentDefName" -}}
+{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+mongodb-mongos
+{{- else -}}
+{{- printf "%s-mongodb-mongos" .Values.resourceNamePrefix -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define cfg-server component defintion name
+*/}}
+{{- define "cfgServer.componentDefName" -}}
+{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+mongodb-cfg-server
+{{- else -}}
+{{- printf "%s-mongodb-cfg-server" .Values.resourceNamePrefix -}}
 {{- end -}}
 {{- end -}}
 
@@ -109,6 +135,22 @@ mongodb-config-constraints
 mongodb5.0-config-template
 {{- else -}}
 {{- .Values.resourceNamePrefix -}}-config-template
+{{- end -}}
+{{- end -}}
+
+{{- define "mongos.configTplName" -}}
+{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+mongodb-mongos-config-template
+{{- else -}}
+{{- .Values.resourceNamePrefix -}}-mongodb-mongos-config-template
+{{- end -}}
+{{- end -}}
+
+{{- define "mongodbShard.configTplName" -}}
+{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+mongodb-shard-config-template
+{{- else -}}
+{{- printf "%s-mongodb-shard-config-template" .Values.resourceNamePrefix -}}
 {{- end -}}
 {{- end -}}
 

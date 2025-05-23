@@ -6,7 +6,11 @@ metadata:
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
 {{- if eq .Values.hostnetwork "enabled" }}
   annotations:
+    {{- if eq .Values.mode "sharding" }}
+    kubeblocks.io/host-network: mongos,mongodb-shard,cfg-server
+    {{- else }}
     kubeblocks.io/host-network: mongodb
+    {{- end }}
 {{- end }}
 spec:
   {{- if .Values.useLegacyCompDef }}
@@ -14,19 +18,11 @@ spec:
   {{- end }}
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
-  {{- if .Values.useLegacyCompDef }}
-  clusterDefinitionRef: mongodb
+  # {{- if .Values.useLegacyCompDef }}
+  # clusterDefinitionRef: mongodb
+  # {{- end }}
+  {{- if or (eq .Values.mode "replicaset") (eq .Values.mode "standalone") }}
+  {{ include "mongodb-cluster.replicasetMode" . | indent 2 }}
+  {{- else if eq .Values.mode "sharding" }}
+  {{ include "mongodb-cluster.shardingMode" . | indent 2 }}
   {{- end }}
-  componentSpecs:
-    - name: mongodb
-      {{- if .Values.useLegacyCompDef }}
-      componentDefRef: {{ include "mongodb-cluster.componentDefRef" $}}
-      {{- else }}
-      componentDef: mongodb
-      serviceVersion: {{ .Values.version }}
-      {{- end }}
-      {{- include "mongodb-cluster.replicaCount" . | indent 6 }}
-      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
-      {{- include "kblib.componentResources" . | indent 6 }}
-      {{- include "kblib.componentStorages" . | indent 6 }}
-      {{- include "kblib.componentServices" . | indent 6 }}
