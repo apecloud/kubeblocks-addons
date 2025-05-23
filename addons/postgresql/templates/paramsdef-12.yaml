@@ -11,10 +11,20 @@ spec:
   fileName: postgresql.conf
 
   reloadAction:
-    tplScriptTrigger:
+    shellTrigger:
       sync: true
-      scriptConfigMapRef: {{ include "postgresql.patroniReloadScriptsTemplate" . }}
-      namespace: {{ .Release.Namespace }}
+      batchReload: true
+      batchParamsFormatterTemplate: |-
+        {{ `{{- $pgparams := dict -}}` }}
+        {{ `{{- range $pk, $val := $ -}}` }}
+        {{ `{{- $_ := set $pgparams $pk ($val | trimAll "'") -}}` }}
+        {{ `{{- end -}}` }}
+        {{ `{{- (toJson (dict "postgresql" (dict "parameters" $pgparams))) -}}` }}
+      command:
+        - "reload_config.sh"
+      scriptConfig:
+        scriptConfigMapRef: {{ include "postgresql.patroniReloadScriptsTemplate" . }}
+        namespace: {{ .Release.Namespace }}
     ## update patroni master
     targetPodSelector:
       matchLabels:
