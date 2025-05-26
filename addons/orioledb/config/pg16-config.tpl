@@ -167,7 +167,7 @@
   max_standby_streaming_delay = '300000ms'
   max_sync_workers_per_subscription = '2'
   max_wal_senders = '64'
-  max_worker_processes = '8'
+  max_worker_processes = '{{ max $phy_cpu 8 }}'
   min_parallel_index_scan_size = '512kB'
   min_parallel_table_scan_size = '8MB'
 
