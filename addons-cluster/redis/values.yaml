@@ -40,7 +40,7 @@ storage: 20
 
 # custom password of default user for redis by passing a secret
 # the secret must contain keys named 'username' and 'password'
-customSecretName: ""
+customSecretName: ""ad
 customSecretNamespace: ""
 
 ## @param twemproxy.enable

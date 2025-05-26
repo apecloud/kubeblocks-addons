@@ -166,7 +166,7 @@ metadata:
 spec:
   terminationPolicy: Delete
   componentSpecs:
-    - name: data
+    - name: dit
       componentDef: elasticsearch-8
       serviceVersion: 8.8.2
       configs:
@@ -893,6 +893,15 @@ metadata:
   labels:               # this is labels set in `prometheus.spec.podMonitorSelector`
     release: prometheus
 spec:
+  jobLabel: app.kubernetes.io/managed-by
+  # defines the labels which are transferred from the
+  # associated Kubernetes `Pod` object onto the ingested metrics
+  # set the lables w.r.t you own needs
+  podTargetLabels:
+  - app.kubernetes.io/instance
+  - app.kubernetes.io/managed-by
+  - apps.kubeblocks.io/component-name
+  - apps.kubeblocks.io/pod-name
   podMetricsEndpoints:
     - path: /metrics
       port: metrics

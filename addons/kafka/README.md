@@ -61,7 +61,7 @@ Before starting, ensure you have:
 
 #### Quick Start
 
-Create a Kafka cluster with controller , broker and a exporter components:
+Create a Kafka cluster with controller, broker and a exporter components:
 
 ```yaml
 # cat examples/kafka/cluster-separated.yaml
@@ -678,7 +678,7 @@ spec:
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
-  name: kafka-jmx-pod-monitor
+  name: kafka-pod-monitor
   namespace: demo
   labels:               # this is labels set in `prometheus.spec.podMonitorSelector`
     release: prometheus
@@ -702,50 +702,10 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/instance: kafka-separated-cluster
-      apps.kubeblocks.io/component-name: kafka-controller
 ```
 
 ```bash
-kubectl apply -f examples/kafka/jvm-pod-monitor.yaml
-```
-
-- Pod Monitor for Kafka Exporter:
-
-```yaml
-# cat examples/kafka/exporter-pod-monitor.yaml
-
-apiVersion: monitoring.coreos.com/v1
-kind: PodMonitor
-metadata:
-  name: kafka-exporter-pod-monitor
-  namespace: demo
-  labels:               # this is labels set in `prometheus.spec.podMonitorSelector`
-    release: prometheus
-spec:
-  jobLabel: app.kubernetes.io/managed-by
-  # defines the labels which are transferred from the
-  # associated Kubernetes `Pod` object onto the ingested metrics
-  # set the lables w.r.t you own needs
-  podTargetLabels:
-  - app.kubernetes.io/instance
-  - app.kubernetes.io/managed-by
-  - apps.kubeblocks.io/component-name
-  - apps.kubeblocks.io/pod-name
-  podMetricsEndpoints:
-    - path: /metrics
-      port: metrics
-      scheme: http
-  namespaceSelector:
-    matchNames:
-      - demo
-  selector:
-    matchLabels:
-      app.kubernetes.io/instance: kafka-separated-cluster
-      apps.kubeblocks.io/component-name: kafka-exporter
-```
-
-```bash
-kubectl apply -f examples/kafka/exporter-pod-monitor.yaml
+kubectl apply -f examples/kafka/kafka-pod-monitor.yaml
 ```
 
 #### 2. Grafana Dashboard Setup

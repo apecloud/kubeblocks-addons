@@ -27,7 +27,7 @@ spec:
   # This field allows for detailed configuration of each Component within the Cluster
   componentSpecs:
     - name: kafka-broker
-      replicas: 3
+      replicas: 1
       resources:
         limits:
           cpu: "0.5"

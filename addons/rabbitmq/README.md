@@ -671,7 +671,7 @@ kubectl apply -f examples/rabbitmq/expose-enable.yaml
 - Option 2. Use port-forwarding:
 
 ```bash
-kubectl port-forward svc/rabbitmq-cluster-rabbitmq 15672:15672
+kubectl port-forward svc/rabbitmq-cluster-rabbitmq -ndemo 15672:15672
 ```
 
 Then log in to the RabbitMQ Management console at `http://<localhost>:<port>/` with the user and password.
