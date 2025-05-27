@@ -32,6 +32,7 @@ if [ "${MODE}" == "cluster" ]; then
   # only save rdb file for redis cluster.
   datasafed push -z zstd-fastest ./dump.rdb "${DP_BACKUP_NAME}.rdb.zst"
   datasafed push ./nodes.conf "nodes.conf"
+  datasafed push ./users.acl "users.acl"
   export DATASAFED_BACKEND_BASE_PATH="$(dirname $DP_BACKUP_BASE_PATH)"
 else
   # NOTE: if files changed during taring, the exit code will be 1 when it ends.
