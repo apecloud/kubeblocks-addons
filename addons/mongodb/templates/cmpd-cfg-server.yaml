@@ -6,7 +6,6 @@ metadata:
     {{- include "mongodb.labels" . | nindent 4 }}
 spec:
   provider: kubeblocks.io
-  serviceKind: mongodb
   serviceVersion: "8.0.4"
   services:
   #   - name: default

@@ -6,8 +6,6 @@ metadata:
     {{- include "mongodb.labels" . | nindent 4 }}
 spec:
   provider: kubeblocks.io
-  description: MongoDB is a document database designed for ease of application development and scaling.
-  serviceKind: mongodb
   serviceVersion: "8.0.4"
   services:
     - name: default
@@ -206,16 +204,18 @@ spec:
           # use config server credential to access to mongos
           compDef: {{ include "cfgServer.componentDefName" . }}
           name: root
-          optional: false
-          username: Required
+          # in case that the config server is terminated, and the shard is executing pre-terminate action
+          optional: true
+          username: Optional
     - name: MONGOS_PASSWORD
       valueFrom:
         credentialVarRef:
           # use config server credential to access to mongos
           compDef: {{ include "cfgServer.componentDefName" . }}
           name: root
-          optional: false
-          password: Required
+          # in case that the config server is terminated, and the shard is executing pre-terminate action
+          optional: true
+          password: Optional
     - name: MONGOS_INTERNAL_SVC_NAME
       valueFrom:
         serviceVarRef:

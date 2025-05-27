@@ -47,19 +47,48 @@ wait_for_mongos() {
     done
 }
 
+
+check_shard_exists() {
+    # Check if the shard exists in the config database
+    local shard_exists
+    shard_exists=$($CLUSTER_MONGO "db.getSiblingDB(\"config\").shards.find({ _id: \"$MONGODB_REPLICA_SET_NAME\" })")
+    if [ -n "$shard_exists" ]; then
+        return 0 # true
+    else
+        return 1
+    fi
+}
+
 initialize_or_scale_out_mongodb_shard() {
     wait_for_mongos
     # check_if_first_member
+
     # Check if the shard exists
-    shard_exists=$($CLUSTER_MONGO "db.getSiblingDB(\"config\").shards.find({ _id: \"$MONGODB_REPLICA_SET_NAME\" });")
-    if [ -n "$shard_exists" ]; then
+    if check_shard_exists; then
         echo "INFO: Shard $MONGODB_REPLICA_SET_NAME already exists, skipping initialization."
         exit 0
     fi
+
     echo "INFO: Shard $MONGODB_REPLICA_SET_NAME does not exist, initializing..."
     pod_endpoints=$(generate_endpoints "$MONGODB_POD_FQDN_LIST" "$KB_SERVICE_PORT")
     echo "INFO: Adding shard $MONGODB_REPLICA_SET_NAME with endpoints: $pod_endpoints"
     $CLUSTER_MONGO "sh.addShard(\"$MONGODB_REPLICA_SET_NAME/$pod_endpoints\")"
+}
+
+get_remove_shard_status() {
+    # Execute the removeShard command and capture its JSON output
+    local result
+    result=$($CLUSTER_MONGO "EJSON.stringify(db.adminCommand( { removeShard: \"$MONGODB_REPLICA_SET_NAME\" } ))")
+    echo "$result"
+}
+
+get_remove_shard_state() {
+    local result=$1
+    # Parse and log the state using jq
+    local state
+    state=$(echo "$result" | jq -r '.state')
+    # Return the state as the function output
+    echo "$state"
 }
 
 scale_in_mongodb_shard() {
@@ -72,11 +101,11 @@ scale_in_mongodb_shard() {
     wait_for_mongos
 
     # check_if_first_member
-    shard_exists=$($CLUSTER_MONGO "db.getSiblingDB(\"config\").shards.find({ _id: \"$MONGODB_REPLICA_SET_NAME\" });")
-    if [ -z "$shard_exists" ]; then
+    if ! check_shard_exists; then
         echo "INFO: Shard $MONGODB_REPLICA_SET_NAME does not exist, skipping scale-in."
         exit 0
     fi
+
     balance_status=$($CLUSTER_MONGO "sh.getBalancerState()")
     if [ "$balance_status" = "false" ]; then
         $CLUSTER_MONGO "sh.startBalancer()"
@@ -84,17 +113,61 @@ scale_in_mongodb_shard() {
 
     echo "INFO: Shard $MONGODB_REPLICA_SET_NAME exists, scaling in..."
     # Remove the shard and wait until the state is 'completed'
+    moved_primary="false"
     while true; do
-      result=$($CLUSTER_MONGO "db.adminCommand( { removeShard: \"$MONGODB_REPLICA_SET_NAME\" } )")
-      echo "$result"
-      # Extract the state field from the output
-      state=$(echo "$result" | grep -o "state': '[^']*" | cut -d"'" -f3)
-      echo "INFO: Shard $MONGODB_REPLICA_SET_NAME state is $state"
-      if [ "$state" = "completed" ]; then
-        break
-      fi
-      sleep 2
+
+        # check_if_first_member
+        if ! check_shard_exists; then
+            echo "INFO: Shard $MONGODB_REPLICA_SET_NAME does not exist, exiting."
+            exit 0
+        fi
+
+        status_json=$(get_remove_shard_status)
+        echo "INFO: Remove shard status: $status_json"
+        state=$(get_remove_shard_state "$status_json")
+        echo "INFO: Current state of shard $MONGODB_REPLICA_SET_NAME is $state"
+        if [ "$state" = "completed" ]; then
+            break
+        elif [ "$state" = "ongoing" ]; then
+            remaining_jumboChunks=$(echo "$status_json" | jq -r '.remaining.jumboChunks')
+            if [ "$remaining_jumboChunks" -gt 0 ]; then
+                echo "INFO: $remaining_jumboChunks jumbo chunks remaining, please clear jumbo chunks before removing the shard."
+                continue
+            fi
+
+            remaining_chunks=$(echo "$status_json" | jq -r '.remaining.chunks')
+            echo "INFO: $remaining_chunks chunks remaining."
+            if [ "$remaining_chunks" -eq 0 ]; then
+                if [ "$moved_primary" = "true" ]; then
+                    echo "INFO: waiting for moving primary to complete..."
+                    continue
+                fi
+                dbs_to_move=$(echo "$status_json" | jq -r '.dbsToMove[]')
+                note=$(echo "$status_json" | jq -r '.note')
+                echo "INFO: $note moving primary for databases: $dbs_to_move"
+                for db in $dbs_to_move; do
+                    echo "INFO: Database '$db' is scheduled for movePrimary..."
+                    if [ -z "$TARGET_SHARD" ]; then
+                        echo "INFO: TARGET_SHARD not defined, selecting a random available shard..."
+                        TARGET_SHARD=$($CLUSTER_MONGO "JSON.stringify(db.getSiblingDB('config').shards.find({ _id: { \$ne: '$MONGODB_REPLICA_SET_NAME' } }).toArray())" | jq -r '.[]._id' | shuf -n 1)
+                        if [ -z "$TARGET_SHARD" ]; then
+                            echo "ERROR: No available shard found for moving primary for database '$db'."
+                            exit 1
+                        fi
+                        echo "INFO: Selected TARGET_SHARD: $TARGET_SHARD"
+                    fi
+                    $CLUSTER_MONGO "db.adminCommand({ movePrimary: \"$db\", to: \"$TARGET_SHARD\" })"
+                done
+                moved_primary="true"
+                echo "INFO: waiting for moving primary to complete..."
+                continue
+            else
+                echo "INFO: $remaining_chunks chunks are still being migrated, waiting..."
+            fi
+        fi
+        sleep 2
     done
+    echo "INFO: Shard $MONGODB_REPLICA_SET_NAME has been successfully removed."
 }
 
 # main
