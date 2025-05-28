@@ -76,8 +76,8 @@ addons-cluster/orioledb/ @1aal @leon-inf @apecloud/kb-reviewers @apecloud/kb-add
 addons/polardbx/ @Vettal_Wu @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/polardbx/ @Vettal_Wu @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/postgresql/ @ldming @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/postgresql/ @ldming @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons/postgresql/ @ldming @dingshun-cmss @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/postgresql/ @ldming @dingshun-cmss @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
 addons/pulsar/ @caiq1nyu @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/pulsar/ @caiq1nyu @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
