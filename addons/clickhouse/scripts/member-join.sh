@@ -30,7 +30,7 @@ function create_databases() {
 function create_tables() {
    pod_fqdn="$1"
    echo "Creating tables..."
-   execute_sql "${pod_fqdn}" "SELECT database,name, uuid FROM system.tables WHERE database NOT IN ('system', 'INFORMATION_SCHEMA','information_schema')" | while read -a row; do
+   execute_sql "${pod_fqdn}" "SELECT database,name, uuid FROM system.tables WHERE database NOT IN ('system', 'INFORMATION_SCHEMA','information_schema') order by dependencies_table desc" | while read -a row; do
      database=${row[0]}
      table=${row[1]}
      uuid=${row[2]}
@@ -57,7 +57,7 @@ function create_tables() {
      execute_sql "${KB_JOIN_MEMBER_POD_FQDN}" "$query;"
      if [[ $? -eq 253 ]]; then
        echo "Replicas already exists, will drop the replica"
-       execute_sql "${pod_fqdn}" "SYSTEM DROP REPLICA '${instanceName}' FROM TABLE ${database}.${table}"
+       execute_sql "${pod_fqdn}" "SYSTEM DROP REPLICA '${KB_JOIN_MEMBER_POD_NAME}' FROM TABLE ${database}.${table}"
        execute_sql "${KB_JOIN_MEMBER_POD_FQDN}" "$query;"
      fi
    done

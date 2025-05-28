@@ -34,7 +34,7 @@ spec:
             name: peer
         volumeMounts:
           - name: data
-            mountPath: {{ .Values.dataMountPath }}
+            mountPath: {{ .Values.dataMountDir }}
           - name: config
             mountPath: /etc/etcd
           - name: scripts
@@ -61,6 +61,8 @@ spec:
       value: {{ .Chart.AppVersion }}
     - name: DATA_DIR
       value: {{ .Values.dataDir }}
+    - name: RESTORE_DIR
+      value: {{ .Values.restoreDir }}
     - name: CLUSTER_NAME
       valueFrom:
         clusterVarRef:

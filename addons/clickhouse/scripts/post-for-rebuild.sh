@@ -33,7 +33,7 @@ function create_databases() {
 function create_tables() {
    pod_fqdn="$1"
    echo "Creating tables..."
-   execute_sql "${pod_fqdn}" "SELECT database,name, uuid FROM system.tables WHERE database NOT IN ('system', 'INFORMATION_SCHEMA','information_schema')" | while read -a row; do
+   execute_sql "${pod_fqdn}" "SELECT database,name, uuid FROM system.tables WHERE database NOT IN ('system', 'INFORMATION_SCHEMA','information_schema') order by dependencies_table desc" | while read -a row; do
      database=${row[0]}
      table=${row[1]}
      uuid=${row[2]}
