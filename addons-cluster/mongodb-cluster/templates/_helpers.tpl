@@ -44,7 +44,6 @@ Define mongodb replicaset mode.
 */}}
 {{- define "mongodb-cluster.replicasetMode" }}
 clusterDefinitionRef: mongodb
-topology: replicaset
 componentSpecs:
   - name: mongodb
     {{- if .Values.useLegacyCompDef }}
@@ -70,7 +69,7 @@ shardingSpecs:
     template:
       name: &sharding_name mongodb-shard
       componentDef: mongodb-shard
-      # serviceVersion: {{ .Values.version }}
+      serviceVersion: {{ .Values.version }}
       replicas: {{ .Values.replicas | default 3 }}
       env:
         # syncer uses this env to get sharding name
@@ -84,7 +83,7 @@ componentSpecs:
   - name: cfg-server
     componentDef: mongodb-cfg-server
     replicas: {{ .Values.cfgServerReplicas | default 3 }}
-    # serviceVersion: {{ .Values.version }}
+    serviceVersion: {{ .Values.version }}
     serviceAccountName: {{ include "kblib.serviceAccountName" . }}
     {{- include "kblib.componentResources" . | indent 4 }}
     {{- include "kblib.componentStorages" . | indent 4 }}
@@ -92,7 +91,7 @@ componentSpecs:
   - name: mongos
     componentDef: mongodb-mongos
     replicas: {{ .Values.mongosReplicas | default 3 }}
-    # serviceVersion: {{ .Values.version }}
+    serviceVersion: {{ .Values.version }}
     serviceAccountName: {{ include "kblib.serviceAccountName" . }}
     {{- include "kblib.componentResources" . | indent 4 }}
     {{- include "kblib.componentServices" . | indent 4 }}

@@ -4,7 +4,7 @@
 
 ## @param version cluster version
 ##
-version: 6.0.16
+version: 8.0.4
 
 # @param clusterVersion cluster version for legacy API
 clusterVersion: mongodb-6.0
@@ -18,9 +18,11 @@ mode: sharding
 shards: 1
 ## @param replicas, replica count
 ##
-replicas: 3
-cfgServerReplicas: 3
-mongosReplicas: 3
+replicas: 1
+## @param cfgServerReplicas, config server replica count, only for sharding mode
+cfgServerReplicas: 1
+## @param mongosReplicas, mongos replica count, only for sharding mode
+mongosReplicas: 1
 ## @param cpu
 ##
 cpu: 0.5

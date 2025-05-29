@@ -11,8 +11,8 @@ data:
     {{- .Files.Get "scripts/mongodb-shard-manage.sh" | nindent 4 }}
   mongodb-mongos-setup.sh: |-
     {{- .Files.Get "scripts/mongodb-mongos-setup.sh" | nindent 4 }}
-  mongodb-mongos-post-start.sh: |-
-    {{- .Files.Get "scripts/mongodb-mongos-post-start.sh" | nindent 4 }}
+  mongodb-cfg-server-pre-terminate.sh: |-
+    {{- .Files.Get "scripts/mongodb-cfg-server-pre-terminate.sh" | nindent 4 }}
   mongos-setup.sh: |-
     #!/bin/sh
     

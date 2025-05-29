@@ -6,30 +6,31 @@ metadata:
     {{- include "mongodb.labels" . | nindent 4 }}
 spec:
   provider: kubeblocks.io
+  serviceKind: mongodb
   serviceVersion: "8.0.4"
   services:
-    - name: default
-      serviceName: mongodb
-      spec:
-        ports:
-          - name: mongodb
-            port: 27017
-            targetPort: mongodb
-      roleSelector: primary
-    - name: readonly
-      serviceName: mongodb-ro
-      spec:
-        ports:
-          - name: mongodb
-            port: 27017
-            targetPort: mongodb
-      roleSelector: secondary
-    - name: everypod
-      spec:
-        ports:
-          - name: mongodb
-            port: 27017
-            targetPort: mongodb
+    # - name: default
+    #   serviceName: mongodb
+    #   spec:
+    #     ports:
+    #       - name: mongodb
+    #         port: 27017
+    #         targetPort: mongodb
+    #   roleSelector: primary
+    # - name: readonly
+    #   serviceName: mongodb-ro
+    #   spec:
+    #     ports:
+    #       - name: mongodb
+    #         port: 27017
+    #         targetPort: mongodb
+    #   roleSelector: secondary
+    # - name: everypod
+    #   spec:
+    #     ports:
+    #       - name: mongodb
+    #         port: 27017
+    #         targetPort: mongodb
   configs:
     - name: mongodb-config
       templateRef: {{ include "mongodbShard.configTplName" . }}
@@ -95,6 +96,7 @@ spec:
     preTerminate:
       customHandler:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        # container: mongodb
         exec:
           command:
             - /bin/bash
@@ -128,8 +130,6 @@ spec:
             containerPort: 3601
         command:
           - syncer
-          - --zap-log-level
-          - debug
           - --
           - /scripts/mongodb-shard-setup.sh
 
@@ -231,6 +231,21 @@ spec:
             name: mongos
     - name: MONGOS_INTERNAL_HOST
       value: "$(MONGOS_INTERNAL_SVC_NAME).$(KB_NAMESPACE).svc.{{ .Values.clusterDomain }}"
+    - name: CFG_SERVER_INTERNAL_SVC_NAME
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "cfgServer.componentDefName" . }}
+          optional: false
+          host: Required
+    - name: CFG_SERVER_INTERNAL_PORT 
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "cfgServer.componentDefName" . }}
+          optional: false
+          port:
+            name: mongodb
+    - name: CFG_SERVER_INTERNAL_HOST
+      value: "$(CFG_SERVER_INTERNAL_SVC_NAME).$(KB_NAMESPACE).svc.{{ .Values.clusterDomain }}"
     - name: MONGODB_POD_FQDN_LIST
       valueFrom:
         componentVarRef:

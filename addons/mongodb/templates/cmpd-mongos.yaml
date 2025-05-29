@@ -82,9 +82,6 @@ spec:
           - name: mongos
             protocol: TCP
             containerPort: 27017
-          - name: ha
-            protocol: TCP
-            containerPort: 3601
         command:
           - bash
           - -c
@@ -96,10 +93,10 @@ spec:
           #   value: mongodb
           - name: SERVICE_PORT
             value: $(KB_SERVICE_PORT)
-          # - name: MONGODB_ROOT_USER
-          #   value: $(MONGODB_USER)
-          # - name: MONGODB_ROOT_PASSWORD
-          #   value: $(MONGODB_PASSWORD)
+          - name: MONGODB_ROOT_USER
+            value: $(MONGOS_USER)
+          - name: MONGODB_ROOT_PASSWORD
+            value: $(MONGOS_PASSWORD)
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
@@ -114,12 +111,12 @@ spec:
           - mountPath: /kubeblocks
             name: kubeblocks
     volumes:
-      # {{- if .Values.logCollector.enabled }}
-      # - name: log-data
-      #   hostPath:
-      #     path: /var/log/kubeblocks
-      #     type: DirectoryOrCreate
-      # {{- end }}
+      {{- if .Values.logCollector.enabled }}
+      - name: log-data
+        hostPath:
+          path: /var/log/kubeblocks
+          type: DirectoryOrCreate
+      {{- end }}
       # mongos does not need persistent volume
       - name: data
         emptyDir: {}
@@ -146,21 +143,6 @@ spec:
             port:
               name: mongos
               option: Optional
-    - name: SYNCER_SERVICE_PORT  
-      valueFrom:
-        hostNetworkVarRef:
-          optional: true
-          container:
-            name: mongos
-            port:
-              name: ha
-              option: Optional
-    # - name: CFG_SERVER_COMPONENT_NAME
-    #   valueFrom:
-    #     componentVarRef:
-    #       compDef: {{ include "cfgServer.componentDefName" . }}
-    #       optional: false
-    #       componentName: Required
     - name: CFG_SERVER_REPLICA_SET_NAME
       valueFrom:
         componentVarRef:
@@ -180,9 +162,26 @@ spec:
           optional: false
           port:
             name: mongodb
+    - name: MONGOS_USER
+      valueFrom:
+        credentialVarRef:
+          # use config server credential to access to mongos
+          compDef: {{ include "cfgServer.componentDefName" . }}
+          name: root
+          # in case that the config server is terminated, and the shard is executing pre-terminate action
+          optional: false
+          username: Required
+    - name: MONGOS_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          # use config server credential to access to mongos
+          compDef: {{ include "cfgServer.componentDefName" . }}
+          name: root
+          # in case that the config server is terminated, and the shard is executing pre-terminate action
+          optional: false
+          password: Required
   hostNetwork:
     containerPorts:
       - container: mongos
         ports:
           - mongos
-          - ha

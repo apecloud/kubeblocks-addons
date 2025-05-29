@@ -91,9 +91,18 @@ get_remove_shard_state() {
     echo "$state"
 }
 
-scale_in_mongodb_shard() {
+delete_or_scale_in_mongodb_shard() {
     # Check if the shard is scaling in
     if [[ $KB_CLUSTER_COMPONENT_IS_SCALING_IN != "true" ]]; then
+        CLUSTER_CFG_SERVER="$CLIENT --host $CFG_SERVER_INTERNAL_HOST --port $CFG_SERVER_INTERNAL_PORT -u $MONGOS_USER -p $MONGOS_PASSWORD --quiet --eval"
+        # Check if shard exists in config server
+        shard_exists=$($CLUSTER_CFG_SERVER "db.getSiblingDB('config').shards.findOne({ _id: '$MONGODB_REPLICA_SET_NAME' })")
+        if [ -n "$shard_exists" ]; then
+            echo "INFO: Force removing shard $MONGODB_REPLICA_SET_NAME from config server..."
+            $CLUSTER_CFG_SERVER "db.getSiblingDB('config').shards.deleteOne({ _id: '$MONGODB_REPLICA_SET_NAME' })"
+        else
+            echo "INFO: Shard $MONGODB_REPLICA_SET_NAME not found in config server."
+        fi
         echo "INFO: Shard $MONGODB_REPLICA_SET_NAME is not scaling in, skipping scale-in."
         exit 0
     fi
@@ -132,7 +141,7 @@ scale_in_mongodb_shard() {
             remaining_jumboChunks=$(echo "$status_json" | jq -r '.remaining.jumboChunks')
             if [ "$remaining_jumboChunks" -gt 0 ]; then
                 echo "INFO: $remaining_jumboChunks jumbo chunks remaining, please clear jumbo chunks before removing the shard."
-                continue
+                exit 1
             fi
 
             remaining_chunks=$(echo "$status_json" | jq -r '.remaining.chunks')
@@ -186,7 +195,10 @@ if [ $# -eq 1 ]; then
     exit 0
     ;;
   --pre-terminate)
-    scale_in_mongodb_shard
+    # avoid config server component and its secrets being deleted before the shard is removed,
+    # so we execute pre-terminate script in the first member pod.
+    # check_if_first_member
+    delete_or_scale_in_mongodb_shard
     exit 0
     ;;
   *)

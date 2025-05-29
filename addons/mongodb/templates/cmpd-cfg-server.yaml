@@ -6,16 +6,8 @@ metadata:
     {{- include "mongodb.labels" . | nindent 4 }}
 spec:
   provider: kubeblocks.io
+  serviceKind: mongodb
   serviceVersion: "8.0.4"
-  services:
-  #   - name: default
-  #     serviceName: mongodb
-  #     spec:
-  #       ports:
-  #         - name: mongodb
-  #           port: 27017
-  #           targetPort: mongodb
-  #     roleSelector: primary
   #   - name: readonly
   #     serviceName: mongodb-ro
   #     spec:
@@ -24,12 +16,12 @@ spec:
   #           port: 27017
   #           targetPort: mongodb
   #     roleSelector: secondary
-    - name: everypod
-      spec:
-        ports:
-          - name: mongodb
-            port: 27017
-            targetPort: mongodb
+    # - name: everypod
+    #   spec:
+    #     ports:
+    #       - name: mongodb
+    #         port: 27017
+    #         targetPort: mongodb
   configs:
     - name: mongodb-config
       templateRef: {{ include "mongodbShard.configTplName" . }}
@@ -81,6 +73,16 @@ spec:
       #         Status=$(export CLIENT=`which mongosh>/dev/null&&echo mongosh||echo mongo`; $CLIENT -u $KB_SERVICE_USER -p $KB_SERVICE_PASSWORD 127.0.0.1:27017 --quiet --eval "JSON.stringify(rs.status())") &&
       #         MyState=$(echo $Status | jq '.myState') &&
       #         echo $Status | jq ".members[] | select(.state == ($MyState | tonumber)) | .stateStr" |tr '[:upper:]' '[:lower:]'|uniq| xargs echo -n
+    preTerminate:
+      customHandler:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        exec:
+          command:
+            - /bin/bash
+            - -c
+            - /scripts/mongodb-cfg-server-pre-terminate.sh
+        retryPolicy:
+          maxRetries: 10
   runtime:
     initContainers:
       - command:
@@ -101,7 +103,7 @@ spec:
         ports:
           - name: mongodb
             protocol: TCP
-            containerPort: 27017
+            containerPort: &mongodbPort 27017
           - name: ha
             protocol: TCP
             containerPort: 3601
@@ -140,6 +142,15 @@ spec:
           path: /var/log/kubeblocks
           type: DirectoryOrCreate
       {{- end }}
+  services:
+    - name: default
+      # serviceName: mongodb
+      spec:
+        ports:
+          - name: mongodb
+            port: *mongodbPort
+            targetPort: mongodb
+      roleSelector: primary
   vars:
     - name: MONGODB_USER
       valueFrom:
@@ -177,6 +188,21 @@ spec:
     - name: KUBERNETES_CLUSTER_DOMAIN
       # syncer will use this env to get the cluster domain to generate the pod FQDN to initialize the replica set
       value: "{{ .Values.clusterDomain }}"
+    - name: CFG_SERVER_INTERNAL_SVC_NAME
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "cfgServer.componentDefName" . }}
+          optional: false
+          host: Required
+    - name: CFG_SERVER_INTERNAL_PORT 
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "cfgServer.componentDefName" . }}
+          optional: false
+          port:
+            name: mongodb
+    - name: CFG_SERVER_INTERNAL_HOST
+      value: "$(CFG_SERVER_INTERNAL_SVC_NAME).$(KB_NAMESPACE).svc.{{ .Values.clusterDomain }}"
   hostNetwork: 
     containerPorts:  
       - container: mongodb
