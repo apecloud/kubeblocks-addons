@@ -94,14 +94,12 @@ get_remove_shard_state() {
 delete_or_scale_in_mongodb_shard() {
     # Check if the shard is scaling in
     if [[ $KB_CLUSTER_COMPONENT_IS_SCALING_IN != "true" ]]; then
-        CLUSTER_CFG_SERVER="$CLIENT --host $CFG_SERVER_INTERNAL_HOST --port $CFG_SERVER_INTERNAL_PORT -u $MONGOS_USER -p $MONGOS_PASSWORD --quiet --eval"
         # Check if shard exists in config server
-        shard_exists=$($CLUSTER_CFG_SERVER "db.getSiblingDB('config').shards.findOne({ _id: '$MONGODB_REPLICA_SET_NAME' })")
-        if [ -n "$shard_exists" ]; then
-            echo "INFO: Force removing shard $MONGODB_REPLICA_SET_NAME from config server..."
-            $CLUSTER_CFG_SERVER "db.getSiblingDB('config').shards.deleteOne({ _id: '$MONGODB_REPLICA_SET_NAME' })"
+        if check_shard_exists; then
+            $CLUSTER_MONGO "db.getSiblingDB('config').shards.deleteOne({ _id: '$MONGODB_REPLICA_SET_NAME' })"
+            echo "INFO: Shard $MONGODB_REPLICA_SET_NAME record deleted from config server."
         else
-            echo "INFO: Shard $MONGODB_REPLICA_SET_NAME not found in config server."
+            echo "INFO: Shard $MONGODB_REPLICA_SET_NAME record not found in config server."
         fi
         echo "INFO: Shard $MONGODB_REPLICA_SET_NAME is not scaling in, skipping scale-in."
         exit 0
@@ -125,7 +123,6 @@ delete_or_scale_in_mongodb_shard() {
     moved_primary="false"
     while true; do
 
-        # check_if_first_member
         if ! check_shard_exists; then
             echo "INFO: Shard $MONGODB_REPLICA_SET_NAME does not exist, exiting."
             exit 0

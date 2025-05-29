@@ -19,10 +19,12 @@ shards: 1
 ## @param replicas, replica count
 ##
 replicas: 1
-## @param cfgServerReplicas, config server replica count, only for sharding mode
-cfgServerReplicas: 1
-## @param mongosReplicas, mongos replica count, only for sharding mode
-mongosReplicas: 1
+## @param cfgServer.replicas, config server replica count, only for sharding mode
+cfgServer:
+  replicas: 1
+## @param mongos.replicas, mongos replica count, only for sharding mode
+mongos:
+  replicas: 1
 ## @param cpu
 ##
 cpu: 0.5

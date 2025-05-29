@@ -8,29 +8,6 @@ spec:
   provider: kubeblocks.io
   serviceKind: mongodb
   serviceVersion: "8.0.4"
-  services:
-    # - name: default
-    #   serviceName: mongodb
-    #   spec:
-    #     ports:
-    #       - name: mongodb
-    #         port: 27017
-    #         targetPort: mongodb
-    #   roleSelector: primary
-    # - name: readonly
-    #   serviceName: mongodb-ro
-    #   spec:
-    #     ports:
-    #       - name: mongodb
-    #         port: 27017
-    #         targetPort: mongodb
-    #   roleSelector: secondary
-    # - name: everypod
-    #   spec:
-    #     ports:
-    #       - name: mongodb
-    #         port: 27017
-    #         targetPort: mongodb
   configs:
     - name: mongodb-config
       templateRef: {{ include "mongodbShard.configTplName" . }}
@@ -52,7 +29,14 @@ spec:
       volumeName: scripts
       defaultMode: 0555  # for read and execute, mysql container switched user account.
   systemAccounts:
-    - name: root
+    - name: local
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 8
+        numSymbols: 0
+        letterCase: MixedCases
+    - name: cluster
       initAccount: true
       passwordGenerationPolicy:
         length: 16
@@ -90,7 +74,7 @@ spec:
             - /bin/bash
             - -c
             - /scripts/mongodb-shard-manage.sh --post-provision
-        preCondition: ComponentReady
+        preCondition: RuntimeReady
         retryPolicy:
           maxRetries: 10
     preTerminate:
@@ -168,13 +152,13 @@ spec:
     - name: MONGODB_USER
       valueFrom:
         credentialVarRef:
-          name: root
+          name: local
           optional: false
           username: Required
     - name: MONGODB_PASSWORD
       valueFrom:
         credentialVarRef:
-          name: root
+          name: local
           optional: false
           password: Required
     - name: KB_SERVICE_PORT  
@@ -198,13 +182,24 @@ spec:
               option: Optional
     - name: MONGODB_CLUSTER_ROLE
       value: "shardsvr"
+    - name: MONGODB_CLUSTER_USER
+      valueFrom:
+        credentialVarRef:
+          name: local
+          optional: false
+          username: Required
+    - name: MONGODB_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: local
+          optional: false
+          password: Required
     - name: MONGOS_USER
       valueFrom:
         credentialVarRef:
           # use config server credential to access to mongos
           compDef: {{ include "cfgServer.componentDefName" . }}
           name: root
-          # in case that the config server is terminated, and the shard is executing pre-terminate action
           optional: true
           username: Optional
     - name: MONGOS_PASSWORD
@@ -213,7 +208,6 @@ spec:
           # use config server credential to access to mongos
           compDef: {{ include "cfgServer.componentDefName" . }}
           name: root
-          # in case that the config server is terminated, and the shard is executing pre-terminate action
           optional: true
           password: Optional
     - name: MONGOS_INTERNAL_SVC_NAME

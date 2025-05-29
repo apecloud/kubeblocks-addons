@@ -82,7 +82,7 @@ shardingSpecs:
 componentSpecs:
   - name: cfg-server
     componentDef: mongodb-cfg-server
-    replicas: {{ .Values.cfgServerReplicas | default 3 }}
+    replicas: {{ .Values.cfgServer.replicas | default 3 }}
     serviceVersion: {{ .Values.version }}
     serviceAccountName: {{ include "kblib.serviceAccountName" . }}
     {{- include "kblib.componentResources" . | indent 4 }}
@@ -90,7 +90,7 @@ componentSpecs:
     {{- include "mongodb-cluster.keyfileVolume" . | indent 4 }}
   - name: mongos
     componentDef: mongodb-mongos
-    replicas: {{ .Values.mongosReplicas | default 3 }}
+    replicas: {{ .Values.mongos.replicas | default 3 }}
     serviceVersion: {{ .Values.version }}
     serviceAccountName: {{ include "kblib.serviceAccountName" . }}
     {{- include "kblib.componentResources" . | indent 4 }}
