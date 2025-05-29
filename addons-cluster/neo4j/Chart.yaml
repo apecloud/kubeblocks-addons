@@ -3,7 +3,7 @@ annotations:
 apiVersion: v2
 name: neo4j-cluster
 type: application
-version: 1.0.0-alpha.0
+version: 1.0.0
 description: A Neo4j cluster Helm chart for KubeBlocks
 dependencies:
   - name: kblib
