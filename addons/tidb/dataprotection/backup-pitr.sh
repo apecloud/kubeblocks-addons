@@ -2,7 +2,7 @@
 
 function save_backup_status() {
     # shellcheck disable=SC2086
-    res=$(/br log status --task-name=pitr --pd "$PD_ADDRESS" --storage "s3://$BUCKET$DP_BACKUP_BASE_PATH?access-key=$ACCESS_KEY_ID&secret-access-key=$SECRET_ACCESS_KEY" --s3.endpoint "$ENDPOINT" $EXTRA_ARGS)
+    res=$(/br log status --task-name=pitr --pd "$PD_ADDRESS" $EXTRA_ARGS)
     start_time_str=$(echo "$res" | awk -F': ' '/^\s*start:/ {print $2}')
     checkpoint_time_str=$(echo "$res" | awk -F': ' '/^checkpoint\[global\]:/ {print $2}' | cut -d';' -f1)
     start_time=$(date -d "$start_time_str" -u '+%Y-%m-%dT%H:%M:%SZ')
@@ -19,6 +19,7 @@ function save_backup_status() {
 function handle_exit() {
   exit_code=$?
   save_backup_status
+  # FIXME: an unexpected pod restart will remove previous log backup progress 
   # shellcheck disable=SC2086
   /br log stop --task-name=pitr --pd "$PD_ADDRESS" --storage "s3://$BUCKET$DP_BACKUP_BASE_PATH?access-key=$ACCESS_KEY_ID&secret-access-key=$SECRET_ACCESS_KEY" --s3.endpoint "$ENDPOINT" $EXTRA_ARGS
   if [ $exit_code -ne 0 ]; then
