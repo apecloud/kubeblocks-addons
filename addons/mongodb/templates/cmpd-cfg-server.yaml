@@ -79,7 +79,7 @@ spec:
         ports:
           - name: mongodb
             protocol: TCP
-            containerPort: &mongodbPort 27017
+            containerPort: &mongodbPort 27019
           - name: ha
             protocol: TCP
             containerPort: 3601
@@ -140,7 +140,7 @@ spec:
           optional: false
           password: Required
     - name: KB_SERVICE_PORT  
-      value: "27017"
+      value: "27019"
       valueFrom:
         hostNetworkVarRef:
           optional: true
@@ -163,21 +163,6 @@ spec:
     - name: KUBERNETES_CLUSTER_DOMAIN
       # syncer will use this env to get the cluster domain to generate the pod FQDN to initialize the replica set
       value: "{{ .Values.clusterDomain }}"
-    - name: CFG_SERVER_INTERNAL_SVC_NAME
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "cfgServer.componentDefName" . }}
-          optional: false
-          host: Required
-    - name: CFG_SERVER_INTERNAL_PORT 
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "cfgServer.componentDefName" . }}
-          optional: false
-          port:
-            name: mongodb
-    - name: CFG_SERVER_INTERNAL_HOST
-      value: "$(CFG_SERVER_INTERNAL_SVC_NAME).$(KB_NAMESPACE).svc.{{ .Values.clusterDomain }}"
   hostNetwork: 
     containerPorts:  
       - container: mongodb

@@ -18,9 +18,6 @@ spec:
   {{- end }}
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
   {{- include "kblib.affinity" . | indent 2 }}
-  # {{- if .Values.useLegacyCompDef }}
-  # clusterDefinitionRef: mongodb
-  # {{- end }}
   {{- if or (eq .Values.mode "replicaset") (eq .Values.mode "standalone") }}
   {{ include "mongodb-cluster.replicasetMode" . | indent 2 }}
   {{- else if eq .Values.mode "sharding" }}

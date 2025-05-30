@@ -74,13 +74,12 @@ spec:
             - /bin/bash
             - -c
             - /scripts/mongodb-shard-manage.sh --post-provision
-        preCondition: RuntimeReady
+        preCondition: ComponentReady
         retryPolicy:
           maxRetries: 10
     preTerminate:
       customHandler:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
-        # container: mongodb
         exec:
           command:
             - /bin/bash
@@ -108,7 +107,7 @@ spec:
         ports:
           - name: mongodb
             protocol: TCP
-            containerPort: 27017
+            containerPort: &mongodbPort 27018
           - name: ha
             protocol: TCP
             containerPort: 3601
@@ -164,7 +163,7 @@ spec:
           optional: false
           password: Required
     - name: KB_SERVICE_PORT  
-      value: "27017"
+      value: "27018"
       valueFrom:
         hostNetworkVarRef:
           optional: true
@@ -215,21 +214,6 @@ spec:
             name: mongos
     - name: MONGOS_INTERNAL_HOST
       value: "$(MONGOS_INTERNAL_SVC_NAME).$(KB_NAMESPACE).svc.{{ .Values.clusterDomain }}"
-    - name: CFG_SERVER_INTERNAL_SVC_NAME
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "cfgServer.componentDefName" . }}
-          optional: false
-          host: Required
-    - name: CFG_SERVER_INTERNAL_PORT 
-      valueFrom:
-        serviceVarRef:
-          compDef: {{ include "cfgServer.componentDefName" . }}
-          optional: false
-          port:
-            name: mongodb
-    - name: CFG_SERVER_INTERNAL_HOST
-      value: "$(CFG_SERVER_INTERNAL_SVC_NAME).$(KB_NAMESPACE).svc.{{ .Values.clusterDomain }}"
     - name: MONGODB_POD_FQDN_LIST
       valueFrom:
         componentVarRef:

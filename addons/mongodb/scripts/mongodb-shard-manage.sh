@@ -1,10 +1,11 @@
 #!/bin/bash
-MONGODB_REPLICA_SET_NAME=$KB_CLUSTER_COMP_NAME
 
+MONGODB_REPLICA_SET_NAME=$KB_CLUSTER_COMP_NAME
 CLIENT=`which mongosh>/dev/null&&echo mongosh||echo mongo`
 CLUSTER_MONGO="$CLIENT --host $MONGOS_INTERNAL_HOST --port $MONGOS_INTERNAL_PORT -u $MONGODB_ADMIN_USER -p $MONGODB_ADMIN_PASSWORD --quiet --eval"
 
 generate_endpoints() {
+    # Generate the endpoints for the shard
     local fqdns=$1
     local port=$2
 
@@ -26,16 +27,8 @@ generate_endpoints() {
     IFS=','; echo "${endpoints[*]}"
 }
 
-# Check if the pod is the first member of the replica set
-check_if_first_member() {
-    if [[ "${KB_POD_NAME: -1}" != "0" ]]; then
-        echo "INFO: This pod $KB_POD_NAME is not the first member of the replica set, exiting."
-        exit 0
-    fi
-}
-
 wait_for_mongos() {
-    # Wait for the mongos process to be ready
+    # Wait for the mongos service to be ready
     while true; do
         result=$($CLUSTER_MONGO "db.adminCommand({ ping: 1 })")
         if [[ "$result" == *"ok"* ]]; then
@@ -43,13 +36,13 @@ wait_for_mongos() {
             break
         fi
         echo "INFO: Waiting for mongos to be ready..."
-        sleep 2
+        sleep 1
     done
 }
 
 
 check_shard_exists() {
-    # Check if the shard exists in the config database
+    # check if the shard exists in the config database
     local shard_exists
     shard_exists=$($CLUSTER_MONGO "db.getSiblingDB(\"config\").shards.find({ _id: \"$MONGODB_REPLICA_SET_NAME\" })")
     if [ -n "$shard_exists" ]; then
@@ -61,7 +54,6 @@ check_shard_exists() {
 
 initialize_or_scale_out_mongodb_shard() {
     wait_for_mongos
-    # check_if_first_member
 
     # Check if the shard exists
     while ! check_shard_exists; do
@@ -70,7 +62,7 @@ initialize_or_scale_out_mongodb_shard() {
         echo "INFO: Adding shard $MONGODB_REPLICA_SET_NAME with endpoints: $pod_endpoints"
         $CLUSTER_MONGO "sh.addShard(\"$MONGODB_REPLICA_SET_NAME/$pod_endpoints\")"
     done
-    echo "INFO: Shard $MONGODB_REPLICA_SET_NAME exists."
+    echo "INFO: Shard $MONGODB_REPLICA_SET_NAME added."
     exit 0
 }
 
@@ -93,7 +85,7 @@ get_remove_shard_state() {
 delete_or_scale_in_mongodb_shard() {
     # Check if the shard is scaling in
     if [[ $KB_CLUSTER_COMPONENT_IS_SCALING_IN != "true" ]]; then
-        echo "INFO: Shard $MONGODB_REPLICA_SET_NAME is not scaling in, skipping scale-in."
+        echo "INFO: Shard $MONGODB_REPLICA_SET_NAME is not scaling in, exiting."
         exit 0
     fi
 
@@ -104,8 +96,8 @@ delete_or_scale_in_mongodb_shard() {
         exit 0
     fi
 
-    balance_status=$($CLUSTER_MONGO "sh.getBalancerState()")
-    if [ "$balance_status" = "false" ]; then
+    original_balance_status=$($CLUSTER_MONGO "sh.getBalancerState()")
+    if [ "$original_balance_status" = "false" ]; then
         $CLUSTER_MONGO "sh.startBalancer()"
     fi
 
@@ -135,28 +127,26 @@ delete_or_scale_in_mongodb_shard() {
             remaining_chunks=$(echo "$status_json" | jq -r '.remaining.chunks')
             echo "INFO: $remaining_chunks chunks remaining."
             if [ "$remaining_chunks" -eq 0 ]; then
-                if [ "$moved_primary" = "true" ]; then
-                    echo "INFO: waiting for moving primary to complete..."
-                    continue
-                fi
                 dbs_to_move=$(echo "$status_json" | jq -r '.dbsToMove[]')
                 note=$(echo "$status_json" | jq -r '.note')
-                echo "INFO: $note moving primary for databases: $dbs_to_move"
+                echo "INFO: $note"
+                echo "$dbs_to_move"
                 for db in $dbs_to_move; do
                     echo "INFO: Database '$db' is scheduled for movePrimary..."
-                    if [ -z "$TARGET_SHARD" ]; then
-                        echo "INFO: TARGET_SHARD not defined, selecting a random available shard..."
-                        TARGET_SHARD=$($CLUSTER_MONGO "JSON.stringify(db.getSiblingDB('config').shards.find({ _id: { \$ne: '$MONGODB_REPLICA_SET_NAME' } }).toArray())" | jq -r '.[]._id' | shuf -n 1)
-                        if [ -z "$TARGET_SHARD" ]; then
+                    if [ -z "$DESTINATION_SHARD" ]; then
+                        DESTINATION_SHARD=$($CLUSTER_MONGO "JSON.stringify(
+                            db.getSiblingDB('config').shards.find({
+                                _id: { \$ne: '$MONGODB_REPLICA_SET_NAME' }
+                            }).toArray()
+                        )" | jq -r '.[]._id' | shuf -n 1)
+                        if [ -z "$DESTINATION_SHARD" ]; then
                             echo "ERROR: No available shard found for moving primary for database '$db'."
                             exit 1
                         fi
-                        echo "INFO: Selected TARGET_SHARD: $TARGET_SHARD"
                     fi
-                    $CLUSTER_MONGO "db.adminCommand({ movePrimary: \"$db\", to: \"$TARGET_SHARD\" })"
+                    echo "INFO: Moving primary for database '$db' to shard '$DESTINATION_SHARD'..."
+                    $CLUSTER_MONGO "db.adminCommand({ movePrimary: \"$db\", to: \"$DESTINATION_SHARD\" })"
                 done
-                moved_primary="true"
-                echo "INFO: waiting for moving primary to complete..."
                 continue
             else
                 echo "INFO: $remaining_chunks chunks are still being migrated, waiting..."
@@ -164,6 +154,12 @@ delete_or_scale_in_mongodb_shard() {
         fi
         sleep 2
     done
+
+    # reset balancer state
+    if [ "$original_balance_status" = "false" ]; then
+        $CLUSTER_MONGO "sh.stopBalancer()"
+        echo "INFO: Balancer state has been reset to false."
+    fi
     echo "INFO: Shard $MONGODB_REPLICA_SET_NAME has been successfully removed."
 }
 

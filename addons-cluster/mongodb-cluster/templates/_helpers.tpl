@@ -43,7 +43,9 @@ volumes:
 Define mongodb replicaset mode.
 */}}
 {{- define "mongodb-cluster.replicasetMode" }}
+{{- if .Values.useLegacyCompDef }}
 clusterDefinitionRef: mongodb
+{{- end }}
 componentSpecs:
   - name: mongodb
     {{- if .Values.useLegacyCompDef }}
@@ -101,6 +103,9 @@ componentSpecs:
     replicas: {{ .Values.mongos.replicas | default 3 }}
     serviceVersion: {{ .Values.version }}
     serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+    env:
+      - name: MONGODB_BALANCER_ENABLED
+        value: "{{ .Values.balancer.enabled }}"
     {{- include "kblib.componentResources" . | indent 4 }}
     {{- include "kblib.componentServices" . | indent 4 }}
     {{- include "mongodb-cluster.keyfileVolume" . | indent 4 }}
