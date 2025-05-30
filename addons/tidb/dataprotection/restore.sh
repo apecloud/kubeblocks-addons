@@ -1,19 +1,6 @@
 #!/bin/bash
 
-set -exo pipefail
+setStorageVar
 
-cat /etc/datasafed/datasafed.conf
-toolConfig=/etc/datasafed/datasafed.conf
-
-function getToolConfigValue() {
-    local var=$1
-    cat $toolConfig | grep "^$var" | awk '{print $NF}'
-}
-
-access_key_id=$(getToolConfigValue access_key_id)
-secret_access_key=$(getToolConfigValue secret_access_key)
-endpoint=$(getToolConfigValue endpoint)
-bucket=$(getToolConfigValue "root")
-
-# FIXME: hardcoded port
-/br restore full --pd "$DP_DB_HOST:2379" --storage "s3://$bucket$DP_BACKUP_BASE_PATH?access-key=$access_key_id&secret-access-key=$secret_access_key" --s3.endpoint "$endpoint"
+# shellcheck disable=SC2086
+/br restore full --pd "$PD_ADDRESS" --storage "s3://$BUCKET$DP_BACKUP_BASE_PATH?access-key=$ACCESS_KEY_ID&secret-access-key=$SECRET_ACCESS_KEY" --s3.endpoint "$ENDPOINT" $BR_EXTRA_ARGS
