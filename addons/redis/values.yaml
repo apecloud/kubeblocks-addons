@@ -12,12 +12,18 @@ cmpdVersionPrefix:
   redis:
     major7:
       minorAll: "redis-7"
+    major8:
+      minorAll: "redis-8"
   redisSentinel:
     major7:
       minorAll: "redis-sentinel-7"
+    major8:
+      minorAll: "redis-sentinel-8"
   redisCluster:
     major7:
       minorAll: "redis-cluster-7"
+    major8:
+      minorAll: "redis-cluster-8"
   redisTwemproxy:
     major05:
       minorAll: "redis-twemproxy-0.5"
@@ -26,10 +32,13 @@ cmpdVersionPrefix:
 defaultServiceVersion:
   redis:
     major7: "7.2.7"
+    major8: "8.0.1"
   redisSentinel:
     major7: "7.2.7"
+    major8: "8.0.1"
   redisCluster:
     major7: "7.2.7"
+    major8: "8.0.1"
   redisTwemproxy:
     major: "0.5.0"
 
@@ -46,6 +55,14 @@ image:
     major7:
       minor70: 7.0.6-RC4
       minor72: 7.2.0-v14
+
+ceImage:
+  registry: docker.io
+  repository: redis
+  pullPolicy: IfNotPresent
+  tag:
+    major8:
+      minor80: 8.0.1
 
 apeDtsImage:
   registry: ""

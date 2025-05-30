@@ -1,15 +1,15 @@
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParamConfigRenderer
 metadata:
-  name: {{ include "redisCluster7.pcrName" . }}
+  name: {{ include "redisCluster8.pcrName" . }}
   labels:
     {{- include "redis.labels" . | nindent 4 }}
   annotations:
     {{- include "redis.annotations" . | nindent 4 }}
 spec:
-  componentDef: {{ include "redisCluster7.cmpdName" . }}
+  componentDef: {{ include "redisCluster8.cmpdName" . }}
   parametersDefs:
-    - {{ include "redisCluster7.paramsDefName" . }}
+    - {{ include "redisCluster8.paramsDefName" . }}
 
   configs:
     - name: redis.conf

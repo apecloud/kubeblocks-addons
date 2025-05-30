@@ -1,4 +1,4 @@
-{{- $pd := .Files.Get "config/redis7-config-effect-scope.yaml" | fromYaml }}
+{{- $pd := .Files.Get "config/redis-config-effect-scope.yaml" | fromYaml }}
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParametersDefinition
 metadata:
@@ -6,6 +6,20 @@ metadata:
   labels:
     {{- include "redis.labels" . | nindent 4 }}
 spec:
+  reloadAction:
+    shellTrigger:
+      sync: true
+      command:
+        - "reload-parameter.sh"
+      scriptConfig:
+        scriptConfigMapRef: redis-reload-tools-script
+        namespace: {{ .Release.Namespace }}
+      toolsSetup:
+        mountPoint: /kb_tools
+        toolConfigs:
+          - name: kb-tools
+            asContainerImage: true
+            image: {{ include "redis7.image" . }}
 
   fileName: redis.conf
   # ConfigurationSchema that impose restrictions on engine parameter's rule
@@ -22,13 +36,3 @@ spec:
     - {{ . }}
     {{- end }}
   {{- end}}
-
-  ## reload parameters
-  ## dynamicParameters
-  {{- if hasKey $pd "dynamicParameters" }}
-  dynamicParameters:
-   {{- $params := get $pd "dynamicParameters" }}
-   {{- range $params }}
-    - {{ . }}
-   {{- end }}
- {{- end}}

@@ -133,6 +133,17 @@ redis-7-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
+Define redis 8.X component definition name
+*/}}
+{{- define "redis8.cmpdName" -}}
+{{- if eq (len .Values.cmpdVersionPrefix.redis.major8.minorAll ) 0 -}}
+redis-8-{{ .Chart.Version }}
+{{- else -}}
+{{- printf "%s" .Values.cmpdVersionPrefix.redis.major8.minorAll -}}-{{ .Chart.Version }}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Define redis sentinel 7.X component definition name
 */}}
 {{- define "redisSentinel7.cmpdName" -}}
@@ -140,6 +151,17 @@ Define redis sentinel 7.X component definition name
 redis-sentinel-7-{{ .Chart.Version }}
 {{- else -}}
 {{- printf "%s" .Values.cmpdVersionPrefix.redisSentinel.major7.minorAll -}}-{{ .Chart.Version }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Define redis sentinel 8.X component definition name
+*/}}
+{{- define "redisSentinel8.cmpdName" -}}
+{{- if eq (len .Values.cmpdVersionPrefix.redisSentinel.major8.minorAll ) 0 -}}
+redis-sentinel-8-{{ .Chart.Version }}
+{{- else -}}
+{{- printf "%s" .Values.cmpdVersionPrefix.redisSentinel.major8.minorAll -}}-{{ .Chart.Version }}
 {{- end -}}
 {{- end -}}
 
@@ -153,6 +175,17 @@ redis-cluster-7-{{ .Chart.Version }}
 {{- printf "%s" .Values.cmpdVersionPrefix.redisCluster.major7.minorAll -}}-{{ .Chart.Version }}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Define redis-cluster 8.X component definition name
+*/}}
+{{- define "redisCluster8.cmpdName" -}}
+{{- if eq (len .Values.cmpdVersionPrefix.redisCluster.major8.minorAll ) 0 -}}
+redis-cluster-8-{{ .Chart.Version }}
+{{- else -}}
+{{- end -}}
+{{- end -}}
+
 
 {{/*
 Define redis-twemproxy 0.5.X component definition name
@@ -208,17 +241,45 @@ redis-cluster7-pd
 {{- end -}}
 
 {{/*
+Define redis 8.X component config constraint name
+*/}}
+{{- define "redis8.paramsDefName" -}}
+redis8-config-pd
+{{- end -}}
+
+{{/*
+Define redis cluster 8.X component config constraint name
+*/}}
+{{- define "redisCluster8.paramsDefName" -}}
+redis-cluster8-pd
+{{- end -}}
+
+{{/*
 Define redis 7.X component config constraint name
 */}}
 {{- define "redis7.pcrName" -}}
-redis7-pcr
+redis-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define redis cluster 7.X component config constraint name
 */}}
 {{- define "redisCluster7.pcrName" -}}
-redis-cluster7-pcr
+redis-cluster-pcr-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define redis 8.X component config constraint name
+*/}}
+{{- define "redis8.pcrName" -}}
+redis8-pcr-{{ .Chart.Version }}
+{{- end -}}
+
+{{/*
+Define redis cluster 8.X component config constraint name
+*/}}
+{{- define "redisCluster8.pcrName" -}}
+redis-cluster8-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
@@ -237,6 +298,10 @@ Define image
 
 {{- define "redis7.image" -}}
 {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major7.minor72 }}
+{{- end }}
+
+{{- define "redis8.image" -}}
+{{ .Values.ceImage.registry | default "docker.io" }}/{{ .Values.ceImage.repository }}:{{ .Values.image.tag.major8.minor80 }}
 {{- end }}
 
 {{- define "redisSentinel.repository" -}}
