@@ -71,6 +71,14 @@ shardingSpecs:
       componentDef: mongodb-shard
       serviceVersion: {{ .Values.version }}
       replicas: {{ .Values.replicas | default 3 }}
+      systemAccounts:
+        - name: cluster-admin
+          passwordConfig:
+            length: 16
+            numDigits: 8
+            numSymbols: 0
+            letterCase: MixedCases
+            seed: {{ include "kblib.clusterName" . }}
       env:
         # syncer uses this env to get sharding name
         - name: KB_SHARDING_NAME

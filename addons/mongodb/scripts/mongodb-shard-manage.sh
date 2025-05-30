@@ -1,9 +1,8 @@
 #!/bin/bash
-set -e
 MONGODB_REPLICA_SET_NAME=$KB_CLUSTER_COMP_NAME
 
 CLIENT=`which mongosh>/dev/null&&echo mongosh||echo mongo`
-CLUSTER_MONGO="$CLIENT --host $MONGOS_INTERNAL_HOST --port $MONGOS_INTERNAL_PORT -u $MONGOS_USER -p $MONGOS_PASSWORD --quiet --eval"
+CLUSTER_MONGO="$CLIENT --host $MONGOS_INTERNAL_HOST --port $MONGOS_INTERNAL_PORT -u $MONGODB_ADMIN_USER -p $MONGODB_ADMIN_PASSWORD --quiet --eval"
 
 generate_endpoints() {
     local fqdns=$1
@@ -43,6 +42,7 @@ wait_for_mongos() {
             echo "INFO: Mongos is ready."
             break
         fi
+        echo "INFO: Waiting for mongos to be ready..."
         sleep 2
     done
 }
@@ -64,15 +64,14 @@ initialize_or_scale_out_mongodb_shard() {
     # check_if_first_member
 
     # Check if the shard exists
-    if check_shard_exists; then
-        echo "INFO: Shard $MONGODB_REPLICA_SET_NAME already exists, skipping initialization."
-        exit 0
-    fi
-
-    echo "INFO: Shard $MONGODB_REPLICA_SET_NAME does not exist, initializing..."
-    pod_endpoints=$(generate_endpoints "$MONGODB_POD_FQDN_LIST" "$KB_SERVICE_PORT")
-    echo "INFO: Adding shard $MONGODB_REPLICA_SET_NAME with endpoints: $pod_endpoints"
-    $CLUSTER_MONGO "sh.addShard(\"$MONGODB_REPLICA_SET_NAME/$pod_endpoints\")"
+    while ! check_shard_exists; do
+        echo "INFO: Shard $MONGODB_REPLICA_SET_NAME does not exist, initializing..."
+        pod_endpoints=$(generate_endpoints "$MONGODB_POD_FQDN_LIST" "$KB_SERVICE_PORT")
+        echo "INFO: Adding shard $MONGODB_REPLICA_SET_NAME with endpoints: $pod_endpoints"
+        $CLUSTER_MONGO "sh.addShard(\"$MONGODB_REPLICA_SET_NAME/$pod_endpoints\")"
+    done
+    echo "INFO: Shard $MONGODB_REPLICA_SET_NAME exists."
+    exit 0
 }
 
 get_remove_shard_status() {
@@ -94,20 +93,12 @@ get_remove_shard_state() {
 delete_or_scale_in_mongodb_shard() {
     # Check if the shard is scaling in
     if [[ $KB_CLUSTER_COMPONENT_IS_SCALING_IN != "true" ]]; then
-        # Check if shard exists in config server
-        if check_shard_exists; then
-            $CLUSTER_MONGO "db.getSiblingDB('config').shards.deleteOne({ _id: '$MONGODB_REPLICA_SET_NAME' })"
-            echo "INFO: Shard $MONGODB_REPLICA_SET_NAME record deleted from config server."
-        else
-            echo "INFO: Shard $MONGODB_REPLICA_SET_NAME record not found in config server."
-        fi
         echo "INFO: Shard $MONGODB_REPLICA_SET_NAME is not scaling in, skipping scale-in."
         exit 0
     fi
 
     wait_for_mongos
 
-    # check_if_first_member
     if ! check_shard_exists; then
         echo "INFO: Shard $MONGODB_REPLICA_SET_NAME does not exist, skipping scale-in."
         exit 0
@@ -192,9 +183,6 @@ if [ $# -eq 1 ]; then
     exit 0
     ;;
   --pre-terminate)
-    # avoid config server component and its secrets being deleted before the shard is removed,
-    # so we execute pre-terminate script in the first member pod.
-    # check_if_first_member
     delete_or_scale_in_mongodb_shard
     exit 0
     ;;

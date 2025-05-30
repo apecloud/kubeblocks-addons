@@ -59,16 +59,6 @@ spec:
       #         Status=$(export CLIENT=`which mongosh>/dev/null&&echo mongosh||echo mongo`; $CLIENT -u $KB_SERVICE_USER -p $KB_SERVICE_PASSWORD 127.0.0.1:27017 --quiet --eval "JSON.stringify(rs.status())") &&
       #         MyState=$(echo $Status | jq '.myState') &&
       #         echo $Status | jq ".members[] | select(.state == ($MyState | tonumber)) | .stateStr" |tr '[:upper:]' '[:lower:]'|uniq| xargs echo -n
-    # preTerminate:
-    #   customHandler:
-    #     image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
-    #     exec:
-    #       command:
-    #         - /bin/bash
-    #         - -c
-    #         - /scripts/mongodb-cfg-server-pre-terminate.sh
-    #     retryPolicy:
-    #       maxRetries: 10
   runtime:
     initContainers:
       - command:

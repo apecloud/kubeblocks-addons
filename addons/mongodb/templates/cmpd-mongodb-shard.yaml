@@ -36,7 +36,7 @@ spec:
         numDigits: 8
         numSymbols: 0
         letterCase: MixedCases
-    - name: cluster
+    - name: cluster-admin
       initAccount: true
       passwordGenerationPolicy:
         length: 16
@@ -152,12 +152,14 @@ spec:
     - name: MONGODB_USER
       valueFrom:
         credentialVarRef:
+          compDef: {{ include "mongodbShard.componentDefName" . }}
           name: local
           optional: false
           username: Required
     - name: MONGODB_PASSWORD
       valueFrom:
         credentialVarRef:
+          compDef: {{ include "mongodbShard.componentDefName" . }}
           name: local
           optional: false
           password: Required
@@ -182,34 +184,22 @@ spec:
               option: Optional
     - name: MONGODB_CLUSTER_ROLE
       value: "shardsvr"
-    - name: MONGODB_CLUSTER_USER
+    - name: MONGODB_ADMIN_USER
       valueFrom:
         credentialVarRef:
-          name: local
+          # use config server credential to access to mongos
+          compDef: {{ include "mongodbShard.componentDefName" . }}
+          name: cluster-admin
           optional: false
           username: Required
-    - name: MONGODB_PASSWORD
+    - name: MONGODB_ADMIN_PASSWORD
       valueFrom:
         credentialVarRef:
-          name: local
+          # use config server credential to access to mongos
+          compDef: {{ include "mongodbShard.componentDefName" . }}
+          name: cluster-admin
           optional: false
           password: Required
-    - name: MONGOS_USER
-      valueFrom:
-        credentialVarRef:
-          # use config server credential to access to mongos
-          compDef: {{ include "cfgServer.componentDefName" . }}
-          name: root
-          optional: true
-          username: Optional
-    - name: MONGOS_PASSWORD
-      valueFrom:
-        credentialVarRef:
-          # use config server credential to access to mongos
-          compDef: {{ include "cfgServer.componentDefName" . }}
-          name: root
-          optional: true
-          password: Optional
     - name: MONGOS_INTERNAL_SVC_NAME
       valueFrom:
         serviceVarRef:

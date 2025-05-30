@@ -35,6 +35,18 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555  # for read and execute, mysql container switched user account.
+  lifecycleActions:
+    postProvision:
+      customHandler:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        exec:
+          command:
+            - /bin/bash
+            - -c
+            - /scripts/mongodb-mongos-post-provision.sh
+        preCondition: RuntimeReady
+        retryPolicy:
+          maxRetries: 10
   runtime:
     containers:
       - name: mongos
@@ -126,6 +138,39 @@ spec:
           name: root
           optional: false
           password: Required
+    - name: MONGODB_ADMIN_USER
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "mongodbShard.componentDefName" . }}
+          name: cluster-admin
+          optional: false
+          username: Required
+          multipleClusterObjectOption:
+            strategy: individual
+    - name: MONGODB_ADMIN_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "mongodbShard.componentDefName" . }}
+          name: cluster-admin
+          optional: false
+          password: Required
+          multipleClusterObjectOption:
+            strategy: individual
+    - name: MONGOS_INTERNAL_SVC_NAME
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "mongos.componentDefName" . }}
+          optional: false
+          host: Required
+    - name: MONGOS_INTERNAL_PORT 
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "mongos.componentDefName" . }}
+          optional: false
+          port:
+            name: mongos
+    - name: MONGOS_INTERNAL_HOST
+      value: "$(MONGOS_INTERNAL_SVC_NAME).$(KB_NAMESPACE).svc.{{ .Values.clusterDomain }}"
   hostNetwork:
     containerPorts:
       - container: mongos
