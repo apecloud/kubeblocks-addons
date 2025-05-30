@@ -15,7 +15,7 @@ trap handle_exit EXIT
 setStorageVar
 
 # shellcheck disable=SC2086
-/br backup full --pd "$DP_DB_HOST:2379" --storage "s3://$BUCKET$DP_BACKUP_BASE_PATH?access-key=$ACCESS_KEY_ID&secret-access-key=$SECRET_ACCESS_KEY" --s3.endpoint "$ENDPOINT" $BR_EXTRA_ARGS
+/br backup full --pd "$PD_ADDRESS" --storage "s3://$BUCKET$DP_BACKUP_BASE_PATH?access-key=$ACCESS_KEY_ID&secret-access-key=$SECRET_ACCESS_KEY" --s3.endpoint "$ENDPOINT" $BR_EXTRA_ARGS
 
 # use datasafed to get backup size
 # if we do not write into $DP_BACKUP_INFO_FILE, the backup job will stuck
