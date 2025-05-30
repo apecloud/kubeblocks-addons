@@ -7,7 +7,7 @@ image:
   repository: apecloud/mongo
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: 5.0.14 # 6.0.3-debian-11-r0
+  tag: 8.0.4 # 6.0.3-debian-11-r0
   syncer:
     repository: apecloud/syncer
     tag: "0.5.0"
@@ -123,3 +123,5 @@ enabledClusterVersions: [ ]
 resourceNamePrefix: ""
 
 useHostNetwork: false
+
+clusterDomain: "cluster.local"
