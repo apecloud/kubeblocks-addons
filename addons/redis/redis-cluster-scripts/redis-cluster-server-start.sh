@@ -125,8 +125,9 @@ get_current_comp_nodes_for_scale_out_replica() {
   fi
 
   # if the cluster_nodes_info contains only one line, it means that the cluster not be initialized
-  if [ "$(echo "$cluster_nodes_info" | wc -l)" -eq 1 ]; then
-    echo "Cluster nodes info contains only one line, returning..."
+  shard_count=$(echo "${ALL_SHARDS_COMPONENT_SHORT_NAMES}" | tr ',' '\n' | wc -l)
+  if [ "$(echo "$cluster_nodes_info" | wc -l)" -lt ${shard_count} ]; then
+    echo "Cluster nodes info contains less than ${shard_count} nodes, returning..."
     return
   fi
 
@@ -578,27 +579,31 @@ parse_redis_cluster_shard_announce_addr() {
 }
 
 start_redis_server() {
+    module_path="/opt/redis-stack/lib"
+    if [[ "$IS_REDIS8" == "true" ]]; then
+       module_path="/usr/local/lib/redis/modules"
+    fi
     exec_cmd="exec redis-server /etc/redis/redis.conf"
-    if [ -f /opt/redis-stack/lib/redisearch.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redisearch.so ${REDISEARCH_ARGS}"
+    if [ -f ${module_path}/redisearch.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/redisearch.so ${REDISEARCH_ARGS}"
     fi
-    if [ -f /opt/redis-stack/lib/redistimeseries.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redistimeseries.so ${REDISTIMESERIES_ARGS}"
+    if [ -f ${module_path}/redistimeseries.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/redistimeseries.so ${REDISTIMESERIES_ARGS}"
     fi
-    if [ -f /opt/redis-stack/lib/rejson.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/rejson.so ${REDISJSON_ARGS}"
+    if [ -f ${module_path}/rejson.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/rejson.so ${REDISJSON_ARGS}"
     fi
-    if [ -f /opt/redis-stack/lib/redisbloom.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redisbloom.so ${REDISBLOOM_ARGS}"
+    if [ -f ${module_path}/redisbloom.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/redisbloom.so ${REDISBLOOM_ARGS}"
     fi
-    if [ -f /opt/redis-stack/lib/redisgraph.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redisgraph.so ${REDISGRAPH_ARGS}"
+    if [ -f ${module_path}/redisgraph.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/redisgraph.so ${REDISGRAPH_ARGS}"
     fi
-    if [ -f /opt/redis-stack/lib/rediscompat.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/rediscompat.so"
+    if [ -f ${module_path}/rediscompat.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/rediscompat.so"
     fi
-    if [ -f /opt/redis-stack/lib/redisgears.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redisgears.so v8-plugin-path /opt/redis-stack/lib/libredisgears_v8_plugin.so ${REDISGEARS_ARGS}"
+    if [ -f ${module_path}/redisgears.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/redisgears.so v8-plugin-path ${module_path}/libredisgears_v8_plugin.so ${REDISGEARS_ARGS}"
     fi
     echo "Starting redis server cmd: $exec_cmd"
     eval "$exec_cmd"

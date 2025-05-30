@@ -27,6 +27,12 @@ test || __() {
 redis_announce_host_value=""
 redis_announce_port_value=""
 redis_default_service_port=6379
+if [ -f /data/.fixed_pod_ip_enabled ]; then
+  # if the file /data/.fixed_pod_ip_enabled exists, it means that the redis pod is running in fixed pod ip mode.
+  FIXED_POD_IP_ENABLED=true
+else
+  FIXED_POD_IP_ENABLED=false
+fi
 
 load_common_library() {
   # the common.sh scripts is mounted to the same path which is defined in the cmpd.spec.scripts
