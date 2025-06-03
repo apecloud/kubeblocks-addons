@@ -99,42 +99,42 @@ mysql-8.0-pd
 Define parameterconfigrenderer name
 */}}
 {{- define "mysql.prcName57" -}}
-mysql-5.7-pcr
+mysql-5.7-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define parameterconfigrenderer name
 */}}
 {{- define "mysql.prcNameOrc57" -}}
-mysql-5.7-orc-pcr
+mysql-5.7-orc-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define parameterconfigrenderer name
 */}}
 {{- define "mysql.prcName80" -}}
-mysql-8.0-pcr
+mysql-8.0-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define parameterconfigrenderer name
 */}}
 {{- define "mysql.prcNameOrc80" -}}
-mysql-8.0-orc-pcr
+mysql-8.0-orc-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define parameterconfigrenderer name
 */}}
 {{- define "mysql.prcNameMgr80" -}}
-mysql-8.0-mgr-pcr
+mysql-8.0-mgr-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define parameterconfigrenderer name
 */}}
 {{- define "mysql.prcNameMgr84" -}}
-mysql-8.4-mgr-pcr
+mysql-8.4-mgr-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 
@@ -142,13 +142,13 @@ mysql-8.4-mgr-pcr
 Define parameterconfigrenderer name
 */}}
 {{- define "mysql.prcName84" -}}
-mysql-8.4-pcr
+mysql-8.4-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define parameterconfigrenderer name
 */}}
 {{- define "mysqlProxy.prcName" -}}
-mysql-proxy-pcr
+mysql-proxy-pcr-{{ .Chart.Version }}
 {{- end -}}
 

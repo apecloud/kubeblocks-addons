@@ -244,28 +244,28 @@ postgresql16-pd-{{ .Chart.Version }}
 Define postgresql12 ParameterDrivenConfigRender name
 */}}
 {{- define "postgresql12.pcr" -}}
-postgresql12-pcr
+postgresql12-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define postgresql14 ParameterDrivenConfigRender name
 */}}
 {{- define "postgresql14.pcr" -}}
-postgresql14-pcr
+postgresql14-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define postgresql15 ParameterDrivenConfigRender name
 */}}
 {{- define "postgresql15.pcr" -}}
-postgresql15-pcr
+postgresql15-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define postgresql16 ParameterDrivenConfigRender name
 */}}
 {{- define "postgresql16.pcr" -}}
-postgresql16-pcr
+postgresql16-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*

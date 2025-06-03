@@ -4,6 +4,8 @@ metadata:
   name: {{ include "mysql.prcNameOrc80" . }}
   labels:
     {{- include "mysql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mysql.annotations" . | nindent 4 }}
 spec:
   componentDef: {{ include "mysql.componentDefNameOrc80" . }}
   parametersDefs:
