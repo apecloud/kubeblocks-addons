@@ -103,7 +103,7 @@ oceanbase-ce-parameters-cc
 {{- end -}}
 
 {{- define "oceanbase-ce.pcrName" -}}
-oceanbase-ce-pcr
+oceanbase-ce-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{- define "oceanbase-ce.clusterDefinition" -}}

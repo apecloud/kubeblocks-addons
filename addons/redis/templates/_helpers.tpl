@@ -211,14 +211,14 @@ redis-cluster7-pd
 Define redis 7.X component config constraint name
 */}}
 {{- define "redis7.pcrName" -}}
-redis7-pcr
+redis7-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define redis cluster 7.X component config constraint name
 */}}
 {{- define "redisCluster7.pcrName" -}}
-redis-cluster7-pcr
+redis-cluster7-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*

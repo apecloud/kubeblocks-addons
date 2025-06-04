@@ -204,28 +204,28 @@ vanilla-pg15-pd
 Define vanilla-postgresql 12 component config constraint name
 */}}
 {{- define "vanilla.prc12Name" -}}
-vanilla-pg12-prc
+vanilla-pg12-prc-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define vanilla-postgresql 14 component config constraint name
 */}}
 {{- define "vanilla.prc14Name" -}}
-vanilla-pg14-prc
+vanilla-pg14-prc-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define vanilla-postgresql 15 component config constraint name
 */}}
 {{- define "vanilla.prc15Name" -}}
-vanilla-pg15-prc
+vanilla-pg15-prc-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define vanilla-postgresql 15 component config constraint name
 */}}
 {{- define "vanilla.prcsupabase15Name" -}}
-vanilla-supabase15-prc
+vanilla-supabase15-prc-{{ .Chart.Version }}
 {{- end -}}
 
 

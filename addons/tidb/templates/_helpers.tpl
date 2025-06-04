@@ -94,15 +94,15 @@ tidb-pd-params
 {{- end -}}
 
 {{- define "tidb.pd.pcrName" -}}
-tidb-pd-pcr
+tidb-pd-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{- define "tidb.tikv.pcrName" -}}
-tidb-tikv-pcr
+tidb-tikv-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{- define "tidb.tidb.pcrName" -}}
-tidb-tidb-pcr
+tidb-tidb-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{- define "tidb.pd7.cmpdRegexpPattern" -}}
