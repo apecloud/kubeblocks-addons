@@ -1,9 +1,11 @@
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParamConfigRenderer
 metadata:
-  name: orioledb-16-pcr
+  name: orioledb-16-pcr-{{ .Chart.Version }}
   labels:
     {{- include "orioledb.labels" . | nindent 4 }}
+  annotations:
+    {{- include "orioledb.annotations" . | nindent 4 }}
 spec:
   componentDef: {{ include "orioledb.cmpdName" . }}
   parametersDefs:

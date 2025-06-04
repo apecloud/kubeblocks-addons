@@ -4,6 +4,8 @@ metadata:
   name: {{ include "vanilla.prcsupabase15Name" . }}
   labels:
     {{- include "vanilla-postgresql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "vanilla-postgresql.annotations" . | nindent 4}}
 spec:
   componentDef: {{ include "vanilla-postgresql-supabase15.compDefName" . }}
   parametersDefs:

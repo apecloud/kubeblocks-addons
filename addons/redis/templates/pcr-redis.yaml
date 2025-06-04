@@ -4,6 +4,8 @@ metadata:
   name: {{ include "redis7.pcrName" . }}
   labels:
     {{- include "redis.labels" . | nindent 4 }}
+  annotations:
+    {{- include "redis.annotations" . | nindent 4 }}
 spec:
   componentDef: {{ include "redis7.cmpdName" . }}
   parametersDefs:

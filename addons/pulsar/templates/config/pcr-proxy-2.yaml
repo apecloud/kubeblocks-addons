@@ -4,6 +4,8 @@ metadata:
   name: {{ include "pulsar2.proxyPCRName" . }}
   labels:
     {{- include "pulsar.labels" . | nindent 4 }}
+  annotations:
+    {{- include "pulsar.annotations" . | nindent 4 }}
 spec:
   componentDef: {{ include "pulsar2.proxyCmpdName" . }}
   parametersDefs:
