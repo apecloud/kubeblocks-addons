@@ -58,13 +58,10 @@
         "type": {
           "title": "Service Type for Peers",
           "description": "Peer Service Configuration, used for advertisement to other etcd members, LoadBalancer is recommended, will support NodePort in the future; otherwise will use headless ClusterIP to advertise",
-          "type": [
-            "null",
-            "string"
-          ],
-          "default": null,
+          "type": "string",
+          "default": "",
           "enum": [
-            null,
+            "",
             "LoadBalancer"
           ]
         },
@@ -84,13 +81,10 @@
         "type": {
           "title": "Service Type",
           "description": "Client Service Configuration, used for client access, NodePort and LoadBalancer is recommended; otherwise will will only create headless ClusterIP",
-          "type": [
-            "null",
-            "string"
-          ],
-          "default": null,
+          "type": "string",
+          "default": "",
           "enum": [
-            null,
+            "",
             "NodePort",
             "LoadBalancer"
           ]
@@ -105,16 +99,11 @@
           "title": "Role",
           "description": "Role of the service within the cluster.",
           "type": "string",
-          "default": "leader"
-        },
-        "nodePort": {
-          "title": "Node Port",
-          "description": "Optional, if clientService type is NodePort, by default and for convenience, the Kubernetes control plane will allocate a port from a range (default: 30000-32767).",
-          "type": [
-            "integer",
-            "null"
-          ],
-          "default": null
+          "default": "leader",
+          "enum": [
+            "leader",
+            "follower"
+          ]
         },
         "annotations": {
           "title": "Annotations",

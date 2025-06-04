@@ -7,15 +7,14 @@ replicas: 3
 
 ## Peer Service Configuration, used for advertisement to other etcd members, LoadBalancer is recommended, will support NodePort in the future; otherwise will use headless ClusterIP to advertise
 peerService:
-  type:
+  type: ""
   annotations: {}
 
 ## Client Service Configuration, used for client access, NodePort and LoadBalancer is recommended; otherwise will will only create headless ClusterIP
 clientService:
-  type:
+  type: ""
   port: 2379
   role: leader
-  nodePort:
   annotations: {}
 
 ## Resource Requests

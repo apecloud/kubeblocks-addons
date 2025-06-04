@@ -1,5 +1,5 @@
 {{/*
-Define "etcd-cluster.componentService" to override component peer service
+Define "etcd-cluster.componentPeerService" to override component peer service
 Primarily used for LoadBalancer service to enable multi-cluster communication
 */}}
 {{- define "etcd-cluster.componentPeerService" -}}
@@ -31,9 +31,6 @@ services:
       ports:
         - port: {{ .Values.clientService.port }}
           targetPort: 2379
-          {{- if .Values.clientService.nodePort }}
-          nodePort: {{ .Values.clientService.nodePort }}
-          {{- end }}
     componentSelector: etcd
     {{- if ne .Values.clientService.type "LoadBalancer" }}
     roleSelector: {{ .Values.clientService.role }}
