@@ -81,6 +81,13 @@ shardingSpecs:
             numSymbols: 0
             letterCase: MixedCases
             seed: {{ include "kblib.clusterName" . }}
+        # - name: local
+        #   passwordConfig:
+        #     length: 16
+        #     numDigits: 8
+        #     numSymbols: 0
+        #     letterCase: MixedCases
+        #     seed: {{ include "kblib.clusterName" . }}
       env:
         # syncer uses this env to get sharding name
         - name: KB_SHARDING_NAME

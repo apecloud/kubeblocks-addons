@@ -28,7 +28,7 @@ CLUSTER_MONGO="$CLIENT --host $MONGOS_INTERNAL_HOST --port $MONGOS_INTERNAL_PORT
 
 # Wait for the mongos process to be ready
 while true; do
-    result=$($CLUSTER_MONGO "db.adminCommand({ ping: 1 })")
+    result=$($CLUSTER_MONGO "db.adminCommand({ ping: 1 })" 2>/dev/null)
     if [[ "$result" == *"ok"* ]]; then
         echo "INFO: Mongos is ready."
         break

@@ -59,6 +59,16 @@ spec:
       #         Status=$(export CLIENT=`which mongosh>/dev/null&&echo mongosh||echo mongo`; $CLIENT -u $KB_SERVICE_USER -p $KB_SERVICE_PASSWORD 127.0.0.1:27017 --quiet --eval "JSON.stringify(rs.status())") &&
       #         MyState=$(echo $Status | jq '.myState') &&
       #         echo $Status | jq ".members[] | select(.state == ($MyState | tonumber)) | .stateStr" |tr '[:upper:]' '[:lower:]'|uniq| xargs echo -n
+    postProvision:
+      customHandler:
+        image: percona/percona-backup-mongodb
+        exec:
+          command:
+            - /bin/bash
+            - -c
+            - /scripts/mongodb-cfg-server-post-provision.sh
+        preCondition: ComponentReady
+        retryPolicy:
   runtime:
     initContainers:
       - command:
@@ -72,6 +82,19 @@ spec:
         volumeMounts:
           - mountPath: /kubeblocks
             name: kubeblocks
+      - command:
+          - bash
+          - -c
+          - |
+            CLIENT=`which mongosh>/dev/null&&echo mongosh||echo mongo`
+            # used by backup agent
+            cp -r /usr/bin/$CLIENT /kubeblocks
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        name: init-backup-agent
+        volumeMounts:
+          - mountPath: /kubeblocks
+            name: kubeblocks
     containers:
       - name: mongodb
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
@@ -79,7 +102,7 @@ spec:
         ports:
           - name: mongodb
             protocol: TCP
-            containerPort: &mongodbPort 27019
+            containerPort: &mongodbPort 27017
           - name: ha
             protocol: TCP
             containerPort: 3601
@@ -111,7 +134,44 @@ spec:
             mountPath: /scripts
           - mountPath: /kubeblocks
             name: kubeblocks
+      - name: mongodb-backup-agent
+        image: percona/percona-backup-mongodb
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/backup-agent-setup.sh
+        env:
+          - name: PATH
+            value: /kubeblocks/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          - name: PBM_AGENT_MONGODB_USERNAME
+            value: $(MONGODB_USER)
+          - name: PBM_AGENT_MONGODB_PASSWORD
+            value: $(MONGODB_PASSWORD)
+          - name: PBM_MONGODB_REPLICA_SET
+            value: $(KB_CLUSTER_COMP_NAME)
+          - name: PBM_AGENT_SIDECAR
+            value: "true"
+          - name: PBM_AGENT_SIDECAR_SLEEP
+            value: "5"
+          - name: SHARED
+            value: "TRUE"
+          - name: POD_NAME
+            value: $(KB_POD_NAME)
+          - name: PBM_MONGODB_URI
+            value: mongodb://$(PBM_AGENT_MONGODB_USERNAME):$(PBM_AGENT_MONGODB_PASSWORD)@localhost:$(KB_SERVICE_PORT)/?authSource=admin
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+          - name: scripts
+            mountPath: /scripts
+          - mountPath: /kubeblocks
+            name: kubeblocks
+          - mountPath: /tmp/mongodb/backups
+            name: tmp-backups
     volumes:
+      - name: tmp-backups
+        emptyDir: {}
       {{- if .Values.logCollector.enabled }}
       - name: log-data
         hostPath:
@@ -140,7 +200,7 @@ spec:
           optional: false
           password: Required
     - name: KB_SERVICE_PORT  
-      value: "27019"
+      value: "27017"
       valueFrom:
         hostNetworkVarRef:
           optional: true
@@ -163,6 +223,22 @@ spec:
     - name: KUBERNETES_CLUSTER_DOMAIN
       # syncer will use this env to get the cluster domain to generate the pod FQDN to initialize the replica set
       value: "{{ .Values.clusterDomain }}"
+    - name: CFG_SERVER_REPLICA_SET_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: CFG_SERVER_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+    - name: CFG_SERVER_INTERNAL_PORT
+      valueFrom:
+        serviceVarRef:
+          optional: false
+          port:
+            name: mongodb
   hostNetwork: 
     containerPorts:  
       - container: mongodb

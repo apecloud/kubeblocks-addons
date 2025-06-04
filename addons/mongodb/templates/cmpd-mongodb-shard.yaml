@@ -29,13 +29,13 @@ spec:
       volumeName: scripts
       defaultMode: 0555  # for read and execute, mysql container switched user account.
   systemAccounts:
-    - name: local
-      initAccount: true
-      passwordGenerationPolicy:
-        length: 16
-        numDigits: 8
-        numSymbols: 0
-        letterCase: MixedCases
+    # - name: local
+    #   initAccount: true
+    #   passwordGenerationPolicy:
+    #     length: 16
+    #     numDigits: 8
+    #     numSymbols: 0
+    #     letterCase: MixedCases
     - name: cluster-admin
       initAccount: true
       passwordGenerationPolicy:
@@ -100,6 +100,19 @@ spec:
         volumeMounts:
           - mountPath: /kubeblocks
             name: kubeblocks
+      - command:
+          - bash
+          - -c
+          - |
+            CLIENT=`which mongosh>/dev/null&&echo mongosh||echo mongo`
+            # used by backup agent
+            cp -r /usr/bin/$CLIENT /kubeblocks
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        name: init-backup-agent
+        volumeMounts:
+          - mountPath: /kubeblocks
+            name: kubeblocks
     containers:
       - name: mongodb
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
@@ -107,7 +120,7 @@ spec:
         ports:
           - name: mongodb
             protocol: TCP
-            containerPort: &mongodbPort 27018
+            containerPort: &mongodbPort 27017
           - name: ha
             protocol: TCP
             containerPort: 3601
@@ -115,7 +128,6 @@ spec:
           - syncer
           - --
           - /scripts/mongodb-shard-setup.sh
-
         env:
           - name: PATH
             value: /kubeblocks/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
@@ -124,9 +136,9 @@ spec:
           - name: SERVICE_PORT
             value: $(KB_SERVICE_PORT)
           - name: MONGODB_ROOT_USER
-            value: $(MONGODB_USER)
+            value: $(MONGODB_ADMIN_USER)
           - name: MONGODB_ROOT_PASSWORD
-            value: $(MONGODB_PASSWORD)
+            value: $(MONGODB_ADMIN_PASSWORD)
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
@@ -140,7 +152,44 @@ spec:
             mountPath: /scripts
           - mountPath: /kubeblocks
             name: kubeblocks
+      - name: mongodb-backup-agent
+        image: percona/percona-backup-mongodb
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+          - /bin/bash
+          - -c
+          - /scripts/backup-agent-setup.sh
+        env:
+          - name: PATH
+            value: /kubeblocks/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          - name: PBM_AGENT_MONGODB_USERNAME
+            value: $(MONGODB_ADMIN_USER)
+          - name: PBM_AGENT_MONGODB_PASSWORD
+            value: $(MONGODB_ADMIN_PASSWORD)
+          - name: PBM_MONGODB_REPLICA_SET
+            value: $(KB_CLUSTER_COMP_NAME)
+          - name: PBM_AGENT_SIDECAR
+            value: "true"
+          - name: PBM_AGENT_SIDECAR_SLEEP
+            value: "5"
+          - name: SHARED
+            value: "TRUE"
+          - name: POD_NAME
+            value: $(KB_POD_NAME)
+          - name: PBM_MONGODB_URI
+            value: mongodb://$(PBM_AGENT_MONGODB_USERNAME):$(PBM_AGENT_MONGODB_PASSWORD)@localhost:$(KB_SERVICE_PORT)/?authSource=admin
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+          - name: scripts
+            mountPath: /scripts
+          - mountPath: /kubeblocks
+            name: kubeblocks
+          - mountPath: /tmp/mongodb/backups
+            name: tmp-backups
     volumes:
+      - name: tmp-backups
+        emptyDir: {}
       {{- if .Values.logCollector.enabled }}
       - name: log-data
         hostPath:
@@ -148,22 +197,26 @@ spec:
           type: DirectoryOrCreate
       {{- end }}
   vars:
+    # - name: MONGODB_USER
+    #   valueFrom:
+    #     credentialVarRef:
+    #       compDef: {{ include "mongodbShard.componentDefName" . }}
+    #       name: local
+    #       optional: false
+    #       username: Required
+    # - name: MONGODB_PASSWORD
+    #   valueFrom:
+    #     credentialVarRef:
+    #       compDef: {{ include "mongodbShard.componentDefName" . }}
+    #       name: local
+    #       optional: false
+    #       password: Required
     - name: MONGODB_USER
-      valueFrom:
-        credentialVarRef:
-          compDef: {{ include "mongodbShard.componentDefName" . }}
-          name: local
-          optional: false
-          username: Required
+      value: $(MONGODB_ADMIN_USER)
     - name: MONGODB_PASSWORD
-      valueFrom:
-        credentialVarRef:
-          compDef: {{ include "mongodbShard.componentDefName" . }}
-          name: local
-          optional: false
-          password: Required
-    - name: KB_SERVICE_PORT  
-      value: "27018"
+      value: $(MONGODB_ADMIN_PASSWORD)
+    - name: KB_SERVICE_PORT
+      value: "27017"
       valueFrom:
         hostNetworkVarRef:
           optional: true
@@ -199,6 +252,22 @@ spec:
           name: cluster-admin
           optional: false
           password: Required
+    # - name: MONGODB_BACKUP_USER
+    #   valueFrom:
+    #     credentialVarRef:
+    #       # use config server credential to backup
+    #       compDef: {{ include "mongodbShard.componentDefName" . }}
+    #       name: cluster-admin
+    #       optional: false
+    #       username: Required
+    # - name: MONGODB_BACKUP_PASSWORD
+    #   valueFrom:
+    #     credentialVarRef:
+    #       # use config server credential to backup
+    #       compDef: {{ include "mongodbShard.componentDefName" . }}
+    #       name: cluster-admin
+    #       optional: false
+    #       password: Required
     - name: MONGOS_INTERNAL_SVC_NAME
       valueFrom:
         serviceVarRef:

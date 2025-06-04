@@ -30,7 +30,7 @@ generate_endpoints() {
 wait_for_mongos() {
     # Wait for the mongos service to be ready
     while true; do
-        result=$($CLUSTER_MONGO "db.adminCommand({ ping: 1 })")
+        result=$($CLUSTER_MONGO "db.adminCommand({ ping: 1 })" 2>/dev/null)
         if [[ "$result" == *"ok"* ]]; then
             echo "INFO: Mongos is ready."
             break

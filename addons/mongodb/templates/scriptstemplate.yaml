@@ -9,10 +9,14 @@ data:
     {{- .Files.Get "scripts/mongodb-shard-setup.sh" | nindent 4 }}
   mongodb-shard-manage.sh: |-
     {{- .Files.Get "scripts/mongodb-shard-manage.sh" | nindent 4 }}
+  backup-agent-setup.sh: |-
+    {{- .Files.Get "scripts/backup-agent-setup.sh" | nindent 4 }}
   mongodb-mongos-setup.sh: |-
     {{- .Files.Get "scripts/mongodb-mongos-setup.sh" | nindent 4 }}
   mongodb-mongos-post-provision.sh: |-
     {{- .Files.Get "scripts/mongodb-mongos-post-provision.sh" | nindent 4 }}
+  mongodb-cfg-server-post-provision.sh: |-
+    {{- .Files.Get "scripts/mongodb-cfg-server-post-provision.sh" | nindent 4 }}
   mongos-setup.sh: |-
     #!/bin/sh
     
