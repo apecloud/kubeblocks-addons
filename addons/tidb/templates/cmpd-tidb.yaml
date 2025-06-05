@@ -46,6 +46,10 @@ spec:
         credentialVarRef:
           name: root
           password: Required
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Optional
   runtime:
     containers:
       - name: tidb
@@ -100,6 +104,12 @@ spec:
       template: {{ include "tidb.tidb.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: config
+  tls:
+    volumeName: tls 
+    mountPath: /etc/pki/tls
+    caFile: ca.pem
+    certFile: cert.pem
+    keyFile: key.pem
   systemAccounts:
     - name: root
       initAccount: true

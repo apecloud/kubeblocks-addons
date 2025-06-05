@@ -9,6 +9,7 @@ data:
   tidb.toml: |
     # full example can be seen at:
     # https://github.com/pingcap/tidb/blob/release-7.5/pkg/config/config.toml.example
+    {{- .Files.Get "config/tidb.toml.tpl" | nindent 4 }}
 ---
 apiVersion: v1
 kind: ConfigMap
