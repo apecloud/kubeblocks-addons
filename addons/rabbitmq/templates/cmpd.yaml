@@ -18,7 +18,7 @@ spec:
           - name: amqp
             port: 5672
             targetPort: amqp
-          - name: management
+          - name: console
             port: 15672
             targetPort: management
   configs:
