@@ -27,10 +27,10 @@ cfg_server_endpoints="$(generate_endpoints "$CFG_SERVER_POD_FQDN_LIST" "$CFG_SER
 
 PBM_MONGODB_URI="mongodb://$MONGODB_USER:$MONGODB_PASSWORD@$cfg_server_endpoints/?authSource=admin&replSetName=$CFG_SERVER_REPLICA_SET_NAME"
 pbm_output=$(pbm config --mongodb-uri "$PBM_MONGODB_URI" | grep "storage" ) || {
-    if [[ "$pbm_output" == "" ]]; then
-        echo "INFO: PBM configuration file not found, creating new configuration."
+    if [[ -z "$pbm_output" ]]; then
+        echo "INFO: PBM storage not configured."
     else
-        echo "INFO: already configured, skip."
+        echo "INFO: PBM storage already configured, skip."
         exit 0
     fi
 }

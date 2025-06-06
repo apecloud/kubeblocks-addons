@@ -91,9 +91,9 @@ Define mongodb-shard component defintion name
 */}}
 {{- define "mongodbShard.componentDefName" -}}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-mongodb-shard
+mongo-shard
 {{- else -}}
-{{- printf "%s-mongodb-shard" .Values.resourceNamePrefix -}}
+{{- printf "%s-mongo-shard" .Values.resourceNamePrefix -}}
 {{- end -}}
 {{- end -}}
 
@@ -102,9 +102,9 @@ Define mongos component defintion name
 */}}
 {{- define "mongos.componentDefName" -}}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-mongodb-mongos
+mongo-mongos
 {{- else -}}
-{{- printf "%s-mongodb-mongos" .Values.resourceNamePrefix -}}
+{{- printf "%s-mongo-mongos" .Values.resourceNamePrefix -}}
 {{- end -}}
 {{- end -}}
 
@@ -113,9 +113,9 @@ Define cfg-server component defintion name
 */}}
 {{- define "cfgServer.componentDefName" -}}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-mongodb-cfg-server
+mongo-config-server
 {{- else -}}
-{{- printf "%s-mongodb-cfg-server" .Values.resourceNamePrefix -}}
+{{- printf "%s-mongo-config-server" .Values.resourceNamePrefix -}}
 {{- end -}}
 {{- end -}}
 

@@ -66,11 +66,11 @@ Define mongodb sharding mode.
 */}}
 {{- define "mongodb-cluster.shardingMode" }}
 shardingSpecs:
-  - name: mongodb-shard
+  - name: &sharding_name mongo-shard
     shards: {{ .Values.shards | default 3 }}
     template:
-      name: &sharding_name mongodb-shard
-      componentDef: mongodb-shard
+      name: *sharding_name
+      componentDef: mongo-shard
       serviceVersion: {{ .Values.version }}
       replicas: {{ .Values.replicas | default 3 }}
       systemAccounts:
@@ -97,8 +97,8 @@ shardingSpecs:
       {{- include "kblib.componentStorages" . | indent 6 }}
       {{- include "mongodb-cluster.keyfileVolume" . | indent 6 }}
 componentSpecs:
-  - name: cfg-server
-    componentDef: mongodb-cfg-server
+  - name: config-server
+    componentDef: mongo-config-server
     replicas: {{ .Values.cfgServer.replicas | default 3 }}
     serviceVersion: {{ .Values.version }}
     serviceAccountName: {{ include "kblib.serviceAccountName" . }}
@@ -106,7 +106,7 @@ componentSpecs:
     {{- include "kblib.componentStorages" . | indent 4 }}
     {{- include "mongodb-cluster.keyfileVolume" . | indent 4 }}
   - name: mongos
-    componentDef: mongodb-mongos
+    componentDef: mongo-mongos
     replicas: {{ .Values.mongos.replicas | default 3 }}
     serviceVersion: {{ .Values.version }}
     serviceAccountName: {{ include "kblib.serviceAccountName" . }}

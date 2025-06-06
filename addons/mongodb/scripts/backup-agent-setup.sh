@@ -29,11 +29,7 @@ if [ "$MONGODB_CLUSTER_ROLE" != "configsvr" ]; then
     done
 fi
 
-# hack to make sure the backup agent can run, backup storage will be changed by backup or restore workloads later.
-# cat <<EOF > /tmp/mongodb/backups/pbm-agent-config.yaml
-# storage:
-#   type: filesystem
-#   filesystem:
-#     path: /tmp/mongodb/backups
-# EOF
-exec pbm-agent # -f /tmp/mongodb/backups/pbm-agent-config.yaml
+# hack to make sure the backup agent can init, backup storage will be changed by backup or restore workloads later.
+echo "latest" > /tmp/mongodb/backups/.pbm.init
+
+exec pbm-agent
