@@ -106,3 +106,17 @@ spec:
             - name: data
               mountPath: {{ .Values.dataMountPath }}
     schedules: *backupSchedules
+  - componentDefs: [mongo-config-server]
+    target:
+      role: secondary
+      fallbackRole: primary
+      account: root
+    backupMethods:
+      - name: shard-logical
+        snapshotVolumes: false
+        actionSetName: mongodb-shard-logical
+    schedules:
+      - backupMethod: shard-logical
+        enabled: false
+        cronExpression: "0 18 * * *"
+        retentionPeriod: 7d

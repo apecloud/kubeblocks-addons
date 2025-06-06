@@ -4,14 +4,36 @@
 
 ## @param version cluster version
 ##
-version: 6.0.16
+version: 8.0.4
 
 # @param clusterVersion cluster version for legacy API
 clusterVersion: mongodb-6.0
 
-## @param mode cluster topology mode, standalone or replicaset
+## @param mode cluster topology mode, standalone、replicaset or sharding
 ##
 mode: standalone
+
+## @param shards, shard count, only for sharding mode
+##
+shards: 3
+
+## @param replicas, replica count
+##
+replicas: 3
+
+## @param cfgServer.replicas, config server replica count, only for sharding mode
+cfgServer:
+  replicas: 3
+
+## @param mongos.replicas, mongos replica count, only for sharding mode
+mongos:
+  replicas: 3
+
+## @param balancer, enable or disable balancer, only for sharding mode
+balancer:
+  enabled: false
+  startTime: # "02:00"
+  stopTime: # "05:00"
 
 ## @param cpu
 ##

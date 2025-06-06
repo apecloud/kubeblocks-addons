@@ -19,3 +19,101 @@ replicas: {{ max .Values.replicas 3 }}
   {{- "mongodb" | quote}}
 {{- end -}}
 {{- end }}
+
+{{/*
+Define mongodb keyfile secret name.
+*/}}
+{{- define "mongodb-cluster.keyfileSecretName" }}
+{{- printf "%s-mongodb-keyfile" (include "kblib.clusterName" .) }}
+{{- end }}
+
+{{/*
+Define mongodb keyfile volume.
+*/}}
+{{- define "mongodb-cluster.keyfileVolume" }}
+volumes:
+  - name: mongodb-keyfile
+    secret:
+      secretName: {{ include "mongodb-cluster.keyfileSecretName" . }}
+      defaultMode: 0400
+      optional: false
+{{- end }}
+
+{{/*
+Define mongodb replicaset mode.
+*/}}
+{{- define "mongodb-cluster.replicasetMode" }}
+{{- if .Values.useLegacyCompDef }}
+clusterDefinitionRef: mongodb
+{{- end }}
+componentSpecs:
+  - name: mongodb
+    {{- if .Values.useLegacyCompDef }}
+    componentDefRef: {{ include "mongodb-cluster.componentDefRef" $}}
+    {{- else }}
+    componentDef: mongodb
+    serviceVersion: {{ .Values.version }}
+    {{- end }}
+    {{- include "mongodb-cluster.replicaCount" . | indent 4 }}
+    serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+    {{- include "kblib.componentResources" . | indent 4 }}
+    {{- include "kblib.componentStorages" . | indent 4 }}
+    {{- include "kblib.componentServices" . | indent 4 }}
+{{- end }}
+
+{{/*
+Define mongodb sharding mode.
+*/}}
+{{- define "mongodb-cluster.shardingMode" }}
+shardingSpecs:
+  - name: &sharding_name mongo-shard
+    shards: {{ .Values.shards | default 3 }}
+    template:
+      name: *sharding_name
+      componentDef: mongo-shard
+      serviceVersion: {{ .Values.version }}
+      replicas: {{ .Values.replicas | default 3 }}
+      systemAccounts:
+        - name: cluster-admin
+          passwordConfig:
+            length: 16
+            numDigits: 8
+            numSymbols: 0
+            letterCase: MixedCases
+            seed: {{ include "kblib.clusterName" . }}
+        # - name: local
+        #   passwordConfig:
+        #     length: 16
+        #     numDigits: 8
+        #     numSymbols: 0
+        #     letterCase: MixedCases
+        #     seed: {{ include "kblib.clusterName" . }}
+      env:
+        # syncer uses this env to get sharding name
+        - name: KB_SHARDING_NAME
+          value: *sharding_name
+      serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
+      {{- include "mongodb-cluster.keyfileVolume" . | indent 6 }}
+componentSpecs:
+  - name: config-server
+    componentDef: mongo-config-server
+    replicas: {{ .Values.cfgServer.replicas | default 3 }}
+    serviceVersion: {{ .Values.version }}
+    serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+    {{- include "kblib.componentResources" . | indent 4 }}
+    {{- include "kblib.componentStorages" . | indent 4 }}
+    {{- include "mongodb-cluster.keyfileVolume" . | indent 4 }}
+  - name: mongos
+    componentDef: mongo-mongos
+    replicas: {{ .Values.mongos.replicas | default 3 }}
+    serviceVersion: {{ .Values.version }}
+    serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+    env:
+      - name: MONGODB_BALANCER_ENABLED
+        value: "{{ .Values.balancer.enabled }}"
+    {{- include "kblib.componentResources" . | indent 4 }}
+    {{- include "kblib.componentServices" . | indent 4 }}
+    {{- include "mongodb-cluster.keyfileVolume" . | indent 4 }}
+{{- end }}
