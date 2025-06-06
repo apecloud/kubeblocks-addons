@@ -113,6 +113,6 @@ data:
   tls.key: <REPLACE_TLS_KEY>
 kind: Secret
 metadata:
-  name: e'stls-certs
+  name: es-tls-certs
   namespace: default
 type: Opaque
