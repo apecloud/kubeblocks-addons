@@ -1,0 +1,14 @@
+# full example can be seen at:
+# https://github.com/tikv/tikv/blob/release-7.5/etc/config-template.toml
+
+[security]
+{{- if eq (index $ "KB_ENABLE_TLS_BETWEEN_COMPONENTS") "true" }}
+# Path of file that contains list of trusted SSL CAs for connection with cluster components.
+ca-path = "/etc/pki/cluster-tls/ca.pem"
+
+# Path of file that contains X509 certificate in PEM format for connection with cluster components.
+cert-path = "/etc/pki/cluster-tls/cert.pem"
+
+# Path of file that contains X509 key in PEM format for connection with cluster components.
+key-path = "/etc/pki/cluster-tls/key.pem"
+{{- end -}}

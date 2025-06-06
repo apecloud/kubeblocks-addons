@@ -75,15 +75,26 @@ ${__SOURCED__:+false} : || return 0
 
 set -exo pipefail
 
+# shellcheck disable=SC1091
+. /scripts/common.sh
+
+write_component_tls_env_to_file
+scheme="http"
+if [[ $KB_ENABLE_TLS_BETWEEN_COMPONENTS == "true" ]]; then
+    scheme="https"
+fi
+
+cat /etc/pd/pd.toml
+
 MY_PEER=$(get_current_pod_fqdn)
 
 DATA_DIR="/var/lib/pd"
 ARGS="--name=$HOSTNAME \
     --data-dir=$DATA_DIR \
-    --peer-urls=http://0.0.0.0:2380 \
-    --advertise-peer-urls=http://$MY_PEER:2380 \
-    --client-urls=http://0.0.0.0:2379 \
-    --advertise-client-urls=http://$MY_PEER:2379 \
+    --peer-urls=$scheme://0.0.0.0:2380 \
+    --advertise-peer-urls=$scheme://$MY_PEER:2380 \
+    --client-urls=$scheme://0.0.0.0:2379 \
+    --advertise-client-urls=$scheme://$MY_PEER:2379 \
     --config=/etc/pd/pd.toml"
 
 set_join_args

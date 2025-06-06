@@ -129,3 +129,6 @@ tikv-7-{{ .Chart.Version }}
 tidb-7-{{ .Chart.Version }}
 {{- end -}}
 
+{{- define "tidb.enableTLSBetweenComponentsEnv" -}}
+KB_ENABLE_TLS_BETWEEN_COMPONENTS
+{{- end -}}

@@ -57,17 +57,7 @@ spec:
             mountPath: /var/lib/tikv
           - name: config
             mountPath: /etc/tikv
-        command:
-          - bin/sh
-          - -c
-          - |
-            echo "start tikv..."
-            exec /tikv-server --pd=http://${PD_ADDRESS} \
-            --data-dir=/var/lib/tikv \
-            --addr=0.0.0.0:20160 \
-            --advertise-addr=${CURRENT_POD_NAME}.${TIKV_COMPONENT_NAME}-headless.${DOMAIN}:20160 \
-            --status-addr=0.0.0.0:20180 \
-            --config=/etc/tikv/tikv.toml
+        command: [ "/scripts/tikv_start.sh" ]
   volumes:
     - name: data
       needSnapshot: true

@@ -81,18 +81,18 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- if .Values.extra.enableTLSBetweenComponents }}
 - name: KB_TLS_BETWEEN_COMPONENTS_CA
   valueFrom:
-  secretKeyRef:
-    name: {{ include "tidb-cluster.TLSBetweenComponentsSecretName" . }}
-    key: ca.pem
+    secretKeyRef:
+      name: {{ include "tidb-cluster.TLSBetweenComponentsSecretName" . }}
+      key: ca.pem
 - name: KB_TLS_BETWEEN_COMPONENTS_CERT
   valueFrom:
-  secretKeyRef:
-    name: {{ include "tidb-cluster.TLSBetweenComponentsSecretName" . }}
-    key: cert.pem
+    secretKeyRef:
+      name: {{ include "tidb-cluster.TLSBetweenComponentsSecretName" . }}
+      key: cert.pem
 - name: KB_TLS_BETWEEN_COMPONENTS_KEY
   valueFrom:
-  secretKeyRef:
-    name: {{ include "tidb-cluster.TLSBetweenComponentsSecretName" . }}
-    key: key.pem
+    secretKeyRef:
+      name: {{ include "tidb-cluster.TLSBetweenComponentsSecretName" . }}
+      key: key.pem
 {{- end }}
 {{- end }}
