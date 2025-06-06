@@ -35,6 +35,9 @@ spec:
           resources:
             requests:
               storage: {{ .persistence.data.size }}
+      env:
+        {{- include "tidb-cluster.enableTLSBetweenComponentsEnv" $ | nindent 6 }}
+        {{- include "tidb-cluster.TLSBetweenComponentsEnv" $ | nindent 6 }}
     {{- end }}
     {{- with $.Values.tikv }}
     - name: tikv
@@ -62,6 +65,9 @@ spec:
           resources:
             requests:
               storage: {{ .persistence.data.size }}
+      env:
+        {{- include "tidb-cluster.enableTLSBetweenComponentsEnv" $ | nindent 6 }}
+        {{- include "tidb-cluster.TLSBetweenComponentsEnv" $ | nindent 6 }}
     {{- end }}
     {{- with $.Values.tidb }}
     - name: tidb
@@ -80,4 +86,7 @@ spec:
           cpu: {{ .requests.cpu | quote }}
           memory: {{ .requests.memory | quote }}
       {{- end }}
+      env:
+        {{- include "tidb-cluster.enableTLSBetweenComponentsEnv" $ | nindent 6 }}
+        {{- include "tidb-cluster.TLSBetweenComponentsEnv" $ | nindent 6 }}
     {{- end }}
