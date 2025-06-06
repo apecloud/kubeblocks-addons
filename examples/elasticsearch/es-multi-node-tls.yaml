@@ -1,0 +1,118 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: myes2
+  namespace: default
+  annotations:
+    kubeblocks.io/extra-env: '{"master-roles":"master", "dit-roles":"data,ingest,transform","mode":"multi-node"}'
+spec:
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: master
+      componentDef: elasticsearch-8
+      serviceVersion: 8.8.2
+      # System accounts and TLS configuration for Elasticsearch cluster
+      systemAccounts:
+      - name: elastic        # Superuser account with full cluster privileges
+        secretRef:
+          name: es-master-account-elastic
+          namespace: default
+      - name: kibana_system  # Account used by Kibana to communicate with Elasticsearch
+        secretRef:
+          name: es-master-account-kibana-system
+          namespace: default
+      tls: true              # Enable TLS for secure communication
+      issuer:
+        name: UserProvided   # Using user-provided certificates
+        secretRef:
+          name: es-tls-certs # Secret containing TLS certificates
+          ca: ca.crt         # CA certificate
+          cert: tls.crt      # Server certificate
+          key: tls.key       # Private key
+      disableExporter: false
+      podUpdatePolicy: Recreate
+      replicas: 1
+      resources:
+        limits:
+          cpu: "1"
+          memory: "2Gi"
+        requests:
+          cpu: "1"
+          memory: "2Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+    - name: dit
+      componentDef: elasticsearch-8
+      serviceVersion: 8.8.2
+      systemAccounts:
+      - name: elastic
+        secretRef:
+          name: es-master-account-elastic
+          namespace: default
+      - name: kibana_system
+        secretRef:
+          name: es-master-account-kibana-system
+          namespace: default
+      tls: true
+      issuer:
+        name: UserProvided
+        secretRef:
+          name: es-tls-certs
+          ca: ca.crt
+          cert: tls.crt
+          key: tls.key
+      disableExporter: false
+      podUpdatePolicy: Recreate
+      replicas: 3
+      resources:
+        limits:
+          cpu: "1"
+          memory: "2Gi"
+        requests:
+          cpu: "1"
+          memory: "2Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+---
+apiVersion: v1
+data:
+  password: OTQxdHhTNDlqdA==
+  username: ZWxhc3RpYw==
+kind: Secret
+metadata:
+  name: es-master-account-elastic
+  namespace: default
+type: Opaque
+---
+apiVersion: v1
+data:
+  password: Tk92NzM0MTV1Tg==
+  username: a2liYW5hX3N5c3RlbQ==
+kind: Secret
+metadata:
+  name: es-master-account-kibana-system
+  namespace: default
+type: Opaque
+---
+apiVersion: v1
+data:
+  ca.crt: <REPLACE_CA_CRT>
+  tls.crt: <REPLACE_TLS_CRT>
+  tls.key: <REPLACE_TLS_KEY>
+kind: Secret
+metadata:
+  name: es-tls-certs
+  namespace: default
+type: Opaque
