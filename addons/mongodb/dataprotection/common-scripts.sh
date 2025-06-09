@@ -1,3 +1,13 @@
+# if the script exits with a non-zero exit code, touch a file to indicate that the backup failed,
+# the sync progress container will check this file and exit if it exists
+function handle_exit() {
+  exit_code=$?
+  if [ $exit_code -ne 0 ]; then
+    echo "failed with exit code $exit_code"
+    touch "${DP_BACKUP_INFO_FILE}.exit"
+    exit 1
+  fi
+}
 # log info file
 function DP_log() {
     msg=$1
@@ -12,10 +22,22 @@ function DP_error_log() {
     echo "${curr_date} ERROR: $msg"
 }
 
+function buildJsonString() {
+    local jsonString=${1}
+    local key=${2}
+    local value=${3}
+    if [ ! -z "$jsonString" ];then
+       jsonString="${jsonString},"
+    fi
+    echo "${jsonString}\"${key}\":\"${value}\""
+}
 
 # Save backup status info file for syncing progress.
 # timeFormat: %Y-%m-%dT%H:%M:%SZ
 function DP_save_backup_status_info() {
+    export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
+    export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
+  
     local totalSize=$1
     local startTime=$2
     local stopTime=$3
@@ -98,17 +120,33 @@ function set_backup_config_env() {
   fi
 
   export S3_ACCESS_KEY="${access_key_id}"
-  echo "INFO: S3_ACCESS_KEY is ${S3_ACCESS_KEY}"
   export S3_SECRET_KEY="${secret_access_key}"
-  echo "INFO: S3_SECRET_KEY is ${S3_SECRET_KEY}"
   export S3_REGION="${region}"
-  echo "INFO: S3_REGION is ${S3_REGION}"
   export S3_ENDPOINT="${endpoint}"
-  echo "INFO: S3_ENDPOINT is ${S3_ENDPOINT}"
   export S3_BUCKET="${bucket}"
-  echo "INFO: S3_BUCKET is ${S3_BUCKET}"
-  export S3_PREFIX="$(dirname ${DP_BACKUP_BASE_PATH})/backups"
-  echo "INFO: S3_PREFIX is ${S3_PREFIX}"
 
   DP_log "storage config have been extracted."
+}
+
+# config backup agent
+generate_endpoints() {
+    local fqdns=$1
+    local port=$2
+
+    if [ -z "$fqdns" ]; then
+        echo "ERROR: No FQDNs provided for config server endpoints." >&2
+        exit 1
+    fi
+
+    IFS=',' read -ra fqdn_array <<< "$fqdns"
+    local endpoints=()
+
+    for fqdn in "${fqdn_array[@]}"; do
+        trimmed_fqdn=$(echo "$fqdn" | xargs)
+        if [[ -n "$trimmed_fqdn" ]]; then
+            endpoints+=("${trimmed_fqdn}:${port}")
+        fi
+    done
+
+    IFS=','; echo "${endpoints[*]}"
 }

@@ -26,14 +26,13 @@ generate_endpoints() {
 cfg_server_endpoints="$(generate_endpoints "$CFG_SERVER_POD_FQDN_LIST" "$CFG_SERVER_INTERNAL_PORT")"
 
 PBM_MONGODB_URI="mongodb://$MONGODB_USER:$MONGODB_PASSWORD@$cfg_server_endpoints/?authSource=admin&replSetName=$CFG_SERVER_REPLICA_SET_NAME"
-pbm_output=$(pbm config --mongodb-uri "$PBM_MONGODB_URI" | grep "storage" ) || {
-    if [[ -z "$pbm_output" ]]; then
-        echo "INFO: PBM storage not configured."
-    else
-        echo "INFO: PBM storage already configured, skip."
-        exit 0
-    fi
-}
+pbm_output=$(pbm config --mongodb-uri "$PBM_MONGODB_URI" | grep "storage" )
+if [[ -z "$pbm_output" ]]; then
+    echo "INFO: PBM storage not configured."
+else
+    echo "INFO: PBM storage already configured, skip."
+    exit 0
+fi
 
 # hack to make sure the backup agent can run, backup storage will be changed by backup or restore workloads later.
 cat <<EOF | pbm config --mongodb-uri "$PBM_MONGODB_URI" --file /dev/stdin

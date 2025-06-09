@@ -1,0 +1,56 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: mongodb-shard-logical
+  labels:
+    clusterdefinition.kubeblocks.io/name: mongodb
+    {{- include "mongodb.labels" . | nindent 4 }}
+spec:
+  env:
+    - name: DATA_DIR
+      value: {{ .Values.dataMountPath }}/db
+  backupType: Full
+  backup:
+    preBackup: []
+    postBackup: []
+    backupData:
+      image: percona/percona-backup-mongodb
+      runOnTargetPodNode: true
+      syncProgress:
+        enabled: true
+        intervalSeconds: 5
+      command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 10 }}
+          {{- .Files.Get "dataprotection/shard-logical-backup.sh" | nindent 10 }}
+  restore:
+    postReady:
+    - job:
+        image: percona/percona-backup-mongodb
+        runOnTargetPodNode: false
+        command:
+          - bash
+          - -c
+          - |
+            {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 10 }}
+            {{- .Files.Get "dataprotection/shard-logical-restore.sh" | nindent 12 }}
+    - job:
+        image: percona/percona-backup-mongodb
+        runOnTargetPodNode: false
+        command:
+          - bash
+          - -c
+          - |
+            {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 10 }}
+            {{- .Files.Get "dataprotection/shard-logical-restore.sh" | nindent 12 }}
+    - job:
+        image: percona/percona-backup-mongodb
+        runOnTargetPodNode: false
+        command:
+          - bash
+          - -c
+          - |
+            {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 10 }}
+            {{- .Files.Get "dataprotection/shard-logical-restore.sh" | nindent 12 }}

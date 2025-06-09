@@ -19,7 +19,7 @@ done
 if [ "$MONGODB_CLUSTER_ROLE" != "configsvr" ]; then
     # Wait for the local mongodb to be ready
     while true; do
-        result=$($CLIENT --host $MONGOS_INTERNAL_HOST --port $MONGOS_INTERNAL_PORT -u $MONGODB_ADMIN_USER -p $MONGODB_ADMIN_PASSWORD --quiet --eval "db.adminCommand({ ping: 1 })")
+        result=$($CLIENT --host $MONGOS_INTERNAL_HOST --port $MONGOS_INTERNAL_PORT -u $MONGODB_ADMIN_USER -p $MONGODB_ADMIN_PASSWORD --quiet --eval "db.adminCommand({ ping: 1 })" 2>/dev/null)
         if [[ "$result" == *"ok"* ]]; then
             echo "INFO: mongos is ready."
             break
@@ -29,7 +29,7 @@ if [ "$MONGODB_CLUSTER_ROLE" != "configsvr" ]; then
     done
 fi
 
-# hack to make sure the backup agent can init, backup storage will be changed by backup or restore workloads later.
+# hack to make sure the backup agent can run without storage checking, backup storage will be changed by backup or restore workloads later.
 echo "latest" > /tmp/mongodb/backups/.pbm.init
 
-exec pbm-agent
+exec pbm-agent-entrypoint

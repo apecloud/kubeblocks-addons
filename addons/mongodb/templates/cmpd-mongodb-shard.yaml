@@ -29,14 +29,7 @@ spec:
       volumeName: scripts
       defaultMode: 0555  # for read and execute, mysql container switched user account.
   systemAccounts:
-    # - name: local
-    #   initAccount: true
-    #   passwordGenerationPolicy:
-    #     length: 16
-    #     numDigits: 8
-    #     numSymbols: 0
-    #     letterCase: MixedCases
-    - name: cluster-admin
+    - name: admin
       initAccount: true
       passwordGenerationPolicy:
         length: 16
@@ -197,20 +190,6 @@ spec:
           type: DirectoryOrCreate
       {{- end }}
   vars:
-    # - name: MONGODB_USER
-    #   valueFrom:
-    #     credentialVarRef:
-    #       compDef: {{ include "mongodbShard.componentDefName" . }}
-    #       name: local
-    #       optional: false
-    #       username: Required
-    # - name: MONGODB_PASSWORD
-    #   valueFrom:
-    #     credentialVarRef:
-    #       compDef: {{ include "mongodbShard.componentDefName" . }}
-    #       name: local
-    #       optional: false
-    #       password: Required
     - name: MONGODB_USER
       value: $(MONGODB_ADMIN_USER)
     - name: MONGODB_PASSWORD
@@ -241,7 +220,7 @@ spec:
         credentialVarRef:
           # use config server credential to access to mongos
           compDef: {{ include "mongodbShard.componentDefName" . }}
-          name: cluster-admin
+          name: admin
           optional: false
           username: Required
     - name: MONGODB_ADMIN_PASSWORD
@@ -249,25 +228,9 @@ spec:
         credentialVarRef:
           # use config server credential to access to mongos
           compDef: {{ include "mongodbShard.componentDefName" . }}
-          name: cluster-admin
+          name: admin
           optional: false
           password: Required
-    # - name: MONGODB_BACKUP_USER
-    #   valueFrom:
-    #     credentialVarRef:
-    #       # use config server credential to backup
-    #       compDef: {{ include "mongodbShard.componentDefName" . }}
-    #       name: cluster-admin
-    #       optional: false
-    #       username: Required
-    # - name: MONGODB_BACKUP_PASSWORD
-    #   valueFrom:
-    #     credentialVarRef:
-    #       # use config server credential to backup
-    #       compDef: {{ include "mongodbShard.componentDefName" . }}
-    #       name: cluster-admin
-    #       optional: false
-    #       password: Required
     - name: MONGOS_INTERNAL_SVC_NAME
       valueFrom:
         serviceVarRef:

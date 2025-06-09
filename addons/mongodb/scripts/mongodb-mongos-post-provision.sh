@@ -49,7 +49,7 @@ if [ -z "$CLUSTER_ADMIN_CHECK" ] || [ "$CLUSTER_ADMIN_CHECK" == "null" ]; then
     $CLUSTER_MONGO "db.getSiblingDB('admin').createUser({
         user: '$CLUSTER_ADMIN_USER',
         pwd: '$CLUSTER_ADMIN_PASSWORD',
-        roles: ['root']
+        roles: ['root', 'anyAction']
     })"
 else
     echo "Checking cluster admin user privileges and password..."
