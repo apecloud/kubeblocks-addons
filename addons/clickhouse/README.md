@@ -990,31 +990,3 @@ kubectl delete cluster -n demo  clickhouse-cluster
 # delete secret udf-account-info if exists
 # kubectl delete secret udf-account-info
 ```
-
-Horizontal scaling out Clickhouse cluster by adding ONE more replica:
-
-```yaml
-# cat examples/clickhouse/scale-out.yaml
-apiVersion: operations.kubeblocks.io/v1alpha1
-kind: OpsRequest
-metadata:
-  name: ch-scale-out
-  namespace: demo
-spec:
-  # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: clickhouse-cluster
-  type: HorizontalScaling
-  # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
-  horizontalScaling:
-    # Specifies the name of the Component.
-  - componentName: clickhouse
-    # Specifies the replica changes for scaling out components
-    scaleOut:
-      # Specifies the replica changes for the component.
-      # add one more replica to current component
-      replicaChanges: 1
-```
-
-```bash
-kubectl apply -f examples/clickhouse/scale-out.yaml
-```
