@@ -436,9 +436,3 @@ kubectl delete cluster -n demo  clickhouse-cluster
 # delete secret udf-account-info if exists
 # kubectl delete secret udf-account-info
 ```
-
-Horizontal scaling out Clickhouse cluster by adding ONE more replica:
-
-```bash
-kubectl apply -f examples/clickhouse/scale-out.yaml
-```
