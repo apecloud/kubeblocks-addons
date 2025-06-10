@@ -438,7 +438,7 @@ This example creates a clickhouse cluster with 2 shards, each shard has 2 replic
 
 #### Scale-out
 
-Horizontal scaling out Clickhouse cluster by adding ONE more replica:
+Horizontal scaling out Clickhouse by adding ONE more replica:
 
 ```yaml
 # cat examples/clickhouse/scale-out.yaml
@@ -454,9 +454,6 @@ spec:
   # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
   horizontalScaling:
     # Specifies the name of the Component.
-    # Specifies the name of the Component.
-    # - clickhouse
-    # - ch-keeper
   - componentName: clickhouse
     # Specifies the replica changes for scaling out components
     scaleOut:
@@ -471,7 +468,7 @@ kubectl apply -f examples/clickhouse/scale-out.yaml
 
 #### Scale-in
 
-Horizontal scaling in clickhouse cluster by deleting ONE replica:
+Horizontal scaling in Clickhouse by deleting ONE replica:
 
 ```yaml
 # cat examples/clickhouse/scale-in.yaml
@@ -487,8 +484,6 @@ spec:
   # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
   horizontalScaling:
     # Specifies the name of the Component.
-    # - clickhouse
-    # - ch-keeper
   - componentName: clickhouse
     # Specifies the replica changes for scaling out components
     scaleIn:
@@ -499,6 +494,66 @@ spec:
 
 ```bash
 kubectl apply -f examples/clickhouse/scale-in.yaml
+```
+
+#### Keeper-Scale-out
+
+Horizontal scaling out Clickhouse Keeper by adding TWO more replica:
+
+```yaml
+# cat examples/clickhouse/keeper-scale-out.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: ch-scale-out
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: clickhouse-cluster
+  type: HorizontalScaling
+  # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
+  horizontalScaling:
+    # Specifies the name of the Component.
+  - componentName: ch-keeper
+    # Specifies the replica changes for scaling out components
+    scaleOut:
+      # Specifies the replica changes for the component.
+      # add one more replica to current component
+      replicaChanges: 2 
+```
+
+```bash
+kubectl apply -f examples/clickhouse/keeper-scale-out.yaml
+```
+
+#### Keeper-Scale-in
+
+Horizontal scaling in Clickhouse Keeper by deleting TWO replica:
+
+```yaml
+# cat examples/clickhouse/keeper-scale-in.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: ch-scale-in
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: clickhouse-cluster
+  type: HorizontalScaling
+  # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
+  horizontalScaling:
+    # Specifies the ame of the Component.
+  - componentName: ch-keeper
+    # Specifies the replica changes for scaling out components
+    scaleIn:
+      # Specifies the replica changes for the component.
+      # add one more replica to current component
+      replicaChanges: 2 
+```
+
+```bash
+kubectl apply -f examples/clickhouse/keeper-scale-in.yaml
 ```
 
 #### Scale-in/out using Cluster API
@@ -934,4 +989,32 @@ kubectl delete cluster -n demo  clickhouse-cluster
 
 # delete secret udf-account-info if exists
 # kubectl delete secret udf-account-info
+```
+
+Horizontal scaling out Clickhouse cluster by adding ONE more replica:
+
+```yaml
+# cat examples/clickhouse/scale-out.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: ch-scale-out
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: clickhouse-cluster
+  type: HorizontalScaling
+  # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
+  horizontalScaling:
+    # Specifies the name of the Component.
+  - componentName: clickhouse
+    # Specifies the replica changes for scaling out components
+    scaleOut:
+      # Specifies the replica changes for the component.
+      # add one more replica to current component
+      replicaChanges: 1
+```
+
+```bash
+kubectl apply -f examples/clickhouse/scale-out.yaml
 ```
