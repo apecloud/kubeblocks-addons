@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "clickhouse24.configurationTplName" . }}
+  name: {{ include "clickhouse.configurationTplName" . }}
   labels:
   {{- include "clickhouse.labels" . | nindent 4 }}
 data:
@@ -11,7 +11,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "clickhouse24.userTplName" . }}
+  name: {{ include "clickhouse.userTplName" . }}
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
 data:
@@ -21,7 +21,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "clickhouse24.clientTplName" . }}
+  name: {{ include "clickhouse.clientTplName" . }}
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
 data:
@@ -31,7 +31,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "clickhouse-keeper24.configurationTplName" . }}
+  name: {{ include "clickhouse-keeper.configurationTplName" . }}
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
 data:

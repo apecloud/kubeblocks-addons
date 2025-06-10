@@ -9,10 +9,10 @@ spec:
   type: HorizontalScaling
   # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
   horizontalScaling:
-    # Specifies the name of the Component.
-  - componentName: clickhouse
+    # Specifies the ame of the Component.
+  - componentName: ch-keeper
     # Specifies the replica changes for scaling out components
     scaleIn:
       # Specifies the replica changes for the component.
       # add one more replica to current component
-      replicaChanges: 1
+      replicaChanges: 2 

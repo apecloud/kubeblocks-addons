@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "clickhouse-keeper24.cmpdName" . }}
+  name: {{ include "clickhouse-keeper.cmpdName" . }}
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
   annotations:
@@ -11,12 +11,25 @@ spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: clickhouse-keeper
-  serviceVersion: "24.8.3"
+  serviceVersion: {{ .Chart.AppVersion }}
+  minReadySeconds: 10
   runtime:
     securityContext:
       fsGroup: 0
       seccompProfile:
         type: RuntimeDefault
+    initContainers:
+      - name: copy-tools
+        imagePullPolicy: {{ .Values.busyboxImage.pullPolicy }}
+        command:
+          - sh
+          - -c
+          - |
+            cp /bin/nc /shared-tools/
+            chmod +x /shared-tools/nc
+        volumeMounts:
+          - name: shared-tools
+            mountPath: /shared-tools
     containers:
       - name: clickhouse
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
@@ -62,6 +75,11 @@ spec:
             mountPath: /scripts
           - name: client-config
             mountPath: /etc/clickhouse-client
+          - name: shared-tools
+            mountPath: /shared-tools
+    volumes:
+      - name: shared-tools
+        emptyDir: {}
   services:
     - name: default
       spec:
@@ -108,12 +126,12 @@ spec:
     scrapePort: "8001"
   configs:
     - name: clickhouse-keeper-tpl
-      template: {{ include "clickhouse-keeper24.configurationTplName" . }}
+      template: {{ include "clickhouse-keeper.configurationTplName" . }}
       volumeName: config
       namespace: {{ .Release.Namespace }}
       externalManaged: true
     - name: clickhouse-client-tpl
-      template: {{ include "clickhouse24.clientTplName" . }}
+      template: {{ include "clickhouse.clientTplName" . }}
       volumeName: client-config
       namespace: {{ .Release.Namespace }}
       restartOnFileChange: false
@@ -188,13 +206,37 @@ spec:
       participatesInQuorum: false
   lifecycleActions:
     roleProbe:
+      initialDelaySeconds: {{ .Values.roleProbe.initialDelaySeconds }}
       periodSeconds: {{ .Values.roleProbe.periodSeconds }}
       timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
       exec:
         container: clickhouse
-        image: {{ .Values.busyboxImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.busyboxImage.repository}}:{{ .Values.busyboxImage.tag }}
         command:
-        - sh
-        - -c
-        - |
-          sh /scripts/keeper-role-probe.sh
+          - bash
+          - -c
+          - |
+            /scripts/keeper-role-probe.sh
+    switchover:
+      exec:
+        container: clickhouse
+        command:
+          - bash
+          - -c
+          - |
+            /scripts/keeper-switchover.sh > /tmp/keeper-switchover.log 2>&1
+    memberJoin:
+      exec:
+        container: clickhouse
+        command:
+          - bash
+          - -c
+          - |
+            /scripts/keeper-member-join.sh > /tmp/keeper-member-join.log 2>&1
+    memberLeave:
+      exec:
+        container: clickhouse
+        command:
+          - bash
+          - -c
+          - |
+            /scripts/keeper-member-leave.sh > /tmp/keeper-member-leave.log 2>&1

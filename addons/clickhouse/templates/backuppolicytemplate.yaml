@@ -7,7 +7,7 @@ metadata:
 spec:
   serviceKind: Clickhouse
   compDefs:
-  - clickhouse-24
+  - {{ include "clickhouse.cmpdRegexpPattern" . }}
   target:
     account: admin
     role: ""
