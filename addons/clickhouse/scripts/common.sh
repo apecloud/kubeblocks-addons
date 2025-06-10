@@ -1,4 +1,4 @@
-# Constants for retry logic
+#!/bin/bash
 readonly RETRY_ATTEMPTS=6
 readonly SLEEP_INTERVAL=10
 
