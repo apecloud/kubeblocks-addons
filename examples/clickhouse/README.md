@@ -174,7 +174,7 @@ This example creates a clickhouse cluster with 2 shards, each shard has 2 replic
 
 #### [Scale-out](scale-out.yaml)
 
-Horizontal scaling out Clickhouse cluster by adding ONE more replica:
+Horizontal scaling out Clickhouse by adding ONE more replica:
 
 ```bash
 kubectl apply -f examples/clickhouse/scale-out.yaml
@@ -182,10 +182,26 @@ kubectl apply -f examples/clickhouse/scale-out.yaml
 
 #### [Scale-in](scale-in.yaml)
 
-Horizontal scaling in clickhouse cluster by deleting ONE replica:
+Horizontal scaling in Clickhouse by deleting ONE replica:
 
 ```bash
 kubectl apply -f examples/clickhouse/scale-in.yaml
+```
+
+#### [Keeper-Scale-out](keeper-scale-out.yaml)
+
+Horizontal scaling out Clickhouse Keeper by adding TWO more replica:
+
+```bash
+kubectl apply -f examples/clickhouse/keeper-scale-out.yaml
+```
+
+#### [Keeper-Scale-in](keeper-scale-in.yaml)
+
+Horizontal scaling in Clickhouse Keeper by deleting TWO replica:
+
+```bash
+kubectl apply -f examples/clickhouse/keeper-scale-in.yaml
 ```
 
 #### Scale-in/out using Cluster API
@@ -419,4 +435,10 @@ kubectl delete cluster -n demo  clickhouse-cluster
 
 # delete secret udf-account-info if exists
 # kubectl delete secret udf-account-info
+```
+
+Horizontal scaling out Clickhouse cluster by adding ONE more replica:
+
+```bash
+kubectl apply -f examples/clickhouse/scale-out.yaml
 ```
