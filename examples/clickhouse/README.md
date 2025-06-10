@@ -11,16 +11,17 @@ There are two key components in the ClickHouse cluster:
 
 ### Lifecycle Management
 
-|   Topology       | Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
-|------------------|------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
-| standalone/cluster     | Yes              | Yes             | Yes              | Yes       | Yes        | Yes       | No    | N/A      |
+| Topology           | Horizontal``scaling | Vertical``scaling | Expand``volume | Restart | Stop/Start | Configure | Expose | Switchover |
+| ------------------ | -------------------------- | ------------------------ | --------------------- | ------- | ---------- | --------- | ------ | ---------- |
+| standalone/cluster | Yes                        | Yes                      | Yes                   | Yes     | Yes        | Yes       | No     | N/A        |
 
 ### Versions
 
 | Major Versions | Description |
-|---------------|-------------|
-| 22            | 22.9.4      |
-| 24           | 24.8.3|
+| -------------- | ----------- |
+| 22             | 22.9.4      |
+| 24             | 24.8.3      |
+| 25             | 25.4.4      |
 
 ## Prerequisites
 
@@ -278,6 +279,7 @@ spec:
 ```
 
 To update parameter `max_bytes_to_read`, we use the full path `clickhouse.profiles.web.max_bytes_to_read` w.r.t the `user.xml` file.
+
 </details>
 
 ### [Restart](restart.yaml)

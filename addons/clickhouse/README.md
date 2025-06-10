@@ -9,18 +9,25 @@ There are two key components in the ClickHouse cluster:
 
 ## Features In KubeBlocks
 
-### Lifecycle Management
+### ClickHouse Server
 
-|   Topology       | Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
-|------------------|------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
-| standalone/cluster     | Yes              | Yes             | Yes              | Yes       | Yes        | Yes       | No    | N/A      |
+| Topology           | Horizontal scaling | Vertical scaling | Expand volume | Restart | Stop/Start | Configure | Expose | Switchover |
+| ------------------ | ------------------ | ---------------- | ------------- | ------- | ---------- | --------- | ------ | ---------- |
+| standalone/cluster | Yes                | Yes              | Yes           | Yes     | Yes        | Yes       | No     | N/A        |
+
+### ClickHouse Keeper
+
+| Topology | Horizontal scaling | Vertical scaling | Expand volume | Restart | Stop/Start | Configure | Expose | Switchover |
+| -------- | ------------------ | ---------------- | ------------- | ------- | ---------- | --------- | ------ | ---------- |
+| cluster  | Yes                | Yes              | Yes           | Yes     | Yes        | Yes       | No     | Yes        |
 
 ### Versions
 
 | Major Versions | Description |
-|---------------|-------------|
-| 22            | 22.9.4      |
-| 24           | 24.8.3|
+| -------------- | ----------- |
+| 22             | 22.9.4      |
+| 24             | 24.8.3      |
+| 25             | 25.4.4      |
 
 ## Prerequisites
 
@@ -541,6 +548,71 @@ spec:
 kubectl apply -f examples/clickhouse/verticalscale.yaml
 ```
 
+### Switchover for Clickhouse Keeper
+
+#### Switchover without preferred candidates
+
+Switchover a specified instance as the new primary or leader of the cluster
+
+```yaml
+# cat examples/clickhouse/keeper-switchover.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: keeper-switchover
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: clickhouse-cluster
+  type: Switchover
+  # Lists Switchover objects, each specifying a Component to perform the switchover operation.
+  switchover:
+    # Specifies the name of the Component.
+  - componentName: ch-keeper
+    # Specifies the instance whose role will be transferred.
+    # A typical usage is to transfer the leader role in a consensus system.
+    instanceName: "clickhouse-cluster-ch-keeper-0"
+
+```
+
+```bash
+kubectl apply -f examples/clickhouse/keeper-switchover.yaml
+```
+
+#### Switchover-specified-instance
+
+Switchover a specified instance as the new primary or leader of the cluster
+
+```yaml
+# cat examples/clickhouse/keeper-switchover-specified-instance.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: keeper-switchover
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: clickhouse-cluster
+  type: Switchover
+  # Lists Switchover objects, each specifying a Component to perform the switchover operation.
+  switchover:
+    # Specifies the name of the Component.
+  - componentName: ch-keeper
+    # Specifies the instance whose role will be transferred.
+    # A typical usage is to transfer the leader role in a consensus system.
+    instanceName: "clickhouse-cluster-ch-keeper-0"
+    # Specifies the instance that will become the new leader, if not specify, the first non leader instance will become candidate.
+    # Need to ensure the candidate instance is catch up logs of the quorum, otherwise the switchover will transfer the leader to other instance.
+    candidateName: "clickhouse-cluster-ch-keeper-1"
+
+```
+
+```bash
+kubectl apply -f examples/clickhouse/keeper-switchover-specified-instance.yaml
+```
+
+You may need to update the `opsrequest.spec.switchover.instanceName` field to your desired instance name.
+
 ### Expand volume
 
 > [!NOTE]
@@ -670,6 +742,7 @@ spec:
 ```
 
 To update parameter `max_bytes_to_read`, we use the full path `clickhouse.profiles.web.max_bytes_to_read` w.r.t the `user.xml` file.
+
 </details>
 
 ### Restart
