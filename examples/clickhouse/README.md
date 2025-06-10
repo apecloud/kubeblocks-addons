@@ -12,8 +12,8 @@ There are two key components in the ClickHouse cluster:
 ### Lifecycle Management
 
 | Topology           | Horizontal``scaling | Vertical``scaling | Expand``volume | Restart | Stop/Start | Configure | Expose | Switchover |
-| ------------------ | -------------------------- | ------------------------ | --------------------- | ------- | ---------- | --------- | ------ | ---------- |
-| standalone/cluster | Yes                        | Yes                      | Yes                   | Yes     | Yes        | Yes       | No     | N/A        |
+| ------------------ | ------------------- | ----------------- | -------------- | ------- | ---------- | --------- | ------ | ---------- |
+| standalone/cluster | Yes                 | Yes               | Yes            | Yes     | Yes        | Yes       | No     | N/A        |
 
 ### Versions
 
