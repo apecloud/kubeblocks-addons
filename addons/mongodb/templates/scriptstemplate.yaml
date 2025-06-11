@@ -6,13 +6,13 @@ metadata:
     {{- include "mongodb.labels" . | nindent 4 }}
 data:
   mongodb-shard-setup.sh: |-
-    {{- .Files.Get "scripts/mongodb-shard-setup.sh" | nindent 4 }}
+    {{- .Files.Get "scripts/mongodb-shard-setup.tpl" | nindent 4 }}
   mongodb-shard-manage.sh: |-
     {{- .Files.Get "scripts/mongodb-shard-manage.sh" | nindent 4 }}
   backup-agent-setup.sh: |-
     {{- .Files.Get "scripts/backup-agent-setup.sh" | nindent 4 }}
   mongodb-mongos-setup.sh: |-
-    {{- .Files.Get "scripts/mongodb-mongos-setup.sh" | nindent 4 }}
+    {{- .Files.Get "scripts/mongodb-mongos-setup.tpl" | nindent 4 }}
   mongodb-mongos-post-provision.sh: |-
     {{- .Files.Get "scripts/mongodb-mongos-post-provision.sh" | nindent 4 }}
   mongodb-config-server-post-provision.sh: |-
