@@ -11,6 +11,12 @@ image:
   syncer:
     repository: apecloud/syncer
     tag: "0.5.0"
+  percona:
+    repository: percona/percona-server-mongodb
+    tag: 8.0.4
+    backup:
+      repository: percona/percona-backup-mongodb
+      tag: 2.9.0
 
 # refer: https://github.com/apecloud/wal-g/blob/kb-dev/docker/wal-g/Dockerfile-mongo
 # this image is built from Dockerfile of apecloud/wal-g forked from wal-g/wal-g.

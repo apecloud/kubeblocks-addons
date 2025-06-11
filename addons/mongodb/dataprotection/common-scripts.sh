@@ -150,3 +150,34 @@ generate_endpoints() {
 
     IFS=','; echo "${endpoints[*]}"
 }
+
+function export_pbm_env_vars() {
+  # Get the cluster admin credentials from environment variables
+  CLUSTER_ADMIN_USER=""
+  CLUSTER_ADMIN_PASSWORD=""
+  for env_var in $(env | grep -E '^MONGODB_ADMIN_USER'); do
+      CLUSTER_ADMIN_USER="${env_var#*=}"
+      if [ -z "$CLUSTER_ADMIN_USER" ]; then
+          continue
+      fi
+      break
+  done
+  for env_var in $(env | grep -E '^MONGODB_ADMIN_PASSWORD'); do
+      CLUSTER_ADMIN_PASSWORD="${env_var#*=}"
+      if [ -z "$CLUSTER_ADMIN_PASSWORD" ]; then
+          continue
+      fi
+      break
+  done
+
+  if [ -z "$CLUSTER_ADMIN_USER" ] || [ -z "$CLUSTER_ADMIN_PASSWORD" ]; then
+      echo "ERROR: MONGODB_ADMIN_USER or MONGODB_ADMIN_PASSWORD is not set." >&2
+      exit 1
+  fi
+
+  export PBM_AGENT_MONGODB_USERNAME="$CLUSTER_ADMIN_USER"
+  export PBM_AGENT_MONGODB_PASSWORD="$CLUSTER_ADMIN_PASSWORD"
+
+  cfg_server_endpoints="$(generate_endpoints "$CFG_SERVER_POD_FQDN_LIST" "$CFG_SERVER_INTERNAL_PORT")"
+  export PBM_MONGODB_URI="mongodb://$PBM_AGENT_MONGODB_USERNAME:$PBM_AGENT_MONGODB_PASSWORD@$cfg_server_endpoints/?authSource=admin&replSetName=$CFG_SERVER_REPLICA_SET_NAME"
+}

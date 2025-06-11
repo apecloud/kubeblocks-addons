@@ -14,7 +14,7 @@ spec:
     preBackup: []
     postBackup: []
     backupData:
-      image: percona/percona-backup-mongodb
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:{{ .Values.image.percona.backup.tag }}
       runOnTargetPodNode: true
       syncProgress:
         enabled: true
@@ -28,29 +28,20 @@ spec:
   restore:
     postReady:
     - job:
-        image: percona/percona-backup-mongodb
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         runOnTargetPodNode: false
         command:
           - bash
           - -c
           - |
-            {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 10 }}
-            {{- .Files.Get "dataprotection/shard-logical-restore.sh" | nindent 12 }}
+            {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 12 }}
+            {{- .Files.Get "dataprotection/shard-logical-restore-prepare.sh" | nindent 12 }}
     - job:
-        image: percona/percona-backup-mongodb
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:{{ .Values.image.percona.backup.tag }}
         runOnTargetPodNode: false
         command:
           - bash
           - -c
           - |
-            {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 10 }}
-            {{- .Files.Get "dataprotection/shard-logical-restore.sh" | nindent 12 }}
-    - job:
-        image: percona/percona-backup-mongodb
-        runOnTargetPodNode: false
-        command:
-          - bash
-          - -c
-          - |
-            {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 10 }}
+            {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 12 }}
             {{- .Files.Get "dataprotection/shard-logical-restore.sh" | nindent 12 }}

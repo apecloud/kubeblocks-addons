@@ -146,7 +146,7 @@ spec:
           - mountPath: /kubeblocks
             name: kubeblocks
       - name: mongodb-backup-agent
-        image: percona/percona-backup-mongodb
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:{{ .Values.image.percona.backup.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /bin/bash

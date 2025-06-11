@@ -135,7 +135,7 @@ spec:
           - mountPath: /kubeblocks
             name: kubeblocks
       - name: mongodb-backup-agent
-        image: percona/percona-backup-mongodb
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:{{ .Values.image.percona.backup.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /bin/bash
@@ -144,10 +144,6 @@ spec:
         env:
           - name: PATH
             value: /kubeblocks/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-          - name: PBM_AGENT_MONGODB_USERNAME
-            value: $(MONGODB_USER)
-          - name: PBM_AGENT_MONGODB_PASSWORD
-            value: $(MONGODB_PASSWORD)
           - name: PBM_MONGODB_REPLICA_SET
             value: $(KB_CLUSTER_COMP_NAME)
           - name: PBM_AGENT_SIDECAR
@@ -158,8 +154,6 @@ spec:
             value: "TRUE"
           - name: POD_NAME
             value: $(KB_POD_NAME)
-          - name: PBM_MONGODB_URI
-            value: mongodb://$(PBM_AGENT_MONGODB_USERNAME):$(PBM_AGENT_MONGODB_PASSWORD)@localhost:$(KB_SERVICE_PORT)/?authSource=admin
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
@@ -254,6 +248,36 @@ spec:
             name: mongos
     - name: MONGOS_INTERNAL_HOST
       value: "$(MONGOS_INTERNAL_SVC_NAME).$(KB_NAMESPACE).svc.{{ .Values.clusterDomain }}"
+    - name: MONGODB_SHARD_REPLICA_SET_NAME_LIST
+      valueFrom:
+        componentVarRef:
+          compDef: {{ include "mongodbShard.componentDefName" . }}
+          optional: false
+          instanceNames: Required
+          multipleClusterObjectOption:
+            strategy: combined
+            combinedOption:
+              flattenFormat:
+                delimiter: "."
+                keyValueDelimiter: "@"
+    - name: MONGODB_ADMIN_USER
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "mongodbShard.componentDefName" . }}
+          name: admin
+          optional: false
+          username: Required
+          multipleClusterObjectOption:
+            strategy: individual
+    - name: MONGODB_ADMIN_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ include "mongodbShard.componentDefName" . }}
+          name: admin
+          optional: false
+          password: Required
+          multipleClusterObjectOption:
+            strategy: individual
   hostNetwork: 
     containerPorts:  
       - container: mongodb

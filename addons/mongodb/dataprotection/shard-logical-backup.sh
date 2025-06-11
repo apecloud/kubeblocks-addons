@@ -12,8 +12,7 @@ trap handle_exit EXIT
 #     sleep 5
 # done
 
-cfg_server_endpoints="$(generate_endpoints "$CFG_SERVER_POD_FQDN_LIST" "$CFG_SERVER_INTERNAL_PORT")"
-export PBM_MONGODB_URI="mongodb://$MONGODB_USER:$MONGODB_PASSWORD@$cfg_server_endpoints/?authSource=admin&replSetName=$CFG_SERVER_REPLICA_SET_NAME"
+export_pbm_env_vars
 
 set_backup_config_env
 
@@ -31,7 +30,7 @@ storage:
   s3:
     region: ${S3_REGION}
     bucket: ${S3_BUCKET}
-    prefix: ${DP_BACKUP_BASE_PATH}
+    prefix: ${DP_BACKUP_BASE_PATH#/}
     endpointUrl: ${S3_ENDPOINT}
     forcePathStyle: ${S3_FORCE_PATH_STYLE:-false}
     credentials:
@@ -42,24 +41,18 @@ echo "INFO: PBM storage configuration completed."
 fi
 
 echo "INFO: Starting logical backup for MongoDB..."
-backup_result=$(pbm backup --type=logical --mongodb-uri "$PBM_MONGODB_URI" --profile=$DP_BACKUP_BASE_PATH -o json)
+backup_result=$(pbm backup --type=logical --mongodb-uri "$PBM_MONGODB_URI" --profile=$DP_BACKUP_BASE_PATH --wait -o json)
 backup_name=$(echo "$backup_result" | jq -r '.name')
 extras=$(buildJsonString "" "backup_name" "$backup_name")
 
-while true; do
-    describe_result=$(pbm describe-backup --mongodb-uri "$PBM_MONGODB_URI" "$backup_name" -o json)
-    backup_status=$(echo "$describe_result" | jq -r '.status')
-    
-    if [ "$backup_status" = "done" ]; then
-        break
-    elif [ "$backup_status" = "running" ] || [ "$backup_status" = "dumpDone" ]; then
-        echo "INFO: Backup status: $backup_status, waiting for completion..."
-        sleep 2
-    else
-        echo "ERROR: Backup failed with status: $backup_status"
-        exit 1
-    fi
-done
+describe_result=$(pbm describe-backup --mongodb-uri "$PBM_MONGODB_URI" "$backup_name" -o json)
+backup_status=$(echo "$describe_result" | jq -r '.status')
+
+if [ "$backup_status" != "done" ]; then
+    echo "ERROR: Backup failed with status: $backup_status"
+    exit 1
+fi
+
 echo "INFO: Backup description result:"
 echo "$(echo $describe_result | jq)"
 start_time=$(echo "$describe_result" | jq -r '.name')
