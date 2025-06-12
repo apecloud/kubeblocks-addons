@@ -140,14 +140,7 @@ Define etcd image repository
 Define latest etcd image
 */}}
 {{- define "etcd3.image" -}}
-{{ include "etcd.repository" . }}:{{ .Values.image.tag.major3.minor515 }}
-{{- end }}
-
-{{/*
-Define latest etcd image build with busybox brinaries
-*/}}
-{{- define "etcd356.image" -}}
-{{ include "etcd.repository" . }}:{{ .Values.image.tag.major3.minor56 }}
+{{ include "etcd.repository" . }}:{{ .Values.image.tag.major3.minor61 }}
 {{- end }}
 
 {{/*

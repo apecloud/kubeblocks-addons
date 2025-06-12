@@ -17,7 +17,7 @@ spec:
   backupType: Full
   backup:
     backupData:
-      image: {{ include "etcd356.image" . }}
+      image: {{ include "etcd3.image" . }}
       runOnTargetPodNode: true
       syncProgress:
         enabled: false
@@ -30,7 +30,7 @@ spec:
         {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
   restore:
     prepareData:
-      image: {{ include "etcd356.image" . }}
+      image: {{ include "etcd3.image" . }}
       runOnTargetPodNode: true
       command:
       - /bin/bash
