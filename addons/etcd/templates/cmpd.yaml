@@ -10,7 +10,6 @@ spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
-  serviceVersion: {{ .Chart.AppVersion }}
   runtime:
     initContainers:
       - name: inject-bash
@@ -136,7 +135,6 @@ spec:
   lifecycleActions:
     roleProbe:
       exec:
-        image: {{ include "etcd356.image" . }}
         container: etcd
         command:
           - /bin/bash
@@ -144,44 +142,36 @@ spec:
           - /scripts/roleprobe.sh
     memberJoin:
       exec:
-        image: {{ include "etcd356.image" . }}
-        container: etcd
         command:
           - /bin/bash
           - -c
-          - /scripts/member-join.sh
+          - /scripts/member-join.sh > /tmp/member-join.log 2>&1
     memberLeave:
       exec:
-        image: {{ include "etcd356.image" . }}
-        container: etcd
         command:
           - /bin/bash
           - -c
-          - /scripts/member-leave.sh
+          - /scripts/member-leave.sh > /tmp/member-leave.log 2>&1
     switchover:
       exec:
-        image: {{ include "etcd356.image" . }}
-        container: etcd
         command:
           - /bin/bash
           - -c
-          - /scripts/switchover.sh
+          - /scripts/switchover.sh > /tmp/switchover.log 2>&1
     dataDump:
       exec:
-        image: {{ include "etcd356.image" . }}
         command:
           - /bin/bash
           - -c
-          - /scripts/data-load.sh
+          - /scripts/data-load.sh > /tmp/data-load.log 2>&1
         targetPodSelector: Role
         matchingKey: leader
     dataLoad:
       exec:
-        image: {{ include "etcd356.image" . }}
         command:
           - /bin/bash
           - -c
-          - /scripts/data-load.sh
+          - /scripts/data-load.sh > /tmp/data-load.log 2>&1
   configs:
     - name: config
       template: {{ include "etcd3.configTemplate" .}}

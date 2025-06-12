@@ -1,32 +1,39 @@
 #!/bin/bash
+set -ex
 
 load_common_library() {
-  # the kb-common.sh and common.sh scripts are defined in the scripts-template configmap
-  # and are mounted to the same path which defined in the cmpd.spec.scripts
   kblib_common_library_file="/scripts/kb-common.sh"
   etcd_common_library_file="/scripts/common.sh"
-  # shellcheck source=/scripts/kb-common.sh
+  # shellcheck disable=SC1090
   . "${kblib_common_library_file}"
-  # shellcheck source=/scripts/common.sh
+  # shellcheck disable=SC1090
   . "${etcd_common_library_file}"
 }
 
 get_etcd_role() {
-  status=$(exec_etcdctl 127.0.0.1:2379 endpoint status --command-timeout=300ms --dial-timeout=100ms)
-  is_leader=$(echo "$status" | awk -F ', ' '{print $5}')
-  is_learner=$(echo "$status" | awk -F ', ' '{print $6}')
-
-  if [ "true" = "$is_leader" ]; then
-    echo "leader"
-  elif [ "true" = "$is_learner" ]; then
-    echo "learner"
-  elif [ "false" = "$is_leader" ] && [ "false" = "$is_learner" ]; then
-    echo "follower"
-  else
-    echo "bad role, please check!" >&2
+  local status member_id leader_id is_learner
+  if ! status=$(exec_etcdctl 127.0.0.1:2379 endpoint status -w fields --command-timeout=300ms --dial-timeout=100ms); then
+    echo "ERROR: Failed to get endpoint status" >&2
     return 1
   fi
-  return 0
+
+  member_id=$(echo "$status" | grep -o '"MemberID" : [0-9]*' | awk '{print $3}')
+  leader_id=$(echo "$status" | grep -o '"Leader" : [0-9]*' | awk '{print $3}')
+  is_learner=$(echo "$status" | grep -o '"IsLearner" : [a-z]*' | awk '{print $3}')
+
+  if [ "$member_id" = "$leader_id" ]; then
+    if [ "$is_learner" = "true" ]; then
+      echo "learner"
+    else
+      echo "leader"
+    fi
+  else
+    if [ "$is_learner" = "true" ]; then
+      echo "learner"
+    else
+      echo "follower"
+    fi
+  fi
 }
 
 # This is magic for shellspec ut framework.
@@ -39,8 +46,4 @@ ${__SOURCED__:+false} : || return 0
 # main
 load_common_library
 etcd_role=$(get_etcd_role)
-status=$?
-if [ "$status" -ne 0 ]; then
-  exit 1
-fi
 echo -n "$etcd_role"

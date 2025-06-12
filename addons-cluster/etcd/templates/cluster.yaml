@@ -3,9 +3,7 @@
     - name: etcd
       {{- include "etcd-cluster.componentPeerService" . | indent 6 }}
       componentDef: etcd
-      {{- if .Chart.AppVersion }}
-      serviceVersion: {{ .Chart.AppVersion }}
-      {{- end }}
+      serviceVersion: {{ default $.Chart.AppVersion $.Values.appVersionOverride }}
       tls: {{ .Values.tlsEnable }}
       {{- if .Values.tlsEnable }}
       issuer:

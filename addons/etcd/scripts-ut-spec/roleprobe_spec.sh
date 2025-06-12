@@ -5,9 +5,25 @@ Describe "Role Probe Tests"
   Include ../scripts/roleprobe.sh
 
   Describe "get_etcd_role()"
-    It "returns leader when IsLeader is true"
+    It "returns leader when MemberID equals Leader ID"
       exec_etcdctl() {
-        echo "127.0.0.1:2379, 8e9e05c52164694d, 3.5.16, 25 kB, true, false, 2, 4, 4,"
+        echo '"ClusterID" : 13039986632204101178
+"MemberID" : 2629816592825133483
+"Revision" : 1
+"RaftTerm" : 2
+"Version" : "3.6.1"
+"StorageVersion" : "3.6.0"
+"DBSize" : 20480
+"DBSizeInUse" : 16384
+"Leader" : 2629816592825133483
+"IsLearner" : false
+"RaftIndex" : 9
+"RaftTerm" : 2
+"RaftAppliedIndex" : 9
+"Errors" : []
+"Endpoint" : "127.0.0.1:2379"
+"DowngradeTargetVersion" : ""
+"DowngradeEnabled" : false'
       }
       When call get_etcd_role
       The output should equal "leader"
@@ -15,27 +31,59 @@ Describe "Role Probe Tests"
 
     It "returns learner when IsLearner is true"
       exec_etcdctl() {
-        echo "127.0.0.1:2379, 8e9e05c52164694d, 3.5.16, 25 kB, false, true, 2, 4, 4,"
+        echo '"ClusterID" : 13039986632204101178
+"MemberID" : 7313738417175062960
+"Revision" : 1
+"RaftTerm" : 2
+"Version" : "3.6.1"
+"StorageVersion" : "3.6.0"
+"DBSize" : 20480
+"DBSizeInUse" : 16384
+"Leader" : 2629816592825133483
+"IsLearner" : true
+"RaftIndex" : 9
+"RaftTerm" : 2
+"RaftAppliedIndex" : 9
+"Errors" : []
+"Endpoint" : "127.0.0.1:2379"
+"DowngradeTargetVersion" : ""
+"DowngradeEnabled" : false'
       }
       When call get_etcd_role
       The output should equal "learner"
     End
 
-    It "returns follower when both IsLeader and IsLearner are false"
+    It "returns follower when MemberID does not equal Leader ID and IsLearner is false"
       exec_etcdctl() {
-        echo "127.0.0.1:2379, 8e9e05c52164694d, 3.5.16, 25 kB, false, false, 2, 4, 4,"
+        echo '"ClusterID" : 13039986632204101178
+"MemberID" : 7313738417175062960
+"Revision" : 1
+"RaftTerm" : 2
+"Version" : "3.6.1"
+"StorageVersion" : "3.6.0"
+"DBSize" : 20480
+"DBSizeInUse" : 16384
+"Leader" : 2629816592825133483
+"IsLearner" : false
+"RaftIndex" : 9
+"RaftTerm" : 2
+"RaftAppliedIndex" : 9
+"Errors" : []
+"Endpoint" : "127.0.0.1:2379"
+"DowngradeTargetVersion" : ""
+"DowngradeEnabled" : false'
       }
       When call get_etcd_role
       The output should equal "follower"
     End
 
-    It "returns error when role is invalid"
+    It "fails when exec_etcdctl command fails"
       exec_etcdctl() {
-        echo "127.0.0.1:2379, 8e9e05c52164694d, 3.5.16, 25 kB, invalid_status, false, 2, 4, 4,"
+        return 1
       }
       When call get_etcd_role
       The status should be failure
-      The stderr should include "bad role, please check!"
+      The stderr should include "ERROR: Failed to get endpoint status"
     End
   End
 End

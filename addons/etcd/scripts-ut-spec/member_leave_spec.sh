@@ -4,14 +4,6 @@
 Describe "Member Leave Script Tests"
   Include ../scripts/member-leave.sh
 
-  Describe "get_leaver_endpoint()"
-    It "returns the correct leaver endpoint"
-      export KB_LEAVE_MEMBER_POD_FQDN="etcd-1"
-      When call get_leaver_endpoint
-      The output should equal "http://etcd-1:2379"
-    End
-  End
-
   Describe "get_etcd_id()"
     It "returns the correct etcd ID"
       exec_etcdctl() {
@@ -24,12 +16,24 @@ Describe "Member Leave Script Tests"
 
   Describe "remove_member()"
     It "removes the member successfully"
+      # Mock required environment variables and functions
+      export KB_PRIMARY_POD_FQDN="etcd-0.etcd-headless"
+      export KB_LEAVE_MEMBER_POD_NAME="etcd-1"
+      export PEER_ENDPOINT=""
+      get_pod_endpoint_with_lb() { echo "$2"; }
+      log() { echo "$@"; }
       exec_etcdctl() { return 0; }
       When call remove_member "8e9e05c52164694d"
       The status should be success
     End
 
     It "fails to remove the member"
+      # Mock required environment variables and functions
+      export KB_PRIMARY_POD_FQDN="etcd-0.etcd-headless"
+      export KB_LEAVE_MEMBER_POD_NAME="etcd-1"
+      export PEER_ENDPOINT=""
+      get_pod_endpoint_with_lb() { echo "$2"; }
+      log() { echo "$@"; }
       exec_etcdctl() { return 1; }
       When call remove_member "8e9e05c52164694d"
       The status should be failure
@@ -38,7 +42,12 @@ Describe "Member Leave Script Tests"
 
   Describe "member_leave()"
     It "leaves the member successfully"
-      get_leaver_endpoint() { echo "http://etcd-1:2379"; }
+      # Mock required environment variables and functions
+      export KB_LEAVE_MEMBER_POD_NAME="etcd-1"
+      export KB_LEAVE_MEMBER_POD_IP="10.0.0.1"
+      export PEER_ENDPOINT=""
+      get_pod_endpoint_with_lb() { echo "$3"; }
+      log() { echo "$@"; }
       get_etcd_id() { echo "8e9e05c52164694d"; }
       remove_member() { return 0; }
       When call member_leave

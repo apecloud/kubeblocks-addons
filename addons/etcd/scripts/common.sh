@@ -1,93 +1,108 @@
 #!/bin/bash
 
-# shellcheck disable=SC2039
-
 # config file used to bootstrap the etcd cluster
-config_file=$TMP_CONFIG_PATH
+config_file="$TMP_CONFIG_PATH"
 
-check_backup_file() {
-  local backup_file=$1
-  output=$(etcdutl snapshot status "${backup_file}")
-  status=$?
-  if [ $status -ne 0 ]; then
-    echo "ERROR: Failed to check the backup file with etcdctl" >&2
-    return 1
-  fi
-  total_key=$(echo "$output" | awk -F', ' '{print $3}')
-  # check if total key is a number
-  if [ -z "$total_key" ] || ! [[ "$total_key" =~ ^[0-9]+$ ]]; then
-    echo "ERROR: snapshot totalKey is not a valid number." >&2
-    return 1
+log() {
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
+}
+
+error_exit() {
+  log "ERROR: $1" >&2
+  exit 1
+}
+
+# execute etcdctl command with proper TLS settings and auto protocol detection
+exec_etcdctl() {
+  local endpoint="$1"
+  shift
+
+  # Auto-detect protocol and add prefix if not present
+  if [[ "$endpoint" != http://* ]] && [[ "$endpoint" != https://* ]]; then
+    if grep -q "^advertise-client-urls:.*https://" "$config_file"; then
+      endpoint="https://$endpoint"
+    else
+      endpoint="http://$endpoint"
+    fi
   fi
 
-  return 0
+  if grep -q "^advertise-client-urls:.*https://" "$config_file"; then
+    [ ! -d "$TLS_MOUNT_PATH" ] && echo "ERROR: TLS_MOUNT_PATH '$TLS_MOUNT_PATH' not found" >&2 && return 1
+    for cert in ca.pem cert.pem key.pem; do
+      [ ! -s "$TLS_MOUNT_PATH/$cert" ] && echo "ERROR: TLS certificate '$cert' missing or empty" >&2 && return 1
+    done
+    etcdctl --endpoints="$endpoint" --cacert="$TLS_MOUNT_PATH/ca.pem" --cert="$TLS_MOUNT_PATH/cert.pem" --key="$TLS_MOUNT_PATH/key.pem" "$@"
+  else
+    etcdctl --endpoints="$endpoint" "$@"
+  fi
 }
 
 get_client_protocol() {
-  # check client tls if is enabled
-  line=$(grep 'advertise-client-urls' "${config_file}")
+  local line
+
+  if [ ! -f "$config_file" ]; then
+    error_exit "get_client_protocol - Config file '$config_file' not found"
+  fi
+  line=$(grep "advertise-client-urls" "$config_file" || true)
   if echo "$line" | grep -q 'https'; then
     echo "https"
-  elif echo "$line" | grep -q 'http'; then
+  else
     echo "http"
   fi
 }
 
 get_peer_protocol() {
-  # check peer tls if is enabled
-  line=$(grep 'initial-advertise-peer-urls' "${config_file}")
+  local line
+
+  if [ ! -f "$config_file" ]; then
+    error_exit "get_peer_protocol - Config file '$config_file' not found"
+  fi
+  line=$(grep "initial-advertise-peer-urls" "$config_file" || true)
   if echo "$line" | grep -q 'https'; then
     echo "https"
-  elif echo "$line" | grep -q 'http'; then
+  else
     echo "http"
   fi
 }
 
-exec_etcdctl() {
-  local endpoints=$1
-  shift
-  client_protocol=$(get_client_protocol)
-  tls_dir=$TLS_MOUNT_PATH
-  # check if the client_protocol is https and the tls_dir is not empty
-  if [ "$client_protocol" = "https" ] && [ -d "$tls_dir" ] && [ -s "${tls_dir}/ca.pem" ] && [ -s "${tls_dir}/cert.pem" ] && [ -s "${tls_dir}/key.pem" ]; then
-    etcdctl --endpoints="${endpoints}" --cacert="${tls_dir}/ca.pem" --cert="${tls_dir}/cert.pem" --key="${tls_dir}/key.pem" "$@"
-  elif [ "$client_protocol" = "http" ]; then
-    etcdctl --endpoints="${endpoints}" "$@"
-  else
-    echo "ERROR: bad etcdctl args: clientProtocol:${client_protocol}, endpoints:${endpoints}, tlsDir:${tls_dir}, please check!" >&2
-    return 1
-  fi
-  status=$?
-  if [ $status -ne 0 ]; then
-    echo "etcdctl command failed" >&2
-    return 1
-  fi
-  return 0
+# For backward compatibility
+get_protocol() {
+  get_client_protocol
 }
 
-get_current_leader() {
-  local leader_endpoint=$1
-  peer_endpoints=$(exec_etcdctl "$leader_endpoint" member list | awk -F', ' '{print $5}' | tr '\n' ',' | sed 's#,$##')
-  leader_endpoint=$(exec_etcdctl "$peer_endpoints" endpoint status | awk -F', ' '$5=="true" {print $1}')
-  if [ -z "$leader_endpoint" ]; then
-    echo "leader is not ready" >&2
+check_backup_file() {
+  local backup_file="$1"
+
+  if [ ! -f "$backup_file" ]; then
+    echo "ERROR: Backup file $backup_file does not exist" >&2
     return 1
   fi
-  echo "${leader_endpoint}"
-  return 0
+  etcdutl snapshot status "$backup_file"
 }
 
-get_current_leader_with_retry() {
-  local origin_leader=$1
-  local max_retries=$2
-  local retry_delay=$3
-  local current_leader
-  current_leader=$(call_func_with_retry "$max_retries" "$retry_delay" get_current_leader "$origin_leader")
-  status=$?
-  if [ $status -ne 0 ]; then
-    echo "Failed to get current leader" >&2
-    return 1
+get_pod_endpoint_with_lb() {
+  local peer_endpoints="$1"
+  local pod_name="$2"
+  local default_fqdn="$3"
+  local result_endpoint="$default_fqdn"
+  
+  if ! is_empty "$peer_endpoints"; then
+    log "LoadBalancer mode detected. Adapting pod FQDN to balance IP."
+    local endpoints lb_endpoint
+    endpoints=$(echo "$peer_endpoints" | tr ',' '\n')
+    lb_endpoint=$(echo "$endpoints" | grep "$pod_name" | head -1)
+    if ! is_empty "$lb_endpoint"; then
+      # e.g.1 etcd-cluster-etcd-0
+      # e.g.2 etcd-cluster-etcd-0:127.0.0.1
+      if echo "$lb_endpoint" | grep -q ":"; then
+        result_endpoint=$(echo "$lb_endpoint" | cut -d: -f2)
+      else
+        result_endpoint="$lb_endpoint"
+      fi
+      log "Using LoadBalancer endpoint for $pod_name: $result_endpoint"
+    else
+      log "Failed to get LB endpoint for $pod_name, using default FQDN: $result_endpoint"
+    fi
   fi
-  echo "${current_leader}"
-  return 0
+  echo "$result_endpoint"
 }

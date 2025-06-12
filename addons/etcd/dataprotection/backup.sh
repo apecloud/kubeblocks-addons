@@ -1,6 +1,5 @@
 #!/bin/bash
-
-set -exo pipefail
+set -ex
 
 # if the script exits with a non-zero exit code, touch a file to indicate that the backup failed,
 # the sync progress container will check this file and exit if it exists
@@ -13,6 +12,11 @@ handle_exit() {
   fi
 }
 trap handle_exit EXIT
+
+if [ -f "/scripts/common.sh" ]; then
+  # shellcheck disable=SC1091
+  . "/scripts/common.sh"
+fi
 
 # use etcdctl create snapshot
 ENDPOINTS=${DP_DB_HOST}.${CLUSTER_NAMESPACE}.svc${CLUSTER_DOMAIN}:2379
