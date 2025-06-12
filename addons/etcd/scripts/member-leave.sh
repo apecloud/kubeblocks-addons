@@ -14,7 +14,7 @@
 ut_mode="false"
 test || __() {
   # when running in non-unit test mode, set the options "set -ex".
-  set -ex;
+  set -uex;
 }
 
 load_common_library() {
@@ -22,43 +22,60 @@ load_common_library() {
   # and are mounted to the same path which defined in the cmpd.spec.scripts
   kblib_common_library_file="/scripts/kb-common.sh"
   etcd_common_library_file="/scripts/common.sh"
-  # shellcheck source=/scripts/kb-common.sh
+  # shellcheck disable=SC1090
   . "${kblib_common_library_file}"
-  # shellcheck source=/scripts/common.sh
+  # shellcheck disable=SC1090
   . "${etcd_common_library_file}"
 }
 
-get_leaver_endpoint() {
-  # TODO: TLS and LB service
-  echo "http://$KB_LEAVE_MEMBER_POD_FQDN:2379"
-}
-
 get_etcd_id() {
-  endpoint="$1"
-  exec_etcdctl "$endpoint" endpoint status | awk -F', ' '{print $2}'
+  local endpoint="$1"
+  exec_etcdctl "$endpoint" endpoint status -w fields | grep -o 'id:"[^"]*"' | cut -d'"' -f2
 }
 
 remove_member() {
-  etcd_id="$1"
-  # TODO: TLS and LB service
-  exec_etcdctl "http://$LEADER_POD_FQDN:2379" member remove "$etcd_id"
+  local etcd_id="$1"
+  local leader_endpoint
+  
+  # Use standard KubeBlocks environment variables
+  # KB_PRIMARY_POD_FQDN: The FQDN of the primary Pod within the replication group
+  
+  # Get leader endpoint (handle LB service) - use primary pod FQDN
+  # Extract primary pod name from FQDN for LB endpoint lookup
+  primary_pod_name="${KB_PRIMARY_POD_FQDN%%.*}"
+  leader_endpoint=$(get_pod_endpoint_with_lb "$PEER_ENDPOINT" "$primary_pod_name" "$KB_PRIMARY_POD_FQDN")
+  
+  log "Removing member $etcd_id via leader $leader_endpoint"
+  exec_etcdctl "$leader_endpoint:2379" member remove "$etcd_id"
 }
 
 member_leave() {
-  leaver_endpoint=$(get_leaver_endpoint)
+  local leaver_endpoint etcd_id
 
-  #if [ -z "$leaver_endpoint" ]; then
-  #  echo "ERROR: leave member pod FQDN is empty" >&2
-  #  return 1
-  #fi
-
-  etcd_id=$(get_etcd_id "$leaver_endpoint")
-  remove_member "$etcd_id"
-  status=$?
-  if [ $status -ne 0 ]; then
-    echo "ERROR: etcdctl remove_member failed" >&2
+  # Use standard KubeBlocks environment variables
+  # KB_LEAVE_MEMBER_POD_NAME: The pod name of the replica being removed from the group
+  # KB_LEAVE_MEMBER_POD_IP: The IP address of the replica being removed from the group
+  
+  # Get leave member endpoint (handle LB service) - use leave member IP
+  leaver_endpoint=$(get_pod_endpoint_with_lb "$PEER_ENDPOINT" "$KB_LEAVE_MEMBER_POD_NAME" "$KB_LEAVE_MEMBER_POD_IP")
+  
+  if [ -z "$leaver_endpoint" ]; then
+    echo "ERROR: leave member pod endpoint is empty" >&2
     return 1
   fi
+
+  log "Getting etcd ID for leaving member: $leaver_endpoint"
+  etcd_id=$(get_etcd_id "$leaver_endpoint:2379")
+  if [ -z "$etcd_id" ]; then
+    echo "ERROR: Failed to get etcd ID" >&2
+    return 1
+  fi
+
+  if ! remove_member "$etcd_id"; then
+    echo "ERROR: Failed to remove member" >&2
+    return 1
+  fi
+
   return 0
 }
 

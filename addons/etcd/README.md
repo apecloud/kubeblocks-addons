@@ -235,7 +235,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: etcd-scale-out
-  namespace: demo
+  namespace: default 
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: etcd-cluster
@@ -274,7 +274,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: etcd-scale-in
-  namespace: demo
+  namespace: default 
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: etcd-cluster
@@ -550,7 +550,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: etcd-switchover
-  namespace: demo
+  namespace: default
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: etcd-cluster
@@ -562,7 +562,7 @@ spec:
     # Specifies the instance whose role will be transferred.
     # A typical usage is to transfer the leader role in a consensus system.
     instanceName: etcd-cluster-etcd-0
-
+    candidateName: etcd-cluster-etcd-2
 ```
 
 ```bash
