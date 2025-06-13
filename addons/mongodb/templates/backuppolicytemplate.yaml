@@ -110,13 +110,20 @@ spec:
     target:
       role: secondary
       fallbackRole: primary
-      account: root
+      account: admin
     backupMethods:
       - name: shard-logical
         snapshotVolumes: false
         actionSetName: mongodb-shard-logical
+      - name: shard-pitr
+        snapshotVolumes: false
+        actionSetName: mongodb-shard-pitr
     schedules:
       - backupMethod: shard-logical
         enabled: false
         cronExpression: "0 18 * * *"
         retentionPeriod: 7d
+      - backupMethod: shard-pitr
+        enabled: false
+        cronExpression: "*/5 * * * *"
+        retentionPeriod: 8d

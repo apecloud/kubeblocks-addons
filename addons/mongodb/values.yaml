@@ -17,6 +17,9 @@ image:
     backup:
       repository: percona/percona-backup-mongodb
       tag: 2.9.0
+  tools:
+    repository: apecloud/kubeblocks-tools
+    tag: 0.9.4
 
 # refer: https://github.com/apecloud/wal-g/blob/kb-dev/docker/wal-g/Dockerfile-mongo
 # this image is built from Dockerfile of apecloud/wal-g forked from wal-g/wal-g.

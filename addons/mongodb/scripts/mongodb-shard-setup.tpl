@@ -15,6 +15,11 @@ mkdir -p $MONGODB_ROOT/db
 mkdir -p $MONGODB_ROOT/logs
 mkdir -p $MONGODB_ROOT/tmp
 
-CLIENT=`which mongosh>/dev/null&&echo mongosh||echo mongo`
+
+client_path=$(whereis mongosh | awk '{print $2}')
+CLIENT="mongosh"
+if [ -z "$client_path" ]; then
+    CLIENT="mongo"
+fi
 
 exec mongod  --bind_ip_all --port $PORT  --replSet $KB_CLUSTER_COMP_NAME --config /etc/mongodb/mongodb.conf

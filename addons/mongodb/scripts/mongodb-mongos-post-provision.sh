@@ -23,19 +23,31 @@ if [ -z "$CLUSTER_ADMIN_USER" ] || [ -z "$CLUSTER_ADMIN_PASSWORD" ]; then
     exit 1
 fi
 
-CLIENT=`which mongosh>/dev/null&&echo mongosh||echo mongo`
+client_path=$(whereis mongosh | awk '{print $2}')
+CLIENT="mongosh"
+if [ -z "$client_path" ]; then
+    CLIENT="mongo"
+fi
 CLUSTER_MONGO="$CLIENT --host $MONGOS_INTERNAL_HOST --port $MONGOS_INTERNAL_PORT -u $MONGOS_USER -p $MONGOS_PASSWORD --quiet --eval"
 
 # Wait for the mongos process to be ready
-while true; do
+MAX_RETRIES=300
+retry_count=0
+while [ $retry_count -lt $MAX_RETRIES ]; do
     result=$($CLUSTER_MONGO "db.adminCommand({ ping: 1 })" 2>/dev/null)
     if [[ "$result" == *"ok"* ]]; then
         echo "INFO: Mongos is ready."
         break
     fi
-    echo "INFO: Waiting for mongos to be ready..."
-    sleep 1
+    echo "INFO: Waiting for mongos to be ready... (attempt $((retry_count+1))/$MAX_RETRIES)"
+    retry_count=$((retry_count+1))
+    sleep 2
 done
+
+if [ $retry_count -eq $MAX_RETRIES ]; then
+    echo "ERROR: Mongos failed to become ready after $MAX_RETRIES attempts." >&2
+    exit 1
+fi
 
 # Root account's credential secret is a sub-resource of the config server component and cannot be used for shard component pre-terminate jobs.
 # This is because if the config server component is deleted before shard components, the root credential secret becomes unavailable and pre-terminate job pods cannot be created.
@@ -51,18 +63,10 @@ if [ -z "$CLUSTER_ADMIN_CHECK" ] || [ "$CLUSTER_ADMIN_CHECK" == "null" ]; then
         pwd: '$CLUSTER_ADMIN_PASSWORD',
         roles: ['root', 'anyAction']
     })"
-else
-    echo "Checking cluster admin user privileges and password..."
-    $CLUSTER_MONGO "const user = db.getSiblingDB('admin').getUser('$CLUSTER_ADMIN_USER');
-        if (!user.roles.some(role => role.role === 'root')) {
-            db.getSiblingDB('admin').grantRolesToUser('$CLUSTER_ADMIN_USER', ['root']);
-        }
-        db.getSiblingDB('admin').updateUser('$CLUSTER_ADMIN_USER', { pwd: '$CLUSTER_ADMIN_PASSWORD' });
-    "
 fi
 
 # Check if need to enable balancer
-if [ "$MONGODB_BALANCER_ENABLED" == "false" ]; then
+if [ "$MONGODB_BALANCER_ENABLED" = "false" ]; then
     $CLUSTER_MONGO "sh.stopBalancer()"
     echo "Balancer is disabled."
 else

@@ -8,7 +8,27 @@ export_pbm_env_vars
 
 set_backup_config_env
 
-sync_pbm_storage_config
+echo "INFO: Checking if PBM config exists for backup path: $S3_PREFIX"
+check_profile=$(pbm config --mongodb-uri "$PBM_MONGODB_URI" -o json | jq '.storage.s3.prefix')
+echo "INFO: Current PBM config prefix: $check_profile"
+if [ "$check_profile" = "$S3_PREFIX" ]; then
+    echo "INFO: PBM config already exists."
+else
+cat <<EOF | pbm config --mongodb-uri "$PBM_MONGODB_URI" --file /dev/stdin
+storage:
+  type: s3
+  s3:
+    region: ${S3_REGION}
+    bucket: ${S3_BUCKET}
+    prefix: ${S3_PREFIX}
+    endpointUrl: ${S3_ENDPOINT}
+    forcePathStyle: ${S3_FORCE_PATH_STYLE:-false}
+    credentials:
+      access-key-id: ${S3_ACCESS_KEY}
+      secret-access-key: ${S3_SECRET_KEY}
+EOF
+fi
+echo "INFO: PBM storage configuration completed."
 
 pbm config --force-resync --mongodb-uri "$PBM_MONGODB_URI"
 extras=$(cat /dp_downward/status_extras)

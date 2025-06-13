@@ -119,13 +119,15 @@ function set_backup_config_env() {
   else
     echo "Unsupported provider: $provider"
   fi
+  backup_path=$(dirname "$DP_BACKUP_BASE_PATH")
 
   export S3_ACCESS_KEY="${access_key_id}"
   export S3_SECRET_KEY="${secret_access_key}"
   export S3_REGION="${region}"
   export S3_ENDPOINT="${endpoint}"
   export S3_BUCKET="${bucket}"
-
+  export S3_PREFIX="${backup_path#/}/backups"
+  
   DP_log "storage config have been extracted."
 }
 
@@ -181,4 +183,35 @@ function export_pbm_env_vars() {
 
   cfg_server_endpoints="$(generate_endpoints "$CFG_SERVER_POD_FQDN_LIST" "$CFG_SERVER_INTERNAL_PORT")"
   export PBM_MONGODB_URI="mongodb://$PBM_AGENT_MONGODB_USERNAME:$PBM_AGENT_MONGODB_PASSWORD@$cfg_server_endpoints/?authSource=admin&replSetName=$CFG_SERVER_REPLICA_SET_NAME"
+}
+
+function sync_pbm_storage_config() {
+  echo "INFO: Checking if PBM storage config exists"
+  check_config=$(pbm config --mongodb-uri "$PBM_MONGODB_URI" -o json)
+  current_endpoint=$(echo "$check_config" | jq -r '.storage.s3.endpointUrl')
+  current_region=$(echo "$check_config" | jq -r '.storage.s3.region')
+  current_bucket=$(echo "$check_config" | jq -r '.storage.s3.bucket')
+  current_prefix=$(echo "$check_config" | jq -r '.storage.s3.prefix')
+  echo "INFO: Current PBM storage endpoint: $current_endpoint"
+  echo "INFO: Current PBM storage region: $current_region"
+  echo "INFO: Current PBM storage bucket: $current_bucket"
+  echo "INFO: Current PBM storage prefix: $current_prefix"
+  if [ "$current_prefix" = "$S3_PREFIX" ] && [ "$current_region" = "$S3_REGION" ] && [ "$current_bucket" = "$S3_BUCKET" ] && [ "$current_endpoint" = "$S3_ENDPOINT" ]; then
+    echo "INFO: PBM storage config already exists."
+  else
+  cat <<EOF | pbm config --mongodb-uri "$PBM_MONGODB_URI" --file /dev/stdin > /dev/null
+storage:
+  type: s3
+  s3:
+    region: ${S3_REGION}
+    bucket: ${S3_BUCKET}
+    prefix: ${S3_PREFIX}
+    endpointUrl: ${S3_ENDPOINT}
+    forcePathStyle: ${S3_FORCE_PATH_STYLE:-false}
+    credentials:
+      access-key-id: ${S3_ACCESS_KEY}
+      secret-access-key: ${S3_SECRET_KEY}
+EOF
+echo "INFO: PBM storage configuration completed."
+  fi
 }

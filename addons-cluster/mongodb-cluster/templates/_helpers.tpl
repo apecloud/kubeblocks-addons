@@ -21,25 +21,6 @@ replicas: {{ max .Values.replicas 3 }}
 {{- end }}
 
 {{/*
-Define mongodb keyfile secret name.
-*/}}
-{{- define "mongodb-cluster.keyfileSecretName" }}
-{{- printf "%s-mongodb-keyfile" (include "kblib.clusterName" .) }}
-{{- end }}
-
-{{/*
-Define mongodb keyfile volume.
-*/}}
-{{- define "mongodb-cluster.keyfileVolume" }}
-volumes:
-  - name: mongodb-keyfile
-    secret:
-      secretName: {{ include "mongodb-cluster.keyfileSecretName" . }}
-      defaultMode: 0400
-      optional: false
-{{- end }}
-
-{{/*
 Define mongodb replicaset mode.
 */}}
 {{- define "mongodb-cluster.replicasetMode" }}
@@ -73,7 +54,7 @@ shardingSpecs:
       componentDef: mongo-shard
       serviceVersion: {{ .Values.version }}
       replicas: {{ .Values.replicas | default 3 }}
-      systemAccounts:
+      systemAccounts: &adminAccounts
         - name: admin
           passwordConfig:
             length: 16
@@ -88,16 +69,18 @@ shardingSpecs:
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
-      {{- include "mongodb-cluster.keyfileVolume" . | indent 6 }}
 componentSpecs:
   - name: config-server
     componentDef: mongo-config-server
     replicas: {{ .Values.cfgServer.replicas | default 3 }}
+    systemAccounts: *adminAccounts
     serviceVersion: {{ .Values.version }}
     serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+    env:
+      - name: MONGODB_BALANCER_ENABLED
+        value: "{{ .Values.balancer.enabled }}"
     {{- include "kblib.componentResources" . | indent 4 }}
     {{- include "kblib.componentStorages" . | indent 4 }}
-    {{- include "mongodb-cluster.keyfileVolume" . | indent 4 }}
   - name: mongos
     componentDef: mongo-mongos
     replicas: {{ .Values.mongos.replicas | default 3 }}
@@ -108,5 +91,4 @@ componentSpecs:
         value: "{{ .Values.balancer.enabled }}"
     {{- include "kblib.componentResources" . | indent 4 }}
     {{- include "kblib.componentServices" . | indent 4 }}
-    {{- include "mongodb-cluster.keyfileVolume" . | indent 4 }}
 {{- end }}

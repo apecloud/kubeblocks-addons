@@ -1,7 +1,12 @@
 #!/bin/bash
 
 MONGODB_REPLICA_SET_NAME=$KB_CLUSTER_COMP_NAME
-CLIENT=`which mongosh>/dev/null&&echo mongosh||echo mongo`
+
+client_path=$(whereis mongosh | awk '{print $2}')
+CLIENT="mongosh"
+if [ -z "$client_path" ]; then
+    CLIENT="mongo"
+fi
 CLUSTER_MONGO="$CLIENT --host $MONGOS_INTERNAL_HOST --port $MONGOS_INTERNAL_PORT -u $MONGODB_ADMIN_USER -p $MONGODB_ADMIN_PASSWORD --quiet --eval"
 
 generate_endpoints() {
@@ -29,15 +34,23 @@ generate_endpoints() {
 
 wait_for_mongos() {
     # Wait for the mongos service to be ready
-    while true; do
+    MAX_RETRIES=300
+    retry_count=0
+    while [ $retry_count -lt $MAX_RETRIES ]; do
         result=$($CLUSTER_MONGO "db.adminCommand({ ping: 1 })" 2>/dev/null)
         if [[ "$result" == *"ok"* ]]; then
             echo "INFO: Mongos is ready."
             break
         fi
-        echo "INFO: Waiting for mongos to be ready..."
-        sleep 1
+        echo "INFO: Waiting for mongos to be ready... (attempt $((retry_count+1))/$MAX_RETRIES)"
+        retry_count=$((retry_count+1))
+        sleep 2
     done
+
+    if [ $retry_count -eq $MAX_RETRIES ]; then
+        echo "ERROR: Mongos failed to become ready after $MAX_RETRIES attempts." >&2
+        exit 1
+    fi
 }
 
 

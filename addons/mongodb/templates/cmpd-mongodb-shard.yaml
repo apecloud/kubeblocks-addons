@@ -14,7 +14,7 @@ spec:
       constraintRef: {{ include "mongodb.configConstraintName" . }}
       volumeName: mongodb-config
       namespace: {{ .Release.Namespace }}
-      defaultMode: 0400  # for only read
+      defaultMode: 0400
       keys:
         - mongodb.conf
   logConfigs:
@@ -61,7 +61,7 @@ spec:
       #         echo $Status | jq ".members[] | select(.state == ($MyState | tonumber)) | .stateStr" |tr '[:upper:]' '[:lower:]'|uniq| xargs echo -n
     postProvision:
       customHandler:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.tag }}
         exec:
           command:
             - /bin/bash
@@ -72,7 +72,7 @@ spec:
           maxRetries: 10
     preTerminate:
       customHandler:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.tag }}
         exec:
           command:
             - /bin/bash
@@ -81,6 +81,9 @@ spec:
         retryPolicy:
           maxRetries: 10
   runtime:
+    securityContext:
+      # percona-server-mongodb needs run as root to have privilege to access to keyfile
+      runAsUser: 0
     initContainers:
       - command:
           - cp
@@ -97,10 +100,14 @@ spec:
           - bash
           - -c
           - |
-            CLIENT=`which mongosh>/dev/null&&echo mongosh||echo mongo`
+            client_path=$(whereis mongosh | awk '{print $2}')
+            CLIENT="mongosh"
+            if [ -z "$client_path" ]; then
+                CLIENT="mongo"
+            fi
             # used by backup agent
             cp -r /usr/bin/$CLIENT /kubeblocks
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         name: init-backup-agent
         volumeMounts:
@@ -108,7 +115,7 @@ spec:
             name: kubeblocks
     containers:
       - name: mongodb
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         ports:
           - name: mongodb
@@ -132,6 +139,8 @@ spec:
             value: $(MONGODB_ADMIN_USER)
           - name: MONGODB_ROOT_PASSWORD
             value: $(MONGODB_ADMIN_PASSWORD)
+          - name: USE_PSM
+            value: "true"
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
@@ -139,7 +148,7 @@ spec:
             name: mongodb-config
             subPath: mongodb.conf
           - mountPath: /etc/mongodb/keyfile
-            name: mongodb-keyfile
+            name: mongodb-config
             subPath: keyfile
           - name: scripts
             mountPath: /scripts
