@@ -112,18 +112,25 @@ spec:
       fallbackRole: primary
       account: admin
     backupMethods:
-      - name: shard-logical
+      - name: pbm-logical
         snapshotVolumes: false
-        actionSetName: mongodb-shard-logical
-      - name: shard-pitr
+        actionSetName: mongodb-shard-pbm-logical
+      - name: pbm-physical
         snapshotVolumes: false
-        actionSetName: mongodb-shard-pitr
+        actionSetName: mongodb-shard-pbm-physical
+      - name: pbm-pitr
+        snapshotVolumes: false
+        actionSetName: mongodb-shard-pbm-pitr
     schedules:
-      - backupMethod: shard-logical
+      - backupMethod: pbm-logical
         enabled: false
         cronExpression: "0 18 * * *"
         retentionPeriod: 7d
-      - backupMethod: shard-pitr
+      - backupMethod: pbm-physical
+        enabled: false
+        cronExpression: "0 18 * * *"
+        retentionPeriod: 7d
+      - backupMethod: pbm-pitr
         enabled: false
         cronExpression: "*/5 * * * *"
         retentionPeriod: 8d

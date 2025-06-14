@@ -215,3 +215,34 @@ EOF
 echo "INFO: PBM storage configuration completed."
   fi
 }
+
+function print_pbm_logs_by_event() {
+  local pbm_event=$1
+  local pbm_logs=$(pbm logs -e $pbm_event --tail 200 --mongodb-uri "$PBM_MONGODB_URI")
+  local purged_logs=$(echo "$pbm_logs" | awk -v start="$PBM_LOGS_START_TIME" '$1 >= start')
+  if [ -z "$purged_logs" ]; then
+    return
+  fi
+  echo "$purged_logs"
+}
+
+function print_pbm_tail_logs() {
+  pbm logs --tail 20 --mongodb-uri "$PBM_MONGODB_URI"
+}
+
+
+function wait_for_other_operations() {
+  running_status=$(pbm status --mongodb-uri "$PBM_MONGODB_URI" -o json | jq -r '.running')
+  local retry_count=0
+  local max_retries=60
+  while [ -n "$running_status" ] && [ $retry_count -lt $max_retries ]; do
+    retry_count=$((retry_count+1))
+    echo "INFO: Other operation $(echo "$running_status" | jq -r '.type')are running, waiting... ($retry_count/$max_retries)"
+    sleep 5
+    running_status=$(pbm status --mongodb-uri "$PBM_MONGODB_URI" -o json | jq -r '.running')
+  done
+  if [ $retry_count -ge $max_retries ]; then
+    echo "ERROR: Other operations are still running after $max_retries retries"
+    exit 1
+  fi
+}
