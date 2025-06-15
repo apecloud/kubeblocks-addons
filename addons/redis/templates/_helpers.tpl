@@ -115,31 +115,17 @@ redis-twemproxy-0.5-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
-Define redis 7.X component configuration template name
+Define redis component script template name
 */}}
-{{- define "redis7.configurationTemplate" -}}
-redis7-config-template-{{ .Chart.Version }}
+{{- define "redis.scriptsTemplate" -}}
+redis-scripts-template-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
-Define redis cluster component 7.X configuration template name
+Define redis cluster component script template name
 */}}
-{{- define "redisCluster7.configurationTemplate" -}}
-redis-cluster7-config-template-{{ .Chart.Version }}
-{{- end -}}
-
-{{/*
-Define redis 7.X component script template name
-*/}}
-{{- define "redis7.scriptsTemplate" -}}
-redis7-scripts-template-{{ .Chart.Version }}
-{{- end -}}
-
-{{/*
-Define redis cluster 7.X component script template name
-*/}}
-{{- define "redisCluster7.scriptsTemplate" -}}
-redis-cluster7-scripts-template-{{ .Chart.Version }}
+{{- define "redisCluster.scriptsTemplate" -}}
+redis-cluster-scripts-template-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*

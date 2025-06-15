@@ -58,7 +58,7 @@ spec:
     scrapePort: http-metrics
   configs:
     - name: redis-cluster-config
-      template: {{ include "redisCluster7.configurationTemplate" $ }}
+      template: {{ printf "redis-cluster%s-config-template-%s" .major $.Chart.Version }}
       namespace: {{ $.Release.Namespace }}
       volumeName: redis-cluster-config
       externalManaged: true
@@ -69,7 +69,7 @@ spec:
       defaultMode: 0444
   scripts:
     - name: redis-cluster-scripts
-      template: {{ include "redisCluster7.scriptsTemplate" $ }}
+      template: {{ include "redisCluster.scriptsTemplate" $ }}
       namespace: {{ $.Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555

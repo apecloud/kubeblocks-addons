@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "redis7.scriptsTemplate" . }}
+  name: {{ printf "redis-cluster-scripts-template-%s" .Chart.Version }}
   labels:
     {{- include "redis.labels" . | nindent 4 }}
   annotations:
@@ -20,8 +20,6 @@ data:
     {{- include "kblib.strings.is_empty" $ | nindent 4 }}
     {{- include "kblib.strings.equals" $ | nindent 4 }}
     {{- include "kblib.strings.split" $ | nindent 4 }}
-    {{- include "kblib.envs.env_exist" $ | nindent 4 }}
-    {{- include "kblib.envs.env_exists" $ | nindent 4 }}
-  {{- with include "redis.extend.scripts" . }}
+  {{- with include "redis-cluster.extend.scripts" . }}
   {{- . | nindent 2 }}
   {{- end }}

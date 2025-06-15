@@ -61,7 +61,7 @@ spec:
     scrapePort: http-metrics
   configs:
     - name: redis-replication-config
-      template: {{ include "redis7.configurationTemplate" $ }}
+      template: {{ printf "redis%s-config-template-%s" .major $.Chart.Version }}
       namespace: {{ $.Release.Namespace }}
       volumeName: redis-config
       externalManaged: true
@@ -72,7 +72,7 @@ spec:
       defaultMode: 0444
   scripts:
     - name: redis-scripts
-      template: {{ include "redis7.scriptsTemplate" $ }}
+      template: {{ include "redis.scriptsTemplate" $ }}
       namespace: {{ $.Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555

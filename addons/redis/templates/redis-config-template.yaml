@@ -1,0 +1,14 @@
+{{- range .Values.redisVersions }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ printf "redis%s-config-template-%s" .major $.Chart.Version }}
+  labels:
+    {{- include "redis.labels" $ | nindent 4 }}
+  annotations:
+    {{- include "redis.annotations" $ | nindent 4 }}
+data:
+  redis.conf: |-
+    {{- $.Files.Get (printf "config/redis%s-config.tpl" .major) | nindent 4 }}
+{{- end }}
