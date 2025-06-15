@@ -8,9 +8,25 @@ export_pbm_env_vars
 
 set_backup_config_env
 
+export_logs_start_time_env
+
+function handle_restore_exit() {
+  exit_code=$?
+  if [ $exit_code -ne 0 ]; then
+    print_pbm_tail_logs
+
+    echo "failed with exit code $exit_code"
+    exit 1
+  fi
+}
+
+trap handle_restore_exit EXIT
+
+wait_for_other_operations
+
 sync_pbm_storage_config
 
-pbm config --force-resync --mongodb-uri "$PBM_MONGODB_URI"
+pbm config --force-resync --mongodb-uri "$PBM_MONGODB_URI" --wait
 extras=$(cat /dp_downward/status_extras)
 backup_name=$(echo "$extras" | jq -r '.[0].backup_name')
 
@@ -81,3 +97,5 @@ if pbm status --mongodb-uri "$PBM_MONGODB_URI" | grep -q "restore"; then
     exit 1
 fi
 pbm restore $backup_name --mongodb-uri "$PBM_MONGODB_URI" --replset-remapping "$mappings" --wait
+
+print_pbm_logs_by_event "restore"

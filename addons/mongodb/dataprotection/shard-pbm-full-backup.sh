@@ -10,6 +10,8 @@ export_pbm_env_vars
 
 set_backup_config_env
 
+export_logs_start_time_env
+
 function handle_backup_exit() {
   exit_code=$?
   if [ $exit_code -ne 0 ]; then
@@ -31,7 +33,7 @@ echo "INFO: Starting $PBM_BACKUP_TYPE backup for MongoDB..."
 backup_result=$(pbm backup --type=$PBM_BACKUP_TYPE --mongodb-uri "$PBM_MONGODB_URI" --wait -o json)
 backup_name=$(echo "$backup_result" | jq -r '.name')
 extras=$(buildJsonString "" "backup_name" "$backup_name")
-extras=$(buildJsonString "" "backup_type" "$PBM_BACKUP_TYPE")
+extras=$(buildJsonString $extras "backup_type" "$PBM_BACKUP_TYPE")
 
 describe_result=$(pbm describe-backup --mongodb-uri "$PBM_MONGODB_URI" "$backup_name" -o json)
 backup_status=$(echo "$describe_result" | jq -r '.status')
@@ -49,4 +51,3 @@ total_size=$(echo "$describe_result" | jq -r '.size')
 DP_save_backup_status_info "$total_size" "$start_time" "$end_time" "" "{$extras}"
 
 print_pbm_logs_by_event "backup"
-

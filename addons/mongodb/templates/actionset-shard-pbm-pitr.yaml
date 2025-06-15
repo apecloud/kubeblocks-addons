@@ -14,7 +14,7 @@ spec:
     - name: PBM_COMPRESSION
       value: s2
     - name: PBM_PURGE_HOUR
-      value: 20
+      value: "20"
   backupType: Continuous
   backup:
     preBackup: []
@@ -30,14 +30,14 @@ spec:
         - -c
         - |
           {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 10 }}
-          {{- .Files.Get "dataprotection/shard-pitr-backup.sh" | nindent 10 }}
+          {{- .Files.Get "dataprotection/shard-pbm-pitr-backup.sh" | nindent 10 }}
     preDelete:
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:{{ .Values.image.percona.backup.tag }}
       command:
         - bash
         - -c
         - |
-          {{- .Files.Get "dataprotection/shard-pitr-delete.sh" | nindent 10 }}
+          {{- .Files.Get "dataprotection/shard-pbm-backup-delete.sh" | nindent 10 }}
 
   restore:
     postReady:

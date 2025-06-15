@@ -1,6 +1,4 @@
 #!/bin/bash
-# if the script exits with a non-zero exit code, touch a file to indicate that the backup failed,
-# the sync progress container will check this file and exit if it exists
 function handle_exit() {
   exit_code=$?
   if [ $exit_code -ne 0 ]; then
@@ -218,15 +216,18 @@ echo "INFO: PBM storage configuration completed."
 
 function print_pbm_logs_by_event() {
   local pbm_event=$1
-  local pbm_logs=$(pbm logs -e $pbm_event --tail 200 --mongodb-uri "$PBM_MONGODB_URI")
+  # echo "INFO: Printing PBM logs by event: $pbm_event"
+  local pbm_logs=$(pbm logs -e $pbm_event --tail 200 --mongodb-uri "$PBM_MONGODB_URI" > /dev/null)
   local purged_logs=$(echo "$pbm_logs" | awk -v start="$PBM_LOGS_START_TIME" '$1 >= start')
   if [ -z "$purged_logs" ]; then
     return
   fi
   echo "$purged_logs"
+  # echo "INFO: PBM logs by event: $pbm_event printed."
 }
 
 function print_pbm_tail_logs() {
+  echo "INFO: Printing PBM tail logs"
   pbm logs --tail 20 --mongodb-uri "$PBM_MONGODB_URI"
 }
 
@@ -235,9 +236,9 @@ function wait_for_other_operations() {
   running_status=$(pbm status --mongodb-uri "$PBM_MONGODB_URI" -o json | jq -r '.running')
   local retry_count=0
   local max_retries=60
-  while [ -n "$running_status" ] && [ $retry_count -lt $max_retries ]; do
+  while [ -n "$running_status" ] && [ "$running_status" != "{}" ] && [ $retry_count -lt $max_retries ]; do
     retry_count=$((retry_count+1))
-    echo "INFO: Other operation $(echo "$running_status" | jq -r '.type')are running, waiting... ($retry_count/$max_retries)"
+    echo "INFO: Other operation $(echo "$running_status" | jq -r '.type') are running, waiting... ($retry_count/$max_retries)"
     sleep 5
     running_status=$(pbm status --mongodb-uri "$PBM_MONGODB_URI" -o json | jq -r '.running')
   done
@@ -245,4 +246,9 @@ function wait_for_other_operations() {
     echo "ERROR: Other operations are still running after $max_retries retries"
     exit 1
   fi
+}
+
+function export_logs_start_time_env() {
+  local logs_start_time=$(date +"%Y-%m-%dT%H:%M:%SZ")
+  export PBM_LOGS_START_TIME="${logs_start_time}"
 }

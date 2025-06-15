@@ -8,40 +8,37 @@ trap handle_exit EXIT
 
 function enable_pitr() {
   local current_pitr_conf=$(pbm config --mongodb-uri "$PBM_MONGODB_URI" -o json | jq -r '.pitr')
-  local current_pitr_enabled=$(current_pitr_conf | jq -r '.enabled')
-  local current_oplog_span_min=$(current_pitr_conf | jq -r '.oplogSpanMin')
-  local current_pitr_compression=$(current_pitr_conf | jq -r '.compression')
+  local current_pitr_enabled=$(echo $current_pitr_conf | jq -r '.enabled')
+  local current_oplog_span_min=$(echo $current_pitr_conf | jq -r '.oplogSpanMin')
+  local current_pitr_compression=$(echo $current_pitr_conf | jq -r '.compression')
 
-  echo "INFO: Starting continuous backup for MongoDB..."
   if [ "$current_pitr_enabled" != "true" ] || [ "$current_oplog_span_min" != "$PBM_OPLOG_SPAN_MIN_MINUTES" ] || [ "$current_pitr_compression" != "$PBM_COMPRESSION" ]; then
+    echo "INFO: Pitr config is not equal to the current config, updating..."
     wait_for_other_operations
 
-    cat <<EOF | pbm config --mongodb-uri "$PBM_MONGODB_URI" --file /dev/stdin > /dev/null
-pitr:
-  enabled: true
-  oplogSpanMin: $PBM_OPLOG_SPAN_MIN_MINUTES
-  compression: $PBM_COMPRESSION
-EOF
+    pbm config --mongodb-uri "$PBM_MONGODB_URI" --set pitr.enabled=true,pitr.oplogSpanMin=$PBM_OPLOG_SPAN_MIN_MINUTES,pitr.compression=$PBM_COMPRESSION
+    echo "INFO: Pitr config updated."
   fi
-  echo "INFO: Continuous backup enabled."
 }
 
 function disable_pitr() {
+  echo "INFO: Disabling Pitr..."
   pbm config --set pitr.enabled=false --mongodb-uri "$PBM_MONGODB_URI"
-  echo "INFO: Continuous backup disabled."
-}
-
-function export_logs_start_time_env() {
-  local logs_start_time=$(date +"%Y-%m-%dT%H:%M:%SZ")
-  export PBM_LOGS_START_TIME="${logs_start_time}"
+  echo "INFO: Pitr disabled."
 }
 
 function upload_continuous_backup_info() {
+  echo "INFO: Uploading continuous backup info..."
   local pitr_chunks_result=$(pbm status --mongodb-uri "$PBM_MONGODB_URI" -o json | jq -r '.backups.pitrChunks')
   echo "INFO: Continuous backup result:"
   echo "$(echo $pitr_chunks_result | jq)"
-  local filtered_sorted_chunks=$(echo "$pitr_chunks_result" | jq -r '.pitrChunks' | jq 'map(select(.noBaseSnapshot != true)) | sort_by(.range.end)')
-  if [ -z "$filtered_sorted_chunks" ]; then
+  local pitr_chunks_arr=$(echo "$pitr_chunks_result" | jq -r '.pitrChunks')
+  if [ -z "$pitr_chunks_arr" ] || [ "$pitr_chunks_arr" = "null" ] || [ "$pitr_chunks_arr" = "[]" ]; then
+    echo "INFO: No oplog found."
+    return
+  fi
+  local filtered_sorted_chunks=$(echo "$pitr_chunks_arr" | jq 'map(select(.noBaseSnapshot != true)) | sort_by(.range.end)')
+  if [ -z "$filtered_sorted_chunks" ] || [ "$filtered_sorted_chunks" = "null" ] || [ "$filtered_sorted_chunks" = "[]" ]; then
     echo "INFO: No oplog found."
     return
   fi
@@ -55,16 +52,22 @@ function upload_continuous_backup_info() {
   local backup_type="continuous"
   local extras=$(buildJsonString "" "backup_type" "$backup_type")
   DP_save_backup_status_info "$total_size" "$start_time" "$end_time" "" "{$extras}"
+  echo "INFO: Continuous backup info uploaded."
 }
 
 function sync_pbm_config_from_storage() {
+  echo "INFO: Syncing PBM config from storage..."
   pbm config --force-resync --wait --mongodb-uri "$PBM_MONGODB_URI"
   print_pbm_logs_by_event "resync"
+  echo "INFO: PBM config synced from storage."
 }
 
 function purge_pitr_chunks() {
+  echo "INFO: Purging PBM chunks..."
   current_hour=$(date -u +"%H")
-  if [ "$current_hour" != "$PBM_PURGE_HOUR" ]; then
+  current_minute=$(date -u +"%M")
+  if [ "$current_hour" != "$PBM_PURGE_HOUR" ] || [ "$current_minute" -gt 10 ]; then
+    echo "INFO: Not time to purge PBM chunks."
     return
   fi
   
@@ -73,8 +76,14 @@ function purge_pitr_chunks() {
   sync_pbm_config_from_storage
 
   local pitr_chunks_result=$(pbm status --mongodb-uri "$PBM_MONGODB_URI" -o json | jq -r '.backups.pitrChunks')
-  local filtered_sorted_chunks=$(echo "$pitr_chunks_result" | jq -r '.pitrChunks' | jq -e 'map(select(.noBaseSnapshot == true)) | sort_by(.range.end)')
-  if [ -z "$filtered_sorted_chunks" ] || [ "$filtered_sorted_chunks" = "[]" ]; then
+  local pitr_chunks_arr=$(echo "$pitr_chunks_result" | jq -r '.pitrChunks')
+  if [ -z "$pitr_chunks_arr" ] || [ "$pitr_chunks_arr" = "null" ] || [ "$pitr_chunks_arr" = "[]" ]; then
+    echo "INFO: No no base snapshot chunks found."
+    return
+  fi
+  local filtered_sorted_chunks=$(echo "$pitr_chunks_arr" | jq -e 'map(select(.noBaseSnapshot == true)) | sort_by(.range.end)')
+  if [ -z "$filtered_sorted_chunks" ] || [ "$filtered_sorted_chunks" = "null" ] || [ "$filtered_sorted_chunks" = "[]" ]; then
+    echo "INFO: No no base snapshot chunks."
     return
   fi
   echo "INFO: No base snapshot chunks:"
@@ -86,7 +95,7 @@ function purge_pitr_chunks() {
 }
 
 function handle_pitr_exit() {
-
+  echo "INFO: Handling PBM pitr exit..."
   print_pbm_tail_logs
 
   disable_pitr
@@ -98,7 +107,6 @@ function handle_pitr_exit() {
     exit 1
   fi
 }
-
 
 export_pbm_env_vars
 
@@ -115,13 +123,13 @@ while true; do
 
   enable_pitr
 
-  upload_continuous_backup_info
-
   purge_pitr_chunks
+
+  upload_continuous_backup_info
 
   print_pbm_logs_by_event "pitr"
 
   export_logs_start_time_env
 
-  sleep 5
+  sleep 10
 done

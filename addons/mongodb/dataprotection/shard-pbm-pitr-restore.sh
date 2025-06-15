@@ -8,56 +8,25 @@ export_pbm_env_vars
 
 set_backup_config_env
 
-echo "INFO: Checking if PBM config exists for backup path: $S3_PREFIX"
-check_profile=$(pbm config --mongodb-uri "$PBM_MONGODB_URI" -o json | jq '.storage.s3.prefix')
-echo "INFO: Current PBM config prefix: $check_profile"
-if [ "$check_profile" = "$S3_PREFIX" ]; then
-    echo "INFO: PBM config already exists."
-else
-cat <<EOF | pbm config --mongodb-uri "$PBM_MONGODB_URI" --file /dev/stdin
-storage:
-  type: s3
-  s3:
-    region: ${S3_REGION}
-    bucket: ${S3_BUCKET}
-    prefix: ${S3_PREFIX}
-    endpointUrl: ${S3_ENDPOINT}
-    forcePathStyle: ${S3_FORCE_PATH_STYLE:-false}
-    credentials:
-      access-key-id: ${S3_ACCESS_KEY}
-      secret-access-key: ${S3_SECRET_KEY}
-EOF
-fi
-echo "INFO: PBM storage configuration completed."
+export_logs_start_time_env
 
-pbm config --force-resync --mongodb-uri "$PBM_MONGODB_URI"
-extras=$(cat /dp_downward/status_extras)
-backup_name=$(echo "$extras" | jq -r '.[0].backup_name')
+function handle_restore_exit() {
+  exit_code=$?
+  if [ $exit_code -ne 0 ]; then
+    print_pbm_tail_logs
 
-MAX_RETRIES=360
-RETRY_INTERVAL=2
-attempt=1
-describe_result=""
-set +e
-while [ $attempt -le $MAX_RETRIES ]; do
-    describe_result=$(pbm describe-backup --mongodb-uri "$PBM_MONGODB_URI" "$backup_name" -o json 2>&1)
-    if [ $? -eq 0 ] && [ -n "$describe_result" ]; then
-        break
-    elif echo "$describe_result" | grep -q "not found"; then
-        echo "INFO: Attempt $attempt: Failed to get backup metadata, retrying in ${RETRY_INTERVAL}s..."
-        sleep $RETRY_INTERVAL
-        ((attempt++))
-        continue
-    else
-        echo "ERROR: Failed to get backup metadata: $describe_result"
-    fi
-done
-set -e
-
-if [ -z "$describe_result" ]; then
-    echo "ERROR: Failed to get backup metadata after $MAX_RETRIES attempts"
+    echo "failed with exit code $exit_code"
     exit 1
-fi
+  fi
+}
+
+trap handle_restore_exit EXIT
+
+wait_for_other_operations
+
+sync_pbm_storage_config
+
+pbm config --force-resync --mongodb-uri "$PBM_MONGODB_URI" --wait
 
 configsvr_name=$(echo "$describe_result" | jq -r '.replsets[] | select(.configsvr == true) | .name')
 echo "INFO: Config server replica set name: $configsvr_name"
@@ -100,4 +69,13 @@ if pbm status --mongodb-uri "$PBM_MONGODB_URI" | grep -q "restore"; then
     echo "ERROR: Restore is already running, cannot start a new restore."
     exit 1
 fi
-pbm restore $backup_name --mongodb-uri "$PBM_MONGODB_URI" --replset-remapping "$mappings" --wait
+
+recovery_target_time=$(date -d "@${DP_RESTORE_TIMESTAMP}" +"%Y-%m-%dT%H:%M:%S")
+echo "INFO: Recovery target time: $recovery_target_time"
+
+echo "INFO: Starting restore..."
+pbm restore --time="$recovery_target_time" --mongodb-uri "$PBM_MONGODB_URI" --replset-remapping "$mappings" --wait
+
+print_pbm_logs_by_event "restore"
+
+echo "INFO: Restore completed."
