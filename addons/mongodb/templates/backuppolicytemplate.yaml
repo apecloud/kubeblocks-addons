@@ -106,3 +106,31 @@ spec:
             - name: data
               mountPath: {{ .Values.dataMountPath }}
     schedules: *backupSchedules
+  - componentDefs: [mongo-config-server]
+    target:
+      role: secondary
+      fallbackRole: primary
+      account: admin
+    backupMethods:
+      - name: pbm-logical
+        snapshotVolumes: false
+        actionSetName: mongodb-shard-pbm-logical
+      - name: pbm-physical
+        snapshotVolumes: false
+        actionSetName: mongodb-shard-pbm-physical
+      - name: pbm-pitr
+        snapshotVolumes: false
+        actionSetName: mongodb-shard-pbm-pitr
+    schedules:
+      - backupMethod: pbm-logical
+        enabled: false
+        cronExpression: "0 18 * * *"
+        retentionPeriod: 7d
+      - backupMethod: pbm-physical
+        enabled: false
+        cronExpression: "0 18 * * *"
+        retentionPeriod: 7d
+      - backupMethod: pbm-pitr
+        enabled: false
+        cronExpression: "*/5 * * * *"
+        retentionPeriod: 8d
