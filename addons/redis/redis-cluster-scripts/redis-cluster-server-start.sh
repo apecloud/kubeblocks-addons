@@ -125,8 +125,9 @@ get_current_comp_nodes_for_scale_out_replica() {
   fi
 
   # if the cluster_nodes_info contains only one line, it means that the cluster not be initialized
-  if [ "$(echo "$cluster_nodes_info" | wc -l)" -eq 1 ]; then
-    echo "Cluster nodes info contains only one line, returning..."
+  shard_count=$(echo "${ALL_SHARDS_COMPONENT_SHORT_NAMES}" | tr ',' '\n' | wc -l)
+  if [ "$(echo "$cluster_nodes_info" | wc -l)" -lt ${shard_count} ]; then
+    echo "Cluster nodes info contains less than ${shard_count} nodes, returning..."
     return
   fi
 

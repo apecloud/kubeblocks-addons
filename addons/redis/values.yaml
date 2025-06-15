@@ -9,36 +9,12 @@ fullnameOverride: ""
 ## @param compDefinitionVersion for each ComponentDefinition resources name created by this chart, that can avoid name conflict
 ## If specified, the component definition will use it as prefix.
 cmpdVersionPrefix:
-  redis:
-    major7:
-      minorAll: "redis-7"
-    major8:
-      minorAll: "redis-8"
-  redisSentinel:
-    major7:
-      minorAll: "redis-sentinel-7"
-    major8:
-      minorAll: "redis-sentinel-8"
-  redisCluster:
-    major7:
-      minorAll: "redis-cluster-7"
-    major8:
-      minorAll: "redis-cluster-8"
   redisTwemproxy:
     major05:
       minorAll: "redis-twemproxy-0.5"
 
 ## @param componentServiceVersion define default serviceVersion of each Component
 defaultServiceVersion:
-  redis:
-    major7: "7.2.7"
-    major8: "8.0.1"
-  redisSentinel:
-    major7: "7.2.7"
-    major8: "8.0.1"
-  redisCluster:
-    major7: "7.2.7"
-    major8: "8.0.1"
   redisTwemproxy:
     major: "0.5.0"
 
