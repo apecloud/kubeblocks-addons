@@ -1,15 +1,17 @@
+{{- range .Values.redisVersions }}
+---
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParamConfigRenderer
 metadata:
-  name: {{ include "redis7.pcrName" . }}
+  name: {{ printf "redis%s-pcr-%s" .major  $.Chart.Version }}
   labels:
-    {{- include "redis.labels" . | nindent 4 }}
+    {{- include "redis.labels" $ | nindent 4 }}
   annotations:
-    {{- include "redis.annotations" . | nindent 4 }}
+    {{- include "redis.annotations" $ | nindent 4 }}
 spec:
-  componentDef: {{ include "redis7.cmpdName" . }}
+  componentDef: {{ printf "%s-%s" .componentDef  $.Chart.Version }}
   parametersDefs:
-    - {{ include "redis7.paramsDefName" . }}
+    - {{ printf "redis%s-config-pd" .major }}
 
   configs:
     - name: redis.conf
@@ -17,3 +19,4 @@ spec:
         format: redis
       reRenderResourceTypes:
         - vscale
+{{- end }}
