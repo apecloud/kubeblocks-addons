@@ -69,7 +69,7 @@ build_announce_ip_and_port() {
       echo "replica-announce-port $redis_announce_port_value"
       echo "replica-announce-ip $redis_announce_host_value"
     } >> $redis_real_conf
-  elif ! is_empty "$FIXED_POD_IP_ENABLED"; then
+  elif [ "$FIXED_POD_IP_ENABLED" == "true" ]; then
       echo "" > /data/.fixed_pod_ip_enabled
       echo "redis use immutable pod ip $CURRENT_POD_IP to announce"
       echo "replica-announce-ip $CURRENT_POD_IP" >> /etc/redis/redis.conf

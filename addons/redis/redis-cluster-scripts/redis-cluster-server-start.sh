@@ -483,7 +483,7 @@ build_announce_ip_and_port() {
       echo "replica-announce-port $redis_announce_port_value"
       echo "replica-announce-ip $redis_announce_host_value"
     } >> $redis_real_conf
-  elif ! is_empty "$FIXED_POD_IP_ENABLED"; then
+  elif [ "$FIXED_POD_IP_ENABLED" == "true" ]; then
     echo "redis use fixed pod ip: $CURRENT_POD_IP to announce"
     echo "replica-announce-ip $CURRENT_POD_IP" >> $redis_real_conf
   else
@@ -513,7 +513,7 @@ build_cluster_announce_info() {
       echo "cluster-announce-hostname $current_pod_fqdn"
       echo "cluster-preferred-endpoint-type ip"
     } >> $redis_real_conf
-  elif ! is_empty "$FIXED_POD_IP_ENABLED"; then
+  elif [ "$FIXED_POD_IP_ENABLED" == "true" ]; then
     echo "redis cluster use fixed pod ip: $CURRENT_POD_IP to announce"
     {
       echo "cluster-announce-ip $CURRENT_POD_IP"

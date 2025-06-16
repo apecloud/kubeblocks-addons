@@ -243,7 +243,7 @@ register_to_sentinel_wrapper() {
     if ! is_empty "$redis_announce_host_value" && ! is_empty "$redis_announce_port_value"; then
       echo "register to sentinel:$sentinel_pod_fqdn with announce addr: redis_announce_host_value=$redis_announce_host_value, redis_announce_port_value=$redis_announce_port_value"
       register_to_sentinel "$sentinel_pod_fqdn" "$master_name" "$redis_announce_host_value" "$redis_announce_port_value"
-    elif ! is_empty "$FIXED_POD_IP_ENABLED"; then
+    elif [ "$FIXED_POD_IP_ENABLED" == "true" ]; then
       # the post provision action is executed in the primary pod, so we can get the primary pod ip from the env defined in the action context.
       echo "register to sentinel:$sentinel_pod_fqdn with fixed primary pod ip: fixed_pod_ip=$CURRENT_POD_IP, redis_default_service_port=$redis_default_service_port"
       register_to_sentinel "$sentinel_pod_fqdn" "$master_name" "$CURRENT_POD_IP" "$redis_default_service_port"
