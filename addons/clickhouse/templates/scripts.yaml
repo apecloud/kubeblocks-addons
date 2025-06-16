@@ -5,8 +5,14 @@ metadata:
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
 data:
+  common.sh: |
+    {{- .Files.Get "scripts/common.sh" | nindent 4 }}
   keeper-role-probe.sh: |
     {{- .Files.Get "scripts/keeper-role-probe.sh" | nindent 4 }}
+  keeper-member-join.sh: |
+    {{- .Files.Get "scripts/keeper-member-join.sh" | nindent 4 }}
+  keeper-member-leave.sh: |
+    {{- .Files.Get "scripts/keeper-member-leave.sh" | nindent 4 }}
   bootstrap-server.sh: |
     {{- .Files.Get "scripts/bootstrap-server.sh" | nindent 4 }}
   bootstrap-keeper.sh: |
