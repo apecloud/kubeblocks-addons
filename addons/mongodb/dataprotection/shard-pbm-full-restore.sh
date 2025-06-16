@@ -26,7 +26,7 @@ wait_for_other_operations
 
 sync_pbm_storage_config
 
-pbm config --force-resync --mongodb-uri "$PBM_MONGODB_URI" --wait
+pbm config --force-resync --mongodb-uri "$PBM_MONGODB_URI" --wait --wait-time 300s
 extras=$(cat /dp_downward/status_extras)
 backup_name=$(echo "$extras" | jq -r '.[0].backup_name')
 

@@ -28,8 +28,9 @@ function disable_pitr() {
 }
 
 function upload_continuous_backup_info() {
+  local status_result=$(pbm status --mongodb-uri "$PBM_MONGODB_URI" -o json)
   echo "INFO: Uploading continuous backup info..."
-  local pitr_chunks_result=$(pbm status --mongodb-uri "$PBM_MONGODB_URI" -o json | jq -r '.backups.pitrChunks')
+  local pitr_chunks_result=$(echo "$status_result" | jq -r '.backups.pitrChunks')
   echo "INFO: Continuous backup result:"
   echo "$(echo $pitr_chunks_result | jq)"
   local pitr_chunks_arr=$(echo "$pitr_chunks_result" | jq -r '.pitrChunks')
@@ -51,13 +52,34 @@ function upload_continuous_backup_info() {
 
   local backup_type="continuous"
   local extras=$(buildJsonString "" "backup_type" "$backup_type")
+
+  local pitr_nodes=$(echo "$status_result" | jq -r '.pitr.nodes?[]?')
+  local shardsvr=""
+  local configsvr=""
+  while IFS= read -r node; do
+    if [[ -n "$node" ]]; then
+      # Extract the text before the first "/"
+      local node_name=${node%%/*}
+      if [[ "$node" == *"config"* ]]; then
+        configsvr="$node_name"
+      else
+        if [ -z "$shardsvr" ]; then
+          shardsvr="$node_name"
+        else
+          shardsvr="$shardsvr,$node_name"
+        fi
+      fi
+    fi
+  done <<< "$pitr_nodes"
+  extras=$(buildJsonString $extras "shardsvr" "$shardsvr")
+  extras=$(buildJsonString $extras "configsvr" "$configsvr")
   DP_save_backup_status_info "$total_size" "$start_time" "$end_time" "" "{$extras}"
   echo "INFO: Continuous backup info uploaded."
 }
 
 function sync_pbm_config_from_storage() {
   echo "INFO: Syncing PBM config from storage..."
-  pbm config --force-resync --wait --mongodb-uri "$PBM_MONGODB_URI"
+  pbm config --force-resync --mongodb-uri "$PBM_MONGODB_URI" --wait --wait-time 300s
   print_pbm_logs_by_event "resync"
   echo "INFO: PBM config synced from storage."
 }

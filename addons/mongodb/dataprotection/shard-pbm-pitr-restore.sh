@@ -26,11 +26,19 @@ wait_for_other_operations
 
 sync_pbm_storage_config
 
-pbm config --force-resync --mongodb-uri "$PBM_MONGODB_URI" --wait
+pbm config --force-resync --mongodb-uri "$PBM_MONGODB_URI" --wait --wait-time 300s
 
-configsvr_name=$(echo "$describe_result" | jq -r '.replsets[] | select(.configsvr == true) | .name')
+export DP_BACKUP_INFO_FILE="kubeblocks-backup.json"
+if [ "$(datasafed list ${DP_BACKUP_INFO_FILE})" == "${DP_BACKUP_INFO_FILE}" ]; then
+    backup_status=$(datasafed pull "/${DP_BACKUP_INFO_FILE}" - | jq -r '.status')
+else
+    echo "INFO: Backup has been deleted."
+    exit 1
+fi
+
+configsvr_name=$(echo "$backup_status" | jq -r '.extras[0].configsvr')
 echo "INFO: Config server replica set name: $configsvr_name"
-shardsvr_names=$(echo "$describe_result" | jq -r '[.replsets[] | select(.configsvr != true) | .name] | join(",")')
+shardsvr_names=$(echo "$backup_status" | jq -r '.extras[0].shardsvr')
 echo "INFO: Shard replica set names: $shardsvr_names"
 mappings=""
 IFS="," read -r -a shardsvr_array <<< "$shardsvr_names"
