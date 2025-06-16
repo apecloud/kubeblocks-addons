@@ -1,16 +1,23 @@
+{{- range .Values.redisVersions }}
+{{- $redisImage := printf "%s/%s:%s" ( $.Values.image.registry | default "docker.io" ) $.Values.image.repository .defaultImageTag }}
+{{- $redisStartScripts := "redis-start.sh" }}
+{{- if eq .major "8" }}
+  {{- $redisImage = printf "%s/%s:%s" ( $.Values.ceImage.registry | default "docker.io" )  $.Values.ceImage.repository .defaultImageTag }}
+{{- end }}
+---
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "redis7.cmpdName" . }}
+  name: {{ printf "%s-%s" .componentDef $.Chart.Version }}
   labels:
-    {{- include "redis.labels" . | nindent 4 }}
+    {{- include "redis.labels" $ | nindent 4 }}
   annotations:
-    {{- include "redis.annotations" . | nindent 4 }}
+    {{- include "redis.annotations" $ | nindent 4 }}
 spec:
   provider: kubeblocks
-  description: A Redis v7.0 component definition for Kubernetes
+  description: A Redis v{{ .major }}.0 component definition for Kubernetes
   serviceKind: redis
-  serviceVersion: {{ .Values.defaultServiceVersion.redis.major7 }}
+  serviceVersion: {{ .serviceVersion }}
   podManagementPolicy: OrderedReady
   services:
     - name: redis
@@ -44,7 +51,7 @@ spec:
       updatePriority: 1
       participatesInQuorum: false
   logConfigs:
-    {{- range $name,$pattern := .Values.logConfigs }}
+    {{- range $name,$pattern := $.Values.logConfigs }}
     - name: {{ $name }}
       filePathPattern: {{ $pattern }}
     {{- end }}
@@ -54,22 +61,22 @@ spec:
     scrapePort: http-metrics
   configs:
     - name: redis-replication-config
-      template: {{ include "redis7.configurationTemplate" . }}
-      namespace: {{ .Release.Namespace }}
+      template: {{ printf "redis%s-config-template-%s" .major $.Chart.Version }}
+      namespace: {{ $.Release.Namespace }}
       volumeName: redis-config
       externalManaged: true
     - name: redis-metrics-config
-      template: {{ include "redis.metricsConfiguration" . }}
-      namespace: {{ .Release.Namespace }}
+      template: {{ include "redis.metricsConfiguration" $ }}
+      namespace: {{ $.Release.Namespace }}
       volumeName: redis-metrics-config
       defaultMode: 0444
   scripts:
     - name: redis-scripts
-      template: {{ include "redis7.scriptsTemplate" . }}
-      namespace: {{ .Release.Namespace }}
+      template: {{ include "redis.scriptsTemplate" $ }}
+      namespace: {{ $.Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
-  {{- include "kblib.syncer.policyRules" . | nindent 2 }}
+  {{- include "kblib.syncer.policyRules" $ | nindent 2 }}
   systemAccounts:
     - name: default
       initAccount: true
@@ -88,6 +95,10 @@ spec:
           - http-metrics
           - server-metrics
   vars:
+  {{- if eq .major "8" }}
+    - name: IS_REDIS8
+      value: "true"
+  {{- end }}
     ## the name of current cluster instance
     - name: CLUSTER_NAME
       valueFrom:
@@ -203,7 +214,7 @@ spec:
     - name: SENTINEL_COMPONENT_NAME
       valueFrom:
         componentVarRef:
-          compDef: {{ include "redisSentinel7.cmpdName" . }}
+          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
           optional: true
           componentName: Required
     ## the username of redis sentinel for redis connection, it is optional
@@ -211,7 +222,7 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the redis-sentinel component definition name
-          compDef: {{ include "redisSentinel7.cmpdName" . }}
+          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
           name: default
           optional: true
           username: Required
@@ -220,27 +231,27 @@ spec:
       valueFrom:
         credentialVarRef:
           ## reference the redis-sentinel component definition name
-          compDef: {{ include "redisSentinel7.cmpdName" . }}
+          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
           name: default
           optional: true
           password: Required
     - name: SENTINEL_POD_NAME_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ include "redisSentinel7.cmpdName" . }}
+          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
           optional: true
           podNames: Required
     - name: SENTINEL_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ include "redisSentinel7.cmpdName" . }}
+          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
           optional: true
           podFQDNs: Required
     ## the redis sentinel server port, if redis sentinel is in host network mode, the port will be allocated automatically by KubeBlocks, if not, the default port is 26379
     - name: SENTINEL_SERVICE_PORT
       valueFrom:
         hostNetworkVarRef:
-          compDef: {{ include "redisSentinel7.cmpdName" . }}
+          compDef: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
           optional: true
           container:
             name: redis-sentinel
@@ -266,7 +277,7 @@ spec:
           - getrole
     postProvision:
       exec:
-        image: {{ include "redis7.image" . }}
+        image: {{ $redisImage }}
         container: redis
         command:
           - /bin/bash
@@ -294,7 +305,7 @@ spec:
       preCondition: RuntimeReady
     accountProvision:
       exec:
-        image: {{ include "redis7.image" . }}
+        image: {{ $redisImage }}
         container: redis
         command:
           - sh
@@ -303,7 +314,7 @@ spec:
           - "redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD acl save "
     switchover:
       exec:
-        image: {{ include "redis7.image" . }}
+        image: {{ $redisImage }}
         container: redis
         command:
           - /bin/bash
@@ -318,22 +329,22 @@ spec:
           - /bin/dbctl
           - /config
           - /tools/
-        image: {{ .Values.dbctlImage.registry | default "docker.io" }}/{{ .Values.dbctlImage.repository }}:{{ .Values.dbctlImage.tag }}
-        imagePullPolicy: {{ default "IfNotPresent" .Values.dbctlImage.pullPolicy }}
+        image: {{ $.Values.dbctlImage.registry | default "docker.io" }}/{{ $.Values.dbctlImage.repository }}:{{ $.Values.dbctlImage.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" $.Values.dbctlImage.pullPolicy }}
         volumeMounts:
           - mountPath: /tools
             name: tools
     containers:
       - name: redis
-        image: {{ include "redis7.image" . }}
-        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
-        command: [ "/scripts/redis-start.sh" ]
+        image: {{ $redisImage  }}
+        imagePullPolicy: {{ default "IfNotPresent" $.Values.image.pullPolicy }}
+        command: [ "/scripts/{{ $redisStartScripts }}" ]
         ports:
           - name: redis
             containerPort: 6379
         volumeMounts:
           - name: data
-            mountPath: {{ .Values.dataMountPath }}
+            mountPath: {{ $.Values.dataMountPath }}
           - name: redis-config
             mountPath: /etc/conf
           - name: scripts
@@ -377,8 +388,8 @@ spec:
                 - -c
                 - /scripts/redis-pre-stop.sh
       - name: metrics
-        image: {{ include "metrics.image" . }}
-        imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
+        image: {{ include "metrics.image" $ }}
+        imagePullPolicy: {{ $.Values.metrics.image.pullPolicy | quote }}
         securityContext:
           runAsNonRoot: true
           runAsUser: 1001
@@ -398,9 +409,10 @@ spec:
           - "--config=/opt/conf/metrics-config.yaml"
         ports:
           - name: http-metrics
-            containerPort: {{ .Values.metrics.service.port }}
+            containerPort: {{ $.Values.metrics.service.port }}
           - name: server-metrics
-            containerPort: {{ .Values.metrics.service.serverPort }}
+            containerPort: {{ $.Values.metrics.service.serverPort }}
         volumeMounts:
           - name: redis-metrics-config
             mountPath: /opt/conf
+{{- end }}
