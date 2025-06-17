@@ -13,7 +13,7 @@ kubectl create -f https://github.com/apecloud/kubeblocks/releases/download/v0.9.
 # If github is not accessible or very slow for you, please use following command instead
 kubectl create -f https://jihulab.com/api/v4/projects/98723/packages/generic/kubeblocks/v0.9.0/kubeblocks_crds.yaml
 
-# Add Helm repo 
+# Add Helm repo
 helm repo add kubeblocks https://apecloud.github.io/helm-charts
 # If github is not accessible or very slow for you, please use following repo instead
 helm repo add kubeblocks https://jihulab.com/api/v4/projects/85949/packages/helm/stable
@@ -24,18 +24,18 @@ helm repo update
 # Install KubeBlocks
 helm install kubeblocks kubeblocks/kubeblocks --namespace kb-system --create-namespace --version="0.9.0"
 ```
- 
+
 
 ## Examples
 
-### [Create](cluster.yaml) 
-Create a redis replication cluster (with an official Redis Sentinel HA) with specified cluster definition 
+### [Create](cluster.yaml)
+Create a redis replication cluster (with an official Redis Sentinel HA) with specified cluster definition
 ```bash
 kubectl apply -f examples/redis/cluster.yaml
 ```
 Starting from kubeblocks 0.9.0, we introduced a more flexible cluster creation method based on components, allowing customization of cluster topology, functionalities and scale according to specific requirements.
 
-Create a redis replication cluster (with an official Redis Sentinel HA) with specified component definition 
+Create a redis replication cluster (with an official Redis Sentinel HA) with specified component definition
 ```bash
 kubectl apply -f examples/redis/cluster-cmpd.yaml
 ```
@@ -48,6 +48,10 @@ kubectl apply -f examples/redis/cluster-cd-topology.yaml
 Or you want to create a redis sharding cluster (An official distributed Redis) with specified component definition
 ```bash
 kubectl apply -f examples/redis/cluster-sharding.yaml
+```
+Or you can create a redis replication cluster (with an official Redis Sentinel HA) with NodePort service type to advertise addresses
+```bash
+kubectl apply -f examples/redis/replication-with-node-port.yaml
 ```
 
 ### [Horizontal scaling](horizontalscale.yaml)
@@ -111,8 +115,8 @@ BackupRepo is the storage repository for backup data, using the full backup and 
 kubectl create secret generic <storage-provider>-credential-for-backuprepo\
   --from-literal=accessKeyId=<ACCESS KEY> \
   --from-literal=secretAccessKey=<SECRET KEY> \
-  -n kb-system 
-  
+  -n kb-system
+
 kubectl apply -f examples/redis/backuprepo.yaml
 ```
 

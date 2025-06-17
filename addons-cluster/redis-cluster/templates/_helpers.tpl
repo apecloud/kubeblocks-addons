@@ -137,8 +137,8 @@ Define redis sentinel ComponentSpec with ComponentDefinition.
       memory:  {{ print .Values.sentinel.memory "Gi" | quote }}
   volumeClaimTemplates:
     - name: data
-      storageClassName: {{ .Values.sentinel.storageClassName }}
       spec:
+        storageClassName: {{ .Values.sentinel.storageClassName | quote }}
         accessModes:
           - ReadWriteOnce
         resources:
