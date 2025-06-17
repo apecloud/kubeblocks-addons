@@ -88,7 +88,7 @@ function purge_pitr_chunks() {
   echo "INFO: Purging PBM chunks..."
   current_hour=$(date -u +"%H")
   current_minute=$(date -u +"%M")
-  if [ "$current_hour" != "$PBM_PURGE_HOUR" ] || [ "$current_minute" -gt 10 ]; then
+  if [ "$current_hour" != "$PBM_PURGE_HOUR" ] || [ $(( 10#$current_minute )) -gt $(( 10#$PBM_PURGE_MINUTES )) ]; then
     echo "INFO: Not time to purge PBM chunks."
     return
   fi
@@ -137,6 +137,10 @@ set_backup_config_env
 export_logs_start_time_env
 
 trap handle_pitr_exit EXIT
+
+wait_for_other_operations
+
+sync_pbm_config_from_storage
 
 while true; do
   wait_for_other_operations

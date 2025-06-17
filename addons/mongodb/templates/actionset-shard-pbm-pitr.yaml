@@ -9,12 +9,20 @@ spec:
   env:
     - name: DATA_DIR
       value: {{ .Values.dataMountPath }}/db
+    - name: PBM_BACKUP_DIR_NAME
+      value: "pbm-backups"
     - name: PBM_OPLOG_SPAN_MIN_MINUTES
       value: "5"
     - name: PBM_COMPRESSION
       value: s2
     - name: PBM_PURGE_HOUR
       value: "20"
+    - name: PBM_PURGE_MINUTES
+      value: "10"
+    - name: PBM_BACKUP_TYPE
+      value: continuous
+    - name: RETAIN_PITR_FILES
+      value: "true"
   backupType: Continuous
   backup:
     preBackup: []

@@ -9,6 +9,8 @@ spec:
   env:
     - name: DATA_DIR
       value: {{ .Values.dataMountPath }}/db
+    - name: PBM_BACKUP_DIR_NAME
+      value: "pbm-backups"
     - name: PBM_BACKUP_TYPE
       value: physical
   backupType: Full

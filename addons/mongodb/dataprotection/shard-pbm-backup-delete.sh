@@ -3,27 +3,29 @@ set -e
 set -o pipefail
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
-export DP_BACKUP_INFO_FILE="kubeblocks-backup.json"
+export DP_BACKUP_JSON="kubeblocks-backup.json"
 
 echo "INFO: Starting shard backup delete script..."
-if [ "$(datasafed list ${DP_BACKUP_INFO_FILE})" == "${DP_BACKUP_INFO_FILE}" ]; then
-    backup_status=$(datasafed pull "/${DP_BACKUP_INFO_FILE}" - | jq -r '.status')
-else
-    echo "INFO: Backup has been deleted."
-    exit 0
-fi
-echo "INFO: Backup status: $backup_status"
-
-backup_type=$(echo "$backup_status" | jq -r '.extras[0].backup_type')
-echo "INFO: Backup type: $backup_type"
-if [ "$backup_type" = "continuous" ]; then
-    export DATASAFED_BACKEND_BASE_PATH="${backup_path#/}/backups"
-    pbm_dir_name="pbmPitr"
-    if [ -n "$(datasafed list $pbm_dir_name)" ]; then
-        datasafed rm $pbm_dir_name -r
-        echo "INFO: PBM pitr files deleted."
+if [ "$PBM_BACKUP_TYPE" = "continuous" ]; then
+    if [ "$RETAIN_PITR_FILES" = "true" ]; then
+        echo "INFO: Retain PBM pitr files, skip deleting."
+    else
+        backup_path=$(dirname "$DP_BACKUP_BASE_PATH")
+        export DATASAFED_BACKEND_BASE_PATH="${backup_path#/}/$PBM_BACKUP_DIR_NAME"
+        pbm_dir_name="pbmPitr"
+        if [ -n "$(datasafed list $pbm_dir_name)" ]; then
+            datasafed rm $pbm_dir_name -r
+            echo "INFO: PBM pitr files deleted."
+        fi
     fi
 else
+    if [ "$(datasafed list ${DP_BACKUP_JSON})" == "${DP_BACKUP_JSON}" ]; then
+        backup_status=$(datasafed pull "/${DP_BACKUP_JSON}" - | jq -r '.status')
+    else
+        echo "INFO: Backup has been deleted."
+        exit 0
+    fi
+    echo "INFO: Backup status: $backup_status"
     backup_name=$(echo "$backup_status" | jq -r '.extras[0].backup_name')
     echo "INFO: Backup name: $backup_name"
 
@@ -33,7 +35,7 @@ else
     fi
 
     backup_path=$(dirname "$DP_BACKUP_BASE_PATH")
-    export DATASAFED_BACKEND_BASE_PATH="${backup_path#/}/backups"
+    export DATASAFED_BACKEND_BASE_PATH="${backup_path#/}/$PBM_BACKUP_DIR_NAME"
     echo "INFO: Backup path: $DATASAFED_BACKEND_BASE_PATH"
     if [ -n "$(datasafed list $backup_name)" ]; then
         datasafed rm $backup_name -r

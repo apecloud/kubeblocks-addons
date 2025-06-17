@@ -124,7 +124,7 @@ function set_backup_config_env() {
   export S3_REGION="${region}"
   export S3_ENDPOINT="${endpoint}"
   export S3_BUCKET="${bucket}"
-  export S3_PREFIX="${backup_path#/}/backups"
+  export S3_PREFIX="${backup_path#/}/$PBM_BACKUP_DIR_NAME"
   
   DP_log "storage config have been extracted."
 }

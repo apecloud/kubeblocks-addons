@@ -139,7 +139,7 @@ spec:
             value: $(MONGODB_ADMIN_USER)
           - name: MONGODB_ROOT_PASSWORD
             value: $(MONGODB_ADMIN_PASSWORD)
-          - name: USE_PSM
+          - name: MONGODB_GRANT_ANYACTION_PRIVILEGE
             value: "true"
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
