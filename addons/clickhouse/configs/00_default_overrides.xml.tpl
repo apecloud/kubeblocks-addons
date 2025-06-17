@@ -148,12 +148,12 @@
   <!-- see https://github.com/ClickHouse/ClickHouse/issues/78830 -->
   <user_directories replace="replace">
     <users_xml>
-      <!-- Local users.xml directory (priority 2, local path) -->
+      <!-- Local users.xml directory (priority 1, local path) -->
       <path>/opt/bitnami/clickhouse/etc/users.xml</path>
     </users_xml>
     {{- if (index . "CH_KEEPER_POD_FQDN_LIST") }}
     <replicated>
-      <!-- Keeper-based replicated user directory (priority 1, keeper path, for backup and restore compatibility) -->
+      <!-- Keeper-based replicated user directory (priority 2, keeper path, for backup and restore compatibility) -->
       <zookeeper_path>/clickhouse/access</zookeeper_path>
     </replicated>
     {{- end }}
