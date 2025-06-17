@@ -7,10 +7,16 @@ image:
   repository: apecloud/mongo
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: 5.0.14 # 6.0.3-debian-11-r0
+  tag: 8.0.8 # 6.0.3-debian-11-r0
   syncer:
     repository: apecloud/syncer
-    tag: "0.5.0"
+    tag: test-wl-1.0
+  percona:
+    repository: apecloud/percona-server-mongodb
+    tag: 8.0.8
+    backup:
+      repository: apecloud/percona-backup-mongodb
+      tag: 2.9.1
 
 # refer: https://github.com/apecloud/wal-g/blob/kb-dev/docker/wal-g/Dockerfile-mongo
 # this image is built from Dockerfile of apecloud/wal-g forked from wal-g/wal-g.
@@ -123,3 +129,5 @@ enabledClusterVersions: [ ]
 resourceNamePrefix: ""
 
 useHostNetwork: false
+
+clusterDomain: "cluster.local"
