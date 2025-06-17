@@ -3,7 +3,7 @@
 set -exo pipefail
 
 output=$(/pd-ctl -u "$PD_ADDRESS" store delete addr "$KB_LEAVE_MEMBER_POD_FQDN:20160")
-if [[ $output != "Success!" ]]; then
+if [[ $output != "Success!" && ! $output =~ not\ found ]]; then
     echo "leave member $KB_LEAVE_MEMBER_POD_FQDN failed"
     exit 1
 fi
