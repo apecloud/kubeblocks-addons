@@ -29,7 +29,7 @@ spec:
       volumeName: scripts
       defaultMode: 0555  # for read and execute, mysql container switched user account.
   systemAccounts:
-    - name: admin
+    - name: root
       initAccount: true
       passwordGenerationPolicy:
         length: 16
@@ -229,7 +229,7 @@ spec:
         credentialVarRef:
           # use config server credential to access to mongos
           compDef: {{ include "mongodbShard.componentDefName" . }}
-          name: admin
+          name: root
           optional: false
           username: Required
     - name: MONGODB_ADMIN_PASSWORD
@@ -237,7 +237,7 @@ spec:
         credentialVarRef:
           # use config server credential to access to mongos
           compDef: {{ include "mongodbShard.componentDefName" . }}
-          name: admin
+          name: root
           optional: false
           password: Required
     - name: MONGOS_INTERNAL_SVC_NAME

@@ -55,7 +55,12 @@ shardingSpecs:
       serviceVersion: {{ .Values.version }}
       replicas: {{ .Values.replicas | default 3 }}
       systemAccounts: &adminAccounts
-        - name: admin
+        - name: root
+          {{- if and .Values.customSecretName .Values.customSecretNamespace }}
+          secretRef:
+            name: {{ .Values.customSecretName }}
+            namespace: {{ .Values.customSecretNamespace }}
+          {{- else }}
           passwordConfig:
             length: 16
             numDigits: 8
@@ -70,18 +75,37 @@ shardingSpecs:
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
 componentSpecs:
-  - name: config-server
+  - name: mongo-config-server
     componentDef: mongo-config-server
-    replicas: {{ .Values.cfgServer.replicas | default 3 }}
+    replicas: {{ .Values.configServer.replicas | default 3 }}
     systemAccounts: *adminAccounts
     serviceVersion: {{ .Values.version }}
     serviceAccountName: {{ include "kblib.serviceAccountName" . }}
     env:
       - name: MONGODB_BALANCER_ENABLED
         value: "{{ .Values.balancer.enabled }}"
-    {{- include "kblib.componentResources" . | indent 4 }}
-    {{- include "kblib.componentStorages" . | indent 4 }}
-  - name: mongos
+    {{- with .Values.configServer.tolerations }}
+    tolerations: {{ .| toYaml | nindent 6 }}
+    {{- end }}
+    resources:
+      limits:
+        cpu: {{ .Values.configServer.cpu | quote }}
+        memory: {{ print .Values.configServer.memory "Gi" | quote }}
+      requests:
+        cpu: {{ .Values.configServer.cpu | quote }}
+        memory: {{ print .Values.configServer.memory "Gi" | quote }}
+    volumeClaimTemplates:
+      - name: data
+        spec:
+          {{- if .Values.configServer.storageClassName }}
+          storageClassName: {{ .Values.configServer.storageClassName | quote }}
+          {{- end }}
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: {{ print .Values.configServer.storage "Gi" }}
+  - name: mongo-mongos
     componentDef: mongo-mongos
     replicas: {{ .Values.mongos.replicas | default 3 }}
     serviceVersion: {{ .Values.version }}
@@ -89,6 +113,14 @@ componentSpecs:
     env:
       - name: MONGODB_BALANCER_ENABLED
         value: "{{ .Values.balancer.enabled }}"
-    {{- include "kblib.componentResources" . | indent 4 }}
-    {{- include "kblib.componentServices" . | indent 4 }}
+    {{- with .Values.mongos.tolerations }}
+    tolerations: {{ .| toYaml | nindent 6 }}
+    {{- end }}
+    resources:
+      limits:
+        cpu: {{ .Values.mongos.cpu | quote }}
+        memory: {{ print .Values.mongos.memory "Gi" | quote }}
+      requests:
+        cpu: {{ .Values.mongos.cpu | quote }}
+        memory: {{ print .Values.mongos.memory "Gi" | quote }}
 {{- end }}

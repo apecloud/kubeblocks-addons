@@ -4,7 +4,7 @@
 
 ## @param version cluster version
 ##
-version: 8.0.4
+version: 8.0.8
 
 # @param clusterVersion cluster version for legacy API
 clusterVersion: mongodb-6.0
@@ -21,13 +21,28 @@ shards: 3
 ##
 replicas: 3
 
-## @param cfgServer.replicas, config server replica count, only for sharding mode
-cfgServer:
+# custom password of default user for redis by passing a secret
+# the secret must contain keys named 'username' and 'password'
+customSecretName: ""
+customSecretNamespace: ""
+
+## @param configServer.replicas, config server replica count, only for sharding mode
+configServer:
   replicas: 3
+  storageClassName:
+  cpu: 1
+  memory: 2
+  storage: 10
+  tolerations: []
+  customSecretName: ""
+  customSecretNamespace: ""
 
 ## @param mongos.replicas, mongos replica count, only for sharding mode
 mongos:
   replicas: 3
+  cpu: 1
+  memory: 2
+  tolerations: []
 
 ## @param balancer, enable or disable balancer, only for sharding mode
 balancer:
