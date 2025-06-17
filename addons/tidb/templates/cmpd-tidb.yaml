@@ -73,6 +73,8 @@ spec:
             mountPath: /var/log/tidb
           - name: config
             mountPath: /etc/tidb
+          - name: scripts
+            mountPath: scripts
       - name: slowlog
         imagePullPolicy: IfNotPresent
         command:
@@ -93,6 +95,12 @@ spec:
       template: {{ include "tidb.tidb.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: config
+  scripts:
+    - name: tidb-scripts
+      template: {{ include "tidb.cmScriptsName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
   tls:
     volumeName: tls 
     mountPath: /etc/pki/tls
