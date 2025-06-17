@@ -7,7 +7,7 @@ metadata:
 spec:
   provider: kubeblocks.io
   serviceKind: mongodb
-  serviceVersion: "8.0.4"
+  serviceVersion: "8.0.8"
   configs:
     - name: mongodb-config
       templateRef: {{ include "mongodbShard.configTplName" . }}
@@ -96,7 +96,7 @@ spec:
             fi
             # used by backup agent
             cp -r /usr/bin/$CLIENT /kubeblocks
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.percona.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         name: init-backup-agent
         volumeMounts:

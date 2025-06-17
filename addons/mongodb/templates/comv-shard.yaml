@@ -41,66 +41,77 @@ spec:
       images:
         mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:8.0.8
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        init-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:8.0.8
     - name: 8.0.4
       changes:
       serviceVersion: 8.0.4
       images:
         mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:8.0.4
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        init-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:8.0.4
     - name: 7.0.16
       changes:
       serviceVersion: 7.0.16
       images:
         mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:7.0.16
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        init-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:7.0.16
     - name: 7.0.12
       changes:
       serviceVersion: 7.0.12
       images:
         mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:7.0.12
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        init-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:7.0.12
     - name: 6.0.20
       changes:
       serviceVersion: 6.0.20
       images:
         mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:6.0.20
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        init-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:6.0.20
     - name: 6.0.16
       changes:
       serviceVersion: 6.0.16
       images:
         mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:6.0.16
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        init-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:6.0.16
     - name: 5.0.30
       changes:
       serviceVersion: 5.0.30
       images:
         mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:5.0.30
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        init-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:5.0.30
     - name: 5.0.28
       changes:
       serviceVersion: 5.0.28
       images:
         mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:5.0.28
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        init-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:5.0.28
     - name: 4.4.29
       changes:
       serviceVersion: 4.4.29
       images:
         mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:4.4.29
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        init-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:4.4.29
     - name: 4.2.24
       changes:
       serviceVersion: 4.2.24
       images:
         mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:4.2.24
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        init-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:4.2.24
     - name: 4.0.28
       changes:
       serviceVersion: 4.0.28
       images:
         mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:4.0.28
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        init-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:4.0.28
 ---
 
 apiVersion: apps.kubeblocks.io/v1alpha1

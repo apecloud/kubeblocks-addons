@@ -67,6 +67,7 @@ shardingSpecs:
             numSymbols: 0
             letterCase: MixedCases
             seed: {{ include "kblib.clusterName" . }}
+          {{- end }}
       env:
         # syncer uses this env to get sharding name
         - name: KB_SHARDING_NAME
