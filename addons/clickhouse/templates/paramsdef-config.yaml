@@ -1,7 +1,7 @@
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParametersDefinition
 metadata:
-  name: {{ include "clickhouse24.configParamsDefinition" . }}
+  name: {{ include "clickhouse.configParamsDefinition" . }}
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
 spec:
