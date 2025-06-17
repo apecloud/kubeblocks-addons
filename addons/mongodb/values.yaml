@@ -10,13 +10,13 @@ image:
   tag: 8.0.4 # 6.0.3-debian-11-r0
   syncer:
     repository: apecloud/syncer
-    tag: "0.5.0"
+    tag: 1.6
   percona:
-    repository: percona/percona-server-mongodb
+    repository: apecloud/percona-server-mongodb
     tag: 8.0.4
     backup:
-      repository: percona/percona-backup-mongodb
-      tag: 2.9.0
+      repository: apecloud/percona-backup-mongodb
+      tag: 2.9.1
   tools:
     repository: apecloud/kubeblocks-tools
     tag: 0.9.4
