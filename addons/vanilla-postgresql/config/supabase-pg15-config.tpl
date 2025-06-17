@@ -113,6 +113,9 @@ temp_file_limit = '{{ printf "%dkB" ( div $phy_memory 1024 ) }}'
 wal_level = logical
 wal_buffers = '{{ printf "%dMB" ( div ( min ( max ( div $phy_memory 2097152 ) 2048) 16384 ) 128 ) }}'
 
+# for pg_rewind
+wal_log_hints = 'true'
+
 # - Checkpoints -
 {{- $max_wal_size := min ( max ( div $phy_memory 2097152 ) 4096 ) 32768 }}
 {{- $min_wal_size := min ( max ( div $phy_memory 8388608 ) 2048 ) 8192 }}

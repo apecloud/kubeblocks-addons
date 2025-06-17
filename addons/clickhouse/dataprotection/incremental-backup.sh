@@ -1,13 +1,12 @@
 #!/bin/bash
-set -e
-set -o pipefail
+set -exo pipefail
 
 # TODO tls
 trap handle_exit EXIT
 generate_backup_config
 set_clickhouse_backup_config_env
 
-# 1. download parent backup and
+# 1. download parent backup
 export S3_PATH="$DP_BACKUP_ROOT_PATH/$DP_PARENT_BACKUP_NAME/$DP_TARGET_RELATIVE_PATH"
 fetch_backup "$DP_PARENT_BACKUP_NAME"
 

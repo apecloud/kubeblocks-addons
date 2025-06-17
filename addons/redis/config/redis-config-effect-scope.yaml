@@ -5,6 +5,3 @@ staticParameters:
   - maxclients
   - io-threads
   - io-threads-do-reads
-
-dynamicParameters:
-  - aof-timestamp-enabled

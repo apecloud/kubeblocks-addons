@@ -31,13 +31,34 @@ Create chart name and version as used by the chart label.
 {{- end }}
 
 {{/*
+Extract major version from Version (e.g., "25.4.4" -> "25")
+*/}}
+{{- define "clickhouse-cluster.majorVersion" -}}
+{{- .Values.version | regexFind "^[0-9]+" }}
+{{- end }}
+
+{{/*
+Dynamic component definition name for clickhouse
+*/}}
+{{- define "clickhouse-cluster.cmpdName" -}}
+clickhouse-{{ include "clickhouse-cluster.majorVersion" . }}
+{{- end }}
+
+{{/*
+Dynamic component definition name for clickhouse-keeper
+*/}}
+{{- define "clickhouse-cluster.keeperCmpdName" -}}
+clickhouse-keeper-{{ include "clickhouse-cluster.majorVersion" . }}
+{{- end }}
+
+{{/*
 Common labels
 */}}
 {{- define "clickhouse-cluster.labels" -}}
 helm.sh/chart: {{ include "clickhouse-cluster.chart" . }}
 {{ include "clickhouse-cluster.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- if .Values.version }}
+app.kubernetes.io/version: {{ .Values.version | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
@@ -77,7 +98,7 @@ Define clickhouse componentSpec with ComponentDefinition.
 */}}
 {{- define "clickhouse-component" -}}
 - name: clickhouse
-  componentDef: clickhouse-24
+  componentDef: {{ include "clickhouse-cluster.cmpdName" . }}
   replicas: {{ $.Values.replicas | default 2 }}
   disableExporter: {{ $.Values.disableExporter | default "false" }}
   serviceVersion: {{ $.Values.version }}
@@ -105,7 +126,7 @@ Define clickhouse keeper componentSpec with ComponentDefinition.
 */}}
 {{- define "clickhouse-keeper-component" -}}
 - name: ch-keeper
-  componentDef: clickhouse-keeper-24
+  componentDef: {{ include "clickhouse-cluster.keeperCmpdName" . }}
   replicas: {{ .Values.keeper.replicas }}
   disableExporter: {{ $.Values.disableExporter | default "false" }}
   serviceVersion: {{ $.Values.version }}
@@ -152,7 +173,7 @@ Define clickhouse shardingComponentSpec with ComponentDefinition.
   shards: {{ .Values.shards }}
   template:
     name: clickhouse
-    componentDef: clickhouse-24
+    componentDef: {{ include "clickhouse-cluster.cmpdName" . }}
     env:
     - name: "INIT_CLUSTER_NAME"
       value: "{{ .Values.clickhouse.initClusterName }}"
@@ -191,7 +212,7 @@ Define clickhouse componentSpec with compatible ComponentDefinition API
   env:
   - name: "INIT_CLUSTER_NAME"
     value: "{{ .Values.clickhouse.initClusterName }}"
-  componentDef: clickhouse-24
+  componentDef: {{ include "clickhouse-cluster.cmpdName" . }}
   replicas: {{ $.Values.replicas | default 2 }}
   disableExporter: {{ $.Values.disableExporter | default "false" }}
   serviceVersion: {{ $.Values.version }}

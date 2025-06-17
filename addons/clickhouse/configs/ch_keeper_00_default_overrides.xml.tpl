@@ -29,6 +29,7 @@
       <server_id from_env="CH_KEEPER_ID"/>
       <log_storage_path>/bitnami/clickhouse/coordination/log</log_storage_path>
       <snapshot_storage_path>/bitnami/clickhouse/coordination/snapshots</snapshot_storage_path>
+      <enable_reconfiguration>true</enable_reconfiguration>
       <coordination_settings>
           <operation_timeout_ms>10000</operation_timeout_ms>
           <session_timeout_ms>30000</session_timeout_ms>

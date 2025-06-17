@@ -1,16 +1,23 @@
+{{- range .Values.redisVersions }}
+{{- $redisSentinelStartScripts := "redis-sentinel-start-v2.sh" }}
+{{- $redisSentinelImage := printf "%s/%s:%s" ( $.Values.image.registry | default "docker.io" ) $.Values.image.repository .defaultImageTag }}
+{{- if eq .major "8" }}
+  {{- $redisSentinelImage = printf "%s/%s:%s" ( $.Values.ceImage.registry | default "docker.io" )  $.Values.ceImage.repository .defaultImageTag }}
+{{- end }}
+---
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "redisSentinel7.cmpdName" . }}
+  name: {{ printf "%s-%s" .sentinelComponentDef $.Chart.Version }}
   labels:
-    {{- include "redis.labels" . | nindent 4 }}
+    {{- include "redis.labels" $ | nindent 4 }}
   annotations:
-    {{- include "redis.annotations" . | nindent 4 }}
+    {{- include "redis.annotations" $ | nindent 4 }}
 spec:
   provider: kubeblocks
-  description: A Redis Sentinel v7.0 component definition for Kubernetes
+  description: A Redis Sentinel v{{ .major }}.0 component definition for Kubernetes
   serviceKind: redis-sentinel
-  serviceVersion: {{ .Values.defaultServiceVersion.redisSentinel.major7 }}
+  serviceVersion: {{ .serviceVersion }}
   podManagementPolicy: Parallel
   services:
     - name: redis-sentinel
@@ -35,14 +42,14 @@ spec:
     - name: data
       needSnapshot: true
   logConfigs:
-    {{- range $name,$pattern := .Values.logConfigs }}
+    {{- range $name,$pattern := $.Values.logConfigs }}
     - name: {{ $name }}
       filePathPattern: {{ $pattern }}
     {{- end }}
   scripts:
     - name: redis-scripts
-      template: {{ include "redis7.scriptsTemplate" . }}
-      namespace: {{ .Release.Namespace }}
+      template: {{ include "redis.scriptsTemplate" $ }}
+      namespace: {{ $.Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
   systemAccounts:
@@ -140,7 +147,7 @@ spec:
   lifecycleActions:
     accountProvision:
       exec:
-        image: {{ include "redisSentinel7.image" . }}
+        image: {{ $redisSentinelImage }}
         container: redis-sentinel
         command:
           - sh
@@ -149,7 +156,7 @@ spec:
           - "redis-cli -h $(KB_ACCOUNT_ENDPOINT) -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -h $(KB_ACCOUNT_ENDPOINT) -p $SENTINEL_SERVICE_PORT -a $SENTINEL_PASSWORD acl save "
     memberLeave:
       exec:
-        image: {{ include "redisSentinel7.image" . }}
+        image: {{ $redisSentinelImage }}
         container: redis-sentinel
         command:
           - /bin/bash
@@ -176,7 +183,7 @@ spec:
   runtime:
     containers:
     - name: redis-sentinel
-      image: {{ include "redisSentinel7.image" . }}
+      image: {{ $redisSentinelImage }}
       imagePullPolicy: IfNotPresent
       ports:
         - containerPort: 26379
@@ -235,3 +242,4 @@ spec:
             - sh
             - -c
             - /scripts/redis-sentinel-ping.sh
+{{- end }}

@@ -43,7 +43,7 @@ spec:
         podSpec:
           containers:
             - name: post-rebuild
-              image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:24.8.3-debian-12-r1
+              image: "{{ include "clickhouse.image" . }}"
               imagePullPolicy: IfNotPresent
               command:
                 - bash
@@ -87,7 +87,7 @@ spec:
         podSpec:
           containers:
             - name: post-rebuild
-              image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository | default "bitnami/clickhouse" }}:24.8.3-debian-12-r1
+              image: "{{ include "clickhouse.image" . }}"
               imagePullPolicy: IfNotPresent
               command:
                 - bash

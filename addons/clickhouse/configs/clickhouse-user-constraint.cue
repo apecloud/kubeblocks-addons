@@ -339,7 +339,7 @@
 	// Which replica to preferably send a query when FIRST_OR_RANDOM load balancing strategy is used.
 	load_balancing_first_offset: int
 
-	// How to calculate TOTALS when HAVING is present, as well as when max_rows_to_group_by and group_by_overflow_mode = ‘any’ are present.
+	// How to calculate TOTALS when HAVING is present, as well as when max_rows_to_group_by and group_by_overflow_mode = 'any' are present.
 	totals_mode: string
 
 	// The threshold for totals_mode = 'auto'.
@@ -1169,6 +1169,18 @@
 
 	// Cancel HTTP readonly queries when a client closes the connection without waiting for response.
 	cancel_http_readonly_queries_on_client_close: int & 0 | 1
+
+	// Enable SQL-driven access control and account management (RBAC). Allows creating users, roles and granting permissions via SQL statements.
+	access_management: int & 0 | 1
+
+	// Allow control over named collections (create, alter, drop). Named collections store connection parameters and other configuration.
+	named_collection_control: int & 0 | 1
+
+	// Allow showing named collections metadata in system tables and SHOW queries.
+	show_named_collections: int & 0 | 1
+
+	// Allow showing named collections secrets/credentials in system tables and SHOW queries.
+	show_named_collections_secrets: int & 0 | 1
 
 	// If it is set to true, external table functions will implicitly use Nullable type if needed. Otherwise NULLs will be substituted with default values. Currently supported only by 'mysql', 'postgresql' and 'odbc' table functions.
 	external_table_functions_use_nulls: int & 0 | 1

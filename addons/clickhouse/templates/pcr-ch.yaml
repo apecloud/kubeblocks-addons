@@ -1,16 +1,16 @@
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParamConfigRenderer
 metadata:
-  name: {{ include "clickhouse24.ckPcr" . }}
+  name: {{ include "clickhouse.pcr" . }}
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
   annotations:
     {{- include "clickhouse.annotations" . | nindent 4 }}
 spec:
-  componentDef: {{ include "clickhouse24.cmpdName" . }}
+  componentDef: {{ include "clickhouse.cmpdName" . }}
   parametersDefs:
-    - {{ include "clickhouse24.userParamsDefinition" . }}
-    - {{ include "clickhouse24.configParamsDefinition" . }}
+    - {{ include "clickhouse.userParamsDefinition" . }}
+    - {{ include "clickhouse.configParamsDefinition" . }}
 
   configs:
     - name: user.xml

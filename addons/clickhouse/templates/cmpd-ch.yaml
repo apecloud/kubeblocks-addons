@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "clickhouse24.cmpdName" . }}
+  name: {{ include "clickhouse.cmpdName" . }}
   labels:
     {{- include "clickhouse.labels" . | nindent 4 }}
   annotations:
@@ -11,7 +11,7 @@ spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
-  serviceVersion: "24.8.3"
+  serviceVersion: {{ .Chart.AppVersion }}
   minReadySeconds: 10
   runtime:
     securityContext:
@@ -83,17 +83,17 @@ spec:
     scrapePort: "8001"
   configs:
     - name: clickhouse-tpl
-      template: {{ include "clickhouse24.configurationTplName" . }}
+      template: {{ include "clickhouse.configurationTplName" . }}
       volumeName: config
       namespace: {{ .Release.Namespace }}
       externalManaged: true
     - name: clickhouse-user-tpl
-      template: {{ include "clickhouse24.userTplName" . }}
+      template: {{ include "clickhouse.userTplName" . }}
       volumeName: user-config
       namespace: {{ .Release.Namespace }}
       externalManaged: true
     - name: clickhouse-client-tpl
-      template: {{ include "clickhouse24.clientTplName" . }}
+      template: {{ include "clickhouse.clientTplName" . }}
       volumeName: client-config
       namespace: {{ .Release.Namespace }}
       restartOnFileChange: false
@@ -154,7 +154,7 @@ spec:
     - name: CH_KEEPER_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ include "clickhouse-keeper24.cmpdRegexpPattern" . }}
+          compDef: {{ include "clickhouse-keeper.cmpdRegexpPattern" . }}
           optional: true
           podFQDNs: Required
     - name: TLS_ENABLED
@@ -164,7 +164,7 @@ spec:
     - name: ALL_SHARDS_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ include "clickhouse24.cmpdRegexpPattern" . }}
+          compDef: {{ include "clickhouse.cmpdRegexpPattern" . }}
           optional: false
           podFQDNs: Required
           multipleClusterObjectOption:
@@ -226,7 +226,6 @@ spec:
       preCondition: RuntimeReady
       exec:
         container: clickhouse
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag.major24 }}
         command:
           - bash
           - -c

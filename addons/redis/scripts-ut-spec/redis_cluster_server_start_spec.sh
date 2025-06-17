@@ -312,8 +312,9 @@ Describe "Redis Cluster Server Start Bash Script Tests"
         echo "$cluster_nodes_info"
       }
       It "returns early when cluster nodes info contains only one line"
+        export ALL_SHARDS_COMPONENT_SHORT_NAMES="redis-shard-sxj,redis-shard-abc,redis-shard-def"
         When call get_current_comp_nodes_for_scale_out_replica "redis-shard-sxj-0.redis-shard-sxj-headless.default.svc" "6379"
-        The stdout should include "Cluster nodes info contains only one line, returning..."
+        The stdout should include "Cluster nodes info contains less than 3 nodes, returning..."
       End
     End
 
