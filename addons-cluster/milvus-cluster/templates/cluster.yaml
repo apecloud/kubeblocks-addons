@@ -13,6 +13,7 @@ spec:
   componentSpecs:
     {{- if .Values.proxy.enabled }}
     - name: proxy
+      serviceVersion: {{ default .Chart.AppVersion .Values.appVersionOverride }}
       replicas: {{ .Values.proxy.replicas }}
       {{- include "kblib.componentResources" . | indent 6 }}
       serviceRefs:
@@ -23,6 +24,7 @@ spec:
       {{- include "kblib.componentMonitor" . | indent 6 }}
     {{- end }}
     - name: mixcoord
+      serviceVersion: {{ default .Chart.AppVersion .Values.appVersionOverride }}
       replicas: {{ .Values.mixcoord.replicas}}
       {{- include "kblib.componentResources" . | indent 6 }}
       serviceRefs:
@@ -32,6 +34,7 @@ spec:
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
     - name: datanode
+      serviceVersion: {{ default .Chart.AppVersion .Values.appVersionOverride }}
       replicas: {{ .Values.datanode.replicas}}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
@@ -42,6 +45,7 @@ spec:
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
     - name: indexnode
+      serviceVersion: {{ default .Chart.AppVersion .Values.appVersionOverride }}
       replicas: {{ .Values.indexnode.replicas}}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
@@ -52,6 +56,7 @@ spec:
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
     - name: querynode
+      serviceVersion: {{ default .Chart.AppVersion .Values.appVersionOverride }}
       replicas: {{ .Values.querynode.replicas}}
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}

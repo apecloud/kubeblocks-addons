@@ -18,6 +18,17 @@ persistence:
     storageClassName:
     size: 10Gi
 
+requests:
+  cpu: 0.5
+  memory: 0.5
+cpu: 4
+memory: 4
+
+# @param appVersionOverride 
+# if not empty, it will override the default tidb version
+# the version must be defined in the clusterversion cr  
+appVersionOverride: ""
+
 ##### parameters for cluster mode
 proxy:
   enabled: true
