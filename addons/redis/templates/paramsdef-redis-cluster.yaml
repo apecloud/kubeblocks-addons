@@ -1,0 +1,49 @@
+{{- range .Values.redisVersions }}
+{{- $version := .major }}
+{{- if eq .major "8" }}
+  {{ $version = "7" }}
+{{- end }}
+{{- $redisImage := printf "%s/%s:%s" ( $.Values.image.registry | default "docker.io" ) $.Values.image.repository .defaultImageTag }}
+{{- if eq .major "8" }}
+{{- $redisImage = printf "%s/%s:%s" ( $.Values.ceImage.registry | default "docker.io" )  $.Values.ceImage.repository .defaultImageTag }}
+{{- end }}
+{{- $pd := $.Files.Get "config/redis-config-effect-scope.yaml" | fromYaml }}
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: {{ printf "redis-cluster%s-pd" .major }}
+  labels:
+    {{- include "redis.labels" $ | nindent 4 }}
+spec:
+  reloadAction:
+    shellTrigger:
+      sync: true
+      command:
+        - "reload-parameter.sh"
+      scriptConfig:
+        scriptConfigMapRef: redis-reload-tools-script
+        namespace: {{ $.Release.Namespace }}
+      toolsSetup:
+        mountPoint: /kb_tools
+        toolConfigs:
+          - name: kb-tools
+            asContainerImage: true
+            image: {{ $redisImage }}
+
+  fileName: redis.conf
+  # ConfigurationSchema that impose restrictions on engine parameter's rule
+  parametersSchema:
+    topLevelKey: RedisParameter
+    cue: |-
+      {{- $.Files.Get (printf "config/redis-cluster%s-config-constraint.cue" .major) | nindent 6 }}
+
+  ## require db instance restart
+  {{- if hasKey $pd "staticParameters" }}
+  staticParameters:
+    {{- $params := get $pd "staticParameters" }}
+    {{- range $params }}
+    - {{ . }}
+    {{- end }}
+  {{- end}}
+{{- end}}

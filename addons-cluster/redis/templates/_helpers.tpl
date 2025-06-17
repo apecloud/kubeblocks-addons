@@ -6,14 +6,19 @@ Define redis cluster shardingSpec with ComponentDefinition.
   shards: {{ .Values.redisCluster.shardCount }}
   template:
     name: redis
-    componentDef: redis-cluster-7
+    componentDef: redis-cluster
     replicas: {{ .Values.replicas }}
     {{- include "redis-cluster.exporter" . | indent 4 }}
-    {{- if and .Values.nodePortEnabled (not .Values.hostNetworkEnabled) }}
+    {{- if and .Values.nodePortEnabled (not .Values.hostNetworkEnabled)  (not .Values.fixedPodIPEnabled) }}
     services:
     - name: redis-advertised
       serviceType: NodePort
       podService: true
+    {{- end }}
+    {{- if and .Values.fixedPodIPEnabled (not .Values.nodePortEnabled) (not .Values.hostNetworkEnabled) }}
+    env:
+      - name: FIXED_POD_IP_ENABLED
+        value: "true"
     {{- end }}
     serviceVersion: {{ .Values.version }}
     systemAccounts:
@@ -54,7 +59,7 @@ Define redis ComponentSpec with ComponentDefinition.
 - name: redis
   {{- include "redis-cluster.replicaCount" . | indent 2 }}
   {{- include "redis-cluster.exporter" . | indent 2 }}
-  {{- if and .Values.nodePortEnabled (not .Values.hostNetworkEnabled) }}
+  {{- if and .Values.nodePortEnabled (not .Values.hostNetworkEnabled) (not .Values.fixedPodIPEnabled) }}
   services:
   - name: redis-advertised
     serviceType: NodePort
@@ -64,6 +69,10 @@ Define redis ComponentSpec with ComponentDefinition.
   {{- if .Values.sentinel.customMasterName }}
   - name: CUSTOM_SENTINEL_MASTER_NAME
     value: {{ .Values.sentinel.customMasterName }}
+  {{- end }}
+  {{- if and .Values.fixedPodIPEnabled (not .Values.nodePortEnabled) (not .Values.hostNetworkEnabled) }}
+  - name: FIXED_POD_IP_ENABLED
+    value: "true"
   {{- end }}
   serviceVersion: {{ .Values.version }}
   {{- if and .Values.customSecretName .Values.customSecretNamespace }}
@@ -83,11 +92,16 @@ Define redis sentinel ComponentSpec with ComponentDefinition.
 {{- define "redis-cluster.sentinelComponentSpec" }}
 - name: redis-sentinel
   replicas: {{ .Values.sentinel.replicas }}
-  {{- if and .Values.nodePortEnabled (not .Values.hostNetworkEnabled) }}
+  {{- if and .Values.nodePortEnabled (not .Values.hostNetworkEnabled) (not .Values.fixedPodIPEnabled) }}
   services:
   - name: sentinel-advertised
     serviceType: NodePort
     podService: true
+  {{- end }}
+  {{- if and .Values.fixedPodIPEnabled (not .Values.nodePortEnabled) (not .Values.hostNetworkEnabled) }}
+  env:
+  - name: FIXED_POD_IP_ENABLED
+    value: "true"
   {{- end }}
   serviceVersion: {{ .Values.version }}
   {{- if and .Values.sentinel.customSecretName .Values.sentinel.customSecretNamespace }}

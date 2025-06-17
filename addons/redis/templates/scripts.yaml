@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-reload-tools-script
+  labels:
+    {{- include "redis.labels" . | nindent 4 }}
+data:
+  reload-parameter.sh: |
+    {{- .Files.Get "scripts/reload-parameter.sh" | nindent 4 }}
