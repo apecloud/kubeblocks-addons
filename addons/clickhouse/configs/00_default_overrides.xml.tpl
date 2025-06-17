@@ -144,4 +144,18 @@
     <buffer_size_rows_flush_threshold>524288</buffer_size_rows_flush_threshold>
     <flush_on_crash>false</flush_on_crash>
   </query_log>
+  <!-- User directories configuration -->
+  <!-- see https://github.com/ClickHouse/ClickHouse/issues/78830 -->
+  <user_directories replace="replace">
+    <users_xml>
+      <!-- Local users.xml directory (priority 2, local path) -->
+      <path>/opt/bitnami/clickhouse/etc/users.xml</path>
+    </users_xml>
+    {{- if (index . "CH_KEEPER_POD_FQDN_LIST") }}
+    <replicated>
+      <!-- Keeper-based replicated user directory (priority 1, keeper path, for backup and restore compatibility) -->
+      <zookeeper_path>/clickhouse/access</zookeeper_path>
+    </replicated>
+    {{- end }}
+  </user_directories>
 </clickhouse>
