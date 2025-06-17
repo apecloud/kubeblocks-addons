@@ -87,7 +87,7 @@ spec:
   terminationPolicy: Delete
   # Specifies the name of the ClusterDefinition to use when creating a Cluster.
   # Note: DO NOT UPDATE THIS FIELD
-  # The value must be `redis` to create a Redis Cluster
+  # The value must be `postgresql` to create a PostgreSQL Cluster
   clusterDef: redis
   # Specifies the name of the ClusterTopology to be used when creating the
   # Cluster.
@@ -1441,7 +1441,7 @@ spec:
 
    ```bash
    # Get encrypted system accounts
-    kubectl get backup <backupName> -n demo -ojson | jq -r '.metadata.annotations | ."kubeblocks.io/encrypted-system-accounts" | fromjson .redis | tojson |gsub("\""; "\\"")'
+    kubectl get backup <backupName> -n demo -ojson | jq -r '.metadata.annotations | ."kubeblocks.io/encrypted-system-accounts" | fromjson .redis | tojson |gsub("\""; "\\\"")'
    ```
 
 3. **Configure Restore**:
@@ -1564,7 +1564,7 @@ spec:
 
   ```bash
   # Get encrypted system accounts
-  kubectl get backup <backup-name> -n demo -ojson | jq -r '.metadata.annotations | ."kubeblocks.io/encrypted-system-accounts" | fromjson .redis | tojson |gsub("\""; "\\"")'
+  kubectl get backup <backup-name> -n demo -ojson | jq -r '.metadata.annotations | ."kubeblocks.io/encrypted-system-accounts" | fromjson .redis | tojson |gsub("\""; "\\\"")'
   ```
 
 3. **Configure Restore**:

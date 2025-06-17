@@ -988,7 +988,7 @@ spec:
     - name: internet
       # Determines how the Service is exposed. Defaults to 'ClusterIP'.
       # Valid options are `ClusterIP`, `NodePort`, and `LoadBalancer`.
-      serviceType: LoadBalancer
+      serviceType: NodePort
       # Contains cloud provider related parameters if ServiceType is LoadBalancer.
       # Following is an example for Aliyun ACK, please adjust the following annotations as needed.
       annotations:
@@ -1001,6 +1001,7 @@ spec:
       roleSelector: primary
     # Indicates whether the services will be exposed. 'Enable' exposes the services. while 'Disable' removes the exposed Service.
     switch: Enable
+
 ```
 
 ```bash
@@ -1106,7 +1107,7 @@ Please consult your cloud provider for more accurate and update-to-date informat
    - Configured `BackupRepo` ([Setup Guide](../docs/create-backuprepo.md))
    - Network connectivity between cluster and repo, `BackupRepo` status is `Ready`
 
-2. **Cluster State**:r
+2. **Cluster State**:
    - Cluster must be in `Running` state
    - No ongoing operations (scaling, upgrades etc.)
 
@@ -1129,6 +1130,11 @@ Please consult your cloud provider for more accurate and update-to-date informat
 KubeBlocks supports multiple backup methods for PostgreSQL cluster,  as described in `BackupPolicy` name `pg-cluster-postgresql-backup-policy`, such as `pg-basebackup`, `volume-snapshot`, `wal-g`, etc. We will elaborate on the `pg-basebackup` and `wal-g` backup methods in the following sections to demonstrate how to create full backup and continuous backup for the cluster.
 
 #### Backup Method Option 1: pg_basebackup
+
+|name | backup type |  description |
+|--------|-----------|-------------|
+| pg-basebackup | full backup |use tool `pg_basebackup`|
+| archive-wal | Continuous backup |
 
 **On-Demand Full Backup**
 
