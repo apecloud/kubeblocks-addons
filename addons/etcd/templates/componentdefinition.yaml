@@ -95,6 +95,7 @@ spec:
       votable: true
   lifecycleActions:
     roleProbe:
+      builtinHandler: custom
       customHandler:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
         exec:
