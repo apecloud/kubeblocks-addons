@@ -154,9 +154,15 @@ http://etcd-1:2380
 http://etcd-2:2380
 '''
       exec_etcdctl_output_endpoint_status_leader_etcd1='''
-endpoint:"http://etcd-0:2379",is_leader:"false"
-endpoint:"http://etcd-1:2379",is_leader:"true"
-endpoint:"http://etcd-2:2379",is_leader:"false"
+"MemberID" : 1001
+"Leader" : 1002
+"Endpoint" : "http://etcd-0:2379"
+"MemberID" : 1002
+"Leader" : 1002
+"Endpoint" : "http://etcd-1:2379"
+"MemberID" : 1003
+"Leader" : 1002
+"Endpoint" : "http://etcd-2:2379"
 '''
       exec_etcdctl() {
         if [[ "$*" == *"member list"* ]]; then
@@ -194,9 +200,15 @@ endpoint:"http://etcd-2:2379",is_leader:"false"
     It "fails if no leader is found in endpoint status"
       get_protocol() { echo "http"; return 0; }
       exec_etcdctl_output_endpoint_status_no_leader='''
-endpoint:"http://etcd-0:2379",is_leader:"false"
-endpoint:"http://etcd-1:2379",is_leader:"false"
-endpoint:"http://etcd-2:2379",is_leader:"false"
+"MemberID" : 1001
+"Leader" : 0
+"Endpoint" : "http://etcd-0:2379"
+"MemberID" : 1002
+"Leader" : 0
+"Endpoint" : "http://etcd-1:2379"
+"MemberID" : 1003
+"Leader" : 0
+"Endpoint" : "http://etcd-2:2379"
 '''
       exec_etcdctl() {
         if [[ "$*" == *"member list"* ]]; then

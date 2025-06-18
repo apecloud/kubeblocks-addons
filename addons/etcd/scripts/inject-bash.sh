@@ -1,16 +1,8 @@
 #!/bin/bash
-set -ex
+set -exo pipefail
 
-load_common_library() {
-  # the kb-common.sh and common.sh scripts are defined in the scripts-template configmap
-  # and are mounted to the same path which defined in the cmpd.spec.scripts
-  kblib_common_library_file="/scripts/kb-common.sh"
-  etcd_common_library_file="/scripts/common.sh"
-  # shellcheck disable=SC1090
-  . "${kblib_common_library_file}"
-  # shellcheck disable=SC1090
-  . "${etcd_common_library_file}"
-}
+# shellcheck disable=SC1091
+. "/scripts/common.sh"
 
 inject_bash() {
   local version="$1"
@@ -35,12 +27,8 @@ inject_bash() {
   fi
 }
 
-# This is magic for shellspec ut framework.
-# Sometime, functions are defined in a single shell script.
-# You will want to test it. but you do not want to run the script.
-# When included from shellspec, __SOURCED__ variable defined and script
-# end here. The script path is assigned to the __SOURCED__ variable.
-${__SOURCED__:+false} : || return 0
+# Shellspec magic
+setup_shellspec
 
 # main
 load_common_library

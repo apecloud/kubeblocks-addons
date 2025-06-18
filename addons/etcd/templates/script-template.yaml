@@ -11,7 +11,6 @@ data:
     #!/bin/bash
     {{- include "kblib.commons.call_func_with_retry" $ | nindent 4 }}
     {{- include "kblib.compvars.get_target_pod_fqdn_from_pod_fqdn_vars" $ | nindent 4 }}
-    {{- include "kblib.strings.is_empty" $ | nindent 4 }}
   {{- with include "etcd.extend.scripts" . }}
   {{- . | nindent 2 }}
   {{- end }}

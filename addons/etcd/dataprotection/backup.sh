@@ -1,5 +1,8 @@
 #!/bin/bash
-set -ex
+set -exo pipefail
+
+# shellcheck disable=SC1091
+. "/scripts/common.sh"
 
 # if the script exits with a non-zero exit code, touch a file to indicate that the backup failed,
 # the sync progress container will check this file and exit if it exists
@@ -13,21 +16,12 @@ handle_exit() {
 }
 trap handle_exit EXIT
 
-if [ -f "/scripts/common.sh" ]; then
-  # shellcheck disable=SC1091
-  . "/scripts/common.sh"
-fi
-
 # use etcdctl create snapshot
 ENDPOINTS=${DP_DB_HOST}.${CLUSTER_NAMESPACE}.svc${CLUSTER_DOMAIN}:2379
 exec_etcdctl "${ENDPOINTS}" snapshot save "${DP_BACKUP_NAME}"
+
 # check the backup file, make sure it is not empty
-if check_backup_file "${DP_BACKUP_NAME}"; then
-  echo "Backup file is valid"
-else
-  echo "Backup file is invalid" >&2
-  exit 1
-fi
+check_backup_file "${DP_BACKUP_NAME}" || error_exit "Backup file is invalid"
 
 # use datasafed to get backup size
 # if we do not write into $DP_BACKUP_INFO_FILE, the backup job will stuck

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -ex 
+set -exo pipefail
 
 default_template_conf="/etc/etcd/etcd.conf"
 default_conf="$TMP_CONFIG_PATH"

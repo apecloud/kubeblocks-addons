@@ -7,7 +7,9 @@ Describe "Member Leave Script Tests"
   Describe "get_etcd_id()"
     It "returns the correct etcd ID"
       exec_etcdctl() {
-        echo "127.0.0.1:2379, 8e9e05c52164694d, 3.5.16, 25 kB, true, false, 2, 4, 4,"
+        echo '"MemberID" : 8e9e05c52164694d
+"Leader" : 12345
+"Endpoint" : "http://etcd-0:2379"'
       }
       When call get_etcd_id "http://etcd-0:2379"
       The output should equal "8e9e05c52164694d"
@@ -17,7 +19,7 @@ Describe "Member Leave Script Tests"
   Describe "remove_member()"
     It "removes the member successfully"
       # Mock required environment variables and functions
-      export KB_PRIMARY_POD_FQDN="etcd-0.etcd-headless"
+      export LEADER_POD_FQDN="etcd-0.etcd-headless"
       export KB_LEAVE_MEMBER_POD_NAME="etcd-1"
       export PEER_ENDPOINT=""
       get_pod_endpoint_with_lb() { echo "$2"; }
@@ -29,7 +31,7 @@ Describe "Member Leave Script Tests"
 
     It "fails to remove the member"
       # Mock required environment variables and functions
-      export KB_PRIMARY_POD_FQDN="etcd-0.etcd-headless"
+      export LEADER_POD_FQDN="etcd-0.etcd-headless"
       export KB_LEAVE_MEMBER_POD_NAME="etcd-1"
       export PEER_ENDPOINT=""
       get_pod_endpoint_with_lb() { echo "$2"; }
@@ -44,7 +46,7 @@ Describe "Member Leave Script Tests"
     It "leaves the member successfully"
       # Mock required environment variables and functions
       export KB_LEAVE_MEMBER_POD_NAME="etcd-1"
-      export KB_LEAVE_MEMBER_POD_IP="10.0.0.1"
+      export KB_LEAVE_MEMBER_POD_FQDN="etcd-1.etcd-headless.default.svc.cluster.local"
       export PEER_ENDPOINT=""
       get_pod_endpoint_with_lb() { echo "$3"; }
       log() { echo "$@"; }

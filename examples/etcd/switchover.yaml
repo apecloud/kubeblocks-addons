@@ -13,5 +13,5 @@ spec:
   - componentName: etcd
     # Specifies the instance whose role will be transferred.
     # A typical usage is to transfer the leader role in a consensus system.
-    instanceName: etcd-cluster-etcd-0
+    instanceName: etcd-cluster-etcd-3
     candidateName: etcd-cluster-etcd-2

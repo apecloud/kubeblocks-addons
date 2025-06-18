@@ -1,34 +1,27 @@
 #!/bin/bash
-set -ex
+set -exo pipefail
 
 default_template_conf="/etc/etcd/etcd.conf"
 real_conf="$TMP_CONFIG_PATH"
 
-load_common_library() {
-  kblib_common_library_file="/scripts/kb-common.sh"
-  etcd_common_library_file="/scripts/common.sh"
-  # shellcheck disable=SC1090
-  . "${kblib_common_library_file}"
-  # shellcheck disable=SC1090
-  . "${etcd_common_library_file}"
-}
+# shellcheck disable=SC1091
+. "/scripts/common.sh"
 
 get_my_endpoint() {
-  local lb_endpoints="$1"
   local my_peer_endpoint
 
-  if is_empty "$CURRENT_POD_NAME" || is_empty "$PEER_FQDNS"; then
+  if [ -z "$CURRENT_POD_NAME" ] || [ -z "$PEER_FQDNS" ]; then
     echo "Error: CURRENT_POD_NAME or PEER_FQDNS is empty. Exiting." >&2
     return 1
   fi
 
   my_peer_endpoint=$(get_target_pod_fqdn_from_pod_fqdn_vars "$PEER_FQDNS" "$CURRENT_POD_NAME")
-  if is_empty "$my_peer_endpoint"; then
+  if [ -z "$my_peer_endpoint" ]; then
     echo "Error: Failed to get current pod: $CURRENT_POD_NAME fqdn from peer fqdn list: $PEER_FQDNS. Exiting." >&2
     return 1
   fi
 
-  my_peer_endpoint=$(get_pod_endpoint_with_lb "$CURRENT_POD_NAME" "$my_peer_endpoint")
+  my_peer_endpoint=$(get_pod_endpoint_with_lb "$PEER_ENDPOINT" "$CURRENT_POD_NAME" "$my_peer_endpoint")
   echo "$my_peer_endpoint"
 }
 
@@ -52,18 +45,11 @@ update_etcd_conf() {
   rm "$tpl_conf.bak"
 }
 
-parse_config_value() {
-  local key="$1"
-  local config_file="$2"
-  grep -E "^$key:" "$config_file" |
-    sed -E \
-      -e "s/^$key:[[:space:]]*//" \
-      -e 's/^[[:space:]]*//; s/[[:space:]]*$//'
-}
+
 
 rebuild_etcd_conf() {
   local my_endpoint
-  my_endpoint=$(get_my_endpoint "$PEER_ENDPOINT")
+  my_endpoint=$(get_my_endpoint)
   update_etcd_conf "$default_template_conf" "$real_conf" "$CURRENT_POD_NAME" "$my_endpoint"
 
   log "Updated etcd.conf:"
@@ -107,12 +93,8 @@ main() {
   exec etcd --config-file "$real_conf"
 }
 
-# This is magic for shellspec ut framework.
-# Sometime, functions are defined in a single shell script.
-# You will want to test it. but you do not want to run the script.
-# When included from shellspec, __SOURCED__ variable defined and script
-# end here. The script path is assigned to the __SOURCED__ variable.
-${__SOURCED__:+false} : || return 0
+# Shellspec magic
+setup_shellspec
 
 # main
 load_common_library
