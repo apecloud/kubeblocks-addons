@@ -676,7 +676,6 @@ spec:
 # irrelevant lines commited
 ```
 Service `redis-advertised` and `redis-sentinel` are defined in `ComponentDefinition` name `redis-7` and `redis-sentinel-7`.  They are used to to parse the advertised endpoints of the Redis pods and Sentinel Pods.
-
 #### Create Redis with Proxy
 
 To create a redis with a proxy (Twemproxy) in front of it:
@@ -741,7 +740,7 @@ spec:
 
 In this example we demonstrate how to create a Redis cluster with multiple shards, and how to override the service type of the `redis-advertised` service to `NodePort`.
 
-The service `redis-advertised` is defined in `ComponentDefinition` and will used to parse the advertised endpoints of the Redis pods.
+The service `redis-advertised` is defined in `ComponentDefinition` and will be used to parse the advertised endpoints of the Redis pods.
 
 By default, the service type is `NodePort`. If you want to expose the service to the outside of the cluster, you can override the service type to `NodePort` or `LoadBalancer` depending on your need.
 
