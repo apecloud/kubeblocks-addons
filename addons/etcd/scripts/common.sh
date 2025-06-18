@@ -65,11 +65,6 @@ get_peer_protocol() {
   fi
 }
 
-# For backward compatibility
-get_protocol() {
-  get_client_protocol
-}
-
 check_backup_file() {
   local backup_file="$1"
 
@@ -81,15 +76,14 @@ check_backup_file() {
 }
 
 get_pod_endpoint_with_lb() {
-  local peer_endpoints="$1"
-  local pod_name="$2"
-  local default_fqdn="$3"
-  local result_endpoint="$default_fqdn"
-  
-  if ! is_empty "$peer_endpoints"; then
+  local pod_name="$1"
+  local result_endpoint="$2"
+  local lb_endpoints="$PEER_ENDPOINT"
+
+  if ! is_empty "$lb_endpoints"; then
     log "LoadBalancer mode detected. Adapting pod FQDN to balance IP."
     local endpoints lb_endpoint
-    endpoints=$(echo "$peer_endpoints" | tr ',' '\n')
+    endpoints=$(echo "$lb_endpoints" | tr ',' '\n')
     lb_endpoint=$(echo "$endpoints" | grep "$pod_name" | head -1)
     if ! is_empty "$lb_endpoint"; then
       # e.g.1 etcd-cluster-etcd-0

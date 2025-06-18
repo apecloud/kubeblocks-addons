@@ -1,4 +1,5 @@
 #!/bin/bash
+set -exo pipefail
 
 # This is magic for shellspec ut framework.
 # shellcheck disable=SC2034
@@ -27,10 +28,10 @@ add_member() {
   # Get leader endpoint (handle LB service) - use primary pod FQDN
   # Extract primary pod name from FQDN for LB endpoint lookup
   primary_pod_name="${KB_PRIMARY_POD_FQDN%%.*}"
-  leader_endpoint=$(get_pod_endpoint_with_lb "$PEER_ENDPOINT" "$primary_pod_name" "$KB_PRIMARY_POD_FQDN")
+  leader_endpoint=$(get_pod_endpoint_with_lb "$primary_pod_name" "$KB_PRIMARY_POD_FQDN")
   
   # Get join member peer endpoint (handle LB service) - use new member IP
-  join_member_endpoint=$(get_pod_endpoint_with_lb "$PEER_ENDPOINT" "$KB_NEW_MEMBER_POD_NAME" "$KB_NEW_MEMBER_POD_IP")
+  join_member_endpoint=$(get_pod_endpoint_with_lb "$KB_NEW_MEMBER_POD_NAME" "$KB_NEW_MEMBER_POD_IP")
   
   # Get protocol for peer URLs
   peer_protocol=$(get_peer_protocol)

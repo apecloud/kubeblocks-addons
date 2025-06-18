@@ -14,11 +14,11 @@ load_common_library() {
 }
 
 get_my_endpoint() {
-  local peer_endpoints="$1"
+  local lb_endpoints="$1"
   local my_peer_endpoint
 
   if is_empty "$CURRENT_POD_NAME" || is_empty "$PEER_FQDNS"; then
-    echo "Error: PEER_FQDNS or CURRENT_POD_NAME is empty. Exiting." >&2
+    echo "Error: CURRENT_POD_NAME or PEER_FQDNS is empty. Exiting." >&2
     return 1
   fi
 
@@ -28,7 +28,7 @@ get_my_endpoint() {
     return 1
   fi
 
-  my_peer_endpoint=$(get_pod_endpoint_with_lb "$peer_endpoints" "$CURRENT_POD_NAME" "$my_peer_endpoint")
+  my_peer_endpoint=$(get_pod_endpoint_with_lb "$CURRENT_POD_NAME" "$my_peer_endpoint")
   echo "$my_peer_endpoint"
 }
 

@@ -55,60 +55,6 @@ Describe "Common Functions Tests"
     End
   End
 
-  Describe "get_protocol()"
-    BeforeEach "setup_temp_config_file"
-    AfterEach "cleanup_temp_config_file"
-
-    It "returns https for 'advertise-client-urls' when https is present"
-      echo "advertise-client-urls: https://etcd-0.com" > "$config_file"
-      When call get_protocol "advertise-client-urls"
-      The output should equal "https"
-      The status should be success
-    End
-
-    It "returns http for 'advertise-client-urls' when http is present"
-      echo "advertise-client-urls: http://etcd-0.com" > "$config_file"
-      When call get_protocol "advertise-client-urls"
-      The output should equal "http"
-      The status should be success
-    End
-
-    It "returns https for 'initial-advertise-peer-urls' when https is present"
-      echo "initial-advertise-peer-urls: https://etcd-0.com" > "$config_file"
-      When call get_protocol "initial-advertise-peer-urls"
-      The output should equal "https"
-      The status should be success
-    End
-
-    It "returns http for 'initial-advertise-peer-urls' when http is present"
-      echo "initial-advertise-peer-urls: http://etcd-0.com" > "$config_file"
-      When call get_protocol "initial-advertise-peer-urls"
-      The output should equal "http"
-      The status should be success
-    End
-
-    It "defaults to http if url_type is not found in config file"
-      echo "some-other-config: value" > "$config_file"
-      When call get_protocol "advertise-client-urls"
-      The output should equal "http" # As per current common.sh logic
-      The status should be success
-    End
-    
-    It "defaults to http if url_type line has no http/https schema"
-      echo "advertise-client-urls: etcd-0.com" > "$config_file"
-      When call get_protocol "advertise-client-urls"
-      The output should equal "http"
-      The status should be success
-    End
-
-    It "fails if config file does not exist"
-      cleanup_temp_config_file # Remove the config file
-      When call get_protocol "advertise-client-urls"
-      The status should be failure
-      The stderr should include "ERROR: get_protocol - Config file '/nonexistent_file_placeholder' not found" # Path will vary
-    End
-  End
-
   Describe "exec_etcdctl()"
     # Mock command -v for etcdctl
     command_check_etcdctl_exists() { if [ "$1" = "-v" ] && [ "$2" = "etcdctl" ]; then return 0; else return 127; fi; }
