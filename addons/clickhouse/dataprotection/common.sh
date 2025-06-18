@@ -1,3 +1,4 @@
+#!/bin/bash
 # log info file
 function DP_log() {
   msg=$1
@@ -54,9 +55,9 @@ function DP_purge_expired_files() {
   fi
   expiredUnix=$((${currentUnix} - ${DP_TTL_SECONDS}))
   files=$(datasafed list -f --recursive --older-than ${expiredUnix} ${root_path})
-  for file in ${files[@]}; do
-    datasafed rm ${file}
-    echo ${file}
+  for file in "${files[@]}"; do
+    datasafed rm "$file"
+    echo "$file"
   done
 }
 
@@ -132,20 +133,21 @@ function generate_backup_config() {
     return 1
   }
   # whole config see https://github.com/Altinity/clickhouse-backup
-  cat > "$clickhouse_backup_config" << 'EOF'
+  cat >"$clickhouse_backup_config" <<'EOF'
 general:
   remote_storage: s3 # REMOTE_STORAGE, choice from: `azblob`,`gcs`,`s3`, etc; if `none` then `upload` and `download` commands will fail.
   max_file_size: 1125899906842624 # MAX_FILE_SIZE, 1PB by default, useless when upload_by_part is true, use to split data parts files by archives
   backups_to_keep_local: 0 # BACKUPS_TO_KEEP_LOCAL, how many latest local backup should be kept, 0 means all created backups will be stored on local disk, -1 means backup will keep after `create` but will delete after `create_remote` command
   backups_to_keep_remote: 0 # BACKUPS_TO_KEEP_REMOTE, how many latest backup should be kept on remote storage, 0 means all uploaded backups will be stored on remote storage.
   log_level: info # LOG_LEVEL, a choice from `debug`, `info`, `warning`, `error`
-  allow_empty_backups: false # ALLOW_EMPTY_BACKUPS
+  allow_empty_backups: true # ALLOW_EMPTY_BACKUPS
   download_concurrency: 1 # DOWNLOAD_CONCURRENCY, max 255, by default, the value is round(sqrt(AVAILABLE_CPU_CORES / 2))
   upload_concurrency: 1 # UPLOAD_CONCURRENCY, max 255, by default, the value is round(sqrt(AVAILABLE_CPU_CORES / 2))
   download_max_bytes_per_second: 0 # DOWNLOAD_MAX_BYTES_PER_SECOND, 0 means no throttling
   upload_max_bytes_per_second: 0 # UPLOAD_MAX_BYTES_PER_SECOND, 0 means no throttling
   object_disk_server_side_copy_concurrency: 32
   allow_object_disk_streaming: false
+  # restore schema on cluster is not support by kb sharding backup and restore strategy right now
   restore_schema_on_cluster: "" # RESTORE_SCHEMA_ON_CLUSTER, execute all schema related SQL queries with `ON CLUSTER` clause as Distributed DDL. This isn't applicable when `use_embedded_backup_restore: true`
   upload_by_part: true # UPLOAD_BY_PART
   download_by_part: true # DOWNLOAD_BY_PART
@@ -187,7 +189,7 @@ clickhouse:
   log_sql_queries: true # CLICKHOUSE_LOG_SQL_QUERIES, logging `clickhouse-backup` SQL queries on `info` level, when true, `debug` level when false
   debug: false # CLICKHOUSE_DEBUG
   config_dir: "/opt/bitnami/clickhouse/etc" # CLICKHOUSE_CONFIG_DIR
-  restart_command: "exec:systemctl restart clickhouse-server" # CLICKHOUSE_RESTART_COMMAND, use this command when restoring with --rbac, --rbac-only or --configs, --configs-only options will split command by ; and execute one by one, all errors will logged and ignore available prefixes - sql: will execute SQL query - exec: will execute command via shell
+  restart_command: "sql:SYSTEM SHUTDOWN" # CLICKHOUSE_RESTART_COMMAND, use this command when restoring with --rbac, --rbac-only or --configs, --configs-only options will split command by ; and execute one by one, all errors will logged and ignore available prefixes - sql: will execute SQL query - exec: will execute command via shell
   ignore_not_exists_error_during_freeze: true # CLICKHOUSE_IGNORE_NOT_EXISTS_ERROR_DURING_FREEZE, helps to avoid backup failures when running frequent CREATE / DROP tables and databases during backup, `clickhouse-backup` will ignore `code: 60` and `code: 81` errors during execution of `ALTER TABLE ... FREEZE`
   check_replicas_before_attach: true # CLICKHOUSE_CHECK_REPLICAS_BEFORE_ATTACH, helps avoiding concurrent ATTACH PART execution when restoring ReplicatedMergeTree tables
   default_replica_path: "/clickhouse/tables/{layer}/{shard}/{database}/{table}" # CLICKHOUSE_DEFAULT_REPLICA_PATH, will use during restore Replicated tables without macros in replication_path if replica already exists, to avoid restoring conflicts
@@ -344,28 +346,20 @@ function fetch_backup() {
 
 function get_shard_fqdn_list() {
   local pattern="ALL_SHARDS_POD_FQDN_LIST*"
-  local fqdn_list=""
-  
-  for var in $(env | grep "^$pattern" | grep $DP_DB_HOST); do
-    local value=${var#*=}
-    if [ -n "$fqdn_list" ]; then
-      fqdn_list="${fqdn_list}\n"
-    fi
-    fqdn_list="${fqdn_list}$(echo $value | tr ',' '\n')"
-  done
-  
+  fqdn_list=$(env | grep "^$pattern" | grep "$DP_DB_HOST")
+  fqdn_list=${fqdn_list#*=}
   echo -e "$fqdn_list"
 }
 
 function delete_backups_except() {
   local latest_backup=$1
-   DP_log "delete backup except $latest_backup"
-   backup_list=$(clickhouse-backup list)
-   echo "$backup_list" | awk '/local/ {print $1}' | while IFS= read -r backup_name; do
-     if [ "$backup_name" != "$latest_backup" ]; then
-       clickhouse-backup delete local "$backup_name" || {
-         DP_error_log "Clickhouse-backup delete local backup $backup_name FAILED"
-       }
-     fi
-   done
+  DP_log "delete backup except $latest_backup"
+  backup_list=$(clickhouse-backup list)
+  echo "$backup_list" | awk '/local/ {print $1}' | while IFS= read -r backup_name; do
+    if [ "$backup_name" != "$latest_backup" ]; then
+      clickhouse-backup delete local "$backup_name" || {
+        DP_error_log "Clickhouse-backup delete local backup $backup_name FAILED"
+      }
+    fi
+  done
 }
