@@ -1288,8 +1288,6 @@ spec:
 # irrelevant lines commited
 ```
 Service `redis-advertised` and `redis-sentinel` are defined in `ComponentDefinition` name `redis-7` and `redis-sentinel-7`.  They are used to to parse the advertised endpoints of the Redis pods and Sentinel Pods.
-
-
 #### Create Redis with Proxy
 
 To create a redis with a proxy (Twemproxy) in front of it:
