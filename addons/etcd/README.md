@@ -235,7 +235,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: etcd-scale-out
-  namespace: default 
+  namespace: demo 
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: etcd-cluster
@@ -274,7 +274,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: etcd-scale-in
-  namespace: default 
+  namespace: demo 
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: etcd-cluster
@@ -550,7 +550,7 @@ apiVersion: operations.kubeblocks.io/v1alpha1
 kind: OpsRequest
 metadata:
   name: etcd-switchover
-  namespace: default
+  namespace: demo 
 spec:
   # Specifies the name of the Cluster resource that this operation is targeting.
   clusterName: etcd-cluster
@@ -629,7 +629,7 @@ spec:
   componentSpecs:
     - name: etcd
       componentDef: etcd
-      serviceVersion: 3.5.15
+      serviceVersion: 3.6.1
       disableExporter: false
       replicas: 3
       resources:
