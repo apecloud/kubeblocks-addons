@@ -68,6 +68,10 @@ spec:
       updatePriority: 1
       participatesInQuorum: true
   {{- include "kblib.syncer.policyRules" . | nindent 2 }}
+  exporter:
+    containerName: exporter
+    scrapePath: /metrics
+    scrapePort: exporter
   lifecycleActions:
     roleProbe:
       periodSeconds: {{ .Values.roleProbe.periodSeconds }}
@@ -172,6 +176,15 @@ spec:
             mountPath: /scripts
           - mountPath: /tools
             name: tools
+      - name: exporter
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        ports:
+          - name: exporter
+            protocol: TCP
+            containerPort: 9216
+        env:
+          - name: MONGODB_URI
+            value: mongodb://127.0.0.1:$(KB_SERVICE_PORT)
     volumes:
       {{- if .Values.logCollector.enabled }}
       - name: log-data
@@ -235,6 +248,16 @@ spec:
             port:
               name: ha
               option: Optional
+    - name: EXPORTER_SERVICE_PORT  
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: exporter
+            port:
+              name: exporter
+              option: Optional
+      expression: {{ `{{if ne (index . "EXPORTER_SERVICE_PORT") ""}}{{.EXPORTER_SERVICE_PORT}}{{else}}9216{{end}}` | toYaml }}
   hostNetwork: 
     containerPorts:  
       - container: mongodb
