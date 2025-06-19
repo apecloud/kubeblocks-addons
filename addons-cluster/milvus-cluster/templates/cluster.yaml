@@ -17,8 +17,8 @@ spec:
       replicas: {{ .Values.proxy.replicas }}
       {{- include "kblib.componentResources" . | indent 6 }}
       serviceRefs:
-        {{- include "milvus.serviceRef.meta" . | indent 8 }}
-        {{- include "milvus.serviceRef.log" . | indent 8 }}
+        # {{- include "milvus.serviceRef.meta" . | indent 8 }}
+        # {{- include "milvus.serviceRef.log" . | indent 8 }}
         {{- include "milvus.serviceRef.object" . | indent 8 }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
@@ -28,8 +28,8 @@ spec:
       replicas: {{ .Values.mixcoord.replicas}}
       {{- include "kblib.componentResources" . | indent 6 }}
       serviceRefs:
-        {{- include "milvus.serviceRef.meta" . | indent 8 }}
-        {{- include "milvus.serviceRef.log" . | indent 8 }}
+        # {{- include "milvus.serviceRef.meta" . | indent 8 }}
+        # {{- include "milvus.serviceRef.log" . | indent 8 }}
         {{- include "milvus.serviceRef.object" . | indent 8 }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
@@ -39,8 +39,8 @@ spec:
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       serviceRefs:
-        {{- include "milvus.serviceRef.meta" . | indent 8 }}
-        {{- include "milvus.serviceRef.log" . | indent 8 }}
+        # {{- include "milvus.serviceRef.meta" . | indent 8 }}
+        # {{- include "milvus.serviceRef.log" . | indent 8 }}
         {{- include "milvus.serviceRef.object" . | indent 8 }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
@@ -50,8 +50,8 @@ spec:
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       serviceRefs:
-        {{- include "milvus.serviceRef.meta" . | indent 8 }}
-        {{- include "milvus.serviceRef.log" . | indent 8 }}
+        # {{- include "milvus.serviceRef.meta" . | indent 8 }}
+        # {{- include "milvus.serviceRef.log" . | indent 8 }}
         {{- include "milvus.serviceRef.object" . | indent 8 }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
@@ -61,8 +61,8 @@ spec:
       {{- include "kblib.componentMonitor" . | indent 6 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       serviceRefs:
-        {{- include "milvus.serviceRef.meta" . | indent 8 }}
-        {{- include "milvus.serviceRef.log" . | indent 8 }}
+        # {{- include "milvus.serviceRef.meta" . | indent 8 }}
+        # {{- include "milvus.serviceRef.log" . | indent 8 }}
         {{- include "milvus.serviceRef.object" . | indent 8 }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}

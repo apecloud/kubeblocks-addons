@@ -248,6 +248,69 @@ Milvus monitor
 {{- end }}
 
 {{/*
+Milvus cluster vars for cluster-with-dep topology
+*/}}
+{{- define "milvus.cluster.serviceRefVarsWithDep" }}
+- name: ETCD_HOST
+  valueFrom:
+    serviceVarRef:
+      compDef: etcd
+      name: client
+      optional: false
+      host: Required
+- name: ETCD_PORT
+  valueFrom:
+    serviceVarRef:
+      compDef: etcd
+      name: client
+      optional: false
+      port:
+        name: client
+        option: Required
+- name: KAFKA_HOST
+  valueFrom:
+    serviceVarRef:
+      compDef: kafka
+      name: advertised-listener
+      optional: false
+      host: Required
+- name: KAFKA_PORT
+  valueFrom:
+    serviceVarRef:
+      compDef: kafka
+      name: advertised-listener
+      optional: false
+      port:
+        name: broker
+        option: Required
+- name: MINIO_SERVER
+  valueFrom:
+    serviceRefVarRef:
+      name: milvus-object-storage
+      optional: false
+      host: Required
+- name: MINIO_PORT
+  valueFrom:
+    serviceRefVarRef:
+      name: milvus-object-storage
+      optional: false
+      port: Required
+- name: MINIO_ACCESS_KEY
+  valueFrom:
+    serviceRefVarRef:
+      name: milvus-object-storage
+      optional: false
+      username: Required
+- name: MINIO_SECRET_KEY
+  valueFrom:
+    serviceRefVarRef:
+      name: milvus-object-storage
+      optional: false
+      password: Required
+{{- end -}}
+
+# this definition will be reused
+{{/*
 Milvus cluster external storage services reference
 */}}
 {{- define "milvus.cluster.serviceRef" }}

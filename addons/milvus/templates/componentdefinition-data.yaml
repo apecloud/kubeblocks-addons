@@ -33,7 +33,7 @@ spec:
     volumes:
       {{- include "milvus.volume.tools" . | indent 6 }}
   vars:
-    {{- include "milvus.cluster.serviceRefVars" . | indent 4 }}
+    {{- include "milvus.cluster.serviceRefVarsWithDep" . | indent 4 }}
   configs:
     {{- include "milvus.config.cluster" . | indent 4 }}
   #monitor:
