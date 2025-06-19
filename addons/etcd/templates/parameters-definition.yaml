@@ -1,0 +1,75 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParametersDefinition
+metadata:
+  name: {{ include "etcd3.cmpdName" . }}-parameters
+  labels:
+    {{- include "etcd.labels" . | nindent 4 }}
+  annotations:
+    {{- include "etcd.annotations" . | nindent 4 }}
+spec:
+  fileName: etcd.conf
+
+  reloadAction:
+    autoTrigger:
+      processName: etcd
+
+  # ConfigurationSchema that impose restrictions on engine parameter's rule
+  parametersSchema:
+    # top level etcd configuration type
+    topLevelKey: EtcdParameter
+
+    # schemaInJSON: auto generate from cue scripts
+    cue: |-
+      {{- .Files.Get "config/etcd-config-constraint.cue" | nindent 6 }}
+
+  staticParameters:
+    - "etcd.name"
+    - "etcd.data-dir"
+    - "etcd.wal-dir"
+    - "etcd.snapshot-count"
+    - "etcd.heartbeat-interval"
+    - "etcd.election-timeout"
+    - "etcd.quota-backend-bytes"
+    - "etcd.listen-peer-urls"
+    - "etcd.listen-client-urls"
+    - "etcd.initial-advertise-peer-urls"
+    - "etcd.advertise-client-urls"
+    - "etcd.initial-cluster"
+    - "etcd.initial-cluster-token"
+    - "etcd.initial-cluster-state"
+    - "etcd.strict-reconfig-check"
+    - "etcd.max-snapshots"
+    - "etcd.max-wals"
+    - "etcd.auto-compaction-mode"
+    - "etcd.auto-compaction-retention"
+    - "etcd.client-transport-security"
+    - "etcd.peer-transport-security"
+    - "etcd.cipher-suites"
+    - "etcd.tls-min-version"
+    - "etcd.tls-max-version"
+    - "etcd.proxy"
+    - "etcd.proxy-failure-wait"
+    - "etcd.proxy-refresh-interval"
+    - "etcd.proxy-dial-timeout"
+    - "etcd.proxy-write-timeout"
+    - "etcd.proxy-read-timeout"
+    - "etcd.enable-pprof"
+    - "etcd.cors"
+    - "etcd.discovery"
+    - "etcd.discovery-fallback"
+    - "etcd.discovery-proxy"
+    - "etcd.discovery-srv"
+    - "etcd.force-new-cluster"
+    - "etcd.self-signed-cert-validity"
+    - "etcd.log-level"
+    - "etcd.log-outputs"
+    - "etcd.logger"
+
+  dynamicParameters:
+    # only member change is dynamic, which is supported by etcdctl 
+
+  immutableParameters:
+    - "etcd.initial-cluster"
+    - "etcd.initial-cluster-token"
+    - "etcd.initial-cluster-state"
+    - "etcd.force-new-cluster" 

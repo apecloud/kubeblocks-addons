@@ -63,15 +63,6 @@ get_protocol() {
   fi
 }
 
-# Convenience functions for backward compatibility
-get_client_protocol() {
-  get_protocol "advertise-client-urls"
-}
-
-get_peer_protocol() {
-  get_protocol "initial-advertise-peer-urls"
-}
-
 check_backup_file() {
   local backup_file="$1"
 
@@ -82,7 +73,7 @@ check_backup_file() {
   etcdutl snapshot status "$backup_file"
 }
 
-get_pod_endpoint_with_lb() {
+get_endpoint_adapt_lb() {
   local lb_endpoints="$1"
   local pod_name="$2"
   local result_endpoint="$3"
@@ -108,95 +99,49 @@ get_pod_endpoint_with_lb() {
   echo "$result_endpoint"
 }
 
-get_current_leader() {
-  local contact_point="$1"
-  local peer_endpoints leader_endpoint
+# Extract field value from endpoint status using fields format
+parse_endpoint_field() {
+  local endpoint="$1"
+  local field_name="$2"
+  local status field_value
 
-  peer_endpoints=$(exec_etcdctl "$contact_point" member list | awk -F', ' '{if($5) print $5}' | paste -sd, -)
-  if [ -z "$peer_endpoints" ]; then
-    error_exit "No peer endpoints found"
+  if ! status=$(exec_etcdctl "$endpoint" endpoint status -w fields); then
+    error_exit "Failed to get endpoint status from $endpoint"
   fi
 
-  # Get status from all endpoints and find the leader
-  local status_output leader_id endpoint
-  status_output=$(exec_etcdctl "$peer_endpoints" endpoint status -w fields)
+  field_value=$(echo "$status" | awk -F': ' -v field="\"$field_name\"" '$1 ~ field {gsub(/[^0-9]/, "", $2); print $2}')
 
-  leader_id=$(echo "$status_output" | grep -o '"Leader" : [0-9]*' | head -1 | awk '{print $3}')
+  [ -z "$field_value" ] && error_exit "Failed to extract $field_name from endpoint status"
 
-  if [ -z "$leader_id" ]; then
-    error_exit "Leader ID not found in endpoint status"
-  fi
-
-  # Find which endpoint has this leader ID as its member ID
-  leader_endpoint=$(echo "$status_output" | awk -v leader_id="$leader_id" '
-    BEGIN { current_endpoint = ""; current_member_id = "" }
-    /"Endpoint" : / { 
-      gsub(/"/, "", $3); 
-      current_endpoint = $3 
-    }
-    /"MemberID" : / { 
-      current_member_id = $3;
-      if (current_member_id == leader_id && current_endpoint != "") {
-        print current_endpoint;
-        exit
-      }
-    }
-  ')
-
-  if [ -z "$leader_endpoint" ]; then
-    error_exit "Leader not found among peers"
-  fi
-
-  echo "$leader_endpoint"
+  echo "$field_value"
 }
 
-get_etcd_id() {
-  local endpoint="$1"
-  exec_etcdctl "$endpoint" endpoint status -w fields | grep -o '"MemberID" : [0-9]*' | awk '{print $3}'
+is_leader() {
+  local contact_point="$1"
+  local member_id leader_id
+
+  member_id=$(parse_endpoint_field "$contact_point" "MemberID")
+  leader_id=$(parse_endpoint_field "$contact_point" "Leader")
+
+  [ "$member_id" = "$leader_id" ]
 }
 
 get_member_and_leader_id() {
   local endpoint="$1"
-  local status member_id leader_id
 
-  status=$(exec_etcdctl "$endpoint" endpoint status -w fields)
-  member_id=$(echo "$status" | grep -o '"MemberID" : [0-9]*' | awk '{print $3}')
-  leader_id=$(echo "$status" | grep -o '"Leader" : [0-9]*' | awk '{print $3}')
+  member_id=$(parse_endpoint_field "$endpoint" "MemberID")
+  leader_id=$(parse_endpoint_field "$endpoint" "Leader")
 
   echo "$member_id $leader_id"
 }
 
-parse_config_value() {
-  local key="$1"
-  local config_file="$2"
-  grep -E "^$key:" "$config_file" |
-    sed -E \
-      -e "s/^$key:[[:space:]]*//" \
-      -e 's/^[[:space:]]*//; s/[[:space:]]*$//'
+get_member_id() {
+  local endpoint="$1"
+  parse_endpoint_field "$endpoint" "MemberID"
 }
 
-get_etcd_role() {
-  local status member_id leader_id is_learner
-  if ! status=$(exec_etcdctl 127.0.0.1:2379 endpoint status -w fields --command-timeout=300ms --dial-timeout=100ms); then
-    echo "ERROR: Failed to get endpoint status" >&2
-    return 1
-  fi
-
-  member_id=$(echo "$status" | grep -o '"MemberID" : [0-9]*' | awk '{print $3}')
-  leader_id=$(echo "$status" | grep -o '"Leader" : [0-9]*' | awk '{print $3}')
-  is_learner=$(echo "$status" | grep -o '"IsLearner" : [a-z]*' | awk '{print $3}')
-
-  if [ "$member_id" = "$leader_id" ]; then
-    if [ "$is_learner" = "true" ]; then
-      echo "learner"
-    else
-      echo "leader"
-    fi
-  else
-    if [ "$is_learner" = "true" ]; then
-      echo "learner"
-    else
-      echo "follower"
-    fi
-  fi
+get_member_id_hex() {
+  local endpoint="$1"
+  member_id=$(parse_endpoint_field "$endpoint" "MemberID")
+  printf "%x" "$member_id"
 }

@@ -5,9 +5,9 @@ Describe "Member Leave Script Tests"
   Include ../scripts/member-leave.sh
 
   Describe "get_etcd_id()"
-    It "returns the correct etcd ID"
+    It "returns the correct etcd ID in hex format"
       exec_etcdctl() {
-        echo '"MemberID" : 8e9e05c52164694d
+        echo '"MemberID" : 10276657743932975437
 "Leader" : 12345
 "Endpoint" : "http://etcd-0:2379"'
       }
@@ -22,7 +22,7 @@ Describe "Member Leave Script Tests"
       export LEADER_POD_FQDN="etcd-0.etcd-headless"
       export KB_LEAVE_MEMBER_POD_NAME="etcd-1"
       export PEER_ENDPOINT=""
-      get_pod_endpoint_with_lb() { echo "$2"; }
+      get_endpoint_adapt_lb() { echo "$2"; }
       log() { echo "$@"; }
       exec_etcdctl() { return 0; }
       When call remove_member "8e9e05c52164694d"
@@ -34,7 +34,7 @@ Describe "Member Leave Script Tests"
       export LEADER_POD_FQDN="etcd-0.etcd-headless"
       export KB_LEAVE_MEMBER_POD_NAME="etcd-1"
       export PEER_ENDPOINT=""
-      get_pod_endpoint_with_lb() { echo "$2"; }
+      get_endpoint_adapt_lb() { echo "$2"; }
       log() { echo "$@"; }
       exec_etcdctl() { return 1; }
       When call remove_member "8e9e05c52164694d"
@@ -48,7 +48,7 @@ Describe "Member Leave Script Tests"
       export KB_LEAVE_MEMBER_POD_NAME="etcd-1"
       export KB_LEAVE_MEMBER_POD_FQDN="etcd-1.etcd-headless.default.svc.cluster.local"
       export PEER_ENDPOINT=""
-      get_pod_endpoint_with_lb() { echo "$3"; }
+      get_endpoint_adapt_lb() { echo "$3"; }
       log() { echo "$@"; }
       get_etcd_id() { echo "8e9e05c52164694d"; }
       remove_member() { return 0; }

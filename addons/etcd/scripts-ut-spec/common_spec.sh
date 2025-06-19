@@ -136,7 +136,7 @@ Describe "Common Functions Tests"
     End
   End
 
-  Describe "get_current_leader()"
+  Describe "is_leader()"
     # Mock command -v for etcdctl (needed by exec_etcdctl)
     command_check_etcdctl_exists() { if [ "$1" = "-v" ] && [ "$2" = "etcdctl" ]; then return 0; else return 127; fi; }
     BeforeEach "setup_temp_config_file" "command_check_etcdctl_exists"
@@ -146,7 +146,7 @@ Describe "Common Functions Tests"
       # Mock get_protocol for exec_etcdctl
       get_protocol() { echo "http"; return 0; }
       
-      # Mock exec_etcdctl for get_current_leader
+      # Mock exec_etcdctl for is_leader
       # This mock needs to handle two types of calls: 'member list' and 'endpoint status'
       exec_etcdctl_output_member_list='''
 http://etcd-0:2380
@@ -177,7 +177,7 @@ http://etcd-2:2380
         fi
         return 0
       }
-      When call get_current_leader "http://initial-contact:2379"
+      When call is_leader "http://initial-contact:2379"
       The output should equal "http://etcd-1:2379"
       The status should be success
     End
@@ -192,9 +192,9 @@ http://etcd-2:2380
         fi
         return 0
       }
-      When call get_current_leader "http://initial-contact:2379"
+      When call is_leader "http://initial-contact:2379"
       The status should be failure
-      The stderr should include "ERROR: get_current_leader - No peer endpoints found from member list of 'http://initial-contact:2379'"
+      The stderr should include "ERROR: is_leader - No peer endpoints found from member list of 'http://initial-contact:2379'"
     End
 
     It "fails if no leader is found in endpoint status"
@@ -220,9 +220,9 @@ http://etcd-2:2380
         fi
         return 0
       }
-      When call get_current_leader "http://initial-contact:2379"
+      When call is_leader "http://initial-contact:2379"
       The status should be failure
-      The stderr should include "ERROR: get_current_leader - Leader not found among peers: 'http://etcd-0:2380,http://etcd-1:2380,http://etcd-2:2380'"
+      The stderr should include "ERROR: is_leader - Leader not found among peers: 'http://etcd-0:2380,http://etcd-1:2380,http://etcd-2:2380'"
     End
     
     It "fails if exec_etcdctl for member list fails internally"
@@ -230,20 +230,20 @@ http://etcd-2:2380
       exec_etcdctl() {
          if [[ "$*" == *"member list"* ]]; then
             # Simulate exec_etcdctl's internal error_exit by returning non-zero and printing to stderr
-            # This makes the main `if ! peer_endpoints=$(...)` in get_current_leader trigger its own error_exit
+            # This makes the main `if ! peer_endpoints=$(...)` in is_leader trigger its own error_exit
             echo "ERROR: exec_etcdctl - etcdctl command failed..." >&2 
             return 1 
          fi
       }
-      When call get_current_leader "http://initial-contact:2379"
+      When call is_leader "http://initial-contact:2379"
       The status should be failure
       # The error message from exec_etcdctl will be printed by the mocked error_exit.
-      # Then get_current_leader's own error_exit for parsing failure will be triggered.
-      The stderr should include "ERROR: get_current_leader - Failed to get or parse member list from 'http://initial-contact:2379'"
+      # Then is_leader's own error_exit for parsing failure will be triggered.
+      The stderr should include "ERROR: is_leader - Failed to get or parse member list from 'http://initial-contact:2379'"
     End
   End
 
-  Describe "get_current_leader_with_retry()"
+  Describe "is_leader_with_retry()"
     # Mock command -v for call_func_with_retry
     command_check_call_func_exists() { if [ "$1" = "-v" ] && [ "$2" = "call_func_with_retry" ]; then return 0; else return 127; fi; }
     
@@ -252,11 +252,11 @@ http://etcd-2:2380
     It "retries and returns the current leader endpoint"
       call_func_with_retry() { # Mock call_func_with_retry
         # Args: max_retries, retry_delay, function_name, function_args...
-        # Simulate successful call to get_current_leader
+        # Simulate successful call to is_leader
         echo "http://leader-from-retry:2379"
         return 0
       }
-      When call get_current_leader_with_retry "http://initial:2379" 3 1
+      When call is_leader_with_retry "http://initial:2379" 3 1
       The output should equal "http://leader-from-retry:2379"
       The status should be success
     End
@@ -264,9 +264,9 @@ http://etcd-2:2380
     It "fails if call_func_with_retry command is not found"
       command_check_call_func_not_exists() { if [ "$1" = "-v" ] && [ "$2" = "call_func_with_retry" ]; then return 1; fi; }
       BeforeRun "command_check_call_func_not_exists" # Override BeforeEach
-      When call get_current_leader_with_retry "http://initial:2379" 3 1
+      When call is_leader_with_retry "http://initial:2379" 3 1
       The status should be failure
-      The stderr should include "ERROR: get_current_leader_with_retry - call_func_with_retry command not found. Ensure kblib is sourced."
+      The stderr should include "ERROR: is_leader_with_retry - call_func_with_retry command not found. Ensure kblib is sourced."
       Skip # Due to BeforeRun interaction complexities with teardown, direct mock is better. Test manually or simplify mock.
     End
     
@@ -275,7 +275,7 @@ http://etcd-2:2380
         echo "ERROR: call_func_with_retry itself failed" >&2
         return 1
       }
-      When call get_current_leader_with_retry "http://initial:2379" 3 1
+      When call is_leader_with_retry "http://initial:2379" 3 1
       The status should be failure
       The stderr should include "ERROR: call_func_with_retry itself failed" # common.sh's error_exit will catch this.
       # Since common.sh has set -e, the script will exit when call_func_with_retry returns 1.

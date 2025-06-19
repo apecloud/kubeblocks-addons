@@ -54,7 +54,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Common annotations
 */}}
 {{- define "etcd.annotations" -}}
-# {{ include "kblib.helm.resourcePolicy" . }}
+{{- /*{{ include "kblib.helm.resourcePolicy" . }}*/ -}}
 {{ include "etcd.apiVersion" . }}
 {{- end }}
 

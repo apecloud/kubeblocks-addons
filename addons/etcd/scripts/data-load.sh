@@ -1,5 +1,4 @@
 #!/bin/bash
-
 set -exo pipefail
 
 default_template_conf="/etc/etcd/etcd.conf"

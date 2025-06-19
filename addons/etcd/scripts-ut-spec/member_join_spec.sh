@@ -11,10 +11,14 @@ Describe "Member Join Script Tests"
       export KB_JOIN_MEMBER_POD_NAME="etcd-3"
       export KB_JOIN_MEMBER_POD_FQDN="etcd-3.etcd-headless.default.svc.cluster.local"
       export PEER_ENDPOINT=""
-      get_pod_endpoint_with_lb() { echo "$3"; }
+      get_endpoint_adapt_lb() { echo "$3"; }
       log() { echo "$@"; }
-      get_peer_protocol() { echo "http"; }
-      get_client_protocol() { echo "http"; }
+      get_protocol() { 
+        case "$1" in
+          "initial-advertise-peer-urls") echo "http" ;;
+          "advertise-client-urls") echo "http" ;;
+        esac
+      }
       exec_etcdctl() { return 0; }
       When call add_member
       The status should be success
@@ -26,10 +30,14 @@ Describe "Member Join Script Tests"
       export KB_JOIN_MEMBER_POD_NAME="etcd-3"
       export KB_JOIN_MEMBER_POD_FQDN="etcd-3.etcd-headless.default.svc.cluster.local"
       export PEER_ENDPOINT=""
-      get_pod_endpoint_with_lb() { echo "$3"; }
+      get_endpoint_adapt_lb() { echo "$3"; }
       log() { echo "$@"; }
-      get_peer_protocol() { echo "http"; }
-      get_client_protocol() { echo "http"; }
+      get_protocol() { 
+        case "$1" in
+          "initial-advertise-peer-urls") echo "http" ;;
+          "advertise-client-urls") echo "http" ;;
+        esac
+      }
       exec_etcdctl() { return 1; }
       When call add_member
       The status should be failure
@@ -40,10 +48,14 @@ Describe "Member Join Script Tests"
       unset LEADER_POD_FQDN
       unset KB_JOIN_MEMBER_POD_NAME
       unset KB_JOIN_MEMBER_POD_FQDN
-      get_pod_endpoint_with_lb() { echo ""; }
+      get_endpoint_adapt_lb() { echo ""; }
       log() { echo "$@"; }
-      get_peer_protocol() { echo "http"; }
-      get_client_protocol() { echo "http"; }
+      get_protocol() { 
+        case "$1" in
+          "initial-advertise-peer-urls") echo "http" ;;
+          "advertise-client-urls") echo "http" ;;
+        esac
+      }
       exec_etcdctl() { return 1; }
       When call add_member
       The status should be failure
