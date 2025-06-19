@@ -11,6 +11,9 @@ image:
   syncer:
     repository: apecloud/syncer
     tag: "0.5.0"
+  exporter:
+    repository: apecloud/mongodb_exporter
+    tag: "0.44.0"
 
 # refer: https://github.com/apecloud/wal-g/blob/kb-dev/docker/wal-g/Dockerfile-mongo
 # this image is built from Dockerfile of apecloud/wal-g forked from wal-g/wal-g.
