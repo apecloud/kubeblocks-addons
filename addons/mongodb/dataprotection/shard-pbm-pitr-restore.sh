@@ -26,7 +26,8 @@ wait_for_other_operations
 
 sync_pbm_storage_config
 
-pbm config --force-resync --mongodb-uri "$PBM_MONGODB_URI" --wait --wait-time 300s
+sync_pbm_config_from_storage
+
 extras=$(cat /dp_downward/status_extras)
 configsvr_name=$(echo "$extras" | jq -r '.[0].configsvr')
 echo "INFO: Config server replica set name: $configsvr_name"

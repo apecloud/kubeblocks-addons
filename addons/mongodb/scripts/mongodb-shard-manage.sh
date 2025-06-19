@@ -53,7 +53,6 @@ wait_for_mongos() {
     fi
 }
 
-
 check_shard_exists() {
     # check if the shard exists in the config database
     local shard_exists

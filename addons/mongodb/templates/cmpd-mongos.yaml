@@ -35,18 +35,6 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555  # for read and execute, mysql container switched user account.
-  # lifecycleActions:
-  #   postProvision:
-  #     customHandler:
-  #       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.tag }}
-  #       exec:
-  #         command:
-  #           - /bin/bash
-  #           - -c
-  #           - /scripts/mongodb-mongos-post-provision.sh
-  #       preCondition: RuntimeReady
-  #       retryPolicy:
-  #         maxRetries: 10
   runtime:
     securityContext:
       # percona-server-mongodb needs run as root to have privilege to access to keyfile
@@ -132,7 +120,7 @@ spec:
         credentialVarRef:
           # use config server credential to access to mongos
           compDef: {{ include "cfgServer.componentDefName" . }}
-          name: admin
+          name: root
           optional: false
           username: Required
     - name: MONGOS_PASSWORD
@@ -140,14 +128,14 @@ spec:
         credentialVarRef:
           # use config server credential to access to mongos
           compDef: {{ include "cfgServer.componentDefName" . }}
-          name: admin
+          name: root
           optional: false
           password: Required
     - name: MONGODB_ADMIN_USER
       valueFrom:
         credentialVarRef:
           compDef: {{ include "mongodbShard.componentDefName" . }}
-          name: admin
+          name: root
           optional: false
           username: Required
           multipleClusterObjectOption:
@@ -156,7 +144,7 @@ spec:
       valueFrom:
         credentialVarRef:
           compDef: {{ include "mongodbShard.componentDefName" . }}
-          name: admin
+          name: root
           optional: false
           password: Required
           multipleClusterObjectOption:

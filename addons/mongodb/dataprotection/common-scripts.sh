@@ -185,19 +185,29 @@ function export_pbm_env_vars() {
 
 function sync_pbm_storage_config() {
   echo "INFO: Checking if PBM storage config exists"
-  check_config=$(pbm config --mongodb-uri "$PBM_MONGODB_URI" -o json)
-  current_endpoint=$(echo "$check_config" | jq -r '.storage.s3.endpointUrl')
-  current_region=$(echo "$check_config" | jq -r '.storage.s3.region')
-  current_bucket=$(echo "$check_config" | jq -r '.storage.s3.bucket')
-  current_prefix=$(echo "$check_config" | jq -r '.storage.s3.prefix')
-  echo "INFO: Current PBM storage endpoint: $current_endpoint"
-  echo "INFO: Current PBM storage region: $current_region"
-  echo "INFO: Current PBM storage bucket: $current_bucket"
-  echo "INFO: Current PBM storage prefix: $current_prefix"
-  if [ "$current_prefix" = "$S3_PREFIX" ] && [ "$current_region" = "$S3_REGION" ] && [ "$current_bucket" = "$S3_BUCKET" ] && [ "$current_endpoint" = "$S3_ENDPOINT" ]; then
-    echo "INFO: PBM storage config already exists."
-  else
-  cat <<EOF | pbm config --mongodb-uri "$PBM_MONGODB_URI" --file /dev/stdin > /dev/null
+  pbm_config_exists=true
+  check_config=$(pbm config --mongodb-uri "$PBM_MONGODB_URI" -o json) || {
+    pbm_config_exists=false
+    echo "INFO: PBM storage config does not exist."
+  }
+  if [ "$pbm_config_exists" = "true" ]; then
+    # check_config=$(pbm config --mongodb-uri "$PBM_MONGODB_URI" -o json)
+    current_endpoint=$(echo "$check_config" | jq -r '.storage.s3.endpointUrl')
+    current_region=$(echo "$check_config" | jq -r '.storage.s3.region')
+    current_bucket=$(echo "$check_config" | jq -r '.storage.s3.bucket')
+    current_prefix=$(echo "$check_config" | jq -r '.storage.s3.prefix')
+    echo "INFO: Current PBM storage endpoint: $current_endpoint"
+    echo "INFO: Current PBM storage region: $current_region"
+    echo "INFO: Current PBM storage bucket: $current_bucket"
+    echo "INFO: Current PBM storage prefix: $current_prefix"
+    if [ "$current_prefix" = "$S3_PREFIX" ] && [ "$current_region" = "$S3_REGION" ] && [ "$current_bucket" = "$S3_BUCKET" ] && [ "$current_endpoint" = "$S3_ENDPOINT" ]; then
+      echo "INFO: PBM storage config already exists."
+    else
+      pbm_config_exists=false
+    fi
+  fi
+  if [ "$pbm_config_exists" = "false" ]; then
+    cat <<EOF | pbm config --mongodb-uri "$PBM_MONGODB_URI" --file /dev/stdin > /dev/null
 storage:
   type: s3
   s3:
@@ -210,7 +220,7 @@ storage:
       access-key-id: ${S3_ACCESS_KEY}
       secret-access-key: ${S3_SECRET_KEY}
 EOF
-echo "INFO: PBM storage configuration completed."
+    echo "INFO: PBM storage configuration completed."
   fi
 }
 
@@ -233,7 +243,11 @@ function print_pbm_tail_logs() {
 
 
 function wait_for_other_operations() {
-  running_status=$(pbm status --mongodb-uri "$PBM_MONGODB_URI" -o json | jq -r '.running')
+  status_result=$(pbm status --mongodb-uri "$PBM_MONGODB_URI" -o json) || {
+    echo "INFO: PBM is not configured."
+    return
+  }
+  local running_status=$(echo "$status_result" | jq -r '.running')
   local retry_count=0
   local max_retries=60
   while [ -n "$running_status" ] && [ "$running_status" != "{}" ] && [ $retry_count -lt $max_retries ]; do
@@ -251,4 +265,15 @@ function wait_for_other_operations() {
 function export_logs_start_time_env() {
   local logs_start_time=$(date +"%Y-%m-%dT%H:%M:%SZ")
   export PBM_LOGS_START_TIME="${logs_start_time}"
+}
+
+function sync_pbm_config_from_storage() {
+  echo "INFO: Syncing PBM config from storage..."
+  pbm config --force-resync --mongodb-uri "$PBM_MONGODB_URI"
+  print_pbm_logs_by_event "resync"
+  
+  # resync wait flag might don't work
+  wait_for_other_operations
+
+  echo "INFO: PBM config synced from storage."
 }

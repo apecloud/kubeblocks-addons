@@ -15,10 +15,8 @@ spec:
       value: "5"
     - name: PBM_COMPRESSION
       value: s2
-    - name: PBM_PURGE_HOUR
-      value: "20"
-    - name: PBM_PURGE_MINUTES
-      value: "10"
+    - name: PBM_PURGE_INTERVAL_SECONDS
+      value: "86400"
     - name: PBM_BACKUP_TYPE
       value: continuous
     - name: RETAIN_PITR_FILES

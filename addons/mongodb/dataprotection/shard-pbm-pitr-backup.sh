@@ -77,22 +77,24 @@ function upload_continuous_backup_info() {
   echo "INFO: Continuous backup info uploaded."
 }
 
-function sync_pbm_config_from_storage() {
-  echo "INFO: Syncing PBM config from storage..."
-  pbm config --force-resync --mongodb-uri "$PBM_MONGODB_URI" --wait --wait-time 300s
-  print_pbm_logs_by_event "resync"
-  echo "INFO: PBM config synced from storage."
-}
-
 function purge_pitr_chunks() {
-  echo "INFO: Purging PBM chunks..."
-  current_hour=$(date -u +"%H")
-  current_minute=$(date -u +"%M")
-  if [ "$current_hour" != "$PBM_PURGE_HOUR" ] || [ $(( 10#$current_minute )) -gt $(( 10#$PBM_PURGE_MINUTES )) ]; then
-    echo "INFO: Not time to purge PBM chunks."
+  current_time=$(date +%s)
+  
+  # Initialize last_global_purge_time if not set
+  if [ -z "$last_global_purge_time" ]; then
+    last_global_purge_time=0
+  fi
+  
+  time_diff=$((current_time - last_global_purge_time))
+  
+  if [ $time_diff -lt $(( ${PBM_PURGE_INTERVAL_SECONDS:-86400} )) ]; then
     return
   fi
   
+  # Update last purge time
+  last_global_purge_time=$current_time
+  
+  echo "INFO: Purging PBM chunks..."
   wait_for_other_operations
 
   sync_pbm_config_from_storage
@@ -140,6 +142,8 @@ trap handle_pitr_exit EXIT
 
 wait_for_other_operations
 
+sync_pbm_storage_config
+
 sync_pbm_config_from_storage
 
 while true; do
@@ -157,5 +161,5 @@ while true; do
 
   export_logs_start_time_env
 
-  sleep 10
+  sleep 5
 done

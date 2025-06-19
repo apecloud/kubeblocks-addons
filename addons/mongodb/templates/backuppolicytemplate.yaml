@@ -110,7 +110,7 @@ spec:
     target:
       role: secondary
       fallbackRole: primary
-      account: admin
+      account: root
     backupMethods:
       - name: pbm-logical
         snapshotVolumes: false
