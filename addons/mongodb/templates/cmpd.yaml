@@ -249,7 +249,6 @@ spec:
               name: ha
               option: Optional
     - name: EXPORTER_SERVICE_PORT  
-      value: "9216"
       valueFrom:
         hostNetworkVarRef:
           optional: true
@@ -258,6 +257,7 @@ spec:
             port:
               name: exporter
               option: Optional
+      expression: {{ `{{if ne (index . "EXPORTER_SERVICE_PORT") ""}}{{.EXPORTER_SERVICE_PORT}}{{else}}9216{{end}}` | toYaml }}
   hostNetwork: 
     containerPorts:  
       - container: mongodb
