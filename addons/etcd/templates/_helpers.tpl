@@ -130,6 +130,13 @@ etcdctl-br
 {{- end -}}
 
 {{/*
+Define etcd backup policy template name
+*/}}
+{{- define "etcd.backupPolicyTemplateName" -}}
+etcd-backup-policy-template
+{{- end -}}
+
+{{/*
 Define etcd image repository
 */}}
 {{- define "etcd.repository" -}}

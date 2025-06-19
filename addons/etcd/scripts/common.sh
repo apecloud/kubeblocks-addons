@@ -1,5 +1,5 @@
-#!/bin/bash
-
+#!/var/run/etcd/bin/bash
+export PATH=/var/run/etcd/bin:$PATH
 # config file used to bootstrap the etcd cluster
 config_file="$TMP_CONFIG_PATH"
 

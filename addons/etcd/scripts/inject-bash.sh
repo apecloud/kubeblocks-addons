@@ -6,6 +6,7 @@ set -exo pipefail
 
 inject_bash() {
   local version="$1"
+  local target_dir="$2"
   local major minor patch
 
   echo "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || error_exit "Invalid version format, check ETCD_VERSION"
@@ -23,7 +24,16 @@ inject_bash() {
     echo "No need to inject bash for etcd-${version} image"
   else
     echo "etcd-$version image build with distroless, injecting binaries to run scripts"
-    cp /bin/* /share/bin
+    mkdir -p "$target_dir"
+    cp /bin/* "$target_dir/"
+    
+    # Create /shared/bin directory and symlink all binaries for standard PATH
+    mkdir -p /shared/bin
+    for binary in "$target_dir"/*; do
+      binary_name=$(basename "$binary")
+      ln -sf "$binary" "/shared/bin/$binary_name"
+    done
+    echo "Created symlinks for $(ls /bin | wc -l) binaries in /bin"
   fi
 }
 
@@ -32,4 +42,5 @@ setup_shellspec
 
 # main
 load_common_library
-inject_bash "$ETCD_VERSION"
+target_dir="${1:-/share/bin}"
+inject_bash "$ETCD_VERSION" "$target_dir"

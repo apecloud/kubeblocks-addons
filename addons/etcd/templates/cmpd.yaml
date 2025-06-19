@@ -18,14 +18,19 @@ spec:
           - name: scripts
             mountPath: /scripts
           - name: bin
-            mountPath: /share/bin
+            mountPath: /shared/bin
+          - name: data
+            mountPath: {{ .Values.dataMountDir }}
         command:
           - /bin/bash
           - -c
-          - scripts/inject-bash.sh
+          - |
+            mkdir -p {{ .Values.binDir }}
+            /scripts/inject-bash.sh {{ .Values.binDir }}
     containers:
       - name: etcd
         imagePullPolicy: {{ .Values.image.pullPolicy }}
+        workingDir: {{ .Values.dataMountDir }}
         ports:
           - containerPort: 2379
             name: client
@@ -44,7 +49,7 @@ spec:
           - /bin/bash
           - -c
           - |
-            export PATH=$PATH:/bin
+            export PATH="/bin:$PATH"
             /scripts/start.sh
         env:
           - name: CURRENT_POD_NAME
@@ -62,6 +67,8 @@ spec:
       value: {{ .Values.dataDir }}
     - name: RESTORE_DIR
       value: {{ .Values.restoreDir }}
+    - name: BIN_DIR
+      value: {{ .Values.binDir }}
     - name: CLUSTER_NAME
       valueFrom:
         clusterVarRef:

@@ -1,8 +1,6 @@
-#!/bin/bash
+#!/var/run/etcd/bin/bash
+export PATH=/var/run/etcd/bin:$PATH
 set -exo pipefail
-
-# shellcheck disable=SC1091
-. "/scripts/common.sh"
 
 # if the script exits with a non-zero exit code, touch a file to indicate that the backup failed,
 # the sync progress container will check this file and exit if it exists
