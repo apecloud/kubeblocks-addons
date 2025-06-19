@@ -23,7 +23,8 @@ images:
   kafka2:
     tag: 2.7.0-debian-10-r124
   kafkaExporter:
-    repository: bitnami/kafka-exporter
+    # bitnami/kafka-exporter has been archived by bitnami as bitnami/kafka-exporter-archived. Here we use apecloud instead.
+    repository: apecloud/kafka-exporter
     tag: 1.6.0-debian-11-r67
   jmxExporter:
     repository: bitnami/jmx-exporter
