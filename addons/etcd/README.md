@@ -248,7 +248,7 @@ spec:
     scaleOut:
       # Specifies the replica changes for the component.
       # add one more replica to current component
-      replicaChanges: 1
+      replicaChanges: 1 
 
 ```
 
@@ -561,8 +561,7 @@ spec:
   - componentName: etcd
     # Specifies the instance whose role will be transferred.
     # A typical usage is to transfer the leader role in a consensus system.
-    instanceName: etcd-cluster-etcd-3
-    candidateName: etcd-cluster-etcd-2
+    instanceName: etcd-cluster-etcd-0
 ```
 
 ```bash
