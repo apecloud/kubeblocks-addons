@@ -30,6 +30,12 @@ memory: 4
 appVersionOverride: "v2.5.13"
 
 ##### parameters for cluster mode
+etcd:
+  replicas: 1
+
+kafka:
+  replicas: 1
+
 proxy:
   enabled: true
   replicas: 1

@@ -59,6 +59,7 @@ External object storage service reference
 {{- if eq .Values.storage.object.mode "serviceref" }}
 - name: milvus-object-storage
   namespace: {{ .Values.storage.object.serviceRef.namespace }}
+  {{- if not .Values.storage.object.serviceRef.serviceDescriptor }}
   clusterServiceSelector:
     cluster: {{ .Values.storage.object.serviceRef.cluster.name }}
     service:
@@ -68,6 +69,8 @@ External object storage service reference
     credential:
       component: {{ .Values.storage.object.serviceRef.cluster.component }}
       name: {{ .Values.storage.object.serviceRef.cluster.credential }}
+  {{- else }}
   serviceDescriptor: {{ .Values.storage.object.serviceRef.serviceDescriptor }}
+  {{- end }}
 {{- end }}
 {{- end }}

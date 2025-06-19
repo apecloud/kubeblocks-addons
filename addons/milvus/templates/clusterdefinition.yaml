@@ -54,7 +54,7 @@ spec:
       orders:
         provision:
           - etcd,kafka
-          - milvus-proxy,milvus-datanode,milvus-indexnode,milvus-querynode
+          - proxy,datanode,indexnode,querynode,mixcoord
         terminate:
-          - milvus-proxy,milvus-datanode,milvus-indexnode,milvus-querynode
+          - proxy,datanode,indexnode,querynode,mixcoord
           - etcd,kafka

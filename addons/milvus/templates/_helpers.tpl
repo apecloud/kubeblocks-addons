@@ -318,14 +318,17 @@ Milvus cluster external storage services reference
   serviceRefDeclarationSpecs:
     - serviceKind: etcd
       serviceVersion: "^3.*"
+  optional: true
 - name: milvus-log-storage
   serviceRefDeclarationSpecs:
     - serviceKind: pulsar
       serviceVersion: "^2.*"
+  optional: true
 - name: milvus-object-storage
   serviceRefDeclarationSpecs:
     - serviceKind: minio
       serviceVersion: "^*"
+  optional: true
 {{- end }}
 
 {{/*
