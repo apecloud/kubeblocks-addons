@@ -4,7 +4,7 @@ metadata:
   name: mongo-cluster-restore
   namespace: demo
   annotations:
-    # e.g. set  "encryptedSystemAccounts": {\"root\":\"ENCRYPTEDPASSWORD\"}
+    # NOTE: replace <ENCRYPTED-SYSTEM-ACCOUNTS> with the accounts info from you backup
     kubeblocks.io/restore-from-backup: '{"mongodb":{"encryptedSystemAccounts":"<ENCRYPTED-SYSTEM-ACCOUNTS>","name":"mongo-cluster-backup","namespace":"demo","volumeRestorePolicy":"Parallel"}}'
 spec:
   terminationPolicy: Delete

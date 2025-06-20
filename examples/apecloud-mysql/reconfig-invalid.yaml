@@ -1,0 +1,13 @@
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: acmysql-reconfigure-invalid
+  namespace: demo
+spec:
+  type: Reconfiguring
+  clusterName: acmysql-cluster
+  reconfigures:
+  - componentName: mysql
+    parameters:
+    - key: max_connections
+      value: 'STRING'
