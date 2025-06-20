@@ -286,18 +286,21 @@ scale_redis_cluster_replica() {
     echo "the nodes.conf file after redis server start is not exist"
   fi
 
-  # get the current component nodes for scale out replica
-  target_node_name=$(min_lexicographical_order_pod "$CURRENT_SHARD_POD_NAME_LIST")
-  if ! is_empty "$CURRENT_SHARD_PRIMARY_POD_NAME"; then
-    target_node_name="$CURRENT_SHARD_PRIMARY_POD_NAME"
-  fi
-  target_node_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$CURRENT_SHARD_POD_FQDN_LIST" "$target_node_name")
-  if is_empty "$target_node_fqdn"; then
-    echo "Error: Failed to get target node fqdn from current shard pod fqdn list: $CURRENT_SHARD_POD_FQDN_LIST. Exiting." >&2
-    exit 1
-  fi
-  # get the current component nodes for scale out replica
-  get_current_comp_nodes_for_scale_out_replica "$target_node_fqdn" "$service_port"
+  for target_node_name in $(echo "${CURRENT_SHARD_POD_NAME_LIST}" | tr ',' '\n'); do
+     if [ -f /data/rebuild.flag ] && [ "${CURRENT_POD_NAME}" == "${target_node_name}" ]; then
+       continue
+     fi
+     target_node_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$CURRENT_SHARD_POD_FQDN_LIST" "$target_node_name")
+     if is_empty "$target_node_fqdn"; then
+       echo "Error: Failed to get target node fqdn from current shard pod fqdn list: $CURRENT_SHARD_POD_FQDN_LIST. Exiting." >&2
+       exit 1
+     fi
+     # get the current component nodes for scale out replica
+     get_current_comp_nodes_for_scale_out_replica "$target_node_fqdn" "$service_port"
+     if [ $? -eq 0 ]; then
+       break
+     fi
+  done
 
   # check current_comp_primary_node is empty or not
   if [ ${#current_comp_primary_node[@]} -eq 0 ]; then
@@ -342,6 +345,15 @@ scale_redis_cluster_replica() {
   fi
   # current_node_with_port do not use advertised svc and port, because advertised svc and port are not ready when Pod is not Ready.
   current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$CURRENT_SHARD_POD_FQDN_LIST" "$CURRENT_POD_NAME")
+  if is_rebuild_instance; then
+    echo "Current instance is a rebuild-instance, forget node id in the cluster firstly."
+    node_id=$(get_cluster_id_with_retry "$primary_node_endpoint" "$primary_node_port" "$current_pod_fqdn")
+    if [ -z ${REDIS_DEFAULT_PASSWORD} ]; then
+      redis-cli -p $service_port --cluster call $primary_node_endpoint_with_port cluster forget ${node_id}
+    else
+      redis-cli -p $service_port --cluster call $primary_node_endpoint_with_port cluster forget ${node_id} -a ${REDIS_DEFAULT_PASSWORD}
+    fi
+  fi
   current_node_with_port="$current_pod_fqdn:$service_port"
   replicated_output=$(secondary_replicated_to_primary "$current_node_with_port" "$primary_node_endpoint_with_port" "$primary_node_cluster_id")
   status=$?
@@ -370,7 +382,7 @@ scale_redis_cluster_replica() {
   fi
 
   # Hacky: When the entire redis cluster is restarted, a hacky sleep is used to wait for all primaries to enter the restarting state
-  sleep_when_ut_mode_false 60
+  sleep_when_ut_mode_false 5
 
   # cluster meet the primary node until the current node is successfully added to the cluster
   current_primary_met=false
