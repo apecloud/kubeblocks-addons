@@ -148,14 +148,18 @@
   <!-- see https://github.com/ClickHouse/ClickHouse/issues/78830 -->
   <user_directories replace="replace">
     <users_xml>
-      <!-- Local users.xml directory (priority 1, local path) -->
-      <path>/opt/bitnami/clickhouse/etc/users.xml</path>
+      <!-- Local static user directory (local path) -->
+      <path>/bitnami/clickhouse/etc/users.d/default/user.xml</path>
     </users_xml>
     {{- if (index . "CH_KEEPER_POD_FQDN_LIST") }}
     <replicated>
-      <!-- Keeper-based replicated user directory (priority 2, keeper path, for backup and restore compatibility) -->
+      <!-- Keeper-based replicated user directory (keeper path) -->
       <zookeeper_path>/clickhouse/access</zookeeper_path>
     </replicated>
     {{- end }}
+    <local_directory>
+      <!-- Local dynamic user directory (local path, for standalone mode) -->
+      <path>/bitnami/clickhouse/data/access/</path>
+    </local_directory>
   </user_directories>
 </clickhouse>
