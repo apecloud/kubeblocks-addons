@@ -281,13 +281,18 @@ get_cluster_nodes_info() {
 get_cluster_id() {
   local cluster_node="$1"
   local cluster_node_port="$2"
+  local pod_fqdn="$3"
   cluster_nodes_info=$(get_cluster_nodes_info "$cluster_node" "$cluster_node_port")
   status=$?
   if [ $status -ne 0 ]; then
     echo "Failed to get cluster nodes info in get_cluster_id" >&2
     return 1
   fi
-  cluster_id=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $1}')
+  if [ -n "${pod_fqdn}" ]; then
+    cluster_id=$(echo "$cluster_nodes_info" | grep "${pod_fqdn}" | awk '{print $1}')
+  else
+    cluster_id=$(echo "$cluster_nodes_info" | grep "myself" | awk '{print $1}')
+  fi
   echo "$cluster_id"
   return 0
 }
@@ -370,8 +375,9 @@ get_cluster_nodes_info_with_retry() {
 get_cluster_id_with_retry() {
   local cluster_node="$1"
   local cluster_node_port="$2"
+  local pod_fqdn="$3"
   # call the execute_get_cluster_id_command function with call_func_with_retry function and get the output
-  cluster_id=$(call_func_with_retry $retry_times $retry_delay_second get_cluster_id "$cluster_node" "$cluster_node_port")
+  cluster_id=$(call_func_with_retry $retry_times $retry_delay_second get_cluster_id "$cluster_node" "$cluster_node_port" "${pod_fqdn}")
   status=$?
   if [ $status -ne 0 ]; then
     echo "Failed to get the cluster id of the cluster node $cluster_node:$cluster_node_port after retry" >&2
