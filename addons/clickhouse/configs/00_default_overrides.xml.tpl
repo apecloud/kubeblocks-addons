@@ -149,7 +149,7 @@
   <user_directories replace="replace">
     <users_xml>
       <!-- Local static user directory (local path) -->
-      <path>/opt/bitnami/clickhouse/etc/users.xml</path>
+      <path>/bitnami/clickhouse/etc/users.d/default/user.xml</path>
     </users_xml>
     {{- if (index . "CH_KEEPER_POD_FQDN_LIST") }}
     <replicated>
