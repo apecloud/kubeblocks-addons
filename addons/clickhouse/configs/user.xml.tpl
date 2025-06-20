@@ -2,12 +2,12 @@
   <!-- Settings profiles -->
   <profiles>
     <!-- Admin user settings -->
-    <admin>
+    <default>
       <!-- The maximum number of threads when running a single query, which is used for admin user -->
       <max_threads>8</max_threads>
       <log_queries>1</log_queries>
       <log_queries_min_query_duration_ms>2000</log_queries_min_query_duration_ms>
-    </admin>
+    </default>
 
     <!-- Settings for quries from the user interface, this is a example profile for day-2-create user or special sessions -->
     <web>
@@ -43,7 +43,7 @@
 
   <!-- Resource usage limits enforced per 1-hour time window -->
   <quotas>
-    <admin>
+    <default>
       <interval>
         <duration>3600</duration>
         <queries>0</queries>
@@ -52,7 +52,7 @@
         <read_rows>0</read_rows>
         <execution_time>0</execution_time>
       </interval>
-    </admin>
+    </default>
   </quotas>
 
   <!-- Users and roles -->
@@ -69,8 +69,8 @@
         <ip>::/0</ip>
       </networks>
 
-      <profile>admin</profile>
-      <quota>admin</quota>
+      <profile>default</profile>
+      <quota>default</quota>
     </admin>
   </users>
 </clickhouse>
