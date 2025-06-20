@@ -79,8 +79,10 @@ spec:
       value: "{{ .Values.tls.client }}"
     - name: PEER_TLS
       value: "{{ .Values.tls.peer }}"
-    - name: TMP_CONFIG_PATH
-      value: {{ .Values.tmpConfigPath }}
+    - name: CONFIG_TEMPLATE_PATH
+      value: {{ .Values.configTemplatePath }}
+    - name: CONFIG_FILE_PATH
+      value: {{ .Values.configFilePath }}
     - name: PEER_FQDNS
       valueFrom:
         componentVarRef:
@@ -185,6 +187,7 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: config
       defaultMode: 0666
+      restartOnFileChange: false
   scripts:
     - name: script
       template: {{ include "etcd3.scriptTemplate" .}}

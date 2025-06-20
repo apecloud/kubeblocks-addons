@@ -15,8 +15,8 @@ handle_exit() {
 trap handle_exit EXIT
 
 # use etcdctl create snapshot
-ENDPOINTS=${DP_DB_HOST}.${CLUSTER_NAMESPACE}.svc${CLUSTER_DOMAIN}:2379
-exec_etcdctl "${ENDPOINTS}" snapshot save "${DP_BACKUP_NAME}"
+ENDPOINT="$DP_DB_HOST.$CLUSTER_NAMESPACE.svc$CLUSTER_DOMAIN:2379"
+exec_etcdctl "${ENDPOINT}" snapshot save "${DP_BACKUP_NAME}"
 
 # check the backup file, make sure it is not empty
 check_backup_file "${DP_BACKUP_NAME}" || error_exit "Backup file is invalid"

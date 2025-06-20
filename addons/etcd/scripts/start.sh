@@ -1,14 +1,14 @@
 #!/bin/bash
 set -exo pipefail
 
-default_template_conf="/etc/etcd/etcd.conf"
-real_conf="$TMP_CONFIG_PATH"
+default_template_conf="$CONFIG_TEMPLATE_PATH"
+default_conf="$CONFIG_FILE_PATH"
 
 # shellcheck disable=SC1091
 . "/scripts/common.sh"
 
 parse_config_value() {
-  local key="$1" 
+  local key="$1"
   local config_file="$2"
   grep "^$key:" "$config_file" | cut -d: -f2- | xargs
 }
@@ -28,6 +28,17 @@ update_etcd_conf() {
 
   if [ ! -e "$tpl_conf" ]; then
     cp "$default_template_conf" "$tpl_conf"
+  else
+    immutable_params=("initial-cluster" "initial-cluster-token" "initial-cluster-state" "force-new-cluster")
+    temp_conf="${tpl_conf}.tmp"
+    cp "$default_template_conf" "$temp_conf"
+    for param in "${immutable_params[@]}"; do
+      if existing_line=$(grep -E "^${param}:" "$tpl_conf"); then
+        sed -i.bak "s|^${param}:.*|${existing_line}|g" "$temp_conf"
+      fi
+    done
+    rm "$temp_conf.bak"
+    mv "$temp_conf" "$tpl_conf"
   fi
 
   peer_protocol=$(get_protocol "initial-advertise-peer-urls")
@@ -41,10 +52,10 @@ update_etcd_conf() {
 
 rebuild_etcd_conf() {
   my_endpoint=$(get_my_endpoint)
-  update_etcd_conf "$default_template_conf" "$real_conf" "$CURRENT_POD_NAME" "$my_endpoint"
+  update_etcd_conf "$default_template_conf" "$default_conf" "$CURRENT_POD_NAME" "$my_endpoint"
 
   log "Updated etcd.conf:"
-  cat "$real_conf"
+  cat "$default_conf"
 }
 
 restore() {
@@ -56,11 +67,11 @@ restore() {
   backup_file="${files[0]}"
   check_backup_file "$backup_file" || error_exit "Backup file is invalid"
 
-  data_dir=$(parse_config_value "data-dir" "$real_conf")
-  name=$(parse_config_value "name" "$real_conf")
-  advertise_urls=$(parse_config_value "initial-advertise-peer-urls" "$real_conf")
-  cluster=$(parse_config_value "initial-cluster" "$real_conf")
-  cluster_token=$(parse_config_value "initial-cluster-token" "$real_conf")
+  data_dir=$(parse_config_value "data-dir" "$default_conf")
+  name=$(parse_config_value "name" "$default_conf")
+  advertise_urls=$(parse_config_value "initial-advertise-peer-urls" "$default_conf")
+  cluster=$(parse_config_value "initial-cluster" "$default_conf")
+  cluster_token=$(parse_config_value "initial-cluster-token" "$default_conf")
   etcdutl snapshot restore "$backup_file" \
     --data-dir="$data_dir" \
     --name="$name" \
@@ -78,7 +89,7 @@ main() {
   fi
 
   log "Starting etcd with updated configuration..."
-  exec etcd --config-file "$real_conf"
+  exec etcd --config-file "$default_conf"
 }
 
 # Shellspec magic

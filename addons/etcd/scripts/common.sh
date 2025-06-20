@@ -1,7 +1,7 @@
 #!/var/run/etcd/bin/bash
 export PATH=/var/run/etcd/bin:$PATH
 # config file used to bootstrap the etcd cluster
-config_file="$TMP_CONFIG_PATH"
+config_file="$CONFIG_FILE_PATH"
 
 log() {
   echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
@@ -27,12 +27,11 @@ setup_shellspec() {
   ${__SOURCED__:+false} : || return 0
 }
 
-# execute etcdctl command with proper TLS settings and auto protocol detection
+# execute etcdctl command with auto protocol detection
 exec_etcdctl() {
   local endpoint="$1"
   shift
 
-  # Auto-detect protocol and add prefix if not present
   if [[ "$endpoint" != http://* ]] && [[ "$endpoint" != https://* ]]; then
     if get_protocol "advertise-client-urls" | grep -q "https"; then
       endpoint="https://$endpoint"
@@ -52,7 +51,6 @@ exec_etcdctl() {
   fi
 }
 
-# Unified protocol detection function - replaces get_client_protocol and get_peer_protocol
 get_protocol() {
   local url_type="$1"
 
@@ -99,7 +97,6 @@ get_endpoint_adapt_lb() {
   echo "$result_endpoint"
 }
 
-# Extract field value from endpoint status using fields format
 parse_endpoint_field() {
   local endpoint="$1"
   local field_name="$2"

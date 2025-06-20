@@ -8,8 +8,6 @@ spec:
   env:
     - name: TLS_DIR
       value: {{ .Values.tlsMountPath }}
-    - name: TMP_CONFIG_PATH
-      value: {{ .Values.tmpConfigPath}}
     - name: RESTORE_DIR
       value: {{ .Values.restoreDir }}
     - name: CLUSTER_DOMAIN
