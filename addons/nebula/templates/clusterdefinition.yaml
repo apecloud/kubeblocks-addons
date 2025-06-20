@@ -5,6 +5,21 @@ metadata:
   labels:
     {{- include "nebula.labels" . | nindent 4 }}
 spec:
+  topologies:
+    - name: default
+      default: true
+      components:
+        - name: graphd
+          compDef: {{ include "nebula-graphd.cmpdRegexpPattern" . }}
+        - name: metad
+          compDef: {{ include "nebula-metad.cmpdRegexpPattern" . }}
+        - name: storaged
+          compDef: {{ include "nebula-storaged.cmpdRegexpPattern" . }}
+      orders:
+        provision:
+          - metad
+          - graphd
+          - storaged
   connectionCredential:
     username: "root"
     password: ""
