@@ -197,6 +197,3 @@ cipher-suites: [
 # Limit etcd to specific TLS protocol versions
 tls-min-version: 'TLS1.2'
 tls-max-version: 'TLS1.3'
-
-# Enable to check data corruption before serving any client/peer traffic.
-experimental-initial-corrupt-check: true

@@ -1,0 +1,17 @@
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "etcd3.cmpdName" . }}-pcr
+  labels:
+    {{- include "etcd.labels" . | nindent 4 }}
+  annotations:
+    {{- include "etcd.annotations" . | nindent 4 }}
+spec:
+  componentDef: {{ include "etcd3.cmpdName" . }}
+  parametersDefs:
+    - {{ include "etcd3.cmpdName" . }}-parameters
+
+  configs:
+    - name: etcd.conf
+      fileFormatConfig:
+        format: yaml 

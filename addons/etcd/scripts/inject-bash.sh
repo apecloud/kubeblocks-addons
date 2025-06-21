@@ -1,58 +1,46 @@
 #!/bin/bash
+set -exo pipefail
 
-load_common_library() {
-  # the kb-common.sh and common.sh scripts are defined in the scripts-template configmap
-  # and are mounted to the same path which defined in the cmpd.spec.scripts
-  kblib_common_library_file="/scripts/kb-common.sh"
-  etcd_common_library_file="/scripts/common.sh"
-  # shellcheck source=/scripts/kb-common.sh
-  . "${kblib_common_library_file}"
-  # shellcheck source=/scripts/common.sh
-  . "${etcd_common_library_file}"
-}
+# shellcheck disable=SC1091
+. "/scripts/common.sh"
 
 inject_bash() {
-  version="$1"
+  local version="$1"
+  local target_dir="$2"
+  local major minor patch
 
-  echo "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || {
-    echo "Invalid version format, check ETCD_VERSION" >&2
-    return 1
-  }
+  echo "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || error_exit "Invalid version format, check ETCD_VERSION"
 
   major=$(echo "$version" | cut -d. -f1)
   minor=$(echo "$version" | cut -d. -f2)
   patch=$(echo "$version" | cut -d. -f3)
 
   # <=3.3 || <= 3.4.22 || <=3.5.6 all base on debian image https://github.com/etcd-io/etcd/tree/main/CHANGELOG
-  if [ "$major" -lt 3 ] || { [ "$major" -eq 3 ] && { [ "$minor" -le 3 ] || { [ "$minor" -eq 4 ] && [ "$patch" -le 22 ]; } || { [ "$minor" -eq 5 ] && [ "$patch" -le 6 ]; }; }; }; then
-    echo "No need to inject bash for etcd-$version image"
+  if [ "$major" -lt 3 ] ||
+    { [ "$major" -eq 3 ] &&
+      { [ "$minor" -le 3 ] ||
+        { [ "$minor" -eq 4 ] && [ "$patch" -le 22 ]; } ||
+        { [ "$minor" -eq 5 ] && [ "$patch" -le 6 ]; }; }; }; then
+    echo "No need to inject bash for etcd-${version} image"
   else
-    echo "etcd-$version image build with distroless, injecting brinaries to run scripts"
-    cp /bin/* /share/bin
-  fi
-  return 0
-}
-
-
-main() {
-  if is_empty "$ETCD_VERSION"; then
-    echo "ETCD_VERSION env is not set"
-    exit 1
-  fi
-
-  if ! inject_bash "$ETCD_VERSION"; then
-    echo "Failed to inject bash" >&2
-    exit 1
+    echo "etcd-$version image build with distroless, injecting binaries to run scripts"
+    mkdir -p "$target_dir"
+    cp /bin/* "$target_dir/"
+    
+    # Create /shared/bin directory and symlink all binaries for standard PATH
+    mkdir -p /shared/bin
+    for binary in "$target_dir"/*; do
+      binary_name=$(basename "$binary")
+      ln -sf "$binary" "/shared/bin/$binary_name"
+    done
+    echo "Created symlinks for $(ls /bin | wc -l) binaries in /bin"
   fi
 }
 
-# This is magic for shellspec ut framework.
-# Sometime, functions are defined in a single shell script.
-# You will want to test it. but you do not want to run the script.
-# When included from shellspec, __SOURCED__ variable defined and script
-# end here. The script path is assigned to the __SOURCED__ variable.
-${__SOURCED__:+false} : || return 0
+# Shellspec magic
+setup_shellspec
 
 # main
 load_common_library
-main
+target_dir="${1:-/share/bin}"
+inject_bash "$ETCD_VERSION" "$target_dir"

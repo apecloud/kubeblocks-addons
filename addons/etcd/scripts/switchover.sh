@@ -1,113 +1,63 @@
 #!/bin/bash
+set -exo pipefail
 
-load_common_library() {
-  # the kb-common.sh and common.sh scripts are defined in the scripts-template configmap
-  # and are mounted to the same path which defined in the cmpd.spec.scripts
-  kblib_common_library_file="/scripts/kb-common.sh"
-  etcd_common_library_file="/scripts/common.sh"
-  # shellcheck source=/scripts/kb-common.sh
-  . "${kblib_common_library_file}"
-  # shellcheck source=/scripts/common.sh
-  . "${etcd_common_library_file}"
-}
+# shellcheck disable=SC1091
+. "/scripts/common.sh"
 
 switchover_with_candidate() {
-  leader_endpoint=${LEADER_POD_FQDN}:2379
-  candidate_endpoint=${KB_SWITCHOVER_CANDIDATE_FQDN}:2379
+  current_pod_name="${KB_SWITCHOVER_CURRENT_FQDN%%.*}"
+  candidate_pod_name="${KB_SWITCHOVER_CANDIDATE_FQDN%%.*}"
 
-  current_leader_endpoint=$(get_current_leader_with_retry "$leader_endpoint" 3 2)
-  get_leader_status=$?
-  if [ "$get_leader_status" -ne 0 ]; then
-    echo "failed to get current leader endpoint" >&2
-    return 1
-  fi
+  current_endpoint=$(get_endpoint_adapt_lb "$PEER_ENDPOINT" "$current_pod_name" "$KB_SWITCHOVER_CURRENT_FQDN")
+  candidate_endpoint=$(get_endpoint_adapt_lb "$PEER_ENDPOINT" "$candidate_pod_name" "$KB_SWITCHOVER_CANDIDATE_FQDN")
 
-  if [ "$current_leader_endpoint" = "$candidate_endpoint" ]; then
-    echo "current leader is the same as candidate, no need to switch"
+  if ! is_leader "$current_endpoint:2379" && is_leader "$candidate_endpoint:2379"; then
+    log "Leader has already changed, no switchover needed"
     return 0
   fi
 
-  candidate_id=$(exec_etcdctl "${candidate_endpoint}" endpoint status | awk -F', ' '{print $2}')
-  exec_etcdctl "${leader_endpoint}" move-leader "$candidate_id"
+  candidate_id=$(get_member_id_hex "$candidate_endpoint:2379")
+  exec_etcdctl "$current_endpoint:2379" move-leader "$candidate_id"
 
-  candidate_status=$(exec_etcdctl "${candidate_endpoint}" endpoint status)
-  is_leader=$(echo "${candidate_status}" | awk -F ', ' '{print $5}')
-
-  if [ "$is_leader" = "true" ]; then
-    return 0
-  elif [ "$is_leader" = "false" ]; then
-    echo "candidate status is not leader after switchover, please check!" >&2
-    return 1
-  fi
-  echo "candidate status '$candidate_status' is unexpected after switchover, please check!" >&2
-  return 1
+  ! is_leader "$candidate_endpoint:2379" && error_exit "Candidate is not leader"
+  log "Switchover to candidate $KB_SWITCHOVER_CANDIDATE_FQDN completed successfully"
 }
 
 switchover_without_candidate() {
-  leader_endpoint=${LEADER_POD_FQDN}:2379
+  current_pod_name="${KB_SWITCHOVER_CURRENT_FQDN%%.*}"
+  current_endpoint=$(get_endpoint_adapt_lb "$PEER_ENDPOINT" "$current_pod_name" "$KB_SWITCHOVER_CURRENT_FQDN")
 
-  current_leader_endpoint=$(get_current_leader_with_retry "$leader_endpoint" 3 2)
-  get_leader_status=$?
-  if [ "$get_leader_status" -ne 0 ]; then
-    echo "failed to get current leader endpoint" >&2
-    return 1
-  fi
+  ! is_leader "$current_endpoint:2379" && error_exit "Leader has already changed, no switchover needed"
 
-  if [ "$leader_endpoint" != "$current_leader_endpoint" ]; then
-    echo "leader has been changed, do not perform switchover, please check!"
-    return 0
-  fi
+  # get first follower
+  leader_id=$(get_member_id "$current_endpoint:2379")
+  peers_id=$(exec_etcdctl "$current_endpoint:2379" member list -w fields | awk -F': ' '/^"ID"/ {gsub(/[^0-9]/, "", $2); print $2}')
+  candidate_id=$(echo "$peers_id" | grep -v "$leader_id" | head -1)
+  [ -z "$candidate_id" ] && error_exit "No candidate found for switchover"
+  candidate_id_hex=$(printf "%x" "$candidate_id")
 
-  leader_id=$(exec_etcdctl "${leader_endpoint}" endpoint status | awk -F', ' '{print $2}')
-  peers_id=$(exec_etcdctl "${leader_endpoint}" member list | awk -F', ' '{print $1}')
-  random_candidate_id=$(echo "$peers_id" | grep -v "$leader_id" | awk 'NR==1')
-
-  if is_empty "$random_candidate_id"; then
-    echo "no candidate found" >&2
-    return 1
-  fi
-
-  exec_etcdctl "$leader_endpoint" move-leader "$random_candidate_id"
-
-  leader_status=$(exec_etcdctl "$leader_endpoint" endpoint status)
-  is_leader=$(echo "$leader_status" | awk -F ', ' '{print $5}')
-  
-  if [ "$is_leader" = "false" ]; then
-    return 0
-  elif [ "$is_leader" = "true" ]; then
-    echo "leader status is no changed after switchover, please check!" >&2
-    return 1
-  fi
-  echo "leader status '$leader_status' is unexpected after switchover, please check!" >&2
-  return 1
+  exec_etcdctl "$current_endpoint:2379" move-leader "$candidate_id_hex"
+  is_leader "$current_endpoint:2379" && error_exit "Switchover failed - current node is still leader after move-leader command"
+  log "Switchover completed successfully - current node is no longer leader"
 }
 
 switchover() {
-  if [[ $LEADER_POD_FQDN != "$KB_SWITCHOVER_CURRENT_FQDN" ]]; then
-    echo "switchover action not triggered for leader pod. Exiting."
+  if [[ "$LEADER_POD_FQDN" != "$KB_SWITCHOVER_CURRENT_FQDN" ]]; then
+    log "switchover action not triggered for leader pod. Exiting."
     exit 0
   fi
 
-  if is_empty "$KB_SWITCHOVER_CANDIDATE_FQDN"; then
-      switchover_without_candidate
+  if [ -n "$KB_SWITCHOVER_CANDIDATE_FQDN" ]; then
+    switchover_with_candidate
   else
-      switchover_with_candidate
+    switchover_without_candidate
   fi
-  status=$?
-  if [ "$status" -ne 0 ]; then
-      echo "ERROR: Failed to switchover. Exiting." >&2
-      return 1
-  fi
-  echo "Switchover successfully."
-  return 0
+
+  log "Switchover completed successfully"
 }
 
-# This is magic for shellspec ut framework.
-# Sometime, functions are defined in a single shell script.
-# You will want to test it. but you do not want to run the script.
-# When included from shellspec, __SOURCED__ variable defined and script
-# end here. The script path is assigned to the __SOURCED__ variable.
-${__SOURCED__:+false} : || return 0
+# Shellspec magic
+setup_shellspec
 
 # main
 load_common_library

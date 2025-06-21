@@ -54,7 +54,7 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Common annotations
 */}}
 {{- define "etcd.annotations" -}}
-{{ include "kblib.helm.resourcePolicy" . }}
+{{- /*{{ include "kblib.helm.resourcePolicy" . }}*/ -}}
 {{ include "etcd.apiVersion" . }}
 {{- end }}
 
@@ -130,6 +130,13 @@ etcdctl-br
 {{- end -}}
 
 {{/*
+Define etcd backup policy template name
+*/}}
+{{- define "etcd.backupPolicyTemplateName" -}}
+etcd-backup-policy-template
+{{- end -}}
+
+{{/*
 Define etcd image repository
 */}}
 {{- define "etcd.repository" -}}
@@ -140,14 +147,7 @@ Define etcd image repository
 Define latest etcd image
 */}}
 {{- define "etcd3.image" -}}
-{{ include "etcd.repository" . }}:{{ .Values.image.tag.major3.minor515 }}
-{{- end }}
-
-{{/*
-Define latest etcd image build with busybox brinaries
-*/}}
-{{- define "etcd356.image" -}}
-{{ include "etcd.repository" . }}:{{ .Values.image.tag.major3.minor56 }}
+{{ include "etcd.repository" . }}:{{ .Values.image.tag.major3.minor61 }}
 {{- end }}
 
 {{/*

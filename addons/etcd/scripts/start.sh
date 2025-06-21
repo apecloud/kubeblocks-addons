@@ -1,163 +1,99 @@
 #!/bin/bash
+set -exo pipefail
 
-default_template_conf="/etc/etcd/etcd.conf"
-real_conf="$TMP_CONFIG_PATH"
+default_template_conf="$CONFIG_TEMPLATE_PATH"
+default_conf="$CONFIG_FILE_PATH"
 
-load_common_library() {
-  # the kb-common.sh and common.sh scripts are defined in the scripts-template configmap
-  # and are mounted to the same path which defined in the cmpd.spec.scripts
-  kblib_common_library_file="/scripts/kb-common.sh"
-  etcd_common_library_file="/scripts/common.sh"
-  # shellcheck source=/scripts/kb-common.sh
-  . "${kblib_common_library_file}"
-  # shellcheck source=/scripts/common.sh
-  . "${etcd_common_library_file}"
-}
-
-log() {
-  echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
-}
-
-get_my_endpoint() {
-  # shellcheck disable=SC2153
-  if is_empty "$CURRENT_POD_NAME" || is_empty "$PEER_FQDNS"; then
-    echo "Error: PEER_FQDNS or CURRENT_POD_NAME is empty. Exiting." >&2
-    return 1
-  fi
-
-  peer_endpoints="$1"
-  current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$PEER_FQDNS" "$CURRENT_POD_NAME")
-  if is_empty "$current_pod_fqdn"; then
-    echo "Error: Failed to get current pod: $CURRENT_POD_NAME fqdn from peer fqdn list: $PEER_FQDNS. Exiting." >&2
-    return 1
-  fi
-
-  my_peer_endpoint="$current_pod_fqdn"
-  if ! is_empty "$peer_endpoints"; then
-    log "LoadBalancer mode detected. Adapting pod FQDN to balance IP." >&2
-    endpoints=$(echo "$peer_endpoints" | tr ',' '\n')
-    my_endpoint=$(echo "$endpoints" | grep "$CURRENT_POD_NAME")
-
-    if is_empty "$my_endpoint"; then
-      log "Failed to get my peer endpoint from PEER_FQDNS:$PEER_FQDNS when loadBalancer mode is enabled, use default pod FQDN to advertise." >&2
-    else
-      # e.g.1 etcd-cluster-etcd-0
-      # e.g.2 etcd-cluster-etcd-0:127.0.0.1
-      if echo "$my_endpoint" | grep -q ":"; then
-        my_peer_endpoint=$(echo "$my_endpoint" | cut -d: -f2)
-      else
-        my_peer_endpoint=$my_endpoint
-      fi
-    fi
-  fi
-
-  echo "$my_peer_endpoint"
-  return 0
-}
-
-update_etcd_conf() {
-  default_template_conf="$1"
-  tpl_conf="$2"
-  current_pod_name="$3"
-  my_endpoint="$4"
-
-  if [ ! -e "$tpl_conf" ]; then
-    cp "$default_template_conf" "$tpl_conf"
-  fi
-
-  sed -i.bak "s/^name:.*/name: $current_pod_name/g" "$tpl_conf"
-  sed -i.bak "s#\(initial-advertise-peer-urls: http\(s\{0,1\}\)://\).*#\1$my_endpoint:2380#g" "$tpl_conf"
-  sed -i.bak "s#\(advertise-client-urls: http\(s\{0,1\}\)://\).*#\1$my_endpoint:2379#g" "$tpl_conf"
-  rm "$tpl_conf.bak"
-}
-
-rebuild_etcd_conf() {
-  # According to https://etcd.io/docs/v3.5/op-guide/configuration/
-  # etcd ignores command-line flags and environment variables if a configuration file is provided.
-  # need to copy the configuration file and modify it
-  log "start to rebuild etcd configuration..."
-  my_endpoint=$(get_my_endpoint "$PEER_ENDPOINT")
-  status=$?
-  if [ "$status" -ne 0 ]; then
-      log "Failed to get my endpoint. Exiting." >&2
-      return 1
-  fi
-  update_etcd_conf "$default_template_conf" "$real_conf" "$CURRENT_POD_NAME" "$my_endpoint"
-
-  log "Updated etcd.conf:"
-  cat "$real_conf"
-  log "---"
-  return 0
-}
+# shellcheck disable=SC1091
+. "/scripts/common.sh"
 
 parse_config_value() {
   local key="$1"
   local config_file="$2"
-  grep -E "^$key:" "$config_file" | \
-  sed -E \
-      -e "s/^$key:[[:space:]]*//" \
-      -e 's/^[[:space:]]*//; s/[[:space:]]*$//'
+  grep "^$key:" "$config_file" | cut -d: -f2- | xargs
+}
+
+get_my_endpoint() {
+  my_peer_endpoint=$(get_target_pod_fqdn_from_pod_fqdn_vars "$PEER_FQDNS" "$CURRENT_POD_NAME")
+  [ -z "$my_peer_endpoint" ] && error_exit "Failed to get current pod: $CURRENT_POD_NAME fqdn from peer fqdn list: $PEER_FQDNS"
+  my_peer_endpoint=$(get_endpoint_adapt_lb "$PEER_ENDPOINT" "$CURRENT_POD_NAME" "$my_peer_endpoint")
+  echo "$my_peer_endpoint"
+}
+
+update_etcd_conf() {
+  local default_template_conf="$1"
+  local tpl_conf="$2"
+  local current_pod_name="$3"
+  local my_endpoint="$4"
+
+  if [ ! -e "$tpl_conf" ]; then
+    cp "$default_template_conf" "$tpl_conf"
+  else
+    immutable_params=("initial-cluster" "initial-cluster-token" "initial-cluster-state" "force-new-cluster")
+    temp_conf="${tpl_conf}.tmp"
+    cp "$default_template_conf" "$temp_conf"
+    for param in "${immutable_params[@]}"; do
+      if existing_line=$(grep -E "^${param}:" "$tpl_conf"); then
+        sed -i.bak "s|^${param}:.*|${existing_line}|g" "$temp_conf"
+      fi
+    done
+    rm "$temp_conf.bak"
+    mv "$temp_conf" "$tpl_conf"
+  fi
+
+  peer_protocol=$(get_protocol "initial-advertise-peer-urls")
+  client_protocol=$(get_protocol "advertise-client-urls")
+
+  sed -i.bak "s|^name:.*|name: $current_pod_name|g" "$tpl_conf"
+  sed -i.bak "s|^initial-advertise-peer-urls:.*|initial-advertise-peer-urls: $peer_protocol://$my_endpoint:2380|g" "$tpl_conf"
+  sed -i.bak "s|^advertise-client-urls:.*|advertise-client-urls: $client_protocol://$my_endpoint:2379|g" "$tpl_conf"
+  rm "$tpl_conf.bak"
+}
+
+rebuild_etcd_conf() {
+  my_endpoint=$(get_my_endpoint)
+  update_etcd_conf "$default_template_conf" "$default_conf" "$CURRENT_POD_NAME" "$my_endpoint"
+
+  log "Updated etcd.conf:"
+  cat "$default_conf"
 }
 
 restore() {
   files=("$RESTORE_DIR"/*)
-  if [ "${#files[@]}" -ne 1 ]; then
-    log "Expected exactly 1 backup file in $RESTORE_DIR, found ${#files[@]}."
-    return 1
+  if [ ${#files[@]} -eq 0 ] || [ ! -e "${files[0]}" ]; then
+    error_exit "No backup file found in $RESTORE_DIR or directory is empty."
   fi
+
   backup_file="${files[0]}"
+  check_backup_file "$backup_file" || error_exit "Backup file is invalid"
 
-  log "Found backup file: $backup_file. Restoring etcd data..."
-  if check_backup_file "$backup_file"; then
-    log "Backup file is valid."
-  else
-    log "Backup file is invalid." >&2
-    exit 1
-  fi
-
-  etcd_data_dir=$(parse_config_value "data-dir" "$real_conf")
-  etcd_name=$(parse_config_value "name" "$real_conf")
-  etcd_initial_advertise_peer_urls=$(parse_config_value "initial-advertise-peer-urls" "$real_conf")
-  etcd_initial_cluster=$(parse_config_value "initial-cluster" "$real_conf")
-  etcd_initial_cluster_token=$(parse_config_value "initial-cluster-token" "$real_conf")
+  data_dir=$(parse_config_value "data-dir" "$default_conf")
+  name=$(parse_config_value "name" "$default_conf")
+  advertise_urls=$(parse_config_value "initial-advertise-peer-urls" "$default_conf")
+  cluster=$(parse_config_value "initial-cluster" "$default_conf")
+  cluster_token=$(parse_config_value "initial-cluster-token" "$default_conf")
   etcdutl snapshot restore "$backup_file" \
-    --data-dir="$etcd_data_dir" \
-    --name="$etcd_name" \
-    --initial-advertise-peer-urls="$etcd_initial_advertise_peer_urls" \
-    --initial-cluster="$etcd_initial_cluster" \
-    --initial-cluster-token="$etcd_initial_cluster_token"
+    --data-dir="$data_dir" \
+    --name="$name" \
+    --initial-advertise-peer-urls="$advertise_urls" \
+    --initial-cluster="$cluster" \
+    --initial-cluster-token="$cluster_token"
   rm -rf "$RESTORE_DIR"
-  return 0
 }
 
 main() {
-  # rebuild etcd configuration
-  if rebuild_etcd_conf; then
-    log "Rebuilt etcd configuration successfully."
-  else
-    log "Failed to rebuild etcd configuration." >&2
-    exit 1
-  fi
+  rebuild_etcd_conf
 
-  if [ -e "$RESTORE_DIR" ]; then
-    if restore; then
-      log "Restored etcd data from backup successfully."
-    else
-      log "Failed to restore etcd data from backup. Exiting to prevent starting with inconsistent state." >&2
-      exit 1
-    fi
+  if [ -d "$RESTORE_DIR" ]; then
+    restore
   fi
 
   log "Starting etcd with updated configuration..."
-  exec etcd --config-file "$real_conf"
+  exec etcd --config-file "$default_conf"
 }
 
-# This is magic for shellspec ut framework.
-# Sometime, functions are defined in a single shell script.
-# You will want to test it. but you do not want to run the script.
-# When included from shellspec, __SOURCED__ variable defined and script
-# end here. The script path is assigned to the __SOURCED__ variable.
-${__SOURCED__:+false} : || return 0
+# Shellspec magic
+setup_shellspec
 
 # main
 load_common_library

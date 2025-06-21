@@ -1,53 +1,26 @@
 #!/bin/bash
+set -exo pipefail
 
-# This is magic for shellspec ut framework. "test" is a `test [expression]` well known as a shell command.
-# Normally test without [expression] returns false. It means that __() { :; }
-# function is defined if this script runs directly.
-#
-# shellspec overrides the test command and returns true *once*. It means that
-# __() function defined internally by shellspec is called.
-#
-# In other words. If not in test mode, __ is just a comment. If test mode, __
-# is a interception point.
-# you should set ut_mode="true" when you want to run the script in shellspec file.
-# shellcheck disable=SC2034
-ut_mode="false"
-test || __() {
-  # when running in non-unit test mode, set the options "set -ex".
-  set -ex;
-}
-
-load_common_library() {
-  # the kb-common.sh and common.sh scripts are defined in the scripts-template configmap
-  # and are mounted to the same path which defined in the cmpd.spec.scripts
-  kblib_common_library_file="/scripts/kb-common.sh"
-  etcd_common_library_file="/scripts/common.sh"
-  # shellcheck source=/scripts/kb-common.sh
-  . "${kblib_common_library_file}"
-  # shellcheck source=/scripts/common.sh
-  . "${etcd_common_library_file}"
-}
+# shellcheck disable=SC1091
+. "/scripts/common.sh"
 
 add_member() {
-  # TODO: TLS and LB service
-  exec_etcdctl "http://$LEADER_POD_FQDN:2379" member add "$KB_JOIN_MEMBER_POD_NAME" --peer-urls=http://$KB_JOIN_MEMBER_POD_FQDN:2380
+  local leader_endpoint join_member_endpoint peer_protocol
+
+  leader_pod_name="${LEADER_POD_FQDN%%.*}"
+  leader_endpoint=$(get_endpoint_adapt_lb "$PEER_ENDPOINT" "$leader_pod_name" "$LEADER_POD_FQDN")
+  join_member_endpoint=$(get_endpoint_adapt_lb "$PEER_ENDPOINT" "$KB_JOIN_MEMBER_POD_NAME" "$KB_JOIN_MEMBER_POD_FQDN")
+  peer_protocol=$(get_protocol "initial-advertise-peer-urls")
+
+  log "Adding member $KB_JOIN_MEMBER_POD_NAME to cluster via leader $leader_endpoint"
+  log "Join member peer URL: $peer_protocol://$join_member_endpoint:2380"
+  exec_etcdctl "$leader_endpoint:2379" member add "$KB_JOIN_MEMBER_POD_NAME" --peer-urls="$peer_protocol://$join_member_endpoint:2380" || error_exit "Failed to join member"
+  log "Member $KB_JOIN_MEMBER_POD_NAME joined cluster via leader $leader_endpoint"
 }
 
-member_join() {
-  add_member
-  status=$?
-  if [ $status -ne 0 ]; then
-    echo "ERROR: etcdctl add_member failed" >&2
-    return 1
-  fi
-  return 0
-}
+# Shellspec magic
+setup_shellspec
 
 # main
 load_common_library
-if member_join; then
-  echo "Member join successfully"
-else
-  echo "Failed to join member" >&2
-  exit 1
-fi
+add_member

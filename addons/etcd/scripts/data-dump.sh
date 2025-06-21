@@ -1,5 +1,4 @@
 #!/bin/bash
-
-set -ex 
+set -exo pipefail
 
 sleep 1
