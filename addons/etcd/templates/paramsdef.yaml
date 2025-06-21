@@ -54,7 +54,7 @@ spec:
     - "etcd.logger"
 
   dynamicParameters:
-    # only member change is dynamic, which is supported by etcdctl 
+    # only member change is dynamic, which can be handle by hscale and switchover ops
 
   immutableParameters:
     # Parameters modified by start.sh script
@@ -71,4 +71,5 @@ spec:
     - "etcd.initial-cluster-token"
     # Parameters set by data-load.sh script
     - "etcd.initial-cluster-state"
+    # Not allow
     - "etcd.force-new-cluster"

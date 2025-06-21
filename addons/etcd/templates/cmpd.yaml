@@ -187,8 +187,7 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: config
       defaultMode: 0666
-      externalManaged: true
-      restartOnFileChange: false
+      restartOnFileChange: true
   scripts:
     - name: script
       template: {{ include "etcd3.scriptTemplate" .}}

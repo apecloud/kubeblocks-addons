@@ -13,18 +13,10 @@ spec:
     # Specifies the name of the Component.
   - componentName: etcd
     parameters:
-      # Maximum number of snapshot files to retain (0 is unlimited)
-    - key: etcd.max-snapshots
+    - key: max-snapshots
       value: '10'
-      # Maximum number of wal files to retain (0 is unlimited)
-    - key: etcd.max-wals
-      value: '10'
-      # Enable info-level logging for etcd (options: debug, info, warn, error, panic, fatal)
-    - key: etcd.log-level
-      value: 'info'
-      # Auto compaction retention (in hours for periodic mode)
-    - key: etcd.auto-compaction-retention
-      value: '2'
+    - key: log-level
+      value: 'debug'
   # Specifies the maximum number of seconds the OpsRequest will wait for its start conditions to be met before aborting. If set to 0 (default), the start conditions must be met immediately for the OpsRequest to proceed.
   preConditionDeadlineSeconds: 0
   type: Reconfiguring
