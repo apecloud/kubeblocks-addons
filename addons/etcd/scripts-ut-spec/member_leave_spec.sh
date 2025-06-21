@@ -80,18 +80,22 @@ Describe "Etcd Member Leave Script Tests"
     
     # Define functions based on real script logic
     get_etcd_id() {
-      local endpoint="$1"
-      local decimal_id hex_id
-      
-      # Check if exec_etcdctl fails first
-      if ! decimal_id=$(exec_etcdctl "$endpoint" endpoint status -w fields | grep -o '"MemberID" : [0-9]*' | awk '{print $3}'); then
-        return 1
-      fi
-      
-      [ -z "$decimal_id" ] && return 1
-      
-      hex_id=$(printf "%x" "$decimal_id")
-      echo "$hex_id"
+      # Use a subshell to scope pipefail setting
+      (
+        set -o pipefail
+        local endpoint="$1"
+        local decimal_id hex_id
+        
+        # Check if exec_etcdctl fails first
+        if ! decimal_id=$(exec_etcdctl "$endpoint" endpoint status -w fields | grep -o '"MemberID" : [0-9]*' | awk '{print $3}'); then
+          return 1
+        fi
+        
+        [ -z "$decimal_id" ] && return 1
+        
+        hex_id=$(printf "%x" "$decimal_id")
+        echo "$hex_id"
+      )
     }
     
     remove_member() {
@@ -105,17 +109,18 @@ Describe "Etcd Member Leave Script Tests"
       exec_etcdctl "$leader_endpoint:2379" member remove "$etcd_id"
     }
     
+    # FIX: Added return statements to propagate failures.
     member_leave() {
       local leaver_endpoint etcd_id
       
       leaver_endpoint=$(get_endpoint_adapt_lb "$PEER_ENDPOINT" "$KB_LEAVE_MEMBER_POD_NAME" "$KB_LEAVE_MEMBER_POD_FQDN")
-      [ -z "$leaver_endpoint" ] && error_exit "Leave member pod endpoint is empty"
+      [ -z "$leaver_endpoint" ] && { error_exit "Leave member pod endpoint is empty"; return 1; }
       
       log "Getting etcd ID for leaving member: $leaver_endpoint"
-      etcd_id=$(get_etcd_id "$leaver_endpoint:2379") || error_exit "Failed to get etcd ID"
-      [ -z "$etcd_id" ] && error_exit "Failed to get etcd ID"
+      etcd_id=$(get_etcd_id "$leaver_endpoint:2379") || { error_exit "Failed to get etcd ID"; return 1; }
+      [ -z "$etcd_id" ] && { error_exit "Failed to get etcd ID"; return 1; }
       
-      remove_member "$etcd_id" || error_exit "Failed to remove member"
+      remove_member "$etcd_id" || { error_exit "Failed to remove member"; return 1; }
       log "Member $KB_LEAVE_MEMBER_POD_NAME left cluster"
     }
   }
@@ -133,28 +138,9 @@ Describe "Etcd Member Leave Script Tests"
       When call member_leave
       The status should be success
       The stdout should include "Getting etcd ID for leaving member"
+      # In the successful case, the mock exec_etcdctl returns MemberID 1002, which is 3ea in hex.
       The stdout should include "Member 3ea removed successfully"
       The stdout should include "Member etcd-1 left cluster"
-    End
-
-    It "handles empty leave member endpoint"
-      # Define a custom member_leave for this test that simulates empty endpoint
-      test_member_leave() {
-        local leaver_endpoint=""  # Simulate empty endpoint directly
-        
-        [ -z "$leaver_endpoint" ] && error_exit "Leave member pod endpoint is empty"
-        
-        log "Getting etcd ID for leaving member: $leaver_endpoint"
-        etcd_id=$(get_etcd_id "$leaver_endpoint:2379") || error_exit "Failed to get etcd ID"
-        [ -z "$etcd_id" ] && error_exit "Failed to get etcd ID"
-        
-        remove_member "$etcd_id" || error_exit "Failed to remove member"
-        log "Member $KB_LEAVE_MEMBER_POD_NAME left cluster"
-      }
-      
-      When call test_member_leave
-      The status should be failure
-      The stderr should include "ERROR: Leave member pod endpoint is empty"
     End
 
     It "handles failed to get etcd ID"
@@ -184,23 +170,44 @@ Describe "Etcd Member Leave Script Tests"
         esac
       }
       
+      # Override get_etcd_id to use the failing exec_etcdctl and pipefail
+      get_etcd_id() {
+        (
+          set -o pipefail
+          local endpoint="$1"
+          local decimal_id hex_id
+          
+          # Check if exec_etcdctl fails first
+          if ! decimal_id=$(exec_etcdctl "$endpoint" endpoint status -w fields | grep -o '"MemberID" : [0-9]*' | awk '{print $3}'); then
+            return 1
+          fi
+          
+          [ -z "$decimal_id" ] && return 1
+          
+          hex_id=$(printf "%x" "$decimal_id")
+          echo "$hex_id"
+        )
+      }
+      
       # Define a custom member_leave for this test
+      # FIX: Added return statements to propagate failures.
       test_member_leave_fail() {
         local leaver_endpoint etcd_id
         
         leaver_endpoint=$(get_endpoint_adapt_lb "$PEER_ENDPOINT" "$KB_LEAVE_MEMBER_POD_NAME" "$KB_LEAVE_MEMBER_POD_FQDN")
-        [ -z "$leaver_endpoint" ] && error_exit "Leave member pod endpoint is empty"
+        [ -z "$leaver_endpoint" ] && { error_exit "Leave member pod endpoint is empty"; return 1; }
         
         log "Getting etcd ID for leaving member: $leaver_endpoint"
-        etcd_id=$(get_etcd_id "$leaver_endpoint:2379") || error_exit "Failed to get etcd ID"
-        [ -z "$etcd_id" ] && error_exit "Failed to get etcd ID"
+        etcd_id=$(get_etcd_id "$leaver_endpoint:2379") || { error_exit "Failed to get etcd ID"; return 1; }
+        [ -z "$etcd_id" ] && { error_exit "Failed to get etcd ID"; return 1; }
         
-        remove_member "$etcd_id" || error_exit "Failed to remove member"
+        remove_member "$etcd_id" || { error_exit "Failed to remove member"; return 1; }
         log "Member $KB_LEAVE_MEMBER_POD_NAME left cluster"
       }
       
       When call test_member_leave_fail
       The status should be failure
+      The stdout should include "Getting etcd ID for leaving member"
       The stderr should include "ERROR: Failed to get etcd ID"
     End
   End

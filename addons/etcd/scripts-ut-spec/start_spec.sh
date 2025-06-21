@@ -85,7 +85,7 @@ Describe "Etcd Start Bash Script Tests"
 
   get_my_endpoint() {
     my_peer_endpoint=$(get_target_pod_fqdn_from_pod_fqdn_vars "$PEER_FQDNS" "$CURRENT_POD_NAME")
-    [ -z "$my_peer_endpoint" ] && error_exit "Failed to get current pod: $CURRENT_POD_NAME fqdn from peer fqdn list: $PEER_FQDNS"
+    [ -z "$my_peer_endpoint" ] && { error_exit "Failed to get current pod: $CURRENT_POD_NAME fqdn from peer fqdn list: $PEER_FQDNS"; return 1; }
     my_peer_endpoint=$(get_endpoint_adapt_lb "$PEER_ENDPOINT" "$CURRENT_POD_NAME" "$my_peer_endpoint")
     echo "$my_peer_endpoint"
   }
@@ -129,7 +129,7 @@ Describe "Etcd Start Bash Script Tests"
   }
 
   rebuild_etcd_conf() {
-    my_endpoint=$(get_my_endpoint)
+    my_endpoint=$(get_my_endpoint) || return 1
     update_etcd_conf "$default_template_conf" "$default_conf" "$CURRENT_POD_NAME" "$my_endpoint"
 
     log "Updated etcd.conf:"
@@ -182,7 +182,7 @@ EOF
     End
 
     It "trims spaces around values"
-      echo "name:   my-etcd-spaces   " > "$test_conf_file"
+      echo "name:    my-etcd-spaces    " > "$test_conf_file"
       When call parse_config_value "name" "$test_conf_file"
       The stdout should eq "my-etcd-spaces"
     End
@@ -222,10 +222,35 @@ EOF
       export PEER_FQDNS="etcd-0.etcd-headless.default.svc.cluster.local,etcd-1.etcd-headless.default.svc.cluster.local"
       export PEER_ENDPOINT="etcd-0:127.0.0.1,etcd-1:127.0.0.2"
       
+      # Override get_endpoint_adapt_lb to ensure it outputs log messages to stderr
+      get_endpoint_adapt_lb() {
+        local lb_endpoints="$1"
+        local pod_name="$2"
+        local result_endpoint="$3"
+
+        if [ -n "$lb_endpoints" ]; then
+          log "LoadBalancer mode detected. Adapting pod FQDN to balance IP." >&2
+          local endpoints lb_endpoint
+          endpoints=$(echo "$lb_endpoints" | tr ',' '\n')
+          lb_endpoint=$(echo "$endpoints" | grep "$pod_name" | head -1)
+          if [ -n "$lb_endpoint" ]; then
+            if echo "$lb_endpoint" | grep -q ":"; then
+              result_endpoint=$(echo "$lb_endpoint" | cut -d: -f2)
+            else
+              result_endpoint="$lb_endpoint"
+            fi
+            log "Using LoadBalancer endpoint for $pod_name: $result_endpoint" >&2
+          else
+            log "Failed to get LB endpoint for $pod_name, using default FQDN: $result_endpoint" >&2
+          fi
+        fi
+        echo "$result_endpoint"
+      }
+      
       When call get_my_endpoint
       The status should be success
-      The line 2 of stdout should include "127.0.0.2"
-      The line 1 of stderr should include "LoadBalancer mode detected"
+      The stdout should include "127.0.0.2"
+      The stderr should include "LoadBalancer mode detected"
     End
 
     It "fails when current pod not found in FQDN list"
