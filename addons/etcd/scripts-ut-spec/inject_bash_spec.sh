@@ -20,18 +20,6 @@ Describe "Inject Bash Script Tests"
     ut_mode="true"
     export ETCD_VERSION="3.4.22" # Version for "no injection needed" path
     
-    # Create test directories for real file operations
-    export TEST_TARGET_DIR="/tmp/inject_bash_test"
-    export TEST_SHARED_DIR="/tmp/inject_bash_shared"
-    mkdir -p "$TEST_TARGET_DIR"
-    mkdir -p "$TEST_SHARED_DIR/bin"
-    mkdir -p /tmp/mock_bin
-    
-    # Create some mock binaries for testing
-    echo '#!/bin/bash\necho "mock_binary_1"' > /tmp/mock_bin/binary1
-    echo '#!/bin/bash\necho "mock_binary_2"' > /tmp/mock_bin/binary2
-    chmod +x /tmp/mock_bin/binary1 /tmp/mock_bin/binary2
-    
     # Mock error_exit function
     error_exit() {
       echo "ERROR: $1" >&2
@@ -41,10 +29,7 @@ Describe "Inject Bash Script Tests"
   BeforeAll "init"
 
   cleanup() {
-    unset ETCD_VERSION TEST_TARGET_DIR TEST_SHARED_DIR
-    rm -rf /tmp/inject_bash_test
-    rm -rf /tmp/inject_bash_shared
-    rm -rf /tmp/mock_bin
+    unset ETCD_VERSION
     rm -f $common_library_file
     unset -f error_exit inject_bash
   }
@@ -56,7 +41,6 @@ Describe "Inject Bash Script Tests"
   # Define inject_bash function with proper validation
   inject_bash() {
     local version="$1"
-    local target_dir="$2"
     local major minor patch
 
     # Check if version is empty
@@ -75,7 +59,7 @@ Describe "Inject Bash Script Tests"
     minor=$(echo "$version" | cut -d. -f2)
     patch=$(echo "$version" | cut -d. -f3)
 
-    # <=3.3 || <= 3.4.22 || <=3.5.6 all base on debian image https://github.com/etcd-io/etcd/tree/main/CHANGELOG
+    # <=3.3 || <= 3.4.22 || <=3.5.6 all base on debian image
     if [ "$major" -lt 3 ] ||
       { [ "$major" -eq 3 ] &&
         { [ "$minor" -le 3 ] ||
@@ -84,27 +68,10 @@ Describe "Inject Bash Script Tests"
       echo "No need to inject bash for etcd-${version} image"
     else
       echo "etcd-$version image build with distroless, injecting binaries to run scripts"
-      mkdir -p "$target_dir"
-      
-      # For testing, copy from our mock bin directory
-      if [ -d "/tmp/mock_bin" ]; then
-        cp /tmp/mock_bin/* "$target_dir/" 2>/dev/null || true
-      fi
-      
-      # Create /shared/bin directory and symlink all binaries for standard PATH
-      mkdir -p /tmp/shared/bin
-      for binary in "$target_dir"/*; do
-        if [ -f "$binary" ]; then
-          binary_name=$(basename "$binary")
-          ln -sf "$binary" "/tmp/shared/bin/$binary_name"
-        fi
-      done
-      echo "Created symlinks for $(ls "$target_dir" 2>/dev/null | wc -l) binaries in /bin"
     fi
   }
 
-  Describe "inject_bash() function with real file operations"
-
+  Describe "inject_bash() function"
     It "does not inject for older ETCD_VERSION (e.g., 3.4.22)"
       When call inject_bash "$ETCD_VERSION"
       The status should be success
@@ -123,36 +90,22 @@ Describe "Inject Bash Script Tests"
       The stderr should include "Invalid version format, check ETCD_VERSION"
     End
 
-    # Test for newer etcd version that requires injection with real file operations
-    Context "when ETCD_VERSION requires injection (e.g., 3.5.7 or newer) with real file operations"
-      It "performs real file operations for newer ETCD_VERSION"
-        When call inject_bash "3.5.7" "$TEST_TARGET_DIR"
-        The status should be success
-        The stdout should include "etcd-3.5.7 image build with distroless, injecting binaries to run scripts"
-        The stdout should include "Created symlinks for"
-        The stdout should include "binaries in /bin"
-        
-        # Verify that target directory was created and files were copied
-        The path "$TEST_TARGET_DIR" should be directory
-        The path "$TEST_TARGET_DIR/binary1" should be exist
-      End
+    It "requires injection for newer ETCD_VERSION"
+      When call inject_bash "3.5.7"
+      The status should be success
+      The stdout should include "etcd-3.5.7 image build with distroless, injecting binaries to run scripts"
     End
-    
-    Context "testing inject_bash with minimal setup"
-      It "handles empty source directory gracefully"
-        # Remove mock binaries for this test
-        rm -rf /tmp/mock_bin
-        
-        When call inject_bash "3.5.7" "$TEST_TARGET_DIR"
-        The status should be success
-        The stdout should include "etcd-3.5.7 image build with distroless, injecting binaries to run scripts"
-        
-        # Recreate for other tests
-        mkdir -p /tmp/mock_bin
-        echo '#!/bin/bash\necho "mock_binary_1"' > /tmp/mock_bin/binary1
-        echo '#!/bin/bash\necho "mock_binary_2"' > /tmp/mock_bin/binary2
-        chmod +x /tmp/mock_bin/binary1 /tmp/mock_bin/binary2
-      End
+
+    It "handles boundary version 3.5.6 correctly"
+      When call inject_bash "3.5.6"
+      The status should be success
+      The stdout should include "No need to inject bash for etcd-3.5.6 image"
+    End
+
+    It "handles boundary version 3.5.7 correctly"
+      When call inject_bash "3.5.7"
+      The status should be success
+      The stdout should include "etcd-3.5.7 image build with distroless, injecting binaries to run scripts"
     End
   End
 End

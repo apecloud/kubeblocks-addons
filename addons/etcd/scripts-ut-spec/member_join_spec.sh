@@ -34,17 +34,10 @@ Describe "Etcd Member Join Script Tests"
     mkdir -p /tmp
     echo "initial-advertise-peer-urls: http://test:2380" > "$CONFIG_FILE_PATH"
     
-    # Mock functions based on real script logic
+    # Mock functions
     get_endpoint_adapt_lb() {
-      local lb_endpoints="$1"
-      local pod_name="$2"
       local result_endpoint="$3"
-      
-      if [ -n "$lb_endpoints" ]; then
-        echo "$pod_name"
-      else
-        echo "$result_endpoint"
-      fi
+      echo "$result_endpoint"
     }
     
     get_protocol() {
@@ -77,7 +70,7 @@ Describe "Etcd Member Join Script Tests"
       return 0
     }
     
-    # Define add_member function based on the real script
+    # Define add_member function
     add_member() {
       local leader_endpoint join_member_endpoint peer_protocol
 

@@ -4,11 +4,11 @@ export PATH=/var/run/etcd/bin:$PATH
 config_file="$CONFIG_FILE_PATH"
 
 log() {
-  echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1" >&2
 }
 
 error_exit() {
-  log "ERROR: $1" >&2
+  log "ERROR: $1"
   exit 1
 }
 
@@ -65,8 +65,7 @@ check_backup_file() {
   local backup_file="$1"
 
   if [ ! -f "$backup_file" ]; then
-    echo "ERROR: Backup file $backup_file does not exist" >&2
-    return 1
+    error_exit "Backup file $backup_file does not exist"
   fi
   etcdutl snapshot status "$backup_file"
 }

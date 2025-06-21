@@ -43,6 +43,7 @@ update_etcd_conf() {
 
   peer_protocol=$(get_protocol "initial-advertise-peer-urls")
   client_protocol=$(get_protocol "advertise-client-urls")
+  my_endpoint=$(get_endpoint_adapt_lb "$PEER_ENDPOINT" "$current_pod_name" "$my_endpoint")
 
   sed -i.bak "s|^name:.*|name: $current_pod_name|g" "$tpl_conf"
   sed -i.bak "s|^initial-advertise-peer-urls:.*|initial-advertise-peer-urls: $peer_protocol://$my_endpoint:2380|g" "$tpl_conf"

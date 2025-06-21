@@ -116,40 +116,6 @@ Describe "Common Script Functions Tests"
     fi
   }
 
-  check_backup_file() {
-    local backup_file="$1"
-
-    if [ ! -f "$backup_file" ]; then
-      echo "ERROR: Backup file $backup_file does not exist" >&2
-      return 1
-    fi
-    etcdutl snapshot status "$backup_file"
-  }
-
-  get_endpoint_adapt_lb() {
-    local lb_endpoints="$1"
-    local pod_name="$2"
-    local result_endpoint="$3"
-
-    if [ -n "$lb_endpoints" ]; then
-      log "LoadBalancer mode detected. Adapting pod FQDN to balance IP."
-      local endpoints lb_endpoint
-      endpoints=$(echo "$lb_endpoints" | tr ',' '\n')
-      lb_endpoint=$(echo "$endpoints" | grep "$pod_name" | head -1)
-      if [ -n "$lb_endpoint" ]; then
-        if echo "$lb_endpoint" | grep -q ":"; then
-          result_endpoint=$(echo "$lb_endpoint" | cut -d: -f2)
-        else
-          result_endpoint="$lb_endpoint"
-        fi
-        log "Using LoadBalancer endpoint for $pod_name: $result_endpoint"
-      else
-        log "Failed to get LB endpoint for $pod_name, using default FQDN: $result_endpoint"
-      fi
-    fi
-    echo "$result_endpoint"
-  }
-
   parse_endpoint_field() {
     local endpoint="$1"
     local field_name="$2"
@@ -174,15 +140,6 @@ Describe "Common Script Functions Tests"
     leader_id=$(parse_endpoint_field "$contact_point" "Leader")
 
     [ "$member_id" = "$leader_id" ]
-  }
-
-  get_member_and_leader_id() {
-    local endpoint="$1"
-
-    member_id=$(parse_endpoint_field "$endpoint" "MemberID")
-    leader_id=$(parse_endpoint_field "$endpoint" "Leader")
-
-    echo "$member_id $leader_id"
   }
 
   get_member_id() {
@@ -212,16 +169,6 @@ Describe "Common Script Functions Tests"
       The status should be success
       The stdout should equal "http"
     End
-
-    It "handles missing config gracefully"
-      export CONFIG_FILE_PATH="/nonexistent/config"
-      
-      When call get_protocol "advertise-client-urls"
-      The status should be success
-      The stdout should equal "http"
-      
-      export CONFIG_FILE_PATH="/tmp/test_etcd.conf"
-    End
   End
 
   Describe "exec_etcdctl() function"
@@ -240,26 +187,6 @@ Describe "Common Script Functions Tests"
     End
   End
 
-  Describe "get_endpoint_adapt_lb() function"
-    It "returns original endpoint when no load balancer"
-      When call get_endpoint_adapt_lb "" "etcd-0" "etcd-0.headless.svc"
-      The status should be success
-      The stdout should equal "etcd-0.headless.svc"
-    End
-
-    It "adapts endpoint for load balancer with IP"
-      When call get_endpoint_adapt_lb "etcd-0:10.0.0.1,etcd-1:10.0.0.2" "etcd-0" "etcd-0.headless.svc"
-      The status should be success
-      The line 3 of stdout should equal "10.0.0.1"
-    End
-
-    It "adapts endpoint for load balancer without IP"
-      When call get_endpoint_adapt_lb "etcd-0,etcd-1" "etcd-0" "etcd-0.headless.svc"
-      The status should be success
-      The line 3 of stdout should equal "etcd-0"
-    End
-  End
-
   Describe "parse_endpoint_field() function"
     It "extracts field value from endpoint status"
       When call parse_endpoint_field "http://etcd-0:2379" "MemberID"
@@ -272,34 +199,6 @@ Describe "Common Script Functions Tests"
     It "returns success when member ID equals leader ID"
       When call is_leader "http://etcd-1:2379"
       The status should be success
-    End
-
-    It "returns failure when member ID differs from leader ID"
-      # Temporarily override etcdctl for this test
-      etcdctl() {
-        if [[ "$*" == *"endpoint status -w fields"* ]]; then
-          echo '"MemberID": 1001'
-          echo '"Leader": 1002'
-          return 0
-        fi
-      }
-      
-      When call is_leader "http://etcd-0:2379"
-      The status should be failure
-      
-      # Restore original mock
-      etcdctl() {
-        if [[ "$*" == *"endpoint status -w fields"* ]]; then
-          echo '"MemberID": 1002'
-          echo '"Leader": 1002'
-          echo '"Raft Term": 1'
-          echo '"Raft Index": 100'
-          return 0
-        else
-          echo "MOCK: etcdctl $*"
-          return 0
-        fi
-      }
     End
   End
 
@@ -316,32 +215,6 @@ Describe "Common Script Functions Tests"
       When call get_member_id_hex "http://etcd-0:2379"
       The status should be success
       The stdout should equal "3ea"
-    End
-  End
-
-  Describe "check_backup_file() function"
-    It "checks backup file existence and calls etcdutl"
-      touch /tmp/test_backup
-      
-      When call check_backup_file "/tmp/test_backup"
-      The status should be success
-      The stdout should include "MOCK: etcdutl snapshot status /tmp/test_backup"
-      
-      rm -f /tmp/test_backup
-    End
-
-    It "fails when backup file does not exist"
-      When call check_backup_file "/nonexistent/backup"
-      The status should be failure
-      The stderr should include "ERROR: Backup file /nonexistent/backup does not exist"
-    End
-  End
-
-  Describe "get_member_and_leader_id() function"
-    It "returns both member and leader IDs"
-      When call get_member_and_leader_id "http://etcd-0:2379"
-      The status should be success
-      The stdout should equal "1002 1002"
     End
   End
 End

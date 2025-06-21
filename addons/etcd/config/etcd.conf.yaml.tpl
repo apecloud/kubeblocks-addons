@@ -128,7 +128,7 @@ proxy-write-timeout: 5000
 # Time (in milliseconds) for a read to timeout.
 proxy-read-timeout: 0
 
-{{- if eq (index $ "TLS_ENABLED") "true" }}
+{{ if eq (index $ "TLS_ENABLED") "true" }}
 {{- if eq $client_protocol "https" }}
 client-transport-security:
   # Path to the client server TLS cert file.

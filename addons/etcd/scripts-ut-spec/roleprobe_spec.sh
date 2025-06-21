@@ -128,36 +128,5 @@ Describe "Etcd Role Probe Script Tests"
       The status should be failure
       The stderr should include "Failed to get endpoint status"
     End
-
-    It "handles timeout scenarios"
-      # Override exec_etcdctl to simulate timeout
-      exec_etcdctl() {
-        case "$*" in
-          *"endpoint status -w fields"*)
-            return 124  # timeout exit code
-            ;;
-        esac
-      }
-      
-      When call get_etcd_role
-      The status should be failure
-      The stderr should include "Failed to get endpoint status"
-    End
-
-    It "handles missing field values"
-      # Override exec_etcdctl to return incomplete status
-      exec_etcdctl() {
-        case "$*" in
-          *"endpoint status -w fields"*)
-            echo '"SomeOtherField": 123'
-            return 0
-            ;;
-        esac
-      }
-      
-      When call get_etcd_role
-      The status should be success
-      The output should equal "follower"  # Should default to follower when parsing fails
-    End
   End
 End

@@ -6,21 +6,21 @@ etcd is a distributed, highly available key-value store designed to securely sto
 
 ### Lifecycle Management
 
-| Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
-|------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
-| Yes                    | Yes                   | Yes              | Yes       | Yes        | Yes       | Yes    | Yes      |
+| Horizontal``scaling | Vertical``scaling | Expand``volume | Restart | Stop/Start | Configure | Expose | Switchover |
+| -------------------------- | ------------------------ | --------------------- | ------- | ---------- | --------- | ------ | ---------- |
+| Yes                        | Yes                      | Yes                   | Yes     | Yes        | Yes       | Yes    | Yes        |
 
 ### Backup and Restore
 
-| Feature     | Method | Description |
-|-------------|--------|------------|
+| Feature     | Method   | Description                                                                  |
+| ----------- | -------- | ---------------------------------------------------------------------------- |
 | Full Backup | datafile | using `etcdcl snapshot save` to create snapshot of the etcd cluster's data |
 
 ### Versions
 
-| Major Versions | Description |
-|---------------|-------------|
-| 3.5.x         | 3.5.6,3.5.15|
+| Major Versions | Description  |
+| -------------- | ------------ |
+| 3.5.x          | 3.5.6,3.5.15 |
 
 ## Prerequisites
 
@@ -124,6 +124,23 @@ bar
 
 </details>
 
+### [Create with LoadBalancer](cluster-with-lb.yaml)
+
+Create an etcd cluster with LoadBalancer services for enhanced external accessibility and multi-cluster communication.
+
+Ensure your Kubernetes cluster has a LoadBalancer provider configured:
+
+- **Cloud providers**: AWS ELB, Azure Load Balancer, GCP Cloud Load Balancing
+- **On-premises**: MetalLB, HAProxy, NGINX Ingress Controller
+- **Other**: Any compatible LoadBalancer implementation
+- **Peer Service LoadBalancer**: Enables etcd members to communicate across different networks or clusters
+- **Client Service LoadBalancer**: Provides a stable external endpoint for etcd client connections
+- **High Availability**: External load balancing ensures resilient access to the etcd cluster
+
+```bash
+kubectl apply -f examples/etcd/cluster-with-lb.yaml
+```
+
 ### Horizontal scaling
 
 #### [Scale-out](scale-out.yaml)
@@ -163,6 +180,126 @@ spec:
     - name: etcd
       replicas: 3 # Update `replicas` to 1 for scaling in, and to 3 for scaling out
 ```
+
+### [Reconfigure](configure.yaml)
+
+Reconfigure parameters with the specified components in the cluster
+
+```bash
+kubectl apply -f examples/etcd/configure.yaml
+```
+
+This example will modify several etcd configuration parameters including snapshot settings and logging levels.
+
+To verify the configuration changes, you can check the etcd configuration and cluster status:
+
+```bash
+# Check the OpsRequest status
+kubectl get opsrequest etcd-reconfiguring -n demo
+
+# View the updated ConfigMap
+kubectl get configmap etcd-cluster-etcd-config -n demo -o yaml
+
+# Connect to an etcd pod to verify cluster health
+kubectl exec -it etcd-cluster-etcd-0 -n demo -- etcdctl endpoint health
+
+# Check etcd member list and status
+kubectl exec -it etcd-cluster-etcd-0 -n demo -- etcdctl member list
+```
+
+<details>
+<summary>Explanation of the configuration</summary>
+
+The etcd configuration is stored in a YAML file (`etcd.conf`) that controls various aspects of the etcd cluster behavior.
+
+When updating the configuration, the parameter keys in the `configure.yaml` file must use the `etcd.` prefix followed by the configuration parameter name:
+
+```yaml
+# snippet of configure.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+spec:
+  reconfigures:
+  - componentName: etcd
+    parameters:
+    - key: etcd.max-snapshots
+      value: '10'
+    - key: etcd.max-wals
+      value: '10'
+    - key: etcd.log-level
+      value: 'info'
+    - key: etcd.auto-compaction-retention
+      value: '2'
+```
+
+#### Parameter Classification
+
+**Static Parameters (Require Restart):**
+Most etcd parameters are static and require an etcd process restart to take effect. These include:
+
+**Performance & Storage:**
+- `etcd.max-snapshots`: Maximum snapshot files to retain
+- `etcd.max-wals`: Maximum WAL files to retain  
+- `etcd.snapshot-count`: Transaction count to trigger snapshot
+- `etcd.quota-backend-bytes`: Backend storage quota
+- `etcd.data-dir`: Path to the data directory
+- `etcd.wal-dir`: Path to the dedicated wal directory
+
+**Timing Parameters:**
+- `etcd.heartbeat-interval`: Heartbeat interval (ms)
+- `etcd.election-timeout`: Election timeout (ms)
+
+**Logging:**
+- `etcd.log-level`: Log level (debug, info, warn, error, panic, fatal)
+- `etcd.log-outputs`: Log output destinations
+- `etcd.logger`: Logger type (capnslog, zap)
+
+**Auto Compaction:**
+- `etcd.auto-compaction-mode`: Compaction mode (periodic, revision)
+- `etcd.auto-compaction-retention`: Retention period/revision count
+
+**Network & Security:**
+- `etcd.listen-peer-urls`: URLs to listen on for peer traffic
+- `etcd.listen-client-urls`: URLs to listen on for client traffic
+- `etcd.advertise-client-urls`: Client URLs to advertise to the public
+- `etcd.initial-advertise-peer-urls`: Peer URLs to advertise to the cluster
+- `etcd.cors`: CORS whitelist origins
+- `etcd.enable-pprof`: Enable runtime profiling
+- `etcd.strict-reconfig-check`: Reject reconfiguration requests that cause quorum loss
+
+**Proxy Configuration:**
+- `etcd.proxy`: Proxy mode (off, readonly, on)
+- `etcd.proxy-failure-wait`: Endpoint failure wait time (ms)
+- `etcd.proxy-refresh-interval`: Endpoint refresh interval (ms)
+- `etcd.proxy-dial-timeout`: Dial timeout (ms)
+- `etcd.proxy-write-timeout`: Write timeout (ms)
+- `etcd.proxy-read-timeout`: Read timeout (ms)
+
+**Discovery:**
+- `etcd.discovery`: Discovery URL for bootstrapping
+- `etcd.discovery-fallback`: Discovery fallback behavior
+- `etcd.discovery-proxy`: HTTP proxy for discovery service
+- `etcd.discovery-srv`: DNS domain for discovery
+
+**TLS & Security:**
+- `etcd.self-signed-cert-validity`: Self-signed certificate validity (years)
+- `etcd.cipher-suites`: TLS cipher suites
+- `etcd.tls-min-version`: Minimum TLS version
+- `etcd.tls-max-version`: Maximum TLS version
+- `etcd.client-transport-security`: Client TLS configuration
+- `etcd.peer-transport-security`: Peer TLS configuration
+
+**Dynamic Parameters:**
+Currently, only member management operations are supported for dynamic configuration through etcdctl.
+
+**Immutable Parameters:**
+The following parameters cannot be changed after cluster creation:
+- `etcd.initial-cluster`: Initial cluster configuration
+- `etcd.initial-cluster-token`: Initial cluster token
+- `etcd.initial-cluster-state`: Initial cluster state
+- `etcd.force-new-cluster`: Force new cluster creation
+
+</details>
 
 ### [Vertical scaling](verticalscale.yaml)
 
@@ -301,7 +438,7 @@ spec:
       replicas: 2
 ```
 
-### Switchover(switchover.yaml)
+### [Switchover](switchover.yaml)
 
 A switchover in database clusters is a planned operation that transfers the primary (leader) role from one database instance to another. The goal of a switchover is to ensure that the database cluster remains available and operational during the transition.
 

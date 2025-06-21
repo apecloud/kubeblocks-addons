@@ -23,27 +23,16 @@ spec:
       {{- .Files.Get "config/etcd-config-constraint.cue" | nindent 6 }}
 
   staticParameters:
-    - "etcd.name"
-    - "etcd.data-dir"
     - "etcd.wal-dir"
     - "etcd.snapshot-count"
     - "etcd.heartbeat-interval"
     - "etcd.election-timeout"
     - "etcd.quota-backend-bytes"
-    - "etcd.listen-peer-urls"
-    - "etcd.listen-client-urls"
-    - "etcd.initial-advertise-peer-urls"
-    - "etcd.advertise-client-urls"
-    - "etcd.initial-cluster"
-    - "etcd.initial-cluster-token"
-    - "etcd.initial-cluster-state"
     - "etcd.strict-reconfig-check"
     - "etcd.max-snapshots"
     - "etcd.max-wals"
     - "etcd.auto-compaction-mode"
     - "etcd.auto-compaction-retention"
-    - "etcd.client-transport-security"
-    - "etcd.peer-transport-security"
     - "etcd.cipher-suites"
     - "etcd.tls-min-version"
     - "etcd.tls-max-version"
@@ -59,7 +48,6 @@ spec:
     - "etcd.discovery-fallback"
     - "etcd.discovery-proxy"
     - "etcd.discovery-srv"
-    - "etcd.force-new-cluster"
     - "etcd.self-signed-cert-validity"
     - "etcd.log-level"
     - "etcd.log-outputs"
@@ -69,7 +57,18 @@ spec:
     # only member change is dynamic, which is supported by etcdctl 
 
   immutableParameters:
+    # Parameters modified by start.sh script
+    - "etcd.name"
+    - "etcd.initial-advertise-peer-urls"
+    - "etcd.advertise-client-urls"
+    # Parameters set by etcd.conf.yaml.tpl template
+    - "etcd.data-dir"
+    - "etcd.listen-peer-urls"
+    - "etcd.listen-client-urls"
+    - "etcd.client-transport-security"
+    - "etcd.peer-transport-security"
     - "etcd.initial-cluster"
     - "etcd.initial-cluster-token"
+    # Parameters set by data-load.sh script
     - "etcd.initial-cluster-state"
-    - "etcd.force-new-cluster" 
+    - "etcd.force-new-cluster"
