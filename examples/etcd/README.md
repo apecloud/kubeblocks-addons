@@ -7,8 +7,8 @@ etcd is a distributed, highly available key-value store designed to securely sto
 ### Lifecycle Management
 
 | Horizontal``scaling | Vertical``scaling | Expand``volume | Restart | Stop/Start | Configure | Expose | Switchover |
-| -------------------------- | ------------------------ | --------------------- | ------- | ---------- | --------- | ------ | ---------- |
-| Yes                        | Yes                      | Yes                   | Yes     | Yes        | Yes       | Yes    | Yes        |
+| ------------------- | ----------------- | -------------- | ------- | ---------- | --------- | ------ | ---------- |
+| Yes                 | Yes               | Yes            | Yes     | Yes        | Yes       | Yes    | Yes        |
 
 ### Backup and Restore
 
@@ -212,7 +212,7 @@ kubectl exec -it etcd-cluster-etcd-0 -n demo -- etcdctl member list
 
 The etcd configuration is stored in a YAML file (`etcd.conf`) that controls various aspects of the etcd cluster behavior.
 
-When updating the configuration, the parameter keys in the `configure.yaml` file should use the parameter name directly without any prefix:
+When updating the configuration, the parameter keys in the `configure.yaml` file should use the parameter name directly:
 
 ```yaml
 # snippet of configure.yaml
@@ -229,35 +229,41 @@ spec:
 #### Parameter Classification
 
 **Static Parameters (Require Restart):**
-Most etcd parameters are static and require an etcd process restart to take effect. These include:
+Most etcd parameters are static and require pod restart to take effect. These include:
 
 **Performance & Storage:**
+
 - `max-snapshots`: Maximum snapshot files to retain
-- `max-wals`: Maximum WAL files to retain  
+- `max-wals`: Maximum WAL files to retain
 - `snapshot-count`: Transaction count to trigger snapshot
 - `quota-backend-bytes`: Backend storage quota
 - `wal-dir`: Path to the dedicated wal directory
 
 **Timing Parameters:**
+
 - `heartbeat-interval`: Heartbeat interval (ms)
 - `election-timeout`: Election timeout (ms)
 
 **Logging:**
+
 - `log-level`: Log level (debug, info, warn, error, panic, fatal)
 - `log-outputs`: Log output destinations
 - `logger`: Logger type (capnslog, zap)
 
 **Auto Compaction:**
+
 - `auto-compaction-mode`: Compaction mode (periodic, revision)
 - `auto-compaction-retention`: Retention period/revision count
 
 **TLS & Security:**
+
 - `cipher-suites`: TLS cipher suites
 - `tls-min-version`: Minimum TLS version
 - `tls-max-version`: Maximum TLS version
 - `self-signed-cert-validity`: Self-signed certificate validity (years)
 
 **Proxy Configuration:**
+
 - `proxy`: Proxy mode (off, readonly, on)
 - `proxy-failure-wait`: Endpoint failure wait time (ms)
 - `proxy-refresh-interval`: Endpoint refresh interval (ms)
@@ -266,15 +272,18 @@ Most etcd parameters are static and require an etcd process restart to take effe
 - `proxy-read-timeout`: Read timeout (ms)
 
 **Discovery:**
+
 - `discovery`: Discovery URL for bootstrapping
 - `discovery-fallback`: Discovery fallback behavior
 - `discovery-proxy`: HTTP proxy for discovery service
 - `discovery-srv`: DNS domain for discovery
 
 **Performance:**
+
 - `enable-pprof`: Enable runtime profiling
 
 **Security:**
+
 - `cors`: CORS whitelist origins
 - `strict-reconfig-check`: Reject reconfiguration requests that cause quorum loss
 
@@ -283,6 +292,7 @@ Currently, only member management operations are supported for dynamic configura
 
 **Immutable Parameters:**
 The following parameters cannot be changed after cluster creation:
+
 - `name`: Node identifier (set by start.sh script)
 - `initial-advertise-peer-urls`: Peer URLs to advertise (set by start.sh script)
 - `advertise-client-urls`: Client URLs to advertise (set by start.sh script)
@@ -293,7 +303,7 @@ The following parameters cannot be changed after cluster creation:
 - `peer-transport-security`: Peer TLS configuration (set by conf.yaml.tpl template)
 - `initial-cluster`: Initial cluster configuration (set by conf.yaml.tpl template)
 - `initial-cluster-token`: Initial cluster token (set by conf.yaml.tpl template)
-- `initial-cluster-state`: Initial cluster state (set by data-load.sh script)
+- `initial-cluster-state`: Initial cluster state (set by conf.yaml.tpl or data-load.sh script)
 - `force-new-cluster`: Force new cluster creation (not allowed)
 
 </details>

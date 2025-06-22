@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: etcd-cluster
+  name: etcd-cluster-lb
   namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
