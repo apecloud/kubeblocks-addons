@@ -24,7 +24,6 @@ spec:
       - {{ .Values.binDir }}/bash
       - -c
       - |
-        export PATH="{{ .Values.binDir }}:$PATH"
         {{- .Files.Get "scripts/common.sh" | nindent 8 }}
         {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
   restore:
