@@ -4,8 +4,11 @@ export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export WALG_COMPRESSION_METHOD=zstd
 export PGPASSWORD=${DP_DB_PASSWORD}
 export DATASAFED_BACKEND_BASE_PATH=${backup_base_path}
+# full backup without incremental backup
+export WALG_DELTA_MAX_STEPS=0
 # 20Gi for bundle file
 export WALG_TAR_SIZE_THRESHOLD=21474836480
+PSQL="psql -h ${KB_CLUSTER_COMP_NAME}-${KB_COMP_NAME} -U ${DP_DB_USER} -d postgres"
 
 # if the script exits with a non-zero exit code, touch a file to indicate that the backup failed,
 # the sync progress container will check this file and exit if it exists
@@ -18,11 +21,21 @@ function handle_exit() {
   fi
 }
 
-function get_backup_name() {
-  line=$(cat result.txt | tail -n 1)
-  if [[ $line == *"Wrote backup with name"* ]]; then
-     echo ${line##* }
-  fi
+function check_archive_mode_enabled() {
+  local timeout=300
+  local interval=10
+  local elapsed=0
+  while [ $elapsed -le $timeout ]; do
+      result=$($PSQL -tXAc "SELECT setting FROM pg_settings WHERE name = 'archive_command';")
+      if [[ "$result" == *"wal-g wal-push"* ]]; then
+          return 0
+      else
+          echo "wait to enable archive command..."
+          sleep $interval
+          elapsed=$((elapsed + interval))
+      fi
+  done
+  return 1
 }
 
 function writeSentinelInBaseBackupPath() {
@@ -35,17 +48,23 @@ function writeSentinelInBaseBackupPath() {
 
 trap handle_exit EXIT
 set -e
+if check_archive_mode_enabled; then
+    echo "archive command is configured."
+else
+    echo "Timeout waiting for archiving to be enabled. Please enable archiving first before proceeding with the operation."
+    exit 1
+fi
+
 # 1. do full backup
 writeSentinelInBaseBackupPath "${backup_base_path}" "wal-g-backup-repo.path"
 PGHOST=${DP_DB_HOST} PGUSER=${DP_DB_USER} PGPORT=5432 wal-g backup-push ${DATA_DIR} 2>&1 | tee result.txt
 
 set +e
 echo "switch wal log"
-PSQL="psql -h ${KB_CLUSTER_NAME}-${KB_COMP_NAME} -U ${DP_DB_USER} -d postgres"
 ${PSQL} -c "select pg_switch_wal();"
 
 # 2. get backup name of the wal-g
-backupName=$(get_backup_name)
+backupName=$(cat result.txt | tail -n 1 | grep -o 'base_[0-9A-Za-z_]*')
 if [[ -z ${backupName} ]] || [[ ${backupName} != "base_"* ]];then
    echo "ERROR: backup failed, can not get the backup name"
    exit 1
@@ -64,4 +83,4 @@ START_TIME=$(echo $result_json | jq -r ".StartTime")
 TOTAL_SIZE=$(echo $result_json | jq -r ".CompressedSize")
 
 # 5. update backup status
-echo "{\"totalSize\":\"$TOTAL_SIZE\",\"timeRange\":{\"start\":\"${START_TIME}\",\"end\":\"${STOP_TIME}\"}}" >"${DP_BACKUP_INFO_FILE}"
+echo "{\"totalSize\":\"$TOTAL_SIZE\",\"extras\":[{\"wal-g-backup-name\":\"${backupName}\"}],\"timeRange\":{\"start\":\"${START_TIME}\",\"end\":\"${STOP_TIME}\"}}" >"${DP_BACKUP_INFO_FILE}"

@@ -27,13 +27,6 @@
 {{ $buffer_unit = "GB" }}
 {{- end }}
 
-{{- $pgVersion := "16.0" }}
-{{- range $i, $spec := $.cluster.spec.componentSpecs }}
-{{- if eq "postgresql" $spec.name }}
-{{- $pgVersion = $spec.serviceVersion }}
-{{- end }}
-{{- end }}
-
 listen_addresses = '*'
 port = '5432'
 archive_command = '/bin/true'
@@ -196,7 +189,6 @@ min_parallel_table_scan_size = '8MB'
 max_wal_size = '{{- printf "%dMB" $max_wal_size }}'
 min_wal_size = '{{- printf "%dMB" $min_wal_size }}'
 
-old_snapshot_threshold = '-1'
 parallel_leader_participation = 'True'
 password_encryption = 'md5'
 pg_stat_statements.max = '5000'
@@ -228,11 +220,7 @@ session_replication_role = 'origin'
 # extension: sql_firewall
 sql_firewall.firewall = 'disable'
 shared_buffers = '{{ printf "%d%s" $shared_buffers $buffer_unit }}'
-{{- if semverCompare ">=16.9.0" $pgVersion }}
 shared_preload_libraries = 'pg_stat_statements,auto_explain,bg_mon,pgextwlist,pg_auth_mon,set_user,pg_cron,pg_stat_kcache,timescaledb,pgaudit,pg_duckdb'
-{{- else }}
-shared_preload_libraries = 'pg_stat_statements,auto_explain,bg_mon,pgextwlist,pg_auth_mon,set_user,pg_cron,pg_stat_kcache,timescaledb,pgaudit'
-{{- end }}
 {{- if $.component.tlsConfig }}
 {{- $ca_file := getCAFile }}
 {{- $cert_file := getCertFile }}

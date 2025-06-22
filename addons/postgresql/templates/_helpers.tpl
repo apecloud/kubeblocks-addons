@@ -2,7 +2,7 @@
 Expand the name of the chart.
 */}}
 {{- define "postgresql.name" -}}
-{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
+{{- .Chart.Name | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
@@ -11,15 +11,11 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 If release name contains chart name it will be used as a full name.
 */}}
 {{- define "postgresql.fullname" -}}
-{{- if .Values.fullnameOverride }}
-{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
-{{- else }}
-{{- $name := default .Chart.Name .Values.nameOverride }}
+{{- $name := .Chart.Name }}
 {{- if contains $name .Release.Name }}
 {{- .Release.Name | trunc 63 | trimSuffix "-" }}
 {{- else }}
 {{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
-{{- end }}
 {{- end }}
 {{- end }}
 
@@ -51,53 +47,6 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Create the name of the service account to use
-*/}}
-{{- define "postgresql.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "postgresql.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
-{{- end }}
-
-{{/*
-Return true if a configmap object should be created for PostgreSQL primary with the configuration
-*/}}
-{{- define "postgresql.primary.createConfigmap" -}}
-{{- if and (or .Values.primary.configuration .Values.primary.pgHbaConfiguration) (not .Values.primary.existingConfigmap) }}
-    {{- true -}}
-{{- else -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Return PostgreSQL service port
-*/}}
-{{- define "postgresql.service.port" -}}
-{{- .Values.primary.service.ports.postgresql -}}
-{{- end -}}
-
-{{/*
-Return the name for a custom database to create
-*/}}
-{{- define "postgresql.database" -}}
-{{- .Values.auth.database -}}
-{{- end -}}
-
-{{/*
-Get the password key.
-*/}}
-{{/* TODO: use $(RANDOM_PASSWD) instead */}}
-{{- define "postgresql.postgresPassword" -}}
-{{- if or (.Release.IsInstall) (not (lookup "apps.kubeblocks.io/v1alpha1" "ClusterDefinition" "" "postgresql")) -}}
-{{ .Values.auth.postgresPassword | default (randAlphaNum 10) }}
-{{- else -}}
-{{ index (lookup "apps.kubeblocks.io/v1alpha1" "ClusterDefinition" "" "postgresql").spec.connectionCredential "password"}}
-{{- end }}
-{{- end }}
-
-{{/*
 Generate scripts configmap
 */}}
 {{- define "postgresql.extend.scripts" -}}
@@ -105,6 +54,21 @@ Generate scripts configmap
 {{ $path | base }}: |-
 {{- $.Files.Get $path | nindent 2 }}
 {{- end }}
+{{- end }}
+
+{{/*
+Define image
+*/}}
+{{- define "postgresql.repository" -}}
+{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}
+{{- end }}
+
+{{- define "postgresql.pgbouncerImage" -}}
+{{ .Values.pgbouncer.image.registry | default (.Values.image.registry | default "docker.io") }}/{{ .Values.pgbouncer.image.repository }}:{{ .Values.pgbouncer.image.tag }}
+{{- end }}
+
+{{- define "postgresql.metricsImage" -}}
+{{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
 {{- end }}
 
 {{/*
@@ -128,45 +92,70 @@ Parameters: cvName, values
 {{- end -}}
 
 {{/*
-Define image
+Get PostgreSQL image address by major and minor version
+Parameters: major (string), minor (string), root context
+Usage: {{ include "postgresql.imageByVersion" (dict "major" "14" "minor" "14.8.0" "root" .) }}
 */}}
-{{- define "postgresql.repository" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}
-{{- end }}
+{{- define "postgresql.imageByVersion" -}}
+{{- $major := .major -}}
+{{- $minor := .minor -}}
+{{- $root := .root -}}
+{{- $tag := "" -}}
+{{- range $root.Values.versions -}}
+  {{- if eq .major $major -}}
+    {{- range .minors -}}
+      {{- if eq .version $minor -}}
+        {{- $tag = .tag -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- if $tag -}}
+{{- printf "%s/%s:%s" ($root.Values.image.registry | default "docker.io") $root.Values.image.repository $tag -}}
+{{- else -}}
+{{- fail (printf "image tag not found for major: %s, minor: %s" $major $minor) -}}
+{{- end -}}
+{{- end -}}
 
-{{- define "postgresql.image.major12.minor140" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor140 }}
-{{- end }}
+{{/*
+Get PostgreSQL image pull policy
+Parameters: root context
+Usage: {{ include "postgresql.imagePullPolicy" . }}
+*/}}
+{{- define "postgresql.imagePullPolicy" -}}
+{{- default "IfNotPresent" .Values.image.pullPolicy -}}
+{{- end -}}
 
-{{- define "postgresql.image.major12.minor141" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor141 }}
-{{- end }}
+{{/*
+Get PostgreSQL componentDef by major version
+Parameters: major (string), root context
+Usage: {{ include "postgresql.componentDefByMajor" (dict "major" "14" "root" .) }}
+*/}}
+{{- define "postgresql.componentDefByMajor" -}}
+{{- $major := .major -}}
+{{- $root := .root -}}
+{{- $componentDef := "" -}}
+{{- range $root.Values.versions -}}
+  {{- if eq .major $major -}}
+    {{- $componentDef = .componentDef -}}
+  {{- end -}}
+{{- end -}}
+{{- $componentDef -}}
+{{- end -}}
 
-{{- define "postgresql.image.major12.minor150" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major12.minor150 }}
-{{- end }}
-
-{{- define "postgresql.image.major14.minor072" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major14.minor072 }}
-{{- end }}
-
-{{- define "postgresql.image.major14.minor080" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major14.minor080 }}
-{{- end }}
-
-{{- define "postgresql.image.major15.minor070" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major15.minor070 }}
-{{- end }}
-
-{{- define "postgresql.image.major16.minor040" -}}
-{{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tags.major16.minor040 }}
-{{- end }}
-
-{{- define "pgbouncer.image" -}}
-{{ .Values.pgbouncer.image.registry | default (.Values.image.registry | default "docker.io") }}/{{ .Values.pgbouncer.image.repository }}:{{ .Values.pgbouncer.image.tag }}
-{{- end }}
-
-{{- define "metrics.image" -}}
-{{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
-{{- end }}
-
+{{/*
+Get PostgreSQL action image by major version
+Parameters: major (string), root context
+Usage: {{ include "postgresql.actionImageByMajor" (dict "major" "14" "root" .) }}
+*/}}
+{{- define "postgresql.actionImageByMajor" -}}
+{{- $major := .major -}}
+{{- $root := .root -}}
+{{- $actionImageTag := "" -}}
+{{- range $root.Values.versions -}}
+  {{- if eq .major $major -}}
+    {{- $actionImageTag = .actionImageTag -}}
+  {{- end -}}
+{{- end -}}
+{{- printf "%s/%s:%s" ($root.Values.image.registry | default "docker.io") $root.Values.image.repository $actionImageTag -}}
+{{- end -}}
