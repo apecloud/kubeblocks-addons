@@ -1,5 +1,4 @@
 #!/bin/bash
-set -exo pipefail
 
 # shellcheck disable=SC1091
 . "/scripts/common.sh"
