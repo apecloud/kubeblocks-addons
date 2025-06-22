@@ -6,21 +6,21 @@ etcd is a distributed, highly available key-value store designed to securely sto
 
 ### Lifecycle Management
 
-| Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
-|------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
-| Yes                    | Yes                   | Yes              | Yes       | Yes        | Yes       | Yes    | Yes      |
+| Horizontal``scaling | Vertical``scaling | Expand``volume | Restart | Stop/Start | Configure | Expose | Switchover |
+| -------------------------- | ------------------------ | --------------------- | ------- | ---------- | --------- | ------ | ---------- |
+| Yes                        | Yes                      | Yes                   | Yes     | Yes        | Yes       | Yes    | Yes        |
 
 ### Backup and Restore
 
-| Feature     | Method | Description |
-|-------------|--------|------------|
+| Feature     | Method   | Description                                                                  |
+| ----------- | -------- | ---------------------------------------------------------------------------- |
 | Full Backup | datafile | using `etcdcl snapshot save` to create snapshot of the etcd cluster's data |
 
 ### Versions
 
-| Major Versions | Description |
-|---------------|-------------|
-| 3.5.x         | 3.5.6,3.5.15|
+| Major Versions | Description  |
+| -------------- | ------------ |
+| 3.5.x          | 3.5.6,3.5.15 |
 
 ## Prerequisites
 
@@ -60,8 +60,8 @@ spec:
       componentDef: etcd
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [3.5.15,3.5.6]
-      serviceVersion: 3.5.15
+      # Valid options are: [3.6.1,3.5.15,3.5.6]
+      serviceVersion: 3.6.1
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
       # Valid options are [true, false]
@@ -128,7 +128,7 @@ spec:
       tls: true   # set TLS to true
       issuer:     # if TLS is True, this filed is required.
         name: KubeBlocks  # set Issuer to [KubeBlocks, UserProvided].
-      serviceVersion: 3.5.15
+      serviceVersion: 3.6.1
       replicas: 3
       resources:
         limits:
@@ -223,6 +223,93 @@ bar
 
 </details>
 
+### Create with LoadBalancer
+
+Create an etcd cluster with LoadBalancer services for enhanced external accessibility and multi-cluster communication.
+
+Ensure your Kubernetes cluster has a LoadBalancer provider configured:
+
+- **Cloud providers**: AWS ELB, Azure Load Balancer, GCP Cloud Load Balancing
+- **On-premises**: MetalLB, HAProxy, NGINX Ingress Controller
+- **Other**: Any compatible LoadBalancer implementation
+- **Peer Service LoadBalancer**: Enables etcd members to communicate across different networks or clusters
+- **Client Service LoadBalancer**: Provides a stable external endpoint for etcd client connections
+- **High Availability**: External load balancing ensures resilient access to the etcd cluster
+
+```yaml
+# cat examples/etcd/cluster-with-lb.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: etcd-cluster
+  namespace: demo
+spec:
+  # Specifies the behavior when a Cluster is deleted.
+  # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
+  # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
+  # - `Delete`: Extends the `Halt` policy by also removing PVCs, leading to a thorough cleanup while removing all persistent data.
+  # - `WipeOut`: An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss.
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: etcd
+      componentDef: etcd
+      # ServiceVersion specifies the version of the Service expected to be
+      # provisioned by this Component.
+      # Valid options are: [3.6.1,3.5.15,3.5.6]
+      serviceVersion: 3.6.1
+      # Determines whether metrics exporter information is annotated on the
+      # Component's headless Service.
+      # Valid options are [true, false]
+      disableExporter: false
+      # Specifies the desired number of replicas in the Component
+      replicas: 3
+      # Peer service configuration for etcd member communication
+      services:
+        - name: peer
+          serviceType: LoadBalancer
+          podService: true
+      # Specifies the resources required by the Component.
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
+      # Specifies a list of PersistentVolumeClaim templates that define the storage
+      # requirements for the Component.
+      volumeClaimTemplates:
+        # Refers to the name of a volumeMount defined in
+        # `componentDefinition.spec.runtime.containers[*].volumeMounts
+        - name: data
+          spec:
+            # The name of the StorageClass required by the claim.
+            # If not specified, the StorageClass annotated with
+            # `storageclass.kubernetes.io/is-default-class=true` will be used by default
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                # Set the storage size as needed
+                storage: 20Gi
+  # Client service configuration for external access
+  services:
+    - name: client
+      serviceName: client
+      spec:
+        type: LoadBalancer
+        ports:
+          - port: 2379
+            targetPort: 2379
+      componentSelector: etcd
+
+```
+
+```bash
+kubectl apply -f examples/etcd/cluster-with-lb.yaml
+```
+
 ### Horizontal scaling
 
 #### Scale-out
@@ -248,6 +335,7 @@ spec:
     scaleOut:
       # Specifies the replica changes for the component.
       # add one more replica to current component
+      # only support change one replica at a time
       replicaChanges: 1
 
 ```
@@ -287,6 +375,7 @@ spec:
     scaleIn:
       # Specifies the replica changes for the component.
       # add one more replica to current component
+      # only support change one replica at a time
       replicaChanges: 1
 
 ```
@@ -308,6 +397,147 @@ spec:
     - name: etcd
       replicas: 3 # Update `replicas` to 1 for scaling in, and to 3 for scaling out
 ```
+
+### Reconfigure
+
+Reconfigure parameters with the specified components in the cluster
+
+```yaml
+# cat examples/etcd/configure.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: etcd-reconfiguring
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: etcd-cluster
+  # Instructs the system to bypass pre-checks (including cluster state checks and customized pre-conditions hooks) and immediately execute the opsRequest, except for the opsRequest of 'Start' type, which will still undergo pre-checks even if `force` is true.  Note: Once set, the `force` field is immutable and cannot be updated.
+  force: false
+  # Specifies a component and its configuration updates.
+  reconfigures:
+    # Specifies the name of the Component.
+  - componentName: etcd
+    parameters:
+    - key: log-level
+      value: 'debug'
+  # Specifies the maximum number of seconds the OpsRequest will wait for its start conditions to be met before aborting. If set to 0 (default), the start conditions must be met immediately for the OpsRequest to proceed.
+  preConditionDeadlineSeconds: 0
+  type: Reconfiguring
+```
+
+```bash
+kubectl apply -f examples/etcd/configure.yaml
+```
+
+This example will modify the etcd log level to debug for enhanced troubleshooting.
+
+To verify the configuration changes, you can check the etcd configuration and cluster status:
+
+```bash
+# Check the OpsRequest status
+kubectl get opsrequest etcd-reconfiguring -n demo
+
+# View the updated ConfigMap
+kubectl get configmap etcd-cluster-etcd-config -n demo -o yaml
+
+# Connect to an etcd pod to verify cluster health
+kubectl exec -it etcd-cluster-etcd-0 -n demo -- etcdctl endpoint health
+
+# Check etcd member list and status
+kubectl exec -it etcd-cluster-etcd-0 -n demo -- etcdctl member list
+```
+
+<details>
+<summary>Explanation of the configuration</summary>
+
+The etcd configuration is stored in a YAML file (`etcd.conf`) that controls various aspects of the etcd cluster behavior.
+
+When updating the configuration, the parameter keys in the `configure.yaml` file should use the parameter name directly without any prefix:
+
+```yaml
+# snippet of configure.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+spec:
+  reconfigures:
+  - componentName: etcd
+    parameters:
+    - key: log-level
+      value: 'debug'
+```
+
+#### Parameter Classification
+
+**Static Parameters (Require Restart):**
+Most etcd parameters are static and require an etcd process restart to take effect. These include:
+
+**Performance & Storage:**
+- `max-snapshots`: Maximum snapshot files to retain
+- `max-wals`: Maximum WAL files to retain  
+- `snapshot-count`: Transaction count to trigger snapshot
+- `quota-backend-bytes`: Backend storage quota
+- `wal-dir`: Path to the dedicated wal directory
+
+**Timing Parameters:**
+- `heartbeat-interval`: Heartbeat interval (ms)
+- `election-timeout`: Election timeout (ms)
+
+**Logging:**
+- `log-level`: Log level (debug, info, warn, error, panic, fatal)
+- `log-outputs`: Log output destinations
+- `logger`: Logger type (capnslog, zap)
+
+**Auto Compaction:**
+- `auto-compaction-mode`: Compaction mode (periodic, revision)
+- `auto-compaction-retention`: Retention period/revision count
+
+**TLS & Security:**
+- `cipher-suites`: TLS cipher suites
+- `tls-min-version`: Minimum TLS version
+- `tls-max-version`: Maximum TLS version
+- `self-signed-cert-validity`: Self-signed certificate validity (years)
+
+**Proxy Configuration:**
+- `proxy`: Proxy mode (off, readonly, on)
+- `proxy-failure-wait`: Endpoint failure wait time (ms)
+- `proxy-refresh-interval`: Endpoint refresh interval (ms)
+- `proxy-dial-timeout`: Dial timeout (ms)
+- `proxy-write-timeout`: Write timeout (ms)
+- `proxy-read-timeout`: Read timeout (ms)
+
+**Discovery:**
+- `discovery`: Discovery URL for bootstrapping
+- `discovery-fallback`: Discovery fallback behavior
+- `discovery-proxy`: HTTP proxy for discovery service
+- `discovery-srv`: DNS domain for discovery
+
+**Performance:**
+- `enable-pprof`: Enable runtime profiling
+
+**Security:**
+- `cors`: CORS whitelist origins
+- `strict-reconfig-check`: Reject reconfiguration requests that cause quorum loss
+
+**Dynamic Parameters:**
+Currently, only member management operations are supported for dynamic configuration through etcdctl.
+
+**Immutable Parameters:**
+The following parameters cannot be changed after cluster creation:
+- `name`: Node identifier (set by start.sh script)
+- `initial-advertise-peer-urls`: Peer URLs to advertise (set by start.sh script)
+- `advertise-client-urls`: Client URLs to advertise (set by start.sh script)
+- `data-dir`: Path to the data directory (set by conf.yaml.tpl template)
+- `listen-peer-urls`: URLs to listen on for peer traffic (set by conf.yaml.tpl template)
+- `listen-client-urls`: URLs to listen on for client traffic (set by conf.yaml.tpl template)
+- `client-transport-security`: Client TLS configuration (set by conf.yaml.tpl template)
+- `peer-transport-security`: Peer TLS configuration (set by conf.yaml.tpl template)
+- `initial-cluster`: Initial cluster configuration (set by conf.yaml.tpl template)
+- `initial-cluster-token`: Initial cluster token (set by conf.yaml.tpl template)
+- `initial-cluster-state`: Initial cluster state (set by data-load.sh script)
+- `force-new-cluster`: Force new cluster creation (not allowed)
+
+</details>
 
 ### Vertical scaling
 
@@ -538,7 +768,7 @@ spec:
       replicas: 2
 ```
 
-### Switchover(switchover.yaml)
+### Switchover
 
 A switchover in database clusters is a planned operation that transfers the primary (leader) role from one database instance to another. The goal of a switchover is to ensure that the database cluster remains available and operational during the transition.
 
@@ -562,7 +792,8 @@ spec:
     # Specifies the instance whose role will be transferred.
     # A typical usage is to transfer the leader role in a consensus system.
     instanceName: etcd-cluster-etcd-0
-
+    # Specifies the instance that will become the new leader, if not specify, the first non leader instance will become candidate.
+    # candidateName: etcd-cluster-etcd-0
 ```
 
 ```bash
@@ -592,11 +823,12 @@ spec:
   # - datafile
   backupMethod: datafile
   # Specifies the backup policy to be applied for this backup.
-  backupPolicyName: etcd-cluster-etcd-backup-policy
+  backupPolicyName: etcd-cluster-tls-etcd-backup-policy
   # Determines whether the backup contents stored in the backup repository should be deleted when the backup custom resource(CR) is deleted. Supported values are `Retain` and `Delete`.
   # - `Retain` means that the backup content and its physical snapshot on backup repository are kept.
   # - `Delete` means that the backup content and its physical snapshot on backup repository are deleted.
   deletionPolicy: Delete
+
 ```
 
 ```bash
