@@ -11,7 +11,7 @@ spec:
 
   reloadAction:
     autoTrigger:
-      processName: etcd
+      processName: ""
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:
@@ -23,53 +23,53 @@ spec:
       {{- .Files.Get "config/etcd-config-constraint.cue" | nindent 6 }}
 
   staticParameters:
-    - "etcd.wal-dir"
-    - "etcd.snapshot-count"
-    - "etcd.heartbeat-interval"
-    - "etcd.election-timeout"
-    - "etcd.quota-backend-bytes"
-    - "etcd.strict-reconfig-check"
-    - "etcd.max-snapshots"
-    - "etcd.max-wals"
-    - "etcd.auto-compaction-mode"
-    - "etcd.auto-compaction-retention"
-    - "etcd.cipher-suites"
-    - "etcd.tls-min-version"
-    - "etcd.tls-max-version"
-    - "etcd.proxy"
-    - "etcd.proxy-failure-wait"
-    - "etcd.proxy-refresh-interval"
-    - "etcd.proxy-dial-timeout"
-    - "etcd.proxy-write-timeout"
-    - "etcd.proxy-read-timeout"
-    - "etcd.enable-pprof"
-    - "etcd.cors"
-    - "etcd.discovery"
-    - "etcd.discovery-fallback"
-    - "etcd.discovery-proxy"
-    - "etcd.discovery-srv"
-    - "etcd.self-signed-cert-validity"
-    - "etcd.log-level"
-    - "etcd.log-outputs"
-    - "etcd.logger"
+    - "wal-dir"
+    - "snapshot-count"
+    - "heartbeat-interval"
+    - "election-timeout"
+    - "quota-backend-bytes"
+    - "strict-reconfig-check"
+    - "max-snapshots"
+    - "max-wals"
+    - "auto-compaction-mode"
+    - "auto-compaction-retention"
+    - "cipher-suites"
+    - "tls-min-version"
+    - "tls-max-version"
+    - "proxy"
+    - "proxy-failure-wait"
+    - "proxy-refresh-interval"
+    - "proxy-dial-timeout"
+    - "proxy-write-timeout"
+    - "proxy-read-timeout"
+    - "enable-pprof"
+    - "cors"
+    - "discovery"
+    - "discovery-fallback"
+    - "discovery-proxy"
+    - "discovery-srv"
+    - "self-signed-cert-validity"
+    - "log-level"
+    - "log-outputs"
+    - "logger"
 
   dynamicParameters:
     # only member change is dynamic, which can be handle by hscale and switchover ops
 
   immutableParameters:
     # Parameters modified by start.sh script
-    - "etcd.name"
-    - "etcd.initial-advertise-peer-urls"
-    - "etcd.advertise-client-urls"
-    # Parameters set by etcd.conf.yaml.tpl template
-    - "etcd.data-dir"
-    - "etcd.listen-peer-urls"
-    - "etcd.listen-client-urls"
-    - "etcd.client-transport-security"
-    - "etcd.peer-transport-security"
-    - "etcd.initial-cluster"
-    - "etcd.initial-cluster-token"
+    - "name"
+    - "initial-advertise-peer-urls"
+    - "advertise-client-urls"
+    # Parameters set by conf.yaml.tpl template
+    - "data-dir"
+    - "listen-peer-urls"
+    - "listen-client-urls"
+    - "client-transport-security"
+    - "peer-transport-security"
+    - "initial-cluster"
+    - "initial-cluster-token"
     # Parameters set by data-load.sh script
-    - "etcd.initial-cluster-state"
+    - "initial-cluster-state"
     # Not allow
-    - "etcd.force-new-cluster"
+    - "force-new-cluster"

@@ -13,8 +13,6 @@ spec:
     # Specifies the name of the Component.
   - componentName: etcd
     parameters:
-    - key: max-snapshots
-      value: '10'
     - key: log-level
       value: 'debug'
   # Specifies the maximum number of seconds the OpsRequest will wait for its start conditions to be met before aborting. If set to 0 (default), the start conditions must be met immediately for the OpsRequest to proceed.

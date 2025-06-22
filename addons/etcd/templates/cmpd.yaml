@@ -132,7 +132,7 @@ spec:
     caFile: ca.pem
     certFile: cert.pem
     keyFile: key.pem
-  # reference: https://etcd.io/docs/v3.5/op-guide/runtime-configuration/ single member changes is better
+  # reference: https://etcd.io/docs/v3.6/op-guide/runtime-configuration/ single member changes is better
   updateStrategy: Serial
   roles:
     - name: leader
@@ -187,6 +187,7 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: config
       defaultMode: 0666
+      externalManaged: true
       restartOnFileChange: true
   scripts:
     - name: script
