@@ -251,22 +251,6 @@ Milvus monitor
 Milvus cluster vars for cluster-with-dep topology
 */}}
 {{- define "milvus.cluster.serviceRefVarsWithDep" }}
-- name: ETCD_HOST
-  valueFrom:
-    serviceVarRef:
-      compDef: etcd
-      name: client
-      optional: false
-      host: Required
-- name: ETCD_PORT
-  valueFrom:
-    serviceVarRef:
-      compDef: etcd
-      name: client
-      optional: false
-      port:
-        name: client
-        option: Required
 - name: KAFKA_HOST
   valueFrom:
     serviceVarRef:
