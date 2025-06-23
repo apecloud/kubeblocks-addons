@@ -83,3 +83,26 @@ External object storage service reference
   serviceDescriptor: {{ .Values.storage.object.serviceRef.serviceDescriptor }}
 {{- end }}
 {{- end }}
+
+{{/*
+External storage configs
+*/}}
+{{- define "milvus.configs" }}
+configs:
+  - name: config
+    variables:
+      etcd_root_path: {{ .Values.config.meta.rootPath }}
+      minio_use_ssl: {{ .Values.config.object.useSSL }}
+      minio_bucket_name: {{ .Values.config.object.bucketName }}
+      minio_root_path: {{ .Values.config.object.rootPath }}
+      log_service: {{ .Values.config.log.service }}
+      kafka_security_protocol: {{ .Values.config.log.kafka.securityProtocol }}
+      kafka_sasl_mechanisms: {{ .Values.config.log.kafka.saslMechanisms }}
+      kafka_sasl_username: {{ .Values.config.log.kafka.saslUsername }}
+      kafka_sasl_password: {{ .Values.config.log.kafka.saslPassword }}
+      pulsar_max_message_size: {{ .Values.config.log.pulsar.maxMessageSize }}
+      pulsar_tenant: {{ .Values.config.log.pulsar.tenant }}
+      pulsar_namespace: {{ .Values.config.log.pulsar.namespace }}
+      pulsar_auth_plugin: {{ .Values.config.log.pulsar.authPlugin }}
+      pulsar_auth_params: {{ .Values.config.log.pulsar.authParams }}
+{{- end }}

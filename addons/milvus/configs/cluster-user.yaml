@@ -1,19 +1,68 @@
 etcd:
   endpoints:
     - {{ .ETCD_ENDPOINT }}
+{{ if index . "etcd_root_path" }}
+  rootPath: {{ .etcd_root_path }}
+{{ else }}
   rootPath: {{ .CLUSTER_NAME }}
-messageQueue: pulsar
+{{ end }}
 minio:
   address: {{ .MINIO_SERVER }}
   port: {{ .MINIO_PORT }}
   accessKeyID: MINIO_ACCESS_KEY
   secretAccessKey: MINIO_SECRET_KEY
+{{ if index . "minio_use_ssl" }}
+  useSSL: {{ .minio_use_ssl }}
+{{ end }}
+{{ if index . "minio_bucket_name" }}
+  bucketName: {{ .minio_bucket_name }}
+{{ else }}
   bucketName: {{ .CLUSTER_NAME }}
+{{ end }}
+{{ if index . "minio_root_path" }}
+  rootPath: {{ .minio_root_path }}
+{{ end }}
+{{ if and (index . "log_service") (eq .log_service "kafka") }}
+mq:
+  type: kafka
+messageQueue: kafka
+kafka:
+  brokerList: {{ .LOG_SERVICE_ENDPOINT }}
+{{ if index . "kafka_security_protocol" }}
+  securityProtocol: {{ .kafka_security_protocol }}
+{{ end }}
+{{ if index . "kafka_sasl_mechanisms" }}
+  saslMechanisms: {{ .kafka_sasl_mechanisms }}
+{{ end }}
+{{ if index . "kafka_sasl_username " }}
+  saslUsername: {{ .kafka_sasl_username }}
+{{ end }}
+{{ if index . "kafka_sasl_password " }}
+  saslPassword: {{ .kafka_sasl_password }}
+{{ end }}
+{{ else }}
 mq:
   type: pulsar
+messageQueue: pulsar
+pulsar:
+  address: {{ .LOG_SERVICE_SERVER }}
+  port: {{ .LOG_SERVICE_PORT }}
+{{ if index . "pulsar_max_message_size" }}
+  maxMessageSize: {{ .pulsar_max_message_size }}
+{{ end }}
+{{ if index . "pulsar_tenant" }}
+  tenant: "{{ .pulsar_tenant }}"
+{{ end }}
+{{ if index . "pulsar_namespace" }}
+  namespace: {{ .pulsar_namespace }}
+{{ end }}
+{{ if index . "pulsar_auth_plugin" }}
+  authPlugin: {{ .pulsar_auth_plugin }}
+{{ end }}
+{{ if index . "pulsar_auth_params" }}
+  authParams: {{ .pulsar_auth_params }}
+{{ end }}
+{{ end }}
 msgChannel:
   chanNamePrefix:
     cluster: {{ .CLUSTER_NAME }}
-pulsar:
-  address: {{ .PULSAR_SERVER }}
-  port: {{ .PULSAR_PORT }}
