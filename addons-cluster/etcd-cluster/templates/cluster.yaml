@@ -1,43 +1,16 @@
-apiVersion: apps.kubeblocks.io/v1alpha1
-kind: Cluster
-metadata:
-  name: {{ include "clustername" . }}
-  labels:
-    {{- include "etcd-cluster.labels" . | nindent 4 }}
-spec:
-  clusterDefinitionRef: etcd
-  clusterVersionRef: etcd-{{ default .Chart.AppVersion .Values.clusterVersionOverride }}
-  terminationPolicy: {{ .Values.terminationPolicy }}
-  affinity:
-    {{- with $.Values.topologyKeys }}
-    topologyKeys: {{ . | toYaml | nindent 6 }}
-    {{- end }}
-  {{- with $.Values.tolerations }}
-  tolerations: {{ . | toYaml | nindent 4 }}
-  {{- end }}
+{{- include "kblib.clusterCommon" . }}
   componentSpecs:
     - name: etcd
-      componentDefRef: etcd
-      monitor: {{ .Values.monitor.enabled }}
-      replicas: {{ .Values.replicaCount | default "3" }}
-      serviceAccountName: {{ include "etcd-cluster.serviceAccountName" . }}
-      {{- with .Values.resources }}
-      resources:
-        limits:
-          cpu: {{ .limits.cpu | quote }}
-          memory: {{ .limits.memory | quote }}
-        requests:
-          cpu: {{ .requests.cpu | quote }}
-          memory: {{ .requests.memory | quote }}
+      {{- include "etcd-cluster.componentPeerService" . | indent 6 }}
+      componentDef: etcd
+      serviceVersion: {{ default $.Chart.AppVersion $.Values.appVersionOverride }}
+      tls: {{ .Values.tlsEnable }}
+      {{- if .Values.tlsEnable }}
+      issuer:
+        name: KubeBlocks
       {{- end }}
-      {{- if .Values.persistence.enabled }}
-      volumeClaimTemplates:
-        - name: data # ref clusterdefinition components.containers.volumeMounts.name
-          spec:
-            storageClassName: {{ .Values.persistence.data.storageClassName }}
-            accessModes:
-              - ReadWriteOnce
-            resources:
-              requests:
-                storage: {{ .Values.persistence.data.size }}
-      {{- end }}
+      replicas: {{ .Values.replicas | default "3" }}
+      {{- include "kblib.componentStorages" . | indent 6 }}
+      {{- include "kblib.componentResources" . | indent 6 }}
+      {{- include "kblib.componentMonitor" . | indent 6 }}
+  {{- include "etcd-cluster.clientService" . | indent 2 }}

@@ -1,0 +1,128 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "properties": {
+    "replicas": {
+      "title": "Replicas",
+      "description": "The number of replicas, the default replicas is 3.",
+      "type": "integer",
+      "default": 3,
+      "minimum": 1,
+      "maximum": 5
+    },
+    "cpu": {
+      "title": "CPU",
+      "description": "CPU cores.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 0.5,
+      "minimum": 0.5,
+      "maximum": 64,
+      "multipleOf": 0.5
+    },
+    "memory": {
+      "title": "Memory(Gi)",
+      "description": "Memory, the unit is Gi.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 0.5,
+      "minimum": 0.5,
+      "maximum": 1000
+    },
+    "storage": {
+      "title": "Storage(Gi)",
+      "description": "Data Storage size, the unit is Gi.",
+      "type": [
+        "number",
+        "string"
+      ],
+      "default": 10,
+      "minimum": 1,
+      "maximum": 10000
+    },
+    "tlsEnable": {
+      "title": "TLS Enable",
+      "description": "Enable TLS for etcd cluster",
+      "type": "boolean",
+      "default": false
+    },
+    "peerService": {
+      "title": "Peer Service Configuration",
+      "description": "Configuration for peer services within the cluster.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "title": "Service Type for Peers",
+          "description": "Peer Service Configuration, used for advertisement to other etcd members, LoadBalancer is recommended, will support NodePort in the future; otherwise will use headless ClusterIP to advertise",
+          "type": [
+            "null",
+            "string"
+          ],
+          "default": null,
+          "enum": [
+            null,
+            "LoadBalancer"
+          ]
+        },
+        "annotations": {
+          "title": "Annotations",
+          "description": "Optional, if peerService type is LoadBalancer, you may need to specify annotations for Cloud Provider.",
+          "type": "object",
+          "default": {}
+        }
+      }
+    },
+    "clientService": {
+      "title": "Client Service Configuration",
+      "description": "Configuration for client communication with the cluster.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "title": "Service Type",
+          "description": "Client Service Configuration, used for client access, NodePort and LoadBalancer is recommended; otherwise will will only create headless ClusterIP",
+          "type": [
+            "null",
+            "string"
+          ],
+          "default": null,
+          "enum": [
+            null,
+            "NodePort",
+            "LoadBalancer"
+          ]
+        },
+        "port": {
+          "title": "Service Port",
+          "description": "The port on which the service will listen.",
+          "type": "integer",
+          "default": 2379
+        },
+        "role": {
+          "title": "Role",
+          "description": "Role of the service within the cluster.",
+          "type": "string",
+          "default": "leader"
+        },
+        "nodePort": {
+          "title": "Node Port",
+          "description": "Optional, if clientService type is NodePort, by default and for convenience, the Kubernetes control plane will allocate a port from a range (default: 30000-32767).",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": null
+        },
+        "annotations": {
+          "title": "Annotations",
+          "description": "Optional, if clientService type is LoadBalancer, you may need to specify annotations for Cloud Provider.",
+          "type": "object",
+          "default": {}
+        }
+      }
+    }
+  }
+}

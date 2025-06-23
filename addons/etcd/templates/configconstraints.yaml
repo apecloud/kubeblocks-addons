@@ -1,0 +1,73 @@
+apiVersion: apps.kubeblocks.io/v1beta1
+kind: ConfigConstraint
+metadata:
+  name: etcd-constraints
+  labels:
+    {{- include "etcd.labels" . | nindent 4 }}
+spec:
+  reloadAction:
+    autoTrigger:
+      processName: ""
+
+  # ConfigurationSchema that impose restrictions on engine parameter's rule
+  parametersSchema:
+    # top level etcd configuration type
+    topLevelKey: EtcdParameter
+
+    # schemaInJSON: auto generate from cue scripts
+    cue: |-
+      {{- .Files.Get "config/etcd-config-constraint.cue" | nindent 6 }}
+
+  fileFormatConfig:
+    format: yaml
+
+  staticParameters:
+    - "wal-dir"
+    - "snapshot-count"
+    - "heartbeat-interval"
+    - "election-timeout"
+    - "quota-backend-bytes"
+    - "strict-reconfig-check"
+    - "max-snapshots"
+    - "max-wals"
+    - "auto-compaction-mode"
+    - "auto-compaction-retention"
+    - "cipher-suites"
+    - "tls-min-version"
+    - "tls-max-version"
+    - "proxy"
+    - "proxy-failure-wait"
+    - "proxy-refresh-interval"
+    - "proxy-dial-timeout"
+    - "proxy-write-timeout"
+    - "proxy-read-timeout"
+    - "enable-pprof"
+    - "cors"
+    - "discovery"
+    - "discovery-fallback"
+    - "discovery-proxy"
+    - "discovery-srv"
+    - "self-signed-cert-validity"
+    - "log-level"
+    - "log-outputs"
+    - "logger"
+
+  dynamicParameters:
+    # only member change is dynamic, which can be handle by hscale and switchover ops
+  immutableParameters:
+    # Parameters modified by start.sh script
+    - "name"
+    - "initial-advertise-peer-urls"
+    - "advertise-client-urls"
+    # Parameters set by conf.yaml.tpl template
+    - "data-dir"
+    - "listen-peer-urls"
+    - "listen-client-urls"
+    - "client-transport-security"
+    - "peer-transport-security"
+    - "initial-cluster"
+    - "initial-cluster-token"
+    # Parameters set by data-load.sh script
+    - "initial-cluster-state"
+    # Not allow
+    - "force-new-cluster"
