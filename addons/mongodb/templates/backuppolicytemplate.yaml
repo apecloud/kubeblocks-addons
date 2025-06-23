@@ -118,9 +118,17 @@ spec:
       - name: pbm-physical
         snapshotVolumes: false
         actionSetName: mongodb-shard-pbm-physical
+        targetVolumes:
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
       - name: pbm-pitr
         snapshotVolumes: false
         actionSetName: mongodb-shard-pbm-pitr
+        targetVolumes:
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
     schedules:
       - backupMethod: pbm-logical
         enabled: false

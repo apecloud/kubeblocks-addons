@@ -75,7 +75,6 @@ initialize_or_scale_out_mongodb_shard() {
         $CLUSTER_MONGO "sh.addShard(\"$MONGODB_REPLICA_SET_NAME/$pod_endpoints\")"
     done
     echo "INFO: Shard $MONGODB_REPLICA_SET_NAME added."
-    exit 0
 }
 
 get_remove_shard_status() {
@@ -115,7 +114,6 @@ delete_or_scale_in_mongodb_shard() {
 
     echo "INFO: Shard $MONGODB_REPLICA_SET_NAME exists, scaling in..."
     # Remove the shard and wait until the state is 'completed'
-    moved_primary="false"
     while true; do
 
         if ! check_shard_exists; then

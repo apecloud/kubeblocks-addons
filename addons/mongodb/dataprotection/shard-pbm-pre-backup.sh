@@ -61,18 +61,4 @@ for i in "${!shardsvr_array[@]}"; do
         sleep 2
     done
 done
-
-original_balance_status=$($CLUSTER_MONGO "sh.getBalancerState()")
-if [ "$original_balance_status" = "true" ]; then
-    $CLUSTER_MONGO "sh.stopBalancer()"
-fi
-echo "INFO: Balancer is disabled."
-# Starting in MongoDB 6.0.3, automatic chunk splitting is not performed. This is because of balancing policy improvements. 
-# Auto-splitting commands still exist, but do not perform an operation. 
-# For details, see Balancing Policy Changes: https://www.mongodb.com/docs/manual/release-notes/6.0/#balancing-policy-changes
-
-version=$($CLUSTER_MONGO "db.version()")
-if [[ "$(echo -e "$version\n6.0.3" | sort -V | head -n1)" != "6.0.3" ]]; then
-    $CLUSTER_MONGO "sh.disableAutoSplit()"
-fi
-echo "INFO: AutoSplit is disabled."
+echo "INFO: Sharding is ready."

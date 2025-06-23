@@ -97,6 +97,31 @@ spec:
           - mountPath: /kubeblocks
             name: kubeblocks
       - command:
+          - sh
+          - -c
+          - |
+            mkdir -p {{ .Values.dataMountPath }}/tmp/bin
+            cp -r /opt/bitnami/kubectl/bin/kubectl {{ .Values.dataMountPath }}/tmp/bin
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        name: init-kubectl
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+      - command:
+          - sh
+          - -c
+          - |
+            cp -r /usr/bin/pbm /kubeblocks
+            cp -r /usr/bin/pbm-agent /kubeblocks
+            cp -r /usr/bin/pbm-agent-entrypoint /kubeblocks
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:{{ .Values.image.percona.backup.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        name: init-pbm-agent
+        volumeMounts:
+          - mountPath: /kubeblocks
+            name: kubeblocks
+      - command:
           - bash
           - -c
           - |
@@ -125,8 +150,8 @@ spec:
             protocol: TCP
             containerPort: 3601
         command:
-          - syncer
-          - --
+          - bash
+          - -c
           - /scripts/mongodb-shard-setup.sh
         env:
           - name: PATH
@@ -141,6 +166,22 @@ spec:
             value: $(MONGODB_ADMIN_PASSWORD)
           - name: MONGODB_GRANT_ANYACTION_PRIVILEGE
             value: "true"
+          - name: PBM_AGENT_MONGODB_USERNAME
+            value: $(MONGODB_ADMIN_USER)
+          - name: PBM_AGENT_MONGODB_PASSWORD
+            value: $(MONGODB_ADMIN_PASSWORD)
+          - name: PBM_MONGODB_REPLICA_SET
+            value: $(KB_CLUSTER_COMP_NAME)
+          - name: PBM_AGENT_SIDECAR
+            value: "true"
+          - name: PBM_AGENT_SIDECAR_SLEEP
+            value: "5"
+          - name: SHARED
+            value: "TRUE"
+          - name: POD_NAME
+            value: $(KB_POD_NAME)
+          - name: PBM_MONGODB_URI
+            value: mongodb://$(PBM_AGENT_MONGODB_USERNAME):$(PBM_AGENT_MONGODB_PASSWORD)@localhost:$(KB_SERVICE_PORT)/?authSource=admin
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
@@ -180,6 +221,8 @@ spec:
             value: $(KB_POD_NAME)
           - name: PBM_MONGODB_URI
             value: mongodb://$(PBM_AGENT_MONGODB_USERNAME):$(PBM_AGENT_MONGODB_PASSWORD)@localhost:$(KB_SERVICE_PORT)/?authSource=admin
+          - name: PBM_DATA_MOUNT_POINT
+            value: {{ .Values.dataMountPath }}
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
@@ -187,11 +230,7 @@ spec:
             mountPath: /scripts
           - mountPath: /kubeblocks
             name: kubeblocks
-          - mountPath: /tmp/mongodb/backups
-            name: tmp-backups
     volumes:
-      - name: tmp-backups
-        emptyDir: {}
       {{- if .Values.logCollector.enabled }}
       - name: log-data
         hostPath:

@@ -15,7 +15,15 @@ spec:
       value: logical
   backupType: Full
   backup:
-    preBackup: []
+    preBackup:
+    - job:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.tag }}
+        runOnTargetPodNode: false
+        command:
+          - bash
+          - -c
+          - |
+            {{- .Files.Get "dataprotection/shard-pbm-pre-backup.sh" | nindent 12 }}
     postBackup: []
     backupData:
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:{{ .Values.image.percona.backup.tag }}

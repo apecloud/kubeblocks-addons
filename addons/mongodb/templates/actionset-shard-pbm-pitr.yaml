@@ -5,6 +5,9 @@ metadata:
   labels:
     clusterdefinition.kubeblocks.io/name: mongodb
     {{- include "mongodb.labels" . | nindent 4 }}
+  annotations:
+    # used to unify full and pitr restore jobs
+    dataprotection.kubeblocks.io/skip-base-backup-restore-in-pitr: "true"
 spec:
   env:
     - name: DATA_DIR
@@ -23,7 +26,15 @@ spec:
       value: "true"
   backupType: Continuous
   backup:
-    preBackup: []
+    preBackup:
+    - job:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.tag }}
+        runOnTargetPodNode: false
+        command:
+          - bash
+          - -c
+          - |
+            {{- .Files.Get "dataprotection/shard-pbm-pre-backup.sh" | nindent 12 }}
     postBackup: []
     backupData:
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:{{ .Values.image.percona.backup.tag }}
@@ -57,18 +68,10 @@ spec:
             {{- .Files.Get "dataprotection/shard-pbm-restore-prepare.sh" | nindent 12 }}
     - job:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:{{ .Values.image.percona.backup.tag }}
-        runOnTargetPodNode: false
+        runOnTargetPodNode: true
         command:
           - bash
           - -c
           - |
             {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 12 }}
             {{- .Files.Get "dataprotection/shard-pbm-pitr-restore.sh" | nindent 12 }}
-    - job:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.tag }}
-        runOnTargetPodNode: false
-        command:
-          - bash
-          - -c
-          - |
-            {{- .Files.Get "dataprotection/shard-pbm-restore-post.sh" | nindent 12 }}
