@@ -30,13 +30,16 @@ spec:
       serviceVersion: {{ $version }}
       images:
         graphd: {{ $.Values.nebula.images.graphd.registry | default ( $.Values.nebula.images.registry | default "docker.io" ) }}/{{ $.Values.nebula.images.graphd.repository }}:{{ $version }}
+        logrotate: {{ $.Values.nebula.images.graphd.registry | default ( $.Values.nebula.images.registry | default "docker.io" ) }}/apecloud/alpine:3.16
     - name: metad-{{ $version }}
       serviceVersion: {{ $version }}
       images:
         metad: {{ $.Values.nebula.images.metad.registry | default ( $.Values.nebula.images.registry | default "docker.io" ) }}/{{ $.Values.nebula.images.metad.repository }}:{{ $version }}
+        logrotate: {{ $.Values.nebula.images.graphd.registry | default ( $.Values.nebula.images.registry | default "docker.io" ) }}/apecloud/alpine:3.16
     - name: storaged-{{ $version }}
       serviceVersion: {{ $version }}
       images:
         init-console: {{ $.Values.nebula.images.console.registry | default ( $.Values.nebula.images.registry | default "docker.io" ) }}/{{ $.Values.nebula.images.console.repository }}:{{ $version }}
         storaged: {{ $.Values.nebula.images.storaged.registry | default ( $.Values.nebula.images.registry | default "docker.io" ) }}/{{ $.Values.nebula.images.storaged.repository }}:{{ $version }}
+        logrotate: {{ $.Values.nebula.images.graphd.registry | default ( $.Values.nebula.images.registry | default "docker.io" ) }}/apecloud/alpine:3.16
 {{- end }}

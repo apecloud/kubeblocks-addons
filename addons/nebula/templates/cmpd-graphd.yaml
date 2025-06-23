@@ -110,3 +110,4 @@ spec:
             name: nebula-graphd
           - name: scripts
             mountPath: /scripts
+          {{- include "nebula.logrotateContainer" . | nindent 6 }}

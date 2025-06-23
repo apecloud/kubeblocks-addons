@@ -92,3 +92,4 @@ spec:
             name: nebula-metad
           - name: scripts
             mountPath: /scripts
+      {{- include "nebula.logrotateContainer" . | nindent 6 }}

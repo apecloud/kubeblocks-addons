@@ -27,6 +27,14 @@ spec:
     - name: data
       needSnapshot: true
     - name: logs
+  systemAccounts:
+    - name: kbadmin
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 8
+        numSymbols: 3
+        letterCase: MixedCases
   vars:
     - name: CLUSTER_DOMAIN
       value: {{ .Values.clusterDomain }}
@@ -65,13 +73,15 @@ spec:
             option: Required
   lifecycleActions:
     memberLeave:
-      exec:
-        command:
-          - /bin/sh
-          - -c
-          - /scripts/member-leave.sh
-        targetPodSelector: Any
-        container: console
+      builtinHandler: custom
+      customHandler:
+        container: storaged
+        exec:
+          command:
+            - bash
+            - -c
+            - |
+              /scripts/member-leave.sh
   runtime:
     volumes:
       - name: nebula-console
@@ -146,3 +156,4 @@ spec:
             mountPath: /scripts
           - name: nebula-console
             mountPath: /usr/local/nebula/console
+      {{- include "nebula.logrotateContainer" . | nindent 6 }}

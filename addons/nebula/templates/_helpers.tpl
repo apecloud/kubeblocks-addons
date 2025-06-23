@@ -136,3 +136,25 @@ Define nebula storaged scripts template name
 {{- define "nebula.scriptsTemplateName" -}}
 nebula-scripts-template
 {{- end -}}
+
+{{/*
+Define logrotate container
+*/}}
+{{- define "nebula.logrotateContainer" -}}
+- name: logrotate
+  imagePullPolicy: {{default .Values.nebula.images.pullPolicy "IfNotPresent"}}
+  command:
+  - /bin/sh
+  - -ecx
+  - sh /scripts/logrotate.sh; crond -f -l 2
+  env:
+  - name: LOGROTATE_ROTATE
+    value: "5"
+  - name: LOGROTATE_SIZE
+    value: 300M
+  volumeMounts:
+  - mountPath: /usr/local/nebula/logs
+    name: logs
+  - mountPath: /scripts
+    name: scripts
+{{- end -}}
