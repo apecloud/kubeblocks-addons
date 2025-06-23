@@ -1,0 +1,185 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: etcd
+  labels:
+    {{- include "etcd.labels" . | nindent 4 }}
+  annotations:
+    apps.kubeblocks.io/skip-immutable-check: "true"
+    apps.kubeblocks.io/horizontal-scale-backup-policy-template: "etcd-hscale-backup-policy-template"
+spec:
+  provider: ApeCloud
+  description: {{ .Chart.Description }}
+  serviceKind: {{ .Chart.Name }}
+  runtime:
+    initContainers:
+      - name: inject-bash
+        imagePullPolicy: {{default .Values.bashBusyboxImage.pullPolicy "IfNotPresent"}}
+        volumeMounts:
+          - name: scripts
+            mountPath: /scripts
+          - name: bin
+            mountPath: /shared/bin
+          - name: data
+            mountPath: {{ .Values.dataMountDir }}
+        command:
+          - /bin/bash
+          - -c
+          - |
+            mkdir -p {{ .Values.binDir }}
+            /scripts/inject-bash.sh {{ .Values.binDir }}
+    containers:
+      - name: etcd
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        workingDir: {{ .Values.dataMountDir }}
+        ports:
+          - containerPort: 2379
+            name: client
+          - containerPort: 2380
+            name: peer
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountDir }}
+          - name: config
+            mountPath: /etc/etcd
+          - name: scripts
+            mountPath: /scripts
+          - name: bin
+            mountPath: /bin
+        command:
+          - /bin/bash
+          - -c
+          - |
+            export PATH="/bin:$PATH"
+            /scripts/start.sh
+        env:
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+    volumes:
+      - name: bin
+        emptyDir: {}
+  vars:
+    - name: ETCD_VERSION
+      value: {{ .Chart.AppVersion }}
+    - name: DATA_DIR
+      value: {{ .Values.dataDir }}
+    - name: BACKUP_DIR
+      value: {{ .Values.backupDir }}
+    - name: BIN_DIR
+      value: {{ .Values.binDir }}
+    - name: TLS_MOUNT_PATH
+      value: {{ .Values.tlsMountPath }}
+    - name: CLIENT_TLS
+      value: "{{ .Values.tls.client }}"
+    - name: PEER_TLS
+      value: "{{ .Values.tls.peer }}"
+    - name: CONFIG_TEMPLATE_PATH
+      value: {{ .Values.configTemplatePath }}
+    - name: CONFIG_FILE_PATH
+      value: {{ .Values.configFilePath }}
+    - name: PEER_FQDNS
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+    - name: PEER_ENDPOINT
+      valueFrom:
+        serviceVarRef:
+          optional: true
+          host: Required
+          loadBalancer: Required
+    - name: ETCD_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+  volumes:
+    - name: data
+      needSnapshot: true
+  services:
+    - name: peer
+      spec:
+        ports:
+          - name: peer
+            port: 2380
+            targetPort: peer
+      podService: true
+      disableAutoProvision: true
+  updateStrategy: Serial
+  roles:
+    - name: leader
+      serviceable: true
+      votable: true
+      writable: true
+    - name: follower
+      serviceable: true
+      votable: true
+      writable: false 
+  lifecycleActions:
+    roleProbe:
+      initialDelaySeconds: {{ .Values.roleProbe.initialDelaySeconds }}
+      periodSeconds: {{ .Values.roleProbe.periodSeconds }}
+      timeoutSeconds: {{ .Values.roleProbe.timeoutSeconds }}
+      builtinHandler: custom
+      customHandler:
+        image: {{ include "etcd.repository" . }}:v{{ .Chart.AppVersion }}
+        container: etcd
+        exec:
+          command:
+            - /bin/bash 
+            - -c
+            - |
+              /scripts/roleprobe.sh
+    switchover:
+      scriptSpecSelectors:
+        - name: etcd-script
+      withCandidate:
+        image: {{ include "etcd.repository" . }}:v3.5.6
+        exec:
+          command:
+            - /bin/bash 
+            - -c
+            - |
+              {{- .Files.Get "scripts/common.sh" | nindent 14 }}
+              {{- .Files.Get "scripts/switchover.sh" | nindent 14 }}
+      withoutCandidate:
+        image: {{ include "etcd.repository" . }}:v3.5.6
+        exec:
+          command:
+            - /bin/bash
+            - -c
+            - |
+              {{- .Files.Get "scripts/common.sh" | nindent 14 }}
+              {{- .Files.Get "scripts/switchover.sh" | nindent 14 }}
+    memberLeave:
+      builtinHandler: custom
+      customHandler:
+        image: {{ include "etcd.repository" . }}:v{{ .Chart.AppVersion }}
+        container: etcd
+        exec:
+          command:
+            - /bin/bash 
+            - -c
+            - |
+              /scripts/member-leave.sh > /tmp/member-leave.log 2>&1
+  exporter:
+    scrapePath: /metrics
+    scrapePort: "2379"
+  configs:
+    - name: config
+      templateRef: etcd-config-template
+      constraintRef: etcd-constraints
+      namespace: {{ .Release.Namespace }}
+      volumeName: config
+      defaultMode: 0666
+      reRenderResourceTypes:
+        - hscale
+  scripts:
+    - name: script
+      templateRef: etcd-script
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555

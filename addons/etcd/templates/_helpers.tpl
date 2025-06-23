@@ -49,3 +49,41 @@ Selector labels
 app.kubernetes.io/name: {{ include "etcd.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+
+{{/*
+Generate scripts configmap
+*/}}
+{{- define "etcd.extend.scripts" -}}
+{{- range $path, $_ :=  $.Files.Glob "scripts/**" }}
+{{ $path | base }}: |-
+{{- $.Files.Get $path | nindent 2 }}
+{{- end }}
+{{- end }}
+
+{{/*
+Define etcd image repository
+*/}}
+{{- define "etcd.repository" -}}
+{{ .Values.image.registry | default "gcr.io" }}/{{ .Values.image.repository | default "etcd-development/etcd"}}
+{{- end }}
+
+{{/*
+Define etcd image
+*/}}
+{{- define "etcd.image" -}}
+{{ include "etcd.repository" . }}:v{{ .Chart.AppVersion }}
+{{- end }}
+
+{{/*
+Define bash-busybox image repository
+*/}}
+{{- define "bashBusyboxImage.repository" -}}
+{{ .Values.bashBusyboxImage.registry | default "docker.io" }}/{{ .Values.bashBusyboxImage.repository }}
+{{- end }}
+
+{{/*
+Define bash-busybox image
+*/}}
+{{- define "bashBusyboxImage.image" -}}
+{{ include "bashBusyboxImage.repository" . }}:{{ .Values.bashBusyboxImage.tag }}
+{{- end }}

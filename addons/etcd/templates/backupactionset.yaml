@@ -1,0 +1,38 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: etcd-backup-actionset
+  labels:
+    {{- include "etcd.labels" . | nindent 4 }}
+spec:
+  env:
+    - name: TLS_DIR
+      value: {{ .Values.tlsMountPath }}
+    - name: BACKUP_DIR
+      value: {{ .Values.backupDir }}
+    - name: CLUSTER_DOMAIN
+      value: {{ .Values.clusterDomain }}
+  backupType: Full
+  backup:
+    backupData:
+      image: {{ include "etcd.image" . }}
+      runOnTargetPodNode: true
+      syncProgress:
+        enabled: false
+        intervalSeconds: 5
+      command:
+      - {{ .Values.binDir }}/bash
+      - -c
+      - |
+        {{- .Files.Get "scripts/common.sh" | nindent 8 }}
+        {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
+  restore:
+    prepareData:
+      image: {{ include "bashBusyboxImage.image" . }}
+      runOnTargetPodNode: true
+      command:
+      - /bin/bash
+      - -c
+      - |
+        {{- .Files.Get "scripts/common.sh" | nindent 12 }}
+        {{- .Files.Get "dataprotection/prepare-for-restore.sh" | nindent 12 }}

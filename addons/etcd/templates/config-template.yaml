@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: etcd-config-template
+  labels:
+    {{- include "etcd.labels" . | nindent 4 }}
+
+data:
+  etcd.conf: |
+    {{- .Files.Get "config/etcd.conf.yaml.tpl" | nindent 4 }}
