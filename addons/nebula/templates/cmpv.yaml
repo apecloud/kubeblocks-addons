@@ -31,6 +31,7 @@ spec:
       images:
         graphd: {{ $.Values.nebula.images.graphd.registry | default ( $.Values.nebula.images.registry | default "docker.io" ) }}/{{ $.Values.nebula.images.graphd.repository }}:{{ $version }}
         logrotate: {{ $.Values.nebula.images.graphd.registry | default ( $.Values.nebula.images.registry | default "docker.io" ) }}/apecloud/alpine:3.16
+        init-console: {{ $.Values.nebula.images.console.registry | default ( $.Values.nebula.images.registry | default "docker.io" ) }}/{{ $.Values.nebula.images.console.repository }}:{{ $version }}
     - name: metad-{{ $version }}
       serviceVersion: {{ $version }}
       images:

@@ -7,11 +7,9 @@ logs_dir=${root_dir}/logs
 function register_storaged() {
   set +x
   echo "Waiting for graphd service $GRAPHD_SVC_NAME to be ready..."
-  until /usr/local/nebula/console/nebula-console --addr $GRAPHD_SVC_NAME --port $GRAPHD_SVC_PORT --user root --password nebula -e "show spaces"; do sleep 2; done
-  touch  /tmp/nebula-storaged-hosts
-  echo ADD HOSTS \"${POD_FQDN}\":9779 > /tmp/nebula-storaged-hosts
-  /usr/local/nebula/console/nebula-console --addr $GRAPHD_SVC_NAME --port $GRAPHD_SVC_PORT --user root --password nebula -f /tmp/nebula-storaged-hosts
-  rm /tmp/nebula-storaged-hosts
+  until /usr/local/nebula/console/nebula-console --addr $GRAPHD_SVC_NAME --port $GRAPHD_SVC_PORT --user root --password ${NEBULA_ROOT_PASSWORD} -e "show spaces"; do sleep 2; done
+  sql="ADD HOSTS \"${POD_FQDN}\":9779"
+  /usr/local/nebula/console/nebula-console --addr $GRAPHD_SVC_NAME --port $GRAPHD_SVC_PORT --user root --password ${NEBULA_ROOT_PASSWORD} -e "${sql}"
   echo "Start Console succeeded!"
   set -x
 }

@@ -27,14 +27,6 @@ spec:
     - name: data
       needSnapshot: true
     - name: logs
-  systemAccounts:
-    - name: kbadmin
-      initAccount: true
-      passwordGenerationPolicy:
-        length: 16
-        numDigits: 8
-        numSymbols: 3
-        letterCase: MixedCases
   vars:
     - name: CLUSTER_DOMAIN
       value: {{ .Values.clusterDomain }}
@@ -43,6 +35,12 @@ spec:
         componentVarRef:
           optional: false
           componentName: Required
+    - name: NEBULA_ROOT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: nebula-graphd
+          name: root
+          password: Required
     - name: STORAGED_COMPONENT_REPLICAS
       valueFrom:
         componentVarRef:
@@ -97,8 +95,6 @@ spec:
             cp /usr/local/bin/nebula-console /usr/local/nebula/console/nebula-console
         imagePullPolicy: {{default .Values.nebula.images.pullPolicy "IfNotPresent"}}
         volumeMounts:
-          - mountPath: /usr/local/nebula/data
-            name: data
           - name: nebula-console
             mountPath: /usr/local/nebula/console
     containers:

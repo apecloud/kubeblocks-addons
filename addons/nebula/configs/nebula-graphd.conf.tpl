@@ -173,4 +173,4 @@
 
 # experimental configuration
 --enable_data_balance=true
---enable_experimental_feature=false
+--enable_experimental_feature=true
