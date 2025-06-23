@@ -1,7 +1,7 @@
 apiVersion: v2
 name: postgresql-cluster
 type: application
-version: 0.9.0
+version: 0.9.5
 description: A PostgreSQL (with Patroni HA) cluster Helm chart for KubeBlocks.
 
 dependencies:
@@ -14,7 +14,7 @@ dependencies:
 # and this value should be consistent with an existing clusterVersion.
 # All supported clusterVersion versions can be viewed through `kubectl get clusterVersion`.
 # The current default value is the highest version of the PostgreSQL (with Patroni HA) supported in KubeBlocks.
-appVersion: "14.8.0"
+appVersion: "17.5.0"
 
 keywords:
   - postgresql
@@ -23,8 +23,8 @@ keywords:
   - replication
   - patroni
 
-home: https://github.com/apecloud/kubeblocks/tree/main/deploy/postgresql-cluster
-icon: https://kubeblocks.io/img/logo.png
+home: https://github.com/apecloud/kubeblocks-addons/tree/main/addons-cluster/postgresql-cluster
+icon: https://www.postgresql.org/media/img/about/press/elephant.png
 
 maintainers:
   - name: ApeCloud
@@ -32,9 +32,7 @@ maintainers:
 
 sources:
   - https://github.com/apecloud/kubeblocks/
-  - https://github.com/apecloud/kubeblocks/tree/main/deploy/postgresql
+  - https://github.com/apecloud/kubeblocks-addons/tree/main/addons/postgresql
 
 annotations:
-  kubeblocks.io/clusterVersions: "14.8.0,12.15.0"
-  kubeblocks.io/multiCV: "true"
   category: Database

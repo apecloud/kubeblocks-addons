@@ -1,15 +1,46 @@
-{{- include "kblib.clusterCommon" . }}
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+spec:
+  terminationPolicy: {{ .Values.extra.terminationPolicy }}
+  {{- include "kblib.affinity" . | indent 2 }}
   clusterDefinitionRef: postgresql
+  topology: {{ .Values.mode }}
   componentSpecs:
     - name: postgresql
-      componentDefRef: postgresql
       {{- include "postgresql-cluster.replicaCount" . | indent 6 }}
       enabledLogs:
         - running
+      serviceVersion: {{ .Values.version }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
-      switchPolicy:
-        type: Noop
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- include "kblib.componentStorages" . | indent 6 }}
       {{- include "kblib.componentServices" . | indent 6 }}
+      env:
+        - name: PG_MODE
+          {{- if .Values.remoteSetting.isStandby }}
+          value: "standby"
+          {{- else }}
+          value: "{{ .Values.mode }}"
+          {{- end }}
+      {{- if and .Values.systemAccountSecret (not (empty .Values.systemAccountSecret)) }}
+      systemAccounts:
+        {{- range $accountName, $secretRef := .Values.systemAccountSecret }}
+        - name: {{ $accountName }}
+          secretRef:
+            name: {{ $secretRef.name }}
+            namespace: {{ $secretRef.namespace }}
+        {{- end }}
+      {{- end }}
+      {{- if and .Values.remoteSetting.isStandby .Values.remoteSetting.primaryHost .Values.remoteSetting.primaryPort }}
+      serviceRefs:
+        - name: remote-instances
+          {{- if .Values.remoteSetting.serviceDescriptorNamespace }}
+          namespace: {{ .Values.remoteSetting.serviceDescriptorNamespace }}
+          {{- end }}
+          serviceDescriptor: {{ include "kblib.clusterName" . }}-remote-desc
+      {{- end }}
