@@ -86,7 +86,7 @@ else
 fi
 
 if  [ ! -z "$primary" ] && [ "$primary" != "$KB_POD_NAME" ]; then
-    primary_fqdn="$primary.$KB_CLUSTER_NAME-$KB_COMP_NAME-headless.$KB_NAMESPACE.svc"
+    primary_fqdn="$primary.$KB_CLUSTER_NAME-$KB_COMP_NAME-headless.$KB_NAMESPACE.svc.${CLUSTER_DOMAIN}"
     echo "primary_fqdn=$primary_fqdn" >> /home/postgres/pgdata/.kb_set_up.log
     # waiting for the primary to be ready, if the wait time exceeds the maximum number of retries, then the script will fail and exit.
     retry pg_isready -U "postgres" -h $primary_fqdn -p 5432
@@ -94,6 +94,18 @@ fi
 
 if [ -f ${RESTORE_DATA_DIR}/kb_restore.signal ]; then
     chown -R postgres ${RESTORE_DATA_DIR}
+fi
+
+if [ "$PG_MODE" == "standby" ]; then
+    if [ ! -z "$KB_PGUSER_STANDBY" ]; then
+        echo "override PGUSER_STANDBY:${PGUSER_STANDBY} to KB_PGUSER_STANDBY:${KB_PGUSER_STANDBY}" >> /home/postgres/pgdata/.kb_set_up.log
+        export PGUSER_STANDBY="$KB_PGUSER_STANDBY"
+    fi
+    
+    if [ ! -z "$KB_PGPASSWORD_STANDBY" ]; then
+        echo "override PGPASSWORD_STANDBY:${PGPASSWORD_STANDBY} to KB_PGPASSWORD_STANDBY:${KB_PGPASSWORD_STANDBY}" >> /home/postgres/pgdata/.kb_set_up.log
+        export PGPASSWORD_STANDBY="$KB_PGPASSWORD_STANDBY"
+    fi
 fi
 restart_for_pending_restart_flag 2>&1 >> /home/postgres/.kb_set_up.log &
 echo "$(date) restart_for_pending_restart_flag PID=$!" >> /home/postgres/.kb_set_up.log

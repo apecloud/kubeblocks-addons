@@ -15,7 +15,8 @@
       "default": "standalone",
       "enum": [
         "standalone",
-        "replication"
+        "replication",
+        "standby"
       ]
     },
     "replicas": {
@@ -35,7 +36,7 @@
       ],
       "default": 0.5,
       "minimum": 0.5,
-      "maximum": 64,
+      "maximum": 256,
       "multipleOf": 0.5
     },
     "memory": {
@@ -64,6 +65,34 @@
       "title": "Storage Class Name",
       "description": "Storage class name of the data volume",
       "type": "string"
+    },
+    "accountSecrets": {
+      "type": ["object", "null"],
+      "description": "Map of account configurations in secrets",
+      "patternProperties": {
+        "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$": {
+          "type": "object",
+          "required": ["name", "namespace"],
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Name of the secret",
+              "minLength": 1,
+              "maxLength": 63,
+              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
+            },
+            "namespace": {
+              "type": "string",
+              "description": "Namespace of the secret",
+              "minLength": 1,
+              "maxLength": 63,
+              "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

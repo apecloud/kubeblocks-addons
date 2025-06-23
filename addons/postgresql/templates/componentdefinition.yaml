@@ -1,0 +1,391 @@
+{{- range .Values.versions }}
+{{- $configName := printf "postgresql%s-configuration" .major }}
+{{/*
+Compatibility with existing configmap name, named postgresql-configuration for postgresql-14.
+*/}}
+{{- if eq .major "14" }}
+{{- $configName = "postgresql-configuration" }}
+{{- end }}
+---
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ComponentDefinition
+metadata:
+  name: {{ .componentDef }}
+  labels:
+    {{- include "postgresql.labels" $ | nindent 4 }}
+spec:
+  provider: kubeblocks
+  description: A PostgreSQL (with Patroni HA) component definition for Kubernetes
+  serviceKind: postgresql
+  serviceVersion: {{ .serviceVersion }}
+  minReadySeconds: 10
+  services:
+    - name: postgresql
+      serviceName: postgresql
+      spec:
+        ports:
+          - name: tcp-postgresql
+            port: 5432
+            targetPort: tcp-postgresql
+          - name: tcp-pgbouncer
+            port: 6432
+            targetPort: tcp-pgbouncer
+      roleSelector: primary
+  updateStrategy: BestEffortParallel
+  volumes:
+    - name: data
+      needSnapshot: true
+  roles:
+    - name: primary
+      serviceable: true
+      writable: true
+    - name: secondary
+      serviceable: false
+      writable: false
+  labels:
+    apps.kubeblocks.postgres.patroni/scope: "$(KB_CLUSTER_NAME)-$(KB_COMP_NAME)-patroni$(KB_CLUSTER_UID_POSTFIX_8)"
+  logConfigs:
+    {{- range $name,$pattern := $.Values.logConfigs }}
+    - name: {{ $name }}
+      filePathPattern: {{ $pattern }}
+    {{- end }}
+  exporter:
+    containerName: exporter
+    scrapePath: /metrics
+  configs:
+    - name: postgresql-configuration
+      templateRef: {{ $configName }}
+      constraintRef: postgresql{{ .major }}-cc
+      keys:
+        - postgresql.conf
+      namespace: {{ $.Release.Namespace }}
+      volumeName: postgresql-config
+      defaultMode: 0444
+      reRenderResourceTypes:
+        - vscale
+    - name: pgbouncer-configuration
+      templateRef: pgbouncer-configuration
+      keys:
+        - pgbouncer.ini
+      namespace: {{ $.Release.Namespace }}
+      volumeName: pgbouncer-config
+      defaultMode: 0777
+    - name: postgresql-custom-metrics
+      templateRef: postgresql{{ .major }}-custom-metrics
+      namespace: {{ $.Release.Namespace }}
+      volumeName: postgresql-custom-metrics
+      defaultMode: 0444
+  scripts:
+    - name: postgresql-scripts
+      templateRef: postgresql-scripts
+      namespace: {{ $.Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  systemAccounts:
+    - name: postgres
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 10
+        numDigits: 5
+        numSymbols: 0
+        letterCase: MixedCases
+    - name: kbadmin
+      statement: CREATE USER $(USERNAME) SUPERUSER PASSWORD '$(PASSWD)';
+      passwordGenerationPolicy: &defaultPasswdGenerationPolicy
+        length: 10
+        numDigits: 5
+        numSymbols: 0
+        letterCase: MixedCases
+    - name: kbdataprotection
+      statement: CREATE USER $(USERNAME) SUPERUSER PASSWORD '$(PASSWD)';
+      passwordGenerationPolicy: *defaultPasswdGenerationPolicy
+    - name: kbprobe
+      statement: CREATE USER $(USERNAME) WITH PASSWORD '$(PASSWD)';  GRANT pg_monitor TO $(USERNAME);
+      passwordGenerationPolicy: *defaultPasswdGenerationPolicy
+    - name: kbmonitoring
+      statement: CREATE USER $(USERNAME) WITH PASSWORD '$(PASSWD)';  GRANT pg_monitor TO $(USERNAME);
+      passwordGenerationPolicy: *defaultPasswdGenerationPolicy
+    - name: kbreplicator
+      statement: CREATE USER $(USERNAME) WITH REPLICATION PASSWORD '$(PASSWD)';
+      passwordGenerationPolicy: *defaultPasswdGenerationPolicy
+  lifecycleActions:
+    roleProbe:
+      periodSeconds: 1
+      timeoutSeconds: 1
+      builtinHandler: custom
+      customHandler:
+        image: {{ include "postgresql.actionImageByMajor" (dict "major" .major "root" $) }}
+        exec:
+          command:
+            - /bin/bash
+            - -c
+            - /kb-scripts/role_probe.sh
+    switchover:
+      withCandidate:
+        image: {{ include "postgresql.actionImageByMajor" (dict "major" .major "root" $) }}
+        exec:
+          command:
+            - /bin/bash
+            - -c
+          args:
+            - curl -s http://$(KB_REPLICATION_PRIMARY_POD_FQDN):8008/switchover -XPOST -d '{"leader":"$(KB_REPLICATION_PRIMARY_POD_NAME)","candidate":"$(KB_SWITCHOVER_CANDIDATE_NAME)"}'
+      withoutCandidate:
+        image: {{ include "postgresql.actionImageByMajor" (dict "major" .major "root" $) }}
+        exec:
+          command:
+            - /bin/bash
+            - -c
+          args:
+            - curl -s http://$(KB_REPLICATION_PRIMARY_POD_FQDN):8008/switchover -XPOST -d '{"leader":"$(KB_REPLICATION_PRIMARY_POD_NAME)"}'
+    accountProvision:
+      customHandler:
+        image: {{ include "postgresql.actionImageByMajor" (dict "major" .major "root" $) }}
+        exec:
+          command:
+            - bash
+            - -c
+            - |
+              echo $KB_ACCOUNT_STATEMENT > /tmp/account_provision.info
+              psql -h127.0.0.1 -Upostgres -f /tmp/account_provision.info
+              rm -f /tmp/account_provision.info
+  runtime:
+    securityContext:
+      runAsUser: 0
+      fsGroup: 103
+      runAsGroup: 103
+      fsGroupChangePolicy: OnRootMismatch
+    initContainers:
+      - name: pg-init-container
+        imagePullPolicy: {{ include "postgresql.imagePullPolicy" $ }}
+        command:
+          - /kb-scripts/init_container.sh
+        volumeMounts:
+          - name: data
+            mountPath: /home/postgres/pgdata
+          - name: postgresql-config
+            mountPath: /home/postgres/conf
+          - name: scripts
+            mountPath: /kb-scripts
+          - name: pod-info
+            mountPath: /kb-podinfo
+    containers:
+      - name: postgresql
+        imagePullPolicy: {{ include "postgresql.imagePullPolicy" $ }}
+        securityContext:
+          runAsUser: 0
+        command:
+          - /kb-scripts/setup.sh
+        readinessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          successThreshold: 1
+          timeoutSeconds: 5
+          exec:
+            command:
+              - /bin/sh
+              - -c
+              - -ee
+              - |
+                exec pg_isready -U {{ default "postgres" | quote }} -h 127.0.0.1 -p 5432
+                [ -f /postgresql/tmp/.initialized ] || [ -f /postgresql/.initialized ]
+        volumeMounts:
+          - name: dshm
+            mountPath: /dev/shm
+          - name: data
+            mountPath: /home/postgres/pgdata
+          - name: postgresql-config
+            mountPath: /home/postgres/conf
+          - name: scripts
+            mountPath: /kb-scripts
+          - name: pod-info
+            mountPath: /kb-podinfo
+        ports:
+          - name: tcp-postgresql
+            containerPort: 5432
+          - name: patroni
+            containerPort: 8008
+        env: ## refer https://github.com/zalando/spilo/blob/master/ENVIRONMENT.rst
+          - name: DCS_ENABLE_KUBERNETES_API
+            value: "true"
+          - name: KUBERNETES_USE_CONFIGMAPS
+            value: "true"
+          - name: SCOPE
+            value: "$(KB_CLUSTER_NAME)-$(KB_COMP_NAME)-patroni$(KB_CLUSTER_UID_POSTFIX_8)"
+          - name: KUBERNETES_SCOPE_LABEL
+            value: "apps.kubeblocks.postgres.patroni/scope"
+          - name: KUBERNETES_ROLE_LABEL
+            value: "apps.kubeblocks.postgres.patroni/role"
+          - name: KUBERNETES_LABELS
+            value: '{"app.kubernetes.io/instance":"$(KB_CLUSTER_NAME)","apps.kubeblocks.io/component-name":"$(KB_COMP_NAME)"}'
+          - name: RESTORE_DATA_DIR
+            value: /home/postgres/pgdata/kb_restore
+          - name: KB_PG_CONFIG_PATH
+            value: /home/postgres/conf/postgresql.conf
+          - name: SPILO_CONFIGURATION
+            value: | ## https://github.com/zalando/patroni#yaml-configuration
+              bootstrap:
+                initdb:
+                  - auth-host: md5
+                  - auth-local: trust
+          - name: ALLOW_NOSSL
+            value: "true"
+          - name: PGROOT
+            value: /home/postgres/pgdata/pgroot
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: PGUSER_SUPERUSER
+            value: $(POSTGRES_USER)
+          - name: PGPASSWORD_SUPERUSER
+            value: $(POSTGRES_PASSWORD)
+          - name: PGUSER_ADMIN
+            value: superadmin
+          - name: PGPASSWORD_ADMIN
+            value: $(POSTGRES_PASSWORD)
+          - name: PGUSER_STANDBY
+            value: standby
+          - name: PGPASSWORD_STANDBY
+            value: $(POSTGRES_PASSWORD)
+          - name: PGUSER
+            value: $(POSTGRES_USER)
+          - name: PGPASSWORD
+            value: $(POSTGRES_PASSWORD)
+          - name: CLUSTER_DOMAIN
+            value: {{ $.Values.clusterDomain | quote }}
+      - name: pgbouncer
+        imagePullPolicy: {{ $.Values.pgbouncer.image.pullPolicy | quote }}
+        securityContext:
+          runAsUser: 0
+        ports:
+          - name: tcp-pgbouncer
+            containerPort: 6432
+        volumeMounts:
+          - name: pgbouncer-config
+            mountPath: /home/pgbouncer/conf
+          - name: scripts
+            mountPath: /kb-scripts
+        command:
+          - /kb-scripts/pgbouncer_setup.sh
+        livenessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 15
+          periodSeconds: 30
+          successThreshold: 1
+          timeoutSeconds: 5
+          tcpSocket:
+            port: tcp-pgbouncer
+        readinessProbe:
+          failureThreshold: 3
+          initialDelaySeconds: 15
+          periodSeconds: 30
+          successThreshold: 1
+          timeoutSeconds: 5
+          tcpSocket:
+            port: tcp-pgbouncer
+        env:
+          - name: PGBOUNCER_AUTH_TYPE
+            value: md5
+          - name: POSTGRESQL_USERNAME
+            value: $(POSTGRES_USER)
+          - name: POSTGRESQL_PASSWORD
+            value: $(POSTGRES_PASSWORD)
+          - name: POSTGRESQL_PORT
+            value: "5432"
+          - name: POSTGRESQL_HOST
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: status.podIP
+          - name: PGBOUNCER_PORT
+            value: "6432"
+          - name: PGBOUNCER_BIND_ADDRESS
+            value: "0.0.0.0"
+      - name: exporter
+        ports:
+          - name: http-metrics
+            containerPort: {{ $.Values.metrics.service.port }}
+        imagePullPolicy: {{ $.Values.metrics.image.pullPolicy | quote }}
+        args:
+          - "--extend.query-path=/opt/conf/custom-metrics.yaml"
+          - "--web.listen-address=:{{ $.Values.metrics.service.port }}"
+          - "--log.level=info"
+        env:
+          - name: DATA_SOURCE_USER
+            value: $(POSTGRES_USER)
+          - name: DATA_SOURCE_PASS
+            value: $(POSTGRES_PASSWORD)
+          - name: DATA_SOURCE_URI
+            value: "localhost:5432/postgres?sslmode=disable"
+        volumeMounts:
+          - name: postgresql-custom-metrics
+            mountPath: /opt/conf
+    volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          {{- with $.Values.shmVolume.sizeLimit }}
+          sizeLimit: {{ . }}
+          {{- end }}
+      - name: pod-info
+        downwardAPI:
+          items:
+            - path: "primary-pod"
+              fieldRef:
+                fieldPath: metadata.annotations['rs.apps.kubeblocks.io/primary']
+            - path: "component-replicas"
+              fieldRef:
+                fieldPath: metadata.annotations['apps.kubeblocks.io/component-replicas']
+  vars:
+    - name: POSTGRES_USER
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ .componentDef }}
+          name: postgres
+          optional: false
+          username: Required
+    - name: POSTGRES_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          compDef: {{ .componentDef }}
+          name: postgres
+          optional: false
+          password: Required
+    - name: STANDBY_HOST
+      valueFrom:
+        serviceRefVarRef:
+          name: remote-instances
+          optional: true
+          host: Required
+    - name: STANDBY_PORT
+      valueFrom:
+        serviceRefVarRef:
+          name: remote-instances
+          optional: true
+          port: Required
+    - name: KB_PGUSER_STANDBY
+      valueFrom:
+        serviceRefVarRef:
+          name: remote-instances
+          optional: true
+          username: Optional
+    - name: KB_PGPASSWORD_STANDBY
+      valueFrom:
+        serviceRefVarRef:
+          name: remote-instances
+          optional: true
+          password: Optional
+  serviceRefDeclarations:
+    - name: remote-instances
+      optional: true
+      serviceRefDeclarationSpecs:
+        - serviceKind: "postgresql"
+          serviceVersion: "{{ .major }}\\.\\d+\\.\\d+"
+{{- end }}

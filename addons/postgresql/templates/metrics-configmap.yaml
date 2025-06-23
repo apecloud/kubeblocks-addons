@@ -1,0 +1,12 @@
+{{- range .Values.versions }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgresql{{ .major }}-custom-metrics
+  labels:
+    {{- include "postgresql.labels" $ | nindent 4 }}
+data:
+  custom-metrics.yaml: |-
+    {{- $.Files.Get (printf "metrics/pg%s-metrics.yaml" .major) | nindent 4 }}
+{{- end }}

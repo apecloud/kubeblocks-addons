@@ -34,3 +34,4 @@ storage: 20
 
 hostnetwork: "disabled"
 useLegacyCompDef: false
+disableExporter: false
