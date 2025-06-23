@@ -1,3 +1,4 @@
+#!/bin/bash
 
 function get_wal_name() {
     local fileName=$1
