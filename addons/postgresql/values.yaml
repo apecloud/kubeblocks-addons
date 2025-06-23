@@ -2,8 +2,6 @@
 
 ## @param image.registry PostgreSQL image registry
 ## @param image.repository PostgreSQL image repository
-## @param image.tag PostgreSQL image tag (immutable tags are recommended)
-## @param image.digest PostgreSQL image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
 ## @param image.pullPolicy PostgreSQL image pull policy
 ## @param image.pullSecrets Specify image pull secrets
 ## @param image.debug Specify if debug values should be set
@@ -14,68 +12,16 @@ image:
   registry: docker.io
   repository: apecloud/spilo
   digest: ""
-  tags:
-    major12:
-      minor140: 12.14.0-pgvector-v0.6.1
-      minor141: 12.14.1-pgvector-v0.6.1
-      minor150: 12.15.0-pgvector-v0.6.1
-    major14:
-      minor072: 14.7.2-pgvector-v0.6.1
-      minor080: 14.8.0-pgvector-v0.6.1
-    major15:
-      minor070: 15.7.0
-    major16:
-      minor040: 16.4.0
+  walg:
+    tag: postgres-1.1
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
   ## ref: https://kubernetes.io/docs/user-guide/images/#pre-pulling-images
   ##
   pullPolicy: IfNotPresent
-  ## Optionally specify an array of imagePullSecrets.
-  ## Secrets must be manually created in the namespace.
-  ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
-  ## Example:
-  ## pullSecrets:
-  ##   - myRegistryKeySecretName
-  ##
   pullSecrets: [ ]
-  ## Set to true if you would like to see extra information on logs
-  ##
   debug: false
-## Authentication parameters
-##
-auth:
-  ## @param auth.postgresPassword Password for the "postgres" admin user, leave empty
-  ## for random generated password.
-  ##
-  postgresPassword:
-  ## @param auth.database Name for a custom database to create
-  ##
-  database: "custom_db"
-## Audit settings
-## @param audit.logHostname Log client hostnames
-## @param audit.logConnections Add client log-in operations to the log file
-## @param audit.logDisconnections Add client log-outs operations to the log file
-## @param audit.pgAuditLog Add operations to log using the pgAudit extension
-## @param audit.pgAuditLogCatalog Log catalog using pgAudit
-## @param audit.clientMinMessages Message log level to share with the user
-## @param audit.logLinePrefix Template for log line prefix (default if not set)
-## @param audit.logTimezone Timezone for the log timestamps
-##
-audit:
-  logHostname: false
-  logConnections: false
-  logDisconnections: false
-  pgAuditLog: ""
-  pgAuditLogCatalog: "off"
-  clientMinMessages: error
-  logLinePrefix: ""
-  logTimezone: ""
 
-## Set PostgreSQL preload extension shared libraries.
-## @param postgresqlSharedPreloadLibraries Shared preload libraries (comma-separated list)
-##
-postgresqlSharedPreloadLibraries: "pg_stat_statements, auto_explain"
 ## Start PostgreSQL pod(s) without limitations on shm memory.
 ## By default, docker and containerd (and possibly other container runtimes) limit `/dev/shm` to `64M`
 ##
@@ -89,14 +35,6 @@ shmVolume:
   ## sizeLimit: 1Gi
   ##
   sizeLimit: ""
-
-## @section PostgreSQL Primary parameters
-##
-primary:
-  ## @param primary.name Name of the primary database (eg primary, master, leader, ...)
-  ##
-  name: primary
-  ## configEnabled: true
 
 ## @section Metrics Parameters
 metrics:
@@ -115,6 +53,61 @@ metrics:
     pullPolicy: IfNotPresent
   service:
     port: 9187
+
+## PostgreSQL versions configuration
+## Array of major versions, each containing minor versions with specific image tags
+## @param serviceVersion define default serviceVersion of each Component
+versions:
+  - major: "12"
+    componentDef: "postgresql-12"
+    serviceVersion: "12.22.0"
+    actionImageTag: "12.15.0-pgvector-v0.6.1"
+    minors:
+      - version: "12.14.0"
+        tag: "12.14.0-pgvector-v0.6.1"
+      - version: "12.14.1"
+        tag: "12.14.1-pgvector-v0.6.1"
+      - version: "12.15.0"
+        tag: "12.15.0-pgvector-v0.6.1"
+      - version: "12.22.0"
+        tag: "12.22"
+  - major: "14"
+    componentDef: "postgresql-14"
+    serviceVersion: "14.18.0"
+    actionImageTag: "14.8.0-pgvector-v0.6.1"
+    minors:
+      - version: "14.7.2"
+        tag: "14.7.2-pgvector-v0.6.1"
+      - version: "14.8.0"
+        tag: "14.8.0-pgvector-v0.6.1"
+      - version: "14.18.0"
+        tag: "14.18"
+  - major: "15"
+    componentDef: "postgresql-15"
+    serviceVersion: "15.13.0"
+    actionImageTag: "15.7.0"
+    minors:
+      - version: "15.7.0"
+        tag: "15.7.0"
+      - version: "15.13.0"
+        tag: "15.13"
+  - major: "16"
+    componentDef: "postgresql-16"
+    serviceVersion: "16.9.0"
+    actionImageTag: "16.4.0"
+    minors:
+      - version: "16.4.0"
+        tag: "16.4.0"
+      - version: "16.9.0"
+        tag: "16.9"
+  - major: "17"
+    componentDef: "postgresql-17"
+    serviceVersion: "17.5.0"
+    actionImageTag: "17.5"
+    minors:
+      - version: "17.5.0"
+        tag: "17.5"
+        isDefault: true
 
 ## @section pgbouncer Parameters
 pgbouncer:
@@ -139,3 +132,6 @@ logConfigs:
 ##   --set enabledClusterVersions={}   # this will disable all cluster versions, the enabledClusterVersions has an empty
 ##                                     # value and the length is 1
 enabledClusterVersions: [ ]
+
+## @param clusterDomain define the kubernetes cluster domain
+clusterDomain: "cluster.local"

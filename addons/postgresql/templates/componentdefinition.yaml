@@ -1,14 +1,24 @@
+{{- range .Values.versions }}
+{{- $configName := printf "postgresql%s-configuration" .major }}
+{{/*
+Compatibility with existing configmap name, named postgresql-configuration for postgresql-14.
+*/}}
+{{- if eq .major "14" }}
+{{- $configName = "postgresql-configuration" }}
+{{- end }}
+---
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: postgresql-12
+  name: {{ .componentDef }}
   labels:
-    {{- include "postgresql.labels" . | nindent 4 }}
+    {{- include "postgresql.labels" $ | nindent 4 }}
 spec:
   provider: kubeblocks
   description: A PostgreSQL (with Patroni HA) component definition for Kubernetes
   serviceKind: postgresql
-  serviceVersion: 12.15.0
+  serviceVersion: {{ .serviceVersion }}
+  minReadySeconds: 10
   services:
     - name: postgresql
       serviceName: postgresql
@@ -35,7 +45,7 @@ spec:
   labels:
     apps.kubeblocks.postgres.patroni/scope: "$(KB_CLUSTER_NAME)-$(KB_COMP_NAME)-patroni$(KB_CLUSTER_UID_POSTFIX_8)"
   logConfigs:
-    {{- range $name,$pattern := .Values.logConfigs }}
+    {{- range $name,$pattern := $.Values.logConfigs }}
     - name: {{ $name }}
       filePathPattern: {{ $pattern }}
     {{- end }}
@@ -44,11 +54,11 @@ spec:
     scrapePath: /metrics
   configs:
     - name: postgresql-configuration
-      templateRef: postgresql12-configuration
-      constraintRef: postgresql12-cc
+      templateRef: {{ $configName }}
+      constraintRef: postgresql{{ .major }}-cc
       keys:
         - postgresql.conf
-      namespace: {{ .Release.Namespace }}
+      namespace: {{ $.Release.Namespace }}
       volumeName: postgresql-config
       defaultMode: 0444
       reRenderResourceTypes:
@@ -57,18 +67,18 @@ spec:
       templateRef: pgbouncer-configuration
       keys:
         - pgbouncer.ini
-      namespace: {{ .Release.Namespace }}
+      namespace: {{ $.Release.Namespace }}
       volumeName: pgbouncer-config
       defaultMode: 0777
     - name: postgresql-custom-metrics
-      templateRef: postgresql12-custom-metrics
-      namespace: {{ .Release.Namespace }}
+      templateRef: postgresql{{ .major }}-custom-metrics
+      namespace: {{ $.Release.Namespace }}
       volumeName: postgresql-custom-metrics
       defaultMode: 0444
   scripts:
     - name: postgresql-scripts
       templateRef: postgresql-scripts
-      namespace: {{ .Release.Namespace }}
+      namespace: {{ $.Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
   systemAccounts:
@@ -100,12 +110,19 @@ spec:
       passwordGenerationPolicy: *defaultPasswdGenerationPolicy
   lifecycleActions:
     roleProbe:
-      builtinHandler: postgresql
       periodSeconds: 1
       timeoutSeconds: 1
+      builtinHandler: custom
+      customHandler:
+        image: {{ include "postgresql.actionImageByMajor" (dict "major" .major "root" $) }}
+        exec:
+          command:
+            - /bin/bash
+            - -c
+            - /kb-scripts/role_probe.sh
     switchover:
       withCandidate:
-        image: {{ include "postgresql.repository" . }}:12.15.0-pgvector-v0.6.1
+        image: {{ include "postgresql.actionImageByMajor" (dict "major" .major "root" $) }}
         exec:
           command:
             - /bin/bash
@@ -113,7 +130,7 @@ spec:
           args:
             - curl -s http://$(KB_REPLICATION_PRIMARY_POD_FQDN):8008/switchover -XPOST -d '{"leader":"$(KB_REPLICATION_PRIMARY_POD_NAME)","candidate":"$(KB_SWITCHOVER_CANDIDATE_NAME)"}'
       withoutCandidate:
-        image: {{ include "postgresql.repository" . }}:12.15.0-pgvector-v0.6.1
+        image: {{ include "postgresql.actionImageByMajor" (dict "major" .major "root" $) }}
         exec:
           command:
             - /bin/bash
@@ -122,19 +139,15 @@ spec:
             - curl -s http://$(KB_REPLICATION_PRIMARY_POD_FQDN):8008/switchover -XPOST -d '{"leader":"$(KB_REPLICATION_PRIMARY_POD_NAME)"}'
     accountProvision:
       customHandler:
-        image: {{ include "postgresql.repository" . }}:12.15.0-pgvector-v0.6.1
+        image: {{ include "postgresql.actionImageByMajor" (dict "major" .major "root" $) }}
         exec:
           command:
-            - psql
-          args:
-            - -h$(KB_ACCOUNT_ENDPOINT)
+            - bash
             - -c
-            - $(KB_ACCOUNT_STATEMENT)
-        env:
-          - name: PGUSER
-            value: $(POSTGRES_USER)
-          - name: PGPASSWORD
-            value: $(POSTGRES_PASSWORD)
+            - |
+              echo $KB_ACCOUNT_STATEMENT > /tmp/account_provision.info
+              psql -h127.0.0.1 -Upostgres -f /tmp/account_provision.info
+              rm -f /tmp/account_provision.info
   runtime:
     securityContext:
       runAsUser: 0
@@ -143,8 +156,7 @@ spec:
       fsGroupChangePolicy: OnRootMismatch
     initContainers:
       - name: pg-init-container
-        image: {{ include "postgresql.repository" . }}:12.15.0-pgvector-v0.6.1
-        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        imagePullPolicy: {{ include "postgresql.imagePullPolicy" $ }}
         command:
           - /kb-scripts/init_container.sh
         volumeMounts:
@@ -158,8 +170,7 @@ spec:
             mountPath: /kb-podinfo
     containers:
       - name: postgresql
-        image: {{ include "postgresql.repository" . }}:12.15.0-pgvector-v0.6.1
-        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        imagePullPolicy: {{ include "postgresql.imagePullPolicy" $ }}
         securityContext:
           runAsUser: 0
         command:
@@ -247,9 +258,10 @@ spec:
             value: $(POSTGRES_USER)
           - name: PGPASSWORD
             value: $(POSTGRES_PASSWORD)
+          - name: CLUSTER_DOMAIN
+            value: {{ $.Values.clusterDomain | quote }}
       - name: pgbouncer
-        image: {{ include "pgbouncer.image" . }}
-        imagePullPolicy: {{ .Values.pgbouncer.image.pullPolicy | quote }}
+        imagePullPolicy: {{ $.Values.pgbouncer.image.pullPolicy | quote }}
         securityContext:
           runAsUser: 0
         ports:
@@ -299,12 +311,11 @@ spec:
       - name: exporter
         ports:
           - name: http-metrics
-            containerPort: {{ .Values.metrics.service.port }}
-        image: {{ include "metrics.image" . }}
-        imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
+            containerPort: {{ $.Values.metrics.service.port }}
+        imagePullPolicy: {{ $.Values.metrics.image.pullPolicy | quote }}
         args:
           - "--extend.query-path=/opt/conf/custom-metrics.yaml"
-          - "--web.listen-address=:{{ .Values.metrics.service.port }}"
+          - "--web.listen-address=:{{ $.Values.metrics.service.port }}"
           - "--log.level=info"
         env:
           - name: DATA_SOURCE_USER
@@ -320,7 +331,7 @@ spec:
       - name: dshm
         emptyDir:
           medium: Memory
-          {{- with .Values.shmVolume.sizeLimit }}
+          {{- with $.Values.shmVolume.sizeLimit }}
           sizeLimit: {{ . }}
           {{- end }}
       - name: pod-info
@@ -336,14 +347,45 @@ spec:
     - name: POSTGRES_USER
       valueFrom:
         credentialVarRef:
-          compDef: postgresql-12
+          compDef: {{ .componentDef }}
           name: postgres
           optional: false
           username: Required
     - name: POSTGRES_PASSWORD
       valueFrom:
         credentialVarRef:
-          compDef: postgresql-12
+          compDef: {{ .componentDef }}
           name: postgres
           optional: false
           password: Required
+    - name: STANDBY_HOST
+      valueFrom:
+        serviceRefVarRef:
+          name: remote-instances
+          optional: true
+          host: Required
+    - name: STANDBY_PORT
+      valueFrom:
+        serviceRefVarRef:
+          name: remote-instances
+          optional: true
+          port: Required
+    - name: KB_PGUSER_STANDBY
+      valueFrom:
+        serviceRefVarRef:
+          name: remote-instances
+          optional: true
+          username: Optional
+    - name: KB_PGPASSWORD_STANDBY
+      valueFrom:
+        serviceRefVarRef:
+          name: remote-instances
+          optional: true
+          password: Optional
+  serviceRefDeclarations:
+    - name: remote-instances
+      optional: true
+      serviceRefDeclarationSpecs:
+        - serviceKind: "postgresql"
+          serviceVersion: "{{ .major }}\\.\\d+\\.\\d+"
+{{- end }}

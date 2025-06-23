@@ -1,16 +1,18 @@
-{{- $cc := .Files.Get "config/pg14-config-effect-scope.yaml" | fromYaml }}
+{{- range .Values.versions }}
+{{- $cc := $.Files.Get (printf "config/pg%s-config-effect-scope.yaml" .major) | fromYaml }}
+---
 apiVersion: apps.kubeblocks.io/v1beta1
 kind: ConfigConstraint
 metadata:
-  name: postgresql14-cc
+  name: postgresql{{ .major }}-cc
   labels:
-    {{- include "postgresql.labels" . | nindent 4 }}
+    {{- include "postgresql.labels" $ | nindent 4 }}
 spec:
   reloadAction:
     tplScriptTrigger:
       sync: true
       scriptConfigMapRef: patroni-reload-script
-      namespace: {{ .Release.Namespace }}
+      namespace: {{ $.Release.Namespace }}
     # update patroni master
     targetPodSelector:
       matchLabels:
@@ -26,29 +28,28 @@ spec:
     # schemaInJSON: auto generate from cue scripts
     # example: ../../pkg/configuration/testdata/mysql_openapi.json
     cue: |-
-      {{- .Files.Get "config/pg14-config-constraint.cue" | nindent 6 }}
+      {{- $.Files.Get (printf "config/pg%s-config-constraint.cue" .major) | nindent 6 }}
 
-  ##  require db instance restart
-  ## staticParameters
+  #  require db instance restart
+  # staticParameters
   {{- if hasKey $cc "staticParameters" }}
   staticParameters:
     {{- $params := get $cc "staticParameters" }}
     {{- range $params }}
     - {{ . }}
     {{- end }}
-  {{- end}}
+  {{- end }}
 
-  ## define immutable parameter list, this feature is not currently supported.
+  # define immutable parameter list, this feature is not currently supported.
   {{- if hasKey $cc "immutableParameters" }}
   immutableParameters:
    {{- $params := get $cc "immutableParameters" }}
    {{- range $params }}
     - {{ . }}
    {{- end }}
-  {{- end}}
+  {{- end }}
 
-
-
-    # configuration file format
+  # configuration file format
   fileFormatConfig:
     format: properties
+{{- end }}

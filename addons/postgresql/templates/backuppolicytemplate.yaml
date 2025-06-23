@@ -12,19 +12,23 @@ metadata:
         "name": "postgresql-configuration",
         "key": "postgresql.conf",
         "enable": {
-          "archive-wal": [{"key": "archive_command","value": "''"}]
+          "archive-wal": [{"key": "archive_command","value": "''"}],
+          "wal-g-archive": [{"key": "archive_command","value": "'envdir {{ .Values.dataMountPath }}/wal-g/env {{ .Values.dataMountPath }}/wal-g/wal-g wal-push %p'"}]
         },
         "disable": {
-          "archive-wal": [{ "key": "archive_command","value": "'/bin/true'"}]
+          "archive-wal": [{ "key": "archive_command","value": "'/bin/true'"}],
+          "wal-g-archive": [{ "key": "archive_command","value": "'/bin/true'"}]
         }
       }
 spec:
   clusterDefinitionRef: postgresql
   backupPolicies:
   - componentDefRef: postgresql
+    backoffLimit: 1
     target:
       role: secondary
       fallbackRole: primary
+      useParentSelectedPods: true
     backupMethods:
     - name: pg-basebackup
       snapshotVolumes: false
@@ -33,14 +37,16 @@ spec:
       - key: IMAGE_TAG
         valueFrom:
           clusterVersionRef:
-          - names: [postgresql-12.14.0, postgresql-12.14.1, postgresql-12.15.0]
+          - names: [postgresql-12.14.0, postgresql-12.14.1, postgresql-12.15.0, postgresql-12.22.0]
             mappingValue: "12.15.0-pgvector-v0.6.1"
-          - names: [postgresql-14.7.2-pgvector-v0.6.1, postgresql-14.8.0]
+          - names: [postgresql-14.7.2-pgvector-v0.6.1, postgresql-14.8.0, postgresql-14.18.0]
             mappingValue: "14.8.0-pgvector-v0.6.1"
-          - names: [postgresql-15.7.0]
+          - names: [postgresql-15.7.0, postgresql-15.13.0]
             mappingValue: "15.7.0"
-          - names: [ postgresql-16.4.0 ]
+          - names: [postgresql-16.4.0, postgresql-16.9.0]
             mappingValue: "16.4.0"
+          - names: [postgresql-17.5.0]
+            mappingValue: "17.5"
       targetVolumes:
         volumeMounts:
         - name: data
@@ -70,6 +76,16 @@ spec:
         volumeMounts:
           - name: data
             mountPath: {{ .Values.dataMountPath }}
+    - name: wal-g-archive
+      target:
+        role: primary
+      actionSetName: postgres-wal-g-pitr
+      snapshotVolumes: false
+      envMapping: *clusterVersionEnvMapping
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: {{ .Values.dataMountPath }}
     - name: archive-wal
       target:
         role: primary
@@ -80,6 +96,14 @@ spec:
         volumeMounts:
           - name: data
             mountPath: {{ .Values.dataMountPath }}
+    - name: wal-g-incremental
+      actionSetName: postgres-wal-g-incremental
+      snapshotVolumes: false
+      compatibleMethod: wal-g
+      targetVolumes:
+        volumeMounts:
+          - name: data
+            mountPath: {{.Values.dataMountPath }}
     schedules: &backupschedules
     - backupMethod: pg-basebackup
       enabled: false
@@ -92,18 +116,32 @@ spec:
     - backupMethod: wal-g
       enabled: false
       cronExpression: "0 18 * * *"
+      retentionPeriod: 8d
+    - backupMethod: wal-g-incremental
+      enabled: false
+      cronExpression: "0 18 * * *"
       retentionPeriod: 7d
     - backupMethod: archive-wal
       enabled: false
       cronExpression: "*/5 * * * *"
       retentionPeriod: 8d
-  - componentDefs: [postgresql-12, postgresql-14, postgresql-15, postgresql-16 ]
+    - backupMethod: wal-g-archive
+      enabled: false
+      cronExpression: "*/5 * * * *"
+      retentionPeriod: 8d
+  - componentDefs: [postgresql-17, postgresql-16, postgresql-15, postgresql-14, postgresql-12]
+    backoffLimit: 1
     target:
-      role: secondary
-      fallbackRole: primary
+      role: primary
+      fallbackRole: secondary
       account: postgres
+      useParentSelectedPods: true
     backupMethods:
       - name: pg-basebackup
+        target:
+          role: secondary
+          fallbackRole: primary
+          account: postgres
         snapshotVolumes: false
         actionSetName: postgres-basebackup
         envMapping: &compDefEnvMapping
@@ -118,6 +156,8 @@ spec:
                   mappingValue: "15.7.0"
                 - names: [postgresql-16]
                   mappingValue: "16.4.0"
+                - names: [postgresql-17]
+                  mappingValue: "17.5"
         targetVolumes:
           volumeMounts:
             - name: data
@@ -138,16 +178,31 @@ spec:
             - name: data
               mountPath: {{ .Values.dataMountPath }}
       - name: wal-g
-        target:
-          role: secondary
-          fallbackRole: primary
-          account: postgres
         actionSetName: postgres-wal-g
         snapshotVolumes: false
         targetVolumes:
           volumeMounts:
             - name: data
               mountPath: {{ .Values.dataMountPath }}
+      - name: wal-g-archive
+        target:
+          role: primary
+          account: postgres
+        actionSetName: postgres-wal-g-pitr
+        envMapping: *compDefEnvMapping
+        snapshotVolumes: false
+        targetVolumes:
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
+      - name: wal-g-incremental
+        actionSetName: postgres-wal-g-incremental
+        snapshotVolumes: false
+        compatibleMethod: wal-g
+        targetVolumes:
+          volumeMounts:
+            - name: data
+              mountPath: {{.Values.dataMountPath }}
       - name: archive-wal
         target:
           role: primary
