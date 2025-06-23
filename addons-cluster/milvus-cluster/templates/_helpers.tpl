@@ -74,3 +74,31 @@ External object storage service reference
   {{- end }}
 {{- end }}
 {{- end }}
+
+{{- define "milvus.objectstorage.env" }}
+- name: MINIO_HOST
+  valueFrom:
+    secretKeyRef:
+      key: host
+      name: {{ .Values.storage.object.secret }}
+- name: MINIO_PORT
+  valueFrom:
+    secretKeyRef:
+      key: port
+      name: {{ .Values.storage.object.secret }}
+- name: MINIO_ACCESS_KEY
+  valueFrom:
+    secretKeyRef:
+      key: accessKey
+      name: {{ .Values.storage.object.secret }}
+- name: MINIO_SECRET_KEY
+  valueFrom:
+    secretKeyRef:
+      key: secretKey
+      name: {{ .Values.storage.object.secret }}
+- name: MINIO_BUCKETNAME
+  valueFrom:
+    secretKeyRef:
+      key: bucketnames
+      name: {{ .Values.storage.object.secret }}
+{{- end -}}

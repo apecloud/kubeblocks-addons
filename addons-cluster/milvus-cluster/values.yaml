@@ -6,8 +6,7 @@ nameOverride: ""
 fullnameOverride: ""
 
 ## Mode of the cluster, optional: standalone, cluster
-mode:
-  standalone
+mode: cluster
 
 ##### parameters for standalone mode
 replicas: 1
@@ -27,7 +26,7 @@ memory: 4
 # @param appVersionOverride 
 # if not empty, it will override the default tidb version
 # the version must be defined in the clusterversion cr  
-appVersionOverride: "v2.5.13"
+appVersionOverride: ""
 
 ##### parameters for cluster mode
 etcd:

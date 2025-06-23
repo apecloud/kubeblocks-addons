@@ -4,11 +4,11 @@ etcd:
     - {{ .KB_CLUSTER_NAME }}-etcd-headless.{{ .KB_NAMESPACE }}.svc.cluster.local:2379
   rootPath: {{ .KB_CLUSTER_NAME }}
 minio:
-  address: {{ .MINIO_SERVER }}
-  port: {{ .MINIO_PORT }}
+  address: MINIO_HOST
+  port: MINIO_PORT
   accessKeyID: MINIO_ACCESS_KEY
   secretAccessKey: MINIO_SECRET_KEY
-  bucketName: {{ .KB_CLUSTER_NAME }}
+  bucketName: MINIO_BUCKETNAME
 mq:
   type: kafka
 messageQueue: kafka

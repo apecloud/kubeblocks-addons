@@ -283,30 +283,30 @@ Milvus cluster vars for cluster-with-dep topology
       port:
         name: broker
         option: Required
-- name: MINIO_SERVER
-  valueFrom:
-    serviceRefVarRef:
-      name: milvus-object-storage
-      optional: false
-      host: Required
-- name: MINIO_PORT
-  valueFrom:
-    serviceRefVarRef:
-      name: milvus-object-storage
-      optional: false
-      port: Required
-- name: MINIO_ACCESS_KEY
-  valueFrom:
-    serviceRefVarRef:
-      name: milvus-object-storage
-      optional: false
-      username: Required
-- name: MINIO_SECRET_KEY
-  valueFrom:
-    serviceRefVarRef:
-      name: milvus-object-storage
-      optional: false
-      password: Required
+# - name: MINIO_SERVER
+#   valueFrom:
+#     serviceRefVarRef:
+#       name: milvus-object-storage
+#       optional: false
+#       host: Required
+# - name: MINIO_PORT
+#   valueFrom:
+#     serviceRefVarRef:
+#       name: milvus-object-storage
+#       optional: false
+#       port: Required
+# - name: MINIO_ACCESS_KEY
+#   valueFrom:
+#     serviceRefVarRef:
+#       name: milvus-object-storage
+#       optional: false
+#       username: Required
+# - name: MINIO_SECRET_KEY
+#   valueFrom:
+#     serviceRefVarRef:
+#       name: milvus-object-storage
+#       optional: false
+#       password: Required
 {{- end -}}
 
 # this definition will be reused
