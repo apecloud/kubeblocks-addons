@@ -1,0 +1,65 @@
+# Default values for rocketmq.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+rocketmq:
+  enableControllerInNamesrv: true
+  registry: docker.io
+  repository: apache/rocketmq
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: 5.3.2
+
+dashboard:
+  registry: docker.io
+  repository: apacherocketmq/rocketmq-dashboard
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: 1.0.0
+
+componentServiceVersion:
+  controller: 5.3.2
+  broker: 5.3.2
+  nameserver: 5.3.2
+  dashboard: 5.3.2
+
+nameOverride: ""
+
+fullnameOverride: ""
+
+## Authentication parameters
+##
+auth:
+  ## @param auth.password Password for the "rocketmq" admin user, leave empty 
+  ## for random generated password.
+  ##
+  password:
+  ## @param auth.database Name for a custom database to create
+  ##
+  database: "admin"
+
+logConfigs:
+  running: /data/rocketmq/logs/rocketmq.log*
+
+logCollector:
+  enabled: false
+
+dataMountPath: /var/lib/rocketmq
+
+
+## @param enabledClusterVersions specifies the enabled cluster versions, if not set, all cluster versions are enabled
+## and will be rendered, installed. Otherwise, only the specified cluster versions will be rendered and installed.
+## Example:
+##   --set "enabledClusterVersions={rabbitmq}"
+##   --set enabledClusterVersions=''   # this will enable all cluster versions
+##   --set enabledClusterVersions={}   # this will disable all cluster versions, the enabledClusterVersions has an empty
+##                                     # value and the length is 1
+enabledClusterVersions: [ ]
+
+## @param resourceNamePrefix Prefix for all resources name created by this chart, that can avoid name conflict
+## if you install multiple releases of this chart.
+## If specified, the cluster definition will use it as name.
+resourceNamePrefix: "rocketmq"
+
+controller:
+  replicaCount: 3

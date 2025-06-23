@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rocketmq.name" . }}-config-template
+  labels:
+    {{- include "rocketmq.labels" . | nindent 4 }}
+data:
+  rocketmq-start.sh: |-
+    {{- .Files.Get "scripts/rocketmq-start.sh" | nindent 4 }}
+  broker-base.conf: |
+{{- if and .Values.controllerModeEnabled }}
+    enableControllerMode = true
+    controllerAddr = {{ include "rocketmq.broker.controllerAddr" . }}
+{{- end }}
+    brokerClusterName = {{ .Values.clusterName }}
+  controller-base.conf: |
+{{- if eq (include "rocketmq.enableControllerInNamesrv" $) "true" }}
+    enableControllerInNamesrv = true
+{{- end }}
+    controllerDLegerPeers = {{ include "rocketmq.controller.dlegerPeers" $ }}
+    controllerStorePath = {{ .Values.dataMountPath }}/controller-data
+  proxy.json: |
+    {
+      "rocketMQClusterName": "{{ .Values.clusterName }}"
+    }
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rocketmq.name" . }}-env-tpl
+  labels:
+    {{- include "rocketmq.labels" . | nindent 4 }}
+data:
+  env: |-
+    {{- .Files.Get "config/rocketmq-env.tpl" | nindent 4 }}

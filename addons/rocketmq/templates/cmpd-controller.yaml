@@ -1,0 +1,126 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "rocketmq.cmpdName" . }}
+  labels:
+    {{- include "rocketmq.labels" . | nindent 4 }}
+  annotations:
+    {{- include "rocketmq.annotations" . | nindent 4 }}
+spec:
+  provider: kubeblocks.io
+  description: RocketMQ Controller is a reliable and mature messaging and streaming broker.
+  serviceKind: controller
+  serviceVersion: {{ .Values.componentServiceVersion.controller }}
+  services:
+    - name: controller
+      spec:
+        ## headless service
+        clusterIP: None
+        publishNotReadyAddresses: true
+        ports:
+          - name: main
+            port: 9878
+            targetPort: main
+  configs:
+    - name: config
+      template: {{ include "rocketmq.configTplName" . }}
+      volumeName: rocketmq-config
+      namespace: {{ .Release.Namespace }}
+      defaultMode: 0644
+      restartOnFileChange: true
+  systemAccounts:
+    - name: root
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 8
+        numSymbols: 0
+        letterCase: MixedCases
+  policyRules:
+    - apiGroups:
+      - ""
+      resources:
+      - endpoints
+      verbs:
+      - get
+    - apiGroups:
+      - ""
+      resources:
+      - events
+      verbs:
+      - create
+  runtime:
+    automountServiceAccountToken: true
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/component: controller
+            topologyKey: kubernetes.io/hostname
+    containers:
+      - name: controller
+        command:
+          - /bin/sh
+          - -c
+          - |
+            cp /root/erlang.cookie /var/lib/rabbitmq/.erlang.cookie
+            chown rabbitmq:rabbitmq /var/lib/rabbitmq/.erlang.cookie
+            chmod 400 /var/lib/rabbitmq/.erlang.cookie
+            exec /opt/rabbitmq/sbin/rabbitmq-server
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: ROCKETMQ_PROCESS_ROLE
+          value: controller
+        - name: CONTROLLER_CONF_FILE
+          value: /etc/rocketmq/controller.conf
+        image: {{ .Values.rocketmq.registry | default "docker.io" }}/{{ .Values.rocketmq.repository }}:{{ .Values.rocketmq.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.rocketmq.pullPolicy }}
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - sh
+              - -c
+              - sleep 5; ./mqshutdown controller
+        ports:
+        - containerPort: 9878
+          name: main
+          protocol: TCP
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+          - mountPath:  /etc/rocketmq/base-cm
+            name: rocketmq-config
+          - mountPath: /rocketmq-start.sh
+            name: rocketmq-config
+            subPath: rocketmq-start.sh
+          - mountPath: {{ .Values.dataMountPath }}/controller-data
+            name: data
+            subPath: controller-data
+          - mountPath: {{ .Values.dataMountPath }}/logs
+            name: data
+            subPath: logs
+  vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: CLUSTER_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
