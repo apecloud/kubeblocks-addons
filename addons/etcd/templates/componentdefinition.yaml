@@ -75,14 +75,6 @@ spec:
             targetPort: peer
       podService: true
       disableAutoProvision: true
-    - name: client
-      serviceName: client
-      spec:
-        ports:
-          - name: client
-            port: 2379
-            targetPort: client
-      podService: true
   vars:
     - name: PEER_ENDPOINT
       valueFrom:
@@ -103,7 +95,6 @@ spec:
       votable: true
   lifecycleActions:
     roleProbe:
-      builtinHandler: custom
       customHandler:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}
         exec:
