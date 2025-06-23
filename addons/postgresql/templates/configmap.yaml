@@ -1,14 +1,23 @@
+{{- range .Values.versions }}
+{{- $configName := printf "postgresql%s-configuration" .major }}
+{{/*
+Compatibility with existing configmap name, named postgresql-configuration for postgresql-14.
+*/}}
+{{- if eq .major "14" }}
+{{- $configName = "postgresql-configuration" }}
+{{- end }}
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "postgresql14.parameterTemplate" . }}
+  name: {{ $configName }}
   labels:
-    {{- include "postgresql.labels" . | nindent 4 }}
+    {{- include "postgresql.labels" $ | nindent 4 }}
   annotations:
-    {{- include "postgresql.annotations" . | nindent 4 }}
+    {{- include "postgresql.apiVersion" $ | nindent 4 }}
 data:
   postgresql.conf: |-
-    {{- .Files.Get "config/pg14-config.tpl" | nindent 4 }}
+    {{- $.Files.Get (printf "config/pg%s-config.tpl" .major) | nindent 4 }}
   # TODO: check if it should trust all
   pg_hba.conf: |
     host     all             all             0.0.0.0/0                md5
@@ -26,4 +35,5 @@ data:
       keep_existing_recovery_conf: false
       recovery_conf: {}
   patroni.yaml: |-
-    {{- .Files.Get "config/patroni-yaml.tpl" | nindent 4 }}
+    {{- $.Files.Get "config/patroni-yaml.tpl" | nindent 4 }}
+{{- end }}

@@ -1,0 +1,28 @@
+{{- range .Values.versions }}
+---
+apiVersion: parameters.kubeblocks.io/v1alpha1
+kind: ParamConfigRenderer
+metadata:
+  name: {{ include "postgresql.pcr" (dict "major" .major "root" $) }}
+  labels:
+    {{- include "postgresql.labels" $ | nindent 4 }}
+  annotations:
+    {{- include "postgresql.annotations" $ | nindent 4 }}
+spec:
+  componentDef: {{ include "postgresql.componentDefByMajor" (dict "major" .major "root" $) }}
+  serviceVersion: {{ .serviceVersion }}
+  parametersDefs:
+    - {{ include "postgresql.parametersDefinition" (dict "major" .major "root" $) }}
+
+  configs:
+    - name: postgresql.conf
+      fileFormatConfig:
+        format: properties
+      reRenderResourceTypes:
+        - vscale
+    - name: pgbouncer.ini
+      fileFormatConfig:
+        format: ini
+        iniConfig:
+          sectionName: pgbouncer
+{{- end -}}
