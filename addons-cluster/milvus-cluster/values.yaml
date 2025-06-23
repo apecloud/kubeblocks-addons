@@ -6,7 +6,7 @@ nameOverride: ""
 fullnameOverride: ""
 
 ## Mode of the cluster, optional: standalone, cluster
-mode: cluster
+mode: standalone
 
 ##### parameters for standalone mode
 replicas: 1
