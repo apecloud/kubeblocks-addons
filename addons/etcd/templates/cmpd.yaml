@@ -187,7 +187,6 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: config
       defaultMode: 0666
-      externalManaged: true
       restartOnFileChange: true
   scripts:
     - name: script

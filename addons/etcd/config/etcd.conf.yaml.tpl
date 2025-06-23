@@ -1,6 +1,6 @@
 # etcd server configuration file
 
-# ========== immutableParameters ==========
+# ========== immutableParameters, control by scripts ==========
 # Node name
 name:
 
@@ -23,7 +23,7 @@ initial-cluster-token: 'etcd-cluster'
 client-transport-security:
 peer-transport-security:
 
-# ========== staticParameters, cluster will restart after change ==========
+# ========== staticParameters, user can specify ==========
 # WAL directory
 wal-dir:
 
