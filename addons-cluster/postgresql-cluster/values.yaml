@@ -2,9 +2,9 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-## @param version MySQL cluster version
+## @param version, mapping cluster.spec.componentSpec[].serviceVersion which defined in ComponentVersion
 ##
-version: postgresql-14.8.0
+version: 17.5.0
 
 ## @param mode postgresql cluster topology mode, standalone, replication
 ##
@@ -36,3 +36,26 @@ storage: 20
 ## @param monitor sidecar
 sidecars:
  - exporter
+
+remoteSetting:
+  isStandby: false
+  serviceDescriptorNamespace: ""
+  primaryHost: ""
+  primaryPort: ""
+  standbyAccountSecret:
+    name: ""
+    userKey: ""
+    passwordKey: ""
+
+## @param account secrets Map of account configurations
+## Each key is the system account name which was defined in the componentdefinition.systemAccounts,
+##   and value contains secret reference information
+## Example:
+##   systemAccountSecret:
+##     postgres:
+##       name: postgres-account
+##       namespace: default
+##     kbadmin:
+##       name: kbadmin-account
+##       namespace: prod
+systemAccountSecret: {}
