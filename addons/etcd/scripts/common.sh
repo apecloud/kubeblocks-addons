@@ -64,7 +64,7 @@ get_protocol() {
 check_backup_file() {
   local backup_file="$1"
 
-  if [ ! -f "$backup_file" ]; then
+  if [ ! -e "$backup_file" ]; then
     error_exit "Backup file $backup_file does not exist"
   fi
   etcdutl snapshot status "$backup_file"

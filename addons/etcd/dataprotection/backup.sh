@@ -19,7 +19,7 @@ ENDPOINT="$DP_DB_HOST.$CLUSTER_NAMESPACE.svc$CLUSTER_DOMAIN:2379"
 exec_etcdctl "${ENDPOINT}" snapshot save "${DP_BACKUP_NAME}"
 
 # check the backup file, make sure it is not empty
-check_backup_file "${DP_BACKUP_NAME}" || error_exit "Backup file is invalid"
+check_backup_file "${DP_BACKUP_NAME}"
 
 # use datasafed to get backup size
 # if we do not write into $DP_BACKUP_INFO_FILE, the backup job will stuck

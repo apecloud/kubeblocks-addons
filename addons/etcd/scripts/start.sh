@@ -109,7 +109,7 @@ restore() {
   [ ${#files[@]} -eq 0 ] || [ ! -e "${files[0]}" ] && error_exit "No backup file found in $RESTORE_DIR or directory is empty."
 
   backup_file="${files[0]}"
-  check_backup_file "$backup_file" || error_exit "Backup file is invalid"
+  check_backup_file "$backup_file"
 
   data_dir=$(parse_config_value "data-dir" "$default_conf")
   name=$(parse_config_value "name" "$default_conf")
