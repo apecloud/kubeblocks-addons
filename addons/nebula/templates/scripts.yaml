@@ -13,5 +13,5 @@ data:
     {{- .Files.Get "scripts/start-storaged.sh" | nindent 4 }}
   logrotate.sh: |
     {{- .Files.Get "scripts/logrotate.sh" | nindent 4 }}
-  member-leave.sh: |
-    {{- .Files.Get "scripts/member-leave.sh" | nindent 4 }}
+  member-leave.py: |
+    {{- .Files.Get "scripts/member-leave.py" | nindent 4 }}

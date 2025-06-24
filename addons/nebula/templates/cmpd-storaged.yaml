@@ -74,12 +74,13 @@ spec:
       builtinHandler: custom
       customHandler:
         container: storaged
+        image: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/nebula-tool:1.0.0
         exec:
           command:
             - bash
             - -c
             - |
-              /scripts/member-leave.sh
+              python /scripts/member-leave.py >> /usr/local/nebula/logs/member-leave.log 2>&1
   runtime:
     volumes:
       - name: nebula-console
@@ -137,8 +138,8 @@ spec:
             path: /status
             port: http
             scheme: HTTP
-          initialDelaySeconds: 10
-          periodSeconds: 10
+          initialDelaySeconds: 5
+          periodSeconds: 5
           successThreshold: 1
           timeoutSeconds: 5
         volumeMounts:
