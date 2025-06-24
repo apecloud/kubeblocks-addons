@@ -8,7 +8,7 @@ version: 1.0.1-beta.0
 
 # The helm chart contains multiple kernel versions of PostgreSQL (with Patroni HA),
 # appVersion should be consistent with the highest PostgreSQL (with Patroni HA) kernel version.
-appVersion: "15.7.0"
+appVersion: "17.5.0"
 
 # Add a dependency to the kubeblocks definition library chart
 dependencies:
@@ -18,8 +18,7 @@ dependencies:
     alias: extra
 
 home: https://kubeblocks.io/
-icon: https://kubeblocks.io/img/logo.png
-
+icon: https://www.postgresql.org/media/img/about/press/elephant.png
 maintainers:
   - name: ldming
     url: https://github.com/apecloud/kubeblocks/

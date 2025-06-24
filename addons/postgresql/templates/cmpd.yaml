@@ -1,16 +1,19 @@
+{{- range .Values.versions }}
+{{- $compDefName := include "postgresql.componentDefByMajor" (dict "major" .major "root" $) }}
+---
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "postgresql12.compDefName" . }}
+  name: {{ $compDefName }}
   labels:
-    {{- include "postgresql.labels" . | nindent 4 }}
+    {{- include "postgresql.labels" $ | nindent 4 }}
   annotations:
-    {{- include "postgresql.annotations" . | nindent 4 }}
+    {{- include "postgresql.annotations" $ | nindent 4 }}
 spec:
   provider: kubeblocks
   description: A PostgreSQL (with Patroni HA) component definition for Kubernetes
   serviceKind: postgresql
-  serviceVersion: {{ .Values.componentServiceVersion.postgresql12 }}
+  serviceVersion: {{ .serviceVersion }}
   serviceRefDeclarations:
     - name: etcd
       serviceRefDeclarationSpecs:
@@ -42,7 +45,7 @@ spec:
       updatePriority: 1
       participatesInQuorum: false
   logConfigs:
-    {{- range $name,$pattern := .Values.logConfigs }}
+    {{- range $name,$pattern := $.Values.logConfigs }}
     - name: {{ $name }}
       filePathPattern: {{ $pattern }}
     {{- end }}
@@ -51,26 +54,26 @@ spec:
     scrapePath: /metrics
   configs:
     - name: postgresql-configuration
-      template: {{ include "postgresql12.parameterTemplate" . }}
-      namespace: {{ .Release.Namespace }}
+      template: {{ include "postgresql.parameterTemplate" (dict "major" .major "root" $) }}
+      namespace: {{ $.Release.Namespace }}
       volumeName: postgresql-config
       defaultMode: 0777
       externalManaged: true
     - name: pgbouncer-configuration
-      template: {{ include "pgbouncer.configurationTemplate" . }}
-      namespace: {{ .Release.Namespace }}
+      template: {{ include "pgbouncer.configurationTemplate" $ }}
+      namespace: {{ $.Release.Namespace }}
       volumeName: pgbouncer-config
       defaultMode: 0777
       externalManaged: true
     - name: postgresql-custom-metrics
-      template: {{ include "postgresql12.metricsConfiguration" . }}
-      namespace: {{ .Release.Namespace }}
+      template: {{ include "postgresql.metricsConfiguration" (dict "major" .major "root" $) }}
+      namespace: {{ $.Release.Namespace }}
       volumeName: postgresql-custom-metrics
       defaultMode: 0444
   scripts:
     - name: postgresql-scripts
-      template: {{ include "postgresql.scriptsTemplate" . }}
-      namespace: {{ .Release.Namespace }}
+      template: {{ include "postgresql.scriptsTemplate" $ }}
+      namespace: {{ $.Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
   vars:
@@ -96,14 +99,14 @@ spec:
     - name: POSTGRES_COMPONENT_NAME
       valueFrom:
         componentVarRef:
-          compDef: {{ include "postgresql12.compDefName" . }}
+          compDef: {{ $compDefName }}
           optional: false
           componentName: Required
     ## the component short name of postgres, it's the short name of postgres component without clusterName prefix
     - name: POSTGRES_COMPONENT_SHORT_NAME
       valueFrom:
         componentVarRef:
-          compDef: {{ include "postgresql12.compDefName" . }}
+          compDef: {{ $compDefName }}
           optional: false
           shortName: Required
     ## the etcd version if postgres patroni use etcd as DCS
@@ -119,14 +122,14 @@ spec:
     - name: POSTGRES_USER
       valueFrom:
         credentialVarRef:
-          compDef: {{ include "postgresql12.compDefName" . }}
+          compDef: {{ $compDefName }}
           name: postgres
           optional: false
           username: Required
     - name: POSTGRES_PASSWORD
       valueFrom:
         credentialVarRef:
-          compDef: {{ include "postgresql12.compDefName" . }}
+          compDef: {{ $compDefName }}
           name: postgres
           optional: false
           password: Required
@@ -134,14 +137,14 @@ spec:
     - name: POSTGRES_POD_NAME_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ include "postgresql12.compDefName" . }}
+          compDef: {{ $compDefName }}
           optional: false
           podNames: Required
     ## the postgres pod fqdn list for each pod, the value format is "pod1FQDN,pod2FQDN,..."
     - name: POSTGRES_POD_FQDN_LIST
       valueFrom:
         componentVarRef:
-          compDef: {{ include "postgresql12.compDefName" . }}
+          compDef: {{ $compDefName }}
           optional: false
           podFQDNs: Required
     - name: TLS_ENABLED
@@ -200,7 +203,6 @@ spec:
           - getrole
     switchover:
       exec:
-        image: {{ include "postgresql.image.major12.minor150" . }}
         container: postgresql
         command: ["/kb-scripts/switchover.sh"]
         env:
@@ -211,7 +213,6 @@ spec:
                 fieldPath: metadata.name
     accountProvision:
       exec:
-        image: {{ include "postgresql.image.major12.minor150" . }}
         container: postgresql
         command:
           - bash
@@ -273,8 +274,7 @@ spec:
       fsGroupChangePolicy: OnRootMismatch
     initContainers:
       - name: pg-init-container
-        image: {{ include "postgresql.image.major12.minor150" . }}
-        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        imagePullPolicy: {{ include "postgresql.imagePullPolicy" $ }}
         command:
           - /kb-scripts/postgres-pre-setup.sh
         volumeMounts:
@@ -290,16 +290,14 @@ spec:
           - /bin/dbctl
           - /config
           - /tools/
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.dbctl.repository }}:{{ .Values.image.dbctl.tag }}
-        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        imagePullPolicy: {{ include "postgresql.imagePullPolicy" $ }}
         name: init-dbctl
         volumeMounts:
           - mountPath: /tools
             name: tools
     containers:
       - name: postgresql
-        image: {{ include "postgresql.image.major12.minor150" . }}
-        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        imagePullPolicy: {{ include "postgresql.imagePullPolicy" $ }}
         securityContext:
           runAsUser: 0
         command:
@@ -397,8 +395,7 @@ spec:
           - name: POD_NAMESPACE
             value: $(CLUSTER_NAMESPACE)
       - name: pgbouncer
-        image: {{ include "pgbouncer.image" . }}
-        imagePullPolicy: {{ .Values.pgbouncer.image.pullPolicy | quote }}
+        imagePullPolicy: {{ include "postgresql.imagePullPolicy" $ }}
         securityContext:
           runAsUser: 0
         ports:
@@ -460,12 +457,11 @@ spec:
       - name: exporter
         ports:
           - name: http-metrics
-            containerPort: {{ .Values.metrics.service.port }}
-        image: {{ include "metrics.image" . }}
-        imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
+            containerPort: {{ $.Values.metrics.service.port }}
+        imagePullPolicy: {{ include "postgresql.imagePullPolicy" $ }}
         args:
           - "--extend.query-path=/opt/conf/custom-metrics.yaml"
-          - "--web.listen-address=:{{ .Values.metrics.service.port }}"
+          - "--web.listen-address=:{{ $.Values.metrics.service.port }}"
           - "--log.level=info"
         env:
           - name: DATA_SOURCE_USER
@@ -481,6 +477,7 @@ spec:
       - name: dshm
         emptyDir:
           medium: Memory
-          {{- with .Values.shmVolume.sizeLimit }}
+          {{- with $.Values.shmVolume.sizeLimit }}
           sizeLimit: {{ . }}
           {{- end }}
+{{- end -}}
