@@ -81,7 +81,7 @@
 
 ########## authentication ##########
 # Enable authorization
---enable_authorize=false
+--enable_authorize=true
 # User login authentication type, password for nebula authentication, ldap for ldap authentication, cloud for cloud authentication
 --auth_type=password
 
@@ -170,3 +170,7 @@
 --memory_purge_enabled=true
 # memory background purge interval in seconds
 --memory_purge_interval_seconds=10
+
+# experimental configuration
+--enable_data_balance=true
+--enable_experimental_feature=true
