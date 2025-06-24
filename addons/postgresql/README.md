@@ -259,7 +259,7 @@ kind: Cluster
 spec:
   componentSpecs:
     - name: postgresql
-      serviceVersion: "17.5.0"
+      serviceVersion: "14.7.2"
       labels:
         apps.kubeblocks.postgres.patroni/scope: pg-cluster-postgresql
       replicas: 2 # Update `replicas` to 1 for scaling in, and to 3 for scaling out
@@ -1154,7 +1154,7 @@ spec:
     - name: postgresql
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [12.14.0,12.14.1,12.15.0,14.7.2,14.8.0,15.7.0,16.4.0]
+      # Valid options are: [12.14.0,12.14.1,12.15.0,12.22.0,14.7.2,14.8.0,14.18.0,15.7.0,15.13.0,16.4.0,16.9.0,17.5.0]
       serviceVersion: "14.7.2"
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
