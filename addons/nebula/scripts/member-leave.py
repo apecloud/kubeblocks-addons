@@ -6,6 +6,13 @@ from kubernetes import client, config
 import os
 import json
 import time
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
 
 def init_k8s_client():
     try:
@@ -24,10 +31,10 @@ def update_configmap(cli, data):
     )
     try:
         cli.patch_namespaced_config_map(cluster_name, namespace, body)
-        print("成功更新ConfigMap:"+cluster_name)
+        logging.info("成功更新ConfigMap:"+cluster_name)
         return True
     except client.exceptions.ApiException as e:
-        print(f"更新ConfigMap失败: {e}")
+        logging.error(f"更新ConfigMap失败: {e}")
         return False
 
 def get_member_leave_info(cli,pod_fqdn):
@@ -49,10 +56,10 @@ def get_member_leave_info(cli,pod_fqdn):
                 cli.create_namespaced_config_map(namespace, client.V1ConfigMap(
                     metadata=client.V1ObjectMeta(name=cluster_name), data={}))
             except client.exceptions.ApiException as e:
-                print(f"创建ConfigMap失败: {e}")
+                logging.error(f"创建ConfigMap失败: {e}")
                 return None,None
             return {}, {}
-        print(f"获取ConfigMap失败: {e}")
+        logging.error(f"获取ConfigMap失败: {e}")
         return None,None
 
 def get_job_info(member_leave_info, space):
@@ -64,38 +71,38 @@ def get_spaces(nebula_client):
     stmt = "SHOW SPACES"
     spaces_result = nebula_client.execute(stmt)
     if not spaces_result.is_succeeded():
-        print("获取space列表失败:", spaces_result.error_msg())
+        logging.error("获取space列表失败:", spaces_result.error_msg())
         return None
     spaces=[]
     for row in spaces_result.rows():
         if row.values:  # 检查是否有值
             spaces.append(str(row.values[0].get_sVal(),"utf-8"))
-    print(f"找到 {len(spaces)} 个space: {spaces}")
+    logging.info(f"找到 {len(spaces)} 个space: {spaces}")
     return spaces
 
 def remove_host(nebula_client,host_to_remove):
     drop_host_cmd = f"DROP HOSTS {host_to_remove}"
     drop_result = nebula_client.execute(drop_host_cmd)
     if not drop_result.is_succeeded():
-        print("删除host失败:", drop_result.error_msg())
+        logging.error("删除host失败:", drop_result.error_msg())
         return False
-    print(f"成功删除host: {host_to_remove}")
+    logging.info(f"成功删除host: {host_to_remove}")
     return True
 
 def balance_leader(nebula_client):
     balance_leader_cmd = "SUBMIT JOB BALANCE LEADER"
     balance_leader_result = nebula_client.execute( balance_leader_cmd)
     if not balance_leader_result.is_succeeded():
-        print("平衡leader失败:", balance_leader_result.error_msg())
+        logging.error("平衡leader失败:", balance_leader_result.error_msg())
     else:
-        print("已触发leader平衡")
+        logging.info("已触发leader平衡")
 
 def remove_host_data(nebula_client,space, host_to_remove):
     balance_cmd = f"USE {space}; SUBMIT JOB BALANCE DATA REMOVE {host_to_remove}"
     balance_result = nebula_client.execute( balance_cmd)
-    print(f"提交BALANCE DATA REMOVE命令: {balance_cmd}")
+    logging.info(f"提交BALANCE DATA REMOVE命令: {balance_cmd}")
     if not balance_result.is_succeeded():
-        print(f"在space {space} 上执行BALANCE DATA REMOVE失败:", balance_result.error_msg())
+        logging.error(f"在space {space} 上执行BALANCE DATA REMOVE失败:", balance_result.error_msg())
         return None
     return balance_result.row_values(0)[0].as_int()
 
@@ -103,14 +110,14 @@ def show_job(nebula_client,space, job_id):
     job_status_cmd = f"use {space};SHOW JOB {job_id}"
     status_result = nebula_client.execute(job_status_cmd)
     if not status_result.is_succeeded():
-        print("检查作业状态失败:", status_result.error_msg())
+        logging.error("检查作业状态失败:", status_result.error_msg())
         return None
     return status_result.row_values(0)[2].as_string()
 
 def host_is_none(nebula_client, pod_fqdn):
     hosts_result = nebula_client.execute("show hosts")
     if not hosts_result.is_succeeded():
-        print("获取hosts失败:", hosts_result.error_msg())
+        logging.error("获取hosts失败:", hosts_result.error_msg())
         return False
     for row in hosts_result.rows():
         if row.values:  # 检查是否有值
@@ -130,12 +137,12 @@ def remove_storage_host(graphd_host, graphd_port, user, password, pod_fqdn,host_
     try:
         # 初始化连接池
         if not connection_pool.init([(graphd_host, graphd_port)], config):
-            print("连接池初始化失败")
+            logging.error("连接池初始化失败")
             return False
 
         # 获取连接
         nebula_client = connection_pool.get_session(user, password)
-        print(f"成功连接到NebulaGraph: {graphd_host}:{graphd_port}")
+        logging.info(f"成功连接到NebulaGraph: {graphd_host}:{graphd_port}")
 
         # 1. 获取所有space
         spaces = get_spaces(nebula_client)
@@ -144,13 +151,13 @@ def remove_storage_host(graphd_host, graphd_port, user, password, pod_fqdn,host_
         # 2. 对每个space执行BALANCE DATA REMOVE
         can_remove_host = True
         for space in spaces:
-            print(f"正在处理space: {space}, host: {host_to_remove}")
+            logging.info(f"正在处理space: {space}, host: {host_to_remove}")
             time.sleep(1)
             job_info = get_job_info(host_member_leave_info, space)
             job_id = job_info.get("job_id")
             job_status = job_info.get("status")
-            print(job_id,job_status)
-            if not job_status:
+            logging.info(job_id,job_status)
+            if not job_status or job_status == "REMOVED":
                 job_id = remove_host_data(nebula_client, space, host_to_remove)
                 if not job_id:
                     if host_is_none(nebula_client,pod_fqdn):
@@ -158,20 +165,21 @@ def remove_storage_host(graphd_host, graphd_port, user, password, pod_fqdn,host_
                     can_remove_host = False
                     continue
                 can_remove_host = False
-                print(f"已提交BALANCE DATA REMOVE作业, Job ID: {job_id}")
+                logging.info(f"已提交BALANCE DATA REMOVE作业, Job ID: {job_id}")
             elif job_status in ["FINISHED"]:
-                print(f"作业 {job_id} 完成, 状态: {job_status}")
+                logging.info(f"作业 {job_id} 完成, 状态: {job_status}")
                 continue
             elif job_status in ["FAILED", "STOPPED"]:
-                print(f"作业 {job_id} 失败, 状态: {job_status}")
+                logging.info(f"作业 {job_id} 失败, 状态: {job_status}")
                 can_remove_host = False
                 recover_job_cmd = f"USE {space}; RECOVER JOB {job_id}"
                 try:
-                    print(f"正在恢复作业 {job_id}...")
+                    logging.info(f"正在恢复作业 {job_id}...")
                     nebula_client.execute(recover_job_cmd)
                 except Exception as e:
-                    print(f"恢复作业 {job_id} 失败: {e}")
+                    logging.error(f"恢复作业 {job_id} 失败: {e}")
             job_status = show_job(nebula_client, space, job_id)
+            logging.info(f"job_status: {job_status}")
             if not job_status:
                 can_remove_host = False
             host_member_leave_info[space] = {
@@ -188,11 +196,11 @@ def remove_storage_host(graphd_host, graphd_port, user, password, pod_fqdn,host_
             update_configmap(cli, member_leave)
             balance_leader(nebula_client)
             return True
-        print(member_leave)
+        logging.info(member_leave)
         update_configmap(cli, member_leave)
         return False
     except Exception as e:
-        print("发生错误:", str(e))
+        logging.error("发生错误:", str(e))
         return False
     finally:
         connection_pool.close()
@@ -211,7 +219,7 @@ if __name__ == "__main__":
     host_to_remove = "\""+pod_fqdn + "\":9779"  # storaged默认端口
 
     if not host_to_remove:
-        print("必须指定要移除的host (通过POD_FQDN环境变量)")
+        logging.error("必须指定要移除的host (通过POD_FQDN环境变量)")
         exit(1)
 
     success = remove_storage_host(graphd_host, graphd_port, user, password,pod_fqdn, host_to_remove)

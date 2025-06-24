@@ -74,13 +74,13 @@ spec:
       builtinHandler: custom
       customHandler:
         container: storaged
-        image: apecloud-registry.cn-zhangjiakou.cr.aliyuncs.com/apecloud/nebula-tool:1.0.0
+        image: {{ $.Values.nebula.images.registry | default "docker.io"  }}/{{ $.Values.nebula.images.tool }}
         exec:
           command:
             - bash
             - -c
             - |
-              python /scripts/member-leave.py >> /usr/local/nebula/logs/member-leave.log 2>&1
+              python /scripts/member-leave.py > /usr/local/nebula/logs/member-leave.log 2>&1
   runtime:
     volumes:
       - name: nebula-console

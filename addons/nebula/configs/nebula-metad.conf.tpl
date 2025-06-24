@@ -50,7 +50,7 @@
 # The default number of parts when a space is created
 --default_parts_num=10
 # The default replica factor when a space is created
---default_replica_factor=1
+--default_replica_factor=3
 
 --heartbeat_interval_secs=10
 --agent_heartbeat_interval_secs=60

@@ -8,6 +8,7 @@ nebula:
   images:
     registry: docker.io
     pullPolicy: IfNotPresent
+    tool: apecloud/nebula-tool:1.0.0
     ## @param nebula.images.graphd, container image settings
     graphd:
       # if the value of nebula.images.graphd.registry is not specified using `--set`, it will be set to the value of 'nebula.images.registry' by default

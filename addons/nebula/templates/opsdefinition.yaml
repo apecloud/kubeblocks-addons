@@ -1,0 +1,42 @@
+---
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: OpsDefinition
+metadata:
+  name: nebula-balance-data
+spec:
+  componentInfos:
+    - componentDefinitionName: nebula-storaged
+  podInfoExtractors:
+    - name: availablePod
+      podSelector:
+        multiPodSelectionPolicy: Any
+      env:
+        - name: GRAPHD_SVC_NAME
+          valueFrom:
+            envRef:
+              envName: GRAPHD_SVC_NAME
+        - name: GRAPHD_SVC_PORT
+          valueFrom:
+            envRef:
+              envName: GRAPHD_SVC_PORT
+        - name: NEBULA_ROOT_PASSWORD
+          valueFrom:
+            envRef:
+              envName: NEBULA_ROOT_PASSWORD
+  actions:
+    - name: balance-data
+      failurePolicy: Fail
+      workload:
+        podInfoExtractorName: availablePod
+        type: Pod
+        backoffLimit: 0
+        podSpec:
+          containers:
+            - name: balance-data
+              image: {{ $.Values.nebula.images.registry | default "docker.io"  }}/{{ $.Values.nebula.images.tool }}
+              imagePullPolicy: IfNotPresent
+              command:
+                - bash
+                - -c
+                - |
+                  python -c '{{- .Files.Get "scripts/balance-data.py" | nindent 18 }}'
