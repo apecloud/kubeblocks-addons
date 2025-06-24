@@ -30,7 +30,7 @@ spec:
   backup:
     preBackup:
     - job:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         runOnTargetPodNode: false
         command:
           - bash
@@ -61,7 +61,7 @@ spec:
   restore:
     postReady:
     - job:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         runOnTargetPodNode: false
         command:
           - bash

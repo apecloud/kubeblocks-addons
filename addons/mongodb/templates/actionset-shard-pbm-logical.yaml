@@ -21,7 +21,7 @@ spec:
   backup:
     preBackup:
     - job:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         runOnTargetPodNode: false
         command:
           - bash
@@ -52,7 +52,7 @@ spec:
   restore:
     postReady:
     - job:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         runOnTargetPodNode: false
         command:
           - bash
@@ -69,7 +69,7 @@ spec:
             {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 12 }}
             {{- .Files.Get "dataprotection/shard-pbm-full-restore.sh" | nindent 12 }}
     - job:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         runOnTargetPodNode: false
         command:
           - bash

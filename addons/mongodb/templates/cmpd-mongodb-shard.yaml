@@ -24,7 +24,7 @@ spec:
     {{- end }}
   scripts:
     - name: mongodb-scripts
-      templateRef: {{ include "mongodb.cmScriptsName" . }}
+      templateRef: {{ include "mongodbShard.cmScriptsName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555  # for read and execute, mysql container switched user account.
@@ -61,7 +61,7 @@ spec:
       #         echo $Status | jq ".members[] | select(.state == ($MyState | tonumber)) | .stateStr" |tr '[:upper:]' '[:lower:]'|uniq| xargs echo -n
     postProvision:
       customHandler:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         exec:
           command:
             - /bin/bash
@@ -72,7 +72,7 @@ spec:
           maxRetries: 10
     preTerminate:
       customHandler:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         exec:
           command:
             - /bin/bash
@@ -102,7 +102,7 @@ spec:
           - |
             mkdir -p {{ .Values.dataMountPath }}/tmp/bin
             cp -r /opt/bitnami/kubectl/bin/kubectl {{ .Values.dataMountPath }}/tmp/bin
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.tools.repository }}:{{ .Values.image.tools.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         name: init-kubectl
         volumeMounts:
@@ -121,26 +121,9 @@ spec:
         volumeMounts:
           - mountPath: /kubeblocks
             name: kubeblocks
-      - command:
-          - bash
-          - -c
-          - |
-            client_path=$(whereis mongosh | awk '{print $2}')
-            CLIENT="mongosh"
-            if [ -z "$client_path" ]; then
-                CLIENT="mongo"
-            fi
-            # used by backup agent
-            cp -r /usr/bin/$CLIENT /kubeblocks
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.percona.tag }}
-        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
-        name: init-backup-agent
-        volumeMounts:
-          - mountPath: /kubeblocks
-            name: kubeblocks
     containers:
       - name: mongodb
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         ports:
           - name: mongodb
@@ -228,8 +211,6 @@ spec:
             name: data
           - name: scripts
             mountPath: /scripts
-          - mountPath: /kubeblocks
-            name: kubeblocks
     volumes:
       {{- if .Values.logCollector.enabled }}
       - name: log-data

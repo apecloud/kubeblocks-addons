@@ -10,108 +10,65 @@ spec:
         - {{ include "mongodbShard.componentDefName" . }}
       releases:
         - 8.0.8
-        - 8.0.4
-        - 7.0.16
-        - 7.0.12
-        - 6.0.20
-        - 6.0.16
-        - 5.0.30
-        - 5.0.28
+        - 7.0.18
+        - 6.0.21
+        - 5.0.29
         - 4.4.29
-        - 4.2.24
+        - 4.2.25
         - 4.0.28
     - compDefs:
         - {{ include "cfgServer.componentDefName" . }}
       releases:
         - 8.0.8
-        - 8.0.4
-        - 7.0.16
-        - 7.0.12
-        - 6.0.20
-        - 6.0.16
-        - 5.0.30
-        - 5.0.28
+        - 7.0.18
+        - 6.0.21
+        - 5.0.29
         - 4.4.29
-        - 4.2.24
+        - 4.2.25
         - 4.0.28
   releases:
     - name: 8.0.8
       changes:
       serviceVersion: 8.0.8
       images:
-        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:8.0.8
+        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.8
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:8.0.8
-    - name: 8.0.4
+    - name: 7.0.18
       changes:
-      serviceVersion: 8.0.4
+      serviceVersion: 7.0.18
       images:
-        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:8.0.4
+        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:7.0.18
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:8.0.4
-    - name: 7.0.16
+    - name: 6.0.21
       changes:
-      serviceVersion: 7.0.16
+      serviceVersion: 6.0.21
       images:
-        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:7.0.16
+        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:6.0.21
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:7.0.16
-    - name: 7.0.12
+    - name: 5.0.29
       changes:
-      serviceVersion: 7.0.12
+      serviceVersion: 5.0.29
       images:
-        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:7.0.12
+        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.0.29
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:7.0.12
-    - name: 6.0.20
-      changes:
-      serviceVersion: 6.0.20
-      images:
-        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:6.0.20
-        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:6.0.20
-    - name: 6.0.16
-      changes:
-      serviceVersion: 6.0.16
-      images:
-        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:6.0.16
-        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:6.0.16
-    - name: 5.0.30
-      changes:
-      serviceVersion: 5.0.30
-      images:
-        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:5.0.30
-        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:5.0.30
-    - name: 5.0.28
-      changes:
-      serviceVersion: 5.0.28
-      images:
-        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:5.0.28
-        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:5.0.28
     - name: 4.4.29
       changes:
       serviceVersion: 4.4.29
       images:
-        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:4.4.29
+        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.4.29
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:4.4.29
-    - name: 4.2.24
+    - name: 4.2.25
       changes:
-      serviceVersion: 4.2.24
+      serviceVersion: 4.2.25
       images:
-        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:4.2.24
+        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.2.25
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:4.2.24
     - name: 4.0.28
       changes:
       serviceVersion: 4.0.28
       images:
-        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:4.0.28
+        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.0.28
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
-        init-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:4.0.28
 ---
 
 apiVersion: apps.kubeblocks.io/v1alpha1
@@ -126,69 +83,45 @@ spec:
         - {{ include "mongos.componentDefName" . }}
       releases:
         - 8.0.8
-        - 8.0.4
-        - 7.0.16
-        - 7.0.12
-        - 6.0.20
-        - 6.0.16
-        - 5.0.30
-        - 5.0.28
+        - 7.0.18
+        - 6.0.21
+        - 5.0.29
         - 4.4.29
-        - 4.2.24
+        - 4.2.25
         - 4.0.28
   releases:
     - name: 8.0.8
       changes:
       serviceVersion: 8.0.8
       images:
-        mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:8.0.8
-    - name: 8.0.4
+        mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.8
+    - name: 7.0.18
       changes:
-      serviceVersion: 8.0.4
+      serviceVersion: 7.0.18
       images:
-        mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:8.0.4
-    - name: 7.0.16
+        mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:7.0.18
+    - name: 6.0.21
       changes:
-      serviceVersion: 7.0.16
+      serviceVersion: 6.0.21
       images:
-        mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:7.0.16
-    - name: 7.0.12
+        mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:6.0.21
+    - name: 5.0.29
       changes:
-      serviceVersion: 7.0.12
+      serviceVersion: 5.0.29
       images:
-        mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:7.0.12
-    - name: 6.0.20
-      changes:
-      serviceVersion: 6.0.20
-      images:
-        mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:6.0.20
-    - name: 6.0.16
-      changes:
-      serviceVersion: 6.0.16
-      images:
-        mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:6.0.16
-    - name: 5.0.30
-      changes:
-      serviceVersion: 5.0.30
-      images:
-        mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:5.0.30
-    - name: 5.0.28
-      changes:
-      serviceVersion: 5.0.28
-      images:
-        mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:5.0.28
+        mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.0.29
     - name: 4.4.29
       changes:
       serviceVersion: 4.4.29
       images:
-        mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:4.4.29
-    - name: 4.2.24
+        mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.4.29
+    - name: 4.2.25
       changes:
-      serviceVersion: 4.2.24
+      serviceVersion: 4.2.25
       images:
-        mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:4.2.24
+        mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.2.25
     - name: 4.0.28
       changes:
       serviceVersion: 4.0.28
       images:
-        mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:4.0.28
+        mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.0.28

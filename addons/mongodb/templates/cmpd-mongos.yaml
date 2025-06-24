@@ -31,7 +31,7 @@ spec:
     {{- end }}
   scripts:
     - name: mongodb-scripts
-      templateRef: {{ include "mongodb.cmScriptsName" . }}
+      templateRef: {{ include "mongodbShard.cmScriptsName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555  # for read and execute, mysql container switched user account.
@@ -41,7 +41,7 @@ spec:
       runAsUser: 0
     containers:
       - name: mongos
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         ports:
           - name: mongos

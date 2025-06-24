@@ -161,3 +161,11 @@ mongodb-scripts
 {{- .Values.resourceNamePrefix -}}-scripts
 {{- end -}}
 {{- end -}}
+
+{{- define "mongodbShard.cmScriptsName" }}
+{{- if eq (len .Values.resourceNamePrefix) 0 -}}
+mongodb-shard-scripts
+{{- else -}}
+{{- .Values.resourceNamePrefix -}}-mongodb-shard-scripts
+{{- end -}}
+{{- end -}}
