@@ -1,5 +1,5 @@
-#!/bin/bash
-
+#!/var/run/etcd/bin/bash
+export PATH=/var/run/etcd/bin:$PATH
 set -exo pipefail
 
 # if the script exits with a non-zero exit code, touch a file to indicate that the backup failed,
@@ -15,15 +15,11 @@ handle_exit() {
 trap handle_exit EXIT
 
 # use etcdctl create snapshot
-ENDPOINTS=${DP_DB_HOST}.${CLUSTER_NAMESPACE}.svc${CLUSTER_DOMAIN}:2379
-exec_etcdctl "${ENDPOINTS}" snapshot save "${DP_BACKUP_NAME}"
+ENDPOINT="$DP_DB_HOST.$CLUSTER_NAMESPACE.svc$CLUSTER_DOMAIN:2379"
+exec_etcdctl "${ENDPOINT}" snapshot save "${DP_BACKUP_NAME}"
+
 # check the backup file, make sure it is not empty
-if check_backup_file "${DP_BACKUP_NAME}"; then
-  echo "Backup file is valid"
-else
-  echo "Backup file is invalid" >&2
-  exit 1
-fi
+check_backup_file "${DP_BACKUP_NAME}"
 
 # use datasafed to get backup size
 # if we do not write into $DP_BACKUP_INFO_FILE, the backup job will stuck
