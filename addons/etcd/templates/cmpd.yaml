@@ -105,7 +105,7 @@ spec:
         ports:
           - name: client
             port: 2379
-            targetPort: peer
+            targetPort: client
     - name: peer
       spec:
         ports:
