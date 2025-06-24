@@ -27,7 +27,7 @@
 {{ $buffer_unit = "GB" }}
 {{- end }}
 
-{{- $pgVersion := "14.0" }}
+{{- $pgVersion := "16.0" }}
 {{- range $i, $spec := $.cluster.spec.componentSpecs }}
 {{- if eq "postgresql" $spec.name }}
 {{- $pgVersion = $spec.serviceVersion }}
@@ -113,7 +113,6 @@ enable_sort = 'True'
 enable_tidscan = 'True'
 escape_string_warning = 'True'
 extra_float_digits = '1'
-force_parallel_mode = '0'
 from_collapse_limit = '8'
 # fsync=off # patroni for Extreme Performance
 # full_page_writes=off # patroni for Extreme Performance
@@ -191,7 +190,6 @@ min_parallel_table_scan_size = '8MB'
 max_wal_size = '{{- printf "%dMB" $max_wal_size }}'
 min_wal_size = '{{- printf "%dMB" $min_wal_size }}'
 
-old_snapshot_threshold = '-1'
 parallel_leader_participation = 'True'
 password_encryption = 'md5'
 pg_stat_statements.max = '5000'
@@ -224,7 +222,7 @@ session_replication_role = 'origin'
 sql_firewall.firewall = 'disable'
 shared_buffers = '{{ printf "%d%s" $shared_buffers $buffer_unit }}'
 
-{{- if semverCompare ">=14.18.0" $pgVersion }}
+{{- if semverCompare ">=16.9.0" $pgVersion }}
 shared_preload_libraries = 'pg_stat_statements,auto_explain,bg_mon,pgextwlist,pg_auth_mon,set_user,pg_cron,pg_stat_kcache,timescaledb,pgaudit,pg_duckdb'
 {{- else }}
 shared_preload_libraries = 'pg_stat_statements,auto_explain,bg_mon,pgextwlist,pg_auth_mon,set_user,pg_cron,pg_stat_kcache,timescaledb,pgaudit'
@@ -265,7 +263,6 @@ vacuum_cost_limit = '10000'
 vacuum_cost_page_dirty = '20'
 vacuum_cost_page_hit = '1'
 vacuum_cost_page_miss = '2'
-vacuum_defer_cleanup_age = '0'
 vacuum_freeze_min_age = '50000000'
 vacuum_freeze_table_age = '200000000'
 vacuum_multixact_freeze_min_age = '5000000'
@@ -284,8 +281,6 @@ work_mem = '{{ printf "%dkB" ( max ( div $phy_memory 4194304 ) 4096 ) }}'
 xmlbinary = 'base64'
 xmloption = 'content'
 
-
-## the following are the parameters adjusted for postgresql14 relative to postgresql12
 autovacuum_vacuum_insert_scale_factor = '0.2'
 autovacuum_vacuum_insert_threshold = '1000'
 client_connection_check_interval = '0'

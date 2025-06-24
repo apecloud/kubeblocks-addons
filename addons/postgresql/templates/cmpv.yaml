@@ -1,0 +1,35 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: postgresql
+  labels:
+    {{- include "postgresql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "postgresql.apiVersion" . | nindent 4 }}
+spec:
+  compatibilityRules:
+  {{- range .Values.versions }}
+    - compDefs:
+        - {{ include "postgresql.componentDefNamePrefixByMajor" (dict "major" .major) }}
+      releases:
+      {{- range .minors }}
+        - {{ .version }}
+      {{- end }}
+  {{- end }}
+  releases:
+  {{- range .Values.versions }}
+  {{- $major := .major }}
+    {{- range .minors }}
+    - name: {{ .version }}
+      changes: ""
+      serviceVersion: {{ .version }}
+      images:
+        init-dbctl: {{ include "postgresql.dbctlImage" $ }}
+        pg-init-container: {{ include "postgresql.imageByVersion" (dict "major" $major "minor" .version "root" $) }}
+        exporter: {{ include "postgresql.metricsImage" $ }}
+        postgresql: {{ include "postgresql.imageByVersion" (dict "major" $major "minor" .version "root" $) }}
+        pgbouncer: {{ include "postgresql.pgbouncerImage" $ }}
+        switchover: {{ include "postgresql.imageByVersion" (dict "major" $major "minor" .version "root" $) }}
+        accountProvision: {{ include "postgresql.imageByVersion" (dict "major" $major "minor" .version "root" $) }}
+  {{- end }}
+  {{- end }}
