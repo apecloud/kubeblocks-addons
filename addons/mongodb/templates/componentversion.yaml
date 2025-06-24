@@ -42,14 +42,14 @@ spec:
       changes:
       serviceVersion: 5.0.29
       images:
-        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.0.29
+        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.0.29-multi
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
     - name: 4.4.29
       changes:
       serviceVersion: 4.4.29
       images:
-        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.4.29
+        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.4.29-multi
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
     - name: 4.2.25
