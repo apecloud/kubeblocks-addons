@@ -6,21 +6,21 @@ etcd is a distributed, highly available key-value store designed to securely sto
 
 ### Lifecycle Management
 
-| Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
-|------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
-| Yes                    | Yes                   | Yes              | Yes       | Yes        | Yes       | Yes    | Yes      |
+| Horizontal scaling | Vertical scaling | Expand volume | Restart | Stop/Start | Configure | Expose | Switchover |
+| ------------------- | ----------------- | -------------- | ------- | ---------- | --------- | ------ | ---------- |
+| Yes                 | Yes               | Yes            | Yes     | Yes        | Yes       | Yes    | Yes        |
 
 ### Backup and Restore
 
-| Feature     | Method | Description |
-|-------------|--------|------------|
+| Feature     | Method   | Description                                                                  |
+| ----------- | -------- | ---------------------------------------------------------------------------- |
 | Full Backup | datafile | using `etcdcl snapshot save` to create snapshot of the etcd cluster's data |
 
 ### Versions
 
-| Major Versions | Description |
-|---------------|-------------|
-| 3.5.x         | 3.5.6,3.5.15|
+| Major Versions | Description  |
+| -------------- | ------------ |
+| 3.5.x          | 3.5.6,3.5.15 |
 
 ## Prerequisites
 
@@ -60,8 +60,8 @@ spec:
       componentDef: etcd
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [3.5.15,3.5.6]
-      serviceVersion: 3.5.15
+      # Valid options are: [3.6.1,3.5.15,3.5.6]
+      serviceVersion: 3.6.1
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
       # Valid options are [true, false]
@@ -128,7 +128,7 @@ spec:
       tls: true   # set TLS to true
       issuer:     # if TLS is True, this filed is required.
         name: KubeBlocks  # set Issuer to [KubeBlocks, UserProvided].
-      serviceVersion: 3.5.15
+      serviceVersion: 3.6.1
       replicas: 3
       resources:
         limits:
@@ -223,6 +223,93 @@ bar
 
 </details>
 
+### Create with LoadBalancer
+
+Create an etcd cluster with LoadBalancer services for enhanced external accessibility and multi-cluster communication.
+
+Ensure your Kubernetes cluster has a LoadBalancer provider configured:
+
+- **Cloud providers**: AWS ELB, Azure Load Balancer, GCP Cloud Load Balancing
+- **On-premises**: MetalLB, HAProxy, NGINX Ingress Controller
+- **Other**: Any compatible LoadBalancer implementation
+- **Peer Service LoadBalancer**: Enables etcd members to communicate across different networks or clusters
+- **Client Service LoadBalancer**: Provides a stable external endpoint for etcd client connections
+- **High Availability**: External load balancing ensures resilient access to the etcd cluster
+
+```yaml
+# cat examples/etcd/cluster-with-lb.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: etcd-cluster-lb
+  namespace: demo
+spec:
+  # Specifies the behavior when a Cluster is deleted.
+  # Valid options are: [DoNotTerminate, Delete, WipeOut] (`Halt` is deprecated since KB 0.9)
+  # - `DoNotTerminate`: Prevents deletion of the Cluster. This policy ensures that all resources remain intact.
+  # - `Delete`: Extends the `Halt` policy by also removing PVCs, leading to a thorough cleanup while removing all persistent data.
+  # - `WipeOut`: An aggressive policy that deletes all Cluster resources, including volume snapshots and backups in external storage. This results in complete data removal and should be used cautiously, primarily in non-production environments to avoid irreversible data loss.
+  terminationPolicy: Delete
+  componentSpecs:
+    - name: etcd
+      componentDef: etcd
+      # ServiceVersion specifies the version of the Service expected to be
+      # provisioned by this Component.
+      # Valid options are: [3.6.1,3.5.15,3.5.6]
+      serviceVersion: 3.6.1
+      # Determines whether metrics exporter information is annotated on the
+      # Component's headless Service.
+      # Valid options are [true, false]
+      disableExporter: false
+      # Specifies the desired number of replicas in the Component
+      replicas: 3
+      # Peer service configuration for etcd member communication
+      services:
+        - name: peer
+          serviceType: LoadBalancer
+          podService: true
+      # Specifies the resources required by the Component.
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
+      # Specifies a list of PersistentVolumeClaim templates that define the storage
+      # requirements for the Component.
+      volumeClaimTemplates:
+        # Refers to the name of a volumeMount defined in
+        # `componentDefinition.spec.runtime.containers[*].volumeMounts
+        - name: data
+          spec:
+            # The name of the StorageClass required by the claim.
+            # If not specified, the StorageClass annotated with
+            # `storageclass.kubernetes.io/is-default-class=true` will be used by default
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                # Set the storage size as needed
+                storage: 20Gi
+  # Client service configuration for external access
+  services:
+    - name: client
+      serviceName: client
+      spec:
+        type: LoadBalancer
+        ports:
+          - port: 2379
+            targetPort: 2379
+      componentSelector: etcd
+
+```
+
+```bash
+kubectl apply -f examples/etcd/cluster-with-lb.yaml
+```
+
 ### Horizontal scaling
 
 #### Scale-out
@@ -248,6 +335,7 @@ spec:
     scaleOut:
       # Specifies the replica changes for the component.
       # add one more replica to current component
+      # only support change one replica at a time
       replicaChanges: 1
 
 ```
@@ -287,6 +375,7 @@ spec:
     scaleIn:
       # Specifies the replica changes for the component.
       # add one more replica to current component
+      # only support change one replica at a time
       replicaChanges: 1
 
 ```
@@ -538,7 +627,7 @@ spec:
       replicas: 2
 ```
 
-### Switchover(switchover.yaml)
+### Switchover
 
 A switchover in database clusters is a planned operation that transfers the primary (leader) role from one database instance to another. The goal of a switchover is to ensure that the database cluster remains available and operational during the transition.
 
@@ -562,7 +651,8 @@ spec:
     # Specifies the instance whose role will be transferred.
     # A typical usage is to transfer the leader role in a consensus system.
     instanceName: etcd-cluster-etcd-0
-
+    # Specifies the instance that will become the new leader, if not specify, the first non leader instance will become candidate.
+    # candidateName: etcd-cluster-etcd-0
 ```
 
 ```bash
@@ -597,6 +687,7 @@ spec:
   # - `Retain` means that the backup content and its physical snapshot on backup repository are kept.
   # - `Delete` means that the backup content and its physical snapshot on backup repository are deleted.
   deletionPolicy: Delete
+
 ```
 
 ```bash
@@ -630,7 +721,7 @@ spec:
   componentSpecs:
     - name: etcd
       componentDef: etcd
-      serviceVersion: 3.5.15
+      serviceVersion: 3.6.1
       disableExporter: false
       replicas: 3
       resources:

@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1
 kind: Cluster
 metadata:
-  name: etcd-cluster
+  name: etcd-cluster-lb
   namespace: demo
 spec:
   # Specifies the behavior when a Cluster is deleted.
@@ -23,6 +23,11 @@ spec:
       disableExporter: false
       # Specifies the desired number of replicas in the Component
       replicas: 3
+      # Peer service configuration for etcd member communication
+      services:
+        - name: peer
+          serviceType: LoadBalancer
+          podService: true
       # Specifies the resources required by the Component.
       resources:
         limits:
@@ -48,3 +53,13 @@ spec:
               requests:
                 # Set the storage size as needed
                 storage: 20Gi
+  # Client service configuration for external access
+  services:
+    - name: client
+      serviceName: client
+      spec:
+        type: LoadBalancer
+        ports:
+          - port: 2379
+            targetPort: 2379
+      componentSelector: etcd
