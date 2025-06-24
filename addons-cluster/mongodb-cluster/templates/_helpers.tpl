@@ -36,6 +36,7 @@ componentSpecs:
     serviceVersion: {{ .Values.version }}
     {{- end }}
     {{- include "mongodb-cluster.replicaCount" . | indent 4 }}
+    disableExporter: {{ $.Values.disableExporter | default "false" }}
     serviceAccountName: {{ include "kblib.serviceAccountName" . }}
     {{- include "kblib.componentResources" . | indent 4 }}
     {{- include "kblib.componentStorages" . | indent 4 }}
