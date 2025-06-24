@@ -8,6 +8,9 @@ Define redis cluster shardingSpec with ComponentDefinition.
     name: redis
     componentDef: redis-cluster
     replicas: {{ .Values.replicas }}
+    {{- if .Values.podAntiAffinityEnabled }}
+    {{- include "redis-cluster.schedulingPolicy" . | indent 2 }}
+    {{- end }}
     {{- include "redis-cluster.exporter" . | indent 4 }}
     {{- if and .Values.nodePortEnabled (not .Values.hostNetworkEnabled)  (not .Values.fixedPodIPEnabled) }}
     services:
@@ -59,6 +62,9 @@ Define redis ComponentSpec with ComponentDefinition.
 - name: redis
   {{- include "redis-cluster.replicaCount" . | indent 2 }}
   {{- include "redis-cluster.exporter" . | indent 2 }}
+  {{- if .Values.podAntiAffinityEnabled }}
+  {{- include "redis-cluster.schedulingPolicy" . | indent 2 }}
+  {{- end }}
   {{- if and .Values.nodePortEnabled (not .Values.hostNetworkEnabled) (not .Values.fixedPodIPEnabled) }}
   services:
   - name: redis-advertised
@@ -92,6 +98,9 @@ Define redis sentinel ComponentSpec with ComponentDefinition.
 {{- define "redis-cluster.sentinelComponentSpec" }}
 - name: redis-sentinel
   replicas: {{ .Values.sentinel.replicas }}
+  {{- if .Values.podAntiAffinityEnabled }}
+  {{- include "redis-cluster.sentinelschedulingPolicy" . | indent 2 }}
+  {{- end }}
   {{- if and .Values.nodePortEnabled (not .Values.hostNetworkEnabled) (not .Values.fixedPodIPEnabled) }}
   services:
   - name: sentinel-advertised
@@ -187,6 +196,42 @@ app.kubernetes.io/instance: {{ include "kblib.clusterName" . | quote }}
 app.kubernetes.io/managed-by: "kubeblocks"
 apps.kubeblocks.io/component-name: "redis"
 {{- end }}
+
+{{/*
+Redis Cluster schedulingPolicy
+*/}}
+{{- define "redis-cluster.schedulingPolicy" }}
+schedulingPolicy:
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ include "kblib.clusterName" . | quote }}
+              app.kubernetes.io/managed-by: "kubeblocks"
+              apps.kubeblocks.io/component-name: "redis"
+          topologyKey: kubernetes.io/hostname
+        weight: 100
+{{- end -}}
+
+{{/*
+Redis sentinel schedulingPolicy
+*/}}
+{{- define "redis-cluster.sentinelschedulingPolicy" }}
+schedulingPolicy:
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ include "kblib.clusterName" . | quote }}
+              app.kubernetes.io/managed-by: "kubeblocks"
+              apps.kubeblocks.io/component-name: "redis-sentinel"
+          topologyKey: kubernetes.io/hostname
+        weight: 100
+{{- end -}}
 
 {{/*
 Define common fileds of cluster object
