@@ -6,7 +6,7 @@ etcd is a distributed, highly available key-value store designed to securely sto
 
 ### Lifecycle Management
 
-| Horizontal``scaling | Vertical``scaling | Expand``volume | Restart | Stop/Start | Configure | Expose | Switchover |
+| Horizontal scaling | Vertical scaling | Expand volume | Restart | Stop/Start | Configure | Expose | Switchover |
 | ------------------- | ----------------- | -------------- | ------- | ---------- | --------- | ------ | ---------- |
 | Yes                 | Yes               | Yes            | Yes     | Yes        | Yes       | Yes    | Yes        |
 
