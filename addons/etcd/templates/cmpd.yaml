@@ -100,6 +100,12 @@ spec:
     - name: data
       needSnapshot: true
   services:
+    - name: client
+      spec:
+        ports:
+          - name: client
+            port: 2379
+            targetPort: peer
     - name: peer
       spec:
         ports:

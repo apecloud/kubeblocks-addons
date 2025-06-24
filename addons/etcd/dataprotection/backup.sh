@@ -20,10 +20,9 @@ if [ "$H_SCALE" == "true" ]; then
 fi
 
 # use etcdctl create snapshot
+mkdir -p "$BACKUP_DIR"
 ENDPOINT=${DP_DB_HOST}.${KB_NAMESPACE}.svc${CLUSTER_DOMAIN}:2379
 exec_etcdctl "${ENDPOINT}" snapshot save "${BACKUP_DIR}/${DP_BACKUP_NAME}"
-
-# check the backup file, make sure it is not empty
 check_backup_file "${BACKUP_DIR}/${DP_BACKUP_NAME}" || error_exit "Backup file is invalid"
 
 # use datasafed to get backup size
