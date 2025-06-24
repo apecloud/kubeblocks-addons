@@ -69,6 +69,10 @@ spec:
       serviceable: true
       writable: false
       votable: true
+  exporter:
+    containerName: exporter
+    scrapePath: /metrics
+    scrapePort: exporter
   lifecycleActions:
     roleProbe:
       builtinHandler: mongodb
@@ -135,6 +139,15 @@ spec:
             mountPath: /scripts
           - mountPath: /kubeblocks
             name: kubeblocks
+      - name: exporter
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        ports:
+          - name: exporter
+            protocol: TCP
+            containerPort: 9216
+        env:
+          - name: MONGODB_URI
+            value: mongodb://127.0.0.1:$(KB_SERVICE_PORT)
     volumes:
       {{- if .Values.logCollector.enabled }}
       - name: log-data
@@ -175,6 +188,16 @@ spec:
             name: mongodb
             port:
               name: ha
+              option: Optional
+    - name: EXPORTER_SERVICE_PORT  
+      value: "9216"
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: exporter
+            port:
+              name: exporter
               option: Optional
   hostNetwork: 
     containerPorts:  

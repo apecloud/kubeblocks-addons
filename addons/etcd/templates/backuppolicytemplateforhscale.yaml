@@ -1,0 +1,30 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: etcd-hscale-backup-policy-template
+  labels:
+    clusterdefinition.kubeblocks.io/name: etcd
+spec:
+  identifier: hscale
+  backupPolicies:
+  - componentDefs:
+      - etcd
+    target:
+      role: leader
+      fallbackRole: follower
+    backupMethods:
+      - name: datafile
+        snapshotVolumes: false
+        actionSetName: etcd-backup-actionset
+        targetVolumes:
+          volumes:
+          - tls
+          - data
+          volumeMounts:
+          - name: tls
+            mountPath: {{ .Values.tlsMountPath }}
+          - name: data
+            mountPath: {{ .Values.dataMountDir }}
+        env:
+          - name: H_SCALE
+            value: "true"

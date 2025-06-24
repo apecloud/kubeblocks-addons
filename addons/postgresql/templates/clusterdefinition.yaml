@@ -80,7 +80,7 @@ spec:
       switchoverSpec:
         withCandidate:
           cmdExecutorConfig:
-            image: {{ include "postgresql.image.major14.minor072" . }}
+            image: {{ include "postgresql.imageByVersion" (dict "major" "14" "minor" "14.7.2" "root" .) }}
             command:
               - /bin/bash
               - -c
@@ -88,7 +88,7 @@ spec:
               - curl -s http://$(KB_REPLICATION_PRIMARY_POD_FQDN):8008/switchover -XPOST -d '{"leader":"$(KB_REPLICATION_PRIMARY_POD_NAME)","candidate":"$(KB_SWITCHOVER_CANDIDATE_NAME)"}'
         withoutCandidate:
           cmdExecutorConfig:
-            image: {{ include "postgresql.image.major14.minor072" . }}
+            image: {{ include "postgresql.imageByVersion" (dict "major" "14" "minor" "14.7.2" "root" .) }}
             command:
               - /bin/bash
               - -c
@@ -102,7 +102,7 @@ spec:
           fsGroupChangePolicy: OnRootMismatch
         initContainers:
           - name: pg-init-container
-            imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+            imagePullPolicy: {{ include "postgresql.imagePullPolicy" . }}
             command:
               - /kb-scripts/init_container.sh
             volumeMounts:
@@ -116,7 +116,7 @@ spec:
                 mountPath: /kb-podinfo
         containers:
           - name: postgresql
-            imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+            imagePullPolicy: {{ include "postgresql.imagePullPolicy" . }}
             securityContext:
               runAsUser: 0
             command:
@@ -231,7 +231,7 @@ spec:
                     key: password
                     optional: false
           - name: pgbouncer
-            image: {{ include "pgbouncer.image" . }}
+            image: {{ include "postgresql.pgbouncerImage" . }}
             imagePullPolicy: {{ .Values.pgbouncer.image.pullPolicy | quote }}
             securityContext:
               runAsUser: 0
@@ -291,7 +291,7 @@ spec:
             ports:
               - name: http-metrics
                 containerPort: {{ .Values.metrics.service.port }}
-            image: {{ include "metrics.image" . }}
+            image: {{ include "postgresql.metricsImage" . }}
             imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
             args:
               - "--extend.query-path=/opt/conf/custom-metrics.yaml"
@@ -336,7 +336,7 @@ spec:
                     fieldPath: metadata.annotations['apps.kubeblocks.io/component-replicas']
       systemAccounts:
         cmdExecutorConfig:
-          image: {{ include "postgresql.image.major14.minor072" . }}
+          image: {{ include "postgresql.imageByVersion" (dict "major" "14" "minor" "14.7.2" "root" $) }}
           command:
             - psql
           args:
@@ -387,3 +387,13 @@ spec:
               statements:
                 creation: CREATE USER $(USERNAME) WITH REPLICATION PASSWORD '$(PASSWD)';
                 update: ALTER USER $(USERNAME) WITH PASSWORD '$(PASSWD)';
+  topologies:
+    - name: standalone
+      components:
+        - name: postgresql
+          compDef: postgresql
+      default: true
+    - name: replication
+      components:
+        - name: postgresql
+          compDef: postgresql

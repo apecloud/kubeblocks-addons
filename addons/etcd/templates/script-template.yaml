@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: etcd-script
+  labels:
+    {{- include "etcd.labels" . | nindent 4 }}
+
+data:
+  {{- with include "etcd.extend.scripts" . }}
+  {{- . | nindent 2 }}
+  {{- end }}

@@ -4,7 +4,6 @@ import os
 import sys
 import yaml
 
-
 def write_file(config, filename, overwrite):
     if not overwrite and os.path.exists(filename):
         pass
@@ -35,7 +34,6 @@ def postgresql_conf_to_dict(file_path):
         key, value = line.split('=', 1)
         result[key.strip()] = value.strip().strip("'")
     return result
-
 
 def main(filename):
     restore_dir = os.environ.get('RESTORE_DATA_DIR', '')
@@ -80,8 +78,8 @@ def main(filename):
             local_config['bootstrap']['dcs'].update(yaml.safe_load(f))
     else:
         print('patroni.yaml not found')
-    write_file(yaml.dump(local_config, default_flow_style=False), filename, True)
 
+    write_file(yaml.dump(local_config, default_flow_style=False), filename, True)
 
 if __name__ == '__main__':
     main(sys.argv[1])

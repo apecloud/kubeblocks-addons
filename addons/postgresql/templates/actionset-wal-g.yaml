@@ -14,7 +14,7 @@ spec:
     preBackup: []
     postBackup: []
     backupData:
-      image: {{ .Values.image.registry | default "docker.io" }}/apecloud/wal-g:postgres-1.0
+      image: {{ .Values.image.registry | default "docker.io" }}/apecloud/wal-g:{{ .Values.image.walg.tag }}
       runOnTargetPodNode: true
       command:
         - bash
@@ -43,11 +43,13 @@ spec:
       value: "$(VOLUME_DATA_DIR)/pgroot/data"
     - name: CONF_DIR
       value: "$(VOLUME_DATA_DIR)/conf"
+    - name: WALG_UPLOAD_DISK_CONCURRENCY
+      value: "8"
   backup:
     preBackup: []
     postBackup: []
     backupData:
-      image: {{ .Values.image.registry | default "docker.io" }}/apecloud/wal-g:postgres-1.0
+      image: {{ .Values.image.registry | default "docker.io" }}/apecloud/wal-g:{{ .Values.image.walg.tag }}
       runOnTargetPodNode: true
       command:
         - bash
@@ -58,7 +60,7 @@ spec:
         enabled: true
         intervalSeconds: 5
     preDelete:
-      image: {{ .Values.image.registry | default "docker.io" }}/apecloud/wal-g:postgres-1.0
+      image: {{ .Values.image.registry | default "docker.io" }}/apecloud/wal-g:{{ .Values.image.walg.tag }}
       command:
         - bash
         - -c
@@ -66,7 +68,7 @@ spec:
           {{- .Files.Get "dataprotection/wal-g-delete.sh" | nindent 10 }}
   restore:
     prepareData:
-      image: {{ .Values.image.registry | default "docker.io" }}/apecloud/wal-g:postgres-1.0
+      image: {{ .Values.image.registry | default "docker.io" }}/apecloud/wal-g:{{ .Values.image.walg.tag }}
       command:
         - bash
         - -c

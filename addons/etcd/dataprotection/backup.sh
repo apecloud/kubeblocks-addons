@@ -1,0 +1,37 @@
+#!/var/run/etcd/bin/bash
+export PATH=/var/run/etcd/bin:$PATH
+set -exo pipefail
+
+# if the script exits with a non-zero exit code, touch a file to indicate that the backup failed,
+# the sync progress container will check this file and exit if it exists
+handle_exit() {
+  exit_code=$?
+  if [ $exit_code -ne 0 ]; then
+    echo "failed with exit code $exit_code"
+    touch "${DP_BACKUP_INFO_FILE}.exit"
+    exit 1
+  fi
+}
+trap handle_exit EXIT
+
+if [ "$H_SCALE" == "true" ]; then
+  echo "{\"totalSize\":\"0\"}" >"${DP_BACKUP_INFO_FILE}" && sync
+  exit 0
+fi
+
+# use etcdctl create snapshot
+mkdir -p "$BACKUP_DIR"
+ENDPOINT=${DP_DB_HOST}.${KB_NAMESPACE}.svc${CLUSTER_DOMAIN}:2379
+exec_etcdctl "${ENDPOINT}" snapshot save "${BACKUP_DIR}/${DP_BACKUP_NAME}"
+check_backup_file "${BACKUP_DIR}/${DP_BACKUP_NAME}" || error_exit "Backup file is invalid"
+
+# use datasafed to get backup size
+# if we do not write into $DP_BACKUP_INFO_FILE, the backup job will stuck
+export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
+export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
+
+cd "$BACKUP_DIR"
+tar -cvf - "${DP_BACKUP_NAME}" | datasafed push -z zstd-fastest - "${DP_BACKUP_NAME}.tar.zst"
+
+TOTAL_SIZE=$(datasafed stat / | grep TotalSize | awk '{print $2}')
+echo "{\"totalSize\":\"$TOTAL_SIZE\"}" >"${DP_BACKUP_INFO_FILE}" && sync

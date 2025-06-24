@@ -1,3 +1,4 @@
+#!/bin/bash
 
 function get_wal_name() {
     local fileName=$1
@@ -43,6 +44,9 @@ function fetch-wal-log(){
 
          # check if the wal_log contains the restore_time logs. if ture, stop fetching
          latest_commit_time=$(pg_waldump ${wal_destination_dir}/$wal_name --rmgr=Transaction 2>/dev/null |tail -n 1|awk -F ' COMMIT ' '{print $2}'|awk -F ';' '{print $1}')
+         if [[ -z $latest_commit_time ]]; then
+            continue
+         fi
          timestamp=`date -d "$latest_commit_time" +%s`
          if [[ $latest_commit_time != "" && $timestamp > $restore_time ]]; then
             DP_log "exit when reaching the target time log."

@@ -1,0 +1,34 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: etcd-backup-policy-template
+  labels:
+    {{- include "etcd.labels" . | nindent 4 }}
+  annotations:
+    dataprotection.kubeblocks.io/is-default-policy-template: "true"
+spec:
+  clusterDefinitionRef: etcd
+  backupPolicies:
+  - componentDefs:
+    - etcd
+    target:
+      role: leader
+      fallbackRole: follower
+    backupMethods:
+      - name: datafile
+        snapshotVolumes: false
+        actionSetName: etcd-backup-actionset
+        targetVolumes:
+          volumes:
+          - tls
+          - data
+          volumeMounts:
+          - name: tls
+            mountPath: {{ .Values.tlsMountPath }}
+          - name: data
+            mountPath: {{ .Values.dataMountDir }}
+    schedules:
+      - backupMethod: datafile
+        enabled: false
+        cronExpression: "0 18 * * 0"
+        retentionPeriod: 7d

@@ -1,0 +1,58 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: Cluster
+metadata:
+  name: redis-replication-nodeport
+  namespace: default
+spec:
+  terminationPolicy: Delete
+  clusterDefinitionRef: redis
+  topology: replication
+  componentSpecs:
+  - name: redis
+    replicas: 2
+    services:
+    - name: redis-advertised
+      serviceType: NodePort
+      podService: true
+    serviceVersion: 7.2.7
+    switchPolicy:
+      type: Noop
+    resources:
+      limits:
+        cpu: "0.5"
+        memory: "0.5Gi"
+      requests:
+        cpu: "0.5"
+        memory: "0.5Gi"
+    volumeClaimTemplates:
+      - name: data
+        spec:
+          storageClassName: ""
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 20Gi
+  - name: redis-sentinel
+    replicas: 3
+    services:
+    - name: sentinel-advertised
+      serviceType: NodePort
+      podService: true
+    serviceVersion: 7.2.7
+    resources:
+      limits:
+        cpu: "0.2"
+        memory:  "0.2Gi"
+      requests:
+        cpu: "0.2"
+        memory:  "0.2Gi"
+    volumeClaimTemplates:
+      - name: data
+        spec:
+          storageClassName: ""
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 20Gi

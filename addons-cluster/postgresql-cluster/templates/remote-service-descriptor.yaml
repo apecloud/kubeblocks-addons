@@ -1,0 +1,34 @@
+{{- if and .Values.remoteSetting.isStandby .Values.remoteSetting.primaryHost .Values.remoteSetting.primaryPort }}
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ServiceDescriptor
+metadata:
+  name: {{ include "kblib.clusterName" . }}-remote-desc
+  {{- if .Values.remoteSetting.serviceDescriptorNamespace }}
+  namespace: {{ .Values.remoteSetting.serviceDescriptorNamespace }}
+  {{- else }}
+  namespace: {{ .Release.Namespace }}
+  {{- end }}
+  labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
+spec:
+  serviceKind: postgresql
+  serviceVersion: {{ .Values.version }}
+  host:
+    value: "{{ .Values.remoteSetting.primaryHost }}"
+  port:
+    value: "{{ .Values.remoteSetting.primaryPort }}"  
+  {{- if and .Values.remoteSetting.standbyAccountSecret.name .Values.remoteSetting.standbyAccountSecret.userKey .Values.remoteSetting.standbyAccountSecret.passwordKey }}
+  auth:
+    username:
+      valueFrom:
+        secretKeyRef:
+          key: {{ .Values.remoteSetting.standbyAccountSecret.userKey }}
+          name: {{ .Values.remoteSetting.standbyAccountSecret.name }}
+          optional: false
+    password:
+      valueFrom:
+        secretKeyRef:
+          key: {{ .Values.remoteSetting.standbyAccountSecret.passwordKey }}
+          name: {{ .Values.remoteSetting.standbyAccountSecret.name }}
+          optional: false
+  {{- end }}  
+{{- end }}
