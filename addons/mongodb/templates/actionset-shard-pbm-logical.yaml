@@ -9,10 +9,14 @@ spec:
   env:
     - name: DATA_DIR
       value: {{ .Values.dataMountPath }}/db
+    - name: MOUNT_DIR
+      value: {{ .Values.dataMountPath }}
     - name: PBM_BACKUP_DIR_NAME
       value: "pbm-backups"
     - name: PBM_BACKUP_TYPE
       value: logical
+    - name: PBM_COMPRESSION
+      value: zstd
   backupType: Full
   backup:
     preBackup:

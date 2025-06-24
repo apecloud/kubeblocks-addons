@@ -65,18 +65,20 @@ echo "INFO: Mapping config server $configsvr_name to $CFG_SERVER_REPLICA_SET_NAM
 mappings="$mappings,$CFG_SERVER_REPLICA_SET_NAME=$configsvr_name"
 echo "INFO: Shard mappings: $mappings"
 
-# check if restore is running in case of fallback
-if pbm status --mongodb-uri "$PBM_MONGODB_URI" | grep -q "restore"; then
-    echo "ERROR: Restore is already running, cannot start a new restore."
-    exit 1
-fi
+process_restore_start_signal
 
 recovery_target_time=$(date -d "@${DP_RESTORE_TIMESTAMP}" +"%Y-%m-%dT%H:%M:%S")
 echo "INFO: Recovery target time: $recovery_target_time"
 
+
 echo "INFO: Starting restore..."
+
+wait_for_other_operations
+
 pbm restore --time="$recovery_target_time" --mongodb-uri "$PBM_MONGODB_URI" --replset-remapping "$mappings" --wait
 
 print_pbm_logs_by_event "restore"
+
+process_restore_end_signal
 
 echo "INFO: Restore completed."

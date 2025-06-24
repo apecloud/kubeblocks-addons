@@ -98,86 +98,12 @@ echo "INFO: Mapping config server $configsvr_name to $CFG_SERVER_REPLICA_SET_NAM
 mappings="$mappings,$CFG_SERVER_REPLICA_SET_NAME=$configsvr_name"
 echo "INFO: Shard mappings: $mappings"
 
-# check if restore is running in case of fallback
-# if pbm status --mongodb-uri "$PBM_MONGODB_URI" | grep -q "restore"; then
-#     echo "ERROR: Restore is already running, cannot start a new restore."
-#     exit 1
-# fi
+process_restore_start_signal
 
-create_restore_signal() {
-    phase=$1
-    kubectl apply -f - <<EOF
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: $dp_cm_name
-  namespace: $dp_cm_namespace
-  labels:
-    app.kubernetes.io/instance: $KB_CLUSTER_NAME
-    apps.kubeblocks.io/restore-mongodb-shard: $phase
-EOF
-}
-
-if [ "$backup_type" = "physical" ]; then
-    echo "INFO: Waiting for prepare restore start signal..."
-    dp_cm_name="$KB_CLUSTER_NAME-restore-signal"
-    dp_cm_namespace="$KB_NAMESPACE"
-    while true; do
-        set +e
-        kubectl_get_result=$(kubectl get configmap $dp_cm_name -n $dp_cm_namespace -o json 2>&1)
-        kubectl_get_exit_code=$?
-        set -e
-        # Wait for the restore signal ConfigMap to be created or updated
-        if [[ "$kubectl_get_exit_code" -ne 0 ]]; then
-            if [[ "$kubectl_get_result" == *"not found"* ]]; then
-                create_restore_signal "start"
-            fi
-        else
-            annotation_value=$(echo "$kubectl_get_result" | jq -r '.metadata.labels["apps.kubeblocks.io/restore-mongodb-shard"] // empty')
-            if [[ "$annotation_value" == "start" ]]; then
-                break
-            elif [[ "$annotation_value" == "end" ]]; then
-                echo "INFO: Restore completed, exiting."
-                exit 0
-            else
-                echo "INFO: Restore start signal is $annotation_value, updating..."
-                create_restore_signal "start"
-            fi
-        fi
-        sleep 1
-    done
-    sleep 5
-    echo "INFO: Prepare restore start signal completed."
-fi
+wait_for_other_operations
 
 pbm restore $backup_name --mongodb-uri "$PBM_MONGODB_URI" --replset-remapping "$mappings" --wait
 
 print_pbm_logs_by_event "restore"
 
-if [ "$backup_type" = "physical" ]; then
-    echo "INFO: Waiting for prepare restore end signal..."
-    dp_cm_name="$KB_CLUSTER_NAME-restore-signal"
-    dp_cm_namespace="$KB_NAMESPACE"
-    while true; do
-        set +e
-        kubectl_get_result=$(kubectl get configmap $dp_cm_name -n $dp_cm_namespace -o json 2>&1)
-        kubectl_get_exit_code=$?
-        set -e
-        # Wait for the restore signal ConfigMap to be created or updated
-        if [[ "$kubectl_get_exit_code" -ne 0 ]]; then
-            if [[ "$kubectl_get_result" == *"not found"* ]]; then
-                create_restore_signal "end"
-            fi
-        else
-            annotation_value=$(echo "$kubectl_get_result" | jq -r '.metadata.labels["apps.kubeblocks.io/restore-mongodb-shard"] // empty')
-            if [[ "$annotation_value" == "end" ]]; then
-                break
-            else
-                echo "INFO: Restore end signal is $annotation_value, updating..."
-                create_restore_signal "end"
-            fi
-        fi
-        sleep 1
-    done
-    echo "INFO: Prepare restore end signal completed."
-fi
+process_restore_end_signal

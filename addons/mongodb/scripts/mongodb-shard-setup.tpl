@@ -23,20 +23,6 @@ if [ -z "$client_path" ]; then
     CLIENT="mongo"
 fi
 
-if [ "$MONGODB_CLUSTER_ROLE" = "shardsvr" ]; then
-    # Wait for the mongos service to be ready which means the config server is already ready.
-    # Useful when restoring from backup. Shards should wait for config server and mongos to be ready.
-    while true; do
-        result=$($CLIENT --host $MONGOS_INTERNAL_HOST --port $MONGOS_INTERNAL_PORT -u $MONGODB_USER -p $MONGODB_PASSWORD --quiet --eval "db.adminCommand({ ping: 1 })" 2>/dev/null)
-        if [[ "$result" == *"ok"* ]]; then
-            echo "INFO: mongos is ready."
-            break
-        fi
-        echo "INFO: Waiting for mongos to be ready..."
-        sleep 2
-    done
-fi
-
 wait_interval=5
 while true; do
     cluster_json=$(kubectl get clusters.apps.kubeblocks.io ${KB_CLUSTER_NAME} -n ${KB_NAMESPACE} -o json 2>&1)
@@ -90,6 +76,7 @@ while true; do
         elif [[ "$annotation_value" == "end" ]]; then
             echo "INFO: Restore completed, exiting."
             kill_process "syncer"
+            kill_process "mongod"
             kill_process "pbm-agent-entrypoint"
             kill_process "pbm-agent"
             exec syncer -- mongod --bind_ip_all --port $PORT --replSet $KB_CLUSTER_COMP_NAME --config /etc/mongodb/mongodb.conf
@@ -114,6 +101,7 @@ while true; do
         if [[ "$annotation_value" == "end" ]]; then
             echo "INFO: Restore completed, exiting."
             kill_process "syncer"
+            kill_process "mongod"
             kill_process "pbm-agent-entrypoint"
             kill_process "pbm-agent"
             exec syncer -- mongod --bind_ip_all --port $PORT --replSet $KB_CLUSTER_COMP_NAME --config /etc/mongodb/mongodb.conf

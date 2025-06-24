@@ -1,4 +1,7 @@
 #!/bin/bash
+
+# When doing point-in-time recovery for deployments with sharded collections, PBM only writes data to existing ones and doesn’t support creating new collections.
+# Therefore, whenever you create a new sharded collection, make a new backup for it to be included there. Ref: https://docs.percona.com/percona-backup-mongodb/usage/pitr-physical.html#post-restore-steps
 set -e
 set -o pipefail
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
