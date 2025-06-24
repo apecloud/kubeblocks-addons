@@ -23,6 +23,19 @@ data:
     {
       "rocketMQClusterName": "{{ .Values.clusterName }}"
     }
+  plain_acl.yml: |
+    globalWhiteRemoteAddresses:
+      - '*'
+      - 10.*.*.*
+      - 192.*.*.*
+      - 172.*.*.*
+    accounts:
+      - accessKey: rocketmq-admin
+        secretKey: 83b97695ae26e650fda34914554bfa09
+        whiteRemoteAddress: 192.*.*.*
+        # if it is admin, it could access all resources
+        admin: true
+
 ---
 
 apiVersion: v1

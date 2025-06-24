@@ -8,19 +8,19 @@ metadata:
     {{- include "rocketmq.annotations" . | nindent 4 }}
 spec:
   provider: kubeblocks.io
-  description: RocketMQ Controller is a reliable and mature messaging and streaming broker.
-  serviceKind: controller
-  serviceVersion: {{ .Values.componentServiceVersion.controller }}
+  description: RocketMQ Proxy is a reliable and mature messaging and streaming broker.
+  serviceKind: proxy
+  serviceVersion: {{ .Values.componentServiceVersion.nameserver }}
   services:
-    - name: controller
+    - name: svr
       spec:
-        ## headless service
-        clusterIP: None
-        publishNotReadyAddresses: true
         ports:
           - name: main
-            port: 9878
+            port: 8080
             targetPort: main
+          - name: grpc
+            port: 8080
+            targetPort: grpc
   configs:
     - name: config
       template: {{ include "rocketmq.configTplName" . }}
@@ -28,14 +28,6 @@ spec:
       namespace: {{ .Release.Namespace }}
       defaultMode: 0644
       restartOnFileChange: true
-  systemAccounts:
-    - name: root
-      initAccount: true
-      passwordGenerationPolicy:
-        length: 16
-        numDigits: 8
-        numSymbols: 0
-        letterCase: MixedCases
   policyRules:
     - apiGroups:
       - ""
@@ -56,12 +48,12 @@ spec:
         requiredDuringSchedulingIgnoredDuringExecution:
           - labelSelector:
               matchLabels:
-                app.kubernetes.io/component: controller
+                app.kubernetes.io/component: proxy
             topologyKey: kubernetes.io/hostname
     containers:
-      - name: controller
+      - name: proxy
         command:
-          - sh
+          - /bin/sh
           - -c
           - /rocketmq-start.sh
         env:
@@ -75,10 +67,12 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: metadata.namespace
+        - name: NAMESRV_ADDR
+          value: {{ include "rocketmq.nameserver.addr" $ }}
         - name: ROCKETMQ_PROCESS_ROLE
-          value: controller
-        - name: CONTROLLER_CONF_FILE
-          value: /etc/rocketmq/controller.conf
+          value: proxy
+        - name: RMQ_PROXY_CONFIG_PATH
+          value: /etc/rocketmq/base-cm/proxy.json
         image: {{ .Values.rocketmq.registry | default "docker.io" }}/{{ .Values.rocketmq.repository }}:{{ .Values.rocketmq.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.rocketmq.pullPolicy }}
         lifecycle:
@@ -87,10 +81,13 @@ spec:
               command:
               - sh
               - -c
-              - sleep 5; ./mqshutdown controller
+              - sleep 5; ./mqshutdown proxy
         ports:
-        - containerPort: 9878
+        - containerPort: 8080
           name: main
+          protocol: TCP
+        - containerPort: 8081
+          name: grpc
           protocol: TCP
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
@@ -100,12 +97,6 @@ spec:
           - mountPath: /rocketmq-start.sh
             name: rocketmq-config
             subPath: rocketmq-start.sh
-          - mountPath: {{ .Values.dataMountPath }}/controller-data
-            name: data
-            subPath: controller-data
-          - mountPath: {{ .Values.dataMountPath }}/logs
-            name: data
-            subPath: logs
   vars:
     - name: CLUSTER_NAME
       valueFrom:

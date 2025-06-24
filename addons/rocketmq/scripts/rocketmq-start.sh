@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # shellcheck disable=SC2034
 
@@ -59,8 +59,8 @@ init_broker_conf() {
   echo "" >> ${BROKER_CONF_FILE}
   echo "# generated config" >> ${BROKER_CONF_FILE}
   broker_name_seq=${HOSTNAME##*-}
-  if [ -n "$MY_POD_NAME" ]; then
-    broker_name_seq=${MY_POD_NAME##*-}
+  if [ -n "$POD_NAME" ]; then
+    broker_name_seq=${POD_NAME##*-}
   fi
   update_broker_conf "brokerName" "broker-g${broker_name_seq}"
   if [ "$enableControllerMode" != "true" ]; then

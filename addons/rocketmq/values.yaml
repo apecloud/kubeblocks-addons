@@ -63,3 +63,14 @@ resourceNamePrefix: "rocketmq"
 
 controller:
   replicaCount: 3
+  
+nameserver:
+  replicaCount: 2
+
+broker:
+  size:
+    master: 1
+    replica: 0
+
+  master:
+    brokerRole: ASYNC_MASTER

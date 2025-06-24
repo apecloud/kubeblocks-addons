@@ -112,3 +112,16 @@ rocketmq.controller.dlegerPeers
   {{- end -}}
 {{- join ";" $address -}}
 {{- end -}}
+
+{{/*
+env NAMESRV_ADDR
+*/}}
+{{- define "rocketmq.nameserver.addr" -}}
+{{- $headlessDomain := printf "svc-headless.%s.svc" .Release.Namespace -}}
+{{- $address := list -}}
+{{- $replicaCount := int .Values.nameserver.replicaCount -}}
+  {{- range $i := until $replicaCount -}}
+  {{- $address = printf "svc-%d.%s:9876" $i $headlessDomain | append $address -}}
+  {{- end -}}
+{{- join ";" $address -}}
+{{- end -}}

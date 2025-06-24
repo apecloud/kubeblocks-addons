@@ -1,0 +1,180 @@
+{{- $cmpdName := include "rocketmq.cmpdName" . -}}
+{{- $labels := include "rocketmq.labels" . -}}
+{{- $annotations := include "rocketmq.annotations" . -}}
+{{- $configTplName := include "rocketmq.configTplName" . -}}
+{{- $fullName := include "rocketmq.fullname" . -}}
+{{- $masterSize := int .Values.broker.size.master -}}
+{{- $replicaCount := int (add1 .Values.broker.size.replica) -}}
+{{- $image := printf "%s:%s" .Values.rocketmq.repository .Values.rocketmq.tag -}}
+{{- range $brokerId := until $replicaCount -}}
+  {{- $brokerFullName := printf "%s-broker-master" $fullName -}}
+  {{- $brokerRole := $.Values.broker.master.brokerRole -}}
+  {{- $brokerConfigKey := "broker-master.conf" -}}
+  {{- if gt $brokerId 0 }}
+    {{- $brokerFullName = printf "%s-broker-replica-id%d" $fullName $brokerId -}}
+    {{- $brokerRole = "SLAVE" -}}
+    {{- $brokerConfigKey = "broker-slave.conf" -}}
+  {{- end }}
+---
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ $cmpdName | quote }}
+  labels:
+    {{ $labels | nindent 4 }}
+  annotations:
+    {{ $annotations | nindent 4 }}
+spec:
+  provider: kubeblocks.io
+  description: RocketMQ Broker is a reliable and mature messaging and streaming broker.
+  serviceKind: broker
+  serviceVersion: {{ $.Values.componentServiceVersion.controller }}
+  services:
+    - name: vip
+      spec:
+        ports:
+          - name: vip
+            port: 10909
+            targetPort: vip
+    - name: main
+      spec:
+        ports:
+          - name: main
+            port: 10911
+            targetPort: main
+    - name: ha
+      spec:
+        ports:
+          - name: ha
+            port: 10912
+            targetPort: ha
+  configs:
+    - name: config
+      template: {{ $configTplName | quote }}
+      volumeName: rocketmq-config
+      namespace: {{ $.Release.Namespace }}
+      defaultMode: 0644
+      restartOnFileChange: false
+  systemAccounts:
+    - name: root
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 16
+        numDigits: 8
+        numSymbols: 0
+        letterCase: MixedCases
+  policyRules:
+    - apiGroups:
+      - ""
+      resources:
+      - endpoints
+      verbs:
+      - get
+    - apiGroups:
+      - ""
+      resources:
+      - events
+      verbs:
+      - create
+  runtime:
+    automountServiceAccountToken: true
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/component: broker
+            topologyKey: kubernetes.io/hostname
+    {{- if $.Values.broker.hostNetwork }}
+    hostNetwork: true
+    dnsPolicy: ClusterFirstWithHostNet
+    {{- else }}
+    dnsPolicy: {{ $.Values.broker.dnsPolicy | default "ClusterFirst" }}
+    {{- end }}
+    terminationGracePeriodSeconds: {{ $.Values.broker.terminationGracePeriodSeconds | default 30 }}
+    containers:
+      - name: broker
+        command:
+          - sh
+          - -c
+          - /rocketmq-start.sh
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: ROCKETMQ_PROCESS_ROLE
+          value: broker
+        - name: NAMESRV_ADDR
+          value: {{ include "rocketmq.nameserver.addr" $ }}
+        - name: ROCKETMQ_CONF_brokerId
+          value: {{ $brokerId | quote }}
+        - name: ROCKETMQ_CONF_brokerRole
+          value: {{ $brokerRole | quote }}
+        {{- if and $.Values.controllerModeEnabled }}
+        - name: enableControllerMode
+          value: "true"
+        {{- end }}
+        {{- with $.Values.broker.commonEnvs }}
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with $.Values.broker.extraEnvs }}
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        image: {{ $.Values.rocketmq.registry | default "docker.io" }}/{{ $.Values.rocketmq.repository }}:{{ $.Values.rocketmq.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" $.Values.rocketmq.pullPolicy }}
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - sh
+              - -c
+              - sleep 5; ./mqshutdown broker
+        ports:
+        - containerPort: 10911
+          name: main
+          protocol: TCP
+        - containerPort: 10912
+          name: ha
+          protocol: TCP
+        - containerPort: 10909
+          name: vip
+          protocol: TCP
+        volumeMounts:
+          - mountPath: {{ $.Values.dataMountPath }}
+            name: data
+          - mountPath:  /etc/rocketmq/acl
+            name: rocketmq-config
+          - mountPath: /rocketmq-start.sh
+            name: rocketmq-config
+            subPath: rocketmq-start.sh
+          - mountPath: /etc/rocketmq/{{ $brokerConfigKey | quote }}
+            name: rocketmq-config
+            subPath: broker-base.conf
+          - mountPath: {{ $.Values.dataMountPath }}/store
+            name: data
+            subPath: store
+          - mountPath: {{ $.Values.dataMountPath }}/logs
+            name: data
+            subPath: logs
+  vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: CLUSTER_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+{{- end }}
