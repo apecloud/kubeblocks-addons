@@ -109,12 +109,12 @@ spec:
       changes:
       serviceVersion: 5.0.29
       images:
-        mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.0.29
+        mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.0.29-multi
     - name: 4.4.29
       changes:
       serviceVersion: 4.4.29
       images:
-        mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.4.29
+        mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.4.29-multi
     - name: 4.2.25
       changes:
       serviceVersion: 4.2.25
