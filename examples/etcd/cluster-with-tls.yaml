@@ -20,7 +20,7 @@ spec:
       tls: true   # set TLS to true
       issuer:     # if TLS is True, this filed is required.
         name: KubeBlocks  # set Issuer to [KubeBlocks, UserProvided].
-      serviceVersion: 3.5.15
+      serviceVersion: 3.6.1
       replicas: 3
       resources:
         limits:

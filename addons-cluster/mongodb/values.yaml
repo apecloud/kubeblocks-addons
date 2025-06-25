@@ -33,3 +33,5 @@ hostnetwork: "disabled"
 
 extra:
   terminationPolicy: Delete
+
+disableExporter: false

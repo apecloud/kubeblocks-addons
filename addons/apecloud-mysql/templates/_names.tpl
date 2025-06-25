@@ -182,9 +182,9 @@ Define config constriant name
 */}}
 {{- define "apecloud-mysql.wesqlPCRName" -}}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-apecloud-mysql8.0-wesql-pcr
+apecloud-mysql8.0-wesql-pcr-{{ .Chart.Version }}
 {{- else -}}
-{{- .Values.resourceNamePrefix -}}-wesql-pcr
+{{- .Values.resourceNamePrefix -}}-wesql-pcr-{{ .Chart.Version }}
 {{- end -}}
 {{- end -}}
 
@@ -193,8 +193,8 @@ Define config constriant name
 */}}
 {{- define "apecloud-mysql.wescalePCRName" -}}
 {{- if eq (len .Values.resourceNamePrefix) 0 -}}
-apecloud-mysql8.0-wescale-pcr
+apecloud-mysql8.0-wescale-pcr-{{ .Chart.Version }}
 {{- else -}}
-{{- .Values.resourceNamePrefix -}}-wescale-pcr
+{{- .Values.resourceNamePrefix -}}-wescale-pcr-{{ .Chart.Version }}
 {{- end -}}
 {{- end -}}

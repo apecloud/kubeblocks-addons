@@ -27,6 +27,13 @@
 {{ $buffer_unit = "GB" }}
 {{- end }}
 
+{{- $pgVersion := "14.0" }}
+{{- range $i, $spec := $.cluster.spec.componentSpecs }}
+{{- if eq "postgresql" $spec.name }}
+{{- $pgVersion = $spec.serviceVersion }}
+{{- end }}
+{{- end }}
+
 listen_addresses = '*'
 port = '5432'
 archive_command = '/bin/true'
@@ -216,7 +223,13 @@ session_replication_role = 'origin'
 # extension: sql_firewall
 sql_firewall.firewall = 'disable'
 shared_buffers = '{{ printf "%d%s" $shared_buffers $buffer_unit }}'
+
+{{- if semverCompare ">=14.18.0" $pgVersion }}
+shared_preload_libraries = 'pg_stat_statements,auto_explain,bg_mon,pgextwlist,pg_auth_mon,set_user,pg_cron,pg_stat_kcache,timescaledb,pgaudit,pg_duckdb'
+{{- else }}
 shared_preload_libraries = 'pg_stat_statements,auto_explain,bg_mon,pgextwlist,pg_auth_mon,set_user,pg_cron,pg_stat_kcache,timescaledb,pgaudit'
+{{- end }}
+
 {{- if eq (index $ "TLS_ENABLED") "true" }}
 ssl = 'True'
 ssl_ca_file = '/etc/pki/tls/ca.pem'

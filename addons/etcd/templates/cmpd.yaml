@@ -10,7 +10,6 @@ spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
-  serviceVersion: {{ .Chart.AppVersion }}
   runtime:
     initContainers:
       - name: inject-bash
@@ -19,14 +18,19 @@ spec:
           - name: scripts
             mountPath: /scripts
           - name: bin
-            mountPath: /share/bin
+            mountPath: /shared/bin
+          - name: data
+            mountPath: {{ .Values.dataMountDir }}
         command:
           - /bin/bash
           - -c
-          - scripts/inject-bash.sh
+          - |
+            mkdir -p {{ .Values.binDir }}
+            /scripts/inject-bash.sh {{ .Values.binDir }}
     containers:
       - name: etcd
         imagePullPolicy: {{ .Values.image.pullPolicy }}
+        workingDir: {{ .Values.dataMountDir }}
         ports:
           - containerPort: 2379
             name: client
@@ -45,7 +49,7 @@ spec:
           - /bin/bash
           - -c
           - |
-            export PATH=$PATH:/bin
+            export PATH="/bin:$PATH"
             /scripts/start.sh
         env:
           - name: CURRENT_POD_NAME
@@ -63,6 +67,8 @@ spec:
       value: {{ .Values.dataDir }}
     - name: RESTORE_DIR
       value: {{ .Values.restoreDir }}
+    - name: BIN_DIR
+      value: {{ .Values.binDir }}
     - name: CLUSTER_NAME
       valueFrom:
         clusterVarRef:
@@ -73,8 +79,10 @@ spec:
       value: "{{ .Values.tls.client }}"
     - name: PEER_TLS
       value: "{{ .Values.tls.peer }}"
-    - name: TMP_CONFIG_PATH
-      value: {{ .Values.tmpConfigPath }}
+    - name: CONFIG_TEMPLATE_PATH
+      value: {{ .Values.configTemplatePath }}
+    - name: CONFIG_FILE_PATH
+      value: {{ .Values.configFilePath }}
     - name: PEER_FQDNS
       valueFrom:
         componentVarRef:
@@ -124,7 +132,7 @@ spec:
     caFile: ca.pem
     certFile: cert.pem
     keyFile: key.pem
-  # reference: https://etcd.io/docs/v3.5/op-guide/runtime-configuration/ single member changes is better
+  # reference: https://etcd.io/docs/v3.6/op-guide/runtime-configuration/ single member changes is better
   updateStrategy: Serial
   roles:
     - name: leader
@@ -136,7 +144,6 @@ spec:
   lifecycleActions:
     roleProbe:
       exec:
-        image: {{ include "etcd356.image" . }}
         container: etcd
         command:
           - /bin/bash
@@ -144,44 +151,36 @@ spec:
           - /scripts/roleprobe.sh
     memberJoin:
       exec:
-        image: {{ include "etcd356.image" . }}
-        container: etcd
         command:
           - /bin/bash
           - -c
-          - /scripts/member-join.sh
+          - /scripts/member-join.sh > /tmp/member-join.log 2>&1
     memberLeave:
       exec:
-        image: {{ include "etcd356.image" . }}
-        container: etcd
         command:
           - /bin/bash
           - -c
-          - /scripts/member-leave.sh
+          - /scripts/member-leave.sh > /tmp/member-leave.log 2>&1
     switchover:
       exec:
-        image: {{ include "etcd356.image" . }}
-        container: etcd
         command:
           - /bin/bash
           - -c
-          - /scripts/switchover.sh
+          - /scripts/switchover.sh > /tmp/switchover.log 2>&1
     dataDump:
       exec:
-        image: {{ include "etcd356.image" . }}
         command:
           - /bin/bash
           - -c
-          - /scripts/data-load.sh
+          - /scripts/data-load.sh > /tmp/data-load.log 2>&1
         targetPodSelector: Role
         matchingKey: leader
     dataLoad:
       exec:
-        image: {{ include "etcd356.image" . }}
         command:
           - /bin/bash
           - -c
-          - /scripts/data-load.sh
+          - /scripts/data-load.sh > /tmp/data-load.log 2>&1
   configs:
     - name: config
       template: {{ include "etcd3.configTemplate" .}}

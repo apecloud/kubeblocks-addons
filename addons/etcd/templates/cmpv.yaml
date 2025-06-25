@@ -13,6 +13,7 @@ spec:
       releases:
         - 3.5.6
         - 3.5.15
+        - 3.6.1
   releases:
     - name: 3.5.6
       serviceVersion: 3.5.6
@@ -36,3 +37,14 @@ spec:
         switchover: {{ include "etcd.repository" . }}:v3.5.15
         dataDump: {{ include "etcd.repository" . }}:v3.5.15
         dataLoad: {{ include "etcd.repository" . }}:v3.5.15
+    - name: 3.6.1
+      serviceVersion: 3.6.1
+      images:
+        inject-bash: {{ include "bashBusyboxImage.repository" . }}:1.37.0-musl
+        etcd: {{ include "etcd.repository" . }}:v3.6.1
+        memberJoin: {{ include "etcd.repository" . }}:v3.6.1
+        memberLeave: {{ include "etcd.repository" . }}:v3.6.1
+        roleProbe: {{ include "etcd.repository" . }}:v3.6.1
+        switchover: {{ include "etcd.repository" . }}:v3.6.1
+        dataDump: {{ include "etcd.repository" . }}:v3.6.1
+        dataLoad: {{ include "etcd.repository" . }}:v3.6.1

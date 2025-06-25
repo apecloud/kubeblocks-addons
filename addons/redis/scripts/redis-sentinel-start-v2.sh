@@ -133,7 +133,7 @@ build_redis_sentinel_conf() {
       echo "sentinel announce-ip $redis_sentinel_announce_host_value"
       echo "sentinel announce-port $redis_sentinel_announce_port_value"
     } >> $redis_sentinel_real_conf
-  elif ! is_empty "$FIXED_POD_IP_ENABLED"; then
+  elif [ "$FIXED_POD_IP_ENABLED" == "true" ]; then
     echo "redis sentinel use the fixed pod ip $CURRENT_POD_IP:$sentinel_port to announce"
     {
       echo "port $sentinel_port"

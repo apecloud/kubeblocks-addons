@@ -471,54 +471,54 @@ pulsar3-bookies-pcr
 Define pulsar v2.X bookies parameter config render name
 */}}
 {{- define "pulsar2.bkrecoveryPCRName" -}}
-pulsar2-bkrecovery-pcr
+pulsar2-bkrecovery-pcr-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define pulsar v3.X bookies parameter config render name
 */}}
 {{- define "pulsar3.bkrecoveryPCRName" -}}
-pulsar3-bkrecovery-pcr
+pulsar3-bkrecovery-pc-{{ .Chart.Version }}r
 {{- end -}}
 
 {{/*
 Define pulsar v2.X bookies parameter config render name
 */}}
 {{- define "pulsar2.proxyPCRName" -}}
-pulsar2-proxy-pcr
+pulsar2-proxy-pc-{{ .Chart.Version }}r
 {{- end -}}
 
 {{/*
 Define pulsar v3.X bookies parameter config render name
 */}}
 {{- define "pulsar3.proxyPCRName" -}}
-pulsar3-proxy-pcr
+pulsar3-proxy-pc-{{ .Chart.Version }}r
 {{- end -}}
 
 {{/*
 Define pulsar v2.X bookies parameter config render name
 */}}
 {{- define "pulsar2.brokerPCRName" -}}
-pulsar2-broker-pcr
+pulsar2-broker-pc-{{ .Chart.Version }}r
 {{- end -}}
 
 {{/*
 Define pulsar v3.X bookies parameter config render name
 */}}
 {{- define "pulsar3.brokerPCRName" -}}
-pulsar3-broker-pcr
+pulsar3-broker-pc-{{ .Chart.Version }}r
 {{- end -}}
 
 {{/*
 Define pulsar v2.X bookies parameter config render name
 */}}
 {{- define "pulsar2.zookeeperPCRName" -}}
-pulsar2-zookeeper-pcr
+pulsar2-zookeeper-pc-{{ .Chart.Version }}r
 {{- end -}}
 
 {{/*
 Define pulsar v3.X bookies parameter config render name
 */}}
 {{- define "pulsar3.zookeeperPCRName" -}}
-pulsar3-zookeeper-pcr
+pulsar3-zookeeper-pc-{{ .Chart.Version }}r
 {{- end -}}

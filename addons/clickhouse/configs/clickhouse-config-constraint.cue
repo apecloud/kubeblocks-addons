@@ -34,6 +34,7 @@
 	tcp_port_secure:                      _
 	listen_host:                          _
 	query_log:                            _
+	user_directories:                     _
 
 	// Path to a folder where a ClickHouse server stores user and role configurations created by SQL commands
 	access_control_path: string

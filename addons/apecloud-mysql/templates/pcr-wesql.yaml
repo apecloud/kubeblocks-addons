@@ -4,6 +4,8 @@ metadata:
   name: {{ include "apecloud-mysql.wesqlPCRName" . }}
   labels:
     {{- include "apecloud-mysql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "apecloud-mysql.annotations" . | nindent 4 }}
 spec:
   componentDef: {{ include "apecloud-mysql.cmpdNameApecloudMySQL" . }}
   parametersDefs:

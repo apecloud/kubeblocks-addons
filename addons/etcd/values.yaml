@@ -1,4 +1,3 @@
-
 nameOverride: ""
 fullnameOverride: ""
 
@@ -9,6 +8,9 @@ dataMountDir: /var/run/etcd
 restoreDir: /var/run/etcd/restore
 dataDir: /var/run/etcd/default.etcd
 
+# bin dir, used to inject static bash and other binaries to distroless etcd image
+binDir: /var/run/etcd/bin
+
 # tls mount path
 tlsMountPath: /etc/pki/tls
 
@@ -16,8 +18,10 @@ tlsMountPath: /etc/pki/tls
 cmpdVersionPrefix:
   major3: "etcd-3"
 
+# original config template path
+configTemplatePath: /etc/etcd/etcd.conf
 # a copy version of /etc/etcd/etcd.conf but add some modification
-tmpConfigPath: /var/run/etcd/etcd.conf
+configFilePath: /var/run/etcd/etcd.conf
 
 # These TLS settings are used to configure two kind of TLS for etcd
 # They will only take effect when 'etcd-cluster.Values.tlsEnable' is set to true
@@ -32,10 +36,9 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag:
     major3:
-      # latest version build with busybox brinaries
       minor56: v3.5.6
-      # latest version build with distroless(default)
       minor515: v3.5.15
+      minor61: v3.6.1
 
 # used to inject static bash and other brinaries to distroless etcd image
 # Dockerfile place in ./bash-busybox

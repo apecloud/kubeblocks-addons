@@ -11,16 +11,25 @@ There are two key components in the ClickHouse cluster:
 
 ### Lifecycle Management
 
-|   Topology       | Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
-|------------------|------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
-| standalone/cluster     | Yes              | Yes             | Yes              | Yes       | Yes        | Yes       | No    | N/A      |
+#### ClickHouse Server
+
+| Topology           | Horizontal scaling | Vertical scaling | Expand volume | Restart | Stop/Start | Configure | Expose | Switchover |
+| ------------------ | ------------------ | ---------------- | ------------- | ------- | ---------- | --------- | ------ | ---------- |
+| standalone/cluster | Yes                | Yes              | Yes           | Yes     | Yes        | Yes       | No     | N/A        |
+
+#### ClickHouse Keeper
+
+| Topology | Horizontal scaling | Vertical scaling | Expand volume | Restart | Stop/Start | Configure | Expose | Switchover |
+| -------- | ------------------ | ---------------- | ------------- | ------- | ---------- | --------- | ------ | ---------- |
+| cluster  | Yes                | Yes              | Yes           | Yes     | Yes        | Yes       | No     | Yes        |
 
 ### Versions
 
 | Major Versions | Description |
-|---------------|-------------|
-| 22            | 22.9.4      |
-| 24           | 24.8.3|
+| -------------- | ----------- |
+| 22             | 22.9.4      |
+| 24             | 24.8.3      |
+| 25             | 25.4.4      |
 
 ## Prerequisites
 
@@ -429,7 +438,7 @@ This example creates a clickhouse cluster with 2 shards, each shard has 2 replic
 
 #### Scale-out
 
-Horizontal scaling out Clickhouse cluster by adding ONE more replica:
+Horizontal scaling out Clickhouse by adding ONE more replica:
 
 ```yaml
 # cat examples/clickhouse/scale-out.yaml
@@ -445,9 +454,6 @@ spec:
   # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
   horizontalScaling:
     # Specifies the name of the Component.
-    # Specifies the name of the Component.
-    # - clickhouse
-    # - ch-keeper
   - componentName: clickhouse
     # Specifies the replica changes for scaling out components
     scaleOut:
@@ -462,7 +468,7 @@ kubectl apply -f examples/clickhouse/scale-out.yaml
 
 #### Scale-in
 
-Horizontal scaling in clickhouse cluster by deleting ONE replica:
+Horizontal scaling in Clickhouse by deleting ONE replica:
 
 ```yaml
 # cat examples/clickhouse/scale-in.yaml
@@ -478,8 +484,6 @@ spec:
   # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
   horizontalScaling:
     # Specifies the name of the Component.
-    # - clickhouse
-    # - ch-keeper
   - componentName: clickhouse
     # Specifies the replica changes for scaling out components
     scaleIn:
@@ -490,6 +494,66 @@ spec:
 
 ```bash
 kubectl apply -f examples/clickhouse/scale-in.yaml
+```
+
+#### Keeper-Scale-out
+
+Horizontal scaling out Clickhouse Keeper by adding TWO more replica:
+
+```yaml
+# cat examples/clickhouse/keeper-scale-out.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: ch-scale-out
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: clickhouse-cluster
+  type: HorizontalScaling
+  # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
+  horizontalScaling:
+    # Specifies the name of the Component.
+  - componentName: ch-keeper
+    # Specifies the replica changes for scaling out components
+    scaleOut:
+      # Specifies the replica changes for the component.
+      # add one more replica to current component
+      replicaChanges: 2 
+```
+
+```bash
+kubectl apply -f examples/clickhouse/keeper-scale-out.yaml
+```
+
+#### Keeper-Scale-in
+
+Horizontal scaling in Clickhouse Keeper by deleting TWO replica:
+
+```yaml
+# cat examples/clickhouse/keeper-scale-in.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: ch-scale-in
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: clickhouse-cluster
+  type: HorizontalScaling
+  # Lists HorizontalScaling objects, each specifying scaling requirements for a Component, including desired total replica counts, configurations for new instances, modifications for existing instances, and instance downscaling options
+  horizontalScaling:
+    # Specifies the ame of the Component.
+  - componentName: ch-keeper
+    # Specifies the replica changes for scaling out components
+    scaleIn:
+      # Specifies the replica changes for the component.
+      # add one more replica to current component
+      replicaChanges: 2 
+```
+
+```bash
+kubectl apply -f examples/clickhouse/keeper-scale-in.yaml
 ```
 
 #### Scale-in/out using Cluster API
@@ -540,6 +604,114 @@ spec:
 ```bash
 kubectl apply -f examples/clickhouse/verticalscale.yaml
 ```
+
+### Switchover for Clickhouse Keeper
+
+#### Switchover without preferred candidates
+
+Switchover a specified instance as the new primary or leader of the cluster
+
+```yaml
+# cat examples/clickhouse/keeper-switchover.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: keeper-switchover
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: clickhouse-cluster
+  type: Switchover
+  # Lists Switchover objects, each specifying a Component to perform the switchover operation.
+  switchover:
+    # Specifies the name of the Component.
+  - componentName: ch-keeper
+    # Specifies the instance whose role will be transferred.
+    # A typical usage is to transfer the leader role in a consensus system.
+    instanceName: "clickhouse-cluster-ch-keeper-0"
+
+```
+
+```yaml
+# cat examples/clickhouse/keeper-switchover.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: keeper-switchover
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: clickhouse-cluster
+  type: Switchover
+  # Lists Switchover objects, each specifying a Component to perform the switchover operation.
+  switchover:
+    # Specifies the name of the Component.
+  - componentName: ch-keeper
+    # Specifies the instance whose role will be transferred.
+    # A typical usage is to transfer the leader role in a consensus system.
+    instanceName: "clickhouse-cluster-ch-keeper-0"
+```
+
+```bash
+kubectl apply -f examples/clickhouse/keeper-switchover.yaml
+```
+
+#### Switchover-specified-instance
+
+Switchover a specified instance as the new primary or leader of the cluster
+
+```yaml
+# cat examples/clickhouse/keeper-switchover-specified-instance.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: keeper-switchover
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: clickhouse-cluster
+  type: Switchover
+  # Lists Switchover objects, each specifying a Component to perform the switchover operation.
+  switchover:
+    # Specifies the name of the Component.
+  - componentName: ch-keeper
+    # Specifies the instance whose role will be transferred.
+    # A typical usage is to transfer the leader role in a consensus system.
+    instanceName: "clickhouse-cluster-ch-keeper-0"
+    # Specifies the instance that will become the new leader, if not specify, the first non leader instance will become candidate.
+    # Need to ensure the candidate instance is catch up logs of the quorum, otherwise the switchover will transfer the leader to other instance.
+    candidateName: "clickhouse-cluster-ch-keeper-1"
+
+```
+
+```yaml
+# cat examples/clickhouse/keeper-switchover-specified-instance.yaml
+apiVersion: operations.kubeblocks.io/v1alpha1
+kind: OpsRequest
+metadata:
+  name: keeper-switchover
+  namespace: demo
+spec:
+  # Specifies the name of the Cluster resource that this operation is targeting.
+  clusterName: clickhouse-cluster
+  type: Switchover
+  # Lists Switchover objects, each specifying a Component to perform the switchover operation.
+  switchover:
+    # Specifies the name of the Component.
+  - componentName: ch-keeper
+    # Specifies the instance whose role will be transferred.
+    # A typical usage is to transfer the leader role in a consensus system.
+    instanceName: "clickhouse-cluster-ch-keeper-0"
+    # Specifies the instance that will become the new leader, if not specify, the first non leader instance will become candidate.
+    # Need to ensure the candidate instance is catch up logs of the quorum, otherwise the switchover will transfer the leader to other instance.
+    candidateName: "clickhouse-cluster-ch-keeper-1"
+```
+
+```bash
+kubectl apply -f examples/clickhouse/keeper-switchover-specified-instance.yaml
+```
+
+You may need to update the `opsrequest.spec.switchover.instanceName` field to your desired instance name.
 
 ### Expand volume
 
@@ -670,6 +842,7 @@ spec:
 ```
 
 To update parameter `max_bytes_to_read`, we use the full path `clickhouse.profiles.web.max_bytes_to_read` w.r.t the `user.xml` file.
+
 </details>
 
 ### Restart

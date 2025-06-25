@@ -13,23 +13,38 @@ spec:
         - 22.9.4
         - 25.4.4
       compDefs:
-        - {{ include "clickhouse24.cmpdRegexpPattern" . }}
+        - {{ include "clickhouse.cmpdRegexpPattern" . }}
     - releases:
         - 24.8.3
         - 22.9.4
         - 25.4.4
       compDefs:
-        - {{ include "clickhouse-keeper24.cmpdRegexpPattern" . }}
+        - {{ include "clickhouse-keeper.cmpdRegexpPattern" . }}
   releases:
     - name: 25.4.4
       serviceVersion: 25.4.4
       images:
-        clickhouse: {{ include "clickhouse.repository" . }}:25.4.4-debian-12-r1
+        copy-tools: {{ include "busybox.image" . }}
+        clickhouse: {{ include "clickhouse25.image" . }}
+        role-probe: {{ include "clickhouse25.image" . }}
+        switchover: {{ include "clickhouse25.image" . }}
+        member-join: {{ include "clickhouse25.image" . }}
+        member-leave: {{ include "clickhouse25.image" . }}
     - name: 24.8.3
       serviceVersion: 24.8.3
       images:
-        clickhouse: {{ include "clickhouse.repository" . }}:24.8.3-debian-12-r1
+        copy-tools: {{ include "busybox.image" . }}
+        clickhouse: {{ include "clickhouse24.image" . }}
+        role-probe: {{ include "clickhouse24.image" . }}
+        switchover: {{ include "clickhouse24.image" . }}
+        member-join: {{ include "clickhouse24.image" . }}
+        member-leave: {{ include "clickhouse24.image" . }}
     - name: 22.9.4
       serviceVersion: 22.9.4
       images:
-        clickhouse: {{ include "clickhouse.repository" . }}:22.9.4-debian-11-r1
+        copy-tools: {{ include "busybox.image" . }}
+        clickhouse: {{ include "clickhouse22.image" . }}
+        role-probe: {{ include "clickhouse22.image" . }}
+        switchover: {{ include "clickhouse22.image" . }}
+        member-join: {{ include "clickhouse22.image" . }}
+        member-leave: {{ include "clickhouse22.image" . }}
