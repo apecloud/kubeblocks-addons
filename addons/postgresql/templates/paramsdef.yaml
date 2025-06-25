@@ -1,20 +1,22 @@
-{{- $cc := .Files.Get "config/pg12-config-effect-scope.yaml" | fromYaml }}
+{{- range .Values.versions -}}
+{{- $cc := $.Files.Get (printf "config/pg%s-config-effect-scope.yaml" .major) | fromYaml }}
+---
 apiVersion: parameters.kubeblocks.io/v1alpha1
 kind: ParametersDefinition
 metadata:
-  name: {{ include "postgresql12.parametersDefinition" . }}
+  name: {{ printf "postgresql%s-pd-%s" .major $.Chart.Version }}
   labels:
-    {{- include "postgresql.labels" . | nindent 4 }}
+    {{- include "postgresql.labels" $ | nindent 4 }}
   annotations:
-    {{- include "postgresql.annotations" . | nindent 4 }}
+    {{- include "postgresql.annotations" $ | nindent 4 }}
 spec:
   fileName: postgresql.conf
 
   reloadAction:
     tplScriptTrigger:
       sync: true
-      scriptConfigMapRef: {{ include "postgresql.patroniReloadScriptsTemplate" . }}
-      namespace: {{ .Release.Namespace }}
+      scriptConfigMapRef: {{ include "postgresql.patroniReloadScriptsTemplate" $ }}
+      namespace: {{ $.Release.Namespace }}
     ## update patroni master
     targetPodSelector:
       matchLabels:
@@ -30,7 +32,7 @@ spec:
     # schemaInJSON: auto generate from cue scripts
     # example: ../../pkg/configuration/testdata/mysql_openapi.json
     cue: |-
-      {{- .Files.Get "config/pg12-config-constraint.cue" | nindent 6 }}
+      {{- $.Files.Get (printf "config/pg%s-config-constraint.cue" .major) | nindent 6 }}
 
   ##  require db instance restart
   ## staticParameters
@@ -50,3 +52,4 @@ spec:
     - {{ . }}
    {{- end }}
   {{- end}}
+{{- end }}

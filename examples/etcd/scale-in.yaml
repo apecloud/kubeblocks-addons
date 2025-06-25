@@ -15,4 +15,5 @@ spec:
     scaleIn:
       # Specifies the replica changes for the component.
       # add one more replica to current component
+      # only support change one replica at a time
       replicaChanges: 1
