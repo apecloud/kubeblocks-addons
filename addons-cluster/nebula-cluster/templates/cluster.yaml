@@ -1,7 +1,7 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: Cluster
 metadata:
-  name: {{ include "nebula-cluster.name" . }}
+  name: {{ include "kblib.clusterName" . }}
   namespace: {{ .Release.Namespace }}
   labels:
     {{ include "nebula-cluster.labels" . | indent 4 }}

@@ -4,6 +4,13 @@ description: Nebula Graph Cluster Helm Chart for KubeBlocks.
 type: application
 version: 0.5.1-beta.0
 appVersion: "v3.5.0"
+
+dependencies:
+  - name: kblib
+    version: 0.1.0
+    repository: file://../kblib
+    alias: extra
+
 maintainers:
   - name: Shanshan Ying
     email: shanshan.ying@apecloud.com
