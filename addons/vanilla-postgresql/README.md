@@ -508,7 +508,8 @@ kbcli cluster explain-config vanpg-cluster # kbcli is a command line tool to int
 
 ### Backup
 
-When create a backup for cluster, you need to create a BackupRepo first. You can refer to the "BackupRepo" section in the ```example/postgresql/README.md``` file to learn how to create a BackupRepo.
+> [!IMPORTANT]
+> Before you start, please create a `BackupRepo` to store the backup data. Refer to [BackupRepo](../docs/create-backuprepo.md) for more details.
 
 KubeBlocks now supports one backup method for Vanilla-PostgreSQL cluster, which is `vanilla-pg-basebackup`.
 Other backup methods such as "wal-g" will be supported in the future.
