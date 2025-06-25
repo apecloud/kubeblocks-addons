@@ -8,7 +8,7 @@ terminationPolicy: Delete
 
 ## @param version, mapping cluster.spec.componentSpec[].serviceVersion which defined in ComponentVersion
 ##
-version: 16.4.0
+version: 17.5.0
 
 ## @param mode postgresql cluster topology mode replication
 ##
