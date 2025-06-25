@@ -23,6 +23,53 @@ if [ -z "$client_path" ]; then
     CLIENT="mongo"
 fi
 
+kill_process() {
+    local process_name="$1"
+    local process_pid=$(pgrep -x "$process_name")
+    if [ -z "$process_pid" ]; then
+        process_pid=$(pgrep -f "$process_name")
+    fi
+    if [ -n "$process_pid" ]; then
+        kill -9 $process_pid
+        echo "INFO: kill $process_name with pid $process_pid"
+    fi
+}
+
+process_restore_signal() {
+    target_signal="$1"
+    restore_signal_cm_name="$KB_CLUSTER_NAME-restore-signal" 
+    restore_signal_cm_namespace="$KB_NAMESPACE"
+    while true; do
+        kubectl_get_result=$(kubectl get configmap $restore_signal_cm_name -n $restore_signal_cm_namespace -o json 2>&1)
+        kubectl_get_exit_code=$?
+        if [ "$kubectl_get_exit_code" -ne 0 ]; then
+            echo "INFO: Waiting for restore signal..."
+        else
+            annotation_value=$(echo "$kubectl_get_result" | jq -r '.metadata.labels["apps.kubeblocks.io/restore-mongodb-shard"] // empty')
+            echo "INFO: Restore signal is $annotation_value."
+            if [[ "$annotation_value" == "start" ]]; then
+                if [[ "$target_signal" == "start" ]]; then
+                    echo "INFO: Restore $annotation_value signal received, starting restore..."
+                    break
+                fi
+            elif [[ "$annotation_value" == "end" ]]; then
+                echo "INFO: Restore completed, exiting."
+                kill_process "syncer"
+                kill_process "mongod"
+                kill_process "pbm-agent-entrypoint"
+                kill_process "pbm-agent"
+                exec syncer -- mongod --bind_ip_all --port $PORT --replSet $KB_CLUSTER_COMP_NAME --config /etc/mongodb/mongodb.conf
+                exit 0
+            else
+                echo "INFO: Restore signal is $annotation_value, bad signal, exiting."
+                exit 1
+            fi
+        fi
+        sleep 1
+    done
+}
+
+# check if need to restore
 wait_interval=5
 while true; do
     cluster_json=$(kubectl get clusters.apps.kubeblocks.io ${KB_CLUSTER_NAME} -n ${KB_NAMESPACE} -o json 2>&1)
@@ -43,75 +90,15 @@ while true; do
     fi
 done
 
-kill_process() {
-    local process_name="$1"
-    local process_pid=$(pgrep -x "$process_name")
-    if [ -z "$process_pid" ]; then
-        process_pid=$(pgrep -f "$process_name")
-    fi
-    if [ -n "$process_pid" ]; then
-        kill -9 $process_pid
-        echo "INFO: kill $process_name with pid $process_pid"
-    fi
-}
-
 echo "INFO: Startup backup agent for restore."
 pbm-agent-entrypoint &
 
 echo "INFO: Start mongodb for restore."
 syncer -- mongod --bind_ip_all --port $PORT --replSet $KB_CLUSTER_COMP_NAME --config /etc/mongodb/mongodb.conf &
 
-restore_signal_cm_name="$KB_CLUSTER_NAME-restore-signal" 
-restore_signal_cm_namespace="$KB_NAMESPACE"
-while true; do
-    kubectl_get_result=$(kubectl get configmap $restore_signal_cm_name -n $restore_signal_cm_namespace -o json 2>&1)
-    kubectl_get_exit_code=$?
-    if [ "$kubectl_get_exit_code" -ne 0 ]; then
-        echo "INFO: Waiting for restore signal..."
-    else
-        annotation_value=$(echo "$kubectl_get_result" | jq -r '.metadata.labels["apps.kubeblocks.io/restore-mongodb-shard"] // empty')
-        if [[ "$annotation_value" == "start" ]]; then
-            echo "INFO: Restore signal received, starting restore..."
-            break
-        elif [[ "$annotation_value" == "end" ]]; then
-            echo "INFO: Restore completed, exiting."
-            kill_process "syncer"
-            kill_process "mongod"
-            kill_process "pbm-agent-entrypoint"
-            kill_process "pbm-agent"
-            exec syncer -- mongod --bind_ip_all --port $PORT --replSet $KB_CLUSTER_COMP_NAME --config /etc/mongodb/mongodb.conf
-            exit 0
-        else
-            echo "INFO: Restore signal is $annotation_value, bad signal, exiting."
-            exit 1
-        fi
-    fi
-    sleep 1
-done
+process_restore_signal "start"
 
+# syncer affects pbm-agent to shutdown and restart mongod, so we need to kill syncer.
 kill_process "syncer"
 
-while true; do
-    kubectl_get_result=$(kubectl get configmap $restore_signal_cm_name -n $restore_signal_cm_namespace -o json 2>&1)
-    kubectl_get_exit_code=$?
-    if [ "$kubectl_get_exit_code" -ne 0 ]; then
-        echo "INFO: Waiting for restore signal..."
-    else
-        annotation_value=$(echo "$kubectl_get_result" | jq -r '.metadata.labels["apps.kubeblocks.io/restore-mongodb-shard"] // empty')
-        if [[ "$annotation_value" == "end" ]]; then
-            echo "INFO: Restore completed, exiting."
-            kill_process "syncer"
-            kill_process "mongod"
-            kill_process "pbm-agent-entrypoint"
-            kill_process "pbm-agent"
-            exec syncer -- mongod --bind_ip_all --port $PORT --replSet $KB_CLUSTER_COMP_NAME --config /etc/mongodb/mongodb.conf
-            exit 0
-        elif [[ "$annotation_value" == "start" ]]; then
-            echo "INFO: Restore signal is $annotation_value."
-        else
-            echo "INFO: Restore signal is $annotation_value, bad signal, exiting."
-            exit 1
-        fi
-    fi
-    sleep 1
-done
+process_restore_signal "end"
