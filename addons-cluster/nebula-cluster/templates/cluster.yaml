@@ -8,6 +8,7 @@ metadata:
 spec:
   clusterDefinitionRef: nebula
   terminationPolicy: {{ .Values.nebula.terminationPolicy }}
+  topology: default
   componentSpecs:
     - name: graphd
       replicas: {{ .Values.nebula.graphd.replicas }}
