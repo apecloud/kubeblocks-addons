@@ -1,19 +1,21 @@
 etcd:
   endpoints:
-    - {{ .ETCD_ENDPOINT }}
+    # port is actually endpoint, maybe a bug of kb
+    - {{ .KB_CLUSTER_NAME }}-etcd-headless.{{ .KB_NAMESPACE }}.svc.cluster.local:2379
   rootPath: {{ .KB_CLUSTER_NAME }}
-messageQueue: pulsar
 minio:
-  address: {{ .MINIO_SERVER }}
-  port: {{ .MINIO_PORT }}
+  address: MINIO_HOST
+  port: MINIO_PORT
   accessKeyID: MINIO_ACCESS_KEY
   secretAccessKey: MINIO_SECRET_KEY
-  bucketName: {{ .KB_CLUSTER_NAME }}
+  bucketName: MINIO_BUCKETNAME
 mq:
-  type: pulsar
+  type: kafka
+messageQueue: kafka
+kafka:
+  # port is actually endpoint, maybe a bug of kb
+  brokerList: {{ .KAFKA_PORT }}
 msgChannel:
   chanNamePrefix:
     cluster: {{ .KB_CLUSTER_NAME }}
-pulsar:
-  address: {{ .PULSAR_SERVER }}
-  port: {{ .PULSAR_PORT }}
+

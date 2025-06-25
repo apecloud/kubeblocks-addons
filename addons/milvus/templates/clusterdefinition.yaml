@@ -34,3 +34,27 @@ spec:
           compDef: milvus-indexnode
         - name: querynode
           compDef: milvus-querynode
+    # with dependencies (etcd/kafka) included
+    - name: cluster-with-dep
+      components:
+        - name: etcd
+          compDef: etcd
+        - name: kafka
+          compDef: kafka-combine
+        - name: proxy
+          compDef: milvus-proxy
+        - name: mixcoord
+          compDef: milvus-mixcoord
+        - name: datanode
+          compDef: milvus-datanode
+        - name: indexnode
+          compDef: milvus-indexnode
+        - name: querynode
+          compDef: milvus-querynode
+      orders:
+        provision:
+          - etcd,kafka
+          - proxy,datanode,indexnode,querynode,mixcoord
+        terminate:
+          - proxy,datanode,indexnode,querynode,mixcoord
+          - etcd,kafka

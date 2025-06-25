@@ -36,9 +36,6 @@ Common labels
 {{- define "milvus.labels" -}}
 helm.sh/chart: {{ include "milvus.chart" . }}
 {{ include "milvus.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-{{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
@@ -108,7 +105,6 @@ readinessProbe:
 Milvus image
 */}}
 {{- define "milvus.image" }}
-image: {{ .Values.images.milvus.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.milvus.repository }}:{{ .Values.images.milvus.tag }}
 imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
 {{- end }}
 
@@ -117,7 +113,6 @@ Milvus init container - setup
 */}}
 {{- define "milvus.initContainer.setup" }}
 - name: setup
-  image: {{ .Values.images.milvusTools.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.milvusTools.repository }}:{{ .Values.images.milvusTools.tag }}
   imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
   command:
     - /cp
@@ -253,6 +248,53 @@ Milvus monitor
 {{- end }}
 
 {{/*
+Milvus cluster vars for cluster-with-dep topology
+*/}}
+{{- define "milvus.cluster.serviceRefVarsWithDep" }}
+- name: KAFKA_HOST
+  valueFrom:
+    serviceVarRef:
+      compDef: kafka
+      name: advertised-listener
+      optional: false
+      host: Required
+- name: KAFKA_PORT
+  valueFrom:
+    serviceVarRef:
+      compDef: kafka
+      name: advertised-listener
+      optional: false
+      port:
+        name: broker
+        option: Required
+# - name: MINIO_SERVER
+#   valueFrom:
+#     serviceRefVarRef:
+#       name: milvus-object-storage
+#       optional: false
+#       host: Required
+# - name: MINIO_PORT
+#   valueFrom:
+#     serviceRefVarRef:
+#       name: milvus-object-storage
+#       optional: false
+#       port: Required
+# - name: MINIO_ACCESS_KEY
+#   valueFrom:
+#     serviceRefVarRef:
+#       name: milvus-object-storage
+#       optional: false
+#       username: Required
+# - name: MINIO_SECRET_KEY
+#   valueFrom:
+#     serviceRefVarRef:
+#       name: milvus-object-storage
+#       optional: false
+#       password: Required
+{{- end -}}
+
+# this definition will be reused
+{{/*
 Milvus cluster external storage services reference
 */}}
 {{- define "milvus.cluster.serviceRef" }}
@@ -260,14 +302,17 @@ Milvus cluster external storage services reference
   serviceRefDeclarationSpecs:
     - serviceKind: etcd
       serviceVersion: "^3.*"
+  optional: true
 - name: milvus-log-storage
   serviceRefDeclarationSpecs:
     - serviceKind: pulsar
       serviceVersion: "^2.*"
+  optional: true
 - name: milvus-object-storage
   serviceRefDeclarationSpecs:
     - serviceKind: minio
       serviceVersion: "^*"
+  optional: true
 {{- end }}
 
 {{/*

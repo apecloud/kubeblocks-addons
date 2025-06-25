@@ -8,7 +8,6 @@ spec:
   provider: ApeCloud
   description: {{ .Chart.Description }}
   serviceKind: {{ .Chart.Name }}
-  serviceVersion: {{ .Chart.AppVersion }}
   runtime:
     initContainers:
       {{- include "milvus.initContainer.setup" . | indent 6 }}
@@ -41,7 +40,7 @@ spec:
     volumes:
       {{- include "milvus.volume.tools" . | indent 6 }}
   vars:
-    {{- include "milvus.cluster.serviceRefVars" . | indent 4 }}
+    {{- include "milvus.cluster.serviceRefVarsWithDep" . | indent 4 }}
   services:
     - name: milvus
       serviceName:  # use default name
