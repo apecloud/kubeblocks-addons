@@ -33,7 +33,7 @@ spec:
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "vanilla-postgresql-supabase15.compDefName" . }}
+  name: {{ include "supabase15.compDefName" . }}
   labels:
     {{- include "vanilla-postgresql.labels" . | nindent 4 }}
   annotations:
@@ -43,7 +43,7 @@ spec:
   serviceVersion: {{ .Values.defaultServiceVersion.supabaseMajor15 }}
   configs:
     - name: supabase-postgresql-configuration
-      template: {{ include "vanilla-postgresql-supabase15.configurationTemplate" . }}
+      template: {{ include "supabase15.configurationTemplate" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: postgresql-config
       defaultMode: 0444
