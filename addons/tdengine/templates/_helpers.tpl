@@ -43,6 +43,13 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
 {{/*
+Common annotations
+*/}}
+{{- define "tdengine.annotations" -}}
+apps.kubeblocks.io/skip-immutable-check: "true"
+{{- end }}
+
+{{/*
 Selector labels
 */}}
 {{- define "tdengine.selectorLabels" -}}
@@ -60,3 +67,25 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+
+{{/*
+Define tdengine component definition name
+*/}}
+{{- define "tdengine.cmpdName" -}}
+tdengine
+{{- end -}}
+
+{{/*
+Define tdengine component definition regex pattern
+*/}}
+{{- define "tdengine.cmpdRegexPattern" -}}
+tdengine
+{{- end -}}
+
+{{/*
+Define tdengine component version name
+*/}}
+{{- define "tdengine.cmpvName" -}}
+tdengine
+{{- end -}}
