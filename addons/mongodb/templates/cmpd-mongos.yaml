@@ -41,7 +41,7 @@ spec:
       runAsUser: 0
     containers:
       - name: mongos
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.percona.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         ports:
           - name: mongos
@@ -60,8 +60,6 @@ spec:
             value: $(MONGOS_USER)
           - name: MONGODB_ROOT_PASSWORD
             value: $(MONGOS_PASSWORD)
-          - name: USE_PSM
-            value: "true"
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data

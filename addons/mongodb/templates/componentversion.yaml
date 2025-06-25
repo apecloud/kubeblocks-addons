@@ -9,54 +9,78 @@ spec:
     - compDefs:
         - {{ include "mongodb.componentDefName" . }}
       releases:
-        - 8.0.8
-        - 7.0.18
-        - 6.0.21
-        - 5.0.29
+        - 8.0.4
+        - 7.0.16
+        - 7.0.12
+        - 6.0.20
+        - 6.0.16
+        - 5.0.30
+        - 5.0.28
         - 4.4.29
-        - 4.2.25
+        - 4.2.24
         - 4.0.28
   releases:
-    - name: 8.0.8
+    - name: 8.0.4
       changes:
-      serviceVersion: 8.0.8
+      serviceVersion: 8.0.4
       images:
-        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.8
+        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.4
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
-    - name: 7.0.18
+    - name: 7.0.16
       changes:
-      serviceVersion: 7.0.18
+      serviceVersion: 7.0.16
       images:
-        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:7.0.18
+        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:7.0.16
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
-    - name: 6.0.21
+    - name: 7.0.12
       changes:
-      serviceVersion: 6.0.21
+      serviceVersion: 7.0.12
       images:
-        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:6.0.21
+        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:7.0.12
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
-    - name: 5.0.29
+    - name: 6.0.20
       changes:
-      serviceVersion: 5.0.29
+      serviceVersion: 6.0.20
       images:
-        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.0.29-multi
+        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:6.0.20
+        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
+    - name: 6.0.16
+      changes:
+      serviceVersion: 6.0.16
+      images:
+        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:6.0.16
+        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
+    - name: 5.0.30
+      changes:
+      serviceVersion: 5.0.30
+      images:
+        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.0.30
+        init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
+        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
+    - name: 5.0.28
+      changes:
+      serviceVersion: 5.0.28
+      images:
+        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.0.28
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
     - name: 4.4.29
       changes:
       serviceVersion: 4.4.29
       images:
-        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.4.29-multi
+        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.4.29
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
-    - name: 4.2.25
+    - name: 4.2.24
       changes:
-      serviceVersion: 4.2.25
+      serviceVersion: 4.2.24
       images:
-        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.2.25
+        mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:4.2.24
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
     - name: 4.0.28

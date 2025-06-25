@@ -4,14 +4,16 @@
 
 image:
   registry: docker.io
-  repository: apecloud/percona-server-mongodb
+  repository: apecloud/mongo
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: 8.0.8 # 6.0.3-debian-11-r0
+  tag: 5.0.4 # 6.0.3-debian-11-r0
   syncer:
     repository: apecloud/syncer
     tag: test-wl-1.0
   percona:
+    repository: apecloud/percona-server-mongodb
+    tag: 8.0.8
     backup:
       repository: apecloud/percona-backup-mongodb
       tag: 2.9.1

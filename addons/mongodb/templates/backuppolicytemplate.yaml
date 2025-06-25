@@ -115,9 +115,59 @@ spec:
       - name: pbm-logical
         snapshotVolumes: false
         actionSetName: mongodb-shard-pbm-logical
+        envMapping:
+          - key: PBM_IMAGE_TAG
+            valueFrom:
+              serviceVersion:
+                - names: ["6.0.21", "7.0.18", "8.0.8"]
+                  mappingValue: "2.9.1"
+                - names: ["5.0.29", "4.4.29"]
+                  mappingValue: "2.3.0-multi"
+          - key: PSM_IMAGE_TAG
+            valueFrom:
+              serviceVersion:
+                - names: ["8.0.8"]
+                  mappingValue: "8.0.8"
+                - names: ["7.0.18"]
+                  mappingValue: "7.0.18"
+                - names: ["6.0.21"]
+                  mappingValue: "6.0.21"
+                - names: ["5.0.29-multi"]
+                  mappingValue: "5.0.29"
+                - names: ["4.4.29-multi"]
+                  mappingValue: "4.4.29"
+                - names: ["4.2.25"]
+                  mappingValue: "4.2.25"
+                - names: ["4.0.28"]
+                  mappingValue: "4.0.28"
       - name: pbm-physical
         snapshotVolumes: false
         actionSetName: mongodb-shard-pbm-physical
+        envMapping:
+          - key: PBM_IMAGE_TAG
+            valueFrom:
+              serviceVersion:
+                - names: ["6.0.21", "7.0.18", "8.0.8"]
+                  mappingValue: "2.9.1"
+                - names: ["5.0.29", "4.4.29"]
+                  mappingValue: "2.3.0-multi"
+          - key: PSM_IMAGE_TAG
+            valueFrom:
+              serviceVersion:
+                - names: ["8.0.8"]
+                  mappingValue: "8.0.8"
+                - names: ["7.0.18"]
+                  mappingValue: "7.0.18"
+                - names: ["6.0.21"]
+                  mappingValue: "6.0.21"
+                - names: ["5.0.29-multi"]
+                  mappingValue: "5.0.29"
+                - names: ["4.4.29-multi"]
+                  mappingValue: "4.4.29"
+                - names: ["4.2.25"]
+                  mappingValue: "4.2.25"
+                - names: ["4.0.28"]
+                  mappingValue: "4.0.28"
         targetVolumes:
           volumeMounts:
             - name: data
@@ -125,6 +175,31 @@ spec:
       - name: pbm-pitr
         snapshotVolumes: false
         actionSetName: mongodb-shard-pbm-pitr
+        envMapping:
+          - key: PBM_IMAGE_TAG
+            valueFrom:
+              serviceVersion:
+                - names: ["6.0.21", "7.0.18", "8.0.8"]
+                  mappingValue: "2.9.1"
+                - names: ["5.0.29", "4.4.29"]
+                  mappingValue: "2.3.0-multi"
+          - key: PSM_IMAGE_TAG
+            valueFrom:
+              serviceVersion:
+                - names: ["8.0.8"]
+                  mappingValue: "8.0.8"
+                - names: ["7.0.18"]
+                  mappingValue: "7.0.18"
+                - names: ["6.0.21"]
+                  mappingValue: "6.0.21"
+                - names: ["5.0.29-multi"]
+                  mappingValue: "5.0.29"
+                - names: ["4.4.29-multi"]
+                  mappingValue: "4.4.29"
+                - names: ["4.2.25"]
+                  mappingValue: "4.2.25"
+                - names: ["4.0.28"]
+                  mappingValue: "4.0.28"
         targetVolumes:
           volumeMounts:
             - name: data

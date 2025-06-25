@@ -19,7 +19,7 @@ function enable_pitr() {
     echo "INFO: Pitr config is not equal to the current config, updating..."
     wait_for_other_operations
 
-    pbm config --mongodb-uri "$PBM_MONGODB_URI" --set pitr.enabled=true,pitr.oplogSpanMin=$PBM_OPLOG_SPAN_MIN_MINUTES,pitr.compression=$PBM_COMPRESSION
+    pbm config --mongodb-uri "$PBM_MONGODB_URI" --set pitr.enabled=true --set pitr.oplogSpanMin=$PBM_OPLOG_SPAN_MIN_MINUTES --set pitr.compression=$PBM_COMPRESSION
     echo "INFO: Pitr config updated."
   fi
 }

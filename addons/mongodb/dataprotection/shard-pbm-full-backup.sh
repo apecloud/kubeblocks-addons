@@ -44,6 +44,13 @@ set +e
 while [ $attempt -le $MAX_RETRIES ]; do
     describe_result=$(pbm describe-backup --mongodb-uri "$PBM_MONGODB_URI" "$backup_name" -o json 2>&1)
     if [ $? -eq 0 ] && [ -n "$describe_result" ]; then
+        backup_status=$(echo "$describe_result" | jq -r '.status')
+        if [ "$backup_status" != "done" ]; then
+            echo "INFO: Attempt $attempt: Backup status is not 'done', retrying in ${RETRY_INTERVAL}s..."
+            sleep $RETRY_INTERVAL
+            ((attempt++))
+            continue
+        fi
         break
     elif echo "$describe_result" | grep -q "not found"; then
         echo "INFO: Attempt $attempt: Failed to get backup metadata, retrying in ${RETRY_INTERVAL}s..."
