@@ -40,7 +40,7 @@ spec:
       serviceable: true
       writable: true
     - name: secondary
-      serviceable: false
+      serviceable: true
       writable: false
   labels:
     apps.kubeblocks.postgres.patroni/scope: "$(KB_CLUSTER_NAME)-$(KB_COMP_NAME)-patroni$(KB_CLUSTER_UID_POSTFIX_8)"
