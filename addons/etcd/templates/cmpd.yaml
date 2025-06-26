@@ -14,7 +14,7 @@ spec:
   runtime:
     initContainers:
       - name: inject-bash
-        imagePullPolicy: {{default .Values.bashBusyboxImage.pullPolicy "IfNotPresent"}}
+        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
         volumeMounts:
           - name: scripts
             mountPath: /scripts
