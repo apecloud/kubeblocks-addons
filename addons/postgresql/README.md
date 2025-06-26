@@ -1286,6 +1286,62 @@ kubectl patch cluster -n demo pg-cluster -p '{"spec":{"terminationPolicy":"WipeO
 kubectl delete cluster -n demo pg-cluster
 ```
 
+## Appendix
+
+### How to Create PostgreSQL Cluster with ETCD or Zookeeper as DCS
+
+```yaml
+# cat examples/postgresql/cluster-with-etcd.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: pg-cluster-etcd
+  namespace: demo
+spec:
+  terminationPolicy: Delete
+  clusterDef: postgresql
+  topology: replication
+  componentSpecs:
+    - name: postgresql
+      serviceVersion: "14.7.2"
+      env:
+      - name: DCS_ENABLE_KUBERNETES_API  # unset this env if you use zookeeper or etcd, default to empty
+      - name: ETCD3_HOST
+        value: 'myetcd-etcd-headless.default.svc.cluster.local:2379' # where is your etcd?
+      # - name: ZOOKEEPER_HOSTS
+      #   value: 'myzk-zookeeper-0.myzk-zookeeper-headless.default.svc.cluster.local:2181' # where is your zookeeper?
+      replicas: 2
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+```
+
+```bash
+kubectl apply -f examples/postgresql/cluster-with-etcd.yaml
+```
+
+This example will create a PostgreSQL cluster with ETCD as DCS. It will set two envs:
+
+- `DCS_ENABLE_KUBERNETES_API` to empty, unset this env if you use zookeeper or etcd, default to empty
+- `ETCD3_HOST` to the ETCD cluster's headless service address, or use `ETCD3_HOSTS` to set ETCD hosts and ports.
+
+Similar for Zookeeper, you can set `ZOOKEEPER_HOSTS` to the Zookeeper's address.
+
+More environment variables can be found in [Spilo's ENVIRONMENT](https://github.com/zalando/spilo/blob/master/ENVIRONMENT.rst).
+
 ## Reference
 
 [^1]: pg_basebackup, <https://www.postgresql.org/docs/current/app-pgbasebackup.html>

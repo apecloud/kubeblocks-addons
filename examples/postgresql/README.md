@@ -672,6 +672,23 @@ kubectl patch cluster -n demo pg-cluster -p '{"spec":{"terminationPolicy":"WipeO
 kubectl delete cluster -n demo pg-cluster
 ```
 
+## Appendix
+
+### How to Create PostgreSQL Cluster with ETCD or Zookeeper as DCS
+
+```bash
+kubectl apply -f examples/postgresql/cluster-with-etcd.yaml
+```
+
+This example will create a PostgreSQL cluster with ETCD as DCS. It will set two envs:
+
+- `DCS_ENABLE_KUBERNETES_API` to empty, unset this env if you use zookeeper or etcd, default to empty
+- `ETCD3_HOST` to the ETCD cluster's headless service address, or use `ETCD3_HOSTS` to set ETCD hosts and ports.
+
+Similar for Zookeeper, you can set `ZOOKEEPER_HOSTS` to the Zookeeper's address.
+
+More environment variables can be found in [Spilo's ENVIRONMENT](https://github.com/zalando/spilo/blob/master/ENVIRONMENT.rst).
+
 ## Reference
 
 [^1]: pg_basebackup, <https://www.postgresql.org/docs/current/app-pgbasebackup.html>
