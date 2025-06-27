@@ -114,7 +114,7 @@ spec:
     backupMethods:
       - name: dump
         snapshotVolumes: false
-        actionSetName: mongodb-shard-pbm-logical
+        actionSetName: mongodb-shard-pbm-physical
         envMapping:
           - key: PBM_IMAGE_TAG
             valueFrom:
