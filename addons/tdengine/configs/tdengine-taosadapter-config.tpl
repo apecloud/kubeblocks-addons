@@ -1,100 +1,304 @@
+
+# Enable pprof debug mode. If set to true, pprof debugging is enabled.
 debug = false
+
+# The directory where TDengine's configuration file (taos.cfg) is located.
 taosConfigDir = ""
+
+# The port on which the server listens.
 port = 6041
-logLevel = "info"
+
+# When the server returns an error, use a non-200 HTTP status code if set to true.
+httpCodeServerError = false
+
+# Automatically create the database when writing data with the schemaless feature if set to true.
+smlAutoCreateDB = false
+
+# Instance ID of the taosAdapter.
+instanceId = 32
+
+# The maximum number of concurrent calls allowed for the C synchronized method.0 means use CPU core count.
+#maxSyncConcurrentLimit = 0
+
+# The maximum number of concurrent calls allowed for the C asynchronous method. 0 means use CPU core count.
+#maxAsyncConcurrentLimit = 0
 
 [cors]
+# If set to true, allows cross-origin requests from any origin (CORS).
 allowAllOrigins = true
 
 [pool]
-maxConnect = 4000
-maxIdle = 4000
-idleTimeout = "1h"
+# The maximum number of connections to the server. If set to 0, use cpu count * 2.
+# maxConnect = 0
+
+# The maximum number of idle connections to the server. Should match maxConnect.
+# maxIdle = 0
+
+# The maximum number of connections waiting to be established. 0 means no limit.
+maxWait = 0
+
+# Maximum time to wait for a connection. 0 means no timeout.
+waitTimeout = 60
 
 [ssl]
+# Enable SSL. Applicable for the Enterprise Edition.
 enable = false
 certFile = ""
 keyFile = ""
 
 [log]
-path = "/var/log/taos"
+# The directory where log files are stored.
+# path = "/var/log/taos"
+
+# The log level. Options are: trace, debug, info, warning, error.
+level = "info"
+
+# Number of log file rotations before deletion.
 rotationCount = 30
-rotationTime = "24h"
+
+# The number of days to retain log files.
+keepDays = 30
+
+# The maximum size of a log file before rotation.
 rotationSize = "1GB"
+
+# If set to true, log files will be compressed.
+compress = false
+
+# Minimum disk space to reserve. Log files will not be written if disk space falls below this limit.
+reservedDiskSize = "1GB"
+
+# Enable logging of HTTP SQL queries.
 enableRecordHttpSql = false
+
+# Number of HTTP SQL log rotations before deletion.
 sqlRotationCount = 2
-sqlRotationTime =  "24h"
+
+# Time interval for rotating HTTP SQL logs.
+sqlRotationTime = "24h"
+
+# Maximum size of HTTP SQL log files before rotation.
 sqlRotationSize = "1GB"
 
 [monitor]
-collectDuration = "3s"
-incgroup = false
-pauseQueryMemoryThreshold = 70
-pauseAllMemoryThreshold = 80
-identity = ""
-writeToTD = false
-user = "root"
-password = "taosdata"
-writeInterval = "30s"
+# If set to true, disables monitoring.
+disable = true
 
-[prometheus]
+# Interval for collecting metrics.
+collectDuration = "3s"
+
+# Indicates if running inside a Docker container.
+incgroup = false
+
+# When memory usage reaches this percentage, query execution will be paused.
+pauseQueryMemoryThreshold = 70
+
+# When memory usage reaches this percentage, both queries and inserts will be paused.
+pauseAllMemoryThreshold = 80
+
+# The identity of the current instance. If empty, it defaults to 'hostname:port'.
+identity = ""
+
+[uploadKeeper]
+# Enable uploading of metrics to TaosKeeper.
 enable = true
 
+# URL of the TaosKeeper service to which metrics will be uploaded.
+url = "http://127.0.0.1:6043/adapter_report"
+
+# Interval for uploading metrics.
+interval = "15s"
+
+# Timeout for uploading metrics.
+timeout = "5s"
+
+# Number of retries when uploading metrics fails.
+retryTimes = 3
+
+# Interval between retries for uploading metrics.
+retryInterval = "5s"
+
 [opentsdb]
+# Enable the OpenTSDB HTTP plugin.
 enable = true
 
 [influxdb]
+# Enable the InfluxDB plugin.
 enable = true
 
 [statsd]
+# Enable the StatsD plugin.
 enable = false
+
+# The port on which the StatsD plugin listens.
 port = 6044
+
+# The database name used by the StatsD plugin.
 db = "statsd"
+
+# The username used to connect to the TDengine database.
 user = "root"
+
+# The password used to connect to the TDengine database.
 password = "taosdata"
+
+# The number of worker threads for processing StatsD data.
 worker = 10
+
+# Interval for gathering StatsD metrics.
 gatherInterval = "5s"
-protocol = "udp"
+
+# The network protocol used by StatsD (e.g., udp4, tcp).
+protocol = "udp4"
+
+# Maximum number of TCP connections allowed for StatsD.
 maxTCPConnections = 250
+
+# If set to true, enables TCP keep-alive for StatsD connections.
 tcpKeepAlive = false
+
+# Maximum number of pending messages StatsD allows.
 allowPendingMessages = 50000
+
+# If set to true, deletes the counter cache after gathering metrics.
 deleteCounters = true
+
+# If set to true, deletes the gauge cache after gathering metrics.
 deleteGauges = true
+
+# If set to true, deletes the set cache after gathering metrics.
 deleteSets = true
+
+# If set to true, deletes the timing cache after gathering metrics.
 deleteTimings = true
 
 [collectd]
+# Enable the Collectd plugin.
 enable = false
+
+# The port on which the Collectd plugin listens.
 port = 6045
+
+# The database name used by the Collectd plugin.
 db = "collectd"
+
+# The username used to connect to the TDengine database.
 user = "root"
+
+# The password used to connect to the TDengine database.
 password = "taosdata"
+
+# Number of worker threads for processing Collectd data.
 worker = 10
 
-
 [opentsdb_telnet]
+# Enable the OpenTSDB Telnet plugin.
 enable = false
+
+# Maximum number of TCP connections allowed for the OpenTSDB Telnet plugin.
 maxTCPConnections = 250
+
+# If set to true, enables TCP keep-alive for OpenTSDB Telnet connections.
 tcpKeepAlive = false
+
+# List of databases to which OpenTSDB Telnet plugin writes data.
 dbs = ["opentsdb_telnet", "collectd", "icinga2", "tcollector"]
+
+# The ports on which the OpenTSDB Telnet plugin listens, corresponding to each database.
 ports = [6046, 6047, 6048, 6049]
+
+# The username used to connect to the TDengine database for OpenTSDB Telnet.
 user = "root"
+
+# The password used to connect to the TDengine database for OpenTSDB Telnet.
 password = "taosdata"
+
+# Batch size for processing OpenTSDB Telnet data.
 batchSize = 1
+
+# Interval between flushing data to the database. 0 means no interval.
 flushInterval = "0s"
 
 [node_exporter]
+# Enable the Node Exporter plugin.
 enable = false
+
+# The database name used by the Node Exporter plugin.
 db = "node_exporter"
+
+# The username used to connect to the TDengine database.
 user = "root"
+
+# The password used to connect to the TDengine database.
 password = "taosdata"
+
+# List of URLs to gather Node Exporter metrics from.
 urls = ["http://localhost:9100"]
+
+# Timeout for waiting for a response from the Node Exporter plugin.
 responseTimeout = "5s"
+
+# Username for HTTP authentication, if applicable.
 httpUsername = ""
+
+# Password for HTTP authentication, if applicable.
 httpPassword = ""
+
+# Bearer token for HTTP requests, if applicable.
 httpBearerTokenString = ""
+
+# Path to the CA certificate file for SSL validation.
 caCertFile = ""
+
+# Path to the client certificate file for SSL validation.
 certFile = ""
+
+# Path to the client key file for SSL validation.
 keyFile = ""
+
+# If set to true, skips SSL certificate verification.
 insecureSkipVerify = true
+
+# Interval for gathering Node Exporter metrics.
 gatherDuration = "5s"
+
+[prometheus]
+# Enable the Prometheus plugin.
+enable = true
+
+# OpenMetrics Configuration
+[open_metrics]
+enable = false  # Enable OpenMetrics data collection
+
+## TDengine connection credentials
+user = "root"  # TDengine username for OpenMetrics connection
+password = "taosdata"  # TDengine password for OpenMetrics connection
+
+## Database configuration
+dbs = ["open_metrics"]  # Target database names for OpenMetrics data
+
+## Endpoint configuration
+urls = ["http://localhost:9100"]  # OpenMetrics endpoints to scrape
+
+## Timeout settings
+responseTimeoutSeconds = [5]  # HTTP response timeout in seconds for OpenMetrics scraping
+
+## Authentication methods
+httpUsernames = []  # Basic auth usernames for protected OpenMetrics endpoints
+httpPasswords = []  # Basic auth passwords for protected OpenMetrics endpoints
+httpBearerTokenStrings = []  # Bearer tokens for OpenMetrics endpoint authentication
+
+## TLS configuration
+caCertFiles = []  # Paths to CA certificate files for TLS verification
+certFiles = []  # Paths to client certificate files for mTLS
+keyFiles = []  # Paths to private key files for mTLS
+insecureSkipVerify = true  # Skip TLS certificate verification (insecure)
+
+## Collection parameters
+gatherDurationSeconds = [5]  # Interval in seconds between OpenMetrics scrapes
+
+## Data retention
+ttl = []  # Time-to-live for OpenMetrics data (0=no expiration)
+
+## Timestamp handling
+ignoreTimestamp = false  # Use server timestamp instead of metrics timestamps

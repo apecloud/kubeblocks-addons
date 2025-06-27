@@ -89,3 +89,24 @@ Define tdengine component version name
 {{- define "tdengine.cmpvName" -}}
 tdengine
 {{- end -}}
+
+{{/*
+Define tdengine component configuration template name
+*/}}
+{{- define "tdengine.configurationTemplate" -}}
+tdengine-configuration-template
+{{- end -}}
+
+{{/*
+Define tdengine scripts configMap template name
+*/}}
+{{- define "tdengine.scriptsTemplate" -}}
+tdengine-scripts-template
+{{- end -}}
+
+{{/*
+Define tdengine component metrice configuration name
+*/}}
+{{- define "tdengine.metricsConfiguration" -}}
+tdengine-metrics-configuration-template
+{{- end -}}

@@ -4,7 +4,7 @@
 
 ## @param version MySQL cluster version
 ##
-version: tdengine-3.0.5.0
+version: 3.3.6-9
 
 ## @param mode TDengine cluster topology mode: standalone(=1) or raftGroup(=3)
 ##

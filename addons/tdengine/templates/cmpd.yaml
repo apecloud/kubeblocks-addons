@@ -11,6 +11,7 @@ spec:
   description: {{ .Chart.Description }}
   serviceKind: tdengine
   serviceVersion: {{ .Chart.AppVersion }}
+  podManagementPolicy: Parallel
   configs:
     - name: tdengine-taos-config
       templateRef: {{ include "tdengine.configurationTemplate" . }}
@@ -27,55 +28,45 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555
+  systemAccounts:
+    - name: root
+      initAccount: true
+      passwordGenerationPolicy:
+        length: 12
+        letterCase: MixedCases
+        numDigits: 5
+        numSymbols: 2
   vars:
-    - name: CLUSTER_NAME
-      valueFrom:
-        clusterVarRef:
-          clusterName: Required
-    - name: CLUSTER_NAMESPACE
-      valueFrom:
-        clusterVarRef:
-          namespace: Required
     - name: TAOS_COMPONENT_NAME
       valueFrom:
         componentVarRef:
           optional: false
           componentName: Required
+    - name: TAOS_ROOT_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          name: root
+          optional: false
+          password: Required
     - name: TAOS_FIRST_EP
-      value: "$(TAOS_COMPONENT_NAME)-0.$(TAOS_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.{{ .Values.clusterDomain }}:6030"
-    - name: TAOS_ADAPTER_USERNAME
-      value: {{ .Values.defaultAuth.username }}
-    - name: TAOS_ADAPTER_PASSWORD
-      value: {{ .Values.defaultAuth.password }}
-      # valueFrom:
-      #   credentialVarRef:
-      #     name: {{ .Values.defaultAuth.username }}
-      #     optional: false
-      #     password: Required
-    - name: TAOS_KEEPER_TDENGINE_USERNAME
-      value: {{ .Values.defaultAuth.username }}
-    - name: TAOS_KEEPER_TDENGINE_PASSWORD
-      value: {{ .Values.defaultAuth.password }}
-      # valueFrom:
-      #   credentialVarRef:
-      #     name: {{ .Values.defaultAuth.username }}
-      #     optional: false
-      #     password: Required
-  # systemAccounts:
-  #   - name: {{ .Values.defaultAuth.username }}
-  #     initAccount: true
+      value: "$(TAOS_COMPONENT_NAME)-0.$(TAOS_COMPONENT_NAME)-headless.$(KB_NAMESPACE).svc.{{ .Values.clusterDomain }}:6030"
+    - name: TAOS_DISABLE_KEEPER
+      value: "1"
+    - name: TAOS_DISABLE_EXPLORER
+      value: "1"
   runtime:
     containers:
       - name: tdengine
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: IfNotPresent
+        command: ["/tini", "--", "/scripts/entrypoint.sh"]
         ports:
           - name: taosd
             containerPort: 6030
           - name: taos-adapter
             containerPort: 6041
         env:
-          - name: SVC_PORT
+          - name: TAOS_SERVICE_PORT
             value: "6030"
           - name: TAOS_ADAPTER_PORT
             value: "6041"
@@ -87,21 +78,23 @@ spec:
                 apiVersion: v1
                 fieldPath: metadata.name
           - name: TAOS_FQDN
-            value: "$(CURRENT_POD_NAME).$(TAOS_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.{{ .Values.clusterDomain }}"
+            value: "$(CURRENT_POD_NAME).$(TAOS_COMPONENT_NAME)-headless.$(KB_NAMESPACE).svc.{{ .Values.clusterDomain }}"
         lifecycle:
           postStart:
             exec:
               command: ["/bin/sh", "-c", "/scripts/taos-adapter-check.sh"]
         readinessProbe:
-          tcpSocket:
-            port: 6030
+          exec:
+            command:
+              - taos-check
           initialDelaySeconds: 5
           timeoutSeconds: 60
         livenessProbe:
-          tcpSocket:
-            port: 6030
+          exec:
+            command:
+              - taos-check
           initialDelaySeconds: 15
-          periodSeconds: 20
+          periodSeconds: 10
         volumeMounts:
           - name: taos-config
             mountPath: /etc/taos
@@ -110,16 +103,23 @@ spec:
           - name: scripts
             mountPath: /scripts
       - name: metrics
-        image:  {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}
+        image:  {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: {{ .Values.metrics.image.pullPolicy | quote }}
-        securityContext:
-          runAsNonRoot: true
-          runAsUser: 1001
-        command: ["taoskeeper"]
-        args: ["-c", "/etc/taos/taoskeeper.toml"]
+        command: ["bash"]
+        args: ["-c", "/scripts/start-keeper.sh"]
+        env:
+          - name: TAOS_SERVICE_PORT
+            value: "6030"
+          - name: CURRENT_POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
         ports:
           - name: http-metrics
-            containerPort: {{ .Values.metrics.service.port }}
+            containerPort: 6043
         volumeMounts:
-          - name: metrics-configuration
-            mountPath: /etc/taos/
+         - name: metrics-configuration
+           mountPath: /etc/taos/
+         - name: scripts
+           mountPath: /scripts
