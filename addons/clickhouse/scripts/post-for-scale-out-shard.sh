@@ -142,6 +142,12 @@ get_new_shard_and_old_available_pod_fqdns
 log "new_shard_pods: ${new_shard_pod_fqdns[@]}"
 log "old_shard_available_pods: ${old_shard_available_pod_fqdns[@]}"
 
+if [[ ${#old_shard_available_pod_fqdns[@]} -eq 0 ]]; then
+    log "info: No tables found in old shard, no need to create databases and tables for new shard pods.
+         You can create the databases and tables manually if needed."
+    exit 0
+fi
+
 # 2. create databases and tables for new shard pods
 for new_shard_pod_fqdn in "${new_shard_pod_fqdns[@]}"; do
     old_available_pod_fqdn=$(get_available_pod_fqdn)
