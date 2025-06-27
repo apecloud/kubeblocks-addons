@@ -14,7 +14,7 @@ cp /etc/taos/taoskeeper.toml $override_config
 
 
 instanceId=${CURRENT_POD_NAME##*-}
-sed -i "s|^password = .*|password = \"${TAOS_ROOT_PASSWORD}\"|g" $override_config
+sed -i '/^password = /c\password = "'"$TAOS_ROOT_PASSWORD"'"' $override_config
 sed -i "s|^instanceId = .*|instanceId = ${instanceId}|g" $override_config
 
 exec taoskeeper -c $override_config

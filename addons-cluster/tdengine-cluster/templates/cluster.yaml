@@ -22,11 +22,11 @@ spec:
               - ReadWriteOnce
             resources:
               requests:
-                storage: {{ print .Values.storage.data | default "100Gi" }}
+                storage: {{ print .Values.dataStorageSize "Gi" }}
         - name: log # ref clusterDefinition components.containers.volumeMounts.name
           spec:
             accessModes:
               - ReadWriteOnce
             resources:
               requests:
-                storage: {{ print .Values.storage.log | default "200Gi" }}
+                storage: {{ print .Values.logStorageSize "Gi" }}

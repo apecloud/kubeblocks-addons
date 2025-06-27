@@ -31,9 +31,8 @@ requests:
 
 ## @param storage size, the unit is Gi
 ##
-storage:
-  data: 100Gi
-  log: 50Gi
+dataStorageSize: 100
+logStorageSize: 50
 
 ## customized values to override kblib chart's values
 extra:
