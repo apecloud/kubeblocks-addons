@@ -47,7 +47,7 @@ incgroup = false
 # path = "/var/log/taos"
 level = "info"
 # Number of log file rotations before deletion.
-rotationCount = 30
+rotationCount = 10
 # The number of days to retain log files.
 keepDays = 30
 # The maximum size of a log file before rotation.
@@ -55,4 +55,4 @@ rotationSize = "1GB"
 # If set to true, log files will be compressed.
 compress = false
 # Minimum disk space to reserve. Log files will not be written if disk space falls below this limit.
-reservedDiskSize = "1GB"
+reservedDiskSize = "30GB"

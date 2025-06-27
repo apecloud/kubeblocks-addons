@@ -66,7 +66,7 @@ rotationSize = "1GB"
 compress = false
 
 # Minimum disk space to reserve. Log files will not be written if disk space falls below this limit.
-reservedDiskSize = "1GB"
+reservedDiskSize = "2GB"
 
 # Enable logging of HTTP SQL queries.
 enableRecordHttpSql = false
