@@ -25,11 +25,13 @@ spec:
     - name: PBM_BACKUP_TYPE
       value: continuous
     - name: RETAIN_PITR_FILES
-      value: "true"
+      value: "false"
     - name: PBM_IMAGE_TAG
       value: {{ .Values.image.percona.backup.tag }}
     - name: PSM_IMAGE_TAG
       value: {{ .Values.image.percona.tag }}
+    - name: PBM_DISABLE_PITR_WHEN_EXIT
+      value: "false"
   backupType: Continuous
   backup:
     preBackup:

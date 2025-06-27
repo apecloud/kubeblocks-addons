@@ -77,10 +77,6 @@ wait_for_other_operations
 
 pbm restore --time="$recovery_target_time" --mongodb-uri "$PBM_MONGODB_URI" --replset-remapping "$mappings" --wait
 
-wait_for_other_operations
-
-print_pbm_logs_by_event "restore"
-
 process_restore_end_signal
 
 echo "INFO: Restore completed."

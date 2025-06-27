@@ -24,11 +24,11 @@ function enable_pitr() {
   fi
 }
 
-# function disable_pitr() {
-#   echo "INFO: Disabling Pitr..."
-#   pbm config --set pitr.enabled=false --mongodb-uri "$PBM_MONGODB_URI"
-#   echo "INFO: Pitr disabled."
-# }
+function disable_pitr() {
+  echo "INFO: Disabling Pitr..."
+  pbm config --set pitr.enabled=false --mongodb-uri "$PBM_MONGODB_URI"
+  echo "INFO: Pitr disabled."
+}
 
 function upload_continuous_backup_info() {
   local status_result=$(pbm status --mongodb-uri "$PBM_MONGODB_URI" -o json)
@@ -125,7 +125,9 @@ function handle_pitr_exit() {
   echo "INFO: Handling PBM pitr exit..."
   print_pbm_tail_logs
 
-  # disable_pitr
+  if [[ "$PBM_DISABLE_PITR_WHEN_EXIT" == "true" ]]; then
+    disable_pitr
+  fi
 
   exit_code=$?
   if [ $exit_code -ne 0 ]; then

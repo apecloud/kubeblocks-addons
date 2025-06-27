@@ -326,6 +326,7 @@ function process_restore_start_signal() {
 
 function process_restore_end_signal() {
     echo "INFO: Waiting for prepare restore end signal..."
+    sleep 5
     dp_cm_name="$KB_CLUSTER_NAME-restore-signal"
     dp_cm_namespace="$KB_NAMESPACE"
     while true; do
