@@ -140,6 +140,10 @@ spec:
                   mappingValue: "4.2.25"
                 - names: ["4.0.28"]
                   mappingValue: "4.0.28"
+        targetVolumes:
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
       - name: physical
         snapshotVolumes: false
         actionSetName: mongodb-shard-pbm-physical
