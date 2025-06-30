@@ -90,7 +90,7 @@ else
         taosd &
     fi
     while true; do
-        es=$(taos -h $FIRST_EP_HOST -P $FIRST_EP_PORT --check | grep "^[0-9]*:")
+        es=$(taos -h $FIRST_EP_HOST -p$TAOS_ROOT_PASSWORD -P $FIRST_EP_PORT --check | grep "^[0-9]*:")
         echo ${es}
         if [ "${es%%:*}" -eq 2 ]; then
             echo "execute create dnode"
@@ -107,7 +107,7 @@ else
 fi
 
 if [ "$DISABLE_ADAPTER" = "0" ]; then
-    which taosadapter >/dev/null && taosadapter &
+    which taosadapter >/dev/null && taosadapter -c /etc/taos-adapter/taosadapter.toml &
     # wait for 6041 port ready
     for _ in $(seq 1 20); do
         nc -z localhost 6041 && break

@@ -17,9 +17,7 @@
 
 #TaosParameter: {
 
-// taosd configuration schema in CUE format
-
-taosdConfig: {
+    // taosd configuration schema in CUE format
     // compressMsgSize: whether to compress RPC messages
     // -1: no compression; 0: all messages; N > 0: only compress messages larger than N bytes
     // dynamic modification: supported, effective after restart
@@ -96,7 +94,7 @@ taosdConfig: {
     // default value: 10 (Linux/macOS), 1 (Windows)
     // valid range: 1 - 512
     // supported since: v3.3.4.0
-    shareConnLimit: int & >=1 & <=512 | *(if os == "windows" then 1 else 10)
+    shareConnLimit: int & >=1 & <=512
 
     // readTimeout: minimum timeout (seconds) for a single request
     // dynamic modification: supported, effective after restart
@@ -104,6 +102,26 @@ taosdConfig: {
     // valid range: 64 - 604800
     // supported since: v3.3.4.0
     readTimeout: int & >=64 & <=604800 | *900
+
+    // monitor: whether to collect and report monitoring data
+    // values: 0 (disabled), 1 (enabled)
+    // dynamic modification: supported, immediate effect
+    // default value: 0
+    // valid range: 0 - 1
+    // supported since: v3.0.0.0
+    monitor: int & >=0 & <=1 | *0
+
+    // monitorFqdn: FQDN of the taosKeeper monitoring server
+    // dynamic modification: supported, effective after restart
+    // default value: none
+    // supported since: v3.0.0.0
+    monitorFqdn?: string
+
+    // monitorPort: port number listened by taosKeeper
+    // dynamic modification: supported, effective after restart
+    // default value: 6043
+    // valid range: 1 - 65056
+    // supported since: v3.0.0.0
 
     // Monitoring related configurations
     // monitorInterval: monitorInterval (in seconds) for recording system metrics (CPU/memory)
@@ -1008,4 +1026,5 @@ taosdConfig: {
 }
 
 configuration: #TaosParameter & {
+
 }

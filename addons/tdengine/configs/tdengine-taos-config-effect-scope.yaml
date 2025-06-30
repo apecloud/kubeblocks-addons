@@ -119,7 +119,6 @@ dynamicParameters:
   - arbHeartBeatIntervalSec
   - arbCheckSyncIntervalSec
   - arbSetAssignedTimeoutSec
-  - arbSetAssignedTimeoutSec
   - mndLogRetention
   - walFsyncDataSizeLimit
   - forceKillTrans

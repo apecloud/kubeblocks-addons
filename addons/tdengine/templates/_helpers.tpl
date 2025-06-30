@@ -94,7 +94,7 @@ tdengine
 Define tdengine component configuration template name
 */}}
 {{- define "tdengine.configurationTemplate" -}}
-tdengine-configuration-template
+tdengine-config-template
 {{- end -}}
 
 {{/*
