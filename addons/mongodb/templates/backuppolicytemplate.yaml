@@ -106,3 +106,118 @@ spec:
             - name: data
               mountPath: {{ .Values.dataMountPath }}
     schedules: *backupSchedules
+  - componentDefs: [mongo-config-server]
+    target:
+      role: secondary
+      fallbackRole: primary
+      account: root
+    backupMethods:
+      - name: dump
+        snapshotVolumes: false
+        actionSetName: mongodb-shard-pbm-physical
+        envMapping:
+          - key: PBM_IMAGE_TAG
+            valueFrom:
+              serviceVersion:
+                - names: ["6.0.16", "7.0.12", "8.0.4"]
+                  mappingValue: "2.9.1"
+                - names: ["5.0.28", "4.4.29"]
+                  mappingValue: "2.5.0-multi"
+          - key: PSM_IMAGE_TAG
+            valueFrom:
+              serviceVersion:
+                - names: ["8.0.4"]
+                  mappingValue: "8.0.8"
+                - names: ["7.0.12"]
+                  mappingValue: "7.0.18"
+                - names: ["6.0.16"]
+                  mappingValue: "6.0.21"
+                - names: ["5.0.28"]
+                  mappingValue: "5.0.29-multi"
+                - names: ["4.4.29"]
+                  mappingValue: "4.4.29-multi"
+                - names: ["4.2.24"]
+                  mappingValue: "4.2.25"
+                - names: ["4.0.28"]
+                  mappingValue: "4.0.28"
+        targetVolumes:
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
+      - name: physical
+        snapshotVolumes: false
+        actionSetName: mongodb-shard-pbm-physical
+        envMapping:
+          - key: PBM_IMAGE_TAG
+            valueFrom:
+              serviceVersion:
+                - names: ["6.0.16", "7.0.12", "8.0.4"]
+                  mappingValue: "2.9.1"
+                - names: ["5.0.28", "4.4.29"]
+                  mappingValue: "2.5.0-multi"
+          - key: PSM_IMAGE_TAG
+            valueFrom:
+              serviceVersion:
+                - names: ["8.0.4"]
+                  mappingValue: "8.0.8"
+                - names: ["7.0.12"]
+                  mappingValue: "7.0.18"
+                - names: ["6.0.16"]
+                  mappingValue: "6.0.21"
+                - names: ["5.0.28"]
+                  mappingValue: "5.0.29-multi"
+                - names: ["4.4.29"]
+                  mappingValue: "4.4.29-multi"
+                - names: ["4.2.24"]
+                  mappingValue: "4.2.25"
+                - names: ["4.0.28"]
+                  mappingValue: "4.0.28"
+        targetVolumes:
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
+      - name: archive-oplog
+        snapshotVolumes: false
+        actionSetName: mongodb-shard-pbm-pitr
+        envMapping:
+          - key: PBM_IMAGE_TAG
+            valueFrom:
+              serviceVersion:
+                - names: ["6.0.16", "7.0.12", "8.0.4"]
+                  mappingValue: "2.9.1"
+                - names: ["5.0.28", "4.4.29"]
+                  mappingValue: "2.5.0-multi"
+          - key: PSM_IMAGE_TAG
+            valueFrom:
+              serviceVersion:
+                - names: ["8.0.4"]
+                  mappingValue: "8.0.8"
+                - names: ["7.0.12"]
+                  mappingValue: "7.0.18"
+                - names: ["6.0.16"]
+                  mappingValue: "6.0.21"
+                - names: ["5.0.28"]
+                  mappingValue: "5.0.29-multi"
+                - names: ["4.4.29"]
+                  mappingValue: "4.4.29-multi"
+                - names: ["4.2.24"]
+                  mappingValue: "4.2.25"
+                - names: ["4.0.28"]
+                  mappingValue: "4.0.28"
+        targetVolumes:
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
+    schedules:
+      - backupMethod: dump
+        enabled: false
+        cronExpression: "0 18 * * *"
+        retentionPeriod: 7d
+      - backupMethod: physical
+        enabled: false
+        cronExpression: "0 18 * * *"
+        retentionPeriod: 7d
+      - backupMethod: archive-oplog
+        enabled: false
+        cronExpression: "*/5 * * * *"
+        retentionPeriod: 8d
