@@ -114,7 +114,7 @@ spec:
     backupMethods:
       - name: dump
         snapshotVolumes: false
-        actionSetName: mongodb-shard-pbm-physical
+        actionSetName: mongodb-shard-pbm-logical
         envMapping:
           - key: PBM_IMAGE_TAG
             valueFrom:
@@ -144,7 +144,7 @@ spec:
           volumeMounts:
             - name: data
               mountPath: {{ .Values.dataMountPath }}
-      - name: physical
+      - name: datafile
         snapshotVolumes: false
         actionSetName: mongodb-shard-pbm-physical
         envMapping:
@@ -213,7 +213,7 @@ spec:
         enabled: false
         cronExpression: "0 18 * * *"
         retentionPeriod: 7d
-      - backupMethod: physical
+      - backupMethod: datafile
         enabled: false
         cronExpression: "0 18 * * *"
         retentionPeriod: 7d
