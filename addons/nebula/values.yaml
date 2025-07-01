@@ -6,34 +6,34 @@ nameOverride: ""
 
 fullnameOverride: ""
 
-nebula:
+images:
+  registry: docker.io
+  pullPolicy: IfNotPresent
   ## @param nebula.version, version of nebula-graph
   ## more info: check https://docs.nebula-graph.io/ for latest and LTS versions
   version: v3.5.0
-  images:
-    registry: docker.io
-    pullPolicy: IfNotPresent
-    ## @param nebula.images.graphd, container image settings
+  nebula:
+    ## @param images.nebula.graphd, container image settings
     graphd:
-      # if the value of nebula.images.graphd.registry is not specified using `--set`, it will be set to the value of 'nebula.images.registry' by default
+      # if the value of images.nebula.graphd.registry is not specified using `--set`, it will be set to the value of 'images.registry' by default
       registry: ""
       repository: vesoft/nebula-graphd
       tag: v3.5.0
-    ## @param nebula.images.metad, container image settings
+    ## @param images.nebula.metad, container image settings
     metad:
-      # if the value of nebula.images.metad.registry is not specified using `--set`, it will be set to the value of 'nebula.images.registry' by default
+      # if the value of images.nebula.metad.registry is not specified using `--set`, it will be set to the value of 'images.registry' by default
       registry: ""
       repository: vesoft/nebula-metad
       tag: v3.5.0
-    ## @param nebula.images.storaged, container image settings
+    ## @param images.nebula.storaged, container image settings
     storaged:
-      # if the value of nebula.images.storaged.registry is not specified using `--set`, it will be set to the value of 'nebula.images.registry' by default
+      # if the value of images.nebula.storaged.registry is not specified using `--set`, it will be set to the value of 'images.registry' by default
       registry: ""
       repository: vesoft/nebula-storaged
       tag: v3.5.0
-    ## @param nebula.images.console, container image settings
+    ## @param images.nebula.console, container image settings
     console:
-      # if the value of nebula.images.console.registry is not specified using `--set`, it will be set to the value of 'nebula.images.registry' by default
+      # if the value of images.nebula.console.registry is not specified using `--set`, it will be set to the value of 'images.registry' by default
       registry: ""
       repository: vesoft/nebula-console
       tag: v3.5.0
