@@ -4,7 +4,7 @@
 
 ## @param version cluster version
 ##
-version: 6.0.16
+version: 6.0.21
 
 # @param clusterVersion cluster version for legacy API
 clusterVersion: mongodb-6.0

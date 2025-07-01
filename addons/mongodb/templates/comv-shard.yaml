@@ -29,7 +29,7 @@ spec:
   releases:
     - name: 8.0.8
       changes:
-      serviceVersion: 8.0.4
+      serviceVersion: 8.0.8
       images:
         mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:8.0.8
         mongodb-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.9.1
@@ -38,7 +38,7 @@ spec:
         init-pbm-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.9.1
     - name: 7.0.18
       changes:
-      serviceVersion: 7.0.12
+      serviceVersion: 7.0.18
       images:
         mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:7.0.18
         mongodb-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.9.1
@@ -47,7 +47,7 @@ spec:
         init-pbm-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.9.1
     - name: 6.0.21
       changes:
-      serviceVersion: 6.0.16
+      serviceVersion: 6.0.21
       images:
         mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:6.0.21
         mongodb-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.9.1
@@ -56,7 +56,7 @@ spec:
         init-pbm-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.9.1
     - name: 5.0.29
       changes:
-      serviceVersion: 5.0.28
+      serviceVersion: 5.0.29
       images:
         mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:5.0.29-multi
         mongodb-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.5.0-multi
@@ -74,22 +74,22 @@ spec:
         init-pbm-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.5.0-multi
     - name: 4.2.25
       changes:
-      serviceVersion: 4.2.24
+      serviceVersion: 4.2.25
       images:
         mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:4.2.25
-        mongodb-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:{{ .Values.image.percona.backup.tag }}
+        mongodb-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.5.0-multi
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         init-kubectl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
-        init-pbm-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:{{ .Values.image.percona.backup.tag }}
+        init-pbm-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.5.0-multi
     - name: 4.0.28
       changes:
       serviceVersion: 4.0.28
       images:
         mongodb: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:4.0.28
-        mongodb-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:{{ .Values.image.percona.backup.tag }}
+        mongodb-backup-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.5.0-multi
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         init-kubectl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
-        init-pbm-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:{{ .Values.image.percona.backup.tag }}
+        init-pbm-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.5.0-multi
 ---
 
 apiVersion: apps.kubeblocks.io/v1alpha1
@@ -113,22 +113,22 @@ spec:
   releases:
     - name: 8.0.8
       changes:
-      serviceVersion: 8.0.4
+      serviceVersion: 8.0.8
       images:
         mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:8.0.8
     - name: 7.0.18
       changes:
-      serviceVersion: 7.0.12
+      serviceVersion: 7.0.18
       images:
         mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:7.0.18
     - name: 6.0.21
       changes:
-      serviceVersion: 6.0.16
+      serviceVersion: 6.0.21
       images:
         mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:6.0.21
     - name: 5.0.29
       changes:
-      serviceVersion: 5.0.28
+      serviceVersion: 5.0.29
       images:
         mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:5.0.29-multi
     - name: 4.4.29
@@ -138,7 +138,7 @@ spec:
         mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:4.4.29-multi
     - name: 4.2.25
       changes:
-      serviceVersion: 4.2.24
+      serviceVersion: 4.2.25
       images:
         mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:4.2.25
     - name: 4.0.28
