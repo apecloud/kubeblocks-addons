@@ -33,7 +33,7 @@ spec:
         podSpec:
           containers:
             - name: balance-data
-              image: {{ $.Values.nebula.images.registry | default "docker.io"  }}/{{ $.Values.nebula.images.tool }}
+              image: {{ $.Values.images.registry | default "docker.io"  }}/{{ $.Values.images.nebula.tool }}
               imagePullPolicy: IfNotPresent
               command:
                 - bash
