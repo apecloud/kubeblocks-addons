@@ -16,3 +16,4 @@ if [[ "$res" == *"Drop OK"* ]]; then
   echo "drop dnode success, dnode id: $dnode_id"
   exit 0
 fi
+exit 1
