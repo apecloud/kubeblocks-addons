@@ -19,16 +19,19 @@ External meta storage service reference
 {{- if eq .Values.storage.meta.mode "serviceref" }}
 - name: milvus-meta-storage
   namespace: {{ .Values.storage.meta.serviceRef.namespace }}
+  {{- if not .Values.storage.object.serviceRef.serviceDescriptor }}
   clusterServiceSelector:
     cluster: {{ .Values.storage.meta.serviceRef.cluster.name }}
     service:
       component: {{ .Values.storage.meta.serviceRef.cluster.component }}
       service: {{ .Values.storage.meta.serviceRef.cluster.service }}
       port: {{ .Values.storage.meta.serviceRef.cluster.port }}
-    credential:
-      component: {{ .Values.storage.meta.serviceRef.cluster.component }}
-      name: {{ .Values.storage.meta.serviceRef.cluster.credential }}
+    # credential:
+    #   component: {{ .Values.storage.meta.serviceRef.cluster.component }}
+    #   name: {{ .Values.storage.meta.serviceRef.cluster.credential }}
+  {{- else }}
   serviceDescriptor: {{ .Values.storage.meta.serviceRef.serviceDescriptor }}
+  {{- end }}
 {{- end }}
 {{- end }}
 
@@ -37,18 +40,21 @@ External log storage service reference
 */}}
 {{- define "milvus.serviceRef.log" }}
 {{- if eq .Values.storage.log.mode "serviceref" }}
-- name: milvus-log-storage
+- name: milvus-log-storage-kafka
   namespace: {{ .Values.storage.log.serviceRef.namespace }}
+  {{- if not .Values.storage.object.serviceRef.serviceDescriptor }}
   clusterServiceSelector:
     cluster: {{ .Values.storage.log.serviceRef.cluster.name }}
     service:
       component: {{ .Values.storage.log.serviceRef.cluster.component }}
       service: {{ .Values.storage.log.serviceRef.cluster.service }}
       port: {{ .Values.storage.log.serviceRef.cluster.port }}
-    credential:
-      component: {{ .Values.storage.log.serviceRef.cluster.component }}
-      name: {{ .Values.storage.log.serviceRef.cluster.credential }}
+    # credential:
+    #   component: {{ .Values.storage.log.serviceRef.cluster.component }}
+    #   name: {{ .Values.storage.log.serviceRef.cluster.credential }}
+  {{- else }}
   serviceDescriptor: {{ .Values.storage.log.serviceRef.serviceDescriptor }}
+  {{- end }}
 {{- end }}
 {{- end }}
 
@@ -58,44 +64,12 @@ External object storage service reference
 {{- define "milvus.serviceRef.object" }}
 {{- if eq .Values.storage.object.mode "serviceref" }}
 - name: milvus-object-storage
-  namespace: {{ .Values.storage.object.serviceRef.namespace }}
-  {{- if not .Values.storage.object.serviceRef.serviceDescriptor }}
-  clusterServiceSelector:
-    cluster: {{ .Values.storage.object.serviceRef.cluster.name }}
-    service:
-      component: {{ .Values.storage.object.serviceRef.cluster.component }}
-      service: {{ .Values.storage.object.serviceRef.cluster.service }}
-      port: {{ .Values.storage.object.serviceRef.cluster.port }}
-    credential:
-      component: {{ .Values.storage.object.serviceRef.cluster.component }}
-      name: {{ .Values.storage.object.serviceRef.cluster.credential }}
-  {{- else }}
-  serviceDescriptor: {{ .Values.storage.object.serviceRef.serviceDescriptor }}
-  {{- end }}
+  namespace: {{ .Release.Namespace }}
+  serviceDescriptor: {{ include "kblib.clusterName" . }}
 {{- end }}
 {{- end }}
 
 {{- define "milvus.objectstorage.env" }}
-- name: MINIO_HOST
-  valueFrom:
-    secretKeyRef:
-      key: host
-      name: {{ .Values.storage.object.secret }}
-- name: MINIO_PORT
-  valueFrom:
-    secretKeyRef:
-      key: port
-      name: {{ .Values.storage.object.secret }}
-- name: MINIO_ACCESS_KEY
-  valueFrom:
-    secretKeyRef:
-      key: accessKey
-      name: {{ .Values.storage.object.secret }}
-- name: MINIO_SECRET_KEY
-  valueFrom:
-    secretKeyRef:
-      key: secretKey
-      name: {{ .Values.storage.object.secret }}
 - name: MINIO_BUCKETNAME
   valueFrom:
     secretKeyRef:

@@ -14,7 +14,7 @@ mq:
 messageQueue: kafka
 kafka:
   # port is actually endpoint, maybe a bug of kb
-  brokerList: {{ .KAFKA_PORT }}
+  brokerList: {{ .KAFKA_PORT_SVC_REF }}
 msgChannel:
   chanNamePrefix:
     cluster: {{ .KB_CLUSTER_NAME }}
