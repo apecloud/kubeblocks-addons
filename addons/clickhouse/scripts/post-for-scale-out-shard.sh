@@ -50,7 +50,7 @@ function get_new_shard_and_old_available_pod_fqdns() {
     for pod_fqdn in $(echo $shard_pod_fqdn_list | tr ',' ' '); do
       tableCount=$(execute_sql "$pod_fqdn" "SELECT count(name) FROM system.tables WHERE database NOT IN ('system', 'INFORMATION_SCHEMA','information_schema')")
       if [[ $tableCount -gt 0 ]]; then
-        # 获得最多5个原shard的pod fqdn
+        # collect up to 5 original shard pod FQDNs
         if [[ ${#old_shard_available_pods[@]} -lt 5 ]]; then
           old_shard_available_pod_fqdns+=("$pod_fqdn")
         fi
