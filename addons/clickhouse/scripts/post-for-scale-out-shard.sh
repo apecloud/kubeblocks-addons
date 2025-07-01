@@ -1,5 +1,5 @@
 #!/bin/bash
-set -ex
+set -x
 
 declare -a new_shard_pod_fqdns=()
 declare -a old_shard_available_pod_fqdns=()
@@ -51,7 +51,7 @@ function get_new_shard_and_old_available_pod_fqdns() {
       tableCount=$(execute_sql "$pod_fqdn" "SELECT count(name) FROM system.tables WHERE database NOT IN ('system', 'INFORMATION_SCHEMA','information_schema')")
       if [[ $tableCount -gt 0 ]]; then
         # collect up to 5 original shard pod FQDNs
-        if [[ ${#old_shard_available_pods[@]} -lt 5 ]]; then
+        if [[ ${#old_shard_available_pod_fqdns[@]} -lt 5 ]]; then
           old_shard_available_pod_fqdns+=("$pod_fqdn")
         fi
         is_old_shard=true
