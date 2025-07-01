@@ -28,17 +28,17 @@ spec:
     - name: console-v3.5.0
       serviceVersion: v3.5.0
       images:
-        console: {{ .Values.nebula.images.console.registry | default ( .Values.nebula.images.registry | default "docker.io" ) }}/{{ .Values.nebula.images.console.repository }}:{{ .Values.nebula.images.console.tag }}
+        console: {{ .Values.images.nebula.console.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.nebula.console.repository }}:{{ .Values.images.nebula.console.tag }}
     - name: graphd-v3.5.0
       serviceVersion: v3.5.0
       images:
-        graphd: {{ .Values.nebula.images.graphd.registry | default ( .Values.nebula.images.registry | default "docker.io" ) }}/{{ .Values.nebula.images.graphd.repository }}:{{ .Values.nebula.images.graphd.tag }}
+        graphd: {{ .Values.images.nebula.graphd.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.nebula.graphd.repository }}:{{ .Values.images.nebula.graphd.tag }}
     - name: metad-v3.5.0
       serviceVersion: v3.5.0
       images:
-        metad: {{ .Values.nebula.images.metad.registry | default ( .Values.nebula.images.registry | default "docker.io" ) }}/{{ .Values.nebula.images.metad.repository }}:{{ .Values.nebula.images.metad.tag }}
+        metad: {{ .Values.images.nebula.metad.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.nebula.metad.repository }}:{{ .Values.images.nebula.metad.tag }}
     - name: storaged-v3.5.0
       serviceVersion: v3.5.0
       images:
-        console: {{ .Values.nebula.images.console.registry | default ( .Values.nebula.images.registry | default "docker.io" ) }}/{{ .Values.nebula.images.console.repository }}:{{ .Values.nebula.images.console.tag }}
-        storaged: {{ .Values.nebula.images.storaged.registry | default ( .Values.nebula.images.registry | default "docker.io" ) }}/{{ .Values.nebula.images.storaged.repository }}:{{ .Values.nebula.images.storaged.tag }}
+        console: {{ .Values.images.nebula.console.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.nebula.console.repository }}:{{ .Values.images.nebula.console.tag }}
+        storaged: {{ .Values.images.nebula.storaged.registry | default ( .Values.images.registry | default "docker.io" ) }}/{{ .Values.images.nebula.storaged.repository }}:{{ .Values.images.nebula.storaged.tag }}
