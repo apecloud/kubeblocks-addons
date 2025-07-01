@@ -87,7 +87,7 @@
 
 ########## memory ##########
 # System memory high watermark ratio, cancel the memory checking when the ratio greater than 1.0
---system_memory_high_watermark_ratio=0.8
+--system_memory_high_watermark_ratio=1.0
 
 ########## audit ##########
 # This variable is used to enable audit. The value can be 'true' or 'false'.

@@ -60,6 +60,7 @@ spec:
           - /bin/sh
           - -c
           - |
+            set -e
             /usr/local/bin/nebula-console --addr ${SVC_NAME} --port ${SVC_PORT} --user root --password nebula -e "ALTER USER root WITH PASSWORD '${NEBULA_ROOT_PASSWORD}';"
   vars:
     - name: CLUSTER_DOMAIN
