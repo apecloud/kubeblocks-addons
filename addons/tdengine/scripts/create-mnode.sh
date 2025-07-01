@@ -2,7 +2,7 @@
 
 function create_mnode() {
   first_ep=${TAOS_FIRST_EP%:*}
-  res=$(taos -h$first_ep -p$TAOS_ROOT_PASSWORD -s "create mnode on dnode ${1}")
+  res=$(taos -h$first_ep -p$TAOS_ROOT_PASSWORD -s "create mnode on dnode ${1}" 2>&1)
   if [[ "$res" == *"Create OK"* ]]; then
      echo "create mnode success on dnode ${1}"
   elif [[ "$res" == *"already exists"* ]]; then

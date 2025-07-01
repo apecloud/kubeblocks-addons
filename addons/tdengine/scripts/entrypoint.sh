@@ -1,5 +1,26 @@
 #!/bin/bash
 set -e
+
+function get_first_ep() {
+    for pod_name in $(echo $TDENGINE_POD_FQDN_LIST | tr ',' '\n') ; do
+        echo $pod_name:${TAOS_SERVICE_PORT}
+        break
+    done
+}
+
+function get_second_ep() {
+  index=0
+  for pod_name in $(echo $TDENGINE_POD_FQDN_LIST | tr ',' '\n') ; do
+      if [ $index -eq 0 ]; then
+         index=$((index+1))
+         continue
+      else
+          echo $pod_name:${TAOS_SERVICE_PORT}
+          break
+      fi
+  done
+}
+
 # for TZ awareness
 if [ "$TZ" != "" ]; then
     ln -sf /usr/share/zoneinfo/$TZ /etc/localtime
@@ -21,6 +42,9 @@ unset TAOS_DISABLE_KEEPER
 DISABLE_EXPLORER=${TAOS_DISABLE_EXPLORER:-0}
 unset TAOS_DISABLE_EXPLORER
 
+export TAOS_FIRST_EP=$(get_first_ep)
+export TAOS_SECOND_EP=$(get_second_ep)
+echo $TAOS_FIRST_EP, $TAOS_SECOND_EP
 # Get DATA_DIR from taosd -C
 DATA_DIR=$(taosd -C|grep -E 'dataDir\s+(\S+)' -o |head -n1|sed 's/dataDir *//')
 DATA_DIR=${DATA_DIR:-/var/lib/taos}
@@ -99,7 +123,7 @@ else
         fi
         sleep 1s
     done
-    if ps aux | grep -v grep | grep taosd > dev/null; then
+    if ps aux | grep -v grep | grep taosd > /dev/null; then
         echo "TDengine is running"
       else
         taosd &

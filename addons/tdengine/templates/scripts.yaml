@@ -15,3 +15,7 @@ data:
     {{- .Files.Get "scripts/reload-parameter.sh" | nindent 4 }}
   create-mnode.sh: |
     {{- .Files.Get "scripts/create-mnode.sh" | nindent 4 }}
+  role-probe.sh: |
+    {{- .Files.Get "scripts/role-probe.sh" | nindent 4 }}
+  member-leave.sh: |
+    {{- .Files.Get "scripts/member-leave.sh" | nindent 4 }}

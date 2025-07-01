@@ -37,3 +37,4 @@ logStorageSize: 50
 ## customized values to override kblib chart's values
 extra:
   monitoringInterval: 60
+  rbacEnabled: true
