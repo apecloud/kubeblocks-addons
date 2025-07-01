@@ -151,7 +151,7 @@ Define logrotate container
 */}}
 {{- define "nebula.logrotateContainer" -}}
 - name: logrotate
-  imagePullPolicy: {{default .Values.nebula.images.pullPolicy "IfNotPresent"}}
+  imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
   command:
   - /bin/sh
   - -ecx
