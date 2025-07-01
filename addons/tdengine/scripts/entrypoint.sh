@@ -113,16 +113,11 @@ else
         echo "run TDengine with single node."
         taosd &
     fi
-    while true; do
-        es=$(taos -h $FIRST_EP_HOST -p$TAOS_ROOT_PASSWORD -P $FIRST_EP_PORT --check | grep "^[0-9]*:")
-        echo ${es}
-        if [ "${es%%:*}" -eq 2 ]; then
-            echo "execute create dnode"
-            sh -c "taos -p'$TAOS_ROOT_PASSWORD' -h $FIRST_EP_HOST -P $FIRST_EP_PORT -s 'create dnode \"$FQDN:$SERVER_PORT\";'"
-            break
-        fi
+    until taos -h $FIRST_EP_HOST -p$TAOS_ROOT_PASSWORD -P $FIRST_EP_PORT -s "show databases"; do
+        echo "Waiting for first ep to be ready..."
         sleep 1s
     done
+    sh -c "taos -p'$TAOS_ROOT_PASSWORD' -h $FIRST_EP_HOST -P $FIRST_EP_PORT -s 'create dnode \"$FQDN:$SERVER_PORT\";'"
     if ps aux | grep -v grep | grep taosd > /dev/null; then
         echo "TDengine is running"
       else

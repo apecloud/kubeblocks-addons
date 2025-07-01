@@ -23,10 +23,10 @@ spec:
             resources:
               requests:
                 storage: {{ print .Values.dataStorageSize "Gi" }}
-        - name: log # ref clusterDefinition components.containers.volumeMounts.name
+        - name: arch # ref clusterDefinition components.containers.volumeMounts.name
           spec:
             accessModes:
               - ReadWriteOnce
             resources:
               requests:
-                storage: {{ print .Values.logStorageSize "Gi" }}
+                storage: {{ print .Values.archStorageSize "Gi" }}

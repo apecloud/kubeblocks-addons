@@ -11,7 +11,6 @@ spec:
   description: {{ .Chart.Description }}
   serviceKind: tdengine
   serviceVersion: {{ .Chart.AppVersion }}
-  # podManagementPolicy: OrderedReady
   podManagementPolicy: Parallel
   minReadySeconds: 10
   services:
@@ -56,7 +55,8 @@ spec:
         length: 12
         letterCase: MixedCases
         numDigits: 5
-        numSymbols: 2
+        # 3.3.6支持长密码和特殊字符串
+        numSymbols: 0
   roles:
     - name: ready
       serviceable: true
@@ -144,6 +144,8 @@ spec:
             containerPort: 6030
           - name: taos-adapter
             containerPort: 6041
+          #- name: taos-explorer
+          #  containerPort: 6060
         env:
           - name: TZ
             value: {{ .Values.timeZone }}
@@ -175,7 +177,7 @@ spec:
             mountPath: /etc/taos-adapter
           - name: data
             mountPath: /var/lib/taos
-          - name: log
+          - name: arch
             mountPath: /var/log/taos
           - name: scripts
             mountPath: /scripts
