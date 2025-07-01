@@ -73,7 +73,7 @@ spec:
             - name: NEBULA_METAD_SVC
               valueFrom:
                 type: HeadlessServiceRef
-                format: $(POD_FQDN){{ .Values.clusterDomain }}:9559
+                format: $(POD_FQDN).{{ .Values.clusterDomain }}:9559
                 joinWith: ","
       podSpec:
         securityContext:
@@ -86,7 +86,7 @@ spec:
               - |
                 set -ex
                 trap : TERM INT
-                exec /usr/local/nebula/bin/nebula-graphd --flagfile=/usr/local/nebula/etc/nebula-graphd.conf --meta_server_addrs=$NEBULA_METAD_SVC --local_ip=${KB_POD_FQDN}{{ .Values.clusterDomain }} --daemonize=false
+                exec /usr/local/nebula/bin/nebula-graphd --flagfile=/usr/local/nebula/etc/nebula-graphd.conf --meta_server_addrs=$NEBULA_METAD_SVC --local_ip=${KB_POD_FQDN}.{{ .Values.clusterDomain }} --daemonize=false
             imagePullPolicy: {{default .Values.images.nebula.graphd.pullPolicy "IfNotPresent"}}
             ports:
               - containerPort: 9669
@@ -134,7 +134,7 @@ spec:
               - |
                 set -ex
                 trap : TERM INT
-                exec /usr/local/nebula/bin/nebula-metad --flagfile=/usr/local/nebula/etc/nebula-metad.conf --meta_server_addrs=$NEBULA_METAD_SVC --local_ip=${KB_POD_FQDN}{{ .Values.clusterDomain }}  --daemonize=false
+                exec /usr/local/nebula/bin/nebula-metad --flagfile=/usr/local/nebula/etc/nebula-metad.conf --meta_server_addrs=$NEBULA_METAD_SVC --local_ip=${KB_POD_FQDN}.{{ .Values.clusterDomain }}  --daemonize=false
             imagePullPolicy: {{default .Values.images.nebula.metad.pullPolicy "IfNotPresent"}}
             ports:
             - containerPort: 9559
@@ -190,7 +190,7 @@ spec:
               - -c
               - |
                 trap : TERM INT
-                exec /usr/local/nebula/bin/nebula-storaged --flagfile=/usr/local/nebula/etc/nebula-storaged.conf --meta_server_addrs=$NEBULA_METAD_SVC --local_ip=$KB_POD_FQDN"{{ .Values.clusterDomain }}" --daemonize=false
+                exec /usr/local/nebula/bin/nebula-storaged --flagfile=/usr/local/nebula/etc/nebula-storaged.conf --meta_server_addrs=$NEBULA_METAD_SVC --local_ip=$KB_POD_FQDN.{{ .Values.clusterDomain }} --daemonize=false
             imagePullPolicy: {{default .Values.images.nebula.storaged.pullPolicy "IfNotPresent"}}
             ports:
               - containerPort: 9779
