@@ -8,7 +8,7 @@ spec:
   provider: kubeblocks.io
   description: MongoDB is a document database designed for ease of application development and scaling.
   serviceKind: mongodb
-  serviceVersion: "5.0.14"
+  serviceVersion: "5.0.29"
   services:
     - name: default
       serviceName: mongodb
@@ -38,7 +38,7 @@ spec:
       constraintRef: {{ include "mongodb.configConstraintName" . }}
       volumeName: mongodb-config
       namespace: {{ .Release.Namespace }}
-      defaultMode: 0400  # for only read
+      defaultMode: 0666  # for only read
       keys:
         - mongodb.conf
   logConfigs:
@@ -88,6 +88,8 @@ spec:
       #         MyState=$(echo $Status | jq '.myState') &&
       #         echo $Status | jq ".members[] | select(.state == ($MyState | tonumber)) | .stateStr" |tr '[:upper:]' '[:lower:]'|uniq| xargs echo -n
   runtime:
+    securityContext:
+      runAsUser: 0
     initContainers:
       - command:
           - cp
