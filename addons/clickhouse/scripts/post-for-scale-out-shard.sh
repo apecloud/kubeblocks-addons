@@ -19,7 +19,7 @@ function execute_sql() {
 
 function server_is_ok() {
   local pod_fqdn="$1"
-  for i in {1..30}; do
+  for _ in {1..30}; do
     sleep 1
     execute_sql "$pod_fqdn" "select 1"
     if [[ $? -eq 0 ]]; then
