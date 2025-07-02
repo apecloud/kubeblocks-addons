@@ -9,7 +9,7 @@ Define redis cluster shardingSpec with ComponentDefinition.
     componentDef: redis-cluster
     replicas: {{ .Values.replicas }}
     {{- if .Values.podAntiAffinityEnabled }}
-    {{- include "redis-cluster.schedulingPolicy" . | indent 2 }}
+    {{- include "redis-cluster.shardingSchedulingPolicy" . | indent 2 }}
     {{- end }}
     {{- include "redis-cluster.exporter" . | indent 4 }}
     {{- if and .Values.nodePortEnabled (not .Values.hostNetworkEnabled)  (not .Values.fixedPodIPEnabled) }}
@@ -198,7 +198,26 @@ apps.kubeblocks.io/component-name: "redis"
 {{- end }}
 
 {{/*
-Redis Cluster schedulingPolicy
+Redis Cluster sharding schedulingPolicy
+*/}}
+{{- define "redis-cluster.shardingSchedulingPolicy" }}
+schedulingPolicy:
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ include "kblib.clusterName" . | quote }}
+              app.kubernetes.io/managed-by: "kubeblocks"
+              kubeblocks.io/role: primary
+          topologyKey: kubernetes.io/hostname
+        weight: 100
+{{- end -}}
+
+
+{{/*
+Redis schedulingPolicy
 */}}
 {{- define "redis-cluster.schedulingPolicy" }}
 schedulingPolicy:
@@ -243,12 +262,15 @@ metadata:
   name: {{ include "kblib.clusterName" . }}
   namespace: {{ .Release.Namespace }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
-  {{- if and .Values.hostNetworkEnabled (eq .Values.mode "cluster") }}
   annotations:
+    apps.kubeblocks.io/mode: {{ .Values.mode }}
+  {{- if and .Values.hostNetworkEnabled (eq .Values.mode "cluster") }}
     kubeblocks.io/host-network: "shard"
   {{- else if .Values.hostNetworkEnabled }}
-  annotations:
     kubeblocks.io/host-network: "redis,redis-sentinel"
+  {{- end }}
+  {{- if and .Values.podAntiAffinityEnabled (eq .Values.mode "cluster") }}
+    apps.kubeblocks.io/shard-pod-anti-affinity: "shard"
   {{- end }}
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}
