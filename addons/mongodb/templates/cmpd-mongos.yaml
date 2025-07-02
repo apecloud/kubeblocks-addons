@@ -35,6 +35,10 @@ spec:
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555  # for read and execute, mysql container switched user account.
+  exporter:
+    containerName: exporter
+    scrapePath: /metrics
+    scrapePort: exporter
   runtime:
     securityContext:
       # percona-server-mongodb needs run as root to have privilege to access to keyfile
@@ -73,6 +77,15 @@ spec:
             mountPath: /scripts
           - mountPath: /kubeblocks
             name: kubeblocks
+      - name: exporter
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        ports:
+          - name: exporter
+            protocol: TCP
+            containerPort: 9216
+        env:
+          - name: MONGODB_URI
+            value: mongodb://127.0.0.1:$(KB_SERVICE_PORT)
     volumes:
       {{- if .Values.logCollector.enabled }}
       - name: log-data
@@ -162,6 +175,16 @@ spec:
             name: mongos
     - name: MONGOS_INTERNAL_HOST
       value: "$(MONGOS_INTERNAL_SVC_NAME).$(KB_NAMESPACE).svc.{{ .Values.clusterDomain }}"
+    - name: EXPORTER_SERVICE_PORT  
+      value: "9216"
+      valueFrom:
+        hostNetworkVarRef:
+          optional: true
+          container:
+            name: exporter
+            port:
+              name: exporter
+              option: Optional
   hostNetwork:
     containerPorts:
       - container: mongos

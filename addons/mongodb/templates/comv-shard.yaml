@@ -36,6 +36,7 @@ spec:
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         init-kubectl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
         init-pbm-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.9.1
+        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
     - name: 7.0.18
       changes:
       serviceVersion: 7.0.18
@@ -45,6 +46,7 @@ spec:
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         init-kubectl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
         init-pbm-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.9.1
+        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
     - name: 6.0.21
       changes:
       serviceVersion: 6.0.21
@@ -54,6 +56,7 @@ spec:
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         init-kubectl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
         init-pbm-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.9.1
+        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
     - name: 5.0.29
       changes:
       serviceVersion: 5.0.29
@@ -63,6 +66,7 @@ spec:
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         init-kubectl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
         init-pbm-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.5.0-multi
+        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
     - name: 4.4.29
       changes:
       serviceVersion: 4.4.29
@@ -72,6 +76,7 @@ spec:
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         init-kubectl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
         init-pbm-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.5.0-multi
+        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
     - name: 4.2.25
       changes:
       serviceVersion: 4.2.25
@@ -81,6 +86,7 @@ spec:
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         init-kubectl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
         init-pbm-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.5.0-multi
+        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
     - name: 4.0.28
       changes:
       serviceVersion: 4.0.28
@@ -90,6 +96,7 @@ spec:
         init-syncer: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
         init-kubectl: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
         init-pbm-agent: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:2.5.0-multi
+        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
 ---
 
 apiVersion: apps.kubeblocks.io/v1alpha1
@@ -116,33 +123,40 @@ spec:
       serviceVersion: 8.0.8
       images:
         mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:8.0.8
+        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
     - name: 7.0.18
       changes:
       serviceVersion: 7.0.18
       images:
         mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:7.0.18
+        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
     - name: 6.0.21
       changes:
       serviceVersion: 6.0.21
       images:
         mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:6.0.21
+        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
     - name: 5.0.29
       changes:
       serviceVersion: 5.0.29
       images:
         mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:5.0.29-multi
+        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
     - name: 4.4.29
       changes:
       serviceVersion: 4.4.29
       images:
         mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:4.4.29-multi
+        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
     - name: 4.2.25
       changes:
       serviceVersion: 4.2.25
       images:
         mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:4.2.25
+        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}
     - name: 4.0.28
       changes:
       serviceVersion: 4.0.28
       images:
         mongos: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:4.0.28
+        exporter: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.exporter.repository }}:{{ .Values.image.exporter.tag }}

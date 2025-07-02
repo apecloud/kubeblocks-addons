@@ -21,6 +21,17 @@ net:
   bindIpAll: true
   #bindIp:
 
+# where to write logging data.
+{{ block "logsBlock" . }}
+systemLog:
+  destination: file
+  quiet: false
+  logAppend: false
+  logRotate: rename
+  path: /data/mongodb/logs/mongodb.log
+  verbosity: 0
+{{ end }}
+
 # sharding:
 
 # security options

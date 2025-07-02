@@ -1,5 +1,8 @@
 #!/bin/bash
 
+{{- $mongodb_root := getVolumePathByName ( index $.podSpec.containers 0 ) "data" }}
+MONGODB_ROOT={{ $mongodb_root }}
+mkdir -p $MONGODB_ROOT/logs
 # require port
 {{- $mongodb_port_info := getPortByName ( index $.podSpec.containers 0 ) "mongos" }}
 {{- $mongodb_port := 27017 }}

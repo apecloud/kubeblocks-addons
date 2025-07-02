@@ -55,6 +55,7 @@ shardingSpecs:
       componentDef: mongo-shard
       serviceVersion: {{ .Values.version }}
       replicas: {{ .Values.replicas | default 3 }}
+      disableExporter: {{ $.Values.disableExporter | default "false" }}
       systemAccounts: &adminAccounts
         - name: root
           {{- if and .Values.customSecretName .Values.customSecretNamespace }}
@@ -80,6 +81,7 @@ componentSpecs:
   - name: mongo-config-server
     componentDef: mongo-config-server
     replicas: {{ .Values.configServer.replicas | default 3 }}
+    disableExporter: {{ $.Values.disableExporter | default "false" }}
     systemAccounts: *adminAccounts
     serviceVersion: {{ .Values.version }}
     serviceAccountName: {{ include "kblib.serviceAccountName" . }}
@@ -110,6 +112,7 @@ componentSpecs:
   - name: mongo-mongos
     componentDef: mongo-mongos
     replicas: {{ .Values.mongos.replicas | default 3 }}
+    disableExporter: {{ $.Values.disableExporter | default "false" }}
     serviceVersion: {{ .Values.version }}
     serviceAccountName: {{ include "kblib.serviceAccountName" . }}
     env:
