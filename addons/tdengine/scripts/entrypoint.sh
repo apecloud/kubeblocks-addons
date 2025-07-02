@@ -117,7 +117,15 @@ else
         echo "Waiting for first ep to be ready..."
         sleep 1s
     done
-    sh -c "taos -p'$TAOS_ROOT_PASSWORD' -h $FIRST_EP_HOST -P $FIRST_EP_PORT -s 'create dnode \"$FQDN:$SERVER_PORT\";'"
+    res=$(sh -c "taos -p'$TAOS_ROOT_PASSWORD' -h $FIRST_EP_HOST -P $FIRST_EP_PORT -s 'create dnode \"$FQDN:$SERVER_PORT\";'" 2>&1)
+    if [[ "$res" == *"Create OK"* ]]; then
+        echo "create dnode success"
+    elif [[ "$res" == *"already exists"* ]]; then
+        echo "dnode already exists"
+    else
+        echo "create dnode failed: $res"
+        exit 1
+    fi
     if ps aux | grep -v grep | grep taosd > /dev/null; then
         echo "TDengine is running"
       else

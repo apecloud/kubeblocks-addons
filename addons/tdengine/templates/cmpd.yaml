@@ -12,7 +12,6 @@ spec:
   serviceKind: tdengine
   serviceVersion: {{ .Chart.AppVersion }}
   podManagementPolicy: Parallel
-  minReadySeconds: 10
   services:
     - name: taosd
       serviceName: taosd
