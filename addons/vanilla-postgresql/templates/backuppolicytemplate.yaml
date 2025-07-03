@@ -11,6 +11,7 @@ spec:
   serviceKind: PostgreSQL
   compDefs:
     - {{ include "vanilla-postgresql.cmpdRegexpPattern" . }}
+    - {{ include "supabase.cmpdRegexpPattern" . }}
   target:
     role: secondary
     fallbackRole: primary

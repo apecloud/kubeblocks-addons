@@ -479,7 +479,7 @@ spec:
   # Specifies the type of this operation.
   type: Reconfiguring
   # Specifies the name of the Cluster resource that this operation is targeting.
-  clusterName: vanpg-cluster
+  clusterName: supabase-cluster
   # Instructs the system to bypass pre-checks (including cluster state checks and customized pre-conditions hooks) and immediately execute the opsRequest, except for the opsRequest of 'Start' type, which will still undergo pre-checks even if `force` is true.  Note: Once set, the `force` field is immutable and cannot be updated.
   force: false
   # Specifies a component and its configuration updates. This field is deprecated and replaced by `reconfigures`.
