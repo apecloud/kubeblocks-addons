@@ -37,9 +37,9 @@ spec:
       env:
         {{- include "milvus.objectstorage.env" . | indent 8}}
       serviceRefs:
-        {{/* {{- include "milvus.serviceRef.meta" . | indent 8 }}
-         {{- include "milvus.serviceRef.log" . | indent 8 }} 
-        {{- include "milvus.serviceRef.object" . | indent 8 }}*/}}
+        {{- /* {{- include "milvus.serviceRef.meta" . | indent 8 }}
+        {{- include "milvus.serviceRef.log" . | indent 8 }} */ -}}
+        {{- include "milvus.serviceRef.object" . | indent 8 }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
     {{- end }}
@@ -50,9 +50,9 @@ spec:
       env:
         {{- include "milvus.objectstorage.env" . | indent 8}}
       serviceRefs:
-        {{/* {{- include "milvus.serviceRef.meta" . | indent 8 }}
-         {{- include "milvus.serviceRef.log" . | indent 8 }} 
-        {{- include "milvus.serviceRef.object" . | indent 8 }}*/}}
+        {{- /* {{- include "milvus.serviceRef.meta" . | indent 8 }}
+        {{- include "milvus.serviceRef.log" . | indent 8 }} */ -}}
+        {{- include "milvus.serviceRef.object" . | indent 8 }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
     - name: datanode
@@ -63,9 +63,9 @@ spec:
       env:
         {{- include "milvus.objectstorage.env" . | indent 8}}
       serviceRefs:
-        {{/* {{- include "milvus.serviceRef.meta" . | indent 8 }}
-         {{- include "milvus.serviceRef.log" . | indent 8 }} 
-        {{- include "milvus.serviceRef.object" . | indent 8 }}*/}}
+        {{- /* {{- include "milvus.serviceRef.meta" . | indent 8 }}
+        {{- include "milvus.serviceRef.log" . | indent 8 }} */ -}}
+        {{- include "milvus.serviceRef.object" . | indent 8 }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
     - name: indexnode
@@ -76,9 +76,9 @@ spec:
       env:
         {{- include "milvus.objectstorage.env" . | indent 8}}
       serviceRefs:
-        {{/* {{- include "milvus.serviceRef.meta" . | indent 8 }}
-         {{- include "milvus.serviceRef.log" . | indent 8 }} 
-        {{- include "milvus.serviceRef.object" . | indent 8 }}*/}}
+        {{- /* {{- include "milvus.serviceRef.meta" . | indent 8 }}
+        {{- include "milvus.serviceRef.log" . | indent 8 }} */ -}}
+        {{- include "milvus.serviceRef.object" . | indent 8 }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
     - name: querynode
@@ -89,9 +89,9 @@ spec:
       env:
         {{- include "milvus.objectstorage.env" . | indent 8}}
       serviceRefs:
-        {{/* {{- include "milvus.serviceRef.meta" . | indent 8 }}
-         {{- include "milvus.serviceRef.log" . | indent 8 }}
-        {{- include "milvus.serviceRef.object" . | indent 8 }} */}}
+        {{- /* {{- include "milvus.serviceRef.meta" . | indent 8 }}
+        {{- include "milvus.serviceRef.log" . | indent 8 }} */ -}}
+        {{- include "milvus.serviceRef.object" . | indent 8 }}
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
 {{- end }}

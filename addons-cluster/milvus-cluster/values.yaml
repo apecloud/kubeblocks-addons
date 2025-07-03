@@ -58,9 +58,9 @@ storage:
       namespace:
       cluster:
         name:
-        component:
-        service:
-        port:
+        component: etcd
+        service: headless
+        port: client
         credential:
       serviceDescriptor:
   log:
@@ -69,13 +69,14 @@ storage:
       namespace:
       cluster:
         name:
-        component:
-        service:
-        port:
+        component: kafka-combine
+        service: advertised-listener
+        port: broker
         credential:
       serviceDescriptor:
   object:
     mode: serviceref  # optional: incluster, serviceref
+    secret:
     serviceRef:
       namespace:
       cluster:
