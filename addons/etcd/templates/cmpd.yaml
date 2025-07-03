@@ -149,6 +149,8 @@ spec:
           - /bin/bash
           - -c
           - /scripts/roleprobe.sh
+      initialDelaySeconds: 10
+      periodSeconds: 5
     memberJoin:
       exec:
         command:
