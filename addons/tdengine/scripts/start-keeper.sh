@@ -1,3 +1,4 @@
+#!/bin/bash
 set -e
 until curl -L -u root:${TAOS_ROOT_PASSWORD} localhost:${TAOS_ADAPTER_PORT}/rest/sql -d "show databases"; do sleep 1; done
 

@@ -71,7 +71,7 @@ sysctl -w kernel.core_pattern=/corefile/core-$FQDN-%e-%p >/dev/null >&1
 set -e
 
 if [ $# -gt 0 ]; then
-    exec $@
+    exec "$@"
     exit 0
 fi
 
