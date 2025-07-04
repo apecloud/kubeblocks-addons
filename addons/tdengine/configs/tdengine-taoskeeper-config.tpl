@@ -35,7 +35,7 @@ name = "log"
 [metrics.database.options]
 vgroups = 1
 buffer = 64
-keep = 90
+keep = 30
 cachemodel = "both"
 
 [environment]

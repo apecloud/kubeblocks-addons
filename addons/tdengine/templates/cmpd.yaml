@@ -153,16 +153,6 @@ spec:
               fieldRef:
                 apiVersion: v1
                 fieldPath: metadata.name
-        #lifecycle:
-        #  postStart:
-        #    exec:
-        #      command: ["/bin/sh", "-c", "/scripts/taos-adapter-check.sh"]
-        #readinessProbe:
-        #  exec:
-         #   command:
-         #     - taos-check
-        #  initialDelaySeconds: 5
-         # timeoutSeconds: 60
         livenessProbe:
           exec:
             command:

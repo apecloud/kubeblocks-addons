@@ -16,5 +16,5 @@ for file in $(datasafed list ${DP_BACKUP_NAME} -r -f); do
  fi
 done
 
-taosdump -h ${DP_DB_HOST} -P ${DP_DB_PORT} -p${TAOS_ROOT_PASSWORD} -i ${BACKUP_DIR}/${DP_BACKUP_NAME}
-# rm -rf ${BACKUP_DIR}/${DP_BACKUP_NAME}
+taosdump -h ${DP_DB_HOST} -P ${DP_DB_PORT} -p${TAOS_ROOT_PASSWORD} -i ${BACKUP_DIR}/${DP_BACKUP_NAME} > ${BACKUP_DIR}/restore.log 2>&1
+rm -rf ${BACKUP_DIR}/${DP_BACKUP_NAME}
