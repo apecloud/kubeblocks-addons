@@ -7,7 +7,7 @@ image:
   repository: tdengine/tdengine
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "3.0.5.0"
+  tag: "3.3.6.9"
 
 imagePullSecrets: []
 
@@ -48,5 +48,7 @@ metrics:
     pullPolicy: IfNotPresent
   service:
     port: 6043
+
+clusterDomain: cluster.local
 
 
