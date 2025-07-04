@@ -1,0 +1,31 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: ServiceDescriptor
+metadata:
+  name: {{ include "kblib.clusterName" . }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  # bucket name is defined as an env variable, not defined here. Because ServiceDescriptor doesn't have
+  # a field for extra parameters.
+  host:
+    valueFrom:
+      secretKeyRef:
+        key: host
+        name: {{ .Values.storage.object.secret }}
+  port:
+    valueFrom:
+      secretKeyRef:
+        key: port
+        name: {{ .Values.storage.object.secret }}
+  serviceKind: minio
+  serviceVersion: 1.0.0
+  auth:
+    username:
+      valueFrom:
+        secretKeyRef:
+          key: accessKey
+          name: {{ .Values.storage.object.secret }}
+    password:
+      valueFrom:
+        secretKeyRef:
+          key: secretKey
+          name: {{ .Values.storage.object.secret }}

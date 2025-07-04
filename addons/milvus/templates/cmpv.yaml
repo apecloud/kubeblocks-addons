@@ -71,30 +71,30 @@ spec:
     - name: v2.5.13-standalone
       serviceVersion: "2.5.13"
       images:
-        setup: {{ .Values.images.milvusTools.registry | default ( .Values.images.registry | default "docker.io" )  }}/{{ .Values.images.milvusTools.repository }}:v0.8.4
+        setup: {{ .Values.images.milvusTools.registry | default ( .Values.images.registry | default "docker.io" )  }}/{{ .Values.images.milvusTools.repository }}:v0.9.17
         milvus: {{ .Values.images.milvus.registry | default ( .Values.images.registry | default "docker.io" )  }}/{{ .Values.images.milvus.repository }}:v2.5.13
     - name: v2.5.13-mixcoord
       serviceVersion: "2.5.13"
       images:
-        setup: {{ .Values.images.milvusTools.registry | default ( .Values.images.registry | default "docker.io" )  }}/{{ .Values.images.milvusTools.repository }}:v0.8.4
+        setup: {{ .Values.images.milvusTools.registry | default ( .Values.images.registry | default "docker.io" )  }}/{{ .Values.images.milvusTools.repository }}:v0.9.17
         mixcoord: {{ .Values.images.milvus.registry | default ( .Values.images.registry | default "docker.io" )  }}/{{ .Values.images.milvus.repository }}:v2.5.13
     - name: v2.5.13-proxy
       serviceVersion: "2.5.13"
       images:
-        setup: {{ .Values.images.milvusTools.registry | default ( .Values.images.registry | default "docker.io" )  }}/{{ .Values.images.milvusTools.repository }}:v0.8.4
+        setup: {{ .Values.images.milvusTools.registry | default ( .Values.images.registry | default "docker.io" )  }}/{{ .Values.images.milvusTools.repository }}:v0.9.17
         proxy: {{ .Values.images.milvus.registry | default ( .Values.images.registry | default "docker.io" )  }}/{{ .Values.images.milvus.repository }}:v2.5.13
     - name: v2.5.13-querynode
       serviceVersion: "2.5.13"
       images:
-        setup: {{ .Values.images.milvusTools.registry | default ( .Values.images.registry | default "docker.io" )  }}/{{ .Values.images.milvusTools.repository }}:v0.8.4
+        setup: {{ .Values.images.milvusTools.registry | default ( .Values.images.registry | default "docker.io" )  }}/{{ .Values.images.milvusTools.repository }}:v0.9.17
         querynode: {{ .Values.images.milvus.registry | default ( .Values.images.registry | default "docker.io" )  }}/{{ .Values.images.milvus.repository }}:v2.5.13
     - name: v2.5.13-indexnode
       serviceVersion: "2.5.13"
       images:
-        setup: {{ .Values.images.milvusTools.registry | default ( .Values.images.registry | default "docker.io" )  }}/{{ .Values.images.milvusTools.repository }}:v0.8.4
+        setup: {{ .Values.images.milvusTools.registry | default ( .Values.images.registry | default "docker.io" )  }}/{{ .Values.images.milvusTools.repository }}:v0.9.17
         indexnode: {{ .Values.images.milvus.registry | default ( .Values.images.registry | default "docker.io" )  }}/{{ .Values.images.milvus.repository }}:v2.5.13
     - name: v2.5.13-datanode
       serviceVersion: "2.5.13"
       images:
-        setup: {{ .Values.images.milvusTools.registry | default ( .Values.images.registry | default "docker.io" )  }}/{{ .Values.images.milvusTools.repository }}:v0.8.4
+        setup: {{ .Values.images.milvusTools.registry | default ( .Values.images.registry | default "docker.io" )  }}/{{ .Values.images.milvusTools.repository }}:v0.9.17
         datanode: {{ .Values.images.milvus.registry | default ( .Values.images.registry | default "docker.io" )  }}/{{ .Values.images.milvus.repository }}:v2.5.13
