@@ -31,6 +31,14 @@ Expand the namespace of the chart.
 {{- end }}
 
 {{/*
+Common annotations
+*/}}
+{{- define "nebula.annotations" -}}
+apps.kubeblocks.io/skip-immutable-check: "true"
+{{- end }}
+
+
+{{/*
 Create chart name and version as used by the chart label.
 */}}
 {{- define "nebula.chart" -}}
@@ -56,4 +64,106 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 helm.sh/chart: {{ include "nebula.chart" . }}
+{{ include "nebula.selectorLabels" . }}
 {{- end }}
+
+{{/*
+Selector labels
+*/}}
+{{- define "nebula.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "nebula.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{/*
+Define nebula metad component definition name
+*/}}
+{{- define "nebula-metad.cmpdName" -}}
+nebula-metad
+{{- end -}}
+
+{{/*
+Define nebula metad component definition regex pattern
+*/}}
+{{- define "nebula-metad.cmpdRegexpPattern" -}}
+^nebula-metad
+{{- end -}}
+
+{{/*
+Define nebula metad configuration template name
+*/}}
+{{- define "nebula-metad.configTemplateName" -}}
+nebula-metad-config-template
+{{- end -}}
+
+
+{{/*
+Define nebula graphd component definition name
+*/}}
+{{- define "nebula-graphd.cmpdName" -}}
+nebula-graphd
+{{- end -}}
+
+{{/*
+Define nebula graphd component definition regex pattern
+*/}}
+{{- define "nebula-graphd.cmpdRegexpPattern" -}}
+^nebula-graphd
+{{- end -}}
+
+{{/*
+Define nebula graphd configuration template name
+*/}}
+{{- define "nebula-graphd.configTemplateName" -}}
+nebula-graphd-config-template
+{{- end -}}
+
+{{/*
+Define nebula storaged component definition name
+*/}}
+{{- define "nebula-storaged.cmpdName" -}}
+nebula-storaged
+{{- end -}}
+
+{{/*
+Define nebula storaged component definition regex pattern
+*/}}
+{{- define "nebula-storaged.cmpdRegexpPattern" -}}
+^nebula-storaged
+{{- end -}}
+
+{{/*
+Define nebula storaged configuration template name
+*/}}
+{{- define "nebula-storaged.configTemplateName" -}}
+nebula-storaged-config-template
+{{- end -}}
+
+{{/*
+Define nebula storaged scripts template name
+*/}}
+{{- define "nebula.scriptsTemplateName" -}}
+nebula-scripts-template
+{{- end -}}
+
+{{/*
+Define logrotate container
+*/}}
+{{- define "nebula.logrotateContainer" -}}
+- name: logrotate
+  imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
+  command:
+  - /bin/sh
+  - -ecx
+  - sh /scripts/logrotate.sh; crond -f -l 2
+  env:
+  - name: LOGROTATE_ROTATE
+    value: "5"
+  - name: LOGROTATE_SIZE
+    value: 300M
+  volumeMounts:
+  - mountPath: /usr/local/nebula/logs
+    name: logs
+  - mountPath: /scripts
+    name: scripts
+{{- end -}}

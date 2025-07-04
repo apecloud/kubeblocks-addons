@@ -30,6 +30,7 @@ spec:
       serviceAccountName: {{ include "kblib.serviceAccountName" . }}
       {{- include "kblib.componentMonitor" . | indent 6 }}
     - name: milvus
+      serviceVersion: {{ default .Chart.AppVersion .Values.appVersionOverride }}
       replicas: {{ .Values.replicas | default 1 }}
       {{- include "kblib.componentResources" . | indent 6 }}
       {{- if .Values.persistence.enabled }}

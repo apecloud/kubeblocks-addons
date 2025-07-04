@@ -81,13 +81,13 @@
 
 ########## authentication ##########
 # Enable authorization
---enable_authorize=false
+--enable_authorize=true
 # User login authentication type, password for nebula authentication, ldap for ldap authentication, cloud for cloud authentication
 --auth_type=password
 
 ########## memory ##########
 # System memory high watermark ratio, cancel the memory checking when the ratio greater than 1.0
---system_memory_high_watermark_ratio=0.8
+--system_memory_high_watermark_ratio=1.0
 
 ########## audit ##########
 # This variable is used to enable audit. The value can be 'true' or 'false'.
@@ -170,3 +170,7 @@
 --memory_purge_enabled=true
 # memory background purge interval in seconds
 --memory_purge_interval_seconds=10
+
+# experimental configuration
+--enable_data_balance=true
+--enable_experimental_feature=true
