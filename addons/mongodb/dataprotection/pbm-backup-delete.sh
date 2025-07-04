@@ -6,7 +6,7 @@ export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH="$DP_BACKUP_BASE_PATH"
 export DP_BACKUP_JSON="kubeblocks-backup.json"
 
-echo "INFO: Starting shard backup delete script..."
+echo "INFO: Starting PBM backup delete script..."
 if [ "$PBM_BACKUP_TYPE" = "continuous" ]; then
     if [ "$RETAIN_PITR_FILES" = "true" ]; then
         echo "INFO: Retain PBM pitr files, skip deleting."
@@ -31,7 +31,7 @@ else
     echo "INFO: Backup name: $backup_name"
 
     if [ -z "$backup_name" ] || [ "$backup_name" = "null" ]; then
-        echo "INFO: Backup name is empty, the backup is not completed and skip handling."
+        echo "INFO: Backup name is empty, the backup  reis not completed and skip handling."
         exit 0
     fi
 
@@ -58,4 +58,4 @@ if [ "$(datasafed list / | wc -l)" = "1" ] && [ "$(datasafed list $pbm_init)" = 
     datasafed rmdir backups
     echo "INFO: PBM initial config file $pbm_init deleted."
 fi
-echo "INFO: Shard backup delete script completed successfully."
+echo "INFO: PBM backup delete script completed successfully."

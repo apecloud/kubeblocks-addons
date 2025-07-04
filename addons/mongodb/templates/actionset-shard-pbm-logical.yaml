@@ -51,7 +51,7 @@ spec:
         - bash
         - -c
         - |
-          {{- .Files.Get "dataprotection/shard-pbm-backup-delete.sh" | nindent 10 }}
+          {{- .Files.Get "dataprotection/pbm-backup-delete.sh" | nindent 10 }}
 
   restore:
     postReady:

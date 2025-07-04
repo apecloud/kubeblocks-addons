@@ -96,6 +96,70 @@ spec:
                 mappingValue: "4.2.25"
               - names: ["4.0.28"]
                 mappingValue: "4.0.28"
+      - name: pbm-physical
+        snapshotVolumes: false
+        actionSetName: mongodb-rs-pbm-physical
+        envMapping:
+          - key: PBM_IMAGE_TAG
+            valueFrom:
+              serviceVersion:
+                - names: ["6.0.21", "7.0.18", "8.0.8"]
+                  mappingValue: "2.9.1"
+                - names: ["5.0.29", "4.4.29", "4.2.25", "4.0.28"]
+                  mappingValue: "2.5.0-multi"
+          - key: PSM_IMAGE_TAG
+            valueFrom:
+              serviceVersion:
+                - names: ["8.0.8"]
+                  mappingValue: "8.0.8"
+                - names: ["7.0.18"]
+                  mappingValue: "7.0.18"
+                - names: ["6.0.21"]
+                  mappingValue: "6.0.21"
+                - names: ["5.0.29"]
+                  mappingValue: "5.0.29-multi"
+                - names: ["4.4.29"]
+                  mappingValue: "4.4.29-multi"
+                - names: ["4.2.25"]
+                  mappingValue: "4.2.25"
+                - names: ["4.0.28"]
+                  mappingValue: "4.0.28"
+        targetVolumes:
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
+      - name: pbm-pitr
+        snapshotVolumes: false
+        actionSetName: mongodb-rs-pbm-pitr
+        envMapping:
+          - key: PBM_IMAGE_TAG
+            valueFrom:
+              serviceVersion:
+                - names: ["6.0.21", "7.0.18", "8.0.8"]
+                  mappingValue: "2.9.1"
+                - names: ["5.0.29", "4.4.29", "4.2.25", "4.0.28"]
+                  mappingValue: "2.5.0-multi"
+          - key: PSM_IMAGE_TAG
+            valueFrom:
+              serviceVersion:
+                - names: ["8.0.8"]
+                  mappingValue: "8.0.8"
+                - names: ["7.0.18"]
+                  mappingValue: "7.0.18"
+                - names: ["6.0.21"]
+                  mappingValue: "6.0.21"
+                - names: ["5.0.29"]
+                  mappingValue: "5.0.29-multi"
+                - names: ["4.4.29"]
+                  mappingValue: "4.4.29-multi"
+                - names: ["4.2.25"]
+                  mappingValue: "4.2.25"
+                - names: ["4.0.28"]
+                  mappingValue: "4.0.28"
+        targetVolumes:
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.dataMountPath }}
       - name: volume-snapshot
         snapshotVolumes: true
         actionSetName: mongodb-volumesnapshot
@@ -105,7 +169,27 @@ spec:
           volumeMounts:
             - name: data
               mountPath: {{ .Values.dataMountPath }}
-    schedules: *backupSchedules
+    schedules:
+      - backupMethod: dump
+        enabled: false
+        cronExpression: "0 18 * * *"
+        retentionPeriod: 7d
+      - backupMethod: datafile
+        enabled: false
+        cronExpression: "0 18 * * *"
+        retentionPeriod: 7d
+      - backupMethod: volume-snapshot
+        enabled: false
+        cronExpression: "0 18 * * *"
+        retentionPeriod: 7d
+      - backupMethod: pbm-physical
+        enabled: false
+        cronExpression: "0 18 * * *"
+        retentionPeriod: 7d
+      - backupMethod: pbm-pitr
+        enabled: false
+        cronExpression: "*/5 * * * *"
+        retentionPeriod: 8d
   - componentDefs: [mongo-config-server]
     target:
       role: secondary

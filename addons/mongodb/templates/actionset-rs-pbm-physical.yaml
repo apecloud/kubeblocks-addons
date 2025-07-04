@@ -1,7 +1,7 @@
 apiVersion: dataprotection.kubeblocks.io/v1alpha1
 kind: ActionSet
 metadata:
-  name: mongodb-shard-pbm-physical
+  name: mongodb-rs-pbm-physical
   labels:
     clusterdefinition.kubeblocks.io/name: mongodb
     {{- include "mongodb.labels" . | nindent 4 }}
@@ -23,15 +23,7 @@ spec:
       value: {{ .Values.image.percona.tag }}
   backupType: Full
   backup:
-    preBackup:
-    - job:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:$(PSM_IMAGE_TAG)
-        runOnTargetPodNode: false
-        command:
-          - bash
-          - -c
-          - |
-            {{- .Files.Get "dataprotection/shard-pbm-pre-backup.sh" | nindent 12 }}
+    preBackup: []
     postBackup: []
     backupData:
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:$(PBM_IMAGE_TAG)
@@ -44,7 +36,7 @@ spec:
         - -c
         - |
           {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 10 }}
-          {{- .Files.Get "dataprotection/shard-pbm-full-backup.sh" | nindent 10 }}
+          {{- .Files.Get "dataprotection/rs-pbm-full-backup.sh" | nindent 10 }}
     preDelete:
       image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:$(PBM_IMAGE_TAG)
       command:
@@ -53,15 +45,14 @@ spec:
         - |
           {{- .Files.Get "dataprotection/pbm-backup-delete.sh" | nindent 10 }}
   restore:
+    prepareData:
+      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:$(PBM_IMAGE_TAG)
+      command:
+      - bash
+      - -c
+      - |
+        {{- .Files.Get "dataprotection/rs-pbm-restore-prepare.sh" | nindent 8 }}
     postReady:
-    - job:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:$(PSM_IMAGE_TAG)
-        runOnTargetPodNode: false
-        command:
-          - bash
-          - -c
-          - |
-            {{- .Files.Get "dataprotection/shard-pbm-restore-prepare.sh" | nindent 12 }}
     - job:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:$(PBM_IMAGE_TAG)
         runOnTargetPodNode: true
@@ -70,4 +61,4 @@ spec:
           - -c
           - |
             {{- .Files.Get "dataprotection/common-scripts.sh" | nindent 12 }}
-            {{- .Files.Get "dataprotection/shard-pbm-full-restore.sh" | nindent 12 }}
+            {{- .Files.Get "dataprotection/rs-pbm-full-restore.sh" | nindent 12 }}

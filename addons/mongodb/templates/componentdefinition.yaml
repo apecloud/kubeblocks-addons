@@ -102,6 +102,31 @@ spec:
         volumeMounts:
           - mountPath: /kubeblocks
             name: kubeblocks
+      - command:
+          - sh
+          - -c
+          - |
+            mkdir -p {{ .Values.dataMountPath }}/tmp/bin
+            cp -r /opt/bitnami/kubectl/bin/kubectl {{ .Values.dataMountPath }}/tmp/bin
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.kubectl.repository }}:{{ .Values.image.kubectl.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        name: init-kubectl
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+      - command:
+          - sh
+          - -c
+          - |
+            cp -r /usr/bin/pbm /kubeblocks
+            cp -r /usr/bin/pbm-agent /kubeblocks
+            cp -r /usr/bin/pbm-agent-entrypoint /kubeblocks
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:{{ .Values.image.percona.backup.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        name: init-pbm-agent
+        volumeMounts:
+          - mountPath: /kubeblocks
+            name: kubeblocks
     containers:
       - name: mongodb
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
@@ -114,8 +139,8 @@ spec:
             protocol: TCP
             containerPort: 3601
         command:
-          - syncer
-          - --
+          - bash
+          - -c
           - /scripts/replicaset-setup.sh
         env:
           - name: PATH
@@ -128,6 +153,20 @@ spec:
             value: $(MONGODB_USER)
           - name: MONGODB_ROOT_PASSWORD
             value: $(MONGODB_PASSWORD)
+          - name: PBM_AGENT_MONGODB_USERNAME
+            value: $(MONGODB_USER)
+          - name: PBM_AGENT_MONGODB_PASSWORD
+            value: $(MONGODB_PASSWORD)
+          - name: PBM_MONGODB_REPLICA_SET
+            value: $(KB_CLUSTER_COMP_NAME)
+          - name: PBM_AGENT_SIDECAR
+            value: "true"
+          - name: PBM_AGENT_SIDECAR_SLEEP
+            value: "5"
+          - name: POD_NAME
+            value: $(KB_POD_NAME)
+          - name: PBM_MONGODB_URI
+            value: mongodb://$(PBM_AGENT_MONGODB_USERNAME):$(PBM_AGENT_MONGODB_PASSWORD)@localhost:$(KB_SERVICE_PORT)/?authSource=admin
         volumeMounts:
           - mountPath: {{ .Values.dataMountPath }}
             name: data
@@ -141,6 +180,42 @@ spec:
             mountPath: /scripts
           - mountPath: /kubeblocks
             name: kubeblocks
+      - name: mongodb-backup-agent
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:{{ .Values.image.percona.backup.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+            - /bin/bash
+            - -c
+            - |
+              while [ -f $PBM_DATA_MOUNT_POINT/tmp/mongodb_pbm.backup ]; do
+                echo "Waiting for restore...";
+                sleep 5;
+              done
+              exec pbm-agent-entrypoint
+        env:
+          - name: PATH
+            value: /kubeblocks/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+          - name: PBM_AGENT_MONGODB_USERNAME
+            value: $(MONGODB_USER)
+          - name: PBM_AGENT_MONGODB_PASSWORD
+            value: $(MONGODB_PASSWORD)
+          - name: PBM_MONGODB_REPLICA_SET
+            value: $(KB_CLUSTER_COMP_NAME)
+          - name: PBM_AGENT_SIDECAR
+            value: "true"
+          - name: PBM_AGENT_SIDECAR_SLEEP
+            value: "5"
+          - name: POD_NAME
+            value: $(KB_POD_NAME)
+          - name: PBM_MONGODB_URI
+            value: mongodb://$(PBM_AGENT_MONGODB_USERNAME):$(PBM_AGENT_MONGODB_PASSWORD)@localhost:$(KB_SERVICE_PORT)/?authSource=admin
+          - name: PBM_DATA_MOUNT_POINT
+            value: {{ .Values.dataMountPath }}
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+          - name: scripts
+            mountPath: /scripts
       - name: exporter
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         ports:
@@ -201,6 +276,16 @@ spec:
             port:
               name: exporter
               option: Optional
+    - name: MONGODB_REPLICA_SET_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
+    - name: MONGODB_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
   hostNetwork: 
     containerPorts:  
       - container: mongodb

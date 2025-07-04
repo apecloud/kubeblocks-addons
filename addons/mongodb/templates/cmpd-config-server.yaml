@@ -177,7 +177,7 @@ spec:
             value: "true"
           - name: PBM_AGENT_SIDECAR_SLEEP
             value: "5"
-          - name: SHARED
+          - name: SHARDED
             value: "TRUE"
           - name: POD_NAME
             value: $(KB_POD_NAME)

@@ -183,6 +183,14 @@ function export_pbm_env_vars() {
   export PBM_MONGODB_URI="mongodb://$PBM_AGENT_MONGODB_USERNAME:$PBM_AGENT_MONGODB_PASSWORD@$cfg_server_endpoints/?authSource=admin&replSetName=$CFG_SERVER_REPLICA_SET_NAME"
 }
 
+function export_pbm_env_vars_for_rs() {
+  export PBM_AGENT_MONGODB_USERNAME="$MONGODB_USER"
+  export PBM_AGENT_MONGODB_PASSWORD="$MONGODB_PASSWORD"
+
+  mongodb_endpoints="$(generate_endpoints "$MONGODB_POD_FQDN_LIST" "$KB_SERVICE_PORT")"
+  export PBM_MONGODB_URI="mongodb://$PBM_AGENT_MONGODB_USERNAME:$PBM_AGENT_MONGODB_PASSWORD@$mongodb_endpoints/?authSource=admin&replSetName=$MONGODB_REPLICA_SET_NAME"
+}
+
 function sync_pbm_storage_config() {
   echo "INFO: Checking if PBM storage config exists"
   pbm_config_exists=true
