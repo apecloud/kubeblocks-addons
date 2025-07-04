@@ -1,0 +1,113 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentDefinition
+metadata:
+  name: {{ include "rocketmq.cmpdName" . }}
+  labels:
+    {{- include "rocketmq.labels" . | nindent 4 }}
+  annotations:
+    {{- include "rocketmq.annotations" . | nindent 4 }}
+spec:
+  provider: kubeblocks.io
+  description: RocketMQ Proxy is a reliable and mature messaging and streaming broker.
+  serviceKind: proxy
+  serviceVersion: {{ .Values.componentServiceVersion.nameserver }}
+  services:
+    - name: svr
+      spec:
+        ports:
+          - name: main
+            port: 8080
+            targetPort: main
+          - name: grpc
+            port: 8080
+            targetPort: grpc
+  configs:
+    - name: config
+      template: {{ include "rocketmq.configTplName" . }}
+      volumeName: rocketmq-config
+      namespace: {{ .Release.Namespace }}
+      defaultMode: 0644
+      restartOnFileChange: true
+  policyRules:
+    - apiGroups:
+      - ""
+      resources:
+      - endpoints
+      verbs:
+      - get
+    - apiGroups:
+      - ""
+      resources:
+      - events
+      verbs:
+      - create
+  runtime:
+    automountServiceAccountToken: true
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/component: proxy
+            topologyKey: kubernetes.io/hostname
+    containers:
+      - name: proxy
+        command:
+          - /bin/sh
+          - -c
+          - /rocketmq-start.sh
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        - name: NAMESRV_ADDR
+          value: {{ include "rocketmq.nameserver.addr" $ }}
+        - name: ROCKETMQ_PROCESS_ROLE
+          value: proxy
+        - name: RMQ_PROXY_CONFIG_PATH
+          value: /etc/rocketmq/base-cm/proxy.json
+        image: {{ .Values.rocketmq.registry | default "docker.io" }}/{{ .Values.rocketmq.repository }}:{{ .Values.rocketmq.tag }}
+        imagePullPolicy: {{ default "IfNotPresent" .Values.rocketmq.pullPolicy }}
+        lifecycle:
+          preStop:
+            exec:
+              command:
+              - sh
+              - -c
+              - sleep 5; ./mqshutdown proxy
+        ports:
+        - containerPort: 8080
+          name: main
+          protocol: TCP
+        - containerPort: 8081
+          name: grpc
+          protocol: TCP
+        volumeMounts:
+          - mountPath: {{ .Values.dataMountPath }}
+            name: data
+          - mountPath:  /etc/rocketmq/base-cm
+            name: rocketmq-config
+          - mountPath: /rocketmq-start.sh
+            name: rocketmq-config
+            subPath: rocketmq-start.sh
+  vars:
+    - name: CLUSTER_NAME
+      valueFrom:
+        clusterVarRef:
+          clusterName: Required
+    - name: CLUSTER_NAMESPACE
+      valueFrom:
+        clusterVarRef:
+          namespace: Required
+    - name: CLUSTER_COMPONENT_NAME
+      valueFrom:
+        componentVarRef:
+          optional: false
+          componentName: Required
