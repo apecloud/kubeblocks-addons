@@ -92,6 +92,10 @@ spec:
             protocol: TCP
             containerPort: 9216
         env:
+          - name: MONGODB_USER
+            value: $(MONGOS_USER)
+          - name: MONGODB_PASSWORD
+            value: $(MONGOS_PASSWORD)
           - name: MONGODB_URI
             value: mongodb://127.0.0.1:$(KB_SERVICE_PORT)
     volumes:
