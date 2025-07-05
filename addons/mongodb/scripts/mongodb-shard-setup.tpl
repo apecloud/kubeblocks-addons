@@ -1,4 +1,5 @@
-#!/bin/sh
+#!/bin/bash
+# shellcheck disable=SC2086
 
 {{- $mongodb_root := getVolumePathByName ( index $.podSpec.containers 0 ) "data" }}
 {{- $mongodb_port_info := getPortByName ( index $.podSpec.containers 0 ) "mongodb" }}
@@ -16,16 +17,10 @@ mkdir -p $MONGODB_ROOT/logs
 mkdir -p $MONGODB_ROOT/tmp
 export PATH=$MONGODB_ROOT/tmp/bin:$PATH
 
-cp /etc/mongodb/keyfile $MONGODB_ROOT/keyfile
-chmod 600 $MONGODB_ROOT/keyfile
-
-PBM_BACKUPFILE=$MONGODB_ROOT/tmp/mongodb_pbm.backup
-CLIENT=`mongosh --version 1>/dev/null&&echo mongosh||echo mongo`
-if [ ! -f $PBM_BACKUPFILE ]
-then
-  echo "INFO: Do not need to restore."
-  exec syncer -- mongod --bind_ip_all --port $PORT --replSet $KB_CLUSTER_COMP_NAME --config /etc/mongodb/mongodb.conf
-  exit 0
+client_path=$(whereis mongosh | awk '{print $2}')
+CLIENT="mongosh"
+if [ -z "$client_path" ]; then
+    CLIENT="mongo"
 fi
 
 kill_process() {
@@ -63,7 +58,6 @@ process_restore_signal() {
                 kill_process "mongod"
                 kill_process "pbm-agent-entrypoint"
                 kill_process "pbm-agent"
-                rm $PBM_BACKUPFILE
                 exec syncer -- mongod --bind_ip_all --port $PORT --replSet $KB_CLUSTER_COMP_NAME --config /etc/mongodb/mongodb.conf
                 exit 0
             else
@@ -74,6 +68,27 @@ process_restore_signal() {
         sleep 1
     done
 }
+
+# check if need to restore
+wait_interval=5
+while true; do
+    cluster_json=$(kubectl get clusters.apps.kubeblocks.io ${KB_CLUSTER_NAME} -n ${KB_NAMESPACE} -o json 2>&1)
+    kubectl_get_exit_code=$?
+    if [ "$kubectl_get_exit_code" -ne 0 ]; then
+        echo "INFO: Cluster ${KB_CLUSTER_NAME} not found, sleep $wait_interval second and retry..."
+        sleep $wait_interval
+        continue
+    fi
+
+    restore_from_backup=$(echo "$cluster_json" | jq -r '.metadata.annotations["kubeblocks.io/restore-from-backup"] // empty')
+    if [ -z "$restore_from_backup" ]; then
+        echo "INFO: No restore-from-backup annotation, do not need to restore."
+        exec syncer -- mongod --bind_ip_all --port $PORT --replSet $KB_CLUSTER_COMP_NAME --config /etc/mongodb/mongodb.conf
+        exit 0
+    else
+        break
+    fi
+done
 
 echo "INFO: Startup backup agent for restore."
 pbm-agent-entrypoint &
