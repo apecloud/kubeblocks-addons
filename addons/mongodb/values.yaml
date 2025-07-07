@@ -18,8 +18,38 @@ image:
     repository: apecloud/mongodb_exporter
     tag: "0.44.0"
 
-componentServiceVersion:
-  mongodb: 5.0.14
+## @param supported versions with detailed information
+versions:
+  - major: "8"
+    componentDef: "^mongodb-"
+    minors:
+      # [version, serviceVersion, tag, deprecated]
+      - ["8.0.8", "8.0.8", "8.0.8", false]
+      - ["8.0.6", "8.0.6", "8.0.6", false]
+      - ["8.0.4", "8.0.4", "8.0.4", false]
+  - major: "7"
+    componentDef: "^mongodb-"
+    minors:
+      - ["7.0.19", "7.0.19", "7.0.19", false]
+      - ["7.0.16", "7.0.16", "7.0.16", false]
+      - ["7.0.12", "7.0.12", "7.0.12", false]
+  - major: "6"
+    componentDef: "^mongodb-"
+    minors:
+      - ["6.0.22", "6.0.22", "6.0.22", false]
+      - ["6.0.20", "6.0.20", "6.0.20", false]
+      - ["6.0.16", "6.0.16", "6.0.16", false]
+  - major: "5"
+    componentDef: "^mongodb-"
+    minors:
+      - ["5.0.30", "5.0.30", "5.0.30", false]
+      - ["5.0.28", "5.0.28", "5.0.28", false]
+  - major: "4"
+    componentDef: "^mongodb-"
+    minors:
+      - ["4.4.29", "4.4.29", "4.4.29", false]
+      - ["4.2.24", "4.2.24", "4.2.24", false]
+      - ["4.0.28", "4.0.28", "4.0.28", false]
 
 # refer: https://github.com/apecloud/wal-g/blob/kb-dev/docker/wal-g/Dockerfile-mongo
 # this image is built from Dockerfile of apecloud/wal-g forked from wal-g/wal-g.
@@ -38,7 +68,7 @@ roleProbe:
 ## Authentication parameters
 ##
 auth:
-  ## @param auth.password Password for the "mongodb" admin user, leave empty 
+  ## @param auth.password Password for the "mongodb" admin user, leave empty
   ## for random generated password.
   ##
   password:

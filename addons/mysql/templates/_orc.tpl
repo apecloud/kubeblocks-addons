@@ -43,7 +43,7 @@ systemAccounts:
   - name: proxysql
     statement:
       create: CREATE USER ${KB_ACCOUNT_NAME} IDENTIFIED BY '${KB_ACCOUNT_PASSWORD}'; GRANT REPLICATION CLIENT, USAGE ON ${ALL_DB} TO ${KB_ACCOUNT_NAME};
-    passwordGenerationPolicy: 
+    passwordGenerationPolicy:
       length: 16
       numDigits: 8
       numSymbols: 0
@@ -251,7 +251,6 @@ switchover:
       cp -r /usr/bin/jq /kubeblocks/jq
       cp -r /scripts/orchestrator-client /kubeblocks/orchestrator-client
       cp -r /usr/local/bin/curl /kubeblocks/curl
-  image: {{ .Values.image.registry | default "docker.io" }}/apecloud/orc-tools:1.0.2
   imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
   name: init-jq
   volumeMounts:
