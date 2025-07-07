@@ -18,8 +18,7 @@ spec:
   {{- include "kblib.syncer.policyRules" . | nindent 2 }}
   runtime:
     initContainers:
-      - image: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:5.7.44
-        name: init-data
+      - name: init-data
         command:
           - bash
           - -c
@@ -35,7 +34,6 @@ spec:
           - -r
           - /xtrabackup
           - /tools/xtrabackup
-        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/xtrabackup:2.4
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         name: init-xtrabackup
         volumeMounts:
@@ -46,7 +44,6 @@ spec:
           - -r
           - /jemalloc/lib/
           - /tools/lib
-        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemalloc:5.3.0
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         name: init-jemalloc
         volumeMounts:
@@ -55,7 +52,6 @@ spec:
       {{- include "mysql.spec.runtime.common" . | nindent 6 }}
     containers:
       - name: mysql
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.7.44
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         command:
           - syncer
