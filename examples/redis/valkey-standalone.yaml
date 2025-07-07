@@ -1,0 +1,28 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: valkey-standalone
+  namespace: demo
+spec:
+  clusterDef: redis
+  topology: standalone
+  terminationPolicy: Delete
+  componentSpecs:
+  - name: redis
+    serviceVersion: 8.1.2-valkey  # serviceVersion is the version of the component version
+    replicas: 1
+    resources:
+      limits:
+        cpu: "0.5"
+        memory: 0.5Gi
+      requests:
+        cpu: "0.5"
+        memory: 0.5Gi
+    volumeClaimTemplates:
+    - name: data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 20Gi

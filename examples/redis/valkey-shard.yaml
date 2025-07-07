@@ -1,0 +1,34 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: valkey-sharding
+  namespace: demo
+spec:
+  terminationPolicy: Delete
+  shardings:
+  - name: shard
+    shards: 3
+    template:
+      name: redis
+      componentDef: redis-cluster-8
+      serviceVersion: 8.1.2-valkey
+      replicas: 2
+      resources:
+        limits:
+          cpu: '1'
+          memory: 1.1Gi
+        requests:
+          cpu: '1'
+          memory: 1.1Gi
+      services:
+      - name: redis-advertised
+        podService: true
+        serviceType: NodePort
+      volumeClaimTemplates:
+      - name: data
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 20Gi
