@@ -1,0 +1,37 @@
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: valkey
+  labels:
+    {{- include "redis.labels" . | nindent 4 }}
+  annotations:
+    {{- include "redis.apiVersion" . | nindent 4 }}
+spec:
+  compatibilityRules:
+  - compDefs:
+    - redis-7
+    releases:
+    - 7.2.9-valkey
+  - compDefs:
+    - redis-8
+    releases:
+    - 8.1.2-valkey
+  releases:
+  - images:
+      init-dbctl: docker.io/apecloud/dbctl:0.1.7
+      metrics: docker.io/apecloud/agamotto:0.1.2-beta.1
+      redis: &valkey-redis docker.io/valkey/valkey:7.2.9
+      postProvision: *valkey-redis
+      accountProvision: *valkey-redis
+      switchover: *valkey-redis
+    name: 7.2.9-valkey
+    serviceVersion: 7.2.9-valkey
+  - images:
+      init-dbctl: docker.io/apecloud/dbctl:0.1.7
+      metrics: docker.io/apecloud/agamotto:0.1.2-beta.1
+      redis: &valkey-redis docker.io/valkey/valkey:8.1.2
+      postProvision: *valkey-redis
+      accountProvision: *valkey-redis
+      switchover: *valkey-redis
+    name: 8.1.2-valkey
+    serviceVersion: 8.1.2-valkey
