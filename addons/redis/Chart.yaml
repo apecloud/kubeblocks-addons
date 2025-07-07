@@ -27,6 +27,9 @@ keywords:
 maintainers:
   - name: ApeCloud
     url: https://github.com/apecloud/kubeblocks/
+  - name: wangyelei
+    url: https://github.com/apecloud/kubeblocks/
+
 
 annotations:
     addon.kubeblocks.io/kubeblocks-version: ">=0.9.0"

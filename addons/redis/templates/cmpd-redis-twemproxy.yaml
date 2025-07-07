@@ -75,7 +75,6 @@ spec:
   runtime:
     initContainers:
       - name: init-redis-twemproxy
-        image: {{ include "busybox.image" . }}
         imagePullPolicy: {{ default .Values.busyboxImage.pullPolicy "IfNotPresent" }}
         command:
           - /scripts/redis-twemproxy-setup-v2.sh
@@ -90,7 +89,6 @@ spec:
             name: scripts
     containers:
     - name: redis-twemproxy
-      image: {{ include "redisTwemproxy05.image" . }}
       imagePullPolicy: {{ default .Values.redisTwemproxyImage.pullPolicy "IfNotPresent" }}
       command:
         - sh
