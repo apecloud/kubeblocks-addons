@@ -84,7 +84,8 @@ for i in "${!shardsvr_array[@]}"; do
     if [ $shardsvr_count -gt 1 ]; then
         shard_name="$KB_CLUSTER_NAME-${new_shardsvr_array[i]%%@*}"
     else
-        shard_name="${new_shardsvr_array[i]%-*}"
+        shard_name="${new_shardsvr_array[i]%%,*}"
+        shard_name="${shard_name%-*}"
     fi
     echo "INFO: Mapping shard ${shardsvr_array[i]} to $shard_name"
     if [ $i -eq 0 ]; then

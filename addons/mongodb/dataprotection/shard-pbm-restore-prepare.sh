@@ -48,7 +48,8 @@ for i in "${!shardsvr_array[@]}"; do
     if [ $shardsvr_count -gt 1 ]; then
         shard_name="$KB_CLUSTER_NAME-${shardsvr_array[i]%%@*}"
     else
-        shard_name="${shardsvr_array[i]%-*}"
+        shard_name="${shardsvr_array[i]%%,*}"
+        shard_name="${shard_name%-*}"
     fi
     retry_count=0
     while ! check_shard_exists "$shard_name"; do
