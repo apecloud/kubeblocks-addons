@@ -30,5 +30,8 @@ spec:
       redis: {{ $redisRepository }}:{{ .imageTag }}
       metrics: {{ include "metrics.repository" $ }}:0.1.2-beta.1
       init-dbctl: {{ $.Values.dbctlImage.registry | default "docker.io" }}/{{ $.Values.dbctlImage.repository }}:{{ $.Values.dbctlImage.tag }}
+      postProvision: {{ $redisRepository }}:{{ .imageTag }}
+      accountProvision: {{ $redisRepository }}:{{ .imageTag }}
+      switchover: {{ $redisRepository }}:{{ .imageTag }}
   {{- end }}
   {{- end }}

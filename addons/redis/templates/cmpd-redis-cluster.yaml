@@ -349,7 +349,6 @@ spec:
           - getrole
     postProvision:
       exec:
-        image: {{ $redisClusterImage }}
         container: redis-cluster
         command:
           - /bin/bash
@@ -377,7 +376,6 @@ spec:
         maxRetries: 10
     preTerminate:
       exec:
-        image: {{ $redisClusterImage }}
         container: redis-cluster
         command:
           - /bin/bash
@@ -387,7 +385,6 @@ spec:
         maxRetries: 10
     memberLeave:
       exec:
-        image: {{ $redisClusterImage }}
         container: redis-cluster
         command:
           - /bin/bash
@@ -397,7 +394,6 @@ spec:
         maxRetries: 10
     switchover:
       exec:
-        image: {{ $redisClusterImage }}
         container: redis-cluster
         command:
           - /bin/bash
@@ -412,14 +408,12 @@ spec:
           - /bin/dbctl
           - /config
           - /tools/
-        image: {{ $.Values.dbctlImage.registry | default "docker.io" }}/{{ $.Values.dbctlImage.repository }}:{{ $.Values.dbctlImage.tag }}
         imagePullPolicy: {{ default "IfNotPresent" $.Values.dbctlImage.pullPolicy }}
         volumeMounts:
           - mountPath: /tools
             name: tools
     containers:
       - name: redis-cluster
-        image: {{ $redisClusterImage }}
         imagePullPolicy: {{ default "IfNotPresent" $.Values.image.pullPolicy }}
         ports:
           - name: redis-cluster
@@ -473,7 +467,6 @@ spec:
                 - -c
                 - /scripts/redis-cluster-replica-pre-stop.sh
       - name: metrics
-        image: {{ include "metrics.image" $ }}
         imagePullPolicy: {{ $.Values.metrics.image.pullPolicy | quote }}
         securityContext:
           runAsNonRoot: true

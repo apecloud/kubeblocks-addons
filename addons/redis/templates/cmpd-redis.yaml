@@ -1,9 +1,5 @@
 {{- range .Values.redisVersions }}
-{{- $redisImage := printf "%s/%s:%s" ( $.Values.image.registry | default "docker.io" ) $.Values.image.repository .defaultImageTag }}
 {{- $redisStartScripts := "redis-start.sh" }}
-{{- if eq .major "8" }}
-  {{- $redisImage = printf "%s/%s:%s" ( $.Values.ceImage.registry | default "docker.io" )  $.Values.ceImage.repository .defaultImageTag }}
-{{- end }}
 ---
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
@@ -277,7 +273,6 @@ spec:
           - getrole
     postProvision:
       exec:
-        image: {{ $redisImage }}
         container: redis
         command:
           - /bin/bash
@@ -305,7 +300,6 @@ spec:
       preCondition: RuntimeReady
     accountProvision:
       exec:
-        image: {{ $redisImage }}
         container: redis
         command:
           - sh
@@ -314,7 +308,6 @@ spec:
           - "redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD $(KB_ACCOUNT_STATEMENT) && redis-cli -h $(KB_ACCOUNT_ENDPOINT) -a $REDIS_DEFAULT_PASSWORD acl save "
     switchover:
       exec:
-        image: {{ $redisImage }}
         container: redis
         command:
           - /bin/bash
@@ -329,14 +322,12 @@ spec:
           - /bin/dbctl
           - /config
           - /tools/
-        image: {{ $.Values.dbctlImage.registry | default "docker.io" }}/{{ $.Values.dbctlImage.repository }}:{{ $.Values.dbctlImage.tag }}
         imagePullPolicy: {{ default "IfNotPresent" $.Values.dbctlImage.pullPolicy }}
         volumeMounts:
           - mountPath: /tools
             name: tools
     containers:
       - name: redis
-        image: {{ $redisImage  }}
         imagePullPolicy: {{ default "IfNotPresent" $.Values.image.pullPolicy }}
         command: [ "/scripts/{{ $redisStartScripts }}" ]
         ports:
@@ -388,7 +379,6 @@ spec:
                 - -c
                 - /scripts/redis-pre-stop.sh
       - name: metrics
-        image: {{ include "metrics.image" $ }}
         imagePullPolicy: {{ $.Values.metrics.image.pullPolicy | quote }}
         securityContext:
           runAsNonRoot: true
