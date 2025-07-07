@@ -20,7 +20,12 @@ function set_jvm_configuration() {
   if [ -f /sys/fs/cgroup/memory/memory.limit_in_bytes ]; then
       system_memory_in_mb=$(($(cat /sys/fs/cgroup/memory/memory.limit_in_bytes)/1024/1024))
   elif [ -f /sys/fs/cgroup/memory.max ]; then
-      system_memory_in_mb=$(($(cat /sys/fs/cgroup/memory.max)/1024/1024))
+      mem_limit=$(cat /sys/fs/cgroup/memory.max)
+      if [ "$mem_limit" = "max" ]; then
+          system_memory_in_mb=$(free -m| sed -n '2p' | awk '{print $2}')
+      else
+          system_memory_in_mb=$(($mem_limit/1024/1024))
+      fi
   else
       echo "ERROR: get memory limit failed, please check cgroup"
       exit 1
