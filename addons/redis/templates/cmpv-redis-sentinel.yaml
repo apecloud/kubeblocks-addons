@@ -28,5 +28,7 @@ spec:
     serviceVersion: {{ .version }}
     images:
       redis-sentinel: {{ $redisRepository }}:{{ .imageTag }}
+      accountProvision: {{ $redisRepository }}:{{ .imageTag }}
+      memberLeave: {{ $redisRepository }}:{{ .imageTag }}
   {{- end }}
   {{- end }}

@@ -88,8 +88,8 @@ addons-cluster/qdrant/ @iziang @leon-inf @apecloud/kb-reviewers @apecloud/kb-add
 addons/rabbitmq/ @xuriwuyun @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/rabbitmq/ @xuriwuyun @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
-addons/redis/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
-addons-cluster/redis/ @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons/redis/ @wangyelei @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
+addons-cluster/redis/ @wangyelei @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 
 addons/risingwave/ @RisingWave_Labs @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
 addons-cluster/risingwave/ @RisingWave_Labs @leon-inf @apecloud/kb-reviewers @apecloud/kb-addon-reviewers
