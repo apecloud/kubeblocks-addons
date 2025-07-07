@@ -264,7 +264,6 @@ SERVICE_ID=$((${POD_NAME##*-} + 1))
     - /bin/syncer
     - /bin/syncerctl
     - /tools/
-  image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
   imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
   name: init-syncer
   volumeMounts:
@@ -286,7 +285,6 @@ env:
     value: $(MYSQL_ROOT_PASSWORD)
   - name: EXPORTER_WEB_PORT
     value: "{{ .Values.metrics.service.port }}"
-image: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
 imagePullPolicy: IfNotPresent
 ports:
   - name: http-metrics

@@ -18,8 +18,7 @@ spec:
   {{- include "kblib.syncer.policyRules" . | nindent 2 }}
   runtime:
     initContainers:
-      - image: {{ .Values.image.registry | default "docker.io" }}/apecloud/mysql_audit_log:8.0.33
-        name: init-data
+      - name: init-data
         command:
           - bash
           - -c
@@ -35,7 +34,6 @@ spec:
           - -r
           - /jemalloc/lib/
           - /tools/lib
-        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/jemalloc:5.3.0
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         name: init-jemalloc
         volumeMounts:
@@ -44,7 +42,6 @@ spec:
       {{- include "mysql.spec.runtime.common" . | nindent 6 }}
     containers:
       - name: mysql
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.33
         imagePullPolicy: {{ default .Values.image.pullPolicy "IfNotPresent" }}
         command:
           - syncer
