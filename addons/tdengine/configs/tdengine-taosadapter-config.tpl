@@ -57,7 +57,7 @@ level = "info"
 rotationCount = 30
 
 # The number of days to retain log files.
-keepDays = 30
+keepDays = 15
 
 # The maximum size of a log file before rotation.
 rotationSize = "1GB"
