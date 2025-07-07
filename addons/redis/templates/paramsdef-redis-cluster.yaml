@@ -5,7 +5,7 @@
 {{- end }}
 {{- $redisImage := printf "%s/%s:%s" ( $.Values.image.registry | default "docker.io" ) $.Values.image.repository .defaultImageTag }}
 {{- if eq .major "8" }}
-{{- $redisImage = printf "%s/%s:%s" ( $.Values.ceImage.registry | default "docker.io" )  $.Values.ceImage.repository .defaultImageTag }}
+{{- $redisImage = printf "%s/%s:%s" ( $.Values.ceImage.registry | default ( $.Values.image.registry | default "docker.io" ) )  $.Values.ceImage.repository .defaultImageTag }}
 {{- end }}
 {{- $pd := $.Files.Get "config/redis-config-effect-scope.yaml" | fromYaml }}
 ---

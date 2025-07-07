@@ -1,11 +1,7 @@
 {{- range .Values.redisVersions }}
-{{- $redisClusterImage  := printf "%s/%s:%s" ( $.Values.image.registry | default "docker.io" ) $.Values.image.repository .defaultImageTag }}
 {{- $redisClusterStartScripts := "redis-cluster-server-start.sh" }}
 {{- $redisClusterManageScripts := "redis-cluster-manage.sh" }}
 {{- $redisClusterSwitchoverScripts := "redis-cluster-switchover.sh" }}
-{{- if eq .major "8" }}
-  {{- $redisClusterImage  = printf "%s/%s:%s" ( $.Values.ceImage.registry | default "docker.io" )  $.Values.ceImage.repository .defaultImageTag }}
-{{- end }}
 ---
 apiVersion: apps.kubeblocks.io/v1
 kind: ComponentDefinition
