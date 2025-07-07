@@ -3639,7 +3639,7 @@
   },
   "timezone": "browser",
   "title": "MongoDB Sharded Cluster Summary",
-  "uid": "mongodb-cluster-summary",
+  "uid": "mongodb-sharded-cluster",
   "version": 7,
   "weekStart": ""
 }
