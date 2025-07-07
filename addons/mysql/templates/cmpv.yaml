@@ -1,0 +1,39 @@
+{{- $imageRegistry := .Values.image.registry | default "docker.io" -}}
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: mysql
+  labels:
+    {{- include "mysql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mysql.apiVersion" . | nindent 4 }}
+spec:
+  compatibilityRules:
+{{- range .Values.versions }}
+  - compDefs:
+    - {{ include (printf "mysql.componentDefName%s" .major) $}}
+    releases:
+{{- range .minors }}
+      - {{ index . 0 }}
+{{- end }}
+{{- end }}
+  releases:
+{{- range .Values.versions }}
+{{- range .minors }}
+{{- if not (index . 3) }}
+  - name: {{ index . 0 }}
+    {{- if ne (index . 0) "5.7.44" }}
+    changes:
+    {{- end }}
+    serviceVersion: {{ index . 1 }}
+    images:
+      mysql: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
+      accountProvision: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
+      {{- if (index . 4) }}
+      init-data: {{ $imageRegistry }}/apecloud/mysql_audit_log:{{ index . 4 }}
+      {{- end }}
+      init-xtrabackup: {{ $imageRegistry }}/apecloud/xtrabackup:{{ index . 5 }}
+      {{- include "mysql.spec.runtime.images" $ | nindent 6 }}
+{{- end }}
+{{- end }}
+{{- end }}

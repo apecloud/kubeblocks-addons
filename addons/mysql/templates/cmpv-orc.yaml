@@ -1,0 +1,41 @@
+{{- $imageRegistry := .Values.image.registry | default "docker.io" -}}
+{{- $metricsRegistry := .Values.metrics.image.registry | default (.Values.image.registry | default "docker.io") -}}
+apiVersion: apps.kubeblocks.io/v1
+kind: ComponentVersion
+metadata:
+  name: mysql-orc
+  labels:
+    {{- include "mysql.labels" . | nindent 4 }}
+  annotations:
+    {{- include "mysql.apiVersion" . | nindent 4 }}
+spec:
+  compatibilityRules:
+{{- range .Values.orcVersions }}
+  - compDefs:
+    - {{ include (printf "mysql.componentDefNameOrc%s" .major) $ }}
+    releases:
+{{- range .minors }}
+      - {{ index . 0 }}
+{{- end }}
+{{- end }}
+  releases:
+{{- range .Values.orcVersions }}
+  {{- range .minors }}
+  {{- if not (index . 3) }}
+  - name: {{ index . 0 }}
+    {{- if ne (index . 0) "5.7.44" }}
+    changes:
+    {{- end }}
+    serviceVersion: {{ index . 1 }}
+    images:
+      mysql: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
+      accountProvision: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
+      postProvision: {{ $imageRegistry }}/{{ $.Values.image.repository }}:{{ index . 2 }}
+      {{- if (index . 4) }}
+      init-data: {{ $imageRegistry }}/apecloud/mysql_audit_log:{{ index . 4 }}
+      {{- end }}
+      init-jq: {{ $imageRegistry }}/apecloud/orc-tools:{{ index . 5 }}
+      mysql-exporter: {{ $metricsRegistry }}/{{ $.Values.metrics.image.repository }}:{{ $.Values.metrics.image.tag | default $.Values.metrics.image.tag }}
+  {{- end }}
+  {{- end }}
+{{- end }}
