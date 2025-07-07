@@ -32,7 +32,15 @@ compare_version() {
 }
 
 set_jvm_configuration() {
-  system_memory_in_mb=$(($(cat /sys/fs/cgroup/memory/memory.limit_in_bytes)/1024/1024))
+  if [ -f /sys/fs/cgroup/memory/memory.limit_in_bytes ]; then
+      system_memory_in_mb=$(($(cat /sys/fs/cgroup/memory/memory.limit_in_bytes)/1024/1024))
+  elif [ -f /sys/fs/cgroup/memory.max ]; then
+      system_memory_in_mb=$(($(cat /sys/fs/cgroup/memory.max)/1024/1024))
+  else
+      echo "ERROR: get memory limit failed, please check cgroup"
+      exit 1
+  fi
+
   # set max heap size based on the following
   # max(min(1/2 ram, 1024MB), min(1/4 ram, 8GB))
   half_system_memory_in_mb=$((system_memory_in_mb / 2))
