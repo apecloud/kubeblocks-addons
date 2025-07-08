@@ -37,7 +37,6 @@ spec:
   runtime:
     initContainers:
       - name: init-chmod-data
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.init.repository }}:{{ .Values.image.init.tag }}
         imagePullPolicy: IfNotPresent
         command:
           - /bin/bash
@@ -53,7 +52,6 @@ spec:
             mountPath: /bitnami/influxdb
     containers:
       - name: influxdb
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.influxdb.repository }}:{{ .Values.image.influxdb.tag }}
         imagePullPolicy: IfNotPresent
         securityContext:
           allowPrivilegeEscalation: false

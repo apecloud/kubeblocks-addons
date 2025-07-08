@@ -173,12 +173,11 @@ lifecycleActions:
               echo "switchover not triggered for primary, nothing to do, exit 0."
               exit 0
           fi
-          
+
           /tools/syncerctl switchover --primary "$KB_SWITCHOVER_CURRENT_NAME" ${KB_SWITCHOVER_CANDIDATE_NAME:+--candidate "$KB_SWITCHOVER_CANDIDATE_NAME"}
   accountProvision:
     exec:
       container: mysql
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.30-5.beta3.20240330.g94d1caf.15
       command:
         - bash
         - -c
@@ -191,7 +190,6 @@ lifecycleActions:
       matchingKey: leader
   dataDump:
     exec:
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.30-5.beta3.20240330.g94d1caf.15
       command:
         - bash
         - -c
@@ -208,7 +206,6 @@ lifecycleActions:
       container: mysql
   dataLoad:
     exec:
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:8.0.30-5.beta3.20240330.g94d1caf.15
       command:
         - bash
         - -c
@@ -468,7 +465,6 @@ env:
     value: $(MYSQL_ROOT_PASSWORD)
   - name: EXPORTER_WEB_PORT
     value: "{{ .Values.metrics.service.port }}"
-image: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ default .Values.metrics.image.tag }}
 imagePullPolicy: IfNotPresent
 ports:
   - name: http-metrics

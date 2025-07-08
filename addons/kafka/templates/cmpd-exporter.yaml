@@ -49,7 +49,6 @@ spec:
     {{- end }}
     containers:
     - name: kafka-exporter
-      image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafkaExporter.repository }}:{{ .Values.images.kafkaExporter.tag }}
       imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
       {{- if .Values.exporter.securityContext }}
       securityContext:

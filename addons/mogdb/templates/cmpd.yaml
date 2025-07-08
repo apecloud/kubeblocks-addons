@@ -100,7 +100,6 @@ spec:
   lifecycleActions:
     roleProbe:
       exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:5.0.5
         command:
           - /bin/bash
           - -c

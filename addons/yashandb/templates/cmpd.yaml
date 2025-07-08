@@ -40,7 +40,6 @@ spec:
     # dnsPolicy: ClusterFirstWithHostNet
     initContainers:
       - name: volume-permissions
-        image: {{ .Values.busyboxImage.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.busyboxImage.repository }}:{{ .Values.busyboxImage.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.busyboxImage.pullPolicy }}
         command:
           - /bin/sh
@@ -54,7 +53,6 @@ spec:
             name: data
     containers:
       - name: yashandb-container
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         securityContext:
           allowPrivilegeEscalation: false
