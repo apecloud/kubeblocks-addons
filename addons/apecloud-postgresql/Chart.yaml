@@ -5,7 +5,7 @@ description: ApeCloud PostgreSQL is a database that is compatible with PostgreSQ
 
 type: application
 
-version: 1.0.0
+version: 1.0.1-beta.0
 
 # This is the version number of the ApeCloud PostgreSQL being deployed
 appVersion: "14.11"
