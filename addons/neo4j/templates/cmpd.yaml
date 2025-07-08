@@ -77,10 +77,9 @@ spec:
           value: "yes"
         - name: NEO4J_CONF
           value: /config/
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         command:
-        - bash  
-        - -c 
+        - bash
+        - -c
         - |
           tini -g -- /startup/docker-entrypoint.sh neo4j
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}

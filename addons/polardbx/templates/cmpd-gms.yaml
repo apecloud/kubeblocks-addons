@@ -70,7 +70,6 @@ spec:
   lifecycleActions:
     roleProbe:
       exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.roleProbe.image.repository }}:{{ .Values.roleProbe.image.tag }}
         command:
           - sh
           - -c
@@ -110,7 +109,6 @@ spec:
         name: podinfo
     initContainers:
       - name: tools-updater
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.toolsUpdater.repository }}:{{.Values.images.polardbx.toolsUpdater.tag}}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.polardbx.pullPolicy }}
         command: [ "/bin/ash" ]
         args: [ "-c", "./hack/update.sh /target" ]
@@ -125,7 +123,6 @@ spec:
             mountPath: /target
     containers:
       - name: engine
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.polardbx.dn.repository}}:{{.Values.images.polardbx.dn.tag}}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.polardbx.pullPolicy }}
         command: [ "/scripts/xstore-setup.sh" ]
         lifecycle:
@@ -219,7 +216,6 @@ spec:
           - name: podinfo
             mountPath: /etc/podinfo
       - name: exporter
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.images.prom.mysqld_exporter.repository}}:{{.Values.images.prom.mysqld_exporter.tag}}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.prom.pullPolicy }}
         ports:
           - name: metrics

@@ -14,7 +14,6 @@ spec:
   runtime:
     containers:
       - name: mariadb
-        image: {{ include "mariadb.image" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         volumeMounts:
           - mountPath: /var/lib/mysql
@@ -26,7 +25,6 @@ spec:
           - name: MARIADB_ROOT_HOST
             value: {{ .Values.auth.rootHost | default "%" | quote }}
       - name: exporter
-        image: {{ include "exporter.image" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         ports:
           - name: metrics
