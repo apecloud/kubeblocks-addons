@@ -10,7 +10,6 @@ spec:
   provider: kubeblocks.io
   description: MongoDB is a document database designed for ease of application development and scaling.
   serviceKind: mongodb
-  serviceVersion: {{ .Values.componentServiceVersion.mongodb }}
   services:
     - name: default
       serviceName: mongodb
@@ -237,7 +236,7 @@ spec:
               name: mongodb
               option: Optional
       expression: {{ `{{if ne (index . "KB_SERVICE_PORT") ""}}{{.KB_SERVICE_PORT}}{{else}}27017{{end}}` | toYaml }}
-    - name: SYNCER_SERVICE_PORT  
+    - name: SYNCER_SERVICE_PORT
       valueFrom:
         hostNetworkVarRef:
           optional: true
@@ -246,7 +245,7 @@ spec:
             port:
               name: ha
               option: Optional
-    - name: EXPORTER_SERVICE_PORT  
+    - name: EXPORTER_SERVICE_PORT
       valueFrom:
         hostNetworkVarRef:
           optional: true
@@ -256,8 +255,8 @@ spec:
               name: exporter
               option: Optional
       expression: {{ `{{if ne (index . "EXPORTER_SERVICE_PORT") ""}}{{.EXPORTER_SERVICE_PORT}}{{else}}9216{{end}}` | toYaml }}
-  hostNetwork: 
-    containerPorts:  
+  hostNetwork:
+    containerPorts:
       - container: mongodb
         ports:
           - mongodb
