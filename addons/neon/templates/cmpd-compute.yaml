@@ -41,7 +41,7 @@ spec:
       volumeName: neon-config
       defaultMode: 0444
       restartOnFileChange: true
-  vars: 
+  vars:
     - name: NEON_COMPUTE_PGPORT
       valueFrom:
         serviceVarRef:
@@ -112,10 +112,9 @@ spec:
           - name: PGDATA
             value: /data
           - name: PGUSER
-            value: $(NEON_COMPUTE_PGUSER) 
+            value: $(NEON_COMPUTE_PGUSER)
           - name: PGPASSWORD
             value: $(NEON_COMPUTE_PGPASSWORD)
-        image: {{ include "neon-compute.image" . }}
         ports:
           - containerPort: 55432
             name: postgresql

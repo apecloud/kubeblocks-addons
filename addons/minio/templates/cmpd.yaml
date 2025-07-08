@@ -11,6 +11,9 @@ spec:
   description: Minio is a High Performance Object Storage.
   serviceKind: minio
   serviceVersion: {{ .Values.defaultServiceVersion.minio }}
+  replicasLimit:
+    minReplicas: 2
+    maxReplicas: 32
   systemAccounts:
     - name: root
       initAccount: true
@@ -112,7 +115,6 @@ spec:
   lifecycleActions:
     roleProbe:
       exec:
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         command:
           - /bin/sh
           - -c
@@ -125,7 +127,6 @@ spec:
   runtime:
     initContainers:
       - name: init
-        image: {{ .Values.image.registry | default "docker.io" }}/apecloud/kubeblocks-tools:latest
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /bin/sh
@@ -138,7 +139,6 @@ spec:
             mountPath: /minio-config
     containers:
       - name: minio
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /bin/bash
@@ -147,7 +147,7 @@ spec:
         ports:
           - name: api
             protocol: TCP
-            containerPort: {{ .Values.minioAPIPort }} 
+            containerPort: {{ .Values.minioAPIPort }}
           - name: console
             protocol: TCP
             containerPort: {{ .Values.minioConsolePort }}

@@ -97,7 +97,6 @@ spec:
     {{- end }}
     containers:
       - name: kafka
-        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.kafka.repository }}:{{ default .Chart.AppVersion .Values.images.kafka.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
         {{- if .Values.container.securityContext }}
         securityContext:
@@ -212,7 +211,6 @@ spec:
           {{- toYaml . | nindent 10}}
           {{- end }}
       - name: jmx-exporter
-        image: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.jmxExporter.repository }}:{{ .Values.images.jmxExporter.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
         {{- if .Values.exporter.securityContext }}
         securityContext:

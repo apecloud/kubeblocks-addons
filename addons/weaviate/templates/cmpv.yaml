@@ -16,4 +16,4 @@ spec:
     - name: 1.19.6
       serviceVersion: 1.19.6
       images:
-        minio: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:1.19.6
+        weaviate: {{ .Values.images.registry | default "docker.io" }}/{{ .Values.images.repository }}:1.19.6

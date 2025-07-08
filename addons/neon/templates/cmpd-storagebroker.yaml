@@ -23,7 +23,6 @@ spec:
   runtime:
     containers:
       - name: neon-storagebroker
-        image: {{ include "neon-storagebroker.image" . }}
         env:
           - name: STORAGEBROKER_PORT
             value: "{{ .Values.storagebroker.port }}"

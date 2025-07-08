@@ -86,7 +86,6 @@ spec:
   runtime:
     initContainers:
       - name: init-bookies
-        image: {{ include "pulsar3.bookiesImage" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/init-bookies.sh
@@ -112,7 +111,6 @@ spec:
                 fieldPath: metadata.name
     containers:
       - name: bookies
-        image:  {{ include "pulsar3.bookiesImage" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/start-bookies.sh
