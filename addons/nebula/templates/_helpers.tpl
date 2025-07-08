@@ -158,9 +158,9 @@ Define logrotate container
   - sh /scripts/logrotate.sh; crond -f -l 2
   env:
   - name: LOGROTATE_ROTATE
-    value: "5"
+    value: "6"
   - name: LOGROTATE_SIZE
-    value: 300M
+    value: 500M
   volumeMounts:
   - mountPath: /usr/local/nebula/logs
     name: logs

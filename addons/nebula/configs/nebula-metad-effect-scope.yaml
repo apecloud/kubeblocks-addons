@@ -1,0 +1,35 @@
+## staticParameters, list of StaticParameter, modifications of them trigger a process restart.
+## dynamicParameters, list of DynamicParameter, modifications of them trigger a config dynamic reload without process restart.
+## staticParameters and dynamicParameters determine the behavior of parameter changes:
+## if any of the modified parameters is in the staticParameters list, this operation will trigger a process restart.
+## if all the changed parameters are in the dynamicParameters list, this change executes reload without process restart.
+## if the above two conditions are not met, by default, parameter change operation follow the rule for using staticParameters.
+staticParameters:
+- --agent_heartbeat_interval_secs
+- --heartbeat_interval_secs
+- --default_replica_factor
+- --default_parts_num
+- --rocksdb_wal_sync
+- --timestamp_in_logfile_name
+- --stderrthreshold
+- --stdout_log_file
+- --stderr_log_file
+- --redirect_stdout
+- --logbufsecs
+- --timezone_name
+
+dynamicParameters:
+- --v
+- --minloglevel
+
+immutableParameters:
+- --data_path
+- --ws_storage_http_port
+- --ws_http_port
+- --ws_ip
+- --port
+- --log_level
+- --meta_server_addrs
+- --log_dir
+- --pid_file
+- --daemonize
