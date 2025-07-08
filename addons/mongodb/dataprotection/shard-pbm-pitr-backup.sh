@@ -74,6 +74,12 @@ function upload_continuous_backup_info() {
       fi
     fi
   done <<< "$pitr_nodes"
+  if [ -z "$shardsvr" ]; then
+    shardsvr=$(echo "$status_result" | jq -r '[.cluster[].rs | select(contains("config-server") | not)] | join(",")')
+  fi
+  if [ -z "$configsvr" ]; then
+    configsvr=$(echo "$status_result" | jq -r '[.cluster[].rs | select(contains("config-server"))] | join(",")')
+  fi
   extras=$(buildJsonString $extras "shardsvr" "$shardsvr")
   extras=$(buildJsonString $extras "configsvr" "$configsvr")
   DP_save_backup_status_info "$total_size" "$start_time" "$end_time" "" "{$extras}"
