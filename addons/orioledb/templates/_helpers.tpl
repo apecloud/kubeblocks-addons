@@ -225,7 +225,6 @@ runtime:
         - sh
         - -c
         - cp -r /bin/syncer /bin/syncerctl /tools/
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
       imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
       name: init-syncer
       volumeMounts:
@@ -291,7 +290,6 @@ runtime:
           value: $(MY_POD_IP)
         - name: KB_POD_NAMESPACE
           value: $(MY_NAMESPACE)
-      image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
       imagePullPolicy: IfNotPresent
       name: orioledb
       ports:

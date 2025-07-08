@@ -47,7 +47,6 @@ spec:
         emptyDir: { }
     containers:
       - name: vtgate
-        image: {{ .Values.wesqlscale.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.wesqlscale.image.repository }}:{{ .Values.wesqlscale.image.tag }}
         imagePullPolicy: IfNotPresent
         ports:
           - containerPort: 15001

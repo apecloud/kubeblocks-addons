@@ -72,7 +72,6 @@ spec:
       runAsGroup: 0
     initContainers:
       - name: check-broker
-        image: {{ include "pulsar2.proxyImage" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/init-proxy.sh
@@ -90,7 +89,6 @@ spec:
         {{- end }}
     containers:
       - name: proxy
-        image: {{ include "pulsar2.proxyImage" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/start-proxy.sh

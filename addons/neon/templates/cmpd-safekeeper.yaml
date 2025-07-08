@@ -41,12 +41,11 @@ spec:
         serviceVarRef:
           compDef: {{ include "neon-storagebroker.cmpdRegexpPattern" . }}
           name: neon-storagebroker
-          port: 
+          port:
             name: storagebroker
   runtime:
     containers:
       - name: neon-safekeeper
-        image: {{ include "neon-safekeeper.image" . }}
         command: ["/scripts/sakekeeper_start.sh"]
         env:
           - name: POD_IP
