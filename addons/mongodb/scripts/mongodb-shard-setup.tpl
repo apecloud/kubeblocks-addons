@@ -71,12 +71,15 @@ process_restore_signal() {
 
 # check if need to restore
 wait_interval=5
-while true; do
+max_retries=12
+retry_count=0
+while [ $retry_count -lt $max_retries ]; do
     cluster_json=$(kubectl get clusters.apps.kubeblocks.io ${KB_CLUSTER_NAME} -n ${KB_NAMESPACE} -o json 2>&1)
     kubectl_get_exit_code=$?
     if [ "$kubectl_get_exit_code" -ne 0 ]; then
-        echo "INFO: Cluster ${KB_CLUSTER_NAME} not found, sleep $wait_interval second and retry..."
+        echo "INFO: Cluster ${KB_CLUSTER_NAME} not found, sleep $wait_interval second and retry... ($((retry_count+1))/$max_retries)"
         sleep $wait_interval
+        retry_count=$((retry_count+1))
         continue
     fi
 
@@ -89,6 +92,11 @@ while true; do
         break
     fi
 done
+
+if [ $retry_count -ge $max_retries ]; then
+    echo "ERROR: Cluster ${KB_CLUSTER_NAME} not found after $max_retries retries, exiting."
+    exit 1
+fi
 
 echo "INFO: Startup backup agent for restore."
 pbm-agent-entrypoint &

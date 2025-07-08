@@ -24,17 +24,10 @@ replicas: {{ max .Values.replicas 3 }}
 Define mongodb replicaset mode.
 */}}
 {{- define "mongodb-cluster.replicasetMode" }}
-{{- if .Values.useLegacyCompDef }}
-clusterDefinitionRef: mongodb
-{{- end }}
 componentSpecs:
   - name: mongodb
-    {{- if .Values.useLegacyCompDef }}
-    componentDefRef: {{ include "mongodb-cluster.componentDefRef" $}}
-    {{- else }}
     componentDef: mongodb
     serviceVersion: {{ .Values.version }}
-    {{- end }}
     {{- include "mongodb-cluster.replicaCount" . | indent 4 }}
     disableExporter: {{ $.Values.disableExporter | default "false" }}
     serviceAccountName: {{ include "kblib.serviceAccountName" . }}
