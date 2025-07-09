@@ -5,8 +5,58 @@
 ## if all the changed parameters are in the dynamicParameters list, this change executes reload without process restart.
 ## if the above two conditions are not met, by default, parameter change operation follow the rule for using staticParameters.
 staticParameters:
+  - --timezone_name
+  - --logbufsecs
+  - --redirect_stdout
+  - --stderrthreshold
+  - --timestamp_in_logfile_name
+  - --minimum_reserved_bytes
+  - --rocksdb_batch_size
+  - --rocksdb_block_cache
+  - --disable_page_cache
+  - --engine_type
+  - --rocksdb_compression
+  - --rocksdb_compression_per_level
+  - --enable_rocksdb_statistics
+  - --rocksdb_stats_level
+  - --enable_rocksdb_prefix_filtering
+  - --enable_rocksdb_whole_key_filtering
+  - --rocksdb_filtering_prefix_length
+  - --enable_partitioned_index_filter
+  - --rocksdb_db_options
+  - --rocksdb_column_family_options
+  - --rocksdb_block_based_table_options
+  - --num_io_threads
+  - --num_max_connections
+  - --num_worker_threads
+  - --max_concurrent_subtasks
+  - --max_edge_returned_per_vertex
 
 dynamicParameters:
+  - --v
+  - --minloglevel
+  - --heartbeat_interval_secs
+  - --raft_heartbeat_interval_secs
+  - --raft_rpc_timeout_ms
+  - --wal_ttl
+  - --query_concurrently
+  - --auto_remove_invalid_space
+  - --snapshot_part_rate_limit
+  - --snapshot_batch_size
+  - --rebuild_index_part_rate_limit
+  - --rebuild_index_batch_size
 
 
 immutableParameters:
+  - --daemonize
+  - --pid_file
+  - --local_config
+  - --log_dir
+  - --stdout_log_file
+  - --stderr_log_file
+  - --meta_server_addrs
+  - --local_ip
+  - --port
+  - --ws_ip
+  - --ws_http_port
+  - --data_path

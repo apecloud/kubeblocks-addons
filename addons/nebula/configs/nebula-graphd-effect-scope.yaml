@@ -5,8 +5,55 @@
 ## if all the changed parameters are in the dynamicParameters list, this change executes reload without process restart.
 ## if the above two conditions are not met, by default, parameter change operation follow the rule for using staticParameters.
 staticParameters:
+  - --enable_optimizer
+  - --timezone_name
+  - --default_charset
+  - --default_collate
+  - --logbufsecs
+  - --redirect_stdout
+  - --stderrthreshold
+  - --timestamp_in_logfile_name
+  - --reuse_port
+  - --listen_backlog
+  - --client_idle_timeout_secs
+  - --session_idle_timeout_secs
+  - --num_accept_threads
+  - --num_netio_threads
+  - --num_max_connections
+  - --num_worker_threads
+  - --heartbeat_interval_secs
+  - --storage_client_timeout_ms
+  - --slow_query_threshold_us
+  - --enable_authorize
+  - --enable_space_level_metrics
+  - --max_sessions_per_ip_per_user
 
 dynamicParameters:
-
+  - --minloglevel
+  - --v
+  - --accept_partial_success
+  - --session_reclaim_interval_secs
+  - --max_allowed_query_size
+  - --system_memory_high_watermark_ratio
+  - --max_job_size
+  - --min_batch_size
+  - --optimize_appendvertices
+  - --path_batch_size
 
 immutableParameters:
+  - --daemonize
+  - --pid_file
+  - --log_dir
+  - --stdout_log_file
+  - --stderr_log_file
+  - --meta_server_addrs
+  - --local_ip
+  - --listen_netdev
+  - --port
+  - --ws_ip
+  - --ws_http_port
+  - --ws_meta_http_port
+  - --auth_type
+  - --enable_experimental_feature
+  - --enable_data_balance
+  - --local_config

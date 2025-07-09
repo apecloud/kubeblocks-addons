@@ -16,6 +16,228 @@
 //along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #NebulaStoragedParameter: {
+    // Whether to run as a daemon process.
+	"--daemonize": bool | *true
+
+	// File path to store the process ID (PID).
+	"--pid_file": string | *"pids/nebula-storaged.pid"
+
+	// Time zone name, e.g., UTC+08:00 for China Standard Time.
+	// Format reference: https://www.gnu.org/software/libc/manual/html_node/TZ-Variable.html
+	// Default value: UTC+00:00:00 if not specified.
+	"--timezone_name": string | *"UTC+00:00:00"
+
+	// Whether to load configuration from local config file.
+	"--local_config": bool | *true
+
+    // Directory to store Graph service logs.
+	// It is recommended to place logs and data on different disks.
+	"--log_dir": string | *"logs"
+
+	// Minimum log level to record (INFO=0, WARNING=1, ERROR=2, FATAL=3).
+	// Setting to 4 disables all logs.
+	// Suggested values:
+	//   - 0 (INFO) for debugging
+	//   - 1 (WARNING) for production
+	// dynamic: true
+	"--minloglevel": int & >=0 & <=4 | *0
+
+	// VLOG verbosity level. Records VLOG messages at or below this level.
+	// Valid values: 0, 1, 2, 3, 4, 5
+	// dynamic: true
+	"--v": int & >=0 & <=5 | *0
+
+	// Maximum time (in seconds) to buffer logs before writing to file.
+	// 0 means real-time logging.
+	"--logbufsecs": number & >=0 | *0
+
+	// Whether to redirect stdout/stderr to separate log files.
+	"--redirect_stdout": bool | *true
+
+	// File name for standard output logs.
+	"--stdout_log_file": string | *"graphd-stdout.log"
+
+	// File name for standard error logs.
+	"--stderr_log_file": string | *"graphd-stderr.log"
+
+	// Minimum log level that will be copied to stderr.
+	// Valid values: 0 (INFO), 1 (WARNING), 2 (ERROR), 3 (FATAL)
+	"--stderrthreshold": int & >=0 & <=3 | *3
+
+	// Whether to include timestamp in log file names.
+	"--timestamp_in_logfile_name": bool | *true
+
+	// Comma-separated list of all Meta service addresses (IP/hostname:port).
+    // Example: "meta1:9559,meta2:9559"
+    "--meta_server_addrs": string | *"127.0.0.1:9559"
+
+    // Local IP address used to identify this graphd instance.
+    // For distributed clusters or remote access, change it accordingly.
+    "--local_ip": string | *"127.0.0.1"
+
+    // RPC port for the Graph service.
+    "--port": int & >=1024 & <=65535 | *9669
+
+    // IP address for HTTP service (metrics, REST API).
+    "--ws_ip": string | *"0.0.0.0"
+
+    // Port for HTTP service (metrics, REST API).
+    "--ws_http_port": int & >=1024 & <=65535 | *19669
+
+    // Default heartbeat interval between services (in seconds).
+    // Must be consistent across all services; otherwise, the system may malfunction.
+    "--heartbeat_interval_secs": int & >0 | *10
+
+    // Raft heartbeat interval in seconds.
+    // This should be consistent across all services.
+    "--raft_heartbeat_interval_secs": int & >=1 & <=86400 | *30
+
+    // Raft RPC timeout in milliseconds.
+    "--raft_rpc_timeout_ms": int & >=10 & <=300000 | *500
+
+    // Time-to-live (TTL) of Write Ahead Logs (WAL) in seconds.
+    "--wal_ttl": int & >=60 & <=259200 | *14400
+
+    // Data storage paths, separated by commas.
+    // Each RocksDB instance corresponds to one path. Do NOT change this arbitrarily.
+    "--data_path": string | *"data/storage"
+
+    // Minimum reserved bytes per data path. If free space is below this value,
+    // write operations may fail. Unit: bytes.
+    "--minimum_reserved_bytes": int & >=1048576 | *268435456
+
+    // Batch operation buffer size in bytes.
+    "--rocksdb_batch_size": int & >=1024 & <=1048576 | *4096
+
+    // Default block cache size for BlockBasedTable. Unit: megabytes.
+    "--rocksdb_block_cache": int & >=1 & <=102400 | *4
+
+    // Whether to disable the OS page cache for RocksDB.
+    // false means allow using page cache.
+    // true means disable it, and you must set sufficient block cache size.
+    "--disable_page_cache": bool | *false
+
+    // Storage engine type. Only "rocksdb" is supported currently.
+    "--engine_type": string | *"rocksdb"
+
+    // Compression algorithm used for all levels.
+    // Valid values: no, snappy, lz4, lz4hc, zlib, bzip2, zstd
+    // This setting can be overridden by rocksdb_compression_per_level.
+    "--rocksdb_compression": string & "no" | "snappy" | "lz4" | "lz4hc" | "zlib" | "bzip2" | "zstd" | *"lz4"
+
+    // Compression algorithms for each level.
+    // Format example: "no:no:lz4:lz4:snappy:zstd:snappy"
+    // If not set for a level, use rocksdb_compression.
+    "--rocksdb_compression_per_level": string
+
+    // Whether to enable RocksDB statistics collection.
+    "--enable_rocksdb_statistics": bool | *false
+
+    // Statistics level for RocksDB.
+    // Valid values:
+    //   kExceptHistogramOrTimers
+    //   kExceptTimers
+    //   kExceptDetailedTimers
+    //   kExceptTimeForMutex
+    //   kAll
+    "--rocksdb_stats_level": string & ("kExceptHistogramOrTimers" | "kExceptTimers" | "kExceptDetailedTimers" | "kExceptTimeForMutex" | "kAll") | *"kExceptHistogramOrTimers"
+
+    // Whether to enable prefix bloom filter.
+    // Improves graph traversal performance but increases memory usage.
+    "--enable_rocksdb_prefix_filtering": bool | *true
+
+    // Whether to enable whole key bloom filter.
+    "--enable_rocksdb_whole_key_filtering": bool | *false
+
+    // Length of the key prefix for filtering.
+    // Valid values: 12 (partition ID + vertex ID), 16 (partition ID + vertex ID + Tag/Edge type ID)
+    // Unit: bytes
+    "--rocksdb_filtering_prefix_length": int & (12 | 16) | *12
+
+    // Whether to enable partitioned index filter to reduce bloom filter memory usage.
+    // May reduce read performance on random seeks.
+    "--enable_partitioned_index_filter": bool | *false
+
+    // RocksDB database options.
+    // Format: a JSON object with key-value pairs of RocksDB DBOptions.
+    // supported options:
+    // max_total_wal_size
+    // delete_obsolete_files_period_micros
+    // max_background_jobs
+    // stats_dump_period_sec
+    // compaction_readahead_size
+    // writable_file_max_buffer_size
+    // bytes_per_sync
+    // wal_bytes_per_sync
+    // delayed_write_rate
+    // avoid_flush_during_shutdown
+    // max_open_files
+    // stats_persist_period_sec
+    // stats_history_buffer_size
+    // strict_bytes_per_sync
+    // enable_rocksdb_prefix_filtering
+    // enable_rocksdb_whole_key_filtering
+    // rocksdb_filtering_prefix_length
+    // num_compaction_threads
+    // rate_limit
+    "--rocksdb_db_options": string | *"{}"
+
+	// RocksDB column family options.
+	// Format: a JSON object with key-value pairs of RocksDB ColumnFamilyOptions
+	// supported options:
+	// write_buffer_size
+    // max_write_buffer_number
+    // level0_file_num_compaction_trigger
+    // level0_slowdown_writes_trigger
+    // level0_stop_writes_trigger
+    // target_file_size_base
+    // target_file_size_multiplier
+    // max_bytes_for_level_base
+    // max_bytes_for_level_multiplier
+    // disable_auto_compactions
+	"--rocksdb_column_family_options": string | *'{"write_buffer_size":"67108864", "max_write_buffer_number":"4","max_bytes_for_level_base":"268435456"}'
+
+    // RocksDB block-based table options.
+    // Format: a JSON object with key-value pairs of RocksDB BlockBasedTableOptions.
+    "--rocksdb_block_based_table_options": string | *'{"block_size":"8192"}'
+
+    // Performance and network configuration for NebulaGraph storaged process
+    // Whether to enable multi-threaded query execution.
+    // Improves single query latency, but may reduce overall throughput under high pressure.
+    "--query_concurrently": bool | *true
+
+    // Whether to automatically remove all data in the space when dropping a graph space.
+    "--auto_remove_invalid_space": bool | *true
+
+    // Number of I/O threads used for sending and receiving RPC requests.
+    "--num_io_threads": int & >=1 & <=256 | *16
+
+    // Maximum number of active connections across all network threads.
+    // 0 means no limit. Per thread limit = max_connections / num_netio_threads
+    "--num_max_connections": int & >=0 | *0
+
+    // Number of worker threads for Storage's RPC service.
+    "--num_worker_threads": int & >=1 & <=256 | *32
+
+    // Max number of subtasks that TaskManager can execute concurrently.
+    "--max_concurrent_subtasks": int & >=1 & <=1000 | *10
+
+    // Rate limit for Raft leader to send snapshot data to other members (in bytes/sec).
+    "--snapshot_part_rate_limit": int & >=1024 & <=1073741824 | *10485760
+
+    // Batch size for each snapshot data transfer (in bytes).
+    "--snapshot_batch_size": int & >=4096 & <=16777216 | *1048576
+
+    // Rate limit for index data sync during index rebuild (in bytes/sec).
+    "--rebuild_index_part_rate_limit": int & >=1024 & <=1073741824 | *4194304
+
+    // Batch size for each index data transfer during index rebuild (in bytes).
+    "--rebuild_index_batch_size": int & >=4096 & <=16777216 | *1048576
+
+    // Maximum number of edges returned per vertex during traversal.
+    // Extra edges will be truncated if exceed this limit.
+    // This prevents performance degradation or OOM caused by dense vertices.
+    "--max_edge_returned_per_vertex": int & >=1 & <=2147483647 | *2147483647
 
 }
 

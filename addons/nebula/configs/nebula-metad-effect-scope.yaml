@@ -12,8 +12,6 @@ staticParameters:
 - --rocksdb_wal_sync
 - --timestamp_in_logfile_name
 - --stderrthreshold
-- --stdout_log_file
-- --stderr_log_file
 - --redirect_stdout
 - --logbufsecs
 - --timezone_name
@@ -33,3 +31,5 @@ immutableParameters:
 - --log_dir
 - --pid_file
 - --daemonize
+- --stdout_log_file
+- --stderr_log_file
