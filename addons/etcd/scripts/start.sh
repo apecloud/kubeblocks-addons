@@ -57,7 +57,10 @@ setup_protocols_and_cluster() {
 }
 
 update_etcd_conf() {
+  # retain initial-cluster-state, which may be set by data-load.sh
+  [ -f "$default_conf" ] && initial_cluster_state=$(parse_config_value "initial-cluster-state" "$default_conf")
   cp "$default_template_conf" "$default_conf"
+  [ -n "$initial_cluster_state" ] && sed -i.bak "s|^initial-cluster-state:.*|initial-cluster-state: $initial_cluster_state|g" "$default_conf"
 
   setup_protocols_and_cluster
 

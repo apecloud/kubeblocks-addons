@@ -172,9 +172,10 @@ spec:
         command:
           - /bin/bash
           - -c
-          - /scripts/data-load.sh > /tmp/data-load.log 2>&1
+          - /scripts/data-dump.sh > /tmp/data-dump.log 2>&1
         targetPodSelector: Role
         matchingKey: leader
+    # send by kbagent-worker as init container, send data dump request to leader, and load data to this pod
     dataLoad:
       exec:
         command:
