@@ -24,10 +24,10 @@ defaultServiceVersion:
 redisVersions:
   - major: "7"
     componentDef: "redis-7"
-    serviceVersion: "7.2.7"
+    serviceVersion: "7.2.10"
     clusterComponentDef: "redis-cluster-7"
     sentinelComponentDef: "redis-sentinel-7"
-    defaultImageTag: "7.2.0-v14"
+    defaultImageTag: "7.2.0-v18"
     mirrorVersions:
       - version: "7.0.6"
         imageTag: "7.0.6-RC4"
@@ -37,15 +37,21 @@ redisVersions:
         imageTag: "7.2.0-v14"
       - version: "7.4.2"
         imageTag: "7.4.0-v3"
+      - version: "7.2.10"
+        imageTag: "7.2.0-v18"
+      - version: "7.4.5"
+        imageTag: "7.4.0-v6"
   - major: "8"
     componentDef: "redis-8"
-    serviceVersion: "8.0.1"
+    serviceVersion: "8.0.3"
     clusterComponentDef: "redis-cluster-8"
     sentinelComponentDef: "redis-sentinel-8"
-    defaultImageTag: "8.0.1"
+    defaultImageTag: "8.0.3"
     mirrorVersions:
       - version: "8.0.1"
         imageTag: "8.0.1"
+      - version: "8.0.3"
+        imageTag: "8.0.3"
 
 image:
   # refer: https://redis.io/docs/stack/
@@ -74,7 +80,7 @@ ceImage:
 apeDtsImage:
   registry: ""
   repository: apecloud/ape-dts
-  tag: 0.1.17
+  tag: 2.0.24
 
 dbctlImage:
   registry:
