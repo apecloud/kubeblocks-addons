@@ -1,36 +1,11 @@
 #!/bin/bash
 
+# shellcheck disable=SC1091
+. "/scripts/mongodb-common.sh"
+
 MONGODB_REPLICA_SET_NAME=$KB_CLUSTER_COMP_NAME
-
-client_path=$(whereis mongosh | awk '{print $2}')
-CLIENT="mongosh"
-if [ -z "$client_path" ]; then
-    CLIENT="mongo"
-fi
+CLIENT=$(get_mongodb_client_name)
 CLUSTER_MONGO="$CLIENT --host $MONGOS_INTERNAL_HOST --port $MONGOS_INTERNAL_PORT -u $MONGODB_ADMIN_USER -p $MONGODB_ADMIN_PASSWORD --quiet --eval"
-
-generate_endpoints() {
-    # Generate the endpoints for the shard
-    local fqdns=$1
-    local port=$2
-
-    if [ -z "$fqdns" ]; then
-        echo "ERROR: No FQDNs provided for config server endpoints." >&2
-        exit 1
-    fi
-
-    IFS=',' read -ra fqdn_array <<< "$fqdns"
-    local endpoints=()
-
-    for fqdn in "${fqdn_array[@]}"; do
-        trimmed_fqdn=$(echo "$fqdn" | xargs)
-        if [[ -n "$trimmed_fqdn" ]]; then
-            endpoints+=("${trimmed_fqdn}:${port}")
-        fi
-    done
-
-    IFS=','; echo "${endpoints[*]}"
-}
 
 wait_for_mongos() {
     # Wait for the mongos service to be ready

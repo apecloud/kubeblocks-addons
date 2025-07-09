@@ -107,7 +107,7 @@ componentSpecs:
     replicas: {{ .Values.mongos.replicas | default 3 }}
     disableExporter: {{ $.Values.disableExporter | default "false" }}
     serviceVersion: {{ .Values.version }}
-    serviceAccountName: {{ include "kblib.serviceAccountName" . }}
+    serviceAccountName: {{ printf "kb-%s" (include "kblib.clusterName" .) }}
     env:
       - name: MONGODB_BALANCER_ENABLED
         value: "{{ .Values.balancer.enabled }}"

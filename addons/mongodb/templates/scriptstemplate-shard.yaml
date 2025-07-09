@@ -13,3 +13,5 @@ data:
     {{- .Files.Get "scripts/backup-agent-setup.sh" | nindent 4 }}
   mongodb-mongos-setup.sh: |-
     {{- .Files.Get "scripts/mongodb-mongos-setup.tpl" | nindent 4 }}
+  mongodb-common.sh: |-
+    {{- .Files.Get "scripts/mongodb-common.sh" | nindent 4 }}

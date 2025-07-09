@@ -116,8 +116,8 @@ spec:
             protocol: TCP
             containerPort: 3601
         command:
-          - bash
-          - -c
+          - syncer
+          - --
           - /scripts/mongodb-shard-setup.sh
         env:
           - name: PATH
@@ -138,7 +138,7 @@ spec:
             value: "true"
           - name: PBM_AGENT_SIDECAR_SLEEP
             value: "5"
-          - name: SHARED
+          - name: SHARDED
             value: "TRUE"
           - name: POD_NAME
             value: $(KB_POD_NAME)
