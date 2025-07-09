@@ -111,7 +111,6 @@ spec:
       runAsGroup: 0
     initContainers:
       - name: init-broker-cluster
-        image: {{ include "pulsar2.brokerImage" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/init-broker.sh
@@ -144,7 +143,6 @@ spec:
           - name: pulsar-config
             mountPath: /opt/pulsar/conf
       - name: init-sysctl
-        image: {{ include "pulsar2.brokerImage" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/init-broker-sysctl.sh
@@ -177,7 +175,6 @@ spec:
               - ALL
           privileged: false
           runAsGroup: 0
-        image: {{ include "pulsar2.brokerImage" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/start-broker.sh

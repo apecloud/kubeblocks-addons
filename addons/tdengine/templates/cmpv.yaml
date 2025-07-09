@@ -18,3 +18,4 @@ spec:
       serviceVersion: 3.0.5
       images:
         tdengine: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:3.0.5.0
+        metrics: {{ .Values.metrics.image.registry | default ( .Values.image.registry | default "docker.io" ) }}/{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}

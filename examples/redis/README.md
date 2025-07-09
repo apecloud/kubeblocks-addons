@@ -641,6 +641,43 @@ kubectl delete cluster -n demo redis-replication
 
 Redis has various deployment topology, such as standalone, replication, sharding, etc. Here are some examples to create different Redis clusters.
 
+#### Create Redis Replication with NodePort
+
+Redis and Sentinel's advertise port is mainly used for correct node discovery and communication in distributed deployment environments. The advertise port is the port that a Redis or Sentinel node announces to other nodes or clients as its externally accessible service port. This is especially important in containerized, NAT, or port-mapped environments where the actual listening port inside the container may differ from the port exposed to the outside world.
+
+- For Redis, the `cluster-announce-port` configuration allows the node to advertise a different port than the one it listens on. This ensures that other nodes or clients can connect to the correct external port.
+- For Sentinel, the `sentinel announce-port` configuration serves a similar purpose, allowing Sentinel nodes to announce the correct external port for inter-node communication and monitoring.
+
+This mechanism solves the problem where the internal and external ports are inconsistent, ensuring reliable communication and failover in Redis and Sentinel clusters.
+
+To access redis replication from the outside of K8s cluster, you should create a redis replication cluster (with an official Redis Sentinel HA) with `NodePort` service type to advertise addresses.
+
+```bash
+kubectl apply -f examples/redis/cluster-with-nodeport.yaml
+```
+
+This example shows how to create a redis replication cluster and override the service type of the `redis-advertised` service to `NodePort`.
+```yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+spec:
+  componentSpecs:
+  - name: redis
+    services:
+    - name: redis-advertised  # override service named `redis-advertised` defined in ComponentDefinition
+      serviceType: NodePort
+      podService: true
+# irrelevant lines commited
+  - name: redis-sentinel
+    services:
+    - name: sentinel-advertised  # override service named `sentinel-advertised` defined in ComponentDefinition
+      serviceType: NodePort
+      podService: true
+# irrelevant lines commited
+```
+Service `redis-advertised` and `redis-sentinel` are defined in `ComponentDefinition` name `redis-7` and `redis-sentinel-7`.  They are used to to parse the advertised endpoints of the Redis pods and Sentinel Pods.
+
+
 #### Create Redis with Proxy
 
 To create a redis with a proxy (Twemproxy) in front of it:
@@ -705,7 +742,7 @@ spec:
 
 In this example we demonstrate how to create a Redis cluster with multiple shards, and how to override the service type of the `redis-advertised` service to `NodePort`.
 
-The service `redis-advertised` is defined in `ComponentDefinition` and will used to parse the advertised endpoints of the Redis pods.
+The service `redis-advertised` is defined in `ComponentDefinition` and will be used to parse the advertised endpoints of the Redis pods.
 
 By default, the service type is `NodePort`. If you want to expose the service to the outside of the cluster, you can override the service type to `NodePort` or `LoadBalancer` depending on your need.
 

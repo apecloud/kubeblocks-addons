@@ -1,6 +1,7 @@
 ## Application Name Overrides
 nameOverride: ""
 fullnameOverride: ""
+appVersionOverride: ""
 
 ## Cluster Configuration
 replicas: 3

@@ -50,7 +50,6 @@ spec:
       runAsUser: 10000
     containers:
       - name: zookeeper
-        image: {{ include "pulsar3.zookeeperImage" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/start-zookeeper.sh

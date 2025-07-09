@@ -9,29 +9,43 @@ fullnameOverride: ""
 ## @param compDefinitionVersion for each ComponentDefinition resources name created by this chart, that can avoid name conflict
 ## If specified, the component definition will use it as prefix.
 cmpdVersionPrefix:
-  redis:
-    major7:
-      minorAll: "redis-7"
-  redisSentinel:
-    major7:
-      minorAll: "redis-sentinel-7"
-  redisCluster:
-    major7:
-      minorAll: "redis-cluster-7"
   redisTwemproxy:
     major05:
       minorAll: "redis-twemproxy-0.5"
 
 ## @param componentServiceVersion define default serviceVersion of each Component
 defaultServiceVersion:
-  redis:
-    major7: "7.2.7"
-  redisSentinel:
-    major7: "7.2.7"
-  redisCluster:
-    major7: "7.2.7"
   redisTwemproxy:
     major: "0.5.0"
+
+## Redis versions configuration
+## Array of major versions, each containing minor versions with specific image tags
+## @param serviceVersion define default serviceVersion of each Component
+redisVersions:
+  - major: "7"
+    componentDef: "redis-7"
+    serviceVersion: "7.2.7"
+    clusterComponentDef: "redis-cluster-7"
+    sentinelComponentDef: "redis-sentinel-7"
+    defaultImageTag: "7.2.0-v14"
+    mirrorVersions:
+      - version: "7.0.6"
+        imageTag: "7.0.6-RC4"
+      - version: "7.2.4"
+        imageTag: "7.2.0-v10"
+      - version: "7.2.7"
+        imageTag: "7.2.0-v14"
+      - version: "7.4.2"
+        imageTag: "7.4.0-v3"
+  - major: "8"
+    componentDef: "redis-8"
+    serviceVersion: "8.0.1"
+    clusterComponentDef: "redis-cluster-8"
+    sentinelComponentDef: "redis-sentinel-8"
+    defaultImageTag: "8.0.1"
+    mirrorVersions:
+      - version: "8.0.1"
+        imageTag: "8.0.1"
 
 image:
   # refer: https://redis.io/docs/stack/
@@ -46,6 +60,16 @@ image:
     major7:
       minor70: 7.0.6-RC4
       minor72: 7.2.0-v14
+    major8:
+      minor80: 8.0.1
+
+ceImage:
+  registry:
+  repository: redis
+  pullPolicy: IfNotPresent
+  tag:
+    major8:
+      minor80: 8.0.1
 
 apeDtsImage:
   registry: ""
@@ -53,7 +77,7 @@ apeDtsImage:
   tag: 0.1.17
 
 dbctlImage:
-  registry: docker.io
+  registry:
   repository: apecloud/dbctl
   pullPolicy: IfNotPresent
   tag: 0.1.7

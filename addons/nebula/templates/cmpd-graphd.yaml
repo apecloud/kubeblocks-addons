@@ -67,7 +67,7 @@ spec:
             set -ex
             trap : TERM INT
             exec /usr/local/nebula/bin/nebula-graphd --flagfile=/usr/local/nebula/etc/nebula-graphd.conf --meta_server_addrs=$NEBULA_METAD_SVC --local_ip=$POD_FQDN --daemonize=false
-        imagePullPolicy: {{default .Values.nebula.images.pullPolicy "IfNotPresent"}}
+        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
         ports:
           - containerPort: 9669
             name: thrift

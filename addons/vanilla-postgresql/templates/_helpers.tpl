@@ -359,7 +359,7 @@ systemAccounts:
       numSymbols: 0
       letterCase: MixedCases
 tls:
-  volumeName: tls 
+  volumeName: tls
   mountPath: /etc/pki/tls
   caFile: ca.pem
   certFile: cert.pem
@@ -369,7 +369,6 @@ tls:
 {{- define "vanilla-postgresql.spec.runtime.common" -}}
 initContainers:
   - name: init-syncer
-    image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.syncer.repository }}:{{ .Values.image.syncer.tag }}
     imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
     command:
       - cp

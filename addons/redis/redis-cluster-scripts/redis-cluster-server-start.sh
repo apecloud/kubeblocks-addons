@@ -125,8 +125,9 @@ get_current_comp_nodes_for_scale_out_replica() {
   fi
 
   # if the cluster_nodes_info contains only one line, it means that the cluster not be initialized
-  if [ "$(echo "$cluster_nodes_info" | wc -l)" -eq 1 ]; then
-    echo "Cluster nodes info contains only one line, returning..."
+  shard_count=$(echo "${ALL_SHARDS_COMPONENT_SHORT_NAMES}" | tr ',' '\n' | wc -l)
+  if [ "$(echo "$cluster_nodes_info" | wc -l)" -lt ${shard_count} ]; then
+    echo "Cluster nodes info contains less than ${shard_count} nodes, returning..."
     return
   fi
 
@@ -285,18 +286,21 @@ scale_redis_cluster_replica() {
     echo "the nodes.conf file after redis server start is not exist"
   fi
 
-  # get the current component nodes for scale out replica
-  target_node_name=$(min_lexicographical_order_pod "$CURRENT_SHARD_POD_NAME_LIST")
-  if ! is_empty "$CURRENT_SHARD_PRIMARY_POD_NAME"; then
-    target_node_name="$CURRENT_SHARD_PRIMARY_POD_NAME"
-  fi
-  target_node_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$CURRENT_SHARD_POD_FQDN_LIST" "$target_node_name")
-  if is_empty "$target_node_fqdn"; then
-    echo "Error: Failed to get target node fqdn from current shard pod fqdn list: $CURRENT_SHARD_POD_FQDN_LIST. Exiting." >&2
-    exit 1
-  fi
-  # get the current component nodes for scale out replica
-  get_current_comp_nodes_for_scale_out_replica "$target_node_fqdn" "$service_port"
+  for target_node_name in $(echo "${CURRENT_SHARD_POD_NAME_LIST}" | tr ',' '\n'); do
+     if [ -f /data/rebuild.flag ] && [ "${CURRENT_POD_NAME}" == "${target_node_name}" ]; then
+       continue
+     fi
+     target_node_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$CURRENT_SHARD_POD_FQDN_LIST" "$target_node_name")
+     if is_empty "$target_node_fqdn"; then
+       echo "Error: Failed to get target node fqdn from current shard pod fqdn list: $CURRENT_SHARD_POD_FQDN_LIST. Exiting." >&2
+       exit 1
+     fi
+     # get the current component nodes for scale out replica
+     get_current_comp_nodes_for_scale_out_replica "$target_node_fqdn" "$service_port"
+     if [ $? -eq 0 ]; then
+       break
+     fi
+  done
 
   # check current_comp_primary_node is empty or not
   if [ ${#current_comp_primary_node[@]} -eq 0 ]; then
@@ -341,6 +345,15 @@ scale_redis_cluster_replica() {
   fi
   # current_node_with_port do not use advertised svc and port, because advertised svc and port are not ready when Pod is not Ready.
   current_pod_fqdn=$(get_target_pod_fqdn_from_pod_fqdn_vars "$CURRENT_SHARD_POD_FQDN_LIST" "$CURRENT_POD_NAME")
+  if is_rebuild_instance; then
+    echo "Current instance is a rebuild-instance, forget node id in the cluster firstly."
+    node_id=$(get_cluster_id_with_retry "$primary_node_endpoint" "$primary_node_port" "$current_pod_fqdn")
+    if [ -z ${REDIS_DEFAULT_PASSWORD} ]; then
+      redis-cli -p $service_port --cluster call $primary_node_endpoint_with_port cluster forget ${node_id}
+    else
+      redis-cli -p $service_port --cluster call $primary_node_endpoint_with_port cluster forget ${node_id} -a ${REDIS_DEFAULT_PASSWORD}
+    fi
+  fi
   current_node_with_port="$current_pod_fqdn:$service_port"
   replicated_output=$(secondary_replicated_to_primary "$current_node_with_port" "$primary_node_endpoint_with_port" "$primary_node_cluster_id")
   status=$?
@@ -369,7 +382,7 @@ scale_redis_cluster_replica() {
   fi
 
   # Hacky: When the entire redis cluster is restarted, a hacky sleep is used to wait for all primaries to enter the restarting state
-  sleep_when_ut_mode_false 60
+  sleep_when_ut_mode_false 5
 
   # cluster meet the primary node until the current node is successfully added to the cluster
   current_primary_met=false
@@ -482,7 +495,7 @@ build_announce_ip_and_port() {
       echo "replica-announce-port $redis_announce_port_value"
       echo "replica-announce-ip $redis_announce_host_value"
     } >> $redis_real_conf
-  elif ! is_empty "$FIXED_POD_IP_ENABLED"; then
+  elif [ "$FIXED_POD_IP_ENABLED" == "true" ]; then
     echo "redis use fixed pod ip: $CURRENT_POD_IP to announce"
     echo "replica-announce-ip $CURRENT_POD_IP" >> $redis_real_conf
   else
@@ -512,7 +525,7 @@ build_cluster_announce_info() {
       echo "cluster-announce-hostname $current_pod_fqdn"
       echo "cluster-preferred-endpoint-type ip"
     } >> $redis_real_conf
-  elif ! is_empty "$FIXED_POD_IP_ENABLED"; then
+  elif [ "$FIXED_POD_IP_ENABLED" == "true" ]; then
     echo "redis cluster use fixed pod ip: $CURRENT_POD_IP to announce"
     {
       echo "cluster-announce-ip $CURRENT_POD_IP"
@@ -578,27 +591,31 @@ parse_redis_cluster_shard_announce_addr() {
 }
 
 start_redis_server() {
+    module_path="/opt/redis-stack/lib"
+    if [[ "$IS_REDIS8" == "true" ]]; then
+       module_path="/usr/local/lib/redis/modules"
+    fi
     exec_cmd="exec redis-server /etc/redis/redis.conf"
-    if [ -f /opt/redis-stack/lib/redisearch.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redisearch.so ${REDISEARCH_ARGS}"
+    if [ -f ${module_path}/redisearch.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/redisearch.so ${REDISEARCH_ARGS}"
     fi
-    if [ -f /opt/redis-stack/lib/redistimeseries.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redistimeseries.so ${REDISTIMESERIES_ARGS}"
+    if [ -f ${module_path}/redistimeseries.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/redistimeseries.so ${REDISTIMESERIES_ARGS}"
     fi
-    if [ -f /opt/redis-stack/lib/rejson.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/rejson.so ${REDISJSON_ARGS}"
+    if [ -f ${module_path}/rejson.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/rejson.so ${REDISJSON_ARGS}"
     fi
-    if [ -f /opt/redis-stack/lib/redisbloom.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redisbloom.so ${REDISBLOOM_ARGS}"
+    if [ -f ${module_path}/redisbloom.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/redisbloom.so ${REDISBLOOM_ARGS}"
     fi
-    if [ -f /opt/redis-stack/lib/redisgraph.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redisgraph.so ${REDISGRAPH_ARGS}"
+    if [ -f ${module_path}/redisgraph.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/redisgraph.so ${REDISGRAPH_ARGS}"
     fi
-    if [ -f /opt/redis-stack/lib/rediscompat.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/rediscompat.so"
+    if [ -f ${module_path}/rediscompat.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/rediscompat.so"
     fi
-    if [ -f /opt/redis-stack/lib/redisgears.so ]; then
-        exec_cmd="$exec_cmd --loadmodule /opt/redis-stack/lib/redisgears.so v8-plugin-path /opt/redis-stack/lib/libredisgears_v8_plugin.so ${REDISGEARS_ARGS}"
+    if [ -f ${module_path}/redisgears.so ]; then
+        exec_cmd="$exec_cmd --loadmodule ${module_path}/redisgears.so v8-plugin-path ${module_path}/libredisgears_v8_plugin.so ${REDISGEARS_ARGS}"
     fi
     echo "Starting redis server cmd: $exec_cmd"
     eval "$exec_cmd"

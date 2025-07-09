@@ -22,10 +22,11 @@ PostgreSQL (Postgres) is an open source object-relational database known for rel
 
 | Major Versions | Description |
 |---------------|-------------|
-| 12            | 12.14.0,12.14.1,12.15.0|
-| 14            | 14.7.2,14.8.0|
-| 15            | 15.7.0|
-| 16            | 16.4.0|
+| 12            | 12.14.0,12.14.1,12.15.0,12.22.0|
+| 14            | 14.7.2,14.8.0,14.18.0|
+| 15            | 15.7.0,15.13.0|
+| 16            | 16.4.0,16.9.0|
+| 17            | 17.5.0|
 
 ## Prerequisites
 
@@ -75,7 +76,7 @@ spec:
     - name: postgresql
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [12.14.0,12.14.1,12.15.0,14.7.2,14.8.0,15.7.0,16.4.0]
+      # Valid options are: [12.14.0,12.14.1,12.15.0,12.22.0,14.7.2,14.8.0,14.18.0,15.7.0,15.13.0,16.4.0,16.9.0,17.5.0]
       serviceVersion: "14.7.2"
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
@@ -158,7 +159,7 @@ spec:
     - name: postgresql
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [12.14.0,12.14.1,12.15.0,14.7.2,14.8.0,15.7.0,16.4.0]
+      # Valid options are: [12.14.0,12.14.1,12.15.0,12.22.0,14.7.2,14.8.0,14.18.0,15.7.0,15.13.0,16.4.0,16.9.0,17.5.0]
       serviceVersion: "14.7.2"
 ```
 
@@ -171,8 +172,8 @@ kubectl get cmpv postgresql
 And the expected output is like:
 
 ```bash
-NAME         VERSIONS                                              STATUS      AGE
-postgresql   12.14.0,12.14.1,12.15.0,14.7.2,14.8.0,15.7.0,16.4.0   Available   Xd
+NAME         VERSIONS                                                                                    STATUS      AGE
+postgresql   17.5.0,16.9.0,16.4.0,15.13.0,15.7.0,14.18.0,14.8.0,14.7.2,12.22.0,12.15.0,12.14.1,12.14.0   Available   Xd
 ```
 
 ### Horizontal scaling
@@ -1153,7 +1154,7 @@ spec:
     - name: postgresql
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
-      # Valid options are: [12.14.0,12.14.1,12.15.0,14.7.2,14.8.0,15.7.0,16.4.0]
+      # Valid options are: [12.14.0,12.14.1,12.15.0,12.22.0,14.7.2,14.8.0,14.18.0,15.7.0,15.13.0,16.4.0,16.9.0,17.5.0]
       serviceVersion: "14.7.2"
       # Determines whether metrics exporter information is annotated on the
       # Component's headless Service.
@@ -1285,6 +1286,62 @@ kubectl patch cluster -n demo pg-cluster -p '{"spec":{"terminationPolicy":"WipeO
 
 kubectl delete cluster -n demo pg-cluster
 ```
+
+## Appendix
+
+### How to Create PostgreSQL Cluster with ETCD or Zookeeper as DCS
+
+```yaml
+# cat examples/postgresql/cluster-with-etcd.yaml
+apiVersion: apps.kubeblocks.io/v1
+kind: Cluster
+metadata:
+  name: pg-cluster-etcd
+  namespace: demo
+spec:
+  terminationPolicy: Delete
+  clusterDef: postgresql
+  topology: replication
+  componentSpecs:
+    - name: postgresql
+      serviceVersion: "14.7.2"
+      env:
+      - name: DCS_ENABLE_KUBERNETES_API  # unset this env if you use zookeeper or etcd, default to empty
+      - name: ETCD3_HOST
+        value: 'myetcd-etcd-headless.default.svc.cluster.local:2379' # where is your etcd?
+      # - name: ZOOKEEPER_HOSTS
+      #   value: 'myzk-zookeeper-0.myzk-zookeeper-headless.default.svc.cluster.local:2181' # where is your zookeeper?
+      replicas: 2
+      resources:
+        limits:
+          cpu: "0.5"
+          memory: "0.5Gi"
+        requests:
+          cpu: "0.5"
+          memory: "0.5Gi"
+      volumeClaimTemplates:
+        - name: data
+          spec:
+            storageClassName: ""
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 20Gi
+```
+
+```bash
+kubectl apply -f examples/postgresql/cluster-with-etcd.yaml
+```
+
+This example will create a PostgreSQL cluster with ETCD as DCS. It will set two envs:
+
+- `DCS_ENABLE_KUBERNETES_API` to empty, unset this env if you use zookeeper or etcd, default to empty
+- `ETCD3_HOST` to the ETCD cluster's headless service address, or use `ETCD3_HOSTS` to set ETCD hosts and ports.
+
+Similar for Zookeeper, you can set `ZOOKEEPER_HOSTS` to the Zookeeper's address.
+
+More environment variables can be found in [Spilo's ENVIRONMENT](https://github.com/zalando/spilo/blob/master/ENVIRONMENT.rst).
 
 ## Reference
 

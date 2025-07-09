@@ -6,14 +6,22 @@ Define redis cluster shardingSpec with ComponentDefinition.
   shards: {{ .Values.redisCluster.shardCount }}
   template:
     name: redis
-    componentDef: redis-cluster-7
+    componentDef: redis-cluster
     replicas: {{ .Values.replicas }}
+    {{- if .Values.podAntiAffinityEnabled }}
+    {{- include "redis-cluster.shardingSchedulingPolicy" . | indent 2 }}
+    {{- end }}
     {{- include "redis-cluster.exporter" . | indent 4 }}
-    {{- if and .Values.nodePortEnabled (not .Values.hostNetworkEnabled) }}
+    {{- if and .Values.nodePortEnabled (not .Values.hostNetworkEnabled)  (not .Values.fixedPodIPEnabled) }}
     services:
     - name: redis-advertised
       serviceType: NodePort
       podService: true
+    {{- end }}
+    {{- if and .Values.fixedPodIPEnabled (not .Values.nodePortEnabled) (not .Values.hostNetworkEnabled) }}
+    env:
+      - name: FIXED_POD_IP_ENABLED
+        value: "true"
     {{- end }}
     serviceVersion: {{ .Values.version }}
     systemAccounts:
@@ -54,7 +62,10 @@ Define redis ComponentSpec with ComponentDefinition.
 - name: redis
   {{- include "redis-cluster.replicaCount" . | indent 2 }}
   {{- include "redis-cluster.exporter" . | indent 2 }}
-  {{- if and .Values.nodePortEnabled (not .Values.hostNetworkEnabled) }}
+  {{- if .Values.podAntiAffinityEnabled }}
+  {{- include "redis-cluster.schedulingPolicy" . | indent 2 }}
+  {{- end }}
+  {{- if and .Values.nodePortEnabled (not .Values.hostNetworkEnabled) (not .Values.fixedPodIPEnabled) }}
   services:
   - name: redis-advertised
     serviceType: NodePort
@@ -64,6 +75,10 @@ Define redis ComponentSpec with ComponentDefinition.
   {{- if .Values.sentinel.customMasterName }}
   - name: CUSTOM_SENTINEL_MASTER_NAME
     value: {{ .Values.sentinel.customMasterName }}
+  {{- end }}
+  {{- if and .Values.fixedPodIPEnabled (not .Values.nodePortEnabled) (not .Values.hostNetworkEnabled) }}
+  - name: FIXED_POD_IP_ENABLED
+    value: "true"
   {{- end }}
   serviceVersion: {{ .Values.version }}
   {{- if and .Values.customSecretName .Values.customSecretNamespace }}
@@ -83,11 +98,19 @@ Define redis sentinel ComponentSpec with ComponentDefinition.
 {{- define "redis-cluster.sentinelComponentSpec" }}
 - name: redis-sentinel
   replicas: {{ .Values.sentinel.replicas }}
-  {{- if and .Values.nodePortEnabled (not .Values.hostNetworkEnabled) }}
+  {{- if .Values.podAntiAffinityEnabled }}
+  {{- include "redis-cluster.sentinelschedulingPolicy" . | indent 2 }}
+  {{- end }}
+  {{- if and .Values.nodePortEnabled (not .Values.hostNetworkEnabled) (not .Values.fixedPodIPEnabled) }}
   services:
   - name: sentinel-advertised
     serviceType: NodePort
     podService: true
+  {{- end }}
+  {{- if and .Values.fixedPodIPEnabled (not .Values.nodePortEnabled) (not .Values.hostNetworkEnabled) }}
+  env:
+  - name: FIXED_POD_IP_ENABLED
+    value: "true"
   {{- end }}
   serviceVersion: {{ .Values.version }}
   {{- if and .Values.sentinel.customSecretName .Values.sentinel.customSecretNamespace }}
@@ -175,6 +198,61 @@ apps.kubeblocks.io/component-name: "redis"
 {{- end }}
 
 {{/*
+Redis Cluster sharding schedulingPolicy
+*/}}
+{{- define "redis-cluster.shardingSchedulingPolicy" }}
+schedulingPolicy:
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ include "kblib.clusterName" . | quote }}
+              app.kubernetes.io/managed-by: "kubeblocks"
+              kubeblocks.io/role: primary
+          topologyKey: kubernetes.io/hostname
+        weight: 100
+{{- end -}}
+
+
+{{/*
+Redis schedulingPolicy
+*/}}
+{{- define "redis-cluster.schedulingPolicy" }}
+schedulingPolicy:
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ include "kblib.clusterName" . | quote }}
+              app.kubernetes.io/managed-by: "kubeblocks"
+              apps.kubeblocks.io/component-name: "redis"
+          topologyKey: kubernetes.io/hostname
+        weight: 100
+{{- end -}}
+
+{{/*
+Redis sentinel schedulingPolicy
+*/}}
+{{- define "redis-cluster.sentinelschedulingPolicy" }}
+schedulingPolicy:
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ include "kblib.clusterName" . | quote }}
+              app.kubernetes.io/managed-by: "kubeblocks"
+              apps.kubeblocks.io/component-name: "redis-sentinel"
+          topologyKey: kubernetes.io/hostname
+        weight: 100
+{{- end -}}
+
+{{/*
 Define common fileds of cluster object
 */}}
 {{- define "redis-cluster.clusterCommon" }}
@@ -184,12 +262,15 @@ metadata:
   name: {{ include "kblib.clusterName" . }}
   namespace: {{ .Release.Namespace }}
   labels: {{ include "kblib.clusterLabels" . | nindent 4 }}
-  {{- if and .Values.hostNetworkEnabled (eq .Values.mode "cluster") }}
   annotations:
+    apps.kubeblocks.io/mode: {{ .Values.mode }}
+  {{- if and .Values.hostNetworkEnabled (eq .Values.mode "cluster") }}
     kubeblocks.io/host-network: "shard"
   {{- else if .Values.hostNetworkEnabled }}
-  annotations:
     kubeblocks.io/host-network: "redis,redis-sentinel"
+  {{- end }}
+  {{- if and .Values.podAntiAffinityEnabled (eq .Values.mode "cluster") }}
+    apps.kubeblocks.io/shard-pod-anti-affinity: "shard"
   {{- end }}
 spec:
   terminationPolicy: {{ .Values.extra.terminationPolicy }}

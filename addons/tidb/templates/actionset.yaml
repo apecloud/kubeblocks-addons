@@ -16,6 +16,7 @@ spec:
       - bash
       - -c
       - |
+        {{- .Files.Get "dataprotection/common.sh" | nindent 8 }}
         {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
   restore:
     postReady:
@@ -25,4 +26,5 @@ spec:
         - bash
         - -c
         - |
+          {{- .Files.Get "dataprotection/common.sh" | nindent 12 }}
           {{- .Files.Get "dataprotection/restore.sh" | nindent 12 }}

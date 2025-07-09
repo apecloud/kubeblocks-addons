@@ -19,3 +19,5 @@ spec:
       images:
         opensearch: {{ include "opensearch.repository" . }}:2.7.0
         os-master-graceful-handler: {{ include "os-master-graceful-handler.repository" . }}:2.7.0
+        fsgroup-volume: {{ include "fsgroup-volume.image" . }}
+        sysctl: {{ include "sysctl.image" . }}

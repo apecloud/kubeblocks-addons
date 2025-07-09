@@ -8,8 +8,6 @@ spec:
   env:
     - name: TLS_DIR
       value: {{ .Values.tlsMountPath }}
-    - name: TMP_CONFIG_PATH
-      value: {{ .Values.tmpConfigPath}}
     - name: RESTORE_DIR
       value: {{ .Values.restoreDir }}
     - name: CLUSTER_DOMAIN
@@ -17,20 +15,20 @@ spec:
   backupType: Full
   backup:
     backupData:
-      image: {{ include "etcd356.image" . }}
+      image: {{ include "etcd3.image" . }}
       runOnTargetPodNode: true
       syncProgress:
         enabled: false
         intervalSeconds: 5
       command:
-      - /bin/bash
+      - {{ .Values.binDir }}/bash
       - -c
       - |
         {{- .Files.Get "scripts/common.sh" | nindent 8 }}
         {{- .Files.Get "dataprotection/backup.sh" | nindent 8 }}
   restore:
     prepareData:
-      image: {{ include "etcd356.image" . }}
+      image: {{ include "bashBusyboxImage.image" . }}
       runOnTargetPodNode: true
       command:
       - /bin/bash

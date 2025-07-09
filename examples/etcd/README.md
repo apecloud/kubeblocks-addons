@@ -6,21 +6,21 @@ etcd is a distributed, highly available key-value store designed to securely sto
 
 ### Lifecycle Management
 
-| Horizontal<br/>scaling | Vertical <br/>scaling | Expand<br/>volume | Restart   | Stop/Start | Configure | Expose | Switchover |
-|------------------------|-----------------------|-------------------|-----------|------------|-----------|--------|------------|
-| Yes                    | Yes                   | Yes              | Yes       | Yes        | Yes       | Yes    | Yes      |
+| Horizontal scaling | Vertical scaling | Expand volume | Restart | Stop/Start | Configure | Expose | Switchover |
+| ------------------- | ----------------- | -------------- | ------- | ---------- | --------- | ------ | ---------- |
+| Yes                 | Yes               | Yes            | Yes     | Yes        | Yes       | Yes    | Yes        |
 
 ### Backup and Restore
 
-| Feature     | Method | Description |
-|-------------|--------|------------|
+| Feature     | Method   | Description                                                                  |
+| ----------- | -------- | ---------------------------------------------------------------------------- |
 | Full Backup | datafile | using `etcdcl snapshot save` to create snapshot of the etcd cluster's data |
 
 ### Versions
 
-| Major Versions | Description |
-|---------------|-------------|
-| 3.5.x         | 3.5.6,3.5.15|
+| Major Versions | Description  |
+| -------------- | ------------ |
+| 3.5.x          | 3.5.6,3.5.15 |
 
 ## Prerequisites
 
@@ -123,6 +123,23 @@ bar
 ```
 
 </details>
+
+### [Create with LoadBalancer](cluster-with-lb.yaml)
+
+Create an etcd cluster with LoadBalancer services for enhanced external accessibility and multi-cluster communication.
+
+Ensure your Kubernetes cluster has a LoadBalancer provider configured:
+
+- **Cloud providers**: AWS ELB, Azure Load Balancer, GCP Cloud Load Balancing
+- **On-premises**: MetalLB, HAProxy, NGINX Ingress Controller
+- **Other**: Any compatible LoadBalancer implementation
+- **Peer Service LoadBalancer**: Enables etcd members to communicate across different networks or clusters
+- **Client Service LoadBalancer**: Provides a stable external endpoint for etcd client connections
+- **High Availability**: External load balancing ensures resilient access to the etcd cluster
+
+```bash
+kubectl apply -f examples/etcd/cluster-with-lb.yaml
+```
 
 ### Horizontal scaling
 
@@ -301,7 +318,7 @@ spec:
       replicas: 2
 ```
 
-### Switchover(switchover.yaml)
+### [Switchover](switchover.yaml)
 
 A switchover in database clusters is a planned operation that transfers the primary (leader) role from one database instance to another. The goal of a switchover is to ensure that the database cluster remains available and operational during the transition.
 

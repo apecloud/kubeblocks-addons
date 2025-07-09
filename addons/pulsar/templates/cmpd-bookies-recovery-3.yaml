@@ -67,7 +67,6 @@ spec:
       runAsGroup: 0
     initContainers:
       - name: check-bookies
-        image: {{ include "pulsar3.bookiesImage" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/check-bookies.sh
@@ -98,7 +97,6 @@ spec:
               - ALL
           privileged: false
           runAsGroup: 0
-        image: {{ include "pulsar3.bookiesImage" . }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
           - /kb-scripts/start-bookies-recovery.sh
