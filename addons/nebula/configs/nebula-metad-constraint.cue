@@ -112,6 +112,16 @@
 	// Whether to synchronize the RocksDB WAL (Write Ahead Log) to disk.
     // Enabling this improves data durability but may impact performance.
     "--rocksdb_wal_sync": bool | *true
+
+    "--license_path": string | *"nebula.license"
+
+    // Minimum reserved bytes of data path
+    "--minimum_reserved_bytes": int & >=0 | *268435456
+
+    "--ng_black_box_switch": bool | *true
+    "--ng_black_box_home": string | *"black_box"
+    "--ng_black_box_dump_period_seconds": int & >=0 | *5
+    "--ng_black_box_file_lifetime_seconds": int & >=0 | *1800
 }
 
 configuration: #NebulaMetadParameter & {

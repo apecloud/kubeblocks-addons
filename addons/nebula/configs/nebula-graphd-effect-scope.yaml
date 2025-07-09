@@ -27,6 +27,7 @@ staticParameters:
   - --enable_authorize
   - --enable_space_level_metrics
   - --max_sessions_per_ip_per_user
+  - --containerized
 
 dynamicParameters:
   - --minloglevel

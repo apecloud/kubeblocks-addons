@@ -15,6 +15,11 @@ staticParameters:
 - --redirect_stdout
 - --logbufsecs
 - --timezone_name
+- --minimum_reserved_bytes
+- --ng_black_box_switch
+- --ng_black_box_home
+- --ng_black_box_dump_period_seconds
+- --ng_black_box_file_lifetime_seconds
 
 dynamicParameters:
 - --v

@@ -66,6 +66,8 @@ spec:
   vars:
     - name: CLUSTER_DOMAIN
       value: {{ .Values.clusterDomain }}
+    - name: HTTP_PORT
+      value: "19669"
     - name: GRAPHD_COMPONENT_NAME
       valueFrom:
         componentVarRef:

@@ -198,6 +198,41 @@
 
     // Number of paths built per thread during path building phase.
     "--path_batch_size": int & >=1000 & <=100000 | *10000
+
+    "--ng_black_box_switch": bool | *true
+    "--ng_black_box_home": string | *"black_box"
+    "--ng_black_box_dump_period_seconds": int & >=0 | *5
+    "--ng_black_box_file_lifetime_seconds": int & >=0 | *1800
+
+    // Memory tracker limit ratio or mode.
+    // Valid values:
+    //   (0, 1]: threshold-based static percentage of available memory.
+    //           Query will fail if it causes OOM beyond this threshold.
+    //   2:      Dynamic self-adaptive mode. Experimental.
+    //   3:      Disabled. Only records memory usage without enforcement.
+    //
+    // Warning: This setting only takes effect if system_memory_high_watermark_ratio ≠ 1.
+    //             For mixed deployments, adjust according to expected memory allocation.
+    "--memory_tracker_limit_ratio": number & >0 & <=1 | 2 | 3 | *0.8
+
+    // Reserved memory size in MB for system usage (not tracked by memory tracker).
+    "--memory_tracker_untracked_reserved_memory_mb": int & >=0 & <=102400 | *50
+
+    // Whether to generate detailed memory tracking logs periodically.
+    "--memory_tracker_detail_log": bool | *false
+
+    // Interval in milliseconds for generating memory tracking logs.
+    // Only takes effect when memory_tracker_detail_log is true.
+    "--memory_tracker_detail_log_interval_ms": int & >=1000 & <=3600000 | *60000
+
+    // Whether to enable periodic memory purging.
+    "--memory_purge_enabled": bool | *true
+
+    // Interval in seconds for memory purging.
+    // Only takes effect when memory_purge_enabled is true.
+    "--memory_purge_interval_seconds": int & >=1 & <=86400 | *10
+
+    "--containerized": bool | *false
 }
 
 configuration: #NebulaGraphdParameter & {

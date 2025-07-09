@@ -31,6 +31,7 @@ staticParameters:
   - --num_worker_threads
   - --max_concurrent_subtasks
   - --max_edge_returned_per_vertex
+  - --containerized
 
 dynamicParameters:
   - --v

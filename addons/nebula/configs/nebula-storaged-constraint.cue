@@ -239,6 +239,90 @@
     // This prevents performance degradation or OOM caused by dense vertices.
     "--max_edge_returned_per_vertex": int & >=1 & <=2147483647 | *2147483647
 
+    // Minimum reserved bytes of data path
+    "--minimum_reserved_bytes": int & >=0 | *268435456
+
+    "--ng_black_box_switch": bool | *true
+    "--ng_black_box_home": string | *"black_box"
+    "--ng_black_box_dump_period_seconds": int & >=0 | *5
+    "--ng_black_box_file_lifetime_seconds": int & >=0 | *1800
+
+    // Memory tracker limit ratio or mode.
+    // Valid values:
+    //   (0, 1]: threshold-based static percentage of available memory.
+    //           Query will fail if it causes OOM beyond this threshold.
+    //   2:      Dynamic self-adaptive mode. Experimental.
+    //   3:      Disabled. Only records memory usage without enforcement.
+    //
+    // Warning: This setting only takes effect if system_memory_high_watermark_ratio ≠ 1.
+    //             For mixed deployments, adjust according to expected memory allocation.
+    "--memory_tracker_limit_ratio": number & >0 & <=1 | 2 | 3 | *0.8
+
+    // Reserved memory size in MB for system usage (not tracked by memory tracker).
+    "--memory_tracker_untracked_reserved_memory_mb": int & >=0 & <=102400 | *50
+
+    // Whether to generate detailed memory tracking logs periodically.
+    "--memory_tracker_detail_log": bool | *false
+
+    // Interval in milliseconds for generating memory tracking logs.
+    // Only takes effect when memory_tracker_detail_log is true.
+    "--memory_tracker_detail_log_interval_ms": int & >=1000 & <=3600000 | *60000
+
+    // Whether to enable periodic memory purging.
+    "--memory_purge_enabled": bool | *true
+
+    // Interval in seconds for memory purging.
+    // Only takes effect when memory_purge_enabled is true.
+    "--memory_purge_interval_seconds": int & >=1 & <=86400 | *10
+
+    "--enable_negative_pool": bool | *false
+
+    // Negative pool size in MB
+    "--negative_pool_capacity": int | *50
+
+    // TTL in seconds for negative items in the cache
+    "--negative_item_ttl": int | *300
+
+
+    // Whether to enable storage cache
+    "--enable_storage_cache": bool | *false
+
+    // Total capacity reserved for storage in memory cache in MB
+    "--storage_cache_capacity": int | *0
+
+    // Estimated number of cache entries on this storage node in base 2 logarithm. E.g., in case of 20, the estimated number of entries will be 2^20.
+    // A good estimate can be log2(#vertices on this storage node). The maximum allowed is 31.
+    "--storage_cache_entries_power": int | *20
+
+    // Whether to add vertex pool in cache. Only valid when storage cache is enabled.
+    "--enable_vertex_pool": bool | *false
+
+    // Vertex pool size in MB
+    "--vertex_pool_capacity": int | *50
+
+    // TTL in seconds for vertex items in the cache
+    "--vertex_item_ttl": int | *300
+
+    // Cache file location
+    "--nv_cache_path": string | *"/tmp/cache"
+
+    // Cache file size in MB
+    "--nv_cache_size": int | *0
+
+    // DRAM part size of non-volatile cache in MB
+    "--nv_dram_size": int | *50
+
+    // DRAM part bucket power. The value is a logarithm with a base of 2. Optional values are 0-32.
+    "--nv_bucket_power": int | *20
+
+    // DRAM part lock power. The value is a logarithm with a base of 2. The recommended value is max(1, nv_bucket_power - 10).
+    "--nv_lock_power": int | *10
+
+    // whether send raft snapshot by files via http
+    "--snapshot_send_files": bool | *true
+
+    "--containerized": bool | *false
+
 }
 
 configuration: #NebulaStoragedParameter & {

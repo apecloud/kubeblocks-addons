@@ -7,8 +7,15 @@ metadata:
     {{- include "nebula.labels" . | nindent 4 }}
 spec:
   reloadAction:
-    autoTrigger:
-      processName: ""
+    shellTrigger:
+      sync: true
+      command:
+        - "update-parameter.sh"
+      scriptConfig:
+        scriptConfigMapRef: {{ include "nebula.scriptsTemplateName" . }}
+        namespace: {{ .Release.Namespace }}
+      toolsSetup:
+        mountPoint: /kb_tools
 
   # ConfigurationSchema that impose restrictions on engine parameter's rule
   parametersSchema:
