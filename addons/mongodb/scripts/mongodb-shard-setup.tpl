@@ -31,7 +31,4 @@ $process &
 
 process_restore_signal "$process" "start"
 
-# syncer affects pbm-agent to shutdown and restart mongod, so we need to kill syncer.
-# kill_process "syncer"
-
 process_restore_signal "$process" "end"

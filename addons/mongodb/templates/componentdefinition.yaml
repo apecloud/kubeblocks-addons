@@ -139,8 +139,8 @@ spec:
             protocol: TCP
             containerPort: 3601
         command:
-          - bash
-          - -c
+          - syncer
+          - --
           - /scripts/replicaset-setup.sh
         env:
           - name: PATH

@@ -1,5 +1,4 @@
 #!/bin/bash
-set -x
 
 {{- $mongodb_root := getVolumePathByName ( index $.podSpec.containers 0 ) "data" }}
 MONGODB_ROOT={{ $mongodb_root }}

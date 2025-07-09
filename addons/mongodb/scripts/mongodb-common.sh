@@ -52,6 +52,7 @@ function kill_process() {
 function process_restore_signal() {
     local process="$1"
     local target_signal="$2"
+    local pbm_backupfile=$MONGODB_ROOT/tmp/mongodb_pbm.backup
     restore_signal_cm_name="$KB_CLUSTER_NAME-restore-signal" 
     restore_signal_cm_namespace="$KB_NAMESPACE"
     while true; do
@@ -74,10 +75,13 @@ function process_restore_signal() {
                 else
                     kill_process "pbm-agent-entrypoint"
                     kill_process "pbm-agent"
-                    # kill_process "syncer"
                     kill_process "mongod"
                 fi
                 wait
+                if [ -f "$pbm_backupfile" ]; then
+                    echo "INFO: Removing backup file $pbm_backupfile"
+                    rm "$pbm_backupfile"
+                fi
                 exec $process
                 exit 0
             else
