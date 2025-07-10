@@ -135,25 +135,6 @@
           "default": {}
         }
       }
-    },
-    "extra": {
-      "title": "Extra Customizations",
-      "description": "Extra customizations for the etcd cluster.",
-      "type": "object",
-      "properties": {
-        "terminationPolicy": {
-          "title": "Termination Policy",
-          "description": "The termination policy for the etcd cluster.",
-          "type": "string",
-          "default": "Delete"
-        },
-        "disableExporter": {
-          "title": "Disable Exporter",
-          "description": "Disable the metrics exporter.",
-          "type": "boolean",
-          "default": false
-        }
-      }
     }
   }
 }
