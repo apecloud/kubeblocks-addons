@@ -10,7 +10,7 @@ image:
   tag: 5.0.29 # 6.0.3-debian-11-r0
   syncer:
     repository: apecloud/syncer
-    tag: test-wl-1.0
+    tag: 0.6.2
   percona:
     repository: apecloud/percona-server-mongodb
     tag: 8.0.8
