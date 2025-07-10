@@ -7,7 +7,7 @@ spec:
   terminationPolicy: WipeOut
   componentSpecs:
     - name: minio
-      componentDef: milvus-minio-1.0.0
+      componentDef: milvus-minio
       replicas: 1
       resources:
         limits:
