@@ -500,7 +500,7 @@ kubectl apply -f examples/vanilla-postgresql/configure.yaml
 ```
 
 This example will change the `max_connections` to `200`.
-> `max_connections` indicates maximum number of client connections allowed. It is a dynamic parameter, so the change will take effect without restarting the database.
+> `max_connections` indicates maximum number of client connections allowed. It is a static parameter, so the change will take effect after restarting the database.
 
 ```bash
 kbcli cluster explain-config vanpg-cluster # kbcli is a command line tool to interact with KubeBlocks
@@ -508,8 +508,7 @@ kbcli cluster explain-config vanpg-cluster # kbcli is a command line tool to int
 
 ### Backup
 
-> [!IMPORTANT]
-> Before you start, please create a `BackupRepo` to store the backup data. Refer to [BackupRepo](../docs/create-backuprepo.md) for more details.
+When create a backup for cluster, you need to create a BackupRepo first. You can refer to the "BackupRepo" section in the ```example/postgresql/README.md``` file to learn how to create a BackupRepo.
 
 KubeBlocks now supports one backup method for Vanilla-PostgreSQL cluster, which is `vanilla-pg-basebackup`.
 Other backup methods such as "wal-g" will be supported in the future.
