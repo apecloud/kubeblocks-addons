@@ -112,7 +112,7 @@ spec:
   terminationPolicy: Delete
   componentSpecs:
     - name: opensearch
-      componentDef: opensearch-1.0.0
+      componentDef: opensearch-core
       serviceVersion: "2.7.0"
       replicas: 3 # update replicas to your need (but not zero)
 ```
