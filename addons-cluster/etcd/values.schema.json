@@ -2,6 +2,12 @@
   "$schema": "http://json-schema.org/schema#",
   "type": "object",
   "properties": {
+    "version": {
+      "title": "Version",
+      "description": "etcd Service Version.",
+      "type": "string",
+      "default": "3.6.1"
+    },
     "replicas": {
       "title": "Replicas",
       "description": "The number of replicas, the default replicas is 3.",
@@ -43,6 +49,12 @@
       "default": 10,
       "minimum": 1,
       "maximum": 10000
+    },
+    "storageClassName": {
+      "title": "Storage Class Name",
+      "description": "The name of the StorageClass to use for data storage.",
+      "type": "string",
+      "default": ""
     },
     "tlsEnable": {
       "title": "TLS Enable",
