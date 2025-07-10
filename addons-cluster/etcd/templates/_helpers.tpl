@@ -1,5 +1,5 @@
 {{/*
-Define "etcd-cluster.componentService" to override component peer service
+Define "etcd-cluster.componentPeerService" to override component peer service
 Primarily used for LoadBalancer service to enable multi-cluster communication
 */}}
 {{- define "etcd-cluster.componentPeerService" -}}
