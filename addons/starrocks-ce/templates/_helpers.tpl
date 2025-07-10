@@ -87,6 +87,15 @@ starrocks-ce-fe-{{ .Chart.Version }}
 starrocks-ce-be-{{ .Chart.Version }}
 {{- end -}}
 
+
+{{- define "fe.componentVersionName" -}}
+starrocks-ce-fe
+{{- end -}}
+
+{{- define "be.componentVersionName" -}}
+starrocks-ce-be
+{{- end -}}
+
 {{/*
 Define fe component definition regex pattern
 */}}
