@@ -101,7 +101,7 @@ kind: Cluster
 spec:
   clusterDef: greptimedb
   componentSpecs:
-  - componentDef: greptimedb-datanode-1.0.0
+  - componentDef: greptimedb-datanode
     name: datanode
     replicas: 4 # update replicas as needed
     resources:

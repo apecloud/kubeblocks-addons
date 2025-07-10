@@ -111,14 +111,14 @@ opensearch-dashboard-{{ .Chart.Version }}
 Define opensearch component definition name
 */}}
 {{- define "opensearch.cmpdName" -}}
-opensearch-{{ .Chart.Version }}
+opensearch-core-{{ .Chart.Version }}
 {{- end -}}
 
 {{/*
 Define opensearch component definition regular expression name prefix
 */}}
 {{- define "opensearch.cmpdRegexpPattern" -}}
-^opensearch-\d+\.\d+\.\d+([-a-zA-Z0-9\.]*)?$
+^opensearch-core-\d+\.\d+\.\d+([-a-zA-Z0-9\.]*)?$
 {{- end -}}
 
 {{/*

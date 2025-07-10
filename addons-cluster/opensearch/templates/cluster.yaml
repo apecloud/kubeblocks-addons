@@ -9,7 +9,7 @@ spec:
   componentSpecs:
     - name: opensearch
       ## TODO: use regex pattern when cluster validation supported
-      componentDef: opensearch-{{ .Chart.Version }}
+      componentDef: opensearch-core
       replicas: {{ .Values.replicaCount | default 3 }}
       {{- with  .Values.resources }}
       resources:
@@ -32,7 +32,7 @@ spec:
                 storage: {{ .Values.persistence.data.size }}
       {{- end }}
     - name: dashboard
-      componentDef: opensearch-dashboard-{{ .Chart.Version }}
+      componentDef: opensearch-dashboard
       replicas: {{ .Values.dashboard.replicaCount | default 1 }}
       {{- with  .Values.dashboard.resources }}
       resources:
