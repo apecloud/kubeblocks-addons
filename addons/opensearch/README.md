@@ -54,7 +54,7 @@ spec:
   # This field allows for detailed configuration of each Component within the Cluster
   componentSpecs:
     - name: opensearch
-      componentDef: opensearch
+      componentDef: opensearch-core
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
       # Valid options are: [2.7.0]
@@ -76,7 +76,7 @@ spec:
               requests:
                 storage: 20Gi
     - name: dashboard
-      componentDef: opensearch-dashboard-1.0.0
+      componentDef: opensearch-dashboard
       # ServiceVersion specifies the version of the Service expected to be
       # provisioned by this Component.
       # Valid options are: [2.7.0]
@@ -214,7 +214,7 @@ spec:
   terminationPolicy: Delete
   componentSpecs:
     - name: opensearch
-      componentDef: opensearch
+      componentDef: opensearch-core
       serviceVersion: "2.7.0"
       replicas: 3 # update replicas to your need (but not zero)
 ```
