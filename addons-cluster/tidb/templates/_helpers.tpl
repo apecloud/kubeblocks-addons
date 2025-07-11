@@ -72,26 +72,3 @@ app.kubernetes.io/instance: {{ .Release.Name }}
     secretName: {{ include "tidb-cluster.TLSBetweenComponentsSecretName" . }}
 {{- end }}
 {{- end }}
-
-
-# it is more appropriate to pass certs by volume mount. However, kubeblocks does not 
-# support customize volumeMounts in cluster cr currently.
-{{- define "tidb-cluster.TLSBetweenComponentsEnv" -}}
-{{- if .Values.extra.enableTLSBetweenComponents }}
-- name: KB_TLS_BETWEEN_COMPONENTS_CA
-  valueFrom:
-    secretKeyRef:
-      name: {{ include "tidb-cluster.TLSBetweenComponentsSecretName" . }}
-      key: ca.pem
-- name: KB_TLS_BETWEEN_COMPONENTS_CERT
-  valueFrom:
-    secretKeyRef:
-      name: {{ include "tidb-cluster.TLSBetweenComponentsSecretName" . }}
-      key: cert.pem
-- name: KB_TLS_BETWEEN_COMPONENTS_KEY
-  valueFrom:
-    secretKeyRef:
-      name: {{ include "tidb-cluster.TLSBetweenComponentsSecretName" . }}
-      key: key.pem
-{{- end }}
-{{- end }}

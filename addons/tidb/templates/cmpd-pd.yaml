@@ -72,16 +72,8 @@ spec:
   lifecycleActions:
     roleProbe:
       exec:
-        command:
-          - bash
-          - -c
-          - |
-            LEADER_NAME=$(/pd-ctl member | jq -r '.leader.name')
-            if [ "$LEADER_NAME" == "$HOSTNAME" ]; then
-                echo -n "leader"
-            else
-                echo -n "follower"
-            fi
+        container: pd
+        command: ["/scripts/pd_roleprobe.sh"]
     memberLeave:
       exec:
         command:
@@ -101,11 +93,7 @@ spec:
       exec:
         targetPodSelector: Role
         matchingKey: leader
-        command:
-          - bash
-          - -c
-          - |
-            {{- .Files.Get "scripts/pd_switchover.sh" | nindent 14 }}
+        command: ["/scripts/pd_switchover.sh"]
   exporter:
     containerName: pd
     scrapePort: "2379"

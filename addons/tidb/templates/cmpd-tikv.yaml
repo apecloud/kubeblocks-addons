@@ -67,6 +67,7 @@ spec:
       template: {{ include "tidb.tikv.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: config
+      externalManaged: true
   scripts:
     - name: tidb-scripts
       template: {{ include "tidb.cmScriptsName" . }}

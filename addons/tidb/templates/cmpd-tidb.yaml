@@ -53,7 +53,7 @@ spec:
     - name: KB_ENABLE_TLS_BETWEEN_COMPONENTS
       valueFrom:
         configMapKeyRef:
-          
+
   runtime:
     containers:
       - name: tidb
@@ -98,6 +98,7 @@ spec:
       template: {{ include "tidb.tidb.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: config
+      externalManaged: true
   scripts:
     - name: tidb-scripts
       template: {{ include "tidb.cmScriptsName" . }}
