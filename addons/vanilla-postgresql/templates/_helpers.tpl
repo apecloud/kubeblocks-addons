@@ -20,6 +20,15 @@ Define vanilla-postgresql component definition regular expression name prefix
 ^(vanilla-postgresql-\w+)
 {{- end -}}
 
+
+{{/*
+Define supabase component definition regular expression name prefix
+*/}}
+{{- define "supabase.cmpdRegexpPattern" -}}
+^(supabase-\w+)
+{{- end -}}
+
+
 {{/*
 Define vanilla-postgresql 12.X component definition regular expression name prefix
 */}}
@@ -42,10 +51,10 @@ Define vanilla-postgresql 15.X component definition regular expression name pref
 {{- end -}}
 
 {{/*
-Define vanilla-postgresql-supabase15.X component definition regular expression name prefix
+Define supabase15.X component definition regular expression name prefix
 */}}
-{{- define "vanilla-postgresql-supabase15.cmpdRegexpPattern" -}}
-^vanilla-postgresql-supabase15.*
+{{- define "supabase15.cmpdRegexpPattern" -}}
+^supabase-15.*
 {{- end -}}
 
 {{/*
@@ -84,9 +93,9 @@ vanilla-postgresql-15-{{ .Chart.Version }}
 {{/*
 Define vanilla-postgresql-supabase 15 component definition name with Chart.Version suffix
 */}}
-{{- define "vanilla-postgresql-supabase15.compDefName" -}}
+{{- define "supabase15.compDefName" -}}
 {{- if eq (len .Values.cmpdVersionPrefix.supabaseMajor15) 0 -}}
-vanilla-postgresql-supabase15-{{ .Chart.Version }}
+supabase-15-{{ .Chart.Version }}
 {{- else -}}
 {{ .Values.cmpdVersionPrefix.supabaseMajor15 }}-{{ .Chart.Version }}
 {{- end -}}
@@ -175,8 +184,8 @@ vanilla-postgresql15-configuration
 {{/*
 Define vanilla-postgresql-supabase 15 component configuration template name
 */}}
-{{- define "vanilla-postgresql-supabase15.configurationTemplate" -}}
-vanilla-postgresql-supabase15-configuration
+{{- define "supabase15.configurationTemplate" -}}
+supabase-15-configuration
 {{- end -}}
 
 {{/*
@@ -225,7 +234,7 @@ vanilla-pg15-prc-{{ .Chart.Version }}
 Define vanilla-postgresql 15 component config constraint name
 */}}
 {{- define "vanilla.prcsupabase15Name" -}}
-vanilla-supabase15-prc-{{ .Chart.Version }}
+supabase15-prc-{{ .Chart.Version }}
 {{- end -}}
 
 

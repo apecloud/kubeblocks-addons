@@ -500,7 +500,7 @@ kubectl apply -f examples/vanilla-postgresql/configure.yaml
 ```
 
 This example will change the `max_connections` to `200`.
-> `max_connections` indicates maximum number of client connections allowed. It is a dynamic parameter, so the change will take effect without restarting the database.
+> `max_connections` indicates maximum number of client connections allowed. It is a static parameter, so the change will take effect after restarting the database.
 
 ```bash
 kbcli cluster explain-config vanpg-cluster # kbcli is a command line tool to interact with KubeBlocks

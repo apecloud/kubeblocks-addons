@@ -7,7 +7,7 @@ metadata:
   annotations:
     {{- include "vanilla-postgresql.annotations" . | nindent 4}}
 spec:
-  componentDef: {{ include "vanilla-postgresql-supabase15.compDefName" . }}
+  componentDef: {{ include "supabase15.compDefName" . }}
   parametersDefs:
     - {{ include "vanilla.pd15Name" . }}
 
