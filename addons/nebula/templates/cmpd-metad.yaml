@@ -39,7 +39,7 @@ spec:
           optional: false
           podFQDNs: Required
       expression: {{ `{{ $hosts := splitList "," .NEBULA_METAD_SVC }}{{ range $idx, $host := $hosts }}{{ $host }}:9559{{ if lt $idx (sub (len $hosts) 1) }},{{ end }}{{ end }}` | toYaml }}
-    - name: METAD_COMPONENT_NAME
+    - name: COMPONENT_NAME
       valueFrom:
         componentVarRef:
           optional: false
@@ -75,7 +75,7 @@ spec:
                 apiVersion: v1
                 fieldPath: metadata.namespace
           - name: POD_FQDN
-            value: $(POD_NAME).$(METAD_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN)
+            value: $(POD_NAME).$(COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN)
         readinessProbe:
           failureThreshold: 3
           httpGet:
@@ -95,4 +95,4 @@ spec:
             name: nebula-metad
           - name: scripts
             mountPath: /scripts
-      {{- include "nebula.logrotateContainer" . | nindent 6 }}
+      {{- include "nebula.agentContainer" . | nindent 6 }}

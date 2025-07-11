@@ -12,6 +12,7 @@ spec:
   serviceKind: nebula
   serviceVersion: {{ .Chart.AppVersion }}
   podManagementPolicy: Parallel
+  minReadySeconds: 10
   configs:
     - name: nebula-storaged-config
       constraintRef: nebula-storaged-config-constraints
@@ -33,7 +34,7 @@ spec:
       value: {{ .Values.clusterDomain }}
     - name: HTTP_PORT
       value: "19779"
-    - name: STORAGED_COMPONENT_NAME
+    - name: COMPONENT_NAME
       valueFrom:
         componentVarRef:
           optional: false
@@ -134,7 +135,7 @@ spec:
                 apiVersion: v1
                 fieldPath: metadata.namespace
           - name: POD_FQDN
-            value: $(POD_NAME).$(STORAGED_COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN)
+            value: $(POD_NAME).$(COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN)
         readinessProbe:
           failureThreshold: 3
           httpGet:
@@ -156,4 +157,4 @@ spec:
             mountPath: /scripts
           - name: nebula-console
             mountPath: /usr/local/nebula/console
-      {{- include "nebula.logrotateContainer" . | nindent 6 }}
+      {{- include "nebula.agentContainer" . | nindent 6 }}

@@ -17,3 +17,5 @@ data:
     {{- .Files.Get "scripts/member-leave.py" | nindent 4 }}
   update-parameter.sh: |
     {{- .Files.Get "scripts/update-parameter.sh" | nindent 4 }}
+  start-agent.sh: |
+    {{- .Files.Get "scripts/start-agent.sh" | nindent 4 }}

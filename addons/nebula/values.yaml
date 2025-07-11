@@ -34,5 +34,12 @@ images:
       registry: ""
       repository: vesoft/nebula-console
       tag: v3.8.0
-
+    agent:
+      registry: ""
+      repository: apecloud/nebula-agent
+      tag: 3.7.1
+    br:
+      registry: ""
+      repository: apecloud/nebula-br
+      tag: 3.6.0
 clusterDomain: "cluster.local"

@@ -1,0 +1,20 @@
+apiVersion: apps.kubeblocks.io/v1alpha1
+kind: BackupPolicyTemplate
+metadata:
+  name: nebula-backup-policy-template
+  labels:
+    {{- include "nebula.labels" . | nindent 4 }}
+spec:
+  clusterDefinitionRef: nebula
+  backupPolicies:
+    - componentDefs:
+        - nebula-metad
+      backupMethods:
+        - name: br
+          snapshotVolumes: false
+          actionSetName: nebula-br
+      schedules:
+        - backupMethod: br
+          enabled: false
+          cronExpression: "0 18 * * *"
+          retentionPeriod: 7d

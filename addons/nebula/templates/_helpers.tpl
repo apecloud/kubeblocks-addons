@@ -149,13 +149,14 @@ nebula-scripts-template
 {{/*
 Define logrotate container
 */}}
-{{- define "nebula.logrotateContainer" -}}
-- name: logrotate
+{{- define "nebula.graphdAgentContainer" -}}
+- name: agent
+  image: {{ $.Values.images.nebula.agent.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.agent.repository }}:3.7.1
   imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
   command:
   - /bin/sh
   - -ecx
-  - sh /scripts/logrotate.sh; crond -f -l 2
+  - sh /scripts/logrotate.sh; cron -f -l 2
   env:
   - name: LOGROTATE_ROTATE
     value: "6"
@@ -166,4 +167,49 @@ Define logrotate container
     name: logs
   - mountPath: /scripts
     name: scripts
+{{- end -}}
+
+{{/*
+Define agent container
+*/}}
+{{- define "nebula.agentContainer" -}}
+- name: agent
+  image: {{ $.Values.images.nebula.agent.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.agent.repository }}:3.7.1
+  imagePullPolicy: {{ default $.Values.images.pullPolicy "IfNotPresent"}}
+  command:
+  - /bin/sh
+  - -ecx
+  - sh /scripts/start-agent.sh
+  env:
+  - name: LOGROTATE_ROTATE
+    value: "6"
+  - name: LOGROTATE_SIZE
+    value: 500M
+  - name: RATE_LIMIT
+    value: "524288000"
+  - name: POD_NAME
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.name
+  - name: CLUSTER_NAMESPACE
+    valueFrom:
+      fieldRef:
+        apiVersion: v1
+        fieldPath: metadata.namespace
+  - name: POD_FQDN
+    value: $(POD_NAME).$(COMPONENT_NAME)-headless.$(CLUSTER_NAMESPACE).svc.$(CLUSTER_DOMAIN)
+  volumeMounts:
+  - mountPath: /usr/local/nebula/data
+    name: data
+  - mountPath: /usr/local/nebula/logs
+    name: logs
+  - mountPath: /usr/local/nebula/etc
+    name: nebula-metad
+  - mountPath: /scripts
+    name: scripts
+  ports:
+  - containerPort: 8888
+    name: agent
+    protocol: TCP
 {{- end -}}

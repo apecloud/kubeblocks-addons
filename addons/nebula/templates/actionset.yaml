@@ -1,0 +1,28 @@
+apiVersion: dataprotection.kubeblocks.io/v1alpha1
+kind: ActionSet
+metadata:
+  name: nebula-br
+  labels:
+    {{- include "nebula.labels" . | nindent 4 }}
+spec:
+  backupType: Full
+  backup:
+    backupData:
+      image: {{ $.Values.images.nebula.br.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.br.repository }}:3.6.0
+      syncProgress:
+        enabled: false
+        intervalSeconds: 5
+      command:
+      - bash
+      - -c
+      - |
+        {{- .Files.Get "dataprotection/br-backup.sh" | nindent 8 }}
+  restore:
+    postReady:
+    - job:
+        image: {{ $.Values.images.nebula.br.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.br.repository }}:3.6.0
+        command:
+        - bash
+        - -c
+        - |
+          {{- .Files.Get "dataprotection/br-restore.sh" | nindent 12 }}
