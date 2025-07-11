@@ -9,6 +9,7 @@ minio:
   accessKeyID: MINIO_ACCESS_KEY
   secretAccessKey: MINIO_SECRET_KEY
   bucketName: MINIO_BUCKETNAME
+  rootPath: {{ .KB_CLUSTER_NAME }}
 mq:
   type: kafka
 messageQueue: kafka

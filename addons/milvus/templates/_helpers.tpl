@@ -116,8 +116,8 @@ Milvus init container - setup
   imagePullPolicy: {{ default "IfNotPresent" .Values.images.pullPolicy }}
   command:
     - /cp
-    - /run.sh,/merge
-    - /milvus/tools/run.sh,/milvus/tools/merge
+    - /run.sh,/merge,/iam-verify
+    - /milvus/tools/run.sh,/milvus/tools/merge,/milvus/tools/iam-verify
   volumeMounts:
     {{- include "milvus.volumeMount.tools" . | indent 4 }}
 {{- end }}
@@ -187,7 +187,7 @@ Milvus volume mounts - tools
 Milvus volume mounts - user
 */}}
 {{- define "milvus.volumeMount.user" }}
-- mountPath: /milvus/configs/user.yaml.raw
+- mountPath: /milvus/configs/operator/user.yaml.raw
   name: milvus-config
   readOnly: true
   subPath: user.yaml
