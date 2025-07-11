@@ -1,0 +1,139 @@
+# etcd configuration parameters effect scope definition
+# This file defines which parameters are static, dynamic, or immutable
+# and properly distinguishes between top-level and nested structure fields
+
+staticParameters:
+  # ========== MEMBER PARAMETERS ==========
+  - "snapshot-count" 
+  - "heartbeat-interval"
+  - "election-timeout"
+  - "initial-election-tick-advance"
+  - "quota-backend-bytes"
+  - "backend-bbolt-freelist-type"
+  - "backend-batch-interval"
+  - "backend-batch-limit"
+  - "max-txn-ops"
+  - "max-request-bytes"
+  - "grpc-keepalive-min-time"
+  - "grpc-keepalive-interval"
+  - "grpc-keepalive-timeout"
+  - "socket-reuse-port"
+  - "socket-reuse-address"
+  - "max-snapshots"
+  - "max-wals"
+
+  # ========== CLUSTERING PARAMETERS ==========
+  - "strict-reconfig-check"
+  - "pre-vote"
+  - "auto-compaction-mode"
+  - "auto-compaction-retention"
+  - "enable-v2"
+  - "v2-deprecation"
+
+  # ========== TLS PARAMETERS (Global only) ==========
+  # Note: Individual cert/key files are configured through nested structures
+  - "self-signed-cert-validity"
+  - "cipher-suites"
+  - "tls-min-version"
+  - "tls-max-version"
+
+  # ========== NETWORK PARAMETERS ==========
+  - "cors"
+  - "host-whitelist"
+  - "listen-client-http-urls"
+
+  # ========== AUTHENTICATION PARAMETERS ==========
+  - "auth-token"
+  - "bcrypt-cost"
+  - "auth-token-ttl"
+
+  # ========== MONITORING PARAMETERS ==========
+  - "enable-pprof"
+  - "metrics"
+  - "listen-metrics-urls"
+
+  # ========== LOGGING PARAMETERS ==========
+  - "logger"
+  - "log-level"
+  - "log-outputs"
+  - "log-format"
+  - "enable-log-rotation"
+  - "log-rotation-config-json"
+
+  # ========== V2 PROXY PARAMETERS ==========
+  - "proxy"
+  - "proxy-failure-wait"
+  - "proxy-refresh-interval"
+  - "proxy-dial-timeout"
+  - "proxy-write-timeout"
+  - "proxy-read-timeout"
+
+  # ========== EXPERIMENTAL FEATURES ==========
+  - "experimental-enable-distributed-tracing"
+  - "experimental-distributed-tracing-address"
+  - "experimental-distributed-tracing-service-name"
+  - "experimental-distributed-tracing-instance-id"
+  - "experimental-distributed-tracing-sampling-rate"
+  - "experimental-initial-corrupt-check"
+  - "experimental-corrupt-check-time"
+  - "experimental-enable-v2v3"
+  - "experimental-enable-lease-checkpoint"
+  - "experimental-compaction-batch-limit"
+  - "experimental-peer-skip-client-san-verification"
+  - "experimental-watch-progress-notify-interval"
+  - "experimental-warning-apply-duration"
+  - "experimental-txn-mode-write-with-shared-buffer"
+  - "experimental-bootstrap-defrag-threshold-megabytes"
+
+  # ========== UNSAFE FEATURES ==========
+  - "unsafe-no-fsync"
+
+dynamicParameters:
+  # Parameters of member changes are handled by hscale and switchover operations
+
+immutableParameters:
+  # ========== RUNTIME IDENTITY PARAMETERS ==========
+  # Parameters modified by start.sh script
+  - "name"
+  - "initial-advertise-peer-urls"
+  - "advertise-client-urls"
+
+  # ========== INFRASTRUCTURE PARAMETERS ==========
+  # Parameters set by conf.yaml.tpl template
+  - "data-dir"
+  - "wal-dir"
+  - "listen-peer-urls"
+  - "listen-client-urls"
+
+  # ========== TLS NESTED STRUCTURES ==========
+  # These are the nested TLS configuration structures used by templates
+  - "client-transport-security"
+  - "client-transport-security.cert-file"
+  - "client-transport-security.key-file"
+  - "client-transport-security.client-cert-auth"
+  - "client-transport-security.trusted-ca-file"
+  - "client-transport-security.auto-tls"
+  - "peer-transport-security"
+  - "peer-transport-security.cert-file"
+  - "peer-transport-security.key-file"
+  - "peer-transport-security.client-cert-auth"
+  - "peer-transport-security.trusted-ca-file"
+  - "peer-transport-security.auto-tls"
+  - "peer-transport-security.allowed-cn"
+  - "peer-transport-security.allowed-hostname"
+
+  # ========== CLUSTER INITIALIZATION PARAMETERS ==========
+  # Parameters set by template and startup scripts
+  - "initial-cluster"
+  - "initial-cluster-token"
+  - "initial-cluster-state"
+
+  # ========== SAFETY PARAMETERS ==========
+  - "force-new-cluster"
+
+  # ========== DISCOVERY PARAMETERS ==========
+  - "discovery"
+  - "discovery-fallback"
+  - "discovery-proxy"
+  - "discovery-srv"
+  - "discovery-srv-name"

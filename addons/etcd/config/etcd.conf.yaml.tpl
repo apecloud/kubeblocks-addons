@@ -1,4 +1,5 @@
 # https://github.com/etcd-io/etcd/blob/main/etcd.conf.yml.sample
+# https://etcd.io/docs/v3.6/op-guide/runtime-configuration
 # using this config file will ignore ALL command-line flag and environment variables.
 
 {{- $peer_protocol := "http" }}
@@ -17,7 +18,7 @@ name: 'default'
 data-dir: {{ .DATA_DIR }}
 
 # Path to the dedicated wal directory.
-wal-dir:
+wal-dir: {{ .DATA_DIR }}/member/wal
 
 # Number of committed transactions to trigger a snapshot to disk.
 snapshot-count: 10000
