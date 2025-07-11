@@ -50,6 +50,10 @@ spec:
       valueFrom:
         tlsVarRef:
           enabled: Optional
+    - name: KB_ENABLE_TLS_BETWEEN_COMPONENTS
+      valueFrom:
+        configMapKeyRef:
+          
   runtime:
     containers:
       - name: tidb
@@ -73,8 +77,7 @@ spec:
             mountPath: /var/log/tidb
           - name: config
             mountPath: /etc/tidb
-          - name: scripts
-            mountPath: scripts
+          {{- include "tidb.commonVolumeMount" . | nindent 10 }}
       - name: slowlog
         imagePullPolicy: IfNotPresent
         command:

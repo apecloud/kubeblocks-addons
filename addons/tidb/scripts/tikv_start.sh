@@ -6,7 +6,7 @@ set -exo pipefail
 . /scripts/common.sh
 
 echo "start tikv..."
-write_component_tls_env_to_file
+# write_component_tls_env_to_file
 
 exec /tikv-server --pd="http://${PD_ADDRESS}" \
     --data-dir=/var/lib/tikv \

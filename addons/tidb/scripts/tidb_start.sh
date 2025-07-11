@@ -6,7 +6,7 @@ set -exo pipefail
 . /scripts/common.sh
 
 echo "start tidb..."
-write_component_tls_env_to_file
+# write_component_tls_env_to_file
 
 exec /tidb-server --store=tikv \
     --advertise-address="${CURRENT_POD_NAME}.${TIDB_COMPONENT_NAME}-headless.${DOMAIN}" \

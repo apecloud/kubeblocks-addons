@@ -13,7 +13,16 @@ ssl-cert = "/etc/pki/tls/cert.pem"
 ssl-key = "/etc/pki/tls/key.pem"
 {{- end -}}
 
-{{- if eq (index $ "KB_ENABLE_TLS_BETWEEN_COMPONENTS") "true" }}
+{{/* a dirty way to inject user defined config */}}
+{{- $conponentTls := false }}
+{{- $container := index $.podSpec.containers 0}}
+{{- range $e := $container.env }}
+{{- if and (eq $e.name "KB_ENABLE_TLS_BETWEEN_COMPONENTS") (eq $e.value "true") }}
+{{- $conponentTls = true }}
+{{- end }}
+{{- end }}
+
+{{- if eq $conponentTls true }}
 # Path of file that contains list of trusted SSL CAs for connection with cluster components.
 cluster-ssl-ca = "/etc/pki/cluster-tls/ca.pem"
 
@@ -22,4 +31,4 @@ cluster-ssl-cert = "/etc/pki/cluster-tls/cert.pem"
 
 # Path of file that contains X509 key in PEM format for connection with cluster components.
 cluster-ssl-key = "/etc/pki/cluster-tls/key.pem"
-{{- end -}}
+{{- end }}

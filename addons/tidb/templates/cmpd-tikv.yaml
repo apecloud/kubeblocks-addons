@@ -57,8 +57,7 @@ spec:
             mountPath: /var/lib/tikv
           - name: config
             mountPath: /etc/tikv
-          - name: scripts
-            mountPath: /scripts
+          {{- include "tidb.commonVolumeMount" . | nindent 10 }}
         command: [ "/scripts/tikv_start.sh" ]
   volumes:
     - name: data
