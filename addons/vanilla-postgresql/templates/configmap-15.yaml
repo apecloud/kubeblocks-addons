@@ -22,7 +22,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "vanilla-postgresql-supabase15.configurationTemplate" . }}
+  name: {{ include "supabase15.configurationTemplate" . }}
   labels:
     {{- include "vanilla-postgresql.labels" . | nindent 4 }}
 data:
