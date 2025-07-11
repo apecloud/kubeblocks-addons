@@ -65,6 +65,13 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
+{{- define "tidb.commonVolumeMount" -}}
+- name: scripts
+  mountPath: /scripts
+- name: component-tls
+  mountPath: /etc/pki/cluster-tls
+{{- end -}}
+
 {{- define "tidb.cmScriptsName" -}}
 tidb-scripts-{{ .Chart.Version }}
 {{- end -}}
@@ -129,3 +136,6 @@ tikv-7-{{ .Chart.Version }}
 tidb-7-{{ .Chart.Version }}
 {{- end -}}
 
+{{- define "tidb.enableTLSBetweenComponentsEnv" -}}
+KB_ENABLE_TLS_BETWEEN_COMPONENTS
+{{- end -}}

@@ -55,3 +55,6 @@ serviceAccount:
 extra:
   # @param terminationPolicy define Cluster termination policy. One of DoNotTerminate, Delete, WipeOut.
   terminationPolicy: Delete
+  # @param enableTLSBetweenComponents determines if tls Between TiDB Components is enabled
+  # ref to https://docs.pingcap.com/tidb/stable/enable-tls-between-components/
+  enableTLSBetweenComponents: false

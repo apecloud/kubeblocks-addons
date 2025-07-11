@@ -43,10 +43,9 @@ spec:
         volumeMounts:
           - name: data
             mountPath: /var/lib/pd
-          - name: scripts
-            mountPath: /scripts
           - name: config
             mountPath: /etc/pd
+          {{- include "tidb.commonVolumeMount" . | nindent 10 }}
         command: [ "/scripts/pd_start.sh" ]
   volumes:
     - name: data
@@ -73,16 +72,8 @@ spec:
   lifecycleActions:
     roleProbe:
       exec:
-        command:
-          - bash
-          - -c
-          - |
-            LEADER_NAME=$(/pd-ctl member | jq -r '.leader.name')
-            if [ "$LEADER_NAME" == "$HOSTNAME" ]; then
-                echo -n "leader"
-            else
-                echo -n "follower"
-            fi
+        container: pd
+        command: ["/scripts/pd_roleprobe.sh"]
     memberLeave:
       exec:
         command:
@@ -92,16 +83,17 @@ spec:
             ADDRESS=${PD_POD_FQDN_LIST%%,*}
             echo $KB_LEAVE_MEMBER_POD_NAME
             echo $ADDRESS
-            /pd-ctl -u "$ADDRESS:2379" member delete name $KB_LEAVE_MEMBER_POD_NAME
+            res=$(/pd-ctl -u "$ADDRESS:2379" member delete name "$KB_LEAVE_MEMBER_POD_NAME")
+            echo "$res"
+            not_found_pattern="Failed to delete member.*not found"
+            if [[ $res != "Success!" && ! $res =~ $not_found_pattern ]]; then
+                exit 1
+            fi
     switchover:
       exec:
         targetPodSelector: Role
         matchingKey: leader
-        command:
-          - bash
-          - -c
-          - |
-            {{- .Files.Get "scripts/pd_switchover.sh" | nindent 14 }}
+        command: ["/scripts/pd_switchover.sh"]
   exporter:
     containerName: pd
     scrapePort: "2379"

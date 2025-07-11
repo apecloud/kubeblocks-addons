@@ -46,6 +46,14 @@ spec:
         credentialVarRef:
           name: root
           password: Required
+    - name: TLS_ENABLED
+      valueFrom:
+        tlsVarRef:
+          enabled: Optional
+    - name: KB_ENABLE_TLS_BETWEEN_COMPONENTS
+      valueFrom:
+        configMapKeyRef:
+
   runtime:
     containers:
       - name: tidb
@@ -63,23 +71,13 @@ spec:
             name: client
           - containerPort: 10080
             name: status
-        command:
-          - bin/sh
-          - -c
-          - |
-            echo "start tidb..."
-            exec /tidb-server --store=tikv \
-            --advertise-address=${CURRENT_POD_NAME}.${TIDB_COMPONENT_NAME}-headless.${DOMAIN} \
-            --host=0.0.0.0 \
-            --path=${PD_ADDRESS} \
-            --log-slow-query=/var/log/tidb/slowlog \
-            --log-file=/var/log/tidb/running.log \
-            --config=/etc/tidb/tidb.toml
+        command: [ "/scripts/tidb_start.sh" ]
         volumeMounts:
           - name: slowlog
             mountPath: /var/log/tidb
           - name: config
             mountPath: /etc/tidb
+          {{- include "tidb.commonVolumeMount" . | nindent 10 }}
       - name: slowlog
         imagePullPolicy: IfNotPresent
         command:
@@ -100,6 +98,19 @@ spec:
       template: {{ include "tidb.tidb.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: config
+      externalManaged: true
+  scripts:
+    - name: tidb-scripts
+      template: {{ include "tidb.cmScriptsName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
+  tls:
+    volumeName: tls 
+    mountPath: /etc/pki/tls
+    caFile: ca.pem
+    certFile: cert.pem
+    keyFile: key.pem
   systemAccounts:
     - name: root
       initAccount: true

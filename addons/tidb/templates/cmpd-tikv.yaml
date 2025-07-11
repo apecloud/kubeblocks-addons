@@ -57,17 +57,8 @@ spec:
             mountPath: /var/lib/tikv
           - name: config
             mountPath: /etc/tikv
-        command:
-          - bin/sh
-          - -c
-          - |
-            echo "start tikv..."
-            exec /tikv-server --pd=http://${PD_ADDRESS} \
-            --data-dir=/var/lib/tikv \
-            --addr=0.0.0.0:20160 \
-            --advertise-addr=${CURRENT_POD_NAME}.${TIKV_COMPONENT_NAME}-headless.${DOMAIN}:20160 \
-            --status-addr=0.0.0.0:20180 \
-            --config=/etc/tikv/tikv.toml
+          {{- include "tidb.commonVolumeMount" . | nindent 10 }}
+        command: [ "/scripts/tikv_start.sh" ]
   volumes:
     - name: data
       needSnapshot: true
@@ -76,6 +67,13 @@ spec:
       template: {{ include "tidb.tikv.configTplName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: config
+      externalManaged: true
+  scripts:
+    - name: tidb-scripts
+      template: {{ include "tidb.cmScriptsName" . }}
+      namespace: {{ .Release.Namespace }}
+      volumeName: scripts
+      defaultMode: 0555
   lifecycleActions:
     memberLeave:
       exec:
