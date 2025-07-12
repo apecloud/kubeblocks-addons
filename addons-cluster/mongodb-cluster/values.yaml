@@ -9,9 +9,46 @@ version: 6.0.21
 # @param clusterVersion cluster version for legacy API
 clusterVersion: mongodb-6.0
 
-## @param mode cluster topology mode, standalone or replicaset
+## @param mode cluster topology mode, standalone、replicaset or sharding
 ##
 mode: standalone
+
+## @param shards, shard count, only for sharding mode
+##
+shards: 3
+
+## @param replicas, replica count
+##
+replicas: 3
+
+# custom password of default user for redis by passing a secret
+# the secret must contain keys named 'username' and 'password'
+customSecretName: ""
+customSecretNamespace: ""
+
+## @param configServer.replicas, config server replica count, only for sharding mode
+configServer:
+  replicas: 3
+  storageClassName:
+  cpu: 0.5
+  memory: 0.5
+  storage: 10
+  tolerations: []
+  customSecretName: ""
+  customSecretNamespace: ""
+
+## @param mongos.replicas, mongos replica count, only for sharding mode
+mongos:
+  replicas: 3
+  cpu: 0.5
+  memory: 0.5
+  tolerations: []
+
+## @param balancer, enable or disable balancer, only for sharding mode
+balancer:
+  enabled: false
+  startTime: # "02:00"
+  stopTime: # "05:00"
 
 ## @param cpu
 ##
@@ -33,5 +70,4 @@ requests:
 storage: 20
 
 hostnetwork: "disabled"
-useLegacyCompDef: false
 disableExporter: false

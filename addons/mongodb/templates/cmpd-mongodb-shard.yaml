@@ -1,44 +1,20 @@
 apiVersion: apps.kubeblocks.io/v1alpha1
 kind: ComponentDefinition
 metadata:
-  name: {{ include "mongodb.componentDefName" . }}
+  name: {{ include "mongodbShard.componentDefName" . }}
   labels:
     {{- include "mongodb.labels" . | nindent 4 }}
 spec:
   provider: kubeblocks.io
-  description: MongoDB is a document database designed for ease of application development and scaling.
   serviceKind: mongodb
-  serviceVersion: "5.0.29"
-  services:
-    - name: default
-      serviceName: mongodb
-      spec:
-        ports:
-          - name: mongodb
-            port: 27017
-            targetPort: mongodb
-      roleSelector: primary
-    - name: readonly
-      serviceName: mongodb-ro
-      spec:
-        ports:
-          - name: mongodb
-            port: 27017
-            targetPort: mongodb
-      roleSelector: secondary
-    - name: everypod
-      spec:
-        ports:
-          - name: mongodb
-            port: 27017
-            targetPort: mongodb
+  serviceVersion: "8.0.8"
   configs:
     - name: mongodb-config
-      templateRef: {{ include "mongodb.configTplName" . }}
+      templateRef: {{ include "mongodbShard.configTplName" . }}
       constraintRef: {{ include "mongodb.configConstraintName" . }}
       volumeName: mongodb-config
       namespace: {{ .Release.Namespace }}
-      defaultMode: 0666  # for only read
+      defaultMode: 0400
       keys:
         - mongodb.conf
   logConfigs:
@@ -48,7 +24,7 @@ spec:
     {{- end }}
   scripts:
     - name: mongodb-scripts
-      templateRef: {{ include "mongodb.cmScriptsName" . }}
+      templateRef: {{ include "mongodbShard.cmScriptsName" . }}
       namespace: {{ .Release.Namespace }}
       volumeName: scripts
       defaultMode: 0555  # for read and execute, mysql container switched user account.
@@ -87,8 +63,30 @@ spec:
       #         Status=$(export CLIENT=`which mongosh>/dev/null&&echo mongosh||echo mongo`; $CLIENT -u $KB_SERVICE_USER -p $KB_SERVICE_PASSWORD 127.0.0.1:27017 --quiet --eval "JSON.stringify(rs.status())") &&
       #         MyState=$(echo $Status | jq '.myState') &&
       #         echo $Status | jq ".members[] | select(.state == ($MyState | tonumber)) | .stateStr" |tr '[:upper:]' '[:lower:]'|uniq| xargs echo -n
+    postProvision:
+      customHandler:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.percona.tag }}
+        exec:
+          command:
+            - /bin/bash
+            - -c
+            - /scripts/mongodb-shard-manage.sh --post-provision
+        preCondition: ComponentReady
+        retryPolicy:
+          maxRetries: 10
+    preTerminate:
+      customHandler:
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.percona.tag }}
+        exec:
+          command:
+            - /bin/bash
+            - -c
+            - /scripts/mongodb-shard-manage.sh --pre-terminate
+        retryPolicy:
+          maxRetries: 10
   runtime:
     securityContext:
+      # percona-server-mongodb needs run as root to have privilege to access to keyfile
       runAsUser: 0
     initContainers:
       - command:
@@ -129,19 +127,19 @@ spec:
             name: kubeblocks
     containers:
       - name: mongodb
-        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+        image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.repository }}:{{ .Values.image.percona.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         ports:
           - name: mongodb
             protocol: TCP
-            containerPort: 27017
+            containerPort: &mongodbPort 27017
           - name: ha
             protocol: TCP
             containerPort: 3601
         command:
           - syncer
           - --
-          - /scripts/replicaset-setup.sh
+          - /scripts/mongodb-shard-setup.sh
         env:
           - name: PATH
             value: /kubeblocks/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
@@ -150,19 +148,23 @@ spec:
           - name: SERVICE_PORT
             value: $(KB_SERVICE_PORT)
           - name: MONGODB_ROOT_USER
-            value: $(MONGODB_USER)
+            value: $(MONGODB_ADMIN_USER)
           - name: MONGODB_ROOT_PASSWORD
-            value: $(MONGODB_PASSWORD)
+            value: $(MONGODB_ADMIN_PASSWORD)
+          - name: MONGODB_GRANT_ANYACTION_PRIVILEGE
+            value: "true"
           - name: PBM_AGENT_MONGODB_USERNAME
-            value: $(MONGODB_USER)
+            value: $(MONGODB_ADMIN_USER)
           - name: PBM_AGENT_MONGODB_PASSWORD
-            value: $(MONGODB_PASSWORD)
+            value: $(MONGODB_ADMIN_PASSWORD)
           - name: PBM_MONGODB_REPLICA_SET
             value: $(KB_CLUSTER_COMP_NAME)
           - name: PBM_AGENT_SIDECAR
             value: "true"
           - name: PBM_AGENT_SIDECAR_SLEEP
             value: "5"
+          - name: SHARDED
+            value: "TRUE"
           - name: POD_NAME
             value: $(KB_POD_NAME)
           - name: PBM_MONGODB_URI
@@ -184,29 +186,24 @@ spec:
         image: {{ .Values.image.registry | default "docker.io" }}/{{ .Values.image.percona.backup.repository }}:{{ .Values.image.percona.backup.tag }}
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
         command:
-            - /bin/bash
-            - -c
-            - |
-              while [ -f $PBM_DATA_MOUNT_POINT/tmp/mongodb_pbm.backup ]; do
-                echo "Waiting for restore...";
-                sleep 5;
-              done
-              exec pbm-agent-entrypoint
+          - /bin/bash
+          - -c
+          - /scripts/backup-agent-setup.sh
         env:
           - name: PATH
             value: /kubeblocks/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
           - name: PBM_AGENT_MONGODB_USERNAME
-            value: $(MONGODB_USER)
+            value: $(MONGODB_ADMIN_USER)
           - name: PBM_AGENT_MONGODB_PASSWORD
-            value: $(MONGODB_PASSWORD)
-          - name: MONGODB_GRANT_ANYACTION_PRIVILEGE
-            value: "true"
+            value: $(MONGODB_ADMIN_PASSWORD)
           - name: PBM_MONGODB_REPLICA_SET
             value: $(KB_CLUSTER_COMP_NAME)
           - name: PBM_AGENT_SIDECAR
             value: "true"
           - name: PBM_AGENT_SIDECAR_SLEEP
             value: "5"
+          - name: SHARDED
+            value: "TRUE"
           - name: POD_NAME
             value: $(KB_POD_NAME)
           - name: PBM_MONGODB_URI
@@ -220,6 +217,14 @@ spec:
             mountPath: /scripts
       - name: exporter
         imagePullPolicy: {{ default "IfNotPresent" .Values.image.pullPolicy }}
+        command:
+          - /mongodb_exporter
+        args:
+          - --compatible-mode
+          - --discovering-mode
+          - --mongodb.direct-connect
+          - --mongodb.global-conn-pool
+          - --collect-all
         ports:
           - name: exporter
             protocol: TCP
@@ -236,20 +241,10 @@ spec:
       {{- end }}
   vars:
     - name: MONGODB_USER
-      valueFrom:
-        credentialVarRef:
-          compDef: {{ include "mongodb.componentDefName" . }}
-          name: root
-          optional: false
-          username: Required
+      value: $(MONGODB_ADMIN_USER)
     - name: MONGODB_PASSWORD
-      valueFrom:
-        credentialVarRef:
-          compDef: {{ include "mongodb.componentDefName" . }}
-          name: root
-          optional: false
-          password: Required
-    - name: KB_SERVICE_PORT  
+      value: $(MONGODB_ADMIN_PASSWORD)
+    - name: KB_SERVICE_PORT
       value: "27017"
       valueFrom:
         hostNetworkVarRef:
@@ -268,6 +263,47 @@ spec:
             port:
               name: ha
               option: Optional
+    - name: MONGODB_CLUSTER_ROLE
+      value: "shardsvr"
+    - name: MONGODB_ADMIN_USER
+      valueFrom:
+        credentialVarRef:
+          # use config server credential to access to mongos
+          compDef: {{ include "mongodbShard.componentDefName" . }}
+          name: root
+          optional: false
+          username: Required
+    - name: MONGODB_ADMIN_PASSWORD
+      valueFrom:
+        credentialVarRef:
+          # use config server credential to access to mongos
+          compDef: {{ include "mongodbShard.componentDefName" . }}
+          name: root
+          optional: false
+          password: Required
+    - name: MONGOS_INTERNAL_SVC_NAME
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "mongos.componentDefName" . }}
+          optional: false
+          host: Required
+    - name: MONGOS_INTERNAL_PORT 
+      valueFrom:
+        serviceVarRef:
+          compDef: {{ include "mongos.componentDefName" . }}
+          optional: false
+          port:
+            name: mongos
+    - name: MONGOS_INTERNAL_HOST
+      value: "$(MONGOS_INTERNAL_SVC_NAME).$(KB_NAMESPACE).svc.{{ .Values.clusterDomain }}"
+    - name: MONGODB_POD_FQDN_LIST
+      valueFrom:
+        componentVarRef:
+          optional: false
+          podFQDNs: Required
+    - name: KUBERNETES_CLUSTER_DOMAIN
+      # syncer will use this env to get the cluster domain to generate the pod FQDN to initialize the replica set
+      value: "{{ .Values.clusterDomain }}"
     - name: EXPORTER_SERVICE_PORT  
       value: "9216"
       valueFrom:
@@ -278,18 +314,8 @@ spec:
             port:
               name: exporter
               option: Optional
-    - name: MONGODB_REPLICA_SET_NAME
-      valueFrom:
-        componentVarRef:
-          optional: false
-          componentName: Required
-    - name: MONGODB_POD_FQDN_LIST
-      valueFrom:
-        componentVarRef:
-          optional: false
-          podFQDNs: Required
-  hostNetwork: 
-    containerPorts:  
+  hostNetwork:
+    containerPorts:
       - container: mongodb
         ports:
           - mongodb
