@@ -7,8 +7,6 @@
 --pid_file=pids/nebula-metad.pid
 --license_path=nebula.license
 
---meta_server_addrs={{ $metad_svc }}
-
 ########## logging ##########
 # The directory to host logging files
 --log_dir=logs
@@ -30,11 +28,11 @@
 
 ########## networking ##########
 # Comma separated Meta Server addresses
---meta_server_addrs=127.0.0.1:9559
+--meta_server_addrs={{ $metad_svc }}
 # Local IP used to identify the nebula-metad process.
 # Change it to an address other than loopback if the service is distributed or
 # will be accessed remotely.
---local_ip=127.0.0.1
+# --local_ip=127.0.0.1
 # Meta daemon listening port
 --port=9559
 # HTTP service ip

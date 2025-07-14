@@ -4,7 +4,7 @@ set -ex
 sh /scripts/logrotate.sh
 cron -l 2
 
-if [ -f "/usr/local/nebula/data/.kb_restore" ] && [ "${IS_GRAPHD}" != "true" ]; then
+if [ -f "/usr/local/nebula/logs/.kb_restore" ]; then
   while true; do
     sleep 5
     echo "$(date): Waiting for Nebula restoration to complete..."

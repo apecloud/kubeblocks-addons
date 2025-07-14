@@ -25,7 +25,7 @@ spec:
       - bash
       - -c
       - |
-        touch /usr/local/nebula/data/.kb_restore
+        touch /usr/local/nebula/logs/.kb_restore
     postReady:
     - job:
         image: {{ $.Values.images.nebula.br.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.br.repository }}:3.6.0

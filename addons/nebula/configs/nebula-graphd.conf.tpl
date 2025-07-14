@@ -1,3 +1,5 @@
+{{- $metad_svc := getEnvByName ( getContainerByName $.podSpec.containers "graphd" ) "NEBULA_METAD_SVC" }}
+
 ########## basics ##########
 # Whether to run as a daemon process
 --daemonize=true
@@ -40,11 +42,11 @@
 
 ########## networking ##########
 # Comma separated Meta Server Addresses
---meta_server_addrs=127.0.0.1:9559
+--meta_server_addrs={{ $metad_svc }}
 # Local IP used to identify the nebula-graphd process.
 # Change it to an address other than loopback if the service is distributed or
 # will be accessed remotely.
---local_ip=127.0.0.1
+#--local_ip=127.0.0.1
 # Network device to listen on
 --listen_netdev=any
 # Port to listen on

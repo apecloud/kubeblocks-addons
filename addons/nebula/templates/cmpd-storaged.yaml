@@ -157,7 +157,7 @@ spec:
           successThreshold: 1
           timeoutSeconds: 5
         volumeMounts:
-          - mountPath: /usr/local/nebula/etc
+          - mountPath: /usr/local/nebula/config
             name: nebula-storaged
           - mountPath: /usr/local/nebula/data
             name: data

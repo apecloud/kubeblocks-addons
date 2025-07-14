@@ -68,8 +68,6 @@ spec:
       value: {{ .Values.clusterDomain }}
     - name: HTTP_PORT
       value: "19669"
-    - name: IS_GRAPHD
-      value: "true"
     - name: COMPONENT_NAME
       valueFrom:
         componentVarRef:
@@ -123,6 +121,16 @@ spec:
         volumeMounts:
           - name: nebula-console
             mountPath: /usr/local/nebula/console
+      - name: init-agent
+        command:
+          - /bin/sh
+          - -c
+          - |
+            cp /usr/local/bin/agent /usr/local/nebula/console/agent
+        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
+        volumeMounts:
+          - name: nebula-console
+            mountPath: /usr/local/nebula/console
     containers:
       - name: graphd
         command:
@@ -169,7 +177,7 @@ spec:
             name: data
           - mountPath: /usr/local/nebula/logs
             name: logs
-          - mountPath: /usr/local/nebula/etc
+          - mountPath: /usr/local/nebula/config
             name: nebula-graphd
           - name: scripts
             mountPath: /scripts

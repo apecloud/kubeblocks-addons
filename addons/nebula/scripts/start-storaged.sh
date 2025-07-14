@@ -36,18 +36,18 @@ function register_storaged_and_tail_logs() {
 }
 
 register_storaged_and_tail_logs &
-if [ -f "${root_dir}/data/.kb_restore" ]; then
+if [ -f "${root_dir}/logs/.kb_restore" ]; then
   # TODO: restore data, start agent
-  cp ${root_dir}/etc/nebula-metad.conf ${root_dir}/nebula-metad.conf
-  echo "local_ip=${POD_FQDN}" >> ${root_dir}/nebula-metad.conf
-  ${root_dir}/scripts/nebula.service -c ${root_dir}/nebula-metad.conf start storaged
+  cp ${root_dir}/config/nebula-storaged.conf ${root_dir}/etc/nebula-storaged.conf
+  printf "\n--local_ip=${POD_FQDN}" >> ${root_dir}/etc/nebula-storaged.conf
+  ${root_dir}/scripts/nebula.service -c ${root_dir}/etc/nebula-storaged.conf start storaged
   meta_ep=$(echo $NEBULA_METAD_SVC | cut -d',' -f1 | cut -d':' -f1)
   until curl -L  http://${meta_ep}:19559/status; do sleep 5; done
-  /usr/local/nebula/console/agent  --agent="${POD_FQDN}:8888" --meta="${POD_FQDN}:9559"
+  /usr/local/nebula/console/agent  --agent="${POD_FQDN}:8888" --meta="${meta_ep}:9559"
   while true; do
     sleep 5
     echo "$(date): Waiting for Nebula restoration to complete..."
   done
 else
-  exec ${root_dir}/bin/nebula-storaged --flagfile=${root_dir}/etc/nebula-storaged.conf --meta_server_addrs=$NEBULA_METAD_SVC --local_ip=$POD_FQDN --daemonize=false
+  exec ${root_dir}/bin/nebula-storaged --flagfile=${root_dir}/config/nebula-storaged.conf --meta_server_addrs=$NEBULA_METAD_SVC --local_ip=$POD_FQDN --daemonize=false
 fi

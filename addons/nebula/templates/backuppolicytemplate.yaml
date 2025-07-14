@@ -15,8 +15,8 @@ spec:
           actionSetName: nebula-br
           targetVolumes:
             volumeMounts:
-              - name: data
-                mountPath: /usr/local/nebula/data
+              - name: logs
+                mountPath: /usr/local/nebula/logs
       schedules:
         - backupMethod: br
           enabled: false

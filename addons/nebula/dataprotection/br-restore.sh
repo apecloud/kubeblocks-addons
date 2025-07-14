@@ -28,7 +28,6 @@ export DATASAFED_BACKEND_BASE_PATH=${DP_BACKUP_BASE_PATH}
 backup_name=$(datasafed list -d / | sort -Vr | head -n 1)
 backup_name=$(basename $backup_name)
 
-sleep 10000
 br restore full --meta ${DP_DB_HOST}.${CLUSTER_NAMESPACE}.svc.${CLUSTER_DOMAIN}:9559 --s3.endpoint "${endpoint}" \
   --storage="s3://${bucket}/${DP_BACKUP_BASE_PATH}" --s3.access_key="${access_key_id}" \
   --s3.secret_key="${secret_access_key}" --name ${backup_name} ${region_flag}

@@ -47,6 +47,9 @@ spec:
           optional: false
           componentName: Required
   runtime:
+    volumes:
+      - name: nebula-console
+        emptyDir: {}
     initContainers:
       - name: init-agent
         command:
@@ -104,8 +107,10 @@ spec:
             name: data
           - mountPath: /usr/local/nebula/logs
             name: logs
-          - mountPath: /usr/local/nebula/etc
+          - mountPath: /usr/local/nebula/config
             name: nebula-metad
           - name: scripts
             mountPath: /scripts
+          - name: nebula-console
+            mountPath: /usr/local/nebula/console
       {{- include "nebula.agentContainer" . | nindent 6 }}
