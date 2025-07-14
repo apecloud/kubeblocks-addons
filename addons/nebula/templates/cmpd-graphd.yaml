@@ -54,12 +54,13 @@ spec:
     postProvision:
       customHandler:
         container: graphd
-        image: {{ $.Values.nebula.images.console.registry | default ( $.Values.nebula.images.registry | default "docker.io" ) }}/{{ $.Values.nebula.images.console.repository }}:v3.8.0
+        image: {{ $.Values.images.nebula.console.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.console.repository }}:v3.8.0
         exec:
           command:
           - /bin/sh
           - -c
           - |
+            set -e
             /usr/local/bin/nebula-console --addr ${SVC_NAME} --port ${SVC_PORT} --user root --password nebula -e "ALTER USER root WITH PASSWORD '${NEBULA_ROOT_PASSWORD}';"
   vars:
     - name: CLUSTER_DOMAIN
@@ -113,7 +114,7 @@ spec:
           - -c
           - |
             cp /usr/local/bin/nebula-console /usr/local/nebula/console/nebula-console
-        imagePullPolicy: {{default .Values.nebula.images.pullPolicy "IfNotPresent"}}
+        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
         volumeMounts:
           - name: nebula-console
             mountPath: /usr/local/nebula/console
@@ -124,7 +125,7 @@ spec:
           - -c
           - |
             /scripts/start-graphd.sh
-        imagePullPolicy: {{default .Values.nebula.images.pullPolicy "IfNotPresent"}}
+        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
         ports:
           - containerPort: 9669
             name: thrift

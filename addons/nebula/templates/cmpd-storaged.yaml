@@ -74,7 +74,7 @@ spec:
       builtinHandler: custom
       customHandler:
         container: storaged
-        image: {{ $.Values.nebula.images.registry | default "docker.io"  }}/{{ $.Values.nebula.images.tool }}
+        image: {{ $.Values.images.registry | default "docker.io"  }}/{{ $.Values.images.nebula.tool }}
         exec:
           command:
             - bash
@@ -94,7 +94,7 @@ spec:
           - -c
           - |
             cp /usr/local/bin/nebula-console /usr/local/nebula/console/nebula-console
-        imagePullPolicy: {{default .Values.nebula.images.pullPolicy "IfNotPresent"}}
+        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
         volumeMounts:
           - name: nebula-console
             mountPath: /usr/local/nebula/console
@@ -105,7 +105,7 @@ spec:
           - -c
           - |
             /scripts/start-storaged.sh
-        imagePullPolicy: {{default .Values.nebula.images.pullPolicy "IfNotPresent"}}
+        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
         ports:
           - containerPort: 9779
             name: thrift

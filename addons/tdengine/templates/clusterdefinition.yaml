@@ -33,17 +33,17 @@ spec:
           scrapePort: {{ .Values.metrics.service.port }}
       configSpecs:
         - name: tdengine-taos-config
-          templateRef: tdengine-config-template
+          templateRef: tdengine-configuration-template
           volumeName: taos-config
           namespace: {{ .Release.Namespace }}
         - name: metrics-configuration
-          templateRef: metrics-configuration
+          templateRef: tdengine-metrics-configuration-template
           namespace: {{ .Release.Namespace }}
           volumeName: metrics-configuration
           defaultMode: 0444
       scriptSpecs:
         - name: taos-adapter-scripts
-          templateRef: taos-adapter-scripts-template
+          templateRef: tdengine-scripts-template
           namespace: {{ .Release.Namespace }}
           volumeName: scripts
           defaultMode: 0555
@@ -59,6 +59,8 @@ spec:
             env:
               - name: SVC_PORT
                 value: "6030"
+              - name: TAOS_ROOT_PASSWORD
+                value: "taosdata"
               - name: TAOS_ADAPTER_PORT
                 value: "6041"
               - name: TZ
