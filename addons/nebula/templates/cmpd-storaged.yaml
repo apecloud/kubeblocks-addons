@@ -102,6 +102,16 @@ spec:
         volumeMounts:
           - name: nebula-console
             mountPath: /usr/local/nebula/console
+      - name: init-agent
+        command:
+          - /bin/sh
+          - -c
+          - |
+            cp /usr/local/bin/agent /usr/local/nebula/console/agent
+        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
+        volumeMounts:
+          - name: nebula-console
+            mountPath: /usr/local/nebula/console
     containers:
       - name: storaged
         command:

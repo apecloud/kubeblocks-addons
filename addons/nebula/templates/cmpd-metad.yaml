@@ -33,6 +33,8 @@ spec:
       value: {{ .Values.clusterDomain }}
     - name: HTTP_PORT
       value: "19559"
+    - name: IS_METAD
+      value: "true"
     - name: NEBULA_METAD_SVC
       valueFrom:
         componentVarRef:
@@ -45,6 +47,17 @@ spec:
           optional: false
           componentName: Required
   runtime:
+    initContainers:
+      - name: init-agent
+        command:
+          - /bin/sh
+          - -c
+          - |
+            cp /usr/local/bin/agent /usr/local/nebula/console/agent
+        imagePullPolicy: {{default .Values.images.pullPolicy "IfNotPresent"}}
+        volumeMounts:
+          - name: nebula-console
+            mountPath: /usr/local/nebula/console
     containers:
       - name: metad
         command:

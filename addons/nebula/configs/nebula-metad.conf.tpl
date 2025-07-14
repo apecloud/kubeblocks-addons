@@ -1,9 +1,13 @@
+{{- $metad_svc := getEnvByName ( getContainerByName $.podSpec.containers "metad" ) "NEBULA_METAD_SVC" }}
+
 ########## basics ##########
 # Whether to run as a daemon process
 --daemonize=true
 # The file to host the process id
 --pid_file=pids/nebula-metad.pid
 --license_path=nebula.license
+
+--meta_server_addrs={{ $metad_svc }}
 
 ########## logging ##########
 # The directory to host logging files

@@ -68,6 +68,8 @@ spec:
       value: {{ .Values.clusterDomain }}
     - name: HTTP_PORT
       value: "19669"
+    - name: IS_GRAPHD
+      value: "true"
     - name: COMPONENT_NAME
       valueFrom:
         componentVarRef:

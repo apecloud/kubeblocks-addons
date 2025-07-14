@@ -8,11 +8,15 @@ spec:
   clusterDefinitionRef: nebula
   backupPolicies:
     - componentDefs:
-        - nebula-metad
+        - nebula-graphd
       backupMethods:
         - name: br
           snapshotVolumes: false
           actionSetName: nebula-br
+          targetVolumes:
+            volumeMounts:
+              - name: data
+                mountPath: /usr/local/nebula/data
       schedules:
         - backupMethod: br
           enabled: false

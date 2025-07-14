@@ -37,10 +37,12 @@ spec:
       images:
         metad: {{ $.Values.images.nebula.metad.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.metad.repository }}:{{ $version }}
         agent: {{ $.Values.images.nebula.agent.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.agent.repository }}:3.7.1
+        init-agent: {{ $.Values.images.nebula.agent.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.agent.repository }}:3.7.1
     - name: storaged-{{ $version }}
       serviceVersion: {{ $version }}
       images:
         init-console: {{ $.Values.images.nebula.console.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.console.repository }}:{{ $version }}
         storaged: {{ $.Values.images.nebula.storaged.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.storaged.repository }}:{{ $version }}
         agent: {{ $.Values.images.nebula.agent.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.agent.repository }}:3.7.1
+        init-agent: {{ $.Values.images.nebula.agent.registry | default ( $.Values.images.registry | default "docker.io" ) }}/{{ $.Values.images.nebula.agent.repository }}:3.7.1
 {{- end }}

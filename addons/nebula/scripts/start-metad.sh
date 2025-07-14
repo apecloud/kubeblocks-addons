@@ -15,4 +15,21 @@ function tail_logs() {
 }
 
 tail_logs &
-exec ${root_dir}/bin/nebula-metad --flagfile=${root_dir}/etc/nebula-metad.conf --meta_server_addrs=$NEBULA_METAD_SVC --local_ip=$POD_FQDN --daemonize=false
+
+if [ -f "${root_dir}/data/.kb_restore" ]; then
+  # TODO: restore data, start agent
+  cp ${root_dir}/etc/nebula-metad.conf ${root_dir}/nebula-metad.conf
+  echo "local_ip=${POD_FQDN}" >> ${root_dir}/nebula-metad.conf
+  ${root_dir}/scripts/nebula.service -c ${root_dir}/nebula-metad.conf start metad
+  until curl -L  http://${POD_FQDN}:19559/status; do sleep 5; done
+  /usr/local/nebula/console/agent  --agent="${POD_FQDN}:8888" --meta="${POD_FQDN}:9559"
+  while true; do
+    sleep 5
+    echo "$(date): Waiting for Nebula restoration to complete..."
+  done
+else
+  exec ${root_dir}/bin/nebula-metad --flagfile=${root_dir}/etc/nebula-metad.conf --meta_server_addrs=$NEBULA_METAD_SVC --local_ip=$POD_FQDN --daemonize=false
+fi
+
+
+#

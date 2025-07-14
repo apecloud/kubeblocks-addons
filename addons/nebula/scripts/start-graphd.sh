@@ -15,4 +15,7 @@ function tail_logs() {
 }
 
 tail_logs &
+if [ -f "${root_dir}/data/.kb_restore" ]; then
+  rm ${root_dir}/data/.kb_restore
+fi
 exec ${root_dir}/bin/nebula-graphd --flagfile=${root_dir}/etc/nebula-graphd.conf --meta_server_addrs=$NEBULA_METAD_SVC --local_ip=$POD_FQDN --daemonize=false

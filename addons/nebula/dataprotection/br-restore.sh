@@ -18,6 +18,10 @@ if [ -n "$region" ]; then
    region_flag="--s3.region=$region"
 fi
 
+if [ "${IS_METAD}" != "true" ]; then
+  echo "No need to restore when the pod is not a metad."
+  exit 0
+fi
 
 export PATH="$PATH:$DP_DATASAFED_BIN_PATH"
 export DATASAFED_BACKEND_BASE_PATH=${DP_BACKUP_BASE_PATH}
