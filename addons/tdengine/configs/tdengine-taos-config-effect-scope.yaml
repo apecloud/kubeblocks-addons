@@ -5,21 +5,11 @@
 ## if all the changed parameters are in the dynamicParameters list, this change executes reload without process restart.
 ## if the above two conditions are not met, by default, parameter change operation follow the rule for using staticParameters.
 staticParameters:
-  - compressMsgSize
-  - numOfRpcSessions
-  - numOfRpcThreads
-  - numOfTaskQueueThreads
-  - resolveFQDNRetryTime
   - timeToGetAvailableConn
   - maxShellConns
-  - maxRetryWaitTime
-  - shareConnLimit
-  - readTimeout
-  - monitorComp
   - telemetryServer
   - telemetryPort
   - tagFilterCache
-  - queryBufferSize
   - queryUseMemoryPool
   - singleQueryMaxMemorySize
   - filterScalarMode
@@ -37,16 +27,6 @@ staticParameters:
   - minDiskFreeSize
   - cacheLazyLoadThreshold
   - supportVnodes
-  - numOfCommitThreads
-  - numOfCompactThreads
-  - numOfMnodeReadThreads
-  - numOfVnodeQueryThreads
-  - numOfVnodeFetchThreads
-  - numOfVnodeRsmaThreads
-  - numOfQnodeQueryThreads
-  - numOfSnodeSharedThreads
-  - numOfSnodeUniqueThreads
-  - ratioOfVnodeStreamThreads
   - ttlPushInterval
   - ttlBatchDropNum
   - tmqMaxTopicNum
@@ -62,16 +42,10 @@ staticParameters:
   - transPullupInterval
   - mqRebalanceInterval
   - timeseriesThreshold
-  - udf
-  - udfdResFuncs
-  - udfdLdLibPath
-  - enableStrongPassword
   - disableStream
-  - streamBufferSize
   - streamAggCnt
   - checkpointInterval
   - concurrentCheckpoint
-  - maxStreamBackendCache
   - streamNotifyMessageSize
   - streamNotifyFrameSize
   - adapterToken
@@ -83,19 +57,45 @@ staticParameters:
   - AVX512Enable
   - rsyncPort
   - snodeAddress
-  - checkpointBackupDir
   - slowLogThresholdTest
-  - bypassFlag
   - lossyColumn
-  - ifAdtFse
   - enableIpv6
-  - maxRange
-  - curRange
   - compressor
 
 dynamicParameters:
+  - queryBufferSize
+  - numOfCommitThreads
+  - numOfCompactThreads
+  - numOfMnodeReadThreads
+  - numOfVnodeQueryThreads
+  - numOfVnodeFetchThreads
+  - numOfVnodeRsmaThreads
+  - numOfQnodeQueryThreads
+  - numOfSnodeSharedThreads
+  - numOfSnodeUniqueThreads
+  - ratioOfVnodeStreamThreads
+  - udf
+  - udfdResFuncs
+  - udfdLdLibPath
+  - enableStrongPassword
+  - streamBufferSize
+  - maxStreamBackendCache
+  - snodeAddress
+  - checkpointBackupDir
+  - bypassFlag
+  - ifAdtFse
+  - maxRange
+  - curRange
+  - monitorComp
+  - readTimeout
+  - compressMsgSize
+  - numOfRpcThreads
+  - numOfTaskQueueThreads
+  - numOfRpcSessions
   - shellActivityTimer
   - rpcQueueMemoryAllowed
+  - shareConnLimit
+  - maxRetryWaitTime
   - monitor
   - monitorInterval
   - monitorMaxLogs
